@@ -1,0 +1,68 @@
+/*
+ * SongScribe song notation program
+ * Copyright (C) Sri Chinmoy Centres International
+ *
+ * This file is part of SongScribe.
+ *
+ * SongScribe is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * SongScribe is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+package songscribe.ui.playback;
+
+import javax.sound.midi.InvalidMidiDataException;
+import javax.sound.midi.ShortMessage;
+import songscribe.ui.component.MainFrame;
+
+public class PlayNoteThread extends Thread {
+
+    private final int pitch;
+
+    public PlayNoteThread(int pitch) {
+        this.pitch = pitch;
+    }
+
+    @Override
+    public void run() {
+        if (MidiController.midiReceiver == null) {
+            return;
+        }
+
+        try {
+            var programChange = new ShortMessage();
+            var instrument = MainFrame.getInstance().getScore().getInstrument();
+            programChange.setMessage(
+                ShortMessage.PROGRAM_CHANGE,
+                instrument,
+                0
+            );
+            MidiController.midiReceiver.send(programChange, -1);
+
+            var on = new ShortMessage();
+            on.setMessage(ShortMessage.NOTE_ON, pitch, 64);
+            var off = new ShortMessage();
+            off.setMessage(ShortMessage.NOTE_OFF, pitch, 64);
+
+            MidiController.midiReceiver.send(on, -1);
+
+            try {
+                Thread.sleep(700);
+            } catch (InterruptedException e) {
+                // okay
+            }
+
+            MidiController.midiReceiver.send(off, -1);
+        } catch (InvalidMidiDataException e) {
+            // Ignore
+        }
+    }
+}

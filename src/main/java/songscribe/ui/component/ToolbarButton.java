@@ -1,0 +1,63 @@
+/*
+ * SongScribe song notation program
+ * Copyright (C) Sri Chinmoy Centres International
+ *
+ * This file is part of SongScribe.
+ *
+ * SongScribe is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * SongScribe is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+package songscribe.ui.component;
+
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
+
+import javax.swing.*;
+
+import songscribe.ui.action.UIAction;
+import songscribe.ui.component.toolbar.Toolbar;
+import songscribe.util.UIUtils;
+
+public class ToolbarButton extends JButton implements PropertyChangeListener {
+
+    public ToolbarButton(UIAction action) {
+        super(action);
+        UIUtils.initToolbarButton(this, Toolbar.BUTTON_DIMENSION);
+        action.addPropertyChangeListener(this);
+    }
+
+    @Override
+    protected void configurePropertiesFromAction(Action a) {
+        if (a instanceof UIAction) {
+            UIUtils.configureButtonFromAction(this, (UIAction) a);
+        } else {
+            super.configurePropertiesFromAction(a);
+        }
+    }
+
+    @Override
+    public void propertyChange(PropertyChangeEvent evt) {
+        var prop = evt.getPropertyName();
+        var action = (UIAction) getAction();
+
+        if (
+            prop.equals(UIAction.FONT_ICON_KEY) ||
+            prop.equals(UIAction.FONT_KEY)
+        ) {
+            UIUtils.configureButtonFromAction(this, action);
+        } else if (prop.equals(Action.SHORT_DESCRIPTION)) {
+            UIUtils.setToolTipText(this, action);
+        }
+    }
+}

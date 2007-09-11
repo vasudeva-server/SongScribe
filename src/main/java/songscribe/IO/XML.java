@@ -1,0 +1,109 @@
+/*
+ * SongScribe song notation program
+ * Copyright (C) Sri Chinmoy Centres International
+ *
+ * This file is part of SongScribe.
+ *
+ * SongScribe is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * SongScribe is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+package songscribe.io;
+
+import java.io.PrintWriter;
+
+public final class XML {
+
+    private static int indent = 0;
+
+    private XML() {}
+
+    public static void setIndent(int newIndent) {
+        indent = newIndent;
+    }
+
+    public static void writeEmptyTag(PrintWriter pw, String tag) {
+        for (var i = 0; i < indent; i++) {
+            pw.print(' ');
+        }
+
+        pw.print('<');
+        pw.print(tag);
+        pw.println(" />");
+    }
+
+    public static void writeBeginTag(PrintWriter pw, String tag) {
+        for (var i = 0; i < indent; i++) {
+            pw.print(' ');
+        }
+
+        pw.print('<');
+        pw.print(tag);
+        pw.println('>');
+    }
+
+    public static void writeEndTag(PrintWriter pw, String tag) {
+        for (var i = 0; i < indent; i++) {
+            pw.print(' ');
+        }
+
+        pw.print("</");
+        pw.print(tag);
+        pw.println('>');
+    }
+
+    public static void writeValue(PrintWriter pw, String tag, String value) {
+        for (var i = 0; i < indent; i++) {
+            pw.print(' ');
+        }
+
+        pw.print('<');
+        pw.print(tag);
+        pw.print('>');
+        pw.print(escapeXML(value));
+        pw.print("</");
+        pw.print(tag);
+        pw.println('>');
+    }
+
+    /**
+     * Replace special characters with XML escapes:
+     * <pre>
+     * &amp; <small>(ampersand)</small> is replaced by &amp;amp;
+     * &lt; <small>(less than)</small> is replaced by &amp;lt;
+     * &gt; <small>(greater than)</small> is replaced by &amp;gt;
+     * &quot; <small>(double quote)</small> is replaced by &amp;quot;
+     * </pre>
+     *
+     * @param string The string to be escaped.
+     * @return The escaped string.
+     */
+    public static String escapeXML(String string) {
+        var sb = new StringBuilder((int) (string.length() * 1.5));
+
+        for (int i = 0, len = string.length(); i < len; i++) {
+            var c = string.charAt(i);
+
+            sb.append(
+                switch (c) {
+                    case '&' -> "&amp;";
+                    case '<' -> "&lt;";
+                    case '>' -> "&gt;";
+                    case '"' -> "&quot;";
+                    default -> c;
+                }
+            );
+        }
+
+        return sb.toString();
+    }
+}

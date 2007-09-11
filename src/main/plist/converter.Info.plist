@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleAllowMixedLocalizations</key>
+	<string>false</string>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>English</string>
+	<key>CFBundleDocumentTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeExtensions</key>
+			<array>
+				<string>mssb</string>
+			</array>
+			<key>CFBundleTypeIconFile</key>
+			<string>document.icns</string>
+			<key>CFBundleTypeName</key>
+			<string>SongScribe Book Document</string>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+		</dict>
+	</array>
+	<key>CFBundleExecutable</key>
+	<string>JavaApplicationStub</string>
+	<key>CFBundleIconFile</key>
+	<string>app.icns</string>
+	<key>CFBundleIdentifier</key>
+	<string>org.songscribe.converter</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>SongScribe Converter</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleSignature</key>
+	<string>SSSC</string>
+	<key>CFBundleVersion</key>
+	<string>${project.version}.${build.version}</string>
+	<key>CFBundleShortVersionString</key>
+	<string>${project.version}</string>
+	<key>NSHighResolutionCapable</key>
+	<true/>
+	<key>JavaVM</key>
+	<dict>
+		<key>ClassPath</key>
+		<string>$APP_PACKAGE/Contents/Resources/Java/SongScribe.jar</string>
+		<key>JVMVersion</key>
+		<string>1.8+</string>
+		<key>MainClass</key>
+		<string>songscribe.SongScribe</string>
+		<key>VMOptionArray</key>
+		<array>
+			<string>-Dsongscribe=ui_converter</string>
+			<string>-Xms256m</string>
+			<string>-Xmx512m</string>
+			<string>-Dapple.laf.useScreenMenuBar=true</string>
+			<string>-Dsun.java2d.d3d=false</string>
+		</array>
+		<key>WorkingDirectory</key>
+		<string>$APP_PACKAGE/Contents/Resources/Java</string>
+	</dict>
+</dict>
+</plist>

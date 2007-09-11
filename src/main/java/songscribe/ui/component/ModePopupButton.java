@@ -1,0 +1,56 @@
+/*
+ * SongScribe song notation program
+ * Copyright (C) Sri Chinmoy Centres International
+ *
+ * This file is part of SongScribe.
+ *
+ * SongScribe is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * SongScribe is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+package songscribe.ui.component;
+
+import static songscribe.ui.action.Actions.MODE_ACTION_GROUP;
+
+import net.engio.mbassy.listener.Handler;
+
+import songscribe.ui.action.Actions;
+import songscribe.ui.component.toolbar.Toolbar;
+import songscribe.ui.message.MessageCenter;
+import songscribe.ui.message.ModeChangedMessage;
+import songscribe.ui.playback.PlaybackController;
+import songscribe.ui.playback.PlaybackStateChangedMessage;
+import songscribe.util.UIUtils;
+
+public class ModePopupButton extends PopupButton {
+
+    public ModePopupButton() {
+        super(MODE_ACTION_GROUP.getActions(), Actions.EDIT_MODE_ACTION);
+        UIUtils.initToolbarButton(this, Toolbar.BUTTON_DIMENSION);
+        MessageCenter.subscribe(this);
+    }
+
+    @Handler
+    public void modeDidChange(ModeChangedMessage message) {
+        // When the mode changes, update the current action so the button
+        // can display the correct icon and tooltip.
+        setCurrentAction(message.getAction());
+    }
+
+    @Handler
+    public void playbackStateDidChange(PlaybackStateChangedMessage message) {
+        setEnabled(
+            message.getState() != PlaybackController.PlaybackState.PLAYING
+        );
+    }
+}

@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<composition version="1.2">
+  <keys>5</keys>
+  <keytype>FLATS</keytype>
+  <tempo>
+    <visibletempo>120</visibletempo>
+    <tempotype>CROTCHET</tempotype>
+    <tempodescription></tempodescription>
+    <dontshowtempo />
+  </tempo>
+  <songtitle>Em and En</songtitle>
+  <lyrics>la la— la la
+la– la la la</lyrics>
+  <rightinfo>
+</rightinfo>
+  <rightinfostarty>52</rightinfostarty>
+  <linewidth>700</linewidth>
+  <parsonssimple>*rudrrud</parsonssimple>
+  <parsonsimproved>*ru2d2rru2d4</parsonsimproved>
+  <lines>
+    <line>
+      <notedistchange>2.0764759</notedistchange>
+      <tempochangeypos>-40</tempochangeypos>
+      <lyricsypos>48</lyricsypos>
+      <notes>
+          <note type="CROTCHET">
+            <xpos>100</xpos>
+            <ypos>1</ypos>
+            <upper />
+          </note>
+          <note type="CROTCHET">
+            <xpos>179</xpos>
+            <ypos>1</ypos>
+            <upper />
+          </note>
+          <note type="CROTCHET">
+            <xpos>245</xpos>
+            <ypos>0</ypos>
+            <upper />
+          </note>
+          <note type="CROTCHET">
+            <xpos>318</xpos>
+            <ypos>1</ypos>
+            <upper />
+          </note>
+      </notes>
+    </line>
+    <line>
+      <notedistchange>2.0776474</notedistchange>
+      <lyricsypos>48</lyricsypos>
+      <notes>
+          <note type="CROTCHET">
+            <xpos>100</xpos>
+            <ypos>1</ypos>
+            <upper />
+          </note>
+          <note type="CROTCHET">
+            <xpos>173</xpos>
+            <ypos>1</ypos>
+            <upper />
+          </note>
+          <note type="CROTCHET">
+            <xpos>245</xpos>
+            <ypos>0</ypos>
+            <upper />
+          </note>
+          <note type="CROTCHET">
+            <xpos>318</xpos>
+            <ypos>2</ypos>
+            <upper />
+          </note>
+      </notes>
+    </line>
+  </lines>
+  <view>
+    <titlefont>Arial</titlefont>
+    <titlefontsize>26</titlefontsize>
+    <titlefontstyle>Plain</titlefontstyle>
+    <lyricsfont>Times New Roman</lyricsfont>
+    <lyricsfontsize>18</lyricsfontsize>
+    <lyricsfontstyle>Plain</lyricsfontstyle>
+    <generalfont>Arial</generalfont>
+    <generalfontsize>14</generalfontsize>
+  </view>
+</composition>

@@ -1,0 +1,13 @@
+# No IntelliJ stuff
+*.iml
+*.ipr
+*.iws
+.idea/
+
+# No maven stuff
+target/
+out/
+jpackage
+
+# No node stuff
+node_modules/
