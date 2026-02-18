@@ -1,170 +1,62 @@
 {
-  "plansDirectory": "plans",
+  "version": "1.0",
   "masterPlans": [
     {
-      "path": "plans/completed/refactors/line-component-refactor/line-component-refactor.md",
-      "subdirectory": "completed/refactors/line-component-refactor",
-      "active": false,
-      "created": "2026-02-13",
-      "description": "LineComponent refactoring - extract renderer, insertion note manager, and selection handler",
-      "category": "refactors",
-      "completed": "2026-02-13"
-    },
-    {
-      "path": "plans/completed/migrations/notespacing-to-layout2/notespacing-to-layout2.md",
-      "subdirectory": "completed/migrations/notespacing-to-layout2",
-      "active": false,
-      "created": "2026-02-04",
-      "description": "Migrate NoteSpacing class to layout2 APIs - remove legacy proportional spacing",
-      "category": "migrations",
-      "completed": "2026-02-13"
-    },
-    {
-      "path": "plans/completed/refactors/score-infrastructure/score-infrastructure.md",
-      "subdirectory": "completed/refactors/score-infrastructure",
-      "active": false,
-      "created": "2026-02-03",
-      "description": "Score.java Infrastructure Extraction - extract 6 infrastructure classes",
-      "category": "refactors",
-      "completed": "2026-02-04"
-    },
-    {
-      "path": "plans/completed/score-cleanup/score-cleanup.md",
-      "subdirectory": "completed/score-cleanup",
-      "active": false,
-      "created": "2026-02-02",
-      "description": "Score.java Legacy Code Cleanup - extract domain logic into dedicated classes",
-      "completed": "2026-02-03"
-    },
-    {
-      "path": "plans/refactors/data-model-modernization/data-model-modernization.md",
-      "subdirectory": "refactors/data-model-modernization",
-      "active": false,
-      "created": "2026-02-02",
-      "description": "Replace stringly-typed Interval.data with typed subclasses, maintain file format compatibility",
-      "category": "refactors"
-    },
-    {
-      "path": "plans/completed/insertion-note-refactor/insertion-note-refactor.md",
-      "subdirectory": "completed/insertion-note-refactor",
-      "active": false,
-      "created": "2026-02-02",
-      "description": "Refactor insertion note to use layout system, decouple from Score.java",
-      "completed": "2026-02-02"
-    },
-    {
-      "path": "plans/migrations/score-layout-redesign/score-layout-redesign.md",
-      "subdirectory": "migrations/score-layout-redesign",
-      "active": false,
-      "created": "2026-01-31",
-      "description": "Layout System Redesign: Swing Component + LineElement Hierarchy",
-      "category": "migrations"
-    },
-    {
-      "path": "plans/completed/line-engraving-rewrite/line-engraving-rewrite.md",
-      "subdirectory": "completed/line-engraving-rewrite",
-      "active": false,
-      "created": "2026-02-01",
-      "completed": "2026-02-01",
-      "description": "Complete layout system rewrite with note columns and lyric-driven spacing"
-    }
-  ],
-  "subPlans": [
-    {
-      "path": "plans/completed/score-layout-redesign/remove-layout-manager.md",
-      "parentPlan": "plans/migrations/score-layout-redesign/score-layout-redesign.md",
-      "parentPhase": 2,
-      "status": "completed",
-      "createdAt": "2026-01-31",
-      "merged": true,
-      "mergedAt": "2026-01-31"
-    },
-    {
-      "path": "plans/completed/score-layout-redesign/line-layout-engine.md",
-      "parentPlan": "plans/migrations/score-layout-redesign/score-layout-redesign.md",
-      "parentPhase": 5,
-      "status": "completed",
-      "createdAt": "2026-01-31",
-      "merged": true,
-      "mergedAt": "2026-01-31"
-    },
-    {
-      "path": "plans/completed/line-engraving-rewrite/phase-2-horizontal-spacing.md",
-      "parentPlan": "plans/completed/line-engraving-rewrite/line-engraving-rewrite.md",
-      "parentPhase": 2,
-      "status": "completed",
-      "createdAt": "2026-02-01",
-      "completedAt": "2026-02-01",
-      "type": "sub-plan",
-      "prePlanned": false
-    },
-    {
-      "path": "plans/completed/line-engraving-rewrite/phase-3-vertical-layout.md",
-      "parentPlan": "plans/completed/line-engraving-rewrite/line-engraving-rewrite.md",
-      "parentPhase": 3,
-      "status": "completed",
-      "createdAt": "2026-02-01",
-      "completedAt": "2026-02-01",
-      "type": "sub-plan",
-      "prePlanned": false
-    },
-    {
-      "path": "plans/completed/line-engraving-rewrite/phase-5-integration-status.md",
-      "parentPlan": "plans/completed/line-engraving-rewrite/line-engraving-rewrite.md",
-      "parentPhase": 5,
-      "status": "completed",
-      "createdAt": "2026-02-01",
-      "completedAt": "2026-02-01",
-      "type": "sub-plan",
-      "prePlanned": false
-    },
-    {
-      "path": "plans/completed/score-cleanup/phase-1-midi-sequence-builder.md",
-      "parentPlan": "plans/completed/score-cleanup/score-cleanup.md",
-      "parentPhase": 1,
-      "status": "pending",
-      "createdAt": "2026-02-02",
-      "type": "sub-plan",
-      "prePlanned": true
-    },
-    {
-      "path": "plans/completed/score-cleanup/phase-5-music-edit-operations.md",
-      "parentPlan": "plans/completed/score-cleanup/score-cleanup.md",
-      "parentPhase": 5,
-      "status": "pending",
-      "createdAt": "2026-02-02",
-      "type": "sub-plan",
-      "prePlanned": false
-    },
-    {
-      "path": "plans/completed/refactors/line-component-refactor/phase-2-insertion-note-manager.md",
-      "parentPlan": "plans/completed/refactors/line-component-refactor/line-component-refactor.md",
-      "parentPhase": 2,
-      "status": "completed",
-      "createdAt": "2026-02-13",
-      "completedAt": "2026-02-13",
-      "type": "sub-plan",
-      "prePlanned": false
-    },
-    {
-      "path": "plans/completed/refactors/line-component-refactor/phase-3-selection-handler.md",
-      "parentPlan": "plans/completed/refactors/line-component-refactor/line-component-refactor.md",
-      "parentPhase": 3,
-      "status": "completed",
-      "createdAt": "2026-02-13",
-      "completedAt": "2026-02-13",
-      "type": "sub-plan",
-      "prePlanned": true
-    },
-    {
-      "path": "plans/migrations/score-layout-redesign/articulation-property-migration.md",
-      "parentPlan": "plans/migrations/score-layout-redesign/score-layout-redesign.md",
-      "parentPhase": 3,
-      "status": "completed",
-      "createdAt": "2026-02-13",
-      "completedAt": "2026-02-14",
-      "type": "sub-plan",
-      "prePlanned": false
+      "path": "plans/migrations/smufl-rewrite/smufl-rewrite.md",
+      "active": true,
+      "subPlans": [
+        {
+          "path": "plans/migrations/smufl-rewrite/phase-2-collapse-hierarchy.md",
+          "phase": 2,
+          "type": "sub-plan",
+          "prePlanned": true,
+          "status": "completed"
+        },
+        {
+          "path": "plans/migrations/smufl-rewrite/phase-3-engraving-defaults.md",
+          "phase": 3,
+          "type": "sub-plan",
+          "prePlanned": false,
+          "status": "completed"
+        },
+        {
+          "path": "plans/migrations/smufl-rewrite/phase-4-smufl-glyph-bounds.md",
+          "phase": 4,
+          "type": "sub-plan",
+          "prePlanned": true,
+          "status": "completed"
+        },
+        {
+          "path": "plans/migrations/smufl-rewrite/phase-5-note-rest-accidental-glyphs.md",
+          "phase": 5,
+          "type": "sub-plan",
+          "prePlanned": true,
+          "status": "completed"
+        },
+        {
+          "path": "plans/migrations/smufl-rewrite/phase-6-stems-flags-tempo.md",
+          "phase": 6,
+          "type": "sub-plan",
+          "prePlanned": false,
+          "status": "completed"
+        },
+        {
+          "path": "plans/migrations/smufl-rewrite/phase-7-custom-to-smufl.md",
+          "phase": 7,
+          "type": "sub-plan",
+          "prePlanned": true,
+          "status": "pending"
+        },
+        {
+          "path": "plans/migrations/smufl-rewrite/phase-7a-stroke-quality.md",
+          "phase": "7a",
+          "type": "sub-plan",
+          "prePlanned": false,
+          "status": "pending"
+        }
+      ],
+      "phases": {},
+      "branches": []
     }
   ]
 }

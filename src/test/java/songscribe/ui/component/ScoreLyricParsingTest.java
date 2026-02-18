@@ -29,7 +29,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
-import songscribe.music.Crotchet;
+import songscribe.music.NoteType;
 import songscribe.music.Line;
 import songscribe.music.Note;
 import songscribe.ui.Constants;
@@ -71,7 +71,7 @@ class ScoreLyricParsingTest {
         var line = new Line();
 
         for (var i = 0; i < noteCount; i++) {
-            line.addNote(new Crotchet());
+            line.addNote(NoteType.CROTCHET.newInstance());
         }
 
         return line;

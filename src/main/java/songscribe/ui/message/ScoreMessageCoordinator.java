@@ -233,10 +233,13 @@ public final class ScoreMessageCoordinator {
     public void onFlipStemDirection(FlipStemDirectionMessage message) {
         operations.flipStemDirection();
 
+        var state = selectionCoordinator.getActiveSelection();
+
         MessageCenter.post(new LayoutChangeMessage(
             LayoutChangeMessage.Section.SCORE,
             LayoutChangeMessage.ChangeType.CONTENT,
-            false
+            false,
+            state != null ? state.getLine() : null
         ));
 
         callback.repaint();
@@ -257,8 +260,16 @@ public final class ScoreMessageCoordinator {
             var staffPanel = mainPanel.getStaffPanel();
 
             if (staffPanel != null) {
+                var targetLine = message.getLine();
+
                 for (var linePanel : staffPanel.getLinePanels()) {
-                    linePanel.getLineComponent().invalidateLayout();
+                    if (targetLine == null || linePanel.getLine() == targetLine) {
+                        linePanel.getLineComponent().invalidateLayout();
+
+                        if (targetLine != null) {
+                            break;
+                        }
+                    }
                 }
             }
         }

@@ -20,11 +20,7 @@
 
 package songscribe.ui.layout2;
 
-import static songscribe.ui.renderer.BaseElementRenderer.MUSIC_FONT;
-
 import java.awt.*;
-import java.awt.font.*;
-import java.awt.geom.*;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.EnumMap;
@@ -36,6 +32,9 @@ import org.jetbrains.annotations.Nullable;
 
 import songscribe.music.Line;
 import songscribe.music.Note;
+import songscribe.smufl.SMuFLGlyph;
+import songscribe.smufl.SMuFLMetadata;
+import songscribe.smufl.StaffSpaces;
 import songscribe.ui.layout.BeamGroup;
 
 /**
@@ -58,8 +57,11 @@ import songscribe.ui.layout.BeamGroup;
  */
 public class NoteColumnBuilder {
 
-    // Standard note head width (from Note.NORMAL_IMAGE_WIDTH)
-    private static final double NOTE_HEAD_WIDTH = 18.0;
+    private static final SMuFLMetadata METADATA = SMuFLMetadata.getInstance();
+
+    // Note head width from SMuFL noteheadBlack bounding box
+    private static final double NOTE_HEAD_WIDTH =
+        StaffSpaces.toPixels(METADATA.getBBox(SMuFLGlyph.NOTEHEAD_BLACK).width());
 
     // Half note head width (for left/right extent calculation)
     private static final double HALF_NOTE_HEAD = NOTE_HEAD_WIDTH / 2.0;
@@ -68,12 +70,12 @@ public class NoteColumnBuilder {
     private static final double DOT_WIDTH = 4.0;
     private static final double DOT_GAP = 2.0;
 
-    // Accidental widths measured from the Fughetta font glyphs
+    // Accidental widths from SMuFL advance widths
     private static final Map<Note.Accidental, Double> ACCIDENTAL_WIDTHS = computeAccidentalWidths();
     private static final double ACCIDENTAL_GAP = 2.0;
 
-    // Stem length (approximate, actual varies with beaming)
-    private static final double STEM_LENGTH = 28.0;
+    // SMuFL standard stem length: 3.5 staff spaces
+    private static final double STEM_LENGTH = StaffSpaces.toPixels(3.5);
 
     private final Graphics2D g2;
     private final Font lyricsFont;
@@ -208,37 +210,37 @@ public class NoteColumnBuilder {
     }
 
     /**
-     * Returns the width of an accidental, measured from the Fughetta font glyphs.
+     * Returns the pixel width of an accidental, derived from SMuFL advance widths.
      */
     public static double getAccidentalWidth(@NotNull Note.Accidental accidental) {
         return ACCIDENTAL_WIDTHS.getOrDefault(accidental, 0.0);
     }
 
     /**
-     * Computes the pixel width of each accidental glyph string using the Fughetta font.
+     * Computes the pixel width of each accidental using SMuFL advance widths.
+     * Compound accidentals (double natural, natural+flat, natural+sharp) sum individual widths.
      */
     private static @NotNull Map<Note.Accidental, Double> computeAccidentalWidths() {
-        // Fughetta glyph strings for each accidental type
-        var glyphs = Map.of(
-            Note.Accidental.NATURAL, "\uf06e",
-            Note.Accidental.FLAT, "\uf062",
-            Note.Accidental.SHARP, "\uf023",
-            Note.Accidental.DOUBLE_NATURAL, "\uf06e\uf06e",
-            Note.Accidental.DOUBLE_FLAT, "\uf0ba",
-            Note.Accidental.DOUBLE_SHARP, "\uf0dc",
-            Note.Accidental.NATURAL_FLAT, "\uf06e\uf062",
-            Note.Accidental.NATURAL_SHARP, "\uf06e\uf023"
-        );
+        double naturalW = advanceWidthPixels(SMuFLGlyph.ACCIDENTAL_NATURAL);
+        double flatW = advanceWidthPixels(SMuFLGlyph.ACCIDENTAL_FLAT);
+        double sharpW = advanceWidthPixels(SMuFLGlyph.ACCIDENTAL_SHARP);
 
-        var frc = new FontRenderContext(null, true, true);
         var widths = new EnumMap<Note.Accidental, Double>(Note.Accidental.class);
-
-        glyphs.forEach((accidental, glyph) -> {
-            Rectangle2D bounds = MUSIC_FONT.getStringBounds(glyph, frc);
-            widths.put(accidental, bounds.getWidth());
-        });
+        widths.put(Note.Accidental.NATURAL, naturalW);
+        widths.put(Note.Accidental.FLAT, flatW);
+        widths.put(Note.Accidental.SHARP, sharpW);
+        widths.put(Note.Accidental.DOUBLE_NATURAL, naturalW + naturalW);
+        widths.put(Note.Accidental.DOUBLE_FLAT, advanceWidthPixels(SMuFLGlyph.ACCIDENTAL_DOUBLE_FLAT));
+        widths.put(Note.Accidental.DOUBLE_SHARP, advanceWidthPixels(SMuFLGlyph.ACCIDENTAL_DOUBLE_SHARP));
+        widths.put(Note.Accidental.NATURAL_FLAT, naturalW + flatW);
+        widths.put(Note.Accidental.NATURAL_SHARP, naturalW + sharpW);
 
         return widths;
+    }
+
+    private static double advanceWidthPixels(SMuFLGlyph glyph) {
+        var width = METADATA.getAdvanceWidth(glyph);
+        return width != null ? StaffSpaces.toPixels(width) : 0.0;
     }
 
     // ==========================================================================

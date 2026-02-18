@@ -29,12 +29,11 @@ import songscribe.music.BeamCalculator;
 import songscribe.music.Composition;
 import songscribe.music.ArticulationType;
 import songscribe.music.ForceArticulation;
-import songscribe.music.GraceSemiQuaver;
+
 import songscribe.music.Line;
 import songscribe.music.LyricsProcessor;
 import songscribe.music.Note;
 import songscribe.music.NoteType;
-import songscribe.music.RepeatLeftRight;
 import songscribe.ui.Control;
 import songscribe.ui.action.Actions;
 import songscribe.ui.clipboard.ClipboardManager;
@@ -322,7 +321,7 @@ public final class EditModeManager {
                 ((noteIndex - 1) >= 0) &&
                 (line.getNote(noteIndex - 1).getNoteType() == NoteType.REPEAT_RIGHT)
         ) {
-            var repeatLeftRight = new RepeatLeftRight();
+            var repeatLeftRight = NoteType.REPEAT_LEFT_RIGHT.newInstance();
             repeatLeftRight.setXPos(line.getNote(noteIndex - 1).getXPos());
             line.setNote(noteIndex - 1, repeatLeftRight);
             return true;
@@ -333,13 +332,9 @@ public final class EditModeManager {
                 (noteIndex < line.noteCount()) &&
                 (line.getNote(noteIndex).getNoteType() == NoteType.REPEAT_LEFT)
         ) {
-            var repeatLeftRight = new RepeatLeftRight();
+            var repeatLeftRight = NoteType.REPEAT_LEFT_RIGHT.newInstance();
             repeatLeftRight.setXPos(line.getNote(noteIndex).getXPos());
             line.setNote(noteIndex, repeatLeftRight);
-            return true;
-        }
-
-        if (editNote.getNoteType() == NoteType.GRACE_SEMIQUAVER_EDIT_STEP1) {
             return true;
         }
 
@@ -432,13 +427,6 @@ public final class EditModeManager {
             }
 
             nextNote = nextNoteType.newInstance();
-        } else if (
-            editNote.getNoteType() == NoteType.GRACE_SEMIQUAVER_EDIT_STEP1
-        ) {
-            nextNote = new GraceSemiQuaver();
-            ((GraceSemiQuaver) nextNote).setY0Pos(editNote.getYPos());
-            ((GraceSemiQuaver) nextNote).setX2DiffPos(15);
-            nextNote.setUpper(true);
         } else {
             nextNote = editNote.getNoteType().newInstance();
         }
@@ -455,7 +443,8 @@ public final class EditModeManager {
         MessageCenter.post(new LayoutChangeMessage(
             LayoutChangeMessage.Section.SCORE,
             LayoutChangeMessage.ChangeType.CONTENT,
-            false
+            false,
+            line
         ));
 
         scoreActions.repaint();

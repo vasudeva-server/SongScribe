@@ -1,0 +1,350 @@
+# Gould / Ross Engraving Standard
+
+## Vocal-Only, Single-Staff, Lyrics Below
+
+### (Professional Consolidation)
+
+This document consolidates engraving rules derived from:
+
+- Elaine Gould -- *Behind Bars*
+- Ted Ross -- *The Art of Music Engraving and Processing*
+
+Adapted specifically for:
+
+- Single melodic staff
+- Vocal music
+- Lyrics below the staff
+- Meterless or lightly structured rhythm
+- Occasional articulations, tuplets, and expressive markings
+
+Clarity, proportional balance, and lyric readability govern all decisions.
+
+---
+
+# 1. Hierarchy of Visual Priority
+
+1. Lyrics
+2. Fermatas / expressive markings
+3. Dynamics and hairpins
+4. Articulations
+5. Beams and stems
+6. Note spacing refinement
+
+If conflicts arise, preserve higher-priority elements.
+
+---
+
+# 2. Horizontal Spacing
+
+## 2.1 Note Columns
+
+Each note or rest creates a rhythmic column.
+
+Columns must:
+
+- Align vertically through the system.
+- Expand to accommodate accidentals.
+- Expand to accommodate lyrics.
+
+Lyrics may override rhythmic proportional spacing when necessary.
+
+## 2.2 Notes and Rests
+
+- Default spacing is non-proportional.
+- Rhythmic value does not determine horizontal distance.
+- Spacing is governed by glyph extents, collision avoidance, and lyric needs.
+- Longer durations increase stretch potential, not guaranteed width.
+- Uneven spacing is expected and correct.
+- Rests create columns equivalent to notes of equal duration.
+
+## 2.3 Accidentals and Augmentation Dots
+
+**Accidentals**
+
+- Project leftward from the notehead.
+- Increase spacing only when minimum clearance would be violated.
+- No fixed reserved space.
+
+**Dots**
+
+- Project rightward.
+- Must not collide with following notes or flags.
+- Do not justify widening a bar on their own.
+
+## 2.4 Bars and Measures
+
+- Bars do not enforce equal widths.
+- Lyrics may legitimately widen or compress measures.
+- Never tighten lyrics to preserve visual symmetry.
+
+## 2.5 Lyrics and Syllables
+
+- One syllable aligns with one notehead.
+- Syllables must never crowd.
+- Optical clarity outweighs rhythmic proportionality.
+
+**Hyphens vs. Extenders**
+
+- Hyphen = syllable division only.
+- Extender = duration only.
+- Never repeat hyphens to show duration.
+- Two-syllable words always use exactly one hyphen.
+
+Example:
+ka____-re
+
+## 2.6 Beamed Groups
+
+- Treated as rhythmic units.
+- Internal spacing proportional but compact.
+- Beams define rhythmic *grouping* and are treated as a single visual unit for spacing.
+- Internal spacing within a beam group should remain as tight and regular as possible, **unless lyrics force expansion**.
+- In vocal music, **lyric readability takes precedence**: if syllable width requires it, the beam group may widen by increasing the spacing between note columns inside the beam.
+- Avoid "fracturing" the beam group visually:
+    - do not let one note appear detached from its beam group,
+    - do not create extreme internal gaps unless required by long text.
+- Beaming typically removes flags, which reduces protruding glyph geometry; therefore beamed passages may space more efficiently than isolated flagged notes.
+- Provide clear separation between adjacent beam groups (or between a beam group and a rest) so rhythmic grouping remains unambiguous.
+- Under lyrics:
+    - keep syllables centered under their noteheads,
+    - maintain clear minimum gaps between syllables,
+    - prefer widening the beam group over compressing text.
+
+## 2.7 Grace Notes
+
+- Do not create full rhythmic columns.
+- Must not disrupt lyric alignment.
+
+---
+
+# 3. Stem Direction
+
+In single-voice vocal music:
+
+- Notes on or above middle line: stems down.
+- Notes below middle line: stems up.
+- Avoid frequent flipping within short spans.
+
+Consistency preferred over strict rule enforcement in ambiguous cases.
+
+---
+
+# 4. Beam Angle Rules
+
+## 4.1 Governing Philosophy
+
+Beam angle should:
+
+- Suggest contour
+- Remain moderate
+- Avoid steep slopes
+- Preserve stem balance
+- Protect lyric clarity
+
+## 4.2 Default Beam Behavior
+
+- Scale melodic slope to 60% of actual contour.
+- Clamp deviation to ≤ 0.75 staff spaces.
+- Absolute maximum: 1 staff space (rare).
+
+If uncertain, flatten.
+
+## 4.3 When to Use Horizontal Beams
+
+Force horizontal beams when:
+
+- Contour reverses
+- Pitch span exceeds a sixth
+- Lyrics are dense
+- Articulations cluster above
+- Slope exceeds 0.75 staff spaces
+- Music is declamatory or calm
+
+Horizontal beams are often preferable in vocal engraving.
+
+## 4.4 Stem Length Balance
+
+Beam placement must avoid:
+
+- Extremely short stems
+- Excessively long stems
+
+Balanced stems override literal pitch slope.
+
+---
+
+# 5. Vertical Spacing
+
+## 5.1 Articulations
+
+**Placement**
+
+For vocal-only engraving:
+
+- Accents: Above staff
+- Staccato alone: Above staff
+- Accent + staccato: Cluster above
+- Fermatas: Above staff
+
+Must clear staff lines, stems, beams, and text.
+
+**Interaction with Beams**
+
+- Beam angle must not compress articulation space.
+- In articulated passages, prefer flatter beams.
+
+## 5.2 Fermatas
+
+- Placed above the staff.
+- Must clear dynamics, tempo text, and endings.
+- Prefer vertical expansion to horizontal distortion.
+
+## 5.3 Dynamics and Hairpins
+
+**Placement**
+
+- Place dynamics above staff.
+- Place cresc./dim. above staff.
+
+**Range Elements (Hairpins)**
+
+- Hairpins are **range indicators**, not rhythmic events.
+- They do not create spacing columns and do not advance time.
+- In vocal-only music, hairpins are placed **above the staff**.
+- Hairpins should:
+    - begin and end clearly under the notes they affect,
+    - avoid touching noteheads, stems, beams, or lyrics,
+    - remain visually subordinate to tempo and fermata marks.
+- Hairpins must **never intrude into lyric space**.
+- Maintain steady vertical alignment.
+- If space is tight:
+    - shorten the hairpin,
+    - adjust vertical position,
+    - widen spacing only as a last resort.
+- Hairpins communicate **dynamic change**, not duration.
+
+**Text Dynamics Across a Range**
+
+- Dynamic text (e.g., *cresc.*, *dim.*) functions like a hairpin.
+- Place above the staff in vocal music.
+- Do not stretch musical spacing solely to center the text.
+- Ensure text remains visually associated with its range.
+
+## 5.4 Breath Marks
+
+- Placed above the staff, after the note.
+- Must be visually clear and unambiguous.
+- May require slight horizontal space after the note.
+- Never compress lyrics to accommodate a breath mark.
+
+## 5.5 First and Second Endings (Volta Brackets)
+
+- Endings are **structural range elements** spanning one or more measures.
+- They do not participate in rhythmic spacing.
+- Use straight horizontal brackets.
+- Vertical hooks at both ends.
+- Second ending usually closed.
+- Align with barline or repeat sign.
+- Must clear tempo marks, dynamics, and fermatas.
+- Maintain consistent bracket height.
+- Vertical expansion is preferred over horizontal distortion.
+- Open or closed final brackets are acceptable; clarity overrides symmetry.
+
+## 5.6 Tempo and Beat Changes
+
+- Placed above the staff.
+- Aligned with the governing musical event.
+- Must remain visually distinct from expressive text.
+
+---
+
+# 6. Tuplets
+
+## 6.1 Beamed Tuplets
+
+- Follow standard beam-angle rules.
+- No brackets when beam is present (unless clarity demands).
+
+## 6.2 Unbeamed Tuplets
+
+- Use straight brackets.
+- Bracket does not dictate beam angle.
+
+Tuplet numbers must remain legible and centered.
+
+---
+
+# 7. Trills and Multi-Note Ornaments
+
+- Place above staff.
+- Span clearly over affected notes.
+- Avoid beam collisions.
+- Maintain vertical hierarchy with dynamics.
+- Trills spanning multiple notes are **ornamental ranges**, not rhythmic events.
+- They do not create spacing columns.
+- Trill lines or extensions should:
+    - align clearly with the notes they modify,
+    - remain visually continuous across the span,
+    - avoid collisions with stems, beams, and lyrics.
+- In vocal music:
+    - trills should remain light and subordinate,
+    - never obscure text or phrasing marks.
+- If space is limited:
+    - shorten or raise the trill line,
+    - avoid widening note spacing unless absolutely necessary.
+
+---
+
+# 8. Meterless Engraving Adjustments
+
+In meterless vocal music:
+
+- Favor conservative beam slopes.
+- Favor horizontal beams when ambiguous.
+- Maintain generous lyric spacing.
+- Avoid visual angular drama.
+
+Stability over geometry.
+
+---
+
+# 9. Implementation Defaults (Recommended Preset)
+
+Slope scaling: 0.6
+Max beam deviation: 0.75 staff spaces
+Horizontal threshold: mixed contour
+Downward slope penalty: -15%
+Stem balance priority: High
+Lyric collision override: Enabled
+Articulation clustering: Enabled
+Dynamic placement: Above staff
+Tuplet bracket style: Straight
+
+---
+
+# 10. Global Principles
+
+1. Lyrics dominate spacing decisions.
+2. Readability beats symmetry.
+3. Duration is never encoded in text.
+4. Uneven spacing is normal.
+5. Everything yields to the singer's eye.
+6. Range elements adapt to spacing; spacing does not adapt to range elements.
+
+---
+
+# 11. Visual Target
+
+Your engraving should appear:
+
+- Calm
+- Balanced
+- Proportional
+- Text-centered
+- Structurally deliberate
+
+The notation must serve the sung text first.
+
+---
+
+End of Gould / Ross Engraving Standard.

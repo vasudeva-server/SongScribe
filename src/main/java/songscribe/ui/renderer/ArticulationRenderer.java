@@ -20,18 +20,15 @@
 
 package songscribe.ui.renderer;
 
-import java.awt.BasicStroke;
 import java.awt.Graphics2D;
-import java.awt.Rectangle;
-import java.awt.Stroke;
-import java.awt.geom.Ellipse2D;
 
 import org.jetbrains.annotations.NotNull;
 
-import static songscribe.ui.renderer.GraphicsState.Property.*;
-
 import songscribe.music.ArticulationType;
 import songscribe.music.Note;
+import songscribe.smufl.SMuFLGlyph;
+import songscribe.smufl.SMuFLMetadata;
+import songscribe.smufl.StaffSpaces;
 import songscribe.ui.layout.LayoutStylesheet;
 import songscribe.ui.layout2.LayoutResult;
 import songscribe.util.GraphicUtils;
@@ -51,39 +48,30 @@ public class ArticulationRenderer extends BaseElementRenderer<Note> {
     // Constants
     // ==========================================================================
 
-    // Crotchet width for positioning
+    // SMuFL bbox-derived dimensions (in pixels) for accent and staccato glyphs.
+    // Used by calculateAccentY/calculateStaccatoY for vertical positioning.
+    private static final int ACCENT_HALF_HEIGHT;
+    private static final double ACCENT_WIDTH;
+    private static final int STACCATO_HALF_HEIGHT;
+    private static final double STACCATO_WIDTH;
+
+    static {
+        var metadata = SMuFLMetadata.getInstance();
+
+        var accentBBox = metadata.getBBox(SMuFLGlyph.ARTIC_ACCENT_ABOVE);
+        ACCENT_HALF_HEIGHT = (int) Math.round(StaffSpaces.toPixels(accentBBox.height()) / 2.0);
+        ACCENT_WIDTH = StaffSpaces.toPixels(accentBBox.width());
+
+        var staccatoBBox = metadata.getBBox(SMuFLGlyph.ARTIC_STACCATO_ABOVE);
+        STACCATO_HALF_HEIGHT = (int) Math.round(StaffSpaces.toPixels(staccatoBBox.height()) / 2.0);
+        STACCATO_WIDTH = StaffSpaces.toPixels(staccatoBBox.width());
+    }
+
+    // Crotchet width for positioning (half-width used for horizontal centering)
     private static final double CROTCHET_WIDTH = BaseElementRenderer.NOTE_FONT_SIZE / 3.6056337d;
-
-    // Accent drawing parameters (DPI-aware stroke width).
-    private static final float ACCENT_STROKE_WIDTH = GraphicUtils.getDpiAwareStrokeWidth(1.0f);
-    private static final Stroke ACCENT_STROKE = new BasicStroke(ACCENT_STROKE_WIDTH);
-    private static final int ACCENT_LINE_HALF_HEIGHT = 3;
-
-    // Accent bounding rect (origin-centered, used for positioning).
-    // When this becomes a font glyph, replace with the glyph's bounding rect.
-    private static final Rectangle ACCENT_BOUNDS = computeAccentBounds();
-
-    // Staccato dot shape
-    private static final Ellipse2D.Double STACCATO_ELLIPSE = new Ellipse2D.Double(0, 0, 4, 4);
-
-    // Staccato visual half-height (4px dot / 2)
-    private static final int STACCATO_HALF_HEIGHT = 2;
 
     // Singleton instance
     private static final ArticulationRenderer INSTANCE = new ArticulationRenderer();
-
-    /**
-     * Computes the bounding rect of the accent shape drawn at origin.
-     * Two lines from (0, -HALF_HEIGHT) to (width, 0) and (0, +HALF_HEIGHT) to (width, 0),
-     * expanded by the stroke width.
-     */
-    private static Rectangle computeAccentBounds() {
-        int strokeExpansion = (int) Math.ceil(ACCENT_STROKE_WIDTH / 2.0);
-        int width = (int) CROTCHET_WIDTH + 2 + strokeExpansion * 2;
-        int halfHeight = ACCENT_LINE_HALF_HEIGHT + strokeExpansion;
-
-        return new Rectangle(-strokeExpansion, -halfHeight, width, halfHeight * 2);
-    }
 
     /**
      * Private constructor - use {@link #getInstance()}.
@@ -142,8 +130,7 @@ public class ArticulationRenderer extends BaseElementRenderer<Note> {
             if (articulation.isStaccato()) {
                 drawStaccatoFromLayout(note, g2, componentY);
             } else if (articulation.isAccent()) {
-                // Center of 8px content box
-                int accentCenterY = componentY + 4;
+                int accentCenterY = componentY + ACCENT_HALF_HEIGHT;
                 drawAccent(note, g2, accentCenterY);
             }
         }
@@ -151,21 +138,24 @@ public class ArticulationRenderer extends BaseElementRenderer<Note> {
 
     /**
      * Renders a staccato dot at a layout-computed Y position.
-     * The Y is the top of the 8px content box; the 4px dot is centered within it.
+     * The Y is the top of the content box from the layout engine.
      */
     private void drawStaccatoFromLayout(
         @NotNull Note note,
         @NotNull Graphics2D g2,
         int contentTopY
     ) {
-        try (var ignored = GraphicsState.save(g2, TRANSFORM)) {
-            double halfNoteWidth = getHalfNoteWidthForTie(note);
-            int xPos = note.getXPos();
+        double halfNoteWidth = getHalfNoteWidthForTie(note);
+        double x = GraphicUtils.snapXToDevicePixel(
+            g2, note.getXPos() + halfNoteWidth - STACCATO_WIDTH / 2.0
+        );
 
-            // Center the 4px dot in the 8px content box: top + 2
-            g2.translate((xPos + halfNoteWidth) - 2, contentTopY + 2);
-            g2.fill(STACCATO_ELLIPSE);
-        }
+        // SMuFL "above" glyph origin is at the bottom; offset by glyph height
+        double y = contentTopY + StaffSpaces.toPixels(
+            SMuFLMetadata.getInstance().getBBox(SMuFLGlyph.ARTIC_STACCATO_ABOVE).height()
+        );
+
+        drawBravuraGlyph(g2, SMuFLGlyph.ARTIC_STACCATO_ABOVE, x, y);
     }
 
     /**
@@ -212,42 +202,43 @@ public class ArticulationRenderer extends BaseElementRenderer<Note> {
     ) {
         int dir = note.isUpper() ? 1 : -1;
         int yPos = note.getYPos();
-        int accentHalfHeight = ACCENT_BOUNDS.height / 2;
         int margin = LayoutStylesheet.px(0.75);
 
         // If staccato is present, stack accent beyond it with 1px gap
         if (hasStaccato) {
-            return staccatoY + dir * (STACCATO_HALF_HEIGHT + 1 + accentHalfHeight);
+            return staccatoY + dir * (STACCATO_HALF_HEIGHT + 1 + ACCENT_HALF_HEIGHT);
         }
 
         // Accent alone.
         // Offset = accent visual half-height + margin so the painted edge clears the reference.
         if (Math.abs(yPos) < 4) {
-            // Within staff (not on edge lines) — anchor to staff edge
+            // Within staff (not on edge lines) -- anchor to staff edge
             int staffEdgeY = middleLineY + (int) (dir * 4 * LayoutStylesheet.NOTE_Y_OFFSET);
 
-            return staffEdgeY + dir * (accentHalfHeight + margin);
+            return staffEdgeY + dir * (ACCENT_HALF_HEIGHT + margin);
         } else {
-            // On staff edge or beyond (ledger lines) — anchor to note head
+            // On staff edge or beyond (ledger lines) -- anchor to note head
             int noteHeadY = middleLineY + (int) (yPos * LayoutStylesheet.NOTE_Y_OFFSET);
             int noteHeadRadius = (int) LayoutStylesheet.NOTE_Y_OFFSET;
 
-            return noteHeadY + dir * (noteHeadRadius + margin + accentHalfHeight);
+            return noteHeadY + dir * (noteHeadRadius + margin + ACCENT_HALF_HEIGHT);
         }
     }
 
     /**
-     * Draws an accent marking (> shape) at the given Y position.
+     * Draws an accent glyph centered vertically at the given Y position.
      */
     private void drawAccent(@NotNull Note note, @NotNull Graphics2D g2, int accentY) {
-        int xPos = note.getXPos();
-        int x2 = xPos + (int) CROTCHET_WIDTH + 2;
+        double halfNoteWidth = getHalfNoteWidthForTie(note);
+        double x = GraphicUtils.snapXToDevicePixel(
+            g2, note.getXPos() + halfNoteWidth - ACCENT_WIDTH / 2.0
+        );
 
-        try (var ignored = GraphicsState.save(g2, STROKE)) {
-            g2.setStroke(ACCENT_STROKE);
-            g2.drawLine(xPos, accentY - ACCENT_LINE_HALF_HEIGHT, x2, accentY);
-            g2.drawLine(xPos, accentY + ACCENT_LINE_HALF_HEIGHT, x2, accentY);
-        }
+        // SMuFL "above" glyph: origin is at the baseline (bottom of glyph).
+        // accentY is the vertical center, so offset down by half-height to get baseline.
+        double y = accentY + ACCENT_HALF_HEIGHT;
+
+        drawBravuraGlyph(g2, SMuFLGlyph.ARTIC_ACCENT_ABOVE, x, y);
     }
 
     /**
@@ -305,22 +296,24 @@ public class ArticulationRenderer extends BaseElementRenderer<Note> {
     }
 
     /**
-     * Renders a staccato dot.
+     * Renders a staccato glyph centered vertically at the computed Y position.
      */
     private void renderStaccato(
         @NotNull Note note,
         @NotNull Graphics2D g2,
         int middleLineY
     ) {
-        int durY = calculateStaccatoY(note, middleLineY);
+        int centerY = calculateStaccatoY(note, middleLineY);
+        double halfNoteWidth = getHalfNoteWidthForTie(note);
+        double x = GraphicUtils.snapXToDevicePixel(
+            g2, note.getXPos() + halfNoteWidth - STACCATO_WIDTH / 2.0
+        );
 
-        try (var ignored = GraphicsState.save(g2, TRANSFORM)) {
-            double halfNoteWidth = getHalfNoteWidthForTie(note);
-            int xPos = note.getXPos();
+        // SMuFL "above" glyph: origin is at the baseline (bottom of glyph).
+        // centerY is the vertical center, so offset down by half-height to get baseline.
+        double y = centerY + STACCATO_HALF_HEIGHT;
 
-            g2.translate((xPos + halfNoteWidth) - 2, durY - 2);
-            g2.fill(STACCATO_ELLIPSE);
-        }
+        drawBravuraGlyph(g2, SMuFLGlyph.ARTIC_STACCATO_ABOVE, x, y);
     }
 
     /**

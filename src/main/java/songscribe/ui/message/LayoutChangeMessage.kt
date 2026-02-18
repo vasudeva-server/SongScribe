@@ -20,17 +20,21 @@
 
 package songscribe.ui.message
 
+import songscribe.music.Line
+
 /**
  * Message posted to MessageCenter when a layout-affecting change occurs.
  *
  * @property section Which section changed
  * @property changeType The type of change (content, font, or size)
  * @property heightChanged Whether the change requires recalculation of sections below
+ * @property line The specific line affected, or null if all lines are affected
  */
-class LayoutChangeMessage(
+class LayoutChangeMessage @JvmOverloads constructor(
     val section: Section,
     val changeType: ChangeType,
-    val heightChanged: Boolean
+    val heightChanged: Boolean,
+    val line: Line? = null
 ) : Message() {
 
     enum class ChangeType {
@@ -50,6 +54,6 @@ class LayoutChangeMessage(
     }
 
     override fun toString(): String {
-        return "${super.toString()}(section=$section, changeType=$changeType, heightChanged=$heightChanged)"
+        return "${super.toString()}(section=$section, changeType=$changeType, heightChanged=$heightChanged, line=$line)"
     }
 }

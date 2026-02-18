@@ -35,17 +35,6 @@ public class DurationToolbar extends Toolbar {
         StickyToggleButton defaultButton = null;
 
         for (var action : ACTIONS) {
-            // Skip grace sixteenth
-            if (
-                action
-                    .getActionCommand()
-                    .equals(
-                        Actions.GRACE_SIXTEENTH_NOTE_ACTION.getActionCommand()
-                    )
-            ) {
-                continue;
-            }
-
             var button = new StickyToggleButton(action);
             add(button);
 

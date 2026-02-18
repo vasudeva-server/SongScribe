@@ -28,7 +28,7 @@ import java.awt.*;
 import org.jetbrains.annotations.NotNull;
 
 import songscribe.music.Composition;
-import songscribe.music.GraceSemiQuaver;
+
 import songscribe.music.Line;
 import songscribe.music.Note;
 import songscribe.music.NoteType;
@@ -258,10 +258,6 @@ public class GlissandoRenderer {
             x1 += SEMIBREVE_OFFSET;
         } else if (noteType.isGraceNote()) {
             x1 += GRACE_NOTE_OFFSET;
-
-            if (noteType == NoteType.GRACE_SEMIQUAVER) {
-                x1 += ((GraceSemiQuaver) note).getX2DiffPos();
-            }
         }
 
         x1 += note.getDotCount() * DOT_OFFSET;

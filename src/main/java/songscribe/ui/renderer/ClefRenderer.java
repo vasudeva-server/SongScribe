@@ -20,10 +20,11 @@
 
 package songscribe.ui.renderer;
 
-import java.awt.Graphics2D;
+import java.awt.*;
 
 import org.jetbrains.annotations.NotNull;
 
+import songscribe.smufl.SMuFLGlyph;
 import songscribe.ui.layout.Clef;
 import songscribe.ui.layout.LayoutStylesheet;
 
@@ -63,12 +64,11 @@ public class ClefRenderer extends BaseElementRenderer<Clef> {
         // The clef's position comes from the element
         double x = element.getX();
 
-        // The treble clef baseline is one staff line below the middle line (B line)
-        // This positions the clef's curl around the G line
-        int baseline = ctx.getMiddleLineY() + LayoutStylesheet.STAFF_LINE_Y_OFFSET;
+        // The SMuFL G clef origin is on the G line (second line from bottom,
+        // one staff space below the middle line)
+        int baseline = ctx.getMiddleLineY() + LayoutStylesheet.STAFF_SPACE;
 
-        // Draw treble clef glyph
-        drawFughettaGlyph(g2, TREBLE_CLEF, x, baseline, ctx);
+        drawBravuraGlyph(g2, SMuFLGlyph.G_CLEF, x, baseline);
     }
 
     /**
@@ -83,7 +83,7 @@ public class ClefRenderer extends BaseElementRenderer<Clef> {
         @NotNull Graphics2D g2,
         @NotNull ElementRenderContext ctx
     ) {
-        int baseline = ctx.getMiddleLineY() + LayoutStylesheet.STAFF_LINE_Y_OFFSET;
-        drawFughettaGlyph(g2, TREBLE_CLEF, CLEF_X_POSITION, baseline, ctx);
+        int baseline = ctx.getMiddleLineY() + LayoutStylesheet.STAFF_SPACE;
+        drawBravuraGlyph(g2, SMuFLGlyph.G_CLEF, CLEF_X_POSITION, baseline);
     }
 }

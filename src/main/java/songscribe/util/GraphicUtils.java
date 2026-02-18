@@ -21,6 +21,7 @@ package songscribe.util;
 
 import java.awt.*;
 import java.awt.font.*;
+import java.awt.geom.*;
 import java.awt.image.*;
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -302,6 +303,31 @@ public final class GraphicUtils {
 
     public static void setMediaTracker(MediaTracker mt) {
         mediaTracker = mt;
+    }
+
+    /**
+     * Snaps a local X coordinate to the nearest device pixel boundary.
+     * Transforms to absolute device space, rounds, and inverse-transforms back to
+     * local coordinates. This ensures crisp rendering of vertical elements (stems,
+     * barlines) regardless of the current graphics translation or Retina scaling.
+     *
+     * @param g2     the graphics context with the current transform
+     * @param localX the X coordinate in local (user) space
+     * @return the adjusted X coordinate in local space, snapped to a device pixel
+     */
+    public static double snapXToDevicePixel(@NotNull Graphics2D g2, double localX) {
+        var transform = g2.getTransform();
+        var devicePt = new Point2D.Double();
+        transform.transform(new Point2D.Double(localX, 0), devicePt);
+        devicePt.x = Math.round(devicePt.x);
+
+        try {
+            transform.inverseTransform(devicePt, devicePt);
+        } catch (java.awt.geom.NoninvertibleTransformException e) {
+            return localX;
+        }
+
+        return devicePt.x;
     }
 
     /**

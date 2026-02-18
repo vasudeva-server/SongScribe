@@ -21,7 +21,7 @@
 package songscribe.ui.component.score;
 
 import java.awt.*;
-import java.awt.geom.Rectangle2D;
+import java.awt.geom.*;
 
 import org.jetbrains.annotations.NotNull;
 
@@ -243,7 +243,7 @@ class LineRenderer {
 
         var lineWidth = lc.getComposition().getLineWidth();
         var middleLineY = lc.getMiddleLineY();
-        var staffLineYOffset = LayoutStylesheet.STAFF_LINE_Y_OFFSET;
+        var staffLineYOffset = LayoutStylesheet.STAFF_SPACE;
 
         // Staff has 5 lines, middle line (B) is at index 2
         // Lines are at: middleLineY - 2*offset, middleLineY - offset, middleLineY,
@@ -380,7 +380,7 @@ class LineRenderer {
         var selectionProvider = lc.getSelectionProvider();
 
         if (selectionProvider != null
-                && selectionProvider.isNoteSelected(noteIndex, lc.getLineIndex())) {
+            && selectionProvider.isNoteSelected(noteIndex, lc.getLineIndex())) {
             return Score.SELECTION_STROKE_COLOR;
         }
 

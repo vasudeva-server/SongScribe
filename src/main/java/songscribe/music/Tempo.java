@@ -98,13 +98,13 @@ public class Tempo {
     }
 
     public enum Type {
-        SEMI_BREVE(new Semibreve()), // Whole note
-        MINIM_DOTTED(new Minim()), // Dotted half note
-        MINIM(new Minim()), // Half note
-        CROTCHET_DOTTED(new Crotchet()), // Dotted quarter note
-        CROTCHET(new Crotchet()), // Quarter note
-        QUAVER_DOTTED(new Quaver()), // Dotted eighth note
-        QUAVER(new Quaver()), // Eighth note
+        SEMI_BREVE(NoteType.SEMIBREVE.newInstance()), // Whole note
+        MINIM_DOTTED(NoteType.MINIM.newInstance()), // Dotted half note
+        MINIM(NoteType.MINIM.newInstance()), // Half note
+        CROTCHET_DOTTED(NoteType.CROTCHET.newInstance()), // Dotted quarter note
+        CROTCHET(NoteType.CROTCHET.newInstance()), // Quarter note
+        QUAVER_DOTTED(NoteType.QUAVER.newInstance()), // Dotted eighth note
+        QUAVER(NoteType.QUAVER.newInstance()), // Eighth note
 
         // IO values
         SEMIBREVE(Type.SEMI_BREVE),

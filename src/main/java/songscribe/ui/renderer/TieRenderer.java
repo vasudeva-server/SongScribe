@@ -29,6 +29,9 @@ import org.jetbrains.annotations.NotNull;
 
 import songscribe.music.Note;
 import songscribe.music.NoteType;
+import songscribe.smufl.EngravingDefaults;
+import songscribe.smufl.SMuFLMetadata;
+import songscribe.smufl.StaffSpaces;
 import songscribe.ui.layout.LayoutStylesheet;
 import songscribe.ui.layout.Tie;
 
@@ -46,8 +49,13 @@ public class TieRenderer extends BaseElementRenderer<Tie> {
     // Constants from Renderer
     // ==========================================================================
 
+    private static final EngravingDefaults ENGRAVING_DEFAULTS =
+        SMuFLMetadata.getInstance().getEngravingDefaults();
+
     private static final BasicStroke LINE_STROKE = new BasicStroke(
-        1f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER
+        (float) StaffSpaces.toPixels(ENGRAVING_DEFAULTS.tieMidpointThickness()),
+        BasicStroke.CAP_BUTT,
+        BasicStroke.JOIN_MITER
     );
 
     // Note Y offset (from LayoutStylesheet)

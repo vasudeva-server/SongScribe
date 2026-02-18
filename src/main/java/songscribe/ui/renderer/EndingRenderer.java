@@ -30,6 +30,9 @@ import org.jetbrains.annotations.NotNull;
 import songscribe.music.Line;
 import songscribe.music.Note;
 import songscribe.music.NoteType;
+import songscribe.smufl.EngravingDefaults;
+import songscribe.smufl.SMuFLMetadata;
+import songscribe.smufl.StaffSpaces;
 import songscribe.ui.layout.Ending;
 import songscribe.ui.layout.LineElement;
 
@@ -48,8 +51,13 @@ public class EndingRenderer extends BaseElementRenderer<LineElement> {
     // Constants
     // ==========================================================================
 
+    private static final EngravingDefaults ENGRAVING_DEFAULTS =
+        SMuFLMetadata.getInstance().getEngravingDefaults();
+
     private static final BasicStroke STEM_STROKE = new BasicStroke(
-        1f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER
+        (float) StaffSpaces.toPixels(ENGRAVING_DEFAULTS.repeatEndingLineThickness()),
+        BasicStroke.CAP_BUTT,
+        BasicStroke.JOIN_MITER
     );
 
     // Bar line positioning constants (from FughettaRenderer)

@@ -21,7 +21,6 @@
 package songscribe.ui.renderer;
 
 import java.awt.*;
-import java.awt.geom.Ellipse2D;
 import java.util.EnumMap;
 
 import org.jetbrains.annotations.NotNull;
@@ -29,6 +28,9 @@ import org.jetbrains.annotations.Nullable;
 
 import songscribe.music.Note;
 import songscribe.music.NoteType;
+import songscribe.smufl.SMuFLGlyph;
+import songscribe.smufl.SMuFLMetadata;
+import songscribe.smufl.StaffSpaces;
 import songscribe.ui.layout.LayoutStylesheet;
 
 import static songscribe.ui.renderer.GraphicsState.Property.FONT;
@@ -37,36 +39,52 @@ import static songscribe.ui.renderer.GraphicsState.Property.TRANSFORM;
 /**
  * Renders rest glyphs (whole, half, quarter, eighth, sixteenth, thirty-second rests).
  * <p>
- * Rest glyphs are rendered at the note's position using the Fughetta font.
+ * Rest glyphs are rendered at the note's position using SMuFL/Bravura glyphs.
  * Rests don't have stems, flags, or accidentals.
  */
 public class RestRenderer extends BaseElementRenderer<Note> {
 
     // ==========================================================================
-    // Rest Glyphs (from FughettaRenderer)
+    // Rest Glyphs (SMuFL/Bravura)
     // ==========================================================================
 
-    private static final EnumMap<NoteType, String> REST_GLYPHS = new EnumMap<>(NoteType.class);
+    private static final EnumMap<NoteType, SMuFLGlyph> REST_GLYPHS = new EnumMap<>(NoteType.class);
 
     static {
-        REST_GLYPHS.put(NoteType.SEMIBREVE_REST, "\uf0ee");
-        REST_GLYPHS.put(NoteType.MINIM_REST, "\uf0ee");
-        REST_GLYPHS.put(NoteType.CROTCHET_REST, "\uf0ce");
-        REST_GLYPHS.put(NoteType.QUAVER_REST, "\uf0e4");
-        REST_GLYPHS.put(NoteType.SEMIQUAVER_REST, "\uf0c5");
-        REST_GLYPHS.put(NoteType.DEMI_SEMIQUAVER_REST, "\uf0a8");
+        REST_GLYPHS.put(NoteType.SEMIBREVE_REST, SMuFLGlyph.REST_WHOLE);
+        REST_GLYPHS.put(NoteType.MINIM_REST, SMuFLGlyph.REST_HALF);
+        REST_GLYPHS.put(NoteType.CROTCHET_REST, SMuFLGlyph.REST_QUARTER);
+        REST_GLYPHS.put(NoteType.QUAVER_REST, SMuFLGlyph.REST_8TH);
+        REST_GLYPHS.put(NoteType.SEMIQUAVER_REST, SMuFLGlyph.REST_16TH);
+        REST_GLYPHS.put(NoteType.DEMI_SEMIQUAVER_REST, SMuFLGlyph.REST_32ND);
     }
 
     // Y position adjustment for whole and half rests (relative to middle line)
     private static final int SEMIBREVE_REST_Y_OFFSET = -2;  // Above the middle line
     private static final int MINIM_REST_Y_OFFSET = 0;       // On the middle line
 
-    // Dot dimensions
-    private static final double DOT_WIDTH = NOTE_FONT_SIZE / 9.142858d;
-    private static final Ellipse2D.Double[] NOTE_DOTS = new Ellipse2D.Double[]{
-        new Ellipse2D.Double(13.1d, -DOT_WIDTH / 2, DOT_WIDTH, DOT_WIDTH),
-        new Ellipse2D.Double(15.878d + DOT_WIDTH, -DOT_WIDTH / 2, DOT_WIDTH, DOT_WIDTH),
-    };
+    // Dot positioning derived from SMuFL metadata
+    // Gap between rest glyph right edge and first dot (in staff spaces)
+    private static final double DOT_GAP_STAFF_SPACES = 0.5;
+    private static final EnumMap<NoteType, Float> FIRST_DOT_X = new EnumMap<>(NoteType.class);
+    private static final float DOT_SPACING;
+
+    static {
+        var metadata = SMuFLMetadata.getInstance();
+
+        // Compute first dot X for each rest type from its advance width
+        for (var entry : REST_GLYPHS.entrySet()) {
+            var advanceWidth = metadata.getAdvanceWidth(entry.getValue());
+
+            if (advanceWidth != null) {
+                var dotX = (float) StaffSpaces.toPixels(advanceWidth + DOT_GAP_STAFF_SPACES);
+                FIRST_DOT_X.put(entry.getKey(), dotX);
+            }
+        }
+
+        var dotAdvanceWidth = metadata.getAdvanceWidth(SMuFLGlyph.AUGMENTATION_DOT);
+        DOT_SPACING = (dotAdvanceWidth != null) ? (float) StaffSpaces.toPixels(dotAdvanceWidth) + 2.8f : 6.6f;
+    }
 
     // Singleton instance
     private static final RestRenderer INSTANCE = new RestRenderer();
@@ -85,13 +103,13 @@ public class RestRenderer extends BaseElementRenderer<Note> {
     }
 
     /**
-     * Returns the Fughetta glyph character for a rest type.
+     * Returns the SMuFL glyph for a rest type.
      *
      * @param noteType The rest note type
-     * @return The glyph string, or null if not a rest type
+     * @return The SMuFL glyph, or null if not a rest type
      */
     @Nullable
-    public static String getRestGlyph(@NotNull NoteType noteType) {
+    public static SMuFLGlyph getRestGlyph(@NotNull NoteType noteType) {
         return REST_GLYPHS.get(noteType);
     }
 
@@ -117,15 +135,15 @@ public class RestRenderer extends BaseElementRenderer<Note> {
 
         try (var ignored = GraphicsState.save(g2, TRANSFORM, FONT)) {
             g2.translate(noteX, noteY);
-            g2.setFont(ctx.getMusicFont());
+            g2.setFont(BRAVURA_FONT);
             // Note: Don't set color here - respect the color set by the caller
             // (e.g., blue for edit notes, black for composition notes)
 
             // Draw rest glyph
-            String glyph = REST_GLYPHS.get(noteType);
+            var glyph = REST_GLYPHS.get(noteType);
 
             if (glyph != null) {
-                g2.drawString(glyph, 0f, 0f);
+                g2.drawString(glyph.asString(), 0f, 0f);
             }
 
             // Draw dots
@@ -163,33 +181,20 @@ public class RestRenderer extends BaseElementRenderer<Note> {
             return;
         }
 
-        try (var ignored = GraphicsState.save(g2, TRANSFORM)) {
-            // Position dots to the right of the rest glyph
-            // Different rest types have different widths, so adjust accordingly
-            switch (noteType) {
-                case SEMIBREVE_REST:
-                case MINIM_REST:
-                    g2.translate(8, 0);
-                    break;
+        var firstDotX = FIRST_DOT_X.get(noteType);
 
-                case CROTCHET_REST:
-                    g2.translate(6, 0);
-                    break;
+        if (firstDotX == null) {
+            return;
+        }
 
-                case QUAVER_REST:
-                case SEMIQUAVER_REST:
-                case DEMI_SEMIQUAVER_REST:
-                    g2.translate(7, 0);
-                    break;
+        // Draw augmentation dots using SMuFL glyph
+        try (var ignored = GraphicsState.save(g2, FONT)) {
+            g2.setFont(BRAVURA_FONT);
+            var dotX = firstDotX;
 
-                default:
-                    g2.translate(8, 0);
-                    break;
-            }
-
-            // Draw the dots
             for (int i = 0; i < note.getDotCount(); i++) {
-                g2.fill(NOTE_DOTS[i]);
+                g2.drawString(SMuFLGlyph.AUGMENTATION_DOT.asString(), dotX, 0f);
+                dotX += DOT_SPACING;
             }
         }
     }

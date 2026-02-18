@@ -35,7 +35,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
-import songscribe.music.Crotchet;
+import songscribe.music.NoteType;
 import songscribe.music.Line;
 import songscribe.music.Note;
 
@@ -73,7 +73,7 @@ class LineJustificationCalculatorTest {
      * Creates a note with optional syllable.
      */
     private Note createNote(String syllable) {
-        var note = new Crotchet();
+        var note = NoteType.CROTCHET.newInstance();
 
         if (syllable != null) {
             note.properties.syllable = syllable;

@@ -28,7 +28,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import songscribe.music.ArticulationType;
-import songscribe.music.Crotchet;
+import songscribe.music.NoteType;
 import songscribe.music.Line;
 import songscribe.music.Note;
 import songscribe.ui.layout.Articulation;
@@ -373,7 +373,7 @@ public class VerticalStackingCalculatorTest {
      * Creates a test note with default values.
      */
     private Note createNote() {
-        var note = new Crotchet();
+        var note = NoteType.CROTCHET.newInstance();
         note.setYPos(2); // Middle of staff
         return note;
     }

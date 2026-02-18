@@ -158,7 +158,7 @@ public final class MyFontUtils {
     @NotNull
     public static Font getNoteFont() {
         if (noteFont == null) {
-            noteFont = getLocalFont("Leland.otf", 20);
+            noteFont = getLocalFont("Bravura.otf", 20);
             assert noteFont != null;
         }
 

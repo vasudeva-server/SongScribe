@@ -33,6 +33,7 @@ import songscribe.ui.action.InsertLineAction;
 import songscribe.ui.component.IMainFrame;
 import songscribe.ui.component.Score;
 import songscribe.ui.layout.LayoutStylesheet;
+import songscribe.ui.layout.LayoutStylesheet;
 import songscribe.ui.message.LayoutChangeMessage;
 import songscribe.ui.message.MessageCenter;
 import songscribe.util.MyFontUtils;
@@ -705,8 +706,8 @@ public final class Composition {
     public void recalcTopPadding() {
         if (!userSetTopPadding) {
             topPadding = (((2 * titleFont.getSize()) +
-                    (Utils.lineCount(attribution) * attributionFont.getSize())) -
-                (2 * Score.STAFF_LINE_Y_OFFSET));
+                (Utils.lineCount(attribution) * attributionFont.getSize())) -
+                (2 * LayoutStylesheet.STAFF_SPACE));
         }
     }
 

@@ -28,6 +28,9 @@ import org.jetbrains.annotations.NotNull;
 import songscribe.data.TupletIntervalData;
 import songscribe.music.Line;
 import songscribe.music.Note;
+import songscribe.smufl.EngravingDefaults;
+import songscribe.smufl.SMuFLMetadata;
+import songscribe.smufl.StaffSpaces;
 import songscribe.ui.layout.LayoutStylesheet;
 import songscribe.ui.layout.Tuplet;
 
@@ -45,8 +48,13 @@ public class TupletRenderer extends BaseElementRenderer<Tuplet> {
     // Constants
     // ==========================================================================
 
+    private static final EngravingDefaults ENGRAVING_DEFAULTS =
+        SMuFLMetadata.getInstance().getEngravingDefaults();
+
     private static final BasicStroke LINE_STROKE = new BasicStroke(
-        1f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER
+        (float) StaffSpaces.toPixels(ENGRAVING_DEFAULTS.tupletBracketThickness()),
+        BasicStroke.CAP_BUTT,
+        BasicStroke.JOIN_MITER
     );
 
     // Crotchet width (from FughettaRenderer)

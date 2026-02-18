@@ -29,6 +29,9 @@ import songscribe.data.DynamicsIntervalData;
 import songscribe.data.Interval;
 import songscribe.music.Line;
 import songscribe.music.Note;
+import songscribe.smufl.EngravingDefaults;
+import songscribe.smufl.SMuFLMetadata;
+import songscribe.smufl.StaffSpaces;
 import songscribe.ui.layout.Crescendo;
 import songscribe.ui.layout.Diminuendo;
 import songscribe.ui.layout.LayoutStylesheet;
@@ -48,8 +51,13 @@ public class DynamicsRenderer extends BaseElementRenderer<LineElement> {
     // Constants
     // ==========================================================================
 
+    private static final EngravingDefaults ENGRAVING_DEFAULTS =
+        SMuFLMetadata.getInstance().getEngravingDefaults();
+
     private static final BasicStroke LINE_STROKE = new BasicStroke(
-        1f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER
+        (float) StaffSpaces.toPixels(ENGRAVING_DEFAULTS.hairpinThickness()),
+        BasicStroke.CAP_BUTT,
+        BasicStroke.JOIN_MITER
     );
 
     // Crotchet width (from FughettaRenderer)

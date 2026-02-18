@@ -39,13 +39,11 @@ import songscribe.data.TupletIntervalData;
 import songscribe.music.Annotation;
 import songscribe.music.Composition;
 import songscribe.music.ArticulationType;
-import songscribe.music.GraceSemiQuaver;
+
 import songscribe.music.KeyType;
 import songscribe.music.Line;
 import songscribe.music.Note;
 import songscribe.music.NoteType;
-import songscribe.music.Quaver;
-import songscribe.music.Semiquaver;
 import songscribe.music.Tempo;
 import songscribe.ui.Constants;
 import songscribe.ui.component.MainFrame;
@@ -381,23 +379,10 @@ public class ExportABCAction extends UIAction {
 
             sb.append(translateDecorations(note));
             sb.append(translateAccidental(note.getAccidental()));
-
-            if (note.getNoteType() == NoteType.GRACE_SEMIQUAVER) {
-                sb.append(translatePitch(((GraceSemiQuaver) note).getY0Pos()));
-                sb.append(
-                    translateNoteLength(
-                        new Semiquaver().getDefaultDuration(),
-                        compositionUnitLength
-                    )
-                );
-            }
-
             sb.append(translatePitch(note.getYPos()));
             var duration =
                 switch (noteType) {
-                    case GRACE_QUAVER -> new Quaver().getDefaultDuration();
-                    case GRACE_SEMIQUAVER -> new Semiquaver()
-                        .getDefaultDuration();
+                    case GRACE_QUAVER -> NoteType.QUAVER.getDefaultDuration();
                     default -> note.getDefaultDurationWithDots();
                 };
 

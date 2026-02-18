@@ -390,7 +390,6 @@ public class UIAction extends AbstractAction {
         var duration = Actions.DURATION_ACTION_GROUP.getSelected();
         return (
             (duration != Actions.GRACE_EIGHTH_NOTE_ACTION) &&
-            (duration != Actions.GRACE_SIXTEENTH_NOTE_ACTION) &&
             (duration != Actions.GLISSANDO_ACTION)
         );
     }

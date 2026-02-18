@@ -23,6 +23,7 @@ package songscribe.ui.component.score;
 import java.awt.*;
 
 import songscribe.ui.component.Score;
+import songscribe.ui.layout.LayoutStylesheet;
 import songscribe.util.GraphicUtils;
 
 /**
@@ -34,7 +35,7 @@ import songscribe.util.GraphicUtils;
 public class TranslationComponent extends ScoreComponent {
 
     /** Vertical spacing for translation block (2 staff lines). */
-    private static final int TRANSLATION_TOP_MARGIN = 2 * Score.STAFF_LINE_Y_OFFSET;
+    private static final int TRANSLATION_TOP_MARGIN = 2 * LayoutStylesheet.STAFF_SPACE;
 
     /** Translation header for official translations. */
     private static final String TRANSLATION_HEADER_OFFICIAL = "Sri Chinmoy's translation:";

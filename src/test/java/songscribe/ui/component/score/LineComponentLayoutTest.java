@@ -34,11 +34,11 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
-import songscribe.music.Crotchet;
+import songscribe.music.NoteType;
 import songscribe.music.KeyType;
 import songscribe.music.Line;
 import songscribe.music.Note;
-import songscribe.music.Quaver;
+
 import songscribe.ui.layout2.LayoutEngine;
 import songscribe.ui.layout2.LayoutResult;
 
@@ -87,7 +87,7 @@ class LineComponentLayoutTest {
      * Creates a note with optional syllable and accidental.
      */
     private Note createNote(String syllable, Note.Accidental accidental) {
-        var note = new Crotchet();
+        var note = NoteType.CROTCHET.newInstance();
 
         if (syllable != null) {
             note.properties.syllable = syllable;
@@ -104,7 +104,7 @@ class LineComponentLayoutTest {
      * Creates a quaver (eighth note) for beam groups.
      */
     private Note createQuaver(String syllable) {
-        var note = new Quaver();
+        var note = NoteType.QUAVER.newInstance();
 
         if (syllable != null) {
             note.properties.syllable = syllable;

@@ -21,7 +21,7 @@
 package songscribe.ui.component;
 
 import java.awt.*;
-import java.awt.event.KeyEvent;
+import java.awt.event.*;
 import java.awt.image.*;
 import java.io.File;
 import java.io.IOException;
@@ -60,8 +60,9 @@ import songscribe.ui.component.score.MainPanel;
 import songscribe.ui.component.score.ScorePanel;
 import songscribe.ui.dialog.LineWidthChangeDialog;
 import songscribe.ui.edit.EditModeManager;
+import songscribe.ui.layout.BravuraFontBoundsProvider;
 import songscribe.ui.layout.FontBoundsProvider;
-import songscribe.ui.layout.FughettaFontBoundsProvider;
+import songscribe.ui.layout.LayoutStylesheet;
 import songscribe.ui.layout2.LayoutConstants;
 import songscribe.ui.menu.DebugState;
 import songscribe.ui.message.MessageCenter;
@@ -96,11 +97,8 @@ public final class Score
     // The number of lines in a staff
     public static final int STAFF_LINE_COUNT = 5;
 
-    // The vertical distance between staff line y positions
-    public static final int STAFF_LINE_Y_OFFSET = 8;
-
     // The vertical distance between whole tones on the staff (e.g. A to B)
-    public static final float NOTE_Y_OFFSET = (float) STAFF_LINE_Y_OFFSET / 2;
+    public static final float NOTE_Y_OFFSET = (float) LayoutStylesheet.STAFF_SPACE / 2;
 
     // The content width and height in inches, excluding page margins
     public static final float PAGE_CONTENT_WIDTH = 7;
@@ -223,7 +221,7 @@ public final class Score
         hierarchyNavigator = new ComponentHierarchyNavigator(this);
 
         // Initialize font bounds provider for measurement calculations
-        FontBoundsProvider fontBoundsProvider = new FughettaFontBoundsProvider(
+        FontBoundsProvider fontBoundsProvider = new BravuraFontBoundsProvider(
             this
         );
 
@@ -351,19 +349,13 @@ public final class Score
     }
 
     public static boolean defaultUpperNote(@NotNull Note note) {
-        return (
-            (note.getYPos() > 0) ||
-                note.getNoteType().isGraceNote() ||
-                (note.getNoteType() == NoteType.GRACE_SEMIQUAVER_EDIT_STEP1)
-        );
+        return (note.getYPos() > 0) || note.getNoteType().isGraceNote();
     }
 
 
     public IMainFrame getMainFrame() {
         return mainFrame;
     }
-
-
 
 
     /**
@@ -965,8 +957,6 @@ public final class Score
     public NoteSelection getSelection() {
         return selectionCoordinator.getSelection();
     }
-
-
 
 
     public void allowFocusInComponent(Component component) {

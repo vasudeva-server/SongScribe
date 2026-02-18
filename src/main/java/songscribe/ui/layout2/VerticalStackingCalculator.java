@@ -32,6 +32,9 @@ import org.jetbrains.annotations.NotNull;
 
 import songscribe.music.Line;
 import songscribe.music.Note;
+import songscribe.smufl.SMuFLGlyph;
+import songscribe.smufl.SMuFLMetadata;
+import songscribe.smufl.StaffSpaces;
 import songscribe.ui.layout.Articulation;
 import songscribe.ui.layout.Attachment;
 import songscribe.ui.layout.FermataAttachment;
@@ -58,6 +61,15 @@ import songscribe.ui.renderer.ArticulationRenderer;
  * it is moved upward until clear.
  */
 public class VerticalStackingCalculator {
+
+    // Note head dimensions from SMuFL noteheadBlack bounding box
+    private static final double NOTE_HEAD_WIDTH =
+        StaffSpaces.toPixels(
+            SMuFLMetadata.getInstance().getBBox(SMuFLGlyph.NOTEHEAD_BLACK).width());
+
+    private static final double NOTE_HEAD_HEIGHT =
+        StaffSpaces.toPixels(
+            SMuFLMetadata.getInstance().getBBox(SMuFLGlyph.NOTEHEAD_BLACK).height());
 
     /**
      * Creates a new vertical stacking calculator.
@@ -485,15 +497,11 @@ public class VerticalStackingCalculator {
         var stemTop = column.getStemTop();
         var stemBottom = column.getStemBottom();
 
-        // Note head is typically 8px wide, centered on X
-        var noteHeadWidth = 8.0;
-        var noteHeadHeight = 6.0;
-
         // Create bounding area from stem top to stem bottom
         var bounds = new Rectangle2D.Double(
-                column.getX() - noteHeadWidth / 2,
+                column.getX() - NOTE_HEAD_WIDTH / 2,
                 stemTop,
-                noteHeadWidth,
+                NOTE_HEAD_WIDTH,
                 stemBottom - stemTop
         );
 

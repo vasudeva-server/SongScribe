@@ -38,7 +38,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
-import songscribe.music.Crotchet;
+import songscribe.music.NoteType;
 import songscribe.music.Note;
 import songscribe.music.Tempo;
 import songscribe.ui.layout.Bounds;
@@ -66,9 +66,9 @@ class LayoutResultTest {
     void setUp() {
         builder = LayoutResult.builder();
 
-        note1 = new Crotchet();
-        note2 = new Crotchet();
-        note3 = new Crotchet();
+        note1 = NoteType.CROTCHET.newInstance();
+        note2 = NoteType.CROTCHET.newInstance();
+        note3 = NoteType.CROTCHET.newInstance();
 
         column1 = createColumn(note1, 100.0);
         column2 = createColumn(note2, 200.0);
@@ -528,7 +528,7 @@ class LayoutResultTest {
 
         @BeforeEach
         void setUp() {
-            parentNote = new Crotchet();
+            parentNote = NoteType.CROTCHET.newInstance();
 
             var tempo = new Tempo();
             tempo.setVisibleTempo(120);
@@ -555,7 +555,7 @@ class LayoutResultTest {
         @Test
         @DisplayName("findAttachmentBounds returns null for missing attachment")
         void findAttachmentBoundsMissing() {
-            var otherNote = new Crotchet();
+            var otherNote = NoteType.CROTCHET.newInstance();
             var bounds = result.findAttachmentBounds(otherNote, TempoAttachment.class);
 
             assertNull(bounds);
@@ -573,7 +573,7 @@ class LayoutResultTest {
         @Test
         @DisplayName("findAttachment returns null for missing attachment")
         void findAttachmentMissing() {
-            var otherNote = new Crotchet();
+            var otherNote = NoteType.CROTCHET.newInstance();
             var attachment = result.findAttachment(otherNote, TempoAttachment.class);
 
             assertNull(attachment);
@@ -582,8 +582,8 @@ class LayoutResultTest {
         @Test
         @DisplayName("findRangeElementBounds finds correct range element")
         void findRangeElementBounds() {
-            var anchorNote = new Crotchet();
-            var endNote = new Crotchet();
+            var anchorNote = NoteType.CROTCHET.newInstance();
+            var endNote = NoteType.CROTCHET.newInstance();
             var tie = new Tie(anchorNote, endNote);
             var tieBounds = Bounds.contentOnly(new Rectangle2D.Double(100, 50, 80, 8));
 
@@ -601,8 +601,8 @@ class LayoutResultTest {
         @Test
         @DisplayName("findRangeElementBounds returns null for missing range element")
         void findRangeElementBoundsMissing() {
-            var anchorNote = new Crotchet();
-            var endNote = new Crotchet();
+            var anchorNote = NoteType.CROTCHET.newInstance();
+            var endNote = NoteType.CROTCHET.newInstance();
 
             var bounds = result.findRangeElementBounds(anchorNote, endNote, Tie.class);
 
@@ -612,8 +612,8 @@ class LayoutResultTest {
         @Test
         @DisplayName("findRangeElementBounds returns null for wrong notes")
         void findRangeElementBoundsWrongNotes() {
-            var anchorNote = new Crotchet();
-            var endNote = new Crotchet();
+            var anchorNote = NoteType.CROTCHET.newInstance();
+            var endNote = NoteType.CROTCHET.newInstance();
             var tie = new Tie(anchorNote, endNote);
             var tieBounds = Bounds.contentOnly(new Rectangle2D.Double(100, 50, 80, 8));
 
@@ -621,7 +621,7 @@ class LayoutResultTest {
                     .putElementBounds(tie, tieBounds)
                     .build();
 
-            var wrongNote = new Crotchet();
+            var wrongNote = NoteType.CROTCHET.newInstance();
             var bounds = resultWithTie.findRangeElementBounds(wrongNote, endNote, Tie.class);
 
             assertNull(bounds);
@@ -796,7 +796,7 @@ class LayoutResultTest {
             @BeforeEach
             void setUp() {
                 // Create a standard insertion note (Crotchet with no accidentals)
-                insertionNote = new Crotchet();
+                insertionNote = NoteType.CROTCHET.newInstance();
             }
 
             @Test
@@ -975,7 +975,7 @@ class LayoutResultTest {
             @DisplayName("accounts for insertion note with accidental")
             void withAccidental() {
                 // Create a note with a sharp (wider left extent)
-                var noteWithSharp = new Crotchet();
+                var noteWithSharp = NoteType.CROTCHET.newInstance();
                 noteWithSharp.setAccidental(Note.Accidental.SHARP);
 
                 var mouseX = 400.0;  // After last note

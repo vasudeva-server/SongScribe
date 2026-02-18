@@ -21,15 +21,15 @@
 package songscribe.ui.component.score;
 
 import java.awt.*;
-import java.awt.event.MouseEvent;
+import java.awt.event.*;
 
 import org.jetbrains.annotations.NotNull;
 
-import songscribe.music.Crotchet;
+import songscribe.music.NoteType;
 import songscribe.music.Note;
-
 import songscribe.ui.Mode;
 import songscribe.ui.component.Score;
+import songscribe.ui.layout.LayoutStylesheet;
 import songscribe.ui.playback.MidiController;
 import songscribe.ui.playback.PlayNoteThread;
 
@@ -189,7 +189,7 @@ class SelectionHandler {
         var mode = score.getMode();
 
         if (mode == Mode.NOTE_ADJUSTMENT || mode == Mode.VERTICAL_ADJUSTMENT
-                || mode == Mode.LYRICS_ADJUSTMENT) {
+            || mode == Mode.LYRICS_ADJUSTMENT) {
             return false;
         }
 
@@ -221,7 +221,7 @@ class SelectionHandler {
 
         if (line.getBeamings().findInterval(noteIndex) != null) {
             out.setBounds(
-                note.isUpper() ? Crotchet.REAL_UP_NOTE_RECT : Crotchet.REAL_DOWN_NOTE_RECT
+                note.isUpper() ? NoteType.CROTCHET.getRealUpNoteRect() : NoteType.CROTCHET.getRealDownNoteRect()
             );
         } else {
             out.setBounds(
@@ -254,7 +254,7 @@ class SelectionHandler {
         }
 
         // No note was hit — check proximity to staff lines for line selection
-        if (Math.abs(clickPoint.y - lc.getMiddleLineY()) <= 2 * Score.STAFF_LINE_Y_OFFSET) {
+        if (Math.abs(clickPoint.y - lc.getMiddleLineY()) <= 2 * LayoutStylesheet.STAFF_SPACE) {
             lineSelectionState.setLineSelected(true);
         }
     }

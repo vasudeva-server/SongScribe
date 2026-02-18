@@ -20,21 +20,22 @@
 
 package songscribe.ui.renderer;
 
-import java.awt.BasicStroke;
 import java.awt.Graphics2D;
-import java.awt.geom.Ellipse2D;
-import java.awt.geom.Line2D;
 
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import songscribe.music.Note;
 import songscribe.music.NoteType;
-import songscribe.ui.layout.LayoutStylesheet;
+import songscribe.smufl.SMuFLGlyph;
+import songscribe.smufl.SMuFLMetadata;
+import songscribe.smufl.StaffSpaces;
+import songscribe.util.GraphicUtils;
 
 import static songscribe.ui.renderer.GraphicsState.Property.*;
 
 /**
- * Renders bar lines and repeat signs.
+ * Renders bar lines and repeat signs using SMuFL/Bravura glyphs.
  * <p>
  * Handles:
  * <ul>
@@ -48,61 +49,9 @@ import static songscribe.ui.renderer.GraphicsState.Property.*;
  */
 public class BarRenderer extends BaseElementRenderer<Note> {
 
-    // ==========================================================================
-    // Constants from Renderer
-    // ==========================================================================
-
-    private static final float NOTE_FONT_SIZE = BaseElementRenderer.NOTE_FONT_SIZE;
-
-    // Bar line strokes
-    private static final BasicStroke HEAVY_LINE_STROKE = new BasicStroke(
-        4f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER
-    );
-    private static final BasicStroke THIN_LINE_STROKE = new BasicStroke(
-        1.5f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER
-    );
-    private static final BasicStroke REPEAT_HEAVY_STROKE = new BasicStroke(
-        4.167f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_BEVEL
-    );
-    private static final BasicStroke REPEAT_THIN_STROKE = new BasicStroke(
-        1.5f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_BEVEL
-    );
-    private static final BasicStroke LINE_STROKE = new BasicStroke(
-        1f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER
-    );
-
-    // Spacing
-    private static final double BAR_LINE_SPACE = 4.167d;
-    private static final double REPEAT_THIN_CIRCLE_DIFF = NOTE_FONT_SIZE / 6.918919d;
-    private static final double REPEAT_THICK_THIN_DIFF = NOTE_FONT_SIZE / 6.095238d;
-
-    // Repeat dots
-    private static final Ellipse2D.Float REPEAT_CIRCLE_1 = new Ellipse2D.Float(
-        0f,
-        (NOTE_FONT_SIZE / 2f) - (NOTE_FONT_SIZE / 2.3703704f),
-        NOTE_FONT_SIZE / 8f,
-        NOTE_FONT_SIZE / 8f
-    );
-    private static final Ellipse2D.Float REPEAT_CIRCLE_2 = new Ellipse2D.Float(
-        0f,
-        (NOTE_FONT_SIZE / 2f) - (NOTE_FONT_SIZE / 1.4545455f),
-        NOTE_FONT_SIZE / 8f,
-        NOTE_FONT_SIZE / 8f
-    );
-
-    // Lines
-    private static final Line2D.Float VERTICAL_LINE = new Line2D.Float(
-        0, -NOTE_FONT_SIZE / 2f, 0, NOTE_FONT_SIZE / 2f
-    );
-    private static final Line2D.Float BAR_LINE = new Line2D.Float(
-        Note.NORMAL_IMAGE_WIDTH, -NOTE_FONT_SIZE / 2f,
-        Note.NORMAL_IMAGE_WIDTH, NOTE_FONT_SIZE / 2f
-    );
-
-    // Repeat positions
-    private static final double REPEAT_LEFT_THICK_X = 4.167d / 2d;
-    private static final double REPEAT_RIGHT_THICK_X = Note.NORMAL_IMAGE_WIDTH - REPEAT_LEFT_THICK_X;
-    private static final double REPEAT_LEFT_RIGHT_THICK_X = Note.NORMAL_IMAGE_WIDTH / 2d;
+    // SMuFL barline glyphs extend upward from their origin at the bottom staff line.
+    // From the middle line, the bottom staff line is 2 staff spaces below.
+    private static final double BOTTOM_STAFF_LINE_Y = 2.0 * StaffSpaces.PIXELS_PER_STAFF_SPACE;
 
     // Singleton instance
     private static final BarRenderer INSTANCE = new BarRenderer();
@@ -136,14 +85,8 @@ public class BarRenderer extends BaseElementRenderer<Note> {
             return;
         }
 
-        try (var ignored = GraphicsState.save(g2, TRANSFORM, COLOR)) {
-            // Get position - bar lines are centered vertically on the staff
-            int noteX = element.getXPos();
-            int noteY = ctx.getMiddleLineY();
-
-            g2.translate(noteX, noteY);
-            g2.setColor(NOTE_COLOR);
-
+        try (var ignored = GraphicsState.save(g2, TRANSFORM)) {
+            g2.translate(element.getXPos(), ctx.getMiddleLineY());
             renderBarLineOrRepeat(g2, noteType);
         }
     }
@@ -152,85 +95,59 @@ public class BarRenderer extends BaseElementRenderer<Note> {
      * Renders a bar line or repeat sign (static helper for delegation).
      */
     public static void renderBarLineOrRepeat(@NotNull Graphics2D g2, @NotNull NoteType noteType) {
-        switch (noteType) {
-            case SINGLE_BARLINE, DOUBLE_BARLINE, FINAL_DOUBLE_BARLINE -> drawBarLine(g2, noteType);
-            case REPEAT_LEFT -> drawRepeat(g2, REPEAT_LEFT_THICK_X, 1d, true);
-            case REPEAT_RIGHT -> drawRepeat(g2, REPEAT_RIGHT_THICK_X, -1d, true);
-            case REPEAT_LEFT_RIGHT -> {
-                drawRepeat(g2, REPEAT_LEFT_RIGHT_THICK_X, 1d, true);
-                drawRepeat(g2, REPEAT_LEFT_RIGHT_THICK_X, -1d, false);
-            }
-            default -> {
-                // Not a bar line type
-            }
+        var glyph = glyphForNoteType(noteType);
+
+        if (glyph == null) {
+            return;
+        }
+
+        double x = computeGlyphX(g2, glyph, noteType);
+
+        try (var ignored = GraphicsState.save(g2, FONT)) {
+            g2.setFont(BRAVURA_FONT);
+            g2.drawString(glyph.asString(), (float) x, (float) BOTTOM_STAFF_LINE_Y);
         }
     }
 
-    /**
-     * Draws a bar line (single, double, or final double).
-     */
-    private static void drawBarLine(@NotNull Graphics2D g2, @NotNull NoteType noteType) {
-        try (var ignored = GraphicsState.save(g2, TRANSFORM, STROKE)) {
-            if (noteType == NoteType.DOUBLE_BARLINE) {
-                g2.setStroke(THIN_LINE_STROKE);
-                g2.draw(BAR_LINE);
-                g2.translate(-BAR_LINE_SPACE - THIN_LINE_STROKE.getLineWidth(), 0);
-            } else if (noteType == NoteType.FINAL_DOUBLE_BARLINE) {
-                g2.setStroke(HEAVY_LINE_STROKE);
-                g2.translate(-HEAVY_LINE_STROKE.getLineWidth() / 2f, 0);
-                g2.draw(BAR_LINE);
-                g2.translate(
-                    -BAR_LINE_SPACE -
-                        (HEAVY_LINE_STROKE.getLineWidth() / 2f) -
-                        (THIN_LINE_STROKE.getLineWidth() / 2f),
-                    0
-                );
-            }
+    // ==========================================================================
+    // Helpers
+    // ==========================================================================
 
-            g2.setStroke(THIN_LINE_STROKE);
-            g2.draw(BAR_LINE);
-        }
+    /**
+     * Maps a note type to its corresponding SMuFL barline/repeat glyph.
+     */
+    @Nullable
+    private static SMuFLGlyph glyphForNoteType(@NotNull NoteType noteType) {
+        return switch (noteType) {
+            case SINGLE_BARLINE -> SMuFLGlyph.BARLINE_SINGLE;
+            case DOUBLE_BARLINE -> SMuFLGlyph.BARLINE_DOUBLE;
+            case FINAL_DOUBLE_BARLINE -> SMuFLGlyph.BARLINE_FINAL;
+            case REPEAT_LEFT -> SMuFLGlyph.REPEAT_LEFT;
+            case REPEAT_RIGHT -> SMuFLGlyph.REPEAT_RIGHT;
+            case REPEAT_LEFT_RIGHT -> SMuFLGlyph.REPEAT_RIGHT_LEFT;
+            default -> null;
+        };
     }
 
     /**
-     * Draws a repeat sign.
-     *
-     * @param g2         Graphics context
-     * @param thickStart X position of the thick line
-     * @param direction  1 for left repeat, -1 for right repeat
-     * @param drawThick  Whether to draw the thick line
+     * Computes the X position for drawing a barline or repeat glyph.
+     * Barlines are right-aligned at {@link Note#NORMAL_IMAGE_WIDTH}.
+     * Repeats are centered in the note image space using the glyph advance width.
      */
-    private static void drawRepeat(
+    private static double computeGlyphX(
         @NotNull Graphics2D g2,
-        double thickStart,
-        double direction,
-        boolean drawThick
+        @NotNull SMuFLGlyph glyph,
+        @NotNull NoteType noteType
     ) {
-        try (var ignored = GraphicsState.save(g2, TRANSFORM, STROKE)) {
-            g2.translate(thickStart, 0);
-
-            // Align repeat bottom with staff line
-            double offset = LINE_STROKE.getLineWidth() / 2d;
-            var line = new Line2D.Double(
-                VERTICAL_LINE.x1, VERTICAL_LINE.y1,
-                VERTICAL_LINE.x2, VERTICAL_LINE.y2 + offset
-            );
-
-            if (drawThick) {
-                g2.setStroke(REPEAT_HEAVY_STROKE);
-                g2.draw(line);
-            }
-
-            g2.setStroke(REPEAT_THIN_STROKE);
-            g2.translate(REPEAT_THICK_THIN_DIFF * direction, 0);
-            g2.draw(line);
-
-            g2.translate(
-                (REPEAT_THIN_CIRCLE_DIFF * direction) - (REPEAT_CIRCLE_1.width / 2),
-                0
-            );
-            g2.fill(REPEAT_CIRCLE_1);
-            g2.fill(REPEAT_CIRCLE_2);
+        if (noteType.isBarLine()) {
+            return Note.NORMAL_IMAGE_WIDTH;
         }
+
+        // Center repeat glyphs in the note image space
+        var advanceSS = SMuFLMetadata.getInstance().getAdvanceWidth(glyph);
+        double advancePx = (advanceSS != null) ? StaffSpaces.toPixels(advanceSS) : 0;
+        double x = (Note.NORMAL_IMAGE_WIDTH - advancePx) / 2.0;
+
+        return GraphicUtils.snapXToDevicePixel(g2, x);
     }
 }

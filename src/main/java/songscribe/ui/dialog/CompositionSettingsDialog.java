@@ -1014,7 +1014,7 @@ public class CompositionSettingsDialog extends StandardDialog {
             boolean isSelected,
             boolean cellHasFocus
         ) {
-            // FlatLaf has trouble drawing Leland with the default renderer,
+            // FlatLaf has trouble drawing Bravura with the default renderer,
             // so we have to draw it ourselves.
             return new NoteLabel((Tempo.Type) value, list, index, isSelected);
         }

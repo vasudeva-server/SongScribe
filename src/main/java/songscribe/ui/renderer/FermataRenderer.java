@@ -21,18 +21,16 @@
 package songscribe.ui.renderer;
 
 import java.awt.Graphics2D;
-import java.awt.Shape;
-import java.awt.geom.Arc2D;
-import java.awt.geom.Area;
-import java.awt.geom.Ellipse2D;
 
 import org.jetbrains.annotations.NotNull;
 
-import static songscribe.ui.renderer.GraphicsState.Property.*;
-
 import songscribe.music.Note;
+import songscribe.smufl.SMuFLGlyph;
+import songscribe.smufl.SMuFLMetadata;
+import songscribe.smufl.StaffSpaces;
 import songscribe.ui.layout.FermataAttachment;
 import songscribe.ui.layout.LayoutStylesheet;
+import songscribe.util.GraphicUtils;
 
 /**
  * Renders fermata symbols above or below notes.
@@ -46,20 +44,14 @@ public class FermataRenderer extends BaseElementRenderer<Note> {
     // Constants
     // ==========================================================================
 
-    // Fermata shape (from FughettaRenderer)
-    private static final Shape FERMATA;
+    // SMuFL bbox-derived fermata dimensions (in pixels) for positioning.
+    private static final double FERMATA_WIDTH;
+    private static final double FERMATA_HEIGHT;
 
     static {
-        // Build the fermata shape: arc with a dot underneath
-        var arc = new Arc2D.Double(-115, -90, 230, 180, 0, 180, Arc2D.CHORD);
-        var innerArc = new Arc2D.Double(-100, -75, 200, 160, 0, 180, Arc2D.CHORD);
-        var dot = new Ellipse2D.Double(-15, 20, 30, 30);
-
-        var area = new Area(arc);
-        area.subtract(new Area(innerArc));
-        area.add(new Area(dot));
-
-        FERMATA = area;
+        var bbox = SMuFLMetadata.getInstance().getBBox(SMuFLGlyph.FERMATA_ABOVE);
+        FERMATA_WIDTH = StaffSpaces.toPixels(bbox.width());
+        FERMATA_HEIGHT = StaffSpaces.toPixels(bbox.height());
     }
 
     // Singleton instance
@@ -92,17 +84,20 @@ public class FermataRenderer extends BaseElementRenderer<Note> {
             return;
         }
 
-        try (var ignored = GraphicsState.save(g2, TRANSFORM)) {
-            // Position fermata above the note
-            int noteX = element.getXPos();
-            int noteY = getEffectiveFermataYPos(element, ctx);
+        int noteX = element.getXPos();
+        int fermataY = getEffectiveFermataYPos(element, ctx);
 
-            g2.translate(noteX - 5, noteY + 12);
-            g2.scale(0.0625, 0.0625);
-            g2.scale(0.9, 0.8);
+        // Center horizontally over the notehead
+        double noteHeadHalfWidth = BaseElementRenderer.NOTE_FONT_SIZE / 3.6056337d / 2.0;
+        double x = GraphicUtils.snapXToDevicePixel(
+            g2, noteX + noteHeadHalfWidth - FERMATA_WIDTH / 2.0
+        );
 
-            g2.fill(FERMATA);
-        }
+        // SMuFL fermata glyph origin is at the baseline (bottom of glyph).
+        // fermataY is the top of the fermata, so offset down by the full height.
+        double y = fermataY + FERMATA_HEIGHT;
+
+        drawBravuraGlyph(g2, SMuFLGlyph.FERMATA_ABOVE, x, y);
     }
 
     /**

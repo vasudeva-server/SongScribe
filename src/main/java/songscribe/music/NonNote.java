@@ -22,34 +22,44 @@ package songscribe.music;
 import org.jetbrains.annotations.Nullable;
 
 /**
- * Abstract base class for non-sounding elements in a line.
+ * Base class for non-sounding elements in a line.
  * <p>
  * NonNote elements include:
  * <ul>
  *   <li>Bar lines (single, double, final, repeat variants)</li>
  *   <li>Breath marks</li>
+ *   <li>Rests</li>
  *   <li>Other non-pitched elements</li>
  * </ul>
  * <p>
- * These elements are positioned on the staff but don't produce sound
- * and don't have pitch-related properties.
+ * These elements are positioned on the staff but don't have
+ * pitch-related properties like accidentals. Rests support dots.
  */
-public abstract class NonNote extends Note {
+public class NonNote extends Note {
 
-    protected NonNote() {}
+    NonNote() {}
 
-    protected NonNote(Note note) {
+    public NonNote(NoteType noteType) {
+        super(noteType);
+    }
+
+    NonNote(Note note) {
         super(note);
     }
 
     @Override
+    public NonNote clone() {
+        return new NonNote(this);
+    }
+
+    @Override
     public int getYPos() {
-        return 0;
+        return getNoteType().getDefaultYPos();
     }
 
     @Override
     public int getDotCount() {
-        return 0;
+        return getNoteType().isRest() ? super.getDotCount() : 0;
     }
 
     @Override
@@ -67,10 +77,5 @@ public abstract class NonNote extends Note {
     @Nullable
     public DurationArticulation getDurationArticulation() {
         return null;
-    }
-
-    @Override
-    public int getDefaultDuration() {
-        return 0;
     }
 }

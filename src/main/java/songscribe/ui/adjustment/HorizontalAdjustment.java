@@ -26,10 +26,9 @@ import org.jetbrains.annotations.Nullable;
 
 import songscribe.data.DynamicsIntervalData;
 import songscribe.data.IntervalSet;
-import songscribe.music.GraceSemiQuaver;
+
 import songscribe.music.Line;
 import songscribe.music.Note;
-import songscribe.music.NoteType;
 import songscribe.ui.component.Score;
 import songscribe.ui.renderer.GlissandoRenderer;
 
@@ -176,22 +175,6 @@ public class HorizontalAdjustment extends Adjustment {
                     : line.getNote(draggingRect.xIndex + 1).getXPos(),
                 draggingRect.rect.y
             );
-        } else if (
-            draggingRect.horizontalAdjustmentType ==
-            HorizontalAdjustmentType.GRACE_SEMIQUAVER_2ND_PART
-        ) {
-            topLeftDragBounds.setLocation(
-                line.getNote(draggingRect.xIndex).getXPos() +
-                draggingRect.rect.width,
-                draggingRect.rect.y
-            );
-            bottomRightDragBounds.setLocation(
-                (draggingRect.xIndex < (line.noteCount() - 1))
-                    ? (line.getNote(draggingRect.xIndex + 1).getXPos() -
-                        draggingRect.rect.width)
-                    : lineWidth,
-                draggingRect.rect.y
-            );
         }
     }
 
@@ -269,11 +252,6 @@ public class HorizontalAdjustment extends Adjustment {
             HorizontalAdjustmentType.GLISSANDO_END
         ) {
             note.getGlissando().x2Translate -= endPoint.x - diffX;
-        } else if (
-            draggingRect.horizontalAdjustmentType ==
-            HorizontalAdjustmentType.GRACE_SEMIQUAVER_2ND_PART
-        ) {
-            ((GraceSemiQuaver) note).setX2DiffPos(endPoint.x - note.getXPos());
         } else if (
             (draggingRect.horizontalAdjustmentType ==
                 HorizontalAdjustmentType.CRESCENDO_START) ||
@@ -373,7 +351,7 @@ public class HorizontalAdjustment extends Adjustment {
                     );
                 }
 
-                // Add special this: GLISSANDO, GRACE_SEMIQUAVER
+                // Add special adjustment rects for glissandos
                 for (var i = 0; i < line.noteCount(); i++) {
                     var note = line.getNote(i);
 
@@ -391,16 +369,6 @@ public class HorizontalAdjustment extends Adjustment {
                                 lineIndex,
                                 i,
                                 HorizontalAdjustmentType.GLISSANDO_END
-                            )
-                        );
-                    }
-
-                    if (note.getNoteType() == NoteType.GRACE_SEMIQUAVER) {
-                        adjustRects.add(
-                            new AdjustRect(
-                                lineIndex,
-                                i,
-                                HorizontalAdjustmentType.GRACE_SEMIQUAVER_2ND_PART
                             )
                         );
                     }
@@ -495,9 +463,6 @@ public class HorizontalAdjustment extends Adjustment {
                 rect.line,
                 score.getComposition()
             ) - 4;
-            case GRACE_SEMIQUAVER_2ND_PART -> rect.rect.x = note.getXPos() +
-            ((GraceSemiQuaver) note).getX2DiffPos() +
-            1;
             case CRESCENDO_START, DIMINUENDO_START -> {
                 var x1Interval = getDynamicIntervalSet(
                     line,
@@ -567,9 +532,6 @@ public class HorizontalAdjustment extends Adjustment {
         // The start/end of a glissando is being shifted
         GLISSANDO_START(Color.magenta, -2),
         GLISSANDO_END(Color.magenta, -2),
-
-        // The second part of a grace semiquaver is being shifted
-        GRACE_SEMIQUAVER_2ND_PART(Color.white, -1),
 
         // The start/end of a crescendo/diminuendo is being shifted
         CRESCENDO_START(Color.orange, 6),

@@ -249,7 +249,8 @@ public class Line {
             MessageCenter.post(new LayoutChangeMessage(
                 LayoutChangeMessage.Section.SCORE,
                 LayoutChangeMessage.ChangeType.CONTENT,
-                true
+                true,
+                this
             ));
         }
     }
@@ -776,25 +777,9 @@ public class Line {
         var trackTicks = ticks;
 
         if (type.isGraceNote()) {
-            switch (type) {
-                case GRACE_SEMIQUAVER -> {
-                    var graceSemiQuaver = (GraceSemiQuaver) note;
-                    var yPos = note.getYPos();
-                    note.setYPos(graceSemiQuaver.getY0Pos());
-                    addNoteOn(track, trackTicks, note);
-                    trackTicks += GRACE_QUAVER_DURATION;
-                    addNoteOff(track, trackTicks, note);
-                    note.setYPos(yPos);
-                }
-                case GRACE_QUAVER -> {
-                    addNoteOn(track, trackTicks, note);
-                    trackTicks += GRACE_QUAVER_DURATION;
-                    addNoteOff(track, trackTicks, note);
-                }
-                default -> {
-                    // Should not happen
-                }
-            }
+            addNoteOn(track, trackTicks, note);
+            trackTicks += GRACE_QUAVER_DURATION;
+            addNoteOff(track, trackTicks, note);
         } else if (type.isNote() || type.isRest()) {
             var noteDuration = getNoteDurationWithTuplet(noteIndex, currentTempo);
 

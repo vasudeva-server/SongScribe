@@ -27,6 +27,9 @@ import org.jetbrains.annotations.NotNull;
 
 import songscribe.music.Line;
 import songscribe.music.NoteType;
+import songscribe.smufl.EngravingDefaults;
+import songscribe.smufl.SMuFLMetadata;
+import songscribe.smufl.StaffSpaces;
 import songscribe.ui.layout.BeamGroup;
 import songscribe.ui.layout.LayoutStylesheet;
 
@@ -46,17 +49,25 @@ public class BeamGroupRenderer extends BaseElementRenderer<BeamGroup> {
 
     private static final float NOTE_FONT_SIZE = BaseElementRenderer.NOTE_FONT_SIZE;
 
+    private static final EngravingDefaults ENGRAVING_DEFAULTS =
+        SMuFLMetadata.getInstance().getEngravingDefaults();
+
     // Beam strokes
     private static final BasicStroke BEAM_STROKE = new BasicStroke(
-        4.04f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER
+        (float) StaffSpaces.toPixels(ENGRAVING_DEFAULTS.beamThickness()),
+        BasicStroke.CAP_BUTT,
+        BasicStroke.JOIN_MITER
     );
     private static final BasicStroke STEM_STROKE = new BasicStroke(
-        1f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER
+        (float) StaffSpaces.toPixels(ENGRAVING_DEFAULTS.stemThickness()),
+        BasicStroke.CAP_BUTT,
+        BasicStroke.JOIN_MITER
     );
 
     // Inner beam dimensions
     private static final double INNER_BEAM_LENGTH = 11d;
-    private static final double INNER_BEAM_OFFSET = 6d;
+    private static final double INNER_BEAM_OFFSET =
+        StaffSpaces.toPixels(ENGRAVING_DEFAULTS.beamThickness() + ENGRAVING_DEFAULTS.beamSpacing());
 
     // Note types for beam levels (32nd, 16th, 8th)
     private static final NoteType[] BEAM_LEVELS = new NoteType[]{

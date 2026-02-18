@@ -21,10 +21,13 @@
 package songscribe.ui.renderer;
 
 import static songscribe.ui.renderer.GraphicsState.Property.COLOR;
+import static songscribe.ui.renderer.GraphicsState.Property.FONT;
 
 import java.awt.*;
 import java.awt.font.*;
 import java.awt.geom.*;
+import java.util.EnumMap;
+import java.util.Map;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -32,6 +35,7 @@ import org.jetbrains.annotations.Nullable;
 import songscribe.music.Note;
 import songscribe.music.NoteType;
 import songscribe.music.Tempo;
+import songscribe.smufl.SMuFLGlyph;
 import songscribe.ui.layout.TempoAttachment;
 
 /**
@@ -46,23 +50,24 @@ public class TempoRenderer extends BaseElementRenderer<Note> {
     // Constants
     // ==========================================================================
 
-    private static final float NOTE_FONT_SIZE = BaseElementRenderer.NOTE_FONT_SIZE;
     private static final double TEMPO_CHANGE_ZOOM_X = BaseElementRenderer.TEMPO_CHANGE_ZOOM_X;
     private static final double TEMPO_CHANGE_ZOOM_Y = BaseElementRenderer.TEMPO_CHANGE_ZOOM_Y;
-    private static final double CROTCHET_WIDTH = NOTE_FONT_SIZE / 3.6056337d;
 
-    // Stem and flag positions for tempo note bounds calculation
-    private static final double UPPER_CROTCHET_STEM_X = NOTE_FONT_SIZE / 3.6056337d;
-    private static final double UPPER_MINIM_STEM_X = NOTE_FONT_SIZE / 3.1411042d;
-    private static final double TEMPO_STEM_SHORTENING = 2;
-    private static final Line2D.Float UPPER_STEM = new Line2D.Float(
-        0f,
-        -NOTE_FONT_SIZE / 32f,
-        0f,
-        -NOTE_FONT_SIZE / 1.1429f
-    );
-    private static final double UPPER_FLAG_X = NOTE_FONT_SIZE / 3.6834533d;
-    private static final double UPPER_FLAG_Y = -NOTE_FONT_SIZE / 1.6623377d;
+    /**
+     * Maps note types to their SMuFL metronome glyph (stem-up, since tempo notes
+     * always display stem-up).
+     */
+    private static final Map<NoteType, SMuFLGlyph> METRONOME_GLYPHS;
+
+    static {
+        METRONOME_GLYPHS = new EnumMap<>(NoteType.class);
+        METRONOME_GLYPHS.put(NoteType.SEMIBREVE, SMuFLGlyph.MET_NOTE_WHOLE);
+        METRONOME_GLYPHS.put(NoteType.MINIM, SMuFLGlyph.MET_NOTE_HALF_UP);
+        METRONOME_GLYPHS.put(NoteType.CROTCHET, SMuFLGlyph.MET_NOTE_QUARTER_UP);
+        METRONOME_GLYPHS.put(NoteType.QUAVER, SMuFLGlyph.MET_NOTE_8TH_UP);
+        METRONOME_GLYPHS.put(NoteType.SEMIQUAVER, SMuFLGlyph.MET_NOTE_16TH_UP);
+        METRONOME_GLYPHS.put(NoteType.DEMI_SEMIQUAVER, SMuFLGlyph.MET_NOTE_32ND_UP);
+    }
 
     // Singleton instance
     private static final TempoRenderer INSTANCE = new TempoRenderer();
@@ -86,13 +91,11 @@ public class TempoRenderer extends BaseElementRenderer<Note> {
 
     /**
      * Calculate the bounding box for a tempo note in the local coordinate
-     * system (before scaling and translation). This includes the note head,
-     * stem, flags, and dots.
-     * <p>
-     * Migrated from FughettaRenderer.getTempoNoteBounds().
+     * system (before scaling and translation). Uses the pre-composed SMuFL
+     * metronome glyph which includes notehead, stem, and flag in one codepoint.
      *
      * @param frc  the font render context
-     * @param font the Fughetta font
+     * @param font the Bravura font (unused, kept for API compatibility)
      * @param note the tempo note
      * @return the bounding rectangle, or null if the note type has no glyph
      */
@@ -102,66 +105,28 @@ public class TempoRenderer extends BaseElementRenderer<Note> {
         Font font,
         Note note
     ) {
-        var noteType = note.getNoteType();
-        var noteHeadChar = NoteRenderer.getNoteHeadChar(noteType);
+        var metGlyph = METRONOME_GLYPHS.get(note.getNoteType());
 
-        if (noteHeadChar == null) {
+        if (metGlyph == null) {
             return null;
         }
 
-        // Get note head bounds
-        var noteGv = font.createGlyphVector(frc, noteHeadChar);
+        // The metronome glyph includes head + stem + flag as a single codepoint
+        var gv = BRAVURA_FONT.createGlyphVector(frc, metGlyph.asString());
         var bounds = new Rectangle2D.Double();
-        bounds.setRect(noteGv.getVisualBounds());
-
-        // Add stem bounds if note has stem
-        if (noteType.isNoteWithStem()) {
-            var stemX = (noteType == NoteType.MINIM)
-                ? UPPER_MINIM_STEM_X
-                : UPPER_CROTCHET_STEM_X;
-            var stemY1 = UPPER_STEM.getY1();
-            var stemY2 = UPPER_STEM.getY2() + TEMPO_STEM_SHORTENING;
-
-            // Account for stem stroke width (1px) and cap
-            // Use min/max to handle both upper and lower stems
-            var stemTop = Math.min(stemY1, stemY2);
-            var stemBottom = Math.max(stemY1, stemY2);
-            var stemBounds = new Rectangle2D.Double(
-                stemX - 0.5,
-                stemTop,
-                1.0,
-                stemBottom - stemTop
-            );
-
-            bounds.add(stemBounds);
-        }
-
-        // Add flag bounds if note is beamable (quaver, semiquaver, etc.)
-        if (noteType.isBeamable()) {
-            // Approximate flag bounds - flags extend upward from the stem
-            var flagBounds = new Rectangle2D.Double(
-                UPPER_FLAG_X,
-                UPPER_FLAG_Y + TEMPO_STEM_SHORTENING,
-                5.0, // approximate flag width
-                10.0 // approximate flag height
-            );
-
-            bounds.add(flagBounds);
-        }
+        bounds.setRect(gv.getVisualBounds());
 
         // Add dot bounds if note has dots
         if (note.getDotCount() > 0) {
-            // Dots are positioned to the right of the note head
+            var dotGv = BRAVURA_FONT.createGlyphVector(frc, SMuFLGlyph.MET_AUGMENTATION_DOT.asString());
+            var dotBounds = dotGv.getVisualBounds();
             var dotX = bounds.getMaxX() + 2;
-            var dotY = 0;
-            var dotBounds = new Rectangle2D.Double(
+            bounds.add(new Rectangle2D.Double(
                 dotX,
-                dotY - 2,
-                note.getDotCount() * 4.0,
-                4.0
-            );
-
-            bounds.add(dotBounds);
+                dotBounds.getY(),
+                dotBounds.getWidth() * note.getDotCount(),
+                dotBounds.getHeight()
+            ));
         }
 
         return bounds;
@@ -262,14 +227,19 @@ public class TempoRenderer extends BaseElementRenderer<Note> {
         g2.setColor(NOTE_COLOR);
 
         if (tempo.shouldShowTempo()) {
-            int extraOffset = 0;
+            // Compute the scaled width of the metronome glyph to position the text after it
+            var metGlyph = METRONOME_GLYPHS.get(tempoTypeNote.getNoteType());
 
-            if (tempoTypeNote.getDotCount() == 1 ||
-                tempoTypeNote.getNoteType() == NoteType.QUAVER) {
-                extraOffset = 6;
+            if (metGlyph != null) {
+                var frc = g2.getFontRenderContext();
+                var gv = BRAVURA_FONT.createGlyphVector(frc, metGlyph.asString());
+                double glyphWidth = gv.getVisualBounds().getWidth() * TEMPO_CHANGE_ZOOM_X;
+                xPos += glyphWidth + 3;
+
+                if (tempoTypeNote.getDotCount() > 0) {
+                    xPos += 4;
+                }
             }
-
-            xPos += CROTCHET_WIDTH + 5 + extraOffset;
         }
 
         var tempoText = tempoBuilder.toString();
@@ -285,54 +255,38 @@ public class TempoRenderer extends BaseElementRenderer<Note> {
         int x,
         int y
     ) {
-        g2.setFont(BaseElementRenderer.MUSIC_FONT);
         var transform = g2.getTransform();
 
         g2.translate(x, y - ((NOTE_FONT_SIZE * TEMPO_CHANGE_ZOOM_Y) / 8.0));
         g2.scale(TEMPO_CHANGE_ZOOM_X, TEMPO_CHANGE_ZOOM_Y);
 
-        // Draw note using NoteRenderer's simple rendering
         paintSimpleTempoNote(g2, tempoNote);
 
         g2.setTransform(transform);
     }
 
     /**
-     * Paints a simple note for tempo display (no accidentals, ledger lines, etc.).
+     * Paints a simple note for tempo display using a pre-composed SMuFL
+     * metronome glyph (notehead + stem + flag in a single codepoint).
      */
     private void paintSimpleTempoNote(@NotNull Graphics2D g2, @NotNull Note note) {
-        var noteType = note.getNoteType();
-        String headChar = NoteRenderer.getNoteHeadChar(noteType);
+        var metGlyph = METRONOME_GLYPHS.get(note.getNoteType());
 
-        if (headChar == null) {
+        if (metGlyph == null) {
             return;
         }
 
-        try (var ignored = GraphicsState.save(g2, COLOR)) {
+        try (var ignored = GraphicsState.save(g2, COLOR, FONT)) {
             g2.setColor(NOTE_COLOR);
-            g2.drawString(headChar, 0f, 0f);
+            g2.setFont(BRAVURA_FONT);
+            g2.drawString(metGlyph.asString(), 0f, 0f);
 
-            // Draw stem if needed (tempo notes have stems up)
-            if (noteType.isNoteWithStem()) {
-                // Simple stem rendering for tempo notes
-                float stemX = (float) (NOTE_FONT_SIZE / 3.6056337d);
-                float stemY1 = -NOTE_FONT_SIZE / 32f;
-                float stemY2 = -NOTE_FONT_SIZE / 1.1429f + 2; // Shortened stem
-
-                g2.drawLine((int) stemX, (int) stemY1, (int) stemX, (int) stemY2);
-
-                // Draw flags for 8th notes and smaller
-                if (noteType.isBeamable()) {
-                    float flagX = (float) (NOTE_FONT_SIZE / 3.6834533d);
-                    float flagY = (float) (-NOTE_FONT_SIZE / 1.6623377f + 2);
-                    g2.drawString("\uf06a", flagX, flagY); // Main upper flag
-                }
-            }
-
-            // Draw dots
+            // Draw augmentation dot using the SMuFL metronome dot glyph
             if (note.getDotCount() > 0) {
-                double dotWidth = NOTE_FONT_SIZE / 9.142858d;
-                g2.fillOval((int) 13.1d, (int) (-dotWidth / 2), (int) dotWidth, (int) dotWidth);
+                var frc = g2.getFontRenderContext();
+                var noteGv = BRAVURA_FONT.createGlyphVector(frc, metGlyph.asString());
+                float dotX = (float) noteGv.getVisualBounds().getMaxX() + 2f;
+                g2.drawString(SMuFLGlyph.MET_AUGMENTATION_DOT.asString(), dotX, 0f);
             }
         }
     }

@@ -31,7 +31,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
-import songscribe.music.Crotchet;
+import songscribe.music.NoteType;
 import songscribe.music.Line;
 import songscribe.music.Note;
 import songscribe.ui.Constants;
@@ -68,7 +68,7 @@ class LyricsRendererTest {
      * Creates a note with a syllable.
      */
     private Note createNote(String syllable) {
-        var note = new Crotchet();
+        var note = NoteType.CROTCHET.newInstance();
         note.properties.syllable = syllable != null ? syllable : "";
         note.properties.syllableRelation = Note.SyllableRelation.NO; // Default to NO
         note.setXPos(100); // Default position

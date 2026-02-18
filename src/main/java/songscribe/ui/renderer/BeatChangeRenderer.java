@@ -181,7 +181,7 @@ public class BeatChangeRenderer extends BaseElementRenderer<Note> {
         int y
     ) {
         try (var ignored = GraphicsState.save(g2, FONT, TRANSFORM)) {
-            g2.setFont(BaseElementRenderer.MUSIC_FONT);
+            g2.setFont(BRAVURA_FONT);
 
             g2.translate(x, y - ((NOTE_FONT_SIZE * TEMPO_CHANGE_ZOOM_Y) / 8.0));
             g2.scale(TEMPO_CHANGE_ZOOM_X, TEMPO_CHANGE_ZOOM_Y);
@@ -214,11 +214,13 @@ public class BeatChangeRenderer extends BaseElementRenderer<Note> {
 
                 g2.drawLine((int) stemX, (int) stemY1, (int) stemX, (int) stemY2);
 
-                // Draw flags for 8th notes and smaller
+                // Draw flags for 8th notes and smaller (still Fughetta PUA, Phase 6 scope)
                 if (noteType.isBeamable()) {
                     float flagX = (float) (NOTE_FONT_SIZE / 3.6834533d);
                     float flagY = (float) (-NOTE_FONT_SIZE / 1.6623377f + 2);
+                    g2.setFont(MUSIC_FONT);
                     g2.drawString("\uf06a", flagX, flagY); // Main upper flag
+                    g2.setFont(BRAVURA_FONT);
                 }
             }
 

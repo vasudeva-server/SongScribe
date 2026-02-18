@@ -34,12 +34,12 @@ import songscribe.ui.layout.Attachment;
 import songscribe.ui.layout.LineElement;
 
 @SuppressWarnings("StaticInitializerReferencesSubClass")
-public abstract class Note extends LineElement implements Cloneable {
+public class Note extends LineElement implements Cloneable {
 
     public static final Point HOT_SPOT = new Point(5, 27);
     public static final int NORMAL_IMAGE_WIDTH = 18;
 
-    // TODO: This will go away when we use Leland font instead of images
+    // TODO: This will go away when we use Bravura font instead of images
     public static final Rectangle[] REAL_NATURAL_FLAT_SHARP_RECT =
         new Rectangle[]{
             new Rectangle(0, 17, 6, 22),
@@ -48,8 +48,8 @@ public abstract class Note extends LineElement implements Cloneable {
             new Rectangle(0, 23, 9, 10),
         };
 
-    public static final Note GLISSANDO_NOTE = new GlissandoNote();
-    public static final Note PASTE_NOTE = new PasteNote();
+    public static final Note GLISSANDO_NOTE = new NonNote();
+    public static final Note PASTE_NOTE = new NonNote();
     public static final Glissando NO_GLISSANDO = new Glissando(
         Integer.MAX_VALUE
     );
@@ -149,10 +149,17 @@ public abstract class Note extends LineElement implements Cloneable {
     /** Attachments on this note (tempo, fermata, dynamics, etc.) */
     private final List<Attachment> attachments = new ArrayList<>();
 
+    private NoteType noteType;
+
     protected Note() {
     }
 
+    public Note(NoteType noteType) {
+        this.noteType = noteType;
+    }
+
     protected Note(@NotNull Note note) {
+        noteType = note.noteType;
         xOffset = note.xOffset;
         yPos = note.yPos;
         dotCount = note.dotCount;
@@ -182,16 +189,30 @@ public abstract class Note extends LineElement implements Cloneable {
         }
     }
 
-    public abstract NoteType getNoteType();
+    public NoteType getNoteType() {
+        return noteType;
+    }
+
+    void initNoteType(NoteType noteType) {
+        this.noteType = noteType;
+    }
 
     @Override
-    public abstract Note clone();
+    public Note clone() {
+        return new Note(this);
+    }
 
-    public abstract Rectangle getRealUpNoteRect();
+    public Rectangle getRealUpNoteRect() {
+        return noteType.getRealUpNoteRect();
+    }
 
-    public abstract Rectangle getRealDownNoteRect();
+    public Rectangle getRealDownNoteRect() {
+        return noteType.getRealDownNoteRect();
+    }
 
-    public abstract int getDefaultDuration();
+    public int getDefaultDuration() {
+        return noteType.getDefaultDuration();
+    }
 
     // ========================================================================
     // LineElement Implementation

@@ -29,7 +29,7 @@ import songscribe.music.BeatChange;
 import songscribe.music.DurationArticulation;
 import songscribe.music.ForceArticulation;
 import songscribe.ui.layout.Articulation;
-import songscribe.music.GraceSemiQuaver;
+
 import songscribe.music.Note;
 import songscribe.music.NoteType;
 
@@ -63,8 +63,6 @@ public final class NoteIO {
         "glissandox1translate";
     private static final String XML_GLISSANDO_X2_TRANSLATE =
         "glissandox2translate";
-    private static final String XML_GRACE_SEMIQUAVER_Y0_POS = "y0pos";
-    private static final String XML_GRACE_SEMIQUAVER_X2_DIFFPOS = "x2diffpos";
     private static final String XML_INVERT_FRACTION_BEAM_ORIENTATION =
         "invertfractionbeamorientation";
     private static final Map<String, Note.Accidental> NOTE_ACCIDENTAL_MAP =
@@ -234,18 +232,6 @@ public final class NoteIO {
             );
         }
 
-        if (note.getNoteType() == NoteType.GRACE_SEMIQUAVER) {
-            XML.writeValue(
-                writer,
-                XML_GRACE_SEMIQUAVER_Y0_POS,
-                Integer.toString(((GraceSemiQuaver) note).getY0Pos())
-            );
-            XML.writeValue(
-                writer,
-                XML_GRACE_SEMIQUAVER_X2_DIFFPOS,
-                Integer.toString(((GraceSemiQuaver) note).getX2DiffPos())
-            );
-        }
 
         writer.println("          </" + XML_NOTE + '>');
     }
@@ -278,6 +264,10 @@ public final class NoteIO {
                 if (type.equals("LINE")) {
                     type = NoteType.SINGLE_BARLINE.name();
                 }
+                if (type.equals("GRACE_SEMIQUAVER") ||
+                    type.equals("GRACE_SEMIQUAVER_EDIT_STEP1")) {
+                    type = NoteType.GRACE_QUAVER.name();
+                }
 
                 note = NoteType.valueOf(type).newInstance();
             } else {
@@ -296,12 +286,17 @@ public final class NoteIO {
                 lastTag = null;
                 where = Where.NOTE;
 
-                if (attributes.getValue(XML_TYPE).equals("VERTICALLINE")) {
+                var type = attributes.getValue(XML_TYPE);
+
+                if (type.equals("VERTICALLINE")) {
                     note = NoteType.SINGLE_BARLINE.newInstance();
                 } else {
-                    note = NoteType.valueOf(
-                        attributes.getValue(XML_TYPE)
-                    ).newInstance();
+                    if (type.equals("GRACE_SEMIQUAVER") ||
+                        type.equals("GRACE_SEMIQUAVER_EDIT_STEP1")) {
+                        type = NoteType.GRACE_QUAVER.name();
+                    }
+
+                    note = NoteType.valueOf(type).newInstance();
                 }
             } else if (qName.equals(TempoIO.XML_TEMPO)) {
                 where = Where.TEMPO_CHANGE;
@@ -401,16 +396,6 @@ public final class NoteIO {
                         note.setInvertFractionBeamOrientation(true);
                     } else if (lastTag.equals(XML_BEAT_CHANGE)) {
                         note.setBeatChange(BEAT_CHANGE_MAP.get(str));
-                    } else if (lastTag.equals(XML_GRACE_SEMIQUAVER_Y0_POS)) {
-                        ((GraceSemiQuaver) note).setY0Pos(
-                                Integer.parseInt(str)
-                            );
-                    } else if (
-                        lastTag.equals(XML_GRACE_SEMIQUAVER_X2_DIFFPOS)
-                    ) {
-                        ((GraceSemiQuaver) note).setX2DiffPos(
-                                Integer.parseInt(str)
-                            );
                     }
                 }
             }

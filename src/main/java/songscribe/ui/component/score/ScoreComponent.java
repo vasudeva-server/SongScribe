@@ -180,6 +180,10 @@ public abstract class ScoreComponent extends JComponent {
             RenderingHints.KEY_FRACTIONALMETRICS,
             RenderingHints.VALUE_FRACTIONALMETRICS_ON
         );
+        g2.setRenderingHint(
+            RenderingHints.KEY_STROKE_CONTROL,
+            RenderingHints.VALUE_STROKE_NORMALIZE
+        );
 
         return g2;
     }

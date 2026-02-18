@@ -440,7 +440,7 @@ public class LineComponent extends ScoreComponent
      * @return Y position of middle staff line in component coordinates
      */
     private int calculateMiddleLineY() {
-        var staffLineYOffset = LayoutStylesheet.STAFF_LINE_Y_OFFSET;
+        var staffLineYOffset = LayoutStylesheet.STAFF_SPACE;
         var defaultSpaceAbove = Score.STAFF_LINES_ABOVE * staffLineYOffset;
         double spaceAbove = MIN_SPACE_ABOVE;
 
@@ -503,7 +503,7 @@ public class LineComponent extends ScoreComponent
      * This prevents the line from jumping in height when the first note is added.
      * Value determined empirically: 5 * STAFF_LINE_Y_OFFSET = 40px
      */
-    private static final int MIN_SPACE_ABOVE = 5 * LayoutStylesheet.STAFF_LINE_Y_OFFSET;
+    private static final int MIN_SPACE_ABOVE = 5 * LayoutStylesheet.STAFF_SPACE;
 
     /**
      * Calculates the height needed for this line.
@@ -518,7 +518,7 @@ public class LineComponent extends ScoreComponent
      * @return Height in pixels
      */
     private int calculateLineHeight() {
-        var staffLineYOffset = LayoutStylesheet.STAFF_LINE_Y_OFFSET;
+        var staffLineYOffset = LayoutStylesheet.STAFF_SPACE;
 
         // Default space above and below staff for ledger lines
         var defaultSpaceAbove = Score.STAFF_LINES_ABOVE * staffLineYOffset;

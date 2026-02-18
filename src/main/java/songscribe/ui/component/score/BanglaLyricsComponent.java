@@ -23,6 +23,7 @@ package songscribe.ui.component.score;
 import java.awt.*;
 
 import songscribe.ui.component.Score;
+import songscribe.ui.layout.LayoutStylesheet;
 import songscribe.util.GraphicUtils;
 
 /**
@@ -34,7 +35,7 @@ import songscribe.util.GraphicUtils;
 public class BanglaLyricsComponent extends ScoreComponent {
 
     /** Vertical spacing for Bangla lyrics (2 staff lines). */
-    private static final int BANGLA_LYRICS_TOP_MARGIN = 2 * Score.STAFF_LINE_Y_OFFSET;
+    private static final int BANGLA_LYRICS_TOP_MARGIN = 2 * LayoutStylesheet.STAFF_SPACE;
 
     /** X position for content (used for union width centering). */
     private float contentX = -1;

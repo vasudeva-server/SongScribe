@@ -131,17 +131,6 @@ public final class Actions {
             InputEvent.SHIFT_DOWN_MASK
         );
 
-    public static final DurationAction GRACE_SIXTEENTH_NOTE_ACTION =
-        new DurationAction(
-            NoteType.GRACE_SEMIQUAVER_EDIT_STEP1,
-            "Grace sixteenth note",
-            "grace-sixteenth.svg",
-            26,
-            "duration-grace-sixteenth",
-            "Insert two grace sixteenth notes followed by glissando",
-            0,
-            0
-        );
 
     public static final DurationAction THIRTY_SECOND_NOTE_ACTION =
         new DurationAction(

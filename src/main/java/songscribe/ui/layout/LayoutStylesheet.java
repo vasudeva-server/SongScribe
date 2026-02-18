@@ -441,7 +441,7 @@ public final class LayoutStylesheet {
     /**
      * Pixels between staff lines
      */
-    public static final int STAFF_LINE_Y_OFFSET = 8;
+    public static final int STAFF_SPACE = 8;
 
     /**
      * Number of staff lines
@@ -461,12 +461,12 @@ public final class LayoutStylesheet {
     /**
      * Height of 5-line staff (4 gaps × 8 pixels)
      */
-    public static final int STAFF_HEIGHT = 4 * STAFF_LINE_Y_OFFSET;  // 32px
+    public static final int STAFF_HEIGHT = 4 * STAFF_SPACE;  // 32px
 
     /**
      * Note Y offset (half of staff line spacing)
      */
-    public static final double NOTE_Y_OFFSET = STAFF_LINE_Y_OFFSET / 2.0;  // 4px
+    public static final double NOTE_Y_OFFSET = STAFF_SPACE / 2.0;  // 4px
 
     // ==========================================================================
     // LINE ELEMENT DEFAULT Y POSITIONS (relative to middleLineY)
@@ -479,17 +479,17 @@ public final class LayoutStylesheet {
     /**
      * Default tempo Y for first line (-5 staff lines above middle)
      */
-    public static final int TEMPO_DEFAULT_Y_FIRST_LINE = -5 * STAFF_LINE_Y_OFFSET;  // -40px
+    public static final int TEMPO_DEFAULT_Y_FIRST_LINE = -5 * STAFF_SPACE;  // -40px
 
     /**
      * Default tempo Y for subsequent lines (-3 staff lines above middle)
      */
-    public static final int TEMPO_DEFAULT_Y_OTHER_LINES = -3 * STAFF_LINE_Y_OFFSET;  // -24px
+    public static final int TEMPO_DEFAULT_Y_OTHER_LINES = -3 * STAFF_SPACE;  // -24px
 
     /**
      * Default beat change Y position (-3 staff lines above middle)
      */
-    public static final int BEAT_CHANGE_DEFAULT_Y = -3 * STAFF_LINE_Y_OFFSET;  // -24px
+    public static final int BEAT_CHANGE_DEFAULT_Y = -3 * STAFF_SPACE;  // -24px
 
     /**
      * Default lyrics Y position (below staff)

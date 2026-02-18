@@ -30,6 +30,10 @@ import java.util.Objects;
 
 import org.jetbrains.annotations.NotNull;
 
+import songscribe.smufl.EngravingDefaults;
+import songscribe.smufl.SMuFLGlyph;
+import songscribe.smufl.SMuFLMetadata;
+import songscribe.smufl.StaffSpaces;
 import songscribe.ui.layout.LayoutStylesheet;
 import songscribe.ui.layout.LineElement;
 import songscribe.util.MyFontUtils;
@@ -39,7 +43,7 @@ import songscribe.util.MyFontUtils;
  * <p>
  * Provides shared utilities:
  * <ul>
- *   <li>Fughetta font glyph constants and mappings</li>
+ *   <li>Font constants and glyph rendering methods</li>
  *   <li>Common drawing operations (ledger lines, staff lines, etc.)</li>
  *   <li>Debug rendering wrapper</li>
  * </ul>
@@ -50,49 +54,13 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
 
     // ==========================================================================
     // Fughetta Font Glyph Constants
-    // (Extracted from FughettaRenderer.java)
     // Note: Fughetta uses Private Use Area Unicode codepoints (U+F0xx)
+    // Remaining Fughetta constants
     // ==========================================================================
-
-    // Note heads
-    protected static final String SEMIBREVE_HEAD = "\uf077";
-    protected static final String MINIM_HEAD = "\uf0cd";
-    protected static final String FILLED_NOTE_HEAD = "\uf0cf";
-
-    // Rests
-    protected static final String SEMIBREVE_REST = "\uf0ee";
-    protected static final String MINIM_REST = "\uf0ee";
-    protected static final String CROTCHET_REST = "\uf0ce";
-    protected static final String QUAVER_REST = "\uf0e4";
-    protected static final String SEMIQUAVER_REST = "\uf0c5";
-    protected static final String DEMISEMIQUAVER_REST = "\uf0a8";
-
-    // Accidentals
-    protected static final String NATURAL = "\uf06e";
-    protected static final String FLAT = "\uf062";
-    protected static final String SHARP = "\uf023";
-    protected static final String DOUBLE_NATURAL = "\uf06e\uf06e";
-    protected static final String DOUBLE_FLAT = "\uf0ba";
-    protected static final String DOUBLE_SHARP = "\uf0dc";
-    protected static final String NATURAL_FLAT = "\uf06e\uf062";
-    protected static final String NATURAL_SHARP = "\uf06e\uf023";
-
-    // Clefs
-    protected static final String TREBLE_CLEF = "\uf026";
-
-    // Flags (for stems)
-    protected static final String MAIN_UPPER_FLAG = "\uf06a";
-    protected static final String SECOND_UPPER_FLAG = "\uf0fb";
-    protected static final String MAIN_LOWER_FLAG = "\uf04a";
-    protected static final String SECOND_LOWER_FLAG = "\uf0f0";
 
     // Special markings
     protected static final String GLISSANDO = "\uf07e";
     protected static final String TRILL = "\uf0d9";
-
-    // Parentheses (for cautionary accidentals)
-    protected static final String BEGIN_PARENTHESIS = "\uf028";
-    protected static final String END_PARENTHESIS = "\uf029";
 
     // ==========================================================================
     // Font Constants
@@ -129,6 +97,11 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
     public static final Font MUSIC_FONT_GRACE;
 
     /**
+     * The Bravura (SMuFL) music notation font at standard note size.
+     */
+    public static final Font BRAVURA_FONT;
+
+    /**
      * Font for tuplet numbers (e.g., "3" for triplets).
      */
     public static final Font TUPLET_FONT;
@@ -146,6 +119,12 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
             );
             MUSIC_FONT = fughettaBase.deriveFont(NOTE_FONT_SIZE);
             MUSIC_FONT_GRACE = fughettaBase.deriveFont(NOTE_FONT_SIZE * GRACE_ACCIDENTAL_RESIZE_FACTOR);
+
+            var bravuraBase = Objects.requireNonNull(
+                MyFontUtils.getLocalFont("Bravura.otf"),
+                "Cannot load Bravura.otf font"
+            );
+            BRAVURA_FONT = bravuraBase.deriveFont(NOTE_FONT_SIZE);
 
             var tupletBase = Objects.requireNonNull(
                 MyFontUtils.getLocalFont("TupletNumbers.ttf"),
@@ -175,9 +154,15 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
     // Strokes
     // ==========================================================================
 
-    protected static final Stroke STAFF_LINE_STROKE = new BasicStroke(1.0f);
-    protected static final Stroke STEM_STROKE = new BasicStroke(1.0f);
-    protected static final Stroke LEDGER_LINE_STROKE = new BasicStroke(1.0f);
+    private static final EngravingDefaults ENGRAVING_DEFAULTS =
+        SMuFLMetadata.getInstance().getEngravingDefaults();
+
+    protected static final Stroke STAFF_LINE_STROKE = new BasicStroke(
+        (float) StaffSpaces.toPixels(ENGRAVING_DEFAULTS.staffLineThickness()));
+    protected static final Stroke STEM_STROKE = new BasicStroke(
+        (float) StaffSpaces.toPixels(ENGRAVING_DEFAULTS.stemThickness()));
+    protected static final Stroke LEDGER_LINE_STROKE = new BasicStroke(
+        (float) StaffSpaces.toPixels(ENGRAVING_DEFAULTS.legerLineThickness()));
 
     // ==========================================================================
     // Rendering Template Method
@@ -375,25 +360,44 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
     }
 
     /**
-     * Draws a glyph string from the Fughetta font.
+     * Draws a SMuFL glyph using the Bravura font.
      *
      * @param g2    Graphics context
-     * @param glyph The Fughetta font string (may contain multiple characters)
+     * @param glyph The SMuFL glyph to draw
      * @param x     X position
      * @param y     Y position
-     * @param ctx   Render context for font access
      */
-    protected void drawFughettaGlyph(
+    protected void drawBravuraGlyph(
         @NotNull Graphics2D g2,
-        @NotNull String glyph,
+        @NotNull SMuFLGlyph glyph,
+        double x,
+        double y
+    ) {
+        drawBravuraGlyph(g2, glyph, x, y, false);
+    }
+
+    /**
+     * Draws a SMuFL glyph using the Bravura font.
+     *
+     * @param g2            Graphics context
+     * @param glyph         The SMuFL glyph to draw
+     * @param x             X position
+     * @param y             Y position
+     * @param preserveColor If true, preserves the current graphics color instead of setting NOTE_COLOR
+     */
+    protected void drawBravuraGlyph(
+        @NotNull Graphics2D g2,
+        @NotNull SMuFLGlyph glyph,
         double x,
         double y,
-        @NotNull ElementRenderContext ctx
+        boolean preserveColor
     ) {
         try (var ignored = GraphicsState.save(g2, COLOR, FONT)) {
-            g2.setFont(ctx.getMusicFont());
-            g2.setColor(NOTE_COLOR);
-            g2.drawString(glyph, (float) x, (float) y);
+            g2.setFont(BRAVURA_FONT);
+            if (!preserveColor) {
+                g2.setColor(NOTE_COLOR);
+            }
+            g2.drawString(glyph.asString(), (float) x, (float) y);
         }
     }
 
@@ -412,7 +416,7 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
      * @return Y coordinate
      */
     protected int staffLineToY(int lineIndex, int middleLineY) {
-        int offset = (lineIndex - 2) * LayoutStylesheet.STAFF_LINE_Y_OFFSET;
+        int offset = (lineIndex - 2) * LayoutStylesheet.STAFF_SPACE;
         return middleLineY + offset;
     }
 

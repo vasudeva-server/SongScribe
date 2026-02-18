@@ -30,6 +30,7 @@ import org.jetbrains.annotations.Nullable;
 
 import songscribe.music.KeyType;
 import songscribe.music.Line;
+import songscribe.smufl.SMuFLGlyph;
 import songscribe.ui.layout.KeySignature;
 import songscribe.ui.layout.LayoutStylesheet;
 
@@ -42,12 +43,12 @@ import songscribe.ui.layout.LayoutStylesheet;
 public class KeySignatureRenderer extends BaseElementRenderer<KeySignature> {
 
     // ==========================================================================
-    // Accidental Glyphs (from FughettaRenderer)
+    // Accidental Glyphs
     // ==========================================================================
 
-    private static final String FLAT_GLYPH = "\uf062";
-    private static final String SHARP_GLYPH = "\uf023";
-    private static final String NATURAL_GLYPH = "\uf06e";
+    private static final SMuFLGlyph FLAT_GLYPH = SMuFLGlyph.ACCIDENTAL_FLAT;
+    private static final SMuFLGlyph SHARP_GLYPH = SMuFLGlyph.ACCIDENTAL_SHARP;
+    private static final SMuFLGlyph NATURAL_GLYPH = SMuFLGlyph.ACCIDENTAL_NATURAL;
 
     // Y positions for accidentals relative to middle line (0 = B4)
     // Index 0 = None (empty), Index 1 = Flats, Index 2 = Sharps
@@ -110,7 +111,7 @@ public class KeySignatureRenderer extends BaseElementRenderer<KeySignature> {
         }
 
         try (var ignored = GraphicsState.save(g2, FONT, COLOR)) {
-            g2.setFont(ctx.getMusicFont());
+            g2.setFont(BRAVURA_FONT);
             g2.setColor(NOTE_COLOR);
 
             // Get the starting X position from the element
@@ -118,7 +119,7 @@ public class KeySignatureRenderer extends BaseElementRenderer<KeySignature> {
             int middleLineY = ctx.getMiddleLineY();
 
             // Determine glyph and Y positions based on key type
-            String glyph;
+            SMuFLGlyph glyph;
             int[] yPositions;
 
             if (keyType == KeyType.FLATS) {
@@ -130,12 +131,14 @@ public class KeySignatureRenderer extends BaseElementRenderer<KeySignature> {
             }
 
             // Draw each accidental
+            var glyphStr = glyph.asString();
+
             for (int i = 0; i < accidentalCount; i++) {
                 // Calculate Y position for this accidental
                 int yPos = yPositions[i % 7];
                 int y = middleLineY + (int) (yPos * LayoutStylesheet.NOTE_Y_OFFSET);
 
-                g2.drawString(glyph, (float) xPos, (float) y);
+                g2.drawString(glyphStr, (float) xPos, (float) y);
                 xPos += ACCIDENTAL_SPACING;
             }
         }
@@ -166,10 +169,10 @@ public class KeySignatureRenderer extends BaseElementRenderer<KeySignature> {
         }
 
         try (var ignored = GraphicsState.save(g2, COLOR, FONT)) {
-            g2.setFont(ctx.getMusicFont());
+            g2.setFont(BRAVURA_FONT);
             g2.setColor(NOTE_COLOR);
 
-            String glyph;
+            SMuFLGlyph glyph;
             int[] yPositions;
 
             if (keyType == KeyType.FLATS) {
@@ -180,13 +183,14 @@ public class KeySignatureRenderer extends BaseElementRenderer<KeySignature> {
                 yPositions = SHARP_Y_POSITIONS;
             }
 
+            var glyphStr = glyph.asString();
             float currentX = xPos;
 
             for (int i = 0; i < accidentalCount; i++) {
                 int yPos = yPositions[i % 7];
                 int y = middleLineY + (int) (yPos * LayoutStylesheet.NOTE_Y_OFFSET);
 
-                g2.drawString(glyph, currentX, (float) y);
+                g2.drawString(glyphStr, currentX, (float) y);
                 currentX += ACCIDENTAL_SPACING;
             }
         }
@@ -276,7 +280,7 @@ public class KeySignatureRenderer extends BaseElementRenderer<KeySignature> {
         @NotNull ElementRenderContext ctx
     ) {
         try (var ignored = GraphicsState.save(g2, COLOR, FONT)) {
-            g2.setFont(ctx.getMusicFont());
+            g2.setFont(BRAVURA_FONT);
             g2.setColor(NOTE_COLOR);
 
             var middleLineY = ctx.getMiddleLineY();
@@ -304,12 +308,13 @@ public class KeySignatureRenderer extends BaseElementRenderer<KeySignature> {
 
                 var yPositions = KEY_Y_POSITIONS[keyTypeOrdinal];
                 var glyph = isNaturals[kt] ? NATURAL_GLYPH : getGlyphForKeyType(keyTypes[kt]);
+                var glyphStr = glyph.asString();
 
                 for (var i = 0; i < accidentalCounts[kt]; i++) {
                     var yPos = yPositions[(i + startingOffsets[kt]) % 7];
                     var y = middleLineY + (int) (yPos * LayoutStylesheet.NOTE_Y_OFFSET);
 
-                    g2.drawString(glyph, xPos, y);
+                    g2.drawString(glyphStr, xPos, y);
                     xPos += KEY_CHANGE_SPACING;
                 }
             }
@@ -319,11 +324,11 @@ public class KeySignatureRenderer extends BaseElementRenderer<KeySignature> {
     /**
      * Returns the glyph for the given key type.
      */
-    private String getGlyphForKeyType(@NotNull KeyType keyType) {
+    private @NotNull SMuFLGlyph getGlyphForKeyType(@NotNull KeyType keyType) {
         return switch (keyType) {
             case FLATS -> FLAT_GLYPH;
             case SHARPS -> SHARP_GLYPH;
-            default -> "";
+            default -> throw new IllegalArgumentException("No glyph for key type: " + keyType);
         };
     }
 }

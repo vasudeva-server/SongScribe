@@ -34,7 +34,7 @@ import javax.swing.*;
 
 import songscribe.util.Utils;
 
-// TODO: Delete this when LelandRenderer is done
+// TODO: Delete this when Bravura rendering is complete
 public final class GeneralPathFile {
 
     private static final char fermataChar = '\uf055';

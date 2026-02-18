@@ -20,25 +20,29 @@
 package songscribe.music;
 
 public enum BeatChange {
-    QUAVER_EQUALS_QUAVER(new Quaver(), new Quaver(), 1f),
+    QUAVER_EQUALS_QUAVER(
+        NoteType.QUAVER.newInstance(),
+        NoteType.QUAVER.newInstance(),
+        1f
+    ),
     DOTTED_CROCHET_EQUALS_MINIM(
-        createDottedVersion(new Crotchet()),
-        new Minim(),
+        createDottedVersion(NoteType.CROTCHET.newInstance()),
+        NoteType.MINIM.newInstance(),
         3f / 4f
     ),
     MINIM_EQUALS_DOTTED_CROCHET(
-        new Minim(),
-        createDottedVersion(new Crotchet()),
+        NoteType.MINIM.newInstance(),
+        createDottedVersion(NoteType.CROTCHET.newInstance()),
         4f / 3f
     ),
     CROTCHET_EQUALS_DOTTED_CROCHET(
-        new Crotchet(),
-        createDottedVersion(new Crotchet()),
+        NoteType.CROTCHET.newInstance(),
+        createDottedVersion(NoteType.CROTCHET.newInstance()),
         2f / 3f
     ),
     DOTTED_CROCHET_EQUALS_CROCHET(
-        createDottedVersion(new Crotchet()),
-        new Crotchet(),
+        createDottedVersion(NoteType.CROTCHET.newInstance()),
+        NoteType.CROTCHET.newInstance(),
         3f / 2f
     );
 
