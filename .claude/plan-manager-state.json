@@ -46,7 +46,7 @@
           "phase": 7,
           "type": "sub-plan",
           "prePlanned": true,
-          "status": "pending"
+          "status": "completed"
         },
         {
           "path": "plans/migrations/smufl-rewrite/phase-7a-stroke-quality.md",
