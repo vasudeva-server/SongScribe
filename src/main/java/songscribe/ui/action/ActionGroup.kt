@@ -97,7 +97,13 @@ open class ActionGroup<T : UIAction>() : PropertyChangeListener {
         }
 
         selected?.putValue(Action.SELECTED_KEY, false)
-        selected = action
+
+        if (value) {
+            selected = action
+        } else {
+            selected = null
+        }
+
         selectLevel -= 1
     }
 

@@ -189,7 +189,7 @@ public class ConvertAction extends AbstractAction {
                     composition.setUnderLyrics("");
                     composition.setTranslatedLyrics("");
                     composition.setTitle("");
-                    composition.setInfo("");
+                    composition.setAttribution("");
 
                     var fileName = songFile.getName();
                     var dotPos = fileName.lastIndexOf('.');

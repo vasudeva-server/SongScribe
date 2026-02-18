@@ -75,6 +75,7 @@ import songscribe.ui.action.InsertLineAction;
 import songscribe.ui.adjustment.HorizontalAdjustment;
 import songscribe.ui.adjustment.LyricsAdjustment;
 import songscribe.ui.adjustment.VerticalAdjustment;
+import songscribe.ui.layout.LayoutManager;
 import songscribe.ui.dialog.LineWidthChangeDialog;
 import songscribe.ui.message.AddDynamicsMessage;
 import songscribe.ui.message.ControlChangedMessage;
@@ -83,6 +84,7 @@ import songscribe.ui.message.FirstSecondEndingMessage;
 import songscribe.ui.message.FlipPartialBeamsMessage;
 import songscribe.ui.message.FlipStemDirectionMessage;
 import songscribe.ui.message.InsertLineMessage;
+import songscribe.ui.message.LayoutChangeMessage;
 import songscribe.ui.message.Message;
 import songscribe.ui.message.MessageCenter;
 import songscribe.ui.message.ModeChangedMessage;
@@ -147,6 +149,9 @@ public final class Score
     // The page margin in dpi
     public static final int PAGE_MARGIN = 80;
 
+    // Delay in milliseconds for debouncing repaint when layout changes occur
+    private static final int REPAINT_DEBOUNCE_DELAY_MS = 300;
+
     // Colors used to draw the music score in various states
     public static final Color PLAYING_NOTE_COLOR = new Color(31, 204, 0);
     public static final Color SELECTION_STROKE_COLOR = Color.magenta;
@@ -203,8 +208,8 @@ public final class Score
 
     // The maximum number of staff lines under a note that can be displayed above and below the staff.
     // The range of notes supported is C3 (3 lines below) to F6 (4 lines above).
-    private static final int STAFF_LINES_ABOVE = 3;
-    private static final int STAFF_LINES_BELOW = 4;
+    public static final int STAFF_LINES_ABOVE = 3;
+    public static final int STAFF_LINES_BELOW = 4;
 
     // The maximum angle of a beam. If the beamed notes would create a beam with a greater angle,
     // the length of note stems is adjusted to make the beam angle <= this value.
@@ -329,8 +334,11 @@ public final class Score
     // The Renderer subclass that renders the music score
     private Renderer renderer = null;
 
-    private final EnumMap<Score.RenderStep, Score.RenderInfo> renderMap =
-        new EnumMap<>(Score.RenderStep.class);
+    // Manages the vertical layout of all sections in the score.
+    private LayoutManager layoutManager = null;
+
+    // Timer for debouncing repaints when layout changes occur
+    private Timer repaintDebounceTimer = null;
 
     // Preferred size of the score panel
     private final Dimension preferredSize = new Dimension();
@@ -387,6 +395,8 @@ public final class Score
             System.exit(0);
         }
 
+        layoutManager = new LayoutManager(this);
+
         try {
             saxParser = SAXParserFactory.newInstance().newSAXParser();
         } catch (Exception e) {
@@ -422,7 +432,6 @@ public final class Score
 
     public void init() {
         composition = new Composition(mainFrame);
-        initRenderMap();
         initView();
         initAdjustments();
         initMargin();
@@ -444,29 +453,6 @@ public final class Score
         }
 
         mainFrame.setDocumentModified(false);
-    }
-
-    private void initRenderMap() {
-        renderMap.put(Score.RenderStep.TITLE, new Score.RenderInfo(-1, 0));
-        renderMap.put(Score.RenderStep.INFO, new Score.RenderInfo(-1, 13));
-        renderMap.put(
-            Score.RenderStep.COMPOSITION,
-            new Score.RenderInfo(-1, 7)
-        );
-        renderMap.put(Score.RenderStep.LYRICS, new Score.RenderInfo(-1, 27));
-        renderMap.put(
-            Score.RenderStep.BANGLA_LYRICS,
-            new Score.RenderInfo(-1, 0)
-        );
-        renderMap.put(
-            Score.RenderStep.ENGLISH_TRANSLATION,
-            new Score.RenderInfo(-1, 0)
-        );
-        renderMap.put(Score.RenderStep.FOOTNOTES, new Score.RenderInfo(-1, 0));
-    }
-
-    public EnumMap<Score.RenderStep, Score.RenderInfo> getRenderMap() {
-        return renderMap;
     }
 
     public static boolean defaultUpperNote(@NotNull Note note) {
@@ -635,21 +621,33 @@ public final class Score
     }
 
     public void viewChanged() {
-        var topPadding = renderMap.get(RenderStep.INFO).maxY;
+        // Invalidate layout and measure with a temporary graphics context
+        layoutManager.invalidate();
 
-        if (topPadding <= 0) {
-            topPadding = composition.getTopPadding();
+        // Only measure if composition is set (not during initialization)
+        if (composition != null) {
+            var img = new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB);
+            var g2 = img.createGraphics();
+
+            try {
+                layoutManager.measure(g2);
+            } finally {
+                g2.dispose();
+            }
+
+            updateLayoutFromManager();
         }
+    }
 
-        middleLineY = ((STAFF_LINES_ABOVE + 3) * STAFF_LINE_Y_OFFSET) +
-        topPadding;
-
-        rowHeight = ((STAFF_LINES_BELOW +
-                STAFF_LINE_COUNT +
-                STAFF_LINES_ABOVE +
-                1) *
-            STAFF_LINE_Y_OFFSET) +
-        composition.getRowHeightAdjustment();
+    /**
+     * Updates middleLineY and rowHeight from LayoutManager.
+     * <p>
+     * Called after layout measurement to sync the cached values used
+     * throughout Score for hit-testing and positioning.
+     */
+    private void updateLayoutFromManager() {
+        middleLineY = layoutManager.getMiddleLineY();
+        rowHeight = layoutManager.getRowHeight();
     }
 
     public JScrollPane getScoreScrollPane() {
@@ -671,6 +669,13 @@ public final class Score
         var g2 = (Graphics2D) g;
         g2.setColor(Color.white);
         g2.fillRect(0, 0, marginPanel.getWidth(), marginPanel.getHeight());
+
+        // Measure layout before drawing if invalidated
+        if (!layoutManager.isValid()) {
+            layoutManager.measure(g2);
+            updateLayoutFromManager();
+        }
+
         renderer.drawScore(g2, true, 1d);
         drawEditElements(g2);
         drawSelectionRect(g2);
@@ -742,13 +747,7 @@ public final class Score
     }
 
     public int getUnderLyricsYPos() {
-        // Adjustable fields
-        var underLyricsYPos = 0;
-        return (
-            middleLineY +
-            (composition.lineCount() * rowHeight) +
-            underLyricsYPos
-        );
+        return layoutManager.getUnderLyricsYPos();
     }
 
     public Note getEditNote() {
@@ -1974,10 +1973,30 @@ public final class Score
         return composition;
     }
 
+    @NotNull
+    public LayoutManager getLayoutManager() {
+        return layoutManager;
+    }
+
     @Handler
     public void onNewDocument(NewFileMessage message) {
         setComposition(new Composition(mainFrame));
         requestFocusInWindow();
+    }
+
+    @Handler
+    public void onLayoutChanged(@NotNull LayoutChangeMessage message) {
+        if (message.getHeightChanged()) {
+            layoutManager.invalidateFromSection(message.getSection());
+        }
+
+        // Debounce repaints to batch multiple rapid changes
+        if (repaintDebounceTimer == null) {
+            repaintDebounceTimer = new Timer(REPAINT_DEBOUNCE_DELAY_MS, e -> repaint());
+            repaintDebounceTimer.setRepeats(false);
+        }
+
+        repaintDebounceTimer.restart();
     }
 
     public void setComposition(Composition composition) {
@@ -2213,19 +2232,7 @@ public final class Score
     }
 
     public int getStartY() {
-        if (composition.getTitle().isEmpty()) {
-            var tempoStartY =
-                (middleLineY + composition.getLine(0).getTempoChangeYPos()) -
-                (STAFF_LINE_Y_OFFSET * STAFF_LINE_COUNT);
-
-            if (composition.getInfo().isEmpty()) {
-                return tempoStartY;
-            }
-
-            return Math.min(tempoStartY, composition.getInfoStartY());
-        }
-
-        return 0;
+        return layoutManager.getContentStartY();
     }
 
     public Dimension getSheetSize() {
@@ -2237,20 +2244,19 @@ public final class Score
     }
 
     public int getSheetHeight() {
-        if (renderer.getHeight() == 0) {
+        // If layout not valid, do a measurement pass
+        if (!layoutManager.isValid()) {
             var image = new BufferedImage(
                 sheetSize.width,
                 sheetSize.height,
                 BufferedImage.TYPE_INT_RGB
             );
             var g2 = image.createGraphics();
-            g2.setColor(Color.white);
-            g2.fillRect(0, 0, image.getWidth(), image.getHeight());
-            renderer.drawScore(g2, true, 1d);
+            layoutManager.measure(g2);
             g2.dispose();
         }
 
-        return renderer.getHeight();
+        return layoutManager.getTotalHeight();
     }
 
     public void drawWidthIfWiderLine(@NotNull Line line, boolean strict) {
@@ -3196,18 +3202,6 @@ public final class Score
         SLUR,
     }
 
-    // The steps in which the music sheet is rendered. The order is important.
-    // Callers can choose to start rendering at any step.
-    public enum RenderStep {
-        TITLE,
-        INFO,
-        COMPOSITION,
-        LYRICS,
-        BANGLA_LYRICS,
-        ENGLISH_TRANSLATION,
-        FOOTNOTES,
-    }
-
     private static class NotePosition {
 
         int xIndex = 0;
@@ -3247,19 +3241,6 @@ public final class Score
         IntervalSet intervals,
         Boolean isTie
     ) {}
-
-    // For each step in the rendering process, we store the maximum Y value rendered and the padding above.
-    // If maxY is -1, the step has not been rendered. The top padding is a fixed value.
-    public static class RenderInfo {
-
-        public int maxY;
-        public final int topPadding;
-
-        public RenderInfo(int maxY, int topPadding) {
-            this.maxY = maxY;
-            this.topPadding = topPadding;
-        }
-    }
 
     private class FocusLostThread extends Thread {
 

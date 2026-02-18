@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch",
+      "Bash(./gradlew compileJava:*)",
+      "Bash(java:*)",
+      "Bash(mvn:*)",
+      "Skill(commit-changes)",
+      "Bash(./scripts/compile.sh:*)",
+      "Bash(./scripts/run.sh:*)",
+      "Bash(pkill -f*)",
+      "Bash(find:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git log:*)"
+    ]
+  },
+  "plansDirectory": "./plans"
+}

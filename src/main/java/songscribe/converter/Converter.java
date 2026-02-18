@@ -51,7 +51,7 @@ public final class Converter {
         }
 
         if (withoutCopyright) {
-            composition.setInfo("");
+            composition.setAttribution("");
         }
 
         return composition;

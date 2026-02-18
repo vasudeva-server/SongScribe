@@ -341,9 +341,7 @@
                                 File dir = new File("${project.download.directory}")
                                 dir.mkdirs()
                                 new File(dir, "version-${os.family.name}.json").withWriter { out ->
-                                out.println '{"downloadFile":
-                                "${project.artifactId}-${project.version}.${jpackage.build.type}","buildVersion":
-                                "${build.version}"}'
+                                out.println '{"downloadFile": "${project.artifactId}-${project.version}.${jpackage.build.type}","buildVersion": "${build.version}"}'
                                 }
                             </source>
                         </configuration>

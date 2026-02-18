@@ -198,7 +198,7 @@ public class ExportABCAction extends UIAction {
         writer.println("X:1");
         writer.println("T:" + composition.getTitle().replace('\n', ' '));
         writer.println("W:" + composition.getUnderLyrics().replace('\n', ' '));
-        writer.println("C:" + composition.getInfo().replace('\n', ' '));
+        writer.println("C:" + composition.getAttribution().replace('\n', ' '));
         writer.println("Q:" + translateTempo(composition.getTempo()));
         writer.println(
             "L:" +

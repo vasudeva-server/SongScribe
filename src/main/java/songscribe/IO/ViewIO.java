@@ -57,11 +57,11 @@ public final class ViewIO {
             Integer.toString(c.getLyricsFont().getSize())
         );
         XML.writeValue(pw, XML_LYRICS_FONT_STYLE, ProfileManager.PLAIN);
-        XML.writeValue(pw, XML_GENERAL_FONT, c.getInfoFont().getPSName());
+        XML.writeValue(pw, XML_GENERAL_FONT, c.getAttributionFont().getPSName());
         XML.writeValue(
             pw,
             XML_GENERAL_FONT_SIZE,
-            Integer.toString(c.getInfoFont().getSize())
+            Integer.toString(c.getAttributionFont().getSize())
         );
     }
 
@@ -87,8 +87,8 @@ public final class ViewIO {
                 )
             );
             general = new StringFont(
-                pm.getDefaultProperty(ProfileManager.ProfileKey.INFO_FONT),
-                pm.getDefaultProperty(ProfileManager.ProfileKey.INFO_FONT_SIZE)
+                pm.getDefaultProperty(ProfileManager.ProfileKey.ATTRIBUTION_FONT),
+                pm.getDefaultProperty(ProfileManager.ProfileKey.ATTRIBUTION_FONT_SIZE)
             );
         }
 
@@ -127,7 +127,7 @@ public final class ViewIO {
             // c.setSongTitleFont(title.getFont());
             // c.setLyricsFont(lyrics.getFont());
             // c.setLyricsItalicFont(lyricsItalic.getFont());
-            // c.setInfoFont(general.getFont());
+            // c.setAttributionFont(general.getFont());
         }
 
         private static class StringFont {

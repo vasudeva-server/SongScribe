@@ -32,6 +32,8 @@ import songscribe.ui.ProfileManager;
 import songscribe.ui.action.InsertLineAction;
 import songscribe.ui.component.IMainFrame;
 import songscribe.ui.component.Score;
+import songscribe.ui.message.LayoutChangeMessage;
+import songscribe.ui.message.MessageCenter;
 import songscribe.util.MyFontUtils;
 import songscribe.util.StringUtils;
 import songscribe.util.Utils;
@@ -65,7 +67,7 @@ public final class Composition {
     private String number = "1";
 
     // The title of the song
-    private String title = "A New Song";
+    private String title = "Untitled";
 
     // Where the song was composed
     private String place = "";
@@ -92,10 +94,13 @@ public final class Composition {
     private String translatedLyrics = "";
 
     // The composer, date and place where the song was composed
-    private String info;
+    private String attribution;
 
     // Additional info about the song
     private String footnotes = "";
+
+    // If true, the translation is unofficial (affects header text)
+    private boolean unofficialTranslation = false;
 
     // The number of accidentals in the key signature and the type of key (flats or sharps)
     private int defaultKeyAccidentalCount;
@@ -108,8 +113,8 @@ public final class Composition {
     private FontMetrics lyricsFontMetrics;
     private Font banglaFont;
     private FontMetrics banglaFontMetrics;
-    private Font infoFont;
-    private FontMetrics infoFontMetrics;
+    private Font attributionFont;
+    private FontMetrics attributionFontMetrics;
     private Font annotationFont;
     private FontMetrics annotationFontMetrics;
     private Font footnoteFont;
@@ -120,7 +125,7 @@ public final class Composition {
 
     private int topPadding = 0;
     private boolean userSetTopPadding = false;
-    private int infoStartY;
+    private int attributionStartY;
     private int rowHeightAdjustment = 0;
 
     // The width of a staff line in pixels
@@ -138,8 +143,8 @@ public final class Composition {
         this.mainFrame = mainFrame;
 
         var profile = mainFrame.getProfileManager();
-        info = profile.getDefaultProperty(
-            ProfileManager.ProfileKey.RIGHT_INFORMATION
+        attribution = profile.getDefaultProperty(
+            ProfileManager.ProfileKey.ATTRIBUTION
         );
         tempo = Tempo.getTempoFromProfile();
         defaultKeyAccidentalCount = Integer.parseInt(
@@ -162,8 +167,8 @@ public final class Composition {
         banglaFont = MyFontUtils.getLocalFont("TiroBangla-Regular.ttf", 17);
         banglaFontMetrics = g.getFontMetrics(banglaFont);
 
-        infoFont = MyFontUtils.getLocalFont("LatoPlus-Regular.otf", 15);
-        infoFontMetrics = g.getFontMetrics(infoFont);
+        attributionFont = MyFontUtils.getLocalFont("LatoPlus-Regular.otf", 15);
+        attributionFontMetrics = g.getFontMetrics(attributionFont);
 
         annotationFont = MyFontUtils.getLocalFont("LatoPlus-Regular.otf", 15);
         annotationFontMetrics = g.getFontMetrics(annotationFont);
@@ -174,7 +179,7 @@ public final class Composition {
         g.dispose();
 
         recalcTopPadding();
-        infoStartY = calculateInfoStartY();
+        attributionStartY = calculateAttributionStartY();
         addLine(new Line());
     }
 
@@ -226,7 +231,13 @@ public final class Composition {
             StringUtils.stripLinefeeds(text)
         );
         title = processText(strippedTitle);
-        infoStartY = calculateInfoStartY();
+        attributionStartY = calculateAttributionStartY();
+
+        MessageCenter.post(new LayoutChangeMessage(
+            LayoutChangeMessage.Section.TITLE,
+            LayoutChangeMessage.ChangeType.CONTENT,
+            true
+        ));
     }
 
     public String getPlace() {
@@ -282,7 +293,19 @@ public final class Composition {
     }
 
     public void setUnderLyrics(@NotNull String text) {
-        underLyrics = processText(text);
+        var newLyrics = processText(text);
+
+        if (underLyrics.equals(newLyrics)) {
+            return;
+        }
+
+        underLyrics = newLyrics;
+
+        MessageCenter.post(new LayoutChangeMessage(
+            LayoutChangeMessage.Section.LYRICS,
+            LayoutChangeMessage.ChangeType.CONTENT,
+            true
+        ));
     }
 
     public String getBanglaLyrics() {
@@ -290,7 +313,19 @@ public final class Composition {
     }
 
     public void setBanglaLyrics(@NotNull String text) {
-        banglaLyrics = text.trim();
+        var newLyrics = text.trim();
+
+        if (banglaLyrics.equals(newLyrics)) {
+            return;
+        }
+
+        banglaLyrics = newLyrics;
+
+        MessageCenter.post(new LayoutChangeMessage(
+            LayoutChangeMessage.Section.BANGLA_LYRICS,
+            LayoutChangeMessage.ChangeType.CONTENT,
+            true
+        ));
     }
 
     public String getTranslatedLyrics() {
@@ -299,7 +334,19 @@ public final class Composition {
 
     // Convert ă => a and Ă => A and trim
     public void setTranslatedLyrics(@NotNull String text) {
-        translatedLyrics = text.trim();
+        var newLyrics = text.trim();
+
+        if (translatedLyrics.equals(newLyrics)) {
+            return;
+        }
+
+        translatedLyrics = newLyrics;
+
+        MessageCenter.post(new LayoutChangeMessage(
+            LayoutChangeMessage.Section.TRANSLATION,
+            LayoutChangeMessage.ChangeType.CONTENT,
+            true
+        ));
     }
 
     public String getFootnotes() {
@@ -307,15 +354,47 @@ public final class Composition {
     }
 
     public void setFootnotes(@NotNull String text) {
-        footnotes = text.trim();
+        var newFootnotes = text.trim();
+
+        if (footnotes.equals(newFootnotes)) {
+            return;
+        }
+
+        footnotes = newFootnotes;
+
+        MessageCenter.post(new LayoutChangeMessage(
+            LayoutChangeMessage.Section.FOOTNOTES,
+            LayoutChangeMessage.ChangeType.CONTENT,
+            true
+        ));
     }
 
-    public String getInfo() {
-        return info;
+    public boolean isUnofficialTranslation() {
+        return unofficialTranslation;
     }
 
-    public void setInfo(@NotNull String text) {
-        info = text.trim();
+    public void setUnofficialTranslation(boolean unofficial) {
+        unofficialTranslation = unofficial;
+    }
+
+    public String getAttribution() {
+        return attribution;
+    }
+
+    public void setAttribution(@NotNull String text) {
+        var newAttribution = text.trim();
+
+        if (attribution.equals(newAttribution)) {
+            return;
+        }
+
+        attribution = newAttribution;
+
+        MessageCenter.post(new LayoutChangeMessage(
+            LayoutChangeMessage.Section.ATTRIBUTION,
+            LayoutChangeMessage.ChangeType.CONTENT,
+            true
+        ));
     }
 
     @NotNull
@@ -432,8 +511,14 @@ public final class Composition {
     public void setTitleFont(Font font) {
         titleFont = font;
         titleFontMetrics = MyFontUtils.getFontMetrics(titleFont);
-        infoStartY = calculateInfoStartY();
+        attributionStartY = calculateAttributionStartY();
         setModified(true);
+
+        MessageCenter.post(new LayoutChangeMessage(
+            LayoutChangeMessage.Section.TITLE,
+            LayoutChangeMessage.ChangeType.FONT,
+            true
+        ));
     }
 
     public FontMetrics getTitleFontMetrics() {
@@ -448,24 +533,36 @@ public final class Composition {
         lyricsFont = font;
         lyricsFontMetrics = MyFontUtils.getFontMetrics(lyricsFont);
         setModified(true);
+
+        MessageCenter.post(new LayoutChangeMessage(
+            LayoutChangeMessage.Section.LYRICS,
+            LayoutChangeMessage.ChangeType.FONT,
+            true
+        ));
     }
 
     public FontMetrics getLyricsFontMetrics() {
         return lyricsFontMetrics;
     }
 
-    public Font getInfoFont() {
-        return infoFont;
+    public Font getAttributionFont() {
+        return attributionFont;
     }
 
-    public void setInfoFont(Font font) {
-        infoFont = font;
-        infoFontMetrics = MyFontUtils.getFontMetrics(infoFont);
+    public void setAttributionFont(Font font) {
+        attributionFont = font;
+        attributionFontMetrics = MyFontUtils.getFontMetrics(attributionFont);
         setModified(true);
+
+        MessageCenter.post(new LayoutChangeMessage(
+            LayoutChangeMessage.Section.ATTRIBUTION,
+            LayoutChangeMessage.ChangeType.FONT,
+            true
+        ));
     }
 
-    public FontMetrics getInfoFontMetrics() {
-        return infoFontMetrics;
+    public FontMetrics getAttributionFontMetrics() {
+        return attributionFontMetrics;
     }
 
     public Font getAnnotationFont() {
@@ -494,6 +591,12 @@ public final class Composition {
         banglaFont = font;
         banglaFontMetrics = MyFontUtils.getFontMetrics(banglaFont);
         setModified(true);
+
+        MessageCenter.post(new LayoutChangeMessage(
+            LayoutChangeMessage.Section.BANGLA_LYRICS,
+            LayoutChangeMessage.ChangeType.FONT,
+            true
+        ));
     }
 
     public Font getFootnoteFont() {
@@ -508,6 +611,12 @@ public final class Composition {
         footnoteFont = font;
         footnoteFontMetrics = MyFontUtils.getFontMetrics(footnoteFont);
         setModified(true);
+
+        MessageCenter.post(new LayoutChangeMessage(
+            LayoutChangeMessage.Section.FOOTNOTES,
+            LayoutChangeMessage.ChangeType.FONT,
+            true
+        ));
     }
 
     public void setTopPadding(int padding, boolean setByUser) {
@@ -520,16 +629,16 @@ public final class Composition {
         return topPadding;
     }
 
-    public int getInfoStartY() {
-        return infoStartY;
+    public int getAttributionStartY() {
+        return attributionStartY;
     }
 
-    public void setInfoStartY(int infoStartY) {
-        this.infoStartY = infoStartY;
+    public void setAttributionStartY(int attributionStartY) {
+        this.attributionStartY = attributionStartY;
     }
 
-    private int calculateInfoStartY() {
-        // We want the info to start half of the song title font size below the song title
+    private int calculateAttributionStartY() {
+        // We want the attribution to start half of the song title font size below the song title
         var lineCount = Utils.lineCount(title);
         var lineHeight = MyFontUtils.getFontMetrics(titleFont).getHeight();
         return (lineHeight * lineCount) + (lineHeight / 2);
@@ -538,7 +647,7 @@ public final class Composition {
     public void recalcTopPadding() {
         if (!userSetTopPadding) {
             topPadding = (((2 * titleFont.getSize()) +
-                    (Utils.lineCount(info) * infoFont.getSize())) -
+                    (Utils.lineCount(attribution) * attributionFont.getSize())) -
                 (2 * Score.STAFF_LINE_Y_OFFSET));
         }
     }

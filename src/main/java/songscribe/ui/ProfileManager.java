@@ -165,8 +165,8 @@ public class ProfileManager {
         var props = new Properties();
         props.setProperty(PROFILE, PROFILE_VERSION);
         props.setProperty(
-            ProfileKey.RIGHT_INFORMATION.getKey(),
-            dialog.rightInfoArea.getText()
+            ProfileKey.ATTRIBUTION.getKey(),
+            dialog.attributionArea.getText()
         );
         props.setProperty(
             ProfileKey.TEMPO_TYPE.getKey(),
@@ -210,11 +210,11 @@ public class ProfileManager {
             ProfileKey.LYRICS_FONT_STYLE
         );
         setFontFromComponent(
-            dialog.infoFontPreview,
+            dialog.attributionFontPreview,
             props,
-            ProfileKey.INFO_FONT,
-            ProfileKey.INFO_FONT_SIZE,
-            ProfileKey.INFO_FONT_SIZE
+            ProfileKey.ATTRIBUTION_FONT,
+            ProfileKey.ATTRIBUTION_FONT_SIZE,
+            ProfileKey.ATTRIBUTION_FONT_SIZE
         );
 
         try (
@@ -252,11 +252,18 @@ public class ProfileManager {
     }
 
     public String getDefaultProperty(ProfileKey pk) {
-        return defaultProfile.getProperty(pk.getKey());
+        // Try the new key first, then fall back to the legacy key for migration
+        var value = defaultProfile.getProperty(pk.getKey());
+
+        if ((value == null) && (pk.getLegacyKey() != null)) {
+            value = defaultProfile.getProperty(pk.getLegacyKey());
+        }
+
+        return value;
     }
 
     public enum ProfileKey {
-        RIGHT_INFORMATION("RightInformation"),
+        ATTRIBUTION("Attribution", "RightInformation"),
         TEMPO_TYPE("TempoType"),
         TEMPO("Tempo"),
         TEMPO_DESCRIPTION("TempoDescription"),
@@ -268,19 +275,29 @@ public class ProfileManager {
         LYRICS_FONT("LyricsFont"),
         LYRICS_FONT_SIZE("LyricsFontSize"),
         LYRICS_FONT_STYLE("LyricsFontStyle"),
-        INFO_FONT("GeneralFont"),
-        INFO_FONT_SIZE("GeneralFontSize"),
+        ATTRIBUTION_FONT("AttributionFont", "GeneralFont"),
+        ATTRIBUTION_FONT_SIZE("AttributionFontSize", "GeneralFontSize"),
         ANNOTATION_FONT("AnnotationFont"),
         ANNOTATION_FONT_SIZE("AnnotationFontSize");
 
         private final String key;
+        private final String legacyKey;
 
         ProfileKey(String key) {
+            this(key, null);
+        }
+
+        ProfileKey(String key, String legacyKey) {
             this.key = key;
+            this.legacyKey = legacyKey;
         }
 
         public String getKey() {
             return key;
+        }
+
+        public String getLegacyKey() {
+            return legacyKey;
         }
     }
 }

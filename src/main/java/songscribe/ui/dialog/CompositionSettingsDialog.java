@@ -79,8 +79,8 @@ public class CompositionSettingsDialog extends StandardDialog {
     private JComboBox<String> dayCombo = null;
     private final NumericTextField yearField = new NumericTextField(5);
 
-    // Right info panel
-    public final MyJTextArea rightInfoArea = new MyJTextArea(4, 27);
+    // Attribution panel
+    public final MyJTextArea attributionArea = new MyJTextArea(4, 27);
 
     // Tempo panel
     public final JComboBox<Tempo.Type> tempoTypeCombo = new JComboBox<>(
@@ -145,8 +145,8 @@ public class CompositionSettingsDialog extends StandardDialog {
         """
     );
 
-    private final JLabel infoFontLabel = new JLabel();
-    public final JTextArea infoFontPreview = new JTextArea(
+    private final JLabel attributionFontLabel = new JLabel();
+    public final JTextArea attributionFontPreview = new JTextArea(
         """
         Words and music
         by Sri Chinmoy"""
@@ -206,7 +206,7 @@ public class CompositionSettingsDialog extends StandardDialog {
         for (var preview : new JComponent[] {
             titleFontPreview,
             lyricsFontPreview,
-            infoFontPreview,
+            attributionFontPreview,
             annotationFontPreview,
         }) {
             preview.setBackground(Color.WHITE);
@@ -339,11 +339,11 @@ public class CompositionSettingsDialog extends StandardDialog {
         @NotNull
         private JPanel createInfoSection() {
             var section = new StandardDialog.TitledSection(
-                "Information on right",
+                "Attribution",
                 BoxLayout.X_AXIS
             );
 
-            var scrollPane = new JScrollPane(rightInfoArea);
+            var scrollPane = new JScrollPane(attributionArea);
             scrollPane.setAlignmentY(Component.CENTER_ALIGNMENT);
             scrollPane.setVerticalScrollBarPolicy(
                 ScrollPaneConstants.VERTICAL_SCROLLBAR_NEVER
@@ -495,11 +495,11 @@ public class CompositionSettingsDialog extends StandardDialog {
                 )
             );
             tabbedPane.addTab(
-                "Info",
+                "Attribution",
                 createFontSection(
-                    "Info (tempo, beat change, right info)",
-                    infoFontLabel,
-                    infoFontPreview,
+                    "Attribution (tempo, beat change, attribution)",
+                    attributionFontLabel,
+                    attributionFontPreview,
                     false
                 )
             );
@@ -666,10 +666,10 @@ public class CompositionSettingsDialog extends StandardDialog {
 
                 resetFont(
                     pm,
-                    infoFontLabel,
-                    infoFontPreview,
-                    ProfileManager.ProfileKey.INFO_FONT,
-                    ProfileManager.ProfileKey.INFO_FONT_SIZE
+                    attributionFontLabel,
+                    attributionFontPreview,
+                    ProfileManager.ProfileKey.ATTRIBUTION_FONT,
+                    ProfileManager.ProfileKey.ATTRIBUTION_FONT_SIZE
                 );
                 revalidate();
                 repaint();
@@ -750,7 +750,7 @@ public class CompositionSettingsDialog extends StandardDialog {
         monthCombo.setSelectedIndex(composition.getMonth());
         dayCombo.setSelectedIndex(composition.getDay());
         yearField.setText(composition.getYear());
-        rightInfoArea.setText(composition.getInfo());
+        attributionArea.setText(composition.getAttribution());
 
         tempoTypeCombo.setSelectedItem(composition.getTempo().getTempoType());
         tempoSpinnerModel.setValue(composition.getTempo().getVisibleTempo());
@@ -770,9 +770,9 @@ public class CompositionSettingsDialog extends StandardDialog {
         lyricsFontPreview.setFont(font);
         lyricsFontLabel.setText(MyFontUtils.getFullFontDescription(font));
 
-        font = composition.getInfoFont();
-        infoFontPreview.setFont(font);
-        infoFontLabel.setText(MyFontUtils.getFullFontDescription(font));
+        font = composition.getAttributionFont();
+        attributionFontPreview.setFont(font);
+        attributionFontLabel.setText(MyFontUtils.getFullFontDescription(font));
 
         font = composition.getAnnotationFont();
         annotationFontPreview.setFont(font);
@@ -839,7 +839,7 @@ public class CompositionSettingsDialog extends StandardDialog {
             );
         }
 
-        composition.setInfo(rightInfoArea.getText());
+        composition.setAttribution(attributionArea.getText());
         composition
             .getTempo()
             .setTempoType((Tempo.Type) tempoTypeCombo.getSelectedItem());
@@ -876,7 +876,7 @@ public class CompositionSettingsDialog extends StandardDialog {
 
         composition.setTitleFont(titleFontPreview.getFont());
         composition.setLyricsFont(lyricsFontPreview.getFont());
-        composition.setInfoFont(infoFontPreview.getFont());
+        composition.setAttributionFont(attributionFontPreview.getFont());
         composition.setAnnotationFont(annotationFontPreview.getFont());
         composition.recalcTopPadding();
         score.viewChanged();
@@ -1187,13 +1187,13 @@ public class CompositionSettingsDialog extends StandardDialog {
 
         @Override
         public void actionPerformed(ActionEvent e) {
-            var rightInfo = rightInfoArea.getText();
+            var attribution = attributionArea.getText();
             var sb = new StringBuilder(100);
 
             var date = getDateString();
 
             if (!date.isEmpty()) {
-                if (rightInfo.charAt(rightInfo.length() - 1) != '\n') {
+                if (attribution.charAt(attribution.length() - 1) != '\n') {
                     sb.append('\n');
                 }
 
@@ -1206,7 +1206,7 @@ public class CompositionSettingsDialog extends StandardDialog {
 
             if (includePlace) {
                 if (!placeField.getText().isEmpty()) {
-                    if (rightInfo.charAt(rightInfo.length() - 1) != '\n') {
+                    if (attribution.charAt(attribution.length() - 1) != '\n') {
                         sb.append('\n');
                     }
 
@@ -1218,7 +1218,7 @@ public class CompositionSettingsDialog extends StandardDialog {
                 }
             }
 
-            rightInfoArea.append(sb.toString());
+            attributionArea.append(sb.toString());
         }
     }
 

@@ -1,6 +1,6 @@
 /*
     SongScribe song notation program
-    Copyright (C) 2006 Csaba Kavai and Sri Chinmoy Centres International
+    Copyright (C) Sri Chinmoy Centres International
 
     This file is part of SongScribe.
 

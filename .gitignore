@@ -11,3 +11,4 @@ jpackage
 
 # No node stuff
 node_modules/
+settings.local.json

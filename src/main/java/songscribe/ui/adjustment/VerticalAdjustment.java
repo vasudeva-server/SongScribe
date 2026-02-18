@@ -31,6 +31,8 @@ import songscribe.data.TupletIntervalData;
 import songscribe.music.Line;
 import songscribe.music.Note;
 import songscribe.ui.component.Score;
+import songscribe.ui.message.LayoutChangeMessage;
+import songscribe.ui.message.MessageCenter;
 
 public class VerticalAdjustment extends Adjustment {
 
@@ -100,7 +102,7 @@ public class VerticalAdjustment extends Adjustment {
         var line = score.getComposition().getLine(dragRect.line);
 
         switch (dragRect.type) {
-            case RIGHT_INFO -> adjustRightInfo(diffY);
+            case ATTRIBUTION -> adjustAttribution(diffY);
             case TOP_SPACE -> adjustTopSpace(diffY);
             case ROW_HEIGHT -> adjustRowHeight(diffY);
             case TEMPO_CHANGE -> adjustTempoChange(line, diffY);
@@ -124,10 +126,16 @@ public class VerticalAdjustment extends Adjustment {
         score.repaint();
     }
 
-    private void adjustRightInfo(int diffY) {
+    private void adjustAttribution(int diffY) {
         score
             .getComposition()
-            .setInfoStartY(score.getComposition().getInfoStartY() + diffY);
+            .setAttributionStartY(score.getComposition().getAttributionStartY() + diffY);
+
+        MessageCenter.post(new LayoutChangeMessage(
+            LayoutChangeMessage.Section.ATTRIBUTION,
+            LayoutChangeMessage.ChangeType.SIZE,
+            true
+        ));
     }
 
     private void adjustTopSpace(int diffY) {
@@ -137,6 +145,12 @@ public class VerticalAdjustment extends Adjustment {
                 score.getComposition().getTopPadding() + diffY,
                 true
             );
+
+        MessageCenter.post(new LayoutChangeMessage(
+            LayoutChangeMessage.Section.TITLE,
+            LayoutChangeMessage.ChangeType.SIZE,
+            true
+        ));
     }
 
     private void adjustRowHeight(int diffY) {
@@ -145,6 +159,12 @@ public class VerticalAdjustment extends Adjustment {
             .setRowHeightAdjustment(
                 score.getComposition().getRowHeightAdjustment() + diffY
             );
+
+        MessageCenter.post(new LayoutChangeMessage(
+            LayoutChangeMessage.Section.SCORE,
+            LayoutChangeMessage.ChangeType.SIZE,
+            true
+        ));
     }
 
     private static void adjustTempoChange(Line line, int diffY) {
@@ -254,8 +274,8 @@ public class VerticalAdjustment extends Adjustment {
         if (enabled) {
             var c = score.getComposition();
 
-            if (!c.getInfo().isEmpty()) {
-                adjustRects.add(new AdjustRect(-1, AdjustType.RIGHT_INFO, -1));
+            if (!c.getAttribution().isEmpty()) {
+                adjustRects.add(new AdjustRect(-1, AdjustType.ATTRIBUTION, -1));
             }
 
             if (c.lineCount() > 0) {
@@ -397,7 +417,7 @@ public class VerticalAdjustment extends Adjustment {
         var note = line.getNote(adjustRect.xIndex);
 
         switch (adjustRect.type) {
-            case RIGHT_INFO -> getRightInfoAdjustRect(adjustRect);
+            case ATTRIBUTION -> getAttributionAdjustRect(adjustRect);
             case TOP_SPACE, ROW_HEIGHT -> getHeightAdjustRect(adjustRect);
             case TEMPO_CHANGE -> getChangeAdjustRect(
                 adjustRect,
@@ -540,9 +560,9 @@ public class VerticalAdjustment extends Adjustment {
         adjustRect.rect.x -= 4;
     }
 
-    private void getRightInfoAdjustRect(AdjustRect adjustRect) {
+    private void getAttributionAdjustRect(AdjustRect adjustRect) {
         adjustRect.rect.x = score.getSheetWidth() - 8;
-        adjustRect.rect.y = score.getComposition().getInfoStartY();
+        adjustRect.rect.y = score.getComposition().getAttributionStartY();
     }
 
     private void getHeightAdjustRect(AdjustRect adjustRect) {
@@ -582,7 +602,7 @@ public class VerticalAdjustment extends Adjustment {
     }
 
     private enum AdjustType {
-        RIGHT_INFO(Color.blue),
+        ATTRIBUTION(Color.blue),
         TOP_SPACE(Color.cyan),
         ROW_HEIGHT(Color.orange),
         TEMPO_CHANGE(Color.red),

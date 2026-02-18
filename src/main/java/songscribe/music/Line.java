@@ -25,6 +25,9 @@ import java.util.List;
 import java.util.stream.IntStream;
 
 import songscribe.data.IntervalSet;
+import songscribe.ui.component.Score;
+import songscribe.ui.message.LayoutChangeMessage;
+import songscribe.ui.message.MessageCenter;
 
 public class Line {
 
@@ -61,6 +64,9 @@ public class Line {
     private int firstSecondEndingYPos = -25;
     private int trillYPos = -27;
     private float noteDistChangeRatio = 1f;
+
+    // Cached required height for this line; -1 means not calculated
+    private int cachedRequiredHeight = -1;
 
     public Composition getComposition() {
         return composition;
@@ -128,8 +134,16 @@ public class Line {
     }
 
     private void modifiedComposition() {
+        cachedRequiredHeight = -1;
+
         if (composition != null) {
             composition.setModified(true);
+
+            MessageCenter.post(new LayoutChangeMessage(
+                LayoutChangeMessage.Section.SCORE,
+                LayoutChangeMessage.ChangeType.CONTENT,
+                true
+            ));
         }
     }
 
@@ -307,5 +321,105 @@ public class Line {
             .filter(n -> getNote(n).getBeatChange() != null)
             .findFirst()
             .orElse(-1);
+    }
+
+    /**
+     * Invalidates the cached required height, forcing recalculation on next access.
+     */
+    public void invalidateHeightCache() {
+        cachedRequiredHeight = -1;
+    }
+
+    /**
+     * Returns the required vertical height for this line based on all its elements.
+     * <p>
+     * The height is calculated from the topmost element (most negative Y) to the
+     * bottommost element (most positive Y), including:
+     * <ul>
+     *   <li>Staff lines themselves (5 lines spanning yPos -4 to +4)</li>
+     *   <li>Notes extending above/below staff (ledger lines)</li>
+     *   <li>Tempo change markers (at tempoChangeYPos if present)</li>
+     *   <li>Beat change markers (at beatChangeYPos if present)</li>
+     *   <li>First/second endings (at firstSecondEndingYPos if present)</li>
+     *   <li>Trills (at trillYPos if present)</li>
+     *   <li>Note annotations (at their Y positions)</li>
+     *   <li>Inline lyrics (at lyricsYPos if notes have syllables)</li>
+     * </ul>
+     * <p>
+     * The result is cached and invalidated when line content changes.
+     *
+     * @return The required height in pixels
+     */
+    public int getRequiredHeight() {
+        if (cachedRequiredHeight >= 0) {
+            return cachedRequiredHeight;
+        }
+
+        // Base staff height: 5 lines at yPos -4, -2, 0, 2, 4
+        // Staff spans from -4 to +4 in note units = -32 to +32 pixels from middle
+        int minY = -4 * Score.STAFF_LINE_Y_OFFSET; // -32 (top of staff)
+        int maxY = 4 * Score.STAFF_LINE_Y_OFFSET;  // +32 (bottom of staff)
+
+        // Check for tempo changes (first line always has tempo at note 0)
+        if (getFirstTempoChange() >= 0) {
+            minY = Math.min(minY, tempoChangeYPos);
+        }
+
+        // Check for beat changes
+        if (getFirstBeatChange() >= 0) {
+            minY = Math.min(minY, beatChangeYPos);
+        }
+
+        // Check for first/second endings
+        if (!firstSecondEndings.isEmpty()) {
+            minY = Math.min(minY, firstSecondEndingYPos);
+        }
+
+        // Check for trills
+        if (getFirstTrill() >= 0) {
+            minY = Math.min(minY, trillYPos);
+        }
+
+        // Track if there are syllables (for lyrics positioning)
+        boolean hasSyllables = false;
+
+        // Check all notes for annotations and extreme positions
+        for (var note : notes) {
+            var noteYPos = note.getYPos();
+
+            // Notes extend from ledger lines above to ledger lines below
+            // Convert note yPos to pixels (each note step is NOTE_Y_OFFSET = 4 pixels)
+            int notePixelY = (int) (noteYPos * Score.NOTE_Y_OFFSET);
+            minY = Math.min(minY, notePixelY - Score.STAFF_LINE_Y_OFFSET); // margin above note
+            maxY = Math.max(maxY, notePixelY + Score.STAFF_LINE_Y_OFFSET); // margin below note
+
+            // Check annotation position
+            var annotation = note.getAnnotation();
+
+            if (annotation != null) {
+                int annotationY = annotation.getYPos();
+
+                if (annotationY < 0) {
+                    minY = Math.min(minY, annotationY);
+                } else {
+                    maxY = Math.max(maxY, annotationY);
+                }
+            }
+
+            // Check for syllables (stored in acceleration.syllable)
+            var syllable = note.acceleration.syllable;
+
+            if (syllable != null && !syllable.isEmpty()) {
+                hasSyllables = true;
+            }
+        }
+
+        // Include lyrics position if there are syllables
+        if (hasSyllables) {
+            maxY = Math.max(maxY, lyricsYPos);
+        }
+
+        cachedRequiredHeight = maxY - minY;
+        return cachedRequiredHeight;
     }
 }
