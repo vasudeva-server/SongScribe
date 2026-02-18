@@ -1,0 +1,89 @@
+/*
+    SongScribe song notation program
+    Copyright (C) Sri Chinmoy Centres International
+
+    This file is part of SongScribe.
+
+    SongScribe is free software; you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; either version 3 of the License, or
+    (at your option) any later version.
+
+    SongScribe is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
+package songscribe.ui.component;
+
+import net.engio.mbassy.listener.Handler;
+
+import songscribe.ui.action.ModeAction;
+import songscribe.ui.message.MessageCenter;
+import songscribe.ui.message.ModeChangedMessage;
+import songscribe.ui.playback.PlaybackController;
+import songscribe.ui.playback.PlaybackStateChangedMessage;
+import songscribe.util.UIUtils;
+
+import static songscribe.ui.action.Actions.EDIT_MODE_ACTION;
+import static songscribe.ui.action.Actions.MODE_ACTION_GROUP;
+import static songscribe.ui.action.Actions.SELECT_MODE_ACTION;
+
+/**
+ * A button that cycles between Edit Mode and Select Mode on each click,
+ * updating its icon and tooltip to reflect the current mode.
+ */
+public class ModeCycleButton extends ToolbarToggleButton {
+
+    private static final ModeAction[] MODES = {
+        EDIT_MODE_ACTION,
+        SELECT_MODE_ACTION,
+    };
+
+    private int currentIndex;
+
+    public ModeCycleButton() {
+        super(null);
+        currentIndex = 0;
+        updateButton(MODES[currentIndex]);
+
+        addActionListener(e -> {
+            currentIndex = (currentIndex + 1) % MODES.length;
+            MODES[currentIndex].perform(this);
+        });
+
+        MessageCenter.subscribe(this);
+    }
+
+    @Handler
+    public void modeDidChange(ModeChangedMessage message) {
+        var mode = message.getMode();
+
+        for (var i = 0; i < MODES.length; i++) {
+            if (MODES[i].getMode() == mode) {
+                currentIndex = i;
+                updateButton(MODES[i]);
+                return;
+            }
+        }
+
+        // Adjustment modes do not change the button state
+    }
+
+    @Handler
+    public void playbackStateDidChange(PlaybackStateChangedMessage message) {
+        setEnabled(
+            message.getState() != PlaybackController.PlaybackState.PLAYING
+        );
+    }
+
+    private void updateButton(ModeAction action) {
+        MODE_ACTION_GROUP.setSelected(action, true);
+        UIUtils.configureButtonFromAction(this, action);
+        setSelected(false);
+    }
+}

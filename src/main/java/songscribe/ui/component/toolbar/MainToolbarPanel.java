@@ -25,7 +25,7 @@ import java.awt.*;
 import javax.swing.*;
 
 import songscribe.ui.component.InsertPopupButton;
-import songscribe.ui.component.ModePopupButton;
+import songscribe.ui.component.ModeCycleButton;
 
 /**
  * This class creates the main toolbar panel for the application.
@@ -96,7 +96,7 @@ public final class MainToolbarPanel extends JPanel {
     private static JPanel createModeToolbarPanel() {
         var panel = createToolbarPanel(NO_BORDER);
         var toolbar = createToolbar();
-        toolbar.add(new ModePopupButton());
+        toolbar.add(new ModeCycleButton());
         panel.add(toolbar);
         return panel;
     }
