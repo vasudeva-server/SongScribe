@@ -77,9 +77,9 @@ public class MenuController {
 
         menuBar.add(initFileMenu());
         menuBar.add(initEditMenu());
-        menuBar.add(initModeMenu());
         menuBar.add(InsertMenu.getInstance());
         menuBar.add(new NotesMenu());
+        menuBar.add(initModeMenu());
         menuBar.add(new PlayMenu());
         menuBar.add(initCompositionMenu());
         //        menuBar.add(launchMenu);
@@ -164,11 +164,11 @@ public class MenuController {
     }
 
     private static JMenu initModeMenu() {
-        var menu = new JMenu("Mode");
+        var menu = new JMenu("Adjustment");
 
-        for (var action : Actions.MODE_ACTION_GROUP.getActions()) {
-            menu.add(new JRadioButtonMenuItem(action));
-        }
+        menu.add(new JRadioButtonMenuItem(Actions.ADJUST_MUSIC_MODE_ACTION));
+        menu.add(new JRadioButtonMenuItem(Actions.ADJUST_LYRICS_MODE_ACTION));
+        menu.add(new JRadioButtonMenuItem(Actions.ADJUST_VERTICAL_MODE_ACTION));
 
         return menu;
     }

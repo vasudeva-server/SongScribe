@@ -64,9 +64,7 @@ public final class Actions {
         "@\uF3D2",
         22,
         "select-mode",
-        "Select song elements",
-        KeyEvent.VK_S,
-        InputEvent.SHIFT_DOWN_MASK
+        "Select song elements"
     );
 
     public static final ModeAction EDIT_MODE_ACTION = new ModeAction(
@@ -75,14 +73,14 @@ public final class Actions {
         "@\uEF63",
         22,
         "edit-mode",
-        "Edit song",
-        KeyEvent.VK_E,
-        0
+        "Edit song"
     );
+
+    public static final CycleModeAction CYCLE_MODE_ACTION = new CycleModeAction();
 
     public static final ModeAction ADJUST_MUSIC_MODE_ACTION = new ModeAction(
         Mode.NOTE_ADJUSTMENT,
-        "Music Adjustment Mode",
+        "Music Adjustment",
         "mode-note-adjustment.svg",
         26,
         "adjust-note-mode",
@@ -91,7 +89,7 @@ public final class Actions {
 
     public static final ModeAction ADJUST_LYRICS_MODE_ACTION = new ModeAction(
         Mode.LYRICS_ADJUSTMENT,
-        "Lyrics Adjustment Mode",
+        "Lyrics Adjustment",
         "mode-lyrics-adjustment.svg",
         26,
         "adjust-lyrics-mode",
@@ -100,7 +98,7 @@ public final class Actions {
 
     public static final ModeAction ADJUST_VERTICAL_MODE_ACTION = new ModeAction(
         Mode.VERTICAL_ADJUSTMENT,
-        "Vertical Adjustment Mode",
+        "Vertical Adjustment",
         "mode-vertical-adjustment.svg",
         26,
         "adjust-vertical-mode",

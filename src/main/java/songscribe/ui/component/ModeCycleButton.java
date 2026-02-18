@@ -29,22 +29,14 @@ import songscribe.ui.playback.PlaybackController;
 import songscribe.ui.playback.PlaybackStateChangedMessage;
 import songscribe.util.UIUtils;
 
-import static songscribe.ui.action.Actions.EDIT_MODE_ACTION;
+import static songscribe.ui.action.Actions.CYCLE_MODE_ACTION;
 import static songscribe.ui.action.Actions.MODE_ACTION_GROUP;
-import static songscribe.ui.action.Actions.SELECT_MODE_ACTION;
 
 /**
  * A button that cycles between Edit Mode and Select Mode on each click,
  * updating its icon and tooltip to reflect the current mode.
  */
 public class ModeCycleButton extends ToolbarToggleButton {
-
-    private static final ModeAction[] MODES = {
-        EDIT_MODE_ACTION,
-        SELECT_MODE_ACTION,
-    };
-
-    private int currentIndex;
 
     public ModeCycleButton() {
         super(null);
@@ -56,30 +48,18 @@ public class ModeCycleButton extends ToolbarToggleButton {
         // every armed release.
         setModel(new javax.swing.DefaultButtonModel());
 
-        currentIndex = 0;
-        updateButton(MODES[currentIndex]);
+        updateButton(CYCLE_MODE_ACTION.getCurrentAction());
 
-        addActionListener(e -> {
-            currentIndex = (currentIndex + 1) % MODES.length;
-            MODES[currentIndex].perform(this);
-        });
+        addActionListener(e -> CYCLE_MODE_ACTION.perform(this));
 
         MessageCenter.subscribe(this);
     }
 
     @Handler
     public void modeDidChange(ModeChangedMessage message) {
-        var mode = message.getMode();
-
-        for (var i = 0; i < MODES.length; i++) {
-            if (MODES[i].getMode() == mode) {
-                currentIndex = i;
-                updateButton(MODES[i]);
-                return;
-            }
+        if (!message.isAdjustmentMode()) {
+            updateButton(message.getAction());
         }
-
-        // Adjustment modes do not change the button state
     }
 
     @Handler
