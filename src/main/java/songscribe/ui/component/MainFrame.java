@@ -684,8 +684,19 @@ public class MainFrame extends JFrame implements IMainFrame, Printable {
         );
 
         var g2 = (Graphics2D) graphics;
-        var scale = format.getImageableWidth() / score.getSheetWidth();
-        score.getScoreRenderer().render(g2, false, scale);
+
+        // Print not yet implemented with component-based rendering
+        g2.setColor(Color.BLACK);
+        g2.drawString(
+            "Print functionality is not yet implemented.",
+            50,
+            50
+        );
+        g2.drawString(
+            "Export functionality will be restored in a future update.",
+            50,
+            70
+        );
 
         return PAGE_EXISTS;
     }

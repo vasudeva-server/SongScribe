@@ -55,6 +55,24 @@ public abstract class LineElement {
     /** Position relative to parent line origin. */
     private @NotNull Point2D position = new Point2D.Double(0, 0);
 
+    /**
+     * User's manual horizontal offset from the layout-calculated position.
+     * <p>
+     * Final X position = calculated position + userXOffset
+     * <p>
+     * Default is 0 (no user adjustment). Positive values move right, negative left.
+     */
+    private double userXOffset = 0;
+
+    /**
+     * User's manual vertical offset from the layout-calculated position.
+     * <p>
+     * Final Y position = calculated position + userYOffset
+     * <p>
+     * Default is 0 (no user adjustment). Positive values move down, negative up.
+     */
+    private double userYOffset = 0;
+
     /** CSS-style margins: top, right, bottom, left (in pixels). */
     private double marginTop = 0;
     private double marginRight = 0;
@@ -149,6 +167,38 @@ public abstract class LineElement {
      */
     public void setPosition(double x, double y) {
         this.position = new Point2D.Double(x, y);
+    }
+
+    // ========================================================================
+    // User Offsets
+    // ========================================================================
+
+    /**
+     * Returns the user's horizontal offset from the calculated position.
+     */
+    public double getUserXOffset() {
+        return userXOffset;
+    }
+
+    /**
+     * Sets the user's horizontal offset from the calculated position.
+     */
+    public void setUserXOffset(double userXOffset) {
+        this.userXOffset = userXOffset;
+    }
+
+    /**
+     * Returns the user's vertical offset from the calculated position.
+     */
+    public double getUserYOffset() {
+        return userYOffset;
+    }
+
+    /**
+     * Sets the user's vertical offset from the calculated position.
+     */
+    public void setUserYOffset(double userYOffset) {
+        this.userYOffset = userYOffset;
     }
 
     // ========================================================================

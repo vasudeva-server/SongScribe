@@ -33,7 +33,7 @@ import songscribe.music.Line;
 import songscribe.music.Note;
 import songscribe.music.NoteType;
 import songscribe.music.Tempo;
-import songscribe.ui.layout.LayoutStylesheet;
+import songscribe.ui.layout.TempoAttachment;
 
 /**
  * Renders tempo change indicators (note = number format).
@@ -242,7 +242,7 @@ public class TempoRenderer extends BaseElementRenderer<Note> {
         int middleLineY = ctx.getMiddleLineY();
 
         // Calculate Y position (above the staff)
-        int yPos = middleLineY + getEffectiveTempoChangeYPos(g2, line, lineIndex);
+        int yPos = getEffectiveTempoChangeYPos(note, ctx);
 
         // Build tempo text
         var tempoBuilder = new StringBuilder(25);
@@ -337,14 +337,30 @@ public class TempoRenderer extends BaseElementRenderer<Note> {
     }
 
     /**
-     * Gets the effective Y position for tempo change, accounting for line settings.
+     * Gets the Y position for tempo change from layout result.
+     * <p>
+     * Converts from layout coordinates (relative to middleLineY=0) to
+     * component coordinates (relative to component top).
      */
     private int getEffectiveTempoChangeYPos(
-        @NotNull Graphics2D g2,
-        @NotNull Line line,
-        int lineIndex
+        @NotNull Note note,
+        @NotNull ElementRenderContext ctx
     ) {
-        // Position above the staff
-        return (int) (-7 * LayoutStylesheet.NOTE_Y_OFFSET) + line.getTempoChangeYPos();
+        var layoutResult = ctx.getLayoutResult();
+
+        if (layoutResult == null) {
+            throw new IllegalStateException("Layout result must be available for rendering");
+        }
+
+        var bounds = layoutResult.findAttachmentBounds(note, TempoAttachment.class);
+
+        if (bounds == null) {
+            throw new IllegalStateException("No bounds found for TempoAttachment on note");
+        }
+
+        // Convert from layout coordinates to component coordinates
+        int componentY = layoutYToComponentY(bounds, ctx);
+
+        return componentY;
     }
 }

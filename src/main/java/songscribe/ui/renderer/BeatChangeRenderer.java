@@ -26,7 +26,7 @@ import org.jetbrains.annotations.NotNull;
 
 import songscribe.music.BeatChange;
 import songscribe.music.Note;
-import songscribe.ui.layout.LayoutStylesheet;
+import songscribe.ui.layout.BeatChangeAttachment;
 
 /**
  * Renders beat change indicators (note = note format).
@@ -112,12 +112,32 @@ public class BeatChangeRenderer extends BaseElementRenderer<Note> {
             return;
         }
 
-        int middleLineY = ctx.getMiddleLineY();
         int xPos = note.getXPos();
-        int yPos = middleLineY + (int) (note.getYPos() * LayoutStylesheet.NOTE_Y_OFFSET)
-            + line.getBeatChangeYPos();
+        int yPos = getEffectiveBeatChangeYPos(note, ctx);
 
         drawBeatChange(g2, beatChange, xPos, yPos, composition);
+    }
+
+    /**
+     * Gets the Y position for beat change from layout result.
+     */
+    private int getEffectiveBeatChangeYPos(
+        @NotNull Note note,
+        @NotNull ElementRenderContext ctx
+    ) {
+        var layoutResult = ctx.getLayoutResult();
+
+        if (layoutResult == null) {
+            throw new IllegalStateException("Layout result must be available for rendering");
+        }
+
+        var bounds = layoutResult.findAttachmentBounds(note, BeatChangeAttachment.class);
+
+        if (bounds == null) {
+            throw new IllegalStateException("No bounds found for BeatChangeAttachment on note");
+        }
+
+        return (int) bounds.getTop();
     }
 
     /**

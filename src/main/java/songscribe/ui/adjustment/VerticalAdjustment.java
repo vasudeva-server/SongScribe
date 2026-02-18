@@ -22,6 +22,7 @@ package songscribe.ui.adjustment;
 import java.awt.*;
 import java.util.ArrayList;
 
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import songscribe.data.DynamicsIntervalData;
@@ -30,6 +31,15 @@ import songscribe.data.TupletIntervalData;
 import songscribe.music.Line;
 import songscribe.music.Note;
 import songscribe.ui.component.Score;
+import songscribe.ui.layout.AnnotationAttachment;
+import songscribe.ui.layout.BeatChangeAttachment;
+import songscribe.ui.layout.Crescendo;
+import songscribe.ui.layout.Diminuendo;
+import songscribe.ui.layout.Ending;
+import songscribe.ui.layout.TempoAttachment;
+import songscribe.ui.layout.Trill;
+import songscribe.ui.layout.Tuplet;
+import songscribe.ui.layout2.LayoutResult;
 import songscribe.ui.message.LayoutChangeMessage;
 import songscribe.ui.message.MessageCenter;
 
@@ -160,27 +170,62 @@ public class VerticalAdjustment extends Adjustment {
         ));
     }
 
-    private static void adjustTempoChange(Line line, int diffY) {
-        line.setTempoChangeYPos(line.getTempoChangeYPos() + diffY);
+    private void adjustTempoChange(Line line, int diffY) {
+        // Update per-instance offset on all tempo attachments in this line
+        for (var i = 0; i < line.noteCount(); i++) {
+            var note = line.getNote(i);
+
+            if (note.getTempoChange() != null) {
+                for (var attachment : note.getAttachments()) {
+                    if (attachment instanceof songscribe.ui.layout.TempoAttachment) {
+                        attachment.setUserYOffset(attachment.getUserYOffset() + diffY);
+                    }
+                }
+            }
+        }
     }
 
-    private static void adjustBeatChange(Line line, int diffY) {
-        line.setBeatChangeYPos(line.getBeatChangeYPos() + diffY);
+    private void adjustBeatChange(Line line, int diffY) {
+        // Update per-instance offset on all beat change attachments in this line
+        for (var i = 0; i < line.noteCount(); i++) {
+            var note = line.getNote(i);
+
+            if (note.getBeatChange() != null) {
+                for (var attachment : note.getAttachments()) {
+                    if (attachment instanceof songscribe.ui.layout.BeatChangeAttachment) {
+                        attachment.setUserYOffset(attachment.getUserYOffset() + diffY);
+                    }
+                }
+            }
+        }
     }
 
-    private static void adjustFirstSecondEnding(Line line, int diffY) {
-        line.setFirstSecondEndingYPos(line.getFirstSecondEndingYPos() + diffY);
+    private void adjustFirstSecondEnding(Line line, int diffY) {
+        // Update per-instance offset on all ending objects in this line
+        for (var element : line.getRangeElements()) {
+            if (element instanceof songscribe.ui.layout.Ending ending) {
+                ending.setYPosition(ending.getYPosition() + diffY);
+            }
+        }
     }
 
     private void adjustAnnotation(Line line, int diffY) {
         if (dragRect != null) {
             var annotation = line.getNote(dragRect.xIndex).getAnnotation();
+            // Update user offset (delta from calculated position)
+            annotation.setUserYOffset(annotation.getUserYOffset() + diffY);
+            // Also update legacy yPos for backward compatibility
             annotation.setYPos(annotation.getYPos() + diffY);
         }
     }
 
-    private static void adjustTrill(Line line, int diffY) {
-        line.setTrillYPos(line.getTrillYPos() + diffY);
+    private void adjustTrill(Line line, int diffY) {
+        // Update per-instance offset on all trill objects in this line
+        for (var element : line.getRangeElements()) {
+            if (element instanceof songscribe.ui.layout.Trill trill) {
+                trill.setYPosition(trill.getYPosition() + diffY);
+            }
+        }
     }
 
     private void adjustDynamics(Line line, int diffY) {
@@ -357,83 +402,138 @@ public class VerticalAdjustment extends Adjustment {
         switch (adjustRect.type) {
             case ATTRIBUTION -> getAttributionAdjustRect(adjustRect);
             case TOP_SPACE, ROW_HEIGHT -> getHeightAdjustRect(adjustRect);
-            case TEMPO_CHANGE -> getChangeAdjustRect(
-                adjustRect,
-                line,
-                note,
-                8,
-                score.getMeasurementService().getEffectiveTempoChangeYPos(
-                    (Graphics2D) score.getGraphics(),
-                    line,
-                    adjustRect.line
-                )
-            );
-            case BEAT_CHANGE -> getChangeAdjustRect(
-                adjustRect,
-                line,
-                note,
-                8,
-                line.getBeatChangeYPos()
-            );
-            case FIRST_SECOND_ENDING -> getChangeAdjustRect(
-                adjustRect,
-                line,
-                note,
-                8,
-                line.getFirstSecondEndingYPos()
-            );
-            case ANNOTATION -> {
-                var measurementService = score.getMeasurementService();
-                var x = measurementService.getAnnotationXPos(
-                    (Graphics2D) score.getGraphics(),
-                    note
-                );
-                adjustRect.rect.x = (int) Math.round(x) - 8;
+            case TEMPO_CHANGE -> {
+                var layoutResult = getLayoutResultForLine(adjustRect.line);
+                var bounds = layoutResult.findAttachmentBounds(note, TempoAttachment.class);
 
-                var y = measurementService.getAnnotationYPos(adjustRect.line, note);
-                adjustRect.rect.y = y - 8;
+                if (bounds == null) {
+                    throw new IllegalStateException("No bounds found for TempoAttachment");
+                }
+
+                adjustRect.rect.x = note.getXPos() - 8;
+                adjustRect.rect.y = (int) bounds.getTop() - 8;
             }
-            case TRILL -> getChangeAdjustRect(
-                adjustRect,
-                line,
-                note,
-                12,
-                line.getTrillYPos()
-            );
-            case CRESCENDO_Y, DIMINUENDO_Y -> {
-                var interval = getCresDecrIntervalSet(
-                    line,
-                    adjustRect.type
-                ).findInterval(adjustRect.xIndex);
+            case BEAT_CHANGE -> {
+                var layoutResult = getLayoutResultForLine(adjustRect.line);
+                var bounds = layoutResult.findAttachmentBounds(note, BeatChangeAttachment.class);
+
+                if (bounds == null) {
+                    throw new IllegalStateException("No bounds found for BeatChangeAttachment");
+                }
+
+                adjustRect.rect.x = note.getXPos() - 8;
+                adjustRect.rect.y = (int) bounds.getTop() - 8;
+            }
+            case FIRST_SECOND_ENDING -> {
+                var interval = line.getFirstSecondEndings().findInterval(adjustRect.xIndex);
 
                 if (interval == null) {
                     return;
                 }
 
-                var startX = line.getNote(interval.getStart()).getXPos();
-                var endX = line.getNote(interval.getEnd()).getXPos();
-                adjustRect.rect.x = (startX + endX + 12) / 2;
+                var startNote = line.getNote(interval.getStart());
+                var endNote = line.getNote(interval.getEnd());
+                var layoutResult = getLayoutResultForLine(adjustRect.line);
+                var bounds = layoutResult.findRangeElementBounds(startNote, endNote, Ending.class);
 
-                var y = score.getNoteYPos(6, adjustRect.line) - 4;
-                var yShift = DynamicsIntervalData.getYShift(interval);
-                adjustRect.rect.y = y + yShift;
+                if (bounds == null) {
+                    throw new IllegalStateException("No bounds found for Ending");
+                }
+
+                adjustRect.rect.x = startNote.getXPos() - 8;
+                adjustRect.rect.y = (int) bounds.getTop() - 8;
             }
-            case TUPLET -> {
-                var interval = line
-                    .getTuplets()
+            case ANNOTATION -> {
+                var layoutResult = getLayoutResultForLine(adjustRect.line);
+                var bounds = layoutResult.findAttachmentBounds(note, AnnotationAttachment.class);
+
+                if (bounds == null) {
+                    throw new IllegalStateException("No bounds found for AnnotationAttachment");
+                }
+
+                adjustRect.rect.x = (int) bounds.getLeft() - 8;
+                adjustRect.rect.y = (int) bounds.getTop() - 8;
+            }
+            case TRILL -> {
+                // Find the Trill range element containing this note
+                var trill = line.getRangeElements().stream()
+                    .filter(e -> e instanceof Trill)
+                    .map(e -> (Trill) e)
+                    .filter(t -> {
+                        var anchorIdx = t.getAnchorNoteIndex();
+                        var endIdx = t.getEndNoteIndex();
+                        return anchorIdx >= 0 && endIdx >= 0 &&
+                               adjustRect.xIndex >= anchorIdx &&
+                               adjustRect.xIndex <= endIdx;
+                    })
+                    .findFirst()
+                    .orElse(null);
+
+                if (trill == null) {
+                    return;
+                }
+
+                var startNote = trill.getAnchorNote();
+                var endNote = trill.getEndNote();
+
+                if (startNote == null || endNote == null) {
+                    return;
+                }
+
+                var layoutResult = getLayoutResultForLine(adjustRect.line);
+                var bounds = layoutResult.findRangeElementBounds(startNote, endNote, Trill.class);
+
+                if (bounds == null) {
+                    throw new IllegalStateException("No bounds found for Trill");
+                }
+
+                adjustRect.rect.x = startNote.getXPos() - 12;
+                adjustRect.rect.y = (int) bounds.getTop() - 8;
+            }
+            case CRESCENDO_Y, DIMINUENDO_Y -> {
+                var interval = getCresDecrIntervalSet(line, adjustRect.type)
                     .findInterval(adjustRect.xIndex);
 
                 if (interval == null) {
                     return;
                 }
 
-                note = line.getNote(interval.getStart());
-                adjustRect.rect.x = note.getXPos() + (note.isUpper() ? 0 : -10);
-                adjustRect.rect.y = score.getNoteYPos(
-                    note.getYPos() + (note.isUpper() ? -10 : -3),
-                    adjustRect.line
-                ) +
-                TupletIntervalData.getVerticalPosition(interval);
+                var startNote = line.getNote(interval.getStart());
+                var endNote = line.getNote(interval.getEnd());
+                var layoutResult = getLayoutResultForLine(adjustRect.line);
+                var rangeClass = adjustRect.type == AdjustType.CRESCENDO_Y
+                    ? Crescendo.class
+                    : Diminuendo.class;
+                var bounds = layoutResult.findRangeElementBounds(startNote, endNote, rangeClass);
+
+                if (bounds == null) {
+                    throw new IllegalStateException("No bounds found for dynamics element");
+                }
+
+                // Position handle at center of dynamics hairpin
+                var startX = startNote.getXPos();
+                var endX = endNote.getXPos();
+                adjustRect.rect.x = (startX + endX + 12) / 2;
+                adjustRect.rect.y = (int) bounds.getTop();
+            }
+            case TUPLET -> {
+                var interval = line.getTuplets().findInterval(adjustRect.xIndex);
+
+                if (interval == null) {
+                    return;
+                }
+
+                var startNote = line.getNote(interval.getStart());
+                var endNote = line.getNote(interval.getEnd());
+                var layoutResult = getLayoutResultForLine(adjustRect.line);
+                var bounds = layoutResult.findRangeElementBounds(startNote, endNote, Tuplet.class);
+
+                if (bounds == null) {
+                    throw new IllegalStateException("No bounds found for Tuplet");
+                }
+
+                adjustRect.rect.x = startNote.getXPos() + (startNote.isUpper() ? 0 : -10);
+                adjustRect.rect.y = (int) bounds.getTop();
             }
         }
 
@@ -451,22 +551,47 @@ public class VerticalAdjustment extends Adjustment {
         adjustRect.rect.y = score.getNoteYPos(0, adjustRect.line) - 4;
     }
 
-    private void getChangeAdjustRect(
-        AdjustRect adjustRect,
-        Line line,
-        Note note,
-        int xOffset,
-        int yPos
-    ) {
-        adjustRect.rect.x = note.getXPos() - xOffset;
-        var y = score.getNoteYPos(0, adjustRect.line);
-        adjustRect.rect.y = (y + yPos) - 8;
-    }
-
     private void revalidateRects() {
         for (var ar : adjustRects) {
             getAdjustRect(ar);
         }
+    }
+
+    /**
+     * Gets the layout result for a specific line.
+     *
+     * @param lineIndex The line index
+     * @return The layout result
+     * @throws IllegalStateException if layout result is not available
+     */
+    @NotNull
+    private LayoutResult getLayoutResultForLine(int lineIndex) {
+        var mainPanel = score.getMainPanel();
+
+        if (mainPanel == null) {
+            throw new IllegalStateException("MainPanel not available");
+        }
+
+        var staffPanel = mainPanel.getStaffPanel();
+
+        if (staffPanel == null) {
+            throw new IllegalStateException("StaffPanel not available");
+        }
+
+        var linePanels = staffPanel.getLinePanels();
+
+        if (lineIndex < 0 || lineIndex >= linePanels.size()) {
+            throw new IllegalStateException("Invalid line index: " + lineIndex);
+        }
+
+        var lineComponent = linePanels.get(lineIndex).getLineComponent();
+        var layoutResult = lineComponent.getLayoutResult();
+
+        if (layoutResult == null) {
+            throw new IllegalStateException("Layout result not available for line " + lineIndex);
+        }
+
+        return layoutResult;
     }
 
     private static IntervalSet getCresDecrIntervalSet(

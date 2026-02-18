@@ -58,6 +58,23 @@ public static final Point HOT_SPOT = new Point(5, 27);
 public static final int NORMAL_IMAGE_WIDTH = 18;
 ```
 
+**Variables**
+
+- Use `var` for local variables when type is obvious from context
+- Use descriptive names, avoid single-letter names except in loops
+- Avoid abbreviations unless widely understood
+- Example:
+
+```
+var noteList = new ArrayList<Note>();
+
+for (var i = 0; i < 10; i++) {
+    // ...
+}
+
+var tempDirectory = System.getProperty("java.io.tmpdir");
+```
+
 ### Annotations
 
 - Use `@NotNull` and `@Nullable` from `org.jetbrains.annotations` for nullability clarity

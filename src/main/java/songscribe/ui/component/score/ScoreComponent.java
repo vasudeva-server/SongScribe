@@ -195,6 +195,17 @@ public abstract class ScoreComponent extends JComponent {
     protected abstract void render(Graphics2D g2);
 
     /**
+     * Returns the maximum size for this component.
+     * <p>
+     * Returns the preferred size to prevent BoxLayout from expanding
+     * components beyond their natural size.
+     */
+    @Override
+    public Dimension getMaximumSize() {
+        return getPreferredSize();
+    }
+
+    /**
      * Renders debug visualizations.
      * <p>
      * Called when debug mode is enabled. Default implementation draws

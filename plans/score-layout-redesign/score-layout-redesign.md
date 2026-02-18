@@ -1,7 +1,7 @@
 # Layout System Redesign: Swing Component + LineElement Hierarchy
 
-**Branch**: `feature/hierarchy-layout-redesign`
-**Last Updated**: 2026-01-29 (Phase 9 Complete)
+**Branch**: `feature/score-layout-redesign`
+**Last Updated**: 2026-01-31 (Line Layout Engine Complete, LayoutManager Removed)
 
 ---
 
@@ -12,19 +12,20 @@
 | Phase | Status | Summary |
 |-------|--------|---------|
 | **Phase 1** | ✅ Complete | Foundation classes (LineElement, Staff, Clef, etc.) |
-| **Phase 2** | ⚠️ Partial | JComponent stubs exist but not yet used for layout |
+| **Phase 2** | ✅ Complete | LayoutManager removed, components are source of truth |
 | **Phase 3** | ✅ Complete | Core musical elements (Note extends LineElement) |
 | **Phase 4** | ✅ Complete | Range elements (Tie, Trill, etc.) and BeamGroup |
-| **Phase 5** | ✅ Complete | Attribution, XPositionCalculator, CollisionDetector |
+| **Phase 5** | 🔄 In Progress | Line layout engine complete; uniform row heights pending |
 | **Phase 6** | ✅ Complete | All 18 ElementRenderers implemented |
 | **Phase 7** | ⏸️ Deferred | IO/File format versioning - not yet needed |
 | **Phase 8.1** | ✅ Complete | iText → JFreePDF migration |
 | **Phase 8.2** | ✅ Complete | Slur functionality removed |
-| **Phase 8.3** | 🔒 Blocked | Old layout system classes still in use |
+| **Phase 8.3** | ✅ Complete | LayoutManager removed (completed as part of Phase 2) |
 | **Phase 8.4** | ✅ Complete | Legacy Renderer/FughettaRenderer deleted (~3764 lines) |
 | **Phase 9.1-9.5** | ✅ Complete | ScoreRenderer orchestrates all drawing |
 | **Phase 9.6** | ✅ Complete | FughettaFontBoundsProvider extracted and integrated |
 | **Phase 9.7** | ✅ Complete | Renderer.java and FughettaRenderer.java deleted |
+| **Line Layout Engine** | ✅ Complete | Element-centric layout strategies with two-pass measure/arrange |
 
 ### Current Architecture
 
@@ -58,19 +59,30 @@ The old Renderer API has been **completely removed**:
 | Renderer.java | ✅ Deleted | 2,651 lines removed (commit 7c740d5) |
 | FughettaRenderer.java | ✅ Deleted | 1,113 lines removed (commit 7c740d5) |
 
+### ✅ Phase 2 Complete: LayoutManager Removed
+
+**Completed**: 2026-01-30
+
+LayoutManager has been **completely removed** from the screen rendering path:
+- ✅ `NoteSpacing` utility class created for horizontal spacing
+- ✅ All static utility callers updated
+- ✅ `ScoreRenderer.render()` stubbed (exports disabled pending migration)
+- ✅ `RenderContext.getLayoutManager()` deprecated and returns null
+- ✅ LayoutManager field removed from Score
+- ✅ `updateLayoutFromComponents()` derives coordinates from component hierarchy
+- ✅ Component hierarchy is now single source of truth
+
+**Files Modified**: Score.java, CompositionIO.java, HorizontalAdjustment.java, BoundsCalculator.java, LayoutStylesheet.java, RenderContext.java, ScoreRenderer.java, LayoutManager.java
+
+**Files Created**: NoteSpacing.java
+
 ### Immediate Next Steps
 
-Phase 8.4 and 9.6-9.7 are now **complete**. The legacy Renderer system has been fully removed.
+**Export rendering needs to be re-enabled** using component-based approach. Current status:
+- Screen rendering: ✅ Works (uses component hierarchy)
+- Exports: ⚠️ Stubbed (shows warning message)
 
-**Next major milestone: Phase 2 - Swing Component Hierarchy**
-
-The current architecture uses procedural rendering via ScoreRenderer. To fix tempo/title
-positioning issues and achieve true component-based layout:
-
-1. **Implement proper JComponent hierarchy** - Replace procedural ScoreRenderer with real Swing components
-2. **Use Swing layout managers** - Let Swing handle vertical stacking naturally
-3. **Implement getPreferredSize()** - Each component calculates its own size
-4. **Enable natural layout** - Tempo, title, and footnote positioning resolve automatically
+To re-enable exports, implement component-based export rendering that captures the component hierarchy output.
 
 ### Long-term Architectural Goal
 
@@ -78,6 +90,23 @@ Replace procedural `ScoreRenderer` with true Swing component hierarchy where:
 - Layout is handled by Swing layout managers
 - Each section (Title, Lines, Footnotes) is a JComponent with `getPreferredSize()`
 - Tempo/attribution positioning issues resolve naturally
+
+---
+
+## Status Dashboard
+
+| Phase | Status | Sub-plans |
+|-------|--------|-----------|
+| 1 | ✅ Complete | — |
+| 2 | ✅ Complete | [remove-layout-manager.md](../completed/score-layout-redesign/remove-layout-manager.md) ✓ |
+| 3 | ✅ Complete | — |
+| 4 | ✅ Complete | — |
+| 5 | ✅ Complete | [line-layout-engine.md](../completed/score-layout-redesign/line-layout-engine.md) ✓, **spatial-stacking-fix** (merged) |
+| 6 | ✅ Complete | — |
+| 7 | ⏸️ Deferred | — |
+| 8 | 🔄 In Progress | — |
+| 9 | ✅ Complete | — |
+| 10 | ⏸️ Future | — |
 
 ---
 
@@ -383,12 +412,31 @@ class MusicXMLExportVisitor implements LineElementVisitor<Element> { ... }
 
 ---
 
-## Phase 2: JComponent Hierarchy ⚠️ PARTIAL
+## Phase 2: JComponent Hierarchy ✅ COMPLETE
 
-**Goal**: Create Swing component structure with layout managers.
+**Goal**: Create Swing component structure with layout managers and remove LayoutManager.
 
-**Status**: Component stubs exist but ScoreRenderer uses procedural rendering, not Swing layout.
-This causes tempo/title positioning issues that won't be fully resolved until this phase is properly implemented.
+**Status**: ✅ Complete (2026-01-30)
+- Component hierarchy exists and is source of truth
+- LayoutManager completely removed from rendering path
+- Screen rendering uses component hierarchy via MainPanel
+- Exports temporarily stubbed (pending migration to component-based approach)
+
+### Sub-plans
+
+- [remove-layout-manager.md](../completed/score-layout-redesign/remove-layout-manager.md) ✓ — Complete removal of LayoutManager from screen rendering
+
+### LayoutManager Removal Summary
+
+The LayoutManager has been **completely removed** from the screen rendering path:
+- ✅ `NoteSpacing` utility class created for horizontal spacing
+- ✅ All static utility callers updated (CompositionIO, HorizontalAdjustment, Score, BoundsCalculator)
+- ✅ `RenderContext.getLayoutManager()` deprecated and returns null
+- ✅ LayoutManager field removed from Score
+- ✅ `updateLayoutFromComponents()` derives coordinates from component hierarchy
+
+**Files created**: `NoteSpacing.java`
+**Files modified**: Score.java, CompositionIO.java, HorizontalAdjustment.java, BoundsCalculator.java, LayoutStylesheet.java, RenderContext.java, ScoreRenderer.java
 
 ### Tasks
 
@@ -526,7 +574,77 @@ This causes tempo/title positioning issues that won't be fully resolved until th
 
 ## Phase 5: Attribution and Layout Integration ✅ COMPLETE
 
-**Goal**: Implement attribution handling and margin collapsing.
+**Goal**: Implement attribution handling, margin collapsing, and uniform row height spacing.
+
+**Status**: ✅ Complete (2026-01-31)
+
+### Completed Sub-Plans
+
+- ✅ [line-layout-engine.md](../completed/score-layout-redesign/line-layout-engine.md) — Element-centric layout strategies with two-pass measure/arrange
+- ✅ **spatial-stacking-fix** — Merged (see below)
+- 🔄 [uniform-row-heights.md](./uniform-row-heights.md) — Pending (next priority)
+
+### Line Layout Engine Summary
+
+The Line Layout Engine implements a comprehensive layout system using:
+- **Element-Centric Strategies**: Each element type has its own `LayoutStrategy`
+- **Two-Pass Layout**: Measure pass (calculate sizes) → Arrange pass (assign positions)
+- **Area-based Accumulation**: Uses `java.awt.geom.Area` for complex shapes (ties, endings)
+- **Stacking Layers**: 12 layers from Note (bottom) to Lyrics (top)
+
+**Completed phases** (all 11 phases):
+1. ✅ Foundation Classes (LayoutLayer, Margin, LayoutAccumulator, contexts)
+2. ✅ Strategy Interface and Registry
+3. ✅ Note, Tie, and Articulation Strategies
+4. ✅ Tuplet Strategy
+5. ✅ Trill, Fermata, Dynamics Strategies
+6. ✅ Endings Strategy (Area-based)
+7. ✅ Tempo, Annotation, Attribution Strategies
+8. ✅ Lyrics Strategy
+9. ✅ LineLayoutEngine Integration
+10. ✅ User Offset Support
+11. ✅ Cleanup and Migration
+
+**Key files created**: 25+ new files in `ui/layout/` and `ui/layout/strategy/`
+
+### Merged: Spatial Stacking Fix
+
+**Problem Solved**: The layout system had infrastructure for spatial collision detection but was still using a **global Y waterline** instead of **X-range spatial queries**, causing cross-element interference (e.g., tempo on note 1 incorrectly affecting fermata on note 10).
+
+**Implementation**: 5-phase spatial collision detection system:
+
+1. **Phase 1: X-Range Queries** ✅
+   - Added `getTopYInRange()`, `getBottomYInRange()`, `intersectsInRange()` to LayoutAccumulator
+   - Enables spatial filtering by X position instead of global queries
+
+2. **Phase 2: ArrangeContext Integration** ✅
+   - Updated `getHighestBoundsInRange()` and `getLowestBoundsInRange()` to include accumulated bounds
+   - Range queries now properly consider spatial overlap
+
+3. **Phase 3: Remove Global Queries** ✅
+   - Removed all `getTopY()` calls from layout strategies
+   - All strategies now use spatial range queries exclusively
+   - Completely eliminated global Y waterline pattern
+
+4. **Phase 4: Articulation-Tie Collision Detection** ✅
+   - Enabled area-based collision detection for articulations (staccato, accent)
+   - Articulations now shift away from ties with 0.5 MU margin
+   - Works with actual tie curve shapes, not just bounding boxes
+
+5. **Phase 5: Cleanup & Optimization** ✅
+   - Removed unused `getTopY()` method entirely (no backward compatibility needed)
+   - Added comprehensive debug logging (`-Dsongscribe.debug.collision=true`)
+   - Documented memory design and performance characteristics
+   - Enhanced javadocs with spatial behavior examples
+
+**Key Achievement**: Elements at different X positions no longer interfere with each other. Tempo on note 1 (x=100) no longer affects fermata positioning on note 10 (x=400).
+
+**Files Modified**:
+- `LayoutAccumulator.java` - Added spatial queries, debug logging, memory documentation
+- `ArrangeContext.java` - Updated range methods for accumulated bounds
+- 6 layout strategies - Removed global query calls, enabled collision detection
+
+**Testing**: ✅ All 26+ tests passing, spatial isolation verified
 
 ### Tasks
 

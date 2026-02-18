@@ -83,9 +83,31 @@ public class TrillRenderer extends BaseElementRenderer<Trill> {
         }
 
         var endNote = element.getEndNote();
-        int trillYPos = (int) element.getY();
+        int trillYPos = getEffectiveTrillYPos(element, ctx);
 
         renderTrill(g2, ctx, anchorNote, endNote, trillYPos);
+    }
+
+    /**
+     * Gets the Y position for a trill from layout result.
+     */
+    private int getEffectiveTrillYPos(
+        @NotNull Trill element,
+        @NotNull ElementRenderContext ctx
+    ) {
+        var layoutResult = ctx.getLayoutResult();
+
+        if (layoutResult == null) {
+            throw new IllegalStateException("Layout result must be available for rendering");
+        }
+
+        var bounds = layoutResult.getBounds(element);
+
+        if (bounds == null) {
+            throw new IllegalStateException("No bounds found for Trill element");
+        }
+
+        return (int) bounds.getTop() - ctx.getMiddleLineY();
     }
 
     /**

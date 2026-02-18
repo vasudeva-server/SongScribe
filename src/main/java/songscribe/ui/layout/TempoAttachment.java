@@ -50,7 +50,6 @@ public class TempoAttachment extends Attachment {
      */
     public TempoAttachment(@NotNull Tempo tempo) {
         this.tempo = tempo;
-        setPlacement(Placement.ABOVE);
         setAlignment(Alignment.LEFT);
     }
 
@@ -63,7 +62,6 @@ public class TempoAttachment extends Attachment {
     public TempoAttachment(@Nullable Note parent, @NotNull Tempo tempo) {
         this.tempo = tempo;
         setParentNote(parent);
-        setPlacement(Placement.ABOVE);
         setAlignment(Alignment.LEFT);
 
         if (parent != null) {

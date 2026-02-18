@@ -29,7 +29,7 @@ import songscribe.music.KeyType;
 import songscribe.music.Line;
 import songscribe.ui.component.IMainFrame;
 import songscribe.ui.component.Score;
-import songscribe.ui.layout.LayoutManager;
+import songscribe.ui.layout.NoteSpacing;
 
 public final class CompositionIO {
 
@@ -423,7 +423,7 @@ public final class CompositionIO {
                     }
 
                     var line = composition.getLine(composition.lineCount() - 1);
-                    note.setXPos(LayoutManager.calculateLastNoteXPos(line, note));
+                    note.setXPos(NoteSpacing.calculateLastNoteXPos(line, note));
                     note.setUpper(Score.defaultUpperNote(note));
                     line.addNote(note);
                 }
@@ -760,8 +760,8 @@ public final class CompositionIO {
 
         public Composition getComposition() {
             // Legacy fallback: if topPadding wasn't set in file, calculate initial value.
-            // LayoutManager.measure() will recalculate this properly, but this provides
-            // a reasonable default for any code that accesses topPadding before measure().
+            // Layout calculation will recalculate this properly, but this provides
+            // a reasonable default for any code that accesses topPadding before layout.
             if (composition.getTopPadding() == 0) {
                 //noinspection deprecation
                 composition.recalcTopPadding();

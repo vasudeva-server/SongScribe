@@ -137,6 +137,11 @@ public final class LayoutStylesheet {
      */
     public static final double ANNOTATION_REGION_MARGIN = 6.0;  // 24px
 
+    /**
+     * Pixel value of annotation margin (for backward compatibility)
+     */
+    public static final int ANNOTATION_MARGIN = px(ANNOTATION_REGION_MARGIN);
+
     // --- Tempo ---
     /**
      * Padding around tempo marking (for hit testing)
@@ -240,6 +245,12 @@ public final class LayoutStylesheet {
      */
     public static final double LYRICS_ROW_MARGIN = 2.0;  // 8px
 
+    /**
+     * Margin from lowest note bounds to lyrics baseline (ascent).
+     * Per Phase 8 spec: ascent 2.5 MU below lowest note bounding box.
+     */
+    public static final double LYRICS_BASELINE_MARGIN = 2.5;  // 10px
+
     // ==========================================================================
     // NOTE ELEMENTS
     // ==========================================================================
@@ -277,6 +288,32 @@ public final class LayoutStylesheet {
      */
     public static final double TIE_MARGIN = 1.5;  // 6px
 
+    /**
+     * Distance from note head to tie arc endpoint
+     */
+    public static final double TIE_NOTE_HEAD_OFFSET = 0.25;  // 1px
+
+    /**
+     * Minimum arc height for ties
+     */
+    public static final double TIE_MIN_ARC_HEIGHT = 1.5;  // 6px
+
+    /**
+     * Reference horizontal distance for arc height scaling (in pixels)
+     */
+    public static final double TIE_REFERENCE_DISTANCE = 50.0;  // 50px baseline
+
+    /**
+     * Arc height scaling factor for ties.
+     * Arc height = minHeight + sqrt(distance / reference) * heightScale
+     */
+    public static final double TIE_HEIGHT_SCALE = 4.0;  // 4px additional per sqrt unit
+
+    /**
+     * Margin from tie to articulations (area-based collision)
+     */
+    public static final double TIE_ARTICULATION_MARGIN = 0.5;  // 2px
+
     // --- Tuplets ---
     /**
      * Padding around tuplet bracket
@@ -287,6 +324,36 @@ public final class LayoutStylesheet {
      * Margin from reference point to tuplet bracket
      */
     public static final double TUPLET_MARGIN = 1.25;  // 5px
+
+    /**
+     * Margin from beam to tuplet number (measured perpendicular to beam)
+     */
+    public static final double TUPLET_BEAM_MARGIN = 0.5;  // 2px
+
+    /**
+     * Margin from highest note/articulation bounds to tuplet bracket
+     */
+    public static final double TUPLET_BRACKET_MARGIN = 0.5;  // 2px
+
+    /**
+     * Minimum margin from staff top to tuplet bracket
+     */
+    public static final double TUPLET_MIN_STAFF_MARGIN = 1.0;  // 4px
+
+    /**
+     * Gap on each side of tuplet number in bracket (in pixels)
+     */
+    public static final double TUPLET_NUMBER_GAP = 1.0;  // 1px
+
+    /**
+     * Overhang of bracket beyond first and last note heads (in pixels)
+     */
+    public static final double TUPLET_BRACKET_OVERHANG = 1.0;  // 1px
+
+    /**
+     * Scale factor for tuplet number in non-beamed (bracket) tuplets
+     */
+    public static final double TUPLET_BRACKET_NUMBER_SCALE = 0.9;  // 90% font size
 
     // --- Beams ---
     /**
@@ -411,7 +478,7 @@ public final class LayoutStylesheet {
     // ==========================================================================
     // These are the default Y offsets from the middle staff line (B line).
     // Negative values = above staff, positive = below staff.
-    // Used by Line.java for initial values and by LayoutManager for offset calculations.
+    // Used by Line.java for initial values and by layout calculation for offset values.
     // Note: These may be replaced by dynamic calculation in future phases.
 
     /**

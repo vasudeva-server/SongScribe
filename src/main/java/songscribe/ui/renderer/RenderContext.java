@@ -24,8 +24,6 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import songscribe.music.Composition;
-import songscribe.ui.layout.LayoutManager;
-import songscribe.ui.layout.LayoutResult;
 
 /**
  * Interface providing render-time data for the Renderer.
@@ -50,18 +48,6 @@ public interface RenderContext {
      */
     @NotNull
     Composition getComposition();
-
-    /**
-     * Returns the layout result, or null if layout has not been calculated.
-     */
-    @Nullable
-    LayoutResult getLayoutResult();
-
-    /**
-     * Returns the layout manager for accessing layout calculations.
-     */
-    @NotNull
-    LayoutManager getLayoutManager();
 
     // -------------------------------------------------------------------------
     // Coordinate system

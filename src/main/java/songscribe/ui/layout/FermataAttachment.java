@@ -39,7 +39,6 @@ public class FermataAttachment extends Attachment {
      * Creates a fermata attachment.
      */
     public FermataAttachment() {
-        setPlacement(Placement.ABOVE);
         setAlignment(Alignment.CENTER);
     }
 
@@ -50,7 +49,6 @@ public class FermataAttachment extends Attachment {
      */
     public FermataAttachment(@Nullable Note parent) {
         setParentNote(parent);
-        setPlacement(Placement.ABOVE);
         setAlignment(Alignment.CENTER);
 
         if (parent != null) {

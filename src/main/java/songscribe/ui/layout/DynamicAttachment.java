@@ -84,7 +84,6 @@ public class DynamicAttachment extends Attachment {
      */
     public DynamicAttachment(@NotNull DynamicType type) {
         this.type = type;
-        setPlacement(Placement.BELOW);
         setAlignment(Alignment.CENTER);
     }
 
@@ -97,7 +96,6 @@ public class DynamicAttachment extends Attachment {
     public DynamicAttachment(@Nullable Note parent, @NotNull DynamicType type) {
         this.type = type;
         setParentNote(parent);
-        setPlacement(Placement.BELOW);
         setAlignment(Alignment.CENTER);
 
         if (parent != null) {

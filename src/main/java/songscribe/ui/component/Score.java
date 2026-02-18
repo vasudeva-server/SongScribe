@@ -22,7 +22,6 @@ package songscribe.ui.component;
 
 import java.awt.*;
 import java.awt.event.*;
-import java.awt.geom.Rectangle2D;
 import java.awt.image.*;
 import java.io.File;
 import java.io.IOException;
@@ -73,12 +72,15 @@ import songscribe.ui.action.InsertLineAction;
 import songscribe.ui.adjustment.HorizontalAdjustment;
 import songscribe.ui.adjustment.LyricsAdjustment;
 import songscribe.ui.adjustment.VerticalAdjustment;
-import songscribe.ui.layout.FontBoundsProvider;
-import songscribe.ui.layout.LayoutManager;
-import songscribe.ui.layout.LayoutResult;
-import songscribe.ui.layout.MeasurementService;
-import songscribe.ui.layout.SectionLayout;
+import songscribe.ui.clipboard.ClipboardManager;
+import songscribe.ui.component.score.MainPanel;
 import songscribe.ui.dialog.LineWidthChangeDialog;
+import songscribe.ui.edit.EditModeManager;
+import songscribe.ui.layout.FontBoundsProvider;
+import songscribe.ui.layout.FughettaFontBoundsProvider;
+import songscribe.ui.layout.LayoutStylesheet;
+import songscribe.ui.layout.NoteSpacing;
+import songscribe.ui.layout.SectionLayout;
 import songscribe.ui.menu.DebugState;
 import songscribe.ui.message.AddDynamicsMessage;
 import songscribe.ui.message.ControlChangedMessage;
@@ -105,24 +107,17 @@ import songscribe.ui.message.ToggleTupletMessage;
 import songscribe.ui.message.UpdateEditNoteMessage;
 import songscribe.ui.playback.MidiController;
 import songscribe.ui.playback.MidiMetaMessageTypes;
-import songscribe.ui.playback.PlaybackStateManager;
 import songscribe.ui.playback.PlayNoteThread;
 import songscribe.ui.playback.PlaybackController;
 import songscribe.ui.playback.PlaybackStateChangedMessage;
-import songscribe.ui.clipboard.ClipboardManager;
-import songscribe.ui.edit.EditModeManager;
-import songscribe.ui.edit.NotePosition;
-import songscribe.ui.renderer.DebugRenderer;
+import songscribe.ui.playback.PlaybackStateManager;
 import songscribe.ui.renderer.ElementRenderContext;
-import songscribe.ui.layout.FughettaFontBoundsProvider;
 import songscribe.ui.renderer.GlissandoRenderer;
 import songscribe.ui.renderer.NoteRenderer;
 import songscribe.ui.renderer.RenderContext;
-import songscribe.ui.renderer.ScoreRenderer;
 import songscribe.ui.selection.NoteSelection;
 import songscribe.ui.selection.SelectionManager;
 import songscribe.ui.selection.TieContext;
-import songscribe.ui.component.score.MainPanel;
 import songscribe.util.FileUtils;
 import songscribe.util.GraphicUtils;
 import songscribe.util.Log;
@@ -136,13 +131,13 @@ import songscribe.util.UIUtils;
 public final class Score
     extends JComponent
     implements
-        FocusListener,
-        KeyListener,
-        MetaEventListener,
-        MouseListener,
-        MouseMotionListener,
-        MusicChangeListener,
-        RenderContext {
+    FocusListener,
+    KeyListener,
+    MetaEventListener,
+    MouseListener,
+    MouseMotionListener,
+    MusicChangeListener,
+    RenderContext {
 
     // The number of lines in a staff
     public static final int STAFF_LINE_COUNT = 5;
@@ -187,9 +182,6 @@ public final class Score
         SELECTION_STROKE_COLOR.getBlue(),
         8
     );
-
-    // How far from the cursor hotspot notes are painted when editing
-    private static final Point CURSOR_OFFSET = new Point(0, -1);
 
     // The maximum number of staff lines under a note that can be displayed above and below the staff.
     // The range of notes supported is C3 (3 lines below) to F6 (4 lines above).
@@ -267,18 +259,6 @@ public final class Score
     // The y position (from the top of the scorePanel) of the middle line (B) of the first staff
     private int middleLineY = 0;
 
-    // Orchestrates rendering using ElementRenderers
-    private ScoreRenderer scoreRenderer = null;
-
-    // Provides measurement operations for layout and adjustment components
-    private MeasurementService measurementService = null;
-
-    // Renders debug visualizations (layout boxes, bounding boxes, margins)
-    private final DebugRenderer debugRenderer = new DebugRenderer();
-
-    // Manages the vertical layout of all sections in the score.
-    private LayoutManager layoutManager = null;
-
     // Manages selection state
     private SelectionManager selectionManager = null;
 
@@ -293,6 +273,10 @@ public final class Score
 
     // New JComponent-based score panel (Phase 2 hierarchy)
     private MainPanel mainPanel = null;
+
+    // Feature flag for Phase 2: enables component-based rendering
+    // When false, uses legacy ScoreRenderer; when true, uses MainPanel hierarchy
+    private boolean useComponentRendering = true;
 
     // Timer for debouncing repaints when layout changes occur
     private Timer repaintDebounceTimer = null;
@@ -342,23 +326,20 @@ public final class Score
             this
         );
 
-        // Initialize measurement service
-        measurementService = new MeasurementService(this, fontBoundsProvider);
-
-        scoreRenderer = new ScoreRenderer(this);
-
-        layoutManager = new LayoutManager(this);
         selectionManager = new SelectionManager(this::getComposition);
         playbackStateManager = new PlaybackStateManager();
         clipboardManager = new ClipboardManager();
         editModeManager = new EditModeManager();
+
+        // Set layout for Phase 2 component hierarchy integration
+        setLayout(new BorderLayout());
 
         try {
             saxParser = SAXParserFactory.newInstance().newSAXParser();
         } catch (Exception e) {
             mainFrame.showErrorMessage(
                 Constants.PACKAGE_NAME +
-                " cannot start because of an initialization error."
+                    " cannot start because of an initialization error."
             );
             System.exit(0);
         }
@@ -369,20 +350,14 @@ public final class Score
     }
 
     public void createSVG(File outputFile, @NotNull Boolean isGUI) {
-        try {
-            var g2 = new SVGGraphics2D(getSheetWidth(), getSheetHeight());
-            scoreRenderer.render(g2, false, 1d);
-            SVGUtils.writeToSVG(outputFile, g2.getSVGElement());
-
-            if (isGUI) {
-                FileUtils.openExportFile(mainFrame, outputFile);
-            }
-        } catch (IOException e1) {
-            if (isGUI) {
-                mainFrame.showErrorMessage(
-                    "An unexpected error occurred and could not export as SVG."
-                );
-            }
+        // SVG export not yet implemented with component-based rendering
+        if (isGUI) {
+            mainFrame.showErrorMessage(
+                "SVG export is not yet implemented. " +
+                "Export functionality will be restored in a future update."
+            );
+        } else {
+            System.err.println("ERROR: SVG export is not yet implemented");
         }
     }
 
@@ -415,13 +390,13 @@ public final class Score
     public static boolean defaultUpperNote(@NotNull Note note) {
         return (
             (note.getYPos() >= 0) ||
-            note.getNoteType().isGraceNote() ||
-            (note.getNoteType() == NoteType.GRACE_SEMIQUAVER_EDIT_STEP1)
+                note.getNoteType().isGraceNote() ||
+                (note.getNoteType() == NoteType.GRACE_SEMIQUAVER_EDIT_STEP1)
         );
     }
 
     private void initKeys() {
-        var keyCodes = new int[] {
+        var keyCodes = new int[]{
             KeyEvent.VK_UP,
             KeyEvent.VK_DOWN,
             KeyEvent.VK_LEFT,
@@ -472,12 +447,73 @@ public final class Score
     /**
      * Initializes the new JComponent-based MainPanel.
      * <p>
-     * The MainPanel is created but not currently added to the visual hierarchy.
-     * It will be integrated gradually in future phases.
+     * The MainPanel is created and added to Score's layout (BorderLayout.CENTER).
+     * It is initially invisible; rendering is controlled by the useComponentRendering flag.
      */
     private void initMainPanel() {
         mainPanel = new MainPanel();
         mainPanel.setComposition(composition);
+
+        // Wire up selection provider for note coloring
+        setupLineComponentState();
+
+        // Add MainPanel to Score's layout hierarchy
+        // Start invisible - will be shown when useComponentRendering is enabled
+        mainPanel.setVisible(false);
+        add(mainPanel, BorderLayout.CENTER);
+    }
+
+    /**
+     * Sets up selection provider and initial state for all LineComponents.
+     * <p>
+     * This wires up the selection checking from Score to enable
+     * note coloring in the component-based rendering.
+     */
+    private void setupLineComponentState() {
+        if (mainPanel == null) {
+            return;
+        }
+
+        var staffPanel = mainPanel.getStaffPanel();
+
+        if (staffPanel == null) {
+            return;
+        }
+
+        for (var linePanel : staffPanel.getLinePanels()) {
+            var lineComponent = linePanel.getLineComponent();
+            lineComponent.setSelectionProvider(this::isNoteSelected);
+        }
+    }
+
+    /**
+     * Updates playback state on LineComponents when playback position changes.
+     *
+     * @param playingLine The line index being played (-1 if not playing)
+     * @param playingNote The note index being played (-1 if not playing)
+     */
+    private void updateLineComponentPlaybackState(int playingLine, int playingNote) {
+        if (mainPanel == null) {
+            return;
+        }
+
+        var staffPanel = mainPanel.getStaffPanel();
+
+        if (staffPanel == null) {
+            return;
+        }
+
+        for (var linePanel : staffPanel.getLinePanels()) {
+            var lineComponent = linePanel.getLineComponent();
+            var lineIndex = lineComponent.getLineIndex();
+
+            // Set playing note index only for the currently playing line
+            if (lineIndex == playingLine) {
+                lineComponent.setPlayingNoteIndex(playingNote);
+            } else {
+                lineComponent.setPlayingNoteIndex(-1);
+            }
+        }
     }
 
     /**
@@ -487,6 +523,31 @@ public final class Score
      */
     public MainPanel getMainPanel() {
         return mainPanel;
+    }
+
+    /**
+     * Returns whether component-based rendering is enabled.
+     * <p>
+     * When true, uses the new JComponent hierarchy (MainPanel).
+     * When false, rendering is disabled (exports not yet implemented).
+     */
+    public boolean isUseComponentRendering() {
+        return useComponentRendering;
+    }
+
+    /**
+     * Sets whether component-based rendering is enabled.
+     * <p>
+     * This feature flag controls whether the JComponent hierarchy is used.
+     * When disabled, rendering is unavailable.
+     *
+     * @param useComponentRendering true to use component rendering
+     */
+    public void setUseComponentRendering(boolean useComponentRendering) {
+        if (this.useComponentRendering != useComponentRendering) {
+            this.useComponentRendering = useComponentRendering;
+            repaint();
+        }
     }
 
     private void initMargin() {
@@ -534,8 +595,8 @@ public final class Score
         } catch (SAXException e) {
             var message =
                 "Could not open the file “" +
-                file.getName() +
-                "” because it is damaged.";
+                    file.getName() +
+                    "” because it is damaged.";
             mainFrame.showErrorMessage(message);
             Log.error(message, e);
         } catch (IOException e) {
@@ -574,9 +635,6 @@ public final class Score
     }
 
     public void viewChanged() {
-        // Invalidate layout and measure with a temporary graphics context
-        layoutManager.invalidate();
-
         // Clear inspector hover since layout bounds will be recalculated
         var needsImmediateRepaint = false;
 
@@ -585,19 +643,8 @@ public final class Score
             needsImmediateRepaint = true;
         }
 
-        // Only measure if composition is set (not during initialization)
-        if (composition != null) {
-            var img = new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB);
-            var g2 = img.createGraphics();
-
-            try {
-                layoutManager.measure(g2);
-            } finally {
-                g2.dispose();
-            }
-
-            updateLayoutFromManager();
-        }
+        // Component hierarchy handles layout automatically
+        updateLayoutFromComponents();
 
         // Force immediate repaint to clear stale inspector visualization
         if (needsImmediateRepaint) {
@@ -606,17 +653,31 @@ public final class Score
     }
 
     /**
-     * Updates middleLineY and rowHeight from LayoutManager.
+     * Updates middleLineY and rowHeight from component hierarchy.
      * <p>
-     * Called after layout measurement to sync the cached values used
-     * throughout Score for hit-testing and positioning.
-     * <p>
-     * This method is public so LayoutManager can call it during measure()
-     * to ensure bounds calculations use up-to-date values.
+     * Derives layout coordinates from the actual positioned components
+     * rather than a separate layout manager.
      */
-    public void updateLayoutFromManager() {
-        middleLineY = layoutManager.getMiddleLineY();
-        rowHeight = layoutManager.getRowHeight();
+    private void updateLayoutFromComponents() {
+        if (mainPanel == null) return;
+
+        var staffPanel = mainPanel.getStaffPanel();
+        if (staffPanel == null) return;
+
+        var linePanels = staffPanel.getLinePanels();
+        if (linePanels.isEmpty()) return;
+
+        // middleLineY = first line's absolute middle Y
+        middleLineY = getActualLineMiddleY(0);
+
+        // rowHeight = distance between consecutive line midpoints
+        if (linePanels.size() >= 2) {
+            rowHeight = getActualLineMiddleY(1) - getActualLineMiddleY(0);
+        } else {
+            var linePanel = linePanels.get(0);
+            rowHeight = linePanel.getLineComponent().getHeight()
+                      + LayoutStylesheet.px(LayoutStylesheet.LINE_MARGIN_BOTTOM);
+        }
     }
 
     public JScrollPane getScoreScrollPane() {
@@ -630,19 +691,24 @@ public final class Score
 
     @Override
     public void paintComponent(Graphics g) {
+        // Control MainPanel visibility based on rendering mode
+        // Must be set before super.paintComponent() to ensure proper painting
+        mainPanel.setVisible(useComponentRendering);
         super.paintComponent(g);
 
         var g2 = (Graphics2D) g;
         g2.setColor(Color.white);
         g2.fillRect(0, 0, marginPanel.getWidth(), marginPanel.getHeight());
 
-        // Measure layout before drawing if invalidated
-        if (!layoutManager.isValid()) {
-            layoutManager.measure(g2);
-            updateLayoutFromManager();
+        // Derive coordinates from positioned components
+        updateLayoutFromComponents();
+
+        // Legacy rendering path removed - exports not yet implemented
+        if (!useComponentRendering) {
+            // TODO: Implement exports using component-based rendering
+            System.err.println("WARNING: Rendering disabled - exports not yet implemented");
         }
 
-        scoreRenderer.render(g2, true, 1d);
         drawEditElements(g2);
         drawSelectionRect(g2);
         drawDebugOverlays(g2);
@@ -663,14 +729,14 @@ public final class Score
 
             if (
                 (editNote != null) &&
-                ((control == Control.KEYBOARD) || editModeManager.isEditNoteVisible()) &&
-                !selectionManager.isStartedDrag() &&
-                !shiftPressed &&
-                !MidiController.isPlaying()
+                    ((control == Control.KEYBOARD) || editModeManager.isEditNoteVisible()) &&
+                    !selectionManager.isStartedDrag() &&
+                    !shiftPressed &&
+                    !MidiController.isPlaying()
             ) {
                 g2.setColor(EDIT_NOTE_COLOR);
                 var lineIndex = editNotePoint.getLineIndex();
-                var lineMiddleY = middleLineY + (lineIndex * rowHeight);
+                var actualRenderLineMiddleY = getActualLineMiddleY(lineIndex);
 
                 //noinspection ObjectEquality
                 if (editNote != Note.GLISSANDO_NOTE) {
@@ -680,14 +746,14 @@ public final class Score
                         editNote.setXPos(composition.getLineWidth() - 12);
                     }
 
-                    NoteRenderer.getInstance().render(g2, editNote, lineMiddleY);
+                    NoteRenderer.getInstance().render(g2, editNote, actualRenderLineMiddleY);
                     editNote.setXPos(x);
                 } else if (editNotePoint.getXIndex() > 0) {
                     var line = composition.getLine(lineIndex);
                     var ctx = new ElementRenderContext(composition);
                     ctx.setCurrentLine(line);
                     ctx.setLineIndex(lineIndex);
-                    ctx.setMiddleLineY(lineMiddleY);
+                    ctx.setMiddleLineY(actualRenderLineMiddleY);
 
                     GlissandoRenderer.getInstance().renderEditGlissando(
                         g2,
@@ -719,12 +785,8 @@ public final class Score
     }
 
     private void drawDebugOverlays(Graphics2D g2) {
-        if (!layoutManager.isValid()) {
-            return;
-        }
-
-        var layoutResult = layoutManager.getLayoutResult();
-        debugRenderer.drawDebugVisualization(g2, layoutResult, this);
+        // TODO: Implement debug overlays with component hierarchy
+        // debugRenderer.drawDebugVisualization(g2, layoutResult, this);
     }
 
     @Override
@@ -736,7 +798,8 @@ public final class Score
 
     @Override
     public int getUnderLyricsYPos() {
-        return layoutManager.getUnderLyricsYPos();
+        // TODO: Calculate from component hierarchy
+        return 0;
     }
 
     public Note getEditNote() {
@@ -925,8 +988,8 @@ public final class Score
 
         if (
             (editNote.getNoteType() == NoteType.REPEAT_LEFT) &&
-            ((noteIndex - 1) >= 0) &&
-            (line.getNote(noteIndex - 1).getNoteType() == NoteType.REPEAT_RIGHT)
+                ((noteIndex - 1) >= 0) &&
+                (line.getNote(noteIndex - 1).getNoteType() == NoteType.REPEAT_RIGHT)
         ) {
             var repeatLeftRight = new RepeatLeftRight();
             repeatLeftRight.setXPos(line.getNote(noteIndex - 1).getXPos());
@@ -936,8 +999,8 @@ public final class Score
 
         if (
             (editNote.getNoteType() == NoteType.REPEAT_RIGHT) &&
-            (noteIndex < line.noteCount()) &&
-            (line.getNote(noteIndex).getNoteType() == NoteType.REPEAT_LEFT)
+                (noteIndex < line.noteCount()) &&
+                (line.getNote(noteIndex).getNoteType() == NoteType.REPEAT_LEFT)
         ) {
             var repeatLeftRight = new RepeatLeftRight();
             repeatLeftRight.setXPos(line.getNote(noteIndex).getXPos());
@@ -961,9 +1024,9 @@ public final class Score
             line.removeInterval(noteIndex - 1, noteIndex);
             var diff =
                 ((noteIndex == line.noteCount())
-                        ? LayoutManager.calculateLastNoteXPos(line, clipboardManager.getFirstNote())
-                        : line.getNote(noteIndex).getXPos()) -
-                clipboardManager.getFirstNote().getXPos();
+                    ? NoteSpacing.calculateLastNoteXPos(line, clipboardManager.getFirstNote())
+                    : line.getNote(noteIndex).getXPos()) -
+                    clipboardManager.getFirstNote().getXPos();
             var copySize = clipboardManager.getSize();
 
             for (var i = 0; i < copySize; i++) {
@@ -976,13 +1039,13 @@ public final class Score
             var lastNote = clipboardManager.getLastNote();
             var shift =
                 (Math.round(
-                        (LayoutManager.getNoteSpacing(lastNote.getNoteType()) +
-                            (lastNote.getAccidental().getWidthFactor() *
-                                LayoutManager.ACCIDENTAL_WIDTH)) *
+                    (NoteSpacing.getNoteSpacing(lastNote.getNoteType()) +
+                        (lastNote.getAccidental().getWidthFactor() *
+                            NoteSpacing.ACCIDENTAL_WIDTH)) *
                         line.getNoteDistChangeRatio()
-                    ) +
+                ) +
                     lastNote.getXPos()) -
-                clipboardManager.getFirstNote().getXPos();
+                    clipboardManager.getFirstNote().getXPos();
 
             for (var i = noteIndex + copySize; i < line.noteCount(); i++) {
                 line.getNote(i).setXPos(line.getNote(i).getXPos() + shift);
@@ -1017,7 +1080,7 @@ public final class Score
         var line = composition.getLine(editNotePoint.getLineIndex());
 
         if (line.noteCount() == editNotePoint.getXIndex()) {
-            editNote.setXPos(LayoutManager.calculateLastNoteXPos(line, editNote));
+            editNote.setXPos(NoteSpacing.calculateLastNoteXPos(line, editNote));
         } else {
             var note = line.getNote(editNotePoint.getXIndex());
             editNote.setXPos(note.getXPos() + editNotePoint.getMovement());
@@ -1092,7 +1155,7 @@ public final class Score
             return;
         }
 
-        editNote.setXPos(LayoutManager.calculateLastNoteXPos(line, editNote));
+        editNote.setXPos(NoteSpacing.calculateLastNoteXPos(line, editNote));
         line.addNote(editNote);
         //mainFrame.getUndoManager().undoableEditHappened(new UndoableEditEvent(this, new
         // InsertUndoableEdit(cloneActiveNote, ni, noteInfo.size()-2)));
@@ -1100,8 +1163,8 @@ public final class Score
         // Decide automatic beaming
         if (
             editNote.getNoteType().isBeamable() &&
-            (line.noteCount() >= 2) &&
-            (line.getTuplets().findInterval(line.noteCount() - 2) == null)
+                (line.noteCount() >= 2) &&
+                (line.getTuplets().findInterval(line.noteCount() - 2) == null)
         ) {
             var sum = 0;
 
@@ -1110,7 +1173,7 @@ public final class Score
                     sum += 2;
                 } else if (
                     (line.getNote(i).getNoteType() == NoteType.SEMIQUAVER) ||
-                    (line.getNote(i).getNoteType() == NoteType.DEMI_SEMIQUAVER)
+                        (line.getNote(i).getNoteType() == NoteType.DEMI_SEMIQUAVER)
                 ) {
                     sum += 1;
                 } else {
@@ -1129,10 +1192,10 @@ public final class Score
                     (sum > 0) &&
                     ((sum % 2) == 0) &&
                     ((sum % 4) != 0)) ||
-                (((editNote.getNoteType() == NoteType.SEMIQUAVER) ||
+                    (((editNote.getNoteType() == NoteType.SEMIQUAVER) ||
                         (editNote.getNoteType() == NoteType.DEMI_SEMIQUAVER)) &&
-                    (sum > 0) &&
-                    ((sum % 4) != 0))
+                        (sum > 0) &&
+                        ((sum % 4) != 0))
             ) {
                 line
                     .getBeamings()
@@ -1169,14 +1232,14 @@ public final class Score
         line.removeInterval(xIndex - 1, xIndex);
         editNote.setXPos(
             line.getNote(xIndex).getXPos() +
-            (editNote.getAccidental().getWidthFactor() * LayoutManager.ACCIDENTAL_WIDTH)
+                (editNote.getAccidental().getWidthFactor() * NoteSpacing.ACCIDENTAL_WIDTH)
         );
         line.addNote(xIndex, editNote);
         var shift = Math.round(
-            (LayoutManager.getNoteSpacing(editNote.getNoteType()) +
+            (NoteSpacing.getNoteSpacing(editNote.getNoteType()) +
                 (editNote.getAccidental().getWidthFactor() *
-                    LayoutManager.ACCIDENTAL_WIDTH)) *
-            line.getNoteDistChangeRatio()
+                    NoteSpacing.ACCIDENTAL_WIDTH)) *
+                line.getNoteDistChangeRatio()
         );
 
         for (var i = xIndex + 1; i < line.noteCount(); i++) {
@@ -1202,7 +1265,7 @@ public final class Score
 
         if (
             (line.getTuplets().findInterval(xIndex) != null) &&
-            (oldNote.getNoteType() != editNote.getNoteType())
+                (oldNote.getNoteType() != editNote.getNoteType())
         ) {
             mainFrame.showErrorMessage(
                 "Cannot modify a triplet with different note type."
@@ -1212,17 +1275,17 @@ public final class Score
 
         editNote.setXPos(
             oldNote.getXPos() +
-            ((editNote.getAccidental().getWidthFactor() -
+                ((editNote.getAccidental().getWidthFactor() -
                     oldNote.getAccidental().getWidthFactor()) *
-                LayoutManager.ACCIDENTAL_WIDTH)
+                    NoteSpacing.ACCIDENTAL_WIDTH)
         );
         var shift = Math.round(
-            ((LayoutManager.getNoteSpacing(editNote.getNoteType()) -
-                    LayoutManager.getNoteSpacing(oldNote.getNoteType())) +
+            ((NoteSpacing.getNoteSpacing(editNote.getNoteType()) -
+                NoteSpacing.getNoteSpacing(oldNote.getNoteType())) +
                 ((editNote.getAccidental().getWidthFactor() -
-                        oldNote.getAccidental().getWidthFactor()) *
-                    LayoutManager.ACCIDENTAL_WIDTH)) *
-            line.getNoteDistChangeRatio()
+                    oldNote.getAccidental().getWidthFactor()) *
+                    NoteSpacing.ACCIDENTAL_WIDTH)) *
+                line.getNoteDistChangeRatio()
         );
         line.setNote(xIndex, editNote);
 
@@ -1251,7 +1314,7 @@ public final class Score
         if (xIndex < (line.noteCount() - 1)) {
             var shift =
                 line.getNote(xIndex).getXPos() -
-                line.getNote(xIndex + 1).getXPos();
+                    line.getNote(xIndex + 1).getXPos();
 
             for (var i = xIndex + 1; i < line.noteCount(); i++) {
                 line.getNote(i).setXPos(line.getNote(i).getXPos() + shift);
@@ -1393,7 +1456,7 @@ public final class Score
     private Pair<
         ArrayList<Interval>,
         ArrayList<Interval>
-    > getDynamicsIntervalsFromSelection() {
+        > getDynamicsIntervalsFromSelection() {
         var line = composition.getLine(selectionManager.getSelectedNotesLine());
         var crescendos = line.getCrescendos();
         var diminuendos = line.getDiminuendos();
@@ -1485,10 +1548,10 @@ public final class Score
         if (!repeatExists) {
             var answer = mainFrame.showConfirmDialog(
                 """
-                It does not make sense to create a first-second ending without a right side \
-                repeat.
-
-                Do you want to continue anyway?""",
+                    It does not make sense to create a first-second ending without a right side \
+                    repeat.
+                    
+                    Do you want to continue anyway?""",
                 JOptionPane.YES_NO_OPTION,
                 JOptionPane.WARNING_MESSAGE
             );
@@ -1703,7 +1766,7 @@ public final class Score
 
                 if (
                     (fromRectangle && selectionManager.getDragRectangle().intersects(helper)) ||
-                    (!fromRectangle && helper.contains(selectionManager.getDragStart()))
+                        (!fromRectangle && helper.contains(selectionManager.getDragStart()))
                 ) {
                     selectionManager.setSelectedNotesLine(lineIndex);
 
@@ -1809,7 +1872,7 @@ public final class Score
         var yPos = note.getYPos();
         return (
             (Math.round((angle * xPos) + distance) * direction) <=
-            (yPos * NOTE_Y_OFFSET * direction)
+                (yPos * NOTE_Y_OFFSET * direction)
         );
     }
 
@@ -1855,7 +1918,7 @@ public final class Score
         } else {
             note.acceleration.lengthening = (int) Math.round(
                 (note.getYPos() * NOTE_Y_OFFSET) -
-                ((angle * note.getXPos()) + distance)
+                    ((angle * note.getXPos()) + distance)
             );
         }
     }
@@ -1863,18 +1926,6 @@ public final class Score
     @Override
     public Composition getComposition() {
         return composition;
-    }
-
-    @NotNull
-    @Override
-    public LayoutManager getLayoutManager() {
-        return layoutManager;
-    }
-
-    @Nullable
-    @Override
-    public LayoutResult getLayoutResult() {
-        return layoutManager.getLayoutResult();
     }
 
     @Handler
@@ -1885,8 +1936,15 @@ public final class Score
 
     @Handler
     public void onLayoutChanged(@NotNull LayoutChangeMessage message) {
-        if (message.getHeightChanged()) {
-            layoutManager.invalidateFromSection(message.getSection());
+        // Invalidate layout for affected lines when content changes
+        if (message.getChangeType() == LayoutChangeMessage.ChangeType.CONTENT) {
+            var staffPanel = mainPanel.getStaffPanel();
+
+            if (staffPanel != null) {
+                for (var linePanel : staffPanel.getLinePanels()) {
+                    linePanel.getLineComponent().invalidateLayout();
+                }
+            }
         }
 
         // Clear inspector hover immediately when layout changes to avoid stale bounds
@@ -1923,7 +1981,7 @@ public final class Score
         for (var l = 0; l < composition.lineCount(); l++) {
             var line = composition.getLine(l);
 
-            for (var li = line.getBeamings().listIterator(); li.hasNext();) {
+            for (var li = line.getBeamings().listIterator(); li.hasNext(); ) {
                 calculateLengthenings(li.next().getStart(), line, false);
             }
         }
@@ -1942,6 +2000,7 @@ public final class Score
         // Update the MainPanel with the new composition
         if (mainPanel != null) {
             mainPanel.setComposition(composition);
+            setupLineComponentState();
         }
 
         // mainFrame.setMode(Mode.NOTE_EDIT);
@@ -2018,14 +2077,15 @@ public final class Score
                         syllableRelation
                     );
                 } else if (c == '-') {
+                    // Gould/Ross: hyphen = syllable division only (always single hyphen)
                     if (
                         (lyrics.charAt(i + 1) == '-') ||
-                        (lyrics.charAt(i + 1) == '\n')
+                            (lyrics.charAt(i + 1) == '\n')
                     ) {
                         syllableRelation = Note.SyllableRelation.ONE_DASH;
                         i++;
                     } else {
-                        syllableRelation = Note.SyllableRelation.DASH;
+                        syllableRelation = Note.SyllableRelation.ONE_DASH;
                     }
 
                     noteIndex = setSyllableForNextNote(
@@ -2035,28 +2095,21 @@ public final class Score
                         syllableRelation
                     );
                 } else { // c == '_'
+                    // Gould/Ross: underscore = duration only (always extender line)
                     var eus = beginIndex + i + 1;
 
                     while (
                         ((eus < composition.getLyrics().length()) &&
                             (composition.getLyrics().charAt(eus) == '_')) ||
-                        (((eus + 1) < composition.getLyrics().length()) &&
-                            (composition.getLyrics().charAt(eus) == '\n') &&
-                            (composition.getLyrics().charAt(eus + 1) == '_'))
+                            (((eus + 1) < composition.getLyrics().length()) &&
+                                (composition.getLyrics().charAt(eus) == '\n') &&
+                                (composition.getLyrics().charAt(eus + 1) == '_'))
                     ) {
                         eus++;
                     }
 
-                    if (eus < composition.getLyrics().length()) {
-                        var eusc = composition.getLyrics().charAt(eus);
-                        syllableRelation = ((eusc == ' ') ||
-                                (eusc == '\n') ||
-                                (eusc == '-'))
-                            ? Note.SyllableRelation.EXTENDER
-                            : Note.SyllableRelation.DASH;
-                    } else {
-                        syllableRelation = Note.SyllableRelation.EXTENDER;
-                    }
+                    // Always use EXTENDER for underscores (duration indication)
+                    syllableRelation = Note.SyllableRelation.EXTENDER;
 
                     if (i > 0) {
                         noteIndex = setSyllableForNextNote(
@@ -2067,18 +2120,6 @@ public final class Score
                         );
                     } else {
                         line.beginRelation = syllableRelation;
-                    }
-
-                    if (
-                        !syllable.equals(Constants.UNDERSCORE) &&
-                        (syllableRelation == Note.SyllableRelation.DASH)
-                    ) {
-                        noteIndex = setSyllableForNextNote(
-                            line,
-                            noteIndex,
-                            Constants.UNDERSCORE,
-                            Note.SyllableRelation.DASH
-                        );
                     }
                 }
 
@@ -2097,8 +2138,8 @@ public final class Score
             for (var i = 0; i < line.noteCount(); i++) {
                 System.out.println(
                     line.getNote(i).acceleration.syllable +
-                    "   Relation: " +
-                    line.getNote(i).acceleration.syllableRelation.name()
+                        "   Relation: " +
+                        line.getNote(i).acceleration.syllableRelation.name()
                 );
             }
 
@@ -2116,8 +2157,8 @@ public final class Score
 
         while (
             (index < line.noteCount()) &&
-            !line.getNote(index).getNoteType().isNote() &&
-            !line.getNote(index).isForceSyllable()
+                !line.getNote(index).getNoteType().isNote() &&
+                !line.getNote(index).isForceSyllable()
         ) {
             index++;
         }
@@ -2138,7 +2179,8 @@ public final class Score
 
     @Override
     public int getStartY() {
-        return layoutManager.getContentStartY();
+        // TODO: Calculate from component hierarchy
+        return 0;
     }
 
     public Dimension getSheetSize() {
@@ -2150,26 +2192,8 @@ public final class Score
     }
 
     public int getSheetHeight() {
-        // If layout not valid, do a measurement pass
-        if (!layoutManager.isValid()) {
-            int width = composition.getLineWidth();
-            int height = getHeight();
-
-            // Ensure valid dimensions for BufferedImage
-            if (width <= 0) {
-                width = 800;
-            }
-            if (height <= 0) {
-                height = 600;
-            }
-
-            var image = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
-            var g2 = image.createGraphics();
-            layoutManager.measure(g2);
-            g2.dispose();
-        }
-
-        return layoutManager.getTotalHeight();
+        // TODO: Calculate from component hierarchy
+        return getHeight();
     }
 
     public void drawWidthIfWiderLine(@NotNull Line line, boolean strict) {
@@ -2180,19 +2204,19 @@ public final class Score
             if (strict) {
                 idealSpace = endNote.getRealUpNoteRect().width;
             } else {
-                idealSpace = (LayoutManager.getNoteSpacing(endNote.getNoteType()) *
+                idealSpace = (NoteSpacing.getNoteSpacing(endNote.getNoteType()) *
                     line.getNoteDistChangeRatio()) +
-                20;
+                    20;
             }
 
             if (
                 line.getNote(line.noteCount() - 1).getXPos() >
-                (composition.getLineWidth() - idealSpace)
+                    (composition.getLineWidth() - idealSpace)
             ) {
                 var firstX = line.getNote(0).getXPos();
                 var ratio =
                     (composition.getLineWidth() - idealSpace - firstX) /
-                    (endNote.getXPos() - firstX);
+                        (endNote.getXPos() - firstX);
 
                 for (var i = 1; i < line.noteCount(); i++) {
                     var note = line.getNote(i);
@@ -2269,14 +2293,6 @@ public final class Score
         this.middleLineY = middleLineY;
     }
 
-    public ScoreRenderer getScoreRenderer() {
-        return scoreRenderer;
-    }
-
-    public MeasurementService getMeasurementService() {
-        return measurementService;
-    }
-
     public void setDragDisabled(boolean dragDisabled) {
         this.dragDisabled = dragDisabled;
     }
@@ -2340,7 +2356,7 @@ public final class Score
             var finalMessage = new MetaMessage();
             finalMessage.setMessage(
                 MidiMetaMessageTypes.SEQUENCE_NUMBER,
-                new byte[] {
+                new byte[]{
                     (byte) (-1 >> 8),
                     (byte) -1,
                     (byte) (-1 >> 8),
@@ -2365,7 +2381,8 @@ public final class Score
         var repeating = false;
         var trackTicks = ticks;
 
-        noteLoop:for (
+        noteLoop:
+        for (
             var noteIndex = 0;
             noteIndex < line.noteCount();
             noteIndex++
@@ -2374,8 +2391,8 @@ public final class Score
 
             if (
                 playWithRepeats &&
-                ((note.getNoteType() == NoteType.REPEAT_RIGHT) ||
-                    (note.getNoteType() == NoteType.REPEAT_LEFT_RIGHT))
+                    ((note.getNoteType() == NoteType.REPEAT_RIGHT) ||
+                        (note.getNoteType() == NoteType.REPEAT_LEFT_RIGHT))
             ) {
                 if (repeating) {
                     repeating = false;
@@ -2411,7 +2428,7 @@ public final class Score
                 for (; noteIndex <= firstSecondInterval.getEnd(); noteIndex++) {
                     if (
                         line.getNote(noteIndex).getNoteType() ==
-                        NoteType.REPEAT_RIGHT
+                            NoteType.REPEAT_RIGHT
                     ) {
                         noteIndex--;
                         continue noteLoop;
@@ -2421,8 +2438,8 @@ public final class Score
 
             if (
                 !playWithRepeats &&
-                (firstSecondInterval != null) &&
-                (note.getNoteType() == NoteType.REPEAT_RIGHT)
+                    (firstSecondInterval != null) &&
+                    (note.getNoteType() == NoteType.REPEAT_RIGHT)
             ) {
                 noteIndex = firstSecondInterval.getEnd();
                 continue;
@@ -2460,7 +2477,7 @@ public final class Score
 
                 if (
                     (firstSecondInterval != null) &&
-                    (note.getNoteType() == NoteType.REPEAT_RIGHT)
+                        (note.getNoteType() == NoteType.REPEAT_RIGHT)
                 ) {
                     noteIndex = firstSecondInterval.getEnd();
                     continue;
@@ -2508,7 +2525,7 @@ public final class Score
             var playNoteMessage = new MetaMessage();
             playNoteMessage.setMessage(
                 MidiMetaMessageTypes.SEQUENCE_NUMBER,
-                new byte[] {
+                new byte[]{
                     (byte) (lineNum >> 8),
                     (byte) lineNum,
                     (byte) (noteIndex >> 8),
@@ -2582,7 +2599,7 @@ public final class Score
                 }
                 default -> mainFrame.showErrorMessage(
                     "Programmer's error: no such NoteType in MIDI generation: " +
-                    type
+                        type
                 );
             }
         } else if (type.isNote() || type.isRest()) {
@@ -2663,7 +2680,7 @@ public final class Score
         var midiTempo = 60000000 / ((realTempo * manualTempoChange) / 100);
         tempoMessage.setMessage(
             MidiMetaMessageTypes.SET_TEMPO,
-            new byte[] {
+            new byte[]{
                 (byte) (midiTempo >> 16),
                 (byte) (midiTempo >> 8),
                 (byte) midiTempo,
@@ -2756,7 +2773,7 @@ public final class Score
             } else if (editNotePoint.getMovement() != 0) {
                 insertEditNote(
                     editNotePoint.getXIndex() +
-                    ((editNotePoint.getMovement() < 0) ? 0 : 1),
+                        ((editNotePoint.getMovement() < 0) ? 0 : 1),
                     line
                 );
             } else {
@@ -2822,14 +2839,14 @@ public final class Score
 
         if (
             (selectionManager.getSelectionBegin() == -1) &&
-            (Math.abs(
+                (Math.abs(
                     e.getY() -
-                    getNoteYPos(
-                        0,
-                        (e.getY() - composition.getTopPadding()) / rowHeight
-                    )
+                        getNoteYPos(
+                            0,
+                            (e.getY() - composition.getTopPadding()) / rowHeight
+                        )
                 ) <=
-                (2 * STAFF_LINE_Y_OFFSET))
+                    (2 * STAFF_LINE_Y_OFFSET))
         ) {
             var lineIndex = (e.getY() - composition.getTopPadding()) / rowHeight;
 
@@ -2865,42 +2882,41 @@ public final class Score
 
         if (
             (editNote == null) ||
-            (control != Control.MOUSE) ||
-            (mode != Mode.NOTE_EDIT)
+                (control != Control.MOUSE) ||
+                (mode != Mode.NOTE_EDIT)
         ) {
             return;
         }
 
-        var x = e.getX() + CURSOR_OFFSET.x;
-        var y = e.getY() + CURSOR_OFFSET.y;
+        var x = e.getX();
+        var y = e.getY();
         var newEditNotePoint = editModeManager.getNewEditNotePoint();
         var editNotePoint = editModeManager.getEditNotePoint();
 
-        newEditNotePoint.setLineIndex(
-            (y - composition.getTopPadding()) / rowHeight
-        );
+        // Use component hierarchy to find which line the mouse is over
+        var lineIndex = findLineIndexAtPoint(y);
 
-        if (
-            (newEditNotePoint.getLineIndex() < 0) ||
-            (newEditNotePoint.getLineIndex() >= composition.lineCount())
-        ) {
+        if (lineIndex < 0 || lineIndex >= composition.lineCount()) {
             return;
         }
 
-        newEditNotePoint.setY(
-            (int) ((y -
-                    composition.getTopPadding() -
-                    (newEditNotePoint.getLineIndex() * rowHeight) -
-                    (NOTE_Y_OFFSET / 2)) /
-                NOTE_Y_OFFSET)
-        );
+        newEditNotePoint.setLineIndex(lineIndex);
+
+        // Get the actual middle line Y from the LineComponent (for new component rendering)
+        // or fall back to the old calculation (for legacy rendering)
+        var actualLineMiddleY = getActualLineMiddleY(newEditNotePoint.getLineIndex());
+        var yPos = Math.round((y - actualLineMiddleY) / NOTE_Y_OFFSET);
+
+        // Convert yPos to the internal coordinate system used by newEditNotePoint.Y
+        // newEditNotePoint.Y = yPos + 12 (where 12 = (STAFF_LINES_ABOVE + 3) * 2)
+        newEditNotePoint.setY((int) yPos + ((STAFF_LINES_ABOVE + 3) * 2));
 
         if (
             (newEditNotePoint.getY() <= 0) ||
-            (newEditNotePoint.getY() >
-                (((STAFF_LINES_BELOW + STAFF_LINE_COUNT + STAFF_LINES_ABOVE) *
+                (newEditNotePoint.getY() >
+                    (((STAFF_LINES_BELOW + STAFF_LINE_COUNT + STAFF_LINES_ABOVE) *
                         2) +
-                    1))
+                        1))
         ) {
             return;
         }
@@ -2928,6 +2944,78 @@ public final class Score
             );
     }
 
+    /**
+     * Gets the actual middle line Y coordinate for a given line index from the LineComponent.
+     *
+     * @param lineIndex The line index
+     * @return The absolute Y coordinate of the middle line in Score coordinates
+     */
+    /**
+     * Finds the line index at the given Y coordinate using the component hierarchy.
+     *
+     * @param y Y coordinate in Score coordinates
+     * @return The line index, or -1 if not found
+     */
+    private int findLineIndexAtPoint(int y) {
+        if (mainPanel == null) {
+            return (y - composition.getTopPadding()) / rowHeight;
+        }
+
+        var staffPanel = mainPanel.getStaffPanel();
+
+        if (staffPanel == null) {
+            return (y - composition.getTopPadding()) / rowHeight;
+        }
+
+        // Convert Score Y to StaffPanel Y
+        var staffPanelY = y - mainPanel.getY() - staffPanel.getY();
+
+        // Find which LinePanel contains this Y
+        var linePanels = staffPanel.getLinePanels();
+
+        for (var i = 0; i < linePanels.size(); i++) {
+            var linePanel = linePanels.get(i);
+            var bounds = linePanel.getBounds();
+
+            if (staffPanelY >= bounds.y && staffPanelY < bounds.y + bounds.height) {
+                return i;
+            }
+        }
+
+        return -1;
+    }
+
+    private int getActualLineMiddleY(int lineIndex) {
+        if (mainPanel == null) {
+            return 0;
+        }
+
+        var staffPanel = mainPanel.getStaffPanel();
+
+        if (staffPanel == null) {
+            return 0;
+        }
+
+        var linePanels = staffPanel.getLinePanels();
+
+        if (lineIndex < 0 || lineIndex >= linePanels.size()) {
+            return 0;
+        }
+
+        var linePanel = linePanels.get(lineIndex);
+        var lineComponent = linePanel.getLineComponent();
+
+        // Get the LineComponent's Y position in the Score coordinate system
+        var linePanelY = linePanel.getY();
+        var staffPanelY = staffPanel.getY();
+        var mainPanelY = mainPanel.getY();
+        var lineComponentY = lineComponent.getY();
+        var componentMiddleLineY = lineComponent.getMiddleLineY();
+
+        // The middleLineY is relative to the LineComponent, so we need to add the offsets
+        return mainPanelY + staffPanelY + linePanelY + lineComponentY + componentMiddleLineY;
+    }
+
     private void setNewEditNotePoint(int xPos, int lineIndex) {
         var x = xPos - Note.HOT_SPOT.x;
         var foundX = 0;
@@ -2937,7 +3025,7 @@ public final class Score
         for (var i = 0; i < (line.noteCount() - 1); i++) {
             if (
                 (line.getNote(i).getXPos() < x) &&
-                (x <= line.getNote(i + 1).getXPos())
+                    (x <= line.getNote(i + 1).getXPos())
             ) {
                 foundX = i + 1;
                 break;
@@ -2958,8 +3046,8 @@ public final class Score
         } else {
             var period =
                 ((x - line.getNote(foundX - 1).getXPos()) * 4) /
-                (line.getNote(foundX).getXPos() -
-                    line.getNote(foundX - 1).getXPos());
+                    (line.getNote(foundX).getXPos() -
+                        line.getNote(foundX - 1).getXPos());
             //if(foundX==endNote-1 && period!=0) period=3;
             switch (period) {
                 case 0 -> {
@@ -3016,8 +3104,8 @@ public final class Score
 
         if (
             !editModeManager.isEditNoteVisible() &&
-            (control == Control.MOUSE) &&
-            (mode == Mode.NOTE_EDIT)
+                (control == Control.MOUSE) &&
+                (mode == Mode.NOTE_EDIT)
         ) {
             editModeManager.setEditNoteVisible(true);
             //setCursor(activeNote==null ? Cursor.getDefaultCursor() : emptyCursor);
@@ -3034,8 +3122,8 @@ public final class Score
 
         if (
             editModeManager.isEditNoteVisible() &&
-            (control == Control.MOUSE) &&
-            (mode == Mode.NOTE_EDIT)
+                (control == Control.MOUSE) &&
+                (mode == Mode.NOTE_EDIT)
         ) {
             editModeManager.setEditNoteVisible(false);
             repaint();
@@ -3048,20 +3136,14 @@ public final class Score
      * Checks elements in priority order (most specific first).
      */
     private void updateInspectorHover(int x, int y) {
-        if (!layoutManager.isValid()) {
-            DebugState.setHoveredElement(null);
-            return;
-        }
+        // TODO: Implement hover detection with component hierarchy
+        DebugState.setHoveredElement(null);
+    }
 
-        var layoutResult = layoutManager.getLayoutResult();
-
-        if (layoutResult == null) {
-            DebugState.setHoveredElement(null);
-            return;
-        }
-
-        // Check in order of priority (most specific first)
-
+    // Stubbed method - temporarily disabled
+    @SuppressWarnings("unused")
+    private void updateInspectorHoverOLD(int x, int y) {
+        /*
         // 1. Check notes
         int noteCount = 0;
         for (var line : layoutResult.getLines()) {
@@ -3134,7 +3216,7 @@ public final class Score
                 // Log element counts for this line
                 System.out.printf(
                     "[Inspector Debug] Line hit | Total notes: %d, syllables: %d, " +
-                    "attachments: %d, ranges: %d%n",
+                        "attachments: %d, ranges: %d%n",
                     noteCount,
                     syllableCount,
                     attachmentCount,
@@ -3203,6 +3285,7 @@ public final class Score
 
         // No element found
         DebugState.setHoveredElement(null);
+        */
     }
 
     /**
@@ -3271,13 +3354,15 @@ public final class Score
     }
 
     @Override
-    public void keyTyped(KeyEvent e) {}
+    public void keyTyped(KeyEvent e) {
+    }
 
     //***********************
     // FocusListener methods
     //***********************
     @Override
-    public void focusGained(FocusEvent e) {}
+    public void focusGained(FocusEvent e) {
+    }
 
     @Override
     public void focusLost(@NotNull FocusEvent e) {
@@ -3307,6 +3392,7 @@ public final class Score
         double scale,
         @NotNull MyBorder border
     ) {
+        // Image export not yet implemented with component-based rendering
         var g2 = image.createGraphics();
         g2.setRenderingHint(
             RenderingHints.KEY_ANTIALIASING,
@@ -3318,8 +3404,8 @@ public final class Score
         );
         g2.setColor(background);
         g2.fillRect(0, 0, image.getWidth(), image.getHeight());
-        g2.translate(border.getLeft(), border.getTop());
-        scoreRenderer.render(g2, false, scale);
+        g2.setColor(Color.BLACK);
+        g2.drawString("Image export not yet implemented", 50, 50);
         g2.dispose();
     }
 
@@ -3332,6 +3418,10 @@ public final class Score
             var line = (data[0] << 8) | data[1];
             var note = (data[2] << 8) | data[3];
             playbackStateManager.setPlayingPosition(line, note);
+
+            // Update LineComponent state for component-based rendering
+            updateLineComponentPlaybackState(line, note);
+
             repaint();
         } else if (meta.getType() == MidiMetaMessageTypes.END_OF_TRACK) {
             // When we reach the end of the track, stop/rewind.
@@ -3351,6 +3441,10 @@ public final class Score
     private void resetPlayback() {
         MidiController.sequencer.setTickPosition(0);
         playbackStateManager.reset();
+
+        // Reset LineComponent playback state
+        updateLineComponentPlaybackState(-1, -1);
+
         repaint();
     }
 
@@ -3482,8 +3576,8 @@ public final class Score
                 if (code == KeyEvent.VK_LEFT) {
                     if (
                         (editNotePoint.getXIndex() == 0) &&
-                        ((editNotePoint.getMovement() != 0) ||
-                            (line.noteCount() == 0))
+                            ((editNotePoint.getMovement() != 0) ||
+                                (line.noteCount() == 0))
                     ) {
                         if (editNotePoint.getLineIndex() > 0) {
                             editNotePoint.setLineIndex(editNotePoint.getLineIndex() - 1);
@@ -3496,12 +3590,12 @@ public final class Score
                         }
                     } else if (
                         (editNotePoint.getMovement() == 0) &&
-                        (editNotePoint.getXIndex() < line.noteCount())
+                            (editNotePoint.getXIndex() < line.noteCount())
                     ) {
                         editNotePoint.setMovement(
                             (editNotePoint.getXIndex() != 0)
                                 ? ((line.getNote(editNotePoint.getXIndex() - 1).getXPos() -
-                                    line.getNote(editNotePoint.getXIndex()).getXPos()) / 2)
+                                line.getNote(editNotePoint.getXIndex()).getXPos()) / 2)
                                 : FIRST_NOTE_IN_LINE_MOVEMENT
                         );
                     } else {
@@ -3512,7 +3606,7 @@ public final class Score
                     if (editNotePoint.getXIndex() == line.noteCount()) {
                         if (
                             editNotePoint.getLineIndex() <
-                            (composition.lineCount() - 1)
+                                (composition.lineCount() - 1)
                         ) {
                             editNotePoint.setLineIndex(editNotePoint.getLineIndex() + 1);
                             editNotePoint.setXIndex(0);
@@ -3531,7 +3625,7 @@ public final class Score
                             editNotePoint.setMovement(
                                 (editNotePoint.getXIndex() != 0)
                                     ? ((line.getNote(editNotePoint.getXIndex() - 1).getXPos() -
-                                        line.getNote(editNotePoint.getXIndex()).getXPos()) / 2)
+                                    line.getNote(editNotePoint.getXIndex()).getXPos()) / 2)
                                     : FIRST_NOTE_IN_LINE_MOVEMENT
                             );
                         } else {
@@ -3570,7 +3664,7 @@ public final class Score
                     } else if (editNotePoint.getMovement() != 0) {
                         insertEditNote(
                             editNotePoint.getXIndex() +
-                            ((editNotePoint.getMovement() < 0) ? 0 : 1),
+                                ((editNotePoint.getMovement() < 0) ? 0 : 1),
                             line
                         );
                     } else {

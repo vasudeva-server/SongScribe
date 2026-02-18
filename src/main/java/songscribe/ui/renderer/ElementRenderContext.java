@@ -27,6 +27,7 @@ import org.jetbrains.annotations.Nullable;
 
 import songscribe.music.Composition;
 import songscribe.music.Line;
+import songscribe.ui.layout2.LayoutResult;
 import songscribe.ui.menu.DebugState;
 
 /**
@@ -41,10 +42,15 @@ import songscribe.ui.menu.DebugState;
  */
 public class ElementRenderContext {
 
+    /** Default X position for key signature (after clef). */
+    public static final int DEFAULT_LEADING_KEYS_POS = 32;
+
     private final Composition composition;
     private Line currentLine;
     private int middleLineY;
     private int lineIndex;
+    private int leadingKeysPos = DEFAULT_LEADING_KEYS_POS;
+    private LayoutResult layoutResult;
 
     /**
      * Creates a render context for the given composition.
@@ -125,6 +131,44 @@ public class ElementRenderContext {
      */
     public void setLineIndex(int lineIndex) {
         this.lineIndex = lineIndex;
+    }
+
+    /**
+     * Returns the X position where key signature accidentals begin.
+     */
+    public int getLeadingKeysPos() {
+        return leadingKeysPos;
+    }
+
+    /**
+     * Sets the X position where key signature accidentals begin.
+     *
+     * @param leadingKeysPos X position in pixels
+     */
+    public void setLeadingKeysPos(int leadingKeysPos) {
+        this.leadingKeysPos = leadingKeysPos;
+    }
+
+    /**
+     * Returns the layout result for the current line.
+     * <p>
+     * The layout result contains calculated bounds for all elements on the line.
+     * Renderers can use this to get pre-calculated positions instead of
+     * computing them during rendering.
+     *
+     * @return The layout result, or null if not available
+     */
+    public @Nullable LayoutResult getLayoutResult() {
+        return layoutResult;
+    }
+
+    /**
+     * Sets the layout result for the current line.
+     *
+     * @param layoutResult The layout result from LayoutEngine
+     */
+    public void setLayoutResult(@Nullable LayoutResult layoutResult) {
+        this.layoutResult = layoutResult;
     }
 
     /**

@@ -95,6 +95,122 @@ public final class FormatMigrator {
         for (var i = 0; i < line.noteCount(); i++) {
             migrateNoteAttachments(line.getNote(i));
         }
+
+        // Migrate line-level Y offsets to per-instance offsets (Phase 11)
+        migrateLineLevelOffsets(line);
+    }
+
+    /**
+     * Migrates deprecated line-level Y position offsets to per-instance offsets.
+     * <p>
+     * This converts the legacy line-level fields (tempoChangeYPos, beatChangeYPos,
+     * firstSecondEndingYPos, trillYPos) to per-instance offsets on the respective
+     * element objects. After migration, the line-level fields can be ignored.
+     * <p>
+     * Also migrates below-staff annotations to above-staff with an appropriate userYOffset.
+     *
+     * @param line The line to migrate
+     */
+    @SuppressWarnings("deprecation")
+    private static void migrateLineLevelOffsets(@NotNull Line line) {
+        // Migrate tempo change offset to per-instance
+        int tempoOffset = line.getTempoChangeYPos();
+
+        if (tempoOffset != 0) {
+            for (var i = 0; i < line.noteCount(); i++) {
+                var note = line.getNote(i);
+
+                if (note.getTempoChange() != null) {
+                    // Find the TempoAttachment and add the line-level offset to its userYOffset
+                    for (var attachment : note.getAttachments()) {
+                        if (attachment instanceof TempoAttachment) {
+                            attachment.setUserYOffset(attachment.getUserYOffset() + tempoOffset);
+                        }
+                    }
+                }
+            }
+        }
+
+        // Migrate beat change offset to per-instance
+        int beatChangeOffset = line.getBeatChangeYPos();
+
+        // BeatChange has a default offset, only migrate if different
+        if (beatChangeOffset != songscribe.ui.layout.LayoutStylesheet.BEAT_CHANGE_DEFAULT_Y) {
+            int delta = beatChangeOffset - songscribe.ui.layout.LayoutStylesheet.BEAT_CHANGE_DEFAULT_Y;
+
+            for (var i = 0; i < line.noteCount(); i++) {
+                var note = line.getNote(i);
+
+                if (note.getBeatChange() != null) {
+                    for (var attachment : note.getAttachments()) {
+                        if (attachment instanceof BeatChangeAttachment) {
+                            attachment.setUserYOffset(attachment.getUserYOffset() + delta);
+                        }
+                    }
+                }
+            }
+        }
+
+        // Migrate first/second ending offset to per-instance
+        int endingOffset = line.getFirstSecondEndingYPos();
+
+        if (endingOffset != songscribe.ui.layout.LayoutStylesheet.ENDING_DEFAULT_Y) {
+            int delta = endingOffset - songscribe.ui.layout.LayoutStylesheet.ENDING_DEFAULT_Y;
+
+            for (var element : line.getRangeElements()) {
+                if (element instanceof Ending ending) {
+                    ending.setYPosition(ending.getYPosition() + delta);
+                }
+            }
+        }
+
+        // Migrate trill offset to per-instance
+        int trillOffset = line.getTrillYPos();
+
+        if (trillOffset != songscribe.ui.layout.LayoutStylesheet.TRILL_DEFAULT_Y) {
+            int delta = trillOffset - songscribe.ui.layout.LayoutStylesheet.TRILL_DEFAULT_Y;
+
+            for (var element : line.getRangeElements()) {
+                if (element instanceof Trill trill) {
+                    trill.setYPosition(trill.getYPosition() + delta);
+                }
+            }
+        }
+
+        // Migrate below-staff annotations to above-staff with userYOffset
+        migrateAnnotationPositions(line);
+    }
+
+    /**
+     * Migrates below-staff annotations to above-staff positioning.
+     * <p>
+     * Legacy documents may have annotations positioned below the staff using
+     * the BELOW constant. The new layout system always positions annotations
+     * above the staff, so we migrate below-staff annotations by:
+     * 1. Setting yPos to ABOVE (the new default)
+     * 2. Adding a userYOffset to preserve the visual position
+     *
+     * @param line The line containing annotations to migrate
+     */
+    private static void migrateAnnotationPositions(@NotNull Line line) {
+        for (var i = 0; i < line.noteCount(); i++) {
+            var annotation = line.getNote(i).getAnnotation();
+
+            if (annotation == null) {
+                continue;
+            }
+
+            // Check if annotation is below staff (legacy positioning)
+            int yPos = annotation.getYPos();
+
+            if (yPos > 0) {
+                // Below-staff annotation: convert to above-staff with offset
+                // The visual position difference is: BELOW - ABOVE = yPos - ABOVE
+                double offset = yPos - songscribe.music.Annotation.ABOVE;
+                annotation.setUserYOffset(annotation.getUserYOffset() + offset);
+                annotation.setYPos(songscribe.music.Annotation.ABOVE);
+            }
+        }
     }
 
     /**

@@ -33,8 +33,9 @@ import songscribe.music.Note;
  * <ul>
  *   <li>A parent note it attaches to</li>
  *   <li>Horizontal alignment relative to the note (LEFT, CENTER, RIGHT)</li>
- *   <li>Vertical placement (ABOVE or BELOW the staff)</li>
  * </ul>
+ * <p>
+ * Vertical placement is determined by the layout calculator, not stored as a property.
  * <p>
  * Concrete subclasses will be created in Phase 3.
  */
@@ -49,22 +50,11 @@ public abstract class Attachment extends LineElement {
         RIGHT
     }
 
-    /**
-     * Vertical placement of the attachment relative to the staff.
-     */
-    public enum Placement {
-        ABOVE,
-        BELOW
-    }
-
     /** The note this attachment belongs to. */
     private @Nullable Note parentNote;
 
     /** Horizontal alignment relative to the note. */
     private @NotNull Alignment alignment = Alignment.CENTER;
-
-    /** Vertical placement relative to the staff. */
-    private @NotNull Placement placement = Placement.ABOVE;
 
     /**
      * Returns the note this attachment belongs to.
@@ -92,33 +82,5 @@ public abstract class Attachment extends LineElement {
      */
     public void setAlignment(@NotNull Alignment alignment) {
         this.alignment = alignment;
-    }
-
-    /**
-     * Returns the vertical placement relative to the staff.
-     */
-    public @NotNull Placement getPlacement() {
-        return placement;
-    }
-
-    /**
-     * Sets the vertical placement relative to the staff.
-     */
-    public void setPlacement(@NotNull Placement placement) {
-        this.placement = placement;
-    }
-
-    /**
-     * Returns whether this attachment is placed above the staff.
-     */
-    public boolean isAbove() {
-        return placement == Placement.ABOVE;
-    }
-
-    /**
-     * Returns whether this attachment is placed below the staff.
-     */
-    public boolean isBelow() {
-        return placement == Placement.BELOW;
     }
 }

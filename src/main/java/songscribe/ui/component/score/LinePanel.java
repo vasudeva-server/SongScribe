@@ -66,6 +66,23 @@ public class LinePanel extends JPanel {
         @NotNull Line line,
         int lineIndex
     ) {
+        this(composition, line, lineIndex, lineIndex == composition.lineCount() - 1);
+    }
+
+    /**
+     * Creates a new LinePanel with explicit isLastLine flag.
+     *
+     * @param composition The composition model
+     * @param line        The line to render
+     * @param lineIndex   Index of the line
+     * @param isLastLine  Whether this is the last line in the composition
+     */
+    public LinePanel(
+        @NotNull Composition composition,
+        @NotNull Line line,
+        int lineIndex,
+        boolean isLastLine
+    ) {
         super();
         setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
         setOpaque(false);
@@ -82,6 +99,7 @@ public class LinePanel extends JPanel {
         lyricsComponent = new LineLyricsComponent();
         lyricsComponent.setComposition(composition);
         lyricsComponent.setLine(line, lineIndex);
+        lyricsComponent.setIsLastLine(isLastLine);
         lyricsComponent.setAlignmentX(LEFT_ALIGNMENT);
 
         add(lineComponent);

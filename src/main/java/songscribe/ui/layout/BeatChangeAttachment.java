@@ -51,7 +51,6 @@ public class BeatChangeAttachment extends Attachment {
      */
     public BeatChangeAttachment(@NotNull BeatChange beatChange) {
         this.beatChange = beatChange;
-        setPlacement(Placement.ABOVE);
         setAlignment(Alignment.CENTER);
     }
 
@@ -64,7 +63,6 @@ public class BeatChangeAttachment extends Attachment {
     public BeatChangeAttachment(@Nullable Note parent, @NotNull BeatChange beatChange) {
         this.beatChange = beatChange;
         setParentNote(parent);
-        setPlacement(Placement.ABOVE);
         setAlignment(Alignment.CENTER);
 
         if (parent != null) {

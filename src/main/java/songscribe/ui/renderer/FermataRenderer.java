@@ -29,7 +29,7 @@ import java.awt.geom.Ellipse2D;
 import org.jetbrains.annotations.NotNull;
 
 import songscribe.music.Note;
-import songscribe.ui.layout.LayoutStylesheet;
+import songscribe.ui.layout.FermataAttachment;
 
 /**
  * Renders fermata symbols above or below notes.
@@ -90,12 +90,10 @@ public class FermataRenderer extends BaseElementRenderer<Note> {
         }
 
         var transform = g2.getTransform();
-        int middleLineY = ctx.getMiddleLineY();
 
         // Position fermata above the note
-        int fermataYPos = getFermataYPos(element);
         int noteX = element.getXPos();
-        int noteY = middleLineY + (int) (fermataYPos * LayoutStylesheet.NOTE_Y_OFFSET);
+        int noteY = getEffectiveFermataYPos(element, ctx);
 
         g2.translate(noteX - 5, noteY + 12);
         g2.scale(0.0625, 0.0625);
@@ -105,6 +103,28 @@ public class FermataRenderer extends BaseElementRenderer<Note> {
         g2.fill(FERMATA);
 
         g2.setTransform(transform);
+    }
+
+    /**
+     * Gets the Y position for a fermata from layout result.
+     */
+    private int getEffectiveFermataYPos(
+        @NotNull Note note,
+        @NotNull ElementRenderContext ctx
+    ) {
+        var layoutResult = ctx.getLayoutResult();
+
+        if (layoutResult == null) {
+            throw new IllegalStateException("Layout result must be available for rendering");
+        }
+
+        var bounds = layoutResult.findAttachmentBounds(note, FermataAttachment.class);
+
+        if (bounds == null) {
+            throw new IllegalStateException("No bounds found for FermataAttachment on note");
+        }
+
+        return (int) bounds.getTop();
     }
 
     /**

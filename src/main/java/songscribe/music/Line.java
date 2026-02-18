@@ -28,7 +28,6 @@ import java.util.stream.IntStream;
 import org.jetbrains.annotations.NotNull;
 
 import songscribe.data.IntervalSet;
-import songscribe.ui.component.Score;
 import songscribe.ui.layout.BeamGroup;
 import songscribe.ui.layout.LayoutStylesheet;
 import songscribe.ui.layout.RangeElement;
@@ -37,9 +36,9 @@ import songscribe.ui.message.MessageCenter;
 
 public class Line {
 
-    private static final int[][] FLAT_SHARP_ORDINAL = new int[][] {
-        new int[] { 0, 3, 6, 2, 5, 1, 4 },
-        new int[] { 4, 1, 5, 2, 6, 3, 0 },
+    private static final int[][] FLAT_SHARP_ORDINAL = new int[][]{
+        new int[]{0, 3, 6, 2, 5, 1, 4},
+        new int[]{4, 1, 5, 2, 6, 3, 0},
     };
     private final IntervalSet beamings = new IntervalSet();
     private final IntervalSet ties = new IntervalSet();
@@ -47,7 +46,7 @@ public class Line {
     private final IntervalSet firstSecondEndings = new IntervalSet();
     private final IntervalSet crescendo = new IntervalSet();
     private final IntervalSet diminuendo = new IntervalSet();
-    private final IntervalSet[] intervalSets = new IntervalSet[] {
+    private final IntervalSet[] intervalSets = new IntervalSet[]{
         beamings,
         ties,
         tuplets,
@@ -75,33 +74,63 @@ public class Line {
     private final List<Note> notes = new ArrayList<>();
 
     // ---------------------------------------------------------------------
-    // View Properties (Y positions relative to middleLineY)
+    // Legacy View Properties (Y positions relative to middleLineY)
     // ---------------------------------------------------------------------
-    // These Y position fields store offsets from the middle staff line (B line).
-    // Negative values are above the staff, positive values are below.
-    // The actual rendering Y = middleLineY + yPos.
+    // DEPRECATED: These line-level Y position fields are retained for backward
+    // compatibility with legacy documents (pre-Phase 11). New code should use
+    // per-instance offsets on the element objects themselves:
+    //   - Tempo/BeatChange: use Attachment.getUserYOffset()
+    //   - Endings: use Ending.getYPosition()
+    //   - Trills: use Trill.getYPosition()
+    //   - Annotations: use Annotation.getUserYOffset()
     //
-    // Default values provide reasonable positioning. Users can adjust these
-    // via vertical dragging (VerticalAdjustment), which modifies the values.
-    //
-    // Future: These may be migrated to offset semantics where the model stores
-    // only the user's adjustment from a layout-calculated default position
-    // (similar to Note.xOffset).
+    // When loading legacy documents, FormatMigrator converts these line-level
+    // offsets to per-instance offsets. LineIO no longer writes these fields
+    // to new documents.
     // ---------------------------------------------------------------------
 
-    /** Y offset for tempo change display. Line 0 default: -40, others: -24. Set by Composition.addLine(). */
+    /**
+     * Y offset for tempo change display. Line 0 default: -40, others: -24.
+     *
+     * @deprecated Use per-instance userYOffset on TempoAttachment instead.
+     *             Retained for backward compatibility with legacy documents.
+     */
+    @Deprecated
     private int tempoChangeYPos = 0;
 
-    /** Y offset for beat change display (default: -24, above staff). */
+    /**
+     * Y offset for beat change display (default: -24, above staff).
+     *
+     * @deprecated Use per-instance userYOffset on BeatChangeAttachment instead.
+     *             Retained for backward compatibility with legacy documents.
+     */
+    @Deprecated
     private int beatChangeYPos = LayoutStylesheet.BEAT_CHANGE_DEFAULT_Y;
 
-    /** Y offset for lyrics display (default: 50, below staff). */
+    /**
+     * Y offset for lyrics display (default: 50, below staff).
+     * <p>
+     * Note: This field is still in active use for line-level lyrics positioning.
+     * Per-instance lyrics offsets are not yet implemented.
+     */
     private int lyricsYPos = LayoutStylesheet.LYRICS_DEFAULT_Y;
 
-    /** Y offset for first/second ending display (default: -25, above staff). */
+    /**
+     * Y offset for first/second ending display (default: -25, above staff).
+     *
+     * @deprecated Use per-instance yPosition on Ending objects instead.
+     *             Retained for backward compatibility with legacy documents.
+     */
+    @Deprecated
     private int firstSecondEndingYPos = LayoutStylesheet.ENDING_DEFAULT_Y;
 
-    /** Y offset for trill display (default: -27, above staff). */
+    /**
+     * Y offset for trill display (default: -27, above staff).
+     *
+     * @deprecated Use per-instance yPosition on Trill objects instead.
+     *             Retained for backward compatibility with legacy documents.
+     */
+    @Deprecated
     private int trillYPos = LayoutStylesheet.TRILL_DEFAULT_Y;
 
     /** Ratio multiplier for horizontal note spacing (default: 1.0, user-adjustable). */
@@ -138,6 +167,7 @@ public class Line {
         modifiedComposition();
         note.setLine(this);
         notes.add(note);
+        attachInitialTempoIfNeeded(note);
     }
 
     public void addNote(int index, Note note) {
@@ -145,12 +175,36 @@ public class Line {
         note.setLine(this);
         notes.add(index, note);
         shiftIntervals(intervalSets, index, 1);
+        attachInitialTempoIfNeeded(note);
     }
 
     public void setNote(int index, Note note) {
         modifiedComposition();
         note.setLine(this);
         notes.set(index, note);
+        attachInitialTempoIfNeeded(note);
+    }
+
+    /**
+     * Attaches the composition's initial tempo to the first note of the first line
+     * if it doesn't already have a tempo change.
+     */
+    private void attachInitialTempoIfNeeded(Note note) {
+        if (composition == null) {
+            return;
+        }
+
+        // Check if this is the first note of the first line
+        boolean isFirstLine = composition.indexOfLine(this) == 0;
+        boolean isFirstNote = notes.size() == 1 && notes.get(0) == note;
+
+        if (isFirstLine && isFirstNote && note.getTempoChange() == null) {
+            var initialTempo = composition.getTempo();
+
+            if (initialTempo != null) {
+                note.setTempoChange(initialTempo);
+            }
+        }
     }
 
     public Note getNote(int index) {
@@ -208,19 +262,35 @@ public class Line {
         );
     }
 
+    /**
+     * @deprecated Use per-instance userYOffset on TempoAttachment instead.
+     */
+    @Deprecated
     public int getTempoChangeYPos() {
         return tempoChangeYPos;
     }
 
+    /**
+     * @deprecated Use per-instance userYOffset on TempoAttachment instead.
+     */
+    @Deprecated
     public void setTempoChangeYPos(int tempoChangeYPos) {
         this.tempoChangeYPos = tempoChangeYPos;
         modifiedComposition();
     }
 
+    /**
+     * @deprecated Use per-instance userYOffset on BeatChangeAttachment instead.
+     */
+    @Deprecated
     public int getBeatChangeYPos() {
         return beatChangeYPos;
     }
 
+    /**
+     * @deprecated Use per-instance userYOffset on BeatChangeAttachment instead.
+     */
+    @Deprecated
     public void setBeatChangeYPos(int beatChangeYPos) {
         this.beatChangeYPos = beatChangeYPos;
         modifiedComposition();
@@ -235,19 +305,35 @@ public class Line {
         modifiedComposition();
     }
 
+    /**
+     * @deprecated Use per-instance yPosition on Ending objects instead.
+     */
+    @Deprecated
     public int getFirstSecondEndingYPos() {
         return firstSecondEndingYPos;
     }
 
+    /**
+     * @deprecated Use per-instance yPosition on Ending objects instead.
+     */
+    @Deprecated
     public void setFirstSecondEndingYPos(int fsEndingYPos) {
         firstSecondEndingYPos = fsEndingYPos;
         modifiedComposition();
     }
 
+    /**
+     * @deprecated Use per-instance yPosition on Trill objects instead.
+     */
+    @Deprecated
     public int getTrillYPos() {
         return trillYPos;
     }
 
+    /**
+     * @deprecated Use per-instance yPosition on Trill objects instead.
+     */
+    @Deprecated
     public void setTrillYPos(int trillYPos) {
         this.trillYPos = trillYPos;
         modifiedComposition();
@@ -305,13 +391,13 @@ public class Line {
         shiftIntervals(copyIntervalSets, 0, xIndex);
 
         for (var i = 0; i < intervalSets.length; i++) {
-            for (var li = copyIntervalSets[i].listIterator(); li.hasNext();) {
+            for (var li = copyIntervalSets[i].listIterator(); li.hasNext(); ) {
                 var iv = li.next();
                 intervalSets[i].addInterval(
-                        iv.getStart(),
-                        iv.getEnd(),
-                        iv.getData()
-                    );
+                    iv.getStart(),
+                    iv.getEnd(),
+                    iv.getData()
+                );
             }
         }
 

@@ -206,7 +206,7 @@ public final class Composition {
 
         g.dispose();
 
-        // Initial topPadding of 0 - LayoutManager.measure() will calculate the correct value
+        // Initial topPadding of 0 - layout calculation will set the correct value
         // attributionStartY is calculated from title, will be recalculated on layout
         attributionStartY = calculateAttributionStartY();
         addLine(new Line());
@@ -260,7 +260,7 @@ public final class Composition {
             StringUtils.stripLinefeeds(text)
         );
         title = processText(strippedTitle);
-        // Note: attributionStartY recalculation removed - LayoutManager.measure()
+        // Note: attributionStartY recalculation removed - layout calculation
         // handles this via the LayoutChangeMessage below
 
         MessageCenter.post(new LayoutChangeMessage(
@@ -543,7 +543,7 @@ public final class Composition {
     public void setTitleFont(Font font) {
         titleFont = font;
         titleFontMetrics = MyFontUtils.getFontMetrics(titleFont);
-        // Note: attributionStartY recalculation removed - LayoutManager.measure()
+        // Note: attributionStartY recalculation removed - layout calculation
         // handles this via the LayoutChangeMessage below
         setModified(true);
 
@@ -674,7 +674,7 @@ public final class Composition {
      * Calculates initial attributionStartY based on title font height.
      * <p>
      * This is only used in the constructor to provide an initial value.
-     * LayoutManager.measure() calculates the actual attribution position using
+     * Layout calculation determines the actual attribution position using
      * proper block flow layout. This method will be removed when attributionStartY
      * is migrated to an offset-based system.
      */
@@ -689,7 +689,7 @@ public final class Composition {
      * Recalculates topPadding based on font sizes.
      * <p>
      * @deprecated This method is deprecated and will be removed in a future version.
-     * LayoutManager.measure() now handles topPadding calculation. This method is only
+     * Layout calculation now handles topPadding. This method is only
      * called by CompositionIO.getComposition() for legacy file handling.
      */
     @Deprecated

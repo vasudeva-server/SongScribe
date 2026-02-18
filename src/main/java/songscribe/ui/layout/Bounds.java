@@ -20,6 +20,7 @@
 
 package songscribe.ui.layout;
 
+import java.awt.geom.Area;
 import java.awt.geom.Rectangle2D;
 
 import org.jetbrains.annotations.NotNull;
@@ -99,6 +100,24 @@ public final class Bounds {
             contentBounds.getY() - top,
             contentBounds.getWidth() + left + right,
             contentBounds.getHeight() + top + bottom
+        );
+        return new Bounds(contentBounds, marginBounds);
+    }
+
+    /**
+     * Creates bounds with a Margin object (left, bottom, right).
+     * Note: Margin uses left/bottom/right only (no top margin).
+     *
+     * @param contentBounds The content rectangle
+     * @param margin        The margin specification
+     * @return New bounds with the specified margins
+     */
+    public static Bounds withMargin(@NotNull Rectangle2D contentBounds, @NotNull Margin margin) {
+        var marginBounds = new Rectangle2D.Double(
+            contentBounds.getX() - margin.left(),
+            contentBounds.getY(),
+            contentBounds.getWidth() + margin.left() + margin.right(),
+            contentBounds.getHeight() + margin.bottom()
         );
         return new Bounds(contentBounds, marginBounds);
     }
@@ -246,6 +265,16 @@ public final class Bounds {
         double thisBottomMargin = getMarginBottom() - getBottom();
         double belowTopMargin = below.getTop() - below.getMarginTop();
         return Math.max(thisBottomMargin, belowTopMargin);
+    }
+
+    /**
+     * Converts the margin bounds to a java.awt.geom.Area for complex collision detection.
+     * Used by the layout engine for handling irregular shapes like L-shaped ending brackets.
+     *
+     * @return An Area representing the margin bounds
+     */
+    public @NotNull Area toArea() {
+        return new Area(marginBounds);
     }
 
     /**

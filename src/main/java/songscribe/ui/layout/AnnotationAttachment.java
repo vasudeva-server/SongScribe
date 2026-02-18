@@ -50,7 +50,6 @@ public class AnnotationAttachment extends Attachment {
      */
     public AnnotationAttachment(@NotNull String text) {
         this.annotation = new Annotation(text);
-        setPlacement(Placement.ABOVE);
         setAlignment(Alignment.LEFT);
     }
 
@@ -61,7 +60,6 @@ public class AnnotationAttachment extends Attachment {
      */
     public AnnotationAttachment(@NotNull Annotation annotation) {
         this.annotation = annotation;
-        setPlacement(Placement.ABOVE);
         setAlignment(Alignment.LEFT);
     }
 
@@ -74,7 +72,6 @@ public class AnnotationAttachment extends Attachment {
     public AnnotationAttachment(@Nullable Note parent, @NotNull Annotation annotation) {
         this.annotation = annotation;
         setParentNote(parent);
-        setPlacement(Placement.ABOVE);
         setAlignment(Alignment.LEFT);
 
         if (parent != null) {

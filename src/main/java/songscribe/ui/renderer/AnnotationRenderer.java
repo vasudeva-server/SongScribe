@@ -25,7 +25,7 @@ import java.awt.Graphics2D;
 import org.jetbrains.annotations.NotNull;
 
 import songscribe.music.Note;
-import songscribe.ui.layout.LayoutStylesheet;
+import songscribe.ui.layout.AnnotationAttachment;
 
 /**
  * Renders text annotations attached to notes.
@@ -81,15 +81,13 @@ public class AnnotationRenderer extends BaseElementRenderer<Note> {
             return;
         }
 
-        int middleLineY = ctx.getMiddleLineY();
-
         // Set font
         g2.setFont(composition.getAnnotationFont());
         g2.setColor(NOTE_COLOR);
 
         // Calculate position
         float x = (float) getAnnotationXPos(g2, element);
-        float y = getAnnotationYPos(ctx.getLineIndex(), element, middleLineY, line);
+        float y = getAnnotationYPos(element, ctx);
 
         // Draw the annotation text
         var text = annotation.getAnnotation();
@@ -129,21 +127,24 @@ public class AnnotationRenderer extends BaseElementRenderer<Note> {
     }
 
     /**
-     * Calculates the Y position for an annotation.
+     * Gets the Y position for an annotation from layout result.
      */
     private float getAnnotationYPos(
-        int lineIndex,
         @NotNull Note note,
-        int middleLineY,
-        @NotNull songscribe.music.Line line
+        @NotNull ElementRenderContext ctx
     ) {
-        var annotation = note.getAnnotation();
+        var layoutResult = ctx.getLayoutResult();
 
-        if (annotation == null) {
-            return middleLineY;
+        if (layoutResult == null) {
+            throw new IllegalStateException("Layout result must be available for rendering");
         }
 
-        // Position based on the annotation's Y position setting
-        return middleLineY + (int) (0 * LayoutStylesheet.NOTE_Y_OFFSET) + annotation.getYPos();
+        var bounds = layoutResult.findAttachmentBounds(note, AnnotationAttachment.class);
+
+        if (bounds == null) {
+            throw new IllegalStateException("No bounds found for AnnotationAttachment on note");
+        }
+
+        return (float) bounds.getTop();
     }
 }

@@ -33,6 +33,9 @@ public final class AnnotationIO {
     public static final String XML_ALIGNMENT = "alignment";
     public static final String XML_YPOS = "ypos";
 
+    // version 2.1 (Phase 11)
+    public static final String XML_USER_Y_OFFSET = "useryoffset";
+
     private AnnotationIO() {}
 
     public static void writeAnnotation(
@@ -49,6 +52,11 @@ public final class AnnotationIO {
         XML.writeValue(pw, XML_NAME, a.getAnnotation());
         XML.writeValue(pw, XML_ALIGNMENT, Float.toString(a.getXAlignment()));
         XML.writeValue(pw, XML_YPOS, Integer.toString(a.getYPos()));
+
+        // Write userYOffset if non-zero (Phase 11)
+        if (a.getUserYOffset() != 0) {
+            XML.writeValue(pw, XML_USER_Y_OFFSET, Double.toString(a.getUserYOffset()));
+        }
 
         for (var i = 0; i < indent; i++) {
             pw.print(' ');
@@ -91,6 +99,9 @@ public final class AnnotationIO {
                         Float.parseFloat(str)
                     );
                     case XML_YPOS -> annotation.setYPos(Integer.parseInt(str));
+                    case XML_USER_Y_OFFSET -> annotation.setUserYOffset(
+                        Double.parseDouble(str)
+                    );
                 }
             }
 

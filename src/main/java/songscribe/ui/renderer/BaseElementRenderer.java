@@ -215,6 +215,43 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
         @NotNull ElementRenderContext ctx
     );
 
+    // ==========================================================================
+    // Coordinate Transformation Utilities
+    // ==========================================================================
+
+    /**
+     * Converts a Y coordinate from layout space to component space.
+     * <p>
+     * Layout coordinates are relative to middleLineY=0 (positive below, negative above).
+     * Component coordinates are relative to the component's top edge.
+     * <p>
+     * This transformation is needed when using layout results for rendering,
+     * as layout positions must be converted to actual screen positions.
+     *
+     * @param bounds The layout bounds
+     * @param ctx    The rendering context containing middleLineY
+     * @return The Y coordinate in component space
+     */
+    protected static int layoutYToComponentY(
+        @NotNull songscribe.ui.layout.Bounds bounds,
+        @NotNull ElementRenderContext ctx
+    ) {
+        return ctx.getMiddleLineY() + (int) bounds.getTop();
+    }
+
+    /**
+     * Converts an X coordinate from layout space to component space.
+     * <p>
+     * Currently, X coordinates are the same in both spaces, but this method
+     * is provided for symmetry and future-proofing.
+     *
+     * @param bounds The layout bounds
+     * @return The X coordinate in component space
+     */
+    protected static int layoutXToComponentX(@NotNull songscribe.ui.layout.Bounds bounds) {
+        return (int) bounds.getLeft();
+    }
+
     /**
      * Renders debug visualization (content bounds, margin bounds, element type label).
      * <p>

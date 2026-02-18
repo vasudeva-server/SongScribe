@@ -25,14 +25,22 @@ import java.awt.*;
 import org.jetbrains.annotations.NotNull;
 
 import songscribe.music.Line;
-import songscribe.music.Note;
 import songscribe.ui.layout.LayoutStylesheet;
+import songscribe.ui.renderer.ElementRenderContext;
+import songscribe.ui.renderer.LyricsRenderer;
 
 /**
  * Component that renders the in-line lyrics for a staff line.
  * <p>
  * Renders syllables positioned under their corresponding notes.
- * The vertical position is determined by {@link Line#getLyricsYPos()}.
+ * Uses {@link LyricsRenderer} for complete lyrics rendering including:
+ * <ul>
+ *   <li>Syllable text centered under notes</li>
+ *   <li>Dashes between syllables of the same word</li>
+ *   <li>Single dash/hyphen between words</li>
+ *   <li>Extender lines for held syllables</li>
+ *   <li>Begin-of-line continuation</li>
+ * </ul>
  */
 public class LineLyricsComponent extends ScoreComponent {
 
@@ -41,6 +49,9 @@ public class LineLyricsComponent extends ScoreComponent {
 
     /** Index of the line within the composition. */
     private int lineIndex;
+
+    /** Whether this is the last line in the composition. */
+    private boolean isLastLine;
 
     /**
      * Creates a new LineLyricsComponent.
@@ -77,48 +88,69 @@ public class LineLyricsComponent extends ScoreComponent {
         return lineIndex;
     }
 
+    /**
+     * Sets whether this is the last line in the composition.
+     *
+     * @param isLastLine true if this is the last line
+     */
+    public void setIsLastLine(boolean isLastLine) {
+        this.isLastLine = isLastLine;
+    }
+
+    /**
+     * Returns whether this is the last line in the composition.
+     */
+    public boolean isLastLine() {
+        return isLastLine;
+    }
+
     @Override
     protected void render(Graphics2D g2) {
         if (composition == null || line == null) {
             return;
         }
 
-        var noteCount = line.noteCount();
+        if (line.noteCount() == 0) {
+            return;
+        }
 
-        if (noteCount == 0) {
+        // Check if line has any lyrics
+        if (!hasLyrics()) {
             return;
         }
 
         var font = composition.getLyricsFont();
         g2.setFont(font);
-        g2.setColor(Color.BLACK);
         var metrics = g2.getFontMetrics();
 
-        // Y position is relative to component top (baseline)
-        var baselineY = metrics.getAscent();
+        // Create render context with adjusted middleLineY
+        // LyricsRenderer calculates: lyricsY = middleLineY + line.getLyricsYPos()
+        // We want lyricsY to be metrics.getAscent() (baseline relative to component top)
+        // So: middleLineY = metrics.getAscent() - line.getLyricsYPos()
+        var ctx = new ElementRenderContext(composition);
+        ctx.setCurrentLine(line);
+        ctx.setLineIndex(lineIndex);
+        ctx.setMiddleLineY(metrics.getAscent() - line.getLyricsYPos());
 
-        for (var i = 0; i < noteCount; i++) {
-            var note = line.getNote(i);
-            var syllable = note.acceleration.syllable;
+        // Delegate to LyricsRenderer for complete lyrics rendering
+        LyricsRenderer.getInstance().renderLyrics(g2, line, ctx, isLastLine);
+    }
 
-            if (syllable == null || syllable.isEmpty() || syllable.equals("_")) {
-                continue;
-            }
+    /**
+     * Checks if the line has any lyrics to render.
+     *
+     * @return true if the line has lyrics
+     */
+    private boolean hasLyrics() {
+        for (var i = 0; i < line.noteCount(); i++) {
+            var syllable = line.getNote(i).acceleration.syllable;
 
-            var syllableWidth = metrics.stringWidth(syllable);
-
-            // Center syllable under note hotspot
-            var x = (note.getXPos() + Note.HOT_SPOT.x) - (syllableWidth / 2) + note.getSyllableMovement();
-            g2.drawString(syllable, x, baselineY);
-
-            // Draw melisma extender if needed
-            if (note.acceleration.syllableRelation == Note.SyllableRelation.EXTENDER) {
-                var extenderX = x + syllableWidth + 2;
-                var extenderY = baselineY;
-                var extenderEndX = extenderX + 20;
-                g2.drawLine(extenderX, extenderY, extenderEndX, extenderY);
+            if (syllable != null && !syllable.isEmpty() && !syllable.equals("_")) {
+                return true;
             }
         }
+
+        return false;
     }
 
     @Override
@@ -127,19 +159,7 @@ public class LineLyricsComponent extends ScoreComponent {
             return new Dimension(0, 0);
         }
 
-        // Check if line has any lyrics
-        var hasLyrics = false;
-
-        for (var i = 0; i < line.noteCount(); i++) {
-            var syllable = line.getNote(i).acceleration.syllable;
-
-            if (syllable != null && !syllable.isEmpty() && !syllable.equals("_")) {
-                hasLyrics = true;
-                break;
-            }
-        }
-
-        if (!hasLyrics) {
+        if (!hasLyrics()) {
             return new Dimension(0, 0);
         }
 

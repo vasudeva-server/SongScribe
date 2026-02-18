@@ -97,7 +97,32 @@ public class TupletRenderer extends BaseElementRenderer<Tuplet> {
             return;
         }
 
-        renderTuplet(g2, line, ctx, startIndex, endIndex, element.getGrade(), element.getVerticalPosition());
+        int verticalPos = getEffectiveTupletVerticalPos(element, ctx);
+        renderTuplet(g2, line, ctx, startIndex, endIndex, element.getGrade(), verticalPos);
+    }
+
+    /**
+     * Gets the vertical position for a tuplet from layout result.
+     */
+    private int getEffectiveTupletVerticalPos(
+        @NotNull Tuplet element,
+        @NotNull ElementRenderContext ctx
+    ) {
+        var layoutResult = ctx.getLayoutResult();
+
+        if (layoutResult == null) {
+            throw new IllegalStateException("Layout result must be available for rendering");
+        }
+
+        var bounds = layoutResult.getBounds(element);
+
+        if (bounds == null) {
+            throw new IllegalStateException("No bounds found for Tuplet element");
+        }
+
+        // The layout result provides absolute Y, but renderTuplet uses a vertical adjustment
+        // TODO: Refactor renderTuplet to use absolute Y from layout result
+        return element.getVerticalPosition();
     }
 
     /**

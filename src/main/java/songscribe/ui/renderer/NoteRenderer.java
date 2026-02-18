@@ -201,7 +201,8 @@ public class NoteRenderer extends BaseElementRenderer<Note> {
         // Note: Don't set color here - respect the color set by the caller
         // (e.g., blue for edit notes, black for composition notes)
         var transform = g2.getTransform();
-        var noteX = element.getXPos();
+        var layoutResult = ctx.getLayoutResult();
+        var noteX = (layoutResult != null) ? layoutResult.getNoteX(element) : element.getXPos();
         var noteY = calculateNoteY(element.getYPos(), ctx.getMiddleLineY());
 
         g2.translate(noteX, noteY);

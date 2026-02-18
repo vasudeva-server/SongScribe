@@ -16,5 +16,8 @@
       "Bash(git push:*)"
     ]
   },
-  "plansDirectory": "./plans"
+  "plansDirectory": "./plans",
+  "env": {
+    "CLAUDE_CODE_TASK_LIST_ID": "SongScribe"
+  }
 }

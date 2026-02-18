@@ -76,43 +76,17 @@ public final class LineIO {
             );
         }
 
-        if (l.getFirstTempoChange() > -1) {
-            XML.writeValue(
-                pw,
-                XML_TEMPO_CHANGE_YPOS,
-                Integer.toString(l.getTempoChangeYPos())
-            );
-        }
+        // Note: Line-level Y position fields (tempoChangeYPos, beatChangeYPos,
+        // firstSecondEndingYPos, trillYPos) are no longer written to new documents.
+        // Per-instance offsets on element objects are used instead.
+        // These fields are still read by LineReader for backward compatibility.
 
-        if (l.getFirstBeatChange() > -1) {
-            XML.writeValue(
-                pw,
-                XML_BEAT_CHANGE_YPOS,
-                Integer.toString(l.getBeatChangeYPos())
-            );
-        }
-
+        // Lyrics Y position is still written (not yet migrated to per-instance)
         XML.writeValue(
             pw,
             XML_LYRICS_YPOS,
             Integer.toString(l.getLyricsYPos())
         );
-
-        if (!l.getFirstSecondEndings().isEmpty()) {
-            XML.writeValue(
-                pw,
-                XML_FSENDING_YPOS,
-                Integer.toString(l.getFirstSecondEndingYPos())
-            );
-        }
-
-        if (l.getFirstTrill() > -1) {
-            XML.writeValue(
-                pw,
-                XML_TRILL_YPOS,
-                Integer.toString(l.getTrillYPos())
-            );
-        }
 
         if (!l.getBeamings().isEmpty()) {
             XML.writeValue(pw, XML_BEAMINGS, intervalToString(l.getBeamings()));

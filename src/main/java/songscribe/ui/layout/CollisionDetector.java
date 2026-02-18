@@ -70,10 +70,10 @@ public final class CollisionDetector {
     ) {
         var collisions = new ArrayList<Attachment>();
 
-        // Check all notes for above-staff attachments
+        // Check all notes for attachments (all are now positioned above the staff)
         for (var note : line.getNotes()) {
             for (var attachment : note.getAttachments()) {
-                if (attachment.isAbove() && checkCollision(attachment, attribution)) {
+                if (checkCollision(attachment, attribution)) {
                     collisions.add(attachment);
                 }
             }

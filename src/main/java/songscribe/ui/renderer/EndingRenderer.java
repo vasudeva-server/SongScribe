@@ -28,8 +28,9 @@ import java.util.stream.IntStream;
 import org.jetbrains.annotations.NotNull;
 
 import songscribe.music.Line;
+import songscribe.music.Note;
 import songscribe.music.NoteType;
-import songscribe.ui.layout.LayoutStylesheet;
+import songscribe.ui.layout.Ending;
 import songscribe.ui.layout.LineElement;
 
 /**
@@ -154,7 +155,7 @@ public class EndingRenderer extends BaseElementRenderer<LineElement> {
                     x1 -= (x1 - previousX) / 2d;
                 }
 
-                drawEnding(g2, line, lineIndex, ctx, x1, x2, 1);
+                drawEnding(g2, line, lineIndex, ctx, x1, x2, 1, startNote, endNote);
             }
 
             // Render second ending (after repeat)
@@ -197,7 +198,8 @@ public class EndingRenderer extends BaseElementRenderer<LineElement> {
                     }
                 }
 
-                drawEnding(g2, line, lineIndex, ctx, repeatX + REPEAT_THICK_THIN_DIFF, x2, 2);
+                var repeatNote = line.getNote(repeatRightPos);
+                drawEnding(g2, line, lineIndex, ctx, repeatX + REPEAT_THICK_THIN_DIFF, x2, 2, repeatNote, endNote);
             }
         }
     }
@@ -212,6 +214,8 @@ public class EndingRenderer extends BaseElementRenderer<LineElement> {
      * @param x1        Left X coordinate
      * @param x2        Right X coordinate
      * @param number    Ending number (1 or 2)
+     * @param startNote The first note of the ending
+     * @param endNote   The last note of the ending
      */
     private void drawEnding(
         @NotNull Graphics2D g2,
@@ -220,10 +224,11 @@ public class EndingRenderer extends BaseElementRenderer<LineElement> {
         @NotNull ElementRenderContext ctx,
         double x1,
         double x2,
-        int number
+        int number,
+        @NotNull Note startNote,
+        @NotNull Note endNote
     ) {
-        int middleLineY = ctx.getMiddleLineY();
-        int y = middleLineY + (int) (line.getFirstSecondEndingYPos() * LayoutStylesheet.NOTE_Y_OFFSET / 4);
+        int y = getEffectiveEndingYPos(ctx, startNote, endNote);
         int fontHeight = BaseElementRenderer.ENDING_FONT.getSize() + 2;
 
         // Build bracket path
@@ -244,5 +249,28 @@ public class EndingRenderer extends BaseElementRenderer<LineElement> {
         // Draw ending number
         g2.setFont(BaseElementRenderer.ENDING_FONT);
         g2.drawString(Integer.toString(number), (float) x1 + 4, y - 3);
+    }
+
+    /**
+     * Gets the Y position for an ending bracket from layout result.
+     */
+    private int getEffectiveEndingYPos(
+        @NotNull ElementRenderContext ctx,
+        @NotNull Note startNote,
+        @NotNull Note endNote
+    ) {
+        var layoutResult = ctx.getLayoutResult();
+
+        if (layoutResult == null) {
+            throw new IllegalStateException("Layout result must be available for rendering");
+        }
+
+        var bounds = layoutResult.findRangeElementBounds(startNote, endNote, Ending.class);
+
+        if (bounds == null) {
+            throw new IllegalStateException("No bounds found for Ending element");
+        }
+
+        return (int) bounds.getTop();
     }
 }

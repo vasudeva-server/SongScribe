@@ -41,10 +41,16 @@ import songscribe.util.MyFontUtils;
  * Handles:
  * <ul>
  *   <li>Syllable text centered under each note</li>
- *   <li>Dashes between syllables of the same word (DASH relation)</li>
- *   <li>Single dash/hyphen between syllables (ONE_DASH relation)</li>
+ *   <li>Single hyphen between syllables of the same word (ONE_DASH relation)</li>
  *   <li>Extender lines for held syllables (EXTENDER relation)</li>
  *   <li>Begin-of-line continuation from previous line</li>
+ * </ul>
+ * <p>
+ * Following Gould/Ross engraving rules:
+ * <ul>
+ *   <li>Hyphen = syllable division only (single hyphen)</li>
+ *   <li>Extender = duration only (continuous line)</li>
+ *   <li>Never use multiple hyphens to show duration</li>
  * </ul>
  */
 public class LyricsRenderer {
@@ -54,36 +60,25 @@ public class LyricsRenderer {
     // ==========================================================================
 
     /**
-     * Stroke for dashed lines between syllables.
-     * Dash pattern: 3.937 on, 5.9055 off (approximately mm to points).
+     * Stroke for single hyphen between syllables.
+     * Following Gould/Ross rules: hyphen indicates syllable division only.
      */
-    private static final BasicStroke DASH_STROKE = new BasicStroke(
-        1f,
-        BasicStroke.CAP_BUTT,
-        BasicStroke.JOIN_MITER,
-        10f,
-        new float[]{3.937f, 5.9055f},
-        0f
-    );
-
-    /**
-     * Stroke for single hyphen/dash between words.
-     */
-    private static final BasicStroke LONG_DASH_STROKE = new BasicStroke(
+    private static final BasicStroke HYPHEN_STROKE = new BasicStroke(
         1f,
         BasicStroke.CAP_BUTT,
         BasicStroke.JOIN_MITER
     );
 
     /**
-     * Width of the long dash (hyphen).
+     * Width of the hyphen.
      */
-    private static final float LONG_DASH_WIDTH = 7f;
+    private static final float HYPHEN_WIDTH = 7f;
 
     /**
-     * Stroke for extender lines (underscores).
+     * Stroke for extender lines.
+     * Following Gould/Ross rules: extender indicates duration only.
      */
-    private static final BasicStroke UNDERSCORE_STROKE = new BasicStroke(
+    private static final BasicStroke EXTENDER_STROKE = new BasicStroke(
         0.836f,
         BasicStroke.CAP_BUTT,
         BasicStroke.JOIN_MITER
@@ -171,6 +166,28 @@ public class LyricsRenderer {
     // ==========================================================================
 
     /**
+     * Gets the Y position for lyrics from layout result.
+     */
+    private int getEffectiveLyricsYPos(
+        @NotNull Line line,
+        @NotNull ElementRenderContext ctx
+    ) {
+        var layoutResult = ctx.getLayoutResult();
+
+        if (layoutResult == null) {
+            throw new IllegalStateException("Layout result must be available for rendering");
+        }
+
+        var bounds = layoutResult.getBounds(line);
+
+        if (bounds == null) {
+            throw new IllegalStateException("No bounds found for Line (lyrics)");
+        }
+
+        return (int) bounds.getTop();
+    }
+
+    /**
      * Initializes font metrics on first call.
      */
     private void initializeMetrics(@NotNull Graphics2D g2, @NotNull ElementRenderContext ctx) {
@@ -185,9 +202,9 @@ public class LyricsRenderer {
 
         lyricsMaxDescent = metrics.getMaxDescent();
 
-        // Calculate dash offset based on x-height
-        var halfDashHeight = LONG_DASH_STROKE.getLineWidth() / 2;
-        dashOffset = MyFontUtils.getXHeight(g2) - halfDashHeight;
+        // Calculate hyphen offset based on x-height
+        var halfHyphenHeight = HYPHEN_STROKE.getLineWidth() / 2;
+        dashOffset = MyFontUtils.getXHeight(g2) - halfHyphenHeight;
     }
 
     /**
@@ -205,10 +222,9 @@ public class LyricsRenderer {
         int drawnIndex
     ) {
         var composition = ctx.getComposition();
-        var middleLineY = ctx.getMiddleLineY();
 
         // Calculate lyrics Y position
-        var lyricsY = middleLineY + line.getLyricsYPos();
+        var lyricsY = getEffectiveLyricsYPos(line, ctx);
 
         var font = composition.getLyricsFont();
         g2.setFont(font);
@@ -221,21 +237,23 @@ public class LyricsRenderer {
         // Draw syllable text (if not underscore placeholder)
         if (syllable != null && !syllable.equals(Constants.UNDERSCORE)) {
             syllableWidth = metrics.stringWidth(syllable);
-            var lyricsX = (note.getXPos() + Note.HOT_SPOT.x) -
+            var layoutResult = ctx.getLayoutResult();
+            var noteX = (layoutResult != null) ? layoutResult.getNoteX(note) : note.getXPos();
+            var lyricsX = (int) ((noteX + Note.HOT_SPOT.x) -
                 (syllableWidth / 2) +
-                note.getSyllableMovement();
+                note.getSyllableMovement());
 
             if (!syllable.isEmpty()) {
                 g2.drawString(syllable, lyricsX, lyricsY);
             }
 
-            // Handle begin-of-line dash (continuation from previous line)
+            // Handle begin-of-line hyphen (continuation from previous line)
             if (noteIndex == 0 && line.beginRelation == Note.SyllableRelation.ONE_DASH) {
-                g2.setStroke(LONG_DASH_STROKE);
+                g2.setStroke(HYPHEN_STROKE);
                 g2.draw(new Line2D.Float(
-                    lyricsX - LONG_DASH_WIDTH - 10,
+                    (float) (lyricsX - HYPHEN_WIDTH - 10),
                     dashY,
-                    lyricsX - 10,
+                    (float) (lyricsX - 10),
                     dashY
                 ));
             }
@@ -307,8 +325,7 @@ public class LyricsRenderer {
     ) {
         int endIndex;
 
-        if (relation == Note.SyllableRelation.DASH ||
-            relation == Note.SyllableRelation.ONE_DASH) {
+        if (relation == Note.SyllableRelation.ONE_DASH) {
             // Find next note with actual syllable (not underscore or empty)
             endIndex = noteIndex + 1;
 
@@ -377,7 +394,7 @@ public class LyricsRenderer {
         // At end of line
         if (endIndex == line.noteCount()) {
             return (relation == Note.SyllableRelation.ONE_DASH)
-                ? startX + (int) (LONG_DASH_WIDTH * 2f)
+                ? startX + (int) (HYPHEN_WIDTH * 2f)
                 : composition.getLineWidth();
         }
 
@@ -389,7 +406,7 @@ public class LyricsRenderer {
 
         if (relation == Note.SyllableRelation.ONE_DASH &&
             endNote.acceleration.syllable.isEmpty()) {
-            return startX + (int) (LONG_DASH_WIDTH * 2f);
+            return startX + (int) (HYPHEN_WIDTH * 2f);
         }
 
         // End before the next syllable
@@ -403,7 +420,10 @@ public class LyricsRenderer {
     }
 
     /**
-     * Draws the relation line (dash, extender, or single dash).
+     * Draws the relation line (hyphen or extender).
+     * Following Gould/Ross rules:
+     * - Hyphen (ONE_DASH) = syllable division only
+     * - Extender = duration only
      */
     private void drawRelation(
         @NotNull Graphics2D g2,
@@ -418,11 +438,9 @@ public class LyricsRenderer {
         @NotNull Note note
     ) {
         switch (relation) {
-            case DASH -> drawDashes(g2, line, startIndex, endIndex, startX, endX, (int) dashY);
-
             case EXTENDER -> drawExtender(g2, line, startIndex, endIndex, startX, endX, (int) lyricsY);
 
-            case ONE_DASH -> drawSingleDash(g2, note, startX, endX, dashY);
+            case ONE_DASH -> drawHyphen(g2, note, startX, endX, dashY);
 
             default -> {
                 // NO relation - nothing to draw
@@ -431,42 +449,8 @@ public class LyricsRenderer {
     }
 
     /**
-     * Draws dashed lines between syllables.
-     */
-    private void drawDashes(
-        @NotNull Graphics2D g2,
-        @NotNull Line line,
-        int startIndex,
-        int endIndex,
-        int startX,
-        int endX,
-        int dashY
-    ) {
-        g2.setStroke(DASH_STROKE);
-
-        // Calculate dash alignment
-        var dashPhase = DASH_STROKE.getDashArray()[0] + DASH_STROKE.getDashArray()[1];
-        var totalWidth = endX - startX;
-        var length = Math.round(
-            (float) Math.floor((totalWidth - DASH_STROKE.getDashArray()[1]) / dashPhase) *
-                dashPhase + DASH_STROKE.getDashArray()[0]
-        );
-        var gap = (totalWidth - length) / 2;
-
-        drawWithEmptySyllablesExclusion(
-            g2,
-            startX + gap,
-            dashY,
-            endX - gap,
-            dashY,
-            line,
-            startIndex,
-            endIndex + 1
-        );
-    }
-
-    /**
-     * Draws extender line (underscore) for held syllables.
+     * Draws extender line (continuous line) for held syllables.
+     * Following Gould/Ross: extender indicates duration only.
      */
     private void drawExtender(
         @NotNull Graphics2D g2,
@@ -477,7 +461,7 @@ public class LyricsRenderer {
         int endX,
         int lyricsY
     ) {
-        g2.setStroke(UNDERSCORE_STROKE);
+        g2.setStroke(EXTENDER_STROKE);
         drawWithEmptySyllablesExclusion(
             g2,
             startX,
@@ -491,16 +475,17 @@ public class LyricsRenderer {
     }
 
     /**
-     * Draws a single dash (hyphen) between syllables.
+     * Draws a single hyphen between syllables.
+     * Following Gould/Ross: hyphen indicates syllable division only.
      */
-    private void drawSingleDash(
+    private void drawHyphen(
         @NotNull Graphics2D g2,
         @NotNull Note note,
         int startX,
         int endX,
         float dashY
     ) {
-        g2.setStroke(LONG_DASH_STROKE);
+        g2.setStroke(HYPHEN_STROKE);
 
         // Store the position for potential adjustment
         note.acceleration.longDashPosition = ((endX - startX) / 2f) + startX;
@@ -511,9 +496,9 @@ public class LyricsRenderer {
             : note.getXPos() + note.getSyllableRelationMovement();
 
         g2.draw(new Line2D.Float(
-            centerX - (LONG_DASH_WIDTH / 2f),
+            centerX - (HYPHEN_WIDTH / 2f),
             dashY,
-            centerX + (LONG_DASH_WIDTH / 2f),
+            centerX + (HYPHEN_WIDTH / 2f),
             dashY
         ));
     }

@@ -98,7 +98,8 @@ public class DynamicsRenderer extends BaseElementRenderer<LineElement> {
             return;
         }
 
-        renderHairpin(g2, ctx, anchorNote, endNote, true, 0, 0, 0);
+        int yShift = getEffectiveDynamicsYShift(element, ctx);
+        renderHairpin(g2, ctx, anchorNote, endNote, true, 0, 0, yShift);
     }
 
     private void renderDiminuendo(
@@ -113,7 +114,33 @@ public class DynamicsRenderer extends BaseElementRenderer<LineElement> {
             return;
         }
 
-        renderHairpin(g2, ctx, anchorNote, endNote, false, 0, 0, 0);
+        int yShift = getEffectiveDynamicsYShift(element, ctx);
+        renderHairpin(g2, ctx, anchorNote, endNote, false, 0, 0, yShift);
+    }
+
+    /**
+     * Gets the Y shift for a dynamics element from layout result.
+     */
+    private int getEffectiveDynamicsYShift(
+        @NotNull LineElement element,
+        @NotNull ElementRenderContext ctx
+    ) {
+        var layoutResult = ctx.getLayoutResult();
+
+        if (layoutResult == null) {
+            throw new IllegalStateException("Layout result must be available for rendering");
+        }
+
+        var bounds = layoutResult.getBounds(element);
+
+        if (bounds == null) {
+            throw new IllegalStateException("No bounds found for dynamics element");
+        }
+
+        // Calculate shift from default position
+        int middleLineY = ctx.getMiddleLineY();
+        int defaultY = middleLineY + (int) (6 * LayoutStylesheet.NOTE_Y_OFFSET);
+        return (int) bounds.getTop() - defaultY;
     }
 
     /**

@@ -89,27 +89,14 @@ public class ExportPDFAction extends UIAction {
             leftMargin = scaledMargin * leftMarginFactor;
         }
 
-        var pdfDoc = new PDFDocument();
-        pdfDoc.setTitle(composition.getTitle());
-        pdfDoc.setAuthor(Constants.PACKAGE_NAME);
-
-        var page = pdfDoc.createPage(
-            new Rectangle2D.Double(0, 0, paperWidth, paperHeight)
-        );
-        var g2 = page.getGraphics2D();
-        g2.translate(leftMargin, data.topMargin * resolution);
-        score.getScoreRenderer().render(g2, false, scale);
-
-        try {
-            pdfDoc.writeToFile(outputFile);
-
-            if (isGUI) {
-                FileUtils.openExportFile(mainFrame, outputFile);
-            }
-        } catch (RuntimeException e) {
-            if (isGUI) {
-                mainFrame.showErrorMessage(MainFrame.COULD_NOT_SAVE_MESSAGE);
-            }
+        // PDF export not yet implemented with component-based rendering
+        if (isGUI) {
+            mainFrame.showErrorMessage(
+                "PDF export is not yet implemented. " +
+                "Export functionality will be restored in a future update."
+            );
+        } else {
+            System.err.println("ERROR: PDF export is not yet implemented");
         }
     }
 

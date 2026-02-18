@@ -1,0 +1,60 @@
+{
+  "plansDirectory": "plans",
+  "masterPlans": [
+    {
+      "path": "plans/score-layout-redesign/score-layout-redesign.md",
+      "subdirectory": "score-layout-redesign",
+      "active": false,
+      "created": "2026-01-31",
+      "description": "Layout System Redesign: Swing Component + LineElement Hierarchy"
+    },
+    {
+      "path": "plans/completed/line-engraving-rewrite/line-engraving-rewrite.md",
+      "subdirectory": "completed/line-engraving-rewrite",
+      "active": false,
+      "created": "2026-02-01",
+      "completed": "2026-02-01",
+      "description": "Complete layout system rewrite with note columns and lyric-driven spacing"
+    }
+  ],
+  "subPlans": [
+    {
+      "path": "plans/completed/score-layout-redesign/remove-layout-manager.md",
+      "parentPlan": "plans/score-layout-redesign/score-layout-redesign.md",
+      "parentPhase": 2,
+      "status": "completed",
+      "createdAt": "2026-01-31",
+      "merged": true,
+      "mergedAt": "2026-01-31"
+    },
+    {
+      "path": "plans/completed/score-layout-redesign/line-layout-engine.md",
+      "parentPlan": "plans/score-layout-redesign/score-layout-redesign.md",
+      "parentPhase": 5,
+      "status": "completed",
+      "createdAt": "2026-01-31",
+      "merged": true,
+      "mergedAt": "2026-01-31"
+    },
+    {
+      "path": "plans/completed/line-engraving-rewrite/phase-2-horizontal-spacing.md",
+      "parentPlan": "plans/completed/line-engraving-rewrite/line-engraving-rewrite.md",
+      "parentPhase": 2,
+      "status": "completed",
+      "createdAt": "2026-02-01",
+      "completedAt": "2026-02-01",
+      "type": "sub-plan",
+      "prePlanned": false
+    },
+    {
+      "path": "plans/completed/line-engraving-rewrite/phase-3-vertical-layout.md",
+      "parentPlan": "plans/completed/line-engraving-rewrite/line-engraving-rewrite.md",
+      "parentPhase": 3,
+      "status": "completed",
+      "createdAt": "2026-02-01",
+      "completedAt": "2026-02-01",
+      "type": "sub-plan",
+      "prePlanned": false
+    }
+  ]
+}

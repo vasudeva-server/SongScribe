@@ -31,6 +31,15 @@ public class Annotation {
     private String annotation;
     private float xAlignment = Component.LEFT_ALIGNMENT;
 
+    /**
+     * User's manual vertical offset from the layout-calculated position.
+     * <p>
+     * Final Y position = calculated position + userYOffset
+     * <p>
+     * Default is 0 (no user adjustment). Positive values move down, negative up.
+     */
+    private double userYOffset = 0;
+
     public Annotation(String annotation) {
         this.annotation = annotation;
     }
@@ -62,5 +71,13 @@ public class Annotation {
 
     public void setYPos(int yPos) {
         this.yPos = yPos;
+    }
+
+    public double getUserYOffset() {
+        return userYOffset;
+    }
+
+    public void setUserYOffset(double userYOffset) {
+        this.userYOffset = userYOffset;
     }
 }

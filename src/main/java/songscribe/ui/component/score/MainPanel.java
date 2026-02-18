@@ -38,6 +38,8 @@ import songscribe.ui.layout.LineElement;
  * <ul>
  *   <li>{@link TitleComponent} - composition title</li>
  *   <li>{@link StaffPanel} - all staff lines</li>
+ *   <li>{@link TextPanel} - under-lyrics sections (lyrics, Bangla, translation)</li>
+ *   <li>{@link FootnotesComponent} - footnotes</li>
  * </ul>
  * <p>
  * This panel serves as the entry point for the new JComponent-based
@@ -51,6 +53,12 @@ public class MainPanel extends JPanel {
 
     /** Staff panel containing all staff lines. */
     private final StaffPanel staffPanel;
+
+    /** Text panel containing under-lyrics sections. */
+    private final TextPanel textPanel;
+
+    /** Footnotes component. */
+    private final FootnotesComponent footnotesComponent;
 
     /** The composition model. */
     private Composition composition;
@@ -74,9 +82,17 @@ public class MainPanel extends JPanel {
         staffPanel = new StaffPanel();
         staffPanel.setAlignmentX(LEFT_ALIGNMENT);
 
+        textPanel = new TextPanel();
+        textPanel.setAlignmentX(LEFT_ALIGNMENT);
+
+        footnotesComponent = new FootnotesComponent();
+        footnotesComponent.setAlignmentX(LEFT_ALIGNMENT);
+
         add(titleComponent);
         add(Box.createVerticalStrut(scoreMarginTop));
         add(staffPanel);
+        add(textPanel);
+        add(footnotesComponent);
     }
 
     /**
@@ -88,6 +104,8 @@ public class MainPanel extends JPanel {
         this.composition = composition;
         titleComponent.setComposition(composition);
         staffPanel.setComposition(composition);
+        textPanel.setComposition(composition);
+        footnotesComponent.setComposition(composition);
         revalidate();
         repaint();
     }
@@ -111,6 +129,20 @@ public class MainPanel extends JPanel {
      */
     public StaffPanel getStaffPanel() {
         return staffPanel;
+    }
+
+    /**
+     * Returns the text panel.
+     */
+    public TextPanel getTextPanel() {
+        return textPanel;
+    }
+
+    /**
+     * Returns the footnotes component.
+     */
+    public FootnotesComponent getFootnotesComponent() {
+        return footnotesComponent;
     }
 
     /**
@@ -186,8 +218,13 @@ public class MainPanel extends JPanel {
 
         var titleSize = titleComponent.getPreferredSize();
         var scoreSize = staffPanel.getPreferredSize();
+        var textSize = textPanel.getPreferredSize();
+        var footnotesSize = footnotesComponent.getPreferredSize();
 
-        var width = Math.max(titleSize.width, scoreSize.width);
+        var width = Math.max(
+            titleSize.width,
+            Math.max(scoreSize.width, Math.max(textSize.width, footnotesSize.width))
+        );
         var height = titleSize.height;
 
         if (titleSize.height > 0 && scoreSize.height > 0) {
@@ -195,6 +232,8 @@ public class MainPanel extends JPanel {
         }
 
         height += scoreSize.height;
+        height += textSize.height;
+        height += footnotesSize.height;
 
         return new Dimension(width, height);
     }
