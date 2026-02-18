@@ -1,0 +1,21 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="SongScribe debug" type="Application" factoryName="Application" activateToolWindowBeforeRun="false" show_console_on_std_err="true" show_console_on_std_out="true">
+    <option name="ALTERNATIVE_JRE_PATH" value="/opt/homebrew/Cellar/openjdk/21.0.1/libexec/openjdk.jdk/Contents/Home" />
+    <envs>
+      <env name="DEBUG" value="1" />
+    </envs>
+    <option name="MAIN_CLASS_NAME" value="songscribe.SongScribe" />
+    <module name="SongScribe" />
+    <option name="VM_PARAMETERS" value="--enable-native-access=ALL-UNNAMED" />
+    <extension name="de.eudaemon.ideaswag.SwingspectorExtension">
+      <Swingspector>
+        <keystroke code="83" modifiers="585" />
+        <active value="true" />
+        <timeout>5.0</timeout>
+      </Swingspector>
+    </extension>
+    <method v="2">
+      <option name="Make" enabled="true" />
+    </method>
+  </configuration>
+</component>
