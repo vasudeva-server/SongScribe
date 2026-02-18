@@ -136,9 +136,6 @@ public class Note extends LineElement implements Cloneable {
     // The line which owns this note
     protected Line line = null;
 
-    // TODO: This will go away when getActiveNotePitchString is moved to StatusBar
-    private final StringBuilder pitchStringBuffer = new StringBuilder(10);
-
     // ========================================================================
     // LineElement hierarchy: articulations and attachments (Phase 3)
     // ========================================================================
@@ -606,31 +603,6 @@ public class Note extends LineElement implements Cloneable {
         }
 
         return Accidental.NONE;
-    }
-
-    // TODO: Fix this to use American Standard Pitch Notation,
-    //  move to StatusBar
-    public String getEditNotePitchString(Line line) {
-        pitchStringBuffer.delete(0, pitchStringBuffer.length());
-        var activeNoteAccidental = getEditNoteAccidental(line);
-
-        if (activeNoteAccidental == Accidental.FLAT) {
-            pitchStringBuffer.append('b');
-            pitchStringBuffer.append(' ');
-        } else if (activeNoteAccidental == Accidental.SHARP) {
-            pitchStringBuffer.append('#');
-            pitchStringBuffer.append(' ');
-        }
-
-        pitchStringBuffer.append((char) (((getPitchIndex() + 1) % 7) + 'A'));
-
-        if (yPos < 0) {
-            pitchStringBuffer.append('\'');
-        } else if (yPos > 6) {
-            pitchStringBuffer.append(',');
-        }
-
-        return pitchStringBuffer.toString();
     }
 
     /*

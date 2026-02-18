@@ -25,7 +25,6 @@ import java.io.IOException;
 import javax.swing.*;
 import javax.swing.event.*;
 
-import songscribe.ui.component.MainFrame;
 import songscribe.util.Utils;
 
 public class HelpDialog
@@ -36,11 +35,11 @@ public class HelpDialog
         new DefaultListModel<>();
     private final JEditorPane editorPane = new JEditorPane();
 
-    public HelpDialog(MainFrame mainFrame, String title) {
-        this(mainFrame, title, true);
+    public HelpDialog(String title) {
+        this(title, true);
     }
 
-    public HelpDialog(MainFrame mainFrame, String title, boolean isModal) {
+    public HelpDialog(String title, boolean isModal) {
         super(title, isModal);
         var leftList = new JList<>(defaultListModel);
         leftList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);

@@ -35,7 +35,7 @@ public class ReportBugDialog extends StandardDialog {
 
     public static final String BUG_EMAIL = "himadri81@zoho.com";
 
-    public ReportBugDialog(MainFrame mainFrame) {
+    public ReportBugDialog() {
         super("Bug report");
         var logFile = new File(MainFrame.SONGSCRIBE_DIR, "log");
         var area = getjEditorPane(logFile);

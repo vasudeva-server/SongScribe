@@ -403,6 +403,17 @@ public final class ScoreMessageCoordinator {
         }
     }
 
+    @Handler
+    public void onSelectLine(SelectLineMessage message) {
+        var state = selectionCoordinator.getActiveSelection();
+
+        if (state != null) {
+            state.selectAll();
+            callback.selectionChanged();
+            callback.repaint();
+        }
+    }
+
     private static void deleteNote(int xIndex, @NotNull Line line) {
         if (xIndex < (line.noteCount() - 1)) {
             var shift =

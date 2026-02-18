@@ -31,7 +31,7 @@ import org.jetbrains.annotations.Nullable;
 import songscribe.midi.MidiSequenceBuilder;
 import songscribe.midi.PlaybackSettings;
 import songscribe.music.Composition;
-import songscribe.ui.Constants;
+import songscribe.prefs.Prefs;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.Score;
 import songscribe.ui.component.score.LineComponent;
@@ -276,6 +276,7 @@ public final class PlaybackController {
             }
 
             setLoopSequence(noteSelection, mainFrame, sequencer);
+            MidiController.reinitChannels();
             playbackDidStart();
             sequencer.start();
         } catch (InvalidMidiDataException e1) {
@@ -297,10 +298,7 @@ public final class PlaybackController {
         var loopPlayback =
             ((noteSelection == null) ||
                 (noteSelection.begin() != noteSelection.end())) &&
-            mainFrame
-                .getProperties()
-                .getProperty(Constants.LOOP_PLAYBACK_PROP)
-                .equals(Constants.TRUE_VALUE);
+            Prefs.getInstance().getBoolean("loopPlayback");
 
         // If a single note is selected, do not loop playback
 

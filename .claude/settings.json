@@ -3,6 +3,9 @@
     "allow": [
       "Bash(./gradlew compileJava:*)",
       "Bash(./scripts/compile.sh:*)",
+      "Bash(./scripts/check-style.sh:*)",
+      "Bash(if echo:*)",
+      "Bash(file=$:*)",
       "Bash(./scripts/run.sh:*)",
       "Bash(bash:*)",
       "Bash(cat:*)",
@@ -49,7 +52,24 @@
       "mcp__serena__write_memory"
     ]
   },
-  "plansDirectory": "./plans",
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if echo \"$CLAUDE_TOOL_INPUT\" | grep -qE '\"file_path\"[[:space:]]*:[[:space:]]*\"[^\"]*\\.(java|kt)\"'; then /Users/aparajita/Developer/projects/SongScribe/scripts/compile.sh 2>&1 | tail -20; fi"
+          },
+          {
+            "type": "command",
+            "command": "file=$(echo \"$CLAUDE_TOOL_INPUT\" | sed -n 's/.*\"file_path\"[[:space:]]*:[[:space:]]*\"\\([^\"]*\\)\".*/\\1/p'); if [[ \"$file\" == *.java || \"$file\" == *.kt ]]; then /Users/aparajita/Developer/projects/SongScribe/scripts/check-style.sh \"$file\"; fi"
+          }
+        ]
+      }
+    ]
+  },
+  "plansDirectory": "plans",
   "env": {
     "CLAUDE_CODE_TASK_LIST_ID": "SongScribe"
   }

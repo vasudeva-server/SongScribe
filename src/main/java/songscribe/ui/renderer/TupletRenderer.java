@@ -29,10 +29,12 @@ import songscribe.data.TupletIntervalData;
 import songscribe.music.Line;
 import songscribe.music.Note;
 import songscribe.smufl.EngravingDefaults;
+import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
 import songscribe.smufl.StaffSpaces;
 import songscribe.ui.layout.LayoutStylesheet;
 import songscribe.ui.layout.Tuplet;
+import songscribe.util.GraphicUtils;
 
 import static songscribe.ui.renderer.GraphicsState.Property.*;
 
@@ -48,17 +50,79 @@ public class TupletRenderer extends BaseElementRenderer<Tuplet> {
     // Constants
     // ==========================================================================
 
-    private static final EngravingDefaults ENGRAVING_DEFAULTS =
-        SMuFLMetadata.getInstance().getEngravingDefaults();
+    private static final SMuFLMetadata METADATA = SMuFLMetadata.getInstance();
+
+    private static final EngravingDefaults ENGRAVING_DEFAULTS = METADATA.getEngravingDefaults();
 
     private static final BasicStroke LINE_STROKE = new BasicStroke(
         (float) StaffSpaces.toPixels(ENGRAVING_DEFAULTS.tupletBracketThickness()),
-        BasicStroke.CAP_BUTT,
+        BasicStroke.CAP_SQUARE,
         BasicStroke.JOIN_MITER
     );
 
-    // Crotchet width (from FughettaRenderer)
-    private static final double CROTCHET_WIDTH = BaseElementRenderer.NOTE_FONT_SIZE / 3.6056337d;
+    // Scale factor for tuplet number glyphs (slightly smaller than standard notation size)
+    private static final float TUPLET_NUMBER_SCALE = 0.9f;
+
+    // Bravura font scaled down for tuplet numbers
+    private static final Font TUPLET_FONT = BRAVURA_FONT.deriveFont(
+        BRAVURA_FONT.getSize2D() * TUPLET_NUMBER_SCALE);
+
+    // Tuplet digit glyphs indexed by value (0–9)
+    private static final SMuFLGlyph[] TUPLET_GLYPHS = {
+        SMuFLGlyph.TUPLET_0, SMuFLGlyph.TUPLET_1, SMuFLGlyph.TUPLET_2,
+        SMuFLGlyph.TUPLET_3, SMuFLGlyph.TUPLET_4, SMuFLGlyph.TUPLET_5,
+        SMuFLGlyph.TUPLET_6, SMuFLGlyph.TUPLET_7, SMuFLGlyph.TUPLET_8,
+        SMuFLGlyph.TUPLET_9
+    };
+
+    // Padding between bracket arm and glyph edge
+    private static final double GAP_PADDING = 2.0;
+
+    // Gap from center to left bracket arm end (half advance width + padding)
+    private static final double LEFT_GAP;
+
+    // Gap from center to right bracket arm start (accounts for italic overhang)
+    private static final double RIGHT_GAP;
+
+    static {
+        double advancePx = StaffSpaces.toPixels(METADATA.getAdvanceWidth(SMuFLGlyph.TUPLET_3))
+            * TUPLET_NUMBER_SCALE;
+        var bbox = METADATA.getBBox(SMuFLGlyph.TUPLET_3);
+        double rightOverhang = bbox != null
+            ? (StaffSpaces.toPixels(bbox.right()) - advancePx) * TUPLET_NUMBER_SCALE
+            : 0;
+
+        LEFT_GAP = advancePx / 2.0 + GAP_PADDING;
+        RIGHT_GAP = advancePx / 2.0 + Math.max(rightOverhang, 0) + GAP_PADDING;
+    }
+
+    // Notehead visual edges relative to the glyph origin
+    private static final double NOTEHEAD_LEFT;
+    private static final double NOTEHEAD_RIGHT;
+
+    // Down-stem noteheads are shifted left by half the stem width in NoteRenderer
+    private static final double DOWN_STEM_NOTEHEAD_SHIFT = NoteRenderer.STEM_WIDTH / 2.0;
+
+    static {
+        var bbox = METADATA.getBBox(SMuFLGlyph.NOTEHEAD_BLACK);
+        assert bbox != null;
+        NOTEHEAD_LEFT = StaffSpaces.toPixels(bbox.left());
+        NOTEHEAD_RIGHT = StaffSpaces.toPixels(bbox.right());
+    }
+
+    // End cap length: ~0.5 staff spaces
+    private static final double END_CAP_LENGTH = StaffSpaces.toPixels(0.5);
+
+    // Bracket clearance above beams: half beam thickness (to clear outer edge)
+    // plus 1.0 staff space gap between beam and bracket
+    private static final double BRACKET_CLEARANCE =
+        StaffSpaces.toPixels(ENGRAVING_DEFAULTS.beamThickness() / 2.0 + 1.0);
+
+    // Horizontal offset from stem center so the bracket's inner edge
+    // aligns with the stem's outer edge: half stem + half bracket
+    private static final double BRACKET_X_OFFSET = Math.ceil(
+        StaffSpaces.toPixels(ENGRAVING_DEFAULTS.stemThickness()) / 2.0
+            + LINE_STROKE.getLineWidth() / 2.0);
 
     // Singleton instance
     private static final TupletRenderer INSTANCE = new TupletRenderer();
@@ -152,72 +216,111 @@ public class TupletRenderer extends BaseElementRenderer<Tuplet> {
         boolean odd = ((endIndex - startIndex + 1) % 2) == 1;
 
         var firstNote = line.getNote(startIndex);
-        int upper = firstNote.isUpper() ? -1 : 0;
-
-        // Calculate left bracket position
-        int lx = firstNote.getXPos() + (int) CROTCHET_WIDTH;
-        int ly = (middleLineY + (int) (firstNote.getYPos() * LayoutStylesheet.NOTE_Y_OFFSET) -
-            Note.HOT_SPOT.y) + (upper * (int) firstNote.properties.lengthening);
-        ly -= 5;
-
-        // Calculate center position
-        int cx;
-
-        if (odd) {
-            var centerNote = line.getNote(((endIndex - startIndex) / 2) + startIndex);
-            cx = centerNote.getXPos() + (int) CROTCHET_WIDTH;
-        } else {
-            var cn1 = line.getNote(((endIndex - startIndex) / 2) + startIndex);
-            var cn2 = line.getNote(((endIndex - startIndex) / 2) + startIndex + 1);
-            cx = ((cn2.getXPos() - cn1.getXPos()) / 2) + cn1.getXPos() + (int) CROTCHET_WIDTH;
-        }
-
-        // Calculate right bracket position
         var lastNote = line.getNote(endIndex);
-        int rx = lastNote.getXPos() + (int) CROTCHET_WIDTH;
-        int ry = (middleLineY + (int) (lastNote.getYPos() * LayoutStylesheet.NOTE_Y_OFFSET) -
-            Note.HOT_SPOT.y) + (upper * (int) lastNote.properties.lengthening);
-        ry -= 5;
+        boolean isUpper = firstNote.isUpper();
 
-        // Adjust for lower stem notes
-        if (!firstNote.isUpper()) {
-            lx -= (int) CROTCHET_WIDTH / 2;
-            ly += Note.HOT_SPOT.y - 3;
-            cx -= (int) CROTCHET_WIDTH / 2;
-            rx -= (int) CROTCHET_WIDTH / 2;
-            ry += Note.HOT_SPOT.y - 3;
+        // Check if the entire tuplet range is beamed
+        boolean allBeamed = line.getBeamings().findInterval(startIndex) != null
+            && line.getBeamings().findInterval(endIndex) != null;
+
+        // Top staff line: 4 positions above middle line
+        double staffTopY = middleLineY - 4 * LayoutStylesheet.NOTE_Y_OFFSET;
+
+        // Find the highest extent across ALL notes in the tuplet group
+        double highestRefY = staffTopY;
+
+        for (var i = startIndex; i <= endIndex; i++) {
+            var note = line.getNote(i);
+            double noteY = middleLineY + note.getYPos() * LayoutStylesheet.NOTE_Y_OFFSET;
+            double refY;
+
+            if (isUpper) {
+                // Stems up: clear stem tops (which extend to beam for beamed notes)
+                refY = noteY + note.properties.stem.y2;
+            } else {
+                // Stems down: clear notehead tops (approx 1 staff space above note center)
+                refY = noteY - LayoutStylesheet.NOTE_Y_OFFSET;
+            }
+
+            highestRefY = Math.min(highestRefY, refY);
         }
+
+        // Horizontal bracket: use the highest extent, but never below staff top
+        int bracketY = (int) (Math.min(highestRefY, staffTopY)
+            - BRACKET_CLEARANCE);
 
         // Apply vertical adjustment if any
         if (verticalAdjustment != 0) {
-            ly += verticalAdjustment;
-            ry += verticalAdjustment;
+            bracketY += verticalAdjustment;
         }
+
+        // X positions and center
+        int lx;
+        int rx;
+        int cx;
+
+        if (isUpper) {
+            // Stems up: align bracket with stems
+            lx = (int) (firstNote.getXPos() + firstNote.properties.stem.x1 - BRACKET_X_OFFSET);
+            rx = (int) (lastNote.getXPos() + lastNote.properties.stem.x1 + BRACKET_X_OFFSET);
+
+            if (odd) {
+                var centerNote = line.getNote(((endIndex - startIndex) / 2) + startIndex);
+                cx = (int) (centerNote.getXPos() + centerNote.properties.stem.x1);
+            } else {
+                var cn1 = line.getNote(((endIndex - startIndex) / 2) + startIndex);
+                var cn2 = line.getNote(((endIndex - startIndex) / 2) + startIndex + 1);
+                int cn1x = (int) (cn1.getXPos() + cn1.properties.stem.x1);
+                int cn2x = (int) (cn2.getXPos() + cn2.properties.stem.x1);
+                cx = (cn2x - cn1x) / 2 + cn1x;
+            }
+        } else {
+            // Stems down: align bracket with notehead edges
+            // (noteheads are shifted left by DOWN_STEM_NOTEHEAD_SHIFT in NoteRenderer)
+            double noteheadShift = DOWN_STEM_NOTEHEAD_SHIFT;
+            lx = (int) (firstNote.getXPos() - noteheadShift + NOTEHEAD_LEFT);
+            rx = (int) (lastNote.getXPos() - noteheadShift + NOTEHEAD_RIGHT);
+            cx = (lx + rx) / 2;
+        }
+
+        // Snap positions to device pixels for crisp rendering
+        double slx = GraphicUtils.snapXToDevicePixel(g2, lx);
+        double sby = GraphicUtils.snapYToDevicePixel(g2, bracketY);
+        double srx = GraphicUtils.snapXToDevicePixel(g2, rx);
+
+        // Shift center rightward by half the italic overhang so the number
+        // appears visually centered between the bracket endpoints
+        double overhangCompensation = (RIGHT_GAP - LEFT_GAP) / 2.0;
+        double scx = GraphicUtils.snapXToDevicePixel(g2, cx + overhangCompensation);
 
         try (var ignored = GraphicsState.save(g2, COLOR, STROKE, FONT)) {
             g2.setColor(NOTE_COLOR);
             g2.setStroke(LINE_STROKE);
 
-            // Calculate slope for bracket
-            var tc = new TupletCalc(lx, ly, rx, ry);
+            if (allBeamed && isUpper) {
+                // Beamed + stems up: number only (beam already provides visual grouping)
+                drawTupletNumber(g2, grade, scx, sby);
+            } else {
+                // All other cases: full bracket with end caps pointing down toward notes
+                double capDir = END_CAP_LENGTH;
 
-            // Draw left curved bracket segment
-            g2.draw(new QuadCurve2D.Float(
-                lx, ly,
-                ((float) (cx - lx) / 4) + lx, tc.getRate(((cx - lx) / 4) + lx) - 10,
-                cx - 7, tc.getRate(cx - 7) - 8
-            ));
+                // Left end cap
+                g2.draw(new Line2D.Double(slx, sby, slx, sby + capDir));
 
-            // Draw right curved bracket segment
-            g2.draw(new QuadCurve2D.Float(
-                cx + 7, tc.getRate(cx + 7) - 8,
-                (((float) (rx - cx) * 3) / 4) + cx, tc.getRate((((rx - cx) * 3) / 4) + cx) - 10,
-                rx, ry
-            ));
+                // Left bracket arm (from left end to gap)
+                double gapLeftX = GraphicUtils.snapXToDevicePixel(g2, scx - LEFT_GAP);
+                g2.draw(new Line2D.Double(slx, sby, gapLeftX, sby));
 
-            // Draw tuplet number
-            g2.setFont(BaseElementRenderer.TUPLET_FONT);
-            g2.drawString(Integer.toString(grade), cx - 3, tc.getRate(cx - 3) - 5);
+                // Right bracket arm (from gap to right end)
+                double gapRightX = GraphicUtils.snapXToDevicePixel(g2, scx + RIGHT_GAP);
+                g2.draw(new Line2D.Double(gapRightX, sby, srx, sby));
+
+                // Right end cap
+                g2.draw(new Line2D.Double(srx, sby, srx, sby + capDir));
+
+                // Draw tuplet number
+                drawTupletNumber(g2, grade, scx, sby);
+            }
         }
     }
 
@@ -241,22 +344,79 @@ public class TupletRenderer extends BaseElementRenderer<Tuplet> {
     }
 
     /**
-     * Helper class to calculate the slope of the tuplet bracket.
+     * Draws the tuplet number centered in the bracket gap using SMuFL glyphs.
      */
-    private static class TupletCalc {
+    private void drawTupletNumber(
+        @NotNull Graphics2D g2,
+        int grade,
+        double cx,
+        double bracketY
+    ) {
+        double scale = TUPLET_NUMBER_SCALE;
 
-        private final float m;
-        private final float lx;
-        private final float ly;
+        if (grade >= 0 && grade <= 9) {
+            // Single digit
+            var glyph = TUPLET_GLYPHS[grade];
+            var advanceWidth = METADATA.getAdvanceWidth(glyph);
+            var bbox = METADATA.getBBox(glyph);
 
-        TupletCalc(int lx, int ly, int rx, int ry) {
-            this.lx = lx;
-            this.ly = ly;
-            this.m = (float) (ry - ly) / (rx - lx);
-        }
+            if (advanceWidth == null || bbox == null) {
+                return;
+            }
 
-        float getRate(float x) {
-            return m * (x - lx) + ly;
+            double advancePx = StaffSpaces.toPixels(advanceWidth) * scale;
+            double bboxTopPx = StaffSpaces.toPixels(bbox.top()) * scale;
+            double bboxHeightPx = StaffSpaces.toPixels(bbox.height()) * scale;
+
+            // Center horizontally on cx
+            double x = GraphicUtils.snapXToDevicePixel(g2, cx - advancePx / 2.0);
+
+            // Center vertically on the bracket line, nudged up 1px for optical balance
+            double y = GraphicUtils.snapYToDevicePixel(g2, bracketY - bboxTopPx - bboxHeightPx / 2.0) - 1;
+
+            drawTupletGlyph(g2, glyph, x, y);
+        } else {
+            // Multi-digit: draw tens then units
+            int tens = grade / 10;
+            int units = grade % 10;
+            var tensGlyph = TUPLET_GLYPHS[tens];
+            var unitsGlyph = TUPLET_GLYPHS[units];
+            var tensAdvance = METADATA.getAdvanceWidth(tensGlyph);
+            var unitsAdvance = METADATA.getAdvanceWidth(unitsGlyph);
+            var tensBbox = METADATA.getBBox(tensGlyph);
+
+            if (tensAdvance == null || unitsAdvance == null || tensBbox == null) {
+                return;
+            }
+
+            double tensAdvancePx = StaffSpaces.toPixels(tensAdvance) * scale;
+            double unitsAdvancePx = StaffSpaces.toPixels(unitsAdvance) * scale;
+            double totalWidth = tensAdvancePx + unitsAdvancePx;
+            double bboxTopPx = StaffSpaces.toPixels(tensBbox.top()) * scale;
+            double bboxHeightPx = StaffSpaces.toPixels(tensBbox.height()) * scale;
+
+            double tensX = GraphicUtils.snapXToDevicePixel(g2, cx - totalWidth / 2.0);
+            // Nudged up 1px for optical balance
+            double y = GraphicUtils.snapYToDevicePixel(g2, bracketY - bboxTopPx - bboxHeightPx / 2.0) - 1;
+
+            drawTupletGlyph(g2, tensGlyph, tensX, y);
+            drawTupletGlyph(g2, unitsGlyph, tensX + tensAdvancePx, y);
         }
     }
+
+    /**
+     * Draws a tuplet glyph at the scaled tuplet font size.
+     */
+    private void drawTupletGlyph(
+        @NotNull Graphics2D g2,
+        @NotNull SMuFLGlyph glyph,
+        double x,
+        double y
+    ) {
+        try (var ignored = GraphicsState.save(g2, FONT)) {
+            g2.setFont(TUPLET_FONT);
+            g2.drawString(glyph.asString(), (float) x, (float) y);
+        }
+    }
+
 }

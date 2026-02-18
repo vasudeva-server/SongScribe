@@ -50,7 +50,6 @@ import songscribe.ui.dialog.KeyMapDialog;
 import songscribe.ui.dialog.LineWidthChangeDialog;
 import songscribe.ui.dialog.ReportBugDialog;
 import songscribe.ui.dialog.TutorialDialog;
-import songscribe.ui.dialog.UpdateDialog;
 import songscribe.ui.dialog.WhatsNewDialog;
 import songscribe.ui.message.MessageCenter;
 import songscribe.ui.playback.PlayMenu;
@@ -144,6 +143,7 @@ public class MenuController {
         menu.add(Actions.COPY_ACTION);
         menu.add(Actions.PASTE_ACTION);
         menu.add(Actions.DELETE_ACTION);
+        menu.add(Actions.SELECT_LINE_ACTION);
         menu.add(Actions.DESELECT_ACTION);
 
         menu.addSeparator();
@@ -203,9 +203,6 @@ public class MenuController {
     }
 
     protected void addCommonHelpItems(JMenu menu) {
-        menu.add(
-            new DialogOpenAction<>("Check for Update...", UpdateDialog.class)
-        );
         menu.add(new DialogOpenAction<>("Report a Bug", ReportBugDialog.class));
 
         if (new File(WhatsNewDialog.WHATS_NEW_FILE).exists()) {

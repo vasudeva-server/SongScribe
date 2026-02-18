@@ -20,11 +20,9 @@
 package songscribe.ui.dialog;
 
 import java.awt.*;
+import java.util.prefs.Preferences;
 
 import javax.swing.*;
-
-import songscribe.ui.Constants;
-import songscribe.ui.component.MainFrame;
 
 public class DoNotShowMessage extends StandardDialog {
 
@@ -34,7 +32,6 @@ public class DoNotShowMessage extends StandardDialog {
     private final String propName;
 
     public DoNotShowMessage(
-        MainFrame mainFrame,
         String title,
         String info,
         String propName
@@ -53,10 +50,7 @@ public class DoNotShowMessage extends StandardDialog {
     public void setVisible(boolean visible) {
         if (visible) {
             if (
-                !mainFrame
-                    .getProperties()
-                    .getProperty(propName, Constants.FALSE_VALUE)
-                    .equals(Constants.TRUE_VALUE)
+                !Preferences.userRoot().node("songscribe").getBoolean(propName, false)
             ) {
                 super.setVisible(true);
             }
@@ -71,9 +65,7 @@ public class DoNotShowMessage extends StandardDialog {
     @Override
     protected void setData() {
         if (dontShowCheck.isSelected()) {
-            mainFrame
-                .getProperties()
-                .setProperty(propName, Constants.TRUE_VALUE);
+            Preferences.userRoot().node("songscribe").putBoolean(propName, true);
         }
     }
 }

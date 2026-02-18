@@ -24,14 +24,13 @@ import java.io.IOException;
 
 import javax.swing.*;
 
-import songscribe.ui.component.MainFrame;
 import songscribe.util.Utils;
 
 public class HTMLDialog extends StandardDialog {
 
     private final JEditorPane editorPane;
 
-    public HTMLDialog(MainFrame mainFrame, String title) {
+    public HTMLDialog(String title) {
         super(title, false);
         buttonPanel = new JPanel();
         buttonPanel.add(okButton);
@@ -48,12 +47,8 @@ public class HTMLDialog extends StandardDialog {
         contentPanel.add(BorderLayout.CENTER, editorScrollPane);
     }
 
-    public HTMLDialog(
-        MainFrame mainFrame,
-        String dialogTitle,
-        String htmlPage
-    ) {
-        this(mainFrame, dialogTitle);
+    public HTMLDialog(String dialogTitle, String htmlPage) {
+        this(dialogTitle);
         setPage(htmlPage);
     }
 

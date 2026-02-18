@@ -23,17 +23,16 @@ package songscribe.ui.component;
 import com.formdev.flatlaf.util.SystemFileChooser;
 import com.formdev.flatlaf.util.SystemInfo;
 import java.awt.*;
+import java.awt.desktop.AppForegroundEvent;
+import java.awt.desktop.AppForegroundListener;
 import java.awt.event.*;
 import java.awt.image.*;
 import java.awt.print.*;
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.Properties;
 import javax.swing.*;
 import net.engio.mbassy.listener.Handler;
 import org.jetbrains.annotations.Nullable;
@@ -47,10 +46,11 @@ import songscribe.ui.Constants;
 import songscribe.ui.ProfileManager;
 import songscribe.ui.action.Actions;
 import songscribe.ui.action.SaveAction;
+import songscribe.ui.component.score.LineComponent;
 import songscribe.ui.component.toolbar.MainToolbarPanel;
 import songscribe.ui.dialog.PlatformFileDialog;
+import songscribe.ui.edit.EditModeManager;
 import songscribe.ui.dialog.PropertiesStateStore;
-import songscribe.ui.dialog.UpdateDialog;
 import songscribe.ui.dialog.WhatsNewDialog;
 import songscribe.ui.menu.MenuController;
 import songscribe.ui.message.MessageCenter;
@@ -60,14 +60,13 @@ import songscribe.ui.message.OpenFileMessage;
 import songscribe.ui.message.PrintMessage;
 import songscribe.ui.message.SaveAsMessage;
 import songscribe.ui.message.SaveMessage;
-import songscribe.ui.message.SelectableMessage;
 import songscribe.ui.playback.LoopPlaybackMessage;
 import songscribe.ui.playback.MidiController;
 import songscribe.ui.playback.PlayWithRepeatsMessage;
 import songscribe.ui.playback.PlaybackTempoChangedMessage;
+import songscribe.prefs.Prefs;
 import songscribe.util.FileUtils;
 import songscribe.util.Log;
-import songscribe.util.Utils;
 
 public class MainFrame extends JFrame implements IMainFrame, Printable {
 
@@ -104,17 +103,8 @@ public class MainFrame extends JFrame implements IMainFrame, Printable {
         }
     }
 
-    // Used to store preferences
-    public static final File PROPS_FILE = new File(SONGSCRIBE_DIR, "props");
-
     // Splash screen
     private static JWindow splashWindow = null;
-
-    // Default user preferences
-    private final Properties defaultProps = new Properties();
-
-    // User preferences
-    protected final Properties properties = new Properties(defaultProps);
 
     private final ProfileManager profileManager = new ProfileManager(this);
 
@@ -131,9 +121,6 @@ public class MainFrame extends JFrame implements IMainFrame, Printable {
     @Nullable
     protected String documentTypeName;
 
-    // The most recently used directory for opening and saving files
-    protected File recentFileDirectory;
-
     private boolean documentModified = false;
 
     // A list of listeners that are notified when a property changes that changes the music
@@ -142,7 +129,6 @@ public class MainFrame extends JFrame implements IMainFrame, Printable {
         new ArrayList<>();
 
     // UI components
-    private StatusBar statusBar = null;
     private LyricsPanel lyricsPanel = null;
 
     private static final double PRINT_EXTRA_MARGIN = 0.25 * 72;
@@ -160,48 +146,16 @@ public class MainFrame extends JFrame implements IMainFrame, Printable {
         appName = "Song Writer";
         documentTypeName = "song";
 
-        try (
-            var stream = new FileInputStream(
-                Utils.getResourcePath("conf/defprops")
-            )
-        ) {
-            defaultProps.load(stream);
-        } catch (IOException e) {
-            showErrorMessage(
-                "The application could not start, because a necessary file is not available. " +
-                "Please reinstall the software."
-            );
-            System.exit(0);
-        }
+        // Trigger Prefs initialization (auto-migrates from old props file)
+        Prefs.getInstance();
 
         // There are some tasks we need to perform the first time the app is run
-        if (
-            properties
-                .getProperty(Constants.FIRST_RUN)
-                .equals(Constants.TRUE_VALUE)
-        ) {
+        if (Prefs.getInstance().getBoolean("firstRun")) {
             firstRun();
-        }
-
-        try (var stream = new FileInputStream(PROPS_FILE)) {
-            properties.load(stream);
-        } catch (IOException e) {
-            // Ignore, it's okay if there are no user preferences
         }
 
         // Initialize SystemFileChooser state persistence
         SystemFileChooser.setStateStore(new PropertiesStateStore());
-
-        recentFileDirectory = new File(
-            properties.getProperty(Constants.PREVIOUS_DIRECTORY)
-        );
-
-        if (
-            recentFileDirectory.getName().isEmpty() ||
-            !recentFileDirectory.exists()
-        ) {
-            recentFileDirectory = FileUtils.getSongScribeDirectory();
-        }
 
         setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
 
@@ -230,34 +184,18 @@ public class MainFrame extends JFrame implements IMainFrame, Printable {
             MidiController.openMidi();
             var instance = getInstance();
             instance.initFrame();
-            var whatsNewProp =
-                Constants.SHOW_WHATS_NEW + Version.PUBLIC_VERSION;
-
             if (
-                (instance.properties.getProperty(whatsNewProp) == null) &&
+                !Version.PUBLIC_VERSION.equals(
+                    Prefs.getInstance().getString("lastSeenWhatsNewVersion")
+                ) &&
                 new File(WhatsNewDialog.WHATS_NEW_FILE).exists()
             ) {
-                instance.properties.setProperty(
-                    whatsNewProp,
-                    Constants.TRUE_VALUE
+                Prefs.getInstance().put(
+                    "lastSeenWhatsNewVersion",
+                    Version.PUBLIC_VERSION
                 );
-                new WhatsNewDialog(instance).setVisible(true);
-            } // else {
-            //                try {
-            //                    if (
-            //                        instance.properties
-            //                            .getProperty(Constants.SHOW_TIP)
-            //                            .equals(Constants.TRUE_VALUE)
-            //                    ) {
-            //                        new TipFrame(instance);
-            //                    }
-            //                } catch (IOException e) {
-            //                    instance.properties.setProperty(
-            //                        Constants.SHOW_TIP,
-            //                        Constants.FALSE_VALUE
-            //                    );
-            //                }
-            //            }
+                new WhatsNewDialog().setVisible(true);
+            }
 
             if (args.length > 0) {
                 var fileToOpen = new File(args[0]);
@@ -308,11 +246,9 @@ public class MainFrame extends JFrame implements IMainFrame, Printable {
                     );
                 }
             }
-
-            recentFileDirectory = documentsDirectory;
         }
 
-        properties.setProperty(Constants.FIRST_RUN, Constants.FALSE_VALUE);
+        Prefs.getInstance().put("firstRun", false);
     }
 
     public void initFrame() {
@@ -326,13 +262,63 @@ public class MainFrame extends JFrame implements IMainFrame, Printable {
         MenuController.init();
         Actions.CONTROL_ACTION_GROUP.selectNext();
 
+        // When the application goes to the background, hide the insertion note
+        // and activate the glass pane so the reactivation click is consumed.
+        // Use the Desktop API on macOS, fall back to WindowListener elsewhere.
+        boolean usingDesktopApi = false;
+
+        if (Desktop.isDesktopSupported()) {
+            var desktop = Desktop.getDesktop();
+
+            if (desktop.isSupported(Desktop.Action.APP_EVENT_FOREGROUND)) {
+                desktop.addAppEventListener(new AppForegroundListener() {
+                    @Override
+                    public void appRaisedToForeground(AppForegroundEvent e) {
+                        ActivationGate.appRaisedToForeground();
+                    }
+
+                    @Override
+                    public void appMovedToBackground(AppForegroundEvent e) {
+                        hideInsertionNote();
+                        ActivationGate.activate();
+                    }
+                });
+                usingDesktopApi = true;
+            }
+        }
+
+        if (!usingDesktopApi) {
+            addWindowListener(new WindowAdapter() {
+                @Override
+                public void windowActivated(WindowEvent e) {
+                    ActivationGate.appRaisedToForeground();
+                }
+
+                @Override
+                public void windowDeactivated(WindowEvent e) {
+                    hideInsertionNote();
+                    ActivationGate.activate();
+                }
+            });
+        }
+
         setFrameSize();
         setLocationRelativeTo(null);
         setVisible(true);
+        ActivationGate.install(this);
 
         score.requestFocusInWindow();
         fireMusicChanged(this);
-        // automaticCheckForUpdate();
+    }
+
+    private void hideInsertionNote() {
+        LineComponent.clearInsertionNote();
+
+        var editModeManager = EditModeManager.getInstance();
+
+        if (editModeManager != null) {
+            editModeManager.setEditNoteVisible(false);
+        }
     }
 
     private void setAppIcon() {
@@ -367,7 +353,6 @@ public class MainFrame extends JFrame implements IMainFrame, Printable {
         // +---------------------+
         // | NORTH: Toolbar      |
         // | CENTER: Score       |
-        // | SOUTH: Status bar   |
         // +---------------------+
         var contentPane = getContentPane();
         contentPane.setLayout(new BorderLayout());
@@ -376,12 +361,10 @@ public class MainFrame extends JFrame implements IMainFrame, Printable {
         score.init();
         contentPane.add(createCenterContent(), BorderLayout.CENTER);
 
-        statusBar = new StatusBar();
-        contentPane.add(statusBar, BorderLayout.SOUTH);
     }
 
     private JSplitPane createCenterContent() {
-        lyricsPanel = new LyricsPanel(this);
+        lyricsPanel = new LyricsPanel();
         var pane = new JSplitPane(JSplitPane.VERTICAL_SPLIT);
 
         // Since it's a split pane, we want to resize it continuously as the pane is resized
@@ -489,11 +472,6 @@ public class MainFrame extends JFrame implements IMainFrame, Printable {
     }
 
     @Override
-    public StatusBar getStatusBar() {
-        return statusBar;
-    }
-
-    @Override
     public LyricsPanel getLyricsModePanel() {
         return lyricsPanel;
     }
@@ -503,27 +481,19 @@ public class MainFrame extends JFrame implements IMainFrame, Printable {
         return profileManager;
     }
 
-    public File getRecentFileDirectory() {
-        return recentFileDirectory;
-    }
-
-    public void setRecentFileDirectory(File directory) {
-        recentFileDirectory = directory;
-    }
-
     // TODO: Use message center instead of this
     @Override
     public void addMusicChangeListener(MusicChangeListener listener) {
         musicChangeListeners.add(listener);
     }
 
-    // TODO: Use message cmenter instead of this
+    // TODO: Use message center instead of this
     @Override
     public void fireMusicChanged(Object source) {
         for (var listener : musicChangeListeners) {
             //noinspection ObjectEquality
             if (listener != source) {
-                listener.musicDidChange(properties);
+                listener.musicDidChange();
             }
         }
     }
@@ -543,20 +513,6 @@ public class MainFrame extends JFrame implements IMainFrame, Printable {
         }
 
         documentModified = false;
-    }
-
-    @Override
-    public Properties getProperties() {
-        return properties;
-    }
-
-    @Override
-    public Properties getDefaultProps() {
-        return defaultProps;
-    }
-
-    protected static void automaticCheckForUpdate() {
-        new UpdateDialog.UpdateInternetThread(true).start();
     }
 
     @Handler
@@ -581,21 +537,6 @@ public class MainFrame extends JFrame implements IMainFrame, Printable {
 
         if (score != null) {
             score.saveProperties();
-        }
-
-        properties.setProperty(
-            Constants.PREVIOUS_DIRECTORY,
-            recentFileDirectory.getAbsolutePath()
-        );
-
-        try (var out = new FileOutputStream(PROPS_FILE)) {
-            properties.store(out, null);
-        } catch (IOException e) {
-            Log.error("Could not save properties file", e);
-
-            showErrorMessage(
-                "Sorry, we could not save the properties file. Please reinstall the software."
-            );
         }
 
         MidiController.closeMidi();
@@ -777,29 +718,19 @@ public class MainFrame extends JFrame implements IMainFrame, Printable {
 
     @Handler
     public void loopPlaybackDidChange(LoopPlaybackMessage message) {
-        handlePlaybackMessage(message, Constants.LOOP_PLAYBACK_PROP);
+        Prefs.getInstance().put("loopPlayback", message.isSelected());
+        fireMusicChanged(this);
     }
 
     @Handler
     public void playWithRepeatsDidChange(PlayWithRepeatsMessage message) {
-        handlePlaybackMessage(message, Constants.WITH_REPEAT_PROP);
-    }
-
-    private void handlePlaybackMessage(SelectableMessage message, String prop) {
-        properties.setProperty(
-            prop,
-            message.isSelected() ? Constants.TRUE_VALUE : Constants.FALSE_VALUE
-        );
-
+        Prefs.getInstance().put("playWithRepeats", message.isSelected());
         fireMusicChanged(this);
     }
 
     @Handler
     public void playbackTempoDidChange(PlaybackTempoChangedMessage message) {
-        properties.setProperty(
-            Constants.TEMPO_CHANGE_PROP,
-            Integer.toString(message.getRatio())
-        );
+        Prefs.getInstance().put("tempoChangePercent", message.getRatio());
         fireMusicChanged(this);
     }
 }

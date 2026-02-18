@@ -355,8 +355,8 @@ public final class Actions {
             NATURAL_SHARP_ACTION
         );
 
-    public static final BarAction[] BAR_ACTIONS = new BarAction[] {
-        new BarAction(
+    public static final NonDurationAction[] REPEAT_ACTIONS = new NonDurationAction[]{
+        new NonDurationAction(
             NoteType.REPEAT_LEFT,
             "Left Repeat",
             "@\uEF68",
@@ -366,17 +366,7 @@ public final class Actions {
             KeyEvent.VK_L,
             0
         ),
-        new BarAction(
-            NoteType.REPEAT_LEFT_RIGHT,
-            "Left/Right Repeat",
-            "@\uF34B",
-            24,
-            "left-right-repeat",
-            "Insert left/right repeat",
-            0,
-            0
-        ),
-        new BarAction(
+        new NonDurationAction(
             NoteType.REPEAT_RIGHT,
             "Right Repeat",
             "@\uF345",
@@ -386,7 +376,20 @@ public final class Actions {
             KeyEvent.VK_R,
             0
         ),
-        new BarAction(
+        new NonDurationAction(
+            NoteType.REPEAT_LEFT_RIGHT,
+            "Left/Right Repeat",
+            "@\uF34B",
+            24,
+            "left-right-repeat",
+            "Insert left/right repeat",
+            0,
+            0
+        ),
+    };
+
+    public static final NonDurationAction[] BARLINE_ACTIONS = new NonDurationAction[]{
+        new NonDurationAction(
             NoteType.FINAL_DOUBLE_BARLINE,
             "Final Double Barline",
             "@\uF34A",
@@ -396,9 +399,9 @@ public final class Actions {
             KeyEvent.VK_F,
             InputEvent.SHIFT_DOWN_MASK
         ),
-        new BarAction(
+        new NonDurationAction(
             NoteType.DOUBLE_BARLINE,
-            "Double Barline (fine)",
+            "Double Barline (Fine)",
             "@\uF347",
             24,
             "double-barline",
@@ -406,7 +409,7 @@ public final class Actions {
             KeyEvent.VK_D,
             0
         ),
-        new BarAction(
+        new NonDurationAction(
             NoteType.SINGLE_BARLINE,
             "Single Barline",
             "@\uF346",
@@ -416,7 +419,10 @@ public final class Actions {
             0,
             0
         ),
-        new BarAction(
+    };
+
+    public static final NonDurationAction BREATH_MARK_ACTION =
+        new NonDurationAction(
             NoteType.BREATH_MARK,
             "Breath Mark",
             null,
@@ -425,11 +431,10 @@ public final class Actions {
             "Insert breath mark",
             0,
             0
-        ),
-    };
+        );
 
-    public static final ActionGroup<BarAction> BAR_ACTION_GROUP =
-        new BarActionGroup();
+    public static final ActionGroup<NonDurationAction> NON_DURATION_ACTION_GROUP =
+        new NonDurationActionGroup();
 
     public static final ForceArticulationAction ACCENT_ACTION =
         new ForceArticulationAction(
@@ -452,7 +457,7 @@ public final class Actions {
 
     public static final ActionGroup<
         DurationArticulationAction
-    > ARTICULATION_ACTION_GROUP = new ActionGroup<>(
+        > ARTICULATION_ACTION_GROUP = new ActionGroup<>(
         STACCATO_ACTION
     );
 
@@ -504,7 +509,7 @@ public final class Actions {
 
     public static final DialogOpenAction<
         CompositionSettingsDialog
-    > COMPOSITION_SETTINGS_ACTION = new DialogOpenAction<>(
+        > COMPOSITION_SETTINGS_ACTION = new DialogOpenAction<>(
         "Composition Settings...",
         KeyEvent.VK_G,
         MENU_SHORTCUT_MASK,
@@ -529,7 +534,9 @@ public final class Actions {
     public static final CopyAction COPY_ACTION = new CopyAction();
     public static final PasteAction PASTE_ACTION = new PasteAction();
     public static final DeleteAction DELETE_ACTION = new DeleteAction();
+    public static final SelectLineAction SELECT_LINE_ACTION = new SelectLineAction();
     public static final DeselectAction DESELECT_ACTION = new DeselectAction();
 
-    private Actions() {}
+    private Actions() {
+    }
 }

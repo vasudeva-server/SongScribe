@@ -28,7 +28,11 @@ import static songscribe.ui.renderer.GraphicsState.Property.*;
 
 import songscribe.music.Line;
 import songscribe.music.Note;
+import songscribe.smufl.SMuFLGlyph;
+import songscribe.smufl.SMuFLMetadata;
+import songscribe.smufl.StaffSpaces;
 import songscribe.ui.layout.Trill;
+import songscribe.util.GraphicUtils;
 
 /**
  * Renders trill markings (tr symbol + wavy line for extended trills).
@@ -39,20 +43,23 @@ public class TrillRenderer extends BaseElementRenderer<Trill> {
     // Constants
     // ==========================================================================
 
-    // Trill glyph from Fughetta
-    private static final String TRILL_GLYPH = "\uf0d9";
+    // Trill glyph advance width in pixels, used to position the wavy line start
+    private static final double TRILL_ADVANCE_WIDTH;
 
-    // Glissando glyph for wavy line
-    private static final String GLISSANDO_GLYPH = "\uf07e";
-
-    // Length of glissando character
-    private static final double GLISSANDO_LENGTH = BaseElementRenderer.NOTE_FONT_SIZE / 2.6666667;
+    // Wavy line segment width from SMuFL repeatOffset (0.948 ss)
+    private static final double WIGGLE_SEGMENT_WIDTH = StaffSpaces.toPixels(0.948);
 
     // Crotchet width
     private static final double CROTCHET_WIDTH = BaseElementRenderer.NOTE_FONT_SIZE / 3.6056337d;
 
     // Singleton instance
     private static final TrillRenderer INSTANCE = new TrillRenderer();
+
+    static {
+        var metadata = SMuFLMetadata.getInstance();
+        var advanceWidth = metadata.getAdvanceWidth(SMuFLGlyph.ORNAMENT_TRILL);
+        TRILL_ADVANCE_WIDTH = (advanceWidth != null) ? StaffSpaces.toPixels(advanceWidth) : 17.0;
+    }
 
     /**
      * Private constructor - use {@link #getInstance()}.
@@ -123,19 +130,20 @@ public class TrillRenderer extends BaseElementRenderer<Trill> {
     ) {
         int middleLineY = ctx.getMiddleLineY();
 
-        int x = startNote.getXPos();
+        double x = GraphicUtils.snapXToDevicePixel(g2, startNote.getXPos());
         int y = middleLineY + trillYPos;
 
-        try (var ignored = GraphicsState.save(g2, FONT, COLOR)) {
-            g2.setFont(ctx.getMusicFont());
-            g2.setColor(NOTE_COLOR);
-            g2.drawString(TRILL_GLYPH, x, y);
+        drawBravuraGlyph(g2, SMuFLGlyph.ORNAMENT_TRILL, x, y);
 
-            // Draw wavy line extension if there's an end note
-            if (endNote != null && endNote != startNote) {
-                int endX = (int) Math.round(endNote.getXPos() + CROTCHET_WIDTH);
-                drawWavyLine(g2, x + 18, y - 3, endX, y - 3);
-            }
+        // Draw wavy line extension if there's an end note
+        if (endNote != null && endNote != startNote) {
+            double wavyStartX = GraphicUtils.snapXToDevicePixel(
+                g2, x + TRILL_ADVANCE_WIDTH
+            );
+            double endX = GraphicUtils.snapXToDevicePixel(
+                g2, endNote.getXPos() + CROTCHET_WIDTH
+            );
+            drawWavyLine(g2, wavyStartX, y, endX);
         }
     }
 
@@ -176,32 +184,36 @@ public class TrillRenderer extends BaseElementRenderer<Trill> {
     }
 
     /**
-     * Draws a wavy line using glissando characters.
+     * Draws a wavy trill extension line using tiled WIGGLE_TRILL glyphs.
      */
     private void drawWavyLine(
         @NotNull Graphics2D g2,
-        int x1,
-        int y1,
-        int x2,
-        int y2
+        double x1,
+        int y,
+        double x2
     ) {
-        double length = Math.sqrt(
-            Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2)
-        );
+        double length = x2 - x1;
 
-        int segments = Math.max(2, (int) Math.round(length / GLISSANDO_LENGTH));
+        if (length <= 0) {
+            return;
+        }
 
-        try (var ignored = GraphicsState.save(g2, TRANSFORM)) {
-            g2.translate(x1, y1 + 2.25);
+        int segments = Math.max(1, (int) Math.round(length / WIGGLE_SEGMENT_WIDTH));
 
-            double angle = Math.atan2(y2 - y1, x2 - x1);
-            g2.rotate(angle);
+        try (var ignored = GraphicsState.save(g2, TRANSFORM, FONT, COLOR)) {
+            g2.setFont(BRAVURA_FONT);
+            g2.setColor(NOTE_COLOR);
+            g2.translate(x1, y);
 
-            double scale = length / GLISSANDO_LENGTH / segments;
+            double scale = length / WIGGLE_SEGMENT_WIDTH / segments;
             g2.scale(scale, 1d);
 
             for (int i = 0; i < segments; i++) {
-                g2.drawString(GLISSANDO_GLYPH, (int) Math.round(i * GLISSANDO_LENGTH), 0);
+                g2.drawString(
+                    SMuFLGlyph.WIGGLE_TRILL.asString(),
+                    (float) (i * WIGGLE_SEGMENT_WIDTH),
+                    0f
+                );
             }
         }
     }

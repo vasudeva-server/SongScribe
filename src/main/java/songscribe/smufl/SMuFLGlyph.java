@@ -101,6 +101,10 @@ public enum SMuFLGlyph {
     GLISSANDO_UP("glissandoUp", '\uE585'),
     GLISSANDO_DOWN("glissandoDown", '\uE586'),
 
+    // Trills and tremolos (U+EAA0-U+EAAF)
+    WIGGLE_TRILL("wiggleTrill", '\uEAA4'),
+    WIGGLE_GLISSANDO("wiggleGlissando", '\uEAAF'),
+
     // Tuplets (U+E880-U+E889)
     TUPLET_0("tuplet0", '\uE880'),
     TUPLET_1("tuplet1", '\uE881'),

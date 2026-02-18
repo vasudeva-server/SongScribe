@@ -21,9 +21,20 @@
 package songscribe.ui.message
 
 import net.engio.mbassy.bus.MBassador
+import net.engio.mbassy.bus.error.IPublicationErrorHandler
+import songscribe.util.Log
 
 object MessageCenter {
-  private val eventBus = MBassador<Message>()
+  private val eventBus = MBassador<Message>(IPublicationErrorHandler { error ->
+    val cause = error.cause
+    val message = error.message ?: "Message publication error"
+
+    if (cause != null) {
+      Log.error(message, cause)
+    } else {
+      Log.error(message)
+    }
+  })
 
   @JvmStatic
   fun post(message: Message) {

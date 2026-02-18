@@ -116,7 +116,6 @@ public class PlatformFileDialog {
             chooser.setFileSelectionMode(SystemFileChooser.DIRECTORIES_ONLY);
         }
 
-        chooser.setCurrentDirectory(mainFrame.getRecentFileDirectory());
     }
 
     public void setFileFiler(MyFileFilter maf) {
@@ -167,13 +166,7 @@ public class PlatformFileDialog {
     }
 
     public File getFile() {
-        File file = chooser.getSelectedFile();
-
-        mainFrame.setRecentFileDirectory(
-            !directoriesOnly ? file.getParentFile() : file
-        );
-
-        return file;
+        return chooser.getSelectedFile();
     }
 
     public void setFile(String file) {
@@ -181,11 +174,7 @@ public class PlatformFileDialog {
     }
 
     public File[] getFiles() {
-        var files = chooser.getSelectedFiles();
-        if (files.length > 0) {
-            mainFrame.setRecentFileDirectory(files[0].getParentFile());
-        }
-        return files;
+        return chooser.getSelectedFiles();
     }
 
     public void setMultiSelectionEnabled(boolean enabled) {

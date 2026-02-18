@@ -25,8 +25,6 @@ import java.awt.event.*;
 import java.awt.image.*;
 import java.io.File;
 import java.io.IOException;
-import java.util.Properties;
-
 import javax.swing.*;
 import javax.xml.parsers.SAXParser;
 import javax.xml.parsers.SAXParserFactory;
@@ -47,6 +45,7 @@ import songscribe.music.LyricsProcessor;
 import songscribe.music.MusicEditOperations;
 import songscribe.music.Note;
 import songscribe.music.NoteType;
+import songscribe.prefs.Prefs;
 import songscribe.ui.Constants;
 import songscribe.ui.Control;
 import songscribe.ui.Mode;
@@ -207,12 +206,7 @@ public final class Score
 
     public Score(@NotNull IMainFrame mainFrame) {
         this.mainFrame = mainFrame;
-        var property = mainFrame
-            .getProperties()
-            .getProperty(Constants.CONTROL_PROP);
-        control = (property != null)
-            ? Control.valueOf(property)
-            : Control.MOUSE;
+        control = Control.valueOf(Prefs.getInstance().getString("control"));
 
         // Initialize focus controller
         focusController = new ScoreFocusController(this);
@@ -430,7 +424,7 @@ public final class Score
         // The margin between the composition and the edge of the page
         marginPanel = new JPanel();
         marginPanel.setBorder(BorderFactory.createEmptyBorder(40, 40, 40, 40));
-        marginPanel.setBackground(Color.white);
+        marginPanel.setBackground(LayoutStylesheet.SCORE_BACKGROUND);
         marginPanel.add(this);
     }
 
@@ -488,40 +482,19 @@ public final class Score
 
     // TODO: Use mbassador instead of this
     @Override
-    public void musicDidChange(@NotNull Properties props) {
-        editModeManager.setPlayInsertingNote(
-            props
-                .getProperty(Constants.PLAY_INSERTING_NOTE)
-                .equals(Constants.TRUE_VALUE)
-        );
-        playWithRepeats = props
-            .getProperty(Constants.WITH_REPEAT_PROP)
-            .equals(Constants.TRUE_VALUE);
+    public void musicDidChange() {
+        var prefs = Prefs.getInstance();
+        editModeManager.setPlayInsertingNote(prefs.getBoolean("playInsertingNote"));
+        playWithRepeats = prefs.getBoolean("playWithRepeats");
 
         // Delegate playback settings to PlaybackController
-        var instrumentValue = Integer.parseInt(
-            props.getProperty(Constants.INSTRUMENT_PROP)
-        );
-        PlaybackController.setInstrument(instrumentValue);
-
-        var tempoChangeValue = Integer.parseInt(
-            props.getProperty(Constants.TEMPO_CHANGE_PROP)
-        );
-        PlaybackController.setTempoChangePercent(tempoChangeValue);
-
-        var noteDurationValue = Integer.parseInt(
-            props.getProperty(Constants.PLAYBACK_NOTE_DURATION_PROP)
-        );
-        PlaybackController.setNoteDurationPercent(noteDurationValue);
-
-        var colorizeValue = props
-            .getProperty(Constants.COLORIZE_NOTE)
-            .equals(Constants.TRUE_VALUE);
-        PlaybackController.setColorizeNotes(colorizeValue);
-
+        PlaybackController.setInstrument(prefs.getInt("instrument"));
+        PlaybackController.setTempoChangePercent(prefs.getInt("tempoChangePercent"));
+        PlaybackController.setNoteDurationPercent(prefs.getInt("playbackNoteDuration"));
+        PlaybackController.setColorizeNotes(prefs.getBoolean("colorizeNote"));
         PlaybackController.setPlayWithRepeats(playWithRepeats);
 
-        composition.musicChanged(props);
+        composition.musicChanged();
     }
 
     public void viewChanged() {
@@ -579,7 +552,7 @@ public final class Score
             g2,
             songscribe.ui.renderer.GraphicsState.Property.COLOR
         )) {
-            g2.setColor(Color.white);
+            g2.setColor(LayoutStylesheet.SCORE_BACKGROUND);
             g2.fillRect(0, 0, marginPanel.getWidth(), marginPanel.getHeight());
         }
 
@@ -909,8 +882,7 @@ public final class Score
     }
 
     public void saveProperties() {
-        var props = mainFrame.getProperties();
-        props.setProperty(Constants.CONTROL_PROP, control.name());
+        Prefs.getInstance().put("control", control.name());
     }
 
     public void setLineWidth(int lineWidth) {

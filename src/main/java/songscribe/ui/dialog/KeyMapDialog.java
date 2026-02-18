@@ -19,11 +19,9 @@
  */
 package songscribe.ui.dialog;
 
-import songscribe.ui.component.MainFrame;
-
 public class KeyMapDialog extends HTMLDialog {
 
-    public KeyMapDialog(MainFrame mainFrame) {
-        super(mainFrame, "Keymap", "Keymap.html");
+    public KeyMapDialog() {
+        super("Keymap", "Keymap.html");
     }
 }

@@ -22,15 +22,13 @@ package songscribe.ui.dialog;
 import java.awt.*;
 
 import songscribe.data.PageLayoutData;
-import songscribe.ui.component.MainFrame;
-
 public class ExportPDFDialog extends StandardDialog {
 
     private final PaperSizeStep paperSizePanel;
     private final PageLayoutData paperSizePageLayoutDataPrivate;
     private PageLayoutData paperSizePageLayoutData = null;
 
-    public ExportPDFDialog(MainFrame mainFrame) {
+    public ExportPDFDialog() {
         super("PDF properties");
         paperSizePageLayoutDataPrivate = new PageLayoutData();
         paperSizePageLayoutDataPrivate.mainFrame = mainFrame;

@@ -15,9 +15,12 @@
 
 package songscribe.music;
 
+import java.util.logging.Logger;
+
 import org.jetbrains.annotations.NotNull;
 
 import songscribe.ui.component.Score;
+import songscribe.ui.layout.LayoutStylesheet;
 
 /**
  * Calculates beam positioning and note lengthenings for proper visual rendering.
@@ -27,7 +30,11 @@ import songscribe.ui.component.Score;
  */
 public class BeamCalculator {
 
-    private static final double MAX_BEAM_ANGLE = 0.4;
+    private static final Logger LOG = Logger.getLogger(BeamCalculator.class.getName());
+
+    private static final double SLOPE_SCALE = 0.6;
+    private static final double MAX_DEVIATION_SS = 0.75;
+    private static final double PITCH_SPAN_THRESHOLD = 8;
 
     private BeamCalculator() {
         // Utility class
@@ -78,48 +85,103 @@ public class BeamCalculator {
         var endX = line.getNote(endIndex).getXPos();
         var xDiff = endX - startX;
 
-        var angle = Math.atan((yDiff * Score.NOTE_Y_OFFSET) / xDiff);
-        angle = Math.max(-MAX_BEAM_ANGLE, Math.min(angle, MAX_BEAM_ANGLE));
+        LOG.fine("=== BeamCalculator: startIndex=%d endIndex=%d yDiff=%.1f xDiff=%.1f direction=%d"
+            .formatted(startIndex, endIndex, yDiff, (double) xDiff, direction));
 
-        var goodIndex = -1;
+        double angle;
+
+        if (shouldForceHorizontal(line, startIndex, endIndex)) {
+            LOG.fine("  Forced horizontal");
+            angle = 0;
+        } else {
+            var rawSlope = (yDiff * Score.NOTE_Y_OFFSET) / xDiff;
+            var slope = rawSlope * SLOPE_SCALE;
+            var maxDevPx = MAX_DEVIATION_SS * LayoutStylesheet.STAFF_SPACE;
+            var deviation = Math.abs(slope * xDiff);
+
+            LOG.fine("  rawSlope=%.4f scaledSlope=%.4f deviation=%.1f maxDevPx=%.1f"
+                .formatted(rawSlope, slope, deviation, maxDevPx));
+
+            if (deviation > maxDevPx) {
+                var clampedSlope = Math.signum(slope) * maxDevPx / xDiff;
+                LOG.fine("  CLAMPED slope %.4f -> %.4f".formatted(slope, clampedSlope));
+                slope = clampedSlope;
+            }
+
+            angle = Math.atan(slope);
+            LOG.fine("  angle=%.4f rad (%.1f deg)".formatted(angle, Math.toDegrees(angle)));
+        }
+
+        // Anchor on the first note (no lengthening), lengthen the rest
+        var firstNote = line.getNote(startIndex);
+        firstNote.properties.lengthening = 0;
+        firstNote.setUpper(direction == 1);
+
+        var distance =
+            (firstNote.getYPos() * Score.NOTE_Y_OFFSET) - (angle * firstNote.getXPos());
+
+        LOG.fine("  anchor: note[%d] yPos=%d xPos=%d distance=%.1f"
+            .formatted(startIndex, firstNote.getYPos(), firstNote.getXPos(), distance));
+
+        for (var i = startIndex + 1; i <= endIndex; i++) {
+            var note = line.getNote(i);
+            calculateNoteLengthening(note, angle, distance, direction);
+            LOG.fine("  note[%d] yPos=%d xPos=%d lengthening=%d"
+                .formatted(i, note.getYPos(), note.getXPos(), note.properties.lengthening));
+        }
+
+    }
+
+    /**
+     * Determines whether a beamed group should be forced to a horizontal beam.
+     * This follows Gould/Ross engraving rules: force horizontal when the melodic
+     * contour reverses direction, when the pitch span is too large, or when
+     * exactly two notes share the same pitch.
+     *
+     * @param line       The line containing the notes
+     * @param startIndex Start index of the beamed group
+     * @param endIndex   End index of the beamed group
+     * @return True if the beam should be horizontal
+     */
+    private static boolean shouldForceHorizontal(
+        @NotNull Line line,
+        int startIndex,
+        int endIndex
+    ) {
+        var minY = Integer.MAX_VALUE;
+        var maxY = Integer.MIN_VALUE;
+        var prevY = line.getNote(startIndex).getYPos();
+        var direction = 0;
 
         for (var i = startIndex; i <= endIndex; i++) {
-            var note = line.getNote(i);
-            var xPos = note.getXPos();
-            var yPos = note.getYPos();
-            var distance = (yPos * Score.NOTE_Y_OFFSET) - (angle * xPos);
+            var y = line.getNote(i).getYPos();
+            minY = Math.min(minY, y);
+            maxY = Math.max(maxY, y);
 
-            if (
-                isGoodNote(
-                    line,
-                    startIndex,
-                    endIndex,
-                    i,
-                    angle,
-                    distance,
-                    direction
-                )
-            ) {
-                goodIndex = i;
-                break;
+            if (i > startIndex) {
+                var diff = y - prevY;
+
+                if (diff != 0) {
+                    var newDirection = (diff > 0) ? 1 : -1;
+
+                    if (direction != 0 && newDirection != direction) {
+                        return true;
+                    }
+
+                    direction = newDirection;
+                }
             }
+
+            prevY = y;
         }
 
-        var note = line.getNote(goodIndex);
-        note.properties.lengthening = 0;
-        note.setUpper(direction == 1);
-        var distance =
-            (note.getYPos() * Score.NOTE_Y_OFFSET) - (angle * note.getXPos());
-
-        for (var left = goodIndex - 1; left >= startIndex; left--) {
-            note = line.getNote(left);
-            calculateNoteLengthening(note, angle, distance, direction);
+        // Two notes at the same pitch
+        if (startIndex == endIndex - 1 && maxY == minY) {
+            return true;
         }
 
-        for (var right = goodIndex + 1; right <= endIndex; right++) {
-            note = line.getNote(right);
-            calculateNoteLengthening(note, angle, distance, direction);
-        }
+        // Pitch span exceeds threshold
+        return Math.abs(maxY - minY) > PITCH_SPAN_THRESHOLD;
     }
 
     /**
@@ -208,8 +270,8 @@ public class BeamCalculator {
         if (note.getNoteType().isGraceNote()) {
             note.properties.lengthening = 0;
         } else {
-            var lengthening = (note.getYPos() * Score.NOTE_Y_OFFSET) -
-                ((angle * note.getXPos()) + distance);
+            var lengthening = direction * ((note.getYPos() * Score.NOTE_Y_OFFSET) -
+                ((angle * note.getXPos()) + distance));
             note.properties.lengthening = (int) Math.round(lengthening);
         }
     }

@@ -37,6 +37,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import songscribe.music.Tempo;
+import songscribe.prefs.Prefs;
 import songscribe.ui.action.Actions;
 import songscribe.ui.component.IMainFrame;
 import songscribe.util.Utils;
@@ -57,30 +58,10 @@ public class ProfileManager {
         this.mainFrame = mainFrame;
         var existingProfiles = enumerateProfiles();
 
-        if (
-            existingProfiles.contains(
-                mainFrame
-                    .getProperties()
-                    .getProperty(Constants.DEFAULT_PROFILE_PROP)
-            )
-        ) {
-            setDefaultProfile(
-                mainFrame
-                    .getProperties()
-                    .getProperty(Constants.DEFAULT_PROFILE_PROP)
-            );
-        } else if (
-            existingProfiles.contains(
-                mainFrame
-                    .getDefaultProps()
-                    .getProperty(Constants.DEFAULT_PROFILE_PROP)
-            )
-        ) {
-            setDefaultProfile(
-                mainFrame
-                    .getDefaultProps()
-                    .getProperty(Constants.DEFAULT_PROFILE_PROP)
-            );
+        var savedDefault = Prefs.getInstance().getString("defaultProfile");
+
+        if (existingProfiles.contains(savedDefault)) {
+            setDefaultProfile(savedDefault);
         } else if (!existingProfiles.isEmpty()) {
             setDefaultProfile(existingProfiles.getFirst());
         } else {
@@ -242,9 +223,7 @@ public class ProfileManager {
     public void setDefaultProfile(String defaultProfileName) {
         this.defaultProfileName = defaultProfileName;
         defaultProfile = getProfile(defaultProfileName);
-        mainFrame
-            .getProperties()
-            .setProperty(Constants.DEFAULT_PROFILE_PROP, defaultProfileName);
+        Prefs.getInstance().put("defaultProfile", defaultProfileName);
     }
 
     public String getDefaultProfileName() {

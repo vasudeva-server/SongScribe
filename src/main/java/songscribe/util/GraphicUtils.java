@@ -331,6 +331,31 @@ public final class GraphicUtils {
     }
 
     /**
+     * Snaps a local Y coordinate to the nearest device pixel boundary.
+     * Transforms to absolute device space, rounds, and inverse-transforms back to
+     * local coordinates. This ensures crisp rendering of horizontal elements
+     * regardless of the current graphics translation or Retina scaling.
+     *
+     * @param g2     the graphics context with the current transform
+     * @param localY the Y coordinate in local (user) space
+     * @return the adjusted Y coordinate in local space, snapped to a device pixel
+     */
+    public static double snapYToDevicePixel(@NotNull Graphics2D g2, double localY) {
+        var transform = g2.getTransform();
+        var devicePt = new Point2D.Double();
+        transform.transform(new Point2D.Double(0, localY), devicePt);
+        devicePt.y = Math.round(devicePt.y);
+
+        try {
+            transform.inverseTransform(devicePt, devicePt);
+        } catch (java.awt.geom.NoninvertibleTransformException e) {
+            return localY;
+        }
+
+        return devicePt.y;
+    }
+
+    /**
      * Takes pixel and returns inches (rounded to 2 decimal places) or mm (rounded to int).
      */
     public static double convertFromPixels(int pixels, Unit unit) {

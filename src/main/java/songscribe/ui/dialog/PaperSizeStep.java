@@ -30,7 +30,7 @@ import javax.swing.*;
 import org.jetbrains.annotations.NotNull;
 
 import songscribe.data.PageLayoutData;
-import songscribe.ui.Constants;
+import songscribe.prefs.Prefs;
 import songscribe.util.GraphicUtils;
 import songscribe.util.Utils;
 
@@ -192,10 +192,7 @@ public class PaperSizeStep extends Step {
 
     @Override
     public void start() {
-        var metric = pageLayoutData.mainFrame
-            .getProperties()
-            .getProperty(Constants.METRIC)
-            .equals(Constants.TRUE_VALUE);
+        var metric = Prefs.getInstance().getBoolean("metric");
 
         for (var i = 0; i < templates.getSize(); i++) {
             if (templates.getElementAt(i).metric == metric) {
@@ -221,23 +218,12 @@ public class PaperSizeStep extends Step {
         pageLayoutData.mirrored = mirroredCheck.isSelected();
 
         if (unitsCombo.getSelectedItem() instanceof TemplateObject) {
-            pageLayoutData.mainFrame
-                .getProperties()
-                .setProperty(
-                    Constants.METRIC,
-                    ((TemplateObject) unitsCombo.getSelectedItem()).metric
-                        ? Constants.TRUE_VALUE
-                        : Constants.FALSE_VALUE
-                );
+            Prefs.getInstance().put(
+                "metric",
+                ((TemplateObject) unitsCombo.getSelectedItem()).metric
+            );
         } else {
-            pageLayoutData.mainFrame
-                .getProperties()
-                .setProperty(
-                    Constants.METRIC,
-                    (unitsCombo.getSelectedIndex() == 0)
-                        ? Constants.FALSE_VALUE
-                        : Constants.TRUE_VALUE
-                );
+            Prefs.getInstance().put("metric", unitsCombo.getSelectedIndex() != 0);
         }
     }
 
@@ -254,12 +240,7 @@ public class PaperSizeStep extends Step {
         int bottomMargin,
         boolean mirroredMargin
     ) {
-        var metric = GraphicUtils.Unit.create(
-            pageLayoutData.mainFrame
-                .getProperties()
-                .getProperty(Constants.METRIC)
-                .equals(Constants.TRUE_VALUE)
-        );
+        var metric = GraphicUtils.Unit.create(Prefs.getInstance().getBoolean("metric"));
         unitsCombo.setSelectedIndex(metric.ordinal());
         widthSpinnerModel.setValue(
             GraphicUtils.convertFromPixels(pageWidth, metric)

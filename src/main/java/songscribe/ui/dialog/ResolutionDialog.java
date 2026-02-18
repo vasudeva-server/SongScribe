@@ -29,9 +29,8 @@ import com.intellij.uiDesigner.core.GridConstraints;
 import com.intellij.uiDesigner.core.GridLayoutManager;
 import com.intellij.uiDesigner.core.Spacer;
 
-import songscribe.ui.Constants;
+import songscribe.prefs.Prefs;
 import songscribe.ui.component.BorderPanel;
-import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.MyBorder;
 import songscribe.util.GraphicUtils;
 
@@ -51,9 +50,8 @@ public class ResolutionDialog extends StandardDialog implements ChangeListener {
     private int sheetHeightWithoutLyrics = 0;
     private int sheetHeightWithoutTitle = 0;
 
-    public ResolutionDialog(MainFrame mainFrame) {
+    public ResolutionDialog() {
         super("Image properties");
-        this.mainFrame = mainFrame;
         borderPanel.setPackListener(_ -> pack());
         borderPanel.addChangeListener(this);
         resolutionSpinner.addChangeListener(this);
@@ -70,11 +68,7 @@ public class ResolutionDialog extends StandardDialog implements ChangeListener {
     @Override
     protected void getData() {
         approved = false;
-        resolutionSpinner.setValue(
-            Integer.parseInt(
-                mainFrame.getProperties().getProperty(Constants.DPI_PROP)
-            )
-        );
+        resolutionSpinner.setValue(Prefs.getInstance().getInt("exportDpi"));
         var score = mainFrame.getScore();
         var composition = score.getComposition();
         sheetWidth = score.getSheetWidth();
@@ -114,12 +108,7 @@ public class ResolutionDialog extends StandardDialog implements ChangeListener {
     @Override
     protected void setData() {
         approved = true;
-        mainFrame
-            .getProperties()
-            .setProperty(
-                Constants.DPI_PROP,
-                resolutionSpinner.getValue().toString()
-            );
+        Prefs.getInstance().put("exportDpi", (int) resolutionSpinner.getValue());
     }
 
     public boolean isApproved() {

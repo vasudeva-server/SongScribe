@@ -25,8 +25,7 @@ import java.util.Hashtable;
 
 import javax.swing.*;
 
-import songscribe.ui.Constants;
-import songscribe.ui.component.MainFrame;
+import songscribe.prefs.Prefs;
 
 public class PreferencesDialog extends StandardDialog {
 
@@ -36,7 +35,7 @@ public class PreferencesDialog extends StandardDialog {
         "Play the note being inserted"
     );
 
-    public PreferencesDialog(MainFrame mainFrame) {
+    public PreferencesDialog() {
         super("Preferences");
         var playbackPanel = new JPanel();
         playbackPanel.setLayout(new BoxLayout(playbackPanel, BoxLayout.Y_AXIS));
@@ -74,32 +73,16 @@ public class PreferencesDialog extends StandardDialog {
 
     @Override
     protected void getData() {
-        var props = mainFrame.getProperties();
-        durationSlider.setValue(
-            Integer.parseInt(
-                props.getProperty(Constants.PLAYBACK_NOTE_DURATION_PROP)
-            )
-        );
-        playInsertingNoteCheck.setSelected(
-            props
-                .getProperty(Constants.PLAY_INSERTING_NOTE)
-                .equals(Constants.TRUE_VALUE)
-        );
+        var prefs = Prefs.getInstance();
+        durationSlider.setValue(prefs.getInt("playbackNoteDuration"));
+        playInsertingNoteCheck.setSelected(prefs.getBoolean("playInsertingNote"));
     }
 
     @Override
     protected void setData() {
-        var props = mainFrame.getProperties();
-        props.setProperty(
-            Constants.PLAYBACK_NOTE_DURATION_PROP,
-            Integer.toString(durationSlider.getValue())
-        );
-        props.setProperty(
-            Constants.PLAY_INSERTING_NOTE,
-            playInsertingNoteCheck.isSelected()
-                ? Constants.TRUE_VALUE
-                : Constants.FALSE_VALUE
-        );
+        var prefs = Prefs.getInstance();
+        prefs.put("playbackNoteDuration", durationSlider.getValue());
+        prefs.put("playInsertingNote", playInsertingNoteCheck.isSelected());
         mainFrame.fireMusicChanged(this);
     }
 }

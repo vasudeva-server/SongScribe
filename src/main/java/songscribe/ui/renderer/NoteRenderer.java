@@ -73,10 +73,15 @@ public class NoteRenderer extends BaseElementRenderer<Note> {
     }
 
     // Stem dimensions from SMuFL metadata, rounded to integer pixels for crisp rendering
-    private static final double STEM_WIDTH = Math.max(1.0,
+    public static final double STEM_WIDTH = Math.max(1.0,
         Math.round(StaffSpaces.toPixels(
             SMuFLMetadata.getInstance().getEngravingDefaults().stemThickness())));
     private static final double STEM_LENGTH = StaffSpaces.toPixels(3.5);
+
+    // Half the beam thickness in pixels, used to tuck beamed stems inside the beam
+    // so they don't peek past the outer edge when the beam is angled.
+    private static final double HALF_BEAM_THICKNESS = StaffSpaces.toPixels(
+        SMuFLMetadata.getInstance().getEngravingDefaults().beamThickness()) / 2.0;
 
     // Cached anchor data for notehead glyphs (in pixels, Y-down screen convention)
     private static final GlyphAnchors.Anchor STEM_UP_SE_BLACK;
@@ -207,6 +212,11 @@ public class NoteRenderer extends BaseElementRenderer<Note> {
             return;
         }
 
+        if (noteType == NoteType.BREATH_MARK) {
+            renderBreathMark(element, g2, ctx);
+            return;
+        }
+
         if (noteType.isGraceNote()) {
             GraceNoteRenderer.getInstance().render(element, g2, ctx);
             return;
@@ -260,6 +270,12 @@ public class NoteRenderer extends BaseElementRenderer<Note> {
             return;
         }
 
+        if (noteType == NoteType.BREATH_MARK) {
+            var breathY = middleLineY - StaffSpaces.toPixels(2.5);
+            drawBravuraGlyph(g2, SMuFLGlyph.BREATH_MARK_COMMA, note.getXPos(), Math.round(breathY), true);
+            return;
+        }
+
         if (noteType.isGraceNote()) {
             GraceNoteRenderer.getInstance().render(g2, note, middleLineY);
             return;
@@ -289,6 +305,30 @@ public class NoteRenderer extends BaseElementRenderer<Note> {
         @NotNull ElementRenderContext ctx
     ) {
         render(note, g2, ctx);
+    }
+
+    // ==========================================================================
+    // Breath Mark Rendering
+    // ==========================================================================
+
+    private void renderBreathMark(
+        @NotNull Note element,
+        @NotNull Graphics2D g2,
+        @NotNull ElementRenderContext ctx
+    ) {
+        var layoutResult = ctx.getLayoutResult();
+        var noteX = (layoutResult != null) ? layoutResult.getNoteX(element) : element.getXPos();
+
+        // Place half a staff space above the top staff line
+        var breathY = ctx.getMiddleLineY() - StaffSpaces.toPixels(2.5);
+
+        drawBravuraGlyph(
+            g2,
+            SMuFLGlyph.BREATH_MARK_COMMA,
+            GraphicUtils.snapXToDevicePixel(g2, noteX),
+            Math.round(breathY),
+            true
+        );
     }
 
     // ==========================================================================
@@ -417,6 +457,13 @@ public class NoteRenderer extends BaseElementRenderer<Note> {
 
         double stemLength = STEM_LENGTH + note.properties.lengthening;
 
+        // For beamed notes, shorten the rendered stem by half the beam thickness
+        // so it tucks inside the beam rather than peeking past the outer edge
+        // when the beam is angled. stem.y2 retains the full length for beam positioning.
+        double drawLength = beamed
+            ? Math.max(0, stemLength - HALF_BEAM_THICKNESS)
+            : stemLength;
+
         if (upper) {
             double stemTopY = anchorY - stemLength;
 
@@ -425,14 +472,14 @@ public class NoteRenderer extends BaseElementRenderer<Note> {
 
             // Draw filled rectangle for crisp rendering
             g2.fill(new Rectangle2D.Double(
-                stemLeftX, stemTopY, STEM_WIDTH, stemLength));
+                stemLeftX, anchorY - drawLength, STEM_WIDTH, drawLength));
         } else {
             double stemBottomY = anchorY + stemLength;
 
             note.properties.stem.setLine(stemCenterX, anchorY, stemCenterX, stemBottomY);
 
             g2.fill(new Rectangle2D.Double(
-                stemLeftX, anchorY, STEM_WIDTH, stemLength));
+                stemLeftX, anchorY, STEM_WIDTH, drawLength));
         }
     }
 

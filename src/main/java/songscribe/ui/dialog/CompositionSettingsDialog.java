@@ -162,7 +162,7 @@ public class CompositionSettingsDialog extends StandardDialog {
     private final JLabel profileInfoLabel = new JLabel();
     private final JButton setAsDefaultButton = new JButton("Set as default");
 
-    public CompositionSettingsDialog(MainFrame mainFrame) {
+    public CompositionSettingsDialog() {
         super("Composition settings");
         initFields();
 

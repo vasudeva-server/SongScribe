@@ -49,6 +49,20 @@ public final class Log {
         Log.filename = filename;
     }
 
+    public static void configureDebugLogging() {
+        if (System.getenv("DEBUG") == null) {
+            return;
+        }
+
+        // Enable FINE logging for all songscribe.* loggers
+        Logger.getLogger("songscribe").setLevel(Level.FINE);
+
+        // Lower the root logger's handlers so FINE records are not filtered before reaching them
+        for (var handler : Logger.getLogger("").getHandlers()) {
+            handler.setLevel(Level.FINE);
+        }
+    }
+
     public static void log(Level level, String msg) {
         getInstance().log(level, msg);
     }

@@ -201,7 +201,9 @@ Only two additions required -- all others already exist in the enum:
 
 ---
 
-## Sub-Phase 7d: Tuplet Numbers
+## Sub-Phase 7d: Tuplet Numbers and Brackets
+
+### 7d.1: Tuplet Numbers
 
 **Current:** Uses `BaseElementRenderer.TUPLET_FONT` (from `TupletNumbers.ttf` at size 13f) via `g2.drawString(Integer.toString(grade), cx - 3, tc.getRate(cx - 3) - 5)`.
 
@@ -217,11 +219,76 @@ Only two additions required -- all others already exist in the enum:
 
 **ENDING_FONT dependency:** `ENDING_FONT = TUPLET_FONT` in `BaseElementRenderer`. Endings display regular text numbers ("1.", "2."), not music-notation tuplet glyphs. `TupletNumbers.ttf` cannot be deleted until Phase 8 resolves this. Out of scope here.
 
+### 7d.2: Tuplet Bracket Rewrite
+
+**Current:** Two `QuadCurve2D.Float` segments form a curved bracket with a gap for the number. `TupletCalc` computes the linear slope between bracket endpoints, but the bracket itself bows downward via quadratic control points (`tc.getRate(...) - 10` for curvature, `tc.getRate(...) - 8` at gap edges). This curved shape is non-standard.
+
+**Target:** Straight brackets per standard engraving practice (Gould, Ross). SMuFL does not define tuplet bracket glyphs -- the spec explicitly states "scoring applications should use primitives to draw tuplet brackets."
+
+**Design:** A straight bracket consists of three line segments:
+- Left vertical end cap (short downward tick at left endpoint)
+- Right vertical end cap (short downward tick at right endpoint)
+- Horizontal line from left to right, following the slope computed by `TupletCalc`, with a gap in the center for the tuplet number
+
+`LINE_STROKE` (already using SMuFL `tupletBracketThickness`) remains unchanged.
+
+**Changes:**
+1. Replace the two `QuadCurve2D.Float` draws with three `Line2D.Float` draws:
+   - Left end cap: vertical line of ~0.5 staff space at `(lx, ly)` pointing away from notes.
+   - Left bracket arm: `(lx, ly)` to `(cx - halfGap, tc.getRate(cx - halfGap))`.
+   - Right bracket arm: `(cx + halfGap, tc.getRate(cx + halfGap))` to `(rx, ry)`.
+   - Right end cap: vertical line of ~0.5 staff space at `(rx, ry)` pointing away from notes.
+2. `halfGap` is derived from the SMuFL tuplet glyph advance width (+ small padding), replacing the hardcoded `7px`.
+3. `TupletCalc` is preserved -- it correctly computes the slope for straight brackets too.
+4. End cap direction depends on stem direction: caps point downward for upper brackets, upward for lower brackets.
+
+**Notes:**
+- The bracket arms naturally follow the slope because `TupletCalc.getRate()` interpolates linearly between `(lx, ly)` and `(rx, ry)`.
+- Combining 7d.1 and 7d.2 avoids touching `renderTuplet()` twice and ensures the bracket gap matches the new glyph width.
+
+### 7d.3: Fix Beam Rendering — Remove Stroke Outline
+
+In `BeamGroupRenderer.drawBeam()`, the beam parallelogram is rendered with both `g2.draw(beam)` and `g2.fill(beam)`. The `draw()` call uses `STEM_STROKE` which adds a half-stroke-width border around the filled shape, causing:
+- Anti-aliased edges where beam meets stems (visible fuzziness)
+- Beam ends not aligning exactly with stem lines
+- Small extra rectangles visible at stem tops on first/last notes of beamed groups
+
+**Fix**: Remove the `g2.draw(beam)` call, keeping only `g2.fill(beam)`. The filled Path2D parallelogram is sufficient. This should also eliminate the extra rectangles at stem tops.
+
+**File**: `src/main/java/songscribe/ui/renderer/BeamGroupRenderer.java`, `drawBeam()` method.
+
+### 7d.4: Verify Extra Rectangles at Stem Tops Resolved
+
+Small extra rectangles are visible at the top of stems on the first and last notes of beamed groups (on the left side of the stem). Likely caused by the `g2.draw(beam)` stroke outline extending beyond the stem line at the beam edges.
+
+Should be resolved by 7d.3. If artifacts persist, investigate whether `NoteRenderer.renderStem()` has overlap/overdraw at the stem endpoint.
+
+**Files**: `BeamGroupRenderer.java`, possibly `NoteRenderer.java`.
+
+### 7d.5: Fix Tuplet Bracket/Number Positioning Above Beams
+
+The tuplet number ("3") is positioned too low — it sits just above the stem tip instead of being offset above the top beam. The bracket lines also overlap with the beams.
+
+**Root cause**: `TupletRenderer.renderTuplet()` calculates bracket Y from the note's Y position + stem lengthening with only a fixed `ly -= 5` pixel offset. This doesn't account for beam thickness or beam count (8th notes have 1 beam, 16ths have 2, etc.).
+
+**Fix options**:
+1. Read actual beam top position from note properties (if available after beam rendering)
+2. Calculate beam clearance from beam count x (beamThickness + beamSpacing) and add to bracket offset
+3. Store the outermost beam Y in note properties during beam rendering for tuplet renderer to reference
+
+The bracket should clear the top beam by at least 0.5-1 staff space. The number should be centered in the bracket gap above the beams.
+
+**File**: `src/main/java/songscribe/ui/renderer/TupletRenderer.java`, `renderTuplet()` method.
+
 ### 7d Verification
 - [ ] Compile and run
-- [ ] Triplet "3" renders centered in bracket
+- [ ] Triplet "3" renders centered in bracket gap
 - [ ] Other tuplet grades (5, 6, 7) render correctly
+- [ ] Bracket is straight with vertical end caps
 - [ ] Bracket gap accommodates SMuFL glyph width
+- [ ] Upper and lower brackets have correct end cap direction
+- [ ] Beams align crisply with stems, no anti-aliased edges or extra rectangles
+- [ ] Tuplet brackets clear the top beam with proper spacing
 - [ ] First/second endings still render correctly (unaffected)
 
 ---
@@ -232,7 +299,7 @@ Only two additions required -- all others already exist in the enum:
 
 - **7a** (Articulations + Fermata): Isolated, self-contained. Good warm-up.
 - **7c** (Trill, Glissando, Breath Mark, BeatChange flags): Requires two new enum entries. Straightforward Fughetta → Bravura swaps.
-- **7d** (Tuplet Numbers): Self-contained font swap.
+- **7d** (Tuplet Numbers + Brackets): Font swap plus bracket shape rewrite from curved to straight.
 - **7b** (Barlines + Repeats): Most drastic change -- removes many constants, changes positioning model. Benefits from confidence gained in earlier sub-phases.
 
 Sub-phases have no inter-dependencies and can technically be done in any order.

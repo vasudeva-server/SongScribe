@@ -21,37 +21,9 @@ package songscribe.ui;
 
 public final class Constants {
 
-    public static final String WITH_REPEAT_PROP = "withrepeat";
-    public static final String LOOP_PLAYBACK_PROP = "playcontinuously";
-    public static final String INSTRUMENT_PROP = "instrument";
-    public static final String TEMPO_CHANGE_PROP = "tempochange";
-    public static final String PLAYBACK_NOTE_DURATION_PROP =
-        "durationshortitude";
-    public static final String STRIP_SHORT_A_PROP = "strip-short-a";
-    public static final String CONTROL_PROP = "control";
-    public static final String DEFAULT_PROFILE_PROP = "defaultprofile";
-    public static final String IMAGE_EXPORT_FILTER_PROP = "imageexportfilter";
-    public static final String DPI_PROP = "dpi";
-    public static final String PREVIOUS_DIRECTORY = "previousdirectory";
-    public static final String PLAY_INSERTING_NOTE = "playinsertingnote";
-    public static final String COLORIZE_NOTE = "colorizenote";
-    public static final String TIP_INDEX = "tipindex";
-    public static final String SHOW_TIP = "showtip";
-    public static final String SHOW_WHATS_NEW = "showwhatsnew";
-    public static final String TRUE_VALUE = "true";
-    public static final String FALSE_VALUE = "false";
     public static final String ACCELERATOR_KEYS = "AcceleratorKeys";
     public static final String UNDERSCORE = "_";
     public static final String HYPHEN = "-";
-    public static final String SHOW_MEM_USAGE = "showmemusage";
-    public static final String SHOW_PUBLISHER_NEW_INFO = "showpublishernewinfo";
-    public static final String LAST_AUTO_UPDATE = "lastautoupdate";
-    public static final String AUTO_UPDATE_PERIOD = "autoupdateperiod";
-    public static final String METRIC = "metric";
-    public static final String FIRST_RUN = "firstrun";
-    public static final String VERSION_URL =
-        "https://songscribe.appspot.com/?platform=";
-    //    public static final Header MAX_AGE_HEADER = new Header("Cache-Control", "max-age=0");
     public static final String NON_BREAKING_HYPHEN = Character.toString(
         '\u00AD'
     );

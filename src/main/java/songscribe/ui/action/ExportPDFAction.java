@@ -89,7 +89,7 @@ public class ExportPDFAction extends UIAction {
         }
 
         if (exportPDFDialog == null) {
-            exportPDFDialog = new ExportPDFDialog(mainFrame);
+            exportPDFDialog = new ExportPDFDialog();
         }
 
         exportPDFDialog.setVisible(true);

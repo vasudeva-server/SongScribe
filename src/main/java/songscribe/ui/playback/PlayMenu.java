@@ -20,14 +20,12 @@
 
 package songscribe.ui.playback;
 
-import java.util.Properties;
-
 import javax.swing.*;
 
 import net.engio.mbassy.listener.Handler;
 
 import songscribe.MusicChangeListener;
-import songscribe.ui.Constants;
+import songscribe.prefs.Prefs;
 import songscribe.ui.action.DialogOpenAction;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.message.MessageCenter;
@@ -84,22 +82,12 @@ public class PlayMenu extends JMenu implements MusicChangeListener {
 
     // TODO: Use message center
     @Override
-    public void musicDidChange(Properties props) {
-        playWithRepeatsItem.setSelected(
-            props
-                .getProperty(Constants.WITH_REPEAT_PROP)
-                .equals(Constants.TRUE_VALUE)
-        );
+    public void musicDidChange() {
+        var prefs = Prefs.getInstance();
+        playWithRepeatsItem.setSelected(prefs.getBoolean("playWithRepeats"));
+        loopPlaybackItem.setSelected(prefs.getBoolean("loopPlayback"));
 
-        loopPlaybackItem.setSelected(
-            props
-                .getProperty(Constants.LOOP_PLAYBACK_PROP)
-                .equals(Constants.TRUE_VALUE)
-        );
-
-        var tempoChange = Integer.parseInt(
-            props.getProperty(Constants.TEMPO_CHANGE_PROP)
-        );
+        var tempoChange = prefs.getInt("tempoChangePercent");
 
         for (
             var menuItems = tempoChangeGroup.getElements();

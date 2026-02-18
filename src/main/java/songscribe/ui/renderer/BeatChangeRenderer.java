@@ -25,9 +25,12 @@ import static songscribe.ui.renderer.GraphicsState.Property.*;
 import java.awt.*;
 
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import songscribe.music.BeatChange;
 import songscribe.music.Note;
+import songscribe.music.NoteType;
+import songscribe.smufl.SMuFLGlyph;
 import songscribe.ui.layout.BeatChangeAttachment;
 
 /**
@@ -214,13 +217,15 @@ public class BeatChangeRenderer extends BaseElementRenderer<Note> {
 
                 g2.drawLine((int) stemX, (int) stemY1, (int) stemX, (int) stemY2);
 
-                // Draw flags for 8th notes and smaller (still Fughetta PUA, Phase 6 scope)
+                // Draw flags for 8th notes and smaller using SMuFL glyphs
                 if (noteType.isBeamable()) {
-                    float flagX = (float) (NOTE_FONT_SIZE / 3.6834533d);
-                    float flagY = (float) (-NOTE_FONT_SIZE / 1.6623377f + 2);
-                    g2.setFont(MUSIC_FONT);
-                    g2.drawString("\uf06a", flagX, flagY); // Main upper flag
-                    g2.setFont(BRAVURA_FONT);
+                    var flagGlyph = getFlagGlyph(noteType);
+
+                    if (flagGlyph != null) {
+                        float flagX = (float) Math.round(NOTE_FONT_SIZE / 3.6834533d);
+                        float flagY = (float) Math.round(-NOTE_FONT_SIZE / 1.6623377d + 2);
+                        g2.drawString(flagGlyph.asString(), flagX, flagY);
+                    }
                 }
             }
 
@@ -230,5 +235,18 @@ public class BeatChangeRenderer extends BaseElementRenderer<Note> {
                 g2.fillOval((int) 13.1d, (int) (-dotWidth / 2), (int) dotWidth, (int) dotWidth);
             }
         }
+    }
+
+    /**
+     * Returns the SMuFL flag glyph for a beamable note type (stems up only for tempo display).
+     */
+    @Nullable
+    private static SMuFLGlyph getFlagGlyph(@NotNull NoteType noteType) {
+        return switch (noteType) {
+            case QUAVER -> SMuFLGlyph.FLAG_8TH_UP;
+            case SEMIQUAVER -> SMuFLGlyph.FLAG_16TH_UP;
+            case DEMI_SEMIQUAVER -> SMuFLGlyph.FLAG_32ND_UP;
+            default -> null;
+        };
     }
 }

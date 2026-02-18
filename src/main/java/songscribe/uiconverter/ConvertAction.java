@@ -26,7 +26,6 @@ import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.util.Properties;
 import java.util.zip.ZipOutputStream;
 
 import javax.sound.midi.InvalidMidiDataException;
@@ -36,7 +35,6 @@ import javax.swing.*;
 import org.jetbrains.annotations.Nullable;
 
 import songscribe.io.CompositionIO;
-import songscribe.ui.Constants;
 import songscribe.ui.component.MyBorder;
 import songscribe.ui.dialog.ProcessDialog;
 import songscribe.ui.playback.PlaybackController;
@@ -120,16 +118,9 @@ public class ConvertAction extends AbstractAction {
                 myBorders[i].setRight(LEFT_RIGHT_MARGIN[i]);
             }
 
-            var props = new Properties(uiConverter.getProperties());
-            props.setProperty(
-                Constants.WITH_REPEAT_PROP,
-                Constants.FALSE_VALUE
-            );
-            props.setProperty(Constants.INSTRUMENT_PROP, Integer.toString(0));
-            props.setProperty(
-                Constants.TEMPO_CHANGE_PROP,
-                Integer.toString(100)
-            );
+            PlaybackController.setPlayWithRepeats(false);
+            PlaybackController.setInstrument(0);
+            PlaybackController.setTempoChangePercent(100);
 
             File zipFile = null;
 
@@ -241,7 +232,6 @@ public class ConvertAction extends AbstractAction {
                     }
 
                     // produce MIDI
-                    score.musicDidChange(props);
                     @Nullable
                     var midiFile = new File(
                         songDirectory,

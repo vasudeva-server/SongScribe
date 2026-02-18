@@ -37,8 +37,8 @@ public class LyricsPanel extends LyricsDialog {
     private JSplitPane lyricsSplitPane;
     private JSplitPane subSplitPane;
 
-    public LyricsPanel(MainFrame mainFrame) {
-        super(mainFrame);
+    public LyricsPanel() {
+        super();
         lyricsSplitPane.setLeftComponent(syllabifiedLyricsPanel);
         lyricsSplitPane.setDividerSize(20);
         subSplitPane.setTopComponent(underLyricsPanel);

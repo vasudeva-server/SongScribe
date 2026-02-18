@@ -815,7 +815,7 @@ public class Line {
     private void addNoteOn(Track track, int ticks, Note note) throws InvalidMidiDataException {
         var down = new ShortMessage();
         down.setMessage(
-            ShortMessage.NOTE_ON,
+            ShortMessage.NOTE_ON, 0,
             note.getPitch(),
             note.hasArticulation(ArticulationType.ACCENT)
                 ? ACCENTED_NOTE_VELOCITY
@@ -829,13 +829,7 @@ public class Line {
      */
     private void addNoteOff(Track track, int ticks, Note note) throws InvalidMidiDataException {
         var up = new ShortMessage();
-        up.setMessage(
-            ShortMessage.NOTE_OFF,
-            note.getPitch(),
-            note.hasArticulation(ArticulationType.ACCENT)
-                ? ACCENTED_NOTE_VELOCITY
-                : NOTE_VELOCITY
-        );
+        up.setMessage(ShortMessage.NOTE_OFF, 0, note.getPitch(), 0);
         track.add(new MidiEvent(up, ticks));
     }
 

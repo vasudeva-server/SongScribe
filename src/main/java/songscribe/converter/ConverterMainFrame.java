@@ -24,9 +24,6 @@ import static org.mockito.Mockito.mock;
 
 import java.awt.*;
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.util.Properties;
 
 import javax.swing.*;
 
@@ -35,32 +32,14 @@ import songscribe.ui.ProfileManager;
 import songscribe.ui.component.IMainFrame;
 import songscribe.ui.component.LyricsPanel;
 import songscribe.ui.component.Score;
-import songscribe.ui.component.StatusBar;
-import songscribe.util.Utils;
 
 public class ConverterMainFrame implements IMainFrame {
 
     private Score score = null;
 
-    private final Properties defaultProps = new Properties();
-
     private final ProfileManager profileManager;
 
     public ConverterMainFrame() {
-        try (
-            var reader = new FileInputStream(
-                Utils.getResourcePath("conf/defprops")
-            )
-        ) {
-            defaultProps.load(reader);
-        } catch (IOException e) {
-            showErrorMessage(
-                "The program could not start, because a necessary file is not available. Please " +
-                "reinstall the software."
-            );
-            throw new RuntimeException(e);
-        }
-
         profileManager = new ProfileManager(this);
     }
 
@@ -107,22 +86,12 @@ public class ConverterMainFrame implements IMainFrame {
     public void addMusicChangeListener(MusicChangeListener listener) {}
 
     @Override
-    public Properties getProperties() {
-        return new Properties();
-    }
-
-    @Override
     public LyricsPanel getLyricsModePanel() {
         return mock(LyricsPanel.class);
     }
 
     @Override
     public void fireMusicChanged(Object source) {}
-
-    @Override
-    public StatusBar getStatusBar() {
-        return mock(StatusBar.class);
-    }
 
     @Override
     public Component getFocusOwner() {
@@ -138,8 +107,4 @@ public class ConverterMainFrame implements IMainFrame {
         this.score = score;
     }
 
-    @Override
-    public Properties getDefaultProps() {
-        return defaultProps;
-    }
 }

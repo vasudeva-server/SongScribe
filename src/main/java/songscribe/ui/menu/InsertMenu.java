@@ -36,7 +36,8 @@ public final class InsertMenu extends JMenu {
         super("Insert");
         add(new DurationMenu());
         add(new JCheckBoxMenuItem(Actions.REST_ACTION));
-        add(new BarsMenu());
+        add(new RepeatsMenu());
+        add(new BarlineMenu());
 
         addSeparator();
 
@@ -44,6 +45,7 @@ public final class InsertMenu extends JMenu {
         add(new AccidentalMenu());
         add(new ArticulationMenu());
         add(new JCheckBoxMenuItem(Actions.FERMATA_ACTION));
+        add(new JRadioButtonMenuItem(Actions.BREATH_MARK_ACTION));
 
         addSeparator();
 

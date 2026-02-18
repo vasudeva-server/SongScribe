@@ -31,7 +31,6 @@ import org.jdesktop.layout.LayoutStyle;
 
 import songscribe.Version;
 import songscribe.data.MyDesktop;
-import songscribe.ui.component.MainFrame;
 import songscribe.util.Utils;
 
 public class AboutDialog extends StandardDialog {
@@ -39,7 +38,7 @@ public class AboutDialog extends StandardDialog {
     public static final String WEB = "http://www.songscribe.org";
     public static final String LICENSE = "GPL (General Public License)";
 
-    public AboutDialog(MainFrame mainFrame) {
+    public AboutDialog() {
         super("About");
         var tabPane = new JTabbedPane();
         tabPane.addTab("About", makeAboutPanel());

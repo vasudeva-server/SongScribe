@@ -35,6 +35,8 @@ import songscribe.util.UIUtils;
 import songscribe.ui.debug.DebugInspector;
 import songscribe.ui.edit.EditModeManager;
 import songscribe.ui.menu.DebugState;
+import songscribe.ui.message.DeselectMessage;
+import songscribe.ui.message.MessageCenter;
 import songscribe.ui.playback.MidiController;
 
 /**
@@ -51,8 +53,6 @@ interface InputHandlerCallback {
     JPopupMenu getEditPopup();
 
     boolean requestFocusInWindow();
-
-    void clearSelection();
 }
 
 /**
@@ -190,8 +190,7 @@ public final class ScoreInputHandler
         } else if (e.getKeyCode() == KeyEvent.VK_ESCAPE
                 && callback.getMode() == Mode.SELECT
                 && !UIUtils.isEditingText()) {
-            callback.clearSelection();
-            callback.repaint();
+            MessageCenter.post(new DeselectMessage());
         }
     }
 

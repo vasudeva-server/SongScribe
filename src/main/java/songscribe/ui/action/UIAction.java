@@ -154,9 +154,9 @@ public class UIAction extends AbstractAction {
         // the action.
         if (
             hasFlag(Flag.REQUIRES_SELECTION) ||
-            hasFlag(Flag.REQUIRES_SINGLE_SELECTION) ||
-            hasFlag(Flag.REQUIRES_MULTIPLE_SELECTION) ||
-            hasFlag(Flag.DISABLE_WHEN_COMPOSITION_EMPTY)
+                hasFlag(Flag.REQUIRES_SINGLE_SELECTION) ||
+                hasFlag(Flag.REQUIRES_MULTIPLE_SELECTION) ||
+                hasFlag(Flag.DISABLE_WHEN_COMPOSITION_EMPTY)
         ) {
             setEnabled(false);
         }
@@ -268,13 +268,13 @@ public class UIAction extends AbstractAction {
         var score = MainFrame.getInstance().getScore();
         var enable =
             enableInAdjustmentMode(score) &&
-            enableFromTextEditingState() &&
-            enableFromPlaybackState() &&
-            enableInRestMode() &&
-            enableFromSelection(score) &&
-            enableFromBarSelection() &&
-            enableFromDurationSelection() &&
-            enableFromCompositionState();
+                enableFromTextEditingState() &&
+                enableFromPlaybackState() &&
+                enableInRestMode() &&
+                enableFromSelection(score) &&
+                enableFromBarSelection() &&
+                enableFromDurationSelection() &&
+                enableFromCompositionState();
         setEnabled(enable);
         return enable;
     }
@@ -287,7 +287,7 @@ public class UIAction extends AbstractAction {
     protected boolean enableInAdjustmentMode(Score score) {
         return (
             !hasFlag(Flag.DISABLE_IN_ADJUSTMENT_MODE) ||
-            !score.getMode().isAdjustmentMode()
+                !score.getMode().isAdjustmentMode()
         );
     }
 
@@ -323,8 +323,8 @@ public class UIAction extends AbstractAction {
 
         return (
             !hasFlag(Flag.REQUIRES_OPTIONAL_MULTIPLE_SELECTION) ||
-            (size == 0) ||
-            (size > 1)
+                (size == 0) ||
+                (size > 1)
         );
     }
 
@@ -336,7 +336,7 @@ public class UIAction extends AbstractAction {
     protected boolean enableInRestMode() {
         return (
             !hasFlag(Flag.DISABLE_IN_REST_MODE) ||
-            !Actions.REST_ACTION.isSelected()
+                !Actions.REST_ACTION.isSelected()
         );
     }
 
@@ -348,8 +348,8 @@ public class UIAction extends AbstractAction {
     protected boolean enableFromPlaybackState() {
         return (
             !hasFlag(Flag.DISABLE_WHEN_PLAYING) ||
-            (PlaybackController.getState() !=
-                PlaybackController.PlaybackState.PLAYING)
+                (PlaybackController.getState() !=
+                    PlaybackController.PlaybackState.PLAYING)
         );
     }
 
@@ -372,7 +372,7 @@ public class UIAction extends AbstractAction {
     protected boolean enableFromBarSelection() {
         return (
             !hasFlag(Flag.DISABLE_WHEN_BAR_SELECTED) ||
-            !Actions.BAR_ACTION_GROUP.anySelected()
+                !Actions.NON_DURATION_ACTION_GROUP.anySelected()
         );
     }
 
@@ -390,7 +390,7 @@ public class UIAction extends AbstractAction {
         var duration = Actions.DURATION_ACTION_GROUP.getSelected();
         return (
             (duration != Actions.GRACE_EIGHTH_NOTE_ACTION) &&
-            (duration != Actions.GLISSANDO_ACTION)
+                (duration != Actions.GLISSANDO_ACTION)
         );
     }
 
@@ -405,6 +405,6 @@ public class UIAction extends AbstractAction {
         }
 
         var composition = MainFrame.getInstance().getScore().getComposition();
-        return !composition.isEmpty();
+        return composition != null && !composition.isEmpty();
     }
 }

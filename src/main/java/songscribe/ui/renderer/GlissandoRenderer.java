@@ -28,17 +28,18 @@ import java.awt.*;
 import org.jetbrains.annotations.NotNull;
 
 import songscribe.music.Composition;
-
 import songscribe.music.Line;
 import songscribe.music.Note;
 import songscribe.music.NoteType;
+import songscribe.smufl.SMuFLGlyph;
+import songscribe.smufl.StaffSpaces;
 
 /**
  * Renders glissando (wavy ornament lines) connecting notes.
  * <p>
  * A glissando is a decorative wavy line that connects a note to a target pitch,
  * typically indicating a slide or glide between pitches. The line is drawn using
- * the Fughetta font's glissando glyph, repeated and scaled to span the distance.
+ * the Bravura font's wiggleGlissando glyph, repeated and scaled to span the distance.
  * <p>
  * Glissando data is stored on the source note via {@link Note#getGlissando()}.
  */
@@ -48,11 +49,8 @@ public class GlissandoRenderer {
     // Constants
     // ==========================================================================
 
-    /** Glissando glyph from Fughetta font. */
-    private static final String GLISSANDO_GLYPH = "\uf07e";
-
-    /** Base length of one glissando segment. */
-    private static final double GLISSANDO_LENGTH = BaseElementRenderer.NOTE_FONT_SIZE / 2.6666667;
+    /** Base length of one glissando segment (SMuFL repeatOffset: 0.96 ss). */
+    private static final double GLISSANDO_LENGTH = StaffSpaces.toPixels(0.96);
 
     /** Minimum number of glissando segments to draw. */
     private static final int MIN_SEGMENTS = 2;
@@ -201,7 +199,7 @@ public class GlissandoRenderer {
         var y1 = noteYPosToCoordinate(note.getYPos(), ctx.getMiddleLineY());
         var y2 = noteYPosToCoordinate(glissando.pitch, ctx.getMiddleLineY());
 
-        renderGlissandoLine(g2, x1, y1, x2, y2, ctx);
+        renderGlissandoLine(g2, x1, y1, x2, y2);
     }
 
     /**
@@ -233,7 +231,7 @@ public class GlissandoRenderer {
         var y1 = noteYPosToCoordinate(note.getYPos(), ctx.getMiddleLineY());
         var y2 = noteYPosToCoordinate(glissando.pitch, ctx.getMiddleLineY());
 
-        renderGlissandoLine(g2, x1, y1, x2, y2, ctx);
+        renderGlissandoLine(g2, x1, y1, x2, y2);
     }
 
     // ==========================================================================
@@ -304,20 +302,18 @@ public class GlissandoRenderer {
     /**
      * Renders the actual glissando wavy line between two points.
      *
-     * @param g2  Graphics context
-     * @param x1  Start X coordinate
-     * @param y1  Start Y coordinate
-     * @param x2  End X coordinate
-     * @param y2  End Y coordinate
-     * @param ctx Render context
+     * @param g2 Graphics context
+     * @param x1 Start X coordinate
+     * @param y1 Start Y coordinate
+     * @param x2 End X coordinate
+     * @param y2 End Y coordinate
      */
     private void renderGlissandoLine(
         @NotNull Graphics2D g2,
         int x1,
         int y1,
         int x2,
-        int y2,
-        @NotNull ElementRenderContext ctx
+        int y2
     ) {
         // Calculate total length
         var dx = Math.abs(x2 - x1);
@@ -329,7 +325,7 @@ public class GlissandoRenderer {
 
         // Save transform and set up for rotated drawing
         try (var ignored = GraphicsState.save(g2, TRANSFORM, FONT)) {
-            g2.setFont(ctx.getMusicFont());
+            g2.setFont(BaseElementRenderer.BRAVURA_FONT);
 
             // Translate to start position
             g2.translate(x1, y1 + GLISSANDO_Y_OFFSET);
@@ -343,8 +339,10 @@ public class GlissandoRenderer {
             g2.scale(scale, 1d);
 
             // Draw glissando segments
+            var glyphStr = SMuFLGlyph.WIGGLE_GLISSANDO.asString();
+
             for (var i = 0; i < segments; i++) {
-                g2.drawString(GLISSANDO_GLYPH, (int) Math.round(i * GLISSANDO_LENGTH), 0);
+                g2.drawString(glyphStr, (float) (i * GLISSANDO_LENGTH), 0f);
             }
         }
     }

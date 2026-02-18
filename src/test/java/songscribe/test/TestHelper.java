@@ -22,7 +22,6 @@ package songscribe.test;
 
 import java.awt.Component;
 import java.io.File;
-import java.util.Properties;
 
 import org.jetbrains.annotations.NotNull;
 
@@ -31,7 +30,6 @@ import songscribe.ui.ProfileManager;
 import songscribe.ui.component.IMainFrame;
 import songscribe.ui.component.LyricsPanel;
 import songscribe.ui.component.Score;
-import songscribe.ui.component.StatusBar;
 
 /**
  * Helper class for creating test fixtures.
@@ -51,18 +49,7 @@ public class TestHelper {
      */
     private static class MockMainFrame implements IMainFrame {
 
-        private final Properties properties;
-        private final Properties defaultProps;
-
         public MockMainFrame() {
-            properties = new Properties();
-            defaultProps = new Properties();
-
-            // Set minimal default properties
-            defaultProps.setProperty("attribution", "Test Attribution");
-            defaultProps.setProperty("keys", "0");
-            defaultProps.setProperty("keyType", "SHARPS");
-
             // Do NOT create ProfileManager in tests - it tries to access
             // the filesystem and can call System.exit() if profiles are missing
         }
@@ -100,11 +87,6 @@ public class TestHelper {
         }
 
         @Override
-        public Properties getProperties() {
-            return properties;
-        }
-
-        @Override
         public LyricsPanel getLyricsModePanel() {
             return null;
         }
@@ -112,11 +94,6 @@ public class TestHelper {
         @Override
         public void fireMusicChanged(Object source) {
             // No-op for tests
-        }
-
-        @Override
-        public StatusBar getStatusBar() {
-            return null;
         }
 
         @Override
@@ -142,11 +119,6 @@ public class TestHelper {
         @Override
         public void setFrameSize() {
             // No-op for tests
-        }
-
-        @Override
-        public Properties getDefaultProps() {
-            return defaultProps;
         }
     }
 }

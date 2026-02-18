@@ -22,12 +22,11 @@ package songscribe.music;
 import java.awt.*;
 import java.awt.image.*;
 import java.util.ArrayList;
-import java.util.Properties;
 import java.util.regex.Pattern;
 
 import org.jetbrains.annotations.NotNull;
 
-import songscribe.ui.Constants;
+import songscribe.prefs.Prefs;
 import songscribe.ui.ProfileManager;
 import songscribe.ui.action.InsertLineAction;
 import songscribe.ui.component.IMainFrame;
@@ -213,7 +212,7 @@ public final class Composition {
         addLine(new Line());
     }
 
-    public void musicChanged(@NotNull Properties props) {
+    public void musicChanged() {
         modified = true;
     }
 
@@ -439,10 +438,7 @@ public final class Composition {
 
     @NotNull
     private String processText(@NotNull String text) {
-        var strip = mainFrame
-            .getProperties()
-            .getProperty(Constants.STRIP_SHORT_A_PROP)
-            .equals(Constants.TRUE_VALUE);
+        var strip = Prefs.getInstance().getBoolean("stripShortA");
 
         if (strip && SHORT_A_PATTERN.matcher(text).find()) {
             mainFrame.showInfoMessage(

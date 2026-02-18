@@ -33,7 +33,6 @@ import com.intellij.uiDesigner.core.Spacer;
 
 import songscribe.music.LyricsProcessor;
 import songscribe.ui.Constants;
-import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.MyJTextArea;
 import songscribe.util.StringUtils;
 import songscribe.util.UIUtils;
@@ -59,7 +58,7 @@ public class LyricsDialog extends StandardDialog {
     protected JPanel underLyricsPanel;
     protected JPanel translatedLyricsPanel;
 
-    public LyricsDialog(MainFrame mainFrame) {
+    public LyricsDialog() {
         super("Lyrics");
         charsPanel.setLayout(
             new GridLayout(1, specialChars[0].length * 2, 4, 0)

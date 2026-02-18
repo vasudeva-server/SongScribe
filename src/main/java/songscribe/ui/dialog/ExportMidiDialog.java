@@ -22,15 +22,12 @@ package songscribe.ui.dialog;
 import java.awt.*;
 import java.io.File;
 import java.io.IOException;
-import java.util.Properties;
 
 import javax.sound.midi.InvalidMidiDataException;
 import javax.sound.midi.MidiSystem;
 import javax.swing.*;
 
-import org.jetbrains.annotations.NotNull;
-
-import songscribe.ui.Constants;
+import songscribe.prefs.Prefs;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.playback.InstrumentDialog;
 import songscribe.ui.playback.PlaybackController;
@@ -42,7 +39,7 @@ public class ExportMidiDialog extends StandardDialog {
     private final JCheckBox withRepeatCheck;
     private File saveFile = null;
 
-    public ExportMidiDialog(MainFrame mainFrame) {
+    public ExportMidiDialog() {
         super("MIDI properties");
         var center = new JPanel();
         center.setLayout(new BoxLayout(center, BoxLayout.Y_AXIS));
@@ -66,48 +63,35 @@ public class ExportMidiDialog extends StandardDialog {
 
     @Override
     protected void getData() {
-        instrumentCombo.setSelectedIndex(
-            Integer.parseInt(
-                mainFrame.getProperties().getProperty(Constants.INSTRUMENT_PROP)
-            )
-        );
-        withRepeatCheck.setSelected(
-            mainFrame
-                .getProperties()
-                .getProperty(Constants.WITH_REPEAT_PROP)
-                .equals(Constants.TRUE_VALUE)
-        );
+        var prefs = Prefs.getInstance();
+        instrumentCombo.setSelectedIndex(InstrumentDialog.programToIndex(prefs.getInt("instrument")));
+        withRepeatCheck.setSelected(prefs.getBoolean("playWithRepeats"));
     }
 
     @Override
     protected void setData() {
         try {
-            var props = getProperties();
             var score = mainFrame.getScore();
-            score.musicDidChange(props);
-            var sequence = PlaybackController.buildSequence(score.getComposition());
-            MidiSystem.write(sequence, 1, saveFile);
-            score.musicDidChange(mainFrame.getProperties());
-            FileUtils.openExportFile(mainFrame, saveFile);
+            var savedSettings = PlaybackController.getPlaybackSettings();
+
+            // Apply export-specific overrides
+            PlaybackController.setPlayWithRepeats(withRepeatCheck.isSelected());
+            var index = instrumentCombo.getSelectedIndex();
+            PlaybackController.setInstrument(index >= 0 ? InstrumentDialog.INSTRUMENT_PROGRAMS[index] : 0);
+            PlaybackController.setTempoChangePercent(100);
+
+            try {
+                var sequence = PlaybackController.buildSequence(score.getComposition());
+                MidiSystem.write(sequence, 1, saveFile);
+                FileUtils.openExportFile(mainFrame, saveFile);
+            } finally {
+                // Restore previous playback settings
+                PlaybackController.setPlayWithRepeats(savedSettings.playWithRepeats());
+                PlaybackController.setInstrument(savedSettings.instrument());
+                PlaybackController.setTempoChangePercent(savedSettings.tempoChangePercent());
+            }
         } catch (IOException | InvalidMidiDataException e1) {
             mainFrame.showErrorMessage(MainFrame.COULD_NOT_SAVE_MESSAGE);
         }
-    }
-
-    @NotNull
-    private Properties getProperties() {
-        var props = new Properties(mainFrame.getProperties());
-        props.setProperty(
-            Constants.WITH_REPEAT_PROP,
-            withRepeatCheck.isSelected()
-                ? Constants.TRUE_VALUE
-                : Constants.FALSE_VALUE
-        );
-        props.setProperty(
-            Constants.INSTRUMENT_PROP,
-            Integer.toString(instrumentCombo.getSelectedIndex())
-        );
-        props.setProperty(Constants.TEMPO_CHANGE_PROP, "100");
-        return props;
     }
 }

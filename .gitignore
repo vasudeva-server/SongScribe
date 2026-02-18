@@ -1,9 +1,3 @@
-# No IntelliJ stuff
-*.iml
-*.ipr
-*.iws
-.idea/
-
 # No maven stuff
 target/
 out/

@@ -104,7 +104,8 @@ public class MidiSequenceBuilder {
         var sequence = new Sequence(Sequence.PPQ, PPQ, 0);
         var track = sequence.createTrack();
 
-        // Add program change for instrument
+        // Force GM melodic bank before program change to avoid sticky variation banks.
+        addBankSelect(track, 0, 0, 0);
         addProgramChange(track, settings.instrument());
 
         // Add initial tempo
@@ -267,8 +268,19 @@ public class MidiSequenceBuilder {
      */
     private void addProgramChange(Track track, int instrument) throws InvalidMidiDataException {
         var programChange = new ShortMessage();
-        programChange.setMessage(ShortMessage.PROGRAM_CHANGE, instrument, 0);
+        programChange.setMessage(ShortMessage.PROGRAM_CHANGE, 0, instrument, 0);
         track.add(new MidiEvent(programChange, 0));
+    }
+
+    private void addBankSelect(Track track, int channel, int msb, int lsb)
+            throws InvalidMidiDataException {
+        var bankMsb = new ShortMessage();
+        bankMsb.setMessage(ShortMessage.CONTROL_CHANGE, channel, 0, msb);
+        track.add(new MidiEvent(bankMsb, 0));
+
+        var bankLsb = new ShortMessage();
+        bankLsb.setMessage(ShortMessage.CONTROL_CHANGE, channel, 32, lsb);
+        track.add(new MidiEvent(bankLsb, 0));
     }
 
     /**

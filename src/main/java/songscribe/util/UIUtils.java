@@ -327,6 +327,11 @@ public final class UIUtils {
     @Nullable
     public static JFrame getFocusedFrame() {
         var focusOwner = KeyboardFocusManager.getCurrentKeyboardFocusManager().getFocusOwner();
+
+        if (focusOwner == null) {
+            return null;
+        }
+
         return getParentFrame(focusOwner);
     }
 

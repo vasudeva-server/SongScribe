@@ -32,6 +32,8 @@ import songscribe.smufl.SMuFLMetadata;
 import songscribe.smufl.StaffSpaces;
 import songscribe.ui.layout.BeamGroup;
 import songscribe.ui.layout.LayoutStylesheet;
+import songscribe.ui.layout2.LayoutResult;
+import songscribe.util.GraphicUtils;
 
 import static songscribe.ui.renderer.GraphicsState.Property.*;
 
@@ -52,17 +54,9 @@ public class BeamGroupRenderer extends BaseElementRenderer<BeamGroup> {
     private static final EngravingDefaults ENGRAVING_DEFAULTS =
         SMuFLMetadata.getInstance().getEngravingDefaults();
 
-    // Beam strokes
-    private static final BasicStroke BEAM_STROKE = new BasicStroke(
-        (float) StaffSpaces.toPixels(ENGRAVING_DEFAULTS.beamThickness()),
-        BasicStroke.CAP_BUTT,
-        BasicStroke.JOIN_MITER
-    );
-    private static final BasicStroke STEM_STROKE = new BasicStroke(
-        (float) StaffSpaces.toPixels(ENGRAVING_DEFAULTS.stemThickness()),
-        BasicStroke.CAP_BUTT,
-        BasicStroke.JOIN_MITER
-    );
+    // Beam thickness in pixels (from SMuFL engravingDefaults)
+    private static final double BEAM_THICKNESS_PX =
+        StaffSpaces.toPixels(ENGRAVING_DEFAULTS.beamThickness());
 
     // Inner beam dimensions
     private static final double INNER_BEAM_LENGTH = 11d;
@@ -289,49 +283,47 @@ public class BeamGroupRenderer extends BaseElementRenderer<BeamGroup> {
         var lastStem = endNote.properties.stem;
 
         int middleLineY = ctx.getMiddleLineY();
+        var halfStemWidth = NoteRenderer.STEM_WIDTH / 2.0;
 
-        // Reduce height by half stem width for rendering accuracy
-        var halfStemWidth = STEM_STROKE.getLineWidth() / 2;
-        var halfBeamWidth = (BEAM_STROKE.getLineWidth() / 2) - halfStemWidth;
+        // Gould/Ross beam model: the beam "nests into" the stem.
+        // For up stems: the beam's top edge aligns with the stem tip,
+        //   and the beam extends downward (toward the notehead) by BEAM_THICKNESS_PX.
+        // For down stems: the beam's bottom edge aligns with the stem tip,
+        //   and the beam extends upward (toward the notehead) by BEAM_THICKNESS_PX.
+        // Secondary beams stack further inward from the primary.
+        var beamThickness = isUpper ? BEAM_THICKNESS_PX : -BEAM_THICKNESS_PX;
 
-        // Inner beam offset: moves beam toward note head for secondary/tertiary beams
+        // Secondary/tertiary beams offset toward the noteheads (inward in the stack)
         var innerBeamOffset = INNER_BEAM_OFFSET * recursionLevel * (isUpper ? 1 : -1);
 
-        // Calculate first note beam position using actual stem end (y2)
-        var noteX = beginNote.getXPos();
-        var firstX = firstStem.x1 + noteX;
+        // Stem coordinates (stem.x1) are stored relative to the snapped note origin
+        // used in NoteRenderer.renderElement(). We must snap noteX the same way here
+        // so beam edges align exactly with stem edges — no re-snapping of the final
+        // beam coordinates, since the stem was already pixel-aligned.
+        var layoutResult = ctx.getLayoutResult();
+
+        // First note: left edge of stem, stem tip Y
+        var noteX = (layoutResult != null) ? layoutResult.getNoteX(beginNote) : beginNote.getXPos();
+        var snappedNoteX = GraphicUtils.snapXToDevicePixel(g2, noteX);
+        var firstX = snappedNoteX + firstStem.x1 - halfStemWidth;
         var noteY = middleLineY + (beginNote.getYPos() * LayoutStylesheet.NOTE_Y_OFFSET);
+        var firstOuterY = GraphicUtils.snapYToDevicePixel(g2, noteY + firstStem.y2 + innerBeamOffset);
+        var firstInnerY = GraphicUtils.snapYToDevicePixel(g2, firstOuterY + beamThickness);
 
-        // Use stem.y2 directly - it already incorporates lengthening from NoteRenderer
-        // Adjust so beam edge meets stem end: upper beams have bottom edge at stem,
-        // lower beams have top edge at stem
-        var firstY = noteY + firstStem.y2 + innerBeamOffset;
-
-        if (isUpper) {
-            firstY -= halfBeamWidth;  // Beam bottom at stem end
-        } else {
-            firstY += halfBeamWidth;  // Beam top at stem end
-        }
-
-        // Build beam path
-        var beam = new Path2D.Double(Path2D.WIND_NON_ZERO, 4);
-        beam.moveTo(firstX, firstY + halfBeamWidth);  // Bottom left
-        beam.lineTo(firstX, firstY - halfBeamWidth);  // Top left
-
-        // Calculate last note beam position
-        noteX = endNote.getXPos();
-        var lastX = lastStem.x1 + noteX;
+        // Last note: right edge of stem, stem tip Y
+        noteX = (layoutResult != null) ? layoutResult.getNoteX(endNote) : endNote.getXPos();
+        snappedNoteX = GraphicUtils.snapXToDevicePixel(g2, noteX);
+        var lastX = snappedNoteX + lastStem.x1 + halfStemWidth;
         noteY = middleLineY + (endNote.getYPos() * LayoutStylesheet.NOTE_Y_OFFSET);
-        var lastY = noteY + lastStem.y2 + innerBeamOffset;
+        var lastOuterY = GraphicUtils.snapYToDevicePixel(g2, noteY + lastStem.y2 + innerBeamOffset);
+        var lastInnerY = GraphicUtils.snapYToDevicePixel(g2, lastOuterY + beamThickness);
 
-        if (isUpper) {
-            lastY -= halfBeamWidth;
-        } else {
-            lastY += halfBeamWidth;
-        }
-
-        beam.lineTo(lastX, lastY - halfBeamWidth);    // Top right
-        beam.lineTo(lastX, lastY + halfBeamWidth);    // Bottom right
+        // Build beam parallelogram: outer edge at stem tips, inner edge toward noteheads
+        var beam = new Path2D.Double(Path2D.WIND_NON_ZERO, 4);
+        beam.moveTo(firstX, firstOuterY);
+        beam.lineTo(lastX, lastOuterY);
+        beam.lineTo(lastX, lastInnerY);
+        beam.lineTo(firstX, firstInnerY);
         beam.closePath();
 
         Shape oldClip = null;
@@ -359,10 +351,8 @@ public class BeamGroupRenderer extends BaseElementRenderer<BeamGroup> {
             g2.setClip(clip);
         }
 
-        try (var ignored = GraphicsState.save(g2, COLOR, STROKE)) {
-            g2.setColor(Color.BLACK);
-            g2.setStroke(STEM_STROKE);
-            g2.draw(beam);
+        try (var ignored = GraphicsState.save(g2, COLOR)) {
+            g2.setColor(NOTE_COLOR);
             g2.fill(beam);
         }
 

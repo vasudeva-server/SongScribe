@@ -35,6 +35,8 @@ public final class SongScribe {
     private SongScribe() {}
 
     public static void main(@NotNull String[] args) {
+        Log.configureDebugLogging();
+
         // Figure out which app to start. The default is Song Writer.
         String app;
 

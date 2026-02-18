@@ -21,12 +21,10 @@ package songscribe.converter;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Properties;
 
 import javax.sound.midi.InvalidMidiDataException;
 import javax.sound.midi.MidiSystem;
 
-import songscribe.ui.Constants;
 import songscribe.ui.component.Score;
 import songscribe.ui.playback.PlaybackController;
 import songscribe.util.FileUtils;
@@ -69,25 +67,14 @@ public class MidiConverter {
         var score = new Score(mainFrame);
         mainFrame.setScore(score);
 
-        var props = new Properties(mainFrame.getProperties());
-        props.setProperty(
-            Constants.WITH_REPEAT_PROP,
-            withRepeat ? Constants.TRUE_VALUE : Constants.FALSE_VALUE
-        );
-        props.setProperty(
-            Constants.INSTRUMENT_PROP,
-            Integer.toString(instrument)
-        );
-        props.setProperty(
-            Constants.TEMPO_CHANGE_PROP,
-            Integer.toString(tempoChange)
-        );
+        PlaybackController.setPlayWithRepeats(withRepeat);
+        PlaybackController.setInstrument(instrument);
+        PlaybackController.setTempoChangePercent(tempoChange);
 
         for (var file : files) {
             try {
                 score.setComposition(null);
                 score.openFile(mainFrame, file, false);
-                score.musicDidChange(props);
 
                 var sequence = PlaybackController.buildSequence(score.getComposition());
                 MidiSystem.write(

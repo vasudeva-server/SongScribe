@@ -23,7 +23,6 @@ import static songscribe.util.StringUtils.toKebabCase;
 
 import java.awt.event.*;
 
-import songscribe.ui.component.MainFrame;
 import songscribe.ui.dialog.StandardDialog;
 import songscribe.util.Log;
 
@@ -57,9 +56,7 @@ public class DialogOpenAction<T extends StandardDialog> extends UIAction {
     public T getDialog() {
         if (dialog == null) {
             try {
-                dialog = dialogClass
-                    .getConstructor(MainFrame.class)
-                    .newInstance(MainFrame.getInstance());
+                dialog = dialogClass.getConstructor().newInstance();
             } catch (Exception error) {
                 Log.error("Error creating dialog", error);
             }

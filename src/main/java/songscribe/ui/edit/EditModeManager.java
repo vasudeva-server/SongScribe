@@ -25,11 +25,10 @@ import java.util.function.Supplier;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import songscribe.music.ArticulationType;
 import songscribe.music.BeamCalculator;
 import songscribe.music.Composition;
-import songscribe.music.ArticulationType;
 import songscribe.music.ForceArticulation;
-
 import songscribe.music.Line;
 import songscribe.music.LyricsProcessor;
 import songscribe.music.Note;
@@ -37,8 +36,8 @@ import songscribe.music.NoteType;
 import songscribe.ui.Control;
 import songscribe.ui.action.Actions;
 import songscribe.ui.clipboard.ClipboardManager;
-import songscribe.ui.layout.Articulation;
 import songscribe.ui.component.IMainFrame;
+import songscribe.ui.layout.Articulation;
 import songscribe.ui.layout2.InsertionSpacingCalculator;
 import songscribe.ui.message.LayoutChangeMessage;
 import songscribe.ui.message.MessageCenter;
@@ -202,7 +201,7 @@ public final class EditModeManager {
         if (durationAction != null) {
             noteType = durationAction.getType();
         } else {
-            var barAction = Actions.BAR_ACTION_GROUP.getSelected();
+            var barAction = Actions.NON_DURATION_ACTION_GROUP.getSelected();
 
             if (barAction != null) {
                 noteType = barAction.getType();
@@ -351,7 +350,7 @@ public final class EditModeManager {
             var diff =
                 ((noteIndex == line.noteCount())
                     ? (int) Math.round(InsertionSpacingCalculator.calculateAppendPosition(
-                        line, clipboardManager.getFirstNote()))
+                    line, clipboardManager.getFirstNote()))
                     : line.getNote(noteIndex).getXPos()) -
                     clipboardManager.getFirstNote().getXPos();
             var copySize = clipboardManager.getSize();
@@ -431,8 +430,9 @@ public final class EditModeManager {
             nextNote = editNote.getNoteType().newInstance();
         }
 
-        // After inserting a note, turn off fermata
+        // After inserting a note, turn off fermata and accidental parentheses
         Actions.FERMATA_ACTION.setSelected(false);
+        Actions.ACCIDENTAL_IN_PARENS_ACTION.setSelected(false);
 
         // Add any other note decorations
         decorateNote(nextNote);

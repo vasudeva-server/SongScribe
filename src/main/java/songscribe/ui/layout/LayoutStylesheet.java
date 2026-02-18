@@ -20,6 +20,8 @@
 
 package songscribe.ui.layout;
 
+import java.awt.*;
+
 /**
  * Centralized layout constants (CSS-like stylesheet).
  * <p>
@@ -46,6 +48,16 @@ public final class LayoutStylesheet {
     private LayoutStylesheet() {
         // Prevent instantiation
     }
+
+    // ==========================================================================
+    // COLORS
+    // ==========================================================================
+
+    /**
+     * Background color of the score page
+     */
+    public static final Color SCORE_BACKGROUND = new Color(0xF9, 0xF9, 0xF9, 0xFF);
+
 
     // ==========================================================================
     // BASE UNIT

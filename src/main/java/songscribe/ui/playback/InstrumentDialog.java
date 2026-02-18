@@ -30,12 +30,36 @@ import javax.sound.midi.Sequence;
 import javax.sound.midi.ShortMessage;
 import javax.swing.*;
 
-import songscribe.ui.Constants;
+import songscribe.prefs.Prefs;
 import songscribe.ui.dialog.StandardDialog;
 
 public class InstrumentDialog extends StandardDialog {
 
-    public static final String[] INSTRUMENT_STRING = instrumentComboFactory();
+    public static final String[] INSTRUMENT_STRING;
+    public static final int[] INSTRUMENT_PROGRAMS;
+
+    static {
+        var names = new ArrayList<String>(128);
+        var programs = new ArrayList<Integer>(128);
+
+        if (MidiController.synthesizer != null) {
+            var count = 0;
+
+            for (var instrument : MidiController.synthesizer.getLoadedInstruments()) {
+                names.add(instrument.getName());
+                programs.add(instrument.getPatch().getProgram());
+                count += 1;
+
+                if (count == 128) {
+                    break;
+                }
+            }
+        }
+
+        INSTRUMENT_STRING = names.toArray(new String[0]);
+        INSTRUMENT_PROGRAMS = programs.stream().mapToInt(Integer::intValue).toArray();
+    }
+
     private final JList<String> instrumentList = new JList<>(INSTRUMENT_STRING);
 
     public InstrumentDialog() {
@@ -57,43 +81,27 @@ public class InstrumentDialog extends StandardDialog {
         contentPanel.add(BorderLayout.SOUTH, buttonPanel);
     }
 
-    private static String[] instrumentComboFactory() {
-        var vs = new ArrayList<String>(128);
-
-        if (MidiController.synthesizer != null) {
-            var i = 1;
-
-            for (var instrument : MidiController.synthesizer.getLoadedInstruments()) {
-                vs.add(i + " - " + instrument.getName());
-                i += 1;
-
-                if (i == 128) {
-                    break;
-                }
+    public static int programToIndex(int program) {
+        for (var i = 0; i < INSTRUMENT_PROGRAMS.length; i++) {
+            if (INSTRUMENT_PROGRAMS[i] == program) {
+                return i;
             }
         }
 
-        return vs.toArray(new String[0]);
+        return 0;
     }
 
     @Override
     protected void getData() {
-        instrumentList.setSelectedIndex(
-            Integer.parseInt(
-                mainFrame.getProperties().getProperty(Constants.INSTRUMENT_PROP)
-            )
-        );
-        instrumentList.ensureIndexIsVisible(instrumentList.getSelectedIndex());
+        var index = programToIndex(Prefs.getInstance().getInt("instrument"));
+        instrumentList.setSelectedIndex(index);
+        instrumentList.ensureIndexIsVisible(index);
     }
 
     @Override
     protected void setData() {
-        mainFrame
-            .getProperties()
-            .setProperty(
-                Constants.INSTRUMENT_PROP,
-                Integer.toString(instrumentList.getSelectedIndex())
-            );
+        var index = instrumentList.getSelectedIndex();
+        Prefs.getInstance().put("instrument", index >= 0 ? INSTRUMENT_PROGRAMS[index] : 0);
         mainFrame.fireMusicChanged(this);
     }
 
@@ -124,10 +132,12 @@ public class InstrumentDialog extends StandardDialog {
             try {
                 var sequence = new Sequence(Sequence.PPQ, PlaybackController.PPQ, 0);
                 var track = sequence.createTrack();
+                var selectedIndex = instrumentList.getSelectedIndex();
+                var program = selectedIndex >= 0 ? INSTRUMENT_PROGRAMS[selectedIndex] : 0;
                 var programChange = new ShortMessage();
                 programChange.setMessage(
                     ShortMessage.PROGRAM_CHANGE,
-                    instrumentList.getSelectedIndex(),
+                    program,
                     0
                 );
                 track.add(new MidiEvent(programChange, 0));
@@ -160,7 +170,7 @@ public class InstrumentDialog extends StandardDialog {
                     up.setMessage(
                         ShortMessage.NOTE_OFF,
                         pitch,
-                        PlaybackController.NOTE_VELOCITY
+                        0
                     );
                     track.add(new MidiEvent(up, ticks));
                 }

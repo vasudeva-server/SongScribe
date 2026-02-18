@@ -103,6 +103,19 @@ public final class LineSelectionState {
     }
 
     /**
+     * Selects all notes on this line.
+     */
+    public void selectAll() {
+        if (line.noteCount() == 0) {
+            return;
+        }
+
+        selectionBegin = 0;
+        selectionEnd = line.noteCount() - 1;
+        selectionAnchor = 0;
+    }
+
+    /**
      * Returns whether any notes are selected on this line.
      */
     public boolean hasNoteSelection() {

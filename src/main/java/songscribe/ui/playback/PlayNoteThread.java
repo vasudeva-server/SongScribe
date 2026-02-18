@@ -38,19 +38,23 @@ public class PlayNoteThread extends Thread {
         }
 
         try {
+            var bankMsb = new ShortMessage();
+            bankMsb.setMessage(ShortMessage.CONTROL_CHANGE, 0, 0, 0);
+            MidiController.midiReceiver.send(bankMsb, -1);
+
+            var bankLsb = new ShortMessage();
+            bankLsb.setMessage(ShortMessage.CONTROL_CHANGE, 0, 32, 0);
+            MidiController.midiReceiver.send(bankLsb, -1);
+
             var programChange = new ShortMessage();
             var instrument = PlaybackController.getPlaybackSettings().instrument();
-            programChange.setMessage(
-                ShortMessage.PROGRAM_CHANGE,
-                instrument,
-                0
-            );
+            programChange.setMessage(ShortMessage.PROGRAM_CHANGE, 0, instrument, 0);
             MidiController.midiReceiver.send(programChange, -1);
 
             var on = new ShortMessage();
-            on.setMessage(ShortMessage.NOTE_ON, pitch, 64);
+            on.setMessage(ShortMessage.NOTE_ON, 0, pitch, 96);
             var off = new ShortMessage();
-            off.setMessage(ShortMessage.NOTE_OFF, pitch, 64);
+            off.setMessage(ShortMessage.NOTE_OFF, 0, pitch, 0);
 
             MidiController.midiReceiver.send(on, -1);
 

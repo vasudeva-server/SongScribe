@@ -22,7 +22,6 @@ package songscribe.ui.component;
 
 import java.awt.*;
 import java.io.File;
-import java.util.Properties;
 
 import songscribe.MusicChangeListener;
 import songscribe.ui.ProfileManager;
@@ -40,15 +39,11 @@ public interface IMainFrame {
 
     void setCurrentFile(File saveFile);
 
-    Properties getProperties();
-
     LyricsPanel getLyricsModePanel();
 
     //    void setMode(Mode noteEdit);
 
     void fireMusicChanged(Object source);
-
-    StatusBar getStatusBar();
 
     Component getFocusOwner();
 
@@ -59,6 +54,4 @@ public interface IMainFrame {
     Score getScore();
 
     void setFrameSize();
-
-    Properties getDefaultProps();
 }

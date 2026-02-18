@@ -1,5 +1,6 @@
 {
   "version": "1.0",
+  "plansDirectory": "plans",
   "masterPlans": [
     {
       "path": "plans/migrations/smufl-rewrite/smufl-rewrite.md",
@@ -56,6 +57,25 @@
         }
       ],
       "phases": {},
+      "branches": []
+    },
+    {
+      "path": "plans/completed/migrations/preferences-migration.md",
+      "active": false,
+      "description": "Migrate preferences from java.util.Properties to java.util.prefs.Preferences API",
+      "subdirectory": null,
+      "subPlans": [],
+      "phases": {
+        "1": "completed",
+        "2": "completed",
+        "3": "completed",
+        "4": "completed",
+        "5": "completed",
+        "6": "completed",
+        "7": "completed",
+        "8": "completed",
+        "9": "completed"
+      },
       "branches": []
     }
   ]

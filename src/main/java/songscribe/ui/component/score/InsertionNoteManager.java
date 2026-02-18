@@ -611,6 +611,7 @@ class InsertionNoteManager {
         existingNote.setYPos(currentYPos);
         existingNote.setUpper(Score.defaultUpperNote(existingNote));
 
+        BeamCalculator.calculateLengthenings(noteIndex, line, true);
         editModeManager.editNoteDidChange(line, noteIndex);
     }
 }

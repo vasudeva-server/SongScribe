@@ -27,7 +27,7 @@ import java.io.IOException;
 import javax.swing.*;
 
 import songscribe.data.MyFileFilter;
-import songscribe.ui.Constants;
+import songscribe.prefs.Prefs;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.dialog.PlatformFileDialog;
 import songscribe.ui.dialog.ResolutionDialog;
@@ -53,11 +53,7 @@ public class ExportImageAction extends UIAction {
             NAME,
             false,
             myFileFilters,
-            Integer.parseInt(
-                mainFrame
-                    .getProperties()
-                    .getProperty(Constants.IMAGE_EXPORT_FILTER_PROP)
-            )
+            Prefs.getInstance().getInt("imageExportFilter")
         );
     }
 
@@ -70,12 +66,10 @@ public class ExportImageAction extends UIAction {
 
         if (fileDialog.showDialog()) {
             var filter = fileDialog.getFileFilter();
-            mainFrame
-                .getProperties()
-                .setProperty(
-                    Constants.IMAGE_EXPORT_FILTER_PROP,
-                    Integer.toString(Utils.arrayIndexOf(myFileFilters, filter))
-                );
+            Prefs.getInstance().put(
+                "imageExportFilter",
+                Utils.arrayIndexOf(myFileFilters, filter)
+            );
             var saveFile = fileDialog.getFile();
             var extension = filter.getExtension(0);
 
@@ -105,7 +99,7 @@ public class ExportImageAction extends UIAction {
             }
 
             if (resolutionDialog == null) {
-                resolutionDialog = new ResolutionDialog(mainFrame);
+                resolutionDialog = new ResolutionDialog();
             }
 
             resolutionDialog.setVisible(true);

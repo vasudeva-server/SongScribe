@@ -27,16 +27,15 @@ import songscribe.ui.component.StickyToggleButton;
 public class BarToolbar extends Toolbar {
 
     public BarToolbar() {
-        for (var action : Actions.BAR_ACTIONS) {
-            // Skip single bar line and breath mark
-            if (
-                (action.getType() == NoteType.SINGLE_BARLINE) ||
-                (action.getType() == NoteType.BREATH_MARK)
-            ) {
-                continue;
-            }
-
+        for (var action : Actions.REPEAT_ACTIONS) {
             add(new StickyToggleButton(action));
+        }
+
+        for (var action : Actions.BARLINE_ACTIONS) {
+            // Skip single barline
+            if (action.getType() != NoteType.SINGLE_BARLINE) {
+                add(new StickyToggleButton(action));
+            }
         }
     }
 }

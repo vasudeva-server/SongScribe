@@ -75,7 +75,7 @@ public class ExportMidiAction extends UIAction {
             }
 
             if (exportMidiDialog == null) {
-                exportMidiDialog = new ExportMidiDialog(mainFrame);
+                exportMidiDialog = new ExportMidiDialog();
             }
 
             exportMidiDialog.setSaveFile(saveFile);

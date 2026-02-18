@@ -24,8 +24,7 @@ import java.awt.event.*;
 
 import javax.swing.*;
 
-import songscribe.ui.Constants;
-import songscribe.ui.component.MainFrame;
+import songscribe.prefs.Prefs;
 import songscribe.ui.component.NumericTextField;
 import songscribe.util.GraphicUtils;
 import songscribe.util.UIUtils;
@@ -54,7 +53,7 @@ public class LineWidthChangeDialog
     private GraphicUtils.Unit currentUnit = GraphicUtils.Unit.UNDETERMINED;
     private int originalWidth = 0;
 
-    public LineWidthChangeDialog(MainFrame mainFrame) {
+    public LineWidthChangeDialog() {
         super("Line Width");
         initContent();
     }
@@ -118,10 +117,7 @@ public class LineWidthChangeDialog
     }
 
     private boolean propIsMetric() {
-        return mainFrame
-            .getProperties()
-            .getProperty(Constants.METRIC)
-            .equals(Constants.TRUE_VALUE);
+        return Prefs.getInstance().getBoolean("metric");
     }
 
     private boolean isMetric() {
@@ -140,10 +136,7 @@ public class LineWidthChangeDialog
 
     @Override
     protected void setData() {
-        var metricValue = isMetric()
-            ? Constants.TRUE_VALUE
-            : Constants.FALSE_VALUE;
-        mainFrame.getProperties().setProperty(Constants.METRIC, metricValue);
+        Prefs.getInstance().put("metric", isMetric());
     }
 
     private double getEnteredWidthInInches(GraphicUtils.Unit unit)

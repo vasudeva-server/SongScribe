@@ -19,10 +19,8 @@
  */
 package songscribe;
 
-import java.util.Properties;
-
 // TODO: Replace with MusicChangeMessage and MessageCenter
 @FunctionalInterface
 public interface MusicChangeListener {
-    void musicDidChange(Properties props);
+    void musicDidChange();
 }
