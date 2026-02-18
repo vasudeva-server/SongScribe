@@ -48,6 +48,14 @@ public class ModeCycleButton extends ToolbarToggleButton {
 
     public ModeCycleButton() {
         super(null);
+
+        // Replace the ToggleButtonModel with a plain DefaultButtonModel so the
+        // button has no sticky "selected" state. The selected state would latch
+        // on press and leave a persistent highlight when the mouse is released
+        // outside the button, because ToggleButtonModel toggles selection on
+        // every armed release.
+        setModel(new javax.swing.DefaultButtonModel());
+
         currentIndex = 0;
         updateButton(MODES[currentIndex]);
 
