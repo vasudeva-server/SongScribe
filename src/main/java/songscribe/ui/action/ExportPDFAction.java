@@ -20,16 +20,12 @@
 package songscribe.ui.action;
 
 import java.awt.event.*;
+import java.awt.geom.Rectangle2D;
 import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
 
 import javax.swing.*;
 
-import com.itextpdf.text.Document;
-import com.itextpdf.text.DocumentException;
-import com.itextpdf.text.Rectangle;
-import com.itextpdf.text.pdf.PdfWriter;
+import org.jfree.pdf.PDFDocument;
 
 import songscribe.data.MyFileFilter;
 import songscribe.data.PageLayoutData;
@@ -64,18 +60,8 @@ public class ExportPDFAction extends UIAction {
         var paperWidth = data.paperWidth * resolution;
         var paperHeight = data.paperHeight * resolution;
         var mainFrame = data.mainFrame;
-
-        var document = new Document(
-            new Rectangle(0, 0, paperWidth, paperHeight),
-            0,
-            0,
-            0,
-            0
-        );
-        document.addCreator(Constants.PACKAGE_NAME);
         var score = mainFrame.getScore();
         var composition = score.getComposition();
-        document.addTitle(composition.getTitle());
 
         // Scale to fit
         var sheetWidth = score.getSheetWidth();
@@ -103,34 +89,27 @@ public class ExportPDFAction extends UIAction {
             leftMargin = scaledMargin * leftMarginFactor;
         }
 
-        try (var stream = new FileOutputStream(outputFile)) {
-            var writer = PdfWriter.getInstance(document, stream);
-            document.open();
-            var canvas = writer.getDirectContent();
+        var pdfDoc = new PDFDocument();
+        pdfDoc.setTitle(composition.getTitle());
+        pdfDoc.setAuthor(Constants.PACKAGE_NAME);
 
-            // createGraphicsShapes is deprecated, but it is the only way to draw using a
-            // Graphics2D.
-            // Otherwise all of the drawing code would have to be rewritten.
-            var g2 = canvas.createGraphicsShapes(paperWidth, paperHeight);
-            g2.translate(leftMargin, data.topMargin * resolution);
-            score.getRenderer().drawScore(g2, false, scale);
-            g2.dispose();
+        var page = pdfDoc.createPage(
+            new Rectangle2D.Double(0, 0, paperWidth, paperHeight)
+        );
+        var g2 = page.getGraphics2D();
+        g2.translate(leftMargin, data.topMargin * resolution);
+        score.getScoreRenderer().render(g2, false, scale);
+
+        try {
+            pdfDoc.writeToFile(outputFile);
 
             if (isGUI) {
                 FileUtils.openExportFile(mainFrame, outputFile);
             }
-        } catch (DocumentException e) {
-            if (isGUI) {
-                mainFrame.showErrorMessage(
-                    "An unexpected error occurred and could not export as PDF."
-                );
-            }
-        } catch (IOException e) {
+        } catch (RuntimeException e) {
             if (isGUI) {
                 mainFrame.showErrorMessage(MainFrame.COULD_NOT_SAVE_MESSAGE);
             }
-        } finally {
-            document.close();
         }
     }
 

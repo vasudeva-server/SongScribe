@@ -42,7 +42,6 @@ public final class LineIO {
     private static final String XML_TRILL_YPOS = "trillypos";
     private static final String XML_BEAMINGS = "beamings";
     private static final String XML_TIES = "ties";
-    private static final String XML_SLURS = "slurs";
     private static final String XML_TRIPLETS = "triplets"; // the old version of triplets
     private static final String XML_TUPLETS = "tuplets";
     private static final String XML_FSENDINGS = "fsendings";
@@ -121,10 +120,6 @@ public final class LineIO {
 
         if (!l.getTies().isEmpty()) {
             XML.writeValue(pw, XML_TIES, intervalToString(l.getTies()));
-        }
-
-        if (!l.getSlurs().isEmpty()) {
-            XML.writeValue(pw, XML_SLURS, intervalToString(l.getSlurs()));
         }
 
         if (!l.getTuplets().isEmpty()) {
@@ -298,10 +293,8 @@ public final class LineIO {
                             line.getTies(),
                             str
                         );
-                        case XML_SLURS -> stringToIntervalSet(
-                            line.getSlurs(),
-                            str
-                        );
+                        // Slurs no longer supported - ignore for backwards compatibility
+                        case "slurs" -> {}
                         case XML_CRESCENDO -> stringToIntervalSet(
                             line.getCrescendos(),
                             str

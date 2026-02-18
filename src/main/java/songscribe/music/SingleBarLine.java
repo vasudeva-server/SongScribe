@@ -21,7 +21,7 @@ package songscribe.music;
 
 import java.awt.*;
 
-public class SingleBarLine extends NotNote {
+public class SingleBarLine extends NonNote {
 
     public static final Rectangle REAL_NOTE_RECT = new Rectangle(17, 12, 1, 32);
 

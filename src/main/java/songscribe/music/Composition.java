@@ -32,6 +32,7 @@ import songscribe.ui.ProfileManager;
 import songscribe.ui.action.InsertLineAction;
 import songscribe.ui.component.IMainFrame;
 import songscribe.ui.component.Score;
+import songscribe.ui.layout.LayoutStylesheet;
 import songscribe.ui.message.LayoutChangeMessage;
 import songscribe.ui.message.MessageCenter;
 import songscribe.util.MyFontUtils;
@@ -137,6 +138,33 @@ public final class Composition {
     // Dirty flag
     private boolean modified = false;
 
+    /**
+     * Indicates whether this composition has been dynamically laid out.
+     * <p>
+     * When reading a document:
+     * - If false (legacy document): ignore xPos values (they were absolute positions)
+     * - If true (new document): read xPos values as relative offsets
+     * <p>
+     * When saving: always set to true.
+     */
+    private boolean hasBeenDynamicallyLaidOut = false;
+
+    /**
+     * Data format version for the composition's internal representation.
+     * <p>
+     * <ul>
+     *   <li>Version 1: Legacy format (IntervalSet ranges, inline Note attachments)</li>
+     *   <li>Version 2: LineElement format (RangeElement objects, Attachment objects)</li>
+     * </ul>
+     * <p>
+     * Note: This is distinct from the IO file format version (CompositionIO.IO_MAJOR_VERSION).
+     * The file format may remain compatible while the in-memory representation is migrated.
+     * <p>
+     * Default is 1 for newly loaded compositions (before migration).
+     * FormatMigrator sets this to 2 after migration.
+     */
+    private int formatVersion = 1;
+
     private final IMainFrame mainFrame;
 
     public Composition(@NotNull IMainFrame mainFrame) {
@@ -178,7 +206,8 @@ public final class Composition {
 
         g.dispose();
 
-        recalcTopPadding();
+        // Initial topPadding of 0 - LayoutManager.measure() will calculate the correct value
+        // attributionStartY is calculated from title, will be recalculated on layout
         attributionStartY = calculateAttributionStartY();
         addLine(new Line());
     }
@@ -231,7 +260,8 @@ public final class Composition {
             StringUtils.stripLinefeeds(text)
         );
         title = processText(strippedTitle);
-        attributionStartY = calculateAttributionStartY();
+        // Note: attributionStartY recalculation removed - LayoutManager.measure()
+        // handles this via the LayoutChangeMessage below
 
         MessageCenter.post(new LayoutChangeMessage(
             LayoutChangeMessage.Section.TITLE,
@@ -472,7 +502,9 @@ public final class Composition {
 
         if (line.getTempoChangeYPos() == 0) {
             line.setTempoChangeYPos(
-                ((lineIndex == 0) ? -5 : -3) * Score.STAFF_LINE_Y_OFFSET
+                (lineIndex == 0)
+                    ? LayoutStylesheet.TEMPO_DEFAULT_Y_FIRST_LINE
+                    : LayoutStylesheet.TEMPO_DEFAULT_Y_OTHER_LINES
             );
         }
 
@@ -511,7 +543,8 @@ public final class Composition {
     public void setTitleFont(Font font) {
         titleFont = font;
         titleFontMetrics = MyFontUtils.getFontMetrics(titleFont);
-        attributionStartY = calculateAttributionStartY();
+        // Note: attributionStartY recalculation removed - LayoutManager.measure()
+        // handles this via the LayoutChangeMessage below
         setModified(true);
 
         MessageCenter.post(new LayoutChangeMessage(
@@ -637,6 +670,14 @@ public final class Composition {
         this.attributionStartY = attributionStartY;
     }
 
+    /**
+     * Calculates initial attributionStartY based on title font height.
+     * <p>
+     * This is only used in the constructor to provide an initial value.
+     * LayoutManager.measure() calculates the actual attribution position using
+     * proper block flow layout. This method will be removed when attributionStartY
+     * is migrated to an offset-based system.
+     */
     private int calculateAttributionStartY() {
         // We want the attribution to start half of the song title font size below the song title
         var lineCount = Utils.lineCount(title);
@@ -644,6 +685,14 @@ public final class Composition {
         return (lineHeight * lineCount) + (lineHeight / 2);
     }
 
+    /**
+     * Recalculates topPadding based on font sizes.
+     * <p>
+     * @deprecated This method is deprecated and will be removed in a future version.
+     * LayoutManager.measure() now handles topPadding calculation. This method is only
+     * called by CompositionIO.getComposition() for legacy file handling.
+     */
+    @Deprecated
     public void recalcTopPadding() {
         if (!userSetTopPadding) {
             topPadding = (((2 * titleFont.getSize()) +
@@ -679,5 +728,51 @@ public final class Composition {
         }
 
         this.lineWidth = lineWidth;
+    }
+
+    /**
+     * Returns whether this composition has been dynamically laid out.
+     * <p>
+     * When false (legacy file), xPos values should be ignored on load.
+     * When true, xPos values are relative offsets from calculated positions.
+     *
+     * @return true if this composition has been dynamically laid out
+     */
+    public boolean hasBeenDynamicallyLaidOut() {
+        return hasBeenDynamicallyLaidOut;
+    }
+
+    /**
+     * Sets whether this composition has been dynamically laid out.
+     * <p>
+     * Should be set to true when saving.
+     *
+     * @param hasBeenDynamicallyLaidOut true if dynamically laid out
+     */
+    public void setHasBeenDynamicallyLaidOut(boolean hasBeenDynamicallyLaidOut) {
+        this.hasBeenDynamicallyLaidOut = hasBeenDynamicallyLaidOut;
+    }
+
+    /**
+     * Returns the data format version of this composition.
+     * <p>
+     * Version 1 indicates legacy format (IntervalSet ranges, inline Note attachments).
+     * Version 2 indicates LineElement format (RangeElement objects, Attachment objects).
+     *
+     * @return the format version (1 or 2)
+     */
+    public int getFormatVersion() {
+        return formatVersion;
+    }
+
+    /**
+     * Sets the data format version of this composition.
+     * <p>
+     * This is typically called by FormatMigrator after migrating from legacy format.
+     *
+     * @param formatVersion the format version to set
+     */
+    public void setFormatVersion(int formatVersion) {
+        this.formatVersion = formatVersion;
     }
 }

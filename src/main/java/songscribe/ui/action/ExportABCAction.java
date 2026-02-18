@@ -56,7 +56,7 @@ import songscribe.util.FileUtils;
  * 1. Accidentals in parentheses. I opened a forum for this topic (with no answer yet):
  * <a href="http://abcnotation.com/forums/viewtopic.php?f=7&t=260">...</a>
  * 2. Beat change. - implemented now
- * 3. Glissandos. I substituted them with slurs for now.
+ * 3. Glissandos. Exported as slurs (parentheses) in ABC format.
  * 4. On syllabified lyrics no long hyphen between compound words (like God-Realisation)
  * 5. Syllables under grace notes. Solution: put together with the syllable of next note with \
  * 6. Forcing syllable under a rest (new SongScribe feature)
@@ -333,10 +333,6 @@ public class ExportABCAction extends UIAction {
             sb.append('.');
         }
 
-        if (note.getDurationArticulation() == DurationArticulation.TENUTO) {
-            sb.append("!tenuto!");
-        }
-
         if (note.isFermata()) {
             sb.append("!fermata!");
         }
@@ -458,7 +454,7 @@ public class ExportABCAction extends UIAction {
                 }
             }
 
-            if (isSlurOrGlissandoBegin(line, i)) {
+            if (isGlissandoBegin(line, i)) {
                 sb.append('(');
             }
 
@@ -485,7 +481,7 @@ public class ExportABCAction extends UIAction {
                 sb.append('-');
             }
 
-            if (isSlurOrGlissandoEnd(line, i)) {
+            if (isGlissandoEnd(line, i)) {
                 sb.append(") ");
             }
         }
@@ -493,22 +489,15 @@ public class ExportABCAction extends UIAction {
         return sb.toString().replace("  ", " ");
     }
 
-    static boolean isSlurOrGlissandoBegin(Line line, int n) {
-        // TODO: How is glissando represented in abc?
+    static boolean isGlissandoBegin(Line line, int n) {
+        // Glissandos are represented as slurs in ABC format
         //noinspection ObjectEquality
-        return (
-            line.getSlurs().isStartOfAnyInterval(n) ||
-            (line.getNote(n).getGlissando() != Note.NO_GLISSANDO)
-        );
+        return line.getNote(n).getGlissando() != Note.NO_GLISSANDO;
     }
 
-    static boolean isSlurOrGlissandoEnd(Line line, int n) {
+    static boolean isGlissandoEnd(Line line, int n) {
         //noinspection ObjectEquality
-        return (
-            line.getSlurs().isEndOfAnyInterval(n) ||
-            ((n > 0) &&
-                (line.getNote(n - 1).getGlissando() != Note.NO_GLISSANDO))
-        );
+        return (n > 0) && (line.getNote(n - 1).getGlissando() != Note.NO_GLISSANDO);
     }
 
     static String translateLyrics(Line line) {

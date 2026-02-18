@@ -21,7 +21,7 @@ package songscribe.music;
 
 import java.awt.*;
 
-public class RepeatLeft extends NotNote {
+public class RepeatLeft extends NonNote {
 
     public static final Rectangle REAL_NOTE_RECT = new Rectangle(0, 12, 13, 32);
 

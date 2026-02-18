@@ -22,11 +22,11 @@ package songscribe.ui.component;
 
 import java.awt.*;
 import java.awt.event.*;
+import java.awt.geom.Rectangle2D;
 import java.awt.image.*;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.EnumMap;
 import java.util.Objects;
 import java.util.Properties;
 import java.util.stream.IntStream;
@@ -44,14 +44,12 @@ import javax.xml.parsers.SAXParserFactory;
 
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import kotlin.Pair;
 import net.engio.mbassy.listener.Handler;
 import org.jfree.svg.SVGGraphics2D;
 import org.jfree.svg.SVGUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.lang.Nullable;
 import org.xml.sax.SAXException;
 
 import songscribe.MusicChangeListener;
@@ -75,8 +73,13 @@ import songscribe.ui.action.InsertLineAction;
 import songscribe.ui.adjustment.HorizontalAdjustment;
 import songscribe.ui.adjustment.LyricsAdjustment;
 import songscribe.ui.adjustment.VerticalAdjustment;
+import songscribe.ui.layout.FontBoundsProvider;
 import songscribe.ui.layout.LayoutManager;
+import songscribe.ui.layout.LayoutResult;
+import songscribe.ui.layout.MeasurementService;
+import songscribe.ui.layout.SectionLayout;
 import songscribe.ui.dialog.LineWidthChangeDialog;
+import songscribe.ui.menu.DebugState;
 import songscribe.ui.message.AddDynamicsMessage;
 import songscribe.ui.message.ControlChangedMessage;
 import songscribe.ui.message.DeselectMessage;
@@ -96,17 +99,30 @@ import songscribe.ui.message.RemoveDynamicsMessage;
 import songscribe.ui.message.RestModeChangedMessage;
 import songscribe.ui.message.ToggleBeamMessage;
 import songscribe.ui.message.ToggleLyricsUnderRestsMessage;
-import songscribe.ui.message.ToggleTieOrSlurMessage;
+import songscribe.ui.message.ToggleTieMessage;
 import songscribe.ui.message.ToggleTrillMessage;
 import songscribe.ui.message.ToggleTupletMessage;
 import songscribe.ui.message.UpdateEditNoteMessage;
 import songscribe.ui.playback.MidiController;
 import songscribe.ui.playback.MidiMetaMessageTypes;
+import songscribe.ui.playback.PlaybackStateManager;
 import songscribe.ui.playback.PlayNoteThread;
 import songscribe.ui.playback.PlaybackController;
 import songscribe.ui.playback.PlaybackStateChangedMessage;
-import songscribe.ui.renderer.FughettaRenderer;
-import songscribe.ui.renderer.Renderer;
+import songscribe.ui.clipboard.ClipboardManager;
+import songscribe.ui.edit.EditModeManager;
+import songscribe.ui.edit.NotePosition;
+import songscribe.ui.renderer.DebugRenderer;
+import songscribe.ui.renderer.ElementRenderContext;
+import songscribe.ui.layout.FughettaFontBoundsProvider;
+import songscribe.ui.renderer.GlissandoRenderer;
+import songscribe.ui.renderer.NoteRenderer;
+import songscribe.ui.renderer.RenderContext;
+import songscribe.ui.renderer.ScoreRenderer;
+import songscribe.ui.selection.NoteSelection;
+import songscribe.ui.selection.SelectionManager;
+import songscribe.ui.selection.TieContext;
+import songscribe.ui.component.score.MainPanel;
 import songscribe.util.FileUtils;
 import songscribe.util.GraphicUtils;
 import songscribe.util.Log;
@@ -125,9 +141,8 @@ public final class Score
         MetaEventListener,
         MouseListener,
         MouseMotionListener,
-        MusicChangeListener {
-
-    private static final Logger log = LoggerFactory.getLogger(Score.class);
+        MusicChangeListener,
+        RenderContext {
 
     // The number of lines in a staff
     public static final int STAFF_LINE_COUNT = 5;
@@ -176,36 +191,6 @@ public final class Score
     // How far from the cursor hotspot notes are painted when editing
     private static final Point CURSOR_OFFSET = new Point(0, -1);
 
-    // The default right padding between a note and the next note in a staff line
-    private static final EnumMap<NoteType, Integer> NOTE_PADDING =
-        new EnumMap<>(NoteType.class);
-
-    static {
-        NOTE_PADDING.put(NoteType.SEMIBREVE, 70);
-        NOTE_PADDING.put(NoteType.MINIM, 50);
-        NOTE_PADDING.put(NoteType.CROTCHET, 35);
-        NOTE_PADDING.put(NoteType.QUAVER, 25);
-        NOTE_PADDING.put(NoteType.SEMIQUAVER, 25);
-        NOTE_PADDING.put(NoteType.DEMI_SEMIQUAVER, 25);
-        NOTE_PADDING.put(NoteType.SEMIBREVE_REST, 70);
-        NOTE_PADDING.put(NoteType.MINIM_REST, 50);
-        NOTE_PADDING.put(NoteType.CROTCHET_REST, 35);
-        NOTE_PADDING.put(NoteType.QUAVER_REST, 25);
-        NOTE_PADDING.put(NoteType.SEMIQUAVER_REST, 25);
-        NOTE_PADDING.put(NoteType.DEMI_SEMIQUAVER_REST, 25);
-        NOTE_PADDING.put(NoteType.GRACE_QUAVER, 30);
-        NOTE_PADDING.put(NoteType.GRACE_SEMIQUAVER, 50);
-        NOTE_PADDING.put(NoteType.GLISSANDO, 0);
-        NOTE_PADDING.put(NoteType.REPEAT_LEFT, 25);
-        NOTE_PADDING.put(NoteType.REPEAT_RIGHT, 25);
-        NOTE_PADDING.put(NoteType.REPEAT_LEFT_RIGHT, 25);
-        NOTE_PADDING.put(NoteType.BREATH_MARK, 15);
-        NOTE_PADDING.put(NoteType.SINGLE_BARLINE, 60);
-        NOTE_PADDING.put(NoteType.DOUBLE_BARLINE, 60);
-        NOTE_PADDING.put(NoteType.FINAL_DOUBLE_BARLINE, 60);
-        NOTE_PADDING.put(NoteType.PASTE, 0);
-    }
-
     // The maximum number of staff lines under a note that can be displayed above and below the staff.
     // The range of notes supported is C3 (3 lines below) to F6 (4 lines above).
     public static final int STAFF_LINES_ABOVE = 3;
@@ -218,9 +203,6 @@ public final class Score
     // When the edit note is before the first note in a line, it is placed this many pixels to the left
     // of the first note.
     private static final int FIRST_NOTE_IN_LINE_MOVEMENT = -15;
-
-    // The number of pixels reserved for a single accidental
-    private static final int ACCIDENTAL_WIDTH = 7;
 
     // The number of pulses per quarter note (ticks per beat), used to calculate the duration of notes
     // when playing back the score or generating a MIDI file.
@@ -236,19 +218,12 @@ public final class Score
     // Used when calculating tuplet note durations
     private static final double LOG2 = Math.log(2);
 
-    // The offset from the left edge of a staff (line) to the first note on the staff
-    private static int firstNoteX = 100;
-
     // Edit popup
     private JPopupMenu popup = null;
     private Control prevPasteControl = null;
 
     private SAXParser saxParser = null;
     private Dimension sheetSize = new Dimension();
-
-    // The index of the currently playing line/note
-    private int playingLine = -1;
-    private int playingNote = -1;
 
     private boolean playInsertingNote = true;
 
@@ -267,45 +242,6 @@ public final class Score
 
     // In some contexts (such as playback), we don't want to allow dragging
     private boolean dragDisabled = false;
-
-    // When a selection is made, we determine whether a tie or slur can be added to or removed from
-    // the selection. The result of that calculation is stored in this context.
-    @Nullable
-    private TieSlurContext tieSlurContext = null;
-
-    // Controls whether the edit note is drawn in edit mode, based on whether
-    // the mouse is over the score is mouse mode.
-    private boolean editNoteIsVisible = false;
-
-    // The music element that will be inserted
-    private Note editNote = null;
-    private final NotePosition newEditNotePoint = new NotePosition();
-    private final NotePosition editNotePoint = new NotePosition();
-
-    // True if the user is dragging the mouse to select notes
-    private boolean inSelectMode = false;
-
-    // The index of the selected staff line. When notes are selected, this will be -1
-    // and selectedNotesLine will be the index of the staff line where the notes are selected.
-    private int selectedLine = -1;
-
-    // The index of the staff line on which notes are selected. When a staff line is selected,
-    // selectedNotesLine will be -1 and selectedLine will be the index of the staff line.
-    private int selectedNotesLine = -1;
-
-    // The index (within the line) of the first and last (inclusive) selected note.
-    // If a single note is selected, selectionBegin and selectionEnd will be the same.
-    private int selectionBegin = 0;
-    private int selectionEnd = 0;
-
-    // True if the user is dragging the mouse to select notes
-    private boolean startedDrag = false;
-
-    // The rectangle defined by the point where the drag started and the current mouse position
-    private final Rectangle dragRectangle = new Rectangle();
-
-    // The point where the drag started
-    private final Point dragStart = new Point();
 
     // The model for the score
     private Composition composition = null;
@@ -331,11 +267,32 @@ public final class Score
     // The y position (from the top of the scorePanel) of the middle line (B) of the first staff
     private int middleLineY = 0;
 
-    // The Renderer subclass that renders the music score
-    private Renderer renderer = null;
+    // Orchestrates rendering using ElementRenderers
+    private ScoreRenderer scoreRenderer = null;
+
+    // Provides measurement operations for layout and adjustment components
+    private MeasurementService measurementService = null;
+
+    // Renders debug visualizations (layout boxes, bounding boxes, margins)
+    private final DebugRenderer debugRenderer = new DebugRenderer();
 
     // Manages the vertical layout of all sections in the score.
     private LayoutManager layoutManager = null;
+
+    // Manages selection state
+    private SelectionManager selectionManager = null;
+
+    // Manages playback state
+    private PlaybackStateManager playbackStateManager = null;
+
+    // Manages clipboard state for copy/paste operations
+    private ClipboardManager clipboardManager = null;
+
+    // Manages edit mode state (edit note and position)
+    private EditModeManager editModeManager = null;
+
+    // New JComponent-based score panel (Phase 2 hierarchy)
+    private MainPanel mainPanel = null;
 
     // Timer for debouncing repaints when layout changes occur
     private Timer repaintDebounceTimer = null;
@@ -356,12 +313,6 @@ public final class Score
     // True if the Shift key is pressed, which temporarily switches to select mode
     private boolean shiftPressed = false;
 
-    // When notes are copied, they are stored here
-    private final ArrayList<Note> pasteboard = new ArrayList<>();
-
-    // When notes are copied, any associated interval sets (e.g. tie/slur) are stored here
-    private IntervalSet[] intervalSetsCopyBuffer = null;
-
     // Sequence used to play the score
     private Sequence sequence = null;
 
@@ -376,6 +327,7 @@ public final class Score
     private int manualTempoChange = 0;
     private boolean colorizeNote = false;
 
+    @SuppressWarnings("deprecation")
     public Score(@NotNull IMainFrame mainFrame) {
         this.mainFrame = mainFrame;
         var property = mainFrame
@@ -385,17 +337,21 @@ public final class Score
             ? Control.valueOf(property)
             : Control.MOUSE;
 
-        try {
-            // TODO: Change to BravuraRenderer
-            renderer = new FughettaRenderer(this);
-        } catch (Exception e) {
-            mainFrame.showErrorMessage(
-                "Sorry, but the app could not open a necessary font and has to quit."
-            );
-            System.exit(0);
-        }
+        // Initialize font bounds provider for measurement calculations
+        FontBoundsProvider fontBoundsProvider = new FughettaFontBoundsProvider(
+            this
+        );
+
+        // Initialize measurement service
+        measurementService = new MeasurementService(this, fontBoundsProvider);
+
+        scoreRenderer = new ScoreRenderer(this);
 
         layoutManager = new LayoutManager(this);
+        selectionManager = new SelectionManager(this::getComposition);
+        playbackStateManager = new PlaybackStateManager();
+        clipboardManager = new ClipboardManager();
+        editModeManager = new EditModeManager();
 
         try {
             saxParser = SAXParserFactory.newInstance().newSAXParser();
@@ -415,7 +371,7 @@ public final class Score
     public void createSVG(File outputFile, @NotNull Boolean isGUI) {
         try {
             var g2 = new SVGGraphics2D(getSheetWidth(), getSheetHeight());
-            renderer.drawScore(g2, false, 1d);
+            scoreRenderer.render(g2, false, 1d);
             SVGUtils.writeToSVG(outputFile, g2.getSVGElement());
 
             if (isGUI) {
@@ -436,6 +392,7 @@ public final class Score
         initAdjustments();
         initMargin();
         initScorePanel();
+        initMainPanel();
 
         setLineWidth(composition.getLineWidth());
         addMouseMotionListener(this);
@@ -461,30 +418,6 @@ public final class Score
             note.getNoteType().isGraceNote() ||
             (note.getNoteType() == NoteType.GRACE_SEMIQUAVER_EDIT_STEP1)
         );
-    }
-
-    public static int calculateLastNoteXPos(@NotNull Line line, Note note) {
-        if (line.noteCount() == 0) {
-            return firstNoteX;
-        }
-
-        var lastNote = line.getNote(line.noteCount() - 1);
-
-        return (
-            lastNote.getXPos() +
-            Math.round(
-                (NOTE_PADDING.get(lastNote.getNoteType()) +
-                    (note.getAccidental().getWidthFactor() * ACCIDENTAL_WIDTH) +
-                    (note.isAccidentalInParentheses() ? 8 : 0)) *
-                line.getNoteDistChangeRatio()
-            )
-        );
-        // lastNote.getXPos()+Math.round((ND+note.getAccidental().getNb()*FIX_PREFIX_WIDTH)*line
-        // .getNoteDistChangeRatio());
-    }
-
-    public static void setFirstNoteX(int firstNoteX) {
-        Score.firstNoteX = firstNoteX;
     }
 
     private void initKeys() {
@@ -534,6 +467,26 @@ public final class Score
         var backgroundColor = Color.lightGray;
         scrollPane.setBackground(backgroundColor);
         scrollPane.getViewport().setBackground(backgroundColor);
+    }
+
+    /**
+     * Initializes the new JComponent-based MainPanel.
+     * <p>
+     * The MainPanel is created but not currently added to the visual hierarchy.
+     * It will be integrated gradually in future phases.
+     */
+    private void initMainPanel() {
+        mainPanel = new MainPanel();
+        mainPanel.setComposition(composition);
+    }
+
+    /**
+     * Returns the MainPanel for the new component hierarchy.
+     * <p>
+     * This is the top-level panel for the Phase 2 JComponent-based rendering.
+     */
+    public MainPanel getMainPanel() {
+        return mainPanel;
     }
 
     private void initMargin() {
@@ -624,6 +577,14 @@ public final class Score
         // Invalidate layout and measure with a temporary graphics context
         layoutManager.invalidate();
 
+        // Clear inspector hover since layout bounds will be recalculated
+        var needsImmediateRepaint = false;
+
+        if (DebugState.isInspectorEnabled() && DebugState.getHoveredElement() != null) {
+            DebugState.setHoveredElement(null);
+            needsImmediateRepaint = true;
+        }
+
         // Only measure if composition is set (not during initialization)
         if (composition != null) {
             var img = new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB);
@@ -637,6 +598,11 @@ public final class Score
 
             updateLayoutFromManager();
         }
+
+        // Force immediate repaint to clear stale inspector visualization
+        if (needsImmediateRepaint) {
+            repaint();
+        }
     }
 
     /**
@@ -644,8 +610,11 @@ public final class Score
      * <p>
      * Called after layout measurement to sync the cached values used
      * throughout Score for hit-testing and positioning.
+     * <p>
+     * This method is public so LayoutManager can call it during measure()
+     * to ensure bounds calculations use up-to-date values.
      */
-    private void updateLayoutFromManager() {
+    public void updateLayoutFromManager() {
         middleLineY = layoutManager.getMiddleLineY();
         rowHeight = layoutManager.getRowHeight();
     }
@@ -654,12 +623,9 @@ public final class Score
         return scrollPane;
     }
 
+    @Override
     public boolean isNoteSelected(int xIndex, int line) {
-        return (
-            (selectedNotesLine == line) &&
-            (selectionBegin <= xIndex) &&
-            (xIndex <= selectionEnd)
-        );
+        return selectionManager.isNoteSelected(xIndex, line);
     }
 
     @Override
@@ -676,25 +642,35 @@ public final class Score
             updateLayoutFromManager();
         }
 
-        renderer.drawScore(g2, true, 1d);
+        scoreRenderer.render(g2, true, 1d);
         drawEditElements(g2);
         drawSelectionRect(g2);
+        drawDebugOverlays(g2);
     }
 
     private void drawEditElements(Graphics2D g2) {
+        if (DebugState.isInspectorEnabled()) {
+            return;
+        }
+
         if (mode == Mode.NOTE_EDIT) {
             // We can insert in edit mode only if:
             // - A drag is not in process
             // - Shift is not pressed
             // - The sequencer is not playing
+            var editNote = editModeManager.getEditNote();
+            var editNotePoint = editModeManager.getEditNotePoint();
+
             if (
                 (editNote != null) &&
-                ((control == Control.KEYBOARD) || editNoteIsVisible) &&
-                !startedDrag &&
+                ((control == Control.KEYBOARD) || editModeManager.isEditNoteVisible()) &&
+                !selectionManager.isStartedDrag() &&
                 !shiftPressed &&
                 !MidiController.isPlaying()
             ) {
                 g2.setColor(EDIT_NOTE_COLOR);
+                var lineIndex = editNotePoint.getLineIndex();
+                var lineMiddleY = middleLineY + (lineIndex * rowHeight);
 
                 //noinspection ObjectEquality
                 if (editNote != Note.GLISSANDO_NOTE) {
@@ -704,19 +680,21 @@ public final class Score
                         editNote.setXPos(composition.getLineWidth() - 12);
                     }
 
-                    renderer.paintNote(
-                        g2,
-                        editNote,
-                        editNotePoint.lineIndex,
-                        false
-                    );
+                    NoteRenderer.getInstance().render(g2, editNote, lineMiddleY);
                     editNote.setXPos(x);
-                } else if (editNotePoint.xIndex > 0) {
-                    renderer.drawGlissando(
+                } else if (editNotePoint.getXIndex() > 0) {
+                    var line = composition.getLine(lineIndex);
+                    var ctx = new ElementRenderContext(composition);
+                    ctx.setCurrentLine(line);
+                    ctx.setLineIndex(lineIndex);
+                    ctx.setMiddleLineY(lineMiddleY);
+
+                    GlissandoRenderer.getInstance().renderEditGlissando(
                         g2,
-                        editNotePoint.xIndex - 1,
+                        editNotePoint.getXIndex() - 1,
                         new Note.Glissando(editNote.getYPos()),
-                        editNotePoint.lineIndex
+                        line,
+                        ctx
                     );
                 }
             }
@@ -730,28 +708,39 @@ public final class Score
     }
 
     private void drawSelectionRect(Graphics2D g2) {
-        if (startedDrag) {
+        if (selectionManager.isStartedDrag()) {
             g2.setColor(SELECTION_RECT_FILL_COLOR);
-            g2.fill(dragRectangle);
+            g2.fill(selectionManager.getDragRectangle());
 
             g2.setStroke(SELECTION_RECT_STROKE);
             g2.setColor(SELECTION_STROKE_COLOR);
-            g2.draw(dragRectangle);
+            g2.draw(selectionManager.getDragRectangle());
         }
     }
 
+    private void drawDebugOverlays(Graphics2D g2) {
+        if (!layoutManager.isValid()) {
+            return;
+        }
+
+        var layoutResult = layoutManager.getLayoutResult();
+        debugRenderer.drawDebugVisualization(g2, layoutResult, this);
+    }
+
+    @Override
     public int getNoteYPos(int yPos, int line) {
         return (int) (middleLineY +
             (yPos * NOTE_Y_OFFSET) +
             (line * rowHeight));
     }
 
+    @Override
     public int getUnderLyricsYPos() {
         return layoutManager.getUnderLyricsYPos();
     }
 
     public Note getEditNote() {
-        return editNote;
+        return editModeManager.getEditNote();
     }
 
     @Handler
@@ -770,6 +759,8 @@ public final class Score
     }
 
     private void updateEditNote() {
+        var editNote = editModeManager.getEditNote();
+
         if (editNote != null) {
             decorateNote(editNote);
             repaint();
@@ -848,18 +839,20 @@ public final class Score
 
     public void setEditNote(@Nullable Note editNote) {
         if (editNote != null) {
-            if (this.editNote != null) {
-                editNote.setYPos(this.editNote.getYPos());
-                editNote.setXPos(this.editNote.getXPos());
+            var currentEditNote = editModeManager.getEditNote();
+
+            if (currentEditNote != null) {
+                editNote.setYPos(currentEditNote.getYPos());
+                editNote.setXPos(currentEditNote.getXPos());
             } else {
-                this.editNote = editNote;
+                editModeManager.setEditNote(editNote);
                 setEditNotePositionToEnd();
             }
 
             editNote.setUpper(defaultUpperNote(editNote));
         }
 
-        this.editNote = editNote;
+        editModeManager.setEditNote(editNote);
         repaint();
     }
 
@@ -867,9 +860,9 @@ public final class Score
     public void onInsertLine(@NotNull InsertLineMessage message) {
         var shift = message.getShift();
 
-        if ((selectedLine != -1) || (shift == InsertLineAction.ADD)) {
+        if ((selectionManager.getSelectedLine() != -1) || (shift == InsertLineAction.ADD)) {
             var index = (shift >= 0)
-                ? (selectedLine + shift)
+                ? (selectionManager.getSelectedLine() + shift)
                 : InsertLineAction.ADD;
             composition.addLine(index, new Line());
             clearSelection();
@@ -880,17 +873,33 @@ public final class Score
         }
     }
 
+    @Override
     public int getPlayingLine() {
-        return playingLine;
+        return playbackStateManager.getPlayingLine();
     }
 
+    @Override
     public int getPlayingNote() {
-        return playingNote;
+        return playbackStateManager.getPlayingNote();
+    }
+
+    @Override
+    public boolean isShowLayoutBoxes() {
+        return DebugState.isShowLayoutBoxes();
+    }
+
+    @Override
+    public boolean isShowBoundingBoxes() {
+        return DebugState.isShowBoundingBoxes();
+    }
+
+    @Override
+    public boolean isShowMargins() {
+        return DebugState.isShowMargins();
     }
 
     public void clearSelection() {
-        selectedLine = -1;
-        selectedNotesLine = -1;
+        selectionManager.clearSelection();
         selectionChanged();
     }
 
@@ -900,12 +909,14 @@ public final class Score
 
     private boolean noteWasModified(Line line, int noteIndex) {
         clearSelection();
+        var editNote = editModeManager.getEditNote();
+        var editNotePoint = editModeManager.getEditNotePoint();
 
         // If the active note is glissando, it needs different handling
         if (editNote.getNoteType() == NoteType.GLISSANDO) {
-            if (editNotePoint.xIndex > 0) {
+            if (editNotePoint.getXIndex() > 0) {
                 line
-                    .getNote(editNotePoint.xIndex - 1)
+                    .getNote(editNotePoint.getXIndex() - 1)
                     .setGlissando(editNote.getYPos());
             }
 
@@ -950,30 +961,28 @@ public final class Score
             line.removeInterval(noteIndex - 1, noteIndex);
             var diff =
                 ((noteIndex == line.noteCount())
-                        ? calculateLastNoteXPos(line, pasteboard.getFirst())
+                        ? LayoutManager.calculateLastNoteXPos(line, clipboardManager.getFirstNote())
                         : line.getNote(noteIndex).getXPos()) -
-                pasteboard.getFirst().getXPos();
-            var copySize = pasteboard.size();
+                clipboardManager.getFirstNote().getXPos();
+            var copySize = clipboardManager.getSize();
 
             for (var i = 0; i < copySize; i++) {
-                var note = pasteboard.get(i);
+                var note = clipboardManager.getNote(i);
                 note.setXPos(note.getXPos() + diff);
                 line.addNote(noteIndex + i, note.clone());
             }
 
-            line.pasteIntervals(intervalSetsCopyBuffer, noteIndex);
-            var lastNote = pasteboard.get(copySize - 1);
+            line.pasteIntervals(clipboardManager.getIntervalsCopyBuffer(), noteIndex);
+            var lastNote = clipboardManager.getLastNote();
             var shift =
                 (Math.round(
-                        (NOTE_PADDING.get(lastNote.getNoteType()) +
+                        (LayoutManager.getNoteSpacing(lastNote.getNoteType()) +
                             (lastNote.getAccidental().getWidthFactor() *
-                                ACCIDENTAL_WIDTH)) *
+                                LayoutManager.ACCIDENTAL_WIDTH)) *
                         line.getNoteDistChangeRatio()
                     ) +
                     lastNote.getXPos()) -
-                pasteboard.getFirst().getXPos();
-            //int shift = Math.round((ND+lastNote.getAccidental().getNb()*FIX_PREFIX_WIDTH)*line
-            // .getNoteDistChangeRatio())+lastNote.getXPos()-pasteboard.get(0).getXPos();
+                clipboardManager.getFirstNote().getXPos();
 
             for (var i = noteIndex + copySize; i < line.noteCount(); i++) {
                 line.getNote(i).setXPos(line.getNote(i).getXPos() + shift);
@@ -990,7 +999,7 @@ public final class Score
                 }
             }
 
-            inSelectMode = true;
+            selectionManager.setInSelectMode(true);
             return true;
         }
 
@@ -998,32 +1007,37 @@ public final class Score
     }
 
     private void calculateEditNoteXPos() {
+        var editNote = editModeManager.getEditNote();
+
         if (editNote == null) {
             return;
         }
 
-        var line = composition.getLine(editNotePoint.lineIndex);
+        var editNotePoint = editModeManager.getEditNotePoint();
+        var line = composition.getLine(editNotePoint.getLineIndex());
 
-        if (line.noteCount() == editNotePoint.xIndex) {
-            editNote.setXPos(calculateLastNoteXPos(line, editNote));
+        if (line.noteCount() == editNotePoint.getXIndex()) {
+            editNote.setXPos(LayoutManager.calculateLastNoteXPos(line, editNote));
         } else {
-            var note = line.getNote(editNotePoint.xIndex);
-            editNote.setXPos(note.getXPos() + editNotePoint.movement);
+            var note = line.getNote(editNotePoint.getXIndex());
+            editNote.setXPos(note.getXPos() + editNotePoint.getMovement());
         }
     }
 
     public void setEditNotePositionToEnd() {
-        editNotePoint.movement = 0;
-        editNotePoint.lineIndex = composition.lineCount() - 1;
-        editNotePoint.xIndex = composition
-            .getLine(editNotePoint.lineIndex)
-            .noteCount();
+        var editNotePoint = editModeManager.getEditNotePoint();
+        editNotePoint.setMovement(0);
+        editNotePoint.setLineIndex(composition.lineCount() - 1);
+        editNotePoint.setXIndex(
+            composition.getLine(editNotePoint.getLineIndex()).noteCount()
+        );
         calculateEditNoteXPos();
     }
 
     private void editNoteDidChange(Line line, int noteIndex) {
         //mainFrame.getUndoManager().undoableEditHappened(new UndoableEditEvent(this, new
         // ModifyUndoableEdit(oldNote, oldNoteInfo, xIndex)));
+        var editNote = editModeManager.getEditNote();
         Note nextNote;
 
         if (editNote.getNoteType().isGraceNote()) {
@@ -1067,6 +1081,8 @@ public final class Score
     }
 
     public void addEditNote(Line line) {
+        var editNote = editModeManager.getEditNote();
+
         if (editNote == null) {
             return;
         }
@@ -1076,7 +1092,7 @@ public final class Score
             return;
         }
 
-        editNote.setXPos(calculateLastNoteXPos(line, editNote));
+        editNote.setXPos(LayoutManager.calculateLastNoteXPos(line, editNote));
         line.addNote(editNote);
         //mainFrame.getUndoManager().undoableEditHappened(new UndoableEditEvent(this, new
         // InsertUndoableEdit(cloneActiveNote, ni, noteInfo.size()-2)));
@@ -1131,6 +1147,8 @@ public final class Score
     }
 
     private void insertEditNote(int xIndex, Line line) {
+        var editNote = editModeManager.getEditNote();
+
         if (editNote == null) {
             return;
         }
@@ -1151,17 +1169,15 @@ public final class Score
         line.removeInterval(xIndex - 1, xIndex);
         editNote.setXPos(
             line.getNote(xIndex).getXPos() +
-            (editNote.getAccidental().getWidthFactor() * ACCIDENTAL_WIDTH)
+            (editNote.getAccidental().getWidthFactor() * LayoutManager.ACCIDENTAL_WIDTH)
         );
         line.addNote(xIndex, editNote);
         var shift = Math.round(
-            (NOTE_PADDING.get(editNote.getNoteType()) +
+            (LayoutManager.getNoteSpacing(editNote.getNoteType()) +
                 (editNote.getAccidental().getWidthFactor() *
-                    ACCIDENTAL_WIDTH)) *
+                    LayoutManager.ACCIDENTAL_WIDTH)) *
             line.getNoteDistChangeRatio()
         );
-        //int shift = Math.round((ND+activeNote.getAccidental().getNb()*FIX_PREFIX_WIDTH)*line
-        // .getNoteDistChangeRatio());
 
         for (var i = xIndex + 1; i < line.noteCount(); i++) {
             line.getNote(i).setXPos(line.getNote(i).getXPos() + shift);
@@ -1171,6 +1187,8 @@ public final class Score
     }
 
     private void modifyEditNote(int xIndex, Line line) {
+        var editNote = editModeManager.getEditNote();
+
         if (editNote == null) {
             return;
         }
@@ -1196,14 +1214,14 @@ public final class Score
             oldNote.getXPos() +
             ((editNote.getAccidental().getWidthFactor() -
                     oldNote.getAccidental().getWidthFactor()) *
-                ACCIDENTAL_WIDTH)
+                LayoutManager.ACCIDENTAL_WIDTH)
         );
         var shift = Math.round(
-            ((NOTE_PADDING.get(editNote.getNoteType()) -
-                    NOTE_PADDING.get(oldNote.getNoteType())) +
+            ((LayoutManager.getNoteSpacing(editNote.getNoteType()) -
+                    LayoutManager.getNoteSpacing(oldNote.getNoteType())) +
                 ((editNote.getAccidental().getWidthFactor() -
                         oldNote.getAccidental().getWidthFactor()) *
-                    ACCIDENTAL_WIDTH)) *
+                    LayoutManager.ACCIDENTAL_WIDTH)) *
             line.getNoteDistChangeRatio()
         );
         line.setNote(xIndex, editNote);
@@ -1244,35 +1262,15 @@ public final class Score
     }
 
     public int getSelectionSize() {
-        if ((selectedNotesLine == -1) || (selectionBegin == -1)) {
-            return 0;
-        }
-
-        // If the start and end index are the same, that is a single note
-        return (selectionEnd - selectionBegin) + 1;
+        return selectionManager.getSelectionSize();
     }
 
     private boolean shouldConnectSelection(@NotNull IntervalSet intervals) {
-        // Figure out if the start and end are part of the same connection.
-        // If so, we will remove the connection, otherwise we will add it.
-        var beginInterval = intervals.findInterval(selectionBegin);
-        var endInterval = intervals.findInterval(selectionEnd);
-
-        //noinspection ObjectEquality
-        return (beginInterval == null) || (beginInterval != endInterval);
+        return selectionManager.shouldConnectSelection(intervals);
     }
 
     public boolean canToggleBeaming() {
-        if (getSelectionSize() < 2) {
-            return false;
-        }
-
-        var line = composition.getLine(selectedNotesLine);
-
-        // The selection is beamable only if all notes are beamable
-        return IntStream.rangeClosed(selectionBegin, selectionEnd).allMatch(
-            i -> line.getNote(i).getNoteType().isBeamable()
-        );
+        return selectionManager.canToggleBeaming();
     }
 
     @Handler
@@ -1282,170 +1280,63 @@ public final class Score
 
     // Assumes that canToggleBeamingOfSelection() is true
     public void toggleBeaming() {
-        var line = composition.getLine(selectedNotesLine);
+        var line = composition.getLine(selectionManager.getSelectedNotesLine());
         var beamings = line.getBeamings();
 
         if (shouldConnectSelection(beamings)) {
-            beamings.addInterval(selectionBegin, selectionEnd);
-            calculateLengthenings(selectionBegin, line, true);
+            beamings.addInterval(selectionManager.getSelectionBegin(), selectionManager.getSelectionEnd());
+            calculateLengthenings(selectionManager.getSelectionBegin(), line, true);
         } else {
-            beamings.removeInterval(selectionBegin, selectionEnd);
-            calculateLengthenings(selectionBegin, line, true);
-            calculateLengthenings(selectionEnd, line, true);
+            beamings.removeInterval(selectionManager.getSelectionBegin(), selectionManager.getSelectionEnd());
+            calculateLengthenings(selectionManager.getSelectionBegin(), line, true);
+            calculateLengthenings(selectionManager.getSelectionEnd(), line, true);
         }
 
         composition.setModified(true);
         repaint();
     }
 
-    public TieSlurContext getTieOrSlurContext() {
-        return tieSlurContext;
+    public TieContext getTieContext() {
+        return selectionManager.getTieContext();
     }
 
-    /*
-     * This method assumes getSelectionSize() >= 2. It sets a TieSlurContext:
-     *
-     *   - canToggle indicates whether the selection can toggle a tie/slur at all.
-     *     If this is false, the other values don't matter.
-     *
-     *   - If canToggle is true, and the selection is part of the same tie or slur,
-     *     intervals will be the IntervalSet corresponding to that tie or slur.
-     *     If none of the notes in the selection are part of a tie or slur,
-     *     intervals will be null.
-     *
-     *   - isTie indicates whether the selection is part of a tie (true) or slur (false).
-     */
-    public boolean canToggleTieOrSlur() {
-        // Ties/slurs can only be toggled if:
-        //   - All of the notes in the selection are real notes (no grace notes or rests)
-        //   - The selection >= 2 notes
-        //
-        // Ties/slurs can only be added if:
-        //   - None of the notes are currently in a tie or slur
-        //
-        // Ties/slurs can only be removed if:
-        //   - The selection is part of a single tie/slur
-
-        var line = composition.getLine(selectedNotesLine);
-        var ties = line.getTies();
-        var slurs = line.getSlurs();
-        Interval firstTieInterval = null;
-        Interval firstSlurInterval = null;
-
-        for (var i = selectionBegin; i <= selectionEnd; i++) {
-            var note = line.getNote(i);
-
-            if (!note.getNoteType().isRealNote()) {
-                tieSlurContext = new TieSlurContext(false, null, false);
-                return false;
-            }
-
-            if (i == selectionBegin) {
-                firstTieInterval = ties.findInterval(i);
-                firstSlurInterval = slurs.findInterval(i);
-            } else {
-                // If the current note is part of a different tie/slur than the first note,
-                // the selection cannot be toggled.
-                //noinspection ObjectEquality
-                if (
-                    (ties.findInterval(i) != firstTieInterval) ||
-                    (slurs.findInterval(i) != firstSlurInterval)
-                ) {
-                    tieSlurContext = new TieSlurContext(false, null, false);
-                    return false;
-                }
-            }
-        }
-
-        // If we get to here, a tie/slur can either be added or removed
-        IntervalSet set = null;
-        Boolean isTie = null;
-
-        if (firstTieInterval != null) {
-            set = ties;
-            isTie = true;
-        } else if (firstSlurInterval != null) {
-            set = slurs;
-            isTie = false;
-        }
-
-        tieSlurContext = new TieSlurContext(true, set, isTie);
-        return true;
+    public boolean canToggleTie() {
+        return selectionManager.canToggleTie();
     }
 
     @Handler
-    public void onToggleTieOrSlur(ToggleTieOrSlurMessage message) {
-        toggleTieOrSlur();
+    public void onToggleTie(ToggleTieMessage message) {
+        toggleTie();
     }
 
-    // This method assumes canToggleTieOrSlur() is true
-    public void toggleTieOrSlur() {
+    // This method assumes canToggleTie() is true
+    public void toggleTie() {
         // Get the context if necessary
-        if (tieSlurContext == null) {
-            canToggleTieOrSlur();
+        if (selectionManager.getTieContext() == null) {
+            canToggleTie();
         }
 
-        var line = composition.getLine(selectedNotesLine);
-        var intervals = tieSlurContext.intervals();
+        var line = composition.getLine(selectionManager.getSelectedNotesLine());
+        var intervals = selectionManager.getTieContext().intervals();
 
         if (intervals != null) {
-            intervals.removeInterval(selectionBegin, selectionEnd);
+            // Remove existing tie
+            intervals.removeInterval(selectionManager.getSelectionBegin(), selectionManager.getSelectionEnd());
         } else {
-            // If we are adding a tie or slur, we need to determine which one
-            // based on the pitches of the notes in the selection.
-            var isTie =
-                line
-                    .getNotes(selectionBegin, selectionEnd)
-                    .stream()
-                    .map(Note::getPitch)
-                    .distinct()
-                    .count() ==
-                1;
-
-            intervals = isTie ? line.getTies() : line.getSlurs();
-            intervals.addInterval(selectionBegin, selectionEnd);
+            // Add a new tie
+            line.getTies().addInterval(selectionManager.getSelectionBegin(), selectionManager.getSelectionEnd());
         }
 
         // Reset the context so it is recalculated next time
-        tieSlurContext = null;
+        selectionManager.setTieContext(null);
         composition.setModified(true);
         repaint();
     }
 
-    /*
-     * This method assumes getSelectionSize() >= 2. It returns a Pair of Booleans:
-     *   - The first Boolean indicates whether the selection can be tupleted/untupleted.
-     *   - The second Boolean indicates whether the selection is currently tupleted.
-     */
     @NotNull
     @Contract(" -> new")
-    @SuppressWarnings("ObjectEquality")
     public Pair<Boolean, Boolean> canToggleTuplet() {
-        // Tuplets can only be toggled if all notes are real notes (no grace notes or rests)
-        // and are either in the same tuplet or are not in any tuplet.
-        var line = composition.getLine(selectedNotesLine);
-        var tuplets = line.getTuplets();
-        Interval firstInterval = null;
-
-        for (var i = selectionBegin; i <= selectionEnd; i++) {
-            if (!line.getNote(i).getNoteType().isRealNote()) {
-                return new Pair<>(false, false);
-            }
-
-            var currentInterval = tuplets.findInterval(i);
-
-            // If this is the first note, remember the current interval. This is what
-            // we will compare against.
-            // Otherwise, if the current interval does not match the previous one,
-            // the selection cannot be tupleted/untupleted.
-            if (i == selectionBegin) {
-                firstInterval = currentInterval;
-            } else if (currentInterval != firstInterval) {
-                return new Pair<>(false, false);
-            }
-        }
-
-        return new Pair<>(true, firstInterval != null);
+        return selectionManager.canToggleTuplet();
     }
 
     @Handler
@@ -1458,19 +1349,19 @@ public final class Score
     public void toggleTuplet(int tupletSize) {
         // If the beginning of the selection is in a tuplet, then all notes in the
         // selection are in the same tuplet.
-        var line = composition.getLine(selectedNotesLine);
+        var line = composition.getLine(selectionManager.getSelectedNotesLine());
         var tuplets = line.getTuplets();
-        var interval = tuplets.findInterval(selectionBegin);
+        var interval = tuplets.findInterval(selectionManager.getSelectionBegin());
 
         if ((interval == null) || (tupletSize > 0)) {
             // If the selection is not in a tuplet, add a new one
             if (interval == null) {
-                interval = tuplets.addInterval(selectionBegin, selectionEnd);
+                interval = tuplets.addInterval(selectionManager.getSelectionBegin(), selectionManager.getSelectionEnd());
             }
 
             TupletIntervalData.setGrade(interval, tupletSize);
         } else {
-            tuplets.removeInterval(selectionBegin, selectionEnd);
+            tuplets.removeInterval(selectionManager.getSelectionBegin(), selectionManager.getSelectionEnd());
         }
 
         composition.setModified(true);
@@ -1487,11 +1378,11 @@ public final class Score
 
     // This method assumes getSelectionSize() > 1
     public void addDynamicsToSelection(boolean crescendo) {
-        var line = composition.getLine(selectedNotesLine);
+        var line = composition.getLine(selectionManager.getSelectedNotesLine());
         var intervalSet = crescendo
             ? line.getCrescendos()
             : line.getDiminuendos();
-        intervalSet.addInterval(selectionBegin, selectionEnd);
+        intervalSet.addInterval(selectionManager.getSelectionBegin(), selectionManager.getSelectionEnd());
         composition.setModified(true);
         repaint();
     }
@@ -1503,13 +1394,13 @@ public final class Score
         ArrayList<Interval>,
         ArrayList<Interval>
     > getDynamicsIntervalsFromSelection() {
-        var line = composition.getLine(selectedNotesLine);
+        var line = composition.getLine(selectionManager.getSelectedNotesLine());
         var crescendos = line.getCrescendos();
         var diminuendos = line.getDiminuendos();
         var crescendoIntervals = new ArrayList<Interval>();
         var diminuendoIntervals = new ArrayList<Interval>();
 
-        for (var i = selectionBegin; i <= selectionEnd; i++) {
+        for (var i = selectionManager.getSelectionBegin(); i <= selectionManager.getSelectionEnd(); i++) {
             var interval = crescendos.findInterval(i);
 
             if (interval != null) {
@@ -1527,7 +1418,7 @@ public final class Score
     }
 
     public boolean canRemoveDynamicsFromSelection() {
-        if (selectedNotesLine == -1) {
+        if (selectionManager.getSelectedNotesLine() == -1) {
             return false;
         }
 
@@ -1545,7 +1436,7 @@ public final class Score
 
     // This method assumes canRemoveDynamicsFromSelection() is not null
     public void removeDynamicsFromSelection() {
-        var line = composition.getLine(selectedNotesLine);
+        var line = composition.getLine(selectionManager.getSelectedNotesLine());
         var crescendos = line.getCrescendos();
         var intervals = getDynamicsIntervalsFromSelection();
         var crescendoIntervals = intervals.getFirst();
@@ -1585,10 +1476,10 @@ public final class Score
     }
 
     public void makeFirstSecondEnding() {
-        var line = composition.getLine(selectedNotesLine);
+        var line = composition.getLine(selectionManager.getSelectedNotesLine());
         var repeatExists = IntStream.rangeClosed(
-            selectionBegin,
-            selectionEnd
+            selectionManager.getSelectionBegin(),
+            selectionManager.getSelectionEnd()
         ).anyMatch(i -> line.getNote(i).getNoteType() == NoteType.REPEAT_RIGHT);
 
         if (!repeatExists) {
@@ -1607,16 +1498,16 @@ public final class Score
             }
         }
 
-        line.getFirstSecondEndings().addInterval(selectionBegin, selectionEnd);
+        line.getFirstSecondEndings().addInterval(selectionManager.getSelectionBegin(), selectionManager.getSelectionEnd());
         composition.setModified(true);
         repaint();
     }
 
     public void removeFirstSecondEnding() {
-        var line = composition.getLine(selectedNotesLine);
+        var line = composition.getLine(selectionManager.getSelectedNotesLine());
         line
             .getFirstSecondEndings()
-            .removeInterval(selectionBegin, selectionEnd);
+            .removeInterval(selectionManager.getSelectionBegin(), selectionManager.getSelectionEnd());
         composition.setModified(true);
         repaint();
     }
@@ -1630,15 +1521,15 @@ public final class Score
     }
 
     public boolean canToggleTrill() {
-        if (selectedNotesLine == -1) {
+        if (selectionManager.getSelectedNotesLine() == -1) {
             return false;
         }
 
         // A trill can only be applied if one or more real notes (no grace notes or rests)
         // are in the selection.
-        var line = composition.getLine(selectedNotesLine);
+        var line = composition.getLine(selectionManager.getSelectedNotesLine());
         return line
-            .getNotes(selectionBegin, selectionEnd)
+            .getNotes(selectionManager.getSelectionBegin(), selectionManager.getSelectionEnd())
             .stream()
             .anyMatch(note -> note.getNoteType().isRealNote());
     }
@@ -1649,9 +1540,9 @@ public final class Score
     }
 
     public void toggleTrill() {
-        var line = composition.getLine(selectedNotesLine);
+        var line = composition.getLine(selectionManager.getSelectedNotesLine());
 
-        for (var note : line.getNotes(selectionBegin, selectionEnd)) {
+        for (var note : line.getNotes(selectionManager.getSelectionBegin(), selectionManager.getSelectionEnd())) {
             note.setTrill(!note.isTrill());
         }
 
@@ -1673,8 +1564,8 @@ public final class Score
     }
 
     public void toggleLyricsUnderRests() {
-        var line = composition.getLine(selectedNotesLine);
-        var note = line.getNote(selectionBegin);
+        var line = composition.getLine(selectionManager.getSelectedNotesLine());
+        var note = line.getNote(selectionManager.getSelectionBegin());
         note.setForceSyllable(!note.isForceSyllable());
         spellLyrics(line);
         composition.setModified(true);
@@ -1686,8 +1577,8 @@ public final class Score
             return false;
         }
 
-        var line = composition.getLine(selectedNotesLine);
-        return line.getBeamings().isInsideAnyInterval(selectionBegin);
+        var line = composition.getLine(selectionManager.getSelectedNotesLine());
+        return line.getBeamings().isInsideAnyInterval(selectionManager.getSelectionBegin());
     }
 
     @Handler
@@ -1697,17 +1588,17 @@ public final class Score
 
     public void flipPartialBeamOrientation() {
         try {
-            if ((selectedNotesLine == -1) || (selectionBegin != selectionEnd)) {
+            if ((selectionManager.getSelectedNotesLine() == -1) || (selectionManager.getSelectionBegin() != selectionManager.getSelectionEnd())) {
                 throw new IllegalArgumentException();
             }
 
-            var line = composition.getLine(selectedNotesLine);
+            var line = composition.getLine(selectionManager.getSelectedNotesLine());
 
-            if (!line.getBeamings().isInsideAnyInterval(selectionBegin)) {
+            if (!line.getBeamings().isInsideAnyInterval(selectionManager.getSelectionBegin())) {
                 throw new IllegalArgumentException();
             }
 
-            var note = line.getNote(selectionBegin);
+            var note = line.getNote(selectionManager.getSelectionBegin());
             note.setInvertFractionBeamOrientation(
                 !note.isInvertFractionBeamOrientation()
             );
@@ -1727,10 +1618,10 @@ public final class Score
         }
 
         // There has to be at least one non-rest note in the selection
-        var line = composition.getLine(selectedNotesLine);
+        var line = composition.getLine(selectionManager.getSelectedNotesLine());
 
         return line
-            .getNotes(selectionBegin, selectionEnd)
+            .getNotes(selectionManager.getSelectionBegin(), selectionManager.getSelectionEnd())
             .stream()
             .anyMatch(note -> !note.getNoteType().isRest());
     }
@@ -1741,22 +1632,22 @@ public final class Score
     }
 
     public void flipStemDirection() {
-        if (selectedNotesLine == -1) {
+        if (selectionManager.getSelectedNotesLine() == -1) {
             mainFrame.showInfoMessage(
                 "You must select one or more notes in order to flip their stem direction."
             );
             return;
         }
 
-        var line = composition.getLine(selectedNotesLine);
+        var line = composition.getLine(selectionManager.getSelectedNotesLine());
 
-        for (var note : line.getNotes(selectionBegin, selectionEnd)) {
+        for (var note : line.getNotes(selectionManager.getSelectionBegin(), selectionManager.getSelectionEnd())) {
             note.setUpper(!note.isUpper());
         }
 
         Interval lastInterval = null;
 
-        for (var i = selectionBegin; i <= selectionEnd; i++) {
+        for (var i = selectionManager.getSelectionBegin(); i <= selectionManager.getSelectionEnd(); i++) {
             var inverval = line.getBeamings().findInterval(i);
 
             //noinspection ObjectEquality
@@ -1772,17 +1663,17 @@ public final class Score
 
     private void calculateSelection(boolean fromRectangle) {
         var helper = new Rectangle();
-        selectedLine = -1;
-        selectedNotesLine = -1;
-        selectionBegin = -1;
-        selectionEnd = -1;
+        selectionManager.setSelectedLine(-1);
+        selectionManager.setSelectedNotesLine(-1);
+        selectionManager.setSelectionBegin(-1);
+        selectionManager.setSelectionEnd(-1);
 
         for (
             var lineIndex = 0;
             lineIndex < composition.lineCount();
             lineIndex++
         ) {
-            if ((selectedNotesLine != -1) && (selectedNotesLine != lineIndex)) {
+            if ((selectionManager.getSelectedNotesLine() != -1) && (selectionManager.getSelectedNotesLine() != lineIndex)) {
                 break;
             }
 
@@ -1811,16 +1702,16 @@ public final class Score
                 );
 
                 if (
-                    (fromRectangle && dragRectangle.intersects(helper)) ||
-                    (!fromRectangle && helper.contains(dragStart))
+                    (fromRectangle && selectionManager.getDragRectangle().intersects(helper)) ||
+                    (!fromRectangle && helper.contains(selectionManager.getDragStart()))
                 ) {
-                    selectedNotesLine = lineIndex;
+                    selectionManager.setSelectedNotesLine(lineIndex);
 
-                    if (selectionBegin == -1) {
-                        selectionBegin = noteIndex;
+                    if (selectionManager.getSelectionBegin() == -1) {
+                        selectionManager.setSelectionBegin(noteIndex);
                     }
 
-                    selectionEnd = noteIndex;
+                    selectionManager.setSelectionEnd(noteIndex);
                 }
             }
         }
@@ -1969,13 +1860,21 @@ public final class Score
         }
     }
 
+    @Override
     public Composition getComposition() {
         return composition;
     }
 
     @NotNull
+    @Override
     public LayoutManager getLayoutManager() {
         return layoutManager;
+    }
+
+    @Nullable
+    @Override
+    public LayoutResult getLayoutResult() {
+        return layoutManager.getLayoutResult();
     }
 
     @Handler
@@ -1988,6 +1887,14 @@ public final class Score
     public void onLayoutChanged(@NotNull LayoutChangeMessage message) {
         if (message.getHeightChanged()) {
             layoutManager.invalidateFromSection(message.getSection());
+        }
+
+        // Clear inspector hover immediately when layout changes to avoid stale bounds
+        if (DebugState.isInspectorEnabled() && DebugState.getHoveredElement() != null) {
+            DebugState.setHoveredElement(null);
+            // Force immediate repaint to clear stale visualization
+            repaint();
+            return;
         }
 
         // Debounce repaints to batch multiple rapid changes
@@ -2008,9 +1915,8 @@ public final class Score
 
         // Reset the playing state
         PlaybackController.stop();
-        playingLine = -1;
-        playingNote = -1;
-        selectedNotesLine = -1;
+        playbackStateManager.reset();
+        selectionManager.setSelectedNotesLine(-1);
         setLineWidth(composition.getLineWidth());
 
         // global calculate lengthening
@@ -2032,6 +1938,11 @@ public final class Score
 
         spellLyrics();
         setEditNotePositionToEnd();
+
+        // Update the MainPanel with the new composition
+        if (mainPanel != null) {
+            mainPanel.setComposition(composition);
+        }
 
         // mainFrame.setMode(Mode.NOTE_EDIT);
         mainFrame.fireMusicChanged(null);
@@ -2222,15 +2133,10 @@ public final class Score
 
     @Nullable
     public Note getSingleSelectedNote() {
-        if ((selectedNotesLine != -1) || (selectionBegin != selectionEnd)) {
-            return composition
-                .getLine(selectedNotesLine)
-                .getNote(selectionBegin);
-        }
-
-        return null;
+        return selectionManager.getSingleSelectedNote();
     }
 
+    @Override
     public int getStartY() {
         return layoutManager.getContentStartY();
     }
@@ -2246,11 +2152,18 @@ public final class Score
     public int getSheetHeight() {
         // If layout not valid, do a measurement pass
         if (!layoutManager.isValid()) {
-            var image = new BufferedImage(
-                sheetSize.width,
-                sheetSize.height,
-                BufferedImage.TYPE_INT_RGB
-            );
+            int width = composition.getLineWidth();
+            int height = getHeight();
+
+            // Ensure valid dimensions for BufferedImage
+            if (width <= 0) {
+                width = 800;
+            }
+            if (height <= 0) {
+                height = 600;
+            }
+
+            var image = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
             var g2 = image.createGraphics();
             layoutManager.measure(g2);
             g2.dispose();
@@ -2267,10 +2180,9 @@ public final class Score
             if (strict) {
                 idealSpace = endNote.getRealUpNoteRect().width;
             } else {
-                idealSpace = (NOTE_PADDING.get(endNote.getNoteType()) *
+                idealSpace = (LayoutManager.getNoteSpacing(endNote.getNoteType()) *
                     line.getNoteDistChangeRatio()) +
                 20;
-                //idealSpace = ND*line.getNoteDistChangeRatio()+20;
             }
 
             if (
@@ -2295,7 +2207,7 @@ public final class Score
     }
 
     public void setInSelectMode(boolean inSelectMode) {
-        this.inSelectMode = inSelectMode;
+        selectionManager.setInSelectMode(inSelectMode);
     }
 
     public Control getControl() {
@@ -2330,6 +2242,7 @@ public final class Score
         repaint();
     }
 
+    @Override
     public int getLeadingKeysPos() {
         return leadingKeysPos;
     }
@@ -2338,6 +2251,7 @@ public final class Score
         this.leadingKeysPos = leadingKeysPos;
     }
 
+    @Override
     public int getRowHeight() {
         return rowHeight;
     }
@@ -2346,6 +2260,7 @@ public final class Score
         this.rowHeight = rowHeight;
     }
 
+    @Override
     public int getMiddleLineY() {
         return middleLineY;
     }
@@ -2354,8 +2269,12 @@ public final class Score
         this.middleLineY = middleLineY;
     }
 
-    public Renderer getRenderer() {
-        return renderer;
+    public ScoreRenderer getScoreRenderer() {
+        return scoreRenderer;
+    }
+
+    public MeasurementService getMeasurementService() {
+        return measurementService;
     }
 
     public void setDragDisabled(boolean dragDisabled) {
@@ -2390,26 +2309,14 @@ public final class Score
         }
     }
 
+    @Override
     public int getSelectedLine() {
-        return selectedLine;
+        return selectionManager.getSelectedLine();
     }
 
     @Nullable
     public NoteSelection getSelection() {
-        if (selectedLine != -1) {
-            var line = composition.getLine(selectedLine);
-            return new NoteSelection(line, 0, line.noteCount() - 1);
-        }
-
-        if (selectedNotesLine != -1) {
-            return new NoteSelection(
-                composition.getLine(selectedNotesLine),
-                selectionBegin,
-                selectionEnd
-            );
-        }
-
-        return null;
+        return selectionManager.getSelection();
     }
 
     public Sequence getSequence() {
@@ -2808,6 +2715,10 @@ public final class Score
     //***************************
     @Override
     public void mouseClicked(@NotNull MouseEvent e) {
+        if (DebugState.isInspectorEnabled()) {
+            return;
+        }
+
         if (e.getButton() != MouseEvent.BUTTON1) {
             return;
         }
@@ -2818,53 +2729,58 @@ public final class Score
             return;
         }
 
-        if (inSelectMode || e.isShiftDown()) {
+        if (selectionManager.isInSelectMode() || e.isShiftDown()) {
             clearSelection();
             resetPlayback();
-            dragStart.setLocation(e.getX(), e.getY());
-            dragRectangle.setBounds(0, 0, 0, 0);
+            selectionManager.getDragStart().setLocation(e.getX(), e.getY());
+            selectionManager.getDragRectangle().setBounds(0, 0, 0, 0);
             updateSelection(e, false);
             selectionChanged();
 
             // If a single note was clicked, play it
             if (getSelectionSize() == 1) {
                 var note = composition
-                    .getLine(selectedNotesLine)
-                    .getNote(selectionBegin);
+                    .getLine(selectionManager.getSelectedNotesLine())
+                    .getNote(selectionManager.getSelectionBegin());
 
                 if (note.getNoteType().isNote()) {
                     new PlayNoteThread(note.getPitch()).start();
                 }
             }
         } else if (control == Control.MOUSE) {
-            var line = composition.getLine(editNotePoint.lineIndex);
+            var editNotePoint = editModeManager.getEditNotePoint();
+            var line = composition.getLine(editNotePoint.getLineIndex());
 
-            if (editNotePoint.xIndex == line.noteCount()) {
+            if (editNotePoint.getXIndex() == line.noteCount()) {
                 addEditNote(line);
-            } else if (editNotePoint.movement != 0) {
+            } else if (editNotePoint.getMovement() != 0) {
                 insertEditNote(
-                    editNotePoint.xIndex +
-                    ((editNotePoint.movement < 0) ? 0 : 1),
+                    editNotePoint.getXIndex() +
+                    ((editNotePoint.getMovement() < 0) ? 0 : 1),
                     line
                 );
             } else {
-                modifyEditNote(editNotePoint.xIndex, line);
+                modifyEditNote(editNotePoint.getXIndex(), line);
             }
         }
     }
 
     @Override
     public void mouseDragged(MouseEvent e) {
+        if (DebugState.isInspectorEnabled()) {
+            return;
+        }
+
         // Don't allow selection during playback
         if (dragDisabled || MidiController.isPlaying()) {
             return;
         }
 
-        var recalculateSelection = startedDrag;
+        var recalculateSelection = selectionManager.isStartedDrag();
 
-        if (!startedDrag) {
-            startedDrag = true;
-            dragStart.setLocation(e.getX(), e.getY());
+        if (!selectionManager.isStartedDrag()) {
+            selectionManager.setStartedDrag(true);
+            selectionManager.getDragStart().setLocation(e.getX(), e.getY());
             clearSelection();
             resetPlayback();
         }
@@ -2885,13 +2801,9 @@ public final class Score
             y = getHeight() - 1;
         }
 
-        dragRectangle.setBounds(
-            Math.min(dragStart.x, x),
-            Math.min(dragStart.y, y),
-            Math.abs(dragStart.x - x),
-            Math.abs(dragStart.y - y)
-        );
-        dragRectangle.setBounds(
+        var dragRect = selectionManager.getDragRectangle();
+        var dragStart = selectionManager.getDragStart();
+        dragRect.setBounds(
             Math.min(dragStart.x, x),
             Math.min(dragStart.y, y),
             Math.abs(dragStart.x - x),
@@ -2909,7 +2821,7 @@ public final class Score
         calculateSelection(fromRectangle);
 
         if (
-            (selectionBegin == -1) &&
+            (selectionManager.getSelectionBegin() == -1) &&
             (Math.abs(
                     e.getY() -
                     getNoteYPos(
@@ -2919,12 +2831,14 @@ public final class Score
                 ) <=
                 (2 * STAFF_LINE_Y_OFFSET))
         ) {
-            selectedLine = (e.getY() - composition.getTopPadding()) / rowHeight;
+            var lineIndex = (e.getY() - composition.getTopPadding()) / rowHeight;
 
             if (
-                (selectedLine < 0) || (selectedLine >= composition.lineCount())
+                (lineIndex < 0) || (lineIndex >= composition.lineCount())
             ) {
-                selectedLine = -1;
+                selectionManager.setSelectedLine(-1);
+            } else {
+                selectionManager.setSelectedLine(lineIndex);
             }
         }
 
@@ -2933,6 +2847,22 @@ public final class Score
 
     @Override
     public void mouseMoved(MouseEvent e) {
+        // Inspector hover tracking - only repaint if hovered element changes
+        if (DebugState.isInspectorEnabled()) {
+            var oldHoveredElement = DebugState.getHoveredElement();
+            DebugState.setMousePosition(new Point(e.getX(), e.getY()));
+            updateInspectorHover(e.getX(), e.getY());
+            var newHoveredElement = DebugState.getHoveredElement();
+
+            // Only repaint if the hovered element actually changed
+            if (!Objects.equals(oldHoveredElement, newHoveredElement)) {
+                logInspectorHover(newHoveredElement);
+                repaint();
+            }
+        }
+
+        var editNote = editModeManager.getEditNote();
+
         if (
             (editNote == null) ||
             (control != Control.MOUSE) ||
@@ -2943,25 +2873,31 @@ public final class Score
 
         var x = e.getX() + CURSOR_OFFSET.x;
         var y = e.getY() + CURSOR_OFFSET.y;
-        newEditNotePoint.lineIndex = (y - composition.getTopPadding()) /
-        rowHeight;
+        var newEditNotePoint = editModeManager.getNewEditNotePoint();
+        var editNotePoint = editModeManager.getEditNotePoint();
+
+        newEditNotePoint.setLineIndex(
+            (y - composition.getTopPadding()) / rowHeight
+        );
 
         if (
-            (newEditNotePoint.lineIndex < 0) ||
-            (newEditNotePoint.lineIndex >= composition.lineCount())
+            (newEditNotePoint.getLineIndex() < 0) ||
+            (newEditNotePoint.getLineIndex() >= composition.lineCount())
         ) {
             return;
         }
 
-        newEditNotePoint.y = (int) ((y -
-                composition.getTopPadding() -
-                (newEditNotePoint.lineIndex * rowHeight) -
-                (NOTE_Y_OFFSET / 2)) /
-            NOTE_Y_OFFSET);
+        newEditNotePoint.setY(
+            (int) ((y -
+                    composition.getTopPadding() -
+                    (newEditNotePoint.getLineIndex() * rowHeight) -
+                    (NOTE_Y_OFFSET / 2)) /
+                NOTE_Y_OFFSET)
+        );
 
         if (
-            (newEditNotePoint.y <= 0) ||
-            (newEditNotePoint.y >
+            (newEditNotePoint.getY() <= 0) ||
+            (newEditNotePoint.getY() >
                 (((STAFF_LINES_BELOW + STAFF_LINE_COUNT + STAFF_LINES_ABOVE) *
                         2) +
                     1))
@@ -2969,14 +2905,14 @@ public final class Score
             return;
         }
 
-        setNewEditNotePoint(x, newEditNotePoint.lineIndex);
-        editNote.setYPos(newEditNotePoint.y - ((STAFF_LINES_ABOVE + 3) * 2));
+        setNewEditNotePoint(x, newEditNotePoint.getLineIndex());
+        editNote.setYPos(newEditNotePoint.getY() - ((STAFF_LINES_ABOVE + 3) * 2));
 
         if (!newEditNotePoint.equals(editNotePoint)) {
-            editNotePoint.xIndex = newEditNotePoint.xIndex;
-            editNotePoint.y = newEditNotePoint.y;
-            editNotePoint.movement = newEditNotePoint.movement;
-            editNotePoint.lineIndex = newEditNotePoint.lineIndex;
+            editNotePoint.setXIndex(newEditNotePoint.getXIndex());
+            editNotePoint.setY(newEditNotePoint.getY());
+            editNotePoint.setMovement(newEditNotePoint.getMovement());
+            editNotePoint.setLineIndex(newEditNotePoint.getLineIndex());
             editNote.setUpper(defaultUpperNote(editNote));
             calculateEditNoteXPos();
             repaint();
@@ -2987,7 +2923,7 @@ public final class Score
             .getStatusBar()
             .setPitchString(
                 editNote.getEditNotePitchString(
-                    composition.getLine(editNotePoint.lineIndex)
+                    composition.getLine(editNotePoint.getLineIndex())
                 )
             );
     }
@@ -2996,6 +2932,7 @@ public final class Score
         var x = xPos - Note.HOT_SPOT.x;
         var foundX = 0;
         var line = composition.getLine(lineIndex);
+        var newEditNotePoint = editModeManager.getNewEditNotePoint();
 
         for (var i = 0; i < (line.noteCount() - 1); i++) {
             if (
@@ -3009,14 +2946,14 @@ public final class Score
 
         if (foundX == 0) {
             if (line.noteCount() == 0) {
-                newEditNotePoint.movement = 0;
-                newEditNotePoint.xIndex = 0;
+                newEditNotePoint.setMovement(0);
+                newEditNotePoint.setXIndex(0);
             } else if (x <= line.getNote(0).getXPos()) {
-                newEditNotePoint.movement = FIRST_NOTE_IN_LINE_MOVEMENT;
-                newEditNotePoint.xIndex = 0;
+                newEditNotePoint.setMovement(FIRST_NOTE_IN_LINE_MOVEMENT);
+                newEditNotePoint.setXIndex(0);
             } else {
-                newEditNotePoint.movement = 0;
-                newEditNotePoint.xIndex = line.noteCount();
+                newEditNotePoint.setMovement(0);
+                newEditNotePoint.setXIndex(line.noteCount());
             }
         } else {
             var period =
@@ -3026,20 +2963,19 @@ public final class Score
             //if(foundX==endNote-1 && period!=0) period=3;
             switch (period) {
                 case 0 -> {
-                    newEditNotePoint.movement = 0;
-                    newEditNotePoint.xIndex = foundX - 1;
+                    newEditNotePoint.setMovement(0);
+                    newEditNotePoint.setXIndex(foundX - 1);
                 }
                 case 1, 2 -> {
-                    newEditNotePoint.movement = -(line
-                            .getNote(foundX)
-                            .getXPos() -
-                        line.getNote(foundX - 1).getXPos()) /
-                    2;
-                    newEditNotePoint.xIndex = foundX;
+                    newEditNotePoint.setMovement(
+                        -(line.getNote(foundX).getXPos() -
+                            line.getNote(foundX - 1).getXPos()) / 2
+                    );
+                    newEditNotePoint.setXIndex(foundX);
                 }
                 case 3, 4 -> {
-                    newEditNotePoint.movement = 0;
-                    newEditNotePoint.xIndex = foundX;
+                    newEditNotePoint.setMovement(0);
+                    newEditNotePoint.setXIndex(foundX);
                 }
             }
         }
@@ -3047,6 +2983,10 @@ public final class Score
 
     @Override
     public void mousePressed(@NotNull MouseEvent e) {
+        if (DebugState.isInspectorEnabled()) {
+            return;
+        }
+
         if (e.isPopupTrigger()) {
             popup.show(this, e.getX(), e.getY());
         }
@@ -3054,10 +2994,14 @@ public final class Score
 
     @Override
     public void mouseReleased(@NotNull MouseEvent e) {
+        if (DebugState.isInspectorEnabled()) {
+            return;
+        }
+
         if (e.isPopupTrigger()) {
             popup.show(this, e.getX(), e.getY());
-        } else if (startedDrag) {
-            startedDrag = false;
+        } else if (selectionManager.isStartedDrag()) {
+            selectionManager.setStartedDrag(false);
             repaint();
         }
 
@@ -3066,27 +3010,241 @@ public final class Score
 
     @Override
     public void mouseEntered(MouseEvent e) {
+        if (DebugState.isInspectorEnabled()) {
+            return;
+        }
+
         if (
-            !editNoteIsVisible &&
+            !editModeManager.isEditNoteVisible() &&
             (control == Control.MOUSE) &&
             (mode == Mode.NOTE_EDIT)
         ) {
-            editNoteIsVisible = true;
+            editModeManager.setEditNoteVisible(true);
             //setCursor(activeNote==null ? Cursor.getDefaultCursor() : emptyCursor);
         }
     }
 
     @Override
     public void mouseExited(MouseEvent e) {
+        if (DebugState.isInspectorEnabled()) {
+            DebugState.setHoveredElement(null);
+            DebugState.setMousePosition(null);
+            repaint();
+        }
+
         if (
-            editNoteIsVisible &&
+            editModeManager.isEditNoteVisible() &&
             (control == Control.MOUSE) &&
             (mode == Mode.NOTE_EDIT)
         ) {
-            editNoteIsVisible = false;
+            editModeManager.setEditNoteVisible(false);
             repaint();
             //setCursor(Cursor.getDefaultCursor());
         }
+    }
+
+    /**
+     * Updates the inspector hovered element based on mouse position.
+     * Checks elements in priority order (most specific first).
+     */
+    private void updateInspectorHover(int x, int y) {
+        if (!layoutManager.isValid()) {
+            DebugState.setHoveredElement(null);
+            return;
+        }
+
+        var layoutResult = layoutManager.getLayoutResult();
+
+        if (layoutResult == null) {
+            DebugState.setHoveredElement(null);
+            return;
+        }
+
+        // Check in order of priority (most specific first)
+
+        // 1. Check notes
+        int noteCount = 0;
+        for (var line : layoutResult.getLines()) {
+            for (var note : line.getNotes()) {
+                noteCount++;
+                if (note.containsPoint(x, y)) {
+                    DebugState.setHoveredElement(new DebugState.HoveredElement(
+                        note.getElementBounds(),
+                        "Note",
+                        DebugState.ElementType.NOTE
+                    ));
+                    return;
+                }
+            }
+        }
+
+        // 2. Check staff lyrics syllables
+        int syllableCount = 0;
+        for (var line : layoutResult.getLines()) {
+            var lyrics = line.getLyrics();
+            syllableCount += lyrics.getSyllables().size();
+
+            for (var syllable : lyrics.getSyllables()) {
+                if (syllable.containsPoint(x, y)) {
+                    DebugState.setHoveredElement(new DebugState.HoveredElement(
+                        syllable.getBounds(),
+                        "Staff Lyrics: " + syllable.getText(),
+                        DebugState.ElementType.STAFF_LYRICS
+                    ));
+                    return;
+                }
+            }
+        }
+
+        // 3. Check attachments
+        int attachmentCount = 0;
+        for (var line : layoutResult.getLines()) {
+            attachmentCount += line.getAttachments().size();
+            for (var attachment : line.getAttachments()) {
+                if (attachment.containsPoint(x, y)) {
+                    DebugState.setHoveredElement(new DebugState.HoveredElement(
+                        attachment.getBounds(),
+                        "Attachment: " + attachment.getType(),
+                        DebugState.ElementType.ATTACHMENT
+                    ));
+                    return;
+                }
+            }
+        }
+
+        // 4. Check ranges
+        int rangeCount = 0;
+        for (var line : layoutResult.getLines()) {
+            rangeCount += line.getRangeElements().size();
+            for (var range : line.getRangeElements()) {
+                if (range.containsPoint(x, y)) {
+                    DebugState.setHoveredElement(new DebugState.HoveredElement(
+                        range.getBounds(),
+                        "Range: " + range.getType(),
+                        DebugState.ElementType.RANGE
+                    ));
+                    return;
+                }
+            }
+        }
+
+        // 5. Check line bounds
+        for (var line : layoutResult.getLines()) {
+            if (line.getLineBounds().containsForHitTest(x, y)) {
+                // Log element counts for this line
+                System.out.printf(
+                    "[Inspector Debug] Line hit | Total notes: %d, syllables: %d, " +
+                    "attachments: %d, ranges: %d%n",
+                    noteCount,
+                    syllableCount,
+                    attachmentCount,
+                    rangeCount
+                );
+
+                DebugState.setHoveredElement(new DebugState.HoveredElement(
+                    line.getLineBounds(),
+                    "Line",
+                    DebugState.ElementType.LINE
+                ));
+                return;
+            }
+        }
+
+        // 6. Check sections
+        if (checkSection(
+            layoutResult.getTitle(), x, y, "Title", DebugState.ElementType.TITLE
+        )) {
+            return;
+        }
+
+        if (checkSection(
+            layoutResult.getAttribution(), x, y, "Attribution", DebugState.ElementType.ATTRIBUTION
+        )) {
+            return;
+        }
+
+        if (checkSection(
+            layoutResult.getLyrics(), x, y, "Under Lyrics", DebugState.ElementType.UNDER_LYRICS
+        )) {
+            return;
+        }
+
+        if (checkSection(
+            layoutResult.getBanglaLyrics(),
+            x,
+            y,
+            "Bangla Lyrics",
+            DebugState.ElementType.BANGLA_LYRICS
+        )) {
+            return;
+        }
+
+        if (checkSection(
+            layoutResult.getTranslation(),
+            x,
+            y,
+            "Translation",
+            DebugState.ElementType.TRANSLATION
+        )) {
+            return;
+        }
+
+        if (checkSection(
+            layoutResult.getFootnotes(), x, y, "Footnotes", DebugState.ElementType.FOOTNOTES
+        )) {
+            return;
+        }
+
+        if (checkSection(
+            layoutResult.getScore(), x, y, "Score", DebugState.ElementType.SECTION
+        )) {
+            return;
+        }
+
+        // No element found
+        DebugState.setHoveredElement(null);
+    }
+
+    /**
+     * Checks if a section contains the given point and sets the hovered element if so.
+     *
+     * @return true if the section was hit and hovered element was set
+     */
+    private boolean checkSection(
+        SectionLayout section,
+        int x,
+        int y,
+        String label,
+        DebugState.ElementType type
+    ) {
+        var bounds = section.getBounds();
+
+        if (bounds.containsForHitTest(x, y) && section.hasContent()) {
+            DebugState.setHoveredElement(new DebugState.HoveredElement(bounds, label, type));
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Logs inspector hover information for debugging.
+     */
+    private void logInspectorHover(DebugState.HoveredElement element) {
+        if (element == null) {
+            System.out.println("[Inspector] Hover cleared");
+            return;
+        }
+
+        var bounds = element.getBounds();
+        System.out.printf(
+            "[Inspector] %s (%s) | Size: %s | Padding: %s | Margin: %s%n",
+            element.getLabel(),
+            element.getType(),
+            bounds.getContentSizeString(),
+            bounds.getPaddingCss(),
+            bounds.getMarginCss()
+        );
     }
 
     public void allowFocusInComponent(Component component) {
@@ -3161,7 +3319,7 @@ public final class Score
         g2.setColor(background);
         g2.fillRect(0, 0, image.getWidth(), image.getHeight());
         g2.translate(border.getLeft(), border.getTop());
-        renderer.drawScore(g2, false, scale);
+        scoreRenderer.render(g2, false, scale);
         g2.dispose();
     }
 
@@ -3171,8 +3329,9 @@ public final class Score
         if (meta.getType() == MidiMetaMessageTypes.SEQUENCE_NUMBER) {
             // We get this message when the next note is about to play.
             var data = meta.getData();
-            playingLine = (data[0] << 8) | data[1];
-            playingNote = (data[2] << 8) | data[3];
+            var line = (data[0] << 8) | data[1];
+            var note = (data[2] << 8) | data[3];
+            playbackStateManager.setPlayingPosition(line, note);
             repaint();
         } else if (meta.getType() == MidiMetaMessageTypes.END_OF_TRACK) {
             // When we reach the end of the track, stop/rewind.
@@ -3191,8 +3350,7 @@ public final class Score
 
     private void resetPlayback() {
         MidiController.sequencer.setTickPosition(0);
-        playingLine = -1;
-        playingNote = -1;
+        playbackStateManager.reset();
         repaint();
     }
 
@@ -3201,46 +3359,6 @@ public final class Score
         TIE,
         SLUR,
     }
-
-    private static class NotePosition {
-
-        int xIndex = 0;
-        int y = 0;
-        int lineIndex = 0;
-        int movement = 0;
-
-        @SuppressWarnings("NonFinalFieldReferenceInEquals")
-        @Override
-        public synchronized boolean equals(Object obj) {
-            //noinspection SimplifiableIfStatement
-            if (this == obj) {
-                return true;
-            }
-
-            //noinspection OverlyComplexBooleanExpression
-            return (
-                (obj instanceof NotePosition position) &&
-                ((xIndex == position.xIndex) &&
-                    (y == position.y) &&
-                    (lineIndex == position.lineIndex) &&
-                    (movement == position.movement))
-            );
-        }
-
-        @SuppressWarnings("NonFinalFieldReferencedInHashCode")
-        @Override
-        public int hashCode() {
-            return Objects.hash(xIndex, y, lineIndex, movement);
-        }
-    }
-
-    public record NoteSelection(Line line, int begin, int end) {}
-
-    public record TieSlurContext(
-        boolean canToggle,
-        IntervalSet intervals,
-        Boolean isTie
-    ) {}
 
     private class FocusLostThread extends Thread {
 
@@ -3257,7 +3375,7 @@ public final class Score
     }
 
     public int getPasteboardSize() {
-        return pasteboard.size();
+        return clipboardManager.getSize();
     }
 
     @Handler
@@ -3281,38 +3399,38 @@ public final class Score
     }
 
     private void handleCopy() {
-        if (selectedNotesLine > -1) {
-            var line = composition.getLine(selectedNotesLine);
-            pasteboard.clear();
+        if (selectionManager.getSelectedNotesLine() > -1) {
+            var line = composition.getLine(selectionManager.getSelectedNotesLine());
+            clipboardManager.clear();
 
-            for (var i = selectionBegin; i <= selectionEnd; i++) {
-                pasteboard.add(line.getNote(i).clone());
+            for (var i = selectionManager.getSelectionBegin(); i <= selectionManager.getSelectionEnd(); i++) {
+                clipboardManager.addNote(line.getNote(i).clone());
             }
 
-            intervalSetsCopyBuffer = line.copyIntervals(
-                selectionBegin,
-                selectionEnd
-            );
+            clipboardManager.setIntervalsCopyBuffer(line.copyIntervals(
+                selectionManager.getSelectionBegin(),
+                selectionManager.getSelectionEnd()
+            ));
         }
     }
 
     public boolean canDeleteLine() {
-        return (selectedLine != -1) && (composition.lineCount() > 1);
+        return selectionManager.canDeleteLine();
     }
 
     private void handleDelete() {
-        if (selectedNotesLine != -1) {
-            var line = composition.getLine(selectedNotesLine);
+        if (selectionManager.getSelectedNotesLine() != -1) {
+            var line = composition.getLine(selectionManager.getSelectedNotesLine());
 
-            for (var i = selectionEnd; i >= selectionBegin; i--) {
+            for (var i = selectionManager.getSelectionEnd(); i >= selectionManager.getSelectionBegin(); i--) {
                 deleteNote(i, line);
             }
 
-            calculateLengthenings(selectionBegin - 1, line, true);
-            calculateLengthenings(selectionBegin, line, true);
+            calculateLengthenings(selectionManager.getSelectionBegin() - 1, line, true);
+            calculateLengthenings(selectionManager.getSelectionBegin(), line, true);
             spellLyrics(line);
         } else if (canDeleteLine()) {
-            composition.removeLine(selectedLine);
+            composition.removeLine(selectionManager.getSelectedLine());
             spellLyrics();
         }
 
@@ -3323,11 +3441,11 @@ public final class Score
     }
 
     private void handlePaste() {
-        if (!pasteboard.isEmpty()) {
+        if (!clipboardManager.isEmpty()) {
             prevPasteControl = control;
             setEditNote(Note.PASTE_NOTE);
             control = Control.MOUSE;
-            inSelectMode = false;
+            selectionManager.setInSelectMode(false);
             repaint();
         }
     }
@@ -3354,76 +3472,73 @@ public final class Score
                 return;
             }
 
+            var editNote = editModeManager.getEditNote();
+
             if (editNote != null) {
-                var line = composition.getLine(editNotePoint.lineIndex);
+                var editNotePoint = editModeManager.getEditNotePoint();
+                var newEditNotePoint = editModeManager.getNewEditNotePoint();
+                var line = composition.getLine(editNotePoint.getLineIndex());
 
                 if (code == KeyEvent.VK_LEFT) {
                     if (
-                        (editNotePoint.xIndex == 0) &&
-                        ((editNotePoint.movement != 0) ||
+                        (editNotePoint.getXIndex() == 0) &&
+                        ((editNotePoint.getMovement() != 0) ||
                             (line.noteCount() == 0))
                     ) {
-                        if (editNotePoint.lineIndex > 0) {
-                            editNotePoint.lineIndex--;
-                            editNotePoint.xIndex = composition
-                                .getLine(editNotePoint.lineIndex)
-                                .noteCount();
-                            editNotePoint.movement = 0;
+                        if (editNotePoint.getLineIndex() > 0) {
+                            editNotePoint.setLineIndex(editNotePoint.getLineIndex() - 1);
+                            editNotePoint.setXIndex(
+                                composition.getLine(editNotePoint.getLineIndex()).noteCount()
+                            );
+                            editNotePoint.setMovement(0);
                         } else {
                             return;
                         }
                     } else if (
-                        (editNotePoint.movement == 0) &&
-                        (editNotePoint.xIndex < line.noteCount())
+                        (editNotePoint.getMovement() == 0) &&
+                        (editNotePoint.getXIndex() < line.noteCount())
                     ) {
-                        editNotePoint.movement = (editNotePoint.xIndex != 0)
-                            ? ((line
-                                        .getNote(editNotePoint.xIndex - 1)
-                                        .getXPos() -
-                                    line
-                                        .getNote(editNotePoint.xIndex)
-                                        .getXPos()) /
-                                2)
-                            : FIRST_NOTE_IN_LINE_MOVEMENT;
+                        editNotePoint.setMovement(
+                            (editNotePoint.getXIndex() != 0)
+                                ? ((line.getNote(editNotePoint.getXIndex() - 1).getXPos() -
+                                    line.getNote(editNotePoint.getXIndex()).getXPos()) / 2)
+                                : FIRST_NOTE_IN_LINE_MOVEMENT
+                        );
                     } else {
-                        editNotePoint.movement = 0;
-                        editNotePoint.xIndex--;
+                        editNotePoint.setMovement(0);
+                        editNotePoint.setXIndex(editNotePoint.getXIndex() - 1);
                     }
                 } else if (code == KeyEvent.VK_RIGHT) {
-                    if (editNotePoint.xIndex == line.noteCount()) {
+                    if (editNotePoint.getXIndex() == line.noteCount()) {
                         if (
-                            editNotePoint.lineIndex <
+                            editNotePoint.getLineIndex() <
                             (composition.lineCount() - 1)
                         ) {
-                            editNotePoint.lineIndex++;
-                            editNotePoint.xIndex = 0;
-                            editNotePoint.movement = (composition
-                                        .getLine(editNotePoint.lineIndex)
-                                        .noteCount() ==
-                                    0)
-                                ? 0
-                                : FIRST_NOTE_IN_LINE_MOVEMENT;
+                            editNotePoint.setLineIndex(editNotePoint.getLineIndex() + 1);
+                            editNotePoint.setXIndex(0);
+                            editNotePoint.setMovement(
+                                (composition.getLine(editNotePoint.getLineIndex()).noteCount() == 0)
+                                    ? 0
+                                    : FIRST_NOTE_IN_LINE_MOVEMENT
+                            );
                         } else {
                             return;
                         }
-                    } else if (editNotePoint.movement == 0) {
-                        editNotePoint.xIndex++;
+                    } else if (editNotePoint.getMovement() == 0) {
+                        editNotePoint.setXIndex(editNotePoint.getXIndex() + 1);
 
-                        if (editNotePoint.xIndex < line.noteCount()) {
-                            editNotePoint.movement = (editNotePoint.xIndex != 0)
-                                ? ((line
-                                            .getNote(editNotePoint.xIndex - 1)
-                                            .getXPos() -
-                                        line
-                                            .getNote(editNotePoint.xIndex)
-                                            .getXPos()) /
-                                    2)
-                                : FIRST_NOTE_IN_LINE_MOVEMENT;
+                        if (editNotePoint.getXIndex() < line.noteCount()) {
+                            editNotePoint.setMovement(
+                                (editNotePoint.getXIndex() != 0)
+                                    ? ((line.getNote(editNotePoint.getXIndex() - 1).getXPos() -
+                                        line.getNote(editNotePoint.getXIndex()).getXPos()) / 2)
+                                    : FIRST_NOTE_IN_LINE_MOVEMENT
+                            );
                         } else {
-                            editNotePoint.movement = 0;
+                            editNotePoint.setMovement(0);
                         }
                     } else {
-                        editNotePoint.movement = 0;
+                        editNotePoint.setMovement(0);
                     }
                 } else if (code == KeyEvent.VK_UP) {
                     if (editNote.getYPos() >= (-(STAFF_LINES_ABOVE + 2) * 2)) {
@@ -3448,40 +3563,40 @@ public final class Score
                             );
                     }
                 } else if (code == KeyEvent.VK_ENTER) {
-                    if (editNotePoint.xIndex == line.noteCount()) {
+                    if (editNotePoint.getXIndex() == line.noteCount()) {
                         addEditNote(line);
-                        editNotePoint.xIndex = line.noteCount();
-                        editNotePoint.movement = 0;
-                    } else if (editNotePoint.movement != 0) {
+                        editNotePoint.setXIndex(line.noteCount());
+                        editNotePoint.setMovement(0);
+                    } else if (editNotePoint.getMovement() != 0) {
                         insertEditNote(
-                            editNotePoint.xIndex +
-                            ((editNotePoint.movement < 0) ? 0 : 1),
+                            editNotePoint.getXIndex() +
+                            ((editNotePoint.getMovement() < 0) ? 0 : 1),
                             line
                         );
                     } else {
-                        modifyEditNote(editNotePoint.xIndex, line);
+                        modifyEditNote(editNotePoint.getXIndex(), line);
                     }
                 } else if (code == KeyEvent.VK_PAGE_UP) {
-                    if (editNotePoint.lineIndex > 0) {
-                        editNotePoint.lineIndex--;
+                    if (editNotePoint.getLineIndex() > 0) {
+                        editNotePoint.setLineIndex(editNotePoint.getLineIndex() - 1);
                         setNewEditNotePoint(
                             editNote.getXPos(),
-                            editNotePoint.lineIndex
+                            editNotePoint.getLineIndex()
                         );
-                        editNotePoint.xIndex = newEditNotePoint.xIndex;
-                        editNotePoint.movement = newEditNotePoint.movement;
+                        editNotePoint.setXIndex(newEditNotePoint.getXIndex());
+                        editNotePoint.setMovement(newEditNotePoint.getMovement());
                     }
                 } else if (code == KeyEvent.VK_PAGE_DOWN) {
                     if (
-                        (editNotePoint.lineIndex + 1) < composition.lineCount()
+                        (editNotePoint.getLineIndex() + 1) < composition.lineCount()
                     ) {
-                        editNotePoint.lineIndex++;
+                        editNotePoint.setLineIndex(editNotePoint.getLineIndex() + 1);
                         setNewEditNotePoint(
                             editNote.getXPos(),
-                            editNotePoint.lineIndex
+                            editNotePoint.getLineIndex()
                         );
-                        editNotePoint.xIndex = newEditNotePoint.xIndex;
-                        editNotePoint.movement = newEditNotePoint.movement;
+                        editNotePoint.setXIndex(newEditNotePoint.getXIndex());
+                        editNotePoint.setMovement(newEditNotePoint.getMovement());
                     }
                 } else if (code == KeyEvent.VK_BACK_SPACE) {
                     if (line.noteCount() > 0) {

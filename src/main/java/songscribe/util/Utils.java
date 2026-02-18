@@ -32,7 +32,6 @@ import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 
 import com.formdev.flatlaf.util.SystemInfo;
-import org.springframework.lang.NonNull;
 
 import songscribe.data.MyDesktop;
 import songscribe.ui.component.MainFrame;
@@ -112,7 +111,7 @@ public final class Utils {
         }
     }
 
-    @NonNull
+    @NotNull
     public static String getPlatformKeyStrokeString(@NotNull KeyStroke key) {
         var sb = new StringBuilder(20);
         var modifiers = key.getModifiers();

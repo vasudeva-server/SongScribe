@@ -19,7 +19,7 @@
  */
 package songscribe.ui.playback;
 
-import org.springframework.lang.Nullable;
+import org.jetbrains.annotations.Nullable;
 
 import songscribe.ui.action.UIAction;
 

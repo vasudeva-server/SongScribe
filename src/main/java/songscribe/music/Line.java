@@ -21,11 +21,17 @@ package songscribe.music;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.IntStream;
 
+import org.jetbrains.annotations.NotNull;
+
 import songscribe.data.IntervalSet;
 import songscribe.ui.component.Score;
+import songscribe.ui.layout.BeamGroup;
+import songscribe.ui.layout.LayoutStylesheet;
+import songscribe.ui.layout.RangeElement;
 import songscribe.ui.message.LayoutChangeMessage;
 import songscribe.ui.message.MessageCenter;
 
@@ -37,7 +43,6 @@ public class Line {
     };
     private final IntervalSet beamings = new IntervalSet();
     private final IntervalSet ties = new IntervalSet();
-    private final IntervalSet slurs = new IntervalSet();
     private final IntervalSet tuplets = new IntervalSet();
     private final IntervalSet firstSecondEndings = new IntervalSet();
     private final IntervalSet crescendo = new IntervalSet();
@@ -47,26 +52,61 @@ public class Line {
         ties,
         tuplets,
         firstSecondEndings,
-        slurs,
         crescendo,
         diminuendo,
     };
+
+    // =========================================================================
+    // New storage for Phase 4+ layout redesign
+    // These will replace IntervalSets after Phase 7 (IO) migration
+    // =========================================================================
+
+    /** Range elements (ties, trills, crescendo, diminuendo, tuplets, endings). */
+    private final List<RangeElement> rangeElements = new ArrayList<>();
+
+    /** Beam groups coordinating note beaming. */
+    private final List<BeamGroup> beamGroups = new ArrayList<>();
+
     // acceleration
     public Note.SyllableRelation beginRelation = Note.SyllableRelation.NO;
     private Composition composition = null;
     private int keys = 0;
     private KeyType keyType = null;
     private final List<Note> notes = new ArrayList<>();
-    // view properties
+
+    // ---------------------------------------------------------------------
+    // View Properties (Y positions relative to middleLineY)
+    // ---------------------------------------------------------------------
+    // These Y position fields store offsets from the middle staff line (B line).
+    // Negative values are above the staff, positive values are below.
+    // The actual rendering Y = middleLineY + yPos.
+    //
+    // Default values provide reasonable positioning. Users can adjust these
+    // via vertical dragging (VerticalAdjustment), which modifies the values.
+    //
+    // Future: These may be migrated to offset semantics where the model stores
+    // only the user's adjustment from a layout-calculated default position
+    // (similar to Note.xOffset).
+    // ---------------------------------------------------------------------
+
+    /** Y offset for tempo change display. Line 0 default: -40, others: -24. Set by Composition.addLine(). */
     private int tempoChangeYPos = 0;
-    private int beatChangeYPos = -24;
-    private int lyricsYPos = 50;
-    private int firstSecondEndingYPos = -25;
-    private int trillYPos = -27;
+
+    /** Y offset for beat change display (default: -24, above staff). */
+    private int beatChangeYPos = LayoutStylesheet.BEAT_CHANGE_DEFAULT_Y;
+
+    /** Y offset for lyrics display (default: 50, below staff). */
+    private int lyricsYPos = LayoutStylesheet.LYRICS_DEFAULT_Y;
+
+    /** Y offset for first/second ending display (default: -25, above staff). */
+    private int firstSecondEndingYPos = LayoutStylesheet.ENDING_DEFAULT_Y;
+
+    /** Y offset for trill display (default: -27, above staff). */
+    private int trillYPos = LayoutStylesheet.TRILL_DEFAULT_Y;
+
+    /** Ratio multiplier for horizontal note spacing (default: 1.0, user-adjustable). */
     private float noteDistChangeRatio = 1f;
 
-    // Cached required height for this line; -1 means not calculated
-    private int cachedRequiredHeight = -1;
 
     public Composition getComposition() {
         return composition;
@@ -134,8 +174,6 @@ public class Line {
     }
 
     private void modifiedComposition() {
-        cachedRequiredHeight = -1;
-
         if (composition != null) {
             composition.setModified(true);
 
@@ -232,10 +270,6 @@ public class Line {
         return ties;
     }
 
-    public IntervalSet getSlurs() {
-        return slurs;
-    }
-
     public IntervalSet getTuplets() {
         return tuplets;
     }
@@ -323,103 +357,138 @@ public class Line {
             .orElse(-1);
     }
 
-    /**
-     * Invalidates the cached required height, forcing recalculation on next access.
-     */
-    public void invalidateHeightCache() {
-        cachedRequiredHeight = -1;
-    }
+    // =========================================================================
+    // Range Element Management (Phase 4+)
+    // =========================================================================
 
     /**
-     * Returns the required vertical height for this line based on all its elements.
-     * <p>
-     * The height is calculated from the topmost element (most negative Y) to the
-     * bottommost element (most positive Y), including:
-     * <ul>
-     *   <li>Staff lines themselves (5 lines spanning yPos -4 to +4)</li>
-     *   <li>Notes extending above/below staff (ledger lines)</li>
-     *   <li>Tempo change markers (at tempoChangeYPos if present)</li>
-     *   <li>Beat change markers (at beatChangeYPos if present)</li>
-     *   <li>First/second endings (at firstSecondEndingYPos if present)</li>
-     *   <li>Trills (at trillYPos if present)</li>
-     *   <li>Note annotations (at their Y positions)</li>
-     *   <li>Inline lyrics (at lyricsYPos if notes have syllables)</li>
-     * </ul>
-     * <p>
-     * The result is cached and invalidated when line content changes.
+     * Adds a range element to this line.
      *
-     * @return The required height in pixels
+     * @param element The range element to add
      */
-    public int getRequiredHeight() {
-        if (cachedRequiredHeight >= 0) {
-            return cachedRequiredHeight;
-        }
-
-        // Base staff height: 5 lines at yPos -4, -2, 0, 2, 4
-        // Staff spans from -4 to +4 in note units = -32 to +32 pixels from middle
-        int minY = -4 * Score.STAFF_LINE_Y_OFFSET; // -32 (top of staff)
-        int maxY = 4 * Score.STAFF_LINE_Y_OFFSET;  // +32 (bottom of staff)
-
-        // Check for tempo changes (first line always has tempo at note 0)
-        if (getFirstTempoChange() >= 0) {
-            minY = Math.min(minY, tempoChangeYPos);
-        }
-
-        // Check for beat changes
-        if (getFirstBeatChange() >= 0) {
-            minY = Math.min(minY, beatChangeYPos);
-        }
-
-        // Check for first/second endings
-        if (!firstSecondEndings.isEmpty()) {
-            minY = Math.min(minY, firstSecondEndingYPos);
-        }
-
-        // Check for trills
-        if (getFirstTrill() >= 0) {
-            minY = Math.min(minY, trillYPos);
-        }
-
-        // Track if there are syllables (for lyrics positioning)
-        boolean hasSyllables = false;
-
-        // Check all notes for annotations and extreme positions
-        for (var note : notes) {
-            var noteYPos = note.getYPos();
-
-            // Notes extend from ledger lines above to ledger lines below
-            // Convert note yPos to pixels (each note step is NOTE_Y_OFFSET = 4 pixels)
-            int notePixelY = (int) (noteYPos * Score.NOTE_Y_OFFSET);
-            minY = Math.min(minY, notePixelY - Score.STAFF_LINE_Y_OFFSET); // margin above note
-            maxY = Math.max(maxY, notePixelY + Score.STAFF_LINE_Y_OFFSET); // margin below note
-
-            // Check annotation position
-            var annotation = note.getAnnotation();
-
-            if (annotation != null) {
-                int annotationY = annotation.getYPos();
-
-                if (annotationY < 0) {
-                    minY = Math.min(minY, annotationY);
-                } else {
-                    maxY = Math.max(maxY, annotationY);
-                }
-            }
-
-            // Check for syllables (stored in acceleration.syllable)
-            var syllable = note.acceleration.syllable;
-
-            if (syllable != null && !syllable.isEmpty()) {
-                hasSyllables = true;
-            }
-        }
-
-        // Include lyrics position if there are syllables
-        if (hasSyllables) {
-            maxY = Math.max(maxY, lyricsYPos);
-        }
-
-        cachedRequiredHeight = maxY - minY;
-        return cachedRequiredHeight;
+    public void addRangeElement(@NotNull RangeElement element) {
+        element.setParentLine(this);
+        rangeElements.add(element);
+        modifiedComposition();
     }
+
+    /**
+     * Removes a range element from this line.
+     *
+     * @param element The range element to remove
+     * @return true if the element was removed
+     */
+    public boolean removeRangeElement(@NotNull RangeElement element) {
+        if (rangeElements.remove(element)) {
+            element.setParentLine(null);
+            modifiedComposition();
+
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Returns an unmodifiable view of the range elements in this line.
+     */
+    public @NotNull List<RangeElement> getRangeElements() {
+        return Collections.unmodifiableList(rangeElements);
+    }
+
+    /**
+     * Finds all range elements that include the specified note index.
+     *
+     * @param noteIndex The note index to search for
+     * @return List of range elements containing the note
+     */
+    public @NotNull List<RangeElement> findRangeElementsAt(int noteIndex) {
+        var result = new ArrayList<RangeElement>();
+
+        for (var element : rangeElements) {
+            int start = element.getAnchorNoteIndex();
+            int end = element.getEndNoteIndex();
+
+            if (noteIndex >= start && noteIndex <= end) {
+                result.add(element);
+            }
+        }
+
+        return result;
+    }
+
+    /**
+     * Finds range elements of a specific type.
+     *
+     * @param type The class of range element to find
+     * @return List of range elements of the specified type
+     */
+    @SuppressWarnings("unchecked")
+    public <T extends RangeElement> @NotNull List<T> findRangeElements(@NotNull Class<T> type) {
+        var result = new ArrayList<T>();
+
+        for (var element : rangeElements) {
+            if (type.isInstance(element)) {
+                result.add((T) element);
+            }
+        }
+
+        return result;
+    }
+
+    // =========================================================================
+    // Beam Group Management (Phase 4+)
+    // =========================================================================
+
+    /**
+     * Adds a beam group to this line.
+     *
+     * @param group The beam group to add
+     */
+    public void addBeamGroup(@NotNull BeamGroup group) {
+        group.setParentLine(this);
+        beamGroups.add(group);
+        modifiedComposition();
+    }
+
+    /**
+     * Removes a beam group from this line.
+     *
+     * @param group The beam group to remove
+     * @return true if the group was removed
+     */
+    public boolean removeBeamGroup(@NotNull BeamGroup group) {
+        if (beamGroups.remove(group)) {
+            group.setParentLine(null);
+            modifiedComposition();
+
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Returns an unmodifiable view of the beam groups in this line.
+     */
+    public @NotNull List<BeamGroup> getBeamGroups() {
+        return Collections.unmodifiableList(beamGroups);
+    }
+
+    /**
+     * Finds the beam group containing the specified note.
+     *
+     * @param note The note to search for
+     * @return The beam group containing the note, or null if not found
+     */
+    public BeamGroup findBeamGroupFor(@NotNull Note note) {
+        for (var group : beamGroups) {
+            if (group.getBeamedNotes().contains(note)) {
+                return group;
+            }
+        }
+
+        return null;
+    }
+
 }

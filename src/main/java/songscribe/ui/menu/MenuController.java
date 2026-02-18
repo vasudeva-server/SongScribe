@@ -87,6 +87,10 @@ public class MenuController {
         //        menuBar.add(initHelpMenu());
         //        var launchMenu = initLaunchMenu();
 
+        if (DebugState.isDebugEnabled()) {
+            menuBar.add(new DebugMenu());
+        }
+
         var mainFrame = MainFrame.getInstance();
 
         if (SystemInfo.isMacOS) {

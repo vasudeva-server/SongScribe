@@ -31,6 +31,8 @@ import songscribe.music.Line;
 import songscribe.music.Note;
 import songscribe.music.NoteType;
 import songscribe.ui.component.Score;
+import songscribe.ui.layout.LayoutManager;
+import songscribe.ui.renderer.GlissandoRenderer;
 
 public class HorizontalAdjustment extends Adjustment {
 
@@ -246,7 +248,7 @@ public class HorizontalAdjustment extends Adjustment {
             draggingRect.horizontalAdjustmentType ==
             HorizontalAdjustmentType.START_OF_LINE
         ) {
-            Score.setFirstNoteX(endPoint.x);
+            LayoutManager.setFirstNoteX(endPoint.x);
 
             for (var currentLine : composition.getLines()) {
                 if (currentLine.noteCount() > 0) {
@@ -479,22 +481,18 @@ public class HorizontalAdjustment extends Adjustment {
         rect.rect.y = yPos - Note.HOT_SPOT.y;
 
         switch (rect.horizontalAdjustmentType) {
-            case GLISSANDO_START -> rect.rect.x = score
-                .getRenderer()
-                .getGlissandoX1Pos(
-                    rect.xIndex,
-                    note.getGlissando(),
-                    rect.line
-                ) -
-            4;
-            case GLISSANDO_END -> rect.rect.x = score
-                .getRenderer()
-                .getGlissandoX2Pos(
-                    rect.xIndex,
-                    note.getGlissando(),
-                    rect.line
-                ) -
-            4;
+            case GLISSANDO_START -> rect.rect.x = GlissandoRenderer.getGlissandoX1Pos(
+                rect.xIndex,
+                note.getGlissando(),
+                rect.line,
+                score.getComposition()
+            ) - 4;
+            case GLISSANDO_END -> rect.rect.x = GlissandoRenderer.getGlissandoX2Pos(
+                rect.xIndex,
+                note.getGlissando(),
+                rect.line,
+                score.getComposition()
+            ) - 4;
             case GRACE_SEMIQUAVER_2ND_PART -> rect.rect.x = note.getXPos() +
             ((GraceSemiQuaver) note).getX2DiffPos() +
             1;

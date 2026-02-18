@@ -42,7 +42,7 @@ public class ExportImageAction extends UIAction {
 
     private final MyFileFilter[] myFileFilters = new MyFileFilter[] {
         new MyFileFilter("JPEG", "jpg"),
-        new MyFileFilter("Portable Network Graphics", "png"),
+        new MyFileFilter("PNG", "png"),
     };
 
     public ExportImageAction() {

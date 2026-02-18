@@ -21,7 +21,7 @@ package songscribe.music;
 
 import java.awt.*;
 
-public class BreathMark extends NotNote {
+public class BreathMark extends NonNote {
 
     public static final Rectangle REAL_NOTE_RECT = new Rectangle(1, 24, 6, 11);
     private static final int YPOS = -7;

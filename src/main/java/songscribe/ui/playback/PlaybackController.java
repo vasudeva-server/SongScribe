@@ -25,12 +25,13 @@ import java.util.ArrayList;
 import javax.sound.midi.InvalidMidiDataException;
 import javax.sound.midi.Sequencer;
 
-import org.springframework.lang.Nullable;
+import org.jetbrains.annotations.Nullable;
 
 import songscribe.ui.Constants;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.Score;
 import songscribe.ui.message.MessageCenter;
+import songscribe.ui.selection.NoteSelection;
 
 public final class PlaybackController {
 
@@ -107,7 +108,7 @@ public final class PlaybackController {
         }
     }
 
-    public static void play(@Nullable Score.NoteSelection selection) {
+    public static void play(@Nullable NoteSelection selection) {
         var mainFrame = MainFrame.getInstance();
         var sequencer = MidiController.sequencer;
 
@@ -117,7 +118,7 @@ public final class PlaybackController {
             }
 
             var score = mainFrame.getScore();
-            Score.NoteSelection noteSelection;
+            NoteSelection noteSelection;
 
             if (selection != null) {
                 noteSelection = selection;
@@ -141,7 +142,7 @@ public final class PlaybackController {
     }
 
     private static void setLoopSequence(
-        Score.NoteSelection noteSelection,
+        NoteSelection noteSelection,
         MainFrame mainFrame,
         Sequencer sequencer
     ) {
@@ -159,7 +160,7 @@ public final class PlaybackController {
     }
 
     private static void setSequenceToPlayFromSelection(
-        Score.NoteSelection noteSelection,
+        NoteSelection noteSelection,
         Score score,
         Sequencer sequencer
     ) throws InvalidMidiDataException {

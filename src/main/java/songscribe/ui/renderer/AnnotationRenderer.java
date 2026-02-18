@@ -1,0 +1,149 @@
+/*
+    SongScribe song notation program
+    Copyright (C) Sri Chinmoy Centres International
+
+    This file is part of SongScribe.
+
+    SongScribe is free software; you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; either version 3 of the License, or
+    (at your option) any later version.
+
+    SongScribe is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
+package songscribe.ui.renderer;
+
+import java.awt.Graphics2D;
+
+import org.jetbrains.annotations.NotNull;
+
+import songscribe.music.Note;
+import songscribe.ui.layout.LayoutStylesheet;
+
+/**
+ * Renders text annotations attached to notes.
+ * <p>
+ * Annotations are text labels that appear above or below notes,
+ * typically used for performance instructions or other markings.
+ */
+public class AnnotationRenderer extends BaseElementRenderer<Note> {
+
+    // ==========================================================================
+    // Constants
+    // ==========================================================================
+
+    // Crotchet width for positioning
+    private static final double CROTCHET_WIDTH = BaseElementRenderer.NOTE_FONT_SIZE / 3.6056337d;
+
+    // Singleton instance
+    private static final AnnotationRenderer INSTANCE = new AnnotationRenderer();
+
+    /**
+     * Private constructor - use {@link #getInstance()}.
+     */
+    private AnnotationRenderer() {
+    }
+
+    /**
+     * Returns the singleton instance.
+     */
+    public static @NotNull AnnotationRenderer getInstance() {
+        return INSTANCE;
+    }
+
+    // ==========================================================================
+    // Rendering
+    // ==========================================================================
+
+    @Override
+    protected void renderElement(
+        @NotNull Note element,
+        @NotNull Graphics2D g2,
+        @NotNull ElementRenderContext ctx
+    ) {
+        var annotation = element.getAnnotation();
+
+        if (annotation == null) {
+            return;
+        }
+
+        var composition = ctx.getComposition();
+        var line = ctx.getCurrentLine();
+
+        if (line == null) {
+            return;
+        }
+
+        int middleLineY = ctx.getMiddleLineY();
+
+        // Set font
+        g2.setFont(composition.getAnnotationFont());
+        g2.setColor(NOTE_COLOR);
+
+        // Calculate position
+        float x = (float) getAnnotationXPos(g2, element);
+        float y = getAnnotationYPos(ctx.getLineIndex(), element, middleLineY, line);
+
+        // Draw the annotation text
+        var text = annotation.getAnnotation();
+        g2.drawString(text, x, y);
+    }
+
+    /**
+     * Renders an annotation for a note if it has one.
+     *
+     * @param g2   Graphics context
+     * @param note The note to check
+     * @param ctx  Render context
+     */
+    public void renderAnnotation(
+        @NotNull Graphics2D g2,
+        @NotNull Note note,
+        @NotNull ElementRenderContext ctx
+    ) {
+        render(note, g2, ctx);
+    }
+
+    /**
+     * Calculates the X position for an annotation, centering it over the note.
+     */
+    private double getAnnotationXPos(@NotNull Graphics2D g2, @NotNull Note note) {
+        var annotation = note.getAnnotation();
+
+        if (annotation == null) {
+            return note.getXPos();
+        }
+
+        var text = annotation.getAnnotation();
+        var textWidth = g2.getFontMetrics().stringWidth(text);
+
+        // Center annotation over note
+        return note.getXPos() + (CROTCHET_WIDTH / 2) - (textWidth / 2.0);
+    }
+
+    /**
+     * Calculates the Y position for an annotation.
+     */
+    private float getAnnotationYPos(
+        int lineIndex,
+        @NotNull Note note,
+        int middleLineY,
+        @NotNull songscribe.music.Line line
+    ) {
+        var annotation = note.getAnnotation();
+
+        if (annotation == null) {
+            return middleLineY;
+        }
+
+        // Position based on the annotation's Y position setting
+        return middleLineY + (int) (0 * LayoutStylesheet.NOTE_Y_OFFSET) + annotation.getYPos();
+    }
+}

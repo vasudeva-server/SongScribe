@@ -24,7 +24,7 @@ import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.net.URI;
 
-import org.springframework.lang.Nullable;
+import org.jetbrains.annotations.Nullable;
 
 public final class MyDesktop {
 

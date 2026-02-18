@@ -20,6 +20,7 @@
 
 package songscribe.ui.component;
 
+import com.formdev.flatlaf.util.SystemFileChooser;
 import com.formdev.flatlaf.util.SystemInfo;
 import java.awt.*;
 import java.awt.event.*;
@@ -48,6 +49,7 @@ import songscribe.ui.action.Actions;
 import songscribe.ui.action.SaveAction;
 import songscribe.ui.component.toolbar.MainToolbarPanel;
 import songscribe.ui.dialog.PlatformFileDialog;
+import songscribe.ui.dialog.PropertiesStateStore;
 import songscribe.ui.dialog.UpdateDialog;
 import songscribe.ui.dialog.WhatsNewDialog;
 import songscribe.ui.menu.MenuController;
@@ -186,6 +188,9 @@ public class MainFrame extends JFrame implements IMainFrame, Printable {
         } catch (IOException e) {
             // Ignore, it's okay if there are no user preferences
         }
+
+        // Initialize SystemFileChooser state persistence
+        SystemFileChooser.setStateStore(new PropertiesStateStore());
 
         recentFileDirectory = new File(
             properties.getProperty(Constants.PREVIOUS_DIRECTORY)
@@ -680,7 +685,7 @@ public class MainFrame extends JFrame implements IMainFrame, Printable {
 
         var g2 = (Graphics2D) graphics;
         var scale = format.getImageableWidth() / score.getSheetWidth();
-        score.getRenderer().drawScore(g2, false, scale);
+        score.getScoreRenderer().render(g2, false, scale);
 
         return PAGE_EXISTS;
     }

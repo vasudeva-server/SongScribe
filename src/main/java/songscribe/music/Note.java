@@ -23,12 +23,18 @@ package songscribe.music;
 import java.awt.*;
 import java.awt.geom.*;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import songscribe.ui.layout.Articulation;
+import songscribe.ui.layout.Attachment;
+import songscribe.ui.layout.LineElement;
+
 @SuppressWarnings("StaticInitializerReferencesSubClass")
-public abstract class Note implements Cloneable {
+public abstract class Note extends LineElement implements Cloneable {
 
     public static final Point HOT_SPOT = new Point(5, 27);
     public static final int NORMAL_IMAGE_WIDTH = 18;
@@ -88,8 +94,14 @@ public abstract class Note implements Cloneable {
 
     public final Acceleration acceleration = new Acceleration();
 
-    // The horizontal position of the note in the line
-    protected int xPos = 0;
+    /**
+     * User's manual horizontal offset from the layout-calculated position.
+     * <p>
+     * Final X position = layout.calculateBaseX(note) + xOffset
+     * <p>
+     * Default is 0 (no user adjustment). Positive values move right, negative left.
+     */
+    protected int xOffset = 0;
 
     /**
      * The y position of the note in the sheet
@@ -127,10 +139,20 @@ public abstract class Note implements Cloneable {
     // TODO: This will go away when getActiveNotePitchString is moved to StatusBar
     private final StringBuilder pitchStringBuffer = new StringBuilder(10);
 
+    // ========================================================================
+    // LineElement hierarchy: articulations and attachments (Phase 3)
+    // ========================================================================
+
+    /** Articulations applied to this note (staccato, accent, etc.) */
+    private final List<Articulation> articulations = new ArrayList<>();
+
+    /** Attachments on this note (tempo, fermata, dynamics, etc.) */
+    private final List<Attachment> attachments = new ArrayList<>();
+
     protected Note() {}
 
     protected Note(@NotNull Note note) {
-        xPos = note.xPos;
+        xOffset = note.xOffset;
         yPos = note.yPos;
         dotCount = note.dotCount;
         accidental = note.accidental;
@@ -149,6 +171,13 @@ public abstract class Note implements Cloneable {
         syllableRelationMovement = note.syllableRelationMovement;
         forceSyllable = note.forceSyllable;
         invertFractionBeamOrientation = note.invertFractionBeamOrientation;
+
+        // Copy LineElement hierarchy data
+        setParentLine(note.getParentLine());
+
+        // Note: articulations and attachments are NOT deep-copied here.
+        // For now, the new Note gets empty lists. Full deep-copy will be
+        // implemented when rendering uses the new hierarchy.
     }
 
     public abstract NoteType getNoteType();
@@ -162,12 +191,184 @@ public abstract class Note implements Cloneable {
 
     public abstract int getDefaultDuration();
 
-    public int getXPos() {
-        return xPos;
+    // ========================================================================
+    // LineElement Implementation
+    // ========================================================================
+
+    /**
+     * Returns the content width based on the note's visual bounds.
+     * Uses the appropriate note rectangle based on stem direction.
+     */
+    @Override
+    public double getContentWidth() {
+        var rect = upper ? getRealDownNoteRect() : getRealUpNoteRect();
+
+        return rect != null ? rect.getWidth() : NORMAL_IMAGE_WIDTH;
     }
 
+    /**
+     * Returns the content height based on the note's visual bounds.
+     * Uses the appropriate note rectangle based on stem direction.
+     */
+    @Override
+    public double getContentHeight() {
+        var rect = upper ? getRealDownNoteRect() : getRealUpNoteRect();
+
+        return rect != null ? rect.getHeight() : HOT_SPOT.y * 2;
+    }
+
+    // ========================================================================
+    // Articulations (Phase 3 LineElement hierarchy)
+    // ========================================================================
+
+    /**
+     * Returns an unmodifiable view of the articulations on this note.
+     */
+    public @NotNull List<Articulation> getArticulations() {
+        return Collections.unmodifiableList(articulations);
+    }
+
+    /**
+     * Adds an articulation to this note.
+     */
+    public void addArticulation(@NotNull Articulation articulation) {
+        articulation.setParentNote(this);
+        articulation.setParentElement(this);
+        articulation.setParentLine(getParentLine());
+        articulations.add(articulation);
+        addChild(articulation);
+    }
+
+    /**
+     * Removes an articulation from this note.
+     */
+    public boolean removeArticulation(@NotNull Articulation articulation) {
+        if (articulations.remove(articulation)) {
+            articulation.setParentNote(null);
+            removeChild(articulation);
+
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Removes all articulations from this note.
+     */
+    public void clearArticulations() {
+        for (var articulation : articulations) {
+            articulation.setParentNote(null);
+            removeChild(articulation);
+        }
+
+        articulations.clear();
+    }
+
+    // ========================================================================
+    // Attachments (Phase 3 LineElement hierarchy)
+    // ========================================================================
+
+    /**
+     * Returns an unmodifiable view of the attachments on this note.
+     */
+    public @NotNull List<Attachment> getAttachments() {
+        return Collections.unmodifiableList(attachments);
+    }
+
+    /**
+     * Adds an attachment to this note.
+     */
+    public void addAttachment(@NotNull Attachment attachment) {
+        attachment.setParentNote(this);
+        attachment.setParentElement(this);
+        attachment.setParentLine(getParentLine());
+        attachments.add(attachment);
+        addChild(attachment);
+    }
+
+    /**
+     * Removes an attachment from this note.
+     */
+    public boolean removeAttachment(@NotNull Attachment attachment) {
+        if (attachments.remove(attachment)) {
+            attachment.setParentNote(null);
+            removeChild(attachment);
+
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Removes all attachments from this note.
+     */
+    public void clearAttachments() {
+        for (var attachment : attachments) {
+            attachment.setParentNote(null);
+            removeChild(attachment);
+        }
+
+        attachments.clear();
+    }
+
+    /**
+     * Finds the first attachment of the specified type.
+     */
+    @SuppressWarnings("unchecked")
+    public <T extends Attachment> @Nullable T findAttachment(@NotNull Class<T> type) {
+        for (var attachment : attachments) {
+            if (type.isInstance(attachment)) {
+                return (T) attachment;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Returns the horizontal offset from the layout-calculated position.
+     * <p>
+     * Deprecated: Use {@link #getXOffset()} for clarity.
+     *
+     * @return The X offset value
+     */
+    public int getXPos() {
+        return xOffset;
+    }
+
+    /**
+     * Sets the horizontal offset from the layout-calculated position.
+     * <p>
+     * Deprecated: Use {@link #setXOffset(int)} for clarity.
+     *
+     * @param xPos The X offset value
+     */
     public void setXPos(int xPos) {
-        this.xPos = xPos;
+        this.xOffset = xPos;
+    }
+
+    /**
+     * Returns the horizontal offset from the layout-calculated position.
+     * <p>
+     * Final X position = layout.calculateBaseX(note) + xOffset
+     *
+     * @return The X offset (0 = no user adjustment)
+     */
+    public int getXOffset() {
+        return xOffset;
+    }
+
+    /**
+     * Sets the horizontal offset from the layout-calculated position.
+     * <p>
+     * Positive values move right, negative values move left.
+     *
+     * @param xOffset The X offset (0 = no user adjustment)
+     */
+    public void setXOffset(int xOffset) {
+        this.xOffset = xOffset;
     }
 
     public int getYPos() {

@@ -59,6 +59,10 @@ public class MyFileFilter extends FileFilter implements FilenameFilter {
         return extensions.get(index);
     }
 
+    public List<String> getExtensions() {
+        return new ArrayList<>(extensions);
+    }
+
     @Override
     public String getDescription() {
         return description;

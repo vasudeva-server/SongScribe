@@ -461,28 +461,17 @@ public final class Actions {
             "Add staccato articulation"
         );
 
-    public static final DurationArticulationAction TENUTO_ACTION =
-        new DurationArticulationAction(
-            DurationArticulation.TENUTO,
-            "Tenuto",
-            "@\uF38D",
-            22,
-            "tenuto",
-            "Add tenuto articulation"
-        );
-
     public static final ActionGroup<
         DurationArticulationAction
     > ARTICULATION_ACTION_GROUP = new ActionGroup<>(
-        STACCATO_ACTION,
-        TENUTO_ACTION
+        STACCATO_ACTION
     );
 
     public static final ToggleBeamAction TOGGLE_BEAM_ACTION =
         new ToggleBeamAction();
 
-    public static final ToggleTieOrSlurAction TOGGLE_TIE_ACTION =
-        new ToggleTieOrSlurAction();
+    public static final ToggleTieAction TOGGLE_TIE_ACTION =
+        new ToggleTieAction();
 
     public static final List<TupletAction> TOGGLE_TUPLET_ACTIONS =
         Arrays.asList(

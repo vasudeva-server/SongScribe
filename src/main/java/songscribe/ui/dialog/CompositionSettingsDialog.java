@@ -878,7 +878,8 @@ public class CompositionSettingsDialog extends StandardDialog {
         composition.setLyricsFont(lyricsFontPreview.getFont());
         composition.setAttributionFont(attributionFontPreview.getFont());
         composition.setAnnotationFont(annotationFontPreview.getFont());
-        composition.recalcTopPadding();
+        // Note: topPadding is recalculated by LayoutManager.measure() when triggered
+        // by the LayoutChangeMessage posted by setTitleFont/setAttributionFont
         score.viewChanged();
     }
 

@@ -19,29 +19,40 @@
  */
 package songscribe.ui.dialog;
 
-import java.awt.*;
 import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
 
-import javax.swing.*;
-import javax.swing.plaf.basic.*;
-
-import com.formdev.flatlaf.util.SystemInfo;
-import com.jtechlabs.ui.widget.directorychooser.DirectoryChooserDefaults;
-import com.jtechlabs.ui.widget.directorychooser.JDirectoryChooser;
+import com.formdev.flatlaf.util.SystemFileChooser;
 
 import songscribe.data.MyFileFilter;
 import songscribe.ui.component.MainFrame;
 
 public class PlatformFileDialog {
 
-    private JFileChooser chooser = null;
-    private FileDialog dialog = null;
-    private File selectedDirectory = null;
+    private SystemFileChooser chooser;
     private final MainFrame mainFrame;
     private final boolean isOpenDialog;
     private final boolean directoriesOnly;
-    private MyFileFilter[] filters = null;
+    private MyFileFilter[] originalFilters = null;
     private int initialFilterIndex = 0;
+    private SystemFileChooser.FileNameExtensionFilter[] convertedFilters = null;
+
+    private static SystemFileChooser.FileNameExtensionFilter convertFilter(MyFileFilter maf) {
+        List<String> extensions = maf.getExtensions();
+
+        // Extract description without extension list (remove " (ext1, ext2)")
+        String description = maf.getDescription();
+        int parenIndex = description.lastIndexOf('(');
+        if (parenIndex > 0) {
+            description = description.substring(0, parenIndex).trim();
+        }
+
+        return new SystemFileChooser.FileNameExtensionFilter(
+            description,
+            extensions.toArray(new String[0])
+        );
+    }
 
     public PlatformFileDialog(
         MainFrame mainFrame,
@@ -72,17 +83,17 @@ public class PlatformFileDialog {
         int initialFilterIndex
     ) {
         this(mainFrame, title, isOpenDialog, false);
-        this.filters = filters;
+        this.originalFilters = filters;
         this.initialFilterIndex = initialFilterIndex;
 
-        if (!SystemInfo.isMacOS) {
-            for (var maf : filters) {
-                chooser.addChoosableFileFilter(maf);
-            }
-
-            chooser.setAcceptAllFileFilterUsed(false);
-            chooser.setFileFilter(filters[initialFilterIndex]);
+        convertedFilters = new SystemFileChooser.FileNameExtensionFilter[filters.length];
+        for (int i = 0; i < filters.length; i++) {
+            convertedFilters[i] = convertFilter(filters[i]);
+            chooser.addChoosableFileFilter(convertedFilters[i]);
         }
+
+        chooser.setAcceptAllFileFilterUsed(false);
+        chooser.setFileFilter(convertedFilters[initialFilterIndex]);
     }
 
     private PlatformFileDialog(
@@ -95,118 +106,68 @@ public class PlatformFileDialog {
         this.isOpenDialog = isOpenDialog;
         this.directoriesOnly = directoriesOnly;
 
-        if (SystemInfo.isMacOS) {
-            dialog = new FileDialog(
-                mainFrame,
-                title,
-                isOpenDialog ? FileDialog.LOAD : FileDialog.SAVE
-            );
-        } else {
-            if (!directoriesOnly) {
-                chooser = new JFileChooser();
-                chooser.setDialogTitle(title);
-            } else {
-                DirectoryChooserDefaults.putOption(
-                    DirectoryChooserDefaults.PROP_DIALOG_TEXT,
-                    title
-                );
-                DirectoryChooserDefaults.putOption(
-                    DirectoryChooserDefaults.PROP_ACCESS,
-                    JDirectoryChooser.ACCESS_NEW |
-                    JDirectoryChooser.ACCESS_RENAME
-                );
-            }
+        chooser = new SystemFileChooser();
+        chooser.setDialogTitle(title);
+        chooser.setDialogType(isOpenDialog
+            ? SystemFileChooser.OPEN_DIALOG
+            : SystemFileChooser.SAVE_DIALOG);
+
+        if (directoriesOnly) {
+            chooser.setFileSelectionMode(SystemFileChooser.DIRECTORIES_ONLY);
         }
+
+        chooser.setCurrentDirectory(mainFrame.getRecentFileDirectory());
     }
 
     public void setFileFiler(MyFileFilter maf) {
-        if (SystemInfo.isMacOS) {
-            dialog.setFilenameFilter(maf);
-        } else {
-            if (!directoriesOnly) {
-                chooser.setFileFilter(maf);
-            }
-        }
+        var filter = convertFilter(maf);
+        chooser.setFileFilter(filter);
+        chooser.setAcceptAllFileFilterUsed(false);
+        this.originalFilters = new MyFileFilter[] { maf };
+        this.convertedFilters = new SystemFileChooser.FileNameExtensionFilter[] { filter };
     }
 
     public MyFileFilter getFileFilter() {
-        if (SystemInfo.isMacOS) {
-            return (MyFileFilter) dialog.getFilenameFilter();
+        // First, try to infer format from the filename extension
+        // This is more reliable than the filter dropdown on macOS native dialogs
+        var selectedFile = chooser.getSelectedFile();
+        if (selectedFile != null && originalFilters != null) {
+            String fileName = selectedFile.getName().toLowerCase();
+            for (MyFileFilter filter : originalFilters) {
+                for (String ext : filter.getExtensions()) {
+                    if (fileName.endsWith("." + ext.toLowerCase())) {
+                        return filter;
+                    }
+                }
+            }
         }
 
-        return (MyFileFilter) chooser.getFileFilter();
+        // Fall back to filter dropdown selection
+        var selectedFilter = chooser.getFileFilter();
+        if (convertedFilters != null && selectedFilter != null) {
+            String selectedDescription = selectedFilter.getDescription();
+            for (int i = 0; i < convertedFilters.length; i++) {
+                if (convertedFilters[i].getDescription().equals(selectedDescription)) {
+                    return originalFilters[i];
+                }
+            }
+        }
+
+        return originalFilters != null && originalFilters.length > 0
+            ? originalFilters[0]
+            : null;
     }
 
     public boolean showDialog() {
-        if (SystemInfo.isMacOS) {
-            if (filters != null) {
-                var answer = JOptionPane.showOptionDialog(
-                    mainFrame,
-                    "Select the file type",
-                    mainFrame.appName,
-                    JOptionPane.OK_CANCEL_OPTION,
-                    JOptionPane.QUESTION_MESSAGE,
-                    null,
-                    filters,
-                    filters[initialFilterIndex]
-                );
+        int result = isOpenDialog
+            ? chooser.showOpenDialog(mainFrame)
+            : chooser.showSaveDialog(mainFrame);
 
-                if (answer == JOptionPane.CLOSED_OPTION) {
-                    return false;
-                }
-
-                setFileFiler(filters[answer]);
-            }
-
-            dialog.setDirectory(
-                mainFrame.getRecentFileDirectory().getAbsolutePath()
-            );
-
-            if (directoriesOnly) {
-                System.setProperty(
-                    "apple.awt.fileDialogForDirectories",
-                    "true"
-                );
-            }
-
-            dialog.setVisible(true);
-
-            if (directoriesOnly) {
-                System.setProperty(
-                    "apple.awt.fileDialogForDirectories",
-                    "false"
-                );
-            }
-
-            return dialog.getFile() != null;
-        }
-
-        if (!directoriesOnly) {
-            chooser.setCurrentDirectory(mainFrame.getRecentFileDirectory());
-            var result = isOpenDialog
-                ? chooser.showOpenDialog(mainFrame)
-                : chooser.showSaveDialog(mainFrame);
-            return result == JFileChooser.APPROVE_OPTION;
-        }
-
-        DirectoryChooserDefaults.putOption(
-            DirectoryChooserDefaults.PROP_INITIAL_DIRECTORY,
-            mainFrame.getRecentFileDirectory()
-        );
-        selectedDirectory = JDirectoryChooser.showDialog(mainFrame);
-        return selectedDirectory != null;
+        return result == SystemFileChooser.APPROVE_OPTION;
     }
 
     public File getFile() {
-        File file;
-
-        if (SystemInfo.isMacOS) {
-            file = new File(dialog.getDirectory(), dialog.getFile());
-        } else {
-            file = !directoriesOnly
-                ? chooser.getSelectedFile()
-                : selectedDirectory;
-        }
+        File file = chooser.getSelectedFile();
 
         mainFrame.setRecentFileDirectory(
             !directoriesOnly ? file.getParentFile() : file
@@ -216,33 +177,18 @@ public class PlatformFileDialog {
     }
 
     public void setFile(String file) {
-        if (SystemInfo.isMacOS) {
-            dialog.setFile(file);
-        } else {
-            if (!directoriesOnly) {
-                if (chooser.getUI() instanceof BasicFileChooserUI) {
-                    ((BasicFileChooserUI) chooser.getUI()).setFileName(file);
-                }
-            }
-        }
+        chooser.setSelectedFile(new File(file));
     }
 
     public File[] getFiles() {
-        if (SystemInfo.isMacOS) {
-            return new File[] { getFile() };
-        }
-        if (directoriesOnly) {
-            return new File[] { getFile() };
-        }
-
         var files = chooser.getSelectedFiles();
-        mainFrame.setRecentFileDirectory(files[0].getParentFile());
+        if (files.length > 0) {
+            mainFrame.setRecentFileDirectory(files[0].getParentFile());
+        }
         return files;
     }
 
     public void setMultiSelectionEnabled(boolean enabled) {
-        if (!SystemInfo.isMacOS && !directoriesOnly) {
-            chooser.setMultiSelectionEnabled(enabled);
-        }
+        chooser.setMultiSelectionEnabled(enabled);
     }
 }

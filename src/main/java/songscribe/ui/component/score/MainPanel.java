@@ -1,0 +1,206 @@
+/*
+    SongScribe song notation program
+    Copyright (C) Sri Chinmoy Centres International
+
+    This file is part of SongScribe.
+
+    SongScribe is free software; you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; either version 3 of the License, or
+    (at your option) any later version.
+
+    SongScribe is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
+package songscribe.ui.component.score;
+
+import java.awt.*;
+
+import javax.swing.*;
+
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+
+import songscribe.music.Composition;
+import songscribe.ui.layout.LayoutStylesheet;
+import songscribe.ui.layout.LineElement;
+
+/**
+ * Top-level panel for the score component hierarchy.
+ * <p>
+ * Contains:
+ * <ul>
+ *   <li>{@link TitleComponent} - composition title</li>
+ *   <li>{@link StaffPanel} - all staff lines</li>
+ * </ul>
+ * <p>
+ * This panel serves as the entry point for the new JComponent-based
+ * rendering system. It is initially embedded alongside the existing
+ * Score rendering to allow gradual migration.
+ */
+public class MainPanel extends JPanel {
+
+    /** Title component. */
+    private final TitleComponent titleComponent;
+
+    /** Staff panel containing all staff lines. */
+    private final StaffPanel staffPanel;
+
+    /** The composition model. */
+    private Composition composition;
+
+    /** Spacing between title and score. */
+    private final int scoreMarginTop;
+
+    /**
+     * Creates a new MainPanel.
+     */
+    public MainPanel() {
+        super();
+        setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
+        setOpaque(false);
+
+        scoreMarginTop = LayoutStylesheet.px(LayoutStylesheet.SCORE_MARGIN_TOP);
+
+        titleComponent = new TitleComponent();
+        titleComponent.setAlignmentX(LEFT_ALIGNMENT);
+
+        staffPanel = new StaffPanel();
+        staffPanel.setAlignmentX(LEFT_ALIGNMENT);
+
+        add(titleComponent);
+        add(Box.createVerticalStrut(scoreMarginTop));
+        add(staffPanel);
+    }
+
+    /**
+     * Sets the composition and updates all child components.
+     *
+     * @param composition The composition
+     */
+    public void setComposition(@NotNull Composition composition) {
+        this.composition = composition;
+        titleComponent.setComposition(composition);
+        staffPanel.setComposition(composition);
+        revalidate();
+        repaint();
+    }
+
+    /**
+     * Returns the composition.
+     */
+    public Composition getComposition() {
+        return composition;
+    }
+
+    /**
+     * Returns the title component.
+     */
+    public TitleComponent getTitleComponent() {
+        return titleComponent;
+    }
+
+    /**
+     * Returns the staff panel.
+     */
+    public StaffPanel getStaffPanel() {
+        return staffPanel;
+    }
+
+    /**
+     * Rebuilds the layout when the composition structure changes.
+     * <p>
+     * Call this after lines are added or removed from the composition.
+     */
+    public void rebuildLayout() {
+        staffPanel.rebuildLayout();
+        revalidate();
+        repaint();
+    }
+
+    /**
+     * Finds the LineElement at the given point.
+     *
+     * @param point Point in panel coordinates
+     * @return The element at the point, or null
+     */
+    @Nullable
+    public LineElement findElementAt(@NotNull Point point) {
+        // Check if point is in score panel
+        var scoreBounds = staffPanel.getBounds();
+
+        if (scoreBounds.contains(point)) {
+            var localPoint = new Point(
+                point.x - scoreBounds.x,
+                point.y - scoreBounds.y
+            );
+            return staffPanel.findElementAt(localPoint);
+        }
+
+        return null;
+    }
+
+    /**
+     * Returns the line panel at the given point.
+     *
+     * @param point Point in panel coordinates
+     * @return The line panel, or null
+     */
+    @Nullable
+    public LinePanel getLinePanelAt(@NotNull Point point) {
+        var scoreBounds = staffPanel.getBounds();
+
+        if (scoreBounds.contains(point)) {
+            var localPoint = new Point(
+                point.x - scoreBounds.x,
+                point.y - scoreBounds.y
+            );
+            return staffPanel.getLinePanelAt(localPoint);
+        }
+
+        return null;
+    }
+
+    /**
+     * Returns the line panel at the given index.
+     *
+     * @param index Line index
+     * @return The line panel, or null
+     */
+    @Nullable
+    public LinePanel getLinePanel(int index) {
+        return staffPanel.getLinePanel(index);
+    }
+
+    @Override
+    public Dimension getPreferredSize() {
+        if (composition == null) {
+            return new Dimension(0, 0);
+        }
+
+        var titleSize = titleComponent.getPreferredSize();
+        var scoreSize = staffPanel.getPreferredSize();
+
+        var width = Math.max(titleSize.width, scoreSize.width);
+        var height = titleSize.height;
+
+        if (titleSize.height > 0 && scoreSize.height > 0) {
+            height += scoreMarginTop;
+        }
+
+        height += scoreSize.height;
+
+        return new Dimension(width, height);
+    }
+
+    @Override
+    public Dimension getMaximumSize() {
+        return getPreferredSize();
+    }
+}

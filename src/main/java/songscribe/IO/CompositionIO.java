@@ -29,11 +29,12 @@ import songscribe.music.KeyType;
 import songscribe.music.Line;
 import songscribe.ui.component.IMainFrame;
 import songscribe.ui.component.Score;
+import songscribe.ui.layout.LayoutManager;
 
 public final class CompositionIO {
 
-    public static final int IO_MAJOR_VERSION = 1;
-    public static final int IO_MINOR_VERSION = 3;
+    public static final int IO_MAJOR_VERSION = 2;
+    public static final int IO_MINOR_VERSION = 0;
 
     // version 1.0
     private static final String XML_COMPOSITION = "composition";
@@ -66,6 +67,9 @@ public final class CompositionIO {
     // version 1.3
     private static final String XML_UNOFFICIAL_TRANSLATION =
         "unofficialTranslation";
+
+    // version 1.4
+    private static final String XML_DYNAMIC_LAYOUT = "dynamicLayout";
 
     private CompositionIO() {}
 
@@ -172,6 +176,10 @@ public final class CompositionIO {
 
         // We store the line width as logical pixels in the fixed UI resolution
         XML.writeValue(pw, XML_LINE_WIDTH, Integer.toString(c.getLineWidth()));
+
+        // Always write dynamicLayout=true for new documents
+        XML.writeValue(pw, XML_DYNAMIC_LAYOUT, Boolean.toString(true));
+
         pw.println("  <" + XML_LINES + '>');
 
         for (var l = 0; l < c.lineCount(); l++) {
@@ -246,6 +254,16 @@ public final class CompositionIO {
                             viewReader = new ViewIO.ViewReader(
                                 mainFrame.getProfileManager()
                             );
+                        } else if ((majorVersion == 1) && (minorVersion == 4)) {
+                            lineReader = new LineIO.LineReader();
+                            viewReader = new ViewIO.ViewReader(
+                                mainFrame.getProfileManager()
+                            );
+                        } else if ((majorVersion == 2) && (minorVersion == 0)) {
+                            lineReader = new LineIO.LineReader();
+                            viewReader = new ViewIO.ViewReader(
+                                mainFrame.getProfileManager()
+                            );
                         } else {
                             throw new SAXException(
                                 "Unsupported version number."
@@ -267,6 +285,10 @@ public final class CompositionIO {
                     startElement12(uri, localName, qName, attributes);
                 } else if ((majorVersion == 1) && (minorVersion == 3)) {
                     startElement13(uri, localName, qName, attributes);
+                } else if ((majorVersion == 1) && (minorVersion == 4)) {
+                    startElement14(uri, localName, qName, attributes);
+                } else if ((majorVersion == 2) && (minorVersion == 0)) {
+                    startElement20(uri, localName, qName, attributes);
                 }
             }
 
@@ -350,6 +372,26 @@ public final class CompositionIO {
             startElement12(uri, localName, qName, attributes);
         }
 
+        public void startElement14(
+            String uri,
+            String localName,
+            String qName,
+            Attributes attributes
+        ) {
+            // No changes from 1.3
+            startElement13(uri, localName, qName, attributes);
+        }
+
+        public void startElement20(
+            String uri,
+            String localName,
+            String qName,
+            Attributes attributes
+        ) {
+            // No changes from 1.4
+            startElement14(uri, localName, qName, attributes);
+        }
+
         @Override
         public void endElement(String uri, String localName, String qName) {
             if ((majorVersion == 1) && (minorVersion == 0)) {
@@ -360,6 +402,10 @@ public final class CompositionIO {
                 endElement12(qName);
             } else if ((majorVersion == 1) && (minorVersion == 3)) {
                 endElement13(qName);
+            } else if ((majorVersion == 1) && (minorVersion == 4)) {
+                endElement14(qName);
+            } else if ((majorVersion == 2) && (minorVersion == 0)) {
+                endElement20(qName);
             }
         }
 
@@ -377,7 +423,7 @@ public final class CompositionIO {
                     }
 
                     var line = composition.getLine(composition.lineCount() - 1);
-                    note.setXPos(Score.calculateLastNoteXPos(line, note));
+                    note.setXPos(LayoutManager.calculateLastNoteXPos(line, note));
                     note.setUpper(Score.defaultUpperNote(note));
                     line.addNote(note);
                 }
@@ -608,6 +654,93 @@ public final class CompositionIO {
             lastTag = null;
         }
 
+        public void endElement14(String qName) {
+            // No changes from 1.3
+            endElement13(qName);
+        }
+
+        public void endElement20(String qName) {
+            if (qName.equals(XML_LINES)) {
+                where = Where.COMPOSITION;
+            } else if (qName.equals(XML_VIEW)) {
+                viewReader.setAttributes(composition);
+                where = Where.COMPOSITION;
+            } else if (where == Where.LINES) {
+                var l = lineReader.endElement11(qName);
+
+                if (l != null) {
+                    composition.addLine(l);
+                }
+            } else if (where == Where.TEMPO) {
+                var t = tempoReader.endElement11(qName);
+
+                if (t != null) {
+                    composition.setTempo(t);
+                    where = Where.COMPOSITION;
+                }
+            } else if (where == Where.COMPOSITION) {
+                if (qName.equals(lastTag)) {
+                    var str = value.toString();
+
+                    switch (lastTag) {
+                        case XML_KEYS -> composition.setDefaultKeyAccidentalCount(
+                            Integer.parseInt(str)
+                        );
+                        case XML_KEYTYPE -> composition.setDefaultKeyType(
+                            KeyType.valueOf(str)
+                        );
+                        case XML_NUMBER -> composition.setNumber(str);
+                        case XML_TITLE -> composition.setTitle(
+                            str.isEmpty() ? "Untitled" : str
+                        );
+                        case XML_PLACE -> composition.setPlace(str);
+                        case XML_YEAR -> composition.setYear(str);
+                        case XML_MONTH -> composition.setMonth(
+                            Integer.parseInt(str)
+                        );
+                        case XML_DAY -> composition.setDay(
+                            Integer.parseInt(str)
+                        );
+                        case XML_LYRICS -> composition.setLyrics(str);
+                        case XML_UNDERLYRICS -> composition.setUnderLyrics(str);
+                        case XML_BANGLA_LYRICS -> composition.setBanglaLyrics(
+                            str
+                        );
+                        case XML_TRANSLATED_LYRICS -> composition.setTranslatedLyrics(
+                            str
+                        );
+                        case XML_UNOFFICIAL_TRANSLATION -> composition.setUnofficialTranslation(
+                            Boolean.parseBoolean(str)
+                        );
+                        case XML_FOOTNOTES -> composition.setFootnotes(str);
+                        case XML_INFO -> composition.setAttribution(str);
+                        case XML_TOP_SPACE -> composition.setTopPadding(
+                            Integer.parseInt(str),
+                            false
+                        );
+                        case XML_INFO_STARTY -> composition.setAttributionStartY(
+                            Integer.parseInt(str)
+                        );
+                        case XML_ROW_HEIGHT -> composition.setRowHeightAdjustment(
+                            Integer.parseInt(str)
+                        );
+                        case XML_LINE_WIDTH -> {
+                            // The line width is stored as logical pixels in the UI resolution
+                            composition.setLineWidth(Integer.parseInt(str));
+                        }
+                        case XML_DYNAMIC_LAYOUT -> composition.setHasBeenDynamicallyLaidOut(
+                            Boolean.parseBoolean(str)
+                        );
+                    }
+                }
+            } else if (where == Where.VIEW) {
+                viewReader.endElement11(qName);
+            }
+
+            value.delete(0, value.length());
+            lastTag = null;
+        }
+
         @Override
         public void characters(char[] ch, int start, int length) {
             if (where == Where.LINES) {
@@ -626,9 +759,28 @@ public final class CompositionIO {
         }
 
         public Composition getComposition() {
+            // Legacy fallback: if topPadding wasn't set in file, calculate initial value.
+            // LayoutManager.measure() will recalculate this properly, but this provides
+            // a reasonable default for any code that accesses topPadding before measure().
             if (composition.getTopPadding() == 0) {
+                //noinspection deprecation
                 composition.recalcTopPadding();
             }
+
+            // For legacy files (pre-2.0), xPos values were absolute positions.
+            // Reset them to 0 since layout will recalculate positions dynamically.
+            if (!composition.hasBeenDynamicallyLaidOut()) {
+                for (var line : composition.getLines()) {
+                    for (var i = 0; i < line.noteCount(); i++) {
+                        // line.getNote(i).setXPos(0);
+                    }
+                }
+            }
+
+            // Migrate from legacy format (IntervalSets, inline Note attachments)
+            // to new format (RangeElements, Attachment objects).
+            // This populates the new data structures from the legacy data.
+            FormatMigrator.migrate(composition);
 
             return composition;
         }

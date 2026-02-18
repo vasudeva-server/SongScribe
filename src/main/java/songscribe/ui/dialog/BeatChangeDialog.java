@@ -26,6 +26,7 @@ import javax.swing.*;
 
 import songscribe.music.BeatChange;
 import songscribe.music.Note;
+import songscribe.ui.renderer.BeatChangeRenderer;
 
 public class BeatChangeDialog extends StandardDialog {
 
@@ -158,10 +159,8 @@ public class BeatChangeDialog extends StandardDialog {
                 // .VALUE_ANTIALIAS_ON);
                 // g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints
                 // .VALUE_TEXT_ANTIALIAS_ON);
-                mainFrame
-                    .getScore()
-                    .getRenderer()
-                    .drawBeatChange(g2, beatChange, 2, 27);
+                var composition = mainFrame.getScore().getComposition();
+                BeatChangeRenderer.getInstance().drawBeatChange(g2, beatChange, 2, 27, composition);
             }
         };
     }

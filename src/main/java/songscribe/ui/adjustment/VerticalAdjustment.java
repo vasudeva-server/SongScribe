@@ -26,7 +26,6 @@ import org.jetbrains.annotations.Nullable;
 
 import songscribe.data.DynamicsIntervalData;
 import songscribe.data.IntervalSet;
-import songscribe.data.SlurData;
 import songscribe.data.TupletIntervalData;
 import songscribe.music.Line;
 import songscribe.music.Note;
@@ -71,7 +70,7 @@ public class VerticalAdjustment extends Adjustment {
                 upLeft.y = score.getNoteYPos(6, dragRect.line - 1);
                 downRight.y = score.getNoteYPos(-4, dragRect.line);
             }
-            case ANNOTATION, SLUR_CTRL_Y, TUPLET, CRESCENDO_Y, DIMINUENDO_Y -> {
+            case ANNOTATION, TUPLET, CRESCENDO_Y, DIMINUENDO_Y -> {
                 upLeft.y = score.getNoteYPos(6, dragRect.line - 1);
                 downRight.y = score.getNoteYPos(-6, dragRect.line + 1);
             }
@@ -111,12 +110,6 @@ public class VerticalAdjustment extends Adjustment {
             case ANNOTATION -> adjustAnnotation(line, diffY);
             case TRILL -> adjustTrill(line, diffY);
             case CRESCENDO_Y, DIMINUENDO_Y -> adjustDynamics(line, diffY);
-            case SLUR_POS1, SLUR_POS2, SLUR_CTRL_Y -> adjustSlur(
-                line,
-                diffX,
-                diffY,
-                midPoint
-            );
             case TUPLET -> adjustTuplet(line, diffY);
         }
 
@@ -205,36 +198,6 @@ public class VerticalAdjustment extends Adjustment {
                 DynamicsIntervalData.getYShift(interval) + diffY
             );
         }
-    }
-
-    private void adjustSlur(Line line, int diffX, int diffY, Point midPoint) {
-        if (dragRect == null) {
-            return;
-        }
-
-        var interval = line.getSlurs().findInterval(dragRect.xIndex);
-
-        if (interval == null) {
-            return;
-        }
-
-        var slurData = new SlurData(interval.getData());
-
-        switch (dragRect.type) {
-            case SLUR_POS1 -> {
-                dragRect.rect.x = endPoint.x - midPoint.x;
-                slurData.setXPos1(slurData.getXPos1() + diffX);
-                slurData.setYPos1(slurData.getYPos1() + diffY);
-            }
-            case SLUR_POS2 -> {
-                dragRect.rect.x = endPoint.x - midPoint.x;
-                slurData.setXPos2(slurData.getXPos2() + diffX);
-                slurData.setYPos2(slurData.getYPos2() + diffY);
-            }
-            case SLUR_CTRL_Y -> slurData.setCtrlY(slurData.getCtrlY() + diffY);
-        }
-
-        interval.setData(slurData.toString());
     }
 
     private void adjustTuplet(Line line, int diffY) {
@@ -343,31 +306,6 @@ public class VerticalAdjustment extends Adjustment {
                     );
                 }
 
-                for (var li = line.getSlurs().listIterator(); li.hasNext();) {
-                    var interval = li.next();
-                    adjustRects.add(
-                        new AdjustRect(
-                            l,
-                            AdjustType.SLUR_POS1,
-                            interval.getStart()
-                        )
-                    );
-                    adjustRects.add(
-                        new AdjustRect(
-                            l,
-                            AdjustType.SLUR_POS2,
-                            interval.getEnd()
-                        )
-                    );
-                    adjustRects.add(
-                        new AdjustRect(
-                            l,
-                            AdjustType.SLUR_CTRL_Y,
-                            interval.getStart()
-                        )
-                    );
-                }
-
                 for (
                     var li = line.getCrescendos().listIterator();
                     li.hasNext();
@@ -424,7 +362,11 @@ public class VerticalAdjustment extends Adjustment {
                 line,
                 note,
                 8,
-                line.getTempoChangeYPos()
+                score.getMeasurementService().getEffectiveTempoChangeYPos(
+                    (Graphics2D) score.getGraphics(),
+                    line,
+                    adjustRect.line
+                )
             );
             case BEAT_CHANGE -> getChangeAdjustRect(
                 adjustRect,
@@ -441,14 +383,14 @@ public class VerticalAdjustment extends Adjustment {
                 line.getFirstSecondEndingYPos()
             );
             case ANNOTATION -> {
-                var renderer = score.getRenderer();
-                var x = renderer.getAnnotationXPos(
+                var measurementService = score.getMeasurementService();
+                var x = measurementService.getAnnotationXPos(
                     (Graphics2D) score.getGraphics(),
                     note
                 );
                 adjustRect.rect.x = (int) Math.round(x) - 8;
 
-                var y = renderer.getAnnotationYPos(adjustRect.line, note);
+                var y = measurementService.getAnnotationYPos(adjustRect.line, note);
                 adjustRect.rect.y = y - 8;
             }
             case TRILL -> getChangeAdjustRect(
@@ -476,11 +418,6 @@ public class VerticalAdjustment extends Adjustment {
                 var yShift = DynamicsIntervalData.getYShift(interval);
                 adjustRect.rect.y = y + yShift;
             }
-            case SLUR_POS1, SLUR_POS2, SLUR_CTRL_Y -> getSlurAdjustRect(
-                adjustRect,
-                line,
-                note
-            );
             case TUPLET -> {
                 var interval = line
                     .getTuplets()
@@ -502,62 +439,6 @@ public class VerticalAdjustment extends Adjustment {
 
         adjustRect.rect.width = 8;
         adjustRect.rect.height = 8;
-    }
-
-    private void getSlurAdjustRect(
-        AdjustRect adjustRect,
-        Line line,
-        Note note
-    ) {
-        var interval = line.getSlurs().findInterval(adjustRect.xIndex);
-
-        if (interval == null) {
-            return;
-        }
-
-        var slurData = new SlurData(interval.getData());
-
-        switch (adjustRect.type) {
-            case SLUR_POS1 -> {
-                adjustRect.rect.x = note.getXPos() + slurData.getXPos1();
-                adjustRect.rect.y = score.getNoteYPos(
-                    note.getYPos(),
-                    adjustRect.line
-                ) +
-                slurData.getYPos1();
-                adjustRect.rect.y += (slurData.getCtrlY() > 0) ? 8 : -20;
-            }
-            case SLUR_POS2 -> {
-                adjustRect.rect.x = note.getXPos() + slurData.getXPos2();
-                adjustRect.rect.y = score.getNoteYPos(
-                    note.getYPos(),
-                    adjustRect.line
-                ) +
-                slurData.getYPos2();
-                adjustRect.rect.y += (slurData.getCtrlY() > 0) ? 8 : -20;
-            }
-            case SLUR_CTRL_Y -> {
-                var lastNote = line.getNote(interval.getEnd());
-                adjustRect.rect.x = (note.getXPos() +
-                    slurData.getXPos1() +
-                    lastNote.getXPos() +
-                    slurData.getXPos2()) /
-                2;
-                adjustRect.rect.y = ((score.getNoteYPos(
-                            note.getYPos(),
-                            adjustRect.line
-                        ) +
-                        score.getNoteYPos(
-                            lastNote.getYPos(),
-                            adjustRect.line
-                        )) /
-                    2) +
-                slurData.getCtrlY();
-                adjustRect.rect.y -= 4;
-            }
-        }
-
-        adjustRect.rect.x -= 4;
     }
 
     private void getAttributionAdjustRect(AdjustRect adjustRect) {
@@ -610,9 +491,6 @@ public class VerticalAdjustment extends Adjustment {
         FIRST_SECOND_ENDING(Color.green),
         ANNOTATION(Color.magenta),
         TRILL(Color.pink),
-        SLUR_POS1(Color.orange),
-        SLUR_POS2(Color.orange),
-        SLUR_CTRL_Y(Color.orange),
         CRESCENDO_Y(Color.green),
         DIMINUENDO_Y(Color.green),
         TUPLET(Color.pink);

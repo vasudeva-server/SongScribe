@@ -20,8 +20,7 @@
 package songscribe.music;
 
 public enum DurationArticulation {
-    STACCATO(33),
-    TENUTO(100);
+    STACCATO(33);
 
     private final int duration;
 
