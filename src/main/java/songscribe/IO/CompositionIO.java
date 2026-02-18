@@ -29,7 +29,7 @@ import songscribe.music.KeyType;
 import songscribe.music.Line;
 import songscribe.ui.component.IMainFrame;
 import songscribe.ui.component.Score;
-import songscribe.ui.layout.NoteSpacing;
+import songscribe.ui.layout2.InsertionSpacingCalculator;
 
 public final class CompositionIO {
 
@@ -423,7 +423,8 @@ public final class CompositionIO {
                     }
 
                     var line = composition.getLine(composition.lineCount() - 1);
-                    note.setXPos(NoteSpacing.calculateLastNoteXPos(line, note));
+                    note.setXPos((int) Math.round(
+                        InsertionSpacingCalculator.calculateAppendPosition(line, note)));
                     note.setUpper(Score.defaultUpperNote(note));
                     line.addNote(note);
                 }

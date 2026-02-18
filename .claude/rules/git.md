@@ -12,3 +12,14 @@
 
 - Feature branches: `feature/description-with-dashes`
 - Bug fixes: `fix/description-with-dashes`
+
+### Creating Commits
+
+Always use the `/commit-commands:commit` skill to create commits instead of manually constructing git commands with bash. The skill handles:
+- Proper staging and unstaging of files
+- Message formatting and validation
+- Co-authorship attribution
+- Multi-line messages without quoting issues
+- Error handling and retry logic
+
+This avoids shell quoting complexities and ensures consistent, high-quality commits.

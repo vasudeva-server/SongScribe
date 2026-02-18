@@ -165,7 +165,7 @@ public class NoteColumnBuilder {
      * @param note The note
      * @return Left extent (negative value, extends left from note head center)
      */
-    private double calculateLeftExtent(@NotNull Note note) {
+    public static double calculateLeftExtent(@NotNull Note note) {
         // Start with half the note head width
         double extent = -HALF_NOTE_HEAD;
 
@@ -187,7 +187,7 @@ public class NoteColumnBuilder {
      * @param note The note
      * @return Right extent (positive value, extends right from note head center)
      */
-    private double calculateRightExtent(@NotNull Note note) {
+    public static double calculateRightExtent(@NotNull Note note) {
         // Start with half the note head width
         double extent = HALF_NOTE_HEAD;
 
@@ -210,7 +210,7 @@ public class NoteColumnBuilder {
     /**
      * Returns the width of an accidental.
      */
-    private double getAccidentalWidth(@NotNull Note.Accidental accidental) {
+    public static double getAccidentalWidth(@NotNull Note.Accidental accidental) {
         return switch (accidental) {
             case NONE -> 0;
             case NATURAL, DOUBLE_NATURAL -> NATURAL_WIDTH;

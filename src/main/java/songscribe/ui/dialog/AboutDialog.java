@@ -69,7 +69,7 @@ public class AboutDialog extends StandardDialog {
                 "Acknowledgements",
                 createTextPane(
                     "file:" +
-                    Utils.getResourcePath("help/Acknowledgements.html")
+                        Utils.getResourcePath("help/Acknowledgements.html")
                 )
             );
         } catch (IOException e) {
@@ -126,8 +126,8 @@ public class AboutDialog extends StandardDialog {
         copyRight1.setFont(new Font("Arial", Font.PLAIN, 14));
         copyRight1.setText(
             "© " +
-            Calendar.getInstance().get(Calendar.YEAR) +
-            " Sri Chinmoy Centres International"
+                Calendar.getInstance().get(Calendar.YEAR) +
+                " Sri Chinmoy Centres International"
         );
 
         copyRight2.setFont(new Font("Arial", Font.PLAIN, 14));
@@ -389,11 +389,11 @@ public class AboutDialog extends StandardDialog {
     }
 
     private void webMouseExited() {
-        contentPanel.setCursor(new Cursor(Cursor.DEFAULT_CURSOR));
+        contentPanel.setCursor(Cursor.getDefaultCursor());
     }
 
     private void webMouseEntered() {
-        contentPanel.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        contentPanel.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
     }
 
     private void webMouseClicked() {
@@ -408,8 +408,10 @@ public class AboutDialog extends StandardDialog {
     }
 
     @Override
-    protected void getData() {}
+    protected void getData() {
+    }
 
     @Override
-    protected void setData() {}
+    protected void setData() {
+    }
 }

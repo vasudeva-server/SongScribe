@@ -20,21 +20,17 @@
 package songscribe.ui.action;
 
 import java.awt.event.*;
-import java.awt.geom.Rectangle2D;
 import java.io.File;
 
 import javax.swing.*;
 
-import org.jfree.pdf.PDFDocument;
-
 import songscribe.data.MyFileFilter;
 import songscribe.data.PageLayoutData;
-import songscribe.ui.Constants;
+import songscribe.export.PDFExporter;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.dialog.ExportPDFDialog;
 import songscribe.ui.dialog.PlatformFileDialog;
 import songscribe.util.FileUtils;
-import songscribe.util.GraphicUtils;
 
 public class ExportPDFAction extends UIAction {
 
@@ -47,7 +43,7 @@ public class ExportPDFAction extends UIAction {
             MainFrame.getInstance(),
             "Export PDF",
             false,
-            new MyFileFilter("Portable Document Format", "pdf")
+            new MyFileFilter("PDF", "pdf")
         );
     }
 
@@ -56,48 +52,7 @@ public class ExportPDFAction extends UIAction {
         File outputFile,
         Boolean isGUI
     ) {
-        var resolution = 72f / GraphicUtils.getDpi();
-        var paperWidth = data.paperWidth * resolution;
-        var paperHeight = data.paperHeight * resolution;
-        var mainFrame = data.mainFrame;
-        var score = mainFrame.getScore();
-        var composition = score.getComposition();
-
-        // Scale to fit
-        var sheetWidth = score.getSheetWidth();
-        var sheetHeight = score.getSheetHeight();
-        var horizontalMargin =
-            (data.leftInnerMargin + data.rightOuterMargin) * resolution;
-        var horizontalScale = (paperWidth - horizontalMargin) / sheetWidth;
-        var verticalMargin = (data.topMargin + data.bottomMargin) * resolution;
-        var verticalScale = (paperHeight - verticalMargin) / sheetHeight;
-        double scale;
-        double leftMargin = data.leftInnerMargin * resolution;
-
-        if (horizontalScale < verticalScale) {
-            scale = horizontalScale;
-        } else {
-            // If scaling vertically, the horizontal margin will be larger than
-            // what is specified in Data. So we calculate the total margin available,
-            // then give the left margin the same fraction of the total margin
-            // it would have had before scaling.
-            scale = verticalScale;
-            var scaledMargin = paperWidth - (sheetWidth * scale);
-            var leftMarginFactor =
-                (double) data.leftInnerMargin /
-                (double) (data.leftInnerMargin + data.rightOuterMargin);
-            leftMargin = scaledMargin * leftMarginFactor;
-        }
-
-        // PDF export not yet implemented with component-based rendering
-        if (isGUI) {
-            mainFrame.showErrorMessage(
-                "PDF export is not yet implemented. " +
-                "Export functionality will be restored in a future update."
-            );
-        } else {
-            System.err.println("ERROR: PDF export is not yet implemented");
-        }
+        PDFExporter.createPDF(data, outputFile, isGUI);
     }
 
     @Override
@@ -122,8 +77,8 @@ public class ExportPDFAction extends UIAction {
             var response = JOptionPane.showConfirmDialog(
                 mainFrame,
                 "The file “" +
-                saveFile.getName() +
-                "” already exists. Do you want to overwrite it?",
+                    saveFile.getName() +
+                    "” already exists. Do you want to overwrite it?",
                 mainFrame.appName,
                 JOptionPane.YES_NO_OPTION
             );

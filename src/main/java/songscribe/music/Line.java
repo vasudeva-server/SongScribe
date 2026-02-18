@@ -25,14 +25,23 @@ import java.util.Collections;
 import java.util.List;
 import java.util.stream.IntStream;
 
+import javax.sound.midi.InvalidMidiDataException;
+import javax.sound.midi.MetaMessage;
+import javax.sound.midi.MidiEvent;
+import javax.sound.midi.ShortMessage;
+import javax.sound.midi.Track;
+
 import org.jetbrains.annotations.NotNull;
 
+import kotlin.Pair;
 import songscribe.data.IntervalSet;
+import songscribe.midi.PlaybackSettings;
 import songscribe.ui.layout.BeamGroup;
 import songscribe.ui.layout.LayoutStylesheet;
 import songscribe.ui.layout.RangeElement;
 import songscribe.ui.message.LayoutChangeMessage;
 import songscribe.ui.message.MessageCenter;
+import songscribe.ui.playback.MidiMetaMessageTypes;
 
 public class Line {
 
@@ -40,6 +49,12 @@ public class Line {
         new int[]{0, 3, 6, 2, 5, 1, 4},
         new int[]{4, 1, 5, 2, 6, 3, 0},
     };
+
+    // MIDI constants for playback
+    private static final int PPQ = 96;
+    private static final int GRACE_QUAVER_DURATION = PPQ / 8;
+    private static final int NOTE_VELOCITY = 98;
+    private static final int ACCENTED_NOTE_VELOCITY = 127;
     private final IntervalSet beamings = new IntervalSet();
     private final IntervalSet ties = new IntervalSet();
     private final IntervalSet tuplets = new IntervalSet();
@@ -575,6 +590,267 @@ public class Line {
         }
 
         return null;
+    }
+
+    // =========================================================================
+    // MIDI Duration Calculation (Phase 1: Score Cleanup)
+    // =========================================================================
+
+    /**
+     * Returns the duration of a note adjusted for tuplet membership.
+     *
+     * @param noteIndex Index of the note
+     * @param referenceTempo The tempo providing the reference note duration
+     * @return Duration in ticks, adjusted for tuplet if applicable
+     */
+    public int getNoteDurationWithTuplet(int noteIndex, Tempo referenceTempo) {
+        return Math.round(getNote(noteIndex).getDuration() * getTupletFactor(noteIndex, referenceTempo));
+    }
+
+    /**
+     * Calculates the tuplet scaling factor for a note.
+     *
+     * @param noteIndex Index of the note
+     * @param referenceTempo The tempo providing the reference note duration
+     * @return Scaling factor (1.0 if not in a tuplet)
+     */
+    private float getTupletFactor(int noteIndex, Tempo referenceTempo) {
+        var tupletInt = tuplets.findInterval(noteIndex);
+
+        if (tupletInt == null) {
+            return 1;
+        }
+
+        var tupletDuration = 0f;
+
+        for (var i = tupletInt.getStart(); i <= tupletInt.getEnd(); i++) {
+            tupletDuration += getNote(i).getDuration();
+        }
+
+        tupletDuration /= referenceTempo.getTempoType().getNote().getDuration();
+        float newDuration;
+
+        if (tupletDuration >= 1) {
+            newDuration = (float) Math.floor(tupletDuration);
+
+            if ((newDuration == tupletDuration) && (newDuration > 1)) {
+                newDuration--;
+            }
+        } else {
+            var log2 = Math.log(2);
+            newDuration = (float) Math.pow(
+                2,
+                Math.floor(Math.log(tupletDuration) / log2)
+            );
+        }
+
+        return newDuration / tupletDuration;
+    }
+
+    /**
+     * Adds this line's notes to a MIDI track.
+     *
+     * @param track The MIDI track to add to
+     * @param lineIndex This line's index in the composition (for colorize messages)
+     * @param startTicks Starting tick position
+     * @param initialTempo Tempo at the start of this line
+     * @param settings Playback settings
+     * @return Pair of (ending tick position, ending tempo)
+     */
+    public Pair<Integer, Tempo> addToTrack(
+        Track track,
+        int lineIndex,
+        int startTicks,
+        Tempo initialTempo,
+        PlaybackSettings settings
+    ) throws InvalidMidiDataException {
+        return addToTrack(track, lineIndex, startTicks, initialTempo, settings, 0, noteCount() - 1);
+    }
+
+    /**
+     * Adds a range of this line's notes to a MIDI track.
+     *
+     * @param track The MIDI track to add to
+     * @param lineIndex This line's index in the composition (for colorize messages)
+     * @param startTicks Starting tick position
+     * @param initialTempo Tempo at the start of this range
+     * @param settings Playback settings
+     * @param startNote Index of the first note to add
+     * @param endNote Index of the last note to add
+     * @return Pair of (ending tick position, ending tempo)
+     */
+    public Pair<Integer, Tempo> addToTrack(
+        Track track,
+        int lineIndex,
+        int startTicks,
+        Tempo initialTempo,
+        PlaybackSettings settings,
+        int startNote,
+        int endNote
+    ) throws InvalidMidiDataException {
+        var ticks = startTicks;
+        var currentTempo = initialTempo;
+
+        var actualEndNote = Math.min(endNote, noteCount() - 1);
+
+        for (var i = startNote; i <= actualEndNote; i++) {
+            var note = getNote(i);
+
+            // Add tempo change if present
+            if (note.getTempoChange() != null) {
+                currentTempo = note.getTempoChange();
+                addTempoMetaMessage(track, ticks, currentTempo, settings.tempoChangePercent());
+            }
+
+            // Add colorize message if enabled
+            if (settings.colorizeNotes()) {
+                addColorizeMetaMessage(track, lineIndex, i, ticks);
+            }
+
+            // Add note on/off messages and update ticks
+            ticks = addNoteMessages(track, i, ticks, currentTempo, settings);
+        }
+
+        return new Pair<>(ticks, currentTempo);
+    }
+
+    /**
+     * Adds a tempo meta message to the track.
+     */
+    private void addTempoMetaMessage(
+        Track track,
+        int ticks,
+        Tempo tempo,
+        int tempoChangePercent
+    ) throws InvalidMidiDataException {
+        var realTempo = tempo.getRealTempo();
+        var midiTempo = 60000000 / ((realTempo * tempoChangePercent) / 100);
+        var tempoMessage = new MetaMessage();
+        tempoMessage.setMessage(
+            MidiMetaMessageTypes.SET_TEMPO,
+            new byte[]{
+                (byte) (midiTempo >> 16),
+                (byte) (midiTempo >> 8),
+                (byte) midiTempo,
+            },
+            3
+        );
+        track.add(new MidiEvent(tempoMessage, ticks));
+    }
+
+    /**
+     * Adds a colorize meta message to the track for playback highlighting.
+     */
+    private void addColorizeMetaMessage(
+        Track track,
+        int lineIndex,
+        int noteIndex,
+        int ticks
+    ) throws InvalidMidiDataException {
+        var playNoteMessage = new MetaMessage();
+        playNoteMessage.setMessage(
+            MidiMetaMessageTypes.SEQUENCE_NUMBER,
+            new byte[]{
+                (byte) (lineIndex >> 8),
+                (byte) lineIndex,
+                (byte) (noteIndex >> 8),
+                (byte) noteIndex,
+            },
+            4
+        );
+        track.add(new MidiEvent(playNoteMessage, ticks));
+    }
+
+    /**
+     * Adds note on/off messages to the track and returns the updated tick position.
+     */
+    private int addNoteMessages(
+        Track track,
+        int noteIndex,
+        int ticks,
+        Tempo currentTempo,
+        PlaybackSettings settings
+    ) throws InvalidMidiDataException {
+        var note = getNote(noteIndex);
+        var type = note.getNoteType();
+        var trackTicks = ticks;
+
+        if (type.isGraceNote()) {
+            switch (type) {
+                case GRACE_SEMIQUAVER -> {
+                    var graceSemiQuaver = (GraceSemiQuaver) note;
+                    var yPos = note.getYPos();
+                    note.setYPos(graceSemiQuaver.getY0Pos());
+                    addNoteOn(track, trackTicks, note);
+                    trackTicks += GRACE_QUAVER_DURATION;
+                    addNoteOff(track, trackTicks, note);
+                    note.setYPos(yPos);
+                }
+                case GRACE_QUAVER -> {
+                    addNoteOn(track, trackTicks, note);
+                    trackTicks += GRACE_QUAVER_DURATION;
+                    addNoteOff(track, trackTicks, note);
+                }
+                default -> {
+                    // Should not happen
+                }
+            }
+        } else if (type.isNote() || type.isRest()) {
+            var noteDuration = getNoteDurationWithTuplet(noteIndex, currentTempo);
+
+            if (type.isNote()) {
+                var interval = ties.findInterval(noteIndex);
+
+                if ((interval == null) || (interval.getStart() == noteIndex)) {
+                    addNoteOn(track, trackTicks, note);
+                }
+
+                if ((interval == null) || (interval.getEnd() == noteIndex)) {
+                    var currDuration = (note.getDurationArticulation() == null)
+                        ? settings.noteDurationPercent()
+                        : note.getDurationArticulation().getDuration();
+                    addNoteOff(
+                        track,
+                        (int) (trackTicks + ((noteDuration * currDuration) / 100f)),
+                        note
+                    );
+                }
+            }
+
+            trackTicks += noteDuration;
+        }
+
+        return trackTicks;
+    }
+
+    /**
+     * Adds a note-on MIDI message to the track.
+     */
+    private void addNoteOn(Track track, int ticks, Note note) throws InvalidMidiDataException {
+        var down = new ShortMessage();
+        down.setMessage(
+            ShortMessage.NOTE_ON,
+            note.getPitch(),
+            (note.getForceArticulation() == ForceArticulation.ACCENT)
+                ? ACCENTED_NOTE_VELOCITY
+                : NOTE_VELOCITY
+        );
+        track.add(new MidiEvent(down, ticks));
+    }
+
+    /**
+     * Adds a note-off MIDI message to the track.
+     */
+    private void addNoteOff(Track track, int ticks, Note note) throws InvalidMidiDataException {
+        var up = new ShortMessage();
+        up.setMessage(
+            ShortMessage.NOTE_OFF,
+            note.getPitch(),
+            (note.getForceArticulation() == ForceArticulation.ACCENT)
+                ? ACCENTED_NOTE_VELOCITY
+                : NOTE_VELOCITY
+        );
+        track.add(new MidiEvent(up, ticks));
     }
 
 }

@@ -21,7 +21,7 @@ package songscribe.music;
 
 import java.awt.*;
 
-import songscribe.ui.component.Score;
+import songscribe.ui.playback.PlaybackController;
 
 public class DemisemiquaverRest extends Note {
 
@@ -65,6 +65,6 @@ public class DemisemiquaverRest extends Note {
 
     @Override
     public int getDefaultDuration() {
-        return Score.PPQ / 8;
+        return PlaybackController.PPQ / 8;
     }
 }

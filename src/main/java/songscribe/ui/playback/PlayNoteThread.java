@@ -39,7 +39,7 @@ public class PlayNoteThread extends Thread {
 
         try {
             var programChange = new ShortMessage();
-            var instrument = MainFrame.getInstance().getScore().getInstrument();
+            var instrument = PlaybackController.getPlaybackSettings().instrument();
             programChange.setMessage(
                 ShortMessage.PROGRAM_CHANGE,
                 instrument,

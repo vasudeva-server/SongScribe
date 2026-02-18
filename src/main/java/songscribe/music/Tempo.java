@@ -21,7 +21,7 @@ package songscribe.music;
 
 import songscribe.ui.ProfileManager;
 import songscribe.ui.component.MainFrame;
-import songscribe.ui.component.Score;
+import songscribe.ui.playback.PlaybackController;
 
 public class Tempo {
 
@@ -86,7 +86,7 @@ public class Tempo {
     }
 
     public int getRealTempo() {
-        return ((visibleTempo * tempoType.getNote().getDuration()) / Score.PPQ);
+        return ((visibleTempo * tempoType.getNote().getDuration()) / PlaybackController.PPQ);
     }
 
     public boolean shouldShowTempo() {

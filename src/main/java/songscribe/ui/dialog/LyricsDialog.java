@@ -31,6 +31,7 @@ import com.intellij.uiDesigner.core.GridConstraints;
 import com.intellij.uiDesigner.core.GridLayoutManager;
 import com.intellij.uiDesigner.core.Spacer;
 
+import songscribe.music.LyricsProcessor;
 import songscribe.ui.Constants;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.MyJTextArea;
@@ -174,7 +175,7 @@ public class LyricsDialog extends StandardDialog {
         composition.setLyrics(lyricsArea.getText());
         composition.setUnderLyrics(underSongArea.getText());
         composition.setTranslatedLyrics(translatedArea.getText());
-        mainFrame.getScore().spellLyrics();
+        LyricsProcessor.spellLyrics(composition);
         mainFrame.setDocumentModified(true);
         mainFrame.getLyricsModePanel().getData();
     }

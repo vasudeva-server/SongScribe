@@ -364,6 +364,238 @@ public final class LayoutResult {
     }
 
     // ==========================================================================
+    // Insertion Note Positioning (Edit Mode)
+    // ==========================================================================
+
+    /**
+     * Finds which insertion slot a mouse X coordinate falls into.
+     * <p>
+     * Insertion slots are the positions where a note can be inserted or replaced:
+     * <ul>
+     *   <li>Index 0 to noteCount-1: over an existing note (for replacement)</li>
+     *   <li>Index noteCount: after the last note (for appending)</li>
+     * </ul>
+     * <p>
+     * If the mouse is within the horizontal bounds of a note head, returns that note's index
+     * to indicate replacement. Otherwise, returns the insertion slot between notes.
+     *
+     * @param mouseX Mouse X coordinate in pixels
+     * @param line   The line containing the notes
+     * @return Insertion index (0 to noteCount inclusive)
+     */
+    public int findInsertionIndex(double mouseX, @NotNull songscribe.music.Line line) {
+        int noteCount = line.noteCount();
+
+        if (noteCount == 0) {
+            return 0;
+        }
+
+        // Note head half-width (from NoteColumnBuilder.HALF_NOTE_HEAD)
+        double noteHeadHalfWidth = 9.0;
+
+        // Check each note to see if mouse is within its note head bounds
+        for (var i = 0; i < noteCount; i++) {
+            var note = line.getNote(i);
+            var column = noteColumns.get(note);
+
+            if (column == null) {
+                continue;
+            }
+
+            var noteX = column.getX();
+            var noteLeft = noteX - noteHeadHalfWidth;
+            var noteRight = noteX + noteHeadHalfWidth;
+
+            // If mouse is within note head bounds, return this note's index (for replacement)
+            if (mouseX >= noteLeft && mouseX <= noteRight) {
+                return i;
+            }
+        }
+
+        // Mouse is not over any note head - find insertion slot between notes
+
+        // Check if before first note
+        var firstNote = line.getNote(0);
+        var firstColumn = noteColumns.get(firstNote);
+
+        if (firstColumn == null) {
+            return 0;
+        }
+
+        if (mouseX < firstColumn.getX() - noteHeadHalfWidth) {
+            return 0;
+        }
+
+        // Check if after last note
+        var lastNote = line.getNote(noteCount - 1);
+        var lastColumn = noteColumns.get(lastNote);
+
+        if (lastColumn == null) {
+            return noteCount;
+        }
+
+        if (mouseX > lastColumn.getX() + noteHeadHalfWidth) {
+            return noteCount;
+        }
+
+        // Find the slot between notes (excluding note head bounds)
+        for (var i = 0; i < noteCount - 1; i++) {
+            var currentNote = line.getNote(i);
+            var nextNote = line.getNote(i + 1);
+
+            var currentColumn = noteColumns.get(currentNote);
+            var nextColumn = noteColumns.get(nextNote);
+
+            if (currentColumn == null || nextColumn == null) {
+                continue;
+            }
+
+            var currentRight = currentColumn.getX() + noteHeadHalfWidth;
+            var nextLeft = nextColumn.getX() - noteHeadHalfWidth;
+
+            // Check if mouseX is in the gap between note heads
+            if (mouseX > currentRight && mouseX < nextLeft) {
+                return i + 1;
+            }
+        }
+
+        // Fallback: return position after last note
+        return noteCount;
+    }
+
+    /**
+     * Checks whether the mouse X coordinate is directly over an existing note head.
+     *
+     * @param mouseX Mouse X coordinate in pixels
+     * @param line   The line containing the notes
+     * @return true if the mouse is within the horizontal bounds of a note head
+     */
+    public boolean isMouseOverNoteHead(double mouseX, @NotNull songscribe.music.Line line) {
+        int noteCount = line.noteCount();
+
+        if (noteCount == 0) {
+            return false;
+        }
+
+        double noteHeadHalfWidth = 9.0;
+
+        for (var i = 0; i < noteCount; i++) {
+            var note = line.getNote(i);
+            var column = noteColumns.get(note);
+
+            if (column == null) {
+                continue;
+            }
+
+            var noteX = column.getX();
+
+            if (mouseX >= noteX - noteHeadHalfWidth && mouseX <= noteX + noteHeadHalfWidth) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Calculates the X position for rendering an insertion note at a given index.
+     * <p>
+     * If the mouse is within the horizontal bounds of a note head, snaps to that note's position.
+     * Otherwise, positions between notes or after the last note as appropriate.
+     *
+     * @param insertionIndex The insertion index (0 to noteCount inclusive)
+     * @param mouseX         Mouse X coordinate (used to detect if over a note head)
+     * @param insertionNote  The note to be inserted (used to calculate extents for after-last-note positioning)
+     * @param line           The line containing the notes
+     * @return X position in pixels for rendering the insertion note
+     */
+    public double calculateInsertionX(
+            int insertionIndex,
+            double mouseX,
+            @NotNull Note insertionNote,
+            @NotNull songscribe.music.Line line) {
+
+        int noteCount = line.noteCount();
+
+        // Empty line - use first note position (clef + key signature + offset)
+        if (noteCount == 0) {
+            return LayoutConstants.calculateFirstNoteX(line.getKeyAccidentalCount());
+        }
+
+        // Note head half-width
+        double noteHeadHalfWidth = 9.0;
+
+        // Check if mouse is over any note head - if so, snap to that note's position
+        for (var i = 0; i < noteCount; i++) {
+            var note = line.getNote(i);
+            var column = noteColumns.get(note);
+
+            if (column == null) {
+                continue;
+            }
+
+            var noteX = column.getX();
+            if (mouseX >= noteX - noteHeadHalfWidth && mouseX <= noteX + noteHeadHalfWidth) {
+                // Mouse is over this note head - snap to its position
+                return noteX;
+            }
+        }
+
+        // Mouse is not over a note head - handle insertion
+
+        // Before first note - position to the left
+        if (insertionIndex == 0) {
+            var firstNote = line.getNote(0);
+            var firstColumn = noteColumns.get(firstNote);
+
+            if (firstColumn == null) {
+                return LayoutConstants.px(LayoutConstants.FIRST_NOTE_OFFSET);
+            }
+
+            return firstColumn.getX() - 15;  // FIRST_NOTE_IN_LINE_MOVEMENT offset
+        }
+
+        // After last note - use same spacing logic as layout engine
+        if (insertionIndex >= noteCount) {
+            var lastNote = line.getNote(noteCount - 1);
+            var lastColumn = noteColumns.get(lastNote);
+
+            if (lastColumn == null) {
+                return LayoutConstants.px(LayoutConstants.FIRST_NOTE_OFFSET);
+            }
+
+            // Build a temporary column for the insertion note to calculate proper spacing
+            var insertionColumn = new NoteColumn(
+                    insertionNote,
+                    java.util.Collections.emptyList(),
+                    NoteColumnBuilder.calculateLeftExtent(insertionNote),
+                    NoteColumnBuilder.calculateRightExtent(insertionNote),
+                    0,
+                    0,
+                    null,
+                    0,
+                    null
+            );
+
+            // Use the same spacing calculation as HorizontalSpacingCalculator
+            return HorizontalSpacingCalculator.calculateNextColumnX(lastColumn, insertionColumn);
+        }
+
+        // Between notes - use midpoint
+        var prevNote = line.getNote(insertionIndex - 1);
+        var currNote = line.getNote(insertionIndex);
+
+        var prevColumn = noteColumns.get(prevNote);
+        var currColumn = noteColumns.get(currNote);
+
+        if (prevColumn == null || currColumn == null) {
+            return LayoutConstants.px(LayoutConstants.FIRST_NOTE_OFFSET);
+        }
+
+        return (prevColumn.getX() + currColumn.getX()) / 2.0;
+    }
+
+    // ==========================================================================
     // Statistics
     // ==========================================================================
 

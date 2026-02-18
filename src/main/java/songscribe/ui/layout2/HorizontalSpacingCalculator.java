@@ -69,12 +69,6 @@ import songscribe.ui.layout.BeamGroup;
  */
 public class HorizontalSpacingCalculator {
 
-    // Clef width constant (treble clef, always the same)
-    private static final double CLEF_WIDTH = 28.0;
-
-    // Key signature accidental width
-    private static final double KEY_ACCIDENTAL_WIDTH = 8.0;
-
     /**
      * Creates a new HorizontalSpacingCalculator.
      */
@@ -129,28 +123,12 @@ public class HorizontalSpacingCalculator {
 
     /**
      * Calculates the X position of the first note in a line.
-     * <p>
-     * Formula: clefWidth + keySignatureWidth + FIRST_NOTE_OFFSET
      *
      * @param line The line (for key signature info)
      * @return X position in pixels
      */
     private double calculateFirstNoteX(@NotNull Line line) {
-        double clefWidth = CLEF_WIDTH;
-        double keySignatureWidth = calculateKeySignatureWidth(line);
-        double offset = LayoutConstants.px(LayoutConstants.FIRST_NOTE_OFFSET);
-
-        return clefWidth + keySignatureWidth + offset;
-    }
-
-    /**
-     * Calculates the width of the key signature.
-     *
-     * @param line The line
-     * @return Key signature width in pixels
-     */
-    private double calculateKeySignatureWidth(@NotNull Line line) {
-        return line.getKeyAccidentalCount() * KEY_ACCIDENTAL_WIDTH;
+        return LayoutConstants.calculateFirstNoteX(line.getKeyAccidentalCount());
     }
 
     // ==========================================================================
@@ -159,12 +137,15 @@ public class HorizontalSpacingCalculator {
 
     /**
      * Calculates the X position for the next column based on the previous column.
+     * <p>
+     * This is the single source of truth for note spacing calculations.
+     * Both layout and insertion note positioning use this method.
      *
      * @param prevColumn Previous column (must have X position already set)
      * @param currColumn Current column
      * @return X position for current column
      */
-    private double calculateNextColumnX(
+    public static double calculateNextColumnX(
             @NotNull NoteColumn prevColumn,
             @NotNull NoteColumn currColumn) {
 
@@ -174,8 +155,15 @@ public class HorizontalSpacingCalculator {
         // Calculate lyric-driven spacing requirement
         double lyricSpacing = calculateLyricSpacing(prevColumn, currColumn);
 
-        // Take maximum
-        double requiredSpacing = Math.max(minimumSpacing, lyricSpacing);
+        // If no lyrics, use default spacing; otherwise use lyric spacing
+        double requiredSpacing;
+        if (lyricSpacing > 0) {
+            requiredSpacing = Math.max(minimumSpacing, lyricSpacing);
+        } else {
+            // No lyrics - use default comfortable spacing
+            double defaultSpacing = calculateDefaultColumnSpacing(prevColumn, currColumn);
+            requiredSpacing = Math.max(minimumSpacing, defaultSpacing);
+        }
 
         // Calculate tentative X position
         double nextX = prevColumn.getX() + requiredSpacing;
@@ -202,7 +190,7 @@ public class HorizontalSpacingCalculator {
      * @param currColumn Current column
      * @return Minimum spacing in pixels
      */
-    private double calculateMinimumColumnSpacing(
+    private static double calculateMinimumColumnSpacing(
             @NotNull NoteColumn prevColumn,
             @NotNull NoteColumn currColumn) {
 
@@ -221,7 +209,7 @@ public class HorizontalSpacingCalculator {
      * @param currColumn Current column
      * @return Lyric spacing in pixels, or 0 if no syllables
      */
-    private double calculateLyricSpacing(
+    private static double calculateLyricSpacing(
             @NotNull NoteColumn prevColumn,
             @NotNull NoteColumn currColumn) {
 
@@ -237,6 +225,23 @@ public class HorizontalSpacingCalculator {
     }
 
     /**
+     * Calculates default spacing for columns when no lyrics are present.
+     * <p>
+     * Uses DEFAULT_COLUMN_GAP to provide comfortable spacing without lyrics.
+     *
+     * @param prevColumn Previous column
+     * @param currColumn Current column
+     * @return Default spacing in pixels
+     */
+    private static double calculateDefaultColumnSpacing(
+            @NotNull NoteColumn prevColumn,
+            @NotNull NoteColumn currColumn) {
+
+        double gap = LayoutConstants.px(LayoutConstants.DEFAULT_COLUMN_GAP);
+        return prevColumn.getRightExtent() + gap + Math.abs(currColumn.getLeftExtent());
+    }
+
+    /**
      * Checks if the current column needs to be pushed right for accidental clearance.
      *
      * @param prevColumn Previous column
@@ -244,7 +249,7 @@ public class HorizontalSpacingCalculator {
      * @param currX      Tentative X position for current column
      * @return true if accidental clearance would be violated
      */
-    private boolean needsAccidentalPush(
+    private static boolean needsAccidentalPush(
             @NotNull NoteColumn prevColumn,
             @NotNull NoteColumn currColumn,
             double currX) {

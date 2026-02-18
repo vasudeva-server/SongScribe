@@ -21,7 +21,7 @@ package songscribe.music;
 
 import java.awt.*;
 
-import songscribe.ui.component.Score;
+import songscribe.ui.playback.PlaybackController;
 
 public class SemibreveRest extends Note {
 
@@ -65,6 +65,6 @@ public class SemibreveRest extends Note {
 
     @Override
     public int getDefaultDuration() {
-        return Score.PPQ * 4;
+        return PlaybackController.PPQ * 4;
     }
 }

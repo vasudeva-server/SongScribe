@@ -22,7 +22,7 @@ package songscribe.music;
 
 import java.awt.*;
 
-import songscribe.ui.component.Score;
+import songscribe.ui.playback.PlaybackController;
 
 public final class Quaver extends Note {
 
@@ -67,6 +67,6 @@ public final class Quaver extends Note {
 
     @Override
     public int getDefaultDuration() {
-        return Score.PPQ / 2;
+        return PlaybackController.PPQ / 2;
     }
 }

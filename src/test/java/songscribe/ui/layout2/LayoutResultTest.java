@@ -670,6 +670,362 @@ class LayoutResultTest {
     }
 
     // ==========================================================================
+    // Insertion Note Positioning Tests
+    // ==========================================================================
+
+    @Nested
+    @DisplayName("Insertion Note Positioning")
+    class InsertionNotePositioningTests {
+
+        private songscribe.music.Line line;
+        private LayoutResult result;
+
+        @BeforeEach
+        void setUp() {
+            line = new songscribe.music.Line();
+            line.addNote(note1);
+            line.addNote(note2);
+            line.addNote(note3);
+
+            result = builder
+                    .putNoteColumn(note1, column1)
+                    .putNoteColumn(note2, column2)
+                    .putNoteColumn(note3, column3)
+                    .build();
+        }
+
+        @Nested
+        @DisplayName("findInsertionIndex")
+        class FindInsertionIndexTests {
+
+            @Test
+            @DisplayName("returns 0 for empty line")
+            void emptyLine() {
+                var emptyLine = new songscribe.music.Line();
+                var emptyResult = LayoutResult.builder().build();
+
+                assertEquals(0, emptyResult.findInsertionIndex(50, emptyLine));
+            }
+
+            @Test
+            @DisplayName("returns 0 when mouse is before first note")
+            void beforeFirstNote() {
+                assertEquals(0, result.findInsertionIndex(50, line));
+            }
+
+            @Test
+            @DisplayName("returns 0 when mouse is exactly at first note")
+            void atFirstNote() {
+                assertEquals(0, result.findInsertionIndex(100, line));
+            }
+
+            @Test
+            @DisplayName("returns noteCount when mouse is after last note")
+            void afterLastNote() {
+                assertEquals(3, result.findInsertionIndex(400, line));
+            }
+
+            @Test
+            @DisplayName("returns correct index when mouse is between first and second note")
+            void betweenFirstAndSecond() {
+                assertEquals(1, result.findInsertionIndex(150, line));
+            }
+
+            @Test
+            @DisplayName("returns correct index when mouse is between second and third note")
+            void betweenSecondAndThird() {
+                assertEquals(2, result.findInsertionIndex(250, line));
+            }
+
+            @Test
+            @DisplayName("handles single note line - before note")
+            void singleNoteBeforeNote() {
+                var singleLine = new songscribe.music.Line();
+                singleLine.addNote(note1);
+
+                var singleResult = LayoutResult.builder()
+                        .putNoteColumn(note1, column1)
+                        .build();
+
+                assertEquals(0, singleResult.findInsertionIndex(50, singleLine));
+            }
+
+            @Test
+            @DisplayName("handles single note line - after note")
+            void singleNoteAfterNote() {
+                var singleLine = new songscribe.music.Line();
+                singleLine.addNote(note1);
+
+                var singleResult = LayoutResult.builder()
+                        .putNoteColumn(note1, column1)
+                        .build();
+
+                assertEquals(1, singleResult.findInsertionIndex(150, singleLine));
+            }
+
+            @Test
+            @DisplayName("handles missing column gracefully")
+            void missingColumn() {
+                var lineWithMissingColumn = new songscribe.music.Line();
+                lineWithMissingColumn.addNote(note1);
+
+                var resultWithoutColumn = LayoutResult.builder().build();
+
+                assertEquals(0, resultWithoutColumn.findInsertionIndex(150, lineWithMissingColumn));
+            }
+
+            @Test
+            @DisplayName("returns 0 when all columns are null")
+            void allColumnsNull() {
+                var lineWithNotes = new songscribe.music.Line();
+                lineWithNotes.addNote(note1);
+                lineWithNotes.addNote(note2);
+
+                var resultWithoutColumns = LayoutResult.builder().build();
+
+                assertEquals(0, resultWithoutColumns.findInsertionIndex(150, lineWithNotes));
+            }
+        }
+
+        @Nested
+        @DisplayName("calculateInsertionX")
+        class CalculateInsertionXTests {
+
+            private Note insertionNote;
+
+            @BeforeEach
+            void setUp() {
+                // Create a standard insertion note (Crotchet with no accidentals)
+                insertionNote = new Crotchet();
+            }
+
+            @Test
+            @DisplayName("returns first note offset for empty line")
+            void emptyLine() {
+                var emptyLine = new songscribe.music.Line();
+                var emptyResult = LayoutResult.builder().build();
+
+                var expectedX = LayoutConstants.calculateFirstNoteX(emptyLine.getKeyAccidentalCount());
+
+                assertEquals(expectedX, emptyResult.calculateInsertionX(0, 0, insertionNote, emptyLine), 0.01);
+            }
+
+            @Test
+            @DisplayName("returns position 15px left of first note when mouse is before note head")
+            void beforeFirstNote() {
+                var mouseX = 50.0;  // Well before first note at 100
+                var expectedX = 100.0 - 15.0;
+
+                assertEquals(expectedX, result.calculateInsertionX(0, mouseX, insertionNote, line), 0.01);
+            }
+
+            @Test
+            @DisplayName("snaps to first note position when mouse is over note head")
+            void overFirstNote() {
+                var mouseX = 100.0;  // Exactly on first note
+                var expectedX = 100.0;
+
+                assertEquals(expectedX, result.calculateInsertionX(0, mouseX, insertionNote, line), 0.01);
+            }
+
+            @Test
+            @DisplayName("uses proper spacing calculation for position after last note")
+            void afterLastNote() {
+                // Mouse is well after last note
+                var mouseX = 400.0;
+
+                // Build temporary column to use HorizontalSpacingCalculator
+                var insertionColumn = new NoteColumn(
+                        insertionNote,
+                        java.util.Collections.emptyList(),
+                        NoteColumnBuilder.calculateLeftExtent(insertionNote),
+                        NoteColumnBuilder.calculateRightExtent(insertionNote),
+                        0,
+                        0,
+                        null,
+                        0,
+                        null
+                );
+
+                var expectedX = HorizontalSpacingCalculator.calculateNextColumnX(column3, insertionColumn);
+
+                assertEquals(expectedX, result.calculateInsertionX(3, mouseX, insertionNote, line), 0.01);
+            }
+
+            @Test
+            @DisplayName("uses proper spacing calculation for index > noteCount")
+            void beyondNoteCount() {
+                // Mouse is well after last note
+                var mouseX = 500.0;
+
+                // Same as afterLastNote - uses last column
+                var insertionColumn = new NoteColumn(
+                        insertionNote,
+                        java.util.Collections.emptyList(),
+                        NoteColumnBuilder.calculateLeftExtent(insertionNote),
+                        NoteColumnBuilder.calculateRightExtent(insertionNote),
+                        0,
+                        0,
+                        null,
+                        0,
+                        null
+                );
+
+                var expectedX = HorizontalSpacingCalculator.calculateNextColumnX(column3, insertionColumn);
+
+                assertEquals(expectedX, result.calculateInsertionX(5, mouseX, insertionNote, line), 0.01);
+            }
+
+            @Test
+            @DisplayName("uses midpoint when inserting between notes")
+            void betweenFirstAndSecond() {
+                // Mouse is between notes (not over note head)
+                var mouseX = 150.0;
+
+                // Between notes: use midpoint
+                var expectedX = (100.0 + 200.0) / 2.0;
+
+                assertEquals(expectedX, result.calculateInsertionX(1, mouseX, insertionNote, line), 0.01);
+            }
+
+            @Test
+            @DisplayName("uses midpoint for second to third position")
+            void betweenSecondAndThird() {
+                // Mouse is between notes (not over note head)
+                var mouseX = 250.0;
+
+                // Between notes: use midpoint
+                var expectedX = (200.0 + 300.0) / 2.0;
+
+                assertEquals(expectedX, result.calculateInsertionX(2, mouseX, insertionNote, line), 0.01);
+            }
+
+            @Test
+            @DisplayName("snaps to note when mouse is over note head")
+            void snapToNoteWhenOverNoteHead() {
+                // Mouse is directly over second note at X=200
+                var mouseX = 200.0;
+                var expectedX = 200.0;
+
+                assertEquals(expectedX, result.calculateInsertionX(1, mouseX, insertionNote, line), 0.01);
+            }
+
+            @Test
+            @DisplayName("handles single note line - before note")
+            void singleNoteBeforeNote() {
+                var singleLine = new songscribe.music.Line();
+                singleLine.addNote(note1);
+
+                var singleResult = LayoutResult.builder()
+                        .putNoteColumn(note1, column1)
+                        .build();
+
+                var mouseX = 50.0;  // Before note
+                var expectedX = 100.0 - 15.0;
+
+                assertEquals(expectedX, singleResult.calculateInsertionX(0, mouseX, insertionNote, singleLine), 0.01);
+            }
+
+            @Test
+            @DisplayName("handles single note line - after note")
+            void singleNoteAfterNote() {
+                var singleLine = new songscribe.music.Line();
+                singleLine.addNote(note1);
+
+                var singleResult = LayoutResult.builder()
+                        .putNoteColumn(note1, column1)
+                        .build();
+
+                var mouseX = 150.0;  // After note
+
+                // After last note: use HorizontalSpacingCalculator
+                var insertionColumn = new NoteColumn(
+                        insertionNote,
+                        java.util.Collections.emptyList(),
+                        NoteColumnBuilder.calculateLeftExtent(insertionNote),
+                        NoteColumnBuilder.calculateRightExtent(insertionNote),
+                        0,
+                        0,
+                        null,
+                        0,
+                        null
+                );
+
+                var expectedX = HorizontalSpacingCalculator.calculateNextColumnX(column1, insertionColumn);
+
+                assertEquals(expectedX, singleResult.calculateInsertionX(1, mouseX, insertionNote, singleLine), 0.01);
+            }
+
+            @Test
+            @DisplayName("handles missing column gracefully - returns first note offset")
+            void missingColumn() {
+                var lineWithMissingColumn = new songscribe.music.Line();
+                lineWithMissingColumn.addNote(note1);
+                lineWithMissingColumn.addNote(note2);
+
+                var resultWithoutColumn = LayoutResult.builder().build();
+
+                var mouseX = 150.0;
+                var expectedX = LayoutConstants.px(LayoutConstants.FIRST_NOTE_OFFSET);
+
+                assertEquals(expectedX, resultWithoutColumn.calculateInsertionX(1, mouseX, insertionNote, lineWithMissingColumn), 0.01);
+            }
+
+            @Test
+            @DisplayName("accounts for insertion note with accidental")
+            void withAccidental() {
+                // Create a note with a sharp (wider left extent)
+                var noteWithSharp = new Crotchet();
+                noteWithSharp.setAccidental(Note.Accidental.SHARP);
+
+                var mouseX = 400.0;  // After last note
+
+                // Build temporary column
+                var insertionColumn = new NoteColumn(
+                        noteWithSharp,
+                        java.util.Collections.emptyList(),
+                        NoteColumnBuilder.calculateLeftExtent(noteWithSharp),
+                        NoteColumnBuilder.calculateRightExtent(noteWithSharp),
+                        0,
+                        0,
+                        null,
+                        0,
+                        null
+                );
+
+                var expectedX = HorizontalSpacingCalculator.calculateNextColumnX(column3, insertionColumn);
+
+                assertEquals(expectedX, result.calculateInsertionX(3, mouseX, noteWithSharp, line), 0.01);
+            }
+
+            @Test
+            @DisplayName("handles columns with different spacings")
+            void differentSpacings() {
+                var wideColumn1 = createColumn(note1, 100.0);
+                var wideColumn2 = createColumn(note2, 300.0);
+                var wideColumn3 = createColumn(note3, 600.0);
+
+                var wideResult = LayoutResult.builder()
+                        .putNoteColumn(note1, wideColumn1)
+                        .putNoteColumn(note2, wideColumn2)
+                        .putNoteColumn(note3, wideColumn3)
+                        .build();
+
+                // Mouse positions between notes
+                var mouseX1 = 200.0;
+                var mouseX2 = 450.0;
+
+                // Between notes: use midpoint
+                var expected1 = (100.0 + 300.0) / 2.0;
+                var expected2 = (300.0 + 600.0) / 2.0;
+
+                assertEquals(expected1, wideResult.calculateInsertionX(1, mouseX1, insertionNote, line), 0.01);
+                assertEquals(expected2, wideResult.calculateInsertionX(2, mouseX2, insertionNote, line), 0.01);
+            }
+        }
+    }
+
+    // ==========================================================================
     // Edge Cases
     // ==========================================================================
 

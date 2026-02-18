@@ -21,7 +21,7 @@ package songscribe.music;
 
 import java.awt.*;
 
-import songscribe.ui.component.Score;
+import songscribe.ui.playback.PlaybackController;
 
 public class Crotchet extends Note {
 
@@ -66,6 +66,6 @@ public class Crotchet extends Note {
 
     @Override
     public int getDefaultDuration() {
-        return Score.PPQ;
+        return PlaybackController.PPQ;
     }
 }

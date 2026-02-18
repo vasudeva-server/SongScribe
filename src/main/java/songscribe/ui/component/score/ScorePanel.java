@@ -1,0 +1,85 @@
+/*
+ * SongScribe song notation program
+ * Copyright (C) Sri Chinmoy Centres International
+ *
+ * This file is part of SongScribe.
+ *
+ * SongScribe is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * SongScribe is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+package songscribe.ui.component.score;
+
+import java.awt.*;
+
+import javax.swing.*;
+
+import org.jetbrains.annotations.NotNull;
+
+public class ScorePanel extends JPanel implements Scrollable {
+
+    private final Component content;
+
+    public ScorePanel(Component content) {
+        this.content = content;
+        setLayout(new GridBagLayout());
+        setBorder(BorderFactory.createEmptyBorder());
+        setBackground(Color.lightGray);
+        add(content);
+    }
+
+    @Override
+    @NotNull
+    public Dimension getPreferredSize() {
+        var contentSize = content.getPreferredSize();
+        var parentSize = getParent().getSize();
+        var width = Math.max(contentSize.width, parentSize.width);
+        return new Dimension(width, contentSize.height);
+    }
+
+    @Override
+    @NotNull
+    public Dimension getPreferredScrollableViewportSize() {
+        return getPreferredSize();
+    }
+
+    @Override
+    public int getScrollableUnitIncrement(
+        Rectangle visibleRect,
+        int orientation,
+        int direction
+    ) {
+        return 30;
+    }
+
+    @Override
+    public int getScrollableBlockIncrement(
+        Rectangle visibleRect,
+        int orientation,
+        int direction
+    ) {
+        return (orientation == SwingConstants.VERTICAL)
+            ? (visibleRect.height - 10)
+            : (visibleRect.width - 20);
+    }
+
+    @Override
+    public boolean getScrollableTracksViewportWidth() {
+        return false;
+    }
+
+    @Override
+    public boolean getScrollableTracksViewportHeight() {
+        return false;
+    }
+}

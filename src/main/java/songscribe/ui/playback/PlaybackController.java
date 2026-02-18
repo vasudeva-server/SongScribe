@@ -23,13 +23,18 @@ package songscribe.ui.playback;
 import java.util.ArrayList;
 
 import javax.sound.midi.InvalidMidiDataException;
+import javax.sound.midi.MetaMessage;
 import javax.sound.midi.Sequencer;
 
 import org.jetbrains.annotations.Nullable;
 
+import songscribe.midi.MidiSequenceBuilder;
+import songscribe.midi.PlaybackSettings;
+import songscribe.music.Composition;
 import songscribe.ui.Constants;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.Score;
+import songscribe.ui.component.score.LineComponent;
 import songscribe.ui.message.MessageCenter;
 import songscribe.ui.selection.NoteSelection;
 
@@ -41,11 +46,28 @@ public final class PlaybackController {
         STOPPED,
     }
 
+    // The number of pulses per quarter note (ticks per beat), used to calculate the duration of notes
+    // when playing back the score or generating a MIDI file.
+    public static final int PPQ = 96;
+
+    // The MIDI velocity values for normal and accented notes
+    public static final int NOTE_VELOCITY = 98;
+    public static final int ACCENTED_NOTE_VELOCITY = 127;
+
     private static PlaybackState state = PlaybackState.STOPPED;
+    private static int previousPlayingLine = -1;
+    private static int previousPlayingNote = -1;
+    private static NoteSelection pausedSelection = null;
     private static final int MINIMUM_PLAYBACK_TEMPO = 20;
     private static final int MAXIMUM_PLAYBACK_TEMPO = 180;
 
     private static final int PLAYBACK_TEMPO_STEP = 20;
+
+    private static int instrument = 0;
+    private static int tempoChangePercent = 100;
+    private static int noteDurationPercent = 100;
+    private static boolean colorizeNotes = false;
+    private static boolean playWithRepeats = false;
 
     public static final ArrayList<TempoChangeAction> PLAYBACK_TEMPO_ACTIONS =
         new ArrayList<>();
@@ -79,25 +101,140 @@ public final class PlaybackController {
 
     public static void playbackDidStart() {
         state = PlaybackState.PLAYING;
+        registerMetaListener();
         MessageCenter.post(new PlaybackStateChangedMessage(state));
+    }
+
+    private static void registerMetaListener() {
+        if (MidiController.sequencer != null) {
+            MidiController.sequencer.addMetaEventListener(PlaybackController::handleMetaMessage);
+        }
+    }
+
+    private static void handleMetaMessage(MetaMessage meta) {
+        if (meta.getType() == MidiMetaMessageTypes.SEQUENCE_NUMBER) {
+            var data = meta.getData();
+            var lineIndex = (data[0] << 8) | data[1];
+            var noteIndex = (data[2] << 8) | data[3];
+            updatePlayingNote(lineIndex, noteIndex);
+        } else if (meta.getType() == MidiMetaMessageTypes.END_OF_TRACK) {
+            stop();
+        }
+    }
+
+    private static void updatePlayingNote(int lineIndex, int noteIndex) {
+        // Clear previous line if different
+        if (previousPlayingLine != -1 && previousPlayingLine != lineIndex) {
+            var prevLineComponent = getLineComponent(previousPlayingLine);
+            if (prevLineComponent != null) {
+                prevLineComponent.setPlayingNoteIndex(-1);
+            }
+        }
+
+        // Set new playing note
+        var lineComponent = getLineComponent(lineIndex);
+        if (lineComponent != null) {
+            lineComponent.setPlayingNoteIndex(noteIndex);
+        }
+
+        previousPlayingLine = lineIndex;
+        previousPlayingNote = noteIndex;
+    }
+
+    private static LineComponent getLineComponent(int lineIndex) {
+        var mainFrame = MainFrame.getInstance();
+        if (mainFrame == null) return null;
+
+        var score = mainFrame.getScore();
+        if (score == null) return null;
+
+        return score.getLineComponent(lineIndex);
     }
 
     public static void playbackDidPause() {
         state = PlaybackState.PAUSED;
         stopSequencer();
+
+        // Remember what was playing when we paused so we can resume from the same position
+        var mainFrame = MainFrame.getInstance();
+        if (mainFrame != null) {
+            var score = mainFrame.getScore();
+            if (score != null) {
+                pausedSelection = score.getSelection();
+            }
+        }
+
         MessageCenter.post(new PlaybackStateChangedMessage(state));
     }
 
     public static void playbackDidStop() {
         state = PlaybackState.STOPPED;
         stopSequencer();
+        clearPlayingHighlight();
+        pausedSelection = null;
         MessageCenter.post(new PlaybackStateChangedMessage(state));
+    }
+
+    private static void clearPlayingHighlight() {
+        if (previousPlayingLine != -1) {
+            var lineComponent = getLineComponent(previousPlayingLine);
+            if (lineComponent != null) {
+                lineComponent.setPlayingNoteIndex(-1);
+            }
+        }
+        previousPlayingLine = -1;
+        previousPlayingNote = -1;
     }
 
     private static void stopSequencer() {
         if (MidiController.sequencer != null) {
             MidiController.sequencer.stop();
         }
+    }
+
+    public static void setInstrument(int value) {
+        instrument = value;
+    }
+
+    public static void setTempoChangePercent(int value) {
+        tempoChangePercent = value;
+    }
+
+    public static void setNoteDurationPercent(int value) {
+        noteDurationPercent = value;
+    }
+
+    public static void setColorizeNotes(boolean value) {
+        colorizeNotes = value;
+    }
+
+    public static void setPlayWithRepeats(boolean value) {
+        playWithRepeats = value;
+    }
+
+    public static PlaybackSettings getPlaybackSettings() {
+        return new PlaybackSettings(
+            instrument,
+            tempoChangePercent,
+            noteDurationPercent,
+            colorizeNotes,
+            playWithRepeats
+        );
+    }
+
+    public static javax.sound.midi.Sequence buildSequence(Composition composition)
+            throws InvalidMidiDataException {
+        return new MidiSequenceBuilder(composition, getPlaybackSettings()).buildFullSequence();
+    }
+
+    public static javax.sound.midi.Sequence buildSelectionSequence(
+            Composition composition,
+            int lineIndex,
+            int startNote,
+            int endNote
+    ) throws InvalidMidiDataException {
+        return new MidiSequenceBuilder(composition, getPlaybackSettings())
+            .buildSelectionSequence(lineIndex, startNote, endNote);
     }
 
     public static void togglePlayPause() {
@@ -126,7 +263,18 @@ public final class PlaybackController {
                 noteSelection = score.getSelection();
             }
 
-            setSequenceToPlayFromSelection(noteSelection, score, sequencer);
+            // Only rebuild the sequence if:
+            // 1. We're not resuming from pause, OR
+            // 2. We're resuming from pause but the selection has changed
+            var isResumingWithSameSelection =
+                (state == PlaybackState.PAUSED) &&
+                ((noteSelection == null && pausedSelection == null) ||
+                 (noteSelection != null && noteSelection.equals(pausedSelection)));
+
+            if (!isResumingWithSameSelection) {
+                setSequenceToPlayFromSelection(noteSelection, score, sequencer);
+            }
+
             setLoopSequence(noteSelection, mainFrame, sequencer);
             playbackDidStart();
             sequencer.start();
@@ -164,10 +312,12 @@ public final class PlaybackController {
         Score score,
         Sequencer sequencer
     ) throws InvalidMidiDataException {
+        var composition = score.getComposition();
         var sequence = (noteSelection == null)
-            ? score.getSequence()
-            : score.getSelectedSequence(
-                noteSelection.line(),
+            ? buildSequence(composition)
+            : buildSelectionSequence(
+                composition,
+                score.getComposition().getLines().indexOf(noteSelection.line()),
                 noteSelection.begin(),
                 noteSelection.end()
             );

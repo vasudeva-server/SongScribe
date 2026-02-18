@@ -10,7 +10,7 @@ This document contains build, compilation, and run instructions for SongScribe d
 ./scripts/compile.sh
 ```
 
-This ensures Java 21 is used, with a fallback to the default JDK if Java 21 is not available.
+This ensures the correct compile invocation is used.
 
 ### Build Full Project
 
@@ -19,6 +19,8 @@ mvn clean package
 ```
 
 ## Running
+
+DO NOT attempt to use the `run.sh` or `run-debug.sh` scripts when debug logging has been added during a bug fix. Request the user to run the application and provide logs instead.
 
 ### From Compiled Classes
 
@@ -68,13 +70,13 @@ mvn dependency:tree
 
 ## Java Version
 
-The project requires Java 21+. For macOS, the `java_home` utility can locate it:
+The project requires Java 25+. For macOS, the `java_home` utility can locate it:
 
 ```bash
-JAVA_HOME=$(/usr/libexec/java_home -v 21 2>/dev/null || /usr/libexec/java_home)
+JAVA_HOME=$(/usr/libexec/java_home -v 25 2>/dev/null || /usr/libexec/java_home)
 ```
 
-This command finds Java 21 with a fallback to the default installed JDK.
+This command finds Java 25 with a fallback to the default installed JDK.
 
 ## Common Issues
 
@@ -84,4 +86,4 @@ Log messages like "Could not register font: *.ttf" are non-fatal. The applicatio
 
 ### Module Access Warnings
 
-Some Java 21+ features may generate module access warnings. These are typically non-fatal and the application will continue running normally.
+Some Java 25+ features may generate module access warnings. These are typically non-fatal and the application will continue running normally.

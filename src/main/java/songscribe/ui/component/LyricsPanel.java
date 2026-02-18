@@ -27,6 +27,7 @@ import javax.swing.*;
 import com.intellij.uiDesigner.core.GridConstraints;
 import com.intellij.uiDesigner.core.GridLayoutManager;
 
+import songscribe.music.LyricsProcessor;
 import songscribe.ui.dialog.LyricsDialog;
 
 @SuppressWarnings("NonStaticInitializer")
@@ -132,7 +133,7 @@ public class LyricsPanel extends LyricsDialog {
                     .setTranslatedLyrics(translatedArea.getText());
 
                 if (spellLyricsNecessary) {
-                    score.spellLyrics();
+                    LyricsProcessor.spellLyrics(score.getComposition());
                 }
 
                 mainFrame.setDocumentModified(true);

@@ -23,10 +23,12 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Properties;
 
+import javax.sound.midi.InvalidMidiDataException;
 import javax.sound.midi.MidiSystem;
 
 import songscribe.ui.Constants;
 import songscribe.ui.component.Score;
+import songscribe.ui.playback.PlaybackController;
 import songscribe.util.FileUtils;
 import songscribe.util.Log;
 
@@ -87,14 +89,15 @@ public class MidiConverter {
                 score.openFile(mainFrame, file, false);
                 score.musicDidChange(props);
 
+                var sequence = PlaybackController.buildSequence(score.getComposition());
                 MidiSystem.write(
-                    score.getSequence(),
+                    sequence,
                     1,
                     new File(
                         FileUtils.getPathWithoutExtension(file) + ".midi"
                     )
                 );
-            } catch (IOException e) {
+            } catch (IOException | InvalidMidiDataException e) {
                 System.out.println("Could not convert " + file.getName());
             }
         }

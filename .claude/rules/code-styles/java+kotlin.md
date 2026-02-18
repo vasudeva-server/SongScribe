@@ -60,7 +60,7 @@ public static final int NORMAL_IMAGE_WIDTH = 18;
 
 **Variables**
 
-- Use `var` for local variables when type is obvious from context
+- Do **NOT** use explicit local variable types when type is obvious from context, use `var`
 - Use descriptive names, avoid single-letter names except in loops
 - Avoid abbreviations unless widely understood
 - Example:

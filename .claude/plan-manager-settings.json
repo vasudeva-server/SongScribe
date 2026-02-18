@@ -1,0 +1,12 @@
+{
+  "enableCategoryOrganization": true,
+  "categoryDirectories": {
+    "refactors": "refactors",
+    "docs": "docs",
+    "migrations": "migrations",
+    "designs": "designs",
+    "features": "features",
+    "reference": "reference",
+    "misc": "misc"
+  }
+}

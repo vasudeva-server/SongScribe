@@ -31,7 +31,6 @@ import javax.sound.midi.ShortMessage;
 import javax.swing.*;
 
 import songscribe.ui.Constants;
-import songscribe.ui.component.Score;
 import songscribe.ui.dialog.StandardDialog;
 
 public class InstrumentDialog extends StandardDialog {
@@ -123,7 +122,7 @@ public class InstrumentDialog extends StandardDialog {
             }
 
             try {
-                var sequence = new Sequence(Sequence.PPQ, Score.PPQ, 0);
+                var sequence = new Sequence(Sequence.PPQ, PlaybackController.PPQ, 0);
                 var track = sequence.createTrack();
                 var programChange = new ShortMessage();
                 programChange.setMessage(
@@ -152,16 +151,16 @@ public class InstrumentDialog extends StandardDialog {
                     down.setMessage(
                         ShortMessage.NOTE_ON,
                         pitch,
-                        Score.NOTE_VELOCITY
+                        PlaybackController.NOTE_VELOCITY
                     );
                     track.add(new MidiEvent(down, ticks));
 
-                    ticks += Score.PPQ / 2;
+                    ticks += PlaybackController.PPQ / 2;
                     var up = new ShortMessage();
                     up.setMessage(
                         ShortMessage.NOTE_OFF,
                         pitch,
-                        Score.NOTE_VELOCITY
+                        PlaybackController.NOTE_VELOCITY
                     );
                     track.add(new MidiEvent(up, ticks));
                 }

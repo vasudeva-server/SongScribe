@@ -29,6 +29,7 @@ import java.io.PrintWriter;
 import java.util.Properties;
 import java.util.zip.ZipOutputStream;
 
+import javax.sound.midi.InvalidMidiDataException;
 import javax.sound.midi.MidiSystem;
 import javax.swing.*;
 
@@ -38,6 +39,7 @@ import songscribe.io.CompositionIO;
 import songscribe.ui.Constants;
 import songscribe.ui.component.MyBorder;
 import songscribe.ui.dialog.ProcessDialog;
+import songscribe.ui.playback.PlaybackController;
 import songscribe.util.FileUtils;
 import songscribe.util.GraphicUtils;
 
@@ -247,8 +249,9 @@ public class ConvertAction extends AbstractAction {
                     );
 
                     try {
-                        MidiSystem.write(score.getSequence(), 1, midiFile);
-                    } catch (IOException e) {
+                        var sequence = PlaybackController.buildSequence(score.getComposition());
+                        MidiSystem.write(sequence, 1, midiFile);
+                    } catch (IOException | InvalidMidiDataException e) {
                         midiFile = null;
                         uiConverter.showErrorMessage(
                             "Could not convert MIDI for " + songFile.getName()

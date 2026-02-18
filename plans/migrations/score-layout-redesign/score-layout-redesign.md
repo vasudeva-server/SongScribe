@@ -1,7 +1,7 @@
 # Layout System Redesign: Swing Component + LineElement Hierarchy
 
-**Branch**: `feature/score-layout-redesign`
-**Last Updated**: 2026-01-31 (Line Layout Engine Complete, LayoutManager Removed)
+**Branch:** `feature/score-layout-redesign`  <br>
+**Last Updated:** 2026-01-31 (Line Layout Engine Complete, LayoutManager Removed)
 
 ---
 
@@ -95,18 +95,18 @@ Replace procedural `ScoreRenderer` with true Swing component hierarchy where:
 
 ## Status Dashboard
 
-| Phase | Status | Sub-plans |
-|-------|--------|-----------|
-| 1 | ✅ Complete | — |
-| 2 | ✅ Complete | [remove-layout-manager.md](../completed/score-layout-redesign/remove-layout-manager.md) ✓ |
-| 3 | ✅ Complete | — |
-| 4 | ✅ Complete | — |
-| 5 | ✅ Complete | [line-layout-engine.md](../completed/score-layout-redesign/line-layout-engine.md) ✓, **spatial-stacking-fix** (merged) |
-| 6 | ✅ Complete | — |
-| 7 | ⏸️ Deferred | — |
-| 8 | 🔄 In Progress | — |
-| 9 | ✅ Complete | — |
-| 10 | ⏸️ Future | — |
+| Phase | Description | Status | Sub-plan |
+|-------|-------------|--------|----------|
+| 1 | [Foundation Classes](#phase-1-foundation-classes--complete) | ✅ Complete | — |
+| 2 | [JComponent Hierarchy](#phase-2-jcomponent-hierarchy--complete) | ✅ Complete | [remove-layout-manager.md](../../completed/score-layout-redesign/remove-layout-manager.md) |
+| 3 | [Core Musical Elements](#phase-3-core-musical-elements--complete) | ✅ Complete | — |
+| 4 | [Range Elements and BeamGroup](#phase-4-range-elements-and-beamgroup--complete) | ✅ Complete | — |
+| 5 | [Attribution and Layout Integration](#phase-5-attribution-and-layout-integration--complete) | ✅ Complete | [line-layout-engine.md](../../completed/score-layout-redesign/line-layout-engine.md) |
+| 6 | [Rendering Infrastructure](#phase-6-rendering-infrastructure-strategy-pattern--complete) | ✅ Complete | — |
+| 7 | [IO and File Format](#phase-7-io-and-file-format--deferred) | ⏸️ Deferred | — |
+| 8 | [Cleanup and Library Migration](#phase-8-cleanup-and-library-migration--in-progress) | 🔄 In Progress | — |
+| 9 | [Orchestration Layer Migration](#phase-9-orchestration-layer-migration--complete) | ✅ Complete | — |
+| 10 | [Export Visitor Infrastructure](#phase-10-export-visitor-infrastructure--future) | ⏸️ Future | — |
 
 ---
 
@@ -363,6 +363,12 @@ class MusicXMLExportVisitor implements LineElementVisitor<Element> { ... }
 
 ## Phase 1: Foundation Classes ✅ COMPLETE
 
+**Status:** Complete  <br>
+**Recommended Model:** Inherit  <br>
+**Testing:** N/A  <br>
+**Priority:** N/A  <br>
+**Estimated Lines:** N/A
+
 **Goal**: Establish core base classes and simplified box model.
 
 ### Tasks
@@ -414,6 +420,12 @@ class MusicXMLExportVisitor implements LineElementVisitor<Element> { ... }
 
 ## Phase 2: JComponent Hierarchy ✅ COMPLETE
 
+**Status:** Complete  <br>
+**Recommended Model:** Inherit  <br>
+**Testing:** N/A  <br>
+**Priority:** N/A  <br>
+**Estimated Lines:** N/A
+
 **Goal**: Create Swing component structure with layout managers and remove LayoutManager.
 
 **Status**: ✅ Complete (2026-01-30)
@@ -424,7 +436,7 @@ class MusicXMLExportVisitor implements LineElementVisitor<Element> { ... }
 
 ### Sub-plans
 
-- [remove-layout-manager.md](../completed/score-layout-redesign/remove-layout-manager.md) ✓ — Complete removal of LayoutManager from screen rendering
+- [remove-layout-manager.md](../../completed/score-layout-redesign/remove-layout-manager.md) ✓ — Complete removal of LayoutManager from screen rendering
 
 ### LayoutManager Removal Summary
 
@@ -489,6 +501,12 @@ The LayoutManager has been **completely removed** from the screen rendering path
 
 ## Phase 3: Core Musical Elements ✅ COMPLETE
 
+**Status:** Complete  <br>
+**Recommended Model:** Inherit  <br>
+**Testing:** N/A  <br>
+**Priority:** N/A  <br>
+**Estimated Lines:** N/A
+
 **Goal**: Migrate Note/Rest/Bar to LineElement hierarchy.
 
 ### Tasks
@@ -530,6 +548,12 @@ The LayoutManager has been **completely removed** from the screen rendering path
 ---
 
 ## Phase 4: Range Elements and BeamGroup ✅ COMPLETE
+
+**Status:** Complete  <br>
+**Recommended Model:** Inherit  <br>
+**Testing:** N/A  <br>
+**Priority:** N/A  <br>
+**Estimated Lines:** N/A
 
 **Goal**: Implement RangeElement subclasses and BeamGroup coordinator.
 
@@ -574,15 +598,21 @@ The LayoutManager has been **completely removed** from the screen rendering path
 
 ## Phase 5: Attribution and Layout Integration ✅ COMPLETE
 
+**Status:** Complete  <br>
+**Recommended Model:** Inherit  <br>
+**Testing:** N/A  <br>
+**Priority:** N/A  <br>
+**Estimated Lines:** N/A
+
 **Goal**: Implement attribution handling, margin collapsing, and uniform row height spacing.
 
 **Status**: ✅ Complete (2026-01-31)
 
 ### Completed Sub-Plans
 
-- ✅ [line-layout-engine.md](../completed/score-layout-redesign/line-layout-engine.md) — Element-centric layout strategies with two-pass measure/arrange
+- ✅ [line-layout-engine.md](../../completed/score-layout-redesign/line-layout-engine.md) — Element-centric layout strategies with two-pass measure/arrange
 - ✅ **spatial-stacking-fix** — Merged (see below)
-- 🔄 [uniform-row-heights.md](./uniform-row-heights.md) — Pending (next priority)
+- 🔄 [uniform-row-heights.md](../../reference/uniform-row-heights.md) — Pending (next priority)
 
 ### Line Layout Engine Summary
 
@@ -678,6 +708,12 @@ The Line Layout Engine implements a comprehensive layout system using:
 
 ## Phase 6: Rendering Infrastructure (Strategy Pattern) ✅ COMPLETE
 
+**Status:** Complete  <br>
+**Recommended Model:** Inherit  <br>
+**Testing:** N/A  <br>
+**Priority:** N/A  <br>
+**Estimated Lines:** N/A
+
 **Goal**: Create modular element renderer system.
 
 **Implemented Renderers** (18 total):
@@ -758,6 +794,12 @@ The Line Layout Engine implements a comprehensive layout system using:
 
 ## Phase 7: IO and File Format ⏸️ DEFERRED
 
+**Status:** Deferred  <br>
+**Recommended Model:** Inherit  <br>
+**Testing:** N/A  <br>
+**Priority:** N/A  <br>
+**Estimated Lines:** N/A
+
 **Goal**: Support both old and new file formats with versioning.
 
 **Status**: Not yet needed. The current file format still works. This phase can be implemented
@@ -801,6 +843,12 @@ when there's a need to persist the new LineElement hierarchy to disk.
 
 ## Phase 8: Cleanup and Library Migration 🔶 IN PROGRESS
 
+**Status:** In Progress  <br>
+**Recommended Model:** Inherit  <br>
+**Testing:** N/A  <br>
+**Priority:** N/A  <br>
+**Estimated Lines:** N/A
+
 **Goal**: Remove deprecated code, migrate libraries, and finalize.
 
 ### Tasks
@@ -819,11 +867,10 @@ when there's a need to persist the new LineElement hierarchy to disk.
    - Remove slur rendering methods
    - Update UI to remove slur tools
 
-8.3. 🔒 BLOCKED: Remove old layout system classes
-   - Old LayoutManager methods — still used for measurement
-   - Old LayoutResult structures — still used
-   - Old NoteLayout, LineLayout classes — still used
-   - **Blocker**: LayoutManager depends on Renderer measurement methods
+8.3. ✅ COMPLETE: Remove old layout system classes
+   - LayoutManager fully removed from rendering path (completed in Phase 2)
+   - Component hierarchy is now single source of truth
+   - Note: LayoutResult, NoteLayout, LineLayout classes still exist and may be cleaned up in future refactoring
 
 8.4. ✅ COMPLETE: Remove old Renderer classes
    - ✅ Removed Renderer API from Score (Score.getRenderer() deleted - commit 1b68261)
@@ -858,6 +905,12 @@ when there's a need to persist the new LineElement hierarchy to disk.
 
 ## Phase 9: Orchestration Layer Migration ✅ COMPLETE
 
+**Status:** Complete  <br>
+**Recommended Model:** Inherit  <br>
+**Testing:** N/A  <br>
+**Priority:** N/A  <br>
+**Estimated Lines:** N/A
+
 **Goal**: Migrate Score.java from Renderer.drawScore() to ScoreRenderer.
 
 **Note**: This phase was added to bridge the gap between the new ElementRenderers and the old
@@ -885,6 +938,12 @@ monolithic Renderer. The original Phase 9 (Export Visitor Infrastructure) is now
 ---
 
 ## Phase 10: Export Visitor Infrastructure ⏸️ FUTURE
+
+**Status:** Future  <br>
+**Recommended Model:** Inherit  <br>
+**Testing:** N/A  <br>
+**Priority:** N/A  <br>
+**Estimated Lines:** N/A
 
 **Goal**: Implement visitor pattern for MIDI and format exports.
 

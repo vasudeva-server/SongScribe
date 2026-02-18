@@ -306,7 +306,7 @@ public class NoteRenderer extends BaseElementRenderer<Note> {
         g2.drawString(headStr, noteHeadXPos, 0f);
 
         // Draw stem (always for notes with stems - beamed notes need stems to connect to beams)
-        renderStem(g2, note, note.isUpper(), false, noteType);
+        renderStem(g2, note, note.isUpper(), false, beamed, noteType);
 
         // Draw flags only for unbeamed notes (beamed notes get beams instead of flags)
         if (!beamed) {
@@ -339,7 +339,7 @@ public class NoteRenderer extends BaseElementRenderer<Note> {
         g2.drawString(headStr, noteHeadXPos, 0f);
 
         // Draw stem (always for notes with stems - beamed notes need stems to connect to beams)
-        renderStem(g2, note, note.isUpper(), false, noteType);
+        renderStem(g2, note, note.isUpper(), false, beamed, noteType);
 
         // Draw flags only for unbeamed notes (beamed notes get beams instead of flags)
         if (!beamed) {
@@ -359,6 +359,7 @@ public class NoteRenderer extends BaseElementRenderer<Note> {
         @NotNull Note note,
         boolean upper,
         boolean isTempoNote,
+        boolean beamed,
         @NotNull NoteType noteType
     ) {
         if (!noteType.isNoteWithStem()) {
@@ -370,16 +371,21 @@ public class NoteRenderer extends BaseElementRenderer<Note> {
 
         if (isTempoNote) {
             stemLengthOffset = -2; // tempoStemShortening
-        } else {
+        } else if (!beamed) {
+            // Only apply flag-related stem length adjustments for unbeamed notes.
+            // Beamed notes don't have flags, so they don't need the extra stem length.
             if (noteType == NoteType.SEMIQUAVER) {
                 stemLengthOffset = FLAG_Y_LENGTH - SEMIQUAVER_AND_DEMI_SEMIQUAVER_FLAG_COLLAPSE;
             } else if (noteType == NoteType.DEMI_SEMIQUAVER) {
                 stemLengthOffset = (2 * FLAG_Y_LENGTH) - SEMIQUAVER_AND_DEMI_SEMIQUAVER_FLAG_COLLAPSE;
-            } else if (noteType == NoteType.CROTCHET) {
-                stemYOffset = LOWER_STEM_CROTCHET_Y1_OFFSET;
-            } else if (noteType == NoteType.MINIM) {
-                stemYOffset = 0.1d;
             }
+        }
+
+        // Y offset adjustments apply to all notes
+        if (noteType == NoteType.CROTCHET) {
+            stemYOffset = LOWER_STEM_CROTCHET_Y1_OFFSET;
+        } else if (noteType == NoteType.MINIM) {
+            stemYOffset = 0.1d;
         }
 
         if (upper) {
@@ -388,14 +394,14 @@ public class NoteRenderer extends BaseElementRenderer<Note> {
                 stemX,
                 UPPER_STEM.getY1(),
                 stemX,
-                UPPER_STEM.getY2() - stemLengthOffset
+                UPPER_STEM.getY2() - stemLengthOffset - note.acceleration.lengthening
             );
         } else {
             note.acceleration.stem.setLine(
                 0d,
                 LOWER_STEM.getY1() + stemYOffset,
                 0d,
-                LOWER_STEM.getY2() + stemLengthOffset
+                LOWER_STEM.getY2() + stemLengthOffset - note.acceleration.lengthening
             );
         }
 

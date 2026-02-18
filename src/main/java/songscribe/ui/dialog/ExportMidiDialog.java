@@ -24,6 +24,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Properties;
 
+import javax.sound.midi.InvalidMidiDataException;
 import javax.sound.midi.MidiSystem;
 import javax.swing.*;
 
@@ -32,6 +33,7 @@ import org.jetbrains.annotations.NotNull;
 import songscribe.ui.Constants;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.playback.InstrumentDialog;
+import songscribe.ui.playback.PlaybackController;
 import songscribe.util.FileUtils;
 
 public class ExportMidiDialog extends StandardDialog {
@@ -83,10 +85,11 @@ public class ExportMidiDialog extends StandardDialog {
             var props = getProperties();
             var score = mainFrame.getScore();
             score.musicDidChange(props);
-            MidiSystem.write(score.getSequence(), 1, saveFile);
+            var sequence = PlaybackController.buildSequence(score.getComposition());
+            MidiSystem.write(sequence, 1, saveFile);
             score.musicDidChange(mainFrame.getProperties());
             FileUtils.openExportFile(mainFrame, saveFile);
-        } catch (IOException e1) {
+        } catch (IOException | InvalidMidiDataException e1) {
             mainFrame.showErrorMessage(MainFrame.COULD_NOT_SAVE_MESSAGE);
         }
     }

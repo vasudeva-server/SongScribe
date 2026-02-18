@@ -244,7 +244,7 @@ public class BeamGroupRenderer extends BaseElementRenderer<BeamGroup> {
         if (!type.isGraceNote()) {
             for (int i = 0; i < BEAM_LEVELS.length; i++) {
                 if (BEAM_LEVELS[i] == type) {
-                    return i <= level;
+                    return i <= (BEAM_LEVELS.length - 1 - level);
                 }
             }
             return false;
@@ -288,17 +288,23 @@ public class BeamGroupRenderer extends BaseElementRenderer<BeamGroup> {
         var halfStemWidth = STEM_STROKE.getLineWidth() / 2;
         var halfBeamWidth = (BEAM_STROKE.getLineWidth() / 2) - halfStemWidth;
 
+        // Inner beam offset: moves beam toward note head for secondary/tertiary beams
+        var innerBeamOffset = INNER_BEAM_OFFSET * recursionLevel * (isUpper ? 1 : -1);
+
+        // Calculate first note beam position using actual stem end (y2)
         var noteX = beginNote.getXPos();
         var firstX = firstStem.x1 + noteX;
+        var noteY = middleLineY + (beginNote.getYPos() * LayoutStylesheet.NOTE_Y_OFFSET);
 
-        var yOffset = INNER_BEAM_OFFSET * recursionLevel * (isUpper ? 1 : -1);
-        var noteY = middleLineY + (beginNote.getYPos() * LayoutStylesheet.NOTE_Y_OFFSET) + yOffset;
-        var firstY = (noteY + firstStem.y1) - beginNote.acceleration.lengthening;
+        // Use stem.y2 directly - it already incorporates lengthening from NoteRenderer
+        // Adjust so beam edge meets stem end: upper beams have bottom edge at stem,
+        // lower beams have top edge at stem
+        var firstY = noteY + firstStem.y2 + innerBeamOffset;
 
         if (isUpper) {
-            firstY += -Note.HOT_SPOT.y + halfBeamWidth;
+            firstY -= halfBeamWidth;  // Beam bottom at stem end
         } else {
-            firstY += Note.HOT_SPOT.y - halfBeamWidth;
+            firstY += halfBeamWidth;  // Beam top at stem end
         }
 
         // Build beam path
@@ -306,15 +312,16 @@ public class BeamGroupRenderer extends BaseElementRenderer<BeamGroup> {
         beam.moveTo(firstX, firstY + halfBeamWidth);  // Bottom left
         beam.lineTo(firstX, firstY - halfBeamWidth);  // Top left
 
+        // Calculate last note beam position
         noteX = endNote.getXPos();
-        noteY = middleLineY + (endNote.getYPos() * LayoutStylesheet.NOTE_Y_OFFSET) + yOffset;
         var lastX = lastStem.x1 + noteX;
-        var lastY = (noteY + lastStem.y1) - endNote.acceleration.lengthening;
+        noteY = middleLineY + (endNote.getYPos() * LayoutStylesheet.NOTE_Y_OFFSET);
+        var lastY = noteY + lastStem.y2 + innerBeamOffset;
 
         if (isUpper) {
-            lastY += -Note.HOT_SPOT.y + halfBeamWidth;
+            lastY -= halfBeamWidth;
         } else {
-            lastY += Note.HOT_SPOT.y - halfBeamWidth;
+            lastY += halfBeamWidth;
         }
 
         beam.lineTo(lastX, lastY - halfBeamWidth);    // Top right

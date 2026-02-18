@@ -1,3 +1,11 @@
+**Type:** Sub-plan
+**Parent:** plans/completed/line-engraving-rewrite/line-engraving-rewrite.md → Phase 5
+**Captured:** 2026-02-01
+**Pre-planned:** No
+**Status:** Completed
+
+---
+
 # Phase 5 Integration Status
 
 ## Completed

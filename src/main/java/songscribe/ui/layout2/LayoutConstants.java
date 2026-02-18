@@ -71,20 +71,53 @@ public final class LayoutConstants {
     }
 
     // ==========================================================================
-    // HORIZONTAL SPACING - Note Columns
+    // HORIZONTAL SPACING - Line Beginning
     // ==========================================================================
+
+    /**
+     * Width of the treble clef symbol.
+     */
+    public static final double CLEF_WIDTH = 28.0;  // px
+
+    /**
+     * Width of each accidental in the key signature.
+     */
+    public static final double KEY_ACCIDENTAL_WIDTH = 8.0;  // px
 
     /**
      * Distance from right extent of clef/key signature to first note column.
      * Per Gould/Ross: provides visual separation between staff beginning and music.
      */
-    public static final double FIRST_NOTE_OFFSET = 11.5;  // 46px
+    public static final double FIRST_NOTE_OFFSET = 7;  // 28px
+
+    /**
+     * Calculates the X position of the first note in a line.
+     * <p>
+     * Formula: clefWidth + keySignatureWidth + FIRST_NOTE_OFFSET
+     *
+     * @param keyAccidentalCount Number of accidentals in the key signature
+     * @return X position in pixels where the first note should be placed
+     */
+    public static double calculateFirstNoteX(int keyAccidentalCount) {
+        double keySignatureWidth = keyAccidentalCount * KEY_ACCIDENTAL_WIDTH;
+        return CLEF_WIDTH + keySignatureWidth + px(FIRST_NOTE_OFFSET);
+    }
+
+    // ==========================================================================
+    // HORIZONTAL SPACING - Note Columns
+    // ==========================================================================
 
     /**
      * Minimum horizontal gap between adjacent note columns.
      * This is the absolute minimum; lyric spacing may require more.
      */
     public static final double MIN_COLUMN_GAP = 0.25;  // 1px
+
+    /**
+     * Default horizontal gap between adjacent note columns when no lyrics are present.
+     * Provides comfortable spacing for music without lyrics.
+     */
+    public static final double DEFAULT_COLUMN_GAP = 3.0;  // 12px
 
     /**
      * Minimum horizontal gap between syllables.

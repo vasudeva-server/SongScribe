@@ -31,7 +31,6 @@ import songscribe.music.Line;
 import songscribe.music.Note;
 import songscribe.music.NoteType;
 import songscribe.ui.component.Score;
-import songscribe.ui.layout.NoteSpacing;
 import songscribe.ui.renderer.GlissandoRenderer;
 
 public class HorizontalAdjustment extends Adjustment {
@@ -248,8 +247,6 @@ public class HorizontalAdjustment extends Adjustment {
             draggingRect.horizontalAdjustmentType ==
             HorizontalAdjustmentType.START_OF_LINE
         ) {
-            NoteSpacing.setFirstNoteX(endPoint.x);
-
             for (var currentLine : composition.getLines()) {
                 if (currentLine.noteCount() > 0) {
                     var diff = endPoint.x - currentLine.getNote(0).getXPos();

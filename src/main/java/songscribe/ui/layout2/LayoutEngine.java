@@ -140,7 +140,10 @@ public class LayoutEngine {
         // Step 4: Calculate vertical positions
         var verticalResult = verticalCalculator.calculateVerticalPositions(columns, line, g2);
 
-        // Step 5: Build final LayoutResult
+        // Step 5: Update Note positions to match calculated layout
+        updateNotePositions(columns);
+
+        // Step 6: Build final LayoutResult
         return buildLayoutResult(columns, verticalResult, line);
     }
 
@@ -151,6 +154,24 @@ public class LayoutEngine {
      */
     public @Nullable String getLastError() {
         return lastError;
+    }
+
+    /**
+     * Updates Note objects with their calculated positions from NoteColumns.
+     * <p>
+     * The layout system calculates positions and stores them in NoteColumn objects,
+     * but the Note objects themselves also store positions that are used by other
+     * parts of the system (insertion marker, debug visualization, etc.). This method
+     * ensures the Note positions stay in sync with the layout results.
+     *
+     * @param columns The note columns with calculated positions
+     */
+    private void updateNotePositions(@NotNull List<NoteColumn> columns) {
+        for (var column : columns) {
+            var note = column.getNote();
+            var x = column.getX();
+            note.setXPos((int) Math.round(x));
+        }
     }
 
     /**

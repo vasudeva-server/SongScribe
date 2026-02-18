@@ -224,12 +224,21 @@ public final class Composition {
         this.tempo = tempo;
     }
 
-    public Tempo getLastTempo(Line line, int noteIndex) {
+    /**
+     * Returns the effective tempo at a given position in the composition.
+     * Walks backwards through lines and notes to find the most recent tempo change,
+     * or returns the default composition tempo if none found.
+     *
+     * @param lineIndex The index of the line
+     * @param noteIndex The index of the note within the line
+     * @return The effective tempo at this position
+     */
+    public Tempo getTempoAt(int lineIndex, int noteIndex) {
         // find the last tempo change
         var lastLine = true;
 
-        for (var lineIndex = lines.indexOf(line); lineIndex >= 0; lineIndex--) {
-            var currentLine = lines.get(lineIndex);
+        for (var i = lineIndex; i >= 0; i--) {
+            var currentLine = lines.get(i);
 
             for (
                 var n = lastLine ? noteIndex : (currentLine.noteCount() - 1);

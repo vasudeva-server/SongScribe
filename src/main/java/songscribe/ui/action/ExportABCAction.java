@@ -49,6 +49,7 @@ import songscribe.ui.Constants;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.Score;
 import songscribe.ui.dialog.PlatformFileDialog;
+import songscribe.ui.playback.PlaybackController;
 import songscribe.util.FileUtils;
 
 /**
@@ -153,7 +154,7 @@ public class ExportABCAction extends UIAction {
         }
 
         if (maxValueEntry.getValue() == Integer.MIN_VALUE) {
-            return Score.PPQ * 4;
+            return PlaybackController.PPQ * 4;
         }
         return maxValueEntry.getKey();
     }
@@ -204,7 +205,7 @@ public class ExportABCAction extends UIAction {
             "L:" +
             translateUnitLength(
                 compositionUnitLength,
-                Score.PPQ * 4
+                PlaybackController.PPQ * 4
             ).asAbcString()
         );
 
@@ -232,7 +233,7 @@ public class ExportABCAction extends UIAction {
         }
         var fraction = translateUnitLength(
             tempo.getTempoType().getNote().getDuration(),
-            Score.PPQ * 4
+            PlaybackController.PPQ * 4
         );
         return (
             fraction.asAbcString() +
