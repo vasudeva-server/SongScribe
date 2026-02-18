@@ -228,13 +228,20 @@ public final class MyFontUtils {
     public static void installLocalFont(@NotNull String fontName, float size) {
         var font = getLocalFont(fontName, size);
 
-        if (font != null) {
-            var success = GraphicsEnvironment.getLocalGraphicsEnvironment()
-                .registerFont(font);
+        if (font == null) {
+            return;
+        }
 
-            if (!success) {
-                Log.error("Could not register font: " + fontName);
-            }
+        var ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
+        var psName = font.getPSName();
+
+        // Skip registration if a font with the same PostScript name is already present
+        // (registerFont returns false for duplicates, but also for other failures).
+        var alreadyRegistered = Arrays.stream(ge.getAllFonts())
+            .anyMatch(f -> f.getPSName().equals(psName));
+
+        if (!alreadyRegistered && !ge.registerFont(font)) {
+            Log.error("Could not register font: " + fontName);
         }
     }
 
