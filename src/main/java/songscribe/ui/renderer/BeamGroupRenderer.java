@@ -99,12 +99,14 @@ public class BeamGroupRenderer extends BaseElementRenderer<BeamGroup> {
         var notes = element.getBeamedNotes();
 
         if (notes.size() < 2) {
+            System.out.println("[BeamRenderer] renderElement: skipping, notes.size()=" + notes.size());
             return;
         }
 
         var line = ctx.getCurrentLine();
 
         if (line == null) {
+            System.out.println("[BeamRenderer] renderElement: skipping, line is null");
             return;
         }
 
@@ -113,11 +115,26 @@ public class BeamGroupRenderer extends BaseElementRenderer<BeamGroup> {
         int endIndex = line.getNoteIndex(notes.get(notes.size() - 1));
 
         if (beginIndex < 0 || endIndex < 0) {
+            System.out.println("[BeamRenderer] renderElement: skipping, beginIndex=" + beginIndex + " endIndex=" + endIndex);
             return;
         }
 
         // Determine beam level based on shortest note value
         int level = getBeamLevel(line, beginIndex, endIndex);
+
+        System.out.println("[BeamRenderer] ============================================");
+        System.out.println("[BeamRenderer] renderElement: beginIndex=" + beginIndex + " endIndex=" + endIndex + " level=" + level);
+        for (int i = beginIndex; i <= endIndex; i++) {
+            var note = line.getNote(i);
+            System.out.println("[BeamRenderer]   note[" + i + "]: type=" + note.getNoteType()
+                + " yPos=" + note.getYPos() + " xPos=" + note.getXPos()
+                + " upper=" + note.isUpper()
+                + " lengthening=" + note.properties.lengthening
+                + " stem=(x1=" + note.properties.stem.x1
+                + " y1=" + note.properties.stem.y1
+                + " x2=" + note.properties.stem.x2
+                + " y2=" + note.properties.stem.y2 + ")");
+        }
 
         // Draw beams
         drawBeams(g2, level, line, ctx, beginIndex, endIndex);
@@ -135,6 +152,8 @@ public class BeamGroupRenderer extends BaseElementRenderer<BeamGroup> {
         int beginIndex,
         int endIndex
     ) {
+        System.out.println("[BeamRenderer] ============================================");
+        System.out.println("[BeamRenderer] renderBeams: beginIndex=" + beginIndex + " endIndex=" + endIndex);
         int level = getBeamLevel(line, beginIndex, endIndex);
         drawBeams(g2, level, line, ctx, beginIndex, endIndex);
     }
@@ -150,12 +169,16 @@ public class BeamGroupRenderer extends BaseElementRenderer<BeamGroup> {
 
             for (int j = 0; j < BEAM_LEVELS.length; j++) {
                 if (noteType == BEAM_LEVELS[j]) {
-                    maxLevel = Math.max(maxLevel, BEAM_LEVELS.length - 1 - j);
+                    var level = BEAM_LEVELS.length - 1 - j;
+                    System.out.println("[BeamRenderer] getBeamLevel: note[" + i + "] type=" + noteType
+                        + " beamLevelIndex=" + j + " level=" + level);
+                    maxLevel = Math.max(maxLevel, level);
                     break;
                 }
             }
         }
 
+        System.out.println("[BeamRenderer] getBeamLevel: maxLevel=" + maxLevel);
         return maxLevel;
     }
 
@@ -185,7 +208,16 @@ public class BeamGroupRenderer extends BaseElementRenderer<BeamGroup> {
         boolean isPrevLeftOriented,
         int recursionLevel
     ) {
+        String indent = "  ".repeat(recursionLevel);
+        System.out.println("[BeamRenderer] " + indent + "doDrawBeams: level=" + level
+            + " beginIndex=" + beginIndex + " endIndex=" + endIndex
+            + " prevBegin=" + prevBeginIndex + " prevEnd=" + prevEndIndex
+            + " isPrevLeftOriented=" + isPrevLeftOriented
+            + " recursionLevel=" + recursionLevel
+            + " outerNotes=(" + outerNotes.x + "," + outerNotes.y + ")");
+
         if (level == -1) {
+            System.out.println("[BeamRenderer] " + indent + "  -> level=-1, returning");
             return;
         }
 
@@ -196,6 +228,7 @@ public class BeamGroupRenderer extends BaseElementRenderer<BeamGroup> {
         // Half beam (single note at this level)
         if (beginIndex == endIndex) {
             if (beginNote.getNoteType().isGraceNote()) {
+                System.out.println("[BeamRenderer] " + indent + "  -> grace note, skipping half beam");
                 return;
             }
 
@@ -214,27 +247,41 @@ public class BeamGroupRenderer extends BaseElementRenderer<BeamGroup> {
             }
 
             var type = leftOriented ? BeamType.ATTACH_RIGHT : BeamType.ATTACH_LEFT;
+            System.out.println("[BeamRenderer] " + indent + "  -> HALF beam: leftOriented=" + leftOriented
+                + " type=" + type + " drawBeam(" + begin + "," + end + ") isUpper=" + isUpper);
             drawBeam(g2, line, ctx, begin, end, isUpper, type, recursionLevel);
         }
         // Full beam
         else {
+            System.out.println("[BeamRenderer] " + indent + "  -> FULL beam: drawBeam(" + beginIndex + "," + endIndex + ") isUpper=" + isUpper);
             drawBeam(g2, line, ctx, beginIndex, endIndex, isUpper, BeamType.FULL, recursionLevel);
         }
 
-        // Sub-beams for higher levels
-        var beamLevel = level - 1;
+        // Sub-beams for inner levels.
+        var beamLevel = recursionLevel + 1;
         var startSubBeam = -1;
+
+        System.out.println("[BeamRenderer] " + indent + "  scanning sub-beams at beamLevel=" + beamLevel);
 
         for (var i = beginIndex; i <= endIndex + 1; i++) {
             if (i <= endIndex && isNoteTypeInLevel(line, i, beamLevel)) {
+                System.out.println("[BeamRenderer] " + indent + "    note[" + i + "] IS in level " + beamLevel
+                    + " (type=" + line.getNote(i).getNoteType() + ")");
                 if (startSubBeam == -1) {
                     startSubBeam = i;
                 }
-            } else if (startSubBeam != -1) {
-                doDrawBeams(g2, beamLevel, line, ctx, outerNotes,
-                    startSubBeam, i - 1, beginIndex, endIndex,
-                    leftOriented, recursionLevel + 1);
-                startSubBeam = -1;
+            } else {
+                if (i <= endIndex) {
+                    System.out.println("[BeamRenderer] " + indent + "    note[" + i + "] NOT in level " + beamLevel
+                        + " (type=" + line.getNote(i).getNoteType() + ")");
+                }
+                if (startSubBeam != -1) {
+                    System.out.println("[BeamRenderer] " + indent + "    -> sub-beam range: " + startSubBeam + " to " + (i - 1));
+                    doDrawBeams(g2, beamLevel, line, ctx, outerNotes,
+                        startSubBeam, i - 1, beginIndex, endIndex,
+                        leftOriented, recursionLevel + 1);
+                    startSubBeam = -1;
+                }
             }
         }
     }
@@ -245,9 +292,14 @@ public class BeamGroupRenderer extends BaseElementRenderer<BeamGroup> {
         if (!type.isGraceNote()) {
             for (int i = 0; i < BEAM_LEVELS.length; i++) {
                 if (BEAM_LEVELS[i] == type) {
-                    return i <= (BEAM_LEVELS.length - 1 - level);
+                    var result = i <= (BEAM_LEVELS.length - 1 - level);
+                    System.out.println("[BeamRenderer]       isNoteTypeInLevel: note[" + noteIndex + "] type=" + type
+                        + " beamLevelIndex=" + i + " threshold=" + (BEAM_LEVELS.length - 1 - level)
+                        + " -> " + result);
+                    return result;
                 }
             }
+            System.out.println("[BeamRenderer]       isNoteTypeInLevel: note[" + noteIndex + "] type=" + type + " NOT beamable -> false");
             return false;
         }
 
@@ -263,8 +315,10 @@ public class BeamGroupRenderer extends BaseElementRenderer<BeamGroup> {
             end++;
         }
 
-        return begin >= 0 && isNoteTypeInLevel(line, begin, level) &&
+        var result = begin >= 0 && isNoteTypeInLevel(line, begin, level) &&
             end < line.noteCount() && isNoteTypeInLevel(line, end, level);
+        System.out.println("[BeamRenderer]       isNoteTypeInLevel: grace note[" + noteIndex + "] -> " + result);
+        return result;
     }
 
     private void drawBeam(
@@ -282,24 +336,30 @@ public class BeamGroupRenderer extends BaseElementRenderer<BeamGroup> {
         var firstStem = beginNote.properties.stem;
         var lastStem = endNote.properties.stem;
 
+        System.out.println("[BeamRenderer]   drawBeam: type=" + type + " beginIndex=" + beginIndex + " endIndex=" + endIndex
+            + " isUpper=" + isUpper + " recursionLevel=" + recursionLevel);
+        System.out.println("[BeamRenderer]     beginNote: type=" + beginNote.getNoteType()
+            + " yPos=" + beginNote.getYPos() + " xPos=" + beginNote.getXPos()
+            + " lengthening=" + beginNote.properties.lengthening
+            + " stem=(x1=" + firstStem.x1 + " y1=" + firstStem.y1 + " x2=" + firstStem.x2 + " y2=" + firstStem.y2 + ")");
+        System.out.println("[BeamRenderer]     endNote: type=" + endNote.getNoteType()
+            + " yPos=" + endNote.getYPos() + " xPos=" + endNote.getXPos()
+            + " lengthening=" + endNote.properties.lengthening
+            + " stem=(x1=" + lastStem.x1 + " y1=" + lastStem.y1 + " x2=" + lastStem.x2 + " y2=" + lastStem.y2 + ")");
+
         int middleLineY = ctx.getMiddleLineY();
         var halfStemWidth = NoteRenderer.STEM_WIDTH / 2.0;
 
-        // Gould/Ross beam model: the beam "nests into" the stem.
-        // For up stems: the beam's top edge aligns with the stem tip,
-        //   and the beam extends downward (toward the notehead) by BEAM_THICKNESS_PX.
-        // For down stems: the beam's bottom edge aligns with the stem tip,
-        //   and the beam extends upward (toward the notehead) by BEAM_THICKNESS_PX.
-        // Secondary beams stack further inward from the primary.
         var beamThickness = isUpper ? BEAM_THICKNESS_PX : -BEAM_THICKNESS_PX;
-
-        // Secondary/tertiary beams offset toward the noteheads (inward in the stack)
         var innerBeamOffset = INNER_BEAM_OFFSET * recursionLevel * (isUpper ? 1 : -1);
 
-        // Stem coordinates (stem.x1) are stored relative to the snapped note origin
-        // used in NoteRenderer.renderElement(). We must snap noteX the same way here
-        // so beam edges align exactly with stem edges — no re-snapping of the final
-        // beam coordinates, since the stem was already pixel-aligned.
+        System.out.println("[BeamRenderer]     middleLineY=" + middleLineY
+            + " halfStemWidth=" + halfStemWidth
+            + " BEAM_THICKNESS_PX=" + BEAM_THICKNESS_PX
+            + " beamThickness=" + beamThickness
+            + " INNER_BEAM_OFFSET=" + INNER_BEAM_OFFSET
+            + " innerBeamOffset=" + innerBeamOffset);
+
         var layoutResult = ctx.getLayoutResult();
 
         // First note: left edge of stem, stem tip Y
@@ -310,6 +370,11 @@ public class BeamGroupRenderer extends BaseElementRenderer<BeamGroup> {
         var firstOuterY = GraphicUtils.snapYToDevicePixel(g2, noteY + firstStem.y2 + innerBeamOffset);
         var firstInnerY = GraphicUtils.snapYToDevicePixel(g2, firstOuterY + beamThickness);
 
+        System.out.println("[BeamRenderer]     firstNote coords: noteX=" + noteX + " snappedNoteX=" + snappedNoteX
+            + " firstX=" + firstX + " noteY=" + noteY
+            + " stemTipY(noteY+stem.y2)=" + (noteY + firstStem.y2)
+            + " firstOuterY=" + firstOuterY + " firstInnerY=" + firstInnerY);
+
         // Last note: right edge of stem, stem tip Y
         noteX = (layoutResult != null) ? layoutResult.getNoteX(endNote) : endNote.getXPos();
         snappedNoteX = GraphicUtils.snapXToDevicePixel(g2, noteX);
@@ -318,6 +383,11 @@ public class BeamGroupRenderer extends BaseElementRenderer<BeamGroup> {
         var lastOuterY = GraphicUtils.snapYToDevicePixel(g2, noteY + lastStem.y2 + innerBeamOffset);
         var lastInnerY = GraphicUtils.snapYToDevicePixel(g2, lastOuterY + beamThickness);
 
+        System.out.println("[BeamRenderer]     lastNote coords: noteX=" + noteX + " snappedNoteX=" + snappedNoteX
+            + " lastX=" + lastX + " noteY=" + noteY
+            + " stemTipY(noteY+stem.y2)=" + (noteY + lastStem.y2)
+            + " lastOuterY=" + lastOuterY + " lastInnerY=" + lastInnerY);
+
         // Build beam parallelogram: outer edge at stem tips, inner edge toward noteheads
         var beam = new Path2D.Double(Path2D.WIND_NON_ZERO, 4);
         beam.moveTo(firstX, firstOuterY);
@@ -325,6 +395,9 @@ public class BeamGroupRenderer extends BaseElementRenderer<BeamGroup> {
         beam.lineTo(lastX, lastInnerY);
         beam.lineTo(firstX, firstInnerY);
         beam.closePath();
+
+        System.out.println("[BeamRenderer]     beam parallelogram: (" + firstX + "," + firstOuterY + ") -> ("
+            + lastX + "," + lastOuterY + ") -> (" + lastX + "," + lastInnerY + ") -> (" + firstX + "," + firstInnerY + ")");
 
         Shape oldClip = null;
         Rectangle2D clip = null;
@@ -347,6 +420,10 @@ public class BeamGroupRenderer extends BaseElementRenderer<BeamGroup> {
                 INNER_BEAM_LENGTH + clipSlop,
                 clip.getHeight() + clipSlop * 2
             );
+
+            System.out.println("[BeamRenderer]     clip: x=" + clip.getX() + " y=" + clip.getY()
+                + " w=" + clip.getWidth() + " h=" + clip.getHeight());
+
             oldClip = g2.getClip();
             g2.setClip(clip);
         }

@@ -36,6 +36,12 @@ public class BeamCalculator {
     private static final double MAX_DEVIATION_SS = 0.75;
     private static final double PITCH_SPAN_THRESHOLD = 8;
 
+    // Gould/Ross section 4.2: minimum stem length is 3.5 staff spaces
+    private static final double MIN_STEM_SS = 3.5;
+    private static final double MIN_STEM_PX = MIN_STEM_SS * LayoutStylesheet.STAFF_SPACE;
+    private static final double SLOPE_REDUCTION_FACTOR = 0.85;
+    private static final int MAX_SLOPE_ITERATIONS = 20;
+
     private BeamCalculator() {
         // Utility class
     }
@@ -112,7 +118,68 @@ public class BeamCalculator {
             LOG.fine("  angle=%.4f rad (%.1f deg)".formatted(angle, Math.toDegrees(angle)));
         }
 
-        // Anchor on the first note (no lengthening), lengthen the rest
+        computeLengthenings(line, startIndex, endIndex, angle, direction);
+
+        // Gould/Ross 4.2: validate stems against minimum length.
+        // Any negative lengthening means a stem shorter than the 3.5 ss default.
+        var minLengthening = findMinLengthening(line, startIndex, endIndex);
+
+        // Phase 1: Reduce slope iteratively until all stems are valid
+        var iterations = 0;
+        var epsilon = 1e-6;
+
+        while (minLengthening < 0 && Math.abs(angle) > epsilon
+            && iterations < MAX_SLOPE_ITERATIONS) {
+
+            angle *= SLOPE_REDUCTION_FACTOR;
+
+            if (Math.abs(angle) < epsilon) {
+                angle = 0;
+            }
+
+            iterations++;
+            computeLengthenings(line, startIndex, endIndex, angle, direction);
+            minLengthening = findMinLengthening(line, startIndex, endIndex);
+        }
+
+        if (iterations > 0) {
+            LOG.fine("  Slope reduced %d times, angle=%.4f rad (%.1f deg)"
+                .formatted(iterations, angle, Math.toDegrees(angle)));
+        }
+
+        // Phase 2: If stems are still too short, shift the entire beam vertically
+        if (minLengthening < 0) {
+            var deficit = -minLengthening;
+            LOG.fine("  Shifting beam vertically by %d px".formatted(deficit));
+
+            for (var i = startIndex; i <= endIndex; i++) {
+                var note = line.getNote(i);
+
+                if (!note.getNoteType().isGraceNote()) {
+                    note.properties.lengthening += deficit;
+                }
+            }
+        }
+    }
+
+    /**
+     * Computes lengthenings for all notes in a beamed group given the beam angle.
+     * The first note is anchored (lengthening = 0), and all other notes are
+     * computed relative to the beam line.
+     *
+     * @param line       The line containing the notes
+     * @param startIndex Start index of the beamed group
+     * @param endIndex   End index of the beamed group
+     * @param angle      The angle of the beam line
+     * @param direction  The beam direction (1 for up, -1 for down)
+     */
+    private static void computeLengthenings(
+        @NotNull Line line,
+        int startIndex,
+        int endIndex,
+        double angle,
+        int direction
+    ) {
         var firstNote = line.getNote(startIndex);
         firstNote.properties.lengthening = 0;
         firstNote.setUpper(direction == 1);
@@ -129,7 +196,32 @@ public class BeamCalculator {
             LOG.fine("  note[%d] yPos=%d xPos=%d lengthening=%d"
                 .formatted(i, note.getYPos(), note.getXPos(), note.properties.lengthening));
         }
+    }
 
+    /**
+     * Finds the minimum lengthening across all non-grace notes in a beamed group.
+     *
+     * @param line       The line containing the notes
+     * @param startIndex Start index of the beamed group
+     * @param endIndex   End index of the beamed group
+     * @return The minimum lengthening value
+     */
+    private static int findMinLengthening(
+        @NotNull Line line,
+        int startIndex,
+        int endIndex
+    ) {
+        var min = Integer.MAX_VALUE;
+
+        for (var i = startIndex; i <= endIndex; i++) {
+            var note = line.getNote(i);
+
+            if (!note.getNoteType().isGraceNote()) {
+                min = Math.min(min, note.properties.lengthening);
+            }
+        }
+
+        return min;
     }
 
     /**

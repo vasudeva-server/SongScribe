@@ -170,9 +170,101 @@ Consistency preferred over strict rule enforcement in ambiguous cases.
 
 ------------------------------------------------------------------------
 
+## 4.1 Minimum Stem Length in Beamed Groups (Vocal Standard)
+
+- Absolute minimum stem length: 3.5 staff spaces.
+- Shortest stem within a beamed group must not fall below this threshold.
+- If slope causes undersized inner stems:
+  - Reduce beam slope.
+  - Or shift beam vertically.
+  - Prefer horizontal beam before violating minimum stem rule.
+
+In lyric-centered engraving, avoid visually stubby inner stems.
+Beam moderation overrides literal contour-following.
+
+------------------------------------------------------------------------
+
+## 4.2 Numeric Beam Geometry Specification (Renderer Implementation)
+
+All measurements expressed in staff spaces.
+
+### Constants
+
+MIN_STEM = 3.5
+PREFERRED_STEM = 3.75
+MAX_STEM = 4.5
+
+SLOPE_SCALE = 0.6
+MAX_SLOPE = 0.75
+HARD_MAX_SLOPE = 1.0
+
+### Beam Slope Calculation
+
+rawSlope = (Y2 - Y1)
+scaledSlope = rawSlope * SLOPE_SCALE
+
+Clamp to MAX_SLOPE.
+Force horizontal if contour reverses or span > sixth.
+
+### Beam Anchoring
+
+Stem-up:
+beamY1 = noteTop(Y1) + PREFERRED_STEM
+beamY2 = beamY1 + scaledSlope
+
+Stem-down:
+beamY1 = noteBottom(Y1) - PREFERRED_STEM
+beamY2 = beamY1 + scaledSlope
+
+### Inner Stem Validation
+
+If any required stem < MIN_STEM:
+
+- Reduce slope by 15%.
+- Recalculate.
+- Repeat until valid or slope = 0.
+
+If violation remains at slope = 0:
+Shift entire beam vertically.
+
+Never extend stems artificially to chase slope.
+
+### Maximum Stem Moderation
+
+If any stem > MAX_STEM:
+
+- Reduce slope slightly, or
+- Shift beam toward noteheads.
+
+Avoid stems > 4.75 staff spaces in normal vocal context.
+
+### Automatic Horizontal Override
+
+Force horizontal if:
+
+- Dense lyrics within group
+- Articulation cluster above
+- Hairpin begins or ends inside group
+- Repeated inner-stem violation
+- Group ≥ 5 notes in vocal context
+
+### Stability Bias
+
+If slope < 0:
+    slope *= 0.85
+
+### Visual Targets
+
+- Shortest stem ≈ 3.6–3.8
+- Longest stem ≈ 4.2–4.4
+- Beam deviation rarely > 0.6
+- Horizontal beams common in calm vocal engraving
+
+------------------------------------------------------------------------
+
 # 5. Beam Angle Rules
 
-## 4.1 Governing Philosophy
+## 5.1 Governing Philosophy
 
 Beam angle should:
 
@@ -182,7 +274,7 @@ Beam angle should:
 - Preserve stem balance
 - Protect lyric clarity
 
-## 4.2 Default Beam Behavior
+## 5.2 Default Beam Behavior
 
 - Scale melodic slope to 60% of actual contour.
 - Clamp deviation to ≤ 0.75 staff spaces.
@@ -190,7 +282,7 @@ Beam angle should:
 
 If uncertain, flatten.
 
-## 4.3 When to Use Horizontal Beams
+## 5.3 When to Use Horizontal Beams
 
 Force horizontal beams when:
 
@@ -203,7 +295,7 @@ Force horizontal beams when:
 
 Horizontal beams are often preferable in vocal engraving.
 
-## 4.4 Stem Length Balance
+## 5.4 Stem Length Balance
 
 Beam placement must avoid:
 
@@ -216,7 +308,7 @@ Balanced stems override literal pitch slope.
 
 # 6. Vertical Spacing
 
-## 5.1 Articulations
+## 6.1 Articulations
 
 **Placement**
 
@@ -234,13 +326,13 @@ Must clear staff lines, stems, beams, and text.
 - Beam angle must not compress articulation space.
 - In articulated passages, prefer flatter beams.
 
-## 5.2 Fermatas
+## 6.2 Fermatas
 
 - Placed above the staff.
 - Must clear dynamics, tempo text, and endings.
 - Prefer vertical expansion to horizontal distortion.
 
-## 5.3 Dynamics and Hairpins
+## 6.3 Dynamics and Hairpins
 
 **Placement**
 
@@ -271,14 +363,14 @@ Must clear staff lines, stems, beams, and text.
 - Do not stretch musical spacing solely to center the text.
 - Ensure text remains visually associated with its range.
 
-## 5.4 Breath Marks
+## 6.4 Breath Marks
 
 - Placed above the staff, after the note.
 - Must be visually clear and unambiguous.
 - May require slight horizontal space after the note.
 - Never compress lyrics to accommodate a breath mark.
 
-## 5.5 First and Second Endings (Volta Brackets)
+## 6.5 First and Second Endings (Volta Brackets)
 
 - Endings are **structural range elements** spanning one or more
   measures.
@@ -293,7 +385,7 @@ Must clear staff lines, stems, beams, and text.
 - Open or closed final brackets are acceptable; clarity overrides
   symmetry.
 
-## 5.6 Tempo and Beat Changes
+## 6.6 Tempo and Beat Changes
 
 - Placed above the staff.
 - Aligned with the governing musical event.
@@ -303,12 +395,12 @@ Must clear staff lines, stems, beams, and text.
 
 # 7. Tuplets
 
-## 6.1 Beamed Tuplets
+## 7.1 Beamed Tuplets
 
 - Follow standard beam-angle rules.
 - No brackets when beam is present (unless clarity demands).
 
-## 6.2 Unbeamed Tuplets
+## 7.2 Unbeamed Tuplets
 
 - Use straight brackets.
 - Bracket does not dictate beam angle.
@@ -339,7 +431,7 @@ Tuplet numbers must remain legible and centered.
 
 ------------------------------------------------------------------------
 
-## 5.7 Above-Note Vertical Hierarchy (Vocal, Meterless, Melody-Only)
+## 6.7 Above-Note Vertical Hierarchy (Vocal, Meterless, Melody-Only)
 
 **Scope** - Single staff - Vocal - Lyrics below - Meterless or lightly
 structured rhythm - No slurs (ties permitted) - Articulations placed
