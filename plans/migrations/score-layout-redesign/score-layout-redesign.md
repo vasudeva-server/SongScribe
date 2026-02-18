@@ -13,7 +13,7 @@
 |-------|--------|---------|
 | **Phase 1** | ✅ Complete | Foundation classes (LineElement, Staff, Clef, etc.) |
 | **Phase 2** | ✅ Complete | LayoutManager removed, components are source of truth |
-| **Phase 3** | ✅ Complete | Core musical elements (Note extends LineElement) |
+| **Phase 3** | ✅ Complete | Core musical elements (Note extends LineElement) — [Articulation Property Migration](articulation-property-migration.md) |
 | **Phase 4** | ✅ Complete | Range elements (Tie, Trill, etc.) and BeamGroup |
 | **Phase 5** | 🔄 In Progress | Line layout engine complete; uniform row heights pending |
 | **Phase 6** | ✅ Complete | All 18 ElementRenderers implemented |
@@ -99,7 +99,7 @@ Replace procedural `ScoreRenderer` with true Swing component hierarchy where:
 |-------|-------------|--------|----------|
 | 1 | [Foundation Classes](#phase-1-foundation-classes--complete) | ✅ Complete | — |
 | 2 | [JComponent Hierarchy](#phase-2-jcomponent-hierarchy--complete) | ✅ Complete | [remove-layout-manager.md](../../completed/score-layout-redesign/remove-layout-manager.md) |
-| 3 | [Core Musical Elements](#phase-3-core-musical-elements--complete) | ✅ Complete | — |
+| 3 | [Core Musical Elements](#phase-3-core-musical-elements--complete) | ✅ Complete | [articulation-property-migration.md](articulation-property-migration.md) |
 | 4 | [Range Elements and BeamGroup](#phase-4-range-elements-and-beamgroup--complete) | ✅ Complete | — |
 | 5 | [Attribution and Layout Integration](#phase-5-attribution-and-layout-integration--complete) | ✅ Complete | [line-layout-engine.md](../../completed/score-layout-redesign/line-layout-engine.md) |
 | 6 | [Rendering Infrastructure](#phase-6-rendering-infrastructure-strategy-pattern--complete) | ✅ Complete | — |
@@ -509,41 +509,15 @@ The LayoutManager has been **completely removed** from the screen rendering path
 
 **Goal**: Migrate Note/Rest/Bar to LineElement hierarchy.
 
-### Tasks
+Phase 3 introduced a new `Articulation` class (extending `LineElement`) and an `ArticulationType` enum, but only partially migrated. The old enum-based properties (`Note.forceArticulation`, `Note.durationArticulation`) remained the source of truth, while the new `List<Articulation>` on `Note` was only populated in tests.
 
-3.1. Make existing `Note` class extend `LineElement`
-   - Add required LineElement properties
-   - Maintain existing properties for compatibility
+This caused a rendering bug: `LineRenderer.renderAttachments()` guards with `!note.getArticulations().isEmpty()` (new system), but `ArticulationRenderer` reads the old properties. Articulations on newly inserted notes never render because the new list is never populated.
 
-3.2. Extract articulations to proper `Articulation` class
-   - Parent note reference
-   - Type from ArticulationType enum
-   - Drawing logic (outward from note head based on stem direction)
+The articulation property migration completed this phase so the `Articulation` objects became the single source of truth.
 
-3.3. Create concrete Attachment subclasses
-   - `TempoAttachment` (from Note.tempoChange)
-   - `FermataAttachment` (from Note.fermata)
-   - `AnnotationAttachment` (from Note.annotation)
-   - `DynamicAttachment` (f, p, mf, etc.)
-   - `BeatChangeAttachment` (from Note.beatChange)
+See [[articulation-property-migration.md]] for detailed 5-phase migration plan.
 
-3.4. Rename `NotNote` to `NonNote` and migrate subclasses
-   - Rest types: extend NonNote (which extends LineElement)
-   - BreathMark: extend NonNote
-   - Bar types: extend NonNote
-
-### Files to Modify
-- `src/main/java/songscribe/music/Note.java`
-- `src/main/java/songscribe/music/NotNote.java`
-- All Note/Rest subclasses
-
-### Files to Create
-- `src/main/java/songscribe/ui/layout/Articulation.java`
-- `src/main/java/songscribe/ui/layout/TempoAttachment.java`
-- `src/main/java/songscribe/ui/layout/FermataAttachment.java`
-- `src/main/java/songscribe/ui/layout/AnnotationAttachment.java`
-- `src/main/java/songscribe/ui/layout/DynamicAttachment.java`
-- `src/main/java/songscribe/ui/layout/BeatChangeAttachment.java`
+✓ Completed articulation property migration on 2026-02-14
 
 ---
 

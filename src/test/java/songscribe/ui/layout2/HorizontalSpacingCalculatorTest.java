@@ -23,9 +23,8 @@ package songscribe.ui.layout2;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.awt.Font;
-import java.awt.Graphics2D;
-import java.awt.image.BufferedImage;
+import java.awt.*;
+import java.awt.image.*;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -34,7 +33,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
-import songscribe.music.Composition;
 import songscribe.music.Crotchet;
 import songscribe.music.KeyType;
 import songscribe.music.Line;
@@ -87,7 +85,7 @@ class HorizontalSpacingCalculatorTest {
         var note = new Crotchet();
 
         if (syllable != null) {
-            note.acceleration.syllable = syllable;
+            note.properties.syllable = syllable;
         }
 
         if (accidental != null) {
@@ -106,7 +104,7 @@ class HorizontalSpacingCalculatorTest {
         var note = new Quaver();
 
         if (syllable != null) {
-            note.acceleration.syllable = syllable;
+            note.properties.syllable = syllable;
         }
 
         return note;
@@ -133,12 +131,12 @@ class HorizontalSpacingCalculatorTest {
     private void assertMinimumSpacing(NoteColumn prev, NoteColumn curr, double expectedMin) {
         double actualSpacing = curr.getX() - prev.getX();
         assertTrue(
-                actualSpacing >= expectedMin - 0.01, // Allow small floating point error
-                String.format(
-                        "Expected spacing >= %.2f, but was %.2f",
-                        expectedMin,
-                        actualSpacing
-                )
+            actualSpacing >= expectedMin - 0.01, // Allow small floating point error
+            String.format(
+                "Expected spacing >= %.2f, but was %.2f",
+                expectedMin,
+                actualSpacing
+            )
         );
     }
 
@@ -220,8 +218,8 @@ class HorizontalSpacingCalculatorTest {
 
             // Spacing should be based on rightExtent + MIN_COLUMN_GAP + abs(leftExtent)
             double expectedMinSpacing = columns.get(0).getRightExtent()
-                    + LayoutConstants.px(LayoutConstants.MIN_COLUMN_GAP)
-                    + Math.abs(columns.get(1).getLeftExtent());
+                + LayoutConstants.px(LayoutConstants.MIN_COLUMN_GAP)
+                + Math.abs(columns.get(1).getLeftExtent());
 
             double actualSpacing = columns.get(1).getX() - columns.get(0).getX();
             assertEquals(expectedMinSpacing, actualSpacing, 0.01);
@@ -248,8 +246,8 @@ class HorizontalSpacingCalculatorTest {
                 double requiredMin = prev.getRightExtent() + minGap + Math.abs(curr.getLeftExtent());
 
                 assertTrue(
-                        spacing >= requiredMin - 0.01,
-                        String.format("Column %d spacing %.2f < required %.2f", i, spacing, requiredMin)
+                    spacing >= requiredMin - 0.01,
+                    String.format("Column %d spacing %.2f < required %.2f", i, spacing, requiredMin)
                 );
             }
         }
@@ -277,15 +275,15 @@ class HorizontalSpacingCalculatorTest {
             double syllable1Width = columns.get(0).getSyllableWidth();
             double syllable2Width = columns.get(1).getSyllableWidth();
             double expectedLyricSpacing = (syllable1Width / 2.0)
-                    + LayoutConstants.px(LayoutConstants.MIN_SYLLABLE_GAP)
-                    + (syllable2Width / 2.0);
+                + LayoutConstants.px(LayoutConstants.MIN_SYLLABLE_GAP)
+                + (syllable2Width / 2.0);
 
             double actualSpacing = columns.get(1).getX() - columns.get(0).getX();
 
             // Actual spacing should be at least the lyric requirement
             assertTrue(
-                    actualSpacing >= expectedLyricSpacing - 0.01,
-                    String.format("Expected lyric spacing >= %.2f, got %.2f", expectedLyricSpacing, actualSpacing)
+                actualSpacing >= expectedLyricSpacing - 0.01,
+                String.format("Expected lyric spacing >= %.2f, got %.2f", expectedLyricSpacing, actualSpacing)
             );
         }
 
@@ -301,15 +299,15 @@ class HorizontalSpacingCalculatorTest {
 
             // With very short syllables, minimum spacing should dominate
             double minSpacing = columns.get(0).getRightExtent()
-                    + LayoutConstants.px(LayoutConstants.MIN_COLUMN_GAP)
-                    + Math.abs(columns.get(1).getLeftExtent());
+                + LayoutConstants.px(LayoutConstants.MIN_COLUMN_GAP)
+                + Math.abs(columns.get(1).getLeftExtent());
 
             double actualSpacing = columns.get(1).getX() - columns.get(0).getX();
 
             // Spacing should be close to minimum (within lyric tolerance)
             assertTrue(
-                    actualSpacing >= minSpacing - 0.01,
-                    String.format("Expected spacing >= %.2f, got %.2f", minSpacing, actualSpacing)
+                actualSpacing >= minSpacing - 0.01,
+                String.format("Expected spacing >= %.2f, got %.2f", minSpacing, actualSpacing)
             );
         }
 
@@ -330,9 +328,9 @@ class HorizontalSpacingCalculatorTest {
             // All spacings should be valid (>= minimum)
             for (var i = 1; i < columns.size(); i++) {
                 assertMinimumSpacing(
-                        columns.get(i - 1),
-                        columns.get(i),
-                        LayoutConstants.px(LayoutConstants.MIN_COLUMN_GAP)
+                    columns.get(i - 1),
+                    columns.get(i),
+                    LayoutConstants.px(LayoutConstants.MIN_COLUMN_GAP)
                 );
             }
         }
@@ -362,10 +360,10 @@ class HorizontalSpacingCalculatorTest {
             double clearance = currAccidentalLeft - prevRightEdge;
 
             assertTrue(
-                    clearance >= LayoutConstants.px(LayoutConstants.ACCIDENTAL_CLEARANCE) - 0.01,
-                    String.format("Accidental clearance %.2f < required %.2f",
-                            clearance,
-                            LayoutConstants.px(LayoutConstants.ACCIDENTAL_CLEARANCE))
+                clearance >= LayoutConstants.px(LayoutConstants.ACCIDENTAL_CLEARANCE) - 0.01,
+                String.format("Accidental clearance %.2f < required %.2f",
+                    clearance,
+                    LayoutConstants.px(LayoutConstants.ACCIDENTAL_CLEARANCE))
             );
         }
 
@@ -385,8 +383,8 @@ class HorizontalSpacingCalculatorTest {
             double clearance = currAccidentalLeft - prevRightEdge;
 
             assertTrue(
-                    clearance >= LayoutConstants.px(LayoutConstants.ACCIDENTAL_CLEARANCE) - 0.01,
-                    "Accidental should have clearance"
+                clearance >= LayoutConstants.px(LayoutConstants.ACCIDENTAL_CLEARANCE) - 0.01,
+                "Accidental should have clearance"
             );
         }
     }
@@ -439,8 +437,8 @@ class HorizontalSpacingCalculatorTest {
 
                 // Spacing should be close to tight gap (with some tolerance for extent calculations)
                 assertTrue(
-                        spacing >= tightGap - 5.0,
-                        String.format("Beam group spacing %.2f should be close to tight gap %.2f", spacing, tightGap)
+                    spacing >= tightGap - 5.0,
+                    String.format("Beam group spacing %.2f should be close to tight gap %.2f", spacing, tightGap)
                 );
             }
         }
@@ -536,16 +534,16 @@ class HorizontalSpacingCalculatorTest {
             // Verify all columns are positioned
             for (var i = 0; i < columns.size(); i++) {
                 assertTrue(
-                        columns.get(i).getX() > 0,
-                        String.format("Column %d should be positioned", i)
+                    columns.get(i).getX() > 0,
+                    String.format("Column %d should be positioned", i)
                 );
             }
 
             // Verify monotonic increase
             for (var i = 1; i < columns.size(); i++) {
                 assertTrue(
-                        columns.get(i).getX() > columns.get(i - 1).getX(),
-                        String.format("Column %d should be right of column %d", i, i - 1)
+                    columns.get(i).getX() > columns.get(i - 1).getX(),
+                    String.format("Column %d should be right of column %d", i, i - 1)
                 );
             }
         }
@@ -596,8 +594,8 @@ class HorizontalSpacingCalculatorTest {
             // Verify all columns are positioned
             for (var i = 0; i < columns.size(); i++) {
                 assertTrue(
-                        columns.get(i).getX() > 0,
-                        String.format("Column %d should be positioned", i)
+                    columns.get(i).getX() > 0,
+                    String.format("Column %d should be positioned", i)
                 );
             }
 
@@ -608,10 +606,10 @@ class HorizontalSpacingCalculatorTest {
             // Verify monotonic increase in X positions
             for (var i = 1; i < columns.size(); i++) {
                 assertTrue(
-                        columns.get(i).getX() > columns.get(i - 1).getX(),
-                        String.format("Column %d (%.2f) should be right of column %d (%.2f)",
-                                i, columns.get(i).getX(),
-                                i - 1, columns.get(i - 1).getX())
+                    columns.get(i).getX() > columns.get(i - 1).getX(),
+                    String.format("Column %d (%.2f) should be right of column %d (%.2f)",
+                        i, columns.get(i).getX(),
+                        i - 1, columns.get(i - 1).getX())
                 );
             }
 
@@ -626,9 +624,9 @@ class HorizontalSpacingCalculatorTest {
                 double gap = currLeft - prevRight;
 
                 assertTrue(
-                        gap >= minGap - 0.01,
-                        String.format("Gap between columns %d and %d (%.2f) should be >= %.2f",
-                                i - 1, i, gap, minGap)
+                    gap >= minGap - 0.01,
+                    String.format("Gap between columns %d and %d (%.2f) should be >= %.2f",
+                        i - 1, i, gap, minGap)
                 );
             }
         }

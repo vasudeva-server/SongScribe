@@ -34,6 +34,8 @@ import songscribe.ui.layout.Diminuendo;
 import songscribe.ui.layout.LayoutStylesheet;
 import songscribe.ui.layout.LineElement;
 
+import static songscribe.ui.renderer.GraphicsState.Property.*;
+
 /**
  * Renders crescendo and diminuendo hairpins.
  * <p>
@@ -175,17 +177,19 @@ public class DynamicsRenderer extends BaseElementRenderer<LineElement> {
         int yBottom = middleLineY + (int) ((isCrescendo ? 7 : 6) * LayoutStylesheet.NOTE_Y_OFFSET) + yShift;
         int yMiddle = middleLineY + (int) (6 * LayoutStylesheet.NOTE_Y_OFFSET) + yShift;
 
-        g2.setColor(NOTE_COLOR);
-        g2.setStroke(LINE_STROKE);
+        try (var ignored = GraphicsState.save(g2, COLOR, STROKE)) {
+            g2.setColor(NOTE_COLOR);
+            g2.setStroke(LINE_STROKE);
 
-        if (isCrescendo) {
-            // Crescendo: point on left, open on right
-            g2.drawLine(x1, yMiddle, x2, yTop);
-            g2.drawLine(x1, yMiddle, x2, yBottom);
-        } else {
-            // Diminuendo: open on left, point on right
-            g2.drawLine(x1, yTop, x2, yMiddle);
-            g2.drawLine(x1, yBottom, x2, yMiddle);
+            if (isCrescendo) {
+                // Crescendo: point on left, open on right
+                g2.drawLine(x1, yMiddle, x2, yTop);
+                g2.drawLine(x1, yMiddle, x2, yBottom);
+            } else {
+                // Diminuendo: open on left, point on right
+                g2.drawLine(x1, yTop, x2, yMiddle);
+                g2.drawLine(x1, yBottom, x2, yMiddle);
+            }
         }
     }
 

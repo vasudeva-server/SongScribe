@@ -204,7 +204,7 @@ public final class SelectionCoordinator {
     }
 
     /**
-     * Returns whether tempo can be changed (selected note is not line 0, note 0).
+     * Returns whether tempo can be changed.
      */
     public boolean canChangeTempo() {
         var state = getActiveSelection();
@@ -215,12 +215,7 @@ public final class SelectionCoordinator {
 
         var selectedNote = state.getSingleSelectedNote();
 
-        if (selectedNote == null) {
-            return false;
-        }
-
-        var composition = compositionSupplier.get();
-        return composition.getLine(0).getNote(0) != selectedNote;
+        return selectedNote != null;
     }
 
     // -------------------------------------------------------------------------

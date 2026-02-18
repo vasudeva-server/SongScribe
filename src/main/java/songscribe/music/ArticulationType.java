@@ -37,13 +37,35 @@ public enum ArticulationType {
      * Staccato - short, detached notes.
      * Drawn closest to the note head.
      */
-    STACCATO,
+    STACCATO(33),
 
     /**
      * Accent - emphasized notes.
      * Drawn outside of staccato when both are present.
      */
-    ACCENT;
+    ACCENT(-1);
+
+    /** MIDI duration as a percentage of the note's full duration, or -1 for no override. */
+    private final int midiDurationPercent;
+
+    ArticulationType(int midiDurationPercent) {
+        this.midiDurationPercent = midiDurationPercent;
+    }
+
+    /**
+     * Returns the MIDI duration as a percentage of the note's full duration,
+     * or -1 if this articulation does not override duration.
+     */
+    public int getMidiDurationPercent() {
+        return midiDurationPercent;
+    }
+
+    /**
+     * Returns true if this articulation overrides the note's MIDI duration.
+     */
+    public boolean hasMidiDurationOverride() {
+        return midiDurationPercent >= 0;
+    }
 
     /**
      * Returns the articulation types in order for drawing on stem side.

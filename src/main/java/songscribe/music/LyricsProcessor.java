@@ -16,6 +16,7 @@
 package songscribe.music;
 
 import org.jetbrains.annotations.NotNull;
+
 import songscribe.ui.Constants;
 
 /**
@@ -52,8 +53,8 @@ public class LyricsProcessor {
 
         for (var n = 0; n < line.noteCount(); n++) {
             var note = line.getNote(n);
-            note.acceleration.syllable = "";
-            note.acceleration.syllableRelation = Note.SyllableRelation.NO;
+            note.properties.syllable = "";
+            note.properties.syllableRelation = Note.SyllableRelation.NO;
         }
 
         // get the lyrics slice
@@ -169,9 +170,9 @@ public class LyricsProcessor {
 
             for (var i = 0; i < line.noteCount(); i++) {
                 System.out.println(
-                    line.getNote(i).acceleration.syllable +
+                    line.getNote(i).properties.syllable +
                         "   Relation: " +
-                        line.getNote(i).acceleration.syllableRelation.name()
+                        line.getNote(i).properties.syllableRelation.name()
                 );
             }
 
@@ -196,8 +197,8 @@ public class LyricsProcessor {
         }
 
         if (index < line.noteCount()) {
-            line.getNote(index).acceleration.syllable = syllable;
-            line.getNote(index).acceleration.syllableRelation =
+            line.getNote(index).properties.syllable = syllable;
+            line.getNote(index).properties.syllableRelation =
                 syllableRelation;
         }
 

@@ -41,7 +41,7 @@ public class TitleComponent extends ScoreComponent {
      */
     public TitleComponent() {
         super();
-        setMarginBottom(LayoutStylesheet.px(LayoutStylesheet.TITLE_MARGIN_BOTTOM));
+        setMarginBottom(LayoutStylesheet.px(LayoutStylesheet.TITLE_MARGIN_BOTTOM_MU));
     }
 
     @Override
@@ -62,10 +62,15 @@ public class TitleComponent extends ScoreComponent {
             title = number + ". " + title;
         }
 
-        var font = composition.getTitleFont();
-        g2.setFont(font);
-        g2.setColor(Color.BLACK);
-        var metrics = g2.getFontMetrics();
+        try (var ignored = songscribe.ui.renderer.GraphicsState.save(
+            g2,
+            songscribe.ui.renderer.GraphicsState.Property.FONT,
+            songscribe.ui.renderer.GraphicsState.Property.COLOR
+        )) {
+            var font = composition.getTitleFont();
+            g2.setFont(font);
+            g2.setColor(Color.BLACK);
+            var metrics = g2.getFontMetrics();
 
         // Wrap the title to fit in the maximum width
         var maxWidth = (int) (composition.getLineWidth() * TITLE_MAX_WIDTH_PERCENTAGE);
@@ -82,15 +87,16 @@ public class TitleComponent extends ScoreComponent {
         var lineWidth = composition.getLineWidth();
         var startX = (lineWidth - actualMaxWidth) / 2;
 
-        // Draw each line
-        var lineHeight = metrics.getHeight();
-        var y = metrics.getAscent();
+            // Draw each line
+            var lineHeight = metrics.getHeight();
+            var y = metrics.getAscent();
 
-        for (var titleLine : titleLines) {
-            var lineWidth2 = metrics.stringWidth(titleLine);
-            var x = startX + ((actualMaxWidth - lineWidth2) / 2);
-            g2.drawString(titleLine, x, y);
-            y += lineHeight;
+            for (var titleLine : titleLines) {
+                var lineWidth2 = metrics.stringWidth(titleLine);
+                var x = startX + ((actualMaxWidth - lineWidth2) / 2);
+                g2.drawString(titleLine, x, y);
+                y += lineHeight;
+            }
         }
     }
 

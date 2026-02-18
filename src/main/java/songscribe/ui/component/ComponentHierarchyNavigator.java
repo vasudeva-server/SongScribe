@@ -199,7 +199,7 @@ public final class ComponentHierarchyNavigator {
         } else {
             var linePanel = linePanels.get(0);
             rowHeight = linePanel.getLineComponent().getHeight()
-                      + LayoutStylesheet.px(LayoutStylesheet.LINE_MARGIN_BOTTOM);
+                + LayoutStylesheet.px(LayoutStylesheet.LINE_MARGIN_BOTTOM_MU);
         }
 
         layoutUpdater.accept(new int[]{middleLineY, rowHeight});

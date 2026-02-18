@@ -32,6 +32,8 @@ import songscribe.music.NoteType;
 import songscribe.ui.layout.LayoutStylesheet;
 import songscribe.ui.layout.Tie;
 
+import static songscribe.ui.renderer.GraphicsState.Property.*;
+
 /**
  * Renders tie arcs between two notes of the same pitch.
  * <p>
@@ -126,31 +128,33 @@ public class TieRenderer extends BaseElementRenderer<Tie> {
             (tieUpper ? (NOTE_Y_OFFSET + 2) : (-NOTE_Y_OFFSET - 2));
 
         // Draw the tie curve
-        g2.setStroke(LINE_STROKE);
-        g2.setColor(NOTE_COLOR);
+        try (var ignored = GraphicsState.save(g2, COLOR, STROKE)) {
+            g2.setStroke(LINE_STROKE);
+            g2.setColor(NOTE_COLOR);
 
-        GeneralPath tie = new GeneralPath(Path2D.WIND_NON_ZERO, 2);
-        tie.moveTo(xPos, yPos);
+            GeneralPath tie = new GeneralPath(Path2D.WIND_NON_ZERO, 2);
+            tie.moveTo(xPos, yPos);
 
-        // First curve (outer)
-        tie.quadTo(
-            xPos + (gap / 2),
-            yPos + (tieUpper ? 6 : -6),
-            xPos + gap,
-            yPos
-        );
+            // First curve (outer)
+            tie.quadTo(
+                xPos + (gap / 2),
+                yPos + (tieUpper ? 6 : -6),
+                xPos + gap,
+                yPos
+            );
 
-        // Second curve (inner, creating the filled shape)
-        tie.quadTo(
-            xPos + (gap / 2),
-            yPos + (tieUpper ? 8 : -8),
-            xPos,
-            yPos
-        );
+            // Second curve (inner, creating the filled shape)
+            tie.quadTo(
+                xPos + (gap / 2),
+                yPos + (tieUpper ? 8 : -8),
+                xPos,
+                yPos
+            );
 
-        tie.closePath();
-        g2.draw(tie);
-        g2.fill(tie);
+            tie.closePath();
+            g2.draw(tie);
+            g2.fill(tie);
+        }
     }
 
     /**

@@ -36,6 +36,7 @@ import songscribe.ui.layout.Articulation;
 import songscribe.ui.layout.Attachment;
 import songscribe.ui.layout.FermataAttachment;
 import songscribe.ui.layout.LineElement;
+import songscribe.ui.renderer.ArticulationRenderer;
 
 /**
  * Calculates vertical positions for all elements above and below the staff.
@@ -156,6 +157,11 @@ public class VerticalStackingCalculator {
 
     /**
      * Stacks articulations for the given column.
+     * <p>
+     * Unlike other elements, articulations have privileged positioning: they anchor
+     * to the staff edge or note head at a fixed distance, on the opposite side from
+     * the stem. They are the only note elements that may go below the staff.
+     * All other elements stack above articulations.
      *
      * @param column              The note column
      * @param accumulated         Accumulated bounding area
@@ -175,20 +181,57 @@ public class VerticalStackingCalculator {
         }
 
         var minY = accumulated.getBounds2D().getMinY();
+        boolean isUpper = note.isUpper();
+        double halfContentHeight = articulations.getFirst().getContentHeight() / 2.0;
 
-        for (var articulation : articulations) {
-            var y = findClearYPosition(
-                    articulation,
-                    column.getX(),
-                    accumulated,
-                    LayoutConstants.px(LayoutConstants.ARTICULATION_MARGIN)
-            );
+        // Identify articulation types
+        Articulation staccatoArticulation = null;
+        Articulation accentArticulation = null;
 
-            positionElement(articulation, column.getX(), y, noteElementPositions);
-            addToAccumulated(articulation, column.getX(), y, accumulated);
+        for (var a : articulations) {
+            if (a.isStaccato()) {
+                staccatoArticulation = a;
+            } else if (a.isAccent()) {
+                accentArticulation = a;
+            }
+        }
 
-            if (y < minY) {
-                minY = y;
+        // Compute center Y positions in layout space (middleLineY=0)
+        // using the same logic as the renderer's fallback path.
+        boolean hasStaccato = staccatoArticulation != null;
+        int staccatoCenterY = hasStaccato
+                ? ArticulationRenderer.calculateStaccatoY(note, 0)
+                : 0;
+
+        // Position staccato
+        if (staccatoArticulation != null) {
+            double topY = staccatoCenterY - halfContentHeight;
+            positionElement(staccatoArticulation, column.getX(), topY, noteElementPositions);
+
+            // Only add to accumulated area if above the note (stem down),
+            // so that elements stacking above will clear it.
+            if (!isUpper) {
+                addToAccumulated(staccatoArticulation, column.getX(), topY, accumulated);
+
+                if (topY < minY) {
+                    minY = topY;
+                }
+            }
+        }
+
+        // Position accent
+        if (accentArticulation != null) {
+            int accentCenterY = ArticulationRenderer.calculateAccentY(
+                    note, 0, staccatoCenterY, hasStaccato);
+            double topY = accentCenterY - halfContentHeight;
+            positionElement(accentArticulation, column.getX(), topY, noteElementPositions);
+
+            if (!isUpper) {
+                addToAccumulated(accentArticulation, column.getX(), topY, accumulated);
+
+                if (topY < minY) {
+                    minY = topY;
+                }
             }
         }
 

@@ -83,8 +83,13 @@ public class BanglaLyricsComponent extends ScoreComponent {
             return 0;
         }
 
-        g2.setFont(composition.getBanglaFont());
-        return GraphicUtils.getTextBlockWidth(banglaLyrics, g2);
+        try (var ignored = songscribe.ui.renderer.GraphicsState.save(
+            g2,
+            songscribe.ui.renderer.GraphicsState.Property.FONT
+        )) {
+            g2.setFont(composition.getBanglaFont());
+            return GraphicUtils.getTextBlockWidth(banglaLyrics, g2);
+        }
     }
 
     @Override
@@ -99,31 +104,37 @@ public class BanglaLyricsComponent extends ScoreComponent {
             return;
         }
 
-        var font = composition.getBanglaFont();
-        g2.setFont(font);
-        g2.setColor(Color.BLACK);
+        try (var ignored = songscribe.ui.renderer.GraphicsState.save(
+            g2,
+            songscribe.ui.renderer.GraphicsState.Property.FONT,
+            songscribe.ui.renderer.GraphicsState.Property.COLOR
+        )) {
+            var font = composition.getBanglaFont();
+            g2.setFont(font);
+            g2.setColor(Color.BLACK);
 
-        var metrics = g2.getFontMetrics();
-        var lineHeight = metrics.getHeight();
+            var metrics = g2.getFontMetrics();
+            var lineHeight = metrics.getHeight();
 
-        // Use contentX if set (for union width centering), otherwise center based on own width
-        float x;
+            // Use contentX if set (for union width centering), otherwise center based on own width
+            float x;
 
-        if (contentX >= 0) {
-            x = contentX;
-        } else {
-            var textWidth = GraphicUtils.getTextBlockWidth(banglaLyrics, g2);
-            x = (float) ((composition.getLineWidth() - textWidth) / 2);
-        }
+            if (contentX >= 0) {
+                x = contentX;
+            } else {
+                var textWidth = GraphicUtils.getTextBlockWidth(banglaLyrics, g2);
+                x = (float) ((composition.getLineWidth() - textWidth) / 2);
+            }
 
-        var y = (float) (marginTop + metrics.getAscent());
+            var y = (float) (marginTop + metrics.getAscent());
 
-        // Draw each line
-        var lines = banglaLyrics.split("\n");
+            // Draw each line
+            var lines = banglaLyrics.split("\n");
 
-        for (var line : lines) {
-            g2.drawString(line, x, y);
-            y += lineHeight;
+            for (var line : lines) {
+                g2.drawString(line, x, y);
+                y += lineHeight;
+            }
         }
     }
 

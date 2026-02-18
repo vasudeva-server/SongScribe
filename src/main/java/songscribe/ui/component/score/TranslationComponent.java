@@ -94,18 +94,23 @@ public class TranslationComponent extends ScoreComponent {
 
         double maxWidth = 0;
 
-        // Header width
-        g2.setFont(headerFont);
-        var headerText = composition.isUnofficialTranslation()
-            ? TRANSLATION_HEADER_UNOFFICIAL
-            : TRANSLATION_HEADER_OFFICIAL;
-        maxWidth = Math.max(maxWidth, GraphicUtils.getTextBlockWidth(headerText, g2));
+        try (var ignored = songscribe.ui.renderer.GraphicsState.save(
+            g2,
+            songscribe.ui.renderer.GraphicsState.Property.FONT
+        )) {
+            // Header width
+            g2.setFont(headerFont);
+            var headerText = composition.isUnofficialTranslation()
+                ? TRANSLATION_HEADER_UNOFFICIAL
+                : TRANSLATION_HEADER_OFFICIAL;
+            maxWidth = Math.max(maxWidth, GraphicUtils.getTextBlockWidth(headerText, g2));
 
-        // Translation text width
-        g2.setFont(lyricsFont);
-        maxWidth = Math.max(maxWidth, GraphicUtils.getTextBlockWidth(translation, g2));
+            // Translation text width
+            g2.setFont(lyricsFont);
+            maxWidth = Math.max(maxWidth, GraphicUtils.getTextBlockWidth(translation, g2));
 
-        return maxWidth;
+            return maxWidth;
+        }
     }
 
     @Override
@@ -120,46 +125,52 @@ public class TranslationComponent extends ScoreComponent {
             return;
         }
 
-        var lyricsFont = composition.getLyricsFont();
-        var headerFont = lyricsFont.deriveFont(Font.BOLD, lyricsFont.getSize2D());
+        try (var ignored = songscribe.ui.renderer.GraphicsState.save(
+            g2,
+            songscribe.ui.renderer.GraphicsState.Property.FONT,
+            songscribe.ui.renderer.GraphicsState.Property.COLOR
+        )) {
+            var lyricsFont = composition.getLyricsFont();
+            var headerFont = lyricsFont.deriveFont(Font.BOLD, lyricsFont.getSize2D());
 
-        // Draw header
-        g2.setFont(headerFont);
-        g2.setColor(Color.BLACK);
+            // Draw header
+            g2.setFont(headerFont);
+            g2.setColor(Color.BLACK);
 
-        var headerText = composition.isUnofficialTranslation()
-            ? TRANSLATION_HEADER_UNOFFICIAL
-            : TRANSLATION_HEADER_OFFICIAL;
+            var headerText = composition.isUnofficialTranslation()
+                ? TRANSLATION_HEADER_UNOFFICIAL
+                : TRANSLATION_HEADER_OFFICIAL;
 
-        var headerMetrics = g2.getFontMetrics();
+            var headerMetrics = g2.getFontMetrics();
 
-        // Use contentX if set (for union width centering), otherwise center based on own width
-        float x;
+            // Use contentX if set (for union width centering), otherwise center based on own width
+            float x;
 
-        if (contentX >= 0) {
-            x = contentX;
-        } else {
-            var headerWidth = GraphicUtils.getTextBlockWidth(headerText, g2);
-            x = (float) ((composition.getLineWidth() - headerWidth) / 2);
-        }
+            if (contentX >= 0) {
+                x = contentX;
+            } else {
+                var headerWidth = GraphicUtils.getTextBlockWidth(headerText, g2);
+                x = (float) ((composition.getLineWidth() - headerWidth) / 2);
+            }
 
-        var y = (float) (marginTop + headerMetrics.getAscent());
+            var y = (float) (marginTop + headerMetrics.getAscent());
 
-        g2.drawString(headerText, x, y);
-        y += headerMetrics.getHeight();
+            g2.drawString(headerText, x, y);
+            y += headerMetrics.getHeight();
 
-        // Margin below header
-        y += lyricsFont.getSize2D() / 4f;
+            // Margin below header
+            y += lyricsFont.getSize2D() / 4f;
 
-        // Draw translation text
-        g2.setFont(lyricsFont);
+            // Draw translation text
+            g2.setFont(lyricsFont);
 
-        var lineHeight = g2.getFontMetrics().getHeight();
-        var lines = translation.split("\n");
+            var lineHeight = g2.getFontMetrics().getHeight();
+            var lines = translation.split("\n");
 
-        for (var line : lines) {
-            g2.drawString(line, x, y);
-            y += lineHeight;
+            for (var line : lines) {
+                g2.drawString(line, x, y);
+                y += lineHeight;
+            }
         }
     }
 

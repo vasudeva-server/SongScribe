@@ -49,7 +49,8 @@ public class PlayPauseAction extends SequencerAction {
         );
         setFlags(
             Flag.DISABLE_WHEN_EDITING_TEXT,
-            Flag.DISABLE_IN_ADJUSTMENT_MODE
+            Flag.DISABLE_IN_ADJUSTMENT_MODE,
+            Flag.DISABLE_WHEN_COMPOSITION_EMPTY
         );
     }
 

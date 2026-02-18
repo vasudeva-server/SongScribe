@@ -81,8 +81,13 @@ public class UnderLyricsComponent extends ScoreComponent {
             return 0;
         }
 
-        g2.setFont(composition.getLyricsFont());
-        return GraphicUtils.getTextBlockWidth(lyrics, g2);
+        try (var ignored = songscribe.ui.renderer.GraphicsState.save(
+            g2,
+            songscribe.ui.renderer.GraphicsState.Property.FONT
+        )) {
+            g2.setFont(composition.getLyricsFont());
+            return GraphicUtils.getTextBlockWidth(lyrics, g2);
+        }
     }
 
     @Override
@@ -97,31 +102,37 @@ public class UnderLyricsComponent extends ScoreComponent {
             return;
         }
 
-        var font = composition.getLyricsFont();
-        g2.setFont(font);
-        g2.setColor(Color.BLACK);
+        try (var ignored = songscribe.ui.renderer.GraphicsState.save(
+            g2,
+            songscribe.ui.renderer.GraphicsState.Property.FONT,
+            songscribe.ui.renderer.GraphicsState.Property.COLOR
+        )) {
+            var font = composition.getLyricsFont();
+            g2.setFont(font);
+            g2.setColor(Color.BLACK);
 
-        var metrics = g2.getFontMetrics();
-        var lineHeight = metrics.getHeight();
+            var metrics = g2.getFontMetrics();
+            var lineHeight = metrics.getHeight();
 
-        // Use contentX if set (for union width centering), otherwise center based on own width
-        float x;
+            // Use contentX if set (for union width centering), otherwise center based on own width
+            float x;
 
-        if (contentX >= 0) {
-            x = contentX;
-        } else {
-            var textWidth = GraphicUtils.getTextBlockWidth(lyrics, g2);
-            x = (float) ((composition.getLineWidth() - textWidth) / 2);
-        }
+            if (contentX >= 0) {
+                x = contentX;
+            } else {
+                var textWidth = GraphicUtils.getTextBlockWidth(lyrics, g2);
+                x = (float) ((composition.getLineWidth() - textWidth) / 2);
+            }
 
-        var y = (float) metrics.getAscent();
+            var y = (float) metrics.getAscent();
 
-        // Draw each line
-        var lines = lyrics.split("\n");
+            // Draw each line
+            var lines = lyrics.split("\n");
 
-        for (var line : lines) {
-            g2.drawString(line, x, y);
-            y += lineHeight;
+            for (var line : lines) {
+                g2.drawString(line, x, y);
+                y += lineHeight;
+            }
         }
     }
 

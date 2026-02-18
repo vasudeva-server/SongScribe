@@ -41,7 +41,7 @@ public abstract class Note extends LineElement implements Cloneable {
 
     // TODO: This will go away when we use Leland font instead of images
     public static final Rectangle[] REAL_NATURAL_FLAT_SHARP_RECT =
-        new Rectangle[] {
+        new Rectangle[]{
             new Rectangle(0, 17, 6, 22),
             new Rectangle(0, 15, 7, 19),
             new Rectangle(0, 17, 8, 22),
@@ -56,7 +56,7 @@ public abstract class Note extends LineElement implements Cloneable {
     protected Glissando glissando = NO_GLISSANDO;
 
     // MIDI pitches B4..A5, corresponding to the index returned by getPitchIndex()
-    private static final int[] MIDI_PITCHES = new int[] {
+    private static final int[] MIDI_PITCHES = new int[]{
         71,
         72,
         74,
@@ -67,7 +67,7 @@ public abstract class Note extends LineElement implements Cloneable {
     };
 
     // How much to adjust the MIDI pitch for each Accidental value
-    private static final int[] MIDI_PITCH_ADJUSTMENT = new int[] {
+    private static final int[] MIDI_PITCH_ADJUSTMENT = new int[]{
         0, // NONE
         0, // NATURAL
         -1, // FLAT
@@ -80,7 +80,7 @@ public abstract class Note extends LineElement implements Cloneable {
     };
 
     // Note durations corresponding to dotCount
-    private static final float[] DOTTED_DURATION = new float[] {
+    private static final float[] DOTTED_DURATION = new float[]{
         1.0f,
         1.5f,
         1.75f,
@@ -92,7 +92,7 @@ public abstract class Note extends LineElement implements Cloneable {
     private static final ArrayList<ColoredImage> coloredImages =
         new ArrayList<>();
 
-    public final Acceleration acceleration = new Acceleration();
+    public final Properties properties = new Properties();
 
     /**
      * User's manual horizontal offset from the layout-calculated position.
@@ -149,7 +149,8 @@ public abstract class Note extends LineElement implements Cloneable {
     /** Attachments on this note (tempo, fermata, dynamics, etc.) */
     private final List<Attachment> attachments = new ArrayList<>();
 
-    protected Note() {}
+    protected Note() {
+    }
 
     protected Note(@NotNull Note note) {
         xOffset = note.xOffset;
@@ -175,9 +176,10 @@ public abstract class Note extends LineElement implements Cloneable {
         // Copy LineElement hierarchy data
         setParentLine(note.getParentLine());
 
-        // Note: articulations and attachments are NOT deep-copied here.
-        // For now, the new Note gets empty lists. Full deep-copy will be
-        // implemented when rendering uses the new hierarchy.
+        // Deep-copy articulations
+        for (var art : note.articulations) {
+            addArticulation(new Articulation(this, art.getType()));
+        }
     }
 
     public abstract NoteType getNoteType();
@@ -251,6 +253,33 @@ public abstract class Note extends LineElement implements Cloneable {
         }
 
         return false;
+    }
+
+    /**
+     * Returns true if this note has an articulation of the given type.
+     */
+    public boolean hasArticulation(@NotNull ArticulationType type) {
+        for (var articulation : articulations) {
+            if (articulation.getType() == type) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Returns the MIDI duration percentage from the first articulation that overrides duration,
+     * or -1 if no articulation overrides duration.
+     */
+    public int findMidiDurationOverride() {
+        for (var articulation : articulations) {
+            if (articulation.getType().hasMidiDurationOverride()) {
+                return articulation.getType().getMidiDurationPercent();
+            }
+        }
+
+        return -1;
     }
 
     /**
@@ -394,7 +423,7 @@ public abstract class Note extends LineElement implements Cloneable {
     public void setAccidental(Accidental accidental) {
         this.accidental = accidental;
         isAccidentalInParentheses = isAccidentalInParentheses &&
-        (getAccidental() != Accidental.NONE);
+            (getAccidental() != Accidental.NONE);
     }
 
     public boolean isAccidentalInParentheses() {
@@ -403,7 +432,7 @@ public abstract class Note extends LineElement implements Cloneable {
 
     public void setAccidentalInParentheses(boolean accidentalInParenthesis) {
         isAccidentalInParentheses = (getAccidental() != Accidental.NONE) &&
-        accidentalInParenthesis;
+            accidentalInParenthesis;
     }
 
     public Glissando getGlissando() {
@@ -534,8 +563,8 @@ public abstract class Note extends LineElement implements Cloneable {
     private int calculatePitch(Accidental accidental) {
         return (
             MIDI_PITCHES[getPitchIndex()] +
-            (12 * (((yPos <= 0) ? -yPos : (-yPos - 6)) / 7)) +
-            MIDI_PITCH_ADJUSTMENT[accidental.ordinal()]
+                (12 * (((yPos <= 0) ? -yPos : (-yPos - 6)) / 7)) +
+                MIDI_PITCH_ADJUSTMENT[accidental.ordinal()]
         );
     }
 
@@ -614,7 +643,7 @@ public abstract class Note extends LineElement implements Cloneable {
 
             if (
                 (note.getYPos() == yPos) &&
-                (note.getAccidental() != Accidental.NONE)
+                    (note.getAccidental() != Accidental.NONE)
             ) {
                 return line.getNote(i).getAccidental();
             }
@@ -698,7 +727,7 @@ public abstract class Note extends LineElement implements Cloneable {
         Image coloredImage
     ) {}
 
-    public static class Acceleration {
+    public static class Properties {
 
         // Lengthening for beaming
         public int lengthening = 0;

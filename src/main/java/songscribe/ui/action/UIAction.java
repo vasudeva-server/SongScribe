@@ -33,6 +33,7 @@ import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.Score;
 import songscribe.ui.message.BarSelectedMessage;
 import songscribe.ui.message.DurationSelectedMessage;
+import songscribe.ui.message.LayoutChangeMessage;
 import songscribe.ui.message.Message;
 import songscribe.ui.message.MessageCenter;
 import songscribe.ui.message.ModeChangedMessage;
@@ -59,7 +60,8 @@ public class UIAction extends AbstractAction {
         DISABLE_WHEN_EDITING_TEXT(1 << 8),
         DISABLE_IN_ADJUSTMENT_MODE(1 << 9),
         DISABLE_WHEN_BAR_SELECTED(1 << 10),
-        ENABLE_WHEN_DURATION_SELECTED(1 << 11);
+        ENABLE_WHEN_DURATION_SELECTED(1 << 11),
+        DISABLE_WHEN_COMPOSITION_EMPTY(1 << 12);
 
         private final int value;
 
@@ -153,7 +155,8 @@ public class UIAction extends AbstractAction {
         if (
             hasFlag(Flag.REQUIRES_SELECTION) ||
             hasFlag(Flag.REQUIRES_SINGLE_SELECTION) ||
-            hasFlag(Flag.REQUIRES_MULTIPLE_SELECTION)
+            hasFlag(Flag.REQUIRES_MULTIPLE_SELECTION) ||
+            hasFlag(Flag.DISABLE_WHEN_COMPOSITION_EMPTY)
         ) {
             setEnabled(false);
         }
@@ -270,7 +273,8 @@ public class UIAction extends AbstractAction {
             enableInRestMode() &&
             enableFromSelection(score) &&
             enableFromBarSelection() &&
-            enableFromDurationSelection();
+            enableFromDurationSelection() &&
+            enableFromCompositionState();
         setEnabled(enable);
         return enable;
     }
@@ -389,5 +393,19 @@ public class UIAction extends AbstractAction {
             (duration != Actions.GRACE_SIXTEENTH_NOTE_ACTION) &&
             (duration != Actions.GLISSANDO_ACTION)
         );
+    }
+
+    @Handler(priority = Message.MEDIUM_PRIORITY)
+    public void layoutDidChange(LayoutChangeMessage message) {
+        updateEnabledState();
+    }
+
+    protected boolean enableFromCompositionState() {
+        if (!hasFlag(Flag.DISABLE_WHEN_COMPOSITION_EMPTY)) {
+            return true;
+        }
+
+        var composition = MainFrame.getInstance().getScore().getComposition();
+        return !composition.isEmpty();
     }
 }

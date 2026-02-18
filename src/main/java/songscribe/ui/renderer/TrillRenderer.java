@@ -20,13 +20,14 @@
 
 package songscribe.ui.renderer;
 
-import java.awt.Graphics2D;
+import java.awt.*;
 
 import org.jetbrains.annotations.NotNull;
 
+import static songscribe.ui.renderer.GraphicsState.Property.*;
+
 import songscribe.music.Line;
 import songscribe.music.Note;
-import songscribe.ui.layout.LayoutStylesheet;
 import songscribe.ui.layout.Trill;
 
 /**
@@ -125,14 +126,16 @@ public class TrillRenderer extends BaseElementRenderer<Trill> {
         int x = startNote.getXPos();
         int y = middleLineY + trillYPos;
 
-        g2.setFont(ctx.getFughettaFont());
-        g2.setColor(NOTE_COLOR);
-        g2.drawString(TRILL_GLYPH, x, y);
+        try (var ignored = GraphicsState.save(g2, FONT, COLOR)) {
+            g2.setFont(ctx.getMusicFont());
+            g2.setColor(NOTE_COLOR);
+            g2.drawString(TRILL_GLYPH, x, y);
 
-        // Draw wavy line extension if there's an end note
-        if (endNote != null && endNote != startNote) {
-            int endX = (int) Math.round(endNote.getXPos() + CROTCHET_WIDTH);
-            drawWavyLine(g2, x + 18, y - 3, endX, y - 3);
+            // Draw wavy line extension if there's an end note
+            if (endNote != null && endNote != startNote) {
+                int endX = (int) Math.round(endNote.getXPos() + CROTCHET_WIDTH);
+                drawWavyLine(g2, x + 18, y - 3, endX, y - 3);
+            }
         }
     }
 
@@ -188,19 +191,18 @@ public class TrillRenderer extends BaseElementRenderer<Trill> {
 
         int segments = Math.max(2, (int) Math.round(length / GLISSANDO_LENGTH));
 
-        var transform = g2.getTransform();
-        g2.translate(x1, y1 + 2.25);
+        try (var ignored = GraphicsState.save(g2, TRANSFORM)) {
+            g2.translate(x1, y1 + 2.25);
 
-        double angle = Math.atan2(y2 - y1, x2 - x1);
-        g2.rotate(angle);
+            double angle = Math.atan2(y2 - y1, x2 - x1);
+            g2.rotate(angle);
 
-        double scale = length / GLISSANDO_LENGTH / segments;
-        g2.scale(scale, 1d);
+            double scale = length / GLISSANDO_LENGTH / segments;
+            g2.scale(scale, 1d);
 
-        for (int i = 0; i < segments; i++) {
-            g2.drawString(GLISSANDO_GLYPH, (int) Math.round(i * GLISSANDO_LENGTH), 0);
+            for (int i = 0; i < segments; i++) {
+                g2.drawString(GLISSANDO_GLYPH, (int) Math.round(i * GLISSANDO_LENGTH), 0);
+            }
         }
-
-        g2.setTransform(transform);
     }
 }

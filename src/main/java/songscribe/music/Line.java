@@ -179,18 +179,18 @@ public class Line {
     }
 
     public void addNote(Note note) {
-        modifiedComposition();
         note.setLine(this);
         notes.add(note);
         attachInitialTempoIfNeeded(note);
+        modifiedComposition();
     }
 
     public void addNote(int index, Note note) {
-        modifiedComposition();
         note.setLine(this);
         notes.add(index, note);
         shiftIntervals(intervalSets, index, 1);
         attachInitialTempoIfNeeded(note);
+        modifiedComposition();
     }
 
     public void setNote(int index, Note note) {
@@ -806,9 +806,10 @@ public class Line {
                 }
 
                 if ((interval == null) || (interval.getEnd() == noteIndex)) {
-                    var currDuration = (note.getDurationArticulation() == null)
+                    var midiOverride = note.findMidiDurationOverride();
+                    var currDuration = (midiOverride < 0)
                         ? settings.noteDurationPercent()
-                        : note.getDurationArticulation().getDuration();
+                        : midiOverride;
                     addNoteOff(
                         track,
                         (int) (trackTicks + ((noteDuration * currDuration) / 100f)),
@@ -831,7 +832,7 @@ public class Line {
         down.setMessage(
             ShortMessage.NOTE_ON,
             note.getPitch(),
-            (note.getForceArticulation() == ForceArticulation.ACCENT)
+            note.hasArticulation(ArticulationType.ACCENT)
                 ? ACCENTED_NOTE_VELOCITY
                 : NOTE_VELOCITY
         );
@@ -846,7 +847,7 @@ public class Line {
         up.setMessage(
             ShortMessage.NOTE_OFF,
             note.getPitch(),
-            (note.getForceArticulation() == ForceArticulation.ACCENT)
+            note.hasArticulation(ArticulationType.ACCENT)
                 ? ACCENTED_NOTE_VELOCITY
                 : NOTE_VELOCITY
         );

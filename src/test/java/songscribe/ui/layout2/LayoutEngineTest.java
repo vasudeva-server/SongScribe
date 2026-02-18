@@ -26,9 +26,8 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.awt.Font;
-import java.awt.Graphics2D;
-import java.awt.image.BufferedImage;
+import java.awt.*;
+import java.awt.image.*;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -82,7 +81,7 @@ class LayoutEngineTest {
         var note = new Crotchet();
 
         if (syllable != null) {
-            note.acceleration.syllable = syllable;
+            note.properties.syllable = syllable;
         }
 
         if (accidental != null) {
@@ -98,7 +97,7 @@ class LayoutEngineTest {
         var note = new Quaver();
 
         if (syllable != null) {
-            note.acceleration.syllable = syllable;
+            note.properties.syllable = syllable;
         }
 
         return note;
@@ -107,10 +106,10 @@ class LayoutEngineTest {
     private void assertLayoutResultValid(LayoutResult result, Line line) {
         assertNotNull(result, "Layout result should not be null");
         assertEquals(line.noteCount(), result.getNoteColumnCount(),
-                "Result should contain a column for each note");
+            "Result should contain a column for each note");
         assertTrue(result.getLineHeight() > 0, "Line height should be positive");
         assertTrue(result.getStaffBottomY() > result.getStaffTopY(),
-                "Staff bottom should be below staff top");
+            "Staff bottom should be below staff top");
     }
 
     private void assertNotePositioned(LayoutResult result, Note note) {
@@ -126,8 +125,8 @@ class LayoutEngineTest {
             var note = notes.get(i);
             var x = result.getNoteX(note);
             assertTrue(x > prevX,
-                    String.format("Note %d (x=%.2f) should be right of previous note (x=%.2f)",
-                            i, x, prevX));
+                String.format("Note %d (x=%.2f) should be right of previous note (x=%.2f)",
+                    i, x, prevX));
             prevX = x;
         }
     }
@@ -142,8 +141,8 @@ class LayoutEngineTest {
         double minGap = LayoutConstants.px(LayoutConstants.MIN_COLUMN_GAP);
 
         assertTrue(gap >= minGap - 0.01,
-                String.format("Gap between notes (%.2f) should be >= minimum (%.2f)",
-                        gap, minGap));
+            String.format("Gap between notes (%.2f) should be >= minimum (%.2f)",
+                gap, minGap));
     }
 
     // ==========================================================================
@@ -219,7 +218,7 @@ class LayoutEngineTest {
             assertTrue(column.hasSyllable(), "Note should have syllable");
             assertEquals("Hello", column.getSyllable());
             assertTrue(result.getLyricBaselineY() > 0,
-                    "Lyric baseline should be positive");
+                "Lyric baseline should be positive");
             assertNull(engine.getLastError());
         }
 
@@ -237,7 +236,7 @@ class LayoutEngineTest {
 
             var column = result.getNoteColumn(note);
             assertTrue(column.getLeftExtent() < -9.0,
-                    "Left extent should include accidental width");
+                "Left extent should include accidental width");
             assertNull(engine.getLastError());
         }
 
@@ -255,7 +254,7 @@ class LayoutEngineTest {
 
             var column = result.getNoteColumn(note);
             assertTrue(column.getRightExtent() > 9.0,
-                    "Right extent should include dot widths");
+                "Right extent should include dot widths");
             assertNull(engine.getLastError());
         }
     }
@@ -321,11 +320,11 @@ class LayoutEngineTest {
 
             double spacing = col2.getX() - col1.getX();
             double minSpacing = col1.getRightExtent() +
-                    LayoutConstants.px(LayoutConstants.MIN_COLUMN_GAP) +
-                    Math.abs(col2.getLeftExtent());
+                LayoutConstants.px(LayoutConstants.MIN_COLUMN_GAP) +
+                Math.abs(col2.getLeftExtent());
 
             assertTrue(spacing >= minSpacing,
-                    "Lyric spacing should be at least minimum note spacing");
+                "Lyric spacing should be at least minimum note spacing");
             assertNull(engine.getLastError());
         }
 
@@ -405,7 +404,7 @@ class LayoutEngineTest {
             double minClearance = LayoutConstants.px(LayoutConstants.ACCIDENTAL_CLEARANCE);
 
             assertTrue(clearance >= minClearance - 0.01,
-                    "Accidental should have proper clearance");
+                "Accidental should have proper clearance");
             assertNull(engine.getLastError());
         }
 
@@ -493,10 +492,10 @@ class LayoutEngineTest {
 
             var col1 = result.getNoteColumn(note1);
             double expectedMinX = 28.0 + (3 * 8.0) +
-                    LayoutConstants.px(LayoutConstants.FIRST_NOTE_OFFSET);
+                LayoutConstants.px(LayoutConstants.FIRST_NOTE_OFFSET);
 
             assertTrue(col1.getX() >= expectedMinX - 0.01,
-                    "First note should account for key signature width");
+                "First note should account for key signature width");
             assertNull(engine.getLastError());
         }
 
@@ -528,14 +527,14 @@ class LayoutEngineTest {
 
             assertLayoutResultValid(result, line);
             assertNotesMonotonicallyIncreasing(result,
-                    List.of(note1, note2, note3, note4, note5, note6));
+                List.of(note1, note2, note3, note4, note5, note6));
 
             for (var i = 0; i < line.noteCount(); i++) {
                 assertNotePositioned(result, line.getNote(i));
             }
 
             assertTrue(result.getLineWidth() < staffRightMargin,
-                    "Line should fit within margin");
+                "Line should fit within margin");
             assertNull(engine.getLastError());
         }
     }
@@ -564,9 +563,9 @@ class LayoutEngineTest {
 
             assertNull(result, "Layout should fail for line that cannot fit");
             assertNotNull(tinyEngine.getLastError(),
-                    "Error message should be set when layout fails");
+                "Error message should be set when layout fails");
             assertTrue(tinyEngine.getLastError().length() > 0,
-                    "Error message should not be empty");
+                "Error message should not be empty");
         }
 
         @Test
@@ -586,10 +585,9 @@ class LayoutEngineTest {
             if (result != null) {
                 assertLayoutResultValid(result, line);
                 assertTrue(result.getLineWidth() <= moderateMargin + 0.01,
-                        "Compressed line should fit within margin");
+                    "Compressed line should fit within margin");
                 assertNull(moderateEngine.getLastError());
-            }
-            else {
+            } else {
                 assertNotNull(moderateEngine.getLastError());
             }
         }
@@ -617,7 +615,7 @@ class LayoutEngineTest {
 
             if (result2 != null) {
                 assertNull(testEngine.getLastError(),
-                        "Error should be cleared after successful layout");
+                    "Error should be cleared after successful layout");
             }
         }
     }
@@ -690,7 +688,7 @@ class LayoutEngineTest {
 
             assertLayoutResultValid(result, line);
             assertNotesMonotonicallyIncreasing(result,
-                    List.of(note1, note2, note3, note4, note5));
+                List.of(note1, note2, note3, note4, note5));
             assertNull(engine.getLastError());
         }
 
@@ -720,7 +718,7 @@ class LayoutEngineTest {
             assertLayoutResultValid(result, line);
             assertEquals(7, result.getNoteColumnCount());
             assertNotesMonotonicallyIncreasing(result,
-                    List.of(note1, note2, note3, note4, note5, note6, note7));
+                List.of(note1, note2, note3, note4, note5, note6, note7));
             assertNull(engine.getLastError());
         }
 

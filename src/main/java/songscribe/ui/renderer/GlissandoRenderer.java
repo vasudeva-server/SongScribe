@@ -20,8 +20,10 @@
 
 package songscribe.ui.renderer;
 
-import java.awt.Graphics2D;
-import java.awt.geom.AffineTransform;
+import static songscribe.ui.renderer.GraphicsState.Property.FONT;
+import static songscribe.ui.renderer.GraphicsState.Property.TRANSFORM;
+
+import java.awt.*;
 
 import org.jetbrains.annotations.NotNull;
 
@@ -330,27 +332,25 @@ public class GlissandoRenderer {
         var segments = Math.max(MIN_SEGMENTS, (int) Math.round(length / GLISSANDO_LENGTH));
 
         // Save transform and set up for rotated drawing
-        var savedTransform = g2.getTransform();
-        g2.setFont(ctx.getFughettaFont());
+        try (var ignored = GraphicsState.save(g2, TRANSFORM, FONT)) {
+            g2.setFont(ctx.getMusicFont());
 
-        // Translate to start position
-        g2.translate(x1, y1 + GLISSANDO_Y_OFFSET);
+            // Translate to start position
+            g2.translate(x1, y1 + GLISSANDO_Y_OFFSET);
 
-        // Rotate to angle of glissando line
-        var angle = Math.atan((double) (y2 - y1) / (double) (x2 - x1));
-        g2.rotate(angle);
+            // Rotate to angle of glissando line
+            var angle = Math.atan((double) (y2 - y1) / (double) (x2 - x1));
+            g2.rotate(angle);
 
-        // Scale horizontally to fit the line
-        var scale = length / GLISSANDO_LENGTH / segments;
-        g2.scale(scale, 1d);
+            // Scale horizontally to fit the line
+            var scale = length / GLISSANDO_LENGTH / segments;
+            g2.scale(scale, 1d);
 
-        // Draw glissando segments
-        for (var i = 0; i < segments; i++) {
-            g2.drawString(GLISSANDO_GLYPH, (int) Math.round(i * GLISSANDO_LENGTH), 0);
+            // Draw glissando segments
+            for (var i = 0; i < segments; i++) {
+                g2.drawString(GLISSANDO_GLYPH, (int) Math.round(i * GLISSANDO_LENGTH), 0);
+            }
         }
-
-        // Restore transform
-        g2.setTransform(savedTransform);
     }
 
     /**

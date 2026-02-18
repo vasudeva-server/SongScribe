@@ -33,6 +33,8 @@ import songscribe.music.NoteType;
 import songscribe.ui.layout.Ending;
 import songscribe.ui.layout.LineElement;
 
+import static songscribe.ui.renderer.GraphicsState.Property.*;
+
 /**
  * Renders first and second ending brackets.
  * <p>
@@ -242,13 +244,15 @@ public class EndingRenderer extends BaseElementRenderer<LineElement> {
             bracket.lineTo(x2, y);
         }
 
-        g2.setStroke(STEM_STROKE);
-        g2.setColor(NOTE_COLOR);
-        g2.draw(bracket);
+        try (var ignored = GraphicsState.save(g2, COLOR, STROKE, FONT)) {
+            g2.setStroke(STEM_STROKE);
+            g2.setColor(NOTE_COLOR);
+            g2.draw(bracket);
 
-        // Draw ending number
-        g2.setFont(BaseElementRenderer.ENDING_FONT);
-        g2.drawString(Integer.toString(number), (float) x1 + 4, y - 3);
+            // Draw ending number
+            g2.setFont(BaseElementRenderer.ENDING_FONT);
+            g2.drawString(Integer.toString(number), (float) x1 + 4, y - 3);
+        }
     }
 
     /**

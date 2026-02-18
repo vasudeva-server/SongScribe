@@ -24,9 +24,11 @@ import java.util.HashMap;
 import java.util.Map;
 import org.jetbrains.annotations.Nullable;
 import org.xml.sax.Attributes;
+import songscribe.music.ArticulationType;
 import songscribe.music.BeatChange;
 import songscribe.music.DurationArticulation;
 import songscribe.music.ForceArticulation;
+import songscribe.ui.layout.Articulation;
 import songscribe.music.GraceSemiQuaver;
 import songscribe.music.Note;
 import songscribe.music.NoteType;
@@ -140,20 +142,19 @@ public final class NoteIO {
             XML.writeEmptyTag(writer, XML_PREFIX_IN_PARENTHESIS);
         }
 
-        if (note.getForceArticulation() != null) {
-            XML.writeValue(
-                writer,
-                XML_FORCE_ARTICULATION,
-                note.getForceArticulation().name()
-            );
-        }
-
-        if (note.getDurationArticulation() != null) {
-            XML.writeValue(
-                writer,
-                XML_DURATION_ARTICULATION,
-                note.getDurationArticulation().name()
-            );
+        for (var articulation : note.getArticulations()) {
+            switch (articulation.getType()) {
+                case ACCENT -> XML.writeValue(
+                    writer,
+                    XML_FORCE_ARTICULATION,
+                    ArticulationType.ACCENT.name()
+                );
+                case STACCATO -> XML.writeValue(
+                    writer,
+                    XML_DURATION_ARTICULATION,
+                    ArticulationType.STACCATO.name()
+                );
+            }
         }
 
         //noinspection ObjectEquality
@@ -359,13 +360,22 @@ public final class NoteIO {
                         lastTag.equals(XML_VOLUME) && str.equals("LOUDER")
                     ) { //old
                         note.setForceArticulation(ForceArticulation.ACCENT);
+                        note.addArticulation(
+                            new Articulation(note, ArticulationType.ACCENT)
+                        );
                     } else if (lastTag.equals(XML_FORCE_ARTICULATION)) {
                         note.setForceArticulation(
                             ForceArticulation.valueOf(str)
                         );
+                        note.addArticulation(
+                            new Articulation(note, ArticulationType.ACCENT)
+                        );
                     } else if (lastTag.equals(XML_DURATION_ARTICULATION)) {
                         note.setDurationArticulation(
                             DurationArticulation.valueOf(str)
+                        );
+                        note.addArticulation(
+                            new Articulation(note, ArticulationType.STACCATO)
                         );
                     } else if (lastTag.equals(XML_GLISSANDO)) {
                         note.setGlissando(Integer.parseInt(str));

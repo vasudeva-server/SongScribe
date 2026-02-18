@@ -325,10 +325,15 @@ public class HorizontalAdjustment extends Adjustment {
     @Override
     public void repaint(Graphics2D g2) {
         for (var ar : adjustRects) {
-            g2.setPaint(ar.horizontalAdjustmentType.getColor());
-            g2.fill(ar.rect);
-            g2.setPaint(Color.black);
-            g2.draw(ar.rect);
+            try (var ignored = songscribe.ui.renderer.GraphicsState.save(
+                g2,
+                songscribe.ui.renderer.GraphicsState.Property.COLOR
+            )) {
+                g2.setPaint(ar.horizontalAdjustmentType.getColor());
+                g2.fill(ar.rect);
+                g2.setPaint(Color.black);
+                g2.draw(ar.rect);
+            }
         }
     }
 

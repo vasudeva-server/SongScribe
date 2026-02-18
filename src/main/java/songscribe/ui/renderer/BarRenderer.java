@@ -31,6 +31,8 @@ import songscribe.music.Note;
 import songscribe.music.NoteType;
 import songscribe.ui.layout.LayoutStylesheet;
 
+import static songscribe.ui.renderer.GraphicsState.Property.*;
+
 /**
  * Renders bar lines and repeat signs.
  * <p>
@@ -134,18 +136,16 @@ public class BarRenderer extends BaseElementRenderer<Note> {
             return;
         }
 
-        var transform = g2.getTransform();
+        try (var ignored = GraphicsState.save(g2, TRANSFORM, COLOR)) {
+            // Get position - bar lines are centered vertically on the staff
+            int noteX = element.getXPos();
+            int noteY = ctx.getMiddleLineY();
 
-        // Get position - bar lines are centered vertically on the staff
-        int noteX = element.getXPos();
-        int noteY = ctx.getMiddleLineY();
+            g2.translate(noteX, noteY);
+            g2.setColor(NOTE_COLOR);
 
-        g2.translate(noteX, noteY);
-        g2.setColor(NOTE_COLOR);
-
-        renderBarLineOrRepeat(g2, noteType);
-
-        g2.setTransform(transform);
+            renderBarLineOrRepeat(g2, noteType);
+        }
     }
 
     /**
@@ -170,28 +170,26 @@ public class BarRenderer extends BaseElementRenderer<Note> {
      * Draws a bar line (single, double, or final double).
      */
     private static void drawBarLine(@NotNull Graphics2D g2, @NotNull NoteType noteType) {
-        var transform = g2.getTransform();
+        try (var ignored = GraphicsState.save(g2, TRANSFORM, STROKE)) {
+            if (noteType == NoteType.DOUBLE_BARLINE) {
+                g2.setStroke(THIN_LINE_STROKE);
+                g2.draw(BAR_LINE);
+                g2.translate(-BAR_LINE_SPACE - THIN_LINE_STROKE.getLineWidth(), 0);
+            } else if (noteType == NoteType.FINAL_DOUBLE_BARLINE) {
+                g2.setStroke(HEAVY_LINE_STROKE);
+                g2.translate(-HEAVY_LINE_STROKE.getLineWidth() / 2f, 0);
+                g2.draw(BAR_LINE);
+                g2.translate(
+                    -BAR_LINE_SPACE -
+                        (HEAVY_LINE_STROKE.getLineWidth() / 2f) -
+                        (THIN_LINE_STROKE.getLineWidth() / 2f),
+                    0
+                );
+            }
 
-        if (noteType == NoteType.DOUBLE_BARLINE) {
             g2.setStroke(THIN_LINE_STROKE);
             g2.draw(BAR_LINE);
-            g2.translate(-BAR_LINE_SPACE - THIN_LINE_STROKE.getLineWidth(), 0);
-        } else if (noteType == NoteType.FINAL_DOUBLE_BARLINE) {
-            g2.setStroke(HEAVY_LINE_STROKE);
-            g2.translate(-HEAVY_LINE_STROKE.getLineWidth() / 2f, 0);
-            g2.draw(BAR_LINE);
-            g2.translate(
-                -BAR_LINE_SPACE -
-                    (HEAVY_LINE_STROKE.getLineWidth() / 2f) -
-                    (THIN_LINE_STROKE.getLineWidth() / 2f),
-                0
-            );
         }
-
-        g2.setStroke(THIN_LINE_STROKE);
-        g2.draw(BAR_LINE);
-
-        g2.setTransform(transform);
     }
 
     /**
@@ -208,32 +206,31 @@ public class BarRenderer extends BaseElementRenderer<Note> {
         double direction,
         boolean drawThick
     ) {
-        var transform = g2.getTransform();
-        g2.translate(thickStart, 0);
+        try (var ignored = GraphicsState.save(g2, TRANSFORM, STROKE)) {
+            g2.translate(thickStart, 0);
 
-        // Align repeat bottom with staff line
-        double offset = LINE_STROKE.getLineWidth() / 2d;
-        var line = new Line2D.Double(
-            VERTICAL_LINE.x1, VERTICAL_LINE.y1,
-            VERTICAL_LINE.x2, VERTICAL_LINE.y2 + offset
-        );
+            // Align repeat bottom with staff line
+            double offset = LINE_STROKE.getLineWidth() / 2d;
+            var line = new Line2D.Double(
+                VERTICAL_LINE.x1, VERTICAL_LINE.y1,
+                VERTICAL_LINE.x2, VERTICAL_LINE.y2 + offset
+            );
 
-        if (drawThick) {
-            g2.setStroke(REPEAT_HEAVY_STROKE);
+            if (drawThick) {
+                g2.setStroke(REPEAT_HEAVY_STROKE);
+                g2.draw(line);
+            }
+
+            g2.setStroke(REPEAT_THIN_STROKE);
+            g2.translate(REPEAT_THICK_THIN_DIFF * direction, 0);
             g2.draw(line);
+
+            g2.translate(
+                (REPEAT_THIN_CIRCLE_DIFF * direction) - (REPEAT_CIRCLE_1.width / 2),
+                0
+            );
+            g2.fill(REPEAT_CIRCLE_1);
+            g2.fill(REPEAT_CIRCLE_2);
         }
-
-        g2.setStroke(REPEAT_THIN_STROKE);
-        g2.translate(REPEAT_THICK_THIN_DIFF * direction, 0);
-        g2.draw(line);
-
-        g2.translate(
-            (REPEAT_THIN_CIRCLE_DIFF * direction) - (REPEAT_CIRCLE_1.width / 2),
-            0
-        );
-        g2.fill(REPEAT_CIRCLE_1);
-        g2.fill(REPEAT_CIRCLE_2);
-
-        g2.setTransform(transform);
     }
 }

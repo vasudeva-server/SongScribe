@@ -28,8 +28,11 @@ import java.awt.geom.Ellipse2D;
 
 import org.jetbrains.annotations.NotNull;
 
+import static songscribe.ui.renderer.GraphicsState.Property.*;
+
 import songscribe.music.Note;
 import songscribe.ui.layout.FermataAttachment;
+import songscribe.ui.layout.LayoutStylesheet;
 
 /**
  * Renders fermata symbols above or below notes.
@@ -89,24 +92,23 @@ public class FermataRenderer extends BaseElementRenderer<Note> {
             return;
         }
 
-        var transform = g2.getTransform();
+        try (var ignored = GraphicsState.save(g2, TRANSFORM)) {
+            // Position fermata above the note
+            int noteX = element.getXPos();
+            int noteY = getEffectiveFermataYPos(element, ctx);
 
-        // Position fermata above the note
-        int noteX = element.getXPos();
-        int noteY = getEffectiveFermataYPos(element, ctx);
+            g2.translate(noteX - 5, noteY + 12);
+            g2.scale(0.0625, 0.0625);
+            g2.scale(0.9, 0.8);
 
-        g2.translate(noteX - 5, noteY + 12);
-        g2.scale(0.0625, 0.0625);
-        g2.scale(0.9, 0.8);
-
-        g2.setColor(NOTE_COLOR);
-        g2.fill(FERMATA);
-
-        g2.setTransform(transform);
+            g2.fill(FERMATA);
+        }
     }
 
     /**
-     * Gets the Y position for a fermata from layout result.
+     * Gets the Y position for a fermata from layout result,
+     * falling back to a computed position when no layout is available
+     * (e.g. for the insertion note preview).
      */
     private int getEffectiveFermataYPos(
         @NotNull Note note,
@@ -114,17 +116,17 @@ public class FermataRenderer extends BaseElementRenderer<Note> {
     ) {
         var layoutResult = ctx.getLayoutResult();
 
-        if (layoutResult == null) {
-            throw new IllegalStateException("Layout result must be available for rendering");
+        if (layoutResult != null) {
+            var bounds = layoutResult.findAttachmentBounds(note, FermataAttachment.class);
+
+            if (bounds != null) {
+                return (int) bounds.getTop();
+            }
         }
 
-        var bounds = layoutResult.findAttachmentBounds(note, FermataAttachment.class);
-
-        if (bounds == null) {
-            throw new IllegalStateException("No bounds found for FermataAttachment on note");
-        }
-
-        return (int) bounds.getTop();
+        // Fallback: compute position directly from note position
+        int fermataYPos = getFermataYPos(note);
+        return ctx.getMiddleLineY() + (int) (fermataYPos * LayoutStylesheet.NOTE_Y_OFFSET);
     }
 
     /**

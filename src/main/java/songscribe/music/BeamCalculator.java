@@ -16,6 +16,7 @@
 package songscribe.music;
 
 import org.jetbrains.annotations.NotNull;
+
 import songscribe.ui.component.Score;
 
 /**
@@ -105,7 +106,7 @@ public class BeamCalculator {
         }
 
         var note = line.getNote(goodIndex);
-        note.acceleration.lengthening = 0;
+        note.properties.lengthening = 0;
         note.setUpper(direction == 1);
         var distance =
             (note.getYPos() * Score.NOTE_Y_OFFSET) - (angle * note.getXPos());
@@ -205,11 +206,11 @@ public class BeamCalculator {
         note.setUpper(direction == 1);
 
         if (note.getNoteType().isGraceNote()) {
-            note.acceleration.lengthening = 0;
+            note.properties.lengthening = 0;
         } else {
             var lengthening = (note.getYPos() * Score.NOTE_Y_OFFSET) -
                 ((angle * note.getXPos()) + distance);
-            note.acceleration.lengthening = (int) Math.round(lengthening);
+            note.properties.lengthening = (int) Math.round(lengthening);
         }
     }
 }

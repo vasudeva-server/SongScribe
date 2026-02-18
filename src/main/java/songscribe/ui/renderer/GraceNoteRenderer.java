@@ -20,10 +20,10 @@
 
 package songscribe.ui.renderer;
 
-import java.awt.BasicStroke;
-import java.awt.Graphics2D;
-import java.awt.Stroke;
-import java.awt.geom.Line2D;
+import static songscribe.ui.renderer.GraphicsState.Property.*;
+
+import java.awt.*;
+import java.awt.geom.*;
 
 import org.jetbrains.annotations.NotNull;
 
@@ -165,56 +165,55 @@ public class GraceNoteRenderer extends BaseElementRenderer<Note> {
         @NotNull Note note,
         int middleLineY
     ) {
-        var origTransform = g2.getTransform();
-        var noteX = note.getXPos();
-        var noteY = noteYPosToCoordinate(note.getYPos(), middleLineY);
+        try (var ignored = GraphicsState.save(g2, TRANSFORM, FONT, COLOR, STROKE)) {
+            var noteX = note.getXPos();
+            var noteY = noteYPosToCoordinate(note.getYPos(), middleLineY);
 
-        g2.translate(noteX, noteY);
-        var translatedTransform = g2.getTransform();
+            g2.translate(noteX, noteY);
+            var translatedTransform = g2.getTransform();
 
-        // Scale for grace note
-        g2.scale(GRACE_NOTE_SCALE, GRACE_NOTE_SCALE);
-        g2.setFont(FUGHETTA);
-        g2.setColor(NOTE_COLOR);
+            // Scale for grace note
+            g2.scale(GRACE_NOTE_SCALE, GRACE_NOTE_SCALE);
+            g2.setFont(MUSIC_FONT);
+            g2.setColor(NOTE_COLOR);
 
-        // Draw note head
-        g2.drawString(FILLED_NOTE_HEAD, 0, 0);
+            // Draw note head
+            g2.drawString(FILLED_NOTE_HEAD, 0, 0);
 
-        // Draw stem and flag
-        g2.setStroke(STEM_STROKE);
+            // Draw stem and flag
+            g2.setStroke(STEM_STROKE);
 
-        if (note.isUpper()) {
-            // Upper stem
-            g2.translate(UPPER_CROTCHET_STEM_X, 0);
-            g2.draw(UPPER_STEM);
-            g2.translate(-UPPER_CROTCHET_STEM_X, 0);
+            if (note.isUpper()) {
+                // Upper stem
+                g2.translate(UPPER_CROTCHET_STEM_X, 0);
+                g2.draw(UPPER_STEM);
+                g2.translate(-UPPER_CROTCHET_STEM_X, 0);
 
-            // Upper flag
-            g2.drawString(MAIN_UPPER_FLAG, (float) UPPER_FLAG_X, (float) UPPER_FLAG_Y);
+                // Upper flag
+                g2.drawString(MAIN_UPPER_FLAG, (float) UPPER_FLAG_X, (float) UPPER_FLAG_Y);
 
-            // Reset scale and draw slash
+                // Reset scale and draw slash
+                g2.setTransform(translatedTransform);
+                g2.setStroke(GRACE_NOTE_SLASH_STROKE);
+                g2.draw(GRACE_NOTE_UPPER_SLASH);
+            } else {
+                // Lower stem
+                g2.draw(LOWER_STEM);
+
+                // Lower flag
+                g2.drawString(MAIN_LOWER_FLAG, 0f, (float) LOWER_FLAG_Y);
+
+                // Reset scale and draw slash
+                g2.setTransform(translatedTransform);
+                g2.setStroke(GRACE_NOTE_SLASH_STROKE);
+                g2.draw(GRACE_NOTE_LOWER_SLASH);
+            }
+
+            // Render ledger lines and accidentals
             g2.setTransform(translatedTransform);
-            g2.setStroke(GRACE_NOTE_SLASH_STROKE);
-            g2.draw(GRACE_NOTE_UPPER_SLASH);
-        } else {
-            // Lower stem
-            g2.draw(LOWER_STEM);
-
-            // Lower flag
-            g2.drawString(MAIN_LOWER_FLAG, 0f, (float) LOWER_FLAG_Y);
-
-            // Reset scale and draw slash
-            g2.setTransform(translatedTransform);
-            g2.setStroke(GRACE_NOTE_SLASH_STROKE);
-            g2.draw(GRACE_NOTE_LOWER_SLASH);
+            renderLedgerLines(g2, note);
+            renderAccidental(g2, note);
         }
-
-        // Render ledger lines and accidentals
-        g2.setTransform(translatedTransform);
-        renderLedgerLines(g2, note);
-        renderAccidental(g2, note);
-
-        g2.setTransform(origTransform);
     }
 
     /**
@@ -225,34 +224,33 @@ public class GraceNoteRenderer extends BaseElementRenderer<Note> {
         @NotNull Note note,
         int middleLineY
     ) {
-        var graceSemiQuaver = (GraceSemiQuaver) note;
-        var origTransform = g2.getTransform();
-        var noteX = note.getXPos();
-        var noteY = noteYPosToCoordinate(note.getYPos(), middleLineY);
+        try (var ignored = GraphicsState.save(g2, TRANSFORM, FONT, COLOR)) {
+            var graceSemiQuaver = (GraceSemiQuaver) note;
+            var noteX = note.getXPos();
+            var noteY = noteYPosToCoordinate(note.getYPos(), middleLineY);
 
-        g2.translate(noteX, noteY);
-        var translatedTransform = g2.getTransform();
+            g2.translate(noteX, noteY);
+            var translatedTransform = g2.getTransform();
 
-        // Scale and draw first note head at offset position
-        g2.scale(GRACE_NOTE_SCALE, GRACE_NOTE_SCALE);
-        g2.setFont(FUGHETTA);
-        g2.setColor(NOTE_COLOR);
+            // Scale and draw first note head at offset position
+            g2.scale(GRACE_NOTE_SCALE, GRACE_NOTE_SCALE);
+            g2.setFont(MUSIC_FONT);
+            g2.setColor(NOTE_COLOR);
 
-        // First note head (at y0Pos offset)
-        var y0Offset = (graceSemiQuaver.getY0Pos() - graceSemiQuaver.getYPos()) *
-            LayoutStylesheet.NOTE_Y_OFFSET / GRACE_NOTE_SCALE;
-        g2.drawString(FILLED_NOTE_HEAD, 0, (float) y0Offset);
+            // First note head (at y0Pos offset)
+            var y0Offset = (graceSemiQuaver.getY0Pos() - graceSemiQuaver.getYPos()) *
+                LayoutStylesheet.NOTE_Y_OFFSET / GRACE_NOTE_SCALE;
+            g2.drawString(FILLED_NOTE_HEAD, 0, (float) y0Offset);
 
-        // Second note head (at x2DiffPos offset)
-        var x2Offset = graceSemiQuaver.getX2DiffPos() / GRACE_NOTE_SCALE;
-        g2.drawString(FILLED_NOTE_HEAD, (float) x2Offset, 0);
+            // Second note head (at x2DiffPos offset)
+            var x2Offset = graceSemiQuaver.getX2DiffPos() / GRACE_NOTE_SCALE;
+            g2.drawString(FILLED_NOTE_HEAD, (float) x2Offset, 0);
 
-        // Reset transform and draw beams
-        g2.setTransform(origTransform);
-        g2.translate(note.isUpper() ? -2.7 : -1.7, 0);
-        drawGraceSemiQuaverBeam(g2, note, middleLineY);
-
-        g2.setTransform(origTransform);
+            // Reset transform and draw beams
+            g2.setTransform(translatedTransform);
+            g2.translate(note.isUpper() ? -2.7 : -1.7, 0);
+            drawGraceSemiQuaverBeam(g2, note, middleLineY);
+        }
     }
 
     /**
@@ -271,39 +269,42 @@ public class GraceNoteRenderer extends BaseElementRenderer<Note> {
         var y1Pos = graceSemiQuaver.getY0Pos();
         var y2Pos = note.getYPos();
 
-        // Draw stems
-        g2.setStroke(GRACE_SEMIQUAVER_STEM_STROKE);
-
-        var yHead1 = noteYPosToCoordinate(y1Pos, middleLineY);
-        var lengthening1 = Math.max((dir * (y2Pos - y1Pos)) - 2, 0);
-        var yUpper1 = noteYPosToCoordinate(y1Pos + (dir * (4 + lengthening1)), middleLineY);
-        g2.drawLine(x1, yHead1, x1, yUpper1 + dir);
-
-        var lengthening2 = Math.max((dir * (y1Pos - y2Pos)) - 2, 0);
-        var yUpper2 = noteYPosToCoordinate(y2Pos + (dir * (4 + lengthening2)), middleLineY);
-        var yHead2 = noteYPosToCoordinate(y2Pos, middleLineY);
-        g2.drawLine(x2, yHead2, x2, yUpper2 + dir);
-
-        // Draw beams
-        g2.setStroke(GRACE_SEMIQUAVER_BEAM_STROKE);
         var oldClip = g2.getClip();
-        g2.setClip(x1, 0, x2 - x1, Integer.MAX_VALUE);
-        g2.drawLine(x1, yUpper1, x2, yUpper2);
-        yUpper1 -= dir * 3;
-        yUpper2 -= dir * 3;
-        g2.drawLine(x1, yUpper1, x2, yUpper2);
-        g2.setClip(oldClip);
+        try (var ignored = GraphicsState.save(g2, COLOR, STROKE)) {
+            // Draw stems
+            g2.setStroke(GRACE_SEMIQUAVER_STEM_STROKE);
 
-        // Draw grace strike (diagonal slash)
-        g2.setStroke(GRACE_SEMIQUAVER_STRIKE_STROKE);
-        yUpper1 += (int) ((-3 * dir * LayoutStylesheet.NOTE_Y_OFFSET) + (dir * 5));
-        yUpper2 += (int) ((dir * LayoutStylesheet.NOTE_Y_OFFSET) + (dir * 4));
-        g2.drawLine(x1 - 5, yUpper1, x2 - 3, yUpper2);
+            var yHead1 = noteYPosToCoordinate(y1Pos, middleLineY);
+            var lengthening1 = Math.max((dir * (y2Pos - y1Pos)) - 2, 0);
+            var yUpper1 = noteYPosToCoordinate(y1Pos + (dir * (4 + lengthening1)), middleLineY);
+            g2.drawLine(x1, yHead1, x1, yUpper1 + dir);
 
-        // Draw ledger lines
-        g2.setStroke(LEDGER_LINE_STROKE);
-        drawStaveLongitude(g2, y1Pos, middleLineY, x1 - 8, x1 + 3);
-        drawStaveLongitude(g2, y2Pos, middleLineY, x2 - 8, x2 + 3);
+            var lengthening2 = Math.max((dir * (y1Pos - y2Pos)) - 2, 0);
+            var yUpper2 = noteYPosToCoordinate(y2Pos + (dir * (4 + lengthening2)), middleLineY);
+            var yHead2 = noteYPosToCoordinate(y2Pos, middleLineY);
+            g2.drawLine(x2, yHead2, x2, yUpper2 + dir);
+
+            // Draw beams
+            g2.setStroke(GRACE_SEMIQUAVER_BEAM_STROKE);
+            g2.setClip(x1, 0, x2 - x1, Integer.MAX_VALUE);
+            g2.drawLine(x1, yUpper1, x2, yUpper2);
+            yUpper1 -= dir * 3;
+            yUpper2 -= dir * 3;
+            g2.drawLine(x1, yUpper1, x2, yUpper2);
+
+            // Draw grace strike (diagonal slash)
+            g2.setStroke(GRACE_SEMIQUAVER_STRIKE_STROKE);
+            yUpper1 += (int) ((-3 * dir * LayoutStylesheet.NOTE_Y_OFFSET) + (dir * 5));
+            yUpper2 += (int) ((dir * LayoutStylesheet.NOTE_Y_OFFSET) + (dir * 4));
+            g2.drawLine(x1 - 5, yUpper1, x2 - 3, yUpper2);
+
+            // Draw ledger lines
+            g2.setStroke(LEDGER_LINE_STROKE);
+            drawStaveLongitude(g2, y1Pos, middleLineY, x1 - 8, x1 + 3);
+            drawStaveLongitude(g2, y2Pos, middleLineY, x2 - 8, x2 + 3);
+        } finally {
+            g2.setClip(oldClip);
+        }
     }
 
     /**
@@ -345,16 +346,18 @@ public class GraceNoteRenderer extends BaseElementRenderer<Note> {
             return;
         }
 
-        g2.setStroke(LEDGER_LINE_STROKE);
-        g2.setColor(NOTE_COLOR);
+        try (var ignored = GraphicsState.save(g2, COLOR, STROKE)) {
+            g2.setStroke(LEDGER_LINE_STROKE);
+            g2.setColor(NOTE_COLOR);
 
-        var ledgerWidth = NOTE_FONT_SIZE * GRACE_NOTE_SCALE / 1.5;
-        var startY = (yPos > 0) ? 6 : -6;
-        var step = (yPos > 0) ? 2 : -2;
+            var ledgerWidth = NOTE_FONT_SIZE * GRACE_NOTE_SCALE / 1.5;
+            var startY = (yPos > 0) ? 6 : -6;
+            var step = (yPos > 0) ? 2 : -2;
 
-        for (var i = startY; (yPos > 0) ? i <= yPos : i >= yPos; i += step) {
-            var ledgerY = i * LayoutStylesheet.NOTE_Y_OFFSET;
-            drawLedgerLine(g2, 0, ledgerY, ledgerWidth);
+            for (var i = startY; (yPos > 0) ? i <= yPos : i >= yPos; i += step) {
+                var ledgerY = i * LayoutStylesheet.NOTE_Y_OFFSET;
+                drawLedgerLine(g2, 0, ledgerY, ledgerWidth);
+            }
         }
     }
 
@@ -375,19 +378,21 @@ public class GraceNoteRenderer extends BaseElementRenderer<Note> {
             return;
         }
 
-        // Use grace-sized font for accidentals
-        g2.setFont(FUGHETTA_GRACE);
-        g2.setColor(NOTE_COLOR);
+        try (var ignored = GraphicsState.save(g2, COLOR, FONT)) {
+            // Use grace-sized font for accidentals
+            g2.setFont(MUSIC_FONT_GRACE);
+            g2.setColor(NOTE_COLOR);
 
-        var accidentalStr = getAccidentalString(accidental.ordinal());
-        var xOffset = -NOTE_FONT_SIZE * GRACE_NOTE_SCALE / 2.5f;
+            var accidentalStr = getAccidentalString(accidental.ordinal());
+            var xOffset = -NOTE_FONT_SIZE * GRACE_NOTE_SCALE / 2.5f;
 
-        if (note.isAccidentalInParentheses()) {
-            accidentalStr = BEGIN_PARENTHESIS + accidentalStr + END_PARENTHESIS;
-            xOffset -= NOTE_FONT_SIZE * GRACE_NOTE_SCALE / 4f;
+            if (note.isAccidentalInParentheses()) {
+                accidentalStr = BEGIN_PARENTHESIS + accidentalStr + END_PARENTHESIS;
+                xOffset -= NOTE_FONT_SIZE * GRACE_NOTE_SCALE / 4f;
+            }
+
+            g2.drawString(accidentalStr, (float) xOffset, 0f);
         }
-
-        g2.drawString(accidentalStr, (float) xOffset, 0f);
     }
 
     /**

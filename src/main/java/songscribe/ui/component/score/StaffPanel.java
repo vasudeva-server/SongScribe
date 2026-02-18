@@ -37,7 +37,7 @@ import songscribe.ui.layout.LineElement;
  * Panel containing all staff lines of a composition.
  * <p>
  * Uses BoxLayout.Y_AXIS to stack {@link LinePanel} components with
- * {@link LayoutStylesheet#LINE_MARGIN_BOTTOM} spacing between them.
+ * {@link LayoutStylesheet#LINE_MARGIN_BOTTOM_MU} spacing between them.
  * <p>
  * Note: Named StaffPanel to avoid conflict with Score.ScorePanel inner class.
  */
@@ -60,7 +60,7 @@ public class StaffPanel extends JPanel {
         setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
         setOpaque(false);
 
-        lineMargin = LayoutStylesheet.px(LayoutStylesheet.LINE_MARGIN_BOTTOM);
+        lineMargin = LayoutStylesheet.px(LayoutStylesheet.LINE_MARGIN_BOTTOM_MU);
     }
 
     /**

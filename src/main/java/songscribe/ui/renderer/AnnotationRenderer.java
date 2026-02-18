@@ -24,6 +24,8 @@ import java.awt.Graphics2D;
 
 import org.jetbrains.annotations.NotNull;
 
+import static songscribe.ui.renderer.GraphicsState.Property.*;
+
 import songscribe.music.Note;
 import songscribe.ui.layout.AnnotationAttachment;
 
@@ -81,17 +83,19 @@ public class AnnotationRenderer extends BaseElementRenderer<Note> {
             return;
         }
 
-        // Set font
-        g2.setFont(composition.getAnnotationFont());
-        g2.setColor(NOTE_COLOR);
+        try (var ignored = GraphicsState.save(g2, FONT, COLOR)) {
+            // Set font
+            g2.setFont(composition.getAnnotationFont());
+            g2.setColor(NOTE_COLOR);
 
-        // Calculate position
-        float x = (float) getAnnotationXPos(g2, element);
-        float y = getAnnotationYPos(element, ctx);
+            // Calculate position
+            float x = (float) getAnnotationXPos(g2, element);
+            float y = getAnnotationYPos(element, ctx);
 
-        // Draw the annotation text
-        var text = annotation.getAnnotation();
-        g2.drawString(text, x, y);
+            // Draw the annotation text
+            var text = annotation.getAnnotation();
+            g2.drawString(text, x, y);
+        }
     }
 
     /**

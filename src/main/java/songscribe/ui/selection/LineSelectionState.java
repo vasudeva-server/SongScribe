@@ -44,6 +44,7 @@ public final class LineSelectionState {
 
     private int selectionBegin = -1;
     private int selectionEnd = -1;
+    private int selectionAnchor = -1;
     private boolean lineSelected = false;
 
     @Nullable
@@ -97,6 +98,7 @@ public final class LineSelectionState {
     public void clearSelection() {
         selectionBegin = -1;
         selectionEnd = -1;
+        selectionAnchor = -1;
         lineSelected = false;
     }
 
@@ -160,6 +162,34 @@ public final class LineSelectionState {
     public void setSelectionFromClick(int noteIndex) {
         selectionBegin = noteIndex;
         selectionEnd = noteIndex;
+        selectionAnchor = noteIndex;
+    }
+
+    /**
+     * Returns the selection anchor index, or -1 if no anchor is set.
+     */
+    public int getSelectionAnchor() {
+        return selectionAnchor;
+    }
+
+    /**
+     * Sets the selection anchor independently (used by drag selection).
+     */
+    public void setSelectionAnchor(int noteIndex) {
+        selectionAnchor = noteIndex;
+    }
+
+    /**
+     * Extends the selection from the anchor to the given note index.
+     * The anchor stays unchanged.
+     */
+    public void extendSelectionTo(int noteIndex) {
+        if (selectionAnchor == -1) {
+            return;
+        }
+
+        selectionBegin = Math.min(selectionAnchor, noteIndex);
+        selectionEnd = Math.max(selectionAnchor, noteIndex);
     }
 
     /**

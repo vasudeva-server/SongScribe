@@ -2,6 +2,15 @@
   "plansDirectory": "plans",
   "masterPlans": [
     {
+      "path": "plans/completed/refactors/line-component-refactor/line-component-refactor.md",
+      "subdirectory": "completed/refactors/line-component-refactor",
+      "active": false,
+      "created": "2026-02-13",
+      "description": "LineComponent refactoring - extract renderer, insertion note manager, and selection handler",
+      "category": "refactors",
+      "completed": "2026-02-13"
+    },
+    {
       "path": "plans/completed/migrations/notespacing-to-layout2/notespacing-to-layout2.md",
       "subdirectory": "completed/migrations/notespacing-to-layout2",
       "active": false,
@@ -124,6 +133,36 @@
       "parentPhase": 5,
       "status": "pending",
       "createdAt": "2026-02-02",
+      "type": "sub-plan",
+      "prePlanned": false
+    },
+    {
+      "path": "plans/completed/refactors/line-component-refactor/phase-2-insertion-note-manager.md",
+      "parentPlan": "plans/completed/refactors/line-component-refactor/line-component-refactor.md",
+      "parentPhase": 2,
+      "status": "completed",
+      "createdAt": "2026-02-13",
+      "completedAt": "2026-02-13",
+      "type": "sub-plan",
+      "prePlanned": false
+    },
+    {
+      "path": "plans/completed/refactors/line-component-refactor/phase-3-selection-handler.md",
+      "parentPlan": "plans/completed/refactors/line-component-refactor/line-component-refactor.md",
+      "parentPhase": 3,
+      "status": "completed",
+      "createdAt": "2026-02-13",
+      "completedAt": "2026-02-13",
+      "type": "sub-plan",
+      "prePlanned": true
+    },
+    {
+      "path": "plans/migrations/score-layout-redesign/articulation-property-migration.md",
+      "parentPlan": "plans/migrations/score-layout-redesign/score-layout-redesign.md",
+      "parentPhase": 3,
+      "status": "completed",
+      "createdAt": "2026-02-13",
+      "completedAt": "2026-02-14",
       "type": "sub-plan",
       "prePlanned": false
     }

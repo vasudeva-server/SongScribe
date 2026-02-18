@@ -20,7 +20,9 @@
 
 package songscribe.ui.renderer;
 
-import java.awt.Graphics2D;
+import static songscribe.ui.renderer.GraphicsState.Property.*;
+
+import java.awt.*;
 
 import org.jetbrains.annotations.NotNull;
 
@@ -178,16 +180,15 @@ public class BeatChangeRenderer extends BaseElementRenderer<Note> {
         int x,
         int y
     ) {
-        g2.setFont(BaseElementRenderer.FUGHETTA);
-        var transform = g2.getTransform();
+        try (var ignored = GraphicsState.save(g2, FONT, TRANSFORM)) {
+            g2.setFont(BaseElementRenderer.MUSIC_FONT);
 
-        g2.translate(x, y - ((NOTE_FONT_SIZE * TEMPO_CHANGE_ZOOM_Y) / 8.0));
-        g2.scale(TEMPO_CHANGE_ZOOM_X, TEMPO_CHANGE_ZOOM_Y);
+            g2.translate(x, y - ((NOTE_FONT_SIZE * TEMPO_CHANGE_ZOOM_Y) / 8.0));
+            g2.scale(TEMPO_CHANGE_ZOOM_X, TEMPO_CHANGE_ZOOM_Y);
 
-        // Draw note using simple rendering
-        paintSimpleTempoNote(g2, tempoNote);
-
-        g2.setTransform(transform);
+            // Draw note using simple rendering
+            paintSimpleTempoNote(g2, tempoNote);
+        }
     }
 
     /**
@@ -201,29 +202,31 @@ public class BeatChangeRenderer extends BaseElementRenderer<Note> {
             return;
         }
 
-        g2.setColor(NOTE_COLOR);
-        g2.drawString(headChar, 0f, 0f);
+        try (var ignored = GraphicsState.save(g2, COLOR)) {
+            g2.setColor(NOTE_COLOR);
+            g2.drawString(headChar, 0f, 0f);
 
-        // Draw stem if needed (tempo notes have stems up)
-        if (noteType.isNoteWithStem()) {
-            float stemX = (float) (NOTE_FONT_SIZE / 3.6056337d);
-            float stemY1 = -NOTE_FONT_SIZE / 32f;
-            float stemY2 = -NOTE_FONT_SIZE / 1.1429f + 2;
+            // Draw stem if needed (tempo notes have stems up)
+            if (noteType.isNoteWithStem()) {
+                float stemX = (float) (NOTE_FONT_SIZE / 3.6056337d);
+                float stemY1 = -NOTE_FONT_SIZE / 32f;
+                float stemY2 = -NOTE_FONT_SIZE / 1.1429f + 2;
 
-            g2.drawLine((int) stemX, (int) stemY1, (int) stemX, (int) stemY2);
+                g2.drawLine((int) stemX, (int) stemY1, (int) stemX, (int) stemY2);
 
-            // Draw flags for 8th notes and smaller
-            if (noteType.isBeamable()) {
-                float flagX = (float) (NOTE_FONT_SIZE / 3.6834533d);
-                float flagY = (float) (-NOTE_FONT_SIZE / 1.6623377f + 2);
-                g2.drawString("\uf06a", flagX, flagY); // Main upper flag
+                // Draw flags for 8th notes and smaller
+                if (noteType.isBeamable()) {
+                    float flagX = (float) (NOTE_FONT_SIZE / 3.6834533d);
+                    float flagY = (float) (-NOTE_FONT_SIZE / 1.6623377f + 2);
+                    g2.drawString("\uf06a", flagX, flagY); // Main upper flag
+                }
             }
-        }
 
-        // Draw dots
-        if (note.getDotCount() > 0) {
-            double dotWidth = NOTE_FONT_SIZE / 9.142858d;
-            g2.fillOval((int) 13.1d, (int) (-dotWidth / 2), (int) dotWidth, (int) dotWidth);
+            // Draw dots
+            if (note.getDotCount() > 0) {
+                double dotWidth = NOTE_FONT_SIZE / 9.142858d;
+                g2.fillOval((int) 13.1d, (int) (-dotWidth / 2), (int) dotWidth, (int) dotWidth);
+            }
         }
     }
 }

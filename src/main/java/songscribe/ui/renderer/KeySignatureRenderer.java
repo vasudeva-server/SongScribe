@@ -20,7 +20,10 @@
 
 package songscribe.ui.renderer;
 
-import java.awt.Graphics2D;
+import static songscribe.ui.renderer.GraphicsState.Property.COLOR;
+import static songscribe.ui.renderer.GraphicsState.Property.FONT;
+
+import java.awt.*;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -54,8 +57,8 @@ public class KeySignatureRenderer extends BaseElementRenderer<KeySignature> {
     private static final int[] SHARP_Y_POSITIONS = {-4, -1, -5, -2, 1, -3, 0};
 
     // Y positions indexed by KeyType ordinal (for key change rendering)
-    private static final int[][] KEY_Y_POSITIONS = new int[][] {
-        new int[] {}, // NONE
+    private static final int[][] KEY_Y_POSITIONS = new int[][]{
+        new int[]{}, // NONE
         FLAT_Y_POSITIONS,
         SHARP_Y_POSITIONS
     };
@@ -106,33 +109,35 @@ public class KeySignatureRenderer extends BaseElementRenderer<KeySignature> {
             return;
         }
 
-        g2.setFont(ctx.getFughettaFont());
-        g2.setColor(NOTE_COLOR);
+        try (var ignored = GraphicsState.save(g2, FONT, COLOR)) {
+            g2.setFont(ctx.getMusicFont());
+            g2.setColor(NOTE_COLOR);
 
-        // Get the starting X position from the element
-        double xPos = element.getX();
-        int middleLineY = ctx.getMiddleLineY();
+            // Get the starting X position from the element
+            double xPos = element.getX();
+            int middleLineY = ctx.getMiddleLineY();
 
-        // Determine glyph and Y positions based on key type
-        String glyph;
-        int[] yPositions;
+            // Determine glyph and Y positions based on key type
+            String glyph;
+            int[] yPositions;
 
-        if (keyType == KeyType.FLATS) {
-            glyph = FLAT_GLYPH;
-            yPositions = FLAT_Y_POSITIONS;
-        } else {
-            glyph = SHARP_GLYPH;
-            yPositions = SHARP_Y_POSITIONS;
-        }
+            if (keyType == KeyType.FLATS) {
+                glyph = FLAT_GLYPH;
+                yPositions = FLAT_Y_POSITIONS;
+            } else {
+                glyph = SHARP_GLYPH;
+                yPositions = SHARP_Y_POSITIONS;
+            }
 
-        // Draw each accidental
-        for (int i = 0; i < accidentalCount; i++) {
-            // Calculate Y position for this accidental
-            int yPos = yPositions[i % 7];
-            int y = middleLineY + (int) (yPos * LayoutStylesheet.NOTE_Y_OFFSET);
+            // Draw each accidental
+            for (int i = 0; i < accidentalCount; i++) {
+                // Calculate Y position for this accidental
+                int yPos = yPositions[i % 7];
+                int y = middleLineY + (int) (yPos * LayoutStylesheet.NOTE_Y_OFFSET);
 
-            g2.drawString(glyph, (float) xPos, (float) y);
-            xPos += ACCIDENTAL_SPACING;
+                g2.drawString(glyph, (float) xPos, (float) y);
+                xPos += ACCIDENTAL_SPACING;
+            }
         }
     }
 
@@ -160,28 +165,30 @@ public class KeySignatureRenderer extends BaseElementRenderer<KeySignature> {
             return;
         }
 
-        g2.setFont(ctx.getFughettaFont());
-        g2.setColor(NOTE_COLOR);
+        try (var ignored = GraphicsState.save(g2, COLOR, FONT)) {
+            g2.setFont(ctx.getMusicFont());
+            g2.setColor(NOTE_COLOR);
 
-        String glyph;
-        int[] yPositions;
+            String glyph;
+            int[] yPositions;
 
-        if (keyType == KeyType.FLATS) {
-            glyph = FLAT_GLYPH;
-            yPositions = FLAT_Y_POSITIONS;
-        } else {
-            glyph = SHARP_GLYPH;
-            yPositions = SHARP_Y_POSITIONS;
-        }
+            if (keyType == KeyType.FLATS) {
+                glyph = FLAT_GLYPH;
+                yPositions = FLAT_Y_POSITIONS;
+            } else {
+                glyph = SHARP_GLYPH;
+                yPositions = SHARP_Y_POSITIONS;
+            }
 
-        float currentX = xPos;
+            float currentX = xPos;
 
-        for (int i = 0; i < accidentalCount; i++) {
-            int yPos = yPositions[i % 7];
-            int y = middleLineY + (int) (yPos * LayoutStylesheet.NOTE_Y_OFFSET);
+            for (int i = 0; i < accidentalCount; i++) {
+                int yPos = yPositions[i % 7];
+                int y = middleLineY + (int) (yPos * LayoutStylesheet.NOTE_Y_OFFSET);
 
-            g2.drawString(glyph, currentX, (float) y);
-            currentX += ACCIDENTAL_SPACING;
+                g2.drawString(glyph, currentX, (float) y);
+                currentX += ACCIDENTAL_SPACING;
+            }
         }
     }
 
@@ -268,41 +275,43 @@ public class KeySignatureRenderer extends BaseElementRenderer<KeySignature> {
         int lineWidth,
         @NotNull ElementRenderContext ctx
     ) {
-        g2.setFont(ctx.getFughettaFont());
-        g2.setColor(NOTE_COLOR);
+        try (var ignored = GraphicsState.save(g2, COLOR, FONT)) {
+            g2.setFont(ctx.getMusicFont());
+            g2.setColor(NOTE_COLOR);
 
-        var middleLineY = ctx.getMiddleLineY();
+            var middleLineY = ctx.getMiddleLineY();
 
-        // Calculate starting X position (right-aligned with margin)
-        float xPos = lineWidth - KEY_CHANGE_RIGHT_MARGIN;
+            // Calculate starting X position (right-aligned with margin)
+            float xPos = lineWidth - KEY_CHANGE_RIGHT_MARGIN;
 
-        // Calculate total width needed
-        for (var count : accidentalCounts) {
-            xPos -= count * KEY_CHANGE_SPACING;
-        }
-
-        // Render each key signature group
-        for (var kt = 0; kt < keyTypes.length; kt++) {
-            if (keyTypes[kt] == null) {
-                break;
+            // Calculate total width needed
+            for (var count : accidentalCounts) {
+                xPos -= count * KEY_CHANGE_SPACING;
             }
 
-            var keyTypeOrdinal = keyTypes[kt].ordinal();
+            // Render each key signature group
+            for (var kt = 0; kt < keyTypes.length; kt++) {
+                if (keyTypes[kt] == null) {
+                    break;
+                }
 
-            if (keyTypeOrdinal == 0) {
-                // NONE - skip
-                continue;
-            }
+                var keyTypeOrdinal = keyTypes[kt].ordinal();
 
-            var yPositions = KEY_Y_POSITIONS[keyTypeOrdinal];
-            var glyph = isNaturals[kt] ? NATURAL_GLYPH : getGlyphForKeyType(keyTypes[kt]);
+                if (keyTypeOrdinal == 0) {
+                    // NONE - skip
+                    continue;
+                }
 
-            for (var i = 0; i < accidentalCounts[kt]; i++) {
-                var yPos = yPositions[(i + startingOffsets[kt]) % 7];
-                var y = middleLineY + (int) (yPos * LayoutStylesheet.NOTE_Y_OFFSET);
+                var yPositions = KEY_Y_POSITIONS[keyTypeOrdinal];
+                var glyph = isNaturals[kt] ? NATURAL_GLYPH : getGlyphForKeyType(keyTypes[kt]);
 
-                g2.drawString(glyph, xPos, y);
-                xPos += KEY_CHANGE_SPACING;
+                for (var i = 0; i < accidentalCounts[kt]; i++) {
+                    var yPos = yPositions[(i + startingOffsets[kt]) % 7];
+                    var y = middleLineY + (int) (yPos * LayoutStylesheet.NOTE_Y_OFFSET);
+
+                    g2.drawString(glyph, xPos, y);
+                    xPos += KEY_CHANGE_SPACING;
+                }
             }
         }
     }

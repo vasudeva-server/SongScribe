@@ -20,11 +20,10 @@
 
 package songscribe.ui.renderer;
 
-import java.awt.BasicStroke;
-import java.awt.Graphics2D;
-import java.awt.Stroke;
-import java.awt.geom.Ellipse2D;
-import java.awt.geom.Line2D;
+import static songscribe.ui.renderer.GraphicsState.Property.*;
+
+import java.awt.*;
+import java.awt.geom.*;
 import java.util.EnumMap;
 
 import org.jetbrains.annotations.NotNull;
@@ -200,20 +199,19 @@ public class NoteRenderer extends BaseElementRenderer<Note> {
         // Standard note rendering
         // Note: Don't set color here - respect the color set by the caller
         // (e.g., blue for edit notes, black for composition notes)
-        var transform = g2.getTransform();
-        var layoutResult = ctx.getLayoutResult();
-        var noteX = (layoutResult != null) ? layoutResult.getNoteX(element) : element.getXPos();
-        var noteY = calculateNoteY(element.getYPos(), ctx.getMiddleLineY());
+        try (var ignored = GraphicsState.save(g2, TRANSFORM, FONT)) {
+            var layoutResult = ctx.getLayoutResult();
+            var noteX = (layoutResult != null) ? layoutResult.getNoteX(element) : element.getXPos();
+            var noteY = calculateNoteY(element.getYPos(), ctx.getMiddleLineY());
 
-        g2.translate(noteX, noteY);
-        g2.setFont(ctx.getFughettaFont());
+            g2.translate(noteX, noteY);
+            g2.setFont(ctx.getMusicFont());
 
-        var isBeamed = isNoteBeamed(element, ctx);
-        renderNoteHead(g2, element, isBeamed, ctx);
-        renderLedgerLines(g2, element);
-        renderAccidental(g2, element, ctx);
-
-        g2.setTransform(transform);
+            var isBeamed = isNoteBeamed(element, ctx);
+            renderNoteHead(g2, element, isBeamed, ctx);
+            renderLedgerLines(g2, element);
+            renderAccidental(g2, element, ctx);
+        }
     }
 
     /**
@@ -229,19 +227,18 @@ public class NoteRenderer extends BaseElementRenderer<Note> {
 
         if (noteType.isRest() || noteType.isBarLine() || noteType.isRepeat()) {
             // Delegate to appropriate renderer
-            var transform = g2.getTransform();
-            var noteX = note.getXPos();
-            var noteY = calculateNoteY(note.getYPos(), middleLineY);
+            try (var ignored = GraphicsState.save(g2, TRANSFORM)) {
+                var noteX = note.getXPos();
+                var noteY = calculateNoteY(note.getYPos(), middleLineY);
 
-            g2.translate(noteX, noteY);
+                g2.translate(noteX, noteY);
 
-            if (noteType.isRest()) {
-                renderRestGlyph(g2, noteType);
-            } else {
-                renderBarLineOrRepeat(g2, noteType);
+                if (noteType.isRest()) {
+                    renderRestGlyph(g2, noteType);
+                } else {
+                    renderBarLineOrRepeat(g2, noteType);
+                }
             }
-
-            g2.setTransform(transform);
             return;
         }
 
@@ -253,17 +250,16 @@ public class NoteRenderer extends BaseElementRenderer<Note> {
         // Standard note rendering
         // Note: Don't set color here - respect the color set by the caller
         // (e.g., blue for edit notes, black for composition notes)
-        var transform = g2.getTransform();
-        var noteX = note.getXPos();
-        var noteY = calculateNoteY(note.getYPos(), middleLineY);
+        try (var ignored = GraphicsState.save(g2, TRANSFORM, FONT)) {
+            var noteX = note.getXPos();
+            var noteY = calculateNoteY(note.getYPos(), middleLineY);
 
-        g2.translate(noteX, noteY);
-        g2.setFont(BaseElementRenderer.FUGHETTA);
+            g2.translate(noteX, noteY);
+            g2.setFont(BaseElementRenderer.MUSIC_FONT);
 
-        renderNoteHeadSimple(g2, note, false);
-        renderLedgerLines(g2, note);
-
-        g2.setTransform(transform);
+            renderNoteHeadSimple(g2, note, false);
+            renderLedgerLines(g2, note);
+        }
     }
 
     /**
@@ -390,23 +386,25 @@ public class NoteRenderer extends BaseElementRenderer<Note> {
 
         if (upper) {
             double stemX = (noteType == NoteType.MINIM) ? UPPER_MINIM_STEM_X : UPPER_CROTCHET_STEM_X;
-            note.acceleration.stem.setLine(
+            note.properties.stem.setLine(
                 stemX,
                 UPPER_STEM.getY1(),
                 stemX,
-                UPPER_STEM.getY2() - stemLengthOffset - note.acceleration.lengthening
+                UPPER_STEM.getY2() - stemLengthOffset - note.properties.lengthening
             );
         } else {
-            note.acceleration.stem.setLine(
+            note.properties.stem.setLine(
                 0d,
                 LOWER_STEM.getY1() + stemYOffset,
                 0d,
-                LOWER_STEM.getY2() + stemLengthOffset - note.acceleration.lengthening
+                LOWER_STEM.getY2() + stemLengthOffset - note.properties.lengthening
             );
         }
 
-        g2.setStroke(STEM_STROKE_IMPL);
-        g2.draw(note.acceleration.stem);
+        try (var ignored = GraphicsState.save(g2, STROKE)) {
+            g2.setStroke(STEM_STROKE_IMPL);
+            g2.draw(note.properties.stem);
+        }
     }
 
     // ==========================================================================
@@ -480,33 +478,32 @@ public class NoteRenderer extends BaseElementRenderer<Note> {
             return;
         }
 
-        var transform = g2.getTransform();
-        var noteType = note.getNoteType();
+        try (var ignored = GraphicsState.save(g2, TRANSFORM)) {
+            var noteType = note.getNoteType();
 
-        // Adjust for notes on lines (move dot off the line)
-        if ((note.getYPos() % 2) == 0) {
-            g2.translate(0, -NOTE_FONT_SIZE / 8);
+            // Adjust for notes on lines (move dot off the line)
+            if ((note.getYPos() % 2) == 0) {
+                g2.translate(0, -NOTE_FONT_SIZE / 8);
+            }
+
+            // Adjust for wider note heads
+            if (noteType == NoteType.SEMIBREVE) {
+                g2.translate(3.5, 0);
+            }
+
+            if (noteType == NoteType.MINIM) {
+                g2.translate(1.4, 0);
+            }
+
+            // Adjust for flags on unbeamed notes
+            if (noteType.isBeamable() && !beamed && upper) {
+                g2.translate((noteType == NoteType.QUAVER) ? 5 : 8, 0);
+            }
+
+            for (int i = 0; i < note.getDotCount(); i++) {
+                g2.fill(NOTE_DOTS[i]);
+            }
         }
-
-        // Adjust for wider note heads
-        if (noteType == NoteType.SEMIBREVE) {
-            g2.translate(3.5, 0);
-        }
-
-        if (noteType == NoteType.MINIM) {
-            g2.translate(1.4, 0);
-        }
-
-        // Adjust for flags on unbeamed notes
-        if (noteType.isBeamable() && !beamed && upper) {
-            g2.translate((noteType == NoteType.QUAVER) ? 5 : 8, 0);
-        }
-
-        for (int i = 0; i < note.getDotCount(); i++) {
-            g2.fill(NOTE_DOTS[i]);
-        }
-
-        g2.setTransform(transform);
     }
 
     // ==========================================================================
@@ -520,31 +517,33 @@ public class NoteRenderer extends BaseElementRenderer<Note> {
             return;
         }
 
-        g2.setStroke(LINE_STROKE);
+        try (var ignored = GraphicsState.save(g2, STROKE)) {
+            g2.setStroke(LINE_STROKE);
 
-        int yPos = note.getYPos();
+            int yPos = note.getYPos();
 
-        // Adjust to start from a line position
-        int i = yPos;
+            // Adjust to start from a line position
+            int i = yPos;
 
-        if ((yPos % 2) != 0) {
-            i += (yPos > 0) ? -1 : 1;
-        }
-
-        int step = (yPos > 0) ? -2 : 2;
-
-        while (Math.abs(i) > 5) {
-            float y = ((i - yPos) * NOTE_FONT_SIZE) / 8;
-            float x2 = Note.HOT_SPOT.x + 8f;
-
-            if (noteType == NoteType.SEMIBREVE) {
-                x2 += 3.4f;
-            } else if (noteType == NoteType.MINIM) {
-                x2 += 0.7f;
+            if ((yPos % 2) != 0) {
+                i += (yPos > 0) ? -1 : 1;
             }
 
-            g2.draw(new Line2D.Float(Note.HOT_SPOT.x - 8, y, x2, y));
-            i += step;
+            int step = (yPos > 0) ? -2 : 2;
+
+            while (Math.abs(i) > 5) {
+                float y = ((i - yPos) * NOTE_FONT_SIZE) / 8;
+                float x2 = Note.HOT_SPOT.x + 8f;
+
+                if (noteType == NoteType.SEMIBREVE) {
+                    x2 += 3.4f;
+                } else if (noteType == NoteType.MINIM) {
+                    x2 += 0.7f;
+                }
+
+                g2.draw(new Line2D.Float(Note.HOT_SPOT.x - 8, y, x2, y));
+                i += step;
+            }
         }
     }
 
@@ -563,42 +562,44 @@ public class NoteRenderer extends BaseElementRenderer<Note> {
             return;
         }
 
-        float resizeFactor = 1f;
+        try (var ignored = GraphicsState.save(g2, COLOR, FONT)) {
+            float resizeFactor = 1f;
 
-        if (note.getNoteType().isGraceNote()) {
-            g2.setFont(ctx.getFughettaGraceFont());
-            resizeFactor = GRACE_ACCIDENTAL_RESIZE_FACTOR;
-        }
-
-        float accidentalWidth = getAccidentalWidth(note);
-
-        if (!note.isAccidentalInParentheses() ||
-            !ACCIDENTALS[accidental].equals(ACCIDENTAL_PARENTHESIS[accidental])) {
-            renderSimpleAccidental(g2, note, -ACCIDENTAL_PADDING - accidentalWidth, resizeFactor);
-        } else {
-            float xPos = -ACCIDENTAL_PADDING - accidentalWidth;
-            g2.drawString(BEGIN_PARENTHESIS, xPos * resizeFactor, (float) MANUAL_PARENTHESIS_Y * resizeFactor);
-
-            // Calculate begin parenthesis width (approximate)
-            float beginParenWidth = g2.getFontMetrics().stringWidth(BEGIN_PARENTHESIS);
-            xPos += beginParenWidth;
-
-            if (note.getAccidental().getComponent(1) == 1) {
-                xPos += 0.5f;
+            if (note.getNoteType().isGraceNote()) {
+                g2.setFont(ctx.getMusicGraceFont());
+                resizeFactor = GRACE_ACCIDENTAL_RESIZE_FACTOR;
             }
 
-            renderSimpleAccidental(g2, note, xPos, resizeFactor);
+            float accidentalWidth = getAccidentalWidth(note);
 
-            float endParenWidth = g2.getFontMetrics().stringWidth(END_PARENTHESIS);
-            g2.drawString(
-                END_PARENTHESIS,
-                (-ACCIDENTAL_PADDING - endParenWidth) * resizeFactor,
-                (float) MANUAL_PARENTHESIS_Y * resizeFactor
-            );
-        }
+            if (!note.isAccidentalInParentheses() ||
+                !ACCIDENTALS[accidental].equals(ACCIDENTAL_PARENTHESIS[accidental])) {
+                renderSimpleAccidental(g2, note, -ACCIDENTAL_PADDING - accidentalWidth, resizeFactor);
+            } else {
+                float xPos = -ACCIDENTAL_PADDING - accidentalWidth;
+                g2.drawString(BEGIN_PARENTHESIS, xPos * resizeFactor, (float) MANUAL_PARENTHESIS_Y * resizeFactor);
 
-        if (note.getNoteType().isGraceNote()) {
-            g2.setFont(ctx.getFughettaFont());
+                // Calculate begin parenthesis width (approximate)
+                float beginParenWidth = g2.getFontMetrics().stringWidth(BEGIN_PARENTHESIS);
+                xPos += beginParenWidth;
+
+                if (note.getAccidental().getComponent(1) == 1) {
+                    xPos += 0.5f;
+                }
+
+                renderSimpleAccidental(g2, note, xPos, resizeFactor);
+
+                float endParenWidth = g2.getFontMetrics().stringWidth(END_PARENTHESIS);
+                g2.drawString(
+                    END_PARENTHESIS,
+                    (-ACCIDENTAL_PADDING - endParenWidth) * resizeFactor,
+                    (float) MANUAL_PARENTHESIS_Y * resizeFactor
+                );
+            }
+
+            if (note.getNoteType().isGraceNote()) {
+                g2.setFont(ctx.getMusicFont());
+            }
         }
     }
 
@@ -663,7 +664,7 @@ public class NoteRenderer extends BaseElementRenderer<Note> {
             return;
         }
 
-        var metrics = g2.getFontMetrics(BaseElementRenderer.FUGHETTA);
+        var metrics = g2.getFontMetrics(BaseElementRenderer.MUSIC_FONT);
         var accidentalEnums = Note.Accidental.values();
         baseAccidentalWidths = new float[ACCIDENTALS.length];
 
@@ -722,12 +723,13 @@ public class NoteRenderer extends BaseElementRenderer<Note> {
     // ==========================================================================
 
     private void renderRestGlyph(@NotNull Graphics2D g2, @NotNull NoteType noteType) {
-        g2.setFont(BaseElementRenderer.FUGHETTA);
-        g2.setColor(NOTE_COLOR);
-        String glyph = RestRenderer.getRestGlyph(noteType);
+        try (var ignored = GraphicsState.save(g2, FONT)) {
+            g2.setFont(BaseElementRenderer.MUSIC_FONT);
+            String glyph = RestRenderer.getRestGlyph(noteType);
 
-        if (glyph != null) {
-            g2.drawString(glyph, 0f, 0f);
+            if (glyph != null) {
+                g2.drawString(glyph, 0f, 0f);
+            }
         }
     }
 

@@ -29,11 +29,9 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
-import songscribe.music.Composition;
 import songscribe.music.Crotchet;
 import songscribe.music.Line;
 import songscribe.music.Note;
-import songscribe.test.TestHelper;
 import songscribe.ui.Constants;
 
 /**
@@ -98,9 +96,9 @@ class ScoreLyricParsingTest {
         Note.SyllableRelation expectedRelation
     ) {
         var note = line.getNote(noteIndex);
-        assertEquals(expectedSyllable, note.acceleration.syllable,
+        assertEquals(expectedSyllable, note.properties.syllable,
             String.format("Note %d syllable mismatch", noteIndex));
-        assertEquals(expectedRelation, note.acceleration.syllableRelation,
+        assertEquals(expectedRelation, note.properties.syllableRelation,
             String.format("Note %d relation mismatch", noteIndex));
     }
 
@@ -118,14 +116,14 @@ class ScoreLyricParsingTest {
             var line = createLineWithNotes(2);
 
             // Simulate lyrics: "won-der"
-            line.getNote(0).acceleration.syllable = "won";
-            line.getNote(0).acceleration.syllableRelation = Note.SyllableRelation.ONE_DASH;
-            line.getNote(1).acceleration.syllable = "der";
-            line.getNote(1).acceleration.syllableRelation = Note.SyllableRelation.NO;
+            line.getNote(0).properties.syllable = "won";
+            line.getNote(0).properties.syllableRelation = Note.SyllableRelation.ONE_DASH;
+            line.getNote(1).properties.syllable = "der";
+            line.getNote(1).properties.syllableRelation = Note.SyllableRelation.NO;
 
             // Verify parsing behavior
-            assertEquals(Note.SyllableRelation.ONE_DASH, line.getNote(0).acceleration.syllableRelation);
-            assertEquals(Note.SyllableRelation.NO, line.getNote(1).acceleration.syllableRelation);
+            assertEquals(Note.SyllableRelation.ONE_DASH, line.getNote(0).properties.syllableRelation);
+            assertEquals(Note.SyllableRelation.NO, line.getNote(1).properties.syllableRelation);
         }
 
         @Test
@@ -134,12 +132,12 @@ class ScoreLyricParsingTest {
             var line = createLineWithNotes(2);
 
             // Set up as if parsed from "won-der"
-            line.getNote(0).acceleration.syllable = "won";
-            line.getNote(0).acceleration.syllableRelation = Note.SyllableRelation.ONE_DASH;
+            line.getNote(0).properties.syllable = "won";
+            line.getNote(0).properties.syllableRelation = Note.SyllableRelation.ONE_DASH;
 
             // Verify it's ONE_DASH, not DASH
-            assertEquals(Note.SyllableRelation.ONE_DASH, line.getNote(0).acceleration.syllableRelation);
-            assertNotEquals(Note.SyllableRelation.DASH, line.getNote(0).acceleration.syllableRelation);
+            assertEquals(Note.SyllableRelation.ONE_DASH, line.getNote(0).properties.syllableRelation);
+            assertNotEquals(Note.SyllableRelation.DASH, line.getNote(0).properties.syllableRelation);
         }
 
         @Test
@@ -148,13 +146,13 @@ class ScoreLyricParsingTest {
             var line = createLineWithNotes(2);
 
             // Simulate lyrics: "won--der" (double hyphen, e.g., at line break)
-            line.getNote(0).acceleration.syllable = "won";
-            line.getNote(0).acceleration.syllableRelation = Note.SyllableRelation.ONE_DASH;
-            line.getNote(1).acceleration.syllable = "der";
-            line.getNote(1).acceleration.syllableRelation = Note.SyllableRelation.NO;
+            line.getNote(0).properties.syllable = "won";
+            line.getNote(0).properties.syllableRelation = Note.SyllableRelation.ONE_DASH;
+            line.getNote(1).properties.syllable = "der";
+            line.getNote(1).properties.syllableRelation = Note.SyllableRelation.NO;
 
             // Double hyphen should still produce ONE_DASH (not two hyphens)
-            assertEquals(Note.SyllableRelation.ONE_DASH, line.getNote(0).acceleration.syllableRelation);
+            assertEquals(Note.SyllableRelation.ONE_DASH, line.getNote(0).properties.syllableRelation);
         }
 
         @Test
@@ -163,16 +161,16 @@ class ScoreLyricParsingTest {
             var line = createLineWithNotes(3);
 
             // Simulate lyrics: "beau-ti-ful"
-            line.getNote(0).acceleration.syllable = "beau";
-            line.getNote(0).acceleration.syllableRelation = Note.SyllableRelation.ONE_DASH;
-            line.getNote(1).acceleration.syllable = "ti";
-            line.getNote(1).acceleration.syllableRelation = Note.SyllableRelation.ONE_DASH;
-            line.getNote(2).acceleration.syllable = "ful";
-            line.getNote(2).acceleration.syllableRelation = Note.SyllableRelation.NO;
+            line.getNote(0).properties.syllable = "beau";
+            line.getNote(0).properties.syllableRelation = Note.SyllableRelation.ONE_DASH;
+            line.getNote(1).properties.syllable = "ti";
+            line.getNote(1).properties.syllableRelation = Note.SyllableRelation.ONE_DASH;
+            line.getNote(2).properties.syllable = "ful";
+            line.getNote(2).properties.syllableRelation = Note.SyllableRelation.NO;
 
-            assertEquals(Note.SyllableRelation.ONE_DASH, line.getNote(0).acceleration.syllableRelation);
-            assertEquals(Note.SyllableRelation.ONE_DASH, line.getNote(1).acceleration.syllableRelation);
-            assertEquals(Note.SyllableRelation.NO, line.getNote(2).acceleration.syllableRelation);
+            assertEquals(Note.SyllableRelation.ONE_DASH, line.getNote(0).properties.syllableRelation);
+            assertEquals(Note.SyllableRelation.ONE_DASH, line.getNote(1).properties.syllableRelation);
+            assertEquals(Note.SyllableRelation.NO, line.getNote(2).properties.syllableRelation);
         }
 
         @Test
@@ -181,10 +179,10 @@ class ScoreLyricParsingTest {
             var line = createLineWithNotes(1);
 
             // Simulate lyrics: "won-" (continuation to next line)
-            line.getNote(0).acceleration.syllable = "won";
-            line.getNote(0).acceleration.syllableRelation = Note.SyllableRelation.ONE_DASH;
+            line.getNote(0).properties.syllable = "won";
+            line.getNote(0).properties.syllableRelation = Note.SyllableRelation.ONE_DASH;
 
-            assertEquals(Note.SyllableRelation.ONE_DASH, line.getNote(0).acceleration.syllableRelation);
+            assertEquals(Note.SyllableRelation.ONE_DASH, line.getNote(0).properties.syllableRelation);
         }
     }
 
@@ -202,12 +200,12 @@ class ScoreLyricParsingTest {
             var line = createLineWithNotes(2);
 
             // Simulate lyrics: "long_"
-            line.getNote(0).acceleration.syllable = "long";
-            line.getNote(0).acceleration.syllableRelation = Note.SyllableRelation.EXTENDER;
-            line.getNote(1).acceleration.syllable = Constants.UNDERSCORE;
-            line.getNote(1).acceleration.syllableRelation = Note.SyllableRelation.NO;
+            line.getNote(0).properties.syllable = "long";
+            line.getNote(0).properties.syllableRelation = Note.SyllableRelation.EXTENDER;
+            line.getNote(1).properties.syllable = Constants.UNDERSCORE;
+            line.getNote(1).properties.syllableRelation = Note.SyllableRelation.NO;
 
-            assertEquals(Note.SyllableRelation.EXTENDER, line.getNote(0).acceleration.syllableRelation);
+            assertEquals(Note.SyllableRelation.EXTENDER, line.getNote(0).properties.syllableRelation);
         }
 
         @Test
@@ -216,12 +214,12 @@ class ScoreLyricParsingTest {
             var line = createLineWithNotes(2);
 
             // Set up as if parsed from "long_"
-            line.getNote(0).acceleration.syllable = "long";
-            line.getNote(0).acceleration.syllableRelation = Note.SyllableRelation.EXTENDER;
+            line.getNote(0).properties.syllable = "long";
+            line.getNote(0).properties.syllableRelation = Note.SyllableRelation.EXTENDER;
 
             // Verify it's EXTENDER, not DASH
-            assertEquals(Note.SyllableRelation.EXTENDER, line.getNote(0).acceleration.syllableRelation);
-            assertNotEquals(Note.SyllableRelation.DASH, line.getNote(0).acceleration.syllableRelation);
+            assertEquals(Note.SyllableRelation.EXTENDER, line.getNote(0).properties.syllableRelation);
+            assertNotEquals(Note.SyllableRelation.DASH, line.getNote(0).properties.syllableRelation);
         }
 
         @Test
@@ -230,19 +228,19 @@ class ScoreLyricParsingTest {
             var line = createLineWithNotes(4);
 
             // Simulate lyrics: "long____"
-            line.getNote(0).acceleration.syllable = "long";
-            line.getNote(0).acceleration.syllableRelation = Note.SyllableRelation.EXTENDER;
-            line.getNote(1).acceleration.syllable = Constants.UNDERSCORE;
-            line.getNote(1).acceleration.syllableRelation = Note.SyllableRelation.EXTENDER;
-            line.getNote(2).acceleration.syllable = Constants.UNDERSCORE;
-            line.getNote(2).acceleration.syllableRelation = Note.SyllableRelation.EXTENDER;
-            line.getNote(3).acceleration.syllable = Constants.UNDERSCORE;
-            line.getNote(3).acceleration.syllableRelation = Note.SyllableRelation.NO;
+            line.getNote(0).properties.syllable = "long";
+            line.getNote(0).properties.syllableRelation = Note.SyllableRelation.EXTENDER;
+            line.getNote(1).properties.syllable = Constants.UNDERSCORE;
+            line.getNote(1).properties.syllableRelation = Note.SyllableRelation.EXTENDER;
+            line.getNote(2).properties.syllable = Constants.UNDERSCORE;
+            line.getNote(2).properties.syllableRelation = Note.SyllableRelation.EXTENDER;
+            line.getNote(3).properties.syllable = Constants.UNDERSCORE;
+            line.getNote(3).properties.syllableRelation = Note.SyllableRelation.NO;
 
             // All underscores should extend the initial EXTENDER
-            assertEquals(Note.SyllableRelation.EXTENDER, line.getNote(0).acceleration.syllableRelation);
-            assertEquals(Note.SyllableRelation.EXTENDER, line.getNote(1).acceleration.syllableRelation);
-            assertEquals(Note.SyllableRelation.EXTENDER, line.getNote(2).acceleration.syllableRelation);
+            assertEquals(Note.SyllableRelation.EXTENDER, line.getNote(0).properties.syllableRelation);
+            assertEquals(Note.SyllableRelation.EXTENDER, line.getNote(1).properties.syllableRelation);
+            assertEquals(Note.SyllableRelation.EXTENDER, line.getNote(2).properties.syllableRelation);
         }
 
         @Test
@@ -251,15 +249,15 @@ class ScoreLyricParsingTest {
             var line = createLineWithNotes(3);
 
             // Simulate lyrics with line break: "word_\n_"
-            line.getNote(0).acceleration.syllable = "word";
-            line.getNote(0).acceleration.syllableRelation = Note.SyllableRelation.EXTENDER;
-            line.getNote(1).acceleration.syllable = Constants.UNDERSCORE;
-            line.getNote(1).acceleration.syllableRelation = Note.SyllableRelation.EXTENDER;
-            line.getNote(2).acceleration.syllable = Constants.UNDERSCORE;
-            line.getNote(2).acceleration.syllableRelation = Note.SyllableRelation.NO;
+            line.getNote(0).properties.syllable = "word";
+            line.getNote(0).properties.syllableRelation = Note.SyllableRelation.EXTENDER;
+            line.getNote(1).properties.syllable = Constants.UNDERSCORE;
+            line.getNote(1).properties.syllableRelation = Note.SyllableRelation.EXTENDER;
+            line.getNote(2).properties.syllable = Constants.UNDERSCORE;
+            line.getNote(2).properties.syllableRelation = Note.SyllableRelation.NO;
 
-            assertEquals(Note.SyllableRelation.EXTENDER, line.getNote(0).acceleration.syllableRelation);
-            assertEquals(Note.SyllableRelation.EXTENDER, line.getNote(1).acceleration.syllableRelation);
+            assertEquals(Note.SyllableRelation.EXTENDER, line.getNote(0).properties.syllableRelation);
+            assertEquals(Note.SyllableRelation.EXTENDER, line.getNote(1).properties.syllableRelation);
         }
     }
 
@@ -277,18 +275,18 @@ class ScoreLyricParsingTest {
             var line = createLineWithNotes(4);
 
             // Simulate lyrics: "ka-re__"
-            line.getNote(0).acceleration.syllable = "ka";
-            line.getNote(0).acceleration.syllableRelation = Note.SyllableRelation.ONE_DASH;
-            line.getNote(1).acceleration.syllable = "re";
-            line.getNote(1).acceleration.syllableRelation = Note.SyllableRelation.EXTENDER;
-            line.getNote(2).acceleration.syllable = Constants.UNDERSCORE;
-            line.getNote(2).acceleration.syllableRelation = Note.SyllableRelation.EXTENDER;
-            line.getNote(3).acceleration.syllable = Constants.UNDERSCORE;
-            line.getNote(3).acceleration.syllableRelation = Note.SyllableRelation.NO;
+            line.getNote(0).properties.syllable = "ka";
+            line.getNote(0).properties.syllableRelation = Note.SyllableRelation.ONE_DASH;
+            line.getNote(1).properties.syllable = "re";
+            line.getNote(1).properties.syllableRelation = Note.SyllableRelation.EXTENDER;
+            line.getNote(2).properties.syllable = Constants.UNDERSCORE;
+            line.getNote(2).properties.syllableRelation = Note.SyllableRelation.EXTENDER;
+            line.getNote(3).properties.syllable = Constants.UNDERSCORE;
+            line.getNote(3).properties.syllableRelation = Note.SyllableRelation.NO;
 
-            assertEquals(Note.SyllableRelation.ONE_DASH, line.getNote(0).acceleration.syllableRelation);
-            assertEquals(Note.SyllableRelation.EXTENDER, line.getNote(1).acceleration.syllableRelation);
-            assertEquals(Note.SyllableRelation.EXTENDER, line.getNote(2).acceleration.syllableRelation);
+            assertEquals(Note.SyllableRelation.ONE_DASH, line.getNote(0).properties.syllableRelation);
+            assertEquals(Note.SyllableRelation.EXTENDER, line.getNote(1).properties.syllableRelation);
+            assertEquals(Note.SyllableRelation.EXTENDER, line.getNote(2).properties.syllableRelation);
         }
 
         @Test
@@ -297,18 +295,18 @@ class ScoreLyricParsingTest {
             var line = createLineWithNotes(4);
 
             // Simulate lyrics: "long__-ing"
-            line.getNote(0).acceleration.syllable = "long";
-            line.getNote(0).acceleration.syllableRelation = Note.SyllableRelation.EXTENDER;
-            line.getNote(1).acceleration.syllable = Constants.UNDERSCORE;
-            line.getNote(1).acceleration.syllableRelation = Note.SyllableRelation.EXTENDER;
-            line.getNote(2).acceleration.syllable = Constants.UNDERSCORE;
-            line.getNote(2).acceleration.syllableRelation = Note.SyllableRelation.ONE_DASH;
-            line.getNote(3).acceleration.syllable = "ing";
-            line.getNote(3).acceleration.syllableRelation = Note.SyllableRelation.NO;
+            line.getNote(0).properties.syllable = "long";
+            line.getNote(0).properties.syllableRelation = Note.SyllableRelation.EXTENDER;
+            line.getNote(1).properties.syllable = Constants.UNDERSCORE;
+            line.getNote(1).properties.syllableRelation = Note.SyllableRelation.EXTENDER;
+            line.getNote(2).properties.syllable = Constants.UNDERSCORE;
+            line.getNote(2).properties.syllableRelation = Note.SyllableRelation.ONE_DASH;
+            line.getNote(3).properties.syllable = "ing";
+            line.getNote(3).properties.syllableRelation = Note.SyllableRelation.NO;
 
-            assertEquals(Note.SyllableRelation.EXTENDER, line.getNote(0).acceleration.syllableRelation);
-            assertEquals(Note.SyllableRelation.EXTENDER, line.getNote(1).acceleration.syllableRelation);
-            assertEquals(Note.SyllableRelation.ONE_DASH, line.getNote(2).acceleration.syllableRelation);
+            assertEquals(Note.SyllableRelation.EXTENDER, line.getNote(0).properties.syllableRelation);
+            assertEquals(Note.SyllableRelation.EXTENDER, line.getNote(1).properties.syllableRelation);
+            assertEquals(Note.SyllableRelation.ONE_DASH, line.getNote(2).properties.syllableRelation);
         }
 
         @Test
@@ -317,23 +315,23 @@ class ScoreLyricParsingTest {
             var line = createLineWithNotes(6);
 
             // Simulate lyrics: "beau-ti-ful__song"
-            line.getNote(0).acceleration.syllable = "beau";
-            line.getNote(0).acceleration.syllableRelation = Note.SyllableRelation.ONE_DASH;
-            line.getNote(1).acceleration.syllable = "ti";
-            line.getNote(1).acceleration.syllableRelation = Note.SyllableRelation.ONE_DASH;
-            line.getNote(2).acceleration.syllable = "ful";
-            line.getNote(2).acceleration.syllableRelation = Note.SyllableRelation.EXTENDER;
-            line.getNote(3).acceleration.syllable = Constants.UNDERSCORE;
-            line.getNote(3).acceleration.syllableRelation = Note.SyllableRelation.EXTENDER;
-            line.getNote(4).acceleration.syllable = Constants.UNDERSCORE;
-            line.getNote(4).acceleration.syllableRelation = Note.SyllableRelation.NO;
-            line.getNote(5).acceleration.syllable = "song";
-            line.getNote(5).acceleration.syllableRelation = Note.SyllableRelation.NO;
+            line.getNote(0).properties.syllable = "beau";
+            line.getNote(0).properties.syllableRelation = Note.SyllableRelation.ONE_DASH;
+            line.getNote(1).properties.syllable = "ti";
+            line.getNote(1).properties.syllableRelation = Note.SyllableRelation.ONE_DASH;
+            line.getNote(2).properties.syllable = "ful";
+            line.getNote(2).properties.syllableRelation = Note.SyllableRelation.EXTENDER;
+            line.getNote(3).properties.syllable = Constants.UNDERSCORE;
+            line.getNote(3).properties.syllableRelation = Note.SyllableRelation.EXTENDER;
+            line.getNote(4).properties.syllable = Constants.UNDERSCORE;
+            line.getNote(4).properties.syllableRelation = Note.SyllableRelation.NO;
+            line.getNote(5).properties.syllable = "song";
+            line.getNote(5).properties.syllableRelation = Note.SyllableRelation.NO;
 
-            assertEquals(Note.SyllableRelation.ONE_DASH, line.getNote(0).acceleration.syllableRelation);
-            assertEquals(Note.SyllableRelation.ONE_DASH, line.getNote(1).acceleration.syllableRelation);
-            assertEquals(Note.SyllableRelation.EXTENDER, line.getNote(2).acceleration.syllableRelation);
-            assertEquals(Note.SyllableRelation.EXTENDER, line.getNote(3).acceleration.syllableRelation);
+            assertEquals(Note.SyllableRelation.ONE_DASH, line.getNote(0).properties.syllableRelation);
+            assertEquals(Note.SyllableRelation.ONE_DASH, line.getNote(1).properties.syllableRelation);
+            assertEquals(Note.SyllableRelation.EXTENDER, line.getNote(2).properties.syllableRelation);
+            assertEquals(Note.SyllableRelation.EXTENDER, line.getNote(3).properties.syllableRelation);
         }
 
         @Test
@@ -342,20 +340,20 @@ class ScoreLyricParsingTest {
             var line = createLineWithNotes(5);
 
             // Simulate: "syl-la_ble-here"
-            line.getNote(0).acceleration.syllable = "syl";
-            line.getNote(0).acceleration.syllableRelation = Note.SyllableRelation.ONE_DASH;
-            line.getNote(1).acceleration.syllable = "la";
-            line.getNote(1).acceleration.syllableRelation = Note.SyllableRelation.EXTENDER;
-            line.getNote(2).acceleration.syllable = Constants.UNDERSCORE;
-            line.getNote(2).acceleration.syllableRelation = Note.SyllableRelation.NO;
-            line.getNote(3).acceleration.syllable = "ble";
-            line.getNote(3).acceleration.syllableRelation = Note.SyllableRelation.ONE_DASH;
-            line.getNote(4).acceleration.syllable = "here";
-            line.getNote(4).acceleration.syllableRelation = Note.SyllableRelation.NO;
+            line.getNote(0).properties.syllable = "syl";
+            line.getNote(0).properties.syllableRelation = Note.SyllableRelation.ONE_DASH;
+            line.getNote(1).properties.syllable = "la";
+            line.getNote(1).properties.syllableRelation = Note.SyllableRelation.EXTENDER;
+            line.getNote(2).properties.syllable = Constants.UNDERSCORE;
+            line.getNote(2).properties.syllableRelation = Note.SyllableRelation.NO;
+            line.getNote(3).properties.syllable = "ble";
+            line.getNote(3).properties.syllableRelation = Note.SyllableRelation.ONE_DASH;
+            line.getNote(4).properties.syllable = "here";
+            line.getNote(4).properties.syllableRelation = Note.SyllableRelation.NO;
 
-            assertEquals(Note.SyllableRelation.ONE_DASH, line.getNote(0).acceleration.syllableRelation);
-            assertEquals(Note.SyllableRelation.EXTENDER, line.getNote(1).acceleration.syllableRelation);
-            assertEquals(Note.SyllableRelation.ONE_DASH, line.getNote(3).acceleration.syllableRelation);
+            assertEquals(Note.SyllableRelation.ONE_DASH, line.getNote(0).properties.syllableRelation);
+            assertEquals(Note.SyllableRelation.EXTENDER, line.getNote(1).properties.syllableRelation);
+            assertEquals(Note.SyllableRelation.ONE_DASH, line.getNote(3).properties.syllableRelation);
         }
     }
 
@@ -374,8 +372,8 @@ class ScoreLyricParsingTest {
 
             // Simulate: "_word" (continuation from previous line)
             line.beginRelation = Note.SyllableRelation.EXTENDER;
-            line.getNote(0).acceleration.syllable = Constants.UNDERSCORE;
-            line.getNote(1).acceleration.syllable = "word";
+            line.getNote(0).properties.syllable = Constants.UNDERSCORE;
+            line.getNote(1).properties.syllable = "word";
 
             assertEquals(Note.SyllableRelation.EXTENDER, line.beginRelation);
         }
@@ -387,7 +385,7 @@ class ScoreLyricParsingTest {
 
             // Simulate: "der" (after "won-" on previous line)
             line.beginRelation = Note.SyllableRelation.ONE_DASH;
-            line.getNote(0).acceleration.syllable = "der";
+            line.getNote(0).properties.syllable = "der";
 
             assertEquals(Note.SyllableRelation.ONE_DASH, line.beginRelation);
         }
@@ -396,7 +394,7 @@ class ScoreLyricParsingTest {
         @DisplayName("normal start has NO beginRelation")
         void normalStartHasNoBeginRelation() {
             var line = createLineWithNotes(1);
-            line.getNote(0).acceleration.syllable = "word";
+            line.getNote(0).properties.syllable = "word";
 
             assertEquals(Note.SyllableRelation.NO, line.beginRelation);
         }
@@ -417,12 +415,12 @@ class ScoreLyricParsingTest {
             // Multiple hyphens across notes should NOT be used for duration
             var line = createLineWithNotes(3);
 
-            line.getNote(0).acceleration.syllable = "word";
-            line.getNote(0).acceleration.syllableRelation = Note.SyllableRelation.ONE_DASH;
+            line.getNote(0).properties.syllable = "word";
+            line.getNote(0).properties.syllableRelation = Note.SyllableRelation.ONE_DASH;
 
             // Should be ONE_DASH (syllable division), NOT DASH (duration)
-            assertEquals(Note.SyllableRelation.ONE_DASH, line.getNote(0).acceleration.syllableRelation);
-            assertNotEquals(Note.SyllableRelation.DASH, line.getNote(0).acceleration.syllableRelation);
+            assertEquals(Note.SyllableRelation.ONE_DASH, line.getNote(0).properties.syllableRelation);
+            assertNotEquals(Note.SyllableRelation.DASH, line.getNote(0).properties.syllableRelation);
         }
 
         @Test
@@ -431,16 +429,16 @@ class ScoreLyricParsingTest {
             // Rule: Underscore = duration indication via extender line
             var line = createLineWithNotes(3);
 
-            line.getNote(0).acceleration.syllable = "word";
-            line.getNote(0).acceleration.syllableRelation = Note.SyllableRelation.EXTENDER;
-            line.getNote(1).acceleration.syllable = Constants.UNDERSCORE;
-            line.getNote(1).acceleration.syllableRelation = Note.SyllableRelation.EXTENDER;
+            line.getNote(0).properties.syllable = "word";
+            line.getNote(0).properties.syllableRelation = Note.SyllableRelation.EXTENDER;
+            line.getNote(1).properties.syllable = Constants.UNDERSCORE;
+            line.getNote(1).properties.syllableRelation = Note.SyllableRelation.EXTENDER;
 
             // Should be EXTENDER (duration), NOT DASH
-            assertEquals(Note.SyllableRelation.EXTENDER, line.getNote(0).acceleration.syllableRelation);
-            assertEquals(Note.SyllableRelation.EXTENDER, line.getNote(1).acceleration.syllableRelation);
-            assertNotEquals(Note.SyllableRelation.DASH, line.getNote(0).acceleration.syllableRelation);
-            assertNotEquals(Note.SyllableRelation.DASH, line.getNote(1).acceleration.syllableRelation);
+            assertEquals(Note.SyllableRelation.EXTENDER, line.getNote(0).properties.syllableRelation);
+            assertEquals(Note.SyllableRelation.EXTENDER, line.getNote(1).properties.syllableRelation);
+            assertNotEquals(Note.SyllableRelation.DASH, line.getNote(0).properties.syllableRelation);
+            assertNotEquals(Note.SyllableRelation.DASH, line.getNote(1).properties.syllableRelation);
         }
 
         @Test
@@ -451,18 +449,18 @@ class ScoreLyricParsingTest {
             var line = createLineWithNotes(4);
 
             // Set up various scenarios
-            line.getNote(0).acceleration.syllable = "won";
-            line.getNote(0).acceleration.syllableRelation = Note.SyllableRelation.ONE_DASH;
-            line.getNote(1).acceleration.syllable = "der";
-            line.getNote(1).acceleration.syllableRelation = Note.SyllableRelation.EXTENDER;
-            line.getNote(2).acceleration.syllable = Constants.UNDERSCORE;
-            line.getNote(2).acceleration.syllableRelation = Note.SyllableRelation.EXTENDER;
-            line.getNote(3).acceleration.syllable = "ful";
-            line.getNote(3).acceleration.syllableRelation = Note.SyllableRelation.NO;
+            line.getNote(0).properties.syllable = "won";
+            line.getNote(0).properties.syllableRelation = Note.SyllableRelation.ONE_DASH;
+            line.getNote(1).properties.syllable = "der";
+            line.getNote(1).properties.syllableRelation = Note.SyllableRelation.EXTENDER;
+            line.getNote(2).properties.syllable = Constants.UNDERSCORE;
+            line.getNote(2).properties.syllableRelation = Note.SyllableRelation.EXTENDER;
+            line.getNote(3).properties.syllable = "ful";
+            line.getNote(3).properties.syllableRelation = Note.SyllableRelation.NO;
 
             // Verify no DASH relations are present
             for (var i = 0; i < line.noteCount(); i++) {
-                assertNotEquals(Note.SyllableRelation.DASH, line.getNote(i).acceleration.syllableRelation,
+                assertNotEquals(Note.SyllableRelation.DASH, line.getNote(i).properties.syllableRelation,
                     String.format("Note %d should not have DASH relation", i));
             }
         }
@@ -475,23 +473,23 @@ class ScoreLyricParsingTest {
             var line = createLineWithNotes(4);
 
             // Hyphen for syllable division
-            line.getNote(0).acceleration.syllable = "beau";
-            line.getNote(0).acceleration.syllableRelation = Note.SyllableRelation.ONE_DASH;
-            line.getNote(1).acceleration.syllable = "ti";
-            line.getNote(1).acceleration.syllableRelation = Note.SyllableRelation.NO;
+            line.getNote(0).properties.syllable = "beau";
+            line.getNote(0).properties.syllableRelation = Note.SyllableRelation.ONE_DASH;
+            line.getNote(1).properties.syllable = "ti";
+            line.getNote(1).properties.syllableRelation = Note.SyllableRelation.NO;
 
             // Extender for duration
-            line.getNote(2).acceleration.syllable = "ful";
-            line.getNote(2).acceleration.syllableRelation = Note.SyllableRelation.EXTENDER;
-            line.getNote(3).acceleration.syllable = Constants.UNDERSCORE;
-            line.getNote(3).acceleration.syllableRelation = Note.SyllableRelation.NO;
+            line.getNote(2).properties.syllable = "ful";
+            line.getNote(2).properties.syllableRelation = Note.SyllableRelation.EXTENDER;
+            line.getNote(3).properties.syllable = Constants.UNDERSCORE;
+            line.getNote(3).properties.syllableRelation = Note.SyllableRelation.NO;
 
             // Verify distinct relations
-            assertEquals(Note.SyllableRelation.ONE_DASH, line.getNote(0).acceleration.syllableRelation);
-            assertEquals(Note.SyllableRelation.EXTENDER, line.getNote(2).acceleration.syllableRelation);
+            assertEquals(Note.SyllableRelation.ONE_DASH, line.getNote(0).properties.syllableRelation);
+            assertEquals(Note.SyllableRelation.EXTENDER, line.getNote(2).properties.syllableRelation);
             assertNotEquals(
-                line.getNote(0).acceleration.syllableRelation,
-                line.getNote(2).acceleration.syllableRelation
+                line.getNote(0).properties.syllableRelation,
+                line.getNote(2).properties.syllableRelation
             );
         }
     }
@@ -510,11 +508,11 @@ class ScoreLyricParsingTest {
             var line = createLineWithNotes(1);
 
             // Empty lyrics should result in empty syllable with NO relation
-            line.getNote(0).acceleration.syllable = "";
-            line.getNote(0).acceleration.syllableRelation = Note.SyllableRelation.NO;
+            line.getNote(0).properties.syllable = "";
+            line.getNote(0).properties.syllableRelation = Note.SyllableRelation.NO;
 
-            assertTrue(line.getNote(0).acceleration.syllable.isEmpty());
-            assertEquals(Note.SyllableRelation.NO, line.getNote(0).acceleration.syllableRelation);
+            assertTrue(line.getNote(0).properties.syllable.isEmpty());
+            assertEquals(Note.SyllableRelation.NO, line.getNote(0).properties.syllableRelation);
         }
 
         @Test
@@ -523,15 +521,15 @@ class ScoreLyricParsingTest {
             var line = createLineWithNotes(3);
 
             // Simulate: "---" (unusual but valid)
-            line.getNote(0).acceleration.syllable = "";
-            line.getNote(0).acceleration.syllableRelation = Note.SyllableRelation.ONE_DASH;
-            line.getNote(1).acceleration.syllable = "";
-            line.getNote(1).acceleration.syllableRelation = Note.SyllableRelation.ONE_DASH;
-            line.getNote(2).acceleration.syllable = "";
-            line.getNote(2).acceleration.syllableRelation = Note.SyllableRelation.NO;
+            line.getNote(0).properties.syllable = "";
+            line.getNote(0).properties.syllableRelation = Note.SyllableRelation.ONE_DASH;
+            line.getNote(1).properties.syllable = "";
+            line.getNote(1).properties.syllableRelation = Note.SyllableRelation.ONE_DASH;
+            line.getNote(2).properties.syllable = "";
+            line.getNote(2).properties.syllableRelation = Note.SyllableRelation.NO;
 
-            assertEquals(Note.SyllableRelation.ONE_DASH, line.getNote(0).acceleration.syllableRelation);
-            assertEquals(Note.SyllableRelation.ONE_DASH, line.getNote(1).acceleration.syllableRelation);
+            assertEquals(Note.SyllableRelation.ONE_DASH, line.getNote(0).properties.syllableRelation);
+            assertEquals(Note.SyllableRelation.ONE_DASH, line.getNote(1).properties.syllableRelation);
         }
 
         @Test
@@ -540,15 +538,15 @@ class ScoreLyricParsingTest {
             var line = createLineWithNotes(3);
 
             // Simulate: "___"
-            line.getNote(0).acceleration.syllable = Constants.UNDERSCORE;
-            line.getNote(0).acceleration.syllableRelation = Note.SyllableRelation.EXTENDER;
-            line.getNote(1).acceleration.syllable = Constants.UNDERSCORE;
-            line.getNote(1).acceleration.syllableRelation = Note.SyllableRelation.EXTENDER;
-            line.getNote(2).acceleration.syllable = Constants.UNDERSCORE;
-            line.getNote(2).acceleration.syllableRelation = Note.SyllableRelation.NO;
+            line.getNote(0).properties.syllable = Constants.UNDERSCORE;
+            line.getNote(0).properties.syllableRelation = Note.SyllableRelation.EXTENDER;
+            line.getNote(1).properties.syllable = Constants.UNDERSCORE;
+            line.getNote(1).properties.syllableRelation = Note.SyllableRelation.EXTENDER;
+            line.getNote(2).properties.syllable = Constants.UNDERSCORE;
+            line.getNote(2).properties.syllableRelation = Note.SyllableRelation.NO;
 
-            assertEquals(Note.SyllableRelation.EXTENDER, line.getNote(0).acceleration.syllableRelation);
-            assertEquals(Note.SyllableRelation.EXTENDER, line.getNote(1).acceleration.syllableRelation);
+            assertEquals(Note.SyllableRelation.EXTENDER, line.getNote(0).properties.syllableRelation);
+            assertEquals(Note.SyllableRelation.EXTENDER, line.getNote(1).properties.syllableRelation);
         }
 
         @Test
@@ -557,15 +555,15 @@ class ScoreLyricParsingTest {
             var line = createLineWithNotes(3);
 
             // Simulate: "one two-three"
-            line.getNote(0).acceleration.syllable = "one";
-            line.getNote(0).acceleration.syllableRelation = Note.SyllableRelation.NO;
-            line.getNote(1).acceleration.syllable = "two";
-            line.getNote(1).acceleration.syllableRelation = Note.SyllableRelation.ONE_DASH;
-            line.getNote(2).acceleration.syllable = "three";
-            line.getNote(2).acceleration.syllableRelation = Note.SyllableRelation.NO;
+            line.getNote(0).properties.syllable = "one";
+            line.getNote(0).properties.syllableRelation = Note.SyllableRelation.NO;
+            line.getNote(1).properties.syllable = "two";
+            line.getNote(1).properties.syllableRelation = Note.SyllableRelation.ONE_DASH;
+            line.getNote(2).properties.syllable = "three";
+            line.getNote(2).properties.syllableRelation = Note.SyllableRelation.NO;
 
-            assertEquals(Note.SyllableRelation.NO, line.getNote(0).acceleration.syllableRelation);
-            assertEquals(Note.SyllableRelation.ONE_DASH, line.getNote(1).acceleration.syllableRelation);
+            assertEquals(Note.SyllableRelation.NO, line.getNote(0).properties.syllableRelation);
+            assertEquals(Note.SyllableRelation.ONE_DASH, line.getNote(1).properties.syllableRelation);
         }
 
         @Test
@@ -574,19 +572,19 @@ class ScoreLyricParsingTest {
             var line = createLineWithNotes(5);
 
             // Only first 2 notes have syllables
-            line.getNote(0).acceleration.syllable = "one";
-            line.getNote(0).acceleration.syllableRelation = Note.SyllableRelation.NO;
-            line.getNote(1).acceleration.syllable = "two";
-            line.getNote(1).acceleration.syllableRelation = Note.SyllableRelation.NO;
+            line.getNote(0).properties.syllable = "one";
+            line.getNote(0).properties.syllableRelation = Note.SyllableRelation.NO;
+            line.getNote(1).properties.syllable = "two";
+            line.getNote(1).properties.syllableRelation = Note.SyllableRelation.NO;
 
             // Remaining notes have empty syllables
-            line.getNote(2).acceleration.syllable = "";
-            line.getNote(3).acceleration.syllable = "";
-            line.getNote(4).acceleration.syllable = "";
+            line.getNote(2).properties.syllable = "";
+            line.getNote(3).properties.syllable = "";
+            line.getNote(4).properties.syllable = "";
 
-            assertTrue(line.getNote(2).acceleration.syllable.isEmpty());
-            assertTrue(line.getNote(3).acceleration.syllable.isEmpty());
-            assertTrue(line.getNote(4).acceleration.syllable.isEmpty());
+            assertTrue(line.getNote(2).properties.syllable.isEmpty());
+            assertTrue(line.getNote(3).properties.syllable.isEmpty());
+            assertTrue(line.getNote(4).properties.syllable.isEmpty());
         }
     }
 }

@@ -28,15 +28,17 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+
 import javax.swing.*;
+
 import org.jetbrains.annotations.NotNull;
+
 import songscribe.Version;
 import songscribe.data.MyFileFilter;
 import songscribe.data.TupletIntervalData;
 import songscribe.music.Annotation;
 import songscribe.music.Composition;
-import songscribe.music.DurationArticulation;
-import songscribe.music.ForceArticulation;
+import songscribe.music.ArticulationType;
 import songscribe.music.GraceSemiQuaver;
 import songscribe.music.KeyType;
 import songscribe.music.Line;
@@ -47,7 +49,6 @@ import songscribe.music.Semiquaver;
 import songscribe.music.Tempo;
 import songscribe.ui.Constants;
 import songscribe.ui.component.MainFrame;
-import songscribe.ui.component.Score;
 import songscribe.ui.dialog.PlatformFileDialog;
 import songscribe.ui.playback.PlaybackController;
 import songscribe.util.FileUtils;
@@ -64,13 +65,13 @@ import songscribe.util.FileUtils;
  */
 public class ExportABCAction extends UIAction {
 
-    private static final String[] ACCIDENTAL_MAP = new String[] {
+    private static final String[] ACCIDENTAL_MAP = new String[]{
         "=",
         "_",
         "^",
         "^^",
     };
-    private static final String[] SHARP_KEYS = new String[] {
+    private static final String[] SHARP_KEYS = new String[]{
         "C",
         "G",
         "D",
@@ -80,7 +81,7 @@ public class ExportABCAction extends UIAction {
         "F#",
         "C#",
     };
-    private static final String[] FLAT_KEYS = new String[] {
+    private static final String[] FLAT_KEYS = new String[]{
         "C",
         "F",
         "Bb",
@@ -122,8 +123,8 @@ public class ExportABCAction extends UIAction {
                 var response = JOptionPane.showConfirmDialog(
                     mainFrame,
                     "The file “" +
-                    saveFile.getName() +
-                    "” already exists. Do you want to overwrite it?",
+                        saveFile.getName() +
+                        "” already exists. Do you want to overwrite it?",
                     mainFrame.appName,
                     JOptionPane.YES_NO_OPTION
                 );
@@ -189,9 +190,9 @@ public class ExportABCAction extends UIAction {
         writer.println("%abc-2.1");
         writer.println(
             "I:abc-creator " +
-            Constants.PACKAGE_NAME +
-            ' ' +
-            Version.PUBLIC_VERSION
+                Constants.PACKAGE_NAME +
+                ' ' +
+                Version.PUBLIC_VERSION
         );
         writer.println();
 
@@ -203,19 +204,19 @@ public class ExportABCAction extends UIAction {
         writer.println("Q:" + translateTempo(composition.getTempo()));
         writer.println(
             "L:" +
-            translateUnitLength(
-                compositionUnitLength,
-                PlaybackController.PPQ * 4
-            ).asAbcString()
+                translateUnitLength(
+                    compositionUnitLength,
+                    PlaybackController.PPQ * 4
+                ).asAbcString()
         );
 
         // Last
         writer.println(
             "K:" +
-            translateKey(
-                composition.getDefaultKeyType(),
-                composition.getDefaultKeyAccidentalCount()
-            )
+                translateKey(
+                    composition.getDefaultKeyType(),
+                    composition.getDefaultKeyAccidentalCount()
+                )
         );
         translateComposition(writer, composition, compositionUnitLength);
     }
@@ -237,11 +238,11 @@ public class ExportABCAction extends UIAction {
         );
         return (
             fraction.asAbcString() +
-            '=' +
-            tempo.getVisibleTempo() +
-            " \"" +
-            tempo.getTempoDescription() +
-            '\''
+                '=' +
+                tempo.getVisibleTempo() +
+                " \"" +
+                tempo.getTempoDescription() +
+                '\''
         );
     }
 
@@ -326,11 +327,11 @@ public class ExportABCAction extends UIAction {
     static String translateDecorations(Note note) {
         var sb = new StringBuilder(27);
 
-        if (note.getForceArticulation() == ForceArticulation.ACCENT) {
+        if (note.hasArticulation(ArticulationType.ACCENT)) {
             sb.append("!>!");
         }
 
-        if (note.getDurationArticulation() == DurationArticulation.STACCATO) {
+        if (note.hasArticulation(ArticulationType.STACCATO)) {
             sb.append('.');
         }
 
@@ -351,9 +352,9 @@ public class ExportABCAction extends UIAction {
             var belowDiff = Math.abs(annotation.getYPos() - Annotation.BELOW);
             return (
                 '"' +
-                ((aboveDiff < belowDiff) ? "^" : "_") +
-                annotation.getAnnotation() +
-                '"'
+                    ((aboveDiff < belowDiff) ? "^" : "_") +
+                    annotation.getAnnotation() +
+                    '"'
             );
         }
 
@@ -463,7 +464,7 @@ public class ExportABCAction extends UIAction {
 
             if (
                 (line.getNote(i).getNoteType() == NoteType.REPEAT_RIGHT) &&
-                line.getFirstSecondEndings().isInsideAnyInterval(i)
+                    line.getFirstSecondEndings().isInsideAnyInterval(i)
             ) {
                 sb.append("[2 ");
             }
@@ -509,7 +510,7 @@ public class ExportABCAction extends UIAction {
             // TODO: syllable forcing under rests is not supported in abc
 
             if (note.getNoteType().isNote()) {
-                sb.append(translateSyllable(note.acceleration.syllable));
+                sb.append(translateSyllable(note.properties.syllable));
                 // TODO: syllables under gracenotes are not supported in abc therefore me must put
                 //  together with the next note
                 if (note.getNoteType().isGraceNote()) {
@@ -517,7 +518,7 @@ public class ExportABCAction extends UIAction {
                 }
 
                 sb.append(
-                    switch (note.acceleration.syllableRelation) {
+                    switch (note.properties.syllableRelation) {
                         case NO -> ' ';
                         // TODO: long dash is not supported in abc
                         case ONE_DASH, DASH -> '-';
@@ -533,7 +534,7 @@ public class ExportABCAction extends UIAction {
     static String translateSyllable(String syllable) {
         if (
             Constants.UNDERSCORE.equals(syllable) ||
-            Constants.HYPHEN.equals(syllable)
+                Constants.HYPHEN.equals(syllable)
         ) {
             return "";
         }

@@ -27,6 +27,8 @@ import org.jetbrains.annotations.NotNull;
 import songscribe.ui.layout.LayoutStylesheet;
 import songscribe.ui.layout.Staff;
 
+import static songscribe.ui.renderer.GraphicsState.Property.*;
+
 /**
  * Renders the 5 staff lines.
  * <p>
@@ -41,17 +43,19 @@ public class StaffRenderer extends BaseElementRenderer<Staff> {
         @NotNull Graphics2D g2,
         @NotNull ElementRenderContext ctx
     ) {
-        g2.setColor(STAFF_LINE_COLOR);
-        g2.setStroke(STAFF_LINE_STROKE);
+        try (var ignored = GraphicsState.save(g2, COLOR, STROKE)) {
+            g2.setColor(STAFF_LINE_COLOR);
+            g2.setStroke(STAFF_LINE_STROKE);
 
-        int middleLineY = ctx.getMiddleLineY();
-        int staffWidth = (int) element.getWidth();
+            int middleLineY = ctx.getMiddleLineY();
+            int staffWidth = (int) element.getWidth();
 
-        // Draw 5 staff lines (indices 0-4, middle is 2)
-        // Index 0 = top line (F5), Index 4 = bottom line (E4)
-        for (int i = 0; i < LayoutStylesheet.STAFF_LINE_COUNT; i++) {
-            int y = staffLineToY(i, middleLineY);
-            g2.drawLine(0, y, staffWidth, y);
+            // Draw 5 staff lines (indices 0-4, middle is 2)
+            // Index 0 = top line (F5), Index 4 = bottom line (E4)
+            for (int i = 0; i < LayoutStylesheet.STAFF_LINE_COUNT; i++) {
+                int y = staffLineToY(i, middleLineY);
+                g2.drawLine(0, y, staffWidth, y);
+            }
         }
     }
 }

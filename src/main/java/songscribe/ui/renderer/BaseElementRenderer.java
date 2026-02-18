@@ -20,13 +20,12 @@
 
 package songscribe.ui.renderer;
 
-import java.awt.BasicStroke;
-import java.awt.Color;
-import java.awt.Font;
-import java.awt.FontMetrics;
-import java.awt.Graphics2D;
-import java.awt.Stroke;
-import java.awt.geom.Rectangle2D;
+import static songscribe.ui.renderer.GraphicsState.Property.COLOR;
+import static songscribe.ui.renderer.GraphicsState.Property.FONT;
+import static songscribe.ui.renderer.GraphicsState.Property.STROKE;
+
+import java.awt.*;
+import java.awt.geom.*;
 import java.util.Objects;
 
 import org.jetbrains.annotations.NotNull;
@@ -120,14 +119,14 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
     public static final double TEMPO_CHANGE_ZOOM_Y = 0.6;
 
     /**
-     * The Fughetta music font at standard note size.
+     * The music notation font at standard note size.
      */
-    public static final Font FUGHETTA;
+    public static final Font MUSIC_FONT;
 
     /**
-     * The Fughetta music font at grace note size.
+     * The music notation font at grace note size.
      */
-    public static final Font FUGHETTA_GRACE;
+    public static final Font MUSIC_FONT_GRACE;
 
     /**
      * Font for tuplet numbers (e.g., "3" for triplets).
@@ -145,8 +144,8 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
                 MyFontUtils.getLocalFont("Fughetta.ttf"),
                 "Cannot load Fughetta.ttf font"
             );
-            FUGHETTA = fughettaBase.deriveFont(NOTE_FONT_SIZE);
-            FUGHETTA_GRACE = fughettaBase.deriveFont(NOTE_FONT_SIZE * GRACE_ACCIDENTAL_RESIZE_FACTOR);
+            MUSIC_FONT = fughettaBase.deriveFont(NOTE_FONT_SIZE);
+            MUSIC_FONT_GRACE = fughettaBase.deriveFont(NOTE_FONT_SIZE * GRACE_ACCIDENTAL_RESIZE_FACTOR);
 
             var tupletBase = Objects.requireNonNull(
                 MyFontUtils.getLocalFont("TupletNumbers.ttf"),
@@ -277,18 +276,22 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
 
         // Draw margin bounds first (behind content bounds)
         if (ctx.isShowMargins() || ctx.isDebugEnabled()) {
-            g2.setColor(DEBUG_MARGIN_COLOR);
-            g2.fill(marginBounds);
-            g2.setColor(DEBUG_MARGIN_BORDER);
-            g2.draw(marginBounds);
+            try (var ignored = GraphicsState.save(g2, COLOR)) {
+                g2.setColor(DEBUG_MARGIN_COLOR);
+                g2.fill(marginBounds);
+                g2.setColor(DEBUG_MARGIN_BORDER);
+                g2.draw(marginBounds);
+            }
         }
 
         // Draw content bounds on top
         if (ctx.isShowBoundingBoxes() || ctx.isDebugEnabled()) {
-            g2.setColor(DEBUG_CONTENT_COLOR);
-            g2.fill(contentBounds);
-            g2.setColor(DEBUG_CONTENT_BORDER);
-            g2.draw(contentBounds);
+            try (var ignored = GraphicsState.save(g2, COLOR)) {
+                g2.setColor(DEBUG_CONTENT_COLOR);
+                g2.fill(contentBounds);
+                g2.setColor(DEBUG_CONTENT_BORDER);
+                g2.draw(contentBounds);
+            }
         }
 
         // Draw element type label
@@ -319,14 +322,16 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
         int textWidth = fm.stringWidth(typeName);
         int textHeight = fm.getHeight();
 
-        // Draw background for label
-        g2.setColor(DEBUG_LABEL_BACKGROUND);
-        g2.fillRect(labelX - 1, labelY - textHeight + fm.getDescent(), textWidth + 2, textHeight);
+        try (var ignored = GraphicsState.save(g2, COLOR, FONT)) {
+            // Draw background for label
+            g2.setColor(DEBUG_LABEL_BACKGROUND);
+            g2.fillRect(labelX - 1, labelY - textHeight + fm.getDescent(), textWidth + 2, textHeight);
 
-        // Draw label text
-        g2.setColor(DEBUG_LABEL_COLOR);
-        g2.setFont(labelFont);
-        g2.drawString(typeName, labelX, labelY);
+            // Draw label text
+            g2.setColor(DEBUG_LABEL_COLOR);
+            g2.setFont(labelFont);
+            g2.drawString(typeName, labelX, labelY);
+        }
     }
 
     /**
@@ -355,19 +360,18 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
      * @param width Width of the ledger line
      */
     protected void drawLedgerLine(@NotNull Graphics2D g2, double x, double y, double width) {
-        var oldStroke = g2.getStroke();
-        g2.setStroke(LEDGER_LINE_STROKE);
-        g2.setColor(STAFF_LINE_COLOR);
+        try (var ignored = GraphicsState.save(g2, COLOR, STROKE)) {
+            g2.setStroke(LEDGER_LINE_STROKE);
+            g2.setColor(STAFF_LINE_COLOR);
 
-        double halfWidth = width / 2.0;
-        g2.drawLine(
-            (int) (x - halfWidth),
-            (int) y,
-            (int) (x + halfWidth),
-            (int) y
-        );
-
-        g2.setStroke(oldStroke);
+            double halfWidth = width / 2.0;
+            g2.drawLine(
+                (int) (x - halfWidth),
+                (int) y,
+                (int) (x + halfWidth),
+                (int) y
+            );
+        }
     }
 
     /**
@@ -386,11 +390,11 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
         double y,
         @NotNull ElementRenderContext ctx
     ) {
-        var oldFont = g2.getFont();
-        g2.setFont(ctx.getFughettaFont());
-        g2.setColor(NOTE_COLOR);
-        g2.drawString(glyph, (float) x, (float) y);
-        g2.setFont(oldFont);
+        try (var ignored = GraphicsState.save(g2, COLOR, FONT)) {
+            g2.setFont(ctx.getMusicFont());
+            g2.setColor(NOTE_COLOR);
+            g2.drawString(glyph, (float) x, (float) y);
+        }
     }
 
     /**

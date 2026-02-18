@@ -232,6 +232,13 @@ public final class ScoreMessageCoordinator {
     @Handler
     public void onFlipStemDirection(FlipStemDirectionMessage message) {
         operations.flipStemDirection();
+
+        MessageCenter.post(new LayoutChangeMessage(
+            LayoutChangeMessage.Section.SCORE,
+            LayoutChangeMessage.ChangeType.CONTENT,
+            false
+        ));
+
         callback.repaint();
     }
 

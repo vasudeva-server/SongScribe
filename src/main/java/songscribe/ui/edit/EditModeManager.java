@@ -27,6 +27,7 @@ import org.jetbrains.annotations.Nullable;
 
 import songscribe.music.BeamCalculator;
 import songscribe.music.Composition;
+import songscribe.music.ArticulationType;
 import songscribe.music.ForceArticulation;
 import songscribe.music.GraceSemiQuaver;
 import songscribe.music.Line;
@@ -37,8 +38,11 @@ import songscribe.music.RepeatLeftRight;
 import songscribe.ui.Control;
 import songscribe.ui.action.Actions;
 import songscribe.ui.clipboard.ClipboardManager;
+import songscribe.ui.layout.Articulation;
 import songscribe.ui.component.IMainFrame;
 import songscribe.ui.layout2.InsertionSpacingCalculator;
+import songscribe.ui.message.LayoutChangeMessage;
+import songscribe.ui.message.MessageCenter;
 import songscribe.ui.playback.PlayNoteThread;
 import songscribe.ui.selection.SelectionCoordinator;
 
@@ -270,6 +274,21 @@ public final class EditModeManager {
         );
 
         note.setFermata(Actions.FERMATA_ACTION.isSelected());
+
+        // Dual-write: populate new Articulation list alongside old properties
+        note.clearArticulations();
+
+        if (Actions.ACCENT_ACTION.isSelected()) {
+            note.addArticulation(
+                new Articulation(note, ArticulationType.ACCENT)
+            );
+        }
+
+        if (durationArticulationAction != null) {
+            note.addArticulation(
+                new Articulation(note, ArticulationType.STACCATO)
+            );
+        }
     }
 
     // -------------------------------------------------------------------------
@@ -432,6 +451,13 @@ public final class EditModeManager {
         scoreActions.setEditNote(nextNote);
         LyricsProcessor.spellLyrics(line);
         scoreActions.drawWidthIfWiderLine(line, false);
+
+        MessageCenter.post(new LayoutChangeMessage(
+            LayoutChangeMessage.Section.SCORE,
+            LayoutChangeMessage.ChangeType.CONTENT,
+            false
+        ));
+
         scoreActions.repaint();
 
         if (playInsertingNote && editNote.getNoteType().isNote()) {

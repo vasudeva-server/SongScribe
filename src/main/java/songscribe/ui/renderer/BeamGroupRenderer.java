@@ -20,21 +20,17 @@
 
 package songscribe.ui.renderer;
 
-import java.awt.BasicStroke;
-import java.awt.Color;
-import java.awt.Graphics2D;
-import java.awt.Point;
-import java.awt.Shape;
-import java.awt.geom.Path2D;
-import java.awt.geom.Rectangle2D;
+import java.awt.*;
+import java.awt.geom.*;
 
 import org.jetbrains.annotations.NotNull;
 
 import songscribe.music.Line;
-import songscribe.music.Note;
 import songscribe.music.NoteType;
 import songscribe.ui.layout.BeamGroup;
 import songscribe.ui.layout.LayoutStylesheet;
+
+import static songscribe.ui.renderer.GraphicsState.Property.*;
 
 /**
  * Renders beam bars connecting beamed notes.
@@ -276,11 +272,10 @@ public class BeamGroupRenderer extends BaseElementRenderer<BeamGroup> {
         @NotNull BeamType type,
         int recursionLevel
     ) {
-        var oldColor = g2.getColor();
         var beginNote = line.getNote(beginIndex);
         var endNote = line.getNote(endIndex);
-        var firstStem = beginNote.acceleration.stem;
-        var lastStem = endNote.acceleration.stem;
+        var firstStem = beginNote.properties.stem;
+        var lastStem = endNote.properties.stem;
 
         int middleLineY = ctx.getMiddleLineY();
 
@@ -353,18 +348,16 @@ public class BeamGroupRenderer extends BaseElementRenderer<BeamGroup> {
             g2.setClip(clip);
         }
 
-        g2.setColor(Color.BLACK);
-        var stroke = g2.getStroke();
-        g2.setStroke(STEM_STROKE);
-        g2.draw(beam);
-        g2.fill(beam);
-        g2.setStroke(stroke);
+        try (var ignored = GraphicsState.save(g2, COLOR, STROKE)) {
+            g2.setColor(Color.BLACK);
+            g2.setStroke(STEM_STROKE);
+            g2.draw(beam);
+            g2.fill(beam);
+        }
 
         if (clip != null) {
             g2.setClip(oldClip);
         }
-
-        g2.setColor(oldColor);
     }
 
     /**

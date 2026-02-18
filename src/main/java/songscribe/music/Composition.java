@@ -542,7 +542,7 @@ public final class Composition {
     }
 
     public boolean isEmpty() {
-        return lines.isEmpty() || lines.stream().anyMatch(Line::isEmpty);
+        return lines.isEmpty() || lines.stream().allMatch(Line::isEmpty);
     }
 
     public Font getTitleFont() {

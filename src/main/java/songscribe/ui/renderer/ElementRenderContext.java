@@ -20,7 +20,7 @@
 
 package songscribe.ui.renderer;
 
-import java.awt.Font;
+import java.awt.*;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -69,19 +69,19 @@ public class ElementRenderContext {
     }
 
     /**
-     * Returns the Fughetta music notation font.
+     * Returns the music notation font.
      * <p>
      * This font contains glyphs for notes, rests, accidentals, clefs, etc.
      */
-    public @NotNull Font getFughettaFont() {
-        return BaseElementRenderer.FUGHETTA;
+    public @NotNull Font getMusicFont() {
+        return BaseElementRenderer.MUSIC_FONT;
     }
 
     /**
-     * Returns the Fughetta font sized for grace notes.
+     * Returns the music notation font sized for grace notes.
      */
-    public @NotNull Font getFughettaGraceFont() {
-        return BaseElementRenderer.FUGHETTA_GRACE;
+    public @NotNull Font getMusicGraceFont() {
+        return BaseElementRenderer.MUSIC_FONT_GRACE;
     }
 
     /**

@@ -20,14 +20,15 @@
 
 package songscribe.ui.renderer;
 
-import java.awt.BasicStroke;
-import java.awt.Graphics2D;
-import java.awt.geom.Line2D;
+import java.awt.*;
+import java.awt.geom.*;
 import java.util.ArrayList;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import org.jetbrains.annotations.NotNull;
+
+import static songscribe.ui.renderer.GraphicsState.Property.*;
 
 import songscribe.data.IntervalSet;
 import songscribe.music.Line;
@@ -146,18 +147,20 @@ public class LyricsRenderer {
     ) {
         initializeMetrics(g2, ctx);
 
-        var composition = ctx.getComposition();
-        var font = composition.getLyricsFont();
-        g2.setFont(font);
+        try (var ignored = GraphicsState.save(g2, FONT)) {
+            var composition = ctx.getComposition();
+            var font = composition.getLyricsFont();
+            g2.setFont(font);
 
-        // Track which syllables have been drawn (for relation handling)
-        var drawnIndex = 0;
+            // Track which syllables have been drawn (for relation handling)
+            var drawnIndex = 0;
 
-        for (var noteIndex = 0; noteIndex < line.noteCount(); noteIndex++) {
-            var note = line.getNote(noteIndex);
-            drawnIndex = renderNoteLyrics(
-                g2, line, ctx, isLastLine, noteIndex, note, drawnIndex
-            );
+            for (var noteIndex = 0; noteIndex < line.noteCount(); noteIndex++) {
+                var note = line.getNote(noteIndex);
+                drawnIndex = renderNoteLyrics(
+                    g2, line, ctx, isLastLine, noteIndex, note, drawnIndex
+                );
+            }
         }
     }
 
@@ -195,16 +198,18 @@ public class LyricsRenderer {
             return;
         }
 
-        var composition = ctx.getComposition();
-        var font = composition.getLyricsFont();
-        g2.setFont(font);
-        var metrics = g2.getFontMetrics(font);
+        try (var ignored = GraphicsState.save(g2, FONT)) {
+            var composition = ctx.getComposition();
+            var font = composition.getLyricsFont();
+            g2.setFont(font);
+            var metrics = g2.getFontMetrics(font);
 
-        lyricsMaxDescent = metrics.getMaxDescent();
+            lyricsMaxDescent = metrics.getMaxDescent();
 
-        // Calculate hyphen offset based on x-height
-        var halfHyphenHeight = HYPHEN_STROKE.getLineWidth() / 2;
-        dashOffset = MyFontUtils.getXHeight(g2) - halfHyphenHeight;
+            // Calculate hyphen offset based on x-height
+            var halfHyphenHeight = HYPHEN_STROKE.getLineWidth() / 2;
+            dashOffset = MyFontUtils.getXHeight(g2) - halfHyphenHeight;
+        }
     }
 
     /**
@@ -231,7 +236,7 @@ public class LyricsRenderer {
         var metrics = g2.getFontMetrics(font);
 
         var syllableWidth = 0;
-        var syllable = note.acceleration.syllable;
+        var syllable = note.properties.syllable;
         var dashY = lyricsY - dashOffset;
 
         // Draw syllable text (if not underscore placeholder)
@@ -249,19 +254,21 @@ public class LyricsRenderer {
 
             // Handle begin-of-line hyphen (continuation from previous line)
             if (noteIndex == 0 && line.beginRelation == Note.SyllableRelation.ONE_DASH) {
-                g2.setStroke(HYPHEN_STROKE);
-                g2.draw(new Line2D.Float(
-                    (float) (lyricsX - HYPHEN_WIDTH - 10),
-                    dashY,
-                    (float) (lyricsX - 10),
-                    dashY
-                ));
+                try (var ignored = GraphicsState.save(g2, STROKE)) {
+                    g2.setStroke(HYPHEN_STROKE);
+                    g2.draw(new Line2D.Float(
+                        (float) (lyricsX - HYPHEN_WIDTH - 10),
+                        dashY,
+                        (float) (lyricsX - 10),
+                        dashY
+                    ));
+                }
             }
         }
 
         // Handle syllable relations (dashes, extenders)
         if (drawnIndex <= noteIndex &&
-            (note.acceleration.syllableRelation != Note.SyllableRelation.NO ||
+            (note.properties.syllableRelation != Note.SyllableRelation.NO ||
                 (noteIndex == 0 && line.beginRelation == Note.SyllableRelation.EXTENDER))) {
 
             drawnIndex = renderSyllableRelation(
@@ -293,8 +300,8 @@ public class LyricsRenderer {
         var metrics = g2.getFontMetrics();
 
         // Determine the relation type
-        var relation = (note.acceleration.syllableRelation != Note.SyllableRelation.NO)
-            ? note.acceleration.syllableRelation
+        var relation = (note.properties.syllableRelation != Note.SyllableRelation.NO)
+            ? note.properties.syllableRelation
             : line.beginRelation;
 
         // Find the end note index for this relation
@@ -330,7 +337,7 @@ public class LyricsRenderer {
             endIndex = noteIndex + 1;
 
             while (endIndex < line.noteCount()) {
-                var nextSyllable = line.getNote(endIndex).acceleration.syllable;
+                var nextSyllable = line.getNote(endIndex).properties.syllable;
 
                 if (!nextSyllable.equals(Constants.UNDERSCORE) && !nextSyllable.isEmpty()) {
                     break;
@@ -345,8 +352,8 @@ public class LyricsRenderer {
             while (endIndex < line.noteCount()) {
                 var nextNote = line.getNote(endIndex);
 
-                if (nextNote.acceleration.syllableRelation != relation &&
-                    !nextNote.acceleration.syllable.isEmpty()) {
+                if (nextNote.properties.syllableRelation != relation &&
+                    !nextNote.properties.syllable.isEmpty()) {
                     break;
                 }
 
@@ -405,12 +412,12 @@ public class LyricsRenderer {
         }
 
         if (relation == Note.SyllableRelation.ONE_DASH &&
-            endNote.acceleration.syllable.isEmpty()) {
+            endNote.properties.syllable.isEmpty()) {
             return startX + (int) (HYPHEN_WIDTH * 2f);
         }
 
         // End before the next syllable
-        var nextSyllable = endNote.acceleration.syllable;
+        var nextSyllable = endNote.properties.syllable;
         var nextSyllableWidth = g2.getFontMetrics().stringWidth(nextSyllable);
 
         return (endNote.getXPos() + Note.HOT_SPOT.x) -
@@ -461,17 +468,19 @@ public class LyricsRenderer {
         int endX,
         int lyricsY
     ) {
-        g2.setStroke(EXTENDER_STROKE);
-        drawWithEmptySyllablesExclusion(
-            g2,
-            startX,
-            lyricsY,
-            endX,
-            lyricsY,
-            line,
-            startIndex,
-            endIndex + 1
-        );
+        try (var ignored = GraphicsState.save(g2, STROKE)) {
+            g2.setStroke(EXTENDER_STROKE);
+            drawWithEmptySyllablesExclusion(
+                g2,
+                startX,
+                lyricsY,
+                endX,
+                lyricsY,
+                line,
+                startIndex,
+                endIndex + 1
+            );
+        }
     }
 
     /**
@@ -485,22 +494,24 @@ public class LyricsRenderer {
         int endX,
         float dashY
     ) {
-        g2.setStroke(HYPHEN_STROKE);
+        try (var ignored = GraphicsState.save(g2, STROKE)) {
+            g2.setStroke(HYPHEN_STROKE);
 
-        // Store the position for potential adjustment
-        note.acceleration.longDashPosition = ((endX - startX) / 2f) + startX;
+            // Store the position for potential adjustment
+            note.properties.longDashPosition = ((endX - startX) / 2f) + startX;
 
-        // Use adjusted position if set, otherwise use calculated center
-        var centerX = (note.getSyllableRelationMovement() == 0)
-            ? note.acceleration.longDashPosition
-            : note.getXPos() + note.getSyllableRelationMovement();
+            // Use adjusted position if set, otherwise use calculated center
+            var centerX = (note.getSyllableRelationMovement() == 0)
+                ? note.properties.longDashPosition
+                : note.getXPos() + note.getSyllableRelationMovement();
 
-        g2.draw(new Line2D.Float(
-            centerX - (HYPHEN_WIDTH / 2f),
-            dashY,
-            centerX + (HYPHEN_WIDTH / 2f),
-            dashY
-        ));
+            g2.draw(new Line2D.Float(
+                centerX - (HYPHEN_WIDTH / 2f),
+                dashY,
+                centerX + (HYPHEN_WIDTH / 2f),
+                dashY
+            ));
+        }
     }
 
     /**
@@ -522,7 +533,7 @@ public class LyricsRenderer {
 
         // Find notes with empty syllables
         var emptySyllables = IntStream.range(startIndex, end)
-            .filter(i -> line.getNote(i).acceleration.syllable.isEmpty())
+            .filter(i -> line.getNote(i).properties.syllable.isEmpty())
             .boxed()
             .collect(Collectors.toCollection(ArrayList::new));
 

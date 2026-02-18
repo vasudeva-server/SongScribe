@@ -26,9 +26,8 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.awt.Font;
-import java.awt.Graphics2D;
-import java.awt.image.BufferedImage;
+import java.awt.*;
+import java.awt.image.*;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -91,7 +90,7 @@ class LineComponentLayoutTest {
         var note = new Crotchet();
 
         if (syllable != null) {
-            note.acceleration.syllable = syllable;
+            note.properties.syllable = syllable;
         }
 
         if (accidental != null) {
@@ -108,7 +107,7 @@ class LineComponentLayoutTest {
         var note = new Quaver();
 
         if (syllable != null) {
-            note.acceleration.syllable = syllable;
+            note.properties.syllable = syllable;
         }
 
         return note;
@@ -416,7 +415,7 @@ class LineComponentLayoutTest {
             line.addNote(note);
 
             // Even without layout result, syllable should be accessible
-            assertEquals("test", note.acceleration.syllable, "Syllable should be stored in note");
+            assertEquals("test", note.properties.syllable, "Syllable should be stored in note");
             assertEquals(100, note.getXPos(), "X position should be available as fallback");
         }
 

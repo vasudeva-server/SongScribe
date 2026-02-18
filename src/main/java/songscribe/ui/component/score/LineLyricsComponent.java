@@ -58,7 +58,7 @@ public class LineLyricsComponent extends ScoreComponent {
      */
     public LineLyricsComponent() {
         super();
-        setMarginTop(LayoutStylesheet.px(LayoutStylesheet.LYRICS_ROW_MARGIN));
+        setMarginTop(LayoutStylesheet.px(LayoutStylesheet.LYRICS_ROW_MARGIN_MU));
     }
 
     /**
@@ -119,21 +119,26 @@ public class LineLyricsComponent extends ScoreComponent {
             return;
         }
 
-        var font = composition.getLyricsFont();
-        g2.setFont(font);
-        var metrics = g2.getFontMetrics();
+        try (var ignored = songscribe.ui.renderer.GraphicsState.save(
+            g2,
+            songscribe.ui.renderer.GraphicsState.Property.FONT
+        )) {
+            var font = composition.getLyricsFont();
+            g2.setFont(font);
+            var metrics = g2.getFontMetrics();
 
-        // Create render context with adjusted middleLineY
-        // LyricsRenderer calculates: lyricsY = middleLineY + line.getLyricsYPos()
-        // We want lyricsY to be metrics.getAscent() (baseline relative to component top)
-        // So: middleLineY = metrics.getAscent() - line.getLyricsYPos()
-        var ctx = new ElementRenderContext(composition);
-        ctx.setCurrentLine(line);
-        ctx.setLineIndex(lineIndex);
-        ctx.setMiddleLineY(metrics.getAscent() - line.getLyricsYPos());
+            // Create render context with adjusted middleLineY
+            // LyricsRenderer calculates: lyricsY = middleLineY + line.getLyricsYPos()
+            // We want lyricsY to be metrics.getAscent() (baseline relative to component top)
+            // So: middleLineY = metrics.getAscent() - line.getLyricsYPos()
+            var ctx = new ElementRenderContext(composition);
+            ctx.setCurrentLine(line);
+            ctx.setLineIndex(lineIndex);
+            ctx.setMiddleLineY(metrics.getAscent() - line.getLyricsYPos());
 
-        // Delegate to LyricsRenderer for complete lyrics rendering
-        LyricsRenderer.getInstance().renderLyrics(g2, line, ctx, isLastLine);
+            // Delegate to LyricsRenderer for complete lyrics rendering
+            LyricsRenderer.getInstance().renderLyrics(g2, line, ctx, isLastLine);
+        }
     }
 
     /**
@@ -143,7 +148,7 @@ public class LineLyricsComponent extends ScoreComponent {
      */
     private boolean hasLyrics() {
         for (var i = 0; i < line.noteCount(); i++) {
-            var syllable = line.getNote(i).acceleration.syllable;
+            var syllable = line.getNote(i).properties.syllable;
 
             if (syllable != null && !syllable.isEmpty() && !syllable.equals("_")) {
                 return true;

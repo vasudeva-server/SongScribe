@@ -20,7 +20,8 @@
 
 package songscribe.ui.renderer;
 
-import java.awt.Graphics2D;
+import java.awt.*;
+import java.awt.geom.Ellipse2D;
 import java.util.EnumMap;
 
 import org.jetbrains.annotations.NotNull;
@@ -29,6 +30,9 @@ import org.jetbrains.annotations.Nullable;
 import songscribe.music.Note;
 import songscribe.music.NoteType;
 import songscribe.ui.layout.LayoutStylesheet;
+
+import static songscribe.ui.renderer.GraphicsState.Property.FONT;
+import static songscribe.ui.renderer.GraphicsState.Property.TRANSFORM;
 
 /**
  * Renders rest glyphs (whole, half, quarter, eighth, sixteenth, thirty-second rests).
@@ -56,6 +60,13 @@ public class RestRenderer extends BaseElementRenderer<Note> {
     // Y position adjustment for whole and half rests (relative to middle line)
     private static final int SEMIBREVE_REST_Y_OFFSET = -2;  // Above the middle line
     private static final int MINIM_REST_Y_OFFSET = 0;       // On the middle line
+
+    // Dot dimensions
+    private static final double DOT_WIDTH = NOTE_FONT_SIZE / 9.142858d;
+    private static final Ellipse2D.Double[] NOTE_DOTS = new Ellipse2D.Double[]{
+        new Ellipse2D.Double(13.1d, -DOT_WIDTH / 2, DOT_WIDTH, DOT_WIDTH),
+        new Ellipse2D.Double(15.878d + DOT_WIDTH, -DOT_WIDTH / 2, DOT_WIDTH, DOT_WIDTH),
+    };
 
     // Singleton instance
     private static final RestRenderer INSTANCE = new RestRenderer();
@@ -100,24 +111,26 @@ public class RestRenderer extends BaseElementRenderer<Note> {
             return;
         }
 
-        var transform = g2.getTransform();
-
         // Get rest position
         int noteX = element.getXPos();
         int noteY = calculateRestY(element, ctx.getMiddleLineY());
 
-        g2.translate(noteX, noteY);
-        g2.setFont(ctx.getFughettaFont());
-        g2.setColor(NOTE_COLOR);
+        try (var ignored = GraphicsState.save(g2, TRANSFORM, FONT)) {
+            g2.translate(noteX, noteY);
+            g2.setFont(ctx.getMusicFont());
+            // Note: Don't set color here - respect the color set by the caller
+            // (e.g., blue for edit notes, black for composition notes)
 
-        // Draw rest glyph
-        String glyph = REST_GLYPHS.get(noteType);
+            // Draw rest glyph
+            String glyph = REST_GLYPHS.get(noteType);
 
-        if (glyph != null) {
-            g2.drawString(glyph, 0f, 0f);
+            if (glyph != null) {
+                g2.drawString(glyph, 0f, 0f);
+            }
+
+            // Draw dots
+            renderDots(g2, element, noteType);
         }
-
-        g2.setTransform(transform);
     }
 
     /**
@@ -140,5 +153,44 @@ public class RestRenderer extends BaseElementRenderer<Note> {
 
         // Other rests use standard note Y positioning
         return middleLineY + (int) (note.getYPos() * LayoutStylesheet.NOTE_Y_OFFSET);
+    }
+
+    /**
+     * Renders dots for dotted rests.
+     */
+    private void renderDots(@NotNull Graphics2D g2, @NotNull Note note, @NotNull NoteType noteType) {
+        if (note.getDotCount() == 0) {
+            return;
+        }
+
+        try (var ignored = GraphicsState.save(g2, TRANSFORM)) {
+            // Position dots to the right of the rest glyph
+            // Different rest types have different widths, so adjust accordingly
+            switch (noteType) {
+                case SEMIBREVE_REST:
+                case MINIM_REST:
+                    g2.translate(8, 0);
+                    break;
+
+                case CROTCHET_REST:
+                    g2.translate(6, 0);
+                    break;
+
+                case QUAVER_REST:
+                case SEMIQUAVER_REST:
+                case DEMI_SEMIQUAVER_REST:
+                    g2.translate(7, 0);
+                    break;
+
+                default:
+                    g2.translate(8, 0);
+                    break;
+            }
+
+            // Draw the dots
+            for (int i = 0; i < note.getDotCount(); i++) {
+                g2.fill(NOTE_DOTS[i]);
+            }
+        }
     }
 }

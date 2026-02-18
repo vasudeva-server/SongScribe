@@ -20,9 +20,8 @@
 
 package songscribe.ui.renderer;
 
-import java.awt.BasicStroke;
-import java.awt.Graphics2D;
-import java.awt.geom.QuadCurve2D;
+import java.awt.*;
+import java.awt.geom.*;
 
 import org.jetbrains.annotations.NotNull;
 
@@ -31,6 +30,8 @@ import songscribe.music.Line;
 import songscribe.music.Note;
 import songscribe.ui.layout.LayoutStylesheet;
 import songscribe.ui.layout.Tuplet;
+
+import static songscribe.ui.renderer.GraphicsState.Property.*;
 
 /**
  * Renders tuplet brackets with numbers.
@@ -148,7 +149,7 @@ public class TupletRenderer extends BaseElementRenderer<Tuplet> {
         // Calculate left bracket position
         int lx = firstNote.getXPos() + (int) CROTCHET_WIDTH;
         int ly = (middleLineY + (int) (firstNote.getYPos() * LayoutStylesheet.NOTE_Y_OFFSET) -
-            Note.HOT_SPOT.y) + (upper * (int) firstNote.acceleration.lengthening);
+            Note.HOT_SPOT.y) + (upper * (int) firstNote.properties.lengthening);
         ly -= 5;
 
         // Calculate center position
@@ -167,7 +168,7 @@ public class TupletRenderer extends BaseElementRenderer<Tuplet> {
         var lastNote = line.getNote(endIndex);
         int rx = lastNote.getXPos() + (int) CROTCHET_WIDTH;
         int ry = (middleLineY + (int) (lastNote.getYPos() * LayoutStylesheet.NOTE_Y_OFFSET) -
-            Note.HOT_SPOT.y) + (upper * (int) lastNote.acceleration.lengthening);
+            Note.HOT_SPOT.y) + (upper * (int) lastNote.properties.lengthening);
         ry -= 5;
 
         // Adjust for lower stem notes
@@ -185,29 +186,31 @@ public class TupletRenderer extends BaseElementRenderer<Tuplet> {
             ry += verticalAdjustment;
         }
 
-        g2.setColor(NOTE_COLOR);
-        g2.setStroke(LINE_STROKE);
+        try (var ignored = GraphicsState.save(g2, COLOR, STROKE, FONT)) {
+            g2.setColor(NOTE_COLOR);
+            g2.setStroke(LINE_STROKE);
 
-        // Calculate slope for bracket
-        var tc = new TupletCalc(lx, ly, rx, ry);
+            // Calculate slope for bracket
+            var tc = new TupletCalc(lx, ly, rx, ry);
 
-        // Draw left curved bracket segment
-        g2.draw(new QuadCurve2D.Float(
-            lx, ly,
-            ((float) (cx - lx) / 4) + lx, tc.getRate(((cx - lx) / 4) + lx) - 10,
-            cx - 7, tc.getRate(cx - 7) - 8
-        ));
+            // Draw left curved bracket segment
+            g2.draw(new QuadCurve2D.Float(
+                lx, ly,
+                ((float) (cx - lx) / 4) + lx, tc.getRate(((cx - lx) / 4) + lx) - 10,
+                cx - 7, tc.getRate(cx - 7) - 8
+            ));
 
-        // Draw right curved bracket segment
-        g2.draw(new QuadCurve2D.Float(
-            cx + 7, tc.getRate(cx + 7) - 8,
-            (((float) (rx - cx) * 3) / 4) + cx, tc.getRate((((rx - cx) * 3) / 4) + cx) - 10,
-            rx, ry
-        ));
+            // Draw right curved bracket segment
+            g2.draw(new QuadCurve2D.Float(
+                cx + 7, tc.getRate(cx + 7) - 8,
+                (((float) (rx - cx) * 3) / 4) + cx, tc.getRate((((rx - cx) * 3) / 4) + cx) - 10,
+                rx, ry
+            ));
 
-        // Draw tuplet number
-        g2.setFont(BaseElementRenderer.TUPLET_FONT);
-        g2.drawString(Integer.toString(grade), cx - 3, tc.getRate(cx - 3) - 5);
+            // Draw tuplet number
+            g2.setFont(BaseElementRenderer.TUPLET_FONT);
+            g2.drawString(Integer.toString(grade), cx - 3, tc.getRate(cx - 3) - 5);
+        }
     }
 
     /**

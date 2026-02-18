@@ -25,9 +25,8 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.awt.Font;
-import java.awt.Graphics2D;
-import java.awt.image.BufferedImage;
+import java.awt.*;
+import java.awt.image.*;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -77,7 +76,7 @@ class LineJustificationCalculatorTest {
         var note = new Crotchet();
 
         if (syllable != null) {
-            note.acceleration.syllable = syllable;
+            note.properties.syllable = syllable;
         }
 
         return note;
@@ -99,15 +98,15 @@ class LineJustificationCalculatorTest {
         }
 
         return new NoteColumn(
-                note,
-                List.of(),
-                leftExtent,
-                rightExtent,
-                0,
-                0,
-                syllable,
-                syllableWidth,
-                null
+            note,
+            List.of(),
+            leftExtent,
+            rightExtent,
+            0,
+            0,
+            syllable,
+            syllableWidth,
+            null
         );
     }
 
@@ -269,7 +268,7 @@ class LineJustificationCalculatorTest {
 
             // Ratios should be preserved (uniform compression)
             assertEquals(originalRatio, newRatio, 0.01,
-                    "Compression should be uniform - spacing ratios should be preserved");
+                "Compression should be uniform - spacing ratios should be preserved");
         }
 
         @Test
@@ -290,7 +289,7 @@ class LineJustificationCalculatorTest {
             // Verify monotonic increase
             for (var i = 1; i < columns.size(); i++) {
                 assertTrue(columns.get(i).getX() > columns.get(i - 1).getX(),
-                        String.format("Column %d should be right of column %d", i, i - 1));
+                    String.format("Column %d should be right of column %d", i, i - 1));
             }
 
             // Verify final position fits
@@ -322,7 +321,7 @@ class LineJustificationCalculatorTest {
             assertFalse(result.isSuccess());
             assertNotNull(result.getErrorMessage());
             assertTrue(result.getErrorMessage().contains("minimum spacing"),
-                    "Error message should mention minimum spacing");
+                "Error message should mention minimum spacing");
         }
 
         @Test
@@ -339,9 +338,9 @@ class LineJustificationCalculatorTest {
             assertFalse(result.isSuccess());
             assertNotNull(result.getErrorMessage());
             assertTrue(
-                    result.getErrorMessage().contains("syllable") ||
-                            result.getErrorMessage().contains("spacing"),
-                    "Error message should mention syllable or spacing issue");
+                result.getErrorMessage().contains("syllable") ||
+                    result.getErrorMessage().contains("spacing"),
+                "Error message should mention syllable or spacing issue");
         }
 
         @Test
@@ -378,8 +377,7 @@ class LineJustificationCalculatorTest {
             // Should either succeed with compression or fail gracefully
             if (!result.isSuccess()) {
                 assertNotNull(result.getErrorMessage());
-            }
-            else if (result.wasCompressionApplied()) {
+            } else if (result.wasCompressionApplied()) {
                 assertEquals(100.0, columns.get(0).getX(), 0.01);
                 assertTrue(columns.get(1).getX() < 200.0);
                 assertTrue(columns.get(1).getRightEdgeX() <= staffRightMargin + 0.01);
@@ -428,8 +426,7 @@ class LineJustificationCalculatorTest {
             // Should handle varying extents correctly
             if (!result.isSuccess()) {
                 assertNotNull(result.getErrorMessage());
-            }
-            else if (result.wasCompressionApplied()) {
+            } else if (result.wasCompressionApplied()) {
                 assertTrue(columns.get(2).getRightEdgeX() <= staffRightMargin + 0.01);
             }
         }
@@ -483,8 +480,7 @@ class LineJustificationCalculatorTest {
             // Should either succeed or fail gracefully with error message
             if (result.isSuccess()) {
                 assertTrue(lastColumn.getRightEdgeX() <= staffRightMargin + 0.01);
-            }
-            else {
+            } else {
                 assertNotNull(result.getErrorMessage());
             }
         }

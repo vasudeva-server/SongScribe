@@ -24,20 +24,16 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.awt.Font;
-import java.awt.Graphics2D;
-import java.awt.image.BufferedImage;
+import java.awt.*;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
-import songscribe.music.Composition;
 import songscribe.music.Crotchet;
 import songscribe.music.Line;
 import songscribe.music.Note;
-import songscribe.test.TestHelper;
 import songscribe.ui.Constants;
 
 /**
@@ -73,8 +69,8 @@ class LyricsRendererTest {
      */
     private Note createNote(String syllable) {
         var note = new Crotchet();
-        note.acceleration.syllable = syllable != null ? syllable : "";
-        note.acceleration.syllableRelation = Note.SyllableRelation.NO; // Default to NO
+        note.properties.syllable = syllable != null ? syllable : "";
+        note.properties.syllableRelation = Note.SyllableRelation.NO; // Default to NO
         note.setXPos(100); // Default position
         return note;
     }
@@ -84,7 +80,7 @@ class LyricsRendererTest {
      */
     private Note createNote(String syllable, Note.SyllableRelation relation) {
         var note = createNote(syllable);
-        note.acceleration.syllableRelation = relation;
+        note.properties.syllableRelation = relation;
         return note;
     }
 
@@ -142,8 +138,8 @@ class LyricsRendererTest {
             // This test verifies rendering doesn't throw exceptions
             // Actual visual verification would require image comparison
             // which is beyond the scope of unit tests
-            assertTrue(note.acceleration.syllable.equals("hello"));
-            assertEquals(Note.SyllableRelation.NO, note.acceleration.syllableRelation);
+            assertTrue(note.properties.syllable.equals("hello"));
+            assertEquals(Note.SyllableRelation.NO, note.properties.syllableRelation);
         }
 
         @Test
@@ -152,7 +148,7 @@ class LyricsRendererTest {
             var note = createNote("");
             var line = createLineWithNotes(note);
 
-            assertTrue(note.acceleration.syllable.isEmpty());
+            assertTrue(note.properties.syllable.isEmpty());
         }
 
         @Test
@@ -161,7 +157,7 @@ class LyricsRendererTest {
             var note = createNote(Constants.UNDERSCORE);
             var line = createLineWithNotes(note);
 
-            assertEquals(Constants.UNDERSCORE, note.acceleration.syllable);
+            assertEquals(Constants.UNDERSCORE, note.properties.syllable);
         }
     }
 
@@ -181,7 +177,7 @@ class LyricsRendererTest {
             @DisplayName("note with NO relation has no connection")
             void noRelationNoConnection() {
                 var note = createNote("word", Note.SyllableRelation.NO);
-                assertEquals(Note.SyllableRelation.NO, note.acceleration.syllableRelation);
+                assertEquals(Note.SyllableRelation.NO, note.properties.syllableRelation);
             }
         }
 
@@ -195,7 +191,7 @@ class LyricsRendererTest {
                 var note1 = createNote("won", Note.SyllableRelation.ONE_DASH);
                 var note2 = createNote("der");
 
-                assertEquals(Note.SyllableRelation.ONE_DASH, note1.acceleration.syllableRelation);
+                assertEquals(Note.SyllableRelation.ONE_DASH, note1.properties.syllableRelation);
             }
 
             @Test
@@ -213,8 +209,8 @@ class LyricsRendererTest {
                 var line = createLineWithNotes(note1, note2, note3);
 
                 // Verify relation is set correctly
-                assertEquals(Note.SyllableRelation.ONE_DASH, note1.acceleration.syllableRelation);
-                assertEquals(Note.SyllableRelation.NO, note2.acceleration.syllableRelation);
+                assertEquals(Note.SyllableRelation.ONE_DASH, note1.properties.syllableRelation);
+                assertEquals(Note.SyllableRelation.NO, note2.properties.syllableRelation);
             }
 
             @Test
@@ -226,9 +222,9 @@ class LyricsRendererTest {
 
                 var line = createLineWithNotes(note1, note2, note3);
 
-                assertEquals(Note.SyllableRelation.ONE_DASH, note1.acceleration.syllableRelation);
-                assertEquals(Note.SyllableRelation.ONE_DASH, note2.acceleration.syllableRelation);
-                assertEquals(Note.SyllableRelation.NO, note3.acceleration.syllableRelation);
+                assertEquals(Note.SyllableRelation.ONE_DASH, note1.properties.syllableRelation);
+                assertEquals(Note.SyllableRelation.ONE_DASH, note2.properties.syllableRelation);
+                assertEquals(Note.SyllableRelation.NO, note3.properties.syllableRelation);
             }
         }
 
@@ -242,7 +238,7 @@ class LyricsRendererTest {
                 var note1 = createNote("word", Note.SyllableRelation.EXTENDER);
                 var note2 = createNote(Constants.UNDERSCORE);
 
-                assertEquals(Note.SyllableRelation.EXTENDER, note1.acceleration.syllableRelation);
+                assertEquals(Note.SyllableRelation.EXTENDER, note1.properties.syllableRelation);
             }
 
             @Test
@@ -260,7 +256,7 @@ class LyricsRendererTest {
                 var line = createLineWithNotes(note1, note2, note3);
 
                 // Verify relation is set correctly
-                assertEquals(Note.SyllableRelation.EXTENDER, note1.acceleration.syllableRelation);
+                assertEquals(Note.SyllableRelation.EXTENDER, note1.properties.syllableRelation);
             }
 
             @Test
@@ -273,9 +269,9 @@ class LyricsRendererTest {
 
                 var line = createLineWithNotes(note1, note2, note3, note4);
 
-                assertEquals(Note.SyllableRelation.EXTENDER, note1.acceleration.syllableRelation);
-                assertEquals(Note.SyllableRelation.EXTENDER, note2.acceleration.syllableRelation);
-                assertEquals(Note.SyllableRelation.EXTENDER, note3.acceleration.syllableRelation);
+                assertEquals(Note.SyllableRelation.EXTENDER, note1.properties.syllableRelation);
+                assertEquals(Note.SyllableRelation.EXTENDER, note2.properties.syllableRelation);
+                assertEquals(Note.SyllableRelation.EXTENDER, note3.properties.syllableRelation);
             }
         }
 
@@ -370,11 +366,11 @@ class LyricsRendererTest {
             var line = createLineWithNotes(note1, note2, note3, note4, note5);
 
             // Verify correct relations
-            assertEquals(Note.SyllableRelation.ONE_DASH, note1.acceleration.syllableRelation);
-            assertEquals(Note.SyllableRelation.ONE_DASH, note2.acceleration.syllableRelation);
-            assertEquals(Note.SyllableRelation.EXTENDER, note3.acceleration.syllableRelation);
-            assertEquals(Note.SyllableRelation.EXTENDER, note4.acceleration.syllableRelation);
-            assertEquals(Note.SyllableRelation.NO, note5.acceleration.syllableRelation);
+            assertEquals(Note.SyllableRelation.ONE_DASH, note1.properties.syllableRelation);
+            assertEquals(Note.SyllableRelation.ONE_DASH, note2.properties.syllableRelation);
+            assertEquals(Note.SyllableRelation.EXTENDER, note3.properties.syllableRelation);
+            assertEquals(Note.SyllableRelation.EXTENDER, note4.properties.syllableRelation);
+            assertEquals(Note.SyllableRelation.NO, note5.properties.syllableRelation);
         }
 
         @Test
@@ -387,9 +383,9 @@ class LyricsRendererTest {
 
             var line = createLineWithNotes(note1, note2, note3, note4);
 
-            assertEquals(Note.SyllableRelation.ONE_DASH, note1.acceleration.syllableRelation);
-            assertEquals(Note.SyllableRelation.EXTENDER, note2.acceleration.syllableRelation);
-            assertEquals(Note.SyllableRelation.EXTENDER, note3.acceleration.syllableRelation);
+            assertEquals(Note.SyllableRelation.ONE_DASH, note1.properties.syllableRelation);
+            assertEquals(Note.SyllableRelation.EXTENDER, note2.properties.syllableRelation);
+            assertEquals(Note.SyllableRelation.EXTENDER, note3.properties.syllableRelation);
         }
 
         @Test
@@ -402,9 +398,9 @@ class LyricsRendererTest {
 
             var line = createLineWithNotes(note1, note2, note3, note4);
 
-            assertEquals(Note.SyllableRelation.EXTENDER, note1.acceleration.syllableRelation);
-            assertEquals(Note.SyllableRelation.EXTENDER, note2.acceleration.syllableRelation);
-            assertEquals(Note.SyllableRelation.ONE_DASH, note3.acceleration.syllableRelation);
+            assertEquals(Note.SyllableRelation.EXTENDER, note1.properties.syllableRelation);
+            assertEquals(Note.SyllableRelation.EXTENDER, note2.properties.syllableRelation);
+            assertEquals(Note.SyllableRelation.ONE_DASH, note3.properties.syllableRelation);
         }
 
         @Test
@@ -419,9 +415,9 @@ class LyricsRendererTest {
 
             // Empty syllables should be skipped in rendering
             // but relation should still be tracked
-            assertEquals(Note.SyllableRelation.EXTENDER, note1.acceleration.syllableRelation);
-            assertTrue(note2.acceleration.syllable.isEmpty());
-            assertTrue(note3.acceleration.syllable.isEmpty());
+            assertEquals(Note.SyllableRelation.EXTENDER, note1.properties.syllableRelation);
+            assertTrue(note2.properties.syllable.isEmpty());
+            assertTrue(note3.properties.syllable.isEmpty());
         }
     }
 
@@ -441,7 +437,7 @@ class LyricsRendererTest {
             var note2 = createNote("der");
 
             // Verify ONE_DASH is used (not DASH)
-            assertEquals(Note.SyllableRelation.ONE_DASH, note1.acceleration.syllableRelation);
+            assertEquals(Note.SyllableRelation.ONE_DASH, note1.properties.syllableRelation);
         }
 
         @Test
@@ -452,7 +448,7 @@ class LyricsRendererTest {
             var note2 = createNote(Constants.UNDERSCORE);
 
             // Verify EXTENDER is used for duration
-            assertEquals(Note.SyllableRelation.EXTENDER, note1.acceleration.syllableRelation);
+            assertEquals(Note.SyllableRelation.EXTENDER, note1.properties.syllableRelation);
         }
 
         @Test
@@ -465,8 +461,8 @@ class LyricsRendererTest {
             var note2 = createNote(Constants.UNDERSCORE, Note.SyllableRelation.EXTENDER);
 
             // Verify we use EXTENDER, not DASH
-            assertEquals(Note.SyllableRelation.EXTENDER, note1.acceleration.syllableRelation);
-            assertEquals(Note.SyllableRelation.EXTENDER, note2.acceleration.syllableRelation);
+            assertEquals(Note.SyllableRelation.EXTENDER, note1.properties.syllableRelation);
+            assertEquals(Note.SyllableRelation.EXTENDER, note2.properties.syllableRelation);
         }
 
         @Test
@@ -477,9 +473,9 @@ class LyricsRendererTest {
             var note2 = createNote("ti", Note.SyllableRelation.ONE_DASH);
             var note3 = createNote("ful");
 
-            assertEquals(Note.SyllableRelation.ONE_DASH, note1.acceleration.syllableRelation);
-            assertEquals(Note.SyllableRelation.ONE_DASH, note2.acceleration.syllableRelation);
-            assertEquals(Note.SyllableRelation.NO, note3.acceleration.syllableRelation);
+            assertEquals(Note.SyllableRelation.ONE_DASH, note1.properties.syllableRelation);
+            assertEquals(Note.SyllableRelation.ONE_DASH, note2.properties.syllableRelation);
+            assertEquals(Note.SyllableRelation.NO, note3.properties.syllableRelation);
         }
 
         @Test
@@ -491,9 +487,9 @@ class LyricsRendererTest {
             var note3 = createNote(Constants.UNDERSCORE, Note.SyllableRelation.EXTENDER);
             var note4 = createNote(Constants.UNDERSCORE);
 
-            assertEquals(Note.SyllableRelation.EXTENDER, note1.acceleration.syllableRelation);
-            assertEquals(Note.SyllableRelation.EXTENDER, note2.acceleration.syllableRelation);
-            assertEquals(Note.SyllableRelation.EXTENDER, note3.acceleration.syllableRelation);
+            assertEquals(Note.SyllableRelation.EXTENDER, note1.properties.syllableRelation);
+            assertEquals(Note.SyllableRelation.EXTENDER, note2.properties.syllableRelation);
+            assertEquals(Note.SyllableRelation.EXTENDER, note3.properties.syllableRelation);
         }
     }
 
@@ -511,7 +507,7 @@ class LyricsRendererTest {
             var note = createNote("word");
             var line = createLineWithNotes(note);
 
-            assertEquals(Note.SyllableRelation.NO, note.acceleration.syllableRelation);
+            assertEquals(Note.SyllableRelation.NO, note.properties.syllableRelation);
         }
 
         @Test
@@ -523,8 +519,8 @@ class LyricsRendererTest {
 
             var line = createLineWithNotes(note1, note2, note3);
 
-            assertEquals(Note.SyllableRelation.EXTENDER, note1.acceleration.syllableRelation);
-            assertEquals(Note.SyllableRelation.EXTENDER, note2.acceleration.syllableRelation);
+            assertEquals(Note.SyllableRelation.EXTENDER, note1.properties.syllableRelation);
+            assertEquals(Note.SyllableRelation.EXTENDER, note2.properties.syllableRelation);
         }
 
         @Test
@@ -534,7 +530,7 @@ class LyricsRendererTest {
             var line = createLineWithNotes(note1);
 
             // Hyphen at end indicates continuation on next line
-            assertEquals(Note.SyllableRelation.ONE_DASH, note1.acceleration.syllableRelation);
+            assertEquals(Note.SyllableRelation.ONE_DASH, note1.properties.syllableRelation);
         }
 
         @Test
@@ -544,7 +540,7 @@ class LyricsRendererTest {
             var line = createLineWithNotes(note1);
 
             // Extender at end indicates continuation on next line
-            assertEquals(Note.SyllableRelation.EXTENDER, note1.acceleration.syllableRelation);
+            assertEquals(Note.SyllableRelation.EXTENDER, note1.properties.syllableRelation);
         }
     }
 }

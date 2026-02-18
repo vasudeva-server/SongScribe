@@ -55,9 +55,9 @@ public class LyricsAdjustment extends Adjustment {
             if (draggingRect.adjustType == AdjustType.SYLLABLE_MOVEMENT) {
                 topLeftDragBounds.setLocation(
                     ((draggingRect.xIndex > 0)
-                            ? line.getNote(draggingRect.xIndex - 1).getXPos()
-                            : 0) +
-                    draggingRect.rectangle.width,
+                        ? line.getNote(draggingRect.xIndex - 1).getXPos()
+                        : 0) +
+                        draggingRect.rectangle.width,
                     draggingRect.rectangle.y
                 );
                 bottomRightDragBounds.setLocation(
@@ -98,7 +98,7 @@ public class LyricsAdjustment extends Adjustment {
 
         if (draggingRect.adjustType == AdjustType.SYLLABLE_MOVEMENT) {
             draggingRect.rectangle.x = endPoint.x -
-            (draggingRect.rectangle.width / 2);
+                (draggingRect.rectangle.width / 2);
             var note = score
                 .getComposition()
                 .getLine(draggingRect.line)
@@ -108,7 +108,7 @@ public class LyricsAdjustment extends Adjustment {
             draggingRect.adjustType == AdjustType.SYLLABLE_RELATION_MOVEMENT
         ) {
             draggingRect.rectangle.x = endPoint.x -
-            (draggingRect.rectangle.width / 2);
+                (draggingRect.rectangle.width / 2);
             var note = score
                 .getComposition()
                 .getLine(draggingRect.line)
@@ -118,7 +118,7 @@ public class LyricsAdjustment extends Adjustment {
             var diffY =
                 draggingRect.rectangle.y + (draggingRect.rectangle.height / 2);
             draggingRect.rectangle.y = endPoint.y -
-            (draggingRect.rectangle.height / 2);
+                (draggingRect.rectangle.height / 2);
             var line = score.getComposition().getLine(draggingRect.line);
             line.setLyricsYPos((line.getLyricsYPos() + endPoint.y) - diffY);
         }
@@ -137,10 +137,15 @@ public class LyricsAdjustment extends Adjustment {
     @Override
     public void repaint(Graphics2D g2) {
         for (var ar : adjustRects) {
-            g2.setPaint(ar.adjustType.getColor());
-            g2.fill(ar.rectangle);
-            g2.setPaint(Color.black);
-            g2.draw(ar.rectangle);
+            try (var ignored = songscribe.ui.renderer.GraphicsState.save(
+                g2,
+                songscribe.ui.renderer.GraphicsState.Property.COLOR
+            )) {
+                g2.setPaint(ar.adjustType.getColor());
+                g2.fill(ar.rectangle);
+                g2.setPaint(Color.black);
+                g2.draw(ar.rectangle);
+            }
         }
     }
 
@@ -157,13 +162,13 @@ public class LyricsAdjustment extends Adjustment {
 
                 for (var n = 0; n < line.noteCount(); n++) {
                     if (
-                        (line.getNote(n).acceleration.syllable != null) &&
-                        !line.getNote(n).acceleration.syllable.isEmpty()
+                        (line.getNote(n).properties.syllable != null) &&
+                            !line.getNote(n).properties.syllable.isEmpty()
                     ) {
                         if (
                             !line
                                 .getNote(n)
-                                .acceleration.syllable.equals(
+                                .properties.syllable.equals(
                                     Constants.UNDERSCORE
                                 )
                         ) {
@@ -177,8 +182,8 @@ public class LyricsAdjustment extends Adjustment {
                         }
 
                         if (
-                            line.getNote(n).acceleration.syllableRelation ==
-                            Note.SyllableRelation.ONE_DASH
+                            line.getNote(n).properties.syllableRelation ==
+                                Note.SyllableRelation.ONE_DASH
                         ) {
                             adjustRects.add(
                                 new AdjustRect(
@@ -214,20 +219,20 @@ public class LyricsAdjustment extends Adjustment {
             rect.rectangle.x = note.getXPos() - 20;
             rect.rectangle.y = (score.getNoteYPos(0, rect.line) +
                 line.getLyricsYPos()) -
-            8;
+                8;
         } else if (rect.adjustType == AdjustType.SYLLABLE_MOVEMENT) {
             rect.rectangle.x = note.getXPos() + note.getSyllableMovement();
             rect.rectangle.y = score.getNoteYPos(0, rect.line) +
-            line.getLyricsYPos() +
-            5;
+                line.getLyricsYPos() +
+                5;
         } else if (rect.adjustType == AdjustType.SYLLABLE_RELATION_MOVEMENT) {
             rect.rectangle.x = ((note.getSyllableRelationMovement() == 0)
-                    ? (int) note.acceleration.longDashPosition
-                    : (note.getXPos() + note.getSyllableRelationMovement())) -
-            4;
+                ? (int) note.properties.longDashPosition
+                : (note.getXPos() + note.getSyllableRelationMovement())) -
+                4;
             rect.rectangle.y = score.getNoteYPos(0, rect.line) +
-            line.getLyricsYPos() +
-            5;
+                line.getLyricsYPos() +
+                5;
         }
 
         rect.rectangle.width = 8;

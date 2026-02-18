@@ -41,7 +41,7 @@ public class FootnotesComponent extends ScoreComponent {
      */
     public FootnotesComponent() {
         super();
-        setMarginTop(LayoutStylesheet.px(LayoutStylesheet.FOOTNOTES_MIN_MARGIN_TOP));
+        setMarginTop(LayoutStylesheet.px(LayoutStylesheet.FOOTNOTES_MIN_MARGIN_TOP_MU));
     }
 
     @Override
@@ -56,28 +56,34 @@ public class FootnotesComponent extends ScoreComponent {
             return;
         }
 
-        var font = composition.getFootnoteFont();
-        g2.setFont(font);
-        g2.setColor(Color.BLACK);
+        try (var ignored = songscribe.ui.renderer.GraphicsState.save(
+            g2,
+            songscribe.ui.renderer.GraphicsState.Property.FONT,
+            songscribe.ui.renderer.GraphicsState.Property.COLOR
+        )) {
+            var font = composition.getFootnoteFont();
+            g2.setFont(font);
+            g2.setColor(Color.BLACK);
 
-        var metrics = g2.getFontMetrics();
-        var lineHeight = metrics.getHeight();
+            var metrics = g2.getFontMetrics();
+            var lineHeight = metrics.getHeight();
 
-        // Calculate text width (capped at max width)
-        var textWidth = GraphicUtils.getTextBlockWidth(footnotes, g2);
-        var maxWidth = composition.getLineWidth() * MAX_WIDTH_PERCENTAGE;
-        var actualWidth = Math.min(textWidth, maxWidth);
+            // Calculate text width (capped at max width)
+            var textWidth = GraphicUtils.getTextBlockWidth(footnotes, g2);
+            var maxWidth = composition.getLineWidth() * MAX_WIDTH_PERCENTAGE;
+            var actualWidth = Math.min(textWidth, maxWidth);
 
-        // Center horizontally
-        var x = (float) ((composition.getLineWidth() - actualWidth) / 2);
-        var y = (float) (marginTop + metrics.getAscent());
+            // Center horizontally
+            var x = (float) ((composition.getLineWidth() - actualWidth) / 2);
+            var y = (float) (marginTop + metrics.getAscent());
 
-        // Draw each line
-        var lines = footnotes.split("\n");
+            // Draw each line
+            var lines = footnotes.split("\n");
 
-        for (var line : lines) {
-            g2.drawString(line, x, y);
-            y += lineHeight;
+            for (var line : lines) {
+                g2.drawString(line, x, y);
+                y += lineHeight;
+            }
         }
     }
 

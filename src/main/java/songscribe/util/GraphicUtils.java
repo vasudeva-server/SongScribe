@@ -125,6 +125,17 @@ public final class GraphicUtils {
         return dpi;
     }
 
+    /**
+     * Computes a DPI-aware stroke width.
+     * Returns an integral width to avoid anti-aliasing artifacts on standard DPI displays.
+     *
+     * @param desiredWidth The desired stroke width in physical pixels
+     * @return Stroke width scaled for current display, rounded to nearest integer
+     */
+    public static float getDpiAwareStrokeWidth(float desiredWidth) {
+        return Math.round(desiredWidth * screenScaleFactor);
+    }
+
     @NotNull
     @Contract(pure = true)
     public static String getScaledImagePath(@NotNull String path) {

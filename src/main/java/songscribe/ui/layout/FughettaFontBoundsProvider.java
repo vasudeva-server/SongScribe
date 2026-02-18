@@ -20,11 +20,9 @@
 
 package songscribe.ui.layout;
 
-import java.awt.Font;
-import java.awt.Graphics2D;
-import java.awt.font.FontRenderContext;
-import java.awt.geom.Line2D;
-import java.awt.geom.Rectangle2D;
+import java.awt.*;
+import java.awt.font.*;
+import java.awt.geom.*;
 import java.util.EnumMap;
 
 import org.jetbrains.annotations.NotNull;
@@ -94,7 +92,7 @@ public class FughettaFontBoundsProvider implements FontBoundsProvider {
     private static final double upperFlagY = -NOTE_FONT_SIZE / 1.6623377d;
 
     // The Fughetta font
-    private static final Font FUGHETTA = BaseElementRenderer.FUGHETTA;
+    private static final Font FUGHETTA = BaseElementRenderer.MUSIC_FONT;
 
     // Instance fields
     private final RenderContext context;

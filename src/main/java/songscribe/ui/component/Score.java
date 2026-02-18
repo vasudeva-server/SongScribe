@@ -582,8 +582,14 @@ public final class Score
         super.paintComponent(g);
 
         var g2 = (Graphics2D) g;
-        g2.setColor(Color.white);
-        g2.fillRect(0, 0, marginPanel.getWidth(), marginPanel.getHeight());
+
+        try (var ignored = songscribe.ui.renderer.GraphicsState.save(
+            g2,
+            songscribe.ui.renderer.GraphicsState.Property.COLOR
+        )) {
+            g2.setColor(Color.white);
+            g2.fillRect(0, 0, marginPanel.getWidth(), marginPanel.getHeight());
+        }
 
         // Derive coordinates from positioned components
         updateLayoutFromComponents();
