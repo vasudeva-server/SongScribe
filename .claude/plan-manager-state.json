@@ -78,19 +78,5 @@
       },
       "branches": []
     },
-    {
-      "path": "plans/fix-beam-stem-validation/fix-beam-stem-validation.md",
-      "active": true,
-      "description": "Add MIN_STEM validation to BeamCalculator to prevent stems from becoming too short in beamed groups",
-      "subdirectory": "fix-beam-stem-validation",
-      "subPlans": [],
-      "phases": {
-        "1": "completed",
-        "2": "completed",
-        "3": "completed",
-        "4": "completed"
-      },
-      "branches": []
-    }
   ]
 }
