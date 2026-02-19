@@ -109,7 +109,7 @@ public final class Log {
                 var fileHandler = new FileHandler(
                     logDir + '/' + filename + ".log",
                     1024 * 1024,
-                    5,
+                    7,
                     true
                 );
                 fileHandler.setLevel(Level.ALL);
