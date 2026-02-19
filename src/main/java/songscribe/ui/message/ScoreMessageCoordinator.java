@@ -246,12 +246,6 @@ public final class ScoreMessageCoordinator {
     }
 
     @Handler
-    public void onNewDocument(NewFileMessage message) {
-        callback.setComposition(new Composition(callback.getMainFrame()));
-        callback.requestFocusInWindow();
-    }
-
-    @Handler
     public void onLayoutChanged(@NotNull LayoutChangeMessage message) {
         var mainPanel = callback.getMainPanel();
 

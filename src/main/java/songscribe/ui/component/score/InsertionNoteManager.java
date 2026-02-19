@@ -610,6 +610,7 @@ class InsertionNoteManager {
         var existingNote = line.getNote(noteIndex);
         existingNote.setYPos(currentYPos);
         existingNote.setUpper(Score.defaultUpperNote(existingNote));
+        score.getComposition().setModified(true);
 
         BeamCalculator.calculateLengthenings(noteIndex, line, true);
         editModeManager.editNoteDidChange(line, noteIndex);

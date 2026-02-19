@@ -469,15 +469,15 @@ public final class Score
                     "” because it is damaged.";
             mainFrame.showErrorMessage(message);
             Log.error(message, e);
+            mainFrame.setDocumentModified(previousModifiedDocument);
         } catch (IOException e) {
             var message = "Could not open the file “" + file.getName() + '”';
             mainFrame.showErrorMessage(
                 message + ". Check if you have the permission to open it."
             );
             Log.error(message, e);
+            mainFrame.setDocumentModified(previousModifiedDocument);
         }
-
-        mainFrame.setDocumentModified(previousModifiedDocument);
     }
 
     // TODO: Use mbassador instead of this

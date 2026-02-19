@@ -135,8 +135,6 @@ public final class Composition {
     // The lines of the score
     private final ArrayList<Line> lines = new ArrayList<>();
 
-    // Dirty flag
-    private boolean modified = false;
 
     /**
      * Indicates whether this composition has been dynamically laid out.
@@ -213,7 +211,8 @@ public final class Composition {
     }
 
     public void musicChanged() {
-        modified = true;
+        // Intentionally does not set modified — this is called when preferences
+        // change (e.g. playback settings), not when the document is edited.
     }
 
     public Tempo getTempo() {
@@ -477,11 +476,10 @@ public final class Composition {
     }
 
     public boolean isModified() {
-        return modified;
+        return mainFrame.isDocumentModified();
     }
 
     public void setModified(boolean modified) {
-        this.modified = modified;
         mainFrame.setDocumentModified(modified);
     }
 

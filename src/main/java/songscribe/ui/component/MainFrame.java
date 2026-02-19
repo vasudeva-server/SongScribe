@@ -38,6 +38,7 @@ import net.engio.mbassy.listener.Handler;
 import org.jetbrains.annotations.Nullable;
 
 import songscribe.MusicChangeListener;
+import songscribe.music.Composition;
 import songscribe.Version;
 import songscribe.data.FileExtensions;
 import songscribe.data.MyFileFilter;
@@ -512,7 +513,7 @@ public class MainFrame extends JFrame implements IMainFrame, Printable {
             setTitle(appName + " - " + saveFile.getName());
         }
 
-        documentModified = false;
+        setDocumentModified(false);
     }
 
     @Handler
@@ -522,6 +523,11 @@ public class MainFrame extends JFrame implements IMainFrame, Printable {
         }
 
         setCurrentFile(null);
+
+        if (score != null) {
+            score.setComposition(new Composition(this));
+            score.requestFocusInWindow();
+        }
     }
 
     public static void handlePrefs() throws IllegalStateException {
@@ -545,10 +551,6 @@ public class MainFrame extends JFrame implements IMainFrame, Printable {
 
     @Handler
     public void onOpenFile(OpenFileMessage message) {
-        if (!showSaveDialog()) {
-            return;
-        }
-
         var dialog = new PlatformFileDialog(
             MainFrame.getInstance(),
             "Open",
@@ -658,7 +660,7 @@ public class MainFrame extends JFrame implements IMainFrame, Printable {
             );
             CompositionIO.writeComposition(score.getComposition(), printWriter);
             printWriter.close();
-            documentModified = false;
+            setDocumentModified(false);
         } catch (IOException e1) {
             showErrorMessage(MainFrame.COULD_NOT_SAVE_MESSAGE);
         }
