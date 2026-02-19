@@ -1,86 +1,63 @@
 # SongScribe Development Guide
 
-This document contains build, compilation, and run instructions for SongScribe development.
+## Mandatory Rules
 
-## Building
+### Use the Provided Scripts
 
-### Compile Java and Kotlin Sources
+NEVER invoke `mvn compile`, `javac`, `kotlinc`, `java -cp`, `mvn exec:java`, or any other raw build/run commands. ALWAYS use the provided shell scripts described below.
 
-```bash
-./scripts/compile.sh
-```
+### Debug Scripts
 
-This ensures the correct compile invocation is used.
+The `-debug` script variants (`crun-debug.sh`, `run-debug.sh`) set the `DEBUG` environment variable. This only affects code that explicitly checks for it (debug drawing, `Log.fine()` output, etc.).
 
-### Build Full Project
-
-```bash
-mvn clean package
-```
-
-## Running
-
-### From Compiled Classes
-
-After compiling with Maven:
-
-Run the application in production mode:
-```bash
-./scripts/run.sh
-```
-
-Run the application in development mode with additional logging:
-```bash
-./scripts/run-debug.sh
-```
-
-### From JAR
-
-After building with `mvn clean package`:
-
-```bash
-java -jar target/SongScribe-*.jar
-```
+**NEVER use `-debug` variants unless the user has requested debug output OR `DEBUG`-dependent output is needed to diagnose a problem.** The default is ALWAYS the non-debug variant.
 
 ## Development Workflow
 
-### Quick Compile and Run
+After making code changes, compile first to verify, then run separately:
 
-For rapid iteration during development:
+```bash
+./scripts/compile.sh    # Compile and verify
+./scripts/run.sh        # Run the application
+```
+
+If you have not already compiled and want to compile and run in one step:
 
 ```bash
 ./scripts/crun.sh
 ```
 
-If debug logging has been requested by you or the user:
+### All Available Scripts
+
+| Script | Purpose |
+|---|---|
+| `./scripts/compile.sh` | Compile Java/Kotlin sources |
+| `./scripts/run.sh` | Run the application (MUST compile first) |
+| `./scripts/run-debug.sh` | Run with DEBUG env var (use only when debug output is needed) |
+| `./scripts/crun.sh` | Compile and run in one step |
+| `./scripts/crun-debug.sh` | Compile and run with DEBUG env var (use only when debug output is needed) |
+
+### Build Full Project
+
+For a full Maven build (e.g. to produce a JAR):
 
 ```bash
-./scripts/crun-debug.sh
+mvn clean package
 ```
 
-### Rebuild After Changes
+Then run from JAR:
 
 ```bash
-./scripts/compile.sh
-```
-
-## Maven Tips
-
-### View Dependencies
-
-```bash
-mvn dependency:tree
+java -jar target/SongScribe-*.jar
 ```
 
 ## Java Version
 
-The project requires Java 25+. For macOS, the `java_home` utility can locate it:
+The project requires Java 25+. To set `JAVA_HOME` correctly:
 
 ```bash
-JAVA_HOME=$(/usr/libexec/java_home -v 25 2>/dev/null || /usr/libexec/java_home)
+source ./scripts/set-java-home.sh
 ```
-
-This command finds Java 25 with a fallback to the default installed JDK.
 
 ## Common Issues
 
