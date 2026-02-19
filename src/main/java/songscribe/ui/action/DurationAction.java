@@ -42,7 +42,11 @@ public class DurationAction extends StickyUIAction {
     ) {
         super(name, icon, size, actionCommand, tooltip, virtualKey, modifiers);
         this.type = type;
-        setFlags(Flag.DISABLE_WHEN_PLAYING, Flag.DISABLE_IN_ADJUSTMENT_MODE);
+        setFlags(
+            Flag.DISABLE_WHEN_PLAYING,
+            Flag.DISABLE_IN_ADJUSTMENT_MODE,
+            Flag.DISABLE_WHEN_EDITING_TEXT
+        );
     }
 
     public NoteType getType() {

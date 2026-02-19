@@ -63,7 +63,8 @@ public class AccidentalAction extends EditNoteAction {
             Flag.DISABLE_WHEN_PLAYING,
             Flag.DISABLE_IN_ADJUSTMENT_MODE,
             Flag.DISABLE_WHEN_BAR_SELECTED,
-            Flag.ENABLE_WHEN_DURATION_SELECTED
+            Flag.ENABLE_WHEN_DURATION_SELECTED,
+            Flag.DISABLE_WHEN_EDITING_TEXT
         );
     }
 

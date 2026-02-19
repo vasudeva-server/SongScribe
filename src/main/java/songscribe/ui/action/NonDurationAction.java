@@ -45,7 +45,8 @@ public class NonDurationAction extends StickyUIAction {
         setFlags(
             Flag.DISABLE_IN_REST_MODE,
             Flag.DISABLE_WHEN_PLAYING,
-            Flag.DISABLE_IN_ADJUSTMENT_MODE
+            Flag.DISABLE_IN_ADJUSTMENT_MODE,
+            Flag.DISABLE_WHEN_EDITING_TEXT
         );
     }
 
