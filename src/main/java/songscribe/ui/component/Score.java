@@ -752,6 +752,9 @@ public final class Score
             setupLineComponentState();
         }
 
+        // Reset modified flag - initialization above is not a user change
+        composition.setModified(false);
+
         // mainFrame.setMode(Mode.NOTE_EDIT);
         mainFrame.fireMusicChanged(null);
         viewChanged();
