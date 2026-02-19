@@ -22,6 +22,7 @@ package songscribe.data;
 import java.awt.*;
 import java.awt.geom.*;
 import java.io.File;
+import java.util.logging.Logger;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
@@ -36,6 +37,8 @@ import songscribe.util.Utils;
 
 // TODO: Delete this when Bravura rendering is complete
 public final class GeneralPathFile {
+
+    private static final Logger LOG = Logger.getLogger(GeneralPathFile.class.getName());
 
     private static final char fermataChar = '\uf055';
 
@@ -87,33 +90,15 @@ public final class GeneralPathFile {
             var segment = iter.currentSegment(buf);
 
             switch (segment) {
-                case PathIterator.SEG_MOVETO -> System.out.printf(
-                    "MOVETO: (%f, %f)\n",
-                    buf[0],
-                    buf[1]
-                );
-                case PathIterator.SEG_LINETO -> System.out.printf(
-                    "LINETO: (%f, %f)\n",
-                    buf[0],
-                    buf[1]
-                );
-                case PathIterator.SEG_QUADTO -> System.out.printf(
-                    "QUADTO: (%f, %f); (%f, %f)\n",
-                    buf[0],
-                    buf[1],
-                    buf[2],
-                    buf[3]
-                );
-                case PathIterator.SEG_CUBICTO -> System.out.printf(
-                    "CUBICTO: (%f, %f); (%f, %f); (%f, %f)\n",
-                    buf[0],
-                    buf[1],
-                    buf[2],
-                    buf[3],
-                    buf[4],
-                    buf[5]
-                );
-                case PathIterator.SEG_CLOSE -> System.out.println("CLOSE");
+                case PathIterator.SEG_MOVETO ->
+                    LOG.fine(String.format("MOVETO: (%f, %f)", buf[0], buf[1]));
+                case PathIterator.SEG_LINETO ->
+                    LOG.fine(String.format("LINETO: (%f, %f)", buf[0], buf[1]));
+                case PathIterator.SEG_QUADTO ->
+                    LOG.fine(String.format("QUADTO: (%f, %f); (%f, %f)", buf[0], buf[1], buf[2], buf[3]));
+                case PathIterator.SEG_CUBICTO ->
+                    LOG.fine(String.format("CUBICTO: (%f, %f); (%f, %f); (%f, %f)", buf[0], buf[1], buf[2], buf[3], buf[4], buf[5]));
+                case PathIterator.SEG_CLOSE -> LOG.fine("CLOSE");
             }
         }
     }

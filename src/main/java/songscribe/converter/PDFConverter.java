@@ -107,14 +107,12 @@ public class PDFConverter {
             }
             case "custom" -> {
                 if ((paperWidth <= 0) || (paperHeight <= 0)) {
-                    System.out.println(
-                        "paperWidth and paperHeight must be specified for custom paperSize"
-                    );
+                    Log.warning("paperWidth and paperHeight must be specified for custom paperSize");
                     return;
                 }
             }
             default -> {
-                System.out.println("invalid paperSize");
+                Log.warning("invalid paperSize");
                 return;
             }
         }
@@ -161,7 +159,7 @@ public class PDFConverter {
                 var path = FileUtils.getPathWithoutExtension(file) + ".pdf";
                 ExportPDFAction.createPDF(data, new File(path), false);
             } catch (IOException e) {
-                System.out.println("Could not convert " + file.getName());
+                Log.error("Could not convert " + file.getName(), e);
             }
         }
     }

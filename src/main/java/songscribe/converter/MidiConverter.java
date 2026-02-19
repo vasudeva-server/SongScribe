@@ -54,12 +54,12 @@ public class MidiConverter {
     @SuppressWarnings("ConstantValue")
     public void convert() {
         if ((instrument < 0) || (instrument > 127)) {
-            System.out.println("The instrument must be in range of 0-127");
+            Log.warning("The instrument must be in range of 0-127");
             return;
         }
 
         if ((tempoChange <= 0) || (tempoChange > 200)) {
-            System.out.println("The tempo change must be in range of 1-200");
+            Log.warning("The tempo change must be in range of 1-200");
             return;
         }
 
@@ -85,7 +85,7 @@ public class MidiConverter {
                     )
                 );
             } catch (IOException | InvalidMidiDataException e) {
-                System.out.println("Could not convert " + file.getName());
+                Log.error("Could not convert " + file.getName(), e);
             }
         }
     }

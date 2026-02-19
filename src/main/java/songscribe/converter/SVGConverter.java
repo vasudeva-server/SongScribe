@@ -24,6 +24,7 @@ import java.io.IOException;
 
 import songscribe.ui.component.Score;
 import songscribe.util.FileUtils;
+import songscribe.util.Log;
 
 @SuppressWarnings("FieldMayBeStatic")
 public class SVGConverter {
@@ -60,7 +61,7 @@ public class SVGConverter {
                 var path = FileUtils.getPathWithoutExtension(file) + ".svg";
                 score.createSVG(new File(path), false);
             } catch (IOException e) {
-                System.out.println("Could not convert " + file.getName());
+                Log.error("Could not convert " + file.getName(), e);
             }
         }
     }

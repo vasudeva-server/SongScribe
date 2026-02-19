@@ -20,6 +20,8 @@
 
 package songscribe.ui.debug;
 
+import java.util.logging.Logger;
+
 import org.jetbrains.annotations.Nullable;
 
 import songscribe.ui.layout.SectionLayout;
@@ -35,6 +37,8 @@ import songscribe.ui.menu.DebugState;
  * to be updated when the component-based layout system is fully implemented.
  */
 public final class DebugInspector {
+
+    private static final Logger LOG = Logger.getLogger(DebugInspector.class.getName());
 
     private DebugInspector() {
         // Utility class - prevent instantiation
@@ -138,14 +142,14 @@ public final class DebugInspector {
         for (var line : layoutResult.getLines()) {
             if (line.getLineBounds().containsForHitTest(x, y)) {
                 // Log element counts for this line
-                System.out.printf(
+                LOG.fine(String.format(
                     "[Inspector Debug] Line hit | Total notes: %d, syllables: %d, " +
-                        "attachments: %d, ranges: %d%n",
+                        "attachments: %d, ranges: %d",
                     noteCount,
                     syllableCount,
                     attachmentCount,
                     rangeCount
-                );
+                ));
 
                 DebugState.setHoveredElement(new DebugState.HoveredElement(
                     line.getLineBounds(),
@@ -246,18 +250,18 @@ public final class DebugInspector {
      */
     public static void logInspectorHover(@Nullable DebugState.HoveredElement element) {
         if (element == null) {
-            System.out.println("[Inspector] Hover cleared");
+            LOG.fine("[Inspector] Hover cleared");
             return;
         }
 
         var bounds = element.getBounds();
-        System.out.printf(
-            "[Inspector] %s (%s) | Size: %s | Padding: %s | Margin: %s%n",
+        LOG.fine(String.format(
+            "[Inspector] %s (%s) | Size: %s | Padding: %s | Margin: %s",
             element.getLabel(),
             element.getType(),
             bounds.getContentSizeString(),
             bounds.getPaddingCss(),
             bounds.getMarginCss()
-        );
+        ));
     }
 }

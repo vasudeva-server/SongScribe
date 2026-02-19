@@ -22,6 +22,8 @@ package songscribe.ui.message;
 
 import net.engio.mbassy.listener.Handler;
 
+import songscribe.util.Log;
+
 public final class MessageLogger {
 
     @SuppressWarnings("StaticNonFinalField")
@@ -37,6 +39,6 @@ public final class MessageLogger {
 
     @Handler
     public void logMessage(Message message) {
-        System.out.println(message);
+        Log.info(message.toString());
     }
 }

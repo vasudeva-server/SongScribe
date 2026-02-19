@@ -15,6 +15,8 @@
 
 package songscribe.music;
 
+import java.util.logging.Logger;
+
 import org.jetbrains.annotations.NotNull;
 
 import songscribe.ui.Constants;
@@ -26,6 +28,8 @@ import songscribe.ui.Constants;
  * respecting syllable continuation markers (hyphens) and extenders (underscores).
  */
 public class LyricsProcessor {
+
+    private static final Logger LOG = Logger.getLogger(LyricsProcessor.class.getName());
 
     private LyricsProcessor() {
         // Utility class
@@ -164,19 +168,15 @@ public class LyricsProcessor {
             }
         }
 
-        if (System.getenv("DEBUG") != null) {
-            System.out.println("Line: " + composition.indexOfLine(line));
-            System.out.println("BeginRelation: " + line.beginRelation);
+        LOG.fine("Line: " + composition.indexOfLine(line));
+        LOG.fine("BeginRelation: " + line.beginRelation);
 
-            for (var i = 0; i < line.noteCount(); i++) {
-                System.out.println(
-                    line.getNote(i).properties.syllable +
-                        "   Relation: " +
-                        line.getNote(i).properties.syllableRelation.name()
-                );
-            }
-
-            System.out.println();
+        for (var i = 0; i < line.noteCount(); i++) {
+            LOG.fine(
+                line.getNote(i).properties.syllable +
+                    "   Relation: " +
+                    line.getNote(i).properties.syllableRelation.name()
+            );
         }
     }
 

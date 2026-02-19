@@ -19,9 +19,6 @@
  */
 package songscribe.data;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
 import java.util.LinkedList;
 import java.util.ListIterator;
 
@@ -30,43 +27,6 @@ import org.jetbrains.annotations.Nullable;
 public class IntervalSet {
 
     private final LinkedList<Interval> intervals = new LinkedList<>();
-
-    static void main(String[] args) throws IOException {
-        try (
-            var stream = new InputStreamReader(System.in);
-            var reader = new BufferedReader(stream)
-        ) {
-            var set = new IntervalSet();
-
-            while (true) {
-                System.out.print("Add(a) / Remove(r) / Quit(q): ");
-                var str = reader.readLine();
-
-                if (str.equals("q")) {
-                    System.exit(0);
-                }
-
-                System.out.print("a: ");
-                var a = Integer.parseInt(reader.readLine());
-                System.out.print("b: ");
-                var b = Integer.parseInt(reader.readLine());
-
-                if (str.equals("a")) {
-                    set.addInterval(a, b);
-                } else if (str.equals("r")) {
-                    set.removeInterval(a, b);
-                }
-
-                for (var interval : set.intervals) {
-                    System.out.print(
-                        "[" + interval.start + ", " + interval.end + "], "
-                    );
-                }
-
-                System.out.println();
-            }
-        }
-    }
 
     public Interval addInterval(int start, int end) {
         return addInterval(start, end, null);

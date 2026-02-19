@@ -138,7 +138,7 @@ public class ImageConverter {
                     new File(path + '.' + type.toLowerCase())
                 );
             } catch (IOException e) {
-                System.out.println("Could not convert " + file.getName());
+                Log.error("Could not convert " + file.getName(), e);
             }
         }
     }

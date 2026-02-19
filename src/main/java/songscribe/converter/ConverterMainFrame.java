@@ -29,6 +29,7 @@ import javax.swing.*;
 
 import songscribe.MusicChangeListener;
 import songscribe.ui.ProfileManager;
+import songscribe.util.Log;
 import songscribe.ui.component.IMainFrame;
 import songscribe.ui.component.LyricsPanel;
 import songscribe.ui.component.Score;
@@ -45,12 +46,12 @@ public class ConverterMainFrame implements IMainFrame {
 
     @Override
     public void showInfoMessage(String message) {
-        System.out.println(message);
+        Log.info(message);
     }
 
     @Override
     public void showErrorMessage(String message) {
-        System.out.println(message);
+        Log.error(message);
     }
 
     @Override
@@ -59,7 +60,7 @@ public class ConverterMainFrame implements IMainFrame {
         int optionType,
         int messageType
     ) {
-        System.out.println(message);
+        Log.info(message);
         return JOptionPane.YES_OPTION;
     }
 

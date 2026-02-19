@@ -54,13 +54,9 @@ public final class Log {
             return;
         }
 
-        // Enable FINE logging for all songscribe.* loggers
+        // Enable FINE logging for all songscribe.* loggers, including the Log utility itself.
+        // init() will not override this level since it's no longer null.
         Logger.getLogger("songscribe").setLevel(Level.FINE);
-
-        // Lower the root logger's handlers so FINE records are not filtered before reaching them
-        for (var handler : Logger.getLogger("").getHandlers()) {
-            handler.setLevel(Level.FINE);
-        }
     }
 
     public static void log(Level level, String msg) {
@@ -98,7 +94,7 @@ public final class Log {
 
     private static Logger getInstance() {
         if (instance == null) {
-            instance = Logger.getLogger("org.songscribe");
+            instance = Logger.getLogger("songscribe");
             init(instance);
         }
 
@@ -126,7 +122,13 @@ public final class Log {
                 logger.addHandler(consoleHandler);
             }
 
-            logger.setLevel(Level.ALL);
+            // Don't propagate to the root logger — we own our handler.
+            logger.setUseParentHandlers(false);
+
+            // Only set level if configureDebugLogging() hasn't already set it.
+            if (logger.getLevel() == null) {
+                logger.setLevel(Level.INFO);
+            }
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -184,7 +186,7 @@ public final class Log {
 
     private static class CustomFormatter extends Formatter {
 
-        private static final String FORMAT = "%1$s %2$-7s %3$s%n";
+        private static final String FORMAT = "%1$s %2$-9s %3$s%n";
         private static final DateTimeFormatter dateTimeFormatter =
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS").withZone(
                 ZoneId.systemDefault()
@@ -195,7 +197,7 @@ public final class Log {
             var date = dateTimeFormatter.format(
                 Instant.ofEpochMilli(record.getMillis())
             );
-            var level = record.getLevel().getLocalizedName();
+            var level = "[" + record.getLevel().getName().toLowerCase() + "]";
             var message = formatMessage(record);
             return String.format(FORMAT, date, level, message);
         }

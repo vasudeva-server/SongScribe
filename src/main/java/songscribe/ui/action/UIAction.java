@@ -43,6 +43,7 @@ import songscribe.ui.message.TextEditingChangedMessage;
 import songscribe.ui.playback.PlaybackController;
 import songscribe.ui.playback.PlaybackStateChangedMessage;
 import songscribe.util.GraphicUtils;
+import songscribe.util.Log;
 import songscribe.util.UIUtils;
 
 public class UIAction extends AbstractAction {
@@ -183,7 +184,7 @@ public class UIAction extends AbstractAction {
             if (svgIcon != null) {
                 putValue(LARGE_ICON_KEY, svgIcon);
             } else {
-                System.out.println("Icon not found: " + icon);
+                Log.warning("Icon not found: " + icon);
             }
         } else {
             // Should be a tagged Unicode icon
