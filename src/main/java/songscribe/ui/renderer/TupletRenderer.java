@@ -25,7 +25,6 @@ import java.awt.geom.*;
 
 import org.jetbrains.annotations.NotNull;
 
-import songscribe.data.TupletIntervalData;
 import songscribe.music.Line;
 import songscribe.music.Note;
 import songscribe.smufl.EngravingDefaults;
@@ -334,12 +333,7 @@ public class TupletRenderer extends BaseElementRenderer<Tuplet> {
     ) {
         for (var iter = line.getTuplets().listIterator(); iter.hasNext(); ) {
             var interval = iter.next();
-            int grade = TupletIntervalData.getGrade(interval);
-            int verticalPos = TupletIntervalData.isVerticalAdjusted(interval)
-                ? TupletIntervalData.getVerticalPosition(interval)
-                : 0;
-
-            renderTuplet(g2, line, ctx, interval.getStart(), interval.getEnd(), grade, verticalPos);
+            renderTuplet(g2, line, ctx, interval.getStart(), interval.getEnd(), interval.getGrade(), interval.getVerticalPosition());
         }
     }
 

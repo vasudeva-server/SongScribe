@@ -2,7 +2,7 @@
 
 **Type:** Master Plan
 **Created:** 2026-02-02
-**Status:** Not Started
+**Status:** Done
 
 ---
 
@@ -10,11 +10,11 @@
 
 | Phase | Description | Status | Sub-plan |
 |-------|-------------|--------|----------|
-| 1 | [Typed Interval Subclasses](#phase-1-typed-interval-subclasses) | ⏳ Pending | — |
-| 2 | [Line Interval Accessors](#phase-2-line-interval-accessors) | ⏳ Pending | — |
-| 3 | [IO Layer Conversion](#phase-3-io-layer-conversion) | ⏳ Pending | — |
+| 1 | [Typed Interval Subclasses](#phase-1-typed-interval-subclasses) | ✅ Done | — |
+| 2 | [Line Interval Accessors](#phase-2-line-interval-accessors) | ✅ Done | clever-enchanting-zephyr.md |
+| 3 | [IO Layer Conversion](#phase-3-io-layer-conversion) | ✅ Done | clever-enchanting-zephyr.md |
 
-**Last Updated:** 2026-02-02
+**Last Updated:** 2026-02-19
 
 ---
 
@@ -60,7 +60,7 @@ LineIO
 
 ## Phase 1: Typed Interval Subclasses
 
-**Status:** Pending  <br>
+**Status:** Done  <br>
 **Recommended Model:** Haiku  <br>
 **Priority:** High  <br>
 **Risk:** Low (additive change)  <br>
@@ -103,7 +103,7 @@ public class TupletInterval extends Interval {
 
 ## Phase 2: Line Interval Accessors
 
-**Status:** Pending  <br>
+**Status:** Done  <br>
 **Recommended Model:** Sonnet  <br>
 **Priority:** High  <br>
 **Risk:** Medium (API change)  <br>
@@ -144,7 +144,7 @@ Once all callers are migrated:
 
 ## Phase 3: IO Layer Conversion
 
-**Status:** Pending  <br>
+**Status:** Done  <br>
 **Recommended Model:** Sonnet  <br>
 **Priority:** High  <br>
 **Risk:** Medium (serialization change)  <br>

@@ -24,7 +24,7 @@ import java.util.ArrayList;
 
 import org.jetbrains.annotations.Nullable;
 
-import songscribe.data.DynamicsIntervalData;
+import songscribe.data.DynamicsInterval;
 import songscribe.data.IntervalSet;
 
 import songscribe.music.Line;
@@ -264,11 +264,7 @@ public class HorizontalAdjustment extends Adjustment {
             ).findInterval(draggingRect.xIndex);
 
             if (interval != null) {
-                DynamicsIntervalData.setX1Shift(
-                    interval,
-                    (DynamicsIntervalData.getX1Shift(interval) + endPoint.x) -
-                    diffX
-                );
+                interval.setX1Shift((interval.getX1Shift() + endPoint.x) - diffX);
             }
         } else if (
             (draggingRect.horizontalAdjustmentType ==
@@ -282,11 +278,7 @@ public class HorizontalAdjustment extends Adjustment {
             ).findInterval(draggingRect.xIndex);
 
             if (interval != null) {
-                DynamicsIntervalData.setX2Shift(
-                    interval,
-                    (DynamicsIntervalData.getX2Shift(interval) + endPoint.x) -
-                    diffX
-                );
+                interval.setX2Shift((interval.getX2Shift() + endPoint.x) - diffX);
             }
         }
 
@@ -471,9 +463,9 @@ public class HorizontalAdjustment extends Adjustment {
 
                 if (x1Interval != null) {
                     rect.rect.x = (line.getNote(rect.xIndex).getXPos() - 12) +
-                    DynamicsIntervalData.getX1Shift(x1Interval);
+                    x1Interval.getX1Shift();
                     rect.rect.y = (score.getNoteYPos(6, rect.line) - 4) +
-                    DynamicsIntervalData.getYShift(x1Interval);
+                    x1Interval.getYShift();
                 }
             }
             case CRESCENDO_END, DIMINUENDO_END -> {
@@ -485,9 +477,9 @@ public class HorizontalAdjustment extends Adjustment {
                 if (x2Interval != null) {
                     rect.rect.x = line.getNote(rect.xIndex).getXPos() +
                     16 +
-                    DynamicsIntervalData.getX2Shift(x2Interval);
+                    x2Interval.getX2Shift();
                     rect.rect.y = (score.getNoteYPos(6, rect.line) - 4) +
-                    DynamicsIntervalData.getYShift(x2Interval);
+                    x2Interval.getYShift();
                 }
             }
             default -> rect.rect.x = note.getXPos() + 1;
@@ -503,7 +495,7 @@ public class HorizontalAdjustment extends Adjustment {
         }
     }
 
-    private static IntervalSet getDynamicIntervalSet(
+    private static IntervalSet<DynamicsInterval> getDynamicIntervalSet(
         Line line,
         HorizontalAdjustmentType horizontalAdjustmentType
     ) {

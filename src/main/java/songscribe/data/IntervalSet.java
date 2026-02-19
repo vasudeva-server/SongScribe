@@ -24,16 +24,18 @@ import java.util.ListIterator;
 
 import org.jetbrains.annotations.Nullable;
 
-public class IntervalSet {
+public class IntervalSet<T extends Interval> {
 
-    private final LinkedList<Interval> intervals = new LinkedList<>();
+    private final LinkedList<T> intervals = new LinkedList<>();
 
-    public Interval addInterval(int start, int end) {
+    @SuppressWarnings("unchecked")
+    public T addInterval(int start, int end) {
         return addInterval(start, end, null);
     }
 
     @Nullable
-    public Interval addInterval(int start, int end, String data) {
+    @SuppressWarnings("unchecked")
+    public T addInterval(int start, int end, String data) {
         if (start >= end) {
             return null;
         }
@@ -41,7 +43,7 @@ public class IntervalSet {
         // Determine the new interval
         var startInterval = findInterval(start);
         var endInterval = findInterval(end);
-        var newInterval = new Interval(
+        var newInterval = (T) new Interval(
             (startInterval != null) ? startInterval.start : start,
             (endInterval != null) ? endInterval.end : end,
             data
@@ -55,17 +57,41 @@ public class IntervalSet {
         return newInterval;
     }
 
+    @Nullable
+    public T addInterval(T interval) {
+        if (interval.start >= interval.end) {
+            return null;
+        }
+
+        // Expand bounds if overlapping intervals exist
+        var startInterval = findInterval(interval.start);
+        var endInterval = findInterval(interval.end);
+
+        if (startInterval != null) {
+            interval.start = startInterval.start;
+        }
+
+        if (endInterval != null) {
+            interval.end = endInterval.end;
+        }
+
+        // Remove overlaps
+        removeOverlaps(interval);
+
+        // Add the interval
+        intervals.addFirst(interval);
+        return interval;
+    }
+
     public void removeInterval(int start, int end) {
         var startInterval = findInterval(start);
         var endInterval = findInterval(end);
 
         //noinspection ObjectEquality
         if ((startInterval != null) && (startInterval == endInterval)) {
-            endInterval = new Interval(
-                endInterval.start,
-                endInterval.end,
-                endInterval.data
-            );
+            @SuppressWarnings("unchecked")
+            var endIntervalCopy = (T) endInterval.copyRange(endInterval.start, endInterval.end);
+            endInterval = endIntervalCopy;
             intervals.addFirst(endInterval);
         }
 
@@ -84,16 +110,16 @@ public class IntervalSet {
         removeOverlaps(start, end);
     }
 
-    public void removeInterval(Interval interval) {
+    public void removeInterval(T interval) {
         intervals.remove(interval);
     }
 
-    public ListIterator<Interval> listIterator() {
+    public ListIterator<T> listIterator() {
         return intervals.listIterator();
     }
 
     @Nullable
-    public Interval findInterval(int index) {
+    public T findInterval(int index) {
         return intervals
             .stream()
             .filter(
@@ -138,13 +164,13 @@ public class IntervalSet {
         return intervals.isEmpty();
     }
 
-    public IntervalSet copyInterval(int start, int end) {
-        var result = new IntervalSet();
+    public IntervalSet<T> copyInterval(int start, int end) {
+        var result = new IntervalSet<T>();
 
         for (var interval : intervals) {
-            result.intervals.addFirst(
-                new Interval(interval.start, interval.end, interval.data)
-            );
+            @SuppressWarnings("unchecked")
+            var copy = (T) interval.copyRange(interval.start, interval.end);
+            result.intervals.addFirst(copy);
         }
 
         result.removeInterval(Integer.MIN_VALUE, start);
@@ -152,13 +178,13 @@ public class IntervalSet {
         return result;
     }
 
-    private void removeIfInvalid(Interval interval) {
+    private void removeIfInvalid(T interval) {
         if ((interval != null) && (interval.start >= interval.end)) {
             intervals.remove(interval);
         }
     }
 
-    private void removeOverlaps(Interval bigInterval) {
+    private void removeOverlaps(T bigInterval) {
         removeOverlaps(bigInterval.start, bigInterval.end);
     }
 

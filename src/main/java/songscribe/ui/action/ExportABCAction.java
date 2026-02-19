@@ -35,7 +35,6 @@ import org.jetbrains.annotations.NotNull;
 
 import songscribe.Version;
 import songscribe.data.MyFileFilter;
-import songscribe.data.TupletIntervalData;
 import songscribe.music.Annotation;
 import songscribe.music.Composition;
 import songscribe.music.ArticulationType;
@@ -435,7 +434,7 @@ public class ExportABCAction extends UIAction {
                         (interval.getEnd() - interval.getStart()) + 1;
                     sb
                         .append('(')
-                        .append(TupletIntervalData.getGrade(interval))
+                        .append(interval.getGrade())
                         .append("::")
                         .append(numberOfNotes);
                 }

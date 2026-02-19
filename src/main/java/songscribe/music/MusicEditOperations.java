@@ -30,9 +30,11 @@ import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 
 import kotlin.Pair;
+import songscribe.data.DynamicsInterval;
+import songscribe.data.EndingInterval;
 import songscribe.data.Interval;
+import songscribe.data.TupletInterval;
 import songscribe.data.IntervalSet;
-import songscribe.data.TupletIntervalData;
 import songscribe.ui.component.IMainFrame;
 import songscribe.ui.selection.LineSelectionState;
 import songscribe.ui.selection.SelectionCoordinator;
@@ -146,10 +148,11 @@ public final class MusicEditOperations {
 
         if ((interval == null) || (tupletSize > 0)) {
             if (interval == null) {
-                interval = tuplets.addInterval(state.getSelectionBegin(), state.getSelectionEnd());
+                interval = tuplets.addInterval(new TupletInterval(
+                    state.getSelectionBegin(), state.getSelectionEnd(), tupletSize));
+            } else {
+                interval.setGrade(tupletSize);
             }
-
-            TupletIntervalData.setGrade(interval, tupletSize);
         } else {
             tuplets.removeInterval(state.getSelectionBegin(), state.getSelectionEnd());
         }
@@ -170,7 +173,7 @@ public final class MusicEditOperations {
         var intervalSet = crescendo
             ? line.getCrescendos()
             : line.getDiminuendos();
-        intervalSet.addInterval(state.getSelectionBegin(), state.getSelectionEnd());
+        intervalSet.addInterval(new DynamicsInterval(state.getSelectionBegin(), state.getSelectionEnd()));
         composition.setModified(true);
     }
 
@@ -217,14 +220,14 @@ public final class MusicEditOperations {
     @NotNull
     @Contract("_ -> new")
     private Pair<
-        ArrayList<Interval>,
-        ArrayList<Interval>
+        ArrayList<DynamicsInterval>,
+        ArrayList<DynamicsInterval>
         > getDynamicsIntervalsFromSelection(@NotNull LineSelectionState state) {
         var line = state.getLine();
         var crescendos = line.getCrescendos();
         var diminuendos = line.getDiminuendos();
-        var crescendoIntervals = new ArrayList<Interval>();
-        var diminuendoIntervals = new ArrayList<Interval>();
+        var crescendoIntervals = new ArrayList<DynamicsInterval>();
+        var diminuendoIntervals = new ArrayList<DynamicsInterval>();
 
         for (var i = state.getSelectionBegin(); i <= state.getSelectionEnd(); i++) {
             var interval = crescendos.findInterval(i);
@@ -278,7 +281,7 @@ public final class MusicEditOperations {
             }
         }
 
-        line.getFirstSecondEndings().addInterval(state.getSelectionBegin(), state.getSelectionEnd());
+        line.getFirstSecondEndings().addInterval(new EndingInterval(state.getSelectionBegin(), state.getSelectionEnd(), 1));
         composition.setModified(true);
     }
 

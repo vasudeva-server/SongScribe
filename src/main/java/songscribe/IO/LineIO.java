@@ -25,7 +25,11 @@ import org.jetbrains.annotations.Nullable;
 
 import org.xml.sax.Attributes;
 
+import songscribe.data.DynamicsInterval;
+import songscribe.data.EndingInterval;
+import songscribe.data.Interval;
 import songscribe.data.IntervalSet;
+import songscribe.data.TupletInterval;
 import songscribe.music.KeyType;
 import songscribe.music.Line;
 
@@ -97,7 +101,7 @@ public final class LineIO {
         }
 
         if (!l.getTuplets().isEmpty()) {
-            XML.writeValue(pw, XML_TUPLETS, intervalToString(l.getTuplets()));
+            XML.writeValue(pw, XML_TUPLETS, tupletIntervalToString(l.getTuplets()));
         }
 
         if (!l.getFirstSecondEndings().isEmpty()) {
@@ -112,7 +116,7 @@ public final class LineIO {
             XML.writeValue(
                 pw,
                 XML_CRESCENDO,
-                intervalToString(l.getCrescendos())
+                dynamicsIntervalToString(l.getCrescendos())
             );
         }
 
@@ -120,7 +124,7 @@ public final class LineIO {
             XML.writeValue(
                 pw,
                 XML_DIMINUENDO,
-                intervalToString(l.getDiminuendos())
+                dynamicsIntervalToString(l.getDiminuendos())
             );
         }
 
@@ -134,7 +138,7 @@ public final class LineIO {
         pw.println("    </" + XML_LINE + '>');
     }
 
-    private static String intervalToString(IntervalSet is) {
+    private static String intervalToString(IntervalSet<? extends Interval> is) {
         var sb = new StringBuilder(27);
 
         for (var li = is.listIterator(); li.hasNext();) {
@@ -146,6 +150,52 @@ public final class LineIO {
             if (i.getData() != null) {
                 sb.append(',');
                 sb.append(i.getData());
+            }
+
+            sb.append(';');
+        }
+
+        return sb.toString();
+    }
+
+    private static String tupletIntervalToString(IntervalSet<TupletInterval> is) {
+        var sb = new StringBuilder(27);
+
+        for (var li = is.listIterator(); li.hasNext();) {
+            var i = li.next();
+            sb.append(i.getStart());
+            sb.append(',');
+            sb.append(i.getEnd());
+            sb.append(',');
+            sb.append(i.getGrade());
+
+            if (i.isVerticallyAdjusted()) {
+                sb.append(',');
+                sb.append(i.getVerticalPosition());
+            }
+
+            sb.append(';');
+        }
+
+        return sb.toString();
+    }
+
+    private static String dynamicsIntervalToString(IntervalSet<DynamicsInterval> is) {
+        var sb = new StringBuilder(27);
+
+        for (var li = is.listIterator(); li.hasNext();) {
+            var i = li.next();
+            sb.append(i.getStart());
+            sb.append(',');
+            sb.append(i.getEnd());
+
+            if (i.getX1Shift() != 0 || i.getX2Shift() != 0 || i.getYShift() != 0) {
+                sb.append(',');
+                sb.append(i.getX1Shift());
+                sb.append(',');
+                sb.append(i.getX2Shift());
+                sb.append(',');
+                sb.append(i.getYShift());
             }
 
             sb.append(';');
@@ -167,7 +217,7 @@ public final class LineIO {
         @Nullable
         private Where where = null;
 
-        private static void stringToIntervalSet(IntervalSet is, String str) {
+        private static void stringToBeamingIntervalSet(IntervalSet<Interval> is, String str) {
             var begin = 0;
             var end = str.indexOf(';', begin);
 
@@ -190,6 +240,126 @@ public final class LineIO {
                     ? null
                     : str.substring(secondComma + 1, end);
                 is.addInterval(a, b, data);
+                begin = str.indexOf(';', begin) + 1;
+                end = str.indexOf(';', begin);
+            }
+        }
+
+        private static void stringToTupletIntervalSet(IntervalSet<TupletInterval> is, String str) {
+            var begin = 0;
+            var end = str.indexOf(';', begin);
+
+            while (end != -1) {
+                var firstComma = str.indexOf(',', begin);
+                var secondComma = str.indexOf(',', firstComma + 1);
+
+                if (secondComma > end) {
+                    secondComma = -1;
+                }
+
+                var a = Integer.parseInt(str.substring(begin, firstComma));
+                var b = Integer.parseInt(
+                    str.substring(
+                        firstComma + 1,
+                        (secondComma == -1) ? end : secondComma
+                    )
+                );
+
+                int grade = 3; // default to triplet
+                int vertPos = 0;
+
+                if (secondComma != -1) {
+                    // Has data portion: grade[,vertPos]
+                    var dataStr = str.substring(secondComma + 1, end);
+                    var parts = dataStr.split(",");
+
+                    try {
+                        grade = Integer.parseInt(parts[0]);
+                    } catch (NumberFormatException e) {
+                        grade = 3;
+                    }
+
+                    if (parts.length > 1) {
+                        try {
+                            vertPos = Integer.parseInt(parts[1]);
+                        } catch (NumberFormatException e) {
+                            vertPos = 0;
+                        }
+                    }
+                }
+
+                var tuplet = new TupletInterval(a, b, grade);
+                tuplet.setVerticalPosition(vertPos);
+                is.addInterval(tuplet);
+                begin = str.indexOf(';', begin) + 1;
+                end = str.indexOf(';', begin);
+            }
+        }
+
+        private static void stringToDynamicsIntervalSet(IntervalSet<DynamicsInterval> is, String str) {
+            var begin = 0;
+            var end = str.indexOf(';', begin);
+
+            while (end != -1) {
+                var firstComma = str.indexOf(',', begin);
+                var secondComma = str.indexOf(',', firstComma + 1);
+
+                if (secondComma > end) {
+                    secondComma = -1;
+                }
+
+                var a = Integer.parseInt(str.substring(begin, firstComma));
+                var b = Integer.parseInt(
+                    str.substring(
+                        firstComma + 1,
+                        (secondComma == -1) ? end : secondComma
+                    )
+                );
+
+                var dynamics = new DynamicsInterval(a, b);
+
+                if (secondComma != -1) {
+                    // Has data portion: x1,x2,y
+                    var dataStr = str.substring(secondComma + 1, end);
+                    var parts = dataStr.split(",");
+
+                    if (parts.length >= 3) {
+                        try {
+                            dynamics.setX1Shift(Integer.parseInt(parts[0]));
+                            dynamics.setX2Shift(Integer.parseInt(parts[1]));
+                            dynamics.setYShift(Integer.parseInt(parts[2]));
+                        } catch (NumberFormatException ignored) {
+                            // Leave shifts at 0
+                        }
+                    }
+                }
+
+                is.addInterval(dynamics);
+                begin = str.indexOf(';', begin) + 1;
+                end = str.indexOf(';', begin);
+            }
+        }
+
+        private static void stringToEndingIntervalSet(IntervalSet<EndingInterval> is, String str) {
+            var begin = 0;
+            var end = str.indexOf(';', begin);
+
+            while (end != -1) {
+                var firstComma = str.indexOf(',', begin);
+                var secondComma = str.indexOf(',', firstComma + 1);
+
+                if (secondComma > end) {
+                    secondComma = -1;
+                }
+
+                var a = Integer.parseInt(str.substring(begin, firstComma));
+                var b = Integer.parseInt(
+                    str.substring(
+                        firstComma + 1,
+                        (secondComma == -1) ? end : secondComma
+                    )
+                );
+                is.addInterval(new EndingInterval(a, b, 1));
                 begin = str.indexOf(';', begin) + 1;
                 end = str.indexOf(';', begin);
             }
@@ -259,39 +429,29 @@ public final class LineIO {
                         case XML_TRILL_YPOS -> line.setTrillYPos(
                             Integer.parseInt(str)
                         );
-                        case XML_BEAMINGS -> stringToIntervalSet(
+                        case XML_BEAMINGS -> stringToBeamingIntervalSet(
                             line.getBeamings(),
                             str
                         );
-                        case XML_TIES -> stringToIntervalSet(
+                        case XML_TIES -> stringToBeamingIntervalSet(
                             line.getTies(),
                             str
                         );
                         // Slurs no longer supported - ignore for backwards compatibility
                         case "slurs" -> {}
-                        case XML_CRESCENDO -> stringToIntervalSet(
+                        case XML_CRESCENDO -> stringToDynamicsIntervalSet(
                             line.getCrescendos(),
                             str
                         );
-                        case XML_DIMINUENDO -> stringToIntervalSet(
+                        case XML_DIMINUENDO -> stringToDynamicsIntervalSet(
                             line.getDiminuendos(),
                             str
                         );
-                        case XML_TUPLETS, XML_TRIPLETS -> {
-                            stringToIntervalSet(line.getTuplets(), str);
-
-                            for (
-                                var li = line.getTuplets().listIterator();
-                                li.hasNext();
-                            ) {
-                                var interval = li.next();
-
-                                if (interval.getData() == null) {
-                                    interval.setData("3");
-                                }
-                            }
-                        }
-                        case XML_FSENDINGS -> stringToIntervalSet(
+                        case XML_TUPLETS, XML_TRIPLETS -> stringToTupletIntervalSet(
+                            line.getTuplets(),
+                            str
+                        );
+                        case XML_FSENDINGS -> stringToEndingIntervalSet(
                             line.getFirstSecondEndings(),
                             str
                         );

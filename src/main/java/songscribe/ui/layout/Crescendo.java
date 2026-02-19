@@ -29,7 +29,7 @@ import songscribe.music.Note;
  * Represents a crescendo (gradually getting louder) hairpin marking.
  * <p>
  * Crescendo hairpins open to the right (< shape) and are typically
- * placed below the staff. The user can adjust the horizontal endpoints
+ * placed above the staff. The user can adjust the horizontal endpoints
  * and vertical position.
  */
 public class Crescendo extends RangeElement {
@@ -82,8 +82,8 @@ public class Crescendo extends RangeElement {
 
     @Override
     public boolean isAbove() {
-        // Dynamics are below the staff
-        return false;
+        // Dynamics are above the staff per Gould-Ross engraving rules
+        return true;
     }
 
     /**

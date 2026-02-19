@@ -45,4 +45,8 @@ public class Interval {
     public void setData(String data) {
         this.data = data;
     }
+
+    public Interval copyRange(int newStart, int newEnd) {
+        return new Interval(newStart, newEnd, data);
+    }
 }

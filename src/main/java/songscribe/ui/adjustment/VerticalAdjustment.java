@@ -25,9 +25,9 @@ import java.util.ArrayList;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import songscribe.data.DynamicsIntervalData;
+import songscribe.data.DynamicsInterval;
 import songscribe.data.IntervalSet;
-import songscribe.data.TupletIntervalData;
+import songscribe.data.TupletInterval;
 import songscribe.music.Line;
 import songscribe.music.Note;
 import songscribe.ui.component.Score;
@@ -238,10 +238,7 @@ public class VerticalAdjustment extends Adjustment {
         );
 
         if (interval != null) {
-            DynamicsIntervalData.setYShift(
-                interval,
-                DynamicsIntervalData.getYShift(interval) + diffY
-            );
+            interval.setYShift(interval.getYShift() + diffY);
         }
     }
 
@@ -253,10 +250,7 @@ public class VerticalAdjustment extends Adjustment {
         var interval = line.getTuplets().findInterval(dragRect.xIndex);
 
         if (interval != null) {
-            TupletIntervalData.setVerticalPosition(
-                interval,
-                TupletIntervalData.getVerticalPosition(interval) + diffY
-            );
+            interval.setVerticalPosition(interval.getVerticalPosition() + diffY);
         }
     }
 
@@ -599,7 +593,7 @@ public class VerticalAdjustment extends Adjustment {
         return layoutResult;
     }
 
-    private static IntervalSet getCresDecrIntervalSet(
+    private static IntervalSet<DynamicsInterval> getCresDecrIntervalSet(
         Line line,
         AdjustType adjustType
     ) {

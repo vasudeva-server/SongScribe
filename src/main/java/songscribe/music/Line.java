@@ -34,7 +34,11 @@ import javax.sound.midi.Track;
 import org.jetbrains.annotations.NotNull;
 
 import kotlin.Pair;
+import songscribe.data.DynamicsInterval;
+import songscribe.data.EndingInterval;
+import songscribe.data.Interval;
 import songscribe.data.IntervalSet;
+import songscribe.data.TupletInterval;
 import songscribe.midi.PlaybackSettings;
 import songscribe.ui.layout.BeamGroup;
 import songscribe.ui.layout.LayoutStylesheet;
@@ -55,12 +59,13 @@ public class Line {
     private static final int GRACE_QUAVER_DURATION = PPQ / 8;
     private static final int NOTE_VELOCITY = 98;
     private static final int ACCENTED_NOTE_VELOCITY = 127;
-    private final IntervalSet beamings = new IntervalSet();
-    private final IntervalSet ties = new IntervalSet();
-    private final IntervalSet tuplets = new IntervalSet();
-    private final IntervalSet firstSecondEndings = new IntervalSet();
-    private final IntervalSet crescendo = new IntervalSet();
-    private final IntervalSet diminuendo = new IntervalSet();
+    private final IntervalSet<Interval> beamings = new IntervalSet<>();
+    private final IntervalSet<Interval> ties = new IntervalSet<>();
+    private final IntervalSet<TupletInterval> tuplets = new IntervalSet<>();
+    private final IntervalSet<EndingInterval> firstSecondEndings = new IntervalSet<>();
+    private final IntervalSet<DynamicsInterval> crescendo = new IntervalSet<>();
+    private final IntervalSet<DynamicsInterval> diminuendo = new IntervalSet<>();
+    @SuppressWarnings("rawtypes")
     private final IntervalSet[] intervalSets = new IntervalSet[]{
         beamings,
         ties,
@@ -364,27 +369,27 @@ public class Line {
         return noteDistChangeRatio;
     }
 
-    public IntervalSet getBeamings() {
+    public IntervalSet<Interval> getBeamings() {
         return beamings;
     }
 
-    public IntervalSet getTies() {
+    public IntervalSet<Interval> getTies() {
         return ties;
     }
 
-    public IntervalSet getTuplets() {
+    public IntervalSet<TupletInterval> getTuplets() {
         return tuplets;
     }
 
-    public IntervalSet getFirstSecondEndings() {
+    public IntervalSet<EndingInterval> getFirstSecondEndings() {
         return firstSecondEndings;
     }
 
-    public IntervalSet getCrescendos() {
+    public IntervalSet<DynamicsInterval> getCrescendos() {
         return crescendo;
     }
 
-    public IntervalSet getDiminuendos() {
+    public IntervalSet<DynamicsInterval> getDiminuendos() {
         return diminuendo;
     }
 
@@ -394,33 +399,30 @@ public class Line {
         }
     }
 
-    public IntervalSet[] copyIntervals(int a, int b) {
+    public IntervalSet<?>[] copyIntervals(int a, int b) {
         var retIs = Arrays.stream(intervalSets)
             .map(intervalSet -> intervalSet.copyInterval(a, b))
-            .toArray(IntervalSet[]::new);
+            .toArray(IntervalSet[]::new); //noinspection unchecked
 
         shiftIntervals(retIs, 0, -a);
         return retIs;
     }
 
-    public void pasteIntervals(IntervalSet[] copyIntervalSets, int xIndex) {
+    public void pasteIntervals(IntervalSet<?>[] copyIntervalSets, int xIndex) {
         shiftIntervals(copyIntervalSets, 0, xIndex);
 
         for (var i = 0; i < intervalSets.length; i++) {
             for (var li = copyIntervalSets[i].listIterator(); li.hasNext(); ) {
                 var iv = li.next();
-                intervalSets[i].addInterval(
-                    iv.getStart(),
-                    iv.getEnd(),
-                    iv.getData()
-                );
+                //noinspection unchecked,rawtypes
+                ((IntervalSet) intervalSets[i]).addInterval(iv);
             }
         }
 
         shiftIntervals(copyIntervalSets, 0, -xIndex);
     }
 
-    private void shiftIntervals(IntervalSet[] iss, int from, int shift) {
+    private void shiftIntervals(IntervalSet<?>[] iss, int from, int shift) {
         for (var is : iss) {
             is.shiftValues(from, shift);
             is.removeInterval(Integer.MIN_VALUE, 0);

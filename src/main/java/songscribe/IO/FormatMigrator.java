@@ -21,7 +21,9 @@ package songscribe.io;
 
 import org.jetbrains.annotations.NotNull;
 
+import songscribe.data.EndingInterval;
 import songscribe.data.Interval;
+import songscribe.data.TupletInterval;
 import songscribe.data.IntervalSet;
 import songscribe.music.Composition;
 import songscribe.music.Line;
@@ -231,7 +233,7 @@ public final class FormatMigrator {
         migrateIntervalSet(line, line.getTuplets(), (l, interval) -> {
             var startNote = l.getNote(interval.getStart());
             var endNote = l.getNote(interval.getEnd());
-            int grade = extractTupletGrade(interval);
+            int grade = extractTupletGrade((TupletInterval) interval);
 
             return new Tuplet(startNote, endNote, grade);
         });
@@ -240,7 +242,7 @@ public final class FormatMigrator {
         migrateIntervalSet(line, line.getFirstSecondEndings(), (l, interval) -> {
             var startNote = l.getNote(interval.getStart());
             var endNote = l.getNote(interval.getEnd());
-            var endingType = extractEndingType(interval);
+            var endingType = extractEndingType((EndingInterval) interval);
 
             return new Ending(startNote, endNote, endingType);
         });
@@ -276,13 +278,14 @@ public final class FormatMigrator {
     /**
      * Helper method to migrate an IntervalSet to RangeElements.
      */
+    @SuppressWarnings("rawtypes")
     private static void migrateIntervalSet(
         @NotNull Line line,
         @NotNull IntervalSet intervalSet,
         @NotNull RangeElementFactory factory
     ) {
         for (var iter = intervalSet.listIterator(); iter.hasNext(); ) {
-            var interval = iter.next();
+            var interval = (Interval) iter.next();
 
             // Validate interval bounds
             if (interval.getStart() < 0 || interval.getEnd() >= line.noteCount()) {
@@ -307,18 +310,8 @@ public final class FormatMigrator {
      * @param interval The interval containing tuplet data
      * @return The tuplet grade (3, 5, 6, 7, etc.)
      */
-    private static int extractTupletGrade(@NotNull Interval interval) {
-        var data = interval.getData();
-
-        if (data == null || data.isEmpty()) {
-            return 3; // Default to triplet
-        }
-
-        try {
-            return Integer.parseInt(data);
-        } catch (NumberFormatException e) {
-            return 3; // Default to triplet
-        }
+    private static int extractTupletGrade(@NotNull TupletInterval interval) {
+        return interval.getGrade();
     }
 
     /**
@@ -330,18 +323,8 @@ public final class FormatMigrator {
      * @param interval The interval containing ending data
      * @return The ending type
      */
-    private static Ending.Type extractEndingType(@NotNull Interval interval) {
-        var data = interval.getData();
-
-        if (data == null || data.isEmpty()) {
-            return Ending.Type.FIRST;
-        }
-
-        if ("2".equals(data)) {
-            return Ending.Type.SECOND;
-        }
-
-        return Ending.Type.FIRST;
+    private static Ending.Type extractEndingType(@NotNull EndingInterval interval) {
+        return interval.getEndingNumber() == 2 ? Ending.Type.SECOND : Ending.Type.FIRST;
     }
 
     /**

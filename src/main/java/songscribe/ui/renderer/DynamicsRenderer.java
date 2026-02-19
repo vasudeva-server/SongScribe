@@ -25,8 +25,7 @@ import java.awt.Graphics2D;
 
 import org.jetbrains.annotations.NotNull;
 
-import songscribe.data.DynamicsIntervalData;
-import songscribe.data.Interval;
+import songscribe.data.DynamicsInterval;
 import songscribe.music.Line;
 import songscribe.music.Note;
 import songscribe.smufl.EngravingDefaults;
@@ -149,7 +148,7 @@ public class DynamicsRenderer extends BaseElementRenderer<LineElement> {
 
         // Calculate shift from default position
         int middleLineY = ctx.getMiddleLineY();
-        int defaultY = middleLineY + (int) (6 * LayoutStylesheet.NOTE_Y_OFFSET);
+        int defaultY = middleLineY - (int) (6 * LayoutStylesheet.NOTE_Y_OFFSET);
         return (int) bounds.getTop() - defaultY;
     }
 
@@ -180,10 +179,11 @@ public class DynamicsRenderer extends BaseElementRenderer<LineElement> {
         int x1 = startNote.getXPos() + x1Shift;
         int x2 = endNote.getXPos() + (int) CROTCHET_WIDTH + x2Shift;
 
-        // Calculate Y positions (below the staff, around y position 5-7)
-        int yTop = middleLineY + (int) ((isCrescendo ? 5 : 6) * LayoutStylesheet.NOTE_Y_OFFSET) + yShift;
-        int yBottom = middleLineY + (int) ((isCrescendo ? 7 : 6) * LayoutStylesheet.NOTE_Y_OFFSET) + yShift;
-        int yMiddle = middleLineY + (int) (6 * LayoutStylesheet.NOTE_Y_OFFSET) + yShift;
+        // Y positions above the staff: center 1 staff space above top staff line
+        // (top staff line = middleLineY - 4*NOTE_Y_OFFSET; 1 space = 2*NOTE_Y_OFFSET)
+        int yTop = middleLineY - (int) (7 * LayoutStylesheet.NOTE_Y_OFFSET) + yShift;
+        int yBottom = middleLineY - (int) (5 * LayoutStylesheet.NOTE_Y_OFFSET) + yShift;
+        int yMiddle = middleLineY - (int) (6 * LayoutStylesheet.NOTE_Y_OFFSET) + yShift;
 
         try (var ignored = GraphicsState.save(g2, COLOR, STROKE)) {
             g2.setColor(NOTE_COLOR);
@@ -227,19 +227,16 @@ public class DynamicsRenderer extends BaseElementRenderer<LineElement> {
         @NotNull Graphics2D g2,
         @NotNull Line line,
         @NotNull ElementRenderContext ctx,
-        @NotNull songscribe.data.IntervalSet dynamics,
+        @NotNull songscribe.data.IntervalSet<DynamicsInterval> dynamics,
         boolean isCrescendo
     ) {
         for (var iter = dynamics.listIterator(); iter.hasNext(); ) {
-            Interval interval = iter.next();
+            var interval = iter.next();
             var startNote = line.getNote(interval.getStart());
             var endNote = line.getNote(interval.getEnd());
 
-            int x1Shift = DynamicsIntervalData.getX1Shift(interval);
-            int x2Shift = DynamicsIntervalData.getX2Shift(interval);
-            int yShift = DynamicsIntervalData.getYShift(interval);
-
-            renderHairpin(g2, ctx, startNote, endNote, isCrescendo, x1Shift, x2Shift, yShift);
+            renderHairpin(g2, ctx, startNote, endNote, isCrescendo,
+                interval.getX1Shift(), interval.getX2Shift(), interval.getYShift());
         }
     }
 }

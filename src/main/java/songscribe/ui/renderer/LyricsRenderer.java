@@ -30,6 +30,7 @@ import org.jetbrains.annotations.NotNull;
 
 import static songscribe.ui.renderer.GraphicsState.Property.*;
 
+import songscribe.data.Interval;
 import songscribe.data.IntervalSet;
 import songscribe.music.Line;
 import songscribe.music.Note;
@@ -543,7 +544,7 @@ public class LyricsRenderer {
         }
 
         // Create intervals excluding empty syllables
-        var intervalSet = new IntervalSet();
+        var intervalSet = new IntervalSet<Interval>();
         intervalSet.addInterval(startIndex, end);
 
         for (var i : emptySyllables) {

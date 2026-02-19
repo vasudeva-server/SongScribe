@@ -28,6 +28,7 @@ import org.jetbrains.annotations.Nullable;
 
 import kotlin.Pair;
 import songscribe.data.Interval;
+import songscribe.data.TupletInterval;
 import songscribe.data.IntervalSet;
 import songscribe.music.Line;
 import songscribe.music.Note;
@@ -301,7 +302,7 @@ public final class LineSelectionState {
         }
 
         var tuplets = line.getTuplets();
-        Interval firstInterval = null;
+        TupletInterval firstInterval = null;
 
         for (var i = selectionBegin; i <= selectionEnd; i++) {
             if (!line.getNote(i).getNoteType().isRealNote()) {

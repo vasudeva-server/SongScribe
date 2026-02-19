@@ -29,7 +29,7 @@ import songscribe.music.Note;
  * Represents a diminuendo (gradually getting softer) hairpin marking.
  * <p>
  * Diminuendo hairpins open to the left (> shape) and are typically
- * placed below the staff. The user can adjust the horizontal endpoints
+ * placed above the staff. The user can adjust the horizontal endpoints
  * and vertical position.
  */
 public class Diminuendo extends RangeElement {
@@ -82,8 +82,8 @@ public class Diminuendo extends RangeElement {
 
     @Override
     public boolean isAbove() {
-        // Dynamics are below the staff
-        return false;
+        // Dynamics are above the staff per Gould-Ross engraving rules
+        return true;
     }
 
     /**
