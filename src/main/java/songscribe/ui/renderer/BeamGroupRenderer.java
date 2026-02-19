@@ -28,6 +28,7 @@ import org.jetbrains.annotations.NotNull;
 
 import songscribe.music.Line;
 import songscribe.music.NoteType;
+import songscribe.ui.component.Score;
 import songscribe.smufl.EngravingDefaults;
 import songscribe.smufl.SMuFLMetadata;
 import songscribe.smufl.StaffSpaces;
@@ -140,7 +141,8 @@ public class BeamGroupRenderer extends BaseElementRenderer<BeamGroup> {
         }
 
         // Draw beams
-        drawBeams(g2, level, line, ctx, beginIndex, endIndex);
+        boolean selected = shouldBeamAppearSelected(ctx, beginIndex, endIndex);
+        drawBeams(g2, level, line, ctx, beginIndex, endIndex, selected);
     }
 
     /**
@@ -158,7 +160,40 @@ public class BeamGroupRenderer extends BaseElementRenderer<BeamGroup> {
         LOG.fine("[BeamRenderer] ============================================");
         LOG.fine("[BeamRenderer] renderBeams: beginIndex=" + beginIndex + " endIndex=" + endIndex);
         int level = getBeamLevel(line, beginIndex, endIndex);
-        drawBeams(g2, level, line, ctx, beginIndex, endIndex);
+        boolean selected = shouldBeamAppearSelected(ctx, beginIndex, endIndex);
+        drawBeams(g2, level, line, ctx, beginIndex, endIndex, selected);
+    }
+
+    /**
+     * Determines whether a beam should appear in the selection color.
+     * A beam should appear selected when removing the selected notes
+     * would eliminate the beam (fewer than 2 beamable notes remain).
+     */
+    private boolean shouldBeamAppearSelected(
+        @NotNull ElementRenderContext ctx,
+        int beginIndex,
+        int endIndex
+    ) {
+        var selectionProvider = ctx.getSelectionProvider();
+
+        if (selectionProvider == null || !ctx.isEditMode()) {
+            return false;
+        }
+
+        var line = ctx.getCurrentLine();
+        var lineIndex = ctx.getLineIndex();
+        var anySelected = false;
+        var remainingBeamableNotes = 0;
+
+        for (var i = beginIndex; i <= endIndex; i++) {
+            if (selectionProvider.isNoteSelected(i, lineIndex)) {
+                anySelected = true;
+            } else if (line.getNote(i).getNoteType().isBeamable()) {
+                remainingBeamableNotes++;
+            }
+        }
+
+        return anySelected && remainingBeamableNotes < 2;
     }
 
     /**
@@ -191,11 +226,12 @@ public class BeamGroupRenderer extends BaseElementRenderer<BeamGroup> {
         @NotNull Line line,
         @NotNull ElementRenderContext ctx,
         int beginIndex,
-        int endIndex
+        int endIndex,
+        boolean selected
     ) {
         var outerNotes = new Point(beginIndex, endIndex);
         doDrawBeams(g2, level, line, ctx, outerNotes,
-            beginIndex, endIndex, beginIndex, endIndex, false, 0);
+            beginIndex, endIndex, beginIndex, endIndex, false, 0, selected);
     }
 
     private void doDrawBeams(
@@ -209,7 +245,8 @@ public class BeamGroupRenderer extends BaseElementRenderer<BeamGroup> {
         int prevBeginIndex,
         int prevEndIndex,
         boolean isPrevLeftOriented,
-        int recursionLevel
+        int recursionLevel,
+        boolean selected
     ) {
         String indent = "  ".repeat(recursionLevel);
         LOG.fine("[BeamRenderer] " + indent + "doDrawBeams: level=" + level
@@ -252,12 +289,12 @@ public class BeamGroupRenderer extends BaseElementRenderer<BeamGroup> {
             var type = leftOriented ? BeamType.ATTACH_RIGHT : BeamType.ATTACH_LEFT;
             LOG.fine("[BeamRenderer] " + indent + "  -> HALF beam: leftOriented=" + leftOriented
                 + " type=" + type + " drawBeam(" + begin + "," + end + ") isUpper=" + isUpper);
-            drawBeam(g2, line, ctx, begin, end, isUpper, type, recursionLevel);
+            drawBeam(g2, line, ctx, begin, end, isUpper, type, recursionLevel, selected);
         }
         // Full beam
         else {
             LOG.fine("[BeamRenderer] " + indent + "  -> FULL beam: drawBeam(" + beginIndex + "," + endIndex + ") isUpper=" + isUpper);
-            drawBeam(g2, line, ctx, beginIndex, endIndex, isUpper, BeamType.FULL, recursionLevel);
+            drawBeam(g2, line, ctx, beginIndex, endIndex, isUpper, BeamType.FULL, recursionLevel, selected);
         }
 
         // Sub-beams for inner levels.
@@ -282,7 +319,7 @@ public class BeamGroupRenderer extends BaseElementRenderer<BeamGroup> {
                     LOG.fine("[BeamRenderer] " + indent + "    -> sub-beam range: " + startSubBeam + " to " + (i - 1));
                     doDrawBeams(g2, beamLevel, line, ctx, outerNotes,
                         startSubBeam, i - 1, beginIndex, endIndex,
-                        leftOriented, recursionLevel + 1);
+                        leftOriented, recursionLevel + 1, selected);
                     startSubBeam = -1;
                 }
             }
@@ -332,7 +369,8 @@ public class BeamGroupRenderer extends BaseElementRenderer<BeamGroup> {
         int endIndex,
         boolean isUpper,
         @NotNull BeamType type,
-        int recursionLevel
+        int recursionLevel,
+        boolean selected
     ) {
         var beginNote = line.getNote(beginIndex);
         var endNote = line.getNote(endIndex);
@@ -435,7 +473,7 @@ public class BeamGroupRenderer extends BaseElementRenderer<BeamGroup> {
         }
 
         try (var ignored = GraphicsState.save(g2, COLOR)) {
-            g2.setColor(NOTE_COLOR);
+            g2.setColor(selected ? Score.SELECTION_STROKE_COLOR : NOTE_COLOR);
             g2.fill(beam);
         }
 

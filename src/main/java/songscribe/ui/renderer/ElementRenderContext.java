@@ -27,6 +27,7 @@ import org.jetbrains.annotations.Nullable;
 
 import songscribe.music.Composition;
 import songscribe.music.Line;
+import songscribe.ui.component.score.LineComponent;
 import songscribe.ui.layout2.LayoutResult;
 import songscribe.ui.menu.DebugState;
 
@@ -51,6 +52,8 @@ public class ElementRenderContext {
     private int lineIndex;
     private int leadingKeysPos = DEFAULT_LEADING_KEYS_POS;
     private LayoutResult layoutResult;
+    private LineComponent.SelectionProvider selectionProvider;
+    private boolean editMode;
 
     /**
      * Creates a render context for the given composition.
@@ -169,6 +172,40 @@ public class ElementRenderContext {
      */
     public void setLayoutResult(@Nullable LayoutResult layoutResult) {
         this.layoutResult = layoutResult;
+    }
+
+    /**
+     * Returns the selection provider for checking note selection state.
+     *
+     * @return The selection provider, or null if not available
+     */
+    public @Nullable LineComponent.SelectionProvider getSelectionProvider() {
+        return selectionProvider;
+    }
+
+    /**
+     * Sets the selection provider for checking note selection state.
+     *
+     * @param selectionProvider The selection provider from LineComponent
+     */
+    public void setSelectionProvider(@Nullable LineComponent.SelectionProvider selectionProvider) {
+        this.selectionProvider = selectionProvider;
+    }
+
+    /**
+     * Returns whether the score is in edit mode.
+     */
+    public boolean isEditMode() {
+        return editMode;
+    }
+
+    /**
+     * Sets whether the score is in edit mode.
+     *
+     * @param editMode true if in edit mode
+     */
+    public void setEditMode(boolean editMode) {
+        this.editMode = editMode;
     }
 
     /**

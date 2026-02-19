@@ -128,6 +128,8 @@ class LineRenderer {
         ctx.setLineIndex(lineIndex);
         ctx.setMiddleLineY(middleLineY);
         ctx.setLayoutResult(lc.getLayoutResult());
+        ctx.setSelectionProvider(lc.getSelectionProvider());
+        ctx.setEditMode(lc.isEditMode());
 
         // Ensure NoteRenderer metrics are initialized
         NoteRenderer.initializeAccidentalWidths(g2);
