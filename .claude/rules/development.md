@@ -20,8 +20,6 @@ mvn clean package
 
 ## Running
 
-DO NOT attempt to use the `run.sh` or `run-debug.sh` scripts when debug logging has been added during a bug fix. Request the user to run the application and provide logs instead.
-
 ### From Compiled Classes
 
 After compiling with Maven:
