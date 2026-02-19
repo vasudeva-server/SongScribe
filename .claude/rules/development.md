@@ -49,7 +49,13 @@ java -jar target/SongScribe-*.jar
 For rapid iteration during development:
 
 ```bash
-./scripts/compile.sh && ./scripts/run-debug.sh
+./scripts/crun.sh
+```
+
+If debug logging has been requested by you or the user:
+
+```bash
+./scripts/crun-debug.sh
 ```
 
 ### Rebuild After Changes
