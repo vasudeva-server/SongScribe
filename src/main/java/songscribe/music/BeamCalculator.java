@@ -19,6 +19,8 @@ import java.util.logging.Logger;
 
 import org.jetbrains.annotations.NotNull;
 
+import songscribe.smufl.SMuFLMetadata;
+import songscribe.smufl.StaffSpaces;
 import songscribe.ui.component.Score;
 import songscribe.ui.layout.LayoutStylesheet;
 
@@ -41,6 +43,11 @@ public class BeamCalculator {
     private static final double MIN_STEM_PX = MIN_STEM_SS * LayoutStylesheet.STAFF_SPACE;
     private static final double SLOPE_REDUCTION_FACTOR = 0.85;
     private static final int MAX_SLOPE_ITERATIONS = 20;
+
+    // Beam thickening: angled beams lose perpendicular thickness by cos(angle).
+    // Compensate with 1/cos(angle) clamped to 3.3–8.8%.
+    private static final double MIN_THICKENING_FACTOR = 1.033;
+    private static final double MAX_THICKENING_FACTOR = 1.088;
 
     private BeamCalculator() {
         // Utility class
@@ -159,6 +166,14 @@ public class BeamCalculator {
                     note.properties.lengthening += deficit;
                 }
             }
+        }
+
+        // Compute beam thickening for angled beams:
+        // 1/cos(angle) compensates for lost perpendicular thickness, plus 1 extra pixel.
+        var thickening = computeBeamThickening(angle);
+
+        for (var i = startIndex; i <= endIndex; i++) {
+            line.getNote(i).properties.beamThickening = thickening;
         }
     }
 
@@ -366,5 +381,24 @@ public class BeamCalculator {
                 ((angle * note.getXPos()) + distance));
             note.properties.lengthening = (int) Math.round(lengthening);
         }
+    }
+
+    /**
+     * Computes the extra beam thickness in pixels for an angled beam.
+     * <p>
+     * Uses 1/cos(angle) geometric correction, clamped to 3.3–8.8%.
+     *
+     * @param angle The beam angle in radians
+     * @return Extra thickness in pixels (0 for horizontal beams)
+     */
+    private static double computeBeamThickening(double angle) {
+        if (angle == 0) {
+            return 0.0;
+        }
+
+        var beamThicknessPx = StaffSpaces.toPixels(
+            SMuFLMetadata.getInstance().getEngravingDefaults().beamThickness());
+        var factor = Math.clamp(1.0 / Math.cos(angle), MIN_THICKENING_FACTOR, MAX_THICKENING_FACTOR);
+        return beamThicknessPx * (factor - 1.0);
     }
 }

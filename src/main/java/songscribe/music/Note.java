@@ -724,6 +724,8 @@ public class Note extends LineElement implements Cloneable {
 
         // Lengthening for beaming
         public int lengthening = 0;
+        // Extra beam thickness in pixels for angled beams (0 = no thickening)
+        public double beamThickening = 0.0;
         // Stem
         public final Line2D.Double stem = new Line2D.Double();
         // Lyrics

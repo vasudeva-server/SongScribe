@@ -350,8 +350,11 @@ public class BeamGroupRenderer extends BaseElementRenderer<BeamGroup> {
         int middleLineY = ctx.getMiddleLineY();
         var halfStemWidth = NoteRenderer.STEM_WIDTH / 2.0;
 
-        var beamThickness = isUpper ? BEAM_THICKNESS_PX : -BEAM_THICKNESS_PX;
-        var innerBeamOffset = INNER_BEAM_OFFSET * recursionLevel * (isUpper ? 1 : -1);
+        var thickening = beginNote.properties.beamThickening;
+        var effectiveBeamThickness = BEAM_THICKNESS_PX + thickening;
+        var beamThickness = isUpper ? effectiveBeamThickness : -effectiveBeamThickness;
+        var effectiveInnerOffset = INNER_BEAM_OFFSET + thickening;
+        var innerBeamOffset = effectiveInnerOffset * recursionLevel * (isUpper ? 1 : -1);
 
         System.out.println("[BeamRenderer]     middleLineY=" + middleLineY
             + " halfStemWidth=" + halfStemWidth

@@ -457,11 +457,11 @@ public class NoteRenderer extends BaseElementRenderer<Note> {
 
         double stemLength = STEM_LENGTH + note.properties.lengthening;
 
-        // For beamed notes, shorten the rendered stem by half the beam thickness
+        // For beamed notes, shorten the rendered stem by half the (thickened) beam
         // so it tucks inside the beam rather than peeking past the outer edge
         // when the beam is angled. stem.y2 retains the full length for beam positioning.
         double drawLength = beamed
-            ? Math.max(0, stemLength - HALF_BEAM_THICKNESS)
+            ? Math.max(0, stemLength - HALF_BEAM_THICKNESS - note.properties.beamThickening / 2.0)
             : stemLength;
 
         if (upper) {

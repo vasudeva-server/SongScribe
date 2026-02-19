@@ -23,6 +23,7 @@ package songscribe.ui.renderer;
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.Graphics2D;
+import java.awt.RenderingHints;
 import java.awt.Stroke;
 import java.awt.geom.AffineTransform;
 
@@ -46,7 +47,9 @@ public final class GraphicsState implements AutoCloseable {
         COLOR,
         STROKE,
         FONT,
-        TRANSFORM
+        TRANSFORM,
+        ANTIALIASING,
+        STROKE_CONTROL
     }
 
     private final Graphics2D g2;
@@ -55,6 +58,8 @@ public final class GraphicsState implements AutoCloseable {
     private Stroke stroke;
     private Font font;
     private AffineTransform transform;
+    private Object antialiasing;
+    private Object strokeControl;
 
     private GraphicsState(@NotNull Graphics2D g2, int propertyMask) {
         this.g2 = g2;
@@ -96,11 +101,27 @@ public final class GraphicsState implements AutoCloseable {
             state.transform = g2.getTransform();
         }
 
+        if (state.has(Property.ANTIALIASING)) {
+            state.antialiasing = g2.getRenderingHint(RenderingHints.KEY_ANTIALIASING);
+        }
+
+        if (state.has(Property.STROKE_CONTROL)) {
+            state.strokeControl = g2.getRenderingHint(RenderingHints.KEY_STROKE_CONTROL);
+        }
+
         return state;
     }
 
     @Override
     public void close() {
+        if (has(Property.STROKE_CONTROL) && strokeControl != null) {
+            g2.setRenderingHint(RenderingHints.KEY_STROKE_CONTROL, strokeControl);
+        }
+
+        if (has(Property.ANTIALIASING) && antialiasing != null) {
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, antialiasing);
+        }
+
         if (has(Property.TRANSFORM)) {
             g2.setTransform(transform);
         }
