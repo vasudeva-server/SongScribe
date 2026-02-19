@@ -21,6 +21,7 @@
 package songscribe.music;
 
 import java.util.ArrayList;
+import java.util.TreeSet;
 import java.util.stream.IntStream;
 
 import javax.swing.JOptionPane;
@@ -409,6 +410,40 @@ public final class MusicEditOperations {
             if ((inverval != null) && (inverval != lastInterval)) {
                 BeamCalculator.calculateLengthenings(i, line, false);
                 lastInterval = inverval;
+            }
+        }
+
+        // Flip tie partners that fall outside the selection. IntervalSet merges
+        // adjacent ties, so the interval may span more than two notes; all notes
+        // in the interval that weren't already covered by the selection must flip.
+        var tiePartnersToFlip = new TreeSet<Integer>();
+
+        for (var i = state.getSelectionBegin(); i <= state.getSelectionEnd(); i++) {
+            var tieInterval = line.getTies().findInterval(i);
+
+            if (tieInterval == null) {
+                continue;
+            }
+
+            for (var j = tieInterval.start; j <= tieInterval.end; j++) {
+                if ((j < state.getSelectionBegin()) || (j > state.getSelectionEnd())) {
+                    tiePartnersToFlip.add(j);
+                }
+            }
+        }
+
+        lastInterval = null;
+
+        for (var i : tiePartnersToFlip) {
+            var note = line.getNote(i);
+            note.setUpper(!note.isUpper());
+
+            var beamInterval = line.getBeamings().findInterval(i);
+
+            //noinspection ObjectEquality
+            if ((beamInterval != null) && (beamInterval != lastInterval)) {
+                BeamCalculator.calculateLengthenings(i, line, false);
+                lastInterval = beamInterval;
             }
         }
 
