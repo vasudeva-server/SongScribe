@@ -410,6 +410,11 @@ public final class EditModeManager {
     public void editNoteDidChange(@NotNull Line line, int noteIndex) {
         //mainFrame.getUndoManager().undoableEditHappened(new UndoableEditEvent(this, new
         // ModifyUndoableEdit(oldNote, oldNoteInfo, xIndex)));
+
+        // Capture the inserted note before editNote is updated for the next insertion.
+        var insertedNote = line.getNote(noteIndex);
+        var shouldPlayNote = playInsertingNote && insertedNote.getNoteType().isNote();
+
         Note nextNote;
 
         if (editNote.getNoteType().isGraceNote()) {
@@ -449,8 +454,8 @@ public final class EditModeManager {
 
         scoreActions.repaint();
 
-        if (playInsertingNote && editNote.getNoteType().isNote()) {
-            new PlayNoteThread(editNote.getEditNotePitch(line)).start();
+        if (shouldPlayNote) {
+            new PlayNoteThread(insertedNote.getPitch()).start();
         }
     }
 
