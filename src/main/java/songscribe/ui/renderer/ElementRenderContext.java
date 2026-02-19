@@ -54,6 +54,7 @@ public class ElementRenderContext {
     private LayoutResult layoutResult;
     private LineComponent.SelectionProvider selectionProvider;
     private boolean editMode;
+    private double overrideNoteX = Double.NaN;
 
     /**
      * Creates a render context for the given composition.
@@ -206,6 +207,40 @@ public class ElementRenderContext {
      */
     public void setEditMode(boolean editMode) {
         this.editMode = editMode;
+    }
+
+    /**
+     * Sets a precise X coordinate for the next note render, bypassing layout lookup and
+     * {@code note.getXPos()}. Used by the edit note preview so that {@link NoteRenderer}
+     * applies device-pixel snapping to the raw computed double directly, matching the
+     * path used for laid-out composition notes. Call {@link #clearOverrideNoteX()} after
+     * rendering to reset.
+     *
+     * @param x the exact X coordinate in local (component) space
+     */
+    public void setOverrideNoteX(double x) {
+        this.overrideNoteX = x;
+    }
+
+    /**
+     * Returns whether an override note X is currently active.
+     */
+    public boolean hasOverrideNoteX() {
+        return !Double.isNaN(overrideNoteX);
+    }
+
+    /**
+     * Returns the override note X. Only valid when {@link #hasOverrideNoteX()} is true.
+     */
+    public double getOverrideNoteX() {
+        return overrideNoteX;
+    }
+
+    /**
+     * Clears the override set by {@link #setOverrideNoteX(double)}.
+     */
+    public void clearOverrideNoteX() {
+        overrideNoteX = Double.NaN;
     }
 
     /**

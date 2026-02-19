@@ -629,7 +629,6 @@ class LineRenderer {
         }
 
         // Set the edit note position
-        editNote.setXPos((int) x);
         editNote.setYPos(currentYPos);
         editNote.setUpper(Score.defaultUpperNote(editNote));
 
@@ -646,12 +645,21 @@ class LineRenderer {
             }
         } else {
             // Render the edit note with the edit note color.
-            // Temporarily clear layoutResult so NoteRenderer uses the edit note's
-            // xPos (set above) instead of looking it up in the layout.
+            // Pass x as an override so NoteRenderer applies device-pixel snapping
+            // to the raw double directly, exactly as it does for composition notes
+            // via layoutResult.getNoteX(). Temporarily clear layoutResult to prevent
+            // sub-renderers from looking up the edit note (which is not in the layout).
             var savedLayout = ctx.getLayoutResult();
+            ctx.setOverrideNoteX(x);
             ctx.setLayoutResult(null);
             g2.setColor(EDIT_NOTE_COLOR);
             NoteRenderer.getInstance().render(g2, editNote, ctx);
+            ctx.clearOverrideNoteX();
+
+            // Set xPos for articulation/fermata renderers, which read it directly.
+            // Simple rounding is fine since those renderers apply their own device-pixel
+            // snapping internally.
+            editNote.setXPos((int) Math.round(x));
 
             // Render articulations and fermata on the insertion note preview
             if (!editNote.getArticulations().isEmpty()) {

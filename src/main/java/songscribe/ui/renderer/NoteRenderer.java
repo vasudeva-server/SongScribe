@@ -193,6 +193,32 @@ public class NoteRenderer extends BaseElementRenderer<Note> {
     // Rendering
     // ==========================================================================
 
+    /**
+     * Resolves the device-pixel-snapped X coordinate for a note, using the first
+     * available source in priority order:
+     * <ol>
+     *   <li>Override X from context (edit note preview)</li>
+     *   <li>Layout result position (laid-out composition notes)</li>
+     *   <li>Note's own {@code xPos} (fallback)</li>
+     * </ol>
+     */
+    private static double resolveNoteX(
+        @NotNull Graphics2D g2,
+        @NotNull Note note,
+        @NotNull ElementRenderContext ctx
+    ) {
+        double noteX;
+
+        if (ctx.hasOverrideNoteX()) {
+            noteX = ctx.getOverrideNoteX();
+        } else {
+            var layoutResult = ctx.getLayoutResult();
+            noteX = (layoutResult != null) ? layoutResult.getNoteX(note) : note.getXPos();
+        }
+
+        return GraphicUtils.snapXToDevicePixel(g2, noteX);
+    }
+
     @Override
     protected void renderElement(
         @NotNull Note element,
@@ -226,13 +252,10 @@ public class NoteRenderer extends BaseElementRenderer<Note> {
         // Note: Don't set color here - respect the color set by the caller
         // (e.g., blue for edit notes, black for composition notes)
         try (var ignored = GraphicsState.save(g2, TRANSFORM, FONT)) {
-            var layoutResult = ctx.getLayoutResult();
-            var noteX = (layoutResult != null) ? layoutResult.getNoteX(element) : element.getXPos();
+            var noteX = resolveNoteX(g2, element, ctx);
             var noteY = calculateNoteY(element.getYPos(), ctx.getMiddleLineY());
 
-            // Snap X to device pixel so glyph and stem rendering share
-            // the same pixel-aligned origin (prevents rounding disagreements).
-            g2.translate(GraphicUtils.snapXToDevicePixel(g2, noteX), noteY);
+            g2.translate(noteX, noteY);
             g2.setFont(ctx.getMusicFont());
 
             var isBeamed = isNoteBeamed(element, ctx);
@@ -316,8 +339,7 @@ public class NoteRenderer extends BaseElementRenderer<Note> {
         @NotNull Graphics2D g2,
         @NotNull ElementRenderContext ctx
     ) {
-        var layoutResult = ctx.getLayoutResult();
-        var noteX = (layoutResult != null) ? layoutResult.getNoteX(element) : element.getXPos();
+        var noteX = resolveNoteX(g2, element, ctx);
 
         // Place half a staff space above the top staff line
         var breathY = ctx.getMiddleLineY() - StaffSpaces.toPixels(2.5);
@@ -325,7 +347,7 @@ public class NoteRenderer extends BaseElementRenderer<Note> {
         drawBravuraGlyph(
             g2,
             SMuFLGlyph.BREATH_MARK_COMMA,
-            GraphicUtils.snapXToDevicePixel(g2, noteX),
+            noteX,
             Math.round(breathY),
             true
         );
