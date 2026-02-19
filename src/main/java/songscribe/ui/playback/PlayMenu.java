@@ -63,6 +63,7 @@ public class PlayMenu extends JMenu implements MusicChangeListener {
         }
 
         add(tempoChangeMenu);
+        addSeparator();
         instrumentItem = new JMenuItem(
             new DialogOpenAction<>("Instruments...", InstrumentDialog.class)
         );

@@ -22,8 +22,10 @@ package songscribe.ui.playback;
 import java.awt.*;
 import java.awt.event.*;
 import java.util.ArrayList;
+import java.util.Map;
 
 import javax.sound.midi.InvalidMidiDataException;
+import javax.sound.midi.MetaEventListener;
 import javax.sound.midi.MetaMessage;
 import javax.sound.midi.MidiEvent;
 import javax.sound.midi.Sequence;
@@ -32,6 +34,7 @@ import javax.swing.*;
 
 import songscribe.prefs.Prefs;
 import songscribe.ui.dialog.StandardDialog;
+import songscribe.util.MyFontUtils;
 
 public class InstrumentDialog extends StandardDialog {
 
@@ -56,25 +59,43 @@ public class InstrumentDialog extends StandardDialog {
             }
         }
 
-        INSTRUMENT_STRING = names.toArray(new String[0]);
-        INSTRUMENT_PROGRAMS = programs.stream().mapToInt(Integer::intValue).toArray();
+        // Sort instruments alphabetically by name, keeping programs in sync
+        var pairs = new ArrayList<Map.Entry<String, Integer>>(names.size());
+
+        for (var i = 0; i < names.size(); i++) {
+            pairs.add(Map.entry(names.get(i), programs.get(i)));
+        }
+
+        pairs.sort(Map.Entry.comparingByKey());
+        INSTRUMENT_STRING = pairs.stream().map(Map.Entry::getKey).toArray(String[]::new);
+        INSTRUMENT_PROGRAMS = pairs.stream().mapToInt(Map.Entry::getValue).toArray();
     }
 
     private final JList<String> instrumentList = new JList<>(INSTRUMENT_STRING);
+    private JButton scaleButton;
+    private Color defaultButtonBackground;
 
     public InstrumentDialog() {
-        super("Instrument select");
-        contentPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+        super("Playback Instruments");
         var center = new JPanel();
         center.setLayout(new BoxLayout(center, BoxLayout.X_AXIS));
-        center.setBorder(BorderFactory.createEmptyBorder(0, 0, 20, 0));
+        center.setBorder(BorderFactory.createEmptyBorder(20, 20, 0, 20));
         instrumentList.setAlignmentY(Component.CENTER_ALIGNMENT);
         instrumentList.setVisibleRowCount(10);
         instrumentList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         center.add(new JScrollPane(instrumentList));
         center.add(Box.createHorizontalStrut(20));
-        var scaleButton = new JButton(new ScaleAction());
+        var scaleAction = new ScaleAction();
+        scaleButton = new JButton(scaleAction);
+        defaultButtonBackground = scaleButton.getBackground();
+        scaleButton.setText("\uEF4E");
+        scaleButton.setFont(MyFontUtils.getIconFont().deriveFont(24f));
+        scaleButton.setMargin(new Insets(8, 8, 8, 8));
         scaleButton.setAlignmentY(Component.CENTER_ALIGNMENT);
+        scaleButton.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(
+            KeyStroke.getKeyStroke(KeyEvent.VK_SPACE, 0), "playScale"
+        );
+        scaleButton.getActionMap().put("playScale", scaleAction);
         center.add(scaleButton);
         contentPanel.add(BorderLayout.CENTER, center);
         buttonPanel.remove(applyButton);
@@ -105,27 +126,47 @@ public class InstrumentDialog extends StandardDialog {
         mainFrame.fireMusicChanged(this);
     }
 
+    private void setScalePlaying(boolean playing) {
+        scaleButton.setBackground(playing ? UIManager.getColor("ToggleButton.toolbar.selectedBackground") : defaultButtonBackground);
+        scaleButton.repaint();
+    }
+
     private class ScaleAction extends AbstractAction {
 
+        private MetaEventListener endListener = null;
+
+        // Db major scale: Db4, Eb4, F4, Gb4, Ab4, Bb4, C5, Db5
         private final int[] SCALE = new int[] {
-            60,
-            62,
-            64,
+            61,
+            63,
             65,
-            67,
-            69,
-            71,
+            66,
+            68,
+            70,
             72,
+            73,
         };
 
         ScaleAction() {
-            putValue(NAME, "Play the scales");
+            putValue(SHORT_DESCRIPTION, "Play instrument");
             setEnabled(MidiController.sequencer != null);
         }
 
         @Override
         public void actionPerformed(ActionEvent e) {
             if (MidiController.sequencer == null) {
+                return;
+            }
+
+            if (MidiController.sequencer.isRunning()) {
+                MidiController.sequencer.stop();
+
+                if (endListener != null) {
+                    MidiController.sequencer.removeMetaEventListener(endListener);
+                    endListener = null;
+                }
+
+                setScalePlaying(false);
                 return;
             }
 
@@ -177,6 +218,18 @@ public class InstrumentDialog extends StandardDialog {
 
                 MidiController.sequencer.setSequence(sequence);
                 MidiController.sequencer.setTickPosition(0);
+
+                setScalePlaying(true);
+
+                endListener = message -> {
+                    if (message.getType() == MidiMetaMessageTypes.END_OF_TRACK) {
+                        MidiController.sequencer.removeMetaEventListener(endListener);
+                        endListener = null;
+                        SwingUtilities.invokeLater(() -> setScalePlaying(false));
+                    }
+                };
+
+                MidiController.sequencer.addMetaEventListener(endListener);
                 MidiController.sequencer.start();
             } catch (InvalidMidiDataException ex) {
                 mainFrame.showErrorMessage(
