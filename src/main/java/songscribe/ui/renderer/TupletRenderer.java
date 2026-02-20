@@ -20,13 +20,16 @@
 
 package songscribe.ui.renderer;
 
+import static songscribe.ui.renderer.GraphicsState.Property.COLOR;
+import static songscribe.ui.renderer.GraphicsState.Property.FONT;
+import static songscribe.ui.renderer.GraphicsState.Property.STROKE;
+
 import java.awt.*;
 import java.awt.geom.*;
 
 import org.jetbrains.annotations.NotNull;
 
 import songscribe.music.Line;
-import songscribe.music.Note;
 import songscribe.smufl.EngravingDefaults;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
@@ -34,8 +37,6 @@ import songscribe.smufl.StaffSpaces;
 import songscribe.ui.layout.LayoutStylesheet;
 import songscribe.ui.layout.Tuplet;
 import songscribe.util.GraphicUtils;
-
-import static songscribe.ui.renderer.GraphicsState.Property.*;
 
 /**
  * Renders tuplet brackets with numbers.
@@ -75,13 +76,13 @@ public class TupletRenderer extends BaseElementRenderer<Tuplet> {
     };
 
     // Padding between bracket arm and glyph edge
-    private static final double GAP_PADDING = 2.0;
+    private static final double GAP_PADDING_PX = 2.0;
 
     // Gap from center to left bracket arm end (half advance width + padding)
-    private static final double LEFT_GAP;
+    private static final double LEFT_GAP_PX;
 
     // Gap from center to right bracket arm start (accounts for italic overhang)
-    private static final double RIGHT_GAP;
+    private static final double RIGHT_GAP_PX;
 
     static {
         double advancePx = StaffSpaces.toPixels(METADATA.getAdvanceWidth(SMuFLGlyph.TUPLET_3))
@@ -91,35 +92,35 @@ public class TupletRenderer extends BaseElementRenderer<Tuplet> {
             ? (StaffSpaces.toPixels(bbox.right()) - advancePx) * TUPLET_NUMBER_SCALE
             : 0;
 
-        LEFT_GAP = advancePx / 2.0 + GAP_PADDING;
-        RIGHT_GAP = advancePx / 2.0 + Math.max(rightOverhang, 0) + GAP_PADDING;
+        LEFT_GAP_PX = advancePx / 2.0 + GAP_PADDING_PX;
+        RIGHT_GAP_PX = advancePx / 2.0 + Math.max(rightOverhang, 0) + GAP_PADDING_PX;
     }
 
     // Notehead visual edges relative to the glyph origin
-    private static final double NOTEHEAD_LEFT;
-    private static final double NOTEHEAD_RIGHT;
+    private static final double NOTEHEAD_LEFT_PX;
+    private static final double NOTEHEAD_RIGHT_PX;
 
     // Down-stem noteheads are shifted left by half the stem width in NoteRenderer
-    private static final double DOWN_STEM_NOTEHEAD_SHIFT = NoteRenderer.STEM_WIDTH / 2.0;
+    private static final double DOWN_STEM_NOTEHEAD_SHIFT_SS = NoteRenderer.STEM_WIDTH_SS / 2.0;
 
     static {
         var bbox = METADATA.getBBox(SMuFLGlyph.NOTEHEAD_BLACK);
         assert bbox != null;
-        NOTEHEAD_LEFT = StaffSpaces.toPixels(bbox.left());
-        NOTEHEAD_RIGHT = StaffSpaces.toPixels(bbox.right());
+        NOTEHEAD_LEFT_PX = StaffSpaces.toPixels(bbox.left());
+        NOTEHEAD_RIGHT_PX = StaffSpaces.toPixels(bbox.right());
     }
 
     // End cap length: ~0.5 staff spaces
-    private static final double END_CAP_LENGTH = StaffSpaces.toPixels(0.5);
+    private static final double END_CAP_LENGTH_PX = StaffSpaces.toPixels(0.5);
 
     // Bracket clearance above beams: half beam thickness (to clear outer edge)
     // plus 1.0 staff space gap between beam and bracket
-    private static final double BRACKET_CLEARANCE =
+    private static final double BRACKET_CLEARANCE_PX =
         StaffSpaces.toPixels(ENGRAVING_DEFAULTS.beamThickness() / 2.0 + 1.0);
 
     // Horizontal offset from stem center so the bracket's inner edge
     // aligns with the stem's outer edge: half stem + half bracket
-    private static final double BRACKET_X_OFFSET = Math.ceil(
+    private static final double BRACKET_X_OFFSET_PX = Math.ceil(
         StaffSpaces.toPixels(ENGRAVING_DEFAULTS.stemThickness()) / 2.0
             + LINE_STROKE.getLineWidth() / 2.0);
 
@@ -207,9 +208,9 @@ public class TupletRenderer extends BaseElementRenderer<Tuplet> {
         int startIndex,
         int endIndex,
         int grade,
-        int verticalAdjustment
+        double verticalAdjustment
     ) {
-        int middleLineY = ctx.getMiddleLineY();
+        double middleLineYSs = ctx.getMiddleLineYSs();
 
         // Calculate if there's an odd or even number of notes
         boolean odd = ((endIndex - startIndex + 1) % 2) == 1;
@@ -223,14 +224,14 @@ public class TupletRenderer extends BaseElementRenderer<Tuplet> {
             && line.getBeamings().findInterval(endIndex) != null;
 
         // Top staff line: 4 positions above middle line
-        double staffTopY = middleLineY - 4 * LayoutStylesheet.NOTE_Y_OFFSET;
+        double staffTopY = middleLineYSs - LayoutStylesheet.toPixelsDouble(4 * LayoutStylesheet.NOTE_Y_OFFSET);
 
         // Find the highest extent across ALL notes in the tuplet group
         double highestRefY = staffTopY;
 
         for (var i = startIndex; i <= endIndex; i++) {
             var note = line.getNote(i);
-            double noteY = middleLineY + note.getYPos() * LayoutStylesheet.NOTE_Y_OFFSET;
+            double noteY = middleLineYSs + LayoutStylesheet.toPixelsDouble(note.getStaffPosition() * LayoutStylesheet.NOTE_Y_OFFSET);
             double refY;
 
             if (isUpper) {
@@ -238,7 +239,7 @@ public class TupletRenderer extends BaseElementRenderer<Tuplet> {
                 refY = noteY + note.properties.stem.y2;
             } else {
                 // Stems down: clear notehead tops (approx 1 staff space above note center)
-                refY = noteY - LayoutStylesheet.NOTE_Y_OFFSET;
+                refY = noteY - LayoutStylesheet.toPixelsDouble(LayoutStylesheet.NOTE_Y_OFFSET);
             }
 
             highestRefY = Math.min(highestRefY, refY);
@@ -246,11 +247,11 @@ public class TupletRenderer extends BaseElementRenderer<Tuplet> {
 
         // Horizontal bracket: use the highest extent, but never below staff top
         int bracketY = (int) (Math.min(highestRefY, staffTopY)
-            - BRACKET_CLEARANCE);
+            - BRACKET_CLEARANCE_PX);
 
         // Apply vertical adjustment if any
         if (verticalAdjustment != 0) {
-            bracketY += verticalAdjustment;
+            bracketY += (int) verticalAdjustment;
         }
 
         // X positions and center
@@ -260,8 +261,8 @@ public class TupletRenderer extends BaseElementRenderer<Tuplet> {
 
         if (isUpper) {
             // Stems up: align bracket with stems
-            lx = (int) (firstNote.getXPos() + firstNote.properties.stem.x1 - BRACKET_X_OFFSET);
-            rx = (int) (lastNote.getXPos() + lastNote.properties.stem.x1 + BRACKET_X_OFFSET);
+            lx = (int) (firstNote.getXPos() + firstNote.properties.stem.x1 - BRACKET_X_OFFSET_PX);
+            rx = (int) (lastNote.getXPos() + lastNote.properties.stem.x1 + BRACKET_X_OFFSET_PX);
 
             if (odd) {
                 var centerNote = line.getNote(((endIndex - startIndex) / 2) + startIndex);
@@ -276,9 +277,9 @@ public class TupletRenderer extends BaseElementRenderer<Tuplet> {
         } else {
             // Stems down: align bracket with notehead edges
             // (noteheads are shifted left by DOWN_STEM_NOTEHEAD_SHIFT in NoteRenderer)
-            double noteheadShift = DOWN_STEM_NOTEHEAD_SHIFT;
-            lx = (int) (firstNote.getXPos() - noteheadShift + NOTEHEAD_LEFT);
-            rx = (int) (lastNote.getXPos() - noteheadShift + NOTEHEAD_RIGHT);
+            double noteheadShift = DOWN_STEM_NOTEHEAD_SHIFT_SS;
+            lx = (int) (firstNote.getXPos() - noteheadShift + NOTEHEAD_LEFT_PX);
+            rx = (int) (lastNote.getXPos() - noteheadShift + NOTEHEAD_RIGHT_PX);
             cx = (lx + rx) / 2;
         }
 
@@ -289,7 +290,7 @@ public class TupletRenderer extends BaseElementRenderer<Tuplet> {
 
         // Shift center rightward by half the italic overhang so the number
         // appears visually centered between the bracket endpoints
-        double overhangCompensation = (RIGHT_GAP - LEFT_GAP) / 2.0;
+        double overhangCompensation = (RIGHT_GAP_PX - LEFT_GAP_PX) / 2.0;
         double scx = GraphicUtils.snapXToDevicePixel(g2, cx + overhangCompensation);
 
         try (var ignored = GraphicsState.save(g2, COLOR, STROKE, FONT)) {
@@ -301,17 +302,17 @@ public class TupletRenderer extends BaseElementRenderer<Tuplet> {
                 drawTupletNumber(g2, grade, scx, sby);
             } else {
                 // All other cases: full bracket with end caps pointing down toward notes
-                double capDir = END_CAP_LENGTH;
+                double capDir = END_CAP_LENGTH_PX;
 
                 // Left end cap
                 g2.draw(new Line2D.Double(slx, sby, slx, sby + capDir));
 
                 // Left bracket arm (from left end to gap)
-                double gapLeftX = GraphicUtils.snapXToDevicePixel(g2, scx - LEFT_GAP);
+                double gapLeftX = GraphicUtils.snapXToDevicePixel(g2, scx - LEFT_GAP_PX);
                 g2.draw(new Line2D.Double(slx, sby, gapLeftX, sby));
 
                 // Right bracket arm (from gap to right end)
-                double gapRightX = GraphicUtils.snapXToDevicePixel(g2, scx + RIGHT_GAP);
+                double gapRightX = GraphicUtils.snapXToDevicePixel(g2, scx + RIGHT_GAP_PX);
                 g2.draw(new Line2D.Double(gapRightX, sby, srx, sby));
 
                 // Right end cap

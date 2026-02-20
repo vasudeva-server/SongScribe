@@ -26,7 +26,6 @@ import org.jetbrains.annotations.NotNull;
 
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.ui.layout.Clef;
-import songscribe.ui.layout.LayoutStylesheet;
 
 /**
  * Renders the treble clef at the start of a staff line.
@@ -36,8 +35,8 @@ import songscribe.ui.layout.LayoutStylesheet;
  */
 public class ClefRenderer extends BaseElementRenderer<Clef> {
 
-    /** Standard X position for clef at start of staff. */
-    private static final int CLEF_X_POSITION = 5;
+    /** Standard X position for clef at start of staff, in staff-space units. */
+    private static final double CLEF_X_POSITION_SS = 0.625; // 5px / 8 px/ss
 
     /** Singleton instance. */
     private static final ClefRenderer INSTANCE = new ClefRenderer();
@@ -66,7 +65,7 @@ public class ClefRenderer extends BaseElementRenderer<Clef> {
 
         // The SMuFL G clef origin is on the G line (second line from bottom,
         // one staff space below the middle line)
-        int baseline = ctx.getMiddleLineY() + LayoutStylesheet.STAFF_SPACE;
+        double baseline = ctx.getMiddleLineYSs() + 1.0;
 
         drawBravuraGlyph(g2, SMuFLGlyph.G_CLEF, x, baseline);
     }
@@ -83,7 +82,7 @@ public class ClefRenderer extends BaseElementRenderer<Clef> {
         @NotNull Graphics2D g2,
         @NotNull ElementRenderContext ctx
     ) {
-        int baseline = ctx.getMiddleLineY() + LayoutStylesheet.STAFF_SPACE;
-        drawBravuraGlyph(g2, SMuFLGlyph.G_CLEF, CLEF_X_POSITION, baseline);
+        double baseline = ctx.getMiddleLineYSs() + 1.0;
+        drawBravuraGlyph(g2, SMuFLGlyph.G_CLEF, CLEF_X_POSITION_SS, baseline);
     }
 }

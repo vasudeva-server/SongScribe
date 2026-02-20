@@ -27,6 +27,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import kotlin.Pair;
+
 import songscribe.data.Interval;
 import songscribe.data.TupletInterval;
 import songscribe.data.IntervalSet;
@@ -267,8 +268,8 @@ public final class LineSelectionState {
             }
 
             if (firstPitch == null) {
-                firstPitch = note.getYPos();
-            } else if (note.getYPos() != firstPitch) {
+                firstPitch = note.getStaffPosition();
+            } else if (note.getStaffPosition() != firstPitch) {
                 tieContext = new TieContext(false, null);
                 return false;
             }

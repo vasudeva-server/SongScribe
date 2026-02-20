@@ -20,7 +20,10 @@
 
 package songscribe.ui.renderer;
 
-import java.awt.Graphics2D;
+import static songscribe.ui.renderer.GraphicsState.Property.FONT;
+import static songscribe.ui.renderer.GraphicsState.Property.TRANSFORM;
+
+import java.awt.*;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -29,10 +32,7 @@ import songscribe.music.Note;
 import songscribe.music.NoteType;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
-import songscribe.smufl.StaffSpaces;
 import songscribe.util.GraphicUtils;
-
-import static songscribe.ui.renderer.GraphicsState.Property.*;
 
 /**
  * Renders bar lines and repeat signs using SMuFL/Bravura glyphs.
@@ -51,7 +51,7 @@ public class BarRenderer extends BaseElementRenderer<Note> {
 
     // SMuFL barline glyphs extend upward from their origin at the bottom staff line.
     // From the middle line, the bottom staff line is 2 staff spaces below.
-    private static final double BOTTOM_STAFF_LINE_Y = 2.0 * StaffSpaces.PIXELS_PER_STAFF_SPACE;
+    private static final double BOTTOM_STAFF_LINE_Y_SS = 2.0;
 
     // Singleton instance
     private static final BarRenderer INSTANCE = new BarRenderer();
@@ -85,8 +85,10 @@ public class BarRenderer extends BaseElementRenderer<Note> {
             return;
         }
 
+        double noteX = resolveBarXSs(g2, element, ctx);
+
         try (var ignored = GraphicsState.save(g2, TRANSFORM)) {
-            g2.translate(element.getXPos(), ctx.getMiddleLineY());
+            g2.translate(noteX, ctx.getMiddleLineYSs());
             renderBarLineOrRepeat(g2, noteType);
         }
     }
@@ -101,17 +103,38 @@ public class BarRenderer extends BaseElementRenderer<Note> {
             return;
         }
 
-        double x = computeGlyphX(g2, glyph, noteType);
+        double x = computeGlyphXSs(g2, glyph, noteType);
 
         try (var ignored = GraphicsState.save(g2, FONT)) {
             g2.setFont(BRAVURA_FONT);
-            g2.drawString(glyph.asString(), (float) x, (float) BOTTOM_STAFF_LINE_Y);
+            g2.drawString(glyph.asString(), (float) x, (float) BOTTOM_STAFF_LINE_Y_SS);
         }
     }
 
     // ==========================================================================
     // Helpers
     // ==========================================================================
+
+    /**
+     * Resolves the X coordinate for a barline/repeat from the layout result,
+     * snapped to device pixels for crisp rendering.
+     */
+    private static double resolveBarXSs(
+        @NotNull Graphics2D g2,
+        @NotNull Note note,
+        @NotNull ElementRenderContext ctx
+    ) {
+        double noteX;
+
+        if (ctx.hasOverrideNoteX()) {
+            noteX = ctx.getOverrideNoteXSs();
+        } else {
+            var layoutResult = ctx.getLayoutResult();
+            noteX = (layoutResult != null) ? layoutResult.getNoteXSs(note) : note.getXPos();
+        }
+
+        return GraphicUtils.snapXToDevicePixel(g2, noteX);
+    }
 
     /**
      * Maps a note type to its corresponding SMuFL barline/repeat glyph.
@@ -130,23 +153,24 @@ public class BarRenderer extends BaseElementRenderer<Note> {
     }
 
     /**
-     * Computes the X position for drawing a barline or repeat glyph.
-     * Barlines are right-aligned at {@link Note#NORMAL_IMAGE_WIDTH}.
-     * Repeats are centered in the note image space using the glyph advance width.
+     * Computes the X offset for drawing a barline or repeat glyph
+     * relative to the bar element's layout position.
+     * Barlines are drawn at the origin (layout positions them correctly).
+     * Repeats are centered using the glyph advance width.
      */
-    private static double computeGlyphX(
+    private static double computeGlyphXSs(
         @NotNull Graphics2D g2,
         @NotNull SMuFLGlyph glyph,
         @NotNull NoteType noteType
     ) {
         if (noteType.isBarLine()) {
-            return Note.NORMAL_IMAGE_WIDTH;
+            return 0;
         }
 
-        // Center repeat glyphs in the note image space
+        // Center repeat glyphs around the layout position
         var advanceSS = SMuFLMetadata.getInstance().getAdvanceWidth(glyph);
-        double advancePx = (advanceSS != null) ? StaffSpaces.toPixels(advanceSS) : 0;
-        double x = (Note.NORMAL_IMAGE_WIDTH - advancePx) / 2.0;
+        double advance = (advanceSS != null) ? advanceSS : 0;
+        double x = -advance / 2.0;
 
         return GraphicUtils.snapXToDevicePixel(g2, x);
     }

@@ -20,21 +20,23 @@
 
 package songscribe.ui.layout2;
 
-import java.awt.geom.Point2D;
-import java.util.ArrayList;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.awt.geom.*;
 import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import songscribe.music.ArticulationType;
-import songscribe.music.NoteType;
 import songscribe.music.Line;
 import songscribe.music.Note;
+import songscribe.music.NoteType;
 import songscribe.ui.layout.Articulation;
 import songscribe.ui.layout.FermataAttachment;
-
-import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Tests for {@link VerticalStackingCalculator}.
@@ -64,9 +66,9 @@ public class VerticalStackingCalculatorTest {
 
         assertNotNull(result);
         assertEquals(1, result.getElementPositions().size());
-        assertTrue(result.getMaxHeightAboveStaff() <= 0);
-        assertTrue(result.getLyricsBaselineY() > 0);
-        assertTrue(result.getLineHeight() > 0);
+        assertTrue(result.getMaxHeightAboveStaffPx() <= 0);
+        assertTrue(result.getLyricsBaselineYPx() > 0);
+        assertTrue(result.getLineHeightPx() > 0);
     }
 
     /**
@@ -90,11 +92,11 @@ public class VerticalStackingCalculatorTest {
         assertNotNull(articulationPos);
 
         // Articulation should be above the note (negative Y)
-        assertTrue(articulationPos.getY() < column.getStemTop());
+        assertTrue(articulationPos.getY() < column.getStemTopSs());
 
         // Should have proper margin
-        var expectedMargin = LayoutConstants.px(LayoutConstants.ARTICULATION_MARGIN);
-        var actualMargin = column.getStemTop() - articulationPos.getY() - articulation.getContentHeight();
+        var expectedMargin = LayoutConstants.toPixels(LayoutConstants.ARTICULATION_MARGIN_SS);
+        var actualMargin = column.getStemTopSs() - articulationPos.getY() - articulation.getContentHeight();
         assertTrue(actualMargin >= expectedMargin - 0.1);
     }
 
@@ -123,8 +125,8 @@ public class VerticalStackingCalculatorTest {
         assertNotNull(accentPos);
 
         // Both should be above the note
-        assertTrue(staccatoPos.getY() < column.getStemTop());
-        assertTrue(accentPos.getY() < column.getStemTop());
+        assertTrue(staccatoPos.getY() < column.getStemTopSs());
+        assertTrue(accentPos.getY() < column.getStemTopSs());
 
         // Should be stacked (one above the other)
         assertNotEquals(staccatoPos.getY(), accentPos.getY());
@@ -149,7 +151,7 @@ public class VerticalStackingCalculatorTest {
         assertNotNull(fermataPos);
 
         // Fermata should be above the note
-        assertTrue(fermataPos.getY() < column.getStemTop());
+        assertTrue(fermataPos.getY() < column.getStemTopSs());
     }
 
     /**
@@ -169,7 +171,7 @@ public class VerticalStackingCalculatorTest {
         assertNotNull(result);
 
         // Should have space reserved above note
-        assertTrue(result.getMaxHeightAboveStaff() < 0);
+        assertTrue(result.getMaxHeightAboveStaffPx() < 0);
     }
 
     /**
@@ -189,7 +191,7 @@ public class VerticalStackingCalculatorTest {
         assertNotNull(result);
 
         // Should have space reserved above note
-        assertTrue(result.getMaxHeightAboveStaff() < 0);
+        assertTrue(result.getMaxHeightAboveStaffPx() < 0);
     }
 
     /**
@@ -217,13 +219,13 @@ public class VerticalStackingCalculatorTest {
         assertNotNull(fermataPos);
 
         // Articulation should be above note
-        assertTrue(articulationPos.getY() < column.getStemTop());
+        assertTrue(articulationPos.getY() < column.getStemTopSs());
 
         // Fermata should be above articulation
         assertTrue(fermataPos.getY() < articulationPos.getY());
 
         // Should maintain proper stacking order
-        var noteTop = column.getStemTop();
+        var noteTop = column.getStemTopSs();
         var artTop = articulationPos.getY();
         var fermataTop = fermataPos.getY();
 
@@ -244,11 +246,11 @@ public class VerticalStackingCalculatorTest {
         var result = calculator.calculateVerticalPositions(columns, line, null);
 
         // Line height should be at least the staff height
-        assertTrue(result.getLineHeight() >= LayoutConstants.STAFF_HEIGHT);
+        assertTrue(result.getLineHeightPx() >= LayoutConstants.toPixels(LayoutConstants.STAFF_HEIGHT_SS));
 
         // Should include space above staff
-        var expectedHeight = LayoutConstants.STAFF_HEIGHT + Math.abs(result.getMaxHeightAboveStaff());
-        assertTrue(result.getLineHeight() >= expectedHeight);
+        var expectedHeight = LayoutConstants.toPixels(LayoutConstants.STAFF_HEIGHT_SS) + Math.abs(result.getMaxHeightAboveStaffPx());
+        assertTrue(result.getLineHeightPx() >= expectedHeight);
     }
 
     /**
@@ -264,11 +266,11 @@ public class VerticalStackingCalculatorTest {
         var result = calculator.calculateVerticalPositions(columns, line, null);
 
         // Lyrics baseline should be below the staff
-        assertTrue(result.getLyricsBaselineY() > LayoutConstants.STAFF_HEIGHT);
+        assertTrue(result.getLyricsBaselineYPx() > LayoutConstants.toPixels(LayoutConstants.STAFF_HEIGHT_SS));
 
         // Should be approximately LYRICS_BASELINE_OFFSET below note
-        var expectedBaseline = column.getStemBottom() + LayoutConstants.px(LayoutConstants.LYRICS_BASELINE_OFFSET);
-        assertEquals(expectedBaseline, result.getLyricsBaselineY(), 1.0);
+        var expectedBaseline = column.getStemBottomSs() + LayoutConstants.toPixels(LayoutConstants.LYRICS_BASELINE_OFFSET_SS);
+        assertEquals(expectedBaseline, result.getLyricsBaselineYPx(), 1.0);
     }
 
     /**
@@ -359,7 +361,7 @@ public class VerticalStackingCalculatorTest {
         assertNotNull(result);
 
         // Should have space for both trill and articulation
-        assertTrue(result.getMaxHeightAboveStaff() < 0);
+        assertTrue(result.getMaxHeightAboveStaffPx() < 0);
 
         var artPos = result.getElementPosition(note, articulation);
         assertNotNull(artPos);
@@ -374,7 +376,7 @@ public class VerticalStackingCalculatorTest {
      */
     private Note createNote() {
         var note = NoteType.CROTCHET.newInstance();
-        note.setYPos(2); // Middle of staff
+        note.setStaffPosition(2); // Middle of staff
         return note;
     }
 
@@ -399,29 +401,29 @@ public class VerticalStackingCalculatorTest {
      */
     private NoteColumn createColumn(Note note, double x, String syllable) {
         // Calculate extents (simplified)
-        var leftExtent = -4.0;  // Half note head width
-        var rightExtent = 4.0;
+        var leftExtentSs = -4.0;  // Half note head width
+        var rightExtentSs = 4.0;
 
         // Calculate stem positions (simplified)
         // Staff is 32px tall, note at middle would be around y=16
         // Stem goes up for this note, so stemTop is above note, stemBottom is at note
-        var stemTop = 10.0;  // Top of stem (above the note head)
-        var stemBottom = 40.0; // Bottom of stem (at note head, below staff)
+        var stemTopSs = 10.0;  // Top of stem (above the note head)
+        var stemBottomSs = 40.0; // Bottom of stem (at note head, below staff)
 
         var column = new NoteColumn(
-                note,
-                List.of(),
-                leftExtent,
-                rightExtent,
-                stemTop,
-                stemBottom,
-                syllable,
-                syllable != null ? 30.0 : 0.0,
-                null
+            note,
+            List.of(),
+            leftExtentSs,
+            rightExtentSs,
+            stemTopSs,
+            stemBottomSs,
+            syllable,
+            syllable != null ? 30.0 : 0.0,
+            null
         );
 
         // Set X position (simulating HorizontalSpacingCalculator)
-        column.setX(x);
+        column.setXSs(x);
 
         return column;
     }
@@ -437,6 +439,6 @@ public class VerticalStackingCalculatorTest {
     private void assertElementY(Point2D position, double expectedY, double tolerance, String elementName) {
         assertNotNull(position, elementName + " position should not be null");
         assertEquals(expectedY, position.getY(), tolerance,
-                     elementName + " Y position should be within tolerance");
+            elementName + " Y position should be within tolerance");
     }
 }

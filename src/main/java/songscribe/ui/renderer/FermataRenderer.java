@@ -20,7 +20,7 @@
 
 package songscribe.ui.renderer;
 
-import java.awt.Graphics2D;
+import java.awt.*;
 
 import org.jetbrains.annotations.NotNull;
 
@@ -45,13 +45,13 @@ public class FermataRenderer extends BaseElementRenderer<Note> {
     // ==========================================================================
 
     // SMuFL bbox-derived fermata dimensions (in pixels) for positioning.
-    private static final double FERMATA_WIDTH;
-    private static final double FERMATA_HEIGHT;
+    private static final double FERMATA_WIDTH_PX;
+    private static final double FERMATA_HEIGHT_PX;
 
     static {
         var bbox = SMuFLMetadata.getInstance().getBBox(SMuFLGlyph.FERMATA_ABOVE);
-        FERMATA_WIDTH = StaffSpaces.toPixels(bbox.width());
-        FERMATA_HEIGHT = StaffSpaces.toPixels(bbox.height());
+        FERMATA_WIDTH_PX = StaffSpaces.toPixels(bbox.width());
+        FERMATA_HEIGHT_PX = StaffSpaces.toPixels(bbox.height());
     }
 
     // Singleton instance
@@ -85,17 +85,17 @@ public class FermataRenderer extends BaseElementRenderer<Note> {
         }
 
         int noteX = element.getXPos();
-        int fermataY = getEffectiveFermataYPos(element, ctx);
+        int fermataY = getEffectiveFermataYPosPx(element, ctx);
 
         // Center horizontally over the notehead
         double noteHeadHalfWidth = BaseElementRenderer.NOTE_FONT_SIZE / 3.6056337d / 2.0;
         double x = GraphicUtils.snapXToDevicePixel(
-            g2, noteX + noteHeadHalfWidth - FERMATA_WIDTH / 2.0
+            g2, noteX + noteHeadHalfWidth - FERMATA_WIDTH_PX / 2.0
         );
 
         // SMuFL fermata glyph origin is at the baseline (bottom of glyph).
         // fermataY is the top of the fermata, so offset down by the full height.
-        double y = fermataY + FERMATA_HEIGHT;
+        double y = fermataY + FERMATA_HEIGHT_PX;
 
         drawBravuraGlyph(g2, SMuFLGlyph.FERMATA_ABOVE, x, y);
     }
@@ -105,7 +105,7 @@ public class FermataRenderer extends BaseElementRenderer<Note> {
      * falling back to a computed position when no layout is available
      * (e.g. for the insertion note preview).
      */
-    private int getEffectiveFermataYPos(
+    private int getEffectiveFermataYPosPx(
         @NotNull Note note,
         @NotNull ElementRenderContext ctx
     ) {
@@ -121,7 +121,7 @@ public class FermataRenderer extends BaseElementRenderer<Note> {
 
         // Fallback: compute position directly from note position
         int fermataYPos = getFermataYPos(note);
-        return ctx.getMiddleLineY() + (int) (fermataYPos * LayoutStylesheet.NOTE_Y_OFFSET);
+        return (int) (ctx.getMiddleLineYSs() + LayoutStylesheet.toPixels(fermataYPos * LayoutStylesheet.NOTE_Y_OFFSET));
     }
 
     /**
@@ -144,7 +144,7 @@ public class FermataRenderer extends BaseElementRenderer<Note> {
      * Fermata is placed above the note, further up for higher notes.
      */
     private int getFermataYPos(@NotNull Note note) {
-        int yPos = note.getYPos();
+        int yPos = note.getStaffPosition();
 
         // For notes above the staff, place fermata higher
         if (yPos < -4) {

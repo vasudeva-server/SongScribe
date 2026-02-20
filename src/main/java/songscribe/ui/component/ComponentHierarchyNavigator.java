@@ -97,10 +97,10 @@ public final class ComponentHierarchyNavigator {
         var staffPanelY = staffPanel.getY();
         var mainPanelY = mainPanel.getY();
         var lineComponentY = lineComponent.getY();
-        var componentMiddleLineY = lineComponent.getMiddleLineY();
+        var componentMiddleLineYPx = lineComponent.getMiddleLineYPx();
 
         // The middleLineY is relative to the LineComponent, so we need to add the offsets
-        return mainPanelY + staffPanelY + linePanelY + lineComponentY + componentMiddleLineY;
+        return mainPanelY + staffPanelY + linePanelY + lineComponentY + componentMiddleLineYPx;
     }
 
     /**
@@ -114,13 +114,13 @@ public final class ComponentHierarchyNavigator {
         var composition = provider.getComposition();
 
         if (mainPanel == null) {
-            return (y - composition.getTopPadding()) / rowHeight;
+            return (int) (y - composition.getTopPadding()) / rowHeight;
         }
 
         var staffPanel = mainPanel.getStaffPanel();
 
         if (staffPanel == null) {
-            return (y - composition.getTopPadding()) / rowHeight;
+            return (int) (y - composition.getTopPadding()) / rowHeight;
         }
 
         // Convert Score Y to StaffPanel Y
@@ -199,7 +199,7 @@ public final class ComponentHierarchyNavigator {
         } else {
             var linePanel = linePanels.get(0);
             rowHeight = linePanel.getLineComponent().getHeight()
-                + LayoutStylesheet.px(LayoutStylesheet.LINE_MARGIN_BOTTOM_MU);
+                + LayoutStylesheet.toPixels(LayoutStylesheet.LINE_MARGIN_BOTTOM);
         }
 
         layoutUpdater.accept(new int[]{middleLineY, rowHeight});

@@ -20,11 +20,12 @@
 
 package songscribe.ui.renderer;
 
-import java.awt.Graphics2D;
+import static songscribe.ui.renderer.GraphicsState.Property.COLOR;
+import static songscribe.ui.renderer.GraphicsState.Property.FONT;
+
+import java.awt.*;
 
 import org.jetbrains.annotations.NotNull;
-
-import static songscribe.ui.renderer.GraphicsState.Property.*;
 
 import songscribe.music.Note;
 import songscribe.ui.layout.AnnotationAttachment;
@@ -42,7 +43,7 @@ public class AnnotationRenderer extends BaseElementRenderer<Note> {
     // ==========================================================================
 
     // Crotchet width for positioning
-    private static final double CROTCHET_WIDTH = BaseElementRenderer.NOTE_FONT_SIZE / 3.6056337d;
+    private static final double CROTCHET_WIDTH_PX = BaseElementRenderer.NOTE_FONT_SIZE / 3.6056337d;
 
     // Singleton instance
     private static final AnnotationRenderer INSTANCE = new AnnotationRenderer();
@@ -89,8 +90,8 @@ public class AnnotationRenderer extends BaseElementRenderer<Note> {
             g2.setColor(NOTE_COLOR);
 
             // Calculate position
-            float x = (float) getAnnotationXPos(g2, element);
-            float y = getAnnotationYPos(element, ctx);
+            float x = (float) getAnnotationXPosPx(g2, element);
+            float y = getAnnotationYPosPx(element, ctx);
 
             // Draw the annotation text
             var text = annotation.getAnnotation();
@@ -116,7 +117,7 @@ public class AnnotationRenderer extends BaseElementRenderer<Note> {
     /**
      * Calculates the X position for an annotation, centering it over the note.
      */
-    private double getAnnotationXPos(@NotNull Graphics2D g2, @NotNull Note note) {
+    private double getAnnotationXPosPx(@NotNull Graphics2D g2, @NotNull Note note) {
         var annotation = note.getAnnotation();
 
         if (annotation == null) {
@@ -127,13 +128,13 @@ public class AnnotationRenderer extends BaseElementRenderer<Note> {
         var textWidth = g2.getFontMetrics().stringWidth(text);
 
         // Center annotation over note
-        return note.getXPos() + (CROTCHET_WIDTH / 2) - (textWidth / 2.0);
+        return note.getXPos() + (CROTCHET_WIDTH_PX / 2) - (textWidth / 2.0);
     }
 
     /**
      * Gets the Y position for an annotation from layout result.
      */
-    private float getAnnotationYPos(
+    private float getAnnotationYPosPx(
         @NotNull Note note,
         @NotNull ElementRenderContext ctx
     ) {

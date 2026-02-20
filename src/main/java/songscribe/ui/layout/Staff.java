@@ -64,14 +64,14 @@ public class Staff extends LineElement {
 
     @Override
     public double getContentHeight() {
-        return LayoutStylesheet.STAFF_HEIGHT;
+        return LayoutStylesheet.toPixelsDouble(LayoutStylesheet.STAFF_HEIGHT);
     }
 
     /**
      * Returns the Y offset between staff lines.
      */
     public int getLineSpacing() {
-        return LayoutStylesheet.STAFF_SPACE;
+        return LayoutStylesheet.toPixels(1.0);
     }
 
     /**
@@ -92,14 +92,14 @@ public class Staff extends LineElement {
      * Returns the Y coordinate of the bottom staff line relative to staff position.
      */
     public double getBottomLineY() {
-        return (LayoutStylesheet.STAFF_LINE_COUNT - 1) * LayoutStylesheet.STAFF_SPACE;
+        return LayoutStylesheet.toPixelsDouble((LayoutStylesheet.STAFF_LINE_COUNT - 1) * 1.0);
     }
 
     /**
      * Returns the Y coordinate of the middle staff line (B line) relative to staff position.
      */
     public double getMiddleLineY() {
-        return 2 * LayoutStylesheet.STAFF_SPACE;
+        return LayoutStylesheet.toPixelsDouble(2.0);
     }
 
     /**
@@ -113,6 +113,6 @@ public class Staff extends LineElement {
             throw new IndexOutOfBoundsException("Staff line index must be 0-4, got: " + lineIndex);
         }
 
-        return lineIndex * LayoutStylesheet.STAFF_SPACE;
+        return LayoutStylesheet.toPixelsDouble(lineIndex);
     }
 }

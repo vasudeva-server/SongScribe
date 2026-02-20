@@ -23,9 +23,9 @@ package songscribe.ui.layout2;
 /**
  * Centralized layout constants for the engraving system.
  * <p>
- * All spacing values are defined in MU (measure units), where 1 MU = 4 pixels.
- * This follows the Gould/Ross principle that spacing is non-proportional and
- * lyric-driven rather than based on rhythmic duration.
+ * All spacing values are in staff-space (ss) units, where 1 ss equals
+ * the distance between two adjacent staff lines. The conversion to pixels
+ * is handled by {@link ScaleContext} (default: 1 ss = 8 px).
  * <p>
  * Key principles from Gould/Ross:
  * <ul>
@@ -42,32 +42,21 @@ public final class LayoutConstants {
     }
 
     // ==========================================================================
-    // BASE UNIT
+    // PIXEL CONVERSION (bridge for callers not yet converted to ss)
     // ==========================================================================
 
     /**
-     * Base measure unit: 1 MU = 4 pixels.
-     */
-    public static final double MU = 4.0;
-
-    /**
-     * Converts measure units to pixels.
+     * Converts staff-space units to pixels using the current {@link ScaleContext}.
+     * <p>
+     * This is a transitional bridge method. Once all layout pipeline code
+     * operates in staff-space units (Milestone 1, Phase 4), this method
+     * will be removed.
      *
-     * @param mu Value in measure units
+     * @param ss Value in staff-space units
      * @return Value in pixels
      */
-    public static double px(double mu) {
-        return mu * MU;
-    }
-
-    /**
-     * Converts measure units to pixels, rounded to nearest integer.
-     *
-     * @param mu Value in measure units
-     * @return Value in pixels (rounded)
-     */
-    public static int pxInt(double mu) {
-        return (int) Math.round(mu * MU);
+    public static double toPixels(double ss) {
+        return ScaleContext.getInstance().toPixels(ss);
     }
 
     // ==========================================================================
@@ -77,30 +66,29 @@ public final class LayoutConstants {
     /**
      * Width of the treble clef symbol.
      */
-    public static final double CLEF_WIDTH = 28.0;  // px
+    public static final double CLEF_WIDTH_SS = 3.5;  // 28px
 
     /**
      * Width of each accidental in the key signature.
      */
-    public static final double KEY_ACCIDENTAL_WIDTH = 8.0;  // px
+    public static final double KEY_ACCIDENTAL_WIDTH_SS = 1.0;  // 8px
 
     /**
      * Distance from right extent of clef/key signature to first note column.
      * Per Gould/Ross: provides visual separation between staff beginning and music.
      */
-    public static final double FIRST_NOTE_OFFSET = 7;  // 28px
+    public static final double FIRST_NOTE_OFFSET_SS = 3.5;  // 28px
 
     /**
-     * Calculates the X position of the first note in a line.
+     * Calculates the X position of the first note in a line, in staff-space units.
      * <p>
      * Formula: clefWidth + keySignatureWidth + FIRST_NOTE_OFFSET
      *
      * @param keyAccidentalCount Number of accidentals in the key signature
-     * @return X position in pixels where the first note should be placed
+     * @return X position in staff-space units where the first note should be placed
      */
-    public static double calculateFirstNoteX(int keyAccidentalCount) {
-        double keySignatureWidth = keyAccidentalCount * KEY_ACCIDENTAL_WIDTH;
-        return CLEF_WIDTH + keySignatureWidth + px(FIRST_NOTE_OFFSET);
+    public static double calculateFirstNoteXSs(int keyAccidentalCount) {
+        return CLEF_WIDTH_SS + keyAccidentalCount * KEY_ACCIDENTAL_WIDTH_SS + FIRST_NOTE_OFFSET_SS;
     }
 
     // ==========================================================================
@@ -111,26 +99,26 @@ public final class LayoutConstants {
      * Minimum horizontal gap between adjacent note columns.
      * This is the absolute minimum; lyric spacing may require more.
      */
-    public static final double MIN_COLUMN_GAP = 0.25;  // 1px
+    public static final double MIN_COLUMN_GAP_SS = 0.125;  // 1px
 
     /**
      * Default horizontal gap between adjacent note columns when no lyrics are present.
      * Provides comfortable spacing for music without lyrics.
      */
-    public static final double DEFAULT_COLUMN_GAP = 3.0;  // 12px
+    public static final double DEFAULT_COLUMN_GAP_SS = 1.5;  // 12px
 
     /**
      * Minimum horizontal gap between syllables.
      * This ensures lyric text remains readable.
      * Note: This value will be tuned empirically during implementation.
      */
-    public static final double MIN_SYLLABLE_GAP = 0.5;  // 2px (TBD)
+    public static final double MIN_SYLLABLE_GAP_SS = 0.25;  // 2px (TBD)
 
     /**
      * Minimum clearance for accidentals from previous column's right extent.
      * Accidentals only push spacing when this minimum would be violated.
      */
-    public static final double ACCIDENTAL_CLEARANCE = 0.25;  // 1px
+    public static final double ACCIDENTAL_CLEARANCE_SS = 0.125;  // 1px
 
     // ==========================================================================
     // HORIZONTAL SPACING - Grace Notes
@@ -141,12 +129,12 @@ public final class LayoutConstants {
      * They must not push earlier notes leftward.
      * If insufficient space, grace notes compress (they are subordinate).
      */
-    public static final double GRACE_NOTE_MIN_WIDTH = 2.0;  // 8px per grace note
+    public static final double GRACE_NOTE_MIN_WIDTH_SS = 1.0;  // 8px per grace note
 
     /**
      * Gap between grace notes in a group.
      */
-    public static final double GRACE_NOTE_GAP = 0.5;  // 2px
+    public static final double GRACE_NOTE_GAP_SS = 0.25;  // 2px
 
     // ==========================================================================
     // HORIZONTAL SPACING - Beam Groups
@@ -156,12 +144,12 @@ public final class LayoutConstants {
      * Minimum internal spacing within a beam group (tight, regular spacing).
      * Beam groups may widen if lyrics under them require it.
      */
-    public static final double BEAM_GROUP_MIN_INTERNAL_GAP = 3.0;  // 12px
+    public static final double BEAM_GROUP_MIN_INTERNAL_GAP_SS = 1.5;  // 12px
 
     /**
      * Minimum gap between adjacent beam groups or between a beam group and a rest.
      */
-    public static final double BEAM_GROUP_EXTERNAL_GAP = 1.0;  // 4px
+    public static final double BEAM_GROUP_EXTERNAL_GAP_SS = 0.5;  // 4px
 
     // ==========================================================================
     // HORIZONTAL SPACING - Barlines
@@ -170,12 +158,12 @@ public final class LayoutConstants {
     /**
      * Space before a barline.
      */
-    public static final double BARLINE_GAP_BEFORE = 2.0;  // 8px
+    public static final double BARLINE_GAP_BEFORE_SS = 1.0;  // 8px
 
     /**
      * Space after a barline.
      */
-    public static final double BARLINE_GAP_AFTER = 3.0;  // 12px
+    public static final double BARLINE_GAP_AFTER_SS = 1.5;  // 12px
 
     // ==========================================================================
     // HORIZONTAL SPACING - Breath Marks
@@ -185,7 +173,7 @@ public final class LayoutConstants {
      * Slight space after a note with a breath mark.
      * Breath marks participate lightly in spacing.
      */
-    public static final double BREATH_MARK_GAP = 0.5;  // 2px
+    public static final double BREATH_MARK_GAP_SS = 0.25;  // 2px
 
     // ==========================================================================
     // VERTICAL STACKING - Layer Margins
@@ -194,42 +182,42 @@ public final class LayoutConstants {
     /**
      * Margin from note bounds to articulations layer.
      */
-    public static final double ARTICULATION_MARGIN = 1.0;  // 4px
+    public static final double ARTICULATION_MARGIN_SS = 0.5;  // 4px
 
     /**
      * Margin from articulations to trill layer.
      */
-    public static final double TRILL_MARGIN = 0.5;  // 2px
+    public static final double TRILL_MARGIN_SS = 0.25;  // 2px
 
     /**
      * Margin from trill to fermata layer.
      */
-    public static final double FERMATA_MARGIN = 0.5;  // 2px
+    public static final double FERMATA_MARGIN_SS = 0.25;  // 2px
 
     /**
      * Margin from fermata to dynamics layer.
      */
-    public static final double DYNAMICS_MARGIN = 0.5;  // 2px
+    public static final double DYNAMICS_MARGIN_SS = 0.25;  // 2px
 
     /**
      * Margin from dynamics to endings layer.
      */
-    public static final double ENDING_MARGIN = 1.0;  // 4px
+    public static final double ENDING_MARGIN_SS = 0.5;  // 4px
 
     /**
      * Margin from endings to tempo layer.
      */
-    public static final double TEMPO_MARGIN = 1.0;  // 4px
+    public static final double TEMPO_MARGIN_SS = 0.5;  // 4px
 
     /**
      * Margin from tempo to annotations layer.
      */
-    public static final double ANNOTATION_MARGIN = 0.5;  // 2px
+    public static final double ANNOTATION_MARGIN_SS = 0.25;  // 2px
 
     /**
      * Margin from annotations to attribution layer.
      */
-    public static final double ATTRIBUTION_MARGIN = 1.0;  // 4px
+    public static final double ATTRIBUTION_MARGIN_SS = 0.5;  // 4px
 
     // ==========================================================================
     // VERTICAL STACKING - Lyrics
@@ -237,18 +225,13 @@ public final class LayoutConstants {
 
     /**
      * Distance from lowest note bounding area to lyrics baseline (ascent).
-     * Per plan: lyrics are below the staff, 2.5 MU below lowest note bounding area.
+     * Per plan: lyrics are below the staff, below lowest note bounding area.
      */
-    public static final double LYRICS_BASELINE_OFFSET = 2.5;  // 10px
+    public static final double LYRICS_BASELINE_OFFSET_SS = 1.25;  // 10px
 
     // ==========================================================================
     // STAFF DIMENSIONS
     // ==========================================================================
-
-    /**
-     * Pixels between staff lines.
-     */
-    public static final int STAFF_LINE_SPACING = 8;
 
     /**
      * Number of staff lines.
@@ -256,9 +239,9 @@ public final class LayoutConstants {
     public static final int STAFF_LINE_COUNT = 5;
 
     /**
-     * Total height of the 5-line staff (4 gaps).
+     * Total height of the 5-line staff (4 gaps of 1 ss each).
      */
-    public static final int STAFF_HEIGHT = (STAFF_LINE_COUNT - 1) * STAFF_LINE_SPACING;  // 32px
+    public static final double STAFF_HEIGHT_SS = 4.0;  // 32px
 
     // ==========================================================================
     // LINE JUSTIFICATION
@@ -274,10 +257,10 @@ public final class LayoutConstants {
      * Absolute minimum column gap during compression.
      * Even under maximum compression, gaps cannot go below this.
      */
-    public static final double COMPRESSED_MIN_COLUMN_GAP = 0.25;  // 1px
+    public static final double COMPRESSED_MIN_COLUMN_GAP_SS = 0.125;  // 1px
 
     /**
      * Absolute minimum syllable gap during compression.
      */
-    public static final double COMPRESSED_MIN_SYLLABLE_GAP = 0.25;  // 1px
+    public static final double COMPRESSED_MIN_SYLLABLE_GAP_SS = 0.125;  // 1px
 }

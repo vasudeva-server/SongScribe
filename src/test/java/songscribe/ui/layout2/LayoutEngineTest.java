@@ -36,11 +36,10 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
-import songscribe.music.NoteType;
 import songscribe.music.KeyType;
 import songscribe.music.Line;
 import songscribe.music.Note;
-
+import songscribe.music.NoteType;
 import songscribe.ui.layout.BeamGroup;
 
 @DisplayName("LayoutEngine Integration Tests")
@@ -56,7 +55,7 @@ class LayoutEngineTest {
         var image = new BufferedImage(100, 100, BufferedImage.TYPE_INT_ARGB);
         g2 = image.createGraphics();
         lyricsFont = new Font("SansSerif", Font.PLAIN, 12);
-        staffRightMargin = 500.0;
+        staffRightMargin = 62.5;  // 500px / 8.0 ppss
 
         engine = new LayoutEngine(g2, lyricsFont, staffRightMargin);
     }
@@ -107,15 +106,15 @@ class LayoutEngineTest {
         assertNotNull(result, "Layout result should not be null");
         assertEquals(line.noteCount(), result.getNoteColumnCount(),
             "Result should contain a column for each note");
-        assertTrue(result.getLineHeight() > 0, "Line height should be positive");
-        assertTrue(result.getStaffBottomY() > result.getStaffTopY(),
+        assertTrue(result.getLineHeightSs() > 0, "Line height should be positive");
+        assertTrue(result.getStaffBottomYSs() > result.getStaffTopYSs(),
             "Staff bottom should be below staff top");
     }
 
     private void assertNotePositioned(LayoutResult result, Note note) {
         var column = result.getNoteColumn(note);
         assertNotNull(column, "Note should have a column in result");
-        assertTrue(column.getX() > 0, "Note X position should be positive");
+        assertTrue(column.getXSs() > 0, "Note X position should be positive");
     }
 
     private void assertNotesMonotonicallyIncreasing(LayoutResult result, List<Note> notes) {
@@ -123,7 +122,7 @@ class LayoutEngineTest {
 
         for (var i = 0; i < notes.size(); i++) {
             var note = notes.get(i);
-            var x = result.getNoteX(note);
+            var x = result.getNoteXSs(note);
             assertTrue(x > prevX,
                 String.format("Note %d (x=%.2f) should be right of previous note (x=%.2f)",
                     i, x, prevX));
@@ -137,8 +136,8 @@ class LayoutEngineTest {
         assertNotNull(col1);
         assertNotNull(col2);
 
-        double gap = col2.getLeftEdgeX() - col1.getRightEdgeX();
-        double minGap = LayoutConstants.px(LayoutConstants.MIN_COLUMN_GAP);
+        double gap = col2.getLeftEdgeXSs() - col1.getRightEdgeXSs();
+        double minGap = LayoutConstants.MIN_COLUMN_GAP_SS;
 
         assertTrue(gap >= minGap - 0.01,
             String.format("Gap between notes (%.2f) should be >= minimum (%.2f)",
@@ -162,7 +161,7 @@ class LayoutEngineTest {
 
             assertNotNull(result);
             assertEquals(0, result.getNoteColumnCount());
-            assertTrue(result.getLineHeight() > 0);
+            assertTrue(result.getLineHeightSs() > 0);
             assertNull(engine.getLastError());
         }
 
@@ -175,7 +174,7 @@ class LayoutEngineTest {
 
             assertNotNull(result);
             assertEquals(0, result.getNoteColumnCount());
-            assertTrue(result.getLineHeight() > 0);
+            assertTrue(result.getLineHeightSs() > 0);
             assertNull(engine.getLastError());
         }
     }
@@ -217,7 +216,7 @@ class LayoutEngineTest {
             var column = result.getNoteColumn(note);
             assertTrue(column.hasSyllable(), "Note should have syllable");
             assertEquals("Hello", column.getSyllable());
-            assertTrue(result.getLyricBaselineY() > 0,
+            assertTrue(result.getLyricBaselineYSs() > 0,
                 "Lyric baseline should be positive");
             assertNull(engine.getLastError());
         }
@@ -235,7 +234,7 @@ class LayoutEngineTest {
             assertNotePositioned(result, note);
 
             var column = result.getNoteColumn(note);
-            assertTrue(column.getLeftExtent() < -9.0,
+            assertTrue(column.getLeftExtentSs() < -NoteColumnBuilder.HALF_NOTE_HEAD_SS,
                 "Left extent should include accidental width");
             assertNull(engine.getLastError());
         }
@@ -253,7 +252,7 @@ class LayoutEngineTest {
             assertNotePositioned(result, note);
 
             var column = result.getNoteColumn(note);
-            assertTrue(column.getRightExtent() > 9.0,
+            assertTrue(column.getRightExtentSs() > NoteColumnBuilder.HALF_NOTE_HEAD_SS,
                 "Right extent should include dot widths");
             assertNull(engine.getLastError());
         }
@@ -318,10 +317,10 @@ class LayoutEngineTest {
             assertTrue(col2.hasSyllable());
             assertTrue(col3.hasSyllable());
 
-            double spacing = col2.getX() - col1.getX();
-            double minSpacing = col1.getRightExtent() +
-                LayoutConstants.px(LayoutConstants.MIN_COLUMN_GAP) +
-                Math.abs(col2.getLeftExtent());
+            double spacing = col2.getXSs() - col1.getXSs();
+            double minSpacing = col1.getRightExtentSs() +
+                LayoutConstants.MIN_COLUMN_GAP_SS +
+                Math.abs(col2.getLeftExtentSs());
 
             assertTrue(spacing >= minSpacing,
                 "Lyric spacing should be at least minimum note spacing");
@@ -400,8 +399,8 @@ class LayoutEngineTest {
 
             var col1 = result.getNoteColumn(note1);
             var col2 = result.getNoteColumn(note2);
-            double clearance = col2.getLeftEdgeX() - col1.getRightEdgeX();
-            double minClearance = LayoutConstants.px(LayoutConstants.ACCIDENTAL_CLEARANCE);
+            double clearance = col2.getLeftEdgeXSs() - col1.getRightEdgeXSs();
+            double minClearance = LayoutConstants.ACCIDENTAL_CLEARANCE_SS;
 
             assertTrue(clearance >= minClearance - 0.01,
                 "Accidental should have proper clearance");
@@ -491,10 +490,9 @@ class LayoutEngineTest {
             assertLayoutResultValid(result, line);
 
             var col1 = result.getNoteColumn(note1);
-            double expectedMinX = 28.0 + (3 * 8.0) +
-                LayoutConstants.px(LayoutConstants.FIRST_NOTE_OFFSET);
+            double expectedMinX = LayoutConstants.calculateFirstNoteXSs(3);
 
-            assertTrue(col1.getX() >= expectedMinX - 0.01,
+            assertTrue(col1.getXSs() >= expectedMinX - 0.01,
                 "First note should account for key signature width");
             assertNull(engine.getLastError());
         }
@@ -533,7 +531,7 @@ class LayoutEngineTest {
                 assertNotePositioned(result, line.getNote(i));
             }
 
-            assertTrue(result.getLineWidth() < staffRightMargin,
+            assertTrue(result.getLineWidthSs() < staffRightMargin,
                 "Line should fit within margin");
             assertNull(engine.getLastError());
         }
@@ -550,7 +548,7 @@ class LayoutEngineTest {
         @Test
         @DisplayName("line that cannot fit within margin returns null")
         void lineTooWide() {
-            var tinyMargin = 100.0;
+            var tinyMargin = 12.5;  // 100px / 8.0 ppss
             var tinyEngine = new LayoutEngine(g2, lyricsFont, tinyMargin);
 
             var line = createLine(0);
@@ -571,7 +569,7 @@ class LayoutEngineTest {
         @Test
         @DisplayName("line requiring compression succeeds if possible")
         void lineRequiringCompression() {
-            var moderateMargin = 250.0;
+            var moderateMargin = 31.25;  // 250px / 8.0 ppss
             var moderateEngine = new LayoutEngine(g2, lyricsFont, moderateMargin);
 
             var line = createLine(0);
@@ -584,7 +582,7 @@ class LayoutEngineTest {
 
             if (result != null) {
                 assertLayoutResultValid(result, line);
-                assertTrue(result.getLineWidth() <= moderateMargin + 0.01,
+                assertTrue(result.getLineWidthSs() <= moderateMargin + 0.01,
                     "Compressed line should fit within margin");
                 assertNull(moderateEngine.getLastError());
             } else {
@@ -595,7 +593,7 @@ class LayoutEngineTest {
         @Test
         @DisplayName("getLastError returns null after successful layout")
         void lastErrorClearedOnSuccess() {
-            var tinyMargin = 50.0;
+            var tinyMargin = 6.25;  // 50px / 8.0 ppss
             var testEngine = new LayoutEngine(g2, lyricsFont, tinyMargin);
 
             var line1 = createLine(0);
@@ -727,7 +725,7 @@ class LayoutEngineTest {
         void engineProperties() {
             assertEquals(g2, engine.getGraphics());
             assertEquals(lyricsFont, engine.getLyricsFont());
-            assertEquals(staffRightMargin, engine.getStaffRightMargin());
+            assertEquals(staffRightMargin, engine.getStaffRightMarginSs());
         }
     }
 }

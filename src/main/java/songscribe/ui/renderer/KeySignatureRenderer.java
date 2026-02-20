@@ -32,7 +32,6 @@ import songscribe.music.KeyType;
 import songscribe.music.Line;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.ui.layout.KeySignature;
-import songscribe.ui.layout.LayoutStylesheet;
 
 /**
  * Renders key signatures (sharps or flats) at the start of a staff line.
@@ -64,14 +63,14 @@ public class KeySignatureRenderer extends BaseElementRenderer<KeySignature> {
         SHARP_Y_POSITIONS
     };
 
-    // Horizontal spacing between accidentals
-    private static final int ACCIDENTAL_SPACING = 9;
+    // Horizontal spacing between accidentals, in staff-space units
+    private static final double ACCIDENTAL_SPACING_SS = 1.125;  // 9px / 8 px/ss
 
-    // Spacing used in key change rendering (slightly tighter)
-    private static final int KEY_CHANGE_SPACING = 8;
+    // Spacing used in key change rendering (slightly tighter), in staff-space units
+    private static final double KEY_CHANGE_SPACING_SS = 1.0;  // 8px / 8 px/ss
 
-    // Right margin for key change from line end
-    private static final int KEY_CHANGE_RIGHT_MARGIN = 5;
+    // Right margin for key change from line end, in staff-space units
+    private static final double KEY_CHANGE_RIGHT_MARGIN_SS = 0.625;  // 5px / 8 px/ss
 
     // Singleton instance
     private static final KeySignatureRenderer INSTANCE = new KeySignatureRenderer();
@@ -116,7 +115,7 @@ public class KeySignatureRenderer extends BaseElementRenderer<KeySignature> {
 
             // Get the starting X position from the element
             double xPos = element.getX();
-            int middleLineY = ctx.getMiddleLineY();
+            double middleLineYSs = ctx.getMiddleLineYSs();
 
             // Determine glyph and Y positions based on key type
             SMuFLGlyph glyph;
@@ -134,12 +133,12 @@ public class KeySignatureRenderer extends BaseElementRenderer<KeySignature> {
             var glyphStr = glyph.asString();
 
             for (int i = 0; i < accidentalCount; i++) {
-                // Calculate Y position for this accidental
+                // Calculate Y position: each staff position is 0.5 ss
                 int yPos = yPositions[i % 7];
-                int y = middleLineY + (int) (yPos * LayoutStylesheet.NOTE_Y_OFFSET);
+                double y = middleLineYSs + yPos * 0.5;
 
                 g2.drawString(glyphStr, (float) xPos, (float) y);
-                xPos += ACCIDENTAL_SPACING;
+                xPos += ACCIDENTAL_SPACING_SS;
             }
         }
     }
@@ -152,16 +151,16 @@ public class KeySignatureRenderer extends BaseElementRenderer<KeySignature> {
      * @param g2              Graphics context
      * @param keyType         The key type (FLATS or SHARPS)
      * @param accidentalCount Number of accidentals (1-7)
-     * @param xPos            Starting X position
-     * @param middleLineY     Y coordinate of the middle staff line
+     * @param xPos            Starting X position (ss)
+     * @param middleLineYSs   Y coordinate of the middle staff line in staff spaces
      * @param ctx             Render context for font access
      */
     public void renderKeySignature(
         @NotNull Graphics2D g2,
         @NotNull KeyType keyType,
         int accidentalCount,
-        float xPos,
-        int middleLineY,
+        double xPos,
+        double middleLineYSs,
         @NotNull ElementRenderContext ctx
     ) {
         if (keyType == KeyType.NONE || accidentalCount == 0) {
@@ -184,14 +183,14 @@ public class KeySignatureRenderer extends BaseElementRenderer<KeySignature> {
             }
 
             var glyphStr = glyph.asString();
-            float currentX = xPos;
+            double currentX = xPos;
 
             for (int i = 0; i < accidentalCount; i++) {
                 int yPos = yPositions[i % 7];
-                int y = middleLineY + (int) (yPos * LayoutStylesheet.NOTE_Y_OFFSET);
+                double y = middleLineYSs + yPos * 0.5;
 
-                g2.drawString(glyphStr, currentX, (float) y);
-                currentX += ACCIDENTAL_SPACING;
+                g2.drawString(glyphStr, (float) currentX, (float) y);
+                currentX += ACCIDENTAL_SPACING_SS;
             }
         }
     }
@@ -209,14 +208,14 @@ public class KeySignatureRenderer extends BaseElementRenderer<KeySignature> {
      * @param g2        Graphics context
      * @param line      The current line
      * @param nextLine  The next line (with different key)
-     * @param lineWidth The width of the staff line
+     * @param lineWidth The width of the staff line (ss)
      * @param ctx       Render context
      */
     public void renderKeyChange(
         @NotNull Graphics2D g2,
         @NotNull Line line,
         @NotNull Line nextLine,
-        int lineWidth,
+        double lineWidth,
         @NotNull ElementRenderContext ctx
     ) {
         // If key signature is identical, nothing to draw
@@ -267,7 +266,7 @@ public class KeySignatureRenderer extends BaseElementRenderer<KeySignature> {
      * @param accidentalCounts Number of accidentals for each key type
      * @param startingOffsets  Starting offset in Y position array (for partial naturals)
      * @param isNaturals      Whether each key type should be rendered as naturals
-     * @param lineWidth       Width of the staff line
+     * @param lineWidth       Width of the staff line (ss)
      * @param ctx             Render context
      */
     private void renderKeySignatureChange(
@@ -276,21 +275,21 @@ public class KeySignatureRenderer extends BaseElementRenderer<KeySignature> {
         int @NotNull [] accidentalCounts,
         int @NotNull [] startingOffsets,
         boolean @NotNull [] isNaturals,
-        int lineWidth,
+        double lineWidth,
         @NotNull ElementRenderContext ctx
     ) {
         try (var ignored = GraphicsState.save(g2, COLOR, FONT)) {
             g2.setFont(BRAVURA_FONT);
             g2.setColor(NOTE_COLOR);
 
-            var middleLineY = ctx.getMiddleLineY();
+            var middleLineYSs = ctx.getMiddleLineYSs();
 
             // Calculate starting X position (right-aligned with margin)
-            float xPos = lineWidth - KEY_CHANGE_RIGHT_MARGIN;
+            double xPos = lineWidth - KEY_CHANGE_RIGHT_MARGIN_SS;
 
             // Calculate total width needed
             for (var count : accidentalCounts) {
-                xPos -= count * KEY_CHANGE_SPACING;
+                xPos -= count * KEY_CHANGE_SPACING_SS;
             }
 
             // Render each key signature group
@@ -312,10 +311,10 @@ public class KeySignatureRenderer extends BaseElementRenderer<KeySignature> {
 
                 for (var i = 0; i < accidentalCounts[kt]; i++) {
                     var yPos = yPositions[(i + startingOffsets[kt]) % 7];
-                    var y = middleLineY + (int) (yPos * LayoutStylesheet.NOTE_Y_OFFSET);
+                    var y = middleLineYSs + yPos * 0.5;
 
-                    g2.drawString(glyphStr, xPos, y);
-                    xPos += KEY_CHANGE_SPACING;
+                    g2.drawString(glyphStr, (float) xPos, (float) y);
+                    xPos += KEY_CHANGE_SPACING_SS;
                 }
             }
         }

@@ -20,7 +20,7 @@
 
 package songscribe.ui.renderer;
 
-import java.awt.Graphics2D;
+import java.awt.*;
 
 import org.jetbrains.annotations.NotNull;
 
@@ -50,25 +50,25 @@ public class ArticulationRenderer extends BaseElementRenderer<Note> {
 
     // SMuFL bbox-derived dimensions (in pixels) for accent and staccato glyphs.
     // Used by calculateAccentY/calculateStaccatoY for vertical positioning.
-    private static final int ACCENT_HALF_HEIGHT;
-    private static final double ACCENT_WIDTH;
-    private static final int STACCATO_HALF_HEIGHT;
-    private static final double STACCATO_WIDTH;
+    private static final int ACCENT_HALF_HEIGHT_PX;
+    private static final double ACCENT_WIDTH_PX;
+    private static final int STACCATO_HALF_HEIGHT_PX;
+    private static final double STACCATO_WIDTH_PX;
 
     static {
         var metadata = SMuFLMetadata.getInstance();
 
         var accentBBox = metadata.getBBox(SMuFLGlyph.ARTIC_ACCENT_ABOVE);
-        ACCENT_HALF_HEIGHT = (int) Math.round(StaffSpaces.toPixels(accentBBox.height()) / 2.0);
-        ACCENT_WIDTH = StaffSpaces.toPixels(accentBBox.width());
+        ACCENT_HALF_HEIGHT_PX = (int) Math.round(StaffSpaces.toPixels(accentBBox.height()) / 2.0);
+        ACCENT_WIDTH_PX = StaffSpaces.toPixels(accentBBox.width());
 
         var staccatoBBox = metadata.getBBox(SMuFLGlyph.ARTIC_STACCATO_ABOVE);
-        STACCATO_HALF_HEIGHT = (int) Math.round(StaffSpaces.toPixels(staccatoBBox.height()) / 2.0);
-        STACCATO_WIDTH = StaffSpaces.toPixels(staccatoBBox.width());
+        STACCATO_HALF_HEIGHT_PX = (int) Math.round(StaffSpaces.toPixels(staccatoBBox.height()) / 2.0);
+        STACCATO_WIDTH_PX = StaffSpaces.toPixels(staccatoBBox.width());
     }
 
     // Crotchet width for positioning (half-width used for horizontal centering)
-    private static final double CROTCHET_WIDTH = BaseElementRenderer.NOTE_FONT_SIZE / 3.6056337d;
+    private static final double CROTCHET_WIDTH_PX = BaseElementRenderer.NOTE_FONT_SIZE / 3.6056337d;
 
     // Singleton instance
     private static final ArticulationRenderer INSTANCE = new ArticulationRenderer();
@@ -125,12 +125,12 @@ public class ArticulationRenderer extends BaseElementRenderer<Note> {
                 continue;
             }
 
-            int componentY = layoutYToComponentY(bounds, ctx);
+            int componentY = (int) layoutYToComponentYSs(bounds, ctx);
 
             if (articulation.isStaccato()) {
                 drawStaccatoFromLayout(note, g2, componentY);
             } else if (articulation.isAccent()) {
-                int accentCenterY = componentY + ACCENT_HALF_HEIGHT;
+                int accentCenterY = componentY + ACCENT_HALF_HEIGHT_PX;
                 drawAccent(note, g2, accentCenterY);
             }
         }
@@ -145,9 +145,9 @@ public class ArticulationRenderer extends BaseElementRenderer<Note> {
         @NotNull Graphics2D g2,
         int contentTopY
     ) {
-        double halfNoteWidth = getHalfNoteWidthForTie(note);
+        double halfNoteWidth = getHalfNoteWidthForTiePx(note);
         double x = GraphicUtils.snapXToDevicePixel(
-            g2, note.getXPos() + halfNoteWidth - STACCATO_WIDTH / 2.0
+            g2, note.getXPos() + halfNoteWidth - STACCATO_WIDTH_PX / 2.0
         );
 
         // SMuFL "above" glyph origin is at the bottom; offset by glyph height
@@ -174,16 +174,16 @@ public class ArticulationRenderer extends BaseElementRenderer<Note> {
             return;
         }
 
-        int middleLineY = ctx.getMiddleLineY();
-        int staccatoY = hasStaccato ? calculateStaccatoY(element, middleLineY) : 0;
+        double middleLineYSs = ctx.getMiddleLineYSs();
+        int staccatoY = hasStaccato ? calculateStaccatoYPx(element, (int) middleLineYSs) : 0;
 
         if (hasAccent) {
-            int accentY = calculateAccentY(element, middleLineY, staccatoY, hasStaccato);
+            int accentY = calculateAccentYPx(element, (int) middleLineYSs, staccatoY, hasStaccato);
             drawAccent(element, g2, accentY);
         }
 
         if (hasStaccato) {
-            renderStaccato(element, g2, middleLineY);
+            renderStaccato(element, g2, (int) middleLineYSs);
         }
     }
 
@@ -194,34 +194,34 @@ public class ArticulationRenderer extends BaseElementRenderer<Note> {
      * For ledger-line notes, it anchors to the note head.
      * When a staccato is present, the accent stacks beyond it with a 1px gap.
      * <p>
-     * Pass {@code middleLineY=0} for layout-space coordinates,
-     * or the actual middleLineY for component-space coordinates.
+     * Pass {@code middleLineYPx=0} for layout-space coordinates,
+     * or the actual middleLineYPx for component-space coordinates.
      */
-    public static int calculateAccentY(
-        @NotNull Note note, int middleLineY, int staccatoY, boolean hasStaccato
+    public static int calculateAccentYPx(
+        @NotNull Note note, int middleLineYPx, int staccatoY, boolean hasStaccato
     ) {
         int dir = note.isUpper() ? 1 : -1;
-        int yPos = note.getYPos();
-        int margin = LayoutStylesheet.px(0.75);
+        int yPos = note.getStaffPosition();
+        int margin = LayoutStylesheet.toPixels(0.375);
 
         // If staccato is present, stack accent beyond it with 1px gap
         if (hasStaccato) {
-            return staccatoY + dir * (STACCATO_HALF_HEIGHT + 1 + ACCENT_HALF_HEIGHT);
+            return staccatoY + dir * (STACCATO_HALF_HEIGHT_PX + 1 + ACCENT_HALF_HEIGHT_PX);
         }
 
         // Accent alone.
         // Offset = accent visual half-height + margin so the painted edge clears the reference.
         if (Math.abs(yPos) < 4) {
             // Within staff (not on edge lines) -- anchor to staff edge
-            int staffEdgeY = middleLineY + (int) (dir * 4 * LayoutStylesheet.NOTE_Y_OFFSET);
+            int staffEdgeY = middleLineYPx + LayoutStylesheet.toPixels(dir * 4 * LayoutStylesheet.NOTE_Y_OFFSET);
 
-            return staffEdgeY + dir * (ACCENT_HALF_HEIGHT + margin);
+            return staffEdgeY + dir * (ACCENT_HALF_HEIGHT_PX + margin);
         } else {
             // On staff edge or beyond (ledger lines) -- anchor to note head
-            int noteHeadY = middleLineY + (int) (yPos * LayoutStylesheet.NOTE_Y_OFFSET);
-            int noteHeadRadius = (int) LayoutStylesheet.NOTE_Y_OFFSET;
+            int noteHeadY = middleLineYPx + LayoutStylesheet.toPixels(yPos * LayoutStylesheet.NOTE_Y_OFFSET);
+            int noteHeadRadius = LayoutStylesheet.toPixels(LayoutStylesheet.NOTE_Y_OFFSET);
 
-            return noteHeadY + dir * (noteHeadRadius + margin + ACCENT_HALF_HEIGHT);
+            return noteHeadY + dir * (noteHeadRadius + margin + ACCENT_HALF_HEIGHT_PX);
         }
     }
 
@@ -229,14 +229,14 @@ public class ArticulationRenderer extends BaseElementRenderer<Note> {
      * Draws an accent glyph centered vertically at the given Y position.
      */
     private void drawAccent(@NotNull Note note, @NotNull Graphics2D g2, int accentY) {
-        double halfNoteWidth = getHalfNoteWidthForTie(note);
+        double halfNoteWidth = getHalfNoteWidthForTiePx(note);
         double x = GraphicUtils.snapXToDevicePixel(
-            g2, note.getXPos() + halfNoteWidth - ACCENT_WIDTH / 2.0
+            g2, note.getXPos() + halfNoteWidth - ACCENT_WIDTH_PX / 2.0
         );
 
         // SMuFL "above" glyph: origin is at the baseline (bottom of glyph).
         // accentY is the vertical center, so offset down by half-height to get baseline.
-        double y = accentY + ACCENT_HALF_HEIGHT;
+        double y = accentY + ACCENT_HALF_HEIGHT_PX;
 
         drawBravuraGlyph(g2, SMuFLGlyph.ARTIC_ACCENT_ABOVE, x, y);
     }
@@ -251,33 +251,33 @@ public class ArticulationRenderer extends BaseElementRenderer<Note> {
      * Inverted stems: the staccato is always placed in a fixed staff space,
      * positioned toward the center of the staff.
      * <p>
-     * Pass {@code middleLineY=0} for layout-space coordinates,
-     * or the actual middleLineY for component-space coordinates.
+     * Pass {@code middleLineYPx=0} for layout-space coordinates,
+     * or the actual middleLineYPx for component-space coordinates.
      */
-    public static int calculateStaccatoY(@NotNull Note note, int middleLineY) {
+    public static int calculateStaccatoYPx(@NotNull Note note, int middleLineYPx) {
         boolean isUpper = note.isUpper();
         int dir = isUpper ? 1 : -1;
-        int yPos = note.getYPos();
+        int yPos = note.getStaffPosition();
         boolean normalStem = (yPos > 0) == isUpper;
 
         if (normalStem) {
-            int margin = LayoutStylesheet.px(0.75);
+            int margin = LayoutStylesheet.toPixels(0.375);
 
             return switch (Math.abs(yPos)) {
                 // B4/C5 or A4: fixed space near opposite staff edge
-                case 0, 1 -> middleLineY + (int) (dir * 3 * LayoutStylesheet.NOTE_Y_OFFSET);
+                case 0, 1 -> middleLineYPx + LayoutStylesheet.toPixels(dir * 3 * LayoutStylesheet.NOTE_Y_OFFSET);
 
                 // D5/E5 or G4/F4: standard margin from staff edge
                 case 2, 3 -> {
-                    int staffEdgeY = middleLineY + (int) (dir * 4 * LayoutStylesheet.NOTE_Y_OFFSET);
-                    yield staffEdgeY + dir * (STACCATO_HALF_HEIGHT + margin);
+                    int staffEdgeY = middleLineYPx + LayoutStylesheet.toPixels(dir * 4 * LayoutStylesheet.NOTE_Y_OFFSET);
+                    yield staffEdgeY + dir * (STACCATO_HALF_HEIGHT_PX + margin);
                 }
 
                 // F5+ or E4+: standard margin from note head
                 default -> {
-                    int noteHeadY = middleLineY + (int) (yPos * LayoutStylesheet.NOTE_Y_OFFSET);
-                    int noteHeadRadius = (int) LayoutStylesheet.NOTE_Y_OFFSET;
-                    yield noteHeadY + dir * (noteHeadRadius + margin + STACCATO_HALF_HEIGHT);
+                    int noteHeadY = middleLineYPx + LayoutStylesheet.toPixels(yPos * LayoutStylesheet.NOTE_Y_OFFSET);
+                    int noteHeadRadius = LayoutStylesheet.toPixels(LayoutStylesheet.NOTE_Y_OFFSET);
+                    yield noteHeadY + dir * (noteHeadRadius + margin + STACCATO_HALF_HEIGHT_PX);
                 }
             };
         }
@@ -292,7 +292,7 @@ public class ArticulationRenderer extends BaseElementRenderer<Note> {
             default -> yPos < 0 ? -3 : 3;  // beyond staff → E5 or F4 space
         };
 
-        return middleLineY + (int) (targetYPos * LayoutStylesheet.NOTE_Y_OFFSET);
+        return middleLineYPx + LayoutStylesheet.toPixels(targetYPos * LayoutStylesheet.NOTE_Y_OFFSET);
     }
 
     /**
@@ -301,17 +301,17 @@ public class ArticulationRenderer extends BaseElementRenderer<Note> {
     private void renderStaccato(
         @NotNull Note note,
         @NotNull Graphics2D g2,
-        int middleLineY
+        int middleLineYPx
     ) {
-        int centerY = calculateStaccatoY(note, middleLineY);
-        double halfNoteWidth = getHalfNoteWidthForTie(note);
+        int centerY = calculateStaccatoYPx(note, middleLineYPx);
+        double halfNoteWidth = getHalfNoteWidthForTiePx(note);
         double x = GraphicUtils.snapXToDevicePixel(
-            g2, note.getXPos() + halfNoteWidth - STACCATO_WIDTH / 2.0
+            g2, note.getXPos() + halfNoteWidth - STACCATO_WIDTH_PX / 2.0
         );
 
         // SMuFL "above" glyph: origin is at the baseline (bottom of glyph).
         // centerY is the vertical center, so offset down by half-height to get baseline.
-        double y = centerY + STACCATO_HALF_HEIGHT;
+        double y = centerY + STACCATO_HALF_HEIGHT_PX;
 
         drawBravuraGlyph(g2, SMuFLGlyph.ARTIC_STACCATO_ABOVE, x, y);
     }
@@ -319,7 +319,7 @@ public class ArticulationRenderer extends BaseElementRenderer<Note> {
     /**
      * Returns half the width of a note for positioning.
      */
-    private double getHalfNoteWidthForTie(@NotNull Note note) {
+    private double getHalfNoteWidthForTiePx(@NotNull Note note) {
         var noteType = note.getNoteType();
 
         if (noteType == songscribe.music.NoteType.SEMIBREVE ||
@@ -327,6 +327,6 @@ public class ArticulationRenderer extends BaseElementRenderer<Note> {
             return note.getRealUpNoteRect().width / 2.0;
         }
 
-        return CROTCHET_WIDTH / 2.0;
+        return CROTCHET_WIDTH_PX / 2.0;
     }
 }

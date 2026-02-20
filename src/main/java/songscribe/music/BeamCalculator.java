@@ -40,7 +40,7 @@ public class BeamCalculator {
 
     // Gould/Ross section 4.2: minimum stem length is 3.5 staff spaces
     private static final double MIN_STEM_SS = 3.5;
-    private static final double MIN_STEM_PX = MIN_STEM_SS * LayoutStylesheet.STAFF_SPACE;
+    private static final double MIN_STEM_PX = LayoutStylesheet.toPixelsDouble(MIN_STEM_SS);
     private static final double SLOPE_REDUCTION_FACTOR = 0.85;
     private static final int MAX_SLOPE_ITERATIONS = 20;
 
@@ -82,7 +82,7 @@ public class BeamCalculator {
             var note = line.getNote(i);
 
             if (automaticStemDirection) {
-                sumY += note.getYPos();
+                sumY += note.getStaffPosition();
             } else {
                 sumY += note.isUpper() ? 1 : -1;
             }
@@ -91,8 +91,8 @@ public class BeamCalculator {
         // +1: upper
         // -1: lower
         var direction = (sumY >= 0) ? 1 : -1;
-        var startY = line.getNote(startIndex).getYPos();
-        var endY = line.getNote(endIndex).getYPos();
+        var startY = line.getNote(startIndex).getStaffPosition();
+        var endY = line.getNote(endIndex).getStaffPosition();
         var yDiff = (double) endY - startY;
         var startX = line.getNote(startIndex).getXPos();
         var endX = line.getNote(endIndex).getXPos();
@@ -107,9 +107,9 @@ public class BeamCalculator {
             LOG.fine("  Forced horizontal");
             angle = 0;
         } else {
-            var rawSlope = (yDiff * Score.NOTE_Y_OFFSET) / xDiff;
+            var rawSlope = (yDiff * Score.NOTE_Y_OFFSET_PX) / xDiff;
             var slope = rawSlope * SLOPE_SCALE;
-            var maxDevPx = MAX_DEVIATION_SS * LayoutStylesheet.STAFF_SPACE;
+            var maxDevPx = LayoutStylesheet.toPixelsDouble(MAX_DEVIATION_SS);
             var deviation = Math.abs(slope * xDiff);
 
             LOG.fine("  rawSlope=%.4f scaledSlope=%.4f deviation=%.1f maxDevPx=%.1f"
@@ -129,7 +129,7 @@ public class BeamCalculator {
 
         // Gould/Ross 4.2: validate stems against minimum length.
         // Any negative lengthening means a stem shorter than the 3.5 ss default.
-        var minLengthening = findMinLengthening(line, startIndex, endIndex);
+        var minLengthening = findMinLengtheningPx(line, startIndex, endIndex);
 
         // Phase 1: Reduce slope iteratively until all stems are valid
         var iterations = 0;
@@ -146,7 +146,7 @@ public class BeamCalculator {
 
             iterations++;
             computeLengthenings(line, startIndex, endIndex, angle, direction);
-            minLengthening = findMinLengthening(line, startIndex, endIndex);
+            minLengthening = findMinLengtheningPx(line, startIndex, endIndex);
         }
 
         if (iterations > 0) {
@@ -170,7 +170,7 @@ public class BeamCalculator {
 
         // Compute beam thickening for angled beams:
         // 1/cos(angle) compensates for lost perpendicular thickness, plus 1 extra pixel.
-        var thickening = computeBeamThickening(angle);
+        var thickening = computeBeamThickeningPx(angle);
 
         for (var i = startIndex; i <= endIndex; i++) {
             line.getNote(i).properties.beamThickening = thickening;
@@ -200,16 +200,16 @@ public class BeamCalculator {
         firstNote.setUpper(direction == 1);
 
         var distance =
-            (firstNote.getYPos() * Score.NOTE_Y_OFFSET) - (angle * firstNote.getXPos());
+            (firstNote.getStaffPosition() * Score.NOTE_Y_OFFSET_PX) - (angle * firstNote.getXPos());
 
         LOG.fine("  anchor: note[%d] yPos=%d xPos=%d distance=%.1f"
-            .formatted(startIndex, firstNote.getYPos(), firstNote.getXPos(), distance));
+            .formatted(startIndex, firstNote.getStaffPosition(), firstNote.getXPos(), distance));
 
         for (var i = startIndex + 1; i <= endIndex; i++) {
             var note = line.getNote(i);
             calculateNoteLengthening(note, angle, distance, direction);
             LOG.fine("  note[%d] yPos=%d xPos=%d lengthening=%d"
-                .formatted(i, note.getYPos(), note.getXPos(), note.properties.lengthening));
+                .formatted(i, note.getStaffPosition(), note.getXPos(), note.properties.lengthening));
         }
     }
 
@@ -221,7 +221,7 @@ public class BeamCalculator {
      * @param endIndex   End index of the beamed group
      * @return The minimum lengthening value
      */
-    private static int findMinLengthening(
+    private static int findMinLengtheningPx(
         @NotNull Line line,
         int startIndex,
         int endIndex
@@ -257,11 +257,11 @@ public class BeamCalculator {
     ) {
         var minY = Integer.MAX_VALUE;
         var maxY = Integer.MIN_VALUE;
-        var prevY = line.getNote(startIndex).getYPos();
+        var prevY = line.getNote(startIndex).getStaffPosition();
         var direction = 0;
 
         for (var i = startIndex; i <= endIndex; i++) {
-            var y = line.getNote(i).getYPos();
+            var y = line.getNote(i).getStaffPosition();
             minY = Math.min(minY, y);
             maxY = Math.max(maxY, y);
 
@@ -307,10 +307,10 @@ public class BeamCalculator {
         int direction
     ) {
         var xPos = note.getXPos();
-        var yPos = note.getYPos();
+        var yPos = note.getStaffPosition();
         return (
             (Math.round((angle * xPos) + distance) * direction) <=
-                (yPos * Score.NOTE_Y_OFFSET * direction)
+                (yPos * Score.NOTE_Y_OFFSET_PX * direction)
         );
     }
 
@@ -377,7 +377,7 @@ public class BeamCalculator {
         if (note.getNoteType().isGraceNote()) {
             note.properties.lengthening = 0;
         } else {
-            var lengthening = direction * ((note.getYPos() * Score.NOTE_Y_OFFSET) -
+            var lengthening = direction * ((note.getStaffPosition() * Score.NOTE_Y_OFFSET_PX) -
                 ((angle * note.getXPos()) + distance));
             note.properties.lengthening = (int) Math.round(lengthening);
         }
@@ -391,7 +391,7 @@ public class BeamCalculator {
      * @param angle The beam angle in radians
      * @return Extra thickness in pixels (0 for horizontal beams)
      */
-    private static double computeBeamThickening(double angle) {
+    private static double computeBeamThickeningPx(double angle) {
         if (angle == 0) {
             return 0.0;
         }

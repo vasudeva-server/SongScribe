@@ -20,7 +20,7 @@
 
 package songscribe.ui.layout2;
 
-import java.awt.geom.Point2D;
+import java.awt.geom.*;
 import java.util.Collections;
 import java.util.Map;
 
@@ -46,31 +46,31 @@ public final class VerticalStackingResult {
     private final @NotNull Map<Note, Map<LineElement, Point2D>> elementPositions;
 
     /** Maximum height reached above the staff top (negative Y value). */
-    private final double maxHeightAboveStaff;
+    private final double maxHeightAboveStaffPx;
 
     /** Y position of the lyrics baseline (positive Y value below staff). */
-    private final double lyricsBaselineY;
+    private final double lyricsBaselineYPx;
 
     /** Total height of the line including all elements and margins. */
-    private final double lineHeight;
+    private final double lineHeightPx;
 
     /**
      * Creates a new vertical stacking result.
      *
      * @param elementPositions    Map of element positions for each note
-     * @param maxHeightAboveStaff Maximum height above staff (negative Y)
-     * @param lyricsBaselineY     Lyrics baseline Y position
-     * @param lineHeight          Total line height
+     * @param maxHeightAboveStaffPx Maximum height above staff in pixels (negative Y)
+     * @param lyricsBaselineYPx     Lyrics baseline Y position in pixels
+     * @param lineHeightPx          Total line height in pixels
      */
     public VerticalStackingResult(
-            @NotNull Map<Note, Map<LineElement, Point2D>> elementPositions,
-            double maxHeightAboveStaff,
-            double lyricsBaselineY,
-            double lineHeight) {
+        @NotNull Map<Note, Map<LineElement, Point2D>> elementPositions,
+        double maxHeightAboveStaffPx,
+        double lyricsBaselineYPx,
+        double lineHeightPx) {
         this.elementPositions = elementPositions;
-        this.maxHeightAboveStaff = maxHeightAboveStaff;
-        this.lyricsBaselineY = lyricsBaselineY;
-        this.lineHeight = lineHeight;
+        this.maxHeightAboveStaffPx = maxHeightAboveStaffPx;
+        this.lyricsBaselineYPx = lyricsBaselineYPx;
+        this.lineHeightPx = lineHeightPx;
     }
 
     /**
@@ -90,8 +90,8 @@ public final class VerticalStackingResult {
      *
      * @return Maximum height above staff in pixels
      */
-    public double getMaxHeightAboveStaff() {
-        return maxHeightAboveStaff;
+    public double getMaxHeightAboveStaffPx() {
+        return maxHeightAboveStaffPx;
     }
 
     /**
@@ -100,8 +100,8 @@ public final class VerticalStackingResult {
      *
      * @return Lyrics baseline Y position in pixels
      */
-    public double getLyricsBaselineY() {
-        return lyricsBaselineY;
+    public double getLyricsBaselineYPx() {
+        return lyricsBaselineYPx;
     }
 
     /**
@@ -110,8 +110,8 @@ public final class VerticalStackingResult {
      *
      * @return Total line height in pixels
      */
-    public double getLineHeight() {
-        return lineHeight;
+    public double getLineHeightPx() {
+        return lineHeightPx;
     }
 
     /**

@@ -20,7 +20,7 @@
 package songscribe.export;
 
 import java.awt.*;
-import java.awt.image.BufferedImage;
+import java.awt.image.*;
 
 import org.jetbrains.annotations.NotNull;
 
@@ -52,8 +52,8 @@ public class ImageExporter {
     ) {
         var score = MainFrame.getInstance().getScore();
         var image = new BufferedImage(
-            (int) ((score.getSheetWidth()) * scale) + border.getWidth(),
-            (int) ((score.getSheetHeight()) * scale) + border.getHeight(),
+            (int) ((score.getSheetWidthPx()) * scale) + border.getWidth(),
+            (int) ((score.getSheetHeightPx()) * scale) + border.getHeight(),
             BufferedImage.TYPE_BYTE_GRAY
         );
         createImageForExport(image, background, scale, border);

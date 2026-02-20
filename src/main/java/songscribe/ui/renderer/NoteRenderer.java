@@ -20,7 +20,10 @@
 
 package songscribe.ui.renderer;
 
-import static songscribe.ui.renderer.GraphicsState.Property.*;
+import static songscribe.ui.renderer.GraphicsState.Property.COLOR;
+import static songscribe.ui.renderer.GraphicsState.Property.FONT;
+import static songscribe.ui.renderer.GraphicsState.Property.STROKE;
+import static songscribe.ui.renderer.GraphicsState.Property.TRANSFORM;
 
 import java.awt.*;
 import java.awt.geom.*;
@@ -34,8 +37,7 @@ import songscribe.music.NoteType;
 import songscribe.smufl.GlyphAnchors;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
-import songscribe.smufl.StaffSpaces;
-import songscribe.ui.layout.LayoutStylesheet;
+import songscribe.ui.layout2.ScaleContext;
 import songscribe.util.GraphicUtils;
 
 /**
@@ -55,10 +57,8 @@ import songscribe.util.GraphicUtils;
 public class NoteRenderer extends BaseElementRenderer<Note> {
 
     // ==========================================================================
-    // Constants from FughettaRenderer
+    // Constants
     // ==========================================================================
-
-    private static final float NOTE_FONT_SIZE = BaseElementRenderer.NOTE_FONT_SIZE;
 
     // Note heads by type
     private static final EnumMap<NoteType, SMuFLGlyph> NOTE_HEAD = new EnumMap<>(NoteType.class);
@@ -72,18 +72,18 @@ public class NoteRenderer extends BaseElementRenderer<Note> {
         NOTE_HEAD.put(NoteType.DEMI_SEMIQUAVER, SMuFLGlyph.NOTEHEAD_BLACK);
     }
 
-    // Stem dimensions from SMuFL metadata, rounded to integer pixels for crisp rendering
-    public static final double STEM_WIDTH = Math.max(1.0,
-        Math.round(StaffSpaces.toPixels(
-            SMuFLMetadata.getInstance().getEngravingDefaults().stemThickness())));
-    private static final double STEM_LENGTH = StaffSpaces.toPixels(3.5);
+    // Stem dimensions from SMuFL metadata, in staff-space units.
+    // The Graphics2D scale transform handles pixel conversion.
+    public static final double STEM_WIDTH_SS =
+        SMuFLMetadata.getInstance().getEngravingDefaults().stemThickness();
+    private static final double STEM_LENGTH_SS = 3.5; // ss
 
-    // Half the beam thickness in pixels, used to tuck beamed stems inside the beam
+    // Half the beam thickness in ss, used to tuck beamed stems inside the beam
     // so they don't peek past the outer edge when the beam is angled.
-    private static final double HALF_BEAM_THICKNESS = StaffSpaces.toPixels(
-        SMuFLMetadata.getInstance().getEngravingDefaults().beamThickness()) / 2.0;
+    private static final double HALF_BEAM_THICKNESS_SS =
+        SMuFLMetadata.getInstance().getEngravingDefaults().beamThickness() / 2.0;
 
-    // Cached anchor data for notehead glyphs (in pixels, Y-down screen convention)
+    // Cached anchor data for notehead glyphs (in staff-space units, Y-down screen convention)
     private static final GlyphAnchors.Anchor STEM_UP_SE_BLACK;
     private static final GlyphAnchors.Anchor STEM_DOWN_NW_BLACK;
     private static final GlyphAnchors.Anchor STEM_UP_SE_HALF;
@@ -103,14 +103,14 @@ public class NoteRenderer extends BaseElementRenderer<Note> {
         STEM_DOWN_NW_HALF = halfAnchors.stemDownNW();
     }
 
-    // Dot positioning (using SMuFL augmentation dot glyph)
-    private static final float FIRST_DOT_X = 13.1f;
-    private static final float DOT_SPACING;
+    // Dot positioning (using SMuFL augmentation dot glyph), in staff-space units
+    private static final float FIRST_DOT_X_SS = 1.6375f; // 13.1px / 8 px/ss
+    private static final float DOT_SPACING_SS;
 
     static {
         var metadata = SMuFLMetadata.getInstance();
         var advanceWidth = metadata.getAdvanceWidth(SMuFLGlyph.AUGMENTATION_DOT);
-        DOT_SPACING = (advanceWidth != null) ? (float) StaffSpaces.toPixels(advanceWidth) + 2.8f : 6.6f;
+        DOT_SPACING_SS = (advanceWidth != null) ? advanceWidth.floatValue() + 0.35f : 0.825f;
     }
 
     // Accidental glyph components indexed by Accidental.ordinal()
@@ -125,34 +125,34 @@ public class NoteRenderer extends BaseElementRenderer<Note> {
         {SMuFLGlyph.ACCIDENTAL_NATURAL, SMuFLGlyph.ACCIDENTAL_FLAT},    // NATURAL_FLAT
         {SMuFLGlyph.ACCIDENTAL_NATURAL, SMuFLGlyph.ACCIDENTAL_SHARP},   // NATURAL_SHARP
     };
-    private static final float ACCIDENTAL_PADDING = 2.7f;
-    private static final float SPACE_BETWEEN_TWO_ACCIDENTALS = 1.3f;
+    private static final float ACCIDENTAL_PADDING_SS = 0.3375f; // 2.7px / 8 px/ss
+    private static final float SPACE_BETWEEN_TWO_ACCIDENTALS_SS = 0.1625f; // 1.3px / 8 px/ss
     private static final float GRACE_ACCIDENTAL_RESIZE_FACTOR = 0.65f;
 
-    // Kerning adjustments for parenthesized accidentals (in pixels).
+    // Kerning adjustments for parenthesized accidentals (in staff-space units).
     // Positive = more space, negative = less space.
     private static final EnumMap<SMuFLGlyph, Float> PAREN_LEFT_KERNING = new EnumMap<>(SMuFLGlyph.class);
     private static final EnumMap<SMuFLGlyph, Float> PAREN_RIGHT_KERNING = new EnumMap<>(SMuFLGlyph.class);
 
     static {
         // Kerning between left parenthesis and following accidental glyph
-        PAREN_LEFT_KERNING.put(SMuFLGlyph.ACCIDENTAL_FLAT, 1f);
-        PAREN_LEFT_KERNING.put(SMuFLGlyph.ACCIDENTAL_NATURAL, 1f);
-        PAREN_LEFT_KERNING.put(SMuFLGlyph.ACCIDENTAL_SHARP, 1f);
-        PAREN_LEFT_KERNING.put(SMuFLGlyph.ACCIDENTAL_DOUBLE_FLAT, 1f);
+        PAREN_LEFT_KERNING.put(SMuFLGlyph.ACCIDENTAL_FLAT, 0.125f);
+        PAREN_LEFT_KERNING.put(SMuFLGlyph.ACCIDENTAL_NATURAL, 0.125f);
+        PAREN_LEFT_KERNING.put(SMuFLGlyph.ACCIDENTAL_SHARP, 0.125f);
+        PAREN_LEFT_KERNING.put(SMuFLGlyph.ACCIDENTAL_DOUBLE_FLAT, 0.125f);
 
         // Kerning between accidental glyph and following right parenthesis
-        PAREN_RIGHT_KERNING.put(SMuFLGlyph.ACCIDENTAL_FLAT, -1f);
-        PAREN_RIGHT_KERNING.put(SMuFLGlyph.ACCIDENTAL_NATURAL, 1f);
-        PAREN_RIGHT_KERNING.put(SMuFLGlyph.ACCIDENTAL_SHARP, 1f);
-        PAREN_RIGHT_KERNING.put(SMuFLGlyph.ACCIDENTAL_DOUBLE_FLAT, -1f);
+        PAREN_RIGHT_KERNING.put(SMuFLGlyph.ACCIDENTAL_FLAT, -0.125f);
+        PAREN_RIGHT_KERNING.put(SMuFLGlyph.ACCIDENTAL_NATURAL, 0.125f);
+        PAREN_RIGHT_KERNING.put(SMuFLGlyph.ACCIDENTAL_SHARP, 0.125f);
+        PAREN_RIGHT_KERNING.put(SMuFLGlyph.ACCIDENTAL_DOUBLE_FLAT, -0.125f);
     }
 
     // Cached accidental widths (computed on first use)
-    private static float[] baseAccidentalWidths = null;
-    private static float[] baseAccidentalParenthesisWidths = null;
-    private static float beginParenthesisWidth = 0.0f;
-    private static float endParenthesisWidth = 0.0f;
+    private static float[] baseAccidentalWidthsSs = null;
+    private static float[] baseAccidentalParenthesisWidthsSs = null;
+    private static float beginParenthesisWidthSs = 0.0f;
+    private static float endParenthesisWidthSs = 0.0f;
 
     private static final BasicStroke LINE_STROKE = (BasicStroke) BaseElementRenderer.LEDGER_LINE_STROKE;
 
@@ -202,7 +202,7 @@ public class NoteRenderer extends BaseElementRenderer<Note> {
      *   <li>Note's own {@code xPos} (fallback)</li>
      * </ol>
      */
-    private static double resolveNoteX(
+    private static double resolveNoteXSs(
         @NotNull Graphics2D g2,
         @NotNull Note note,
         @NotNull ElementRenderContext ctx
@@ -210,10 +210,10 @@ public class NoteRenderer extends BaseElementRenderer<Note> {
         double noteX;
 
         if (ctx.hasOverrideNoteX()) {
-            noteX = ctx.getOverrideNoteX();
+            noteX = ctx.getOverrideNoteXSs();
         } else {
             var layoutResult = ctx.getLayoutResult();
-            noteX = (layoutResult != null) ? layoutResult.getNoteX(note) : note.getXPos();
+            noteX = (layoutResult != null) ? layoutResult.getNoteXSs(note) : note.getXPos();
         }
 
         return GraphicUtils.snapXToDevicePixel(g2, noteX);
@@ -252,8 +252,8 @@ public class NoteRenderer extends BaseElementRenderer<Note> {
         // Note: Don't set color here - respect the color set by the caller
         // (e.g., blue for edit notes, black for composition notes)
         try (var ignored = GraphicsState.save(g2, TRANSFORM, FONT)) {
-            var noteX = resolveNoteX(g2, element, ctx);
-            var noteY = calculateNoteY(element.getYPos(), ctx.getMiddleLineY());
+            var noteX = resolveNoteXSs(g2, element, ctx);
+            var noteY = calculateNoteYSs(element.getStaffPosition(), ctx.getMiddleLineYSs());
 
             g2.translate(noteX, noteY);
             g2.setFont(ctx.getMusicFont());
@@ -262,60 +262,6 @@ public class NoteRenderer extends BaseElementRenderer<Note> {
             renderNoteHead(g2, element, isBeamed, ctx);
             renderLedgerLines(g2, element);
             renderAccidental(g2, element, ctx);
-        }
-    }
-
-    /**
-     * Renders a note with the simple method signature for backward compatibility.
-     */
-    public void render(
-        @NotNull Graphics2D g2,
-        @NotNull Note note,
-        int middleLineY
-    ) {
-        // Create a minimal context for backward compatibility
-        var noteType = note.getNoteType();
-
-        if (noteType.isRest() || noteType.isBarLine() || noteType.isRepeat()) {
-            // Delegate to appropriate renderer
-            try (var ignored = GraphicsState.save(g2, TRANSFORM)) {
-                var noteX = note.getXPos();
-                var noteY = calculateNoteY(note.getYPos(), middleLineY);
-
-                g2.translate(noteX, noteY);
-
-                if (noteType.isRest()) {
-                    renderRestGlyph(g2, noteType);
-                } else {
-                    renderBarLineOrRepeat(g2, noteType);
-                }
-            }
-            return;
-        }
-
-        if (noteType == NoteType.BREATH_MARK) {
-            var breathY = middleLineY - StaffSpaces.toPixels(2.5);
-            drawBravuraGlyph(g2, SMuFLGlyph.BREATH_MARK_COMMA, note.getXPos(), Math.round(breathY), true);
-            return;
-        }
-
-        if (noteType.isGraceNote()) {
-            GraceNoteRenderer.getInstance().render(g2, note, middleLineY);
-            return;
-        }
-
-        // Standard note rendering
-        // Note: Don't set color here - respect the color set by the caller
-        // (e.g., blue for edit notes, black for composition notes)
-        try (var ignored = GraphicsState.save(g2, TRANSFORM, FONT)) {
-            var noteX = note.getXPos();
-            var noteY = calculateNoteY(note.getYPos(), middleLineY);
-
-            g2.translate(noteX, noteY);
-            g2.setFont(BaseElementRenderer.MUSIC_FONT);
-
-            renderNoteHeadSimple(g2, note, false);
-            renderLedgerLines(g2, note);
         }
     }
 
@@ -339,16 +285,16 @@ public class NoteRenderer extends BaseElementRenderer<Note> {
         @NotNull Graphics2D g2,
         @NotNull ElementRenderContext ctx
     ) {
-        var noteX = resolveNoteX(g2, element, ctx);
+        var noteX = resolveNoteXSs(g2, element, ctx);
 
         // Place half a staff space above the top staff line
-        var breathY = ctx.getMiddleLineY() - StaffSpaces.toPixels(2.5);
+        var breathY = ctx.getMiddleLineYSs() - 2.5;
 
         drawBravuraGlyph(
             g2,
             SMuFLGlyph.BREATH_MARK_COMMA,
             noteX,
-            Math.round(breathY),
+            breathY,
             true
         );
     }
@@ -376,43 +322,7 @@ public class NoteRenderer extends BaseElementRenderer<Note> {
         float noteHeadXPos = 0f;
 
         if (noteType.isNoteWithStem() && !note.isUpper()) {
-            noteHeadXPos -= (float) (STEM_WIDTH / 2);
-        }
-
-        try (var ignored = GraphicsState.save(g2, FONT)) {
-            g2.setFont(BRAVURA_FONT);
-            g2.drawString(glyph.asString(), noteHeadXPos, 0f);
-        }
-
-        // Draw stem (always for notes with stems - beamed notes need stems to connect to beams)
-        renderStem(g2, note, note.isUpper(), beamed, noteType);
-
-        // Draw flags only for unbeamed notes (beamed notes get beams instead of flags)
-        if (!beamed) {
-            renderFlags(g2, note, note.isUpper(), noteType);
-        }
-
-        // Draw dots
-        renderDots(g2, note, beamed, note.isUpper());
-    }
-
-    private void renderNoteHeadSimple(
-        @NotNull Graphics2D g2,
-        @NotNull Note note,
-        boolean beamed
-    ) {
-        var noteType = note.getNoteType();
-        var glyph = NOTE_HEAD.get(noteType);
-
-        if (glyph == null) {
-            return;
-        }
-
-        // Adjust x position for lower stem notes
-        float noteHeadXPos = 0f;
-
-        if (noteType.isNoteWithStem() && !note.isUpper()) {
-            noteHeadXPos -= (float) (STEM_WIDTH / 2);
+            noteHeadXPos -= (float) (STEM_WIDTH_SS / 2);
         }
 
         try (var ignored = GraphicsState.save(g2, FONT)) {
@@ -449,7 +359,7 @@ public class NoteRenderer extends BaseElementRenderer<Note> {
 
         boolean isMinim = noteType == NoteType.MINIM;
 
-        // Get anchor positions in pixels from the notehead's SMuFL anchor data
+        // Get anchor positions in staff-space units from the notehead's SMuFL anchor data
         GlyphAnchors.Anchor anchor;
 
         if (upper) {
@@ -458,32 +368,36 @@ public class NoteRenderer extends BaseElementRenderer<Note> {
             anchor = isMinim ? STEM_DOWN_NW_HALF : STEM_DOWN_NW_BLACK;
         }
 
-        double anchorX = StaffSpaces.toPixels(anchor.x());
-        double anchorY = StaffSpaces.toPixels(anchor.y());
+        double anchorX = anchor.x();
+        double anchorY = anchor.y();
 
         // Calculate stem left edge from the anchor point.
         // stemUpSE marks where the stem's RIGHT edge meets the notehead,
         // stemDownNW marks where the stem's LEFT edge meets the notehead
-        // (but the down-stem notehead is shifted left by STEM_WIDTH/2, so we
+        // (but the down-stem notehead is shifted left by STEM_WIDTH_SS/2, so we
         // compensate here to keep the stem aligned with the shifted notehead).
-        // stemUpSE marks the stem's right edge; stemDownNW marks the left edge
-        // (but down-stem noteheads are shifted left by STEM_WIDTH/2, so we compensate).
-        double stemLeftRaw = upper ? anchorX - STEM_WIDTH : anchorX - STEM_WIDTH / 2;
+        double stemLeftRaw = upper ? anchorX - STEM_WIDTH_SS : anchorX - STEM_WIDTH_SS / 2;
 
         // Snap to device pixel boundary for crisp rendering.
         // We must work in absolute (device) coordinates because the graphics context
         // has been translated to the note's position — rounding in local coordinates
         // won't align to actual screen pixels.
         double stemLeftX = GraphicUtils.snapXToDevicePixel(g2, stemLeftRaw);
-        double stemCenterX = stemLeftX + STEM_WIDTH / 2;
+        double stemCenterX = stemLeftX + STEM_WIDTH_SS / 2;
 
-        double stemLength = STEM_LENGTH + note.properties.lengthening;
+        // Convert lengthening/beamThickening from pixels to ss (BeamCalculator
+        // hasn't been converted yet and still computes in pixel units)
+        double pxPerSs = ScaleContext.getInstance().getPixelsPerStaffSpace();
+        double lengtheningInSs = note.properties.lengthening / pxPerSs;
+        double beamThickeningInSs = note.properties.beamThickening / pxPerSs;
+
+        double stemLength = STEM_LENGTH_SS + lengtheningInSs;
 
         // For beamed notes, shorten the rendered stem by half the (thickened) beam
         // so it tucks inside the beam rather than peeking past the outer edge
         // when the beam is angled. stem.y2 retains the full length for beam positioning.
         double drawLength = beamed
-            ? Math.max(0, stemLength - HALF_BEAM_THICKNESS - note.properties.beamThickening / 2.0)
+            ? Math.max(0, stemLength - HALF_BEAM_THICKNESS_SS - beamThickeningInSs / 2.0)
             : stemLength;
 
         if (upper) {
@@ -494,14 +408,14 @@ public class NoteRenderer extends BaseElementRenderer<Note> {
 
             // Draw filled rectangle for crisp rendering
             g2.fill(new Rectangle2D.Double(
-                stemLeftX, anchorY - drawLength, STEM_WIDTH, drawLength));
+                stemLeftX, anchorY - drawLength, STEM_WIDTH_SS, drawLength));
         } else {
             double stemBottomY = anchorY + stemLength;
 
             note.properties.stem.setLine(stemCenterX, anchorY, stemCenterX, stemBottomY);
 
             g2.fill(new Rectangle2D.Double(
-                stemLeftX, anchorY, STEM_WIDTH, drawLength));
+                stemLeftX, anchorY, STEM_WIDTH_SS, drawLength));
         }
     }
 
@@ -528,7 +442,7 @@ public class NoteRenderer extends BaseElementRenderer<Note> {
         // Position flag at the stem tip. SMuFL flag glyphs have their origin
         // at the left edge of the stem, so use stem center minus half width.
         var stem = note.properties.stem;
-        float flagX = (float) (stem.getX1() - STEM_WIDTH / 2);
+        float flagX = (float) (stem.getX1() - STEM_WIDTH_SS / 2);
         float flagY = (float) stem.getY2();
 
         try (var ignored = GraphicsState.save(g2, FONT)) {
@@ -564,32 +478,32 @@ public class NoteRenderer extends BaseElementRenderer<Note> {
         try (var ignored = GraphicsState.save(g2, TRANSFORM)) {
             var noteType = note.getNoteType();
 
-            // Adjust for notes on lines (move dot off the line)
-            if ((note.getYPos() % 2) == 0) {
-                g2.translate(0, -NOTE_FONT_SIZE / 8);
+            // Adjust for notes on lines (move dot off the line by half a staff space)
+            if ((note.getStaffPosition() % 2) == 0) {
+                g2.translate(0, -0.5);
             }
 
             // Adjust for wider note heads
             if (noteType == NoteType.SEMIBREVE) {
-                g2.translate(3.5, 0);
+                g2.translate(0.4375, 0); // 3.5px / 8 px/ss
             }
 
             if (noteType == NoteType.MINIM) {
-                g2.translate(1.4, 0);
+                g2.translate(0.175, 0); // 1.4px / 8 px/ss
             }
 
             // Adjust for flags on unbeamed notes
             if (noteType.isBeamable() && !beamed && upper) {
-                g2.translate((noteType == NoteType.QUAVER) ? 5 : 8, 0);
+                g2.translate((noteType == NoteType.QUAVER) ? 0.625 : 1.0, 0);
             }
 
             // Draw augmentation dots using SMuFL glyph
             try (var ignored2 = GraphicsState.save(g2, FONT)) {
                 g2.setFont(BRAVURA_FONT);
-                var dotX = FIRST_DOT_X;
+                var dotX = FIRST_DOT_X_SS;
                 for (int i = 0; i < note.getDotCount(); i++) {
                     g2.drawString(SMuFLGlyph.AUGMENTATION_DOT.asString(), dotX, 0f);
-                    dotX += DOT_SPACING;
+                    dotX += DOT_SPACING_SS;
                 }
             }
         }
@@ -599,17 +513,22 @@ public class NoteRenderer extends BaseElementRenderer<Note> {
     // Ledger Line Rendering
     // ==========================================================================
 
+    // Ledger line extent around the notehead, in staff-space units.
+    // Based on the approximate Bravura notehead center (~0.625 ss) ±1.0 ss extension.
+    private static final double LEDGER_LINE_LEFT_SS = -0.375;  // (5 - 8) / 8 px→ss
+    private static final double LEDGER_LINE_RIGHT_SS = 1.625;  // (5 + 8) / 8 px→ss
+
     private void renderLedgerLines(@NotNull Graphics2D g2, @NotNull Note note) {
         var noteType = note.getNoteType();
 
-        if (Math.abs(note.getYPos()) <= 5 || !noteType.drawStaveLongitude()) {
+        if (Math.abs(note.getStaffPosition()) <= 5 || !noteType.drawStaveLongitude()) {
             return;
         }
 
         try (var ignored = GraphicsState.save(g2, STROKE)) {
             g2.setStroke(LINE_STROKE);
 
-            int yPos = note.getYPos();
+            int yPos = note.getStaffPosition();
 
             // Adjust to start from a line position
             int i = yPos;
@@ -621,16 +540,16 @@ public class NoteRenderer extends BaseElementRenderer<Note> {
             int step = (yPos > 0) ? -2 : 2;
 
             while (Math.abs(i) > 5) {
-                float y = ((i - yPos) * NOTE_FONT_SIZE) / 8;
-                float x2 = Note.HOT_SPOT.x + 8f;
+                double y = (i - yPos) * 0.5; // each staff position = 0.5 ss
+                double x2 = LEDGER_LINE_RIGHT_SS;
 
                 if (noteType == NoteType.SEMIBREVE) {
-                    x2 += 3.4f;
+                    x2 += 0.425; // 3.4px / 8 px/ss
                 } else if (noteType == NoteType.MINIM) {
-                    x2 += 0.7f;
+                    x2 += 0.0875; // 0.7px / 8 px/ss
                 }
 
-                g2.draw(new Line2D.Float(Note.HOT_SPOT.x - 8, y, x2, y));
+                g2.draw(new Line2D.Double(LEDGER_LINE_LEFT_SS, y, x2, y));
                 i += step;
             }
         }
@@ -660,8 +579,8 @@ public class NoteRenderer extends BaseElementRenderer<Note> {
 
             g2.setFont(BRAVURA_FONT);
 
-            float accidentalWidth = getAccidentalWidth(note);
-            float x = (-ACCIDENTAL_PADDING - accidentalWidth) * resizeFactor;
+            float accidentalWidth = getAccidentalWidthSs(note);
+            float x = (-ACCIDENTAL_PADDING_SS - accidentalWidth) * resizeFactor;
 
             if (resizeFactor != 1f) {
                 g2.scale(resizeFactor, resizeFactor);
@@ -696,7 +615,7 @@ public class NoteRenderer extends BaseElementRenderer<Note> {
 
         for (var i = 0; i < components.length; i++) {
             if (i > 0) {
-                x += SPACE_BETWEEN_TWO_ACCIDENTALS;
+                x += SPACE_BETWEEN_TWO_ACCIDENTALS_SS;
             }
 
             x = drawGlyph(g2, components[i], x);
@@ -712,7 +631,7 @@ public class NoteRenderer extends BaseElementRenderer<Note> {
     private float drawGlyph(@NotNull Graphics2D g2, @NotNull SMuFLGlyph glyph, float x) {
         g2.drawString(glyph.asString(), x, 0f);
         var advanceWidth = SMuFLMetadata.getInstance().getAdvanceWidth(glyph);
-        return x + (advanceWidth != null ? (float) StaffSpaces.toPixels(advanceWidth) : 0f);
+        return x + (advanceWidth != null ? advanceWidth.floatValue() : 0f);
     }
 
     /**
@@ -720,7 +639,7 @@ public class NoteRenderer extends BaseElementRenderer<Note> {
      * This is the sum of left-paren kerning (based on first component)
      * and right-paren kerning (based on last component).
      */
-    private static float parenthesizedAccidentalKerning(int accidentalOrdinal) {
+    private static float parenthesizedAccidentalKerningSs(int accidentalOrdinal) {
         var components = ACCIDENTAL_COMPONENTS[accidentalOrdinal];
 
         if (components.length == 0) {
@@ -735,8 +654,8 @@ public class NoteRenderer extends BaseElementRenderer<Note> {
     // Utility Methods
     // ==========================================================================
 
-    private int calculateNoteY(int yPos, int middleLineY) {
-        return middleLineY + (int) (yPos * LayoutStylesheet.NOTE_Y_OFFSET);
+    private double calculateNoteYSs(int staffPosition, double middleLineYSs) {
+        return middleLineYSs + staffPosition * 0.5;
     }
 
     private boolean isNoteBeamed(@NotNull Note note, @NotNull ElementRenderContext ctx) {
@@ -757,15 +676,15 @@ public class NoteRenderer extends BaseElementRenderer<Note> {
 
     /**
      * Initializes the cached accidental widths from SMuFL metadata advance widths.
-     * This must be called once before using getAccidentalWidth() or getAccidentalComponentWidth().
+     * This must be called once before using getAccidentalWidthSs() or getAccidentalComponentWidthSs().
      */
     public static void initializeAccidentalWidths(@NotNull Graphics2D g2) {
-        if (baseAccidentalWidths != null) {
+        if (baseAccidentalWidthsSs != null) {
             return;
         }
 
         var metadata = SMuFLMetadata.getInstance();
-        baseAccidentalWidths = new float[ACCIDENTAL_COMPONENTS.length];
+        baseAccidentalWidthsSs = new float[ACCIDENTAL_COMPONENTS.length];
 
         for (var i = 0; i < ACCIDENTAL_COMPONENTS.length; i++) {
             var components = ACCIDENTAL_COMPONENTS[i];
@@ -773,69 +692,51 @@ public class NoteRenderer extends BaseElementRenderer<Note> {
 
             for (var c = 0; c < components.length; c++) {
                 if (c > 0) {
-                    width += SPACE_BETWEEN_TWO_ACCIDENTALS;
+                    width += SPACE_BETWEEN_TWO_ACCIDENTALS_SS;
                 }
 
                 var aw = metadata.getAdvanceWidth(components[c]);
-                width += (aw != null) ? (float) StaffSpaces.toPixels(aw) : 0f;
+                width += (aw != null) ? aw.floatValue() : 0f;
             }
 
-            baseAccidentalWidths[i] = width;
+            baseAccidentalWidthsSs[i] = width;
         }
 
-        // Calculate parenthesis widths
+        // Calculate parenthesis widths (advance widths are already in ss)
         var parensLeftWidth = metadata.getAdvanceWidth(SMuFLGlyph.ACCIDENTAL_PARENS_LEFT);
         var parensRightWidth = metadata.getAdvanceWidth(SMuFLGlyph.ACCIDENTAL_PARENS_RIGHT);
-        beginParenthesisWidth = (parensLeftWidth != null) ? (float) StaffSpaces.toPixels(parensLeftWidth) : 0f;
-        endParenthesisWidth = (parensRightWidth != null) ? (float) StaffSpaces.toPixels(parensRightWidth) : 0f;
+        beginParenthesisWidthSs = (parensLeftWidth != null) ? parensLeftWidth.floatValue() : 0f;
+        endParenthesisWidthSs = (parensRightWidth != null) ? parensRightWidth.floatValue() : 0f;
 
         // Parenthesized width = parens left + accidental components + parens right
-        baseAccidentalParenthesisWidths = new float[ACCIDENTAL_COMPONENTS.length];
+        baseAccidentalParenthesisWidthsSs = new float[ACCIDENTAL_COMPONENTS.length];
 
-        for (var i = 0; i < baseAccidentalParenthesisWidths.length; i++) {
-            baseAccidentalParenthesisWidths[i] =
-                baseAccidentalWidths[i] + beginParenthesisWidth + endParenthesisWidth;
+        for (var i = 0; i < baseAccidentalParenthesisWidthsSs.length; i++) {
+            baseAccidentalParenthesisWidthsSs[i] =
+                baseAccidentalWidthsSs[i] + beginParenthesisWidthSs + endParenthesisWidthSs;
 
-            baseAccidentalParenthesisWidths[i] += parenthesizedAccidentalKerning(i);
+            baseAccidentalParenthesisWidthsSs[i] += parenthesizedAccidentalKerningSs(i);
         }
     }
 
     /**
      * Returns the width of the accidental for a note.
      */
-    public static float getAccidentalWidth(@NotNull Note note) {
+    public static float getAccidentalWidthSs(@NotNull Note note) {
         return note.isAccidentalInParentheses()
-            ? baseAccidentalParenthesisWidths[note.getAccidental().ordinal()]
-            : baseAccidentalWidths[note.getAccidental().ordinal()];
+            ? baseAccidentalParenthesisWidthsSs[note.getAccidental().ordinal()]
+            : baseAccidentalWidthsSs[note.getAccidental().ordinal()];
     }
 
     /**
      * Returns the width of a specific accidental component.
      */
-    public static float getAccidentalComponentWidth(@NotNull Note note, int component) {
-        if (baseAccidentalWidths == null) {
-            getAccidentalWidth(note);
+    public static float getAccidentalComponentWidthSs(@NotNull Note note, int component) {
+        if (baseAccidentalWidthsSs == null) {
+            getAccidentalWidthSs(note);
         }
 
-        return baseAccidentalWidths[note.getAccidental().getComponent(component) + 1];
+        return baseAccidentalWidthsSs[note.getAccidental().getComponent(component) + 1];
     }
 
-    // ==========================================================================
-    // Stub implementations for bar/rest delegation
-    // ==========================================================================
-
-    private void renderRestGlyph(@NotNull Graphics2D g2, @NotNull NoteType noteType) {
-        try (var ignored = GraphicsState.save(g2, FONT)) {
-            g2.setFont(BRAVURA_FONT);
-            var glyph = RestRenderer.getRestGlyph(noteType);
-
-            if (glyph != null) {
-                g2.drawString(glyph.asString(), 0f, 0f);
-            }
-        }
-    }
-
-    private void renderBarLineOrRepeat(@NotNull Graphics2D g2, @NotNull NoteType noteType) {
-        BarRenderer.renderBarLineOrRepeat(g2, noteType);
-    }
 }

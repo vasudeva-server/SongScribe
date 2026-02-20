@@ -22,7 +22,6 @@ package songscribe.export;
 import java.io.File;
 
 import songscribe.data.PageLayoutData;
-import songscribe.ui.component.MainFrame;
 import songscribe.util.GraphicUtils;
 
 /**
@@ -54,8 +53,8 @@ public class PDFExporter {
         var composition = score.getComposition();
 
         // Scale to fit
-        var sheetWidth = score.getSheetWidth();
-        var sheetHeight = score.getSheetHeight();
+        var sheetWidth = score.getSheetWidthPx();
+        var sheetHeight = score.getSheetHeightPx();
         var horizontalMargin =
             (data.leftInnerMargin + data.rightOuterMargin) * resolution;
         var horizontalScale = (paperWidth - horizontalMargin) / sheetWidth;

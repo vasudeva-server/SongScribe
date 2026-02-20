@@ -20,6 +20,9 @@
 
 package songscribe.ui.renderer;
 
+import static songscribe.ui.renderer.GraphicsState.Property.FONT;
+import static songscribe.ui.renderer.GraphicsState.Property.TRANSFORM;
+
 import java.awt.*;
 import java.util.EnumMap;
 
@@ -30,16 +33,15 @@ import songscribe.music.Note;
 import songscribe.music.NoteType;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
-import songscribe.smufl.StaffSpaces;
 import songscribe.ui.layout.LayoutStylesheet;
-
-import static songscribe.ui.renderer.GraphicsState.Property.FONT;
-import static songscribe.ui.renderer.GraphicsState.Property.TRANSFORM;
+import songscribe.util.GraphicUtils;
 
 /**
  * Renders rest glyphs (whole, half, quarter, eighth, sixteenth, thirty-second rests).
  * <p>
  * Rest glyphs are rendered at the note's position using SMuFL/Bravura glyphs.
+ * All coordinates are in staff-space units; the Graphics2D scale transform
+ * applied by LineComponent handles pixel conversion.
  * Rests don't have stems, flags, or accidentals.
  */
 public class RestRenderer extends BaseElementRenderer<Note> {
@@ -63,27 +65,26 @@ public class RestRenderer extends BaseElementRenderer<Note> {
     private static final int SEMIBREVE_REST_Y_OFFSET = -2;  // Above the middle line
     private static final int MINIM_REST_Y_OFFSET = 0;       // On the middle line
 
-    // Dot positioning derived from SMuFL metadata
-    // Gap between rest glyph right edge and first dot (in staff spaces)
-    private static final double DOT_GAP_STAFF_SPACES = 0.5;
-    private static final EnumMap<NoteType, Float> FIRST_DOT_X = new EnumMap<>(NoteType.class);
-    private static final float DOT_SPACING;
+    // Dot positioning derived from SMuFL metadata, in staff-space units.
+    // The Graphics2D scale transform handles pixel conversion.
+    private static final double DOT_GAP_SS = 0.5; // ss gap between rest glyph right edge and first dot
+    private static final EnumMap<NoteType, Float> FIRST_DOT_X_SS = new EnumMap<>(NoteType.class);
+    private static final float DOT_SPACING_SS;
 
     static {
         var metadata = SMuFLMetadata.getInstance();
 
-        // Compute first dot X for each rest type from its advance width
+        // Compute first dot X for each rest type from its advance width (in ss)
         for (var entry : REST_GLYPHS.entrySet()) {
             var advanceWidth = metadata.getAdvanceWidth(entry.getValue());
 
             if (advanceWidth != null) {
-                var dotX = (float) StaffSpaces.toPixels(advanceWidth + DOT_GAP_STAFF_SPACES);
-                FIRST_DOT_X.put(entry.getKey(), dotX);
+                FIRST_DOT_X_SS.put(entry.getKey(), (float) (advanceWidth + DOT_GAP_SS));
             }
         }
 
         var dotAdvanceWidth = metadata.getAdvanceWidth(SMuFLGlyph.AUGMENTATION_DOT);
-        DOT_SPACING = (dotAdvanceWidth != null) ? (float) StaffSpaces.toPixels(dotAdvanceWidth) + 2.8f : 6.6f;
+        DOT_SPACING_SS = (dotAdvanceWidth != null) ? dotAdvanceWidth.floatValue() + 0.35f : 0.825f;
     }
 
     // Singleton instance
@@ -117,6 +118,27 @@ public class RestRenderer extends BaseElementRenderer<Note> {
     // Rendering
     // ==========================================================================
 
+    /**
+     * Resolves the X coordinate for a rest from the layout result,
+     * snapped to device pixels for crisp rendering.
+     */
+    private static double resolveRestXSs(
+        @NotNull Graphics2D g2,
+        @NotNull Note note,
+        @NotNull ElementRenderContext ctx
+    ) {
+        double noteX;
+
+        if (ctx.hasOverrideNoteX()) {
+            noteX = ctx.getOverrideNoteXSs();
+        } else {
+            var layoutResult = ctx.getLayoutResult();
+            noteX = (layoutResult != null) ? layoutResult.getNoteXSs(note) : note.getXPos();
+        }
+
+        return GraphicUtils.snapXToDevicePixel(g2, noteX);
+    }
+
     @Override
     protected void renderElement(
         @NotNull Note element,
@@ -129,9 +151,9 @@ public class RestRenderer extends BaseElementRenderer<Note> {
             return;
         }
 
-        // Get rest position
-        int noteX = element.getXPos();
-        int noteY = calculateRestY(element, ctx.getMiddleLineY());
+        // Get rest position in staff-space units
+        double noteX = resolveRestXSs(g2, element, ctx);
+        double noteY = calculateRestYSs(element, ctx.getMiddleLineYSs());
 
         try (var ignored = GraphicsState.save(g2, TRANSFORM, FONT)) {
             g2.translate(noteX, noteY);
@@ -152,25 +174,25 @@ public class RestRenderer extends BaseElementRenderer<Note> {
     }
 
     /**
-     * Calculates the Y position for a rest.
+     * Calculates the Y position for a rest in staff-space units.
      * Whole rests hang from the second line, half rests sit on the middle line.
      * Other rests are centered vertically on the staff.
      */
-    private int calculateRestY(@NotNull Note note, int middleLineY) {
+    private double calculateRestYSs(@NotNull Note note, double middleLineYSs) {
         var noteType = note.getNoteType();
 
         if (noteType == NoteType.SEMIBREVE_REST) {
             // Whole rest hangs below the 4th line (second from top)
-            return middleLineY + (int) (SEMIBREVE_REST_Y_OFFSET * LayoutStylesheet.NOTE_Y_OFFSET);
+            return middleLineYSs + SEMIBREVE_REST_Y_OFFSET * LayoutStylesheet.NOTE_Y_OFFSET;
         }
 
         if (noteType == NoteType.MINIM_REST) {
             // Half rest sits on the middle line
-            return middleLineY + (int) (MINIM_REST_Y_OFFSET * LayoutStylesheet.NOTE_Y_OFFSET);
+            return middleLineYSs + MINIM_REST_Y_OFFSET * LayoutStylesheet.NOTE_Y_OFFSET;
         }
 
         // Other rests use standard note Y positioning
-        return middleLineY + (int) (note.getYPos() * LayoutStylesheet.NOTE_Y_OFFSET);
+        return middleLineYSs + note.getStaffPosition() * LayoutStylesheet.NOTE_Y_OFFSET;
     }
 
     /**
@@ -181,7 +203,7 @@ public class RestRenderer extends BaseElementRenderer<Note> {
             return;
         }
 
-        var firstDotX = FIRST_DOT_X.get(noteType);
+        var firstDotX = FIRST_DOT_X_SS.get(noteType);
 
         if (firstDotX == null) {
             return;
@@ -194,7 +216,7 @@ public class RestRenderer extends BaseElementRenderer<Note> {
 
             for (int i = 0; i < note.getDotCount(); i++) {
                 g2.drawString(SMuFLGlyph.AUGMENTATION_DOT.asString(), dotX, 0f);
-                dotX += DOT_SPACING;
+                dotX += DOT_SPACING_SS;
             }
         }
     }

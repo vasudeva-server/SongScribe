@@ -169,10 +169,10 @@ public class LinePanel extends JPanel {
     /**
      * Sets the middle line Y coordinate.
      *
-     * @param middleLineY Y coordinate of middle staff line
+     * @param middleLineYSs Y coordinate of middle staff line in staff-space units
      */
-    public void setMiddleLineY(int middleLineY) {
-        lineComponent.setMiddleLineY(middleLineY);
+    public void setMiddleLineYSs(double middleLineYSs) {
+        lineComponent.setMiddleLineYSs(middleLineYSs);
     }
 
     /**

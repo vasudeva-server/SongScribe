@@ -20,9 +20,9 @@
 
 package songscribe.ui.layout2;
 
-import java.awt.Font;
-import java.awt.Graphics2D;
-import java.awt.geom.Rectangle2D;
+import java.awt.*;
+import java.awt.geom.*;
+import java.util.HashMap;
 import java.util.List;
 
 import org.jetbrains.annotations.NotNull;
@@ -31,7 +31,6 @@ import org.jetbrains.annotations.Nullable;
 import songscribe.music.Line;
 import songscribe.music.Note;
 import songscribe.ui.layout.Bounds;
-import songscribe.ui.layout.LineElement;
 
 /**
  * Orchestrates the complete layout pipeline for a staff line.
@@ -47,7 +46,7 @@ import songscribe.ui.layout.LineElement;
  * <p>
  * Usage:
  * <pre>{@code
- * var engine = new LayoutEngine(g2, lyricsFont, staffRightMargin);
+ * var engine = new LayoutEngine(g2, lyricsFont, staffRightMarginSs);
  * LayoutResult result = engine.layout(line);
  *
  * if (result == null) {
@@ -61,12 +60,19 @@ import songscribe.ui.layout.LineElement;
  */
 public class LayoutEngine {
 
-    // Standard staff height (5 lines * 4 spaces = 32 pixels based on 8px line spacing)
-    private static final double STAFF_HEIGHT = 32.0;
+    // Staff height in staff-space units (from LayoutConstants)
+    private static final double STAFF_HEIGHT_SS = LayoutConstants.STAFF_HEIGHT_SS;
+
+    // Beam geometry constants (staff-space units unless noted)
+    private static final double BEAM_DEPTH_SS = 0.4;        // beam thickness
+    private static final double BEAM_SHIFT_SS = 0.625;      // gap between stacked beam levels
+    private static final double BEAM_STUB_SS = 1.0;         // partial beam stub length
+    private static final double BEAM_SLOPE_MAX = 0.4;    // hyperbolic saturation limit (dimensionless)
+    private static final double MIN_STEM_SS = 3.5;       // minimum stem length (Gould/Ross 4.2)
 
     private final Graphics2D g2;
     private final Font lyricsFont;
-    private final double staffRightMargin;
+    private final double staffRightMarginSs;
 
     // Calculators
     private final NoteColumnBuilder columnBuilder;
@@ -82,15 +88,15 @@ public class LayoutEngine {
      *
      * @param g2               Graphics context for text measurement
      * @param lyricsFont       Font to use for lyrics (for measuring syllable widths)
-     * @param staffRightMargin Right margin of the staff in pixels
+     * @param staffRightMarginSs Right margin of the staff in staff-space units
      */
     public LayoutEngine(
-            @NotNull Graphics2D g2,
-            @NotNull Font lyricsFont,
-            double staffRightMargin) {
+        @NotNull Graphics2D g2,
+        @NotNull Font lyricsFont,
+        double staffRightMarginSs) {
         this.g2 = g2;
         this.lyricsFont = lyricsFont;
-        this.staffRightMargin = staffRightMargin;
+        this.staffRightMarginSs = staffRightMarginSs;
 
         // Initialize calculators
         this.columnBuilder = new NoteColumnBuilder(g2, lyricsFont);
@@ -119,9 +125,9 @@ public class LayoutEngine {
         if (columns.isEmpty()) {
             // Empty line - return empty result
             return LayoutResult.builder()
-                .setLineHeight(STAFF_HEIGHT)
-                .setStaffGeometry(0, STAFF_HEIGHT)
-                .setLyricBaselineY(0)
+                .setLineHeightSs(STAFF_HEIGHT_SS)
+                .setStaffGeometrySs(0, STAFF_HEIGHT_SS)
+                .setLyricBaselineYSs(0)
                 .build();
         }
 
@@ -129,7 +135,7 @@ public class LayoutEngine {
         horizontalCalculator.calculatePositions(columns, line);
 
         // Step 3: Apply line justification (compression if needed)
-        var justificationResult = justificationCalculator.justifyLine(columns, staffRightMargin);
+        var justificationResult = justificationCalculator.justifyLine(columns, staffRightMarginSs);
 
         if (!justificationResult.isSuccess()) {
             // Line cannot fit within margin while maintaining minimum spacing
@@ -140,11 +146,16 @@ public class LayoutEngine {
         // Step 4: Calculate vertical positions
         var verticalResult = verticalCalculator.calculateVerticalPositions(columns, line, g2);
 
-        // Step 5: Update Note positions to match calculated layout
-        updateNotePositions(columns);
+        var builder = LayoutResult.builder();
 
-        // Step 6: Build final LayoutResult
-        return buildLayoutResult(columns, verticalResult, line);
+        // Step 5: Calculate beam layouts for beamed note groups
+        calculateBeams(line, columns, builder);
+
+        // Step 6: Calculate stem layouts for unbeamed notes
+        calculateUnbeamedStems(line, columns, builder);
+
+        // Step 7: Build final LayoutResult
+        return buildLayoutResult(columns, verticalResult, line, builder);
     }
 
     /**
@@ -157,32 +168,15 @@ public class LayoutEngine {
     }
 
     /**
-     * Updates Note objects with their calculated positions from NoteColumns.
-     * <p>
-     * The layout system calculates positions and stores them in NoteColumn objects,
-     * but the Note objects themselves also store positions that are used by other
-     * parts of the system (insertion marker, debug visualization, etc.). This method
-     * ensures the Note positions stay in sync with the layout results.
-     *
-     * @param columns The note columns with calculated positions
-     */
-    private void updateNotePositions(@NotNull List<NoteColumn> columns) {
-        for (var column : columns) {
-            var note = column.getNote();
-            var x = column.getX();
-            note.setXPos((int) Math.round(x));
-        }
-    }
-
-    /**
      * Builds the final LayoutResult from calculated positions.
+     * Populates the given builder with note columns, element bounds, and staff geometry,
+     * then returns the built result.
      */
     private LayoutResult buildLayoutResult(
-            @NotNull List<NoteColumn> columns,
-            @NotNull VerticalStackingResult verticalResult,
-            @NotNull Line line) {
-
-        var builder = LayoutResult.builder();
+        @NotNull List<NoteColumn> columns,
+        @NotNull VerticalStackingResult verticalResult,
+        @NotNull Line line,
+        @NotNull LayoutResult.Builder builder) {
 
         // Add note columns
         for (var column : columns) {
@@ -227,16 +221,306 @@ public class LayoutEngine {
         }
 
         // Set staff geometry
-        double staffTopY = 0;
-        double staffBottomY = STAFF_HEIGHT;
+        double staffTopYSs = 0;
+        double staffBottomYSs = STAFF_HEIGHT_SS;
 
-        builder.setStaffGeometry(staffTopY, staffBottomY);
+        builder.setStaffGeometrySs(staffTopYSs, staffBottomYSs);
 
         // Set line height and lyrics baseline from vertical result
-        builder.setLineHeight(verticalResult.getLineHeight());
-        builder.setLyricBaselineY(verticalResult.getLyricsBaselineY());
+        builder.setLineHeightSs(verticalResult.getLineHeightPx());
+        builder.setLyricBaselineYSs(verticalResult.getLyricsBaselineYPx());
 
         return builder.build();
+    }
+
+    /**
+     * Calculates beam geometry for all beamed note groups in the line.
+     * Populates {@code builder} with a {@link LayoutResult.BeamLayout} for each beam interval.
+     */
+    private void calculateBeams(
+        @NotNull Line line,
+        @NotNull List<NoteColumn> columns,
+        @NotNull LayoutResult.Builder builder) {
+        var beamings = line.getBeamings();
+
+        // Build a note→column map for fast X lookups inside the loop.
+        var noteToColumn = new HashMap<Note, NoteColumn>(columns.size() * 2);
+
+        for (var column : columns) {
+            noteToColumn.put(column.getNote(), column);
+        }
+
+        var it = beamings.listIterator();
+
+        while (it.hasNext()) {
+            var interval = it.next();
+
+            // Determine stem direction from the pitch contour of the group.
+            // Staff position 0 = middle line; negative = below midpoint → stems up.
+            // We compare (min + max) to 0 rather than dividing to keep integer arithmetic.
+            int minStaffPos = Integer.MAX_VALUE;
+            int maxStaffPos = Integer.MIN_VALUE;
+
+            for (int i = interval.getStart(); i <= interval.getEnd(); i++) {
+                int pos = line.getNote(i).getStaffPosition();
+
+                if (pos < minStaffPos) {
+                    minStaffPos = pos;
+                }
+
+                if (pos > maxStaffPos) {
+                    maxStaffPos = pos;
+                }
+            }
+
+            boolean stemsUp = (minStaffPos + maxStaffPos) < 0;
+
+            // Apply stem direction to notes with auto direction; preserve manual overrides.
+            for (int i = interval.getStart(); i <= interval.getEnd(); i++) {
+                var note = line.getNote(i);
+
+                if (note.isStemDirectionAuto()) {
+                    note.setUpper(stemsUp);
+                }
+            }
+
+            // Compute beam slope (abc2svg algorithm with hyperbolic dampening).
+            // Staff positions are in half-staff-spaces; ×0.5 converts to staff-space units.
+            var firstNote = line.getNote(interval.getStart());
+            var lastNote = line.getNote(interval.getEnd());
+            var firstColumn = noteToColumn.get(firstNote);
+            var lastColumn = noteToColumn.get(lastNote);
+
+            double slope = 0.0;
+
+            if (firstColumn != null && lastColumn != null) {
+                double dxSs = lastColumn.getXSs() - firstColumn.getXSs();
+
+                if (dxSs != 0.0) {
+                    double rawSlope =
+                        (lastNote.getStaffPosition() - firstNote.getStaffPosition()) * 0.5 / dxSs;
+
+                    // Hyperbolic dampening saturates extreme slopes without hard clamping.
+                    slope = BEAM_SLOPE_MAX * rawSlope / (BEAM_SLOPE_MAX + Math.abs(rawSlope));
+                }
+            }
+
+            // Compute y-intercept so beam passes through the anchor note's stem tip at MIN_STEM_SS.
+            // The anchor is the extremal note in the stem direction:
+            //   stemsUp  → note with max staffPosition (highest pitch, so closest to beam above)
+            //   stemsDown → note with min staffPosition (lowest pitch, so closest to beam below)
+            // All Y values are in staff-space with Y-up positive (positive staffPos = above center).
+            double startYSs = 0.0;
+
+            if (firstColumn != null) {
+                double firstXSs = firstColumn.getXSs();
+
+                int anchorIdx = interval.getStart();
+                int anchorStaffPos = firstNote.getStaffPosition();
+
+                for (int i = interval.getStart() + 1; i <= interval.getEnd(); i++) {
+                    int pos = line.getNote(i).getStaffPosition();
+
+                    if (stemsUp ? pos > anchorStaffPos : pos < anchorStaffPos) {
+                        anchorStaffPos = pos;
+                        anchorIdx = i;
+                    }
+                }
+
+                var anchorNote = line.getNote(anchorIdx);
+                var anchorColumn = noteToColumn.get(anchorNote);
+                double anchorXSs = (anchorColumn != null) ? anchorColumn.getXSs() : firstXSs;
+                double anchorNoteYSs = anchorNote.getStaffPosition() * 0.5;
+
+                // Place beam exactly MIN_STEM_SS from the anchor notehead.
+                double beamYAtAnchorSs = stemsUp
+                    ? anchorNoteYSs + MIN_STEM_SS
+                    : anchorNoteYSs - MIN_STEM_SS;
+
+                startYSs = beamYAtAnchorSs - slope * (anchorXSs - firstXSs);
+
+                // Iteratively reduce slope until all stems are at least MIN_STEM_SS, or give up
+                // after 20 iterations.
+                for (int iter = 0; iter < 20; iter++) {
+                    boolean allOk = true;
+
+                    for (int i = interval.getStart(); i <= interval.getEnd(); i++) {
+                        var note = line.getNote(i);
+                        var col = noteToColumn.get(note);
+
+                        if (col == null) {
+                            continue;
+                        }
+
+                        double noteYSs = note.getStaffPosition() * 0.5;
+                        double beamYSs = slope * (col.getXSs() - firstXSs) + startYSs;
+                        double stemLenSs = stemsUp ? (beamYSs - noteYSs) : (noteYSs - beamYSs);
+
+                        if (stemLenSs < MIN_STEM_SS - 1e-9) {
+                            allOk = false;
+                            break;
+                        }
+                    }
+
+                    if (allOk) {
+                        break;
+                    }
+
+                    // Reduce slope and reanchor so the anchor note still has exactly MIN_STEM_SS.
+                    slope *= 0.85;
+                    beamYAtAnchorSs = stemsUp
+                        ? anchorNoteYSs + MIN_STEM_SS
+                        : anchorNoteYSs - MIN_STEM_SS;
+                    startYSs = beamYAtAnchorSs - slope * (anchorXSs - firstXSs);
+                }
+
+                // After slope reduction, shift beam vertically to cover any remaining deficit.
+                double maxDeficitSs = 0.0;
+
+                for (int i = interval.getStart(); i <= interval.getEnd(); i++) {
+                    var note = line.getNote(i);
+                    var col = noteToColumn.get(note);
+
+                    if (col == null) {
+                        continue;
+                    }
+
+                    double noteYSs = note.getStaffPosition() * 0.5;
+                    double beamYSs = slope * (col.getXSs() - firstXSs) + startYSs;
+                    double stemLenSs = stemsUp ? (beamYSs - noteYSs) : (noteYSs - beamYSs);
+                    double deficitSs = MIN_STEM_SS - stemLenSs;
+
+                    if (deficitSs > maxDeficitSs) {
+                        maxDeficitSs = deficitSs;
+                    }
+                }
+
+                if (maxDeficitSs > 0.0) {
+                    startYSs += stemsUp ? maxDeficitSs : -maxDeficitSs;
+                }
+            }
+
+            // Flat beam snapping: when slope is near zero, snap startYSs to the nearest
+            // staff line or space boundary so the beam sits cleanly on the grid.
+            // Grid points are at multiples of 0.5 ss (each staff line/space = 0.5 ss).
+            // The formula maps startYSs into the nearest 0.5 ss slot, offset by the
+            // staff's half-line-space (0.25 ss from center = 1.5 half-spaces).
+            if (Math.abs(slope) < 0.05) {
+                startYSs = Math.round((startYSs + 1.5) / 0.75) * 0.75 - 1.5;
+            }
+
+            // Beam thickening: angled beams appear thinner due to raster aliasing.
+            // Compensate by increasing BEAM_DEPTH proportionally to 1/cos(angle),
+            // clamped to a 3.3–8.8% increase over the nominal beam depth.
+            double angle = Math.atan(slope);
+            double factor = Math.clamp(1.0 / Math.cos(angle), 1.033, 1.088);
+            double thickeningSs = BEAM_DEPTH_SS * (factor - 1.0);
+
+            // Build StemLayout for each note in the beam group and accumulate into a map
+            // for the BeamLayout.  All Y values are in staff-space with Y-up positive.
+            //   stemsUp:   topYSs = beamYSs (above notehead),  bottomYSs = noteAnchorYSs
+            //   stemsDown: topYSs = noteAnchorYSs,             bottomYSs = beamYSs (below notehead)
+            var stemLayouts = new HashMap<Note, LayoutResult.StemLayout>();
+
+            if (firstColumn != null) {
+                double firstXSs = firstColumn.getXSs();
+
+                for (int i = interval.getStart(); i <= interval.getEnd(); i++) {
+                    var note = line.getNote(i);
+                    var col = noteToColumn.get(note);
+
+                    if (col == null) {
+                        continue;
+                    }
+
+                    double noteYSs = note.getStaffPosition() * 0.5;
+                    double beamYSs = slope * (col.getXSs() - firstXSs) + startYSs;
+                    double stemLenSs = stemsUp ? (beamYSs - noteYSs) : (noteYSs - beamYSs);
+                    double lengtheningSs = stemLenSs - MIN_STEM_SS;
+
+                    double topYSs = stemsUp ? beamYSs : noteYSs;
+                    double bottomYSs = stemsUp ? noteYSs : beamYSs;
+
+                    // Determine stub direction for partial-beam notes.
+                    // A stub is needed at beam level L when neither neighbour shares level L.
+                    int myBeams = beamCount(note);
+                    int leftBeams = i > interval.getStart() ? beamCount(line.getNote(i - 1)) : 0;
+                    int rightBeams = i < interval.getEnd() ? beamCount(line.getNote(i + 1)) : 0;
+
+                    boolean hasStub = false;
+
+                    for (int level = 2; level <= myBeams; level++) {
+                        if (leftBeams < level && rightBeams < level) {
+                            hasStub = true;
+                            break;
+                        }
+                    }
+
+                    boolean stubRight = false;
+
+                    if (hasStub) {
+                        if (i == interval.getStart()) {
+                            stubRight = true;                   // first note → stub right
+                        } else if (i == interval.getEnd()) {
+                            stubRight = false;                  // last note → stub left
+                        } else if (rightBeams < myBeams) {
+                            stubRight = false;                  // note before a beam break → left
+                        } else if (leftBeams < myBeams) {
+                            stubRight = true;                   // note at a beam break → right
+                        } else {
+                            stubRight = rightBeams >= leftBeams; // toward neighbour with more beams
+                        }
+                    }
+
+                    stemLayouts.put(note, new LayoutResult.StemLayout(topYSs, bottomYSs, lengtheningSs, stubRight));
+                }
+            }
+
+            // TODO: Phase 4 — BeamLayout → builder
+        }
+    }
+
+    /**
+     * Calculates stem geometry for all notes not covered by a beam group.
+     * Populates {@code builder} with a {@link LayoutResult.StemLayout} for each such note.
+     */
+    private void calculateUnbeamedStems(
+        @NotNull Line line,
+        @NotNull List<NoteColumn> columns,
+        @NotNull LayoutResult.Builder builder) {
+        for (var col : columns) {
+            var note = col.getNote();
+
+            if (col.isBeamed() || !note.getNoteType().isNoteWithStem()) {
+                continue;
+            }
+
+            // Set auto stem direction: notes on or below the middle line get stems up.
+            if (note.isStemDirectionAuto()) {
+                note.setUpper(note.getStaffPosition() <= 0);
+            }
+
+            // !isUpper() → stem up (per NoteColumnBuilder convention)
+            boolean stemsUp = !note.isUpper();
+            double noteYSs = note.getStaffPosition() * 0.5;
+
+            double topYSs = stemsUp ? noteYSs + MIN_STEM_SS : noteYSs;
+            double bottomYSs = stemsUp ? noteYSs : noteYSs - MIN_STEM_SS;
+
+            builder.putStemLayout(note, new LayoutResult.StemLayout(topYSs, bottomYSs, 0.0, false));
+        }
+    }
+
+    /**
+     * Returns the number of beams (flag levels) for a note type.
+     * QUAVER = 1, SEMIQUAVER = 2, DEMI_SEMIQUAVER = 3.
+     */
+    private static int beamCount(@NotNull Note note) {
+        return switch (note.getNoteType()) {
+            case SEMIQUAVER -> 2;
+            case DEMI_SEMIQUAVER -> 3;
+            default -> 1;
+        };
     }
 
     /**
@@ -256,7 +540,7 @@ public class LayoutEngine {
     /**
      * Returns the staff right margin used by this engine.
      */
-    public double getStaffRightMargin() {
-        return staffRightMargin;
+    public double getStaffRightMarginSs() {
+        return staffRightMarginSs;
     }
 }

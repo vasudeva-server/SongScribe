@@ -29,6 +29,7 @@ import org.jetbrains.annotations.NotNull;
 
 import songscribe.music.Note;
 import songscribe.smufl.SMuFLGlyph;
+import songscribe.util.GraphicUtils;
 
 /**
  * Renders grace notes using pre-composed SMuFL glyphs.
@@ -56,35 +57,23 @@ public class GraceNoteRenderer extends BaseElementRenderer<Note> {
         @NotNull Graphics2D g2,
         @NotNull ElementRenderContext ctx
     ) {
-        renderGraceQuaver(g2, element, ctx.getMiddleLineY());
-    }
-
-    /**
-     * Renders a grace note with simple method signature for backward compatibility.
-     *
-     * @param g2          Graphics context
-     * @param note        The grace note to render
-     * @param middleLineY Y position of middle staff line
-     */
-    public void render(
-        @NotNull Graphics2D g2,
-        @NotNull Note note,
-        int middleLineY
-    ) {
-        renderGraceQuaver(g2, note, middleLineY);
+        renderGraceQuaver(g2, element, ctx);
     }
 
     /**
      * Renders a grace quaver using pre-composed SMuFL glyph.
+     * <p>
+     * All coordinates are in staff-space units. The Graphics2D scale transform
+     * converts to pixels at the render boundary.
      */
     private void renderGraceQuaver(
         @NotNull Graphics2D g2,
         @NotNull Note note,
-        int middleLineY
+        @NotNull ElementRenderContext ctx
     ) {
         try (var ignored = GraphicsState.save(g2, TRANSFORM, FONT)) {
-            var noteX = note.getXPos();
-            var noteY = noteYPosToCoordinate(note.getYPos(), middleLineY);
+            var noteX = resolveNoteXSs(g2, note, ctx);
+            var noteY = noteYPosToCoordinateSs(note.getStaffPosition(), ctx.getMiddleLineYSs());
 
             g2.translate(noteX, noteY);
             g2.scale(GRACE_NOTE_SCALE, GRACE_NOTE_SCALE);
@@ -100,6 +89,32 @@ public class GraceNoteRenderer extends BaseElementRenderer<Note> {
 
             // Note: Ledger lines are not rendered for grace notes
         }
+    }
+
+    /**
+     * Resolves the device-pixel-snapped X coordinate for a grace note, using the first
+     * available source in priority order:
+     * <ol>
+     *   <li>Override X from context (edit note preview)</li>
+     *   <li>Layout result position (laid-out composition notes)</li>
+     *   <li>Note's own {@code xPos} (fallback)</li>
+     * </ol>
+     */
+    private static double resolveNoteXSs(
+        @NotNull Graphics2D g2,
+        @NotNull Note note,
+        @NotNull ElementRenderContext ctx
+    ) {
+        double noteX;
+
+        if (ctx.hasOverrideNoteX()) {
+            noteX = ctx.getOverrideNoteXSs();
+        } else {
+            var layoutResult = ctx.getLayoutResult();
+            noteX = (layoutResult != null) ? layoutResult.getNoteXSs(note) : note.getXPos();
+        }
+
+        return GraphicUtils.snapXToDevicePixel(g2, noteX);
     }
 
 }

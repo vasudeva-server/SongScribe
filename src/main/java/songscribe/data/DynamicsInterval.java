@@ -21,9 +21,9 @@ package songscribe.data;
 
 public class DynamicsInterval extends Interval {
 
-    private int x1Shift;
-    private int x2Shift;
-    private int yShift;
+    private double x1Shift;
+    private double x2Shift;
+    private double yShift;
 
     public DynamicsInterval(int start, int end) {
         super(start, end, null);
@@ -32,27 +32,27 @@ public class DynamicsInterval extends Interval {
         this.yShift = 0;
     }
 
-    public int getX1Shift() {
+    public double getX1Shift() {
         return x1Shift;
     }
 
-    public void setX1Shift(int x1Shift) {
+    public void setX1Shift(double x1Shift) {
         this.x1Shift = x1Shift;
     }
 
-    public int getX2Shift() {
+    public double getX2Shift() {
         return x2Shift;
     }
 
-    public void setX2Shift(int x2Shift) {
+    public void setX2Shift(double x2Shift) {
         this.x2Shift = x2Shift;
     }
 
-    public int getYShift() {
+    public double getYShift() {
         return yShift;
     }
 
-    public void setYShift(int yShift) {
+    public void setYShift(double yShift) {
         this.yShift = yShift;
     }
 

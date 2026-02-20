@@ -378,7 +378,7 @@ public class ExportABCAction extends UIAction {
 
             sb.append(translateDecorations(note));
             sb.append(translateAccidental(note.getAccidental()));
-            sb.append(translatePitch(note.getYPos()));
+            sb.append(translatePitch(note.getStaffPosition()));
             var duration =
                 switch (noteType) {
                     case GRACE_QUAVER -> NoteType.QUAVER.getDefaultDuration();

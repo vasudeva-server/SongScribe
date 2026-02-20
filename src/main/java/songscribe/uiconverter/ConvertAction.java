@@ -43,9 +43,9 @@ import songscribe.util.GraphicUtils;
 
 public class ConvertAction extends AbstractAction {
 
-    public static final int[] IMAGE_WIDTH = new int[] { /*640, */2240 };
-    public static final int[] LEFT_RIGHT_MARGIN = new int[] { /*13, */39 };
-    public static final String[] IMAGE_NAME_POSIX = new String[] {
+    public static final int[] IMAGE_WIDTH = new int[]{ /*640, */2240};
+    public static final int[] LEFT_RIGHT_MARGIN = new int[]{ /*13, */39};
+    public static final String[] IMAGE_NAME_POSIX = new String[]{
         /*"-s", */"-l",
     };
     private static final boolean CREATE_ZIP = false;
@@ -195,7 +195,7 @@ public class ConvertAction extends AbstractAction {
                         var scale =
                             (double) (IMAGE_WIDTH[i] -
                                 (2 * LEFT_RIGHT_MARGIN[i])) /
-                            score.getSheetWidth();
+                                score.getSheetWidthPx();
                         var image = score.createImageForExport(
                             Color.WHITE,
                             scale,
@@ -205,9 +205,9 @@ public class ConvertAction extends AbstractAction {
                         var imageFile = new File(
                             songDirectory,
                             fileName +
-                            IMAGE_NAME_POSIX[i] +
-                            '.' +
-                            IMAGETYPE.toLowerCase()
+                                IMAGE_NAME_POSIX[i] +
+                                '.' +
+                                IMAGETYPE.toLowerCase()
                         );
                         try {
                             GraphicUtils.writeImage(

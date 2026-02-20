@@ -20,7 +20,9 @@
 
 package songscribe.ui.renderer;
 
-import static songscribe.ui.renderer.GraphicsState.Property.*;
+import static songscribe.ui.renderer.GraphicsState.Property.COLOR;
+import static songscribe.ui.renderer.GraphicsState.Property.FONT;
+import static songscribe.ui.renderer.GraphicsState.Property.TRANSFORM;
 
 import java.awt.*;
 
@@ -49,7 +51,7 @@ public class BeatChangeRenderer extends BaseElementRenderer<Note> {
     private static final float NOTE_FONT_SIZE = BaseElementRenderer.NOTE_FONT_SIZE;
     private static final double TEMPO_CHANGE_ZOOM_X = BaseElementRenderer.TEMPO_CHANGE_ZOOM_X;
     private static final double TEMPO_CHANGE_ZOOM_Y = BaseElementRenderer.TEMPO_CHANGE_ZOOM_Y;
-    private static final double CROTCHET_WIDTH = NOTE_FONT_SIZE / 3.6056337d;
+    private static final double CROTCHET_WIDTH_PX = NOTE_FONT_SIZE / 3.6056337d;
 
     // Singleton instance
     private static final BeatChangeRenderer INSTANCE = new BeatChangeRenderer();
@@ -118,7 +120,7 @@ public class BeatChangeRenderer extends BaseElementRenderer<Note> {
         }
 
         int xPos = note.getXPos();
-        int yPos = getEffectiveBeatChangeYPos(note, ctx);
+        int yPos = getEffectiveBeatChangeYPosPx(note, ctx);
 
         drawBeatChange(g2, beatChange, xPos, yPos, composition);
     }
@@ -126,7 +128,7 @@ public class BeatChangeRenderer extends BaseElementRenderer<Note> {
     /**
      * Gets the Y position for beat change from layout result.
      */
-    private int getEffectiveBeatChangeYPos(
+    private int getEffectiveBeatChangeYPosPx(
         @NotNull Note note,
         @NotNull ElementRenderContext ctx
     ) {
@@ -167,7 +169,7 @@ public class BeatChangeRenderer extends BaseElementRenderer<Note> {
         // Draw equals sign
         g2.setFont(composition.getAttributionFont());
         g2.setColor(NOTE_COLOR);
-        int eqXPos = xPos + (int) CROTCHET_WIDTH + 7;
+        int eqXPos = xPos + (int) CROTCHET_WIDTH_PX + 7;
         g2.drawString("=", (float) eqXPos, yPos);
 
         // Draw second note

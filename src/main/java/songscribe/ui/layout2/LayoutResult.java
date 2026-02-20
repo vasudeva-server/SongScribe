@@ -20,20 +20,22 @@
 
 package songscribe.ui.layout2;
 
-import java.awt.geom.Point2D;
-import java.util.Collections;
+import java.awt.geom.*;
 import java.util.HashMap;
 import java.util.Map;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import songscribe.data.Interval;
 import songscribe.music.Note;
 import songscribe.ui.layout.Bounds;
 import songscribe.ui.layout.LineElement;
 
 /**
  * Immutable result of the layout engine containing all positioned elements for rendering.
+ * <p>
+ * All positions and dimensions are in staff-space units.
  * <p>
  * The LayoutResult provides rendering code with final positions for all elements in a line,
  * eliminating the need for any position calculations during rendering. It contains:
@@ -48,12 +50,26 @@ import songscribe.ui.layout.LineElement;
  */
 public final class LayoutResult {
 
+    /**
+     * Half-width of the note head hit-test area in staff-space units.
+     * Deliberately larger than the actual glyph bbox half-width (~0.59 ss)
+     * for comfortable click targeting, matching the old 9px hit area.
+     */
+    static final double NOTE_HEAD_HALF_WIDTH_SS = 1.125;  // was 9.0px
+
+    /**
+     * Offset for positioning an insertion note before the first note in the line (ss).
+     */
+    private static final double INSERTION_BEFORE_FIRST_OFFSET_SS = 1.875;  // 15px
+
     private final @NotNull Map<Note, NoteColumn> noteColumns;
     private final @NotNull Map<LineElement, Bounds> elementBounds;
-    private final double lineHeight;
-    private final double staffTopY;
-    private final double staffBottomY;
-    private final double lyricBaselineY;
+    private final @NotNull Map<Interval, BeamLayout> beamLayouts;
+    private final @NotNull Map<Note, StemLayout> stemLayouts;
+    private final double lineHeightSs;
+    private final double staffTopYSs;
+    private final double staffBottomYSs;
+    private final double lyricBaselineYSs;
 
     /**
      * Creates a layout result with the given data.
@@ -62,24 +78,30 @@ public final class LayoutResult {
      *
      * @param noteColumns      Map of notes to their columns with positions
      * @param elementBounds    Map of line elements to their bounds
-     * @param lineHeight       Total height of the line (including staff, elements, and lyrics)
-     * @param staffTopY        Y position of the top staff line
-     * @param staffBottomY     Y position of the bottom staff line
-     * @param lyricBaselineY   Y position of the lyric baseline (0 if no lyrics)
+     * @param beamLayouts      Map of beam intervals to their computed beam geometry
+     * @param stemLayouts      Map of unbeamed notes to their computed stem geometry
+     * @param lineHeightSs       Total height of the line in staff spaces (including staff, elements, and lyrics)
+     * @param staffTopYSs        Y position of the top staff line in staff spaces
+     * @param staffBottomYSs     Y position of the bottom staff line in staff spaces
+     * @param lyricBaselineYSs   Y position of the lyric baseline in staff spaces (0 if no lyrics)
      */
     private LayoutResult(
-            @NotNull Map<Note, NoteColumn> noteColumns,
-            @NotNull Map<LineElement, Bounds> elementBounds,
-            double lineHeight,
-            double staffTopY,
-            double staffBottomY,
-            double lyricBaselineY) {
+        @NotNull Map<Note, NoteColumn> noteColumns,
+        @NotNull Map<LineElement, Bounds> elementBounds,
+        @NotNull Map<Interval, BeamLayout> beamLayouts,
+        @NotNull Map<Note, StemLayout> stemLayouts,
+        double lineHeightSs,
+        double staffTopYSs,
+        double staffBottomYSs,
+        double lyricBaselineYSs) {
         this.noteColumns = Map.copyOf(noteColumns);
         this.elementBounds = Map.copyOf(elementBounds);
-        this.lineHeight = lineHeight;
-        this.staffTopY = staffTopY;
-        this.staffBottomY = staffBottomY;
-        this.lyricBaselineY = lyricBaselineY;
+        this.beamLayouts = Map.copyOf(beamLayouts);
+        this.stemLayouts = Map.copyOf(stemLayouts);
+        this.lineHeightSs = lineHeightSs;
+        this.staffTopYSs = staffTopYSs;
+        this.staffBottomYSs = staffBottomYSs;
+        this.lyricBaselineYSs = lyricBaselineYSs;
     }
 
     // ==========================================================================
@@ -102,9 +124,9 @@ public final class LayoutResult {
      * @param note The note to look up
      * @return The X position, or 0 if the note was not laid out
      */
-    public double getNoteX(@NotNull Note note) {
+    public double getNoteXSs(@NotNull Note note) {
         var column = noteColumns.get(note);
-        return column != null ? column.getX() : 0;
+        return column != null ? column.getXSs() : 0;
     }
 
     /**
@@ -124,6 +146,41 @@ public final class LayoutResult {
      */
     public boolean hasNote(@NotNull Note note) {
         return noteColumns.containsKey(note);
+    }
+
+    // ==========================================================================
+    // Beam + Stem Layout Access
+    // ==========================================================================
+
+    /**
+     * Returns the beam geometry for a beam interval.
+     *
+     * @param interval The beam interval to look up
+     * @return The beam layout, or null if not computed
+     */
+    public @Nullable BeamLayout getBeamLayout(@NotNull Interval interval) {
+        return beamLayouts.get(interval);
+    }
+
+    /**
+     * Returns the stem geometry for a note.
+     * <p>
+     * Checks beamed stem layouts first (notes inside a beam group), then falls back
+     * to the standalone stem layouts for unbeamed notes.
+     *
+     * @param note The note to look up
+     * @return The stem layout, or null if not computed
+     */
+    public @Nullable StemLayout getStemLayout(@NotNull Note note) {
+        for (var beamLayout : beamLayouts.values()) {
+            var stemLayout = beamLayout.stems().get(note);
+
+            if (stemLayout != null) {
+                return stemLayout;
+            }
+        }
+
+        return stemLayouts.get(note);
     }
 
     // ==========================================================================
@@ -207,8 +264,8 @@ public final class LayoutResult {
      * @return The bounds if found, null otherwise
      */
     public @Nullable Bounds findAttachmentBounds(
-            @NotNull Note parentNote,
-            @NotNull Class<? extends songscribe.ui.layout.Attachment> attachmentType) {
+        @NotNull Note parentNote,
+        @NotNull Class<? extends songscribe.ui.layout.Attachment> attachmentType) {
 
         for (var entry : elementBounds.entrySet()) {
             var element = entry.getKey();
@@ -237,8 +294,8 @@ public final class LayoutResult {
      */
     @SuppressWarnings("unchecked")
     public @Nullable <A extends songscribe.ui.layout.Attachment> A findAttachment(
-            @NotNull Note parentNote,
-            @NotNull Class<A> attachmentType) {
+        @NotNull Note parentNote,
+        @NotNull Class<A> attachmentType) {
 
         for (var element : elementBounds.keySet()) {
             if (attachmentType.isInstance(element)) {
@@ -265,9 +322,9 @@ public final class LayoutResult {
      * @return The bounds if found, null otherwise
      */
     public @Nullable Bounds findRangeElementBounds(
-            @NotNull Note anchorNote,
-            @NotNull Note endNote,
-            @NotNull Class<? extends songscribe.ui.layout.RangeElement> rangeElementType) {
+        @NotNull Note anchorNote,
+        @NotNull Note endNote,
+        @NotNull Class<? extends songscribe.ui.layout.RangeElement> rangeElementType) {
 
         for (var entry : elementBounds.entrySet()) {
             var element = entry.getKey();
@@ -306,40 +363,40 @@ public final class LayoutResult {
     // ==========================================================================
 
     /**
-     * Returns the total height of this line (staff + elements + lyrics).
+     * Returns the total height of this line (staff + elements + lyrics), in staff spaces.
      */
-    public double getLineHeight() {
-        return lineHeight;
+    public double getLineHeightSs() {
+        return lineHeightSs;
     }
 
     /**
-     * Returns the Y position of the top staff line.
+     * Returns the Y position of the top staff line, in staff spaces.
      */
-    public double getStaffTopY() {
-        return staffTopY;
+    public double getStaffTopYSs() {
+        return staffTopYSs;
     }
 
     /**
-     * Returns the Y position of the bottom staff line.
+     * Returns the Y position of the bottom staff line, in staff spaces.
      */
-    public double getStaffBottomY() {
-        return staffBottomY;
+    public double getStaffBottomYSs() {
+        return staffBottomYSs;
     }
 
     /**
-     * Returns the Y position of the lyric baseline.
+     * Returns the Y position of the lyric baseline, in staff spaces.
      *
-     * @return Lyric baseline Y, or 0 if no lyrics on this line
+     * @return Lyric baseline Y in staff spaces, or 0 if no lyrics on this line
      */
-    public double getLyricBaselineY() {
-        return lyricBaselineY;
+    public double getLyricBaselineYSs() {
+        return lyricBaselineYSs;
     }
 
     /**
      * Returns whether this line has lyrics.
      */
     public boolean hasLyrics() {
-        return lyricBaselineY > 0;
+        return lyricBaselineYSs > 0;
     }
 
     /**
@@ -347,13 +404,13 @@ public final class LayoutResult {
      * <p>
      * Calculates the rightmost edge of all note columns in the line.
      *
-     * @return Line width in pixels, or 0 if no columns
+     * @return Line width in staff-space units, or 0 if no columns
      */
-    public double getLineWidth() {
+    public double getLineWidthSs() {
         double maxX = 0;
 
         for (var column : noteColumns.values()) {
-            double rightEdge = column.getRightEdgeX();
+            double rightEdge = column.getRightEdgeXSs();
 
             if (rightEdge > maxX) {
                 maxX = rightEdge;
@@ -379,7 +436,7 @@ public final class LayoutResult {
      * If the mouse is within the horizontal bounds of a note head, returns that note's index
      * to indicate replacement. Otherwise, returns the insertion slot between notes.
      *
-     * @param mouseX Mouse X coordinate in pixels
+     * @param mouseX Mouse X coordinate in staff-space units
      * @param line   The line containing the notes
      * @return Insertion index (0 to noteCount inclusive)
      */
@@ -390,8 +447,7 @@ public final class LayoutResult {
             return 0;
         }
 
-        // Note head half-width (from NoteColumnBuilder.HALF_NOTE_HEAD)
-        double noteHeadHalfWidth = 9.0;
+        double noteHeadHalfWidth = NOTE_HEAD_HALF_WIDTH_SS;
 
         // Check each note to see if mouse is within its note head bounds
         for (var i = 0; i < noteCount; i++) {
@@ -402,7 +458,7 @@ public final class LayoutResult {
                 continue;
             }
 
-            var noteX = column.getX();
+            var noteX = column.getXSs();
             var noteLeft = noteX - noteHeadHalfWidth;
             var noteRight = noteX + noteHeadHalfWidth;
 
@@ -422,7 +478,7 @@ public final class LayoutResult {
             return 0;
         }
 
-        if (mouseX < firstColumn.getX() - noteHeadHalfWidth) {
+        if (mouseX < firstColumn.getXSs() - noteHeadHalfWidth) {
             return 0;
         }
 
@@ -434,7 +490,7 @@ public final class LayoutResult {
             return noteCount;
         }
 
-        if (mouseX > lastColumn.getX() + noteHeadHalfWidth) {
+        if (mouseX > lastColumn.getXSs() + noteHeadHalfWidth) {
             return noteCount;
         }
 
@@ -450,8 +506,8 @@ public final class LayoutResult {
                 continue;
             }
 
-            var currentRight = currentColumn.getX() + noteHeadHalfWidth;
-            var nextLeft = nextColumn.getX() - noteHeadHalfWidth;
+            var currentRight = currentColumn.getXSs() + noteHeadHalfWidth;
+            var nextLeft = nextColumn.getXSs() - noteHeadHalfWidth;
 
             // Check if mouseX is in the gap between note heads
             if (mouseX > currentRight && mouseX < nextLeft) {
@@ -466,7 +522,7 @@ public final class LayoutResult {
     /**
      * Checks whether the mouse X coordinate is directly over an existing note head.
      *
-     * @param mouseX Mouse X coordinate in pixels
+     * @param mouseX Mouse X coordinate in staff-space units
      * @param line   The line containing the notes
      * @return true if the mouse is within the horizontal bounds of a note head
      */
@@ -477,7 +533,7 @@ public final class LayoutResult {
             return false;
         }
 
-        double noteHeadHalfWidth = 9.0;
+        double noteHeadHalfWidth = NOTE_HEAD_HALF_WIDTH_SS;
 
         for (var i = 0; i < noteCount; i++) {
             var note = line.getNote(i);
@@ -487,7 +543,7 @@ public final class LayoutResult {
                 continue;
             }
 
-            var noteX = column.getX();
+            var noteX = column.getXSs();
 
             if (mouseX >= noteX - noteHeadHalfWidth && mouseX <= noteX + noteHeadHalfWidth) {
                 return true;
@@ -504,26 +560,25 @@ public final class LayoutResult {
      * Otherwise, positions between notes or after the last note as appropriate.
      *
      * @param insertionIndex The insertion index (0 to noteCount inclusive)
-     * @param mouseX         Mouse X coordinate (used to detect if over a note head)
+     * @param mouseX         Mouse X coordinate in staff-space units (used to detect if over a note head)
      * @param insertionNote  The note to be inserted (used to calculate extents for after-last-note positioning)
      * @param line           The line containing the notes
-     * @return X position in pixels for rendering the insertion note
+     * @return X position in staff-space units for rendering the insertion note
      */
-    public double calculateInsertionX(
-            int insertionIndex,
-            double mouseX,
-            @NotNull Note insertionNote,
-            @NotNull songscribe.music.Line line) {
+    public double calculateInsertionXSs(
+        int insertionIndex,
+        double mouseX,
+        @NotNull Note insertionNote,
+        @NotNull songscribe.music.Line line) {
 
         int noteCount = line.noteCount();
 
         // Empty line - use first note position (clef + key signature + offset)
         if (noteCount == 0) {
-            return LayoutConstants.calculateFirstNoteX(line.getKeyAccidentalCount());
+            return LayoutConstants.calculateFirstNoteXSs(line.getKeyAccidentalCount());
         }
 
-        // Note head half-width
-        double noteHeadHalfWidth = 9.0;
+        double noteHeadHalfWidth = NOTE_HEAD_HALF_WIDTH_SS;
 
         // Check if mouse is over any note head - if so, snap to that note's position
         for (var i = 0; i < noteCount; i++) {
@@ -534,7 +589,7 @@ public final class LayoutResult {
                 continue;
             }
 
-            var noteX = column.getX();
+            var noteX = column.getXSs();
             if (mouseX >= noteX - noteHeadHalfWidth && mouseX <= noteX + noteHeadHalfWidth) {
                 // Mouse is over this note head - snap to its position
                 return noteX;
@@ -549,10 +604,10 @@ public final class LayoutResult {
             var firstColumn = noteColumns.get(firstNote);
 
             if (firstColumn == null) {
-                return LayoutConstants.px(LayoutConstants.FIRST_NOTE_OFFSET);
+                return LayoutConstants.FIRST_NOTE_OFFSET_SS;
             }
 
-            return firstColumn.getX() - 15;  // FIRST_NOTE_IN_LINE_MOVEMENT offset
+            return firstColumn.getXSs() - INSERTION_BEFORE_FIRST_OFFSET_SS;
         }
 
         // After last note - use same spacing logic as layout engine
@@ -561,24 +616,24 @@ public final class LayoutResult {
             var lastColumn = noteColumns.get(lastNote);
 
             if (lastColumn == null) {
-                return LayoutConstants.px(LayoutConstants.FIRST_NOTE_OFFSET);
+                return LayoutConstants.FIRST_NOTE_OFFSET_SS;
             }
 
             // Build a temporary column for the insertion note to calculate proper spacing
             var insertionColumn = new NoteColumn(
-                    insertionNote,
-                    java.util.Collections.emptyList(),
-                    NoteColumnBuilder.calculateLeftExtent(insertionNote),
-                    NoteColumnBuilder.calculateRightExtent(insertionNote),
-                    0,
-                    0,
-                    null,
-                    0,
-                    null
+                insertionNote,
+                java.util.Collections.emptyList(),
+                NoteColumnBuilder.calculateLeftExtentSs(insertionNote),
+                NoteColumnBuilder.calculateRightExtentSs(insertionNote),
+                0,
+                0,
+                null,
+                0,
+                null
             );
 
             // Use the same spacing calculation as HorizontalSpacingCalculator
-            return HorizontalSpacingCalculator.calculateNextColumnX(lastColumn, insertionColumn);
+            return HorizontalSpacingCalculator.calculateNextColumnXSs(lastColumn, insertionColumn);
         }
 
         // Between notes - use midpoint
@@ -589,10 +644,10 @@ public final class LayoutResult {
         var currColumn = noteColumns.get(currNote);
 
         if (prevColumn == null || currColumn == null) {
-            return LayoutConstants.px(LayoutConstants.FIRST_NOTE_OFFSET);
+            return LayoutConstants.FIRST_NOTE_OFFSET_SS;
         }
 
-        return (prevColumn.getX() + currColumn.getX()) / 2.0;
+        return (prevColumn.getXSs() + currColumn.getXSs()) / 2.0;
     }
 
     // ==========================================================================
@@ -624,14 +679,18 @@ public final class LayoutResult {
 
         private final Map<Note, NoteColumn> noteColumns;
         private final Map<LineElement, Bounds> elementBounds;
-        private double lineHeight = 0;
-        private double staffTopY = 0;
-        private double staffBottomY = 0;
-        private double lyricBaselineY = 0;
+        private final Map<Interval, BeamLayout> beamLayouts;
+        private final Map<Note, StemLayout> stemLayouts;
+        private double lineHeightSs = 0;
+        private double staffTopYSs = 0;
+        private double staffBottomYSs = 0;
+        private double lyricBaselineYSs = 0;
 
         public Builder() {
             this.noteColumns = new HashMap<>();
             this.elementBounds = new HashMap<>();
+            this.beamLayouts = new HashMap<>();
+            this.stemLayouts = new HashMap<>();
         }
 
         /**
@@ -661,35 +720,59 @@ public final class LayoutResult {
         /**
          * Sets the total line height.
          *
-         * @param lineHeight Height in pixels
+         * @param lineHeightSs Height in staff-space units
          * @return This builder for chaining
          */
-        public Builder setLineHeight(double lineHeight) {
-            this.lineHeight = lineHeight;
+        public Builder setLineHeightSs(double lineHeightSs) {
+            this.lineHeightSs = lineHeightSs;
             return this;
         }
 
         /**
          * Sets the staff geometry.
          *
-         * @param staffTopY    Y position of top staff line
-         * @param staffBottomY Y position of bottom staff line
+         * @param staffTopYSs    Y position of top staff line in staff spaces
+         * @param staffBottomYSs Y position of bottom staff line in staff spaces
          * @return This builder for chaining
          */
-        public Builder setStaffGeometry(double staffTopY, double staffBottomY) {
-            this.staffTopY = staffTopY;
-            this.staffBottomY = staffBottomY;
+        public Builder setStaffGeometrySs(double staffTopYSs, double staffBottomYSs) {
+            this.staffTopYSs = staffTopYSs;
+            this.staffBottomYSs = staffBottomYSs;
             return this;
         }
 
         /**
          * Sets the lyric baseline Y position.
          *
-         * @param lyricBaselineY Y position (0 if no lyrics)
+         * @param lyricBaselineYSs Y position in staff spaces (0 if no lyrics)
          * @return This builder for chaining
          */
-        public Builder setLyricBaselineY(double lyricBaselineY) {
-            this.lyricBaselineY = lyricBaselineY;
+        public Builder setLyricBaselineYSs(double lyricBaselineYSs) {
+            this.lyricBaselineYSs = lyricBaselineYSs;
+            return this;
+        }
+
+        /**
+         * Adds computed beam geometry for a beam interval.
+         *
+         * @param interval   The beam interval
+         * @param beamLayout The computed beam geometry
+         * @return This builder for chaining
+         */
+        public Builder putBeamLayout(@NotNull Interval interval, @NotNull BeamLayout beamLayout) {
+            beamLayouts.put(interval, beamLayout);
+            return this;
+        }
+
+        /**
+         * Adds computed stem geometry for an unbeamed note.
+         *
+         * @param note       The note
+         * @param stemLayout The computed stem geometry
+         * @return This builder for chaining
+         */
+        public Builder putStemLayout(@NotNull Note note, @NotNull StemLayout stemLayout) {
+            stemLayouts.put(note, stemLayout);
             return this;
         }
 
@@ -702,10 +785,12 @@ public final class LayoutResult {
             return new LayoutResult(
                 noteColumns,
                 elementBounds,
-                lineHeight,
-                staffTopY,
-                staffBottomY,
-                lyricBaselineY
+                beamLayouts,
+                stemLayouts,
+                lineHeightSs,
+                staffTopYSs,
+                staffBottomYSs,
+                lyricBaselineYSs
             );
         }
     }
@@ -725,10 +810,50 @@ public final class LayoutResult {
             "LayoutResult{columns=%d, elements=%d, height=%.1f, staff=[%.1f, %.1f], lyrics=%.1f}",
             noteColumns.size(),
             elementBounds.size(),
-            lineHeight,
-            staffTopY,
-            staffBottomY,
-            lyricBaselineY
+            lineHeightSs,
+            staffTopYSs,
+            staffBottomYSs,
+            lyricBaselineYSs
         );
     }
+
+    // ==========================================================================
+    // Layout Records
+    // ==========================================================================
+
+    /**
+     * Immutable stem geometry for a single note, computed during layout.
+     * <p>
+     * All values are in staff-space units.
+     *
+     * @param topYSs       Y position of the top of the stem
+     * @param bottomYSs    Y position of the bottom of the stem
+     * @param lengtheningSs Extra stem extension beyond the minimum required to reach the beam (≥ 0)
+     * @param stubRight  For partial-beam notes: true if the stub extends to the right, false to the left.
+     *                   Meaningless for full-beam and unbeamed notes.
+     */
+    public record StemLayout(
+        double topYSs,
+        double bottomYSs,
+        double lengtheningSs,
+        boolean stubRight) {}
+
+    /**
+     * Immutable beam geometry for a beam group, computed during layout.
+     * <p>
+     * All values are in staff-space units unless noted.
+     *
+     * @param slope      Beam slope in staff-space units per staff-space unit (dimensionless)
+     * @param startYSs     Beam Y position at the first note's X coordinate
+     * @param stemsUp    True if stems point upward (beam below noteheads)
+     * @param thickeningSs Extra beam thickness from the {@code 1/cos(angle)} raster correction (ss);
+     *                   added symmetrically to the nominal {@code BEAM_DEPTH}
+     * @param stems      Stem geometry keyed by note, for every note in this beam group
+     */
+    public record BeamLayout(
+        double slope,
+        double startYSs,
+        boolean stemsUp,
+        double thickeningSs,
+        @NotNull Map<Note, StemLayout> stems) {}
 }

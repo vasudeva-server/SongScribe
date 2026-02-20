@@ -35,9 +35,9 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
-import songscribe.music.NoteType;
 import songscribe.music.Line;
 import songscribe.music.Note;
+import songscribe.music.NoteType;
 
 @DisplayName("LineJustificationCalculator")
 class LineJustificationCalculatorTest {
@@ -85,27 +85,27 @@ class LineJustificationCalculatorTest {
     /**
      * Creates a simple column with fixed extents and optional syllable.
      */
-    private NoteColumn createSimpleColumn(double leftExtent, double rightExtent, String syllable) {
+    private NoteColumn createSimpleColumn(double leftExtentSs, double rightExtentSs, String syllable) {
         var note = createNote(syllable);
         var line = createLine();
         line.addNote(note);
 
-        double syllableWidth = 0;
+        double syllableWidthSs = 0;
 
         if (syllable != null) {
             var metrics = g2.getFontMetrics(lyricsFont);
-            syllableWidth = metrics.stringWidth(syllable);
+            syllableWidthSs = metrics.stringWidth(syllable);
         }
 
         return new NoteColumn(
             note,
             List.of(),
-            leftExtent,
-            rightExtent,
+            leftExtentSs,
+            rightExtentSs,
             0,
             0,
             syllable,
-            syllableWidth,
+            syllableWidthSs,
             null
         );
     }
@@ -118,7 +118,7 @@ class LineJustificationCalculatorTest {
 
         for (var x : xPositions) {
             var column = createSimpleColumn(-5.0, 5.0, null);
-            column.setX(x);
+            column.setXSs(x);
             columns.add(column);
         }
 
@@ -134,7 +134,7 @@ class LineJustificationCalculatorTest {
 
         for (var syllable : syllables) {
             var column = createSimpleColumn(-5.0, 5.0, syllable);
-            column.setX(x);
+            column.setXSs(x);
             columns.add(column);
             x += 50.0; // Fixed spacing
         }
@@ -182,9 +182,9 @@ class LineJustificationCalculatorTest {
             assertFalse(result.wasCompressionApplied());
 
             // Positions should remain unchanged
-            assertEquals(100.0, columns.get(0).getX(), 0.01);
-            assertEquals(150.0, columns.get(1).getX(), 0.01);
-            assertEquals(200.0, columns.get(2).getX(), 0.01);
+            assertEquals(100.0, columns.get(0).getXSs(), 0.01);
+            assertEquals(150.0, columns.get(1).getXSs(), 0.01);
+            assertEquals(200.0, columns.get(2).getXSs(), 0.01);
         }
 
         @Test
@@ -192,7 +192,7 @@ class LineJustificationCalculatorTest {
         void lineExactlyAtMargin() {
             var columns = createPositionedColumns(100.0, 150.0, 200.0);
             var lastColumn = columns.get(columns.size() - 1);
-            var staffRightMargin = lastColumn.getRightEdgeX(); // Exact fit
+            var staffRightMargin = lastColumn.getRightEdgeXSs(); // Exact fit
 
             var result = calculator.justifyLine(columns, staffRightMargin);
 
@@ -234,15 +234,15 @@ class LineJustificationCalculatorTest {
             assertTrue(result.wasCompressionApplied());
 
             // First column should remain at original position
-            assertEquals(100.0, columns.get(0).getX(), 0.01);
+            assertEquals(100.0, columns.get(0).getXSs(), 0.01);
 
             // Later columns should be compressed
-            assertTrue(columns.get(1).getX() < 200.0, "Column 1 should be compressed");
-            assertTrue(columns.get(2).getX() < 300.0, "Column 2 should be compressed");
+            assertTrue(columns.get(1).getXSs() < 200.0, "Column 1 should be compressed");
+            assertTrue(columns.get(2).getXSs() < 300.0, "Column 2 should be compressed");
 
             // Line should now fit within margin
             var lastColumn = columns.get(columns.size() - 1);
-            assertTrue(lastColumn.getRightEdgeX() <= staffRightMargin + 0.01);
+            assertTrue(lastColumn.getRightEdgeXSs() <= staffRightMargin + 0.01);
         }
 
         @Test
@@ -252,8 +252,8 @@ class LineJustificationCalculatorTest {
             var staffRightMargin = 230.0;
 
             // Calculate original spacing ratios
-            double originalGap1 = columns.get(1).getX() - columns.get(0).getX();
-            double originalGap2 = columns.get(2).getX() - columns.get(1).getX();
+            double originalGap1 = columns.get(1).getXSs() - columns.get(0).getXSs();
+            double originalGap2 = columns.get(2).getXSs() - columns.get(1).getXSs();
             double originalRatio = originalGap2 / originalGap1;
 
             var result = calculator.justifyLine(columns, staffRightMargin);
@@ -262,8 +262,8 @@ class LineJustificationCalculatorTest {
             assertTrue(result.wasCompressionApplied());
 
             // Calculate new spacing ratios
-            double newGap1 = columns.get(1).getX() - columns.get(0).getX();
-            double newGap2 = columns.get(2).getX() - columns.get(1).getX();
+            double newGap1 = columns.get(1).getXSs() - columns.get(0).getXSs();
+            double newGap2 = columns.get(2).getXSs() - columns.get(1).getXSs();
             double newRatio = newGap2 / newGap1;
 
             // Ratios should be preserved (uniform compression)
@@ -284,17 +284,17 @@ class LineJustificationCalculatorTest {
             assertTrue(result.wasCompressionApplied());
 
             // Verify all columns are positioned correctly
-            assertEquals(100.0, columns.get(0).getX(), 0.01);
+            assertEquals(100.0, columns.get(0).getXSs(), 0.01);
 
             // Verify monotonic increase
             for (var i = 1; i < columns.size(); i++) {
-                assertTrue(columns.get(i).getX() > columns.get(i - 1).getX(),
+                assertTrue(columns.get(i).getXSs() > columns.get(i - 1).getXSs(),
                     String.format("Column %d should be right of column %d", i, i - 1));
             }
 
             // Verify final position fits
             var lastColumn = columns.get(columns.size() - 1);
-            assertTrue(lastColumn.getRightEdgeX() <= staffRightMargin + 0.01);
+            assertTrue(lastColumn.getRightEdgeXSs() <= staffRightMargin + 0.01);
         }
     }
 
@@ -310,7 +310,6 @@ class LineJustificationCalculatorTest {
         @DisplayName("rejects when compression would violate minimum column gap")
         void rejectsMinimumColumnGapViolation() {
             // Create tightly spaced columns
-            var minGap = LayoutConstants.px(LayoutConstants.COMPRESSED_MIN_COLUMN_GAP);
             var columns = createPositionedColumns(100.0, 100.0 + 20.0, 100.0 + 40.0);
 
             // Try to compress to a margin that would violate minimum gap
@@ -347,7 +346,6 @@ class LineJustificationCalculatorTest {
         @DisplayName("rejects extreme compression scenarios")
         void rejectsExtremeCompression() {
             // Create tightly spaced columns to ensure extreme compression fails
-            var minGap = LayoutConstants.px(LayoutConstants.COMPRESSED_MIN_COLUMN_GAP);
             var columns = createPositionedColumns(100.0, 120.0, 140.0, 160.0, 180.0);
             var staffRightMargin = 110.0; // Very extreme compression needed
 
@@ -378,9 +376,9 @@ class LineJustificationCalculatorTest {
             if (!result.isSuccess()) {
                 assertNotNull(result.getErrorMessage());
             } else if (result.wasCompressionApplied()) {
-                assertEquals(100.0, columns.get(0).getX(), 0.01);
-                assertTrue(columns.get(1).getX() < 200.0);
-                assertTrue(columns.get(1).getRightEdgeX() <= staffRightMargin + 0.01);
+                assertEquals(100.0, columns.get(0).getXSs(), 0.01);
+                assertTrue(columns.get(1).getXSs() < 200.0);
+                assertTrue(columns.get(1).getRightEdgeXSs() <= staffRightMargin + 0.01);
             }
         }
 
@@ -389,7 +387,7 @@ class LineJustificationCalculatorTest {
         void verySmallMarginExcess() {
             var columns = createPositionedColumns(100.0, 150.0, 200.0);
             var lastColumn = columns.get(columns.size() - 1);
-            var staffRightMargin = lastColumn.getRightEdgeX() - 1.0; // 1px over
+            var staffRightMargin = lastColumn.getRightEdgeXSs() - 1.0; // 1px over
 
             var result = calculator.justifyLine(columns, staffRightMargin);
 
@@ -406,17 +404,17 @@ class LineJustificationCalculatorTest {
 
             // Column with large left extent (accidental)
             var col1 = createSimpleColumn(-15.0, 5.0, null);
-            col1.setX(100.0);
+            col1.setXSs(100.0);
             columns.add(col1);
 
             // Column with large right extent (dots)
             var col2 = createSimpleColumn(-5.0, 15.0, null);
-            col2.setX(200.0);
+            col2.setXSs(200.0);
             columns.add(col2);
 
             // Normal column
             var col3 = createSimpleColumn(-5.0, 5.0, null);
-            col3.setX(300.0);
+            col3.setXSs(300.0);
             columns.add(col3);
 
             var staffRightMargin = 280.0;
@@ -427,7 +425,7 @@ class LineJustificationCalculatorTest {
             if (!result.isSuccess()) {
                 assertNotNull(result.getErrorMessage());
             } else if (result.wasCompressionApplied()) {
-                assertTrue(columns.get(2).getRightEdgeX() <= staffRightMargin + 0.01);
+                assertTrue(columns.get(2).getRightEdgeXSs() <= staffRightMargin + 0.01);
             }
         }
     }
@@ -470,7 +468,7 @@ class LineJustificationCalculatorTest {
 
             // Get the calculated width
             var lastColumn = columns.get(columns.size() - 1);
-            var calculatedWidth = lastColumn.getRightEdgeX();
+            var calculatedWidth = lastColumn.getRightEdgeXSs();
 
             // Try to compress to 90% of calculated width
             var staffRightMargin = calculatedWidth * 0.9;
@@ -479,7 +477,7 @@ class LineJustificationCalculatorTest {
 
             // Should either succeed or fail gracefully with error message
             if (result.isSuccess()) {
-                assertTrue(lastColumn.getRightEdgeX() <= staffRightMargin + 0.01);
+                assertTrue(lastColumn.getRightEdgeXSs() <= staffRightMargin + 0.01);
             } else {
                 assertNotNull(result.getErrorMessage());
             }
@@ -505,7 +503,7 @@ class LineJustificationCalculatorTest {
             spacingCalculator.calculatePositions(columns, line);
 
             var lastColumn = columns.get(columns.size() - 1);
-            var staffRightMargin = lastColumn.getRightEdgeX() + 100.0; // Plenty of room
+            var staffRightMargin = lastColumn.getRightEdgeXSs() + 100.0; // Plenty of room
 
             var result = calculator.justifyLine(columns, staffRightMargin);
 

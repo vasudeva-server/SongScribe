@@ -26,24 +26,19 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.awt.geom.Point2D;
-import java.awt.geom.Rectangle2D;
+import java.awt.geom.*;
 import java.util.Collections;
-import java.util.List;
 
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
-import songscribe.music.NoteType;
 import songscribe.music.Note;
+import songscribe.music.NoteType;
 import songscribe.music.Tempo;
 import songscribe.ui.layout.Bounds;
 import songscribe.ui.layout.LineElement;
-import songscribe.ui.layout.RangeElement;
 import songscribe.ui.layout.TempoAttachment;
 import songscribe.ui.layout.Tie;
 
@@ -114,17 +109,17 @@ class LayoutResultTest {
      */
     private NoteColumn createColumn(Note note, double x) {
         var column = new NoteColumn(
-                note,
-                Collections.emptyList(),
-                -10.0,
-                15.0,
-                0,
-                20,
-                null,
-                0,
-                null
+            note,
+            Collections.emptyList(),
+            -10.0,
+            15.0,
+            0,
+            20,
+            null,
+            0,
+            null
         );
-        column.setX(x);
+        column.setXSs(x);
         return column;
     }
 
@@ -144,40 +139,40 @@ class LayoutResultTest {
             assertNotNull(result);
             assertEquals(0, result.getNoteColumnCount());
             assertEquals(0, result.getElementCount());
-            assertEquals(0, result.getLineHeight(), 0.01);
-            assertEquals(0, result.getStaffTopY(), 0.01);
-            assertEquals(0, result.getStaffBottomY(), 0.01);
-            assertEquals(0, result.getLyricBaselineY(), 0.01);
+            assertEquals(0, result.getLineHeightSs(), 0.01);
+            assertEquals(0, result.getStaffTopYSs(), 0.01);
+            assertEquals(0, result.getStaffBottomYSs(), 0.01);
+            assertEquals(0, result.getLyricBaselineYSs(), 0.01);
         }
 
         @Test
         @DisplayName("creates LayoutResult with all fields set")
         void createFullResult() {
             var result = builder
-                    .putNoteColumn(note1, column1)
-                    .putNoteColumn(note2, column2)
-                    .putElementBounds(element1, bounds1)
-                    .putElementBounds(element2, bounds2)
-                    .setLineHeight(150.0)
-                    .setStaffGeometry(50.0, 100.0)
-                    .setLyricBaselineY(120.0)
-                    .build();
+                .putNoteColumn(note1, column1)
+                .putNoteColumn(note2, column2)
+                .putElementBounds(element1, bounds1)
+                .putElementBounds(element2, bounds2)
+                .setLineHeightSs(150.0)
+                .setStaffGeometrySs(50.0, 100.0)
+                .setLyricBaselineYSs(120.0)
+                .build();
 
             assertEquals(2, result.getNoteColumnCount());
             assertEquals(2, result.getElementCount());
-            assertEquals(150.0, result.getLineHeight(), 0.01);
-            assertEquals(50.0, result.getStaffTopY(), 0.01);
-            assertEquals(100.0, result.getStaffBottomY(), 0.01);
-            assertEquals(120.0, result.getLyricBaselineY(), 0.01);
+            assertEquals(150.0, result.getLineHeightSs(), 0.01);
+            assertEquals(50.0, result.getStaffTopYSs(), 0.01);
+            assertEquals(100.0, result.getStaffBottomYSs(), 0.01);
+            assertEquals(120.0, result.getLyricBaselineYSs(), 0.01);
         }
 
         @Test
         @DisplayName("allows chaining")
         void allowsChaining() {
             var result = builder
-                    .putNoteColumn(note1, column1)
-                    .setLineHeight(150.0)
-                    .build();
+                .putNoteColumn(note1, column1)
+                .setLineHeightSs(150.0)
+                .build();
 
             assertNotNull(result);
             assertEquals(1, result.getNoteColumnCount());
@@ -197,9 +192,9 @@ class LayoutResultTest {
         @BeforeEach
         void setUp() {
             result = builder
-                    .putNoteColumn(note1, column1)
-                    .putNoteColumn(note2, column2)
-                    .build();
+                .putNoteColumn(note1, column1)
+                .putNoteColumn(note2, column2)
+                .build();
         }
 
         @Test
@@ -208,7 +203,7 @@ class LayoutResultTest {
             var column = result.getNoteColumn(note1);
 
             assertNotNull(column);
-            assertEquals(100.0, column.getX(), 0.01);
+            assertEquals(100.0, column.getXSs(), 0.01);
         }
 
         @Test
@@ -222,14 +217,14 @@ class LayoutResultTest {
         @Test
         @DisplayName("getNoteX returns correct X position")
         void getNoteX() {
-            assertEquals(100.0, result.getNoteX(note1), 0.01);
-            assertEquals(200.0, result.getNoteX(note2), 0.01);
+            assertEquals(100.0, result.getNoteXSs(note1), 0.01);
+            assertEquals(200.0, result.getNoteXSs(note2), 0.01);
         }
 
         @Test
         @DisplayName("getNoteX returns 0 for missing note")
         void getNoteXMissing() {
-            assertEquals(0, result.getNoteX(note3), 0.01);
+            assertEquals(0, result.getNoteXSs(note3), 0.01);
         }
 
         @Test
@@ -269,9 +264,9 @@ class LayoutResultTest {
         @BeforeEach
         void setUp() {
             result = builder
-                    .putElementBounds(element1, bounds1)
-                    .putElementBounds(element2, bounds2)
-                    .build();
+                .putElementBounds(element1, bounds1)
+                .putElementBounds(element2, bounds2)
+                .build();
         }
 
         @Test
@@ -350,44 +345,44 @@ class LayoutResultTest {
         @DisplayName("getStaffTopY returns correct value")
         void getStaffTopY() {
             var result = builder
-                    .setStaffGeometry(50.0, 100.0)
-                    .build();
+                .setStaffGeometrySs(50.0, 100.0)
+                .build();
 
-            assertEquals(50.0, result.getStaffTopY(), 0.01);
+            assertEquals(50.0, result.getStaffTopYSs(), 0.01);
         }
 
         @Test
         @DisplayName("getStaffBottomY returns correct value")
         void getStaffBottomY() {
             var result = builder
-                    .setStaffGeometry(50.0, 100.0)
-                    .build();
+                .setStaffGeometrySs(50.0, 100.0)
+                .build();
 
-            assertEquals(100.0, result.getStaffBottomY(), 0.01);
+            assertEquals(100.0, result.getStaffBottomYSs(), 0.01);
         }
 
         @Test
         @DisplayName("getLineHeight returns correct value")
         void getLineHeight() {
             var result = builder
-                    .setLineHeight(150.0)
-                    .build();
+                .setLineHeightSs(150.0)
+                .build();
 
-            assertEquals(150.0, result.getLineHeight(), 0.01);
+            assertEquals(150.0, result.getLineHeightSs(), 0.01);
         }
 
         @Test
         @DisplayName("getLineWidth returns rightmost column edge")
         void getLineWidth() {
             var result = builder
-                    .putNoteColumn(note1, column1)
-                    .putNoteColumn(note2, column2)
-                    .putNoteColumn(note3, column3)
-                    .build();
+                .putNoteColumn(note1, column1)
+                .putNoteColumn(note2, column2)
+                .putNoteColumn(note3, column3)
+                .build();
 
-            double expectedWidth = column3.getRightEdgeX();
+            double expectedWidth = column3.getRightEdgeXSs();
 
-            assertEquals(expectedWidth, result.getLineWidth(), 0.01);
+            assertEquals(expectedWidth, result.getLineWidthSs(), 0.01);
         }
 
         @Test
@@ -395,7 +390,7 @@ class LayoutResultTest {
         void getLineWidthEmpty() {
             var result = builder.build();
 
-            assertEquals(0, result.getLineWidth(), 0.01);
+            assertEquals(0, result.getLineWidthSs(), 0.01);
         }
     }
 
@@ -411,18 +406,18 @@ class LayoutResultTest {
         @DisplayName("getLyricBaselineY returns correct value when lyrics present")
         void getLyricBaselineY() {
             var result = builder
-                    .setLyricBaselineY(120.0)
-                    .build();
+                .setLyricBaselineYSs(120.0)
+                .build();
 
-            assertEquals(120.0, result.getLyricBaselineY(), 0.01);
+            assertEquals(120.0, result.getLyricBaselineYSs(), 0.01);
         }
 
         @Test
         @DisplayName("hasLyrics returns true when lyrics present")
         void hasLyricsPresent() {
             var result = builder
-                    .setLyricBaselineY(120.0)
-                    .build();
+                .setLyricBaselineYSs(120.0)
+                .build();
 
             assertTrue(result.hasLyrics());
         }
@@ -431,8 +426,8 @@ class LayoutResultTest {
         @DisplayName("hasLyrics returns false when no lyrics")
         void hasLyricsAbsent() {
             var result = builder
-                    .setLyricBaselineY(0)
-                    .build();
+                .setLyricBaselineYSs(0)
+                .build();
 
             assertFalse(result.hasLyrics());
         }
@@ -459,9 +454,9 @@ class LayoutResultTest {
         @BeforeEach
         void setUp() {
             result = builder
-                    .putElementBounds(element1, bounds1)
-                    .putElementBounds(element2, bounds2)
-                    .build();
+                .putElementBounds(element1, bounds1)
+                .putElementBounds(element2, bounds2)
+                .build();
         }
 
         @Test
@@ -537,9 +532,9 @@ class LayoutResultTest {
             tempoBounds = Bounds.contentOnly(new Rectangle2D.Double(50, 10, 60, 20));
 
             result = builder
-                    .putElementBounds(tempoAttachment, tempoBounds)
-                    .putElementBounds(element1, bounds1)
-                    .build();
+                .putElementBounds(tempoAttachment, tempoBounds)
+                .putElementBounds(element1, bounds1)
+                .build();
         }
 
         @Test
@@ -588,8 +583,8 @@ class LayoutResultTest {
             var tieBounds = Bounds.contentOnly(new Rectangle2D.Double(100, 50, 80, 8));
 
             var resultWithTie = LayoutResult.builder()
-                    .putElementBounds(tie, tieBounds)
-                    .build();
+                .putElementBounds(tie, tieBounds)
+                .build();
 
             var bounds = resultWithTie.findRangeElementBounds(anchorNote, endNote, Tie.class);
 
@@ -618,8 +613,8 @@ class LayoutResultTest {
             var tieBounds = Bounds.contentOnly(new Rectangle2D.Double(100, 50, 80, 8));
 
             var resultWithTie = LayoutResult.builder()
-                    .putElementBounds(tie, tieBounds)
-                    .build();
+                .putElementBounds(tie, tieBounds)
+                .build();
 
             var wrongNote = NoteType.CROTCHET.newInstance();
             var bounds = resultWithTie.findRangeElementBounds(wrongNote, endNote, Tie.class);
@@ -640,10 +635,10 @@ class LayoutResultTest {
         @DisplayName("getNoteColumnCount returns correct count")
         void getNoteColumnCount() {
             var result = builder
-                    .putNoteColumn(note1, column1)
-                    .putNoteColumn(note2, column2)
-                    .putNoteColumn(note3, column3)
-                    .build();
+                .putNoteColumn(note1, column1)
+                .putNoteColumn(note2, column2)
+                .putNoteColumn(note3, column3)
+                .build();
 
             assertEquals(3, result.getNoteColumnCount());
         }
@@ -652,9 +647,9 @@ class LayoutResultTest {
         @DisplayName("getElementCount returns correct count")
         void getElementCount() {
             var result = builder
-                    .putElementBounds(element1, bounds1)
-                    .putElementBounds(element2, bounds2)
-                    .build();
+                .putElementBounds(element1, bounds1)
+                .putElementBounds(element2, bounds2)
+                .build();
 
             assertEquals(2, result.getElementCount());
         }
@@ -688,10 +683,10 @@ class LayoutResultTest {
             line.addNote(note3);
 
             result = builder
-                    .putNoteColumn(note1, column1)
-                    .putNoteColumn(note2, column2)
-                    .putNoteColumn(note3, column3)
-                    .build();
+                .putNoteColumn(note1, column1)
+                .putNoteColumn(note2, column2)
+                .putNoteColumn(note3, column3)
+                .build();
         }
 
         @Nested
@@ -744,8 +739,8 @@ class LayoutResultTest {
                 singleLine.addNote(note1);
 
                 var singleResult = LayoutResult.builder()
-                        .putNoteColumn(note1, column1)
-                        .build();
+                    .putNoteColumn(note1, column1)
+                    .build();
 
                 assertEquals(0, singleResult.findInsertionIndex(50, singleLine));
             }
@@ -757,8 +752,8 @@ class LayoutResultTest {
                 singleLine.addNote(note1);
 
                 var singleResult = LayoutResult.builder()
-                        .putNoteColumn(note1, column1)
-                        .build();
+                    .putNoteColumn(note1, column1)
+                    .build();
 
                 assertEquals(1, singleResult.findInsertionIndex(150, singleLine));
             }
@@ -805,18 +800,18 @@ class LayoutResultTest {
                 var emptyLine = new songscribe.music.Line();
                 var emptyResult = LayoutResult.builder().build();
 
-                var expectedX = LayoutConstants.calculateFirstNoteX(emptyLine.getKeyAccidentalCount());
+                var expectedX = LayoutConstants.calculateFirstNoteXSs(emptyLine.getKeyAccidentalCount());
 
-                assertEquals(expectedX, emptyResult.calculateInsertionX(0, 0, insertionNote, emptyLine), 0.01);
+                assertEquals(expectedX, emptyResult.calculateInsertionXSs(0, 0, insertionNote, emptyLine), 0.01);
             }
 
             @Test
-            @DisplayName("returns position 15px left of first note when mouse is before note head")
+            @DisplayName("returns position offset left of first note when mouse is before note head")
             void beforeFirstNote() {
                 var mouseX = 50.0;  // Well before first note at 100
-                var expectedX = 100.0 - 15.0;
+                var expectedX = 100.0 - 1.875;  // INSERTION_BEFORE_FIRST_OFFSET
 
-                assertEquals(expectedX, result.calculateInsertionX(0, mouseX, insertionNote, line), 0.01);
+                assertEquals(expectedX, result.calculateInsertionXSs(0, mouseX, insertionNote, line), 0.01);
             }
 
             @Test
@@ -825,7 +820,7 @@ class LayoutResultTest {
                 var mouseX = 100.0;  // Exactly on first note
                 var expectedX = 100.0;
 
-                assertEquals(expectedX, result.calculateInsertionX(0, mouseX, insertionNote, line), 0.01);
+                assertEquals(expectedX, result.calculateInsertionXSs(0, mouseX, insertionNote, line), 0.01);
             }
 
             @Test
@@ -836,20 +831,20 @@ class LayoutResultTest {
 
                 // Build temporary column to use HorizontalSpacingCalculator
                 var insertionColumn = new NoteColumn(
-                        insertionNote,
-                        java.util.Collections.emptyList(),
-                        NoteColumnBuilder.calculateLeftExtent(insertionNote),
-                        NoteColumnBuilder.calculateRightExtent(insertionNote),
-                        0,
-                        0,
-                        null,
-                        0,
-                        null
+                    insertionNote,
+                    java.util.Collections.emptyList(),
+                    NoteColumnBuilder.calculateLeftExtentSs(insertionNote),
+                    NoteColumnBuilder.calculateRightExtentSs(insertionNote),
+                    0,
+                    0,
+                    null,
+                    0,
+                    null
                 );
 
-                var expectedX = HorizontalSpacingCalculator.calculateNextColumnX(column3, insertionColumn);
+                var expectedX = HorizontalSpacingCalculator.calculateNextColumnXSs(column3, insertionColumn);
 
-                assertEquals(expectedX, result.calculateInsertionX(3, mouseX, insertionNote, line), 0.01);
+                assertEquals(expectedX, result.calculateInsertionXSs(3, mouseX, insertionNote, line), 0.01);
             }
 
             @Test
@@ -860,20 +855,20 @@ class LayoutResultTest {
 
                 // Same as afterLastNote - uses last column
                 var insertionColumn = new NoteColumn(
-                        insertionNote,
-                        java.util.Collections.emptyList(),
-                        NoteColumnBuilder.calculateLeftExtent(insertionNote),
-                        NoteColumnBuilder.calculateRightExtent(insertionNote),
-                        0,
-                        0,
-                        null,
-                        0,
-                        null
+                    insertionNote,
+                    java.util.Collections.emptyList(),
+                    NoteColumnBuilder.calculateLeftExtentSs(insertionNote),
+                    NoteColumnBuilder.calculateRightExtentSs(insertionNote),
+                    0,
+                    0,
+                    null,
+                    0,
+                    null
                 );
 
-                var expectedX = HorizontalSpacingCalculator.calculateNextColumnX(column3, insertionColumn);
+                var expectedX = HorizontalSpacingCalculator.calculateNextColumnXSs(column3, insertionColumn);
 
-                assertEquals(expectedX, result.calculateInsertionX(5, mouseX, insertionNote, line), 0.01);
+                assertEquals(expectedX, result.calculateInsertionXSs(5, mouseX, insertionNote, line), 0.01);
             }
 
             @Test
@@ -885,7 +880,7 @@ class LayoutResultTest {
                 // Between notes: use midpoint
                 var expectedX = (100.0 + 200.0) / 2.0;
 
-                assertEquals(expectedX, result.calculateInsertionX(1, mouseX, insertionNote, line), 0.01);
+                assertEquals(expectedX, result.calculateInsertionXSs(1, mouseX, insertionNote, line), 0.01);
             }
 
             @Test
@@ -897,7 +892,7 @@ class LayoutResultTest {
                 // Between notes: use midpoint
                 var expectedX = (200.0 + 300.0) / 2.0;
 
-                assertEquals(expectedX, result.calculateInsertionX(2, mouseX, insertionNote, line), 0.01);
+                assertEquals(expectedX, result.calculateInsertionXSs(2, mouseX, insertionNote, line), 0.01);
             }
 
             @Test
@@ -907,7 +902,7 @@ class LayoutResultTest {
                 var mouseX = 200.0;
                 var expectedX = 200.0;
 
-                assertEquals(expectedX, result.calculateInsertionX(1, mouseX, insertionNote, line), 0.01);
+                assertEquals(expectedX, result.calculateInsertionXSs(1, mouseX, insertionNote, line), 0.01);
             }
 
             @Test
@@ -917,13 +912,13 @@ class LayoutResultTest {
                 singleLine.addNote(note1);
 
                 var singleResult = LayoutResult.builder()
-                        .putNoteColumn(note1, column1)
-                        .build();
+                    .putNoteColumn(note1, column1)
+                    .build();
 
                 var mouseX = 50.0;  // Before note
-                var expectedX = 100.0 - 15.0;
+                var expectedX = 100.0 - 1.875;  // INSERTION_BEFORE_FIRST_OFFSET
 
-                assertEquals(expectedX, singleResult.calculateInsertionX(0, mouseX, insertionNote, singleLine), 0.01);
+                assertEquals(expectedX, singleResult.calculateInsertionXSs(0, mouseX, insertionNote, singleLine), 0.01);
             }
 
             @Test
@@ -933,27 +928,27 @@ class LayoutResultTest {
                 singleLine.addNote(note1);
 
                 var singleResult = LayoutResult.builder()
-                        .putNoteColumn(note1, column1)
-                        .build();
+                    .putNoteColumn(note1, column1)
+                    .build();
 
                 var mouseX = 150.0;  // After note
 
                 // After last note: use HorizontalSpacingCalculator
                 var insertionColumn = new NoteColumn(
-                        insertionNote,
-                        java.util.Collections.emptyList(),
-                        NoteColumnBuilder.calculateLeftExtent(insertionNote),
-                        NoteColumnBuilder.calculateRightExtent(insertionNote),
-                        0,
-                        0,
-                        null,
-                        0,
-                        null
+                    insertionNote,
+                    java.util.Collections.emptyList(),
+                    NoteColumnBuilder.calculateLeftExtentSs(insertionNote),
+                    NoteColumnBuilder.calculateRightExtentSs(insertionNote),
+                    0,
+                    0,
+                    null,
+                    0,
+                    null
                 );
 
-                var expectedX = HorizontalSpacingCalculator.calculateNextColumnX(column1, insertionColumn);
+                var expectedX = HorizontalSpacingCalculator.calculateNextColumnXSs(column1, insertionColumn);
 
-                assertEquals(expectedX, singleResult.calculateInsertionX(1, mouseX, insertionNote, singleLine), 0.01);
+                assertEquals(expectedX, singleResult.calculateInsertionXSs(1, mouseX, insertionNote, singleLine), 0.01);
             }
 
             @Test
@@ -966,9 +961,9 @@ class LayoutResultTest {
                 var resultWithoutColumn = LayoutResult.builder().build();
 
                 var mouseX = 150.0;
-                var expectedX = LayoutConstants.px(LayoutConstants.FIRST_NOTE_OFFSET);
+                var expectedX = LayoutConstants.FIRST_NOTE_OFFSET_SS;
 
-                assertEquals(expectedX, resultWithoutColumn.calculateInsertionX(1, mouseX, insertionNote, lineWithMissingColumn), 0.01);
+                assertEquals(expectedX, resultWithoutColumn.calculateInsertionXSs(1, mouseX, insertionNote, lineWithMissingColumn), 0.01);
             }
 
             @Test
@@ -982,20 +977,20 @@ class LayoutResultTest {
 
                 // Build temporary column
                 var insertionColumn = new NoteColumn(
-                        noteWithSharp,
-                        java.util.Collections.emptyList(),
-                        NoteColumnBuilder.calculateLeftExtent(noteWithSharp),
-                        NoteColumnBuilder.calculateRightExtent(noteWithSharp),
-                        0,
-                        0,
-                        null,
-                        0,
-                        null
+                    noteWithSharp,
+                    java.util.Collections.emptyList(),
+                    NoteColumnBuilder.calculateLeftExtentSs(noteWithSharp),
+                    NoteColumnBuilder.calculateRightExtentSs(noteWithSharp),
+                    0,
+                    0,
+                    null,
+                    0,
+                    null
                 );
 
-                var expectedX = HorizontalSpacingCalculator.calculateNextColumnX(column3, insertionColumn);
+                var expectedX = HorizontalSpacingCalculator.calculateNextColumnXSs(column3, insertionColumn);
 
-                assertEquals(expectedX, result.calculateInsertionX(3, mouseX, noteWithSharp, line), 0.01);
+                assertEquals(expectedX, result.calculateInsertionXSs(3, mouseX, noteWithSharp, line), 0.01);
             }
 
             @Test
@@ -1006,10 +1001,10 @@ class LayoutResultTest {
                 var wideColumn3 = createColumn(note3, 600.0);
 
                 var wideResult = LayoutResult.builder()
-                        .putNoteColumn(note1, wideColumn1)
-                        .putNoteColumn(note2, wideColumn2)
-                        .putNoteColumn(note3, wideColumn3)
-                        .build();
+                    .putNoteColumn(note1, wideColumn1)
+                    .putNoteColumn(note2, wideColumn2)
+                    .putNoteColumn(note3, wideColumn3)
+                    .build();
 
                 // Mouse positions between notes
                 var mouseX1 = 200.0;
@@ -1019,8 +1014,8 @@ class LayoutResultTest {
                 var expected1 = (100.0 + 300.0) / 2.0;
                 var expected2 = (300.0 + 600.0) / 2.0;
 
-                assertEquals(expected1, wideResult.calculateInsertionX(1, mouseX1, insertionNote, line), 0.01);
-                assertEquals(expected2, wideResult.calculateInsertionX(2, mouseX2, insertionNote, line), 0.01);
+                assertEquals(expected1, wideResult.calculateInsertionXSs(1, mouseX1, insertionNote, line), 0.01);
+                assertEquals(expected2, wideResult.calculateInsertionXSs(2, mouseX2, insertionNote, line), 0.01);
             }
         }
     }
@@ -1037,9 +1032,9 @@ class LayoutResultTest {
         @DisplayName("result is immutable")
         void resultIsImmutable() {
             var result = builder
-                    .putNoteColumn(note1, column1)
-                    .putElementBounds(element1, bounds1)
-                    .build();
+                .putNoteColumn(note1, column1)
+                .putElementBounds(element1, bounds1)
+                .build();
 
             var columns = result.getNoteColumns();
             var elements = result.getElementBounds();
@@ -1052,13 +1047,13 @@ class LayoutResultTest {
         @DisplayName("toString returns meaningful representation")
         void toStringRepresentation() {
             var result = builder
-                    .putNoteColumn(note1, column1)
-                    .putNoteColumn(note2, column2)
-                    .putElementBounds(element1, bounds1)
-                    .setLineHeight(150.0)
-                    .setStaffGeometry(50.0, 100.0)
-                    .setLyricBaselineY(120.0)
-                    .build();
+                .putNoteColumn(note1, column1)
+                .putNoteColumn(note2, column2)
+                .putElementBounds(element1, bounds1)
+                .setLineHeightSs(150.0)
+                .setStaffGeometrySs(50.0, 100.0)
+                .setLyricBaselineYSs(120.0)
+                .build();
 
             var str = result.toString();
 
@@ -1078,12 +1073,12 @@ class LayoutResultTest {
             var column2a = createColumn(note2, 100.0);
 
             var result = builder
-                    .putNoteColumn(note1, column1a)
-                    .putNoteColumn(note2, column2a)
-                    .build();
+                .putNoteColumn(note1, column1a)
+                .putNoteColumn(note2, column2a)
+                .build();
 
-            assertEquals(100.0, result.getNoteX(note1), 0.01);
-            assertEquals(100.0, result.getNoteX(note2), 0.01);
+            assertEquals(100.0, result.getNoteXSs(note1), 0.01);
+            assertEquals(100.0, result.getNoteXSs(note2), 0.01);
         }
 
         @Test
@@ -1093,11 +1088,11 @@ class LayoutResultTest {
             var column1b = createColumn(note1, 150.0);
 
             var result = builder
-                    .putNoteColumn(note1, column1a)
-                    .putNoteColumn(note1, column1b)
-                    .build();
+                .putNoteColumn(note1, column1a)
+                .putNoteColumn(note1, column1b)
+                .build();
 
-            assertEquals(150.0, result.getNoteX(note1), 0.01);
+            assertEquals(150.0, result.getNoteXSs(note1), 0.01);
             assertEquals(1, result.getNoteColumnCount());
         }
 
@@ -1108,9 +1103,9 @@ class LayoutResultTest {
             var bounds1b = Bounds.contentOnly(new Rectangle2D.Double(100, 120, 60, 40));
 
             var result = builder
-                    .putElementBounds(element1, bounds1a)
-                    .putElementBounds(element1, bounds1b)
-                    .build();
+                .putElementBounds(element1, bounds1a)
+                .putElementBounds(element1, bounds1b)
+                .build();
 
             var bounds = result.getElementBounds(element1);
 
@@ -1123,23 +1118,23 @@ class LayoutResultTest {
         @DisplayName("getLineWidth handles negative extents")
         void getLineWidthWithNegativeExtents() {
             var columnWithNegativeExtent = new NoteColumn(
-                    note1,
-                    Collections.emptyList(),
-                    -25.0,
-                    10.0,
-                    0,
-                    20,
-                    null,
-                    0,
-                    null
+                note1,
+                Collections.emptyList(),
+                -25.0,
+                10.0,
+                0,
+                20,
+                null,
+                0,
+                null
             );
-            columnWithNegativeExtent.setX(100.0);
+            columnWithNegativeExtent.setXSs(100.0);
 
             var result = builder
-                    .putNoteColumn(note1, columnWithNegativeExtent)
-                    .build();
+                .putNoteColumn(note1, columnWithNegativeExtent)
+                .build();
 
-            assertEquals(110.0, result.getLineWidth(), 0.01);
+            assertEquals(110.0, result.getLineWidthSs(), 0.01);
         }
     }
 }

@@ -20,7 +20,6 @@
 
 package songscribe.ui.layout2;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import org.jetbrains.annotations.NotNull;
@@ -52,7 +51,7 @@ import org.jetbrains.annotations.Nullable;
  * Usage:
  * <pre>{@code
  * var calculator = new LineJustificationCalculator();
- * var result = calculator.justifyLine(columns, staffRightMargin);
+ * var result = calculator.justifyLine(columns, staffRightMarginSs);
  *
  * if (!result.isSuccess()) {
  *     // Alert user: result.getErrorMessage()
@@ -122,12 +121,12 @@ public class LineJustificationCalculator {
      * This method modifies column X positions in-place if compression is needed.
      *
      * @param columns          List of columns (must have X positions already set)
-     * @param staffRightMargin The right margin of the staff in pixels
+     * @param staffRightMarginSs The right margin of the staff in staff-space units
      * @return JustificationResult indicating success or failure
      */
     public @NotNull JustificationResult justifyLine(
-            @NotNull List<NoteColumn> columns,
-            double staffRightMargin) {
+        @NotNull List<NoteColumn> columns,
+        double staffRightMarginSs) {
 
         if (columns.isEmpty()) {
             return JustificationResult.success();
@@ -135,15 +134,15 @@ public class LineJustificationCalculator {
 
         // Check if line exceeds margin
         var lastColumn = columns.get(columns.size() - 1);
-        double lineWidth = lastColumn.getRightEdgeX();
+        double lineWidthSs = lastColumn.getRightEdgeXSs();
 
-        if (lineWidth <= staffRightMargin) {
+        if (lineWidthSs <= staffRightMarginSs) {
             // Line fits - no adjustment needed (uneven spacing is correct per Gould/Ross)
             return JustificationResult.success();
         }
 
         // Line exceeds margin - attempt compression
-        return compressLine(columns, staffRightMargin);
+        return compressLine(columns, staffRightMarginSs);
     }
 
     // ==========================================================================
@@ -154,12 +153,12 @@ public class LineJustificationCalculator {
      * Compresses the line to fit within the staff right margin.
      *
      * @param columns          List of columns
-     * @param staffRightMargin Right margin in pixels
+     * @param staffRightMarginSs Right margin in staff-space units
      * @return JustificationResult indicating success or failure
      */
     private @NotNull JustificationResult compressLine(
-            @NotNull List<NoteColumn> columns,
-            double staffRightMargin) {
+        @NotNull List<NoteColumn> columns,
+        double staffRightMarginSs) {
 
         // Calculate compression ratio
         var firstColumn = columns.get(0);
@@ -168,14 +167,14 @@ public class LineJustificationCalculator {
         // The total width includes the span between column centers plus the extents
         // Width = centerSpan + (lastRightExtent - firstLeftExtent)
         // When compressing, only the centerSpan changes, extents stay fixed
-        double centerSpan = lastColumn.getX() - firstColumn.getX();
-        double extentOffset = lastColumn.getRightExtent() - firstColumn.getLeftExtent();
+        double centerSpanSs = lastColumn.getXSs() - firstColumn.getXSs();
+        double extentOffsetSs = lastColumn.getRightExtentSs() - firstColumn.getLeftExtentSs();
 
-        double calculatedWidth = centerSpan + extentOffset;
-        double targetWidth = staffRightMargin - firstColumn.getLeftEdgeX();
+        double calculatedWidthSs = centerSpanSs + extentOffsetSs;
+        double targetWidthSs = staffRightMarginSs - firstColumn.getLeftEdgeXSs();
 
         // ratio = (targetWidth - extentOffset) / centerSpan
-        double compressionRatio = (targetWidth - extentOffset) / centerSpan;
+        double compressionRatio = (targetWidthSs - extentOffsetSs) / centerSpanSs;
 
         // Validate that compression is possible
         var validation = validateCompression(columns, compressionRatio);
@@ -227,44 +226,44 @@ public class LineJustificationCalculator {
      * @return CompressionValidation result
      */
     private @NotNull CompressionValidation validateCompression(
-            @NotNull List<NoteColumn> columns,
-            double compressionRatio) {
+        @NotNull List<NoteColumn> columns,
+        double compressionRatio) {
 
-        double minColumnGap = LayoutConstants.px(LayoutConstants.COMPRESSED_MIN_COLUMN_GAP);
-        double minSyllableGap = LayoutConstants.px(LayoutConstants.COMPRESSED_MIN_SYLLABLE_GAP);
+        double minColumnGapSs = LayoutConstants.COMPRESSED_MIN_COLUMN_GAP_SS;
+        double minSyllableGapSs = LayoutConstants.COMPRESSED_MIN_SYLLABLE_GAP_SS;
 
         var firstColumn = columns.get(0);
-        double anchorX = firstColumn.getX();
+        double anchorXSs = firstColumn.getXSs();
 
         for (var i = 1; i < columns.size(); i++) {
             var prevColumn = columns.get(i - 1);
             var currColumn = columns.get(i);
 
             // Calculate current gap between column edges
-            double prevRightEdge = prevColumn.getX() + prevColumn.getRightExtent();
-            double currLeftEdge = currColumn.getX() + currColumn.getLeftExtent();
-            double currentGap = currLeftEdge - prevRightEdge;
+            double prevRightEdgeSs = prevColumn.getXSs() + prevColumn.getRightExtentSs();
+            double currLeftEdgeSs = currColumn.getXSs() + currColumn.getLeftExtentSs();
+            double currentGapSs = currLeftEdgeSs - prevRightEdgeSs;
 
             // Calculate compressed gap
             // When we compress, positions change relative to anchor (first column):
             // Gap' = Gap - (X_i - X_{i-1}) * (1 - ratio)
             // This is because center distances compress but extents stay fixed
-            double centerDistance = currColumn.getX() - prevColumn.getX();
-            double compressedGap = currentGap - centerDistance * (1.0 - compressionRatio);
+            double centerDistanceSs = currColumn.getXSs() - prevColumn.getXSs();
+            double compressedGapSs = currentGapSs - centerDistanceSs * (1.0 - compressionRatio);
 
             // Check minimum column gap
-            if (compressedGap < minColumnGap) {
+            if (compressedGapSs < minColumnGapSs) {
                 return CompressionValidation.invalid(
-                        "Note cannot fit on line while maintaining minimum spacing");
+                    "Note cannot fit on line while maintaining minimum spacing");
             }
 
             // Check minimum syllable gap if both columns have syllables
             if (prevColumn.hasSyllable() && currColumn.hasSyllable()) {
-                double syllableGap = calculateSyllableGap(prevColumn, currColumn, compressionRatio);
+                double syllableGapSs = calculateSyllableGapSs(prevColumn, currColumn, compressionRatio);
 
-                if (syllableGap < minSyllableGap) {
+                if (syllableGapSs < minSyllableGapSs) {
                     return CompressionValidation.invalid(
-                            "Note cannot fit on line while maintaining minimum syllable spacing");
+                        "Note cannot fit on line while maintaining minimum syllable spacing");
                 }
             }
         }
@@ -278,26 +277,26 @@ public class LineJustificationCalculator {
      * @param prevColumn       Previous column
      * @param currColumn       Current column
      * @param compressionRatio Compression ratio
-     * @return Syllable gap in pixels
+     * @return Syllable gap in staff-space units
      */
-    private double calculateSyllableGap(
-            @NotNull NoteColumn prevColumn,
-            @NotNull NoteColumn currColumn,
-            double compressionRatio) {
+    private double calculateSyllableGapSs(
+        @NotNull NoteColumn prevColumn,
+        @NotNull NoteColumn currColumn,
+        double compressionRatio) {
 
         // Current distance between column centers
-        double centerDistance = currColumn.getX() - prevColumn.getX();
+        double centerDistanceSs = currColumn.getXSs() - prevColumn.getXSs();
 
         // Current syllable gap
-        double prevHalfWidth = prevColumn.getSyllableWidth() / 2.0;
-        double currHalfWidth = currColumn.getSyllableWidth() / 2.0;
-        double currentSyllableGap = centerDistance - prevHalfWidth - currHalfWidth;
+        double prevHalfWidthSs = prevColumn.getSyllableWidthSs() / 2.0;
+        double currHalfWidthSs = currColumn.getSyllableWidthSs() / 2.0;
+        double currentSyllableGapSs = centerDistanceSs - prevHalfWidthSs - currHalfWidthSs;
 
         // Compressed syllable gap (same formula as column gap)
         // Gap' = Gap - centerDistance * (1 - ratio)
-        double compressedSyllableGap = currentSyllableGap - centerDistance * (1.0 - compressionRatio);
+        double compressedSyllableGapSs = currentSyllableGapSs - centerDistanceSs * (1.0 - compressionRatio);
 
-        return compressedSyllableGap;
+        return compressedSyllableGapSs;
     }
 
     /**
@@ -310,22 +309,22 @@ public class LineJustificationCalculator {
      * @param compressionRatio The compression ratio to apply
      */
     private void applyCompression(
-            @NotNull List<NoteColumn> columns,
-            double compressionRatio) {
+        @NotNull List<NoteColumn> columns,
+        double compressionRatio) {
 
         if (columns.isEmpty()) {
             return;
         }
 
         var firstColumn = columns.get(0);
-        double anchorX = firstColumn.getX();
+        double anchorXSs = firstColumn.getXSs();
 
         // Compress all positions relative to the first column
         for (var i = 1; i < columns.size(); i++) {
             var column = columns.get(i);
-            double currentOffset = column.getX() - anchorX;
-            double compressedOffset = currentOffset * compressionRatio;
-            column.setX(anchorX + compressedOffset);
+            double currentOffsetSs = column.getXSs() - anchorXSs;
+            double compressedOffsetSs = currentOffsetSs * compressionRatio;
+            column.setXSs(anchorXSs + compressedOffsetSs);
         }
     }
 }

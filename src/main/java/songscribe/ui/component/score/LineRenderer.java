@@ -27,12 +27,13 @@ import org.jetbrains.annotations.NotNull;
 
 import songscribe.data.Interval;
 import songscribe.music.Note;
+import songscribe.smufl.SMuFLMetadata;
 import songscribe.ui.Mode;
 import songscribe.ui.component.Score;
 import songscribe.ui.edit.EditModeManager;
-import songscribe.ui.layout.LayoutStylesheet;
 import songscribe.ui.layout.LineElement;
 import songscribe.ui.layout.TempoAttachment;
+import songscribe.ui.layout2.ScaleContext;
 import songscribe.ui.renderer.AnnotationRenderer;
 import songscribe.ui.renderer.ArticulationRenderer;
 import songscribe.ui.renderer.BeamGroupRenderer;
@@ -50,6 +51,7 @@ import songscribe.ui.renderer.TempoRenderer;
 import songscribe.ui.renderer.TieRenderer;
 import songscribe.ui.renderer.TrillRenderer;
 import songscribe.ui.renderer.TupletRenderer;
+import songscribe.util.GraphicUtils;
 
 /**
  * Handles all rendering for a single staff line.
@@ -66,6 +68,10 @@ class LineRenderer {
 
     /** Color for staff lines. */
     private static final Color STAFF_LINE_COLOR = Color.BLACK;
+
+    /** Staff line thickness in staff-space units (from SMuFL engraving defaults). */
+    private static final double STAFF_LINE_THICKNESS =
+        SMuFLMetadata.getInstance().getEngravingDefaults().staffLineThickness();
 
     /** Color for placeholder rectangles (for unregistered element types). */
     private static final Color PLACEHOLDER_COLOR = new Color(100, 100, 100, 128);
@@ -119,14 +125,13 @@ class LineRenderer {
     void render(Graphics2D g2) {
         var composition = lc.getComposition();
         var line = lc.getLine();
-        var middleLineY = lc.getMiddleLineY();
         var lineIndex = lc.getLineIndex();
 
         // Create render context for this rendering pass
         var ctx = new ElementRenderContext(composition);
         ctx.setCurrentLine(line);
         ctx.setLineIndex(lineIndex);
-        ctx.setMiddleLineY(middleLineY);
+        ctx.setMiddleLineYSs(lc.getMiddleLineYSs());
         ctx.setLayoutResult(lc.getLayoutResult());
         ctx.setSelectionProvider(lc.getSelectionProvider());
         ctx.setEditMode(lc.isEditMode());
@@ -147,7 +152,6 @@ class LineRenderer {
         renderEndings(g2, ctx);
         renderAttachments(g2, ctx);
         renderInsertionNote(g2, ctx);
-        renderDragRectangle(g2);
     }
 
     /**
@@ -159,23 +163,23 @@ class LineRenderer {
      * @param g2 Graphics context
      */
     void renderDebug(Graphics2D g2) {
-        var middleLineY = lc.getMiddleLineY();
+        var middleLineYPx = lc.getMiddleLineYPx();
         var line = lc.getLine();
         var layoutResult = lc.getLayoutResult();
 
         // Draw middle line indicator
         g2.setColor(new Color(0, 0, 255, 128));
-        g2.drawLine(0, middleLineY, 20, middleLineY);
+        g2.drawLine(0, middleLineYPx, 20, middleLineYPx);
 
         // Draw note positions
         if (line != null) {
             g2.setColor(new Color(255, 0, 255, 128));
-            var noteYOffset = Score.NOTE_Y_OFFSET;
+            var noteYOffset = Score.NOTE_Y_OFFSET_PX;
 
             for (var i = 0; i < line.noteCount(); i++) {
                 var note = line.getNote(i);
                 var x = note.getXPos();
-                var y = middleLineY + (int) (note.getYPos() * noteYOffset);
+                var y = middleLineYPx + (int) (note.getStaffPosition() * noteYOffset);
                 g2.fillOval(x - 2, y - 2, 4, 4);
             }
         }
@@ -189,19 +193,19 @@ class LineRenderer {
 
             // Draw note column rectangles
             g2.setColor(new Color(0, 255, 0, 80));  // Green with transparency
-            var staffTopY = layoutResult.getStaffTopY();
-            var staffBottomY = layoutResult.getStaffBottomY();
+            var staffTopYSs = layoutResult.getStaffTopYSs();
+            var staffBottomYSs = layoutResult.getStaffBottomYSs();
 
             for (var column : layoutResult.getNoteColumns().values()) {
-                var leftX = column.getLeftEdgeX();
-                var rightX = column.getRightEdgeX();
+                var leftX = column.getLeftEdgeXSs();
+                var rightX = column.getRightEdgeXSs();
                 var width = rightX - leftX;
-                var height = staffBottomY - staffTopY;
+                var height = staffBottomYSs - staffTopYSs;
 
-                // Draw column rectangle (X is absolute, Y centered on middleLineY)
+                // Draw column rectangle (X is absolute, Y centered on middleLineYPx)
                 var rect = new Rectangle2D.Double(
                     leftX,
-                    middleLineY - height / 2,
+                    middleLineYPx - height / 2,
                     width,
                     height
                 );
@@ -212,10 +216,10 @@ class LineRenderer {
             g2.setColor(new Color(255, 165, 0, 80));  // Orange with transparency
 
             for (var bounds : layoutResult.getElementBounds().values()) {
-                // X is absolute, Y is relative to middleLineY
+                // X is absolute, Y is relative to middleLineYPx
                 var rect = new Rectangle2D.Double(
                     bounds.getLeft(),
-                    middleLineY + bounds.getTop(),
+                    middleLineYPx + bounds.getTop(),
                     bounds.getWidth(),
                     bounds.getHeight()
                 );
@@ -232,7 +236,7 @@ class LineRenderer {
     // ==========================================================================
 
     /**
-     * Draws the 5 staff lines.
+     * Draws the 5 staff lines as filled rectangles snapped to device pixels.
      */
     private void drawStaffLines(Graphics2D g2) {
         var selectionProvider = lc.getSelectionProvider();
@@ -244,15 +248,19 @@ class LineRenderer {
         g2.setColor(staffSelected ? Score.SELECTION_STROKE_COLOR : STAFF_LINE_COLOR);
 
         var lineWidth = lc.getComposition().getLineWidth();
-        var middleLineY = lc.getMiddleLineY();
-        var staffLineYOffset = LayoutStylesheet.STAFF_SPACE;
+        var middleLineYSs = lc.getMiddleLineYSs();
 
-        // Staff has 5 lines, middle line (B) is at index 2
-        // Lines are at: middleLineY - 2*offset, middleLineY - offset, middleLineY,
-        //               middleLineY + offset, middleLineY + 2*offset
+        // Staff has 5 lines, middle line (B) is at index 2.
+        // Lines are at: middleLineYSs - 2, middleLineYSs - 1, middleLineYSs,
+        //               middleLineYSs + 1, middleLineYSs + 2
+        // Each line is drawn as a filled rectangle snapped to device pixels
+        // to avoid anti-aliasing artifacts from stroking.
         for (var i = -2; i <= 2; i++) {
-            var y = middleLineY + (i * staffLineYOffset);
-            g2.drawLine(0, y, lineWidth, y);
+            var centerY = middleLineYSs + i;
+            var snappedTop = GraphicUtils.snapYToDevicePixel(g2, centerY - STAFF_LINE_THICKNESS / 2);
+            var snappedBottom = GraphicUtils.snapYToDevicePixel(g2, centerY + STAFF_LINE_THICKNESS / 2);
+
+            g2.fill(new Rectangle2D.Double(0, snappedTop, lineWidth, snappedBottom - snappedTop));
         }
     }
 
@@ -264,7 +272,6 @@ class LineRenderer {
      */
     private void renderLineBeginning(Graphics2D g2, ElementRenderContext ctx) {
         var line = lc.getLine();
-        var middleLineY = lc.getMiddleLineY();
 
         // Render treble clef
         ClefRenderer.getInstance().renderClef(g2, ctx);
@@ -274,8 +281,8 @@ class LineRenderer {
             g2,
             line.getKeyType(),
             line.getKeyAccidentalCount(),
-            ctx.getLeadingKeysPos(),
-            middleLineY,
+            ctx.getLeadingKeysPosSs(),
+            ctx.getMiddleLineYSs(),
             ctx
         );
     }
@@ -415,7 +422,7 @@ class LineRenderer {
         var beamings = line.getBeamings();
 
         for (var iter = beamings.listIterator(); iter.hasNext(); ) {
-            var interval = (Interval) iter.next();
+            var interval = iter.next();
             beamRenderer.renderBeams(g2, line, ctx, interval.getStart(), interval.getEnd());
         }
     }
@@ -615,21 +622,20 @@ class LineRenderer {
         var mousePos = lc.getMousePosition();
 
         if (mousePos != null) {
-            mouseX = mousePos.getX();
+            mouseX = ScaleContext.getInstance().fromPixels(mousePos.getX());
         }
 
         var layoutResult = lc.getLayoutResult();
         var line = lc.getLine();
         var currentXIndex = InsertionNoteManager.getCurrentXIndex();
         var currentYPos = InsertionNoteManager.getCurrentYPos();
-        var middleLineY = lc.getMiddleLineY();
 
         if (layoutResult != null && line != null) {
-            x = layoutResult.calculateInsertionX(currentXIndex, mouseX, editNote, line);
+            x = layoutResult.calculateInsertionXSs(currentXIndex, mouseX, editNote, line);
         }
 
         // Set the edit note position
-        editNote.setYPos(currentYPos);
+        editNote.setStaffPosition(currentYPos);
         editNote.setUpper(Score.defaultUpperNote(editNote));
 
         // Handle glissando note specially
@@ -650,7 +656,7 @@ class LineRenderer {
             // via layoutResult.getNoteX(). Temporarily clear layoutResult to prevent
             // sub-renderers from looking up the edit note (which is not in the layout).
             var savedLayout = ctx.getLayoutResult();
-            ctx.setOverrideNoteX(x);
+            ctx.setOverrideNoteXSs(x);
             ctx.setLayoutResult(null);
             g2.setColor(EDIT_NOTE_COLOR);
             NoteRenderer.getInstance().render(g2, editNote, ctx);
@@ -679,7 +685,7 @@ class LineRenderer {
      *
      * @param g2 Graphics context
      */
-    private void renderDragRectangle(Graphics2D g2) {
+    void renderDragRectangle(Graphics2D g2) {
         if (!lc.isDraggingSelection()) {
             return;
         }

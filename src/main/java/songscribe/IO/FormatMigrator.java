@@ -21,6 +21,7 @@ package songscribe.io;
 
 import org.jetbrains.annotations.NotNull;
 
+import songscribe.data.DynamicsInterval;
 import songscribe.data.EndingInterval;
 import songscribe.data.Interval;
 import songscribe.data.TupletInterval;
@@ -28,6 +29,7 @@ import songscribe.data.IntervalSet;
 import songscribe.music.Composition;
 import songscribe.music.Line;
 import songscribe.music.Note;
+import songscribe.ui.layout2.ScaleContext;
 import songscribe.ui.layout.AnnotationAttachment;
 import songscribe.ui.layout.BeatChangeAttachment;
 import songscribe.ui.layout.Crescendo;
@@ -57,6 +59,18 @@ import songscribe.ui.layout.Tuplet;
  * <p>
  * This migrator is called after loading a composition to populate the new data structures.
  * The legacy structures are preserved for backward compatibility during the transition period.
+ *
+ * <h2>Migration history</h2>
+ * <ul>
+ *   <li><b>v1 → v2</b>: {@link #migrate} — IntervalSets converted to RangeElements;
+ *       inline Note properties converted to Attachment objects.</li>
+ *   <li><b>v2.0 → v2.1</b>: {@link #migratePixelsToStaffSpace} — pixel-based position
+ *       fields converted to staff-space units.</li>
+ *   <li><b>v2.1 → v2.2</b>: <em>Intentional no-op.</em> {@code stemDirectionAuto}
+ *       defaults to {@code true}, so absence of the {@code <stemDirectionAuto/>} tag in
+ *       existing v2.1 files is handled correctly by that default. Re-saving a v2.1 file
+ *       stamps it as v2.2.</li>
+ * </ul>
  */
 public final class FormatMigrator {
 
@@ -82,6 +96,91 @@ public final class FormatMigrator {
 
         // Mark as migrated
         composition.setFormatVersion(2);
+    }
+
+    /**
+     * Converts pixel-based position values to staff-space units.
+     * <p>
+     * Called when loading a v2.0 file (which stores positions in pixels).
+     * Divides all position/offset fields by the legacy pixelsPerStaffSpace (8.0)
+     * to convert to staff-space units.
+     * <p>
+     * Fields that are already unit-agnostic (e.g. Note.staffPosition, which is a
+     * diatonic step count) are NOT converted.
+     *
+     * @param composition The composition with pixel values to convert
+     */
+    public static void migratePixelsToStaffSpace(@NotNull Composition composition) {
+        var pps = ScaleContext.DEFAULT_PIXELS_PER_STAFF_SPACE;
+
+        // Composition-level fields
+        composition.setTopPadding(composition.getTopPadding() / pps, false);
+        composition.setLineWidth(composition.getLineWidth() / pps);
+        composition.setRowHeightAdjustment(composition.getRowHeightAdjustment() / pps);
+        composition.setAttributionStartY(composition.getAttributionStartY() / pps);
+
+        for (var line : composition.getLines()) {
+            // Line-level fields
+            line.setLyricsYPos(line.getLyricsYPos() / pps);
+
+            // TupletInterval.verticalPosition
+            for (var iter = line.getTuplets().listIterator(); iter.hasNext(); ) {
+                var tuplet = iter.next();
+
+                if (tuplet.isVerticallyAdjusted()) {
+                    tuplet.setVerticalPosition(tuplet.getVerticalPosition() / pps);
+                }
+            }
+
+            // DynamicsInterval shifts (crescendo + diminuendo)
+            migrateDynamicsIntervals(line.getCrescendos(), pps);
+            migrateDynamicsIntervals(line.getDiminuendos(), pps);
+
+            // Glissando translates and per-instance attachment offsets
+            for (var i = 0; i < line.noteCount(); i++) {
+                var note = line.getNote(i);
+
+                //noinspection ObjectEquality
+                if (note.getGlissando() != Note.NO_GLISSANDO) {
+                    note.getGlissando().x1Translate /= pps;
+                    note.getGlissando().x2Translate /= pps;
+                }
+
+                // Convert per-instance attachment offsets created by migrateLineLevelOffsets()
+                for (var attachment : note.getAttachments()) {
+                    if (attachment.getUserYOffset() != 0) {
+                        attachment.setUserYOffset(attachment.getUserYOffset() / pps);
+                    }
+                }
+
+                // Reset stale layout pixel xPos — layout now writes to LayoutResult, not Note
+                note.setXPos(0);
+            }
+
+            // Convert per-instance RangeElement offsets (Ending, Trill)
+            for (var element : line.getRangeElements()) {
+                if (element instanceof Ending ending && ending.getYPosition() != 0) {
+                    ending.setYPosition((int) Math.round(ending.getYPosition() / pps));
+                } else if (element instanceof Trill trill && trill.getYPosition() != 0) {
+                    trill.setYPosition((int) Math.round(trill.getYPosition() / pps));
+                }
+            }
+        }
+    }
+
+    private static void migrateDynamicsIntervals(
+        @NotNull IntervalSet<DynamicsInterval> intervals,
+        double pps
+    ) {
+        for (var iter = intervals.listIterator(); iter.hasNext(); ) {
+            var interval = iter.next();
+
+            if (interval.getX1Shift() != 0 || interval.getX2Shift() != 0 || interval.getYShift() != 0) {
+                interval.setX1Shift(interval.getX1Shift() / pps);
+                interval.setX2Shift(interval.getX2Shift() / pps);
+                interval.setYShift(interval.getYShift() / pps);
+            }
+        }
     }
 
     /**
@@ -137,8 +236,8 @@ public final class FormatMigrator {
         int beatChangeOffset = line.getBeatChangeYPos();
 
         // BeatChange has a default offset, only migrate if different
-        if (beatChangeOffset != songscribe.ui.layout.LayoutStylesheet.BEAT_CHANGE_DEFAULT_Y) {
-            int delta = beatChangeOffset - songscribe.ui.layout.LayoutStylesheet.BEAT_CHANGE_DEFAULT_Y;
+        if (beatChangeOffset != songscribe.ui.layout.LayoutStylesheet.toPixels(songscribe.ui.layout.LayoutStylesheet.BEAT_CHANGE_DEFAULT_Y)) {
+            int delta = beatChangeOffset - songscribe.ui.layout.LayoutStylesheet.toPixels(songscribe.ui.layout.LayoutStylesheet.BEAT_CHANGE_DEFAULT_Y);
 
             for (var i = 0; i < line.noteCount(); i++) {
                 var note = line.getNote(i);
@@ -156,8 +255,8 @@ public final class FormatMigrator {
         // Migrate first/second ending offset to per-instance
         int endingOffset = line.getFirstSecondEndingYPos();
 
-        if (endingOffset != songscribe.ui.layout.LayoutStylesheet.ENDING_DEFAULT_Y) {
-            int delta = endingOffset - songscribe.ui.layout.LayoutStylesheet.ENDING_DEFAULT_Y;
+        if (endingOffset != songscribe.ui.layout.LayoutStylesheet.toPixels(songscribe.ui.layout.LayoutStylesheet.ENDING_DEFAULT_Y)) {
+            int delta = endingOffset - songscribe.ui.layout.LayoutStylesheet.toPixels(songscribe.ui.layout.LayoutStylesheet.ENDING_DEFAULT_Y);
 
             for (var element : line.getRangeElements()) {
                 if (element instanceof Ending ending) {
@@ -169,8 +268,8 @@ public final class FormatMigrator {
         // Migrate trill offset to per-instance
         int trillOffset = line.getTrillYPos();
 
-        if (trillOffset != songscribe.ui.layout.LayoutStylesheet.TRILL_DEFAULT_Y) {
-            int delta = trillOffset - songscribe.ui.layout.LayoutStylesheet.TRILL_DEFAULT_Y;
+        if (trillOffset != songscribe.ui.layout.LayoutStylesheet.toPixels(songscribe.ui.layout.LayoutStylesheet.TRILL_DEFAULT_Y)) {
+            int delta = trillOffset - songscribe.ui.layout.LayoutStylesheet.toPixels(songscribe.ui.layout.LayoutStylesheet.TRILL_DEFAULT_Y);
 
             for (var element : line.getRangeElements()) {
                 if (element instanceof Trill trill) {

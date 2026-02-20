@@ -30,6 +30,7 @@ import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 
 import kotlin.Pair;
+import songscribe.data.BeamInterval;
 import songscribe.data.DynamicsInterval;
 import songscribe.data.EndingInterval;
 import songscribe.data.Interval;
@@ -78,7 +79,7 @@ public final class MusicEditOperations {
         var beamings = line.getBeamings();
 
         if (state.shouldConnectSelection(beamings)) {
-            beamings.addInterval(state.getSelectionBegin(), state.getSelectionEnd());
+            beamings.addInterval(new BeamInterval(state.getSelectionBegin(), state.getSelectionEnd()));
             BeamCalculator.calculateLengthenings(state.getSelectionBegin(), line, true);
         } else {
             beamings.removeInterval(state.getSelectionBegin(), state.getSelectionEnd());
@@ -351,34 +352,8 @@ public final class MusicEditOperations {
     }
 
     public void flipPartialBeamOrientation() {
-        var state = coordinator.getActiveSelection();
-
-        if (state == null) {
-            return;
-        }
-
-        try {
-            if (state.getSelectionBegin() != state.getSelectionEnd()) {
-                throw new IllegalArgumentException();
-            }
-
-            var line = state.getLine();
-
-            if (!line.getBeamings().isInsideAnyInterval(state.getSelectionBegin())) {
-                throw new IllegalArgumentException();
-            }
-
-            var note = line.getNote(state.getSelectionBegin());
-            note.setInvertFractionBeamOrientation(
-                !note.isInvertFractionBeamOrientation()
-            );
-
-            composition.setModified(true);
-        } catch (IllegalArgumentException e) {
-            mainFrame.showInfoMessage(
-                "You must select one beamed note in order to flip partial beam orientation."
-            );
-        }
+        // Partial beam stub direction is now automatic from rhythmic context.
+        // This operation is a no-op.
     }
 
     // ========== Stem Direction Operations ==========

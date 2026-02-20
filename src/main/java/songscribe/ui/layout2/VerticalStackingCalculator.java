@@ -20,10 +20,8 @@
 
 package songscribe.ui.layout2;
 
-import java.awt.Graphics2D;
-import java.awt.geom.Area;
-import java.awt.geom.Point2D;
-import java.awt.geom.Rectangle2D;
+import java.awt.*;
+import java.awt.geom.*;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -36,7 +34,6 @@ import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
 import songscribe.smufl.StaffSpaces;
 import songscribe.ui.layout.Articulation;
-import songscribe.ui.layout.Attachment;
 import songscribe.ui.layout.FermataAttachment;
 import songscribe.ui.layout.LineElement;
 import songscribe.ui.renderer.ArticulationRenderer;
@@ -63,11 +60,11 @@ import songscribe.ui.renderer.ArticulationRenderer;
 public class VerticalStackingCalculator {
 
     // Note head dimensions from SMuFL noteheadBlack bounding box
-    private static final double NOTE_HEAD_WIDTH =
+    private static final double NOTE_HEAD_WIDTH_PX =
         StaffSpaces.toPixels(
             SMuFLMetadata.getInstance().getBBox(SMuFLGlyph.NOTEHEAD_BLACK).width());
 
-    private static final double NOTE_HEAD_HEIGHT =
+    private static final double NOTE_HEAD_HEIGHT_PX =
         StaffSpaces.toPixels(
             SMuFLMetadata.getInstance().getBBox(SMuFLGlyph.NOTEHEAD_BLACK).height());
 
@@ -89,12 +86,12 @@ public class VerticalStackingCalculator {
      * @return VerticalStackingResult containing all calculated positions
      */
     public @NotNull VerticalStackingResult calculateVerticalPositions(
-            @NotNull List<NoteColumn> columns,
-            @NotNull Line line,
-            Graphics2D g2) {
+        @NotNull List<NoteColumn> columns,
+        @NotNull Line line,
+        Graphics2D g2) {
 
         var elementPositions = new HashMap<Note, Map<LineElement, Point2D>>();
-        var maxHeightAboveStaff = 0.0;
+        var maxHeightAboveStaffPx = 0.0;
 
         // Process each column
         for (var column : columns) {
@@ -106,64 +103,64 @@ public class VerticalStackingCalculator {
             var accumulated = getNoteBoundingArea(column);
 
             // Track the highest point reached for this column
-            var columnMaxY = accumulated.getBounds2D().getMinY();
+            var columnMaxYPx = accumulated.getBounds2D().getMinY();
 
             // Process each layer in order (bottom to top)
-            var articulationsMaxY = stackArticulations(column, accumulated, noteElementPositions);
-            if (articulationsMaxY < columnMaxY) {
-                columnMaxY = articulationsMaxY;
+            var articulationsMaxYPx = stackArticulations(column, accumulated, noteElementPositions);
+            if (articulationsMaxYPx < columnMaxYPx) {
+                columnMaxYPx = articulationsMaxYPx;
             }
 
-            var trillMaxY = stackTrill(column, accumulated, noteElementPositions);
-            if (trillMaxY < columnMaxY) {
-                columnMaxY = trillMaxY;
+            var trillMaxYPx = stackTrill(column, accumulated, noteElementPositions);
+            if (trillMaxYPx < columnMaxYPx) {
+                columnMaxYPx = trillMaxYPx;
             }
 
-            var fermataMaxY = stackFermata(column, accumulated, noteElementPositions);
-            if (fermataMaxY < columnMaxY) {
-                columnMaxY = fermataMaxY;
+            var fermataMaxYPx = stackFermata(column, accumulated, noteElementPositions);
+            if (fermataMaxYPx < columnMaxYPx) {
+                columnMaxYPx = fermataMaxYPx;
             }
 
-            var dynamicsMaxY = stackDynamics(column, accumulated, noteElementPositions);
-            if (dynamicsMaxY < columnMaxY) {
-                columnMaxY = dynamicsMaxY;
+            var dynamicsMaxYPx = stackDynamics(column, accumulated, noteElementPositions);
+            if (dynamicsMaxYPx < columnMaxYPx) {
+                columnMaxYPx = dynamicsMaxYPx;
             }
 
-            var tempoMaxY = stackTempo(column, accumulated, noteElementPositions);
-            if (tempoMaxY < columnMaxY) {
-                columnMaxY = tempoMaxY;
+            var tempoMaxYPx = stackTempo(column, accumulated, noteElementPositions);
+            if (tempoMaxYPx < columnMaxYPx) {
+                columnMaxYPx = tempoMaxYPx;
             }
 
-            var annotationsMaxY = stackAnnotations(column, accumulated, noteElementPositions);
-            if (annotationsMaxY < columnMaxY) {
-                columnMaxY = annotationsMaxY;
+            var annotationsMaxYPx = stackAnnotations(column, accumulated, noteElementPositions);
+            if (annotationsMaxYPx < columnMaxYPx) {
+                columnMaxYPx = annotationsMaxYPx;
             }
 
             // Update global maximum height
-            if (columnMaxY < maxHeightAboveStaff) {
-                maxHeightAboveStaff = columnMaxY;
+            if (columnMaxYPx < maxHeightAboveStaffPx) {
+                maxHeightAboveStaffPx = columnMaxYPx;
             }
         }
 
         // Calculate lyrics baseline
-        var lowestNoteY = findLowestNoteBoundingY(columns);
-        var lyricsBaselineY = lowestNoteY + LayoutConstants.px(LayoutConstants.LYRICS_BASELINE_OFFSET);
+        var lowestNoteYPx = findLowestNoteBoundingYPx(columns);
+        var lyricsBaselineYPx = lowestNoteYPx + LayoutConstants.toPixels(LayoutConstants.LYRICS_BASELINE_OFFSET_SS);
 
         // Calculate line height
         var hasLyrics = columns.stream().anyMatch(NoteColumn::hasSyllable);
-        var lyricsHeight = hasLyrics ? 20.0 : 0.0; // TODO: Measure actual lyric height
-        var interLineMargin = 10.0; // TODO: Get from LayoutConstants
+        var lyricsHeightPx = hasLyrics ? 20.0 : 0.0; // TODO: Measure actual lyric height
+        var interLineMarginPx = 10.0; // TODO: Get from LayoutConstants
 
-        var lineHeight = LayoutConstants.STAFF_HEIGHT +
-                         Math.abs(maxHeightAboveStaff) +
-                         lyricsHeight +
-                         interLineMargin;
+        var lineHeightPx = LayoutConstants.toPixels(LayoutConstants.STAFF_HEIGHT_SS) +
+            Math.abs(maxHeightAboveStaffPx) +
+            lyricsHeightPx +
+            interLineMarginPx;
 
         return new VerticalStackingResult(
-                elementPositions,
-                maxHeightAboveStaff,
-                lyricsBaselineY,
-                lineHeight
+            elementPositions,
+            maxHeightAboveStaffPx,
+            lyricsBaselineYPx,
+            lineHeightPx
         );
     }
 
@@ -181,9 +178,9 @@ public class VerticalStackingCalculator {
      * @return Minimum Y position reached (most negative)
      */
     private double stackArticulations(
-            @NotNull NoteColumn column,
-            @NotNull Area accumulated,
-            @NotNull Map<LineElement, Point2D> noteElementPositions) {
+        @NotNull NoteColumn column,
+        @NotNull Area accumulated,
+        @NotNull Map<LineElement, Point2D> noteElementPositions) {
 
         var note = column.getNote();
         var articulations = note.getArticulations();
@@ -192,9 +189,9 @@ public class VerticalStackingCalculator {
             return accumulated.getBounds2D().getMinY();
         }
 
-        var minY = accumulated.getBounds2D().getMinY();
+        var minYPx = accumulated.getBounds2D().getMinY();
         boolean isUpper = note.isUpper();
-        double halfContentHeight = articulations.getFirst().getContentHeight() / 2.0;
+        double halfContentHeightPx = articulations.getFirst().getContentHeight() / 2.0;
 
         // Identify articulation types
         Articulation staccatoArticulation = null;
@@ -212,42 +209,42 @@ public class VerticalStackingCalculator {
         // using the same logic as the renderer's fallback path.
         boolean hasStaccato = staccatoArticulation != null;
         int staccatoCenterY = hasStaccato
-                ? ArticulationRenderer.calculateStaccatoY(note, 0)
-                : 0;
+            ? ArticulationRenderer.calculateStaccatoYPx(note, 0)
+            : 0;
 
         // Position staccato
         if (staccatoArticulation != null) {
-            double topY = staccatoCenterY - halfContentHeight;
-            positionElement(staccatoArticulation, column.getX(), topY, noteElementPositions);
+            double topYPx = staccatoCenterY - halfContentHeightPx;
+            positionElement(staccatoArticulation, column.getXSs(), topYPx, noteElementPositions);
 
             // Only add to accumulated area if above the note (stem down),
             // so that elements stacking above will clear it.
             if (!isUpper) {
-                addToAccumulated(staccatoArticulation, column.getX(), topY, accumulated);
+                addToAccumulated(staccatoArticulation, column.getXSs(), topYPx, accumulated);
 
-                if (topY < minY) {
-                    minY = topY;
+                if (topYPx < minYPx) {
+                    minYPx = topYPx;
                 }
             }
         }
 
         // Position accent
         if (accentArticulation != null) {
-            int accentCenterY = ArticulationRenderer.calculateAccentY(
-                    note, 0, staccatoCenterY, hasStaccato);
-            double topY = accentCenterY - halfContentHeight;
-            positionElement(accentArticulation, column.getX(), topY, noteElementPositions);
+            int accentCenterY = ArticulationRenderer.calculateAccentYPx(
+                note, 0, staccatoCenterY, hasStaccato);
+            double topYPx = accentCenterY - halfContentHeightPx;
+            positionElement(accentArticulation, column.getXSs(), topYPx, noteElementPositions);
 
             if (!isUpper) {
-                addToAccumulated(accentArticulation, column.getX(), topY, accumulated);
+                addToAccumulated(accentArticulation, column.getXSs(), topYPx, accumulated);
 
-                if (topY < minY) {
-                    minY = topY;
+                if (topYPx < minYPx) {
+                    minYPx = topYPx;
                 }
             }
         }
 
-        return minY;
+        return minYPx;
     }
 
     /**
@@ -259,9 +256,9 @@ public class VerticalStackingCalculator {
      * @return Minimum Y position reached (most negative)
      */
     private double stackTrill(
-            @NotNull NoteColumn column,
-            @NotNull Area accumulated,
-            @NotNull Map<LineElement, Point2D> noteElementPositions) {
+        @NotNull NoteColumn column,
+        @NotNull Area accumulated,
+        @NotNull Map<LineElement, Point2D> noteElementPositions) {
 
         var note = column.getNote();
 
@@ -272,23 +269,23 @@ public class VerticalStackingCalculator {
 
         // For now, just reserve space for legacy trill
         // Actual positioning will be done in rendering phase
-        var trillHeight = 12.0;
-        var trillWidth = 20.0;
+        var trillHeightPx = 12.0;
+        var trillWidthPx = 20.0;
 
-        var y = accumulated.getBounds2D().getMinY() -
-                LayoutConstants.px(LayoutConstants.TRILL_MARGIN) -
-                trillHeight;
+        var yPx = accumulated.getBounds2D().getMinY() -
+            LayoutConstants.toPixels(LayoutConstants.TRILL_MARGIN_SS) -
+            trillHeightPx;
 
         var trillBounds = new Rectangle2D.Double(
-                column.getX() - trillWidth / 2,
-                y,
-                trillWidth,
-                trillHeight
+            column.getXSs() - trillWidthPx / 2,
+            yPx,
+            trillWidthPx,
+            trillHeightPx
         );
 
         accumulated.add(new Area(trillBounds));
 
-        return y;
+        return yPx;
     }
 
     /**
@@ -300,58 +297,58 @@ public class VerticalStackingCalculator {
      * @return Minimum Y position reached (most negative)
      */
     private double stackFermata(
-            @NotNull NoteColumn column,
-            @NotNull Area accumulated,
-            @NotNull Map<LineElement, Point2D> noteElementPositions) {
+        @NotNull NoteColumn column,
+        @NotNull Area accumulated,
+        @NotNull Map<LineElement, Point2D> noteElementPositions) {
 
         var note = column.getNote();
-        var minY = accumulated.getBounds2D().getMinY();
+        var minYPx = accumulated.getBounds2D().getMinY();
 
         // Check new attachment hierarchy first
         var fermata = note.findAttachment(FermataAttachment.class);
 
         if (fermata != null) {
-            var y = findClearYPosition(
-                    fermata,
-                    column.getX(),
-                    accumulated,
-                    LayoutConstants.px(LayoutConstants.FERMATA_MARGIN)
+            var yPx = findClearYPositionPx(
+                fermata,
+                column.getXSs(),
+                accumulated,
+                LayoutConstants.toPixels(LayoutConstants.FERMATA_MARGIN_SS)
             );
 
-            positionElement(fermata, column.getX(), y, noteElementPositions);
-            addToAccumulated(fermata, column.getX(), y, accumulated);
+            positionElement(fermata, column.getXSs(), yPx, noteElementPositions);
+            addToAccumulated(fermata, column.getXSs(), yPx, accumulated);
 
-            if (y < minY) {
-                minY = y;
+            if (yPx < minYPx) {
+                minYPx = yPx;
             }
 
-            return minY;
+            return minYPx;
         }
 
         // Fall back to legacy flag
         if (note.isFermata()) {
-            var fermataHeight = 16.0;
-            var fermataWidth = 16.0;
+            var fermataHeightPx = 16.0;
+            var fermataWidthPx = 16.0;
 
-            var y = accumulated.getBounds2D().getMinY() -
-                    LayoutConstants.px(LayoutConstants.FERMATA_MARGIN) -
-                    fermataHeight;
+            var yPx = accumulated.getBounds2D().getMinY() -
+                LayoutConstants.toPixels(LayoutConstants.FERMATA_MARGIN_SS) -
+                fermataHeightPx;
 
             var fermataBounds = new Rectangle2D.Double(
-                    column.getX() - fermataWidth / 2,
-                    y,
-                    fermataWidth,
-                    fermataHeight
+                column.getXSs() - fermataWidthPx / 2,
+                yPx,
+                fermataWidthPx,
+                fermataHeightPx
             );
 
             accumulated.add(new Area(fermataBounds));
 
-            if (y < minY) {
-                minY = y;
+            if (yPx < minYPx) {
+                minYPx = yPx;
             }
         }
 
-        return minY;
+        return minYPx;
     }
 
     /**
@@ -363,9 +360,9 @@ public class VerticalStackingCalculator {
      * @return Minimum Y position reached (most negative)
      */
     private double stackDynamics(
-            @NotNull NoteColumn column,
-            @NotNull Area accumulated,
-            @NotNull Map<LineElement, Point2D> noteElementPositions) {
+        @NotNull NoteColumn column,
+        @NotNull Area accumulated,
+        @NotNull Map<LineElement, Point2D> noteElementPositions) {
 
         // TODO: Implement when DynamicAttachment is ready
         // For now, dynamics are deferred
@@ -381,62 +378,62 @@ public class VerticalStackingCalculator {
      * @return Minimum Y position reached (most negative)
      */
     private double stackTempo(
-            @NotNull NoteColumn column,
-            @NotNull Area accumulated,
-            @NotNull Map<LineElement, Point2D> noteElementPositions) {
+        @NotNull NoteColumn column,
+        @NotNull Area accumulated,
+        @NotNull Map<LineElement, Point2D> noteElementPositions) {
 
         var note = column.getNote();
-        var minY = accumulated.getBounds2D().getMinY();
+        var minYPx = accumulated.getBounds2D().getMinY();
 
         // Check for tempo change (legacy property)
         if (note.getTempoChange() != null) {
-            var tempoHeight = 20.0;
-            var tempoWidth = 60.0;
+            var tempoHeightPx = 20.0;
+            var tempoWidthPx = 60.0;
 
-            var y = accumulated.getBounds2D().getMinY() -
-                    LayoutConstants.px(LayoutConstants.TEMPO_MARGIN) -
-                    tempoHeight;
+            var yPx = accumulated.getBounds2D().getMinY() -
+                LayoutConstants.toPixels(LayoutConstants.TEMPO_MARGIN_SS) -
+                tempoHeightPx;
 
             var tempoBounds = new Rectangle2D.Double(
-                    column.getX() - tempoWidth / 2,
-                    y,
-                    tempoWidth,
-                    tempoHeight
+                column.getXSs() - tempoWidthPx / 2,
+                yPx,
+                tempoWidthPx,
+                tempoHeightPx
             );
 
             accumulated.add(new Area(tempoBounds));
 
-            if (y < minY) {
-                minY = y;
+            if (yPx < minYPx) {
+                minYPx = yPx;
             }
         }
 
         // Check for beat change (legacy property)
         if (note.getBeatChange() != null) {
-            var beatChangeHeight = 20.0;
-            var beatChangeWidth = 40.0;
+            var beatChangeHeightPx = 20.0;
+            var beatChangeWidthPx = 40.0;
 
-            var y = accumulated.getBounds2D().getMinY() -
-                    LayoutConstants.px(LayoutConstants.TEMPO_MARGIN) -
-                    beatChangeHeight;
+            var yPx = accumulated.getBounds2D().getMinY() -
+                LayoutConstants.toPixels(LayoutConstants.TEMPO_MARGIN_SS) -
+                beatChangeHeightPx;
 
             var beatChangeBounds = new Rectangle2D.Double(
-                    column.getX() - beatChangeWidth / 2,
-                    y,
-                    beatChangeWidth,
-                    beatChangeHeight
+                column.getXSs() - beatChangeWidthPx / 2,
+                yPx,
+                beatChangeWidthPx,
+                beatChangeHeightPx
             );
 
             accumulated.add(new Area(beatChangeBounds));
 
-            if (y < minY) {
-                minY = y;
+            if (yPx < minYPx) {
+                minYPx = yPx;
             }
         }
 
         // TODO: Also check new TempoAttachment and BeatChangeAttachment hierarchy
 
-        return minY;
+        return minYPx;
     }
 
     /**
@@ -448,39 +445,39 @@ public class VerticalStackingCalculator {
      * @return Minimum Y position reached (most negative)
      */
     private double stackAnnotations(
-            @NotNull NoteColumn column,
-            @NotNull Area accumulated,
-            @NotNull Map<LineElement, Point2D> noteElementPositions) {
+        @NotNull NoteColumn column,
+        @NotNull Area accumulated,
+        @NotNull Map<LineElement, Point2D> noteElementPositions) {
 
         var note = column.getNote();
-        var minY = accumulated.getBounds2D().getMinY();
+        var minYPx = accumulated.getBounds2D().getMinY();
 
         // Check for annotation (legacy property)
         if (note.getAnnotation() != null) {
-            var annotationHeight = 14.0;
-            var annotationWidth = 40.0; // TODO: Measure actual text width
+            var annotationHeightPx = 14.0;
+            var annotationWidthPx = 40.0; // TODO: Measure actual text width
 
-            var y = accumulated.getBounds2D().getMinY() -
-                    LayoutConstants.px(LayoutConstants.ANNOTATION_MARGIN) -
-                    annotationHeight;
+            var yPx = accumulated.getBounds2D().getMinY() -
+                LayoutConstants.toPixels(LayoutConstants.ANNOTATION_MARGIN_SS) -
+                annotationHeightPx;
 
             var annotationBounds = new Rectangle2D.Double(
-                    column.getX() - annotationWidth / 2,
-                    y,
-                    annotationWidth,
-                    annotationHeight
+                column.getXSs() - annotationWidthPx / 2,
+                yPx,
+                annotationWidthPx,
+                annotationHeightPx
             );
 
             accumulated.add(new Area(annotationBounds));
 
-            if (y < minY) {
-                minY = y;
+            if (yPx < minYPx) {
+                minYPx = yPx;
             }
         }
 
         // TODO: Also check new AnnotationAttachment hierarchy
 
-        return minY;
+        return minYPx;
     }
 
     /**
@@ -494,15 +491,15 @@ public class VerticalStackingCalculator {
         var note = column.getNote();
 
         // Get stem bounds
-        var stemTop = column.getStemTop();
-        var stemBottom = column.getStemBottom();
+        var stemTopPx = column.getStemTopSs();
+        var stemBottomPx = column.getStemBottomSs();
 
         // Create bounding area from stem top to stem bottom
         var bounds = new Rectangle2D.Double(
-                column.getX() - NOTE_HEAD_WIDTH / 2,
-                stemTop,
-                NOTE_HEAD_WIDTH,
-                stemBottom - stemTop
+            column.getXSs() - NOTE_HEAD_WIDTH_PX / 2,
+            stemTopPx,
+            NOTE_HEAD_WIDTH_PX,
+            stemBottomPx - stemTopPx
         );
 
         return new Area(bounds);
@@ -518,25 +515,25 @@ public class VerticalStackingCalculator {
      * @param element     The element to position
      * @param x           X position of the element
      * @param accumulated Accumulated bounding area
-     * @param margin      Margin from accumulated area (in pixels)
-     * @return Y position for the element (top-left corner)
+     * @param marginPx    Margin from accumulated area in pixels
+     * @return Y position for the element (top-left corner) in pixels
      */
-    private double findClearYPosition(
-            @NotNull LineElement element,
-            double x,
-            @NotNull Area accumulated,
-            double margin) {
+    private double findClearYPositionPx(
+        @NotNull LineElement element,
+        double x,
+        @NotNull Area accumulated,
+        double marginPx) {
 
         // Start from top of accumulated bounding area
         var accBounds = accumulated.getBounds2D();
-        var candidateY = accBounds.getMinY() - margin - element.getContentHeight();
+        var candidateYPx = accBounds.getMinY() - marginPx - element.getContentHeight();
 
         // Create element bounds at candidate position
         var elementBounds = new Rectangle2D.Double(
-                x - element.getContentWidth() / 2,
-                candidateY,
-                element.getContentWidth(),
-                element.getContentHeight()
+            x - element.getContentWidth() / 2,
+            candidateYPx,
+            element.getContentWidth(),
+            element.getContentHeight()
         );
 
         var elementArea = new Area(elementBounds);
@@ -547,13 +544,13 @@ public class VerticalStackingCalculator {
 
         // If intersects, move up until clear
         while (!testArea.isEmpty()) {
-            candidateY -= 1.0;
+            candidateYPx -= 1.0;
 
             elementBounds.setRect(
-                    x - element.getContentWidth() / 2,
-                    candidateY,
-                    element.getContentWidth(),
-                    element.getContentHeight()
+                x - element.getContentWidth() / 2,
+                candidateYPx,
+                element.getContentWidth(),
+                element.getContentHeight()
             );
 
             elementArea = new Area(elementBounds);
@@ -561,7 +558,7 @@ public class VerticalStackingCalculator {
             testArea.intersect(elementArea);
         }
 
-        return candidateY;
+        return candidateYPx;
     }
 
     /**
@@ -573,10 +570,10 @@ public class VerticalStackingCalculator {
      * @param noteElementPositions Map to store the position
      */
     private void positionElement(
-            @NotNull LineElement element,
-            double x,
-            double y,
-            @NotNull Map<LineElement, Point2D> noteElementPositions) {
+        @NotNull LineElement element,
+        double x,
+        double y,
+        @NotNull Map<LineElement, Point2D> noteElementPositions) {
 
         var position = new Point2D.Double(x, y);
         element.setPosition(position);
@@ -592,16 +589,16 @@ public class VerticalStackingCalculator {
      * @param accumulated Accumulated bounding area to update
      */
     private void addToAccumulated(
-            @NotNull LineElement element,
-            double x,
-            double y,
-            @NotNull Area accumulated) {
+        @NotNull LineElement element,
+        double x,
+        double y,
+        @NotNull Area accumulated) {
 
         var bounds = new Rectangle2D.Double(
-                x - element.getContentWidth() / 2,
-                y,
-                element.getContentWidth(),
-                element.getContentHeight()
+            x - element.getContentWidth() / 2,
+            y,
+            element.getContentWidth(),
+            element.getContentHeight()
         );
 
         accumulated.add(new Area(bounds));
@@ -614,17 +611,17 @@ public class VerticalStackingCalculator {
      * @param columns List of note columns
      * @return Lowest Y position (maximum Y value)
      */
-    private double findLowestNoteBoundingY(@NotNull List<NoteColumn> columns) {
-        var lowestY = 0.0;
+    private double findLowestNoteBoundingYPx(@NotNull List<NoteColumn> columns) {
+        var lowestYPx = 0.0;
 
         for (var column : columns) {
-            var stemBottom = column.getStemBottom();
+            var stemBottomPx = column.getStemBottomSs();
 
-            if (stemBottom > lowestY) {
-                lowestY = stemBottom;
+            if (stemBottomPx > lowestYPx) {
+                lowestYPx = stemBottomPx;
             }
         }
 
-        return lowestY;
+        return lowestYPx;
     }
 }

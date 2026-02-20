@@ -21,22 +21,24 @@
 package songscribe.ui.component.score;
 
 import java.awt.*;
-import java.awt.event.MouseEvent;
+import java.awt.event.*;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import net.engio.mbassy.listener.Handler;
+
+import songscribe.data.BeamInterval;
 import songscribe.music.BeamCalculator;
 import songscribe.music.Line;
 import songscribe.music.NoteType;
-import net.engio.mbassy.listener.Handler;
-
-import songscribe.ui.component.Score;
 import songscribe.ui.Control;
 import songscribe.ui.Mode;
+import songscribe.ui.component.Score;
 import songscribe.ui.edit.EditModeManager;
 import songscribe.ui.layout.LayoutStylesheet;
 import songscribe.ui.layout2.InsertionSpacingCalculator;
+import songscribe.ui.layout2.ScaleContext;
 import songscribe.ui.message.MessageCenter;
 import songscribe.ui.message.ModeChangedMessage;
 
@@ -210,8 +212,13 @@ class InsertionNoteManager {
             return;
         }
 
-        // Calculate Y position from mouse
-        int yPos = calculateYPosFromMouse(e.getY(), lc.getMiddleLineY());
+        // Convert mouse pixel coordinates to staff-space units
+        var scale = ScaleContext.getInstance();
+        var mouseXss = scale.fromPixels(e.getX());
+        var mouseYss = scale.fromPixels(e.getY());
+
+        // Calculate Y position from mouse (in staff-space coordinates)
+        int yPos = calculateYPosFromMouse(mouseYss, lc.getMiddleLineYSs());
 
         if (!isValidYPos(yPos)) {
             // Mouse is outside valid range, clear insertion note if on this line
@@ -229,13 +236,13 @@ class InsertionNoteManager {
         var line = lc.getLine();
 
         if (layoutResult != null && line != null) {
-            xIndex = layoutResult.findInsertionIndex(e.getX(), line);
-            isOverNoteHead = layoutResult.isMouseOverNoteHead(e.getX(), line);
+            xIndex = layoutResult.findInsertionIndex(mouseXss, line);
+            isOverNoteHead = layoutResult.isMouseOverNoteHead(mouseXss, line);
         }
 
         // Check if position actually changed
         if (lc == currentInsertionLine && xIndex == currentXIndex
-                && yPos == currentYPos && isOverNoteHead == currentIsOverNoteHead) {
+            && yPos == currentYPos && isOverNoteHead == currentIsOverNoteHead) {
             return;  // No change, no repaint
         }
 
@@ -257,7 +264,7 @@ class InsertionNoteManager {
             var editNote = editModeManager.getEditNote();
 
             if (editNote != null) {
-                editNote.setYPos(yPos);
+                editNote.setStaffPosition(yPos);
             }
         }
 
@@ -398,15 +405,14 @@ class InsertionNoteManager {
     }
 
     /**
-     * Calculates the Y position (in note units) from a mouse Y coordinate.
+     * Calculates the staff position (in note units) from a mouse Y coordinate.
      *
-     * @param mouseY      Mouse Y coordinate in component coordinates
-     * @param middleLineY Y coordinate of the middle staff line
-     * @return Y position in note units
+     * @param mouseYss    Mouse Y coordinate in staff-space units
+     * @param middleLineYSs Y coordinate of the middle staff line in staff-space units
+     * @return Staff position in note units
      */
-    private static int calculateYPosFromMouse(int mouseY, int middleLineY) {
-        var noteYOffset = LayoutStylesheet.NOTE_Y_OFFSET;
-        return (int) Math.round((mouseY - middleLineY) / noteYOffset);
+    private static int calculateYPosFromMouse(double mouseYss, double middleLineYSs) {
+        return (int) Math.round((mouseYss - middleLineYSs) / LayoutStylesheet.NOTE_Y_OFFSET);
     }
 
     /**
@@ -456,7 +462,7 @@ class InsertionNoteManager {
         }
 
         editNote.setXPos((int) Math.round(
-            InsertionSpacingCalculator.calculateAppendPosition(line, editNote)));
+            InsertionSpacingCalculator.calculateAppendPositionSs(line, editNote)));
         line.addNote(editNote);
 
         applyAutomaticBeaming(line, line.noteCount() - 1);
@@ -505,9 +511,9 @@ class InsertionNoteManager {
 
         line.removeInterval(xIndex - 1, xIndex);
         var insertion = InsertionSpacingCalculator.calculateInsertion(line, editNote, xIndex);
-        editNote.setXPos((int) Math.round(insertion.insertedNoteX()));
+        editNote.setXPos((int) Math.round(insertion.insertedNoteXSs()));
         line.addNote(xIndex, editNote);
-        var shift = (int) Math.round(insertion.shiftForSubsequentNotes());
+        var shift = (int) Math.round(insertion.shiftForSubsequentNotesSs());
 
         for (var i = xIndex + 1; i < line.noteCount(); i++) {
             line.getNote(i).setXPos(line.getNote(i).getXPos() + shift);
@@ -569,7 +575,7 @@ class InsertionNoteManager {
         ) {
             line
                 .getBeamings()
-                .addInterval(noteIndex - 1, noteIndex);
+                .addInterval(new BeamInterval(noteIndex - 1, noteIndex));
         }
 
         BeamCalculator.calculateLengthenings(noteIndex, line, true);
@@ -608,7 +614,7 @@ class InsertionNoteManager {
         }
 
         var existingNote = line.getNote(noteIndex);
-        existingNote.setYPos(currentYPos);
+        existingNote.setStaffPosition(currentYPos);
         existingNote.setUpper(Score.defaultUpperNote(existingNote));
         score.getComposition().setModified(true);
 

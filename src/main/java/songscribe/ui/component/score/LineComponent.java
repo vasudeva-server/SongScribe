@@ -36,6 +36,7 @@ import songscribe.ui.layout.LineElement;
 import songscribe.ui.layout.TempoAttachment;
 import songscribe.ui.layout2.LayoutEngine;
 import songscribe.ui.layout2.LayoutResult;
+import songscribe.ui.layout2.ScaleContext;
 import songscribe.ui.renderer.RendererRegistry;
 import songscribe.ui.selection.LineSelectionState;
 
@@ -101,8 +102,8 @@ public class LineComponent extends ScoreComponent
     /** Root element of the LineElement tree for this line. */
     private LineElement rootElement;
 
-    /** Y coordinate of the middle staff line (B line) relative to component top. */
-    private int middleLineY;
+    /** Y coordinate of the middle staff line (B line) in staff-space units. */
+    private double middleLineYSs;
 
     /** Provider for checking note selection state. */
     private SelectionProvider selectionProvider;
@@ -215,25 +216,35 @@ public class LineComponent extends ScoreComponent
     }
 
     /**
-     * Sets the Y coordinate of the middle staff line.
+     * Sets the Y coordinate of the middle staff line in staff-space units.
      *
-     * @param middleLineY Y coordinate relative to component top
+     * @param middleLineYSs Y coordinate in staff-space units
      */
-    public void setMiddleLineY(int middleLineY) {
-        this.middleLineY = middleLineY;
+    public void setMiddleLineYSs(double middleLineYSs) {
+        this.middleLineYSs = middleLineYSs;
     }
 
     /**
-     * Returns the Y coordinate of the middle staff line.
+     * Returns the Y coordinate of the middle staff line in staff-space units.
      * <p>
      * Lazily calculates the value if it hasn't been set yet.
      */
-    public int getMiddleLineY() {
-        if (middleLineY == 0 && composition != null) {
-            middleLineY = calculateMiddleLineY();
+    public double getMiddleLineYSs() {
+        if (middleLineYSs == 0.0 && composition != null) {
+            middleLineYSs = calculateMiddleLineYSs();
         }
 
-        return middleLineY;
+        return middleLineYSs;
+    }
+
+    /**
+     * Returns the Y coordinate of the middle staff line in pixels.
+     * <p>
+     * Bridge method for callers not yet converted to staff-space units.
+     * Will be removed when renderers and mouse code are converted.
+     */
+    public int getMiddleLineYPx() {
+        return (int) Math.round(ScaleContext.getInstance().toPixels(getMiddleLineYSs()));
     }
 
     /**
@@ -334,8 +345,8 @@ public class LineComponent extends ScoreComponent
         }
 
         var lyricsFont = composition.getLyricsFont();
-        var staffRightMargin = composition.getLineWidth();
-        layoutEngine = new LayoutEngine(g2, lyricsFont, staffRightMargin);
+        var staffRightMarginSs = composition.getLineWidth();
+        layoutEngine = new LayoutEngine(g2, lyricsFont, staffRightMarginSs);
         layoutResult = layoutEngine.layout(line);
 
         if (layoutResult == null) {
@@ -399,17 +410,26 @@ public class LineComponent extends ScoreComponent
         // Perform layout if dirty
         if (layoutDirty || layoutResult == null) {
             performLayout(g2);
-
-            // Recalculate middleLineY after layout to account for elements above staff
-            var newMiddleLineY = calculateMiddleLineY();
-
-            if (newMiddleLineY != middleLineY) {
-                middleLineY = newMiddleLineY;
-                revalidate();
-            }
         }
 
-        lineRenderer.render(g2);
+        // Update middleLineY from layout result (render owns this field)
+        middleLineYSs = calculateMiddleLineYSs();
+
+        // Apply staff-space to pixel scale transform at the render boundary.
+        // All downstream drawing uses staff-space coordinates.
+        var savedTransform = g2.getTransform();
+        var scale = ScaleContext.getInstance().getPixelsPerStaffSpace();
+        g2.scale(scale, scale);
+
+        try {
+            lineRenderer.render(g2);
+        } finally {
+            g2.setTransform(savedTransform);
+        }
+
+        // Drag rectangle is a pixel-space UI overlay — render after restoring the transform
+        // so it is not affected by the staff-space scale.
+        lineRenderer.renderDragRectangle(g2);
     }
 
     @Override
@@ -418,18 +438,21 @@ public class LineComponent extends ScoreComponent
             return new Dimension(0, 0);
         }
 
-        // Calculate width and height
-        int width = calculateLineWidth();
-        int height = calculateLineHeight();
+        // Calculate width and height in staff-space units
+        double widthSs = calculateLineWidthSs();
+        double heightSs = calculateLineHeightSs();
 
-        // Calculate middleLineY based on actual space above (which may include tempo)
-        middleLineY = calculateMiddleLineY();
+        // Convert to pixels at the Swing boundary
+        var scale = ScaleContext.getInstance();
 
-        return new Dimension(width, height);
+        return new Dimension(
+            (int) Math.ceil(scale.toPixels(widthSs)),
+            (int) Math.ceil(scale.toPixels(heightSs))
+        );
     }
 
     /**
-     * Calculates the Y position of the middle staff line.
+     * Calculates the Y position of the middle staff line in staff-space units.
      * <p>
      * This accounts for extra space needed above the staff for tempo markings
      * and other elements that extend above the default staff area.
@@ -437,26 +460,25 @@ public class LineComponent extends ScoreComponent
      * Even for empty lines, uses minimum spacing to accommodate typical notes,
      * preventing position jumps when the first note is inserted.
      *
-     * @return Y position of middle staff line in component coordinates
+     * @return Y position of middle staff line in staff-space units
      */
-    private int calculateMiddleLineY() {
-        var staffLineYOffset = LayoutStylesheet.STAFF_SPACE;
-        var defaultSpaceAbove = Score.STAFF_LINES_ABOVE * staffLineYOffset;
-        double spaceAbove = MIN_SPACE_ABOVE;
+    private double calculateMiddleLineYSs() {
+        // In staff-space: spacing between adjacent staff lines is 1.0 ss
+        double defaultSpaceAbove = Score.STAFF_LINES_ABOVE;  // 3.0 ss
+        double spaceAbove = MIN_SPACE_ABOVE_SS;
 
         // Get extent of notes and attachments (only if line has content)
         if (line != null && !line.isEmpty()) {
-            double tempMiddleLineY = defaultSpaceAbove + (2.0 * staffLineYOffset);
-            var extent = CollisionDetector.calculateNoteExtent(line, tempMiddleLineY);
-            spaceAbove = Math.max(MIN_SPACE_ABOVE, Math.abs(extent.getMinY()));
+            // CollisionDetector still uses pixel-space margin bounds (renderers not yet converted)
+            var scale = ScaleContext.getInstance();
+            double tempMiddleLineYPx = scale.toPixels(defaultSpaceAbove + 2.0);
+            var extent = CollisionDetector.calculateNoteExtent(line, tempMiddleLineYPx);
+            spaceAbove = Math.max(MIN_SPACE_ABOVE_SS, scale.fromPixels(Math.abs(extent.getMinY())));
         }
 
         // Use layout result to determine space needed above staff
-        // Layout result positions are relative to middleLineY=0, so negative Y means above staff
+        // Layout result positions are in ss relative to middleLineY=0
         if (layoutResult != null) {
-            // Find the minimum (topmost) Y position from layout result
-            // We need to scan all elements since we don't have a method to get all bounds
-            // For now, check if first note has tempo attachment
             if (line != null && line.noteCount() > 0) {
                 var firstNote = line.getNote(0);
                 var tempoBounds = layoutResult.findAttachmentBounds(firstNote, TempoAttachment.class);
@@ -473,37 +495,35 @@ public class LineComponent extends ScoreComponent
             }
         }
 
-        var result = (int) spaceAbove + (2 * staffLineYOffset);
-
-        // Middle line is 2 staff line offsets below the top staff line
-        return result;
+        // Middle line is 2 staff-space offsets below the top staff line
+        return spaceAbove + 2.0;
     }
 
     /**
-     * Calculates the width needed for this line.
+     * Calculates the width needed for this line in staff-space units.
      * <p>
      * Uses the composition's line width, or calculates from note positions
      * if the line has notes.
      *
-     * @return Width in pixels
+     * @return Width in staff-space units
      */
-    private int calculateLineWidth() {
+    private double calculateLineWidthSs() {
         if (line == null || line.isEmpty() || layoutResult == null) {
             return composition.getLineWidth();
         }
 
         // Use the greater of composition width or calculated width from layout
-        double calculatedWidth = layoutResult.getLineWidth();
+        double calculatedWidth = layoutResult.getLineWidthSs();
 
-        return (int) Math.max(composition.getLineWidth(), Math.ceil(calculatedWidth));
+        return Math.max(composition.getLineWidth(), calculatedWidth);
     }
 
     /**
      * Minimum space above staff to accommodate a typical note (quarter note with stem).
      * This prevents the line from jumping in height when the first note is added.
-     * Value determined empirically: 5 * STAFF_LINE_Y_OFFSET = 40px
+     * Value: 5.0 ss (5 staff-space gaps above the top staff line).
      */
-    private static final int MIN_SPACE_ABOVE = 5 * LayoutStylesheet.STAFF_SPACE;
+    private static final double MIN_SPACE_ABOVE_SS = 5.0;
 
     /**
      * Calculates the height needed for this line.
@@ -515,48 +535,44 @@ public class LineComponent extends ScoreComponent
      * Even for empty lines, uses minimum spacing to accommodate typical notes,
      * preventing height jumps when the first note is inserted.
      *
-     * @return Height in pixels
+     * @return Height in staff-space units
      */
-    private int calculateLineHeight() {
-        var staffLineYOffset = LayoutStylesheet.STAFF_SPACE;
+    private double calculateLineHeightSs() {
+        // All values in staff-space units
+        double defaultSpaceAbove = Score.STAFF_LINES_ABOVE;  // 3.0 ss
+        double defaultSpaceBelow = Score.STAFF_LINES_BELOW;  // 4.0 ss
+        double staffHeight = LayoutStylesheet.STAFF_HEIGHT;   // 4.0 ss
 
-        // Default space above and below staff for ledger lines
-        var defaultSpaceAbove = Score.STAFF_LINES_ABOVE * staffLineYOffset;
-        var defaultSpaceBelow = Score.STAFF_LINES_BELOW * staffLineYOffset;
-
-        // Staff height: 4 gaps between 5 lines
-        var staffHeight = LayoutStylesheet.STAFF_HEIGHT;
-
-        // Start with minimum space needed for typical notes
-        double spaceAbove = MIN_SPACE_ABOVE;
+        double spaceAbove = MIN_SPACE_ABOVE_SS;
         double spaceBelow = defaultSpaceBelow;
 
         // Get extent of notes and attachments (only if line has content)
         if (line != null && !line.isEmpty()) {
-            double tempMiddleLineY = defaultSpaceAbove + (2.0 * staffLineYOffset);
-            var extent = CollisionDetector.calculateNoteExtent(line, tempMiddleLineY);
-            spaceAbove = Math.max(MIN_SPACE_ABOVE, Math.abs(extent.getMinY()));
+            // CollisionDetector still uses pixel-space margin bounds (renderers not yet converted)
+            var scale = ScaleContext.getInstance();
+            double tempMiddleLineYPx = scale.toPixels(defaultSpaceAbove + 2.0);
+            var extent = CollisionDetector.calculateNoteExtent(line, tempMiddleLineYPx);
+            spaceAbove = Math.max(MIN_SPACE_ABOVE_SS, scale.fromPixels(Math.abs(extent.getMinY())));
             spaceBelow = Math.max(
                 defaultSpaceBelow,
-                extent.getMaxY() - (staffHeight / 2.0)
+                scale.fromPixels(extent.getMaxY()) - (staffHeight / 2.0)
             );
         }
 
         // Account for tempo marking on first line (even if line is empty)
         if (lineIndex == 0 && hasTempo()) {
-            // Tempo is rendered at middleLineY + tempoYOffset (where tempoYOffset is negative)
-            // The tempo includes a note symbol and text, which extend above the baseline
-            // Typical tempo content height above baseline: ~25 pixels
-            var tempoChangeYPos = (line != null) ? line.getTempoChangeYPos() : 0;
-            var tempoYOffset = (int) (-7 * LayoutStylesheet.NOTE_Y_OFFSET) + tempoChangeYPos;
-            // Calculate space needed: |tempoYOffset| + contentHeight - distanceFromTopToMiddle
-            // distanceFromTopToMiddle = 2*staffLineYOffset (top staff line to middle line)
-            var tempoContentHeight = 25;  // Note symbol + text ascent
-            var tempoSpaceAbove = Math.abs(tempoYOffset) + tempoContentHeight - (2 * staffLineYOffset);
+            // tempoChangeYPos is a legacy pixel offset (deprecated, typically 0)
+            var tempoChangeYPosSs = ScaleContext.getInstance().fromPixels(
+                (line != null) ? line.getTempoChangeYPos() : 0
+            );
+            var tempoYOffset = -7.0 * LayoutStylesheet.NOTE_Y_OFFSET + tempoChangeYPosSs;
+            // Approximate tempo content height (note symbol + text ascent): ~3.125 ss
+            var tempoContentHeight = 3.125;
+            var tempoSpaceAbove = Math.abs(tempoYOffset) + tempoContentHeight - 2.0;
             spaceAbove = Math.max(spaceAbove, tempoSpaceAbove);
         }
 
-        return (int) Math.ceil(spaceAbove + staffHeight + spaceBelow);
+        return spaceAbove + staffHeight + spaceBelow;
     }
 
     /**

@@ -34,11 +34,10 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
-import songscribe.music.NoteType;
 import songscribe.music.KeyType;
 import songscribe.music.Line;
 import songscribe.music.Note;
-
+import songscribe.music.NoteType;
 import songscribe.ui.layout2.LayoutEngine;
 import songscribe.ui.layout2.LayoutResult;
 
@@ -192,8 +191,8 @@ class LineComponentLayoutTest {
             var result = performLayout(line);
 
             assertNotNull(result, "LayoutResult should not be null");
-            assertEquals(0.0, result.getStaffTopY(), 0.01, "Staff top should be at 0");
-            assertEquals(32.0, result.getStaffBottomY(), 0.01, "Staff bottom should be at 32 (standard staff height)");
+            assertEquals(0.0, result.getStaffTopYSs(), 0.01, "Staff top should be at 0");
+            assertEquals(32.0, result.getStaffBottomYSs(), 0.01, "Staff bottom should be at 32 (standard staff height)");
         }
 
         @Test
@@ -205,7 +204,7 @@ class LineComponentLayoutTest {
 
             assertNotNull(result, "LayoutResult should not be null even for empty line");
             assertEquals(0, result.getNoteColumnCount(), "Empty line should have 0 note columns");
-            assertEquals(32.0, result.getLineHeight(), 0.01, "Empty line should have standard staff height");
+            assertEquals(32.0, result.getLineHeightSs(), 0.01, "Empty line should have standard staff height");
         }
     }
 
@@ -282,8 +281,8 @@ class LineComponentLayoutTest {
 
             assertNotNull(result, "LayoutResult should not be null");
 
-            var x1 = result.getNoteX(note1);
-            var x2 = result.getNoteX(note2);
+            var x1 = result.getNoteXSs(note1);
+            var x2 = result.getNoteXSs(note2);
 
             assertTrue(x1 > 0, "Note 1 X position should be positive");
             assertTrue(x2 > x1, "Note 2 should be to the right of Note 1");
@@ -323,8 +322,8 @@ class LineComponentLayoutTest {
             assertNotNull(column2, "Note 2 should have a column");
 
             // Accidentals extend the left extent
-            assertTrue(column1.getLeftExtent() < 0, "Note with accidental should have negative left extent");
-            assertTrue(column2.getLeftExtent() < 0, "Note with accidental should have negative left extent");
+            assertTrue(column1.getLeftExtentSs() < 0, "Note with accidental should have negative left extent");
+            assertTrue(column2.getLeftExtentSs() < 0, "Note with accidental should have negative left extent");
         }
     }
 
@@ -352,9 +351,9 @@ class LineComponentLayoutTest {
             assertNotNull(result, "LayoutResult should not be null");
 
             // Verify that syllable positions are calculated from note X positions
-            var x1 = result.getNoteX(note1);
-            var x2 = result.getNoteX(note2);
-            var x3 = result.getNoteX(note3);
+            var x1 = result.getNoteXSs(note1);
+            var x2 = result.getNoteXSs(note2);
+            var x3 = result.getNoteXSs(note3);
 
             assertTrue(x1 > 0, "Note 1 X should be positive");
             assertTrue(x2 > x1, "Note 2 should be to the right of Note 1");
@@ -364,8 +363,8 @@ class LineComponentLayoutTest {
             var col1 = result.getNoteColumn(note1);
             var col2 = result.getNoteColumn(note2);
 
-            assertTrue(col1.getSyllableWidth() > 0, "Syllable 'won' should have width");
-            assertTrue(col2.getSyllableWidth() > 0, "Syllable 'der' should have width");
+            assertTrue(col1.getSyllableWidthSs() > 0, "Syllable 'won' should have width");
+            assertTrue(col2.getSyllableWidthSs() > 0, "Syllable 'der' should have width");
         }
 
         @Test
@@ -379,7 +378,7 @@ class LineComponentLayoutTest {
 
             assertNotNull(result, "LayoutResult should not be null");
             assertTrue(result.hasLyrics(), "Line with syllables should have lyrics");
-            assertTrue(result.getLyricBaselineY() > 0, "Lyric baseline should be below staff");
+            assertTrue(result.getLyricBaselineYSs() > 0, "Lyric baseline should be below staff");
         }
 
         @Test
@@ -439,8 +438,8 @@ class LineComponentLayoutTest {
             var col2 = result.getNoteColumn(note2);
             var col3 = result.getNoteColumn(note3);
 
-            var spacing12 = col2.getX() - col1.getX();
-            var spacing23 = col3.getX() - col2.getX();
+            var spacing12 = col2.getXSs() - col1.getXSs();
+            var spacing23 = col3.getXSs() - col2.getXSs();
 
             // Spacing should be reasonable (greater than minimum note spacing, which is about 16-18px)
             assertTrue(spacing12 > 15, "Spacing between notes should be reasonable (was " + spacing12 + ")");
@@ -477,10 +476,10 @@ class LineComponentLayoutTest {
             assertEquals(4, result.getNoteColumnCount(), "Should have 4 note columns");
 
             // Verify all notes are positioned
-            assertTrue(result.getNoteX(note1) > 0, "Note 1 should be positioned");
-            assertTrue(result.getNoteX(note2) > result.getNoteX(note1), "Note 2 should be right of Note 1");
-            assertTrue(result.getNoteX(note3) > result.getNoteX(note2), "Note 3 should be right of Note 2");
-            assertTrue(result.getNoteX(note4) > result.getNoteX(note3), "Note 4 should be right of Note 3");
+            assertTrue(result.getNoteXSs(note1) > 0, "Note 1 should be positioned");
+            assertTrue(result.getNoteXSs(note2) > result.getNoteXSs(note1), "Note 2 should be right of Note 1");
+            assertTrue(result.getNoteXSs(note3) > result.getNoteXSs(note2), "Note 3 should be right of Note 2");
+            assertTrue(result.getNoteXSs(note4) > result.getNoteXSs(note3), "Note 4 should be right of Note 3");
 
             // Verify syllables
             var col1 = result.getNoteColumn(note1);
@@ -509,8 +508,8 @@ class LineComponentLayoutTest {
             assertNotNull(resultNoKey, "LayoutResult without key should not be null");
             assertNotNull(resultWithKey, "LayoutResult with key should not be null");
 
-            var xNoKey = resultNoKey.getNoteX(lineNoKey.getNote(0));
-            var xWithKey = resultWithKey.getNoteX(lineWithKey.getNote(0));
+            var xNoKey = resultNoKey.getNoteXSs(lineNoKey.getNote(0));
+            var xWithKey = resultWithKey.getNoteXSs(lineWithKey.getNote(0));
 
             assertTrue(
                 xWithKey > xNoKey,
@@ -532,8 +531,8 @@ class LineComponentLayoutTest {
             assertNotNull(result, "LayoutResult should not be null");
 
             // Verify we can get positions for rendering
-            var x1 = result.getNoteX(note1);
-            var x2 = result.getNoteX(note2);
+            var x1 = result.getNoteXSs(note1);
+            var x2 = result.getNoteXSs(note2);
 
             assertNotNull(result.getNoteColumn(note1), "Should have column for note1");
             assertNotNull(result.getNoteColumn(note2), "Should have column for note2");

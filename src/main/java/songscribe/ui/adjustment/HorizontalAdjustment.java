@@ -26,7 +26,6 @@ import org.jetbrains.annotations.Nullable;
 
 import songscribe.data.DynamicsInterval;
 import songscribe.data.IntervalSet;
-
 import songscribe.music.Line;
 import songscribe.music.Note;
 import songscribe.ui.component.Score;
@@ -65,39 +64,39 @@ public class HorizontalAdjustment extends Adjustment {
 
         if (
             draggingRect.horizontalAdjustmentType ==
-            HorizontalAdjustmentType.SINGLE_NOTE
+                HorizontalAdjustmentType.SINGLE_NOTE
         ) {
             topLeftDragBounds.setLocation(
                 ((draggingRect.xIndex > 0)
-                        ? line.getNote(draggingRect.xIndex - 1).getXPos()
-                        : 20) +
-                draggingRect.rect.width,
+                    ? line.getNote(draggingRect.xIndex - 1).getXPos()
+                    : 20) +
+                    draggingRect.rect.width,
                 draggingRect.rect.y
             );
             bottomRightDragBounds.setLocation(
                 (draggingRect.xIndex < (line.noteCount() - 1))
                     ? (line.getNote(draggingRect.xIndex + 1).getXPos() -
-                        draggingRect.rect.width)
+                    draggingRect.rect.width)
                     : lineWidth,
                 draggingRect.rect.y
             );
         } else if (
             draggingRect.horizontalAdjustmentType ==
-            HorizontalAdjustmentType.TO_END_OF_LINE
+                HorizontalAdjustmentType.TO_END_OF_LINE
         ) {
             topLeftDragBounds.setLocation(
                 line.getNote(draggingRect.xIndex - 1).getXPos() +
-                draggingRect.rect.width,
+                    draggingRect.rect.width,
                 draggingRect.rect.y
             );
             bottomRightDragBounds.setLocation(
                 ((draggingRect.rect.x - draggingRect.rect.width) + lineWidth) -
-                line.getNote(line.noteCount() - 1).getXPos(),
+                    line.getNote(line.noteCount() - 1).getXPos(),
                 draggingRect.rect.y
             );
         } else if (
             draggingRect.horizontalAdjustmentType ==
-            HorizontalAdjustmentType.STRETCH_NOTE_SPACING
+                HorizontalAdjustmentType.STRETCH_NOTE_SPACING
         ) {
             topLeftDragBounds.setLocation(
                 line.getNote(0).getXPos(),
@@ -110,7 +109,7 @@ public class HorizontalAdjustment extends Adjustment {
 
             if (
                 (stretchHelper == null) ||
-                (stretchHelper.length < line.noteCount())
+                    (stretchHelper.length < line.noteCount())
             ) {
                 stretchHelper = new float[line.noteCount()];
             }
@@ -120,7 +119,7 @@ public class HorizontalAdjustment extends Adjustment {
             }
         } else if (
             draggingRect.horizontalAdjustmentType ==
-            HorizontalAdjustmentType.START_OF_LINE
+                HorizontalAdjustmentType.START_OF_LINE
         ) {
             topLeftDragBounds.setLocation(
                 draggingRect.rect.width,
@@ -128,12 +127,12 @@ public class HorizontalAdjustment extends Adjustment {
             );
             bottomRightDragBounds.setLocation(
                 ((draggingRect.rect.x - draggingRect.rect.width) + lineWidth) -
-                line.getNote(line.noteCount() - 1).getXPos(),
+                    line.getNote(line.noteCount() - 1).getXPos(),
                 draggingRect.rect.y
             );
         } else if (
             draggingRect.horizontalAdjustmentType ==
-            HorizontalAdjustmentType.GLISSANDO_START
+                HorizontalAdjustmentType.GLISSANDO_START
         ) {
             topLeftDragBounds.setLocation(
                 line.getNote(draggingRect.xIndex).getXPos(),
@@ -145,23 +144,23 @@ public class HorizontalAdjustment extends Adjustment {
             );
         } else if (
             draggingRect.horizontalAdjustmentType ==
-            HorizontalAdjustmentType.GLISSANDO_END
+                HorizontalAdjustmentType.GLISSANDO_END
         ) {
             topLeftDragBounds.setLocation(
                 adjustRects.get(adjustRects.indexOf(draggingRect) - 1).rect.x +
-                draggingRect.rect.width,
+                    draggingRect.rect.width,
                 draggingRect.rect.y
             );
             bottomRightDragBounds.setLocation(lineWidth, draggingRect.rect.y);
         } else if (
             (draggingRect.horizontalAdjustmentType ==
                 HorizontalAdjustmentType.CRESCENDO_START) ||
-            (draggingRect.horizontalAdjustmentType ==
-                HorizontalAdjustmentType.CRESCENDO_END) ||
-            (draggingRect.horizontalAdjustmentType ==
-                HorizontalAdjustmentType.DIMINUENDO_START) ||
-            (draggingRect.horizontalAdjustmentType ==
-                HorizontalAdjustmentType.DIMINUENDO_END)
+                (draggingRect.horizontalAdjustmentType ==
+                    HorizontalAdjustmentType.CRESCENDO_END) ||
+                (draggingRect.horizontalAdjustmentType ==
+                    HorizontalAdjustmentType.DIMINUENDO_START) ||
+                (draggingRect.horizontalAdjustmentType ==
+                    HorizontalAdjustmentType.DIMINUENDO_END)
         ) {
             topLeftDragBounds.setLocation(
                 (draggingRect.xIndex == 0)
@@ -190,9 +189,9 @@ public class HorizontalAdjustment extends Adjustment {
 
         if (
             note.getNoteType().snapToEnd() &&
-            ((composition.getLineWidth() - endPoint.x) < END_SNAP_LIMIT)
+                ((composition.getLineWidth() - endPoint.x) < END_SNAP_LIMIT)
         ) {
-            endPoint.x = composition.getLineWidth() - Note.NORMAL_IMAGE_WIDTH;
+            endPoint.x = (int) composition.getLineWidth() - Note.NORMAL_IMAGE_WIDTH;
         }
 
         var diffX = draggingRect.rect.x + (draggingRect.rect.width / 2);
@@ -200,21 +199,21 @@ public class HorizontalAdjustment extends Adjustment {
 
         if (
             draggingRect.horizontalAdjustmentType ==
-            HorizontalAdjustmentType.STRETCH_NOTE_SPACING
+                HorizontalAdjustmentType.STRETCH_NOTE_SPACING
         ) {
             var ratio = (float) endPoint.x / note.getXPos();
             var firstX = line.getNote(0).getXPos();
 
             for (var i = 0; i < line.noteCount(); i++) {
                 stretchHelper[i] = firstX +
-                ((stretchHelper[i] - firstX) * ratio);
+                    ((stretchHelper[i] - firstX) * ratio);
                 line.getNote(i).setXPos(Math.round(stretchHelper[i]));
             }
 
             line.mulNoteDistChange(ratio);
         } else if (
             draggingRect.horizontalAdjustmentType ==
-            HorizontalAdjustmentType.TO_END_OF_LINE
+                HorizontalAdjustmentType.TO_END_OF_LINE
         ) {
             for (var i = draggingRect.xIndex; i < line.noteCount(); i++) {
                 line
@@ -223,12 +222,12 @@ public class HorizontalAdjustment extends Adjustment {
             }
         } else if (
             draggingRect.horizontalAdjustmentType ==
-            HorizontalAdjustmentType.SINGLE_NOTE
+                HorizontalAdjustmentType.SINGLE_NOTE
         ) {
             note.setXPos(endPoint.x);
         } else if (
             draggingRect.horizontalAdjustmentType ==
-            HorizontalAdjustmentType.START_OF_LINE
+                HorizontalAdjustmentType.START_OF_LINE
         ) {
             for (var currentLine : composition.getLines()) {
                 if (currentLine.noteCount() > 0) {
@@ -244,19 +243,19 @@ public class HorizontalAdjustment extends Adjustment {
             }
         } else if (
             draggingRect.horizontalAdjustmentType ==
-            HorizontalAdjustmentType.GLISSANDO_START
+                HorizontalAdjustmentType.GLISSANDO_START
         ) {
             note.getGlissando().x1Translate += endPoint.x - diffX;
         } else if (
             draggingRect.horizontalAdjustmentType ==
-            HorizontalAdjustmentType.GLISSANDO_END
+                HorizontalAdjustmentType.GLISSANDO_END
         ) {
             note.getGlissando().x2Translate -= endPoint.x - diffX;
         } else if (
             (draggingRect.horizontalAdjustmentType ==
                 HorizontalAdjustmentType.CRESCENDO_START) ||
-            (draggingRect.horizontalAdjustmentType ==
-                HorizontalAdjustmentType.DIMINUENDO_START)
+                (draggingRect.horizontalAdjustmentType ==
+                    HorizontalAdjustmentType.DIMINUENDO_START)
         ) {
             var interval = getDynamicIntervalSet(
                 line,
@@ -269,8 +268,8 @@ public class HorizontalAdjustment extends Adjustment {
         } else if (
             (draggingRect.horizontalAdjustmentType ==
                 HorizontalAdjustmentType.CRESCENDO_END) ||
-            (draggingRect.horizontalAdjustmentType ==
-                HorizontalAdjustmentType.DIMINUENDO_END)
+                (draggingRect.horizontalAdjustmentType ==
+                    HorizontalAdjustmentType.DIMINUENDO_END)
         ) {
             var interval = getDynamicIntervalSet(
                 line,
@@ -443,13 +442,13 @@ public class HorizontalAdjustment extends Adjustment {
         rect.rect.y = yPos - Note.HOT_SPOT.y;
 
         switch (rect.horizontalAdjustmentType) {
-            case GLISSANDO_START -> rect.rect.x = GlissandoRenderer.getGlissandoX1Pos(
+            case GLISSANDO_START -> rect.rect.x = GlissandoRenderer.getGlissandoX1PosPx(
                 rect.xIndex,
                 note.getGlissando(),
                 rect.line,
                 score.getComposition()
             ) - 4;
-            case GLISSANDO_END -> rect.rect.x = GlissandoRenderer.getGlissandoX2Pos(
+            case GLISSANDO_END -> rect.rect.x = GlissandoRenderer.getGlissandoX2PosPx(
                 rect.xIndex,
                 note.getGlissando(),
                 rect.line,
@@ -462,10 +461,10 @@ public class HorizontalAdjustment extends Adjustment {
                 ).findInterval(rect.xIndex);
 
                 if (x1Interval != null) {
-                    rect.rect.x = (line.getNote(rect.xIndex).getXPos() - 12) +
-                    x1Interval.getX1Shift();
-                    rect.rect.y = (score.getNoteYPos(6, rect.line) - 4) +
-                    x1Interval.getYShift();
+                    rect.rect.x = (int) ((line.getNote(rect.xIndex).getXPos() - 12) +
+                        x1Interval.getX1Shift());
+                    rect.rect.y = (int) ((score.getNoteYPos(6, rect.line) - 4) +
+                        x1Interval.getYShift());
                 }
             }
             case CRESCENDO_END, DIMINUENDO_END -> {
@@ -475,11 +474,11 @@ public class HorizontalAdjustment extends Adjustment {
                 ).findInterval(rect.xIndex);
 
                 if (x2Interval != null) {
-                    rect.rect.x = line.getNote(rect.xIndex).getXPos() +
-                    16 +
-                    x2Interval.getX2Shift();
-                    rect.rect.y = (score.getNoteYPos(6, rect.line) - 4) +
-                    x2Interval.getYShift();
+                    rect.rect.x = (int) (line.getNote(rect.xIndex).getXPos() +
+                        16 +
+                        x2Interval.getX2Shift());
+                    rect.rect.y = (int) ((score.getNoteYPos(6, rect.line) - 4) +
+                        x2Interval.getYShift());
                 }
             }
             default -> rect.rect.x = note.getXPos() + 1;

@@ -20,14 +20,15 @@
 
 package songscribe.ui.renderer;
 
-import java.awt.Graphics2D;
+import static songscribe.ui.renderer.GraphicsState.Property.COLOR;
+import static songscribe.ui.renderer.GraphicsState.Property.STROKE;
+
+import java.awt.*;
 
 import org.jetbrains.annotations.NotNull;
 
 import songscribe.ui.layout.LayoutStylesheet;
 import songscribe.ui.layout.Staff;
-
-import static songscribe.ui.renderer.GraphicsState.Property.*;
 
 /**
  * Renders the 5 staff lines.
@@ -47,13 +48,13 @@ public class StaffRenderer extends BaseElementRenderer<Staff> {
             g2.setColor(STAFF_LINE_COLOR);
             g2.setStroke(STAFF_LINE_STROKE);
 
-            int middleLineY = ctx.getMiddleLineY();
+            double middleLineYSs = ctx.getMiddleLineYSs();
             int staffWidth = (int) element.getWidth();
 
             // Draw 5 staff lines (indices 0-4, middle is 2)
             // Index 0 = top line (F5), Index 4 = bottom line (E4)
             for (int i = 0; i < LayoutStylesheet.STAFF_LINE_COUNT; i++) {
-                int y = staffLineToY(i, middleLineY);
+                int y = (int) staffLineToYSs(i, middleLineYSs);
                 g2.drawLine(0, y, staffWidth, y);
             }
         }

@@ -22,23 +22,26 @@ package songscribe.io;
 import java.io.PrintWriter;
 import java.util.HashMap;
 import java.util.Map;
+
 import org.jetbrains.annotations.Nullable;
+
 import org.xml.sax.Attributes;
+
 import songscribe.music.ArticulationType;
 import songscribe.music.BeatChange;
 import songscribe.music.DurationArticulation;
 import songscribe.music.ForceArticulation;
-import songscribe.ui.layout.Articulation;
-
 import songscribe.music.Note;
 import songscribe.music.NoteType;
+import songscribe.ui.layout.Articulation;
 
 public final class NoteIO {
 
     // version 1.0
     private static final String XML_NOTE = "note";
     private static final String XML_TYPE = "type";
-    private static final String XML_YPOS = "ypos";
+    private static final String XML_YPOS = "ypos"; // legacy, read for compat
+    private static final String XML_STAFF_POSITION = "staffposition";
     private static final String XML_DOTTED = "dotted";
     private static final String XML_PREFIX = "prefix";
     private static final String XML_VOLUME = "volume";
@@ -63,6 +66,7 @@ public final class NoteIO {
         "glissandox1translate";
     private static final String XML_GLISSANDO_X2_TRANSLATE =
         "glissandox2translate";
+    private static final String XML_STEM_DIRECTION_AUTO = "stemDirectionAuto";
     private static final String XML_INVERT_FRACTION_BEAM_ORIENTATION =
         "invertfractionbeamorientation";
     private static final Map<String, Note.Accidental> NOTE_ACCIDENTAL_MAP =
@@ -108,21 +112,26 @@ public final class NoteIO {
         );
     }
 
-    private NoteIO() {}
+    private NoteIO() {
+    }
 
     public static void writeNote(Note note, PrintWriter writer) {
         writer.println(
             "          <" +
-            XML_NOTE +
-            ' ' +
-            XML_TYPE +
-            "=\"" +
-            note.getNoteType().name() +
-            "\">"
+                XML_NOTE +
+                ' ' +
+                XML_TYPE +
+                "=\"" +
+                note.getNoteType().name() +
+                "\">"
         );
         XML.setIndent(12);
-        XML.writeValue(writer, XML_XPOS, Integer.toString(note.getXPos()));
-        XML.writeValue(writer, XML_YPOS, Integer.toString(note.getYPos()));
+
+        if (note.getXOffset() != 0) {
+            XML.writeValue(writer, XML_XPOS, Integer.toString(note.getXOffset()));
+        }
+
+        XML.writeValue(writer, XML_STAFF_POSITION, Integer.toString(note.getStaffPosition()));
 
         if (note.getDotCount() != 0) {
             XML.writeValue(
@@ -167,7 +176,7 @@ public final class NoteIO {
                 XML.writeValue(
                     writer,
                     XML_GLISSANDO_X1_TRANSLATE,
-                    Integer.toString(note.getGlissando().x1Translate)
+                    Double.toString(note.getGlissando().x1Translate)
                 );
             }
 
@@ -175,9 +184,13 @@ public final class NoteIO {
                 XML.writeValue(
                     writer,
                     XML_GLISSANDO_X2_TRANSLATE,
-                    Integer.toString(note.getGlissando().x2Translate)
+                    Double.toString(note.getGlissando().x2Translate)
                 );
             }
+        }
+
+        if (!note.isStemDirectionAuto()) {
+            XML.writeEmptyTag(writer, XML_STEM_DIRECTION_AUTO);
         }
 
         if (note.isUpper()) {
@@ -218,10 +231,6 @@ public final class NoteIO {
 
         if (note.isForceSyllable()) {
             XML.writeEmptyTag(writer, XML_FORCE_SYLLABLE);
-        }
-
-        if (note.isInvertFractionBeamOrientation()) {
-            XML.writeEmptyTag(writer, XML_INVERT_FRACTION_BEAM_ORIENTATION);
         }
 
         if (note.getBeatChange() != null) {
@@ -343,8 +352,9 @@ public final class NoteIO {
 
                     if (lastTag.equals(XML_XPOS)) {
                         note.setXPos(Integer.parseInt(str));
-                    } else if (lastTag.equals(XML_YPOS)) {
-                        note.setYPos(Integer.parseInt(str));
+                    } else if (lastTag.equals(XML_STAFF_POSITION) ||
+                        lastTag.equals(XML_YPOS)) {
+                        note.setStaffPosition(Integer.parseInt(str));
                     } else if (lastTag.equals(XML_DOTTED)) {
                         note.setDotCount(Integer.parseInt(str));
                     } else if (lastTag.equals(XML_PREFIX)) {
@@ -375,9 +385,9 @@ public final class NoteIO {
                     } else if (lastTag.equals(XML_GLISSANDO)) {
                         note.setGlissando(Integer.parseInt(str));
                     } else if (lastTag.equals(XML_GLISSANDO_X1_TRANSLATE)) {
-                        note.getGlissando().x1Translate = Integer.parseInt(str);
+                        note.getGlissando().x1Translate = Double.parseDouble(str);
                     } else if (lastTag.equals(XML_GLISSANDO_X2_TRANSLATE)) {
-                        note.getGlissando().x2Translate = Integer.parseInt(str);
+                        note.getGlissando().x2Translate = Double.parseDouble(str);
                     } else if (lastTag.equals(XML_UPPER)) {
                         note.setUpper(true);
                     } else if (lastTag.equals(XML_SYLLABLE_MOVEMENT)) {
@@ -390,10 +400,12 @@ public final class NoteIO {
                         note.setFermata(true);
                     } else if (lastTag.equals(XML_FORCE_SYLLABLE)) {
                         note.setForceSyllable(true);
+                    } else if (lastTag.equals(XML_STEM_DIRECTION_AUTO)) {
+                        note.setStemDirectionAuto(false);
                     } else if (
                         lastTag.equals(XML_INVERT_FRACTION_BEAM_ORIENTATION)
                     ) {
-                        note.setInvertFractionBeamOrientation(true);
+                        // Silently ignored — partial beam stub direction is now automatic.
                     } else if (lastTag.equals(XML_BEAT_CHANGE)) {
                         note.setBeatChange(BEAT_CHANGE_MAP.get(str));
                     }

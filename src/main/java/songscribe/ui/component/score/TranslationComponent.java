@@ -35,7 +35,7 @@ import songscribe.util.GraphicUtils;
 public class TranslationComponent extends ScoreComponent {
 
     /** Vertical spacing for translation block (2 staff lines). */
-    private static final int TRANSLATION_TOP_MARGIN = 2 * LayoutStylesheet.STAFF_SPACE;
+    private static final int TRANSLATION_TOP_MARGIN = LayoutStylesheet.toPixels(2.0);
 
     /** Translation header for official translations. */
     private static final String TRANSLATION_HEADER_OFFICIAL = "Sri Chinmoy's translation:";
@@ -202,6 +202,6 @@ public class TranslationComponent extends ScoreComponent {
         var lines = translation.split("\n");
         height += textMetrics.getHeight() * lines.length;
 
-        return new Dimension(composition.getLineWidth(), (int) height);
+        return new Dimension((int) composition.getLineWidth(), (int) height);
     }
 }

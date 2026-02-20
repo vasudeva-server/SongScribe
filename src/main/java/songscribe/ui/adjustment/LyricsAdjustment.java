@@ -217,22 +217,22 @@ public class LyricsAdjustment extends Adjustment {
 
         if (rect.adjustType == AdjustType.LYRICS_YPOS) {
             rect.rectangle.x = note.getXPos() - 20;
-            rect.rectangle.y = (score.getNoteYPos(0, rect.line) +
+            rect.rectangle.y = (int) ((score.getNoteYPos(0, rect.line) +
                 line.getLyricsYPos()) -
-                8;
+                8);
         } else if (rect.adjustType == AdjustType.SYLLABLE_MOVEMENT) {
             rect.rectangle.x = note.getXPos() + note.getSyllableMovement();
-            rect.rectangle.y = score.getNoteYPos(0, rect.line) +
+            rect.rectangle.y = (int) (score.getNoteYPos(0, rect.line) +
                 line.getLyricsYPos() +
-                5;
+                5);
         } else if (rect.adjustType == AdjustType.SYLLABLE_RELATION_MOVEMENT) {
             rect.rectangle.x = ((note.getSyllableRelationMovement() == 0)
                 ? (int) note.properties.longDashPosition
                 : (note.getXPos() + note.getSyllableRelationMovement())) -
                 4;
-            rect.rectangle.y = score.getNoteYPos(0, rect.line) +
+            rect.rectangle.y = (int) (score.getNoteYPos(0, rect.line) +
                 line.getLyricsYPos() +
-                5;
+                5);
         }
 
         rect.rectangle.width = 8;

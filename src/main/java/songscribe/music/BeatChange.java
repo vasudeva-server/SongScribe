@@ -58,7 +58,7 @@ public enum BeatChange {
 
     private static Note createDottedVersion(Note note) {
         note.setDotCount(1);
-        note.setYPos(1);
+        note.setStaffPosition(1);
         return note;
     }
 

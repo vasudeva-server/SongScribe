@@ -21,7 +21,6 @@
 package songscribe.ui.renderer;
 
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 import songscribe.music.Composition;
 
@@ -56,7 +55,7 @@ public interface RenderContext {
     /**
      * Returns the Y position of the middle staff line (B4) of the first staff.
      */
-    int getMiddleLineY();
+    int getMiddleLineYPx();
 
     /**
      * Returns the vertical distance between staff rows.

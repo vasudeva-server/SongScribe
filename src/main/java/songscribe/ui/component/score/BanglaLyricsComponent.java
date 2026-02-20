@@ -35,7 +35,7 @@ import songscribe.util.GraphicUtils;
 public class BanglaLyricsComponent extends ScoreComponent {
 
     /** Vertical spacing for Bangla lyrics (2 staff lines). */
-    private static final int BANGLA_LYRICS_TOP_MARGIN = 2 * LayoutStylesheet.STAFF_SPACE;
+    private static final int BANGLA_LYRICS_TOP_MARGIN = LayoutStylesheet.toPixels(2.0);
 
     /** X position for content (used for union width centering). */
     private float contentX = -1;
@@ -158,6 +158,6 @@ public class BanglaLyricsComponent extends ScoreComponent {
         var lineHeight = metrics.getHeight();
         var height = lineHeight * lines.length;
 
-        return new Dimension(composition.getLineWidth(), height + marginTop);
+        return new Dimension((int) composition.getLineWidth(), height + marginTop);
     }
 }

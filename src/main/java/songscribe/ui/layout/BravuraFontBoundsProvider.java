@@ -29,8 +29,6 @@ import org.jetbrains.annotations.Nullable;
 
 import songscribe.music.Note;
 import songscribe.music.NoteType;
-import songscribe.smufl.BBox;
-import songscribe.smufl.GlyphAnchors;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
 import songscribe.smufl.StaffSpaces;
@@ -195,7 +193,7 @@ public class BravuraFontBoundsProvider implements FontBoundsProvider {
 
         // Note anchor position in absolute coordinates
         var noteX = note.getXPos();
-        var noteY = context.getNoteYPos(note.getYPos(), lineIndex);
+        var noteY = context.getNoteYPos(note.getStaffPosition(), lineIndex);
 
         if (glyph == null) {
             // Return a minimal bounds at the note position

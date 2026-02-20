@@ -58,7 +58,7 @@ public class LineLyricsComponent extends ScoreComponent {
      */
     public LineLyricsComponent() {
         super();
-        setMarginTop(LayoutStylesheet.px(LayoutStylesheet.LYRICS_ROW_MARGIN_MU));
+        setMarginTop(LayoutStylesheet.toPixels(LayoutStylesheet.LYRICS_ROW_MARGIN));
     }
 
     /**
@@ -134,7 +134,7 @@ public class LineLyricsComponent extends ScoreComponent {
             var ctx = new ElementRenderContext(composition);
             ctx.setCurrentLine(line);
             ctx.setLineIndex(lineIndex);
-            ctx.setMiddleLineY(metrics.getAscent() - line.getLyricsYPos());
+            ctx.setMiddleLineYSs((int) (metrics.getAscent() - line.getLyricsYPos()));
 
             // Delegate to LyricsRenderer for complete lyrics rendering
             LyricsRenderer.getInstance().renderLyrics(g2, line, ctx, isLastLine);
@@ -172,6 +172,6 @@ public class LineLyricsComponent extends ScoreComponent {
         var metrics = getFontMetrics(font);
         var height = metrics.getHeight();
 
-        return new Dimension(composition.getLineWidth(), height + marginTop);
+        return new Dimension((int) composition.getLineWidth(), height + marginTop);
     }
 }

@@ -20,9 +20,12 @@
 
 package songscribe.ui.renderer;
 
-import java.awt.BasicStroke;
-import java.awt.Graphics2D;
-import java.awt.geom.Path2D;
+import static songscribe.ui.renderer.GraphicsState.Property.COLOR;
+import static songscribe.ui.renderer.GraphicsState.Property.FONT;
+import static songscribe.ui.renderer.GraphicsState.Property.STROKE;
+
+import java.awt.*;
+import java.awt.geom.*;
 import java.util.stream.IntStream;
 
 import org.jetbrains.annotations.NotNull;
@@ -35,8 +38,6 @@ import songscribe.smufl.SMuFLMetadata;
 import songscribe.smufl.StaffSpaces;
 import songscribe.ui.layout.Ending;
 import songscribe.ui.layout.LineElement;
-
-import static songscribe.ui.renderer.GraphicsState.Property.*;
 
 /**
  * Renders first and second ending brackets.
@@ -62,10 +63,10 @@ public class EndingRenderer extends BaseElementRenderer<LineElement> {
 
     // Bar line positioning constants (from FughettaRenderer)
     private static final float NOTE_FONT_SIZE = BaseElementRenderer.NOTE_FONT_SIZE;
-    private static final double BAR_LINE_X1 = NOTE_FONT_SIZE / 11.636364d;
-    private static final double BAR_LINE_SPACE = NOTE_FONT_SIZE / 5.8181818d;
-    private static final double REPEAT_RIGHT_THICK_X = NOTE_FONT_SIZE / 11.636364d;
-    private static final double REPEAT_THICK_THIN_DIFF = NOTE_FONT_SIZE / 11.636364d * 2;
+    private static final double BAR_LINE_X1_PX = NOTE_FONT_SIZE / 11.636364d;
+    private static final double BAR_LINE_SPACE_PX = NOTE_FONT_SIZE / 5.8181818d;
+    private static final double REPEAT_RIGHT_THICK_X_PX = NOTE_FONT_SIZE / 11.636364d;
+    private static final double REPEAT_THICK_THIN_DIFF_PX = NOTE_FONT_SIZE / 11.636364d * 2;
 
     // Singleton instance
     private static final EndingRenderer INSTANCE = new EndingRenderer();
@@ -144,8 +145,8 @@ public class EndingRenderer extends BaseElementRenderer<LineElement> {
 
                 if (repeatRightPos != -1) {
                     // Right edge aligns with thin line of repeat
-                    repeatX = line.getNote(repeatRightPos).getXPos() + REPEAT_RIGHT_THICK_X;
-                    x2 = repeatX - REPEAT_THICK_THIN_DIFF;
+                    repeatX = line.getNote(repeatRightPos).getXPos() + REPEAT_RIGHT_THICK_X_PX;
+                    x2 = repeatX - REPEAT_THICK_THIN_DIFF_PX;
                 } else {
                     // Go halfway to next note
                     double nextX = line.getNote(end + 1).getXPos();
@@ -157,7 +158,7 @@ public class EndingRenderer extends BaseElementRenderer<LineElement> {
 
                 // Align with bar line if starting on one
                 if (startNote.getNoteType() == NoteType.SINGLE_BARLINE) {
-                    x1 += BAR_LINE_X1;
+                    x1 += BAR_LINE_X1_PX;
                 } else if (start > 0) {
                     // Otherwise go halfway to previous note's right edge
                     var previousNote = line.getNote(start - 1);
@@ -191,10 +192,10 @@ public class EndingRenderer extends BaseElementRenderer<LineElement> {
 
                 // Align right edge with bar line
                 if (type == NoteType.SINGLE_BARLINE || type == NoteType.DOUBLE_BARLINE) {
-                    x2 += BAR_LINE_X1;
+                    x2 += BAR_LINE_X1_PX;
 
                     if (type == NoteType.DOUBLE_BARLINE) {
-                        x2 -= BAR_LINE_SPACE;
+                        x2 -= BAR_LINE_SPACE_PX;
                     }
                 } else {
                     // Go halfway to next note or a note width beyond
@@ -209,7 +210,7 @@ public class EndingRenderer extends BaseElementRenderer<LineElement> {
                 }
 
                 var repeatNote = line.getNote(repeatRightPos);
-                drawEnding(g2, line, lineIndex, ctx, repeatX + REPEAT_THICK_THIN_DIFF, x2, 2, repeatNote, endNote);
+                drawEnding(g2, line, lineIndex, ctx, repeatX + REPEAT_THICK_THIN_DIFF_PX, x2, 2, repeatNote, endNote);
             }
         }
     }
@@ -238,7 +239,7 @@ public class EndingRenderer extends BaseElementRenderer<LineElement> {
         @NotNull Note startNote,
         @NotNull Note endNote
     ) {
-        int y = getEffectiveEndingYPos(ctx, startNote, endNote);
+        int y = getEffectiveEndingYPosPx(ctx, startNote, endNote);
         int fontHeight = BaseElementRenderer.ENDING_FONT.getSize() + 2;
 
         // Build bracket path
@@ -266,7 +267,7 @@ public class EndingRenderer extends BaseElementRenderer<LineElement> {
     /**
      * Gets the Y position for an ending bracket from layout result.
      */
-    private int getEffectiveEndingYPos(
+    private int getEffectiveEndingYPosPx(
         @NotNull ElementRenderContext ctx,
         @NotNull Note startNote,
         @NotNull Note endNote

@@ -20,10 +20,11 @@
 
 package songscribe.ui.renderer;
 
-import java.awt.BasicStroke;
-import java.awt.Graphics2D;
-import java.awt.geom.GeneralPath;
-import java.awt.geom.Path2D;
+import static songscribe.ui.renderer.GraphicsState.Property.COLOR;
+import static songscribe.ui.renderer.GraphicsState.Property.STROKE;
+
+import java.awt.*;
+import java.awt.geom.*;
 
 import org.jetbrains.annotations.NotNull;
 
@@ -34,8 +35,6 @@ import songscribe.smufl.SMuFLMetadata;
 import songscribe.smufl.StaffSpaces;
 import songscribe.ui.layout.LayoutStylesheet;
 import songscribe.ui.layout.Tie;
-
-import static songscribe.ui.renderer.GraphicsState.Property.*;
 
 /**
  * Renders tie arcs between two notes of the same pitch.
@@ -59,7 +58,7 @@ public class TieRenderer extends BaseElementRenderer<Tie> {
     );
 
     // Note Y offset (from LayoutStylesheet)
-    private static final double NOTE_Y_OFFSET = LayoutStylesheet.NOTE_Y_OFFSET;
+    private static final double NOTE_Y_OFFSET_PX = LayoutStylesheet.toPixelsDouble(LayoutStylesheet.NOTE_Y_OFFSET);
 
     // Singleton instance
     private static final TieRenderer INSTANCE = new TieRenderer();
@@ -111,17 +110,17 @@ public class TieRenderer extends BaseElementRenderer<Tie> {
         @NotNull Note endNote,
         @NotNull ElementRenderContext ctx
     ) {
-        int middleLineY = ctx.getMiddleLineY();
+        double middleLineYSs = ctx.getMiddleLineYSs();
 
         // Determine tie direction (above = true if stem is up)
         boolean tieUpper = startNote.isUpper();
 
         // Calculate start position
-        double halfNoteWidth = getHalfNoteWidthForTie(startNote);
+        double halfNoteWidth = getHalfNoteWidthForTiePx(startNote);
         double xPos = startNote.getXPos() + halfNoteWidth + 2;
 
         // Calculate gap (distance between tie start and end)
-        double endHalfWidth = getHalfNoteWidthForTie(endNote);
+        double endHalfWidth = getHalfNoteWidthForTiePx(endNote);
         double gap = (endNote.getXPos() + endHalfWidth) - xPos - 3;
 
         // Handle case where stem directions differ
@@ -132,8 +131,8 @@ public class TieRenderer extends BaseElementRenderer<Tie> {
         }
 
         // Calculate Y position
-        double yPos = middleLineY + (startNote.getYPos() * NOTE_Y_OFFSET) +
-            (tieUpper ? (NOTE_Y_OFFSET + 2) : (-NOTE_Y_OFFSET - 2));
+        double yPos = middleLineYSs + (startNote.getStaffPosition() * NOTE_Y_OFFSET_PX) +
+            (tieUpper ? (NOTE_Y_OFFSET_PX + 2) : (-NOTE_Y_OFFSET_PX - 2));
 
         // Draw the tie curve
         try (var ignored = GraphicsState.save(g2, COLOR, STROKE)) {
@@ -169,7 +168,7 @@ public class TieRenderer extends BaseElementRenderer<Tie> {
      * Returns half the width of a note for tie positioning.
      * Whole notes and half notes are wider than filled notes.
      */
-    private double getHalfNoteWidthForTie(@NotNull Note note) {
+    private double getHalfNoteWidthForTiePx(@NotNull Note note) {
         var noteType = note.getNoteType();
 
         if (noteType == NoteType.SEMIBREVE || noteType == NoteType.MINIM) {

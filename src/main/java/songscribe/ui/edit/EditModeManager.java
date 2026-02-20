@@ -309,7 +309,7 @@ public final class EditModeManager {
             if (noteIndex > 0) {
                 line
                     .getNote(noteIndex - 1)
-                    .setGlissando(editNote.getYPos());
+                    .setGlissando(editNote.getStaffPosition());
             }
 
             return true;
@@ -349,7 +349,7 @@ public final class EditModeManager {
             line.removeInterval(noteIndex - 1, noteIndex);
             var diff =
                 ((noteIndex == line.noteCount())
-                    ? (int) Math.round(InsertionSpacingCalculator.calculateAppendPosition(
+                    ? (int) Math.round(InsertionSpacingCalculator.calculateAppendPositionSs(
                     line, clipboardManager.getFirstNote()))
                     : line.getNote(noteIndex).getXPos()) -
                     clipboardManager.getFirstNote().getXPos();
@@ -371,7 +371,7 @@ public final class EditModeManager {
                 var lastPastedNote = line.getNote(afterPasteIndex - 1);
                 var firstNoteAfter = line.getNote(afterPasteIndex);
                 shift = (int) Math.round(
-                    InsertionSpacingCalculator.calculateNextNoteX(
+                    InsertionSpacingCalculator.calculateNextNoteXSs(
                         lastPastedNote, firstNoteAfter) -
                         firstNoteAfter.getXPos());
                 shift = Math.max(0, shift);

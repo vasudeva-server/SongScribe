@@ -31,13 +31,13 @@ import org.jetbrains.annotations.NotNull;
 import songscribe.ui.Control;
 import songscribe.ui.Mode;
 import songscribe.ui.component.score.LineComponent;
-import songscribe.util.UIUtils;
 import songscribe.ui.debug.DebugInspector;
 import songscribe.ui.edit.EditModeManager;
 import songscribe.ui.menu.DebugState;
 import songscribe.ui.message.DeselectMessage;
 import songscribe.ui.message.MessageCenter;
 import songscribe.ui.playback.MidiController;
+import songscribe.util.UIUtils;
 
 /**
  * Callback interface for ScoreInputHandler to communicate with Score.
@@ -188,8 +188,8 @@ public final class ScoreInputHandler
             LineComponent.setAltPressed(true);
             callback.repaint();
         } else if (e.getKeyCode() == KeyEvent.VK_ESCAPE
-                && callback.getMode() == Mode.SELECT
-                && !UIUtils.isEditingText()) {
+            && callback.getMode() == Mode.SELECT
+            && !UIUtils.isEditingText()) {
             MessageCenter.post(new DeselectMessage());
         }
     }
@@ -244,13 +244,13 @@ public final class ScoreInputHandler
 
             if (editNote != null) {
                 if (code == KeyEvent.VK_UP) {
-                    if (editNote.getYPos() >= (-(Score.STAFF_LINES_ABOVE + 2) * 2)) {
-                        editNote.setYPos(editNote.getYPos() - 1);
+                    if (editNote.getStaffPosition() >= (-(Score.STAFF_LINES_ABOVE + 2) * 2)) {
+                        editNote.setStaffPosition(editNote.getStaffPosition() - 1);
                         callback.repaint();
                     }
                 } else if (code == KeyEvent.VK_DOWN) {
-                    if (editNote.getYPos() <= ((Score.STAFF_LINES_BELOW + 2) * 2)) {
-                        editNote.setYPos(editNote.getYPos() + 1);
+                    if (editNote.getStaffPosition() <= ((Score.STAFF_LINES_BELOW + 2) * 2)) {
+                        editNote.setStaffPosition(editNote.getStaffPosition() + 1);
                         callback.repaint();
                     }
                 }

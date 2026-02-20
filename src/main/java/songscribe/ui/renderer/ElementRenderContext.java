@@ -29,6 +29,7 @@ import songscribe.music.Composition;
 import songscribe.music.Line;
 import songscribe.ui.component.score.LineComponent;
 import songscribe.ui.layout2.LayoutResult;
+import songscribe.ui.layout2.ScaleContext;
 import songscribe.ui.menu.DebugState;
 
 /**
@@ -43,18 +44,18 @@ import songscribe.ui.menu.DebugState;
  */
 public class ElementRenderContext {
 
-    /** Default X position for key signature (after clef). */
-    public static final int DEFAULT_LEADING_KEYS_POS = 32;
+    /** Default X position for key signature (after clef), in staff-space units. */
+    public static final double DEFAULT_LEADING_KEYS_POS_SS = 4.0;
 
     private final Composition composition;
     private Line currentLine;
-    private int middleLineY;
+    private double middleLineYSs;
     private int lineIndex;
-    private int leadingKeysPos = DEFAULT_LEADING_KEYS_POS;
+    private double leadingKeysPosSs = DEFAULT_LEADING_KEYS_POS_SS;
     private LayoutResult layoutResult;
     private LineComponent.SelectionProvider selectionProvider;
     private boolean editMode;
-    private double overrideNoteX = Double.NaN;
+    private double overrideNoteXSs = Double.NaN;
 
     /**
      * Creates a render context for the given composition.
@@ -106,19 +107,19 @@ public class ElementRenderContext {
 
     /**
      * Returns the Y coordinate of the middle staff line (B line)
-     * relative to the component's coordinate system.
+     * in staff-space units.
      */
-    public int getMiddleLineY() {
-        return middleLineY;
+    public double getMiddleLineYSs() {
+        return middleLineYSs;
     }
 
     /**
      * Sets the Y coordinate of the middle staff line.
      *
-     * @param middleLineY Y coordinate in component coordinates
+     * @param middleLineYSs Y coordinate in staff-space units
      */
-    public void setMiddleLineY(int middleLineY) {
-        this.middleLineY = middleLineY;
+    public void setMiddleLineYSs(double middleLineYSs) {
+        this.middleLineYSs = middleLineYSs;
     }
 
     /**
@@ -138,19 +139,28 @@ public class ElementRenderContext {
     }
 
     /**
-     * Returns the X position where key signature accidentals begin.
+     * Returns the X position where key signature accidentals begin,
+     * in staff-space units.
      */
-    public int getLeadingKeysPos() {
-        return leadingKeysPos;
+    public double getLeadingKeysPosSs() {
+        return leadingKeysPosSs;
     }
 
     /**
      * Sets the X position where key signature accidentals begin.
      *
-     * @param leadingKeysPos X position in pixels
+     * @param leadingKeysPosSs X position in staff-space units
      */
-    public void setLeadingKeysPos(int leadingKeysPos) {
-        this.leadingKeysPos = leadingKeysPos;
+    public void setLeadingKeysPosSs(double leadingKeysPosSs) {
+        this.leadingKeysPosSs = leadingKeysPosSs;
+    }
+
+    /**
+     * Returns the pixels-per-staff-space scale factor.
+     * Convenience accessor for renderers that need pixel conversion.
+     */
+    public double getPixelsPerStaffSpace() {
+        return ScaleContext.getInstance().getPixelsPerStaffSpace();
     }
 
     /**
@@ -218,29 +228,29 @@ public class ElementRenderContext {
      *
      * @param x the exact X coordinate in local (component) space
      */
-    public void setOverrideNoteX(double x) {
-        this.overrideNoteX = x;
+    public void setOverrideNoteXSs(double x) {
+        this.overrideNoteXSs = x;
     }
 
     /**
      * Returns whether an override note X is currently active.
      */
     public boolean hasOverrideNoteX() {
-        return !Double.isNaN(overrideNoteX);
+        return !Double.isNaN(overrideNoteXSs);
     }
 
     /**
      * Returns the override note X. Only valid when {@link #hasOverrideNoteX()} is true.
      */
-    public double getOverrideNoteX() {
-        return overrideNoteX;
+    public double getOverrideNoteXSs() {
+        return overrideNoteXSs;
     }
 
     /**
-     * Clears the override set by {@link #setOverrideNoteX(double)}.
+     * Clears the override set by {@link #setOverrideNoteXSs(double)}.
      */
     public void clearOverrideNoteX() {
-        overrideNoteX = Double.NaN;
+        overrideNoteXSs = Double.NaN;
     }
 
     /**

@@ -34,7 +34,6 @@ import songscribe.music.Line;
 import songscribe.music.Note;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
-import songscribe.smufl.StaffSpaces;
 import songscribe.ui.layout.BeamGroup;
 
 /**
@@ -59,23 +58,23 @@ public class NoteColumnBuilder {
 
     private static final SMuFLMetadata METADATA = SMuFLMetadata.getInstance();
 
-    // Note head width from SMuFL noteheadBlack bounding box
-    private static final double NOTE_HEAD_WIDTH =
-        StaffSpaces.toPixels(METADATA.getBBox(SMuFLGlyph.NOTEHEAD_BLACK).width());
+    // Note head width from SMuFL noteheadBlack bounding box (ss)
+    private static final double NOTE_HEAD_WIDTH_SS =
+        METADATA.getBBox(SMuFLGlyph.NOTEHEAD_BLACK).width();
 
-    // Half note head width (for left/right extent calculation)
-    private static final double HALF_NOTE_HEAD = NOTE_HEAD_WIDTH / 2.0;
+    // Half note head width (for left/right extent calculation) (ss)
+    static final double HALF_NOTE_HEAD_SS = NOTE_HEAD_WIDTH_SS / 2.0;
 
-    // Dot width and spacing
-    private static final double DOT_WIDTH = 4.0;
-    private static final double DOT_GAP = 2.0;
+    // Dot width and spacing (ss)
+    private static final double DOT_WIDTH_SS = 0.5;
+    private static final double DOT_GAP_SS = 0.25;
 
-    // Accidental widths from SMuFL advance widths
+    // Accidental widths from SMuFL advance widths (ss)
     private static final Map<Note.Accidental, Double> ACCIDENTAL_WIDTHS = computeAccidentalWidths();
-    private static final double ACCIDENTAL_GAP = 2.0;
+    private static final double ACCIDENTAL_GAP_SS = 0.25;
 
-    // SMuFL standard stem length: 3.5 staff spaces
-    private static final double STEM_LENGTH = StaffSpaces.toPixels(3.5);
+    // SMuFL standard stem length (ss)
+    private static final double STEM_LENGTH_SS = 3.5;
 
     private final Graphics2D g2;
     private final Font lyricsFont;
@@ -126,16 +125,16 @@ public class NoteColumnBuilder {
      */
     public @NotNull NoteColumn buildColumn(@NotNull Note note, @NotNull Line line) {
         // Calculate horizontal extents
-        double leftExtent = calculateLeftExtent(note);
-        double rightExtent = calculateRightExtent(note);
+        double leftExtentSs = calculateLeftExtentSs(note);
+        double rightExtentSs = calculateRightExtentSs(note);
 
         // Calculate stem positions
-        double stemTop = calculateStemTop(note);
-        double stemBottom = calculateStemBottom(note);
+        double stemTopSs = calculateStemTopSs(note);
+        double stemBottomSs = calculateStemBottomSs(note);
 
         // Get syllable and measure width
         String syllable = getSyllable(note);
-        double syllableWidth = measureSyllableWidth(syllable);
+        double syllableWidthSs = measureSyllableWidthSs(syllable);
 
         // Find beam group (if any)
         BeamGroup beamGroup = findBeamGroup(note, line);
@@ -146,12 +145,12 @@ public class NoteColumnBuilder {
         return new NoteColumn(
             note,
             graceNotes,
-            leftExtent,
-            rightExtent,
-            stemTop,
-            stemBottom,
+            leftExtentSs,
+            rightExtentSs,
+            stemTopSs,
+            stemBottomSs,
             syllable,
-            syllableWidth,
+            syllableWidthSs,
             beamGroup
         );
     }
@@ -165,21 +164,21 @@ public class NoteColumnBuilder {
      * This includes the note head left edge plus any accidental.
      *
      * @param note The note
-     * @return Left extent (negative value, extends left from note head center)
+     * @return Left extent in ss (negative value, extends left from note head center)
      */
-    public static double calculateLeftExtent(@NotNull Note note) {
+    public static double calculateLeftExtentSs(@NotNull Note note) {
         // Start with half the note head width
-        double extent = -HALF_NOTE_HEAD;
+        double extentSs = -HALF_NOTE_HEAD_SS;
 
         // Add accidental width if present
         var accidental = note.getAccidental();
 
         if (accidental != Note.Accidental.NONE) {
-            double accidentalWidth = getAccidentalWidth(accidental);
-            extent -= (accidentalWidth + ACCIDENTAL_GAP);
+            double accidentalWidthSs = getAccidentalWidthSs(accidental);
+            extentSs -= (accidentalWidthSs + ACCIDENTAL_GAP_SS);
         }
 
-        return extent;
+        return extentSs;
     }
 
     /**
@@ -187,60 +186,60 @@ public class NoteColumnBuilder {
      * This includes the note head right edge plus any dots.
      *
      * @param note The note
-     * @return Right extent (positive value, extends right from note head center)
+     * @return Right extent in ss (positive value, extends right from note head center)
      */
-    public static double calculateRightExtent(@NotNull Note note) {
+    public static double calculateRightExtentSs(@NotNull Note note) {
         // Start with half the note head width
-        double extent = HALF_NOTE_HEAD;
+        double extentSs = HALF_NOTE_HEAD_SS;
 
         // Add dot widths if present
         int dotCount = note.getDotCount();
 
         if (dotCount > 0) {
             // First dot: gap + dot
-            extent += DOT_GAP + DOT_WIDTH;
+            extentSs += DOT_GAP_SS + DOT_WIDTH_SS;
 
             // Additional dots: gap + dot each
             for (var i = 1; i < dotCount; i++) {
-                extent += DOT_GAP + DOT_WIDTH;
+                extentSs += DOT_GAP_SS + DOT_WIDTH_SS;
             }
         }
 
-        return extent;
+        return extentSs;
     }
 
     /**
-     * Returns the pixel width of an accidental, derived from SMuFL advance widths.
+     * Returns the width of an accidental in ss, derived from SMuFL advance widths.
      */
-    public static double getAccidentalWidth(@NotNull Note.Accidental accidental) {
+    public static double getAccidentalWidthSs(@NotNull Note.Accidental accidental) {
         return ACCIDENTAL_WIDTHS.getOrDefault(accidental, 0.0);
     }
 
     /**
-     * Computes the pixel width of each accidental using SMuFL advance widths.
+     * Computes the width of each accidental in ss using SMuFL advance widths.
      * Compound accidentals (double natural, natural+flat, natural+sharp) sum individual widths.
      */
     private static @NotNull Map<Note.Accidental, Double> computeAccidentalWidths() {
-        double naturalW = advanceWidthPixels(SMuFLGlyph.ACCIDENTAL_NATURAL);
-        double flatW = advanceWidthPixels(SMuFLGlyph.ACCIDENTAL_FLAT);
-        double sharpW = advanceWidthPixels(SMuFLGlyph.ACCIDENTAL_SHARP);
+        double naturalW = advanceWidthSs(SMuFLGlyph.ACCIDENTAL_NATURAL);
+        double flatW = advanceWidthSs(SMuFLGlyph.ACCIDENTAL_FLAT);
+        double sharpW = advanceWidthSs(SMuFLGlyph.ACCIDENTAL_SHARP);
 
         var widths = new EnumMap<Note.Accidental, Double>(Note.Accidental.class);
         widths.put(Note.Accidental.NATURAL, naturalW);
         widths.put(Note.Accidental.FLAT, flatW);
         widths.put(Note.Accidental.SHARP, sharpW);
         widths.put(Note.Accidental.DOUBLE_NATURAL, naturalW + naturalW);
-        widths.put(Note.Accidental.DOUBLE_FLAT, advanceWidthPixels(SMuFLGlyph.ACCIDENTAL_DOUBLE_FLAT));
-        widths.put(Note.Accidental.DOUBLE_SHARP, advanceWidthPixels(SMuFLGlyph.ACCIDENTAL_DOUBLE_SHARP));
+        widths.put(Note.Accidental.DOUBLE_FLAT, advanceWidthSs(SMuFLGlyph.ACCIDENTAL_DOUBLE_FLAT));
+        widths.put(Note.Accidental.DOUBLE_SHARP, advanceWidthSs(SMuFLGlyph.ACCIDENTAL_DOUBLE_SHARP));
         widths.put(Note.Accidental.NATURAL_FLAT, naturalW + flatW);
         widths.put(Note.Accidental.NATURAL_SHARP, naturalW + sharpW);
 
         return widths;
     }
 
-    private static double advanceWidthPixels(SMuFLGlyph glyph) {
+    private static double advanceWidthSs(SMuFLGlyph glyph) {
         var width = METADATA.getAdvanceWidth(glyph);
-        return width != null ? StaffSpaces.toPixels(width) : 0.0;
+        return width != null ? width : 0.0;
     }
 
     // ==========================================================================
@@ -253,23 +252,23 @@ public class NoteColumnBuilder {
      * For stem-down or stemless notes, this is the note head top.
      *
      * @param note The note
-     * @return Stem top Y position (relative to staff, negative = above)
+     * @return Stem top Y position in ss (relative to staff, negative = above)
      */
-    private double calculateStemTop(@NotNull Note note) {
+    private double calculateStemTopSs(@NotNull Note note) {
         var noteType = note.getNoteType();
 
         // Rests and stemless notes: use note head top
         if (!noteType.isNoteWithStem()) {
-            return -HALF_NOTE_HEAD;
+            return -HALF_NOTE_HEAD_SS;
         }
 
         // Stem up: stem extends upward
         if (!note.isUpper()) {
-            return -STEM_LENGTH;
+            return -STEM_LENGTH_SS;
         }
 
         // Stem down: top is just above note head
-        return -HALF_NOTE_HEAD;
+        return -HALF_NOTE_HEAD_SS;
     }
 
     /**
@@ -278,23 +277,23 @@ public class NoteColumnBuilder {
      * For stem-up or stemless notes, this is the note head bottom.
      *
      * @param note The note
-     * @return Stem bottom Y position (relative to staff, positive = below)
+     * @return Stem bottom Y position in ss (relative to staff, positive = below)
      */
-    private double calculateStemBottom(@NotNull Note note) {
+    private double calculateStemBottomSs(@NotNull Note note) {
         var noteType = note.getNoteType();
 
         // Rests and stemless notes: use note head bottom
         if (!noteType.isNoteWithStem()) {
-            return HALF_NOTE_HEAD;
+            return HALF_NOTE_HEAD_SS;
         }
 
         // Stem down: stem extends downward
         if (note.isUpper()) {
-            return STEM_LENGTH;
+            return STEM_LENGTH_SS;
         }
 
         // Stem up: bottom is just below note head
-        return HALF_NOTE_HEAD;
+        return HALF_NOTE_HEAD_SS;
     }
 
     // ==========================================================================
@@ -313,17 +312,19 @@ public class NoteColumnBuilder {
     }
 
     /**
-     * Measures the width of a syllable in pixels.
+     * Measures the width of a syllable in staff-space units.
+     * Text is measured in pixels via FontMetrics, then converted to ss.
      *
      * @param syllable The syllable text
-     * @return Width in pixels, or 0 if null/empty
+     * @return Width in ss, or 0 if null/empty
      */
-    private double measureSyllableWidth(@Nullable String syllable) {
+    private double measureSyllableWidthSs(@Nullable String syllable) {
         if (syllable == null || syllable.isEmpty()) {
             return 0;
         }
 
-        return lyricsFontMetrics.stringWidth(syllable);
+        double widthPx = lyricsFontMetrics.stringWidth(syllable);
+        return ScaleContext.getInstance().fromPixels(widthPx);
     }
 
     // ==========================================================================

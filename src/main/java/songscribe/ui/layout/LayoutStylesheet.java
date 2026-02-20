@@ -20,22 +20,16 @@
 
 package songscribe.ui.layout;
 
+import songscribe.ui.layout2.ScaleContext;
+
 import java.awt.*;
 
 /**
  * Centralized layout constants (CSS-like stylesheet).
  * <p>
- * All spacing values are defined in MU (measure units), where 1 MU = 4 pixels.
- * Values must be multiples of 0.25 so that {@code value * MU} is always an integer.
- * <p>
- * Common values:
- * <ul>
- *   <li>0.25 MU = 1px</li>
- *   <li>0.5 MU = 2px</li>
- *   <li>1.0 MU = 4px</li>
- *   <li>2.0 MU = 8px (1 staff line)</li>
- *   <li>4.0 MU = 16px (2 staff lines)</li>
- * </ul>
+ * All spacing values are in staff-space (ss) units, where 1 ss equals
+ * the distance between two adjacent staff lines. The conversion to pixels
+ * is handled by {@link ScaleContext} (default: 1 ss = 8 px).
  * <p>
  * Terminology:
  * <ul>
@@ -50,6 +44,33 @@ public final class LayoutStylesheet {
     }
 
     // ==========================================================================
+    // PIXEL CONVERSION (bridge for callers not yet converted to ss)
+    // ==========================================================================
+
+    /**
+     * Converts staff-space units to pixels using the current {@link ScaleContext}.
+     * <p>
+     * This is a transitional bridge method. Once all rendering and component
+     * code operates in staff-space units, this method will be removed.
+     *
+     * @param ss Value in staff-space units
+     * @return Value in pixels (rounded to nearest int)
+     */
+    public static int toPixels(double ss) {
+        return (int) Math.round(ScaleContext.getInstance().toPixels(ss));
+    }
+
+    /**
+     * Converts staff-space units to pixels (double precision).
+     *
+     * @param ss Value in staff-space units
+     * @return Value in pixels
+     */
+    public static double toPixelsDouble(double ss) {
+        return ScaleContext.getInstance().toPixels(ss);
+    }
+
+    // ==========================================================================
     // COLORS
     // ==========================================================================
 
@@ -58,305 +79,283 @@ public final class LayoutStylesheet {
      */
     public static final Color SCORE_BACKGROUND = new Color(0xF9, 0xF9, 0xF9, 0xFF);
 
-
     // ==========================================================================
-    // BASE UNIT
+    // SECTION ELEMENTS (block flow layout)
     // ==========================================================================
-
-    /**
-     * Base measure unit: 1 MU = 4 pixels (like Tailwind's base unit)
-     */
-    public static final double MU = 4.0;
-
-    /**
-     * Converts measure units to pixels.
-     * All MU values should be multiples of 0.25 so result is always an integer.
-     *
-     * @param muUnits Value in measure units
-     * @return Value in pixels (rounded to nearest int)
-     */
-    public static int px(double muUnits) {
-        return (int) Math.round(muUnits * MU);
-    }
-
-    // ==========================================================================
-    // SECTION ELEMENTS (block flow layout)    // ==========================================================================
 
     // --- Title ---
     /**
-     * Padding inside title bounds, in MU (for hit testing)
+     * Padding inside title bounds (for hit testing)
      */
-    public static final double TITLE_PADDING_MU = 0;
+    public static final double TITLE_PADDING = 0;
 
     /**
-     * Margin from title bottom to next section, in MU
+     * Margin from title bottom to next section
      */
-    public static final double TITLE_MARGIN_BOTTOM_MU = 4.0;  // 16px
+    public static final double TITLE_MARGIN_BOTTOM = 2.0;  // 16px
 
     // --- Attribution ---
     /**
-     * Padding inside attribution bounds, in MU
+     * Padding inside attribution bounds
      */
-    public static final double ATTRIBUTION_PADDING_MU = 0;
+    public static final double ATTRIBUTION_PADDING = 0;
 
     /**
-     * Margin from attribution bottom to score, in MU
+     * Margin from attribution bottom to score
      */
-    public static final double ATTRIBUTION_MARGIN_BOTTOM_MU = 4.0;  // 16px
+    public static final double ATTRIBUTION_MARGIN_BOTTOM = 2.0;  // 16px
 
     // --- Score (contains staff lines) ---
     /**
-     * Margin from previous section to score top, in MU
+     * Margin from previous section to score top
      */
-    public static final double SCORE_MARGIN_TOP_MU = 3.0;  // 12px
+    public static final double SCORE_MARGIN_TOP = 1.5;  // 12px
 
     // --- Line (staff system) ---
     /**
-     * Margin between staff lines, in MU
+     * Margin between staff lines
      */
-    public static final double LINE_MARGIN_BOTTOM_MU = 4.0;  // 16px
+    public static final double LINE_MARGIN_BOTTOM = 2.0;  // 16px
 
     // --- Lyrics Block (below score) ---
     /**
-     * Margin from score bottom to lyrics block, in MU
+     * Margin from score bottom to lyrics block
      */
-    public static final double LYRICS_BLOCK_MARGIN_TOP_MU = 10.0;  // 40px
+    public static final double LYRICS_BLOCK_MARGIN_TOP = 5.0;  // 40px
 
     /**
-     * Margin from primary lyrics to Bangla lyrics, in MU
+     * Margin from primary lyrics to Bangla lyrics
      */
-    public static final double BANGLA_MARGIN_TOP_MU = 4.0;  // 16px
+    public static final double BANGLA_MARGIN_TOP = 2.0;  // 16px
 
     /**
-     * Margin from Bangla lyrics to translation, in MU
+     * Margin from Bangla lyrics to translation
      */
-    public static final double TRANSLATION_MARGIN_TOP_MU = 4.0;  // 16px
+    public static final double TRANSLATION_MARGIN_TOP = 2.0;  // 16px
 
     // --- Footnotes ---
     /**
-     * Minimum margin above footnotes section, in MU
+     * Minimum margin above footnotes section
      */
-    public static final double FOOTNOTES_MIN_MARGIN_TOP_MU = 10.0;  // 40px
+    public static final double FOOTNOTES_MIN_MARGIN_TOP = 5.0;  // 40px
 
     // ==========================================================================
-    // ABOVE-STAFF ELEMENTS (reference-based positioning)    // ==========================================================================
+    // ABOVE-STAFF ELEMENTS (reference-based positioning)
+    // ==========================================================================
 
     // --- Annotation Region ---
     /**
-     * Reserved vertical space for above-staff elements, in MU
+     * Reserved vertical space for above-staff elements
      */
-    public static final double ANNOTATION_REGION_MARGIN_MU = 6.0;  // 24px
-
-    /**
-     * Pixel value of annotation margin (for backward compatibility)
-     */
-    public static final int ANNOTATION_MARGIN = px(ANNOTATION_REGION_MARGIN_MU);
+    public static final double ANNOTATION_REGION_MARGIN = 3.0;  // 24px
 
     // --- Tempo ---
     /**
-     * Padding around tempo marking, in MU (for hit testing)
+     * Padding around tempo marking (for hit testing)
      */
-    public static final double TEMPO_PADDING_MU = 0.5;  // 2px
+    public static final double TEMPO_PADDING = 0.25;  // 2px
 
     /**
-     * Margin from reference point to tempo marking, in MU
+     * Margin from reference point to tempo marking
      */
-    public static final double TEMPO_MARGIN_MU = 2.0;  // 8px
+    public static final double TEMPO_MARGIN = 1.0;  // 8px
 
     // --- Beat Change ---
     /**
-     * Padding around beat/time signature change, in MU
+     * Padding around beat/time signature change
      */
-    public static final double BEAT_CHANGE_PADDING_MU = 0.5;  // 2px
+    public static final double BEAT_CHANGE_PADDING = 0.25;  // 2px
 
     /**
-     * Margin from reference point to beat change, in MU
+     * Margin from reference point to beat change
      */
-    public static final double BEAT_CHANGE_MARGIN_MU = 2.0;  // 8px
+    public static final double BEAT_CHANGE_MARGIN = 1.0;  // 8px
 
     // --- First/Second Endings (Volta brackets) ---
     /**
-     * Padding around ending bracket, in MU
+     * Padding around ending bracket
      */
-    public static final double ENDING_PADDING_MU = 0.5;  // 2px
+    public static final double ENDING_PADDING = 0.25;  // 2px
 
     /**
-     * Margin from reference point to ending bracket, in MU
+     * Margin from reference point to ending bracket
      */
-    public static final double ENDING_MARGIN_MU = 1.5;  // 6px
+    public static final double ENDING_MARGIN = 0.75;  // 6px
 
     // --- Trill ---
     /**
-     * Padding around trill marking, in MU
+     * Padding around trill marking
      */
-    public static final double TRILL_PADDING_MU = 0.5;  // 2px
+    public static final double TRILL_PADDING = 0.25;  // 2px
 
     /**
-     * Margin from reference point to trill, in MU
+     * Margin from reference point to trill
      */
-    public static final double TRILL_MARGIN_MU = 2.0;  // 8px
+    public static final double TRILL_MARGIN = 1.0;  // 8px
 
     // --- Fermata ---
     /**
-     * Padding around fermata marking, in MU
+     * Padding around fermata marking
      */
-    public static final double FERMATA_PADDING_MU = 0.5;  // 2px
+    public static final double FERMATA_PADDING = 0.25;  // 2px
 
     /**
-     * Margin from note to fermata, in MU
+     * Margin from note to fermata
      */
-    public static final double FERMATA_MARGIN_MU = 1.0;  // 4px
+    public static final double FERMATA_MARGIN = 0.5;  // 4px
 
     // --- Annotations (text above staff) ---
     /**
-     * Padding around text annotation, in MU
+     * Padding around text annotation
      */
-    public static final double ANNOTATION_ABOVE_PADDING_MU = 0.5;  // 2px
+    public static final double ANNOTATION_ABOVE_PADDING = 0.25;  // 2px
 
     /**
-     * Margin from reference point to annotation, in MU
+     * Margin from reference point to annotation
      */
-    public static final double ANNOTATION_ABOVE_MARGIN_MU = 1.0;  // 4px
+    public static final double ANNOTATION_ABOVE_MARGIN = 0.5;  // 4px
 
     // ==========================================================================
-    // BELOW-STAFF ELEMENTS    // ==========================================================================
+    // BELOW-STAFF ELEMENTS
+    // ==========================================================================
 
     // --- Dynamics (p, f, ff, etc.) ---
     /**
-     * Padding around dynamic marking, in MU
+     * Padding around dynamic marking
      */
-    public static final double DYNAMICS_PADDING_MU = 0.5;  // 2px
+    public static final double DYNAMICS_PADDING = 0.25;  // 2px
 
     /**
-     * Margin from staff bottom to dynamics, in MU
+     * Margin from staff bottom to dynamics
      */
-    public static final double DYNAMICS_MARGIN_MU = 2.0;  // 8px
+    public static final double DYNAMICS_MARGIN = 1.0;  // 8px
 
     // --- Crescendo/Diminuendo hairpins ---
     /**
-     * Padding around hairpin, in MU
+     * Padding around hairpin
      */
-    public static final double CRESC_DIM_PADDING_MU = 0.25;  // 1px
+    public static final double CRESC_DIM_PADDING = 0.125;  // 1px
 
     /**
-     * Margin from reference point to hairpin, in MU
+     * Margin from reference point to hairpin
      */
-    public static final double CRESC_DIM_MARGIN_MU = 1.0;  // 4px
+    public static final double CRESC_DIM_MARGIN = 0.5;  // 4px
 
     // --- Lyrics Row (under staff) ---
     /**
-     * Padding around lyrics row, in MU
+     * Padding around lyrics row
      */
-    public static final double LYRICS_ROW_PADDING_MU = 0;
+    public static final double LYRICS_ROW_PADDING = 0;
 
     /**
-     * Margin from staff bottom to lyrics, in MU
+     * Margin from staff bottom to lyrics
      */
-    public static final double LYRICS_ROW_MARGIN_MU = 2.0;  // 8px
+    public static final double LYRICS_ROW_MARGIN = 1.0;  // 8px
 
     /**
-     * Margin from lowest note bounds to lyrics baseline (ascent), in MU.
-     * Per Phase 8 spec: ascent 2.5 MU below lowest note bounding box.
+     * Margin from lowest note bounds to lyrics baseline (ascent).
+     * Per Phase 8 spec: ascent below lowest note bounding box.
      */
-    public static final double LYRICS_BASELINE_MARGIN_MU = 2.5;  // 10px
+    public static final double LYRICS_BASELINE_MARGIN = 1.25;  // 10px
 
     // ==========================================================================
-    // NOTE ELEMENTS    // ==========================================================================
+    // NOTE ELEMENTS
+    // ==========================================================================
 
     // --- Note (hit testing) ---
     /**
-     * Padding around note for hit testing, in MU
+     * Padding around note for hit testing
      */
-    public static final double NOTE_PADDING_MU = 1.0;  // 4px
+    public static final double NOTE_PADDING = 0.5;  // 4px
 
     // --- Articulations ---
     /**
-     * Padding around articulation marking, in MU
+     * Padding around articulation marking
      */
-    public static final double ARTICULATION_PADDING_MU = 0.5;  // 2px
+    public static final double ARTICULATION_PADDING = 0.25;  // 2px
 
     /**
-     * Margin from note head to first articulation, in MU
+     * Margin from note head to first articulation
      */
-    public static final double ARTICULATION_MARGIN_FROM_NOTE_MU = 1.0;  // 4px
+    public static final double ARTICULATION_MARGIN_FROM_NOTE = 0.5;  // 4px
 
     /**
-     * Margin between stacked articulations, in MU (staccato → accent)
+     * Margin between stacked articulations (staccato -> accent)
      */
-    public static final double ARTICULATION_INTER_MARGIN_MU = 0.75;  // 3px
+    public static final double ARTICULATION_INTER_MARGIN = 0.375;  // 3px
 
     // --- Ties ---
     /**
-     * Padding around tie curve, in MU
+     * Padding around tie curve
      */
-    public static final double TIE_PADDING_MU = 0.5;  // 2px
+    public static final double TIE_PADDING = 0.25;  // 2px
 
     /**
-     * Margin from articulations to tie, in MU
+     * Margin from articulations to tie
      */
-    public static final double TIE_MARGIN_MU = 1.5;  // 6px
+    public static final double TIE_MARGIN = 0.75;  // 6px
 
     /**
-     * Distance from note head to tie arc endpoint, in MU
+     * Distance from note head to tie arc endpoint
      */
-    public static final double TIE_NOTE_HEAD_OFFSET_MU = 0.25;  // 1px
+    public static final double TIE_NOTE_HEAD_OFFSET = 0.125;  // 1px
 
     /**
-     * Minimum arc height for ties, in MU
+     * Minimum arc height for ties
      */
-    public static final double TIE_MIN_ARC_HEIGHT_MU = 1.5;  // 6px
+    public static final double TIE_MIN_ARC_HEIGHT = 0.75;  // 6px
 
     /**
-     * Reference horizontal distance for arc height scaling (in pixels)
+     * Reference horizontal distance for arc height scaling
      */
-    public static final double TIE_REFERENCE_DISTANCE = 50.0;  // 50px baseline
+    public static final double TIE_REFERENCE_DISTANCE = 6.25;  // 50px
 
     /**
      * Arc height scaling factor for ties.
      * Arc height = minHeight + sqrt(distance / reference) * heightScale
      */
-    public static final double TIE_HEIGHT_SCALE = 4.0;  // 4px additional per sqrt unit
+    public static final double TIE_HEIGHT_SCALE = 0.5;  // 4px additional per sqrt unit
 
     /**
-     * Margin from tie to articulations (area-based collision), in MU
+     * Margin from tie to articulations (area-based collision)
      */
-    public static final double TIE_ARTICULATION_MARGIN_MU = 0.5;  // 2px
+    public static final double TIE_ARTICULATION_MARGIN = 0.25;  // 2px
 
     // --- Tuplets ---
     /**
-     * Padding around tuplet bracket, in MU
+     * Padding around tuplet bracket
      */
-    public static final double TUPLET_PADDING_MU = 0.5;  // 2px
+    public static final double TUPLET_PADDING = 0.25;  // 2px
 
     /**
-     * Margin from reference point to tuplet bracket, in MU
+     * Margin from reference point to tuplet bracket
      */
-    public static final double TUPLET_MARGIN_MU = 1.25;  // 5px
+    public static final double TUPLET_MARGIN = 0.625;  // 5px
 
     /**
-     * Margin from beam to tuplet number (measured perpendicular to beam), in MU
+     * Margin from beam to tuplet number (measured perpendicular to beam)
      */
-    public static final double TUPLET_BEAM_MARGIN_MU = 0.5;  // 2px
+    public static final double TUPLET_BEAM_MARGIN = 0.25;  // 2px
 
     /**
-     * Margin from highest note/articulation bounds to tuplet bracket, in MU
+     * Margin from highest note/articulation bounds to tuplet bracket
      */
-    public static final double TUPLET_BRACKET_MARGIN_MU = 0.5;  // 2px
+    public static final double TUPLET_BRACKET_MARGIN = 0.25;  // 2px
 
     /**
-     * Minimum margin from staff top to tuplet bracket, in MU
+     * Minimum margin from staff top to tuplet bracket
      */
-    public static final double TUPLET_MIN_STAFF_MARGIN_MU = 1.0;  // 4px
+    public static final double TUPLET_MIN_STAFF_MARGIN = 0.5;  // 4px
 
     /**
-     * Gap on each side of tuplet number in bracket (in pixels)
+     * Gap on each side of tuplet number in bracket
      */
-    public static final double TUPLET_NUMBER_GAP = 1.0;  // 1px
+    public static final double TUPLET_NUMBER_GAP = 0.125;  // 1px
 
     /**
-     * Overhang of bracket beyond first and last note heads (in pixels)
+     * Overhang of bracket beyond first and last note heads
      */
-    public static final double TUPLET_BRACKET_OVERHANG = 1.0;  // 1px
+    public static final double TUPLET_BRACKET_OVERHANG = 0.125;  // 1px
 
     /**
      * Scale factor for tuplet number in non-beamed (bracket) tuplets
@@ -365,95 +364,91 @@ public final class LayoutStylesheet {
 
     // --- Beams ---
     /**
-     * Padding around beam, in MU
+     * Padding around beam
      */
-    public static final double BEAM_PADDING_MU = 0;
+    public static final double BEAM_PADDING = 0;
 
     /**
-     * Margin between beam levels, in MU (8th → 16th)
+     * Margin between beam levels (8th -> 16th)
      */
-    public static final double BEAM_INTER_MARGIN_MU = 1.5;  // 6px
+    public static final double BEAM_INTER_MARGIN = 0.75;  // 6px
 
     // ==========================================================================
-    // HORIZONTAL SPACING    // ==========================================================================
+    // HORIZONTAL SPACING
+    // ==========================================================================
 
     // --- Accidentals ---
     /**
-     * Padding around accidental glyph, in MU
+     * Padding around accidental glyph
      */
-    public static final double ACCIDENTAL_PADDING_MU = 0.75;  // 3px
+    public static final double ACCIDENTAL_PADDING = 0.375;  // 3px
 
     /**
-     * Margin between accidental and note head, in MU
+     * Margin between accidental and note head
      */
-    public static final double ACCIDENTAL_INTER_MARGIN_MU = 0.25;  // 1px
+    public static final double ACCIDENTAL_INTER_MARGIN = 0.125;  // 1px
 
     // --- Note Type Spacing (right margin after note) ---
     /**
-     * Right margin after semibreve (whole note), in MU
+     * Right margin after semibreve (whole note)
      */
-    public static final double SEMIBREVE_MARGIN_RIGHT_MU = 17.5;  // 70px
+    public static final double SEMIBREVE_MARGIN_RIGHT = 8.75;  // 70px
 
     /**
-     * Right margin after minim (half note), in MU
+     * Right margin after minim (half note)
      */
-    public static final double MINIM_MARGIN_RIGHT_MU = 12.5;  // 50px
+    public static final double MINIM_MARGIN_RIGHT = 6.25;  // 50px
 
     /**
-     * Right margin after crotchet (quarter note), in MU
+     * Right margin after crotchet (quarter note)
      */
-    public static final double CROTCHET_MARGIN_RIGHT_MU = 8.75;  // 35px
+    public static final double CROTCHET_MARGIN_RIGHT = 4.375;  // 35px
 
     /**
-     * Right margin after quaver (eighth note), in MU
+     * Right margin after quaver (eighth note)
      */
-    public static final double QUAVER_MARGIN_RIGHT_MU = 6.25;  // 25px
+    public static final double QUAVER_MARGIN_RIGHT = 3.125;  // 25px
 
     /**
-     * Right margin after semiquaver (sixteenth note), in MU
+     * Right margin after semiquaver (sixteenth note)
      */
-    public static final double SEMIQUAVER_MARGIN_RIGHT_MU = 6.25;  // 25px
+    public static final double SEMIQUAVER_MARGIN_RIGHT = 3.125;  // 25px
 
     /**
-     * Right margin after barline, in MU
+     * Right margin after barline
      */
-    public static final double BARLINE_MARGIN_RIGHT_MU = 15.0;  // 60px
+    public static final double BARLINE_MARGIN_RIGHT = 7.5;  // 60px
 
     /**
-     * Right margin after breath mark, in MU
+     * Right margin after breath mark
      */
-    public static final double BREATH_MARK_MARGIN_RIGHT_MU = 3.75;  // 15px
+    public static final double BREATH_MARK_MARGIN_RIGHT = 1.875;  // 15px
 
     // --- Syllables ---
     /**
-     * Horizontal padding around syllable text, in MU
+     * Horizontal padding around syllable text
      */
-    public static final double SYLLABLE_PADDING_H_MU = 0.5;  // 2px
+    public static final double SYLLABLE_PADDING_H = 0.25;  // 2px
 
     /**
-     * Left margin before syllable, in MU
+     * Left margin before syllable
      */
-    public static final double SYLLABLE_MARGIN_LEFT_MU = 0.5;  // 2px
+    public static final double SYLLABLE_MARGIN_LEFT = 0.25;  // 2px
 
     /**
-     * Right margin after syllable, in MU
+     * Right margin after syllable
      */
-    public static final double SYLLABLE_MARGIN_RIGHT_MU = 0.5;  // 2px
+    public static final double SYLLABLE_MARGIN_RIGHT = 0.25;  // 2px
 
     // --- First Note ---
     /**
-     * X position of first note from left edge, in MU
+     * X position of first note from left edge
      */
-    public static final double FIRST_NOTE_X_MU = 25.0;  // 100px
+    public static final double FIRST_NOTE_X = 12.5;  // 100px
 
     // ==========================================================================
     // STAFF DIMENSIONS
     // ==========================================================================
-
-    /**
-     * Pixels between staff lines
-     */
-    public static final int STAFF_SPACE = 8;
 
     /**
      * Number of staff lines
@@ -471,50 +466,50 @@ public final class LayoutStylesheet {
     public static final int STAFF_LINES_BELOW = 4;
 
     /**
-     * Height of 5-line staff (4 gaps × 8 pixels)
+     * Height of 5-line staff (4 gaps of 1 ss each)
      */
-    public static final int STAFF_HEIGHT = 4 * STAFF_SPACE;  // 32px
+    public static final double STAFF_HEIGHT = 4.0;  // 32px
 
     /**
-     * Note Y offset (half of staff line spacing)
+     * Note Y offset: half of one staff space.
+     * Used to convert between staff positions and Y coordinates.
      */
-    public static final double NOTE_Y_OFFSET = STAFF_SPACE / 2.0;  // 4px
+    public static final double NOTE_Y_OFFSET = 0.5;  // 4px
 
     // ==========================================================================
-    // LINE ELEMENT DEFAULT Y POSITIONS (relative to middleLineY)
+    // LINE ELEMENT DEFAULT Y POSITIONS (relative to middleLineY, in ss)
     // ==========================================================================
     // These are the default Y offsets from the middle staff line (B line).
     // Negative values = above staff, positive = below staff.
     // Used by Line.java for initial values and by layout calculation for offset values.
-    // Note: These may be replaced by dynamic calculation in future phases.
 
     /**
-     * Default tempo Y for first line (-5 staff lines above middle)
+     * Default tempo Y for first line (-5 staff spaces above middle)
      */
-    public static final int TEMPO_DEFAULT_Y_FIRST_LINE = -5 * STAFF_SPACE;  // -40px
+    public static final double TEMPO_DEFAULT_Y_FIRST_LINE = -5.0;  // -40px
 
     /**
-     * Default tempo Y for subsequent lines (-3 staff lines above middle)
+     * Default tempo Y for subsequent lines (-3 staff spaces above middle)
      */
-    public static final int TEMPO_DEFAULT_Y_OTHER_LINES = -3 * STAFF_SPACE;  // -24px
+    public static final double TEMPO_DEFAULT_Y_OTHER_LINES = -3.0;  // -24px
 
     /**
-     * Default beat change Y position (-3 staff lines above middle)
+     * Default beat change Y position (-3 staff spaces above middle)
      */
-    public static final int BEAT_CHANGE_DEFAULT_Y = -3 * STAFF_SPACE;  // -24px
+    public static final double BEAT_CHANGE_DEFAULT_Y = -3.0;  // -24px
 
     /**
      * Default lyrics Y position (below staff)
      */
-    public static final int LYRICS_DEFAULT_Y = 50;
+    public static final double LYRICS_DEFAULT_Y = 6.25;  // 50px
 
     /**
      * Default first/second ending Y position (above staff)
      */
-    public static final int ENDING_DEFAULT_Y = -25;
+    public static final double ENDING_DEFAULT_Y = -3.125;  // -25px
 
     /**
      * Default trill Y position (above staff)
      */
-    public static final int TRILL_DEFAULT_Y = -27;
+    public static final double TRILL_DEFAULT_Y = -3.375;  // -27px
 }

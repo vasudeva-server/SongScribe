@@ -41,7 +41,7 @@ public class FootnotesComponent extends ScoreComponent {
      */
     public FootnotesComponent() {
         super();
-        setMarginTop(LayoutStylesheet.px(LayoutStylesheet.FOOTNOTES_MIN_MARGIN_TOP_MU));
+        setMarginTop(LayoutStylesheet.toPixels(LayoutStylesheet.FOOTNOTES_MIN_MARGIN_TOP));
     }
 
     @Override
@@ -106,6 +106,6 @@ public class FootnotesComponent extends ScoreComponent {
         var lineHeight = metrics.getHeight();
         var height = marginTop + (lineHeight * lines.length);
 
-        return new Dimension(composition.getLineWidth(), height);
+        return new Dimension((int) composition.getLineWidth(), height);
     }
 }

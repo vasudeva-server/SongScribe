@@ -104,7 +104,8 @@ public class Note extends LineElement implements Cloneable {
     protected int xOffset = 0;
 
     /**
-     * The y position of the note in the sheet
+     * The staff position of the note, where each step is one diatonic
+     * step (half staff-space). B4 (middle line) is 0.
      * <table>
      * <tr><th>Pitch<th>Value
      * <tr><td>D5<td>-2
@@ -114,7 +115,7 @@ public class Note extends LineElement implements Cloneable {
      * <tr><td>G4<td>2
      * </table>
      */
-    protected int yPos = 0;
+    protected int staffPosition = 0;
 
     // How many dots the note has. Possible values are 0, 1, 2.
     protected int dotCount = 0;
@@ -131,7 +132,7 @@ public class Note extends LineElement implements Cloneable {
     protected int syllableMovement = 0;
     protected int syllableRelationMovement = 0;
     protected boolean forceSyllable = false;
-    protected boolean invertFractionBeamOrientation = false;
+    private boolean stemDirectionAuto = true;
 
     // The line which owns this note
     protected Line line = null;
@@ -158,7 +159,7 @@ public class Note extends LineElement implements Cloneable {
     protected Note(@NotNull Note note) {
         noteType = note.noteType;
         xOffset = note.xOffset;
-        yPos = note.yPos;
+        staffPosition = note.staffPosition;
         dotCount = note.dotCount;
         accidental = note.accidental;
         isAccidentalInParentheses = note.isAccidentalInParentheses;
@@ -175,7 +176,7 @@ public class Note extends LineElement implements Cloneable {
         syllableMovement = note.syllableMovement;
         syllableRelationMovement = note.syllableRelationMovement;
         forceSyllable = note.forceSyllable;
-        invertFractionBeamOrientation = note.invertFractionBeamOrientation;
+        stemDirectionAuto = note.stemDirectionAuto;
 
         // Copy LineElement hierarchy data
         setParentLine(note.getParentLine());
@@ -418,12 +419,12 @@ public class Note extends LineElement implements Cloneable {
         this.xOffset = xOffset;
     }
 
-    public int getYPos() {
-        return yPos;
+    public int getStaffPosition() {
+        return staffPosition;
     }
 
-    public void setYPos(int yPos) {
-        this.yPos = yPos;
+    public void setStaffPosition(int staffPosition) {
+        this.staffPosition = staffPosition;
     }
 
     public int getDotCount() {
@@ -558,14 +559,12 @@ public class Note extends LineElement implements Cloneable {
         this.forceSyllable = forceSyllable;
     }
 
-    public boolean isInvertFractionBeamOrientation() {
-        return invertFractionBeamOrientation;
+    public boolean isStemDirectionAuto() {
+        return stemDirectionAuto;
     }
 
-    public void setInvertFractionBeamOrientation(
-        boolean invertFractionBeamOrientation
-    ) {
-        this.invertFractionBeamOrientation = invertFractionBeamOrientation;
+    public void setStemDirectionAuto(boolean stemDirectionAuto) {
+        this.stemDirectionAuto = stemDirectionAuto;
     }
 
     public int getPitch() {
@@ -581,7 +580,7 @@ public class Note extends LineElement implements Cloneable {
     private int calculatePitch(Accidental accidental) {
         return (
             MIDI_PITCHES[getPitchIndex()] +
-                (12 * (((yPos <= 0) ? -yPos : (-yPos - 6)) / 7)) +
+                (12 * (((staffPosition <= 0) ? -staffPosition : (-staffPosition - 6)) / 7)) +
                 MIDI_PITCH_ADJUSTMENT[accidental.ordinal()]
         );
     }
@@ -611,7 +610,7 @@ public class Note extends LineElement implements Cloneable {
       or the octave.
     */
     public int getPitchIndex() {
-        return (((yPos <= 0) ? -yPos : (7 - (yPos % 7))) % 7);
+        return (((staffPosition <= 0) ? -staffPosition : (7 - (staffPosition % 7))) % 7);
     }
 
     public int getDefaultDurationWithDots() {
@@ -635,7 +634,7 @@ public class Note extends LineElement implements Cloneable {
             var note = line.getNote(i);
 
             if (
-                (note.getYPos() == yPos) &&
+                (note.getStaffPosition() == staffPosition) &&
                     (note.getAccidental() != Accidental.NONE)
             ) {
                 return line.getNote(i).getAccidental();
@@ -695,8 +694,8 @@ public class Note extends LineElement implements Cloneable {
     public static class Glissando {
 
         public int pitch;
-        public int x1Translate = 0;
-        public int x2Translate = 0;
+        public double x1Translate = 0;
+        public double x2Translate = 0;
 
         public Glissando(int pitch) {
             this.pitch = pitch;
@@ -722,15 +721,14 @@ public class Note extends LineElement implements Cloneable {
 
     public static class Properties {
 
-        // Lengthening for beaming
-        public int lengthening = 0;
-        // Extra beam thickness in pixels for angled beams (0 = no thickening)
-        public double beamThickening = 0.0;
-        // Stem
-        public final Line2D.Double stem = new Line2D.Double();
         // Lyrics
         public String syllable = null;
         public SyllableRelation syllableRelation = null;
         public float longDashPosition = 0.0F;
+
+        // Beaming (written by BeamCalculator in pixel units; not yet migrated to ss)
+        public int lengthening = 0;
+        public double beamThickening = 0.0;
+        public final Line2D.Double stem = new Line2D.Double();
     }
 }

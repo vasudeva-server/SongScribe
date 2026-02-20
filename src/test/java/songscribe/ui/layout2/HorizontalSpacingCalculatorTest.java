@@ -33,11 +33,10 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
-import songscribe.music.NoteType;
 import songscribe.music.KeyType;
 import songscribe.music.Line;
 import songscribe.music.Note;
-
+import songscribe.music.NoteType;
 import songscribe.ui.layout.BeamGroup;
 
 @DisplayName("HorizontalSpacingCalculator")
@@ -129,13 +128,13 @@ class HorizontalSpacingCalculatorTest {
      * Asserts that spacing between two columns is at least a minimum value.
      */
     private void assertMinimumSpacing(NoteColumn prev, NoteColumn curr, double expectedMin) {
-        double actualSpacing = curr.getX() - prev.getX();
+        double actualSpacingSs = curr.getXSs() - prev.getXSs();
         assertTrue(
-            actualSpacing >= expectedMin - 0.01, // Allow small floating point error
+            actualSpacingSs >= expectedMin - 0.01, // Allow small floating point error
             String.format(
                 "Expected spacing >= %.2f, but was %.2f",
                 expectedMin,
-                actualSpacing
+                actualSpacingSs
             )
         );
     }
@@ -178,9 +177,9 @@ class HorizontalSpacingCalculatorTest {
 
             calculator.calculatePositions(columns, line);
 
-            // Expected: clefWidth(28) + keySignatureWidth(0) + FIRST_NOTE_OFFSET(11.5 MU = 46px)
-            double expectedX = 28.0 + 0 + LayoutConstants.px(LayoutConstants.FIRST_NOTE_OFFSET);
-            assertEquals(expectedX, columns.get(0).getX(), 0.01);
+            // Expected: clefWidth + keySignatureWidth(0) + FIRST_NOTE_OFFSET (all in ss)
+            double expectedXSs = LayoutConstants.CLEF_WIDTH_SS + LayoutConstants.FIRST_NOTE_OFFSET_SS;
+            assertEquals(expectedXSs, columns.get(0).getXSs(), 0.01);
         }
 
         @Test
@@ -192,9 +191,11 @@ class HorizontalSpacingCalculatorTest {
 
             calculator.calculatePositions(columns, line);
 
-            // Expected: clefWidth(28) + keySignatureWidth(3 * 8 = 24) + FIRST_NOTE_OFFSET(46px)
-            double expectedX = 28.0 + (3 * 8.0) + LayoutConstants.px(LayoutConstants.FIRST_NOTE_OFFSET);
-            assertEquals(expectedX, columns.get(0).getX(), 0.01);
+            // Expected: clefWidth + keySignatureWidth(3 * 1.0 ss) + FIRST_NOTE_OFFSET (all in ss)
+            double expectedXSs = LayoutConstants.CLEF_WIDTH_SS
+                + 3 * LayoutConstants.KEY_ACCIDENTAL_WIDTH_SS
+                + LayoutConstants.FIRST_NOTE_OFFSET_SS;
+            assertEquals(expectedXSs, columns.get(0).getXSs(), 0.01);
         }
     }
 
@@ -216,13 +217,19 @@ class HorizontalSpacingCalculatorTest {
 
             calculator.calculatePositions(columns, line);
 
-            // Spacing should be based on rightExtent + MIN_COLUMN_GAP + abs(leftExtent)
-            double expectedMinSpacing = columns.get(0).getRightExtent()
-                + LayoutConstants.px(LayoutConstants.MIN_COLUMN_GAP)
-                + Math.abs(columns.get(1).getLeftExtent());
+            // Spacing should be at least rightExtent + MIN_COLUMN_GAP + abs(leftExtent)
+            double minSpacingSs = columns.get(0).getRightExtentSs()
+                + LayoutConstants.MIN_COLUMN_GAP_SS
+                + Math.abs(columns.get(1).getLeftExtentSs());
 
-            double actualSpacing = columns.get(1).getX() - columns.get(0).getX();
-            assertEquals(expectedMinSpacing, actualSpacing, 0.01);
+            // Without lyrics, the calculator uses DEFAULT_COLUMN_GAP (larger than MIN)
+            double expectedSpacingSs = columns.get(0).getRightExtentSs()
+                + LayoutConstants.DEFAULT_COLUMN_GAP_SS
+                + Math.abs(columns.get(1).getLeftExtentSs());
+
+            double actualSpacingSs = columns.get(1).getXSs() - columns.get(0).getXSs();
+            assertTrue(actualSpacingSs >= minSpacingSs, "Actual spacing should be >= minimum");
+            assertEquals(expectedSpacingSs, actualSpacingSs, 0.01);
         }
 
         @Test
@@ -237,17 +244,17 @@ class HorizontalSpacingCalculatorTest {
             calculator.calculatePositions(columns, line);
 
             // Each gap should be >= MIN_COLUMN_GAP
-            double minGap = LayoutConstants.px(LayoutConstants.MIN_COLUMN_GAP);
+            double minGapSs = LayoutConstants.MIN_COLUMN_GAP_SS;
 
             for (var i = 1; i < columns.size(); i++) {
                 var prev = columns.get(i - 1);
                 var curr = columns.get(i);
-                double spacing = curr.getX() - prev.getX();
-                double requiredMin = prev.getRightExtent() + minGap + Math.abs(curr.getLeftExtent());
+                double spacingSs = curr.getXSs() - prev.getXSs();
+                double requiredMinSs = prev.getRightExtentSs() + minGapSs + Math.abs(curr.getLeftExtentSs());
 
                 assertTrue(
-                    spacing >= requiredMin - 0.01,
-                    String.format("Column %d spacing %.2f < required %.2f", i, spacing, requiredMin)
+                    spacingSs >= requiredMinSs - 0.01,
+                    String.format("Column %d spacing %.2f < required %.2f", i, spacingSs, requiredMinSs)
                 );
             }
         }
@@ -272,18 +279,18 @@ class HorizontalSpacingCalculatorTest {
             calculator.calculatePositions(columns, line);
 
             // Calculate expected lyric spacing
-            double syllable1Width = columns.get(0).getSyllableWidth();
-            double syllable2Width = columns.get(1).getSyllableWidth();
-            double expectedLyricSpacing = (syllable1Width / 2.0)
-                + LayoutConstants.px(LayoutConstants.MIN_SYLLABLE_GAP)
-                + (syllable2Width / 2.0);
+            double syllable1WidthSs = columns.get(0).getSyllableWidthSs();
+            double syllable2WidthSs = columns.get(1).getSyllableWidthSs();
+            double expectedLyricSpacingSs = (syllable1WidthSs / 2.0)
+                + LayoutConstants.MIN_SYLLABLE_GAP_SS
+                + (syllable2WidthSs / 2.0);
 
-            double actualSpacing = columns.get(1).getX() - columns.get(0).getX();
+            double actualSpacingSs = columns.get(1).getXSs() - columns.get(0).getXSs();
 
             // Actual spacing should be at least the lyric requirement
             assertTrue(
-                actualSpacing >= expectedLyricSpacing - 0.01,
-                String.format("Expected lyric spacing >= %.2f, got %.2f", expectedLyricSpacing, actualSpacing)
+                actualSpacingSs >= expectedLyricSpacingSs - 0.01,
+                String.format("Expected lyric spacing >= %.2f, got %.2f", expectedLyricSpacingSs, actualSpacingSs)
             );
         }
 
@@ -298,16 +305,16 @@ class HorizontalSpacingCalculatorTest {
             calculator.calculatePositions(columns, line);
 
             // With very short syllables, minimum spacing should dominate
-            double minSpacing = columns.get(0).getRightExtent()
-                + LayoutConstants.px(LayoutConstants.MIN_COLUMN_GAP)
-                + Math.abs(columns.get(1).getLeftExtent());
+            double minSpacingSs = columns.get(0).getRightExtentSs()
+                + LayoutConstants.MIN_COLUMN_GAP_SS
+                + Math.abs(columns.get(1).getLeftExtentSs());
 
-            double actualSpacing = columns.get(1).getX() - columns.get(0).getX();
+            double actualSpacingSs = columns.get(1).getXSs() - columns.get(0).getXSs();
 
             // Spacing should be close to minimum (within lyric tolerance)
             assertTrue(
-                actualSpacing >= minSpacing - 0.01,
-                String.format("Expected spacing >= %.2f, got %.2f", minSpacing, actualSpacing)
+                actualSpacingSs >= minSpacingSs - 0.01,
+                String.format("Expected spacing >= %.2f, got %.2f", minSpacingSs, actualSpacingSs)
             );
         }
 
@@ -330,7 +337,7 @@ class HorizontalSpacingCalculatorTest {
                 assertMinimumSpacing(
                     columns.get(i - 1),
                     columns.get(i),
-                    LayoutConstants.px(LayoutConstants.MIN_COLUMN_GAP)
+                    LayoutConstants.MIN_COLUMN_GAP_SS
                 );
             }
         }
@@ -355,15 +362,15 @@ class HorizontalSpacingCalculatorTest {
             calculator.calculatePositions(columns, line);
 
             // Verify accidental has clearance
-            double prevRightEdge = columns.get(0).getRightEdgeX();
-            double currAccidentalLeft = columns.get(1).getLeftEdgeX();
+            double prevRightEdge = columns.get(0).getRightEdgeXSs();
+            double currAccidentalLeft = columns.get(1).getLeftEdgeXSs();
             double clearance = currAccidentalLeft - prevRightEdge;
 
             assertTrue(
-                clearance >= LayoutConstants.px(LayoutConstants.ACCIDENTAL_CLEARANCE) - 0.01,
+                clearance >= LayoutConstants.ACCIDENTAL_CLEARANCE_SS - 0.01,
                 String.format("Accidental clearance %.2f < required %.2f",
                     clearance,
-                    LayoutConstants.px(LayoutConstants.ACCIDENTAL_CLEARANCE))
+                    LayoutConstants.ACCIDENTAL_CLEARANCE_SS)
             );
         }
 
@@ -378,12 +385,12 @@ class HorizontalSpacingCalculatorTest {
             calculator.calculatePositions(columns, line);
 
             // With long syllables, accidental should have plenty of clearance
-            double prevRightEdge = columns.get(0).getRightEdgeX();
-            double currAccidentalLeft = columns.get(1).getLeftEdgeX();
+            double prevRightEdge = columns.get(0).getRightEdgeXSs();
+            double currAccidentalLeft = columns.get(1).getLeftEdgeXSs();
             double clearance = currAccidentalLeft - prevRightEdge;
 
             assertTrue(
-                clearance >= LayoutConstants.px(LayoutConstants.ACCIDENTAL_CLEARANCE) - 0.01,
+                clearance >= LayoutConstants.ACCIDENTAL_CLEARANCE_SS - 0.01,
                 "Accidental should have clearance"
             );
         }
@@ -428,17 +435,17 @@ class HorizontalSpacingCalculatorTest {
             calculator.calculatePositions(columns, line);
 
             // Internal gaps should be approximately BEAM_GROUP_MIN_INTERNAL_GAP
-            double tightGap = LayoutConstants.px(LayoutConstants.BEAM_GROUP_MIN_INTERNAL_GAP);
+            double tightGapSs = LayoutConstants.BEAM_GROUP_MIN_INTERNAL_GAP_SS;
 
             for (var i = 1; i < columns.size(); i++) {
                 var prev = columns.get(i - 1);
                 var curr = columns.get(i);
-                double spacing = curr.getX() - prev.getX();
+                double spacingSs = curr.getXSs() - prev.getXSs();
 
                 // Spacing should be close to tight gap (with some tolerance for extent calculations)
                 assertTrue(
-                    spacing >= tightGap - 5.0,
-                    String.format("Beam group spacing %.2f should be close to tight gap %.2f", spacing, tightGap)
+                    spacingSs >= tightGapSs - 0.625,
+                    String.format("Beam group spacing %.2f should be close to tight gap %.2f", spacingSs, tightGapSs)
                 );
             }
         }
@@ -474,15 +481,15 @@ class HorizontalSpacingCalculatorTest {
             calculator.calculatePositions(columns, line);
 
             // With wide syllables, spacing should be expanded beyond tight gap
-            double tightGap = LayoutConstants.px(LayoutConstants.BEAM_GROUP_MIN_INTERNAL_GAP);
+            double tightGapSs = LayoutConstants.BEAM_GROUP_MIN_INTERNAL_GAP_SS;
 
             // At least one gap should be wider than tight spacing
             boolean hasExpandedGap = false;
 
             for (var i = 1; i < columns.size(); i++) {
-                double spacing = columns.get(i).getX() - columns.get(i - 1).getX();
+                double spacingSs = columns.get(i).getXSs() - columns.get(i - 1).getXSs();
 
-                if (spacing > tightGap + 1.0) { // Allow 1px tolerance
+                if (spacingSs > tightGapSs + 0.125) { // Allow small ss tolerance
                     hasExpandedGap = true;
                     break;
                 }
@@ -534,7 +541,7 @@ class HorizontalSpacingCalculatorTest {
             // Verify all columns are positioned
             for (var i = 0; i < columns.size(); i++) {
                 assertTrue(
-                    columns.get(i).getX() > 0,
+                    columns.get(i).getXSs() > 0,
                     String.format("Column %d should be positioned", i)
                 );
             }
@@ -542,7 +549,7 @@ class HorizontalSpacingCalculatorTest {
             // Verify monotonic increase
             for (var i = 1; i < columns.size(); i++) {
                 assertTrue(
-                    columns.get(i).getX() > columns.get(i - 1).getX(),
+                    columns.get(i).getXSs() > columns.get(i - 1).getXSs(),
                     String.format("Column %d should be right of column %d", i, i - 1)
                 );
             }
@@ -594,33 +601,35 @@ class HorizontalSpacingCalculatorTest {
             // Verify all columns are positioned
             for (var i = 0; i < columns.size(); i++) {
                 assertTrue(
-                    columns.get(i).getX() > 0,
+                    columns.get(i).getXSs() > 0,
                     String.format("Column %d should be positioned", i)
                 );
             }
 
             // Verify first note accounts for key signature
-            double expectedFirstX = 28.0 + (2 * 8.0) + LayoutConstants.px(LayoutConstants.FIRST_NOTE_OFFSET);
-            assertEquals(expectedFirstX, columns.get(0).getX(), 0.01);
+            double expectedFirstX = LayoutConstants.CLEF_WIDTH_SS
+                + 2 * LayoutConstants.KEY_ACCIDENTAL_WIDTH_SS
+                + LayoutConstants.FIRST_NOTE_OFFSET_SS;
+            assertEquals(expectedFirstX, columns.get(0).getXSs(), 0.01);
 
             // Verify monotonic increase in X positions
             for (var i = 1; i < columns.size(); i++) {
                 assertTrue(
-                    columns.get(i).getX() > columns.get(i - 1).getX(),
+                    columns.get(i).getXSs() > columns.get(i - 1).getXSs(),
                     String.format("Column %d (%.2f) should be right of column %d (%.2f)",
-                        i, columns.get(i).getX(),
-                        i - 1, columns.get(i - 1).getX())
+                        i, columns.get(i).getXSs(),
+                        i - 1, columns.get(i - 1).getXSs())
                 );
             }
 
             // Verify minimum spacing is maintained everywhere
-            double minGap = LayoutConstants.px(LayoutConstants.MIN_COLUMN_GAP);
+            double minGap = LayoutConstants.MIN_COLUMN_GAP_SS;
 
             for (var i = 1; i < columns.size(); i++) {
                 var prev = columns.get(i - 1);
                 var curr = columns.get(i);
-                double prevRight = prev.getRightEdgeX();
-                double currLeft = curr.getLeftEdgeX();
+                double prevRight = prev.getRightEdgeXSs();
+                double currLeft = curr.getLeftEdgeXSs();
                 double gap = currLeft - prevRight;
 
                 assertTrue(

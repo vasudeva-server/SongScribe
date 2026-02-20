@@ -60,7 +60,7 @@ public class StaffPanel extends JPanel {
         setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
         setOpaque(false);
 
-        lineMargin = LayoutStylesheet.px(LayoutStylesheet.LINE_MARGIN_BOTTOM_MU);
+        lineMargin = LayoutStylesheet.toPixels(LayoutStylesheet.LINE_MARGIN_BOTTOM);
     }
 
     /**

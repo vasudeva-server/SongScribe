@@ -20,8 +20,10 @@
 
 package songscribe.ui.renderer;
 
-import java.awt.BasicStroke;
-import java.awt.Graphics2D;
+import static songscribe.ui.renderer.GraphicsState.Property.COLOR;
+import static songscribe.ui.renderer.GraphicsState.Property.STROKE;
+
+import java.awt.*;
 
 import org.jetbrains.annotations.NotNull;
 
@@ -35,8 +37,6 @@ import songscribe.ui.layout.Crescendo;
 import songscribe.ui.layout.Diminuendo;
 import songscribe.ui.layout.LayoutStylesheet;
 import songscribe.ui.layout.LineElement;
-
-import static songscribe.ui.renderer.GraphicsState.Property.*;
 
 /**
  * Renders crescendo and diminuendo hairpins.
@@ -60,7 +60,7 @@ public class DynamicsRenderer extends BaseElementRenderer<LineElement> {
     );
 
     // Crotchet width (from FughettaRenderer)
-    private static final double CROTCHET_WIDTH = BaseElementRenderer.NOTE_FONT_SIZE / 3.6056337d;
+    private static final double CROTCHET_WIDTH_PX = BaseElementRenderer.NOTE_FONT_SIZE / 3.6056337d;
 
     // Singleton instance
     private static final DynamicsRenderer INSTANCE = new DynamicsRenderer();
@@ -107,7 +107,7 @@ public class DynamicsRenderer extends BaseElementRenderer<LineElement> {
             return;
         }
 
-        int yShift = getEffectiveDynamicsYShift(element, ctx);
+        int yShift = getEffectiveDynamicsYShiftPx(element, ctx);
         renderHairpin(g2, ctx, anchorNote, endNote, true, 0, 0, yShift);
     }
 
@@ -123,14 +123,14 @@ public class DynamicsRenderer extends BaseElementRenderer<LineElement> {
             return;
         }
 
-        int yShift = getEffectiveDynamicsYShift(element, ctx);
+        int yShift = getEffectiveDynamicsYShiftPx(element, ctx);
         renderHairpin(g2, ctx, anchorNote, endNote, false, 0, 0, yShift);
     }
 
     /**
      * Gets the Y shift for a dynamics element from layout result.
      */
-    private int getEffectiveDynamicsYShift(
+    private int getEffectiveDynamicsYShiftPx(
         @NotNull LineElement element,
         @NotNull ElementRenderContext ctx
     ) {
@@ -147,9 +147,9 @@ public class DynamicsRenderer extends BaseElementRenderer<LineElement> {
         }
 
         // Calculate shift from default position
-        int middleLineY = ctx.getMiddleLineY();
-        int defaultY = middleLineY - (int) (6 * LayoutStylesheet.NOTE_Y_OFFSET);
-        return (int) bounds.getTop() - defaultY;
+        double middleLineYSs = ctx.getMiddleLineYSs();
+        double defaultY = middleLineYSs - LayoutStylesheet.toPixels(6 * LayoutStylesheet.NOTE_Y_OFFSET);
+        return (int) (bounds.getTop() - defaultY);
     }
 
     /**
@@ -170,20 +170,20 @@ public class DynamicsRenderer extends BaseElementRenderer<LineElement> {
         @NotNull Note startNote,
         @NotNull Note endNote,
         boolean isCrescendo,
-        int x1Shift,
-        int x2Shift,
-        int yShift
+        double x1Shift,
+        double x2Shift,
+        double yShift
     ) {
-        int middleLineY = ctx.getMiddleLineY();
+        double middleLineYSs = ctx.getMiddleLineYSs();
 
-        int x1 = startNote.getXPos() + x1Shift;
-        int x2 = endNote.getXPos() + (int) CROTCHET_WIDTH + x2Shift;
+        int x1 = (int) (startNote.getXPos() + x1Shift);
+        int x2 = (int) (endNote.getXPos() + CROTCHET_WIDTH_PX + x2Shift);
 
         // Y positions above the staff: center 1 staff space above top staff line
-        // (top staff line = middleLineY - 4*NOTE_Y_OFFSET; 1 space = 2*NOTE_Y_OFFSET)
-        int yTop = middleLineY - (int) (7 * LayoutStylesheet.NOTE_Y_OFFSET) + yShift;
-        int yBottom = middleLineY - (int) (5 * LayoutStylesheet.NOTE_Y_OFFSET) + yShift;
-        int yMiddle = middleLineY - (int) (6 * LayoutStylesheet.NOTE_Y_OFFSET) + yShift;
+        // (top staff line = middleLineYSs - 4*NOTE_Y_OFFSET; 1 space = 2*NOTE_Y_OFFSET)
+        int yTop = (int) (middleLineYSs - LayoutStylesheet.toPixelsDouble(7 * LayoutStylesheet.NOTE_Y_OFFSET) + yShift);
+        int yBottom = (int) (middleLineYSs - LayoutStylesheet.toPixelsDouble(5 * LayoutStylesheet.NOTE_Y_OFFSET) + yShift);
+        int yMiddle = (int) (middleLineYSs - LayoutStylesheet.toPixelsDouble(6 * LayoutStylesheet.NOTE_Y_OFFSET) + yShift);
 
         try (var ignored = GraphicsState.save(g2, COLOR, STROKE)) {
             g2.setColor(NOTE_COLOR);

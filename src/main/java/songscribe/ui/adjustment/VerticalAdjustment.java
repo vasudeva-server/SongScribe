@@ -27,9 +27,7 @@ import org.jetbrains.annotations.Nullable;
 
 import songscribe.data.DynamicsInterval;
 import songscribe.data.IntervalSet;
-import songscribe.data.TupletInterval;
 import songscribe.music.Line;
-import songscribe.music.Note;
 import songscribe.ui.component.Score;
 import songscribe.ui.layout.AnnotationAttachment;
 import songscribe.ui.layout.BeatChangeAttachment;
@@ -378,7 +376,7 @@ public class VerticalAdjustment extends Adjustment {
                     );
                 }
 
-                for (var li = line.getTuplets().listIterator(); li.hasNext();) {
+                for (var li = line.getTuplets().listIterator(); li.hasNext(); ) {
                     var interval = li.next();
                     adjustRects.add(
                         new AdjustRect(
@@ -462,8 +460,8 @@ public class VerticalAdjustment extends Adjustment {
                         var anchorIdx = t.getAnchorNoteIndex();
                         var endIdx = t.getEndNoteIndex();
                         return anchorIdx >= 0 && endIdx >= 0 &&
-                               adjustRect.xIndex >= anchorIdx &&
-                               adjustRect.xIndex <= endIdx;
+                            adjustRect.xIndex >= anchorIdx &&
+                            adjustRect.xIndex <= endIdx;
                     })
                     .findFirst()
                     .orElse(null);
@@ -541,8 +539,8 @@ public class VerticalAdjustment extends Adjustment {
     }
 
     private void getAttributionAdjustRect(AdjustRect adjustRect) {
-        adjustRect.rect.x = score.getSheetWidth() - 8;
-        adjustRect.rect.y = score.getComposition().getAttributionStartY();
+        adjustRect.rect.x = score.getSheetWidthPx() - 8;
+        adjustRect.rect.y = (int) score.getComposition().getAttributionStartY();
     }
 
     private void getHeightAdjustRect(AdjustRect adjustRect) {

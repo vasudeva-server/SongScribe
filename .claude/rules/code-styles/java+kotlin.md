@@ -47,6 +47,51 @@ import org.jetbrains.annotations.Nullable;
 - Constants: CONSTANT_CASE (e.g., `HOT_SPOT`, `NORMAL_IMAGE_WIDTH`, `MIDI_PITCHES`)
 - Boolean fields/parameters: prefix with `is`, `has`, `can`, or `should`
 
+**Unit Suffixes (pixels vs staff spaces)**
+
+Any numeric value representing a spatial measurement MUST have a unit suffix:
+- `Ss` for staff spaces (the layout unit; 1 ss = distance between adjacent staff lines)
+- `Px` for pixels (device pixels; at default scale, 1 ss = 8 px)
+
+This applies to fields, parameters, local variables, method names, and constants:
+
+```java
+// Fields
+private double middleLineYSs;
+private int xOffsetPx;
+
+// Parameters
+void drawStem(double xSs, double topSs, double bottomSs)
+
+// Local variables
+double noteXPx = scaleContext.toPixels(noteXSs);
+
+// Methods
+double getMiddleLineYSs()
+int getMiddleLineYPx()
+
+// Constants
+public static final double BEAM_THICKNESS_SS = 0.5;  // 4px
+public static final double LYRICS_BASELINE_OFFSET_SS = 1.25;  // 10px
+```
+
+The `// NNpx` comment on constants is retained as a convenience for human readers, but the suffix is the authoritative indicator.
+
+Dimensionless values (counts, ratios, indices, staff positions) do not get a suffix:
+```java
+int staffLineCount;           // a count, not a measurement
+double compressionRatio;      // a ratio
+int staffPosition;            // an index (-4 to +4), not a spatial distance
+```
+
+When a method converts between units, both units should appear in the name:
+```java
+double toPixels(double ss)    // ScaleContext — input is ss, output is px
+double fromPixels(double px)  // ScaleContext — input is px, output is ss
+```
+
+Method names and field names can be bulk-renamed using the Serena `rename_symbol` tool, which updates all references automatically. Update javadoc after renaming. Parameters and local variables are scoped to their method body, so renaming them requires no cross-file search: read the method body with `jet_brains_find_symbol(include_body=true)` and edit in place.
+
 **Constants**
 
 - Use `public static final` for class constants

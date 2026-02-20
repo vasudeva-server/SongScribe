@@ -155,6 +155,6 @@ public class UnderLyricsComponent extends ScoreComponent {
         var lineHeight = metrics.getHeight();
         var height = lineHeight * lines.length;
 
-        return new Dimension(composition.getLineWidth(), height);
+        return new Dimension((int) composition.getLineWidth(), height);
     }
 }

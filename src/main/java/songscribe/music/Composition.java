@@ -124,13 +124,13 @@ public final class Composition {
     // When the title is set, it is wrapped into lines and stored here
     private final ArrayList<String> titleLines = new ArrayList<>();
 
-    private int topPadding = 0;
+    private double topPadding = 0;
     private boolean userSetTopPadding = false;
-    private int attributionStartY;
-    private int rowHeightAdjustment = 0;
+    private double attributionStartY;
+    private double rowHeightAdjustment = 0;
 
-    // The width of a staff line in pixels
-    private int lineWidth = Score.PAGE_CONTENT_SIZE.width;
+    // The width of a staff line in staff-space units
+    private double lineWidth = Score.PAGE_CONTENT_SIZE.width;
 
     // The lines of the score
     private final ArrayList<Line> lines = new ArrayList<>();
@@ -164,6 +164,9 @@ public final class Composition {
     private int formatVersion = 1;
 
     private final IMainFrame mainFrame;
+
+    /** Whether the user has already been notified about short-ă replacement in this session. */
+    private boolean shortANotified;
 
     public Composition(@NotNull IMainFrame mainFrame) {
         this.mainFrame = mainFrame;
@@ -440,9 +443,12 @@ public final class Composition {
         var strip = Prefs.getInstance().getBoolean("stripShortA");
 
         if (strip && SHORT_A_PATTERN.matcher(text).find()) {
-            mainFrame.showInfoMessage(
-                "The characters “ă” and “Ă” have been replaced with “a” and “A”."
-            );
+            if (!shortANotified) {
+                shortANotified = true;
+                mainFrame.showInfoMessage(
+                    "The characters “ă” and “Ă” have been replaced with “a” and “A”."
+                );
+            }
 
             setModified(true);
             return text.replace("ă", "a").replace("Ă", "A");
@@ -507,8 +513,8 @@ public final class Composition {
         if (line.getTempoChangeYPos() == 0) {
             line.setTempoChangeYPos(
                 (lineIndex == 0)
-                    ? LayoutStylesheet.TEMPO_DEFAULT_Y_FIRST_LINE
-                    : LayoutStylesheet.TEMPO_DEFAULT_Y_OTHER_LINES
+                    ? LayoutStylesheet.toPixels(LayoutStylesheet.TEMPO_DEFAULT_Y_FIRST_LINE)
+                    : LayoutStylesheet.toPixels(LayoutStylesheet.TEMPO_DEFAULT_Y_OTHER_LINES)
             );
         }
 
@@ -656,21 +662,21 @@ public final class Composition {
         ));
     }
 
-    public void setTopPadding(int padding, boolean setByUser) {
+    public void setTopPadding(double padding, boolean setByUser) {
         topPadding = padding;
         userSetTopPadding = userSetTopPadding || setByUser;
         setModified(true);
     }
 
-    public int getTopPadding() {
+    public double getTopPadding() {
         return topPadding;
     }
 
-    public int getAttributionStartY() {
+    public double getAttributionStartY() {
         return attributionStartY;
     }
 
-    public void setAttributionStartY(int attributionStartY) {
+    public void setAttributionStartY(double attributionStartY) {
         this.attributionStartY = attributionStartY;
     }
 
@@ -682,7 +688,7 @@ public final class Composition {
      * proper block flow layout. This method will be removed when attributionStartY
      * is migrated to an offset-based system.
      */
-    private int calculateAttributionStartY() {
+    private double calculateAttributionStartY() {
         // We want the attribution to start half of the song title font size below the song title
         var lineCount = Utils.lineCount(title);
         var lineHeight = MyFontUtils.getFontMetrics(titleFont).getHeight();
@@ -701,7 +707,7 @@ public final class Composition {
         if (!userSetTopPadding) {
             topPadding = (((2 * titleFont.getSize()) +
                 (Utils.lineCount(attribution) * attributionFont.getSize())) -
-                (2 * LayoutStylesheet.STAFF_SPACE));
+                LayoutStylesheet.toPixels(2.0));
         }
     }
 
@@ -709,16 +715,16 @@ public final class Composition {
         return userSetTopPadding;
     }
 
-    public int getRowHeightAdjustment() {
+    public double getRowHeightAdjustment() {
         return rowHeightAdjustment;
     }
 
-    public void setRowHeightAdjustment(int rowHeightAdjustment) {
+    public void setRowHeightAdjustment(double rowHeightAdjustment) {
         this.rowHeightAdjustment = rowHeightAdjustment;
         setModified(true);
     }
 
-    public int getLineWidth() {
+    public double getLineWidth() {
         return lineWidth;
     }
 
@@ -726,7 +732,7 @@ public final class Composition {
      * Do not call this directly unless you know what you are doing.
      * Instead, use score.setLineWidth.
      */
-    public void setLineWidth(int lineWidth) {
+    public void setLineWidth(double lineWidth) {
         if (this.lineWidth == lineWidth) {
             return;
         }

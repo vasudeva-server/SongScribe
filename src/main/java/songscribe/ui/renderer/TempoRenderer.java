@@ -203,10 +203,10 @@ public class TempoRenderer extends BaseElementRenderer<Note> {
             return;
         }
 
-        int middleLineY = ctx.getMiddleLineY();
+        double middleLineYSs = ctx.getMiddleLineYSs();
 
         // Calculate Y position (above the staff)
-        int yPos = getEffectiveTempoChangeYPos(note, ctx);
+        int yPos = getEffectiveTempoChangeYPosSs(note, ctx);
 
         // Build tempo text
         var tempoBuilder = new StringBuilder(25);
@@ -297,7 +297,7 @@ public class TempoRenderer extends BaseElementRenderer<Note> {
      * Converts from layout coordinates (relative to middleLineY=0) to
      * component coordinates (relative to component top).
      */
-    private int getEffectiveTempoChangeYPos(
+    private int getEffectiveTempoChangeYPosSs(
         @NotNull Note note,
         @NotNull ElementRenderContext ctx
     ) {
@@ -314,7 +314,7 @@ public class TempoRenderer extends BaseElementRenderer<Note> {
         }
 
         // Convert from layout coordinates to component coordinates
-        int componentY = layoutYToComponentY(bounds, ctx);
+        int componentY = (int) layoutYToComponentYSs(bounds, ctx);
 
         return componentY;
     }

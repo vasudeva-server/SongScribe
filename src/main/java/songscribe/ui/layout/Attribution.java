@@ -53,10 +53,10 @@ public class Attribution extends LineElement {
     public Attribution(@NotNull String text) {
         this.text = text;
         setMargin(
-            LayoutStylesheet.px(LayoutStylesheet.ATTRIBUTION_PADDING_MU),
-            LayoutStylesheet.px(LayoutStylesheet.ATTRIBUTION_PADDING_MU),
-            LayoutStylesheet.px(LayoutStylesheet.ATTRIBUTION_MARGIN_BOTTOM_MU),
-            LayoutStylesheet.px(LayoutStylesheet.ATTRIBUTION_PADDING_MU)
+            LayoutStylesheet.toPixels(LayoutStylesheet.ATTRIBUTION_PADDING),
+            LayoutStylesheet.toPixels(LayoutStylesheet.ATTRIBUTION_PADDING),
+            LayoutStylesheet.toPixels(LayoutStylesheet.ATTRIBUTION_MARGIN_BOTTOM),
+            LayoutStylesheet.toPixels(LayoutStylesheet.ATTRIBUTION_PADDING)
         );
     }
 

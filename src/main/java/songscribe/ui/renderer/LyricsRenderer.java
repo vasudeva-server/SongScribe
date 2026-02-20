@@ -20,6 +20,9 @@
 
 package songscribe.ui.renderer;
 
+import static songscribe.ui.renderer.GraphicsState.Property.FONT;
+import static songscribe.ui.renderer.GraphicsState.Property.STROKE;
+
 import java.awt.*;
 import java.awt.geom.*;
 import java.util.ArrayList;
@@ -27,8 +30,6 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import org.jetbrains.annotations.NotNull;
-
-import static songscribe.ui.renderer.GraphicsState.Property.*;
 
 import songscribe.data.Interval;
 import songscribe.data.IntervalSet;
@@ -74,7 +75,7 @@ public class LyricsRenderer {
     /**
      * Width of the hyphen.
      */
-    private static final float HYPHEN_WIDTH = 7f;
+    private static final float HYPHEN_WIDTH_PX = 7f;
 
     /**
      * Stroke for extender lines.
@@ -97,13 +98,13 @@ public class LyricsRenderer {
      * Cached max descent from lyrics font metrics.
      * Initialized on first render call.
      */
-    private int lyricsMaxDescent = 0;
+    private int lyricsMaxDescentPx = 0;
 
     /**
      * Offset from lyrics baseline to dash Y position.
      * Calculated based on x-height of lyrics font.
      */
-    private float dashOffset = 0;
+    private float dashOffsetPx = 0;
 
     // ==========================================================================
     // Constructor
@@ -172,7 +173,7 @@ public class LyricsRenderer {
     /**
      * Gets the Y position for lyrics from layout result.
      */
-    private int getEffectiveLyricsYPos(
+    private int getEffectiveLyricsYPosPx(
         @NotNull Line line,
         @NotNull ElementRenderContext ctx
     ) {
@@ -195,7 +196,7 @@ public class LyricsRenderer {
      * Initializes font metrics on first call.
      */
     private void initializeMetrics(@NotNull Graphics2D g2, @NotNull ElementRenderContext ctx) {
-        if (lyricsMaxDescent != 0) {
+        if (lyricsMaxDescentPx != 0) {
             return;
         }
 
@@ -205,11 +206,11 @@ public class LyricsRenderer {
             g2.setFont(font);
             var metrics = g2.getFontMetrics(font);
 
-            lyricsMaxDescent = metrics.getMaxDescent();
+            lyricsMaxDescentPx = metrics.getMaxDescent();
 
             // Calculate hyphen offset based on x-height
             var halfHyphenHeight = HYPHEN_STROKE.getLineWidth() / 2;
-            dashOffset = MyFontUtils.getXHeight(g2) - halfHyphenHeight;
+            dashOffsetPx = MyFontUtils.getXHeight(g2) - halfHyphenHeight;
         }
     }
 
@@ -230,7 +231,7 @@ public class LyricsRenderer {
         var composition = ctx.getComposition();
 
         // Calculate lyrics Y position
-        var lyricsY = getEffectiveLyricsYPos(line, ctx);
+        var lyricsY = getEffectiveLyricsYPosPx(line, ctx);
 
         var font = composition.getLyricsFont();
         g2.setFont(font);
@@ -238,13 +239,13 @@ public class LyricsRenderer {
 
         var syllableWidth = 0;
         var syllable = note.properties.syllable;
-        var dashY = lyricsY - dashOffset;
+        var dashY = lyricsY - dashOffsetPx;
 
         // Draw syllable text (if not underscore placeholder)
         if (syllable != null && !syllable.equals(Constants.UNDERSCORE)) {
             syllableWidth = metrics.stringWidth(syllable);
             var layoutResult = ctx.getLayoutResult();
-            var noteX = (layoutResult != null) ? layoutResult.getNoteX(note) : note.getXPos();
+            var noteX = (layoutResult != null) ? layoutResult.getNoteXSs(note) : note.getXPos();
             var lyricsX = (int) ((noteX + Note.HOT_SPOT.x) -
                 (syllableWidth / 2) +
                 note.getSyllableMovement());
@@ -258,7 +259,7 @@ public class LyricsRenderer {
                 try (var ignored = GraphicsState.save(g2, STROKE)) {
                     g2.setStroke(HYPHEN_STROKE);
                     g2.draw(new Line2D.Float(
-                        (float) (lyricsX - HYPHEN_WIDTH - 10),
+                        (float) (lyricsX - HYPHEN_WIDTH_PX - 10),
                         dashY,
                         (float) (lyricsX - 10),
                         dashY
@@ -310,10 +311,10 @@ public class LyricsRenderer {
         drawnIndex = endIndex;
 
         // Calculate start X position
-        var startX = calculateRelationStartX(line, noteIndex, note, syllableWidth);
+        var startX = calculateRelationStartXPx(line, noteIndex, note, syllableWidth);
 
         // Calculate end X position
-        var endX = calculateRelationEndX(
+        var endX = calculateRelationEndXPx(
             g2, line, composition, noteIndex, endIndex, relation, startX
         );
 
@@ -368,7 +369,7 @@ public class LyricsRenderer {
     /**
      * Calculates the start X position for a relation line.
      */
-    private int calculateRelationStartX(
+    private int calculateRelationStartXPx(
         @NotNull Line line,
         int noteIndex,
         @NotNull Note note,
@@ -390,7 +391,7 @@ public class LyricsRenderer {
     /**
      * Calculates the end X position for a relation line.
      */
-    private int calculateRelationEndX(
+    private int calculateRelationEndXPx(
         @NotNull Graphics2D g2,
         @NotNull Line line,
         @NotNull songscribe.music.Composition composition,
@@ -402,8 +403,8 @@ public class LyricsRenderer {
         // At end of line
         if (endIndex == line.noteCount()) {
             return (relation == Note.SyllableRelation.ONE_DASH)
-                ? startX + (int) (HYPHEN_WIDTH * 2f)
-                : composition.getLineWidth();
+                ? startX + (int) (HYPHEN_WIDTH_PX * 2f)
+                : (int) composition.getLineWidth();
         }
 
         var endNote = line.getNote(endIndex);
@@ -414,7 +415,7 @@ public class LyricsRenderer {
 
         if (relation == Note.SyllableRelation.ONE_DASH &&
             endNote.properties.syllable.isEmpty()) {
-            return startX + (int) (HYPHEN_WIDTH * 2f);
+            return startX + (int) (HYPHEN_WIDTH_PX * 2f);
         }
 
         // End before the next syllable
@@ -507,9 +508,9 @@ public class LyricsRenderer {
                 : note.getXPos() + note.getSyllableRelationMovement();
 
             g2.draw(new Line2D.Float(
-                centerX - (HYPHEN_WIDTH / 2f),
+                centerX - (HYPHEN_WIDTH_PX / 2f),
                 dashY,
-                centerX + (HYPHEN_WIDTH / 2f),
+                centerX + (HYPHEN_WIDTH_PX / 2f),
                 dashY
             ));
         }

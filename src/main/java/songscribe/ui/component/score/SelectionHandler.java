@@ -25,11 +25,11 @@ import java.awt.event.*;
 
 import org.jetbrains.annotations.NotNull;
 
-import songscribe.music.NoteType;
 import songscribe.music.Note;
+import songscribe.music.NoteType;
 import songscribe.ui.Mode;
 import songscribe.ui.component.Score;
-import songscribe.ui.layout.LayoutStylesheet;
+import songscribe.ui.layout2.ScaleContext;
 import songscribe.ui.playback.MidiController;
 import songscribe.ui.playback.PlayNoteThread;
 
@@ -229,8 +229,13 @@ class SelectionHandler {
             );
         }
 
-        var noteY = lc.getMiddleLineY() + (int) (note.getYPos() * Score.NOTE_Y_OFFSET);
-        out.translate(note.getXPos(), noteY - Note.HOT_SPOT.y);
+        // Get note X from LayoutResult (staff-space) and convert to pixels, so the
+        // hit rect is in pixel coordinates consistent with the mouse-event dragRect.
+        var layoutResult = lc.getLayoutResult();
+        var noteXss = layoutResult != null ? layoutResult.getNoteXSs(note) : 0.0;
+        var noteXpx = (int) Math.round(ScaleContext.getInstance().toPixels(noteXss));
+        var noteY = lc.getMiddleLineYPx() + (int) (note.getStaffPosition() * Score.NOTE_Y_OFFSET_PX);
+        out.translate(noteXpx, noteY - Note.HOT_SPOT.y);
     }
 
     private void calculateLineSelectionFromClick(@NotNull Point clickPoint) {
@@ -254,7 +259,9 @@ class SelectionHandler {
         }
 
         // No note was hit — check proximity to staff lines for line selection
-        if (Math.abs(clickPoint.y - lc.getMiddleLineY()) <= 2 * LayoutStylesheet.STAFF_SPACE) {
+        var clickYss = ScaleContext.getInstance().fromPixels(clickPoint.y);
+
+        if (Math.abs(clickYss - lc.getMiddleLineYSs()) <= 2.0) {
             lineSelectionState.setLineSelected(true);
         }
     }

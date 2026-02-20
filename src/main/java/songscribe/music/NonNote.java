@@ -37,7 +37,8 @@ import org.jetbrains.annotations.Nullable;
  */
 public class NonNote extends Note {
 
-    NonNote() {}
+    NonNote() {
+    }
 
     public NonNote(NoteType noteType) {
         super(noteType);
@@ -53,7 +54,7 @@ public class NonNote extends Note {
     }
 
     @Override
-    public int getYPos() {
+    public int getStaffPosition() {
         return getNoteType().getDefaultYPos();
     }
 

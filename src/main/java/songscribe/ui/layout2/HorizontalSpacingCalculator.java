@@ -42,7 +42,7 @@ import songscribe.ui.layout.BeamGroup;
  * <p>
  * Algorithm:
  * <ol>
- *   <li>Calculate first note position (11.5 MU from clef/key signature right extent)</li>
+ *   <li>Calculate first note position (clef + key signature + offset, all in ss)</li>
  *   <li>For each subsequent column:
  *     <ul>
  *       <li>Calculate minimum spacing based on previous column's right extent</li>
@@ -93,8 +93,8 @@ public class HorizontalSpacingCalculator {
         var beamGroupRanges = identifyBeamGroupRanges(columns);
 
         // Calculate first note position
-        double firstX = calculateFirstNoteX(line);
-        columns.get(0).setX(firstX);
+        double firstXSs = calculateFirstNoteXSs(line);
+        columns.get(0).setXSs(firstXSs);
 
         // Process remaining columns
         for (var i = 1; i < columns.size(); i++) {
@@ -104,15 +104,14 @@ public class HorizontalSpacingCalculator {
             if (beamGroupRange != null) {
                 // Process entire beam group
                 var prevColumn = columns.get(i - 1);
-                handleBeamGroup(columns, beamGroupRange, prevColumn.getX());
+                handleBeamGroup(columns, beamGroupRange, prevColumn.getXSs());
                 i = beamGroupRange.end; // Skip to end of beam group
-            }
-            else {
+            } else {
                 // Normal column-to-column spacing
                 var prevColumn = columns.get(i - 1);
                 var currColumn = columns.get(i);
-                double nextX = calculateNextColumnX(prevColumn, currColumn);
-                currColumn.setX(nextX);
+                double nextXSs = calculateNextColumnXSs(prevColumn, currColumn);
+                currColumn.setXSs(nextXSs);
             }
         }
     }
@@ -125,10 +124,10 @@ public class HorizontalSpacingCalculator {
      * Calculates the X position of the first note in a line.
      *
      * @param line The line (for key signature info)
-     * @return X position in pixels
+     * @return X position in ss
      */
-    private double calculateFirstNoteX(@NotNull Line line) {
-        return LayoutConstants.calculateFirstNoteX(line.getKeyAccidentalCount());
+    private double calculateFirstNoteXSs(@NotNull Line line) {
+        return LayoutConstants.calculateFirstNoteXSs(line.getKeyAccidentalCount());
     }
 
     // ==========================================================================
@@ -145,42 +144,42 @@ public class HorizontalSpacingCalculator {
      * @param currColumn Current column
      * @return X position for current column
      */
-    public static double calculateNextColumnX(
-            @NotNull NoteColumn prevColumn,
-            @NotNull NoteColumn currColumn) {
+    public static double calculateNextColumnXSs(
+        @NotNull NoteColumn prevColumn,
+        @NotNull NoteColumn currColumn) {
 
         // Calculate minimum spacing (from previous column's right extent)
-        double minimumSpacing = calculateMinimumColumnSpacing(prevColumn, currColumn);
+        double minimumSpacingSs = calculateMinimumColumnSpacingSs(prevColumn, currColumn);
 
         // Calculate lyric-driven spacing requirement
-        double lyricSpacing = calculateLyricSpacing(prevColumn, currColumn);
+        double lyricSpacingSs = calculateLyricSpacingSs(prevColumn, currColumn);
 
         // If no lyrics, use default spacing; otherwise use lyric spacing
-        double requiredSpacing;
-        if (lyricSpacing > 0) {
-            requiredSpacing = Math.max(minimumSpacing, lyricSpacing);
+        double requiredSpacingSs;
+        if (lyricSpacingSs > 0) {
+            requiredSpacingSs = Math.max(minimumSpacingSs, lyricSpacingSs);
         } else {
             // No lyrics - use default comfortable spacing
-            double defaultSpacing = calculateDefaultColumnSpacing(prevColumn, currColumn);
-            requiredSpacing = Math.max(minimumSpacing, defaultSpacing);
+            double defaultSpacingSs = calculateDefaultColumnSpacingSs(prevColumn, currColumn);
+            requiredSpacingSs = Math.max(minimumSpacingSs, defaultSpacingSs);
         }
 
         // Calculate tentative X position
-        double nextX = prevColumn.getX() + requiredSpacing;
+        double nextXSs = prevColumn.getXSs() + requiredSpacingSs;
 
         // Check accidental clearance and push right if needed
-        if (needsAccidentalPush(prevColumn, currColumn, nextX)) {
-            double accidentalClearance = LayoutConstants.px(LayoutConstants.ACCIDENTAL_CLEARANCE);
-            double prevRightEdge = prevColumn.getRightEdgeX();
-            double currAccidentalLeft = nextX + currColumn.getLeftExtent();
-            double neededPush = prevRightEdge + accidentalClearance - currAccidentalLeft;
+        if (needsAccidentalPush(prevColumn, currColumn, nextXSs)) {
+            double accidentalClearanceSs = LayoutConstants.ACCIDENTAL_CLEARANCE_SS;
+            double prevRightEdgeSs = prevColumn.getRightEdgeXSs();
+            double currAccidentalLeftSs = nextXSs + currColumn.getLeftExtentSs();
+            double neededPushSs = prevRightEdgeSs + accidentalClearanceSs - currAccidentalLeftSs;
 
-            if (neededPush > 0) {
-                nextX += neededPush;
+            if (neededPushSs > 0) {
+                nextXSs += neededPushSs;
             }
         }
 
-        return nextX;
+        return nextXSs;
     }
 
     /**
@@ -188,16 +187,15 @@ public class HorizontalSpacingCalculator {
      *
      * @param prevColumn Previous column
      * @param currColumn Current column
-     * @return Minimum spacing in pixels
+     * @return Minimum spacing in ss
      */
-    private static double calculateMinimumColumnSpacing(
-            @NotNull NoteColumn prevColumn,
-            @NotNull NoteColumn currColumn) {
+    private static double calculateMinimumColumnSpacingSs(
+        @NotNull NoteColumn prevColumn,
+        @NotNull NoteColumn currColumn) {
 
         // Distance from previous column's center to current column's center
         // = previous column's right extent + MIN_COLUMN_GAP + abs(current column's left extent)
-        double gap = LayoutConstants.px(LayoutConstants.MIN_COLUMN_GAP);
-        return prevColumn.getRightExtent() + gap + Math.abs(currColumn.getLeftExtent());
+        return prevColumn.getRightExtentSs() + LayoutConstants.MIN_COLUMN_GAP_SS + Math.abs(currColumn.getLeftExtentSs());
     }
 
     /**
@@ -207,21 +205,20 @@ public class HorizontalSpacingCalculator {
      *
      * @param prevColumn Previous column
      * @param currColumn Current column
-     * @return Lyric spacing in pixels, or 0 if no syllables
+     * @return Lyric spacing in ss, or 0 if no syllables
      */
-    private static double calculateLyricSpacing(
-            @NotNull NoteColumn prevColumn,
-            @NotNull NoteColumn currColumn) {
+    private static double calculateLyricSpacingSs(
+        @NotNull NoteColumn prevColumn,
+        @NotNull NoteColumn currColumn) {
 
         if (!prevColumn.hasSyllable() && !currColumn.hasSyllable()) {
             return 0;
         }
 
-        double prevHalfWidth = prevColumn.hasSyllable() ? prevColumn.getSyllableWidth() / 2.0 : 0;
-        double currHalfWidth = currColumn.hasSyllable() ? currColumn.getSyllableWidth() / 2.0 : 0;
-        double minGap = LayoutConstants.px(LayoutConstants.MIN_SYLLABLE_GAP);
+        double prevHalfWidthSs = prevColumn.hasSyllable() ? prevColumn.getSyllableWidthSs() / 2.0 : 0;
+        double currHalfWidthSs = currColumn.hasSyllable() ? currColumn.getSyllableWidthSs() / 2.0 : 0;
 
-        return prevHalfWidth + minGap + currHalfWidth;
+        return prevHalfWidthSs + LayoutConstants.MIN_SYLLABLE_GAP_SS + currHalfWidthSs;
     }
 
     /**
@@ -231,14 +228,13 @@ public class HorizontalSpacingCalculator {
      *
      * @param prevColumn Previous column
      * @param currColumn Current column
-     * @return Default spacing in pixels
+     * @return Default spacing in ss
      */
-    private static double calculateDefaultColumnSpacing(
-            @NotNull NoteColumn prevColumn,
-            @NotNull NoteColumn currColumn) {
+    private static double calculateDefaultColumnSpacingSs(
+        @NotNull NoteColumn prevColumn,
+        @NotNull NoteColumn currColumn) {
 
-        double gap = LayoutConstants.px(LayoutConstants.DEFAULT_COLUMN_GAP);
-        return prevColumn.getRightExtent() + gap + Math.abs(currColumn.getLeftExtent());
+        return prevColumn.getRightExtentSs() + LayoutConstants.DEFAULT_COLUMN_GAP_SS + Math.abs(currColumn.getLeftExtentSs());
     }
 
     /**
@@ -246,13 +242,13 @@ public class HorizontalSpacingCalculator {
      *
      * @param prevColumn Previous column
      * @param currColumn Current column
-     * @param currX      Tentative X position for current column
+     * @param currXSs    Tentative X position for current column in staff spaces
      * @return true if accidental clearance would be violated
      */
     private static boolean needsAccidentalPush(
-            @NotNull NoteColumn prevColumn,
-            @NotNull NoteColumn currColumn,
-            double currX) {
+        @NotNull NoteColumn prevColumn,
+        @NotNull NoteColumn currColumn,
+        double currXSs) {
 
         // Only check if current note has an accidental
         if (currColumn.getNote().getAccidental() == Note.Accidental.NONE) {
@@ -304,7 +300,7 @@ public class HorizontalSpacingCalculator {
 
             // Check if we've already processed this beam group
             boolean alreadyProcessed = ranges.stream()
-                    .anyMatch(range -> range.group == beamGroup);
+                .anyMatch(range -> range.group == beamGroup);
 
             if (alreadyProcessed) {
                 continue;
@@ -317,8 +313,7 @@ public class HorizontalSpacingCalculator {
             for (var j = i + 1; j < columns.size(); j++) {
                 if (columns.get(j).getBeamGroup() == beamGroup) {
                     end = j;
-                }
-                else {
+                } else {
                     break;
                 }
             }
@@ -337,8 +332,8 @@ public class HorizontalSpacingCalculator {
      * @return BeamGroupRange if found, null otherwise
      */
     private BeamGroupRange findBeamGroupStartingAt(
-            @NotNull List<BeamGroupRange> ranges,
-            int index) {
+        @NotNull List<BeamGroupRange> ranges,
+        int index) {
 
         for (var range : ranges) {
             if (range.start == index) {
@@ -362,12 +357,12 @@ public class HorizontalSpacingCalculator {
      *
      * @param columns        All columns
      * @param range          Beam group range
-     * @param prevColumnX    X position of the column before the beam group
+     * @param prevColumnXSs  X position in staff spaces of the column before the beam group
      */
     private void handleBeamGroup(
-            @NotNull List<NoteColumn> columns,
-            @NotNull BeamGroupRange range,
-            double prevColumnX) {
+        @NotNull List<NoteColumn> columns,
+        @NotNull BeamGroupRange range,
+        double prevColumnXSs) {
 
         var beamColumns = columns.subList(range.start, range.end + 1);
         int columnCount = beamColumns.size();
@@ -379,71 +374,69 @@ public class HorizontalSpacingCalculator {
         // Calculate where first column of beam group should go
         var prevColumn = columns.get(range.start - 1);
         var firstBeamColumn = beamColumns.get(0);
-        double startX = calculateNextColumnX(prevColumn, firstBeamColumn);
+        double startXSs = calculateNextColumnXSs(prevColumn, firstBeamColumn);
 
         if (columnCount == 1) {
             // Single column "beam group" - just use normal spacing
-            beamColumns.get(0).setX(startX);
+            beamColumns.get(0).setXSs(startXSs);
             return;
         }
 
         // Step 1: Calculate tight internal spacing
-        double tightGap = LayoutConstants.px(LayoutConstants.BEAM_GROUP_MIN_INTERNAL_GAP);
+        double tightGapSs = LayoutConstants.BEAM_GROUP_MIN_INTERNAL_GAP_SS;
         var tightPositions = new ArrayList<Double>();
-        double currentX = startX;
+        double currentXSs = startXSs;
 
-        tightPositions.add(currentX);
+        tightPositions.add(currentXSs);
 
         for (var i = 1; i < columnCount; i++) {
             var prev = beamColumns.get(i - 1);
             var curr = beamColumns.get(i);
 
             // Use tight gap, ignoring syllables
-            double spacing = prev.getRightExtent() + tightGap + Math.abs(curr.getLeftExtent());
-            currentX += spacing;
-            tightPositions.add(currentX);
+            double spacingSs = prev.getRightExtentSs() + tightGapSs + Math.abs(curr.getLeftExtentSs());
+            currentXSs += spacingSs;
+            tightPositions.add(currentXSs);
         }
 
-        double tightTotalWidth = currentX - startX;
+        double tightTotalWidthSs = currentXSs - startXSs;
 
         // Step 2: Calculate lyric-driven width requirement
-        double lyricRequiredWidth = 0;
+        double lyricRequiredWidthSs = 0;
 
         for (var i = 1; i < columnCount; i++) {
             var prev = beamColumns.get(i - 1);
             var curr = beamColumns.get(i);
-            double lyricSpacing = calculateLyricSpacing(prev, curr);
+            double lyricSpacingSs = calculateLyricSpacingSs(prev, curr);
 
-            if (lyricSpacing > 0) {
-                lyricRequiredWidth += lyricSpacing;
-            }
-            else {
+            if (lyricSpacingSs > 0) {
+                lyricRequiredWidthSs += lyricSpacingSs;
+            } else {
                 // No lyrics, use minimum spacing
-                lyricRequiredWidth += calculateMinimumColumnSpacing(prev, curr);
+                lyricRequiredWidthSs += calculateMinimumColumnSpacingSs(prev, curr);
             }
         }
 
         // Step 3: Determine final positions
-        if (lyricRequiredWidth <= tightTotalWidth) {
+        if (lyricRequiredWidthSs <= tightTotalWidthSs) {
             // Tight spacing is sufficient
             for (var i = 0; i < columnCount; i++) {
-                beamColumns.get(i).setX(tightPositions.get(i));
+                beamColumns.get(i).setXSs(tightPositions.get(i));
             }
-        }
-        else {
+        } else {
             // Need to expand - distribute expansion evenly
-            double expansionNeeded = lyricRequiredWidth - tightTotalWidth;
-            double expansionPerGap = expansionNeeded / (columnCount - 1);
+            double expansionNeededSs = lyricRequiredWidthSs - tightTotalWidthSs;
+            double expansionPerGapSs = expansionNeededSs / (columnCount - 1);
 
-            beamColumns.get(0).setX(startX);
-            currentX = startX;
+            beamColumns.get(0).setXSs(startXSs);
+            currentXSs = startXSs;
 
             for (var i = 1; i < columnCount; i++) {
-                double tightSpacing = tightPositions.get(i) - tightPositions.get(i - 1);
-                double expandedSpacing = tightSpacing + expansionPerGap;
+                double tightSpacingSs = tightPositions.get(i) - tightPositions.get(i - 1);
+                double expandedSpacingSs = tightSpacingSs + expansionPerGapSs;
 
-                currentX += expandedSpacing;
-                beamColumns.get(i).setX(currentX);
+                currentXSs += expandedSpacingSs;
+                beamColumns.get(i).setXSs(currentXSs);
             }
         }
     }

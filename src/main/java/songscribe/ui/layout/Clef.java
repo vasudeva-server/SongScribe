@@ -47,7 +47,7 @@ public class Clef extends LineElement {
      */
     public Clef() {
         // Default margin from clef to key signature
-        setMarginRight(LayoutStylesheet.px(1.0));
+        setMarginRight(LayoutStylesheet.toPixels(0.5));
     }
 
     /**

@@ -116,11 +116,11 @@ public class Tempo {
 
         static {
             MINIM_DOTTED.note.setDotCount(1);
-            MINIM_DOTTED.note.setYPos(1);
+            MINIM_DOTTED.note.setStaffPosition(1);
             CROTCHET_DOTTED.note.setDotCount(1);
-            CROTCHET_DOTTED.note.setYPos(1);
+            CROTCHET_DOTTED.note.setStaffPosition(1);
             QUAVER_DOTTED.note.setDotCount(1);
-            QUAVER_DOTTED.note.setYPos(1);
+            QUAVER_DOTTED.note.setStaffPosition(1);
         }
 
         Type(Note note) {

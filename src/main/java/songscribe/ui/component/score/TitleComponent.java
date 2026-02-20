@@ -41,7 +41,7 @@ public class TitleComponent extends ScoreComponent {
      */
     public TitleComponent() {
         super();
-        setMarginBottom(LayoutStylesheet.px(LayoutStylesheet.TITLE_MARGIN_BOTTOM_MU));
+        setMarginBottom(LayoutStylesheet.toPixels(LayoutStylesheet.TITLE_MARGIN_BOTTOM));
     }
 
     @Override
@@ -84,7 +84,7 @@ public class TitleComponent extends ScoreComponent {
         }
 
         // Center the title horizontally within the component
-        var lineWidth = composition.getLineWidth();
+        var lineWidth = (int) composition.getLineWidth();
         var startX = (lineWidth - actualMaxWidth) / 2;
 
             // Draw each line
@@ -128,6 +128,6 @@ public class TitleComponent extends ScoreComponent {
         var lineHeight = metrics.getHeight();
         var height = lineHeight * titleLines.size();
 
-        return new Dimension(composition.getLineWidth(), height + marginBottom);
+        return new Dimension((int) composition.getLineWidth(), height + marginBottom);
     }
 }

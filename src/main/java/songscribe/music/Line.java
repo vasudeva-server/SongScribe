@@ -34,6 +34,7 @@ import javax.sound.midi.Track;
 import org.jetbrains.annotations.NotNull;
 
 import kotlin.Pair;
+import songscribe.data.BeamInterval;
 import songscribe.data.DynamicsInterval;
 import songscribe.data.EndingInterval;
 import songscribe.data.Interval;
@@ -59,7 +60,7 @@ public class Line {
     private static final int GRACE_QUAVER_DURATION = PPQ / 8;
     private static final int NOTE_VELOCITY = 98;
     private static final int ACCENTED_NOTE_VELOCITY = 127;
-    private final IntervalSet<Interval> beamings = new IntervalSet<>();
+    private final IntervalSet<BeamInterval> beamings = new IntervalSet<>();
     private final IntervalSet<Interval> ties = new IntervalSet<>();
     private final IntervalSet<TupletInterval> tuplets = new IntervalSet<>();
     private final IntervalSet<EndingInterval> firstSecondEndings = new IntervalSet<>();
@@ -125,7 +126,7 @@ public class Line {
      *             Retained for backward compatibility with legacy documents.
      */
     @Deprecated
-    private int beatChangeYPos = LayoutStylesheet.BEAT_CHANGE_DEFAULT_Y;
+    private int beatChangeYPos = LayoutStylesheet.toPixels(LayoutStylesheet.BEAT_CHANGE_DEFAULT_Y);
 
     /**
      * Y offset for lyrics display (default: 50, below staff).
@@ -133,7 +134,7 @@ public class Line {
      * Note: This field is still in active use for line-level lyrics positioning.
      * Per-instance lyrics offsets are not yet implemented.
      */
-    private int lyricsYPos = LayoutStylesheet.LYRICS_DEFAULT_Y;
+    private double lyricsYPos = LayoutStylesheet.LYRICS_DEFAULT_Y;
 
     /**
      * Y offset for first/second ending display (default: -25, above staff).
@@ -142,7 +143,7 @@ public class Line {
      *             Retained for backward compatibility with legacy documents.
      */
     @Deprecated
-    private int firstSecondEndingYPos = LayoutStylesheet.ENDING_DEFAULT_Y;
+    private int firstSecondEndingYPos = LayoutStylesheet.toPixels(LayoutStylesheet.ENDING_DEFAULT_Y);
 
     /**
      * Y offset for trill display (default: -27, above staff).
@@ -151,7 +152,7 @@ public class Line {
      *             Retained for backward compatibility with legacy documents.
      */
     @Deprecated
-    private int trillYPos = LayoutStylesheet.TRILL_DEFAULT_Y;
+    private int trillYPos = LayoutStylesheet.toPixels(LayoutStylesheet.TRILL_DEFAULT_Y);
 
     /** Ratio multiplier for horizontal note spacing (default: 1.0, user-adjustable). */
     private float noteDistChangeRatio = 1f;
@@ -317,11 +318,11 @@ public class Line {
         modifiedComposition();
     }
 
-    public int getLyricsYPos() {
+    public double getLyricsYPos() {
         return lyricsYPos;
     }
 
-    public void setLyricsYPos(int lyricsYPos) {
+    public void setLyricsYPos(double lyricsYPos) {
         this.lyricsYPos = lyricsYPos;
         modifiedComposition();
     }
@@ -369,7 +370,7 @@ public class Line {
         return noteDistChangeRatio;
     }
 
-    public IntervalSet<Interval> getBeamings() {
+    public IntervalSet<BeamInterval> getBeamings() {
         return beamings;
     }
 

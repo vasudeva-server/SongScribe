@@ -20,11 +20,13 @@
 
 package songscribe.ui.renderer;
 
+import static songscribe.ui.renderer.GraphicsState.Property.COLOR;
+import static songscribe.ui.renderer.GraphicsState.Property.FONT;
+import static songscribe.ui.renderer.GraphicsState.Property.TRANSFORM;
+
 import java.awt.*;
 
 import org.jetbrains.annotations.NotNull;
-
-import static songscribe.ui.renderer.GraphicsState.Property.*;
 
 import songscribe.music.Line;
 import songscribe.music.Note;
@@ -44,13 +46,13 @@ public class TrillRenderer extends BaseElementRenderer<Trill> {
     // ==========================================================================
 
     // Trill glyph advance width in pixels, used to position the wavy line start
-    private static final double TRILL_ADVANCE_WIDTH;
+    private static final double TRILL_ADVANCE_WIDTH_PX;
 
     // Wavy line segment width from SMuFL repeatOffset (0.948 ss)
-    private static final double WIGGLE_SEGMENT_WIDTH = StaffSpaces.toPixels(0.948);
+    private static final double WIGGLE_SEGMENT_WIDTH_PX = StaffSpaces.toPixels(0.948);
 
     // Crotchet width
-    private static final double CROTCHET_WIDTH = BaseElementRenderer.NOTE_FONT_SIZE / 3.6056337d;
+    private static final double CROTCHET_WIDTH_PX = BaseElementRenderer.NOTE_FONT_SIZE / 3.6056337d;
 
     // Singleton instance
     private static final TrillRenderer INSTANCE = new TrillRenderer();
@@ -58,7 +60,7 @@ public class TrillRenderer extends BaseElementRenderer<Trill> {
     static {
         var metadata = SMuFLMetadata.getInstance();
         var advanceWidth = metadata.getAdvanceWidth(SMuFLGlyph.ORNAMENT_TRILL);
-        TRILL_ADVANCE_WIDTH = (advanceWidth != null) ? StaffSpaces.toPixels(advanceWidth) : 17.0;
+        TRILL_ADVANCE_WIDTH_PX = (advanceWidth != null) ? StaffSpaces.toPixels(advanceWidth) : 17.0;
     }
 
     /**
@@ -91,7 +93,7 @@ public class TrillRenderer extends BaseElementRenderer<Trill> {
         }
 
         var endNote = element.getEndNote();
-        int trillYPos = getEffectiveTrillYPos(element, ctx);
+        int trillYPos = getEffectiveTrillYPosSs(element, ctx);
 
         renderTrill(g2, ctx, anchorNote, endNote, trillYPos);
     }
@@ -99,7 +101,7 @@ public class TrillRenderer extends BaseElementRenderer<Trill> {
     /**
      * Gets the Y position for a trill from layout result.
      */
-    private int getEffectiveTrillYPos(
+    private int getEffectiveTrillYPosSs(
         @NotNull Trill element,
         @NotNull ElementRenderContext ctx
     ) {
@@ -115,7 +117,7 @@ public class TrillRenderer extends BaseElementRenderer<Trill> {
             throw new IllegalStateException("No bounds found for Trill element");
         }
 
-        return (int) bounds.getTop() - ctx.getMiddleLineY();
+        return (int) (bounds.getTop() - ctx.getMiddleLineYSs());
     }
 
     /**
@@ -128,20 +130,20 @@ public class TrillRenderer extends BaseElementRenderer<Trill> {
         Note endNote,
         int trillYPos
     ) {
-        int middleLineY = ctx.getMiddleLineY();
+        double middleLineYSs = ctx.getMiddleLineYSs();
 
         double x = GraphicUtils.snapXToDevicePixel(g2, startNote.getXPos());
-        int y = middleLineY + trillYPos;
+        int y = (int) (middleLineYSs + trillYPos);
 
         drawBravuraGlyph(g2, SMuFLGlyph.ORNAMENT_TRILL, x, y);
 
         // Draw wavy line extension if there's an end note
         if (endNote != null && endNote != startNote) {
             double wavyStartX = GraphicUtils.snapXToDevicePixel(
-                g2, x + TRILL_ADVANCE_WIDTH
+                g2, x + TRILL_ADVANCE_WIDTH_PX
             );
             double endX = GraphicUtils.snapXToDevicePixel(
-                g2, endNote.getXPos() + CROTCHET_WIDTH
+                g2, endNote.getXPos() + CROTCHET_WIDTH_PX
             );
             drawWavyLine(g2, wavyStartX, y, endX);
         }
@@ -198,20 +200,20 @@ public class TrillRenderer extends BaseElementRenderer<Trill> {
             return;
         }
 
-        int segments = Math.max(1, (int) Math.round(length / WIGGLE_SEGMENT_WIDTH));
+        int segments = Math.max(1, (int) Math.round(length / WIGGLE_SEGMENT_WIDTH_PX));
 
         try (var ignored = GraphicsState.save(g2, TRANSFORM, FONT, COLOR)) {
             g2.setFont(BRAVURA_FONT);
             g2.setColor(NOTE_COLOR);
             g2.translate(x1, y);
 
-            double scale = length / WIGGLE_SEGMENT_WIDTH / segments;
+            double scale = length / WIGGLE_SEGMENT_WIDTH_PX / segments;
             g2.scale(scale, 1d);
 
             for (int i = 0; i < segments; i++) {
                 g2.drawString(
                     SMuFLGlyph.WIGGLE_TRILL.asString(),
-                    (float) (i * WIGGLE_SEGMENT_WIDTH),
+                    (float) (i * WIGGLE_SEGMENT_WIDTH_PX),
                     0f
                 );
             }

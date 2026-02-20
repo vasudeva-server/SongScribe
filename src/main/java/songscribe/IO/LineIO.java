@@ -25,6 +25,7 @@ import org.jetbrains.annotations.Nullable;
 
 import org.xml.sax.Attributes;
 
+import songscribe.data.BeamInterval;
 import songscribe.data.DynamicsInterval;
 import songscribe.data.EndingInterval;
 import songscribe.data.Interval;
@@ -89,7 +90,7 @@ public final class LineIO {
         XML.writeValue(
             pw,
             XML_LYRICS_YPOS,
-            Integer.toString(l.getLyricsYPos())
+            Double.toString(l.getLyricsYPos())
         );
 
         if (!l.getBeamings().isEmpty()) {
@@ -245,6 +246,20 @@ public final class LineIO {
             }
         }
 
+        private static void stringToBeamIntervalSet(IntervalSet<BeamInterval> is, String str) {
+            var begin = 0;
+            var end = str.indexOf(';', begin);
+
+            while (end != -1) {
+                var firstComma = str.indexOf(',', begin);
+                var a = Integer.parseInt(str.substring(begin, firstComma));
+                var b = Integer.parseInt(str.substring(firstComma + 1, end));
+                is.addInterval(new BeamInterval(a, b));
+                begin = str.indexOf(';', begin) + 1;
+                end = str.indexOf(';', begin);
+            }
+        }
+
         private static void stringToTupletIntervalSet(IntervalSet<TupletInterval> is, String str) {
             var begin = 0;
             var end = str.indexOf(';', begin);
@@ -266,7 +281,7 @@ public final class LineIO {
                 );
 
                 int grade = 3; // default to triplet
-                int vertPos = 0;
+                double vertPos = 0;
 
                 if (secondComma != -1) {
                     // Has data portion: grade[,vertPos]
@@ -281,7 +296,7 @@ public final class LineIO {
 
                     if (parts.length > 1) {
                         try {
-                            vertPos = Integer.parseInt(parts[1]);
+                            vertPos = Double.parseDouble(parts[1]);
                         } catch (NumberFormatException e) {
                             vertPos = 0;
                         }
@@ -325,9 +340,9 @@ public final class LineIO {
 
                     if (parts.length >= 3) {
                         try {
-                            dynamics.setX1Shift(Integer.parseInt(parts[0]));
-                            dynamics.setX2Shift(Integer.parseInt(parts[1]));
-                            dynamics.setYShift(Integer.parseInt(parts[2]));
+                            dynamics.setX1Shift(Double.parseDouble(parts[0]));
+                            dynamics.setX2Shift(Double.parseDouble(parts[1]));
+                            dynamics.setYShift(Double.parseDouble(parts[2]));
                         } catch (NumberFormatException ignored) {
                             // Leave shifts at 0
                         }
@@ -421,7 +436,7 @@ public final class LineIO {
                             Integer.parseInt(str)
                         );
                         case XML_LYRICS_YPOS -> line.setLyricsYPos(
-                            Integer.parseInt(str)
+                            Double.parseDouble(str)
                         );
                         case XML_FSENDING_YPOS -> line.setFirstSecondEndingYPos(
                             Integer.parseInt(str)
@@ -429,7 +444,7 @@ public final class LineIO {
                         case XML_TRILL_YPOS -> line.setTrillYPos(
                             Integer.parseInt(str)
                         );
-                        case XML_BEAMINGS -> stringToBeamingIntervalSet(
+                        case XML_BEAMINGS -> stringToBeamIntervalSet(
                             line.getBeamings(),
                             str
                         );

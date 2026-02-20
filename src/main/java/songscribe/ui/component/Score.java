@@ -25,6 +25,7 @@ import java.awt.event.*;
 import java.awt.image.*;
 import java.io.File;
 import java.io.IOException;
+
 import javax.swing.*;
 import javax.xml.parsers.SAXParser;
 import javax.xml.parsers.SAXParserFactory;
@@ -44,7 +45,6 @@ import songscribe.music.Line;
 import songscribe.music.LyricsProcessor;
 import songscribe.music.MusicEditOperations;
 import songscribe.music.Note;
-import songscribe.music.NoteType;
 import songscribe.prefs.Prefs;
 import songscribe.ui.Constants;
 import songscribe.ui.Control;
@@ -97,7 +97,7 @@ public final class Score
     public static final int STAFF_LINE_COUNT = 5;
 
     // The vertical distance between whole tones on the staff (e.g. A to B)
-    public static final float NOTE_Y_OFFSET = (float) LayoutStylesheet.STAFF_SPACE / 2;
+    public static final float NOTE_Y_OFFSET_PX = (float) LayoutStylesheet.toPixelsDouble(LayoutStylesheet.NOTE_Y_OFFSET);
 
     // The content width and height in inches, excluding page margins
     public static final float PAGE_CONTENT_WIDTH = 7;
@@ -108,7 +108,7 @@ public final class Score
     );
 
     // The page margin in dpi
-    public static final int PAGE_MARGIN = 80;
+    public static final int PAGE_MARGIN_PX = 80;
 
     // Delay in milliseconds for debouncing repaint when layout changes occur
     private static final int REPAINT_DEBOUNCE_DELAY_MS = 300;
@@ -158,15 +158,15 @@ public final class Score
 
     // TODO: Not sure why this is here. It really should be in the renderer, and should be based
     //  on the advance of the clef.
-    private int leadingKeysPos = 32;
+    private int leadingKeysPosPx = 32;
 
     // The vertical distance between the top of one staff line and the next.
     // This can vary depending on what appears above and below the staff line,
     // as well as vertical adjustments made by the user.
-    private int rowHeight = 0;
+    private int rowHeightPx = 0;
 
     // The y position (from the top of the scorePanel) of the middle line (B) of the first staff
-    private int middleLineY = 0;
+    private int middleLineYPx = 0;
 
     // Coordinates selection state across lines
     private SelectionCoordinator selectionCoordinator = null;
@@ -264,7 +264,7 @@ public final class Score
         initScorePanel();
         initMainPanel();
 
-        setLineWidth(composition.getLineWidth());
+        setLineWidth((int) composition.getLineWidth());
         addMouseMotionListener(inputHandler);
         addMouseListener(inputHandler);
         addFocusListener(focusController);
@@ -343,7 +343,7 @@ public final class Score
     }
 
     public static boolean defaultUpperNote(@NotNull Note note) {
-        return (note.getYPos() > 0) || note.getNoteType().isGraceNote();
+        return (note.getStaffPosition() > 0) || note.getNoteType().isGraceNote();
     }
 
 
@@ -523,8 +523,8 @@ public final class Score
      */
     private void updateLayoutFromComponents() {
         hierarchyNavigator.updateLayoutFromComponents(layout -> {
-            middleLineY = layout[0];
-            rowHeight = layout[1];
+            middleLineYPx = layout[0];
+            rowHeightPx = layout[1];
         });
     }
 
@@ -586,9 +586,9 @@ public final class Score
 
     @Override
     public int getNoteYPos(int yPos, int line) {
-        return (int) (middleLineY +
-            (yPos * NOTE_Y_OFFSET) +
-            (line * rowHeight));
+        return (int) (middleLineYPx +
+            (yPos * NOTE_Y_OFFSET_PX) +
+            (line * rowHeightPx));
     }
 
     @Override
@@ -606,7 +606,7 @@ public final class Score
             var currentEditNote = editModeManager.getEditNote();
 
             if (currentEditNote != null) {
-                editNote.setYPos(currentEditNote.getYPos());
+                editNote.setStaffPosition(currentEditNote.getStaffPosition());
                 editNote.setXPos(currentEditNote.getXPos());
             } else {
                 editModeManager.setEditNote(editNote);
@@ -725,7 +725,7 @@ public final class Score
         // Reset the playing state
         PlaybackController.stop();
         selectionCoordinator.clearSelection();
-        setLineWidth(composition.getLineWidth());
+        setLineWidth((int) composition.getLineWidth());
 
         // global calculate lengthening
         for (var l = 0; l < composition.lineCount(); l++) {
@@ -776,11 +776,11 @@ public final class Score
         return sheetSize;
     }
 
-    public int getSheetWidth() {
-        return composition.getLineWidth();
+    public int getSheetWidthPx() {
+        return (int) composition.getLineWidth();
     }
 
-    public int getSheetHeight() {
+    public int getSheetHeightPx() {
         // TODO: Calculate from component hierarchy
         return getHeight();
     }
@@ -793,7 +793,7 @@ public final class Score
             if (strict) {
                 idealSpace = endNote.getRealUpNoteRect().width;
             } else {
-                idealSpace = (float) LayoutConstants.px(LayoutConstants.DEFAULT_COLUMN_GAP) + 20;
+                idealSpace = (float) LayoutConstants.toPixels(LayoutConstants.DEFAULT_COLUMN_GAP_SS) + 20;
             }
 
             if (
@@ -808,11 +808,11 @@ public final class Score
                 for (var i = 1; i < line.noteCount(); i++) {
                     var note = line.getNote(i);
                     note.setXPos(
-                        firstX + Math.round((note.getXPos() - firstX) * ratio)
+                        (int) (firstX + Math.round((note.getXPos() - firstX) * ratio))
                     );
                 }
 
-                line.mulNoteDistChange(ratio);
+                line.mulNoteDistChange((float) ratio);
             }
         }
     }
@@ -855,29 +855,29 @@ public final class Score
 
     @Override
     public int getLeadingKeysPos() {
-        return leadingKeysPos;
+        return leadingKeysPosPx;
     }
 
-    public void setLeadingKeysPos(int leadingKeysPos) {
-        this.leadingKeysPos = leadingKeysPos;
+    public void setLeadingKeysPosPx(int leadingKeysPosPx) {
+        this.leadingKeysPosPx = leadingKeysPosPx;
     }
 
     @Override
     public int getRowHeight() {
-        return rowHeight;
+        return rowHeightPx;
     }
 
-    public void setRowHeight(int rowHeight) {
-        this.rowHeight = rowHeight;
+    public void setRowHeightPx(int rowHeightPx) {
+        this.rowHeightPx = rowHeightPx;
     }
 
     @Override
-    public int getMiddleLineY() {
-        return middleLineY;
+    public int getMiddleLineYPx() {
+        return middleLineYPx;
     }
 
-    public void setMiddleLineY(int middleLineY) {
-        this.middleLineY = middleLineY;
+    public void setMiddleLineYPx(int middleLineYPx) {
+        this.middleLineYPx = middleLineYPx;
     }
 
     public void setDragDisabled(boolean dragDisabled) {
@@ -900,8 +900,8 @@ public final class Score
 
         if (marginPanel != null) {
             var width = Math.max(lineWidth, PAGE_CONTENT_SIZE.width);
-            preferredSizeWithMargin.width = width + PAGE_MARGIN;
-            preferredSizeWithMargin.height = preferredSize.height + PAGE_MARGIN;
+            preferredSizeWithMargin.width = width + PAGE_MARGIN_PX;
+            preferredSizeWithMargin.height = preferredSize.height + PAGE_MARGIN_PX;
             marginPanel.setPreferredSize(preferredSizeWithMargin);
             invalidate();
             marginPanel.invalidate();

@@ -50,34 +50,34 @@ public class GlissandoRenderer {
     // ==========================================================================
 
     /** Base length of one glissando segment (SMuFL repeatOffset: 0.96 ss). */
-    private static final double GLISSANDO_LENGTH = StaffSpaces.toPixels(0.96);
+    private static final double GLISSANDO_LENGTH_PX = StaffSpaces.toPixels(0.96);
 
     /** Minimum number of glissando segments to draw. */
     private static final int MIN_SEGMENTS = 2;
 
     /** Horizontal offset from note position to glissando start. */
-    private static final int GLISSANDO_START_OFFSET = 15;
+    private static final int GLISSANDO_START_OFFSET_PX = 15;
 
     /** Horizontal gap before the next note. */
-    private static final int GLISSANDO_END_GAP = 3;
+    private static final int GLISSANDO_END_GAP_PX = 3;
 
     /** Additional offset for semibreve notes. */
-    private static final int SEMIBREVE_OFFSET = 3;
+    private static final int SEMIBREVE_OFFSET_PX = 3;
 
     /** Additional offset for grace notes. */
-    private static final int GRACE_NOTE_OFFSET = -3;
+    private static final int GRACE_NOTE_OFFSET_PX = -3;
 
     /** X offset per dot on the note. */
-    private static final int DOT_OFFSET = 6;
+    private static final int DOT_OFFSET_PX = 6;
 
     /** Fallback offset when glissando is at end of line. */
-    private static final int END_OF_LINE_OFFSET = 45;
+    private static final int END_OF_LINE_OFFSET_PX = 45;
 
     /** Accidental gap factor. */
-    private static final float ACCIDENTAL_GAP = 1.6f;
+    private static final float ACCIDENTAL_GAP_SS = 1.6f;
 
     /** Y translation for glissando glyph rendering. */
-    private static final double GLISSANDO_Y_OFFSET = 2.25;
+    private static final double GLISSANDO_Y_OFFSET_SS = 2.25;
 
     // ==========================================================================
     // Singleton
@@ -110,7 +110,7 @@ public class GlissandoRenderer {
      * @param composition The composition containing the line
      * @return X coordinate for glissando start
      */
-    public static int getGlissandoX1Pos(
+    public static int getGlissandoX1PosPx(
         int xIndex,
         @NotNull Note.Glissando glissando,
         int lineIndex,
@@ -118,7 +118,7 @@ public class GlissandoRenderer {
     ) {
         var line = composition.getLine(lineIndex);
         var note = line.getNote(xIndex);
-        return INSTANCE.getGlissandoX1Pos(note, glissando);
+        return INSTANCE.getGlissandoX1PosPx(note, glissando);
     }
 
     /**
@@ -132,14 +132,14 @@ public class GlissandoRenderer {
      * @param composition The composition containing the line
      * @return X coordinate for glissando end
      */
-    public static int getGlissandoX2Pos(
+    public static int getGlissandoX2PosPx(
         int xIndex,
         @NotNull Note.Glissando glissando,
         int lineIndex,
         @NotNull Composition composition
     ) {
         var line = composition.getLine(lineIndex);
-        return INSTANCE.getGlissandoX2Pos(line, xIndex, glissando);
+        return INSTANCE.getGlissandoX2PosPx(line, xIndex, glissando);
     }
 
     // ==========================================================================
@@ -194,12 +194,12 @@ public class GlissandoRenderer {
             return;
         }
 
-        var x1 = getGlissandoX1Pos(note, glissando);
-        var x2 = getGlissandoX2Pos(line, noteIndex, glissando);
-        var y1 = noteYPosToCoordinate(note.getYPos(), ctx.getMiddleLineY());
-        var y2 = noteYPosToCoordinate(glissando.pitch, ctx.getMiddleLineY());
+        var x1 = getGlissandoX1PosPx(note, glissando);
+        var x2 = getGlissandoX2PosPx(line, noteIndex, glissando);
+        var y1 = noteYPosToCoordinateSs(note.getStaffPosition(), ctx.getMiddleLineYSs());
+        var y2 = noteYPosToCoordinateSs(glissando.pitch, ctx.getMiddleLineYSs());
 
-        renderGlissandoLine(g2, x1, y1, x2, y2);
+        renderGlissandoLine(g2, x1, (int) y1, x2, (int) y2);
     }
 
     /**
@@ -226,12 +226,12 @@ public class GlissandoRenderer {
         }
 
         var note = line.getNote(xIndex);
-        var x1 = getGlissandoX1Pos(note, glissando);
-        var x2 = getGlissandoX2Pos(line, xIndex, glissando);
-        var y1 = noteYPosToCoordinate(note.getYPos(), ctx.getMiddleLineY());
-        var y2 = noteYPosToCoordinate(glissando.pitch, ctx.getMiddleLineY());
+        var x1 = getGlissandoX1PosPx(note, glissando);
+        var x2 = getGlissandoX2PosPx(line, xIndex, glissando);
+        var y1 = noteYPosToCoordinateSs(note.getStaffPosition(), ctx.getMiddleLineYSs());
+        var y2 = noteYPosToCoordinateSs(glissando.pitch, ctx.getMiddleLineYSs());
 
-        renderGlissandoLine(g2, x1, y1, x2, y2);
+        renderGlissandoLine(g2, x1, (int) y1, x2, (int) y2);
     }
 
     // ==========================================================================
@@ -245,20 +245,20 @@ public class GlissandoRenderer {
      * @param glissando The glissando data
      * @return X coordinate for glissando start
      */
-    private int getGlissandoX1Pos(
+    private int getGlissandoX1PosPx(
         @NotNull Note note,
         @NotNull Note.Glissando glissando
     ) {
-        var x1 = note.getXPos() + GLISSANDO_START_OFFSET + glissando.x1Translate;
+        var x1 = note.getXPos() + GLISSANDO_START_OFFSET_PX + (int) glissando.x1Translate;
         var noteType = note.getNoteType();
 
         if (noteType == NoteType.SEMIBREVE) {
-            x1 += SEMIBREVE_OFFSET;
+            x1 += SEMIBREVE_OFFSET_PX;
         } else if (noteType.isGraceNote()) {
-            x1 += GRACE_NOTE_OFFSET;
+            x1 += GRACE_NOTE_OFFSET_PX;
         }
 
-        x1 += note.getDotCount() * DOT_OFFSET;
+        x1 += note.getDotCount() * DOT_OFFSET_PX;
         return x1;
     }
 
@@ -270,26 +270,26 @@ public class GlissandoRenderer {
      * @param glissando The glissando data
      * @return X coordinate for glissando end
      */
-    private int getGlissandoX2Pos(
+    private int getGlissandoX2PosPx(
         @NotNull Line line,
         int noteIndex,
         @NotNull Note.Glissando glissando
     ) {
-        float x2 = -glissando.x2Translate;
+        float x2 = (float) -glissando.x2Translate;
 
         if ((noteIndex + 1) < line.noteCount()) {
             var nextNote = line.getNote(noteIndex + 1);
-            x2 += nextNote.getXPos() - GLISSANDO_END_GAP;
+            x2 += nextNote.getXPos() - GLISSANDO_END_GAP_PX;
 
             var accNum = nextNote.getAccidental().ordinal();
 
             if (accNum > 0) {
-                x2 -= NoteRenderer.getAccidentalWidth(nextNote);
-                x2 -= ACCIDENTAL_GAP;
+                x2 -= NoteRenderer.getAccidentalWidthSs(nextNote);
+                x2 -= ACCIDENTAL_GAP_SS;
             }
         } else {
             // At end of line, use fixed offset from current note
-            x2 += line.getNote(noteIndex).getXPos() + END_OF_LINE_OFFSET;
+            x2 += line.getNote(noteIndex).getXPos() + END_OF_LINE_OFFSET_PX;
         }
 
         return Math.round(x2);
@@ -321,28 +321,28 @@ public class GlissandoRenderer {
         var length = Math.sqrt((double) dx * dx + (double) dy * dy);
 
         // Calculate number of segments (minimum 2)
-        var segments = Math.max(MIN_SEGMENTS, (int) Math.round(length / GLISSANDO_LENGTH));
+        var segments = Math.max(MIN_SEGMENTS, (int) Math.round(length / GLISSANDO_LENGTH_PX));
 
         // Save transform and set up for rotated drawing
         try (var ignored = GraphicsState.save(g2, TRANSFORM, FONT)) {
             g2.setFont(BaseElementRenderer.BRAVURA_FONT);
 
             // Translate to start position
-            g2.translate(x1, y1 + GLISSANDO_Y_OFFSET);
+            g2.translate(x1, y1 + GLISSANDO_Y_OFFSET_SS);
 
             // Rotate to angle of glissando line
             var angle = Math.atan((double) (y2 - y1) / (double) (x2 - x1));
             g2.rotate(angle);
 
             // Scale horizontally to fit the line
-            var scale = length / GLISSANDO_LENGTH / segments;
+            var scale = length / GLISSANDO_LENGTH_PX / segments;
             g2.scale(scale, 1d);
 
             // Draw glissando segments
             var glyphStr = SMuFLGlyph.WIGGLE_GLISSANDO.asString();
 
             for (var i = 0; i < segments; i++) {
-                g2.drawString(glyphStr, (float) (i * GLISSANDO_LENGTH), 0f);
+                g2.drawString(glyphStr, (float) (i * GLISSANDO_LENGTH_PX), 0f);
             }
         }
     }
@@ -351,10 +351,10 @@ public class GlissandoRenderer {
      * Calculates the Y coordinate for a given pitch position.
      *
      * @param yPos        The note's y-position relative to middle line
-     * @param middleLineY Y position of middle staff line
+     * @param middleLineYSs Y position of middle staff line in staff spaces
      * @return Y coordinate
      */
-    private int noteYPosToCoordinate(int yPos, int middleLineY) {
-        return middleLineY + (int) (yPos * (BaseElementRenderer.NOTE_FONT_SIZE / 8));
+    private double noteYPosToCoordinateSs(int yPos, double middleLineYSs) {
+        return middleLineYSs + yPos * (BaseElementRenderer.NOTE_FONT_SIZE / 8);
     }
 }

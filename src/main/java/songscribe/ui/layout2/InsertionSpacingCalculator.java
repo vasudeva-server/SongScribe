@@ -35,8 +35,8 @@ import songscribe.music.Note;
  * lightweight NoteColumns internally to leverage the standard spacing algorithms from
  * {@link HorizontalSpacingCalculator}.
  * <ul>
- *   <li>Append note to end of line: {@link #calculateAppendPosition(Line, Note)}</li>
- *   <li>Insert note in middle: {@link #calculateInsertionShift(Line, Note, int)}</li>
+ *   <li>Append note to end of line: {@link #calculateAppendPositionSs(Line, Note)}</li>
+ *   <li>Insert note in middle: {@link #calculateInsertionShiftSs(Line, Note, int)}</li>
  * </ul>
  */
 public class InsertionSpacingCalculator {
@@ -45,10 +45,10 @@ public class InsertionSpacingCalculator {
      * Result of an insertion spacing calculation, providing both the X position for the
      * inserted note and the shift amount for subsequent notes.
      *
-     * @param insertedNoteX X position where the inserted note should be placed
-     * @param shiftForSubsequentNotes Amount to shift all notes after the insertion point (always >= 0)
+     * @param insertedNoteXSs X position where the inserted note should be placed
+     * @param shiftForSubsequentNotesSs Amount to shift all notes after the insertion point (always >= 0)
      */
-    public record InsertionResult(double insertedNoteX, double shiftForSubsequentNotes) {}
+    public record InsertionResult(double insertedNoteXSs, double shiftForSubsequentNotesSs) {}
 
     private InsertionSpacingCalculator() {
         // Prevent instantiation - utility class with static methods only
@@ -65,12 +65,12 @@ public class InsertionSpacingCalculator {
      * @param noteToAppend The note being appended
      * @return X position in pixels where the note should be placed
      */
-    public static double calculateAppendPosition(@NotNull Line line, @NotNull Note noteToAppend) {
+    public static double calculateAppendPositionSs(@NotNull Line line, @NotNull Note noteToAppend) {
         var noteCount = line.noteCount();
 
         if (noteCount == 0) {
             // First note on the line - use standard first note positioning
-            return LayoutConstants.calculateFirstNoteX(line.getKeyAccidentalCount());
+            return LayoutConstants.toPixels(LayoutConstants.calculateFirstNoteXSs(line.getKeyAccidentalCount()));
         }
 
         // Get the last note and create a column for it
@@ -78,13 +78,13 @@ public class InsertionSpacingCalculator {
         var lastColumn = createLightweightColumn(lastNote);
 
         // Use the last note's actual X position
-        lastColumn.setX(lastNote.getXPos());
+        lastColumn.setXSs(lastNote.getXPos());
 
         // Create column for note to append
         var appendColumn = createLightweightColumn(noteToAppend);
 
         // Calculate where the new note should go
-        return HorizontalSpacingCalculator.calculateNextColumnX(lastColumn, appendColumn);
+        return HorizontalSpacingCalculator.calculateNextColumnXSs(lastColumn, appendColumn);
     }
 
     /**
@@ -98,11 +98,11 @@ public class InsertionSpacingCalculator {
      * @param nextNote    The note to be placed after currentNote
      * @return X position where nextNote should be placed
      */
-    public static double calculateNextNoteX(@NotNull Note currentNote, @NotNull Note nextNote) {
+    public static double calculateNextNoteXSs(@NotNull Note currentNote, @NotNull Note nextNote) {
         var currentColumn = createLightweightColumn(currentNote);
-        currentColumn.setX(currentNote.getXPos());
+        currentColumn.setXSs(currentNote.getXPos());
         var nextColumn = createLightweightColumn(nextNote);
-        return HorizontalSpacingCalculator.calculateNextColumnX(currentColumn, nextColumn);
+        return HorizontalSpacingCalculator.calculateNextColumnXSs(currentColumn, nextColumn);
     }
 
     /**
@@ -117,44 +117,43 @@ public class InsertionSpacingCalculator {
      * @return An {@link InsertionResult} with the note's X position and the shift for subsequent notes
      */
     public static @NotNull InsertionResult calculateInsertion(
-            @NotNull Line line,
-            @NotNull Note insertedNote,
-            int insertIndex) {
+        @NotNull Line line,
+        @NotNull Note insertedNote,
+        int insertIndex) {
 
         var noteCount = line.noteCount();
 
         // Validate index
         if (insertIndex < 0 || insertIndex > noteCount) {
             throw new IllegalArgumentException(
-                    "insertIndex " + insertIndex + " out of bounds [0, " + noteCount + "]");
+                "insertIndex " + insertIndex + " out of bounds [0, " + noteCount + "]");
         }
 
         // If inserting at end, no shift needed (use calculateAppendPosition instead)
         if (insertIndex == noteCount) {
-            return new InsertionResult(calculateAppendPosition(line, insertedNote), 0);
+            return new InsertionResult(calculateAppendPositionSs(line, insertedNote), 0);
         }
 
         // Create column for inserted note
         var insertedColumn = createLightweightColumn(insertedNote);
 
-        double insertedNoteX;
-        double requiredSpace;
+        double insertedNoteXSs;
+        double requiredSpaceSs;
 
         if (insertIndex == 0) {
             // Inserting at beginning - calculate space from line start
-            insertedNoteX = LayoutConstants.calculateFirstNoteX(line.getKeyAccidentalCount());
+            insertedNoteXSs = LayoutConstants.toPixels(LayoutConstants.calculateFirstNoteXSs(line.getKeyAccidentalCount()));
             var nextNote = line.getNote(0);
             var nextColumn = createLightweightColumn(nextNote);
 
             // Space needed: firstNoteX → inserted note → existing first note
-            insertedColumn.setX(insertedNoteX);
-            double insertedToNext = HorizontalSpacingCalculator.calculateNextColumnX(
-                    insertedColumn, nextColumn);
+            insertedColumn.setXSs(insertedNoteXSs);
+            double insertedToNextSs = HorizontalSpacingCalculator.calculateNextColumnXSs(
+                insertedColumn, nextColumn);
 
             // Shift = (where first note needs to be) - (where it currently is)
-            requiredSpace = insertedToNext - nextNote.getXPos();
-        }
-        else {
+            requiredSpaceSs = insertedToNextSs - nextNote.getXPos();
+        } else {
             // Inserting in middle - calculate space between prev and next
             var prevNote = line.getNote(insertIndex - 1);
             var nextNote = line.getNote(insertIndex);
@@ -162,21 +161,21 @@ public class InsertionSpacingCalculator {
             var prevColumn = createLightweightColumn(prevNote);
             var nextColumn = createLightweightColumn(nextNote);
 
-            prevColumn.setX(prevNote.getXPos());
+            prevColumn.setXSs(prevNote.getXPos());
 
             // Calculate: prev → inserted → next
-            insertedNoteX = HorizontalSpacingCalculator.calculateNextColumnX(
-                    prevColumn, insertedColumn);
-            insertedColumn.setX(insertedNoteX);
+            insertedNoteXSs = HorizontalSpacingCalculator.calculateNextColumnXSs(
+                prevColumn, insertedColumn);
+            insertedColumn.setXSs(insertedNoteXSs);
 
-            double insertedToNext = HorizontalSpacingCalculator.calculateNextColumnX(
-                    insertedColumn, nextColumn);
+            double insertedToNextSs = HorizontalSpacingCalculator.calculateNextColumnXSs(
+                insertedColumn, nextColumn);
 
             // Shift = (where next needs to be) - (where it currently is)
-            requiredSpace = insertedToNext - nextNote.getXPos();
+            requiredSpaceSs = insertedToNextSs - nextNote.getXPos();
         }
 
-        return new InsertionResult(insertedNoteX, Math.max(0, requiredSpace));
+        return new InsertionResult(insertedNoteXSs, Math.max(0, requiredSpaceSs));
     }
 
     /**
@@ -190,12 +189,12 @@ public class InsertionSpacingCalculator {
      * @param insertIndex  The index where the note is being inserted (0-based)
      * @return Shift amount in pixels (positive = shift right)
      */
-    public static double calculateInsertionShift(
-            @NotNull Line line,
-            @NotNull Note insertedNote,
-            int insertIndex) {
+    public static double calculateInsertionShiftSs(
+        @NotNull Line line,
+        @NotNull Note insertedNote,
+        int insertIndex) {
 
-        return calculateInsertion(line, insertedNote, insertIndex).shiftForSubsequentNotes();
+        return calculateInsertion(line, insertedNote, insertIndex).shiftForSubsequentNotesSs();
     }
 
     /**
@@ -209,31 +208,31 @@ public class InsertionSpacingCalculator {
      */
     private static @NotNull NoteColumn createLightweightColumn(@NotNull Note note) {
         // Calculate geometric extents using NoteColumnBuilder's static methods
-        double leftExtent = NoteColumnBuilder.calculateLeftExtent(note);
-        double rightExtent = NoteColumnBuilder.calculateRightExtent(note);
+        double leftExtentSs = NoteColumnBuilder.calculateLeftExtentSs(note);
+        double rightExtentSs = NoteColumnBuilder.calculateRightExtentSs(note);
 
         // For insertion operations, we don't need stem positions or beam group info
         // since we're only calculating horizontal spacing
-        double stemTop = 0;
-        double stemBottom = 0;
+        double stemTopSs = 0;
+        double stemBottomSs = 0;
 
         // No syllable information for lightweight columns
         String syllable = null;
-        double syllableWidth = 0;
+        double syllableWidthSs = 0;
 
         // No beam group (insertions typically happen to individual notes)
         songscribe.ui.layout.BeamGroup beamGroup = null;
 
         return new NoteColumn(
-                note,
-                Collections.emptyList(),  // No grace notes
-                leftExtent,
-                rightExtent,
-                stemTop,
-                stemBottom,
-                syllable,
-                syllableWidth,
-                beamGroup
+            note,
+            Collections.emptyList(),  // No grace notes
+            leftExtentSs,
+            rightExtentSs,
+            stemTopSs,
+            stemBottomSs,
+            syllable,
+            syllableWidthSs,
+            beamGroup
         );
     }
 }

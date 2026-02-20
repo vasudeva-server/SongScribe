@@ -20,10 +20,13 @@
 package songscribe.io;
 
 import java.io.PrintWriter;
+
 import org.jetbrains.annotations.Nullable;
+
 import org.xml.sax.Attributes;
 import org.xml.sax.SAXException;
 import org.xml.sax.helpers.DefaultHandler;
+
 import songscribe.music.Composition;
 import songscribe.music.KeyType;
 import songscribe.music.Line;
@@ -34,7 +37,7 @@ import songscribe.ui.layout2.InsertionSpacingCalculator;
 public final class CompositionIO {
 
     public static final int IO_MAJOR_VERSION = 2;
-    public static final int IO_MINOR_VERSION = 0;
+    public static final int IO_MINOR_VERSION = 2;
 
     // version 1.0
     private static final String XML_COMPOSITION = "composition";
@@ -71,20 +74,21 @@ public final class CompositionIO {
     // version 1.4
     private static final String XML_DYNAMIC_LAYOUT = "dynamicLayout";
 
-    private CompositionIO() {}
+    private CompositionIO() {
+    }
 
     public static void writeComposition(Composition c, PrintWriter pw) {
         pw.println("<?xml version=\"1.0\" encoding=\"UTF-8\"?>");
         pw.println(
             '<' +
-            XML_COMPOSITION +
-            ' ' +
-            XML_VERSION +
-            "=\"" +
-            IO_MAJOR_VERSION +
-            '.' +
-            IO_MINOR_VERSION +
-            "\">"
+                XML_COMPOSITION +
+                ' ' +
+                XML_VERSION +
+                "=\"" +
+                IO_MAJOR_VERSION +
+                '.' +
+                IO_MINOR_VERSION +
+                "\">"
         );
         XML.setIndent(2);
         XML.writeValue(
@@ -156,26 +160,26 @@ public final class CompositionIO {
             XML.writeValue(
                 pw,
                 XML_TOP_SPACE,
-                Integer.toString(c.getTopPadding())
+                Double.toString(c.getTopPadding())
             );
         }
 
         XML.writeValue(
             pw,
             XML_INFO_STARTY,
-            Integer.toString(c.getAttributionStartY())
+            Double.toString(c.getAttributionStartY())
         );
 
         if (c.getRowHeightAdjustment() != 0) {
             XML.writeValue(
                 pw,
                 XML_ROW_HEIGHT,
-                Integer.toString(c.getRowHeightAdjustment())
+                Double.toString(c.getRowHeightAdjustment())
             );
         }
 
-        // We store the line width as logical pixels in the fixed UI resolution
-        XML.writeValue(pw, XML_LINE_WIDTH, Integer.toString(c.getLineWidth()));
+        // Line width in staff-space units
+        XML.writeValue(pw, XML_LINE_WIDTH, Double.toString(c.getLineWidth()));
 
         // Always write dynamicLayout=true for new documents
         XML.writeValue(pw, XML_DYNAMIC_LAYOUT, Boolean.toString(true));
@@ -264,6 +268,11 @@ public final class CompositionIO {
                             viewReader = new ViewIO.ViewReader(
                                 mainFrame.getProfileManager()
                             );
+                        } else if ((majorVersion == 2) && (minorVersion == 1)) {
+                            lineReader = new LineIO.LineReader();
+                            viewReader = new ViewIO.ViewReader(
+                                mainFrame.getProfileManager()
+                            );
                         } else {
                             throw new SAXException(
                                 "Unsupported version number."
@@ -289,6 +298,8 @@ public final class CompositionIO {
                     startElement14(uri, localName, qName, attributes);
                 } else if ((majorVersion == 2) && (minorVersion == 0)) {
                     startElement20(uri, localName, qName, attributes);
+                } else if ((majorVersion == 2) && (minorVersion == 1)) {
+                    startElement21(uri, localName, qName, attributes);
                 }
             }
 
@@ -392,6 +403,16 @@ public final class CompositionIO {
             startElement14(uri, localName, qName, attributes);
         }
 
+        public void startElement21(
+            String uri,
+            String localName,
+            String qName,
+            Attributes attributes
+        ) {
+            // No changes from 2.0
+            startElement20(uri, localName, qName, attributes);
+        }
+
         @Override
         public void endElement(String uri, String localName, String qName) {
             if ((majorVersion == 1) && (minorVersion == 0)) {
@@ -406,6 +427,8 @@ public final class CompositionIO {
                 endElement14(qName);
             } else if ((majorVersion == 2) && (minorVersion == 0)) {
                 endElement20(qName);
+            } else if ((majorVersion == 2) && (minorVersion == 1)) {
+                endElement21(qName);
             }
         }
 
@@ -424,7 +447,7 @@ public final class CompositionIO {
 
                     var line = composition.getLine(composition.lineCount() - 1);
                     note.setXPos((int) Math.round(
-                        InsertionSpacingCalculator.calculateAppendPosition(line, note)));
+                        InsertionSpacingCalculator.calculateAppendPositionSs(line, note)));
                     note.setUpper(Score.defaultUpperNote(note));
                     line.addNote(note);
                 }
@@ -442,7 +465,7 @@ public final class CompositionIO {
 
                             if (
                                 tempoReader.getPos10() <
-                                (firstNoteInLine + line.noteCount())
+                                    (firstNoteInLine + line.noteCount())
                             ) {
                                 line
                                     .getNote(
@@ -742,6 +765,87 @@ public final class CompositionIO {
             lastTag = null;
         }
 
+        public void endElement21(String qName) {
+            if (qName.equals(XML_LINES)) {
+                where = Where.COMPOSITION;
+            } else if (qName.equals(XML_VIEW)) {
+                viewReader.setAttributes(composition);
+                where = Where.COMPOSITION;
+            } else if (where == Where.LINES) {
+                var l = lineReader.endElement11(qName);
+
+                if (l != null) {
+                    composition.addLine(l);
+                }
+            } else if (where == Where.TEMPO) {
+                var t = tempoReader.endElement11(qName);
+
+                if (t != null) {
+                    composition.setTempo(t);
+                    where = Where.COMPOSITION;
+                }
+            } else if (where == Where.COMPOSITION) {
+                if (qName.equals(lastTag)) {
+                    var str = value.toString();
+
+                    switch (lastTag) {
+                        case XML_KEYS -> composition.setDefaultKeyAccidentalCount(
+                            Integer.parseInt(str)
+                        );
+                        case XML_KEYTYPE -> composition.setDefaultKeyType(
+                            KeyType.valueOf(str)
+                        );
+                        case XML_NUMBER -> composition.setNumber(str);
+                        case XML_TITLE -> composition.setTitle(
+                            str.isEmpty() ? "Untitled" : str
+                        );
+                        case XML_PLACE -> composition.setPlace(str);
+                        case XML_YEAR -> composition.setYear(str);
+                        case XML_MONTH -> composition.setMonth(
+                            Integer.parseInt(str)
+                        );
+                        case XML_DAY -> composition.setDay(
+                            Integer.parseInt(str)
+                        );
+                        case XML_LYRICS -> composition.setLyrics(str);
+                        case XML_UNDERLYRICS -> composition.setUnderLyrics(str);
+                        case XML_BANGLA_LYRICS -> composition.setBanglaLyrics(
+                            str
+                        );
+                        case XML_TRANSLATED_LYRICS -> composition.setTranslatedLyrics(
+                            str
+                        );
+                        case XML_UNOFFICIAL_TRANSLATION -> composition.setUnofficialTranslation(
+                            Boolean.parseBoolean(str)
+                        );
+                        case XML_FOOTNOTES -> composition.setFootnotes(str);
+                        case XML_INFO -> composition.setAttribution(str);
+                        case XML_TOP_SPACE -> composition.setTopPadding(
+                            Double.parseDouble(str),
+                            false
+                        );
+                        case XML_INFO_STARTY -> composition.setAttributionStartY(
+                            Double.parseDouble(str)
+                        );
+                        case XML_ROW_HEIGHT -> composition.setRowHeightAdjustment(
+                            Double.parseDouble(str)
+                        );
+                        case XML_LINE_WIDTH -> composition.setLineWidth(
+                            Double.parseDouble(str)
+                        );
+                        case XML_DYNAMIC_LAYOUT -> composition.setHasBeenDynamicallyLaidOut(
+                            Boolean.parseBoolean(str)
+                        );
+                    }
+                }
+            } else if (where == Where.VIEW) {
+                viewReader.endElement11(qName);
+            }
+
+            value.delete(0, value.length());
+            lastTag = null;
+        }
+
         @Override
         public void characters(char[] ch, int start, int length) {
             if (where == Where.LINES) {
@@ -782,6 +886,16 @@ public final class CompositionIO {
             // to new format (RangeElements, Attachment objects).
             // This populates the new data structures from the legacy data.
             FormatMigrator.migrate(composition);
+
+            // For pre-v2.1 files, convert pixel-based positions to staff-space units.
+            // v2.1+ files already store values in staff-space units.
+            if (majorVersion < 2 || (majorVersion == 2 && minorVersion < 1)) {
+                FormatMigrator.migratePixelsToStaffSpace(composition);
+            }
+
+            // v2.1 → v2.2: No migration needed. stemDirectionAuto defaults to true,
+            // so absence of <stemDirectionAuto/> in existing v2.1 files is correct.
+            // Re-saving a v2.1 file stamps it as v2.2. See FormatMigrator Javadoc.
 
             return composition;
         }

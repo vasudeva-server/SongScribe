@@ -71,20 +71,20 @@ public class ResolutionDialog extends StandardDialog implements ChangeListener {
         resolutionSpinner.setValue(Prefs.getInstance().getInt("exportDpi"));
         var score = mainFrame.getScore();
         var composition = score.getComposition();
-        sheetWidth = score.getSheetWidth();
-        sheetHeight = score.getSheetHeight();
+        sheetWidth = score.getSheetWidthPx();
+        sheetHeight = score.getSheetHeightPx();
 
         var underLyrics = composition.getUnderLyrics();
         var translatedLyrics = composition.getTranslatedLyrics();
         composition.setUnderLyrics("");
         composition.setTranslatedLyrics("");
-        sheetHeightWithoutLyrics = sheetHeight - score.getSheetHeight();
+        sheetHeightWithoutLyrics = sheetHeight - score.getSheetHeightPx();
         composition.setUnderLyrics(underLyrics);
         composition.setTranslatedLyrics(translatedLyrics);
 
         var songTitle = composition.getTitle();
         composition.setTitle("");
-        sheetHeightWithoutTitle = sheetHeight - score.getSheetHeight();
+        sheetHeightWithoutTitle = sheetHeight - score.getSheetHeightPx();
         composition.setTitle(songTitle);
 
         if (underLyrics.isEmpty() && translatedLyrics.isEmpty()) {
@@ -198,9 +198,9 @@ public class ResolutionDialog extends StandardDialog implements ChangeListener {
                 GridConstraints.ANCHOR_CENTER,
                 GridConstraints.FILL_BOTH,
                 GridConstraints.SIZEPOLICY_CAN_SHRINK |
-                GridConstraints.SIZEPOLICY_CAN_GROW,
+                    GridConstraints.SIZEPOLICY_CAN_GROW,
                 GridConstraints.SIZEPOLICY_CAN_SHRINK |
-                GridConstraints.SIZEPOLICY_CAN_GROW,
+                    GridConstraints.SIZEPOLICY_CAN_GROW,
                 null,
                 null,
                 null,
@@ -317,7 +317,7 @@ public class ResolutionDialog extends StandardDialog implements ChangeListener {
                 GridConstraints.ANCHOR_WEST,
                 GridConstraints.FILL_NONE,
                 GridConstraints.SIZEPOLICY_CAN_SHRINK |
-                GridConstraints.SIZEPOLICY_CAN_GROW,
+                    GridConstraints.SIZEPOLICY_CAN_GROW,
                 GridConstraints.SIZEPOLICY_FIXED,
                 null,
                 null,
@@ -340,9 +340,9 @@ public class ResolutionDialog extends StandardDialog implements ChangeListener {
                 GridConstraints.ANCHOR_CENTER,
                 GridConstraints.FILL_BOTH,
                 GridConstraints.SIZEPOLICY_CAN_SHRINK |
-                GridConstraints.SIZEPOLICY_CAN_GROW,
+                    GridConstraints.SIZEPOLICY_CAN_GROW,
                 GridConstraints.SIZEPOLICY_CAN_SHRINK |
-                GridConstraints.SIZEPOLICY_CAN_GROW,
+                    GridConstraints.SIZEPOLICY_CAN_GROW,
                 null,
                 null,
                 null,
@@ -361,9 +361,9 @@ public class ResolutionDialog extends StandardDialog implements ChangeListener {
                 GridConstraints.ANCHOR_CENTER,
                 GridConstraints.FILL_NONE,
                 GridConstraints.SIZEPOLICY_CAN_SHRINK |
-                GridConstraints.SIZEPOLICY_CAN_GROW,
+                    GridConstraints.SIZEPOLICY_CAN_GROW,
                 GridConstraints.SIZEPOLICY_CAN_SHRINK |
-                GridConstraints.SIZEPOLICY_CAN_GROW,
+                    GridConstraints.SIZEPOLICY_CAN_GROW,
                 null,
                 null,
                 null,
@@ -404,9 +404,9 @@ public class ResolutionDialog extends StandardDialog implements ChangeListener {
                 GridConstraints.ANCHOR_CENTER,
                 GridConstraints.FILL_BOTH,
                 GridConstraints.SIZEPOLICY_CAN_SHRINK |
-                GridConstraints.SIZEPOLICY_CAN_GROW,
+                    GridConstraints.SIZEPOLICY_CAN_GROW,
                 GridConstraints.SIZEPOLICY_CAN_SHRINK |
-                GridConstraints.SIZEPOLICY_CAN_GROW,
+                    GridConstraints.SIZEPOLICY_CAN_GROW,
                 null,
                 null,
                 null,
@@ -428,9 +428,9 @@ public class ResolutionDialog extends StandardDialog implements ChangeListener {
                 GridConstraints.ANCHOR_CENTER,
                 GridConstraints.FILL_BOTH,
                 GridConstraints.SIZEPOLICY_CAN_SHRINK |
-                GridConstraints.SIZEPOLICY_CAN_GROW,
+                    GridConstraints.SIZEPOLICY_CAN_GROW,
                 GridConstraints.SIZEPOLICY_CAN_SHRINK |
-                GridConstraints.SIZEPOLICY_CAN_GROW,
+                    GridConstraints.SIZEPOLICY_CAN_GROW,
                 null,
                 null,
                 null,
@@ -618,7 +618,7 @@ public class ResolutionDialog extends StandardDialog implements ChangeListener {
                 GridConstraints.ANCHOR_WEST,
                 GridConstraints.FILL_NONE,
                 GridConstraints.SIZEPOLICY_CAN_SHRINK |
-                GridConstraints.SIZEPOLICY_CAN_GROW,
+                    GridConstraints.SIZEPOLICY_CAN_GROW,
                 GridConstraints.SIZEPOLICY_FIXED,
                 null,
                 null,

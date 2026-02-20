@@ -33,8 +33,6 @@ import org.jetbrains.annotations.NotNull;
 import songscribe.smufl.EngravingDefaults;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
-import songscribe.smufl.StaffSpaces;
-import songscribe.ui.layout.LayoutStylesheet;
 import songscribe.ui.layout.LineElement;
 import songscribe.util.MyFontUtils;
 
@@ -67,9 +65,11 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
     // ==========================================================================
 
     /**
-     * The base font size for Fughetta music notation glyphs.
+     * The base font size for music notation glyphs, in staff-space units.
+     * Under the Graphics2D scale transform, this produces the correct pixel size
+     * (4.0 ss * 8 px/ss = 32px).
      */
-    public static final float NOTE_FONT_SIZE = 32f;
+    public static final float NOTE_FONT_SIZE = 4.0f;
 
     /**
      * Scale factor for grace note accidentals relative to NOTE_FONT_SIZE.
@@ -130,7 +130,7 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
                 MyFontUtils.getLocalFont("TupletNumbers.ttf"),
                 "Cannot load TupletNumbers.ttf font"
             );
-            TUPLET_FONT = tupletBase.deriveFont(13f);
+            TUPLET_FONT = tupletBase.deriveFont(1.625f);  // 13px / 8 px/ss
             ENDING_FONT = TUPLET_FONT;
         } catch (Exception e) {
             throw new RuntimeException("Cannot load required fonts for rendering.", e);
@@ -158,11 +158,11 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
         SMuFLMetadata.getInstance().getEngravingDefaults();
 
     protected static final Stroke STAFF_LINE_STROKE = new BasicStroke(
-        (float) StaffSpaces.toPixels(ENGRAVING_DEFAULTS.staffLineThickness()));
+        (float) ENGRAVING_DEFAULTS.staffLineThickness());
     protected static final Stroke STEM_STROKE = new BasicStroke(
-        (float) StaffSpaces.toPixels(ENGRAVING_DEFAULTS.stemThickness()));
+        (float) ENGRAVING_DEFAULTS.stemThickness());
     protected static final Stroke LEDGER_LINE_STROKE = new BasicStroke(
-        (float) StaffSpaces.toPixels(ENGRAVING_DEFAULTS.legerLineThickness()));
+        (float) ENGRAVING_DEFAULTS.legerLineThickness());
 
     // ==========================================================================
     // Rendering Template Method
@@ -216,11 +216,11 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
      * @param ctx    The rendering context containing middleLineY
      * @return The Y coordinate in component space
      */
-    protected static int layoutYToComponentY(
+    protected static double layoutYToComponentYSs(
         @NotNull songscribe.ui.layout.Bounds bounds,
         @NotNull ElementRenderContext ctx
     ) {
-        return ctx.getMiddleLineY() + (int) bounds.getTop();
+        return ctx.getMiddleLineYSs() + bounds.getTop();
     }
 
     /**
@@ -232,8 +232,8 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
      * @param bounds The layout bounds
      * @return The X coordinate in component space
      */
-    protected static int layoutXToComponentX(@NotNull songscribe.ui.layout.Bounds bounds) {
-        return (int) bounds.getLeft();
+    protected static double layoutXToComponentXSs(@NotNull songscribe.ui.layout.Bounds bounds) {
+        return bounds.getLeft();
     }
 
     /**
@@ -350,12 +350,7 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
             g2.setColor(STAFF_LINE_COLOR);
 
             double halfWidth = width / 2.0;
-            g2.drawLine(
-                (int) (x - halfWidth),
-                (int) y,
-                (int) (x + halfWidth),
-                (int) y
-            );
+            g2.draw(new Line2D.Double(x - halfWidth, y, x + halfWidth, y));
         }
     }
 
@@ -402,7 +397,7 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
     }
 
     /**
-     * Converts a staff line index to Y coordinate.
+     * Converts a staff line index to Y coordinate in staff-space units.
      * <p>
      * Staff lines are indexed 0-4 where:
      * <ul>
@@ -410,31 +405,32 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
      *   <li>2 = middle line (B4)</li>
      *   <li>4 = bottom line (E4)</li>
      * </ul>
+     * Each staff line is 1.0 ss apart.
      *
      * @param lineIndex   Staff line index (0-4)
-     * @param middleLineY Y position of middle staff line
-     * @return Y coordinate
+     * @param middleLineYSs Y position of middle staff line in staff spaces
+     * @return Y coordinate in staff spaces
      */
-    protected int staffLineToY(int lineIndex, int middleLineY) {
-        int offset = (lineIndex - 2) * LayoutStylesheet.STAFF_SPACE;
-        return middleLineY + offset;
+    protected double staffLineToYSs(int lineIndex, double middleLineYSs) {
+        return middleLineYSs + (lineIndex - 2);
     }
 
     /**
-     * Calculates the Y position for a note given its pitch position.
+     * Calculates the Y coordinate for a note given its staff position.
      * <p>
-     * The pitch position is relative to the middle line (B4), where:
+     * The staff position is relative to the middle line (B4), where:
      * <ul>
      *   <li>0 = B4 (middle line)</li>
      *   <li>Negative values = higher pitches (above middle line)</li>
      *   <li>Positive values = lower pitches (below middle line)</li>
      * </ul>
+     * Each staff position is 0.5 ss (half a staff space).
      *
-     * @param yPos        The note's y-position relative to middle line
-     * @param middleLineY Y position of middle staff line
-     * @return Y coordinate for the note
+     * @param staffPosition The note's staff position relative to middle line
+     * @param middleLineYSs Y position of middle staff line in staff spaces
+     * @return Y coordinate for the note in staff spaces
      */
-    protected int noteYPosToCoordinate(int yPos, int middleLineY) {
-        return middleLineY + (int) (yPos * LayoutStylesheet.NOTE_Y_OFFSET);
+    protected double noteYPosToCoordinateSs(int staffPosition, double middleLineYSs) {
+        return middleLineYSs + staffPosition * 0.5;
     }
 }

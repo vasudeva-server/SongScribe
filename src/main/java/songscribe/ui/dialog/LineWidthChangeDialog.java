@@ -130,7 +130,7 @@ public class LineWidthChangeDialog
 
     @Override
     protected void getData() {
-        originalWidth = mainFrame.getScore().getComposition().getLineWidth();
+        originalWidth = (int) mainFrame.getScore().getComposition().getLineWidth();
         actionPerformed(null);
     }
 
