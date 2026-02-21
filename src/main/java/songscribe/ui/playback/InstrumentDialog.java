@@ -74,6 +74,7 @@ public class InstrumentDialog extends StandardDialog {
     private final JList<String> instrumentList = new JList<>(INSTRUMENT_STRING);
     private JButton scaleButton;
     private Color defaultButtonBackground;
+    private ScaleAction scaleAction;
 
     public InstrumentDialog() {
         super("Playback Instruments");
@@ -85,7 +86,7 @@ public class InstrumentDialog extends StandardDialog {
         instrumentList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         center.add(new JScrollPane(instrumentList));
         center.add(Box.createHorizontalStrut(20));
-        var scaleAction = new ScaleAction();
+        scaleAction = new ScaleAction();
         scaleButton = new JButton(scaleAction);
         defaultButtonBackground = scaleButton.getBackground();
         scaleButton.setText("\uEF4E");
@@ -126,6 +127,15 @@ public class InstrumentDialog extends StandardDialog {
         mainFrame.fireMusicChanged(this);
     }
 
+    @Override
+    public void setVisible(boolean visible) {
+        if (!visible) {
+            scaleAction.stop();
+        }
+
+        super.setVisible(visible);
+    }
+
     private void setScalePlaying(boolean playing) {
         scaleButton.setBackground(playing ? UIManager.getColor("ToggleButton.toolbar.selectedBackground") : defaultButtonBackground);
         scaleButton.repaint();
@@ -152,13 +162,8 @@ public class InstrumentDialog extends StandardDialog {
             setEnabled(MidiController.sequencer != null);
         }
 
-        @Override
-        public void actionPerformed(ActionEvent e) {
-            if (MidiController.sequencer == null) {
-                return;
-            }
-
-            if (MidiController.sequencer.isRunning()) {
+        void stop() {
+            if (MidiController.sequencer != null && MidiController.sequencer.isRunning()) {
                 MidiController.sequencer.stop();
 
                 if (endListener != null) {
@@ -167,6 +172,17 @@ public class InstrumentDialog extends StandardDialog {
                 }
 
                 setScalePlaying(false);
+            }
+        }
+
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            if (MidiController.sequencer == null) {
+                return;
+            }
+
+            if (MidiController.sequencer.isRunning()) {
+                stop();
                 return;
             }
 
