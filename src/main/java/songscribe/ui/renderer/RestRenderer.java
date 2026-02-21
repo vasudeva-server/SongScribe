@@ -133,7 +133,7 @@ public class RestRenderer extends BaseElementRenderer<Note> {
             noteX = ctx.getOverrideNoteXSs();
         } else {
             var layoutResult = ctx.getLayoutResult();
-            noteX = (layoutResult != null) ? layoutResult.getNoteXSs(note) : note.getXPos();
+            noteX = (layoutResult != null) ? layoutResult.getNoteXSs(note) : note.getXPosSs();
         }
 
         return GraphicUtils.snapXToDevicePixel(g2, noteX);

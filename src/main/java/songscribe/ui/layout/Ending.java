@@ -43,7 +43,7 @@ public class Ending extends RangeElement {
 
     private @Nullable Note endNote;
     private @NotNull Type type = Type.FIRST;
-    private int yPosition = 0;
+    private int yPositionSs = 0;
 
     /**
      * Creates an ending bracket.
@@ -111,15 +111,15 @@ public class Ending extends RangeElement {
     /**
      * Returns the user-adjustable Y offset for this ending bracket.
      */
-    public int getYPosition() {
-        return yPosition;
+    public int getYPositionSs() {
+        return yPositionSs;
     }
 
     /**
      * Sets the user-adjustable Y offset for this ending bracket.
      */
-    public void setYPosition(int yPosition) {
-        this.yPosition = yPosition;
+    public void setYPositionSs(int yPositionSs) {
+        this.yPositionSs = yPositionSs;
     }
 
     /**

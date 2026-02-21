@@ -196,8 +196,8 @@ public class GlissandoRenderer {
 
         var x1 = getGlissandoX1PosPx(note, glissando);
         var x2 = getGlissandoX2PosPx(line, noteIndex, glissando);
-        var y1 = noteYPosToCoordinateSs(note.getStaffPosition(), ctx.getMiddleLineYSs());
-        var y2 = noteYPosToCoordinateSs(glissando.pitch, ctx.getMiddleLineYSs());
+        var y1 = noteStaffPositionToCoordinateSs(note.getStaffPosition(), ctx.getMiddleLineYSs());
+        var y2 = noteStaffPositionToCoordinateSs(glissando.pitch, ctx.getMiddleLineYSs());
 
         renderGlissandoLine(g2, x1, (int) y1, x2, (int) y2);
     }
@@ -228,8 +228,8 @@ public class GlissandoRenderer {
         var note = line.getNote(xIndex);
         var x1 = getGlissandoX1PosPx(note, glissando);
         var x2 = getGlissandoX2PosPx(line, xIndex, glissando);
-        var y1 = noteYPosToCoordinateSs(note.getStaffPosition(), ctx.getMiddleLineYSs());
-        var y2 = noteYPosToCoordinateSs(glissando.pitch, ctx.getMiddleLineYSs());
+        var y1 = noteStaffPositionToCoordinateSs(note.getStaffPosition(), ctx.getMiddleLineYSs());
+        var y2 = noteStaffPositionToCoordinateSs(glissando.pitch, ctx.getMiddleLineYSs());
 
         renderGlissandoLine(g2, x1, (int) y1, x2, (int) y2);
     }
@@ -249,7 +249,7 @@ public class GlissandoRenderer {
         @NotNull Note note,
         @NotNull Note.Glissando glissando
     ) {
-        var x1 = note.getXPos() + GLISSANDO_START_OFFSET_PX + (int) glissando.x1Translate;
+        var x1 = note.getXPosSs() + GLISSANDO_START_OFFSET_PX + (int) glissando.x1Translate;
         var noteType = note.getNoteType();
 
         if (noteType == NoteType.SEMIBREVE) {
@@ -279,7 +279,7 @@ public class GlissandoRenderer {
 
         if ((noteIndex + 1) < line.noteCount()) {
             var nextNote = line.getNote(noteIndex + 1);
-            x2 += nextNote.getXPos() - GLISSANDO_END_GAP_PX;
+            x2 += nextNote.getXPosSs() - GLISSANDO_END_GAP_PX;
 
             var accNum = nextNote.getAccidental().ordinal();
 
@@ -289,7 +289,7 @@ public class GlissandoRenderer {
             }
         } else {
             // At end of line, use fixed offset from current note
-            x2 += line.getNote(noteIndex).getXPos() + END_OF_LINE_OFFSET_PX;
+            x2 += line.getNote(noteIndex).getXPosSs() + END_OF_LINE_OFFSET_PX;
         }
 
         return Math.round(x2);
@@ -350,11 +350,11 @@ public class GlissandoRenderer {
     /**
      * Calculates the Y coordinate for a given pitch position.
      *
-     * @param yPos        The note's y-position relative to middle line
+     * @param staffPosition The note's staff position relative to middle line
      * @param middleLineYSs Y position of middle staff line in staff spaces
      * @return Y coordinate
      */
-    private double noteYPosToCoordinateSs(int yPos, double middleLineYSs) {
-        return middleLineYSs + yPos * (BaseElementRenderer.NOTE_FONT_SIZE / 8);
+    private double noteStaffPositionToCoordinateSs(int staffPosition, double middleLineYSs) {
+        return middleLineYSs + staffPosition * (BaseElementRenderer.NOTE_FONT_SIZE / 8);
     }
 }

@@ -34,7 +34,7 @@ import songscribe.music.Note;
 public class Trill extends RangeElement {
 
     private @Nullable Note endNote;
-    private int yPosition = 0;
+    private int yPositionSs = 0;
 
     /**
      * Creates a trill spanning multiple notes.
@@ -100,15 +100,15 @@ public class Trill extends RangeElement {
     /**
      * Returns the user-adjustable Y offset for this trill.
      */
-    public int getYPosition() {
-        return yPosition;
+    public int getYPositionSs() {
+        return yPositionSs;
     }
 
     /**
      * Sets the user-adjustable Y offset for this trill.
      */
-    public void setYPosition(int yPosition) {
-        this.yPosition = yPosition;
+    public void setYPositionSs(int yPositionSs) {
+        this.yPositionSs = yPositionSs;
     }
 
     @Override

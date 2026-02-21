@@ -455,7 +455,7 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
      * @param middleLineYSs Y position of middle staff line in staff spaces
      * @return Y coordinate for the note in staff spaces
      */
-    protected double noteYPosToCoordinateSs(int staffPosition, double middleLineYSs) {
+    protected double noteStaffPositionToCoordinateSs(int staffPosition, double middleLineYSs) {
         return middleLineYSs + staffPosition * 0.5;
     }
 

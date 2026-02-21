@@ -117,21 +117,21 @@ public class TieRenderer extends BaseElementRenderer<Tie> {
 
         // Calculate start position
         double halfNoteWidth = getHalfNoteWidthForTiePx(startNote);
-        double xPos = startNote.getXPos() + halfNoteWidth + 2;
+        double xPosSs = startNote.getXPosSs() + halfNoteWidth + 2;
 
         // Calculate gap (distance between tie start and end)
         double endHalfWidth = getHalfNoteWidthForTiePx(endNote);
-        double gap = (endNote.getXPos() + endHalfWidth) - xPos - 3;
+        double gap = (endNote.getXPosSs() + endHalfWidth) - xPosSs - 3;
 
         // Handle case where stem directions differ
         if (startNote.isUpper() != endNote.isUpper() && startNote.isUpper()) {
             tieUpper = false;
-            xPos += 7;
+            xPosSs += 7;
             gap -= 5;
         }
 
         // Calculate Y position
-        double yPos = middleLineYSs + (startNote.getStaffPosition() * NOTE_Y_OFFSET_PX) +
+        double yPosSs = middleLineYSs + (startNote.getStaffPosition() * NOTE_Y_OFFSET_PX) +
             (tieUpper ? (NOTE_Y_OFFSET_PX + 2) : (-NOTE_Y_OFFSET_PX - 2));
 
         // Draw the tie curve
@@ -140,22 +140,22 @@ public class TieRenderer extends BaseElementRenderer<Tie> {
             g2.setColor(NOTE_COLOR);
 
             GeneralPath tie = new GeneralPath(Path2D.WIND_NON_ZERO, 2);
-            tie.moveTo(xPos, yPos);
+            tie.moveTo(xPosSs, yPosSs);
 
             // First curve (outer)
             tie.quadTo(
-                xPos + (gap / 2),
-                yPos + (tieUpper ? 6 : -6),
-                xPos + gap,
-                yPos
+                xPosSs + (gap / 2),
+                yPosSs + (tieUpper ? 6 : -6),
+                xPosSs + gap,
+                yPosSs
             );
 
             // Second curve (inner, creating the filled shape)
             tie.quadTo(
-                xPos + (gap / 2),
-                yPos + (tieUpper ? 8 : -8),
-                xPos,
-                yPos
+                xPosSs + (gap / 2),
+                yPosSs + (tieUpper ? 8 : -8),
+                xPosSs,
+                yPosSs
             );
 
             tie.closePath();

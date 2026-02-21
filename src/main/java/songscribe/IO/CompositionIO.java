@@ -455,7 +455,7 @@ public final class CompositionIO {
                     }
 
                     var line = composition.getLine(composition.lineCount() - 1);
-                    note.setXPos((int) Math.round(
+                    note.setXPosSs((int) Math.round(
                         InsertionSpacingCalculator.calculateAppendPositionSs(line, note)));
                     note.setUpper(Score.defaultUpperNote(note));
                     line.addNote(note);
@@ -886,7 +886,7 @@ public final class CompositionIO {
             if (!composition.hasBeenDynamicallyLaidOut()) {
                 for (var line : composition.getLines()) {
                     for (var i = 0; i < line.noteCount(); i++) {
-                        // line.getNote(i).setXPos(0);
+                        // line.getNote(i).setXPosSs(0);
                     }
                 }
             }

@@ -83,7 +83,7 @@ class InsertionNoteManager {
     private static int currentXIndex = -1;
 
     /** Current Y position on the staff (in note units, not pixels). */
-    private static int currentYPos = 0;
+    private static int currentStaffPosition = 0;
 
     /** Whether the Alt key is currently held down. */
     private static boolean altPressed = false;
@@ -131,7 +131,7 @@ class InsertionNoteManager {
             var oldLine = currentInsertionLine;
             currentInsertionLine = null;
             currentXIndex = -1;
-            currentYPos = 0;
+            currentStaffPosition = 0;
             currentIsOverNoteHead = false;
             oldLine.repaint();
         }
@@ -182,8 +182,8 @@ class InsertionNoteManager {
     /**
      * Returns the current insertion Y position.
      */
-    static int getCurrentYPos() {
-        return currentYPos;
+    static int getCurrentStaffPosition() {
+        return currentStaffPosition;
     }
 
     /**
@@ -217,9 +217,9 @@ class InsertionNoteManager {
         var mouseYss = scale.fromPixels(e.getY());
 
         // Calculate Y position from mouse (in staff-space coordinates)
-        int yPos = calculateYPosFromMouse(mouseYss, lc.getMiddleLineYSs());
+        int staffPosition = calculateStaffPositionFromMouse(mouseYss, lc.getMiddleLineYSs());
 
-        if (!isValidYPos(yPos)) {
+        if (!isValidStaffPosition(staffPosition)) {
             // Mouse is outside valid range, clear insertion note if on this line
             if (currentInsertionLine == lc) {
                 clearInsertionNote();
@@ -241,7 +241,7 @@ class InsertionNoteManager {
 
         // Check if position actually changed
         if (lc == currentInsertionLine && xIndex == currentXIndex
-            && yPos == currentYPos && isOverNoteHead == currentIsOverNoteHead) {
+            && staffPosition == currentStaffPosition && isOverNoteHead == currentIsOverNoteHead) {
             return;  // No change, no repaint
         }
 
@@ -253,7 +253,7 @@ class InsertionNoteManager {
         // Update static state
         currentInsertionLine = lc;
         currentXIndex = xIndex;
-        currentYPos = yPos;
+        currentStaffPosition = staffPosition;
         currentIsOverNoteHead = isOverNoteHead;
 
         // Update the edit note's Y position
@@ -263,7 +263,7 @@ class InsertionNoteManager {
             var editNote = editModeManager.getEditNote();
 
             if (editNote != null) {
-                editNote.setStaffPosition(yPos);
+                editNote.setStaffPosition(staffPosition);
             }
         }
 
@@ -410,20 +410,20 @@ class InsertionNoteManager {
      * @param middleLineYSs Y coordinate of the middle staff line in staff-space units
      * @return Staff position in note units
      */
-    private static int calculateYPosFromMouse(double mouseYss, double middleLineYSs) {
+    private static int calculateStaffPositionFromMouse(double mouseYss, double middleLineYSs) {
         return (int) Math.round((mouseYss - middleLineYSs) / LayoutStylesheet.NOTE_Y_OFFSET);
     }
 
     /**
      * Returns whether the given Y position is within the valid range for notes.
      *
-     * @param yPos Y position in note units
+     * @param staffPosition Staff position in note units
      * @return true if the position is valid
      */
-    private static boolean isValidYPos(int yPos) {
+    private static boolean isValidStaffPosition(int staffPosition) {
         var minY = -(STAFF_LINES_ABOVE + 2) * 2;
         var maxY = (STAFF_LINES_BELOW + 2) * 2;
-        return yPos >= minY && yPos <= maxY;
+        return staffPosition >= minY && staffPosition <= maxY;
     }
 
     // ==========================================================================
@@ -460,7 +460,7 @@ class InsertionNoteManager {
             return;
         }
 
-        editNote.setXPos((int) Math.round(
+        editNote.setXPosSs((int) Math.round(
             InsertionSpacingCalculator.calculateAppendPositionSs(line, editNote)));
         line.addNote(editNote);
 
@@ -510,12 +510,12 @@ class InsertionNoteManager {
 
         line.removeInterval(xIndex - 1, xIndex);
         var insertion = InsertionSpacingCalculator.calculateInsertion(line, editNote, xIndex);
-        editNote.setXPos((int) Math.round(insertion.insertedNoteXSs()));
+        editNote.setXPosSs((int) Math.round(insertion.insertedNoteXSs()));
         line.addNote(xIndex, editNote);
         var shift = (int) Math.round(insertion.shiftForSubsequentNotesSs());
 
         for (var i = xIndex + 1; i < line.noteCount(); i++) {
-            line.getNote(i).setXPos(line.getNote(i).getXPos() + shift);
+            line.getNote(i).setXPosSs(line.getNote(i).getXPosSs() + shift);
         }
 
         applyAutomaticBeaming(line, xIndex);
@@ -611,7 +611,7 @@ class InsertionNoteManager {
         }
 
         var existingNote = line.getNote(noteIndex);
-        existingNote.setStaffPosition(currentYPos);
+        existingNote.setStaffPosition(currentStaffPosition);
         existingNote.setUpper(Score.defaultUpperNote(existingNote));
         score.getComposition().setModified(true);
 

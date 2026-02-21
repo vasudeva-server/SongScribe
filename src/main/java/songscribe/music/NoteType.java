@@ -230,7 +230,7 @@ public enum NoteType {
     private final Rectangle realUpNoteRect;
     private final Rectangle realDownNoteRect;
     private final int defaultDuration;
-    private final int defaultYPos;
+    private final int defaultStaffPosition;
     private final NoteType aliasOf;
 
     NoteType(
@@ -240,13 +240,13 @@ public enum NoteType {
         Rectangle realUp,
         Rectangle realDown,
         int defaultDuration,
-        int defaultYPos
+        int defaultStaffPosition
     ) {
         this.name = name;
         this.realUpNoteRect = realUp;
         this.realDownNoteRect = realDown;
         this.defaultDuration = defaultDuration;
-        this.defaultYPos = defaultYPos;
+        this.defaultStaffPosition = defaultStaffPosition;
         this.aliasOf = null;
 
         if (keyCode != 0) {
@@ -265,9 +265,9 @@ public enum NoteType {
         Rectangle realUp,
         Rectangle realDown,
         int defaultDuration,
-        int defaultYPos
+        int defaultStaffPosition
     ) {
-        this(name, 0, 0, realUp, realDown, defaultDuration, defaultYPos);
+        this(name, 0, 0, realUp, realDown, defaultDuration, defaultStaffPosition);
     }
 
     NoteType(NoteType aliasOf) {
@@ -277,7 +277,7 @@ public enum NoteType {
         this.realUpNoteRect = aliasOf.realUpNoteRect;
         this.realDownNoteRect = aliasOf.realDownNoteRect;
         this.defaultDuration = aliasOf.defaultDuration;
-        this.defaultYPos = aliasOf.defaultYPos;
+        this.defaultStaffPosition = aliasOf.defaultStaffPosition;
     }
 
     private Note createDefaultInstance() {
@@ -324,8 +324,8 @@ public enum NoteType {
         return defaultDuration;
     }
 
-    public int getDefaultYPos() {
-        return defaultYPos;
+    public int getDefaultStaffPosition() {
+        return defaultStaffPosition;
     }
 
     /**

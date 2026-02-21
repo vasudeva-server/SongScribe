@@ -119,10 +119,10 @@ public class BeatChangeRenderer extends BaseElementRenderer<Note> {
             return;
         }
 
-        int xPos = note.getXPos();
-        int yPos = getEffectiveBeatChangeYPosPx(note, ctx);
+        int xPosSs = note.getXPosSs();
+        int yPosPx = getEffectiveBeatChangeYPosPx(note, ctx);
 
-        drawBeatChange(g2, beatChange, xPos, yPos, composition);
+        drawBeatChange(g2, beatChange, xPosSs, yPosPx, composition);
     }
 
     /**
@@ -152,28 +152,28 @@ public class BeatChangeRenderer extends BaseElementRenderer<Note> {
      *
      * @param g2         Graphics context
      * @param beatChange The beat change data
-     * @param xPos       X position
-     * @param yPos       Y position
+     * @param xPosSs      X position (staff spaces)
+     * @param yPosPx      Y position (pixels)
      * @param composition The composition (for font access)
      */
     public void drawBeatChange(
         @NotNull Graphics2D g2,
         @NotNull BeatChange beatChange,
-        int xPos,
-        int yPos,
+        int xPosSs,
+        int yPosPx,
         @NotNull songscribe.music.Composition composition
     ) {
         // Draw first note
-        drawTempoChangeNote(g2, beatChange.getFirstNote(), xPos, yPos);
+        drawTempoChangeNote(g2, beatChange.getFirstNote(), xPosSs, yPosPx);
 
         // Draw equals sign
         g2.setFont(composition.getAttributionFont());
         g2.setColor(NOTE_COLOR);
-        int eqXPos = xPos + (int) CROTCHET_WIDTH_PX + 7;
-        g2.drawString("=", (float) eqXPos, yPos);
+        int eqXPosSs = xPosSs + (int) CROTCHET_WIDTH_PX + 7;
+        g2.drawString("=", (float) eqXPosSs, yPosPx);
 
         // Draw second note
-        drawTempoChangeNote(g2, beatChange.getSecondNote(), (int) Math.round(eqXPos + 12), yPos);
+        drawTempoChangeNote(g2, beatChange.getSecondNote(), (int) Math.round(eqXPosSs + 12), yPosPx);
     }
 
     /**

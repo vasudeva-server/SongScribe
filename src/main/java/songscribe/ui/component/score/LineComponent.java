@@ -561,9 +561,9 @@ public class LineComponent extends ScoreComponent
 
         // Account for tempo marking on first line (even if line is empty)
         if (lineIndex == 0 && hasTempo()) {
-            // tempoChangeYPos is a legacy pixel offset (deprecated, typically 0)
+            // tempoChangeYPosPx is a legacy pixel offset (deprecated, typically 0)
             var tempoChangeYPosSs = ScaleContext.getInstance().fromPixels(
-                (line != null) ? line.getTempoChangeYPos() : 0
+                (line != null) ? line.getTempoChangeYPosPx() : 0
             );
             var tempoYOffset = -7.0 * LayoutStylesheet.NOTE_Y_OFFSET + tempoChangeYPosSs;
             // Approximate tempo content height (note symbol + text ascent): ~3.125 ss
@@ -643,8 +643,8 @@ public class LineComponent extends ScoreComponent
     /**
      * Returns the current insertion Y position.
      */
-    public static int getCurrentYPos() {
-        return InsertionNoteManager.getCurrentYPos();
+    public static int getCurrentStaffPosition() {
+        return InsertionNoteManager.getCurrentStaffPosition();
     }
 
     // ==========================================================================

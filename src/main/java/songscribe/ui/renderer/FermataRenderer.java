@@ -84,7 +84,7 @@ public class FermataRenderer extends BaseElementRenderer<Note> {
             return;
         }
 
-        int noteX = element.getXPos();
+        int noteX = element.getXPosSs();
         int fermataY = getEffectiveFermataYPosPx(element, ctx);
 
         // Center horizontally over the notehead
@@ -120,8 +120,8 @@ public class FermataRenderer extends BaseElementRenderer<Note> {
         }
 
         // Fallback: compute position directly from note position
-        int fermataYPos = getFermataYPos(note);
-        return (int) (ctx.getMiddleLineYSs() + LayoutStylesheet.toPixels(fermataYPos * LayoutStylesheet.NOTE_Y_OFFSET));
+        int fermataStaffPosition = getFermataStaffPosition(note);
+        return (int) (ctx.getMiddleLineYSs() + LayoutStylesheet.toPixels(fermataStaffPosition * LayoutStylesheet.NOTE_Y_OFFSET));
     }
 
     /**
@@ -143,12 +143,12 @@ public class FermataRenderer extends BaseElementRenderer<Note> {
      * Calculates the Y position for the fermata based on note position.
      * Fermata is placed above the note, further up for higher notes.
      */
-    private int getFermataYPos(@NotNull Note note) {
-        int yPos = note.getStaffPosition();
+    private int getFermataStaffPosition(@NotNull Note note) {
+        int staffPosition = note.getStaffPosition();
 
         // For notes above the staff, place fermata higher
-        if (yPos < -4) {
-            return yPos - 3;
+        if (staffPosition < -4) {
+            return staffPosition - 3;
         }
 
         // Default position above the staff

@@ -297,8 +297,8 @@ public class TupletRenderer extends BaseElementRenderer<Tuplet> {
             // Stems down: align bracket with notehead edges
             // (noteheads are shifted left by DOWN_STEM_NOTEHEAD_SHIFT in NoteRenderer)
             double noteheadShift = DOWN_STEM_NOTEHEAD_SHIFT_SS;
-            lx = (int) (firstNote.getXPos() - noteheadShift + NOTEHEAD_LEFT_PX);
-            rx = (int) (lastNote.getXPos() - noteheadShift + NOTEHEAD_RIGHT_PX);
+            lx = (int) (firstNote.getXPosSs() - noteheadShift + NOTEHEAD_LEFT_PX);
+            rx = (int) (lastNote.getXPosSs() - noteheadShift + NOTEHEAD_RIGHT_PX);
             cx = (lx + rx) / 2;
         }
 

@@ -145,16 +145,16 @@ public class EndingRenderer extends BaseElementRenderer<LineElement> {
 
                 if (repeatRightPos != -1) {
                     // Right edge aligns with thin line of repeat
-                    repeatX = line.getNote(repeatRightPos).getXPos() + REPEAT_RIGHT_THICK_X_PX;
+                    repeatX = line.getNote(repeatRightPos).getXPosSs() + REPEAT_RIGHT_THICK_X_PX;
                     x2 = repeatX - REPEAT_THICK_THIN_DIFF_PX;
                 } else {
                     // Go halfway to next note
-                    double nextX = line.getNote(end + 1).getXPos();
-                    x2 = endNote.getXPos();
+                    double nextX = line.getNote(end + 1).getXPosSs();
+                    x2 = endNote.getXPosSs();
                     x2 += (nextX - x2) / 2d;
                 }
 
-                double x1 = startNote.getXPos();
+                double x1 = startNote.getXPosSs();
 
                 // Align with bar line if starting on one
                 if (startNote.getNoteType() == NoteType.SINGLE_BARLINE) {
@@ -162,7 +162,7 @@ public class EndingRenderer extends BaseElementRenderer<LineElement> {
                 } else if (start > 0) {
                     // Otherwise go halfway to previous note's right edge
                     var previousNote = line.getNote(start - 1);
-                    double previousX = previousNote.getXPos() + previousNote.getRealUpNoteRect().width;
+                    double previousX = previousNote.getXPosSs() + previousNote.getRealUpNoteRect().width;
                     x1 -= (x1 - previousX) / 2d;
                 }
 
@@ -171,7 +171,7 @@ public class EndingRenderer extends BaseElementRenderer<LineElement> {
 
             // Render second ending (after repeat)
             if ((repeatRightPos != -1) && (end > repeatRightPos)) {
-                double x2 = endNote.getXPos();
+                double x2 = endNote.getXPosSs();
                 var type = endNote.getNoteType();
 
                 // Extend to next bar line if present
@@ -186,7 +186,7 @@ public class EndingRenderer extends BaseElementRenderer<LineElement> {
                         nextType == NoteType.DOUBLE_BARLINE) {
                         ++end;
                         type = nextType;
-                        x2 = nextNote.getXPos();
+                        x2 = nextNote.getXPosSs();
                     }
                 }
 
@@ -203,7 +203,7 @@ public class EndingRenderer extends BaseElementRenderer<LineElement> {
                     x2 += nextNote.getRealUpNoteRect().width;
 
                     if (end < line.noteCount()) {
-                        x2 += (nextNote.getXPos() - x2) / 2d;
+                        x2 += (nextNote.getXPosSs() - x2) / 2d;
                     } else {
                         x2 += nextNote.getRealUpNoteRect().width;
                     }

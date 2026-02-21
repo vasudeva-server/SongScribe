@@ -296,8 +296,8 @@ class SelectionHandler {
                 var end = lineSelectionState.getSelectionEnd();
                 var beginNote = line.getNote(begin);
                 var endNote = line.getNote(end);
-                var distToBegin = Math.abs(dragStart.x - beginNote.getXPos());
-                var distToEnd = Math.abs(dragStart.x - endNote.getXPos());
+                var distToBegin = Math.abs(dragStart.x - beginNote.getXPosSs());
+                var distToEnd = Math.abs(dragStart.x - endNote.getXPosSs());
                 lineSelectionState.setSelectionAnchor(distToBegin <= distToEnd ? begin : end);
             }
         }

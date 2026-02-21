@@ -113,7 +113,7 @@ public class Line {
      *             Retained for backward compatibility with legacy documents.
      */
     @Deprecated
-    private int tempoChangeYPos = 0;
+    private int tempoChangeYPosPx = 0;
 
     /**
      * Y offset for beat change display (default: -24, above staff).
@@ -122,7 +122,7 @@ public class Line {
      *             Retained for backward compatibility with legacy documents.
      */
     @Deprecated
-    private int beatChangeYPos = LayoutStylesheet.toPixels(LayoutStylesheet.BEAT_CHANGE_DEFAULT_Y);
+    private int beatChangeYPosPx = LayoutStylesheet.toPixels(LayoutStylesheet.BEAT_CHANGE_DEFAULT_Y);
 
     /**
      * Y offset for lyrics display (default: 50, below staff).
@@ -130,7 +130,7 @@ public class Line {
      * Note: This field is still in active use for line-level lyrics positioning.
      * Per-instance lyrics offsets are not yet implemented.
      */
-    private double lyricsYPos = LayoutStylesheet.LYRICS_DEFAULT_Y;
+    private double lyricsYPosSs = LayoutStylesheet.LYRICS_DEFAULT_Y;
 
     /**
      * Y offset for first/second ending display (default: -25, above staff).
@@ -139,7 +139,7 @@ public class Line {
      *             Retained for backward compatibility with legacy documents.
      */
     @Deprecated
-    private int firstSecondEndingYPos = LayoutStylesheet.toPixels(LayoutStylesheet.ENDING_DEFAULT_Y);
+    private int firstSecondEndingYPosPx = LayoutStylesheet.toPixels(LayoutStylesheet.ENDING_DEFAULT_Y);
 
     /**
      * Y offset for trill display (default: -27, above staff).
@@ -148,7 +148,7 @@ public class Line {
      *             Retained for backward compatibility with legacy documents.
      */
     @Deprecated
-    private int trillYPos = LayoutStylesheet.toPixels(LayoutStylesheet.TRILL_DEFAULT_Y);
+    private int trillYPosPx = LayoutStylesheet.toPixels(LayoutStylesheet.TRILL_DEFAULT_Y);
 
     /** Ratio multiplier for horizontal note spacing (default: 1.0, user-adjustable). */
     private float noteDistChangeRatio = 1f;
@@ -284,16 +284,16 @@ public class Line {
      * @deprecated Use per-instance userYOffset on TempoAttachment instead.
      */
     @Deprecated
-    public int getTempoChangeYPos() {
-        return tempoChangeYPos;
+    public int getTempoChangeYPosPx() {
+        return tempoChangeYPosPx;
     }
 
     /**
      * @deprecated Use per-instance userYOffset on TempoAttachment instead.
      */
     @Deprecated
-    public void setTempoChangeYPos(int tempoChangeYPos) {
-        this.tempoChangeYPos = tempoChangeYPos;
+    public void setTempoChangeYPosPx(int tempoChangeYPosPx) {
+        this.tempoChangeYPosPx = tempoChangeYPosPx;
         modifiedComposition();
     }
 
@@ -301,25 +301,25 @@ public class Line {
      * @deprecated Use per-instance userYOffset on BeatChangeAttachment instead.
      */
     @Deprecated
-    public int getBeatChangeYPos() {
-        return beatChangeYPos;
+    public int getBeatChangeYPosPx() {
+        return beatChangeYPosPx;
     }
 
     /**
      * @deprecated Use per-instance userYOffset on BeatChangeAttachment instead.
      */
     @Deprecated
-    public void setBeatChangeYPos(int beatChangeYPos) {
-        this.beatChangeYPos = beatChangeYPos;
+    public void setBeatChangeYPosPx(int beatChangeYPosPx) {
+        this.beatChangeYPosPx = beatChangeYPosPx;
         modifiedComposition();
     }
 
-    public double getLyricsYPos() {
-        return lyricsYPos;
+    public double getLyricsYPosSs() {
+        return lyricsYPosSs;
     }
 
-    public void setLyricsYPos(double lyricsYPos) {
-        this.lyricsYPos = lyricsYPos;
+    public void setLyricsYPosSs(double lyricsYPosSs) {
+        this.lyricsYPosSs = lyricsYPosSs;
         modifiedComposition();
     }
 
@@ -327,16 +327,16 @@ public class Line {
      * @deprecated Use per-instance yPosition on Ending objects instead.
      */
     @Deprecated
-    public int getFirstSecondEndingYPos() {
-        return firstSecondEndingYPos;
+    public int getFirstSecondEndingYPosPx() {
+        return firstSecondEndingYPosPx;
     }
 
     /**
      * @deprecated Use per-instance yPosition on Ending objects instead.
      */
     @Deprecated
-    public void setFirstSecondEndingYPos(int fsEndingYPos) {
-        firstSecondEndingYPos = fsEndingYPos;
+    public void setFirstSecondEndingYPosPx(int fsEndingYPosPx) {
+        firstSecondEndingYPosPx = fsEndingYPosPx;
         modifiedComposition();
     }
 
@@ -344,16 +344,16 @@ public class Line {
      * @deprecated Use per-instance yPosition on Trill objects instead.
      */
     @Deprecated
-    public int getTrillYPos() {
-        return trillYPos;
+    public int getTrillYPosPx() {
+        return trillYPosPx;
     }
 
     /**
      * @deprecated Use per-instance yPosition on Trill objects instead.
      */
     @Deprecated
-    public void setTrillYPos(int trillYPos) {
-        this.trillYPos = trillYPos;
+    public void setTrillYPosPx(int trillYPosPx) {
+        this.trillYPosPx = trillYPosPx;
         modifiedComposition();
     }
 

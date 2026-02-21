@@ -346,7 +346,7 @@ public class BeamGroupRenderer extends BaseElementRenderer<LineElement> {
         // --- First note stem geometry ---
         var firstStemLayout = (layoutResult != null) ? layoutResult.getStemLayout(beginNote) : null;
         double firstNoteXSs = (layoutResult != null)
-            ? layoutResult.getNoteXSs(beginNote) : beginNote.getXPos();
+            ? layoutResult.getNoteXSs(beginNote) : beginNote.getXPosSs();
         double firstStemCenterXSs = firstNoteXSs
             + stemCenterXOffsetSs(beginNote.getNoteType(), isUpper);
         double firstX      = GraphicUtils.snapXToDevicePixel(g2, firstStemCenterXSs - halfStemWidthSs);
@@ -358,7 +358,7 @@ public class BeamGroupRenderer extends BaseElementRenderer<LineElement> {
         // --- Last note stem geometry ---
         var lastStemLayout = (layoutResult != null) ? layoutResult.getStemLayout(endNote) : null;
         double lastNoteXSs = (layoutResult != null)
-            ? layoutResult.getNoteXSs(endNote) : endNote.getXPos();
+            ? layoutResult.getNoteXSs(endNote) : endNote.getXPosSs();
         double lastStemCenterXSs = lastNoteXSs
             + stemCenterXOffsetSs(endNote.getNoteType(), isUpper);
         double lastX      = GraphicUtils.snapXToDevicePixel(g2, lastStemCenterXSs + halfStemWidthSs);

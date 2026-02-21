@@ -78,7 +78,7 @@ public class InsertionSpacingCalculator {
         var lastColumn = createLightweightColumn(lastNote);
 
         // Use the last note's actual X position
-        lastColumn.setXSs(lastNote.getXPos());
+        lastColumn.setXSs(lastNote.getXPosSs());
 
         // Create column for note to append
         var appendColumn = createLightweightColumn(noteToAppend);
@@ -100,7 +100,7 @@ public class InsertionSpacingCalculator {
      */
     public static double calculateNextNoteXSs(@NotNull Note currentNote, @NotNull Note nextNote) {
         var currentColumn = createLightweightColumn(currentNote);
-        currentColumn.setXSs(currentNote.getXPos());
+        currentColumn.setXSs(currentNote.getXPosSs());
         var nextColumn = createLightweightColumn(nextNote);
         return HorizontalSpacingCalculator.calculateNextColumnXSs(currentColumn, nextColumn);
     }
@@ -152,7 +152,7 @@ public class InsertionSpacingCalculator {
                 insertedColumn, nextColumn);
 
             // Shift = (where first note needs to be) - (where it currently is)
-            requiredSpaceSs = insertedToNextSs - nextNote.getXPos();
+            requiredSpaceSs = insertedToNextSs - nextNote.getXPosSs();
         } else {
             // Inserting in middle - calculate space between prev and next
             var prevNote = line.getNote(insertIndex - 1);
@@ -161,7 +161,7 @@ public class InsertionSpacingCalculator {
             var prevColumn = createLightweightColumn(prevNote);
             var nextColumn = createLightweightColumn(nextNote);
 
-            prevColumn.setXSs(prevNote.getXPos());
+            prevColumn.setXSs(prevNote.getXPosSs());
 
             // Calculate: prev → inserted → next
             insertedNoteXSs = HorizontalSpacingCalculator.calculateNextColumnXSs(
@@ -172,7 +172,7 @@ public class InsertionSpacingCalculator {
                 insertedColumn, nextColumn);
 
             // Shift = (where next needs to be) - (where it currently is)
-            requiredSpaceSs = insertedToNextSs - nextNote.getXPos();
+            requiredSpaceSs = insertedToNextSs - nextNote.getXPosSs();
         }
 
         return new InsertionResult(insertedNoteXSs, Math.max(0, requiredSpaceSs));

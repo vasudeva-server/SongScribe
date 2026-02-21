@@ -257,17 +257,17 @@ public class ExportABCAction extends UIAction {
         return new Fraction(upper, lower);
     }
 
-    public static String translatePitch(int yPos) {
+    public static String translatePitch(int staffPosition) {
         var sb = new StringBuilder(7);
-        var pitch = ((getPitchType(yPos) + 1) % 7);
-        var letter = (char) (pitch + ((yPos >= 0) ? 'A' : 'a'));
+        var pitch = ((getPitchType(staffPosition) + 1) % 7);
+        var letter = (char) (pitch + ((staffPosition >= 0) ? 'A' : 'a'));
         sb.append(letter);
 
-        for (var y = yPos; y >= 7; y -= 7) {
+        for (var y = staffPosition; y >= 7; y -= 7) {
             sb.append(',');
         }
 
-        for (var y = yPos; y < -7; y += 7) {
+        for (var y = staffPosition; y < -7; y += 7) {
             sb.append('\'');
         }
 
@@ -277,8 +277,8 @@ public class ExportABCAction extends UIAction {
     /**
      * @return 0 for B, 1 for C, 2 for D, ..., 6 for A
      */
-    static int getPitchType(int yPos) {
-        return (((yPos <= 0) ? -yPos : (7 - (yPos % 7))) % 7);
+    static int getPitchType(int staffPosition) {
+        return (((staffPosition <= 0) ? -staffPosition : (7 - (staffPosition % 7))) % 7);
     }
 
     public static String translateAccidental(Note.Accidental accidental) {
@@ -345,8 +345,8 @@ public class ExportABCAction extends UIAction {
 
     static String translateAnnotation(Annotation annotation) {
         if (annotation != null) {
-            var aboveDiff = Math.abs(annotation.getYPos() - Annotation.ABOVE);
-            var belowDiff = Math.abs(annotation.getYPos() - Annotation.BELOW);
+            var aboveDiff = Math.abs(annotation.getYPosPx() - Annotation.ABOVE);
+            var belowDiff = Math.abs(annotation.getYPosPx() - Annotation.BELOW);
             return (
                 '"' +
                     ((aboveDiff < belowDiff) ? "^" : "_") +

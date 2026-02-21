@@ -32,7 +32,6 @@ import songscribe.ui.action.InsertLineAction;
 import songscribe.ui.component.IMainFrame;
 import songscribe.ui.component.Score;
 import songscribe.ui.layout.LayoutStylesheet;
-import songscribe.ui.layout.LayoutStylesheet;
 import songscribe.ui.message.LayoutChangeMessage;
 import songscribe.ui.message.MessageCenter;
 import songscribe.util.MyFontUtils;
@@ -510,8 +509,8 @@ public final class Composition {
             line.setKeyType(defaultKeyType);
         }
 
-        if (line.getTempoChangeYPos() == 0) {
-            line.setTempoChangeYPos(
+        if (line.getTempoChangeYPosPx() == 0) {
+            line.setTempoChangeYPosPx(
                 (lineIndex == 0)
                     ? LayoutStylesheet.toPixels(LayoutStylesheet.TEMPO_DEFAULT_Y_FIRST_LINE)
                     : LayoutStylesheet.toPixels(LayoutStylesheet.TEMPO_DEFAULT_Y_OTHER_LINES)

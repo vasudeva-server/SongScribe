@@ -320,7 +320,7 @@ public final class EditModeManager {
                 (line.getNote(noteIndex - 1).getNoteType() == NoteType.REPEAT_RIGHT)
         ) {
             var repeatLeftRight = NoteType.REPEAT_LEFT_RIGHT.newInstance();
-            repeatLeftRight.setXPos(line.getNote(noteIndex - 1).getXPos());
+            repeatLeftRight.setXPosSs(line.getNote(noteIndex - 1).getXPosSs());
             line.setNote(noteIndex - 1, repeatLeftRight);
             return true;
         }
@@ -331,7 +331,7 @@ public final class EditModeManager {
                 (line.getNote(noteIndex).getNoteType() == NoteType.REPEAT_LEFT)
         ) {
             var repeatLeftRight = NoteType.REPEAT_LEFT_RIGHT.newInstance();
-            repeatLeftRight.setXPos(line.getNote(noteIndex).getXPos());
+            repeatLeftRight.setXPosSs(line.getNote(noteIndex).getXPosSs());
             line.setNote(noteIndex, repeatLeftRight);
             return true;
         }
@@ -350,13 +350,13 @@ public final class EditModeManager {
                 ((noteIndex == line.noteCount())
                     ? (int) Math.round(InsertionSpacingCalculator.calculateAppendPositionSs(
                     line, clipboardManager.getFirstNote()))
-                    : line.getNote(noteIndex).getXPos()) -
-                    clipboardManager.getFirstNote().getXPos();
+                    : line.getNote(noteIndex).getXPosSs()) -
+                    clipboardManager.getFirstNote().getXPosSs();
             var copySize = clipboardManager.getSize();
 
             for (var i = 0; i < copySize; i++) {
                 var note = clipboardManager.getNote(i);
-                note.setXPos(note.getXPos() + diff);
+                note.setXPosSs(note.getXPosSs() + diff);
                 line.addNote(noteIndex + i, note.clone());
             }
 
@@ -372,12 +372,12 @@ public final class EditModeManager {
                 shift = (int) Math.round(
                     InsertionSpacingCalculator.calculateNextNoteXSs(
                         lastPastedNote, firstNoteAfter) -
-                        firstNoteAfter.getXPos());
+                        firstNoteAfter.getXPosSs());
                 shift = Math.max(0, shift);
             }
 
             for (var i = afterPasteIndex; i < line.noteCount(); i++) {
-                line.getNote(i).setXPos(line.getNote(i).getXPos() + shift);
+                line.getNote(i).setXPosSs(line.getNote(i).getXPosSs() + shift);
             }
 
             var control = scoreActions.getControl();

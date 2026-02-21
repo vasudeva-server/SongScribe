@@ -313,7 +313,7 @@ public class AnnotationDialog extends StandardDialog {
             }
         }
 
-        var oldVerticalButton = (annotation.getYPos() < 0)
+        var oldVerticalButton = (annotation.getYPosPx() < 0)
             ? aboveButton
             : belowButton;
 
@@ -351,12 +351,12 @@ public class AnnotationDialog extends StandardDialog {
             );
 
             // Vertical alignment
-            int yPos;
+            int yPosPx;
 
             if (aboveButton.isSelected()) {
-                yPos = Annotation.ABOVE;
+                yPosPx = Annotation.ABOVE;
             } else if (belowButton.isSelected()) {
-                yPos = Annotation.BELOW;
+                yPosPx = Annotation.BELOW;
             } else {
                 var message =
                     "Programmer's error: no such vertical annotation.";
@@ -364,7 +364,7 @@ public class AnnotationDialog extends StandardDialog {
                 throw new RuntimeException(message);
             }
 
-            annotation.setYPos(yPos);
+            annotation.setYPosPx(yPosPx);
         }
 
         selectedNote.setAnnotation(annotation);

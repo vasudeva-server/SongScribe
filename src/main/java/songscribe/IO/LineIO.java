@@ -90,7 +90,7 @@ public final class LineIO {
         XML.writeValue(
             pw,
             XML_LYRICS_YPOS,
-            Double.toString(l.getLyricsYPos())
+            Double.toString(l.getLyricsYPosSs())
         );
 
         if (!l.getBeamings().isEmpty()) {
@@ -429,19 +429,19 @@ public final class LineIO {
                         case XML_NOTE_DIST_CHANGE -> line.mulNoteDistChange(
                             Float.parseFloat(str)
                         );
-                        case XML_TEMPO_CHANGE_YPOS -> line.setTempoChangeYPos(
+                        case XML_TEMPO_CHANGE_YPOS -> line.setTempoChangeYPosPx(
                             Integer.parseInt(str)
                         );
-                        case XML_BEAT_CHANGE_YPOS -> line.setBeatChangeYPos(
+                        case XML_BEAT_CHANGE_YPOS -> line.setBeatChangeYPosPx(
                             Integer.parseInt(str)
                         );
-                        case XML_LYRICS_YPOS -> line.setLyricsYPos(
+                        case XML_LYRICS_YPOS -> line.setLyricsYPosSs(
                             Double.parseDouble(str)
                         );
-                        case XML_FSENDING_YPOS -> line.setFirstSecondEndingYPos(
+                        case XML_FSENDING_YPOS -> line.setFirstSecondEndingYPosPx(
                             Integer.parseInt(str)
                         );
-                        case XML_TRILL_YPOS -> line.setTrillYPos(
+                        case XML_TRILL_YPOS -> line.setTrillYPosPx(
                             Integer.parseInt(str)
                         );
                         case XML_BEAMINGS -> stringToBeamIntervalSet(

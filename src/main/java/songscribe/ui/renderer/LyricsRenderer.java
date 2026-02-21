@@ -245,7 +245,7 @@ public class LyricsRenderer {
         if (syllable != null && !syllable.equals(Constants.UNDERSCORE)) {
             syllableWidth = metrics.stringWidth(syllable);
             var layoutResult = ctx.getLayoutResult();
-            var noteX = (layoutResult != null) ? layoutResult.getNoteXSs(note) : note.getXPos();
+            var noteX = (layoutResult != null) ? layoutResult.getNoteXSs(note) : note.getXPosSs();
             var lyricsX = (int) ((noteX + Note.HOT_SPOT.x) -
                 (syllableWidth / 2) +
                 note.getSyllableMovement());
@@ -377,11 +377,11 @@ public class LyricsRenderer {
     ) {
         // Begin-of-line extender starts before the note
         if (noteIndex == 0 && line.beginRelation == Note.SyllableRelation.EXTENDER) {
-            return note.getXPos() - 10;
+            return note.getXPosSs() - 10;
         }
 
         // Normal case: start after the syllable
-        return note.getXPos() +
+        return note.getXPosSs() +
             Note.HOT_SPOT.x +
             (syllableWidth / 2) +
             note.getSyllableMovement() +
@@ -410,7 +410,7 @@ public class LyricsRenderer {
         var endNote = line.getNote(endIndex);
 
         if (relation == Note.SyllableRelation.EXTENDER) {
-            return endNote.getXPos() + 12;
+            return endNote.getXPosSs() + 12;
         }
 
         if (relation == Note.SyllableRelation.ONE_DASH &&
@@ -422,7 +422,7 @@ public class LyricsRenderer {
         var nextSyllable = endNote.properties.syllable;
         var nextSyllableWidth = g2.getFontMetrics().stringWidth(nextSyllable);
 
-        return (endNote.getXPos() + Note.HOT_SPOT.x) -
+        return (endNote.getXPosSs() + Note.HOT_SPOT.x) -
             (nextSyllableWidth / 2) +
             endNote.getSyllableMovement() -
             2;
@@ -505,7 +505,7 @@ public class LyricsRenderer {
             // Use adjusted position if set, otherwise use calculated center
             var centerX = (note.getSyllableRelationMovement() == 0)
                 ? note.properties.longDashPosition
-                : note.getXPos() + note.getSyllableRelationMovement();
+                : note.getXPosSs() + note.getSyllableRelationMovement();
 
             g2.draw(new Line2D.Float(
                 centerX - (HYPHEN_WIDTH_PX / 2f),
@@ -558,11 +558,11 @@ public class LyricsRenderer {
 
             var drawX1 = (interval.getStart() == startIndex)
                 ? x1
-                : line.getNote(interval.getStart()).getXPos();
+                : line.getNote(interval.getStart()).getXPosSs();
 
             var drawX2 = (interval.getEnd() == end)
                 ? x2
-                : line.getNote(interval.getEnd() - 1).getXPos() + 12;
+                : line.getNote(interval.getEnd() - 1).getXPosSs() + 12;
 
             g2.drawLine(drawX1, y1, drawX2, y2);
         }

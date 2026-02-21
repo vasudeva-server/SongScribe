@@ -73,14 +73,14 @@ public class VerticalAdjustment extends Adjustment {
         var downRight = new Point(dragRect.rect.x, Integer.MAX_VALUE);
 
         switch (dragRect.type) {
-            case ROW_HEIGHT -> upLeft.y = score.getNoteYPos(6, 0);
+            case ROW_HEIGHT -> upLeft.y = score.getNoteYPosPx(6, 0);
             case TEMPO_CHANGE, FIRST_SECOND_ENDING, TRILL, BEAT_CHANGE -> {
-                upLeft.y = score.getNoteYPos(6, dragRect.line - 1);
-                downRight.y = score.getNoteYPos(-4, dragRect.line);
+                upLeft.y = score.getNoteYPosPx(6, dragRect.line - 1);
+                downRight.y = score.getNoteYPosPx(-4, dragRect.line);
             }
             case ANNOTATION, TUPLET, CRESCENDO_Y, DIMINUENDO_Y -> {
-                upLeft.y = score.getNoteYPos(6, dragRect.line - 1);
-                downRight.y = score.getNoteYPos(-6, dragRect.line + 1);
+                upLeft.y = score.getNoteYPosPx(6, dragRect.line - 1);
+                downRight.y = score.getNoteYPosPx(-6, dragRect.line + 1);
             }
             case null, default -> {
                 upLeft.x = 0;
@@ -202,7 +202,7 @@ public class VerticalAdjustment extends Adjustment {
         // Update per-instance offset on all ending objects in this line
         for (var element : line.getRangeElements()) {
             if (element instanceof songscribe.ui.layout.Ending ending) {
-                ending.setYPosition(ending.getYPosition() + diffY);
+                ending.setYPositionSs(ending.getYPositionSs() + diffY);
             }
         }
     }
@@ -213,7 +213,7 @@ public class VerticalAdjustment extends Adjustment {
             // Update user offset (delta from calculated position)
             annotation.setUserYOffset(annotation.getUserYOffset() + diffY);
             // Also update legacy yPos for backward compatibility
-            annotation.setYPos(annotation.getYPos() + diffY);
+            annotation.setYPosPx(annotation.getYPosPx() + diffY);
         }
     }
 
@@ -221,7 +221,7 @@ public class VerticalAdjustment extends Adjustment {
         // Update per-instance offset on all trill objects in this line
         for (var element : line.getRangeElements()) {
             if (element instanceof songscribe.ui.layout.Trill trill) {
-                trill.setYPosition(trill.getYPosition() + diffY);
+                trill.setYPositionSs(trill.getYPositionSs() + diffY);
             }
         }
     }
@@ -407,7 +407,7 @@ public class VerticalAdjustment extends Adjustment {
                     throw new IllegalStateException("No bounds found for TempoAttachment");
                 }
 
-                adjustRect.rect.x = note.getXPos() - 8;
+                adjustRect.rect.x = note.getXPosSs() - 8;
                 adjustRect.rect.y = (int) bounds.getTop() - 8;
             }
             case BEAT_CHANGE -> {
@@ -418,7 +418,7 @@ public class VerticalAdjustment extends Adjustment {
                     throw new IllegalStateException("No bounds found for BeatChangeAttachment");
                 }
 
-                adjustRect.rect.x = note.getXPos() - 8;
+                adjustRect.rect.x = note.getXPosSs() - 8;
                 adjustRect.rect.y = (int) bounds.getTop() - 8;
             }
             case FIRST_SECOND_ENDING -> {
@@ -437,7 +437,7 @@ public class VerticalAdjustment extends Adjustment {
                     throw new IllegalStateException("No bounds found for Ending");
                 }
 
-                adjustRect.rect.x = startNote.getXPos() - 8;
+                adjustRect.rect.x = startNote.getXPosSs() - 8;
                 adjustRect.rect.y = (int) bounds.getTop() - 8;
             }
             case ANNOTATION -> {
@@ -484,7 +484,7 @@ public class VerticalAdjustment extends Adjustment {
                     throw new IllegalStateException("No bounds found for Trill");
                 }
 
-                adjustRect.rect.x = startNote.getXPos() - 12;
+                adjustRect.rect.x = startNote.getXPosSs() - 12;
                 adjustRect.rect.y = (int) bounds.getTop() - 8;
             }
             case CRESCENDO_Y, DIMINUENDO_Y -> {
@@ -508,8 +508,8 @@ public class VerticalAdjustment extends Adjustment {
                 }
 
                 // Position handle at center of dynamics hairpin
-                var startX = startNote.getXPos();
-                var endX = endNote.getXPos();
+                var startX = startNote.getXPosSs();
+                var endX = endNote.getXPosSs();
                 adjustRect.rect.x = (startX + endX + 12) / 2;
                 adjustRect.rect.y = (int) bounds.getTop();
             }
@@ -529,7 +529,7 @@ public class VerticalAdjustment extends Adjustment {
                     throw new IllegalStateException("No bounds found for Tuplet");
                 }
 
-                adjustRect.rect.x = startNote.getXPos() + (startNote.isUpper() ? 0 : -10);
+                adjustRect.rect.x = startNote.getXPosSs() + (startNote.isUpper() ? 0 : -10);
                 adjustRect.rect.y = (int) bounds.getTop();
             }
         }
@@ -545,7 +545,7 @@ public class VerticalAdjustment extends Adjustment {
 
     private void getHeightAdjustRect(AdjustRect adjustRect) {
         adjustRect.rect.x = 0;
-        adjustRect.rect.y = score.getNoteYPos(0, adjustRect.line) - 4;
+        adjustRect.rect.y = score.getNoteYPosPx(0, adjustRect.line) - 4;
     }
 
     private void revalidateRects() {

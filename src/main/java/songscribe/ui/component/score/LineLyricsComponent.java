@@ -128,13 +128,13 @@ public class LineLyricsComponent extends ScoreComponent {
             var metrics = g2.getFontMetrics();
 
             // Create render context with adjusted middleLineY
-            // LyricsRenderer calculates: lyricsY = middleLineY + line.getLyricsYPos()
+            // LyricsRenderer calculates: lyricsY = middleLineY + line.getLyricsYPosSs()
             // We want lyricsY to be metrics.getAscent() (baseline relative to component top)
-            // So: middleLineY = metrics.getAscent() - line.getLyricsYPos()
+            // So: middleLineY = metrics.getAscent() - line.getLyricsYPosSs()
             var ctx = new ElementRenderContext(composition);
             ctx.setCurrentLine(line);
             ctx.setLineIndex(lineIndex);
-            ctx.setMiddleLineYSs((int) (metrics.getAscent() - line.getLyricsYPos()));
+            ctx.setMiddleLineYSs((int) (metrics.getAscent() - line.getLyricsYPosSs()));
 
             // Delegate to LyricsRenderer for complete lyrics rendering
             LyricsRenderer.getInstance().renderLyrics(g2, line, ctx, isLastLine);

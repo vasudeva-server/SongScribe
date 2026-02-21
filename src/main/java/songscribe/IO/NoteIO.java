@@ -351,7 +351,7 @@ public final class NoteIO {
                     var str = value.toString();
 
                     if (lastTag.equals(XML_XPOS)) {
-                        note.setXPos(Integer.parseInt(str));
+                        note.setXPosSs(Integer.parseInt(str));
                     } else if (lastTag.equals(XML_STAFF_POSITION) ||
                         lastTag.equals(XML_YPOS)) {
                         note.setStaffPosition(Integer.parseInt(str));

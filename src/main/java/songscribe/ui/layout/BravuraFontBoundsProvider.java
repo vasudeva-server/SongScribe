@@ -192,8 +192,8 @@ public class BravuraFontBoundsProvider implements FontBoundsProvider {
         var glyph = type.getSMuFLNoteheadGlyph();
 
         // Note anchor position in absolute coordinates
-        var noteX = note.getXPos();
-        var noteY = context.getNoteYPos(note.getStaffPosition(), lineIndex);
+        var noteX = note.getXPosSs();
+        var noteY = context.getNoteYPosPx(note.getStaffPosition(), lineIndex);
 
         if (glyph == null) {
             // Return a minimal bounds at the note position

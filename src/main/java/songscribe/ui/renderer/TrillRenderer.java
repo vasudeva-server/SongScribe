@@ -93,9 +93,9 @@ public class TrillRenderer extends BaseElementRenderer<Trill> {
         }
 
         var endNote = element.getEndNote();
-        int trillYPos = getEffectiveTrillYPosSs(element, ctx);
+        int trillYPosSs = getEffectiveTrillYPosSs(element, ctx);
 
-        renderTrill(g2, ctx, anchorNote, endNote, trillYPos);
+        renderTrill(g2, ctx, anchorNote, endNote, trillYPosSs);
     }
 
     /**
@@ -128,12 +128,12 @@ public class TrillRenderer extends BaseElementRenderer<Trill> {
         @NotNull ElementRenderContext ctx,
         @NotNull Note startNote,
         Note endNote,
-        int trillYPos
+        int trillYPosSs
     ) {
         double middleLineYSs = ctx.getMiddleLineYSs();
 
-        double x = GraphicUtils.snapXToDevicePixel(g2, startNote.getXPos());
-        int y = (int) (middleLineYSs + trillYPos);
+        double x = GraphicUtils.snapXToDevicePixel(g2, startNote.getXPosSs());
+        int y = (int) (middleLineYSs + trillYPosSs);
 
         drawBravuraGlyph(g2, SMuFLGlyph.ORNAMENT_TRILL, x, y);
 
@@ -143,7 +143,7 @@ public class TrillRenderer extends BaseElementRenderer<Trill> {
                 g2, x + TRILL_ADVANCE_WIDTH_PX
             );
             double endX = GraphicUtils.snapXToDevicePixel(
-                g2, endNote.getXPos() + CROTCHET_WIDTH_PX
+                g2, endNote.getXPosSs() + CROTCHET_WIDTH_PX
             );
             drawWavyLine(g2, wavyStartX, y, endX);
         }
@@ -157,7 +157,7 @@ public class TrillRenderer extends BaseElementRenderer<Trill> {
         @NotNull Line line,
         @NotNull ElementRenderContext ctx
     ) {
-        int trillYPos = line.getTrillYPos();
+        int trillYPosPx = line.getTrillYPosPx();
 
         for (int noteIndex = 0; noteIndex < line.noteCount(); noteIndex++) {
             var note = line.getNote(noteIndex);
@@ -181,7 +181,7 @@ public class TrillRenderer extends BaseElementRenderer<Trill> {
             trillEnd--;
 
             Note endNote = (trillEnd > noteIndex) ? line.getNote(trillEnd) : null;
-            renderTrill(g2, ctx, note, endNote, trillYPos);
+            renderTrill(g2, ctx, note, endNote, trillYPosPx);
         }
     }
 

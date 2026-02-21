@@ -382,7 +382,7 @@ public class Note extends LineElement implements Cloneable {
      *
      * @return The X offset value
      */
-    public int getXPos() {
+    public int getXPosSs() {
         return xOffset;
     }
 
@@ -391,10 +391,10 @@ public class Note extends LineElement implements Cloneable {
      * <p>
      * Deprecated: Use {@link #setXOffset(int)} for clarity.
      *
-     * @param xPos The X offset value
+     * @param xPosSs The X offset value in staff spaces
      */
-    public void setXPos(int xPos) {
-        this.xOffset = xPos;
+    public void setXPosSs(int xPosSs) {
+        this.xOffset = xPosSs;
     }
 
     /**

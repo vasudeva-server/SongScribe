@@ -37,7 +37,6 @@ import songscribe.music.NoteType;
 import songscribe.smufl.GlyphAnchors;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
-import songscribe.ui.layout2.LayoutResult;
 import songscribe.util.GraphicUtils;
 
 /**
@@ -189,7 +188,7 @@ public class NoteRenderer extends BaseElementRenderer<Note> {
             noteX = ctx.getOverrideNoteXSs();
         } else {
             var layoutResult = ctx.getLayoutResult();
-            noteX = (layoutResult != null) ? layoutResult.getNoteXSs(note) : note.getXPos();
+            noteX = (layoutResult != null) ? layoutResult.getNoteXSs(note) : note.getXPosSs();
         }
 
         return GraphicUtils.snapXToDevicePixel(g2, noteX);
@@ -295,15 +294,15 @@ public class NoteRenderer extends BaseElementRenderer<Note> {
         // Note: Don't set color here - respect the color set by the caller
 
         // Adjust x position for lower stem notes
-        float noteHeadXPos = 0f;
+        float noteHeadXPosSs = 0f;
 
         if (noteType.isNoteWithStem() && !note.isUpper()) {
-            noteHeadXPos -= (float) (STEM_WIDTH_SS / 2);
+            noteHeadXPosSs -= (float) (STEM_WIDTH_SS / 2);
         }
 
         try (var ignored = GraphicsState.save(g2, FONT)) {
             g2.setFont(BRAVURA_FONT);
-            g2.drawString(glyph.asString(), noteHeadXPos, 0f);
+            g2.drawString(glyph.asString(), noteHeadXPosSs, 0f);
         }
 
         // Draw stem (always for notes with stems - beamed notes need stems to connect to beams)
@@ -522,19 +521,19 @@ public class NoteRenderer extends BaseElementRenderer<Note> {
         try (var ignored = GraphicsState.save(g2, STROKE)) {
             g2.setStroke(LINE_STROKE);
 
-            int yPos = note.getStaffPosition();
+            int staffPosition = note.getStaffPosition();
 
             // Adjust to start from a line position
-            int i = yPos;
+            int i = staffPosition;
 
-            if ((yPos % 2) != 0) {
-                i += (yPos > 0) ? -1 : 1;
+            if ((staffPosition % 2) != 0) {
+                i += (staffPosition > 0) ? -1 : 1;
             }
 
-            int step = (yPos > 0) ? -2 : 2;
+            int step = (staffPosition > 0) ? -2 : 2;
 
             while (Math.abs(i) > 5) {
-                double y = (i - yPos) * 0.5; // each staff position = 0.5 ss
+                double y = (i - staffPosition) * 0.5; // each staff position = 0.5 ss
                 double x2 = LEDGER_LINE_RIGHT_SS;
 
                 if (noteType == NoteType.SEMIBREVE) {

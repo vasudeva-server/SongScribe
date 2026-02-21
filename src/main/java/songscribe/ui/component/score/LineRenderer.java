@@ -178,7 +178,7 @@ class LineRenderer {
 
             for (var i = 0; i < line.noteCount(); i++) {
                 var note = line.getNote(i);
-                var x = note.getXPos();
+                var x = note.getXPosSs();
                 var y = middleLineYPx + (int) (note.getStaffPosition() * noteYOffset);
                 g2.fillOval(x - 2, y - 2, 4, 4);
             }
@@ -628,14 +628,14 @@ class LineRenderer {
         var layoutResult = lc.getLayoutResult();
         var line = lc.getLine();
         var currentXIndex = InsertionNoteManager.getCurrentXIndex();
-        var currentYPos = InsertionNoteManager.getCurrentYPos();
+        var currentStaffPosition = InsertionNoteManager.getCurrentStaffPosition();
 
         if (layoutResult != null && line != null) {
             x = layoutResult.calculateInsertionXSs(currentXIndex, mouseX, editNote, line);
         }
 
         // Set the edit note position
-        editNote.setStaffPosition(currentYPos);
+        editNote.setStaffPosition(currentStaffPosition);
         editNote.setUpper(Score.defaultUpperNote(editNote));
 
         // Handle glissando note specially
@@ -644,7 +644,7 @@ class LineRenderer {
                 GlissandoRenderer.getInstance().renderEditGlissando(
                     g2,
                     currentXIndex - 1,
-                    new Note.Glissando(currentYPos),
+                    new Note.Glissando(currentStaffPosition),
                     line,
                     ctx
                 );
@@ -662,10 +662,10 @@ class LineRenderer {
             NoteRenderer.getInstance().render(g2, editNote, ctx);
             ctx.clearOverrideNoteX();
 
-            // Set xPos for articulation/fermata renderers, which read it directly.
+            // Set xPosSs for articulation/fermata renderers, which read it directly.
             // Simple rounding is fine since those renderers apply their own device-pixel
             // snapping internally.
-            editNote.setXPos((int) Math.round(x));
+            editNote.setXPosSs((int) Math.round(x));
 
             // Render articulations and fermata on the insertion note preview
             if (!editNote.getArticulations().isEmpty()) {

@@ -252,7 +252,7 @@ class LineComponentLayoutTest {
             if (result == null) {
                 // Fallback to note.getXPos() should work
                 var note = line.getNote(0);
-                var xPos = note.getXPos();
+                var xPos = note.getXPosSs();
                 assertTrue(xPos >= 0, "Fallback xPos should be non-negative");
             } else {
                 assertNotNull(result, "Layout should succeed for simple line");
@@ -293,11 +293,11 @@ class LineComponentLayoutTest {
         void noteRendererFallsBackToNoteXPos() {
             var line = createLine(0);
             var note = createNote("test", null);
-            note.setXPos(100);
+            note.setXPosSs(100);
             line.addNote(note);
 
             // When layoutResult is null, renderer should use note.getXPos()
-            var fallbackX = note.getXPos();
+            var fallbackX = note.getXPosSs();
 
             assertEquals(100, fallbackX, "Should use note's stored X position as fallback");
         }
@@ -410,12 +410,12 @@ class LineComponentLayoutTest {
         void lyricsRendererFallsBackWhenLayoutResultNull() {
             var line = createLine(0);
             var note = createNote("test", null);
-            note.setXPos(100);
+            note.setXPosSs(100);
             line.addNote(note);
 
             // Even without layout result, syllable should be accessible
             assertEquals("test", note.properties.syllable, "Syllable should be stored in note");
-            assertEquals(100, note.getXPos(), "X position should be available as fallback");
+            assertEquals(100, note.getXPosSs(), "X position should be available as fallback");
         }
 
         @Test

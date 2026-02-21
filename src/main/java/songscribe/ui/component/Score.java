@@ -584,14 +584,14 @@ public final class Score
     }
 
     @Override
-    public int getNoteYPos(int yPos, int line) {
+    public int getNoteYPosPx(int staffPosition, int line) {
         return (int) (middleLineYPx +
-            (yPos * NOTE_Y_OFFSET_PX) +
+            (staffPosition * NOTE_Y_OFFSET_PX) +
             (line * rowHeightPx));
     }
 
     @Override
-    public int getUnderLyricsYPos() {
+    public int getUnderLyricsYPosPx() {
         // TODO: Calculate from component hierarchy
         return 0;
     }
@@ -606,7 +606,7 @@ public final class Score
 
             if (currentEditNote != null) {
                 editNote.setStaffPosition(currentEditNote.getStaffPosition());
-                editNote.setXPos(currentEditNote.getXPos());
+                editNote.setXPosSs(currentEditNote.getXPosSs());
             } else {
                 editModeManager.setEditNote(editNote);
             }
@@ -783,18 +783,18 @@ public boolean canFlipStemDirection() {
             }
 
             if (
-                line.getNote(line.noteCount() - 1).getXPos() >
+                line.getNote(line.noteCount() - 1).getXPosSs() >
                     (composition.getLineWidth() - idealSpace)
             ) {
-                var firstX = line.getNote(0).getXPos();
+                var firstX = line.getNote(0).getXPosSs();
                 var ratio =
                     (composition.getLineWidth() - idealSpace - firstX) /
-                        (endNote.getXPos() - firstX);
+                        (endNote.getXPosSs() - firstX);
 
                 for (var i = 1; i < line.noteCount(); i++) {
                     var note = line.getNote(i);
-                    note.setXPos(
-                        (int) (firstX + Math.round((note.getXPos() - firstX) * ratio))
+                    note.setXPosSs(
+                        (int) (firstX + Math.round((note.getXPosSs() - firstX) * ratio))
                     );
                 }
 

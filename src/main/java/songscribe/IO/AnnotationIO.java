@@ -51,7 +51,7 @@ public final class AnnotationIO {
         XML.setIndent(indent + 2);
         XML.writeValue(pw, XML_NAME, a.getAnnotation());
         XML.writeValue(pw, XML_ALIGNMENT, Float.toString(a.getXAlignment()));
-        XML.writeValue(pw, XML_YPOS, Integer.toString(a.getYPos()));
+        XML.writeValue(pw, XML_YPOS, Integer.toString(a.getYPosPx()));
 
         // Write userYOffset if non-zero (Phase 11)
         if (a.getUserYOffset() != 0) {
@@ -98,7 +98,7 @@ public final class AnnotationIO {
                     case XML_ALIGNMENT -> annotation.setXAlignment(
                         Float.parseFloat(str)
                     );
-                    case XML_YPOS -> annotation.setYPos(Integer.parseInt(str));
+                    case XML_YPOS -> annotation.setYPosPx(Integer.parseInt(str));
                     case XML_USER_Y_OFFSET -> annotation.setUserYOffset(
                         Double.parseDouble(str)
                     );

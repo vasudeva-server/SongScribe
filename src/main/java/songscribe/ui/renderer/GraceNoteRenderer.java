@@ -73,7 +73,7 @@ public class GraceNoteRenderer extends BaseElementRenderer<Note> {
     ) {
         try (var ignored = GraphicsState.save(g2, TRANSFORM, FONT)) {
             var noteX = resolveNoteXSs(g2, note, ctx);
-            var noteY = noteYPosToCoordinateSs(note.getStaffPosition(), ctx.getMiddleLineYSs());
+            var noteY = noteStaffPositionToCoordinateSs(note.getStaffPosition(), ctx.getMiddleLineYSs());
 
             g2.translate(noteX, noteY);
             g2.scale(GRACE_NOTE_SCALE, GRACE_NOTE_SCALE);
@@ -111,7 +111,7 @@ public class GraceNoteRenderer extends BaseElementRenderer<Note> {
             noteX = ctx.getOverrideNoteXSs();
         } else {
             var layoutResult = ctx.getLayoutResult();
-            noteX = (layoutResult != null) ? layoutResult.getNoteXSs(note) : note.getXPos();
+            noteX = (layoutResult != null) ? layoutResult.getNoteXSs(note) : note.getXPosSs();
         }
 
         return GraphicUtils.snapXToDevicePixel(g2, noteX);

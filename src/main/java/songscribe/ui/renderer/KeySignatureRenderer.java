@@ -52,15 +52,15 @@ public class KeySignatureRenderer extends BaseElementRenderer<KeySignature> {
     // Y positions for accidentals relative to middle line (0 = B4)
     // Index 0 = None (empty), Index 1 = Flats, Index 2 = Sharps
     // Flats: B, E, A, D, G, C, F
-    private static final int[] FLAT_Y_POSITIONS = {0, -3, 1, -2, 2, -1, 3};
+    private static final int[] FLAT_STAFF_POSITIONS = {0, -3, 1, -2, 2, -1, 3};
     // Sharps: F, C, G, D, A, E, B
-    private static final int[] SHARP_Y_POSITIONS = {-4, -1, -5, -2, 1, -3, 0};
+    private static final int[] SHARP_STAFF_POSITIONS = {-4, -1, -5, -2, 1, -3, 0};
 
     // Y positions indexed by KeyType ordinal (for key change rendering)
-    private static final int[][] KEY_Y_POSITIONS = new int[][]{
+    private static final int[][] KEY_STAFF_POSITIONS = new int[][]{
         new int[]{}, // NONE
-        FLAT_Y_POSITIONS,
-        SHARP_Y_POSITIONS
+        FLAT_STAFF_POSITIONS,
+        SHARP_STAFF_POSITIONS
     };
 
     // Horizontal spacing between accidentals, in staff-space units
@@ -114,19 +114,19 @@ public class KeySignatureRenderer extends BaseElementRenderer<KeySignature> {
             g2.setColor(NOTE_COLOR);
 
             // Get the starting X position from the element
-            double xPos = element.getX();
+            double xPosSs = element.getX();
             double middleLineYSs = ctx.getMiddleLineYSs();
 
             // Determine glyph and Y positions based on key type
             SMuFLGlyph glyph;
-            int[] yPositions;
+            int[] staffPositions;
 
             if (keyType == KeyType.FLATS) {
                 glyph = FLAT_GLYPH;
-                yPositions = FLAT_Y_POSITIONS;
+                staffPositions = FLAT_STAFF_POSITIONS;
             } else {
                 glyph = SHARP_GLYPH;
-                yPositions = SHARP_Y_POSITIONS;
+                staffPositions = SHARP_STAFF_POSITIONS;
             }
 
             // Draw each accidental
@@ -134,11 +134,11 @@ public class KeySignatureRenderer extends BaseElementRenderer<KeySignature> {
 
             for (int i = 0; i < accidentalCount; i++) {
                 // Calculate Y position: each staff position is 0.5 ss
-                int yPos = yPositions[i % 7];
-                double y = middleLineYSs + yPos * 0.5;
+                int staffPosition = staffPositions[i % 7];
+                double y = middleLineYSs + staffPosition * 0.5;
 
-                g2.drawString(glyphStr, (float) xPos, (float) y);
-                xPos += ACCIDENTAL_SPACING_SS;
+                g2.drawString(glyphStr, (float) xPosSs, (float) y);
+                xPosSs += ACCIDENTAL_SPACING_SS;
             }
         }
     }
@@ -151,7 +151,7 @@ public class KeySignatureRenderer extends BaseElementRenderer<KeySignature> {
      * @param g2              Graphics context
      * @param keyType         The key type (FLATS or SHARPS)
      * @param accidentalCount Number of accidentals (1-7)
-     * @param xPos            Starting X position (ss)
+     * @param xPosSs          Starting X position (ss)
      * @param middleLineYSs   Y coordinate of the middle staff line in staff spaces
      * @param ctx             Render context for font access
      */
@@ -159,7 +159,7 @@ public class KeySignatureRenderer extends BaseElementRenderer<KeySignature> {
         @NotNull Graphics2D g2,
         @NotNull KeyType keyType,
         int accidentalCount,
-        double xPos,
+        double xPosSs,
         double middleLineYSs,
         @NotNull ElementRenderContext ctx
     ) {
@@ -172,22 +172,22 @@ public class KeySignatureRenderer extends BaseElementRenderer<KeySignature> {
             g2.setColor(NOTE_COLOR);
 
             SMuFLGlyph glyph;
-            int[] yPositions;
+            int[] staffPositions;
 
             if (keyType == KeyType.FLATS) {
                 glyph = FLAT_GLYPH;
-                yPositions = FLAT_Y_POSITIONS;
+                staffPositions = FLAT_STAFF_POSITIONS;
             } else {
                 glyph = SHARP_GLYPH;
-                yPositions = SHARP_Y_POSITIONS;
+                staffPositions = SHARP_STAFF_POSITIONS;
             }
 
             var glyphStr = glyph.asString();
-            double currentX = xPos;
+            double currentX = xPosSs;
 
             for (int i = 0; i < accidentalCount; i++) {
-                int yPos = yPositions[i % 7];
-                double y = middleLineYSs + yPos * 0.5;
+                int staffPosition = staffPositions[i % 7];
+                double y = middleLineYSs + staffPosition * 0.5;
 
                 g2.drawString(glyphStr, (float) currentX, (float) y);
                 currentX += ACCIDENTAL_SPACING_SS;
@@ -285,11 +285,11 @@ public class KeySignatureRenderer extends BaseElementRenderer<KeySignature> {
             var middleLineYSs = ctx.getMiddleLineYSs();
 
             // Calculate starting X position (right-aligned with margin)
-            double xPos = lineWidth - KEY_CHANGE_RIGHT_MARGIN_SS;
+            double xPosSs = lineWidth - KEY_CHANGE_RIGHT_MARGIN_SS;
 
             // Calculate total width needed
             for (var count : accidentalCounts) {
-                xPos -= count * KEY_CHANGE_SPACING_SS;
+                xPosSs -= count * KEY_CHANGE_SPACING_SS;
             }
 
             // Render each key signature group
@@ -305,16 +305,16 @@ public class KeySignatureRenderer extends BaseElementRenderer<KeySignature> {
                     continue;
                 }
 
-                var yPositions = KEY_Y_POSITIONS[keyTypeOrdinal];
+                var staffPositions = KEY_STAFF_POSITIONS[keyTypeOrdinal];
                 var glyph = isNaturals[kt] ? NATURAL_GLYPH : getGlyphForKeyType(keyTypes[kt]);
                 var glyphStr = glyph.asString();
 
                 for (var i = 0; i < accidentalCounts[kt]; i++) {
-                    var yPos = yPositions[(i + startingOffsets[kt]) % 7];
-                    var y = middleLineYSs + yPos * 0.5;
+                    var staffPosition = staffPositions[(i + startingOffsets[kt]) % 7];
+                    var y = middleLineYSs + staffPosition * 0.5;
 
-                    g2.drawString(glyphStr, (float) xPos, (float) y);
-                    xPos += KEY_CHANGE_SPACING_SS;
+                    g2.drawString(glyphStr, (float) xPosSs, (float) y);
+                    xPosSs += KEY_CHANGE_SPACING_SS;
                 }
             }
         }

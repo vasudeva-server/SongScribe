@@ -55,14 +55,14 @@ public class LyricsAdjustment extends Adjustment {
             if (draggingRect.adjustType == AdjustType.SYLLABLE_MOVEMENT) {
                 topLeftDragBounds.setLocation(
                     ((draggingRect.xIndex > 0)
-                        ? line.getNote(draggingRect.xIndex - 1).getXPos()
+                        ? line.getNote(draggingRect.xIndex - 1).getXPosSs()
                         : 0) +
                         draggingRect.rectangle.width,
                     draggingRect.rectangle.y
                 );
                 bottomRightDragBounds.setLocation(
                     (draggingRect.xIndex < (line.noteCount() - 1))
-                        ? line.getNote(draggingRect.xIndex + 1).getXPos()
+                        ? line.getNote(draggingRect.xIndex + 1).getXPosSs()
                         : score.getComposition().getLineWidth(),
                     draggingRect.rectangle.y
                 );
@@ -70,7 +70,7 @@ public class LyricsAdjustment extends Adjustment {
                 draggingRect.adjustType == AdjustType.SYLLABLE_RELATION_MOVEMENT
             ) {
                 topLeftDragBounds.setLocation(
-                    line.getNote(draggingRect.xIndex).getXPos(),
+                    line.getNote(draggingRect.xIndex).getXPosSs(),
                     draggingRect.rectangle.y
                 );
                 bottomRightDragBounds.setLocation(
@@ -80,11 +80,11 @@ public class LyricsAdjustment extends Adjustment {
             } else if (draggingRect.adjustType == AdjustType.LYRICS_YPOS) {
                 topLeftDragBounds.setLocation(
                     draggingRect.rectangle.x,
-                    score.getNoteYPos(6, draggingRect.line)
+                    score.getNoteYPosPx(6, draggingRect.line)
                 );
                 bottomRightDragBounds.setLocation(
                     draggingRect.rectangle.x,
-                    score.getNoteYPos(-4, draggingRect.line + 1)
+                    score.getNoteYPosPx(-4, draggingRect.line + 1)
                 );
             }
         }
@@ -103,7 +103,7 @@ public class LyricsAdjustment extends Adjustment {
                 .getComposition()
                 .getLine(draggingRect.line)
                 .getNote(draggingRect.xIndex);
-            note.setSyllableMovement(endPoint.x - note.getXPos());
+            note.setSyllableMovement(endPoint.x - note.getXPosSs());
         } else if (
             draggingRect.adjustType == AdjustType.SYLLABLE_RELATION_MOVEMENT
         ) {
@@ -113,14 +113,14 @@ public class LyricsAdjustment extends Adjustment {
                 .getComposition()
                 .getLine(draggingRect.line)
                 .getNote(draggingRect.xIndex);
-            note.setSyllableRelationMovement(endPoint.x - note.getXPos());
+            note.setSyllableRelationMovement(endPoint.x - note.getXPosSs());
         } else if (draggingRect.adjustType == AdjustType.LYRICS_YPOS) {
             var diffY =
                 draggingRect.rectangle.y + (draggingRect.rectangle.height / 2);
             draggingRect.rectangle.y = endPoint.y -
                 (draggingRect.rectangle.height / 2);
             var line = score.getComposition().getLine(draggingRect.line);
-            line.setLyricsYPos((line.getLyricsYPos() + endPoint.y) - diffY);
+            line.setLyricsYPosSs((line.getLyricsYPosSs() + endPoint.y) - diffY);
         }
 
         score.viewChanged();
@@ -216,22 +216,22 @@ public class LyricsAdjustment extends Adjustment {
         var note = line.getNote(rect.xIndex);
 
         if (rect.adjustType == AdjustType.LYRICS_YPOS) {
-            rect.rectangle.x = note.getXPos() - 20;
-            rect.rectangle.y = (int) ((score.getNoteYPos(0, rect.line) +
-                line.getLyricsYPos()) -
+            rect.rectangle.x = note.getXPosSs() - 20;
+            rect.rectangle.y = (int) ((score.getNoteYPosPx(0, rect.line) +
+                line.getLyricsYPosSs()) -
                 8);
         } else if (rect.adjustType == AdjustType.SYLLABLE_MOVEMENT) {
-            rect.rectangle.x = note.getXPos() + note.getSyllableMovement();
-            rect.rectangle.y = (int) (score.getNoteYPos(0, rect.line) +
-                line.getLyricsYPos() +
+            rect.rectangle.x = note.getXPosSs() + note.getSyllableMovement();
+            rect.rectangle.y = (int) (score.getNoteYPosPx(0, rect.line) +
+                line.getLyricsYPosSs() +
                 5);
         } else if (rect.adjustType == AdjustType.SYLLABLE_RELATION_MOVEMENT) {
             rect.rectangle.x = ((note.getSyllableRelationMovement() == 0)
                 ? (int) note.properties.longDashPosition
-                : (note.getXPos() + note.getSyllableRelationMovement())) -
+                : (note.getXPosSs() + note.getSyllableRelationMovement())) -
                 4;
-            rect.rectangle.y = (int) (score.getNoteYPos(0, rect.line) +
-                line.getLyricsYPos() +
+            rect.rectangle.y = (int) (score.getNoteYPosPx(0, rect.line) +
+                line.getLyricsYPosSs() +
                 5);
         }
 

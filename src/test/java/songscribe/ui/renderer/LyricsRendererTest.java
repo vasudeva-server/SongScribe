@@ -71,7 +71,7 @@ class LyricsRendererTest {
         var note = NoteType.CROTCHET.newInstance();
         note.properties.syllable = syllable != null ? syllable : "";
         note.properties.syllableRelation = Note.SyllableRelation.NO; // Default to NO
-        note.setXPos(100); // Default position
+        note.setXPosSs(100); // Default position
         return note;
     }
 
@@ -198,13 +198,13 @@ class LyricsRendererTest {
             @DisplayName("ONE_DASH renders single hyphen between syllables")
             void oneDashRendersSingleHyphen() {
                 var note1 = createNote("beau", Note.SyllableRelation.ONE_DASH);
-                note1.setXPos(100);
+                note1.setXPosSs(100);
 
                 var note2 = createNote("ti");
-                note2.setXPos(150);
+                note2.setXPosSs(150);
 
                 var note3 = createNote("ful");
-                note3.setXPos(200);
+                note3.setXPosSs(200);
 
                 var line = createLineWithNotes(note1, note2, note3);
 
@@ -245,13 +245,13 @@ class LyricsRendererTest {
             @DisplayName("EXTENDER renders continuous line")
             void extenderRendersContinuousLine() {
                 var note1 = createNote("long", Note.SyllableRelation.EXTENDER);
-                note1.setXPos(100);
+                note1.setXPosSs(100);
 
                 var note2 = createNote(Constants.UNDERSCORE);
-                note2.setXPos(150);
+                note2.setXPosSs(150);
 
                 var note3 = createNote(Constants.UNDERSCORE);
-                note3.setXPos(200);
+                note3.setXPosSs(200);
 
                 var line = createLineWithNotes(note1, note2, note3);
 

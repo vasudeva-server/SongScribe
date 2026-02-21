@@ -24,7 +24,6 @@ import javax.swing.Timer;
 
 import org.jetbrains.annotations.NotNull;
 
-import kotlin.Pair;
 import net.engio.mbassy.listener.Handler;
 
 import songscribe.music.Composition;
@@ -32,7 +31,6 @@ import songscribe.music.Line;
 import songscribe.music.LyricsProcessor;
 import songscribe.music.MusicEditOperations;
 import songscribe.music.Note;
-import songscribe.music.NoteType;
 import songscribe.ui.Control;
 import songscribe.ui.Mode;
 import songscribe.ui.action.InsertLineAction;
@@ -41,18 +39,13 @@ import songscribe.ui.adjustment.LyricsAdjustment;
 import songscribe.ui.adjustment.VerticalAdjustment;
 import songscribe.ui.clipboard.ClipboardManager;
 import songscribe.ui.component.IMainFrame;
-import songscribe.ui.component.Score;
 import songscribe.ui.component.score.MainPanel;
-import songscribe.ui.debug.DebugInspector;
 import songscribe.ui.edit.EditModeManager;
 import songscribe.ui.menu.DebugState;
 import songscribe.ui.playback.MidiController;
 import songscribe.ui.playback.PlaybackController;
 import songscribe.ui.playback.PlaybackStateChangedMessage;
-import songscribe.ui.selection.LineSelectionState;
-import songscribe.ui.selection.NoteSelection;
 import songscribe.ui.selection.SelectionCoordinator;
-import songscribe.ui.selection.TieContext;
 
 /**
  * Coordinates message handling for the Score component.
@@ -402,11 +395,11 @@ public final class ScoreMessageCoordinator {
     private static void deleteNote(int xIndex, @NotNull Line line) {
         if (xIndex < (line.noteCount() - 1)) {
             var shift =
-                line.getNote(xIndex).getXPos() -
-                    line.getNote(xIndex + 1).getXPos();
+                line.getNote(xIndex).getXPosSs() -
+                    line.getNote(xIndex + 1).getXPosSs();
 
             for (var i = xIndex + 1; i < line.noteCount(); i++) {
-                line.getNote(i).setXPos(line.getNote(i).getXPos() + shift);
+                line.getNote(i).setXPosSs(line.getNote(i).getXPosSs() + shift);
             }
         }
 

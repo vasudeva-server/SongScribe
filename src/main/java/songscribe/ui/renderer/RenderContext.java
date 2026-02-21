@@ -65,16 +65,16 @@ public interface RenderContext {
     /**
      * Calculates the Y position for a note at the given y-position and line index.
      *
-     * @param yPos      The note's y-position relative to middle line (0 = B4)
-     * @param lineIndex The staff line index (0-based)
+     * @param staffPosition The note's staff position relative to middle line (0 = B4)
+     * @param lineIndex     The staff line index (0-based)
      * @return The Y coordinate in pixels
      */
-    int getNoteYPos(int yPos, int lineIndex);
+    int getNoteYPosPx(int staffPosition, int lineIndex);
 
     /**
      * Returns the Y position for content rendered below the lyrics area.
      */
-    int getUnderLyricsYPos();
+    int getUnderLyricsYPosPx();
 
     /**
      * Returns the starting Y position for the score content.

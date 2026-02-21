@@ -176,8 +176,8 @@ public class DynamicsRenderer extends BaseElementRenderer<LineElement> {
     ) {
         double middleLineYSs = ctx.getMiddleLineYSs();
 
-        int x1 = (int) (startNote.getXPos() + x1Shift);
-        int x2 = (int) (endNote.getXPos() + CROTCHET_WIDTH_PX + x2Shift);
+        int x1 = (int) (startNote.getXPosSs() + x1Shift);
+        int x2 = (int) (endNote.getXPosSs() + CROTCHET_WIDTH_PX + x2Shift);
 
         // Y positions above the staff: center 1 staff space above top staff line
         // (top staff line = middleLineYSs - 4*NOTE_Y_OFFSET; 1 space = 2*NOTE_Y_OFFSET)

@@ -55,7 +55,7 @@ public class NonNote extends Note {
 
     @Override
     public int getStaffPosition() {
-        return getNoteType().getDefaultYPos();
+        return getNoteType().getDefaultStaffPosition();
     }
 
     @Override

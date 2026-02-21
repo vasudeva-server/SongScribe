@@ -206,16 +206,16 @@ public class TempoRenderer extends BaseElementRenderer<Note> {
         double middleLineYSs = ctx.getMiddleLineYSs();
 
         // Calculate Y position (above the staff)
-        int yPos = getEffectiveTempoChangeYPosSs(note, ctx);
+        int yPosSs = getEffectiveTempoChangeYPosSs(note, ctx);
 
         // Build tempo text
         var tempoBuilder = new StringBuilder(25);
         var tempoTypeNote = tempo.getTempoType().getNote();
 
-        double xPos = note.getXPos();
+        double xPosSs = note.getXPosSs();
 
         if (tempo.shouldShowTempo()) {
-            drawTempoChangeNote(g2, tempoTypeNote, (int) xPos, yPos);
+            drawTempoChangeNote(g2, tempoTypeNote, (int) xPosSs, yPosSs);
             tempoBuilder.append("= ");
             tempoBuilder.append(tempo.getVisibleTempo());
             tempoBuilder.append(' ');
@@ -234,16 +234,16 @@ public class TempoRenderer extends BaseElementRenderer<Note> {
                 var frc = g2.getFontRenderContext();
                 var gv = BRAVURA_FONT.createGlyphVector(frc, metGlyph.asString());
                 double glyphWidth = gv.getVisualBounds().getWidth() * TEMPO_CHANGE_ZOOM_X;
-                xPos += glyphWidth + 3;
+                xPosSs += glyphWidth + 3;
 
                 if (tempoTypeNote.getDotCount() > 0) {
-                    xPos += 4;
+                    xPosSs += 4;
                 }
             }
         }
 
         var tempoText = tempoBuilder.toString();
-        g2.drawString(tempoText, (float) xPos, (float) yPos);
+        g2.drawString(tempoText, (float) xPosSs, (float) yPosSs);
     }
 
     /**
