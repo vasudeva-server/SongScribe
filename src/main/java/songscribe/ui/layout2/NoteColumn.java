@@ -26,7 +26,6 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import songscribe.music.Note;
-import songscribe.ui.layout.BeamGroup;
 
 /**
  * The fundamental horizontal spacing unit in the engraving system.
@@ -38,7 +37,7 @@ import songscribe.ui.layout.BeamGroup;
  *   <li>Horizontal extents (left edge including accidentals/grace notes, right edge including dots)</li>
  *   <li>Stem information (top/bottom for beam group coordination)</li>
  *   <li>Associated lyric syllable (which drives horizontal spacing per Gould/Ross)</li>
- *   <li>Beam group membership (for internal spacing coordination)</li>
+ *   <li>Beam membership flag (for internal spacing coordination)</li>
  * </ul>
  * <p>
  * This class is immutable after construction. Use {@link NoteColumnBuilder} to create instances.
@@ -53,7 +52,7 @@ public final class NoteColumn {
     private final double stemBottomSs;
     private final @Nullable String syllable;
     private final double syllableWidthSs;
-    private final @Nullable BeamGroup beamGroup;
+    private final boolean beamed;
 
     // Computed X position (set by HorizontalSpacingCalculator)
     private double xSs = 0;
@@ -71,7 +70,7 @@ public final class NoteColumn {
      * @param stemBottomSs    Bottom of stem (if stem down), or note head bottom if no stem
      * @param syllable        Associated lyric syllable text (null if none)
      * @param syllableWidthSs Measured width of syllable text in staff spaces (0 if no syllable)
-     * @param beamGroup       Beam group this note belongs to (null if unbeamed)
+     * @param beamed          Whether this note is part of a beam group
      */
     public NoteColumn(
         @NotNull Note note,
@@ -82,7 +81,7 @@ public final class NoteColumn {
         double stemBottomSs,
         @Nullable String syllable,
         double syllableWidthSs,
-        @Nullable BeamGroup beamGroup) {
+        boolean beamed) {
         this.note = note;
         this.graceNotes = List.copyOf(graceNotes);
         this.leftExtentSs = leftExtentSs;
@@ -91,7 +90,7 @@ public final class NoteColumn {
         this.stemBottomSs = stemBottomSs;
         this.syllable = syllable;
         this.syllableWidthSs = syllableWidthSs;
-        this.beamGroup = beamGroup;
+        this.beamed = beamed;
     }
 
     // ==========================================================================
@@ -237,19 +236,10 @@ public final class NoteColumn {
     // ==========================================================================
 
     /**
-     * Returns the beam group this note belongs to.
-     *
-     * @return BeamGroup, or null if this note is not beamed
-     */
-    public @Nullable BeamGroup getBeamGroup() {
-        return beamGroup;
-    }
-
-    /**
      * Returns whether this note is part of a beam group.
      */
     public boolean isBeamed() {
-        return beamGroup != null;
+        return beamed;
     }
 
     // ==========================================================================

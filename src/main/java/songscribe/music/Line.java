@@ -41,7 +41,6 @@ import songscribe.data.Interval;
 import songscribe.data.IntervalSet;
 import songscribe.data.TupletInterval;
 import songscribe.midi.PlaybackSettings;
-import songscribe.ui.layout.BeamGroup;
 import songscribe.ui.layout.LayoutStylesheet;
 import songscribe.ui.layout.RangeElement;
 import songscribe.ui.message.LayoutChangeMessage;
@@ -83,9 +82,6 @@ public class Line {
 
     /** Range elements (ties, trills, crescendo, diminuendo, tuplets, endings). */
     private final List<RangeElement> rangeElements = new ArrayList<>();
-
-    /** Beam groups coordinating note beaming. */
-    private final List<BeamGroup> beamGroups = new ArrayList<>();
 
     // acceleration
     public Note.SyllableRelation beginRelation = Note.SyllableRelation.NO;
@@ -544,57 +540,6 @@ public class Line {
     // =========================================================================
     // Beam Group Management (Phase 4+)
     // =========================================================================
-
-    /**
-     * Adds a beam group to this line.
-     *
-     * @param group The beam group to add
-     */
-    public void addBeamGroup(@NotNull BeamGroup group) {
-        group.setParentLine(this);
-        beamGroups.add(group);
-        modifiedComposition();
-    }
-
-    /**
-     * Removes a beam group from this line.
-     *
-     * @param group The beam group to remove
-     * @return true if the group was removed
-     */
-    public boolean removeBeamGroup(@NotNull BeamGroup group) {
-        if (beamGroups.remove(group)) {
-            group.setParentLine(null);
-            modifiedComposition();
-
-            return true;
-        }
-
-        return false;
-    }
-
-    /**
-     * Returns an unmodifiable view of the beam groups in this line.
-     */
-    public @NotNull List<BeamGroup> getBeamGroups() {
-        return Collections.unmodifiableList(beamGroups);
-    }
-
-    /**
-     * Finds the beam group containing the specified note.
-     *
-     * @param note The note to search for
-     * @return The beam group containing the note, or null if not found
-     */
-    public BeamGroup findBeamGroupFor(@NotNull Note note) {
-        for (var group : beamGroups) {
-            if (group.getBeamedNotes().contains(note)) {
-                return group;
-            }
-        }
-
-        return null;
-    }
 
     // =========================================================================
     // MIDI Duration Calculation (Phase 1: Score Cleanup)

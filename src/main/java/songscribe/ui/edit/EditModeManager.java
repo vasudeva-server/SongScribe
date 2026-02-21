@@ -26,7 +26,6 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import songscribe.music.ArticulationType;
-import songscribe.music.BeamCalculator;
 import songscribe.music.Composition;
 import songscribe.music.ForceArticulation;
 import songscribe.music.Line;
@@ -388,7 +387,6 @@ public final class EditModeManager {
                 var interval = line.getBeamings().findInterval(i);
 
                 if (interval != null) {
-                    BeamCalculator.calculateLengthenings(i, line, true);
                     i = interval.getEnd();
                 }
             }

@@ -37,7 +37,7 @@ import songscribe.music.NoteType;
 import songscribe.smufl.GlyphAnchors;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
-import songscribe.ui.layout2.ScaleContext;
+import songscribe.ui.layout2.LayoutResult;
 import songscribe.util.GraphicUtils;
 
 /**
@@ -72,36 +72,12 @@ public class NoteRenderer extends BaseElementRenderer<Note> {
         NOTE_HEAD.put(NoteType.DEMI_SEMIQUAVER, SMuFLGlyph.NOTEHEAD_BLACK);
     }
 
-    // Stem dimensions from SMuFL metadata, in staff-space units.
-    // The Graphics2D scale transform handles pixel conversion.
-    public static final double STEM_WIDTH_SS =
-        SMuFLMetadata.getInstance().getEngravingDefaults().stemThickness();
     private static final double STEM_LENGTH_SS = 3.5; // ss
 
     // Half the beam thickness in ss, used to tuck beamed stems inside the beam
     // so they don't peek past the outer edge when the beam is angled.
     private static final double HALF_BEAM_THICKNESS_SS =
         SMuFLMetadata.getInstance().getEngravingDefaults().beamThickness() / 2.0;
-
-    // Cached anchor data for notehead glyphs (in staff-space units, Y-down screen convention)
-    private static final GlyphAnchors.Anchor STEM_UP_SE_BLACK;
-    private static final GlyphAnchors.Anchor STEM_DOWN_NW_BLACK;
-    private static final GlyphAnchors.Anchor STEM_UP_SE_HALF;
-    private static final GlyphAnchors.Anchor STEM_DOWN_NW_HALF;
-
-    static {
-        var metadata = SMuFLMetadata.getInstance();
-        var blackAnchors = metadata.getAnchors(SMuFLGlyph.NOTEHEAD_BLACK);
-        var halfAnchors = metadata.getAnchors(SMuFLGlyph.NOTEHEAD_HALF);
-
-        assert blackAnchors != null && blackAnchors.stemUpSE() != null && blackAnchors.stemDownNW() != null;
-        assert halfAnchors != null && halfAnchors.stemUpSE() != null && halfAnchors.stemDownNW() != null;
-
-        STEM_UP_SE_BLACK = blackAnchors.stemUpSE();
-        STEM_DOWN_NW_BLACK = blackAnchors.stemDownNW();
-        STEM_UP_SE_HALF = halfAnchors.stemUpSE();
-        STEM_DOWN_NW_HALF = halfAnchors.stemDownNW();
-    }
 
     // Dot positioning (using SMuFL augmentation dot glyph), in staff-space units
     private static final float FIRST_DOT_X_SS = 1.6375f; // 13.1px / 8 px/ss
@@ -331,11 +307,11 @@ public class NoteRenderer extends BaseElementRenderer<Note> {
         }
 
         // Draw stem (always for notes with stems - beamed notes need stems to connect to beams)
-        renderStem(g2, note, note.isUpper(), beamed, noteType);
+        var stemTip = renderStem(g2, note, note.isUpper(), beamed, noteType, ctx);
 
         // Draw flags only for unbeamed notes (beamed notes get beams instead of flags)
         if (!beamed) {
-            renderFlags(g2, note, note.isUpper(), noteType);
+            renderFlags(g2, note, note.isUpper(), noteType, stemTip);
         }
 
         // Draw dots
@@ -346,15 +322,18 @@ public class NoteRenderer extends BaseElementRenderer<Note> {
     // Stem Rendering
     // ==========================================================================
 
-    private void renderStem(
+    // Returns the flag attachment point (x = stem left edge, y = stem tip), or null if no stem.
+    @Nullable
+    private Point2D.Double renderStem(
         @NotNull Graphics2D g2,
         @NotNull Note note,
         boolean upper,
         boolean beamed,
-        @NotNull NoteType noteType
+        @NotNull NoteType noteType,
+        @NotNull ElementRenderContext ctx
     ) {
         if (!noteType.isNoteWithStem()) {
-            return;
+            return null;
         }
 
         boolean isMinim = noteType == NoteType.MINIM;
@@ -385,37 +364,52 @@ public class NoteRenderer extends BaseElementRenderer<Note> {
         double stemLeftX = GraphicUtils.snapXToDevicePixel(g2, stemLeftRaw);
         double stemCenterX = stemLeftX + STEM_WIDTH_SS / 2;
 
-        // Convert lengthening/beamThickening from pixels to ss (BeamCalculator
-        // hasn't been converted yet and still computes in pixel units)
-        double pxPerSs = ScaleContext.getInstance().getPixelsPerStaffSpace();
-        double lengtheningInSs = note.properties.lengthening / pxPerSs;
-        double beamThickeningInSs = note.properties.beamThickening / pxPerSs;
+        var layoutResult = ctx.getLayoutResult();
+        var stemLayout = (layoutResult != null) ? layoutResult.getStemLayout(note) : null;
+        double lengtheningSs = (stemLayout != null) ? stemLayout.lengtheningSs() : 0.0;
 
-        double stemLength = STEM_LENGTH_SS + lengtheningInSs;
+        double beamThickeningSs = 0.0;
+
+        if (beamed && layoutResult != null) {
+            var line = ctx.getCurrentLine();
+
+            if (line != null) {
+                var interval = line.getBeamings().findInterval(line.getNoteIndex(note));
+
+                if (interval != null) {
+                    var beamLayout = layoutResult.getBeamLayout(interval);
+
+                    if (beamLayout != null) {
+                        beamThickeningSs = beamLayout.thickeningSs();
+                    }
+                }
+            }
+        }
+
+        double stemLength = STEM_LENGTH_SS + lengtheningSs;
 
         // For beamed notes, shorten the rendered stem by half the (thickened) beam
         // so it tucks inside the beam rather than peeking past the outer edge
         // when the beam is angled. stem.y2 retains the full length for beam positioning.
         double drawLength = beamed
-            ? Math.max(0, stemLength - HALF_BEAM_THICKNESS_SS - beamThickeningInSs / 2.0)
+            ? Math.max(0, stemLength - HALF_BEAM_THICKNESS_SS - beamThickeningSs / 2.0)
             : stemLength;
 
         if (upper) {
             double stemTopY = anchorY - stemLength;
 
-            // Store logical stem line for BeamGroupRenderer (center X, actual Y endpoints)
-            note.properties.stem.setLine(stemCenterX, anchorY, stemCenterX, stemTopY);
-
             // Draw filled rectangle for crisp rendering
             g2.fill(new Rectangle2D.Double(
                 stemLeftX, anchorY - drawLength, STEM_WIDTH_SS, drawLength));
+
+            return new Point2D.Double(stemLeftX, stemTopY);
         } else {
             double stemBottomY = anchorY + stemLength;
 
-            note.properties.stem.setLine(stemCenterX, anchorY, stemCenterX, stemBottomY);
-
             g2.fill(new Rectangle2D.Double(
                 stemLeftX, anchorY, STEM_WIDTH_SS, drawLength));
+
+            return new Point2D.Double(stemLeftX, stemBottomY);
         }
     }
 
@@ -427,9 +421,10 @@ public class NoteRenderer extends BaseElementRenderer<Note> {
         @NotNull Graphics2D g2,
         @NotNull Note note,
         boolean upper,
-        @NotNull NoteType noteType
+        @NotNull NoteType noteType,
+        @Nullable Point2D.Double stemTip
     ) {
-        if (!noteType.isBeamable()) {
+        if (!noteType.isBeamable() || stemTip == null) {
             return;
         }
 
@@ -440,10 +435,9 @@ public class NoteRenderer extends BaseElementRenderer<Note> {
         }
 
         // Position flag at the stem tip. SMuFL flag glyphs have their origin
-        // at the left edge of the stem, so use stem center minus half width.
-        var stem = note.properties.stem;
-        float flagX = (float) (stem.getX1() - STEM_WIDTH_SS / 2);
-        float flagY = (float) stem.getY2();
+        // at the left edge of the stem, so stemTip.x is already the left edge.
+        float flagX = (float) stemTip.x;
+        float flagY = (float) stemTip.y;
 
         try (var ignored = GraphicsState.save(g2, FONT)) {
             g2.setFont(BRAVURA_FONT);

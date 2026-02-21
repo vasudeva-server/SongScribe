@@ -273,6 +273,11 @@ public final class CompositionIO {
                             viewReader = new ViewIO.ViewReader(
                                 mainFrame.getProfileManager()
                             );
+                        } else if ((majorVersion == 2) && (minorVersion == 2)) {
+                            lineReader = new LineIO.LineReader();
+                            viewReader = new ViewIO.ViewReader(
+                                mainFrame.getProfileManager()
+                            );
                         } else {
                             throw new SAXException(
                                 "Unsupported version number."
@@ -299,6 +304,8 @@ public final class CompositionIO {
                 } else if ((majorVersion == 2) && (minorVersion == 0)) {
                     startElement20(uri, localName, qName, attributes);
                 } else if ((majorVersion == 2) && (minorVersion == 1)) {
+                    startElement21(uri, localName, qName, attributes);
+                } else if ((majorVersion == 2) && (minorVersion == 2)) {
                     startElement21(uri, localName, qName, attributes);
                 }
             }
@@ -428,6 +435,8 @@ public final class CompositionIO {
             } else if ((majorVersion == 2) && (minorVersion == 0)) {
                 endElement20(qName);
             } else if ((majorVersion == 2) && (minorVersion == 1)) {
+                endElement21(qName);
+            } else if ((majorVersion == 2) && (minorVersion == 2)) {
                 endElement21(qName);
             }
         }
@@ -880,6 +889,12 @@ public final class CompositionIO {
                         // line.getNote(i).setXPos(0);
                     }
                 }
+            }
+
+            // Mark the composition's format version so FormatMigrator skips
+            // migrations that have already been applied in v2.x files.
+            if (majorVersion >= 2) {
+                composition.setFormatVersion(2);
             }
 
             // Migrate from legacy format (IntervalSets, inline Note attachments)

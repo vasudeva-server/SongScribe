@@ -220,9 +220,6 @@ public class InsertionSpacingCalculator {
         String syllable = null;
         double syllableWidthSs = 0;
 
-        // No beam group (insertions typically happen to individual notes)
-        songscribe.ui.layout.BeamGroup beamGroup = null;
-
         return new NoteColumn(
             note,
             Collections.emptyList(),  // No grace notes
@@ -232,7 +229,7 @@ public class InsertionSpacingCalculator {
             stemBottomSs,
             syllable,
             syllableWidthSs,
-            beamGroup
+            false
         );
     }
 }

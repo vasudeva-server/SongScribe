@@ -34,7 +34,6 @@ import songscribe.music.Line;
 import songscribe.music.Note;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
-import songscribe.ui.layout.BeamGroup;
 
 /**
  * Builds {@link NoteColumn} instances from a Line's notes.
@@ -120,7 +119,7 @@ public class NoteColumnBuilder {
      * Builds a single NoteColumn for a note.
      *
      * @param note The note to process
-     * @param line The line containing the note (for beam group lookup)
+     * @param line The line containing the note (for beaming lookup)
      * @return The constructed NoteColumn
      */
     public @NotNull NoteColumn buildColumn(@NotNull Note note, @NotNull Line line) {
@@ -136,8 +135,9 @@ public class NoteColumnBuilder {
         String syllable = getSyllable(note);
         double syllableWidthSs = measureSyllableWidthSs(syllable);
 
-        // Find beam group (if any)
-        BeamGroup beamGroup = findBeamGroup(note, line);
+        // Determine beam membership from the line's Beamings intervals
+        int noteIndex = line.getNoteIndex(note);
+        boolean beamed = line.getBeamings().findInterval(noteIndex) != null;
 
         // Get grace notes (currently not implemented in data model)
         List<Note> graceNotes = getGraceNotes(note);
@@ -151,7 +151,7 @@ public class NoteColumnBuilder {
             stemBottomSs,
             syllable,
             syllableWidthSs,
-            beamGroup
+            beamed
         );
     }
 
@@ -325,27 +325,6 @@ public class NoteColumnBuilder {
 
         double widthPx = lyricsFontMetrics.stringWidth(syllable);
         return ScaleContext.getInstance().fromPixels(widthPx);
-    }
-
-    // ==========================================================================
-    // Beam Group Lookup
-    // ==========================================================================
-
-    /**
-     * Finds the beam group that contains a note.
-     *
-     * @param note The note to look up
-     * @param line The line containing the note
-     * @return The BeamGroup, or null if the note is not beamed
-     */
-    private @Nullable BeamGroup findBeamGroup(@NotNull Note note, @NotNull Line line) {
-        for (var group : line.getBeamGroups()) {
-            if (group.containsNote(note)) {
-                return group;
-            }
-        }
-
-        return null;
     }
 
     // ==========================================================================

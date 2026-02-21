@@ -39,7 +39,6 @@ import org.xml.sax.SAXException;
 
 import songscribe.MusicChangeListener;
 import songscribe.io.CompositionIO;
-import songscribe.music.BeamCalculator;
 import songscribe.music.Composition;
 import songscribe.music.Line;
 import songscribe.music.LyricsProcessor;
@@ -685,11 +684,7 @@ public final class Score
         return operations.canToggleLyricsUnderRests();
     }
 
-    public boolean canFlipPartialBeamOrientation() {
-        return operations.canFlipPartialBeamOrientation();
-    }
-
-    public boolean canFlipStemDirection() {
+public boolean canFlipStemDirection() {
         return operations.canFlipStemDirection();
     }
 
@@ -726,15 +721,6 @@ public final class Score
         PlaybackController.stop();
         selectionCoordinator.clearSelection();
         setLineWidth((int) composition.getLineWidth());
-
-        // global calculate lengthening
-        for (var l = 0; l < composition.lineCount(); l++) {
-            var line = composition.getLine(l);
-
-            for (var li = line.getBeamings().listIterator(); li.hasNext(); ) {
-                BeamCalculator.calculateLengthenings(li.next().getStart(), line, false);
-            }
-        }
 
         for (var i = 0; i < composition.lineCount(); i++) {
             drawWidthIfWiderLine(composition.getLine(i), true);

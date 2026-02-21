@@ -30,7 +30,9 @@ import java.util.Objects;
 
 import org.jetbrains.annotations.NotNull;
 
+import songscribe.music.NoteType;
 import songscribe.smufl.EngravingDefaults;
+import songscribe.smufl.GlyphAnchors;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
 import songscribe.ui.layout.LineElement;
@@ -163,6 +165,29 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
         (float) ENGRAVING_DEFAULTS.stemThickness());
     protected static final Stroke LEDGER_LINE_STROKE = new BasicStroke(
         (float) ENGRAVING_DEFAULTS.legerLineThickness());
+
+    // Stem width in staff-space units (scale transform handles pixel conversion).
+    protected static final double STEM_WIDTH_SS = ENGRAVING_DEFAULTS.stemThickness();
+
+    // Cached anchor data for notehead glyphs (in staff-space units, Y-down screen convention).
+    protected static final GlyphAnchors.Anchor STEM_UP_SE_BLACK;
+    protected static final GlyphAnchors.Anchor STEM_DOWN_NW_BLACK;
+    protected static final GlyphAnchors.Anchor STEM_UP_SE_HALF;
+    protected static final GlyphAnchors.Anchor STEM_DOWN_NW_HALF;
+
+    static {
+        var metadata = SMuFLMetadata.getInstance();
+        var blackAnchors = metadata.getAnchors(SMuFLGlyph.NOTEHEAD_BLACK);
+        var halfAnchors = metadata.getAnchors(SMuFLGlyph.NOTEHEAD_HALF);
+
+        assert blackAnchors != null && blackAnchors.stemUpSE() != null && blackAnchors.stemDownNW() != null;
+        assert halfAnchors != null && halfAnchors.stemUpSE() != null && halfAnchors.stemDownNW() != null;
+
+        STEM_UP_SE_BLACK = blackAnchors.stemUpSE();
+        STEM_DOWN_NW_BLACK = blackAnchors.stemDownNW();
+        STEM_UP_SE_HALF = halfAnchors.stemUpSE();
+        STEM_DOWN_NW_HALF = halfAnchors.stemDownNW();
+    }
 
     // ==========================================================================
     // Rendering Template Method
@@ -432,5 +457,24 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
      */
     protected double noteYPosToCoordinateSs(int staffPosition, double middleLineYSs) {
         return middleLineYSs + staffPosition * 0.5;
+    }
+
+    /**
+     * Returns the X offset in staff spaces from the note reference point to the stem center,
+     * for the given stem direction and note type.
+     *
+     * @param noteType the note type (determines which notehead anchor to use)
+     * @param upper    true = stem goes up (stem-up SE anchor); false = stem goes down (stem-down NW anchor)
+     * @return X offset from note reference point to stem center, in staff spaces
+     */
+    protected static double stemCenterXOffsetSs(@NotNull NoteType noteType, boolean upper) {
+        boolean isMinim = noteType == NoteType.MINIM;
+        double anchorX = upper
+            ? (isMinim ? STEM_UP_SE_HALF.x()   : STEM_UP_SE_BLACK.x())
+            : (isMinim ? STEM_DOWN_NW_HALF.x() : STEM_DOWN_NW_BLACK.x());
+
+        // upper: SE anchor is the stem's right edge; center = anchorX - half stem width
+        // lower: NW anchor is the stem's left edge (after notehead shift); center = anchorX
+        return upper ? anchorX - STEM_WIDTH_SS / 2.0 : anchorX;
     }
 }

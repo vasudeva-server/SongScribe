@@ -27,7 +27,6 @@ import org.jetbrains.annotations.NotNull;
 
 import songscribe.music.Line;
 import songscribe.music.Note;
-import songscribe.ui.layout.BeamGroup;
 
 /**
  * Calculates horizontal X positions for note columns following Gould/Ross engraving principles.
@@ -268,12 +267,10 @@ public class HorizontalSpacingCalculator {
     private static class BeamGroupRange {
         final int start;
         final int end;
-        final BeamGroup group;
 
-        BeamGroupRange(int start, int end, BeamGroup group) {
+        BeamGroupRange(int start, int end) {
             this.start = start;
             this.end = end;
-            this.group = group;
         }
     }
 
@@ -290,35 +287,24 @@ public class HorizontalSpacingCalculator {
         var ranges = new ArrayList<BeamGroupRange>();
 
         for (var i = 0; i < columns.size(); i++) {
-            var column = columns.get(i);
-
-            if (!column.isBeamed()) {
+            if (!columns.get(i).isBeamed()) {
                 continue;
             }
 
-            var beamGroup = column.getBeamGroup();
-
-            // Check if we've already processed this beam group
-            boolean alreadyProcessed = ranges.stream()
-                .anyMatch(range -> range.group == beamGroup);
-
-            if (alreadyProcessed) {
-                continue;
-            }
-
-            // Find start and end indices for this beam group
+            // Find the end of this consecutive beamed run
             int start = i;
             int end = i;
 
             for (var j = i + 1; j < columns.size(); j++) {
-                if (columns.get(j).getBeamGroup() == beamGroup) {
+                if (columns.get(j).isBeamed()) {
                     end = j;
                 } else {
                     break;
                 }
             }
 
-            ranges.add(new BeamGroupRange(start, end, beamGroup));
+            ranges.add(new BeamGroupRange(start, end));
+            i = end; // Skip to end of this group
         }
 
         return ranges;

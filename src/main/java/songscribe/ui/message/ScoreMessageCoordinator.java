@@ -27,7 +27,6 @@ import org.jetbrains.annotations.NotNull;
 import kotlin.Pair;
 import net.engio.mbassy.listener.Handler;
 
-import songscribe.music.BeamCalculator;
 import songscribe.music.Composition;
 import songscribe.music.Line;
 import songscribe.music.LyricsProcessor;
@@ -224,12 +223,6 @@ public final class ScoreMessageCoordinator {
     }
 
     @Handler
-    public void onFlipPartialBeams(FlipPartialBeamsMessage message) {
-        operations.flipPartialBeamOrientation();
-        callback.repaint();
-    }
-
-    @Handler
     public void onFlipStemDirection(FlipStemDirectionMessage message) {
         operations.flipStemDirection();
 
@@ -367,8 +360,6 @@ public final class ScoreMessageCoordinator {
                 deleteNote(i, line);
             }
 
-            BeamCalculator.calculateLengthenings(state.getSelectionBegin() - 1, line, true);
-            BeamCalculator.calculateLengthenings(state.getSelectionBegin(), line, true);
             LyricsProcessor.spellLyrics(line);
         } else if (callback.canDeleteLine()) {
             composition.removeLine(selectionCoordinator.getSelectedLine());

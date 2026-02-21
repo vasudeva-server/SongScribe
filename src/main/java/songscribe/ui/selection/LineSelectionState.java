@@ -345,17 +345,6 @@ public final class LineSelectionState {
     }
 
     /**
-     * Returns whether the partial beam orientation can be flipped.
-     */
-    public boolean canFlipPartialBeamOrientation() {
-        if (getSelectionSize() != 1) {
-            return false;
-        }
-
-        return line.getBeamings().isInsideAnyInterval(selectionBegin);
-    }
-
-    /**
      * Returns whether the stem direction can be flipped.
      */
     public boolean canFlipStemDirection() {

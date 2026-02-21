@@ -273,14 +273,29 @@ public class LayoutEngine {
                 }
             }
 
-            boolean stemsUp = (minStaffPos + maxStaffPos) < 0;
+            // Scan for any manual override in the group; first one wins.
+            Boolean manualDirection = null;
 
-            // Apply stem direction to notes with auto direction; preserve manual overrides.
             for (int i = interval.getStart(); i <= interval.getEnd(); i++) {
-                var note = line.getNote(i);
+                var n = line.getNote(i);
 
-                if (note.isStemDirectionAuto()) {
-                    note.setUpper(stemsUp);
+                if (!n.isStemDirectionAuto()) {
+                    manualDirection = n.isUpper();
+                    break;
+                }
+            }
+
+            boolean stemsUp = (manualDirection != null)
+                ? manualDirection
+                : (minStaffPos + maxStaffPos) < 0;
+
+            // Normalize auto-direction notes to the group stem direction.
+            // Manual overrides are left untouched.
+            for (int i = interval.getStart(); i <= interval.getEnd(); i++) {
+                var n = line.getNote(i);
+
+                if (n.isStemDirectionAuto()) {
+                    n.setUpper(stemsUp);
                 }
             }
 
@@ -476,7 +491,8 @@ public class LayoutEngine {
                 }
             }
 
-            // TODO: Phase 4 — BeamLayout → builder
+            var beamLayout = new LayoutResult.BeamLayout(slope, startYSs, stemsUp, thickeningSs, stemLayouts);
+            builder.putBeamLayout(interval, beamLayout);
         }
     }
 
@@ -495,17 +511,19 @@ public class LayoutEngine {
                 continue;
             }
 
-            // Set auto stem direction: notes on or below the middle line get stems up.
+            // Set auto stem direction: notes below the middle line (staffPosition > 0) get stems up.
+            // This matches Score.defaultUpperNote: upper=true means stem up.
             if (note.isStemDirectionAuto()) {
-                note.setUpper(note.getStaffPosition() <= 0);
+                note.setUpper(note.getStaffPosition() > 0);
             }
 
-            // !isUpper() → stem up (per NoteColumnBuilder convention)
-            boolean stemsUp = !note.isUpper();
+            // isUpper() → stem up (upper=true means stem goes up)
+            boolean stemsUp = note.isUpper();
             double noteYSs = note.getStaffPosition() * 0.5;
 
-            double topYSs = stemsUp ? noteYSs + MIN_STEM_SS : noteYSs;
-            double bottomYSs = stemsUp ? noteYSs : noteYSs - MIN_STEM_SS;
+            // Y increases downward: stem-up tip has smaller Y; stem-down tip has larger Y.
+            double topYSs = stemsUp ? noteYSs - MIN_STEM_SS : noteYSs;
+            double bottomYSs = stemsUp ? noteYSs : noteYSs + MIN_STEM_SS;
 
             builder.putStemLayout(note, new LayoutResult.StemLayout(topYSs, bottomYSs, 0.0, false));
         }

@@ -101,7 +101,7 @@
     },
     {
       "path": "plans/fix-beam-stem-validation/fix-beam-stem-validation.md",
-      "active": true,
+      "active": false,
       "description": "Add MIN_STEM validation to BeamCalculator to prevent stems from becoming too short in beamed groups",
       "subdirectory": "fix-beam-stem-validation",
       "subPlans": [],
@@ -110,6 +110,47 @@
         "2": "completed",
         "3": "completed",
         "4": "completed"
+      },
+      "branches": []
+    },
+    {
+      "path": "plans/migrations/rendering-rewrite/rendering-rewrite.md",
+      "active": false,
+      "description": "Rewrite rendering and layout pipeline with staff-space coordinate system, abc2svg algorithms",
+      "subdirectory": "migrations/rendering-rewrite",
+      "subPlans": [
+        {
+          "path": "plans/migrations/rendering-rewrite/milestone-1-coordinate-system.md",
+          "phase": 1,
+          "type": "sub-plan",
+          "prePlanned": true,
+          "status": "pending"
+        }
+      ],
+      "phases": {
+        "1": "pending",
+        "2": "pending",
+        "3": "pending",
+        "4": "pending",
+        "5": "pending",
+        "6": "pending"
+      },
+      "branches": []
+    },
+    {
+      "path": "plans/completed/fix-migration-issues/fix-migration-issues.md",
+      "active": false,
+      "description": "Fix bugs from Milestone 1-2 migrations: IO version dispatch, duplicate RangeElements, BeamGroup migration, stem direction, TupletRenderer, dead code",
+      "subdirectory": "fix-migration-issues",
+      "subPlans": [],
+      "phases": {
+        "1": "completed",
+        "2": "completed",
+        "3": "completed",
+        "4": "completed",
+        "5": "completed",
+        "6": "completed",
+        "7": "completed"
       },
       "branches": []
     }

@@ -27,15 +27,14 @@ import java.awt.geom.*;
 import java.util.logging.Logger;
 
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import songscribe.music.Line;
+import songscribe.music.Note;
 import songscribe.music.NoteType;
-import songscribe.smufl.EngravingDefaults;
-import songscribe.smufl.SMuFLMetadata;
-import songscribe.smufl.StaffSpaces;
 import songscribe.ui.component.Score;
-import songscribe.ui.layout.BeamGroup;
-import songscribe.ui.layout.LayoutStylesheet;
+import songscribe.ui.layout.LineElement;
+import songscribe.ui.layout2.LayoutResult;
 import songscribe.util.GraphicUtils;
 
 /**
@@ -44,25 +43,17 @@ import songscribe.util.GraphicUtils;
  * Beams are drawn as filled parallelograms connecting the stems of beamed notes.
  * Multiple beam levels (8th, 16th, 32nd) are stacked vertically.
  */
-public class BeamGroupRenderer extends BaseElementRenderer<BeamGroup> {
+public class BeamGroupRenderer extends BaseElementRenderer<LineElement> {
 
     // ==========================================================================
     // Constants from Renderer
     // ==========================================================================
 
-    private static final float NOTE_FONT_SIZE = BaseElementRenderer.NOTE_FONT_SIZE;
-
-    private static final EngravingDefaults ENGRAVING_DEFAULTS =
-        SMuFLMetadata.getInstance().getEngravingDefaults();
-
-    // Beam thickness in pixels (from SMuFL engravingDefaults)
-    private static final double BEAM_THICKNESS_PX =
-        StaffSpaces.toPixels(ENGRAVING_DEFAULTS.beamThickness());
-
-    // Inner beam dimensions
-    private static final double INNER_BEAM_LENGTH_PX = 11d;
-    private static final double INNER_BEAM_OFFSET_PX =
-        StaffSpaces.toPixels(ENGRAVING_DEFAULTS.beamThickness() + ENGRAVING_DEFAULTS.beamSpacing());
+    // Beam geometry constants (staff-space units; scale transform handles pixel conversion)
+    private static final double BEAM_DEPTH_SS  = 0.4;    // beam thickness
+    private static final double BEAM_SHIFT_SS  = 0.625;  // gap between stacked beam levels
+    private static final double BEAM_STUB_SS   = 1.0;    // partial beam stub length
+    private static final double CLIP_SLOP_SS   = 0.25;   // extra clipping margin (~2 px)
 
     // Note types for beam levels (32nd, 16th, 8th)
     private static final NoteType[] BEAM_LEVELS = new NoteType[]{
@@ -95,53 +86,10 @@ public class BeamGroupRenderer extends BaseElementRenderer<BeamGroup> {
 
     @Override
     protected void renderElement(
-        @NotNull BeamGroup element,
+        @NotNull LineElement element,
         @NotNull Graphics2D g2,
         @NotNull ElementRenderContext ctx
     ) {
-        var notes = element.getBeamedNotes();
-
-        if (notes.size() < 2) {
-            LOG.fine("[BeamRenderer] renderElement: skipping, notes.size()=" + notes.size());
-            return;
-        }
-
-        var line = ctx.getCurrentLine();
-
-        if (line == null) {
-            LOG.fine("[BeamRenderer] renderElement: skipping, line is null");
-            return;
-        }
-
-        // Find the indices of the first and last notes
-        int beginIndex = line.getNoteIndex(notes.get(0));
-        int endIndex = line.getNoteIndex(notes.get(notes.size() - 1));
-
-        if (beginIndex < 0 || endIndex < 0) {
-            LOG.fine("[BeamRenderer] renderElement: skipping, beginIndex=" + beginIndex + " endIndex=" + endIndex);
-            return;
-        }
-
-        // Determine beam level based on shortest note value
-        int level = getBeamLevel(line, beginIndex, endIndex);
-
-        LOG.fine("[BeamRenderer] ============================================");
-        LOG.fine("[BeamRenderer] renderElement: beginIndex=" + beginIndex + " endIndex=" + endIndex + " level=" + level);
-        for (int i = beginIndex; i <= endIndex; i++) {
-            var note = line.getNote(i);
-            LOG.fine("[BeamRenderer]   note[" + i + "]: type=" + note.getNoteType()
-                + " yPos=" + note.getStaffPosition() + " xPos=" + note.getXPos()
-                + " upper=" + note.isUpper()
-                + " lengthening=" + note.properties.lengthening
-                + " stem=(x1=" + note.properties.stem.x1
-                + " y1=" + note.properties.stem.y1
-                + " x2=" + note.properties.stem.x2
-                + " y2=" + note.properties.stem.y2 + ")");
-        }
-
-        // Draw beams
-        boolean selected = shouldBeamAppearSelected(ctx, beginIndex, endIndex);
-        drawBeams(g2, level, line, ctx, beginIndex, endIndex, selected);
     }
 
     /**
@@ -229,8 +177,12 @@ public class BeamGroupRenderer extends BaseElementRenderer<BeamGroup> {
         boolean selected
     ) {
         var outerNotes = new Point(beginIndex, endIndex);
+        var layoutResult = ctx.getLayoutResult();
+        var interval = (layoutResult != null) ? line.getBeamings().findInterval(beginIndex) : null;
+        var beamLayout = (layoutResult != null && interval != null)
+            ? layoutResult.getBeamLayout(interval) : null;
         doDrawBeams(g2, level, line, ctx, outerNotes,
-            beginIndex, endIndex, beginIndex, endIndex, false, 0, selected);
+            beginIndex, endIndex, beginIndex, endIndex, false, 0, selected, beamLayout);
     }
 
     private void doDrawBeams(
@@ -245,7 +197,8 @@ public class BeamGroupRenderer extends BaseElementRenderer<BeamGroup> {
         int prevEndIndex,
         boolean isPrevLeftOriented,
         int recursionLevel,
-        boolean selected
+        boolean selected,
+        @Nullable LayoutResult.BeamLayout beamLayout
     ) {
         String indent = "  ".repeat(recursionLevel);
         LOG.fine("[BeamRenderer] " + indent + "doDrawBeams: level=" + level
@@ -271,10 +224,11 @@ public class BeamGroupRenderer extends BaseElementRenderer<BeamGroup> {
                 return;
             }
 
-            // Stub direction is automatic from rhythmic context (Phase 6 will read from StemLayout).
-            leftOriented = (prevBeginIndex == prevEndIndex)
-                ? isPrevLeftOriented
-                : (beginIndex != prevBeginIndex);
+            var layoutResult = ctx.getLayoutResult();
+            var stubStemLayout = (layoutResult != null) ? layoutResult.getStemLayout(beginNote) : null;
+            leftOriented = (stubStemLayout != null)
+                ? !stubStemLayout.stubRight()
+                : (prevBeginIndex == prevEndIndex) ? isPrevLeftOriented : (beginIndex != prevBeginIndex);
 
             int begin, end;
 
@@ -289,12 +243,12 @@ public class BeamGroupRenderer extends BaseElementRenderer<BeamGroup> {
             var type = leftOriented ? BeamType.ATTACH_RIGHT : BeamType.ATTACH_LEFT;
             LOG.fine("[BeamRenderer] " + indent + "  -> HALF beam: leftOriented=" + leftOriented
                 + " type=" + type + " drawBeam(" + begin + "," + end + ") isUpper=" + isUpper);
-            drawBeam(g2, line, ctx, begin, end, isUpper, type, recursionLevel, selected);
+            drawBeam(g2, line, ctx, begin, end, isUpper, type, recursionLevel, selected, beamLayout);
         }
         // Full beam
         else {
             LOG.fine("[BeamRenderer] " + indent + "  -> FULL beam: drawBeam(" + beginIndex + "," + endIndex + ") isUpper=" + isUpper);
-            drawBeam(g2, line, ctx, beginIndex, endIndex, isUpper, BeamType.FULL, recursionLevel, selected);
+            drawBeam(g2, line, ctx, beginIndex, endIndex, isUpper, BeamType.FULL, recursionLevel, selected, beamLayout);
         }
 
         // Sub-beams for inner levels.
@@ -319,7 +273,7 @@ public class BeamGroupRenderer extends BaseElementRenderer<BeamGroup> {
                     LOG.fine("[BeamRenderer] " + indent + "    -> sub-beam range: " + startSubBeam + " to " + (i - 1));
                     doDrawBeams(g2, beamLevel, line, ctx, outerNotes,
                         startSubBeam, i - 1, beginIndex, endIndex,
-                        leftOriented, recursionLevel + 1, selected);
+                        leftOriented, recursionLevel + 1, selected, beamLayout);
                     startSubBeam = -1;
                 }
             }
@@ -370,104 +324,72 @@ public class BeamGroupRenderer extends BaseElementRenderer<BeamGroup> {
         boolean isUpper,
         @NotNull BeamType type,
         int recursionLevel,
-        boolean selected
+        boolean selected,
+        @Nullable LayoutResult.BeamLayout beamLayout
     ) {
         var beginNote = line.getNote(beginIndex);
-        var endNote = line.getNote(endIndex);
-        var firstStem = beginNote.properties.stem;
-        var lastStem = endNote.properties.stem;
+        var endNote   = line.getNote(endIndex);
+        var layoutResult = ctx.getLayoutResult();
+        double middleLineYSs = ctx.getMiddleLineYSs();
+        double halfStemWidthSs = STEM_WIDTH_SS / 2.0;
 
         LOG.fine("[BeamRenderer]   drawBeam: type=" + type + " beginIndex=" + beginIndex + " endIndex=" + endIndex
             + " isUpper=" + isUpper + " recursionLevel=" + recursionLevel);
-        LOG.fine("[BeamRenderer]     beginNote: type=" + beginNote.getNoteType()
-            + " yPos=" + beginNote.getStaffPosition() + " xPos=" + beginNote.getXPos()
-            + " lengthening=" + beginNote.properties.lengthening
-            + " stem=(x1=" + firstStem.x1 + " y1=" + firstStem.y1 + " x2=" + firstStem.x2 + " y2=" + firstStem.y2 + ")");
-        LOG.fine("[BeamRenderer]     endNote: type=" + endNote.getNoteType()
-            + " yPos=" + endNote.getStaffPosition() + " xPos=" + endNote.getXPos()
-            + " lengthening=" + endNote.properties.lengthening
-            + " stem=(x1=" + lastStem.x1 + " y1=" + lastStem.y1 + " x2=" + lastStem.x2 + " y2=" + lastStem.y2 + ")");
 
-        double middleLineYSs = ctx.getMiddleLineYSs();
-        var halfStemWidth = NoteRenderer.STEM_WIDTH_SS / 2.0;
+        // --- Thickening (from BeamLayout, zero if unavailable) ---
+        double thickeningSs = (beamLayout != null) ? beamLayout.thickeningSs() : 0.0;
+        double effectiveBeamDepthSs = BEAM_DEPTH_SS + thickeningSs;
+        double beamDepthSs          = isUpper ? effectiveBeamDepthSs : -effectiveBeamDepthSs;
+        double effectiveBeamShiftSs = BEAM_SHIFT_SS + thickeningSs;
+        double innerBeamOffsetSs    = effectiveBeamShiftSs * recursionLevel * (isUpper ? 1 : -1);
 
-        var thickening = beginNote.properties.beamThickening;
-        var effectiveBeamThickness = BEAM_THICKNESS_PX + thickening;
-        var beamThickness = isUpper ? effectiveBeamThickness : -effectiveBeamThickness;
-        var effectiveInnerOffset = INNER_BEAM_OFFSET_PX + thickening;
-        var innerBeamOffset = effectiveInnerOffset * recursionLevel * (isUpper ? 1 : -1);
+        // --- First note stem geometry ---
+        var firstStemLayout = (layoutResult != null) ? layoutResult.getStemLayout(beginNote) : null;
+        double firstNoteXSs = (layoutResult != null)
+            ? layoutResult.getNoteXSs(beginNote) : beginNote.getXPos();
+        double firstStemCenterXSs = firstNoteXSs
+            + stemCenterXOffsetSs(beginNote.getNoteType(), isUpper);
+        double firstX      = GraphicUtils.snapXToDevicePixel(g2, firstStemCenterXSs - halfStemWidthSs);
+        double firstTipYSs = stemTipYSsOffset(firstStemLayout, isUpper, beginNote);
+        double firstOuterY = GraphicUtils.snapYToDevicePixel(
+            g2, middleLineYSs + firstTipYSs + innerBeamOffsetSs);
+        double firstInnerY = GraphicUtils.snapYToDevicePixel(g2, firstOuterY + beamDepthSs);
 
-        LOG.fine("[BeamRenderer]     middleLineYSs=" + middleLineYSs
-            + " halfStemWidth=" + halfStemWidth
-            + " BEAM_THICKNESS_PX=" + BEAM_THICKNESS_PX
-            + " beamThickness=" + beamThickness
-            + " INNER_BEAM_OFFSET=" + INNER_BEAM_OFFSET_PX
-            + " innerBeamOffset=" + innerBeamOffset);
+        // --- Last note stem geometry ---
+        var lastStemLayout = (layoutResult != null) ? layoutResult.getStemLayout(endNote) : null;
+        double lastNoteXSs = (layoutResult != null)
+            ? layoutResult.getNoteXSs(endNote) : endNote.getXPos();
+        double lastStemCenterXSs = lastNoteXSs
+            + stemCenterXOffsetSs(endNote.getNoteType(), isUpper);
+        double lastX      = GraphicUtils.snapXToDevicePixel(g2, lastStemCenterXSs + halfStemWidthSs);
+        double lastTipYSs = stemTipYSsOffset(lastStemLayout, isUpper, endNote);
+        double lastOuterY = GraphicUtils.snapYToDevicePixel(
+            g2, middleLineYSs + lastTipYSs + innerBeamOffsetSs);
+        double lastInnerY = GraphicUtils.snapYToDevicePixel(g2, lastOuterY + beamDepthSs);
 
-        var layoutResult = ctx.getLayoutResult();
+        LOG.fine("[BeamRenderer]     firstX=" + firstX + " firstOuterY=" + firstOuterY
+            + " lastX=" + lastX + " lastOuterY=" + lastOuterY);
 
-        // First note: left edge of stem, stem tip Y
-        var noteX = (layoutResult != null) ? layoutResult.getNoteXSs(beginNote) : beginNote.getXPos();
-        var snappedNoteX = GraphicUtils.snapXToDevicePixel(g2, noteX);
-        var firstX = snappedNoteX + firstStem.x1 - halfStemWidth;
-        var noteY = middleLineYSs + LayoutStylesheet.toPixelsDouble(beginNote.getStaffPosition() * LayoutStylesheet.NOTE_Y_OFFSET);
-        var firstOuterY = GraphicUtils.snapYToDevicePixel(g2, noteY + firstStem.y2 + innerBeamOffset);
-        var firstInnerY = GraphicUtils.snapYToDevicePixel(g2, firstOuterY + beamThickness);
-
-        LOG.fine("[BeamRenderer]     firstNote coords: noteX=" + noteX + " snappedNoteX=" + snappedNoteX
-            + " firstX=" + firstX + " noteY=" + noteY
-            + " stemTipY(noteY+stem.y2)=" + (noteY + firstStem.y2)
-            + " firstOuterY=" + firstOuterY + " firstInnerY=" + firstInnerY);
-
-        // Last note: right edge of stem, stem tip Y
-        noteX = (layoutResult != null) ? layoutResult.getNoteXSs(endNote) : endNote.getXPos();
-        snappedNoteX = GraphicUtils.snapXToDevicePixel(g2, noteX);
-        var lastX = snappedNoteX + lastStem.x1 + halfStemWidth;
-        noteY = middleLineYSs + LayoutStylesheet.toPixelsDouble(endNote.getStaffPosition() * LayoutStylesheet.NOTE_Y_OFFSET);
-        var lastOuterY = GraphicUtils.snapYToDevicePixel(g2, noteY + lastStem.y2 + innerBeamOffset);
-        var lastInnerY = GraphicUtils.snapYToDevicePixel(g2, lastOuterY + beamThickness);
-
-        LOG.fine("[BeamRenderer]     lastNote coords: noteX=" + noteX + " snappedNoteX=" + snappedNoteX
-            + " lastX=" + lastX + " noteY=" + noteY
-            + " stemTipY(noteY+stem.y2)=" + (noteY + lastStem.y2)
-            + " lastOuterY=" + lastOuterY + " lastInnerY=" + lastInnerY);
-
-        // Build beam parallelogram: outer edge at stem tips, inner edge toward noteheads
+        // --- Build and draw parallelogram ---
         var beam = new Path2D.Double(Path2D.WIND_NON_ZERO, 4);
         beam.moveTo(firstX, firstOuterY);
-        beam.lineTo(lastX, lastOuterY);
-        beam.lineTo(lastX, lastInnerY);
+        beam.lineTo(lastX,  lastOuterY);
+        beam.lineTo(lastX,  lastInnerY);
         beam.lineTo(firstX, firstInnerY);
         beam.closePath();
 
-        LOG.fine("[BeamRenderer]     beam parallelogram: (" + firstX + "," + firstOuterY + ") -> ("
-            + lastX + "," + lastOuterY + ") -> (" + lastX + "," + lastInnerY + ") -> (" + firstX + "," + firstInnerY + ")");
-
         Shape oldClip = null;
-        Rectangle2D clip = null;
 
         if (type != BeamType.FULL) {
-            // Clip partial beams
-            clip = beam.getBounds2D();
-            double clipSlop = 2d;
-            double x1;
-
-            if (type == BeamType.ATTACH_LEFT) {
-                x1 = firstX - clipSlop;
-            } else {
-                x1 = lastX - INNER_BEAM_LENGTH_PX;
-            }
-
+            var clip = beam.getBounds2D();
+            double x1 = (type == BeamType.ATTACH_LEFT)
+                ? firstX - CLIP_SLOP_SS
+                : lastX  - BEAM_STUB_SS;
             clip.setRect(
                 x1,
-                clip.getMinY() - clipSlop,
-                INNER_BEAM_LENGTH_PX + clipSlop,
-                clip.getHeight() + clipSlop * 2
-            );
-
-            LOG.fine("[BeamRenderer]     clip: x=" + clip.getX() + " y=" + clip.getY()
-                + " w=" + clip.getWidth() + " h=" + clip.getHeight());
-
+                clip.getMinY() - CLIP_SLOP_SS,
+                BEAM_STUB_SS + CLIP_SLOP_SS,
+                clip.getHeight() + CLIP_SLOP_SS * 2);
             oldClip = g2.getClip();
             g2.setClip(clip);
         }
@@ -477,9 +399,33 @@ public class BeamGroupRenderer extends BaseElementRenderer<BeamGroup> {
             g2.fill(beam);
         }
 
-        if (clip != null) {
+        if (oldClip != null) {
             g2.setClip(oldClip);
         }
+    }
+
+    /**
+     * Returns the Y offset from {@code middleLineYSs} to the beam-connection end of the stem
+     * (the stem tip), in staff-space units.
+     *
+     * @param layout  StemLayout from LayoutResult, or null if unavailable
+     * @param isUpper true = stem goes up (beam above notes)
+     * @param note    fallback note for staff-position estimate when layout is null
+     */
+    private static double stemTipYSsOffset(
+        @Nullable LayoutResult.StemLayout layout,
+        boolean isUpper,
+        @NotNull Note note
+    ) {
+        if (layout != null) {
+            // topYSs = larger Y (lower screen); bottomYSs = smaller Y (higher screen)
+            // Stem-up tip = bottomYSs; stem-down tip = topYSs
+            return isUpper ? layout.bottomYSs() : layout.topYSs();
+        }
+
+        // Fallback: approximate from staff position + standard stem length
+        double noteYSs = note.getStaffPosition() * 0.5;
+        return isUpper ? noteYSs - 3.5 : noteYSs + 3.5;  // 3.5 = MIN_STEM_SS
     }
 
     /**

@@ -98,6 +98,7 @@ These constants are ported directly from abc2svg and expressed in staff spaces:
 | BEAM_SHIFT | 0.625 ss | `BEAM_SHIFT = 5` |
 | BEAM_STUB | 1.0 ss | `BEAM_STUB = 8` |
 | BEAM_SLOPE_MAX | 0.4 | `BEAM_SLOPE = 0.4` (dimensionless) |
+| MIN_STEM_SS | 3.5 ss | Minimum stem length (Gould/Ross 4.2; not in abc2svg) |
 | TIE_ALFA | 0.3 | Control point factor (dimensionless) |
 | TIE_BETA | 0.45 | Tangent factor (dimensionless) |
 | TIE_HEIGHT_SHORT | 0.08 | Height scale for spans > 3 notes |
@@ -187,6 +188,7 @@ record BeamLayout(
     double slope,
     double startY,
     boolean stemsUp,
+    double thickening,  // extra thickness from 1/cos(angle) correction, in ss
     Map<Note, StemLayout> stems
 ) {}
 
@@ -201,7 +203,8 @@ record TieLayout(
 
 record StemLayout(
     double topY, double bottomY,
-    double lengthening
+    double lengthening,
+    boolean stubRight  // only meaningful for partial-beam notes; false for full-beam or unbeamed
 ) {}
 ```
 
@@ -371,7 +374,8 @@ plus `set_beams()` in core/music.js.
 ### Slope Calculation
 
 1. Compute raw slope from first/last note positions:
-   `a = (lastY - firstY) / (lastX - firstX)`
+   `a = (lastStaffPos - firstStaffPos) * 0.5 / (lastX - firstX)`
+   (staff positions are in half-staff-spaces; ×0.5 converts to staff-space units)
 2. Apply hyperbolic dampening:
    `a = BEAM_SLOPE_MAX * a / (BEAM_SLOPE_MAX + abs(a))`
    This saturates at 0.4 regardless of pitch contour.

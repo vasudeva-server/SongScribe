@@ -726,9 +726,6 @@ public class Note extends LineElement implements Cloneable {
         public SyllableRelation syllableRelation = null;
         public float longDashPosition = 0.0F;
 
-        // Beaming (written by BeamCalculator in pixel units; not yet migrated to ss)
-        public int lengthening = 0;
-        public double beamThickening = 0.0;
         public final Line2D.Double stem = new Line2D.Double();
     }
 }

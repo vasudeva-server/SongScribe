@@ -21,6 +21,7 @@
 package songscribe.music;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.TreeSet;
 import java.util.stream.IntStream;
 
@@ -80,11 +81,8 @@ public final class MusicEditOperations {
 
         if (state.shouldConnectSelection(beamings)) {
             beamings.addInterval(new BeamInterval(state.getSelectionBegin(), state.getSelectionEnd()));
-            BeamCalculator.calculateLengthenings(state.getSelectionBegin(), line, true);
         } else {
             beamings.removeInterval(state.getSelectionBegin(), state.getSelectionEnd());
-            BeamCalculator.calculateLengthenings(state.getSelectionBegin(), line, true);
-            BeamCalculator.calculateLengthenings(state.getSelectionEnd(), line, true);
         }
 
         composition.setModified(true);
@@ -346,17 +344,7 @@ public final class MusicEditOperations {
 
     // ========== Partial Beam Operations ==========
 
-    public boolean canFlipPartialBeamOrientation() {
-        var state = coordinator.getActiveSelection();
-        return (state != null) && state.canFlipPartialBeamOrientation();
-    }
-
-    public void flipPartialBeamOrientation() {
-        // Partial beam stub direction is now automatic from rhythmic context.
-        // This operation is a no-op.
-    }
-
-    // ========== Stem Direction Operations ==========
+// ========== Stem Direction Operations ==========
 
     public boolean canFlipStemDirection() {
         var state = coordinator.getActiveSelection();
@@ -375,19 +363,39 @@ public final class MusicEditOperations {
 
         var line = state.getLine();
 
-        for (var note : line.getNotes(state.getSelectionBegin(), state.getSelectionEnd())) {
-            note.setUpper(!note.isUpper());
-        }
-
-        Interval lastInterval = null;
+        // Track which beam groups have already been processed to avoid double-flipping.
+        var processedBeamIntervals = new HashSet<Interval>();
 
         for (var i = state.getSelectionBegin(); i <= state.getSelectionEnd(); i++) {
-            var inverval = line.getBeamings().findInterval(i);
+            var note = line.getNote(i);
 
-            //noinspection ObjectEquality
-            if ((inverval != null) && (inverval != lastInterval)) {
-                BeamCalculator.calculateLengthenings(i, line, false);
-                lastInterval = inverval;
+            if (note.getNoteType().isRest()) {
+                continue;
+            }
+
+            var beamInterval = line.getBeamings().findInterval(i);
+            System.out.println("[flipStem] note[" + i + "] auto=" + note.isStemDirectionAuto()
+                + " upper=" + note.isUpper() + " beamInterval=" + beamInterval);
+
+            if (beamInterval != null) {
+                // Flip the whole beam group together, once per group.
+                if (processedBeamIntervals.add(beamInterval)) {
+                    var firstNote = line.getNote(beamInterval.getStart());
+                    boolean newUpper = !firstNote.isUpper();
+                    System.out.println("[flipStem] flipping beam group " + beamInterval.getStart()
+                        + "-" + beamInterval.getEnd() + " firstNote.upper=" + firstNote.isUpper()
+                        + " -> newUpper=" + newUpper);
+
+                    for (var j = beamInterval.getStart(); j <= beamInterval.getEnd(); j++) {
+                        var beamNote = line.getNote(j);
+                        beamNote.setStemDirectionAuto(false);
+                        beamNote.setUpper(newUpper);
+                    }
+                }
+            } else {
+                System.out.println("[flipStem] standalone note[" + i + "] -> setUpper(" + !note.isUpper() + ")");
+                note.setStemDirectionAuto(false);
+                note.setUpper(!note.isUpper());
             }
         }
 
@@ -410,19 +418,10 @@ public final class MusicEditOperations {
             }
         }
 
-        lastInterval = null;
-
         for (var i : tiePartnersToFlip) {
             var note = line.getNote(i);
+            note.setStemDirectionAuto(false);
             note.setUpper(!note.isUpper());
-
-            var beamInterval = line.getBeamings().findInterval(i);
-
-            //noinspection ObjectEquality
-            if ((beamInterval != null) && (beamInterval != lastInterval)) {
-                BeamCalculator.calculateLengthenings(i, line, false);
-                lastInterval = beamInterval;
-            }
         }
 
         composition.setModified(true);

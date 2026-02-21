@@ -30,7 +30,6 @@ import static songscribe.ui.action.Actions.TOGGLE_TUPLET_ACTIONS;
 import javax.swing.*;
 
 import songscribe.ui.action.FirstSecondEndingAction;
-import songscribe.ui.action.FlipPartialBeamAction;
 import songscribe.ui.action.FlipStemDirectionAction;
 import songscribe.ui.action.ToggleLyricsUnderRestsAction;
 import songscribe.ui.action.ToggleTrillAction;
@@ -57,7 +56,6 @@ public class NotesMenu extends JMenu {
 
         add(new FlipStemDirectionAction());
         add(new ToggleLyricsUnderRestsAction());
-        add(new FlipPartialBeamAction());
 
         MessageCenter.subscribe(this);
     }

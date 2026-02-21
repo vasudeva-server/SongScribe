@@ -26,7 +26,6 @@ import java.util.Map;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import songscribe.ui.layout.BeamGroup;
 import songscribe.ui.layout.Clef;
 import songscribe.ui.layout.KeySignature;
 import songscribe.ui.layout.LineElement;
@@ -79,7 +78,6 @@ public class RendererRegistry {
         register(KeySignature.class, KeySignatureRenderer.getInstance());
 
         // Range element renderers (typed to specific element classes)
-        register(BeamGroup.class, BeamGroupRenderer.getInstance());
         register(Tie.class, TieRenderer.getInstance());
         register(Tuplet.class, TupletRenderer.getInstance());
         register(Trill.class, TrillRenderer.getInstance());

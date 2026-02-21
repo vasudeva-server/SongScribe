@@ -629,7 +629,7 @@ public final class LayoutResult {
                 0,
                 null,
                 0,
-                null
+                false
             );
 
             // Use the same spacing calculation as HorizontalSpacingCalculator

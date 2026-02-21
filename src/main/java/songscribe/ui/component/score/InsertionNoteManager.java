@@ -29,7 +29,6 @@ import org.jetbrains.annotations.Nullable;
 import net.engio.mbassy.listener.Handler;
 
 import songscribe.data.BeamInterval;
-import songscribe.music.BeamCalculator;
 import songscribe.music.Line;
 import songscribe.music.NoteType;
 import songscribe.ui.Control;
@@ -577,8 +576,6 @@ class InsertionNoteManager {
                 .getBeamings()
                 .addInterval(new BeamInterval(noteIndex - 1, noteIndex));
         }
-
-        BeamCalculator.calculateLengthenings(noteIndex, line, true);
     }
 
     /**
@@ -618,7 +615,6 @@ class InsertionNoteManager {
         existingNote.setUpper(Score.defaultUpperNote(existingNote));
         score.getComposition().setModified(true);
 
-        BeamCalculator.calculateLengthenings(noteIndex, line, true);
         editModeManager.editNoteDidChange(line, noteIndex);
     }
 }
