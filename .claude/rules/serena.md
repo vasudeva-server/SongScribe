@@ -6,11 +6,11 @@ The Serena MCP server provides semantic code understanding tools that are far mo
 
 ### When to Use Serena Tools
 
-**Finding usages/references:**
-- ❌ DON'T: `Grep` for method/class names
-- ✅ DO: `jet_brains_find_referencing_symbols` with the symbol's name path
+**Finding callers/usages of a method:**
+- ❌ DON'T: `Grep` or `search_for_pattern` for method/class names
+- ✅ DO: `jet_brains_find_referencing_symbols` with the symbol's name path (finds all places where a method is called)
 
-**Example:** Finding where `Composition.isEmpty()` is used:
+**Example:** Finding all callers of `Composition.isEmpty()`:
 ```
 jet_brains_find_referencing_symbols(name_path="Composition/isEmpty", relative_path="src/main/java/songscribe/music/Composition.java")
 ```
