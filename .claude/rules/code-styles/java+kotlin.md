@@ -2,6 +2,48 @@
 paths: src/**/*.{java,kt}
 ---
 
+## CRITICAL: No Logic Duplication
+
+**NEVER** duplicate code that embodies logic or an algorithm, even if it is a single expression. Before planning or implementing anything, aggressively search for existing code — **across the entire codebase, not just the current file or package** — that can be reused or refactored into a shared helper.
+
+This applies to all granularities:
+- A repeated arithmetic expression → extract a named constant or helper method
+- A repeated sequence of statements → extract a method with parameters for the varying parts
+- A repeated pattern across classes → extract a shared utility or base class
+
+```java
+// Bad — the same formula duplicated in two methods
+int method1() {
+    int bar = 27;
+    return bar + getRectHeight() + SOME_CONSTANT * ANOTHER_CONSTANT / 2;
+}
+
+int method2() {
+    int foo = 7;
+    return foo + getRectHeight() + SOME_CONSTANT * ANOTHER_CONSTANT / 2;
+}
+
+// Good — the shared formula lives in one place
+private static final int OFFSET1 = 27;
+private static final int OFFSET2 = 7;
+
+private int doSomeCalculation(int offset) {
+    return offset + getRectHeight() + SOME_CONSTANT * ANOTHER_CONSTANT / 2;
+}
+
+int method1() {
+    return doSomeCalculation(OFFSET1);
+}
+
+int method2() {
+    return doSomeCalculation(OFFSET2);
+}
+```
+
+When adding new code that resembles existing code, **refactor the existing code first** so both callers share the extracted helper.
+
+---
+
 ## Java+Kotlin Code Style
 
 These rules are written for Java, adjust for equivalent concepts in Kotlin.
