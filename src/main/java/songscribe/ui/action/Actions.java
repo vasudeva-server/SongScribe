@@ -372,7 +372,7 @@ public final class Actions {
             "right-repeat",
             "Insert right repeat",
             KeyEvent.VK_R,
-            0
+            InputEvent.SHIFT_DOWN_MASK
         ),
         new NonDurationAction(
             NoteType.REPEAT_LEFT_RIGHT,

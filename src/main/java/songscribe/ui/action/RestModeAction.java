@@ -36,7 +36,7 @@ public class RestModeAction extends UIAction {
             "Insert rest of selected duration",
             true,
             KeyEvent.VK_R,
-            InputEvent.SHIFT_DOWN_MASK
+            0
         );
         setFlags(
             Flag.DISABLE_WHEN_PLAYING,
