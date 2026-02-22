@@ -54,6 +54,7 @@ import songscribe.ui.edit.EditModeManager;
 import songscribe.ui.dialog.PropertiesStateStore;
 import songscribe.ui.dialog.WhatsNewDialog;
 import songscribe.ui.menu.MenuController;
+import songscribe.ui.message.CloseWindowMessage;
 import songscribe.ui.message.MessageCenter;
 import songscribe.ui.message.MessageLogger;
 import songscribe.ui.message.NewFileMessage;
@@ -547,6 +548,13 @@ public class MainFrame extends JFrame implements IMainFrame, Printable {
 
         MidiController.closeMidi();
         return true;
+    }
+
+    @Handler
+    public void onCloseWindow(CloseWindowMessage message) {
+        if (handleQuit()) {
+            System.exit(0);
+        }
     }
 
     @Handler

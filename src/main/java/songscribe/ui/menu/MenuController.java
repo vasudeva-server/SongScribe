@@ -32,6 +32,7 @@ import com.formdev.flatlaf.util.SystemInfo;
 
 import songscribe.Version;
 import songscribe.ui.action.Actions;
+import songscribe.ui.action.CloseWindowAction;
 import songscribe.ui.action.DialogOpenAction;
 import songscribe.ui.action.ExportABCAction;
 import songscribe.ui.action.ExportImageAction;
@@ -107,6 +108,7 @@ public class MenuController {
         var menu = new JMenu("File");
         menu.add(new NewAction());
         menu.add(new OpenAction());
+        menu.add(new CloseWindowAction());
 
         menu.addSeparator();
 
