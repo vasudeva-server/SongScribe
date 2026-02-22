@@ -686,12 +686,14 @@ public class LineComponent extends ScoreComponent
         }
 
         if (selectionHandler.isSelectionActive(e)) {
+            InsertionNoteManager.onMousePressed();
             selectionHandler.handlePress(e);
         }
     }
 
     @Override
     public void mouseReleased(MouseEvent e) {
+        InsertionNoteManager.onMouseReleased();
         selectionHandler.handleRelease();
     }
 
