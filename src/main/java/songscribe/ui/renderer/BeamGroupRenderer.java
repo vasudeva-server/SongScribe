@@ -418,9 +418,9 @@ public class BeamGroupRenderer extends BaseElementRenderer<LineElement> {
         @NotNull Note note
     ) {
         if (layout != null) {
-            // topYSs = larger Y (lower screen); bottomYSs = smaller Y (higher screen)
-            // Stem-up tip = bottomYSs; stem-down tip = topYSs
-            return isUpper ? layout.bottomYSs() : layout.topYSs();
+            // topYSs = smaller Y (higher screen) = stem tip for stem-up
+            // bottomYSs = larger Y (lower screen) = stem tip for stem-down
+            return isUpper ? layout.topYSs() : layout.bottomYSs();
         }
 
         // Fallback: approximate from staff position + standard stem length

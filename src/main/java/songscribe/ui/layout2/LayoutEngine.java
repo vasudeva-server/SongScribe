@@ -256,7 +256,7 @@ public class LayoutEngine {
             var interval = it.next();
 
             // Determine stem direction from the pitch contour of the group.
-            // Staff position 0 = middle line; negative = below midpoint → stems up.
+            // Staff position 0 = middle line; positive = below midpoint (Y-down) → stems up.
             // We compare (min + max) to 0 rather than dividing to keep integer arithmetic.
             int minStaffPos = Integer.MAX_VALUE;
             int maxStaffPos = Integer.MIN_VALUE;
@@ -287,7 +287,7 @@ public class LayoutEngine {
 
             boolean stemsUp = (manualDirection != null)
                 ? manualDirection
-                : (minStaffPos + maxStaffPos) < 0;
+                : (minStaffPos + maxStaffPos) > 0;
 
             // Normalize auto-direction notes to the group stem direction.
             // Manual overrides are left untouched.
@@ -321,10 +321,10 @@ public class LayoutEngine {
             }
 
             // Compute y-intercept so beam passes through the anchor note's stem tip at MIN_STEM_SS.
-            // The anchor is the extremal note in the stem direction:
-            //   stemsUp  → note with max staffPosition (highest pitch, so closest to beam above)
-            //   stemsDown → note with min staffPosition (lowest pitch, so closest to beam below)
-            // All Y values are in staff-space with Y-up positive (positive staffPos = above center).
+            // The anchor is the note whose stem would be shortest — i.e., closest to the beam.
+            //   stemsUp  → note with min staffPosition (highest pitch in Y-down, closest to beam above)
+            //   stemsDown → note with max staffPosition (lowest pitch in Y-down, closest to beam below)
+            // All Y values are in staff-space with Y-down positive (positive staffPos = below center).
             double startYSs = 0.0;
 
             if (firstColumn != null) {
@@ -336,7 +336,7 @@ public class LayoutEngine {
                 for (int i = interval.getStart() + 1; i <= interval.getEnd(); i++) {
                     int pos = line.getNote(i).getStaffPosition();
 
-                    if (stemsUp ? pos > anchorStaffPos : pos < anchorStaffPos) {
+                    if (stemsUp ? pos < anchorStaffPos : pos > anchorStaffPos) {
                         anchorStaffPos = pos;
                         anchorIdx = i;
                     }
@@ -348,9 +348,10 @@ public class LayoutEngine {
                 double anchorNoteYSs = anchorNote.getStaffPosition() * 0.5;
 
                 // Place beam exactly MIN_STEM_SS from the anchor notehead.
+                // Y-down: beam above notehead = smaller Y (subtract); beam below = larger Y (add).
                 double beamYAtAnchorSs = stemsUp
-                    ? anchorNoteYSs + MIN_STEM_SS
-                    : anchorNoteYSs - MIN_STEM_SS;
+                    ? anchorNoteYSs - MIN_STEM_SS
+                    : anchorNoteYSs + MIN_STEM_SS;
 
                 startYSs = beamYAtAnchorSs - slope * (anchorXSs - firstXSs);
 
@@ -369,7 +370,7 @@ public class LayoutEngine {
 
                         double noteYSs = note.getStaffPosition() * 0.5;
                         double beamYSs = slope * (col.getXSs() - firstXSs) + startYSs;
-                        double stemLenSs = stemsUp ? (beamYSs - noteYSs) : (noteYSs - beamYSs);
+                        double stemLenSs = stemsUp ? (noteYSs - beamYSs) : (beamYSs - noteYSs);
 
                         if (stemLenSs < MIN_STEM_SS - 1e-9) {
                             allOk = false;
@@ -384,8 +385,8 @@ public class LayoutEngine {
                     // Reduce slope and reanchor so the anchor note still has exactly MIN_STEM_SS.
                     slope *= 0.85;
                     beamYAtAnchorSs = stemsUp
-                        ? anchorNoteYSs + MIN_STEM_SS
-                        : anchorNoteYSs - MIN_STEM_SS;
+                        ? anchorNoteYSs - MIN_STEM_SS
+                        : anchorNoteYSs + MIN_STEM_SS;
                     startYSs = beamYAtAnchorSs - slope * (anchorXSs - firstXSs);
                 }
 
@@ -402,7 +403,7 @@ public class LayoutEngine {
 
                     double noteYSs = note.getStaffPosition() * 0.5;
                     double beamYSs = slope * (col.getXSs() - firstXSs) + startYSs;
-                    double stemLenSs = stemsUp ? (beamYSs - noteYSs) : (noteYSs - beamYSs);
+                    double stemLenSs = stemsUp ? (noteYSs - beamYSs) : (beamYSs - noteYSs);
                     double deficitSs = MIN_STEM_SS - stemLenSs;
 
                     if (deficitSs > maxDeficitSs) {
@@ -411,7 +412,7 @@ public class LayoutEngine {
                 }
 
                 if (maxDeficitSs > 0.0) {
-                    startYSs += stemsUp ? maxDeficitSs : -maxDeficitSs;
+                    startYSs += stemsUp ? -maxDeficitSs : maxDeficitSs;
                 }
             }
 
@@ -432,9 +433,9 @@ public class LayoutEngine {
             double thickeningSs = BEAM_DEPTH_SS * (factor - 1.0);
 
             // Build StemLayout for each note in the beam group and accumulate into a map
-            // for the BeamLayout.  All Y values are in staff-space with Y-up positive.
-            //   stemsUp:   topYSs = beamYSs (above notehead),  bottomYSs = noteAnchorYSs
-            //   stemsDown: topYSs = noteAnchorYSs,             bottomYSs = beamYSs (below notehead)
+            // for the BeamLayout.  All Y values are in staff-space with Y-down positive.
+            //   stemsUp:   topYSs = beamYSs (above notehead, smaller Y),  bottomYSs = noteAnchorYSs
+            //   stemsDown: topYSs = noteAnchorYSs,                        bottomYSs = beamYSs (below notehead, larger Y)
             var stemLayouts = new HashMap<Note, LayoutResult.StemLayout>();
 
             if (firstColumn != null) {
@@ -450,7 +451,7 @@ public class LayoutEngine {
 
                     double noteYSs = note.getStaffPosition() * 0.5;
                     double beamYSs = slope * (col.getXSs() - firstXSs) + startYSs;
-                    double stemLenSs = stemsUp ? (beamYSs - noteYSs) : (noteYSs - beamYSs);
+                    double stemLenSs = stemsUp ? (noteYSs - beamYSs) : (beamYSs - noteYSs);
                     double lengtheningSs = stemLenSs - MIN_STEM_SS;
 
                     double topYSs = stemsUp ? beamYSs : noteYSs;
