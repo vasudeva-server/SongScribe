@@ -612,7 +612,10 @@ class InsertionNoteManager {
 
         var existingNote = line.getNote(noteIndex);
         existingNote.setStaffPosition(currentStaffPosition);
-        existingNote.setUpper(Score.defaultUpperNote(existingNote));
+
+        if (existingNote.isStemDirectionAuto()) {
+            existingNote.setUpper(Score.defaultUpperNote(existingNote));
+        }
         score.getComposition().setModified(true);
 
         editModeManager.editNoteDidChange(line, noteIndex);
