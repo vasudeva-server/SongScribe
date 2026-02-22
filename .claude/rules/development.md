@@ -63,6 +63,7 @@ source ./scripts/set-java-home.sh
 
 - Use `refs #<number>` in commit messages to reference an issue without closing it.
 - Only use `Closes #<number>` when the user explicitly says to close the issue as part of a commit.
+- After committing with `Closes #<number>`, also close the issue imperatively with `glab issue close <number>`.
 
 ## Common Issues
 
