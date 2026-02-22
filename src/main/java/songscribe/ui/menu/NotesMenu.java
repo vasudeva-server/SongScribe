@@ -21,6 +21,7 @@ package songscribe.ui.menu;
 
 import static songscribe.ui.action.Actions.ADD_CRESCENDO_ACTION;
 import static songscribe.ui.action.Actions.ADD_DIMINUENDO_ACTION;
+import static songscribe.ui.action.Actions.FLIP_STEM_DIRECTION_ACTION;
 import static songscribe.ui.action.Actions.REMOVE_DYNAMICS_ACTION;
 import static songscribe.ui.action.Actions.REMOVE_TUPLET_ACTION;
 import static songscribe.ui.action.Actions.TOGGLE_BEAM_ACTION;
@@ -54,7 +55,7 @@ public class NotesMenu extends JMenu {
 
         addSeparator();
 
-        add(new FlipStemDirectionAction());
+        add(new JMenuItem(FLIP_STEM_DIRECTION_ACTION));
         add(new ToggleLyricsUnderRestsAction());
 
         MessageCenter.subscribe(this);

@@ -33,11 +33,18 @@ import songscribe.ui.message.MusicSelectionChangedMessage;
 public class FlipStemDirectionAction extends UIAction {
 
     public FlipStemDirectionAction() {
-        super("Flip Stem Direction", "flip-stem-direction");
+        super(
+            "Flip Stem Direction",
+            "@\uF374",
+            18,
+            "flip-stem-direction",
+            "Flip stem direction"
+        );
         setFlags(
             Flag.REQUIRES_SELECTION,
             Flag.DISABLE_WHEN_PLAYING,
-            Flag.DISABLE_WHEN_EDITING_TEXT
+            Flag.DISABLE_WHEN_EDITING_TEXT,
+            Flag.DISABLE_IN_ADJUSTMENT_MODE
         );
     }
 

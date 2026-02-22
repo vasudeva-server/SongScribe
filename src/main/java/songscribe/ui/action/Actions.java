@@ -479,6 +479,9 @@ public final class Actions {
         TupletAction.Tuplet.REMOVE
     );
 
+    public static final FlipStemDirectionAction FLIP_STEM_DIRECTION_ACTION =
+        new FlipStemDirectionAction();
+
     public static final AddDynamicsAction ADD_CRESCENDO_ACTION =
         new AddDynamicsAction(true);
 
