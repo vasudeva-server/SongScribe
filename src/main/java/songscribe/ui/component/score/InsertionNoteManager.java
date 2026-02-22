@@ -603,11 +603,13 @@ class InsertionNoteManager {
     }
 
     /**
-     * Modifies an existing note's pitch by changing its Y position.
-     * Called when the user clicks directly on an existing note head.
+     * Replaces an existing note entirely with the current edit note.
+     * Only the x position is preserved from the existing note; all other attributes
+     * (type, duration, dots, beaming, ties) come from the edit note.
+     * Called when the user clicks on an existing note head with the insertion note active.
      *
      * @param lc        The LineComponent
-     * @param noteIndex The index of the note to modify
+     * @param noteIndex The index of the note to replace
      * @param line      The line containing the note
      */
     private static void modifyExistingNote(LineComponent lc, int noteIndex, @NotNull Line line) {
@@ -634,13 +636,34 @@ class InsertionNoteManager {
             return;
         }
 
-        var existingNote = line.getNote(noteIndex);
-        existingNote.setStaffPosition(currentStaffPosition);
+        // Preserve the existing note's x position
+        editNote.setXPosSs(line.getNote(noteIndex).getXPosSs());
+        editNote.setStaffPosition(currentStaffPosition);
 
-        if (existingNote.isStemDirectionAuto()) {
-            existingNote.setUpper(Score.defaultUpperNote(existingNote));
+        if (editNote.isStemDirectionAuto()) {
+            editNote.setUpper(Score.defaultUpperNote(editNote));
         }
-        score.getComposition().setModified(true);
+
+        // Remove all beam intervals touching this note — the new note type may differ
+        var beam = line.getBeamings().findInterval(noteIndex);
+
+        while (beam != null) {
+            line.getBeamings().removeInterval(beam);
+            beam = line.getBeamings().findInterval(noteIndex);
+        }
+
+        // Remove all tie intervals touching this note
+        var tie = line.getTies().findInterval(noteIndex);
+
+        while (tie != null) {
+            line.getTies().removeInterval(tie);
+            tie = line.getTies().findInterval(noteIndex);
+        }
+
+        // Replace the note entirely (line.setNote marks the composition modified)
+        line.setNote(noteIndex, editNote);
+
+        applyAutomaticBeaming(line, noteIndex);
 
         editModeManager.editNoteDidChange(line, noteIndex);
     }
