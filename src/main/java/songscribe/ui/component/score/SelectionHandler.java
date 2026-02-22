@@ -41,6 +41,9 @@ import songscribe.ui.playback.PlayNoteThread;
  */
 class SelectionHandler {
 
+    /** Half-height of the staff hit zone for line selection, in staff spaces. */
+    private static final double STAFF_HIT_RADIUS_SS = 2.0;
+
     private final LineComponent lc;
     private boolean dragging = false;
     private final Point dragStart = new Point();
@@ -200,6 +203,15 @@ class SelectionHandler {
     // Private helpers
     // ======================================================================
 
+    boolean didHitSelectableElement(@NotNull Point point) {
+        if (hitTestNote(point) != -1) {
+            return true;
+        }
+
+        var clickYss = ScaleContext.getInstance().fromPixels(point.y);
+        return Math.abs(clickYss - lc.getMiddleLineYSs()) <= STAFF_HIT_RADIUS_SS;
+    }
+
     private int hitTestNote(@NotNull Point point) {
         var line = lc.getLine();
         var helper = new Rectangle();
@@ -261,7 +273,7 @@ class SelectionHandler {
         // No note was hit — check proximity to staff lines for line selection
         var clickYss = ScaleContext.getInstance().fromPixels(clickPoint.y);
 
-        if (Math.abs(clickYss - lc.getMiddleLineYSs()) <= 2.0) {
+        if (Math.abs(clickYss - lc.getMiddleLineYSs()) <= STAFF_HIT_RADIUS_SS) {
             lineSelectionState.setLineSelected(true);
         }
     }

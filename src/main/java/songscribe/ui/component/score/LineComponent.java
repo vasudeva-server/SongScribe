@@ -686,7 +686,8 @@ public class LineComponent extends ScoreComponent
         }
 
         if (selectionHandler.isSelectionActive(e)) {
-            InsertionNoteManager.onMousePressed();
+            var pressedOnNote = selectionHandler.didHitSelectableElement(e.getPoint());
+            InsertionNoteManager.onMousePressed(pressedOnNote);
             selectionHandler.handlePress(e);
         }
     }

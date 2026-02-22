@@ -91,6 +91,9 @@ class InsertionNoteManager {
     /** Whether the primary mouse button is currently pressed. */
     private static boolean mouseButtonPressed = false;
 
+    /** Whether the press occurred on a selectable element (e.g., a note or staff line). */
+    private static boolean pressedOnSelectableElement = false;
+
     /** The LineComponent the mouse is currently over (independent of insertion note state). */
     @Nullable
     private static LineComponent currentMouseLine = null;
@@ -392,11 +395,13 @@ class InsertionNoteManager {
     }
 
     /**
-     * Called when the primary mouse button is pressed. Shows crosshair cursor if
-     * the press occurs during alt+drag (edit mode) or in select mode.
+     * Called when the primary mouse button is pressed.
+     *
+     * @param onSelectableElement true if the press occurred on a selectable element
      */
-    static void onMousePressed() {
+    static void onMousePressed(boolean onSelectableElement) {
         mouseButtonPressed = true;
+        pressedOnSelectableElement = onSelectableElement;
         updateCursor();
     }
 
@@ -405,15 +410,15 @@ class InsertionNoteManager {
      */
     static void onMouseReleased() {
         mouseButtonPressed = false;
+        pressedOnSelectableElement = false;
         updateCursor();
     }
 
     /**
      * Updates the cursor on the current mouse line based on mode and input state.
      * <p>
-     * Crosshair is shown only while the mouse button is held, in select mode or
-     * when Alt is pressed (alt+drag in edit mode). The default cursor is used
-     * otherwise, including when simply entering select mode.
+     * Crosshair is shown while the mouse button is held in select mode or with Alt
+     * pressed, provided the press did not land on a selectable element.
      */
     private static void updateCursor() {
         if (currentMouseLine == null) {
@@ -422,7 +427,9 @@ class InsertionNoteManager {
 
         var score = currentMouseLine.getScore();
         var isSelectMode = score != null && score.getMode() == Mode.SELECT;
-        var shouldCrosshair = mouseButtonPressed && (isSelectMode || altPressed);
+        var shouldCrosshair = mouseButtonPressed
+            && (isSelectMode || altPressed)
+            && !pressedOnSelectableElement;
         var cursor = shouldCrosshair ? CROSSHAIR_CURSOR : DEFAULT_CURSOR;
         currentMouseLine.setCursor(cursor);
     }
