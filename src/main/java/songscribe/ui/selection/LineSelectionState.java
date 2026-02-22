@@ -250,7 +250,7 @@ public final class LineSelectionState {
      * Also sets the tieContext field.
      */
     public boolean canToggleTie() {
-        if (getSelectionSize() < 2) {
+        if (getSelectionSize() != 2) {
             tieContext = new TieContext(false, null);
             return false;
         }
