@@ -439,10 +439,8 @@ class LineRenderer {
         var ties = line.getTies();
 
         for (var iter = ties.listIterator(); iter.hasNext(); ) {
-            var interval = (Interval) iter.next();
-            var startNote = line.getNote(interval.getStart());
-            var endNote = line.getNote(interval.getEnd());
-            tieRenderer.renderTie(g2, startNote, endNote, ctx);
+            var interval = iter.next();
+            tieRenderer.renderTie(g2, interval, ctx);
         }
     }
 

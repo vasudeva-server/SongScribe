@@ -30,6 +30,7 @@ import songscribe.data.DynamicsInterval;
 import songscribe.data.EndingInterval;
 import songscribe.data.Interval;
 import songscribe.data.IntervalSet;
+import songscribe.data.TieInterval;
 import songscribe.data.TupletInterval;
 import songscribe.music.KeyType;
 import songscribe.music.Line;
@@ -260,6 +261,20 @@ public final class LineIO {
             }
         }
 
+        private static void stringToTieIntervalSet(IntervalSet<TieInterval> is, String str) {
+            var begin = 0;
+            var end = str.indexOf(';', begin);
+
+            while (end != -1) {
+                var firstComma = str.indexOf(',', begin);
+                var a = Integer.parseInt(str.substring(begin, firstComma));
+                var b = Integer.parseInt(str.substring(firstComma + 1, end));
+                is.addInterval(new TieInterval(a, b));
+                begin = str.indexOf(';', begin) + 1;
+                end = str.indexOf(';', begin);
+            }
+        }
+
         private static void stringToTupletIntervalSet(IntervalSet<TupletInterval> is, String str) {
             var begin = 0;
             var end = str.indexOf(';', begin);
@@ -448,7 +463,7 @@ public final class LineIO {
                             line.getBeamings(),
                             str
                         );
-                        case XML_TIES -> stringToBeamingIntervalSet(
+                        case XML_TIES -> stringToTieIntervalSet(
                             line.getTies(),
                             str
                         );

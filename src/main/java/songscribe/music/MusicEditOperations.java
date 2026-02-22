@@ -35,8 +35,9 @@ import songscribe.data.BeamInterval;
 import songscribe.data.DynamicsInterval;
 import songscribe.data.EndingInterval;
 import songscribe.data.Interval;
-import songscribe.data.TupletInterval;
 import songscribe.data.IntervalSet;
+import songscribe.data.TieInterval;
+import songscribe.data.TupletInterval;
 import songscribe.ui.component.IMainFrame;
 import songscribe.ui.selection.LineSelectionState;
 import songscribe.ui.selection.SelectionCoordinator;
@@ -118,7 +119,7 @@ public final class MusicEditOperations {
         if (intervals != null) {
             intervals.removeInterval(state.getSelectionBegin(), state.getSelectionEnd());
         } else {
-            line.getTies().addInterval(state.getSelectionBegin(), state.getSelectionEnd());
+            line.getTies().addInterval(new TieInterval(state.getSelectionBegin(), state.getSelectionEnd()));
         }
 
         state.setTieContext(null);

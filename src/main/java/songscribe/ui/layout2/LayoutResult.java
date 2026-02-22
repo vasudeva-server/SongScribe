@@ -23,6 +23,7 @@ package songscribe.ui.layout2;
 import java.awt.geom.*;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -66,6 +67,7 @@ public final class LayoutResult {
     private final @NotNull Map<LineElement, Bounds> elementBounds;
     private final @NotNull Map<Interval, BeamLayout> beamLayouts;
     private final @NotNull Map<Note, StemLayout> stemLayouts;
+    private final @NotNull Map<Interval, TieLayout> tieLayouts;
     private final double lineHeightSs;
     private final double staffTopYSs;
     private final double staffBottomYSs;
@@ -80,6 +82,7 @@ public final class LayoutResult {
      * @param elementBounds    Map of line elements to their bounds
      * @param beamLayouts      Map of beam intervals to their computed beam geometry
      * @param stemLayouts      Map of unbeamed notes to their computed stem geometry
+     * @param tieLayouts       Map of tie intervals to their computed tie geometry
      * @param lineHeightSs       Total height of the line in staff spaces (including staff, elements, and lyrics)
      * @param staffTopYSs        Y position of the top staff line in staff spaces
      * @param staffBottomYSs     Y position of the bottom staff line in staff spaces
@@ -90,6 +93,7 @@ public final class LayoutResult {
         @NotNull Map<LineElement, Bounds> elementBounds,
         @NotNull Map<Interval, BeamLayout> beamLayouts,
         @NotNull Map<Note, StemLayout> stemLayouts,
+        @NotNull Map<Interval, TieLayout> tieLayouts,
         double lineHeightSs,
         double staffTopYSs,
         double staffBottomYSs,
@@ -98,6 +102,7 @@ public final class LayoutResult {
         this.elementBounds = Map.copyOf(elementBounds);
         this.beamLayouts = Map.copyOf(beamLayouts);
         this.stemLayouts = Map.copyOf(stemLayouts);
+        this.tieLayouts = Map.copyOf(tieLayouts);
         this.lineHeightSs = lineHeightSs;
         this.staffTopYSs = staffTopYSs;
         this.staffBottomYSs = staffBottomYSs;
@@ -181,6 +186,24 @@ public final class LayoutResult {
         }
 
         return stemLayouts.get(note);
+    }
+
+    // ==========================================================================
+    // Tie Layout Access
+    // ==========================================================================
+
+    /**
+     * Returns the tie geometry for a tie interval, if it was computed during layout.
+     * <p>
+     * Returns an empty Optional when the interval was not laid out (e.g., degenerate
+     * tie spanning notes that could not be positioned). Callers should skip rendering
+     * if the result is empty.
+     *
+     * @param interval The tie interval to look up
+     * @return An Optional containing the tie layout, or empty if not computed
+     */
+    public @NotNull Optional<TieLayout> getTieLayout(@NotNull Interval interval) {
+        return Optional.ofNullable(tieLayouts.get(interval));
     }
 
     // ==========================================================================
@@ -681,6 +704,7 @@ public final class LayoutResult {
         private final Map<LineElement, Bounds> elementBounds;
         private final Map<Interval, BeamLayout> beamLayouts;
         private final Map<Note, StemLayout> stemLayouts;
+        private final Map<Interval, TieLayout> tieLayouts;
         private double lineHeightSs = 0;
         private double staffTopYSs = 0;
         private double staffBottomYSs = 0;
@@ -691,6 +715,7 @@ public final class LayoutResult {
             this.elementBounds = new HashMap<>();
             this.beamLayouts = new HashMap<>();
             this.stemLayouts = new HashMap<>();
+            this.tieLayouts = new HashMap<>();
         }
 
         /**
@@ -777,6 +802,18 @@ public final class LayoutResult {
         }
 
         /**
+         * Adds computed tie geometry for a tie interval.
+         *
+         * @param interval  The tie interval
+         * @param tieLayout The computed tie geometry
+         * @return This builder for chaining
+         */
+        public Builder putTieLayout(@NotNull Interval interval, @NotNull TieLayout tieLayout) {
+            tieLayouts.put(interval, tieLayout);
+            return this;
+        }
+
+        /**
          * Builds the immutable result.
          *
          * @return The layout result
@@ -787,6 +824,7 @@ public final class LayoutResult {
                 elementBounds,
                 beamLayouts,
                 stemLayouts,
+                tieLayouts,
                 lineHeightSs,
                 staffTopYSs,
                 staffBottomYSs,
@@ -856,4 +894,33 @@ public final class LayoutResult {
         boolean stemsUp,
         double thickeningSs,
         @NotNull Map<Note, StemLayout> stems) {}
+
+    /**
+     * Immutable tie geometry, computed during layout.
+     * <p>
+     * All values are in staff-space units. The outer and inner curves form a filled
+     * lens shape when rendered as a closed path: draw the outer cubic Bezier from
+     * start to end, then draw the inner cubic Bezier in reverse (end back to start),
+     * then close and fill.
+     *
+     * @param startXSs    Tie start X position
+     * @param startYSs    Tie start Y position
+     * @param endXSs      Tie end X position
+     * @param endYSs      Tie end Y position
+     * @param cp1XSs      Outer curve control point 1 X
+     * @param cp1YSs      Outer curve control point 1 Y
+     * @param cp2XSs      Outer curve control point 2 X
+     * @param cp2YSs      Outer curve control point 2 Y
+     * @param innerCp1XSs Inner curve control point 1 X
+     * @param innerCp1YSs Inner curve control point 1 Y
+     * @param innerCp2XSs Inner curve control point 2 X
+     * @param innerCp2YSs Inner curve control point 2 Y
+     */
+    public record TieLayout(
+        double startXSs, double startYSs,
+        double endXSs, double endYSs,
+        double cp1XSs, double cp1YSs,
+        double cp2XSs, double cp2YSs,
+        double innerCp1XSs, double innerCp1YSs,
+        double innerCp2XSs, double innerCp2YSs) {}
 }

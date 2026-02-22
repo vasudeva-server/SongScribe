@@ -39,6 +39,7 @@ import songscribe.data.DynamicsInterval;
 import songscribe.data.EndingInterval;
 import songscribe.data.Interval;
 import songscribe.data.IntervalSet;
+import songscribe.data.TieInterval;
 import songscribe.data.TupletInterval;
 import songscribe.midi.PlaybackSettings;
 import songscribe.ui.layout.LayoutStylesheet;
@@ -60,7 +61,7 @@ public class Line {
     private static final int NOTE_VELOCITY = 98;
     private static final int ACCENTED_NOTE_VELOCITY = 127;
     private final IntervalSet<BeamInterval> beamings = new IntervalSet<>();
-    private final IntervalSet<Interval> ties = new IntervalSet<>();
+    private final IntervalSet<TieInterval> ties = new IntervalSet<>();
     private final IntervalSet<TupletInterval> tuplets = new IntervalSet<>();
     private final IntervalSet<EndingInterval> firstSecondEndings = new IntervalSet<>();
     private final IntervalSet<DynamicsInterval> crescendo = new IntervalSet<>();
@@ -370,7 +371,7 @@ public class Line {
         return beamings;
     }
 
-    public IntervalSet<Interval> getTies() {
+    public IntervalSet<TieInterval> getTies() {
         return ties;
     }
 

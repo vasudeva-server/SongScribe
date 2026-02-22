@@ -168,7 +168,15 @@ public final class ScoreMessageCoordinator {
     @Handler
     public void onToggleTie(ToggleTieMessage message) {
         operations.toggleTie();
-        callback.repaint();
+
+        var state = selectionCoordinator.getActiveSelection();
+
+        MessageCenter.post(new LayoutChangeMessage(
+            LayoutChangeMessage.Section.SCORE,
+            LayoutChangeMessage.ChangeType.CONTENT,
+            false,
+            state != null ? state.getLine() : null
+        ));
     }
 
     @Handler

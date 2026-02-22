@@ -30,7 +30,6 @@ import songscribe.ui.layout.Clef;
 import songscribe.ui.layout.KeySignature;
 import songscribe.ui.layout.LineElement;
 import songscribe.ui.layout.Staff;
-import songscribe.ui.layout.Tie;
 import songscribe.ui.layout.Trill;
 import songscribe.ui.layout.Tuplet;
 
@@ -78,7 +77,8 @@ public class RendererRegistry {
         register(KeySignature.class, KeySignatureRenderer.getInstance());
 
         // Range element renderers (typed to specific element classes)
-        register(Tie.class, TieRenderer.getInstance());
+        // Note: TieRenderer is no longer registered here — ties are rendered
+        // directly from LayoutResult via LineRenderer.renderTies().
         register(Tuplet.class, TupletRenderer.getInstance());
         register(Trill.class, TrillRenderer.getInstance());
 

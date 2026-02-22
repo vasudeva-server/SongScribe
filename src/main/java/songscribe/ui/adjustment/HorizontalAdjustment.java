@@ -29,6 +29,7 @@ import songscribe.data.IntervalSet;
 import songscribe.music.Line;
 import songscribe.music.Note;
 import songscribe.ui.component.Score;
+import songscribe.ui.layout2.ScaleContext;
 import songscribe.ui.renderer.GlissandoRenderer;
 
 public class HorizontalAdjustment extends Adjustment {
@@ -442,17 +443,25 @@ public class HorizontalAdjustment extends Adjustment {
         rect.rect.y = yPosPx - Note.HOT_SPOT.y;
 
         switch (rect.horizontalAdjustmentType) {
-            case GLISSANDO_START -> rect.rect.x = GlissandoRenderer.getGlissandoX1PosPx(
-                rect.xIndex,
-                note.getGlissando(),
-                rect.line,
-                score.getComposition()
+            case GLISSANDO_START -> rect.rect.x = (int) Math.round(
+                ScaleContext.getInstance().toPixels(
+                    GlissandoRenderer.getGlissandoX1Ss(
+                        rect.xIndex,
+                        note.getGlissando(),
+                        rect.line,
+                        score.getComposition()
+                    )
+                )
             ) - 4;
-            case GLISSANDO_END -> rect.rect.x = GlissandoRenderer.getGlissandoX2PosPx(
-                rect.xIndex,
-                note.getGlissando(),
-                rect.line,
-                score.getComposition()
+            case GLISSANDO_END -> rect.rect.x = (int) Math.round(
+                ScaleContext.getInstance().toPixels(
+                    GlissandoRenderer.getGlissandoX2Ss(
+                        rect.xIndex,
+                        note.getGlissando(),
+                        rect.line,
+                        score.getComposition()
+                    )
+                )
             ) - 4;
             case CRESCENDO_START, DIMINUENDO_START -> {
                 var x1Interval = getDynamicIntervalSet(

@@ -32,7 +32,6 @@ import songscribe.music.Line;
 import songscribe.music.Note;
 import songscribe.music.NoteType;
 import songscribe.smufl.SMuFLGlyph;
-import songscribe.smufl.StaffSpaces;
 
 /**
  * Renders glissando (wavy ornament lines) connecting notes.
@@ -50,28 +49,28 @@ public class GlissandoRenderer {
     // ==========================================================================
 
     /** Base length of one glissando segment (SMuFL repeatOffset: 0.96 ss). */
-    private static final double GLISSANDO_LENGTH_PX = StaffSpaces.toPixels(0.96);
+    private static final double GLISSANDO_LENGTH_SS = 0.96;
 
     /** Minimum number of glissando segments to draw. */
     private static final int MIN_SEGMENTS = 2;
 
     /** Horizontal offset from note position to glissando start. */
-    private static final int GLISSANDO_START_OFFSET_PX = 15;
+    private static final double GLISSANDO_START_OFFSET_SS = 1.875;  // 15px
 
     /** Horizontal gap before the next note. */
-    private static final int GLISSANDO_END_GAP_PX = 3;
+    private static final double GLISSANDO_END_GAP_SS = 0.375;  // 3px
 
     /** Additional offset for semibreve notes. */
-    private static final int SEMIBREVE_OFFSET_PX = 3;
+    private static final double SEMIBREVE_OFFSET_SS = 0.375;  // 3px
 
     /** Additional offset for grace notes. */
-    private static final int GRACE_NOTE_OFFSET_PX = -3;
+    private static final double GRACE_NOTE_OFFSET_SS = -0.375;  // -3px
 
     /** X offset per dot on the note. */
-    private static final int DOT_OFFSET_PX = 6;
+    private static final double DOT_OFFSET_SS = 0.75;  // 6px
 
     /** Fallback offset when glissando is at end of line. */
-    private static final int END_OF_LINE_OFFSET_PX = 45;
+    private static final double END_OF_LINE_OFFSET_SS = 5.625;  // 45px
 
     /** Accidental gap factor. */
     private static final float ACCIDENTAL_GAP_SS = 1.6f;
@@ -108,9 +107,9 @@ public class GlissandoRenderer {
      * @param glissando   The glissando data
      * @param lineIndex   Index of the line in the composition
      * @param composition The composition containing the line
-     * @return X coordinate for glissando start
+     * @return X coordinate for glissando start in staff-space units
      */
-    public static int getGlissandoX1PosPx(
+    public static double getGlissandoX1Ss(
         int xIndex,
         @NotNull Note.Glissando glissando,
         int lineIndex,
@@ -118,7 +117,7 @@ public class GlissandoRenderer {
     ) {
         var line = composition.getLine(lineIndex);
         var note = line.getNote(xIndex);
-        return INSTANCE.getGlissandoX1PosPx(note, glissando);
+        return INSTANCE.getGlissandoX1Ss(note, glissando);
     }
 
     /**
@@ -130,16 +129,16 @@ public class GlissandoRenderer {
      * @param glissando   The glissando data
      * @param lineIndex   Index of the line in the composition
      * @param composition The composition containing the line
-     * @return X coordinate for glissando end
+     * @return X coordinate for glissando end in staff-space units
      */
-    public static int getGlissandoX2PosPx(
+    public static double getGlissandoX2Ss(
         int xIndex,
         @NotNull Note.Glissando glissando,
         int lineIndex,
         @NotNull Composition composition
     ) {
         var line = composition.getLine(lineIndex);
-        return INSTANCE.getGlissandoX2PosPx(line, xIndex, glissando);
+        return INSTANCE.getGlissandoX2Ss(line, xIndex, glissando);
     }
 
     // ==========================================================================
@@ -194,12 +193,12 @@ public class GlissandoRenderer {
             return;
         }
 
-        var x1 = getGlissandoX1PosPx(note, glissando);
-        var x2 = getGlissandoX2PosPx(line, noteIndex, glissando);
+        var x1 = getGlissandoX1Ss(note, glissando);
+        var x2 = getGlissandoX2Ss(line, noteIndex, glissando);
         var y1 = noteStaffPositionToCoordinateSs(note.getStaffPosition(), ctx.getMiddleLineYSs());
         var y2 = noteStaffPositionToCoordinateSs(glissando.pitch, ctx.getMiddleLineYSs());
 
-        renderGlissandoLine(g2, x1, (int) y1, x2, (int) y2);
+        renderGlissandoLine(g2, x1, y1, x2, y2);
     }
 
     /**
@@ -226,12 +225,12 @@ public class GlissandoRenderer {
         }
 
         var note = line.getNote(xIndex);
-        var x1 = getGlissandoX1PosPx(note, glissando);
-        var x2 = getGlissandoX2PosPx(line, xIndex, glissando);
+        var x1 = getGlissandoX1Ss(note, glissando);
+        var x2 = getGlissandoX2Ss(line, xIndex, glissando);
         var y1 = noteStaffPositionToCoordinateSs(note.getStaffPosition(), ctx.getMiddleLineYSs());
         var y2 = noteStaffPositionToCoordinateSs(glissando.pitch, ctx.getMiddleLineYSs());
 
-        renderGlissandoLine(g2, x1, (int) y1, x2, (int) y2);
+        renderGlissandoLine(g2, x1, y1, x2, y2);
     }
 
     // ==========================================================================
@@ -243,22 +242,22 @@ public class GlissandoRenderer {
      *
      * @param note      The source note
      * @param glissando The glissando data
-     * @return X coordinate for glissando start
+     * @return X coordinate for glissando start in staff-space units
      */
-    private int getGlissandoX1PosPx(
+    private double getGlissandoX1Ss(
         @NotNull Note note,
         @NotNull Note.Glissando glissando
     ) {
-        var x1 = note.getXPosSs() + GLISSANDO_START_OFFSET_PX + (int) glissando.x1Translate;
+        var x1 = note.getXPosSs() + GLISSANDO_START_OFFSET_SS + glissando.x1Translate;
         var noteType = note.getNoteType();
 
         if (noteType == NoteType.SEMIBREVE) {
-            x1 += SEMIBREVE_OFFSET_PX;
+            x1 += SEMIBREVE_OFFSET_SS;
         } else if (noteType.isGraceNote()) {
-            x1 += GRACE_NOTE_OFFSET_PX;
+            x1 += GRACE_NOTE_OFFSET_SS;
         }
 
-        x1 += note.getDotCount() * DOT_OFFSET_PX;
+        x1 += note.getDotCount() * DOT_OFFSET_SS;
         return x1;
     }
 
@@ -268,18 +267,18 @@ public class GlissandoRenderer {
      * @param line      The line containing the notes
      * @param noteIndex Index of the source note
      * @param glissando The glissando data
-     * @return X coordinate for glissando end
+     * @return X coordinate for glissando end in staff-space units
      */
-    private int getGlissandoX2PosPx(
+    private double getGlissandoX2Ss(
         @NotNull Line line,
         int noteIndex,
         @NotNull Note.Glissando glissando
     ) {
-        float x2 = (float) -glissando.x2Translate;
+        var x2 = -glissando.x2Translate;
 
         if ((noteIndex + 1) < line.noteCount()) {
             var nextNote = line.getNote(noteIndex + 1);
-            x2 += nextNote.getXPosSs() - GLISSANDO_END_GAP_PX;
+            x2 += nextNote.getXPosSs() - GLISSANDO_END_GAP_SS;
 
             var accNum = nextNote.getAccidental().ordinal();
 
@@ -289,10 +288,10 @@ public class GlissandoRenderer {
             }
         } else {
             // At end of line, use fixed offset from current note
-            x2 += line.getNote(noteIndex).getXPosSs() + END_OF_LINE_OFFSET_PX;
+            x2 += line.getNote(noteIndex).getXPosSs() + END_OF_LINE_OFFSET_SS;
         }
 
-        return Math.round(x2);
+        return x2;
     }
 
     // ==========================================================================
@@ -302,26 +301,26 @@ public class GlissandoRenderer {
     /**
      * Renders the actual glissando wavy line between two points.
      *
-     * @param g2 Graphics context
-     * @param x1 Start X coordinate
-     * @param y1 Start Y coordinate
-     * @param x2 End X coordinate
-     * @param y2 End Y coordinate
+     * @param g2 Graphics context (staff-space coordinate system)
+     * @param x1 Start X coordinate in staff spaces
+     * @param y1 Start Y coordinate in staff spaces
+     * @param x2 End X coordinate in staff spaces
+     * @param y2 End Y coordinate in staff spaces
      */
     private void renderGlissandoLine(
         @NotNull Graphics2D g2,
-        int x1,
-        int y1,
-        int x2,
-        int y2
+        double x1,
+        double y1,
+        double x2,
+        double y2
     ) {
-        // Calculate total length
+        // Calculate total length in staff spaces
         var dx = Math.abs(x2 - x1);
         var dy = Math.abs(y2 - y1);
-        var length = Math.sqrt((double) dx * dx + (double) dy * dy);
+        var length = Math.sqrt(dx * dx + dy * dy);
 
         // Calculate number of segments (minimum 2)
-        var segments = Math.max(MIN_SEGMENTS, (int) Math.round(length / GLISSANDO_LENGTH_PX));
+        var segments = Math.max(MIN_SEGMENTS, (int) Math.round(length / GLISSANDO_LENGTH_SS));
 
         // Save transform and set up for rotated drawing
         try (var ignored = GraphicsState.save(g2, TRANSFORM, FONT)) {
@@ -331,18 +330,18 @@ public class GlissandoRenderer {
             g2.translate(x1, y1 + GLISSANDO_Y_OFFSET_SS);
 
             // Rotate to angle of glissando line
-            var angle = Math.atan((double) (y2 - y1) / (double) (x2 - x1));
+            var angle = Math.atan((y2 - y1) / (x2 - x1));
             g2.rotate(angle);
 
             // Scale horizontally to fit the line
-            var scale = length / GLISSANDO_LENGTH_PX / segments;
+            var scale = length / GLISSANDO_LENGTH_SS / segments;
             g2.scale(scale, 1d);
 
             // Draw glissando segments
             var glyphStr = SMuFLGlyph.WIGGLE_GLISSANDO.asString();
 
             for (var i = 0; i < segments; i++) {
-                g2.drawString(glyphStr, (float) (i * GLISSANDO_LENGTH_PX), 0f);
+                g2.drawString(glyphStr, (float) (i * GLISSANDO_LENGTH_SS), 0f);
             }
         }
     }
@@ -355,6 +354,7 @@ public class GlissandoRenderer {
      * @return Y coordinate
      */
     private double noteStaffPositionToCoordinateSs(int staffPosition, double middleLineYSs) {
-        return middleLineYSs + staffPosition * (BaseElementRenderer.NOTE_FONT_SIZE / 8);
+        // Staff positions are in half-staff-space increments, so multiply by 0.5 ss
+        return middleLineYSs + staffPosition * 0.5;
     }
 }

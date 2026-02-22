@@ -70,6 +70,17 @@ public class LayoutEngine {
     private static final double BEAM_SLOPE_MAX = 0.4;    // hyperbolic saturation limit (dimensionless)
     private static final double MIN_STEM_SS = 3.5;       // minimum stem length (Gould/Ross 4.2)
 
+    // Tie geometry constants (MuseScore port, staff-space units unless noted)
+    private static final double TIE_SHOULDER_W = 0.6;                // shoulder width fraction of tie span
+    private static final double TIE_MIN_SHOULDER_HEIGHT_SS = 0.3;   // minimum arc height
+    private static final double TIE_MAX_SHOULDER_HEIGHT_SS = 2.0;   // maximum arc height
+    private static final double TIE_SHOULDER_HEIGHT_SCALE = 0.3;    // sqrt scaling factor for arc height
+    private static final double TIE_MID_THICKNESS_SS = 0.16;        // midpoint half-thickness (midWidth - endWidth)
+    private static final double TIE_COLLISION_FACTOR = 0.65;        // interior deflection scaling
+    private static final double TIE_COLLISION_PUSH = 0.45;          // midpoint push-up ratio on collision
+    private static final double TIE_NOTEHEAD_HALF_WIDTH_SS = 0.6;   // visual half-width of notehead
+    private static final double TIE_ENDPOINT_Y_OFFSET_SS = 0.7;    // y offset from note center (noteHeight/2 + 0.2)
+
     private final Graphics2D g2;
     private final Font lyricsFont;
     private final double staffRightMarginSs;
@@ -154,7 +165,10 @@ public class LayoutEngine {
         // Step 6: Calculate stem layouts for unbeamed notes
         calculateUnbeamedStems(line, columns, builder);
 
-        // Step 7: Build final LayoutResult
+        // Step 7: Calculate tie geometry for all tie intervals
+        calculateTies(line, columns, builder);
+
+        // Step 8: Build final LayoutResult
         return buildLayoutResult(columns, verticalResult, line, builder);
     }
 
@@ -529,6 +543,133 @@ public class LayoutEngine {
             builder.putStemLayout(note, new LayoutResult.StemLayout(topYSs, bottomYSs, 0.0, false));
         }
     }
+
+    /**
+     * Calculates tie geometry for all tie intervals in the line.
+     * <p>
+     * Ports MuseScore's tie layout algorithm to SongScribe's staff-space coordinate system.
+     * Each tie produces a filled lens shape defined by an outer and an inner cubic Bezier curve
+     * that share start/end points, creating natural tapering at the endpoints.
+     * Populates {@code builder} with a {@link LayoutResult.TieLayout} for each tie interval.
+     */
+    private void calculateTies(
+        @NotNull Line line,
+        @NotNull List<NoteColumn> columns,
+        @NotNull LayoutResult.Builder builder) {
+
+        var ties = line.getTies();
+
+        if (ties.isEmpty()) {
+            return;
+        }
+
+        // Build a note → column map for fast X lookups.
+        var noteToColumn = new HashMap<Note, NoteColumn>(columns.size() * 2);
+
+        for (var column : columns) {
+            noteToColumn.put(column.getNote(), column);
+        }
+
+        var it = ties.listIterator();
+
+        while (it.hasNext()) {
+            var interval = it.next();
+
+            var startNote = line.getNote(interval.getStart());
+            var endNote = line.getNote(interval.getEnd());
+            var startColumn = noteToColumn.get(startNote);
+            var endColumn = noteToColumn.get(endNote);
+
+            if (startColumn == null || endColumn == null) {
+                continue;
+            }
+
+            // Tie direction: stem-up notes tie below (+1), stem-down notes tie above (-1).
+            // Y increases downward, so direction = +1 → arc bulges downward.
+            int direction = startNote.isUpper() ? 1 : -1;
+
+            // Tie attachment points: centered on notehead horizontally.
+            double startXSs = startColumn.getXSs() + TIE_NOTEHEAD_HALF_WIDTH_SS;
+            double endXSs = endColumn.getXSs() + TIE_NOTEHEAD_HALF_WIDTH_SS;
+            double startYSs = startNote.getStaffPosition() * 0.5 + direction * TIE_ENDPOINT_Y_OFFSET_SS;
+            double endYSs = endNote.getStaffPosition() * 0.5 + direction * TIE_ENDPOINT_Y_OFFSET_SS;
+
+            double tieWidthSs = endXSs - startXSs;
+
+            // Shoulder height: sqrt growth curve, short ties are relatively tall, long ties flatten.
+            double shoulderHSs = TIE_MIN_SHOULDER_HEIGHT_SS
+                + TIE_SHOULDER_HEIGHT_SCALE * Math.sqrt(Math.max(tieWidthSs - 1, 0));
+            shoulderHSs = Math.clamp(shoulderHSs, TIE_MIN_SHOULDER_HEIGHT_SS, TIE_MAX_SHOULDER_HEIGHT_SS);
+
+            // Control point X positions: at 20% and 80% of tie width (shoulderW = 0.6).
+            double marginFraction = (1.0 - TIE_SHOULDER_W) * 0.5;
+            double cp1XSs = startXSs + tieWidthSs * marginFraction;
+            double cp2XSs = startXSs + tieWidthSs * (marginFraction + TIE_SHOULDER_W);
+
+            // Control point Y: both at shoulder height from the baseline.
+            // Baseline is the midpoint Y of the two endpoints (identical for ties).
+            double baseYSs = (startYSs + endYSs) * 0.5;
+            double shoulderYSs = baseYSs + direction * shoulderHSs;
+
+            // Outer curve control points: offset away from notes by midThickness.
+            double outerCpYSs = shoulderYSs + direction * TIE_MID_THICKNESS_SS;
+
+            // Inner curve control points: offset toward notes by midThickness.
+            double innerCpYSs = shoulderYSs - direction * TIE_MID_THICKNESS_SS;
+
+            // Interior note collision avoidance: only for ties spanning 3+ notes.
+            if (interval.getEnd() - interval.getStart() >= 2) {
+                double maxDeflection = 0.0;
+
+                for (int i = interval.getStart() + 1; i < interval.getEnd(); i++) {
+                    var interiorNote = line.getNote(i);
+                    var interiorColumn = noteToColumn.get(interiorNote);
+
+                    if (interiorColumn == null) {
+                        continue;
+                    }
+
+                    double noteXSs = interiorColumn.getXSs();
+                    double noteYSs = interiorNote.getStaffPosition() * 0.5;
+
+                    // Evaluate outer cubic Bezier at approximate t (linear X interpolation).
+                    double t = tieWidthSs > 0
+                        ? Math.clamp((noteXSs - startXSs) / tieWidthSs, 0.0, 1.0) : 0.5;
+                    double mt = 1.0 - t;
+                    double tieYAtNoteSs =
+                        mt * mt * mt * startYSs +
+                        3 * mt * mt * t * outerCpYSs +
+                        3 * mt * t * t * outerCpYSs +
+                        t * t * t * endYSs;
+
+                    // Deflection: how much the note protrudes into the tie arc.
+                    double deflection = (tieYAtNoteSs - noteYSs) * direction;
+
+                    if (deflection > maxDeflection) {
+                        maxDeflection = deflection;
+                    }
+                }
+
+                if (maxDeflection > 0.0) {
+                    double push = TIE_COLLISION_PUSH * TIE_COLLISION_FACTOR * maxDeflection;
+                    shoulderHSs += push;
+                    shoulderYSs = baseYSs + direction * shoulderHSs;
+                    outerCpYSs = shoulderYSs + direction * TIE_MID_THICKNESS_SS;
+                    innerCpYSs = shoulderYSs - direction * TIE_MID_THICKNESS_SS;
+                }
+            }
+
+            builder.putTieLayout(interval, new LayoutResult.TieLayout(
+                startXSs, startYSs,
+                endXSs, endYSs,
+                cp1XSs, outerCpYSs,
+                cp2XSs, outerCpYSs,
+                cp1XSs, innerCpYSs,
+                cp2XSs, innerCpYSs
+            ));
+        }
+    }
+
 
     /**
      * Returns the number of beams (flag levels) for a note type.
