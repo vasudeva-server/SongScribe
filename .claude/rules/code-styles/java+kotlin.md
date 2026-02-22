@@ -134,6 +134,27 @@ public Note getNote(@NotNull String name)
 public String getOptionalValue()
 ```
 
+**Optional vs @Nullable**
+
+Use `Optional` as a return type when the caller must explicitly handle the absent case and the allocation cost is acceptable (e.g., non-hot-path lookups). Avoid `Optional` in tight inner loops or allocation-sensitive rendering paths where `@Nullable` with a null check is cheaper.
+
+```java
+// Good: non-hot-path lookup, caller must handle Optional
+public Optional<Note> findNoteByName(String name) { ... }
+
+var note = findNoteByName("C4");
+if (note.isPresent()) { ... }
+
+// Good: hot path, allocation-sensitive rendering code
+@Nullable
+private Note getCachedNote(int index) {
+    return cache[index];  // null if not cached
+}
+
+var note = getCachedNote(0);
+if (note != null) { ... }
+```
+
 ### Class Structure Order
 
 1. File header (license)
