@@ -59,6 +59,11 @@ The project requires Java 25+. To set `JAVA_HOME` correctly:
 source ./scripts/set-java-home.sh
 ```
 
+## GitLab Issue Workflow
+
+- Use `refs #<number>` in commit messages to reference an issue without closing it.
+- Only use `Closes #<number>` when the user explicitly says to close the issue as part of a commit.
+
 ## Common Issues
 
 ### Font Registration Warnings
