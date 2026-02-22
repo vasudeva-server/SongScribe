@@ -6,7 +6,7 @@
 |-------|-------------|--------|----------|
 | 1 | [Coordinate System + Staff + Notes](#-phase-1-coordinate-system--staff--notes) | ✅ Done | [milestone-1-coordinate-system.md](milestone-1-coordinate-system.md) |
 | 2 | [Beams + Stems](#-phase-2-beams--stems) | ✅ Done | [milestone-2-beams-stems.md](milestone-2-beams-stems.md) |
-| 3 | [Ties + Glissandos](#-phase-3-ties--glissandos) | ⏳ Pending | — |
+| 3 | [Ties + Glissandos](#-phase-3-ties--glissandos) | ⏳ Pending | [milestone-3-ties-glissandos.md](milestone-3-ties-glissandos.md) |
 | 4 | [Vertical Stacking + All Decorations](#-phase-4-vertical-stacking--all-decorations) | ⏳ Pending | — |
 | 5 | [Lyrics + Line Height + Tuplets](#-phase-5-lyrics--line-height--tuplets) | ⏳ Pending | — |
 | 6 | [Cleanup + Polish](#-phase-6-cleanup--polish) | ⏳ Pending | — |
@@ -56,6 +56,8 @@ See [milestone-2-beams-stems.md](milestone-2-beams-stems.md) for detailed implem
 Port tie algorithm from abc2svg `slur_out()`. Cubic Bezier replacing quadratic. Dynamic height scaling. Interior note collision avoidance. Filled lens shape rendering. Glissando rendering between notes.
 
 **Verification:** Ties scale height with span distance. Short ties similar to before; long ties noticeably better.
+
+See [milestone-3-ties-glissandos.md](milestone-3-ties-glissandos.md) for detailed implementation plan.
 
 ---
 

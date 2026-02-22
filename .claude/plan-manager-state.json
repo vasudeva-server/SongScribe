@@ -103,7 +103,7 @@
       "parentPhase": 2,
       "parentStep": null,
       "masterPlan": "plans/migrations/rendering-rewrite/rendering-rewrite.md",
-      "status": "in_progress",
+      "status": "completed",
       "type": "sub-plan"
     },
     {
@@ -120,6 +120,15 @@
       "parentPlan": "plans/migrations/rendering-rewrite/milestone-2-beams-stems.md",
       "parentPhase": null,
       "parentStep": 7,
+      "masterPlan": "plans/migrations/rendering-rewrite/rendering-rewrite.md",
+      "status": "pending",
+      "type": "sub-plan"
+    },
+    {
+      "path": "plans/migrations/rendering-rewrite/milestone-3-ties-glissandos.md",
+      "parentPlan": "plans/migrations/rendering-rewrite/rendering-rewrite.md",
+      "parentPhase": 3,
+      "parentStep": null,
       "masterPlan": "plans/migrations/rendering-rewrite/rendering-rewrite.md",
       "status": "pending",
       "type": "sub-plan"
