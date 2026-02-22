@@ -20,7 +20,6 @@
 
 package songscribe.ui.component.toolbar;
 
-import songscribe.music.NoteType;
 import songscribe.ui.action.Actions;
 import songscribe.ui.component.StickyToggleButton;
 
@@ -32,10 +31,7 @@ public class BarToolbar extends Toolbar {
         }
 
         for (var action : Actions.BARLINE_ACTIONS) {
-            // Skip single barline
-            if (action.getType() != NoteType.SINGLE_BARLINE) {
-                add(new StickyToggleButton(action));
-            }
+            add(new StickyToggleButton(action));
         }
     }
 }
