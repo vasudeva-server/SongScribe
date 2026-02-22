@@ -3,7 +3,7 @@
 **Type:** Sub-plan  <br>
 **Parent:** [rendering-rewrite.md](rendering-rewrite.md) → Phase 2  <br>
 **Created:** 2026-02-01  <br>
-**Status:** In Progress  <br>
+**Status:** Done  <br>
 **BlockedBy:** —
 
 **Spec:** [docs/specs/rendering-rewrite.md](../../../docs/specs/rendering-rewrite.md) — always read the spec before implementing tasks.
@@ -21,7 +21,7 @@
 | 5 | [Remove Eager Call Sites + Delete BeamCalculator](#-phase-5-remove-eager-call-sites--delete-beamcalculator) | ✅ Done |
 | 6 | [Update BeamGroupRenderer to Use LayoutResult](#-phase-6-update-beamgrouprenderer-to-use-layoutresult) | ✅ Done |
 | 7 | [Update NoteRenderer Stems to Use LayoutResult](#-phase-7-update-noterenderer-stems-to-use-layoutresult) | ✅ Done |
-| 8 | [Verification](#-phase-8-verification) | ⏳ Pending |
+| 8 | [Verification](#-phase-8-verification) | ✅ Done |
 
 ## Overview
 
@@ -254,16 +254,16 @@ This phase implements the full abc2svg-ported beam algorithm as a private pipeli
   - Reads `note.properties.stem.y2` for bracket anchor Y
   - Replace with stem tip Y from `LayoutResult.getStemLayout(note)`
 
-### ⏳ Phase 8: Verification
+### ✅ Phase 8: Verification
 
-- [ ] Compile with `./scripts/compile.sh`
-- [ ] Run with `./scripts/run.sh`
-- [ ] Open a composition with beamed 8th notes — beams render with correct slopes
-- [ ] Open a composition with 16th and 32nd notes — multi-level beams render correctly
-- [ ] Partial beams (dotted rhythms) — stub direction is automatic and correct
-- [ ] Manually flip stem direction on a beamed note — `stemDirectionAuto` becomes false, direction persists across layout
-- [ ] Manually flip stem direction on an unbeamed note — same override behavior
-- [ ] Save and reload — `stemDirectionAuto = false` notes retain their manual direction
-- [ ] Open an old v2.1 file — loads correctly, all notes default to auto stem direction
-- [ ] Confirm `invertFractionBeamOrientation` tag in old files is silently ignored on load
-- [ ] No regressions: clef, key signature, notes, rests, barlines, grace notes render correctly
+- [x] Compile with `./scripts/compile.sh`
+- [x] Run with `./scripts/run.sh`
+- [x] Open a composition with beamed 8th notes — beams render with correct slopes
+- [x] Open a composition with 16th and 32nd notes — multi-level beams render correctly
+- [x] Partial beams (dotted rhythms) — stub direction is automatic and correct
+- [x] Manually flip stem direction on a beamed note — `stemDirectionAuto` becomes false, direction persists across layout
+- [x] Manually flip stem direction on an unbeamed note — same override behavior
+- [x] Save and reload — `stemDirectionAuto = false` notes retain their manual direction
+- [x] Open an old v2.1 file — loads correctly, all notes default to auto stem direction
+- [x] Confirm `invertFractionBeamOrientation` tag in old files is silently ignored on load
+- [x] No regressions: clef, key signature, notes, rests, barlines, grace notes render correctly

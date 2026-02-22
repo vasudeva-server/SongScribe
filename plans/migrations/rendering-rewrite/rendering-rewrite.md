@@ -5,7 +5,7 @@
 | Phase | Description | Status | Sub-plan |
 |-------|-------------|--------|----------|
 | 1 | [Coordinate System + Staff + Notes](#-phase-1-coordinate-system--staff--notes) | ✅ Done | [milestone-1-coordinate-system.md](milestone-1-coordinate-system.md) |
-| 2 | [Beams + Stems](#-phase-2-beams--stems) | ⏳ Pending | [milestone-2-beams-stems.md](milestone-2-beams-stems.md) |
+| 2 | [Beams + Stems](#-phase-2-beams--stems) | ✅ Done | [milestone-2-beams-stems.md](milestone-2-beams-stems.md) |
 | 3 | [Ties + Glissandos](#-phase-3-ties--glissandos) | ⏳ Pending | — |
 | 4 | [Vertical Stacking + All Decorations](#-phase-4-vertical-stacking--all-decorations) | ⏳ Pending | — |
 | 5 | [Lyrics + Line Height + Tuplets](#-phase-5-lyrics--line-height--tuplets) | ⏳ Pending | — |
@@ -41,7 +41,7 @@ See [milestone-1-coordinate-system.md](milestone-1-coordinate-system.md) for det
 
 ---
 
-## ⏳ Phase 2: Beams + Stems
+## ✅ Phase 2: Beams + Stems
 
 Port beam algorithm from abc2svg `calculate_beam()` and `draw_beams()`. Hyperbolic slope dampening, flat beam snapping, beam thickening. Automatic stem direction from pitch. Automatic partial beam stub direction. Multi-level beams.
 
