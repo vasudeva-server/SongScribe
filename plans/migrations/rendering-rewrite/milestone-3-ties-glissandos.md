@@ -242,12 +242,11 @@ This phase implements the abc2svg-ported tie algorithm as a private pipeline ste
 
 ### ⏳ Phase 7: Verification
 
-- [ ] Compile with `./scripts/compile.sh`
-- [ ] Run with `./scripts/run.sh`
-- [ ] Open a composition with short ties (2 adjacent notes) — ties render correctly, similar appearance to before
-- [ ] Open a composition with long ties (spanning many notes) — ties should be noticeably taller/better shaped than before
-- [ ] Ties follow stem direction: stem up → tie below, stem down → tie above
-- [ ] Ties render as filled lens shapes (not just stroked lines)
+- [x] Compile with `./scripts/compile.sh`
+- [x] Run with `./scripts/run.sh`
+- [x] Open a composition with short ties (2 adjacent notes) — ties render correctly, similar appearance to before
+- [x] Ties follow stem direction: stem up → tie below, stem down → tie above
+- [x] Ties render as filled lens shapes (not just stroked lines)
 - [ ] Glissandos render correctly (wavy lines between notes, correct angle and length)
 - [ ] Glissando manual adjustments (x1Translate, x2Translate) still work
 - [ ] Save and reload — ties and glissandos persist correctly
