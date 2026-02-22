@@ -1,6 +1,6 @@
-**Type:** Sub-plan
-**Parent:** smufl-rewrite.md → Phase 2
-**Pre-planned:** Yes
+**Type:** Sub-plan  <br>
+**Parent:** smufl-rewrite.md → Phase 2  <br>
+**Pre-planned:** Yes  <br>
 **Status:** Completed
 
 ---

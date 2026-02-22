@@ -12,7 +12,7 @@
 | 5     | [Note Head, Rest, and Accidental Glyph Rendering](#-phase-5-note-head-rest-and-accidental-glyph-rendering) | ✅ Complete | [phase-5-note-rest-accidental-glyphs.md](phase-5-note-rest-accidental-glyphs.md) |
 | 6     | [Stems, Flags, Tempo](#-phase-6-stems-flags-tempo)                                                        | ✅ Complete | [phase-6-stems-flags-tempo.md](phase-6-stems-flags-tempo.md) |
 | 7     | [Custom-Drawn Elements → SMuFL Glyphs](#-phase-7-custom-drawn-elements--smufl-glyphs)                      | ✅ Complete | [phase-7-custom-to-smufl.md](phase-7-custom-to-smufl.md) |
-| 7a    | [Screen Rendering Stroke Quality](#-phase-7a-screen-rendering-stroke-quality)                              | 📋 Sub-plan | [phase-7a-stroke-quality.md](phase-7a-stroke-quality.md) |
+| 7a    | [Screen Rendering Stroke Quality](#-phase-7a-screen-rendering-stroke-quality)                              | ⏳ Pending  | [phase-7a-stroke-quality.md](phase-7a-stroke-quality.md) |
 | 8     | [Remove Fughetta and Clean Up](#-phase-8-remove-fughetta-and-clean-up)                                     | ⏳ Pending | —        |
 | 9     | [Remove Legacy HiDPI Infrastructure](#-phase-9-remove-legacy-hidpi-infrastructure)                         | ⏳ Pending | —        |
 | 10    | [Staff-Space Coordinate Unit Migration](#-phase-10-staff-space-coordinate-unit-migration)                  | ⏳ Pending | —        |
@@ -138,7 +138,7 @@ This plan replaces the entire glyph and metrics infrastructure with SMuFL/Bravur
 
 ---
 
-## 📋 Phase 7a: Screen Rendering Stroke Quality
+## ⏳ Phase 7a: Screen Rendering Stroke Quality
 
 **Goal**: Eliminate anti-aliasing artifacts on axis-aligned strokes for screen rendering. After converting staff lines, stems, barlines, and other elements to SMuFL glyphs in Phases 5-7, glyph rendering may still produce sub-pixel anti-aliasing. This phase ensures crisp on-screen rendering while preserving high-quality output for print/export.
 

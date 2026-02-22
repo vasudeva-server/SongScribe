@@ -1,6 +1,14 @@
-# Milestone 1: Coordinate System + Staff + Notes
+# Sub-plan: Coordinate System + Staff + Notes
+
+**Type:** Sub-plan  <br>
+**Parent:** [rendering-rewrite.md](rendering-rewrite.md) → Phase 1  <br>
+**Created:** 2026-01-01  <br>
+**Status:** Complete  <br>
+**BlockedBy:** —
 
 **Spec:** [docs/specs/rendering-rewrite.md](../../../docs/specs/rendering-rewrite.md) — always read the spec before implementing tasks.
+
+---
 
 ## Status Dashboard
 

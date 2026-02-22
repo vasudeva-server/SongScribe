@@ -1,4 +1,13 @@
-# Phase 6: Update BeamGroupRenderer to Use LayoutResult
+# Sub-plan: Update BeamGroupRenderer to Use LayoutResult
+
+**Type:** Sub-plan  <br>
+**Parent:** [milestone-2-beams-stems.md](milestone-2-beams-stems.md) → Phase 6  <br>
+**Master:** [rendering-rewrite.md](rendering-rewrite.md)  <br>
+**Created:** 2026-02-15  <br>
+**Status:** Complete  <br>
+**BlockedBy:** —
+
+---
 
 ## Context
 

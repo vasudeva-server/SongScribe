@@ -2,14 +2,14 @@
 
 ## Status Dashboard
 
-| Milestone | Description | Status | Sub-plan |
-|-----------|-------------|--------|----------|
-| 1 | [Coordinate System + Staff + Notes](#milestone-1-coordinate-system--staff--notes) | ✅ Done | [milestone-1-coordinate-system.md](milestone-1-coordinate-system.md) |
-| 2 | [Beams + Stems](#milestone-2-beams--stems) | ⏳ Pending | [milestone-2-beams-stems.md](milestone-2-beams-stems.md) |
-| 3 | [Ties + Glissandos](#milestone-3-ties--glissandos) | ⏳ Pending | — |
-| 4 | [Vertical Stacking + All Decorations](#milestone-4-vertical-stacking--all-decorations) | ⏳ Pending | — |
-| 5 | [Lyrics + Line Height + Tuplets](#milestone-5-lyrics--line-height--tuplets) | ⏳ Pending | — |
-| 6 | [Cleanup + Polish](#milestone-6-cleanup--polish) | ⏳ Pending | — |
+| Phase | Description | Status | Sub-plan |
+|-------|-------------|--------|----------|
+| 1 | [Coordinate System + Staff + Notes](#-phase-1-coordinate-system--staff--notes) | ✅ Done | [milestone-1-coordinate-system.md](milestone-1-coordinate-system.md) |
+| 2 | [Beams + Stems](#-phase-2-beams--stems) | ⏳ Pending | [milestone-2-beams-stems.md](milestone-2-beams-stems.md) |
+| 3 | [Ties + Glissandos](#-phase-3-ties--glissandos) | ⏳ Pending | — |
+| 4 | [Vertical Stacking + All Decorations](#-phase-4-vertical-stacking--all-decorations) | ⏳ Pending | — |
+| 5 | [Lyrics + Line Height + Tuplets](#-phase-5-lyrics--line-height--tuplets) | ⏳ Pending | — |
+| 6 | [Cleanup + Polish](#-phase-6-cleanup--polish) | ⏳ Pending | — |
 
 ## Context
 
@@ -31,7 +31,7 @@ SongScribe's rendering and layout pipeline uses a mix of legacy pixel-based code
 
 ---
 
-## Milestone 1: Coordinate System + Staff + Notes
+## ✅ Phase 1: Coordinate System + Staff + Notes
 
 Establish the staff-space coordinate system and get all basic note rendering working. This is the foundation everything else builds on.
 
@@ -41,7 +41,7 @@ See [milestone-1-coordinate-system.md](milestone-1-coordinate-system.md) for det
 
 ---
 
-## Milestone 2: Beams + Stems
+## ⏳ Phase 2: Beams + Stems
 
 Port beam algorithm from abc2svg `calculate_beam()` and `draw_beams()`. Hyperbolic slope dampening, flat beam snapping, beam thickening. Automatic stem direction from pitch. Automatic partial beam stub direction. Multi-level beams.
 
@@ -51,7 +51,7 @@ See [milestone-2-beams-stems.md](milestone-2-beams-stems.md) for detailed implem
 
 ---
 
-## Milestone 3: Ties + Glissandos
+## ⏳ Phase 3: Ties + Glissandos
 
 Port tie algorithm from abc2svg `slur_out()`. Cubic Bezier replacing quadratic. Dynamic height scaling. Interior note collision avoidance. Filled lens shape rendering. Glissando rendering between notes.
 
@@ -59,7 +59,7 @@ Port tie algorithm from abc2svg `slur_out()`. Cubic Bezier replacing quadratic. 
 
 ---
 
-## Milestone 4: Vertical Stacking + All Decorations
+## ⏳ Phase 4: Vertical Stacking + All Decorations
 
 Y-extent array collision detection (YSTEP=128). Three-layer model. Tier 1: articulations. Tier 2: fermata, trill. Tier 3: dynamics hairpins, text dynamics (new), volta brackets. Tier 4: tempo, beat changes, annotations. Self-rendering note-attached elements. All manual offset adjustments working post-layout.
 
@@ -67,7 +67,7 @@ Y-extent array collision detection (YSTEP=128). Three-layer model. Tier 1: artic
 
 ---
 
-## Milestone 5: Lyrics + Line Height + Tuplets
+## ⏳ Phase 5: Lyrics + Line Height + Tuplets
 
 Lyric collision avoidance via syllable width overflow walk (ported from abc2svg `ly_width()`). Lyric rendering below staff. Total line height calculation. Tuplet bracket rendering. Line justification (compress/stretch).
 
@@ -75,7 +75,7 @@ Lyric collision avoidance via syllable width overflow walk (ported from abc2svg 
 
 ---
 
-## Milestone 6: Cleanup + Polish
+## ⏳ Phase 6: Cleanup + Polish
 
 Remove RendererRegistry and BaseElementRenderer hierarchy. Remove Note.Properties mutable state. Remove all pixel-based constants from layout code. Verify all manual adjustment fields work in staff-space units. Performance profiling. Full regression testing.
 

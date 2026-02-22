@@ -1,12 +1,12 @@
-# Phase 5: Note Head, Rest, and Accidental Glyph Rendering
-
-**Type:** Sub-plan
-**Parent:** plans/migrations/smufl-rewrite/smufl-rewrite.md -> Phase 5
-**Captured:** 2026-02-16
-**Pre-planned:** Yes
+**Type:** Sub-plan  <br>
+**Parent:** plans/migrations/smufl-rewrite/smufl-rewrite.md → Phase 5  <br>
+**Captured:** 2026-02-16  <br>
+**Pre-planned:** Yes  <br>
 **Status:** Completed
 
 ---
+
+# Phase 5: Note Head, Rest, and Accidental Glyph Rendering
 
 ## Status Dashboard
 

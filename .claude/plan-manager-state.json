@@ -1,158 +1,128 @@
 {
-  "version": "1.0",
+  "version": "1.1.0",
   "plansDirectory": "plans",
   "masterPlans": [
     {
       "path": "plans/migrations/smufl-rewrite/smufl-rewrite.md",
+      "subdirectory": "migrations/smufl-rewrite",
       "active": false,
-      "subPlans": [
-        {
-          "path": "plans/migrations/smufl-rewrite/phase-2-collapse-hierarchy.md",
-          "phase": 2,
-          "type": "sub-plan",
-          "prePlanned": true,
-          "status": "completed"
-        },
-        {
-          "path": "plans/migrations/smufl-rewrite/phase-3-engraving-defaults.md",
-          "phase": 3,
-          "type": "sub-plan",
-          "prePlanned": false,
-          "status": "completed"
-        },
-        {
-          "path": "plans/migrations/smufl-rewrite/phase-4-smufl-glyph-bounds.md",
-          "phase": 4,
-          "type": "sub-plan",
-          "prePlanned": true,
-          "status": "completed"
-        },
-        {
-          "path": "plans/migrations/smufl-rewrite/phase-5-note-rest-accidental-glyphs.md",
-          "phase": 5,
-          "type": "sub-plan",
-          "prePlanned": true,
-          "status": "completed"
-        },
-        {
-          "path": "plans/migrations/smufl-rewrite/phase-6-stems-flags-tempo.md",
-          "phase": 6,
-          "type": "sub-plan",
-          "prePlanned": false,
-          "status": "completed"
-        },
-        {
-          "path": "plans/migrations/smufl-rewrite/phase-7-custom-to-smufl.md",
-          "phase": 7,
-          "type": "sub-plan",
-          "prePlanned": true,
-          "status": "completed"
-        },
-        {
-          "path": "plans/migrations/smufl-rewrite/phase-7a-stroke-quality.md",
-          "phase": "7a",
-          "type": "sub-plan",
-          "prePlanned": false,
-          "status": "pending"
-        }
-      ],
-      "phases": {},
-      "branches": []
-    },
-    {
-      "path": "plans/completed/migrations/preferences-migration.md",
-      "active": false,
-      "description": "Migrate preferences from java.util.Properties to java.util.prefs.Preferences API",
-      "subdirectory": null,
-      "subPlans": [],
-      "phases": {
-        "1": "completed",
-        "2": "completed",
-        "3": "completed",
-        "4": "completed",
-        "5": "completed",
-        "6": "completed",
-        "7": "completed",
-        "8": "completed",
-        "9": "completed"
-      },
-      "branches": []
-    },
-    {
-      "path": "plans/completed/refactors/data-model-modernization.md",
-      "active": false,
-      "description": "Replace stringly-typed Interval.data with typed subclasses (TupletInterval, DynamicsInterval, EndingInterval)",
-      "subdirectory": "refactors/data-model-modernization",
-      "subPlans": [
-        {
-          "path": "plans/clever-enchanting-zephyr.md",
-          "phase": "2-3",
-          "type": "sub-plan",
-          "prePlanned": false,
-          "status": "completed"
-        }
-      ],
-      "phases": {
-        "1": "completed",
-        "2": "completed",
-        "3": "completed"
-      },
-      "branches": []
-    },
-    {
-      "path": "plans/fix-beam-stem-validation/fix-beam-stem-validation.md",
-      "active": false,
-      "description": "Add MIN_STEM validation to BeamCalculator to prevent stems from becoming too short in beamed groups",
-      "subdirectory": "fix-beam-stem-validation",
-      "subPlans": [],
-      "phases": {
-        "1": "completed",
-        "2": "completed",
-        "3": "completed",
-        "4": "completed"
-      },
-      "branches": []
+      "description": "Rewrite rendering to use SMuFL glyph system and engraving defaults"
     },
     {
       "path": "plans/migrations/rendering-rewrite/rendering-rewrite.md",
-      "active": false,
-      "description": "Rewrite rendering and layout pipeline with staff-space coordinate system, abc2svg algorithms",
       "subdirectory": "migrations/rendering-rewrite",
-      "subPlans": [
-        {
-          "path": "plans/migrations/rendering-rewrite/milestone-1-coordinate-system.md",
-          "phase": 1,
-          "type": "sub-plan",
-          "prePlanned": true,
-          "status": "pending"
-        }
-      ],
-      "phases": {
-        "1": "pending",
-        "2": "pending",
-        "3": "pending",
-        "4": "pending",
-        "5": "pending",
-        "6": "pending"
-      },
-      "branches": []
+      "active": true,
+      "description": "Rewrite rendering and layout pipeline with staff-space coordinate system, abc2svg algorithms"
+    },
+  ],
+  "subPlans": [
+    {
+      "path": "plans/migrations/smufl-rewrite/phase-2-collapse-hierarchy.md",
+      "parentPlan": "plans/migrations/smufl-rewrite/smufl-rewrite.md",
+      "parentPhase": 2,
+      "parentStep": null,
+      "masterPlan": "plans/migrations/smufl-rewrite/smufl-rewrite.md",
+      "status": "completed",
+      "type": "sub-plan"
     },
     {
-      "path": "plans/completed/fix-migration-issues/fix-migration-issues.md",
-      "active": false,
-      "description": "Fix bugs from Milestone 1-2 migrations: IO version dispatch, duplicate RangeElements, BeamGroup migration, stem direction, TupletRenderer, dead code",
-      "subdirectory": "fix-migration-issues",
-      "subPlans": [],
-      "phases": {
-        "1": "completed",
-        "2": "completed",
-        "3": "completed",
-        "4": "completed",
-        "5": "completed",
-        "6": "completed",
-        "7": "completed"
-      },
-      "branches": []
+      "path": "plans/migrations/smufl-rewrite/phase-3-engraving-defaults.md",
+      "parentPlan": "plans/migrations/smufl-rewrite/smufl-rewrite.md",
+      "parentPhase": 3,
+      "parentStep": null,
+      "masterPlan": "plans/migrations/smufl-rewrite/smufl-rewrite.md",
+      "status": "completed",
+      "type": "sub-plan"
+    },
+    {
+      "path": "plans/migrations/smufl-rewrite/phase-3-verification.md",
+      "parentPlan": "plans/migrations/smufl-rewrite/smufl-rewrite.md",
+      "parentPhase": 3,
+      "parentStep": null,
+      "masterPlan": "plans/migrations/smufl-rewrite/smufl-rewrite.md",
+      "status": "completed",
+      "type": "branch"
+    },
+    {
+      "path": "plans/migrations/smufl-rewrite/phase-4-smufl-glyph-bounds.md",
+      "parentPlan": "plans/migrations/smufl-rewrite/smufl-rewrite.md",
+      "parentPhase": 4,
+      "parentStep": null,
+      "masterPlan": "plans/migrations/smufl-rewrite/smufl-rewrite.md",
+      "status": "completed",
+      "type": "sub-plan"
+    },
+    {
+      "path": "plans/migrations/smufl-rewrite/phase-5-note-rest-accidental-glyphs.md",
+      "parentPlan": "plans/migrations/smufl-rewrite/smufl-rewrite.md",
+      "parentPhase": 5,
+      "parentStep": null,
+      "masterPlan": "plans/migrations/smufl-rewrite/smufl-rewrite.md",
+      "status": "completed",
+      "type": "sub-plan"
+    },
+    {
+      "path": "plans/migrations/smufl-rewrite/phase-6-stems-flags-tempo.md",
+      "parentPlan": "plans/migrations/smufl-rewrite/smufl-rewrite.md",
+      "parentPhase": 6,
+      "parentStep": null,
+      "masterPlan": "plans/migrations/smufl-rewrite/smufl-rewrite.md",
+      "status": "completed",
+      "type": "sub-plan"
+    },
+    {
+      "path": "plans/migrations/smufl-rewrite/phase-7-custom-to-smufl.md",
+      "parentPlan": "plans/migrations/smufl-rewrite/smufl-rewrite.md",
+      "parentPhase": 7,
+      "parentStep": null,
+      "masterPlan": "plans/migrations/smufl-rewrite/smufl-rewrite.md",
+      "status": "completed",
+      "type": "sub-plan"
+    },
+    {
+      "path": "plans/migrations/smufl-rewrite/phase-7a-stroke-quality.md",
+      "parentPlan": "plans/migrations/smufl-rewrite/smufl-rewrite.md",
+      "parentPhase": "7a",
+      "parentStep": null,
+      "masterPlan": "plans/migrations/smufl-rewrite/smufl-rewrite.md",
+      "status": "pending",
+      "type": "sub-plan"
+    },
+    {
+      "path": "plans/migrations/rendering-rewrite/milestone-1-coordinate-system.md",
+      "parentPlan": "plans/migrations/rendering-rewrite/rendering-rewrite.md",
+      "parentPhase": 1,
+      "parentStep": null,
+      "masterPlan": "plans/migrations/rendering-rewrite/rendering-rewrite.md",
+      "status": "completed",
+      "type": "sub-plan"
+    },
+    {
+      "path": "plans/migrations/rendering-rewrite/milestone-2-beams-stems.md",
+      "parentPlan": "plans/migrations/rendering-rewrite/rendering-rewrite.md",
+      "parentPhase": 2,
+      "parentStep": null,
+      "masterPlan": "plans/migrations/rendering-rewrite/rendering-rewrite.md",
+      "status": "in_progress",
+      "type": "sub-plan"
+    },
+    {
+      "path": "plans/migrations/rendering-rewrite/milestone-2-phase-6.md",
+      "parentPlan": "plans/migrations/rendering-rewrite/milestone-2-beams-stems.md",
+      "parentPhase": null,
+      "parentStep": 6,
+      "masterPlan": "plans/migrations/rendering-rewrite/rendering-rewrite.md",
+      "status": "completed",
+      "type": "sub-plan"
+    },
+    {
+      "path": "plans/migrations/rendering-rewrite/milestone-2-phase-7.md",
+      "parentPlan": "plans/migrations/rendering-rewrite/milestone-2-beams-stems.md",
+      "parentPhase": null,
+      "parentStep": 7,
+      "masterPlan": "plans/migrations/rendering-rewrite/rendering-rewrite.md",
+      "status": "pending",
+      "type": "sub-plan"
     }
   ]
 }

@@ -1,11 +1,12 @@
-# Phase 3: Engraving Defaults - Verification Plan
-
-**Type:** Verification Plan
-**Parent:** plans/migrations/smufl-rewrite/phase-3-engraving-defaults.md
-**Created:** 2026-02-15
+**Type:** Verification Plan  <br>
+**Parent:** [phase-3-engraving-defaults.md](phase-3-engraving-defaults.md) → Phase 3  <br>
+**Master:** [smufl-rewrite.md](smufl-rewrite.md)  <br>
+**Created:** 2026-02-15  <br>
 **Status:** Ready for Testing
 
 ---
+
+# Phase 3: Engraving Defaults - Verification Plan
 
 ## Overview
 

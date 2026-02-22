@@ -1,4 +1,13 @@
-# Plan: Phase 7 — Update NoteRenderer Stems + Fix TupletRenderer
+# Sub-plan: Update NoteRenderer Stems + Fix TupletRenderer
+
+**Type:** Sub-plan  <br>
+**Parent:** [milestone-2-beams-stems.md](milestone-2-beams-stems.md) → Phase 7  <br>
+**Master:** [rendering-rewrite.md](rendering-rewrite.md)  <br>
+**Created:** 2026-02-20  <br>
+**Status:** In Progress  <br>
+**BlockedBy:** —
+
+---
 
 ## Context
 

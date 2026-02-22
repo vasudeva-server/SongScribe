@@ -8,8 +8,6 @@
 
 # Phase 7: Custom-Drawn Elements → SMuFL Glyphs
 
-## Status: Pending
-
 ## Overview
 
 Replace all remaining custom-drawn elements (Java2D shapes, Fughetta PUA codepoints, custom font glyphs) with SMuFL/Bravura glyph rendering. All infrastructure (`drawBravuraGlyph()`, `BRAVURA_FONT`, SMuFL metadata) is in place from earlier phases.

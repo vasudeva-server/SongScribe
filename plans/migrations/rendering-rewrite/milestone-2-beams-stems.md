@@ -1,6 +1,14 @@
-# Milestone 2: Beams + Stems
+# Sub-plan: Beams + Stems
+
+**Type:** Sub-plan  <br>
+**Parent:** [rendering-rewrite.md](rendering-rewrite.md) → Phase 2  <br>
+**Created:** 2026-02-01  <br>
+**Status:** In Progress  <br>
+**BlockedBy:** —
 
 **Spec:** [docs/specs/rendering-rewrite.md](../../../docs/specs/rendering-rewrite.md) — always read the spec before implementing tasks.
+
+---
 
 ## Status Dashboard
 
@@ -12,7 +20,7 @@
 | 4 | [Fold Beam Calculation into LayoutEngine](#-phase-4-fold-beam-calculation-into-layoutengine) | ✅ Done |
 | 5 | [Remove Eager Call Sites + Delete BeamCalculator](#-phase-5-remove-eager-call-sites--delete-beamcalculator) | ✅ Done |
 | 6 | [Update BeamGroupRenderer to Use LayoutResult](#-phase-6-update-beamgrouprenderer-to-use-layoutresult) | ✅ Done |
-| 7 | [Update NoteRenderer Stems to Use LayoutResult](#-phase-7-update-noterenderer-stems-to-use-layoutresult) | ⏳ Pending |
+| 7 | [Update NoteRenderer Stems to Use LayoutResult](#-phase-7-update-noterenderer-stems-to-use-layoutresult) | ✅ Done |
 | 8 | [Verification](#-phase-8-verification) | ⏳ Pending |
 
 ## Overview
@@ -229,7 +237,7 @@ This phase implements the full abc2svg-ported beam algorithm as a private pipeli
   - Remove all `note.isInvertFractionBeamOrientation()` references (field is gone)
   - Read `StemLayout.stubRight()` instead
 
-### ⏳ Phase 7: Update NoteRenderer Stems to Use LayoutResult
+### ✅ Phase 7: Update NoteRenderer Stems to Use LayoutResult
 
 - [x] **Replace `Note.Properties.lengthening` / `beamThickening` reads in `renderStem()`**
   - Read `ctx.getLayoutResult().getStemLayout(note)` for `lengthening()` and beam thickening
@@ -242,7 +250,7 @@ This phase implements the full abc2svg-ported beam algorithm as a private pipeli
 - [x] **Replace `Note.Properties.stem` reads in flags rendering**
   - Flags need the stem tip Y position; read from `StemLayout.topY()` / `bottomY()`
 
-- [ ] **Fix `TupletRenderer`**
+- [x] **Fix `TupletRenderer`**
   - Reads `note.properties.stem.y2` for bracket anchor Y
   - Replace with stem tip Y from `LayoutResult.getStemLayout(note)`
 
