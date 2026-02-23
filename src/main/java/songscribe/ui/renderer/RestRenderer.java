@@ -159,7 +159,7 @@ public class RestRenderer extends BaseElementRenderer<Note> {
             g2.translate(noteX, noteY);
             g2.setFont(BRAVURA_FONT);
             // Note: Don't set color here - respect the color set by the caller
-            // (e.g., blue for edit notes, black for composition notes)
+            // (e.g., blue for insertion notes, black for composition notes)
 
             // Draw rest glyph
             var glyph = REST_GLYPHS.get(noteType);

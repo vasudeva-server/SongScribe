@@ -141,7 +141,7 @@ public class InsertionNoteManager {
         var editModeManager = EditModeManager.getInstance();
 
         if (editModeManager != null) {
-            editModeManager.setEditNoteVisible(false);
+            editModeManager.setInsertionNoteVisible(false);
         }
     }
 
@@ -305,18 +305,18 @@ public class InsertionNoteManager {
             var editModeManager = EditModeManager.getInstance();
 
             if (editModeManager != null) {
-                editModeManager.setEditNoteVisible(true);
+                editModeManager.setInsertionNoteVisible(true);
             }
         }
 
-        // Update the edit note's Y position
+        // Update the insertion note's Y position
         var editModeManager = EditModeManager.getInstance();
 
         if (editModeManager != null) {
-            var editNote = editModeManager.getEditNote();
+            var insertionNote = editModeManager.getInsertionNote();
 
-            if (editNote != null) {
-                editNote.setStaffPosition(staffPosition);
+            if (insertionNote != null) {
+                insertionNote.setStaffPosition(staffPosition);
             }
         }
 
@@ -342,16 +342,16 @@ public class InsertionNoteManager {
 
         // Determine action based on position
         if (currentXIndex == line.noteCount()) {
-            addEditNote(lc, line);
+            addInsertionNote(lc, line);
         } else if (currentIsOverNoteHead) {
             modifyExistingNote(lc, currentXIndex, line);
         } else {
-            insertEditNote(lc, currentXIndex, line);
+            insertInsertionNote(lc, currentXIndex, line);
         }
     }
 
     /**
-     * Handles mouse entering a line. Sets up cursor and edit note visibility.
+     * Handles mouse entering a line. Sets up cursor and insertion note visibility.
      */
     static void mouseEnteredLine(LineComponent lc) {
         currentMouseLine = lc;
@@ -360,7 +360,7 @@ public class InsertionNoteManager {
         var editModeManager = EditModeManager.getInstance();
 
         if (shouldHandleInsertionNote(lc) && editModeManager != null) {
-            editModeManager.setEditNoteVisible(true);
+            editModeManager.setInsertionNoteVisible(true);
         }
     }
 
@@ -379,7 +379,7 @@ public class InsertionNoteManager {
         var editModeManager = EditModeManager.getInstance();
 
         if (editModeManager != null) {
-            editModeManager.setEditNoteVisible(false);
+            editModeManager.setInsertionNoteVisible(false);
         }
     }
 
@@ -390,12 +390,12 @@ public class InsertionNoteManager {
     /**
      * Returns whether insertion note handling should be active for the given line.
      * <p>
-     * Requires: edit mode enabled, MOUSE control, NOTE_EDIT mode, and an edit note set.
+     * Requires: edit mode enabled, MOUSE control, NOTE_EDIT mode, and an insertion note set.
      */
     private static boolean shouldHandleInsertionNote(LineComponent lc) {
         var editModeManager = EditModeManager.getInstance();
 
-        if (!lc.isEditMode() || editModeManager == null || !editModeManager.hasEditNote()) {
+        if (!lc.isEditMode() || editModeManager == null || !editModeManager.hasInsertionNote()) {
             return false;
         }
 
@@ -424,12 +424,12 @@ public class InsertionNoteManager {
             return;
         }
 
-        // Ensure edit note is visible (it may have been hidden if the mouse
+        // Ensure insertion note is visible (it may have been hidden if the mouse
         // entered while in a non-edit mode like SELECT)
         var editModeManager = EditModeManager.getInstance();
 
         if (editModeManager != null) {
-            editModeManager.setEditNoteVisible(true);
+            editModeManager.setInsertionNoteVisible(true);
         }
 
         // Synthesize a MouseEvent and delegate to trackMouse
@@ -509,12 +509,12 @@ public class InsertionNoteManager {
     // ==========================================================================
 
     /**
-     * Adds an edit note to the end of the line.
+     * Adds an insertion note to the end of the line.
      *
      * @param lc   The LineComponent
      * @param line The line to add the note to
      */
-    private static void addEditNote(LineComponent lc, @NotNull Line line) {
+    private static void addInsertionNote(LineComponent lc, @NotNull Line line) {
         var score = lc.getScore();
 
         if (score == null) {
@@ -527,34 +527,34 @@ public class InsertionNoteManager {
             return;
         }
 
-        var editNote = editModeManager.getEditNote();
+        var insertionNote = editModeManager.getInsertionNote();
 
-        if (editNote == null) {
+        if (insertionNote == null) {
             return;
         }
 
         if (editModeManager.noteWasModified(line, line.noteCount())) {
-            editModeManager.editNoteDidChange(line, line.noteCount() - 1);
+            editModeManager.insertionNoteDidChange(line, line.noteCount() - 1);
             return;
         }
 
-        editNote.setXPosSs((int) Math.round(
-            InsertionSpacingCalculator.calculateAppendPositionSs(line, editNote)));
-        line.addNote(editNote);
+        insertionNote.setXPosSs((int) Math.round(
+            InsertionSpacingCalculator.calculateAppendPositionSs(line, insertionNote)));
+        line.addNote(insertionNote);
 
         applyAutomaticBeaming(line, line.noteCount() - 1);
 
-        editModeManager.editNoteDidChange(line, line.noteCount() - 1);
+        editModeManager.insertionNoteDidChange(line, line.noteCount() - 1);
     }
 
     /**
-     * Inserts an edit note at the specified index in the line.
+     * Inserts an insertion note at the specified index in the line.
      *
      * @param lc     The LineComponent
      * @param xIndex The index to insert at
      * @param line   The line to insert into
      */
-    private static void insertEditNote(LineComponent lc, int xIndex, @NotNull Line line) {
+    private static void insertInsertionNote(LineComponent lc, int xIndex, @NotNull Line line) {
         var score = lc.getScore();
 
         if (score == null) {
@@ -567,14 +567,14 @@ public class InsertionNoteManager {
             return;
         }
 
-        var editNote = editModeManager.getEditNote();
+        var insertionNote = editModeManager.getInsertionNote();
 
-        if (editNote == null) {
+        if (insertionNote == null) {
             return;
         }
 
         if (editModeManager.noteWasModified(line, xIndex)) {
-            editModeManager.editNoteDidChange(line, line.noteCount() - 1);
+            editModeManager.insertionNoteDidChange(line, line.noteCount() - 1);
             return;
         }
 
@@ -587,9 +587,9 @@ public class InsertionNoteManager {
         }
 
         line.removeInterval(xIndex - 1, xIndex);
-        var insertion = InsertionSpacingCalculator.calculateInsertion(line, editNote, xIndex);
-        editNote.setXPosSs((int) Math.round(insertion.insertedNoteXSs()));
-        line.addNote(xIndex, editNote);
+        var insertion = InsertionSpacingCalculator.calculateInsertion(line, insertionNote, xIndex);
+        insertionNote.setXPosSs((int) Math.round(insertion.insertedNoteXSs()));
+        line.addNote(xIndex, insertionNote);
         var shift = (int) Math.round(insertion.shiftForSubsequentNotesSs());
 
         for (var i = xIndex + 1; i < line.noteCount(); i++) {
@@ -597,7 +597,7 @@ public class InsertionNoteManager {
         }
 
         applyAutomaticBeaming(line, xIndex);
-        editModeManager.editNoteDidChange(line, xIndex);
+        editModeManager.insertionNoteDidChange(line, xIndex);
     }
 
     /**
@@ -657,9 +657,9 @@ public class InsertionNoteManager {
     }
 
     /**
-     * Replaces an existing note entirely with the current edit note.
+     * Replaces an existing note entirely with the current insertion note.
      * Only the x position is preserved from the existing note; all other attributes
-     * (type, duration, dots, beaming, ties) come from the edit note.
+     * (type, duration, dots, beaming, ties) come from the insertion note.
      * Called when the user clicks on an existing note head with the insertion note active.
      *
      * @param lc        The LineComponent
@@ -679,23 +679,23 @@ public class InsertionNoteManager {
             return;
         }
 
-        var editNote = editModeManager.getEditNote();
+        var insertionNote = editModeManager.getInsertionNote();
 
-        if (editNote == null) {
+        if (insertionNote == null) {
             return;
         }
 
         if (editModeManager.noteWasModified(line, noteIndex)) {
-            editModeManager.editNoteDidChange(line, line.noteCount() - 1);
+            editModeManager.insertionNoteDidChange(line, line.noteCount() - 1);
             return;
         }
 
         // Preserve the existing note's x position
-        editNote.setXPosSs(line.getNote(noteIndex).getXPosSs());
-        editNote.setStaffPosition(currentStaffPosition);
+        insertionNote.setXPosSs(line.getNote(noteIndex).getXPosSs());
+        insertionNote.setStaffPosition(currentStaffPosition);
 
-        if (editNote.isStemDirectionAuto()) {
-            editNote.setUpper(Score.defaultUpperNote(editNote));
+        if (insertionNote.isStemDirectionAuto()) {
+            insertionNote.setUpper(Score.defaultUpperNote(insertionNote));
         }
 
         // Remove all beam intervals touching this note — the new note type may differ
@@ -715,7 +715,7 @@ public class InsertionNoteManager {
         }
 
         // Replace the note entirely (line.setNote marks the composition modified)
-        line.setNote(noteIndex, editNote);
+        line.setNote(noteIndex, insertionNote);
 
         applyAutomaticBeaming(line, noteIndex);
 
@@ -725,6 +725,6 @@ public class InsertionNoteManager {
             applyAutomaticBeaming(line, noteIndex + 1);
         }
 
-        editModeManager.editNoteDidChange(line, noteIndex);
+        editModeManager.insertionNoteDidChange(line, noteIndex);
     }
 }

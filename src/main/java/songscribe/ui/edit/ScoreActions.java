@@ -47,11 +47,11 @@ public interface ScoreActions {
     void repaint();
 
     /**
-     * Sets the edit note.
+     * Sets the insertion note.
      *
-     * @param editNote The note to set as the edit note
+     * @param insertionNote The note to set as the insertion note
      */
-    void setEditNote(@Nullable Note editNote);
+    void setInsertionNote(@Nullable Note insertionNote);
 
     /**
      * Adjusts the drawing width if the line is wider than the current width.

@@ -46,7 +46,7 @@ import songscribe.ui.selection.SelectionCoordinator;
 /**
  * Manages edit mode state for the Score.
  * <p>
- * EditModeManager holds the state related to the edit note (the note that will be inserted),
+ * EditModeManager holds the state related to the insertion note (the note that will be inserted),
  * including its type, duration, and accidentals. Also handles note creation, decoration,
  * and modification logic. Extracted from Score.java as part of Phase 6 of the Score Cleanup refactoring.
  */
@@ -76,12 +76,12 @@ public final class EditModeManager {
     private final SelectionCoordinator selectionCoordinator;
     private final ScoreActions scoreActions;
 
-    // Whether the edit note is visible (based on mouse position in mouse mode)
-    private boolean editNoteIsVisible = false;
+    // Whether the insertion note is visible (based on mouse position in mouse mode)
+    private boolean insertionNoteIsVisible = false;
 
-    // The current edit note that will be inserted
+    // The current insertion note that will be inserted
     @Nullable
-    private Note editNote = null;
+    private Note insertionNote = null;
 
     // Control state for paste operations
     @Nullable
@@ -115,47 +115,47 @@ public final class EditModeManager {
     }
 
     // -------------------------------------------------------------------------
-    // Edit note accessors
+    // Insertion note accessors
     // -------------------------------------------------------------------------
 
     /**
-     * Returns whether the edit note is currently visible.
+     * Returns whether the insertion note is currently visible.
      */
-    public boolean isEditNoteVisible() {
-        return editNoteIsVisible;
+    public boolean isInsertionNoteVisible() {
+        return insertionNoteIsVisible;
     }
 
     /**
-     * Sets whether the edit note is visible.
+     * Sets whether the insertion note is visible.
      *
-     * @param visible true to show the edit note, false to hide it
+     * @param visible true to show the insertion note, false to hide it
      */
-    public void setEditNoteVisible(boolean visible) {
-        this.editNoteIsVisible = visible;
+    public void setInsertionNoteVisible(boolean visible) {
+        this.insertionNoteIsVisible = visible;
     }
 
     /**
-     * Returns the current edit note, or null if no edit note is set.
+     * Returns the current insertion note, or null if no insertion note is set.
      */
     @Nullable
-    public Note getEditNote() {
-        return editNote;
+    public Note getInsertionNote() {
+        return insertionNote;
     }
 
     /**
-     * Sets the current edit note.
+     * Sets the current insertion note.
      *
-     * @param editNote The note to set as the edit note, or null to clear it
+     * @param insertionNote The note to set as the insertion note, or null to clear it
      */
-    public void setEditNote(@Nullable Note editNote) {
-        this.editNote = editNote;
+    public void setInsertionNote(@Nullable Note insertionNote) {
+        this.insertionNote = insertionNote;
     }
 
     /**
-     * Returns whether an edit note is currently set.
+     * Returns whether an insertion note is currently set.
      */
-    public boolean hasEditNote() {
-        return editNote != null;
+    public boolean hasInsertionNote() {
+        return insertionNote != null;
     }
 
     /**
@@ -184,16 +184,16 @@ public final class EditModeManager {
     }
 
     // -------------------------------------------------------------------------
-    // Edit note creation and decoration
+    // Insertion note creation and decoration
     // -------------------------------------------------------------------------
 
     /**
-     * Creates a new edit note based on the currently selected note type.
+     * Creates a new insertion note based on the currently selected note type.
      *
-     * @return The newly created edit note
+     * @return The newly created insertion note
      */
     @NotNull
-    public Note makeEditNote() {
+    public Note makeInsertionNote() {
         var noteType = NoteType.CROTCHET;
         var durationAction = Actions.DURATION_ACTION_GROUP.getSelected();
 
@@ -207,17 +207,17 @@ public final class EditModeManager {
             }
         }
 
-        return makeEditNote(noteType);
+        return makeInsertionNote(noteType);
     }
 
     /**
-     * Creates a new edit note of the given type.
+     * Creates a new insertion note of the given type.
      *
      * @param noteType The type of note to create
-     * @return The newly created edit note
+     * @return The newly created insertion note
      */
     @NotNull
-    public Note makeEditNote(@NotNull NoteType noteType) {
+    public Note makeInsertionNote(@NotNull NoteType noteType) {
         // Make a new note or rest of the given type
         var type = noteType;
 
@@ -304,18 +304,18 @@ public final class EditModeManager {
         scoreActions.clearSelection();
 
         // If the active note is glissando, it needs different handling
-        if (editNote.getNoteType() == NoteType.GLISSANDO) {
+        if (insertionNote.getNoteType() == NoteType.GLISSANDO) {
             if (noteIndex > 0) {
                 line
                     .getNote(noteIndex - 1)
-                    .setGlissando(editNote.getStaffPosition());
+                    .setGlissando(insertionNote.getStaffPosition());
             }
 
             return true;
         }
 
         if (
-            (editNote.getNoteType() == NoteType.REPEAT_LEFT) &&
+            (insertionNote.getNoteType() == NoteType.REPEAT_LEFT) &&
                 ((noteIndex - 1) >= 0) &&
                 (line.getNote(noteIndex - 1).getNoteType() == NoteType.REPEAT_RIGHT)
         ) {
@@ -326,7 +326,7 @@ public final class EditModeManager {
         }
 
         if (
-            (editNote.getNoteType() == NoteType.REPEAT_RIGHT) &&
+            (insertionNote.getNoteType() == NoteType.REPEAT_RIGHT) &&
                 (noteIndex < line.noteCount()) &&
                 (line.getNote(noteIndex).getNoteType() == NoteType.REPEAT_LEFT)
         ) {
@@ -336,7 +336,7 @@ public final class EditModeManager {
             return true;
         }
 
-        if (editNote.getNoteType() == NoteType.PASTE) {
+        if (insertionNote.getNoteType() == NoteType.PASTE) {
             // If the user tries to insert into triplet, they will get an error message.
             var iv = line.getTuplets().findInterval(noteIndex - 1);
 
@@ -400,24 +400,24 @@ public final class EditModeManager {
 
     /**
      * Called after a note has been inserted or modified.
-     * Updates the edit note for the next insertion and triggers necessary updates.
+     * Updates the insertion note for the next insertion and triggers necessary updates.
      *
      * @param line The line that was modified
      * @param noteIndex The index of the note that was inserted/modified
      */
-    public void editNoteDidChange(@NotNull Line line, int noteIndex) {
+    public void insertionNoteDidChange(@NotNull Line line, int noteIndex) {
         //mainFrame.getUndoManager().undoableEditHappened(new UndoableEditEvent(this, new
         // ModifyUndoableEdit(oldNote, oldNoteInfo, xIndex)));
 
-        // Capture the inserted note before editNote is updated for the next insertion.
+        // Capture the inserted note before insertionNote is updated for the next insertion.
         var insertedNote = line.getNote(noteIndex);
         var shouldPlayNote = playInsertingNote && insertedNote.getNoteType().isNote();
 
         Note nextNote;
 
-        if (editNote.getNoteType().isGraceNote()) {
+        if (insertionNote.getNoteType().isGraceNote()) {
             nextNote = NoteType.GLISSANDO.newInstance();
-        } else if (editNote.getNoteType() == NoteType.GLISSANDO) {
+        } else if (insertionNote.getNoteType() == NoteType.GLISSANDO) {
             NoteType nextNoteType;
 
             if (!line.getNote(noteIndex).getNoteType().isGraceNote()) {
@@ -430,7 +430,7 @@ public final class EditModeManager {
 
             nextNote = nextNoteType.newInstance();
         } else {
-            nextNote = editNote.getNoteType().newInstance();
+            nextNote = insertionNote.getNoteType().newInstance();
         }
 
         // After inserting a note, turn off fermata and accidental parentheses
@@ -439,7 +439,7 @@ public final class EditModeManager {
 
         // Add any other note decorations
         decorateNote(nextNote);
-        scoreActions.setEditNote(nextNote);
+        scoreActions.setInsertionNote(nextNote);
         LyricsProcessor.spellLyrics(line);
         scoreActions.drawWidthIfWiderLine(line, false);
 

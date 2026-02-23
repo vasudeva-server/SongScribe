@@ -79,7 +79,7 @@ public class GraceNoteRenderer extends BaseElementRenderer<Note> {
             g2.scale(GRACE_NOTE_SCALE, GRACE_NOTE_SCALE);
             g2.setFont(BRAVURA_FONT);
             // Note: Don't set color here - respect the color set by the caller
-            // (e.g., blue for edit notes, black for composition notes)
+            // (e.g., blue for insertion notes, black for composition notes)
 
             // Draw pre-composed grace note glyph
             var glyph = note.isUpper()
@@ -95,7 +95,7 @@ public class GraceNoteRenderer extends BaseElementRenderer<Note> {
      * Resolves the device-pixel-snapped X coordinate for a grace note, using the first
      * available source in priority order:
      * <ol>
-     *   <li>Override X from context (edit note preview)</li>
+     *   <li>Override X from context (insertion note preview)</li>
      *   <li>Layout result position (laid-out composition notes)</li>
      *   <li>Note's own {@code xPos} (fallback)</li>
      * </ol>

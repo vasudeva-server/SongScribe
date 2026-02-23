@@ -22,7 +22,7 @@ package songscribe.ui.action;
 
 import org.jetbrains.annotations.Nullable;
 
-public class DotAction extends EditNoteAction {
+public class DotAction extends InsertionNoteAction {
 
     private final DotLevel dotLevel;
 

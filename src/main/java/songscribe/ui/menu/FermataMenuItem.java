@@ -37,10 +37,10 @@ public class FermataMenuItem
     @Override
     public void actionPerformed(ActionEvent e) {
         var mainFrame = MainFrame.getInstance();
-        var editNote = mainFrame.getScore().getEditNote();
+        var insertionNote = mainFrame.getScore().getInsertionNote();
 
-        if (editNote != null) {
-            editNote.setFermata(isSelected());
+        if (insertionNote != null) {
+            insertionNote.setFermata(isSelected());
             mainFrame.getScore().repaint();
         }
     }

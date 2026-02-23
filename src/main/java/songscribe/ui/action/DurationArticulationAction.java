@@ -22,7 +22,7 @@ package songscribe.ui.action;
 
 import songscribe.music.DurationArticulation;
 
-public class DurationArticulationAction extends EditNoteAction {
+public class DurationArticulationAction extends InsertionNoteAction {
 
     private final DurationArticulation articulation;
 

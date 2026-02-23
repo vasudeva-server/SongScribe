@@ -20,7 +20,7 @@
 
 package songscribe.ui.action;
 
-public class FermataAction extends EditNoteAction {
+public class FermataAction extends InsertionNoteAction {
 
     public FermataAction() {
         super("Fermata", null, 0, "fermata", "Add fermata", true);

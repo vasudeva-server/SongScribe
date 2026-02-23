@@ -22,7 +22,7 @@ package songscribe.ui.action;
 
 import songscribe.music.Note;
 
-public class AccidentalAction extends EditNoteAction {
+public class AccidentalAction extends InsertionNoteAction {
 
     private final Note.Accidental accidental;
 

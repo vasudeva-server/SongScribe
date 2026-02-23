@@ -25,18 +25,18 @@ import java.awt.event.*;
 import org.jetbrains.annotations.Nullable;
 
 import songscribe.ui.message.MessageCenter;
-import songscribe.ui.message.UpdateEditNoteMessage;
+import songscribe.ui.message.UpdateInsertionNoteMessage;
 
 /**
- * This class is the superclass for all actions that change the edit note.
+ * This class is the superclass for all actions that change the insertion note.
  */
-public class EditNoteAction extends UIAction {
+public class InsertionNoteAction extends UIAction {
 
-    public EditNoteAction(String name, String actionCommand) {
+    public InsertionNoteAction(String name, String actionCommand) {
         super(name, actionCommand);
     }
 
-    public EditNoteAction(
+    public InsertionNoteAction(
         String name,
         String actionCommand,
         int virtualKey,
@@ -45,7 +45,7 @@ public class EditNoteAction extends UIAction {
         super(name, actionCommand, virtualKey, modifiers);
     }
 
-    public EditNoteAction(
+    public InsertionNoteAction(
         @Nullable String name,
         @Nullable String icon,
         int size,
@@ -55,7 +55,7 @@ public class EditNoteAction extends UIAction {
         super(name, icon, size, actionCommand, tooltip);
     }
 
-    public EditNoteAction(
+    public InsertionNoteAction(
         @Nullable String name,
         @Nullable String icon,
         int size,
@@ -66,7 +66,7 @@ public class EditNoteAction extends UIAction {
         super(name, icon, size, actionCommand, tooltip, isToggle);
     }
 
-    public EditNoteAction(
+    public InsertionNoteAction(
         @Nullable String name,
         @Nullable String icon,
         int size,
@@ -91,6 +91,6 @@ public class EditNoteAction extends UIAction {
     @Override
     public void actionPerformed(ActionEvent e) {
         super.actionPerformed(e);
-        MessageCenter.post(new UpdateEditNoteMessage());
+        MessageCenter.post(new UpdateInsertionNoteMessage());
     }
 }

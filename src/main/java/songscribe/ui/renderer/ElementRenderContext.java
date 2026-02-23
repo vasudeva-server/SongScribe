@@ -224,7 +224,7 @@ public class ElementRenderContext {
     /**
      * Returns the color used to render selected notes and beams.
      * Defaults to {@link Score#SELECTION_STROKE_COLOR}; override during a
-     * note pitch-drag to use {@code EDIT_NOTE_COLOR} instead.
+     * note pitch-drag to use {@code INSERTION_NOTE_COLOR} instead.
      */
     public @NotNull Color getSelectionColor() {
         return selectionColor;
@@ -241,7 +241,7 @@ public class ElementRenderContext {
 
     /**
      * Sets a precise X coordinate for the next note render, bypassing layout lookup and
-     * {@code note.getXPos()}. Used by the edit note preview so that {@link NoteRenderer}
+     * {@code note.getXPos()}. Used by the insertion note preview so that {@link NoteRenderer}
      * applies device-pixel snapping to the raw computed double directly, matching the
      * path used for laid-out composition notes. Call {@link #clearOverrideNoteX()} after
      * rendering to reset.

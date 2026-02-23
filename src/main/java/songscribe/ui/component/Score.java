@@ -114,7 +114,7 @@ public final class Score
 
     // Colors used to draw the music score in various states
     public static final Color PLAYING_NOTE_COLOR = new Color(31, 204, 0);
-    public static final Color EDIT_NOTE_COLOR = new Color(3, 136, 255);
+    public static final Color INSERTION_NOTE_COLOR = new Color(3, 136, 255);
     public static final Color SELECTION_STROKE_COLOR = Color.magenta;
 
     // The maximum number of staff lines under a note that can be displayed above and below the staff.
@@ -177,7 +177,7 @@ public final class Score
     // Manages clipboard state for copy/paste operations
     private ClipboardManager clipboardManager = null;
 
-    // Manages edit mode state (edit note and position)
+    // Manages edit mode state (insertion note and position)
     private EditModeManager editModeManager = null;
 
     // New JComponent-based score panel (Phase 2 hierarchy)
@@ -273,8 +273,8 @@ public final class Score
         selectionChanged();
         initKeys();
 
-        // Initialize edit note with default type
-        setEditNote(editModeManager.makeEditNote());
+        // Initialize insertion note with default type
+        setInsertionNote(editModeManager.makeInsertionNote());
 
         mainFrame.addMusicChangeListener(this);
         mainFrame.setDocumentModified(false);
@@ -597,25 +597,25 @@ public final class Score
         return 0;
     }
 
-    public Note getEditNote() {
-        return editModeManager.getEditNote();
+    public Note getInsertionNote() {
+        return editModeManager.getInsertionNote();
     }
 
-    public void setEditNote(@Nullable Note editNote) {
-        if (editNote != null) {
-            var currentEditNote = editModeManager.getEditNote();
+    public void setInsertionNote(@Nullable Note insertionNote) {
+        if (insertionNote != null) {
+            var currentInsertionNote = editModeManager.getInsertionNote();
 
-            if (currentEditNote != null) {
-                editNote.setStaffPosition(currentEditNote.getStaffPosition());
-                editNote.setXPosSs(currentEditNote.getXPosSs());
+            if (currentInsertionNote != null) {
+                insertionNote.setStaffPosition(currentInsertionNote.getStaffPosition());
+                insertionNote.setXPosSs(currentInsertionNote.getXPosSs());
             } else {
-                editModeManager.setEditNote(editNote);
+                editModeManager.setInsertionNote(insertionNote);
             }
 
-            editNote.setUpper(defaultUpperNote(editNote));
+            insertionNote.setUpper(defaultUpperNote(insertionNote));
         }
 
-        editModeManager.setEditNote(editNote);
+        editModeManager.setInsertionNote(insertionNote);
         repaint();
     }
 

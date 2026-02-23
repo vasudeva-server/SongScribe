@@ -27,11 +27,9 @@ import org.jetbrains.annotations.Nullable;
 
 import songscribe.data.TieInterval;
 import songscribe.music.Line;
-import songscribe.music.Note;
 import songscribe.ui.Mode;
 import songscribe.ui.component.Score;
 import songscribe.ui.edit.EditModeManager;
-import songscribe.ui.layout.LayoutStylesheet;
 import songscribe.ui.layout2.ScaleContext;
 import songscribe.ui.message.LayoutChangeMessage;
 import songscribe.ui.message.MessageCenter;
@@ -131,7 +129,7 @@ class NoteDragHandler {
         var editModeManager = EditModeManager.getInstance();
 
         if (editModeManager != null) {
-            editModeManager.setEditNoteVisible(false);
+            editModeManager.setInsertionNoteVisible(false);
         }
 
         lc.getSelectionHandler().selectNoteAtIndex(hitIndex);
@@ -229,7 +227,7 @@ class NoteDragHandler {
         var editModeManager = EditModeManager.getInstance();
 
         if (editModeManager != null) {
-            editModeManager.setEditNoteVisible(true);
+            editModeManager.setInsertionNoteVisible(true);
         }
     }
 }

@@ -573,8 +573,8 @@ public class Note extends LineElement implements Cloneable {
         );
     }
 
-    public int getEditNotePitch(Line line) {
-        return calculatePitch(getEditNoteAccidental(line));
+    public int getInsertionNotePitch(Line line) {
+        return calculatePitch(getInsertionNoteAccidental(line));
     }
 
     private int calculatePitch(Accidental accidental) {
@@ -585,7 +585,7 @@ public class Note extends LineElement implements Cloneable {
         );
     }
 
-    private Accidental getEditNoteAccidental(Line line) {
+    private Accidental getInsertionNoteAccidental(Line line) {
         if (accidental == Accidental.NONE) {
             return getAccidental(line);
         }

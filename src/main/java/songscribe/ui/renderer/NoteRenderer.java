@@ -172,7 +172,7 @@ public class NoteRenderer extends BaseElementRenderer<Note> {
      * Resolves the device-pixel-snapped X coordinate for a note, using the first
      * available source in priority order:
      * <ol>
-     *   <li>Override X from context (edit note preview)</li>
+     *   <li>Override X from context (insertion note preview)</li>
      *   <li>Layout result position (laid-out composition notes)</li>
      *   <li>Note's own {@code xPos} (fallback)</li>
      * </ol>
@@ -225,7 +225,7 @@ public class NoteRenderer extends BaseElementRenderer<Note> {
 
         // Standard note rendering
         // Note: Don't set color here - respect the color set by the caller
-        // (e.g., blue for edit notes, black for composition notes)
+        // (e.g., blue for insertion notes, black for composition notes)
         try (var ignored = GraphicsState.save(g2, TRANSFORM, FONT)) {
             var noteX = resolveNoteXSs(g2, element, ctx);
             var noteY = calculateNoteYSs(element.getStaffPosition(), ctx.getMiddleLineYSs());

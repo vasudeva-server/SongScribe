@@ -272,7 +272,7 @@ The following colors remain as-is and do not adapt to theme:
 |---|---|---|
 | `STAFF_LINE_COLOR` | Staff lines | `Color.BLACK` |
 | `NOTE_COLOR` | Notes | `Color.BLACK` |
-| `EDIT_NOTE_COLOR` | Insertion cursor note | `#0388FF` (blue) |
+| `INSERTION_NOTE_COLOR` | Insertion cursor note | `#0388FF` (blue) |
 | `PLAYING_NOTE_COLOR` | Currently playing note | `#1FCC00` (green) |
 | `SELECTION_STROKE_COLOR` | Selection highlight | `Color.MAGENTA` |
 
@@ -284,7 +284,7 @@ page backgrounds.
 ## What Does NOT Change
 
 - Score page rendering (notation, staff lines, text — always black on light)
-- Highlight colors (edit note blue, playing note green, selection magenta)
+- Highlight colors (insertion note blue, playing note green, selection magenta)
 - Export output (PDF, SVG, image exports are unaffected by theme)
 - Splash screen appearance
 - Font registration and font preferences

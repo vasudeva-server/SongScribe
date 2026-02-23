@@ -125,11 +125,11 @@ public final class ScoreInputHandler
         }
 
         if (
-            !editModeManager.isEditNoteVisible() &&
+            !editModeManager.isInsertionNoteVisible() &&
                 (callback.getControl() == Control.MOUSE) &&
                 (callback.getMode() == Mode.NOTE_EDIT)
         ) {
-            editModeManager.setEditNoteVisible(true);
+            editModeManager.setInsertionNoteVisible(true);
         }
     }
 
@@ -142,11 +142,11 @@ public final class ScoreInputHandler
         }
 
         if (
-            editModeManager.isEditNoteVisible() &&
+            editModeManager.isInsertionNoteVisible() &&
                 (callback.getControl() == Control.MOUSE) &&
                 (callback.getMode() == Mode.NOTE_EDIT)
         ) {
-            editModeManager.setEditNoteVisible(false);
+            editModeManager.setInsertionNoteVisible(false);
             callback.repaint();
         }
     }
@@ -240,17 +240,17 @@ public final class ScoreInputHandler
             // LineComponent's insertion tracking or a separate keyboard-specific system.
 
             // For now, keyboard mode is disabled. Only UP/DOWN for pitch adjustment remain functional.
-            var editNote = editModeManager.getEditNote();
+            var insertionNote = editModeManager.getInsertionNote();
 
-            if (editNote != null) {
+            if (insertionNote != null) {
                 if (code == KeyEvent.VK_UP) {
-                    if (editNote.getStaffPosition() >= (-(Score.STAFF_LINES_ABOVE + 2) * 2)) {
-                        editNote.setStaffPosition(editNote.getStaffPosition() - 1);
+                    if (insertionNote.getStaffPosition() >= (-(Score.STAFF_LINES_ABOVE + 2) * 2)) {
+                        insertionNote.setStaffPosition(insertionNote.getStaffPosition() - 1);
                         callback.repaint();
                     }
                 } else if (code == KeyEvent.VK_DOWN) {
-                    if (editNote.getStaffPosition() <= ((Score.STAFF_LINES_BELOW + 2) * 2)) {
-                        editNote.setStaffPosition(editNote.getStaffPosition() + 1);
+                    if (insertionNote.getStaffPosition() <= ((Score.STAFF_LINES_BELOW + 2) * 2)) {
+                        insertionNote.setStaffPosition(insertionNote.getStaffPosition() + 1);
                         callback.repaint();
                     }
                 }

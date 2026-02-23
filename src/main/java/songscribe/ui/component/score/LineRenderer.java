@@ -25,7 +25,6 @@ import java.awt.geom.*;
 
 import org.jetbrains.annotations.NotNull;
 
-import songscribe.data.Interval;
 import songscribe.music.Note;
 import songscribe.smufl.SMuFLMetadata;
 import songscribe.ui.Mode;
@@ -58,7 +57,7 @@ import songscribe.util.GraphicUtils;
  * <p>
  * Extracted from {@link LineComponent} to separate rendering concerns.
  * Reads state from the owning LineComponent but does not mutate it
- * (except for positioning the edit note preview before drawing).
+ * (except for positioning the insertion note preview before drawing).
  */
 class LineRenderer {
 
@@ -77,7 +76,7 @@ class LineRenderer {
     private static final Color PLACEHOLDER_COLOR = new Color(100, 100, 100, 128);
 
     /** Color for the insertion note preview — defined in Score for shared access across renderers. */
-    private static final Color EDIT_NOTE_COLOR = Score.EDIT_NOTE_COLOR;
+    private static final Color INSERTION_NOTE_COLOR = Score.INSERTION_NOTE_COLOR;
 
     /** The stroke used to draw the selection rectangle border. */
     private static final BasicStroke SELECTION_RECT_STROKE = new BasicStroke(2.0f);
@@ -138,7 +137,7 @@ class LineRenderer {
 
         // Override selection color when a pitch drag is in progress
         if (lc.getNoteDragHandler().isDragActive()) {
-            ctx.setSelectionColor(EDIT_NOTE_COLOR);
+            ctx.setSelectionColor(INSERTION_NOTE_COLOR);
         }
 
         // Ensure NoteRenderer metrics are initialized
@@ -403,7 +402,7 @@ class LineRenderer {
             && InsertionNoteManager.getHoveredNoteIndex() == noteIndex;
 
         if (isHovered) {
-            return EDIT_NOTE_COLOR;
+            return INSERTION_NOTE_COLOR;
         }
 
         return Color.BLACK;
@@ -613,14 +612,14 @@ class LineRenderer {
             return;
         }
 
-        var editNote = editModeManager.getEditNote();
+        var insertionNote = editModeManager.getInsertionNote();
 
-        if (editNote == null) {
+        if (insertionNote == null) {
             return;
         }
 
-        // Skip if edit note is not visible (e.g., in keyboard mode, or hovering over a note head)
-        if (!editModeManager.isEditNoteVisible()) {
+        // Skip if insertion note is not visible (e.g., in keyboard mode, or hovering over a note head)
+        if (!editModeManager.isInsertionNoteVisible()) {
             return;
         }
 
@@ -642,15 +641,15 @@ class LineRenderer {
         var currentStaffPosition = InsertionNoteManager.getCurrentStaffPosition();
 
         if (layoutResult != null && line != null) {
-            x = layoutResult.calculateInsertionXSs(currentXIndex, mouseX, editNote, line);
+            x = layoutResult.calculateInsertionXSs(currentXIndex, mouseX, insertionNote, line);
         }
 
-        // Set the edit note position
-        editNote.setStaffPosition(currentStaffPosition);
-        editNote.setUpper(Score.defaultUpperNote(editNote));
+        // Set the insertion note position
+        insertionNote.setStaffPosition(currentStaffPosition);
+        insertionNote.setUpper(Score.defaultUpperNote(insertionNote));
 
         // Handle glissando note specially
-        if (editNote == Note.GLISSANDO_NOTE) {
+        if (insertionNote == Note.GLISSANDO_NOTE) {
             if (currentXIndex > 0) {
                 GlissandoRenderer.getInstance().renderEditGlissando(
                     g2,
@@ -661,30 +660,30 @@ class LineRenderer {
                 );
             }
         } else {
-            // Render the edit note with the edit note color.
+            // Render the insertion note with the insertion note color.
             // Pass x as an override so NoteRenderer applies device-pixel snapping
             // to the raw double directly, exactly as it does for composition notes
             // via layoutResult.getNoteX(). Temporarily clear layoutResult to prevent
-            // sub-renderers from looking up the edit note (which is not in the layout).
+            // sub-renderers from looking up the insertion note (which is not in the layout).
             var savedLayout = ctx.getLayoutResult();
             ctx.setOverrideNoteXSs(x);
             ctx.setLayoutResult(null);
-            g2.setColor(EDIT_NOTE_COLOR);
-            NoteRenderer.getInstance().render(g2, editNote, ctx);
+            g2.setColor(INSERTION_NOTE_COLOR);
+            NoteRenderer.getInstance().render(g2, insertionNote, ctx);
             ctx.clearOverrideNoteX();
 
             // Set xPosSs for articulation/fermata renderers, which read it directly.
             // Simple rounding is fine since those renderers apply their own device-pixel
             // snapping internally.
-            editNote.setXPosSs((int) Math.round(x));
+            insertionNote.setXPosSs((int) Math.round(x));
 
             // Render articulations and fermata on the insertion note preview
-            if (!editNote.getArticulations().isEmpty()) {
-                ArticulationRenderer.getInstance().render(editNote, g2, ctx);
+            if (!insertionNote.getArticulations().isEmpty()) {
+                ArticulationRenderer.getInstance().render(insertionNote, g2, ctx);
             }
 
-            if (editNote.isFermata()) {
-                FermataRenderer.getInstance().render(editNote, g2, ctx);
+            if (insertionNote.isFermata()) {
+                FermataRenderer.getInstance().render(insertionNote, g2, ctx);
             }
 
             ctx.setLayoutResult(savedLayout);

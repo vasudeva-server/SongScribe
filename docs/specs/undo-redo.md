@@ -20,7 +20,7 @@ edits share with music edits.
 | Text field edits (lyrics, footnotes, etc.) | Unified stack | Per character (standard Swing UndoManager forwarded to global stack) |
 | Dialog-confirmed changes (composition settings, key signature, tempo, annotation, etc.) | Snapshot (before/after diff) | One step per dialog OK if state actually changed |
 | Paste | Composite command | One atomic step regardless of note count |
-| Edit-note session | Composite command | One step per complete edit-note session (not per keypress) |
+| Insertion-note session | Composite command | One step per complete insertion-note session (not per keypress) |
 | Drag position | Command | One step per completed drag (mouseReleased, not intermediate events) |
 
 ### Command Pattern Details
@@ -38,7 +38,7 @@ Some operations are logically atomic from the user's perspective:
 
 - **Paste**: wraps N individual note-add commands in a `CompoundEdit`. One Cmd+Z removes all pasted
   notes.
-- **Edit-note session**: captures note state on enter, records final state on exit (click away or
+- **Insertion-note session**: captures note state on enter, records final state on exit (click away or
   Escape). The entire session is one `CompoundEdit`.
 
 ### Snapshot (Dialog) Details
@@ -71,7 +71,7 @@ Everything that changes the visual appearance of the score:
 
 ### Note-Level Operations
 - Add note / delete note
-- Change note pitch (via edit-note session)
+- Change note pitch (via insertion-note session)
 - Change note duration / dot count
 - Change accidental
 - Toggle trill, fermata, stem direction, fraction beam orientation
@@ -237,9 +237,9 @@ confirmation is shown.
 the note but do not push to the undo stack. `mouseReleased` pushes one command capturing
 before/after positions. If the note did not move, no entry is pushed.
 
-### Edit-Note Session
-Entering edit-note mode begins a `CompoundEdit`. Every pitch/duration change during the session is
-part of that compound. Exiting edit-note mode (click away, Escape, or switching mode) closes and
+### Insertion-Note Session
+Entering insertion-note mode begins a `CompoundEdit`. Every pitch/duration change during the session is
+part of that compound. Exiting insertion-note mode (click away, Escape, or switching mode) closes and
 commits the compound. If the note was not changed, the compound is discarded.
 
 ### Paste With Empty Clipboard

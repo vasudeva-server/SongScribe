@@ -14,8 +14,8 @@
 |   MenuCtrl  | | Standard-   | | Duration | | UIAction   |
 |   DebugState| | Dialog      | | Dot/Rest | | StickyUI-  |
 |             | | Properties- | | Accid.   | |  Action    |
-|             | | Dialog      | | Artic.   | | EditNote-  |
-|             | | ExportPDF-  | | Connect. | |  Action    |
+|             | | Dialog      | | Artic.   | | Insertion- |
+|             | | ExportPDF-  | | Connect. | | NoteAction |
 |             | | Dialog ...  | | Bar ...  | | Pasteboard |
 +-------------+ +-------------+ +----------+ +------------+
         |              |              |              |
@@ -168,7 +168,7 @@ ElementRenderer<T> (interface)
 ```
 UIAction (extends AbstractAction)
 ├── StickyUIAction ── DurationAction, BarAction
-├── EditNoteAction ── AccidentalAction, DotAction, FermataAction, ...
+├── InsertionNoteAction ── AccidentalAction, DotAction, FermataAction, ...
 ├── PasteboardAction ── CutAction, CopyAction, PasteAction, DeleteAction
 ├── NewAction, OpenAction, SaveAction, PrintAction, ...
 ├── ToggleTieAction, ToggleBeamAction, ToggleTrillAction, ...

@@ -65,7 +65,7 @@ public final class ScoreMessageCoordinator {
         void selectionChanged();
         void setMode(Mode mode);
         void setControl(Control control);
-        void setEditNote(Note editNote);
+        void setInsertionNote(Note insertionNote);
         Composition getComposition();
         void setComposition(Composition composition);
         boolean requestFocusInWindow();
@@ -116,27 +116,27 @@ public final class ScoreMessageCoordinator {
 
     @Handler
     public void noteTypeWasSelected(@NotNull NoteTypeSelectedMessage message) {
-        callback.setEditNote(editModeManager.makeEditNote(message.getNoteType()));
+        callback.setInsertionNote(editModeManager.makeInsertionNote(message.getNoteType()));
     }
 
     @Handler
     public void restModeDidChange(RestModeChangedMessage message) {
-        callback.setEditNote(editModeManager.makeEditNote());
+        callback.setInsertionNote(editModeManager.makeInsertionNote());
     }
 
     @Handler
-    public void onUpdateEditNote(UpdateEditNoteMessage message) {
-        updateEditNote();
+    public void onUpdateInsertionNote(UpdateInsertionNoteMessage message) {
+        updateInsertionNote();
     }
 
-    private void updateEditNote() {
-        var editNote = editModeManager.getEditNote();
+    private void updateInsertionNote() {
+        var insertionNote = editModeManager.getInsertionNote();
 
-        if (editNote != null) {
-            editModeManager.decorateNote(editNote);
+        if (insertionNote != null) {
+            editModeManager.decorateNote(insertionNote);
             callback.repaint();
         } else {
-            callback.setEditNote(editModeManager.makeEditNote());
+            callback.setInsertionNote(editModeManager.makeInsertionNote());
         }
     }
 
@@ -366,7 +366,7 @@ public final class ScoreMessageCoordinator {
     private void handlePaste() {
         if (!clipboardManager.isEmpty()) {
             editModeManager.setPrevPasteControl(callback.getControl());
-            callback.setEditNote(Note.PASTE_NOTE);
+            callback.setInsertionNote(Note.PASTE_NOTE);
             callback.setControl(Control.MOUSE);
             selectionCoordinator.setInSelectMode(false);
             callback.repaint();

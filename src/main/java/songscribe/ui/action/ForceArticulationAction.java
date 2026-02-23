@@ -20,7 +20,7 @@
 
 package songscribe.ui.action;
 
-public class ForceArticulationAction extends EditNoteAction {
+public class ForceArticulationAction extends InsertionNoteAction {
 
     public ForceArticulationAction(
         String name,

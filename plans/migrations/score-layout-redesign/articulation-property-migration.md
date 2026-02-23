@@ -84,7 +84,7 @@ Switch all consumers from old properties to new `Articulation` list queries.
 - `renderStaccato()`: change guard from `getDurationArticulation() != STACCATO` to `!note.hasArticulation(STACCATO)`
 
 ### `LineRenderer.renderInsertionNote()` (`src/main/java/songscribe/ui/component/score/LineRenderer.java`)
-- Change guard to `!editNote.getArticulations().isEmpty()` (matches `renderAttachments`)
+- Change guard to `!insertionNote.getArticulations().isEmpty()` (matches `renderAttachments`)
 
 ### `Line` MIDI methods (`src/main/java/songscribe/music/Line.java`)
 - `addNoteOn()`/`addNoteOff()`: change to `note.hasArticulation(ACCENT)`

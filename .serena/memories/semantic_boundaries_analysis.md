@@ -71,7 +71,7 @@
 - **Document Actions**: NewAction, OpenAction, SaveAction, SaveAsAction
 - **Export Actions**: ExportPDFAction, ExportSVGAction, ExportABCAction, ExportImageAction, ExportMidiAction
 - **Playback Actions**: PlayPauseAction, StopAction, LoopPlaybackAction
-- **Score Actions**: ToggleTieAction, ToggleBeamAction, EditNoteAction, DeleteAction
+- **Score Actions**: ToggleTieAction, ToggleBeamAction, InsertionNoteAction, DeleteAction
 
 #### songscribe.ui.dialog - 6,221 lines (13.6% of UI)
 - **Settings Dialogs**: PreferencesDialog, CompositionSettingsDialog, LineWidthChangeDialog
@@ -83,7 +83,7 @@
 #### songscribe.ui.message - 1,511 lines (3.3% of UI)
 - **Event Bus**: MessageCenter (coordinator), Message (base Kotlin class)
 - **Score Events**: MusicSelectionChangedMessage, LayoutChangeMessage
-- **Edit Events**: UpdateEditNoteMessage, DurationSelectedMessage, NoteTypeSelectedMessage
+- **Edit Events**: UpdateInsertionNoteMessage, DurationSelectedMessage, NoteTypeSelectedMessage
 - **State Events**: ModeChangedMessage, ControlChangedMessage, RestModeChangedMessage
 - **File/UI Events**: SaveMessage, OpenFileMessage, NewFileMessage, PrintMessage
 - **Playback Events**: PlaybackStateChangedMessage, PlaybackTempoChangedMessage

@@ -117,7 +117,7 @@ public class BeamGroupRenderer extends BaseElementRenderer<LineElement> {
      * Returns the color to use for beam highlighting, or null if the beam should not be highlighted.
      * A beam is highlighted when removing the highlighted note(s) would eliminate the beam
      * (fewer than 2 beamable notes remain). Selected notes use the selection color;
-     * hovered notes use the edit note color.
+     * hovered notes use the insertion note color.
      */
     @Nullable
     private Color getBeamHighlightColor(
@@ -161,7 +161,7 @@ public class BeamGroupRenderer extends BaseElementRenderer<LineElement> {
         }
 
         if (anyHovered) {
-            return Score.EDIT_NOTE_COLOR;
+            return Score.INSERTION_NOTE_COLOR;
         }
 
         return null;

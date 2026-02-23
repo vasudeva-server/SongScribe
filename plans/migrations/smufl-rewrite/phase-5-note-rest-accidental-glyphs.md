@@ -126,7 +126,7 @@ Currently, note heads, accidentals, and rests are rendered using `g2.drawString(
 4. Draws the `SMuFLGlyph.asString()` at the specified position
 5. Restores graphics state
 
-However, `drawBravuraGlyph()` always sets `NOTE_COLOR`, which would override the caller's color (e.g., blue for edit notes). This needs to be addressed. The rendering methods currently follow the pattern "don't set color here - respect the color set by the caller." A new overload or variant of `drawBravuraGlyph()` that preserves the current color is needed.
+However, `drawBravuraGlyph()` always sets `NOTE_COLOR`, which would override the caller's color (e.g., blue for insertion notes). This needs to be addressed. The rendering methods currently follow the pattern "don't set color here - respect the color set by the caller." A new overload or variant of `drawBravuraGlyph()` that preserves the current color is needed.
 
 ## Accidental Width Computation
 
@@ -138,7 +138,7 @@ Currently, `initializeAccidentalWidths()` uses `g2.getFontMetrics(MUSIC_FONT)` t
 
 ### ✅ Step 1: Add color-preserving drawBravuraGlyph variant to BaseElementRenderer
 
-Add a new protected method `drawBravuraGlyphPreserveColor()` (or modify `drawBravuraGlyph` to accept a boolean parameter) that sets the Bravura font but does NOT override the current color. This is needed because note head, accidental, and rest rendering relies on the caller having set the color (black for composition notes, blue for edit notes, etc.).
+Add a new protected method `drawBravuraGlyphPreserveColor()` (or modify `drawBravuraGlyph` to accept a boolean parameter) that sets the Bravura font but does NOT override the current color. This is needed because note head, accidental, and rest rendering relies on the caller having set the color (black for composition notes, blue for insertion notes, etc.).
 
 Suggested signature:
 ```java
