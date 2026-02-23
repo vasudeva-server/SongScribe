@@ -105,7 +105,7 @@ public final class LayoutConstants {
      * Default horizontal gap between adjacent note columns when no lyrics are present.
      * Provides comfortable spacing for music without lyrics.
      */
-    public static final double DEFAULT_COLUMN_GAP_SS = 1.5;  // 12px
+    public static final double DEFAULT_COLUMN_GAP_SS = 2.5;  // 20px
 
     /**
      * Minimum horizontal gap between syllables.
