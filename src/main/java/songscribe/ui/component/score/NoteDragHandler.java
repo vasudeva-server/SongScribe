@@ -196,12 +196,7 @@ class NoteDragHandler {
             lc.getScore().clearSelection();
 
             // Finalize: notify layout and mark composition modified
-            MessageCenter.post(new LayoutChangeMessage(
-                LayoutChangeMessage.Section.SCORE,
-                LayoutChangeMessage.ChangeType.CONTENT,
-                false,
-                dragLine
-            ));
+            MessageCenter.post(LayoutChangeMessage.scoreContent(dragLine));
             lc.getComposition().setModified(true);
             // TODO: push to undo stack when undo system is re-enabled
         } else {

@@ -161,51 +161,38 @@ public final class ScoreMessageCoordinator {
 
     @Handler
     public void onToggleBeaming(ToggleBeamMessage message) {
+        // Capture line before the operation in case selection changes.
+        // Invalidate layout so LayoutEngine recomputes BeamLayout for the new/removed interval.
+        // Without this, BeamGroupRenderer draws beams with null BeamLayout (no thickening or slope).
         var selection = selectionCoordinator.getActiveSelection();
         var line = (selection != null) ? selection.getLine() : null;
         operations.toggleBeaming();
-
-        // Invalidate layout so LayoutEngine recomputes BeamLayout for the new/removed interval.
-        // Without this, BeamGroupRenderer draws beams with null BeamLayout (no thickening or slope).
-        MessageCenter.post(new LayoutChangeMessage(
-            LayoutChangeMessage.Section.SCORE,
-            LayoutChangeMessage.ChangeType.CONTENT,
-            false,
-            line
-        ));
+        MessageCenter.post(LayoutChangeMessage.scoreContent(line));
     }
 
     @Handler
     public void onToggleTie(ToggleTieMessage message) {
         operations.toggleTie();
-
-        var state = selectionCoordinator.getActiveSelection();
-
-        MessageCenter.post(new LayoutChangeMessage(
-            LayoutChangeMessage.Section.SCORE,
-            LayoutChangeMessage.ChangeType.CONTENT,
-            false,
-            state != null ? state.getLine() : null
-        ));
+        postSelectionContentChanged();
     }
 
     @Handler
     public void onToggleTuplet(@NotNull ToggleTupletMessage message) {
         operations.toggleTuplet(message.getTupletSize());
         callback.selectionChanged();
-        callback.repaint();
+        postSelectionContentChanged();
     }
 
     @Handler
     public void onAddDynamics(@NotNull AddDynamicsMessage message) {
         operations.addDynamicsToSelection(message.isCrescendo());
-        callback.repaint();
+        postSelectionContentChanged();
     }
 
     @Handler
     public void onRemoveDynamics(@NotNull RemoveDynamicsMessage message) {
         operations.removeDynamicsFromSelection();
-        callback.repaint();
+        postSelectionContentChanged();
     }
 
     @Handler
@@ -216,13 +203,13 @@ public final class ScoreMessageCoordinator {
             operations.removeFirstSecondEnding();
         }
 
-        callback.repaint();
+        postSelectionContentChanged();
     }
 
     @Handler
     public void onToggleTrill(ToggleTrillMessage message) {
         operations.toggleTrill();
-        callback.repaint();
+        postSelectionContentChanged();
     }
 
     @Handler
@@ -230,23 +217,18 @@ public final class ScoreMessageCoordinator {
         ToggleLyricsUnderRestsMessage message
     ) {
         operations.toggleLyricsUnderRests();
-        callback.repaint();
+        MessageCenter.post(LayoutChangeMessage.scoreContent());
     }
 
     @Handler
     public void onFlipStemDirection(FlipStemDirectionMessage message) {
         operations.flipStemDirection();
+        postSelectionContentChanged();
+    }
 
+    private void postSelectionContentChanged() {
         var state = selectionCoordinator.getActiveSelection();
-
-        MessageCenter.post(new LayoutChangeMessage(
-            LayoutChangeMessage.Section.SCORE,
-            LayoutChangeMessage.ChangeType.CONTENT,
-            false,
-            state != null ? state.getLine() : null
-        ));
-
-        callback.repaint();
+        MessageCenter.post(LayoutChangeMessage.scoreContent(state != null ? state.getLine() : null));
     }
 
     @Handler

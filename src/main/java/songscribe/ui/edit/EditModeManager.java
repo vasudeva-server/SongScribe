@@ -443,12 +443,7 @@ public final class EditModeManager {
         LyricsProcessor.spellLyrics(line);
         scoreActions.drawWidthIfWiderLine(line, false);
 
-        MessageCenter.post(new LayoutChangeMessage(
-            LayoutChangeMessage.Section.SCORE,
-            LayoutChangeMessage.ChangeType.CONTENT,
-            false,
-            line
-        ));
+        MessageCenter.post(LayoutChangeMessage.scoreContent(line));
 
         scoreActions.repaint();
 

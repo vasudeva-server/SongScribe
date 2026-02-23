@@ -53,6 +53,13 @@ class LayoutChangeMessage @JvmOverloads constructor(
         FOOTNOTES
     }
 
+    companion object {
+        @JvmOverloads
+        @JvmStatic
+        fun scoreContent(line: Line? = null): LayoutChangeMessage =
+            LayoutChangeMessage(Section.SCORE, ChangeType.CONTENT, false, line)
+    }
+
     override fun toString(): String {
         return "${super.toString()}(section=$section, changeType=$changeType, heightChanged=$heightChanged, line=$line)"
     }
