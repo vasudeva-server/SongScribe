@@ -672,6 +672,12 @@ class InsertionNoteManager {
 
         applyAutomaticBeaming(line, noteIndex);
 
+        // Also check the note after the replaced one: when noteIndex is the start of a beam,
+        // applyAutomaticBeaming only scans backward and misses the forward neighbor.
+        if (noteIndex + 1 < line.noteCount()) {
+            applyAutomaticBeaming(line, noteIndex + 1);
+        }
+
         editModeManager.editNoteDidChange(line, noteIndex);
     }
 }

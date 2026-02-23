@@ -161,8 +161,18 @@ public final class ScoreMessageCoordinator {
 
     @Handler
     public void onToggleBeaming(ToggleBeamMessage message) {
+        var selection = selectionCoordinator.getActiveSelection();
+        var line = (selection != null) ? selection.getLine() : null;
         operations.toggleBeaming();
-        callback.repaint();
+
+        // Invalidate layout so LayoutEngine recomputes BeamLayout for the new/removed interval.
+        // Without this, BeamGroupRenderer draws beams with null BeamLayout (no thickening or slope).
+        MessageCenter.post(new LayoutChangeMessage(
+            LayoutChangeMessage.Section.SCORE,
+            LayoutChangeMessage.ChangeType.CONTENT,
+            false,
+            line
+        ));
     }
 
     @Handler
