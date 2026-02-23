@@ -129,6 +129,11 @@ public final class Actions {
             InputEvent.SHIFT_DOWN_MASK
         );
 
+    // Grace note and rest mode are mutually exclusive
+    static {
+        GRACE_EIGHTH_NOTE_ACTION.setFlags(UIAction.Flag.DISABLE_IN_REST_MODE);
+    }
+
 
     public static final DurationAction THIRTY_SECOND_NOTE_ACTION =
         new DurationAction(
