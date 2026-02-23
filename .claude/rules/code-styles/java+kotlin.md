@@ -94,6 +94,7 @@ import org.jetbrains.annotations.Nullable;
 Any numeric value representing a spatial measurement MUST have a unit suffix:
 - `Ss` for staff spaces (the layout unit; 1 ss = distance between adjacent staff lines)
 - `Px` for pixels (device pixels; at default scale, 1 ss = 8 px)
+- `Sp` for staff positions (integer index along the Y axis; each unit = one half staff-line spacing)
 
 This applies to fields, parameters, local variables, method names, and constants:
 
@@ -119,11 +120,15 @@ public static final double LYRICS_BASELINE_OFFSET_SS = 1.25;  // 10px
 
 The `// NNpx` comment on constants is retained as a convenience for human readers, but the suffix is the authoritative indicator.
 
-Dimensionless values (counts, ratios, indices, staff positions) do not get a suffix:
+Dimensionless values (counts, ratios, pure indices) do not get a suffix:
 ```java
 int staffLineCount;           // a count, not a measurement
 double compressionRatio;      // a ratio
-int staffPosition;            // an index (-4 to +4), not a spatial distance
+```
+
+Note: staff positions are **not** dimensionless — use the `Sp` suffix:
+```java
+int positionSp;               // a staff-position measurement
 ```
 
 When a method converts between units, both units should appear in the name:

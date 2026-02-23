@@ -223,11 +223,5 @@ class NoteDragHandler {
         tieInterval = null;
 
         InsertionNoteManager.restoreInsertionNote(lc);
-
-        var editModeManager = EditModeManager.getInstance();
-
-        if (editModeManager != null) {
-            editModeManager.setInsertionNoteVisible(true);
-        }
     }
 }

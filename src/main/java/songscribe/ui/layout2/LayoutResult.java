@@ -448,6 +448,36 @@ public final class LayoutResult {
     // ==========================================================================
 
     /**
+     * Returns the index of the note whose head contains {@code mouseX}, or {@code -1} if none.
+     * <p>
+     * Only the horizontal (X) dimension is checked; Y position is ignored.
+     *
+     * @param mouseX Mouse X coordinate in staff-space units
+     * @param line   The line containing the notes
+     * @return Note index, or {@code -1} if mouseX is not within any note head's horizontal bounds
+     */
+    public int findNoteAtX(double mouseX, @NotNull songscribe.music.Line line) {
+        double noteHeadHalfWidth = NOTE_HEAD_HALF_WIDTH_SS;
+
+        for (var i = 0; i < line.noteCount(); i++) {
+            var note = line.getNote(i);
+            var column = noteColumns.get(note);
+
+            if (column == null) {
+                continue;
+            }
+
+            var noteX = column.getXSs();
+
+            if (mouseX >= noteX - noteHeadHalfWidth && mouseX <= noteX + noteHeadHalfWidth) {
+                return i;
+            }
+        }
+
+        return -1;
+    }
+
+    /**
      * Finds which insertion slot a mouse X coordinate falls into.
      * <p>
      * Insertion slots are the positions where a note can be inserted or replaced:
@@ -470,28 +500,15 @@ public final class LayoutResult {
             return 0;
         }
 
-        double noteHeadHalfWidth = NOTE_HEAD_HALF_WIDTH_SS;
-
         // Check each note to see if mouse is within its note head bounds
-        for (var i = 0; i < noteCount; i++) {
-            var note = line.getNote(i);
-            var column = noteColumns.get(note);
+        int noteAtX = findNoteAtX(mouseX, line);
 
-            if (column == null) {
-                continue;
-            }
-
-            var noteX = column.getXSs();
-            var noteLeft = noteX - noteHeadHalfWidth;
-            var noteRight = noteX + noteHeadHalfWidth;
-
-            // If mouse is within note head bounds, return this note's index (for replacement)
-            if (mouseX >= noteLeft && mouseX <= noteRight) {
-                return i;
-            }
+        if (noteAtX >= 0) {
+            return noteAtX;
         }
 
         // Mouse is not over any note head - find insertion slot between notes
+        double noteHeadHalfWidth = NOTE_HEAD_HALF_WIDTH_SS;
 
         // Check if before first note
         var firstNote = line.getNote(0);
@@ -540,46 +557,6 @@ public final class LayoutResult {
 
         // Fallback: return position after last note
         return noteCount;
-    }
-
-    /**
-     * Checks whether the mouse is directly over an existing note head.
-     *
-     * @param mouseX         Mouse X coordinate in staff-space units
-     * @param staffPosition  Mouse staff position (integer; each unit = half a staff line spacing)
-     * @param line           The line containing the notes
-     * @return true if the mouse is within the bounds of a note head (both X and Y)
-     */
-    public boolean isMouseOverNoteHead(
-        double mouseX,
-        int staffPosition,
-        @NotNull songscribe.music.Line line
-    ) {
-        int noteCount = line.noteCount();
-
-        if (noteCount == 0) {
-            return false;
-        }
-
-        double noteHeadHalfWidth = NOTE_HEAD_HALF_WIDTH_SS;
-
-        for (var i = 0; i < noteCount; i++) {
-            var note = line.getNote(i);
-            var column = noteColumns.get(note);
-
-            if (column == null) {
-                continue;
-            }
-
-            var noteX = column.getXSs();
-
-            if (mouseX >= noteX - noteHeadHalfWidth && mouseX <= noteX + noteHeadHalfWidth
-                && Math.abs(staffPosition - note.getStaffPosition()) <= 1) {
-                return true;
-            }
-        }
-
-        return false;
     }
 
     /**

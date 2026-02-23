@@ -98,8 +98,11 @@ public class InsertionNoteManager {
     @Nullable
     private static LineComponent currentMouseLine = null;
 
-    /** Whether the current insertion position is directly over an existing note head. */
-    private static boolean currentIsOverNoteHead = false;
+    /** Whether the mouse X (in staff spaces) is within the horizontal bounds of a note head. */
+    private static boolean xPosSsMatchesNote = false;
+
+    /** Whether the mouse Y (staff position) is within the vertical bounds of that note head. */
+    private static boolean yPosSpMatchesNote = false;
 
     /** Strong reference to prevent garbage collection by the weak-reference message bus. */
     private static final ModeChangeListener MODE_CHANGE_LISTENER = new ModeChangeListener();
@@ -156,7 +159,8 @@ public class InsertionNoteManager {
             currentInsertionLine = null;
             currentXIndex = -1;
             currentStaffPosition = 0;
-            currentIsOverNoteHead = false;
+            xPosSsMatchesNote = false;
+            yPosSpMatchesNote = false;
             oldLine.repaint();
         }
     }
@@ -215,7 +219,7 @@ public class InsertionNoteManager {
      * or -1 if the insertion note is not hovering over an existing note head.
      */
     public static int getHoveredNoteLineIndex() {
-        return (currentIsOverNoteHead && currentInsertionLine != null)
+        return (xPosSsMatchesNote && yPosSpMatchesNote && currentInsertionLine != null)
             ? currentInsertionLine.getLineIndex()
             : -1;
     }
@@ -225,7 +229,7 @@ public class InsertionNoteManager {
      * or -1 if the insertion note is not hovering over an existing note head.
      */
     public static int getHoveredNoteIndex() {
-        return currentIsOverNoteHead ? currentXIndex : -1;
+        return (xPosSsMatchesNote && yPosSpMatchesNote) ? currentXIndex : -1;
     }
 
     /**
@@ -270,20 +274,32 @@ public class InsertionNoteManager {
             return;
         }
 
-        // Calculate X index from mouse using layout result
-        int xIndex = 0;
-        boolean isOverNoteHead = false;
+        // Calculate X index and note-head match from mouse using layout result
         var layoutResult = lc.getLayoutResult();
         var line = lc.getLine();
 
-        if (layoutResult != null && line != null) {
-            xIndex = layoutResult.findInsertionIndex(mouseXss, line);
-            isOverNoteHead = layoutResult.isMouseOverNoteHead(mouseXss, staffPosition, line);
+        if (layoutResult == null || line == null) {
+            // Layout is being recalculated (e.g., mid-drag). Clear stale hover state
+            // so that the next repaint does not show a highlight on the wrong note.
+            xPosSsMatchesNote = false;
+            yPosSpMatchesNote = false;
+            return;
         }
+
+        int xIndex = layoutResult.findInsertionIndex(mouseXss, line);
+        int noteAtX = layoutResult.findNoteAtX(mouseXss, line);
+
+        // Compute new position match flags before the early-return check, so that a
+        // change in hover state (e.g., mouse slides from gap into note-head bounds at
+        // the same xIndex) is not silently dropped.
+        boolean newXMatch = noteAtX >= 0;
+        boolean newYMatch = newXMatch
+            && Math.abs(staffPosition - line.getNote(noteAtX).getStaffPosition()) <= 1;
 
         // Check if position actually changed
         if (lc == currentInsertionLine && xIndex == currentXIndex
-            && staffPosition == currentStaffPosition && isOverNoteHead == currentIsOverNoteHead) {
+            && staffPosition == currentStaffPosition
+            && newXMatch == xPosSsMatchesNote && newYMatch == yPosSpMatchesNote) {
             return;  // No change, no repaint
         }
 
@@ -296,23 +312,22 @@ public class InsertionNoteManager {
         currentInsertionLine = lc;
         currentXIndex = xIndex;
         currentStaffPosition = staffPosition;
-        currentIsOverNoteHead = isOverNoteHead;
+        xPosSsMatchesNote = newXMatch;
+        yPosSpMatchesNote = newYMatch;
 
-        // Show or hide the insertion note preview depending on whether we're over a note head
-        if (isOverNoteHead) {
-            hideInsertionNote(false);
-        } else {
-            var editModeManager = EditModeManager.getInstance();
-
-            if (editModeManager != null) {
-                editModeManager.setInsertionNoteVisible(true);
-            }
-        }
-
-        // Update the insertion note's Y position
+        // Hide the insertion note only when both X and Y match: the hover highlight on the
+        // existing note already signals what will be replaced. When only X matches, show the
+        // preview so the user can see the pitch that will replace the existing note.
         var editModeManager = EditModeManager.getInstance();
 
         if (editModeManager != null) {
+            if (xPosSsMatchesNote && yPosSpMatchesNote) {
+                editModeManager.setInsertionNoteVisible(false);
+            } else {
+                editModeManager.setInsertionNoteVisible(true);
+            }
+
+            // Update the insertion note's Y position
             var insertionNote = editModeManager.getInsertionNote();
 
             if (insertionNote != null) {
@@ -343,10 +358,10 @@ public class InsertionNoteManager {
         // Determine action based on position
         if (currentXIndex == line.noteCount()) {
             addInsertionNote(lc, line);
-        } else if (currentIsOverNoteHead) {
+        } else if (xPosSsMatchesNote) {
             modifyExistingNote(lc, currentXIndex, line);
         } else {
-            insertInsertionNote(lc, currentXIndex, line);
+            insertNote(lc, currentXIndex, line);
         }
     }
 
@@ -424,13 +439,10 @@ public class InsertionNoteManager {
             return;
         }
 
-        // Ensure insertion note is visible (it may have been hidden if the mouse
-        // entered while in a non-edit mode like SELECT)
-        var editModeManager = EditModeManager.getInstance();
-
-        if (editModeManager != null) {
-            editModeManager.setInsertionNoteVisible(true);
-        }
+        // Invalidate the cached xIndex so that the early-return guard in trackMouse
+        // does not skip recomputation when the mouse position is unchanged but the
+        // underlying notes have moved (e.g., after a drag finalises a pitch change).
+        currentXIndex = -1;
 
         // Synthesize a MouseEvent and delegate to trackMouse
         var syntheticEvent = new MouseEvent(
@@ -554,7 +566,7 @@ public class InsertionNoteManager {
      * @param xIndex The index to insert at
      * @param line   The line to insert into
      */
-    private static void insertInsertionNote(LineComponent lc, int xIndex, @NotNull Line line) {
+    private static void insertNote(LineComponent lc, int xIndex, @NotNull Line line) {
         var score = lc.getScore();
 
         if (score == null) {
