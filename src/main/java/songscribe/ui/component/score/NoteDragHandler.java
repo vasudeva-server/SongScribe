@@ -112,7 +112,7 @@ class NoteDragHandler {
         var line = lc.getLine();
         var note = line.getNote(hitIndex);
 
-        if (!note.getNoteType().isRealNote()) {
+        if (!note.getNoteType().isNote()) {
             return false;
         }
 
