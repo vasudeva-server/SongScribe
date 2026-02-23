@@ -129,6 +129,9 @@ public class LineComponent extends ScoreComponent
     /** Handles selection, hit-testing, and drag logic. */
     private final SelectionHandler selectionHandler = new SelectionHandler(this);
 
+    /** Handles press/drag/release for pitch-dragging a note in NOTE_EDIT mode. */
+    private final NoteDragHandler noteDragHandler = new NoteDragHandler(this);
+
     /** Renderer that handles all drawing for this line. */
     private final LineRenderer lineRenderer = new LineRenderer(this);
 
@@ -658,6 +661,11 @@ public class LineComponent extends ScoreComponent
 
     @Override
     public void mouseDragged(MouseEvent e) {
+        if (noteDragHandler.isDragActive()) {
+            noteDragHandler.handleDrag(e);
+            return;
+        }
+
         if (selectionHandler.isSelectionActive(e)) {
             selectionHandler.handleDrag(e);
         }
@@ -669,6 +677,10 @@ public class LineComponent extends ScoreComponent
             return;
         }
 
+        if (noteDragHandler.wasDragPerformed()) {
+            return;
+        }
+
         if (!selectionHandler.handleClick(e)) {
             InsertionNoteManager.handleClick(this);
         }
@@ -677,6 +689,10 @@ public class LineComponent extends ScoreComponent
     @Override
     public void mousePressed(MouseEvent e) {
         if (e.getButton() != MouseEvent.BUTTON1) {
+            return;
+        }
+
+        if (noteDragHandler.handlePress(e)) {
             return;
         }
 
@@ -694,6 +710,11 @@ public class LineComponent extends ScoreComponent
 
     @Override
     public void mouseReleased(MouseEvent e) {
+        if (noteDragHandler.isDragActive()) {
+            noteDragHandler.handleRelease();
+            return;
+        }
+
         InsertionNoteManager.onMouseReleased();
         selectionHandler.handleRelease();
     }
@@ -731,6 +752,20 @@ public class LineComponent extends ScoreComponent
      */
     boolean isDraggingSelection() {
         return selectionHandler.isDragging();
+    }
+
+    /**
+     * Returns the note pitch-drag handler for this line.
+     */
+    NoteDragHandler getNoteDragHandler() {
+        return noteDragHandler;
+    }
+
+    /**
+     * Returns the selection handler for this line.
+     */
+    SelectionHandler getSelectionHandler() {
+        return selectionHandler;
     }
 
     /**

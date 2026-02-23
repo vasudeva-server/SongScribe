@@ -33,37 +33,67 @@ public class PlayNoteThread extends Thread {
 
     @Override
     public void run() {
+        sendNoteOn(pitch);
+
+        try {
+            Thread.sleep(700);
+        } catch (InterruptedException e) {
+            // okay
+        }
+
+        sendNoteOff(pitch);
+    }
+
+    /**
+     * Sends bank-select and program-change messages to configure the instrument.
+     * No-op if {@code midiReceiver} is null.
+     */
+    private static void setupInstrument() throws InvalidMidiDataException {
+        var bankMsb = new ShortMessage();
+        bankMsb.setMessage(ShortMessage.CONTROL_CHANGE, 0, 0, 0);
+        MidiController.midiReceiver.send(bankMsb, -1);
+
+        var bankLsb = new ShortMessage();
+        bankLsb.setMessage(ShortMessage.CONTROL_CHANGE, 0, 32, 0);
+        MidiController.midiReceiver.send(bankLsb, -1);
+
+        var programChange = new ShortMessage();
+        var instrument = PlaybackController.getPlaybackSettings().instrument();
+        programChange.setMessage(ShortMessage.PROGRAM_CHANGE, 0, instrument, 0);
+        MidiController.midiReceiver.send(programChange, -1);
+    }
+
+    /**
+     * Sends a NOTE_ON message for the given pitch (after instrument setup).
+     * No-op if {@code midiReceiver} is null.
+     */
+    public static void sendNoteOn(int pitch) {
         if (MidiController.midiReceiver == null) {
             return;
         }
 
         try {
-            var bankMsb = new ShortMessage();
-            bankMsb.setMessage(ShortMessage.CONTROL_CHANGE, 0, 0, 0);
-            MidiController.midiReceiver.send(bankMsb, -1);
-
-            var bankLsb = new ShortMessage();
-            bankLsb.setMessage(ShortMessage.CONTROL_CHANGE, 0, 32, 0);
-            MidiController.midiReceiver.send(bankLsb, -1);
-
-            var programChange = new ShortMessage();
-            var instrument = PlaybackController.getPlaybackSettings().instrument();
-            programChange.setMessage(ShortMessage.PROGRAM_CHANGE, 0, instrument, 0);
-            MidiController.midiReceiver.send(programChange, -1);
-
+            setupInstrument();
             var on = new ShortMessage();
             on.setMessage(ShortMessage.NOTE_ON, 0, pitch, 96);
+            MidiController.midiReceiver.send(on, -1);
+        } catch (InvalidMidiDataException e) {
+            // Ignore
+        }
+    }
+
+    /**
+     * Sends a NOTE_OFF message for the given pitch.
+     * No-op if {@code midiReceiver} is null.
+     */
+    public static void sendNoteOff(int pitch) {
+        if (MidiController.midiReceiver == null) {
+            return;
+        }
+
+        try {
             var off = new ShortMessage();
             off.setMessage(ShortMessage.NOTE_OFF, 0, pitch, 0);
-
-            MidiController.midiReceiver.send(on, -1);
-
-            try {
-                Thread.sleep(700);
-            } catch (InterruptedException e) {
-                // okay
-            }
-
             MidiController.midiReceiver.send(off, -1);
         } catch (InvalidMidiDataException e) {
             // Ignore

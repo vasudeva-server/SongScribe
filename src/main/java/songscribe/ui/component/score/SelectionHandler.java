@@ -26,9 +26,7 @@ import java.awt.event.*;
 import org.jetbrains.annotations.NotNull;
 
 import songscribe.music.Note;
-import songscribe.music.NoteType;
 import songscribe.ui.Mode;
-import songscribe.ui.component.Score;
 import songscribe.ui.layout2.ScaleContext;
 import songscribe.ui.playback.MidiController;
 import songscribe.ui.playback.PlayNoteThread;
@@ -213,61 +211,38 @@ class SelectionHandler {
     }
 
     private int hitTestNote(@NotNull Point point) {
-        var line = lc.getLine();
-        var helper = new Rectangle();
-
-        for (var noteIndex = 0; noteIndex < line.noteCount(); noteIndex++) {
-            var note = line.getNote(noteIndex);
-            buildNoteHitRect(note, noteIndex, helper);
-
-            if (helper.contains(point)) {
-                return noteIndex;
-            }
-        }
-
-        return -1;
+        return NoteHitTest.hitTestNote(lc, point);
     }
 
     private void buildNoteHitRect(@NotNull Note note, int noteIndex, @NotNull Rectangle out) {
-        var line = lc.getLine();
+        NoteHitTest.buildNoteHitRect(lc, note, noteIndex, out);
+    }
 
-        if (line.getBeamings().findInterval(noteIndex) != null) {
-            out.setBounds(
-                note.isUpper() ? NoteType.CROTCHET.getRealUpNoteRect() : NoteType.CROTCHET.getRealDownNoteRect()
-            );
-        } else {
-            out.setBounds(
-                note.isUpper() ? note.getRealUpNoteRect() : note.getRealDownNoteRect()
-            );
-        }
-
-        // Get note X from LayoutResult (staff-space) and convert to pixels, so the
-        // hit rect is in pixel coordinates consistent with the mouse-event dragRect.
-        var layoutResult = lc.getLayoutResult();
-        var noteXss = layoutResult != null ? layoutResult.getNoteXSs(note) : 0.0;
-        var noteXpx = (int) Math.round(ScaleContext.getInstance().toPixels(noteXss));
-        var noteY = lc.getMiddleLineYPx() + (int) (note.getStaffPosition() * Score.NOTE_Y_OFFSET_PX);
-        out.translate(noteXpx, noteY - Note.HOT_SPOT.y);
+    /**
+     * Selects the note at the given index in this line, clearing any prior selection.
+     * Used by both the click handler and {@link NoteDragHandler}.
+     */
+    void selectNoteAtIndex(int noteIndex) {
+        var score = lc.getScore();
+        var lineSelectionState = lc.getLineSelectionState();
+        score.clearSelection();
+        score.getSelectionCoordinator().activateLine(lc.getLineIndex());
+        lineSelectionState.setSelectionFromClick(noteIndex);
+        score.selectionChanged();
     }
 
     private void calculateLineSelectionFromClick(@NotNull Point clickPoint) {
         var score = lc.getScore();
-        var line = lc.getLine();
         var lineSelectionState = lc.getLineSelectionState();
         var coordinator = score.getSelectionCoordinator();
         coordinator.activateLine(lc.getLineIndex());
         lineSelectionState.clearSelection();
 
-        var helper = new Rectangle();
+        var hitIndex = NoteHitTest.hitTestNote(lc, clickPoint);
 
-        for (var noteIndex = 0; noteIndex < line.noteCount(); noteIndex++) {
-            var note = line.getNote(noteIndex);
-            buildNoteHitRect(note, noteIndex, helper);
-
-            if (helper.contains(clickPoint)) {
-                lineSelectionState.setSelectionFromClick(noteIndex);
-                return;
-            }
+        if (hitIndex != -1) {
+            lineSelectionState.setSelectionFromClick(hitIndex);
+            return;
         }
 
         // No note was hit — check proximity to staff lines for line selection

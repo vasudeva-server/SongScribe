@@ -27,6 +27,7 @@ import org.jetbrains.annotations.Nullable;
 
 import songscribe.music.Composition;
 import songscribe.music.Line;
+import songscribe.ui.component.Score;
 import songscribe.ui.component.score.LineComponent;
 import songscribe.ui.layout2.LayoutResult;
 import songscribe.ui.layout2.ScaleContext;
@@ -55,6 +56,7 @@ public class ElementRenderContext {
     private LayoutResult layoutResult;
     private LineComponent.SelectionProvider selectionProvider;
     private boolean editMode;
+    private Color selectionColor = Score.SELECTION_STROKE_COLOR;
     private double overrideNoteXSs = Double.NaN;
 
     /**
@@ -217,6 +219,24 @@ public class ElementRenderContext {
      */
     public void setEditMode(boolean editMode) {
         this.editMode = editMode;
+    }
+
+    /**
+     * Returns the color used to render selected notes and beams.
+     * Defaults to {@link Score#SELECTION_STROKE_COLOR}; override during a
+     * note pitch-drag to use {@code EDIT_NOTE_COLOR} instead.
+     */
+    public @NotNull Color getSelectionColor() {
+        return selectionColor;
+    }
+
+    /**
+     * Sets the color used to render selected notes and beams.
+     *
+     * @param selectionColor the color to use
+     */
+    public void setSelectionColor(@NotNull Color selectionColor) {
+        this.selectionColor = selectionColor;
     }
 
     /**

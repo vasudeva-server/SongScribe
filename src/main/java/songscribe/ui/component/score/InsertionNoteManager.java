@@ -366,7 +366,7 @@ class InsertionNoteManager {
      * Called when Alt is released to immediately show the insertion note
      * without requiring mouse movement.
      */
-    private static void restoreInsertionNote(LineComponent lc) {
+    static void restoreInsertionNote(LineComponent lc) {
         if (!shouldHandleInsertionNote(lc)) {
             return;
         }
@@ -441,7 +441,7 @@ class InsertionNoteManager {
      * @param middleLineYSs Y coordinate of the middle staff line in staff-space units
      * @return Staff position in note units
      */
-    private static int calculateStaffPositionFromMouse(double mouseYss, double middleLineYSs) {
+    static int calculateStaffPositionFromMouse(double mouseYss, double middleLineYSs) {
         return (int) Math.round((mouseYss - middleLineYSs) / LayoutStylesheet.NOTE_Y_OFFSET);
     }
 
@@ -451,7 +451,7 @@ class InsertionNoteManager {
      * @param staffPosition Staff position in note units
      * @return true if the position is valid
      */
-    private static boolean isValidStaffPosition(int staffPosition) {
+    static boolean isValidStaffPosition(int staffPosition) {
         var minY = -(STAFF_LINES_ABOVE + 2) * 2;
         var maxY = (STAFF_LINES_BELOW + 2) * 2;
         return staffPosition >= minY && staffPosition <= maxY;

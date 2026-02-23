@@ -32,7 +32,6 @@ import org.jetbrains.annotations.Nullable;
 import songscribe.music.Line;
 import songscribe.music.Note;
 import songscribe.music.NoteType;
-import songscribe.ui.component.Score;
 import songscribe.ui.layout.LineElement;
 import songscribe.ui.layout2.LayoutResult;
 import songscribe.util.GraphicUtils;
@@ -108,7 +107,8 @@ public class BeamGroupRenderer extends BaseElementRenderer<LineElement> {
         LOG.fine("[BeamRenderer] renderBeams: beginIndex=" + beginIndex + " endIndex=" + endIndex);
         int level = getBeamLevel(line, beginIndex, endIndex);
         boolean selected = shouldBeamAppearSelected(ctx, beginIndex, endIndex);
-        drawBeams(g2, level, line, ctx, beginIndex, endIndex, selected);
+        var selectionColor = ctx.getSelectionColor();
+        drawBeams(g2, level, line, ctx, beginIndex, endIndex, selected, selectionColor);
     }
 
     /**
@@ -174,7 +174,8 @@ public class BeamGroupRenderer extends BaseElementRenderer<LineElement> {
         @NotNull ElementRenderContext ctx,
         int beginIndex,
         int endIndex,
-        boolean selected
+        boolean selected,
+        @NotNull Color selectionColor
     ) {
         var outerNotes = new Point(beginIndex, endIndex);
         var layoutResult = ctx.getLayoutResult();
@@ -182,7 +183,7 @@ public class BeamGroupRenderer extends BaseElementRenderer<LineElement> {
         var beamLayout = (layoutResult != null && interval != null)
             ? layoutResult.getBeamLayout(interval) : null;
         doDrawBeams(g2, level, line, ctx, outerNotes,
-            beginIndex, endIndex, beginIndex, endIndex, false, 0, selected, beamLayout);
+            beginIndex, endIndex, beginIndex, endIndex, false, 0, selected, beamLayout, selectionColor);
     }
 
     private void doDrawBeams(
@@ -198,7 +199,8 @@ public class BeamGroupRenderer extends BaseElementRenderer<LineElement> {
         boolean isPrevLeftOriented,
         int recursionLevel,
         boolean selected,
-        @Nullable LayoutResult.BeamLayout beamLayout
+        @Nullable LayoutResult.BeamLayout beamLayout,
+        @NotNull Color selectionColor
     ) {
         String indent = "  ".repeat(recursionLevel);
         LOG.fine("[BeamRenderer] " + indent + "doDrawBeams: level=" + level
@@ -243,12 +245,12 @@ public class BeamGroupRenderer extends BaseElementRenderer<LineElement> {
             var type = leftOriented ? BeamType.ATTACH_RIGHT : BeamType.ATTACH_LEFT;
             LOG.fine("[BeamRenderer] " + indent + "  -> HALF beam: leftOriented=" + leftOriented
                 + " type=" + type + " drawBeam(" + begin + "," + end + ") isUpper=" + isUpper);
-            drawBeam(g2, line, ctx, begin, end, isUpper, type, recursionLevel, selected, beamLayout);
+            drawBeam(g2, line, ctx, begin, end, isUpper, type, recursionLevel, selected, beamLayout, selectionColor);
         }
         // Full beam
         else {
             LOG.fine("[BeamRenderer] " + indent + "  -> FULL beam: drawBeam(" + beginIndex + "," + endIndex + ") isUpper=" + isUpper);
-            drawBeam(g2, line, ctx, beginIndex, endIndex, isUpper, BeamType.FULL, recursionLevel, selected, beamLayout);
+            drawBeam(g2, line, ctx, beginIndex, endIndex, isUpper, BeamType.FULL, recursionLevel, selected, beamLayout, selectionColor);
         }
 
         // Sub-beams for inner levels.
@@ -273,7 +275,7 @@ public class BeamGroupRenderer extends BaseElementRenderer<LineElement> {
                     LOG.fine("[BeamRenderer] " + indent + "    -> sub-beam range: " + startSubBeam + " to " + (i - 1));
                     doDrawBeams(g2, beamLevel, line, ctx, outerNotes,
                         startSubBeam, i - 1, beginIndex, endIndex,
-                        leftOriented, recursionLevel + 1, selected, beamLayout);
+                        leftOriented, recursionLevel + 1, selected, beamLayout, selectionColor);
                     startSubBeam = -1;
                 }
             }
@@ -325,7 +327,8 @@ public class BeamGroupRenderer extends BaseElementRenderer<LineElement> {
         @NotNull BeamType type,
         int recursionLevel,
         boolean selected,
-        @Nullable LayoutResult.BeamLayout beamLayout
+        @Nullable LayoutResult.BeamLayout beamLayout,
+        @NotNull Color selectionColor
     ) {
         var beginNote = line.getNote(beginIndex);
         var endNote   = line.getNote(endIndex);
@@ -395,7 +398,7 @@ public class BeamGroupRenderer extends BaseElementRenderer<LineElement> {
         }
 
         try (var ignored = GraphicsState.save(g2, COLOR)) {
-            g2.setColor(selected ? Score.SELECTION_STROKE_COLOR : NOTE_COLOR);
+            g2.setColor(selected ? selectionColor : NOTE_COLOR);
             g2.fill(beam);
         }
 

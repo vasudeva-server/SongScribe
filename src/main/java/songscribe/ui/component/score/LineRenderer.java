@@ -136,6 +136,11 @@ class LineRenderer {
         ctx.setSelectionProvider(lc.getSelectionProvider());
         ctx.setEditMode(lc.isEditMode());
 
+        // Override selection color when a pitch drag is in progress
+        if (lc.getNoteDragHandler().isDragActive()) {
+            ctx.setSelectionColor(EDIT_NOTE_COLOR);
+        }
+
         // Ensure NoteRenderer metrics are initialized
         NoteRenderer.initializeAccidentalWidths(g2);
 
@@ -359,7 +364,7 @@ class LineRenderer {
             var note = line.getNote(i);
 
             // Apply color based on selection/playing state
-            var color = getNoteColor(i);
+            var color = getNoteColor(i, ctx);
             g2.setColor(color);
 
             noteRenderer.render(g2, note, ctx);
@@ -375,7 +380,7 @@ class LineRenderer {
      * @param noteIndex The index of the note within this line
      * @return The color to use for rendering
      */
-    private Color getNoteColor(int noteIndex) {
+    private Color getNoteColor(int noteIndex, ElementRenderContext ctx) {
         if (!lc.isEditMode()) {
             return Color.BLACK;
         }
@@ -390,7 +395,7 @@ class LineRenderer {
 
         if (selectionProvider != null
             && selectionProvider.isNoteSelected(noteIndex, lc.getLineIndex())) {
-            return Score.SELECTION_STROKE_COLOR;
+            return ctx.getSelectionColor();
         }
 
         return Color.BLACK;
