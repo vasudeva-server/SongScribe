@@ -47,10 +47,10 @@ import songscribe.ui.Constants;
 import songscribe.ui.ProfileManager;
 import songscribe.ui.action.Actions;
 import songscribe.ui.action.SaveAction;
-import songscribe.ui.component.score.LineComponent;
+import songscribe.ui.component.score.InsertionNoteManager;
 import songscribe.ui.component.toolbar.MainToolbarPanel;
 import songscribe.ui.dialog.PlatformFileDialog;
-import songscribe.ui.edit.EditModeManager;
+
 import songscribe.ui.dialog.PropertiesStateStore;
 import songscribe.ui.dialog.WhatsNewDialog;
 import songscribe.ui.menu.MenuController;
@@ -314,13 +314,7 @@ public class MainFrame extends JFrame implements IMainFrame, Printable {
     }
 
     private void hideInsertionNote() {
-        LineComponent.clearInsertionNote();
-
-        var editModeManager = EditModeManager.getInstance();
-
-        if (editModeManager != null) {
-            editModeManager.setEditNoteVisible(false);
-        }
+        InsertionNoteManager.hideInsertionNote(true);
     }
 
     private void setAppIcon() {

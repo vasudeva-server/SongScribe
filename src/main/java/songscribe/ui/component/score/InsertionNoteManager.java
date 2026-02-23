@@ -48,7 +48,7 @@ import songscribe.ui.message.ModeChangedMessage;
  * cursor management, and note mutation logic. Only one insertion note can be
  * active across all LineComponents at a time.
  */
-class InsertionNoteManager {
+public class InsertionNoteManager {
 
     // ==========================================================================
     // Constants
@@ -128,6 +128,24 @@ class InsertionNoteManager {
     // ==========================================================================
 
     /**
+     * Hides the insertion note preview and optionally clears position tracking state.
+     *
+     * @param clear true to also clear position state (e.g., window deactivated);
+     *              false to only hide the visual (e.g., hovering over an existing note head)
+     */
+    public static void hideInsertionNote(boolean clear) {
+        if (clear) {
+            clearInsertionNote();
+        }
+
+        var editModeManager = EditModeManager.getInstance();
+
+        if (editModeManager != null) {
+            editModeManager.setEditNoteVisible(false);
+        }
+    }
+
+    /**
      * Clears the insertion note from all lines.
      * <p>
      * Call this when exiting edit mode or when the mouse leaves the score area.
@@ -193,6 +211,24 @@ class InsertionNoteManager {
     }
 
     /**
+     * Returns the line index of the note currently highlighted by insertion-note hover,
+     * or -1 if the insertion note is not hovering over an existing note head.
+     */
+    public static int getHoveredNoteLineIndex() {
+        return (currentIsOverNoteHead && currentInsertionLine != null)
+            ? currentInsertionLine.getLineIndex()
+            : -1;
+    }
+
+    /**
+     * Returns the note index of the note currently highlighted by insertion-note hover,
+     * or -1 if the insertion note is not hovering over an existing note head.
+     */
+    public static int getHoveredNoteIndex() {
+        return currentIsOverNoteHead ? currentXIndex : -1;
+    }
+
+    /**
      * Returns whether the given line currently has the insertion note.
      */
     static boolean hasInsertionNote(LineComponent lc) {
@@ -242,7 +278,7 @@ class InsertionNoteManager {
 
         if (layoutResult != null && line != null) {
             xIndex = layoutResult.findInsertionIndex(mouseXss, line);
-            isOverNoteHead = layoutResult.isMouseOverNoteHead(mouseXss, line);
+            isOverNoteHead = layoutResult.isMouseOverNoteHead(mouseXss, staffPosition, line);
         }
 
         // Check if position actually changed
@@ -261,6 +297,17 @@ class InsertionNoteManager {
         currentXIndex = xIndex;
         currentStaffPosition = staffPosition;
         currentIsOverNoteHead = isOverNoteHead;
+
+        // Show or hide the insertion note preview depending on whether we're over a note head
+        if (isOverNoteHead) {
+            hideInsertionNote(false);
+        } else {
+            var editModeManager = EditModeManager.getInstance();
+
+            if (editModeManager != null) {
+                editModeManager.setEditNoteVisible(true);
+            }
+        }
 
         // Update the edit note's Y position
         var editModeManager = EditModeManager.getInstance();

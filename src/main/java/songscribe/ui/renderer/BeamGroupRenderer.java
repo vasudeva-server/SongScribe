@@ -32,6 +32,8 @@ import org.jetbrains.annotations.Nullable;
 import songscribe.music.Line;
 import songscribe.music.Note;
 import songscribe.music.NoteType;
+import songscribe.ui.component.Score;
+import songscribe.ui.component.score.InsertionNoteManager;
 import songscribe.ui.layout.LineElement;
 import songscribe.ui.layout2.LayoutResult;
 import songscribe.util.GraphicUtils;
@@ -106,41 +108,63 @@ public class BeamGroupRenderer extends BaseElementRenderer<LineElement> {
         LOG.fine("[BeamRenderer] ============================================");
         LOG.fine("[BeamRenderer] renderBeams: beginIndex=" + beginIndex + " endIndex=" + endIndex);
         int level = getBeamLevel(line, beginIndex, endIndex);
-        boolean selected = shouldBeamAppearSelected(ctx, beginIndex, endIndex);
-        var selectionColor = ctx.getSelectionColor();
-        drawBeams(g2, level, line, ctx, beginIndex, endIndex, selected, selectionColor);
+        var highlightColor = getBeamHighlightColor(ctx, beginIndex, endIndex);
+        drawBeams(g2, level, line, ctx, beginIndex, endIndex, highlightColor != null,
+            highlightColor != null ? highlightColor : ctx.getSelectionColor());
     }
 
     /**
-     * Determines whether a beam should appear in the selection color.
-     * A beam should appear selected when removing the selected notes
-     * would eliminate the beam (fewer than 2 beamable notes remain).
+     * Returns the color to use for beam highlighting, or null if the beam should not be highlighted.
+     * A beam is highlighted when removing the highlighted note(s) would eliminate the beam
+     * (fewer than 2 beamable notes remain). Selected notes use the selection color;
+     * hovered notes use the edit note color.
      */
-    private boolean shouldBeamAppearSelected(
+    @Nullable
+    private Color getBeamHighlightColor(
         @NotNull ElementRenderContext ctx,
         int beginIndex,
         int endIndex
     ) {
-        var selectionProvider = ctx.getSelectionProvider();
-
-        if (selectionProvider == null || !ctx.isEditMode()) {
-            return false;
+        if (!ctx.isEditMode()) {
+            return null;
         }
 
+        var selectionProvider = ctx.getSelectionProvider();
         var line = ctx.getCurrentLine();
         var lineIndex = ctx.getLineIndex();
+        var hoveredLineIndex = InsertionNoteManager.getHoveredNoteLineIndex();
+        var hoveredNoteIndex = InsertionNoteManager.getHoveredNoteIndex();
         var anySelected = false;
+        var anyHovered = false;
         var remainingBeamableNotes = 0;
 
         for (var i = beginIndex; i <= endIndex; i++) {
-            if (selectionProvider.isNoteSelected(i, lineIndex)) {
+            var isSelected = selectionProvider != null && selectionProvider.isNoteSelected(i, lineIndex);
+            var isHovered = hoveredLineIndex == lineIndex && i == hoveredNoteIndex;
+
+            if (isSelected) {
                 anySelected = true;
+            } else if (isHovered) {
+                anyHovered = true;
             } else if (line.getNote(i).getNoteType().isBeamable()) {
                 remainingBeamableNotes++;
             }
         }
 
-        return anySelected && remainingBeamableNotes < 2;
+        if (remainingBeamableNotes >= 2) {
+            return null;
+        }
+
+        // Selection takes priority over hover
+        if (anySelected) {
+            return ctx.getSelectionColor();
+        }
+
+        if (anyHovered) {
+            return Score.EDIT_NOTE_COLOR;
+        }
+
+        return null;
     }
 
     /**

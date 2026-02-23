@@ -76,8 +76,8 @@ class LineRenderer {
     /** Color for placeholder rectangles (for unregistered element types). */
     private static final Color PLACEHOLDER_COLOR = new Color(100, 100, 100, 128);
 
-    /** Color for the insertion note preview. */
-    private static final Color EDIT_NOTE_COLOR = new Color(3, 136, 255);
+    /** Color for the insertion note preview — defined in Score for shared access across renderers. */
+    private static final Color EDIT_NOTE_COLOR = Score.EDIT_NOTE_COLOR;
 
     /** The stroke used to draw the selection rectangle border. */
     private static final BasicStroke SELECTION_RECT_STROKE = new BasicStroke(2.0f);
@@ -390,12 +390,20 @@ class LineRenderer {
             return Score.PLAYING_NOTE_COLOR;
         }
 
-        // Check if note is selected
+        // Check if note is selected or highlighted by insertion-note hover
         var selectionProvider = lc.getSelectionProvider();
+        var isSelected = selectionProvider != null
+            && selectionProvider.isNoteSelected(noteIndex, lc.getLineIndex());
 
-        if (selectionProvider != null
-            && selectionProvider.isNoteSelected(noteIndex, lc.getLineIndex())) {
+        if (isSelected) {
             return ctx.getSelectionColor();
+        }
+
+        var isHovered = InsertionNoteManager.getHoveredNoteLineIndex() == lc.getLineIndex()
+            && InsertionNoteManager.getHoveredNoteIndex() == noteIndex;
+
+        if (isHovered) {
+            return EDIT_NOTE_COLOR;
         }
 
         return Color.BLACK;
@@ -611,7 +619,7 @@ class LineRenderer {
             return;
         }
 
-        // Skip if edit note is not visible (e.g., in keyboard mode)
+        // Skip if edit note is not visible (e.g., in keyboard mode, or hovering over a note head)
         if (!editModeManager.isEditNoteVisible()) {
             return;
         }

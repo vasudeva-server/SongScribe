@@ -543,13 +543,18 @@ public final class LayoutResult {
     }
 
     /**
-     * Checks whether the mouse X coordinate is directly over an existing note head.
+     * Checks whether the mouse is directly over an existing note head.
      *
-     * @param mouseX Mouse X coordinate in staff-space units
-     * @param line   The line containing the notes
-     * @return true if the mouse is within the horizontal bounds of a note head
+     * @param mouseX         Mouse X coordinate in staff-space units
+     * @param staffPosition  Mouse staff position (integer; each unit = half a staff line spacing)
+     * @param line           The line containing the notes
+     * @return true if the mouse is within the bounds of a note head (both X and Y)
      */
-    public boolean isMouseOverNoteHead(double mouseX, @NotNull songscribe.music.Line line) {
+    public boolean isMouseOverNoteHead(
+        double mouseX,
+        int staffPosition,
+        @NotNull songscribe.music.Line line
+    ) {
         int noteCount = line.noteCount();
 
         if (noteCount == 0) {
@@ -568,7 +573,8 @@ public final class LayoutResult {
 
             var noteX = column.getXSs();
 
-            if (mouseX >= noteX - noteHeadHalfWidth && mouseX <= noteX + noteHeadHalfWidth) {
+            if (mouseX >= noteX - noteHeadHalfWidth && mouseX <= noteX + noteHeadHalfWidth
+                && Math.abs(staffPosition - note.getStaffPosition()) <= 1) {
                 return true;
             }
         }

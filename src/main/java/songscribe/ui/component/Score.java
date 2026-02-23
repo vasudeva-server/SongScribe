@@ -114,6 +114,7 @@ public final class Score
 
     // Colors used to draw the music score in various states
     public static final Color PLAYING_NOTE_COLOR = new Color(31, 204, 0);
+    public static final Color EDIT_NOTE_COLOR = new Color(3, 136, 255);
     public static final Color SELECTION_STROKE_COLOR = Color.magenta;
 
     // The maximum number of staff lines under a note that can be displayed above and below the staff.
