@@ -67,6 +67,7 @@ import songscribe.ui.playback.MidiController;
 import songscribe.ui.playback.PlayWithRepeatsMessage;
 import songscribe.ui.playback.PlaybackTempoChangedMessage;
 import songscribe.prefs.Prefs;
+import songscribe.prefs.RecentDocumentsManager;
 import songscribe.util.FileUtils;
 import songscribe.util.Log;
 
@@ -573,7 +574,7 @@ public class MainFrame extends JFrame implements IMainFrame, Printable {
             return;
         }
 
-        score.openFile(this, file, true);
+        var opened = score.openFile(this, file, true);
 
         // Reset the mode to edit mode
         Actions.MODE_ACTION_GROUP.select(Actions.EDIT_MODE_ACTION, this);
@@ -582,6 +583,10 @@ public class MainFrame extends JFrame implements IMainFrame, Printable {
         Actions.DURATION_ACTION_GROUP.select(Actions.QUARTER_NOTE_ACTION, this);
         Actions.DOT_ACTION_GROUP.setSelected(Actions.DOT_ACTION, false);
         Actions.REST_ACTION.setSelected(false);
+
+        if (opened) {
+            RecentDocumentsManager.getInstance().add(file.toPath().toAbsolutePath());
+        }
     }
 
     @Handler
@@ -717,6 +722,10 @@ public class MainFrame extends JFrame implements IMainFrame, Printable {
 
             setCurrentFile(saveFile);
             onSave(null);
+
+            if (!isDocumentModified()) {
+                RecentDocumentsManager.getInstance().add(saveFile.toPath().toAbsolutePath());
+            }
         }
     }
 

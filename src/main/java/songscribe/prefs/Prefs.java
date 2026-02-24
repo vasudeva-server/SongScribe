@@ -26,8 +26,10 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.logging.Level;
@@ -35,6 +37,7 @@ import java.util.logging.Logger;
 
 import com.formdev.flatlaf.util.SystemInfo;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
@@ -111,6 +114,24 @@ public final class Prefs {
     public boolean getBoolean(@NotNull String key) {
         var value = store.get(key);
         return value != null ? (Boolean) value : (Boolean) getDefault(key);
+    }
+
+    @NotNull
+    public List<String> getStringList(@NotNull String key) {
+        var value = store.get(key);
+
+        if (value instanceof List<?> list) {
+            return list.stream()
+                    .map(Object::toString)
+                    .toList();
+        }
+
+        return Collections.emptyList();
+    }
+
+    public void putStringList(@NotNull String key, @NotNull List<String> value) {
+        store.put(key, new ArrayList<>(value));
+        save();
     }
 
     public void put(@NotNull String key, @NotNull String value) {
@@ -218,6 +239,14 @@ public final class Prefs {
                     } else {
                         result.put(entry.getKey(), primitive.getAsString());
                     }
+                } else if (element.isJsonArray()) {
+                    var list = new ArrayList<String>();
+
+                    for (var item : element.getAsJsonArray()) {
+                        list.add(item.getAsString());
+                    }
+
+                    result.put(entry.getKey(), list);
                 }
             }
         } catch (IOException e) {
@@ -244,6 +273,10 @@ public final class Prefs {
                     json.addProperty(key, b);
                 } else if (value instanceof Long l) {
                     json.addProperty(key, l);
+                } else if (value instanceof List<?> list) {
+                    var array = new JsonArray();
+                    list.forEach(item -> array.add(item.toString()));
+                    json.add(key, array);
                 } else {
                     json.addProperty(key, value.toString());
                 }

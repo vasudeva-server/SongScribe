@@ -443,7 +443,7 @@ public final class Score
         viewChanged();
     }
 
-    public void openFile(
+    public boolean openFile(
         @NotNull IMainFrame mainFrame,
         File file,
         boolean setTitle
@@ -463,6 +463,8 @@ public final class Score
             if (setTitle) {
                 mainFrame.setCurrentFile(file);
             }
+
+            return true;
         } catch (SAXException e) {
             var message =
                 "Could not open the file “" +
@@ -471,6 +473,7 @@ public final class Score
             mainFrame.showErrorMessage(message);
             Log.error(message, e);
             mainFrame.setDocumentModified(previousModifiedDocument);
+            return false;
         } catch (IOException e) {
             var message = "Could not open the file “" + file.getName() + '”';
             mainFrame.showErrorMessage(
@@ -478,6 +481,7 @@ public final class Score
             );
             Log.error(message, e);
             mainFrame.setDocumentModified(previousModifiedDocument);
+            return false;
         }
     }
 

@@ -23,15 +23,25 @@ package songscribe.ui.menu;
 import static songscribe.util.UIUtils.setupDesktopHandlers;
 
 import java.io.File;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
 
 import javax.swing.*;
+
+import net.engio.mbassy.listener.Handler;
 
 import org.jetbrains.annotations.NotNull;
 
 import com.formdev.flatlaf.util.SystemInfo;
 
 import songscribe.Version;
+import songscribe.prefs.RecentDocumentsManager;
 import songscribe.ui.action.Actions;
+import songscribe.ui.action.ClearRecentsAction;
 import songscribe.ui.action.CloseWindowAction;
 import songscribe.ui.action.DialogOpenAction;
 import songscribe.ui.action.ExportABCAction;
@@ -42,6 +52,7 @@ import songscribe.ui.action.ExportSVGAction;
 import songscribe.ui.action.LaunchAction;
 import songscribe.ui.action.NewAction;
 import songscribe.ui.action.OpenAction;
+import songscribe.ui.action.OpenRecentAction;
 import songscribe.ui.action.PDFTutorialOpenAction;
 import songscribe.ui.action.SaveAction;
 import songscribe.ui.action.SaveAsAction;
@@ -53,6 +64,7 @@ import songscribe.ui.dialog.ReportBugDialog;
 import songscribe.ui.dialog.TutorialDialog;
 import songscribe.ui.dialog.WhatsNewDialog;
 import songscribe.ui.message.MessageCenter;
+import songscribe.ui.message.RecentDocumentsChangedMessage;
 import songscribe.ui.playback.PlayMenu;
 
 public class MenuController {
@@ -64,6 +76,8 @@ public class MenuController {
     @SuppressWarnings({ "FieldCanBeLocal", "unused" })
     private static MenuController instance = null;
 
+    private JMenu openRecentMenu;
+
     public static void init() {
         instance = new MenuController();
     }
@@ -73,7 +87,7 @@ public class MenuController {
         MessageCenter.subscribe(this);
     }
 
-    private static void initMenus() {
+    private void initMenus() {
         var menuBar = new JMenuBar();
 
         menuBar.add(initFileMenu());
@@ -104,10 +118,13 @@ public class MenuController {
         setupDesktopHandlers(mainFrame, true);
     }
 
-    private static JMenu initFileMenu() {
+    private JMenu initFileMenu() {
         var menu = new JMenu("File");
         menu.add(new NewAction());
         menu.add(new OpenAction());
+        openRecentMenu = new JMenu("Open Recent");
+        rebuildOpenRecentMenu();
+        menu.add(openRecentMenu);
         menu.add(new CloseWindowAction());
 
         menu.addSeparator();
@@ -135,6 +152,112 @@ public class MenuController {
         }
 
         return menu;
+    }
+
+    private void rebuildOpenRecentMenu() {
+        openRecentMenu.removeAll();
+        var recents = RecentDocumentsManager.getInstance().getRecents();
+
+        if (recents.isEmpty()) {
+            var noRecentItem = new JMenuItem("No Recent Documents");
+            noRecentItem.setEnabled(false);
+            openRecentMenu.add(noRecentItem);
+        } else {
+            var labels = buildLabels(recents);
+
+            for (var i = 0; i < recents.size(); i++) {
+                openRecentMenu.add(new OpenRecentAction(labels.get(i), recents.get(i)));
+            }
+
+            openRecentMenu.addSeparator();
+            openRecentMenu.add(new ClearRecentsAction());
+        }
+    }
+
+    @Handler
+    public void onRecentDocumentsChanged(RecentDocumentsChangedMessage message) {
+        rebuildOpenRecentMenu();
+    }
+
+    private static List<String> buildLabels(List<Path> paths) {
+        var nameToIndices = new LinkedHashMap<String, List<Integer>>();
+
+        for (var i = 0; i < paths.size(); i++) {
+            var filename = paths.get(i).getFileName().toString();
+            nameToIndices.computeIfAbsent(filename, k -> new ArrayList<>()).add(i);
+        }
+
+        var labels = new String[paths.size()];
+
+        for (var entry : nameToIndices.entrySet()) {
+            var filename = entry.getKey();
+            var indices = entry.getValue();
+
+            if (indices.size() == 1) {
+                labels[indices.get(0)] = filename;
+            } else {
+                disambiguate(paths, indices, filename, labels);
+            }
+        }
+
+        return List.of(labels);
+    }
+
+    private static void disambiguate(
+            List<Path> paths,
+            List<Integer> indices,
+            String filename,
+            String[] labels
+    ) {
+        var homePath = Path.of(System.getProperty("user.home"));
+        var maxDepth = paths.stream()
+                .mapToInt(p -> p.getNameCount() - 1)
+                .max()
+                .orElse(0);
+
+        for (var depth = 1; depth <= maxDepth; depth++) {
+            var suffixMap = new HashMap<Integer, String>();
+            var seen = new HashSet<String>();
+            var allUnique = true;
+
+            for (var idx : indices) {
+                var parent = paths.get(idx).getParent();
+                var nameCount = parent.getNameCount();
+                var start = Math.max(0, nameCount - depth);
+                var suffix = parent.subpath(start, nameCount).toString();
+                var suffixStr = tildeSubstitute(suffix, homePath);
+                suffixMap.put(idx, suffixStr);
+
+                if (!seen.add(suffixStr)) {
+                    allUnique = false;
+                }
+            }
+
+            if (allUnique) {
+                for (var idx : indices) {
+                    labels[idx] = filename + " \u2014 " + suffixMap.get(idx);
+                }
+
+                return;
+            }
+        }
+
+        // Fallback: full absolute path with ~ substitution
+        for (var idx : indices) {
+            labels[idx] = tildeSubstitute(paths.get(idx).toString(), homePath);
+        }
+    }
+
+    private static String tildeSubstitute(String pathStr, Path homePath) {
+        var path = Path.of(pathStr);
+
+        if (path.startsWith(homePath)) {
+            var relative = homePath.relativize(path);
+            var relStr = relative.toString();
+            return relStr.isEmpty() ? "~" : "~/" + relStr;
+        }
+
+        return pathStr;
     }
 
     private static JMenu initEditMenu() {
