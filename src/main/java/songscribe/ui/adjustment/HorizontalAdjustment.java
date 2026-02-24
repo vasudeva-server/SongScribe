@@ -441,6 +441,7 @@ public class HorizontalAdjustment extends Adjustment {
             rect.line
         );
         rect.rect.y = yPosPx - Note.HOT_SPOT.y;
+        var layoutResult = score.getLineComponent(rect.line).getLayoutResult();
 
         switch (rect.horizontalAdjustmentType) {
             case GLISSANDO_START -> rect.rect.x = (int) Math.round(
@@ -449,7 +450,8 @@ public class HorizontalAdjustment extends Adjustment {
                         rect.xIndex,
                         note.getGlissando(),
                         rect.line,
-                        score.getComposition()
+                        score.getComposition(),
+                        layoutResult
                     )
                 )
             ) - 4;
@@ -459,7 +461,8 @@ public class HorizontalAdjustment extends Adjustment {
                         rect.xIndex,
                         note.getGlissando(),
                         rect.line,
-                        score.getComposition()
+                        score.getComposition(),
+                        layoutResult
                     )
                 )
             ) - 4;

@@ -418,17 +418,17 @@ public final class EditModeManager {
         if (insertionNote.getNoteType().isGraceNote()) {
             nextNote = NoteType.GLISSANDO.newInstance();
         } else if (insertionNote.getNoteType() == NoteType.GLISSANDO) {
-            NoteType nextNoteType;
+            // Restore the previously selected duration tool.
+            // This handles both the grace note two-step (grace → glissando → restore)
+            // and standalone glissando (glissando → restore).
+            var previousAction = Actions.DURATION_ACTION_GROUP.getPreviousSelected();
 
-            if (!line.getNote(noteIndex).getNoteType().isGraceNote()) {
-                nextNoteType = line.getNote(noteIndex).getNoteType();
-            } else if (noteIndex > 0) {
-                nextNoteType = line.getNote(noteIndex - 1).getNoteType();
+            if (previousAction != null) {
+                Actions.DURATION_ACTION_GROUP.setSelected(previousAction, true);
+                nextNote = previousAction.getType().newInstance();
             } else {
-                nextNoteType = NoteType.CROTCHET;
+                nextNote = NoteType.CROTCHET.newInstance();
             }
-
-            nextNote = nextNoteType.newInstance();
         } else {
             nextNote = insertionNote.getNoteType().newInstance();
         }

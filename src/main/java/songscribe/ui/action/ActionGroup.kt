@@ -37,6 +37,10 @@ open class ActionGroup<T : UIAction>() : PropertyChangeListener {
     var selected: T? = null
         private set
 
+    /** The previously selected action, saved automatically when selection changes. */
+    var previousSelected: T? = null
+        private set
+
     private var selectLevel = 0
 
     fun add(action: T) {
@@ -94,6 +98,10 @@ open class ActionGroup<T : UIAction>() : PropertyChangeListener {
 
             selectLevel -= 1
             return
+        }
+
+        if (value && selected != null) {
+            previousSelected = selected
         }
 
         selected?.putValue(Action.SELECTED_KEY, false)

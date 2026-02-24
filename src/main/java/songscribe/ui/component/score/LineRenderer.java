@@ -618,6 +618,26 @@ class LineRenderer {
             return;
         }
 
+        // Glissando preview bypasses insertion note visibility — it manages its own
+        // display logic via shouldShowGlissandoPreview() and never uses the note-head preview.
+        if (insertionNote == Note.GLISSANDO_NOTE) {
+            var line = lc.getLine();
+
+            if (line == null || !InsertionNoteManager.shouldShowGlissandoPreview(line)) {
+                return;
+            }
+
+            var currentXIndex = InsertionNoteManager.getCurrentXIndex();
+            var sourceIndex = currentXIndex - 1;
+            var targetPitchSp = InsertionNoteManager.getGlissandoTargetPitchSp(line);
+
+            g2.setColor(INSERTION_NOTE_COLOR);
+            GlissandoRenderer.getInstance().renderPreviewGlissando(
+                g2, sourceIndex, targetPitchSp, line, ctx
+            );
+            return;
+        }
+
         // Skip if insertion note is not visible (e.g., in keyboard mode, or hovering over a note head)
         if (!editModeManager.isInsertionNoteVisible()) {
             return;
@@ -648,46 +668,33 @@ class LineRenderer {
         insertionNote.setStaffPosition(currentStaffPosition);
         insertionNote.setUpper(Score.defaultUpperNote(insertionNote));
 
-        // Handle glissando note specially
-        if (insertionNote == Note.GLISSANDO_NOTE) {
-            if (currentXIndex > 0) {
-                GlissandoRenderer.getInstance().renderEditGlissando(
-                    g2,
-                    currentXIndex - 1,
-                    new Note.Glissando(currentStaffPosition),
-                    line,
-                    ctx
-                );
-            }
-        } else {
-            // Render the insertion note with the insertion note color.
-            // Pass x as an override so NoteRenderer applies device-pixel snapping
-            // to the raw double directly, exactly as it does for composition notes
-            // via layoutResult.getNoteX(). Temporarily clear layoutResult to prevent
-            // sub-renderers from looking up the insertion note (which is not in the layout).
-            var savedLayout = ctx.getLayoutResult();
-            ctx.setOverrideNoteXSs(x);
-            ctx.setLayoutResult(null);
-            g2.setColor(INSERTION_NOTE_COLOR);
-            NoteRenderer.getInstance().render(g2, insertionNote, ctx);
-            ctx.clearOverrideNoteX();
+        // Render the insertion note with the insertion note color.
+        // Pass x as an override so NoteRenderer applies device-pixel snapping
+        // to the raw double directly, exactly as it does for composition notes
+        // via layoutResult.getNoteX(). Temporarily clear layoutResult to prevent
+        // sub-renderers from looking up the insertion note (which is not in the layout).
+        var savedLayout = ctx.getLayoutResult();
+        ctx.setOverrideNoteXSs(x);
+        ctx.setLayoutResult(null);
+        g2.setColor(INSERTION_NOTE_COLOR);
+        NoteRenderer.getInstance().render(g2, insertionNote, ctx);
+        ctx.clearOverrideNoteX();
 
-            // Set xPosSs for articulation/fermata renderers, which read it directly.
-            // Simple rounding is fine since those renderers apply their own device-pixel
-            // snapping internally.
-            insertionNote.setXPosSs((int) Math.round(x));
+        // Set xPosSs for articulation/fermata renderers, which read it directly.
+        // Simple rounding is fine since those renderers apply their own device-pixel
+        // snapping internally.
+        insertionNote.setXPosSs((int) Math.round(x));
 
-            // Render articulations and fermata on the insertion note preview
-            if (!insertionNote.getArticulations().isEmpty()) {
-                ArticulationRenderer.getInstance().render(insertionNote, g2, ctx);
-            }
-
-            if (insertionNote.isFermata()) {
-                FermataRenderer.getInstance().render(insertionNote, g2, ctx);
-            }
-
-            ctx.setLayoutResult(savedLayout);
+        // Render articulations and fermata on the insertion note preview
+        if (!insertionNote.getArticulations().isEmpty()) {
+            ArticulationRenderer.getInstance().render(insertionNote, g2, ctx);
         }
+
+        if (insertionNote.isFermata()) {
+            FermataRenderer.getInstance().render(insertionNote, g2, ctx);
+        }
+
+        ctx.setLayoutResult(savedLayout);
     }
 
     /**

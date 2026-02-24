@@ -30,7 +30,9 @@ import net.engio.mbassy.listener.Handler;
 
 import songscribe.data.BeamInterval;
 import songscribe.music.Line;
+import songscribe.music.Note;
 import songscribe.music.NoteType;
+import songscribe.ui.renderer.GlissandoRenderer;
 import songscribe.ui.Control;
 import songscribe.ui.Mode;
 import songscribe.ui.component.Score;
@@ -239,6 +241,53 @@ public class InsertionNoteManager {
         return currentInsertionLine == lc;
     }
 
+    /**
+     * Returns whether the mouse is currently hovering over an existing note head
+     * (both X and Y match).
+     */
+    public static boolean isHoveringOverNoteHead() {
+        return xPosSsMatchesNote && yPosSpMatchesNote;
+    }
+
+    /**
+     * Returns whether a glissando preview line should be drawn for the given line.
+     * <p>
+     * True when the mouse is between notes (not over a note head), there is a source
+     * note to the left, and that source note does not already have a glissando.
+     */
+    @SuppressWarnings("ObjectEquality")
+    static boolean shouldShowGlissandoPreview(@NotNull Line line) {
+        if (isHoveringOverNoteHead()) {
+            return false;
+        }
+
+        var noteCount = line.noteCount();
+
+        if (currentXIndex <= 0 || noteCount <= 0) {
+            return false;
+        }
+
+        return line.getNote(currentXIndex - 1).getGlissando() == Note.NO_GLISSANDO;
+    }
+
+    /**
+     * Returns the target pitch (in staff positions) for a glissando preview or click.
+     * <p>
+     * Between notes, uses the next note's pitch. At end of line, offsets from the
+     * source note by {@link GlissandoRenderer#getDefaultSlideOutYOffsetSp()}.
+     *
+     * @param line The line containing the notes
+     * @return Target pitch in staff positions
+     */
+    static int getGlissandoTargetPitchSp(@NotNull Line line) {
+        if (currentXIndex < line.noteCount()) {
+            return line.getNote(currentXIndex).getStaffPosition();
+        }
+
+        return line.getNote(currentXIndex - 1).getStaffPosition()
+            + GlissandoRenderer.getDefaultSlideOutYOffsetSp();
+    }
+
     // ==========================================================================
     // Delegation Entry Points (called from LineComponent mouse handlers)
     // ==========================================================================
@@ -315,12 +364,20 @@ public class InsertionNoteManager {
         xPosSsMatchesNote = newXMatch;
         yPosSpMatchesNote = newYMatch;
 
-        // Hide the insertion note only when both X and Y match: the hover highlight on the
-        // existing note already signals what will be replaced. When only X matches, show the
-        // preview so the user can see the pitch that will replace the existing note.
         var editModeManager = EditModeManager.getInstance();
 
         if (editModeManager != null) {
+            var insertionNote = editModeManager.getInsertionNote();
+
+            if (insertionNote == Note.GLISSANDO_NOTE) {
+                // No note-head preview for glissando tool — renderInsertionNote draws the preview line.
+                lc.repaint();
+                return;
+            }
+
+            // Hide the insertion note only when both X and Y match: the hover highlight on the
+            // existing note already signals what will be replaced. When only X matches, show the
+            // preview so the user can see the pitch that will replace the existing note.
             if (xPosSsMatchesNote && yPosSpMatchesNote) {
                 editModeManager.setInsertionNoteVisible(false);
             } else {
@@ -328,8 +385,6 @@ public class InsertionNoteManager {
             }
 
             // Update the insertion note's Y position
-            var insertionNote = editModeManager.getInsertionNote();
-
             if (insertionNote != null) {
                 insertionNote.setStaffPosition(staffPosition);
             }
@@ -355,6 +410,22 @@ public class InsertionNoteManager {
             return;
         }
 
+        var editModeManager = EditModeManager.getInstance();
+
+        if (editModeManager != null) {
+            var insertionNote = editModeManager.getInsertionNote();
+
+            if (insertionNote == Note.GLISSANDO_NOTE) {
+                if (!shouldShowGlissandoPreview(line)) {
+                    return;  // No preview visible = click is a no-op
+                }
+
+                // Set target pitch that noteWasModified() will read from insertionNote.
+                insertionNote.setStaffPosition(getGlissandoTargetPitchSp(line));
+                // Fall through to existing dispatch
+            }
+        }
+
         // Determine action based on position
         if (currentXIndex == line.noteCount()) {
             addInsertionNote(lc, line);
@@ -375,7 +446,11 @@ public class InsertionNoteManager {
         var editModeManager = EditModeManager.getInstance();
 
         if (shouldHandleInsertionNote(lc) && editModeManager != null) {
-            editModeManager.setInsertionNoteVisible(true);
+            var insertionNote = editModeManager.getInsertionNote();
+
+            if (insertionNote != Note.GLISSANDO_NOTE) {
+                editModeManager.setInsertionNoteVisible(true);
+            }
         }
     }
 
