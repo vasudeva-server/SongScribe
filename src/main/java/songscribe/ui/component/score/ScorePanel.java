@@ -50,7 +50,12 @@ public class ScorePanel extends JPanel implements Scrollable {
     @Override
     @NotNull
     public Dimension getPreferredScrollableViewportSize() {
-        return getPreferredSize();
+        // Return the content's natural preferred size so the JScrollPane can compute its own
+        // preferred size without feedback from the current viewport width. If we delegated to
+        // getPreferredSize() here, the viewport width would be included in the scroll pane's
+        // preferred size, causing setFrameSize() to grow the window by one scroll bar width on
+        // every "Open Recent" call.
+        return content.getPreferredSize();
     }
 
     @Override
