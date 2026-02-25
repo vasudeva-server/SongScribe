@@ -120,10 +120,6 @@ public class MainFrame extends JFrame implements IMainFrame, Printable {
     // The current open file
     protected File currentFile = null;
 
-    // The name of the document type, e.g. "song", "score", etc
-    @Nullable
-    protected String documentTypeName;
-
     private boolean documentModified = false;
 
     // A list of listeners that are notified when a property changes that changes the music
@@ -147,7 +143,6 @@ public class MainFrame extends JFrame implements IMainFrame, Printable {
         }
 
         appName = "Song Writer";
-        documentTypeName = "song";
 
         // Trigger Prefs initialization (auto-migrates from old props file)
         Prefs.getInstance();
@@ -396,11 +391,10 @@ public class MainFrame extends JFrame implements IMainFrame, Printable {
             return true;
         }
 
+        var docName = (currentFile != null) ? currentFile.getName() : "Untitled";
         var answer = JOptionPane.showConfirmDialog(
             this,
-            "The document has been modified. Do you want to save the " +
-            documentTypeName +
-            '?',
+            '“' + docName + "” has been modified. Do you want to save it?",
             appName,
             JOptionPane.YES_NO_CANCEL_OPTION,
             JOptionPane.QUESTION_MESSAGE
@@ -454,9 +448,15 @@ public class MainFrame extends JFrame implements IMainFrame, Printable {
         return documentModified;
     }
 
+    private void updateTitle() {
+        var name = (currentFile != null) ? currentFile.getName() : "Untitled";
+        setTitle(documentModified ? '•' + name : name);
+    }
+
     @Override
     public void setDocumentModified(boolean documentWasModified) {
         documentModified = documentWasModified;
+        updateTitle();
     }
 
     @Override
@@ -502,13 +502,6 @@ public class MainFrame extends JFrame implements IMainFrame, Printable {
     @Override
     public void setCurrentFile(File saveFile) {
         currentFile = saveFile;
-
-        if (saveFile == null) {
-            setTitle(appName);
-        } else {
-            setTitle(appName + " - " + saveFile.getName());
-        }
-
         setDocumentModified(false);
     }
 

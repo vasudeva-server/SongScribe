@@ -66,8 +66,6 @@ public class UIConverter extends MainFrame {
 
     public UIConverter() {
         appName = "Song Converter";
-        documentTypeName = null;
-
         setTitle(appName);
         setIconImage(GraphicUtils.getImage("songwriter-icon.png"));
         new MyQuitAction();
