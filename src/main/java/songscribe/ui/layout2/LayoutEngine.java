@@ -430,13 +430,13 @@ public class LayoutEngine {
                 }
             }
 
-            // Flat beam snapping: when slope is near zero, snap startYSs to the nearest
-            // staff line or space boundary so the beam sits cleanly on the grid.
-            // Grid points are at multiples of 0.5 ss (each staff line/space = 0.5 ss).
-            // The formula maps startYSs into the nearest 0.5 ss slot, offset by the
-            // staff's half-line-space (0.25 ss from center = 1.5 half-spaces).
+            // Flat beam snapping: when slope is near zero, snap the outer beam edge to
+            // the nearest staff line or space boundary (0.5 ss grid) so the beam sits
+            // cleanly on the grid. startYSs is the outer edge (top for stems-up,
+            // bottom for stems-down), so rounding to the nearest 0.5 ss aligns it
+            // with a line or space center.
             if (Math.abs(slope) < 0.05) {
-                startYSs = Math.round((startYSs + 1.5) / 0.75) * 0.75 - 1.5;
+                startYSs = Math.round(startYSs * 2.0) / 2.0;
             }
 
             // Beam thickening: angled beams appear thinner due to raster aliasing.

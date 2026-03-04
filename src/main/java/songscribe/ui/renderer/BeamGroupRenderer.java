@@ -32,6 +32,7 @@ import org.jetbrains.annotations.Nullable;
 import songscribe.music.Line;
 import songscribe.music.Note;
 import songscribe.music.NoteType;
+import songscribe.smufl.SMuFLMetadata;
 import songscribe.ui.component.Score;
 import songscribe.ui.component.score.InsertionNoteManager;
 import songscribe.ui.layout.LineElement;
@@ -52,8 +53,9 @@ public class BeamGroupRenderer extends BaseElementRenderer<LineElement> {
     // ==========================================================================
 
     // Beam geometry constants (staff-space units; scale transform handles pixel conversion)
-    private static final double BEAM_DEPTH_SS  = 0.4;    // beam thickness
-    private static final double BEAM_SHIFT_SS  = 0.625;  // gap between stacked beam levels
+    private static final SMuFLMetadata METADATA = SMuFLMetadata.getInstance();
+    private static final double BEAM_DEPTH_SS  = METADATA.getEngravingDefaults().beamThickness();
+    private static final double BEAM_GAP_SS    = METADATA.getEngravingDefaults().beamSpacing();
     private static final double BEAM_STUB_SS   = 1.0;    // partial beam stub length
     private static final double CLIP_SLOP_SS   = 0.25;   // extra clipping margin (~2 px)
 
@@ -368,8 +370,7 @@ public class BeamGroupRenderer extends BaseElementRenderer<LineElement> {
         double thickeningSs = (beamLayout != null) ? beamLayout.thickeningSs() : 0.0;
         double effectiveBeamDepthSs = BEAM_DEPTH_SS + thickeningSs;
         double beamDepthSs          = isUpper ? effectiveBeamDepthSs : -effectiveBeamDepthSs;
-        double effectiveBeamShiftSs = BEAM_SHIFT_SS + thickeningSs;
-        double innerBeamOffsetSs    = effectiveBeamShiftSs * recursionLevel * (isUpper ? 1 : -1);
+        double innerBeamOffsetSs    = (effectiveBeamDepthSs + BEAM_GAP_SS) * recursionLevel * (isUpper ? 1 : -1);
 
         // --- First note stem geometry ---
         var firstStemLayout = (layoutResult != null) ? layoutResult.getStemLayout(beginNote) : null;
