@@ -9,3 +9,4 @@ settings.local.json
 
 # Reference images during development
 images/CleanShot*.png
+.DS_Store
