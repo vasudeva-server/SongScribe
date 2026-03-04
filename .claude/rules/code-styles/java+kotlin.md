@@ -44,6 +44,38 @@ When adding new code that resembles existing code, **refactor the existing code 
 
 ---
 
+## CRITICAL: No Nullable Fallbacks for Critical Objects
+
+**NEVER** accept `@Nullable` on a parameter or dependency that is required for correct behavior, and **NEVER** write fallback logic that silently degrades when a critical object is null. If an object is needed, declare it `@NotNull`.
+
+If null is truly impossible to prevent further up the call chain, catch the condition **as early as possible**: log the error, warn the user, and exit the application. A null critical object means the application is in an unstable state — silent degradation only masks the bug and produces incorrect results downstream.
+
+```java
+// Bad — fallback hides a bug and produces wrong results
+private static double getRightExtentSs(
+    @NotNull Note note,
+    @Nullable LayoutResult layoutResult   // nullable "just in case"
+) {
+    var noteColumn = layoutResult != null ? layoutResult.getNoteColumn(note) : null;
+
+    if (noteColumn != null) {
+        return noteColumn.getRightExtentSs();
+    }
+
+    return someWrongFallbackValue;  // silently wrong
+}
+
+// Good — declare @NotNull and let callers guarantee it
+private static double getRightExtentSs(
+    @NotNull Note note,
+    @NotNull LayoutResult layoutResult
+) {
+    return layoutResult.getNoteColumn(note).getRightExtentSs();
+}
+```
+
+---
+
 ## Java+Kotlin Code Style
 
 These rules are written for Java, adjust for equivalent concepts in Kotlin.
