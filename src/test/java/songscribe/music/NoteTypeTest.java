@@ -41,11 +41,11 @@ class NoteTypeTest {
         assertThat(NoteType.DEMI_SEMIQUAVER.getFlagGlyph(false)).isEqualTo(SMuFLGlyph.FLAG_32ND_DOWN);
     }
 
-    // T7 continued: GRACE_QUAVER always returns small 8th flag (stem always up)
+    // T7 continued: GRACE_QUAVER always returns regular 8th flag (renderers use grace font for sizing)
     @Test
-    void testGetFlagGlyphReturnsSmallEighthFlagForGraceQuaver() {
-        assertThat(NoteType.GRACE_QUAVER.getFlagGlyph(true)).isEqualTo(SMuFLGlyph.FLAG_8TH_UP_SMALL);
-        assertThat(NoteType.GRACE_QUAVER.getFlagGlyph(false)).isEqualTo(SMuFLGlyph.FLAG_8TH_UP_SMALL);
+    void testGetFlagGlyphReturnsEighthFlagForGraceQuaver() {
+        assertThat(NoteType.GRACE_QUAVER.getFlagGlyph(true)).isEqualTo(SMuFLGlyph.FLAG_8TH_UP);
+        assertThat(NoteType.GRACE_QUAVER.getFlagGlyph(false)).isEqualTo(SMuFLGlyph.FLAG_8TH_UP);
     }
 
     // T8: getFlagGlyph(upper) returns null for non-flagged types

@@ -34,7 +34,6 @@ import org.jetbrains.annotations.Nullable;
 
 import songscribe.music.Note;
 import songscribe.music.NoteType;
-import songscribe.smufl.GlyphAnchors;
 import songscribe.ui.layout2.LayoutConstants;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
@@ -80,8 +79,6 @@ public class NoteRenderer extends BaseElementRenderer<Note> {
     private static final double HALF_BEAM_THICKNESS_SS =
         METADATA.getEngravingDefaults().beamThickness() / 2.0;
 
-    private static final double LEDGER_LINE_EXTENSION_SS =
-        METADATA.getEngravingDefaults().legerLineExtension();
 
     // Dot positioning (using SMuFL augmentation dot glyph), in staff-space units
     static final float FIRST_DOT_X_SS = 1.6375f; // 13.1px / 8 px/ss
@@ -348,46 +345,23 @@ public class NoteRenderer extends BaseElementRenderer<Note> {
             return null;
         }
 
-        boolean isMinim = noteType == NoteType.MINIM;
-        boolean isGrace = noteType.isGraceNote();
+        var geom = LayoutConstants.computeBaseStemGeometry(noteType, upper);
 
-        // Get anchor positions in staff-space units from the notehead's SMuFL anchor data
-        GlyphAnchors.Anchor anchor;
-
-        if (isGrace) {
-            // Grace notes always stem up, use small notehead anchor
-            anchor = LayoutConstants.STEM_UP_SE_BLACK_SMALL;
-        } else if (upper) {
-            anchor = isMinim ? LayoutConstants.STEM_UP_SE_HALF : LayoutConstants.STEM_UP_SE_BLACK;
-        } else {
-            anchor = isMinim ? LayoutConstants.STEM_DOWN_NW_HALF : LayoutConstants.STEM_DOWN_NW_BLACK;
-        }
-
-        double anchorX = anchor.x();
-        double anchorY = anchor.y();
-
-        // Calculate stem left edge from the anchor point.
-        // stemUpSE marks where the stem's RIGHT edge meets the notehead,
-        // stemDownNW marks where the stem's LEFT edge meets the notehead
-        // (but the down-stem notehead is shifted left by LayoutConstants.STEM_WIDTH_SS/2, so we
-        // compensate here to keep the stem aligned with the shifted notehead).
-        //
-        // Snap to device pixel boundary for crisp rendering.
+        // Snap stem left edge to device pixel boundary for crisp rendering.
         // We must work in absolute (device) coordinates because the graphics context
         // has been translated to the note's position — rounding in local coordinates
         // won't align to actual screen pixels.
         //
-        // For up-stems, snap the RIGHT edge (anchorX) so the stem never protrudes past
+        // For up-stems, snap the RIGHT edge so the stem never protrudes past
         // the notehead. For down-stems, snap the LEFT edge directly.
         double stemLeftX;
 
         if (upper) {
-            double stemRightX = GraphicUtils.snapXToDevicePixel(g2, anchorX);
+            double stemRightX = GraphicUtils.snapXToDevicePixel(g2, geom.stemLeftXSs() + LayoutConstants.STEM_WIDTH_SS);
             stemLeftX = stemRightX - LayoutConstants.STEM_WIDTH_SS;
         } else {
-            stemLeftX = GraphicUtils.snapXToDevicePixel(g2, anchorX - LayoutConstants.STEM_WIDTH_SS / 2);
+            stemLeftX = GraphicUtils.snapXToDevicePixel(g2, geom.stemLeftXSs());
         }
-        double stemCenterX = stemLeftX + LayoutConstants.STEM_WIDTH_SS / 2;
 
         var layoutResult = ctx.getLayoutResult();
         var stemLayout = (layoutResult != null) ? layoutResult.getStemLayout(note) : null;
@@ -411,7 +385,7 @@ public class NoteRenderer extends BaseElementRenderer<Note> {
             }
         }
 
-        double stemLength = (isGrace ? LayoutConstants.GRACE_NOTE_STEM_LENGTH_SS : LayoutConstants.STEM_LENGTH_SS) + lengtheningSs;
+        double stemLength = geom.lengthSs() + lengtheningSs;
 
         // For beamed notes, shorten the rendered stem by half the (thickened) beam
         // so it tucks inside the beam rather than peeking past the outer edge
@@ -420,10 +394,11 @@ public class NoteRenderer extends BaseElementRenderer<Note> {
             ? Math.max(0, stemLength - HALF_BEAM_THICKNESS_SS - beamThickeningSs / 2.0)
             : stemLength;
 
+        double anchorY = geom.anchorYSs();
+
         if (upper) {
             double stemTopY = anchorY - stemLength;
 
-            // Draw filled rectangle for crisp rendering
             g2.fill(new Rectangle2D.Double(
                 stemLeftX, anchorY - drawLength, LayoutConstants.STEM_WIDTH_SS, drawLength));
 
@@ -546,14 +521,13 @@ public class NoteRenderer extends BaseElementRenderer<Note> {
     // ==========================================================================
 
     private void renderLedgerLines(@NotNull Graphics2D g2, @NotNull Note note) {
-        var noteType = note.getNoteType();
+        double extensionSs = LayoutConstants.getLedgerLineOverhangSs(note);
 
-        if (Math.abs(note.getStaffPosition()) <= 5 || !noteType.drawStaveLongitude()) {
+        if (extensionSs == 0.0) {
             return;
         }
 
         double noteheadWidthSs = getNoteheadRightEdgeSs(note);
-        double extensionSs = LEDGER_LINE_EXTENSION_SS;
         double ledgerWidthSs = noteheadWidthSs + 2 * extensionSs;
         double centerXSs = noteheadWidthSs / 2.0;
 

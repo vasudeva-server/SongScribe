@@ -40,7 +40,7 @@ import songscribe.music.Note;
 import songscribe.music.NoteType;
 
 import songscribe.smufl.EngravingDefaults;
-import songscribe.smufl.GlyphAnchors;
+
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
 import songscribe.ui.layout2.LayoutConstants;
@@ -744,16 +744,10 @@ public class GlissandoRenderer {
 
     /**
      * Returns the ledger line overhang for a note, or 0 if the note has no ledger lines.
-     * This is the distance the ledger lines extend beyond the notehead on each side.
-     * Used by both addLedgerLinesToArea() and the spacing constraint in
-     * HorizontalSpacingCalculator.
+     * Delegates to {@link LayoutConstants#getLedgerLineOverhangSs(Note)}.
      */
     public static double getLedgerLineOverhangSs(@NotNull Note note) {
-        if (Math.abs(note.getStaffPosition()) <= 5 || !note.getNoteType().drawStaveLongitude()) {
-            return 0.0;
-        }
-
-        return ENGRAVING.legerLineExtension();
+        return LayoutConstants.getLedgerLineOverhangSs(note);
     }
 
     /**
@@ -784,7 +778,7 @@ public class GlissandoRenderer {
 
     /**
      * Adds a stem rectangle to the area and returns the stem tip point.
-     * Mirrors the positioning logic in {@link NoteRenderer#renderStem}.
+     * Uses {@link LayoutConstants#computeBaseStemGeometry} for shared anchor/positioning logic.
      *
      * @return The stem tip point (x = stem left edge, y = stem tip)
      */
@@ -793,40 +787,18 @@ public class GlissandoRenderer {
         @NotNull NoteType noteType,
         boolean upper
     ) {
-        boolean isMinim = noteType == NoteType.MINIM;
-        boolean isGrace = noteType.isGraceNote();
-
-        GlyphAnchors.Anchor anchor;
-
-        if (isGrace) {
-            anchor = LayoutConstants.STEM_UP_SE_BLACK_SMALL;
-        } else if (upper) {
-            anchor = isMinim ? LayoutConstants.STEM_UP_SE_HALF : LayoutConstants.STEM_UP_SE_BLACK;
-        } else {
-            anchor = isMinim ? LayoutConstants.STEM_DOWN_NW_HALF : LayoutConstants.STEM_DOWN_NW_BLACK;
-        }
-
-        double anchorX = anchor.x();
-        double anchorY = anchor.y();
-
-        // Stem left edge calculation matches NoteRenderer
-        double stemLeftX = upper
-            ? anchorX - LayoutConstants.STEM_WIDTH_SS
-            : anchorX - LayoutConstants.STEM_WIDTH_SS / 2;
-
-        double stemLength = isGrace ? LayoutConstants.GRACE_NOTE_STEM_LENGTH_SS : LayoutConstants.STEM_LENGTH_SS;
+        var geom = LayoutConstants.computeBaseStemGeometry(noteType, upper);
+        double stemTipY = geom.stemTipYSs(upper);
 
         if (upper) {
-            double stemTopY = anchorY - stemLength;
             area.add(new Area(new Rectangle2D.Double(
-                stemLeftX, stemTopY, LayoutConstants.STEM_WIDTH_SS, stemLength)));
-            return new Point2D.Double(stemLeftX, stemTopY);
+                geom.stemLeftXSs(), stemTipY, LayoutConstants.STEM_WIDTH_SS, geom.lengthSs())));
         } else {
-            double stemBottomY = anchorY + stemLength;
             area.add(new Area(new Rectangle2D.Double(
-                stemLeftX, anchorY, LayoutConstants.STEM_WIDTH_SS, stemLength)));
-            return new Point2D.Double(stemLeftX, stemBottomY);
+                geom.stemLeftXSs(), geom.anchorYSs(), LayoutConstants.STEM_WIDTH_SS, geom.lengthSs())));
         }
+
+        return new Point2D.Double(geom.stemLeftXSs(), stemTipY);
     }
 
     /**

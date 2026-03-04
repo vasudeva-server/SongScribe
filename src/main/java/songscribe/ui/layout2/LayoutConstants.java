@@ -20,6 +20,10 @@
 
 package songscribe.ui.layout2;
 
+import org.jetbrains.annotations.NotNull;
+
+import songscribe.music.Note;
+import songscribe.music.NoteType;
 import songscribe.smufl.GlyphAnchors;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
@@ -352,5 +356,94 @@ public final class LayoutConstants {
             STEM_UP_SE_BLACK.x() * GRACE_NOTE_SCALE,
             STEM_UP_SE_BLACK.y() * GRACE_NOTE_SCALE
         );
+
+        LEDGER_LINE_EXTENSION_SS = metadata.getEngravingDefaults().legerLineExtension();
+    }
+
+    // ==========================================================================
+    // LEDGER LINES
+    // ==========================================================================
+
+    /**
+     * How far ledger lines extend beyond the notehead on each side, in staff-space units.
+     */
+    public static final double LEDGER_LINE_EXTENSION_SS;
+
+    /**
+     * Returns the ledger line overhang for a note, or 0 if the note has no ledger lines.
+     * This is the distance the ledger lines extend beyond the notehead on each side.
+     *
+     * @param note The note to check
+     * @return The overhang in staff-space units, or 0 if no ledger lines are needed
+     */
+    public static double getLedgerLineOverhangSs(@NotNull Note note) {
+        if (Math.abs(note.getStaffPosition()) <= 5 || !note.getNoteType().drawStaveLongitude()) {
+            return 0.0;
+        }
+
+        return LEDGER_LINE_EXTENSION_SS;
+    }
+
+    // ==========================================================================
+    // STEM GEOMETRY
+    // ==========================================================================
+
+    /**
+     * Base stem geometry computed from SMuFL anchor data, before any rendering-specific
+     * adjustments (device-pixel snapping, beam lengthening, etc.).
+     *
+     * @param stemLeftXSs Left edge of the stem in staff spaces (relative to notehead origin)
+     * @param anchorYSs   Y position where the stem meets the notehead
+     * @param lengthSs    Stem length in staff spaces (without beam lengthening)
+     */
+    public record StemGeometry(double stemLeftXSs, double anchorYSs, double lengthSs) {
+
+        /**
+         * Returns the Y position of the stem tip (the end away from the notehead).
+         *
+         * @param upper true for stem-up (tip above notehead), false for stem-down
+         * @return stem tip Y in staff spaces
+         */
+        public double stemTipYSs(boolean upper) {
+            return upper ? anchorYSs - lengthSs : anchorYSs + lengthSs;
+        }
+    }
+
+    /**
+     * Computes the base stem geometry for a note type and direction.
+     * This is the shared anchor selection and positioning logic used by both
+     * {@code NoteRenderer} (for drawing) and {@code GlissandoRenderer} (for area building).
+     *
+     * @param noteType The note type (determines anchor and stem length)
+     * @param upper    true for stem-up, false for stem-down
+     * @return The base stem geometry
+     */
+    @NotNull
+    public static StemGeometry computeBaseStemGeometry(@NotNull NoteType noteType, boolean upper) {
+        boolean isMinim = noteType == NoteType.MINIM;
+        boolean isGrace = noteType.isGraceNote();
+
+        GlyphAnchors.Anchor anchor;
+
+        if (isGrace) {
+            anchor = STEM_UP_SE_BLACK_SMALL;
+        } else if (upper) {
+            anchor = isMinim ? STEM_UP_SE_HALF : STEM_UP_SE_BLACK;
+        } else {
+            anchor = isMinim ? STEM_DOWN_NW_HALF : STEM_DOWN_NW_BLACK;
+        }
+
+        double anchorX = anchor.x();
+
+        // Stem left edge: for up-stems, the anchor marks the RIGHT edge of the stem;
+        // for down-stems, the anchor marks the LEFT edge but the notehead is shifted
+        // left by STEM_WIDTH_SS/2, so we compensate.
+        double stemLeftX = upper
+            ? anchorX - STEM_WIDTH_SS
+            : anchorX - STEM_WIDTH_SS / 2;
+
+        double stemLength = isGrace ? GRACE_NOTE_STEM_LENGTH_SS : STEM_LENGTH_SS;
+
+        return new StemGeometry(stemLeftX, anchor.y(), stemLength);
     }
 }

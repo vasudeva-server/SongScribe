@@ -127,9 +127,8 @@ public class TupletRenderer extends BaseElementRenderer<Tuplet> {
         StaffSpaces.toPixels(ENGRAVING_DEFAULTS.stemThickness()) / 2.0
             + LINE_STROKE.getLineWidth() / 2.0);
 
-    // Minimum stem length in staff spaces (Gould/Ross 4.2) — used as fallback
-    // when StemLayout is not available
-    private static final double MIN_STEM_SS = 3.5;
+    // Minimum stem length — used as fallback when StemLayout is not available
+    private static final double MIN_STEM_SS = LayoutConstants.STEM_LENGTH_SS;
 
     // Singleton instance
     private static final TupletRenderer INSTANCE = new TupletRenderer();

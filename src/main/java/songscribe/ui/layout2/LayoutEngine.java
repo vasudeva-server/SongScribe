@@ -68,7 +68,7 @@ public class LayoutEngine {
     private static final double BEAM_SHIFT_SS = 0.625;      // gap between stacked beam levels
     private static final double BEAM_STUB_SS = 1.0;         // partial beam stub length
     private static final double BEAM_SLOPE_MAX = 0.4;    // hyperbolic saturation limit (dimensionless)
-    private static final double MIN_STEM_SS = 3.5;       // minimum stem length (Gould/Ross 4.2)
+    private static final double MIN_STEM_SS = LayoutConstants.STEM_LENGTH_SS;
 
     // Tie geometry constants (MuseScore port, staff-space units unless noted)
     private static final double TIE_SHOULDER_W = 0.6;                // shoulder width fraction of tie span
