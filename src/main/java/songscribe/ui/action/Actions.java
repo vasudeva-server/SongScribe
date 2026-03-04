@@ -120,8 +120,8 @@ public final class Actions {
     public static final DurationAction GRACE_EIGHTH_NOTE_ACTION =
         new DurationAction(
             NoteType.GRACE_QUAVER,
-            "Grace eighth note",
-            "grace-eighth.svg",
+            "Grace note",
+            "grace.svg",
             26,
             "duration-grace-eighth",
             "Insert grace eighth note followed by glissando",
