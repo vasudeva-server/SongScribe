@@ -21,9 +21,9 @@
       "description": "Rewrite glissando rendering and interaction with type-based data model and zone-based tool"
     },
     {
-      "path": "plans/glissando-rendering-redesign/glissando-rendering-redesign.md",
-      "subdirectory": "glissando-rendering-redesign",
-      "active": true,
+      "path": "plans/completed/glissando-rendering-redesign/glissando-rendering-redesign.md",
+      "subdirectory": "completed/glissando-rendering-redesign",
+      "active": false,
       "description": "Redesign glissando rendering with Area-based gap calculation and pill-shape rendering"
     }
   ],
@@ -146,21 +146,21 @@
       "type": "sub-plan"
     },
     {
-      "path": "plans/glissando-rendering-redesign/phase2-pill-rendering.md",
-      "parentPlan": "plans/glissando-rendering-redesign/glissando-rendering-redesign.md",
+      "path": "plans/completed/glissando-rendering-redesign/phase2-pill-rendering.md",
+      "parentPlan": "plans/completed/glissando-rendering-redesign/glissando-rendering-redesign.md",
       "parentPhase": 2,
       "parentStep": null,
-      "masterPlan": "plans/glissando-rendering-redesign/glissando-rendering-redesign.md",
-      "status": "in_progress",
+      "masterPlan": "plans/completed/glissando-rendering-redesign/glissando-rendering-redesign.md",
+      "status": "completed",
       "type": "sub-plan"
     },
     {
-      "path": "plans/glissando-rendering-redesign/phase3-layout-integration.md",
-      "parentPlan": "plans/glissando-rendering-redesign/glissando-rendering-redesign.md",
+      "path": "plans/completed/glissando-rendering-redesign/phase3-layout-integration.md",
+      "parentPlan": "plans/completed/glissando-rendering-redesign/glissando-rendering-redesign.md",
       "parentPhase": 3,
       "parentStep": null,
-      "masterPlan": "plans/glissando-rendering-redesign/glissando-rendering-redesign.md",
-      "status": "in_progress",
+      "masterPlan": "plans/completed/glissando-rendering-redesign/glissando-rendering-redesign.md",
+      "status": "completed",
       "type": "sub-plan"
     }
   ]

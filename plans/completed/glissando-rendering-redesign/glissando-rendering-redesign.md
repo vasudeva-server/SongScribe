@@ -7,8 +7,8 @@
 | 0 | [DRY Prerequisites](#-phase-0-dry-prerequisites-pure-refactoring-no-behavioral-changes) | ✅ Complete | — |
 | 1 | [Note Area Construction](#-phase-1-note-area-construction-new-code-no-behavioral-change) | ✅ Complete | — |
 | 2 | [Rounded Rect Rendering](#-phase-2-rounded-rect-rendering-visual-change) | ✅ Complete | 📋 [phase2-pill-rendering.md](./phase2-pill-rendering.md) |
-| 3 | [Layout Integration](#-phase-3-layout-integration-spacing-change) | 📋 Sub-plan | 📋 [phase3-layout-integration.md](./phase3-layout-integration.md) |
-| 4 | [Behavioral Changes](#-phase-4-behavioral-changes) | ⏳ Pending | — |
+| 3 | [Layout Integration](#-phase-3-layout-integration-spacing-change) | ✅ Complete | 📋 [phase3-layout-integration.md](./phase3-layout-integration.md) |
+| 4 | [Behavioral Changes](#-phase-4-behavioral-changes) | ✅ Complete | — |
 
 ## Context
 
@@ -162,7 +162,7 @@ Same path as committed glissandos. CONNECTED previews use both note areas; SLIDE
 
 ---
 
-## 📋 Phase 3: Layout Integration (spacing change)
+## ✅ Phase 3: Layout Integration (spacing change)
 
 > Sub-plan: [phase3-layout-integration.md](./phase3-layout-integration.md)
 
@@ -182,7 +182,7 @@ Add public `getGlissandoEndpoint1Ss()` / `getGlissandoEndpoint2Ss()` methods tha
 
 ---
 
-## ⏳ Phase 4: Behavioral Changes
+## ✅ Phase 4: Behavioral Changes
 
 ### 4.1 — Unison prevention on add
 
