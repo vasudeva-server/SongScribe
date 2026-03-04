@@ -30,7 +30,6 @@ import songscribe.smufl.SMuFLMetadata;
 import songscribe.ui.Mode;
 import songscribe.ui.component.Score;
 import songscribe.ui.edit.EditModeManager;
-import songscribe.ui.layout.LineElement;
 import songscribe.ui.layout.TempoAttachment;
 import songscribe.ui.layout2.ScaleContext;
 import songscribe.ui.renderer.AnnotationRenderer;
@@ -45,7 +44,6 @@ import songscribe.ui.renderer.FermataRenderer;
 import songscribe.ui.renderer.GlissandoRenderer;
 import songscribe.ui.renderer.KeySignatureRenderer;
 import songscribe.ui.renderer.NoteRenderer;
-import songscribe.ui.renderer.RendererRegistry;
 import songscribe.ui.renderer.TempoRenderer;
 import songscribe.ui.renderer.TieRenderer;
 import songscribe.ui.renderer.TrillRenderer;
@@ -72,11 +70,11 @@ class LineRenderer {
     private static final double STAFF_LINE_THICKNESS =
         SMuFLMetadata.getInstance().getEngravingDefaults().staffLineThickness();
 
-    /** Color for placeholder rectangles (for unregistered element types). */
-    private static final Color PLACEHOLDER_COLOR = new Color(100, 100, 100, 128);
+
 
     /** Color for the insertion note preview — defined in Score for shared access across renderers. */
     private static final Color INSERTION_NOTE_COLOR = Score.INSERTION_NOTE_COLOR;
+    private static final Color PREVIEW_REMOVAL_COLOR = Score.PREVIEW_REMOVAL_COLOR;
 
     /** The stroke used to draw the selection rectangle border. */
     private static final BasicStroke SELECTION_RECT_STROKE = new BasicStroke(2.0f);
@@ -296,66 +294,12 @@ class LineRenderer {
     // ==========================================================================
 
     /**
-     * Renders notes using the modular renderer system.
+     * Renders notes using NoteRenderer.
      *
      * @param g2  Graphics context
      * @param ctx Element render context
      */
     private void renderNotes(Graphics2D g2, ElementRenderContext ctx) {
-        var rootElement = lc.getRootElement();
-
-        if (rootElement != null) {
-            // Render LineElement tree using registered renderers
-            renderElement(g2, rootElement, ctx);
-        } else {
-            // Fallback: render notes directly using NoteRenderer
-            renderNotesDirectly(g2, ctx);
-        }
-    }
-
-    /**
-     * Recursively renders a LineElement and its children using registered renderers.
-     *
-     * @param g2      Graphics context
-     * @param element Element to render
-     * @param ctx     Render context
-     */
-    private void renderElement(
-        Graphics2D g2,
-        @NotNull LineElement element,
-        ElementRenderContext ctx
-    ) {
-        var registry = RendererRegistry.getInstance();
-        var renderer = registry.getRenderer(element);
-
-        if (renderer != null) {
-            // Use registered renderer
-            renderer.render(element, g2, ctx);
-        } else {
-            // Fallback: Draw content bounds as placeholder for unregistered types
-            var bounds = element.getContentBounds();
-            g2.setColor(PLACEHOLDER_COLOR);
-            g2.fillRect(
-                (int) bounds.getX(),
-                (int) bounds.getY(),
-                (int) bounds.getWidth(),
-                (int) bounds.getHeight()
-            );
-        }
-
-        // Render children
-        for (var child : element.getChildren()) {
-            renderElement(g2, child, ctx);
-        }
-    }
-
-    /**
-     * Renders notes directly using NoteRenderer (when no LineElement tree).
-     *
-     * @param g2  Graphics context
-     * @param ctx Render context
-     */
-    private void renderNotesDirectly(Graphics2D g2, ElementRenderContext ctx) {
         var noteRenderer = NoteRenderer.getInstance();
         var line = lc.getLine();
 
@@ -621,19 +565,27 @@ class LineRenderer {
         // Glissando preview bypasses insertion note visibility — it manages its own
         // display logic via shouldShowGlissandoPreview() and never uses the note-head preview.
         if (insertionNote == Note.GLISSANDO_NOTE) {
-            var line = lc.getLine();
-
-            if (line == null || !InsertionNoteManager.shouldShowGlissandoPreview(line)) {
+            if (!InsertionNoteManager.shouldShowGlissandoPreview()) {
                 return;
             }
 
-            var currentXIndex = InsertionNoteManager.getCurrentXIndex();
-            var sourceIndex = currentXIndex - 1;
-            var targetPitchSp = InsertionNoteManager.getGlissandoTargetPitchSp(line);
+            var type = InsertionNoteManager.getGlissandoZone();
 
-            g2.setColor(INSERTION_NOTE_COLOR);
+            if (type == null) {
+                return;  // Defensive: shouldShowGlissandoPreview() guards this
+            }
+
+            var line = lc.getLine();
+
+            if (line == null) {
+                return;
+            }
+
+            var sourceIndex = InsertionNoteManager.getCurrentXIndex() - 1;
+            var removalMode = InsertionNoteManager.isGlissandoRemovalMode(line);
+            g2.setColor(removalMode ? PREVIEW_REMOVAL_COLOR : INSERTION_NOTE_COLOR);
             GlissandoRenderer.getInstance().renderPreviewGlissando(
-                g2, sourceIndex, targetPitchSp, line, ctx
+                g2, sourceIndex, type, line, ctx
             );
             return;
         }

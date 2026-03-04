@@ -31,7 +31,6 @@ import org.jetbrains.annotations.Nullable;
 
 import songscribe.music.Composition;
 import songscribe.ui.layout.LayoutStylesheet;
-import songscribe.ui.layout.LineElement;
 
 /**
  * Panel containing all staff lines of a composition.
@@ -136,29 +135,6 @@ public class StaffPanel extends JPanel {
         }
 
         return linePanels.get(index);
-    }
-
-    /**
-     * Finds the LineElement at the given point.
-     *
-     * @param point Point in panel coordinates
-     * @return The element at the point, or null
-     */
-    @Nullable
-    public LineElement findElementAt(@NotNull Point point) {
-        for (var linePanel : linePanels) {
-            var panelBounds = linePanel.getBounds();
-
-            if (panelBounds.contains(point)) {
-                var localPoint = new Point(
-                    point.x - panelBounds.x,
-                    point.y - panelBounds.y
-                );
-                return linePanel.findElementAt(localPoint);
-            }
-        }
-
-        return null;
     }
 
     /**

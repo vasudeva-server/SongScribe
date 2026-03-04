@@ -50,9 +50,7 @@ public class Note extends LineElement implements Cloneable {
 
     public static final Note GLISSANDO_NOTE = new NonNote();
     public static final Note PASTE_NOTE = new NonNote();
-    public static final Glissando NO_GLISSANDO = new Glissando(
-        Integer.MAX_VALUE
-    );
+    public static final Glissando NO_GLISSANDO = new Glissando(Glissando.Type.CONNECTED);
     protected Glissando glissando = NO_GLISSANDO;
 
     // MIDI pitches B4..A5, corresponding to the index returned by getPitchIndex()
@@ -427,6 +425,27 @@ public class Note extends LineElement implements Cloneable {
         this.staffPosition = staffPosition;
     }
 
+    /**
+     * Returns the number of ledger lines required for this note's staff position.
+     * Consistent with {@link songscribe.ui.renderer.BaseElementRenderer#forEachLedgerLineYSs}.
+     */
+    public int getLedgerLineCount() {
+        int a = Math.abs(staffPosition);
+
+        if (a % 2 != 0) {
+            a--;
+        }
+
+        return Math.max(0, (a - 4) / 2);
+    }
+
+    /**
+     * Returns whether this note requires ledger lines (staff position beyond the staff).
+     */
+    public boolean hasLedgerLines() {
+        return getLedgerLineCount() > 0;
+    }
+
     public int getDotCount() {
         return dotCount;
     }
@@ -458,13 +477,17 @@ public class Note extends LineElement implements Cloneable {
         return glissando;
     }
 
-    public void setGlissando(int pitch) {
+    public void setGlissando(Glissando.Type type) {
         //noinspection ObjectEquality
         if (glissando == NO_GLISSANDO) {
-            glissando = new Glissando(pitch);
+            glissando = new Glissando(type);
         } else {
-            glissando.pitch = pitch;
+            glissando.type = type;
         }
+    }
+
+    public void removeGlissando() {
+        glissando = NO_GLISSANDO;
     }
 
     public Tempo getTempoChange() {
@@ -693,12 +716,14 @@ public class Note extends LineElement implements Cloneable {
 
     public static class Glissando {
 
-        public int pitch;
+        public enum Type { CONNECTED, SLIDE_OUT }
+
+        public Type type;
         public double x1Translate = 0;
         public double x2Translate = 0;
 
-        public Glissando(int pitch) {
-            this.pitch = pitch;
+        public Glissando(Type type) {
+            this.type = type;
         }
     }
 

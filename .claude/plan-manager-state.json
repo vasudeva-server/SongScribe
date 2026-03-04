@@ -11,9 +11,21 @@
     {
       "path": "plans/migrations/rendering-rewrite/rendering-rewrite.md",
       "subdirectory": "migrations/rendering-rewrite",
-      "active": true,
+      "active": false,
       "description": "Rewrite rendering and layout pipeline with staff-space coordinate system, abc2svg algorithms"
     },
+    {
+      "path": "plans/glissando-rewrite.md",
+      "subdirectory": null,
+      "active": false,
+      "description": "Rewrite glissando rendering and interaction with type-based data model and zone-based tool"
+    },
+    {
+      "path": "plans/glissando-rendering-redesign/glissando-rendering-redesign.md",
+      "subdirectory": "glissando-rendering-redesign",
+      "active": true,
+      "description": "Redesign glissando rendering with Area-based gap calculation and pill-shape rendering"
+    }
   ],
   "subPlans": [
     {
@@ -131,6 +143,24 @@
       "parentStep": null,
       "masterPlan": "plans/migrations/rendering-rewrite/rendering-rewrite.md",
       "status": "pending",
+      "type": "sub-plan"
+    },
+    {
+      "path": "plans/glissando-rendering-redesign/phase2-pill-rendering.md",
+      "parentPlan": "plans/glissando-rendering-redesign/glissando-rendering-redesign.md",
+      "parentPhase": 2,
+      "parentStep": null,
+      "masterPlan": "plans/glissando-rendering-redesign/glissando-rendering-redesign.md",
+      "status": "in_progress",
+      "type": "sub-plan"
+    },
+    {
+      "path": "plans/glissando-rendering-redesign/phase3-layout-integration.md",
+      "parentPlan": "plans/glissando-rendering-redesign/glissando-rendering-redesign.md",
+      "parentPhase": 3,
+      "parentStep": null,
+      "masterPlan": "plans/glissando-rendering-redesign/glissando-rendering-redesign.md",
+      "status": "in_progress",
       "type": "sub-plan"
     }
   ]

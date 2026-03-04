@@ -23,9 +23,7 @@ package songscribe.ui.layout2;
 import java.awt.*;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.EnumMap;
 import java.util.List;
-import java.util.Map;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -34,6 +32,7 @@ import songscribe.music.Line;
 import songscribe.music.Note;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
+import songscribe.ui.renderer.NoteRenderer;
 
 /**
  * Builds {@link NoteColumn} instances from a Line's notes.
@@ -58,22 +57,15 @@ public class NoteColumnBuilder {
     private static final SMuFLMetadata METADATA = SMuFLMetadata.getInstance();
 
     // Note head width from SMuFL noteheadBlack bounding box (ss)
-    private static final double NOTE_HEAD_WIDTH_SS =
+    public static final double NOTE_HEAD_WIDTH_SS =
         METADATA.getBBox(SMuFLGlyph.NOTEHEAD_BLACK).width();
+
+    // Small note head width from SMuFL noteheadBlackSmall bounding box (ss)
+    public static final double NOTE_HEAD_SMALL_WIDTH_SS =
+        METADATA.getBBox(SMuFLGlyph.NOTEHEAD_BLACK_SMALL).width();
 
     // Half note head width (for left/right extent calculation) (ss)
     static final double HALF_NOTE_HEAD_SS = NOTE_HEAD_WIDTH_SS / 2.0;
-
-    // Dot width and spacing (ss)
-    private static final double DOT_WIDTH_SS = 0.5;
-    private static final double DOT_GAP_SS = 0.25;
-
-    // Accidental widths from SMuFL advance widths (ss)
-    private static final Map<Note.Accidental, Double> ACCIDENTAL_WIDTHS = computeAccidentalWidths();
-    private static final double ACCIDENTAL_GAP_SS = 0.25;
-
-    // SMuFL standard stem length (ss)
-    private static final double STEM_LENGTH_SS = 3.5;
 
     private final Graphics2D g2;
     private final Font lyricsFont;
@@ -123,9 +115,13 @@ public class NoteColumnBuilder {
      * @return The constructed NoteColumn
      */
     public @NotNull NoteColumn buildColumn(@NotNull Note note, @NotNull Line line) {
+        // Determine beam membership first — needed for right extent calculation
+        int noteIndex = line.getNoteIndex(note);
+        boolean beamed = line.getBeamings().findInterval(noteIndex) != null;
+
         // Calculate horizontal extents
         double leftExtentSs = calculateLeftExtentSs(note);
-        double rightExtentSs = calculateRightExtentSs(note);
+        double rightExtentSs = calculateRightExtentSs(note, beamed, note.isUpper());
 
         // Calculate stem positions
         double stemTopSs = calculateStemTopSs(note);
@@ -134,10 +130,6 @@ public class NoteColumnBuilder {
         // Get syllable and measure width
         String syllable = getSyllable(note);
         double syllableWidthSs = measureSyllableWidthSs(syllable);
-
-        // Determine beam membership from the line's Beamings intervals
-        int noteIndex = line.getNoteIndex(note);
-        boolean beamed = line.getBeamings().findInterval(noteIndex) != null;
 
         // Get grace notes (currently not implemented in data model)
         List<Note> graceNotes = getGraceNotes(note);
@@ -161,21 +153,20 @@ public class NoteColumnBuilder {
 
     /**
      * Calculates the left extent of a note column.
-     * This includes the note head left edge plus any accidental.
+     * This includes any accidental to the left of the note head.
      *
      * @param note The note
-     * @return Left extent in ss (negative value, extends left from note head center)
+     * @return Left extent in ss relative to note head left edge (glyph origin);
+     *         0.0 with no accidental, negative when an accidental is present
      */
     public static double calculateLeftExtentSs(@NotNull Note note) {
-        // Start with half the note head width
-        double extentSs = -HALF_NOTE_HEAD_SS;
+        // Note head left edge is at xSs (the glyph origin), so the base extent is 0
+        double extentSs = 0.0;
 
         // Add accidental width if present
-        var accidental = note.getAccidental();
-
-        if (accidental != Note.Accidental.NONE) {
-            double accidentalWidthSs = getAccidentalWidthSs(accidental);
-            extentSs -= (accidentalWidthSs + ACCIDENTAL_GAP_SS);
+        if (note.getAccidental() != Note.Accidental.NONE) {
+            double accidentalWidthSs = NoteRenderer.getAccidentalWidthSs(note);
+            extentSs -= (accidentalWidthSs + LayoutConstants.ACCIDENTAL_GAP_SS);
         }
 
         return extentSs;
@@ -183,58 +174,49 @@ public class NoteColumnBuilder {
 
     /**
      * Calculates the right extent of a note column.
-     * This includes the note head right edge plus any dots.
+     * This includes the note head right edge, any dots, and the flag extent for unbeamed
+     * flagged notes (8th, 16th, 32nd, grace quaver).
      *
-     * @param note The note
-     * @return Right extent in ss (positive value, extends right from note head center)
+     * @param note   The note
+     * @param beamed {@code true} if the note is part of a beam group (flags are suppressed)
+     * @param upper  {@code true} if the stem goes up; affects which stem anchor is used
+     * @return Right extent in ss relative to note head left edge (glyph origin)
      */
-    public static double calculateRightExtentSs(@NotNull Note note) {
-        // Start with half the note head width
-        double extentSs = HALF_NOTE_HEAD_SS;
+    public static double calculateRightExtentSs(@NotNull Note note, boolean beamed, boolean upper) {
+        // Note head right edge: use small notehead width for grace notes
+        double noteheadRightExtent = note.getNoteType().isGraceNote()
+            ? NOTE_HEAD_SMALL_WIDTH_SS
+            : NOTE_HEAD_WIDTH_SS;
 
         // Add dot widths if present
         int dotCount = note.getDotCount();
 
         if (dotCount > 0) {
             // First dot: gap + dot
-            extentSs += DOT_GAP_SS + DOT_WIDTH_SS;
+            noteheadRightExtent += LayoutConstants.DOT_GAP_SS + LayoutConstants.DOT_WIDTH_SS;
 
             // Additional dots: gap + dot each
             for (var i = 1; i < dotCount; i++) {
-                extentSs += DOT_GAP_SS + DOT_WIDTH_SS;
+                noteheadRightExtent += LayoutConstants.DOT_GAP_SS + LayoutConstants.DOT_WIDTH_SS;
             }
         }
 
-        return extentSs;
-    }
+        // Flag extent: only for unbeamed notes that have a flag
+        var flagGlyph = note.getNoteType().getFlagGlyph(upper);
+        double flagRightExtent = 0.0;
 
-    /**
-     * Returns the width of an accidental in ss, derived from SMuFL advance widths.
-     */
-    public static double getAccidentalWidthSs(@NotNull Note.Accidental accidental) {
-        return ACCIDENTAL_WIDTHS.getOrDefault(accidental, 0.0);
-    }
+        if (!beamed && flagGlyph != null) {
+            double flagAdvanceWidthSs = advanceWidthSs(flagGlyph);
 
-    /**
-     * Computes the width of each accidental in ss using SMuFL advance widths.
-     * Compound accidentals (double natural, natural+flat, natural+sharp) sum individual widths.
-     */
-    private static @NotNull Map<Note.Accidental, Double> computeAccidentalWidths() {
-        double naturalW = advanceWidthSs(SMuFLGlyph.ACCIDENTAL_NATURAL);
-        double flatW = advanceWidthSs(SMuFLGlyph.ACCIDENTAL_FLAT);
-        double sharpW = advanceWidthSs(SMuFLGlyph.ACCIDENTAL_SHARP);
+            // Grace notes always stem up, use the small notehead anchor
+            double stemAnchorX = note.getNoteType().isGraceNote()
+                ? LayoutConstants.STEM_UP_SE_BLACK_SMALL.x()
+                : (upper ? LayoutConstants.STEM_UP_SE_BLACK.x() : LayoutConstants.STEM_DOWN_NW_BLACK.x());
 
-        var widths = new EnumMap<Note.Accidental, Double>(Note.Accidental.class);
-        widths.put(Note.Accidental.NATURAL, naturalW);
-        widths.put(Note.Accidental.FLAT, flatW);
-        widths.put(Note.Accidental.SHARP, sharpW);
-        widths.put(Note.Accidental.DOUBLE_NATURAL, naturalW + naturalW);
-        widths.put(Note.Accidental.DOUBLE_FLAT, advanceWidthSs(SMuFLGlyph.ACCIDENTAL_DOUBLE_FLAT));
-        widths.put(Note.Accidental.DOUBLE_SHARP, advanceWidthSs(SMuFLGlyph.ACCIDENTAL_DOUBLE_SHARP));
-        widths.put(Note.Accidental.NATURAL_FLAT, naturalW + flatW);
-        widths.put(Note.Accidental.NATURAL_SHARP, naturalW + sharpW);
+            flagRightExtent = stemAnchorX + flagAdvanceWidthSs;
+        }
 
-        return widths;
+        return Math.max(noteheadRightExtent, flagRightExtent);
     }
 
     private static double advanceWidthSs(SMuFLGlyph glyph) {
@@ -264,7 +246,7 @@ public class NoteColumnBuilder {
 
         // Stem up: stem extends upward
         if (!note.isUpper()) {
-            return -STEM_LENGTH_SS;
+            return -LayoutConstants.STEM_LENGTH_SS;
         }
 
         // Stem down: top is just above note head
@@ -289,7 +271,7 @@ public class NoteColumnBuilder {
 
         // Stem down: stem extends downward
         if (note.isUpper()) {
-            return STEM_LENGTH_SS;
+            return LayoutConstants.STEM_LENGTH_SS;
         }
 
         // Stem up: bottom is just below note head

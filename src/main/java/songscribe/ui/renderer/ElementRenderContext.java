@@ -85,13 +85,6 @@ public class ElementRenderContext {
     }
 
     /**
-     * Returns the music notation font sized for grace notes.
-     */
-    public @NotNull Font getMusicGraceFont() {
-        return BaseElementRenderer.MUSIC_FONT_GRACE;
-    }
-
-    /**
      * Returns the current line being rendered.
      */
     public @Nullable Line getCurrentLine() {

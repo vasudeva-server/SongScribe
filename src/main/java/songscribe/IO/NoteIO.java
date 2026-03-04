@@ -169,7 +169,7 @@ public final class NoteIO {
             XML.writeValue(
                 writer,
                 XML_GLISSANDO,
-                Integer.toString(note.getGlissando().pitch)
+                note.getGlissando().type.name()
             );
 
             if (note.getGlissando().x1Translate != 0) {
@@ -274,7 +274,8 @@ public final class NoteIO {
                     type = NoteType.SINGLE_BARLINE.name();
                 }
                 if (type.equals("GRACE_SEMIQUAVER") ||
-                    type.equals("GRACE_SEMIQUAVER_EDIT_STEP1")) {
+                    type.equals("GRACE_SEMIQUAVER_EDIT_STEP1") ||
+                    type.equals("GRACESEMIQUAVER")) {
                     type = NoteType.GRACE_QUAVER.name();
                 }
 
@@ -383,7 +384,16 @@ public final class NoteIO {
                             new Articulation(note, ArticulationType.STACCATO)
                         );
                     } else if (lastTag.equals(XML_GLISSANDO)) {
-                        note.setGlissando(Integer.parseInt(str));
+                        // Legacy files stored an integer pitch; treat those as CONNECTED.
+                        Note.Glissando.Type type;
+
+                        try {
+                            type = Note.Glissando.Type.valueOf(str);
+                        } catch (IllegalArgumentException e) {
+                            type = Note.Glissando.Type.CONNECTED;
+                        }
+
+                        note.setGlissando(type);
                     } else if (lastTag.equals(XML_GLISSANDO_X1_TRANSLATE)) {
                         note.getGlissando().x1Translate = Double.parseDouble(str);
                     } else if (lastTag.equals(XML_GLISSANDO_X2_TRANSLATE)) {

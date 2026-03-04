@@ -20,6 +20,10 @@
 
 package songscribe.ui.layout2;
 
+import songscribe.smufl.GlyphAnchors;
+import songscribe.smufl.SMuFLGlyph;
+import songscribe.smufl.SMuFLMetadata;
+
 /**
  * Centralized layout constants for the engraving system.
  * <p>
@@ -263,4 +267,90 @@ public final class LayoutConstants {
      * Absolute minimum syllable gap during compression.
      */
     public static final double COMPRESSED_MIN_SYLLABLE_GAP_SS = 0.125;  // 1px
+
+    // ==========================================================================
+    // SMuFL STEM ANCHORS
+    // ==========================================================================
+
+    /**
+     * Scale factor applied to grace notes relative to regular notes.
+     * Grace notes use the regular glyphs drawn with a scaled-down Bravura font.
+     */
+    public static final float GRACE_NOTE_SCALE = 0.75f;
+
+    /**
+     * SMuFL standard stem length in staff-space units.
+     */
+    public static final double STEM_LENGTH_SS = 3.5;
+
+    /**
+     * Stem length for grace notes in staff-space units.
+     */
+    public static final double GRACE_NOTE_STEM_LENGTH_SS = 2.5;
+
+    /**
+     * Augmentation dot width in staff-space units.
+     */
+    public static final double DOT_WIDTH_SS = 0.5;
+
+    /**
+     * Gap between the notehead right edge and the first augmentation dot, in staff-space units.
+     */
+    public static final double DOT_GAP_SS = 0.25;
+
+    /**
+     * Gap between an accidental and the notehead, in staff-space units.
+     */
+    public static final double ACCIDENTAL_GAP_SS = 0.25;
+
+    /**
+     * Stem width in staff-space units (from Bravura engraving defaults).
+     */
+    public static final double STEM_WIDTH_SS;
+
+    /**
+     * Stem anchor point for black noteheads (stem-up, south-east corner).
+     */
+    public static final GlyphAnchors.Anchor STEM_UP_SE_BLACK;
+
+    /**
+     * Stem anchor point for black noteheads (stem-down, north-west corner).
+     */
+    public static final GlyphAnchors.Anchor STEM_DOWN_NW_BLACK;
+
+    /**
+     * Stem anchor point for half noteheads (stem-up, south-east corner).
+     */
+    public static final GlyphAnchors.Anchor STEM_UP_SE_HALF;
+
+    /**
+     * Stem anchor point for half noteheads (stem-down, north-west corner).
+     */
+    public static final GlyphAnchors.Anchor STEM_DOWN_NW_HALF;
+
+    /**
+     * Stem anchor point for small black noteheads (stem-up, south-east corner).
+     * Used for grace notes which use pre-sized small glyphs.
+     */
+    public static final GlyphAnchors.Anchor STEM_UP_SE_BLACK_SMALL;
+
+    static {
+        var metadata = SMuFLMetadata.getInstance();
+        STEM_WIDTH_SS = metadata.getEngravingDefaults().stemThickness();
+
+        var blackAnchors = metadata.getAnchors(SMuFLGlyph.NOTEHEAD_BLACK);
+        var halfAnchors = metadata.getAnchors(SMuFLGlyph.NOTEHEAD_HALF);
+
+        assert blackAnchors != null && blackAnchors.stemUpSE() != null && blackAnchors.stemDownNW() != null;
+        assert halfAnchors != null && halfAnchors.stemUpSE() != null && halfAnchors.stemDownNW() != null;
+
+        STEM_UP_SE_BLACK = blackAnchors.stemUpSE();
+        STEM_DOWN_NW_BLACK = blackAnchors.stemDownNW();
+        STEM_UP_SE_HALF = halfAnchors.stemUpSE();
+        STEM_DOWN_NW_HALF = halfAnchors.stemDownNW();
+        STEM_UP_SE_BLACK_SMALL = new GlyphAnchors.Anchor(
+            STEM_UP_SE_BLACK.x() * GRACE_NOTE_SCALE,
+            STEM_UP_SE_BLACK.y() * GRACE_NOTE_SCALE
+        );
+    }
 }

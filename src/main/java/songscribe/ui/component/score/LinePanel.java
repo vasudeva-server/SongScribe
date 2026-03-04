@@ -25,11 +25,9 @@ import java.awt.*;
 import javax.swing.*;
 
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 import songscribe.music.Composition;
 import songscribe.music.Line;
-import songscribe.ui.layout.LineElement;
 
 /**
  * Panel containing a single staff line and its associated lyrics.
@@ -158,34 +156,12 @@ public class LinePanel extends JPanel {
     }
 
     /**
-     * Sets the root element for the line component.
-     *
-     * @param rootElement The root LineElement
-     */
-    public void setRootElement(@Nullable LineElement rootElement) {
-        lineComponent.setRootElement(rootElement);
-    }
-
-    /**
      * Sets the middle line Y coordinate.
      *
      * @param middleLineYSs Y coordinate of middle staff line in staff-space units
      */
     public void setMiddleLineYSs(double middleLineYSs) {
         lineComponent.setMiddleLineYSs(middleLineYSs);
-    }
-
-    /**
-     * Finds the LineElement at the given point.
-     *
-     * @param point Point in panel coordinates
-     * @return The element at the point, or null
-     */
-    @Nullable
-    public LineElement findElementAt(@NotNull Point point) {
-        // Convert to line component coordinates
-        var linePoint = SwingUtilities.convertPoint(this, point, lineComponent);
-        return lineComponent.findElementAt(linePoint);
     }
 
     @Override

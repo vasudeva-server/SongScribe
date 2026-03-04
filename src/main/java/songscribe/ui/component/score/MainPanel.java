@@ -29,7 +29,6 @@ import org.jetbrains.annotations.Nullable;
 
 import songscribe.music.Composition;
 import songscribe.ui.layout.LayoutStylesheet;
-import songscribe.ui.layout.LineElement;
 
 /**
  * Top-level panel for the score component hierarchy.
@@ -154,28 +153,6 @@ public class MainPanel extends JPanel {
         staffPanel.rebuildLayout();
         revalidate();
         repaint();
-    }
-
-    /**
-     * Finds the LineElement at the given point.
-     *
-     * @param point Point in panel coordinates
-     * @return The element at the point, or null
-     */
-    @Nullable
-    public LineElement findElementAt(@NotNull Point point) {
-        // Check if point is in score panel
-        var scoreBounds = staffPanel.getBounds();
-
-        if (scoreBounds.contains(point)) {
-            var localPoint = new Point(
-                point.x - scoreBounds.x,
-                point.y - scoreBounds.y
-            );
-            return staffPanel.findElementAt(localPoint);
-        }
-
-        return null;
     }
 
     /**

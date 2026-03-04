@@ -221,7 +221,7 @@ public final class EditModeManager {
         // Make a new note or rest of the given type
         var type = noteType;
 
-        if (Actions.REST_ACTION.isSelected()) {
+        if (Actions.REST_ACTION.isSelected() && noteType.isRealNote()) {
             type = NoteType.valueOf(noteType.name() + "_REST");
         }
 
@@ -302,17 +302,6 @@ public final class EditModeManager {
      */
     public boolean noteWasModified(@NotNull Line line, int noteIndex) {
         scoreActions.clearSelection();
-
-        // If the active note is glissando, it needs different handling
-        if (insertionNote.getNoteType() == NoteType.GLISSANDO) {
-            if (noteIndex > 0) {
-                line
-                    .getNote(noteIndex - 1)
-                    .setGlissando(insertionNote.getStaffPosition());
-            }
-
-            return true;
-        }
 
         if (
             (insertionNote.getNoteType() == NoteType.REPEAT_LEFT) &&
@@ -398,13 +387,6 @@ public final class EditModeManager {
         return false;
     }
 
-    /**
-     * Called after a note has been inserted or modified.
-     * Updates the insertion note for the next insertion and triggers necessary updates.
-     *
-     * @param line The line that was modified
-     * @param noteIndex The index of the note that was inserted/modified
-     */
     public void insertionNoteDidChange(@NotNull Line line, int noteIndex) {
         //mainFrame.getUndoManager().undoableEditHappened(new UndoableEditEvent(this, new
         // ModifyUndoableEdit(oldNote, oldNoteInfo, xIndex)));
@@ -416,19 +398,9 @@ public final class EditModeManager {
         Note nextNote;
 
         if (insertionNote.getNoteType().isGraceNote()) {
+            // Grace note two-step: after inserting a grace note, auto-switch to glissando tool
+            // so the user can connect it.
             nextNote = NoteType.GLISSANDO.newInstance();
-        } else if (insertionNote.getNoteType() == NoteType.GLISSANDO) {
-            // Restore the previously selected duration tool.
-            // This handles both the grace note two-step (grace → glissando → restore)
-            // and standalone glissando (glissando → restore).
-            var previousAction = Actions.DURATION_ACTION_GROUP.getPreviousSelected();
-
-            if (previousAction != null) {
-                Actions.DURATION_ACTION_GROUP.setSelected(previousAction, true);
-                nextNote = previousAction.getType().newInstance();
-            } else {
-                nextNote = NoteType.CROTCHET.newInstance();
-            }
         } else {
             nextNote = insertionNote.getNoteType().newInstance();
         }

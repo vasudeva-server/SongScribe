@@ -32,12 +32,10 @@ import songscribe.ui.action.Actions;
 import songscribe.ui.component.Score;
 import songscribe.ui.layout.CollisionDetector;
 import songscribe.ui.layout.LayoutStylesheet;
-import songscribe.ui.layout.LineElement;
 import songscribe.ui.layout.TempoAttachment;
 import songscribe.ui.layout2.LayoutEngine;
 import songscribe.ui.layout2.LayoutResult;
 import songscribe.ui.layout2.ScaleContext;
-import songscribe.ui.renderer.RendererRegistry;
 import songscribe.ui.selection.LineSelectionState;
 
 /**
@@ -46,14 +44,8 @@ import songscribe.ui.selection.LineSelectionState;
  * This is the core rendering component that:
  * <ul>
  *   <li>Draws the 5-line staff</li>
- *   <li>Traverses the {@link LineElement} tree for element rendering</li>
- *   <li>Uses {@link RendererRegistry} for modular element rendering</li>
- *   <li>Provides hit testing via {@link #findElementAt(Point)}</li>
+ *   <li>Renders notes and other elements via {@link LineRenderer}</li>
  * </ul>
- * <p>
- * Phase 6 implementation uses modular renderers via the Strategy pattern.
- * Notes are rendered as filled circles (stub); full rendering will be
- * added incrementally in later phases.
  */
 public class LineComponent extends ScoreComponent
     implements MouseMotionListener, MouseListener {
@@ -98,9 +90,6 @@ public class LineComponent extends ScoreComponent
 
     /** Per-line selection state. */
     private LineSelectionState lineSelectionState;
-
-    /** Root element of the LineElement tree for this line. */
-    private LineElement rootElement;
 
     /** Y coordinate of the middle staff line (B line) in staff-space units. */
     private double middleLineYSs;
@@ -161,7 +150,6 @@ public class LineComponent extends ScoreComponent
         this.line = line;
         this.lineIndex = lineIndex;
         this.lineSelectionState = new LineSelectionState(line);
-        this.rootElement = null;
         this.layoutDirty = true;
         this.layoutResult = null;
 
@@ -198,24 +186,6 @@ public class LineComponent extends ScoreComponent
     @Nullable
     public LineSelectionState getLineSelectionState() {
         return lineSelectionState;
-    }
-
-    /**
-     * Sets the root element of the LineElement tree.
-     *
-     * @param rootElement The root element
-     */
-    public void setRootElement(@Nullable LineElement rootElement) {
-        this.rootElement = rootElement;
-        repaint();
-    }
-
-    /**
-     * Returns the root element of the LineElement tree.
-     */
-    @Nullable
-    public LineElement getRootElement() {
-        return rootElement;
     }
 
     /**
@@ -358,50 +328,6 @@ public class LineComponent extends ScoreComponent
         }
 
         layoutDirty = false;
-    }
-
-    /**
-     * Finds the LineElement at the given point.
-     * <p>
-     * Traverses the element tree recursively, returning the deepest element
-     * that contains the point.
-     *
-     * @param point Point in component coordinates
-     * @return The element at the point, or null if none found
-     */
-    @Nullable
-    public LineElement findElementAt(@NotNull Point point) {
-        if (rootElement == null) {
-            return null;
-        }
-
-        return findElementAtRecursive(rootElement, point.getX(), point.getY());
-    }
-
-    /**
-     * Recursively finds an element containing the point.
-     */
-    @Nullable
-    private LineElement findElementAtRecursive(
-        @NotNull LineElement element,
-        double x,
-        double y
-    ) {
-        // Check children first (deepest match wins)
-        for (var child : element.getChildren()) {
-            var found = findElementAtRecursive(child, x, y);
-
-            if (found != null) {
-                return found;
-            }
-        }
-
-        // Then check this element
-        if (element.containsPoint(x, y)) {
-            return element;
-        }
-
-        return null;
     }
 
     @Override

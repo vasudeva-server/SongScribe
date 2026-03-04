@@ -32,6 +32,7 @@ import songscribe.music.NoteType;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
 import songscribe.smufl.StaffSpaces;
+import songscribe.ui.layout2.LayoutConstants;
 import songscribe.ui.renderer.RenderContext;
 
 /**
@@ -45,16 +46,13 @@ import songscribe.ui.renderer.RenderContext;
  */
 public class BravuraFontBoundsProvider implements FontBoundsProvider {
 
-    // SMuFL standard stem length in staff spaces
-    private static final double STEM_LENGTH_STAFF_SPACES = 3.5;
-
     // Precomputed constants from SMuFL metadata
     private static final SMuFLMetadata METADATA = SMuFLMetadata.getInstance();
     private static final double CROTCHET_WIDTH = StaffSpaces.toPixels(
         METADATA.getBBox(SMuFLGlyph.NOTEHEAD_BLACK).width()
     );
     private static final double STEM_LENGTH = StaffSpaces.toPixels(
-        STEM_LENGTH_STAFF_SPACES
+        LayoutConstants.STEM_LENGTH_SS
     );
 
     // Instance fields
@@ -124,35 +122,27 @@ public class BravuraFontBoundsProvider implements FontBoundsProvider {
             }
         }
 
-        // Add flag bounds if note is beamable
-        if (noteType.isBeamable()) {
-            // Get flag glyph based on note type
-            var flagGlyph = switch (noteType) {
-                case QUAVER -> SMuFLGlyph.FLAG_8TH_UP;
-                case SEMIQUAVER -> SMuFLGlyph.FLAG_16TH_UP;
-                case DEMI_SEMIQUAVER -> SMuFLGlyph.FLAG_32ND_UP;
-                default -> null;
-            };
+        // Add flag bounds if note type has a flag
+        var flagGlyph = noteType.getFlagGlyph(true);
 
-            if (flagGlyph != null) {
-                var flagBBox = METADATA.getBBox(flagGlyph);
-                var anchors = METADATA.getAnchors(glyph);
+        if (flagGlyph != null) {
+            var flagBBox = METADATA.getBBox(flagGlyph);
+            var anchors = METADATA.getAnchors(glyph);
 
-                if (anchors != null && anchors.stemUpSE() != null) {
-                    var stemAnchor = anchors.stemUpSE();
-                    var stemX = StaffSpaces.toPixels(stemAnchor.x());
-                    var stemTopY = StaffSpaces.toPixels(stemAnchor.y()) - STEM_LENGTH;
+            if (anchors != null && anchors.stemUpSE() != null) {
+                var stemAnchor = anchors.stemUpSE();
+                var stemX = StaffSpaces.toPixels(stemAnchor.x());
+                var stemTopY = StaffSpaces.toPixels(stemAnchor.y()) - STEM_LENGTH;
 
-                    // Position flag at top of stem
-                    var flagBounds = new Rectangle2D.Double(
-                        stemX + StaffSpaces.toPixels(flagBBox.left()),
-                        stemTopY + StaffSpaces.toPixels(flagBBox.top()),
-                        StaffSpaces.toPixels(flagBBox.width()),
-                        StaffSpaces.toPixels(flagBBox.height())
-                    );
+                // Position flag at top of stem
+                var flagBounds = new Rectangle2D.Double(
+                    stemX + StaffSpaces.toPixels(flagBBox.left()),
+                    stemTopY + StaffSpaces.toPixels(flagBBox.top()),
+                    StaffSpaces.toPixels(flagBBox.width()),
+                    StaffSpaces.toPixels(flagBBox.height())
+                );
 
-                    bounds.add(flagBounds);
-                }
+                bounds.add(flagBounds);
             }
         }
 

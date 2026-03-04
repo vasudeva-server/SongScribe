@@ -37,6 +37,7 @@ import songscribe.smufl.SMuFLMetadata;
 import songscribe.smufl.StaffSpaces;
 import songscribe.ui.layout.LayoutStylesheet;
 import songscribe.ui.layout.Tuplet;
+import songscribe.ui.layout2.LayoutConstants;
 import songscribe.ui.layout2.LayoutResult;
 import songscribe.util.GraphicUtils;
 
@@ -103,7 +104,7 @@ public class TupletRenderer extends BaseElementRenderer<Tuplet> {
     private static final double NOTEHEAD_RIGHT_PX;
 
     // Down-stem noteheads are shifted left by half the stem width in NoteRenderer
-    private static final double DOWN_STEM_NOTEHEAD_SHIFT_SS = NoteRenderer.STEM_WIDTH_SS / 2.0;
+    private static final double DOWN_STEM_NOTEHEAD_SHIFT_SS = LayoutConstants.STEM_WIDTH_SS / 2.0;
 
     static {
         var bbox = METADATA.getBBox(SMuFLGlyph.NOTEHEAD_BLACK);

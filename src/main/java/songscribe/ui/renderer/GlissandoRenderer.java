@@ -20,11 +20,16 @@
 
 package songscribe.ui.renderer;
 
-import static songscribe.ui.renderer.GraphicsState.Property.FONT;
+import static songscribe.ui.renderer.GraphicsState.Property.COLOR;
+import static songscribe.ui.renderer.GraphicsState.Property.STROKE;
 import static songscribe.ui.renderer.GraphicsState.Property.TRANSFORM;
 
 import java.awt.*;
-import java.util.Objects;
+import java.awt.font.FontRenderContext;
+import java.awt.geom.*;
+import java.util.EnumMap;
+import java.util.Map;
+import java.util.WeakHashMap;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -33,17 +38,25 @@ import songscribe.music.Composition;
 import songscribe.music.Line;
 import songscribe.music.Note;
 import songscribe.music.NoteType;
+
+import songscribe.smufl.EngravingDefaults;
+import songscribe.smufl.GlyphAnchors;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
 import songscribe.ui.layout2.LayoutConstants;
 import songscribe.ui.layout2.LayoutResult;
+import songscribe.ui.layout2.ScaleContext;
 
 /**
- * Renders glissando (wavy ornament lines) connecting notes.
+ * Renders glissando lines connecting notes as filled rounded rectangles.
  * <p>
- * A glissando is a decorative wavy line that connects a note to a target pitch,
- * typically indicating a slide or glide between pitches. The line is drawn using
- * the Bravura font's wiggleGlissando glyph, tiled at natural size to span the distance.
+ * Two types are supported: CONNECTED (note to note) and SLIDE_OUT (short
+ * diagonal extension past the last note at 45 degrees).
+ * <p>
+ * The glissando endpoints are computed using an inward-search algorithm that pre-expands
+ * the note area by the gap distance, then steps inward from the bounding box edge until
+ * the first intersection with the expanded area. A gap is baked into the offset area so
+ * the glissando never overlaps any note element.
  * <p>
  * Glissando data is stored on the source note via {@link Note#getGlissando()}.
  */
@@ -53,40 +66,124 @@ public class GlissandoRenderer {
     // Constants
     // ==========================================================================
 
-    /** Minimum number of glissando segments to draw. */
-    private static final int MIN_SEGMENTS = 2;
+    private static final SMuFLMetadata METADATA = SMuFLMetadata.getInstance();
+    private static final EngravingDefaults ENGRAVING = METADATA.getEngravingDefaults();
 
     /**
-     * Minimum gap between a glissando endpoint and the adjacent notehead edge, in staff spaces.
-     * Applied after the source notehead's right edge (x1) and before the target notehead's
-     * left edge (x2). The notehead edges are derived from bravura_metadata.json bounding boxes.
+     * Minimum gap between the note area exit point and the glissando endpoint, in staff spaces.
      */
-    private static final double MIN_NOTEHEAD_GAP_SS = 0.375;  // 3px
+    private static final double MIN_GAP_SS = 0.3;
 
-    /** X offset per dot on the note. */
-    private static final double DOT_OFFSET_SS = 0.75;  // 6px
-
-    /** Fallback offset when glissando is at end of line. */
-    private static final double END_OF_LINE_OFFSET_SS = 5.625;  // 45px
-
-    /** Y offset for end-of-line glissando preview, in staff positions (4sp = 2ss). */
-    private static final int DEFAULT_SLIDE_OUT_Y_OFFSET_SP = 4;
-
-    /** Accidental gap factor. */
-    private static final float ACCIDENTAL_GAP_SS = 1.6f;
+    /** Minimum rendered glissando length in staff spaces. Glissandos shorter than this are not drawn. */
+    private static final double MIN_RECT_LENGTH_SS = 1.0;
 
     /**
-     * Y offset applied to the glyph baseline to vertically center the wave on the note position.
-     * wiggleTrillFaster: bBoxSW.y=0.380, bBoxNE.y=0.848 → center = 0.614 ss above baseline.
-     * Applied in the rotated coordinate system so it stays perpendicular to the line at any angle.
+     * Minimum horizontal distance (in staff spaces) that must be reserved between two
+     * note origins for a glissando to render. Equals the minimum glissando length plus
+     * the gap on each side.
      */
-    private static final double GLISSANDO_Y_OFFSET_SS = 0.614;
+    public static final double MIN_HORIZONTAL_RESERVATION_SS =
+        MIN_RECT_LENGTH_SS + 2 * MIN_GAP_SS;  // 1.0 + 0.6 = 1.6 ss
+
+    /** Glissando thickness in staff spaces (matches leger line thickness). */
+    private static final double RECT_THICKNESS_SS = ENGRAVING.legerLineThickness();
+
+    /** Corner radius for the rounded rectangle, in staff spaces (half-round ends). */
+    private static final double CORNER_RADIUS_SS = RECT_THICKNESS_SS / 2.0;
+
+    // ==========================================================================
+    // Note Area Constants and Cached Shapes
+    // ==========================================================================
+
+    /** Cached glyph outline for filled (black) noteheads (quarter, eighth, etc.). */
+    private static final Shape NOTEHEAD_BLACK_SHAPE;
+
+    /** Cached glyph outline for whole noteheads. */
+    private static final Shape NOTEHEAD_WHOLE_SHAPE;
+
+    /** Cached glyph outline for grace noteheads. */
+    private static final Shape NOTEHEAD_GRACE_SHAPE;
+
+    /** Cached glyph outlines for flag glyphs at standard size. */
+    private static final Map<SMuFLGlyph, Shape> FLAG_SHAPES;
+
+    /** Cached glyph outline for the grace note flag (FLAG_8TH_UP at grace scale). */
+    private static final Shape FLAG_8TH_UP_GRACE_SHAPE;
+
+    static {
+        var frc = new FontRenderContext(null, true, true);
+        var font = BaseElementRenderer.BRAVURA_FONT;
+        var graceFont = BaseElementRenderer.BRAVURA_FONT_GRACE;
+
+        NOTEHEAD_BLACK_SHAPE = glyphOutline(font, frc, SMuFLGlyph.NOTEHEAD_BLACK);
+        NOTEHEAD_WHOLE_SHAPE = glyphOutline(font, frc, SMuFLGlyph.NOTEHEAD_WHOLE);
+        NOTEHEAD_GRACE_SHAPE = glyphOutline(graceFont, frc, SMuFLGlyph.NOTEHEAD_BLACK);
+
+        var flagGlyphs = new SMuFLGlyph[]{
+            SMuFLGlyph.FLAG_8TH_UP, SMuFLGlyph.FLAG_8TH_DOWN,
+            SMuFLGlyph.FLAG_16TH_UP, SMuFLGlyph.FLAG_16TH_DOWN,
+            SMuFLGlyph.FLAG_32ND_UP, SMuFLGlyph.FLAG_32ND_DOWN,
+        };
+        var flagShapes = new EnumMap<SMuFLGlyph, Shape>(SMuFLGlyph.class);
+
+        for (var glyph : flagGlyphs) {
+            flagShapes.put(glyph, glyphOutline(font, frc, glyph));
+        }
+
+        FLAG_SHAPES = flagShapes;
+        FLAG_8TH_UP_GRACE_SHAPE = glyphOutline(graceFont, frc, SMuFLGlyph.FLAG_8TH_UP);
+    }
+
+    /**
+     * Returns the glyph outline for the given SMuFL glyph, suitable for use as an Area component.
+     */
+    private static Shape glyphOutline(
+        @NotNull Font font,
+        @NotNull FontRenderContext frc,
+        @NotNull SMuFLGlyph glyph
+    ) {
+        var glyphVector = font.createGlyphVector(frc, glyph.asString());
+        return glyphVector.getOutline();
+    }
 
     // ==========================================================================
     // Singleton
     // ==========================================================================
 
     private static final GlissandoRenderer INSTANCE = new GlissandoRenderer();
+
+    /**
+     * Cache key capturing the note attributes that affect the composite area shape.
+     * When any attribute changes, the key won't match and the area is rebuilt.
+     * <p>
+     * {@code staffPosition} is only relevant when ledger lines are present
+     * (it affects the area shape). For notes on the staff, it is normalized to 0
+     * so that dragging through non-ledger positions doesn't cause unnecessary
+     * cache misses.
+     */
+    private record AreaCacheKey(
+        NoteType noteType, int ledgerLineCount, int staffPosition,
+        int dotCount, Note.Accidental accidental, boolean upper, boolean beamed) {
+
+        AreaCacheKey(@NotNull Note note, boolean beamed) {
+            this(note.getNoteType(),
+                note.getLedgerLineCount(),
+                note.hasLedgerLines() ? note.getStaffPosition() : 0,
+                note.getDotCount(),
+                note.getAccidental(),
+                note.isUpper(),
+                beamed);
+        }
+    }
+
+    private record AreaCacheEntry(
+        AreaCacheKey key,
+        Area offsetArea,
+        Rectangle2D offsetBounds
+    ) {}
+
+    /** Self-validating area cache keyed by Note identity. Weak keys allow GC of removed notes. */
+    private final WeakHashMap<Note, AreaCacheEntry> areaCache = new WeakHashMap<>();
 
     private GlissandoRenderer() {
     }
@@ -105,48 +202,76 @@ public class GlissandoRenderer {
     /**
      * Calculates the starting X position for a glissando (public static version).
      * <p>
-     * This method is used by HorizontalAdjustment to position UI handles.
+     * Returns the actual glissando start X after area exit and gap computation,
+     * not the notehead center. Used by HorizontalAdjustment to position UI handles
+     * at the glissando endpoints.
      *
-     * @param xIndex       Index of the source note in the line
-     * @param glissando    The glissando data
-     * @param lineIndex    Index of the line in the composition
-     * @param composition  The composition containing the line
-     * @param layoutResult Layout result for resolving note positions (may be null)
-     * @return X coordinate for glissando start in staff-space units
+     * @param xIndex        Index of the source note in the line
+     * @param glissando     The glissando data
+     * @param lineIndex     Index of the line in the composition
+     * @param composition   The composition containing the line
+     * @param layoutResult  Layout result for resolving note positions
+     * @param middleLineYSs Y position of the middle staff line in staff spaces
+     * @return X coordinate for glissando start in staff spaces
      */
     public static double getGlissandoX1Ss(
         int xIndex,
         @NotNull Note.Glissando glissando,
         int lineIndex,
         @NotNull Composition composition,
-        @Nullable LayoutResult layoutResult
+        @NotNull LayoutResult layoutResult,
+        double middleLineYSs
     ) {
-        var line = composition.getLine(lineIndex);
-        var note = line.getNote(xIndex);
-        return INSTANCE.getGlissandoX1Ss(note, glissando, layoutResult);
+        var endpoints = INSTANCE.computeEndpointsForNote(
+            xIndex, glissando, lineIndex, composition, layoutResult, middleLineYSs);
+
+        if (endpoints != null) {
+            return endpoints.startX;
+        }
+
+        // Fallback to notehead center if glissando cannot render
+        var note = composition.getLine(lineIndex).getNote(xIndex);
+        return noteheadCenterXSs(note, layoutResult);
     }
 
     /**
      * Calculates the ending X position for a glissando (public static version).
      * <p>
-     * This method is used by HorizontalAdjustment to position UI handles.
+     * Returns the actual glissando end X after area exit and gap computation,
+     * not the notehead center. Used by HorizontalAdjustment to position UI handles
+     * at the glissando endpoints.
      *
-     * @param xIndex       Index of the source note in the line
-     * @param glissando    The glissando data
-     * @param lineIndex    Index of the line in the composition
-     * @param composition  The composition containing the line
-     * @param layoutResult Layout result for resolving note positions (may be null)
-     * @return X coordinate for glissando end in staff-space units
+     * @param xIndex        Index of the source note in the line
+     * @param glissando     The glissando data
+     * @param lineIndex     Index of the line in the composition
+     * @param composition   The composition containing the line
+     * @param layoutResult  Layout result for resolving note positions
+     * @param middleLineYSs Y position of the middle staff line in staff spaces
+     * @return X coordinate for glissando end in staff spaces
      */
     public static double getGlissandoX2Ss(
         int xIndex,
         @NotNull Note.Glissando glissando,
         int lineIndex,
         @NotNull Composition composition,
-        @Nullable LayoutResult layoutResult
+        @NotNull LayoutResult layoutResult,
+        double middleLineYSs
     ) {
+        var endpoints = INSTANCE.computeEndpointsForNote(
+            xIndex, glissando, lineIndex, composition, layoutResult, middleLineYSs);
+
+        if (endpoints != null) {
+            return endpoints.endX;
+        }
+
+        // Fallback to notehead center if glissando cannot render
         var line = composition.getLine(lineIndex);
-        return INSTANCE.getGlissandoX2Ss(line, xIndex, glissando, layoutResult);
+
+        if (glissando.type == Note.Glissando.Type.CONNECTED) {
+            return noteheadCenterXSs(line.getNote(xIndex + 1), layoutResult);
+        }
+
+        return noteheadCenterXSs(line.getNote(xIndex), layoutResult);
     }
 
     // ==========================================================================
@@ -177,9 +302,6 @@ public class GlissandoRenderer {
 
     /**
      * Renders a glissando for a specific note.
-     * <p>
-     * This is the public entry point for rendering a single glissando,
-     * used by both line-level rendering and edit mode preview.
      *
      * @param g2        Graphics context
      * @param line      The line containing the note
@@ -202,95 +324,34 @@ public class GlissandoRenderer {
         }
 
         var layoutResult = ctx.getLayoutResult();
-        var x1 = getGlissandoX1Ss(note, glissando, layoutResult);
-        var x2 = getGlissandoX2Ss(line, noteIndex, glissando, layoutResult);
-        var y1 = noteStaffPositionToCoordinateSs(note.getStaffPosition(), ctx.getMiddleLineYSs());
+        var middleLineYSs = ctx.getMiddleLineYSs();
+        var src = resolveNoteContext(note, noteIndex, line, layoutResult, middleLineYSs);
+        var tgt = resolveTargetContext(glissando.type, noteIndex, line, layoutResult, middleLineYSs);
 
-        // Use the live next note's staff position when available so the glissando
-        // endpoint tracks the note during pitch-drag. Fall back to glissando.pitch
-        // at end of line where there is no next note.
-        var nextNote = ((noteIndex + 1) < line.noteCount()) ? line.getNote(noteIndex + 1) : null;
-        var targetPitch = (nextNote != null) ? nextNote.getStaffPosition() : glissando.pitch;
-        var y2 = noteStaffPositionToCoordinateSs(targetPitch, ctx.getMiddleLineYSs());
-
-        // Adjust endpoints to follow the line direction (angle-dependent gap).
-        if (nextNote != null) {
-            var x1CenterSs = resolveNoteXSs(note, layoutResult);
-            var x2CenterSs = resolveNoteXSs(nextNote, layoutResult);
-            var adjusted = adjustEndpointsForAngle(x1CenterSs, x2CenterSs, y1, y2, x1, x2);
-            y1 = adjusted[0];
-            y2 = adjusted[1];
-        }
-
-        renderGlissandoLine(g2, x1, y1, x2, y2);
-    }
-
-    /**
-     * Renders a glissando for edit mode preview.
-     * <p>
-     * This method is called when the user is placing a glissando note
-     * and needs to see a preview of the glissando line.
-     *
-     * @param g2        Graphics context
-     * @param xIndex    Index of the note to attach glissando to
-     * @param glissando The glissando data
-     * @param line      The line containing the note
-     * @param ctx       Render context
-     */
-    public void renderEditGlissando(
-        @NotNull Graphics2D g2,
-        int xIndex,
-        @NotNull Note.Glissando glissando,
-        @NotNull Line line,
-        @NotNull ElementRenderContext ctx
-    ) {
-        if (xIndex < 0 || xIndex >= line.noteCount()) {
+        // A connected glissando between notes at the same pitch is musically meaningless — hide it
+        if (tgt != null && src.note().getPitch() == tgt.note().getPitch()) {
             return;
         }
 
-        var note = line.getNote(xIndex);
-        var layoutResult = ctx.getLayoutResult();
-        var x1 = getGlissandoX1Ss(note, glissando, layoutResult);
-        var x2 = getGlissandoX2Ss(line, xIndex, glissando, layoutResult);
-        var y1 = noteStaffPositionToCoordinateSs(note.getStaffPosition(), ctx.getMiddleLineYSs());
-        var y2 = noteStaffPositionToCoordinateSs(glissando.pitch, ctx.getMiddleLineYSs());
-
-        // Adjust endpoints to follow the line direction (angle-dependent gap).
-        if ((xIndex + 1) < line.noteCount()) {
-            var nextNote = line.getNote(xIndex + 1);
-            var x1CenterSs = resolveNoteXSs(note, layoutResult);
-            var x2CenterSs = resolveNoteXSs(nextNote, layoutResult);
-            var adjusted = adjustEndpointsForAngle(x1CenterSs, x2CenterSs, y1, y2, x1, x2);
-            y1 = adjusted[0];
-            y2 = adjusted[1];
-        }
-
-        renderGlissandoLine(g2, x1, y1, x2, y2);
+        render(g2, src, tgt, glissando.x1Translate, glissando.type == Note.Glissando.Type.CONNECTED ? glissando.x2Translate : 0);
     }
 
     /**
-     * Returns the default Y offset (in staff positions) used for end-of-line glissando previews.
-     */
-    public static int getDefaultSlideOutYOffsetSp() {
-        return DEFAULT_SLIDE_OUT_Y_OFFSET_SP;
-    }
-
-    /**
-     * Renders a preview glissando line connecting the source note to a target pitch.
+     * Renders a preview glissando line from the source note.
      * <p>
-     * Used when the glissando tool is selected and the mouse hovers between notes
-     * (or past the last note). No note head is shown — only the wavy line preview.
+     * Used when the glissando tool is active and the mouse hovers over a zone.
+     * No notehead is shown — only the glissando preview.
      *
-     * @param g2            Graphics context (staff-space coordinate system)
-     * @param sourceIndex   Index of the source note in the line
-     * @param targetPitchSp Target pitch in staff positions
-     * @param line          The line containing the notes
-     * @param ctx           Render context
+     * @param g2          Graphics context (staff-space coordinate system)
+     * @param sourceIndex Index of the source note in the line
+     * @param type        Glissando type to preview (CONNECTED or SLIDE_OUT)
+     * @param line        The line containing the notes
+     * @param ctx         Render context
      */
     public void renderPreviewGlissando(
         @NotNull Graphics2D g2,
         int sourceIndex,
-        int targetPitchSp,
+        @NotNull Note.Glissando.Type type,
         @NotNull Line line,
         @NotNull ElementRenderContext ctx
     ) {
@@ -299,33 +360,12 @@ public class GlissandoRenderer {
         }
 
         var note = line.getNote(sourceIndex);
-        var sentinel = new Note.Glissando(targetPitchSp);
         var layoutResult = ctx.getLayoutResult();
-        var x1 = getGlissandoX1Ss(note, sentinel, layoutResult);
-
-        double x2;
-        var noteCount = line.noteCount();
-
-        if (sourceIndex + 1 < noteCount) {
-            x2 = getGlissandoX2Ss(line, sourceIndex, sentinel, layoutResult);
-        } else {
-            x2 = resolveNoteXSs(note, layoutResult) + LayoutConstants.DEFAULT_COLUMN_GAP_SS;
-        }
-
         var middleLineYSs = ctx.getMiddleLineYSs();
-        var y1 = noteStaffPositionToCoordinateSs(note.getStaffPosition(), middleLineYSs);
-        var y2 = noteStaffPositionToCoordinateSs(targetPitchSp, middleLineYSs);
+        var src = resolveNoteContext(note, sourceIndex, line, layoutResult, middleLineYSs);
+        var tgt = resolveTargetContext(type, sourceIndex, line, layoutResult, middleLineYSs);
 
-        if (sourceIndex + 1 < noteCount) {
-            var nextNote = line.getNote(sourceIndex + 1);
-            var x1CenterSs = resolveNoteXSs(note, layoutResult);
-            var x2CenterSs = resolveNoteXSs(nextNote, layoutResult);
-            var adjusted = adjustEndpointsForAngle(x1CenterSs, x2CenterSs, y1, y2, x1, x2);
-            y1 = adjusted[0];
-            y2 = adjusted[1];
-        }
-
-        renderGlissandoLine(g2, x1, y1, x2, y2);
+        render(g2, src, tgt, 0, 0);
     }
 
     // ==========================================================================
@@ -333,207 +373,586 @@ public class GlissandoRenderer {
     // ==========================================================================
 
     /**
-     * Calculates the starting X position for a glissando.
-     * <p>
-     * The start is placed MIN_NOTEHEAD_GAP_SS past the source notehead's right edge,
-     * where the right edge is read from bravura_metadata.json bounding boxes.
-     *
-     * @param note         The source note
-     * @param glissando    The glissando data
-     * @param layoutResult Layout result for resolving note positions (may be null)
-     * @return X coordinate for glissando start in staff-space units
+     * Returns the notehead center X for a note, in staff spaces.
      */
-    private double getGlissandoX1Ss(
+    private static double noteheadCenterXSs(
         @NotNull Note note,
-        @NotNull Note.Glissando glissando,
-        @Nullable LayoutResult layoutResult
+        @NotNull LayoutResult layoutResult
     ) {
-        var noteXSs = resolveNoteXSs(note, layoutResult);
-        var x1 = noteXSs + getNoteheadRightEdgeSs(note) + MIN_NOTEHEAD_GAP_SS;
-        x1 += note.getDotCount() * DOT_OFFSET_SS;
-        x1 += glissando.x1Translate;
-        return x1;
+        return layoutResult.getNoteXSs(note) + NoteRenderer.getNoteheadRightEdgeSs(note) / 2.0;
     }
 
     /**
-     * Returns the right edge of the notehead bounding box in staff spaces, relative to note X.
+     * Computes the glissando endpoints for a note, building areas and
+     * delegating to {@link #computeEndpoints}. Used by the public static
+     * endpoint methods.
+     *
+     * @return The glissando endpoints, or null if the glissando cannot render
+     */
+    @Nullable
+    private GlissandoRenderer.Endpoints computeEndpointsForNote(
+        int xIndex,
+        @NotNull Note.Glissando glissando,
+        int lineIndex,
+        @NotNull Composition composition,
+        @NotNull LayoutResult layoutResult,
+        double middleLineYSs
+    ) {
+        var line = composition.getLine(lineIndex);
+        var note = line.getNote(xIndex);
+        var src = resolveNoteContext(note, xIndex, line, layoutResult, middleLineYSs);
+        var tgt = resolveTargetContext(glissando.type, xIndex, line, layoutResult, middleLineYSs);
+
+        return computeEndpoints(src, tgt,
+            glissando.x1Translate, glissando.type == Note.Glissando.Type.CONNECTED ? glissando.x2Translate : 0);
+    }
+
+    // ==========================================================================
+    // Endpoint Computation and Rendering
+    // ==========================================================================
+
+    /**
+     * Resolved geometry for a single note: center position, offset area, and note reference.
+     */
+    record NoteContext(
+        @NotNull Note note,
+        double cx, double cy,
+        @NotNull Area offsetArea,
+        @NotNull Rectangle2D offsetBounds
+    ) {}
+
+    /**
+     * Immutable record holding the computed glissando endpoint positions in layout space.
+     */
+    record Endpoints(double startX, double startY, double endX, double endY, double angle) {}
+
+    /**
+     * Resolves the geometry context for a note at the given index: notehead center
+     * position, staff-position Y coordinate, and composite area for gap calculation.
+     */
+    private NoteContext resolveNoteContext(
+        @NotNull Note note, int noteIndex, @NotNull Line line,
+        @NotNull LayoutResult layoutResult, double middleLineYSs
+    ) {
+        boolean beamed = line.getBeamings().findInterval(noteIndex) != null;
+        var cx = noteheadCenterXSs(note, layoutResult);
+        var cy = BaseElementRenderer.noteStaffPositionToCoordinateSs(note.getStaffPosition(), middleLineYSs);
+        var entry = getOrBuildArea(note, beamed);
+
+        return new NoteContext(note, cx, cy, entry.offsetArea(), entry.offsetBounds());
+    }
+
+    /**
+     * Resolves the target note context for a CONNECTED glissando, or returns null
+     * for SLIDE_OUT or if no next note exists.
+     */
+    @Nullable
+    private NoteContext resolveTargetContext(
+        @NotNull Note.Glissando.Type type, int sourceIndex, @NotNull Line line,
+        @NotNull LayoutResult layoutResult, double middleLineYSs
+    ) {
+        if (type != Note.Glissando.Type.CONNECTED || sourceIndex + 1 >= line.noteCount()) {
+            return null;
+        }
+
+        var nextNote = line.getNote(sourceIndex + 1);
+
+        return resolveNoteContext(nextNote, sourceIndex + 1, line, layoutResult, middleLineYSs);
+    }
+
+    /**
+     * Computes the glissando start/end positions in layout space (staff-space coordinates).
+     * Returns null if the glissando is too short to render (endpoints crossed or
+     * length < MIN_RECT_LENGTH_SS).
      * <p>
-     * For regular notes the value is read from bravura_metadata.json via SMuFLMetadata.
-     * For grace notes the pre-composed acciaccatura glyph bbox is scaled by GRACE_NOTE_SCALE.
+     * Both render() and the public endpoint methods delegate to this.
      *
-     * @param note The note whose notehead right edge is needed
-     * @return Right edge of the notehead in staff-space units (relative to note X)
+     * @param src          Source note context
+     * @param tgt          Target note context, or null for SLIDE_OUT
+     * @param x1Translate  User drag offset for source endpoint
+     * @param x2Translate  User drag offset for target endpoint
+     * @return The glissando endpoints, or null if the glissando cannot render
      */
-    private static double getNoteheadRightEdgeSs(@NotNull Note note) {
-        var metadata = SMuFLMetadata.getInstance();
-        var noteType = note.getNoteType();
-
-        // Regular notes: look up the notehead glyph directly
-        var glyph = noteType.getSMuFLNoteheadGlyph();
-
-        if (glyph != null) {
-            var bbox = metadata.getBBox(glyph);
-
-            if (bbox != null) {
-                return bbox.right();
-            }
-        }
-
-        // Grace notes: pre-composed glyph rendered at GRACE_NOTE_SCALE
-        if (noteType.isGraceNote()) {
-            var graceGlyph = note.isUpper()
-                ? SMuFLGlyph.GRACE_NOTE_ACCIACCATURA_STEM_UP
-                : SMuFLGlyph.GRACE_NOTE_ACCIACCATURA_STEM_DOWN;
-            var bbox = metadata.getBBox(graceGlyph);
-
-            if (bbox != null) {
-                return bbox.right() * GraceNoteRenderer.GRACE_NOTE_SCALE;
-            }
-        }
-
-        // Fallback: use a safe default (noteheadBlack right edge)
-        return 1.18;
-    }
-
-    /**
-     * Calculates the ending X position for a glissando.
-     *
-     * @param line         The line containing the notes
-     * @param noteIndex    Index of the source note
-     * @param glissando    The glissando data
-     * @param layoutResult Layout result for resolving note positions (may be null)
-     * @return X coordinate for glissando end in staff-space units
-     */
-    private double getGlissandoX2Ss(
-        @NotNull Line line,
-        int noteIndex,
-        @NotNull Note.Glissando glissando,
-        @Nullable LayoutResult layoutResult
+    @Nullable
+    private static GlissandoRenderer.Endpoints computeEndpoints(
+        @NotNull NoteContext src, @Nullable NoteContext tgt,
+        double x1Translate, double x2Translate
     ) {
-        var x2 = -glissando.x2Translate;
+        boolean isSlideOut = (tgt == null);
 
-        if ((noteIndex + 1) < line.noteCount()) {
-            var nextNote = line.getNote(noteIndex + 1);
-            x2 += resolveNoteXSs(nextNote, layoutResult) - MIN_NOTEHEAD_GAP_SS;
+        // Tangent direction in layout space
+        double dx, dy;
 
-            var accNum = nextNote.getAccidental().ordinal();
-
-            if (accNum > 0) {
-                x2 -= NoteRenderer.getAccidentalWidthSs(nextNote);
-                x2 -= ACCIDENTAL_GAP_SS;
-            }
+        if (isSlideOut) {
+            dx = 1.0;
+            dy = 1.0;
         } else {
-            // At end of line, use fixed offset from current note
-            var currentNote = line.getNote(noteIndex);
-            x2 += resolveNoteXSs(currentNote, layoutResult) + END_OF_LINE_OFFSET_SS;
+            dx = tgt.cx - src.cx;
+            dy = tgt.cy - src.cy;
         }
 
-        return x2;
+        double len = Math.sqrt(dx * dx + dy * dy);
+
+        if (!isSlideOut && len == 0) {
+            return null;
+        }
+
+        double nx = dx / len;
+        double ny = dy / len;
+
+        // Areas are in local coordinates (origin at notehead glyph origin).
+        // Local notehead center is at (noteheadRightEdge/2, 0).
+        // Layout offset from local origin: (cx - localCenterX, cy).
+        // Exit points found in local space are translated to layout space by adding the offset.
+
+        // Source: find entry point on offset area in local space
+        double localCx1 = NoteRenderer.getNoteheadRightEdgeSs(src.note) / 2.0;
+        double offset1X = src.cx - localCx1;
+        double offset1Y = src.cy;
+
+        double stepSs = ScaleContext.getInstance().fromPixels(1.0);
+        var entry1 = findNoteAreaEntryPoint(src.offsetArea, src.offsetBounds, localCx1, 0, nx, ny, stepSs);
+
+        double effectiveX1Translate = Math.max(x1Translate, -MIN_GAP_SS);
+        double startX = entry1.x + offset1X + nx * effectiveX1Translate;
+        double startY = entry1.y + offset1Y + ny * effectiveX1Translate;
+
+        double endX, endY;
+
+        if (isSlideOut) {
+            endX = startX + nx * MIN_RECT_LENGTH_SS;
+            endY = startY + ny * MIN_RECT_LENGTH_SS;
+        } else {
+            // Target: find entry point on offset area in local space (reverse direction)
+            double localCx2 = NoteRenderer.getNoteheadRightEdgeSs(tgt.note) / 2.0;
+            double offset2X = tgt.cx - localCx2;
+            double offset2Y = tgt.cy;
+
+            var entry2 = findNoteAreaEntryPoint(tgt.offsetArea, tgt.offsetBounds, localCx2, 0, -nx, -ny, stepSs);
+
+            double effectiveX2Translate = Math.max(x2Translate, -MIN_GAP_SS);
+            endX = entry2.x + offset2X - nx * effectiveX2Translate;
+            endY = entry2.y + offset2Y - ny * effectiveX2Translate;
+        }
+
+        // Compute glissando length
+        dx = endX - startX;
+        dy = endY - startY;
+        double length = Math.sqrt(dx * dx + dy * dy);
+
+        // If the endpoints have crossed or the glissando is too short, skip rendering
+        if ((dx * nx + dy * ny) < 0 || length < MIN_RECT_LENGTH_SS) {
+            return null;
+        }
+
+        return new Endpoints(startX, startY, endX, endY, Math.atan2(ny, nx));
     }
 
     /**
-     * Resolves the actual X position for a note, using layout data when available.
-     *
-     * @param note         The note to resolve
-     * @param layoutResult Layout result (may be null for fallback)
-     * @return The note's X position in staff-space units
-     */
-    private static double resolveNoteXSs(
-        @NotNull Note note,
-        @Nullable LayoutResult layoutResult
-    ) {
-        return (layoutResult != null) ? layoutResult.getNoteXSs(note) : note.getXPosSs();
-    }
-
-    // ==========================================================================
-    // Glyph Rendering
-    // ==========================================================================
-
-    /**
-     * Adjusts glissando endpoint y-coordinates to follow the line direction.
+     * Renders a filled rounded rectangle between two note areas.
      * <p>
-     * Without this, a fixed x-gap from the notehead causes the wavy line to appear
-     * detached at steep angles. By shifting y proportionally to the slope (MuseScore-style),
-     * the endpoints move along the line direction so the visual gap scales as 1/cos(angle).
+     * For CONNECTED glissandos, the shape spans from the source note area exit
+     * to the target note area exit, with gaps on both sides. For SLIDE_OUT
+     * glissandos, it extends from the source area exit at a fixed 45-degree
+     * angle for {@link #MIN_RECT_LENGTH_SS}.
      *
-     * @param x1CenterSs Notehead center X of the source note, in staff spaces
-     * @param x2CenterSs Notehead center X of the target note, in staff spaces
-     * @param y1         Raw y of source note, in staff spaces
-     * @param y2         Raw y of target note, in staff spaces
-     * @param x1         Gap-adjusted start X, in staff spaces
-     * @param x2         Gap-adjusted end X, in staff spaces
-     * @return {adjustedY1, adjustedY2}
+     * @param g2           Graphics context (staff-space coordinate system)
+     * @param src          Source note context
+     * @param tgt          Target note context, or null for SLIDE_OUT
+     * @param x1Translate  User drag offset for source endpoint
+     * @param x2Translate  User drag offset for target endpoint
      */
-    private static double[] adjustEndpointsForAngle(
-        double x1CenterSs, double x2CenterSs,
-        double y1, double y2,
-        double x1, double x2
+    private void render(
+        @NotNull Graphics2D g2,
+        @NotNull NoteContext src, @Nullable NoteContext tgt,
+        double x1Translate, double x2Translate
     ) {
-        var rawDx = x2CenterSs - x1CenterSs;
+        var endpoints = computeEndpoints(src, tgt, x1Translate, x2Translate);
 
-        if (rawDx > 0) {
-            var slope = (y2 - y1) / rawDx;
-            y1 += slope * (x1 - x1CenterSs);
-            y2 += slope * (x2 - x2CenterSs);
+        if (endpoints == null) {
+            return;
         }
 
-        return new double[]{y1, y2};
+        double dx = endpoints.endX() - endpoints.startX();
+        double dy = endpoints.endY() - endpoints.startY();
+        double length = Math.sqrt(dx * dx + dy * dy);
+
+        try (var ignored = GraphicsState.save(g2, TRANSFORM)) {
+            g2.translate(endpoints.startX(), endpoints.startY());
+            g2.rotate(endpoints.angle());
+            g2.fill(new RoundRectangle2D.Double(
+                0, -RECT_THICKNESS_SS / 2.0,
+                length, RECT_THICKNESS_SS,
+                CORNER_RADIUS_SS * 2, CORNER_RADIUS_SS * 2
+            ));
+        }
     }
 
     /**
-     * Renders the actual glissando wavy line between two points.
-     *
-     * @param g2 Graphics context (staff-space coordinate system)
-     * @param x1 Start X coordinate in staff spaces
-     * @param y1 Start Y coordinate in staff spaces
-     * @param x2 End X coordinate in staff spaces
-     * @param y2 End Y coordinate in staff spaces
+     * Returns the cached entry if the note's visual attributes haven't changed,
+     * or builds, caches, and returns a new one.
      */
-    private void renderGlissandoLine(
-        @NotNull Graphics2D g2,
-        double x1,
-        double y1,
-        double x2,
-        double y2
-    ) {
-        var dx = x2 - x1;
-        var dy = y2 - y1;
-        var length = Math.sqrt(dx * dx + dy * dy);
+    @NotNull AreaCacheEntry getOrBuildArea(@NotNull Note note, boolean beamed) {
+        var key = new AreaCacheKey(note, beamed);
 
-        var advance = Objects.requireNonNull(
-            SMuFLMetadata.getInstance().getAdvanceWidth(SMuFLGlyph.WIGGLE_TRILL_FASTER));
+        var cached = areaCache.get(note);
 
-        // Truncate (not ceil) so segments never overshoot the endpoint gap.
-        // Any leftover space is split equally on both sides, centering the pattern.
-        var n = Math.max(MIN_SEGMENTS, (int) (length / advance));
-        var xOffset = (length - n * advance) * 0.5;
+        if (cached != null && cached.key.equals(key)) {
+            return cached;
+        }
 
-        try (var ignored = GraphicsState.save(g2, TRANSFORM, FONT)) {
-            g2.setFont(BaseElementRenderer.BRAVURA_FONT);
+        var offsetArea = createOffsetArea(buildNoteArea(note, beamed), (float) MIN_GAP_SS);
+        var entry = new AreaCacheEntry(key, offsetArea, offsetArea.getBounds2D());
+        areaCache.put(note, entry);
 
-            // Translate to (x1, y1), then rotate so the line is horizontal.
-            // Applying the Y centering offset after rotation keeps it perpendicular
-            // to the line at any angle (rather than purely vertical in screen coords).
-            g2.translate(x1, y1);
-            g2.rotate(Math.atan2(dy, dx));
+        return entry;
+    }
 
-            var glyphStr = SMuFLGlyph.WIGGLE_TRILL_FASTER.asString();
+    // ==========================================================================
+    // Note Area Construction
+    // ==========================================================================
 
-            for (var i = 0; i < n; i++) {
-                g2.drawString(glyphStr, (float) (xOffset + i * advance), (float) GLISSANDO_Y_OFFSET_SS);
+    /**
+     * Builds a geometric {@link Area} representing the visual footprint of a note,
+     * including notehead, dots, accidentals, ledger lines, stem, and flags.
+     * All coordinates are in staff spaces, relative to the notehead glyph origin.
+     *
+     * @param note   The note to build the area for
+     * @param beamed Whether the note is part of a beam group (suppresses flags)
+     * @return The composite area of all note components
+     */
+    Area buildNoteArea(@NotNull Note note, boolean beamed) {
+        var area = new Area();
+        var noteType = note.getNoteType();
+        boolean upper = note.isUpper();
+
+        // Grace notes always stem up
+        if (noteType.isGraceNote()) {
+            upper = true;
+        }
+
+        addNoteheadToArea(area, noteType, upper);
+        addDotsToArea(area, note, beamed, upper);
+        addAccidentalToArea(area, note);
+        addLedgerLinesToArea(area, note);
+
+        if (noteType.isNoteWithStem()) {
+            var stemTip = addStemToArea(area, noteType, upper);
+
+            if (!beamed) {
+                addFlagsToArea(area, noteType, upper, stemTip);
             }
         }
+
+        return area;
     }
 
     /**
-     * Calculates the Y coordinate for a given pitch position.
-     *
-     * @param staffPosition The note's staff position relative to middle line
-     * @param middleLineYSs Y position of middle staff line in staff spaces
-     * @return Y coordinate
+     * Adds the notehead glyph outline to the area.
+     * For stem-down notes, the notehead is shifted left by half the stem width
+     * via {@link NoteRenderer#getNoteheadXOffsetSs}.
      */
-    private double noteStaffPositionToCoordinateSs(int staffPosition, double middleLineYSs) {
-        // Staff positions are in half-staff-space increments, so multiply by 0.5 ss
-        return middleLineYSs + staffPosition * 0.5;
+    private void addNoteheadToArea(
+        @NotNull Area area,
+        @NotNull NoteType noteType,
+        boolean upper
+    ) {
+        Shape shape;
+
+        if (noteType.isGraceNote()) {
+            shape = NOTEHEAD_GRACE_SHAPE;
+        } else if (noteType == NoteType.SEMIBREVE) {
+            shape = NOTEHEAD_WHOLE_SHAPE;
+        } else {
+            shape = NOTEHEAD_BLACK_SHAPE;
+        }
+
+        float offsetX = NoteRenderer.getNoteheadXOffsetSs(noteType, upper);
+
+        if (offsetX != 0f) {
+            shape = AffineTransform.getTranslateInstance(offsetX, 0).createTransformedShape(shape);
+        }
+
+        area.add(new Area(shape));
     }
+
+    /**
+     * Adds augmentation dot rectangles to the area.
+     * Uses {@link NoteRenderer#forEachDotPosition} for shared positioning logic.
+     */
+    private void addDotsToArea(
+        @NotNull Area area,
+        @NotNull Note note,
+        boolean beamed,
+        boolean upper
+    ) {
+        var dotBBox = METADATA.getBBox(SMuFLGlyph.AUGMENTATION_DOT);
+
+        if (dotBBox == null) {
+            return;
+        }
+
+        NoteRenderer.forEachDotPosition(note, beamed, upper, (dotX, yOffset) ->
+            area.add(new Area(new Rectangle2D.Double(
+                dotX + dotBBox.left(),
+                yOffset + dotBBox.top(),
+                dotBBox.width(),
+                dotBBox.height()
+            ))));
+    }
+
+    /**
+     * Adds an accidental bounding rectangle to the area.
+     * Mirrors the positioning logic in {@link NoteRenderer#renderAccidental}.
+     */
+    private void addAccidentalToArea(@NotNull Area area, @NotNull Note note) {
+        if (note.getAccidental() == Note.Accidental.NONE) {
+            return;
+        }
+
+        float accWidth = NoteRenderer.getAccidentalWidthSs(note);
+
+        if (accWidth <= 0) {
+            return;
+        }
+
+        // Accidental X position mirrors NoteRenderer: -(padding + width)
+        // For grace notes, accWidth already reflects the small glyph size.
+        double x = -NoteRenderer.ACCIDENTAL_PADDING_SS - accWidth;
+
+        // Use the tallest accidental bbox height as a reasonable approximation.
+        // The actual accidental may be shorter, but this gives a safe bounding area.
+        double height = estimateAccidentalHeightSs(note);
+        double halfHeight = height / 2.0;
+
+        area.add(new Area(new Rectangle2D.Double(
+            x, -halfHeight,
+            accWidth, height
+        )));
+    }
+
+    /**
+     * Estimates the vertical extent of a note's accidental in staff spaces,
+     * using the tallest component glyph's bounding box.
+     */
+    private double estimateAccidentalHeightSs(@NotNull Note note) {
+        // Use the sharp glyph bbox as a reasonable default height (~2.5 ss)
+        var bbox = METADATA.getBBox(SMuFLGlyph.ACCIDENTAL_SHARP);
+
+        return bbox != null ? bbox.height() : 2.5;
+    }
+
+    /**
+     * Returns the ledger line overhang for a note, or 0 if the note has no ledger lines.
+     * This is the distance the ledger lines extend beyond the notehead on each side.
+     * Used by both addLedgerLinesToArea() and the spacing constraint in
+     * HorizontalSpacingCalculator.
+     */
+    public static double getLedgerLineOverhangSs(@NotNull Note note) {
+        if (Math.abs(note.getStaffPosition()) <= 5 || !note.getNoteType().drawStaveLongitude()) {
+            return 0.0;
+        }
+
+        return ENGRAVING.legerLineExtension();
+    }
+
+    /**
+     * Adds ledger line rectangles to the area.
+     * Mirrors the positioning logic in {@link NoteRenderer#renderLedgerLines}.
+     */
+    private void addLedgerLinesToArea(@NotNull Area area, @NotNull Note note) {
+        double extensionSs = getLedgerLineOverhangSs(note);
+
+        if (extensionSs == 0.0) {
+            return;
+        }
+
+        double noteheadWidthSs = NoteRenderer.getNoteheadRightEdgeSs(note);
+        double ledgerWidthSs = noteheadWidthSs + 2 * extensionSs;
+        double centerXSs = noteheadWidthSs / 2.0;
+        double thicknessSs = ENGRAVING.legerLineThickness();
+        double halfThickness = thicknessSs / 2.0;
+
+        BaseElementRenderer.forEachLedgerLineYSs(note.getStaffPosition(), y ->
+            area.add(new Area(new Rectangle2D.Double(
+                centerXSs - ledgerWidthSs / 2.0,
+                y - halfThickness,
+                ledgerWidthSs,
+                thicknessSs
+            ))));
+    }
+
+    /**
+     * Adds a stem rectangle to the area and returns the stem tip point.
+     * Mirrors the positioning logic in {@link NoteRenderer#renderStem}.
+     *
+     * @return The stem tip point (x = stem left edge, y = stem tip)
+     */
+    private Point2D.Double addStemToArea(
+        @NotNull Area area,
+        @NotNull NoteType noteType,
+        boolean upper
+    ) {
+        boolean isMinim = noteType == NoteType.MINIM;
+        boolean isGrace = noteType.isGraceNote();
+
+        GlyphAnchors.Anchor anchor;
+
+        if (isGrace) {
+            anchor = LayoutConstants.STEM_UP_SE_BLACK_SMALL;
+        } else if (upper) {
+            anchor = isMinim ? LayoutConstants.STEM_UP_SE_HALF : LayoutConstants.STEM_UP_SE_BLACK;
+        } else {
+            anchor = isMinim ? LayoutConstants.STEM_DOWN_NW_HALF : LayoutConstants.STEM_DOWN_NW_BLACK;
+        }
+
+        double anchorX = anchor.x();
+        double anchorY = anchor.y();
+
+        // Stem left edge calculation matches NoteRenderer
+        double stemLeftX = upper
+            ? anchorX - LayoutConstants.STEM_WIDTH_SS
+            : anchorX - LayoutConstants.STEM_WIDTH_SS / 2;
+
+        double stemLength = isGrace ? LayoutConstants.GRACE_NOTE_STEM_LENGTH_SS : LayoutConstants.STEM_LENGTH_SS;
+
+        if (upper) {
+            double stemTopY = anchorY - stemLength;
+            area.add(new Area(new Rectangle2D.Double(
+                stemLeftX, stemTopY, LayoutConstants.STEM_WIDTH_SS, stemLength)));
+            return new Point2D.Double(stemLeftX, stemTopY);
+        } else {
+            double stemBottomY = anchorY + stemLength;
+            area.add(new Area(new Rectangle2D.Double(
+                stemLeftX, anchorY, LayoutConstants.STEM_WIDTH_SS, stemLength)));
+            return new Point2D.Double(stemLeftX, stemBottomY);
+        }
+    }
+
+    /**
+     * Adds flag bounding rectangles to the area.
+     * Mirrors the positioning logic in {@link NoteRenderer#renderFlags}.
+     */
+    private void addFlagsToArea(
+        @NotNull Area area,
+        @NotNull NoteType noteType,
+        boolean upper,
+        @NotNull Point2D.Double stemTip
+    ) {
+        var flagGlyph = noteType.getFlagGlyph(upper);
+
+        if (flagGlyph == null) {
+            return;
+        }
+
+        var flagShape = noteType.isGraceNote() ? FLAG_8TH_UP_GRACE_SHAPE : FLAG_SHAPES.get(flagGlyph);
+
+        if (flagShape == null) {
+            return;
+        }
+
+        area.add(new Area(AffineTransform.getTranslateInstance(stemTip.x, stemTip.y)
+            .createTransformedShape(flagShape)));
+    }
+
+    // ==========================================================================
+    // Offset Area and Inward-Search for Tangent-Area Intersection
+    // ==========================================================================
+
+    /**
+     * Returns a new Area that is the union of the original shape's fill
+     * and a stroke of width 2 × offsetSs around it, effectively expanding
+     * the shape outward by offsetSs on all sides.
+     */
+    static @NotNull Area createOffsetArea(@NotNull Shape shape, float offsetSs) {
+        var thickStroke = new BasicStroke(
+            offsetSs * 2,
+            BasicStroke.CAP_ROUND,
+            BasicStroke.JOIN_ROUND,
+            10.0f
+        );
+        var expanded = new Area(thickStroke.createStrokedShape(shape));
+        expanded.add(new Area(shape));
+        return expanded;
+    }
+
+    /**
+     * Finds the glissando endpoint on the boundary of an offset (pre-expanded) note area,
+     * by stepping inward from the bounding box edge until the first intersection.
+     * The gap is already baked into the offset area, so no additional gap is needed here.
+     * <p>
+     * The algorithm inverts the classic outward-sweep: instead of starting at the center
+     * and sweeping out, it starts at the bounding box edge and steps inward ~1 px at a time:
+     *
+     * <pre>
+     *   bbox edge         offset area boundary     notehead center
+     *       |                    |                      |
+     *       v                    v                      v
+     *       * ← ← ← ← ← * ← ← * ← ← ← ← ← ← ← ← ← *
+     *       ^             ^
+     *       startT        endpoint (one step past first intersect)
+     * </pre>
+     *
+     * @param offsetArea   The pre-expanded note area (includes gap)
+     * @param offsetBounds Bounding box of the offset area
+     * @param cx           Notehead center X in local space
+     * @param cy           Notehead center Y in local space
+     * @param nx           Normalized X component of the glissando direction
+     * @param ny           Normalized Y component of the glissando direction
+     * @param stepSs       Step size in staff spaces (typically 1px)
+     * @return The endpoint just outside the offset area boundary
+     */
+    static @NotNull Point2D.Double findNoteAreaEntryPoint(
+        @NotNull Area offsetArea,
+        @NotNull Rectangle2D offsetBounds,
+        double cx, double cy,
+        double nx, double ny,
+        double stepSs
+    ) {
+        // Zero-direction guard
+        if (nx == 0 && ny == 0) {
+            return new Point2D.Double(cx, cy);
+        }
+
+        // Precompute bounding-box half-dimensions of the rotated tip rectangle
+        double halfStep = stepSs / 2.0;
+        double halfThickness = RECT_THICKNESS_SS / 2.0;
+        double halfW = halfStep * Math.abs(nx) + halfThickness * Math.abs(ny);
+        double halfH = halfStep * Math.abs(ny) + halfThickness * Math.abs(nx);
+
+        // Start at the point where the outward ray exits the bounding box
+        double startT = computeFarBoundsT(offsetBounds, cx, cy, nx, ny);
+
+        // Step inward; return the last non-intersecting position
+        for (double t = startT; t >= 0; t -= stepSs) {
+            double px = cx + nx * t;
+            double py = cy + ny * t;
+            var tipRect = new Rectangle2D.Double(px - halfW, py - halfH, halfW * 2, halfH * 2);
+
+            if (offsetArea.intersects(tipRect)) {
+                double endT = t + stepSs;
+                return new Point2D.Double(cx + nx * endT, cy + ny * endT);
+            }
+        }
+
+        // Fallback: center is outside the area
+        return new Point2D.Double(cx, cy);
+    }
+
+    static double computeFarBoundsT(
+        @NotNull Rectangle2D bounds,
+        double cx, double cy,
+        double nx, double ny
+    ) {
+        double tx = nx > 0 ? (bounds.getMaxX() - cx) / nx
+                   : nx < 0 ? (bounds.getMinX() - cx) / nx
+                   : Double.MAX_VALUE;
+
+        double ty = ny > 0 ? (bounds.getMaxY() - cy) / ny
+                   : ny < 0 ? (bounds.getMinY() - cy) / ny
+                   : Double.MAX_VALUE;
+
+        return Math.min(tx, ty);
+    }
+
 }

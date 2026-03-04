@@ -52,13 +52,6 @@ import songscribe.ui.layout.LineElement;
 public final class LayoutResult {
 
     /**
-     * Half-width of the note head hit-test area in staff-space units.
-     * Deliberately larger than the actual glyph bbox half-width (~0.59 ss)
-     * for comfortable click targeting, matching the old 9px hit area.
-     */
-    static final double NOTE_HEAD_HALF_WIDTH_SS = 1.125;  // was 9.0px
-
-    /**
      * Offset for positioning an insertion note before the first note in the line (ss).
      */
     private static final double INSERTION_BEFORE_FIRST_OFFSET_SS = 1.875;  // 15px
@@ -124,7 +117,7 @@ public final class LayoutResult {
     }
 
     /**
-     * Returns the X position of a note's column center.
+     * Returns the X position of a note's note head left edge (glyph origin).
      *
      * @param note The note to look up
      * @return The X position, or 0 if the note was not laid out
@@ -448,17 +441,16 @@ public final class LayoutResult {
     // ==========================================================================
 
     /**
-     * Returns the index of the note whose head contains {@code mouseX}, or {@code -1} if none.
+     * Returns the index of the note whose head contains {@code mouseXSs}, or {@code -1} if none.
      * <p>
      * Only the horizontal (X) dimension is checked; Y position is ignored.
+     * The hit zone is the actual note head body: {@code [xSs, xSs + rightExtentSs]}.
      *
-     * @param mouseX Mouse X coordinate in staff-space units
-     * @param line   The line containing the notes
-     * @return Note index, or {@code -1} if mouseX is not within any note head's horizontal bounds
+     * @param mouseXSs Mouse X coordinate in staff-space units
+     * @param line     The line containing the notes
+     * @return Note index, or {@code -1} if mouseXSs is not within any note head's horizontal bounds
      */
-    public int findNoteAtX(double mouseX, @NotNull songscribe.music.Line line) {
-        double noteHeadHalfWidth = NOTE_HEAD_HALF_WIDTH_SS;
-
+    public int findNoteAtXSs(double mouseXSs, @NotNull songscribe.music.Line line) {
         for (var i = 0; i < line.noteCount(); i++) {
             var note = line.getNote(i);
             var column = noteColumns.get(note);
@@ -469,7 +461,7 @@ public final class LayoutResult {
 
             var noteX = column.getXSs();
 
-            if (mouseX >= noteX - noteHeadHalfWidth && mouseX <= noteX + noteHeadHalfWidth) {
+            if (mouseXSs >= noteX && mouseXSs <= noteX + column.getRightExtentSs()) {
                 return i;
             }
         }
@@ -493,7 +485,7 @@ public final class LayoutResult {
      * @param line   The line containing the notes
      * @return Insertion index (0 to noteCount inclusive)
      */
-    public int findInsertionIndex(double mouseX, @NotNull songscribe.music.Line line) {
+    public int findInsertionIndex(double mouseXSs, @NotNull songscribe.music.Line line) {
         int noteCount = line.noteCount();
 
         if (noteCount == 0) {
@@ -501,14 +493,13 @@ public final class LayoutResult {
         }
 
         // Check each note to see if mouse is within its note head bounds
-        int noteAtX = findNoteAtX(mouseX, line);
+        int noteAtX = findNoteAtXSs(mouseXSs, line);
 
         if (noteAtX >= 0) {
             return noteAtX;
         }
 
         // Mouse is not over any note head - find insertion slot between notes
-        double noteHeadHalfWidth = NOTE_HEAD_HALF_WIDTH_SS;
 
         // Check if before first note
         var firstNote = line.getNote(0);
@@ -518,7 +509,7 @@ public final class LayoutResult {
             return 0;
         }
 
-        if (mouseX < firstColumn.getXSs() - noteHeadHalfWidth) {
+        if (mouseXSs < firstColumn.getXSs()) {
             return 0;
         }
 
@@ -530,7 +521,7 @@ public final class LayoutResult {
             return noteCount;
         }
 
-        if (mouseX > lastColumn.getXSs() + noteHeadHalfWidth) {
+        if (mouseXSs > lastColumn.getRightEdgeXSs()) {
             return noteCount;
         }
 
@@ -546,11 +537,11 @@ public final class LayoutResult {
                 continue;
             }
 
-            var currentRight = currentColumn.getXSs() + noteHeadHalfWidth;
-            var nextLeft = nextColumn.getXSs() - noteHeadHalfWidth;
+            var currentRight = currentColumn.getRightEdgeXSs();
+            var nextLeft = nextColumn.getXSs();
 
-            // Check if mouseX is in the gap between note heads
-            if (mouseX > currentRight && mouseX < nextLeft) {
+            // Check if mouseXSs is in the gap between note heads
+            if (mouseXSs > currentRight && mouseXSs < nextLeft) {
                 return i + 1;
             }
         }
@@ -573,7 +564,7 @@ public final class LayoutResult {
      */
     public double calculateInsertionXSs(
         int insertionIndex,
-        double mouseX,
+        double mouseXSs,
         @NotNull Note insertionNote,
         @NotNull songscribe.music.Line line) {
 
@@ -583,8 +574,6 @@ public final class LayoutResult {
         if (noteCount == 0) {
             return LayoutConstants.calculateFirstNoteXSs(line.getKeyAccidentalCount());
         }
-
-        double noteHeadHalfWidth = NOTE_HEAD_HALF_WIDTH_SS;
 
         // Check if mouse is over any note head - if so, snap to that note's position
         for (var i = 0; i < noteCount; i++) {
@@ -596,7 +585,8 @@ public final class LayoutResult {
             }
 
             var noteX = column.getXSs();
-            if (mouseX >= noteX - noteHeadHalfWidth && mouseX <= noteX + noteHeadHalfWidth) {
+
+            if (mouseXSs >= noteX && mouseXSs <= noteX + column.getRightExtentSs()) {
                 // Mouse is over this note head - snap to its position
                 return noteX;
             }
@@ -630,7 +620,7 @@ public final class LayoutResult {
                 insertionNote,
                 java.util.Collections.emptyList(),
                 NoteColumnBuilder.calculateLeftExtentSs(insertionNote),
-                NoteColumnBuilder.calculateRightExtentSs(insertionNote),
+                NoteColumnBuilder.calculateRightExtentSs(insertionNote, false, true),
                 0,
                 0,
                 null,

@@ -51,6 +51,9 @@ public enum SMuFLGlyph {
     NOTEHEAD_PARENTHESIS_LEFT("noteheadParenthesisLeft", '\uE0F5'),
     NOTEHEAD_PARENTHESIS_RIGHT("noteheadParenthesisRight", '\uE0F6'),
 
+    // Small noteheads (Bravura stylistic alternates)
+    NOTEHEAD_BLACK_SMALL("noteheadBlackSmall", '\uF46A'),
+
     // Individual notes / augmentation (U+E1D0-U+E1EF)
     AUGMENTATION_DOT("augmentationDot", '\uE1E7'),
 
@@ -62,6 +65,9 @@ public enum SMuFLGlyph {
     FLAG_32ND_UP("flag32ndUp", '\uE244'),
     FLAG_32ND_DOWN("flag32ndDown", '\uE245'),
 
+    // Small flags (Bravura stylistic alternates)
+    FLAG_8TH_UP_SMALL("flag8thUpSmall", '\uF48B'),
+
     // Accidentals (U+E260-U+E26F)
     ACCIDENTAL_FLAT("accidentalFlat", '\uE260'),
     ACCIDENTAL_NATURAL("accidentalNatural", '\uE261'),
@@ -70,6 +76,11 @@ public enum SMuFLGlyph {
     ACCIDENTAL_DOUBLE_FLAT("accidentalDoubleFlat", '\uE264'),
     ACCIDENTAL_PARENS_LEFT("accidentalParensLeft", '\uE26A'),
     ACCIDENTAL_PARENS_RIGHT("accidentalParensRight", '\uE26B'),
+
+    // Small accidentals (Bravura stylistic alternates)
+    ACCIDENTAL_FLAT_SMALL("accidentalFlatSmall", '\uF427'),
+    ACCIDENTAL_NATURAL_SMALL("accidentalNaturalSmall", '\uF428'),
+    ACCIDENTAL_SHARP_SMALL("accidentalSharpSmall", '\uF429'),
 
     // Articulations (U+E4A0-U+E4AF)
     ARTIC_ACCENT_ABOVE("articAccentAbove", '\uE4A0'),

@@ -31,7 +31,7 @@ import org.jetbrains.annotations.Nullable;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
 import songscribe.smufl.StaffSpaces;
-import songscribe.ui.renderer.GraceNoteRenderer;
+import songscribe.ui.layout2.LayoutConstants;
 import songscribe.util.UIUtils;
 
 import static songscribe.ui.playback.PlaybackController.PPQ;
@@ -162,7 +162,6 @@ public enum NoteType {
     SEMIQUAVERREST(NoteType.SEMIQUAVER_REST),
     DEMISEMIQUAVERREST(NoteType.DEMI_SEMIQUAVER_REST),
     GRACEQUAVER(NoteType.GRACE_QUAVER),
-    GRACESEMIQUAVER(NoteType.GRACE_QUAVER),
     REPEATLEFT(NoteType.REPEAT_LEFT),
     REPEATRIGHT(NoteType.REPEAT_RIGHT),
     REPEATLEFTRIGHT(NoteType.REPEAT_LEFT_RIGHT),
@@ -204,6 +203,7 @@ public enum NoteType {
         Map.entry(QUAVER, SMuFLGlyph.NOTEHEAD_BLACK),
         Map.entry(SEMIQUAVER, SMuFLGlyph.NOTEHEAD_BLACK),
         Map.entry(DEMI_SEMIQUAVER, SMuFLGlyph.NOTEHEAD_BLACK),
+        Map.entry(GRACE_QUAVER, SMuFLGlyph.NOTEHEAD_BLACK),
         Map.entry(SEMIBREVE_REST, SMuFLGlyph.REST_WHOLE),
         Map.entry(MINIM_REST, SMuFLGlyph.REST_HALF),
         Map.entry(CROTCHET_REST, SMuFLGlyph.REST_QUARTER),
@@ -211,8 +211,6 @@ public enum NoteType {
         Map.entry(SEMIQUAVER_REST, SMuFLGlyph.REST_16TH),
         Map.entry(DEMI_SEMIQUAVER_REST, SMuFLGlyph.REST_32ND)
     );
-
-    private static final double STEM_LENGTH_SS = 3.5;
 
     static {
         recomputeRectsFromSMuFL();
@@ -408,7 +406,7 @@ public enum NoteType {
         computeNoteRects(metadata, hotSpotY,
             SEMIBREVE, MINIM, CROTCHET, QUAVER, SEMIQUAVER, DEMI_SEMIQUAVER);
 
-        // Grace notes use pre-composed acciaccatura glyphs (already at correct size)
+        // Grace notes are composed from noteheadBlackSmall + flag8thUpSmall + stem
         computeGraceNoteRects(metadata, hotSpotY, GRACE_QUAVER);
 
         // Rests
@@ -434,7 +432,7 @@ public enum NoteType {
     private static void computeNoteRects(
         SMuFLMetadata metadata, int hotSpotY, NoteType... types
     ) {
-        double stemLength = StaffSpaces.toPixels(STEM_LENGTH_SS);
+        double stemLength = StaffSpaces.toPixels(LayoutConstants.STEM_LENGTH_SS);
 
         for (var type : types) {
             var glyph = SMUFL_NOTEHEADS.get(type);
@@ -505,42 +503,78 @@ public enum NoteType {
     }
 
     /**
-     * Grace notes use pre-composed acciaccatura glyphs whose BBoxes
-     * are scaled by the grace note rendering scale factor.
+     * Grace notes are composed from regular glyphs (noteheadBlack + flag8thUp) drawn with
+     * a scaled-down Bravura font ({@link LayoutConstants#GRACE_NOTE_SCALE}). The stem is always up.
      */
     private static void computeGraceNoteRects(
         SMuFLMetadata metadata, int hotSpotY, NoteType... types
     ) {
-        var upBBox = metadata.getBBox(SMuFLGlyph.GRACE_NOTE_ACCIACCATURA_STEM_UP);
-        var downBBox = metadata.getBBox(SMuFLGlyph.GRACE_NOTE_ACCIACCATURA_STEM_DOWN);
+        var headBBox = metadata.getBBox(SMuFLGlyph.NOTEHEAD_BLACK);
 
-        if (upBBox == null || downBBox == null) {
+        if (headBBox == null) {
             return;
         }
 
-        double scale = GraceNoteRenderer.GRACE_NOTE_SCALE;
+        double scale = LayoutConstants.GRACE_NOTE_SCALE;
+        double headTop = StaffSpaces.toPixels(headBBox.top() * scale);
+        double headBottom = StaffSpaces.toPixels(headBBox.bottom() * scale);
+        double headRight = StaffSpaces.toPixels(headBBox.right() * scale);
 
-        int upY = (int) Math.round(StaffSpaces.toPixels(upBBox.top()) * scale + hotSpotY);
-        int upW = (int) Math.round(StaffSpaces.toPixels(upBBox.width()) * scale);
-        int upH = (int) Math.round(StaffSpaces.toPixels(upBBox.height()) * scale);
+        double stemLength = StaffSpaces.toPixels(LayoutConstants.GRACE_NOTE_STEM_LENGTH_SS);
+        var anchors = metadata.getAnchors(SMuFLGlyph.NOTEHEAD_BLACK);
 
-        int downY = (int) Math.round(StaffSpaces.toPixels(downBBox.top()) * scale + hotSpotY);
-        int downW = (int) Math.round(StaffSpaces.toPixels(downBBox.width()) * scale);
-        int downH = (int) Math.round(StaffSpaces.toPixels(downBBox.height()) * scale);
+        if (anchors == null || anchors.stemUpSE() == null) {
+            return;
+        }
+
+        double stemUpX = StaffSpaces.toPixels(anchors.stemUpSE().x() * scale);
+        double stemUpY = StaffSpaces.toPixels(anchors.stemUpSE().y() * scale);
+
+        // Stem-up: stem extends upward from stemUpSE anchor
+        double upTop = stemUpY - stemLength;
+        double upRight = headRight;
+
+        // Extend width to include the flag (scaled)
+        var flagGlyph = SMuFLGlyph.FLAG_8TH_UP;
+        var flagBBox = metadata.getBBox(flagGlyph);
+
+        if (flagBBox != null) {
+            upRight = Math.max(upRight,
+                stemUpX + StaffSpaces.toPixels(flagBBox.right() * scale));
+        }
 
         for (var type : types) {
-            type.realUpNoteRect.setBounds(0, upY, upW, upH);
-            type.realDownNoteRect.setBounds(0, downY, downW, downH);
+            // Grace notes always stem up, so both rects use the stem-up layout
+            type.realUpNoteRect.setBounds(
+                0,
+                (int) Math.round(upTop + hotSpotY),
+                (int) Math.round(upRight),
+                (int) Math.round(headBottom - upTop)
+            );
+            type.realDownNoteRect.setBounds(type.realUpNoteRect);
         }
+    }
+
+    /**
+     * Returns the SMuFL flag glyph for this note type and stem direction, or {@code null} if this
+     * type has no flag (whole, half, quarter notes, rests, non-note types).
+     *
+     * @param upper {@code true} for stem-up (flag on right of stem); {@code false} for stem-down
+     * @return The flag glyph, or {@code null} if this type carries no flag
+     */
+    @Nullable
+    public SMuFLGlyph getFlagGlyph(boolean upper) {
+        return switch (this) {
+            case QUAVER -> upper ? SMuFLGlyph.FLAG_8TH_UP : SMuFLGlyph.FLAG_8TH_DOWN;
+            case GRACE_QUAVER -> SMuFLGlyph.FLAG_8TH_UP;
+            case SEMIQUAVER -> upper ? SMuFLGlyph.FLAG_16TH_UP : SMuFLGlyph.FLAG_16TH_DOWN;
+            case DEMI_SEMIQUAVER -> upper ? SMuFLGlyph.FLAG_32ND_UP : SMuFLGlyph.FLAG_32ND_DOWN;
+            default -> null;
+        };
     }
 
     @Nullable
     private static SMuFLGlyph getStemUpFlagGlyph(NoteType type) {
-        return switch (type) {
-            case QUAVER -> SMuFLGlyph.FLAG_8TH_UP;
-            case SEMIQUAVER -> SMuFLGlyph.FLAG_16TH_UP;
-            case DEMI_SEMIQUAVER -> SMuFLGlyph.FLAG_32ND_UP;
-            default -> null;
-        };
+        return type.getFlagGlyph(true);
     }
 }

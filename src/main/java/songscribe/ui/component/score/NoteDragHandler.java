@@ -27,6 +27,7 @@ import org.jetbrains.annotations.Nullable;
 
 import songscribe.data.TieInterval;
 import songscribe.music.Line;
+import songscribe.music.Note;
 import songscribe.ui.Mode;
 import songscribe.ui.component.Score;
 import songscribe.ui.edit.EditModeManager;
@@ -193,6 +194,9 @@ class NoteDragHandler {
             // Clear selection so the note doesn't appear highlighted after drag
             lc.getScore().clearSelection();
 
+            // Remove connected glissandos that became unison after the pitch drag
+            removeUnisonConnectedGlissandos(dragLine, dragNoteIndex);
+
             // Finalize: notify layout and mark composition modified
             MessageCenter.post(LayoutChangeMessage.scoreContent(dragLine));
             lc.getComposition().setModified(true);
@@ -223,5 +227,31 @@ class NoteDragHandler {
         tieInterval = null;
 
         InsertionNoteManager.restoreInsertionNote(lc);
+    }
+
+    /**
+     * Removes connected glissandos that became unison after a pitch drag.
+     * Checks the glissando FROM the dragged note (to the next note) and
+     * the glissando TO the dragged note (from the previous note).
+     */
+    private static void removeUnisonConnectedGlissandos(@NotNull Line line, int noteIndex) {
+        var note = line.getNote(noteIndex);
+
+        // Glissando FROM the dragged note to the next note
+        if (note.getGlissando().type == Note.Glissando.Type.CONNECTED
+                && noteIndex + 1 < line.noteCount()
+                && note.getPitch() == line.getNote(noteIndex + 1).getPitch()) {
+            note.removeGlissando();
+        }
+
+        // Glissando TO the dragged note from the previous note
+        if (noteIndex > 0) {
+            var prev = line.getNote(noteIndex - 1);
+
+            if (prev.getGlissando().type == Note.Glissando.Type.CONNECTED
+                    && prev.getPitch() == note.getPitch()) {
+                prev.removeGlissando();
+            }
+        }
     }
 }

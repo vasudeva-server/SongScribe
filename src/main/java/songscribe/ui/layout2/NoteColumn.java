@@ -53,8 +53,7 @@ public final class NoteColumn {
     private final @Nullable String syllable;
     private final double syllableWidthSs;
     private final boolean beamed;
-
-    // Computed X position (set by HorizontalSpacingCalculator)
+    // Computed X position of note head left edge (set by HorizontalSpacingCalculator)
     private double xSs = 0;
 
     /**
@@ -64,8 +63,8 @@ public final class NoteColumn {
      *
      * @param note          The primary note (or rest, barline, etc.)
      * @param graceNotes    Grace notes anchored to this note (empty list if none)
-     * @param leftExtentSs    Left edge relative to note head center (includes accidental + grace notes)
-     * @param rightExtentSs   Right edge relative to note head center (includes dots)
+     * @param leftExtentSs    Left extent relative to note head left edge; 0.0 without accidental, negative with one
+     * @param rightExtentSs   Right extent relative to note head left edge; equals note head width, plus dots if any
      * @param stemTopSs       Top of stem (if stem up), or note head top if no stem
      * @param stemBottomSs    Bottom of stem (if stem down), or note head bottom if no stem
      * @param syllable        Associated lyric syllable text (null if none)
@@ -144,16 +143,16 @@ public final class NoteColumn {
     // ==========================================================================
 
     /**
-     * Returns the left extent relative to the note head center.
-     * This includes accidentals and grace notes (negative value = extends left).
+     * Returns the left extent relative to the note head left edge (glyph origin).
+     * 0.0 with no accidental; negative when an accidental is present (extends further left).
      */
     public double getLeftExtentSs() {
         return leftExtentSs;
     }
 
     /**
-     * Returns the right extent relative to the note head center.
-     * This includes dots (positive value = extends right).
+     * Returns the right extent relative to the note head left edge (glyph origin).
+     * Equal to the note head width with no dots; larger when dots are present.
      */
     public double getRightExtentSs() {
         return rightExtentSs;
@@ -242,12 +241,20 @@ public final class NoteColumn {
         return beamed;
     }
 
+    /**
+     * Returns whether this note has an outgoing glissando.
+     */
+    @SuppressWarnings("ObjectEquality")
+    public boolean hasGlissando() {
+        return note.getGlissando() != Note.NO_GLISSANDO;
+    }
+
     // ==========================================================================
     // X Position (set by HorizontalSpacingCalculator)
     // ==========================================================================
 
     /**
-     * Returns the X position of this column's note head center.
+     * Returns the X position of this column's note head left edge (glyph origin).
      * This is set by the HorizontalSpacingCalculator during layout.
      */
     public double getXSs() {
@@ -255,7 +262,7 @@ public final class NoteColumn {
     }
 
     /**
-     * Sets the X position of this column's note head center.
+     * Sets the X position of this column's note head left edge (glyph origin).
      * Called by the HorizontalSpacingCalculator during layout.
      *
      * @param x X position in staff spaces

@@ -27,15 +27,17 @@ import static songscribe.ui.renderer.GraphicsState.Property.STROKE;
 import java.awt.*;
 import java.awt.geom.*;
 import java.util.Objects;
+import java.util.function.DoubleConsumer;
 
 import org.jetbrains.annotations.NotNull;
 
 import songscribe.music.NoteType;
 import songscribe.smufl.EngravingDefaults;
-import songscribe.smufl.GlyphAnchors;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
 import songscribe.ui.layout.LineElement;
+import songscribe.ui.layout2.LayoutConstants;
+import songscribe.util.GraphicUtils;
 import songscribe.util.MyFontUtils;
 
 /**
@@ -73,10 +75,6 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
      */
     public static final float NOTE_FONT_SIZE = 4.0f;
 
-    /**
-     * Scale factor for grace note accidentals relative to NOTE_FONT_SIZE.
-     */
-    public static final float GRACE_ACCIDENTAL_RESIZE_FACTOR = 0.65f;
 
     /**
      * Horizontal scale factor for tempo change note display.
@@ -94,14 +92,14 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
     public static final Font MUSIC_FONT;
 
     /**
-     * The music notation font at grace note size.
-     */
-    public static final Font MUSIC_FONT_GRACE;
-
-    /**
      * The Bravura (SMuFL) music notation font at standard note size.
      */
     public static final Font BRAVURA_FONT;
+
+    /**
+     * The Bravura font scaled for grace note rendering ({@link LayoutConstants#GRACE_NOTE_SCALE}).
+     */
+    public static final Font BRAVURA_FONT_GRACE;
 
     /**
      * Font for tuplet numbers (e.g., "3" for triplets).
@@ -120,13 +118,13 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
                 "Cannot load Fughetta.ttf font"
             );
             MUSIC_FONT = fughettaBase.deriveFont(NOTE_FONT_SIZE);
-            MUSIC_FONT_GRACE = fughettaBase.deriveFont(NOTE_FONT_SIZE * GRACE_ACCIDENTAL_RESIZE_FACTOR);
 
             var bravuraBase = Objects.requireNonNull(
                 MyFontUtils.getLocalFont("Bravura.otf"),
                 "Cannot load Bravura.otf font"
             );
             BRAVURA_FONT = bravuraBase.deriveFont(NOTE_FONT_SIZE);
+            BRAVURA_FONT_GRACE = bravuraBase.deriveFont(NOTE_FONT_SIZE * LayoutConstants.GRACE_NOTE_SCALE);
 
             var tupletBase = Objects.requireNonNull(
                 MyFontUtils.getLocalFont("TupletNumbers.ttf"),
@@ -163,31 +161,6 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
         (float) ENGRAVING_DEFAULTS.staffLineThickness());
     protected static final Stroke STEM_STROKE = new BasicStroke(
         (float) ENGRAVING_DEFAULTS.stemThickness());
-    protected static final Stroke LEDGER_LINE_STROKE = new BasicStroke(
-        (float) ENGRAVING_DEFAULTS.legerLineThickness());
-
-    // Stem width in staff-space units (scale transform handles pixel conversion).
-    protected static final double STEM_WIDTH_SS = ENGRAVING_DEFAULTS.stemThickness();
-
-    // Cached anchor data for notehead glyphs (in staff-space units, Y-down screen convention).
-    protected static final GlyphAnchors.Anchor STEM_UP_SE_BLACK;
-    protected static final GlyphAnchors.Anchor STEM_DOWN_NW_BLACK;
-    protected static final GlyphAnchors.Anchor STEM_UP_SE_HALF;
-    protected static final GlyphAnchors.Anchor STEM_DOWN_NW_HALF;
-
-    static {
-        var metadata = SMuFLMetadata.getInstance();
-        var blackAnchors = metadata.getAnchors(SMuFLGlyph.NOTEHEAD_BLACK);
-        var halfAnchors = metadata.getAnchors(SMuFLGlyph.NOTEHEAD_HALF);
-
-        assert blackAnchors != null && blackAnchors.stemUpSE() != null && blackAnchors.stemDownNW() != null;
-        assert halfAnchors != null && halfAnchors.stemUpSE() != null && halfAnchors.stemDownNW() != null;
-
-        STEM_UP_SE_BLACK = blackAnchors.stemUpSE();
-        STEM_DOWN_NW_BLACK = blackAnchors.stemDownNW();
-        STEM_UP_SE_HALF = halfAnchors.stemUpSE();
-        STEM_DOWN_NW_HALF = halfAnchors.stemDownNW();
-    }
 
     // ==========================================================================
     // Rendering Template Method
@@ -363,6 +336,11 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
 
     /**
      * Draws a ledger line for a note above or below the staff.
+     * <p>
+     * Uses a filled rounded rectangle with pixel-snapped top/bottom edges
+     * (same technique as {@code LineRenderer.drawStaffLines()}) to avoid
+     * antialiasing fuzz. The semicircular ends come from setting the arc
+     * height equal to the snapped thickness.
      *
      * @param g2    Graphics context
      * @param x     Center X position of the note
@@ -370,13 +348,20 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
      * @param width Width of the ledger line
      */
     protected void drawLedgerLine(@NotNull Graphics2D g2, double x, double y, double width) {
-        try (var ignored = GraphicsState.save(g2, COLOR, STROKE)) {
-            g2.setStroke(LEDGER_LINE_STROKE);
-            g2.setColor(STAFF_LINE_COLOR);
+        // Color is intentionally not set — inherited from caller so insertion notes
+        // draw ledger lines in their own color.
+        var thicknessSs = ENGRAVING_DEFAULTS.legerLineThickness();
+        var halfThickness = thicknessSs / 2.0;
+        var snappedTop = GraphicUtils.snapYToDevicePixel(g2, y - halfThickness);
+        var snappedBottom = GraphicUtils.snapYToDevicePixel(g2, y + halfThickness);
+        var snappedThickness = snappedBottom - snappedTop;
+        var halfWidth = width / 2.0;
 
-            double halfWidth = width / 2.0;
-            g2.draw(new Line2D.Double(x - halfWidth, y, x + halfWidth, y));
-        }
+        g2.fill(new RoundRectangle2D.Double(
+            x - halfWidth, snappedTop,
+            width, snappedThickness,
+            0, snappedThickness
+        ));
     }
 
     /**
@@ -455,7 +440,7 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
      * @param middleLineYSs Y position of middle staff line in staff spaces
      * @return Y coordinate for the note in staff spaces
      */
-    protected double noteStaffPositionToCoordinateSs(int staffPosition, double middleLineYSs) {
+    public static double noteStaffPositionToCoordinateSs(int staffPosition, double middleLineYSs) {
         return middleLineYSs + staffPosition * 0.5;
     }
 
@@ -467,14 +452,36 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
      * @param upper    true = stem goes up (stem-up SE anchor); false = stem goes down (stem-down NW anchor)
      * @return X offset from note reference point to stem center, in staff spaces
      */
+    /**
+     * Iterates over the Y offsets (in staff spaces, relative to the note's staff position)
+     * of each ledger line needed for a note at the given staff position.
+     *
+     * @param staffPosition The note's staff position (integer index along the Y axis)
+     * @param consumer      Called once per ledger line with the Y offset in staff spaces
+     */
+    static void forEachLedgerLineYSs(int staffPosition, @NotNull DoubleConsumer consumer) {
+        int i = staffPosition;
+
+        if ((staffPosition % 2) != 0) {
+            i += (staffPosition > 0) ? -1 : 1;
+        }
+
+        int step = (staffPosition > 0) ? -2 : 2;
+
+        while (Math.abs(i) > 5) {
+            consumer.accept((i - staffPosition) * 0.5);
+            i += step;
+        }
+    }
+
     protected static double stemCenterXOffsetSs(@NotNull NoteType noteType, boolean upper) {
         boolean isMinim = noteType == NoteType.MINIM;
         double anchorX = upper
-            ? (isMinim ? STEM_UP_SE_HALF.x()   : STEM_UP_SE_BLACK.x())
-            : (isMinim ? STEM_DOWN_NW_HALF.x() : STEM_DOWN_NW_BLACK.x());
+            ? (isMinim ? LayoutConstants.STEM_UP_SE_HALF.x()   : LayoutConstants.STEM_UP_SE_BLACK.x())
+            : (isMinim ? LayoutConstants.STEM_DOWN_NW_HALF.x() : LayoutConstants.STEM_DOWN_NW_BLACK.x());
 
         // upper: SE anchor is the stem's right edge; center = anchorX - half stem width
         // lower: NW anchor is the stem's left edge (after notehead shift); center = anchorX
-        return upper ? anchorX - STEM_WIDTH_SS / 2.0 : anchorX;
+        return upper ? anchorX - LayoutConstants.STEM_WIDTH_SS / 2.0 : anchorX;
     }
 }

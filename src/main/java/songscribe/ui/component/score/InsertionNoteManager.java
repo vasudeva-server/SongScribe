@@ -32,14 +32,15 @@ import songscribe.data.BeamInterval;
 import songscribe.music.Line;
 import songscribe.music.Note;
 import songscribe.music.NoteType;
-import songscribe.ui.renderer.GlissandoRenderer;
 import songscribe.ui.Control;
 import songscribe.ui.Mode;
 import songscribe.ui.component.Score;
 import songscribe.ui.edit.EditModeManager;
 import songscribe.ui.layout.LayoutStylesheet;
 import songscribe.ui.layout2.InsertionSpacingCalculator;
+import songscribe.ui.layout2.LayoutResult;
 import songscribe.ui.layout2.ScaleContext;
+import songscribe.ui.message.LayoutChangeMessage;
 import songscribe.ui.message.MessageCenter;
 import songscribe.ui.message.ModeChangedMessage;
 
@@ -106,6 +107,10 @@ public class InsertionNoteManager {
     /** Whether the mouse Y (staff position) is within the vertical bounds of that note head. */
     private static boolean yPosSpMatchesNote = false;
 
+    /** The glissando zone type determined by mouse position (null if no valid zone). */
+    @Nullable
+    private static Note.Glissando.Type currentGlissandoZone = null;
+
     /** Strong reference to prevent garbage collection by the weak-reference message bus. */
     private static final ModeChangeListener MODE_CHANGE_LISTENER = new ModeChangeListener();
 
@@ -163,6 +168,7 @@ public class InsertionNoteManager {
             currentStaffPosition = 0;
             xPosSsMatchesNote = false;
             yPosSpMatchesNote = false;
+            currentGlissandoZone = null;
             oldLine.repaint();
         }
     }
@@ -250,43 +256,98 @@ public class InsertionNoteManager {
     }
 
     /**
-     * Returns whether a glissando preview line should be drawn for the given line.
+     * Returns whether a glissando preview line should be drawn.
      * <p>
-     * True when the mouse is between notes (not over a note head), there is a source
-     * note to the left, and that source note does not already have a glissando.
+     * True when the mouse is in a valid glissando zone (not over a note head, not to the
+     * left of the first note). The preview is shown for both insertion and removal modes.
      */
-    @SuppressWarnings("ObjectEquality")
-    static boolean shouldShowGlissandoPreview(@NotNull Line line) {
-        if (isHoveringOverNoteHead()) {
-            return false;
-        }
-
-        var noteCount = line.noteCount();
-
-        if (currentXIndex <= 0 || noteCount <= 0) {
-            return false;
-        }
-
-        return line.getNote(currentXIndex - 1).getGlissando() == Note.NO_GLISSANDO;
+    static boolean shouldShowGlissandoPreview() {
+        return currentGlissandoZone != null;
     }
 
     /**
-     * Returns the target pitch (in staff positions) for a glissando preview or click.
+     * Returns whether the glissando tool is in removal mode for the given line.
      * <p>
-     * Between notes, uses the next note's pitch. At end of line, offsets from the
-     * source note by {@link GlissandoRenderer#getDefaultSlideOutYOffsetSp()}.
-     *
-     * @param line The line containing the notes
-     * @return Target pitch in staff positions
+     * True when the source note already has a glissando of the same type as the current zone.
      */
-    static int getGlissandoTargetPitchSp(@NotNull Line line) {
-        if (currentXIndex < line.noteCount()) {
-            return line.getNote(currentXIndex).getStaffPosition();
+    @SuppressWarnings("ObjectEquality")
+    static boolean isGlissandoRemovalMode(@NotNull Line line) {
+        if (currentGlissandoZone == null || currentXIndex <= 0 || line.noteCount() <= 0) {
+            return false;
         }
 
-        return line.getNote(currentXIndex - 1).getStaffPosition()
-            + GlissandoRenderer.getDefaultSlideOutYOffsetSp();
+        var glissando = line.getNote(currentXIndex - 1).getGlissando();
+
+        return glissando != Note.NO_GLISSANDO && glissando.type == currentGlissandoZone;
     }
+
+    /**
+     * Returns the current glissando zone type, or null if no valid zone exists.
+     */
+    @Nullable
+    static Note.Glissando.Type getGlissandoZone() {
+        return currentGlissandoZone;
+    }
+
+
+    // ==========================================================================
+    // Private Helpers
+    // ==========================================================================
+
+    /**
+     * Computes the glissando zone type based on mouse position.
+     * <p>
+     * Returns null if the mouse is to the left of the first note (no source note),
+     * {@link Note.Glissando.Type#SLIDE_OUT} if after the last note, or a zone-based
+     * type determined by the mouse X position relative to the midpoint of the gap
+     * between the source and next note columns.
+     *
+     * @param line       The line containing the notes
+     * @param layout     The layout result for column edge positions
+     * @param mouseXSs   Mouse X coordinate in staff spaces
+     * @param xIndex     Insertion index from {@link LayoutResult#findInsertionIndex}
+     * @return The zone type, or null if no valid zone
+     */
+    @Nullable
+    private static Note.Glissando.Type computeGlissandoZone(
+            @NotNull Line line,
+            @NotNull LayoutResult layout,
+            double mouseXSs,
+            int xIndex) {
+        // xIndex=0 means to the left of the first note — no source note to draw from
+        if (xIndex <= 0 || line.noteCount() == 0) {
+            return null;
+        }
+
+        // After last note: always slide-out
+        if (xIndex >= line.noteCount()) {
+            return Note.Glissando.Type.SLIDE_OUT;
+        }
+
+        // Between two notes: zone based on mouse X relative to midpoint of the inter-column gap
+        var sourceColumn = layout.getNoteColumn(line.getNote(xIndex - 1));
+        var nextColumn = layout.getNoteColumn(line.getNote(xIndex));
+
+        if (sourceColumn == null || nextColumn == null) {
+            return Note.Glissando.Type.SLIDE_OUT;
+        }
+
+        var sourceRightXSs = sourceColumn.getRightEdgeXSs();
+        var nextLeftXSs = nextColumn.getLeftEdgeXSs();
+        var cutoffXSs = sourceRightXSs + (nextLeftXSs - sourceRightXSs) / 2.0;
+
+        if (mouseXSs < cutoffXSs) {
+            return Note.Glissando.Type.SLIDE_OUT;
+        }
+
+        // A connected glissando between notes at the same pitch is musically meaningless
+        if (line.getNote(xIndex - 1).getPitch() == line.getNote(xIndex).getPitch()) {
+            return null;
+        }
+
+        return Note.Glissando.Type.CONNECTED;
+    }
+
 
     // ==========================================================================
     // Delegation Entry Points (called from LineComponent mouse handlers)
@@ -336,7 +397,7 @@ public class InsertionNoteManager {
         }
 
         int xIndex = layoutResult.findInsertionIndex(mouseXss, line);
-        int noteAtX = layoutResult.findNoteAtX(mouseXss, line);
+        int noteAtX = layoutResult.findNoteAtXSs(mouseXss, line);
 
         // Compute new position match flags before the early-return check, so that a
         // change in hover state (e.g., mouse slides from gap into note-head bounds at
@@ -345,10 +406,22 @@ public class InsertionNoteManager {
         boolean newYMatch = newXMatch
             && Math.abs(staffPosition - line.getNote(noteAtX).getStaffPosition()) <= 1;
 
+        // Compute glissando zone before change detection so zone changes trigger repaints.
+        // Only compute when not over a note head (noteAtX < 0), as hovering over a note
+        // head means there is no valid glissando target to the left.
+        var editModeManager = EditModeManager.getInstance();
+        Note.Glissando.Type newGlissandoZone = null;
+
+        if (editModeManager != null && editModeManager.getInsertionNote() == Note.GLISSANDO_NOTE
+                && noteAtX < 0) {
+            newGlissandoZone = computeGlissandoZone(line, layoutResult, mouseXss, xIndex);
+        }
+
         // Check if position actually changed
         if (lc == currentInsertionLine && xIndex == currentXIndex
             && staffPosition == currentStaffPosition
-            && newXMatch == xPosSsMatchesNote && newYMatch == yPosSpMatchesNote) {
+            && newXMatch == xPosSsMatchesNote && newYMatch == yPosSpMatchesNote
+            && newGlissandoZone == currentGlissandoZone) {
             return;  // No change, no repaint
         }
 
@@ -363,8 +436,7 @@ public class InsertionNoteManager {
         currentStaffPosition = staffPosition;
         xPosSsMatchesNote = newXMatch;
         yPosSpMatchesNote = newYMatch;
-
-        var editModeManager = EditModeManager.getInstance();
+        currentGlissandoZone = newGlissandoZone;
 
         if (editModeManager != null) {
             var insertionNote = editModeManager.getInsertionNote();
@@ -416,13 +488,36 @@ public class InsertionNoteManager {
             var insertionNote = editModeManager.getInsertionNote();
 
             if (insertionNote == Note.GLISSANDO_NOTE) {
-                if (!shouldShowGlissandoPreview(line)) {
-                    return;  // No preview visible = click is a no-op
+                var zoneType = currentGlissandoZone;
+
+                if (zoneType == null) {
+                    return;  // No valid zone = click is a no-op
                 }
 
-                // Set target pitch that noteWasModified() will read from insertionNote.
-                insertionNote.setStaffPosition(getGlissandoTargetPitchSp(line));
-                // Fall through to existing dispatch
+                var sourceNote = line.getNote(currentXIndex - 1);
+                var existingGlissando = sourceNote.getGlissando();
+
+                // Toggle: if existing glissando matches the zone type, remove; otherwise set.
+                // If existing glissando is a different type, replace it.
+                @SuppressWarnings("ObjectEquality")
+                var isSameType = existingGlissando != Note.NO_GLISSANDO
+                    && existingGlissando.type == zoneType;
+
+                if (isSameType) {
+                    sourceNote.removeGlissando();
+                } else {
+                    sourceNote.setGlissando(zoneType);
+                }
+
+                var composition = line.getComposition();
+
+                if (composition != null) {
+                    composition.setModified(true);
+                }
+
+                MessageCenter.post(LayoutChangeMessage.scoreContent(line));
+                lc.repaint();
+                return;  // Stay in glissando mode
             }
         }
 
@@ -661,7 +756,7 @@ public class InsertionNoteManager {
         }
 
         if (editModeManager.noteWasModified(line, xIndex)) {
-            editModeManager.insertionNoteDidChange(line, line.noteCount() - 1);
+            editModeManager.insertionNoteDidChange(line, xIndex);
             return;
         }
 
@@ -773,7 +868,7 @@ public class InsertionNoteManager {
         }
 
         if (editModeManager.noteWasModified(line, noteIndex)) {
-            editModeManager.insertionNoteDidChange(line, line.noteCount() - 1);
+            editModeManager.insertionNoteDidChange(line, noteIndex);
             return;
         }
 

@@ -251,7 +251,7 @@ public class HorizontalAdjustment extends Adjustment {
             draggingRect.horizontalAdjustmentType ==
                 HorizontalAdjustmentType.GLISSANDO_END
         ) {
-            note.getGlissando().x2Translate -= endPoint.x - diffX;
+            note.getGlissando().x2Translate += endPoint.x - diffX;
         } else if (
             (draggingRect.horizontalAdjustmentType ==
                 HorizontalAdjustmentType.CRESCENDO_START) ||
@@ -356,13 +356,17 @@ public class HorizontalAdjustment extends Adjustment {
                                 HorizontalAdjustmentType.GLISSANDO_START
                             )
                         );
-                        adjustRects.add(
-                            new AdjustRect(
-                                lineIndex,
-                                i,
-                                HorizontalAdjustmentType.GLISSANDO_END
-                            )
-                        );
+
+                        // SLIDE_OUT glissandos have a fixed endpoint; x2Translate has no effect
+                        if (note.getGlissando().type == Note.Glissando.Type.CONNECTED) {
+                            adjustRects.add(
+                                new AdjustRect(
+                                    lineIndex,
+                                    i,
+                                    HorizontalAdjustmentType.GLISSANDO_END
+                                )
+                            );
+                        }
                     }
                 }
 
@@ -441,7 +445,8 @@ public class HorizontalAdjustment extends Adjustment {
             rect.line
         );
         rect.rect.y = yPosPx - Note.HOT_SPOT.y;
-        var layoutResult = score.getLineComponent(rect.line).getLayoutResult();
+        var lineComponent = score.getLineComponent(rect.line);
+        var layoutResult = lineComponent.getLayoutResult();
 
         switch (rect.horizontalAdjustmentType) {
             case GLISSANDO_START -> rect.rect.x = (int) Math.round(
@@ -451,7 +456,8 @@ public class HorizontalAdjustment extends Adjustment {
                         note.getGlissando(),
                         rect.line,
                         score.getComposition(),
-                        layoutResult
+                        layoutResult,
+                        lineComponent.getMiddleLineYSs()
                     )
                 )
             ) - 4;
@@ -462,7 +468,8 @@ public class HorizontalAdjustment extends Adjustment {
                         note.getGlissando(),
                         rect.line,
                         score.getComposition(),
-                        layoutResult
+                        layoutResult,
+                        lineComponent.getMiddleLineYSs()
                     )
                 )
             ) - 4;

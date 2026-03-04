@@ -27,6 +27,8 @@ import org.jetbrains.annotations.NotNull;
 
 import songscribe.music.Line;
 import songscribe.music.Note;
+import songscribe.ui.renderer.GlissandoRenderer;
+import songscribe.ui.renderer.NoteRenderer;
 
 /**
  * Calculates horizontal X positions for note columns following Gould/Ross engraving principles.
@@ -178,6 +180,11 @@ public class HorizontalSpacingCalculator {
             }
         }
 
+        // Check glissando spacing: ensure enough horizontal room for the glissando
+        double spacingSs = nextXSs - prevColumn.getXSs();
+        spacingSs = ensureGlissandoSpacing(prevColumn, currColumn, spacingSs);
+        nextXSs = prevColumn.getXSs() + spacingSs;
+
         return nextXSs;
     }
 
@@ -255,6 +262,61 @@ public class HorizontalSpacingCalculator {
         }
 
         return true; // Let calculateNextColumnX handle the actual push calculation
+    }
+
+    /**
+     * Ensures minimum horizontal spacing for a glissando between two columns.
+     * Computes ledger-line-inclusive extents on-the-fly via the shared helper
+     * on {@link GlissandoRenderer}. Returns the input spacing unchanged if no glissando
+     * or if there is already enough room.
+     * <p>
+     * Geometry:
+     * <pre>
+     *   prev note origin          curr note origin
+     *       |                         |
+     *       |-- rightExtent -->|      |
+     *       |            overhang-->| |<--overhang
+     *       |                   |<->| |
+     *       |                   gap   |
+     *       |<------- spacingSs ----->|
+     * </pre>
+     * {@code glissRightExtent = max(rightExtent, noteheadWidth + overhang)}
+     * <br>
+     * {@code glissLeftExtent = min(leftExtent, -overhang)}
+     * <br>
+     * {@code gap = spacingSs + glissLeftExtent(curr) - glissRightExtent(prev)}
+     * <br>
+     * The glissando must fit within "gap".
+     */
+    private static double ensureGlissandoSpacing(
+        @NotNull NoteColumn prev, @NotNull NoteColumn curr, double spacingSs
+    ) {
+        if (!prev.hasGlissando()) return spacingSs;
+
+        // Compute ledger-line-inclusive extents on-the-fly
+        double prevOverhang = GlissandoRenderer.getLedgerLineOverhangSs(prev.getNote());
+        double prevGlissRight = prev.getRightExtentSs();
+
+        if (prevOverhang > 0) {
+            double noteheadWidthSs = NoteRenderer.getNoteheadRightEdgeSs(prev.getNote());
+            prevGlissRight = Math.max(prevGlissRight, noteheadWidthSs + prevOverhang);
+        }
+
+        double currOverhang = GlissandoRenderer.getLedgerLineOverhangSs(curr.getNote());
+        double currGlissLeft = curr.getLeftExtentSs();
+
+        if (currOverhang > 0) {
+            currGlissLeft = Math.min(currGlissLeft, -currOverhang);
+        }
+
+        double gap = spacingSs + currGlissLeft - prevGlissRight;
+        double needed = GlissandoRenderer.MIN_HORIZONTAL_RESERVATION_SS;
+
+        if (gap < needed) {
+            spacingSs += (needed - gap);
+        }
+
+        return spacingSs;
     }
 
     // ==========================================================================
@@ -381,6 +443,7 @@ public class HorizontalSpacingCalculator {
 
             // Use tight gap, ignoring syllables
             double spacingSs = prev.getRightExtentSs() + tightGapSs + Math.abs(curr.getLeftExtentSs());
+            spacingSs = ensureGlissandoSpacing(prev, curr, spacingSs);
             currentXSs += spacingSs;
             tightPositions.add(currentXSs);
         }

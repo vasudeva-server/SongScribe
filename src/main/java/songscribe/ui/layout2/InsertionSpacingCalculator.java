@@ -209,7 +209,7 @@ public class InsertionSpacingCalculator {
     private static @NotNull NoteColumn createLightweightColumn(@NotNull Note note) {
         // Calculate geometric extents using NoteColumnBuilder's static methods
         double leftExtentSs = NoteColumnBuilder.calculateLeftExtentSs(note);
-        double rightExtentSs = NoteColumnBuilder.calculateRightExtentSs(note);
+        double rightExtentSs = NoteColumnBuilder.calculateRightExtentSs(note, false, note.isUpper());
 
         // For insertion operations, we don't need stem positions or beam group info
         // since we're only calculating horizontal spacing

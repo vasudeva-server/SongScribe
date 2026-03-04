@@ -29,7 +29,6 @@ import org.jetbrains.annotations.Nullable;
 import songscribe.ui.layout.Clef;
 import songscribe.ui.layout.KeySignature;
 import songscribe.ui.layout.LineElement;
-import songscribe.ui.layout.Staff;
 import songscribe.ui.layout.Trill;
 import songscribe.ui.layout.Tuplet;
 
@@ -72,7 +71,6 @@ public class RendererRegistry {
      */
     private void registerDefaultRenderers() {
         // Foundation renderers
-        register(Staff.class, new StaffRenderer());
         register(Clef.class, ClefRenderer.getInstance());
         register(KeySignature.class, KeySignatureRenderer.getInstance());
 
