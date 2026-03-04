@@ -385,31 +385,41 @@ public class NoteRenderer extends BaseElementRenderer<Note> {
             }
         }
 
-        double stemLength = geom.lengthSs() + lengtheningSs;
+        // Stem length is measured from notehead center (y=0), not from the anchor.
+        // The anchor only determines where the stem visually attaches to the notehead.
+        var stemLength = geom.lengthSs() + lengtheningSs;
+        var anchorY = geom.anchorYSs();
 
         // For beamed notes, shorten the rendered stem by half the (thickened) beam
         // so it tucks inside the beam rather than peeking past the outer edge
-        // when the beam is angled. stem.y2 retains the full length for beam positioning.
-        double drawLength = beamed
-            ? Math.max(0, stemLength - HALF_BEAM_THICKNESS_SS - beamThickeningSs / 2.0)
-            : stemLength;
-
-        double anchorY = geom.anchorYSs();
+        // when the beam is angled. The logical stem tip retains the full length
+        // for beam positioning.
+        var beamInsetSs = beamed
+            ? HALF_BEAM_THICKNESS_SS + beamThickeningSs / 2.0
+            : 0.0;
 
         if (upper) {
-            double stemTopY = anchorY - stemLength;
+            var stemTipY = -stemLength;
+
+            // Snap drawn edges to device pixels for crisp rendering
+            var drawTop = GraphicUtils.snapYToDevicePixel(g2, -(stemLength - beamInsetSs));
+            var drawBottom = GraphicUtils.snapYToDevicePixel(g2, anchorY);
 
             g2.fill(new Rectangle2D.Double(
-                stemLeftX, anchorY - drawLength, LayoutConstants.STEM_WIDTH_SS, drawLength));
+                stemLeftX, drawTop, LayoutConstants.STEM_WIDTH_SS, drawBottom - drawTop));
 
-            return new Point2D.Double(stemLeftX, stemTopY);
+            return new Point2D.Double(stemLeftX, stemTipY);
         } else {
-            double stemBottomY = anchorY + stemLength;
+            var stemTipY = stemLength;
+
+            // Snap drawn edges to device pixels for crisp rendering
+            var drawTop = GraphicUtils.snapYToDevicePixel(g2, anchorY);
+            var drawBottom = GraphicUtils.snapYToDevicePixel(g2, stemLength - beamInsetSs);
 
             g2.fill(new Rectangle2D.Double(
-                stemLeftX, anchorY, LayoutConstants.STEM_WIDTH_SS, drawLength));
+                stemLeftX, drawTop, LayoutConstants.STEM_WIDTH_SS, drawBottom - drawTop));
 
-            return new Point2D.Double(stemLeftX, stemBottomY);
+            return new Point2D.Double(stemLeftX, stemTipY);
         }
     }
 
