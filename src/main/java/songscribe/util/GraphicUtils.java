@@ -184,6 +184,46 @@ public final class GraphicUtils {
         }
     }
 
+    /**
+     * Creates a custom cursor from a PNG resource, with HiDPI support.
+     *
+     * @param resourcePath classpath-relative path to the 1x PNG (e.g. "/cursors/scissors.png")
+     * @param hotSpot      hot-spot in logical (1x) coordinates
+     * @param name         cursor name for accessibility
+     * @return the cursor, or null if the image could not be loaded
+     */
+    @Nullable
+    public static Cursor createCustomCursor(
+        @NotNull String resourcePath,
+        @NotNull Point hotSpot,
+        @NotNull String name
+    ) {
+        BufferedImage image;
+        var scaledHotSpot = new Point(hotSpot);
+
+        if (isRetina) {
+            image = readImageResource(getScaledImagePath(resourcePath));
+
+            if (image != null) {
+                scaledHotSpot.x *= screenScaleFactor;
+                scaledHotSpot.y *= screenScaleFactor;
+            }
+        } else {
+            image = null;
+        }
+
+        if (image == null) {
+            image = readImageResource(resourcePath);
+            scaledHotSpot.setLocation(hotSpot);
+        }
+
+        if (image == null) {
+            return null;
+        }
+
+        return Toolkit.getDefaultToolkit().createCustomCursor(image, scaledHotSpot, name);
+    }
+
     public static boolean writeImage(
         BufferedImage image,
         String extension,
