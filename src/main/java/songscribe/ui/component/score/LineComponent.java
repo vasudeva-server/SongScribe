@@ -617,6 +617,12 @@ public class LineComponent extends ScoreComponent
             return;
         }
 
+        // Press was on a note head in NOTE_EDIT mode but no drag occurred —
+        // the note was already selected and played in handlePress, nothing more to do.
+        if (noteDragHandler.wasPressCaptured()) {
+            return;
+        }
+
         if (!selectionHandler.handleClick(e)) {
             InsertionNoteManager.handleClick(this);
         }

@@ -25,18 +25,33 @@ import songscribe.ui.component.MainFrame;
 
 public class PlayNoteThread extends Thread {
 
+    private static final int NOTE_DURATION_MS = 700;
+
     private final int pitch;
+    private final boolean playNoteOn;
 
     public PlayNoteThread(int pitch) {
+        this(pitch, true);
+    }
+
+    /**
+     * @param pitch     the MIDI pitch to play
+     * @param playNoteOn if true, sends NOTE_ON before the delay; if false, only
+     *                   schedules the NOTE_OFF (useful when a NOTE_ON is already sounding)
+     */
+    public PlayNoteThread(int pitch, boolean playNoteOn) {
         this.pitch = pitch;
+        this.playNoteOn = playNoteOn;
     }
 
     @Override
     public void run() {
-        sendNoteOn(pitch);
+        if (playNoteOn) {
+            sendNoteOn(pitch);
+        }
 
         try {
-            Thread.sleep(700);
+            Thread.sleep(NOTE_DURATION_MS);
         } catch (InterruptedException e) {
             // okay
         }

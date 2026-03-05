@@ -49,6 +49,7 @@ class NoteDragHandler {
 
     private boolean dragActive = false;
     private boolean dragMoved = false;
+    private boolean pressHandled = false;
     private int dragNoteIndex = -1;
     private int originalStaffPosition;
     private boolean originalUpper;
@@ -74,6 +75,15 @@ class NoteDragHandler {
         return dragMoved;
     }
 
+    /**
+     * Returns whether the last press was captured by this handler (i.e. the user
+     * pressed on a note head in NOTE_EDIT mode). This is true regardless of
+     * whether a drag subsequently occurred.
+     */
+    boolean wasPressCaptured() {
+        return pressHandled;
+    }
+
     int getDragNoteIndex() {
         return dragNoteIndex;
     }
@@ -92,6 +102,8 @@ class NoteDragHandler {
      * and the event should not be processed further.
      */
     boolean handlePress(@NotNull MouseEvent e) {
+        pressHandled = false;
+
         var score = lc.getScore();
 
         if (score == null || score.getMode() != Mode.NOTE_EDIT) {
@@ -136,6 +148,7 @@ class NoteDragHandler {
         lc.getSelectionHandler().selectNoteAtIndex(hitIndex);
         new PlayNoteThread(note.getPitch()).start();
 
+        pressHandled = true;
         dragActive = true;
         lc.repaint();
         return true;
@@ -188,9 +201,10 @@ class NoteDragHandler {
      * Handles mouse release, finalizing or reverting the pitch change.
      */
     void handleRelease() {
-        PlayNoteThread.sendNoteOff(dragLine.getNote(dragNoteIndex).getPitch());
-
         if (dragMoved) {
+            // The last drag noteOn is still sounding — schedule a noteOff after the standard duration
+            new PlayNoteThread(dragLine.getNote(dragNoteIndex).getPitch(), false).start();
+
             // Clear selection so the note doesn't appear highlighted after drag
             lc.getScore().clearSelection();
 
