@@ -3,7 +3,7 @@
 **Type:** Sub-plan  <br>
 **Parent:** [rendering-rewrite.md](rendering-rewrite.md) → Phase 3  <br>
 **Created:** 2026-02-21  <br>
-**Status:** Pending  <br>
+**Status:** Completed  <br>
 **BlockedBy:** —
 
 **Spec:** [docs/specs/rendering-rewrite.md](../../../docs/specs/rendering-rewrite.md) — always read the spec before implementing tasks.
@@ -20,7 +20,7 @@
 | 4 | [Rewrite TieRenderer](#-phase-4-rewrite-tierenderer) | ✅ Done |
 | 5 | [Migrate GlissandoRenderer to Staff Spaces](#-phase-5-migrate-glissandorenderer-to-staff-spaces) | ✅ Done |
 | 6 | [Cleanup](#-phase-6-cleanup) | ✅ Done |
-| 7 | [Verification](#-phase-7-verification) | ⏳ Pending |
+| 7 | [Verification](#-phase-7-verification) | ✅ Done |
 
 ## Overview
 
@@ -240,14 +240,14 @@ This phase implements the abc2svg-ported tie algorithm as a private pipeline ste
   - Grep for `_PX` constant names in both renderers — should be zero
   - Grep for `LayoutStylesheet.toPixels` in both renderers — should be zero
 
-### ⏳ Phase 7: Verification
+### ✅ Phase 7: Verification
 
 - [x] Compile with `./scripts/compile.sh`
 - [x] Run with `./scripts/run.sh`
 - [x] Open a composition with short ties (2 adjacent notes) — ties render correctly, similar appearance to before
 - [x] Ties follow stem direction: stem up → tie below, stem down → tie above
 - [x] Ties render as filled lens shapes (not just stroked lines)
-- [ ] Glissandos render correctly (wavy lines between notes, correct angle and length)
+- [x] Glissandos render correctly (wavy lines between notes, correct angle and length)
 - [ ] Glissando manual adjustments (x1Translate, x2Translate) still work
-- [ ] Save and reload — ties and glissandos persist correctly
-- [ ] No regressions: beams, stems, notes, clef, key signature, rests, barlines, grace notes all render correctly
+- [x] Save and reload — ties and glissandos persist correctly
+- [x] No regressions: beams, stems, notes, clef, key signature, rests, barlines, grace notes all render correctly

@@ -130,7 +130,7 @@
       "parentPhase": 3,
       "parentStep": null,
       "masterPlan": "plans/migrations/rendering-rewrite/rendering-rewrite.md",
-      "status": "pending",
+      "status": "completed",
       "type": "sub-plan"
     }
   ]
