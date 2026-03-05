@@ -88,8 +88,8 @@ public class GlissandoRenderer {
     public static final double MIN_HORIZONTAL_RESERVATION_SS =
         MIN_RECT_LENGTH_SS + 2 * MIN_GAP_SS;  // 1.0 + 0.6 = 1.6 ss
 
-    /** Glissando thickness in staff spaces (2px). */
-    private static final double RECT_THICKNESS_SS = ScaleContext.getInstance().fromPixels(2.0);
+    /** Glissando thickness in pixels. */
+    private static final double RECT_THICKNESS_PX = 2.0;
 
     // ==========================================================================
     // Note Area Constants and Cached Shapes
@@ -580,9 +580,10 @@ public class GlissandoRenderer {
         try (var ignored = GraphicsState.save(g2, TRANSFORM)) {
             g2.translate(endpoints.startX(), endpoints.startY());
             g2.rotate(endpoints.angle());
+            double thicknessSs = ScaleContext.getInstance().fromPixels(RECT_THICKNESS_PX);
             g2.fill(new Rectangle2D.Double(
-                0, -RECT_THICKNESS_SS / 2.0,
-                length, RECT_THICKNESS_SS
+                0, -thicknessSs / 2.0,
+                length, thicknessSs
             ));
         }
     }
@@ -887,7 +888,7 @@ public class GlissandoRenderer {
 
         // Precompute bounding-box half-dimensions of the rotated tip rectangle
         double halfStep = stepSs / 2.0;
-        double halfThickness = RECT_THICKNESS_SS / 2.0;
+        double halfThickness = ScaleContext.getInstance().fromPixels(RECT_THICKNESS_PX) / 2.0;
         double halfW = halfStep * Math.abs(nx) + halfThickness * Math.abs(ny);
         double halfH = halfStep * Math.abs(ny) + halfThickness * Math.abs(nx);
 

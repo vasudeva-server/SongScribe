@@ -222,7 +222,7 @@ public final class Actions {
         "slide-out",
         "Insert slide out glissando after a note",
         KeyEvent.VK_G,
-        InputEvent.SHIFT_DOWN_MASK + InputEvent.META_DOWN_MASK
+        InputEvent.SHIFT_DOWN_MASK | InputEvent.META_DOWN_MASK
     );
 
     public static final DurationActionGroup DURATION_ACTION_GROUP =
