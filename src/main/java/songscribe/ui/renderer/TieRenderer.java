@@ -92,7 +92,7 @@ public class TieRenderer {
 
         try (var ignored = GraphicsState.save(g2, TRANSFORM, COLOR)) {
             g2.translate(0, ctx.getMiddleLineYSs());
-            g2.setColor(NOTE_COLOR);
+            g2.setColor(determineTieColor(interval, ctx));
 
             var tie = new GeneralPath(Path2D.WIND_NON_ZERO, 4);
 
@@ -115,5 +115,21 @@ public class TieRenderer {
             tie.closePath();
             g2.fill(tie);
         }
+    }
+
+    @NotNull
+    private Color determineTieColor(@NotNull Interval interval, @NotNull ElementRenderContext ctx) {
+        var sp = ctx.getSelectionProvider();
+
+        if (sp != null) {
+            var li = ctx.getLineIndex();
+
+            if (sp.isNoteSelected(interval.getStart(), li)
+                    || sp.isNoteSelected(interval.getEnd(), li)) {
+                return ctx.getSelectionColor();
+            }
+        }
+
+        return NOTE_COLOR;
     }
 }
