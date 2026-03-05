@@ -267,22 +267,6 @@ public class InsertionNoteManager {
     }
 
     /**
-     * Returns whether the glissando tool is in removal mode for the given line.
-     * <p>
-     * True when the source note already has a glissando of the same type as the current zone.
-     */
-    @SuppressWarnings("ObjectEquality")
-    static boolean isGlissandoRemovalMode(@NotNull Line line) {
-        if (currentGlissandoZone == null || currentXIndex <= 0 || line.noteCount() <= 0) {
-            return false;
-        }
-
-        var glissando = line.getNote(currentXIndex - 1).getGlissando();
-
-        return glissando != Note.NO_GLISSANDO && glissando.type == currentGlissandoZone;
-    }
-
-    /**
      * Returns the current glissando zone type, or null if no valid zone exists.
      */
     @Nullable
@@ -503,19 +487,7 @@ public class InsertionNoteManager {
                 }
 
                 var sourceNote = line.getNote(currentXIndex - 1);
-                var existingGlissando = sourceNote.getGlissando();
-
-                // Toggle: if existing glissando matches the zone type, remove; otherwise set.
-                // If existing glissando is a different type, replace it.
-                @SuppressWarnings("ObjectEquality")
-                var isSameType = existingGlissando != Note.NO_GLISSANDO
-                    && existingGlissando.type == zoneType;
-
-                if (isSameType) {
-                    sourceNote.removeGlissando();
-                } else {
-                    sourceNote.setGlissando(zoneType);
-                }
+                sourceNote.setGlissando(zoneType);
 
                 var composition = line.getComposition();
 

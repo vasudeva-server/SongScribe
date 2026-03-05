@@ -487,6 +487,7 @@ public class Note extends LineElement implements Cloneable {
     }
 
     public void removeGlissando() {
+        glissando.clearCachedGeometry();
         glissando = NO_GLISSANDO;
     }
 
@@ -722,8 +723,19 @@ public class Note extends LineElement implements Cloneable {
         public double x1Translate = 0;
         public double x2Translate = 0;
 
+        // Transient cached geometry populated during the render pass, used for hit-testing
+        public transient double cachedStartX;
+        public transient double cachedStartY;
+        public transient double cachedAngle;
+        public transient double cachedLength;
+        public transient boolean hasCachedGeometry;
+
         public Glissando(Type type) {
             this.type = type;
+        }
+
+        public void clearCachedGeometry() {
+            hasCachedGeometry = false;
         }
     }
 

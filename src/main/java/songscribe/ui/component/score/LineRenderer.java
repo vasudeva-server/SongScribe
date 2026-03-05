@@ -74,7 +74,7 @@ class LineRenderer {
 
     /** Color for the insertion note preview — defined in Score for shared access across renderers. */
     private static final Color INSERTION_NOTE_COLOR = Score.INSERTION_NOTE_COLOR;
-    private static final Color PREVIEW_REMOVAL_COLOR = Score.PREVIEW_REMOVAL_COLOR;
+
 
     /** The stroke used to draw the selection rectangle border. */
     private static final BasicStroke SELECTION_RECT_STROKE = new BasicStroke(2.0f);
@@ -582,8 +582,15 @@ class LineRenderer {
             }
 
             var sourceIndex = InsertionNoteManager.getCurrentXIndex() - 1;
-            var removalMode = InsertionNoteManager.isGlissandoRemovalMode(line);
-            g2.setColor(removalMode ? PREVIEW_REMOVAL_COLOR : INSERTION_NOTE_COLOR);
+            var sourceNote = line.getNote(sourceIndex);
+
+            //noinspection ObjectEquality
+            if (sourceNote.getGlissando() != Note.NO_GLISSANDO
+                    && sourceNote.getGlissando().type == type) {
+                return;  // Already has this glissando type — no preview needed
+            }
+
+            g2.setColor(INSERTION_NOTE_COLOR);
             GlissandoRenderer.getInstance().renderPreviewGlissando(
                 g2, sourceIndex, type, line, ctx
             );

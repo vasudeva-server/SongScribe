@@ -48,6 +48,7 @@ public final class LineSelectionState {
     private int selectionEnd = -1;
     private int selectionAnchor = -1;
     private boolean lineSelected = false;
+    private int selectedGlissandoNoteIndex = -1;
 
     @Nullable
     private TieContext tieContext = null;
@@ -74,6 +75,43 @@ public final class LineSelectionState {
 
     public void setLineSelected(boolean lineSelected) {
         this.lineSelected = lineSelected;
+
+        if (lineSelected) {
+            selectedGlissandoNoteIndex = -1;
+        }
+    }
+
+    /**
+     * Returns whether a glissando is selected on this line.
+     */
+    public boolean hasGlissandoSelection() {
+        return selectedGlissandoNoteIndex != -1;
+    }
+
+    /**
+     * Returns the note index of the selected glissando, or -1 if none.
+     */
+    public int getSelectedGlissandoNoteIndex() {
+        return selectedGlissandoNoteIndex;
+    }
+
+    /**
+     * Selects the glissando owned by the note at the given index,
+     * clearing any note or line selection.
+     */
+    public void selectGlissando(int noteIndex) {
+        selectedGlissandoNoteIndex = noteIndex;
+        selectionBegin = -1;
+        selectionEnd = -1;
+        selectionAnchor = -1;
+        lineSelected = false;
+    }
+
+    /**
+     * Returns whether the glissando at the given note index is selected.
+     */
+    public boolean isGlissandoSelected(int noteIndex) {
+        return selectedGlissandoNoteIndex == noteIndex;
     }
 
     @Nullable
@@ -102,6 +140,7 @@ public final class LineSelectionState {
         selectionEnd = -1;
         selectionAnchor = -1;
         lineSelected = false;
+        selectedGlissandoNoteIndex = -1;
     }
 
     /**
@@ -115,6 +154,7 @@ public final class LineSelectionState {
         selectionBegin = 0;
         selectionEnd = line.noteCount() - 1;
         selectionAnchor = 0;
+        selectedGlissandoNoteIndex = -1;
     }
 
     /**
@@ -178,6 +218,7 @@ public final class LineSelectionState {
         selectionBegin = noteIndex;
         selectionEnd = noteIndex;
         selectionAnchor = noteIndex;
+        selectedGlissandoNoteIndex = -1;
     }
 
     /**
@@ -205,6 +246,7 @@ public final class LineSelectionState {
 
         selectionBegin = Math.min(selectionAnchor, noteIndex);
         selectionEnd = Math.max(selectionAnchor, noteIndex);
+        selectedGlissandoNoteIndex = -1;
     }
 
     /**
@@ -217,6 +259,7 @@ public final class LineSelectionState {
         }
 
         selectionEnd = noteIndex;
+        selectedGlissandoNoteIndex = -1;
     }
 
     /**

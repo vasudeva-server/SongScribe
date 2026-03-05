@@ -51,7 +51,7 @@ import songscribe.ui.layout2.ScaleContext;
  * Renders glissando lines connecting notes as filled rectangles.
  * <p>
  * Two types are supported: CONNECTED (note to note) and SLIDE_OUT (short
- * diagonal extension past the last note at 45 degrees).
+ * diagonal extension past the last note at 30 degrees).
  * <p>
  * The glissando endpoints are computed using an inward-search algorithm that pre-expands
  * the note area by the gap distance, then steps inward from the bounding box edge until
@@ -78,7 +78,10 @@ public class GlissandoRenderer {
     private static final double MIN_RECT_LENGTH_SS = 1.0;
 
     /** Length of a slide-out glissando in staff spaces. */
-    private static final double SLIDE_OUT_LENGTH_SS = 1.5;
+    private static final double SLIDE_OUT_LENGTH_SS = 1.75;
+
+    /** Angle of a slide-out glissando below horizontal, in degrees. */
+    private static final double SLIDE_OUT_ANGLE_DEG = 30.0;
 
     /**
      * Minimum horizontal distance (in staff spaces) that must be reserved between two
@@ -90,6 +93,9 @@ public class GlissandoRenderer {
 
     /** Glissando thickness in pixels. */
     private static final double RECT_THICKNESS_PX = 2.0;
+
+    /** Hit-test tolerance in pixels (wider than visual thickness for easier clicking). */
+    private static final double HIT_THICKNESS_PX = 8.0;
 
     // ==========================================================================
     // Note Area Constants and Cached Shapes
@@ -333,7 +339,51 @@ public class GlissandoRenderer {
             return;
         }
 
-        render(g2, src, tgt, glissando.x1Translate, glissando.type == Note.Glissando.Type.CONNECTED ? glissando.x2Translate : 0);
+        var color = determineGlissandoColor(noteIndex, glissando.type, ctx);
+
+        render(g2, src, tgt, glissando.x1Translate, glissando.type == Note.Glissando.Type.CONNECTED ? glissando.x2Translate : 0, glissando, color);
+    }
+
+    /**
+     * Determines the color for a glissando based on selection state.
+     * Returns the selection color if the glissando or its attached notes are selected,
+     * otherwise black.
+     */
+    @NotNull
+    private Color determineGlissandoColor(
+        int noteIndex,
+        @NotNull Note.Glissando.Type type,
+        @NotNull ElementRenderContext ctx
+    ) {
+        if (!ctx.isEditMode()) {
+            return Color.BLACK;
+        }
+
+        var selectionProvider = ctx.getSelectionProvider();
+
+        if (selectionProvider == null) {
+            return Color.BLACK;
+        }
+
+        var lineIndex = ctx.getLineIndex();
+
+        // Standalone glissando selection
+        if (selectionProvider.isGlissandoSelected(noteIndex, lineIndex)) {
+            return ctx.getSelectionColor();
+        }
+
+        // Implied by source note selection
+        if (selectionProvider.isNoteSelected(noteIndex, lineIndex)) {
+            return ctx.getSelectionColor();
+        }
+
+        // Implied by target note selection (CONNECTED only)
+        if (type == Note.Glissando.Type.CONNECTED
+                && selectionProvider.isNoteSelected(noteIndex + 1, lineIndex)) {
+            return ctx.getSelectionColor();
+        }
+
+        return Color.BLACK;
     }
 
     /**
@@ -365,7 +415,41 @@ public class GlissandoRenderer {
         var src = resolveNoteContext(note, sourceIndex, line, layoutResult, middleLineYSs);
         var tgt = resolveTargetContext(type, sourceIndex, line, layoutResult, middleLineYSs);
 
-        render(g2, src, tgt, 0, 0);
+        render(g2, src, tgt, 0, 0, null, g2.getColor());
+    }
+
+    /**
+     * Hit-tests all glissandos in a line against a click point in staff-space coordinates.
+     * Uses cached geometry from the most recent render pass.
+     *
+     * @param clickXSs click X in staff spaces
+     * @param clickYSs click Y in staff spaces
+     * @param line     the line to test
+     * @return the note index of the hit glissando's owner, or -1 if no hit
+     */
+    public int hitTestGlissando(double clickXSs, double clickYSs, @NotNull Line line) {
+        var halfHitSs = ScaleContext.getInstance().fromPixels(HIT_THICKNESS_PX) / 2.0;
+
+        for (var i = 0; i < line.noteCount(); i++) {
+            var glissando = line.getNote(i).getGlissando();
+
+            if (!glissando.hasCachedGeometry) {
+                continue;
+            }
+
+            var dx = clickXSs - glissando.cachedStartX;
+            var dy = clickYSs - glissando.cachedStartY;
+            var cos = Math.cos(glissando.cachedAngle);
+            var sin = Math.sin(glissando.cachedAngle);
+            var localX = dx * cos + dy * sin;
+            var localY = -dx * sin + dy * cos;
+
+            if (localX >= 0 && localX <= glissando.cachedLength && Math.abs(localY) <= halfHitSs) {
+                return i;
+            }
+        }
+
+        return -1;
     }
 
     // ==========================================================================
@@ -484,8 +568,8 @@ public class GlissandoRenderer {
         double dx, dy;
 
         if (isSlideOut) {
-            dx = 1.0;
-            dy = 1.0;
+            dx = Math.cos(Math.toRadians(SLIDE_OUT_ANGLE_DEG));
+            dy = Math.sin(Math.toRadians(SLIDE_OUT_ANGLE_DEG));
         } else {
             dx = tgt.cx - src.cx;
             dy = tgt.cy - src.cy;
@@ -565,7 +649,9 @@ public class GlissandoRenderer {
     private void render(
         @NotNull Graphics2D g2,
         @NotNull NoteContext src, @Nullable NoteContext tgt,
-        double x1Translate, double x2Translate
+        double x1Translate, double x2Translate,
+        @Nullable Note.Glissando glissando,
+        @NotNull Color color
     ) {
         var endpoints = computeEndpoints(src, tgt, x1Translate, x2Translate);
 
@@ -577,7 +663,16 @@ public class GlissandoRenderer {
         double dy = endpoints.endY() - endpoints.startY();
         double length = Math.sqrt(dx * dx + dy * dy);
 
-        try (var ignored = GraphicsState.save(g2, TRANSFORM)) {
+        if (glissando != null) {
+            glissando.cachedStartX = endpoints.startX();
+            glissando.cachedStartY = endpoints.startY();
+            glissando.cachedAngle = endpoints.angle();
+            glissando.cachedLength = length;
+            glissando.hasCachedGeometry = true;
+        }
+
+        try (var ignored = GraphicsState.save(g2, TRANSFORM, COLOR)) {
+            g2.setColor(color);
             g2.translate(endpoints.startX(), endpoints.startY());
             g2.rotate(endpoints.angle());
             double thicknessSs = ScaleContext.getInstance().fromPixels(RECT_THICKNESS_PX);

@@ -65,6 +65,7 @@ public class PasteboardAction extends UIAction {
                 // Allow lines to be deleted
                 case DELETE -> setEnabled(
                     (message.getSelectionSize() > 0) ||
+                    message.hasGlissandoSelection() ||
                     (message.getScore().canDeleteLine())
                 );
                 case null, default -> setEnabled(

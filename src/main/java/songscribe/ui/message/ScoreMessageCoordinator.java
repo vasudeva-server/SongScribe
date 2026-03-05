@@ -354,6 +354,9 @@ public final class ScoreMessageCoordinator {
             }
 
             LyricsProcessor.spellLyrics(line);
+        } else if (state != null && state.hasGlissandoSelection()) {
+            var line = state.getLine();
+            line.getNote(state.getSelectedGlissandoNoteIndex()).removeGlissando();
         } else if (callback.canDeleteLine()) {
             composition.removeLine(selectionCoordinator.getSelectedLine());
             LyricsProcessor.spellLyrics(composition);

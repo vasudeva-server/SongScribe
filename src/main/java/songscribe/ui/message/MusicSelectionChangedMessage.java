@@ -25,15 +25,21 @@ import songscribe.ui.component.Score;
 public class MusicSelectionChangedMessage extends Message {
 
     private final int selectionSize;
+    private final boolean hasGlissandoSelection;
     private final Score score;
 
     public MusicSelectionChangedMessage(Score score) {
         selectionSize = score.getSelectionSize();
+        hasGlissandoSelection = score.getSelectionCoordinator().hasGlissandoSelection();
         this.score = score;
     }
 
     public int getSelectionSize() {
         return selectionSize;
+    }
+
+    public boolean hasGlissandoSelection() {
+        return hasGlissandoSelection;
     }
 
     public Score getScore() {

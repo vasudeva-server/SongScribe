@@ -182,6 +182,27 @@ public final class SelectionCoordinator {
         return (state != null) && state.isLineSelected();
     }
 
+    /**
+     * Returns whether the glissando owned by the note at the given index
+     * on the given line is selected.
+     */
+    public boolean isGlissandoSelected(int noteIndex, int lineIndex) {
+        if (activeLineIndex != lineIndex) {
+            return false;
+        }
+
+        var state = lineStates.get(lineIndex);
+        return (state != null) && state.isGlissandoSelected(noteIndex);
+    }
+
+    /**
+     * Returns whether any glissando is selected on the active line.
+     */
+    public boolean hasGlissandoSelection() {
+        var state = getActiveSelection();
+        return (state != null) && state.hasGlissandoSelection();
+    }
+
     // -------------------------------------------------------------------------
     // Cross-line query methods
     // -------------------------------------------------------------------------

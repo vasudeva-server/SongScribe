@@ -76,6 +76,16 @@ public class LineComponent extends ScoreComponent
          * @return true if the staff line is selected
          */
         boolean isLineSelected(int lineIndex);
+
+        /**
+         * Returns whether the glissando owned by the note at the given index
+         * is selected.
+         *
+         * @param noteIndex The note index within the line
+         * @param lineIndex The line index
+         * @return true if the glissando is selected
+         */
+        boolean isGlissandoSelected(int noteIndex, int lineIndex);
     }
 
     // ==========================================================================

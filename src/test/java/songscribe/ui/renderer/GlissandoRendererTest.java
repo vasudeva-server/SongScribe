@@ -434,6 +434,101 @@ class GlissandoRendererTest {
     }
 
     // ======================================================================
+    // hitTestGlissando tests
+    // ======================================================================
+
+    /**
+     * Injects synthetic cached geometry onto a glissando, bypassing the render pass.
+     * Angle is in degrees for readability; the method converts to radians internally.
+     */
+    private static void setCachedGeometry(
+            Note.Glissando glissando,
+            double startXSs, double startYSs,
+            double angleDeg, double lengthSs) {
+        glissando.cachedStartX = startXSs;
+        glissando.cachedStartY = startYSs;
+        glissando.cachedAngle = Math.toRadians(angleDeg);
+        glissando.cachedLength = lengthSs;
+        glissando.hasCachedGeometry = true;
+    }
+
+    @Test
+    void testHitTestGlissando_pointOnLine_returnsNoteIndex() {
+        // Horizontal glissando (angle=0) from (5.0, 3.0) with length 10.0
+        var line = makeTwoNoteLineWithGlissando(0, Note.Accidental.NONE, -2, Note.Accidental.NONE);
+        setCachedGeometry(line.getNote(0).getGlissando(), 5.0, 3.0, 0.0, 10.0);
+
+        // Click at the midpoint: localX=5, localY=0 — well within hit bounds
+        assertThat(RENDERER.hitTestGlissando(10.0, 3.0, line)).isEqualTo(0);
+    }
+
+    @Test
+    void testHitTestGlissando_pointBesideLine_returnsMinusOne() {
+        // Same glissando, but click is 1.0 ss above (> halfHitSs = 0.5)
+        var line = makeTwoNoteLineWithGlissando(0, Note.Accidental.NONE, -2, Note.Accidental.NONE);
+        setCachedGeometry(line.getNote(0).getGlissando(), 5.0, 3.0, 0.0, 10.0);
+
+        assertThat(RENDERER.hitTestGlissando(10.0, 4.0, line)).isEqualTo(-1);
+    }
+
+    @Test
+    void testHitTestGlissando_pointBeforeStart_returnsMinusOne() {
+        var line = makeTwoNoteLineWithGlissando(0, Note.Accidental.NONE, -2, Note.Accidental.NONE);
+        setCachedGeometry(line.getNote(0).getGlissando(), 5.0, 3.0, 0.0, 10.0);
+
+        // localX = 4.9 - 5.0 = -0.1 < 0
+        assertThat(RENDERER.hitTestGlissando(4.9, 3.0, line)).isEqualTo(-1);
+    }
+
+    @Test
+    void testHitTestGlissando_pointAfterEnd_returnsMinusOne() {
+        var line = makeTwoNoteLineWithGlissando(0, Note.Accidental.NONE, -2, Note.Accidental.NONE);
+        setCachedGeometry(line.getNote(0).getGlissando(), 5.0, 3.0, 0.0, 10.0);
+
+        // localX = 15.1 - 5.0 = 10.1 > cachedLength (10.0)
+        assertThat(RENDERER.hitTestGlissando(15.1, 3.0, line)).isEqualTo(-1);
+    }
+
+    @Test
+    void testHitTestGlissando_noCachedGeometry_skipped() {
+        // Note has a Glissando object but hasCachedGeometry is false (default) — must be skipped
+        var line = makeTwoNoteLineWithGlissando(0, Note.Accidental.NONE, -2, Note.Accidental.NONE);
+
+        assertThat(RENDERER.hitTestGlissando(10.0, 3.0, line)).isEqualTo(-1);
+    }
+
+    @Test
+    void testHitTestGlissando_diagonalLine_returnsNoteIndex() {
+        // 45° glissando from (0, 0), length 10; midpoint in world coords: (5·cos45°, 5·sin45°)
+        var line = makeTwoNoteLineWithGlissando(0, Note.Accidental.NONE, -2, Note.Accidental.NONE);
+        setCachedGeometry(line.getNote(0).getGlissando(), 0.0, 0.0, 45.0, 10.0);
+
+        double mid = 5.0 * Math.cos(Math.toRadians(45.0));
+        assertThat(RENDERER.hitTestGlissando(mid, mid, line)).isEqualTo(0);
+    }
+
+    @Test
+    void testHitTestGlissando_secondNoteGlissando_returnsCorrectIndex() {
+        // Three-note line; only note at index 1 has a cached glissando
+        var note0 = NoteType.CROTCHET.newInstance();
+        note0.setUpper(true);
+        var note1 = NoteType.CROTCHET.newInstance();
+        note1.setUpper(true);
+        note1.setGlissando(Note.Glissando.Type.CONNECTED);
+        var note2 = NoteType.CROTCHET.newInstance();
+        note2.setUpper(true);
+
+        var line = new Line();
+        line.addNote(note0);
+        line.addNote(note1);
+        line.addNote(note2);
+
+        setCachedGeometry(note1.getGlissando(), 5.0, 3.0, 0.0, 10.0);
+
+        assertThat(RENDERER.hitTestGlissando(10.0, 3.0, line)).isEqualTo(1);
+    }
+
+    // ======================================================================
     // Unison connected glissando tests
     //
     // These verify that getPitch() (MIDI pitch) — not staff position —

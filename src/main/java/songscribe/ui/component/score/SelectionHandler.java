@@ -29,6 +29,7 @@ import songscribe.music.Note;
 import songscribe.ui.Mode;
 import songscribe.ui.layout2.ScaleContext;
 import songscribe.ui.playback.MidiController;
+import songscribe.ui.renderer.GlissandoRenderer;
 import songscribe.ui.playback.PlayNoteThread;
 
 /**
@@ -206,8 +207,16 @@ class SelectionHandler {
             return true;
         }
 
-        var clickYss = ScaleContext.getInstance().fromPixels(point.y);
-        return Math.abs(clickYss - lc.getMiddleLineYSs()) <= STAFF_HIT_RADIUS_SS;
+        var scaleContext = ScaleContext.getInstance();
+        var clickXSs = scaleContext.fromPixels(point.x);
+        var clickYSs = scaleContext.fromPixels(point.y);
+        var line = lc.getLineSelectionState().getLine();
+
+        if (GlissandoRenderer.getInstance().hitTestGlissando(clickXSs, clickYSs, line) != -1) {
+            return true;
+        }
+
+        return Math.abs(clickYSs - lc.getMiddleLineYSs()) <= STAFF_HIT_RADIUS_SS;
     }
 
     private int hitTestNote(@NotNull Point point) {
@@ -245,10 +254,21 @@ class SelectionHandler {
             return;
         }
 
-        // No note was hit — check proximity to staff lines for line selection
-        var clickYss = ScaleContext.getInstance().fromPixels(clickPoint.y);
+        // No note was hit — check if a glissando was hit
+        var scaleContext = ScaleContext.getInstance();
+        var clickXSs = scaleContext.fromPixels(clickPoint.x);
+        var clickYSs = scaleContext.fromPixels(clickPoint.y);
+        var glissandoHit = GlissandoRenderer.getInstance().hitTestGlissando(
+            clickXSs, clickYSs, lineSelectionState.getLine()
+        );
 
-        if (Math.abs(clickYss - lc.getMiddleLineYSs()) <= STAFF_HIT_RADIUS_SS) {
+        if (glissandoHit != -1) {
+            lineSelectionState.selectGlissando(glissandoHit);
+            return;
+        }
+
+        // No note or glissando was hit — check proximity to staff lines for line selection
+        if (Math.abs(clickYSs - lc.getMiddleLineYSs()) <= STAFF_HIT_RADIUS_SS) {
             lineSelectionState.setLineSelected(true);
         }
     }
