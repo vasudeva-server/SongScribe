@@ -48,7 +48,7 @@ import songscribe.ui.layout2.LayoutResult;
 import songscribe.ui.layout2.ScaleContext;
 
 /**
- * Renders glissando lines connecting notes as filled rounded rectangles.
+ * Renders glissando lines connecting notes as filled rectangles.
  * <p>
  * Two types are supported: CONNECTED (note to note) and SLIDE_OUT (short
  * diagonal extension past the last note at 45 degrees).
@@ -77,6 +77,9 @@ public class GlissandoRenderer {
     /** Minimum rendered glissando length in staff spaces. Glissandos shorter than this are not drawn. */
     private static final double MIN_RECT_LENGTH_SS = 1.0;
 
+    /** Length of a slide-out glissando in staff spaces. */
+    private static final double SLIDE_OUT_LENGTH_SS = 1.5;
+
     /**
      * Minimum horizontal distance (in staff spaces) that must be reserved between two
      * note origins for a glissando to render. Equals the minimum glissando length plus
@@ -85,11 +88,8 @@ public class GlissandoRenderer {
     public static final double MIN_HORIZONTAL_RESERVATION_SS =
         MIN_RECT_LENGTH_SS + 2 * MIN_GAP_SS;  // 1.0 + 0.6 = 1.6 ss
 
-    /** Glissando thickness in staff spaces (matches leger line thickness). */
-    private static final double RECT_THICKNESS_SS = ENGRAVING.legerLineThickness();
-
-    /** Corner radius for the rounded rectangle, in staff spaces (half-round ends). */
-    private static final double CORNER_RADIUS_SS = RECT_THICKNESS_SS / 2.0;
+    /** Glissando thickness in staff spaces (2px). */
+    private static final double RECT_THICKNESS_SS = ScaleContext.getInstance().fromPixels(2.0);
 
     // ==========================================================================
     // Note Area Constants and Cached Shapes
@@ -520,8 +520,8 @@ public class GlissandoRenderer {
         double endX, endY;
 
         if (isSlideOut) {
-            endX = startX + nx * MIN_RECT_LENGTH_SS;
-            endY = startY + ny * MIN_RECT_LENGTH_SS;
+            endX = startX + nx * SLIDE_OUT_LENGTH_SS;
+            endY = startY + ny * SLIDE_OUT_LENGTH_SS;
         } else {
             // Target: find entry point on offset area in local space (reverse direction)
             double localCx2 = NoteRenderer.getNoteheadRightEdgeSs(tgt.note) / 2.0;
@@ -549,7 +549,7 @@ public class GlissandoRenderer {
     }
 
     /**
-     * Renders a filled rounded rectangle between two note areas.
+     * Renders a filled rectangle between two note areas.
      * <p>
      * For CONNECTED glissandos, the shape spans from the source note area exit
      * to the target note area exit, with gaps on both sides. For SLIDE_OUT
@@ -580,10 +580,9 @@ public class GlissandoRenderer {
         try (var ignored = GraphicsState.save(g2, TRANSFORM)) {
             g2.translate(endpoints.startX(), endpoints.startY());
             g2.rotate(endpoints.angle());
-            g2.fill(new RoundRectangle2D.Double(
+            g2.fill(new Rectangle2D.Double(
                 0, -RECT_THICKNESS_SS / 2.0,
-                length, RECT_THICKNESS_SS,
-                CORNER_RADIUS_SS * 2, CORNER_RADIUS_SS * 2
+                length, RECT_THICKNESS_SS
             ));
         }
     }

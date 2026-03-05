@@ -34,6 +34,7 @@ import songscribe.music.Note;
 import songscribe.music.NoteType;
 import songscribe.ui.Control;
 import songscribe.ui.Mode;
+import songscribe.ui.action.Actions;
 import songscribe.ui.component.Score;
 import songscribe.ui.edit.EditModeManager;
 import songscribe.ui.layout.LayoutStylesheet;
@@ -295,57 +296,64 @@ public class InsertionNoteManager {
     // ==========================================================================
 
     /**
-     * Computes the glissando zone type based on mouse position.
+     * Returns the glissando type corresponding to the currently selected action,
+     * or null if neither glissando action is selected.
+     */
+    @Nullable
+    private static Note.Glissando.Type getSelectedGlissandoType() {
+        var selected = Actions.DURATION_ACTION_GROUP.getSelected();
+
+        if (selected == Actions.GLISSANDO_ACTION) {
+            return Note.Glissando.Type.CONNECTED;
+        }
+
+        if (selected == Actions.SLIDE_OUT_ACTION) {
+            return Note.Glissando.Type.SLIDE_OUT;
+        }
+
+        return null;
+    }
+
+    /**
+     * Computes the glissando zone type based on the selected tool.
      * <p>
-     * Returns null if the mouse is to the left of the first note (no source note),
-     * {@link Note.Glissando.Type#SLIDE_OUT} if after the last note, or a zone-based
-     * type determined by the mouse X position relative to the midpoint of the gap
-     * between the source and next note columns.
+     * Returns null if the mouse is to the left of the first note (no source note).
+     * Otherwise validates whether the selected glissando type can be inserted at
+     * the given index: CONNECTED requires a note to the right with a different pitch,
+     * SLIDE_OUT only requires a source note to the left.
      *
-     * @param line       The line containing the notes
-     * @param layout     The layout result for column edge positions
-     * @param mouseXSs   Mouse X coordinate in staff spaces
-     * @param xIndex     Insertion index from {@link LayoutResult#findInsertionIndex}
+     * @param line   The line containing the notes
+     * @param xIndex Insertion index from {@link LayoutResult#findInsertionIndex}
      * @return The zone type, or null if no valid zone
      */
     @Nullable
     private static Note.Glissando.Type computeGlissandoZone(
             @NotNull Line line,
-            @NotNull LayoutResult layout,
-            double mouseXSs,
             int xIndex) {
         // xIndex=0 means to the left of the first note — no source note to draw from
         if (xIndex <= 0 || line.noteCount() == 0) {
             return null;
         }
 
-        // After last note: always slide-out
-        if (xIndex >= line.noteCount()) {
-            return Note.Glissando.Type.SLIDE_OUT;
-        }
+        var intendedType = getSelectedGlissandoType();
 
-        // Between two notes: zone based on mouse X relative to midpoint of the inter-column gap
-        var sourceColumn = layout.getNoteColumn(line.getNote(xIndex - 1));
-        var nextColumn = layout.getNoteColumn(line.getNote(xIndex));
-
-        if (sourceColumn == null || nextColumn == null) {
-            return Note.Glissando.Type.SLIDE_OUT;
-        }
-
-        var sourceRightXSs = sourceColumn.getRightEdgeXSs();
-        var nextLeftXSs = nextColumn.getLeftEdgeXSs();
-        var cutoffXSs = sourceRightXSs + (nextLeftXSs - sourceRightXSs) / 2.0;
-
-        if (mouseXSs < cutoffXSs) {
-            return Note.Glissando.Type.SLIDE_OUT;
-        }
-
-        // A connected glissando between notes at the same pitch is musically meaningless
-        if (line.getNote(xIndex - 1).getPitch() == line.getNote(xIndex).getPitch()) {
+        if (intendedType == null) {
             return null;
         }
 
-        return Note.Glissando.Type.CONNECTED;
+        if (intendedType == Note.Glissando.Type.CONNECTED) {
+            // Connected requires a note to the right
+            if (xIndex >= line.noteCount()) {
+                return null;
+            }
+
+            // Same-pitch connected glissando is musically meaningless
+            if (line.getNote(xIndex - 1).getPitch() == line.getNote(xIndex).getPitch()) {
+                return null;
+            }
+        }
+
+        return intendedType;
     }
 
 
@@ -414,7 +422,7 @@ public class InsertionNoteManager {
 
         if (editModeManager != null && editModeManager.getInsertionNote() == Note.GLISSANDO_NOTE
                 && noteAtX < 0) {
-            newGlissandoZone = computeGlissandoZone(line, layoutResult, mouseXss, xIndex);
+            newGlissandoZone = computeGlissandoZone(line, xIndex);
         }
 
         // Check if position actually changed

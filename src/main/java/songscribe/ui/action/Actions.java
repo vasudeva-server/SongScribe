@@ -205,13 +205,24 @@ public final class Actions {
 
     public static final DurationAction GLISSANDO_ACTION = new DurationAction(
         NoteType.GLISSANDO,
-        "Glissando",
-        "glissando.svg",
+        "Connecting glissando",
+        "connecting-glissando.svg",
         26,
         "glissando",
-        "Insert glissando",
+        "Insert glissando between two notes",
         KeyEvent.VK_G,
         0
+    );
+
+    public static final DurationAction SLIDE_OUT_ACTION = new DurationAction(
+        NoteType.GLISSANDO,
+        "Slide out glissando",
+        "slide-out.svg",
+        26,
+        "slide-out",
+        "Insert slide out glissando after a note",
+        KeyEvent.VK_G,
+        InputEvent.SHIFT_DOWN_MASK + InputEvent.META_DOWN_MASK
     );
 
     public static final DurationActionGroup DURATION_ACTION_GROUP =
@@ -223,7 +234,8 @@ public final class Actions {
             QUARTER_NOTE_ACTION,
             HALF_NOTE_ACTION,
             WHOLE_NOTE_ACTION,
-            GLISSANDO_ACTION
+            GLISSANDO_ACTION,
+            SLIDE_OUT_ACTION
         );
 
     public static final DotAction DOT_ACTION = new DotAction(

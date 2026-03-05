@@ -27,7 +27,12 @@ public class DurationMenu extends JMenu {
 
     public DurationMenu() {
         super("Duration");
+
         for (var action : Actions.DURATION_ACTION_GROUP.getActions()) {
+            if (action == Actions.GLISSANDO_ACTION) {
+                addSeparator();
+            }
+
             add(new JRadioButtonMenuItem(action));
         }
     }
