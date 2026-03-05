@@ -445,9 +445,12 @@ class GlissandoRendererTest {
             Note.Glissando glissando,
             double startXSs, double startYSs,
             double angleDeg, double lengthSs) {
+        var angleRad = Math.toRadians(angleDeg);
         glissando.cachedStartX = startXSs;
         glissando.cachedStartY = startYSs;
-        glissando.cachedAngle = Math.toRadians(angleDeg);
+        glissando.cachedAngle = angleRad;
+        glissando.cachedCos = Math.cos(angleRad);
+        glissando.cachedSin = Math.sin(angleRad);
         glissando.cachedLength = lengthSs;
         glissando.hasCachedGeometry = true;
     }

@@ -71,7 +71,6 @@ class LineRenderer {
         SMuFLMetadata.getInstance().getEngravingDefaults().staffLineThickness();
 
 
-
     /** Color for the insertion note preview — defined in Score for shared access across renderers. */
     private static final Color INSERTION_NOTE_COLOR = Score.INSERTION_NOTE_COLOR;
 

@@ -207,20 +207,25 @@ class SelectionHandler {
             return true;
         }
 
-        var scaleContext = ScaleContext.getInstance();
-        var clickXSs = scaleContext.fromPixels(point.x);
-        var clickYSs = scaleContext.fromPixels(point.y);
-        var line = lc.getLineSelectionState().getLine();
-
-        if (GlissandoRenderer.getInstance().hitTestGlissando(clickXSs, clickYSs, line) != -1) {
+        if (hitTestGlissandoAtPoint(point) != -1) {
             return true;
         }
 
+        var clickYSs = ScaleContext.getInstance().fromPixels(point.y);
         return Math.abs(clickYSs - lc.getMiddleLineYSs()) <= STAFF_HIT_RADIUS_SS;
     }
 
     private int hitTestNote(@NotNull Point point) {
         return NoteHitTest.hitTestNote(lc, point);
+    }
+
+    private int hitTestGlissandoAtPoint(@NotNull Point point) {
+        var scaleContext = ScaleContext.getInstance();
+        var clickXSs = scaleContext.fromPixels(point.x);
+        var clickYSs = scaleContext.fromPixels(point.y);
+        return GlissandoRenderer.getInstance().hitTestGlissando(
+            clickXSs, clickYSs, lc.getLineSelectionState().getLine()
+        );
     }
 
     private void buildNoteHitRect(@NotNull Note note, int noteIndex, @NotNull Rectangle out) {
@@ -255,12 +260,7 @@ class SelectionHandler {
         }
 
         // No note was hit — check if a glissando was hit
-        var scaleContext = ScaleContext.getInstance();
-        var clickXSs = scaleContext.fromPixels(clickPoint.x);
-        var clickYSs = scaleContext.fromPixels(clickPoint.y);
-        var glissandoHit = GlissandoRenderer.getInstance().hitTestGlissando(
-            clickXSs, clickYSs, lineSelectionState.getLine()
-        );
+        var glissandoHit = hitTestGlissandoAtPoint(clickPoint);
 
         if (glissandoHit != -1) {
             lineSelectionState.selectGlissando(glissandoHit);
@@ -268,6 +268,8 @@ class SelectionHandler {
         }
 
         // No note or glissando was hit — check proximity to staff lines for line selection
+        var clickYSs = ScaleContext.getInstance().fromPixels(clickPoint.y);
+
         if (Math.abs(clickYSs - lc.getMiddleLineYSs()) <= STAFF_HIT_RADIUS_SS) {
             lineSelectionState.setLineSelected(true);
         }

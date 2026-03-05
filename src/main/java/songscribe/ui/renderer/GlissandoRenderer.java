@@ -439,10 +439,8 @@ public class GlissandoRenderer {
 
             var dx = clickXSs - glissando.cachedStartX;
             var dy = clickYSs - glissando.cachedStartY;
-            var cos = Math.cos(glissando.cachedAngle);
-            var sin = Math.sin(glissando.cachedAngle);
-            var localX = dx * cos + dy * sin;
-            var localY = -dx * sin + dy * cos;
+            var localX = dx * glissando.cachedCos + dy * glissando.cachedSin;
+            var localY = -dx * glissando.cachedSin + dy * glissando.cachedCos;
 
             if (localX >= 0 && localX <= glissando.cachedLength && Math.abs(localY) <= halfHitSs) {
                 return i;
@@ -667,6 +665,8 @@ public class GlissandoRenderer {
             glissando.cachedStartX = endpoints.startX();
             glissando.cachedStartY = endpoints.startY();
             glissando.cachedAngle = endpoints.angle();
+            glissando.cachedCos = Math.cos(endpoints.angle());
+            glissando.cachedSin = Math.sin(endpoints.angle());
             glissando.cachedLength = length;
             glissando.hasCachedGeometry = true;
         }
