@@ -644,8 +644,6 @@ public class LineComponent extends ScoreComponent
         }
 
         if (selectionHandler.isSelectionActive(e)) {
-            var pressedOnNote = selectionHandler.didHitSelectableElement(e.getPoint());
-            InsertionNoteManager.onMousePressed(pressedOnNote);
             selectionHandler.handlePress(e);
         }
     }
@@ -657,7 +655,6 @@ public class LineComponent extends ScoreComponent
             return;
         }
 
-        InsertionNoteManager.onMouseReleased();
         selectionHandler.handleRelease();
     }
 

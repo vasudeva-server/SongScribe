@@ -64,9 +64,6 @@ public class InsertionNoteManager {
     /** Number of ledger lines below the staff. */
     private static final int STAFF_LINES_BELOW = 4;
 
-    /** Crosshair cursor for selection mode. */
-    private static final Cursor CROSSHAIR_CURSOR = Cursor.getPredefinedCursor(Cursor.CROSSHAIR_CURSOR);
-
     /** Default cursor. */
     private static final Cursor DEFAULT_CURSOR = Cursor.getDefaultCursor();
 
@@ -91,12 +88,6 @@ public class InsertionNoteManager {
 
     /** Whether the Alt key is currently held down. */
     private static boolean altPressed = false;
-
-    /** Whether the primary mouse button is currently pressed. */
-    private static boolean mouseButtonPressed = false;
-
-    /** Whether the press occurred on a selectable element (e.g., a note or staff line). */
-    private static boolean pressedOnSelectableElement = false;
 
     /** The LineComponent the mouse is currently over (independent of insertion note state). */
     @Nullable
@@ -175,13 +166,12 @@ public class InsertionNoteManager {
     }
 
     /**
-     * Sets whether the Alt key is currently pressed and updates the cursor.
+     * Sets whether the Alt key is currently pressed.
      *
      * @param pressed true if Alt is pressed
      */
     static void setAltPressed(boolean pressed) {
         altPressed = pressed;
-        updateCursor();
 
         // When Alt is released, re-trigger insertion note from current mouse position
         if (!pressed && currentMouseLine != null) {
@@ -190,12 +180,10 @@ public class InsertionNoteManager {
     }
 
     /**
-     * Called when the score mode changes. Updates cursor and restores insertion
-     * note if switching back to NOTE_EDIT mode.
+     * Called when the score mode changes. Restores insertion note if switching
+     * back to NOTE_EDIT mode.
      */
     static void onModeChanged() {
-        updateCursor();
-
         if (currentMouseLine != null) {
             restoreInsertionNote(currentMouseLine);
         }
@@ -516,7 +504,6 @@ public class InsertionNoteManager {
      */
     static void mouseEnteredLine(LineComponent lc) {
         currentMouseLine = lc;
-        updateCursor();
 
         var editModeManager = EditModeManager.getInstance();
 
@@ -601,46 +588,6 @@ public class InsertionNoteManager {
             mousePos.x, mousePos.y, 0, false
         );
         trackMouse(lc, syntheticEvent);
-    }
-
-    /**
-     * Called when the primary mouse button is pressed.
-     *
-     * @param onSelectableElement true if the press occurred on a selectable element
-     */
-    static void onMousePressed(boolean onSelectableElement) {
-        mouseButtonPressed = true;
-        pressedOnSelectableElement = onSelectableElement;
-        updateCursor();
-    }
-
-    /**
-     * Called when the primary mouse button is released. Restores the default cursor.
-     */
-    static void onMouseReleased() {
-        mouseButtonPressed = false;
-        pressedOnSelectableElement = false;
-        updateCursor();
-    }
-
-    /**
-     * Updates the cursor on the current mouse line based on mode and input state.
-     * <p>
-     * Crosshair is shown while the mouse button is held in select mode or with Alt
-     * pressed, provided the press did not land on a selectable element.
-     */
-    private static void updateCursor() {
-        if (currentMouseLine == null) {
-            return;
-        }
-
-        var score = currentMouseLine.getScore();
-        var isSelectMode = score != null && score.getMode() == Mode.SELECT;
-        var shouldCrosshair = mouseButtonPressed
-            && (isSelectMode || altPressed)
-            && !pressedOnSelectableElement;
-        var cursor = shouldCrosshair ? CROSSHAIR_CURSOR : DEFAULT_CURSOR;
-        currentMouseLine.setCursor(cursor);
     }
 
     /**
