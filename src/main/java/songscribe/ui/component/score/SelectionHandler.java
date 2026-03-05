@@ -45,6 +45,8 @@ class SelectionHandler {
 
     private final LineComponent lc;
     private boolean dragging = false;
+    private boolean pressHandled = false;
+    private HitResult pressHitResult = new HitResult.Nothing();
     private final Point dragStart = new Point();
     private final Rectangle dragRectangle = new Rectangle();
 
@@ -65,13 +67,48 @@ class SelectionHandler {
     }
 
     // ======================================================================
+    // Hit testing
+    // ======================================================================
+
+    /**
+     * Hit-tests the given point against all selectable elements in this line.
+     * <p>
+     * The cascade tests note heads first, then glissandos, then staff-line proximity.
+     * If nothing is hit, {@link HitResult.Nothing} is returned.
+     */
+    HitResult hitTest(@NotNull Point point) {
+        var noteIndex = NoteHitTest.hitTestNote(lc, point);
+
+        if (noteIndex != -1) {
+            return new HitResult.NoteHead(noteIndex);
+        }
+
+        var glissandoIndex = hitTestGlissandoAtPoint(point);
+
+        if (glissandoIndex != -1) {
+            return new HitResult.Glissando(glissandoIndex);
+        }
+
+        var clickYSs = ScaleContext.getInstance().fromPixels(point.y);
+
+        if (Math.abs(clickYSs - lc.getMiddleLineYSs()) <= STAFF_HIT_RADIUS_SS) {
+            return new HitResult.StaffLine();
+        }
+
+        return new HitResult.Nothing();
+    }
+
+    // ======================================================================
     // Public delegation entry points
     // ======================================================================
 
     void handlePress(@NotNull MouseEvent e) {
         dragging = false;
+        pressHandled = false;
         dragStart.setLocation(e.getPoint());
         dragRectangle.setBounds(0, 0, 0, 0);
+
+        pressHitResult = hitTest(e.getPoint());
 
         var lineSelectionState = lc.getLineSelectionState();
 
@@ -83,9 +120,47 @@ class SelectionHandler {
                 MidiController.sequencer.setTickPosition(0);
             }
         }
+
+        // Select the hit element immediately on press.
+        // This prevents rubber-band drag from starting on selectable elements.
+        // Shift+click on a note head is handled in handleClick for extend-selection.
+        if (e.isShiftDown() && pressHitResult instanceof HitResult.NoteHead) {
+            return;
+        }
+
+        switch (pressHitResult) {
+            case HitResult.NoteHead(var index) -> {
+                selectAndPlayNote(index);
+                pressHandled = true;
+            }
+
+            case HitResult.Glissando(var noteIndex) -> {
+                prepareSelection();
+                lineSelectionState.selectGlissando(noteIndex);
+                lc.getScore().selectionChanged();
+                pressHandled = true;
+            }
+
+            case HitResult.StaffLine() -> {
+                prepareSelection();
+                lineSelectionState.setLineSelected(true);
+                lc.getScore().selectionChanged();
+                pressHandled = true;
+            }
+
+            case HitResult.Nothing() -> lc.repaint();
+        }
+
+        if (pressHandled) {
+            lc.repaint();
+        }
     }
 
     void handleDrag(@NotNull MouseEvent e) {
+        if (pressHandled) {
+            return;
+        }
+
         dragging = true;
 
         // Clamp coordinates to component bounds
@@ -113,40 +188,22 @@ class SelectionHandler {
             return false;
         }
 
-        var score = lc.getScore();
-        var line = lc.getLine();
-        var lineSelectionState = lc.getLineSelectionState();
-
-        if (e.isShiftDown() && lineSelectionState.getSelectionAnchor() != -1) {
-            // Shift+click: extend selection from anchor to clicked note
-            var hitIndex = hitTestNote(e.getPoint());
-
-            if (hitIndex != -1) {
-                lineSelectionState.extendSelectionTo(hitIndex);
-                score.selectionChanged();
-                lc.repaint();
-            }
-        } else {
-            score.clearSelection();
-
-            if (MidiController.sequencer != null) {
-                MidiController.sequencer.setTickPosition(0);
-            }
-
-            calculateLineSelectionFromClick(e.getPoint());
-            score.selectionChanged();
-
-            // Play single selected note
-            if (lineSelectionState.getSelectionSize() == 1) {
-                var note = line.getNote(lineSelectionState.getSelectionBegin());
-
-                if (note.getNoteType().isNote()) {
-                    new PlayNoteThread(note.getPitch()).start();
-                }
-            }
+        // Element was already selected on press — nothing more to do
+        if (pressHandled) {
+            return true;
         }
 
-        lc.repaint();
+        // Shift+click on a note head: extend selection from anchor
+        if (e.isShiftDown()
+                && pressHitResult instanceof HitResult.NoteHead(var index)
+                && lc.getLineSelectionState().getSelectionAnchor() != -1) {
+            var lineSelectionState = lc.getLineSelectionState();
+            lineSelectionState.extendSelectionTo(index);
+            lc.getScore().selectionChanged();
+            playNoteIfPitched(index);
+            lc.repaint();
+        }
+
         return true;
     }
 
@@ -199,25 +256,49 @@ class SelectionHandler {
     }
 
     // ======================================================================
-    // Private helpers
+    // Selection helpers
     // ======================================================================
 
-    boolean didHitSelectableElement(@NotNull Point point) {
-        if (hitTestNote(point) != -1) {
-            return true;
-        }
-
-        if (hitTestGlissandoAtPoint(point) != -1) {
-            return true;
-        }
-
-        var clickYSs = ScaleContext.getInstance().fromPixels(point.y);
-        return Math.abs(clickYSs - lc.getMiddleLineYSs()) <= STAFF_HIT_RADIUS_SS;
+    /**
+     * Clears all selection and activates this line for new selection.
+     */
+    private void prepareSelection() {
+        lc.getScore().clearSelection();
+        lc.getScore().getSelectionCoordinator().activateLine(lc.getLineIndex());
     }
 
-    private int hitTestNote(@NotNull Point point) {
-        return NoteHitTest.hitTestNote(lc, point);
+    /**
+     * Selects the note at the given index in this line, clearing any prior selection.
+     * Used by both the press handler and {@link NoteDragHandler}.
+     */
+    void selectNoteAtIndex(int noteIndex) {
+        prepareSelection();
+        lc.getLineSelectionState().setSelectionFromClick(noteIndex);
+        lc.getScore().selectionChanged();
     }
+
+    /**
+     * Selects the note at the given index and plays it if it is a pitched note.
+     */
+    void selectAndPlayNote(int noteIndex) {
+        selectNoteAtIndex(noteIndex);
+        playNoteIfPitched(noteIndex);
+    }
+
+    /**
+     * Plays the note at the given index if it is a pitched note (not a rest).
+     */
+    private void playNoteIfPitched(int noteIndex) {
+        var note = lc.getLine().getNote(noteIndex);
+
+        if (note.getNoteType().isNote()) {
+            new PlayNoteThread(note.getPitch()).start();
+        }
+    }
+
+    // ======================================================================
+    // Private helpers
+    // ======================================================================
 
     private int hitTestGlissandoAtPoint(@NotNull Point point) {
         var scaleContext = ScaleContext.getInstance();
@@ -230,49 +311,6 @@ class SelectionHandler {
 
     private void buildNoteHitRect(@NotNull Note note, int noteIndex, @NotNull Rectangle out) {
         NoteHitTest.buildNoteHitRect(lc, note, noteIndex, out);
-    }
-
-    /**
-     * Selects the note at the given index in this line, clearing any prior selection.
-     * Used by both the click handler and {@link NoteDragHandler}.
-     */
-    void selectNoteAtIndex(int noteIndex) {
-        var score = lc.getScore();
-        var lineSelectionState = lc.getLineSelectionState();
-        score.clearSelection();
-        score.getSelectionCoordinator().activateLine(lc.getLineIndex());
-        lineSelectionState.setSelectionFromClick(noteIndex);
-        score.selectionChanged();
-    }
-
-    private void calculateLineSelectionFromClick(@NotNull Point clickPoint) {
-        var score = lc.getScore();
-        var lineSelectionState = lc.getLineSelectionState();
-        var coordinator = score.getSelectionCoordinator();
-        coordinator.activateLine(lc.getLineIndex());
-        lineSelectionState.clearSelection();
-
-        var hitIndex = NoteHitTest.hitTestNote(lc, clickPoint);
-
-        if (hitIndex != -1) {
-            lineSelectionState.setSelectionFromClick(hitIndex);
-            return;
-        }
-
-        // No note was hit — check if a glissando was hit
-        var glissandoHit = hitTestGlissandoAtPoint(clickPoint);
-
-        if (glissandoHit != -1) {
-            lineSelectionState.selectGlissando(glissandoHit);
-            return;
-        }
-
-        // No note or glissando was hit — check proximity to staff lines for line selection
-        var clickYSs = ScaleContext.getInstance().fromPixels(clickPoint.y);
-
-        if (Math.abs(clickYSs - lc.getMiddleLineYSs()) <= STAFF_HIT_RADIUS_SS) {
-            lineSelectionState.setLineSelected(true);
-        }
     }
 
     private void calculateLineSelectionFromDrag(@NotNull Rectangle dragRect) {
@@ -296,7 +334,7 @@ class SelectionHandler {
 
         // Set anchor to the selection end nearest the drag start point
         if (lineSelectionState.hasNoteSelection()) {
-            var anchorIndex = hitTestNote(dragStart);
+            var anchorIndex = NoteHitTest.hitTestNote(lc, dragStart);
 
             if (anchorIndex != -1) {
                 lineSelectionState.setSelectionAnchor(anchorIndex);

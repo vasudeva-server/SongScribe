@@ -129,6 +129,8 @@ class NoteDragHandler {
             return false;
         }
 
+        lc.getSelectionHandler().selectAndPlayNote(hitIndex);
+
         // Save state for possible revert on a press+release without drag
         dragNoteIndex = hitIndex;
         originalStaffPosition = note.getStaffPosition();
@@ -144,9 +146,6 @@ class NoteDragHandler {
         if (editModeManager != null) {
             editModeManager.setInsertionNoteVisible(false);
         }
-
-        lc.getSelectionHandler().selectNoteAtIndex(hitIndex);
-        new PlayNoteThread(note.getPitch()).start();
 
         pressHandled = true;
         dragActive = true;
