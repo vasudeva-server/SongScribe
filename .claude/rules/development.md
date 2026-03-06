@@ -59,11 +59,11 @@ The project requires Java 25+. To set `JAVA_HOME` correctly:
 source ./scripts/set-java-home.sh
 ```
 
-## GitLab Issue Workflow
+## GitHub Issue Workflow
 
 - Use `refs #<number>` in commit messages to reference an issue without closing it.
 - Only use `Closes #<number>` when the user explicitly says to close the issue as part of a commit.
-- After committing with `Closes #<number>`, also close the issue imperatively with `glab issue close <number>`.
+- Use `gh` CLI for all GitHub operations (issues, PRs, etc.).
 
 ## Common Issues
 
