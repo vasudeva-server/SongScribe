@@ -40,6 +40,7 @@ public class ModeCycleButton extends ToolbarToggleButton {
 
     public ModeCycleButton() {
         super(null);
+        setName(ComponentNames.MODE_CYCLE_BUTTON);
 
         // Replace the ToggleButtonModel with a plain DefaultButtonModel so the
         // button has no sticky "selected" state. The selected state would latch

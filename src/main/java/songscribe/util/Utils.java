@@ -165,15 +165,6 @@ public final class Utils {
 
     @NotNull
     public static String getResourcePath(@NotNull String resourcePath) {
-        var classLoader = Utils.class.getClassLoader();
-        var resource = classLoader.getResource("");
-
-        if (resource == null) {
-            throw new IllegalArgumentException(
-                "Resource not found: " + resourcePath
-            );
-        }
-
         // Strip a leading "/" from the resource path
         var path = resourcePath;
 
@@ -181,6 +172,25 @@ public final class Utils {
             path = path.substring(1);
         }
 
-        return Paths.get(resource.getPath(), path).toString();
+        // Look up the resource directly so it is found on whichever
+        // classpath entry contains it (important when tests run from
+        // target/test-classes while resources live in target/classes).
+        var classLoader = Utils.class.getClassLoader();
+        var resource = classLoader.getResource(path);
+
+        if (resource != null) {
+            return Paths.get(URI.create(resource.toExternalForm())).toString();
+        }
+
+        // Fall back to constructing from the classpath root
+        var root = classLoader.getResource("");
+
+        if (root == null) {
+            throw new IllegalArgumentException(
+                "Resource not found: " + resourcePath
+            );
+        }
+
+        return Paths.get(root.getPath(), path).toString();
     }
 }

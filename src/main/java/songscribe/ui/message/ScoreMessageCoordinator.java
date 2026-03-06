@@ -395,6 +395,7 @@ public final class ScoreMessageCoordinator {
         }
     }
 
+    @SuppressWarnings("ObjectEquality")
     private static void deleteNote(int xIndex, @NotNull Line line) {
         if (xIndex < (line.noteCount() - 1)) {
             var shift =
@@ -403,6 +404,15 @@ public final class ScoreMessageCoordinator {
 
             for (var i = xIndex + 1; i < line.noteCount(); i++) {
                 line.getNote(i).setXPosSs(line.getNote(i).getXPosSs() + shift);
+            }
+        }
+
+        // If the previous note has a glissando targeting this note, remove it
+        if (xIndex > 0) {
+            var prevNote = line.getNote(xIndex - 1);
+
+            if (prevNote.getGlissando() != Note.NO_GLISSANDO) {
+                prevNote.removeGlissando();
             }
         }
 

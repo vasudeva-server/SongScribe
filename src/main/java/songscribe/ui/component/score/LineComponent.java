@@ -29,7 +29,9 @@ import org.jetbrains.annotations.Nullable;
 import songscribe.music.Line;
 import songscribe.ui.Mode;
 import songscribe.ui.action.Actions;
+import songscribe.ui.component.ComponentNames;
 import songscribe.ui.component.Score;
+import songscribe.util.FatalError;
 import songscribe.ui.layout.CollisionDetector;
 import songscribe.ui.layout.LayoutStylesheet;
 import songscribe.ui.layout.TempoAttachment;
@@ -113,9 +115,6 @@ public class LineComponent extends ScoreComponent
     /** Index of the currently playing note (-1 if not playing). */
     private int playingNoteIndex = -1;
 
-    /** Whether edit mode is enabled (affects coloring). */
-    private boolean editMode = true;
-
     /** The layout engine for calculating element positions. */
     private LayoutEngine layoutEngine;
 
@@ -159,6 +158,7 @@ public class LineComponent extends ScoreComponent
     public void setLine(@NotNull Line line, int lineIndex) {
         this.line = line;
         this.lineIndex = lineIndex;
+        setName(ComponentNames.line(lineIndex));
         this.lineSelectionState = new LineSelectionState(line);
         this.layoutDirty = true;
         this.layoutResult = null;
@@ -231,6 +231,16 @@ public class LineComponent extends ScoreComponent
     }
 
     /**
+     * Converts a staff position to a Y pixel coordinate.
+     *
+     * @param staffPositionSp The staff position (0 = middle line)
+     * @return Y coordinate in pixels
+     */
+    public int staffPositionToYPx(int staffPositionSp) {
+        return getMiddleLineYPx() + (int) Math.round(staffPositionSp * Score.NOTE_Y_OFFSET_PX);
+    }
+
+    /**
      * Sets the selection provider for checking note selection state.
      *
      * @param selectionProvider The selection provider
@@ -244,11 +254,11 @@ public class LineComponent extends ScoreComponent
      *
      * @param score The Score component
      */
-    public void setScore(@Nullable songscribe.ui.component.Score score) {
+    public void setScore(@NotNull songscribe.ui.component.Score score) {
         this.score = score;
 
         // Register LineSelectionState with coordinator when score is set
-        if (score != null && lineSelectionState != null) {
+        if (lineSelectionState != null) {
             var coordinator = score.getSelectionCoordinator();
 
             if (coordinator != null) {
@@ -277,19 +287,11 @@ public class LineComponent extends ScoreComponent
     }
 
     /**
-     * Sets whether edit mode is enabled.
-     *
-     * @param editMode true if edit mode is enabled
-     */
-    public void setEditMode(boolean editMode) {
-        this.editMode = editMode;
-    }
-
-    /**
-     * Returns whether edit mode is enabled.
+     * Returns whether the score is in an interactive editing mode (note edit or select),
+     * as opposed to an adjustment mode.
      */
     public boolean isEditMode() {
-        return editMode;
+        return !getScore().getMode().isAdjustmentMode();
     }
 
     /**
@@ -675,7 +677,9 @@ public class LineComponent extends ScoreComponent
     /**
      * Returns the Score reference.
      */
+    @NotNull
     Score getScore() {
+        FatalError.exitIfNull(score, "Score reference not set on LineComponent");
         return score;
     }
 

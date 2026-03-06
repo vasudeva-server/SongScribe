@@ -175,12 +175,11 @@ class LineRenderer {
         // Draw note positions
         if (line != null) {
             g2.setColor(new Color(255, 0, 255, 128));
-            var noteYOffset = Score.NOTE_Y_OFFSET_PX;
 
             for (var i = 0; i < line.noteCount(); i++) {
                 var note = line.getNote(i);
                 var x = note.getXPosSs();
-                var y = middleLineYPx + (int) (note.getStaffPosition() * noteYOffset);
+                var y = lc.staffPositionToYPx(note.getStaffPosition());
                 g2.fillOval(x - 2, y - 2, 4, 4);
             }
         }

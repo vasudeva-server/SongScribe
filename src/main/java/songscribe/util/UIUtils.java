@@ -128,6 +128,7 @@ public final class UIUtils {
 
             button.setEnabled(action.isEnabled());
             button.setActionCommand(action.getActionCommand());
+            button.setName(action.getActionCommand());
         } else {
             button.setEnabled(true);
         }

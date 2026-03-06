@@ -255,6 +255,8 @@ public final class Score
     }
 
     public void init() {
+        setName(ComponentNames.SCORE);
+
         // Create initial composition
         composition = new Composition(mainFrame);
 

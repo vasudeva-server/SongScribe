@@ -26,7 +26,6 @@ import org.jetbrains.annotations.NotNull;
 
 import songscribe.music.Note;
 import songscribe.music.NoteType;
-import songscribe.ui.component.Score;
 import songscribe.ui.layout2.ScaleContext;
 
 /**
@@ -85,7 +84,7 @@ class NoteHitTest {
         var layoutResult = lc.getLayoutResult();
         var noteXss = layoutResult != null ? layoutResult.getNoteXSs(note) : 0.0;
         var noteXpx = (int) Math.round(ScaleContext.getInstance().toPixels(noteXss));
-        var noteY = lc.getMiddleLineYPx() + (int) (note.getStaffPosition() * Score.NOTE_Y_OFFSET_PX);
+        var noteY = lc.staffPositionToYPx(note.getStaffPosition());
         out.translate(noteXpx, noteY - Note.HOT_SPOT.y);
     }
 }
