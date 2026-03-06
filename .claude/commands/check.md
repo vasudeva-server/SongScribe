@@ -71,9 +71,9 @@ Review the same code for efficiency:
 
 Wait for all three agents to complete, then:
 
-1. **Present findings.** Output all findings from the three agents in a single organized summary. Add two blank lines after the summary (workaround: AskUserQuestion obscures the last two lines of prior output).
+1. **Present findings.** Output all findings from the three agents in a single organized summary.
 
-2. **Dummy prompt.** Immediately call AskUserQuestion with the text "Press Enter to continue" -- this is a workaround for a bug where the first AskUserQuestion auto-dismisses with an empty answer. Do not act on the response.
+2. **Dummy prompt.** Immediately present a prompt with the text "Press Enter to continue". Do NOT use AskUserQuestion for this prompt, and do not act on the response.
 
 3. **Clarifying questions.** If any findings need clarification (ambiguous code intent, unclear whether something is intentional, etc.), ask them via AskUserQuestion.
 
