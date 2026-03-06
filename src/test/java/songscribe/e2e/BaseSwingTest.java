@@ -40,6 +40,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.api.extension.TestWatcher;
 
+import java.io.File;
 import java.io.PrintWriter;
 import java.io.StringReader;
 import java.io.StringWriter;
@@ -47,6 +48,8 @@ import java.io.StringWriter;
 import javax.xml.parsers.SAXParserFactory;
 
 import org.xml.sax.InputSource;
+
+import org.junit.jupiter.api.Test;
 
 import songscribe.io.CompositionIO;
 import songscribe.music.Composition;
@@ -86,7 +89,55 @@ abstract class BaseSwingTest {
     private static int testCounter = 0;
     private static int passCount = 0;
     private static int failCount = 0;
-    private static final int TOTAL_E2E_TESTS = 37;
+    private static int totalE2eTests = -1;
+
+    private static int getTotalE2eTests() {
+        if (totalE2eTests < 0) {
+            totalE2eTests = countTestMethods();
+        }
+
+        return totalE2eTests;
+    }
+
+    private static int countTestMethods() {
+        var count = 0;
+        var packageName = BaseSwingTest.class.getPackageName();
+        var packagePath = packageName.replace('.', '/');
+        var url = BaseSwingTest.class.getClassLoader().getResource(packagePath);
+
+        if (url == null) {
+            return 0;
+        }
+
+        var dir = new File(url.getFile());
+        var files = dir.listFiles((d, name) -> name.endsWith(".class"));
+
+        if (files == null) {
+            return 0;
+        }
+
+        for (var file : files) {
+            var className = packageName + "." + file.getName().replace(".class", "");
+
+            try {
+                var clazz = Class.forName(className);
+
+                if (!BaseSwingTest.class.isAssignableFrom(clazz) || clazz == BaseSwingTest.class) {
+                    continue;
+                }
+
+                for (var method : clazz.getDeclaredMethods()) {
+                    if (method.isAnnotationPresent(Test.class)) {
+                        count++;
+                    }
+                }
+            } catch (ClassNotFoundException e) {
+                // skip
+            }
+        }
+
+        return count;
+    }
 
     private static JWindow statusOverlay;
     private static JLabel statusLabel;
@@ -137,7 +188,7 @@ abstract class BaseSwingTest {
         });
 
         pause();
-        debugConfirm("Test " + testCounter + " of " + TOTAL_E2E_TESTS + ": " + currentTestName);
+        debugConfirm("Test " + testCounter + " of " + getTotalE2eTests() + ": " + currentTestName);
     }
 
     @AfterAll
@@ -170,7 +221,7 @@ abstract class BaseSwingTest {
 
     private void updateStatusOverlay() {
         var sb = new StringBuilder("  ");
-        sb.append(testCounter).append(" of ").append(TOTAL_E2E_TESTS);
+        sb.append(testCounter).append(" of ").append(getTotalE2eTests());
 
         if (passCount > 0 || failCount > 0) {
             sb.append(" [+").append(passCount).append("/-").append(failCount).append("]");
@@ -211,7 +262,7 @@ abstract class BaseSwingTest {
     /**
      * Finds a toolbar button by its component name (set from the action command).
      */
-    private AbstractButton findButtonByName(String name) {
+    protected AbstractButton findButtonByName(String name) {
         return robot.finder().find(new GenericTypeMatcher<AbstractButton>(AbstractButton.class) {
             @Override
             protected boolean isMatching(AbstractButton b) {

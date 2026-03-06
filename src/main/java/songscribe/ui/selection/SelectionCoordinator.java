@@ -20,14 +20,25 @@
 
 package songscribe.ui.selection;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.IdentityHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
+
+import net.engio.mbassy.listener.Handler;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import songscribe.music.Composition;
+import songscribe.music.Note;
+import songscribe.ui.action.Actions;
+import songscribe.ui.action.UIAction;
+import songscribe.ui.message.Message;
+import songscribe.ui.message.MessageCenter;
+import songscribe.ui.message.MusicSelectionChangedMessage;
 
 /**
  * Lightweight score-level coordinator that tracks which line (if any) has
@@ -48,8 +59,18 @@ public final class SelectionCoordinator {
     /** Whether the user is in select mode (shift held down or select mode active). */
     private boolean inSelectMode = false;
 
+    // Lazy-initialized list of all reflectable actions discovered from Actions.
+    private List<UIAction.Reflectable> reflectableActions = null;
+
+    // Saved toggle states of reflectable actions before a selection becomes active.
+    private final Map<UIAction, Boolean> savedToggleStates = new IdentityHashMap<>();
+
+    // Last reflected selection range, used to skip redundant reflection.
+    private NoteSelection lastReflectedSelection = null;
+
     public SelectionCoordinator(@NotNull Supplier<Composition> compositionSupplier) {
         this.compositionSupplier = compositionSupplier;
+        MessageCenter.subscribe(this);
     }
 
     // -------------------------------------------------------------------------
@@ -284,5 +305,136 @@ public final class SelectionCoordinator {
         }
 
         return -1;
+    }
+
+    /**
+     * Returns the notes in the active selection, or an empty list if nothing is selected.
+     */
+    public List<Note> getSelectedNotes() {
+        var selection = getSelection();
+
+        if (selection == null) {
+            return List.of();
+        }
+
+        var line = selection.line();
+        var notes = new ArrayList<Note>(selection.end() - selection.begin() + 1);
+
+        for (var i = selection.begin(); i <= selection.end(); i++) {
+            notes.add(line.getNote(i));
+        }
+
+        return notes;
+    }
+
+    // -------------------------------------------------------------------------
+    // Toolbar reflection
+    // -------------------------------------------------------------------------
+
+    /**
+     * Lazily discovers all static fields in Actions that implement UIAction.Reflectable,
+     * including elements of UIAction array fields.
+     */
+    private List<UIAction.Reflectable> getReflectableActions() {
+        if (reflectableActions == null) {
+            reflectableActions = new ArrayList<>();
+
+            for (var field : Actions.class.getDeclaredFields()) {
+                if (!java.lang.reflect.Modifier.isStatic(field.getModifiers())) {
+                    continue;
+                }
+
+                try {
+                    var value = field.get(null);
+
+                    if (value instanceof UIAction[] array) {
+                        for (var action : array) {
+                            if (action instanceof UIAction.Reflectable reflectable) {
+                                reflectableActions.add(reflectable);
+                            }
+                        }
+                    } else if (value instanceof List<?> list) {
+                        for (var item : list) {
+                            if (item instanceof UIAction.Reflectable reflectable) {
+                                reflectableActions.add(reflectable);
+                            }
+                        }
+                    } else if (value instanceof UIAction.Reflectable reflectable) {
+                        reflectableActions.add(reflectable);
+                    }
+                } catch (IllegalAccessException e) {
+                    // Non-public fields are skipped
+                }
+            }
+        }
+
+        return reflectableActions;
+    }
+
+    /**
+     * Reflects the current selection onto all reflectable toolbar actions.
+     * Fires at LOW_PRIORITY so it runs after all UIAction handlers have processed
+     * the selection-changed message.
+     */
+    @Handler(priority = Message.LOW_PRIORITY)
+    public void reflectSelection(MusicSelectionChangedMessage message) {
+        var actions = getReflectableActions();
+        var selection = getSelection();
+
+        // Selection cleared — restore saved state
+        if (selection == null) {
+            lastReflectedSelection = null;
+
+            if (!savedToggleStates.isEmpty()) {
+                for (var entry : savedToggleStates.entrySet()) {
+                    entry.getKey().setSelected(entry.getValue());
+                }
+
+                savedToggleStates.clear();
+            }
+
+            return;
+        }
+
+        // Skip if the selection range is unchanged
+        if (selection.equals(lastReflectedSelection)) {
+            return;
+        }
+
+        lastReflectedSelection = selection;
+
+        // Selection just became active — save current toggle states
+        if (savedToggleStates.isEmpty()) {
+            for (var reflectable : actions) {
+                var action = (UIAction) reflectable;
+                savedToggleStates.put(action, action.isSelected());
+            }
+        }
+
+        // Reflect selection attributes onto toolbar actions
+        var line = selection.line();
+
+        for (var reflectable : actions) {
+            var action = (UIAction) reflectable;
+            var applicable = false;
+            var matched = true;
+
+            for (var i = selection.begin(); i <= selection.end(); i++) {
+                var note = line.getNote(i);
+
+                if (!reflectable.appliesTo(note)) {
+                    continue;
+                }
+
+                applicable = true;
+
+                if (!reflectable.matchesNote(note)) {
+                    matched = false;
+                    break;
+                }
+            }
+
+            action.setSelected(applicable && matched);
+        }
     }
 }

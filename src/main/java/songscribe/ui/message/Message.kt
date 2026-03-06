@@ -24,6 +24,7 @@ open class Message {
     companion object {
         const val HIGH_PRIORITY = 27
         const val MEDIUM_PRIORITY = 13
+        const val LOW_PRIORITY = 0
     }
 
     override fun toString(): String {

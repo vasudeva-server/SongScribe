@@ -20,44 +20,55 @@
 
 package songscribe.ui.action;
 
-import java.awt.event.*;
+import org.jetbrains.annotations.Nullable;
 
-import songscribe.music.NoteType;
-import songscribe.ui.message.BarSelectedMessage;
-import songscribe.ui.message.MessageCenter;
+import songscribe.music.Note;
 
-public class NonDurationAction extends StickyUIAction {
+/**
+ * Abstract base for actions whose attributes apply only to notes
+ * (not rests or barlines). Provides a shared appliesTo implementation.
+ */
+public abstract class NoteOnlyAction extends InsertionNoteAction
+    implements UIAction.Reflectable {
 
-    private final NoteType type;
-
-    public NonDurationAction(
-        NoteType type,
-        String name,
-        String icon,
+    public NoteOnlyAction(
+        @Nullable String name,
+        @Nullable String icon,
         int size,
         String actionCommand,
         String tooltip,
+        boolean isToggle
+    ) {
+        super(name, icon, size, actionCommand, tooltip, isToggle);
+        setDefaultFlags();
+    }
+
+    public NoteOnlyAction(
+        @Nullable String name,
+        @Nullable String icon,
+        int size,
+        String actionCommand,
+        String tooltip,
+        boolean isToggle,
         int virtualKey,
         int modifiers
     ) {
-        super(name, icon, size, actionCommand, tooltip, virtualKey, modifiers);
-        this.type = type;
+        super(name, icon, size, actionCommand, tooltip, isToggle, virtualKey, modifiers);
+        setDefaultFlags();
+    }
+
+    private void setDefaultFlags() {
         setFlags(
             Flag.DISABLE_IN_REST_MODE,
             Flag.DISABLE_WHEN_PLAYING,
             Flag.DISABLE_IN_ADJUSTMENT_MODE,
-            Flag.DISABLE_WHEN_EDITING_TEXT
+            Flag.DISABLE_WHEN_BAR_SELECTED,
+            Flag.ENABLE_WHEN_DURATION_SELECTED
         );
     }
 
-    public NoteType getType() {
-        return type;
-    }
-
     @Override
-    public void actionPerformed(ActionEvent e) {
-        if (doActionPerformed(e)) {
-            MessageCenter.post(new BarSelectedMessage(type));
-        }
+    public boolean appliesTo(Note note) {
+        return note.getNoteType().isNote();
     }
 }

@@ -22,15 +22,21 @@ package songscribe.ui.action;
 
 import java.awt.event.*;
 
+import songscribe.music.Note;
 import songscribe.music.NoteType;
+import songscribe.ui.message.BarSelectedMessage;
 import songscribe.ui.message.DurationSelectedMessage;
 import songscribe.ui.message.MessageCenter;
 
-public class DurationAction extends StickyUIAction {
+public class NoteTypeAction extends StickyUIAction implements UIAction.Reflectable {
+
+    public enum Kind { DURATION, NON_DURATION }
 
     private final NoteType type;
+    private final Kind kind;
 
-    public DurationAction(
+    public NoteTypeAction(
+        Kind kind,
         NoteType type,
         String name,
         String icon,
@@ -41,22 +47,55 @@ public class DurationAction extends StickyUIAction {
         int modifiers
     ) {
         super(name, icon, size, actionCommand, tooltip, virtualKey, modifiers);
+        this.kind = kind;
         this.type = type;
-        setFlags(
-            Flag.DISABLE_WHEN_PLAYING,
-            Flag.DISABLE_IN_ADJUSTMENT_MODE,
-            Flag.DISABLE_WHEN_EDITING_TEXT
-        );
+
+        if (kind == Kind.NON_DURATION) {
+            setFlags(
+                Flag.DISABLE_IN_REST_MODE,
+                Flag.DISABLE_WHEN_PLAYING,
+                Flag.DISABLE_IN_ADJUSTMENT_MODE,
+                Flag.DISABLE_WHEN_EDITING_TEXT
+            );
+        } else {
+            setFlags(
+                Flag.DISABLE_WHEN_PLAYING,
+                Flag.DISABLE_IN_ADJUSTMENT_MODE,
+                Flag.DISABLE_WHEN_EDITING_TEXT
+            );
+        }
     }
 
     public NoteType getType() {
         return type;
     }
 
+    public Kind getKind() {
+        return kind;
+    }
+
+    @Override
+    public boolean appliesTo(Note note) {
+        if (kind == Kind.DURATION) {
+            return true;
+        }
+
+        return note.getNoteType().isNonDuration();
+    }
+
+    @Override
+    public boolean matchesNote(Note note) {
+        return note.getNoteType() == type;
+    }
+
     @Override
     public void actionPerformed(ActionEvent e) {
         if (doActionPerformed(e)) {
-            MessageCenter.post(new DurationSelectedMessage(type));
+            if (kind == Kind.DURATION) {
+                MessageCenter.post(new DurationSelectedMessage(type));
+            } else {
+                MessageCenter.post(new BarSelectedMessage(type));
+            }
         }
     }
 }

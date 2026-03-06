@@ -22,7 +22,9 @@ package songscribe.ui.action;
 
 import org.jetbrains.annotations.Nullable;
 
-public class DotAction extends InsertionNoteAction {
+import songscribe.music.Note;
+
+public class DotAction extends InsertionNoteAction implements UIAction.Reflectable {
 
     private final DotLevel dotLevel;
 
@@ -60,8 +62,20 @@ public class DotAction extends InsertionNoteAction {
         return dotLevel;
     }
 
+    @Override
+    public boolean appliesTo(Note note) {
+        return note.getNoteType().isDuration();
+    }
+
+    @Override
+    public boolean matchesNote(Note note) {
+        return switch (dotLevel) {
+            case SINGLE -> note.getDotCount() == 1;
+            case DOUBLE -> note.getDotCount() == 2;
+        };
+    }
+
     public enum DotLevel {
-        NONE,
         SINGLE,
         DOUBLE,
     }

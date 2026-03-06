@@ -22,7 +22,7 @@ package songscribe.ui.action;
 
 import songscribe.music.Note;
 
-public class AccidentalAction extends InsertionNoteAction {
+public class AccidentalAction extends NoteOnlyAction {
 
     private final Note.Accidental accidental;
 
@@ -58,17 +58,15 @@ public class AccidentalAction extends InsertionNoteAction {
             modifiers
         );
         this.accidental = accidental;
-        setFlags(
-            Flag.DISABLE_IN_REST_MODE, // Accidentals do not apply to rests
-            Flag.DISABLE_WHEN_PLAYING,
-            Flag.DISABLE_IN_ADJUSTMENT_MODE,
-            Flag.DISABLE_WHEN_BAR_SELECTED,
-            Flag.ENABLE_WHEN_DURATION_SELECTED,
-            Flag.DISABLE_WHEN_EDITING_TEXT
-        );
+        setFlags(Flag.DISABLE_WHEN_EDITING_TEXT);
     }
 
     public Note.Accidental getAccidental() {
         return accidental;
+    }
+
+    @Override
+    public boolean matchesNote(Note note) {
+        return note.getAccidental() == accidental;
     }
 }

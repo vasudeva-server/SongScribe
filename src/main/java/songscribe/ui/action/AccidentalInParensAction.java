@@ -20,31 +20,23 @@
 
 package songscribe.ui.action;
 
-import songscribe.music.DurationArticulation;
 import songscribe.music.Note;
 
-public class DurationArticulationAction extends NoteOnlyAction {
+public class AccidentalInParensAction extends NoteOnlyAction {
 
-    private final DurationArticulation articulation;
-
-    public DurationArticulationAction(
-        DurationArticulation articulation,
-        String name,
-        String icon,
-        int size,
-        String actionCommand,
-        String tooltip
-    ) {
-        super(name, icon, size, actionCommand, tooltip, true);
-        this.articulation = articulation;
-    }
-
-    public DurationArticulation getArticulation() {
-        return articulation;
+    public AccidentalInParensAction() {
+        super(
+            "In Parentheses",
+            null,
+            0,
+            "accidental-in-parens",
+            "Add accidental in parentheses",
+            true
+        );
     }
 
     @Override
     public boolean matchesNote(Note note) {
-        return note.getDurationArticulation() == articulation;
+        return note.isAccidentalInParentheses();
     }
 }

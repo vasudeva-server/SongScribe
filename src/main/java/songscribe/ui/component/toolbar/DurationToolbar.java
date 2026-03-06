@@ -23,12 +23,12 @@ package songscribe.ui.component.toolbar;
 import java.util.List;
 
 import songscribe.ui.action.Actions;
-import songscribe.ui.action.DurationAction;
+import songscribe.ui.action.NoteTypeAction;
 import songscribe.ui.component.StickyToggleButton;
 
 public class DurationToolbar extends Toolbar {
 
-    private static final List<DurationAction> ACTIONS =
+    private static final List<NoteTypeAction> ACTIONS =
         Actions.DURATION_ACTION_GROUP.getActions();
 
     public DurationToolbar() {

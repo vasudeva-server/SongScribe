@@ -11,8 +11,14 @@
     {
       "path": "plans/migrations/rendering-rewrite/rendering-rewrite.md",
       "subdirectory": "migrations/rendering-rewrite",
-      "active": true,
+      "active": false,
       "description": "Rewrite rendering and layout pipeline with staff-space coordinate system, abc2svg algorithms"
+    },
+    {
+      "path": "plans/issue-80-implementation-plan.md",
+      "subdirectory": null,
+      "active": true,
+      "description": "Implement toolbar button state reflection based on selected notes (issue #80)"
     }
   ],
   "subPlans": [

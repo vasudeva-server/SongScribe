@@ -27,6 +27,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import songscribe.music.DurationArticulation;
+import songscribe.music.ForceArticulation;
 import songscribe.music.Note;
 import songscribe.music.NoteType;
 import songscribe.ui.Control;
@@ -117,8 +118,9 @@ public final class Actions {
     //
     // Duration actions
     //
-    public static final DurationAction GRACE_EIGHTH_NOTE_ACTION =
-        new DurationAction(
+    public static final NoteTypeAction GRACE_EIGHTH_NOTE_ACTION =
+        new NoteTypeAction(
+            NoteTypeAction.Kind.DURATION,
             NoteType.GRACE_QUAVER,
             "Grace note",
             "grace.svg",
@@ -135,8 +137,9 @@ public final class Actions {
     }
 
 
-    public static final DurationAction THIRTY_SECOND_NOTE_ACTION =
-        new DurationAction(
+    public static final NoteTypeAction THIRTY_SECOND_NOTE_ACTION =
+        new NoteTypeAction(
+            NoteTypeAction.Kind.DURATION,
             NoteType.DEMI_SEMIQUAVER,
             "Thirty-second",
             "@\uF36B",
@@ -147,8 +150,9 @@ public final class Actions {
             0
         );
 
-    public static final DurationAction SIXTEENTH_NOTE_ACTION =
-        new DurationAction(
+    public static final NoteTypeAction SIXTEENTH_NOTE_ACTION =
+        new NoteTypeAction(
+            NoteTypeAction.Kind.DURATION,
             NoteType.SEMIQUAVER,
             "Sixteenth",
             "@\uF36A",
@@ -159,7 +163,8 @@ public final class Actions {
             0
         );
 
-    public static final DurationAction EIGHTH_NOTE_ACTION = new DurationAction(
+    public static final NoteTypeAction EIGHTH_NOTE_ACTION = new NoteTypeAction(
+        NoteTypeAction.Kind.DURATION,
         NoteType.QUAVER,
         "Eighth",
         "@\uF369",
@@ -170,7 +175,8 @@ public final class Actions {
         0
     );
 
-    public static final DurationAction QUARTER_NOTE_ACTION = new DurationAction(
+    public static final NoteTypeAction QUARTER_NOTE_ACTION = new NoteTypeAction(
+        NoteTypeAction.Kind.DURATION,
         NoteType.CROTCHET,
         "Quarter",
         "@\uF368",
@@ -181,7 +187,8 @@ public final class Actions {
         0
     );
 
-    public static final DurationAction HALF_NOTE_ACTION = new DurationAction(
+    public static final NoteTypeAction HALF_NOTE_ACTION = new NoteTypeAction(
+        NoteTypeAction.Kind.DURATION,
         NoteType.MINIM,
         "Half",
         "@\uF367",
@@ -192,7 +199,8 @@ public final class Actions {
         0
     );
 
-    public static final DurationAction WHOLE_NOTE_ACTION = new DurationAction(
+    public static final NoteTypeAction WHOLE_NOTE_ACTION = new NoteTypeAction(
+        NoteTypeAction.Kind.DURATION,
         NoteType.SEMIBREVE,
         "Whole",
         "@\uF366",
@@ -203,7 +211,8 @@ public final class Actions {
         0
     );
 
-    public static final DurationAction GLISSANDO_ACTION = new DurationAction(
+    public static final NoteTypeAction GLISSANDO_ACTION = new NoteTypeAction(
+        NoteTypeAction.Kind.DURATION,
         NoteType.GLISSANDO,
         "Connecting glissando",
         "connecting-glissando.svg",
@@ -214,7 +223,8 @@ public final class Actions {
         0
     );
 
-    public static final DurationAction SLIDE_OUT_ACTION = new DurationAction(
+    public static final NoteTypeAction SLIDE_OUT_ACTION = new NoteTypeAction(
+        NoteTypeAction.Kind.DURATION,
         NoteType.GLISSANDO,
         "Slide out glissando",
         "slide-out.svg",
@@ -344,20 +354,8 @@ public final class Actions {
             0
         );
 
-    public static final UIAction ACCIDENTAL_IN_PARENS_ACTION = new UIAction(
-        "In Parentheses",
-        null,
-        0,
-        "accidental-in-parens",
-        "Add accidental in parentheses",
-        true
-    );
-
-    static {
-        ACCIDENTAL_IN_PARENS_ACTION.setFlags(
-            UIAction.Flag.DISABLE_IN_ADJUSTMENT_MODE
-        );
-    }
+    public static final AccidentalInParensAction ACCIDENTAL_IN_PARENS_ACTION =
+        new AccidentalInParensAction();
 
     public static final ActionGroup<AccidentalAction> ACCIDENTAL_ACTION_GROUP =
         new ActionGroup<>(
@@ -370,8 +368,9 @@ public final class Actions {
             NATURAL_SHARP_ACTION
         );
 
-    public static final NonDurationAction[] REPEAT_ACTIONS = new NonDurationAction[]{
-        new NonDurationAction(
+    public static final NoteTypeAction[] REPEAT_ACTIONS = new NoteTypeAction[]{
+        new NoteTypeAction(
+            NoteTypeAction.Kind.NON_DURATION,
             NoteType.REPEAT_LEFT,
             "Left Repeat",
             "@\uEF68",
@@ -381,7 +380,8 @@ public final class Actions {
             KeyEvent.VK_L,
             0
         ),
-        new NonDurationAction(
+        new NoteTypeAction(
+            NoteTypeAction.Kind.NON_DURATION,
             NoteType.REPEAT_RIGHT,
             "Right Repeat",
             "@\uF345",
@@ -391,7 +391,8 @@ public final class Actions {
             KeyEvent.VK_R,
             InputEvent.SHIFT_DOWN_MASK
         ),
-        new NonDurationAction(
+        new NoteTypeAction(
+            NoteTypeAction.Kind.NON_DURATION,
             NoteType.REPEAT_LEFT_RIGHT,
             "Left/Right Repeat",
             "@\uF34B",
@@ -403,8 +404,9 @@ public final class Actions {
         ),
     };
 
-    public static final NonDurationAction[] BARLINE_ACTIONS = new NonDurationAction[]{
-        new NonDurationAction(
+    public static final NoteTypeAction[] BARLINE_ACTIONS = new NoteTypeAction[]{
+        new NoteTypeAction(
+            NoteTypeAction.Kind.NON_DURATION,
             NoteType.FINAL_DOUBLE_BARLINE,
             "Final Double Barline",
             "@\uF34A",
@@ -414,7 +416,8 @@ public final class Actions {
             KeyEvent.VK_F,
             InputEvent.SHIFT_DOWN_MASK
         ),
-        new NonDurationAction(
+        new NoteTypeAction(
+            NoteTypeAction.Kind.NON_DURATION,
             NoteType.DOUBLE_BARLINE,
             "Double Barline (Fine)",
             "@\uF347",
@@ -424,7 +427,8 @@ public final class Actions {
             KeyEvent.VK_D,
             0
         ),
-        new NonDurationAction(
+        new NoteTypeAction(
+            NoteTypeAction.Kind.NON_DURATION,
             NoteType.SINGLE_BARLINE,
             "Single Barline",
             "@\uF346",
@@ -436,8 +440,9 @@ public final class Actions {
         ),
     };
 
-    public static final NonDurationAction BREATH_MARK_ACTION =
-        new NonDurationAction(
+    public static final NoteTypeAction BREATH_MARK_ACTION =
+        new NoteTypeAction(
+            NoteTypeAction.Kind.NON_DURATION,
             NoteType.BREATH_MARK,
             "Breath Mark",
             null,
@@ -448,11 +453,12 @@ public final class Actions {
             0
         );
 
-    public static final ActionGroup<NonDurationAction> NON_DURATION_ACTION_GROUP =
+    public static final ActionGroup<NoteTypeAction> NON_DURATION_ACTION_GROUP =
         new NonDurationActionGroup();
 
     public static final ForceArticulationAction ACCENT_ACTION =
         new ForceArticulationAction(
+            ForceArticulation.ACCENT,
             "Accent",
             "@\uF38C",
             22,

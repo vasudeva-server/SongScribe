@@ -313,3 +313,70 @@ The status overlay shows the test counter and the test name.
 1. Create a composition with key signature set to 3 sharps.
 2. Save to XML and reload.
 3. Verify the reloaded composition has key type SHARPS and accidental count 3.
+
+
+## ToolbarReflectionTest
+
+### testSingleNoteSelection
+**Goal:** Verify that selecting a single note reflects its properties onto toolbar buttons.
+**Steps:**
+1. Insert 1 quarter note at staff position 0.
+2. Switch to select mode, click the note.
+3. Verify QUARTER button is selected, HALF/EIGHTH are deselected.
+4. Verify all accidental buttons are deselected (note has no accidental).
+5. Verify DOT button is deselected.
+
+### testSingleRestSelection
+**Goal:** Verify that selecting a single rest deselects all toolbar buttons.
+**Steps:**
+1. Build a composition with 1 crotchet rest.
+2. Switch to select mode, click the rest.
+3. Verify all duration buttons are deselected (CROTCHET_REST != CROTCHET).
+4. Verify all accidental/articulation buttons are deselected (not applicable to rests).
+
+### testMultipleIdenticalNotes
+**Goal:** Verify that selecting multiple identical notes reflects their shared properties.
+**Steps:**
+1. Build a composition with 2 quarter notes at different staff positions.
+2. Switch to select mode, click first note, shift-click second note.
+3. Verify QUARTER button is selected (both are quarter notes).
+4. Verify accidental buttons are deselected (both have no accidental).
+
+### testMultipleDifferentDurations
+**Goal:** Verify that selecting notes with different durations deselects all duration buttons.
+**Steps:**
+1. Build a composition with 1 quarter note + 1 half note.
+2. Switch to select mode, select both notes.
+3. Verify QUARTER is deselected, HALF is deselected (types differ).
+
+### testMultipleDifferentAccidentals
+**Goal:** Verify that selecting notes with different accidentals deselects accidental buttons.
+**Steps:**
+1. Build a composition with 2 quarter notes, first with FLAT, second with DOUBLE_FLAT.
+2. Switch to select mode, select both notes.
+3. Verify FLAT is deselected, DOUBLE_FLAT is deselected (accidentals differ).
+4. Verify QUARTER is selected (both are quarter notes).
+
+### testNoteAndRestSelection
+**Goal:** Verify toolbar state when selecting a note and a rest together.
+**Steps:**
+1. Build a composition with 1 quarter note + 1 quarter rest.
+2. Switch to select mode, select both.
+3. Verify QUARTER is deselected (CROTCHET != CROTCHET_REST).
+4. Verify all accidental buttons are deselected.
+
+### testDifferentDurationsAndRest
+**Goal:** Verify toolbar state when selecting notes of different durations plus a rest.
+**Steps:**
+1. Build a composition with 1 quarter note + 1 half note + 1 quarter rest.
+2. Switch to select mode, select all 3.
+3. Verify QUARTER is deselected, HALF is deselected, all accidentals deselected.
+
+### testSelectionClearedRestoresState
+**Goal:** Verify that clearing a selection restores toolbar buttons to their pre-selection state.
+**Steps:**
+1. Build a composition with a minim note that has a FLAT accidental.
+2. Switch to select mode. Verify FLAT action is deselected.
+3. Click the note. Verify FLAT action is selected (reflection).
+4. Press Cmd+D to deselect all.
+5. Verify FLAT action is restored to deselected.

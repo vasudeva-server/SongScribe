@@ -279,7 +279,7 @@ public enum NoteType {
     }
 
     private Note createDefaultInstance() {
-        if (isRest() || isBarLine() || isRepeat() || this == BREATH_MARK) {
+        if (isRest() || isNonDuration()) {
             return new NonNote(this);
         }
 
@@ -375,6 +375,14 @@ public enum NoteType {
             ordinal() >= SINGLE_BARLINE.ordinal() &&
             ordinal() <= FINAL_DOUBLE_BARLINE.ordinal()
         );
+    }
+
+    public boolean isDuration() {
+        return isNote() || isRest();
+    }
+
+    public boolean isNonDuration() {
+        return isBarLine() || isRepeat() || this == BREATH_MARK;
     }
 
     public boolean isGraceNote() {

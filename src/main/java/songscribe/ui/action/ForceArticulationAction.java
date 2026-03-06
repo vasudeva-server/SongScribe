@@ -20,9 +20,15 @@
 
 package songscribe.ui.action;
 
-public class ForceArticulationAction extends InsertionNoteAction {
+import songscribe.music.ForceArticulation;
+import songscribe.music.Note;
+
+public class ForceArticulationAction extends NoteOnlyAction {
+
+    private final ForceArticulation articulation;
 
     public ForceArticulationAction(
+        ForceArticulation articulation,
         String name,
         String icon,
         int size,
@@ -30,12 +36,15 @@ public class ForceArticulationAction extends InsertionNoteAction {
         String tooltip
     ) {
         super(name, icon, size, actionCommand, tooltip, true);
-        setFlags(
-            Flag.DISABLE_IN_REST_MODE,
-            Flag.DISABLE_WHEN_PLAYING,
-            Flag.DISABLE_IN_ADJUSTMENT_MODE,
-            Flag.DISABLE_WHEN_BAR_SELECTED,
-            Flag.ENABLE_WHEN_DURATION_SELECTED
-        );
+        this.articulation = articulation;
+    }
+
+    public ForceArticulation getArticulation() {
+        return articulation;
+    }
+
+    @Override
+    public boolean matchesNote(Note note) {
+        return note.getForceArticulation() == articulation;
     }
 }

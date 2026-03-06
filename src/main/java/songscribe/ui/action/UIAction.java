@@ -29,6 +29,7 @@ import org.jetbrains.annotations.Nullable;
 
 import net.engio.mbassy.listener.Handler;
 
+import songscribe.music.Note;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.Score;
 import songscribe.ui.message.BarSelectedMessage;
@@ -73,6 +74,21 @@ public class UIAction extends AbstractAction {
         public int getValue() {
             return value;
         }
+    }
+
+    public interface Reflectable {
+        /**
+         * Whether this action's attribute is applicable to the given note.
+         * For example, accidental actions return false for rests;
+         * barline actions return false for notes.
+         */
+        boolean appliesTo(Note note);
+
+        /**
+         * Whether the given note has the attribute this action represents.
+         * Only called when appliesTo() returns true.
+         */
+        boolean matchesNote(Note note);
     }
 
     public static final String FONT_ICON_KEY = "font-icon";
@@ -391,7 +407,8 @@ public class UIAction extends AbstractAction {
         var duration = Actions.DURATION_ACTION_GROUP.getSelected();
         return (
             (duration != Actions.GRACE_EIGHTH_NOTE_ACTION) &&
-                (duration != Actions.GLISSANDO_ACTION)
+                (duration != Actions.GLISSANDO_ACTION) &&
+                (duration != Actions.SLIDE_OUT_ACTION)
         );
     }
 

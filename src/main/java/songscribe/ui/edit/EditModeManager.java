@@ -238,7 +238,7 @@ public final class EditModeManager {
     public void decorateNote(@NotNull Note note) {
         var dotAction = Actions.DOT_ACTION_GROUP.getSelected();
         note.setDotCount(
-            (dotAction != null) ? dotAction.getDotLevel().ordinal() : 0
+            (dotAction != null) ? dotAction.getDotLevel().ordinal() + 1 : 0
         );
 
         // Rests don't get any other decorations

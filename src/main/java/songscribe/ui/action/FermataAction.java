@@ -20,17 +20,17 @@
 
 package songscribe.ui.action;
 
-public class FermataAction extends InsertionNoteAction {
+import songscribe.music.Note;
+
+public class FermataAction extends NoteOnlyAction {
 
     public FermataAction() {
         super("Fermata", null, 0, "fermata", "Add fermata", true);
-        setFlags(
-            Flag.DISABLE_IN_REST_MODE,
-            Flag.DISABLE_WHEN_PLAYING,
-            Flag.DISABLE_WHEN_EDITING_TEXT,
-            Flag.DISABLE_IN_ADJUSTMENT_MODE,
-            Flag.DISABLE_WHEN_BAR_SELECTED,
-            Flag.ENABLE_WHEN_DURATION_SELECTED
-        );
+        setFlags(Flag.DISABLE_WHEN_EDITING_TEXT);
+    }
+
+    @Override
+    public boolean matchesNote(Note note) {
+        return note.isFermata();
     }
 }
