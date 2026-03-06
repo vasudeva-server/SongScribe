@@ -4,7 +4,7 @@
 
 ### Use the Provided Scripts
 
-NEVER invoke `mvn compile`, `javac`, `kotlinc`, `java -cp`, `mvn exec:java`, or any other raw build/run commands. ALWAYS use the provided shell scripts described below.
+NEVER invoke `mvn compile`, `mvn test`, `javac`, `kotlinc`, `java -cp`, `mvn exec:java`, or any other raw build/run/test commands. ALWAYS use the provided shell scripts described below.
 
 ### Debug Scripts
 
@@ -36,6 +36,20 @@ If you have not already compiled and want to compile and run in one step:
 | `./scripts/run-debug.sh` | Run with DEBUG env var (use only when debug output is needed) |
 | `./scripts/crun.sh` | Compile and run in one step |
 | `./scripts/crun-debug.sh` | Compile and run with DEBUG env var (use only when debug output is needed) |
+| `./scripts/test.sh` | Run tests (see examples below) |
+
+### Running Tests
+
+ALWAYS use `./scripts/test.sh` to run tests. NEVER invoke `mvn test` directly.
+
+```bash
+./scripts/test.sh                     # Run all tests
+./scripts/test.sh e2e                 # Run only e2e tests
+./scripts/test.sh unit                # Run only unit tests (excludes e2e)
+./scripts/test.sh --debug e2e         # Run e2e tests, pausing between each test
+./scripts/test.sh SMuFLMetadataTest   # Run specific test class
+./scripts/test.sh -Dtest=*Test        # Run with Maven pattern
+```
 
 ### Build Full Project
 

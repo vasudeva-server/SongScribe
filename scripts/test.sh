@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Run Maven tests with specified test class/pattern
+# Run tests with JUnit Console Launcher (tree-style output)
 # Usage: ./scripts/test.sh [--debug] [e2e|unit|test-pattern]
 # Examples:
 #   ./scripts/test.sh                     # Run all tests
@@ -9,22 +9,66 @@
 #   ./scripts/test.sh SMuFLMetadataTest   # Run specific test class
 #   ./scripts/test.sh -Dtest=*Test        # Run with Maven pattern
 
-source "$(dirname "$0")/set-java-home.sh"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-DEBUG_FLAG=""
+source "$SCRIPT_DIR/set-java-home.sh"
+
+# Parse --debug flag
+JVM_ARGS=()
 if [[ "$1" == "--debug" ]]; then
-    DEBUG_FLAG="-De2e.debug=true"
+    JVM_ARGS+=("-De2e.debug=true")
     shift
 fi
 
-if [ $# -eq 0 ]; then
-    mvn test $DEBUG_FLAG
-elif [[ "$1" == "e2e" ]]; then
-    mvn test -Pe2e $DEBUG_FLAG
-elif [[ "$1" == "unit" ]]; then
-    mvn test -Punit $DEBUG_FLAG
-elif [[ "$1" == -D* ]]; then
-    mvn test "$@" $DEBUG_FLAG
-else
-    mvn test -Dtest="$@" $DEBUG_FLAG
+# JVM args for module access (from surefire config) and agent loading (Mockito)
+JVM_ARGS+=(
+    "-XX:+EnableDynamicAgentLoading"
+    "-Xshare:off"
+    "--add-opens" "java.desktop/javax.swing=ALL-UNNAMED"
+    "--add-opens" "java.desktop/javax.swing.plaf.basic=ALL-UNNAMED"
+    "--add-opens" "java.desktop/java.awt=ALL-UNNAMED"
+    "--add-opens" "java.base/java.lang=ALL-UNNAMED"
+)
+
+# Compile test code
+echo "Compiling..."
+if ! mvn -q test-compile -f "$PROJECT_DIR/pom.xml"; then
+    echo "Compilation failed."
+    exit 1
 fi
+
+# Build classpath
+CP_FILE=$(mktemp)
+trap 'rm -f "$CP_FILE"' EXIT
+mvn -q dependency:build-classpath -f "$PROJECT_DIR/pom.xml" \
+    -DincludeScope=test -Dmdep.outputFile="$CP_FILE" || exit 1
+CLASSPATH="$PROJECT_DIR/target/classes:$PROJECT_DIR/target/test-classes:$(cat "$CP_FILE")"
+
+# Build console launcher args
+TEST_DIR="$PROJECT_DIR/target/test-classes"
+LAUNCHER_ARGS=(
+    "execute"
+    "--disable-banner"
+    "--details=tree"
+    "--details-theme=unicode"
+)
+
+if [ $# -eq 0 ]; then
+    LAUNCHER_ARGS+=("--scan-classpath=$TEST_DIR")
+elif [[ "$1" == "e2e" ]]; then
+    LAUNCHER_ARGS+=("--scan-classpath=$TEST_DIR" "--include-package=songscribe.e2e")
+elif [[ "$1" == "unit" ]]; then
+    LAUNCHER_ARGS+=("--scan-classpath=$TEST_DIR" "--exclude-package=songscribe.e2e")
+elif [[ "$1" == -Dtest=* ]]; then
+    # Convert Maven test pattern to classname regex
+    PATTERN="${1#-Dtest=}"
+    PATTERN="${PATTERN//\*/.*}"
+    LAUNCHER_ARGS+=("--scan-classpath=$TEST_DIR" "--include-classname=$PATTERN")
+else
+    LAUNCHER_ARGS+=("--scan-classpath=$TEST_DIR" "--include-classname=.*$1.*")
+fi
+
+# Run tests
+java "${JVM_ARGS[@]}" -cp "$CLASSPATH" \
+    org.junit.platform.console.ConsoleLauncher "${LAUNCHER_ARGS[@]}"
