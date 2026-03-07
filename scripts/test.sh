@@ -66,7 +66,10 @@ elif [[ "$1" == -Dtest=* ]]; then
     PATTERN="${PATTERN//\*/.*}"
     LAUNCHER_ARGS+=("--scan-classpath=$TEST_DIR" "--include-classname=$PATTERN")
 else
-    LAUNCHER_ARGS+=("--scan-classpath=$TEST_DIR" "--include-classname=.*$1.*")
+    LAUNCHER_ARGS+=("--scan-classpath=$TEST_DIR")
+    for cls in "$@"; do
+        LAUNCHER_ARGS+=("--include-classname=.*$cls.*")
+    done
 fi
 
 # Run tests
