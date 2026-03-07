@@ -357,7 +357,7 @@
                         <configuration>
                             <scripts>
                                 <script>
-                                    File dir = new File("${project.build.sourceDirectory}/songscribe/")
+                                    File dir = new File("${project.build.directory}/generated-sources/songscribe/")
                                     dir.mkdirs()
                                     new File(dir, "Version.java").withWriter { out ->
                                     out.println '// This is an auto generated code. DO NOT MODIFY!'
