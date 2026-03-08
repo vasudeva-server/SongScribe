@@ -63,7 +63,7 @@ public class PopupButton
 
         for (var action : actions) {
             popup.add(
-                action.isToggle()
+                action instanceof UIAction.Selectable
                     ? new JCheckBoxMenuItem(action)
                     : new JMenuItem(action)
             );
@@ -91,8 +91,8 @@ public class PopupButton
         currentAction = action;
         configureButtonFromAction(action);
 
-        if (action != null) {
-            action.setSelected(true);
+        if (action instanceof UIAction.Selectable selectable) {
+            selectable.setSelected(true);
         }
 
         // This is called when an item is selected from the popup,

@@ -58,13 +58,56 @@ public final class ReflectionTestHelper {
         coordinator.registerLineState(0, state);
         coordinator.activateLine(0);
 
+        // Derive managed actions from the reflectable actions list.
+        var managedActions = new ArrayList<UIAction>();
+
+        for (var action : actions) {
+            managedActions.add((UIAction) action);
+        }
+
+        return createCoordinator(coordinator, actions, managedActions);
+    }
+
+    /**
+     * Creates a SelectionCoordinator with a Line containing the given notes,
+     * registered and activated at line index 0, with the given reflectable and
+     * managed actions injected.
+     */
+    public static SelectionCoordinator createCoordinator(
+            List<Note> notes,
+            List<UIAction.Reflectable> actions,
+            List<UIAction> managedActions
+    ) {
+        var line = new Line();
+
+        for (var note : notes) {
+            line.addNote(note);
+        }
+
+        var coordinator = new SelectionCoordinator(() -> null);
+        var state = new LineSelectionState(line);
+        coordinator.registerLineState(0, state);
+        coordinator.activateLine(0);
+
+        return createCoordinator(coordinator, actions, managedActions);
+    }
+
+    private static SelectionCoordinator createCoordinator(
+            SelectionCoordinator coordinator,
+            List<UIAction.Reflectable> actions,
+            List<UIAction> managedActions
+    ) {
         try {
-            var field = SelectionCoordinator.class.getDeclaredField("reflectableActions");
-            field.setAccessible(true);
-            field.set(coordinator, new ArrayList<>(actions));
+            var reflField = SelectionCoordinator.class.getDeclaredField("reflectableActions");
+            reflField.setAccessible(true);
+            reflField.set(coordinator, new ArrayList<>(actions));
+
+            var managedField = SelectionCoordinator.class.getDeclaredField("managedActions");
+            managedField.setAccessible(true);
+            managedField.set(coordinator, new ArrayList<>(managedActions));
         }
         catch (NoSuchFieldException | IllegalAccessException e) {
-            throw new RuntimeException("Failed to inject reflectableActions", e);
+            throw new RuntimeException("Failed to inject test actions", e);
         }
 
         return coordinator;

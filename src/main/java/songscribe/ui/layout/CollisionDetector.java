@@ -27,6 +27,7 @@ import java.util.List;
 import org.jetbrains.annotations.NotNull;
 
 import songscribe.music.Line;
+import songscribe.ui.layout2.ScaleContext;
 
 /**
  * Detects collisions between layout elements and calculates extent bounds.
@@ -191,7 +192,7 @@ public final class CollisionDetector {
         double staffMiddleY
     ) {
         // Start with staff height
-        double height = LayoutStylesheet.toPixelsDouble(LayoutStylesheet.STAFF_HEIGHT);
+        double height = ScaleContext.getInstance().toPixels(LayoutStylesheet.STAFF_HEIGHT);
 
         // Calculate extent of all elements above and below staff
         var extent = calculateNoteExtent(line, staffMiddleY);
@@ -201,7 +202,7 @@ public final class CollisionDetector {
         height += spaceAbove;
 
         // Add space below staff (accounting for staff position relative to middle)
-        double spaceBelow = extent.getMaxY() - (LayoutStylesheet.toPixelsDouble(LayoutStylesheet.STAFF_HEIGHT) / 2.0);
+        double spaceBelow = extent.getMaxY() - (ScaleContext.getInstance().toPixels(LayoutStylesheet.STAFF_HEIGHT) / 2.0);
         height += Math.max(0, spaceBelow);
 
         return height;

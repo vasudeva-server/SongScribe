@@ -25,7 +25,7 @@ import songscribe.ui.Control;
 import songscribe.ui.message.ControlChangedMessage;
 import songscribe.ui.message.MessageCenter;
 
-public class ControlAction extends UIAction {
+public class ControlAction extends SelectableUIAction {
 
     public final Control control;
 
@@ -35,8 +35,7 @@ public class ControlAction extends UIAction {
             null,
             0,
             control.name(),
-            "Control editing with " + control.getDescription().toLowerCase(),
-            true
+            "Control editing with " + control.getDescription().toLowerCase()
         );
         this.control = control;
     }

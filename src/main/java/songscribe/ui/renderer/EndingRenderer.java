@@ -162,7 +162,7 @@ public class EndingRenderer extends BaseElementRenderer<LineElement> {
                 } else if (start > 0) {
                     // Otherwise go halfway to previous note's right edge
                     var previousNote = line.getNote(start - 1);
-                    double previousX = previousNote.getXPosSs() + previousNote.getRealUpNoteRect().width;
+                    double previousX = previousNote.getXPosSs() + previousNote.getContentWidth();
                     x1 -= (x1 - previousX) / 2d;
                 }
 
@@ -200,12 +200,12 @@ public class EndingRenderer extends BaseElementRenderer<LineElement> {
                 } else {
                     // Go halfway to next note or a note width beyond
                     var nextNote = line.getNote(end + 1);
-                    x2 += nextNote.getRealUpNoteRect().width;
+                    x2 += nextNote.getContentWidth();
 
                     if (end < line.noteCount()) {
                         x2 += (nextNote.getXPosSs() - x2) / 2d;
                     } else {
-                        x2 += nextNote.getRealUpNoteRect().width;
+                        x2 += nextNote.getContentWidth();
                     }
                 }
 

@@ -53,7 +53,6 @@ public class AccidentalAction extends NoteOnlyAction {
             size,
             actionCommand,
             tooltip,
-            true,
             virtualKey,
             modifiers
         );
@@ -68,5 +67,10 @@ public class AccidentalAction extends NoteOnlyAction {
     @Override
     public boolean matchesNote(Note note) {
         return note.getAccidental() == accidental;
+    }
+
+    @Override
+    public void applyToNote(Note note, boolean selected) {
+        note.setAccidental(selected ? accidental : Note.Accidental.NONE);
     }
 }

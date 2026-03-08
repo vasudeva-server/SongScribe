@@ -35,7 +35,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * Milestone 1 E2E tests: programmatic save/load round-trip, model equality.
  */
 @Order(6)
-class SaveLoadRoundTripTest extends BaseSwingTest {
+class SaveLoadRoundTripTest extends E2ETest {
 
     @Test @Order(1)
     void testSaveAndReloadPreservesNotes() throws Exception {

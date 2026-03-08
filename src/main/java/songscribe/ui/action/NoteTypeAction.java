@@ -24,11 +24,13 @@ import java.awt.event.*;
 
 import songscribe.music.Note;
 import songscribe.music.NoteType;
+
+import org.jetbrains.annotations.Nullable;
 import songscribe.ui.message.BarSelectedMessage;
 import songscribe.ui.message.DurationSelectedMessage;
 import songscribe.ui.message.MessageCenter;
 
-public class NoteTypeAction extends StickyUIAction implements UIAction.Reflectable {
+public class NoteTypeAction extends StickyUIAction implements UIAction.NoteReplaceable {
 
     public enum Kind { DURATION, NON_DURATION }
 
@@ -76,11 +78,9 @@ public class NoteTypeAction extends StickyUIAction implements UIAction.Reflectab
 
     @Override
     public boolean appliesTo(Note note) {
-        if (kind == Kind.DURATION) {
-            return true;
-        }
-
-        return note.getNoteType().isNonDuration();
+        return kind == Kind.DURATION
+            ? note.getNoteType().isDuration()
+            : note.getNoteType().isNonDuration();
     }
 
     @Override
@@ -89,13 +89,30 @@ public class NoteTypeAction extends StickyUIAction implements UIAction.Reflectab
     }
 
     @Override
+    @Nullable
+    public Note createReplacement(Note note, boolean selected) {
+        if (!selected) {
+            return null;
+        }
+
+        var targetType = note.getNoteType().isRest() ? type.toRest() : type.toNote();
+        return new Note(targetType, note);
+    }
+
+    @Override
     public void actionPerformed(ActionEvent e) {
-        if (doActionPerformed(e)) {
-            if (kind == Kind.DURATION) {
-                MessageCenter.post(new DurationSelectedMessage(type));
-            } else {
-                MessageCenter.post(new BarSelectedMessage(type));
-            }
+        if (!doActionPerformed(e)) {
+            return;
+        }
+
+        if (applyToSelectionIfActive()) {
+            return;
+        }
+
+        if (kind == Kind.DURATION) {
+            MessageCenter.post(new DurationSelectedMessage(type));
+        } else {
+            MessageCenter.post(new BarSelectedMessage(type));
         }
     }
 }

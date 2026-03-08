@@ -20,6 +20,7 @@
 
 package songscribe.ui.action;
 
+import songscribe.UnitTest;
 import songscribe.music.Note;
 import songscribe.music.NoteType;
 
@@ -27,7 +28,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-class AccidentalInParensActionTest {
+class AccidentalInParensActionTest extends UnitTest {
 
     private final AccidentalInParensAction action = new AccidentalInParensAction();
 
@@ -48,5 +49,21 @@ class AccidentalInParensActionTest {
         var note = NoteType.CROTCHET.newInstance();
 
         assertThat(action.matchesNote(note)).isFalse();
+    }
+
+    @Test
+    void testApplyToNoteAppliesParentheses() {
+        var note = NoteType.CROTCHET.newInstance();
+        note.setAccidental(Note.Accidental.SHARP);
+        action.applyToNote(note, true);
+        assertThat(note.isAccidentalInParentheses()).isTrue();
+    }
+
+    @Test
+    void testApplyToNoteRemovesParentheses() {
+        var note = NoteType.CROTCHET.newInstance();
+        note.setAccidentalInParentheses(true);
+        action.applyToNote(note, false);
+        assertThat(note.isAccidentalInParentheses()).isFalse();
     }
 }

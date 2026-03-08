@@ -44,33 +44,6 @@ public final class LayoutStylesheet {
     }
 
     // ==========================================================================
-    // PIXEL CONVERSION (bridge for callers not yet converted to ss)
-    // ==========================================================================
-
-    /**
-     * Converts staff-space units to pixels using the current {@link ScaleContext}.
-     * <p>
-     * This is a transitional bridge method. Once all rendering and component
-     * code operates in staff-space units, this method will be removed.
-     *
-     * @param ss Value in staff-space units
-     * @return Value in pixels (rounded to nearest int)
-     */
-    public static int toPixels(double ss) {
-        return (int) Math.round(ScaleContext.getInstance().toPixels(ss));
-    }
-
-    /**
-     * Converts staff-space units to pixels (double precision).
-     *
-     * @param ss Value in staff-space units
-     * @return Value in pixels
-     */
-    public static double toPixelsDouble(double ss) {
-        return ScaleContext.getInstance().toPixels(ss);
-    }
-
-    // ==========================================================================
     // COLORS
     // ==========================================================================
 

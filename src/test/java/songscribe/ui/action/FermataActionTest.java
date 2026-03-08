@@ -20,13 +20,14 @@
 
 package songscribe.ui.action;
 
+import songscribe.UnitTest;
 import songscribe.music.NoteType;
 
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-class FermataActionTest {
+class FermataActionTest extends UnitTest {
 
     private final FermataAction action = new FermataAction();
 
@@ -41,5 +42,20 @@ class FermataActionTest {
     void testDoesNotMatchWhenFermataFalse() {
         var note = NoteType.CROTCHET.newInstance();
         assertThat(action.matchesNote(note)).isFalse();
+    }
+
+    @Test
+    void testApplyToNoteAppliesFermata() {
+        var note = NoteType.CROTCHET.newInstance();
+        action.applyToNote(note, true);
+        assertThat(note.isFermata()).isTrue();
+    }
+
+    @Test
+    void testApplyToNoteRemovesFermata() {
+        var note = NoteType.CROTCHET.newInstance();
+        note.setFermata(true);
+        action.applyToNote(note, false);
+        assertThat(note.isFermata()).isFalse();
     }
 }

@@ -26,6 +26,7 @@ import org.jetbrains.annotations.NotNull;
 
 import songscribe.music.Line;
 import songscribe.ui.layout.LayoutStylesheet;
+import songscribe.ui.layout2.ScaleContext;
 import songscribe.ui.renderer.ElementRenderContext;
 import songscribe.ui.renderer.LyricsRenderer;
 
@@ -58,7 +59,7 @@ public class LineLyricsComponent extends ScoreComponent {
      */
     public LineLyricsComponent() {
         super();
-        setMarginTop(LayoutStylesheet.toPixels(LayoutStylesheet.LYRICS_ROW_MARGIN));
+        setMarginTop(ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.LYRICS_ROW_MARGIN));
     }
 
     /**

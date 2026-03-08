@@ -32,6 +32,7 @@ import songscribe.ui.action.InsertLineAction;
 import songscribe.ui.component.IMainFrame;
 import songscribe.ui.component.Score;
 import songscribe.ui.layout.LayoutStylesheet;
+import songscribe.ui.layout2.ScaleContext;
 import songscribe.ui.message.LayoutChangeMessage;
 import songscribe.ui.message.MessageCenter;
 import songscribe.util.MyFontUtils;
@@ -512,8 +513,8 @@ public final class Composition {
         if (line.getTempoChangeYPosPx() == 0) {
             line.setTempoChangeYPosPx(
                 (lineIndex == 0)
-                    ? LayoutStylesheet.toPixels(LayoutStylesheet.TEMPO_DEFAULT_Y_FIRST_LINE)
-                    : LayoutStylesheet.toPixels(LayoutStylesheet.TEMPO_DEFAULT_Y_OTHER_LINES)
+                    ? ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.TEMPO_DEFAULT_Y_FIRST_LINE)
+                    : ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.TEMPO_DEFAULT_Y_OTHER_LINES)
             );
         }
 
@@ -706,7 +707,7 @@ public final class Composition {
         if (!userSetTopPadding) {
             topPadding = (((2 * titleFont.getSize()) +
                 (Utils.lineCount(attribution) * attributionFont.getSize())) -
-                LayoutStylesheet.toPixels(2.0));
+                ScaleContext.getInstance().toRoundedPixels(2.0));
         }
     }
 

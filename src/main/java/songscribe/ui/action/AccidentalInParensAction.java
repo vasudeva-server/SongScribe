@@ -30,13 +30,17 @@ public class AccidentalInParensAction extends NoteOnlyAction {
             null,
             0,
             "accidental-in-parens",
-            "Add accidental in parentheses",
-            true
+            "Add accidental in parentheses"
         );
     }
 
     @Override
     public boolean matchesNote(Note note) {
         return note.isAccidentalInParentheses();
+    }
+
+    @Override
+    public void applyToNote(Note note, boolean selected) {
+        note.setAccidentalInParentheses(selected);
     }
 }

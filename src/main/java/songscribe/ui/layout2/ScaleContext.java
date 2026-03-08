@@ -67,6 +67,11 @@ public final class ScaleContext {
         return ss * pixelsPerStaffSpace;
     }
 
+    /** Convert a value in staff-space units to pixels, rounded to the nearest integer. */
+    public int toRoundedPixels(double ss) {
+        return (int) Math.round(ss * pixelsPerStaffSpace);
+    }
+
     /** Convert a value in pixels to staff-space units. */
     public double fromPixels(double px) {
         return px / pixelsPerStaffSpace;

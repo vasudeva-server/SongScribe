@@ -23,6 +23,7 @@ package songscribe.ui.layout;
 import org.jetbrains.annotations.NotNull;
 
 import songscribe.music.KeyType;
+import songscribe.ui.layout2.ScaleContext;
 
 /**
  * Represents the key signature (sharps or flats) at the start of a staff line.
@@ -64,7 +65,7 @@ public class KeySignature extends LineElement {
         this.accidentalCount = Math.max(0, Math.min(7, accidentalCount));
 
         // Default margin from key signature to first note
-        setMarginRight(LayoutStylesheet.toPixels(1.0));
+        setMarginRight(ScaleContext.getInstance().toRoundedPixels(1.0));
     }
 
     /**

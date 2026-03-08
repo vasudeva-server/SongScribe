@@ -5,19 +5,10 @@
 `ScaleContext` is the single source of truth for pixel/staff-space conversion. It holds the mutable `pixelsPerStaffSpace` value and will support per-view zoom in the future.
 
 ```java
-ScaleContext.getInstance().toPixels(valueSs)    // ss → px
-ScaleContext.getInstance().fromPixels(valuePx)  // px → ss
+ScaleContext.getInstance().toPixels(valueSs)        // ss → px (double)
+ScaleContext.getInstance().toRoundedPixels(valueSs)  // ss → px (int, rounded)
+ScaleContext.getInstance().fromPixels(valuePx)       // px → ss
 ```
-
-### Approved Bridge Methods
-
-These delegate to `ScaleContext` and are acceptable to use:
-
-- `LayoutStylesheet.toPixels(double ss)` → returns `int` (rounded)
-- `LayoutStylesheet.toPixelsDouble(double ss)` → returns `double`
-- `LayoutConstants.toPixels(double ss)` → returns `double`
-
-These are transitional bridges for code that still works in pixels. Prefer using `ScaleContext` directly in new code.
 
 ### Deprecated: `StaffSpaces` utility class
 
@@ -33,4 +24,4 @@ The goal is for all layout and rendering code to work in staff spaces. Conversio
 - Data model (new fields): staff spaces (`double`)
 - Data model (legacy fields): pixels (`int`), migrate incrementally
 - Renderers using scale transform: staff spaces (the transform handles conversion)
-- Renderers not yet converted: pixels via bridge methods (migrate when touched)
+- Renderers not yet converted: pixels via `ScaleContext` (migrate when touched)

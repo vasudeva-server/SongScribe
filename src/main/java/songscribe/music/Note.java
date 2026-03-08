@@ -32,21 +32,10 @@ import org.jetbrains.annotations.Nullable;
 import songscribe.ui.layout.Articulation;
 import songscribe.ui.layout.Attachment;
 import songscribe.ui.layout.LineElement;
+import songscribe.ui.layout2.ScaleContext;
 
 @SuppressWarnings("StaticInitializerReferencesSubClass")
 public class Note extends LineElement implements Cloneable {
-
-    public static final Point HOT_SPOT = new Point(5, 27);
-    public static final int NORMAL_IMAGE_WIDTH = 18;
-
-    // TODO: This will go away when we use Bravura font instead of images
-    public static final Rectangle[] REAL_NATURAL_FLAT_SHARP_RECT =
-        new Rectangle[]{
-            new Rectangle(0, 17, 6, 22),
-            new Rectangle(0, 15, 7, 19),
-            new Rectangle(0, 17, 8, 22),
-            new Rectangle(0, 23, 9, 10),
-        };
 
     public static final Note GLISSANDO_NOTE = new NonNote();
     public static final Note PASTE_NOTE = new NonNote();
@@ -154,6 +143,50 @@ public class Note extends LineElement implements Cloneable {
         this.noteType = noteType;
     }
 
+    /**
+     * Creates a note of the target type, copying only applicable attributes from the source.
+     * Uses a whitelist strategy: new attributes added to Note in the future default to
+     * missing (visible, safe) rather than stale (invisible, potentially corrupt).
+     */
+    public Note(@NotNull NoteType targetType, @NotNull Note source) {
+        this.noteType = targetType;
+
+        // Always copy
+        this.xOffset = source.xOffset;
+        this.dotCount = source.dotCount;
+        this.fermata = source.fermata;
+        this.tempoChange = source.tempoChange;
+        this.beatChange = source.beatChange;
+        this.annotation = source.annotation;
+        this.syllableMovement = source.syllableMovement;
+        this.syllableRelationMovement = source.syllableRelationMovement;
+        this.forceSyllable = source.forceSyllable;
+        this.line = source.line;
+
+        // Copy only if target is a note (not a rest)
+        if (targetType.isNote()) {
+            this.accidental = source.accidental;
+            this.isAccidentalInParentheses = source.isAccidentalInParentheses;
+            this.glissando = source.glissando;
+            this.forceArticulation = source.forceArticulation;
+            this.durationArticulation = source.durationArticulation;
+            this.trill = source.trill;
+            this.upper = source.upper;
+            this.stemDirectionAuto = source.stemDirectionAuto;
+            this.staffPosition = source.staffPosition;
+
+            // Deep-copy articulations
+            for (var art : source.articulations) {
+                addArticulation(new Articulation(this, art.getType()));
+            }
+        } else {
+            // Rest: use default staff position for the target type
+            this.staffPosition = targetType.getDefaultStaffPosition();
+        }
+
+        setParentLine(source.getParentLine());
+    }
+
     protected Note(@NotNull Note note) {
         noteType = note.noteType;
         xOffset = note.xOffset;
@@ -198,14 +231,6 @@ public class Note extends LineElement implements Cloneable {
         return new Note(this);
     }
 
-    public Rectangle getRealUpNoteRect() {
-        return noteType.getRealUpNoteRect();
-    }
-
-    public Rectangle getRealDownNoteRect() {
-        return noteType.getRealDownNoteRect();
-    }
-
     public int getDefaultDuration() {
         return noteType.getDefaultDuration();
     }
@@ -214,26 +239,21 @@ public class Note extends LineElement implements Cloneable {
     // LineElement Implementation
     // ========================================================================
 
-    /**
-     * Returns the content width based on the note's visual bounds.
-     * Uses the appropriate note rectangle based on stem direction.
-     */
+    // TODO: When the layout system moves to staff spaces, these should return ss directly
+    //  and the toPixels() conversion should move to the rendering boundary.
+
     @Override
     public double getContentWidth() {
-        var rect = upper ? getRealDownNoteRect() : getRealUpNoteRect();
-
-        return rect != null ? rect.getWidth() : NORMAL_IMAGE_WIDTH;
+        return ScaleContext.getInstance().toPixels(noteType.getElementWidthSs());
     }
 
-    /**
-     * Returns the content height based on the note's visual bounds.
-     * Uses the appropriate note rectangle based on stem direction.
-     */
+    public double getContentCenterX() {
+        return ScaleContext.getInstance().toPixels(noteType.getCenterXSs());
+    }
+
     @Override
     public double getContentHeight() {
-        var rect = upper ? getRealDownNoteRect() : getRealUpNoteRect();
-
-        return rect != null ? rect.getHeight() : HOT_SPOT.y * 2;
+        return ScaleContext.getInstance().toPixels(noteType.getElementHeightSs(upper));
     }
 
     // ========================================================================

@@ -20,8 +20,6 @@
 
 package songscribe.util;
 
-import javax.swing.JOptionPane;
-
 import org.jetbrains.annotations.Nullable;
 
 /**
@@ -29,7 +27,11 @@ import org.jetbrains.annotations.Nullable;
  * (e.g. a critical object is null). Logs the error, warns the user,
  * and exits the application.
  */
-public final class FatalError {
+public final class FatalError extends RuntimeError {
+
+    private static final String ALERT_TITLE = "Fatal Error";
+    private static final String USER_MESSAGE =
+        "Sorry, but a fatal error has occurred and the application must quit.";
 
     /**
      * Logs the message, shows an error dialog to the user, and exits.
@@ -37,20 +39,7 @@ public final class FatalError {
      * @param message Description of the violated invariant
      */
     public static void exit(String message) {
-        Log.error("Fatal: " + message);
-
-        JOptionPane.showOptionDialog(
-            null,
-            "Sorry, but a fatal error has occurred and the application must quit.",
-            "Fatal Error",
-            JOptionPane.DEFAULT_OPTION,
-            JOptionPane.ERROR_MESSAGE,
-            null,
-            new String[]{"Quit"},
-            "Quit"
-        );
-
-        System.exit(-1);
+        exitIfNull(null, message);
     }
 
     /**
@@ -60,8 +49,8 @@ public final class FatalError {
      * @param message Description of the violated invariant
      */
     public static void exitIfNull(@Nullable Object object, String message) {
-        if (object == null) {
-            exit(message);
+        if (logNull(object, ALERT_TITLE, "Fatal: " + message, USER_MESSAGE)) {
+            System.exit(-1);
         }
     }
 

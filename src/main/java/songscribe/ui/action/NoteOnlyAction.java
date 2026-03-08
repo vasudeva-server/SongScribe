@@ -29,17 +29,16 @@ import songscribe.music.Note;
  * (not rests or barlines). Provides a shared appliesTo implementation.
  */
 public abstract class NoteOnlyAction extends InsertionNoteAction
-    implements UIAction.Reflectable {
+    implements UIAction.NoteModifiable {
 
     public NoteOnlyAction(
         @Nullable String name,
         @Nullable String icon,
         int size,
         String actionCommand,
-        String tooltip,
-        boolean isToggle
+        String tooltip
     ) {
-        super(name, icon, size, actionCommand, tooltip, isToggle);
+        super(name, icon, size, actionCommand, tooltip);
         setDefaultFlags();
     }
 
@@ -49,11 +48,10 @@ public abstract class NoteOnlyAction extends InsertionNoteAction
         int size,
         String actionCommand,
         String tooltip,
-        boolean isToggle,
         int virtualKey,
         int modifiers
     ) {
-        super(name, icon, size, actionCommand, tooltip, isToggle, virtualKey, modifiers);
+        super(name, icon, size, actionCommand, tooltip, virtualKey, modifiers);
         setDefaultFlags();
     }
 

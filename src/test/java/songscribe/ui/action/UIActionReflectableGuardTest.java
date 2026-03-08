@@ -22,6 +22,7 @@ package songscribe.ui.action;
 
 import java.awt.event.ActionEvent;
 
+import songscribe.UnitTest;
 import songscribe.ui.Mode;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.Score;
@@ -34,7 +35,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 
-class UIActionReflectableGuardTest {
+class UIActionReflectableGuardTest extends UnitTest {
 
     @Test
     void testReflectableWithSelectionStillRunsFlagLogic() {

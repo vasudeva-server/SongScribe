@@ -40,7 +40,6 @@ class SequencerAction extends UIAction {
             size,
             actionCommand,
             tooltip,
-            false,
             virtualKey,
             modifiers
         );

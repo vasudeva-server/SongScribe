@@ -23,6 +23,7 @@ package songscribe.ui.component.score;
 import java.awt.*;
 
 import songscribe.ui.layout.LayoutStylesheet;
+import songscribe.ui.layout2.ScaleContext;
 import songscribe.util.GraphicUtils;
 
 /**
@@ -41,7 +42,7 @@ public class FootnotesComponent extends ScoreComponent {
      */
     public FootnotesComponent() {
         super();
-        setMarginTop(LayoutStylesheet.toPixels(LayoutStylesheet.FOOTNOTES_MIN_MARGIN_TOP));
+        setMarginTop(ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.FOOTNOTES_MIN_MARGIN_TOP));
     }
 
     @Override

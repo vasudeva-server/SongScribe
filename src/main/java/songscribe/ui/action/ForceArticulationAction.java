@@ -35,7 +35,7 @@ public class ForceArticulationAction extends NoteOnlyAction {
         String actionCommand,
         String tooltip
     ) {
-        super(name, icon, size, actionCommand, tooltip, true);
+        super(name, icon, size, actionCommand, tooltip);
         this.articulation = articulation;
     }
 
@@ -46,5 +46,10 @@ public class ForceArticulationAction extends NoteOnlyAction {
     @Override
     public boolean matchesNote(Note note) {
         return note.getForceArticulation() == articulation;
+    }
+
+    @Override
+    public void applyToNote(Note note, boolean selected) {
+        note.setForceArticulation(selected ? articulation : null);
     }
 }

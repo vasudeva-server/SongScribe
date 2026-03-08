@@ -2,12 +2,13 @@
 # Run tests with JUnit Console Launcher (tree-style output)
 # Usage: ./scripts/test.sh [--debug] [e2e|unit|test-pattern]
 # Examples:
-#   ./scripts/test.sh                     # Run all tests
-#   ./scripts/test.sh e2e                 # Run only e2e tests
-#   ./scripts/test.sh unit                # Run only unit tests (excludes e2e)
-#   ./scripts/test.sh --debug e2e         # Run e2e tests, pausing between each test
-#   ./scripts/test.sh SMuFLMetadataTest   # Run specific test class
-#   ./scripts/test.sh -Dtest=*Test        # Run with Maven pattern
+#   ./scripts/test.sh                                        # Run all tests
+#   ./scripts/test.sh e2e                                    # Run only e2e tests
+#   ./scripts/test.sh unit                                   # Run only unit tests (excludes e2e)
+#   ./scripts/test.sh --debug e2e                            # Run e2e tests, pausing between each test
+#   ./scripts/test.sh SMuFLMetadataTest                      # Run specific test class
+#   ./scripts/test.sh BeamingTest.testFlipStemDirection       # Run specific test method
+#   ./scripts/test.sh -Dtest=*Test                           # Run with Maven pattern
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
@@ -23,12 +24,14 @@ fi
 
 # JVM args for module access (from surefire config) and agent loading (Mockito)
 JVM_ARGS+=(
+    "--enable-native-access=ALL-UNNAMED"
     "-XX:+EnableDynamicAgentLoading"
     "-Xshare:off"
     "--add-opens" "java.desktop/javax.swing=ALL-UNNAMED"
     "--add-opens" "java.desktop/javax.swing.plaf.basic=ALL-UNNAMED"
     "--add-opens" "java.desktop/java.awt=ALL-UNNAMED"
     "--add-opens" "java.base/java.lang=ALL-UNNAMED"
+    "--add-opens" "java.base/java.util=ALL-UNNAMED"
 )
 
 # Compile test code
@@ -65,11 +68,33 @@ elif [[ "$1" == -Dtest=* ]]; then
     PATTERN="${1#-Dtest=}"
     PATTERN="${PATTERN//\*/.*}"
     LAUNCHER_ARGS+=("--scan-classpath=$TEST_DIR" "--include-classname=$PATTERN")
+    JVM_ARGS+=("-Dtestclasses=$PATTERN")
 else
-    LAUNCHER_ARGS+=("--scan-classpath=$TEST_DIR")
-    for cls in "$@"; do
-        LAUNCHER_ARGS+=("--include-classname=.*$cls.*")
+    PATTERNS=()
+    HAS_METHOD_SELECT=false
+    for arg in "$@"; do
+        if [[ "$arg" == *"."* ]]; then
+            cls="${arg%%.*}"
+            method="${arg#*.}"
+            # Find the fully qualified class name from compiled test classes
+            fqcn=$(find "$TEST_DIR" -name "${cls}.class" | head -1 \
+                | sed "s|$TEST_DIR/||; s|\.class$||; s|/|.|g")
+            if [ -z "$fqcn" ]; then
+                echo "Error: could not find test class matching '$cls'"
+                exit 1
+            fi
+            LAUNCHER_ARGS+=("--select-method=${fqcn}#${method}")
+            PATTERNS+=(".*$cls.*")
+            HAS_METHOD_SELECT=true
+        else
+            LAUNCHER_ARGS+=("--include-classname=.*$arg.*")
+            PATTERNS+=(".*$arg.*")
+        fi
     done
+    if [ "$HAS_METHOD_SELECT" = false ]; then
+        LAUNCHER_ARGS+=("--scan-classpath=$TEST_DIR")
+    fi
+    JVM_ARGS+=("-Dtestclasses=$(IFS=,; echo "${PATTERNS[*]}")")
 fi
 
 # Run tests

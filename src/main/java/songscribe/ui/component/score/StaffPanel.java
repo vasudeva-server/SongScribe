@@ -31,6 +31,7 @@ import org.jetbrains.annotations.Nullable;
 
 import songscribe.music.Composition;
 import songscribe.ui.layout.LayoutStylesheet;
+import songscribe.ui.layout2.ScaleContext;
 
 /**
  * Panel containing all staff lines of a composition.
@@ -59,7 +60,7 @@ public class StaffPanel extends JPanel {
         setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
         setOpaque(false);
 
-        lineMargin = LayoutStylesheet.toPixels(LayoutStylesheet.LINE_MARGIN_BOTTOM);
+        lineMargin = ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.LINE_MARGIN_BOTTOM);
     }
 
     /**

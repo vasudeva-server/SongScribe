@@ -25,6 +25,7 @@ import java.util.HashMap;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 import net.engio.mbassy.listener.Handler;
@@ -32,10 +33,15 @@ import net.engio.mbassy.listener.Handler;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import songscribe.data.Interval;
+import songscribe.data.IntervalSet;
 import songscribe.music.Composition;
+import songscribe.music.Line;
 import songscribe.music.Note;
 import songscribe.ui.action.Actions;
 import songscribe.ui.action.UIAction;
+import songscribe.util.RuntimeError;
+import songscribe.ui.message.LayoutChangeMessage;
 import songscribe.ui.message.Message;
 import songscribe.ui.message.MessageCenter;
 import songscribe.ui.message.MusicSelectionChangedMessage;
@@ -62,11 +68,25 @@ public final class SelectionCoordinator {
     // Lazy-initialized list of all reflectable actions discovered from Actions.
     private List<UIAction.Reflectable> reflectableActions = null;
 
-    // Saved toggle states of reflectable actions before a selection becomes active.
-    private final Map<UIAction, Boolean> savedToggleStates = new IdentityHashMap<>();
+    // Lazy-initialized list of all actions whose state is managed during selection.
+    private List<UIAction> managedActions = null;
+
+    // Saved action states (selected + enabled) before a selection becomes active.
+    private final Map<UIAction, ActionState> savedActionStates = new IdentityHashMap<>();
 
     // Last reflected selection range, used to skip redundant reflection.
     private NoteSelection lastReflectedSelection = null;
+
+    // Content cache: lazily computed flags about what the current selection contains.
+    private NoteSelection contentCacheSelection = null;
+    private boolean hasDurations;
+    private boolean hasNonDurations;
+
+    // Applicability cache: maps action to whether it applies to any note in the selection.
+    private NoteSelection applicabilityCacheSelection = null;
+    private final Map<UIAction.Reflectable, Boolean> applicabilityCache = new IdentityHashMap<>();
+
+    record ActionState(boolean selected, boolean enabled) {}
 
     public SelectionCoordinator(@NotNull Supplier<Composition> compositionSupplier) {
         this.compositionSupplier = compositionSupplier;
@@ -328,47 +348,289 @@ public final class SelectionCoordinator {
     }
 
     // -------------------------------------------------------------------------
+    // Selection content queries
+    // -------------------------------------------------------------------------
+
+    /**
+     * Returns whether there is an active note selection.
+     */
+    public boolean hasActiveSelection() {
+        return getSelection() != null;
+    }
+
+    /**
+     * Returns whether the current selection contains any duration notes (notes or rests).
+     * Returns {@code false} if there is no active selection.
+     */
+    public boolean selectionHasDurations() {
+        if (!hasActiveSelection()) {
+            return false;
+        }
+
+        ensureContentComputed();
+        return hasDurations;
+    }
+
+    /**
+     * Returns whether the given reflectable action is applicable to any note
+     * in the current selection. Results are cached per selection.
+     * Returns {@code false} if there is no active selection.
+     */
+    public boolean isApplicableToSelection(@NotNull UIAction.Reflectable action) {
+        var selection = getSelection();
+
+        if (selection == null) {
+            return false;
+        }
+
+        // Invalidate cache if selection changed
+        if (!selection.equals(applicabilityCacheSelection)) {
+            applicabilityCacheSelection = selection;
+            applicabilityCache.clear();
+        }
+
+        return applicabilityCache.computeIfAbsent(action, a -> {
+            var line = selection.line();
+
+            for (var i = selection.begin(); i <= selection.end(); i++) {
+                if (a.appliesTo(line.getNote(i))) {
+                    return true;
+                }
+            }
+
+            return false;
+        });
+    }
+
+    /**
+     * Computes and caches the content flags for the current selection.
+     * Short-circuits when both flags are set.
+     */
+    private void ensureContentComputed() {
+        var selection = getSelection();
+
+        if (selection == null || selection.equals(contentCacheSelection)) {
+            return;
+        }
+
+        hasDurations = false;
+        hasNonDurations = false;
+        contentCacheSelection = selection;
+
+        var line = selection.line();
+
+        for (var i = selection.begin(); i <= selection.end(); i++) {
+            var noteType = line.getNote(i).getNoteType();
+
+            if (noteType.isDuration()) {
+                hasDurations = true;
+            } else {
+                hasNonDurations = true;
+            }
+
+            if (hasDurations && hasNonDurations) {
+                break;
+            }
+        }
+    }
+
+    // -------------------------------------------------------------------------
     // Toolbar reflection
     // -------------------------------------------------------------------------
 
     /**
-     * Lazily discovers all static fields in Actions that implement UIAction.Reflectable,
-     * including elements of UIAction array fields.
+     * Scans all static fields in Actions for UIAction instances matching the given predicate.
      */
-    private List<UIAction.Reflectable> getReflectableActions() {
-        if (reflectableActions == null) {
-            reflectableActions = new ArrayList<>();
+    private <T> List<T> collectActions(Class<T> type, java.util.function.Predicate<UIAction> filter) {
+        var result = new ArrayList<T>();
 
-            for (var field : Actions.class.getDeclaredFields()) {
-                if (!java.lang.reflect.Modifier.isStatic(field.getModifiers())) {
-                    continue;
-                }
+        for (var field : Actions.class.getDeclaredFields()) {
+            if (!java.lang.reflect.Modifier.isStatic(field.getModifiers())) {
+                continue;
+            }
 
-                try {
-                    var value = field.get(null);
+            try {
+                var value = field.get(null);
 
-                    if (value instanceof UIAction[] array) {
-                        for (var action : array) {
-                            if (action instanceof UIAction.Reflectable reflectable) {
-                                reflectableActions.add(reflectable);
-                            }
-                        }
-                    } else if (value instanceof List<?> list) {
-                        for (var item : list) {
-                            if (item instanceof UIAction.Reflectable reflectable) {
-                                reflectableActions.add(reflectable);
-                            }
-                        }
-                    } else if (value instanceof UIAction.Reflectable reflectable) {
-                        reflectableActions.add(reflectable);
+                if (value instanceof UIAction action) {
+                    if (filter.test(action) && type.isInstance(action)) {
+                        result.add(type.cast(action));
                     }
-                } catch (IllegalAccessException e) {
-                    // Non-public fields are skipped
+                } else if (value instanceof UIAction[] array) {
+                    for (var action : array) {
+                        if (filter.test(action) && type.isInstance(action)) {
+                            result.add(type.cast(action));
+                        }
+                    }
+                } else if (value instanceof List<?> list) {
+                    for (var item : list) {
+                        if (item instanceof UIAction action
+                                && filter.test(action) && type.isInstance(action)) {
+                            result.add(type.cast(action));
+                        }
+                    }
                 }
+            } catch (IllegalAccessException e) {
+                // Non-public fields are skipped
             }
         }
 
+        return result;
+    }
+
+    private List<UIAction.Reflectable> getReflectableActions() {
+        if (reflectableActions == null) {
+            reflectableActions = collectActions(
+                UIAction.Reflectable.class,
+                action -> true
+            );
+        }
+
         return reflectableActions;
+    }
+
+    /**
+     * Lazily discovers all actions whose state needs to be saved/restored during selection.
+     * This includes reflectable actions (whose selected state reflects selection content)
+     * and non-reflectable actions with DISABLE_WHEN_BAR_SELECTED (whose enabled state
+     * may change due to mutual exclusivity).
+     */
+    private List<UIAction> getManagedActions() {
+        if (managedActions == null) {
+            managedActions = collectActions(
+                UIAction.class,
+                action -> action instanceof UIAction.Reflectable
+                    || action.hasFlag(UIAction.Flag.DISABLE_WHEN_BAR_SELECTED)
+            );
+        }
+
+        return managedActions;
+    }
+
+    /**
+     * Applies the given action to all applicable notes in the selection.
+     * @param action   the reflectable action to apply
+     * @param selected true to apply the attribute, false to remove it
+     */
+    public void applyActionToSelection(UIAction.Reflectable action, boolean selected) {
+        var selection = getSelection();
+        if (selection == null) return;
+
+        var line = selection.line();
+        var needsIntervalCleanup = false;
+
+        for (int i = selection.begin(); i <= selection.end(); i++) {
+            var note = line.getNote(i);
+
+            if (!action.appliesTo(note)) continue;
+
+            if (action instanceof UIAction.NoteReplaceable replaceable) {
+                var replacement = replaceable.createReplacement(note, selected);
+
+                if (replacement == null) {
+                    if (selected) {
+                        RuntimeError.logNull(
+                            null,
+                            "Selection Error",
+                            "createReplacement returned null for note " + i + " in selection",
+                            "Could not change the duration of a selected note."
+                        );
+                    }
+
+                    continue;
+                }
+
+                line.replaceNoteQuietly(i, replacement);
+                needsIntervalCleanup = true;
+            } else if (action instanceof UIAction.NoteModifiable modifiable) {
+                modifiable.applyToNote(note, selected);
+            }
+        }
+
+        if (needsIntervalCleanup) {
+            validateIntervals(line, selection.begin(), selection.end());
+        }
+
+        contentCacheSelection = null;
+        applicabilityCacheSelection = null;
+        applicabilityCache.clear();
+        line.getComposition().setModified(true);
+        MessageCenter.post(LayoutChangeMessage.scoreContent(line));
+    }
+
+    /**
+     * Validates beam, tie, and tuplet intervals after batch note replacement.
+     * Notes that changed type may invalidate intervals they belong to.
+     */
+    private void validateIntervals(Line line, int begin, int end) {
+        repairIntervalSet(line.getBeamings(), line, begin, end,
+            note -> note.getNoteType().isBeamable());
+        repairIntervalSet(line.getTies(), line, begin, end,
+            note -> note.getNoteType().isNote());
+        repairIntervalSet(line.getTuplets(), line, begin, end,
+            note -> note.getNoteType().isDuration());
+    }
+
+    /**
+     * Generic interval repair: finds intervals overlapping [begin, end] that contain
+     * notes failing the validity predicate, removes them, and re-creates sub-intervals
+     * for contiguous runs of valid notes (minimum 2 notes per sub-interval).
+     */
+    private <T extends Interval> void repairIntervalSet(
+            IntervalSet<T> intervalSet, Line line, int begin, int end,
+            Predicate<Note> isValid) {
+
+        var toProcess = new ArrayList<T>();
+
+        for (var iter = intervalSet.listIterator(); iter.hasNext(); ) {
+            var interval = iter.next();
+
+            if (interval.start <= end && interval.end >= begin) {
+                toProcess.add(interval);
+            }
+        }
+
+        for (var interval : toProcess) {
+            boolean allValid = true;
+
+            for (int i = interval.start; i <= interval.end; i++) {
+                if (!isValid.test(line.getNote(i))) {
+                    allValid = false;
+                    break;
+                }
+            }
+
+            if (allValid) {
+                continue;
+            }
+
+            intervalSet.removeInterval(interval);
+
+            // Find runs of valid notes and create sub-intervals
+            int runStart = -1;
+
+            for (int i = interval.start; i <= interval.end; i++) {
+                if (isValid.test(line.getNote(i))) {
+                    if (runStart == -1) {
+                        runStart = i;
+                    }
+                } else {
+                    if (runStart != -1 && (i - runStart) >= 2) {
+                        @SuppressWarnings("unchecked")
+                        var sub = (T) interval.copyRange(runStart, i - 1);
+                        intervalSet.addInterval(sub);
+                    }
+
+                    runStart = -1;
+                }
+            }
+
+            if (runStart != -1 && (interval.end - runStart) >= 1) {
+                @SuppressWarnings("unchecked")
+                var sub = (T) interval.copyRange(runStart, interval.end);
+                intervalSet.addInterval(sub);
+            }
+        }
     }
 
     /**
@@ -385,12 +647,19 @@ public final class SelectionCoordinator {
         if (selection == null) {
             lastReflectedSelection = null;
 
-            if (!savedToggleStates.isEmpty()) {
-                for (var entry : savedToggleStates.entrySet()) {
-                    entry.getKey().setSelected(entry.getValue());
+            if (!savedActionStates.isEmpty()) {
+                for (var entry : savedActionStates.entrySet()) {
+                    var action = entry.getKey();
+                    var state = entry.getValue();
+
+                    if (action instanceof UIAction.Selectable selectable) {
+                        selectable.setSelected(state.selected());
+                    }
+
+                    action.setEnabled(state.enabled());
                 }
 
-                savedToggleStates.clear();
+                savedActionStates.clear();
             }
 
             return;
@@ -403,11 +672,12 @@ public final class SelectionCoordinator {
 
         lastReflectedSelection = selection;
 
-        // Selection just became active — save current toggle states
-        if (savedToggleStates.isEmpty()) {
-            for (var reflectable : actions) {
-                var action = (UIAction) reflectable;
-                savedToggleStates.put(action, action.isSelected());
+        // Selection just became active — save current state for all managed actions
+        if (savedActionStates.isEmpty()) {
+            for (var action : getManagedActions()) {
+                var selected = (action instanceof UIAction.Selectable selectable)
+                    && selectable.isSelected();
+                savedActionStates.put(action, new ActionState(selected, action.isEnabled()));
             }
         }
 
@@ -415,7 +685,6 @@ public final class SelectionCoordinator {
         var line = selection.line();
 
         for (var reflectable : actions) {
-            var action = (UIAction) reflectable;
             var applicable = false;
             var matched = true;
 
@@ -434,7 +703,7 @@ public final class SelectionCoordinator {
                 }
             }
 
-            action.setSelected(applicable && matched);
+            reflectable.setSelected(applicable && matched);
         }
     }
 }

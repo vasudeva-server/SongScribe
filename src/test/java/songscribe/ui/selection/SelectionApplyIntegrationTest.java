@@ -1,0 +1,593 @@
+/*
+    SongScribe song notation program
+    Copyright (C) Sri Chinmoy Centres International
+
+    This file is part of SongScribe.
+
+    SongScribe is free software; you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; either version 3 of the License, or
+    (at your option) any later version.
+
+    SongScribe is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
+package songscribe.ui.selection;
+
+import java.awt.event.ActionEvent;
+import java.util.ArrayList;
+import java.util.List;
+
+import songscribe.UnitTest;
+import songscribe.music.Composition;
+import songscribe.music.DurationArticulation;
+import songscribe.music.Note;
+import songscribe.music.NoteType;
+import songscribe.ui.action.AccidentalAction;
+import songscribe.ui.action.DotAction;
+import songscribe.ui.action.DurationArticulationAction;
+import songscribe.ui.action.FermataAction;
+import songscribe.ui.action.NoteTypeAction;
+import songscribe.ui.action.NoteTypeAction.Kind;
+import songscribe.ui.action.UIAction;
+
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+
+/**
+ * Integration tests for the selection-apply feature (Phase 11).
+ * These tests exercise the full flow: select → reflect → apply → verify,
+ * combining multiple subsystems (coordinator, actions, content queries).
+ */
+class SelectionApplyIntegrationTest extends UnitTest {
+
+    // -- Shared action instances --
+
+    private static final NoteTypeAction QUARTER_ACTION = new NoteTypeAction(
+        Kind.DURATION, NoteType.CROTCHET, "Quarter", null, 0, "quarter", "Quarter note", 0, 0
+    );
+
+    private static final NoteTypeAction HALF_ACTION = new NoteTypeAction(
+        Kind.DURATION, NoteType.MINIM, "Half", null, 0, "half", "Half note", 0, 0
+    );
+
+    private static final NoteTypeAction BARLINE_ACTION = new NoteTypeAction(
+        Kind.NON_DURATION, NoteType.SINGLE_BARLINE, "Barline", null, 0, "barline", "Single barline", 0, 0
+    );
+
+    private static final NoteTypeAction DOUBLE_BARLINE_ACTION = new NoteTypeAction(
+        Kind.NON_DURATION, NoteType.DOUBLE_BARLINE, "Double Barline", null, 0, "double-barline", "Double barline", 0, 0
+    );
+
+    private static final AccidentalAction SHARP_ACTION =
+        new AccidentalAction(Note.Accidental.SHARP, "Sharp", null, 0, "sharp", "Sharp");
+
+    private static final AccidentalAction FLAT_ACTION =
+        new AccidentalAction(Note.Accidental.FLAT, "Flat", null, 0, "flat", "Flat");
+
+    private static final DotAction DOT_ACTION =
+        new DotAction(DotAction.DotLevel.SINGLE, "Dot", null, 0, "dot", "Dot", 0, 0);
+
+    private static final FermataAction FERMATA_ACTION = new FermataAction();
+
+    private static final DurationArticulationAction STACCATO_ACTION =
+        new DurationArticulationAction(DurationArticulation.STACCATO, "Staccato", null, 0, "staccato", "Staccato");
+
+    private SelectionCoordinator createCoordinator(
+            List<Note> notes,
+            List<UIAction.Reflectable> actions
+    ) {
+        var coordinator = ReflectionTestHelper.createCoordinator(notes, actions);
+        var line = coordinator.getActiveSelection().getLine();
+        line.setComposition(mock(Composition.class));
+        return coordinator;
+    }
+
+    private SelectionCoordinator createCoordinator(
+            List<Note> notes,
+            List<UIAction.Reflectable> actions,
+            List<UIAction> managedActions
+    ) {
+        var coordinator = ReflectionTestHelper.createCoordinator(notes, actions, managedActions);
+        var line = coordinator.getActiveSelection().getLine();
+        line.setComposition(mock(Composition.class));
+        return coordinator;
+    }
+
+    // ---- Mutual Exclusivity ----
+
+    @Nested
+    class MutualExclusivity {
+
+        @Test
+        void testNoteOnlySelectionEnablesDurationActions() {
+            var coordinator = createCoordinator(
+                List.of(NoteType.CROTCHET.newInstance(), NoteType.QUAVER.newInstance()),
+                List.of(QUARTER_ACTION, BARLINE_ACTION)
+            );
+
+            ReflectionTestHelper.selectRange(coordinator, 0, 1);
+
+            assertThat(coordinator.isApplicableToSelection(QUARTER_ACTION))
+                .as("duration action applicable to note-only selection")
+                .isTrue();
+            assertThat(coordinator.selectionHasDurations())
+                .as("note-only selection has durations")
+                .isTrue();
+        }
+
+        @Test
+        void testNoteOnlySelectionDisablesBarlineActions() {
+            var coordinator = createCoordinator(
+                List.of(NoteType.CROTCHET.newInstance(), NoteType.QUAVER.newInstance()),
+                List.of(QUARTER_ACTION, BARLINE_ACTION)
+            );
+
+            ReflectionTestHelper.selectRange(coordinator, 0, 1);
+
+            assertThat(coordinator.isApplicableToSelection(BARLINE_ACTION))
+                .as("barline action not applicable to note-only selection")
+                .isFalse();
+        }
+
+        @Test
+        void testBarlineOnlySelectionDisablesDurationActions() {
+            var coordinator = createCoordinator(
+                List.of(NoteType.SINGLE_BARLINE.newInstance(), NoteType.DOUBLE_BARLINE.newInstance()),
+                List.of(QUARTER_ACTION, BARLINE_ACTION)
+            );
+
+            ReflectionTestHelper.selectRange(coordinator, 0, 1);
+
+            assertThat(coordinator.isApplicableToSelection(QUARTER_ACTION))
+                .as("duration action not applicable to barline-only selection")
+                .isFalse();
+            assertThat(coordinator.selectionHasDurations())
+                .as("barline-only selection has no durations")
+                .isFalse();
+        }
+
+        @Test
+        void testBarlineOnlySelectionEnablesBarlineActions() {
+            var coordinator = createCoordinator(
+                List.of(NoteType.SINGLE_BARLINE.newInstance(), NoteType.DOUBLE_BARLINE.newInstance()),
+                List.of(QUARTER_ACTION, BARLINE_ACTION)
+            );
+
+            ReflectionTestHelper.selectRange(coordinator, 0, 1);
+
+            assertThat(coordinator.isApplicableToSelection(BARLINE_ACTION))
+                .as("barline action applicable to barline-only selection")
+                .isTrue();
+        }
+
+        @Test
+        void testMixedSelectionDisablesNonReflectableNoteActions() {
+            // Non-reflectable actions with DISABLE_WHEN_BAR_SELECTED check selectionHasDurations.
+            // Mixed selection has durations, so they are enabled (the action applies to the notes).
+            // The mutual exclusivity only fully disables when ALL elements are inapplicable.
+            var coordinator = createCoordinator(
+                List.of(NoteType.CROTCHET.newInstance(), NoteType.SINGLE_BARLINE.newInstance()),
+                List.of(QUARTER_ACTION, BARLINE_ACTION)
+            );
+
+            ReflectionTestHelper.selectRange(coordinator, 0, 1);
+
+            // Duration actions are applicable because notes exist
+            assertThat(coordinator.isApplicableToSelection(QUARTER_ACTION)).isTrue();
+            // Barline actions are applicable because barlines exist
+            assertThat(coordinator.isApplicableToSelection(BARLINE_ACTION)).isTrue();
+            // selectionHasDurations is true because notes exist
+            assertThat(coordinator.selectionHasDurations()).isTrue();
+        }
+
+        @Test
+        void testRestOnlySelectionDisablesNoteOnlyActions() {
+            // AccidentalAction applies only to notes, not rests
+            var coordinator = createCoordinator(
+                List.of(NoteType.CROTCHET_REST.newInstance(), NoteType.QUAVER_REST.newInstance()),
+                List.of(SHARP_ACTION, DOT_ACTION)
+            );
+
+            ReflectionTestHelper.selectRange(coordinator, 0, 1);
+
+            assertThat(coordinator.isApplicableToSelection(SHARP_ACTION))
+                .as("accidental not applicable to rest-only selection")
+                .isFalse();
+            assertThat(coordinator.isApplicableToSelection(DOT_ACTION))
+                .as("dot applicable to rest-only selection (durations)")
+                .isTrue();
+        }
+    }
+
+    // ---- Full Select → Reflect → Apply → Verify Flow ----
+
+    @Nested
+    class FullApplyFlow {
+
+        @Test
+        void testSelectNotesClickDurationVerifyChanged() {
+            var notes = List.of(
+                NoteType.QUAVER.newInstance(),
+                NoteType.SEMIQUAVER.newInstance(),
+                NoteType.QUAVER.newInstance()
+            );
+            var actions = List.<UIAction.Reflectable>of(QUARTER_ACTION, HALF_ACTION);
+            var coordinator = createCoordinator(notes, actions);
+            var line = coordinator.getActiveSelection().getLine();
+
+            // Select all notes
+            ReflectionTestHelper.selectRange(coordinator, 0, 2);
+
+            // Reflect — should show no duration selected (mixed quaver/semiquaver)
+            coordinator.reflectSelection(null);
+            assertThat(QUARTER_ACTION.isSelected()).isFalse();
+            assertThat(HALF_ACTION.isSelected()).isFalse();
+
+            // Apply quarter note to selection
+            coordinator.applyActionToSelection(QUARTER_ACTION, true);
+
+            // Verify all notes changed to crotchet
+            for (int i = 0; i <= 2; i++) {
+                assertThat(line.getNote(i).getNoteType())
+                    .as("note %d should be crotchet", i)
+                    .isEqualTo(NoteType.CROTCHET);
+            }
+
+            // Selection should still be active
+            assertThat(coordinator.getSelection()).isNotNull();
+        }
+
+        @Test
+        void testSelectNotesClickAccidentalVerifyApplied() {
+            var note1 = NoteType.CROTCHET.newInstance();
+            var note2 = NoteType.CROTCHET.newInstance();
+            note2.setAccidental(Note.Accidental.FLAT);
+            var notes = List.of(note1, note2);
+
+            var coordinator = createCoordinator(notes, List.of(SHARP_ACTION, FLAT_ACTION));
+            var line = coordinator.getActiveSelection().getLine();
+
+            ReflectionTestHelper.selectRange(coordinator, 0, 1);
+
+            // Reflect — sharp not selected (not all match), flat not selected (not all match)
+            coordinator.reflectSelection(null);
+            assertThat(SHARP_ACTION.isSelected()).isFalse();
+            assertThat(FLAT_ACTION.isSelected()).isFalse();
+
+            // Apply sharp to selection
+            coordinator.applyActionToSelection(SHARP_ACTION, true);
+
+            // Verify both notes are now sharp
+            assertThat(line.getNote(0).getAccidental()).isEqualTo(Note.Accidental.SHARP);
+            assertThat(line.getNote(1).getAccidental()).isEqualTo(Note.Accidental.SHARP);
+        }
+
+        @Test
+        void testSelectNotesAndRestsClickDotVerifyBothGetDots() {
+            var notes = List.of(
+                NoteType.CROTCHET.newInstance(),
+                NoteType.CROTCHET_REST.newInstance(),
+                NoteType.QUAVER.newInstance()
+            );
+            var coordinator = createCoordinator(notes, List.of(DOT_ACTION));
+            var line = coordinator.getActiveSelection().getLine();
+
+            ReflectionTestHelper.selectRange(coordinator, 0, 2);
+
+            // Apply dot to selection — DotAction applies to all durations (notes + rests)
+            coordinator.applyActionToSelection(DOT_ACTION, true);
+
+            for (int i = 0; i <= 2; i++) {
+                assertThat(line.getNote(i).getDotCount())
+                    .as("note %d should have 1 dot", i)
+                    .isEqualTo(1);
+            }
+        }
+
+        @Test
+        void testSelectBarlinesClickBarlineTypeVerifyChanged() {
+            var notes = List.of(
+                NoteType.SINGLE_BARLINE.newInstance(),
+                NoteType.SINGLE_BARLINE.newInstance()
+            );
+            var coordinator = createCoordinator(notes, List.of(DOUBLE_BARLINE_ACTION));
+            var line = coordinator.getActiveSelection().getLine();
+
+            ReflectionTestHelper.selectRange(coordinator, 0, 1);
+            coordinator.applyActionToSelection(DOUBLE_BARLINE_ACTION, true);
+
+            for (int i = 0; i <= 1; i++) {
+                assertThat(line.getNote(i).getNoteType())
+                    .as("barline %d should be double barline", i)
+                    .isEqualTo(NoteType.DOUBLE_BARLINE);
+            }
+        }
+    }
+
+    // ---- Multi-Action Sequential Application ----
+
+    @Nested
+    class SequentialApply {
+
+        @Test
+        void testApplyMultipleAttributesInSequence() {
+            var notes = List.of(
+                NoteType.QUAVER.newInstance(),
+                NoteType.QUAVER.newInstance()
+            );
+            var actions = List.<UIAction.Reflectable>of(
+                QUARTER_ACTION, SHARP_ACTION, FERMATA_ACTION, STACCATO_ACTION
+            );
+            var coordinator = createCoordinator(notes, actions);
+            var line = coordinator.getActiveSelection().getLine();
+
+            ReflectionTestHelper.selectRange(coordinator, 0, 1);
+
+            // Step 1: Change duration to quarter
+            coordinator.applyActionToSelection(QUARTER_ACTION, true);
+
+            // Step 2: Add sharp
+            coordinator.applyActionToSelection(SHARP_ACTION, true);
+
+            // Step 3: Add fermata
+            coordinator.applyActionToSelection(FERMATA_ACTION, true);
+
+            // Step 4: Add staccato
+            coordinator.applyActionToSelection(STACCATO_ACTION, true);
+
+            // Verify all attributes applied to both notes
+            for (int i = 0; i <= 1; i++) {
+                var note = line.getNote(i);
+                assertThat(note.getNoteType())
+                    .as("note %d type", i).isEqualTo(NoteType.CROTCHET);
+                assertThat(note.getAccidental())
+                    .as("note %d accidental", i).isEqualTo(Note.Accidental.SHARP);
+                assertThat(note.isFermata())
+                    .as("note %d fermata", i).isTrue();
+                assertThat(note.getDurationArticulation())
+                    .as("note %d staccato", i).isEqualTo(DurationArticulation.STACCATO);
+            }
+
+            // Selection remains active throughout
+            assertThat(coordinator.getSelection()).isNotNull();
+        }
+
+        @Test
+        void testApplyThenRemoveAttribute() {
+            var notes = List.of(
+                NoteType.CROTCHET.newInstance(),
+                NoteType.CROTCHET.newInstance()
+            );
+            var coordinator = createCoordinator(notes, List.of(FERMATA_ACTION));
+            var line = coordinator.getActiveSelection().getLine();
+
+            ReflectionTestHelper.selectRange(coordinator, 0, 1);
+
+            // Apply fermata
+            coordinator.applyActionToSelection(FERMATA_ACTION, true);
+            assertThat(line.getNote(0).isFermata()).isTrue();
+            assertThat(line.getNote(1).isFermata()).isTrue();
+
+            // Remove fermata
+            coordinator.applyActionToSelection(FERMATA_ACTION, false);
+            assertThat(line.getNote(0).isFermata()).isFalse();
+            assertThat(line.getNote(1).isFermata()).isFalse();
+        }
+
+        @Test
+        void testApplyDotThenChangeDurationPreservesDots() {
+            var notes = List.of(
+                NoteType.QUAVER.newInstance(),
+                NoteType.QUAVER.newInstance()
+            );
+            var coordinator = createCoordinator(notes, List.of(DOT_ACTION, QUARTER_ACTION));
+            var line = coordinator.getActiveSelection().getLine();
+
+            ReflectionTestHelper.selectRange(coordinator, 0, 1);
+
+            // Add dots first
+            coordinator.applyActionToSelection(DOT_ACTION, true);
+
+            // Change duration — dots should be preserved by copy constructor
+            coordinator.applyActionToSelection(QUARTER_ACTION, true);
+
+            for (int i = 0; i <= 1; i++) {
+                var note = line.getNote(i);
+                assertThat(note.getNoteType())
+                    .as("note %d type", i).isEqualTo(NoteType.CROTCHET);
+                assertThat(note.getDotCount())
+                    .as("note %d dots", i).isEqualTo(1);
+            }
+        }
+    }
+
+    // ---- State Management Integration ----
+
+    @Nested
+    class StateManagement {
+
+        @Test
+        void testSaveReflectApplyClearRestoresState() {
+            var note = NoteType.CROTCHET.newInstance();
+            note.setAccidental(Note.Accidental.FLAT);
+
+            var sharpAction = new AccidentalAction(
+                Note.Accidental.SHARP, "Sharp", null, 0, "sharp", "Sharp"
+            );
+            var flatAction = new AccidentalAction(
+                Note.Accidental.FLAT, "Flat", null, 0, "flat", "Flat"
+            );
+            // Pre-selection state
+            sharpAction.setSelected(false);
+            sharpAction.setEnabled(true);
+            flatAction.setSelected(true);
+            flatAction.setEnabled(true);
+
+            var coordinator = createCoordinator(
+                List.of(note),
+                List.of(sharpAction, flatAction)
+            );
+
+            // Select and reflect — saves state, then reflects
+            ReflectionTestHelper.selectNote(coordinator, 0);
+            coordinator.reflectSelection(null);
+
+            // Note has FLAT, so SHARP=false, FLAT=true
+            assertThat(sharpAction.isSelected()).isFalse();
+            assertThat(flatAction.isSelected()).isTrue();
+
+            // Apply sharp — mutates the note
+            coordinator.applyActionToSelection(sharpAction, true);
+            var line = coordinator.getActiveSelection().getLine();
+            assertThat(line.getNote(0).getAccidental()).isEqualTo(Note.Accidental.SHARP);
+
+            // Simulate disabled state during selection (flag chain would do this)
+            sharpAction.setEnabled(false);
+
+            // Clear selection and reflect — restores pre-selection state
+            ReflectionTestHelper.clearSelection(coordinator);
+            coordinator.reflectSelection(null);
+
+            assertThat(sharpAction.isSelected()).as("sharp restored to pre-selection selected").isFalse();
+            assertThat(sharpAction.isEnabled()).as("sharp restored to pre-selection enabled").isTrue();
+            assertThat(flatAction.isSelected()).as("flat restored to pre-selection selected").isTrue();
+            assertThat(flatAction.isEnabled()).as("flat restored to pre-selection enabled").isTrue();
+        }
+
+        @Test
+        void testManagedActionsIncludeNonReflectableWithFlag() {
+            var note = NoteType.CROTCHET.newInstance();
+
+            var fermataAction = new FermataAction();
+            var flaggedAction = new UIAction("Beam", null, 0, "beam", "Toggle beam") {
+                @Override
+                public void actionPerformed(ActionEvent e) {}
+            };
+            flaggedAction.setFlags(UIAction.Flag.DISABLE_WHEN_BAR_SELECTED);
+
+            var reflectableActions = List.<UIAction.Reflectable>of(fermataAction);
+            var managedActions = new ArrayList<UIAction>();
+            managedActions.add(fermataAction);
+            managedActions.add(flaggedAction);
+
+            var coordinator = createCoordinator(
+                List.of(note),
+                reflectableActions,
+                managedActions
+            );
+
+            // Set distinct initial states
+            fermataAction.setSelected(false);
+            fermataAction.setEnabled(true);
+            flaggedAction.setEnabled(true);
+
+            // Select and reflect — saves state for both managed actions
+            ReflectionTestHelper.selectNote(coordinator, 0);
+            coordinator.reflectSelection(null);
+
+            // Simulate flag chain disabling the non-reflectable action
+            flaggedAction.setEnabled(false);
+
+            // Clear and reflect — both actions should be restored
+            ReflectionTestHelper.clearSelection(coordinator);
+            coordinator.reflectSelection(null);
+
+            assertThat(flaggedAction.isEnabled())
+                .as("non-reflectable action enabled state restored")
+                .isTrue();
+        }
+    }
+
+    // ---- Edge Cases ----
+
+    @Nested
+    class EdgeCases {
+
+        @Test
+        void testGraceNotesUnaffectedByDurationChange() {
+            // Grace notes are not durations — they are intimately tied to the
+            // following note and have no standalone duration.
+            var notes = List.of(
+                NoteType.GRACE_QUAVER.newInstance(),
+                NoteType.QUAVER.newInstance()
+            );
+            var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
+            var line = coordinator.getActiveSelection().getLine();
+
+            ReflectionTestHelper.selectRange(coordinator, 0, 1);
+            coordinator.applyActionToSelection(QUARTER_ACTION, true);
+
+            assertThat(line.getNote(0).getNoteType()).isEqualTo(NoteType.GRACE_QUAVER);
+            assertThat(line.getNote(1).getNoteType()).isEqualTo(NoteType.CROTCHET);
+        }
+
+        @Test
+        void testAccidentalAppliedToNotesOnlyInMixedSelection() {
+            var note = NoteType.CROTCHET.newInstance();
+            var rest = NoteType.CROTCHET_REST.newInstance();
+            var barline = NoteType.SINGLE_BARLINE.newInstance();
+
+            var coordinator = createCoordinator(
+                List.of(note, rest, barline),
+                List.of(SHARP_ACTION)
+            );
+            var line = coordinator.getActiveSelection().getLine();
+
+            ReflectionTestHelper.selectRange(coordinator, 0, 2);
+            coordinator.applyActionToSelection(SHARP_ACTION, true);
+
+            // Only the actual note gets the accidental
+            assertThat(line.getNote(0).getAccidental()).isEqualTo(Note.Accidental.SHARP);
+            assertThat(line.getNote(1).getAccidental()).isEqualTo(Note.Accidental.NONE);
+            assertThat(line.getNote(2).getAccidental()).isEqualTo(Note.Accidental.NONE);
+        }
+
+        @Test
+        void testDurationChangeOnRestPreservesRestKind() {
+            var notes = List.of(
+                NoteType.QUAVER.newInstance(),
+                NoteType.QUAVER_REST.newInstance()
+            );
+            var coordinator = createCoordinator(notes, List.of(HALF_ACTION));
+            var line = coordinator.getActiveSelection().getLine();
+
+            ReflectionTestHelper.selectRange(coordinator, 0, 1);
+            coordinator.applyActionToSelection(HALF_ACTION, true);
+
+            assertThat(line.getNote(0).getNoteType()).isEqualTo(NoteType.MINIM);
+            assertThat(line.getNote(1).getNoteType()).isEqualTo(NoteType.MINIM_REST);
+        }
+
+        @Test
+        void testDurationChangePreservesExistingAttributes() {
+            var note = NoteType.QUAVER.newInstance();
+            note.setAccidental(Note.Accidental.SHARP);
+            note.setDotCount(1);
+            note.setFermata(true);
+            note.setDurationArticulation(DurationArticulation.STACCATO);
+
+            var coordinator = createCoordinator(List.of(note), List.of(QUARTER_ACTION));
+            var line = coordinator.getActiveSelection().getLine();
+
+            ReflectionTestHelper.selectNote(coordinator, 0);
+            coordinator.applyActionToSelection(QUARTER_ACTION, true);
+
+            var replaced = line.getNote(0);
+            assertThat(replaced.getNoteType()).isEqualTo(NoteType.CROTCHET);
+            assertThat(replaced.getAccidental()).isEqualTo(Note.Accidental.SHARP);
+            assertThat(replaced.getDotCount()).isEqualTo(1);
+            assertThat(replaced.isFermata()).isTrue();
+            assertThat(replaced.getDurationArticulation()).isEqualTo(DurationArticulation.STACCATO);
+        }
+    }
+}

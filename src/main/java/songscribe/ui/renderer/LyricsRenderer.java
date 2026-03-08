@@ -246,7 +246,7 @@ public class LyricsRenderer {
             syllableWidth = metrics.stringWidth(syllable);
             var layoutResult = ctx.getLayoutResult();
             var noteX = (layoutResult != null) ? layoutResult.getNoteXSs(note) : note.getXPosSs();
-            var lyricsX = (int) ((noteX + Note.HOT_SPOT.x) -
+            var lyricsX = (int) ((noteX + note.getContentCenterX()) -
                 (syllableWidth / 2) +
                 note.getSyllableMovement());
 
@@ -381,11 +381,11 @@ public class LyricsRenderer {
         }
 
         // Normal case: start after the syllable
-        return note.getXPosSs() +
-            Note.HOT_SPOT.x +
+        return (int) (note.getXPosSs() +
+            note.getContentCenterX() +
             (syllableWidth / 2) +
             note.getSyllableMovement() +
-            2;
+            2);
     }
 
     /**
@@ -422,10 +422,10 @@ public class LyricsRenderer {
         var nextSyllable = endNote.properties.syllable;
         var nextSyllableWidth = g2.getFontMetrics().stringWidth(nextSyllable);
 
-        return (endNote.getXPosSs() + Note.HOT_SPOT.x) -
+        return (int) ((endNote.getXPosSs() + endNote.getContentCenterX()) -
             (nextSyllableWidth / 2) +
             endNote.getSyllableMovement() -
-            2;
+            2);
     }
 
     /**

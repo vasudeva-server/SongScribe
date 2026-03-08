@@ -22,6 +22,7 @@ package songscribe.ui.selection;
 
 import java.util.List;
 
+import songscribe.UnitTest;
 import songscribe.music.DurationArticulation;
 import songscribe.music.Note;
 import songscribe.music.NoteType;
@@ -38,7 +39,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-class ReflectionIntegrationTest {
+class ReflectionIntegrationTest extends UnitTest {
 
     private NoteTypeAction crotchetAction;
     private NoteTypeAction minimAction;
@@ -73,7 +74,7 @@ class ReflectionIntegrationTest {
     }
 
     private void assertSelected(UIAction.Reflectable action, boolean expected) {
-        assertThat(((UIAction) action).isSelected()).isEqualTo(expected);
+        assertThat(((UIAction.Selectable) action).isSelected()).isEqualTo(expected);
     }
 
     @Test

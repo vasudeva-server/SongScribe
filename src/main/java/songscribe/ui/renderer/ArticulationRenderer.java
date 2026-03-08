@@ -31,6 +31,7 @@ import songscribe.smufl.SMuFLMetadata;
 import songscribe.smufl.StaffSpaces;
 import songscribe.ui.layout.LayoutStylesheet;
 import songscribe.ui.layout2.LayoutResult;
+import songscribe.ui.layout2.ScaleContext;
 import songscribe.util.GraphicUtils;
 
 /**
@@ -66,9 +67,6 @@ public class ArticulationRenderer extends BaseElementRenderer<Note> {
         STACCATO_HALF_HEIGHT_PX = (int) Math.round(StaffSpaces.toPixels(staccatoBBox.height()) / 2.0);
         STACCATO_WIDTH_PX = StaffSpaces.toPixels(staccatoBBox.width());
     }
-
-    // Crotchet width for positioning (half-width used for horizontal centering)
-    private static final double CROTCHET_WIDTH_PX = BaseElementRenderer.NOTE_FONT_SIZE / 3.6056337d;
 
     // Singleton instance
     private static final ArticulationRenderer INSTANCE = new ArticulationRenderer();
@@ -202,7 +200,7 @@ public class ArticulationRenderer extends BaseElementRenderer<Note> {
     ) {
         int dir = note.isUpper() ? 1 : -1;
         int staffPosition = note.getStaffPosition();
-        int margin = LayoutStylesheet.toPixels(0.375);
+        int margin = ScaleContext.getInstance().toRoundedPixels(0.375);
 
         // If staccato is present, stack accent beyond it with 1px gap
         if (hasStaccato) {
@@ -213,13 +211,13 @@ public class ArticulationRenderer extends BaseElementRenderer<Note> {
         // Offset = accent visual half-height + margin so the painted edge clears the reference.
         if (Math.abs(staffPosition) < 4) {
             // Within staff (not on edge lines) -- anchor to staff edge
-            int staffEdgeY = middleLineYPx + LayoutStylesheet.toPixels(dir * 4 * LayoutStylesheet.NOTE_Y_OFFSET);
+            int staffEdgeY = middleLineYPx + ScaleContext.getInstance().toRoundedPixels(dir * 4 * LayoutStylesheet.NOTE_Y_OFFSET);
 
             return staffEdgeY + dir * (ACCENT_HALF_HEIGHT_PX + margin);
         } else {
             // On staff edge or beyond (ledger lines) -- anchor to note head
-            int noteHeadY = middleLineYPx + LayoutStylesheet.toPixels(staffPosition * LayoutStylesheet.NOTE_Y_OFFSET);
-            int noteHeadRadius = LayoutStylesheet.toPixels(LayoutStylesheet.NOTE_Y_OFFSET);
+            int noteHeadY = middleLineYPx + ScaleContext.getInstance().toRoundedPixels(staffPosition * LayoutStylesheet.NOTE_Y_OFFSET);
+            int noteHeadRadius = ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.NOTE_Y_OFFSET);
 
             return noteHeadY + dir * (noteHeadRadius + margin + ACCENT_HALF_HEIGHT_PX);
         }
@@ -261,22 +259,22 @@ public class ArticulationRenderer extends BaseElementRenderer<Note> {
         boolean normalStem = (staffPosition > 0) == isUpper;
 
         if (normalStem) {
-            int margin = LayoutStylesheet.toPixels(0.375);
+            int margin = ScaleContext.getInstance().toRoundedPixels(0.375);
 
             return switch (Math.abs(staffPosition)) {
                 // B4/C5 or A4: fixed space near opposite staff edge
-                case 0, 1 -> middleLineYPx + LayoutStylesheet.toPixels(dir * 3 * LayoutStylesheet.NOTE_Y_OFFSET);
+                case 0, 1 -> middleLineYPx + ScaleContext.getInstance().toRoundedPixels(dir * 3 * LayoutStylesheet.NOTE_Y_OFFSET);
 
                 // D5/E5 or G4/F4: standard margin from staff edge
                 case 2, 3 -> {
-                    int staffEdgeY = middleLineYPx + LayoutStylesheet.toPixels(dir * 4 * LayoutStylesheet.NOTE_Y_OFFSET);
+                    int staffEdgeY = middleLineYPx + ScaleContext.getInstance().toRoundedPixels(dir * 4 * LayoutStylesheet.NOTE_Y_OFFSET);
                     yield staffEdgeY + dir * (STACCATO_HALF_HEIGHT_PX + margin);
                 }
 
                 // F5+ or E4+: standard margin from note head
                 default -> {
-                    int noteHeadY = middleLineYPx + LayoutStylesheet.toPixels(staffPosition * LayoutStylesheet.NOTE_Y_OFFSET);
-                    int noteHeadRadius = LayoutStylesheet.toPixels(LayoutStylesheet.NOTE_Y_OFFSET);
+                    int noteHeadY = middleLineYPx + ScaleContext.getInstance().toRoundedPixels(staffPosition * LayoutStylesheet.NOTE_Y_OFFSET);
+                    int noteHeadRadius = ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.NOTE_Y_OFFSET);
                     yield noteHeadY + dir * (noteHeadRadius + margin + STACCATO_HALF_HEIGHT_PX);
                 }
             };
@@ -292,7 +290,7 @@ public class ArticulationRenderer extends BaseElementRenderer<Note> {
             default -> staffPosition < 0 ? -3 : 3;  // beyond staff → E5 or F4 space
         };
 
-        return middleLineYPx + LayoutStylesheet.toPixels(targetStaffPosition * LayoutStylesheet.NOTE_Y_OFFSET);
+        return middleLineYPx + ScaleContext.getInstance().toRoundedPixels(targetStaffPosition * LayoutStylesheet.NOTE_Y_OFFSET);
     }
 
     /**
@@ -320,13 +318,6 @@ public class ArticulationRenderer extends BaseElementRenderer<Note> {
      * Returns half the width of a note for positioning.
      */
     private double getHalfNoteWidthForTiePx(@NotNull Note note) {
-        var noteType = note.getNoteType();
-
-        if (noteType == songscribe.music.NoteType.SEMIBREVE ||
-            noteType == songscribe.music.NoteType.MINIM) {
-            return note.getRealUpNoteRect().width / 2.0;
-        }
-
-        return CROTCHET_WIDTH_PX / 2.0;
+        return note.getContentCenterX();
     }
 }

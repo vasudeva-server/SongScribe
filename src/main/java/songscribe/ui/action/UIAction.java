@@ -76,7 +76,27 @@ public class UIAction extends AbstractAction {
         }
     }
 
-    public interface Reflectable {
+    /**
+     * Marks an action that has a toggle selected state (e.g. accidentals, note durations).
+     * Actions that do not implement this interface have no selected state.
+     */
+    public interface Selectable {
+        boolean isSelected();
+        void setSelected(boolean selected);
+
+        /**
+         * Toggles the selected state when the action is invoked via a keyboard
+         * shortcut (source is JRootPane). Swing buttons handle toggling
+         * themselves, but keyboard shortcuts need explicit toggling.
+         */
+        default void toggleOnKeyboardShortcut(ActionEvent e) {
+            if (e.getSource() instanceof JRootPane) {
+                setSelected(!isSelected());
+            }
+        }
+    }
+
+    public interface Reflectable extends Selectable {
         /**
          * Whether this action's attribute is applicable to the given note.
          * For example, accidental actions return false for rests;
@@ -91,13 +111,39 @@ public class UIAction extends AbstractAction {
         boolean matchesNote(Note note);
     }
 
+    /**
+     * A reflectable action that modifies a note's attributes in place.
+     */
+    public interface NoteModifiable extends Reflectable {
+        /**
+         * Apply or remove this action's attribute on the given note.
+         * @param note     the note to modify
+         * @param selected true to apply the attribute, false to remove it
+         */
+        void applyToNote(Note note, boolean selected);
+    }
+
+    /**
+     * A reflectable action that replaces a note with a new instance
+     * (e.g. changing duration requires a new Note object).
+     */
+    public interface NoteReplaceable extends Reflectable {
+        /**
+         * Create a replacement note with this action's attribute applied.
+         * @param note     the source note to base the replacement on
+         * @param selected true to apply the attribute, false to skip
+         * @return the replacement note, or null if no replacement is needed
+         */
+        @Nullable Note createReplacement(Note note, boolean selected);
+    }
+
     public static final String FONT_ICON_KEY = "font-icon";
     public static final String FONT_KEY = "font";
 
     private int flags = 0;
 
     public UIAction(String name, String actionCommand) {
-        this(name, null, 0, actionCommand, null, false, 0, 0);
+        this(name, null, 0, actionCommand, null, 0, 0);
     }
 
     public UIAction(
@@ -106,7 +152,7 @@ public class UIAction extends AbstractAction {
         int virtualKey,
         int modifiers
     ) {
-        this(name, null, 0, actionCommand, null, false, virtualKey, modifiers);
+        this(name, null, 0, actionCommand, null, virtualKey, modifiers);
     }
 
     public UIAction(
@@ -116,7 +162,7 @@ public class UIAction extends AbstractAction {
         String actionCommand,
         String tooltip
     ) {
-        this(name, icon, size, actionCommand, tooltip, false, 0, 0);
+        this(name, icon, size, actionCommand, tooltip, 0, 0);
     }
 
     public UIAction(
@@ -125,18 +171,6 @@ public class UIAction extends AbstractAction {
         int size,
         String actionCommand,
         String tooltip,
-        boolean isToggle
-    ) {
-        this(name, icon, size, actionCommand, tooltip, isToggle, 0, 0);
-    }
-
-    public UIAction(
-        @Nullable String name,
-        @Nullable String icon,
-        int size,
-        String actionCommand,
-        String tooltip,
-        boolean isToggle,
         int virtualKey,
         int modifiers
     ) {
@@ -144,10 +178,6 @@ public class UIAction extends AbstractAction {
         putValue(ACTION_COMMAND_KEY, actionCommand);
         putValue(SHORT_DESCRIPTION, tooltip);
         setIcon(icon, size);
-
-        if (isToggle) {
-            setSelected(false);
-        }
 
         if (virtualKey != 0) {
             putValue(
@@ -216,10 +246,6 @@ public class UIAction extends AbstractAction {
         }
     }
 
-    public boolean isToggle() {
-        return isSelected() != null;
-    }
-
     public String getName() {
         return (String) getValue(NAME);
     }
@@ -245,20 +271,6 @@ public class UIAction extends AbstractAction {
         return (KeyStroke) getValue(ACCELERATOR_KEY);
     }
 
-    public void setSelected(boolean selected) {
-        putValue(SELECTED_KEY, selected);
-    }
-
-    public Boolean isSelected() {
-        return (Boolean) getValue(SELECTED_KEY);
-    }
-
-    // Set the selected state AND invoke the action
-    public void select(Object source) {
-        setSelected(true);
-        perform(source);
-    }
-
     public void perform(Object source) {
         actionPerformed(
             new ActionEvent(
@@ -271,26 +283,24 @@ public class UIAction extends AbstractAction {
 
     @Override
     public void actionPerformed(ActionEvent e) {
-        // Toggle the selected state if it's a toggle action invoked by a keyboard shortcut
-        if (isToggle() && (e.getSource() instanceof JRootPane)) {
-            setSelected(!isSelected());
-        }
-        // Subclasses should override and call super.actionPerformed(e)
-        // if the action is a toggle action.
+        // Subclasses override this. Selectable actions should call
+        // toggleOnKeyboardShortcut(e) for keyboard shortcut support.
     }
 
     protected boolean updateEnabledState() {
         // If an action is going to be enabled based on a single flag,
         // we have to check the entire context to see if the action can in fact be enabled.
         var score = MainFrame.getInstance().getScore();
+        var activeSelection = hasActiveSelection();
         var enable =
             enableInAdjustmentMode(score) &&
                 enableFromTextEditingState() &&
                 enableFromPlaybackState() &&
                 enableInRestMode() &&
-                enableFromSelection(score) &&
-                enableFromBarSelection() &&
-                enableFromDurationSelection() &&
+                enableFromSelectionSize(score) &&
+                enableFromBarSelection(activeSelection) &&
+                enableFromSelection(activeSelection, score) &&
+                enableFromDurationSelection(activeSelection) &&
                 enableFromCompositionState();
         setEnabled(enable);
         return enable;
@@ -315,7 +325,7 @@ public class UIAction extends AbstractAction {
         updateEnabledState();
     }
 
-    protected boolean enableFromSelection(@NotNull Score score) {
+    protected boolean enableFromSelectionSize(@NotNull Score score) {
         var size = score.getSelectionSize();
 
         if (hasFlag(Flag.REQUIRES_SELECTION)) {
@@ -386,11 +396,33 @@ public class UIAction extends AbstractAction {
         updateEnabledState();
     }
 
-    protected boolean enableFromBarSelection() {
+    protected boolean enableFromBarSelection(boolean activeSelection) {
+        if (activeSelection) {
+            return true;
+        }
+
         return (
             !hasFlag(Flag.DISABLE_WHEN_BAR_SELECTED) ||
                 !Actions.NON_DURATION_ACTION_GROUP.anySelected()
         );
+    }
+
+    protected boolean enableFromSelection(boolean activeSelection, Score score) {
+        if (!activeSelection) {
+            return true;
+        }
+
+        var coordinator = score.getSelectionCoordinator();
+
+        if (this instanceof Reflectable reflectable) {
+            return coordinator.isApplicableToSelection(reflectable);
+        }
+
+        if (hasFlag(Flag.DISABLE_WHEN_BAR_SELECTED)) {
+            return coordinator.selectionHasDurations();
+        }
+
+        return true;
     }
 
     @Handler(priority = Message.MEDIUM_PRIORITY)
@@ -399,7 +431,11 @@ public class UIAction extends AbstractAction {
     }
 
     @SuppressWarnings("ObjectEquality")
-    protected boolean enableFromDurationSelection() {
+    protected boolean enableFromDurationSelection(boolean activeSelection) {
+        if (activeSelection) {
+            return true;
+        }
+
         if (!hasFlag(Flag.ENABLE_WHEN_DURATION_SELECTED)) {
             return true;
         }
@@ -415,6 +451,35 @@ public class UIAction extends AbstractAction {
     @Handler(priority = Message.MEDIUM_PRIORITY)
     public void layoutDidChange(LayoutChangeMessage message) {
         updateEnabledState();
+    }
+
+    /**
+     * If a selection is active and this action is Reflectable, apply the action
+     * to all applicable notes in the selection.
+     * @return true if the action was applied to the selection (caller should skip normal flow)
+     */
+    protected boolean applyToSelectionIfActive() {
+        if (!(this instanceof Reflectable reflectable)) {
+            return false;
+        }
+
+        var score = MainFrame.getInstance().getScore();
+        var coordinator = score.getSelectionCoordinator();
+        var selection = coordinator.getSelection();
+
+        if (selection == null) {
+            return false;
+        }
+
+        coordinator.applyActionToSelection(reflectable, reflectable.isSelected());
+        return true;
+    }
+
+    private boolean hasActiveSelection() {
+        return MainFrame.getInstance()
+            .getScore()
+            .getSelectionCoordinator()
+            .hasActiveSelection();
     }
 
     protected boolean enableFromCompositionState() {

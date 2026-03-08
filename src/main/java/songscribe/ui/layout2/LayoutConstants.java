@@ -50,24 +50,6 @@ public final class LayoutConstants {
     }
 
     // ==========================================================================
-    // PIXEL CONVERSION (bridge for callers not yet converted to ss)
-    // ==========================================================================
-
-    /**
-     * Converts staff-space units to pixels using the current {@link ScaleContext}.
-     * <p>
-     * This is a transitional bridge method. Once all layout pipeline code
-     * operates in staff-space units (Milestone 1, Phase 4), this method
-     * will be removed.
-     *
-     * @param ss Value in staff-space units
-     * @return Value in pixels
-     */
-    public static double toPixels(double ss) {
-        return ScaleContext.getInstance().toPixels(ss);
-    }
-
-    // ==========================================================================
     // HORIZONTAL SPACING - Line Beginning
     // ==========================================================================
 

@@ -29,6 +29,7 @@ import org.jetbrains.annotations.Nullable;
 
 import songscribe.music.Composition;
 import songscribe.ui.layout.LayoutStylesheet;
+import songscribe.ui.layout2.ScaleContext;
 
 /**
  * Top-level panel for the score component hierarchy.
@@ -73,7 +74,7 @@ public class MainPanel extends JPanel {
         setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
         setOpaque(false);
 
-        scoreMarginTop = LayoutStylesheet.toPixels(LayoutStylesheet.SCORE_MARGIN_TOP);
+        scoreMarginTop = ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.SCORE_MARGIN_TOP);
 
         titleComponent = new TitleComponent();
         titleComponent.setAlignmentX(LEFT_ALIGNMENT);

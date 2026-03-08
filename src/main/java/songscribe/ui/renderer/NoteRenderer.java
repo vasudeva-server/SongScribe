@@ -762,7 +762,7 @@ public class NoteRenderer extends BaseElementRenderer<Note> {
      * @return Right edge of the notehead in staff-space units (relative to note X)
      */
     public static double getNoteheadRightEdgeSs(@NotNull Note note) {
-        var glyph = note.getNoteType().getSMuFLNoteheadGlyph();
+        var glyph = note.getNoteType().getSMuFLGlyph();
 
         if (glyph != null) {
             var bbox = METADATA.getBBox(glyph);

@@ -20,13 +20,14 @@
 
 package songscribe.ui.action;
 
-import org.junit.jupiter.api.Test;
-
+import songscribe.UnitTest;
 import songscribe.music.NoteType;
+
+import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-class NoteOnlyActionAppliesToTest {
+class NoteOnlyActionAppliesToTest extends UnitTest {
 
     // Use FermataAction as the simplest concrete NoteOnlyAction subclass
     private final FermataAction action = new FermataAction();

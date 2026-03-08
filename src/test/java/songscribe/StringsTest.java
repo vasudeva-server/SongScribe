@@ -26,11 +26,13 @@ import java.util.HashSet;
 import java.util.ResourceBundle;
 import java.util.Set;
 
+import songscribe.UnitTest;
+
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-class StringsTest {
+class StringsTest extends UnitTest {
 
     // Every constant in Strings.class must correspond to a key in the bundle
     @Test

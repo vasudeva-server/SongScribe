@@ -30,6 +30,7 @@ import songscribe.smufl.SMuFLMetadata;
 import songscribe.smufl.StaffSpaces;
 import songscribe.ui.layout.FermataAttachment;
 import songscribe.ui.layout.LayoutStylesheet;
+import songscribe.ui.layout2.ScaleContext;
 import songscribe.util.GraphicUtils;
 
 /**
@@ -121,7 +122,7 @@ public class FermataRenderer extends BaseElementRenderer<Note> {
 
         // Fallback: compute position directly from note position
         int fermataStaffPosition = getFermataStaffPosition(note);
-        return (int) (ctx.getMiddleLineYSs() + LayoutStylesheet.toPixels(fermataStaffPosition * LayoutStylesheet.NOTE_Y_OFFSET));
+        return (int) (ctx.getMiddleLineYSs() + ScaleContext.getInstance().toRoundedPixels(fermataStaffPosition * LayoutStylesheet.NOTE_Y_OFFSET));
     }
 
     /**

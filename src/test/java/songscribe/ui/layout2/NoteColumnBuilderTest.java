@@ -20,14 +20,15 @@
 
 package songscribe.ui.layout2;
 
-import org.junit.jupiter.api.Test;
-
+import songscribe.UnitTest;
 import songscribe.music.Note;
 import songscribe.music.NoteType;
 
+import org.junit.jupiter.api.Test;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
-class NoteColumnBuilderTest {
+class NoteColumnBuilderTest extends UnitTest {
 
     private static Note note(NoteType type) {
         return type.newInstance();

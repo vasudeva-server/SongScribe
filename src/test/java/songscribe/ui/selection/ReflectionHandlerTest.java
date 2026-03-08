@@ -22,16 +22,17 @@ package songscribe.ui.selection;
 
 import java.util.List;
 
+import songscribe.UnitTest;
 import songscribe.music.Note;
 import songscribe.music.NoteType;
 import songscribe.ui.action.AccidentalAction;
-import songscribe.ui.action.UIAction;
+import songscribe.ui.action.SelectableUIAction;
 
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-class ReflectionHandlerTest {
+class ReflectionHandlerTest extends UnitTest {
 
     // -- Section A: State Transitions --
 
@@ -41,7 +42,7 @@ class ReflectionHandlerTest {
         note.setAccidental(Note.Accidental.SHARP);
 
         var action = new AccidentalAction(Note.Accidental.SHARP, "Sharp", null, 0, "sharp", "Sharp");
-        var uiAction = (UIAction) action;
+        var uiAction = (SelectableUIAction) action;
         uiAction.setSelected(false);
 
         var coordinator = ReflectionTestHelper.createCoordinator(
@@ -60,7 +61,7 @@ class ReflectionHandlerTest {
         note.setAccidental(Note.Accidental.FLAT);
 
         var action = new AccidentalAction(Note.Accidental.SHARP, "Sharp", null, 0, "sharp", "Sharp");
-        var uiAction = (UIAction) action;
+        var uiAction = (SelectableUIAction) action;
         uiAction.setSelected(true);
 
         var coordinator = ReflectionTestHelper.createCoordinator(
@@ -85,7 +86,7 @@ class ReflectionHandlerTest {
         note.setAccidental(Note.Accidental.SHARP);
 
         var action = new AccidentalAction(Note.Accidental.SHARP, "Sharp", null, 0, "sharp", "Sharp");
-        var uiAction = (UIAction) action;
+        var uiAction = (SelectableUIAction) action;
         uiAction.setSelected(false);
 
         var coordinator = ReflectionTestHelper.createCoordinator(
@@ -108,7 +109,7 @@ class ReflectionHandlerTest {
         note2.setAccidental(Note.Accidental.FLAT);
 
         var action = new AccidentalAction(Note.Accidental.SHARP, "Sharp", null, 0, "sharp", "Sharp");
-        var uiAction = (UIAction) action;
+        var uiAction = (SelectableUIAction) action;
         uiAction.setSelected(false);
 
         var coordinator = ReflectionTestHelper.createCoordinator(
@@ -143,7 +144,7 @@ class ReflectionHandlerTest {
         note2.setAccidental(Note.Accidental.SHARP);
 
         var action = new AccidentalAction(Note.Accidental.SHARP, "Sharp", null, 0, "sharp", "Sharp");
-        var uiAction = (UIAction) action;
+        var uiAction = (SelectableUIAction) action;
 
         var coordinator = ReflectionTestHelper.createCoordinator(
                 List.of(note1, note2),
@@ -165,7 +166,7 @@ class ReflectionHandlerTest {
         note2.setAccidental(Note.Accidental.SHARP);
 
         var action = new AccidentalAction(Note.Accidental.SHARP, "Sharp", null, 0, "sharp", "Sharp");
-        var uiAction = (UIAction) action;
+        var uiAction = (SelectableUIAction) action;
 
         var coordinator = ReflectionTestHelper.createCoordinator(
                 List.of(note1, note2),
@@ -187,7 +188,7 @@ class ReflectionHandlerTest {
         note2.setAccidental(Note.Accidental.FLAT);
 
         var action = new AccidentalAction(Note.Accidental.SHARP, "Sharp", null, 0, "sharp", "Sharp");
-        var uiAction = (UIAction) action;
+        var uiAction = (SelectableUIAction) action;
 
         var coordinator = ReflectionTestHelper.createCoordinator(
                 List.of(note1, note2),
@@ -208,7 +209,7 @@ class ReflectionHandlerTest {
         var rest = NoteType.CROTCHET_REST.newInstance();
 
         var action = new AccidentalAction(Note.Accidental.SHARP, "Sharp", null, 0, "sharp", "Sharp");
-        var uiAction = (UIAction) action;
+        var uiAction = (SelectableUIAction) action;
 
         var coordinator = ReflectionTestHelper.createCoordinator(
                 List.of(note1, rest),
@@ -229,7 +230,7 @@ class ReflectionHandlerTest {
         var rest = NoteType.CROTCHET_REST.newInstance();
 
         var action = new AccidentalAction(Note.Accidental.SHARP, "Sharp", null, 0, "sharp", "Sharp");
-        var uiAction = (UIAction) action;
+        var uiAction = (SelectableUIAction) action;
 
         var coordinator = ReflectionTestHelper.createCoordinator(
                 List.of(note1, rest),
@@ -248,7 +249,7 @@ class ReflectionHandlerTest {
         var rest2 = NoteType.CROTCHET_REST.newInstance();
 
         var action = new AccidentalAction(Note.Accidental.SHARP, "Sharp", null, 0, "sharp", "Sharp");
-        var uiAction = (UIAction) action;
+        var uiAction = (SelectableUIAction) action;
 
         var coordinator = ReflectionTestHelper.createCoordinator(
                 List.of(rest1, rest2),
@@ -270,8 +271,8 @@ class ReflectionHandlerTest {
 
         var action1 = new AccidentalAction(Note.Accidental.SHARP, "Sharp", null, 0, "sharp", "Sharp");
         var action2 = new AccidentalAction(Note.Accidental.FLAT, "Flat", null, 0, "flat", "Flat");
-        var uiAction1 = (UIAction) action1;
-        var uiAction2 = (UIAction) action2;
+        var uiAction1 = (SelectableUIAction) action1;
+        var uiAction2 = (SelectableUIAction) action2;
         uiAction1.setEnabled(false);
         uiAction2.setEnabled(false);
 
@@ -290,29 +291,70 @@ class ReflectionHandlerTest {
     }
 
     @Test
-    void testClearSelectionDoesNotSetEnabled() {
+    void testSaveRestoreRoundTripPreservesBothSelectedAndEnabled() {
+        var note = NoteType.CROTCHET.newInstance();
+        note.setAccidental(Note.Accidental.SHARP);
+
+        var action1 = new AccidentalAction(Note.Accidental.SHARP, "Sharp", null, 0, "sharp", "Sharp");
+        var action2 = new AccidentalAction(Note.Accidental.FLAT, "Flat", null, 0, "flat", "Flat");
+        var uiAction1 = (SelectableUIAction) action1;
+        var uiAction2 = (SelectableUIAction) action2;
+
+        // Set distinct initial states
+        uiAction1.setSelected(true);
+        uiAction1.setEnabled(true);
+        uiAction2.setSelected(false);
+        uiAction2.setEnabled(false);
+
+        var coordinator = ReflectionTestHelper.createCoordinator(
+                List.of(note),
+                List.of(action1, action2)
+        );
+
+        // Select and reflect — saves both selected and enabled for each action
+        ReflectionTestHelper.selectNote(coordinator, 0);
+        coordinator.reflectSelection(null);
+
+        // During selection, states have changed:
+        // action1: selected=true (SHARP matches), action2: selected=false (FLAT doesn't match)
+        // Manually flip enabled states to simulate flag chain changes during selection
+        uiAction1.setEnabled(false);
+        uiAction2.setEnabled(true);
+
+        // Clear and reflect — restores original states
+        ReflectionTestHelper.clearSelection(coordinator);
+        coordinator.reflectSelection(null);
+
+        assertThat(uiAction1.isSelected()).as("action1 selected").isTrue();
+        assertThat(uiAction1.isEnabled()).as("action1 enabled").isTrue();
+        assertThat(uiAction2.isSelected()).as("action2 selected").isFalse();
+        assertThat(uiAction2.isEnabled()).as("action2 enabled").isFalse();
+    }
+
+    @Test
+    void testClearSelectionRestoresEnabledState() {
         var note = NoteType.CROTCHET.newInstance();
         note.setAccidental(Note.Accidental.SHARP);
 
         var action = new AccidentalAction(Note.Accidental.SHARP, "Sharp", null, 0, "sharp", "Sharp");
-        var uiAction = (UIAction) action;
+        var uiAction = (SelectableUIAction) action;
 
         var coordinator = ReflectionTestHelper.createCoordinator(
                 List.of(note),
                 List.of(action)
         );
 
-        // Select and reflect
+        // Select and reflect — saves state (selected=false, enabled=true)
         ReflectionTestHelper.selectNote(coordinator, 0);
         coordinator.reflectSelection(null);
 
-        // Manually disable the action
+        // Manually disable the action during selection
         uiAction.setEnabled(false);
 
-        // Clear and reflect — restore only restores selected, not enabled
+        // Clear and reflect — restores both selected and enabled from saved state
         ReflectionTestHelper.clearSelection(coordinator);
         coordinator.reflectSelection(null);
 
-        assertThat(uiAction.isEnabled()).isFalse();
+        assertThat(uiAction.isEnabled()).isTrue();
     }
 }

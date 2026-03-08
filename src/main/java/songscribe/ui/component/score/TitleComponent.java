@@ -23,6 +23,7 @@ package songscribe.ui.component.score;
 import java.awt.*;
 
 import songscribe.ui.layout.LayoutStylesheet;
+import songscribe.ui.layout2.ScaleContext;
 import songscribe.util.StringUtils;
 
 /**
@@ -41,7 +42,7 @@ public class TitleComponent extends ScoreComponent {
      */
     public TitleComponent() {
         super();
-        setMarginBottom(LayoutStylesheet.toPixels(LayoutStylesheet.TITLE_MARGIN_BOTTOM));
+        setMarginBottom(ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.TITLE_MARGIN_BOTTOM));
     }
 
     @Override

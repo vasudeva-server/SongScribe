@@ -25,12 +25,17 @@ import songscribe.music.Note;
 public class FermataAction extends NoteOnlyAction {
 
     public FermataAction() {
-        super("Fermata", null, 0, "fermata", "Add fermata", true);
+        super("Fermata", null, 0, "fermata", "Add fermata");
         setFlags(Flag.DISABLE_WHEN_EDITING_TEXT);
     }
 
     @Override
     public boolean matchesNote(Note note) {
         return note.isFermata();
+    }
+
+    @Override
+    public void applyToNote(Note note, boolean selected) {
+        note.setFermata(selected);
     }
 }

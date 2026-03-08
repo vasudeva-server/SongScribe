@@ -28,10 +28,12 @@ import javax.swing.*;
 
 import org.jetbrains.annotations.Nullable;
 
+import songscribe.smufl.BBox;
+import songscribe.smufl.EngravingDefaults;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
-import songscribe.smufl.StaffSpaces;
 import songscribe.ui.layout2.LayoutConstants;
+import songscribe.util.FatalError;
 import songscribe.util.UIUtils;
 
 import static songscribe.ui.playback.PlaybackController.PPQ;
@@ -39,121 +41,34 @@ import static songscribe.ui.playback.PlaybackController.PPQ;
 @SuppressWarnings("ALL")
 public enum NoteType {
     // Notes
-    SEMIBREVE(
-        "Whole note", KeyEvent.VK_6, 0,
-        new Rectangle(0, 24, 15, 8), new Rectangle(0, 24, 15, 8),
-        PPQ * 4, 0
-    ),
-    MINIM(
-        "Half note", KeyEvent.VK_5, 0,
-        new Rectangle(0, 0, 11, 32), new Rectangle(0, 24, 11, 32),
-        PPQ * 2, 0
-    ),
-    CROTCHET(
-        "Quarter note", KeyEvent.VK_4, 0,
-        new Rectangle(0, 0, 11, 32), new Rectangle(0, 24, 11, 32),
-        PPQ, 0
-    ),
-    QUAVER(
-        "Eighth note", KeyEvent.VK_3, 0,
-        new Rectangle(0, 0, 18, 32), new Rectangle(0, 24, 11, 32),
-        PPQ / 2, 0
-    ),
-    SEMIQUAVER(
-        "Sixteenth note", KeyEvent.VK_2, 0,
-        new Rectangle(0, 0, 19, 32), new Rectangle(0, 24, 11, 32),
-        PPQ / 4, 0
-    ),
-    DEMI_SEMIQUAVER(
-        "Thirtysecond note", KeyEvent.VK_1, 0,
-        new Rectangle(0, 0, 19, 32), new Rectangle(0, 24, 11, 32),
-        PPQ / 8, 0
-    ),
+    SEMIBREVE("Whole note", KeyEvent.VK_6, 0, PPQ * 4, 0),
+    MINIM("Half note", KeyEvent.VK_5, 0, PPQ * 2, 0),
+    CROTCHET("Quarter note", KeyEvent.VK_4, 0, PPQ, 0),
+    QUAVER("Eighth note", KeyEvent.VK_3, 0, PPQ / 2, 0),
+    SEMIQUAVER("Sixteenth note", KeyEvent.VK_2, 0, PPQ / 4, 0),
+    DEMI_SEMIQUAVER("Thirtysecond note", KeyEvent.VK_1, 0, PPQ / 8, 0),
 
     // Rests
-    SEMIBREVE_REST(
-        "Whole rest", KeyEvent.VK_6, -1,
-        new Rectangle(0, 21, 9, 4), new Rectangle(0, 21, 9, 4),
-        PPQ * 4, -1
-    ),
-    MINIM_REST(
-        "Half rest", KeyEvent.VK_5, -1,
-        new Rectangle(0, 24, 9, 4), new Rectangle(0, 24, 9, 4),
-        PPQ * 2, 0
-    ),
-    CROTCHET_REST(
-        "Quarter rest", KeyEvent.VK_4, -1,
-        new Rectangle(0, 15, 8, 25), new Rectangle(0, 15, 8, 25),
-        PPQ, 0
-    ),
-    QUAVER_REST(
-        "Eighth rest", KeyEvent.VK_3, -1,
-        new Rectangle(0, 22, 9, 15), new Rectangle(0, 22, 9, 15),
-        PPQ / 2, 0
-    ),
-    SEMIQUAVER_REST(
-        "Sixteenth rest", KeyEvent.VK_2, -1,
-        new Rectangle(0, 21, 12, 22), new Rectangle(0, 21, 12, 22),
-        PPQ / 4, 0
-    ),
-    DEMI_SEMIQUAVER_REST(
-        "Thirtysecond rest", KeyEvent.VK_1, -1,
-        new Rectangle(0, 13, 14, 34), new Rectangle(0, 13, 14, 34),
-        PPQ / 8, 0
-    ),
+    SEMIBREVE_REST("Whole rest", KeyEvent.VK_6, -1, PPQ * 4, -1),
+    MINIM_REST("Half rest", KeyEvent.VK_5, -1, PPQ * 2, 0),
+    CROTCHET_REST("Quarter rest", KeyEvent.VK_4, -1, PPQ, 0),
+    QUAVER_REST("Eighth rest", KeyEvent.VK_3, -1, PPQ / 2, 0),
+    SEMIQUAVER_REST("Sixteenth rest", KeyEvent.VK_2, -1, PPQ / 4, 0),
+    DEMI_SEMIQUAVER_REST("Thirtysecond rest", KeyEvent.VK_1, -1, PPQ / 8, 0),
 
     // Grace notes
-    GRACE_QUAVER(
-        "Grace eighth", KeyEvent.VK_G, 0,
-        new Rectangle(2, 11, 13, 20), new Rectangle(0, 24, 9, 20),
-        0, 0
-    ),
-    // Other
-    GLISSANDO(
-        "Glissando", KeyEvent.VK_G, InputEvent.SHIFT_DOWN_MASK,
-        null, null, 0, 0
-    ),
-    REPEAT_LEFT(
-        "Repeat left", KeyEvent.VK_L, 0,
-        new Rectangle(0, 12, 13, 32), new Rectangle(0, 12, 13, 32),
-        0, 0
-    ),
-    REPEAT_RIGHT(
-        "Repeat right", KeyEvent.VK_R, 0,
-        new Rectangle(5, 12, 13, 32), new Rectangle(5, 12, 13, 32),
-        0, 0
-    ),
-    REPEAT_LEFT_RIGHT(
-        "Repeate left/right",
-        new Rectangle(0, 12, 22, 32), new Rectangle(0, 12, 22, 32),
-        0, 0
-    ),
-    BREATH_MARK(
-        "Breath mark",
-        new Rectangle(1, 24, 6, 11), new Rectangle(1, 24, 6, 11),
-        0, -7
-    ),
-    SINGLE_BARLINE(
-        "Single barline",
-        new Rectangle(17, 12, 1, 32), new Rectangle(17, 12, 1, 32),
-        0, 0
-    ),
-    DOUBLE_BARLINE(
-        "Double barline",
-        new Rectangle(12, 12, 6, 32), new Rectangle(12, 12, 6, 32),
-        0, 0
-    ),
-    FINAL_DOUBLE_BARLINE(
-        "Final double barline",
-        new Rectangle(10, 12, 8, 32), new Rectangle(10, 12, 8, 32),
-        0, 0
-    ),
+    GRACE_QUAVER("Grace eighth", KeyEvent.VK_G, 0, 0, 0),
 
-    PASTE(
-        null,
-        new Rectangle(0, 12, 18, 38), new Rectangle(0, 12, 18, 38),
-        0, 0
-    ),
+    // Other
+    GLISSANDO("Glissando", KeyEvent.VK_G, InputEvent.SHIFT_DOWN_MASK, 0, 0),
+    REPEAT_LEFT("Repeat left", KeyEvent.VK_L, 0, 0, 0),
+    REPEAT_RIGHT("Repeat right", KeyEvent.VK_R, 0, 0, 0),
+    REPEAT_LEFT_RIGHT("Repeate left/right", 0, 0),
+    BREATH_MARK("Breath mark", 0, -7),
+    SINGLE_BARLINE("Single barline", 0, 0),
+    DOUBLE_BARLINE("Double barline", 0, 0),
+    FINAL_DOUBLE_BARLINE("Final double barline", 0, 0),
+    PASTE(null, 0, 0),
     // IO aliases
     SEMIBREVEREST(NoteType.SEMIBREVE_REST),
     MINIMREST(NoteType.MINIM_REST),
@@ -193,10 +108,11 @@ public enum NoteType {
     }
 
     /**
-     * Maps each NoteType to its corresponding SMuFL notehead/rest glyph.
+     * Maps each NoteType to its corresponding SMuFL glyph.
      * Used for metadata-driven bounds computation and rendering.
+     * Barline and repeat types are absent — they compute bounds from engraving defaults.
      */
-    private static final Map<NoteType, SMuFLGlyph> SMUFL_NOTEHEADS = Map.ofEntries(
+    private static final Map<NoteType, SMuFLGlyph> SMUFL_GLYPHS = Map.ofEntries(
         Map.entry(SEMIBREVE, SMuFLGlyph.NOTEHEAD_WHOLE),
         Map.entry(MINIM, SMuFLGlyph.NOTEHEAD_HALF),
         Map.entry(CROTCHET, SMuFLGlyph.NOTEHEAD_BLACK),
@@ -209,11 +125,12 @@ public enum NoteType {
         Map.entry(CROTCHET_REST, SMuFLGlyph.REST_QUARTER),
         Map.entry(QUAVER_REST, SMuFLGlyph.REST_8TH),
         Map.entry(SEMIQUAVER_REST, SMuFLGlyph.REST_16TH),
-        Map.entry(DEMI_SEMIQUAVER_REST, SMuFLGlyph.REST_32ND)
+        Map.entry(DEMI_SEMIQUAVER_REST, SMuFLGlyph.REST_32ND),
+        Map.entry(BREATH_MARK, SMuFLGlyph.BREATH_MARK_COMMA)
     );
 
     static {
-        recomputeRectsFromSMuFL();
+        computeElementBoundsSs();
     }
 
     public static int getMenuShortcutKeyMask() {
@@ -225,24 +142,24 @@ public enum NoteType {
     private Note instance;
     private final String name;
     private final KeyStroke acceleratorKey;
-    private final Rectangle realUpNoteRect;
-    private final Rectangle realDownNoteRect;
     private final int defaultDuration;
     private final int defaultStaffPosition;
     private final NoteType aliasOf;
+    private double widthSs;
+    private double noteheadWidthSs;
+    private double heightUpSs;
+    private double heightDownSs;
+    private double topOffsetUpSs;
+    private double topOffsetDownSs;
 
     NoteType(
         String name,
         int keyCode,
         int modifiers,
-        Rectangle realUp,
-        Rectangle realDown,
         int defaultDuration,
         int defaultStaffPosition
     ) {
         this.name = name;
-        this.realUpNoteRect = realUp;
-        this.realDownNoteRect = realDown;
         this.defaultDuration = defaultDuration;
         this.defaultStaffPosition = defaultStaffPosition;
         this.aliasOf = null;
@@ -260,20 +177,16 @@ public enum NoteType {
 
     NoteType(
         String name,
-        Rectangle realUp,
-        Rectangle realDown,
         int defaultDuration,
         int defaultStaffPosition
     ) {
-        this(name, 0, 0, realUp, realDown, defaultDuration, defaultStaffPosition);
+        this(name, 0, 0, defaultDuration, defaultStaffPosition);
     }
 
     NoteType(NoteType aliasOf) {
         this.aliasOf = aliasOf;
         this.name = aliasOf.name;
         this.acceleratorKey = aliasOf.acceleratorKey;
-        this.realUpNoteRect = aliasOf.realUpNoteRect;
-        this.realDownNoteRect = aliasOf.realDownNoteRect;
         this.defaultDuration = aliasOf.defaultDuration;
         this.defaultStaffPosition = aliasOf.defaultStaffPosition;
     }
@@ -310,12 +223,76 @@ public enum NoteType {
         return acceleratorKey;
     }
 
-    public Rectangle getRealUpNoteRect() {
-        return realUpNoteRect;
+    private void requireVisualBounds() {
+        if (this == GLISSANDO || this == PASTE) {
+            throw new UnsupportedOperationException(name() + " has no visual bounds");
+        }
     }
 
-    public Rectangle getRealDownNoteRect() {
-        return realDownNoteRect;
+    /**
+     * Returns the element width in staff spaces. Includes flag extent for stemmed notes.
+     *
+     * @throws UnsupportedOperationException for GLISSANDO and PASTE (no visual bounds)
+     */
+    public double getElementWidthSs() {
+        requireVisualBounds();
+        return widthSs;
+    }
+
+    /**
+     * Returns the element height in staff spaces for the given stem direction.
+     *
+     * @param upper {@code true} for stem-up; {@code false} for stem-down
+     * @throws UnsupportedOperationException for GLISSANDO and PASTE (no visual bounds)
+     */
+    public double getElementHeightSs(boolean upper) {
+        requireVisualBounds();
+        return upper ? heightUpSs : heightDownSs;
+    }
+
+    /**
+     * Returns the horizontal center of the element in staff spaces.
+     *
+     * @throws UnsupportedOperationException for GLISSANDO and PASTE (no visual bounds)
+     */
+    public double getCenterXSs() {
+        return getElementWidthSs() / 2;
+    }
+
+    /**
+     * Returns the notehead width in staff spaces, excluding flag extent.
+     * For non-note types (rests, barlines, etc.), returns the element width.
+     *
+     * @throws UnsupportedOperationException for GLISSANDO and PASTE (no visual bounds)
+     */
+    public double getNoteheadWidthSs() {
+        requireVisualBounds();
+        return noteheadWidthSs;
+    }
+
+    /**
+     * Returns the horizontal center of the notehead in staff spaces.
+     * For non-note types, returns the element center.
+     *
+     * @throws UnsupportedOperationException for GLISSANDO and PASTE (no visual bounds)
+     */
+    public double getNoteheadCenterXSs() {
+        return getNoteheadWidthSs() / 2;
+    }
+
+    /**
+     * Returns the Y offset in staff spaces from the notehead center to the top of the element.
+     * The returned value is negative (the top is above the note center).
+     * <p>
+     * For stem-up notes this is the stem tip; for stem-down the notehead top; for
+     * non-stemmed elements the glyph bbox top or half of the staff height above center.
+     *
+     * @param upper {@code true} for stem-up; {@code false} for stem-down
+     * @throws UnsupportedOperationException for GLISSANDO and PASTE (no visual bounds)
+     */
+    public double getTopYOffsetSs(boolean upper) {
+        requireVisualBounds();
+        return upper ? topOffsetUpSs : topOffsetDownSs;
     }
 
     public int getDefaultDuration() {
@@ -327,12 +304,13 @@ public enum NoteType {
     }
 
     /**
-     * Returns the SMuFL glyph corresponding to this note type's notehead or rest.
-     * Returns null for non-musical elements (barlines, repeats, breath marks, etc.).
+     * Returns the SMuFL glyph corresponding to this note type's primary glyph
+     * (notehead, rest, or breath mark).
+     * Returns null for barlines and repeats (they compute bounds from engraving defaults).
      */
     @Nullable
-    public SMuFLGlyph getSMuFLNoteheadGlyph() {
-        return SMUFL_NOTEHEADS.get(this);
+    public SMuFLGlyph getSMuFLGlyph() {
+        return SMUFL_GLYPHS.get(this);
     }
 
     public boolean isRealNote() {
@@ -378,7 +356,7 @@ public enum NoteType {
     }
 
     public boolean isDuration() {
-        return isNote() || isRest();
+        return isRealNote() || isRest();
     }
 
     public boolean isNonDuration() {
@@ -387,6 +365,36 @@ public enum NoteType {
 
     public boolean isGraceNote() {
         return this == GRACE_QUAVER;
+    }
+
+    /**
+     * Returns the rest equivalent of this type, or {@code this} if no rest counterpart exists.
+     */
+    public NoteType toRest() {
+        return switch (this) {
+            case SEMIBREVE -> SEMIBREVE_REST;
+            case MINIM -> MINIM_REST;
+            case CROTCHET -> CROTCHET_REST;
+            case QUAVER -> QUAVER_REST;
+            case SEMIQUAVER -> SEMIQUAVER_REST;
+            case DEMI_SEMIQUAVER -> DEMI_SEMIQUAVER_REST;
+            default -> this;
+        };
+    }
+
+    /**
+     * Returns the note equivalent of this type, or {@code this} if no note counterpart exists.
+     */
+    public NoteType toNote() {
+        return switch (this) {
+            case SEMIBREVE_REST -> SEMIBREVE;
+            case MINIM_REST -> MINIM;
+            case CROTCHET_REST -> CROTCHET;
+            case QUAVER_REST -> QUAVER;
+            case SEMIQUAVER_REST -> SEMIQUAVER;
+            case DEMI_SEMIQUAVER_REST -> DEMI_SEMIQUAVER;
+            default -> this;
+        };
     }
 
     public boolean drawStaveLongitude() {
@@ -400,167 +408,6 @@ public enum NoteType {
             this == DOUBLE_BARLINE ||
             this == FINAL_DOUBLE_BARLINE
         );
-    }
-
-    // ========================================================================
-    // SMuFL rectangle computation
-    // ========================================================================
-
-    private static void recomputeRectsFromSMuFL() {
-        var metadata = SMuFLMetadata.getInstance();
-        int hotSpotY = Note.HOT_SPOT.y;
-
-        // Regular notes
-        computeNoteRects(metadata, hotSpotY,
-            SEMIBREVE, MINIM, CROTCHET, QUAVER, SEMIQUAVER, DEMI_SEMIQUAVER);
-
-        // Grace notes are composed from noteheadBlackSmall + flag8thUpSmall + stem
-        computeGraceNoteRects(metadata, hotSpotY, GRACE_QUAVER);
-
-        // Rests
-        for (var type : new NoteType[] {
-            SEMIBREVE_REST, MINIM_REST, CROTCHET_REST,
-            QUAVER_REST, SEMIQUAVER_REST, DEMI_SEMIQUAVER_REST
-        }) {
-            var glyph = SMUFL_NOTEHEADS.get(type);
-            var bbox = metadata.getBBox(glyph);
-
-            if (bbox == null) {
-                continue;
-            }
-
-            int y = (int) Math.round(StaffSpaces.toPixels(bbox.top()) + hotSpotY);
-            int w = (int) Math.round(StaffSpaces.toPixels(bbox.width()));
-            int h = (int) Math.round(StaffSpaces.toPixels(bbox.height()));
-            type.realUpNoteRect.setBounds(0, y, w, h);
-            type.realDownNoteRect.setBounds(0, y, w, h);
-        }
-    }
-
-    private static void computeNoteRects(
-        SMuFLMetadata metadata, int hotSpotY, NoteType... types
-    ) {
-        double stemLength = StaffSpaces.toPixels(LayoutConstants.STEM_LENGTH_SS);
-
-        for (var type : types) {
-            var glyph = SMUFL_NOTEHEADS.get(type);
-
-            if (glyph == null) {
-                continue;
-            }
-
-            var bbox = metadata.getBBox(glyph);
-
-            if (bbox == null) {
-                continue;
-            }
-
-            double headTop = StaffSpaces.toPixels(bbox.top());
-            double headBottom = StaffSpaces.toPixels(bbox.bottom());
-            double headRight = StaffSpaces.toPixels(bbox.right());
-
-            var anchors = metadata.getAnchors(glyph);
-
-            if (anchors != null && anchors.stemUpSE() != null) {
-                // Stemmed note
-                double stemUpX = StaffSpaces.toPixels(anchors.stemUpSE().x());
-                double stemUpY = StaffSpaces.toPixels(anchors.stemUpSE().y());
-                double stemDownY = StaffSpaces.toPixels(anchors.stemDownNW().y());
-
-                // Stem-up: stem extends upward from stemUpSE anchor
-                double upTop = stemUpY - stemLength;
-                double upRight = headRight;
-
-                // For beamable notes, extend width to include flag
-                var flagGlyph = getStemUpFlagGlyph(type);
-
-                if (flagGlyph != null) {
-                    var flagBBox = metadata.getBBox(flagGlyph);
-
-                    if (flagBBox != null) {
-                        upRight = Math.max(upRight,
-                            stemUpX + StaffSpaces.toPixels(flagBBox.right()));
-                    }
-                }
-
-                type.realUpNoteRect.setBounds(
-                    0,
-                    (int) Math.round(upTop + hotSpotY),
-                    (int) Math.round(upRight),
-                    (int) Math.round(headBottom - upTop)
-                );
-
-                // Stem-down: stem extends downward from stemDownNW anchor
-                double downBottom = stemDownY + stemLength;
-
-                type.realDownNoteRect.setBounds(
-                    0,
-                    (int) Math.round(headTop + hotSpotY),
-                    (int) Math.round(headRight),
-                    (int) Math.round(downBottom - headTop)
-                );
-            } else {
-                // No stem (semibreve)
-                int y = (int) Math.round(headTop + hotSpotY);
-                int w = (int) Math.round(headRight);
-                int h = (int) Math.round(headBottom - headTop);
-                type.realUpNoteRect.setBounds(0, y, w, h);
-                type.realDownNoteRect.setBounds(0, y, w, h);
-            }
-        }
-    }
-
-    /**
-     * Grace notes are composed from regular glyphs (noteheadBlack + flag8thUp) drawn with
-     * a scaled-down Bravura font ({@link LayoutConstants#GRACE_NOTE_SCALE}). The stem is always up.
-     */
-    private static void computeGraceNoteRects(
-        SMuFLMetadata metadata, int hotSpotY, NoteType... types
-    ) {
-        var headBBox = metadata.getBBox(SMuFLGlyph.NOTEHEAD_BLACK);
-
-        if (headBBox == null) {
-            return;
-        }
-
-        double scale = LayoutConstants.GRACE_NOTE_SCALE;
-        double headTop = StaffSpaces.toPixels(headBBox.top() * scale);
-        double headBottom = StaffSpaces.toPixels(headBBox.bottom() * scale);
-        double headRight = StaffSpaces.toPixels(headBBox.right() * scale);
-
-        double stemLength = StaffSpaces.toPixels(LayoutConstants.GRACE_NOTE_STEM_LENGTH_SS);
-        var anchors = metadata.getAnchors(SMuFLGlyph.NOTEHEAD_BLACK);
-
-        if (anchors == null || anchors.stemUpSE() == null) {
-            return;
-        }
-
-        double stemUpX = StaffSpaces.toPixels(anchors.stemUpSE().x() * scale);
-        double stemUpY = StaffSpaces.toPixels(anchors.stemUpSE().y() * scale);
-
-        // Stem-up: stem extends upward from stemUpSE anchor
-        double upTop = stemUpY - stemLength;
-        double upRight = headRight;
-
-        // Extend width to include the flag (scaled)
-        var flagGlyph = SMuFLGlyph.FLAG_8TH_UP;
-        var flagBBox = metadata.getBBox(flagGlyph);
-
-        if (flagBBox != null) {
-            upRight = Math.max(upRight,
-                stemUpX + StaffSpaces.toPixels(flagBBox.right() * scale));
-        }
-
-        for (var type : types) {
-            // Grace notes always stem up, so both rects use the stem-up layout
-            type.realUpNoteRect.setBounds(
-                0,
-                (int) Math.round(upTop + hotSpotY),
-                (int) Math.round(upRight),
-                (int) Math.round(headBottom - upTop)
-            );
-            type.realDownNoteRect.setBounds(type.realUpNoteRect);
-        }
     }
 
     /**
@@ -584,5 +431,205 @@ public enum NoteType {
     @Nullable
     private static SMuFLGlyph getStemUpFlagGlyph(NoteType type) {
         return type.getFlagGlyph(true);
+    }
+
+    // ========================================================================
+    // Element bounds in staff spaces
+    // ========================================================================
+
+    private static void computeElementBoundsSs() {
+        var metadata = SMuFLMetadata.getInstance();
+        var defaults = metadata.getEngravingDefaults();
+
+        computeNoteBoundsSs(metadata,
+            SEMIBREVE, MINIM, CROTCHET, QUAVER, SEMIQUAVER, DEMI_SEMIQUAVER);
+
+        computeGraceNoteBoundsSs(metadata, GRACE_QUAVER);
+
+        computeGlyphBoundsSs(metadata,
+            SEMIBREVE_REST, MINIM_REST, CROTCHET_REST,
+            QUAVER_REST, SEMIQUAVER_REST, DEMI_SEMIQUAVER_REST,
+            BREATH_MARK);
+
+        computeBarlineBoundsSs(defaults);
+        computeRepeatBoundsSs(metadata, defaults);
+
+        // Copy bounds to alias types
+        for (var type : values()) {
+            if (type.aliasOf != null) {
+                type.copyBoundsFrom(type.aliasOf);
+            }
+        }
+
+        validateElementBounds();
+    }
+
+    private static void computeNoteBoundsSs(SMuFLMetadata metadata, NoteType... types) {
+        for (var type : types) {
+            var glyph = SMUFL_GLYPHS.get(type);
+            var bbox = requireBBox(metadata, glyph, type);
+            var anchors = metadata.getAnchors(glyph);
+
+            if (anchors != null && anchors.stemUpSE() != null) {
+                // Stemmed note
+                double headTop = bbox.top();
+                double headBottom = bbox.bottom();
+                double headRight = bbox.right();
+                double stemUpX = anchors.stemUpSE().x();
+                double stemUpY = anchors.stemUpSE().y();
+                double stemDownY = anchors.stemDownNW().y();
+
+                // Width: max of notehead and stem-up flag extent
+                double width = headRight;
+                var flagGlyph = getStemUpFlagGlyph(type);
+
+                if (flagGlyph != null) {
+                    var flagBBox = metadata.getBBox(flagGlyph);
+
+                    if (flagBBox != null) {
+                        width = Math.max(width, stemUpX + flagBBox.right());
+                    }
+                }
+
+                type.widthSs = width;
+                type.noteheadWidthSs = headRight;
+
+                // Height up: from top of stem to bottom of notehead
+                double upTop = stemUpY - LayoutConstants.STEM_LENGTH_SS;
+                type.heightUpSs = headBottom - upTop;
+                type.topOffsetUpSs = upTop;    // stem tip above center (negative)
+
+                // Height down: from top of notehead to bottom of stem
+                double downBottom = stemDownY + LayoutConstants.STEM_LENGTH_SS;
+                type.heightDownSs = downBottom - headTop;
+                type.topOffsetDownSs = headTop; // notehead top above center (negative)
+            } else {
+                // No stem (semibreve)
+                type.widthSs = bbox.right();
+                type.noteheadWidthSs = bbox.right();
+                type.heightUpSs = bbox.height();
+                type.heightDownSs = bbox.height();
+                type.topOffsetUpSs = bbox.top();
+                type.topOffsetDownSs = bbox.top();
+            }
+        }
+    }
+
+    private static void computeGraceNoteBoundsSs(SMuFLMetadata metadata, NoteType type) {
+        var headBBox = requireBBox(metadata, SMuFLGlyph.NOTEHEAD_BLACK, type);
+        double scale = LayoutConstants.GRACE_NOTE_SCALE;
+
+        double headBottom = headBBox.bottom() * scale;
+        double headRight = headBBox.right() * scale;
+
+        var anchors = metadata.getAnchors(SMuFLGlyph.NOTEHEAD_BLACK);
+
+        if (anchors == null || anchors.stemUpSE() == null) {
+            FatalError.exit("Missing stem anchors for NOTEHEAD_BLACK (needed for grace notes)");
+        }
+
+        double stemUpX = anchors.stemUpSE().x() * scale;
+        double stemUpY = anchors.stemUpSE().y() * scale;
+
+        double upTop = stemUpY - LayoutConstants.GRACE_NOTE_STEM_LENGTH_SS;
+        double width = headRight;
+
+        var flagBBox = metadata.getBBox(SMuFLGlyph.FLAG_8TH_UP);
+
+        if (flagBBox != null) {
+            width = Math.max(width, stemUpX + flagBBox.right() * scale);
+        }
+
+        double height = headBottom - upTop;
+
+        type.setSymmetricBounds(width, height, upTop);
+        type.noteheadWidthSs = headRight;
+    }
+
+    /**
+     * Sets symmetric bounds where up/down values are identical and
+     * noteheadWidth equals element width.
+     */
+    private void setSymmetricBounds(
+        double width, double height, double topOffset
+    ) {
+        this.widthSs = width;
+        this.noteheadWidthSs = width;
+        this.heightUpSs = height;
+        this.heightDownSs = height;
+        this.topOffsetUpSs = topOffset;
+        this.topOffsetDownSs = topOffset;
+    }
+
+    private void copyBoundsFrom(NoteType source) {
+        this.widthSs = source.widthSs;
+        this.noteheadWidthSs = source.noteheadWidthSs;
+        this.heightUpSs = source.heightUpSs;
+        this.heightDownSs = source.heightDownSs;
+        this.topOffsetUpSs = source.topOffsetUpSs;
+        this.topOffsetDownSs = source.topOffsetDownSs;
+    }
+
+    private static void computeGlyphBoundsSs(SMuFLMetadata metadata, NoteType... types) {
+        for (var type : types) {
+            var glyph = SMUFL_GLYPHS.get(type);
+            var bbox = requireBBox(metadata, glyph, type);
+            type.setSymmetricBounds(bbox.width(), bbox.height(), bbox.top());
+        }
+    }
+
+    private static void computeBarlineBoundsSs(EngravingDefaults defaults) {
+        double thin = defaults.thinBarlineThickness();
+        double thick = defaults.thickBarlineThickness();
+        double sep = defaults.barlineSeparation();
+        double staffHeight = LayoutConstants.STAFF_HEIGHT_SS;
+        double topOffset = -staffHeight / 2;
+
+        SINGLE_BARLINE.setSymmetricBounds(thin, staffHeight, topOffset);
+        DOUBLE_BARLINE.setSymmetricBounds(2 * thin + sep, staffHeight, topOffset);
+        FINAL_DOUBLE_BARLINE.setSymmetricBounds(thin + thick + sep, staffHeight, topOffset);
+    }
+
+    private static void computeRepeatBoundsSs(
+        SMuFLMetadata metadata, EngravingDefaults defaults
+    ) {
+        double thin = defaults.thinBarlineThickness();
+        double thick = defaults.thickBarlineThickness();
+        double sep = defaults.barlineSeparation();
+        double dotSep = defaults.repeatBarlineDotSeparation();
+        var dotBBox = requireBBox(metadata, SMuFLGlyph.REPEAT_DOT, REPEAT_LEFT);
+        double dotWidth = dotBBox.width();
+        double staffHeight = LayoutConstants.STAFF_HEIGHT_SS;
+        double topOffset = -staffHeight / 2;
+
+        double singleRepeatWidth = thin + thick + sep + dotSep + dotWidth;
+
+        REPEAT_LEFT.setSymmetricBounds(singleRepeatWidth, staffHeight, topOffset);
+        REPEAT_RIGHT.setSymmetricBounds(singleRepeatWidth, staffHeight, topOffset);
+        REPEAT_LEFT_RIGHT.setSymmetricBounds(2 * singleRepeatWidth, staffHeight, topOffset);
+    }
+
+    private static BBox requireBBox(SMuFLMetadata metadata, SMuFLGlyph glyph, NoteType context) {
+        var bbox = metadata.getBBox(glyph);
+
+        FatalError.exitIfNull(bbox,
+            "Missing SMuFL bounding box for " + glyph + " (needed by " + context + ")");
+
+        return bbox;
+    }
+
+    private static void validateElementBounds() {
+        for (var type : values()) {
+            if (type == GLISSANDO || type == PASTE || type.aliasOf != null) {
+                continue;
+            }
+
+            if (type.widthSs <= 0 || type.heightUpSs <= 0 || type.heightDownSs <= 0) {
+                FatalError.exit("Invalid element bounds for " + type +
+                    ": widthSs=" + type.widthSs +
+                    ", heightUpSs=" + type.heightUpSs +
+                    ", heightDownSs=" + type.heightDownSs);
+            }
+        }
     }
 }

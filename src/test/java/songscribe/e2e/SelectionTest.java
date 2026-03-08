@@ -40,7 +40,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * Milestone 1 E2E tests: click-to-select, shift-click range, deselect.
  */
 @Order(2)
-class SelectionTest extends BaseSwingTest {
+class SelectionTest extends E2ETest {
 
     @Test @Order(1)
     void testClickToSelectNote() {

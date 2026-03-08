@@ -29,7 +29,7 @@ import javax.swing.*;
  * by a keysroke. Subclasses should call super.doActionPerformed() in their
  * actionPerformed() method, and only process the action if it returns true.
  */
-public class StickyUIAction extends UIAction {
+public class StickyUIAction extends SelectableUIAction {
 
     protected StickyUIAction(
         String name,
@@ -46,7 +46,6 @@ public class StickyUIAction extends UIAction {
             size,
             actionCommand,
             tooltip,
-            true,
             virtualKey,
             modifiers
         );
@@ -62,7 +61,7 @@ public class StickyUIAction extends UIAction {
             return false;
         }
 
-        super.actionPerformed(e);
+        toggleOnKeyboardShortcut(e);
         return true;
     }
 }

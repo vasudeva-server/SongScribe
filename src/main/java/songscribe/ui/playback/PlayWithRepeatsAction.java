@@ -21,10 +21,10 @@ package songscribe.ui.playback;
 
 import java.awt.event.*;
 
-import songscribe.ui.action.UIAction;
+import songscribe.ui.action.SelectableUIAction;
 import songscribe.ui.message.MessageCenter;
 
-public class PlayWithRepeatsAction extends UIAction {
+public class PlayWithRepeatsAction extends SelectableUIAction {
 
     public PlayWithRepeatsAction() {
         super(
@@ -32,10 +32,7 @@ public class PlayWithRepeatsAction extends UIAction {
             "@\uF345",
             20,
             "play-with-repeats",
-            "Play with repeats",
-            true,
-            0,
-            0
+            "Play with repeats"
         );
         setFlags(
             Flag.DISABLE_WHEN_PLAYING,

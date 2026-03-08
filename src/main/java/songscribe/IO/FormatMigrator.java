@@ -29,6 +29,7 @@ import songscribe.data.IntervalSet;
 import songscribe.music.Composition;
 import songscribe.music.Line;
 import songscribe.music.Note;
+import songscribe.ui.layout.LayoutStylesheet;
 import songscribe.ui.layout2.ScaleContext;
 import songscribe.ui.layout.AnnotationAttachment;
 import songscribe.ui.layout.BeatChangeAttachment;
@@ -236,8 +237,8 @@ public final class FormatMigrator {
         int beatChangeOffset = line.getBeatChangeYPosPx();
 
         // BeatChange has a default offset, only migrate if different
-        if (beatChangeOffset != songscribe.ui.layout.LayoutStylesheet.toPixels(songscribe.ui.layout.LayoutStylesheet.BEAT_CHANGE_DEFAULT_Y)) {
-            int delta = beatChangeOffset - songscribe.ui.layout.LayoutStylesheet.toPixels(songscribe.ui.layout.LayoutStylesheet.BEAT_CHANGE_DEFAULT_Y);
+        if (beatChangeOffset != ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.BEAT_CHANGE_DEFAULT_Y)) {
+            int delta = beatChangeOffset - ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.BEAT_CHANGE_DEFAULT_Y);
 
             for (var i = 0; i < line.noteCount(); i++) {
                 var note = line.getNote(i);
@@ -255,8 +256,8 @@ public final class FormatMigrator {
         // Migrate first/second ending offset to per-instance
         int endingOffset = line.getFirstSecondEndingYPosPx();
 
-        if (endingOffset != songscribe.ui.layout.LayoutStylesheet.toPixels(songscribe.ui.layout.LayoutStylesheet.ENDING_DEFAULT_Y)) {
-            int delta = endingOffset - songscribe.ui.layout.LayoutStylesheet.toPixels(songscribe.ui.layout.LayoutStylesheet.ENDING_DEFAULT_Y);
+        if (endingOffset != ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.ENDING_DEFAULT_Y)) {
+            int delta = endingOffset - ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.ENDING_DEFAULT_Y);
 
             for (var element : line.getRangeElements()) {
                 if (element instanceof Ending ending) {
@@ -268,8 +269,8 @@ public final class FormatMigrator {
         // Migrate trill offset to per-instance
         int trillOffset = line.getTrillYPosPx();
 
-        if (trillOffset != songscribe.ui.layout.LayoutStylesheet.toPixels(songscribe.ui.layout.LayoutStylesheet.TRILL_DEFAULT_Y)) {
-            int delta = trillOffset - songscribe.ui.layout.LayoutStylesheet.toPixels(songscribe.ui.layout.LayoutStylesheet.TRILL_DEFAULT_Y);
+        if (trillOffset != ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.TRILL_DEFAULT_Y)) {
+            int delta = trillOffset - ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.TRILL_DEFAULT_Y);
 
             for (var element : line.getRangeElements()) {
                 if (element instanceof Trill trill) {

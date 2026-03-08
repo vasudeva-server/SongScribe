@@ -24,7 +24,7 @@ import org.jetbrains.annotations.Nullable;
 
 import songscribe.music.Note;
 
-public class DotAction extends InsertionNoteAction implements UIAction.Reflectable {
+public class DotAction extends InsertionNoteAction implements UIAction.NoteModifiable {
 
     private final DotLevel dotLevel;
 
@@ -44,7 +44,6 @@ public class DotAction extends InsertionNoteAction implements UIAction.Reflectab
             size,
             actionCommand,
             tooltip,
-            true,
             virtualKey,
             modifiers
         );
@@ -73,6 +72,11 @@ public class DotAction extends InsertionNoteAction implements UIAction.Reflectab
             case SINGLE -> note.getDotCount() == 1;
             case DOUBLE -> note.getDotCount() == 2;
         };
+    }
+
+    @Override
+    public void applyToNote(Note note, boolean selected) {
+        note.setDotCount(selected ? dotLevel.ordinal() + 1 : 0);
     }
 
     public enum DotLevel {

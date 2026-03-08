@@ -36,6 +36,7 @@ import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
 import songscribe.smufl.StaffSpaces;
 import songscribe.ui.layout.LayoutStylesheet;
+import songscribe.ui.layout2.ScaleContext;
 import songscribe.ui.layout.Tuplet;
 import songscribe.ui.layout2.LayoutConstants;
 import songscribe.ui.layout2.LayoutResult;
@@ -231,7 +232,7 @@ public class TupletRenderer extends BaseElementRenderer<Tuplet> {
             && line.getBeamings().findInterval(endIndex) != null;
 
         // Top staff line: 4 positions above middle line
-        double staffTopY = middleLineYSs - LayoutStylesheet.toPixelsDouble(4 * LayoutStylesheet.NOTE_Y_OFFSET);
+        double staffTopY = middleLineYSs - ScaleContext.getInstance().toPixels(4 * LayoutStylesheet.NOTE_Y_OFFSET);
 
         // Find the highest extent across ALL notes in the tuplet group
         double highestRefY = staffTopY;
@@ -246,16 +247,16 @@ public class TupletRenderer extends BaseElementRenderer<Tuplet> {
             if (isUpper) {
                 // Stems up: clear stem tops (which extend to beam for beamed notes)
                 if (stemLayout != null) {
-                    refY = middleLineYSs + LayoutStylesheet.toPixelsDouble(stemLayout.topYSs());
+                    refY = middleLineYSs + ScaleContext.getInstance().toPixels(stemLayout.topYSs());
                 } else {
-                    refY = middleLineYSs + LayoutStylesheet.toPixelsDouble(noteYSs - MIN_STEM_SS);
+                    refY = middleLineYSs + ScaleContext.getInstance().toPixels(noteYSs - MIN_STEM_SS);
                 }
             } else {
                 // Stems down: clear stem bottoms
                 if (stemLayout != null) {
-                    refY = middleLineYSs + LayoutStylesheet.toPixelsDouble(stemLayout.bottomYSs());
+                    refY = middleLineYSs + ScaleContext.getInstance().toPixels(stemLayout.bottomYSs());
                 } else {
-                    refY = middleLineYSs + LayoutStylesheet.toPixelsDouble(noteYSs + MIN_STEM_SS);
+                    refY = middleLineYSs + ScaleContext.getInstance().toPixels(noteYSs + MIN_STEM_SS);
                 }
             }
 

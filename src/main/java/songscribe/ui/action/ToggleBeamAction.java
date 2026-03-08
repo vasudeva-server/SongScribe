@@ -39,12 +39,12 @@ public class ToggleBeamAction extends UIAction {
             28,
             "toggle-beam",
             "Beam/unbeam selected notes",
-            false,
             KeyEvent.VK_B,
             0
         );
         setFlags(
             Flag.REQUIRES_MULTIPLE_SELECTION,
+            Flag.DISABLE_WHEN_BAR_SELECTED,
             Flag.DISABLE_WHEN_PLAYING,
             Flag.DISABLE_WHEN_EDITING_TEXT,
             Flag.DISABLE_IN_ADJUSTMENT_MODE

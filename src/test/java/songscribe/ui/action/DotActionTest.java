@@ -20,13 +20,14 @@
 
 package songscribe.ui.action;
 
+import songscribe.UnitTest;
 import songscribe.music.NoteType;
 
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-class DotActionTest {
+class DotActionTest extends UnitTest {
     private final DotAction singleDotAction =
         new DotAction(DotAction.DotLevel.SINGLE, "Dot", null, 0, "dot", "Add dot", 0, 0);
     private final DotAction doubleDotAction =
@@ -76,5 +77,27 @@ class DotActionTest {
         var note = NoteType.CROTCHET.newInstance();
         note.setDotCount(1);
         assertThat(doubleDotAction.matchesNote(note)).isFalse();
+    }
+
+    @Test
+    void testApplyToNoteSingleDotApplies() {
+        var note = NoteType.CROTCHET.newInstance();
+        singleDotAction.applyToNote(note, true);
+        assertThat(note.getDotCount()).isEqualTo(1);
+    }
+
+    @Test
+    void testApplyToNoteDoubleDotApplies() {
+        var note = NoteType.CROTCHET.newInstance();
+        doubleDotAction.applyToNote(note, true);
+        assertThat(note.getDotCount()).isEqualTo(2);
+    }
+
+    @Test
+    void testApplyToNoteRemovesDot() {
+        var note = NoteType.CROTCHET.newInstance();
+        note.setDotCount(1);
+        singleDotAction.applyToNote(note, false);
+        assertThat(note.getDotCount()).isEqualTo(0);
     }
 }

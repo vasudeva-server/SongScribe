@@ -36,6 +36,7 @@ import songscribe.smufl.StaffSpaces;
 import songscribe.ui.layout.Crescendo;
 import songscribe.ui.layout.Diminuendo;
 import songscribe.ui.layout.LayoutStylesheet;
+import songscribe.ui.layout2.ScaleContext;
 import songscribe.ui.layout.LineElement;
 
 /**
@@ -148,7 +149,7 @@ public class DynamicsRenderer extends BaseElementRenderer<LineElement> {
 
         // Calculate shift from default position
         double middleLineYSs = ctx.getMiddleLineYSs();
-        double defaultY = middleLineYSs - LayoutStylesheet.toPixels(6 * LayoutStylesheet.NOTE_Y_OFFSET);
+        double defaultY = middleLineYSs - ScaleContext.getInstance().toRoundedPixels(6 * LayoutStylesheet.NOTE_Y_OFFSET);
         return (int) (bounds.getTop() - defaultY);
     }
 
@@ -181,9 +182,9 @@ public class DynamicsRenderer extends BaseElementRenderer<LineElement> {
 
         // Y positions above the staff: center 1 staff space above top staff line
         // (top staff line = middleLineYSs - 4*NOTE_Y_OFFSET; 1 space = 2*NOTE_Y_OFFSET)
-        int yTop = (int) (middleLineYSs - LayoutStylesheet.toPixelsDouble(7 * LayoutStylesheet.NOTE_Y_OFFSET) + yShift);
-        int yBottom = (int) (middleLineYSs - LayoutStylesheet.toPixelsDouble(5 * LayoutStylesheet.NOTE_Y_OFFSET) + yShift);
-        int yMiddle = (int) (middleLineYSs - LayoutStylesheet.toPixelsDouble(6 * LayoutStylesheet.NOTE_Y_OFFSET) + yShift);
+        int yTop = (int) (middleLineYSs - ScaleContext.getInstance().toPixels(7 * LayoutStylesheet.NOTE_Y_OFFSET) + yShift);
+        int yBottom = (int) (middleLineYSs - ScaleContext.getInstance().toPixels(5 * LayoutStylesheet.NOTE_Y_OFFSET) + yShift);
+        int yMiddle = (int) (middleLineYSs - ScaleContext.getInstance().toPixels(6 * LayoutStylesheet.NOTE_Y_OFFSET) + yShift);
 
         try (var ignored = GraphicsState.save(g2, COLOR, STROKE)) {
             g2.setColor(NOTE_COLOR);

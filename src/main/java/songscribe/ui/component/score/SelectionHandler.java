@@ -309,8 +309,8 @@ class SelectionHandler {
         );
     }
 
-    private void buildNoteHitRect(@NotNull Note note, int noteIndex, @NotNull Rectangle out) {
-        NoteHitTest.buildNoteHitRect(lc, note, noteIndex, out);
+    private void buildNoteHitRect(@NotNull Note note, @NotNull Rectangle out) {
+        NoteHitTest.buildNoteHitRect(lc, note, out);
     }
 
     private void calculateLineSelectionFromDrag(@NotNull Rectangle dragRect) {
@@ -325,7 +325,7 @@ class SelectionHandler {
 
         for (var noteIndex = 0; noteIndex < line.noteCount(); noteIndex++) {
             var note = line.getNote(noteIndex);
-            buildNoteHitRect(note, noteIndex, helper);
+            buildNoteHitRect(note, helper);
 
             if (dragRect.intersects(helper)) {
                 lineSelectionState.extendSelection(noteIndex);

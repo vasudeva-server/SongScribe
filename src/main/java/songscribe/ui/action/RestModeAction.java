@@ -25,7 +25,7 @@ import java.awt.event.*;
 import songscribe.ui.message.MessageCenter;
 import songscribe.ui.message.RestModeChangedMessage;
 
-public class RestModeAction extends UIAction {
+public class RestModeAction extends SelectableUIAction {
 
     public RestModeAction() {
         super(
@@ -34,7 +34,6 @@ public class RestModeAction extends UIAction {
             22,
             "rest-mode",
             "Insert rest of selected duration",
-            true,
             KeyEvent.VK_R,
             0
         );
@@ -49,7 +48,7 @@ public class RestModeAction extends UIAction {
 
     @Override
     public void actionPerformed(ActionEvent e) {
-        super.actionPerformed(e);
+        toggleOnKeyboardShortcut(e);
         MessageCenter.post(new RestModeChangedMessage());
     }
 }

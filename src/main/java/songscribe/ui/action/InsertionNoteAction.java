@@ -30,7 +30,7 @@ import songscribe.ui.message.UpdateInsertionNoteMessage;
 /**
  * This class is the superclass for all actions that change the insertion note.
  */
-public class InsertionNoteAction extends UIAction {
+public class InsertionNoteAction extends SelectableUIAction {
 
     public InsertionNoteAction(String name, String actionCommand) {
         super(name, actionCommand);
@@ -61,18 +61,6 @@ public class InsertionNoteAction extends UIAction {
         int size,
         String actionCommand,
         String tooltip,
-        boolean isToggle
-    ) {
-        super(name, icon, size, actionCommand, tooltip, isToggle);
-    }
-
-    public InsertionNoteAction(
-        @Nullable String name,
-        @Nullable String icon,
-        int size,
-        String actionCommand,
-        String tooltip,
-        boolean isToggle,
         int virtualKey,
         int modifiers
     ) {
@@ -82,7 +70,6 @@ public class InsertionNoteAction extends UIAction {
             size,
             actionCommand,
             tooltip,
-            isToggle,
             virtualKey,
             modifiers
         );
@@ -90,7 +77,12 @@ public class InsertionNoteAction extends UIAction {
 
     @Override
     public void actionPerformed(ActionEvent e) {
-        super.actionPerformed(e);
+        toggleOnKeyboardShortcut(e);
+
+        if (applyToSelectionIfActive()) {
+            return;
+        }
+
         MessageCenter.post(new UpdateInsertionNoteMessage());
     }
 }

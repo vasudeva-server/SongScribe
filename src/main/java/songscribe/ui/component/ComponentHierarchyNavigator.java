@@ -29,6 +29,7 @@ import songscribe.music.Composition;
 import songscribe.ui.component.score.LineComponent;
 import songscribe.ui.component.score.MainPanel;
 import songscribe.ui.layout.LayoutStylesheet;
+import songscribe.ui.layout2.ScaleContext;
 
 interface ComponentHierarchyProvider {
 
@@ -199,7 +200,7 @@ public final class ComponentHierarchyNavigator {
         } else {
             var linePanel = linePanels.get(0);
             rowHeight = linePanel.getLineComponent().getHeight()
-                + LayoutStylesheet.toPixels(LayoutStylesheet.LINE_MARGIN_BOTTOM);
+                + ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.LINE_MARGIN_BOTTOM);
         }
 
         layoutUpdater.accept(new int[]{middleLineY, rowHeight});

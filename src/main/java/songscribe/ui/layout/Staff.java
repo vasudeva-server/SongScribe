@@ -20,6 +20,8 @@
 
 package songscribe.ui.layout;
 
+import songscribe.ui.layout2.ScaleContext;
+
 /**
  * Represents the 5 horizontal staff lines within a Line.
  * <p>
@@ -64,14 +66,14 @@ public class Staff extends LineElement {
 
     @Override
     public double getContentHeight() {
-        return LayoutStylesheet.toPixelsDouble(LayoutStylesheet.STAFF_HEIGHT);
+        return ScaleContext.getInstance().toPixels(LayoutStylesheet.STAFF_HEIGHT);
     }
 
     /**
      * Returns the Y offset between staff lines.
      */
     public int getLineSpacing() {
-        return LayoutStylesheet.toPixels(1.0);
+        return ScaleContext.getInstance().toRoundedPixels(1.0);
     }
 
     /**
@@ -92,14 +94,14 @@ public class Staff extends LineElement {
      * Returns the Y coordinate of the bottom staff line relative to staff position.
      */
     public double getBottomLineY() {
-        return LayoutStylesheet.toPixelsDouble((LayoutStylesheet.STAFF_LINE_COUNT - 1) * 1.0);
+        return ScaleContext.getInstance().toPixels((LayoutStylesheet.STAFF_LINE_COUNT - 1) * 1.0);
     }
 
     /**
      * Returns the Y coordinate of the middle staff line (B line) relative to staff position.
      */
     public double getMiddleLineY() {
-        return LayoutStylesheet.toPixelsDouble(2.0);
+        return ScaleContext.getInstance().toPixels(2.0);
     }
 
     /**
@@ -113,6 +115,6 @@ public class Staff extends LineElement {
             throw new IndexOutOfBoundsException("Staff line index must be 0-4, got: " + lineIndex);
         }
 
-        return LayoutStylesheet.toPixelsDouble(lineIndex);
+        return ScaleContext.getInstance().toPixels(lineIndex);
     }
 }

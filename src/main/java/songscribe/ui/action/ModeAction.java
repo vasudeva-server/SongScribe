@@ -26,7 +26,7 @@ import songscribe.ui.Mode;
 import songscribe.ui.message.MessageCenter;
 import songscribe.ui.message.ModeChangedMessage;
 
-public class ModeAction extends UIAction {
+public class ModeAction extends SelectableUIAction {
 
     private final Mode mode;
 
@@ -57,7 +57,6 @@ public class ModeAction extends UIAction {
             size,
             actionCommand,
             tooltip,
-            true,
             virtualKey,
             modifiers
         );
@@ -71,7 +70,7 @@ public class ModeAction extends UIAction {
 
     @Override
     public void actionPerformed(ActionEvent e) {
-        super.actionPerformed(e);
+        toggleOnKeyboardShortcut(e);
         MessageCenter.post(new ModeChangedMessage(this));
     }
 }

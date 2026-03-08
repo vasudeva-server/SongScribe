@@ -25,7 +25,6 @@ import java.awt.*;
 import org.jetbrains.annotations.NotNull;
 
 import songscribe.music.Note;
-import songscribe.music.NoteType;
 import songscribe.ui.layout2.ScaleContext;
 
 /**
@@ -48,7 +47,7 @@ class NoteHitTest {
 
         for (var noteIndex = 0; noteIndex < line.noteCount(); noteIndex++) {
             var note = line.getNote(noteIndex);
-            buildNoteHitRect(lc, note, noteIndex, helper);
+            buildNoteHitRect(lc, note, helper);
 
             if (helper.contains(point)) {
                 return noteIndex;
@@ -64,27 +63,23 @@ class NoteHitTest {
     static void buildNoteHitRect(
         @NotNull LineComponent lc,
         @NotNull Note note,
-        int noteIndex,
         @NotNull Rectangle out
     ) {
-        var line = lc.getLine();
+        var noteType = note.getNoteType();
+        var upper = note.isUpper();
+        var sc = ScaleContext.getInstance();
 
-        if (line.getBeamings().findInterval(noteIndex) != null) {
-            out.setBounds(
-                note.isUpper() ? NoteType.CROTCHET.getRealUpNoteRect() : NoteType.CROTCHET.getRealDownNoteRect()
-            );
-        } else {
-            out.setBounds(
-                note.isUpper() ? note.getRealUpNoteRect() : note.getRealDownNoteRect()
-            );
-        }
+        // Use notehead width (excludes flag extent); apply 4px minimum for narrow elements (AD-10)
+        var widthPx = Math.max((int) Math.round(sc.toPixels(noteType.getNoteheadWidthSs())), 4);
+        var heightPx = (int) Math.round(sc.toPixels(noteType.getElementHeightSs(upper)));
 
         // Get note X from LayoutResult (staff-space) and convert to pixels, so the
         // hit rect is in pixel coordinates consistent with the mouse-event point.
         var layoutResult = lc.getLayoutResult();
         var noteXss = layoutResult != null ? layoutResult.getNoteXSs(note) : 0.0;
-        var noteXpx = (int) Math.round(ScaleContext.getInstance().toPixels(noteXss));
+        var noteXpx = (int) Math.round(sc.toPixels(noteXss));
         var noteY = lc.staffPositionToYPx(note.getStaffPosition());
-        out.translate(noteXpx, noteY - Note.HOT_SPOT.y);
+        var topOffsetPx = (int) Math.round(sc.toPixels(noteType.getTopYOffsetSs(upper)));
+        out.setBounds(noteXpx, noteY + topOffsetPx, widthPx, heightPx);
     }
 }

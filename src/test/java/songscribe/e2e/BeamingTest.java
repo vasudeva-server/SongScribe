@@ -37,7 +37,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * Milestone 2 E2E tests: automatic beaming, manual toggle, stem direction.
  */
 @Order(3)
-class BeamingTest extends BaseSwingTest {
+class BeamingTest extends E2ETest {
 
     @Test @Order(1)
     void testAutoBeamingOnInsertion() {

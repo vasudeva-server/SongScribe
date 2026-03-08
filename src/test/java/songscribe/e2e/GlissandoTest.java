@@ -40,7 +40,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * Milestone 3 E2E tests: glissando insert, select, delete, highlight, persistence.
  */
 @Order(5)
-class GlissandoTest extends BaseSwingTest {
+class GlissandoTest extends E2ETest {
 
     @Test @Order(1)
     void testInsertConnectedGlissando() {

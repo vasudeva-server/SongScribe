@@ -144,14 +144,14 @@ public class VerticalStackingCalculator {
 
         // Calculate lyrics baseline
         var lowestNoteYPx = findLowestNoteBoundingYPx(columns);
-        var lyricsBaselineYPx = lowestNoteYPx + LayoutConstants.toPixels(LayoutConstants.LYRICS_BASELINE_OFFSET_SS);
+        var lyricsBaselineYPx = lowestNoteYPx + ScaleContext.getInstance().toPixels(LayoutConstants.LYRICS_BASELINE_OFFSET_SS);
 
         // Calculate line height
         var hasLyrics = columns.stream().anyMatch(NoteColumn::hasSyllable);
         var lyricsHeightPx = hasLyrics ? 20.0 : 0.0; // TODO: Measure actual lyric height
         var interLineMarginPx = 10.0; // TODO: Get from LayoutConstants
 
-        var lineHeightPx = LayoutConstants.toPixels(LayoutConstants.STAFF_HEIGHT_SS) +
+        var lineHeightPx = ScaleContext.getInstance().toPixels(LayoutConstants.STAFF_HEIGHT_SS) +
             Math.abs(maxHeightAboveStaffPx) +
             lyricsHeightPx +
             interLineMarginPx;
@@ -273,7 +273,7 @@ public class VerticalStackingCalculator {
         var trillWidthPx = 20.0;
 
         var yPx = accumulated.getBounds2D().getMinY() -
-            LayoutConstants.toPixels(LayoutConstants.TRILL_MARGIN_SS) -
+            ScaleContext.getInstance().toPixels(LayoutConstants.TRILL_MARGIN_SS) -
             trillHeightPx;
 
         var trillBounds = new Rectangle2D.Double(
@@ -312,7 +312,7 @@ public class VerticalStackingCalculator {
                 fermata,
                 column.getXSs(),
                 accumulated,
-                LayoutConstants.toPixels(LayoutConstants.FERMATA_MARGIN_SS)
+                ScaleContext.getInstance().toPixels(LayoutConstants.FERMATA_MARGIN_SS)
             );
 
             positionElement(fermata, column.getXSs(), yPx, noteElementPositions);
@@ -331,7 +331,7 @@ public class VerticalStackingCalculator {
             var fermataWidthPx = 16.0;
 
             var yPx = accumulated.getBounds2D().getMinY() -
-                LayoutConstants.toPixels(LayoutConstants.FERMATA_MARGIN_SS) -
+                ScaleContext.getInstance().toPixels(LayoutConstants.FERMATA_MARGIN_SS) -
                 fermataHeightPx;
 
             var fermataBounds = new Rectangle2D.Double(
@@ -391,7 +391,7 @@ public class VerticalStackingCalculator {
             var tempoWidthPx = 60.0;
 
             var yPx = accumulated.getBounds2D().getMinY() -
-                LayoutConstants.toPixels(LayoutConstants.TEMPO_MARGIN_SS) -
+                ScaleContext.getInstance().toPixels(LayoutConstants.TEMPO_MARGIN_SS) -
                 tempoHeightPx;
 
             var tempoBounds = new Rectangle2D.Double(
@@ -414,7 +414,7 @@ public class VerticalStackingCalculator {
             var beatChangeWidthPx = 40.0;
 
             var yPx = accumulated.getBounds2D().getMinY() -
-                LayoutConstants.toPixels(LayoutConstants.TEMPO_MARGIN_SS) -
+                ScaleContext.getInstance().toPixels(LayoutConstants.TEMPO_MARGIN_SS) -
                 beatChangeHeightPx;
 
             var beatChangeBounds = new Rectangle2D.Double(
@@ -458,7 +458,7 @@ public class VerticalStackingCalculator {
             var annotationWidthPx = 40.0; // TODO: Measure actual text width
 
             var yPx = accumulated.getBounds2D().getMinY() -
-                LayoutConstants.toPixels(LayoutConstants.ANNOTATION_MARGIN_SS) -
+                ScaleContext.getInstance().toPixels(LayoutConstants.ANNOTATION_MARGIN_SS) -
                 annotationHeightPx;
 
             var annotationBounds = new Rectangle2D.Double(

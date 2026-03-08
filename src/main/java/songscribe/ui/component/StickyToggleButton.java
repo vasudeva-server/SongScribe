@@ -25,7 +25,7 @@ import java.beans.PropertyChangeEvent;
 
 import javax.swing.*;
 
-import songscribe.ui.action.UIAction;
+import songscribe.ui.action.SelectableUIAction;
 import songscribe.ui.component.toolbar.Toolbar;
 import songscribe.util.UIUtils;
 
@@ -37,9 +37,9 @@ public class StickyToggleButton
     implements ActionListener {
 
     // We have to keep track of the action because we don't want to bind to it
-    private final UIAction action;
+    private final SelectableUIAction action;
 
-    public StickyToggleButton(UIAction action) {
+    public StickyToggleButton(SelectableUIAction action) {
         // We want to manually track changes to the action, but not bind to it
         // so that we can control when the action's actionPerformed method is called.
         this.action = action;

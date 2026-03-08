@@ -43,7 +43,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * to reflect the attributes of the selected notes.
  */
 @Order(7)
-class ToolbarReflectionTest extends BaseSwingTest {
+class ToolbarReflectionTest extends E2ETest {
 
     @Test @Order(1)
     void testSingleNoteSelection() {
@@ -231,7 +231,8 @@ class ToolbarReflectionTest extends BaseSwingTest {
      * including those that only exist in menus.
      */
     private void assertActionSelected(UIAction action, boolean expected) {
-        var isSelected = GuiActionRunner.execute(() -> action.isSelected());
+        var selectable = (UIAction.Selectable) action;
+        var isSelected = GuiActionRunner.execute(() -> selectable.isSelected());
         assertThat(isSelected)
             .as("Action '%s' selected state", action.getActionCommand())
             .isEqualTo(expected);

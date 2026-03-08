@@ -20,14 +20,15 @@
 
 package songscribe.ui.action;
 
-import org.junit.jupiter.api.Test;
-
+import songscribe.UnitTest;
 import songscribe.music.NoteType;
+
+import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static songscribe.ui.action.NoteTypeAction.Kind;
 
-class NoteTypeActionTest {
+class NoteTypeActionTest extends UnitTest {
 
     private final NoteTypeAction durationAction = new NoteTypeAction(
             Kind.DURATION, NoteType.CROTCHET, "Quarter", null, 0, "quarter", "Quarter note", 0, 0
@@ -51,11 +52,18 @@ class NoteTypeActionTest {
         assertThat(durationAction.appliesTo(note)).isTrue();
     }
 
-    // A3: DURATION action applies to barlines
+    // A3: DURATION action does not apply to barlines
     @Test
-    void testDurationAppliesToBarline() {
+    void testDurationDoesNotApplyToBarline() {
         var note = NoteType.SINGLE_BARLINE.newInstance();
-        assertThat(durationAction.appliesTo(note)).isTrue();
+        assertThat(durationAction.appliesTo(note)).isFalse();
+    }
+
+    // A3b: DURATION action does not apply to grace notes
+    @Test
+    void testDurationDoesNotApplyToGraceNote() {
+        var note = NoteType.GRACE_QUAVER.newInstance();
+        assertThat(durationAction.appliesTo(note)).isFalse();
     }
 
     // A4: NON_DURATION action does not apply to notes
@@ -109,5 +117,42 @@ class NoteTypeActionTest {
         assertThat(nonDurationAction.hasFlag(UIAction.Flag.DISABLE_WHEN_PLAYING)).isTrue();
         assertThat(nonDurationAction.hasFlag(UIAction.Flag.DISABLE_IN_ADJUSTMENT_MODE)).isTrue();
         assertThat(nonDurationAction.hasFlag(UIAction.Flag.DISABLE_WHEN_EDITING_TEXT)).isTrue();
+    }
+
+    // CR1: createReplacement returns null when selected == false
+    @Test
+    void testCreateReplacementReturnsNullWhenNotSelected() {
+        var note = NoteType.CROTCHET.newInstance();
+        assertThat(durationAction.createReplacement(note, false)).isNull();
+    }
+
+    // CR2: createReplacement preserves note kind (note stays note)
+    @Test
+    void testCreateReplacementPreservesNoteKind() {
+        var note = NoteType.MINIM.newInstance();
+        var replacement = durationAction.createReplacement(note, true);
+        assertThat(replacement).isNotNull();
+        assertThat(replacement.getNoteType()).isEqualTo(NoteType.CROTCHET);
+    }
+
+    // CR3: createReplacement preserves rest kind (rest stays rest)
+    @Test
+    void testCreateReplacementPreservesRestKind() {
+        var note = NoteType.MINIM_REST.newInstance();
+        var replacement = durationAction.createReplacement(note, true);
+        assertThat(replacement).isNotNull();
+        assertThat(replacement.getNoteType()).isEqualTo(NoteType.CROTCHET_REST);
+    }
+
+    // CR4: createReplacement with grace note (toNote/toRest returns this)
+    @Test
+    void testCreateReplacementWithGraceNote() {
+        var graceAction = new NoteTypeAction(
+            Kind.DURATION, NoteType.GRACE_QUAVER, "Grace", null, 0, "grace", "Grace note", 0, 0
+        );
+        var note = NoteType.CROTCHET.newInstance();
+        var replacement = graceAction.createReplacement(note, true);
+        assertThat(replacement).isNotNull();
+        assertThat(replacement.getNoteType()).isEqualTo(NoteType.GRACE_QUAVER);
     }
 }

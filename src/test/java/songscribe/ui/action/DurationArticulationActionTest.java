@@ -20,6 +20,7 @@
 
 package songscribe.ui.action;
 
+import songscribe.UnitTest;
 import songscribe.music.DurationArticulation;
 import songscribe.music.NoteType;
 
@@ -27,7 +28,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-class DurationArticulationActionTest {
+class DurationArticulationActionTest extends UnitTest {
 
     private final DurationArticulationAction action = new DurationArticulationAction(
         DurationArticulation.STACCATO, "Staccato", null, 0, "staccato", "Add staccato"
@@ -44,5 +45,20 @@ class DurationArticulationActionTest {
     void testDoesNotMatchWhenArticulationNull() {
         var note = NoteType.CROTCHET.newInstance();
         assertThat(action.matchesNote(note)).isFalse();
+    }
+
+    @Test
+    void testApplyToNoteAppliesArticulation() {
+        var note = NoteType.CROTCHET.newInstance();
+        action.applyToNote(note, true);
+        assertThat(note.getDurationArticulation()).isEqualTo(DurationArticulation.STACCATO);
+    }
+
+    @Test
+    void testApplyToNoteRemovesArticulation() {
+        var note = NoteType.CROTCHET.newInstance();
+        note.setDurationArticulation(DurationArticulation.STACCATO);
+        action.applyToNote(note, false);
+        assertThat(note.getDurationArticulation()).isNull();
     }
 }

@@ -24,16 +24,17 @@ import java.awt.geom.Area;
 import java.awt.geom.Ellipse2D;
 import java.awt.geom.Rectangle2D;
 
-import org.junit.jupiter.api.Test;
-
+import songscribe.UnitTest;
 import songscribe.music.Line;
 import songscribe.music.Note;
 import songscribe.music.NoteType;
 
+import org.junit.jupiter.api.Test;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
 
-class GlissandoRendererTest {
+class GlissandoRendererTest extends UnitTest {
 
     /** Step size used as both the search step parameter and assertion tolerance basis. */
     private static final double STEP_SS = 0.1;

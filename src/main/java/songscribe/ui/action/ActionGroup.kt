@@ -79,7 +79,7 @@ open class ActionGroup<T : UIAction>() : PropertyChangeListener {
         // It isn't sufficient to check selected != null, because this may be set *after*
         // an action's actionPerformed() is called, and we need to know within the context
         // of that call. So we check if any of the actions in the group are selected.
-        return actions.any { it.isSelected }
+        return actions.any { (it as? UIAction.Selectable)?.isSelected() == true }
     }
 
     fun setSelected(action: T, value: Boolean) {

@@ -103,11 +103,9 @@ public class BarRenderer extends BaseElementRenderer<Note> {
             return;
         }
 
-        double x = computeGlyphXSs(g2, glyph, noteType);
-
         try (var ignored = GraphicsState.save(g2, FONT)) {
             g2.setFont(BRAVURA_FONT);
-            g2.drawString(glyph.asString(), (float) x, (float) BOTTOM_STAFF_LINE_Y_SS);
+            g2.drawString(glyph.asString(), 0f, (float) BOTTOM_STAFF_LINE_Y_SS);
         }
     }
 
@@ -152,26 +150,4 @@ public class BarRenderer extends BaseElementRenderer<Note> {
         };
     }
 
-    /**
-     * Computes the X offset for drawing a barline or repeat glyph
-     * relative to the bar element's layout position.
-     * Barlines are drawn at the origin (layout positions them correctly).
-     * Repeats are centered using the glyph advance width.
-     */
-    private static double computeGlyphXSs(
-        @NotNull Graphics2D g2,
-        @NotNull SMuFLGlyph glyph,
-        @NotNull NoteType noteType
-    ) {
-        if (noteType.isBarLine()) {
-            return 0;
-        }
-
-        // Center repeat glyphs around the layout position
-        var advanceSS = SMuFLMetadata.getInstance().getAdvanceWidth(glyph);
-        double advance = (advanceSS != null) ? advanceSS : 0;
-        double x = -advance / 2.0;
-
-        return GraphicUtils.snapXToDevicePixel(g2, x);
-    }
 }

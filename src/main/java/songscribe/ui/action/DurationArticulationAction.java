@@ -35,7 +35,7 @@ public class DurationArticulationAction extends NoteOnlyAction {
         String actionCommand,
         String tooltip
     ) {
-        super(name, icon, size, actionCommand, tooltip, true);
+        super(name, icon, size, actionCommand, tooltip);
         this.articulation = articulation;
     }
 
@@ -46,5 +46,10 @@ public class DurationArticulationAction extends NoteOnlyAction {
     @Override
     public boolean matchesNote(Note note) {
         return note.getDurationArticulation() == articulation;
+    }
+
+    @Override
+    public void applyToNote(Note note, boolean selected) {
+        note.setDurationArticulation(selected ? articulation : null);
     }
 }

@@ -22,6 +22,8 @@ package songscribe.ui.layout;
 
 import org.jetbrains.annotations.NotNull;
 
+import songscribe.ui.layout2.ScaleContext;
+
 /**
  * Represents attribution text (composer/arranger) displayed on the staff.
  * <p>
@@ -53,10 +55,10 @@ public class Attribution extends LineElement {
     public Attribution(@NotNull String text) {
         this.text = text;
         setMargin(
-            LayoutStylesheet.toPixels(LayoutStylesheet.ATTRIBUTION_PADDING),
-            LayoutStylesheet.toPixels(LayoutStylesheet.ATTRIBUTION_PADDING),
-            LayoutStylesheet.toPixels(LayoutStylesheet.ATTRIBUTION_MARGIN_BOTTOM),
-            LayoutStylesheet.toPixels(LayoutStylesheet.ATTRIBUTION_PADDING)
+            ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.ATTRIBUTION_PADDING),
+            ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.ATTRIBUTION_PADDING),
+            ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.ATTRIBUTION_MARGIN_BOTTOM),
+            ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.ATTRIBUTION_PADDING)
         );
     }
 

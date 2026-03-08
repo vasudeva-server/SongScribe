@@ -20,6 +20,7 @@
 
 package songscribe.ui.action;
 
+import songscribe.UnitTest;
 import songscribe.music.ForceArticulation;
 import songscribe.music.NoteType;
 
@@ -27,7 +28,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-class ForceArticulationActionTest {
+class ForceArticulationActionTest extends UnitTest {
 
     private final ForceArticulationAction action =
             new ForceArticulationAction(
@@ -47,5 +48,20 @@ class ForceArticulationActionTest {
         var note = NoteType.CROTCHET.newInstance();
 
         assertThat(action.matchesNote(note)).isFalse();
+    }
+
+    @Test
+    void testApplyToNoteAppliesArticulation() {
+        var note = NoteType.CROTCHET.newInstance();
+        action.applyToNote(note, true);
+        assertThat(note.getForceArticulation()).isEqualTo(ForceArticulation.ACCENT);
+    }
+
+    @Test
+    void testApplyToNoteRemovesArticulation() {
+        var note = NoteType.CROTCHET.newInstance();
+        note.setForceArticulation(ForceArticulation.ACCENT);
+        action.applyToNote(note, false);
+        assertThat(note.getForceArticulation()).isNull();
     }
 }

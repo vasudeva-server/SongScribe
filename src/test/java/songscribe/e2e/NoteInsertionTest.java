@@ -33,7 +33,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * Milestone 1 E2E tests: note insertion, replacement, and pitch drag.
  */
 @Order(1)
-class NoteInsertionTest extends BaseSwingTest {
+class NoteInsertionTest extends E2ETest {
 
     @Test @Order(1)
     void testInsertQuarterNote() {

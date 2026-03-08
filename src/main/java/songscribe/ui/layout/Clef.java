@@ -20,6 +20,8 @@
 
 package songscribe.ui.layout;
 
+import songscribe.ui.layout2.ScaleContext;
+
 /**
  * Represents the treble clef at the start of a staff line.
  * <p>
@@ -47,7 +49,7 @@ public class Clef extends LineElement {
      */
     public Clef() {
         // Default margin from clef to key signature
-        setMarginRight(LayoutStylesheet.toPixels(0.5));
+        setMarginRight(ScaleContext.getInstance().toRoundedPixels(0.5));
     }
 
     /**

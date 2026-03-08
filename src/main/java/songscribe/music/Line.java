@@ -44,6 +44,7 @@ import songscribe.data.TupletInterval;
 import songscribe.midi.PlaybackSettings;
 import songscribe.ui.layout.LayoutStylesheet;
 import songscribe.ui.layout.RangeElement;
+import songscribe.ui.layout2.ScaleContext;
 import songscribe.ui.message.LayoutChangeMessage;
 import songscribe.ui.message.MessageCenter;
 import songscribe.ui.playback.MidiMetaMessageTypes;
@@ -123,7 +124,7 @@ public class Line {
      *             Retained for backward compatibility with legacy documents.
      */
     @Deprecated
-    private int beatChangeYPosPx = LayoutStylesheet.toPixels(LayoutStylesheet.BEAT_CHANGE_DEFAULT_Y);
+    private int beatChangeYPosPx = ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.BEAT_CHANGE_DEFAULT_Y);
 
     /**
      * Y offset for lyrics display (default: 50, below staff).
@@ -140,7 +141,7 @@ public class Line {
      *             Retained for backward compatibility with legacy documents.
      */
     @Deprecated
-    private int firstSecondEndingYPosPx = LayoutStylesheet.toPixels(LayoutStylesheet.ENDING_DEFAULT_Y);
+    private int firstSecondEndingYPosPx = ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.ENDING_DEFAULT_Y);
 
     /**
      * Y offset for trill display (default: -27, above staff).
@@ -149,7 +150,7 @@ public class Line {
      *             Retained for backward compatibility with legacy documents.
      */
     @Deprecated
-    private int trillYPosPx = LayoutStylesheet.toPixels(LayoutStylesheet.TRILL_DEFAULT_Y);
+    private int trillYPosPx = ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.TRILL_DEFAULT_Y);
 
     /** Ratio multiplier for horizontal note spacing (default: 1.0, user-adjustable). */
     private float noteDistChangeRatio = 1f;
@@ -201,6 +202,15 @@ public class Line {
         note.setLine(this);
         notes.set(index, note);
         attachInitialTempoIfNeeded(note);
+    }
+
+    /**
+     * Replaces the note at the given index without posting LayoutChangeMessage.
+     * The caller is responsible for posting a single LayoutChangeMessage after batch operations.
+     */
+    public void replaceNoteQuietly(int index, Note note) {
+        note.setLine(this);
+        notes.set(index, note);
     }
 
     /**

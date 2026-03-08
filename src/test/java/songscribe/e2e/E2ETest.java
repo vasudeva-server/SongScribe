@@ -61,6 +61,7 @@ import songscribe.ui.action.UIAction;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.Score;
 import songscribe.ui.layout2.ScaleContext;
+import songscribe.util.RuntimeError;
 import songscribe.util.UIUtils;
 
 import static org.assertj.swing.core.MouseButton.LEFT_BUTTON;
@@ -163,6 +164,7 @@ abstract class E2ETest {
 
     @BeforeAll
     void setUpOnce() {
+        RuntimeError.setSuppressDialogs(false);
         FailOnThreadViolationRepaintManager.install();
         robot = BasicRobot.robotWithCurrentAwtHierarchy();
 
@@ -396,7 +398,7 @@ abstract class E2ETest {
 
             var locationOnScreen = lc.getLocationOnScreen();
             return new Point(
-                locationOnScreen.x + noteXPx + (int) Math.round(ScaleContext.getInstance().toPixels(note.getNoteType().getCenterXSs())),
+                locationOnScreen.x + noteXPx + (int) Math.round(ScaleContext.getInstance().toPixels(note.getNoteType().getNoteheadCenterXSs())),
                 locationOnScreen.y + noteYPx
             );
         });

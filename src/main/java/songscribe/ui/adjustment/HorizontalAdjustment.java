@@ -29,6 +29,7 @@ import songscribe.data.IntervalSet;
 import songscribe.music.Line;
 import songscribe.music.Note;
 import songscribe.ui.component.Score;
+
 import songscribe.ui.layout2.ScaleContext;
 import songscribe.ui.renderer.GlissandoRenderer;
 
@@ -192,7 +193,7 @@ public class HorizontalAdjustment extends Adjustment {
             note.getNoteType().snapToEnd() &&
                 ((composition.getLineWidth() - endPoint.x) < END_SNAP_LIMIT)
         ) {
-            endPoint.x = (int) composition.getLineWidth() - Note.NORMAL_IMAGE_WIDTH;
+            endPoint.x = (int) (composition.getLineWidth() - note.getContentWidth());
         }
 
         var diffX = draggingRect.rect.x + (draggingRect.rect.width / 2);
@@ -444,7 +445,8 @@ public class HorizontalAdjustment extends Adjustment {
             rect.horizontalAdjustmentType.getStaffPosition(),
             rect.line
         );
-        rect.rect.y = yPosPx - Note.HOT_SPOT.y;
+        rect.rect.y = yPosPx + ScaleContext.getInstance().toRoundedPixels(
+            note.getNoteType().getTopYOffsetSs(note.isUpper()));
         var lineComponent = score.getLineComponent(rect.line);
         var layoutResult = lineComponent.getLayoutResult();
 

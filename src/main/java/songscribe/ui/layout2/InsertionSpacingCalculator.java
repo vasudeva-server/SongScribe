@@ -70,7 +70,7 @@ public class InsertionSpacingCalculator {
 
         if (noteCount == 0) {
             // First note on the line - use standard first note positioning
-            return LayoutConstants.toPixels(LayoutConstants.calculateFirstNoteXSs(line.getKeyAccidentalCount()));
+            return ScaleContext.getInstance().toPixels(LayoutConstants.calculateFirstNoteXSs(line.getKeyAccidentalCount()));
         }
 
         // Get the last note and create a column for it
@@ -142,7 +142,7 @@ public class InsertionSpacingCalculator {
 
         if (insertIndex == 0) {
             // Inserting at beginning - calculate space from line start
-            insertedNoteXSs = LayoutConstants.toPixels(LayoutConstants.calculateFirstNoteXSs(line.getKeyAccidentalCount()));
+            insertedNoteXSs = ScaleContext.getInstance().toPixels(LayoutConstants.calculateFirstNoteXSs(line.getKeyAccidentalCount()));
             var nextNote = line.getNote(0);
             var nextColumn = createLightweightColumn(nextNote);
 
