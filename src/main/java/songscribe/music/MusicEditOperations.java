@@ -41,7 +41,6 @@ import songscribe.data.TupletInterval;
 import songscribe.ui.component.IMainFrame;
 import songscribe.ui.selection.LineSelectionState;
 import songscribe.ui.selection.SelectionCoordinator;
-import songscribe.ui.selection.TieContext;
 
 /**
  * Handles music editing operations for a composition.
@@ -91,11 +90,6 @@ public final class MusicEditOperations {
 
     // ========== Tie Operations ==========
 
-    public TieContext getTieContext() {
-        var state = coordinator.getActiveSelection();
-        return (state != null) ? state.getTieContext() : null;
-    }
-
     public boolean canToggleTie() {
         var state = coordinator.getActiveSelection();
         return (state != null) && state.canToggleTie();
@@ -108,13 +102,13 @@ public final class MusicEditOperations {
             return;
         }
 
-        // Get the context if necessary
-        if (state.getTieContext() == null) {
+        // Evaluate if not yet checked
+        if (state.getCanTie() == null) {
             state.canToggleTie();
         }
 
         var line = state.getLine();
-        var intervals = state.getTieContext().intervals();
+        var intervals = state.getTieInterval();
 
         if (intervals != null) {
             intervals.removeInterval(state.getSelectionBegin(), state.getSelectionEnd());
@@ -122,7 +116,7 @@ public final class MusicEditOperations {
             line.getTies().addInterval(new TieInterval(state.getSelectionBegin(), state.getSelectionEnd()));
         }
 
-        state.setTieContext(null);
+        state.resetTieState();
         composition.setModified(true);
     }
 

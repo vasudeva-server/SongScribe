@@ -25,7 +25,9 @@ import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 
 import songscribe.music.Composition;
+import songscribe.music.KeyType;
 import songscribe.music.Line;
+import songscribe.music.Note.Accidental;
 import songscribe.music.NoteType;
 import songscribe.data.TieInterval;
 import songscribe.ui.action.Actions;
@@ -37,7 +39,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * Milestone 3 E2E tests: tie creation, removal, selection semantics, drag.
  */
 @Order(4)
-class TieTest extends BaseSwingTest {
+class TieTest extends E2ETest {
 
     @Test @Order(1)
     void testCreateTieViaSelection() {
@@ -119,10 +121,10 @@ class TieTest extends BaseSwingTest {
         var lss = score().getLineComponent(0).getLineSelectionState();
         assertThat(lss.getSelectionSize()).isEqualTo(2);
 
-        // canToggleTie populates tieContext and should return true for tied notes
+        // canToggleTie populates canTie and should return true for tied notes
         assertThat(lss.canToggleTie()).isTrue();
-        assertThat(lss.getTieContext()).isNotNull();
-        assertThat(lss.getTieContext().canToggle()).isTrue();
+        assertThat(lss.getCanTie()).isTrue();
+        assertThat(lss.getTieInterval()).isNotNull();
     }
 
     @Test @Order(5)
@@ -145,6 +147,116 @@ class TieTest extends BaseSwingTest {
         assertThat(line.getNote(1).getStaffPosition()).isEqualTo(targetSp);
     }
 
+
+    @Test @Order(6)
+    void testCannotTieSamePositionDifferentAccidental() {
+        // B natural (sp=0) and B# (sp=0) — same staff position, different pitch
+        buildNotes(0, Accidental.NATURAL, 0, Accidental.SHARP);
+
+        enterSelectMode();
+        clickAt(noteScreenPosition(0, 0));
+        shiftClickAt(noteScreenPosition(0, 1));
+
+        var lss = score().getLineComponent(0).getLineSelectionState();
+        assertThat(lss.canToggleTie()).isFalse();
+    }
+
+    @Test @Order(7)
+    void testCanTieEnharmonicNotes() {
+        // B# (sp=0, pitch 72) and C (sp=-1, pitch 72) — different position, same pitch
+        buildNotes(0, Accidental.SHARP, -1, Accidental.NONE);
+
+        enterSelectMode();
+        clickAt(noteScreenPosition(0, 0));
+        shiftClickAt(noteScreenPosition(0, 1));
+
+        var lss = score().getLineComponent(0).getLineSelectionState();
+        assertThat(lss.canToggleTie()).isTrue();
+    }
+
+    @Test @Order(8)
+    void testCanTieWithInheritedAccidental() {
+        // F# (sp=4, explicit sharp) then F (sp=4, NONE) — inherits sharp, same pitch
+        buildNotes(4, Accidental.SHARP, 4, Accidental.NONE);
+
+        enterSelectMode();
+        clickAt(noteScreenPosition(0, 0));
+        shiftClickAt(noteScreenPosition(0, 1));
+
+        var lss = score().getLineComponent(0).getLineSelectionState();
+        assertThat(lss.canToggleTie()).isTrue();
+    }
+
+    @Test @Order(9)
+    void testCannotTieWhenNaturalCancelsInheritedAccidental() {
+        // F# (sp=4), F (sp=4, NONE inherits sharp), F natural (sp=4, explicit natural)
+        // Tying last two: F# vs F natural — different pitch
+        buildThreeNotes();
+
+        enterSelectMode();
+        clickAt(noteScreenPosition(0, 1));
+        shiftClickAt(noteScreenPosition(0, 2));
+
+        var lss = score().getLineComponent(0).getLineSelectionState();
+        assertThat(lss.canToggleTie()).isFalse();
+    }
+
+    @Test @Order(10)
+    void testCanTieWithKeySignatureAccidental() {
+        // Db major (5 flats): B at sp=0 gets Bb from key signature.
+        // Two notes at sp=0 with NONE accidental should both resolve to Bb.
+        buildNotesWithKeySignature(KeyType.FLATS, 5, 0, Accidental.NONE, 0, Accidental.NONE);
+
+        enterSelectMode();
+        clickAt(noteScreenPosition(0, 0));
+        shiftClickAt(noteScreenPosition(0, 1));
+
+        var lss = score().getLineComponent(0).getLineSelectionState();
+        assertThat(lss.canToggleTie()).isTrue();
+    }
+
+    @Test @Order(11)
+    void testCanTieAfterNaturalFlatResetsToKeySignature() {
+        // Db major: G at sp=-5 is Gb from key signature.
+        // G (Gb from key sig), Gbb, G natural-flat (Gb), G (inherits natural-flat = Gb).
+        // Tying last two: both resolve to Gb.
+        GuiActionRunner.execute(() -> {
+            var composition = new Composition(MainFrame.getInstance());
+            var line = new Line();
+            line.setKeyType(KeyType.FLATS);
+            line.setKeyAccidentalCount(5);
+
+            var note1 = NoteType.CROTCHET.newInstance();
+            note1.setStaffPosition(-5);
+            line.addNote(note1);
+
+            var note2 = NoteType.CROTCHET.newInstance();
+            note2.setStaffPosition(-5);
+            note2.setAccidental(Accidental.DOUBLE_FLAT);
+            line.addNote(note2);
+
+            var note3 = NoteType.CROTCHET.newInstance();
+            note3.setStaffPosition(-5);
+            note3.setAccidental(Accidental.NATURAL_FLAT);
+            line.addNote(note3);
+
+            var note4 = NoteType.CROTCHET.newInstance();
+            note4.setStaffPosition(-5);
+            line.addNote(note4);
+
+            composition.addLine(0, line);
+            score().setComposition(composition);
+        });
+
+        performLayout(0);
+
+        enterSelectMode();
+        clickAt(noteScreenPosition(0, 2));
+        shiftClickAt(noteScreenPosition(0, 3));
+
+        var lss = score().getLineComponent(0).getLineSelectionState();
+        assertThat(lss.canToggleTie()).isTrue();
+    }
 
     // -- Helpers --
 
@@ -182,6 +294,81 @@ class TieTest extends BaseSwingTest {
             line.addNote(note2);
 
             line.getTies().addInterval(new TieInterval(0, 1));
+
+            composition.addLine(0, line);
+            score().setComposition(composition);
+        });
+
+        performLayout(0);
+    }
+
+    private void buildNotes(int sp1, Accidental acc1, int sp2, Accidental acc2) {
+        GuiActionRunner.execute(() -> {
+            var composition = new Composition(MainFrame.getInstance());
+            var line = new Line();
+
+            var note1 = NoteType.CROTCHET.newInstance();
+            note1.setStaffPosition(sp1);
+            note1.setAccidental(acc1);
+            line.addNote(note1);
+
+            var note2 = NoteType.CROTCHET.newInstance();
+            note2.setStaffPosition(sp2);
+            note2.setAccidental(acc2);
+            line.addNote(note2);
+
+            composition.addLine(0, line);
+            score().setComposition(composition);
+        });
+
+        performLayout(0);
+    }
+
+    private void buildThreeNotes() {
+        GuiActionRunner.execute(() -> {
+            var composition = new Composition(MainFrame.getInstance());
+            var line = new Line();
+
+            var note1 = NoteType.CROTCHET.newInstance();
+            note1.setStaffPosition(4);
+            note1.setAccidental(Accidental.SHARP);
+            line.addNote(note1);
+
+            var note2 = NoteType.CROTCHET.newInstance();
+            note2.setStaffPosition(4);
+            line.addNote(note2);
+
+            var note3 = NoteType.CROTCHET.newInstance();
+            note3.setStaffPosition(4);
+            note3.setAccidental(Accidental.NATURAL);
+            line.addNote(note3);
+
+            composition.addLine(0, line);
+            score().setComposition(composition);
+        });
+
+        performLayout(0);
+    }
+
+    private void buildNotesWithKeySignature(
+        KeyType keyType, int keyCount,
+        int sp1, Accidental acc1, int sp2, Accidental acc2
+    ) {
+        GuiActionRunner.execute(() -> {
+            var composition = new Composition(MainFrame.getInstance());
+            var line = new Line();
+            line.setKeyType(keyType);
+            line.setKeyAccidentalCount(keyCount);
+
+            var note1 = NoteType.CROTCHET.newInstance();
+            note1.setStaffPosition(sp1);
+            note1.setAccidental(acc1);
+            line.addNote(note1);
+
+            var note2 = NoteType.CROTCHET.newInstance();
+            note2.setStaffPosition(sp2);
+            note2.setAccidental(acc2);
+            line.addNote(note2);
 
             composition.addLine(0, line);
             score().setComposition(composition);

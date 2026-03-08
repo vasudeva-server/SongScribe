@@ -44,6 +44,9 @@ import java.io.File;
 import java.io.PrintWriter;
 import java.io.StringReader;
 import java.io.StringWriter;
+import java.util.Arrays;
+import java.util.List;
+import java.util.regex.Pattern;
 
 import javax.xml.parsers.SAXParserFactory;
 
@@ -53,7 +56,6 @@ import org.junit.jupiter.api.Test;
 
 import songscribe.io.CompositionIO;
 import songscribe.music.Composition;
-import songscribe.music.Note;
 import songscribe.ui.action.Actions;
 import songscribe.ui.action.UIAction;
 import songscribe.ui.component.MainFrame;
@@ -71,8 +73,8 @@ import static org.assertj.swing.core.MouseButton.LEFT_BUTTON;
  * notes and staff positions.
  */
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-@ExtendWith(BaseSwingTest.ResultTracker.class)
-abstract class BaseSwingTest {
+@ExtendWith(E2ETest.ResultTracker.class)
+abstract class E2ETest {
 
     private static final boolean DEBUG_MODE = Boolean.getBoolean("e2e.debug");
 
@@ -100,10 +102,19 @@ abstract class BaseSwingTest {
     }
 
     private static int countTestMethods() {
+        var testClassesProperty = System.getProperty("testclasses");
+        List<Pattern> filters = null;
+
+        if (testClassesProperty != null && !testClassesProperty.isBlank()) {
+            filters = Arrays.stream(testClassesProperty.split(","))
+                .map(Pattern::compile)
+                .toList();
+        }
+
         var count = 0;
-        var packageName = BaseSwingTest.class.getPackageName();
+        var packageName = E2ETest.class.getPackageName();
         var packagePath = packageName.replace('.', '/');
-        var url = BaseSwingTest.class.getClassLoader().getResource(packagePath);
+        var url = E2ETest.class.getClassLoader().getResource(packagePath);
 
         if (url == null) {
             return 0;
@@ -119,10 +130,14 @@ abstract class BaseSwingTest {
         for (var file : files) {
             var className = packageName + "." + file.getName().replace(".class", "");
 
+            if (filters != null && filters.stream().noneMatch(p -> p.matcher(className).matches())) {
+                continue;
+            }
+
             try {
                 var clazz = Class.forName(className);
 
-                if (!BaseSwingTest.class.isAssignableFrom(clazz) || clazz == BaseSwingTest.class) {
+                if (!E2ETest.class.isAssignableFrom(clazz) || clazz == E2ETest.class) {
                     continue;
                 }
 
@@ -345,6 +360,23 @@ abstract class BaseSwingTest {
     }
 
 
+    // -- Menu helpers --
+
+    /**
+     * Clicks a menu item by searching the entire menu bar recursively.
+     * Finds and clicks the first item whose text matches {@code itemName}.
+     */
+    protected void clickMenuItem(String itemName) {
+        window.menuItem(new GenericTypeMatcher<JMenuItem>(JMenuItem.class) {
+            @Override
+            protected boolean isMatching(JMenuItem item) {
+                return itemName.equals(item.getText());
+            }
+        }).click();
+        pause();
+    }
+
+
     // -- Coordinate helpers --
 
     /**
@@ -364,7 +396,7 @@ abstract class BaseSwingTest {
 
             var locationOnScreen = lc.getLocationOnScreen();
             return new Point(
-                locationOnScreen.x + noteXPx + Note.HOT_SPOT.x,
+                locationOnScreen.x + noteXPx + (int) Math.round(ScaleContext.getInstance().toPixels(note.getNoteType().getCenterXSs())),
                 locationOnScreen.y + noteYPx
             );
         });

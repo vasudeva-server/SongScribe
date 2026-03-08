@@ -58,10 +58,9 @@ import songscribe.ui.component.score.MainPanel;
 import songscribe.ui.component.score.ScorePanel;
 import songscribe.ui.dialog.LineWidthChangeDialog;
 import songscribe.ui.edit.EditModeManager;
-import songscribe.ui.layout.BravuraFontBoundsProvider;
-import songscribe.ui.layout.FontBoundsProvider;
 import songscribe.ui.layout.LayoutStylesheet;
 import songscribe.ui.layout2.LayoutConstants;
+import songscribe.ui.layout2.ScaleContext;
 import songscribe.ui.menu.DebugState;
 import songscribe.ui.message.MessageCenter;
 import songscribe.ui.message.MusicSelectionChangedMessage;
@@ -70,7 +69,6 @@ import songscribe.ui.playback.PlaybackController;
 import songscribe.ui.renderer.RenderContext;
 import songscribe.ui.selection.NoteSelection;
 import songscribe.ui.selection.SelectionCoordinator;
-import songscribe.ui.selection.TieContext;
 import songscribe.util.GraphicUtils;
 import songscribe.util.Log;
 import songscribe.util.UIUtils;
@@ -96,7 +94,7 @@ public final class Score
     public static final int STAFF_LINE_COUNT = 5;
 
     // The vertical distance between whole tones on the staff (e.g. A to B)
-    public static final float NOTE_Y_OFFSET_PX = (float) LayoutStylesheet.toPixelsDouble(LayoutStylesheet.NOTE_Y_OFFSET);
+    public static final float NOTE_Y_OFFSET_PX = (float) ScaleContext.getInstance().toPixels(LayoutStylesheet.NOTE_Y_OFFSET);
 
     // The content width and height in inches, excluding page margins
     public static final float PAGE_CONTENT_WIDTH = 7;
@@ -214,11 +212,6 @@ public final class Score
 
         // Initialize hierarchy navigator
         hierarchyNavigator = new ComponentHierarchyNavigator(this);
-
-        // Initialize font bounds provider for measurement calculations
-        FontBoundsProvider fontBoundsProvider = new BravuraFontBoundsProvider(
-            this
-        );
 
         selectionCoordinator = new SelectionCoordinator(this::getComposition);
         clipboardManager = new ClipboardManager();
@@ -663,10 +656,6 @@ public final class Score
         return operations.canToggleBeaming();
     }
 
-    public TieContext getTieContext() {
-        return operations.getTieContext();
-    }
-
     public boolean canToggleTie() {
         return operations.canToggleTie();
     }
@@ -790,9 +779,9 @@ public boolean canFlipStemDirection() {
             float idealSpace;
 
             if (strict) {
-                idealSpace = endNote.getRealUpNoteRect().width;
+                idealSpace = (float) endNote.getContentWidth();
             } else {
-                idealSpace = (float) LayoutConstants.toPixels(LayoutConstants.DEFAULT_COLUMN_GAP_SS) + 20;
+                idealSpace = (float) ScaleContext.getInstance().toPixels(LayoutConstants.DEFAULT_COLUMN_GAP_SS) + 20;
             }
 
             if (

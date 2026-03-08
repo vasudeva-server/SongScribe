@@ -51,7 +51,10 @@ public final class LineSelectionState {
     private int selectedGlissandoNoteIndex = -1;
 
     @Nullable
-    private TieContext tieContext = null;
+    private Boolean canTie = null;
+
+    @Nullable
+    private IntervalSet tieInterval = null;
 
     public LineSelectionState(@NotNull Line line) {
         this.line = line;
@@ -115,12 +118,18 @@ public final class LineSelectionState {
     }
 
     @Nullable
-    public TieContext getTieContext() {
-        return tieContext;
+    public Boolean getCanTie() {
+        return canTie;
     }
 
-    public void setTieContext(@Nullable TieContext tieContext) {
-        this.tieContext = tieContext;
+    @Nullable
+    public IntervalSet getTieInterval() {
+        return tieInterval;
+    }
+
+    public void resetTieState() {
+        canTie = null;
+        tieInterval = null;
     }
 
     @NotNull
@@ -290,11 +299,11 @@ public final class LineSelectionState {
 
     /**
      * Returns whether the current selection can toggle a tie.
-     * Also sets the tieContext field.
+     * Also sets the canTie and tieInterval fields.
      */
     public boolean canToggleTie() {
         if (getSelectionSize() != 2) {
-            tieContext = new TieContext(false, null);
+            canTie = false;
             return false;
         }
 
@@ -306,14 +315,14 @@ public final class LineSelectionState {
             var note = line.getNote(i);
 
             if (!note.getNoteType().isRealNote()) {
-                tieContext = new TieContext(false, null);
+                canTie = false;
                 return false;
             }
 
             if (firstPitch == null) {
-                firstPitch = note.getStaffPosition();
-            } else if (note.getStaffPosition() != firstPitch) {
-                tieContext = new TieContext(false, null);
+                firstPitch = note.getPitch();
+            } else if (note.getPitch() != firstPitch) {
+                canTie = false;
                 return false;
             }
 
@@ -322,13 +331,14 @@ public final class LineSelectionState {
             } else {
                 //noinspection ObjectEquality
                 if (ties.findInterval(i) != firstTieInterval) {
-                    tieContext = new TieContext(false, null);
+                    canTie = false;
                     return false;
                 }
             }
         }
 
-        tieContext = new TieContext(true, firstTieInterval != null ? ties : null);
+        canTie = true;
+        tieInterval = firstTieInterval != null ? ties : null;
         return true;
     }
 
