@@ -23,6 +23,7 @@ import java.awt.*;
 
 import javax.swing.*;
 
+import songscribe.Strings;
 import songscribe.music.KeyType;
 
 public class KeySignatureChangeDialog extends StandardDialog {
@@ -32,7 +33,7 @@ public class KeySignatureChangeDialog extends StandardDialog {
     private final SpinnerModel keysSpinner = new SpinnerNumberModel(4, 0, 7, 1);
 
     public KeySignatureChangeDialog() {
-        super("Key Signature Change");
+        super(Strings.get(Strings.DIALOG_KEY_SIGNATURE_CHANGE_TITLE));
         var center = new JPanel();
         center.setLayout(new BoxLayout(center, BoxLayout.Y_AXIS));
         center.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
@@ -40,7 +41,7 @@ public class KeySignatureChangeDialog extends StandardDialog {
         var large = new Dimension(0, 15);
 
         var infoPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 5));
-        infoPanel.add(new JLabel("Index of selected line:"));
+        infoPanel.add(new JLabel(Strings.get(Strings.LABEL_KEYSIG_SELECTED_LINE)));
         infoPanel.add(indexOfSelectedElementLabel);
         infoPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
         center.add(infoPanel);

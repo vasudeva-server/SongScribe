@@ -23,10 +23,12 @@ import static songscribe.ui.action.Actions.BARLINE_ACTIONS;
 
 import javax.swing.*;
 
+import songscribe.Strings;
+
 public class BarlineMenu extends JMenu {
 
     public BarlineMenu() {
-        super("Barlines");
+        super(Strings.get(Strings.MENU_NOTATION_BARLINES));
 
         for (var action : BARLINE_ACTIONS) {
             add(new JRadioButtonMenuItem(action));

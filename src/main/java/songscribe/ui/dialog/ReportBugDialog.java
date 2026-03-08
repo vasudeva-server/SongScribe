@@ -26,6 +26,7 @@ import javax.swing.*;
 
 import org.jetbrains.annotations.NotNull;
 
+import songscribe.Strings;
 import songscribe.Version;
 import songscribe.data.MyDesktop;
 import songscribe.ui.component.MainFrame;
@@ -36,7 +37,7 @@ public class ReportBugDialog extends StandardDialog {
     public static final String BUG_EMAIL = "himadri81@zoho.com";
 
     public ReportBugDialog() {
-        super("Bug report");
+        super(Strings.get(Strings.DIALOG_BUG_REPORT_TITLE));
         var logFile = new File(MainFrame.SONGSCRIBE_DIR, "log");
         var area = getjEditorPane(logFile);
         contentPanel.add(area);
@@ -44,16 +45,20 @@ public class ReportBugDialog extends StandardDialog {
         buttonPanel.remove(cancelButton);
 
         if (MyDesktop.isDesktopSupported()) {
-            var sendBug = new JButton("Send a report");
+            var sendBug = new JButton(Strings.get(Strings.DIALOG_BUG_REPORT_SEND));
             sendBug.addActionListener(_ -> {
                 var answer = JOptionPane.showOptionDialog(
                     contentPanel,
-                    "What would you like to send?",
+                    Strings.get(Strings.DIALOG_BUG_REPORT_WHAT_TO_SEND),
                     mainFrame.appName,
                     JOptionPane.YES_NO_OPTION,
                     JOptionPane.QUESTION_MESSAGE,
                     null,
-                    new String[] { "Bug", "Request", "Cancel" },
+                    new String[] {
+                        Strings.get(Strings.DIALOG_BUG_REPORT_OPTION_BUG),
+                        Strings.get(Strings.DIALOG_BUG_REPORT_OPTION_REQUEST),
+                        Strings.get(Strings.DIALOG_BUTTON_CANCEL)
+                    },
                     null
                 );
 
@@ -86,8 +91,7 @@ public class ReportBugDialog extends StandardDialog {
                     Utils.openEmail(mainFrame, sb.toString());
                 } catch (Exception e1) {
                     mainFrame.showErrorMessage(
-                        "Cannot open the e-mail client. Please make your report manually as " +
-                        "described above."
+                        Strings.get(Strings.ERROR_EMAIL_OPEN_REPORT)
                     );
                 }
             });

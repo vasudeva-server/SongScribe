@@ -10,7 +10,7 @@ def outDir = new File("${project.build.directory}/generated-sources/songscribe")
 outDir.mkdirs()
 
 def props = new Properties()
-propsFile.withInputStream { props.load(it) }
+propsFile.withReader('UTF-8') { props.load(it) }
 
 // Validate keys and build constant -> key mapping
 def constantToKey = [:]

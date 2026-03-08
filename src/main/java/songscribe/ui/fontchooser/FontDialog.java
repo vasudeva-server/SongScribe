@@ -28,6 +28,7 @@ import javax.swing.*;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import songscribe.Strings;
 import songscribe.util.UIUtils;
 
 /**
@@ -42,7 +43,7 @@ public class FontDialog extends JDialog {
         @NotNull Component component,
         @Nullable Point location
     ) {
-        var dialog = new FontDialog((Frame) null, "Choose font", true);
+        var dialog = new FontDialog((Frame) null, Strings.get(Strings.DIALOG_FONT_CHOOSER_TITLE), true);
 
         // Make the dialog a little taller than the default size
         var size = dialog.getPreferredSize();
@@ -67,9 +68,9 @@ public class FontDialog extends JDialog {
 
     private final FontChooser chooser = new FontChooser();
 
-    private final JButton cancelButton = new JButton("Cancel");
+    private final JButton cancelButton = new JButton(Strings.get(Strings.DIALOG_BUTTON_CANCEL));
 
-    private final JButton okButton = new JButton("OK");
+    private final JButton okButton = new JButton(Strings.get(Strings.DIALOG_BUTTON_OK));
 
     public FontDialog() {
         initDialog();

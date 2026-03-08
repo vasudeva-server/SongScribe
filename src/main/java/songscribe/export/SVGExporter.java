@@ -23,6 +23,7 @@ import java.io.File;
 
 import org.jetbrains.annotations.NotNull;
 
+import songscribe.Strings;
 import songscribe.ui.component.MainFrame;
 
 /**
@@ -46,8 +47,7 @@ public class SVGExporter {
         // SVG export not yet implemented with component-based rendering
         if (isGUI) {
             mainFrame.showErrorMessage(
-                "SVG export is not yet implemented. " +
-                "Export functionality will be restored in a future update."
+                Strings.get(Strings.ERROR_EXPORT_NOT_IMPLEMENTED, "SVG")
             );
         } else {
             System.err.println("ERROR: SVG export is not yet implemented");

@@ -30,6 +30,7 @@ import com.intellij.uiDesigner.core.GridLayoutManager;
 import com.intellij.uiDesigner.core.Spacer;
 
 import songscribe.prefs.Prefs;
+import songscribe.Strings;
 import songscribe.ui.component.BorderPanel;
 import songscribe.ui.component.MyBorder;
 import songscribe.util.GraphicUtils;
@@ -51,7 +52,7 @@ public class ResolutionDialog extends StandardDialog implements ChangeListener {
     private int sheetHeightWithoutTitle = 0;
 
     public ResolutionDialog() {
-        super("Image properties");
+        super(Strings.get(Strings.DIALOG_RESOLUTION_TITLE));
         borderPanel.setPackListener(_ -> pack());
         borderPanel.addChangeListener(this);
         resolutionSpinner.addChangeListener(this);
@@ -209,7 +210,7 @@ public class ResolutionDialog extends StandardDialog implements ChangeListener {
             )
         );
         final JLabel label1 = new JLabel();
-        label1.setText("Image resolution:");
+        label1.setText(Strings.get(Strings.LABEL_IMAGE_RESOLUTION));
         panel1.add(
             label1,
             new GridConstraints(
@@ -267,7 +268,7 @@ public class ResolutionDialog extends StandardDialog implements ChangeListener {
             )
         );
         final JLabel label2 = new JLabel();
-        label2.setText("DPI");
+        label2.setText(Strings.get(Strings.LABEL_DPI));
         panel1.add(
             label2,
             new GridConstraints(
@@ -306,7 +307,7 @@ public class ResolutionDialog extends StandardDialog implements ChangeListener {
             )
         );
         withoutLyricsCheck = new JCheckBox();
-        withoutLyricsCheck.setText("Export without lyrics under the song");
+        withoutLyricsCheck.setText(Strings.get(Strings.LABEL_EXPORT_WITHOUT_LYRICS));
         mainPanel.add(
             withoutLyricsCheck,
             new GridConstraints(
@@ -441,7 +442,7 @@ public class ResolutionDialog extends StandardDialog implements ChangeListener {
         panel4.setBorder(
             BorderFactory.createTitledBorder(
                 BorderFactory.createEtchedBorder(),
-                "Image size",
+                Strings.get(Strings.LABEL_IMAGE_SIZE),
                 TitledBorder.DEFAULT_JUSTIFICATION,
                 TitledBorder.DEFAULT_POSITION,
                 null,
@@ -449,7 +450,7 @@ public class ResolutionDialog extends StandardDialog implements ChangeListener {
             )
         );
         final JLabel label3 = new JLabel();
-        label3.setText("Width:");
+        label3.setText(Strings.get(Strings.LABEL_WIDTH));
         panel4.add(
             label3,
             new GridConstraints(
@@ -469,7 +470,7 @@ public class ResolutionDialog extends StandardDialog implements ChangeListener {
             )
         );
         final JLabel label4 = new JLabel();
-        label4.setText("Height:");
+        label4.setText(Strings.get(Strings.LABEL_HEIGHT));
         panel4.add(
             label4,
             new GridConstraints(
@@ -529,7 +530,7 @@ public class ResolutionDialog extends StandardDialog implements ChangeListener {
             )
         );
         final JLabel label5 = new JLabel();
-        label5.setText("px");
+        label5.setText(Strings.get(Strings.LABEL_PX));
         panel4.add(
             label5,
             new GridConstraints(
@@ -549,7 +550,7 @@ public class ResolutionDialog extends StandardDialog implements ChangeListener {
             )
         );
         final JLabel label6 = new JLabel();
-        label6.setText("px");
+        label6.setText(Strings.get(Strings.LABEL_PX));
         panel4.add(
             label6,
             new GridConstraints(
@@ -607,7 +608,7 @@ public class ResolutionDialog extends StandardDialog implements ChangeListener {
             )
         );
         exportWithoutTitleCheckBox = new JCheckBox();
-        exportWithoutTitleCheckBox.setText("Export without title");
+        exportWithoutTitleCheckBox.setText(Strings.get(Strings.LABEL_EXPORT_WITHOUT_TITLE));
         mainPanel.add(
             exportWithoutTitleCheckBox,
             new GridConstraints(

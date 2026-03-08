@@ -25,6 +25,7 @@ import java.util.function.Supplier;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import songscribe.Strings;
 import songscribe.music.ArticulationType;
 import songscribe.music.Composition;
 import songscribe.music.ElementType;
@@ -330,7 +331,7 @@ public final class EditModeManager {
             var iv = line.getTuplets().findInterval(elementIndex - 1);
 
             if ((iv != null) && ((elementIndex - 1) < iv.getEnd())) {
-                mainFrame.showErrorMessage("Cannot insert into a triplet.");
+                mainFrame.showErrorMessage(Strings.get(Strings.ERROR_TRIPLET_INSERT));
                 return true;
             }
 

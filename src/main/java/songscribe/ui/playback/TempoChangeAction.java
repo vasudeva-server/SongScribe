@@ -23,15 +23,16 @@ import java.awt.event.*;
 
 import javax.swing.*;
 
+import songscribe.Strings;
 import songscribe.ui.message.MessageCenter;
 
 public class TempoChangeAction extends AbstractAction {
 
-    static final String TIP = "Set playback tempo";
+    static final String TIP = Strings.get(Strings.TOOLTIP_PLAY_TEMPO);
     private final int ratio;
 
     TempoChangeAction(int ratio) {
-        super(ratio + "%");
+        super(Strings.get(Strings.ACTION_PLAY_TEMPO_PERCENT, ratio));
         this.ratio = ratio;
     }
 

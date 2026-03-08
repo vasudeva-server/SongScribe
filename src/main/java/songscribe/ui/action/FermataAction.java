@@ -20,12 +20,13 @@
 
 package songscribe.ui.action;
 
+import songscribe.Strings;
 import songscribe.music.StaffElement;
 
 public class FermataAction extends NoteOnlyAction {
 
     public FermataAction() {
-        super("Fermata", null, 0, "fermata", "Add fermata");
+        super(Strings.get(Strings.ACTION_FERMATA), null, 0, "fermata", Strings.get(Strings.ACTION_FERMATA_TOOLTIP));
         setFlags(Flag.DISABLE_WHEN_EDITING_TEXT);
     }
 

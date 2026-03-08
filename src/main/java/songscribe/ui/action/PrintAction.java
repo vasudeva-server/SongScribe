@@ -21,6 +21,7 @@ package songscribe.ui.action;
 
 import java.awt.event.*;
 
+import songscribe.Strings;
 import songscribe.ui.message.MessageCenter;
 import songscribe.ui.message.PrintMessage;
 import songscribe.util.UIUtils;
@@ -29,7 +30,7 @@ public class PrintAction extends UIAction {
 
     public PrintAction() {
         super(
-            "Print...",
+            Strings.get(Strings.ACTION_FILE_PRINT),
             "print-document",
             KeyEvent.VK_P,
             UIUtils.MENU_SHORTCUT_MASK

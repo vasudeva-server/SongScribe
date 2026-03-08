@@ -22,6 +22,7 @@ package songscribe.ui.action;
 
 import java.awt.event.*;
 
+import songscribe.Strings;
 import songscribe.ui.message.MessageCenter;
 import songscribe.ui.message.SelectLineMessage;
 import songscribe.util.UIUtils;
@@ -30,7 +31,7 @@ public class SelectLineAction extends UIAction {
 
     public SelectLineAction() {
         super(
-            "Select Line",
+            Strings.get(Strings.ACTION_EDIT_SELECT_LINE),
             "select-line",
             KeyEvent.VK_L,
             InputEvent.SHIFT_DOWN_MASK + UIUtils.MENU_SHORTCUT_MASK

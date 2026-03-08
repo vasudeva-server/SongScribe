@@ -32,6 +32,7 @@ import javax.sound.midi.Sequence;
 import javax.sound.midi.ShortMessage;
 import javax.swing.*;
 
+import songscribe.Strings;
 import songscribe.prefs.Prefs;
 import songscribe.ui.dialog.StandardDialog;
 import songscribe.util.MyFontUtils;
@@ -77,7 +78,7 @@ public class InstrumentDialog extends StandardDialog {
     private ScaleAction scaleAction;
 
     public InstrumentDialog() {
-        super("Playback Instruments");
+        super(Strings.get(Strings.DIALOG_INSTRUMENTS_TITLE));
         var center = new JPanel();
         center.setLayout(new BoxLayout(center, BoxLayout.X_AXIS));
         center.setBorder(BorderFactory.createEmptyBorder(20, 20, 0, 20));
@@ -158,7 +159,7 @@ public class InstrumentDialog extends StandardDialog {
         };
 
         ScaleAction() {
-            putValue(SHORT_DESCRIPTION, "Play instrument");
+            putValue(SHORT_DESCRIPTION, Strings.get(Strings.TOOLTIP_PLAY_INSTRUMENT));
             setEnabled(MidiController.sequencer != null);
         }
 
@@ -248,9 +249,7 @@ public class InstrumentDialog extends StandardDialog {
                 MidiController.sequencer.addMetaEventListener(endListener);
                 MidiController.sequencer.start();
             } catch (InvalidMidiDataException ex) {
-                mainFrame.showErrorMessage(
-                    "Could not play the scale because of an unexpected error."
-                );
+                mainFrame.showErrorMessage(Strings.get(Strings.ERROR_SCALE_PLAY));
             }
         }
     }

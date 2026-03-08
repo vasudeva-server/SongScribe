@@ -37,6 +37,7 @@ import org.jetbrains.annotations.NotNull;
 import com.formdev.flatlaf.util.SystemInfo;
 import net.engio.mbassy.listener.Handler;
 
+import songscribe.Strings;
 import songscribe.Version;
 import songscribe.prefs.RecentDocumentsManager;
 import songscribe.ui.action.Actions;
@@ -118,10 +119,10 @@ public class MenuController {
     }
 
     private JMenu initFileMenu() {
-        var menu = new JMenu("File");
+        var menu = new JMenu(Strings.get(Strings.MENU_FILE));
         menu.add(new NewAction());
         menu.add(new OpenAction());
-        openRecentMenu = new JMenu("Open Recent");
+        openRecentMenu = new JMenu(Strings.get(Strings.MENU_FILE_OPEN_RECENT));
         rebuildOpenRecentMenu();
         menu.add(openRecentMenu);
         menu.add(new CloseWindowAction());
@@ -158,7 +159,7 @@ public class MenuController {
         var recents = RecentDocumentsManager.getInstance().getRecents();
 
         if (recents.isEmpty()) {
-            var noRecentItem = new JMenuItem("No Recent Documents");
+            var noRecentItem = new JMenuItem(Strings.get(Strings.MENU_FILE_NO_RECENT_DOCUMENTS));
             noRecentItem.setEnabled(false);
             openRecentMenu.add(noRecentItem);
         } else {
@@ -260,7 +261,7 @@ public class MenuController {
     }
 
     private static JMenu initEditMenu() {
-        var menu = new JMenu("Edit");
+        var menu = new JMenu(Strings.get(Strings.MENU_EDIT));
         var score = MainFrame.getInstance().getScore();
 
         menu.add(Actions.CUT_ACTION);
@@ -272,7 +273,7 @@ public class MenuController {
 
         menu.addSeparator();
 
-        var controlMenu = new JMenu("Control");
+        var controlMenu = new JMenu(Strings.get(Strings.MENU_EDIT_CONTROL));
 
         for (var action : Actions.CONTROL_ACTION_GROUP.getActions()) {
             controlMenu.add(new JRadioButtonMenuItem(action));
@@ -288,7 +289,7 @@ public class MenuController {
     }
 
     private static JMenu initModeMenu() {
-        var menu = new JMenu("Adjustment");
+        var menu = new JMenu(Strings.get(Strings.MENU_ADJUSTMENT));
 
         menu.add(new JRadioButtonMenuItem(Actions.ADJUST_MUSIC_MODE_ACTION));
         menu.add(new JRadioButtonMenuItem(Actions.ADJUST_LYRICS_MODE_ACTION));
@@ -298,12 +299,12 @@ public class MenuController {
     }
 
     private static JMenu initCompositionMenu() {
-        var menu = new JMenu("Composition");
+        var menu = new JMenu(Strings.get(Strings.MENU_COMPOSITION));
         menu.add(Actions.COMPOSITION_SETTINGS_ACTION);
         menu.add(Actions.LYRICS_DIALOG_ACTION);
 
         menu.add(
-            new DialogOpenAction<>("Line Width...", LineWidthChangeDialog.class)
+            new DialogOpenAction<>(Strings.get(Strings.ACTION_LINE_WIDTH), LineWidthChangeDialog.class)
         );
 
         return menu;
@@ -312,13 +313,13 @@ public class MenuController {
     @NotNull
     private JMenu initHelpMenu() {
         // TODO: Help needs updating for the new app
-        var menu = new JMenu("Help");
+        var menu = new JMenu(Strings.get(Strings.MENU_HELP));
         menu.add(
-            new DialogOpenAction<>("Basic Tutorial", TutorialDialog.class)
+            new DialogOpenAction<>(Strings.get(Strings.ACTION_HELP_TUTORIAL), TutorialDialog.class)
         );
-        menu.add(new PDFTutorialOpenAction("Extended Tutorial (PDF)"));
+        menu.add(new PDFTutorialOpenAction(Strings.get(Strings.ACTION_HELP_EXTENDED_TUTORIAL)));
         menu.add(new TipAction());
-        menu.add(new DialogOpenAction<>("Keymap", KeyMapDialog.class));
+        menu.add(new DialogOpenAction<>(Strings.get(Strings.ACTION_HELP_KEYMAP), KeyMapDialog.class));
 
         menu.addSeparator();
 
@@ -327,12 +328,12 @@ public class MenuController {
     }
 
     protected void addCommonHelpItems(JMenu menu) {
-        menu.add(new DialogOpenAction<>("Report a Bug", ReportBugDialog.class));
+        menu.add(new DialogOpenAction<>(Strings.get(Strings.ACTION_HELP_REPORT_BUG), ReportBugDialog.class));
 
         if (new File(WhatsNewDialog.WHATS_NEW_FILE).exists()) {
             menu.add(
                 new DialogOpenAction<>(
-                    "What’s new in " + Version.PUBLIC_VERSION,
+                    Strings.get(Strings.ACTION_HELP_WHATS_NEW, Version.PUBLIC_VERSION),
                     WhatsNewDialog.class
                 )
             );
@@ -345,7 +346,7 @@ public class MenuController {
 
     @NotNull
     private static JMenu initLaunchMenu() {
-        var menu = new JMenu("Launch");
+        var menu = new JMenu(Strings.get(Strings.MENU_LAUNCH));
         menu.add(new LaunchAction(LaunchAction.App.SONGBOOK));
         menu.add(new LaunchAction(LaunchAction.App.SONGSHOW));
         return menu;

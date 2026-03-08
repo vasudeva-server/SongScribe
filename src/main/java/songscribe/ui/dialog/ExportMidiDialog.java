@@ -28,6 +28,7 @@ import javax.sound.midi.MidiSystem;
 import javax.swing.*;
 
 import songscribe.prefs.Prefs;
+import songscribe.Strings;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.playback.InstrumentDialog;
 import songscribe.ui.playback.PlaybackController;
@@ -40,16 +41,16 @@ public class ExportMidiDialog extends StandardDialog {
     private File saveFile = null;
 
     public ExportMidiDialog() {
-        super("MIDI properties");
+        super(Strings.get(Strings.DIALOG_EXPORT_MIDI_TITLE));
         var center = new JPanel();
         center.setLayout(new BoxLayout(center, BoxLayout.Y_AXIS));
         center.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
-        StandardDialog.addLabelToBox(center, "Instrument:", 5);
+        StandardDialog.addLabelToBox(center, Strings.get(Strings.LABEL_INSTRUMENT), 5);
         instrumentCombo = new JComboBox<>(InstrumentDialog.INSTRUMENT_STRING);
         instrumentCombo.setAlignmentX(Component.LEFT_ALIGNMENT);
         center.add(instrumentCombo);
         center.add(Box.createVerticalStrut(15));
-        withRepeatCheck = new JCheckBox("Export with repeats");
+        withRepeatCheck = new JCheckBox(Strings.get(Strings.LABEL_EXPORT_WITH_REPEATS));
         withRepeatCheck.setAlignmentX(Component.LEFT_ALIGNMENT);
         center.add(withRepeatCheck);
         contentPanel.add(BorderLayout.CENTER, center);
@@ -91,7 +92,7 @@ public class ExportMidiDialog extends StandardDialog {
                 PlaybackController.setTempoChangePercent(savedSettings.tempoChangePercent());
             }
         } catch (IOException | InvalidMidiDataException e1) {
-            mainFrame.showErrorMessage(MainFrame.COULD_NOT_SAVE_MESSAGE);
+            mainFrame.showErrorMessage(Strings.get(Strings.ERROR_FILE_SAVE));
         }
     }
 }

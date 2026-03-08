@@ -21,12 +21,13 @@ package songscribe.ui.menu;
 
 import javax.swing.*;
 
+import songscribe.Strings;
 import songscribe.ui.action.Actions;
 
 public class DurationMenu extends JMenu {
 
     public DurationMenu() {
-        super("Duration");
+        super(Strings.get(Strings.MENU_NOTATION_DURATION));
 
         for (var action : Actions.DURATION_ACTION_GROUP.getActions()) {
             if (action == Actions.GLISSANDO_ACTION) {

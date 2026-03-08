@@ -23,6 +23,7 @@ package songscribe.ui.action;
 import java.awt.event.*;
 
 import songscribe.ui.message.DeselectMessage;
+import songscribe.Strings;
 import songscribe.ui.message.MessageCenter;
 import songscribe.util.UIUtils;
 
@@ -30,7 +31,7 @@ public class DeselectAction extends UIAction {
 
     public DeselectAction() {
         super(
-            "Deselect",
+            Strings.get(Strings.ACTION_EDIT_DESELECT),
             "deselect",
             KeyEvent.VK_D,
             UIUtils.MENU_SHORTCUT_MASK

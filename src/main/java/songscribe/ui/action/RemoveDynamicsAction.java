@@ -26,6 +26,7 @@ import org.jetbrains.annotations.NotNull;
 
 import net.engio.mbassy.listener.Handler;
 
+import songscribe.Strings;
 import songscribe.ui.message.MessageCenter;
 import songscribe.ui.message.MusicSelectionChangedMessage;
 import songscribe.ui.message.RemoveDynamicsMessage;
@@ -34,11 +35,11 @@ public class RemoveDynamicsAction extends UIAction {
 
     public RemoveDynamicsAction() {
         super(
-            "Remove",
+            Strings.get(Strings.ACTION_DYNAMICS_REMOVE),
             null,
             0,
             "remove-dynamics",
-            "Remove crescendo or diminuendo"
+            Strings.get(Strings.ACTION_DYNAMICS_REMOVE_TOOLTIP)
         );
         setFlags(
             Flag.REQUIRES_SELECTION,

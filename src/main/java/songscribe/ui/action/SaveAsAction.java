@@ -21,6 +21,7 @@ package songscribe.ui.action;
 
 import java.awt.event.*;
 
+import songscribe.Strings;
 import songscribe.ui.message.MessageCenter;
 import songscribe.ui.message.SaveAsMessage;
 import songscribe.util.UIUtils;
@@ -29,7 +30,7 @@ public class SaveAsAction extends UIAction {
 
     public SaveAsAction() {
         super(
-            "Save As...",
+            Strings.get(Strings.ACTION_FILE_SAVE_AS),
             "save-as",
             KeyEvent.VK_S,
             InputEvent.SHIFT_DOWN_MASK + UIUtils.MENU_SHORTCUT_MASK

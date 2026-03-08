@@ -32,6 +32,7 @@ import org.jetbrains.annotations.NotNull;
 
 import kotlin.Pair;
 
+import songscribe.Strings;
 import songscribe.data.BeamInterval;
 import songscribe.data.DynamicsInterval;
 import songscribe.data.EndingInterval;
@@ -261,11 +262,7 @@ public final class MusicEditOperations {
 
         if (!repeatExists) {
             var answer = mainFrame.showConfirmDialog(
-                """
-                    It does not make sense to create a first-second ending without a right side \
-                    repeat.
-                    
-                    Do you want to continue anyway?""",
+                Strings.get(Strings.CONFIRM_ENDING_NO_REPEAT),
                 JOptionPane.YES_NO_OPTION,
                 JOptionPane.WARNING_MESSAGE
             );
@@ -351,7 +348,7 @@ public final class MusicEditOperations {
 
         if (state == null) {
             mainFrame.showInfoMessage(
-                "You must select one or more notes in order to flip their stem direction."
+                Strings.get(Strings.ERROR_STEM_NO_SELECTION)
             );
             return;
         }

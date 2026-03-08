@@ -21,6 +21,7 @@ package songscribe.ui.action;
 
 import java.awt.event.*;
 
+import songscribe.Strings;
 import songscribe.ui.message.MessageCenter;
 import songscribe.ui.message.OpenFileMessage;
 import songscribe.util.UIUtils;
@@ -29,7 +30,7 @@ public class OpenAction extends UIAction {
 
     public OpenAction() {
         super(
-            "Open...",
+            Strings.get(Strings.ACTION_FILE_OPEN),
             "open-document",
             KeyEvent.VK_O,
             UIUtils.MENU_SHORTCUT_MASK

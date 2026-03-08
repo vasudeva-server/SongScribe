@@ -23,10 +23,12 @@ import static songscribe.ui.action.Actions.REPEAT_ACTIONS;
 
 import javax.swing.*;
 
+import songscribe.Strings;
+
 public class RepeatsMenu extends JMenu {
 
     public RepeatsMenu() {
-        super("Repeats");
+        super(Strings.get(Strings.MENU_NOTATION_REPEATS));
 
         for (var action : REPEAT_ACTIONS) {
             add(new JRadioButtonMenuItem(action));

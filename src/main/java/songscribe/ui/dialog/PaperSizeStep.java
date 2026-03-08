@@ -29,6 +29,7 @@ import javax.swing.*;
 
 import org.jetbrains.annotations.NotNull;
 
+import songscribe.Strings;
 import songscribe.data.PageLayoutData;
 import songscribe.prefs.Prefs;
 import songscribe.util.GraphicUtils;
@@ -85,7 +86,7 @@ public class PaperSizeStep extends Step {
     );
     private final JLabel leftInnerLabel = new JLabel();
     private final JLabel rightOuterLabel = new JLabel();
-    private final JCheckBox mirroredCheck = new JCheckBox("Mirrored");
+    private final JCheckBox mirroredCheck = new JCheckBox(Strings.get(Strings.DIALOG_PAPER_SIZE_MIRRORED));
     private GraphicUtils.Unit currentUnit = GraphicUtils.Unit.INCH;
 
     public PaperSizeStep(PageLayoutData pageLayoutData) {
@@ -114,23 +115,23 @@ public class PaperSizeStep extends Step {
         c.weighty = 0.5;
         c.anchor = GridBagConstraints.LINE_END;
         c.insets = new Insets(5, 5, 0, 5);
-        panel.add(new JLabel("From template:"), c);
+        panel.add(new JLabel(Strings.get(Strings.DIALOG_PAPER_SIZE_FROM_TEMPLATE)), c);
         c.gridy = 1;
-        panel.add(new JLabel("Paper size:"), c);
+        panel.add(new JLabel(Strings.get(Strings.DIALOG_PAPER_SIZE_PAPER_SIZE)), c);
         c.gridy = 2;
-        panel.add(new JLabel("Width:"), c);
+        panel.add(new JLabel(Strings.get(Strings.DIALOG_PAPER_SIZE_WIDTH)), c);
         c.gridy = 3;
-        panel.add(new JLabel("Height:"), c);
+        panel.add(new JLabel(Strings.get(Strings.DIALOG_PAPER_SIZE_HEIGHT)), c);
         c.gridy = 4;
-        panel.add(new JLabel("Margins:"), c);
+        panel.add(new JLabel(Strings.get(Strings.DIALOG_PAPER_SIZE_MARGINS)), c);
         c.gridy = 5;
         panel.add(leftInnerLabel, c);
         c.gridy = 6;
         panel.add(rightOuterLabel, c);
         c.gridy = 7;
-        panel.add(new JLabel("Top:"), c);
+        panel.add(new JLabel(Strings.get(Strings.DIALOG_PAPER_SIZE_TOP)), c);
         c.gridy = 8;
-        panel.add(new JLabel("Bottom:"), c);
+        panel.add(new JLabel(Strings.get(Strings.DIALOG_PAPER_SIZE_BOTTOM)), c);
         c.gridx = 1;
         c.gridy = 0;
         c.anchor = GridBagConstraints.CENTER;
@@ -369,10 +370,14 @@ public class PaperSizeStep extends Step {
         @Override
         public void actionPerformed(ActionEvent e) {
             leftInnerLabel.setText(
-                mirroredCheck.isSelected() ? "Inner:" : "Left:"
+                mirroredCheck.isSelected()
+                    ? Strings.get(Strings.DIALOG_PAPER_SIZE_INNER)
+                    : Strings.get(Strings.DIALOG_PAPER_SIZE_LEFT)
             );
             rightOuterLabel.setText(
-                mirroredCheck.isSelected() ? "Outer:" : "Right:"
+                mirroredCheck.isSelected()
+                    ? Strings.get(Strings.DIALOG_PAPER_SIZE_OUTER)
+                    : Strings.get(Strings.DIALOG_PAPER_SIZE_RIGHT)
             );
         }
     }

@@ -20,14 +20,9 @@
 
 package songscribe.ui.action;
 
-import static songscribe.util.StringUtils.capitalizeSentence;
-import static songscribe.util.StringUtils.toKebabCase;
-
 import java.awt.event.*;
 
-import org.jetbrains.annotations.Contract;
-import org.jetbrains.annotations.NotNull;
-
+import songscribe.Strings;
 import songscribe.ui.message.AddDynamicsMessage;
 import songscribe.ui.message.MessageCenter;
 
@@ -37,11 +32,11 @@ public class AddDynamicsAction extends UIAction {
 
     public AddDynamicsAction(boolean isCrescendo) {
         super(
-            getName(isCrescendo),
+            Strings.get(isCrescendo ? Strings.ACTION_DYNAMICS_CRESCENDO : Strings.ACTION_DYNAMICS_DIMINUENDO),
             null,
             0,
-            toKebabCase(getName(isCrescendo)),
-            capitalizeSentence(getName(isCrescendo))
+            isCrescendo ? "add-crescendo" : "add-diminuendo",
+            Strings.get(isCrescendo ? Strings.ACTION_DYNAMICS_CRESCENDO_TOOLTIP : Strings.ACTION_DYNAMICS_DIMINUENDO_TOOLTIP)
         );
         this.isCrescendo = isCrescendo;
         setFlags(
@@ -52,12 +47,6 @@ public class AddDynamicsAction extends UIAction {
             Flag.DISABLE_WHEN_EDITING_TEXT,
             Flag.DISABLE_IN_ADJUSTMENT_MODE
         );
-    }
-
-    @NotNull
-    @Contract(pure = true)
-    private static String getName(boolean isCrescendo) {
-        return isCrescendo ? "Add Crescendo" : "Add Diminuendo";
     }
 
     public boolean isCrescendo() {

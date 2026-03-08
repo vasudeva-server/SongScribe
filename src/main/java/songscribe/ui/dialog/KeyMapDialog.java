@@ -19,9 +19,11 @@
  */
 package songscribe.ui.dialog;
 
+import songscribe.Strings;
+
 public class KeyMapDialog extends HTMLDialog {
 
     public KeyMapDialog() {
-        super("Keymap", "Keymap.html");
+        super(Strings.get(Strings.DIALOG_KEYMAP_TITLE), "Keymap.html");
     }
 }

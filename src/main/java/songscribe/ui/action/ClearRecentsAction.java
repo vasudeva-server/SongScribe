@@ -21,12 +21,13 @@ package songscribe.ui.action;
 
 import java.awt.event.ActionEvent;
 
+import songscribe.Strings;
 import songscribe.prefs.RecentDocumentsManager;
 
 public class ClearRecentsAction extends UIAction {
 
     public ClearRecentsAction() {
-        super("Clear Recents", "clear-recents");
+        super(Strings.get(Strings.ACTION_EDIT_CLEAR_RECENTS), "clear-recents");
         setFlags(Flag.DISABLE_WHEN_PLAYING);
     }
 

@@ -26,6 +26,7 @@ import org.jetbrains.annotations.NotNull;
 
 import net.engio.mbassy.listener.Handler;
 
+import songscribe.Strings;
 import songscribe.ui.message.MessageCenter;
 import songscribe.ui.message.MusicSelectionChangedMessage;
 import songscribe.ui.message.ToggleBeamMessage;
@@ -34,11 +35,11 @@ public class ToggleBeamAction extends UIAction {
 
     public ToggleBeamAction() {
         super(
-            "Toggle Beam",
+            Strings.get(Strings.ACTION_BEAM_TOGGLE),
             "beam.svg",
             28,
             "toggle-beam",
-            "Beam/unbeam selected notes",
+            Strings.get(Strings.ACTION_BEAM_TOGGLE_TOOLTIP),
             KeyEvent.VK_B,
             0
         );

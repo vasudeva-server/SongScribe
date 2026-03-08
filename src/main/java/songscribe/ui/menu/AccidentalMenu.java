@@ -21,13 +21,14 @@ package songscribe.ui.menu;
 
 import javax.swing.*;
 
+import songscribe.Strings;
 import songscribe.music.StaffElement;
 import songscribe.ui.action.Actions;
 
 public class AccidentalMenu extends JMenu {
 
     public AccidentalMenu() {
-        super("Accidental");
+        super(Strings.get(Strings.MENU_NOTATION_ACCIDENTAL));
         for (var action : Actions.ACCIDENTAL_ACTION_GROUP.getActions()) {
             if (action.getAccidental() == StaffElement.Accidental.NONE) {
                 continue;

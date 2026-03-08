@@ -20,17 +20,16 @@
 
 package songscribe.ui;
 
+import songscribe.Strings;
+
 public enum Control {
-    MOUSE("Mouse"),
-    KEYBOARD("Keyboard");
-
-    private final String description;
-
-    Control(String description) {
-        this.description = description;
-    }
+    MOUSE,
+    KEYBOARD;
 
     public String getDescription() {
-        return description;
+        return switch (this) {
+            case MOUSE -> Strings.get(Strings.ACTION_CONTROL_MOUSE);
+            case KEYBOARD -> Strings.get(Strings.ACTION_CONTROL_KEYBOARD);
+        };
     }
 }

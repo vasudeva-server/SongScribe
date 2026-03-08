@@ -24,6 +24,7 @@ import java.awt.event.*;
 
 import javax.swing.*;
 
+import songscribe.Strings;
 import songscribe.music.BeatChange;
 import songscribe.music.StaffElement;
 import songscribe.ui.renderer.BeatChangeRenderer;
@@ -35,7 +36,7 @@ public class BeatChangeDialog extends StandardDialog {
     private final ButtonGroup bg;
 
     public BeatChangeDialog() {
-        super("Beat change");
+        super(Strings.get(Strings.DIALOG_BEAT_CHANGE_TITLE));
         var center = new JPanel();
         center.setLayout(new BoxLayout(center, BoxLayout.Y_AXIS));
         center.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
@@ -80,7 +81,7 @@ public class BeatChangeDialog extends StandardDialog {
 
         //----------------------south------------------------
         var south = new JPanel();
-        removeButton = new JButton("Remove");
+        removeButton = new JButton(Strings.get(Strings.LABEL_BUTTON_REMOVE));
         removeButton.addActionListener(_ -> {
             var score = mainFrame.getScore();
             selectedElement.setBeatChange(null);
@@ -120,11 +121,11 @@ public class BeatChangeDialog extends StandardDialog {
         removeButton.setEnabled(!bcnull);
 
         if (bcnull) {
-            okButton.setText("Add");
-            applyButton.setText("Apply addition");
+            okButton.setText(Strings.get(Strings.LABEL_BUTTON_ADD));
+            applyButton.setText(Strings.get(Strings.LABEL_BUTTON_APPLY_ADDITION));
         } else {
-            okButton.setText("Modify");
-            applyButton.setText("Apply modification");
+            okButton.setText(Strings.get(Strings.LABEL_BUTTON_MODIFY));
+            applyButton.setText(Strings.get(Strings.LABEL_BUTTON_APPLY_MODIFICATION));
         }
     }
 
@@ -132,7 +133,7 @@ public class BeatChangeDialog extends StandardDialog {
     protected void setData() {
         if (bg.getSelection() == null) {
             mainFrame.showErrorMessage(
-                "You must select one of the beat change type!"
+                Strings.get(Strings.ERROR_BEAT_CHANGE_NO_SELECTION)
             );
             return;
         }

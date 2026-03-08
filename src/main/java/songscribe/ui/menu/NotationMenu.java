@@ -30,6 +30,7 @@ import static songscribe.ui.action.Actions.TOGGLE_TUPLET_ACTIONS;
 
 import javax.swing.*;
 
+import songscribe.Strings;
 import songscribe.ui.action.FirstSecondEndingAction;
 import songscribe.ui.action.ToggleLyricsUnderRestsAction;
 import songscribe.ui.action.ToggleTrillAction;
@@ -37,7 +38,7 @@ import songscribe.ui.message.MessageCenter;
 
 public class NotationMenu extends JMenu {
 
-    public static final String NAME = "Notation";
+    public static final String NAME = Strings.get(Strings.MENU_NOTATION);
 
     public NotationMenu() {
         super(NAME);
@@ -61,7 +62,7 @@ public class NotationMenu extends JMenu {
     }
 
     private static JMenu createTupletMenu() {
-        var menu = new JMenu("Tuplet");
+        var menu = new JMenu(Strings.get(Strings.MENU_NOTATION_TUPLET));
 
         for (var action : TOGGLE_TUPLET_ACTIONS) {
             menu.add(new JMenuItem(action));
@@ -73,7 +74,7 @@ public class NotationMenu extends JMenu {
     }
 
     private static JMenu createDynamicsMenu() {
-        var menu = new JMenu("Crescendo & Diminuendo");
+        var menu = new JMenu(Strings.get(Strings.MENU_NOTATION_DYNAMICS));
         menu.add(new JMenuItem(ADD_CRESCENDO_ACTION));
         menu.add(new JMenuItem(ADD_DIMINUENDO_ACTION));
         menu.add(new JMenuItem(REMOVE_DYNAMICS_ACTION));

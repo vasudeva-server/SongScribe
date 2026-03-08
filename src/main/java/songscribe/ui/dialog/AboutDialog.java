@@ -29,6 +29,7 @@ import javax.swing.*;
 import org.jdesktop.layout.GroupLayout;
 import org.jdesktop.layout.LayoutStyle;
 
+import songscribe.Strings;
 import songscribe.Version;
 import songscribe.data.MyDesktop;
 import songscribe.util.Utils;
@@ -36,16 +37,15 @@ import songscribe.util.Utils;
 public class AboutDialog extends StandardDialog {
 
     public static final String WEB = "http://www.songscribe.org";
-    public static final String LICENSE = "GPL (General Public License)";
 
     public AboutDialog() {
-        super("About");
+        super(Strings.get(Strings.DIALOG_ABOUT_TITLE));
         var tabPane = new JTabbedPane();
-        tabPane.addTab("About", makeAboutPanel());
+        tabPane.addTab(Strings.get(Strings.DIALOG_ABOUT_TAB_ABOUT), makeAboutPanel());
 
         try {
             tabPane.add(
-                "Read me",
+                Strings.get(Strings.DIALOG_ABOUT_TAB_README),
                 createTextPane(
                     "file:" + Utils.getResourcePath("help/About.html")
                 )
@@ -56,7 +56,7 @@ public class AboutDialog extends StandardDialog {
 
         try {
             tabPane.add(
-                "License agreement",
+                Strings.get(Strings.DIALOG_ABOUT_TAB_LICENSE_AGREEMENT),
                 createTextPane("file:license.txt")
             );
         } catch (IOException e) {
@@ -65,7 +65,7 @@ public class AboutDialog extends StandardDialog {
 
         try {
             tabPane.add(
-                "Acknowledgements",
+                Strings.get(Strings.DIALOG_ABOUT_TAB_ACKNOWLEDGEMENTS),
                 createTextPane(
                     "file:" +
                         Utils.getResourcePath("help/Acknowledgements.html")
@@ -113,14 +113,14 @@ public class AboutDialog extends StandardDialog {
 
         versionLabel.setFont(new Font("Arial", Font.BOLD, 14));
         versionLabel.setHorizontalAlignment(SwingConstants.TRAILING);
-        versionLabel.setText("Version:");
+        versionLabel.setText(Strings.get(Strings.LABEL_VERSION));
 
         version.setFont(new Font("Arial", Font.PLAIN, 14));
         version.setText(Version.PUBLIC_VERSION);
 
         copyrightLabel.setFont(new Font("Arial", Font.BOLD, 14));
         copyrightLabel.setHorizontalAlignment(SwingConstants.TRAILING);
-        copyrightLabel.setText("Copyright:");
+        copyrightLabel.setText(Strings.get(Strings.LABEL_COPYRIGHT));
 
         copyRight1.setFont(new Font("Arial", Font.PLAIN, 14));
         copyRight1.setText(
@@ -130,18 +130,18 @@ public class AboutDialog extends StandardDialog {
         );
 
         copyRight2.setFont(new Font("Arial", Font.PLAIN, 14));
-        copyRight2.setText("All rights reserved.");
+        copyRight2.setText(Strings.get(Strings.LABEL_ALL_RIGHTS_RESERVED));
 
         licenseLabel.setFont(new Font("Arial", Font.BOLD, 14));
         licenseLabel.setHorizontalAlignment(SwingConstants.TRAILING);
-        licenseLabel.setText("License:");
+        licenseLabel.setText(Strings.get(Strings.LABEL_LICENSE));
 
         license.setFont(new Font("Arial", Font.PLAIN, 14));
-        license.setText(LICENSE);
+        license.setText(Strings.get(Strings.LABEL_GPL));
 
         webLabel.setFont(new Font("Arial", Font.BOLD, 14));
         webLabel.setHorizontalAlignment(SwingConstants.TRAILING);
-        webLabel.setText("Web:");
+        webLabel.setText(Strings.get(Strings.LABEL_WEB));
 
         web.setFont(new Font("Arial", Font.PLAIN, 14));
         web.setText(WEB);
@@ -170,7 +170,7 @@ public class AboutDialog extends StandardDialog {
 
         emailLabel.setFont(new Font("Arial", Font.BOLD, 14));
         emailLabel.setHorizontalAlignment(SwingConstants.TRAILING);
-        emailLabel.setText("E-mail:");
+        emailLabel.setText(Strings.get(Strings.LABEL_EMAIL));
 
         email.setFont(new Font("Arial", Font.PLAIN, 12));
         email.setText(ReportBugDialog.BUG_EMAIL);

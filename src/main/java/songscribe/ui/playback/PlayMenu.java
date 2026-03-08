@@ -25,6 +25,7 @@ import javax.swing.*;
 import net.engio.mbassy.listener.Handler;
 
 import songscribe.MusicChangeListener;
+import songscribe.Strings;
 import songscribe.prefs.Prefs;
 import songscribe.ui.action.DialogOpenAction;
 import songscribe.ui.component.MainFrame;
@@ -39,7 +40,7 @@ public class PlayMenu extends JMenu implements MusicChangeListener {
     private final JMenu tempoChangeMenu;
 
     public PlayMenu() {
-        super("Play");
+        super(Strings.get(Strings.MENU_PLAY));
         add(new JMenuItem(PlaybackController.PLAY_PAUSE_ACTION));
         add(new JMenuItem(PlaybackController.STOP_ACTION));
 
@@ -54,7 +55,7 @@ public class PlayMenu extends JMenu implements MusicChangeListener {
             PlaybackController.LOOP_PLAYBACK_ACTION
         );
         add(loopPlaybackItem);
-        tempoChangeMenu = new JMenu("Playback Tempo");
+        tempoChangeMenu = new JMenu(Strings.get(Strings.MENU_PLAY_TEMPO));
 
         for (var action : PlaybackController.PLAYBACK_TEMPO_ACTIONS) {
             var menuItem = new JRadioButtonMenuItem(action);
@@ -65,7 +66,7 @@ public class PlayMenu extends JMenu implements MusicChangeListener {
         add(tempoChangeMenu);
         addSeparator();
         instrumentItem = new JMenuItem(
-            new DialogOpenAction<>("Instruments...", InstrumentDialog.class)
+            new DialogOpenAction<>(Strings.get(Strings.MENU_PLAY_INSTRUMENTS), InstrumentDialog.class)
         );
         add(instrumentItem);
 

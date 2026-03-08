@@ -24,6 +24,7 @@ import java.awt.*;
 import javax.swing.*;
 import javax.swing.event.*;
 
+import songscribe.Strings;
 import songscribe.ui.fontchooser.listeners.FamilyListSelectionListener;
 import songscribe.ui.fontchooser.listeners.SizeListSelectionListener;
 import songscribe.ui.fontchooser.listeners.StyleListSelectionListener;
@@ -51,13 +52,13 @@ public class FontChooser extends JPanel implements FontContainer {
 
     private FontSelectionModel selectionModel = null;
 
-    private final JLabel familyLabel = new JLabel("Font");
+    private final JLabel familyLabel = new JLabel(Strings.get(Strings.LABEL_FONT_FAMILY));
 
-    private final JLabel styleLabel = new JLabel("Style");
+    private final JLabel styleLabel = new JLabel(Strings.get(Strings.LABEL_FONT_STYLE));
 
-    private final JLabel sizeLabel = new JLabel("Size");
+    private final JLabel sizeLabel = new JLabel(Strings.get(Strings.LABEL_FONT_SIZE));
 
-    private final JLabel previewLabel = new JLabel("Preview");
+    private final JLabel previewLabel = new JLabel(Strings.get(Strings.LABEL_FONT_PREVIEW));
 
     private final JPanel fontPanel = new JPanel();
 

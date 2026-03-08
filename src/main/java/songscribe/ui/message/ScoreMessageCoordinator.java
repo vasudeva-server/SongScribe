@@ -26,6 +26,7 @@ import org.jetbrains.annotations.NotNull;
 
 import net.engio.mbassy.listener.Handler;
 
+import songscribe.Strings;
 import songscribe.music.Composition;
 import songscribe.music.Line;
 import songscribe.music.LyricsProcessor;
@@ -172,7 +173,7 @@ public final class ScoreMessageCoordinator {
             mainFrame.setDocumentModified(true);
             callback.repaint();
         } else {
-            mainFrame.showErrorMessage("Please select a line first.");
+            mainFrame.showErrorMessage(Strings.get(Strings.ERROR_LINE_NO_SELECTION));
         }
     }
 

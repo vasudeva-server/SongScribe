@@ -21,6 +21,7 @@ package songscribe.ui.menu;
 
 import javax.swing.*;
 
+import songscribe.Strings;
 import songscribe.ui.action.Actions;
 import songscribe.ui.action.InsertLineAction;
 
@@ -33,7 +34,7 @@ public final class InsertMenu extends JMenu {
     }
 
     private InsertMenu() {
-        super("Insert");
+        super(Strings.get(Strings.MENU_INSERT));
         add(new DurationMenu());
         add(new JCheckBoxMenuItem(Actions.REST_ACTION));
         add(new RepeatsMenu());
@@ -56,10 +57,10 @@ public final class InsertMenu extends JMenu {
 
         addSeparator();
 
-        var lineMenu = new JMenu("Line");
-        lineMenu.add(new InsertLineAction("At the end", -1));
-        lineMenu.add(new InsertLineAction("Before the selected line", 0));
-        lineMenu.add(new InsertLineAction("After the selected line", 1));
+        var lineMenu = new JMenu(Strings.get(Strings.MENU_INSERT_LINE));
+        lineMenu.add(new InsertLineAction(Strings.get(Strings.MENU_INSERT_LINE_AT_END), -1));
+        lineMenu.add(new InsertLineAction(Strings.get(Strings.MENU_INSERT_LINE_BEFORE), 0));
+        lineMenu.add(new InsertLineAction(Strings.get(Strings.MENU_INSERT_LINE_AFTER), 1));
         add(lineMenu);
     }
 }

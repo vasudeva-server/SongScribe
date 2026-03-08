@@ -25,6 +25,7 @@ import org.jetbrains.annotations.NotNull;
 
 import net.engio.mbassy.listener.Handler;
 
+import songscribe.Strings;
 import songscribe.ui.dialog.KeySignatureChangeDialog;
 import songscribe.ui.message.Message;
 import songscribe.ui.message.MusicSelectionChangedMessage;
@@ -33,11 +34,11 @@ public class KeySignatureChangeAction extends UIAction {
 
     public KeySignatureChangeAction() {
         super(
-            "Key Signature Change...",
+            Strings.get(Strings.ACTION_KEY_SIGNATURE_CHANGE),
             null,
             0,
             "key-signature-change",
-            "Insert key signature change"
+            Strings.get(Strings.ACTION_KEY_SIGNATURE_CHANGE_TOOLTIP)
         );
         setFlags(
             Flag.DISABLE_WHEN_BAR_SELECTED,

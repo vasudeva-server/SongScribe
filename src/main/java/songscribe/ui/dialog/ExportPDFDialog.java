@@ -21,6 +21,7 @@ package songscribe.ui.dialog;
 
 import java.awt.*;
 
+import songscribe.Strings;
 import songscribe.data.PageLayoutData;
 public class ExportPDFDialog extends StandardDialog {
 
@@ -29,7 +30,7 @@ public class ExportPDFDialog extends StandardDialog {
     private PageLayoutData paperSizePageLayoutData = null;
 
     public ExportPDFDialog() {
-        super("PDF properties");
+        super(Strings.get(Strings.DIALOG_EXPORT_PDF_TITLE));
         paperSizePageLayoutDataPrivate = new PageLayoutData();
         paperSizePageLayoutDataPrivate.mainFrame = mainFrame;
         paperSizePanel = new PaperSizeStep(paperSizePageLayoutDataPrivate);

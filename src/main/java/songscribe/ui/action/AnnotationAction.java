@@ -21,12 +21,13 @@ package songscribe.ui.action;
 
 import java.awt.event.*;
 
+import songscribe.Strings;
 import songscribe.ui.dialog.AnnotationDialog;
 
 public class AnnotationAction extends UIAction {
 
     public AnnotationAction() {
-        super("Annotation...", null, 0, "annotation", "Insert annotation");
+        super(Strings.get(Strings.ACTION_ANNOTATION), null, 0, "annotation", Strings.get(Strings.ACTION_ANNOTATION_TOOLTIP));
         setFlags(
             Flag.REQUIRES_SINGLE_SELECTION,
             Flag.DISABLE_WHEN_PLAYING,

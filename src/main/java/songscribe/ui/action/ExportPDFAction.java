@@ -24,6 +24,7 @@ import java.io.File;
 
 import javax.swing.*;
 
+import songscribe.Strings;
 import songscribe.data.MyFileFilter;
 import songscribe.data.PageLayoutData;
 import songscribe.export.PDFExporter;
@@ -38,12 +39,12 @@ public class ExportPDFAction extends UIAction {
     private ExportPDFDialog exportPDFDialog = null;
 
     public ExportPDFAction() {
-        super("Export as PDF...", "export-pdf");
+        super(Strings.get(Strings.ACTION_EXPORT_PDF), "export-pdf");
         fileDialog = new PlatformFileDialog(
             MainFrame.getInstance(),
             "Export PDF",
             false,
-            new MyFileFilter("PDF", "pdf")
+            new MyFileFilter(Strings.get(Strings.FILTER_PDF), "pdf")
         );
     }
 
@@ -76,9 +77,7 @@ public class ExportPDFAction extends UIAction {
         if (saveFile.exists()) {
             var response = JOptionPane.showConfirmDialog(
                 mainFrame,
-                "The file “" +
-                    saveFile.getName() +
-                    "” already exists. Do you want to overwrite it?",
+                Strings.get(Strings.CONFIRM_FILE_OVERWRITE, saveFile.getName()),
                 mainFrame.appName,
                 JOptionPane.YES_NO_OPTION
             );

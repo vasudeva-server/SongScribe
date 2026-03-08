@@ -28,6 +28,7 @@ import org.jetbrains.annotations.Nullable;
 
 import net.engio.mbassy.listener.Handler;
 
+import songscribe.Strings;
 import songscribe.data.BeamInterval;
 import songscribe.music.ElementType;
 import songscribe.music.Line;
@@ -691,7 +692,7 @@ public class InsertionElementManager {
         var iv = line.getTuplets().findInterval(xIndex - 1);
 
         if ((iv != null) && ((xIndex - 1) < iv.getEnd())) {
-            score.getMainFrame().showErrorMessage("Cannot insert into a triplet.");
+            score.getMainFrame().showErrorMessage(Strings.get(Strings.ERROR_TRIPLET_INSERT));
             return;
         }
 

@@ -23,6 +23,7 @@ import java.io.File;
 
 import org.jetbrains.annotations.NotNull;
 
+import songscribe.Strings;
 import songscribe.ui.component.MainFrame;
 
 /**
@@ -49,7 +50,7 @@ public class ABCExporter {
         // ABC export is not supported
         if (isGUI) {
             mainFrame.showErrorMessage(
-                "ABC export is not currently supported."
+                Strings.get(Strings.ERROR_ABC_NOT_SUPPORTED)
             );
         } else {
             System.err.println("ERROR: ABC export is not currently supported");

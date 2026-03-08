@@ -25,6 +25,7 @@ import java.awt.event.*;
 import javax.swing.*;
 
 import songscribe.prefs.Prefs;
+import songscribe.Strings;
 import songscribe.ui.component.NumericTextField;
 import songscribe.util.GraphicUtils;
 import songscribe.util.UIUtils;
@@ -54,7 +55,7 @@ public class LineWidthChangeDialog
     private int originalWidth = 0;
 
     public LineWidthChangeDialog() {
-        super("Line Width");
+        super(Strings.get(Strings.DIALOG_LINE_WIDTH_TITLE));
         initContent();
     }
 
@@ -65,7 +66,7 @@ public class LineWidthChangeDialog
         controlsPanel.setBorder(BorderFactory.createEmptyBorder(20, 8, 0, 15));
         addLabeledField(
             controlsPanel,
-            "Line width: ",
+            Strings.get(Strings.LABEL_LINE_WIDTH) + " ",
             lineWidthField,
             LabelPosition.LEFT
         );
@@ -156,7 +157,7 @@ public class LineWidthChangeDialog
         try {
             width = getEnteredWidthInInches(getSelectedUnit());
         } catch (NumberFormatException e) {
-            mainFrame.showErrorMessage("Invalid line width.");
+            mainFrame.showErrorMessage(Strings.get(Strings.ERROR_LINE_WIDTH_INVALID));
             return -1;
         }
 
@@ -176,13 +177,12 @@ public class LineWidthChangeDialog
         }
 
         mainFrame.showErrorMessage(
-            "Line width must be between " +
-            min +
-            " and " +
-            max +
-            ' ' +
-            (isMetric() ? "cm" : "inches") +
-            '.'
+            Strings.get(
+                Strings.ERROR_LINE_WIDTH_RANGE,
+                min,
+                max,
+                Strings.get(isMetric() ? Strings.LABEL_UNIT_CM : Strings.LABEL_UNIT_INCHES)
+            )
         );
 
         return -1;

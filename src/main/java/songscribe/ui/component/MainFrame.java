@@ -40,6 +40,7 @@ import com.formdev.flatlaf.util.SystemInfo;
 import net.engio.mbassy.listener.Handler;
 
 import songscribe.MusicChangeListener;
+import songscribe.Strings;
 import songscribe.Version;
 import songscribe.data.FileExtensions;
 import songscribe.data.MyFileFilter;
@@ -74,10 +75,6 @@ import songscribe.util.Log;
 
 public class MainFrame extends JFrame implements IMainFrame, Printable {
 
-    public static final String COULD_NOT_SAVE_MESSAGE =
-        "Could not save the file. Check if you have permission to create a file in this directory" +
-            " or if the overwritten file is write-protected.";
-
     // This directory is used to store preferences and logs
     public static final File SONGSCRIBE_DIR = new File(
         System.getProperty("user.home"),
@@ -90,10 +87,7 @@ public class MainFrame extends JFrame implements IMainFrame, Printable {
         if (!SONGSCRIBE_DIR.exists() && !SONGSCRIBE_DIR.mkdir()) {
             JOptionPane.showMessageDialog(
                 null,
-                """
-                    Oops, we cannot make a “.songscribe” directory in the current user’s home directory. Please give proper permissions.
-                    
-                    Until then preferences cannot be saved.""",
+                Strings.get(Strings.ERROR_DIRECTORY_CREATE),
                 Constants.PACKAGE_NAME,
                 JOptionPane.ERROR_MESSAGE
             );
@@ -143,7 +137,7 @@ public class MainFrame extends JFrame implements IMainFrame, Printable {
             );
         }
 
-        appName = "Song Writer";
+        appName = Strings.get(Strings.APP_SONGWRITER);
 
         // Trigger Prefs initialization (auto-migrates from old props file)
         Prefs.getInstance();
@@ -392,10 +386,10 @@ public class MainFrame extends JFrame implements IMainFrame, Printable {
             return true;
         }
 
-        var docName = (currentFile != null) ? currentFile.getName() : "Untitled";
+        var docName = (currentFile != null) ? currentFile.getName() : Strings.get(Strings.DOCUMENT_UNTITLED);
         var answer = JOptionPane.showConfirmDialog(
             this,
-            '“' + docName + "” has been modified. Do you want to save it?",
+            Strings.get(Strings.CONFIRM_SAVE_MODIFIED, docName),
             appName,
             JOptionPane.YES_NO_CANCEL_OPTION,
             JOptionPane.QUESTION_MESSAGE
@@ -450,7 +444,7 @@ public class MainFrame extends JFrame implements IMainFrame, Printable {
     }
 
     private void updateTitle() {
-        var name = (currentFile != null) ? currentFile.getName() : "Untitled";
+        var name = (currentFile != null) ? currentFile.getName() : Strings.get(Strings.DOCUMENT_UNTITLED);
         setTitle(documentModified ? '•' + name : name);
     }
 
@@ -550,10 +544,10 @@ public class MainFrame extends JFrame implements IMainFrame, Printable {
     public void onOpenFile(OpenFileMessage message) {
         var dialog = new PlatformFileDialog(
             MainFrame.getInstance(),
-            "Open",
+            Strings.get(Strings.DIALOG_OPEN_TITLE),
             true,
             new MyFileFilter(
-                "SongScribe song files",
+                Strings.get(Strings.FILTER_SONGSCRIBE),
                 FileExtensions.SONGWRITER.substring(1)
             )
         );
@@ -597,7 +591,7 @@ public class MainFrame extends JFrame implements IMainFrame, Printable {
                 printerJob.print();
             } catch (PrinterException e1) {
                 MainFrame.getInstance()
-                    .showErrorMessage("Could not print the song.");
+                    .showErrorMessage(Strings.get(Strings.ERROR_PRINT));
             }
         }
     }
@@ -632,12 +626,12 @@ public class MainFrame extends JFrame implements IMainFrame, Printable {
         // Print not yet implemented with component-based rendering
         g2.setColor(Color.BLACK);
         g2.drawString(
-            "Print functionality is not yet implemented.",
+            Strings.get(Strings.ERROR_PRINT_NOT_IMPLEMENTED),
             50,
             50
         );
         g2.drawString(
-            "Export functionality will be restored in a future update.",
+            Strings.get(Strings.ERROR_EXPORT_PENDING),
             50,
             70
         );
@@ -663,7 +657,7 @@ public class MainFrame extends JFrame implements IMainFrame, Printable {
             printWriter.close();
             setDocumentModified(false);
         } catch (IOException e1) {
-            showErrorMessage(MainFrame.COULD_NOT_SAVE_MESSAGE);
+            showErrorMessage(Strings.get(Strings.ERROR_FILE_SAVE));
         }
     }
 
@@ -671,10 +665,10 @@ public class MainFrame extends JFrame implements IMainFrame, Printable {
     public void onSaveAs(@Nullable SaveAsMessage message) {
         var fileDialog = new PlatformFileDialog(
             this,
-            "Save As",
+            Strings.get(Strings.DIALOG_SAVE_AS_TITLE),
             false,
             new MyFileFilter(
-                "SongScribe song files",
+                Strings.get(Strings.FILTER_SONGSCRIBE),
                 FileExtensions.SONGWRITER.substring(1)
             )
         );
@@ -702,9 +696,7 @@ public class MainFrame extends JFrame implements IMainFrame, Printable {
             if (saveFile.exists()) {
                 var response = JOptionPane.showConfirmDialog(
                     this,
-                    "The file “" +
-                        saveFile.getName() +
-                        "” already exists. Do you want to overwrite it?",
+                    Strings.get(Strings.CONFIRM_FILE_OVERWRITE, saveFile.getName()),
                     appName,
                     JOptionPane.YES_NO_OPTION
                 );

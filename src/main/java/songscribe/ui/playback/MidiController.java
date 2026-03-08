@@ -44,6 +44,7 @@ import javax.swing.*;
 
 import org.jetbrains.annotations.Nullable;
 
+import songscribe.Strings;
 import songscribe.ui.Constants;
 import songscribe.util.Log;
 
@@ -76,11 +77,7 @@ public final class MidiController {
             Log.warning("MIDI initialization failed: " + e.getMessage());
             JOptionPane.showMessageDialog(
                 null,
-                "You may already be running " + Constants.PACKAGE_NAME +
-                " or another application that uses sound. " +
-                "Please try to quit them and restart " +
-                Constants.PACKAGE_NAME + ". " +
-                "In this session playback will be disabled.",
+                Strings.get(Strings.ERROR_MIDI_INIT, Constants.PACKAGE_NAME),
                 Constants.PACKAGE_NAME,
                 JOptionPane.WARNING_MESSAGE
             );

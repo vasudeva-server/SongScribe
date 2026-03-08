@@ -24,6 +24,7 @@ import java.awt.*;
 
 import javax.swing.*;
 
+import songscribe.Strings;
 import songscribe.ui.Constants;
 import songscribe.util.GraphicUtils;
 
@@ -36,25 +37,25 @@ public final class StartFrame {
         var panel = new JPanel();
         panel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
         panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
-        var label = new JLabel("Which application do you want to start?");
+        var label = new JLabel(Strings.get(Strings.LABEL_START_WHICH_APPLICATION));
         label.setAlignmentX(Component.LEFT_ALIGNMENT);
         panel.add(label);
         panel.add(Box.createVerticalStrut(10));
         var bg = new ButtonGroup();
         GraphicUtils.setMediaTracker(new MediaTracker(frame));
-        var sw = new JRadioButton("Song Writer", null, true);
+        var sw = new JRadioButton(Strings.get(Strings.APP_SONGWRITER), null, true);
         bg.add(sw);
         panel.add(sw);
         panel.add(Box.createVerticalStrut(5));
-        var ss = new JRadioButton("Song Show", null);
+        var ss = new JRadioButton(Strings.get(Strings.ACTION_LAUNCH_SONG_SHOW), null);
         bg.add(ss);
         panel.add(ss);
         panel.add(Box.createVerticalStrut(5));
-        var sb = new JRadioButton("Song Book", null);
+        var sb = new JRadioButton(Strings.get(Strings.ACTION_LAUNCH_SONG_BOOK), null);
         bg.add(sb);
         panel.add(sb);
         frame.getContentPane().add(panel);
-        var start = new JButton("Start");
+        var start = new JButton(Strings.get(Strings.LABEL_BUTTON_START));
         start.addActionListener(_ -> {
             frame.setVisible(false);
 

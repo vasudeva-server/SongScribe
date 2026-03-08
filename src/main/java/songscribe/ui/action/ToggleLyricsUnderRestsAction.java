@@ -26,6 +26,7 @@ import org.jetbrains.annotations.NotNull;
 
 import net.engio.mbassy.listener.Handler;
 
+import songscribe.Strings;
 import songscribe.ui.message.MessageCenter;
 import songscribe.ui.message.MusicSelectionChangedMessage;
 import songscribe.ui.message.ToggleLyricsUnderRestsMessage;
@@ -34,7 +35,7 @@ public class ToggleLyricsUnderRestsAction extends UIAction {
 
     public ToggleLyricsUnderRestsAction() {
         super(
-            "Allow / Disallow Lyrics Under Rest",
+            Strings.get(Strings.ACTION_LYRICS_UNDER_RESTS),
             "toggle-lyrics-under-rests"
         );
         setFlags(

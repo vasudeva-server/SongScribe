@@ -26,6 +26,7 @@ import java.io.IOException;
 
 import javax.swing.*;
 
+import songscribe.Strings;
 import songscribe.data.MyFileFilter;
 import songscribe.prefs.Prefs;
 import songscribe.ui.component.MainFrame;
@@ -41,12 +42,12 @@ public class ExportImageAction extends UIAction {
     private ResolutionDialog resolutionDialog = null;
 
     private final MyFileFilter[] myFileFilters = new MyFileFilter[] {
-        new MyFileFilter("JPEG", "jpg"),
-        new MyFileFilter("PNG", "png"),
+        new MyFileFilter(Strings.get(Strings.FILTER_JPEG), "jpg"),
+        new MyFileFilter(Strings.get(Strings.FILTER_PNG), "png"),
     };
 
     public ExportImageAction() {
-        super("Export as Image...", "export-image");
+        super(Strings.get(Strings.ACTION_EXPORT_IMAGE), "export-image");
         var mainFrame = MainFrame.getInstance();
         fileDialog = new PlatformFileDialog(
             mainFrame,
@@ -86,9 +87,7 @@ public class ExportImageAction extends UIAction {
             if (saveFile.exists()) {
                 var response = JOptionPane.showConfirmDialog(
                     mainFrame,
-                    "The file “" +
-                    saveFile.getName() +
-                    "” already exists. Do you want to overwrite it?",
+                    Strings.get(Strings.CONFIRM_FILE_OVERWRITE, saveFile.getName()),
                     mainFrame.appName,
                     JOptionPane.YES_NO_OPTION
                 );
@@ -139,16 +138,16 @@ public class ExportImageAction extends UIAction {
 
                 if (!successful) {
                     mainFrame.showErrorMessage(
-                        "Could not export the image file."
+                        Strings.get(Strings.ERROR_IMAGE_EXPORT)
                     );
                 } else {
                     FileUtils.openExportFile(mainFrame, saveFile);
                 }
             } catch (IOException e1) {
-                mainFrame.showErrorMessage(MainFrame.COULD_NOT_SAVE_MESSAGE);
+                mainFrame.showErrorMessage(Strings.get(Strings.ERROR_FILE_SAVE));
             } catch (OutOfMemoryError e1) {
                 mainFrame.showErrorMessage(
-                    "There is not enough memory for this resolution."
+                    Strings.get(Strings.ERROR_IMAGE_MEMORY)
                 );
             } finally {
                 if (resolutionDialog.isWithoutLyrics()) {

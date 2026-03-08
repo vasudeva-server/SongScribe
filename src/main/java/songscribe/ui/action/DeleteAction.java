@@ -24,12 +24,13 @@ import java.awt.event.*;
 
 import javax.swing.*;
 
+import songscribe.Strings;
 import songscribe.util.UIUtils;
 
 public class DeleteAction extends PasteboardAction {
 
     public DeleteAction() {
-        super(Operation.DELETE, "Delete", "edit-delete", 0, 0);
+        super(Operation.DELETE, Strings.get(Strings.ACTION_EDIT_DELETE), "edit-delete", 0, 0);
         var keystrokes = new KeyStroke[] {
             KeyStroke.getKeyStroke(KeyEvent.VK_DELETE, 0),
             KeyStroke.getKeyStroke(KeyEvent.VK_BACK_SPACE, 0),

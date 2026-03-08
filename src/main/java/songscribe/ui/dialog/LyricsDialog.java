@@ -31,6 +31,7 @@ import com.intellij.uiDesigner.core.GridConstraints;
 import com.intellij.uiDesigner.core.GridLayoutManager;
 import com.intellij.uiDesigner.core.Spacer;
 
+import songscribe.Strings;
 import songscribe.music.LyricsProcessor;
 import songscribe.ui.Constants;
 import songscribe.ui.component.MyJTextArea;
@@ -59,7 +60,7 @@ public class LyricsDialog extends StandardDialog {
     protected JPanel translatedLyricsPanel;
 
     public LyricsDialog() {
-        super("Lyrics");
+        super(Strings.get(Strings.DIALOG_LYRICS_TITLE));
         charsPanel.setLayout(
             new GridLayout(1, specialChars[0].length * 2, 4, 0)
         );
@@ -152,7 +153,11 @@ public class LyricsDialog extends StandardDialog {
         morePanel.setVisible(false);
         moreButton.addActionListener(_ -> {
             morePanel.setVisible(!morePanel.isVisible());
-            moreButton.setText(morePanel.isVisible() ? "<< Less" : "More >>");
+            moreButton.setText(
+                morePanel.isVisible()
+                    ? Strings.get(Strings.DIALOG_LYRICS_LESS)
+                    : Strings.get(Strings.DIALOG_LYRICS_MORE)
+            );
             pack();
         });
 
@@ -225,7 +230,7 @@ public class LyricsDialog extends StandardDialog {
         syllabifiedLyricsPanel.setBorder(
             BorderFactory.createTitledBorder(
                 BorderFactory.createEtchedBorder(),
-                "Syllabified lyrics",
+                Strings.get(Strings.DIALOG_LYRICS_SYLLABIFIED),
                 TitledBorder.DEFAULT_JUSTIFICATION,
                 TitledBorder.DEFAULT_POSITION,
                 null,
@@ -256,7 +261,7 @@ public class LyricsDialog extends StandardDialog {
         lyricsArea = new MyJTextArea();
         lyricsArea.setColumns(30);
         lyricsArea.setRows(6);
-        lyricsArea.setToolTipText("This text is shown under the notes");
+        lyricsArea.setToolTipText(Strings.get(Strings.TOOLTIP_LYRICS_SYLLABIFIED));
         scrollPane1.setViewportView(lyricsArea);
         final JPanel panel1 = new JPanel();
         panel1.setLayout(
@@ -367,7 +372,7 @@ public class LyricsDialog extends StandardDialog {
             )
         );
         nonBreakingHyphenButton = new JButton();
-        nonBreakingHyphenButton.setText("Non-breaking hyphen");
+        nonBreakingHyphenButton.setText(Strings.get(Strings.DIALOG_LYRICS_NON_BREAKING_HYPHEN));
         panel2.add(
             nonBreakingHyphenButton,
             new GridConstraints(
@@ -426,7 +431,7 @@ public class LyricsDialog extends StandardDialog {
             )
         );
         moreButton = new JButton();
-        moreButton.setText("More >>");
+        moreButton.setText(Strings.get(Strings.DIALOG_LYRICS_MORE));
         centerPanel.add(
             moreButton,
             new GridConstraints(
@@ -521,7 +526,7 @@ public class LyricsDialog extends StandardDialog {
         underLyricsPanel.setBorder(
             BorderFactory.createTitledBorder(
                 BorderFactory.createEtchedBorder(),
-                "Lyrics under the song",
+                Strings.get(Strings.DIALOG_LYRICS_UNDER_SONG),
                 TitledBorder.DEFAULT_JUSTIFICATION,
                 TitledBorder.DEFAULT_POSITION,
                 null,
@@ -552,10 +557,10 @@ public class LyricsDialog extends StandardDialog {
         underSongArea = new MyJTextArea();
         underSongArea.setColumns(30);
         underSongArea.setRows(6);
-        underSongArea.setToolTipText("This text is shown under the song");
+        underSongArea.setToolTipText(Strings.get(Strings.TOOLTIP_LYRICS_UNDER_SONG));
         scrollPane2.setViewportView(underSongArea);
         takeButton = new JButton();
-        takeButton.setText("Take from syllabified lyrics");
+        takeButton.setText(Strings.get(Strings.DIALOG_LYRICS_TAKE_FROM_SYLLABIFIED));
         underLyricsPanel.add(
             takeButton,
             new GridConstraints(
@@ -602,7 +607,7 @@ public class LyricsDialog extends StandardDialog {
         translatedLyricsPanel.setBorder(
             BorderFactory.createTitledBorder(
                 BorderFactory.createEtchedBorder(),
-                "English translation",
+                Strings.get(Strings.DIALOG_LYRICS_TRANSLATION),
                 TitledBorder.DEFAULT_JUSTIFICATION,
                 TitledBorder.DEFAULT_POSITION,
                 null,
@@ -634,7 +639,7 @@ public class LyricsDialog extends StandardDialog {
         translatedArea.setColumns(30);
         translatedArea.setRows(6);
         translatedArea.setToolTipText(
-            "This text is shown under the song as translation"
+            Strings.get(Strings.TOOLTIP_LYRICS_TRANSLATION)
         );
         scrollPane3.setViewportView(translatedArea);
     }

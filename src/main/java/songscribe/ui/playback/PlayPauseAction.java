@@ -23,17 +23,18 @@ import java.awt.event.*;
 
 import net.engio.mbassy.listener.Handler;
 
+import songscribe.Strings;
 import songscribe.ui.message.Message;
 
 public class PlayPauseAction extends SequencerAction {
 
-    private static final String PLAY_NAME = "Play";
+    private static final String PLAY_NAME = Strings.get(Strings.ACTION_PLAY_PLAY);
     private static final String PLAY_ICON = "@\uF446";
-    private static final String PLAY_TOOLTIP = "Start playback";
+    private static final String PLAY_TOOLTIP = Strings.get(Strings.ACTION_PLAY_PLAY_TOOLTIP);
 
-    private static final String PAUSE_NAME = "Pause";
+    private static final String PAUSE_NAME = Strings.get(Strings.ACTION_PLAY_PAUSE);
     private static final String PAUSE_ICON = "@\uF44B";
-    private static final String PAUSE_TOOLTIP = "Pause playback";
+    private static final String PAUSE_TOOLTIP = Strings.get(Strings.ACTION_PLAY_PAUSE_TOOLTIP);
 
     private static final int ICON_SIZE = 20;
 
@@ -42,7 +43,7 @@ public class PlayPauseAction extends SequencerAction {
             PLAY_NAME,
             PLAY_ICON,
             ICON_SIZE,
-            PLAY_NAME.toLowerCase(),
+            "play",
             PLAY_TOOLTIP,
             KeyEvent.VK_SPACE,
             0

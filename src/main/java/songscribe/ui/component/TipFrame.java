@@ -31,6 +31,7 @@ import javax.swing.*;
 import org.jdesktop.layout.GroupLayout;
 import org.jdesktop.layout.LayoutStyle;
 
+import songscribe.Strings;
 import songscribe.prefs.Prefs;
 import songscribe.util.Utils;
 
@@ -48,7 +49,7 @@ public class TipFrame extends JFrame {
 
     public TipFrame(MainFrame mainFrame)
         throws IOException, FileNotFoundException {
-        super("Tip of the Day");
+        super(Strings.get(Strings.DIALOG_TIP_TITLE));
         this.mainFrame = mainFrame;
         setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
         addWindowListener(
@@ -76,30 +77,30 @@ public class TipFrame extends JFrame {
         var previousButton = new JButton();
 
         didYouKnowLabel.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 18));
-        didYouKnowLabel.setText("Did you know ... ?");
+        didYouKnowLabel.setText(Strings.get(Strings.LABEL_TIP_DID_YOU_KNOW));
 
         tipPane.setEditable(false);
         tipPane.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 16));
         tipScroll.setViewportView(tipPane);
 
         showTip.setSelected(Prefs.getInstance().getBoolean("showTips"));
-        showTip.setText("Show tips on startup");
+        showTip.setText(Strings.get(Strings.LABEL_TIP_SHOW_ON_STARTUP));
         showTip.setBorder(BorderFactory.createEmptyBorder());
         showTip.setMargin(new Insets(0, 0, 0, 0));
 
-        closeButton.setText("Close");
+        closeButton.setText(Strings.get(Strings.DIALOG_BUTTON_CLOSE));
         closeButton.addActionListener(_ -> closeWindow());
 
-        nextButton.setText("Next tip");
+        nextButton.setText(Strings.get(Strings.LABEL_TIP_NEXT));
         nextButton.addActionListener(_ -> {
             try {
                 showTip();
             } catch (IOException e1) {
-                mainFrame.showErrorMessage("Cannot read the tip file.");
+                mainFrame.showErrorMessage(Strings.get(Strings.ERROR_TIP_READ));
             }
         });
 
-        previousButton.setText("Previous tip");
+        previousButton.setText(Strings.get(Strings.LABEL_TIP_PREVIOUS));
         previousButton.addActionListener(_ -> {
             try {
                 if (index > 1) {
@@ -107,7 +108,7 @@ public class TipFrame extends JFrame {
                     showTip();
                 }
             } catch (IOException e1) {
-                mainFrame.showErrorMessage("Cannot read the tip file.");
+                mainFrame.showErrorMessage(Strings.get(Strings.ERROR_TIP_READ));
             }
         });
 

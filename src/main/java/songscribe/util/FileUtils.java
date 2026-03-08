@@ -35,6 +35,7 @@ import javax.swing.*;
 
 import com.formdev.flatlaf.util.SystemInfo;
 
+import songscribe.Strings;
 import songscribe.data.MyDesktop;
 import songscribe.ui.Constants;
 import songscribe.ui.component.IMainFrame;
@@ -143,7 +144,7 @@ public final class FileUtils {
         } catch (IOException e) {
             JOptionPane.showMessageDialog(
                 null,
-                "Could not open a necessary file. Please reinstall the software.",
+                Strings.get(Strings.ERROR_FILE_REINSTALL),
                 Constants.PACKAGE_NAME,
                 JOptionPane.ERROR_MESSAGE
             );
@@ -176,7 +177,7 @@ public final class FileUtils {
             }
 
             var answer = mainFrame.showConfirmDialog(
-                "Do you want to open the file?",
+                Strings.get(Strings.CONFIRM_FILE_OPEN),
                 JOptionPane.YES_NO_OPTION,
                 JOptionPane.QUESTION_MESSAGE
             );
@@ -185,7 +186,7 @@ public final class FileUtils {
                 try {
                     desktop.open(file);
                 } catch (Exception e) {
-                    mainFrame.showErrorMessage("Could not open the file.");
+                    mainFrame.showErrorMessage(Strings.get(Strings.ERROR_FILE_OPEN));
                 }
             }
         }

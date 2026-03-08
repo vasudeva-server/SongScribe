@@ -33,6 +33,7 @@ import org.jetbrains.annotations.NotNull;
 
 import kotlin.Pair;
 
+import songscribe.Strings;
 import songscribe.music.Composition;
 import songscribe.music.KeyType;
 import songscribe.music.Tempo;
@@ -62,18 +63,18 @@ public class CompositionSettingsDialog extends StandardDialog {
     private final JComboBox<String> monthCombo = new JComboBox<>(
         new String[] {
             "",
-            "January",
-            "February",
-            "March",
-            "April",
-            "May",
-            "June",
-            "July",
-            "August",
-            "September",
-            "October",
-            "November",
-            "December",
+            Strings.get(Strings.MONTH_JANUARY),
+            Strings.get(Strings.MONTH_FEBRUARY),
+            Strings.get(Strings.MONTH_MARCH),
+            Strings.get(Strings.MONTH_APRIL),
+            Strings.get(Strings.MONTH_MAY),
+            Strings.get(Strings.MONTH_JUNE),
+            Strings.get(Strings.MONTH_JULY),
+            Strings.get(Strings.MONTH_AUGUST),
+            Strings.get(Strings.MONTH_SEPTEMBER),
+            Strings.get(Strings.MONTH_OCTOBER),
+            Strings.get(Strings.MONTH_NOVEMBER),
+            Strings.get(Strings.MONTH_DECEMBER),
         }
     );
     private JComboBox<String> dayCombo = null;
@@ -101,7 +102,7 @@ public class CompositionSettingsDialog extends StandardDialog {
 
     public final JComboBox<String> tempoDescriptionCombo = new JComboBox<>();
     private final JCheckBox showOnlyDescriptionCheckBox = new JCheckBox(
-        "Show only description"
+        Strings.get(Strings.DIALOG_COMPOSITION_SETTINGS_SHOW_ONLY_DESCRIPTION)
     );
 
     // Key signature panel
@@ -160,18 +161,29 @@ public class CompositionSettingsDialog extends StandardDialog {
     // Profile tab
     private JComboBox<Object> profileCombo = null;
     private final JLabel profileInfoLabel = new JLabel();
-    private final JButton setAsDefaultButton = new JButton("Set as default");
+    private final JButton setAsDefaultButton = new JButton(
+        Strings.get(Strings.DIALOG_COMPOSITION_SETTINGS_SET_AS_DEFAULT)
+    );
 
     public CompositionSettingsDialog() {
-        super("Composition settings");
+        super(Strings.get(Strings.DIALOG_COMPOSITION_SETTINGS_TITLE));
         initFields();
 
         var tabbedPane = createTabbedPane();
-        tabbedPane.addTab("Text", new TextTab());
-        tabbedPane.addTab("Music", new MusicTab());
+        tabbedPane.addTab(
+            Strings.get(Strings.DIALOG_COMPOSITION_SETTINGS_TAB_TEXT),
+            new TextTab()
+        );
+        tabbedPane.addTab(
+            Strings.get(Strings.DIALOG_COMPOSITION_SETTINGS_TAB_MUSIC),
+            new MusicTab()
+        );
 
         if (System.getenv("DEBUG") != null) {
-            tabbedPane.addTab("Fonts", new FontTab());
+            tabbedPane.addTab(
+                Strings.get(Strings.DIALOG_COMPOSITION_SETTINGS_TAB_FONTS),
+                new FontTab()
+            );
             // tabbedPane.addTab("Profile", new ProfileTab());
         }
 
@@ -231,10 +243,12 @@ public class CompositionSettingsDialog extends StandardDialog {
 
         @NotNull
         private JPanel createTitleSection() {
-            var section = new StandardDialog.TitledSection("Title of song");
+            var section = new StandardDialog.TitledSection(
+                Strings.get(Strings.DIALOG_COMPOSITION_SETTINGS_SECTION_TITLE_OF_SONG)
+            );
             addLabeledField(
                 section,
-                "Number:",
+                Strings.get(Strings.DIALOG_COMPOSITION_SETTINGS_NUMBER),
                 numberField,
                 StandardDialog.LabelPosition.LEFT
             );
@@ -253,7 +267,7 @@ public class CompositionSettingsDialog extends StandardDialog {
 
             addLabeledField(
                 section,
-                "Title:",
+                Strings.get(Strings.DIALOG_COMPOSITION_SETTINGS_SONG_TITLE),
                 scrollPane,
                 StandardDialog.LabelPosition.TOP
             );
@@ -278,7 +292,9 @@ public class CompositionSettingsDialog extends StandardDialog {
             );
             panel.add(takeButton);
 
-            panel.add(new JLabel(" the first"));
+            panel.add(new JLabel(
+                Strings.get(Strings.DIALOG_COMPOSITION_SETTINGS_THE_FIRST)
+            ));
 
             var spinner = new JSpinner(takeFirstWordsSpinnerModel);
             var editor = (JSpinner.DefaultEditor) spinner.getEditor();
@@ -287,18 +303,22 @@ public class CompositionSettingsDialog extends StandardDialog {
             textField.setFocusable(false);
 
             panel.add(spinner);
-            panel.add(new JLabel(" words from lyrics"));
+            panel.add(new JLabel(
+                Strings.get(Strings.DIALOG_COMPOSITION_SETTINGS_WORDS_FROM_LYRICS)
+            ));
 
             return panel;
         }
 
         @NotNull
         private JPanel createPlaceAndDateSection() {
-            var section = new StandardDialog.TitledSection("Place and date");
+            var section = new StandardDialog.TitledSection(
+                Strings.get(Strings.DIALOG_COMPOSITION_SETTINGS_SECTION_PLACE_AND_DATE)
+            );
 
             addLabeledField(
                 section,
-                "Place:",
+                Strings.get(Strings.DIALOG_COMPOSITION_SETTINGS_PLACE),
                 placeField,
                 StandardDialog.LabelPosition.LEFT
             );
@@ -311,21 +331,21 @@ public class CompositionSettingsDialog extends StandardDialog {
 
             addLabeledField(
                 datePanel,
-                "Month:",
+                Strings.get(Strings.DIALOG_COMPOSITION_SETTINGS_MONTH),
                 monthCombo,
                 StandardDialog.LabelPosition.LEFT
             );
 
             addLabeledField(
                 datePanel,
-                "Day:",
+                Strings.get(Strings.DIALOG_COMPOSITION_SETTINGS_DAY),
                 dayCombo,
                 StandardDialog.LabelPosition.LEFT
             );
 
             addLabeledField(
                 datePanel,
-                "Year:",
+                Strings.get(Strings.DIALOG_COMPOSITION_SETTINGS_YEAR),
                 yearField,
                 StandardDialog.LabelPosition.LEFT
             );
@@ -339,7 +359,7 @@ public class CompositionSettingsDialog extends StandardDialog {
         @NotNull
         private JPanel createInfoSection() {
             var section = new StandardDialog.TitledSection(
-                "Attribution",
+                Strings.get(Strings.DIALOG_COMPOSITION_SETTINGS_SECTION_ATTRIBUTION),
                 BoxLayout.X_AXIS
             );
 
@@ -364,14 +384,18 @@ public class CompositionSettingsDialog extends StandardDialog {
             section.add(appendButtonPanel);
 
             var dateString = getDateString();
-            var button = new JButton("Add date");
+            var button = new JButton(
+                Strings.get(Strings.DIALOG_COMPOSITION_SETTINGS_ADD_DATE)
+            );
             button.setAlignmentX(Component.LEFT_ALIGNMENT);
             button.addActionListener(new AddDateAndPlaceAction(false));
             appendButtonPanel.add(button);
 
             appendButtonPanel.add(Box.createVerticalStrut(7));
 
-            button = new JButton("Add date & place");
+            button = new JButton(
+                Strings.get(Strings.DIALOG_COMPOSITION_SETTINGS_ADD_DATE_PLACE)
+            );
             button.setAlignmentX(Component.LEFT_ALIGNMENT);
             button.addActionListener(new AddDateAndPlaceAction(true));
             appendButtonPanel.add(button);
@@ -399,7 +423,9 @@ public class CompositionSettingsDialog extends StandardDialog {
 
         @NotNull
         private JPanel createTempoSection() {
-            var section = new StandardDialog.TitledSection("Tempo");
+            var section = new StandardDialog.TitledSection(
+                Strings.get(Strings.DIALOG_COMPOSITION_SETTINGS_SECTION_TEMPO)
+            );
 
             var contents = new JPanel(new GridBagLayout());
             contents.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -448,7 +474,9 @@ public class CompositionSettingsDialog extends StandardDialog {
 
         @NotNull
         private JPanel createKeySignatureSection() {
-            var section = new StandardDialog.TitledSection("Key Signature");
+            var section = new StandardDialog.TitledSection(
+                Strings.get(Strings.DIALOG_COMPOSITION_SETTINGS_SECTION_KEY_SIGNATURE)
+            );
             keyCombo.setMaximumSize(keyCombo.getPreferredSize());
             keyCombo.setAlignmentX(Component.LEFT_ALIGNMENT);
             section.add(keyCombo);
@@ -477,7 +505,7 @@ public class CompositionSettingsDialog extends StandardDialog {
             tabbedPane.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 0));
 
             tabbedPane.addTab(
-                "Title",
+                Strings.get(Strings.DIALOG_COMPOSITION_SETTINGS_FONT_TITLE),
                 createFontSection(
                     "Title",
                     titleFontLabel,
@@ -486,7 +514,7 @@ public class CompositionSettingsDialog extends StandardDialog {
                 )
             );
             tabbedPane.addTab(
-                "Lyrics",
+                Strings.get(Strings.DIALOG_COMPOSITION_SETTINGS_FONT_LYRICS),
                 createFontSection(
                     "Lyrics",
                     lyricsFontLabel,
@@ -495,7 +523,7 @@ public class CompositionSettingsDialog extends StandardDialog {
                 )
             );
             tabbedPane.addTab(
-                "Attribution",
+                Strings.get(Strings.DIALOG_COMPOSITION_SETTINGS_FONT_ATTRIBUTION),
                 createFontSection(
                     "Attribution (tempo, beat change, attribution)",
                     attributionFontLabel,
@@ -504,7 +532,7 @@ public class CompositionSettingsDialog extends StandardDialog {
                 )
             );
             tabbedPane.addTab(
-                "Annotation",
+                Strings.get(Strings.DIALOG_COMPOSITION_SETTINGS_FONT_ANNOTATION),
                 createFontSection(
                     "Annotation",
                     annotationFontLabel,
@@ -619,7 +647,10 @@ public class CompositionSettingsDialog extends StandardDialog {
                 JLabel fontDescription,
                 JComponent preview
             ) {
-                super("Choose...", "choose-font");
+                super(
+                    Strings.get(Strings.DIALOG_COMPOSITION_SETTINGS_CHOOSE),
+                    "choose-font"
+                );
                 this.fontDescription = fontDescription;
                 this.preview = preview;
             }
@@ -643,7 +674,10 @@ public class CompositionSettingsDialog extends StandardDialog {
         private final class ResetFontsAction extends UIAction {
 
             private ResetFontsAction() {
-                super("Reset to defaults", "reset-fonts");
+                super(
+                    Strings.get(Strings.DIALOG_COMPOSITION_SETTINGS_RESET_TO_DEFAULTS),
+                    "reset-fonts"
+                );
             }
 
             @Override
@@ -720,7 +754,7 @@ public class CompositionSettingsDialog extends StandardDialog {
             var panel = new JPanel(new BorderLayout());
             profileInfoLabel.setVerticalAlignment(SwingConstants.TOP);
             profileInfoLabel.setBorder(
-                BorderFactory.createTitledBorder("Profile properties")
+                BorderFactory.createTitledBorder(Strings.get(Strings.DIALOG_COMPOSITION_SETTINGS_PROFILE_PROPERTIES))
             );
             panel.add(BorderLayout.CENTER, profileInfoLabel);
             //            var southProfilePanel = new JPanel();
@@ -813,7 +847,7 @@ public class CompositionSettingsDialog extends StandardDialog {
         } catch (NumberFormatException e) {
             JOptionPane.showMessageDialog(
                 contentPanel,
-                "The song number is not a number",
+                Strings.get(Strings.ERROR_COMPOSITION_NUMBER),
                 mainFrame.appName,
                 JOptionPane.ERROR_MESSAGE
             );
@@ -833,7 +867,7 @@ public class CompositionSettingsDialog extends StandardDialog {
         } catch (NumberFormatException e) {
             JOptionPane.showMessageDialog(
                 contentPanel,
-                "The year is not a number",
+                Strings.get(Strings.ERROR_COMPOSITION_YEAR),
                 mainFrame.appName,
                 JOptionPane.ERROR_MESSAGE
             );
@@ -1119,7 +1153,10 @@ public class CompositionSettingsDialog extends StandardDialog {
     private final class TakeFirstLyricsWordAction extends UIAction {
 
         private TakeFirstLyricsWordAction() {
-            super("Take", "take-lyrics");
+            super(
+                Strings.get(Strings.DIALOG_COMPOSITION_SETTINGS_TAKE),
+                "take-lyrics"
+            );
         }
 
         @Override
@@ -1201,7 +1238,7 @@ public class CompositionSettingsDialog extends StandardDialog {
                 sb.append(date);
             } else {
                 MainFrame.getInstance()
-                    .showErrorMessage("You must at least enter a year.");
+                    .showErrorMessage(Strings.get(Strings.ERROR_COMPOSITION_YEAR_REQUIRED));
                 return;
             }
 
@@ -1214,7 +1251,7 @@ public class CompositionSettingsDialog extends StandardDialog {
                     sb.append(placeField.getText());
                 } else {
                     MainFrame.getInstance()
-                        .showErrorMessage("No place has been entered.");
+                        .showErrorMessage(Strings.get(Strings.ERROR_COMPOSITION_PLACE_REQUIRED));
                     return;
                 }
             }
@@ -1240,7 +1277,7 @@ public class CompositionSettingsDialog extends StandardDialog {
         public void actionPerformed(ActionEvent e) {
             var name = JOptionPane.showInputDialog(
                 contentPanel,
-                "Enter the name of the new profile:",
+                Strings.get(Strings.DIALOG_COMPOSITION_SETTINGS_PROFILE_NAME),
                 mainFrame.appName,
                 JOptionPane.QUESTION_MESSAGE
             );
@@ -1256,7 +1293,7 @@ public class CompositionSettingsDialog extends StandardDialog {
             } catch (IOException e1) {
                 JOptionPane.showMessageDialog(
                     contentPanel,
-                    "Could not create a new profile.",
+                    Strings.get(Strings.ERROR_PROFILE_CREATE),
                     mainFrame.appName,
                     JOptionPane.ERROR_MESSAGE
                 );
@@ -1271,7 +1308,7 @@ public class CompositionSettingsDialog extends StandardDialog {
             if (profileCombo.getItemCount() <= 1) {
                 JOptionPane.showMessageDialog(
                     contentPanel,
-                    "You cannot delete the last profile",
+                    Strings.get(Strings.ERROR_PROFILE_DELETE_LAST),
                     mainFrame.appName,
                     JOptionPane.ERROR_MESSAGE
                 );
@@ -1280,7 +1317,7 @@ public class CompositionSettingsDialog extends StandardDialog {
 
             var answer = JOptionPane.showConfirmDialog(
                 contentPanel,
-                "Are you sure to delete the selected profile?",
+                Strings.get(Strings.CONFIRM_PROFILE_DELETE),
                 mainFrame.appName,
                 JOptionPane.YES_NO_OPTION
             );
@@ -1308,7 +1345,7 @@ public class CompositionSettingsDialog extends StandardDialog {
                 } else {
                     JOptionPane.showMessageDialog(
                         contentPanel,
-                        "Could not delete the profile",
+                        Strings.get(Strings.ERROR_PROFILE_DELETE),
                         mainFrame.appName,
                         JOptionPane.ERROR_MESSAGE
                     );

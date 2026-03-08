@@ -24,9 +24,11 @@ import java.awt.event.*;
 
 import com.formdev.flatlaf.util.SystemInfo;
 
+import songscribe.Strings;
+
 public class QuitAction extends UIAction {
 
-    public static final String NAME = SystemInfo.isMacOS ? "Quit" : "Exit";
+    public static final String NAME = SystemInfo.isMacOS ? Strings.get(Strings.ACTION_FILE_QUIT) : Strings.get(Strings.ACTION_FILE_EXIT);
 
     public QuitAction() {
         // On macOS, the system sets the accelerator for the Quit menu item

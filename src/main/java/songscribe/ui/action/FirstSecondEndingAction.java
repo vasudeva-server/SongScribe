@@ -22,6 +22,8 @@ package songscribe.ui.action;
 
 import java.awt.event.*;
 
+import songscribe.Strings;
+
 import songscribe.ui.message.FirstSecondEndingMessage;
 import songscribe.ui.message.MessageCenter;
 
@@ -31,7 +33,7 @@ public class FirstSecondEndingAction extends UIAction {
 
     public FirstSecondEndingAction(boolean makeEnding) {
         super(
-            (makeEnding ? "Make" : "Remove") + " First-second Ending",
+            Strings.get(makeEnding ? Strings.ACTION_ENDING_MAKE : Strings.ACTION_ENDING_REMOVE),
             "first-second-ending"
         );
         this.makeEnding = makeEnding;

@@ -26,6 +26,7 @@ import org.jetbrains.annotations.NotNull;
 
 import net.engio.mbassy.listener.Handler;
 
+import songscribe.Strings;
 import songscribe.ui.message.MessageCenter;
 import songscribe.ui.message.MusicSelectionChangedMessage;
 import songscribe.ui.message.ToggleTieMessage;
@@ -34,11 +35,11 @@ public class ToggleTieAction extends UIAction {
 
     public ToggleTieAction() {
         super(
-            "Toggle Tie",
+            Strings.get(Strings.ACTION_TIE_TOGGLE),
             "@\uF373",
             20,
             "toggle-tie",
-            "Tie/untie selected notes",
+            Strings.get(Strings.ACTION_TIE_TOGGLE_TOOLTIP),
             KeyEvent.VK_T,
             0
         );

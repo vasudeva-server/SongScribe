@@ -39,6 +39,7 @@ import com.intellij.uiDesigner.core.GridConstraints;
 import com.intellij.uiDesigner.core.GridLayoutManager;
 import com.intellij.uiDesigner.core.Spacer;
 
+import songscribe.Strings;
 import songscribe.data.FileExtensions;
 import songscribe.ui.action.QuitAction;
 import songscribe.ui.component.MainFrame;
@@ -186,7 +187,7 @@ public class UIConverter extends MainFrame {
             )
         );
         final JLabel label1 = new JLabel();
-        label1.setText("Songs Folder:");
+        label1.setText(Strings.get(Strings.LABEL_SONGS_FOLDER));
         panel1.add(
             label1,
             new GridConstraints(
@@ -226,7 +227,7 @@ public class UIConverter extends MainFrame {
             )
         );
         chooseButton = new JButton();
-        chooseButton.setText("Choose");
+        chooseButton.setText(Strings.get(Strings.ACTION_CONVERTER_CHOOSE));
         panel1.add(
             chooseButton,
             new GridConstraints(
@@ -281,7 +282,7 @@ public class UIConverter extends MainFrame {
             )
         );
         convertButton = new JButton();
-        convertButton.setText("Convert");
+        convertButton.setText(Strings.get(Strings.ACTION_CONVERTER_CONVERT));
         panel2.add(
             convertButton,
             new GridConstraints(
@@ -416,7 +417,7 @@ public class UIConverter extends MainFrame {
         );
         scrollPane1.setViewportView(acceptedTable);
         final JLabel label2 = new JLabel();
-        label2.setText("Accepted songs:");
+        label2.setText(Strings.get(Strings.LABEL_ACCEPTED_SONGS));
         panel3.add(
             label2,
             new GridConstraints(
@@ -469,7 +470,7 @@ public class UIConverter extends MainFrame {
         }
         scrollPane2.setViewportView(rejectList);
         final JLabel label3 = new JLabel();
-        label3.setText("Rejected songs:");
+        label3.setText(Strings.get(Strings.LABEL_REJECTED_SONGS));
         panel4.add(
             label3,
             new GridConstraints(
@@ -513,7 +514,7 @@ public class UIConverter extends MainFrame {
             )
         );
         numberSongButton = new JButton();
-        numberSongButton.setText("Number a Song and Accept");
+        numberSongButton.setText(Strings.get(Strings.LABEL_NUMBER_SONG_AND_ACCEPT));
         panel5.add(
             numberSongButton,
             new GridConstraints(
@@ -577,9 +578,7 @@ public class UIConverter extends MainFrame {
         if (label4Font != null) {
             label4.setFont(label4Font);
         }
-        label4.setText(
-            "Note: these songs have been rejected because the file name does not "
-        );
+        label4.setText(Strings.get(Strings.LABEL_CONVERTER_REJECTED_NOTE_FIRST));
         panel4.add(
             label4,
             new GridConstraints(
@@ -604,9 +603,7 @@ public class UIConverter extends MainFrame {
         if (label5Font != null) {
             label5.setFont(label5Font);
         }
-        label5.setText(
-            "start with a three digit order number followed by a space or dash"
-        );
+        label5.setText(Strings.get(Strings.LABEL_CONVERTER_REJECTED_NOTE_SECOND));
         panel4.add(
             label5,
             new GridConstraints(
@@ -734,13 +731,13 @@ public class UIConverter extends MainFrame {
             var selectedSong = (String) rejectList.getSelectedValue();
 
             if (selectedSong == null) {
-                showErrorMessage("No rejected song is selected.");
+                showErrorMessage(Strings.get(Strings.ERROR_CONVERTER_NO_REJECTED_SONG));
                 return;
             }
 
             var numberStr = JOptionPane.showInputDialog(
                 UIConverter.this,
-                "Enter the number of song:"
+                Strings.get(Strings.DIALOG_CONVERTER_ENTER_NUMBER)
             );
 
             if (numberStr == null) {
@@ -752,14 +749,12 @@ public class UIConverter extends MainFrame {
             try {
                 number = Integer.parseInt(numberStr);
             } catch (NumberFormatException nfe) {
-                showErrorMessage(
-                    "The value could not be recognized as a number"
-                );
+                showErrorMessage(Strings.get(Strings.ERROR_CONVERTER_NUMBER_INVALID));
                 return;
             }
 
             if ((number < 1) || (number > 999)) {
-                showErrorMessage("The number must be between 1 and 999");
+                showErrorMessage(Strings.get(Strings.ERROR_CONVERTER_NUMBER_RANGE));
                 return;
             }
 
@@ -774,20 +769,14 @@ public class UIConverter extends MainFrame {
             );
 
             if (!isLegalFileName(renamedSongFile.getName())) {
-                showErrorMessage(
-                    "An inner problem occured. Numbering failed. Contact the developer!"
-                );
+                showErrorMessage(Strings.get(Strings.ERROR_CONVERTER_NUMBER_FAILED));
                 return;
             }
 
             var renameSuccessful = originalSongFile.renameTo(renamedSongFile);
 
             if (!renameSuccessful) {
-                showErrorMessage(
-                    "Numbering the song was not successful, because the file-rename failed.\nTry " +
-                    "to rename " +
-                    "the corresponding file manually."
-                );
+                showErrorMessage(Strings.get(Strings.ERROR_CONVERTER_RENAME_FAILED));
                 return;
             }
 

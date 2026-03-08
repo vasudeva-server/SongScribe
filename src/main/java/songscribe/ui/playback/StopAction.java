@@ -21,17 +21,18 @@ package songscribe.ui.playback;
 
 import java.awt.event.*;
 
+import songscribe.Strings;
 import songscribe.util.UIUtils;
 
 public class StopAction extends SequencerAction {
 
     public StopAction() {
         super(
-            "Stop",
+            Strings.get(Strings.ACTION_PLAY_STOP),
             "@\uF447",
             20,
             "stop",
-            "Stop playback and rewind",
+            Strings.get(Strings.ACTION_PLAY_STOP_TOOLTIP),
             KeyEvent.VK_PERIOD,
             UIUtils.MENU_SHORTCUT_MASK
         );

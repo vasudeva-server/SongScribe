@@ -24,6 +24,7 @@ import java.io.IOException;
 
 import javax.swing.*;
 
+import songscribe.Strings;
 import songscribe.util.Utils;
 
 public class HTMLDialog extends StandardDialog {
@@ -58,7 +59,7 @@ public class HTMLDialog extends StandardDialog {
                 "file:" + Utils.getResourcePath("help/" + htmlPage)
             );
         } catch (IOException e) {
-            mainFrame.showErrorMessage("Could not open the help file.");
+            mainFrame.showErrorMessage(Strings.get(Strings.ERROR_HELP_OPEN));
         }
     }
 

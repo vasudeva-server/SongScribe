@@ -30,6 +30,8 @@ import com.intellij.uiDesigner.core.GridConstraints;
 import com.intellij.uiDesigner.core.GridLayoutManager;
 import com.intellij.uiDesigner.core.Spacer;
 
+import songscribe.Strings;
+
 @SuppressWarnings("NonStaticInitializer")
 public class BorderPanel extends JPanel {
 
@@ -71,7 +73,7 @@ public class BorderPanel extends JPanel {
 
     public void setExpertBorder(boolean expert) {
         exportBorder = expert;
-        expertBorderButton.setText(expert ? "<< Simple" : "Expert >>");
+        expertBorderButton.setText(expert ? Strings.get(Strings.LABEL_BORDER_SIMPLE) : Strings.get(Strings.LABEL_BORDER_EXPERT));
         expertBorderPanel.setVisible(expert);
         simpleBorderPanel.setVisible(!expert);
 
@@ -114,7 +116,7 @@ public class BorderPanel extends JPanel {
             new GridLayoutManager(2, 5, new Insets(0, 0, 0, 0), -1, -1)
         );
         final JLabel label1 = new JLabel();
-        label1.setText("Border:");
+        label1.setText(Strings.get(Strings.LABEL_BORDER));
         borderPanel.add(
             label1,
             new GridConstraints(
@@ -177,7 +179,7 @@ public class BorderPanel extends JPanel {
             )
         );
         final JLabel label2 = new JLabel();
-        label2.setText("px");
+        label2.setText(Strings.get(Strings.LABEL_PX));
         simpleBorderPanel.add(
             label2,
             new GridConstraints(
@@ -222,7 +224,7 @@ public class BorderPanel extends JPanel {
             )
         );
         final JLabel label3 = new JLabel();
-        label3.setText("Top");
+        label3.setText(Strings.get(Strings.LABEL_BORDER_TOP));
         expertBorderPanel.add(
             label3,
             new GridConstraints(
@@ -261,7 +263,7 @@ public class BorderPanel extends JPanel {
             )
         );
         final JLabel label4 = new JLabel();
-        label4.setText("Left");
+        label4.setText(Strings.get(Strings.LABEL_BORDER_LEFT));
         expertBorderPanel.add(
             label4,
             new GridConstraints(
@@ -300,7 +302,7 @@ public class BorderPanel extends JPanel {
             )
         );
         final JLabel label5 = new JLabel();
-        label5.setText("Bottom");
+        label5.setText(Strings.get(Strings.LABEL_BORDER_BOTTOM));
         expertBorderPanel.add(
             label5,
             new GridConstraints(
@@ -339,7 +341,7 @@ public class BorderPanel extends JPanel {
             )
         );
         final JLabel label6 = new JLabel();
-        label6.setText("Right");
+        label6.setText(Strings.get(Strings.LABEL_BORDER_RIGHT));
         expertBorderPanel.add(
             label6,
             new GridConstraints(
@@ -378,7 +380,7 @@ public class BorderPanel extends JPanel {
             )
         );
         final JLabel label7 = new JLabel();
-        label7.setText("px");
+        label7.setText(Strings.get(Strings.LABEL_PX));
         expertBorderPanel.add(
             label7,
             new GridConstraints(
@@ -398,7 +400,7 @@ public class BorderPanel extends JPanel {
             )
         );
         final JLabel label8 = new JLabel();
-        label8.setText("px");
+        label8.setText(Strings.get(Strings.LABEL_PX));
         expertBorderPanel.add(
             label8,
             new GridConstraints(
@@ -418,7 +420,7 @@ public class BorderPanel extends JPanel {
             )
         );
         final JLabel label9 = new JLabel();
-        label9.setText("px");
+        label9.setText(Strings.get(Strings.LABEL_PX));
         expertBorderPanel.add(
             label9,
             new GridConstraints(
@@ -438,7 +440,7 @@ public class BorderPanel extends JPanel {
             )
         );
         final JLabel label10 = new JLabel();
-        label10.setText("px");
+        label10.setText(Strings.get(Strings.LABEL_PX));
         expertBorderPanel.add(
             label10,
             new GridConstraints(
@@ -458,7 +460,7 @@ public class BorderPanel extends JPanel {
             )
         );
         expertBorderButton = new JButton();
-        expertBorderButton.setText("Expert >>");
+        expertBorderButton.setText(Strings.get(Strings.LABEL_BORDER_EXPERT));
         borderPanel.add(
             expertBorderButton,
             new GridConstraints(

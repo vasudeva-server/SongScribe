@@ -24,13 +24,14 @@ import java.io.IOException;
 
 import javax.swing.*;
 
+import songscribe.Strings;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.TipFrame;
 
 public class TipAction extends AbstractAction {
 
     public TipAction() {
-        putValue(Action.NAME, "Tip of the Day");
+        putValue(Action.NAME, Strings.get(Strings.ACTION_TIP));
     }
 
     @Override
@@ -40,7 +41,7 @@ public class TipAction extends AbstractAction {
         try {
             new TipFrame(mainFrame);
         } catch (IOException e1) {
-            mainFrame.showErrorMessage("Cannot read the tip file.");
+            mainFrame.showErrorMessage(Strings.get(Strings.ERROR_TIP_READ));
         }
     }
 }

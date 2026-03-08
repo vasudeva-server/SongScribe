@@ -26,6 +26,7 @@ import java.util.regex.Pattern;
 
 import org.jetbrains.annotations.NotNull;
 
+import songscribe.Strings;
 import songscribe.prefs.Prefs;
 import songscribe.ui.ProfileManager;
 import songscribe.ui.action.InsertLineAction;
@@ -446,7 +447,7 @@ public final class Composition {
             if (!shortANotified) {
                 shortANotified = true;
                 mainFrame.showInfoMessage(
-                    "The characters “ă” and “Ă” have been replaced with “a” and “A”."
+                    Strings.get(Strings.INFO_CHARACTER_REPLACEMENT)
                 );
             }
 

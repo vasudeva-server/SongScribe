@@ -33,6 +33,7 @@ import org.jetbrains.annotations.NotNull;
 
 import com.formdev.flatlaf.util.SystemInfo;
 
+import songscribe.Strings;
 import songscribe.data.MyDesktop;
 import songscribe.ui.component.MainFrame;
 
@@ -82,7 +83,7 @@ public final class Utils {
             try {
                 desktop.browse(new URI(webPage));
             } catch (Exception e) {
-                mainFrame.showErrorMessage("Could not open the webpage.");
+                mainFrame.showErrorMessage(Strings.get(Strings.ERROR_WEBPAGE_OPEN));
             }
         }
     }
@@ -98,7 +99,7 @@ public final class Utils {
             try {
                 desktop.mail(new URI("mailto", email, null));
             } catch (Exception e) {
-                mainFrame.showErrorMessage("Could not open the webpage.");
+                mainFrame.showErrorMessage(Strings.get(Strings.ERROR_EMAIL_OPEN));
             }
         }
     }

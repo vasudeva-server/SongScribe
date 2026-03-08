@@ -23,20 +23,22 @@ import java.awt.*;
 
 import javax.swing.*;
 
+import songscribe.Strings;
+
 public class ProcessDialog extends JDialog {
 
     protected final JProgressBar progressBar = new JProgressBar();
 
     public ProcessDialog(JDialog owner, String label, int maximum)
         throws HeadlessException {
-        super(owner, "Progress", true);
+        super(owner, Strings.get(Strings.DIALOG_PROGRESS_TITLE), true);
         init(maximum, label);
         setDefaultCloseOperation(DO_NOTHING_ON_CLOSE);
     }
 
     public ProcessDialog(JFrame owner, String label, int maximum)
         throws HeadlessException {
-        super(owner, "Progress", true);
+        super(owner, Strings.get(Strings.DIALOG_PROGRESS_TITLE), true);
         init(maximum, label);
         setDefaultCloseOperation(DO_NOTHING_ON_CLOSE);
     }

@@ -23,6 +23,7 @@ import java.awt.event.*;
 
 import javax.swing.*;
 
+import songscribe.Strings;
 import songscribe.data.MyFileFilter;
 import songscribe.ui.dialog.PlatformFileDialog;
 
@@ -31,10 +32,10 @@ public class ChooseDirectoryAction extends AbstractAction {
     private final PlatformFileDialog pfd;
 
     public ChooseDirectoryAction(UIConverter uiConverter) {
-        putValue(NAME, "Choose");
+        putValue(NAME, Strings.get(Strings.ACTION_CONVERTER_CHOOSE));
         pfd = new PlatformFileDialog(
             uiConverter,
-            "Open folder",
+            Strings.get(Strings.DIALOG_OPEN_FOLDER_TITLE),
             true,
             new MyFileFilter("Folders"),
             true

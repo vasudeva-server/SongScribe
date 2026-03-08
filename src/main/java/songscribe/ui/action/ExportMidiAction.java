@@ -22,6 +22,7 @@ package songscribe.ui.action;
 import java.awt.event.*;
 import java.io.File;
 import javax.swing.*;
+import songscribe.Strings;
 import songscribe.data.MyFileFilter;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.dialog.ExportMidiDialog;
@@ -34,12 +35,12 @@ public class ExportMidiAction extends UIAction {
     private ExportMidiDialog exportMidiDialog = null;
 
     public ExportMidiAction() {
-        super("Export as MIDI...", "export-midi");
+        super(Strings.get(Strings.ACTION_EXPORT_MIDI), "export-midi");
         fileDialog = new PlatformFileDialog(
             MainFrame.getInstance(),
             "Export MIDI",
             false,
-            new MyFileFilter("Midi Files", "mid")
+            new MyFileFilter(Strings.get(Strings.FILTER_MIDI), "mid")
         );
     }
 
@@ -62,9 +63,7 @@ public class ExportMidiAction extends UIAction {
             if (saveFile.exists()) {
                 var response = JOptionPane.showConfirmDialog(
                     mainFrame,
-                    "The file “" +
-                    saveFile.getName() +
-                    "” already exists. Do you want to overwrite it?",
+                    Strings.get(Strings.CONFIRM_FILE_OVERWRITE, saveFile.getName()),
                     mainFrame.appName,
                     JOptionPane.YES_NO_OPTION
                 );

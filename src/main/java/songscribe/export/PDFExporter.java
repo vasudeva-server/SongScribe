@@ -21,6 +21,7 @@ package songscribe.export;
 
 import java.io.File;
 
+import songscribe.Strings;
 import songscribe.data.PageLayoutData;
 import songscribe.util.GraphicUtils;
 
@@ -81,8 +82,7 @@ public class PDFExporter {
         // PDF export not yet implemented with component-based rendering
         if (isGUI) {
             mainFrame.showErrorMessage(
-                "PDF export is not yet implemented. " +
-                    "Export functionality will be restored in a future update."
+                Strings.get(Strings.ERROR_EXPORT_NOT_IMPLEMENTED, "PDF")
             );
         } else {
             System.err.println("ERROR: PDF export is not yet implemented");

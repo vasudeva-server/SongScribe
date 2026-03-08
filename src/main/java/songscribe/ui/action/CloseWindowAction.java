@@ -22,6 +22,7 @@ package songscribe.ui.action;
 import java.awt.event.*;
 
 import songscribe.ui.message.CloseWindowMessage;
+import songscribe.Strings;
 import songscribe.ui.message.MessageCenter;
 import songscribe.util.UIUtils;
 
@@ -29,7 +30,7 @@ public class CloseWindowAction extends UIAction {
 
     public CloseWindowAction() {
         super(
-            "Close Window",
+            Strings.get(Strings.ACTION_FILE_CLOSE),
             null,
             KeyEvent.VK_W,
             UIUtils.MENU_SHORTCUT_MASK

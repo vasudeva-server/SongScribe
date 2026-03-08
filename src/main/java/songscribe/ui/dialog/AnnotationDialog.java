@@ -29,6 +29,7 @@ import org.jetbrains.annotations.Nullable;
 import org.jdesktop.layout.GroupLayout;
 import org.jdesktop.layout.LayoutStyle;
 
+import songscribe.Strings;
 import songscribe.music.Annotation;
 import songscribe.music.StaffElement;
 import songscribe.util.FileUtils;
@@ -45,12 +46,12 @@ public class AnnotationDialog extends StandardDialog {
     private final JRadioButton belowButton;
 
     public AnnotationDialog() {
-        super("Annotation");
+        super(Strings.get(Strings.DIALOG_ANNOTATION_TITLE));
         //----------------------centerPanel------------------------
         var centerPanel = new JPanel();
         centerPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
 
-        var annotationLabel = new JLabel("Annotation:");
+        var annotationLabel = new JLabel(Strings.get(Strings.LABEL_ANNOTATION));
         annotationCombo = new JComboBox<>();
         annotationCombo.setEditable(true);
 
@@ -60,7 +61,7 @@ public class AnnotationDialog extends StandardDialog {
         xPanel.setBorder(
             BorderFactory.createTitledBorder(
                 BorderFactory.createEtchedBorder(),
-                "Alignment for element"
+                Strings.get(Strings.DIALOG_ANNOTATION_ALIGNMENT)
             )
         );
 
@@ -68,15 +69,15 @@ public class AnnotationDialog extends StandardDialog {
         aboveButton = new JRadioButton();
         belowButton = new JRadioButton();
 
-        Alignment.left.button.setText("Left");
+        Alignment.left.button.setText(Strings.get(Strings.LABEL_ALIGN_LEFT));
         Alignment.left.button.setBorder(BorderFactory.createEmptyBorder());
         Alignment.left.button.setMargin(new Insets(0, 0, 0, 0));
 
-        Alignment.center.button.setText("Center");
+        Alignment.center.button.setText(Strings.get(Strings.LABEL_ALIGN_CENTER));
         Alignment.center.button.setBorder(BorderFactory.createEmptyBorder());
         Alignment.center.button.setMargin(new Insets(0, 0, 0, 0));
 
-        Alignment.right.button.setText("Right");
+        Alignment.right.button.setText(Strings.get(Strings.LABEL_ALIGN_RIGHT));
         Alignment.right.button.setBorder(BorderFactory.createEmptyBorder());
         Alignment.right.button.setMargin(new Insets(0, 0, 0, 0));
 
@@ -122,15 +123,15 @@ public class AnnotationDialog extends StandardDialog {
         verticalPanel.setBorder(
             BorderFactory.createTitledBorder(
                 BorderFactory.createEtchedBorder(),
-                "Vertical position"
+                Strings.get(Strings.DIALOG_ANNOTATION_VERTICAL)
             )
         );
 
-        aboveButton.setText("Above the staff");
+        aboveButton.setText(Strings.get(Strings.DIALOG_ANNOTATION_ABOVE_STAFF));
         aboveButton.setBorder(BorderFactory.createEmptyBorder());
         aboveButton.setMargin(new Insets(0, 0, 0, 0));
 
-        belowButton.setText("Below the staff");
+        belowButton.setText(Strings.get(Strings.DIALOG_ANNOTATION_BELOW_STAFF));
         belowButton.setBorder(BorderFactory.createEmptyBorder());
         belowButton.setMargin(new Insets(0, 0, 0, 0));
 
@@ -273,7 +274,7 @@ public class AnnotationDialog extends StandardDialog {
 
         // Buttons
         var south = new JPanel();
-        removeButton = new JButton("Remove");
+        removeButton = new JButton(Strings.get(Strings.LABEL_BUTTON_REMOVE));
         removeButton.addActionListener(_ -> {
             var score = mainFrame.getScore();
             selectedElement.setAnnotation(null);
@@ -320,7 +321,7 @@ public class AnnotationDialog extends StandardDialog {
         oldVerticalButton.setSelected(true);
         removeButton.setEnabled(hasExistingAnnotation);
 
-        okButton.setText(hasExistingAnnotation ? "Modify" : "Add");
+        okButton.setText(Strings.get(hasExistingAnnotation ? Strings.LABEL_BUTTON_MODIFY : Strings.LABEL_BUTTON_ADD));
     }
 
     @Override

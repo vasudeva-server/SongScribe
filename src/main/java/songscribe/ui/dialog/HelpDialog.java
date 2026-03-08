@@ -25,6 +25,7 @@ import java.io.IOException;
 import javax.swing.*;
 import javax.swing.event.*;
 
+import songscribe.Strings;
 import songscribe.util.Utils;
 
 public class HelpDialog
@@ -126,7 +127,7 @@ public class HelpDialog
                     )
                 );
             } catch (IOException e1) {
-                mainFrame.showErrorMessage("Could not open the help file.");
+                mainFrame.showErrorMessage(Strings.get(Strings.ERROR_HELP_OPEN));
             }
         }
     }

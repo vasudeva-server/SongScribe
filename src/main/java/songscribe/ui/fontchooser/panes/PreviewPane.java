@@ -24,6 +24,7 @@ import java.awt.*;
 
 import javax.swing.*;
 
+import songscribe.Strings;
 import songscribe.ui.component.MyJTextArea;
 
 public class PreviewPane extends JScrollPane {
@@ -31,7 +32,7 @@ public class PreviewPane extends JScrollPane {
     private final JTextArea previewText = new MyJTextArea();
 
     public PreviewPane() {
-        previewText.setText("Bhulite Diyona");
+        previewText.setText(Strings.get(Strings.LABEL_FONT_PREVIEW_TEXT));
         previewText.setMargin(new Insets(5, 5, 5, 5));
         setPreferredSize(new Dimension(200, 80));
         setViewportView(previewText);

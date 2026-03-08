@@ -26,6 +26,7 @@ import org.jetbrains.annotations.NotNull;
 
 import net.engio.mbassy.listener.Handler;
 
+import songscribe.Strings;
 import songscribe.ui.message.MessageCenter;
 import songscribe.ui.message.MusicSelectionChangedMessage;
 import songscribe.ui.message.ToggleTrillMessage;
@@ -33,7 +34,7 @@ import songscribe.ui.message.ToggleTrillMessage;
 public class ToggleTrillAction extends UIAction {
 
     public ToggleTrillAction() {
-        super("Toggle Trill", "toggle-trill");
+        super(Strings.get(Strings.ACTION_TRILL_TOGGLE), "toggle-trill");
         setFlags(
             Flag.REQUIRES_SELECTION,
             Flag.DISABLE_WHEN_PLAYING,

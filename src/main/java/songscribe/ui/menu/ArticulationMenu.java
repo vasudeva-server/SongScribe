@@ -21,12 +21,13 @@ package songscribe.ui.menu;
 
 import javax.swing.*;
 
+import songscribe.Strings;
 import songscribe.ui.action.Actions;
 
 public class ArticulationMenu extends JMenu {
 
     public ArticulationMenu() {
-        super("Articulation");
+        super(Strings.get(Strings.MENU_NOTATION_ARTICULATION));
         add(new JCheckBoxMenuItem(Actions.ACCENT_ACTION));
 
         for (var action : Actions.ARTICULATION_ACTION_GROUP.getActions()) {

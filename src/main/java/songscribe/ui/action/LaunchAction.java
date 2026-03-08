@@ -22,6 +22,8 @@ package songscribe.ui.action;
 
 import java.awt.event.*;
 import java.util.ArrayList;
+
+import songscribe.Strings;
 import java.util.Arrays;
 import java.util.List;
 
@@ -30,14 +32,14 @@ import javax.swing.*;
 public class LaunchAction extends AbstractAction {
 
     public enum App {
-        SONGBOOK("Song Book", "sb"),
-        SONGSHOW("Song Show", "ss");
+        SONGBOOK(Strings.ACTION_LAUNCH_SONG_BOOK, "sb"),
+        SONGSHOW(Strings.ACTION_LAUNCH_SONG_SHOW, "ss");
 
-        private final String name;
+        private final String nameKey;
         private final String command;
 
-        App(String name, String command) {
-            this.name = name;
+        App(String nameKey, String command) {
+            this.nameKey = nameKey;
             this.command = command;
         }
     }
@@ -46,7 +48,7 @@ public class LaunchAction extends AbstractAction {
 
     public LaunchAction(App app) {
         this.app = app;
-        putValue(Action.NAME, app.name);
+        putValue(Action.NAME, Strings.get(app.nameKey));
     }
 
     @Override

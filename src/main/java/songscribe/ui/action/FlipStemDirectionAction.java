@@ -26,6 +26,7 @@ import org.jetbrains.annotations.NotNull;
 
 import net.engio.mbassy.listener.Handler;
 
+import songscribe.Strings;
 import songscribe.ui.message.FlipStemDirectionMessage;
 import songscribe.ui.message.MessageCenter;
 import songscribe.ui.message.MusicSelectionChangedMessage;
@@ -34,11 +35,11 @@ public class FlipStemDirectionAction extends UIAction {
 
     public FlipStemDirectionAction() {
         super(
-            "Flip Stem Direction",
+            Strings.get(Strings.ACTION_STEM_FLIP),
             "@\uF374",
             18,
             "flip-stem-direction",
-            "Flip stem direction"
+            Strings.get(Strings.ACTION_STEM_FLIP_TOOLTIP)
         );
         setFlags(
             Flag.REQUIRES_SELECTION,

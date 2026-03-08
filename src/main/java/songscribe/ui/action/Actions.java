@@ -26,6 +26,7 @@ import java.awt.event.*;
 import java.util.Arrays;
 import java.util.List;
 
+import songscribe.Strings;
 import songscribe.music.DurationArticulation;
 import songscribe.music.ElementType;
 import songscribe.music.ForceArticulation;
@@ -61,49 +62,49 @@ public final class Actions {
     //
     public static final ModeAction SELECT_MODE_ACTION = new ModeAction(
         Mode.SELECT,
-        "Select Mode",
+        Strings.get(Strings.ACTION_MODE_SELECT),
         "@\uF3D2",
         22,
         "select-mode",
-        "Select song elements"
+        Strings.get(Strings.ACTION_MODE_SELECT_TOOLTIP)
     );
 
     public static final ModeAction EDIT_MODE_ACTION = new ModeAction(
         Mode.EDIT,
-        "Edit Mode",
+        Strings.get(Strings.ACTION_MODE_EDIT),
         "@\uEF63",
         22,
         "edit-mode",
-        "Edit song"
+        Strings.get(Strings.ACTION_MODE_EDIT_TOOLTIP)
     );
 
     public static final CycleModeAction CYCLE_MODE_ACTION = new CycleModeAction();
 
     public static final ModeAction ADJUST_MUSIC_MODE_ACTION = new ModeAction(
         Mode.ADJUSTMENT,
-        "Music Adjustment",
+        Strings.get(Strings.ACTION_MODE_MUSIC_ADJUST),
         "mode-note-adjustment.svg",
         26,
         "adjust-note-mode",
-        "Adjust horizontal position of music elements"
+        Strings.get(Strings.ACTION_MODE_MUSIC_ADJUST_TOOLTIP)
     );
 
     public static final ModeAction ADJUST_LYRICS_MODE_ACTION = new ModeAction(
         Mode.LYRICS_ADJUSTMENT,
-        "Lyrics Adjustment",
+        Strings.get(Strings.ACTION_MODE_LYRICS_ADJUST),
         "mode-lyrics-adjustment.svg",
         26,
         "adjust-lyrics-mode",
-        "Adjust horizontal position of lyrics"
+        Strings.get(Strings.ACTION_MODE_LYRICS_ADJUST_TOOLTIP)
     );
 
     public static final ModeAction ADJUST_VERTICAL_MODE_ACTION = new ModeAction(
         Mode.VERTICAL_ADJUSTMENT,
-        "Vertical Adjustment",
+        Strings.get(Strings.ACTION_MODE_VERTICAL_ADJUST),
         "mode-vertical-adjustment.svg",
         26,
         "adjust-vertical-mode",
-        "Adjust vertical position of non-music elements"
+        Strings.get(Strings.ACTION_MODE_VERTICAL_ADJUST_TOOLTIP)
     );
 
     public static final ActionGroup<ModeAction> MODE_ACTION_GROUP =
@@ -122,11 +123,11 @@ public final class Actions {
         new ElementTypeAction(
             ElementTypeAction.Kind.DURATION,
             ElementType.GRACE_QUAVER,
-            "Grace note",
+            Strings.get(Strings.ACTION_DURATION_GRACE),
             "grace.svg",
             26,
             "duration-grace-eighth",
-            "Insert grace eighth note followed by glissando",
+            Strings.get(Strings.ACTION_DURATION_GRACE_TOOLTIP),
             KeyEvent.VK_G,
             InputEvent.SHIFT_DOWN_MASK
         );
@@ -141,11 +142,11 @@ public final class Actions {
         new ElementTypeAction(
             ElementTypeAction.Kind.DURATION,
             ElementType.DEMI_SEMIQUAVER,
-            "Thirty-second",
+            Strings.get(Strings.ACTION_DURATION_THIRTY_SECOND),
             "@\uF36B",
             18,
             "duration-thirty-second",
-            "Set duration to thirty-second note",
+            Strings.get(Strings.ACTION_DURATION_THIRTY_SECOND_TOOLTIP),
             KeyEvent.VK_1,
             0
         );
@@ -154,11 +155,11 @@ public final class Actions {
         new ElementTypeAction(
             ElementTypeAction.Kind.DURATION,
             ElementType.SEMIQUAVER,
-            "Sixteenth",
+            Strings.get(Strings.ACTION_DURATION_SIXTEENTH),
             "@\uF36A",
             18,
             "duration-sixteenth",
-            "Set duration to sixteenth note",
+            Strings.get(Strings.ACTION_DURATION_SIXTEENTH_TOOLTIP),
             KeyEvent.VK_2,
             0
         );
@@ -166,11 +167,11 @@ public final class Actions {
     public static final ElementTypeAction EIGHTH_NOTE_ACTION = new ElementTypeAction(
         ElementTypeAction.Kind.DURATION,
         ElementType.QUAVER,
-        "Eighth",
+        Strings.get(Strings.ACTION_DURATION_EIGHTH),
         "@\uF369",
         18,
         "duration-eighth",
-        "Set duration to eighth note",
+        Strings.get(Strings.ACTION_DURATION_EIGHTH_TOOLTIP),
         KeyEvent.VK_3,
         0
     );
@@ -178,11 +179,11 @@ public final class Actions {
     public static final ElementTypeAction QUARTER_NOTE_ACTION = new ElementTypeAction(
         ElementTypeAction.Kind.DURATION,
         ElementType.CROTCHET,
-        "Quarter",
+        Strings.get(Strings.ACTION_DURATION_QUARTER),
         "@\uF368",
         18,
         "duration-quarter",
-        "Set duration to quarter note",
+        Strings.get(Strings.ACTION_DURATION_QUARTER_TOOLTIP),
         KeyEvent.VK_4,
         0
     );
@@ -190,11 +191,11 @@ public final class Actions {
     public static final ElementTypeAction HALF_NOTE_ACTION = new ElementTypeAction(
         ElementTypeAction.Kind.DURATION,
         ElementType.MINIM,
-        "Half",
+        Strings.get(Strings.ACTION_DURATION_HALF),
         "@\uF367",
         18,
         "duration-half",
-        "Set duration to half note",
+        Strings.get(Strings.ACTION_DURATION_HALF_TOOLTIP),
         KeyEvent.VK_5,
         0
     );
@@ -202,11 +203,11 @@ public final class Actions {
     public static final ElementTypeAction WHOLE_NOTE_ACTION = new ElementTypeAction(
         ElementTypeAction.Kind.DURATION,
         ElementType.SEMIBREVE,
-        "Whole",
+        Strings.get(Strings.ACTION_DURATION_WHOLE),
         "@\uF366",
         18,
         "duration-whole",
-        "Set duration to whole note",
+        Strings.get(Strings.ACTION_DURATION_WHOLE_TOOLTIP),
         KeyEvent.VK_6,
         0
     );
@@ -214,11 +215,11 @@ public final class Actions {
     public static final ElementTypeAction GLISSANDO_ACTION = new ElementTypeAction(
         ElementTypeAction.Kind.DURATION,
         ElementType.GLISSANDO,
-        "Connecting glissando",
+        Strings.get(Strings.ACTION_DURATION_GLISSANDO),
         "connecting-glissando.svg",
         26,
         "glissando",
-        "Insert glissando between two notes",
+        Strings.get(Strings.ACTION_DURATION_GLISSANDO_TOOLTIP),
         KeyEvent.VK_G,
         0
     );
@@ -226,11 +227,11 @@ public final class Actions {
     public static final ElementTypeAction SLIDE_OUT_ACTION = new ElementTypeAction(
         ElementTypeAction.Kind.DURATION,
         ElementType.GLISSANDO,
-        "Slide out glissando",
+        Strings.get(Strings.ACTION_DURATION_SLIDE_OUT),
         "slide-out.svg",
         26,
         "slide-out",
-        "Insert slide out glissando after a note",
+        Strings.get(Strings.ACTION_DURATION_SLIDE_OUT_TOOLTIP),
         KeyEvent.VK_G,
         InputEvent.SHIFT_DOWN_MASK | InputEvent.META_DOWN_MASK
     );
@@ -250,22 +251,22 @@ public final class Actions {
 
     public static final DotAction DOT_ACTION = new DotAction(
         DotAction.DotLevel.SINGLE,
-        "Dot",
+        Strings.get(Strings.ACTION_DOT_SINGLE),
         "@\uF372",
         18,
         "add-dot",
-        "Add a single dot to the note",
+        Strings.get(Strings.ACTION_DOT_SINGLE_TOOLTIP),
         KeyEvent.VK_PERIOD,
         0
     );
 
     public static final DotAction DOUBLE_DOT_ACTION = new DotAction(
         DotAction.DotLevel.DOUBLE,
-        "Double Dot",
+        Strings.get(Strings.ACTION_DOT_DOUBLE),
         "@\uF395",
         18,
         "add-double-dot",
-        "Add a double dot to the note",
+        Strings.get(Strings.ACTION_DOT_DOUBLE_TOOLTIP),
         0,
         0
     );
@@ -277,11 +278,11 @@ public final class Actions {
 
     public static final AccidentalAction FLAT_ACTION = new AccidentalAction(
         StaffElement.Accidental.FLAT,
-        "Flat",
+        Strings.get(Strings.ACTION_ACCIDENTAL_FLAT),
         "@\uF388",
         18,
         "flat",
-        "Add flat to note",
+        Strings.get(Strings.ACTION_ACCIDENTAL_FLAT_TOOLTIP),
         0,
         0
     );
@@ -289,11 +290,11 @@ public final class Actions {
     public static final AccidentalAction DOUBLE_FLAT_ACTION =
         new AccidentalAction(
             StaffElement.Accidental.DOUBLE_FLAT,
-            "Double Flat",
+            Strings.get(Strings.ACTION_ACCIDENTAL_DOUBLE_FLAT),
             "@\uF389",
             18,
             "double-flat",
-            "Add double flat to note",
+            Strings.get(Strings.ACTION_ACCIDENTAL_DOUBLE_FLAT_TOOLTIP),
             KeyEvent.VK_F,
             0
         );
@@ -301,31 +302,31 @@ public final class Actions {
     public static final AccidentalAction NATURAL_FLAT_ACTION =
         new AccidentalAction(
             StaffElement.Accidental.NATURAL_FLAT,
-            "Natural Flat",
+            Strings.get(Strings.ACTION_ACCIDENTAL_NATURAL_FLAT),
             "#\uE267",
             32,
             "natural-flat",
-            "Add natural flat to note"
+            Strings.get(Strings.ACTION_ACCIDENTAL_NATURAL_FLAT_TOOLTIP)
         );
 
     public static final AccidentalAction NATURAL_ACTION = new AccidentalAction(
         StaffElement.Accidental.NATURAL,
-        "Natural",
+        Strings.get(Strings.ACTION_ACCIDENTAL_NATURAL),
         "@\uF387",
         18,
         "natural",
-        "Add natural to note",
+        Strings.get(Strings.ACTION_ACCIDENTAL_NATURAL_TOOLTIP),
         KeyEvent.VK_N,
         0
     );
 
     public static final AccidentalAction SHARP_ACTION = new AccidentalAction(
         StaffElement.Accidental.SHARP,
-        "Sharp",
+        Strings.get(Strings.ACTION_ACCIDENTAL_SHARP),
         "@\uF386",
         18,
         "sharp",
-        "Add sharp to note",
+        Strings.get(Strings.ACTION_ACCIDENTAL_SHARP_TOOLTIP),
         0,
         0
     );
@@ -333,11 +334,11 @@ public final class Actions {
     public static final AccidentalAction DOUBLE_SHARP_ACTION =
         new AccidentalAction(
             StaffElement.Accidental.DOUBLE_SHARP,
-            "Double Sharp",
+            Strings.get(Strings.ACTION_ACCIDENTAL_DOUBLE_SHARP),
             "@\uF38A",
             18,
             "double-sharp",
-            "Add double sharp to note",
+            Strings.get(Strings.ACTION_ACCIDENTAL_DOUBLE_SHARP_TOOLTIP),
             0,
             0
         );
@@ -345,11 +346,11 @@ public final class Actions {
     public static final AccidentalAction NATURAL_SHARP_ACTION =
         new AccidentalAction(
             StaffElement.Accidental.NATURAL_SHARP,
-            "Natural Sharp",
+            Strings.get(Strings.ACTION_ACCIDENTAL_NATURAL_SHARP),
             "#\uE268",
             32,
             "natural-sharp",
-            "Add natural sharp to note",
+            Strings.get(Strings.ACTION_ACCIDENTAL_NATURAL_SHARP_TOOLTIP),
             0,
             0
         );
@@ -372,33 +373,33 @@ public final class Actions {
         new ElementTypeAction(
             ElementTypeAction.Kind.NON_DURATION,
             ElementType.REPEAT_LEFT,
-            "Left Repeat",
+            Strings.get(Strings.ACTION_REPEAT_LEFT),
             "@\uEF68",
             24,
             "left-repeat",
-            "Insert left repeat",
+            Strings.get(Strings.ACTION_REPEAT_LEFT_TOOLTIP),
             KeyEvent.VK_L,
             0
         ),
         new ElementTypeAction(
             ElementTypeAction.Kind.NON_DURATION,
             ElementType.REPEAT_RIGHT,
-            "Right Repeat",
+            Strings.get(Strings.ACTION_REPEAT_RIGHT),
             "@\uF345",
             24,
             "right-repeat",
-            "Insert right repeat",
+            Strings.get(Strings.ACTION_REPEAT_RIGHT_TOOLTIP),
             KeyEvent.VK_R,
             InputEvent.SHIFT_DOWN_MASK
         ),
         new ElementTypeAction(
             ElementTypeAction.Kind.NON_DURATION,
             ElementType.REPEAT_LEFT_RIGHT,
-            "Left/Right Repeat",
+            Strings.get(Strings.ACTION_REPEAT_LEFT_RIGHT),
             "@\uF34B",
             24,
             "left-right-repeat",
-            "Insert left/right repeat",
+            Strings.get(Strings.ACTION_REPEAT_LEFT_RIGHT_TOOLTIP),
             0,
             0
         ),
@@ -408,33 +409,33 @@ public final class Actions {
         new ElementTypeAction(
             ElementTypeAction.Kind.NON_DURATION,
             ElementType.FINAL_DOUBLE_BARLINE,
-            "Final Double Barline",
+            Strings.get(Strings.ACTION_BARLINE_FINAL_DOUBLE),
             "@\uF34A",
             24,
             "final-double-barline",
-            "Insert final double barline",
+            Strings.get(Strings.ACTION_BARLINE_FINAL_DOUBLE_TOOLTIP),
             KeyEvent.VK_F,
             InputEvent.SHIFT_DOWN_MASK
         ),
         new ElementTypeAction(
             ElementTypeAction.Kind.NON_DURATION,
             ElementType.DOUBLE_BARLINE,
-            "Double Barline (Fine)",
+            Strings.get(Strings.ACTION_BARLINE_DOUBLE_FINE),
             "@\uF347",
             24,
             "double-barline",
-            "Insert double barline and <em>fine</em>",
+            Strings.get(Strings.ACTION_BARLINE_DOUBLE_FINE_TOOLTIP),
             KeyEvent.VK_D,
             0
         ),
         new ElementTypeAction(
             ElementTypeAction.Kind.NON_DURATION,
             ElementType.SINGLE_BARLINE,
-            "Single Barline",
+            Strings.get(Strings.ACTION_BARLINE_SINGLE),
             "@\uF346",
             24,
             "single-barline",
-            "Insert single barline",
+            Strings.get(Strings.ACTION_BARLINE_SINGLE_TOOLTIP),
             0,
             0
         ),
@@ -444,11 +445,11 @@ public final class Actions {
         new ElementTypeAction(
             ElementTypeAction.Kind.NON_DURATION,
             ElementType.BREATH_MARK,
-            "Breath Mark",
+            Strings.get(Strings.ACTION_BREATH_MARK),
             null,
             0,
             "breath-mark",
-            "Insert breath mark",
+            Strings.get(Strings.ACTION_BREATH_MARK_TOOLTIP),
             0,
             0
         );
@@ -459,21 +460,21 @@ public final class Actions {
     public static final ForceArticulationAction ACCENT_ACTION =
         new ForceArticulationAction(
             ForceArticulation.ACCENT,
-            "Accent",
+            Strings.get(Strings.ACTION_ACCENT),
             "@\uF38C",
             22,
             "accent",
-            "Add accent articulation"
+            Strings.get(Strings.ACTION_ACCENT_TOOLTIP)
         );
 
     public static final DurationArticulationAction STACCATO_ACTION =
         new DurationArticulationAction(
             DurationArticulation.STACCATO,
-            "Staccato",
+            Strings.get(Strings.ACTION_STACCATO),
             "@\uF38E",
             22,
             "staccato",
-            "Add staccato articulation"
+            Strings.get(Strings.ACTION_STACCATO_TOOLTIP)
         );
 
     public static final ActionGroup<
@@ -529,12 +530,12 @@ public final class Actions {
     public static final FermataAction FERMATA_ACTION = new FermataAction();
 
     public static final DialogOpenAction<PreferencesDialog> PREFERENCES_ACTION =
-        new DialogOpenAction<>("Settings...", PreferencesDialog.class);
+        new DialogOpenAction<>(Strings.get(Strings.ACTION_SETTINGS), PreferencesDialog.class);
 
     public static final DialogOpenAction<
         CompositionSettingsDialog
         > COMPOSITION_SETTINGS_ACTION = new DialogOpenAction<>(
-        "Composition Settings...",
+        Strings.get(Strings.ACTION_COMPOSITION_SETTINGS),
         KeyEvent.VK_G,
         MENU_SHORTCUT_MASK,
         CompositionSettingsDialog.class
@@ -542,14 +543,14 @@ public final class Actions {
 
     public static final DialogOpenAction<LyricsDialog> LYRICS_DIALOG_ACTION =
         new DialogOpenAction<>(
-            "Lyrics...",
+            Strings.get(Strings.ACTION_LYRICS),
             KeyEvent.VK_L,
             MENU_SHORTCUT_MASK,
             LyricsDialog.class
         );
 
     public static final DialogOpenAction<AboutDialog> ABOUT_ACTION =
-        new DialogOpenAction<>("About SongScribe...", AboutDialog.class);
+        new DialogOpenAction<>(Strings.get(Strings.ACTION_ABOUT), AboutDialog.class);
 
     public static final PrintAction PRINT_ACTION = new PrintAction();
     public static final QuitAction QUIT_ACTION = new QuitAction();

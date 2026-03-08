@@ -24,6 +24,7 @@ import java.io.File;
 
 import javax.swing.*;
 
+import songscribe.Strings;
 import songscribe.data.MyFileFilter;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.dialog.PlatformFileDialog;
@@ -34,7 +35,7 @@ public class ExportSVGAction extends UIAction {
     private final PlatformFileDialog fileDialog;
 
     public ExportSVGAction() {
-        super("Export as SVG...", "export-svg");
+        super(Strings.get(Strings.ACTION_EXPORT_SVG), "export-svg");
         fileDialog = new PlatformFileDialog(
             MainFrame.getInstance(),
             NAME,
@@ -61,9 +62,7 @@ public class ExportSVGAction extends UIAction {
             if (saveFile.exists()) {
                 var response = JOptionPane.showConfirmDialog(
                     mainFrame,
-                    "The file “" +
-                    saveFile.getName() +
-                    "” already exists. Do you want to overwrite it?",
+                    Strings.get(Strings.CONFIRM_FILE_OVERWRITE, saveFile.getName()),
                     mainFrame.appName,
                     JOptionPane.YES_NO_OPTION
                 );

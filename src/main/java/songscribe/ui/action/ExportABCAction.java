@@ -34,6 +34,7 @@ import javax.swing.*;
 import org.jetbrains.annotations.NotNull;
 
 import songscribe.Version;
+import songscribe.Strings;
 import songscribe.data.MyFileFilter;
 import songscribe.music.Annotation;
 import songscribe.music.ArticulationType;
@@ -91,12 +92,12 @@ public class ExportABCAction extends UIAction {
     private final PlatformFileDialog fileDialog;
 
     public ExportABCAction() {
-        super("Export as ABC Notation...", "export-abc");
+        super(Strings.get(Strings.ACTION_EXPORT_ABC), "export-abc");
         fileDialog = new PlatformFileDialog(
             MainFrame.getInstance(),
             "Export ABC",
             false,
-            new MyFileFilter("ABC Files", "abc")
+            new MyFileFilter(Strings.get(Strings.FILTER_ABC), "abc")
         );
     }
 
@@ -118,9 +119,7 @@ public class ExportABCAction extends UIAction {
             if (saveFile.exists()) {
                 var response = JOptionPane.showConfirmDialog(
                     mainFrame,
-                    "The file “" +
-                        saveFile.getName() +
-                        "” already exists. Do you want to overwrite it?",
+                    Strings.get(Strings.CONFIRM_FILE_OVERWRITE, saveFile.getName()),
                     mainFrame.appName,
                     JOptionPane.YES_NO_OPTION
                 );
@@ -133,7 +132,7 @@ public class ExportABCAction extends UIAction {
             try (var writer = new PrintWriter(saveFile)) {
                 writeABC(mainFrame.getScore().getComposition(), writer);
             } catch (IOException e1) {
-                mainFrame.showErrorMessage(MainFrame.COULD_NOT_SAVE_MESSAGE);
+                mainFrame.showErrorMessage(Strings.get(Strings.ERROR_FILE_SAVE));
             }
         }
     }

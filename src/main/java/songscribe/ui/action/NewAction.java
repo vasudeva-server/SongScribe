@@ -21,6 +21,7 @@ package songscribe.ui.action;
 
 import java.awt.event.*;
 
+import songscribe.Strings;
 import songscribe.ui.message.MessageCenter;
 import songscribe.ui.message.NewFileMessage;
 import songscribe.util.UIUtils;
@@ -28,7 +29,7 @@ import songscribe.util.UIUtils;
 public class NewAction extends UIAction {
 
     public NewAction() {
-        super("New", "new-document", KeyEvent.VK_N, UIUtils.MENU_SHORTCUT_MASK);
+        super(Strings.get(Strings.ACTION_FILE_NEW), "new-document", KeyEvent.VK_N, UIUtils.MENU_SHORTCUT_MASK);
         setFlags(Flag.DISABLE_WHEN_PLAYING);
     }
 

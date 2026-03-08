@@ -21,12 +21,13 @@ package songscribe.ui.menu;
 
 import javax.swing.*;
 
+import songscribe.Strings;
 import songscribe.ui.action.Actions;
 
 public class DotMenu extends JMenu {
 
     public DotMenu() {
-        super("Dot");
+        super(Strings.get(Strings.MENU_NOTATION_DOT));
         for (var action : Actions.DOT_ACTION_GROUP.getActions()) {
             add(new JRadioButtonMenuItem(action));
         }

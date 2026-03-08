@@ -21,12 +21,14 @@ package songscribe.ui.action;
 
 import java.awt.event.*;
 
+import songscribe.Strings;
+
 import songscribe.ui.dialog.BeatChangeDialog;
 
 public class BeatChangeAction extends UIAction {
 
     public BeatChangeAction() {
-        super("Beat Change...", "beat-change");
+        super(Strings.get(Strings.ACTION_BEAT_CHANGE), "beat-change");
         setFlags(
             Flag.REQUIRES_SINGLE_SELECTION,
             Flag.DISABLE_WHEN_PLAYING,

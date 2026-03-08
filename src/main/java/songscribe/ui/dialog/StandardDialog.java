@@ -29,6 +29,7 @@ import org.jetbrains.annotations.NotNull;
 
 import org.intellij.lang.annotations.MagicConstant;
 
+import songscribe.Strings;
 import songscribe.ui.component.MainFrame;
 import songscribe.util.UIUtils;
 
@@ -70,7 +71,7 @@ public abstract class StandardDialog {
         var score = mainFrame.getScore();
         dialogTitle = title;
         this.isModal = isModal;
-        okButton = new JButton("OK");
+        okButton = new JButton(Strings.get(Strings.DIALOG_BUTTON_OK));
         okButton.addActionListener(_ -> {
             setData();
 
@@ -81,7 +82,7 @@ public abstract class StandardDialog {
             setVisible(false);
         });
 
-        applyButton = new JButton("Apply");
+        applyButton = new JButton(Strings.get(Strings.DIALOG_BUTTON_APPLY));
         applyButton.addActionListener(_ -> {
             setData();
 
@@ -90,7 +91,7 @@ public abstract class StandardDialog {
             }
         });
 
-        cancelButton = new JButton("Cancel");
+        cancelButton = new JButton(Strings.get(Strings.DIALOG_BUTTON_CANCEL));
         cancelButton.addActionListener(_ -> setVisible(false));
 
         buttonPanel.setBorder(BorderFactory.createEmptyBorder(18, 0, 18, 13));

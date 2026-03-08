@@ -26,22 +26,23 @@ import java.util.Hashtable;
 import javax.swing.*;
 
 import songscribe.prefs.Prefs;
+import songscribe.Strings;
 
 public class PreferencesDialog extends StandardDialog {
 
     // Playback
     private final JSlider durationSlider = new JSlider(34, 100);
     private final JCheckBox playInsertingNoteCheck = new JCheckBox(
-        "Play the note being inserted"
+        Strings.get(Strings.LABEL_PREFS_PLAY_INSERTED_NOTE)
     );
 
     public PreferencesDialog() {
-        super("Preferences");
+        super(Strings.get(Strings.DIALOG_PREFERENCES_TITLE));
         var playbackPanel = new JPanel();
         playbackPanel.setLayout(new BoxLayout(playbackPanel, BoxLayout.Y_AXIS));
         playbackPanel.setBorder(BorderFactory.createEmptyBorder(15, 15, 0, 15));
 
-        var label = new JLabel("Playback note duration:");
+        var label = new JLabel(Strings.get(Strings.LABEL_PREFS_PLAYBACK_DURATION));
         label.setAlignmentX(Component.LEFT_ALIGNMENT);
         playbackPanel.add(label);
 
@@ -54,9 +55,9 @@ public class PreferencesDialog extends StandardDialog {
         durationSlider.setPaintTicks(true);
         //noinspection UseOfObsoleteCollectionType
         Dictionary<Integer, JLabel> labels = new Hashtable<>();
-        labels.put(34, new JLabel("Staccato"));
-        labels.put(67, new JLabel("Normal"));
-        labels.put(100, new JLabel("Legato"));
+        labels.put(34, new JLabel(Strings.get(Strings.LABEL_PREFS_STACCATO)));
+        labels.put(67, new JLabel(Strings.get(Strings.LABEL_PREFS_NORMAL)));
+        labels.put(100, new JLabel(Strings.get(Strings.LABEL_PREFS_LEGATO)));
         durationSlider.setLabelTable(labels);
         durationSlider.setAlignmentX(Component.LEFT_ALIGNMENT);
         playbackPanel.add(durationSlider);

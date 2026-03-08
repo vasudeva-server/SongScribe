@@ -24,6 +24,7 @@ import java.io.IOException;
 
 import javax.swing.*;
 
+import songscribe.Strings;
 import songscribe.Version;
 import songscribe.util.Utils;
 
@@ -35,7 +36,7 @@ public class WhatsNewDialog extends StandardDialog {
     private boolean noReleaseNotes = false;
 
     public WhatsNewDialog() {
-        super("What's new");
+        super(Strings.get(Strings.DIALOG_WHATS_NEW_TITLE));
         try {
             contentPanel.add(
                 BorderLayout.CENTER,

@@ -34,6 +34,7 @@ import javax.swing.*;
 
 import org.jetbrains.annotations.Nullable;
 
+import songscribe.Strings;
 import songscribe.io.CompositionIO;
 import songscribe.ui.component.MyBorder;
 import songscribe.ui.dialog.ProcessDialog;
@@ -55,20 +56,20 @@ public class ConvertAction extends AbstractAction {
     public ConvertAction(UIConverter uiConverter, JTextField songsDirectory) {
         this.uiConverter = uiConverter;
         this.songsDirectory = songsDirectory;
-        putValue(NAME, "Convert");
+        putValue(NAME, Strings.get(Strings.ACTION_CONVERTER_CONVERT));
     }
 
     @Override
     public void actionPerformed(ActionEvent e) {
         if (songsDirectory.getText().isEmpty()) {
-            uiConverter.showErrorMessage("You need to select a folder first.");
+            uiConverter.showErrorMessage(Strings.get(Strings.ERROR_CONVERTER_NO_FOLDER));
             return;
         }
 
         var songDirectoryFile = new File(songsDirectory.getText());
 
         if (!songDirectoryFile.exists()) {
-            uiConverter.showErrorMessage("The selected folder does not exist.");
+            uiConverter.showErrorMessage(Strings.get(Strings.ERROR_CONVERTER_FOLDER_NOT_EXIST));
             return;
         }
 
@@ -77,13 +78,13 @@ public class ConvertAction extends AbstractAction {
         );
 
         if ((songFiles == null) || (songFiles.length == 0)) {
-            uiConverter.showErrorMessage("No files in this folder to convert.");
+            uiConverter.showErrorMessage(Strings.get(Strings.ERROR_CONVERTER_NO_FILES));
             return;
         }
 
         var pd = new ProcessDialog(
             uiConverter,
-            "Converting...",
+            Strings.get(Strings.DIALOG_CONVERTER_CONVERTING),
             songFiles.length * (3 + (IMAGE_WIDTH.length * 2))
         );
         pd.packAndPos();
@@ -218,7 +219,7 @@ public class ConvertAction extends AbstractAction {
                         } catch (Exception e) {
                             imageFile = null;
                             uiConverter.showErrorMessage(
-                                "Could not convert image for " + songFile.getName()
+                                Strings.get(Strings.ERROR_CONVERTER_IMAGE, songFile.getName())
                             );
                         } finally {
                             processDialog.nextValue();
@@ -244,7 +245,7 @@ public class ConvertAction extends AbstractAction {
                     } catch (IOException | InvalidMidiDataException e) {
                         midiFile = null;
                         uiConverter.showErrorMessage(
-                            "Could not convert MIDI for " + songFile.getName()
+                            Strings.get(Strings.ERROR_CONVERTER_MIDI, songFile.getName())
                         );
                     } finally {
                         processDialog.nextValue();
@@ -259,13 +260,13 @@ public class ConvertAction extends AbstractAction {
 
                 JOptionPane.showMessageDialog(
                     processDialog,
-                    "Conversion complete!"
+                    Strings.get(Strings.CONFIRM_CONVERSION_COMPLETE)
                 );
                 //Utilities.openWebPage(uiConverter, uiConverter.getProperties().getProperty
                 // (Constants
                 // .BOOK_UPLOAD_URL));
             } catch (IOException e) {
-                uiConverter.showErrorMessage("Error while producing ZIP file.");
+                uiConverter.showErrorMessage(Strings.get(Strings.ERROR_CONVERTER_ZIP));
             } finally {
                 processDialog.setVisible(false);
             }

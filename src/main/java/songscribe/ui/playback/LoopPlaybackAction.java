@@ -22,17 +22,18 @@ package songscribe.ui.playback;
 import java.awt.event.*;
 
 import songscribe.ui.action.SelectableUIAction;
+import songscribe.Strings;
 import songscribe.ui.message.MessageCenter;
 
 public class LoopPlaybackAction extends SelectableUIAction {
 
     public LoopPlaybackAction() {
         super(
-            "Loop",
+            Strings.get(Strings.ACTION_PLAY_LOOP),
             "@\uF358",
             20,
             "loop-playback",
-            "Loop playback continuously"
+            Strings.get(Strings.ACTION_PLAY_LOOP_TOOLTIP)
         );
         setFlags(
             Flag.DISABLE_WHEN_PLAYING,

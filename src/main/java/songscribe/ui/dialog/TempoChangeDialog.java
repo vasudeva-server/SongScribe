@@ -23,6 +23,7 @@ import java.awt.*;
 
 import javax.swing.*;
 
+import songscribe.Strings;
 import songscribe.music.StaffElement;
 import songscribe.music.Tempo;
 import songscribe.util.FileUtils;
@@ -40,12 +41,12 @@ public class TempoChangeDialog extends StandardDialog {
     );
     private final JComboBox<String> tempoDescriptionCombo = new JComboBox<>();
     private final JCheckBox showOnlyDescriptionCheckBox = new JCheckBox(
-        "Show only the tempo description"
+        Strings.get(Strings.DIALOG_TEMPO_CHANGE_SHOW_ONLY_DESCRIPTION)
     );
     private final JButton removeButton;
 
     public TempoChangeDialog() {
-        super("Tempo change");
+        super(Strings.get(Strings.DIALOG_TEMPO_CHANGE_TITLE));
         //----------------------center------------------------
         var center = new JPanel();
         center.setLayout(new BoxLayout(center, BoxLayout.Y_AXIS));
@@ -54,7 +55,7 @@ public class TempoChangeDialog extends StandardDialog {
         var large = new Dimension(0, 15);
 
         var infoPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 5));
-        infoPanel.add(new JLabel("Index of selected element:"));
+        infoPanel.add(new JLabel(Strings.get(Strings.DIALOG_TEMPO_CHANGE_SELECTED_ELEMENT)));
         infoPanel.add(indexOfSelectedElementLabel);
         infoPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
         center.add(infoPanel);
@@ -69,7 +70,7 @@ public class TempoChangeDialog extends StandardDialog {
         tempoPanel.add(new JLabel("="));
         var ts = new JSpinner(tempoSpinner);
         tempoPanel.add(ts);
-        tempoPanel.add(new JLabel("Description:"));
+        tempoPanel.add(new JLabel(Strings.get(Strings.DIALOG_TEMPO_CHANGE_DESCRIPTION)));
         tempoDescriptionCombo.setEditable(true);
         FileUtils.readComboValuesFromFile(
             tempoDescriptionCombo,
@@ -85,7 +86,7 @@ public class TempoChangeDialog extends StandardDialog {
 
         //----------------------south------------------------
         var south = new JPanel(new FlowLayout(FlowLayout.RIGHT, 13, 0));
-        removeButton = new JButton("Remove");
+        removeButton = new JButton(Strings.get(Strings.LABEL_BUTTON_REMOVE));
         removeButton.addActionListener(_ -> {
             var score = mainFrame.getScore();
             selectedElement.setTempoChange(null);
@@ -118,12 +119,11 @@ public class TempoChangeDialog extends StandardDialog {
         }
 
         indexOfSelectedElementLabel.setText(
-            (
-                score.getComposition().indexOfLine(selectedElement.getLine()) + 1
-            ) +
-                ". line " +
-                (selectedElement.getLine().getElementIndex(selectedElement) + 1) +
-                ". element"
+            Strings.get(
+                Strings.DIALOG_TEMPO_CHANGE_INDEX,
+                score.getComposition().indexOfLine(selectedElement.getLine()) + 1,
+                selectedElement.getLine().getElementIndex(selectedElement) + 1
+            )
         );
 
         tempoTypeCombo.setSelectedIndex(tempoChange.getTempoType().ordinal());
@@ -135,11 +135,11 @@ public class TempoChangeDialog extends StandardDialog {
         removeButton.setEnabled(!addingTempoChange);
 
         if (addingTempoChange) {
-            okButton.setText("Add");
-            applyButton.setText("Apply addition");
+            okButton.setText(Strings.get(Strings.LABEL_BUTTON_ADD));
+            applyButton.setText(Strings.get(Strings.LABEL_BUTTON_APPLY_ADDITION));
         } else {
-            okButton.setText("Modify");
-            applyButton.setText("Apply modification");
+            okButton.setText(Strings.get(Strings.LABEL_BUTTON_MODIFY));
+            applyButton.setText(Strings.get(Strings.LABEL_BUTTON_APPLY_MODIFICATION));
         }
     }
 

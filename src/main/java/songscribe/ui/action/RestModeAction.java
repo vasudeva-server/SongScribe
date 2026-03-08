@@ -22,6 +22,8 @@ package songscribe.ui.action;
 
 import java.awt.event.*;
 
+import songscribe.Strings;
+
 import songscribe.ui.message.MessageCenter;
 import songscribe.ui.message.RestModeChangedMessage;
 
@@ -29,11 +31,11 @@ public class RestModeAction extends SelectableUIAction {
 
     public RestModeAction() {
         super(
-            "Rest Mode",
+            Strings.get(Strings.ACTION_REST_MODE),
             "@\uF371",
             22,
             "rest-mode",
-            "Insert rest of selected duration",
+            Strings.get(Strings.ACTION_REST_MODE_TOOLTIP),
             KeyEvent.VK_R,
             0
         );
