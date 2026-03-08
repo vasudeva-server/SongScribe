@@ -125,7 +125,7 @@ public class LineJustificationCalculator {
      * @return JustificationResult indicating success or failure
      */
     public @NotNull JustificationResult justifyLine(
-        @NotNull List<NoteColumn> columns,
+        @NotNull List<ElementColumn> columns,
         double staffRightMarginSs) {
 
         if (columns.isEmpty()) {
@@ -157,7 +157,7 @@ public class LineJustificationCalculator {
      * @return JustificationResult indicating success or failure
      */
     private @NotNull JustificationResult compressLine(
-        @NotNull List<NoteColumn> columns,
+        @NotNull List<ElementColumn> columns,
         double staffRightMarginSs) {
 
         // Calculate compression ratio
@@ -226,7 +226,7 @@ public class LineJustificationCalculator {
      * @return CompressionValidation result
      */
     private @NotNull CompressionValidation validateCompression(
-        @NotNull List<NoteColumn> columns,
+        @NotNull List<ElementColumn> columns,
         double compressionRatio) {
 
         double minColumnGapSs = LayoutConstants.COMPRESSED_MIN_COLUMN_GAP_SS;
@@ -280,8 +280,8 @@ public class LineJustificationCalculator {
      * @return Syllable gap in staff-space units
      */
     private double calculateSyllableGapSs(
-        @NotNull NoteColumn prevColumn,
-        @NotNull NoteColumn currColumn,
+        @NotNull ElementColumn prevColumn,
+        @NotNull ElementColumn currColumn,
         double compressionRatio) {
 
         // Current distance between column centers
@@ -309,7 +309,7 @@ public class LineJustificationCalculator {
      * @param compressionRatio The compression ratio to apply
      */
     private void applyCompression(
-        @NotNull List<NoteColumn> columns,
+        @NotNull List<ElementColumn> columns,
         double compressionRatio) {
 
         if (columns.isEmpty()) {

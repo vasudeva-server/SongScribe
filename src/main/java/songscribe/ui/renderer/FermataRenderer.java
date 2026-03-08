@@ -24,7 +24,7 @@ import java.awt.*;
 
 import org.jetbrains.annotations.NotNull;
 
-import songscribe.music.Note;
+import songscribe.music.StaffElement;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
 import songscribe.smufl.StaffSpaces;
@@ -39,7 +39,7 @@ import songscribe.util.GraphicUtils;
  * A fermata indicates that a note should be held longer than its written duration.
  * The symbol consists of a dot under an arc (like an eyebrow over an eye).
  */
-public class FermataRenderer extends BaseElementRenderer<Note> {
+public class FermataRenderer extends BaseElementRenderer<StaffElement> {
 
     // ==========================================================================
     // Constants
@@ -77,7 +77,7 @@ public class FermataRenderer extends BaseElementRenderer<Note> {
 
     @Override
     protected void renderElement(
-        @NotNull Note element,
+        @NotNull StaffElement element,
         @NotNull Graphics2D g2,
         @NotNull ElementRenderContext ctx
     ) {
@@ -89,7 +89,7 @@ public class FermataRenderer extends BaseElementRenderer<Note> {
         int fermataY = getEffectiveFermataYPosPx(element, ctx);
 
         // Center horizontally over the notehead
-        double noteHeadHalfWidth = BaseElementRenderer.NOTE_FONT_SIZE / 3.6056337d / 2.0;
+        double noteHeadHalfWidth = BaseElementRenderer.FONT_SIZE / 3.6056337d / 2.0;
         double x = GraphicUtils.snapXToDevicePixel(
             g2, noteX + noteHeadHalfWidth - FERMATA_WIDTH_PX / 2.0
         );
@@ -107,7 +107,7 @@ public class FermataRenderer extends BaseElementRenderer<Note> {
      * (e.g. for the insertion note preview).
      */
     private int getEffectiveFermataYPosPx(
-        @NotNull Note note,
+        @NotNull StaffElement note,
         @NotNull ElementRenderContext ctx
     ) {
         var layoutResult = ctx.getLayoutResult();
@@ -122,7 +122,7 @@ public class FermataRenderer extends BaseElementRenderer<Note> {
 
         // Fallback: compute position directly from note position
         int fermataStaffPosition = getFermataStaffPosition(note);
-        return (int) (ctx.getMiddleLineYSs() + ScaleContext.getInstance().toRoundedPixels(fermataStaffPosition * LayoutStylesheet.NOTE_Y_OFFSET));
+        return (int) (ctx.getMiddleLineYSs() + ScaleContext.getInstance().toRoundedPixels(fermataStaffPosition * LayoutStylesheet.STAFF_POSITION_OFFSET));
     }
 
     /**
@@ -134,7 +134,7 @@ public class FermataRenderer extends BaseElementRenderer<Note> {
      */
     public void renderFermata(
         @NotNull Graphics2D g2,
-        @NotNull Note note,
+        @NotNull StaffElement note,
         @NotNull ElementRenderContext ctx
     ) {
         render(note, g2, ctx);
@@ -144,7 +144,7 @@ public class FermataRenderer extends BaseElementRenderer<Note> {
      * Calculates the Y position for the fermata based on note position.
      * Fermata is placed above the note, further up for higher notes.
      */
-    private int getFermataStaffPosition(@NotNull Note note) {
+    private int getFermataStaffPosition(@NotNull StaffElement note) {
         int staffPosition = note.getStaffPosition();
 
         // For notes above the staff, place fermata higher

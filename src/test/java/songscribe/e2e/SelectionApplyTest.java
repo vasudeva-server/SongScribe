@@ -20,19 +20,19 @@
 
 package songscribe.e2e;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import org.assertj.swing.edt.GuiActionRunner;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 
 import songscribe.music.Composition;
+import songscribe.music.ElementType;
 import songscribe.music.Line;
-import songscribe.music.Note;
-import songscribe.music.NoteType;
+import songscribe.music.StaffElement;
 import songscribe.ui.action.Actions;
 import songscribe.ui.action.UIAction;
 import songscribe.ui.component.MainFrame;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * E2E tests for applying toolbar actions to a selection.
@@ -42,7 +42,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 @Order(8)
 class SelectionApplyTest extends E2ETest {
 
-    @Test @Order(1)
+    @Test
+    @Order(1)
     void testSelectNotesClickDurationVerifyChanged() {
         buildComposition(quaver(0), quaver(-2), quaver(-4));
         enterSelectMode();
@@ -56,15 +57,16 @@ class SelectionApplyTest extends E2ETest {
         clickToolbarButton(Actions.QUARTER_NOTE_ACTION);
 
         // All notes should now be crotchets
-        verifyNoteType(0, 0, NoteType.CROTCHET);
-        verifyNoteType(0, 1, NoteType.CROTCHET);
-        verifyNoteType(0, 2, NoteType.CROTCHET);
+        verifyNoteType(0, 0, ElementType.CROTCHET);
+        verifyNoteType(0, 1, ElementType.CROTCHET);
+        verifyNoteType(0, 2, ElementType.CROTCHET);
 
         // Selection should remain active
         assertThat(score().getSelectionSize()).isEqualTo(3);
     }
 
-    @Test @Order(2)
+    @Test
+    @Order(2)
     void testSelectNotesClickAccidentalVerifyApplied() {
         buildComposition(crotchet(0), crotchet(-2));
         enterSelectMode();
@@ -76,14 +78,15 @@ class SelectionApplyTest extends E2ETest {
         // Click the flat toolbar button
         clickToolbarButton(Actions.FLAT_ACTION);
 
-        verifyAccidental(0, 0, Note.Accidental.FLAT);
-        verifyAccidental(0, 1, Note.Accidental.FLAT);
+        verifyAccidental(0, 0, StaffElement.Accidental.FLAT);
+        verifyAccidental(0, 1, StaffElement.Accidental.FLAT);
 
         // Selection should remain active
         assertThat(score().getSelectionSize()).isEqualTo(2);
     }
 
-    @Test @Order(3)
+    @Test
+    @Order(3)
     void testSelectNotesClickNaturalToolbarVerifyApplied() {
         buildComposition(crotchet(0), crotchet(-2));
         enterSelectMode();
@@ -95,16 +98,17 @@ class SelectionApplyTest extends E2ETest {
         // Click the natural toolbar button
         clickToolbarButton(Actions.NATURAL_ACTION);
 
-        verifyAccidental(0, 0, Note.Accidental.NATURAL);
-        verifyAccidental(0, 1, Note.Accidental.NATURAL);
+        verifyAccidental(0, 0, StaffElement.Accidental.NATURAL);
+        verifyAccidental(0, 1, StaffElement.Accidental.NATURAL);
 
         // Selection should remain active
         assertThat(score().getSelectionSize()).isEqualTo(2);
     }
 
-    @Test @Order(4)
+    @Test
+    @Order(4)
     void testSelectNotesAndRestsClickDotVerifyBothGetDots() {
-        buildComposition(crotchet(0), rest(NoteType.CROTCHET_REST), crotchet(-4));
+        buildComposition(crotchet(0), rest(ElementType.CROTCHET_REST), crotchet(-4));
         enterSelectMode();
 
         clickAt(noteScreenPosition(0, 0));
@@ -120,7 +124,8 @@ class SelectionApplyTest extends E2ETest {
         verifyDotCount(0, 2, 1);
     }
 
-    @Test @Order(5)
+    @Test
+    @Order(5)
     void testSelectNotesAndBarlineVerifyMutualExclusivity() {
         // Note, barline, note — select first two elements
         buildComposition(crotchet(0), barline(), crotchet(-4));
@@ -138,7 +143,8 @@ class SelectionApplyTest extends E2ETest {
         assertActionEnabled(Actions.BARLINE_ACTIONS[2], true);
     }
 
-    @Test @Order(6)
+    @Test
+    @Order(6)
     void testSelectOnlyBarlinesDisablesDurationActions() {
         // Two barlines with a note after (so we have clickable positions)
         buildComposition(barline(), barline(), crotchet(-4));
@@ -160,7 +166,8 @@ class SelectionApplyTest extends E2ETest {
         assertActionEnabled(Actions.BARLINE_ACTIONS[2], true);
     }
 
-    @Test @Order(7)
+    @Test
+    @Order(7)
     void testApplyFermataThenRemove() {
         buildComposition(crotchet(0), crotchet(-2));
         enterSelectMode();
@@ -179,9 +186,10 @@ class SelectionApplyTest extends E2ETest {
         verifyFermata(0, 1, false);
     }
 
-    @Test @Order(8)
+    @Test
+    @Order(8)
     void testDurationChangePreservesNoteRestKind() {
-        buildComposition(quaver(0), rest(NoteType.QUAVER_REST), quaver(-4));
+        buildComposition(quaver(0), rest(ElementType.QUAVER_REST), quaver(-4));
         enterSelectMode();
 
         clickAt(noteScreenPosition(0, 0));
@@ -190,44 +198,44 @@ class SelectionApplyTest extends E2ETest {
         // Change all to half notes
         clickToolbarButton(Actions.HALF_NOTE_ACTION);
 
-        verifyNoteType(0, 0, NoteType.MINIM);
-        verifyNoteType(0, 1, NoteType.MINIM_REST);
-        verifyNoteType(0, 2, NoteType.MINIM);
+        verifyNoteType(0, 0, ElementType.MINIM);
+        verifyNoteType(0, 1, ElementType.MINIM_REST);
+        verifyNoteType(0, 2, ElementType.MINIM);
     }
 
 
     // -- Note factory helpers --
 
-    private Note crotchet(int staffPositionSp) {
-        var note = NoteType.CROTCHET.newInstance();
+    private StaffElement crotchet(int staffPositionSp) {
+        var note = ElementType.CROTCHET.newInstance();
         note.setStaffPosition(staffPositionSp);
         return note;
     }
 
-    private Note quaver(int staffPositionSp) {
-        var note = NoteType.QUAVER.newInstance();
+    private StaffElement quaver(int staffPositionSp) {
+        var note = ElementType.QUAVER.newInstance();
         note.setStaffPosition(staffPositionSp);
         return note;
     }
 
-    private Note rest(NoteType restType) {
+    private StaffElement rest(ElementType restType) {
         return restType.newInstance();
     }
 
-    private Note barline() {
-        return NoteType.SINGLE_BARLINE.newInstance();
+    private StaffElement barline() {
+        return ElementType.SINGLE_BARLINE.newInstance();
     }
 
 
     // -- Composition builder --
 
-    private void buildComposition(Note... notes) {
+    private void buildComposition(StaffElement... notes) {
         GuiActionRunner.execute(() -> {
             var composition = new Composition(MainFrame.getInstance());
             var line = new Line();
 
             for (var note : notes) {
-                line.addNote(note);
+                line.addElement(note);
             }
 
             composition.addLine(0, line);
@@ -242,18 +250,18 @@ class SelectionApplyTest extends E2ETest {
 
     // -- Assertion helpers --
 
-    private void verifyNoteType(int lineIndex, int noteIndex, NoteType expected) {
+    private void verifyNoteType(int lineIndex, int noteIndex, ElementType expected) {
         var actual = GuiActionRunner.execute(
-            () -> composition().getLine(lineIndex).getNote(noteIndex).getNoteType()
+            () -> composition().getLine(lineIndex).getElement(noteIndex).getType()
         );
         assertThat(actual)
             .as("note[%d][%d] type", lineIndex, noteIndex)
             .isEqualTo(expected);
     }
 
-    private void verifyAccidental(int lineIndex, int noteIndex, Note.Accidental expected) {
+    private void verifyAccidental(int lineIndex, int noteIndex, StaffElement.Accidental expected) {
         var actual = GuiActionRunner.execute(
-            () -> composition().getLine(lineIndex).getNote(noteIndex).getAccidental()
+            () -> composition().getLine(lineIndex).getElement(noteIndex).getAccidental()
         );
         assertThat(actual)
             .as("note[%d][%d] accidental", lineIndex, noteIndex)
@@ -262,7 +270,7 @@ class SelectionApplyTest extends E2ETest {
 
     private void verifyDotCount(int lineIndex, int noteIndex, int expected) {
         var actual = GuiActionRunner.execute(
-            () -> composition().getLine(lineIndex).getNote(noteIndex).getDotCount()
+            () -> composition().getLine(lineIndex).getElement(noteIndex).getDotCount()
         );
         assertThat(actual)
             .as("note[%d][%d] dot count", lineIndex, noteIndex)
@@ -271,7 +279,7 @@ class SelectionApplyTest extends E2ETest {
 
     private void verifyFermata(int lineIndex, int noteIndex, boolean expected) {
         var actual = GuiActionRunner.execute(
-            () -> composition().getLine(lineIndex).getNote(noteIndex).isFermata()
+            () -> composition().getLine(lineIndex).getElement(noteIndex).isFermata()
         );
         assertThat(actual)
             .as("note[%d][%d] fermata", lineIndex, noteIndex)

@@ -23,14 +23,14 @@ import java.awt.*;
 
 import javax.swing.*;
 
-import songscribe.music.Note;
+import songscribe.music.StaffElement;
 import songscribe.music.Tempo;
 import songscribe.util.FileUtils;
 
 public class TempoChangeDialog extends StandardDialog {
 
-    private Note selectedNote = null;
-    private final JLabel indexOfSelectedNoteLabel = new JLabel();
+    private StaffElement selectedElement = null;
+    private final JLabel indexOfSelectedElementLabel = new JLabel();
     private final JComboBox<?> tempoTypeCombo;
     private final SpinnerModel tempoSpinner = new SpinnerNumberModel(
         120,
@@ -54,8 +54,8 @@ public class TempoChangeDialog extends StandardDialog {
         var large = new Dimension(0, 15);
 
         var infoPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 5));
-        infoPanel.add(new JLabel("Index of selected note:"));
-        infoPanel.add(indexOfSelectedNoteLabel);
+        infoPanel.add(new JLabel("Index of selected element:"));
+        infoPanel.add(indexOfSelectedElementLabel);
         infoPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
         center.add(infoPanel);
         center.add(Box.createRigidArea(large));
@@ -88,7 +88,7 @@ public class TempoChangeDialog extends StandardDialog {
         removeButton = new JButton("Remove");
         removeButton.addActionListener(_ -> {
             var score = mainFrame.getScore();
-            selectedNote.setTempoChange(null);
+            selectedElement.setTempoChange(null);
             setVisible(false);
             score.repaint();
             score.getComposition().setModified(true);
@@ -103,27 +103,27 @@ public class TempoChangeDialog extends StandardDialog {
     @Override
     protected void getData() {
         var score = mainFrame.getScore();
-        selectedNote = score.getSingleSelectedNote();
+        selectedElement = score.getSingleSelectedElement();
 
         // This should never happen, but make Java happy
-        if (selectedNote == null) {
+        if (selectedElement == null) {
             return;
         }
 
-        var tempoChange = selectedNote.getTempoChange();
+        var tempoChange = selectedElement.getTempoChange();
         var addingTempoChange = tempoChange == null;
 
         if (addingTempoChange) {
             tempoChange = new Tempo(144, Tempo.Type.CROTCHET, "Slower", true);
         }
 
-        indexOfSelectedNoteLabel.setText(
+        indexOfSelectedElementLabel.setText(
             (
-                score.getComposition().indexOfLine(selectedNote.getLine()) + 1
+                score.getComposition().indexOfLine(selectedElement.getLine()) + 1
             ) +
-            ". line " +
-            (selectedNote.getLine().getNoteIndex(selectedNote) + 1) +
-            ". note"
+                ". line " +
+                (selectedElement.getLine().getElementIndex(selectedElement) + 1) +
+                ". element"
         );
 
         tempoTypeCombo.setSelectedIndex(tempoChange.getTempoType().ordinal());
@@ -145,7 +145,7 @@ public class TempoChangeDialog extends StandardDialog {
 
     @Override
     protected void setData() {
-        selectedNote.setTempoChange(
+        selectedElement.setTempoChange(
             new Tempo(
                 ((Integer) tempoSpinner.getValue()),
                 (Tempo.Type) tempoTypeCombo.getSelectedItem(),

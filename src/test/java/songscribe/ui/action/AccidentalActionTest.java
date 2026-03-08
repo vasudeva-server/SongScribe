@@ -20,44 +20,44 @@
 
 package songscribe.ui.action;
 
-import songscribe.UnitTest;
-import songscribe.music.Note;
-import songscribe.music.NoteType;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.jupiter.api.Test;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import songscribe.UnitTest;
+import songscribe.music.ElementType;
+import songscribe.music.StaffElement;
 
 class AccidentalActionTest extends UnitTest {
     private final AccidentalAction action =
-        new AccidentalAction(Note.Accidental.SHARP, "Sharp", null, 0, "sharp", "Sharp");
+        new AccidentalAction(StaffElement.Accidental.SHARP, "Sharp", null, 0, "sharp", "Sharp");
 
     @Test
     void testMatchesWhenAccidentalMatches() {
-        var note = NoteType.CROTCHET.newInstance();
-        note.setAccidental(Note.Accidental.SHARP);
-        assertThat(action.matchesNote(note)).isTrue();
+        var note = ElementType.CROTCHET.newInstance();
+        note.setAccidental(StaffElement.Accidental.SHARP);
+        assertThat(action.matchesElement(note)).isTrue();
     }
 
     @Test
     void testDoesNotMatchWhenAccidentalDiffers() {
-        var note = NoteType.CROTCHET.newInstance();
-        note.setAccidental(Note.Accidental.FLAT);
-        assertThat(action.matchesNote(note)).isFalse();
+        var note = ElementType.CROTCHET.newInstance();
+        note.setAccidental(StaffElement.Accidental.FLAT);
+        assertThat(action.matchesElement(note)).isFalse();
     }
 
     @Test
     void testApplyToNoteAppliesAccidental() {
-        var note = NoteType.CROTCHET.newInstance();
-        action.applyToNote(note, true);
-        assertThat(note.getAccidental()).isEqualTo(Note.Accidental.SHARP);
+        var note = ElementType.CROTCHET.newInstance();
+        action.applyToElement(note, true);
+        assertThat(note.getAccidental()).isEqualTo(StaffElement.Accidental.SHARP);
     }
 
     @Test
     void testApplyToNoteRemovesAccidental() {
-        var note = NoteType.CROTCHET.newInstance();
-        note.setAccidental(Note.Accidental.SHARP);
-        action.applyToNote(note, false);
-        assertThat(note.getAccidental()).isEqualTo(Note.Accidental.NONE);
+        var note = ElementType.CROTCHET.newInstance();
+        note.setAccidental(StaffElement.Accidental.SHARP);
+        action.applyToElement(note, false);
+        assertThat(note.getAccidental()).isEqualTo(StaffElement.Accidental.NONE);
     }
 }

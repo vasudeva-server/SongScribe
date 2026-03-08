@@ -25,12 +25,12 @@ import java.awt.event.*;
 
 import org.jetbrains.annotations.NotNull;
 
-import songscribe.music.Note;
+import songscribe.music.StaffElement;
 import songscribe.ui.Mode;
 import songscribe.ui.layout2.ScaleContext;
 import songscribe.ui.playback.MidiController;
+import songscribe.ui.playback.PlayThread;
 import songscribe.ui.renderer.GlissandoRenderer;
-import songscribe.ui.playback.PlayNoteThread;
 
 /**
  * Handles selection, hit-testing, and drag logic for a {@link LineComponent}.
@@ -77,10 +77,10 @@ class SelectionHandler {
      * If nothing is hit, {@link HitResult.Nothing} is returned.
      */
     HitResult hitTest(@NotNull Point point) {
-        var noteIndex = NoteHitTest.hitTestNote(lc, point);
+        var elementIndex = ElementHitTest.hitTestElement(lc, point);
 
-        if (noteIndex != -1) {
-            return new HitResult.NoteHead(noteIndex);
+        if (elementIndex != -1) {
+            return new HitResult.ElementHead(elementIndex);
         }
 
         var glissandoIndex = hitTestGlissandoAtPoint(point);
@@ -124,19 +124,19 @@ class SelectionHandler {
         // Select the hit element immediately on press.
         // This prevents rubber-band drag from starting on selectable elements.
         // Shift+click on a note head is handled in handleClick for extend-selection.
-        if (e.isShiftDown() && pressHitResult instanceof HitResult.NoteHead) {
+        if (e.isShiftDown() && pressHitResult instanceof HitResult.ElementHead) {
             return;
         }
 
         switch (pressHitResult) {
-            case HitResult.NoteHead(var index) -> {
-                selectAndPlayNote(index);
+            case HitResult.ElementHead(var index) -> {
+                selectAndPlayElement(index);
                 pressHandled = true;
             }
 
-            case HitResult.Glissando(var noteIndex) -> {
+            case HitResult.Glissando(var elementIndex) -> {
                 prepareSelection();
-                lineSelectionState.selectGlissando(noteIndex);
+                lineSelectionState.selectGlissando(elementIndex);
                 lc.getScore().selectionChanged();
                 pressHandled = true;
             }
@@ -195,8 +195,8 @@ class SelectionHandler {
 
         // Shift+click on a note head: extend selection from anchor
         if (e.isShiftDown()
-                && pressHitResult instanceof HitResult.NoteHead(var index)
-                && lc.getLineSelectionState().getSelectionAnchor() != -1) {
+            && pressHitResult instanceof HitResult.ElementHead(var index)
+            && lc.getLineSelectionState().getSelectionAnchor() != -1) {
             var lineSelectionState = lc.getLineSelectionState();
             lineSelectionState.extendSelectionTo(index);
             lc.getScore().selectionChanged();
@@ -247,7 +247,7 @@ class SelectionHandler {
 
         var mode = score.getMode();
 
-        if (mode == Mode.NOTE_ADJUSTMENT || mode == Mode.VERTICAL_ADJUSTMENT
+        if (mode == Mode.ADJUSTMENT || mode == Mode.VERTICAL_ADJUSTMENT
             || mode == Mode.LYRICS_ADJUSTMENT) {
             return false;
         }
@@ -268,31 +268,31 @@ class SelectionHandler {
     }
 
     /**
-     * Selects the note at the given index in this line, clearing any prior selection.
-     * Used by both the press handler and {@link NoteDragHandler}.
+     * Selects the element at the given index in this line, clearing any prior selection.
+     * Used by both the press handler and {@link ElementDragHandler}.
      */
-    void selectNoteAtIndex(int noteIndex) {
+    void selectElementAtIndex(int elementIndex) {
         prepareSelection();
-        lc.getLineSelectionState().setSelectionFromClick(noteIndex);
+        lc.getLineSelectionState().setSelectionFromClick(elementIndex);
         lc.getScore().selectionChanged();
     }
 
     /**
-     * Selects the note at the given index and plays it if it is a pitched note.
+     * Selects the element at the given index and plays it if it is a pitched note.
      */
-    void selectAndPlayNote(int noteIndex) {
-        selectNoteAtIndex(noteIndex);
-        playNoteIfPitched(noteIndex);
+    void selectAndPlayElement(int elementIndex) {
+        selectElementAtIndex(elementIndex);
+        playNoteIfPitched(elementIndex);
     }
 
     /**
-     * Plays the note at the given index if it is a pitched note (not a rest).
+     * Plays the element at the given index if it is a pitched note (not a rest).
      */
-    private void playNoteIfPitched(int noteIndex) {
-        var note = lc.getLine().getNote(noteIndex);
+    private void playNoteIfPitched(int elementIndex) {
+        var element = lc.getLine().getElement(elementIndex);
 
-        if (note.getNoteType().isNote()) {
-            new PlayNoteThread(note.getPitch()).start();
+        if (element.getType().isNote()) {
+            new PlayThread(element.getPitch()).start();
         }
     }
 
@@ -309,8 +309,8 @@ class SelectionHandler {
         );
     }
 
-    private void buildNoteHitRect(@NotNull Note note, @NotNull Rectangle out) {
-        NoteHitTest.buildNoteHitRect(lc, note, out);
+    private void buildElementHitRect(@NotNull StaffElement element, @NotNull Rectangle out) {
+        ElementHitTest.buildElementHitRect(lc, element, out);
     }
 
     private void calculateLineSelectionFromDrag(@NotNull Rectangle dragRect) {
@@ -323,28 +323,28 @@ class SelectionHandler {
 
         var helper = new Rectangle();
 
-        for (var noteIndex = 0; noteIndex < line.noteCount(); noteIndex++) {
-            var note = line.getNote(noteIndex);
-            buildNoteHitRect(note, helper);
+        for (var elementIndex = 0; elementIndex < line.elementCount(); elementIndex++) {
+            var element = line.getElement(elementIndex);
+            buildElementHitRect(element, helper);
 
             if (dragRect.intersects(helper)) {
-                lineSelectionState.extendSelection(noteIndex);
+                lineSelectionState.extendSelection(elementIndex);
             }
         }
 
         // Set anchor to the selection end nearest the drag start point
-        if (lineSelectionState.hasNoteSelection()) {
-            var anchorIndex = NoteHitTest.hitTestNote(lc, dragStart);
+        if (lineSelectionState.hasElementSelection()) {
+            var anchorIndex = ElementHitTest.hitTestElement(lc, dragStart);
 
             if (anchorIndex != -1) {
                 lineSelectionState.setSelectionAnchor(anchorIndex);
             } else {
                 var begin = lineSelectionState.getSelectionBegin();
                 var end = lineSelectionState.getSelectionEnd();
-                var beginNote = line.getNote(begin);
-                var endNote = line.getNote(end);
-                var distToBegin = Math.abs(dragStart.x - beginNote.getXPosSs());
-                var distToEnd = Math.abs(dragStart.x - endNote.getXPosSs());
+                var beginElement = line.getElement(begin);
+                var endElement = line.getElement(end);
+                var distToBegin = Math.abs(dragStart.x - beginElement.getXPosSs());
+                var distToEnd = Math.abs(dragStart.x - endElement.getXPosSs());
                 lineSelectionState.setSelectionAnchor(distToBegin <= distToEnd ? begin : end);
             }
         }

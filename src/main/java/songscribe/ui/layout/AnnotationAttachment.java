@@ -24,7 +24,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import songscribe.music.Annotation;
-import songscribe.music.Note;
+import songscribe.music.StaffElement;
 
 /**
  * Represents a text annotation attachment on a note.
@@ -69,13 +69,13 @@ public class AnnotationAttachment extends Attachment {
      * @param parent     The parent note
      * @param annotation The annotation data
      */
-    public AnnotationAttachment(@Nullable Note parent, @NotNull Annotation annotation) {
+    public AnnotationAttachment(@Nullable StaffElement parent, @NotNull Annotation annotation) {
         this.annotation = annotation;
-        setParentNote(parent);
+        setOwnerElement(parent);
         setAlignment(Alignment.LEFT);
 
         if (parent != null) {
-            setParentElement(parent);
+            setOwnerElement(parent);
             setParentLine(parent.getParentLine());
         }
     }

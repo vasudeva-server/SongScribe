@@ -36,13 +36,12 @@ import org.jetbrains.annotations.NotNull;
 import songscribe.Version;
 import songscribe.data.MyFileFilter;
 import songscribe.music.Annotation;
-import songscribe.music.Composition;
 import songscribe.music.ArticulationType;
-
+import songscribe.music.Composition;
+import songscribe.music.ElementType;
 import songscribe.music.KeyType;
 import songscribe.music.Line;
-import songscribe.music.Note;
-import songscribe.music.NoteType;
+import songscribe.music.StaffElement;
 import songscribe.music.Tempo;
 import songscribe.ui.Constants;
 import songscribe.ui.component.MainFrame;
@@ -170,10 +169,10 @@ public class ExportABCAction extends UIAction {
         ) {
             var line = composition.getLine(lineIndex);
 
-            for (var noteIndex = 0; noteIndex < line.noteCount(); noteIndex++) {
-                var note = line.getNote(noteIndex);
+            for (var noteIndex = 0; noteIndex < line.elementCount(); noteIndex++) {
+                var note = line.getElement(noteIndex);
 
-                if (note.getNoteType().isRealNote()) {
+                if (note.getType().isPitchedNote()) {
                     Integer defaultDuration = note.getDefaultDuration();
                     unitLengths.merge(defaultDuration, 1, Integer::sum);
                 }
@@ -281,7 +280,7 @@ public class ExportABCAction extends UIAction {
         return (((staffPosition <= 0) ? -staffPosition : (7 - (staffPosition % 7))) % 7);
     }
 
-    public static String translateAccidental(Note.Accidental accidental) {
+    public static String translateAccidental(StaffElement.Accidental accidental) {
         // TODO: abc does not support accidental in parenthesis
         return IntStream.range(0, accidental.getWidthFactor())
             .mapToObj(i -> ACCIDENTAL_MAP[accidental.getComponent(i)])
@@ -309,7 +308,7 @@ public class ExportABCAction extends UIAction {
         return fraction.asAbcString();
     }
 
-    static String translateRepeatAndBarLine(NoteType noteType) {
+    static String translateRepeatAndBarLine(ElementType noteType) {
         return switch (noteType) {
             case REPEAT_LEFT -> "|:";
             case REPEAT_RIGHT -> ":|";
@@ -321,7 +320,7 @@ public class ExportABCAction extends UIAction {
         };
     }
 
-    static String translateDecorations(Note note) {
+    static String translateDecorations(StaffElement note) {
         var sb = new StringBuilder(27);
 
         if (note.hasArticulation(ArticulationType.ACCENT)) {
@@ -358,7 +357,7 @@ public class ExportABCAction extends UIAction {
         return "";
     }
 
-    static String translateNote(Note note, int compositionUnitLength) {
+    static String translateNote(StaffElement note, int compositionUnitLength) {
         var sb = new StringBuilder(27);
 
         if (note.getTempoChange() != null) {
@@ -369,7 +368,7 @@ public class ExportABCAction extends UIAction {
         }
 
         sb.append(translateAnnotation(note.getAnnotation()));
-        var noteType = note.getNoteType();
+        var noteType = note.getType();
 
         if (noteType.isNote()) {
             if (noteType.isGraceNote()) {
@@ -381,7 +380,7 @@ public class ExportABCAction extends UIAction {
             sb.append(translatePitch(note.getStaffPosition()));
             var duration =
                 switch (noteType) {
-                    case GRACE_QUAVER -> NoteType.QUAVER.getDefaultDuration();
+                    case GRACE_QUAVER -> ElementType.QUAVER.getDefaultDuration();
                     default -> note.getDefaultDurationWithDots();
                 };
 
@@ -407,7 +406,7 @@ public class ExportABCAction extends UIAction {
             sb.append(translateRepeatAndBarLine(noteType));
         }
 
-        if (noteType == NoteType.BREATH_MARK) {
+        if (noteType == ElementType.BREATH_MARK) {
             sb.append("!breath!");
         }
 
@@ -417,7 +416,7 @@ public class ExportABCAction extends UIAction {
     static String translateLine(Line line, int compositionUnitLength) {
         var sb = new StringBuilder(27);
 
-        for (var i = 0; i < line.noteCount(); i++) {
+        for (var i = 0; i < line.elementCount(); i++) {
             if (line.getBeamings().isStartOfAnyInterval(i)) {
                 sb.append(' ');
             }
@@ -444,10 +443,10 @@ public class ExportABCAction extends UIAction {
                 sb.append('(');
             }
 
-            sb.append(translateNote(line.getNote(i), compositionUnitLength));
+            sb.append(translateNote(line.getElement(i), compositionUnitLength));
 
             if (
-                (line.getNote(i).getNoteType() == NoteType.REPEAT_RIGHT) &&
+                (line.getElement(i).getType() == ElementType.REPEAT_RIGHT) &&
                     line.getFirstSecondEndings().isInsideAnyInterval(i)
             ) {
                 sb.append("[2 ");
@@ -478,26 +477,26 @@ public class ExportABCAction extends UIAction {
     static boolean isGlissandoBegin(Line line, int n) {
         // Glissandos are represented as slurs in ABC format
         //noinspection ObjectEquality
-        return line.getNote(n).getGlissando() != Note.NO_GLISSANDO;
+        return line.getElement(n).getGlissando() != StaffElement.NO_GLISSANDO;
     }
 
     static boolean isGlissandoEnd(Line line, int n) {
         //noinspection ObjectEquality
-        return (n > 0) && (line.getNote(n - 1).getGlissando() != Note.NO_GLISSANDO);
+        return (n > 0) && (line.getElement(n - 1).getGlissando() != StaffElement.NO_GLISSANDO);
     }
 
     static String translateLyrics(Line line) {
         var sb = new StringBuilder(270);
 
-        for (var n = 0; n < line.noteCount(); n++) {
-            var note = line.getNote(n);
+        for (var n = 0; n < line.elementCount(); n++) {
+            var note = line.getElement(n);
             // TODO: syllable forcing under rests is not supported in abc
 
-            if (note.getNoteType().isNote()) {
+            if (note.getType().isNote()) {
                 sb.append(translateSyllable(note.properties.syllable));
                 // TODO: syllables under gracenotes are not supported in abc therefore me must put
                 //  together with the next note
-                if (note.getNoteType().isGraceNote()) {
+                if (note.getType().isGraceNote()) {
                     sb.append('\\');
                 }
 

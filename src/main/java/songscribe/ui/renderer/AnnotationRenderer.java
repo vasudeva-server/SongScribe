@@ -27,7 +27,7 @@ import java.awt.*;
 
 import org.jetbrains.annotations.NotNull;
 
-import songscribe.music.Note;
+import songscribe.music.StaffElement;
 import songscribe.ui.layout.AnnotationAttachment;
 
 /**
@@ -36,14 +36,14 @@ import songscribe.ui.layout.AnnotationAttachment;
  * Annotations are text labels that appear above or below notes,
  * typically used for performance instructions or other markings.
  */
-public class AnnotationRenderer extends BaseElementRenderer<Note> {
+public class AnnotationRenderer extends BaseElementRenderer<StaffElement> {
 
     // ==========================================================================
     // Constants
     // ==========================================================================
 
     // Crotchet width for positioning
-    private static final double CROTCHET_WIDTH_PX = BaseElementRenderer.NOTE_FONT_SIZE / 3.6056337d;
+    private static final double CROTCHET_WIDTH_PX = BaseElementRenderer.FONT_SIZE / 3.6056337d;
 
     // Singleton instance
     private static final AnnotationRenderer INSTANCE = new AnnotationRenderer();
@@ -67,7 +67,7 @@ public class AnnotationRenderer extends BaseElementRenderer<Note> {
 
     @Override
     protected void renderElement(
-        @NotNull Note element,
+        @NotNull StaffElement element,
         @NotNull Graphics2D g2,
         @NotNull ElementRenderContext ctx
     ) {
@@ -87,7 +87,7 @@ public class AnnotationRenderer extends BaseElementRenderer<Note> {
         try (var ignored = GraphicsState.save(g2, FONT, COLOR)) {
             // Set font
             g2.setFont(composition.getAnnotationFont());
-            g2.setColor(NOTE_COLOR);
+            g2.setColor(ELEMENT_COLOR);
 
             // Calculate position
             float x = (float) getAnnotationXPosPx(g2, element);
@@ -108,7 +108,7 @@ public class AnnotationRenderer extends BaseElementRenderer<Note> {
      */
     public void renderAnnotation(
         @NotNull Graphics2D g2,
-        @NotNull Note note,
+        @NotNull StaffElement note,
         @NotNull ElementRenderContext ctx
     ) {
         render(note, g2, ctx);
@@ -117,7 +117,7 @@ public class AnnotationRenderer extends BaseElementRenderer<Note> {
     /**
      * Calculates the X position for an annotation, centering it over the note.
      */
-    private double getAnnotationXPosPx(@NotNull Graphics2D g2, @NotNull Note note) {
+    private double getAnnotationXPosPx(@NotNull Graphics2D g2, @NotNull StaffElement note) {
         var annotation = note.getAnnotation();
 
         if (annotation == null) {
@@ -135,7 +135,7 @@ public class AnnotationRenderer extends BaseElementRenderer<Note> {
      * Gets the Y position for an annotation from layout result.
      */
     private float getAnnotationYPosPx(
-        @NotNull Note note,
+        @NotNull StaffElement note,
         @NotNull ElementRenderContext ctx
     ) {
         var layoutResult = ctx.getLayoutResult();

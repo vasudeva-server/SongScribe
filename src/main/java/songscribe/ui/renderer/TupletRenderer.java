@@ -30,16 +30,16 @@ import java.awt.geom.*;
 import org.jetbrains.annotations.NotNull;
 
 import songscribe.music.Line;
-import songscribe.music.Note;
+import songscribe.music.StaffElement;
 import songscribe.smufl.EngravingDefaults;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
 import songscribe.smufl.StaffSpaces;
 import songscribe.ui.layout.LayoutStylesheet;
-import songscribe.ui.layout2.ScaleContext;
 import songscribe.ui.layout.Tuplet;
 import songscribe.ui.layout2.LayoutConstants;
 import songscribe.ui.layout2.LayoutResult;
+import songscribe.ui.layout2.ScaleContext;
 import songscribe.util.GraphicUtils;
 
 /**
@@ -157,8 +157,8 @@ public class TupletRenderer extends BaseElementRenderer<Tuplet> {
         @NotNull Graphics2D g2,
         @NotNull ElementRenderContext ctx
     ) {
-        var anchorNote = element.getAnchorNote();
-        var endNote = element.getEndNote();
+        var anchorNote = element.getAnchorElement();
+        var endNote = element.getEndElement();
 
         if (anchorNote == null || endNote == null) {
             return;
@@ -170,8 +170,8 @@ public class TupletRenderer extends BaseElementRenderer<Tuplet> {
             return;
         }
 
-        int startIndex = element.getAnchorNoteIndex();
-        int endIndex = element.getEndNoteIndex();
+        int startIndex = element.getAnchorElementIndex();
+        int endIndex = element.getEndElementIndex();
 
         if (startIndex < 0 || endIndex < 0) {
             return;
@@ -223,40 +223,40 @@ public class TupletRenderer extends BaseElementRenderer<Tuplet> {
         // Calculate if there's an odd or even number of notes
         boolean odd = ((endIndex - startIndex + 1) % 2) == 1;
 
-        var firstNote = line.getNote(startIndex);
-        var lastNote = line.getNote(endIndex);
-        boolean isUpper = firstNote.isUpper();
+        var firstElement = line.getElement(startIndex);
+        var lastElement = line.getElement(endIndex);
+        boolean isUpper = firstElement.isUpper();
 
         // Check if the entire tuplet range is beamed
         boolean allBeamed = line.getBeamings().findInterval(startIndex) != null
             && line.getBeamings().findInterval(endIndex) != null;
 
         // Top staff line: 4 positions above middle line
-        double staffTopY = middleLineYSs - ScaleContext.getInstance().toPixels(4 * LayoutStylesheet.NOTE_Y_OFFSET);
+        double staffTopY = middleLineYSs - ScaleContext.getInstance().toPixels(4 * LayoutStylesheet.STAFF_POSITION_OFFSET);
 
         // Find the highest extent across ALL notes in the tuplet group
         double highestRefY = staffTopY;
 
         for (var i = startIndex; i <= endIndex; i++) {
-            var note = line.getNote(i);
-            double noteYSs = note.getStaffPosition() * LayoutStylesheet.NOTE_Y_OFFSET;
+            var element = line.getElement(i);
+            double elementYSs = element.getStaffPosition() * LayoutStylesheet.STAFF_POSITION_OFFSET;
             double refY;
 
-            var stemLayout = layoutResult != null ? layoutResult.getStemLayout(note) : null;
+            var stemLayout = layoutResult != null ? layoutResult.getStemLayout(element) : null;
 
             if (isUpper) {
                 // Stems up: clear stem tops (which extend to beam for beamed notes)
                 if (stemLayout != null) {
                     refY = middleLineYSs + ScaleContext.getInstance().toPixels(stemLayout.topYSs());
                 } else {
-                    refY = middleLineYSs + ScaleContext.getInstance().toPixels(noteYSs - MIN_STEM_SS);
+                    refY = middleLineYSs + ScaleContext.getInstance().toPixels(elementYSs - MIN_STEM_SS);
                 }
             } else {
                 // Stems down: clear stem bottoms
                 if (stemLayout != null) {
                     refY = middleLineYSs + ScaleContext.getInstance().toPixels(stemLayout.bottomYSs());
                 } else {
-                    refY = middleLineYSs + ScaleContext.getInstance().toPixels(noteYSs + MIN_STEM_SS);
+                    refY = middleLineYSs + ScaleContext.getInstance().toPixels(elementYSs + MIN_STEM_SS);
                 }
             }
 
@@ -279,17 +279,17 @@ public class TupletRenderer extends BaseElementRenderer<Tuplet> {
 
         if (isUpper && layoutResult != null) {
             // Stems up: align bracket with stem centers
-            double firstStemXSs = stemXSs(firstNote, layoutResult);
-            double lastStemXSs = stemXSs(lastNote, layoutResult);
+            double firstStemXSs = stemXSs(firstElement, layoutResult);
+            double lastStemXSs = stemXSs(lastElement, layoutResult);
             lx = (int) (firstStemXSs - BRACKET_X_OFFSET_PX);
             rx = (int) (lastStemXSs + BRACKET_X_OFFSET_PX);
 
             if (odd) {
-                var centerNote = line.getNote(((endIndex - startIndex) / 2) + startIndex);
+                var centerNote = line.getElement(((endIndex - startIndex) / 2) + startIndex);
                 cx = (int) stemXSs(centerNote, layoutResult);
             } else {
-                var cn1 = line.getNote(((endIndex - startIndex) / 2) + startIndex);
-                var cn2 = line.getNote(((endIndex - startIndex) / 2) + startIndex + 1);
+                var cn1 = line.getElement(((endIndex - startIndex) / 2) + startIndex);
+                var cn2 = line.getElement(((endIndex - startIndex) / 2) + startIndex + 1);
                 double cn1x = stemXSs(cn1, layoutResult);
                 double cn2x = stemXSs(cn2, layoutResult);
                 cx = (int) ((cn2x - cn1x) / 2 + cn1x);
@@ -298,8 +298,8 @@ public class TupletRenderer extends BaseElementRenderer<Tuplet> {
             // Stems down: align bracket with notehead edges
             // (noteheads are shifted left by DOWN_STEM_NOTEHEAD_SHIFT in NoteRenderer)
             double noteheadShift = DOWN_STEM_NOTEHEAD_SHIFT_SS;
-            lx = (int) (firstNote.getXPosSs() - noteheadShift + NOTEHEAD_LEFT_PX);
-            rx = (int) (lastNote.getXPosSs() - noteheadShift + NOTEHEAD_RIGHT_PX);
+            lx = (int) (firstElement.getXPosSs() - noteheadShift + NOTEHEAD_LEFT_PX);
+            rx = (int) (lastElement.getXPosSs() - noteheadShift + NOTEHEAD_RIGHT_PX);
             cx = (lx + rx) / 2;
         }
 
@@ -314,7 +314,7 @@ public class TupletRenderer extends BaseElementRenderer<Tuplet> {
         double scx = GraphicUtils.snapXToDevicePixel(g2, cx + overhangCompensation);
 
         try (var ignored = GraphicsState.save(g2, COLOR, STROKE, FONT)) {
-            g2.setColor(NOTE_COLOR);
+            g2.setColor(ELEMENT_COLOR);
             g2.setStroke(LINE_STROKE);
 
             if (allBeamed && isUpper) {
@@ -368,9 +368,9 @@ public class TupletRenderer extends BaseElementRenderer<Tuplet> {
      * @param layoutResult the layout result containing note positions
      * @return stem center X in staff spaces
      */
-    private double stemXSs(@NotNull Note note, @NotNull LayoutResult layoutResult) {
-        double noteXSs = layoutResult.getNoteXSs(note);
-        double offsetSs = stemCenterXOffsetSs(note.getNoteType(), note.isUpper());
+    private double stemXSs(@NotNull StaffElement note, @NotNull LayoutResult layoutResult) {
+        double noteXSs = layoutResult.getElementXSs(note);
+        double offsetSs = stemCenterXOffsetSs(note.getType(), note.isUpper());
         return noteXSs + offsetSs;
     }
 

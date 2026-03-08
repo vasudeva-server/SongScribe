@@ -20,7 +20,7 @@
 
 package songscribe.ui.action;
 
-import songscribe.music.Note;
+import songscribe.music.StaffElement;
 
 public class AccidentalInParensAction extends NoteOnlyAction {
 
@@ -35,12 +35,12 @@ public class AccidentalInParensAction extends NoteOnlyAction {
     }
 
     @Override
-    public boolean matchesNote(Note note) {
-        return note.isAccidentalInParentheses();
+    public boolean matchesElement(StaffElement element) {
+        return element.isAccidentalInParentheses();
     }
 
     @Override
-    public void applyToNote(Note note, boolean selected) {
-        note.setAccidentalInParentheses(selected);
+    public void applyToElement(StaffElement element, boolean selected) {
+        element.setAccidentalInParentheses(selected);
     }
 }

@@ -34,10 +34,10 @@ import javax.sound.midi.Track;
 import org.jetbrains.annotations.NotNull;
 
 import kotlin.Pair;
+
 import songscribe.data.BeamInterval;
 import songscribe.data.DynamicsInterval;
 import songscribe.data.EndingInterval;
-import songscribe.data.Interval;
 import songscribe.data.IntervalSet;
 import songscribe.data.TieInterval;
 import songscribe.data.TupletInterval;
@@ -86,11 +86,11 @@ public class Line {
     private final List<RangeElement> rangeElements = new ArrayList<>();
 
     // acceleration
-    public Note.SyllableRelation beginRelation = Note.SyllableRelation.NO;
+    public StaffElement.SyllableRelation beginRelation = StaffElement.SyllableRelation.NO;
     private Composition composition = null;
     private int keys = 0;
     private KeyType keyType = null;
-    private final List<Note> notes = new ArrayList<>();
+    private final List<StaffElement> elements = new ArrayList<>();
 
     // ---------------------------------------------------------------------
     // Legacy View Properties (Y positions relative to middleLineY)
@@ -152,8 +152,8 @@ public class Line {
     @Deprecated
     private int trillYPosPx = ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.TRILL_DEFAULT_Y);
 
-    /** Ratio multiplier for horizontal note spacing (default: 1.0, user-adjustable). */
-    private float noteDistChangeRatio = 1f;
+    /** Ratio multiplier for horizontal element spacing (default: 1.0, user-adjustable). */
+    private float elementDistChangeRatio = 1f;
 
 
     public Composition getComposition() {
@@ -182,76 +182,76 @@ public class Line {
         this.keyType = keyType;
     }
 
-    public void addNote(Note note) {
-        note.setLine(this);
-        notes.add(note);
-        attachInitialTempoIfNeeded(note);
+    public void addElement(StaffElement element) {
+        element.setLine(this);
+        elements.add(element);
+        attachInitialTempoIfNeeded(element);
         modifiedComposition();
     }
 
-    public void addNote(int index, Note note) {
-        note.setLine(this);
-        notes.add(index, note);
+    public void addElement(int index, StaffElement element) {
+        element.setLine(this);
+        elements.add(index, element);
         shiftIntervals(intervalSets, index, 1);
-        attachInitialTempoIfNeeded(note);
+        attachInitialTempoIfNeeded(element);
         modifiedComposition();
     }
 
-    public void setNote(int index, Note note) {
+    public void setElement(int index, StaffElement element) {
         modifiedComposition();
-        note.setLine(this);
-        notes.set(index, note);
-        attachInitialTempoIfNeeded(note);
+        element.setLine(this);
+        elements.set(index, element);
+        attachInitialTempoIfNeeded(element);
     }
 
     /**
-     * Replaces the note at the given index without posting LayoutChangeMessage.
+     * Replaces the element at the given index without posting LayoutChangeMessage.
      * The caller is responsible for posting a single LayoutChangeMessage after batch operations.
      */
-    public void replaceNoteQuietly(int index, Note note) {
-        note.setLine(this);
-        notes.set(index, note);
+    public void replaceElementQuietly(int index, StaffElement element) {
+        element.setLine(this);
+        elements.set(index, element);
     }
 
     /**
-     * Attaches the composition's initial tempo to the first note of the first line
+     * Attaches the composition's initial tempo to the first element of the first line
      * if it doesn't already have a tempo change.
      */
-    private void attachInitialTempoIfNeeded(Note note) {
+    private void attachInitialTempoIfNeeded(StaffElement element) {
         if (composition == null) {
             return;
         }
 
-        // Check if this is the first note of the first line
+        // Check if this is the first element of the first line
         boolean isFirstLine = composition.indexOfLine(this) == 0;
-        boolean isFirstNote = notes.size() == 1 && notes.get(0) == note;
+        boolean isFirstElement = elements.size() == 1 && elements.get(0) == element;
 
-        if (isFirstLine && isFirstNote && note.getTempoChange() == null) {
+        if (isFirstLine && isFirstElement && element.getTempoChange() == null) {
             var initialTempo = composition.getTempo();
 
             if (initialTempo != null) {
-                note.setTempoChange(initialTempo);
+                element.setTempoChange(initialTempo);
             }
         }
     }
 
-    public Note getNote(int index) {
-        return notes.get(index);
+    public StaffElement getElement(int index) {
+        return elements.get(index);
     }
 
-    public List<Note> getNotes() {
-        return notes;
+    public List<StaffElement> getElements() {
+        return elements;
     }
 
-    // Returns a sublist of notes from start to end inclusive
-    public List<Note> getNotes(int start, int end) {
+    // Returns a sublist of elements from start to end inclusive
+    public List<StaffElement> getElements(int start, int end) {
         // subList is exclusive of the end index, so we add 1
-        return notes.subList(start, end + 1);
+        return elements.subList(start, end + 1);
     }
 
-    public void removeNote(int index) {
+    public void removeElement(int index) {
         modifiedComposition();
-        notes.remove(index);
+        elements.remove(index);
         shiftIntervals(intervalSets, index, -1);
     }
 
@@ -268,16 +268,16 @@ public class Line {
         }
     }
 
-    public int noteCount() {
-        return notes.size();
+    public int elementCount() {
+        return elements.size();
     }
 
     public boolean isEmpty() {
-        return notes.isEmpty();
+        return elements.isEmpty();
     }
 
-    public int getNoteIndex(Note note) {
-        return notes.indexOf(note);
+    public int getElementIndex(StaffElement element) {
+        return elements.indexOf(element);
     }
 
     /**
@@ -368,13 +368,13 @@ public class Line {
         modifiedComposition();
     }
 
-    public void mulNoteDistChange(float ratio) {
-        noteDistChangeRatio *= ratio;
+    public void mulElementDistChange(float ratio) {
+        elementDistChangeRatio *= ratio;
         modifiedComposition();
     }
 
-    public float getNoteDistChangeRatio() {
-        return noteDistChangeRatio;
+    public float getElementDistChangeRatio() {
+        return elementDistChangeRatio;
     }
 
     public IntervalSet<BeamInterval> getBeamings() {
@@ -434,37 +434,37 @@ public class Line {
         for (var is : iss) {
             is.shiftValues(from, shift);
             is.removeInterval(Integer.MIN_VALUE, 0);
-            is.removeInterval(notes.size() - 1, Integer.MAX_VALUE);
+            is.removeInterval(elements.size() - 1, Integer.MAX_VALUE);
         }
     }
 
     public int getFirstTempoChange() {
-        if ((composition.indexOfLine(this) == 0) && (noteCount() > 0)) {
+        if ((composition.indexOfLine(this) == 0) && (elementCount() > 0)) {
             return 0;
         }
 
-        return IntStream.range(0, noteCount())
-            .filter(n -> getNote(n).getTempoChange() != null)
+        return IntStream.range(0, elementCount())
+            .filter(n -> getElement(n).getTempoChange() != null)
             .findFirst()
             .orElse(-1);
     }
 
     public boolean isAnnotation() {
-        return IntStream.range(0, noteCount()).anyMatch(
-            n -> getNote(n).getAnnotation() != null
+        return IntStream.range(0, elementCount()).anyMatch(
+            n -> getElement(n).getAnnotation() != null
         );
     }
 
     public int getFirstTrill() {
-        return IntStream.range(0, noteCount())
-            .filter(n -> getNote(n).isTrill())
+        return IntStream.range(0, elementCount())
+            .filter(n -> getElement(n).isTrill())
             .findFirst()
             .orElse(-1);
     }
 
     public int getFirstBeatChange() {
-        return IntStream.range(0, noteCount())
-            .filter(n -> getNote(n).getBeatChange() != null)
+        return IntStream.range(0, elementCount())
+            .filter(n -> getElement(n).getBeatChange() != null)
             .findFirst()
             .orElse(-1);
     }
@@ -509,19 +509,19 @@ public class Line {
     }
 
     /**
-     * Finds all range elements that include the specified note index.
+     * Finds all range elements that include the specified element index.
      *
-     * @param noteIndex The note index to search for
-     * @return List of range elements containing the note
+     * @param elementIndex The element index to search for
+     * @return List of range elements containing the element
      */
-    public @NotNull List<RangeElement> findRangeElementsAt(int noteIndex) {
+    public @NotNull List<RangeElement> findRangeElementsAt(int elementIndex) {
         var result = new ArrayList<RangeElement>();
 
         for (var element : rangeElements) {
-            int start = element.getAnchorNoteIndex();
-            int end = element.getEndNoteIndex();
+            int start = element.getAnchorElementIndex();
+            int end = element.getEndElementIndex();
 
-            if (noteIndex >= start && noteIndex <= end) {
+            if (elementIndex >= start && elementIndex <= end) {
                 result.add(element);
             }
         }
@@ -557,25 +557,25 @@ public class Line {
     // =========================================================================
 
     /**
-     * Returns the duration of a note adjusted for tuplet membership.
+     * Returns the duration of an element adjusted for tuplet membership.
      *
-     * @param noteIndex Index of the note
+     * @param elementIndex Index of the element
      * @param referenceTempo The tempo providing the reference note duration
      * @return Duration in ticks, adjusted for tuplet if applicable
      */
-    public int getNoteDurationWithTuplet(int noteIndex, Tempo referenceTempo) {
-        return Math.round(getNote(noteIndex).getDuration() * getTupletFactor(noteIndex, referenceTempo));
+    public int getElementDurationWithTuplet(int elementIndex, Tempo referenceTempo) {
+        return Math.round(getElement(elementIndex).getDuration() * getTupletFactor(elementIndex, referenceTempo));
     }
 
     /**
-     * Calculates the tuplet scaling factor for a note.
+     * Calculates the tuplet scaling factor for an element.
      *
-     * @param noteIndex Index of the note
+     * @param elementIndex Index of the element
      * @param referenceTempo The tempo providing the reference note duration
      * @return Scaling factor (1.0 if not in a tuplet)
      */
-    private float getTupletFactor(int noteIndex, Tempo referenceTempo) {
-        var tupletInt = tuplets.findInterval(noteIndex);
+    private float getTupletFactor(int elementIndex, Tempo referenceTempo) {
+        var tupletInt = tuplets.findInterval(elementIndex);
 
         if (tupletInt == null) {
             return 1;
@@ -584,7 +584,7 @@ public class Line {
         var tupletDuration = 0f;
 
         for (var i = tupletInt.getStart(); i <= tupletInt.getEnd(); i++) {
-            tupletDuration += getNote(i).getDuration();
+            tupletDuration += getElement(i).getDuration();
         }
 
         tupletDuration /= referenceTempo.getTempoType().getNote().getDuration();
@@ -608,7 +608,7 @@ public class Line {
     }
 
     /**
-     * Adds this line's notes to a MIDI track.
+     * Adds this line's elements to a MIDI track.
      *
      * @param track The MIDI track to add to
      * @param lineIndex This line's index in the composition (for colorize messages)
@@ -624,19 +624,19 @@ public class Line {
         Tempo initialTempo,
         PlaybackSettings settings
     ) throws InvalidMidiDataException {
-        return addToTrack(track, lineIndex, startTicks, initialTempo, settings, 0, noteCount() - 1);
+        return addToTrack(track, lineIndex, startTicks, initialTempo, settings, 0, elementCount() - 1);
     }
 
     /**
-     * Adds a range of this line's notes to a MIDI track.
+     * Adds a range of this line's elements to a MIDI track.
      *
      * @param track The MIDI track to add to
      * @param lineIndex This line's index in the composition (for colorize messages)
      * @param startTicks Starting tick position
      * @param initialTempo Tempo at the start of this range
      * @param settings Playback settings
-     * @param startNote Index of the first note to add
-     * @param endNote Index of the last note to add
+     * @param startElement Index of the first element to add
+     * @param endElement Index of the last element to add
      * @return Pair of (ending tick position, ending tempo)
      */
     public Pair<Integer, Tempo> addToTrack(
@@ -645,20 +645,20 @@ public class Line {
         int startTicks,
         Tempo initialTempo,
         PlaybackSettings settings,
-        int startNote,
-        int endNote
+        int startElement,
+        int endElement
     ) throws InvalidMidiDataException {
         var ticks = startTicks;
         var currentTempo = initialTempo;
 
-        var actualEndNote = Math.min(endNote, noteCount() - 1);
+        var actualEnd = Math.min(endElement, elementCount() - 1);
 
-        for (var i = startNote; i <= actualEndNote; i++) {
-            var note = getNote(i);
+        for (var i = startElement; i <= actualEnd; i++) {
+            var element = getElement(i);
 
             // Add tempo change if present
-            if (note.getTempoChange() != null) {
-                currentTempo = note.getTempoChange();
+            if (element.getTempoChange() != null) {
+                currentTempo = element.getTempoChange();
                 addTempoMetaMessage(track, ticks, currentTempo, settings.tempoChangePercent());
             }
 
@@ -704,7 +704,7 @@ public class Line {
     private void addColorizeMetaMessage(
         Track track,
         int lineIndex,
-        int noteIndex,
+        int elementIndex,
         int ticks
     ) throws InvalidMidiDataException {
         var playNoteMessage = new MetaMessage();
@@ -713,8 +713,8 @@ public class Line {
             new byte[]{
                 (byte) (lineIndex >> 8),
                 (byte) lineIndex,
-                (byte) (noteIndex >> 8),
-                (byte) noteIndex,
+                (byte) (elementIndex >> 8),
+                (byte) elementIndex,
             },
             4
         );
@@ -726,43 +726,43 @@ public class Line {
      */
     private int addNoteMessages(
         Track track,
-        int noteIndex,
+        int elementIndex,
         int ticks,
         Tempo currentTempo,
         PlaybackSettings settings
     ) throws InvalidMidiDataException {
-        var note = getNote(noteIndex);
-        var type = note.getNoteType();
+        var element = getElement(elementIndex);
+        var type = element.getType();
         var trackTicks = ticks;
 
         if (type.isGraceNote()) {
-            addNoteOn(track, trackTicks, note);
+            addNoteOn(track, trackTicks, element);
             trackTicks += GRACE_QUAVER_DURATION;
-            addNoteOff(track, trackTicks, note);
+            addNoteOff(track, trackTicks, element);
         } else if (type.isNote() || type.isRest()) {
-            var noteDuration = getNoteDurationWithTuplet(noteIndex, currentTempo);
+            var duration = getElementDurationWithTuplet(elementIndex, currentTempo);
 
             if (type.isNote()) {
-                var interval = ties.findInterval(noteIndex);
+                var interval = ties.findInterval(elementIndex);
 
-                if ((interval == null) || (interval.getStart() == noteIndex)) {
-                    addNoteOn(track, trackTicks, note);
+                if ((interval == null) || (interval.getStart() == elementIndex)) {
+                    addNoteOn(track, trackTicks, element);
                 }
 
-                if ((interval == null) || (interval.getEnd() == noteIndex)) {
-                    var midiOverride = note.findMidiDurationOverride();
+                if ((interval == null) || (interval.getEnd() == elementIndex)) {
+                    var midiOverride = element.findMidiDurationOverride();
                     var currDuration = (midiOverride < 0)
                         ? settings.noteDurationPercent()
                         : midiOverride;
                     addNoteOff(
                         track,
-                        (int) (trackTicks + ((noteDuration * currDuration) / 100f)),
-                        note
+                        (int) (trackTicks + ((duration * currDuration) / 100f)),
+                        element
                     );
                 }
             }
 
-            trackTicks += noteDuration;
+            trackTicks += duration;
         }
 
         return trackTicks;
@@ -771,7 +771,7 @@ public class Line {
     /**
      * Adds a note-on MIDI message to the track.
      */
-    private void addNoteOn(Track track, int ticks, Note note) throws InvalidMidiDataException {
+    private void addNoteOn(Track track, int ticks, StaffElement note) throws InvalidMidiDataException {
         var down = new ShortMessage();
         down.setMessage(
             ShortMessage.NOTE_ON, 0,
@@ -786,7 +786,7 @@ public class Line {
     /**
      * Adds a note-off MIDI message to the track.
      */
-    private void addNoteOff(Track track, int ticks, Note note) throws InvalidMidiDataException {
+    private void addNoteOff(Track track, int ticks, StaffElement note) throws InvalidMidiDataException {
         var up = new ShortMessage();
         up.setMessage(ShortMessage.NOTE_OFF, 0, note.getPitch(), 0);
         track.add(new MidiEvent(up, ticks));

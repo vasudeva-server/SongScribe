@@ -23,7 +23,7 @@ package songscribe.ui.layout;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import songscribe.music.Note;
+import songscribe.music.StaffElement;
 
 /**
  * Represents a first or second ending bracket above a repeated section.
@@ -41,7 +41,7 @@ public class Ending extends RangeElement {
         SECOND
     }
 
-    private @Nullable Note endNote;
+    private @Nullable StaffElement endNote;
     private @NotNull Type type = Type.FIRST;
     private int yPositionSs = 0;
 
@@ -52,34 +52,34 @@ public class Ending extends RangeElement {
      * @param endNote    The last note of the ending
      * @param type       Whether this is a first or second ending
      */
-    public Ending(@NotNull Note anchorNote, @NotNull Note endNote, @NotNull Type type) {
-        setAnchorNote(anchorNote);
+    public Ending(@NotNull StaffElement anchorNote, @NotNull StaffElement endNote, @NotNull Type type) {
+        setAnchorElement(anchorNote);
         this.endNote = endNote;
         this.type = type;
     }
 
     @Override
-    public @Nullable Note getEndNote() {
+    public @Nullable StaffElement getEndElement() {
         return endNote;
     }
 
     /**
      * Sets the end note of this ending.
      */
-    public void setEndNote(@Nullable Note endNote) {
+    public void setEndNote(@Nullable StaffElement endNote) {
         this.endNote = endNote;
     }
 
     @Override
     public int getNoteCount() {
-        var anchor = getAnchorNote();
+        var anchor = getAnchorElement();
 
         if (anchor == null || endNote == null) {
             return 0;
         }
 
-        int startIndex = getAnchorNoteIndex();
-        int endIndex = getEndNoteIndex();
+        int startIndex = getAnchorElementIndex();
+        int endIndex = getEndElementIndex();
 
         if (startIndex < 0 || endIndex < 0) {
             return 0;
@@ -131,7 +131,7 @@ public class Ending extends RangeElement {
 
     @Override
     public double getContentWidth() {
-        var anchor = getAnchorNote();
+        var anchor = getAnchorElement();
 
         if (anchor == null || endNote == null) {
             return 0;

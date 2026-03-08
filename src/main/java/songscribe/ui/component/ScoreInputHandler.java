@@ -125,11 +125,11 @@ public final class ScoreInputHandler
         }
 
         if (
-            !editModeManager.isInsertionNoteVisible() &&
+            !editModeManager.isInsertionElementVisible() &&
                 (callback.getControl() == Control.MOUSE) &&
-                (callback.getMode() == Mode.NOTE_EDIT)
+                (callback.getMode() == Mode.EDIT)
         ) {
-            editModeManager.setInsertionNoteVisible(true);
+            editModeManager.setInsertionElementVisible(true);
         }
     }
 
@@ -142,11 +142,11 @@ public final class ScoreInputHandler
         }
 
         if (
-            editModeManager.isInsertionNoteVisible() &&
+            editModeManager.isInsertionElementVisible() &&
                 (callback.getControl() == Control.MOUSE) &&
-                (callback.getMode() == Mode.NOTE_EDIT)
+                (callback.getMode() == Mode.EDIT)
         ) {
-            editModeManager.setInsertionNoteVisible(false);
+            editModeManager.setInsertionElementVisible(false);
             callback.repaint();
         }
     }
@@ -184,7 +184,7 @@ public final class ScoreInputHandler
     @Override
     public void keyPressed(@NotNull KeyEvent e) {
         if (e.getKeyCode() == KeyEvent.VK_ALT) {
-            LineComponent.clearInsertionNote();
+            LineComponent.clearInsertionElement();
             LineComponent.setAltPressed(true);
             callback.repaint();
         } else if (e.getKeyCode() == KeyEvent.VK_ESCAPE
@@ -230,7 +230,7 @@ public final class ScoreInputHandler
 
         @Override
         public void actionPerformed(ActionEvent e) {
-            if ((callback.getMode() != Mode.NOTE_EDIT) || (callback.getControl() != Control.KEYBOARD)) {
+            if ((callback.getMode() != Mode.EDIT) || (callback.getControl() != Control.KEYBOARD)) {
                 return;
             }
 
@@ -240,7 +240,7 @@ public final class ScoreInputHandler
             // LineComponent's insertion tracking or a separate keyboard-specific system.
 
             // For now, keyboard mode is disabled. Only UP/DOWN for pitch adjustment remain functional.
-            var insertionNote = editModeManager.getInsertionNote();
+            var insertionNote = editModeManager.getInsertionElement();
 
             if (insertionNote != null) {
                 if (code == KeyEvent.VK_UP) {

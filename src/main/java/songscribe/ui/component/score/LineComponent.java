@@ -31,7 +31,6 @@ import songscribe.ui.Mode;
 import songscribe.ui.action.Actions;
 import songscribe.ui.component.ComponentNames;
 import songscribe.ui.component.Score;
-import songscribe.util.FatalError;
 import songscribe.ui.layout.CollisionDetector;
 import songscribe.ui.layout.LayoutStylesheet;
 import songscribe.ui.layout.TempoAttachment;
@@ -39,6 +38,7 @@ import songscribe.ui.layout2.LayoutEngine;
 import songscribe.ui.layout2.LayoutResult;
 import songscribe.ui.layout2.ScaleContext;
 import songscribe.ui.selection.LineSelectionState;
+import songscribe.util.FatalError;
 
 /**
  * Component that renders a single staff line with its musical content.
@@ -63,13 +63,13 @@ public class LineComponent extends ScoreComponent
      */
     public interface SelectionProvider {
         /**
-         * Returns whether the specified note is selected.
+         * Returns whether the specified element is selected.
          *
-         * @param noteIndex The note index within the line
-         * @param lineIndex The line index
-         * @return true if the note is selected
+         * @param elementIndex The element index within the line
+         * @param lineIndex    The line index
+         * @return true if the element is selected
          */
-        boolean isNoteSelected(int noteIndex, int lineIndex);
+        boolean isElementSelected(int elementIndex, int lineIndex);
 
         /**
          * Returns whether the staff line itself is selected (for deletion).
@@ -80,21 +80,21 @@ public class LineComponent extends ScoreComponent
         boolean isLineSelected(int lineIndex);
 
         /**
-         * Returns whether the glissando owned by the note at the given index
+         * Returns whether the glissando owned by the element at the given index
          * is selected.
          *
-         * @param noteIndex The note index within the line
-         * @param lineIndex The line index
+         * @param elementIndex The element index within the line
+         * @param lineIndex    The line index
          * @return true if the glissando is selected
          */
-        boolean isGlissandoSelected(int noteIndex, int lineIndex);
+        boolean isGlissandoSelected(int elementIndex, int lineIndex);
     }
 
     // ==========================================================================
     // Instance Fields
     // ==========================================================================
 
-    /** The line model containing notes and other elements. */
+    /** The line model containing staff elements. */
     private Line line;
 
     /** Index of this line within the composition. */
@@ -128,7 +128,7 @@ public class LineComponent extends ScoreComponent
     private final SelectionHandler selectionHandler = new SelectionHandler(this);
 
     /** Handles press/drag/release for pitch-dragging a note in NOTE_EDIT mode. */
-    private final NoteDragHandler noteDragHandler = new NoteDragHandler(this);
+    private final ElementDragHandler elementDragHandler = new ElementDragHandler(this);
 
     /** Renderer that handles all drawing for this line. */
     private final LineRenderer lineRenderer = new LineRenderer(this);
@@ -237,7 +237,7 @@ public class LineComponent extends ScoreComponent
      * @return Y coordinate in pixels
      */
     public int staffPositionToYPx(int staffPositionSp) {
-        return getMiddleLineYPx() + (int) Math.round(staffPositionSp * Score.NOTE_Y_OFFSET_PX);
+        return getMiddleLineYPx() + (int) Math.round(staffPositionSp * Score.STAFF_POSITION_OFFSET_PX);
     }
 
     /**
@@ -420,8 +420,8 @@ public class LineComponent extends ScoreComponent
         // Use layout result to determine space needed above staff
         // Layout result positions are in ss relative to middleLineY=0
         if (layoutResult != null) {
-            if (line != null && line.noteCount() > 0) {
-                var firstNote = line.getNote(0);
+            if (line != null && line.elementCount() > 0) {
+                var firstNote = line.getElement(0);
                 var tempoBounds = layoutResult.findAttachmentBounds(firstNote, TempoAttachment.class);
 
                 if (tempoBounds != null) {
@@ -506,7 +506,7 @@ public class LineComponent extends ScoreComponent
             var tempoChangeYPosSs = ScaleContext.getInstance().fromPixels(
                 (line != null) ? line.getTempoChangeYPosPx() : 0
             );
-            var tempoYOffset = -7.0 * LayoutStylesheet.NOTE_Y_OFFSET + tempoChangeYPosSs;
+            var tempoYOffset = -7.0 * LayoutStylesheet.STAFF_POSITION_OFFSET + tempoChangeYPosSs;
             // Approximate tempo content height (note symbol + text ascent): ~3.125 ss
             var tempoContentHeight = 3.125;
             var tempoSpaceAbove = Math.abs(tempoYOffset) + tempoContentHeight - 2.0;
@@ -531,8 +531,8 @@ public class LineComponent extends ScoreComponent
 
         // Check for tempo change on any note in this line
         if (line != null) {
-            for (var i = 0; i < line.noteCount(); i++) {
-                if (line.getNote(i).getTempoChange() != null) {
+            for (var i = 0; i < line.elementCount(); i++) {
+                if (line.getElement(i).getTempoChange() != null) {
                     return true;
                 }
             }
@@ -553,39 +553,39 @@ public class LineComponent extends ScoreComponent
 
     /**
      * Clears the insertion note from all lines.
-     * Delegates to {@link InsertionNoteManager}.
+     * Delegates to {@link InsertionElementManager}.
      */
-    public static void clearInsertionNote() {
-        InsertionNoteManager.clearInsertionNote();
+    public static void clearInsertionElement() {
+        InsertionElementManager.clearInsertionElement();
     }
 
     /**
      * Sets whether the Alt key is currently pressed and updates the cursor.
-     * Delegates to {@link InsertionNoteManager}.
+     * Delegates to {@link InsertionElementManager}.
      */
     public static void setAltPressed(boolean pressed) {
-        InsertionNoteManager.setAltPressed(pressed);
+        InsertionElementManager.setAltPressed(pressed);
     }
 
     /**
      * Returns whether this line currently has the insertion note.
      */
-    public boolean hasInsertionNote() {
-        return InsertionNoteManager.hasInsertionNote(this);
+    public boolean hasInsertionElement() {
+        return InsertionElementManager.hasInsertionElement(this);
     }
 
     /**
      * Returns the current insertion X index.
      */
     public static int getCurrentXIndex() {
-        return InsertionNoteManager.getCurrentXIndex();
+        return InsertionElementManager.getCurrentXIndex();
     }
 
     /**
      * Returns the current insertion Y position.
      */
     public static int getCurrentStaffPosition() {
-        return InsertionNoteManager.getCurrentStaffPosition();
+        return InsertionElementManager.getCurrentStaffPosition();
     }
 
     // ==========================================================================
@@ -594,13 +594,13 @@ public class LineComponent extends ScoreComponent
 
     @Override
     public void mouseMoved(MouseEvent e) {
-        InsertionNoteManager.trackMouse(this, e);
+        InsertionElementManager.trackMouse(this, e);
     }
 
     @Override
     public void mouseDragged(MouseEvent e) {
-        if (noteDragHandler.isDragActive()) {
-            noteDragHandler.handleDrag(e);
+        if (elementDragHandler.isDragActive()) {
+            elementDragHandler.handleDrag(e);
             return;
         }
 
@@ -615,18 +615,18 @@ public class LineComponent extends ScoreComponent
             return;
         }
 
-        if (noteDragHandler.wasDragPerformed()) {
+        if (elementDragHandler.wasDragPerformed()) {
             return;
         }
 
         // Press was on a note head in NOTE_EDIT mode but no drag occurred —
         // the note was already selected and played in handlePress, nothing more to do.
-        if (noteDragHandler.wasPressCaptured()) {
+        if (elementDragHandler.wasPressCaptured()) {
             return;
         }
 
         if (!selectionHandler.handleClick(e)) {
-            InsertionNoteManager.handleClick(this);
+            InsertionElementManager.handleClick(this);
         }
     }
 
@@ -636,7 +636,7 @@ public class LineComponent extends ScoreComponent
             return;
         }
 
-        if (noteDragHandler.handlePress(e)) {
+        if (elementDragHandler.handlePress(e)) {
             return;
         }
 
@@ -652,8 +652,8 @@ public class LineComponent extends ScoreComponent
 
     @Override
     public void mouseReleased(MouseEvent e) {
-        if (noteDragHandler.isDragActive()) {
-            noteDragHandler.handleRelease();
+        if (elementDragHandler.isDragActive()) {
+            elementDragHandler.handleRelease();
             return;
         }
 
@@ -662,12 +662,12 @@ public class LineComponent extends ScoreComponent
 
     @Override
     public void mouseEntered(MouseEvent e) {
-        InsertionNoteManager.mouseEnteredLine(this);
+        InsertionElementManager.mouseEnteredLine(this);
     }
 
     @Override
     public void mouseExited(MouseEvent e) {
-        InsertionNoteManager.mouseExitedLine(this);
+        InsertionElementManager.mouseExitedLine(this);
     }
 
     // ==========================================================================
@@ -700,8 +700,8 @@ public class LineComponent extends ScoreComponent
     /**
      * Returns the note pitch-drag handler for this line.
      */
-    NoteDragHandler getNoteDragHandler() {
-        return noteDragHandler;
+    ElementDragHandler getElementDragHandler() {
+        return elementDragHandler;
     }
 
     /**

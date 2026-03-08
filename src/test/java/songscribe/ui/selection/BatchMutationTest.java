@@ -20,37 +20,37 @@
 
 package songscribe.ui.selection;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static songscribe.ui.action.ElementTypeAction.Kind;
+
 import java.util.List;
+
+import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
 import songscribe.data.BeamInterval;
 import songscribe.data.TieInterval;
 import songscribe.data.TupletInterval;
 import songscribe.music.Composition;
+import songscribe.music.ElementType;
 import songscribe.music.Line;
-import songscribe.music.Note;
-import songscribe.music.NoteType;
+import songscribe.music.StaffElement;
 import songscribe.ui.action.AccidentalAction;
+import songscribe.ui.action.ElementTypeAction;
 import songscribe.ui.action.FermataAction;
-import songscribe.ui.action.NoteTypeAction;
 import songscribe.ui.action.UIAction;
-
-import org.junit.jupiter.api.Test;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
-import static songscribe.ui.action.NoteTypeAction.Kind;
 
 class BatchMutationTest extends UnitTest {
 
     private static final FermataAction FERMATA_ACTION = new FermataAction();
 
     private static final AccidentalAction SHARP_ACTION =
-        new AccidentalAction(Note.Accidental.SHARP, "Sharp", null, 0, "sharp", "Sharp");
+        new AccidentalAction(StaffElement.Accidental.SHARP, "Sharp", null, 0, "sharp", "Sharp");
 
-    private static final NoteTypeAction QUARTER_ACTION = new NoteTypeAction(
-        Kind.DURATION, NoteType.CROTCHET, "Quarter", null, 0, "quarter", "Quarter note", 0, 0
+    private static final ElementTypeAction QUARTER_ACTION = new ElementTypeAction(
+        Kind.DURATION, ElementType.CROTCHET, "Quarter", null, 0, "quarter", "Quarter note", 0, 0
     );
 
     /**
@@ -58,8 +58,8 @@ class BatchMutationTest extends UnitTest {
      * so applyActionToSelection can call line.getComposition().setModified().
      */
     private SelectionCoordinator createCoordinator(
-            List<Note> notes,
-            List<UIAction.Reflectable> actions
+        List<StaffElement> notes,
+        List<UIAction.Reflectable> actions
     ) {
         var coordinator = ReflectionTestHelper.createCoordinator(notes, actions);
         var line = coordinator.getActiveSelection().getLine();
@@ -76,9 +76,9 @@ class BatchMutationTest extends UnitTest {
     @Test
     void testApplyFermataToSelection() {
         var notes = List.of(
-            NoteType.CROTCHET.newInstance(),
-            NoteType.CROTCHET.newInstance(),
-            NoteType.CROTCHET.newInstance()
+            ElementType.CROTCHET.newInstance(),
+            ElementType.CROTCHET.newInstance(),
+            ElementType.CROTCHET.newInstance()
         );
         var coordinator = createCoordinator(notes, List.of(FERMATA_ACTION));
         ReflectionTestHelper.selectRange(coordinator, 0, 2);
@@ -88,7 +88,7 @@ class BatchMutationTest extends UnitTest {
         var line = getLine(coordinator);
 
         for (int i = 0; i <= 2; i++) {
-            assertThat(line.getNote(i).isFermata())
+            assertThat(line.getElement(i).isFermata())
                 .as("note %d should have fermata", i)
                 .isTrue();
         }
@@ -97,9 +97,9 @@ class BatchMutationTest extends UnitTest {
     @Test
     void testRemoveFermataFromSelection() {
         var notes = List.of(
-            NoteType.CROTCHET.newInstance(),
-            NoteType.CROTCHET.newInstance(),
-            NoteType.CROTCHET.newInstance()
+            ElementType.CROTCHET.newInstance(),
+            ElementType.CROTCHET.newInstance(),
+            ElementType.CROTCHET.newInstance()
         );
 
         for (var note : notes) {
@@ -114,7 +114,7 @@ class BatchMutationTest extends UnitTest {
         var line = getLine(coordinator);
 
         for (int i = 0; i <= 2; i++) {
-            assertThat(line.getNote(i).isFermata())
+            assertThat(line.getElement(i).isFermata())
                 .as("note %d should not have fermata", i)
                 .isFalse();
         }
@@ -125,9 +125,9 @@ class BatchMutationTest extends UnitTest {
     @Test
     void testAccidentalSkipsRests() {
         var notes = List.of(
-            NoteType.CROTCHET.newInstance(),
-            NoteType.CROTCHET_REST.newInstance(),
-            NoteType.CROTCHET.newInstance()
+            ElementType.CROTCHET.newInstance(),
+            ElementType.CROTCHET_REST.newInstance(),
+            ElementType.CROTCHET.newInstance()
         );
         var coordinator = createCoordinator(notes, List.of(SHARP_ACTION));
         ReflectionTestHelper.selectRange(coordinator, 0, 2);
@@ -135,9 +135,9 @@ class BatchMutationTest extends UnitTest {
         coordinator.applyActionToSelection(SHARP_ACTION, true);
 
         var line = getLine(coordinator);
-        assertThat(line.getNote(0).getAccidental()).isEqualTo(Note.Accidental.SHARP);
-        assertThat(line.getNote(1).getAccidental()).isEqualTo(Note.Accidental.NONE);
-        assertThat(line.getNote(2).getAccidental()).isEqualTo(Note.Accidental.SHARP);
+        assertThat(line.getElement(0).getAccidental()).isEqualTo(StaffElement.Accidental.SHARP);
+        assertThat(line.getElement(1).getAccidental()).isEqualTo(StaffElement.Accidental.NONE);
+        assertThat(line.getElement(2).getAccidental()).isEqualTo(StaffElement.Accidental.SHARP);
     }
 
     // -- Duration change replaces notes --
@@ -145,8 +145,8 @@ class BatchMutationTest extends UnitTest {
     @Test
     void testDurationChangeReplacesNotes() {
         var notes = List.of(
-            NoteType.QUAVER.newInstance(),
-            NoteType.QUAVER.newInstance()
+            ElementType.QUAVER.newInstance(),
+            ElementType.QUAVER.newInstance()
         );
         var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
         ReflectionTestHelper.selectRange(coordinator, 0, 1);
@@ -154,16 +154,16 @@ class BatchMutationTest extends UnitTest {
         coordinator.applyActionToSelection(QUARTER_ACTION, true);
 
         var line = getLine(coordinator);
-        assertThat(line.getNote(0).getNoteType()).isEqualTo(NoteType.CROTCHET);
-        assertThat(line.getNote(1).getNoteType()).isEqualTo(NoteType.CROTCHET);
+        assertThat(line.getElement(0).getType()).isEqualTo(ElementType.CROTCHET);
+        assertThat(line.getElement(1).getType()).isEqualTo(ElementType.CROTCHET);
     }
 
     @Test
     void testDurationChangePreservesNoteRestKind() {
         var notes = List.of(
-            NoteType.QUAVER.newInstance(),
-            NoteType.QUAVER_REST.newInstance(),
-            NoteType.QUAVER.newInstance()
+            ElementType.QUAVER.newInstance(),
+            ElementType.QUAVER_REST.newInstance(),
+            ElementType.QUAVER.newInstance()
         );
         var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
         ReflectionTestHelper.selectRange(coordinator, 0, 2);
@@ -171,26 +171,26 @@ class BatchMutationTest extends UnitTest {
         coordinator.applyActionToSelection(QUARTER_ACTION, true);
 
         var line = getLine(coordinator);
-        assertThat(line.getNote(0).getNoteType()).isEqualTo(NoteType.CROTCHET);
-        assertThat(line.getNote(1).getNoteType()).isEqualTo(NoteType.CROTCHET_REST);
-        assertThat(line.getNote(2).getNoteType()).isEqualTo(NoteType.CROTCHET);
+        assertThat(line.getElement(0).getType()).isEqualTo(ElementType.CROTCHET);
+        assertThat(line.getElement(1).getType()).isEqualTo(ElementType.CROTCHET_REST);
+        assertThat(line.getElement(2).getType()).isEqualTo(ElementType.CROTCHET);
     }
 
     @Test
     void testDurationChangePreservesAttributes() {
-        var note = NoteType.QUAVER.newInstance();
+        var note = ElementType.QUAVER.newInstance();
         note.setFermata(true);
-        note.setAccidental(Note.Accidental.SHARP);
+        note.setAccidental(StaffElement.Accidental.SHARP);
 
         var coordinator = createCoordinator(List.of(note), List.of(QUARTER_ACTION));
         ReflectionTestHelper.selectNote(coordinator, 0);
 
         coordinator.applyActionToSelection(QUARTER_ACTION, true);
 
-        var replaced = getLine(coordinator).getNote(0);
-        assertThat(replaced.getNoteType()).isEqualTo(NoteType.CROTCHET);
+        var replaced = getLine(coordinator).getElement(0);
+        assertThat(replaced.getType()).isEqualTo(ElementType.CROTCHET);
         assertThat(replaced.isFermata()).isTrue();
-        assertThat(replaced.getAccidental()).isEqualTo(Note.Accidental.SHARP);
+        assertThat(replaced.getAccidental()).isEqualTo(StaffElement.Accidental.SHARP);
     }
 
     // -- Duration un-apply is a no-op --
@@ -198,8 +198,8 @@ class BatchMutationTest extends UnitTest {
     @Test
     void testDurationUnApplyIsNoOp() {
         var notes = List.of(
-            NoteType.QUAVER.newInstance(),
-            NoteType.QUAVER.newInstance()
+            ElementType.QUAVER.newInstance(),
+            ElementType.QUAVER.newInstance()
         );
         var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
         ReflectionTestHelper.selectRange(coordinator, 0, 1);
@@ -207,15 +207,15 @@ class BatchMutationTest extends UnitTest {
         coordinator.applyActionToSelection(QUARTER_ACTION, false);
 
         var line = getLine(coordinator);
-        assertThat(line.getNote(0).getNoteType()).isEqualTo(NoteType.QUAVER);
-        assertThat(line.getNote(1).getNoteType()).isEqualTo(NoteType.QUAVER);
+        assertThat(line.getElement(0).getType()).isEqualTo(ElementType.QUAVER);
+        assertThat(line.getElement(1).getType()).isEqualTo(ElementType.QUAVER);
     }
 
     // -- Composition is marked modified --
 
     @Test
     void testCompositionMarkedModified() {
-        var notes = List.of(NoteType.CROTCHET.newInstance());
+        var notes = List.of(ElementType.CROTCHET.newInstance());
         var coordinator = createCoordinator(notes, List.of(FERMATA_ACTION));
         ReflectionTestHelper.selectNote(coordinator, 0);
 
@@ -230,8 +230,8 @@ class BatchMutationTest extends UnitTest {
     @Test
     void testSelectionRemainsActiveAfterMutation() {
         var notes = List.of(
-            NoteType.CROTCHET.newInstance(),
-            NoteType.CROTCHET.newInstance()
+            ElementType.CROTCHET.newInstance(),
+            ElementType.CROTCHET.newInstance()
         );
         var coordinator = createCoordinator(notes, List.of(FERMATA_ACTION));
         ReflectionTestHelper.selectRange(coordinator, 0, 1);
@@ -247,13 +247,13 @@ class BatchMutationTest extends UnitTest {
 
     @Test
     void testNoSelectionIsNoOp() {
-        var notes = List.of(NoteType.CROTCHET.newInstance());
+        var notes = List.of(ElementType.CROTCHET.newInstance());
         var coordinator = createCoordinator(notes, List.of(FERMATA_ACTION));
 
         // No selection set -- should not throw
         coordinator.applyActionToSelection(FERMATA_ACTION, true);
 
-        assertThat(getLine(coordinator).getNote(0).isFermata()).isFalse();
+        assertThat(getLine(coordinator).getElement(0).isFermata()).isFalse();
     }
 
     // -- Duration change skips barlines --
@@ -261,9 +261,9 @@ class BatchMutationTest extends UnitTest {
     @Test
     void testDurationChangeSkipsBarlines() {
         var notes = List.of(
-            NoteType.QUAVER.newInstance(),
-            NoteType.SINGLE_BARLINE.newInstance(),
-            NoteType.QUAVER.newInstance()
+            ElementType.QUAVER.newInstance(),
+            ElementType.SINGLE_BARLINE.newInstance(),
+            ElementType.QUAVER.newInstance()
         );
         var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
         ReflectionTestHelper.selectRange(coordinator, 0, 2);
@@ -271,9 +271,9 @@ class BatchMutationTest extends UnitTest {
         coordinator.applyActionToSelection(QUARTER_ACTION, true);
 
         var line = getLine(coordinator);
-        assertThat(line.getNote(0).getNoteType()).isEqualTo(NoteType.CROTCHET);
-        assertThat(line.getNote(1).getNoteType()).isEqualTo(NoteType.SINGLE_BARLINE);
-        assertThat(line.getNote(2).getNoteType()).isEqualTo(NoteType.CROTCHET);
+        assertThat(line.getElement(0).getType()).isEqualTo(ElementType.CROTCHET);
+        assertThat(line.getElement(1).getType()).isEqualTo(ElementType.SINGLE_BARLINE);
+        assertThat(line.getElement(2).getType()).isEqualTo(ElementType.CROTCHET);
     }
 
     // -- Beam interval validation --
@@ -281,11 +281,11 @@ class BatchMutationTest extends UnitTest {
     @Test
     void testBeamSplitAroundNonBeamable() {
         var notes = List.of(
-            NoteType.QUAVER.newInstance(),
-            NoteType.QUAVER.newInstance(),
-            NoteType.QUAVER.newInstance(),
-            NoteType.QUAVER.newInstance(),
-            NoteType.QUAVER.newInstance()
+            ElementType.QUAVER.newInstance(),
+            ElementType.QUAVER.newInstance(),
+            ElementType.QUAVER.newInstance(),
+            ElementType.QUAVER.newInstance(),
+            ElementType.QUAVER.newInstance()
         );
         var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
         var line = getLine(coordinator);
@@ -294,7 +294,7 @@ class BatchMutationTest extends UnitTest {
         ReflectionTestHelper.selectNote(coordinator, 2);
         coordinator.applyActionToSelection(QUARTER_ACTION, true);
 
-        assertThat(line.getNote(2).getNoteType()).isEqualTo(NoteType.CROTCHET);
+        assertThat(line.getElement(2).getType()).isEqualTo(ElementType.CROTCHET);
 
         var beam0 = line.getBeamings().findInterval(0);
         assertThat(beam0).isNotNull();
@@ -312,8 +312,8 @@ class BatchMutationTest extends UnitTest {
     @Test
     void testBeamDissolvedWhenSubgroupTooSmall() {
         var notes = List.of(
-            NoteType.QUAVER.newInstance(),
-            NoteType.QUAVER.newInstance()
+            ElementType.QUAVER.newInstance(),
+            ElementType.QUAVER.newInstance()
         );
         var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
         var line = getLine(coordinator);
@@ -329,9 +329,9 @@ class BatchMutationTest extends UnitTest {
     @Test
     void testBeamDissolvedWhenAllNonBeamable() {
         var notes = List.of(
-            NoteType.QUAVER.newInstance(),
-            NoteType.QUAVER.newInstance(),
-            NoteType.QUAVER.newInstance()
+            ElementType.QUAVER.newInstance(),
+            ElementType.QUAVER.newInstance(),
+            ElementType.QUAVER.newInstance()
         );
         var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
         var line = getLine(coordinator);
@@ -346,10 +346,10 @@ class BatchMutationTest extends UnitTest {
     @Test
     void testBeamShrunkFromStart() {
         var notes = List.of(
-            NoteType.QUAVER.newInstance(),
-            NoteType.QUAVER.newInstance(),
-            NoteType.QUAVER.newInstance(),
-            NoteType.QUAVER.newInstance()
+            ElementType.QUAVER.newInstance(),
+            ElementType.QUAVER.newInstance(),
+            ElementType.QUAVER.newInstance(),
+            ElementType.QUAVER.newInstance()
         );
         var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
         var line = getLine(coordinator);
@@ -368,10 +368,10 @@ class BatchMutationTest extends UnitTest {
     @Test
     void testBeamShrunkFromEnd() {
         var notes = List.of(
-            NoteType.QUAVER.newInstance(),
-            NoteType.QUAVER.newInstance(),
-            NoteType.QUAVER.newInstance(),
-            NoteType.QUAVER.newInstance()
+            ElementType.QUAVER.newInstance(),
+            ElementType.QUAVER.newInstance(),
+            ElementType.QUAVER.newInstance(),
+            ElementType.QUAVER.newInstance()
         );
         var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
         var line = getLine(coordinator);
@@ -392,8 +392,8 @@ class BatchMutationTest extends UnitTest {
     @Test
     void testTieDissolvedWhenContainsRest() {
         var notes = List.of(
-            NoteType.QUAVER.newInstance(),
-            NoteType.QUAVER_REST.newInstance()
+            ElementType.QUAVER.newInstance(),
+            ElementType.QUAVER_REST.newInstance()
         );
         var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
         var line = getLine(coordinator);
@@ -408,11 +408,11 @@ class BatchMutationTest extends UnitTest {
     @Test
     void testTieSplitAroundRest() {
         var notes = List.of(
-            NoteType.QUAVER.newInstance(),
-            NoteType.QUAVER.newInstance(),
-            NoteType.QUAVER_REST.newInstance(),
-            NoteType.QUAVER.newInstance(),
-            NoteType.QUAVER.newInstance()
+            ElementType.QUAVER.newInstance(),
+            ElementType.QUAVER.newInstance(),
+            ElementType.QUAVER_REST.newInstance(),
+            ElementType.QUAVER.newInstance(),
+            ElementType.QUAVER.newInstance()
         );
         var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
         var line = getLine(coordinator);
@@ -439,9 +439,9 @@ class BatchMutationTest extends UnitTest {
     @Test
     void testTupletDissolvedWhenContainsNonDuration() {
         var notes = List.of(
-            NoteType.QUAVER.newInstance(),
-            NoteType.SINGLE_BARLINE.newInstance(),
-            NoteType.QUAVER.newInstance()
+            ElementType.QUAVER.newInstance(),
+            ElementType.SINGLE_BARLINE.newInstance(),
+            ElementType.QUAVER.newInstance()
         );
         var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
         var line = getLine(coordinator);
@@ -456,11 +456,11 @@ class BatchMutationTest extends UnitTest {
     @Test
     void testTupletSplitAroundNonDuration() {
         var notes = List.of(
-            NoteType.QUAVER.newInstance(),
-            NoteType.QUAVER.newInstance(),
-            NoteType.SINGLE_BARLINE.newInstance(),
-            NoteType.QUAVER.newInstance(),
-            NoteType.QUAVER.newInstance()
+            ElementType.QUAVER.newInstance(),
+            ElementType.QUAVER.newInstance(),
+            ElementType.SINGLE_BARLINE.newInstance(),
+            ElementType.QUAVER.newInstance(),
+            ElementType.QUAVER.newInstance()
         );
         var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
         var line = getLine(coordinator);

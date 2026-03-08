@@ -43,7 +43,7 @@ import songscribe.music.Composition;
 import songscribe.music.Line;
 import songscribe.music.LyricsProcessor;
 import songscribe.music.MusicEditOperations;
-import songscribe.music.Note;
+import songscribe.music.StaffElement;
 import songscribe.prefs.Prefs;
 import songscribe.ui.Constants;
 import songscribe.ui.Control;
@@ -67,7 +67,7 @@ import songscribe.ui.message.MusicSelectionChangedMessage;
 import songscribe.ui.message.ScoreMessageCoordinator;
 import songscribe.ui.playback.PlaybackController;
 import songscribe.ui.renderer.RenderContext;
-import songscribe.ui.selection.NoteSelection;
+import songscribe.ui.selection.ElementSelection;
 import songscribe.ui.selection.SelectionCoordinator;
 import songscribe.util.GraphicUtils;
 import songscribe.util.Log;
@@ -94,7 +94,7 @@ public final class Score
     public static final int STAFF_LINE_COUNT = 5;
 
     // The vertical distance between whole tones on the staff (e.g. A to B)
-    public static final float NOTE_Y_OFFSET_PX = (float) ScaleContext.getInstance().toPixels(LayoutStylesheet.NOTE_Y_OFFSET);
+    public static final float STAFF_POSITION_OFFSET_PX = (float) ScaleContext.getInstance().toPixels(LayoutStylesheet.STAFF_POSITION_OFFSET);
 
     // The content width and height in inches, excluding page margins
     public static final float PAGE_CONTENT_WIDTH = 7;
@@ -135,7 +135,7 @@ public final class Score
     private final IMainFrame mainFrame;
 
     // The current editing mode
-    private Mode mode = Mode.NOTE_EDIT;
+    private Mode mode = Mode.EDIT;
 
     // Whether editing is done via mouse or keyboard
     private Control control;
@@ -270,7 +270,7 @@ public final class Score
         initKeys();
 
         // Initialize insertion note with default type
-        setInsertionNote(editModeManager.makeInsertionNote());
+        setInsertionElement(editModeManager.makeInsertionElement());
 
         mainFrame.addMusicChangeListener(this);
         mainFrame.setDocumentModified(false);
@@ -338,8 +338,8 @@ public final class Score
         setupLineComponentState();
     }
 
-    public static boolean defaultUpperNote(@NotNull Note note) {
-        return (note.getStaffPosition() > 0) || note.getNoteType().isGraceNote();
+    public static boolean defaultUpperNote(@NotNull StaffElement note) {
+        return (note.getStaffPosition() > 0) || note.getType().isGraceNote();
     }
 
 
@@ -484,7 +484,7 @@ public final class Score
     @Override
     public void musicDidChange() {
         var prefs = Prefs.getInstance();
-        editModeManager.setPlayInsertingNote(prefs.getBoolean("playInsertingNote"));
+        editModeManager.setPlayInsertedNote(prefs.getBoolean("playInsertedNote"));
         playWithRepeats = prefs.getBoolean("playWithRepeats");
 
         // Delegate playback settings to PlaybackController
@@ -533,8 +533,8 @@ public final class Score
     }
 
     @Override
-    public boolean isNoteSelected(int xIndex, int line) {
-        return selectionCoordinator.isNoteSelected(xIndex, line);
+    public boolean isElementSelected(int xIndex, int line) {
+        return selectionCoordinator.isElementSelected(xIndex, line);
     }
 
     @Override
@@ -543,8 +543,8 @@ public final class Score
     }
 
     @Override
-    public boolean isGlissandoSelected(int noteIndex, int lineIndex) {
-        return selectionCoordinator.isGlissandoSelected(noteIndex, lineIndex);
+    public boolean isGlissandoSelected(int elementIndex, int lineIndex) {
+        return selectionCoordinator.isGlissandoSelected(elementIndex, lineIndex);
     }
 
     @Override
@@ -573,9 +573,9 @@ public final class Score
             return;
         }
 
-        if (mode == Mode.NOTE_EDIT) {
+        if (mode == Mode.EDIT) {
             // Insertion note rendering is now handled by LineComponent
-        } else if (mode == Mode.NOTE_ADJUSTMENT) {
+        } else if (mode == Mode.ADJUSTMENT) {
             horizontalAdjustment.repaint(g2);
         } else if (mode == Mode.VERTICAL_ADJUSTMENT) {
             verticalAdjustment.repaint(g2);
@@ -592,7 +592,7 @@ public final class Score
     @Override
     public int getNoteYPosPx(int staffPosition, int line) {
         return (int) (middleLineYPx +
-            (staffPosition * NOTE_Y_OFFSET_PX) +
+            (staffPosition * STAFF_POSITION_OFFSET_PX) +
             (line * rowHeightPx));
     }
 
@@ -602,25 +602,25 @@ public final class Score
         return 0;
     }
 
-    public Note getInsertionNote() {
-        return editModeManager.getInsertionNote();
+    public StaffElement getInsertionElement() {
+        return editModeManager.getInsertionElement();
     }
 
-    public void setInsertionNote(@Nullable Note insertionNote) {
-        if (insertionNote != null) {
-            var currentInsertionNote = editModeManager.getInsertionNote();
+    public void setInsertionElement(@Nullable StaffElement insertionElement) {
+        if (insertionElement != null) {
+            var currentInsertionElement = editModeManager.getInsertionElement();
 
-            if (currentInsertionNote != null) {
-                insertionNote.setStaffPosition(currentInsertionNote.getStaffPosition());
-                insertionNote.setXPosSs(currentInsertionNote.getXPosSs());
+            if (currentInsertionElement != null) {
+                insertionElement.setStaffPosition(currentInsertionElement.getStaffPosition());
+                insertionElement.setXPosSs(currentInsertionElement.getXPosSs());
             } else {
-                editModeManager.setInsertionNote(insertionNote);
+                editModeManager.setInsertionElement(insertionElement);
             }
 
-            insertionNote.setUpper(defaultUpperNote(insertionNote));
+            insertionElement.setUpper(defaultUpperNote(insertionElement));
         }
 
-        editModeManager.setInsertionNote(insertionNote);
+        editModeManager.setInsertionElement(insertionElement);
         repaint();
     }
 
@@ -686,7 +686,7 @@ public final class Score
         return operations.canToggleLyricsUnderRests();
     }
 
-public boolean canFlipStemDirection() {
+    public boolean canFlipStemDirection() {
         return operations.canFlipStemDirection();
     }
 
@@ -750,8 +750,8 @@ public boolean canFlipStemDirection() {
     }
 
     @Nullable
-    public Note getSingleSelectedNote() {
-        return selectionCoordinator.getSingleSelectedNote();
+    public StaffElement getSingleSelectedElement() {
+        return selectionCoordinator.getSingleSelectedElement();
     }
 
     @Override
@@ -774,8 +774,8 @@ public boolean canFlipStemDirection() {
     }
 
     public void drawWidthIfWiderLine(@NotNull Line line, boolean strict) {
-        if (line.noteCount() > 1) {
-            var endNote = line.getNote(line.noteCount() - 1);
+        if (line.elementCount() > 1) {
+            var endNote = line.getElement(line.elementCount() - 1);
             float idealSpace;
 
             if (strict) {
@@ -785,22 +785,22 @@ public boolean canFlipStemDirection() {
             }
 
             if (
-                line.getNote(line.noteCount() - 1).getXPosSs() >
+                line.getElement(line.elementCount() - 1).getXPosSs() >
                     (composition.getLineWidth() - idealSpace)
             ) {
-                var firstX = line.getNote(0).getXPosSs();
+                var firstX = line.getElement(0).getXPosSs();
                 var ratio =
                     (composition.getLineWidth() - idealSpace - firstX) /
                         (endNote.getXPosSs() - firstX);
 
-                for (var i = 1; i < line.noteCount(); i++) {
-                    var note = line.getNote(i);
+                for (var i = 1; i < line.elementCount(); i++) {
+                    var note = line.getElement(i);
                     note.setXPosSs(
                         (int) (firstX + Math.round((note.getXPosSs() - firstX) * ratio))
                     );
                 }
 
-                line.mulNoteDistChange((float) ratio);
+                line.mulElementDistChange((float) ratio);
             }
         }
     }
@@ -917,7 +917,7 @@ public boolean canFlipStemDirection() {
     }
 
     @Nullable
-    public NoteSelection getSelection() {
+    public ElementSelection getSelection() {
         return selectionCoordinator.getSelection();
     }
 

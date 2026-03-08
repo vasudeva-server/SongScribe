@@ -23,8 +23,8 @@ package songscribe.ui.selection;
 import java.util.List;
 
 import songscribe.UnitTest;
-import songscribe.music.Note;
-import songscribe.music.NoteType;
+import songscribe.music.StaffElement;
+import songscribe.music.ElementType;
 import songscribe.ui.action.AccidentalAction;
 import songscribe.ui.action.DotAction;
 
@@ -39,8 +39,8 @@ class SelectionContentTest extends UnitTest {
     @Test
     void testNoSelectionReturnsNoActiveSelection() {
         var coordinator = ReflectionTestHelper.createCoordinator(
-                List.of(NoteType.CROTCHET.newInstance()),
-                List.of()
+            List.of(ElementType.CROTCHET.newInstance()),
+            List.of()
         );
 
         assertThat(coordinator.hasActiveSelection()).isFalse();
@@ -49,8 +49,8 @@ class SelectionContentTest extends UnitTest {
     @Test
     void testWithSelectionReturnsActiveSelection() {
         var coordinator = ReflectionTestHelper.createCoordinator(
-                List.of(NoteType.CROTCHET.newInstance()),
-                List.of()
+            List.of(ElementType.CROTCHET.newInstance()),
+            List.of()
         );
 
         ReflectionTestHelper.selectNote(coordinator, 0);
@@ -63,8 +63,8 @@ class SelectionContentTest extends UnitTest {
     @Test
     void testNoSelectionHasDurationsReturnsFalse() {
         var coordinator = ReflectionTestHelper.createCoordinator(
-                List.of(NoteType.CROTCHET.newInstance()),
-                List.of()
+            List.of(ElementType.CROTCHET.newInstance()),
+            List.of()
         );
 
         assertThat(coordinator.selectionHasDurations()).isFalse();
@@ -73,8 +73,8 @@ class SelectionContentTest extends UnitTest {
     @Test
     void testSelectionWithOnlyDurationsHasDurations() {
         var coordinator = ReflectionTestHelper.createCoordinator(
-                List.of(NoteType.CROTCHET.newInstance(), NoteType.QUAVER_REST.newInstance()),
-                List.of()
+            List.of(ElementType.CROTCHET.newInstance(), ElementType.QUAVER_REST.newInstance()),
+            List.of()
         );
 
         ReflectionTestHelper.selectRange(coordinator, 0, 1);
@@ -85,8 +85,8 @@ class SelectionContentTest extends UnitTest {
     @Test
     void testSelectionWithOnlyNonDurationsHasNoDurations() {
         var coordinator = ReflectionTestHelper.createCoordinator(
-                List.of(NoteType.SINGLE_BARLINE.newInstance()),
-                List.of()
+            List.of(ElementType.SINGLE_BARLINE.newInstance()),
+            List.of()
         );
 
         ReflectionTestHelper.selectNote(coordinator, 0);
@@ -97,8 +97,8 @@ class SelectionContentTest extends UnitTest {
     @Test
     void testSelectionWithMixedContentHasDurations() {
         var coordinator = ReflectionTestHelper.createCoordinator(
-                List.of(NoteType.CROTCHET.newInstance(), NoteType.SINGLE_BARLINE.newInstance()),
-                List.of()
+            List.of(ElementType.CROTCHET.newInstance(), ElementType.SINGLE_BARLINE.newInstance()),
+            List.of()
         );
 
         ReflectionTestHelper.selectRange(coordinator, 0, 1);
@@ -110,10 +110,10 @@ class SelectionContentTest extends UnitTest {
 
     @Test
     void testNoSelectionIsNotApplicable() {
-        var action = new AccidentalAction(Note.Accidental.SHARP, "Sharp", null, 0, "sharp", "Sharp");
+        var action = new AccidentalAction(StaffElement.Accidental.SHARP, "Sharp", null, 0, "sharp", "Sharp");
         var coordinator = ReflectionTestHelper.createCoordinator(
-                List.of(NoteType.CROTCHET.newInstance()),
-                List.of(action)
+            List.of(ElementType.CROTCHET.newInstance()),
+            List.of(action)
         );
 
         assertThat(coordinator.isApplicableToSelection(action)).isFalse();
@@ -121,10 +121,10 @@ class SelectionContentTest extends UnitTest {
 
     @Test
     void testApplicableActionWithApplicableNotesReturnsTrue() {
-        var action = new AccidentalAction(Note.Accidental.SHARP, "Sharp", null, 0, "sharp", "Sharp");
+        var action = new AccidentalAction(StaffElement.Accidental.SHARP, "Sharp", null, 0, "sharp", "Sharp");
         var coordinator = ReflectionTestHelper.createCoordinator(
-                List.of(NoteType.CROTCHET.newInstance()),
-                List.of(action)
+            List.of(ElementType.CROTCHET.newInstance()),
+            List.of(action)
         );
 
         ReflectionTestHelper.selectNote(coordinator, 0);
@@ -135,10 +135,10 @@ class SelectionContentTest extends UnitTest {
     @Test
     void testApplicableActionWithNoApplicableNotesReturnsFalse() {
         // AccidentalAction applies only to notes, not rests
-        var action = new AccidentalAction(Note.Accidental.SHARP, "Sharp", null, 0, "sharp", "Sharp");
+        var action = new AccidentalAction(StaffElement.Accidental.SHARP, "Sharp", null, 0, "sharp", "Sharp");
         var coordinator = ReflectionTestHelper.createCoordinator(
-                List.of(NoteType.CROTCHET_REST.newInstance()),
-                List.of(action)
+            List.of(ElementType.CROTCHET_REST.newInstance()),
+            List.of(action)
         );
 
         ReflectionTestHelper.selectNote(coordinator, 0);
@@ -149,10 +149,10 @@ class SelectionContentTest extends UnitTest {
     @Test
     void testApplicableActionWithMixedNotesReturnsTrue() {
         // AccidentalAction applies to the note but not the rest
-        var action = new AccidentalAction(Note.Accidental.SHARP, "Sharp", null, 0, "sharp", "Sharp");
+        var action = new AccidentalAction(StaffElement.Accidental.SHARP, "Sharp", null, 0, "sharp", "Sharp");
         var coordinator = ReflectionTestHelper.createCoordinator(
-                List.of(NoteType.CROTCHET.newInstance(), NoteType.CROTCHET_REST.newInstance()),
-                List.of(action)
+            List.of(ElementType.CROTCHET.newInstance(), ElementType.CROTCHET_REST.newInstance()),
+            List.of(action)
         );
 
         ReflectionTestHelper.selectRange(coordinator, 0, 1);
@@ -165,8 +165,8 @@ class SelectionContentTest extends UnitTest {
         // DotAction applies to both notes and rests (durations)
         var action = new DotAction(DotAction.DotLevel.SINGLE, "Dot", null, 0, "dot", "Dot", 0, 0);
         var coordinator = ReflectionTestHelper.createCoordinator(
-                List.of(NoteType.CROTCHET_REST.newInstance()),
-                List.of(action)
+            List.of(ElementType.CROTCHET_REST.newInstance()),
+            List.of(action)
         );
 
         ReflectionTestHelper.selectNote(coordinator, 0);
@@ -177,10 +177,10 @@ class SelectionContentTest extends UnitTest {
     @Test
     void testActionNotApplicableToBarlines() {
         // AccidentalAction does not apply to barlines
-        var action = new AccidentalAction(Note.Accidental.SHARP, "Sharp", null, 0, "sharp", "Sharp");
+        var action = new AccidentalAction(StaffElement.Accidental.SHARP, "Sharp", null, 0, "sharp", "Sharp");
         var coordinator = ReflectionTestHelper.createCoordinator(
-                List.of(NoteType.SINGLE_BARLINE.newInstance()),
-                List.of(action)
+            List.of(ElementType.SINGLE_BARLINE.newInstance()),
+            List.of(action)
         );
 
         ReflectionTestHelper.selectNote(coordinator, 0);

@@ -30,7 +30,7 @@ import javax.sound.midi.Track;
 import org.jetbrains.annotations.NotNull;
 
 import songscribe.music.Composition;
-import songscribe.music.NoteType;
+import songscribe.music.ElementType;
 import songscribe.music.Tempo;
 import songscribe.ui.playback.MidiMetaMessageTypes;
 
@@ -78,7 +78,7 @@ public class MidiSequenceBuilder {
      * @throws InvalidMidiDataException if MIDI data is invalid
      */
     public Sequence buildSelectionSequence(int lineIndex, int startNote, int endNote)
-            throws InvalidMidiDataException {
+        throws InvalidMidiDataException {
         var startTempo = composition.getTempoAt(lineIndex, startNote);
         return buildSequence(lineIndex, startNote, lineIndex, endNote, startTempo);
     }
@@ -171,14 +171,14 @@ public class MidiSequenceBuilder {
         var lineIndex = startLine;
         while (lineIndex < lines.size()) {
             var line = lines.get(lineIndex);
-            var noteCount = line.noteCount();
+            var noteCount = line.elementCount();
 
             for (var noteIndex = 0; noteIndex < noteCount; noteIndex++) {
-                var note = line.getNote(noteIndex);
-                var noteType = note.getNoteType();
+                var note = line.getElement(noteIndex);
+                var noteType = note.getType();
 
                 // Handle repeat markers
-                if (noteType == NoteType.REPEAT_RIGHT || noteType == NoteType.REPEAT_LEFT_RIGHT) {
+                if (noteType == ElementType.REPEAT_RIGHT || noteType == ElementType.REPEAT_LEFT_RIGHT) {
                     if (repeating) {
                         // Second time through: exit the repeat
                         repeating = false;
@@ -193,8 +193,8 @@ public class MidiSequenceBuilder {
                         repeatSearchLoop:
                         while (searchLineIndex >= 0) {
                             while (searchNoteIndex >= 0) {
-                                var searchNote = lines.get(searchLineIndex).getNote(searchNoteIndex);
-                                if (searchNote.getNoteType().isRepeat()) {
+                                var searchNote = lines.get(searchLineIndex).getElement(searchNoteIndex);
+                                if (searchNote.getType().isRepeat()) {
                                     // Found a repeat marker, continue from here
                                     lineIndex = searchLineIndex;
                                     noteIndex = searchNoteIndex;
@@ -205,7 +205,7 @@ public class MidiSequenceBuilder {
 
                             searchLineIndex--;
                             if (searchLineIndex >= 0) {
-                                searchNoteIndex = lines.get(searchLineIndex).noteCount() - 1;
+                                searchNoteIndex = lines.get(searchLineIndex).elementCount() - 1;
                             }
                         }
 
@@ -226,7 +226,7 @@ public class MidiSequenceBuilder {
                     // During repeat: skip first ending, play only on second pass
                     var foundRepeatRight = false;
                     for (var i = noteIndex; i <= firstSecondInterval.getEnd() && i < noteCount; i++) {
-                        if (line.getNote(i).getNoteType() == NoteType.REPEAT_RIGHT) {
+                        if (line.getElement(i).getType() == ElementType.REPEAT_RIGHT) {
                             foundRepeatRight = true;
                             noteIndex = i - 1; // Will be incremented in the loop
                             break;
@@ -237,7 +237,7 @@ public class MidiSequenceBuilder {
                     }
                 }
 
-                if (!repeating && firstSecondInterval != null && noteType == NoteType.REPEAT_RIGHT) {
+                if (!repeating && firstSecondInterval != null && noteType == ElementType.REPEAT_RIGHT) {
                     // Not repeating and at end of first-second ending: skip to end
                     noteIndex = firstSecondInterval.getEnd();
                     continue;
@@ -273,7 +273,7 @@ public class MidiSequenceBuilder {
     }
 
     private void addBankSelect(Track track, int channel, int msb, int lsb)
-            throws InvalidMidiDataException {
+        throws InvalidMidiDataException {
         var bankMsb = new ShortMessage();
         bankMsb.setMessage(ShortMessage.CONTROL_CHANGE, channel, 0, msb);
         track.add(new MidiEvent(bankMsb, 0));

@@ -23,7 +23,7 @@ package songscribe.ui.layout;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import songscribe.music.Note;
+import songscribe.music.StaffElement;
 
 /**
  * Represents a diminuendo (gradually getting softer) hairpin marking.
@@ -34,7 +34,7 @@ import songscribe.music.Note;
  */
 public class Diminuendo extends RangeElement {
 
-    private @Nullable Note endNote;
+    private @Nullable StaffElement endNote;
     private int x1Shift = 0;
     private int x2Shift = 0;
     private int yShift = 0;
@@ -45,33 +45,33 @@ public class Diminuendo extends RangeElement {
      * @param anchorNote The starting note of the diminuendo
      * @param endNote    The ending note of the diminuendo
      */
-    public Diminuendo(@NotNull Note anchorNote, @NotNull Note endNote) {
-        setAnchorNote(anchorNote);
+    public Diminuendo(@NotNull StaffElement anchorNote, @NotNull StaffElement endNote) {
+        setAnchorElement(anchorNote);
         this.endNote = endNote;
     }
 
     @Override
-    public @Nullable Note getEndNote() {
+    public @Nullable StaffElement getEndElement() {
         return endNote;
     }
 
     /**
      * Sets the end note of this diminuendo.
      */
-    public void setEndNote(@Nullable Note endNote) {
+    public void setEndNote(@Nullable StaffElement endNote) {
         this.endNote = endNote;
     }
 
     @Override
     public int getNoteCount() {
-        var anchor = getAnchorNote();
+        var anchor = getAnchorElement();
 
         if (anchor == null || endNote == null) {
             return 0;
         }
 
-        int startIndex = getAnchorNoteIndex();
-        int endIndex = getEndNoteIndex();
+        int startIndex = getAnchorElementIndex();
+        int endIndex = getEndElementIndex();
 
         if (startIndex < 0 || endIndex < 0) {
             return 0;
@@ -130,7 +130,7 @@ public class Diminuendo extends RangeElement {
 
     @Override
     public double getContentWidth() {
-        var anchor = getAnchorNote();
+        var anchor = getAnchorElement();
 
         if (anchor == null || endNote == null) {
             return 0;

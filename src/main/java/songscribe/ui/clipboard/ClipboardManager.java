@@ -25,20 +25,20 @@ import java.util.ArrayList;
 import org.jetbrains.annotations.Nullable;
 
 import songscribe.data.IntervalSet;
-import songscribe.music.Note;
+import songscribe.music.StaffElement;
 
 /**
  * Manages clipboard state for copy/paste operations.
  * <p>
- * ClipboardManager stores copied notes and their associated interval sets
+ * ClipboardManager stores copied elements and their associated interval sets
  * (ties, beaming) for paste operations.
  */
 public final class ClipboardManager {
 
-    // Copied notes waiting to be pasted
-    private final ArrayList<Note> pasteboard = new ArrayList<>();
+    // Copied elements waiting to be pasted
+    private final ArrayList<StaffElement> pasteboard = new ArrayList<>();
 
-    // Associated interval sets (ties, etc.) for the copied notes
+    // Associated interval sets (ties, etc.) for the copied elements
     private IntervalSet[] intervalSetsCopyBuffer = null;
 
     // -------------------------------------------------------------------------
@@ -46,7 +46,7 @@ public final class ClipboardManager {
     // -------------------------------------------------------------------------
 
     /**
-     * Returns the number of notes in the pasteboard.
+     * Returns the number of elements in the pasteboard.
      */
     public int getSize() {
         return pasteboard.size();
@@ -60,30 +60,30 @@ public final class ClipboardManager {
     }
 
     /**
-     * Returns the note at the specified index.
+     * Returns the element at the specified index.
      *
-     * @param index The index of the note to retrieve
-     * @return The note at the specified index
+     * @param index The index of the element to retrieve
+     * @return The element at the specified index
      */
-    public Note getNote(int index) {
+    public StaffElement getElement(int index) {
         return pasteboard.get(index);
     }
 
     /**
-     * Returns the first note in the pasteboard.
+     * Returns the first element in the pasteboard.
      *
-     * @return The first note
+     * @return The first element
      */
-    public Note getFirstNote() {
+    public StaffElement getFirstElement() {
         return pasteboard.getFirst();
     }
 
     /**
-     * Returns the last note in the pasteboard.
+     * Returns the last element in the pasteboard.
      *
-     * @return The last note
+     * @return The last element
      */
-    public Note getLastNote() {
+    public StaffElement getLastElement() {
         return pasteboard.getLast();
     }
 
@@ -114,12 +114,12 @@ public final class ClipboardManager {
     }
 
     /**
-     * Adds a note to the pasteboard.
+     * Adds an element to the pasteboard.
      *
-     * @param note The note to add
+     * @param element The element to add
      */
-    public void addNote(Note note) {
-        pasteboard.add(note);
+    public void addElement(StaffElement element) {
+        pasteboard.add(element);
     }
 
     /**

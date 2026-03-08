@@ -25,4 +25,4 @@ package songscribe.ui.message;
  * the music sheet's active note. This allows the Score class
  * to listen for these messages and update the active note accordingly.
  */
-public class UpdateInsertionNoteMessage extends Message {}
+public class UpdateInsertionElementMessage extends Message {}

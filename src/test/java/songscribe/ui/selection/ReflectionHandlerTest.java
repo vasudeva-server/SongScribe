@@ -23,8 +23,8 @@ package songscribe.ui.selection;
 import java.util.List;
 
 import songscribe.UnitTest;
-import songscribe.music.Note;
-import songscribe.music.NoteType;
+import songscribe.music.StaffElement;
+import songscribe.music.ElementType;
 import songscribe.ui.action.AccidentalAction;
 import songscribe.ui.action.SelectableUIAction;
 
@@ -38,16 +38,16 @@ class ReflectionHandlerTest extends UnitTest {
 
     @Test
     void testNoSelectionNoSavedStateIsNoOp() {
-        var note = NoteType.CROTCHET.newInstance();
-        note.setAccidental(Note.Accidental.SHARP);
+        var note = ElementType.CROTCHET.newInstance();
+        note.setAccidental(StaffElement.Accidental.SHARP);
 
-        var action = new AccidentalAction(Note.Accidental.SHARP, "Sharp", null, 0, "sharp", "Sharp");
+        var action = new AccidentalAction(StaffElement.Accidental.SHARP, "Sharp", null, 0, "sharp", "Sharp");
         var uiAction = (SelectableUIAction) action;
         uiAction.setSelected(false);
 
         var coordinator = ReflectionTestHelper.createCoordinator(
-                List.of(note),
-                List.of(action)
+            List.of(note),
+            List.of(action)
         );
 
         coordinator.reflectSelection(null);
@@ -57,16 +57,16 @@ class ReflectionHandlerTest extends UnitTest {
 
     @Test
     void testClearSelectionRestoresSavedState() {
-        var note = NoteType.CROTCHET.newInstance();
-        note.setAccidental(Note.Accidental.FLAT);
+        var note = ElementType.CROTCHET.newInstance();
+        note.setAccidental(StaffElement.Accidental.FLAT);
 
-        var action = new AccidentalAction(Note.Accidental.SHARP, "Sharp", null, 0, "sharp", "Sharp");
+        var action = new AccidentalAction(StaffElement.Accidental.SHARP, "Sharp", null, 0, "sharp", "Sharp");
         var uiAction = (SelectableUIAction) action;
         uiAction.setSelected(true);
 
         var coordinator = ReflectionTestHelper.createCoordinator(
-                List.of(note),
-                List.of(action)
+            List.of(note),
+            List.of(action)
         );
 
         // Select and reflect — action becomes false (FLAT does not match SHARP)
@@ -82,16 +82,16 @@ class ReflectionHandlerTest extends UnitTest {
 
     @Test
     void testNewSelectionSavesState() {
-        var note = NoteType.CROTCHET.newInstance();
-        note.setAccidental(Note.Accidental.SHARP);
+        var note = ElementType.CROTCHET.newInstance();
+        note.setAccidental(StaffElement.Accidental.SHARP);
 
-        var action = new AccidentalAction(Note.Accidental.SHARP, "Sharp", null, 0, "sharp", "Sharp");
+        var action = new AccidentalAction(StaffElement.Accidental.SHARP, "Sharp", null, 0, "sharp", "Sharp");
         var uiAction = (SelectableUIAction) action;
         uiAction.setSelected(false);
 
         var coordinator = ReflectionTestHelper.createCoordinator(
-                List.of(note),
-                List.of(action)
+            List.of(note),
+            List.of(action)
         );
 
         // Select and reflect — action becomes true (SHARP matches)
@@ -102,19 +102,19 @@ class ReflectionHandlerTest extends UnitTest {
 
     @Test
     void testChangedSelectionDoesNotResave() {
-        var note1 = NoteType.CROTCHET.newInstance();
-        note1.setAccidental(Note.Accidental.SHARP);
+        var note1 = ElementType.CROTCHET.newInstance();
+        note1.setAccidental(StaffElement.Accidental.SHARP);
 
-        var note2 = NoteType.CROTCHET.newInstance();
-        note2.setAccidental(Note.Accidental.FLAT);
+        var note2 = ElementType.CROTCHET.newInstance();
+        note2.setAccidental(StaffElement.Accidental.FLAT);
 
-        var action = new AccidentalAction(Note.Accidental.SHARP, "Sharp", null, 0, "sharp", "Sharp");
+        var action = new AccidentalAction(StaffElement.Accidental.SHARP, "Sharp", null, 0, "sharp", "Sharp");
         var uiAction = (SelectableUIAction) action;
         uiAction.setSelected(false);
 
         var coordinator = ReflectionTestHelper.createCoordinator(
-                List.of(note1, note2),
-                List.of(action)
+            List.of(note1, note2),
+            List.of(action)
         );
 
         // Select note 0 only, reflect — action becomes true (SHARP matches)
@@ -137,18 +137,18 @@ class ReflectionHandlerTest extends UnitTest {
 
     @Test
     void testAllApplicableAllMatchSelected() {
-        var note1 = NoteType.CROTCHET.newInstance();
-        note1.setAccidental(Note.Accidental.SHARP);
+        var note1 = ElementType.CROTCHET.newInstance();
+        note1.setAccidental(StaffElement.Accidental.SHARP);
 
-        var note2 = NoteType.CROTCHET.newInstance();
-        note2.setAccidental(Note.Accidental.SHARP);
+        var note2 = ElementType.CROTCHET.newInstance();
+        note2.setAccidental(StaffElement.Accidental.SHARP);
 
-        var action = new AccidentalAction(Note.Accidental.SHARP, "Sharp", null, 0, "sharp", "Sharp");
+        var action = new AccidentalAction(StaffElement.Accidental.SHARP, "Sharp", null, 0, "sharp", "Sharp");
         var uiAction = (SelectableUIAction) action;
 
         var coordinator = ReflectionTestHelper.createCoordinator(
-                List.of(note1, note2),
-                List.of(action)
+            List.of(note1, note2),
+            List.of(action)
         );
 
         ReflectionTestHelper.selectRange(coordinator, 0, 1);
@@ -159,18 +159,18 @@ class ReflectionHandlerTest extends UnitTest {
 
     @Test
     void testAllApplicableFirstMismatchDeselected() {
-        var note1 = NoteType.CROTCHET.newInstance();
-        note1.setAccidental(Note.Accidental.FLAT);
+        var note1 = ElementType.CROTCHET.newInstance();
+        note1.setAccidental(StaffElement.Accidental.FLAT);
 
-        var note2 = NoteType.CROTCHET.newInstance();
-        note2.setAccidental(Note.Accidental.SHARP);
+        var note2 = ElementType.CROTCHET.newInstance();
+        note2.setAccidental(StaffElement.Accidental.SHARP);
 
-        var action = new AccidentalAction(Note.Accidental.SHARP, "Sharp", null, 0, "sharp", "Sharp");
+        var action = new AccidentalAction(StaffElement.Accidental.SHARP, "Sharp", null, 0, "sharp", "Sharp");
         var uiAction = (SelectableUIAction) action;
 
         var coordinator = ReflectionTestHelper.createCoordinator(
-                List.of(note1, note2),
-                List.of(action)
+            List.of(note1, note2),
+            List.of(action)
         );
 
         ReflectionTestHelper.selectRange(coordinator, 0, 1);
@@ -181,18 +181,18 @@ class ReflectionHandlerTest extends UnitTest {
 
     @Test
     void testAllApplicableSecondMismatchDeselected() {
-        var note1 = NoteType.CROTCHET.newInstance();
-        note1.setAccidental(Note.Accidental.SHARP);
+        var note1 = ElementType.CROTCHET.newInstance();
+        note1.setAccidental(StaffElement.Accidental.SHARP);
 
-        var note2 = NoteType.CROTCHET.newInstance();
-        note2.setAccidental(Note.Accidental.FLAT);
+        var note2 = ElementType.CROTCHET.newInstance();
+        note2.setAccidental(StaffElement.Accidental.FLAT);
 
-        var action = new AccidentalAction(Note.Accidental.SHARP, "Sharp", null, 0, "sharp", "Sharp");
+        var action = new AccidentalAction(StaffElement.Accidental.SHARP, "Sharp", null, 0, "sharp", "Sharp");
         var uiAction = (SelectableUIAction) action;
 
         var coordinator = ReflectionTestHelper.createCoordinator(
-                List.of(note1, note2),
-                List.of(action)
+            List.of(note1, note2),
+            List.of(action)
         );
 
         ReflectionTestHelper.selectRange(coordinator, 0, 1);
@@ -203,17 +203,17 @@ class ReflectionHandlerTest extends UnitTest {
 
     @Test
     void testNoteAndRestNoteMatchesSelected() {
-        var note1 = NoteType.CROTCHET.newInstance();
-        note1.setAccidental(Note.Accidental.SHARP);
+        var note1 = ElementType.CROTCHET.newInstance();
+        note1.setAccidental(StaffElement.Accidental.SHARP);
 
-        var rest = NoteType.CROTCHET_REST.newInstance();
+        var rest = ElementType.CROTCHET_REST.newInstance();
 
-        var action = new AccidentalAction(Note.Accidental.SHARP, "Sharp", null, 0, "sharp", "Sharp");
+        var action = new AccidentalAction(StaffElement.Accidental.SHARP, "Sharp", null, 0, "sharp", "Sharp");
         var uiAction = (SelectableUIAction) action;
 
         var coordinator = ReflectionTestHelper.createCoordinator(
-                List.of(note1, rest),
-                List.of(action)
+            List.of(note1, rest),
+            List.of(action)
         );
 
         ReflectionTestHelper.selectRange(coordinator, 0, 1);
@@ -224,17 +224,17 @@ class ReflectionHandlerTest extends UnitTest {
 
     @Test
     void testNoteAndRestNoteMismatchDeselected() {
-        var note1 = NoteType.CROTCHET.newInstance();
-        note1.setAccidental(Note.Accidental.FLAT);
+        var note1 = ElementType.CROTCHET.newInstance();
+        note1.setAccidental(StaffElement.Accidental.FLAT);
 
-        var rest = NoteType.CROTCHET_REST.newInstance();
+        var rest = ElementType.CROTCHET_REST.newInstance();
 
-        var action = new AccidentalAction(Note.Accidental.SHARP, "Sharp", null, 0, "sharp", "Sharp");
+        var action = new AccidentalAction(StaffElement.Accidental.SHARP, "Sharp", null, 0, "sharp", "Sharp");
         var uiAction = (SelectableUIAction) action;
 
         var coordinator = ReflectionTestHelper.createCoordinator(
-                List.of(note1, rest),
-                List.of(action)
+            List.of(note1, rest),
+            List.of(action)
         );
 
         ReflectionTestHelper.selectRange(coordinator, 0, 1);
@@ -245,15 +245,15 @@ class ReflectionHandlerTest extends UnitTest {
 
     @Test
     void testAllInapplicableDeselected() {
-        var rest1 = NoteType.CROTCHET_REST.newInstance();
-        var rest2 = NoteType.CROTCHET_REST.newInstance();
+        var rest1 = ElementType.CROTCHET_REST.newInstance();
+        var rest2 = ElementType.CROTCHET_REST.newInstance();
 
-        var action = new AccidentalAction(Note.Accidental.SHARP, "Sharp", null, 0, "sharp", "Sharp");
+        var action = new AccidentalAction(StaffElement.Accidental.SHARP, "Sharp", null, 0, "sharp", "Sharp");
         var uiAction = (SelectableUIAction) action;
 
         var coordinator = ReflectionTestHelper.createCoordinator(
-                List.of(rest1, rest2),
-                List.of(action)
+            List.of(rest1, rest2),
+            List.of(action)
         );
 
         ReflectionTestHelper.selectRange(coordinator, 0, 1);
@@ -266,19 +266,19 @@ class ReflectionHandlerTest extends UnitTest {
 
     @Test
     void testReflectionDoesNotForceEnable() {
-        var note = NoteType.CROTCHET.newInstance();
-        note.setAccidental(Note.Accidental.SHARP);
+        var note = ElementType.CROTCHET.newInstance();
+        note.setAccidental(StaffElement.Accidental.SHARP);
 
-        var action1 = new AccidentalAction(Note.Accidental.SHARP, "Sharp", null, 0, "sharp", "Sharp");
-        var action2 = new AccidentalAction(Note.Accidental.FLAT, "Flat", null, 0, "flat", "Flat");
+        var action1 = new AccidentalAction(StaffElement.Accidental.SHARP, "Sharp", null, 0, "sharp", "Sharp");
+        var action2 = new AccidentalAction(StaffElement.Accidental.FLAT, "Flat", null, 0, "flat", "Flat");
         var uiAction1 = (SelectableUIAction) action1;
         var uiAction2 = (SelectableUIAction) action2;
         uiAction1.setEnabled(false);
         uiAction2.setEnabled(false);
 
         var coordinator = ReflectionTestHelper.createCoordinator(
-                List.of(note),
-                List.of(action1, action2)
+            List.of(note),
+            List.of(action1, action2)
         );
 
         ReflectionTestHelper.selectNote(coordinator, 0);
@@ -292,11 +292,11 @@ class ReflectionHandlerTest extends UnitTest {
 
     @Test
     void testSaveRestoreRoundTripPreservesBothSelectedAndEnabled() {
-        var note = NoteType.CROTCHET.newInstance();
-        note.setAccidental(Note.Accidental.SHARP);
+        var note = ElementType.CROTCHET.newInstance();
+        note.setAccidental(StaffElement.Accidental.SHARP);
 
-        var action1 = new AccidentalAction(Note.Accidental.SHARP, "Sharp", null, 0, "sharp", "Sharp");
-        var action2 = new AccidentalAction(Note.Accidental.FLAT, "Flat", null, 0, "flat", "Flat");
+        var action1 = new AccidentalAction(StaffElement.Accidental.SHARP, "Sharp", null, 0, "sharp", "Sharp");
+        var action2 = new AccidentalAction(StaffElement.Accidental.FLAT, "Flat", null, 0, "flat", "Flat");
         var uiAction1 = (SelectableUIAction) action1;
         var uiAction2 = (SelectableUIAction) action2;
 
@@ -307,8 +307,8 @@ class ReflectionHandlerTest extends UnitTest {
         uiAction2.setEnabled(false);
 
         var coordinator = ReflectionTestHelper.createCoordinator(
-                List.of(note),
-                List.of(action1, action2)
+            List.of(note),
+            List.of(action1, action2)
         );
 
         // Select and reflect — saves both selected and enabled for each action
@@ -333,15 +333,15 @@ class ReflectionHandlerTest extends UnitTest {
 
     @Test
     void testClearSelectionRestoresEnabledState() {
-        var note = NoteType.CROTCHET.newInstance();
-        note.setAccidental(Note.Accidental.SHARP);
+        var note = ElementType.CROTCHET.newInstance();
+        note.setAccidental(StaffElement.Accidental.SHARP);
 
-        var action = new AccidentalAction(Note.Accidental.SHARP, "Sharp", null, 0, "sharp", "Sharp");
+        var action = new AccidentalAction(StaffElement.Accidental.SHARP, "Sharp", null, 0, "sharp", "Sharp");
         var uiAction = (SelectableUIAction) action;
 
         var coordinator = ReflectionTestHelper.createCoordinator(
-                List.of(note),
-                List.of(action)
+            List.of(note),
+            List.of(action)
         );
 
         // Select and reflect — saves state (selected=false, enabled=true)

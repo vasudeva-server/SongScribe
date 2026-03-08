@@ -20,10 +20,9 @@
 
 package songscribe.ui.layout;
 
-import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import songscribe.music.Note;
+import songscribe.music.StaffElement;
 
 /**
  * Abstract base class for elements that span multiple notes.
@@ -42,19 +41,19 @@ import songscribe.music.Note;
 public abstract class RangeElement extends LineElement {
 
     /** The first note in this range. */
-    private @Nullable Note anchorNote;
+    private @Nullable StaffElement anchorNote;
 
     /**
      * Returns the first note in this range.
      */
-    public @Nullable Note getAnchorNote() {
+    public @Nullable StaffElement getAnchorElement() {
         return anchorNote;
     }
 
     /**
      * Sets the first note in this range.
      */
-    public void setAnchorNote(@Nullable Note anchorNote) {
+    public void setAnchorElement(@Nullable StaffElement anchorNote) {
         this.anchorNote = anchorNote;
     }
 
@@ -62,7 +61,7 @@ public abstract class RangeElement extends LineElement {
      * Returns the last note in this range.
      * Subclasses must implement based on their specific range definition.
      */
-    public abstract @Nullable Note getEndNote();
+    public abstract @Nullable StaffElement getEndElement();
 
     /**
      * Returns the number of notes in this range.
@@ -79,25 +78,25 @@ public abstract class RangeElement extends LineElement {
      * Returns the index of the anchor note within its line.
      * Returns -1 if the anchor note is not set or not in a line.
      */
-    public int getAnchorNoteIndex() {
+    public int getAnchorElementIndex() {
         if (anchorNote == null || anchorNote.getLine() == null) {
             return -1;
         }
 
-        return anchorNote.getLine().getNoteIndex(anchorNote);
+        return anchorNote.getLine().getElementIndex(anchorNote);
     }
 
     /**
      * Returns the index of the end note within its line.
      * Returns -1 if the end note is not set or not in a line.
      */
-    public int getEndNoteIndex() {
-        var endNote = getEndNote();
+    public int getEndElementIndex() {
+        var endNote = getEndElement();
 
         if (endNote == null || endNote.getLine() == null) {
             return -1;
         }
 
-        return endNote.getLine().getNoteIndex(endNote);
+        return endNote.getLine().getElementIndex(endNote);
     }
 }

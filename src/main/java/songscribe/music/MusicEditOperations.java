@@ -25,17 +25,17 @@ import java.util.HashSet;
 import java.util.TreeSet;
 import java.util.stream.IntStream;
 
-import javax.swing.JOptionPane;
+import javax.swing.*;
 
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 
 import kotlin.Pair;
+
 import songscribe.data.BeamInterval;
 import songscribe.data.DynamicsInterval;
 import songscribe.data.EndingInterval;
 import songscribe.data.Interval;
-import songscribe.data.IntervalSet;
 import songscribe.data.TieInterval;
 import songscribe.data.TupletInterval;
 import songscribe.ui.component.IMainFrame;
@@ -174,7 +174,7 @@ public final class MusicEditOperations {
     public boolean canRemoveDynamicsFromSelection() {
         var state = coordinator.getActiveSelection();
 
-        if (state == null || !state.hasNoteSelection()) {
+        if (state == null || !state.hasElementSelection()) {
             return false;
         }
 
@@ -257,14 +257,14 @@ public final class MusicEditOperations {
         var repeatExists = IntStream.rangeClosed(
             state.getSelectionBegin(),
             state.getSelectionEnd()
-        ).anyMatch(i -> line.getNote(i).getNoteType() == NoteType.REPEAT_RIGHT);
+        ).anyMatch(i -> line.getElement(i).getType() == ElementType.REPEAT_RIGHT);
 
         if (!repeatExists) {
             var answer = mainFrame.showConfirmDialog(
                 """
                     It does not make sense to create a first-second ending without a right side \
                     repeat.
-
+                    
                     Do you want to continue anyway?""",
                 JOptionPane.YES_NO_OPTION,
                 JOptionPane.WARNING_MESSAGE
@@ -309,7 +309,7 @@ public final class MusicEditOperations {
 
         var line = state.getLine();
 
-        for (var note : line.getNotes(state.getSelectionBegin(), state.getSelectionEnd())) {
+        for (var note : line.getElements(state.getSelectionBegin(), state.getSelectionEnd())) {
             note.setTrill(!note.isTrill());
         }
 
@@ -331,7 +331,7 @@ public final class MusicEditOperations {
         }
 
         var line = state.getLine();
-        var note = line.getNote(state.getSelectionBegin());
+        var note = line.getElement(state.getSelectionBegin());
         note.setForceSyllable(!note.isForceSyllable());
         LyricsProcessor.spellLyrics(line);
         composition.setModified(true);
@@ -362,9 +362,9 @@ public final class MusicEditOperations {
         var processedBeamIntervals = new HashSet<Interval>();
 
         for (var i = state.getSelectionBegin(); i <= state.getSelectionEnd(); i++) {
-            var note = line.getNote(i);
+            var note = line.getElement(i);
 
-            if (note.getNoteType().isRest()) {
+            if (note.getType().isRest()) {
                 continue;
             }
 
@@ -375,16 +375,16 @@ public final class MusicEditOperations {
             if (beamInterval != null) {
                 // Flip the whole beam group together, once per group.
                 if (processedBeamIntervals.add(beamInterval)) {
-                    var firstNote = line.getNote(beamInterval.getStart());
-                    boolean newUpper = !firstNote.isUpper();
+                    var firstElement = line.getElement(beamInterval.getStart());
+                    boolean newUpper = !firstElement.isUpper();
                     System.out.println("[flipStem] flipping beam group " + beamInterval.getStart()
-                        + "-" + beamInterval.getEnd() + " firstNote.upper=" + firstNote.isUpper()
+                        + "-" + beamInterval.getEnd() + " firstElement.upper=" + firstElement.isUpper()
                         + " -> newUpper=" + newUpper);
 
                     for (var j = beamInterval.getStart(); j <= beamInterval.getEnd(); j++) {
-                        var beamNote = line.getNote(j);
-                        beamNote.setStemDirectionAuto(false);
-                        beamNote.setUpper(newUpper);
+                        var beamElement = line.getElement(j);
+                        beamElement.setStemDirectionAuto(false);
+                        beamElement.setUpper(newUpper);
                     }
                 }
             } else {
@@ -414,7 +414,7 @@ public final class MusicEditOperations {
         }
 
         for (var i : tiePartnersToFlip) {
-            var note = line.getNote(i);
+            var note = line.getElement(i);
             note.setStemDirectionAuto(false);
             note.setUpper(!note.isUpper());
         }

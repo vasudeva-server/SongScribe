@@ -20,7 +20,7 @@
 
 package songscribe.ui.action;
 
-import songscribe.music.Note;
+import songscribe.music.StaffElement;
 
 public class FermataAction extends NoteOnlyAction {
 
@@ -30,12 +30,12 @@ public class FermataAction extends NoteOnlyAction {
     }
 
     @Override
-    public boolean matchesNote(Note note) {
-        return note.isFermata();
+    public boolean matchesElement(StaffElement element) {
+        return element.isFermata();
     }
 
     @Override
-    public void applyToNote(Note note, boolean selected) {
-        note.setFermata(selected);
+    public void applyToElement(StaffElement element, boolean selected) {
+        element.setFermata(selected);
     }
 }

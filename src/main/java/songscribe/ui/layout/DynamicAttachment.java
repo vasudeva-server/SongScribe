@@ -23,7 +23,7 @@ package songscribe.ui.layout;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import songscribe.music.Note;
+import songscribe.music.StaffElement;
 
 /**
  * Represents a dynamic marking attachment on a note.
@@ -93,13 +93,13 @@ public class DynamicAttachment extends Attachment {
      * @param parent The parent note
      * @param type   The dynamic type
      */
-    public DynamicAttachment(@Nullable Note parent, @NotNull DynamicType type) {
+    public DynamicAttachment(@Nullable StaffElement parent, @NotNull DynamicType type) {
         this.type = type;
-        setParentNote(parent);
+        setOwnerElement(parent);
         setAlignment(Alignment.CENTER);
 
         if (parent != null) {
-            setParentElement(parent);
+            setOwnerElement(parent);
             setParentLine(parent.getParentLine());
         }
     }

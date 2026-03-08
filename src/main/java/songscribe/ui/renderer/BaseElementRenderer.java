@@ -22,7 +22,6 @@ package songscribe.ui.renderer;
 
 import static songscribe.ui.renderer.GraphicsState.Property.COLOR;
 import static songscribe.ui.renderer.GraphicsState.Property.FONT;
-import static songscribe.ui.renderer.GraphicsState.Property.STROKE;
 
 import java.awt.*;
 import java.awt.geom.*;
@@ -31,7 +30,7 @@ import java.util.function.DoubleConsumer;
 
 import org.jetbrains.annotations.NotNull;
 
-import songscribe.music.NoteType;
+import songscribe.music.ElementType;
 import songscribe.smufl.EngravingDefaults;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
@@ -73,7 +72,7 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
      * Under the Graphics2D scale transform, this produces the correct pixel size
      * (4.0 ss * 8 px/ss = 32px).
      */
-    public static final float NOTE_FONT_SIZE = 4.0f;
+    public static final float FONT_SIZE = 4.0f;
 
 
     /**
@@ -117,14 +116,14 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
                 MyFontUtils.getLocalFont("Fughetta.ttf"),
                 "Cannot load Fughetta.ttf font"
             );
-            MUSIC_FONT = fughettaBase.deriveFont(NOTE_FONT_SIZE);
+            MUSIC_FONT = fughettaBase.deriveFont(FONT_SIZE);
 
             var bravuraBase = Objects.requireNonNull(
                 MyFontUtils.getLocalFont("Bravura.otf"),
                 "Cannot load Bravura.otf font"
             );
-            BRAVURA_FONT = bravuraBase.deriveFont(NOTE_FONT_SIZE);
-            BRAVURA_FONT_GRACE = bravuraBase.deriveFont(NOTE_FONT_SIZE * LayoutConstants.GRACE_NOTE_SCALE);
+            BRAVURA_FONT = bravuraBase.deriveFont(FONT_SIZE);
+            BRAVURA_FONT_GRACE = bravuraBase.deriveFont(FONT_SIZE * LayoutConstants.GRACE_NOTE_SCALE);
 
             var tupletBase = Objects.requireNonNull(
                 MyFontUtils.getLocalFont("TupletNumbers.ttf"),
@@ -142,7 +141,7 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
     // ==========================================================================
 
     protected static final Color STAFF_LINE_COLOR = Color.BLACK;
-    protected static final Color NOTE_COLOR = Color.BLACK;
+    protected static final Color ELEMENT_COLOR = Color.BLACK;
     protected static final Color DEBUG_CONTENT_COLOR = new Color(0, 0, 255, 64);
     protected static final Color DEBUG_CONTENT_BORDER = new Color(0, 0, 255, 128);
     protected static final Color DEBUG_MARGIN_COLOR = new Color(255, 0, 0, 64);
@@ -388,7 +387,7 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
      * @param glyph         The SMuFL glyph to draw
      * @param x             X position
      * @param y             Y position
-     * @param preserveColor If true, preserves the current graphics color instead of setting NOTE_COLOR
+     * @param preserveColor If true, preserves the current graphics color instead of setting ELEMENT_COLOR
      */
     protected void drawBravuraGlyph(
         @NotNull Graphics2D g2,
@@ -400,7 +399,7 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
         try (var ignored = GraphicsState.save(g2, COLOR, FONT)) {
             g2.setFont(BRAVURA_FONT);
             if (!preserveColor) {
-                g2.setColor(NOTE_COLOR);
+                g2.setColor(ELEMENT_COLOR);
             }
             g2.drawString(glyph.asString(), (float) x, (float) y);
         }
@@ -474,10 +473,10 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
         }
     }
 
-    protected static double stemCenterXOffsetSs(@NotNull NoteType noteType, boolean upper) {
-        boolean isMinim = noteType == NoteType.MINIM;
+    protected static double stemCenterXOffsetSs(@NotNull ElementType noteType, boolean upper) {
+        boolean isMinim = noteType == ElementType.MINIM;
         double anchorX = upper
-            ? (isMinim ? LayoutConstants.STEM_UP_SE_HALF.x()   : LayoutConstants.STEM_UP_SE_BLACK.x())
+            ? (isMinim ? LayoutConstants.STEM_UP_SE_HALF.x() : LayoutConstants.STEM_UP_SE_BLACK.x())
             : (isMinim ? LayoutConstants.STEM_DOWN_NW_HALF.x() : LayoutConstants.STEM_DOWN_NW_BLACK.x());
 
         // upper: SE anchor is the stem's right edge; center = anchorX - half stem width

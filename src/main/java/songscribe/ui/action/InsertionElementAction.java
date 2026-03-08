@@ -25,18 +25,18 @@ import java.awt.event.*;
 import org.jetbrains.annotations.Nullable;
 
 import songscribe.ui.message.MessageCenter;
-import songscribe.ui.message.UpdateInsertionNoteMessage;
+import songscribe.ui.message.UpdateInsertionElementMessage;
 
 /**
- * This class is the superclass for all actions that change the insertion note.
+ * This class is the superclass for all actions that change the insertion element.
  */
-public class InsertionNoteAction extends SelectableUIAction {
+public class InsertionElementAction extends SelectableUIAction {
 
-    public InsertionNoteAction(String name, String actionCommand) {
+    public InsertionElementAction(String name, String actionCommand) {
         super(name, actionCommand);
     }
 
-    public InsertionNoteAction(
+    public InsertionElementAction(
         String name,
         String actionCommand,
         int virtualKey,
@@ -45,7 +45,7 @@ public class InsertionNoteAction extends SelectableUIAction {
         super(name, actionCommand, virtualKey, modifiers);
     }
 
-    public InsertionNoteAction(
+    public InsertionElementAction(
         @Nullable String name,
         @Nullable String icon,
         int size,
@@ -55,7 +55,7 @@ public class InsertionNoteAction extends SelectableUIAction {
         super(name, icon, size, actionCommand, tooltip);
     }
 
-    public InsertionNoteAction(
+    public InsertionElementAction(
         @Nullable String name,
         @Nullable String icon,
         int size,
@@ -83,6 +83,6 @@ public class InsertionNoteAction extends SelectableUIAction {
             return;
         }
 
-        MessageCenter.post(new UpdateInsertionNoteMessage());
+        MessageCenter.post(new UpdateInsertionElementMessage());
     }
 }

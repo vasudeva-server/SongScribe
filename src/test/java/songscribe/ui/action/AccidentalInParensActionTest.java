@@ -20,13 +20,13 @@
 
 package songscribe.ui.action;
 
-import songscribe.UnitTest;
-import songscribe.music.Note;
-import songscribe.music.NoteType;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.jupiter.api.Test;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import songscribe.UnitTest;
+import songscribe.music.ElementType;
+import songscribe.music.StaffElement;
 
 class AccidentalInParensActionTest extends UnitTest {
 
@@ -35,35 +35,35 @@ class AccidentalInParensActionTest extends UnitTest {
     // M15: matchesNote returns true when accidental is in parentheses
     @Test
     void testMatchesWhenInParentheses() {
-        var note = NoteType.CROTCHET.newInstance();
+        var note = ElementType.CROTCHET.newInstance();
         // Must set a non-NONE accidental first; setter is a no-op otherwise
-        note.setAccidental(Note.Accidental.SHARP);
+        note.setAccidental(StaffElement.Accidental.SHARP);
         note.setAccidentalInParentheses(true);
 
-        assertThat(action.matchesNote(note)).isTrue();
+        assertThat(action.matchesElement(note)).isTrue();
     }
 
     // M16: matchesNote returns false when accidental is not in parentheses
     @Test
     void testDoesNotMatchWhenNotInParentheses() {
-        var note = NoteType.CROTCHET.newInstance();
+        var note = ElementType.CROTCHET.newInstance();
 
-        assertThat(action.matchesNote(note)).isFalse();
+        assertThat(action.matchesElement(note)).isFalse();
     }
 
     @Test
     void testApplyToNoteAppliesParentheses() {
-        var note = NoteType.CROTCHET.newInstance();
-        note.setAccidental(Note.Accidental.SHARP);
-        action.applyToNote(note, true);
+        var note = ElementType.CROTCHET.newInstance();
+        note.setAccidental(StaffElement.Accidental.SHARP);
+        action.applyToElement(note, true);
         assertThat(note.isAccidentalInParentheses()).isTrue();
     }
 
     @Test
     void testApplyToNoteRemovesParentheses() {
-        var note = NoteType.CROTCHET.newInstance();
+        var note = ElementType.CROTCHET.newInstance();
         note.setAccidentalInParentheses(true);
-        action.applyToNote(note, false);
+        action.applyToElement(note, false);
         assertThat(note.isAccidentalInParentheses()).isFalse();
     }
 }

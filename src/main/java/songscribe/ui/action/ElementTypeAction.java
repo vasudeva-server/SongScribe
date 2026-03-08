@@ -22,24 +22,24 @@ package songscribe.ui.action;
 
 import java.awt.event.*;
 
-import songscribe.music.Note;
-import songscribe.music.NoteType;
-
 import org.jetbrains.annotations.Nullable;
+
+import songscribe.music.ElementType;
+import songscribe.music.StaffElement;
 import songscribe.ui.message.BarSelectedMessage;
 import songscribe.ui.message.DurationSelectedMessage;
 import songscribe.ui.message.MessageCenter;
 
-public class NoteTypeAction extends StickyUIAction implements UIAction.NoteReplaceable {
+public class ElementTypeAction extends StickyUIAction implements UIAction.ElementReplaceable {
 
-    public enum Kind { DURATION, NON_DURATION }
+    public enum Kind {DURATION, NON_DURATION}
 
-    private final NoteType type;
+    private final ElementType type;
     private final Kind kind;
 
-    public NoteTypeAction(
+    public ElementTypeAction(
         Kind kind,
-        NoteType type,
+        ElementType type,
         String name,
         String icon,
         int size,
@@ -68,7 +68,7 @@ public class NoteTypeAction extends StickyUIAction implements UIAction.NoteRepla
         }
     }
 
-    public NoteType getType() {
+    public ElementType getType() {
         return type;
     }
 
@@ -77,26 +77,26 @@ public class NoteTypeAction extends StickyUIAction implements UIAction.NoteRepla
     }
 
     @Override
-    public boolean appliesTo(Note note) {
+    public boolean appliesTo(StaffElement element) {
         return kind == Kind.DURATION
-            ? note.getNoteType().isDuration()
-            : note.getNoteType().isNonDuration();
+            ? element.getType().isDuration()
+            : element.getType().isNonDuration();
     }
 
     @Override
-    public boolean matchesNote(Note note) {
-        return note.getNoteType() == type;
+    public boolean matchesElement(StaffElement element) {
+        return element.getType() == type;
     }
 
     @Override
     @Nullable
-    public Note createReplacement(Note note, boolean selected) {
+    public StaffElement createReplacement(StaffElement element, boolean selected) {
         if (!selected) {
             return null;
         }
 
-        var targetType = note.getNoteType().isRest() ? type.toRest() : type.toNote();
-        return new Note(targetType, note);
+        var targetType = element.getType().isRest() ? type.toRest() : type.toNote();
+        return new StaffElement(targetType, element);
     }
 
     @Override

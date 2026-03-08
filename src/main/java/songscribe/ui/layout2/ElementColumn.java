@@ -25,12 +25,12 @@ import java.util.List;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import songscribe.music.Note;
+import songscribe.music.StaffElement;
 
 /**
  * The fundamental horizontal spacing unit in the engraving system.
  * <p>
- * A NoteColumn represents a vertical slice of the staff containing:
+ * An ElementColumn represents a vertical slice of the staff containing:
  * <ul>
  *   <li>A primary element (note, rest, or barline)</li>
  *   <li>Optional grace notes (which borrow space from the left)</li>
@@ -40,12 +40,12 @@ import songscribe.music.Note;
  *   <li>Beam membership flag (for internal spacing coordination)</li>
  * </ul>
  * <p>
- * This class is immutable after construction. Use {@link NoteColumnBuilder} to create instances.
+ * This class is immutable after construction. Use {@link ElementColumnBuilder} to create instances.
  */
-public final class NoteColumn {
+public final class ElementColumn {
 
-    private final @NotNull Note note;
-    private final @NotNull List<Note> graceNotes;
+    private final @NotNull StaffElement element;
+    private final @NotNull List<StaffElement> graceNotes;
     private final double leftExtentSs;
     private final double rightExtentSs;
     private final double stemTopSs;
@@ -53,27 +53,27 @@ public final class NoteColumn {
     private final @Nullable String syllable;
     private final double syllableWidthSs;
     private final boolean beamed;
-    // Computed X position of note head left edge (set by HorizontalSpacingCalculator)
+    // Computed X position of element head left edge (set by HorizontalSpacingCalculator)
     private double xSs = 0;
 
     /**
-     * Creates a new NoteColumn.
+     * Creates a new ElementColumn.
      * <p>
-     * Use {@link NoteColumnBuilder} rather than calling this constructor directly.
+     * Use {@link ElementColumnBuilder} rather than calling this constructor directly.
      *
-     * @param note          The primary note (or rest, barline, etc.)
-     * @param graceNotes    Grace notes anchored to this note (empty list if none)
-     * @param leftExtentSs    Left extent relative to note head left edge; 0.0 without accidental, negative with one
-     * @param rightExtentSs   Right extent relative to note head left edge; equals note head width, plus dots if any
-     * @param stemTopSs       Top of stem (if stem up), or note head top if no stem
-     * @param stemBottomSs    Bottom of stem (if stem down), or note head bottom if no stem
+     * @param element         The primary element (note, rest, barline, etc.)
+     * @param graceNotes      Grace notes anchored to this element (empty list if none)
+     * @param leftExtentSs    Left extent relative to element head left edge; 0.0 without accidental, negative with one
+     * @param rightExtentSs   Right extent relative to element head left edge; equals element head width, plus dots if any
+     * @param stemTopSs       Top of stem (if stem up), or element head top if no stem
+     * @param stemBottomSs    Bottom of stem (if stem down), or element head bottom if no stem
      * @param syllable        Associated lyric syllable text (null if none)
      * @param syllableWidthSs Measured width of syllable text in staff spaces (0 if no syllable)
-     * @param beamed          Whether this note is part of a beam group
+     * @param beamed          Whether this element is part of a beam group
      */
-    public NoteColumn(
-        @NotNull Note note,
-        @NotNull List<Note> graceNotes,
+    public ElementColumn(
+        @NotNull StaffElement element,
+        @NotNull List<StaffElement> graceNotes,
         double leftExtentSs,
         double rightExtentSs,
         double stemTopSs,
@@ -81,7 +81,7 @@ public final class NoteColumn {
         @Nullable String syllable,
         double syllableWidthSs,
         boolean beamed) {
-        this.note = note;
+        this.element = element;
         this.graceNotes = List.copyOf(graceNotes);
         this.leftExtentSs = leftExtentSs;
         this.rightExtentSs = rightExtentSs;
@@ -97,24 +97,24 @@ public final class NoteColumn {
     // ==========================================================================
 
     /**
-     * Returns the primary note (or rest, barline, etc.) for this column.
+     * Returns the primary element (note, rest, barline, etc.) for this column.
      */
-    public @NotNull Note getNote() {
-        return note;
+    public @NotNull StaffElement getElement() {
+        return element;
     }
 
     /**
      * Returns whether this column represents a rest.
      */
     public boolean isRest() {
-        return note.getNoteType().isRest();
+        return element.getType().isRest();
     }
 
     /**
      * Returns whether this column represents a barline.
      */
     public boolean isBarline() {
-        return note.getNoteType().isBarLine();
+        return element.getType().isBarLine();
     }
 
     // ==========================================================================
@@ -123,11 +123,11 @@ public final class NoteColumn {
 
     /**
      * Returns the grace notes anchored to this column.
-     * Grace notes borrow space from the main note's left side.
+     * Grace notes borrow space from the main element's left side.
      *
      * @return Unmodifiable list of grace notes (empty if none)
      */
-    public @NotNull List<Note> getGraceNotes() {
+    public @NotNull List<StaffElement> getGraceNotes() {
         return graceNotes;
     }
 
@@ -143,7 +143,7 @@ public final class NoteColumn {
     // ==========================================================================
 
     /**
-     * Returns the left extent relative to the note head left edge (glyph origin).
+     * Returns the left extent relative to the element head left edge (glyph origin).
      * 0.0 with no accidental; negative when an accidental is present (extends further left).
      */
     public double getLeftExtentSs() {
@@ -151,8 +151,8 @@ public final class NoteColumn {
     }
 
     /**
-     * Returns the right extent relative to the note head left edge (glyph origin).
-     * Equal to the note head width with no dots; larger when dots are present.
+     * Returns the right extent relative to the element head left edge (glyph origin).
+     * Equal to the element head width with no dots; larger when dots are present.
      */
     public double getRightExtentSs() {
         return rightExtentSs;
@@ -186,16 +186,16 @@ public final class NoteColumn {
     // ==========================================================================
 
     /**
-     * Returns the Y position of the stem top (for stem-up notes or beaming).
-     * For notes without stems, returns the note head top.
+     * Returns the Y position of the stem top (for stem-up elements or beaming).
+     * For elements without stems, returns the element head top.
      */
     public double getStemTopSs() {
         return stemTopSs;
     }
 
     /**
-     * Returns the Y position of the stem bottom (for stem-down notes or beaming).
-     * For notes without stems, returns the note head bottom.
+     * Returns the Y position of the stem bottom (for stem-down elements or beaming).
+     * For elements without stems, returns the element head bottom.
      */
     public double getStemBottomSs() {
         return stemBottomSs;
@@ -235,18 +235,18 @@ public final class NoteColumn {
     // ==========================================================================
 
     /**
-     * Returns whether this note is part of a beam group.
+     * Returns whether this element is part of a beam group.
      */
     public boolean isBeamed() {
         return beamed;
     }
 
     /**
-     * Returns whether this note has an outgoing glissando.
+     * Returns whether this element has an outgoing glissando.
      */
     @SuppressWarnings("ObjectEquality")
     public boolean hasGlissando() {
-        return note.getGlissando() != Note.NO_GLISSANDO;
+        return element.getGlissando() != StaffElement.NO_GLISSANDO;
     }
 
     // ==========================================================================
@@ -254,7 +254,7 @@ public final class NoteColumn {
     // ==========================================================================
 
     /**
-     * Returns the X position of this column's note head left edge (glyph origin).
+     * Returns the X position of this column's element head left edge (glyph origin).
      * This is set by the HorizontalSpacingCalculator during layout.
      */
     public double getXSs() {
@@ -262,7 +262,7 @@ public final class NoteColumn {
     }
 
     /**
-     * Sets the X position of this column's note head left edge (glyph origin).
+     * Sets the X position of this column's element head left edge (glyph origin).
      * Called by the HorizontalSpacingCalculator during layout.
      *
      * @param x X position in staff spaces
@@ -278,8 +278,8 @@ public final class NoteColumn {
     @Override
     public String toString() {
         var sb = new StringBuilder();
-        sb.append("NoteColumn{");
-        sb.append("note=").append(note.getNoteType());
+        sb.append("ElementColumn{");
+        sb.append("element=").append(element.getType());
 
         if (hasGraceNotes()) {
             sb.append(", graceNotes=").append(graceNotes.size());

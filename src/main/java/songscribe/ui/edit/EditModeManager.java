@@ -27,11 +27,11 @@ import org.jetbrains.annotations.Nullable;
 
 import songscribe.music.ArticulationType;
 import songscribe.music.Composition;
+import songscribe.music.ElementType;
 import songscribe.music.ForceArticulation;
 import songscribe.music.Line;
 import songscribe.music.LyricsProcessor;
-import songscribe.music.Note;
-import songscribe.music.NoteType;
+import songscribe.music.StaffElement;
 import songscribe.ui.Control;
 import songscribe.ui.action.Actions;
 import songscribe.ui.clipboard.ClipboardManager;
@@ -40,14 +40,14 @@ import songscribe.ui.layout.Articulation;
 import songscribe.ui.layout2.InsertionSpacingCalculator;
 import songscribe.ui.message.LayoutChangeMessage;
 import songscribe.ui.message.MessageCenter;
-import songscribe.ui.playback.PlayNoteThread;
+import songscribe.ui.playback.PlayThread;
 import songscribe.ui.selection.SelectionCoordinator;
 
 /**
  * Manages edit mode state for the Score.
  * <p>
- * EditModeManager holds the state related to the insertion note (the note that will be inserted),
- * including its type, duration, and accidentals. Also handles note creation, decoration,
+ * EditModeManager holds the state related to the insertion element (the element that will be inserted),
+ * including its type, duration, and accidentals. Also handles element creation, decoration,
  * and modification logic. Extracted from Score.java as part of Phase 6 of the Score Cleanup refactoring.
  */
 public final class EditModeManager {
@@ -76,19 +76,19 @@ public final class EditModeManager {
     private final SelectionCoordinator selectionCoordinator;
     private final ScoreActions scoreActions;
 
-    // Whether the insertion note is visible (based on mouse position in mouse mode)
-    private boolean insertionNoteIsVisible = false;
+    // Whether the insertion element is visible (based on mouse position in mouse mode)
+    private boolean insertionElementIsVisible = false;
 
-    // The current insertion note that will be inserted
+    // The current insertion element that will be inserted
     @Nullable
-    private Note insertionNote = null;
+    private StaffElement insertionElement = null;
 
     // Control state for paste operations
     @Nullable
     private Control prevPasteControl = null;
 
-    // Whether to play a note sound when inserting notes
-    private boolean playInsertingNote = true;
+    // Whether to play a note sound when inserting elements
+    private boolean playInsertedNote = true;
 
     /**
      * Creates a new EditModeManager and registers it as the global instance.
@@ -115,63 +115,63 @@ public final class EditModeManager {
     }
 
     // -------------------------------------------------------------------------
-    // Insertion note accessors
+    // Insertion element accessors
     // -------------------------------------------------------------------------
 
     /**
-     * Returns whether the insertion note is currently visible.
+     * Returns whether the insertion element is currently visible.
      */
-    public boolean isInsertionNoteVisible() {
-        return insertionNoteIsVisible;
+    public boolean isInsertionElementVisible() {
+        return insertionElementIsVisible;
     }
 
     /**
-     * Sets whether the insertion note is visible.
+     * Sets whether the insertion element is visible.
      *
-     * @param visible true to show the insertion note, false to hide it
+     * @param visible true to show the insertion element, false to hide it
      */
-    public void setInsertionNoteVisible(boolean visible) {
-        this.insertionNoteIsVisible = visible;
+    public void setInsertionElementVisible(boolean visible) {
+        this.insertionElementIsVisible = visible;
     }
 
     /**
-     * Returns the current insertion note, or null if no insertion note is set.
+     * Returns the current insertion element, or null if no insertion element is set.
      */
     @Nullable
-    public Note getInsertionNote() {
-        return insertionNote;
+    public StaffElement getInsertionElement() {
+        return insertionElement;
     }
 
     /**
-     * Sets the current insertion note.
+     * Sets the current insertion element.
      *
-     * @param insertionNote The note to set as the insertion note, or null to clear it
+     * @param insertionElement The element to set as the insertion element, or null to clear it
      */
-    public void setInsertionNote(@Nullable Note insertionNote) {
-        this.insertionNote = insertionNote;
+    public void setInsertionElement(@Nullable StaffElement insertionElement) {
+        this.insertionElement = insertionElement;
     }
 
     /**
-     * Returns whether an insertion note is currently set.
+     * Returns whether an insertion element is currently set.
      */
-    public boolean hasInsertionNote() {
-        return insertionNote != null;
+    public boolean hasInsertionElement() {
+        return insertionElement != null;
     }
 
     /**
-     * Returns whether to play inserting notes.
+     * Returns whether to play inserted notes.
      */
-    public boolean isPlayInsertingNote() {
-        return playInsertingNote;
+    public boolean isPlayInsertedNote() {
+        return playInsertedNote;
     }
 
     /**
-     * Sets whether to play inserting notes.
+     * Sets whether to play inserted notes.
      *
-     * @param playInsertingNote true to play inserting notes, false otherwise
+     * @param playInsertedNote true to play inserted notes, false otherwise
      */
-    public void setPlayInsertingNote(boolean playInsertingNote) {
-        this.playInsertingNote = playInsertingNote;
+    public void setPlayInsertedNote(boolean playInsertedNote) {
+        this.playInsertedNote = playInsertedNote;
     }
 
     /**
@@ -184,195 +184,195 @@ public final class EditModeManager {
     }
 
     // -------------------------------------------------------------------------
-    // Insertion note creation and decoration
+    // Insertion element creation and decoration
     // -------------------------------------------------------------------------
 
     /**
-     * Creates a new insertion note based on the currently selected note type.
+     * Creates a new insertion element based on the currently selected element type.
      *
-     * @return The newly created insertion note
+     * @return The newly created insertion element
      */
     @NotNull
-    public Note makeInsertionNote() {
-        var noteType = NoteType.CROTCHET;
+    public StaffElement makeInsertionElement() {
+        var elementType = ElementType.CROTCHET;
         var durationAction = Actions.DURATION_ACTION_GROUP.getSelected();
 
         if (durationAction != null) {
-            noteType = durationAction.getType();
+            elementType = durationAction.getType();
         } else {
             var barAction = Actions.NON_DURATION_ACTION_GROUP.getSelected();
 
             if (barAction != null) {
-                noteType = barAction.getType();
+                elementType = barAction.getType();
             }
         }
 
-        return makeInsertionNote(noteType);
+        return makeInsertionElement(elementType);
     }
 
     /**
-     * Creates a new insertion note of the given type.
+     * Creates a new insertion element of the given type.
      *
-     * @param noteType The type of note to create
-     * @return The newly created insertion note
+     * @param elementType The type of element to create
+     * @return The newly created insertion element
      */
     @NotNull
-    public Note makeInsertionNote(@NotNull NoteType noteType) {
-        // Make a new note or rest of the given type
-        var type = noteType;
+    public StaffElement makeInsertionElement(@NotNull ElementType elementType) {
+        // Make a new element or rest of the given type
+        var type = elementType;
 
-        if (Actions.REST_ACTION.isSelected() && noteType.isRealNote()) {
-            type = NoteType.valueOf(noteType.name() + "_REST");
+        if (Actions.REST_ACTION.isSelected() && elementType.isPitchedNote()) {
+            type = ElementType.valueOf(elementType.name() + "_REST");
         }
 
-        var note = type.newInstance();
-        decorateNote(note);
-        return note;
+        var element = type.newInstance();
+        decorateElement(element);
+        return element;
     }
 
     /**
-     * Decorates a note with the currently selected accidentals, dots, and articulations.
+     * Decorates an element with the currently selected accidentals, dots, and articulations.
      *
-     * @param note The note to decorate
+     * @param element The element to decorate
      */
-    public void decorateNote(@NotNull Note note) {
+    public void decorateElement(@NotNull StaffElement element) {
         var dotAction = Actions.DOT_ACTION_GROUP.getSelected();
-        note.setDotCount(
+        element.setDotCount(
             (dotAction != null) ? dotAction.getDotLevel().ordinal() + 1 : 0
         );
 
         // Rests don't get any other decorations
-        if (note.getNoteType().isRest()) {
+        if (element.getType().isRest()) {
             return;
         }
 
         var accidentalAction = Actions.ACCIDENTAL_ACTION_GROUP.getSelected();
-        note.setAccidental(
+        element.setAccidental(
             (accidentalAction != null)
                 ? accidentalAction.getAccidental()
-                : Note.Accidental.NONE
+                : StaffElement.Accidental.NONE
         );
 
-        note.setAccidentalInParentheses(
+        element.setAccidentalInParentheses(
             Actions.ACCIDENTAL_IN_PARENS_ACTION.isSelected()
         );
 
-        note.setForceArticulation(
+        element.setForceArticulation(
             Actions.ACCENT_ACTION.isSelected() ? ForceArticulation.ACCENT : null
         );
 
         var durationArticulationAction =
             Actions.ARTICULATION_ACTION_GROUP.getSelected();
 
-        note.setDurationArticulation(
+        element.setDurationArticulation(
             (durationArticulationAction != null)
                 ? durationArticulationAction.getArticulation()
                 : null
         );
 
-        note.setFermata(Actions.FERMATA_ACTION.isSelected());
+        element.setFermata(Actions.FERMATA_ACTION.isSelected());
 
         // Dual-write: populate new Articulation list alongside old properties
-        note.clearArticulations();
+        element.clearArticulations();
 
         if (Actions.ACCENT_ACTION.isSelected()) {
-            note.addArticulation(
-                new Articulation(note, ArticulationType.ACCENT)
+            element.addArticulation(
+                new Articulation(element, ArticulationType.ACCENT)
             );
         }
 
         if (durationArticulationAction != null) {
-            note.addArticulation(
-                new Articulation(note, ArticulationType.STACCATO)
+            element.addArticulation(
+                new Articulation(element, ArticulationType.STACCATO)
             );
         }
     }
 
     // -------------------------------------------------------------------------
-    // Note modification operations
+    // Element modification operations
     // -------------------------------------------------------------------------
 
     /**
-     * Handles special note types that require custom insertion behavior.
-     * Returns true if the note was modified (and no further insertion should occur).
+     * Handles special element types that require custom insertion behavior.
+     * Returns true if the element was modified (and no further insertion should occur).
      *
      * @param line The line to insert into
-     * @param noteIndex The index at which to insert
-     * @return true if the note was modified, false if normal insertion should proceed
+     * @param elementIndex The index at which to insert
+     * @return true if the element was modified, false if normal insertion should proceed
      */
-    public boolean noteWasModified(@NotNull Line line, int noteIndex) {
+    public boolean elementWasModified(@NotNull Line line, int elementIndex) {
         scoreActions.clearSelection();
 
         if (
-            (insertionNote.getNoteType() == NoteType.REPEAT_LEFT) &&
-                ((noteIndex - 1) >= 0) &&
-                (line.getNote(noteIndex - 1).getNoteType() == NoteType.REPEAT_RIGHT)
+            (insertionElement.getType() == ElementType.REPEAT_LEFT) &&
+                ((elementIndex - 1) >= 0) &&
+                (line.getElement(elementIndex - 1).getType() == ElementType.REPEAT_RIGHT)
         ) {
-            var repeatLeftRight = NoteType.REPEAT_LEFT_RIGHT.newInstance();
-            repeatLeftRight.setXPosSs(line.getNote(noteIndex - 1).getXPosSs());
-            line.setNote(noteIndex - 1, repeatLeftRight);
+            var repeatLeftRight = ElementType.REPEAT_LEFT_RIGHT.newInstance();
+            repeatLeftRight.setXPosSs(line.getElement(elementIndex - 1).getXPosSs());
+            line.setElement(elementIndex - 1, repeatLeftRight);
             return true;
         }
 
         if (
-            (insertionNote.getNoteType() == NoteType.REPEAT_RIGHT) &&
-                (noteIndex < line.noteCount()) &&
-                (line.getNote(noteIndex).getNoteType() == NoteType.REPEAT_LEFT)
+            (insertionElement.getType() == ElementType.REPEAT_RIGHT) &&
+                (elementIndex < line.elementCount()) &&
+                (line.getElement(elementIndex).getType() == ElementType.REPEAT_LEFT)
         ) {
-            var repeatLeftRight = NoteType.REPEAT_LEFT_RIGHT.newInstance();
-            repeatLeftRight.setXPosSs(line.getNote(noteIndex).getXPosSs());
-            line.setNote(noteIndex, repeatLeftRight);
+            var repeatLeftRight = ElementType.REPEAT_LEFT_RIGHT.newInstance();
+            repeatLeftRight.setXPosSs(line.getElement(elementIndex).getXPosSs());
+            line.setElement(elementIndex, repeatLeftRight);
             return true;
         }
 
-        if (insertionNote.getNoteType() == NoteType.PASTE) {
+        if (insertionElement.getType() == ElementType.PASTE) {
             // If the user tries to insert into triplet, they will get an error message.
-            var iv = line.getTuplets().findInterval(noteIndex - 1);
+            var iv = line.getTuplets().findInterval(elementIndex - 1);
 
-            if ((iv != null) && ((noteIndex - 1) < iv.getEnd())) {
+            if ((iv != null) && ((elementIndex - 1) < iv.getEnd())) {
                 mainFrame.showErrorMessage("Cannot insert into a triplet.");
                 return true;
             }
 
-            line.removeInterval(noteIndex - 1, noteIndex);
+            line.removeInterval(elementIndex - 1, elementIndex);
             var diff =
-                ((noteIndex == line.noteCount())
+                ((elementIndex == line.elementCount())
                     ? (int) Math.round(InsertionSpacingCalculator.calculateAppendPositionSs(
-                    line, clipboardManager.getFirstNote()))
-                    : line.getNote(noteIndex).getXPosSs()) -
-                    clipboardManager.getFirstNote().getXPosSs();
+                    line, clipboardManager.getFirstElement()))
+                    : line.getElement(elementIndex).getXPosSs()) -
+                    clipboardManager.getFirstElement().getXPosSs();
             var copySize = clipboardManager.getSize();
 
             for (var i = 0; i < copySize; i++) {
-                var note = clipboardManager.getNote(i);
-                note.setXPosSs(note.getXPosSs() + diff);
-                line.addNote(noteIndex + i, note.clone());
+                var element = clipboardManager.getElement(i);
+                element.setXPosSs(element.getXPosSs() + diff);
+                line.addElement(elementIndex + i, element.clone());
             }
 
-            line.pasteIntervals(clipboardManager.getIntervalsCopyBuffer(), noteIndex);
+            line.pasteIntervals(clipboardManager.getIntervalsCopyBuffer(), elementIndex);
 
-            // Calculate shift for notes after the pasted block
-            var afterPasteIndex = noteIndex + copySize;
+            // Calculate shift for elements after the pasted block
+            var afterPasteIndex = elementIndex + copySize;
             int shift = 0;
 
-            if (afterPasteIndex < line.noteCount()) {
-                var lastPastedNote = line.getNote(afterPasteIndex - 1);
-                var firstNoteAfter = line.getNote(afterPasteIndex);
+            if (afterPasteIndex < line.elementCount()) {
+                var lastPastedElement = line.getElement(afterPasteIndex - 1);
+                var firstElementAfter = line.getElement(afterPasteIndex);
                 shift = (int) Math.round(
-                    InsertionSpacingCalculator.calculateNextNoteXSs(
-                        lastPastedNote, firstNoteAfter) -
-                        firstNoteAfter.getXPosSs());
+                    InsertionSpacingCalculator.calculateNextElementXSs(
+                        lastPastedElement, firstElementAfter) -
+                        firstElementAfter.getXPosSs());
                 shift = Math.max(0, shift);
             }
 
-            for (var i = afterPasteIndex; i < line.noteCount(); i++) {
-                line.getNote(i).setXPosSs(line.getNote(i).getXPosSs() + shift);
+            for (var i = afterPasteIndex; i < line.elementCount(); i++) {
+                line.getElement(i).setXPosSs(line.getElement(i).getXPosSs() + shift);
             }
 
             var control = scoreActions.getControl();
             scoreActions.setControl(prevPasteControl);
 
-            for (var i = noteIndex; i < (noteIndex + copySize); i++) {
+            for (var i = elementIndex; i < (elementIndex + copySize); i++) {
                 var interval = line.getBeamings().findInterval(i);
 
                 if (interval != null) {
@@ -387,31 +387,28 @@ public final class EditModeManager {
         return false;
     }
 
-    public void insertionNoteDidChange(@NotNull Line line, int noteIndex) {
-        //mainFrame.getUndoManager().undoableEditHappened(new UndoableEditEvent(this, new
-        // ModifyUndoableEdit(oldNote, oldNoteInfo, xIndex)));
+    public void insertionElementDidChange(@NotNull Line line, int elementIndex) {
+        // Capture the inserted element before insertionElement is updated for the next insertion.
+        var insertedElement = line.getElement(elementIndex);
+        var shouldPlayNote = playInsertedNote && insertedElement.getType().isNote();
 
-        // Capture the inserted note before insertionNote is updated for the next insertion.
-        var insertedNote = line.getNote(noteIndex);
-        var shouldPlayNote = playInsertingNote && insertedNote.getNoteType().isNote();
+        StaffElement nextElement;
 
-        Note nextNote;
-
-        if (insertionNote.getNoteType().isGraceNote()) {
+        if (insertionElement.getType().isGraceNote()) {
             // Grace note two-step: after inserting a grace note, auto-switch to glissando tool
             // so the user can connect it.
-            nextNote = NoteType.GLISSANDO.newInstance();
+            nextElement = ElementType.GLISSANDO.newInstance();
         } else {
-            nextNote = insertionNote.getNoteType().newInstance();
+            nextElement = insertionElement.getType().newInstance();
         }
 
-        // After inserting a note, turn off fermata and accidental parentheses
+        // After inserting an element, turn off fermata and accidental parentheses
         Actions.FERMATA_ACTION.setSelected(false);
         Actions.ACCIDENTAL_IN_PARENS_ACTION.setSelected(false);
 
-        // Add any other note decorations
-        decorateNote(nextNote);
-        scoreActions.setInsertionNote(nextNote);
+        // Add any other element decorations
+        decorateElement(nextElement);
+        scoreActions.setInsertionElement(nextElement);
         LyricsProcessor.spellLyrics(line);
         scoreActions.drawWidthIfWiderLine(line, false);
 
@@ -420,7 +417,7 @@ public final class EditModeManager {
         scoreActions.repaint();
 
         if (shouldPlayNote) {
-            new PlayNoteThread(insertedNote.getPitch()).start();
+            new PlayThread(insertedElement.getPitch()).start();
         }
     }
 

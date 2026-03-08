@@ -20,26 +20,24 @@
 
 package songscribe.ui.action;
 
-import java.awt.event.ActionEvent;
-
-import songscribe.UnitTest;
-import songscribe.music.Line;
-import songscribe.music.Note;
-import songscribe.music.NoteType;
-import songscribe.ui.Mode;
-import songscribe.ui.component.MainFrame;
-import songscribe.ui.component.Score;
-import songscribe.ui.selection.NoteSelection;
-import songscribe.ui.selection.SelectionCoordinator;
-
-import org.junit.jupiter.api.Test;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+
+import java.awt.event.*;
+
+import org.junit.jupiter.api.Test;
+
+import songscribe.UnitTest;
+import songscribe.music.Line;
+import songscribe.ui.Mode;
+import songscribe.ui.component.MainFrame;
+import songscribe.ui.component.Score;
+import songscribe.ui.selection.ElementSelection;
+import songscribe.ui.selection.SelectionCoordinator;
 
 class ApplyToSelectionInterceptTest extends UnitTest {
 
@@ -49,7 +47,7 @@ class ApplyToSelectionInterceptTest extends UnitTest {
     void testReflectableWithSelectionReturnsTrue() {
         try (var mainFrameMock = mockStatic(MainFrame.class)) {
             var env = setupMockEnv(mainFrameMock);
-            var selection = new NoteSelection(mock(Line.class), 0, 2);
+            var selection = new ElementSelection(mock(Line.class), 0, 2);
             when(env.coordinator.getSelection()).thenReturn(selection);
 
             var action = new FermataAction();
@@ -64,7 +62,7 @@ class ApplyToSelectionInterceptTest extends UnitTest {
     void testReflectableWithSelectionPassesSelectedFalse() {
         try (var mainFrameMock = mockStatic(MainFrame.class)) {
             var env = setupMockEnv(mainFrameMock);
-            var selection = new NoteSelection(mock(Line.class), 0, 2);
+            var selection = new ElementSelection(mock(Line.class), 0, 2);
             when(env.coordinator.getSelection()).thenReturn(selection);
 
             var action = new FermataAction();
@@ -102,7 +100,8 @@ class ApplyToSelectionInterceptTest extends UnitTest {
 
             var action = new UIAction("Test", null, 0, "test", "Test") {
                 @Override
-                public void actionPerformed(ActionEvent e) {}
+                public void actionPerformed(ActionEvent e) {
+                }
             };
 
             assertThat(action.applyToSelectionIfActive()).isFalse();
@@ -127,7 +126,7 @@ class ApplyToSelectionInterceptTest extends UnitTest {
         mainFrameMock.when(MainFrame::getInstance).thenReturn(mockFrame);
         when(mockFrame.getScore()).thenReturn(mockScore);
         when(mockScore.getSelectionCoordinator()).thenReturn(mockCoordinator);
-        when(mockScore.getMode()).thenReturn(Mode.NOTE_EDIT);
+        when(mockScore.getMode()).thenReturn(Mode.EDIT);
         when(mockScore.getSelectionSize()).thenReturn(0);
 
         return new MockEnv(mockFrame, mockScore, mockCoordinator);

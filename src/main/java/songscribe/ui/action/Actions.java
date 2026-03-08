@@ -27,9 +27,9 @@ import java.util.Arrays;
 import java.util.List;
 
 import songscribe.music.DurationArticulation;
+import songscribe.music.ElementType;
 import songscribe.music.ForceArticulation;
-import songscribe.music.Note;
-import songscribe.music.NoteType;
+import songscribe.music.StaffElement;
 import songscribe.ui.Control;
 import songscribe.ui.Mode;
 import songscribe.ui.dialog.AboutDialog;
@@ -69,7 +69,7 @@ public final class Actions {
     );
 
     public static final ModeAction EDIT_MODE_ACTION = new ModeAction(
-        Mode.NOTE_EDIT,
+        Mode.EDIT,
         "Edit Mode",
         "@\uEF63",
         22,
@@ -80,7 +80,7 @@ public final class Actions {
     public static final CycleModeAction CYCLE_MODE_ACTION = new CycleModeAction();
 
     public static final ModeAction ADJUST_MUSIC_MODE_ACTION = new ModeAction(
-        Mode.NOTE_ADJUSTMENT,
+        Mode.ADJUSTMENT,
         "Music Adjustment",
         "mode-note-adjustment.svg",
         26,
@@ -118,10 +118,10 @@ public final class Actions {
     //
     // Duration actions
     //
-    public static final NoteTypeAction GRACE_EIGHTH_NOTE_ACTION =
-        new NoteTypeAction(
-            NoteTypeAction.Kind.DURATION,
-            NoteType.GRACE_QUAVER,
+    public static final ElementTypeAction GRACE_EIGHTH_NOTE_ACTION =
+        new ElementTypeAction(
+            ElementTypeAction.Kind.DURATION,
+            ElementType.GRACE_QUAVER,
             "Grace note",
             "grace.svg",
             26,
@@ -137,10 +137,10 @@ public final class Actions {
     }
 
 
-    public static final NoteTypeAction THIRTY_SECOND_NOTE_ACTION =
-        new NoteTypeAction(
-            NoteTypeAction.Kind.DURATION,
-            NoteType.DEMI_SEMIQUAVER,
+    public static final ElementTypeAction THIRTY_SECOND_NOTE_ACTION =
+        new ElementTypeAction(
+            ElementTypeAction.Kind.DURATION,
+            ElementType.DEMI_SEMIQUAVER,
             "Thirty-second",
             "@\uF36B",
             18,
@@ -150,10 +150,10 @@ public final class Actions {
             0
         );
 
-    public static final NoteTypeAction SIXTEENTH_NOTE_ACTION =
-        new NoteTypeAction(
-            NoteTypeAction.Kind.DURATION,
-            NoteType.SEMIQUAVER,
+    public static final ElementTypeAction SIXTEENTH_NOTE_ACTION =
+        new ElementTypeAction(
+            ElementTypeAction.Kind.DURATION,
+            ElementType.SEMIQUAVER,
             "Sixteenth",
             "@\uF36A",
             18,
@@ -163,9 +163,9 @@ public final class Actions {
             0
         );
 
-    public static final NoteTypeAction EIGHTH_NOTE_ACTION = new NoteTypeAction(
-        NoteTypeAction.Kind.DURATION,
-        NoteType.QUAVER,
+    public static final ElementTypeAction EIGHTH_NOTE_ACTION = new ElementTypeAction(
+        ElementTypeAction.Kind.DURATION,
+        ElementType.QUAVER,
         "Eighth",
         "@\uF369",
         18,
@@ -175,9 +175,9 @@ public final class Actions {
         0
     );
 
-    public static final NoteTypeAction QUARTER_NOTE_ACTION = new NoteTypeAction(
-        NoteTypeAction.Kind.DURATION,
-        NoteType.CROTCHET,
+    public static final ElementTypeAction QUARTER_NOTE_ACTION = new ElementTypeAction(
+        ElementTypeAction.Kind.DURATION,
+        ElementType.CROTCHET,
         "Quarter",
         "@\uF368",
         18,
@@ -187,9 +187,9 @@ public final class Actions {
         0
     );
 
-    public static final NoteTypeAction HALF_NOTE_ACTION = new NoteTypeAction(
-        NoteTypeAction.Kind.DURATION,
-        NoteType.MINIM,
+    public static final ElementTypeAction HALF_NOTE_ACTION = new ElementTypeAction(
+        ElementTypeAction.Kind.DURATION,
+        ElementType.MINIM,
         "Half",
         "@\uF367",
         18,
@@ -199,9 +199,9 @@ public final class Actions {
         0
     );
 
-    public static final NoteTypeAction WHOLE_NOTE_ACTION = new NoteTypeAction(
-        NoteTypeAction.Kind.DURATION,
-        NoteType.SEMIBREVE,
+    public static final ElementTypeAction WHOLE_NOTE_ACTION = new ElementTypeAction(
+        ElementTypeAction.Kind.DURATION,
+        ElementType.SEMIBREVE,
         "Whole",
         "@\uF366",
         18,
@@ -211,9 +211,9 @@ public final class Actions {
         0
     );
 
-    public static final NoteTypeAction GLISSANDO_ACTION = new NoteTypeAction(
-        NoteTypeAction.Kind.DURATION,
-        NoteType.GLISSANDO,
+    public static final ElementTypeAction GLISSANDO_ACTION = new ElementTypeAction(
+        ElementTypeAction.Kind.DURATION,
+        ElementType.GLISSANDO,
         "Connecting glissando",
         "connecting-glissando.svg",
         26,
@@ -223,9 +223,9 @@ public final class Actions {
         0
     );
 
-    public static final NoteTypeAction SLIDE_OUT_ACTION = new NoteTypeAction(
-        NoteTypeAction.Kind.DURATION,
-        NoteType.GLISSANDO,
+    public static final ElementTypeAction SLIDE_OUT_ACTION = new ElementTypeAction(
+        ElementTypeAction.Kind.DURATION,
+        ElementType.GLISSANDO,
         "Slide out glissando",
         "slide-out.svg",
         26,
@@ -276,7 +276,7 @@ public final class Actions {
     public static final RestModeAction REST_ACTION = new RestModeAction();
 
     public static final AccidentalAction FLAT_ACTION = new AccidentalAction(
-        Note.Accidental.FLAT,
+        StaffElement.Accidental.FLAT,
         "Flat",
         "@\uF388",
         18,
@@ -288,7 +288,7 @@ public final class Actions {
 
     public static final AccidentalAction DOUBLE_FLAT_ACTION =
         new AccidentalAction(
-            Note.Accidental.DOUBLE_FLAT,
+            StaffElement.Accidental.DOUBLE_FLAT,
             "Double Flat",
             "@\uF389",
             18,
@@ -300,7 +300,7 @@ public final class Actions {
 
     public static final AccidentalAction NATURAL_FLAT_ACTION =
         new AccidentalAction(
-            Note.Accidental.NATURAL_FLAT,
+            StaffElement.Accidental.NATURAL_FLAT,
             "Natural Flat",
             "#\uE267",
             32,
@@ -309,7 +309,7 @@ public final class Actions {
         );
 
     public static final AccidentalAction NATURAL_ACTION = new AccidentalAction(
-        Note.Accidental.NATURAL,
+        StaffElement.Accidental.NATURAL,
         "Natural",
         "@\uF387",
         18,
@@ -320,7 +320,7 @@ public final class Actions {
     );
 
     public static final AccidentalAction SHARP_ACTION = new AccidentalAction(
-        Note.Accidental.SHARP,
+        StaffElement.Accidental.SHARP,
         "Sharp",
         "@\uF386",
         18,
@@ -332,7 +332,7 @@ public final class Actions {
 
     public static final AccidentalAction DOUBLE_SHARP_ACTION =
         new AccidentalAction(
-            Note.Accidental.DOUBLE_SHARP,
+            StaffElement.Accidental.DOUBLE_SHARP,
             "Double Sharp",
             "@\uF38A",
             18,
@@ -344,7 +344,7 @@ public final class Actions {
 
     public static final AccidentalAction NATURAL_SHARP_ACTION =
         new AccidentalAction(
-            Note.Accidental.NATURAL_SHARP,
+            StaffElement.Accidental.NATURAL_SHARP,
             "Natural Sharp",
             "#\uE268",
             32,
@@ -368,10 +368,10 @@ public final class Actions {
             NATURAL_SHARP_ACTION
         );
 
-    public static final NoteTypeAction[] REPEAT_ACTIONS = new NoteTypeAction[]{
-        new NoteTypeAction(
-            NoteTypeAction.Kind.NON_DURATION,
-            NoteType.REPEAT_LEFT,
+    public static final ElementTypeAction[] REPEAT_ACTIONS = new ElementTypeAction[]{
+        new ElementTypeAction(
+            ElementTypeAction.Kind.NON_DURATION,
+            ElementType.REPEAT_LEFT,
             "Left Repeat",
             "@\uEF68",
             24,
@@ -380,9 +380,9 @@ public final class Actions {
             KeyEvent.VK_L,
             0
         ),
-        new NoteTypeAction(
-            NoteTypeAction.Kind.NON_DURATION,
-            NoteType.REPEAT_RIGHT,
+        new ElementTypeAction(
+            ElementTypeAction.Kind.NON_DURATION,
+            ElementType.REPEAT_RIGHT,
             "Right Repeat",
             "@\uF345",
             24,
@@ -391,9 +391,9 @@ public final class Actions {
             KeyEvent.VK_R,
             InputEvent.SHIFT_DOWN_MASK
         ),
-        new NoteTypeAction(
-            NoteTypeAction.Kind.NON_DURATION,
-            NoteType.REPEAT_LEFT_RIGHT,
+        new ElementTypeAction(
+            ElementTypeAction.Kind.NON_DURATION,
+            ElementType.REPEAT_LEFT_RIGHT,
             "Left/Right Repeat",
             "@\uF34B",
             24,
@@ -404,10 +404,10 @@ public final class Actions {
         ),
     };
 
-    public static final NoteTypeAction[] BARLINE_ACTIONS = new NoteTypeAction[]{
-        new NoteTypeAction(
-            NoteTypeAction.Kind.NON_DURATION,
-            NoteType.FINAL_DOUBLE_BARLINE,
+    public static final ElementTypeAction[] BARLINE_ACTIONS = new ElementTypeAction[]{
+        new ElementTypeAction(
+            ElementTypeAction.Kind.NON_DURATION,
+            ElementType.FINAL_DOUBLE_BARLINE,
             "Final Double Barline",
             "@\uF34A",
             24,
@@ -416,9 +416,9 @@ public final class Actions {
             KeyEvent.VK_F,
             InputEvent.SHIFT_DOWN_MASK
         ),
-        new NoteTypeAction(
-            NoteTypeAction.Kind.NON_DURATION,
-            NoteType.DOUBLE_BARLINE,
+        new ElementTypeAction(
+            ElementTypeAction.Kind.NON_DURATION,
+            ElementType.DOUBLE_BARLINE,
             "Double Barline (Fine)",
             "@\uF347",
             24,
@@ -427,9 +427,9 @@ public final class Actions {
             KeyEvent.VK_D,
             0
         ),
-        new NoteTypeAction(
-            NoteTypeAction.Kind.NON_DURATION,
-            NoteType.SINGLE_BARLINE,
+        new ElementTypeAction(
+            ElementTypeAction.Kind.NON_DURATION,
+            ElementType.SINGLE_BARLINE,
             "Single Barline",
             "@\uF346",
             24,
@@ -440,10 +440,10 @@ public final class Actions {
         ),
     };
 
-    public static final NoteTypeAction BREATH_MARK_ACTION =
-        new NoteTypeAction(
-            NoteTypeAction.Kind.NON_DURATION,
-            NoteType.BREATH_MARK,
+    public static final ElementTypeAction BREATH_MARK_ACTION =
+        new ElementTypeAction(
+            ElementTypeAction.Kind.NON_DURATION,
+            ElementType.BREATH_MARK,
             "Breath Mark",
             null,
             0,
@@ -453,7 +453,7 @@ public final class Actions {
             0
         );
 
-    public static final ActionGroup<NoteTypeAction> NON_DURATION_ACTION_GROUP =
+    public static final ActionGroup<ElementTypeAction> NON_DURATION_ACTION_GROUP =
         new NonDurationActionGroup();
 
     public static final ForceArticulationAction ACCENT_ACTION =

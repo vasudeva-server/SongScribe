@@ -20,26 +20,26 @@
 
 package songscribe.ui.layout2;
 
-import songscribe.UnitTest;
-import songscribe.music.Note;
-import songscribe.music.NoteType;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.jupiter.api.Test;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import songscribe.UnitTest;
+import songscribe.music.ElementType;
+import songscribe.music.StaffElement;
 
-class NoteColumnBuilderTest extends UnitTest {
+class ElementColumnBuilderTest extends UnitTest {
 
-    private static Note note(NoteType type) {
+    private static StaffElement element(ElementType type) {
         return type.newInstance();
     }
 
     // T1: Unbeamed quaver right extent > notehead-only extent
     @Test
     void testUnbeamedQuaverExtentExceedsNoteheadOnly() {
-        var quaver = note(NoteType.QUAVER);
-        double noteheadOnly = NoteColumnBuilder.NOTE_HEAD_WIDTH_SS;
-        double extent = NoteColumnBuilder.calculateRightExtentSs(quaver, false, true);
+        var quaver = element(ElementType.QUAVER);
+        double noteheadOnly = ElementColumnBuilder.NOTE_HEAD_WIDTH_SS;
+        double extent = ElementColumnBuilder.calculateRightExtentSs(quaver, false, true);
 
         assertThat(extent).isGreaterThan(noteheadOnly);
     }
@@ -47,9 +47,9 @@ class NoteColumnBuilderTest extends UnitTest {
     // T2: Beamed quaver right extent equals notehead-only extent (no flag contribution)
     @Test
     void testBeamedQuaverExtentEqualsNoteheadOnly() {
-        var quaver = note(NoteType.QUAVER);
-        double noteheadOnly = NoteColumnBuilder.NOTE_HEAD_WIDTH_SS;
-        double extent = NoteColumnBuilder.calculateRightExtentSs(quaver, true, true);
+        var quaver = element(ElementType.QUAVER);
+        double noteheadOnly = ElementColumnBuilder.NOTE_HEAD_WIDTH_SS;
+        double extent = ElementColumnBuilder.calculateRightExtentSs(quaver, true, true);
 
         assertThat(extent).isEqualTo(noteheadOnly);
     }
@@ -57,11 +57,11 @@ class NoteColumnBuilderTest extends UnitTest {
     // T3: Non-flagged types (CROTCHET, MINIM, SEMIBREVE) are unchanged by beamed/upper
     @Test
     void testNonFlaggedTypesUnchanged() {
-        for (var type : new NoteType[]{NoteType.CROTCHET, NoteType.MINIM, NoteType.SEMIBREVE}) {
-            var n = note(type);
-            double noteheadOnly = NoteColumnBuilder.NOTE_HEAD_WIDTH_SS;
-            double extentUnbeamed = NoteColumnBuilder.calculateRightExtentSs(n, false, true);
-            double extentBeamed = NoteColumnBuilder.calculateRightExtentSs(n, true, true);
+        for (var type : new ElementType[]{ElementType.CROTCHET, ElementType.MINIM, ElementType.SEMIBREVE}) {
+            var n = element(type);
+            double noteheadOnly = ElementColumnBuilder.NOTE_HEAD_WIDTH_SS;
+            double extentUnbeamed = ElementColumnBuilder.calculateRightExtentSs(n, false, true);
+            double extentBeamed = ElementColumnBuilder.calculateRightExtentSs(n, true, true);
 
             assertThat(extentUnbeamed)
                 .as("Unbeamed %s should equal notehead extent", type)
@@ -75,9 +75,9 @@ class NoteColumnBuilderTest extends UnitTest {
     // T4: Stem-up vs stem-down produce different extents for an unbeamed quaver
     @Test
     void testStemUpVsStemDownProduceDifferentExtents() {
-        var quaver = note(NoteType.QUAVER);
-        double upExtent = NoteColumnBuilder.calculateRightExtentSs(quaver, false, true);
-        double downExtent = NoteColumnBuilder.calculateRightExtentSs(quaver, false, false);
+        var quaver = element(ElementType.QUAVER);
+        double upExtent = ElementColumnBuilder.calculateRightExtentSs(quaver, false, true);
+        double downExtent = ElementColumnBuilder.calculateRightExtentSs(quaver, false, false);
 
         assertThat(upExtent).isNotEqualTo(downExtent);
     }
@@ -85,11 +85,11 @@ class NoteColumnBuilderTest extends UnitTest {
     // T5: Grace quaver gets a scaled flag width (smaller than regular quaver)
     @Test
     void testGraceQuaverExtentSmallerThanRegularQuaver() {
-        var graceQuaver = note(NoteType.GRACE_QUAVER);
-        var regularQuaver = note(NoteType.QUAVER);
+        var graceQuaver = element(ElementType.GRACE_QUAVER);
+        var regularQuaver = element(ElementType.QUAVER);
 
-        double graceExtent = NoteColumnBuilder.calculateRightExtentSs(graceQuaver, false, true);
-        double regularExtent = NoteColumnBuilder.calculateRightExtentSs(regularQuaver, false, true);
+        double graceExtent = ElementColumnBuilder.calculateRightExtentSs(graceQuaver, false, true);
+        double regularExtent = ElementColumnBuilder.calculateRightExtentSs(regularQuaver, false, true);
 
         assertThat(graceExtent).isLessThan(regularExtent);
     }
@@ -97,15 +97,15 @@ class NoteColumnBuilderTest extends UnitTest {
     // T6: Dotted quaver extent is >= both notehead+dots extent and flag extent individually
     @Test
     void testDottedQuaverExtentIsMaxOfDotsAndFlag() {
-        var dottedQuaver = note(NoteType.QUAVER);
+        var dottedQuaver = element(ElementType.QUAVER);
         dottedQuaver.setDotCount(1);
 
-        double dotsOnlyExtent = NoteColumnBuilder.NOTE_HEAD_WIDTH_SS + 0.25 + 0.5; // DOT_GAP + DOT_WIDTH
+        double dotsOnlyExtent = ElementColumnBuilder.NOTE_HEAD_WIDTH_SS + 0.25 + 0.5; // DOT_GAP + DOT_WIDTH
 
-        var undottedQuaver = note(NoteType.QUAVER);
-        double flagOnlyExtent = NoteColumnBuilder.calculateRightExtentSs(undottedQuaver, false, true);
+        var undottedQuaver = element(ElementType.QUAVER);
+        double flagOnlyExtent = ElementColumnBuilder.calculateRightExtentSs(undottedQuaver, false, true);
 
-        double actual = NoteColumnBuilder.calculateRightExtentSs(dottedQuaver, false, true);
+        double actual = ElementColumnBuilder.calculateRightExtentSs(dottedQuaver, false, true);
 
         assertThat(actual)
             .isGreaterThanOrEqualTo(dotsOnlyExtent)

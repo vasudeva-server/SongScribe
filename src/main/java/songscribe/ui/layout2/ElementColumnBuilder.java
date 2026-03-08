@@ -29,16 +29,16 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import songscribe.music.Line;
-import songscribe.music.Note;
+import songscribe.music.StaffElement;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
 import songscribe.ui.renderer.NoteRenderer;
 
 /**
- * Builds {@link NoteColumn} instances from a Line's notes.
+ * Builds {@link ElementColumn} instances from a Line's elements.
  * <p>
  * This builder constructs the fundamental spacing units for the engraving system.
- * Each note (or rest, barline, etc.) becomes a NoteColumn with:
+ * Each element (note, rest, barline, etc.) becomes an ElementColumn with:
  * <ul>
  *   <li>Horizontal extents (left for accidentals/grace notes, right for dots)</li>
  *   <li>Stem positions (for beam coordination)</li>
@@ -48,11 +48,11 @@ import songscribe.ui.renderer.NoteRenderer;
  * <p>
  * Usage:
  * <pre>{@code
- * var builder = new NoteColumnBuilder(g2, lyricsFont);
- * List<NoteColumn> columns = builder.buildColumns(line);
+ * var builder = new ElementColumnBuilder(g2, lyricsFont);
+ * List<ElementColumn> columns = builder.buildColumns(line);
  * }</pre>
  */
-public class NoteColumnBuilder {
+public class ElementColumnBuilder {
 
     private static final SMuFLMetadata METADATA = SMuFLMetadata.getInstance();
 
@@ -72,35 +72,35 @@ public class NoteColumnBuilder {
     private final FontMetrics lyricsFontMetrics;
 
     /**
-     * Creates a new NoteColumnBuilder.
+     * Creates a new ElementColumnBuilder.
      *
      * @param g2         Graphics context for measuring text
      * @param lyricsFont Font used for lyrics (for measuring syllable widths)
      */
-    public NoteColumnBuilder(@NotNull Graphics2D g2, @NotNull Font lyricsFont) {
+    public ElementColumnBuilder(@NotNull Graphics2D g2, @NotNull Font lyricsFont) {
         this.g2 = g2;
         this.lyricsFont = lyricsFont;
         this.lyricsFontMetrics = g2.getFontMetrics(lyricsFont);
     }
 
     /**
-     * Builds NoteColumns for all notes in a line.
+     * Builds ElementColumns for all elements in a line.
      *
      * @param line The line to process
-     * @return List of NoteColumns in note order
+     * @return List of ElementColumns in element order
      */
-    public @NotNull List<NoteColumn> buildColumns(@NotNull Line line) {
-        var noteCount = line.noteCount();
+    public @NotNull List<ElementColumn> buildColumns(@NotNull Line line) {
+        var elementCount = line.elementCount();
 
-        if (noteCount == 0) {
+        if (elementCount == 0) {
             return Collections.emptyList();
         }
 
-        var columns = new ArrayList<NoteColumn>(noteCount);
+        var columns = new ArrayList<ElementColumn>(elementCount);
 
-        for (var i = 0; i < noteCount; i++) {
-            var note = line.getNote(i);
-            var column = buildColumn(note, line);
+        for (var i = 0; i < elementCount; i++) {
+            var element = line.getElement(i);
+            var column = buildColumn(element, line);
             columns.add(column);
         }
 
@@ -108,34 +108,34 @@ public class NoteColumnBuilder {
     }
 
     /**
-     * Builds a single NoteColumn for a note.
+     * Builds a single ElementColumn for an element.
      *
-     * @param note The note to process
-     * @param line The line containing the note (for beaming lookup)
-     * @return The constructed NoteColumn
+     * @param element The element to process
+     * @param line    The line containing the element (for beaming lookup)
+     * @return The constructed ElementColumn
      */
-    public @NotNull NoteColumn buildColumn(@NotNull Note note, @NotNull Line line) {
+    public @NotNull ElementColumn buildColumn(@NotNull StaffElement element, @NotNull Line line) {
         // Determine beam membership first — needed for right extent calculation
-        int noteIndex = line.getNoteIndex(note);
-        boolean beamed = line.getBeamings().findInterval(noteIndex) != null;
+        int elementIndex = line.getElementIndex(element);
+        boolean beamed = line.getBeamings().findInterval(elementIndex) != null;
 
         // Calculate horizontal extents
-        double leftExtentSs = calculateLeftExtentSs(note);
-        double rightExtentSs = calculateRightExtentSs(note, beamed, note.isUpper());
+        double leftExtentSs = calculateLeftExtentSs(element);
+        double rightExtentSs = calculateRightExtentSs(element, beamed, element.isUpper());
 
         // Calculate stem positions
-        double stemTopSs = calculateStemTopSs(note);
-        double stemBottomSs = calculateStemBottomSs(note);
+        double stemTopSs = calculateStemTopSs(element);
+        double stemBottomSs = calculateStemBottomSs(element);
 
         // Get syllable and measure width
-        String syllable = getSyllable(note);
+        String syllable = getSyllable(element);
         double syllableWidthSs = measureSyllableWidthSs(syllable);
 
         // Get grace notes (currently not implemented in data model)
-        List<Note> graceNotes = getGraceNotes(note);
+        List<StaffElement> graceNotes = getGraceNotes(element);
 
-        return new NoteColumn(
-            note,
+        return new ElementColumn(
+            element,
             graceNotes,
             leftExtentSs,
             rightExtentSs,
@@ -152,20 +152,20 @@ public class NoteColumnBuilder {
     // ==========================================================================
 
     /**
-     * Calculates the left extent of a note column.
-     * This includes any accidental to the left of the note head.
+     * Calculates the left extent of an element column.
+     * This includes any accidental to the left of the element head.
      *
-     * @param note The note
-     * @return Left extent in ss relative to note head left edge (glyph origin);
+     * @param element The element
+     * @return Left extent in ss relative to element head left edge (glyph origin);
      *         0.0 with no accidental, negative when an accidental is present
      */
-    public static double calculateLeftExtentSs(@NotNull Note note) {
-        // Note head left edge is at xSs (the glyph origin), so the base extent is 0
+    public static double calculateLeftExtentSs(@NotNull StaffElement element) {
+        // Element head left edge is at xSs (the glyph origin), so the base extent is 0
         double extentSs = 0.0;
 
         // Add accidental width if present
-        if (note.getAccidental() != Note.Accidental.NONE) {
-            double accidentalWidthSs = NoteRenderer.getAccidentalWidthSs(note);
+        if (element.getAccidental() != StaffElement.Accidental.NONE) {
+            double accidentalWidthSs = NoteRenderer.getAccidentalWidthSs(element);
             extentSs -= (accidentalWidthSs + LayoutConstants.ACCIDENTAL_GAP_SS);
         }
 
@@ -173,23 +173,23 @@ public class NoteColumnBuilder {
     }
 
     /**
-     * Calculates the right extent of a note column.
-     * This includes the note head right edge, any dots, and the flag extent for unbeamed
-     * flagged notes (8th, 16th, 32nd, grace quaver).
+     * Calculates the right extent of an element column.
+     * This includes the element head right edge, any dots, and the flag extent for unbeamed
+     * flagged elements (8th, 16th, 32nd, grace quaver).
      *
-     * @param note   The note
-     * @param beamed {@code true} if the note is part of a beam group (flags are suppressed)
-     * @param upper  {@code true} if the stem goes up; affects which stem anchor is used
-     * @return Right extent in ss relative to note head left edge (glyph origin)
+     * @param element The element
+     * @param beamed  {@code true} if the element is part of a beam group (flags are suppressed)
+     * @param upper   {@code true} if the stem goes up; affects which stem anchor is used
+     * @return Right extent in ss relative to element head left edge (glyph origin)
      */
-    public static double calculateRightExtentSs(@NotNull Note note, boolean beamed, boolean upper) {
-        // Note head right edge: use small notehead width for grace notes
-        double noteheadRightExtent = note.getNoteType().isGraceNote()
+    public static double calculateRightExtentSs(@NotNull StaffElement element, boolean beamed, boolean upper) {
+        // Element head right edge: use small notehead width for grace notes
+        double noteheadRightExtent = element.getType().isGraceNote()
             ? NOTE_HEAD_SMALL_WIDTH_SS
             : NOTE_HEAD_WIDTH_SS;
 
         // Add dot widths if present
-        int dotCount = note.getDotCount();
+        int dotCount = element.getDotCount();
 
         if (dotCount > 0) {
             // First dot: gap + dot
@@ -201,15 +201,15 @@ public class NoteColumnBuilder {
             }
         }
 
-        // Flag extent: only for unbeamed notes that have a flag
-        var flagGlyph = note.getNoteType().getFlagGlyph(upper);
+        // Flag extent: only for unbeamed elements that have a flag
+        var flagGlyph = element.getType().getFlagGlyph(upper);
         double flagRightExtent = 0.0;
 
         if (!beamed && flagGlyph != null) {
             double flagAdvanceWidthSs = advanceWidthSs(flagGlyph);
 
             // Grace notes always stem up, use the small notehead anchor
-            double stemAnchorX = note.getNoteType().isGraceNote()
+            double stemAnchorX = element.getType().isGraceNote()
                 ? LayoutConstants.STEM_UP_SE_BLACK_SMALL.x()
                 : (upper ? LayoutConstants.STEM_UP_SE_BLACK.x() : LayoutConstants.STEM_DOWN_NW_BLACK.x());
 
@@ -230,51 +230,51 @@ public class NoteColumnBuilder {
 
     /**
      * Calculates the Y position of the stem top.
-     * For stem-up notes, this is above the note head.
-     * For stem-down or stemless notes, this is the note head top.
+     * For stem-up elements, this is above the element head.
+     * For stem-down or stemless elements, this is the element head top.
      *
-     * @param note The note
+     * @param element The element
      * @return Stem top Y position in ss (relative to staff, negative = above)
      */
-    private double calculateStemTopSs(@NotNull Note note) {
-        var noteType = note.getNoteType();
+    private double calculateStemTopSs(@NotNull StaffElement element) {
+        var elementType = element.getType();
 
-        // Rests and stemless notes: use note head top
-        if (!noteType.isNoteWithStem()) {
+        // Rests and stemless elements: use element head top
+        if (!elementType.isNoteWithStem()) {
             return -HALF_NOTE_HEAD_SS;
         }
 
         // Stem up: stem extends upward
-        if (!note.isUpper()) {
+        if (!element.isUpper()) {
             return -LayoutConstants.STEM_LENGTH_SS;
         }
 
-        // Stem down: top is just above note head
+        // Stem down: top is just above element head
         return -HALF_NOTE_HEAD_SS;
     }
 
     /**
      * Calculates the Y position of the stem bottom.
-     * For stem-down notes, this is below the note head.
-     * For stem-up or stemless notes, this is the note head bottom.
+     * For stem-down elements, this is below the element head.
+     * For stem-up or stemless elements, this is the element head bottom.
      *
-     * @param note The note
+     * @param element The element
      * @return Stem bottom Y position in ss (relative to staff, positive = below)
      */
-    private double calculateStemBottomSs(@NotNull Note note) {
-        var noteType = note.getNoteType();
+    private double calculateStemBottomSs(@NotNull StaffElement element) {
+        var elementType = element.getType();
 
-        // Rests and stemless notes: use note head bottom
-        if (!noteType.isNoteWithStem()) {
+        // Rests and stemless elements: use element head bottom
+        if (!elementType.isNoteWithStem()) {
             return HALF_NOTE_HEAD_SS;
         }
 
         // Stem down: stem extends downward
-        if (note.isUpper()) {
+        if (element.isUpper()) {
             return LayoutConstants.STEM_LENGTH_SS;
         }
 
-        // Stem up: bottom is just below note head
+        // Stem up: bottom is just below element head
         return HALF_NOTE_HEAD_SS;
     }
 
@@ -283,14 +283,13 @@ public class NoteColumnBuilder {
     // ==========================================================================
 
     /**
-     * Gets the syllable text for a note.
-     * Syllables are stored in note.acceleration.syllable.
+     * Gets the syllable text for an element.
      *
-     * @param note The note
+     * @param element The element
      * @return Syllable text, or null if none
      */
-    private @Nullable String getSyllable(@NotNull Note note) {
-        return note.properties.syllable;
+    private @Nullable String getSyllable(@NotNull StaffElement element) {
+        return element.properties.syllable;
     }
 
     /**
@@ -314,17 +313,17 @@ public class NoteColumnBuilder {
     // ==========================================================================
 
     /**
-     * Gets the grace notes anchored to a main note.
+     * Gets the grace notes anchored to a main element.
      * <p>
      * Note: Grace notes are not yet fully implemented in the data model.
      * This method returns an empty list for now.
      *
-     * @param note The main note
+     * @param element The main element
      * @return List of grace notes (empty for now)
      */
-    private @NotNull List<Note> getGraceNotes(@NotNull Note note) {
+    private @NotNull List<StaffElement> getGraceNotes(@NotNull StaffElement element) {
         // TODO: Implement grace note retrieval when data model supports it
-        // Grace notes would be stored on the main note or looked up from the line
+        // Grace notes would be stored on the main element or looked up from the line
         return Collections.emptyList();
     }
 }

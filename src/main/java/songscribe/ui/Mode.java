@@ -28,10 +28,10 @@ public enum Mode {
     SELECT,
 
     // Editing notes
-    NOTE_EDIT,
+    EDIT,
 
     // Adjusting the horizontal position of notes
-    NOTE_ADJUSTMENT,
+    ADJUSTMENT,
 
     // Adjusting the horizontal position of syllabified lyrics
     LYRICS_ADJUSTMENT,
@@ -41,9 +41,9 @@ public enum Mode {
 
     public boolean isAdjustmentMode() {
         return (
-            (this == NOTE_ADJUSTMENT) ||
-            (this == VERTICAL_ADJUSTMENT) ||
-            (this == LYRICS_ADJUSTMENT)
+            (this == ADJUSTMENT) ||
+                (this == VERTICAL_ADJUSTMENT) ||
+                (this == LYRICS_ADJUSTMENT)
         );
     }
 }

@@ -25,12 +25,12 @@ import java.awt.event.*;
 import javax.swing.*;
 
 import songscribe.music.BeatChange;
-import songscribe.music.Note;
+import songscribe.music.StaffElement;
 import songscribe.ui.renderer.BeatChangeRenderer;
 
 public class BeatChangeDialog extends StandardDialog {
 
-    private Note selectedNote = null;
+    private StaffElement selectedElement = null;
     private final JButton removeButton;
     private final ButtonGroup bg;
 
@@ -56,16 +56,20 @@ public class BeatChangeDialog extends StandardDialog {
                     }
 
                     @Override
-                    public void mousePressed(MouseEvent e) {}
+                    public void mousePressed(MouseEvent e) {
+                    }
 
                     @Override
-                    public void mouseReleased(MouseEvent e) {}
+                    public void mouseReleased(MouseEvent e) {
+                    }
 
                     @Override
-                    public void mouseEntered(MouseEvent e) {}
+                    public void mouseEntered(MouseEvent e) {
+                    }
 
                     @Override
-                    public void mouseExited(MouseEvent e) {}
+                    public void mouseExited(MouseEvent e) {
+                    }
                 }
             );
             panel.add(component);
@@ -79,7 +83,7 @@ public class BeatChangeDialog extends StandardDialog {
         removeButton = new JButton("Remove");
         removeButton.addActionListener(_ -> {
             var score = mainFrame.getScore();
-            selectedNote.setBeatChange(null);
+            selectedElement.setBeatChange(null);
             setVisible(false);
             score.repaint();
             score.getComposition().setModified(true);
@@ -94,17 +98,17 @@ public class BeatChangeDialog extends StandardDialog {
     @Override
     protected void getData() {
         var score = mainFrame.getScore();
-        selectedNote = score.getSingleSelectedNote();
+        selectedElement = score.getSingleSelectedElement();
         BeatChange beatChange = null;
 
-        if (selectedNote != null) {
-            beatChange = selectedNote.getBeatChange();
+        if (selectedElement != null) {
+            beatChange = selectedElement.getBeatChange();
         }
 
         var bcnull = beatChange == null;
 
         if (beatChange != null) {
-            for (var elements = bg.getElements(); elements.hasMoreElements();) {
+            for (var elements = bg.getElements(); elements.hasMoreElements(); ) {
                 var element = elements.nextElement();
 
                 if (element.getActionCommand().equals(beatChange.name())) {
@@ -133,7 +137,7 @@ public class BeatChangeDialog extends StandardDialog {
             return;
         }
 
-        selectedNote.setBeatChange(
+        selectedElement.setBeatChange(
             BeatChange.valueOf(bg.getSelection().getActionCommand())
         );
     }

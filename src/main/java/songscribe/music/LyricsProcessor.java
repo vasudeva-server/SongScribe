@@ -53,12 +53,12 @@ public class LyricsProcessor {
      */
     public static void spellLyrics(@NotNull Line line) {
         // delete the current values
-        line.beginRelation = Note.SyllableRelation.NO;
+        line.beginRelation = StaffElement.SyllableRelation.NO;
 
-        for (var n = 0; n < line.noteCount(); n++) {
-            var note = line.getNote(n);
+        for (var n = 0; n < line.elementCount(); n++) {
+            var note = line.getElement(n);
             note.properties.syllable = "";
-            note.properties.syllableRelation = Note.SyllableRelation.NO;
+            note.properties.syllableRelation = StaffElement.SyllableRelation.NO;
         }
 
         // get the lyrics slice
@@ -87,7 +87,7 @@ public class LyricsProcessor {
 
         // calculate the begin relations
         if (lyrics.startsWith("--")) {
-            line.beginRelation = Note.SyllableRelation.ONE_DASH;
+            line.beginRelation = StaffElement.SyllableRelation.ONE_DASH;
             lyrics = lyrics.substring(2);
             beginIndex += 2;
         }
@@ -103,11 +103,11 @@ public class LyricsProcessor {
                 var syllable = (begin < i)
                     ? lyrics.substring(begin, i)
                     : Constants.UNDERSCORE;
-                Note.SyllableRelation syllableRelation;
+                StaffElement.SyllableRelation syllableRelation;
 
                 if ((c == '\n') || (c == ' ')) {
-                    syllableRelation = Note.SyllableRelation.NO;
-                    noteIndex = setSyllableForNextNote(
+                    syllableRelation = StaffElement.SyllableRelation.NO;
+                    noteIndex = setSyllableForNextElement(
                         line,
                         noteIndex,
                         syllable,
@@ -119,13 +119,13 @@ public class LyricsProcessor {
                         (lyrics.charAt(i + 1) == '-') ||
                             (lyrics.charAt(i + 1) == '\n')
                     ) {
-                        syllableRelation = Note.SyllableRelation.ONE_DASH;
+                        syllableRelation = StaffElement.SyllableRelation.ONE_DASH;
                         i++;
                     } else {
-                        syllableRelation = Note.SyllableRelation.ONE_DASH;
+                        syllableRelation = StaffElement.SyllableRelation.ONE_DASH;
                     }
 
-                    noteIndex = setSyllableForNextNote(
+                    noteIndex = setSyllableForNextElement(
                         line,
                         noteIndex,
                         syllable,
@@ -146,10 +146,10 @@ public class LyricsProcessor {
                     }
 
                     // Always use EXTENDER for underscores (duration indication)
-                    syllableRelation = Note.SyllableRelation.EXTENDER;
+                    syllableRelation = StaffElement.SyllableRelation.EXTENDER;
 
                     if (i > 0) {
-                        noteIndex = setSyllableForNextNote(
+                        noteIndex = setSyllableForNextElement(
                             line,
                             noteIndex,
                             syllable,
@@ -160,7 +160,7 @@ public class LyricsProcessor {
                     }
                 }
 
-                if (noteIndex >= line.noteCount()) {
+                if (noteIndex >= line.elementCount()) {
                     break;
                 }
 
@@ -171,34 +171,34 @@ public class LyricsProcessor {
         LOG.fine("Line: " + composition.indexOfLine(line));
         LOG.fine("BeginRelation: " + line.beginRelation);
 
-        for (var i = 0; i < line.noteCount(); i++) {
+        for (var i = 0; i < line.elementCount(); i++) {
             LOG.fine(
-                line.getNote(i).properties.syllable +
+                line.getElement(i).properties.syllable +
                     "   Relation: " +
-                    line.getNote(i).properties.syllableRelation.name()
+                    line.getElement(i).properties.syllableRelation.name()
             );
         }
     }
 
-    private static int setSyllableForNextNote(
+    private static int setSyllableForNextElement(
         @NotNull Line line,
         int noteIndex,
         String syllable,
-        Note.SyllableRelation syllableRelation
+        StaffElement.SyllableRelation syllableRelation
     ) {
         var index = noteIndex;
 
         while (
-            (index < line.noteCount()) &&
-                !line.getNote(index).getNoteType().isNote() &&
-                !line.getNote(index).isForceSyllable()
+            (index < line.elementCount()) &&
+                !line.getElement(index).getType().isNote() &&
+                !line.getElement(index).isForceSyllable()
         ) {
             index++;
         }
 
-        if (index < line.noteCount()) {
-            line.getNote(index).properties.syllable = syllable;
-            line.getNote(index).properties.syllableRelation =
+        if (index < line.elementCount()) {
+            line.getElement(index).properties.syllable = syllable;
+            line.getElement(index).properties.syllableRelation =
                 syllableRelation;
         }
 

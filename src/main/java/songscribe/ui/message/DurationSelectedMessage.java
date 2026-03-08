@@ -20,11 +20,11 @@
 
 package songscribe.ui.message;
 
-import songscribe.music.NoteType;
+import songscribe.music.ElementType;
 
-public class DurationSelectedMessage extends NoteTypeSelectedMessage {
+public class DurationSelectedMessage extends ElementTypeSelectedMessage {
 
-    public DurationSelectedMessage(NoteType noteType) {
+    public DurationSelectedMessage(ElementType noteType) {
         super(noteType);
     }
 }

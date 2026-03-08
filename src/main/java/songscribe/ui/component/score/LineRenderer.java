@@ -25,7 +25,7 @@ import java.awt.geom.*;
 
 import org.jetbrains.annotations.NotNull;
 
-import songscribe.music.Note;
+import songscribe.music.StaffElement;
 import songscribe.smufl.SMuFLMetadata;
 import songscribe.ui.Mode;
 import songscribe.ui.component.Score;
@@ -133,7 +133,7 @@ class LineRenderer {
         ctx.setEditMode(lc.isEditMode());
 
         // Override selection color when a pitch drag is in progress
-        if (lc.getNoteDragHandler().isDragActive()) {
+        if (lc.getElementDragHandler().isDragActive()) {
             ctx.setSelectionColor(INSERTION_NOTE_COLOR);
         }
 
@@ -143,7 +143,7 @@ class LineRenderer {
         // Render in proper order (back to front)
         drawStaffLines(g2);
         renderLineBeginning(g2, ctx);
-        renderNotes(g2, ctx);
+        renderElements(g2, ctx);
         renderGlissandos(g2, ctx);
         renderBeams(g2, ctx);
         renderTies(g2, ctx);
@@ -152,7 +152,7 @@ class LineRenderer {
         renderDynamics(g2, ctx);
         renderEndings(g2, ctx);
         renderAttachments(g2, ctx);
-        renderInsertionNote(g2, ctx);
+        renderInsertionElement(g2, ctx);
     }
 
     /**
@@ -176,10 +176,10 @@ class LineRenderer {
         if (line != null) {
             g2.setColor(new Color(255, 0, 255, 128));
 
-            for (var i = 0; i < line.noteCount(); i++) {
-                var note = line.getNote(i);
-                var x = note.getXPosSs();
-                var y = lc.staffPositionToYPx(note.getStaffPosition());
+            for (var i = 0; i < line.elementCount(); i++) {
+                var element = line.getElement(i);
+                var x = element.getXPosSs();
+                var y = lc.staffPositionToYPx(element.getStaffPosition());
                 g2.fillOval(x - 2, y - 2, 4, 4);
             }
         }
@@ -196,7 +196,7 @@ class LineRenderer {
             var staffTopYSs = layoutResult.getStaffTopYSs();
             var staffBottomYSs = layoutResult.getStaffBottomYSs();
 
-            for (var column : layoutResult.getNoteColumns().values()) {
+            for (var column : layoutResult.getElementColumns().values()) {
                 var leftX = column.getLeftEdgeXSs();
                 var rightX = column.getRightEdgeXSs();
                 var width = rightX - leftX;
@@ -297,18 +297,18 @@ class LineRenderer {
      * @param g2  Graphics context
      * @param ctx Element render context
      */
-    private void renderNotes(Graphics2D g2, ElementRenderContext ctx) {
+    private void renderElements(Graphics2D g2, ElementRenderContext ctx) {
         var noteRenderer = NoteRenderer.getInstance();
         var line = lc.getLine();
 
-        for (var i = 0; i < line.noteCount(); i++) {
-            var note = line.getNote(i);
+        for (var i = 0; i < line.elementCount(); i++) {
+            var element = line.getElement(i);
 
             // Apply color based on selection/playing state
-            var color = getNoteColor(i, ctx);
+            var color = getElementColor(i, ctx);
             g2.setColor(color);
 
-            noteRenderer.render(g2, note, ctx);
+            noteRenderer.render(g2, element, ctx);
         }
 
         // Restore default color
@@ -316,32 +316,32 @@ class LineRenderer {
     }
 
     /**
-     * Determines the color for rendering a note based on selection and playback state.
+     * Determines the color for rendering an element based on selection and playback state.
      *
-     * @param noteIndex The index of the note within this line
+     * @param elementIndex The index of the element within this line
      * @return The color to use for rendering
      */
-    private Color getNoteColor(int noteIndex, ElementRenderContext ctx) {
+    private Color getElementColor(int elementIndex, ElementRenderContext ctx) {
         if (!lc.isEditMode()) {
             return Color.BLACK;
         }
 
-        // Check if note is currently playing
-        if (lc.getPlayingNoteIndex() == noteIndex) {
+        // Check if element is currently playing
+        if (lc.getPlayingNoteIndex() == elementIndex) {
             return Score.PLAYING_NOTE_COLOR;
         }
 
-        // Check if note is selected or highlighted by insertion-note hover
+        // Check if element is selected or highlighted by insertion element hover
         var selectionProvider = lc.getSelectionProvider();
         var isSelected = selectionProvider != null
-            && selectionProvider.isNoteSelected(noteIndex, lc.getLineIndex());
+            && selectionProvider.isElementSelected(elementIndex, lc.getLineIndex());
 
         if (isSelected) {
             return ctx.getSelectionColor();
         }
 
-        var isHovered = InsertionNoteManager.getHoveredNoteLineIndex() == lc.getLineIndex()
-            && InsertionNoteManager.getHoveredNoteIndex() == noteIndex;
+        var isHovered = InsertionElementManager.getHoveredElementLineIndex() == lc.getLineIndex()
+            && InsertionElementManager.getHoveredElementIndex() == elementIndex;
 
         if (isHovered) {
             return INSERTION_NOTE_COLOR;
@@ -487,37 +487,37 @@ class LineRenderer {
 
         g2.setColor(Color.BLACK);
 
-        for (var i = 0; i < line.noteCount(); i++) {
-            var note = line.getNote(i);
+        for (var i = 0; i < line.elementCount(); i++) {
+            var element = line.getElement(i);
 
-            // Tempo marking (including initial tempo on first note of first line)
+            // Tempo marking (including initial tempo on first element of first line)
             // Check layout result for TempoAttachment - layout creates one for initial tempo too
             var tempoBounds = layoutResult != null
-                ? layoutResult.findAttachmentBounds(note, TempoAttachment.class)
+                ? layoutResult.findAttachmentBounds(element, TempoAttachment.class)
                 : null;
 
             if (tempoBounds != null) {
-                tempoRenderer.render(note, g2, ctx);
+                tempoRenderer.render(element, g2, ctx);
             }
 
             // Beat change
-            if (note.getBeatChange() != null) {
-                beatChangeRenderer.render(note, g2, ctx);
+            if (element.getBeatChange() != null) {
+                beatChangeRenderer.render(element, g2, ctx);
             }
 
             // Fermata
-            if (note.isFermata()) {
-                fermataRenderer.render(note, g2, ctx);
+            if (element.isFermata()) {
+                fermataRenderer.render(element, g2, ctx);
             }
 
             // Annotation
-            if (note.getAnnotation() != null) {
-                annotationRenderer.render(note, g2, ctx);
+            if (element.getAnnotation() != null) {
+                annotationRenderer.render(element, g2, ctx);
             }
 
             // Articulations
-            if (!note.getArticulations().isEmpty()) {
-                articulationRenderer.render(note, g2, ctx);
+            if (!element.getArticulations().isEmpty()) {
+                articulationRenderer.render(element, g2, ctx);
             }
         }
 
@@ -530,18 +530,18 @@ class LineRenderer {
     // ==========================================================================
 
     /**
-     * Renders the insertion note if this line is the current insertion line.
+     * Renders the insertion element if this line is the current insertion line.
      *
      * @param g2  Graphics context
      * @param ctx Render context
      */
-    private void renderInsertionNote(Graphics2D g2, ElementRenderContext ctx) {
+    private void renderInsertionElement(Graphics2D g2, ElementRenderContext ctx) {
         // Only render if this line is the current insertion line
-        if (!InsertionNoteManager.hasInsertionNote(lc)) {
+        if (!InsertionElementManager.hasInsertionElement(lc)) {
             return;
         }
 
-        // Don't render insertion note when in select mode
+        // Don't render insertion element when in select mode
         var score = lc.getScore();
 
         if (score != null && score.getMode() == Mode.SELECT) {
@@ -554,20 +554,20 @@ class LineRenderer {
             return;
         }
 
-        var insertionNote = editModeManager.getInsertionNote();
+        var insertionElement = editModeManager.getInsertionElement();
 
-        if (insertionNote == null) {
+        if (insertionElement == null) {
             return;
         }
 
-        // Glissando preview bypasses insertion note visibility — it manages its own
+        // Glissando preview bypasses insertion element visibility — it manages its own
         // display logic via shouldShowGlissandoPreview() and never uses the note-head preview.
-        if (insertionNote == Note.GLISSANDO_NOTE) {
-            if (!InsertionNoteManager.shouldShowGlissandoPreview()) {
+        if (insertionElement == StaffElement.GLISSANDO_PLACEHOLDER) {
+            if (!InsertionElementManager.shouldShowGlissandoPreview()) {
                 return;
             }
 
-            var type = InsertionNoteManager.getGlissandoZone();
+            var type = InsertionElementManager.getGlissandoZone();
 
             if (type == null) {
                 return;  // Defensive: shouldShowGlissandoPreview() guards this
@@ -579,12 +579,12 @@ class LineRenderer {
                 return;
             }
 
-            var sourceIndex = InsertionNoteManager.getCurrentXIndex() - 1;
-            var sourceNote = line.getNote(sourceIndex);
+            var sourceIndex = InsertionElementManager.getCurrentXIndex() - 1;
+            var sourceNote = line.getElement(sourceIndex);
 
             //noinspection ObjectEquality
-            if (sourceNote.getGlissando() != Note.NO_GLISSANDO
-                    && sourceNote.getGlissando().type == type) {
+            if (sourceNote.getGlissando() != StaffElement.NO_GLISSANDO
+                && sourceNote.getGlissando().type == type) {
                 return;  // Already has this glissando type — no preview needed
             }
 
@@ -595,8 +595,8 @@ class LineRenderer {
             return;
         }
 
-        // Skip if insertion note is not visible (e.g., in keyboard mode, or hovering over a note head)
-        if (!editModeManager.isInsertionNoteVisible()) {
+        // Skip if insertion element is not visible (e.g., in keyboard mode, or hovering over a note head)
+        if (!editModeManager.isInsertionElementVisible()) {
             return;
         }
 
@@ -614,41 +614,41 @@ class LineRenderer {
 
         var layoutResult = lc.getLayoutResult();
         var line = lc.getLine();
-        var currentXIndex = InsertionNoteManager.getCurrentXIndex();
-        var currentStaffPosition = InsertionNoteManager.getCurrentStaffPosition();
+        var currentXIndex = InsertionElementManager.getCurrentXIndex();
+        var currentStaffPosition = InsertionElementManager.getCurrentStaffPosition();
 
         if (layoutResult != null && line != null) {
-            x = layoutResult.calculateInsertionXSs(currentXIndex, mouseX, insertionNote, line);
+            x = layoutResult.calculateInsertionXSs(currentXIndex, mouseX, insertionElement, line);
         }
 
-        // Set the insertion note position
-        insertionNote.setStaffPosition(currentStaffPosition);
-        insertionNote.setUpper(Score.defaultUpperNote(insertionNote));
+        // Set the insertion element position
+        insertionElement.setStaffPosition(currentStaffPosition);
+        insertionElement.setUpper(Score.defaultUpperNote(insertionElement));
 
-        // Render the insertion note with the insertion note color.
+        // Render the insertion element with the insertion element color.
         // Pass x as an override so NoteRenderer applies device-pixel snapping
-        // to the raw double directly, exactly as it does for composition notes
-        // via layoutResult.getNoteX(). Temporarily clear layoutResult to prevent
-        // sub-renderers from looking up the insertion note (which is not in the layout).
+        // to the raw double directly, exactly as it does for composition elements
+        // via layoutResult.getElementXSs(). Temporarily clear layoutResult to prevent
+        // sub-renderers from looking up the insertion element (which is not in the layout).
         var savedLayout = ctx.getLayoutResult();
-        ctx.setOverrideNoteXSs(x);
+        ctx.setOverrideElementXSs(x);
         ctx.setLayoutResult(null);
         g2.setColor(INSERTION_NOTE_COLOR);
-        NoteRenderer.getInstance().render(g2, insertionNote, ctx);
-        ctx.clearOverrideNoteX();
+        NoteRenderer.getInstance().render(g2, insertionElement, ctx);
+        ctx.clearOverrideElementX();
 
         // Set xPosSs for articulation/fermata renderers, which read it directly.
         // Simple rounding is fine since those renderers apply their own device-pixel
         // snapping internally.
-        insertionNote.setXPosSs((int) Math.round(x));
+        insertionElement.setXPosSs((int) Math.round(x));
 
-        // Render articulations and fermata on the insertion note preview
-        if (!insertionNote.getArticulations().isEmpty()) {
-            ArticulationRenderer.getInstance().render(insertionNote, g2, ctx);
+        // Render articulations and fermata on the insertion element preview
+        if (!insertionElement.getArticulations().isEmpty()) {
+            ArticulationRenderer.getInstance().render(insertionElement, g2, ctx);
         }
 
-        if (insertionNote.isFermata()) {
-            FermataRenderer.getInstance().render(insertionNote, g2, ctx);
+        if (insertionElement.isFermata()) {
+            FermataRenderer.getInstance().render(insertionElement, g2, ctx);
         }
 
         ctx.setLayoutResult(savedLayout);

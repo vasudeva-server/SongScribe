@@ -28,23 +28,23 @@ import java.util.Map;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 
-import net.engio.mbassy.listener.Handler;
-
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+
+import net.engio.mbassy.listener.Handler;
 
 import songscribe.data.Interval;
 import songscribe.data.IntervalSet;
 import songscribe.music.Composition;
 import songscribe.music.Line;
-import songscribe.music.Note;
+import songscribe.music.StaffElement;
 import songscribe.ui.action.Actions;
 import songscribe.ui.action.UIAction;
-import songscribe.util.RuntimeError;
 import songscribe.ui.message.LayoutChangeMessage;
 import songscribe.ui.message.Message;
 import songscribe.ui.message.MessageCenter;
 import songscribe.ui.message.MusicSelectionChangedMessage;
+import songscribe.util.RuntimeError;
 
 /**
  * Lightweight score-level coordinator that tracks which line (if any) has
@@ -75,15 +75,15 @@ public final class SelectionCoordinator {
     private final Map<UIAction, ActionState> savedActionStates = new IdentityHashMap<>();
 
     // Last reflected selection range, used to skip redundant reflection.
-    private NoteSelection lastReflectedSelection = null;
+    private ElementSelection lastReflectedSelection = null;
 
     // Content cache: lazily computed flags about what the current selection contains.
-    private NoteSelection contentCacheSelection = null;
+    private ElementSelection contentCacheSelection = null;
     private boolean hasDurations;
     private boolean hasNonDurations;
 
-    // Applicability cache: maps action to whether it applies to any note in the selection.
-    private NoteSelection applicabilityCacheSelection = null;
+    // Applicability cache: maps action to whether it applies to any element in the selection.
+    private ElementSelection applicabilityCacheSelection = null;
     private final Map<UIAction.Reflectable, Boolean> applicabilityCache = new IdentityHashMap<>();
 
     record ActionState(boolean selected, boolean enabled) {}
@@ -199,16 +199,16 @@ public final class SelectionCoordinator {
     // -------------------------------------------------------------------------
 
     /**
-     * Returns whether the note at the given index on the given line is selected.
+     * Returns whether the element at the given index on the given line is selected.
      * Delegates to the correct LineSelectionState.
      */
-    public boolean isNoteSelected(int noteIndex, int lineIndex) {
+    public boolean isElementSelected(int elementIndex, int lineIndex) {
         if (activeLineIndex != lineIndex) {
             return false;
         }
 
         var state = lineStates.get(lineIndex);
-        return (state != null) && state.hasNoteSelection() && state.isNoteSelected(noteIndex);
+        return (state != null) && state.hasElementSelection() && state.isElementSelected(elementIndex);
     }
 
     /**
@@ -224,16 +224,16 @@ public final class SelectionCoordinator {
     }
 
     /**
-     * Returns whether the glissando owned by the note at the given index
+     * Returns whether the glissando owned by the element at the given index
      * on the given line is selected.
      */
-    public boolean isGlissandoSelected(int noteIndex, int lineIndex) {
+    public boolean isGlissandoSelected(int elementIndex, int lineIndex) {
         if (activeLineIndex != lineIndex) {
             return false;
         }
 
         var state = lineStates.get(lineIndex);
-        return (state != null) && state.isGlissandoSelected(noteIndex);
+        return (state != null) && state.isGlissandoSelected(elementIndex);
     }
 
     /**
@@ -275,9 +275,9 @@ public final class SelectionCoordinator {
             return false;
         }
 
-        var selectedNote = state.getSingleSelectedNote();
+        var selectedElement = state.getSingleSelectedElement();
 
-        return selectedNote != null;
+        return selectedElement != null;
     }
 
     // -------------------------------------------------------------------------
@@ -285,7 +285,7 @@ public final class SelectionCoordinator {
     // -------------------------------------------------------------------------
 
     /**
-     * Returns the number of notes in the active selection.
+     * Returns the number of elements in the active selection.
      */
     public int getSelectionSize() {
         var state = getActiveSelection();
@@ -296,19 +296,19 @@ public final class SelectionCoordinator {
      * Returns the current selection, or null if nothing is selected.
      */
     @Nullable
-    public NoteSelection getSelection() {
+    public ElementSelection getSelection() {
         var state = getActiveSelection();
         return (state != null) ? state.getSelection() : null;
     }
 
     /**
-     * Returns the single selected note if exactly one note is selected,
+     * Returns the single selected element if exactly one element is selected,
      * or null otherwise.
      */
     @Nullable
-    public songscribe.music.Note getSingleSelectedNote() {
+    public StaffElement getSingleSelectedElement() {
         var state = getActiveSelection();
-        return (state != null) ? state.getSingleSelectedNote() : null;
+        return (state != null) ? state.getSingleSelectedElement() : null;
     }
 
     /**
@@ -328,9 +328,9 @@ public final class SelectionCoordinator {
     }
 
     /**
-     * Returns the notes in the active selection, or an empty list if nothing is selected.
+     * Returns the elements in the active selection, or an empty list if nothing is selected.
      */
-    public List<Note> getSelectedNotes() {
+    public List<StaffElement> getSelectedElements() {
         var selection = getSelection();
 
         if (selection == null) {
@@ -338,13 +338,13 @@ public final class SelectionCoordinator {
         }
 
         var line = selection.line();
-        var notes = new ArrayList<Note>(selection.end() - selection.begin() + 1);
+        var elements = new ArrayList<StaffElement>(selection.end() - selection.begin() + 1);
 
         for (var i = selection.begin(); i <= selection.end(); i++) {
-            notes.add(line.getNote(i));
+            elements.add(line.getElement(i));
         }
 
-        return notes;
+        return elements;
     }
 
     // -------------------------------------------------------------------------
@@ -352,7 +352,7 @@ public final class SelectionCoordinator {
     // -------------------------------------------------------------------------
 
     /**
-     * Returns whether there is an active note selection.
+     * Returns whether there is an active element selection.
      */
     public boolean hasActiveSelection() {
         return getSelection() != null;
@@ -372,7 +372,7 @@ public final class SelectionCoordinator {
     }
 
     /**
-     * Returns whether the given reflectable action is applicable to any note
+     * Returns whether the given reflectable action is applicable to any element
      * in the current selection. Results are cached per selection.
      * Returns {@code false} if there is no active selection.
      */
@@ -393,7 +393,7 @@ public final class SelectionCoordinator {
             var line = selection.line();
 
             for (var i = selection.begin(); i <= selection.end(); i++) {
-                if (a.appliesTo(line.getNote(i))) {
+                if (a.appliesTo(line.getElement(i))) {
                     return true;
                 }
             }
@@ -420,9 +420,9 @@ public final class SelectionCoordinator {
         var line = selection.line();
 
         for (var i = selection.begin(); i <= selection.end(); i++) {
-            var noteType = line.getNote(i).getNoteType();
+            var elementType = line.getElement(i).getType();
 
-            if (noteType.isDuration()) {
+            if (elementType.isDuration()) {
                 hasDurations = true;
             } else {
                 hasNonDurations = true;
@@ -465,7 +465,7 @@ public final class SelectionCoordinator {
                 } else if (value instanceof List<?> list) {
                     for (var item : list) {
                         if (item instanceof UIAction action
-                                && filter.test(action) && type.isInstance(action)) {
+                            && filter.test(action) && type.isInstance(action)) {
                             result.add(type.cast(action));
                         }
                     }
@@ -508,7 +508,7 @@ public final class SelectionCoordinator {
     }
 
     /**
-     * Applies the given action to all applicable notes in the selection.
+     * Applies the given action to all applicable elements in the selection.
      * @param action   the reflectable action to apply
      * @param selected true to apply the attribute, false to remove it
      */
@@ -520,30 +520,30 @@ public final class SelectionCoordinator {
         var needsIntervalCleanup = false;
 
         for (int i = selection.begin(); i <= selection.end(); i++) {
-            var note = line.getNote(i);
+            var element = line.getElement(i);
 
-            if (!action.appliesTo(note)) continue;
+            if (!action.appliesTo(element)) continue;
 
-            if (action instanceof UIAction.NoteReplaceable replaceable) {
-                var replacement = replaceable.createReplacement(note, selected);
+            if (action instanceof UIAction.ElementReplaceable replaceable) {
+                var replacement = replaceable.createReplacement(element, selected);
 
                 if (replacement == null) {
                     if (selected) {
                         RuntimeError.logNull(
                             null,
                             "Selection Error",
-                            "createReplacement returned null for note " + i + " in selection",
-                            "Could not change the duration of a selected note."
+                            "createReplacement returned null for element " + i + " in selection",
+                            "Could not change the duration of a selected element."
                         );
                     }
 
                     continue;
                 }
 
-                line.replaceNoteQuietly(i, replacement);
+                line.replaceElementQuietly(i, replacement);
                 needsIntervalCleanup = true;
-            } else if (action instanceof UIAction.NoteModifiable modifiable) {
-                modifiable.applyToNote(note, selected);
+            } else if (action instanceof UIAction.ElementModifiable modifiable) {
+                modifiable.applyToElement(element, selected);
             }
         }
 
@@ -559,26 +559,26 @@ public final class SelectionCoordinator {
     }
 
     /**
-     * Validates beam, tie, and tuplet intervals after batch note replacement.
-     * Notes that changed type may invalidate intervals they belong to.
+     * Validates beam, tie, and tuplet intervals after batch element replacement.
+     * Elements that changed type may invalidate intervals they belong to.
      */
     private void validateIntervals(Line line, int begin, int end) {
         repairIntervalSet(line.getBeamings(), line, begin, end,
-            note -> note.getNoteType().isBeamable());
+            element -> element.getType().isBeamable());
         repairIntervalSet(line.getTies(), line, begin, end,
-            note -> note.getNoteType().isNote());
+            element -> element.getType().isNote());
         repairIntervalSet(line.getTuplets(), line, begin, end,
-            note -> note.getNoteType().isDuration());
+            element -> element.getType().isDuration());
     }
 
     /**
      * Generic interval repair: finds intervals overlapping [begin, end] that contain
-     * notes failing the validity predicate, removes them, and re-creates sub-intervals
-     * for contiguous runs of valid notes (minimum 2 notes per sub-interval).
+     * elements failing the validity predicate, removes them, and re-creates sub-intervals
+     * for contiguous runs of valid elements (minimum 2 elements per sub-interval).
      */
     private <T extends Interval> void repairIntervalSet(
-            IntervalSet<T> intervalSet, Line line, int begin, int end,
-            Predicate<Note> isValid) {
+        IntervalSet<T> intervalSet, Line line, int begin, int end,
+        Predicate<StaffElement> isValid) {
 
         var toProcess = new ArrayList<T>();
 
@@ -594,7 +594,7 @@ public final class SelectionCoordinator {
             boolean allValid = true;
 
             for (int i = interval.start; i <= interval.end; i++) {
-                if (!isValid.test(line.getNote(i))) {
+                if (!isValid.test(line.getElement(i))) {
                     allValid = false;
                     break;
                 }
@@ -606,11 +606,11 @@ public final class SelectionCoordinator {
 
             intervalSet.removeInterval(interval);
 
-            // Find runs of valid notes and create sub-intervals
+            // Find runs of valid elements and create sub-intervals
             int runStart = -1;
 
             for (int i = interval.start; i <= interval.end; i++) {
-                if (isValid.test(line.getNote(i))) {
+                if (isValid.test(line.getElement(i))) {
                     if (runStart == -1) {
                         runStart = i;
                     }
@@ -689,15 +689,15 @@ public final class SelectionCoordinator {
             var matched = true;
 
             for (var i = selection.begin(); i <= selection.end(); i++) {
-                var note = line.getNote(i);
+                var element = line.getElement(i);
 
-                if (!reflectable.appliesTo(note)) {
+                if (!reflectable.appliesTo(element)) {
                     continue;
                 }
 
                 applicable = true;
 
-                if (!reflectable.matchesNote(note)) {
+                if (!reflectable.matchesElement(element)) {
                     matched = false;
                     break;
                 }

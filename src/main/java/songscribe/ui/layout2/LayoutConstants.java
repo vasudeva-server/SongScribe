@@ -22,8 +22,8 @@ package songscribe.ui.layout2;
 
 import org.jetbrains.annotations.NotNull;
 
-import songscribe.music.Note;
-import songscribe.music.NoteType;
+import songscribe.music.ElementType;
+import songscribe.music.StaffElement;
 import songscribe.smufl.GlyphAnchors;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
@@ -77,7 +77,7 @@ public final class LayoutConstants {
      * @param keyAccidentalCount Number of accidentals in the key signature
      * @return X position in staff-space units where the first note should be placed
      */
-    public static double calculateFirstNoteXSs(int keyAccidentalCount) {
+    public static double calculateFirstElementXSs(int keyAccidentalCount) {
         return CLEF_WIDTH_SS + keyAccidentalCount * KEY_ACCIDENTAL_WIDTH_SS + FIRST_NOTE_OFFSET_SS;
     }
 
@@ -358,8 +358,8 @@ public final class LayoutConstants {
      * @param note The note to check
      * @return The overhang in staff-space units, or 0 if no ledger lines are needed
      */
-    public static double getLedgerLineOverhangSs(@NotNull Note note) {
-        if (Math.abs(note.getStaffPosition()) <= 5 || !note.getNoteType().drawStaveLongitude()) {
+    public static double getLedgerLineOverhangSs(@NotNull StaffElement note) {
+        if (Math.abs(note.getStaffPosition()) <= 5 || !note.getType().drawStaveLongitude()) {
             return 0.0;
         }
 
@@ -401,8 +401,8 @@ public final class LayoutConstants {
      * @return The base stem geometry
      */
     @NotNull
-    public static StemGeometry computeBaseStemGeometry(@NotNull NoteType noteType, boolean upper) {
-        boolean isMinim = noteType == NoteType.MINIM;
+    public static StemGeometry computeBaseStemGeometry(@NotNull ElementType noteType, boolean upper) {
+        boolean isMinim = noteType == ElementType.MINIM;
         boolean isGrace = noteType.isGraceNote();
 
         GlyphAnchors.Anchor anchor;

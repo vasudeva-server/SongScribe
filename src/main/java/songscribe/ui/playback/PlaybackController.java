@@ -36,7 +36,7 @@ import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.Score;
 import songscribe.ui.component.score.LineComponent;
 import songscribe.ui.message.MessageCenter;
-import songscribe.ui.selection.NoteSelection;
+import songscribe.ui.selection.ElementSelection;
 
 public final class PlaybackController {
 
@@ -57,7 +57,7 @@ public final class PlaybackController {
     private static PlaybackState state = PlaybackState.STOPPED;
     private static int previousPlayingLine = -1;
     private static int previousPlayingNote = -1;
-    private static NoteSelection pausedSelection = null;
+    private static ElementSelection pausedSelection = null;
     private static final int MINIMUM_PLAYBACK_TEMPO = 20;
     private static final int MAXIMUM_PLAYBACK_TEMPO = 180;
 
@@ -93,7 +93,8 @@ public final class PlaybackController {
     public static final LoopPlaybackAction LOOP_PLAYBACK_ACTION =
         new LoopPlaybackAction();
 
-    private PlaybackController() {}
+    private PlaybackController() {
+    }
 
     public static PlaybackState getState() {
         return state;
@@ -223,15 +224,15 @@ public final class PlaybackController {
     }
 
     public static javax.sound.midi.Sequence buildSequence(Composition composition)
-            throws InvalidMidiDataException {
+        throws InvalidMidiDataException {
         return new MidiSequenceBuilder(composition, getPlaybackSettings()).buildFullSequence();
     }
 
     public static javax.sound.midi.Sequence buildSelectionSequence(
-            Composition composition,
-            int lineIndex,
-            int startNote,
-            int endNote
+        Composition composition,
+        int lineIndex,
+        int startNote,
+        int endNote
     ) throws InvalidMidiDataException {
         return new MidiSequenceBuilder(composition, getPlaybackSettings())
             .buildSelectionSequence(lineIndex, startNote, endNote);
@@ -245,7 +246,7 @@ public final class PlaybackController {
         }
     }
 
-    public static void play(@Nullable NoteSelection selection) {
+    public static void play(@Nullable ElementSelection selection) {
         var mainFrame = MainFrame.getInstance();
         var sequencer = MidiController.sequencer;
 
@@ -255,7 +256,7 @@ public final class PlaybackController {
             }
 
             var score = mainFrame.getScore();
-            NoteSelection noteSelection;
+            ElementSelection noteSelection;
 
             if (selection != null) {
                 noteSelection = selection;
@@ -268,8 +269,8 @@ public final class PlaybackController {
             // 2. We're resuming from pause but the selection has changed
             var isResumingWithSameSelection =
                 (state == PlaybackState.PAUSED) &&
-                ((noteSelection == null && pausedSelection == null) ||
-                 (noteSelection != null && noteSelection.equals(pausedSelection)));
+                    ((noteSelection == null && pausedSelection == null) ||
+                        (noteSelection != null && noteSelection.equals(pausedSelection)));
 
             if (!isResumingWithSameSelection) {
                 setSequenceToPlayFromSelection(noteSelection, score, sequencer);
@@ -291,14 +292,14 @@ public final class PlaybackController {
     }
 
     private static void setLoopSequence(
-        NoteSelection noteSelection,
+        ElementSelection noteSelection,
         MainFrame mainFrame,
         Sequencer sequencer
     ) {
         var loopPlayback =
             ((noteSelection == null) ||
                 (noteSelection.begin() != noteSelection.end())) &&
-            Prefs.getInstance().getBoolean("loopPlayback");
+                Prefs.getInstance().getBoolean("loopPlayback");
 
         // If a single note is selected, do not loop playback
 
@@ -306,7 +307,7 @@ public final class PlaybackController {
     }
 
     private static void setSequenceToPlayFromSelection(
-        NoteSelection noteSelection,
+        ElementSelection noteSelection,
         Score score,
         Sequencer sequencer
     ) throws InvalidMidiDataException {
@@ -314,16 +315,16 @@ public final class PlaybackController {
         var sequence = (noteSelection == null)
             ? buildSequence(composition)
             : buildSelectionSequence(
-                composition,
-                score.getComposition().getLines().indexOf(noteSelection.line()),
-                noteSelection.begin(),
-                noteSelection.end()
-            );
+            composition,
+            score.getComposition().getLines().indexOf(noteSelection.line()),
+            noteSelection.begin(),
+            noteSelection.end()
+        );
 
         //noinspection ObjectEquality
         if (
             (sequencer.getTickPosition() >= sequencer.getTickLength()) ||
-            (sequence != sequencer.getSequence())
+                (sequence != sequencer.getSequence())
         ) {
             sequencer.setTickPosition(0);
 

@@ -20,11 +20,8 @@
 
 package songscribe.ui.component;
 
-import com.formdev.flatlaf.util.SystemFileChooser;
-import com.formdev.flatlaf.util.SystemInfo;
 import java.awt.*;
-import java.awt.desktop.AppForegroundEvent;
-import java.awt.desktop.AppForegroundListener;
+import java.awt.desktop.*;
 import java.awt.event.*;
 import java.awt.image.*;
 import java.awt.print.*;
@@ -33,24 +30,30 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+
 import javax.swing.*;
-import net.engio.mbassy.listener.Handler;
+
 import org.jetbrains.annotations.Nullable;
 
+import com.formdev.flatlaf.util.SystemFileChooser;
+import com.formdev.flatlaf.util.SystemInfo;
+import net.engio.mbassy.listener.Handler;
+
 import songscribe.MusicChangeListener;
-import songscribe.music.Composition;
 import songscribe.Version;
 import songscribe.data.FileExtensions;
 import songscribe.data.MyFileFilter;
 import songscribe.io.CompositionIO;
+import songscribe.music.Composition;
+import songscribe.prefs.Prefs;
+import songscribe.prefs.RecentDocumentsManager;
 import songscribe.ui.Constants;
 import songscribe.ui.ProfileManager;
 import songscribe.ui.action.Actions;
 import songscribe.ui.action.SaveAction;
-import songscribe.ui.component.score.InsertionNoteManager;
+import songscribe.ui.component.score.InsertionElementManager;
 import songscribe.ui.component.toolbar.MainToolbarPanel;
 import songscribe.ui.dialog.PlatformFileDialog;
-
 import songscribe.ui.dialog.PropertiesStateStore;
 import songscribe.ui.dialog.WhatsNewDialog;
 import songscribe.ui.menu.MenuController;
@@ -66,8 +69,6 @@ import songscribe.ui.playback.LoopPlaybackMessage;
 import songscribe.ui.playback.MidiController;
 import songscribe.ui.playback.PlayWithRepeatsMessage;
 import songscribe.ui.playback.PlaybackTempoChangedMessage;
-import songscribe.prefs.Prefs;
-import songscribe.prefs.RecentDocumentsManager;
 import songscribe.util.FileUtils;
 import songscribe.util.Log;
 
@@ -75,7 +76,7 @@ public class MainFrame extends JFrame implements IMainFrame, Printable {
 
     public static final String COULD_NOT_SAVE_MESSAGE =
         "Could not save the file. Check if you have permission to create a file in this directory" +
-        " or if the overwritten file is write-protected.";
+            " or if the overwritten file is write-protected.";
 
     // This directory is used to store preferences and logs
     public static final File SONGSCRIBE_DIR = new File(
@@ -90,9 +91,9 @@ public class MainFrame extends JFrame implements IMainFrame, Printable {
             JOptionPane.showMessageDialog(
                 null,
                 """
-                Oops, we cannot make a “.songscribe” directory in the current user’s home directory. Please give proper permissions.
-
-                Until then preferences cannot be saved.""",
+                    Oops, we cannot make a “.songscribe” directory in the current user’s home directory. Please give proper permissions.
+                    
+                    Until then preferences cannot be saved.""",
                 Constants.PACKAGE_NAME,
                 JOptionPane.ERROR_MESSAGE
             );
@@ -186,7 +187,7 @@ public class MainFrame extends JFrame implements IMainFrame, Printable {
                 !Version.PUBLIC_VERSION.equals(
                     Prefs.getInstance().getString("lastSeenWhatsNewVersion")
                 ) &&
-                new File(WhatsNewDialog.WHATS_NEW_FILE).exists()
+                    new File(WhatsNewDialog.WHATS_NEW_FILE).exists()
             ) {
                 Prefs.getInstance().put(
                     "lastSeenWhatsNewVersion",
@@ -310,7 +311,7 @@ public class MainFrame extends JFrame implements IMainFrame, Printable {
     }
 
     private void hideInsertionNote() {
-        InsertionNoteManager.hideInsertionNote(true);
+        InsertionElementManager.hideInsertionElement(true);
     }
 
     private void setAppIcon() {
@@ -702,8 +703,8 @@ public class MainFrame extends JFrame implements IMainFrame, Printable {
                 var response = JOptionPane.showConfirmDialog(
                     this,
                     "The file “" +
-                    saveFile.getName() +
-                    "” already exists. Do you want to overwrite it?",
+                        saveFile.getName() +
+                        "” already exists. Do you want to overwrite it?",
                     appName,
                     JOptionPane.YES_NO_OPTION
                 );

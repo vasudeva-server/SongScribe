@@ -21,7 +21,7 @@ package songscribe.ui.menu;
 
 import javax.swing.*;
 
-import songscribe.music.Note;
+import songscribe.music.StaffElement;
 import songscribe.ui.action.Actions;
 
 public class AccidentalMenu extends JMenu {
@@ -29,7 +29,7 @@ public class AccidentalMenu extends JMenu {
     public AccidentalMenu() {
         super("Accidental");
         for (var action : Actions.ACCIDENTAL_ACTION_GROUP.getActions()) {
-            if (action.getAccidental() == Note.Accidental.NONE) {
+            if (action.getAccidental() == StaffElement.Accidental.NONE) {
                 continue;
             }
 

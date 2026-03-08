@@ -30,9 +30,9 @@ import java.util.stream.IntStream;
 
 import org.jetbrains.annotations.NotNull;
 
+import songscribe.music.ElementType;
 import songscribe.music.Line;
-import songscribe.music.Note;
-import songscribe.music.NoteType;
+import songscribe.music.StaffElement;
 import songscribe.smufl.EngravingDefaults;
 import songscribe.smufl.SMuFLMetadata;
 import songscribe.smufl.StaffSpaces;
@@ -62,7 +62,7 @@ public class EndingRenderer extends BaseElementRenderer<LineElement> {
     );
 
     // Bar line positioning constants (from FughettaRenderer)
-    private static final float NOTE_FONT_SIZE = BaseElementRenderer.NOTE_FONT_SIZE;
+    private static final float NOTE_FONT_SIZE = BaseElementRenderer.FONT_SIZE;
     private static final double BAR_LINE_X1_PX = NOTE_FONT_SIZE / 11.636364d;
     private static final double BAR_LINE_SPACE_PX = NOTE_FONT_SIZE / 5.8181818d;
     private static final double REPEAT_RIGHT_THICK_X_PX = NOTE_FONT_SIZE / 11.636364d;
@@ -120,24 +120,24 @@ public class EndingRenderer extends BaseElementRenderer<LineElement> {
 
             // Find repeat right position within the interval
             int repeatRightPos = IntStream.rangeClosed(start, end)
-                .filter(i -> line.getNote(i).getNoteType() == NoteType.REPEAT_RIGHT)
+                .filter(i -> line.getElement(i).getType() == ElementType.REPEAT_RIGHT)
                 .findFirst()
                 .orElse(-1);
 
             double repeatX = 0d;
-            var startNote = line.getNote(start);
+            var startNote = line.getElement(start);
 
             // Adjust start if previous note is a bar line
             if (start > 0) {
-                var previousNote = line.getNote(start - 1);
+                var previousNote = line.getElement(start - 1);
 
-                if (previousNote.getNoteType() == NoteType.SINGLE_BARLINE) {
+                if (previousNote.getType() == ElementType.SINGLE_BARLINE) {
                     --start;
                     startNote = previousNote;
                 }
             }
 
-            var endNote = line.getNote(end);
+            var endNote = line.getElement(end);
 
             // Render first ending (before repeat or entire interval if no repeat)
             if ((start < repeatRightPos) || (repeatRightPos == -1)) {
@@ -145,11 +145,11 @@ public class EndingRenderer extends BaseElementRenderer<LineElement> {
 
                 if (repeatRightPos != -1) {
                     // Right edge aligns with thin line of repeat
-                    repeatX = line.getNote(repeatRightPos).getXPosSs() + REPEAT_RIGHT_THICK_X_PX;
+                    repeatX = line.getElement(repeatRightPos).getXPosSs() + REPEAT_RIGHT_THICK_X_PX;
                     x2 = repeatX - REPEAT_THICK_THIN_DIFF_PX;
                 } else {
                     // Go halfway to next note
-                    double nextX = line.getNote(end + 1).getXPosSs();
+                    double nextX = line.getElement(end + 1).getXPosSs();
                     x2 = endNote.getXPosSs();
                     x2 += (nextX - x2) / 2d;
                 }
@@ -157,11 +157,11 @@ public class EndingRenderer extends BaseElementRenderer<LineElement> {
                 double x1 = startNote.getXPosSs();
 
                 // Align with bar line if starting on one
-                if (startNote.getNoteType() == NoteType.SINGLE_BARLINE) {
+                if (startNote.getType() == ElementType.SINGLE_BARLINE) {
                     x1 += BAR_LINE_X1_PX;
                 } else if (start > 0) {
                     // Otherwise go halfway to previous note's right edge
-                    var previousNote = line.getNote(start - 1);
+                    var previousNote = line.getElement(start - 1);
                     double previousX = previousNote.getXPosSs() + previousNote.getContentWidth();
                     x1 -= (x1 - previousX) / 2d;
                 }
@@ -172,44 +172,44 @@ public class EndingRenderer extends BaseElementRenderer<LineElement> {
             // Render second ending (after repeat)
             if ((repeatRightPos != -1) && (end > repeatRightPos)) {
                 double x2 = endNote.getXPosSs();
-                var type = endNote.getNoteType();
+                var type = endNote.getType();
 
                 // Extend to next bar line if present
-                if (type != NoteType.SINGLE_BARLINE &&
-                    type != NoteType.DOUBLE_BARLINE &&
-                    (end + 1) < line.noteCount()) {
+                if (type != ElementType.SINGLE_BARLINE &&
+                    type != ElementType.DOUBLE_BARLINE &&
+                    (end + 1) < line.elementCount()) {
 
-                    var nextNote = line.getNote(end + 1);
-                    var nextType = nextNote.getNoteType();
+                    var nextElement = line.getElement(end + 1);
+                    var nextType = nextElement.getType();
 
-                    if (nextType == NoteType.SINGLE_BARLINE ||
-                        nextType == NoteType.DOUBLE_BARLINE) {
+                    if (nextType == ElementType.SINGLE_BARLINE ||
+                        nextType == ElementType.DOUBLE_BARLINE) {
                         ++end;
                         type = nextType;
-                        x2 = nextNote.getXPosSs();
+                        x2 = nextElement.getXPosSs();
                     }
                 }
 
                 // Align right edge with bar line
-                if (type == NoteType.SINGLE_BARLINE || type == NoteType.DOUBLE_BARLINE) {
+                if (type == ElementType.SINGLE_BARLINE || type == ElementType.DOUBLE_BARLINE) {
                     x2 += BAR_LINE_X1_PX;
 
-                    if (type == NoteType.DOUBLE_BARLINE) {
+                    if (type == ElementType.DOUBLE_BARLINE) {
                         x2 -= BAR_LINE_SPACE_PX;
                     }
                 } else {
-                    // Go halfway to next note or a note width beyond
-                    var nextNote = line.getNote(end + 1);
-                    x2 += nextNote.getContentWidth();
+                    // Go halfway to next element or an element width beyond
+                    var nextElement = line.getElement(end + 1);
+                    x2 += nextElement.getContentWidth();
 
-                    if (end < line.noteCount()) {
-                        x2 += (nextNote.getXPosSs() - x2) / 2d;
+                    if (end < line.elementCount()) {
+                        x2 += (nextElement.getXPosSs() - x2) / 2d;
                     } else {
-                        x2 += nextNote.getContentWidth();
+                        x2 += nextElement.getContentWidth();
                     }
                 }
 
-                var repeatNote = line.getNote(repeatRightPos);
+                var repeatNote = line.getElement(repeatRightPos);
                 drawEnding(g2, line, lineIndex, ctx, repeatX + REPEAT_THICK_THIN_DIFF_PX, x2, 2, repeatNote, endNote);
             }
         }
@@ -236,8 +236,8 @@ public class EndingRenderer extends BaseElementRenderer<LineElement> {
         double x1,
         double x2,
         int number,
-        @NotNull Note startNote,
-        @NotNull Note endNote
+        @NotNull StaffElement startNote,
+        @NotNull StaffElement endNote
     ) {
         int y = getEffectiveEndingYPosPx(ctx, startNote, endNote);
         int fontHeight = BaseElementRenderer.ENDING_FONT.getSize() + 2;
@@ -255,7 +255,7 @@ public class EndingRenderer extends BaseElementRenderer<LineElement> {
 
         try (var ignored = GraphicsState.save(g2, COLOR, STROKE, FONT)) {
             g2.setStroke(STEM_STROKE);
-            g2.setColor(NOTE_COLOR);
+            g2.setColor(ELEMENT_COLOR);
             g2.draw(bracket);
 
             // Draw ending number
@@ -269,8 +269,8 @@ public class EndingRenderer extends BaseElementRenderer<LineElement> {
      */
     private int getEffectiveEndingYPosPx(
         @NotNull ElementRenderContext ctx,
-        @NotNull Note startNote,
-        @NotNull Note endNote
+        @NotNull StaffElement startNote,
+        @NotNull StaffElement endNote
     ) {
         var layoutResult = ctx.getLayoutResult();
 

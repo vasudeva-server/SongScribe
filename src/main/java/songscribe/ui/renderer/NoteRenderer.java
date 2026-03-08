@@ -32,11 +32,11 @@ import java.util.function.BiConsumer;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import songscribe.music.Note;
-import songscribe.music.NoteType;
-import songscribe.ui.layout2.LayoutConstants;
+import songscribe.music.ElementType;
+import songscribe.music.StaffElement;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
+import songscribe.ui.layout2.LayoutConstants;
 import songscribe.util.GraphicUtils;
 
 /**
@@ -53,23 +53,23 @@ import songscribe.util.GraphicUtils;
  *   <li>Ledger lines (for notes above/below staff)</li>
  * </ul>
  */
-public class NoteRenderer extends BaseElementRenderer<Note> {
+public class NoteRenderer extends BaseElementRenderer<StaffElement> {
 
     // ==========================================================================
     // Constants
     // ==========================================================================
 
     // Note heads by type
-    private static final EnumMap<NoteType, SMuFLGlyph> NOTE_HEAD = new EnumMap<>(NoteType.class);
+    private static final EnumMap<ElementType, SMuFLGlyph> NOTE_HEAD = new EnumMap<>(ElementType.class);
 
     static {
-        NOTE_HEAD.put(NoteType.SEMIBREVE, SMuFLGlyph.NOTEHEAD_WHOLE);
-        NOTE_HEAD.put(NoteType.MINIM, SMuFLGlyph.NOTEHEAD_HALF);
-        NOTE_HEAD.put(NoteType.CROTCHET, SMuFLGlyph.NOTEHEAD_BLACK);
-        NOTE_HEAD.put(NoteType.QUAVER, SMuFLGlyph.NOTEHEAD_BLACK);
-        NOTE_HEAD.put(NoteType.SEMIQUAVER, SMuFLGlyph.NOTEHEAD_BLACK);
-        NOTE_HEAD.put(NoteType.DEMI_SEMIQUAVER, SMuFLGlyph.NOTEHEAD_BLACK);
-        NOTE_HEAD.put(NoteType.GRACE_QUAVER, SMuFLGlyph.NOTEHEAD_BLACK);
+        NOTE_HEAD.put(ElementType.SEMIBREVE, SMuFLGlyph.NOTEHEAD_WHOLE);
+        NOTE_HEAD.put(ElementType.MINIM, SMuFLGlyph.NOTEHEAD_HALF);
+        NOTE_HEAD.put(ElementType.CROTCHET, SMuFLGlyph.NOTEHEAD_BLACK);
+        NOTE_HEAD.put(ElementType.QUAVER, SMuFLGlyph.NOTEHEAD_BLACK);
+        NOTE_HEAD.put(ElementType.SEMIQUAVER, SMuFLGlyph.NOTEHEAD_BLACK);
+        NOTE_HEAD.put(ElementType.DEMI_SEMIQUAVER, SMuFLGlyph.NOTEHEAD_BLACK);
+        NOTE_HEAD.put(ElementType.GRACE_QUAVER, SMuFLGlyph.NOTEHEAD_BLACK);
     }
 
     private static final SMuFLMetadata METADATA = SMuFLMetadata.getInstance();
@@ -165,7 +165,7 @@ public class NoteRenderer extends BaseElementRenderer<Note> {
      * Returns the SMuFL glyph for a note type's head.
      */
     @Nullable
-    public static SMuFLGlyph getNoteHeadGlyph(NoteType noteType) {
+    public static SMuFLGlyph getNoteHeadGlyph(ElementType noteType) {
         return NOTE_HEAD.get(noteType);
     }
 
@@ -173,7 +173,7 @@ public class NoteRenderer extends BaseElementRenderer<Note> {
      * Returns the note head character string for a note type (Bravura codepoint).
      */
     @Nullable
-    public static String getNoteHeadChar(NoteType noteType) {
+    public static String getNoteHeadChar(ElementType noteType) {
         var glyph = NOTE_HEAD.get(noteType);
         return glyph != null ? glyph.asString() : null;
     }
@@ -193,16 +193,16 @@ public class NoteRenderer extends BaseElementRenderer<Note> {
      */
     private static double resolveNoteXSs(
         @NotNull Graphics2D g2,
-        @NotNull Note note,
+        @NotNull StaffElement note,
         @NotNull ElementRenderContext ctx
     ) {
         double noteX;
 
-        if (ctx.hasOverrideNoteX()) {
-            noteX = ctx.getOverrideNoteXSs();
+        if (ctx.hasOverrideElementX()) {
+            noteX = ctx.getOverrideElementXSs();
         } else {
             var layoutResult = ctx.getLayoutResult();
-            noteX = (layoutResult != null) ? layoutResult.getNoteXSs(note) : note.getXPosSs();
+            noteX = (layoutResult != null) ? layoutResult.getElementXSs(note) : note.getXPosSs();
         }
 
         return GraphicUtils.snapXToDevicePixel(g2, noteX);
@@ -210,11 +210,11 @@ public class NoteRenderer extends BaseElementRenderer<Note> {
 
     @Override
     protected void renderElement(
-        @NotNull Note element,
+        @NotNull StaffElement element,
         @NotNull Graphics2D g2,
         @NotNull ElementRenderContext ctx
     ) {
-        var noteType = element.getNoteType();
+        var noteType = element.getType();
 
         // Delegate to specialized renderers for non-note types
         if (noteType.isRest()) {
@@ -227,7 +227,7 @@ public class NoteRenderer extends BaseElementRenderer<Note> {
             return;
         }
 
-        if (noteType == NoteType.BREATH_MARK) {
+        if (noteType == ElementType.BREATH_MARK) {
             renderBreathMark(element, g2, ctx);
             return;
         }
@@ -254,7 +254,7 @@ public class NoteRenderer extends BaseElementRenderer<Note> {
      */
     public void render(
         @NotNull Graphics2D g2,
-        @NotNull Note note,
+        @NotNull StaffElement note,
         @NotNull ElementRenderContext ctx
     ) {
         render(note, g2, ctx);
@@ -265,7 +265,7 @@ public class NoteRenderer extends BaseElementRenderer<Note> {
     // ==========================================================================
 
     private void renderBreathMark(
-        @NotNull Note element,
+        @NotNull StaffElement element,
         @NotNull Graphics2D g2,
         @NotNull ElementRenderContext ctx
     ) {
@@ -289,11 +289,11 @@ public class NoteRenderer extends BaseElementRenderer<Note> {
 
     private void renderNoteHead(
         @NotNull Graphics2D g2,
-        @NotNull Note note,
+        @NotNull StaffElement note,
         boolean beamed,
         @NotNull ElementRenderContext ctx
     ) {
-        var noteType = note.getNoteType();
+        var noteType = note.getType();
         var glyph = NOTE_HEAD.get(noteType);
 
         if (glyph == null) {
@@ -335,10 +335,10 @@ public class NoteRenderer extends BaseElementRenderer<Note> {
     @Nullable
     private Point2D.Double renderStem(
         @NotNull Graphics2D g2,
-        @NotNull Note note,
+        @NotNull StaffElement note,
         boolean upper,
         boolean beamed,
-        @NotNull NoteType noteType,
+        @NotNull ElementType noteType,
         @NotNull ElementRenderContext ctx
     ) {
         if (!noteType.isNoteWithStem()) {
@@ -373,7 +373,7 @@ public class NoteRenderer extends BaseElementRenderer<Note> {
             var line = ctx.getCurrentLine();
 
             if (line != null) {
-                var interval = line.getBeamings().findInterval(line.getNoteIndex(note));
+                var interval = line.getBeamings().findInterval(line.getElementIndex(note));
 
                 if (interval != null) {
                     var beamLayout = layoutResult.getBeamLayout(interval);
@@ -429,9 +429,9 @@ public class NoteRenderer extends BaseElementRenderer<Note> {
 
     private void renderFlags(
         @NotNull Graphics2D g2,
-        @NotNull Note note,
+        @NotNull StaffElement note,
         boolean upper,
-        @NotNull NoteType noteType,
+        @NotNull ElementType noteType,
         @Nullable Point2D.Double stemTip
     ) {
         if (stemTip == null) {
@@ -473,7 +473,7 @@ public class NoteRenderer extends BaseElementRenderer<Note> {
 
     private void renderDots(
         @NotNull Graphics2D g2,
-        @NotNull Note note,
+        @NotNull StaffElement note,
         boolean beamed,
         boolean upper
     ) {
@@ -495,14 +495,14 @@ public class NoteRenderer extends BaseElementRenderer<Note> {
      * relative to the note's glyph origin.
      */
     static void forEachDotPosition(
-        @NotNull Note note, boolean beamed, boolean upper,
+        @NotNull StaffElement note, boolean beamed, boolean upper,
         @NotNull BiConsumer<Double, Double> consumer
     ) {
         if (note.getDotCount() == 0) {
             return;
         }
 
-        var noteType = note.getNoteType();
+        var noteType = note.getType();
 
         // Dots shift up by 0.5 ss when note is on a line
         double yOffset = (note.getStaffPosition() % 2 == 0) ? -0.5 : 0.0;
@@ -510,12 +510,12 @@ public class NoteRenderer extends BaseElementRenderer<Note> {
         // X offset adjustments for wider noteheads and flags
         double xAdjust = 0.0;
 
-        if (noteType == NoteType.SEMIBREVE) {
+        if (noteType == ElementType.SEMIBREVE) {
             xAdjust = 0.4375;
-        } else if (noteType == NoteType.MINIM) {
+        } else if (noteType == ElementType.MINIM) {
             xAdjust = 0.175;
         } else if (noteType.isBeamable() && !beamed && upper) {
-            xAdjust = (noteType == NoteType.QUAVER) ? 0.625 : 1.0;
+            xAdjust = (noteType == ElementType.QUAVER) ? 0.625 : 1.0;
         }
 
         double dotX = FIRST_DOT_X_SS + xAdjust;
@@ -530,7 +530,7 @@ public class NoteRenderer extends BaseElementRenderer<Note> {
     // Ledger Line Rendering
     // ==========================================================================
 
-    private void renderLedgerLines(@NotNull Graphics2D g2, @NotNull Note note) {
+    private void renderLedgerLines(@NotNull Graphics2D g2, @NotNull StaffElement note) {
         double extensionSs = LayoutConstants.getLedgerLineOverhangSs(note);
 
         if (extensionSs == 0.0) {
@@ -551,7 +551,7 @@ public class NoteRenderer extends BaseElementRenderer<Note> {
 
     private void renderAccidental(
         @NotNull Graphics2D g2,
-        @NotNull Note note,
+        @NotNull StaffElement note,
         @NotNull ElementRenderContext ctx
     ) {
         var accidental = note.getAccidental().ordinal();
@@ -560,7 +560,7 @@ public class NoteRenderer extends BaseElementRenderer<Note> {
             return;
         }
 
-        boolean isGrace = note.getNoteType().isGraceNote();
+        boolean isGrace = note.getType().isGraceNote();
         var components = isGrace
             ? ACCIDENTAL_COMPONENTS_SMALL[accidental]
             : ACCIDENTAL_COMPONENTS[accidental];
@@ -635,16 +635,16 @@ public class NoteRenderer extends BaseElementRenderer<Note> {
     // Utility Methods
     // ==========================================================================
 
-    private boolean isNoteBeamed(@NotNull Note note, @NotNull ElementRenderContext ctx) {
+    private boolean isNoteBeamed(@NotNull StaffElement note, @NotNull ElementRenderContext ctx) {
         var line = ctx.getCurrentLine();
 
         if (line == null) {
             return false;
         }
 
-        int noteIndex = line.getNoteIndex(note);
+        int noteIndex = line.getElementIndex(note);
         return line.getBeamings().findInterval(noteIndex) != null &&
-            note.getNoteType() != NoteType.GRACE_QUAVER;
+            note.getType() != ElementType.GRACE_QUAVER;
     }
 
     // ==========================================================================
@@ -710,10 +710,10 @@ public class NoteRenderer extends BaseElementRenderer<Note> {
      * Returns the width of the accidental for a note.
      * Grace notes use pre-sized small accidental glyphs.
      */
-    public static float getAccidentalWidthSs(@NotNull Note note) {
+    public static float getAccidentalWidthSs(@NotNull StaffElement note) {
         var ordinal = note.getAccidental().ordinal();
 
-        if (note.getNoteType().isGraceNote()) {
+        if (note.getType().isGraceNote()) {
             return smallAccidentalWidthsSs[ordinal];
         }
 
@@ -725,7 +725,7 @@ public class NoteRenderer extends BaseElementRenderer<Note> {
     /**
      * Returns the width of a specific accidental component.
      */
-    public static float getAccidentalComponentWidthSs(@NotNull Note note, int component) {
+    public static float getAccidentalComponentWidthSs(@NotNull StaffElement note, int component) {
         if (baseAccidentalWidthsSs == null) {
             getAccidentalWidthSs(note);
         }
@@ -744,7 +744,7 @@ public class NoteRenderer extends BaseElementRenderer<Note> {
      * @param upper    Whether the stem points up
      * @return The X offset in staff spaces (negative for stem-down, 0 otherwise)
      */
-    public static float getNoteheadXOffsetSs(@NotNull NoteType noteType, boolean upper) {
+    public static float getNoteheadXOffsetSs(@NotNull ElementType noteType, boolean upper) {
         if (noteType.isNoteWithStem() && !upper) {
             return (float) -(LayoutConstants.STEM_WIDTH_SS / 2);
         }
@@ -761,8 +761,8 @@ public class NoteRenderer extends BaseElementRenderer<Note> {
      * @param note The note whose notehead right edge is needed
      * @return Right edge of the notehead in staff-space units (relative to note X)
      */
-    public static double getNoteheadRightEdgeSs(@NotNull Note note) {
-        var glyph = note.getNoteType().getSMuFLGlyph();
+    public static double getNoteheadRightEdgeSs(@NotNull StaffElement note) {
+        var glyph = note.getType().getSMuFLGlyph();
 
         if (glyph != null) {
             var bbox = METADATA.getBBox(glyph);

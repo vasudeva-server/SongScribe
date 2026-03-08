@@ -22,17 +22,17 @@ package songscribe.ui.message;
 
 import org.jetbrains.annotations.NotNull;
 
-import songscribe.music.NoteType;
+import songscribe.music.ElementType;
 
-public class NoteTypeSelectedMessage extends Message {
+public class ElementTypeSelectedMessage extends Message {
 
-    protected final NoteType noteType;
+    protected final ElementType noteType;
 
-    public NoteTypeSelectedMessage(NoteType noteType) {
+    public ElementTypeSelectedMessage(ElementType noteType) {
         this.noteType = noteType;
     }
 
-    public NoteType getNoteType() {
+    public ElementType getNoteType() {
         return noteType;
     }
 

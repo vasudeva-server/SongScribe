@@ -23,7 +23,7 @@ package songscribe.ui.layout;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import songscribe.music.Note;
+import songscribe.music.StaffElement;
 import songscribe.music.Tempo;
 
 /**
@@ -59,13 +59,13 @@ public class TempoAttachment extends Attachment {
      * @param parent The parent note
      * @param tempo  The tempo data
      */
-    public TempoAttachment(@Nullable Note parent, @NotNull Tempo tempo) {
+    public TempoAttachment(@Nullable StaffElement parent, @NotNull Tempo tempo) {
         this.tempo = tempo;
-        setParentNote(parent);
+        setOwnerElement(parent);
         setAlignment(Alignment.LEFT);
 
         if (parent != null) {
-            setParentElement(parent);
+            setOwnerElement(parent);
             setParentLine(parent.getParentLine());
         }
     }

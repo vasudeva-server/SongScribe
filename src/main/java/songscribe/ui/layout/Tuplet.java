@@ -23,7 +23,7 @@ package songscribe.ui.layout;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import songscribe.music.Note;
+import songscribe.music.StaffElement;
 
 /**
  * Represents a tuplet grouping (triplet, quintuplet, etc.).
@@ -37,7 +37,7 @@ import songscribe.music.Note;
  */
 public class Tuplet extends RangeElement {
 
-    private @Nullable Note endNote;
+    private @Nullable StaffElement endNote;
     private int grade = 3;
     private int verticalPosition = 0;
 
@@ -48,21 +48,21 @@ public class Tuplet extends RangeElement {
      * @param endNote    The last note in the tuplet
      * @param grade      The tuplet number (3 for triplet, 5 for quintuplet, etc.)
      */
-    public Tuplet(@NotNull Note anchorNote, @NotNull Note endNote, int grade) {
-        setAnchorNote(anchorNote);
+    public Tuplet(@NotNull StaffElement anchorNote, @NotNull StaffElement endNote, int grade) {
+        setAnchorElement(anchorNote);
         this.endNote = endNote;
         this.grade = grade;
     }
 
     @Override
-    public @Nullable Note getEndNote() {
+    public @Nullable StaffElement getEndElement() {
         return endNote;
     }
 
     /**
      * Sets the end note of this tuplet.
      */
-    public void setEndNote(@Nullable Note endNote) {
+    public void setEndNote(@Nullable StaffElement endNote) {
         this.endNote = endNote;
     }
 
@@ -76,7 +76,7 @@ public class Tuplet extends RangeElement {
     public boolean isAbove() {
         // Tuplet bracket goes above if stems point down, below if stems point up
         // Check the anchor note's stem direction
-        var anchor = getAnchorNote();
+        var anchor = getAnchorElement();
 
         return anchor != null && anchor.isUpper();
     }
@@ -111,7 +111,7 @@ public class Tuplet extends RangeElement {
 
     @Override
     public double getContentWidth() {
-        var anchor = getAnchorNote();
+        var anchor = getAnchorElement();
 
         if (anchor == null || endNote == null) {
             return 0;

@@ -57,7 +57,7 @@ public class ElementRenderContext {
     private LineComponent.SelectionProvider selectionProvider;
     private boolean editMode;
     private Color selectionColor = Score.SELECTION_STROKE_COLOR;
-    private double overrideNoteXSs = Double.NaN;
+    private double overrideElementXSs = Double.NaN;
 
     /**
      * Creates a render context for the given composition.
@@ -181,7 +181,7 @@ public class ElementRenderContext {
     }
 
     /**
-     * Returns the selection provider for checking note selection state.
+     * Returns the selection provider for checking element selection state.
      *
      * @return The selection provider, or null if not available
      */
@@ -190,7 +190,7 @@ public class ElementRenderContext {
     }
 
     /**
-     * Sets the selection provider for checking note selection state.
+     * Sets the selection provider for checking element selection state.
      *
      * @param selectionProvider The selection provider from LineComponent
      */
@@ -215,16 +215,16 @@ public class ElementRenderContext {
     }
 
     /**
-     * Returns the color used to render selected notes and beams.
-     * Defaults to {@link Score#SELECTION_STROKE_COLOR}; override during a
-     * note pitch-drag to use {@code INSERTION_NOTE_COLOR} instead.
+     * Returns the color used to render selected elements and beams.
+     * Defaults to {@link Score#SELECTION_STROKE_COLOR}; override during an
+     * element pitch-drag to use {@code INSERTION_NOTE_COLOR} instead.
      */
     public @NotNull Color getSelectionColor() {
         return selectionColor;
     }
 
     /**
-     * Sets the color used to render selected notes and beams.
+     * Sets the color used to render selected elements and beams.
      *
      * @param selectionColor the color to use
      */
@@ -233,37 +233,37 @@ public class ElementRenderContext {
     }
 
     /**
-     * Sets a precise X coordinate for the next note render, bypassing layout lookup and
-     * {@code note.getXPos()}. Used by the insertion note preview so that {@link NoteRenderer}
+     * Sets a precise X coordinate for the next element render, bypassing layout lookup and
+     * {@code element.getXPos()}. Used by the insertion element preview so that {@link NoteRenderer}
      * applies device-pixel snapping to the raw computed double directly, matching the
-     * path used for laid-out composition notes. Call {@link #clearOverrideNoteX()} after
+     * path used for laid-out composition elements. Call {@link #clearOverrideElementX()} after
      * rendering to reset.
      *
      * @param x the exact X coordinate in local (component) space
      */
-    public void setOverrideNoteXSs(double x) {
-        this.overrideNoteXSs = x;
+    public void setOverrideElementXSs(double x) {
+        this.overrideElementXSs = x;
     }
 
     /**
-     * Returns whether an override note X is currently active.
+     * Returns whether an override element X is currently active.
      */
-    public boolean hasOverrideNoteX() {
-        return !Double.isNaN(overrideNoteXSs);
+    public boolean hasOverrideElementX() {
+        return !Double.isNaN(overrideElementXSs);
     }
 
     /**
-     * Returns the override note X. Only valid when {@link #hasOverrideNoteX()} is true.
+     * Returns the override element X. Only valid when {@link #hasOverrideElementX()} is true.
      */
-    public double getOverrideNoteXSs() {
-        return overrideNoteXSs;
+    public double getOverrideElementXSs() {
+        return overrideElementXSs;
     }
 
     /**
-     * Clears the override set by {@link #setOverrideNoteXSs(double)}.
+     * Clears the override set by {@link #setOverrideElementXSs(double)}.
      */
-    public void clearOverrideNoteX() {
-        overrideNoteXSs = Double.NaN;
+    public void clearOverrideElementX() {
+        overrideElementXSs = Double.NaN;
     }
 
     /**

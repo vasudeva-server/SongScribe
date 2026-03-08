@@ -21,7 +21,7 @@
 package songscribe.ui.action;
 
 import songscribe.music.ForceArticulation;
-import songscribe.music.Note;
+import songscribe.music.StaffElement;
 
 public class ForceArticulationAction extends NoteOnlyAction {
 
@@ -44,12 +44,12 @@ public class ForceArticulationAction extends NoteOnlyAction {
     }
 
     @Override
-    public boolean matchesNote(Note note) {
-        return note.getForceArticulation() == articulation;
+    public boolean matchesElement(StaffElement element) {
+        return element.getForceArticulation() == articulation;
     }
 
     @Override
-    public void applyToNote(Note note, boolean selected) {
-        note.setForceArticulation(selected ? articulation : null);
+    public void applyToElement(StaffElement element, boolean selected) {
+        element.setForceArticulation(selected ? articulation : null);
     }
 }

@@ -23,10 +23,10 @@ package songscribe.ui.selection;
 import songscribe.music.Line;
 
 /**
- * Represents a selection of notes within a staff line.
+ * Represents a selection of elements within a staff line.
  *
  * @param line  The staff line containing the selection
- * @param begin The index of the first selected note
- * @param end   The index of the last selected note (inclusive)
+ * @param begin The index of the first selected element
+ * @param end   The index of the last selected element (inclusive)
  */
-public record NoteSelection(Line line, int begin, int end) {}
+public record ElementSelection(Line line, int begin, int end) {}

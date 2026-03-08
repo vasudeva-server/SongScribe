@@ -28,8 +28,8 @@ package songscribe.ui.layout;
  */
 public enum LayoutLayer {
 
-    /** Note elements (head, stem, flag, ledger lines) - bottom layer */
-    NOTE,
+    /** Staff elements (head, stem, flag, ledger lines) - bottom layer */
+    ELEMENT,
 
     /** Tie curves connecting notes */
     TIE,

@@ -20,9 +20,9 @@
 
 package songscribe.ui.layout;
 
-import songscribe.ui.layout2.ScaleContext;
-
 import java.awt.*;
+
+import songscribe.ui.layout2.ScaleContext;
 
 /**
  * Centralized layout constants (CSS-like stylesheet).
@@ -237,9 +237,9 @@ public final class LayoutStylesheet {
 
     // --- Note (hit testing) ---
     /**
-     * Padding around note for hit testing
+     * Padding around element for hit testing
      */
-    public static final double NOTE_PADDING = 0.5;  // 4px
+    public static final double ELEMENT_PADDING = 0.5;  // 4px
 
     // --- Articulations ---
     /**
@@ -444,10 +444,10 @@ public final class LayoutStylesheet {
     public static final double STAFF_HEIGHT = 4.0;  // 32px
 
     /**
-     * Note Y offset: half of one staff space.
+     * Staff position offset: half of one staff space.
      * Used to convert between staff positions and Y coordinates.
      */
-    public static final double NOTE_Y_OFFSET = 0.5;  // 4px
+    public static final double STAFF_POSITION_OFFSET = 0.5;  // 4px
 
     // ==========================================================================
     // LINE ELEMENT DEFAULT Y POSITIONS (relative to middleLineY, in ss)

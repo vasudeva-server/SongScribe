@@ -75,14 +75,14 @@ public class PreferencesDialog extends StandardDialog {
     protected void getData() {
         var prefs = Prefs.getInstance();
         durationSlider.setValue(prefs.getInt("playbackNoteDuration"));
-        playInsertingNoteCheck.setSelected(prefs.getBoolean("playInsertingNote"));
+        playInsertingNoteCheck.setSelected(prefs.getBoolean("playInsertedNote"));
     }
 
     @Override
     protected void setData() {
         var prefs = Prefs.getInstance();
         prefs.put("playbackNoteDuration", durationSlider.getValue());
-        prefs.put("playInsertingNote", playInsertingNoteCheck.isSelected());
+        prefs.put("playInsertedNote", playInsertingNoteCheck.isSelected());
         mainFrame.fireMusicChanged(this);
     }
 }

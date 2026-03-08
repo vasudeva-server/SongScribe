@@ -20,14 +20,14 @@
 
 package songscribe.ui.component.score;
 
-import java.awt.event.MouseEvent;
+import java.awt.event.*;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import songscribe.data.TieInterval;
 import songscribe.music.Line;
-import songscribe.music.Note;
+import songscribe.music.StaffElement;
 import songscribe.ui.Mode;
 import songscribe.ui.component.Score;
 import songscribe.ui.edit.EditModeManager;
@@ -35,7 +35,7 @@ import songscribe.ui.layout2.ScaleContext;
 import songscribe.ui.message.LayoutChangeMessage;
 import songscribe.ui.message.MessageCenter;
 import songscribe.ui.playback.MidiController;
-import songscribe.ui.playback.PlayNoteThread;
+import songscribe.ui.playback.PlayThread;
 
 /**
  * Handles press/drag/release for pitch-dragging a note head in NOTE_EDIT mode.
@@ -43,14 +43,14 @@ import songscribe.ui.playback.PlayNoteThread;
  * One instance per {@link LineComponent}. The owning component delegates its
  * mouse events here before passing them on to other handlers.
  */
-class NoteDragHandler {
+class ElementDragHandler {
 
     private final LineComponent lc;
 
     private boolean dragActive = false;
     private boolean dragMoved = false;
     private boolean pressHandled = false;
-    private int dragNoteIndex = -1;
+    private int dragElementIndex = -1;
     private int originalStaffPosition;
     private boolean originalUpper;
     private int lastPlayedStaffPosition;
@@ -59,7 +59,7 @@ class NoteDragHandler {
     @Nullable
     private TieInterval tieInterval;
 
-    NoteDragHandler(@NotNull LineComponent lc) {
+    ElementDragHandler(@NotNull LineComponent lc) {
         this.lc = lc;
     }
 
@@ -84,8 +84,8 @@ class NoteDragHandler {
         return pressHandled;
     }
 
-    int getDragNoteIndex() {
-        return dragNoteIndex;
+    int getDragElementIndex() {
+        return dragElementIndex;
     }
 
     @Nullable
@@ -106,7 +106,7 @@ class NoteDragHandler {
 
         var score = lc.getScore();
 
-        if (score == null || score.getMode() != Mode.NOTE_EDIT) {
+        if (score == null || score.getMode() != Mode.EDIT) {
             return false;
         }
 
@@ -116,35 +116,35 @@ class NoteDragHandler {
 
         dragMoved = false;
 
-        var hitIndex = NoteHitTest.hitTestNote(lc, e.getPoint());
+        var hitIndex = ElementHitTest.hitTestElement(lc, e.getPoint());
 
         if (hitIndex == -1) {
             return false;
         }
 
         var line = lc.getLine();
-        var note = line.getNote(hitIndex);
+        var note = line.getElement(hitIndex);
 
-        if (!note.getNoteType().isNote()) {
+        if (!note.getType().isNote()) {
             return false;
         }
 
-        lc.getSelectionHandler().selectAndPlayNote(hitIndex);
+        lc.getSelectionHandler().selectAndPlayElement(hitIndex);
 
         // Save state for possible revert on a press+release without drag
-        dragNoteIndex = hitIndex;
+        dragElementIndex = hitIndex;
         originalStaffPosition = note.getStaffPosition();
         originalUpper = note.isUpper();
         lastPlayedStaffPosition = originalStaffPosition;
         dragLine = line;
         tieInterval = line.getTies().findInterval(hitIndex);
 
-        InsertionNoteManager.clearInsertionNote();
+        InsertionElementManager.clearInsertionElement();
 
         var editModeManager = EditModeManager.getInstance();
 
         if (editModeManager != null) {
-            editModeManager.setInsertionNoteVisible(false);
+            editModeManager.setInsertionElementVisible(false);
         }
 
         pressHandled = true;
@@ -158,15 +158,15 @@ class NoteDragHandler {
      */
     void handleDrag(@NotNull MouseEvent e) {
         var mouseYss = ScaleContext.getInstance().fromPixels(e.getY());
-        var newPosition = InsertionNoteManager.calculateStaffPositionFromMouse(mouseYss, lc.getMiddleLineYSs());
+        var newPosition = InsertionElementManager.calculateStaffPositionFromMouse(mouseYss, lc.getMiddleLineYSs());
 
-        if (newPosition == lastPlayedStaffPosition || !InsertionNoteManager.isValidStaffPosition(newPosition)) {
+        if (newPosition == lastPlayedStaffPosition || !InsertionElementManager.isValidStaffPosition(newPosition)) {
             return;
         }
 
         // Send NOTE_OFF for the pitch we were playing
-        var oldNote = dragLine.getNote(dragNoteIndex);
-        PlayNoteThread.sendNoteOff(oldNote.getPitch());
+        var oldNote = dragLine.getElement(dragElementIndex);
+        PlayThread.sendNoteOff(oldNote.getPitch());
 
         // Update the dragged note (and all tied notes if in a tie)
         int rangeStart;
@@ -176,19 +176,19 @@ class NoteDragHandler {
             rangeStart = tieInterval.getStart();
             rangeEnd = tieInterval.getEnd();
         } else {
-            rangeStart = dragNoteIndex;
-            rangeEnd = dragNoteIndex;
+            rangeStart = dragElementIndex;
+            rangeEnd = dragElementIndex;
         }
 
         for (var i = rangeStart; i <= rangeEnd; i++) {
-            var note = dragLine.getNote(i);
+            var note = dragLine.getElement(i);
             note.setStaffPosition(newPosition);
             note.setUpper(Score.defaultUpperNote(note));
         }
 
         // Play NOTE_ON for the new pitch
-        var newPitch = dragLine.getNote(dragNoteIndex).getPitch();
-        PlayNoteThread.sendNoteOn(newPitch);
+        var newPitch = dragLine.getElement(dragElementIndex).getPitch();
+        PlayThread.sendNoteOn(newPitch);
         lastPlayedStaffPosition = newPosition;
 
         lc.invalidateLayout();
@@ -202,13 +202,13 @@ class NoteDragHandler {
     void handleRelease() {
         if (dragMoved) {
             // The last drag noteOn is still sounding — schedule a noteOff after the standard duration
-            new PlayNoteThread(dragLine.getNote(dragNoteIndex).getPitch(), false).start();
+            new PlayThread(dragLine.getElement(dragElementIndex).getPitch(), false).start();
 
             // Clear selection so the note doesn't appear highlighted after drag
             lc.getScore().clearSelection();
 
             // Remove connected glissandos that became unison after the pitch drag
-            removeUnisonConnectedGlissandos(dragLine, dragNoteIndex);
+            removeUnisonConnectedGlissandos(dragLine, dragElementIndex);
 
             // Finalize: notify layout and mark composition modified
             MessageCenter.post(LayoutChangeMessage.scoreContent(dragLine));
@@ -223,23 +223,23 @@ class NoteDragHandler {
                 rangeStart = tieInterval.getStart();
                 rangeEnd = tieInterval.getEnd();
             } else {
-                rangeStart = dragNoteIndex;
-                rangeEnd = dragNoteIndex;
+                rangeStart = dragElementIndex;
+                rangeEnd = dragElementIndex;
             }
 
             for (var i = rangeStart; i <= rangeEnd; i++) {
-                var note = dragLine.getNote(i);
+                var note = dragLine.getElement(i);
                 note.setStaffPosition(originalStaffPosition);
                 note.setUpper(originalUpper);
             }
         }
 
         dragActive = false;
-        dragNoteIndex = -1;
+        dragElementIndex = -1;
         dragLine = null;
         tieInterval = null;
 
-        InsertionNoteManager.restoreInsertionNote(lc);
+        InsertionElementManager.restoreInsertionElement(lc);
     }
 
     /**
@@ -247,22 +247,22 @@ class NoteDragHandler {
      * Checks the glissando FROM the dragged note (to the next note) and
      * the glissando TO the dragged note (from the previous note).
      */
-    private static void removeUnisonConnectedGlissandos(@NotNull Line line, int noteIndex) {
-        var note = line.getNote(noteIndex);
+    private static void removeUnisonConnectedGlissandos(@NotNull Line line, int elementIndex) {
+        var element = line.getElement(elementIndex);
 
         // Glissando FROM the dragged note to the next note
-        if (note.getGlissando().type == Note.Glissando.Type.CONNECTED
-                && noteIndex + 1 < line.noteCount()
-                && note.getPitch() == line.getNote(noteIndex + 1).getPitch()) {
-            note.removeGlissando();
+        if (element.getGlissando().type == StaffElement.Glissando.Type.CONNECTED
+            && elementIndex + 1 < line.elementCount()
+            && element.getPitch() == line.getElement(elementIndex + 1).getPitch()) {
+            element.removeGlissando();
         }
 
         // Glissando TO the dragged note from the previous note
-        if (noteIndex > 0) {
-            var prev = line.getNote(noteIndex - 1);
+        if (elementIndex > 0) {
+            var prev = line.getElement(elementIndex - 1);
 
-            if (prev.getGlissando().type == Note.Glissando.Type.CONNECTED
-                    && prev.getPitch() == note.getPitch()) {
+            if (prev.getGlissando().type == StaffElement.Glissando.Type.CONNECTED
+                && prev.getPitch() == element.getPitch()) {
                 prev.removeGlissando();
             }
         }

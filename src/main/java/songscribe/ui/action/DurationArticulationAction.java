@@ -21,7 +21,7 @@
 package songscribe.ui.action;
 
 import songscribe.music.DurationArticulation;
-import songscribe.music.Note;
+import songscribe.music.StaffElement;
 
 public class DurationArticulationAction extends NoteOnlyAction {
 
@@ -44,12 +44,12 @@ public class DurationArticulationAction extends NoteOnlyAction {
     }
 
     @Override
-    public boolean matchesNote(Note note) {
-        return note.getDurationArticulation() == articulation;
+    public boolean matchesElement(StaffElement element) {
+        return element.getDurationArticulation() == articulation;
     }
 
     @Override
-    public void applyToNote(Note note, boolean selected) {
-        note.setDurationArticulation(selected ? articulation : null);
+    public void applyToElement(StaffElement element, boolean selected) {
+        element.setDurationArticulation(selected ? articulation : null);
     }
 }

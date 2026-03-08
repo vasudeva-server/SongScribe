@@ -25,9 +25,9 @@ import songscribe.ui.component.Score;
 
 public class Annotation {
 
-    public static final int ABOVE = (int) (-4 * Score.NOTE_Y_OFFSET_PX);
+    public static final int ABOVE = (int) (-4 * Score.STAFF_POSITION_OFFSET_PX);
     private int yPosPx = ABOVE;
-    public static final int BELOW = (int) (8 * Score.NOTE_Y_OFFSET_PX);
+    public static final int BELOW = (int) (8 * Score.STAFF_POSITION_OFFSET_PX);
     private String annotation;
     private float xAlignment = Component.LEFT_ALIGNMENT;
 

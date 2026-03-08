@@ -29,7 +29,7 @@ import org.jetbrains.annotations.Nullable;
 
 import net.engio.mbassy.listener.Handler;
 
-import songscribe.music.Note;
+import songscribe.music.StaffElement;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.Score;
 import songscribe.ui.message.BarSelectedMessage;
@@ -82,6 +82,7 @@ public class UIAction extends AbstractAction {
      */
     public interface Selectable {
         boolean isSelected();
+
         void setSelected(boolean selected);
 
         /**
@@ -98,43 +99,43 @@ public class UIAction extends AbstractAction {
 
     public interface Reflectable extends Selectable {
         /**
-         * Whether this action's attribute is applicable to the given note.
+         * Whether this action's attribute is applicable to the given element.
          * For example, accidental actions return false for rests;
          * barline actions return false for notes.
          */
-        boolean appliesTo(Note note);
+        boolean appliesTo(StaffElement element);
 
         /**
-         * Whether the given note has the attribute this action represents.
+         * Whether the given element has the attribute this action represents.
          * Only called when appliesTo() returns true.
          */
-        boolean matchesNote(Note note);
+        boolean matchesElement(StaffElement element);
     }
 
     /**
-     * A reflectable action that modifies a note's attributes in place.
+     * A reflectable action that modifies an element's attributes in place.
      */
-    public interface NoteModifiable extends Reflectable {
+    public interface ElementModifiable extends Reflectable {
         /**
-         * Apply or remove this action's attribute on the given note.
-         * @param note     the note to modify
+         * Apply or remove this action's attribute on the given element.
+         * @param element  the element to modify
          * @param selected true to apply the attribute, false to remove it
          */
-        void applyToNote(Note note, boolean selected);
+        void applyToElement(StaffElement element, boolean selected);
     }
 
     /**
-     * A reflectable action that replaces a note with a new instance
-     * (e.g. changing duration requires a new Note object).
+     * A reflectable action that replaces an element with a new instance
+     * (e.g. changing duration requires a new StaffElement object).
      */
-    public interface NoteReplaceable extends Reflectable {
+    public interface ElementReplaceable extends Reflectable {
         /**
-         * Create a replacement note with this action's attribute applied.
-         * @param note     the source note to base the replacement on
+         * Create a replacement element with this action's attribute applied.
+         * @param element  the source element to base the replacement on
          * @param selected true to apply the attribute, false to skip
-         * @return the replacement note, or null if no replacement is needed
+         * @return the replacement element, or null if no replacement is needed
          */
-        @Nullable Note createReplacement(Note note, boolean selected);
+        @Nullable StaffElement createReplacement(StaffElement element, boolean selected);
     }
 
     public static final String FONT_ICON_KEY = "font-icon";

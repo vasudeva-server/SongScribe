@@ -24,33 +24,34 @@ import java.awt.*;
 
 import org.jetbrains.annotations.NotNull;
 
-import songscribe.music.Note;
+import songscribe.music.StaffElement;
 import songscribe.ui.layout2.ScaleContext;
 
 /**
  * Static hit-testing utilities for note heads in a {@link LineComponent}.
  * <p>
- * Extracted from {@link SelectionHandler} so that {@link NoteDragHandler} can
+ * Extracted from {@link SelectionHandler} so that {@link ElementDragHandler} can
  * share the same logic without duplicating it.
  */
-class NoteHitTest {
+class ElementHitTest {
 
-    private NoteHitTest() {}
+    private ElementHitTest() {
+    }
 
     /**
-     * Iterates all notes in the line and returns the index of the first note
+     * Iterates all elements in the line and returns the index of the first element
      * whose hit rectangle contains {@code point}, or -1 if none.
      */
-    static int hitTestNote(@NotNull LineComponent lc, @NotNull Point point) {
+    static int hitTestElement(@NotNull LineComponent lc, @NotNull Point point) {
         var line = lc.getLine();
         var helper = new Rectangle();
 
-        for (var noteIndex = 0; noteIndex < line.noteCount(); noteIndex++) {
-            var note = line.getNote(noteIndex);
-            buildNoteHitRect(lc, note, helper);
+        for (var elementIndex = 0; elementIndex < line.elementCount(); elementIndex++) {
+            var element = line.getElement(elementIndex);
+            buildElementHitRect(lc, element, helper);
 
             if (helper.contains(point)) {
-                return noteIndex;
+                return elementIndex;
             }
         }
 
@@ -58,28 +59,28 @@ class NoteHitTest {
     }
 
     /**
-     * Builds the pixel-coordinate hit rectangle for the given note into {@code out}.
+     * Builds the pixel-coordinate hit rectangle for the given element into {@code out}.
      */
-    static void buildNoteHitRect(
+    static void buildElementHitRect(
         @NotNull LineComponent lc,
-        @NotNull Note note,
+        @NotNull StaffElement element,
         @NotNull Rectangle out
     ) {
-        var noteType = note.getNoteType();
-        var upper = note.isUpper();
+        var elementType = element.getType();
+        var upper = element.isUpper();
         var sc = ScaleContext.getInstance();
 
         // Use notehead width (excludes flag extent); apply 4px minimum for narrow elements (AD-10)
-        var widthPx = Math.max((int) Math.round(sc.toPixels(noteType.getNoteheadWidthSs())), 4);
-        var heightPx = (int) Math.round(sc.toPixels(noteType.getElementHeightSs(upper)));
+        var widthPx = Math.max((int) Math.round(sc.toPixels(elementType.getNoteheadWidthSs())), 4);
+        var heightPx = (int) Math.round(sc.toPixels(elementType.getElementHeightSs(upper)));
 
-        // Get note X from LayoutResult (staff-space) and convert to pixels, so the
+        // Get element X from LayoutResult (staff-space) and convert to pixels, so the
         // hit rect is in pixel coordinates consistent with the mouse-event point.
         var layoutResult = lc.getLayoutResult();
-        var noteXss = layoutResult != null ? layoutResult.getNoteXSs(note) : 0.0;
-        var noteXpx = (int) Math.round(sc.toPixels(noteXss));
-        var noteY = lc.staffPositionToYPx(note.getStaffPosition());
-        var topOffsetPx = (int) Math.round(sc.toPixels(noteType.getTopYOffsetSs(upper)));
-        out.setBounds(noteXpx, noteY + topOffsetPx, widthPx, heightPx);
+        var elementXSs = layoutResult != null ? layoutResult.getElementXSs(element) : 0.0;
+        var elementXPx = (int) Math.round(sc.toPixels(elementXSs));
+        var elementY = lc.staffPositionToYPx(element.getStaffPosition());
+        var topOffsetPx = (int) Math.round(sc.toPixels(elementType.getTopYOffsetSs(upper)));
+        out.setBounds(elementXPx, elementY + topOffsetPx, widthPx, heightPx);
     }
 }

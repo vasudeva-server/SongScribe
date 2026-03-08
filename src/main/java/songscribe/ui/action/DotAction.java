@@ -22,9 +22,9 @@ package songscribe.ui.action;
 
 import org.jetbrains.annotations.Nullable;
 
-import songscribe.music.Note;
+import songscribe.music.StaffElement;
 
-public class DotAction extends InsertionNoteAction implements UIAction.NoteModifiable {
+public class DotAction extends InsertionElementAction implements UIAction.ElementModifiable {
 
     private final DotLevel dotLevel;
 
@@ -62,21 +62,21 @@ public class DotAction extends InsertionNoteAction implements UIAction.NoteModif
     }
 
     @Override
-    public boolean appliesTo(Note note) {
-        return note.getNoteType().isDuration();
+    public boolean appliesTo(StaffElement element) {
+        return element.getType().isDuration();
     }
 
     @Override
-    public boolean matchesNote(Note note) {
+    public boolean matchesElement(StaffElement element) {
         return switch (dotLevel) {
-            case SINGLE -> note.getDotCount() == 1;
-            case DOUBLE -> note.getDotCount() == 2;
+            case SINGLE -> element.getDotCount() == 1;
+            case DOUBLE -> element.getDotCount() == 2;
         };
     }
 
     @Override
-    public void applyToNote(Note note, boolean selected) {
-        note.setDotCount(selected ? dotLevel.ordinal() + 1 : 0);
+    public void applyToElement(StaffElement element, boolean selected) {
+        element.setDotCount(selected ? dotLevel.ordinal() + 1 : 0);
     }
 
     public enum DotLevel {

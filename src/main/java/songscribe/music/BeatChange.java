@@ -21,53 +21,53 @@ package songscribe.music;
 
 public enum BeatChange {
     QUAVER_EQUALS_QUAVER(
-        NoteType.QUAVER.newInstance(),
-        NoteType.QUAVER.newInstance(),
+        ElementType.QUAVER.newInstance(),
+        ElementType.QUAVER.newInstance(),
         1f
     ),
     DOTTED_CROCHET_EQUALS_MINIM(
-        createDottedVersion(NoteType.CROTCHET.newInstance()),
-        NoteType.MINIM.newInstance(),
+        createDottedVersion(ElementType.CROTCHET.newInstance()),
+        ElementType.MINIM.newInstance(),
         3f / 4f
     ),
     MINIM_EQUALS_DOTTED_CROCHET(
-        NoteType.MINIM.newInstance(),
-        createDottedVersion(NoteType.CROTCHET.newInstance()),
+        ElementType.MINIM.newInstance(),
+        createDottedVersion(ElementType.CROTCHET.newInstance()),
         4f / 3f
     ),
     CROTCHET_EQUALS_DOTTED_CROCHET(
-        NoteType.CROTCHET.newInstance(),
-        createDottedVersion(NoteType.CROTCHET.newInstance()),
+        ElementType.CROTCHET.newInstance(),
+        createDottedVersion(ElementType.CROTCHET.newInstance()),
         2f / 3f
     ),
     DOTTED_CROCHET_EQUALS_CROCHET(
-        createDottedVersion(NoteType.CROTCHET.newInstance()),
-        NoteType.CROTCHET.newInstance(),
+        createDottedVersion(ElementType.CROTCHET.newInstance()),
+        ElementType.CROTCHET.newInstance(),
         3f / 2f
     );
 
-    private final Note firstNote;
-    private final Note secondNote;
+    private final StaffElement firstElement;
+    private final StaffElement secondElement;
     private final float tempoChange;
 
-    BeatChange(Note firstNote, Note secondNote, float tempoChange) {
-        this.firstNote = firstNote;
-        this.secondNote = secondNote;
+    BeatChange(StaffElement firstElement, StaffElement secondElement, float tempoChange) {
+        this.firstElement = firstElement;
+        this.secondElement = secondElement;
         this.tempoChange = tempoChange;
     }
 
-    private static Note createDottedVersion(Note note) {
-        note.setDotCount(1);
-        note.setStaffPosition(1);
-        return note;
+    private static StaffElement createDottedVersion(StaffElement element) {
+        element.setDotCount(1);
+        element.setStaffPosition(1);
+        return element;
     }
 
-    public Note getFirstNote() {
-        return firstNote;
+    public StaffElement getFirstElement() {
+        return firstElement;
     }
 
-    public Note getSecondNote() {
-        return secondNote;
+    public StaffElement getSecondElement() {
+        return secondElement;
     }
 
     public float getTempoChange() {

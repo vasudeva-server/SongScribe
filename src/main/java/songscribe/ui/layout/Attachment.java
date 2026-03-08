@@ -23,26 +23,24 @@ package songscribe.ui.layout;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import songscribe.music.Note;
+import songscribe.music.StaffElement;
 
 /**
- * Abstract base class for elements that attach to notes.
+ * Abstract base class for elements that attach to staff elements.
  * <p>
  * Attachments include tempo markings, fermatas, annotations, dynamics, and beat changes.
  * Each attachment has:
  * <ul>
- *   <li>A parent note it attaches to</li>
- *   <li>Horizontal alignment relative to the note (LEFT, CENTER, RIGHT)</li>
+ *   <li>An owner element it attaches to</li>
+ *   <li>Horizontal alignment relative to the element (LEFT, CENTER, RIGHT)</li>
  * </ul>
  * <p>
  * Vertical placement is determined by the layout calculator, not stored as a property.
- * <p>
- * Concrete subclasses will be created in Phase 3.
  */
 public abstract class Attachment extends LineElement {
 
     /**
-     * Horizontal alignment of the attachment relative to the note.
+     * Horizontal alignment of the attachment relative to the owner element.
      */
     public enum Alignment {
         LEFT,
@@ -50,24 +48,24 @@ public abstract class Attachment extends LineElement {
         RIGHT
     }
 
-    /** The note this attachment belongs to. */
-    private @Nullable Note parentNote;
+    /** The staff element this attachment belongs to. */
+    private @Nullable StaffElement ownerElement;
 
-    /** Horizontal alignment relative to the note. */
+    /** Horizontal alignment relative to the owner element. */
     private @NotNull Alignment alignment = Alignment.CENTER;
 
     /**
-     * Returns the note this attachment belongs to.
+     * Returns the staff element this attachment belongs to.
      */
-    public @Nullable Note getParentNote() {
-        return parentNote;
+    public @Nullable StaffElement getOwnerElement() {
+        return ownerElement;
     }
 
     /**
-     * Sets the note this attachment belongs to.
+     * Sets the staff element this attachment belongs to.
      */
-    public void setParentNote(@Nullable Note parentNote) {
-        this.parentNote = parentNote;
+    public void setOwnerElement(@Nullable StaffElement ownerElement) {
+        this.ownerElement = ownerElement;
     }
 
     /**

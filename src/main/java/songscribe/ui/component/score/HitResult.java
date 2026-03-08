@@ -27,8 +27,11 @@ package songscribe.ui.component.score;
  * If nothing is hit, {@link Nothing} is returned.
  */
 sealed interface HitResult {
-    record NoteHead(int index) implements HitResult {}
-    record Glissando(int noteIndex) implements HitResult {}
+    record ElementHead(int index) implements HitResult {}
+
+    record Glissando(int elementIndex) implements HitResult {}
+
     record StaffLine() implements HitResult {}
+
     record Nothing() implements HitResult {}
 }

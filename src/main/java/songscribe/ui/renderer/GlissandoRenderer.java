@@ -21,11 +21,10 @@
 package songscribe.ui.renderer;
 
 import static songscribe.ui.renderer.GraphicsState.Property.COLOR;
-import static songscribe.ui.renderer.GraphicsState.Property.STROKE;
 import static songscribe.ui.renderer.GraphicsState.Property.TRANSFORM;
 
 import java.awt.*;
-import java.awt.font.FontRenderContext;
+import java.awt.font.*;
 import java.awt.geom.*;
 import java.util.EnumMap;
 import java.util.Map;
@@ -35,12 +34,10 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import songscribe.music.Composition;
+import songscribe.music.ElementType;
 import songscribe.music.Line;
-import songscribe.music.Note;
-import songscribe.music.NoteType;
-
+import songscribe.music.StaffElement;
 import songscribe.smufl.EngravingDefaults;
-
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
 import songscribe.ui.layout2.LayoutConstants;
@@ -58,7 +55,7 @@ import songscribe.ui.layout2.ScaleContext;
  * the first intersection with the expanded area. A gap is baked into the offset area so
  * the glissando never overlaps any note element.
  * <p>
- * Glissando data is stored on the source note via {@link Note#getGlissando()}.
+ * Glissando data is stored on the source note via {@link StaffElement#getGlissando()}.
  */
 public class GlissandoRenderer {
 
@@ -168,11 +165,11 @@ public class GlissandoRenderer {
      * cache misses.
      */
     private record AreaCacheKey(
-        NoteType noteType, int ledgerLineCount, int staffPosition,
-        int dotCount, Note.Accidental accidental, boolean upper, boolean beamed) {
+        ElementType noteType, int ledgerLineCount, int staffPosition,
+        int dotCount, StaffElement.Accidental accidental, boolean upper, boolean beamed) {
 
-        AreaCacheKey(@NotNull Note note, boolean beamed) {
-            this(note.getNoteType(),
+        AreaCacheKey(@NotNull StaffElement note, boolean beamed) {
+            this(note.getType(),
                 note.getLedgerLineCount(),
                 note.hasLedgerLines() ? note.getStaffPosition() : 0,
                 note.getDotCount(),
@@ -189,7 +186,7 @@ public class GlissandoRenderer {
     ) {}
 
     /** Self-validating area cache keyed by Note identity. Weak keys allow GC of removed notes. */
-    private final WeakHashMap<Note, AreaCacheEntry> areaCache = new WeakHashMap<>();
+    private final WeakHashMap<StaffElement, AreaCacheEntry> areaCache = new WeakHashMap<>();
 
     private GlissandoRenderer() {
     }
@@ -222,7 +219,7 @@ public class GlissandoRenderer {
      */
     public static double getGlissandoX1Ss(
         int xIndex,
-        @NotNull Note.Glissando glissando,
+        @NotNull StaffElement.Glissando glissando,
         int lineIndex,
         @NotNull Composition composition,
         @NotNull LayoutResult layoutResult,
@@ -236,7 +233,7 @@ public class GlissandoRenderer {
         }
 
         // Fallback to notehead center if glissando cannot render
-        var note = composition.getLine(lineIndex).getNote(xIndex);
+        var note = composition.getLine(lineIndex).getElement(xIndex);
         return noteheadCenterXSs(note, layoutResult);
     }
 
@@ -257,7 +254,7 @@ public class GlissandoRenderer {
      */
     public static double getGlissandoX2Ss(
         int xIndex,
-        @NotNull Note.Glissando glissando,
+        @NotNull StaffElement.Glissando glissando,
         int lineIndex,
         @NotNull Composition composition,
         @NotNull LayoutResult layoutResult,
@@ -273,11 +270,11 @@ public class GlissandoRenderer {
         // Fallback to notehead center if glissando cannot render
         var line = composition.getLine(lineIndex);
 
-        if (glissando.type == Note.Glissando.Type.CONNECTED) {
-            return noteheadCenterXSs(line.getNote(xIndex + 1), layoutResult);
+        if (glissando.type == StaffElement.Glissando.Type.CONNECTED) {
+            return noteheadCenterXSs(line.getElement(xIndex + 1), layoutResult);
         }
 
-        return noteheadCenterXSs(line.getNote(xIndex), layoutResult);
+        return noteheadCenterXSs(line.getElement(xIndex), layoutResult);
     }
 
     // ==========================================================================
@@ -296,11 +293,11 @@ public class GlissandoRenderer {
         @NotNull Line line,
         @NotNull ElementRenderContext ctx
     ) {
-        for (var i = 0; i < line.noteCount(); i++) {
-            var note = line.getNote(i);
+        for (var i = 0; i < line.elementCount(); i++) {
+            var note = line.getElement(i);
 
             //noinspection ObjectEquality
-            if (note.getGlissando() != Note.NO_GLISSANDO) {
+            if (note.getGlissando() != StaffElement.NO_GLISSANDO) {
                 renderGlissando(g2, line, note, i, ctx);
             }
         }
@@ -318,14 +315,14 @@ public class GlissandoRenderer {
     public void renderGlissando(
         @NotNull Graphics2D g2,
         @NotNull Line line,
-        @NotNull Note note,
+        @NotNull StaffElement note,
         int noteIndex,
         @NotNull ElementRenderContext ctx
     ) {
         var glissando = note.getGlissando();
 
         //noinspection ObjectEquality
-        if (glissando == Note.NO_GLISSANDO) {
+        if (glissando == StaffElement.NO_GLISSANDO) {
             return;
         }
 
@@ -341,7 +338,7 @@ public class GlissandoRenderer {
 
         var color = determineGlissandoColor(noteIndex, glissando.type, ctx);
 
-        render(g2, src, tgt, glissando.x1Translate, glissando.type == Note.Glissando.Type.CONNECTED ? glissando.x2Translate : 0, glissando, color);
+        render(g2, src, tgt, glissando.x1Translate, glissando.type == StaffElement.Glissando.Type.CONNECTED ? glissando.x2Translate : 0, glissando, color);
     }
 
     /**
@@ -352,7 +349,7 @@ public class GlissandoRenderer {
     @NotNull
     private Color determineGlissandoColor(
         int noteIndex,
-        @NotNull Note.Glissando.Type type,
+        @NotNull StaffElement.Glissando.Type type,
         @NotNull ElementRenderContext ctx
     ) {
         if (!ctx.isEditMode()) {
@@ -373,13 +370,13 @@ public class GlissandoRenderer {
         }
 
         // Implied by source note selection
-        if (selectionProvider.isNoteSelected(noteIndex, lineIndex)) {
+        if (selectionProvider.isElementSelected(noteIndex, lineIndex)) {
             return ctx.getSelectionColor();
         }
 
         // Implied by target note selection (CONNECTED only)
-        if (type == Note.Glissando.Type.CONNECTED
-                && selectionProvider.isNoteSelected(noteIndex + 1, lineIndex)) {
+        if (type == StaffElement.Glissando.Type.CONNECTED
+            && selectionProvider.isElementSelected(noteIndex + 1, lineIndex)) {
             return ctx.getSelectionColor();
         }
 
@@ -401,15 +398,15 @@ public class GlissandoRenderer {
     public void renderPreviewGlissando(
         @NotNull Graphics2D g2,
         int sourceIndex,
-        @NotNull Note.Glissando.Type type,
+        @NotNull StaffElement.Glissando.Type type,
         @NotNull Line line,
         @NotNull ElementRenderContext ctx
     ) {
-        if (sourceIndex < 0 || sourceIndex >= line.noteCount()) {
+        if (sourceIndex < 0 || sourceIndex >= line.elementCount()) {
             return;
         }
 
-        var note = line.getNote(sourceIndex);
+        var note = line.getElement(sourceIndex);
         var layoutResult = ctx.getLayoutResult();
         var middleLineYSs = ctx.getMiddleLineYSs();
         var src = resolveNoteContext(note, sourceIndex, line, layoutResult, middleLineYSs);
@@ -430,8 +427,8 @@ public class GlissandoRenderer {
     public int hitTestGlissando(double clickXSs, double clickYSs, @NotNull Line line) {
         var halfHitSs = ScaleContext.getInstance().fromPixels(HIT_THICKNESS_PX) / 2.0;
 
-        for (var i = 0; i < line.noteCount(); i++) {
-            var glissando = line.getNote(i).getGlissando();
+        for (var i = 0; i < line.elementCount(); i++) {
+            var glissando = line.getElement(i).getGlissando();
 
             if (!glissando.hasCachedGeometry) {
                 continue;
@@ -458,10 +455,10 @@ public class GlissandoRenderer {
      * Returns the notehead center X for a note, in staff spaces.
      */
     private static double noteheadCenterXSs(
-        @NotNull Note note,
+        @NotNull StaffElement note,
         @NotNull LayoutResult layoutResult
     ) {
-        return layoutResult.getNoteXSs(note) + NoteRenderer.getNoteheadRightEdgeSs(note) / 2.0;
+        return layoutResult.getElementXSs(note) + NoteRenderer.getNoteheadRightEdgeSs(note) / 2.0;
     }
 
     /**
@@ -474,19 +471,19 @@ public class GlissandoRenderer {
     @Nullable
     private GlissandoRenderer.Endpoints computeEndpointsForNote(
         int xIndex,
-        @NotNull Note.Glissando glissando,
+        @NotNull StaffElement.Glissando glissando,
         int lineIndex,
         @NotNull Composition composition,
         @NotNull LayoutResult layoutResult,
         double middleLineYSs
     ) {
         var line = composition.getLine(lineIndex);
-        var note = line.getNote(xIndex);
+        var note = line.getElement(xIndex);
         var src = resolveNoteContext(note, xIndex, line, layoutResult, middleLineYSs);
         var tgt = resolveTargetContext(glissando.type, xIndex, line, layoutResult, middleLineYSs);
 
         return computeEndpoints(src, tgt,
-            glissando.x1Translate, glissando.type == Note.Glissando.Type.CONNECTED ? glissando.x2Translate : 0);
+            glissando.x1Translate, glissando.type == StaffElement.Glissando.Type.CONNECTED ? glissando.x2Translate : 0);
     }
 
     // ==========================================================================
@@ -497,7 +494,7 @@ public class GlissandoRenderer {
      * Resolved geometry for a single note: center position, offset area, and note reference.
      */
     record NoteContext(
-        @NotNull Note note,
+        @NotNull StaffElement note,
         double cx, double cy,
         @NotNull Area offsetArea,
         @NotNull Rectangle2D offsetBounds
@@ -513,7 +510,7 @@ public class GlissandoRenderer {
      * position, staff-position Y coordinate, and composite area for gap calculation.
      */
     private NoteContext resolveNoteContext(
-        @NotNull Note note, int noteIndex, @NotNull Line line,
+        @NotNull StaffElement note, int noteIndex, @NotNull Line line,
         @NotNull LayoutResult layoutResult, double middleLineYSs
     ) {
         boolean beamed = line.getBeamings().findInterval(noteIndex) != null;
@@ -530,16 +527,16 @@ public class GlissandoRenderer {
      */
     @Nullable
     private NoteContext resolveTargetContext(
-        @NotNull Note.Glissando.Type type, int sourceIndex, @NotNull Line line,
+        @NotNull StaffElement.Glissando.Type type, int sourceIndex, @NotNull Line line,
         @NotNull LayoutResult layoutResult, double middleLineYSs
     ) {
-        if (type != Note.Glissando.Type.CONNECTED || sourceIndex + 1 >= line.noteCount()) {
+        if (type != StaffElement.Glissando.Type.CONNECTED || sourceIndex + 1 >= line.elementCount()) {
             return null;
         }
 
-        var nextNote = line.getNote(sourceIndex + 1);
+        var nextElement = line.getElement(sourceIndex + 1);
 
-        return resolveNoteContext(nextNote, sourceIndex + 1, line, layoutResult, middleLineYSs);
+        return resolveNoteContext(nextElement, sourceIndex + 1, line, layoutResult, middleLineYSs);
     }
 
     /**
@@ -648,7 +645,7 @@ public class GlissandoRenderer {
         @NotNull Graphics2D g2,
         @NotNull NoteContext src, @Nullable NoteContext tgt,
         double x1Translate, double x2Translate,
-        @Nullable Note.Glissando glissando,
+        @Nullable StaffElement.Glissando glissando,
         @NotNull Color color
     ) {
         var endpoints = computeEndpoints(src, tgt, x1Translate, x2Translate);
@@ -687,7 +684,7 @@ public class GlissandoRenderer {
      * Returns the cached entry if the note's visual attributes haven't changed,
      * or builds, caches, and returns a new one.
      */
-    @NotNull AreaCacheEntry getOrBuildArea(@NotNull Note note, boolean beamed) {
+    @NotNull AreaCacheEntry getOrBuildArea(@NotNull StaffElement note, boolean beamed) {
         var key = new AreaCacheKey(note, beamed);
 
         var cached = areaCache.get(note);
@@ -716,9 +713,9 @@ public class GlissandoRenderer {
      * @param beamed Whether the note is part of a beam group (suppresses flags)
      * @return The composite area of all note components
      */
-    Area buildNoteArea(@NotNull Note note, boolean beamed) {
+    Area buildNoteArea(@NotNull StaffElement note, boolean beamed) {
         var area = new Area();
-        var noteType = note.getNoteType();
+        var noteType = note.getType();
         boolean upper = note.isUpper();
 
         // Grace notes always stem up
@@ -749,14 +746,14 @@ public class GlissandoRenderer {
      */
     private void addNoteheadToArea(
         @NotNull Area area,
-        @NotNull NoteType noteType,
+        @NotNull ElementType noteType,
         boolean upper
     ) {
         Shape shape;
 
         if (noteType.isGraceNote()) {
             shape = NOTEHEAD_GRACE_SHAPE;
-        } else if (noteType == NoteType.SEMIBREVE) {
+        } else if (noteType == ElementType.SEMIBREVE) {
             shape = NOTEHEAD_WHOLE_SHAPE;
         } else {
             shape = NOTEHEAD_BLACK_SHAPE;
@@ -777,7 +774,7 @@ public class GlissandoRenderer {
      */
     private void addDotsToArea(
         @NotNull Area area,
-        @NotNull Note note,
+        @NotNull StaffElement note,
         boolean beamed,
         boolean upper
     ) {
@@ -800,8 +797,8 @@ public class GlissandoRenderer {
      * Adds an accidental bounding rectangle to the area.
      * Mirrors the positioning logic in {@link NoteRenderer#renderAccidental}.
      */
-    private void addAccidentalToArea(@NotNull Area area, @NotNull Note note) {
-        if (note.getAccidental() == Note.Accidental.NONE) {
+    private void addAccidentalToArea(@NotNull Area area, @NotNull StaffElement note) {
+        if (note.getAccidental() == StaffElement.Accidental.NONE) {
             return;
         }
 
@@ -830,7 +827,7 @@ public class GlissandoRenderer {
      * Estimates the vertical extent of a note's accidental in staff spaces,
      * using the tallest component glyph's bounding box.
      */
-    private double estimateAccidentalHeightSs(@NotNull Note note) {
+    private double estimateAccidentalHeightSs(@NotNull StaffElement note) {
         // Use the sharp glyph bbox as a reasonable default height (~2.5 ss)
         var bbox = METADATA.getBBox(SMuFLGlyph.ACCIDENTAL_SHARP);
 
@@ -839,9 +836,9 @@ public class GlissandoRenderer {
 
     /**
      * Returns the ledger line overhang for a note, or 0 if the note has no ledger lines.
-     * Delegates to {@link LayoutConstants#getLedgerLineOverhangSs(Note)}.
+     * Delegates to {@link LayoutConstants#getLedgerLineOverhangSs(StaffElement)}.
      */
-    public static double getLedgerLineOverhangSs(@NotNull Note note) {
+    public static double getLedgerLineOverhangSs(@NotNull StaffElement note) {
         return LayoutConstants.getLedgerLineOverhangSs(note);
     }
 
@@ -849,7 +846,7 @@ public class GlissandoRenderer {
      * Adds ledger line rectangles to the area.
      * Mirrors the positioning logic in {@link NoteRenderer#renderLedgerLines}.
      */
-    private void addLedgerLinesToArea(@NotNull Area area, @NotNull Note note) {
+    private void addLedgerLinesToArea(@NotNull Area area, @NotNull StaffElement note) {
         double extensionSs = getLedgerLineOverhangSs(note);
 
         if (extensionSs == 0.0) {
@@ -879,7 +876,7 @@ public class GlissandoRenderer {
      */
     private Point2D.Double addStemToArea(
         @NotNull Area area,
-        @NotNull NoteType noteType,
+        @NotNull ElementType noteType,
         boolean upper
     ) {
         var geom = LayoutConstants.computeBaseStemGeometry(noteType, upper);
@@ -902,7 +899,7 @@ public class GlissandoRenderer {
      */
     private void addFlagsToArea(
         @NotNull Area area,
-        @NotNull NoteType noteType,
+        @NotNull ElementType noteType,
         boolean upper,
         @NotNull Point2D.Double stemTip
     ) {
@@ -1012,12 +1009,12 @@ public class GlissandoRenderer {
         double nx, double ny
     ) {
         double tx = nx > 0 ? (bounds.getMaxX() - cx) / nx
-                   : nx < 0 ? (bounds.getMinX() - cx) / nx
-                   : Double.MAX_VALUE;
+            : nx < 0 ? (bounds.getMinX() - cx) / nx
+            : Double.MAX_VALUE;
 
         double ty = ny > 0 ? (bounds.getMaxY() - cy) / ny
-                   : ny < 0 ? (bounds.getMinY() - cy) / ny
-                   : Double.MAX_VALUE;
+            : ny < 0 ? (bounds.getMinY() - cy) / ny
+            : Double.MAX_VALUE;
 
         return Math.min(tx, ty);
     }

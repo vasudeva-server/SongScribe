@@ -24,12 +24,12 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import songscribe.music.ArticulationType;
-import songscribe.music.Note;
+import songscribe.music.StaffElement;
 
 /**
- * Represents an articulation marking on a note.
+ * Represents an articulation marking on a staff element.
  * <p>
- * Articulations modify how a note is played (staccato, accent, etc.).
+ * Articulations modify how an element is played (staccato, accent, etc.).
  * They are drawn outward from the note head:
  * <ul>
  *   <li>For downward stems: articulations go below the head</li>
@@ -41,8 +41,8 @@ public class Articulation extends LineElement {
     /** Default size for articulation symbols in pixels. */
     private static final double DEFAULT_SIZE = 8.0;
 
-    /** The note this articulation belongs to. */
-    private @Nullable Note parentNote;
+    /** The staff element this articulation belongs to. */
+    private @Nullable StaffElement ownerElement;
 
     /** The type of articulation (STACCATO, ACCENT, etc.). */
     private @NotNull ArticulationType type;
@@ -57,13 +57,13 @@ public class Articulation extends LineElement {
     }
 
     /**
-     * Creates a new articulation attached to a note.
+     * Creates a new articulation attached to a staff element.
      *
-     * @param parent The parent note
+     * @param parent The owner element
      * @param type   The articulation type
      */
-    public Articulation(@Nullable Note parent, @NotNull ArticulationType type) {
-        this.parentNote = parent;
+    public Articulation(@Nullable StaffElement parent, @NotNull ArticulationType type) {
+        this.ownerElement = parent;
         this.type = type;
 
         if (parent != null) {
@@ -73,17 +73,17 @@ public class Articulation extends LineElement {
     }
 
     /**
-     * Returns the note this articulation belongs to.
+     * Returns the staff element this articulation belongs to.
      */
-    public @Nullable Note getParentNote() {
-        return parentNote;
+    public @Nullable StaffElement getOwnerElement() {
+        return ownerElement;
     }
 
     /**
-     * Sets the note this articulation belongs to.
+     * Sets the staff element this articulation belongs to.
      */
-    public void setParentNote(@Nullable Note parentNote) {
-        this.parentNote = parentNote;
+    public void setOwnerElement(@Nullable StaffElement ownerElement) {
+        this.ownerElement = ownerElement;
     }
 
     /**

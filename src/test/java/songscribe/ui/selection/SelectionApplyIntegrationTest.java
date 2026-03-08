@@ -20,28 +20,28 @@
 
 package songscribe.ui.selection;
 
-import java.awt.event.ActionEvent;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+
+import java.awt.event.*;
 import java.util.ArrayList;
 import java.util.List;
-
-import songscribe.UnitTest;
-import songscribe.music.Composition;
-import songscribe.music.DurationArticulation;
-import songscribe.music.Note;
-import songscribe.music.NoteType;
-import songscribe.ui.action.AccidentalAction;
-import songscribe.ui.action.DotAction;
-import songscribe.ui.action.DurationArticulationAction;
-import songscribe.ui.action.FermataAction;
-import songscribe.ui.action.NoteTypeAction;
-import songscribe.ui.action.NoteTypeAction.Kind;
-import songscribe.ui.action.UIAction;
 
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.mock;
+import songscribe.UnitTest;
+import songscribe.music.Composition;
+import songscribe.music.DurationArticulation;
+import songscribe.music.ElementType;
+import songscribe.music.StaffElement;
+import songscribe.ui.action.AccidentalAction;
+import songscribe.ui.action.DotAction;
+import songscribe.ui.action.DurationArticulationAction;
+import songscribe.ui.action.ElementTypeAction;
+import songscribe.ui.action.ElementTypeAction.Kind;
+import songscribe.ui.action.FermataAction;
+import songscribe.ui.action.UIAction;
 
 /**
  * Integration tests for the selection-apply feature (Phase 11).
@@ -52,27 +52,27 @@ class SelectionApplyIntegrationTest extends UnitTest {
 
     // -- Shared action instances --
 
-    private static final NoteTypeAction QUARTER_ACTION = new NoteTypeAction(
-        Kind.DURATION, NoteType.CROTCHET, "Quarter", null, 0, "quarter", "Quarter note", 0, 0
+    private static final ElementTypeAction QUARTER_ACTION = new ElementTypeAction(
+        Kind.DURATION, ElementType.CROTCHET, "Quarter", null, 0, "quarter", "Quarter note", 0, 0
     );
 
-    private static final NoteTypeAction HALF_ACTION = new NoteTypeAction(
-        Kind.DURATION, NoteType.MINIM, "Half", null, 0, "half", "Half note", 0, 0
+    private static final ElementTypeAction HALF_ACTION = new ElementTypeAction(
+        Kind.DURATION, ElementType.MINIM, "Half", null, 0, "half", "Half note", 0, 0
     );
 
-    private static final NoteTypeAction BARLINE_ACTION = new NoteTypeAction(
-        Kind.NON_DURATION, NoteType.SINGLE_BARLINE, "Barline", null, 0, "barline", "Single barline", 0, 0
+    private static final ElementTypeAction BARLINE_ACTION = new ElementTypeAction(
+        Kind.NON_DURATION, ElementType.SINGLE_BARLINE, "Barline", null, 0, "barline", "Single barline", 0, 0
     );
 
-    private static final NoteTypeAction DOUBLE_BARLINE_ACTION = new NoteTypeAction(
-        Kind.NON_DURATION, NoteType.DOUBLE_BARLINE, "Double Barline", null, 0, "double-barline", "Double barline", 0, 0
+    private static final ElementTypeAction DOUBLE_BARLINE_ACTION = new ElementTypeAction(
+        Kind.NON_DURATION, ElementType.DOUBLE_BARLINE, "Double Barline", null, 0, "double-barline", "Double barline", 0, 0
     );
 
     private static final AccidentalAction SHARP_ACTION =
-        new AccidentalAction(Note.Accidental.SHARP, "Sharp", null, 0, "sharp", "Sharp");
+        new AccidentalAction(StaffElement.Accidental.SHARP, "Sharp", null, 0, "sharp", "Sharp");
 
     private static final AccidentalAction FLAT_ACTION =
-        new AccidentalAction(Note.Accidental.FLAT, "Flat", null, 0, "flat", "Flat");
+        new AccidentalAction(StaffElement.Accidental.FLAT, "Flat", null, 0, "flat", "Flat");
 
     private static final DotAction DOT_ACTION =
         new DotAction(DotAction.DotLevel.SINGLE, "Dot", null, 0, "dot", "Dot", 0, 0);
@@ -83,8 +83,8 @@ class SelectionApplyIntegrationTest extends UnitTest {
         new DurationArticulationAction(DurationArticulation.STACCATO, "Staccato", null, 0, "staccato", "Staccato");
 
     private SelectionCoordinator createCoordinator(
-            List<Note> notes,
-            List<UIAction.Reflectable> actions
+        List<StaffElement> notes,
+        List<UIAction.Reflectable> actions
     ) {
         var coordinator = ReflectionTestHelper.createCoordinator(notes, actions);
         var line = coordinator.getActiveSelection().getLine();
@@ -93,9 +93,9 @@ class SelectionApplyIntegrationTest extends UnitTest {
     }
 
     private SelectionCoordinator createCoordinator(
-            List<Note> notes,
-            List<UIAction.Reflectable> actions,
-            List<UIAction> managedActions
+        List<StaffElement> notes,
+        List<UIAction.Reflectable> actions,
+        List<UIAction> managedActions
     ) {
         var coordinator = ReflectionTestHelper.createCoordinator(notes, actions, managedActions);
         var line = coordinator.getActiveSelection().getLine();
@@ -111,7 +111,7 @@ class SelectionApplyIntegrationTest extends UnitTest {
         @Test
         void testNoteOnlySelectionEnablesDurationActions() {
             var coordinator = createCoordinator(
-                List.of(NoteType.CROTCHET.newInstance(), NoteType.QUAVER.newInstance()),
+                List.of(ElementType.CROTCHET.newInstance(), ElementType.QUAVER.newInstance()),
                 List.of(QUARTER_ACTION, BARLINE_ACTION)
             );
 
@@ -128,7 +128,7 @@ class SelectionApplyIntegrationTest extends UnitTest {
         @Test
         void testNoteOnlySelectionDisablesBarlineActions() {
             var coordinator = createCoordinator(
-                List.of(NoteType.CROTCHET.newInstance(), NoteType.QUAVER.newInstance()),
+                List.of(ElementType.CROTCHET.newInstance(), ElementType.QUAVER.newInstance()),
                 List.of(QUARTER_ACTION, BARLINE_ACTION)
             );
 
@@ -142,7 +142,7 @@ class SelectionApplyIntegrationTest extends UnitTest {
         @Test
         void testBarlineOnlySelectionDisablesDurationActions() {
             var coordinator = createCoordinator(
-                List.of(NoteType.SINGLE_BARLINE.newInstance(), NoteType.DOUBLE_BARLINE.newInstance()),
+                List.of(ElementType.SINGLE_BARLINE.newInstance(), ElementType.DOUBLE_BARLINE.newInstance()),
                 List.of(QUARTER_ACTION, BARLINE_ACTION)
             );
 
@@ -159,7 +159,7 @@ class SelectionApplyIntegrationTest extends UnitTest {
         @Test
         void testBarlineOnlySelectionEnablesBarlineActions() {
             var coordinator = createCoordinator(
-                List.of(NoteType.SINGLE_BARLINE.newInstance(), NoteType.DOUBLE_BARLINE.newInstance()),
+                List.of(ElementType.SINGLE_BARLINE.newInstance(), ElementType.DOUBLE_BARLINE.newInstance()),
                 List.of(QUARTER_ACTION, BARLINE_ACTION)
             );
 
@@ -176,7 +176,7 @@ class SelectionApplyIntegrationTest extends UnitTest {
             // Mixed selection has durations, so they are enabled (the action applies to the notes).
             // The mutual exclusivity only fully disables when ALL elements are inapplicable.
             var coordinator = createCoordinator(
-                List.of(NoteType.CROTCHET.newInstance(), NoteType.SINGLE_BARLINE.newInstance()),
+                List.of(ElementType.CROTCHET.newInstance(), ElementType.SINGLE_BARLINE.newInstance()),
                 List.of(QUARTER_ACTION, BARLINE_ACTION)
             );
 
@@ -194,7 +194,7 @@ class SelectionApplyIntegrationTest extends UnitTest {
         void testRestOnlySelectionDisablesNoteOnlyActions() {
             // AccidentalAction applies only to notes, not rests
             var coordinator = createCoordinator(
-                List.of(NoteType.CROTCHET_REST.newInstance(), NoteType.QUAVER_REST.newInstance()),
+                List.of(ElementType.CROTCHET_REST.newInstance(), ElementType.QUAVER_REST.newInstance()),
                 List.of(SHARP_ACTION, DOT_ACTION)
             );
 
@@ -217,9 +217,9 @@ class SelectionApplyIntegrationTest extends UnitTest {
         @Test
         void testSelectNotesClickDurationVerifyChanged() {
             var notes = List.of(
-                NoteType.QUAVER.newInstance(),
-                NoteType.SEMIQUAVER.newInstance(),
-                NoteType.QUAVER.newInstance()
+                ElementType.QUAVER.newInstance(),
+                ElementType.SEMIQUAVER.newInstance(),
+                ElementType.QUAVER.newInstance()
             );
             var actions = List.<UIAction.Reflectable>of(QUARTER_ACTION, HALF_ACTION);
             var coordinator = createCoordinator(notes, actions);
@@ -238,9 +238,9 @@ class SelectionApplyIntegrationTest extends UnitTest {
 
             // Verify all notes changed to crotchet
             for (int i = 0; i <= 2; i++) {
-                assertThat(line.getNote(i).getNoteType())
+                assertThat(line.getElement(i).getType())
                     .as("note %d should be crotchet", i)
-                    .isEqualTo(NoteType.CROTCHET);
+                    .isEqualTo(ElementType.CROTCHET);
             }
 
             // Selection should still be active
@@ -249,9 +249,9 @@ class SelectionApplyIntegrationTest extends UnitTest {
 
         @Test
         void testSelectNotesClickAccidentalVerifyApplied() {
-            var note1 = NoteType.CROTCHET.newInstance();
-            var note2 = NoteType.CROTCHET.newInstance();
-            note2.setAccidental(Note.Accidental.FLAT);
+            var note1 = ElementType.CROTCHET.newInstance();
+            var note2 = ElementType.CROTCHET.newInstance();
+            note2.setAccidental(StaffElement.Accidental.FLAT);
             var notes = List.of(note1, note2);
 
             var coordinator = createCoordinator(notes, List.of(SHARP_ACTION, FLAT_ACTION));
@@ -268,16 +268,16 @@ class SelectionApplyIntegrationTest extends UnitTest {
             coordinator.applyActionToSelection(SHARP_ACTION, true);
 
             // Verify both notes are now sharp
-            assertThat(line.getNote(0).getAccidental()).isEqualTo(Note.Accidental.SHARP);
-            assertThat(line.getNote(1).getAccidental()).isEqualTo(Note.Accidental.SHARP);
+            assertThat(line.getElement(0).getAccidental()).isEqualTo(StaffElement.Accidental.SHARP);
+            assertThat(line.getElement(1).getAccidental()).isEqualTo(StaffElement.Accidental.SHARP);
         }
 
         @Test
         void testSelectNotesAndRestsClickDotVerifyBothGetDots() {
             var notes = List.of(
-                NoteType.CROTCHET.newInstance(),
-                NoteType.CROTCHET_REST.newInstance(),
-                NoteType.QUAVER.newInstance()
+                ElementType.CROTCHET.newInstance(),
+                ElementType.CROTCHET_REST.newInstance(),
+                ElementType.QUAVER.newInstance()
             );
             var coordinator = createCoordinator(notes, List.of(DOT_ACTION));
             var line = coordinator.getActiveSelection().getLine();
@@ -288,7 +288,7 @@ class SelectionApplyIntegrationTest extends UnitTest {
             coordinator.applyActionToSelection(DOT_ACTION, true);
 
             for (int i = 0; i <= 2; i++) {
-                assertThat(line.getNote(i).getDotCount())
+                assertThat(line.getElement(i).getDotCount())
                     .as("note %d should have 1 dot", i)
                     .isEqualTo(1);
             }
@@ -297,8 +297,8 @@ class SelectionApplyIntegrationTest extends UnitTest {
         @Test
         void testSelectBarlinesClickBarlineTypeVerifyChanged() {
             var notes = List.of(
-                NoteType.SINGLE_BARLINE.newInstance(),
-                NoteType.SINGLE_BARLINE.newInstance()
+                ElementType.SINGLE_BARLINE.newInstance(),
+                ElementType.SINGLE_BARLINE.newInstance()
             );
             var coordinator = createCoordinator(notes, List.of(DOUBLE_BARLINE_ACTION));
             var line = coordinator.getActiveSelection().getLine();
@@ -307,9 +307,9 @@ class SelectionApplyIntegrationTest extends UnitTest {
             coordinator.applyActionToSelection(DOUBLE_BARLINE_ACTION, true);
 
             for (int i = 0; i <= 1; i++) {
-                assertThat(line.getNote(i).getNoteType())
+                assertThat(line.getElement(i).getType())
                     .as("barline %d should be double barline", i)
-                    .isEqualTo(NoteType.DOUBLE_BARLINE);
+                    .isEqualTo(ElementType.DOUBLE_BARLINE);
             }
         }
     }
@@ -322,8 +322,8 @@ class SelectionApplyIntegrationTest extends UnitTest {
         @Test
         void testApplyMultipleAttributesInSequence() {
             var notes = List.of(
-                NoteType.QUAVER.newInstance(),
-                NoteType.QUAVER.newInstance()
+                ElementType.QUAVER.newInstance(),
+                ElementType.QUAVER.newInstance()
             );
             var actions = List.<UIAction.Reflectable>of(
                 QUARTER_ACTION, SHARP_ACTION, FERMATA_ACTION, STACCATO_ACTION
@@ -347,11 +347,11 @@ class SelectionApplyIntegrationTest extends UnitTest {
 
             // Verify all attributes applied to both notes
             for (int i = 0; i <= 1; i++) {
-                var note = line.getNote(i);
-                assertThat(note.getNoteType())
-                    .as("note %d type", i).isEqualTo(NoteType.CROTCHET);
+                var note = line.getElement(i);
+                assertThat(note.getType())
+                    .as("note %d type", i).isEqualTo(ElementType.CROTCHET);
                 assertThat(note.getAccidental())
-                    .as("note %d accidental", i).isEqualTo(Note.Accidental.SHARP);
+                    .as("note %d accidental", i).isEqualTo(StaffElement.Accidental.SHARP);
                 assertThat(note.isFermata())
                     .as("note %d fermata", i).isTrue();
                 assertThat(note.getDurationArticulation())
@@ -365,8 +365,8 @@ class SelectionApplyIntegrationTest extends UnitTest {
         @Test
         void testApplyThenRemoveAttribute() {
             var notes = List.of(
-                NoteType.CROTCHET.newInstance(),
-                NoteType.CROTCHET.newInstance()
+                ElementType.CROTCHET.newInstance(),
+                ElementType.CROTCHET.newInstance()
             );
             var coordinator = createCoordinator(notes, List.of(FERMATA_ACTION));
             var line = coordinator.getActiveSelection().getLine();
@@ -375,20 +375,20 @@ class SelectionApplyIntegrationTest extends UnitTest {
 
             // Apply fermata
             coordinator.applyActionToSelection(FERMATA_ACTION, true);
-            assertThat(line.getNote(0).isFermata()).isTrue();
-            assertThat(line.getNote(1).isFermata()).isTrue();
+            assertThat(line.getElement(0).isFermata()).isTrue();
+            assertThat(line.getElement(1).isFermata()).isTrue();
 
             // Remove fermata
             coordinator.applyActionToSelection(FERMATA_ACTION, false);
-            assertThat(line.getNote(0).isFermata()).isFalse();
-            assertThat(line.getNote(1).isFermata()).isFalse();
+            assertThat(line.getElement(0).isFermata()).isFalse();
+            assertThat(line.getElement(1).isFermata()).isFalse();
         }
 
         @Test
         void testApplyDotThenChangeDurationPreservesDots() {
             var notes = List.of(
-                NoteType.QUAVER.newInstance(),
-                NoteType.QUAVER.newInstance()
+                ElementType.QUAVER.newInstance(),
+                ElementType.QUAVER.newInstance()
             );
             var coordinator = createCoordinator(notes, List.of(DOT_ACTION, QUARTER_ACTION));
             var line = coordinator.getActiveSelection().getLine();
@@ -402,9 +402,9 @@ class SelectionApplyIntegrationTest extends UnitTest {
             coordinator.applyActionToSelection(QUARTER_ACTION, true);
 
             for (int i = 0; i <= 1; i++) {
-                var note = line.getNote(i);
-                assertThat(note.getNoteType())
-                    .as("note %d type", i).isEqualTo(NoteType.CROTCHET);
+                var note = line.getElement(i);
+                assertThat(note.getType())
+                    .as("note %d type", i).isEqualTo(ElementType.CROTCHET);
                 assertThat(note.getDotCount())
                     .as("note %d dots", i).isEqualTo(1);
             }
@@ -418,14 +418,14 @@ class SelectionApplyIntegrationTest extends UnitTest {
 
         @Test
         void testSaveReflectApplyClearRestoresState() {
-            var note = NoteType.CROTCHET.newInstance();
-            note.setAccidental(Note.Accidental.FLAT);
+            var note = ElementType.CROTCHET.newInstance();
+            note.setAccidental(StaffElement.Accidental.FLAT);
 
             var sharpAction = new AccidentalAction(
-                Note.Accidental.SHARP, "Sharp", null, 0, "sharp", "Sharp"
+                StaffElement.Accidental.SHARP, "Sharp", null, 0, "sharp", "Sharp"
             );
             var flatAction = new AccidentalAction(
-                Note.Accidental.FLAT, "Flat", null, 0, "flat", "Flat"
+                StaffElement.Accidental.FLAT, "Flat", null, 0, "flat", "Flat"
             );
             // Pre-selection state
             sharpAction.setSelected(false);
@@ -449,7 +449,7 @@ class SelectionApplyIntegrationTest extends UnitTest {
             // Apply sharp — mutates the note
             coordinator.applyActionToSelection(sharpAction, true);
             var line = coordinator.getActiveSelection().getLine();
-            assertThat(line.getNote(0).getAccidental()).isEqualTo(Note.Accidental.SHARP);
+            assertThat(line.getElement(0).getAccidental()).isEqualTo(StaffElement.Accidental.SHARP);
 
             // Simulate disabled state during selection (flag chain would do this)
             sharpAction.setEnabled(false);
@@ -466,12 +466,13 @@ class SelectionApplyIntegrationTest extends UnitTest {
 
         @Test
         void testManagedActionsIncludeNonReflectableWithFlag() {
-            var note = NoteType.CROTCHET.newInstance();
+            var note = ElementType.CROTCHET.newInstance();
 
             var fermataAction = new FermataAction();
             var flaggedAction = new UIAction("Beam", null, 0, "beam", "Toggle beam") {
                 @Override
-                public void actionPerformed(ActionEvent e) {}
+                public void actionPerformed(ActionEvent e) {
+                }
             };
             flaggedAction.setFlags(UIAction.Flag.DISABLE_WHEN_BAR_SELECTED);
 
@@ -518,8 +519,8 @@ class SelectionApplyIntegrationTest extends UnitTest {
             // Grace notes are not durations — they are intimately tied to the
             // following note and have no standalone duration.
             var notes = List.of(
-                NoteType.GRACE_QUAVER.newInstance(),
-                NoteType.QUAVER.newInstance()
+                ElementType.GRACE_QUAVER.newInstance(),
+                ElementType.QUAVER.newInstance()
             );
             var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
             var line = coordinator.getActiveSelection().getLine();
@@ -527,15 +528,15 @@ class SelectionApplyIntegrationTest extends UnitTest {
             ReflectionTestHelper.selectRange(coordinator, 0, 1);
             coordinator.applyActionToSelection(QUARTER_ACTION, true);
 
-            assertThat(line.getNote(0).getNoteType()).isEqualTo(NoteType.GRACE_QUAVER);
-            assertThat(line.getNote(1).getNoteType()).isEqualTo(NoteType.CROTCHET);
+            assertThat(line.getElement(0).getType()).isEqualTo(ElementType.GRACE_QUAVER);
+            assertThat(line.getElement(1).getType()).isEqualTo(ElementType.CROTCHET);
         }
 
         @Test
         void testAccidentalAppliedToNotesOnlyInMixedSelection() {
-            var note = NoteType.CROTCHET.newInstance();
-            var rest = NoteType.CROTCHET_REST.newInstance();
-            var barline = NoteType.SINGLE_BARLINE.newInstance();
+            var note = ElementType.CROTCHET.newInstance();
+            var rest = ElementType.CROTCHET_REST.newInstance();
+            var barline = ElementType.SINGLE_BARLINE.newInstance();
 
             var coordinator = createCoordinator(
                 List.of(note, rest, barline),
@@ -547,16 +548,16 @@ class SelectionApplyIntegrationTest extends UnitTest {
             coordinator.applyActionToSelection(SHARP_ACTION, true);
 
             // Only the actual note gets the accidental
-            assertThat(line.getNote(0).getAccidental()).isEqualTo(Note.Accidental.SHARP);
-            assertThat(line.getNote(1).getAccidental()).isEqualTo(Note.Accidental.NONE);
-            assertThat(line.getNote(2).getAccidental()).isEqualTo(Note.Accidental.NONE);
+            assertThat(line.getElement(0).getAccidental()).isEqualTo(StaffElement.Accidental.SHARP);
+            assertThat(line.getElement(1).getAccidental()).isEqualTo(StaffElement.Accidental.NONE);
+            assertThat(line.getElement(2).getAccidental()).isEqualTo(StaffElement.Accidental.NONE);
         }
 
         @Test
         void testDurationChangeOnRestPreservesRestKind() {
             var notes = List.of(
-                NoteType.QUAVER.newInstance(),
-                NoteType.QUAVER_REST.newInstance()
+                ElementType.QUAVER.newInstance(),
+                ElementType.QUAVER_REST.newInstance()
             );
             var coordinator = createCoordinator(notes, List.of(HALF_ACTION));
             var line = coordinator.getActiveSelection().getLine();
@@ -564,14 +565,14 @@ class SelectionApplyIntegrationTest extends UnitTest {
             ReflectionTestHelper.selectRange(coordinator, 0, 1);
             coordinator.applyActionToSelection(HALF_ACTION, true);
 
-            assertThat(line.getNote(0).getNoteType()).isEqualTo(NoteType.MINIM);
-            assertThat(line.getNote(1).getNoteType()).isEqualTo(NoteType.MINIM_REST);
+            assertThat(line.getElement(0).getType()).isEqualTo(ElementType.MINIM);
+            assertThat(line.getElement(1).getType()).isEqualTo(ElementType.MINIM_REST);
         }
 
         @Test
         void testDurationChangePreservesExistingAttributes() {
-            var note = NoteType.QUAVER.newInstance();
-            note.setAccidental(Note.Accidental.SHARP);
+            var note = ElementType.QUAVER.newInstance();
+            note.setAccidental(StaffElement.Accidental.SHARP);
             note.setDotCount(1);
             note.setFermata(true);
             note.setDurationArticulation(DurationArticulation.STACCATO);
@@ -582,9 +583,9 @@ class SelectionApplyIntegrationTest extends UnitTest {
             ReflectionTestHelper.selectNote(coordinator, 0);
             coordinator.applyActionToSelection(QUARTER_ACTION, true);
 
-            var replaced = line.getNote(0);
-            assertThat(replaced.getNoteType()).isEqualTo(NoteType.CROTCHET);
-            assertThat(replaced.getAccidental()).isEqualTo(Note.Accidental.SHARP);
+            var replaced = line.getElement(0);
+            assertThat(replaced.getType()).isEqualTo(ElementType.CROTCHET);
+            assertThat(replaced.getAccidental()).isEqualTo(StaffElement.Accidental.SHARP);
             assertThat(replaced.getDotCount()).isEqualTo(1);
             assertThat(replaced.isFermata()).isTrue();
             assertThat(replaced.getDurationArticulation()).isEqualTo(DurationArticulation.STACCATO);

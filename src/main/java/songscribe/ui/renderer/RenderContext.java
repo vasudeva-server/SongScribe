@@ -63,9 +63,9 @@ public interface RenderContext {
     int getRowHeight();
 
     /**
-     * Calculates the Y position for a note at the given y-position and line index.
+     * Calculates the Y position for an element at the given staff position and line index.
      *
-     * @param staffPosition The note's staff position relative to middle line (0 = B4)
+     * @param staffPosition The element's staff position relative to middle line (0 = B4)
      * @param lineIndex     The staff line index (0-based)
      * @return The Y coordinate in pixels
      */
@@ -91,13 +91,13 @@ public interface RenderContext {
     // -------------------------------------------------------------------------
 
     /**
-     * Returns whether the note at the given index is selected.
+     * Returns whether the element at the given index is selected.
      *
-     * @param noteIndex The note index within the line
-     * @param lineIndex The staff line index
-     * @return true if the note is selected
+     * @param elementIndex The element index within the line
+     * @param lineIndex    The staff line index
+     * @return true if the element is selected
      */
-    boolean isNoteSelected(int noteIndex, int lineIndex);
+    boolean isElementSelected(int elementIndex, int lineIndex);
 
     /**
      * Returns the index of the currently selected staff line, or -1 if none.

@@ -30,7 +30,7 @@ import songscribe.ui.message.MessageCenter;
  * An action group that manages non-duration actions (bars and breath mark).
  * Duration actions and rest mode are mutually exclusive with non-duration actions.
  */
-public class NonDurationActionGroup extends ActionGroup<NoteTypeAction> {
+public class NonDurationActionGroup extends ActionGroup<ElementTypeAction> {
 
     NonDurationActionGroup() {
         super(Actions.REPEAT_ACTIONS);

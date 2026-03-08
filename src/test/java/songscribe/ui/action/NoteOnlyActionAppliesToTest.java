@@ -21,7 +21,7 @@
 package songscribe.ui.action;
 
 import songscribe.UnitTest;
-import songscribe.music.NoteType;
+import songscribe.music.ElementType;
 
 import org.junit.jupiter.api.Test;
 
@@ -35,21 +35,21 @@ class NoteOnlyActionAppliesToTest extends UnitTest {
     // A7: appliesTo returns true for notes
     @Test
     void testAppliesToNote() {
-        var note = NoteType.CROTCHET.newInstance();
+        var note = ElementType.CROTCHET.newInstance();
         assertThat(action.appliesTo(note)).isTrue();
     }
 
     // A8: appliesTo returns false for rests
     @Test
     void testDoesNotApplyToRest() {
-        var note = NoteType.CROTCHET_REST.newInstance();
+        var note = ElementType.CROTCHET_REST.newInstance();
         assertThat(action.appliesTo(note)).isFalse();
     }
 
     // A9: appliesTo returns false for barlines
     @Test
     void testDoesNotApplyToBarline() {
-        var note = NoteType.SINGLE_BARLINE.newInstance();
+        var note = ElementType.SINGLE_BARLINE.newInstance();
         assertThat(action.appliesTo(note)).isFalse();
     }
 }

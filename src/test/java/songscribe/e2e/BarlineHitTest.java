@@ -20,16 +20,16 @@
 
 package songscribe.e2e;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import org.assertj.swing.edt.GuiActionRunner;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 
 import songscribe.music.Composition;
+import songscribe.music.ElementType;
 import songscribe.music.Line;
-import songscribe.music.NoteType;
 import songscribe.ui.component.MainFrame;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * E2E tests verifying that barlines and repeats are clickable (hit-testable)
@@ -38,70 +38,76 @@ import static org.assertj.core.api.Assertions.assertThat;
 @Order(5)
 class BarlineHitTest extends E2ETest {
 
-    @Test @Order(1)
+    @Test
+    @Order(1)
     void testClickSingleBarline() {
-        buildLineWithElement(NoteType.SINGLE_BARLINE);
+        buildLineWithElement(ElementType.SINGLE_BARLINE);
         enterSelectMode();
 
         clickAt(noteScreenPosition(0, 1));
 
-        assertThat(score().getSingleSelectedNote())
-            .isEqualTo(composition().getLine(0).getNote(1));
+        assertThat(score().getSingleSelectedElement())
+            .isEqualTo(composition().getLine(0).getElement(1));
     }
 
-    @Test @Order(2)
+    @Test
+    @Order(2)
     void testClickDoubleBarline() {
-        buildLineWithElement(NoteType.DOUBLE_BARLINE);
+        buildLineWithElement(ElementType.DOUBLE_BARLINE);
         enterSelectMode();
 
         clickAt(noteScreenPosition(0, 1));
 
-        assertThat(score().getSingleSelectedNote())
-            .isEqualTo(composition().getLine(0).getNote(1));
+        assertThat(score().getSingleSelectedElement())
+            .isEqualTo(composition().getLine(0).getElement(1));
     }
 
-    @Test @Order(3)
+    @Test
+    @Order(3)
     void testClickFinalDoubleBarline() {
-        buildLineWithElement(NoteType.FINAL_DOUBLE_BARLINE);
+        buildLineWithElement(ElementType.FINAL_DOUBLE_BARLINE);
         enterSelectMode();
 
         clickAt(noteScreenPosition(0, 1));
 
-        assertThat(score().getSingleSelectedNote())
-            .isEqualTo(composition().getLine(0).getNote(1));
+        assertThat(score().getSingleSelectedElement())
+            .isEqualTo(composition().getLine(0).getElement(1));
     }
 
-    @Test @Order(4)
+    @Test
+    @Order(4)
     void testClickRepeatLeft() {
-        buildLineWithElement(NoteType.REPEAT_LEFT);
+        buildLineWithElement(ElementType.REPEAT_LEFT);
         enterSelectMode();
 
         clickAt(noteScreenPosition(0, 1));
 
-        assertThat(score().getSingleSelectedNote())
-            .isEqualTo(composition().getLine(0).getNote(1));
+        assertThat(score().getSingleSelectedElement())
+            .isEqualTo(composition().getLine(0).getElement(1));
     }
 
-    @Test @Order(5)
+    @Test
+    @Order(5)
     void testClickRepeatRight() {
-        buildLineWithElement(NoteType.REPEAT_RIGHT);
+        buildLineWithElement(ElementType.REPEAT_RIGHT);
         enterSelectMode();
 
         clickAt(noteScreenPosition(0, 1));
 
-        assertThat(score().getSingleSelectedNote())
-            .isEqualTo(composition().getLine(0).getNote(1));
+        assertThat(score().getSingleSelectedElement())
+            .isEqualTo(composition().getLine(0).getElement(1));
     }
 
-    @Test @Order(6)
+    @Test
+    @Order(6)
     void testClickRepeatLeftRight() {
-        buildLineWithElement(NoteType.REPEAT_LEFT_RIGHT);
+        buildLineWithElement(ElementType.REPEAT_LEFT_RIGHT);
         enterSelectMode();
 
         clickAt(noteScreenPosition(0, 1));
 
-        assertThat(score().getSingleSelectedNote())
-            .isEqualTo(composition().getLine(0).getNote(1));
+        assertThat(score().getSingleSelectedElement())
+            .isEqualTo(composition().getLine(0).getElement(1));
     }
 
 
@@ -111,18 +117,18 @@ class BarlineHitTest extends E2ETest {
      * Builds a composition with a crotchet followed by the given element type.
      * The crotchet ensures the element is not at x=0 and has proper spacing.
      */
-    private void buildLineWithElement(NoteType elementType) {
+    private void buildLineWithElement(ElementType elementType) {
         GuiActionRunner.execute(() -> {
             var composition = new Composition(MainFrame.getInstance());
             var line = new Line();
 
-            var crotchet = NoteType.CROTCHET.newInstance();
+            var crotchet = ElementType.CROTCHET.newInstance();
             crotchet.setStaffPosition(0);
-            line.addNote(crotchet);
+            line.addElement(crotchet);
 
             var element = elementType.newInstance();
             element.setStaffPosition(0);
-            line.addNote(element);
+            line.addElement(element);
 
             composition.addLine(0, line);
             score().setComposition(composition);

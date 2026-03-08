@@ -20,18 +20,18 @@
 
 package songscribe.e2e;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import org.assertj.swing.edt.GuiActionRunner;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 
 import songscribe.data.BeamInterval;
 import songscribe.music.Composition;
+import songscribe.music.ElementType;
 import songscribe.music.Line;
-import songscribe.music.NoteType;
 import songscribe.ui.action.Actions;
 import songscribe.ui.component.MainFrame;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Milestone 2 E2E tests: automatic beaming, manual toggle, stem direction.
@@ -39,7 +39,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 @Order(3)
 class BeamingTest extends E2ETest {
 
-    @Test @Order(1)
+    @Test
+    @Order(1)
     void testAutoBeamingOnInsertion() {
         enterEditMode();
         selectDuration(Actions.EIGHTH_NOTE_ACTION);
@@ -51,7 +52,7 @@ class BeamingTest extends E2ETest {
         performLayout(0);
 
         var line = composition().getLine(0);
-        assertThat(line.noteCount()).isEqualTo(2);
+        assertThat(line.elementCount()).isEqualTo(2);
 
         // Both notes should be in a beam group
         assertThat(isBeamed(0, 0)).isTrue();
@@ -64,7 +65,8 @@ class BeamingTest extends E2ETest {
         assertThat(beam.getEnd()).isEqualTo(1);
     }
 
-    @Test @Order(2)
+    @Test
+    @Order(2)
     void testToggleBeamingOnSelection() {
         // Build composition with two unbeamed eighth notes
         buildUnbeamedEighthNotes();
@@ -87,7 +89,8 @@ class BeamingTest extends E2ETest {
         assertThat(isBeamed(0, 1)).isTrue();
     }
 
-    @Test @Order(3)
+    @Test
+    @Order(3)
     void testToggleBeamingRemovesExistingBeam() {
         // Build composition with beamed eighth notes
         buildBeamedEighthNotes();
@@ -110,12 +113,13 @@ class BeamingTest extends E2ETest {
         assertThat(isBeamed(0, 1)).isFalse();
     }
 
-    @Test @Order(4)
+    @Test
+    @Order(4)
     void testFlipStemDirection() {
         // Build composition with beamed eighth notes
         buildBeamedEighthNotes();
 
-        var note = composition().getLine(0).getNote(0);
+        var note = composition().getLine(0).getElement(0);
         assertThat(note.isStemDirectionAuto()).isTrue();
         var originalUpper = note.isUpper();
 
@@ -129,12 +133,13 @@ class BeamingTest extends E2ETest {
         assertThat(note.isUpper()).isNotEqualTo(originalUpper);
     }
 
-    @Test @Order(5)
+    @Test
+    @Order(5)
     void testFlipStemDirectionUnbeamed() {
         // Build composition with unbeamed quarter notes
         buildTwoQuarterNotes();
 
-        var note = composition().getLine(0).getNote(0);
+        var note = composition().getLine(0).getElement(0);
         assertThat(note.isStemDirectionAuto()).isTrue();
         var originalUpper = note.isUpper();
 
@@ -148,12 +153,13 @@ class BeamingTest extends E2ETest {
         assertThat(note.isUpper()).isNotEqualTo(originalUpper);
     }
 
-    @Test @Order(6)
+    @Test
+    @Order(6)
     void testStemDirectionPersistsThroughSaveLoad() throws Exception {
         // Build composition and flip a note's stem
         buildTwoQuarterNotes();
 
-        var originalNote = composition().getLine(0).getNote(0);
+        var originalNote = composition().getLine(0).getElement(0);
         enterSelectMode();
         clickAt(noteScreenPosition(0, 0));
 
@@ -165,7 +171,7 @@ class BeamingTest extends E2ETest {
         // Round-trip save/load
         var reloaded = roundTrip(composition());
 
-        var reloadedNote = reloaded.getLine(0).getNote(0);
+        var reloadedNote = reloaded.getLine(0).getElement(0);
         assertThat(reloadedNote.isStemDirectionAuto()).isFalse();
         assertThat(reloadedNote.isUpper()).isEqualTo(flippedUpper);
     }
@@ -178,13 +184,13 @@ class BeamingTest extends E2ETest {
             var composition = new Composition(MainFrame.getInstance());
             var line = new Line();
 
-            var note1 = NoteType.QUAVER.newInstance();
+            var note1 = ElementType.QUAVER.newInstance();
             note1.setStaffPosition(0);
-            line.addNote(note1);
+            line.addElement(note1);
 
-            var note2 = NoteType.QUAVER.newInstance();
+            var note2 = ElementType.QUAVER.newInstance();
             note2.setStaffPosition(-2);
-            line.addNote(note2);
+            line.addElement(note2);
 
             composition.addLine(0, line);
             score().setComposition(composition);
@@ -198,13 +204,13 @@ class BeamingTest extends E2ETest {
             var composition = new Composition(MainFrame.getInstance());
             var line = new Line();
 
-            var note1 = NoteType.QUAVER.newInstance();
+            var note1 = ElementType.QUAVER.newInstance();
             note1.setStaffPosition(0);
-            line.addNote(note1);
+            line.addElement(note1);
 
-            var note2 = NoteType.QUAVER.newInstance();
+            var note2 = ElementType.QUAVER.newInstance();
             note2.setStaffPosition(-2);
-            line.addNote(note2);
+            line.addElement(note2);
 
             line.getBeamings().addInterval(new BeamInterval(0, 1));
 
@@ -220,13 +226,13 @@ class BeamingTest extends E2ETest {
             var composition = new Composition(MainFrame.getInstance());
             var line = new Line();
 
-            var note1 = NoteType.CROTCHET.newInstance();
+            var note1 = ElementType.CROTCHET.newInstance();
             note1.setStaffPosition(0);
-            line.addNote(note1);
+            line.addElement(note1);
 
-            var note2 = NoteType.CROTCHET.newInstance();
+            var note2 = ElementType.CROTCHET.newInstance();
             note2.setStaffPosition(-2);
-            line.addNote(note2);
+            line.addElement(note2);
 
             composition.addLine(0, line);
             score().setComposition(composition);

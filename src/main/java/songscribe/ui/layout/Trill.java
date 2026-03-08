@@ -23,7 +23,7 @@ package songscribe.ui.layout;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import songscribe.music.Note;
+import songscribe.music.StaffElement;
 
 /**
  * Represents a trill marking that can span one or more notes.
@@ -33,7 +33,7 @@ import songscribe.music.Note;
  */
 public class Trill extends RangeElement {
 
-    private @Nullable Note endNote;
+    private @Nullable StaffElement endNote;
     private int yPositionSs = 0;
 
     /**
@@ -42,8 +42,8 @@ public class Trill extends RangeElement {
      * @param anchorNote The first note of the trill
      * @param endNote    The last note of the trill
      */
-    public Trill(@NotNull Note anchorNote, @NotNull Note endNote) {
-        setAnchorNote(anchorNote);
+    public Trill(@NotNull StaffElement anchorNote, @NotNull StaffElement endNote) {
+        setAnchorElement(anchorNote);
         this.endNote = endNote;
     }
 
@@ -52,25 +52,25 @@ public class Trill extends RangeElement {
      *
      * @param note The note with the trill
      */
-    public Trill(@NotNull Note note) {
+    public Trill(@NotNull StaffElement note) {
         this(note, note);
     }
 
     @Override
-    public @Nullable Note getEndNote() {
+    public @Nullable StaffElement getEndElement() {
         return endNote;
     }
 
     /**
      * Sets the end note of this trill.
      */
-    public void setEndNote(@Nullable Note endNote) {
+    public void setEndNote(@Nullable StaffElement endNote) {
         this.endNote = endNote;
     }
 
     @Override
     public int getNoteCount() {
-        var anchor = getAnchorNote();
+        var anchor = getAnchorElement();
 
         if (anchor == null || endNote == null) {
             return 0;
@@ -81,8 +81,8 @@ public class Trill extends RangeElement {
             return 1;
         }
 
-        int startIndex = getAnchorNoteIndex();
-        int endIndex = getEndNoteIndex();
+        int startIndex = getAnchorElementIndex();
+        int endIndex = getEndElementIndex();
 
         if (startIndex < 0 || endIndex < 0) {
             return 0;
@@ -113,7 +113,7 @@ public class Trill extends RangeElement {
 
     @Override
     public double getContentWidth() {
-        var anchor = getAnchorNote();
+        var anchor = getAnchorElement();
 
         if (anchor == null || endNote == null) {
             return 0;

@@ -20,7 +20,7 @@
 
 package songscribe.ui.message;
 
-import javax.swing.Timer;
+import javax.swing.*;
 
 import org.jetbrains.annotations.NotNull;
 
@@ -30,7 +30,7 @@ import songscribe.music.Composition;
 import songscribe.music.Line;
 import songscribe.music.LyricsProcessor;
 import songscribe.music.MusicEditOperations;
-import songscribe.music.Note;
+import songscribe.music.StaffElement;
 import songscribe.ui.Control;
 import songscribe.ui.Mode;
 import songscribe.ui.action.InsertLineAction;
@@ -61,22 +61,39 @@ public final class ScoreMessageCoordinator {
      */
     public interface Callback {
         void repaint();
+
         void clearSelection();
+
         void selectionChanged();
+
         void setMode(Mode mode);
+
         void setControl(Control control);
-        void setInsertionNote(Note insertionNote);
+
+        void setInsertionElement(StaffElement insertionNote);
+
         Composition getComposition();
+
         void setComposition(Composition composition);
+
         boolean requestFocusInWindow();
+
         boolean isFocusOwner();
+
         MainPanel getMainPanel();
+
         IMainFrame getMainFrame();
+
         HorizontalAdjustment getHorizontalAdjustment();
+
         VerticalAdjustment getVerticalAdjustment();
+
         LyricsAdjustment getLyricsAdjustment();
+
         Control getControl();
+
         boolean canDeleteLine();
+
         void setInSelectMode(boolean inSelectMode);
     }
 
@@ -115,28 +132,28 @@ public final class ScoreMessageCoordinator {
     }
 
     @Handler
-    public void noteTypeWasSelected(@NotNull NoteTypeSelectedMessage message) {
-        callback.setInsertionNote(editModeManager.makeInsertionNote(message.getNoteType()));
+    public void noteTypeWasSelected(@NotNull ElementTypeSelectedMessage message) {
+        callback.setInsertionElement(editModeManager.makeInsertionElement(message.getNoteType()));
     }
 
     @Handler
     public void restModeDidChange(RestModeChangedMessage message) {
-        callback.setInsertionNote(editModeManager.makeInsertionNote());
+        callback.setInsertionElement(editModeManager.makeInsertionElement());
     }
 
     @Handler
-    public void onUpdateInsertionNote(UpdateInsertionNoteMessage message) {
-        updateInsertionNote();
+    public void onUpdateInsertionElement(UpdateInsertionElementMessage message) {
+        updateInsertionElement();
     }
 
-    private void updateInsertionNote() {
-        var insertionNote = editModeManager.getInsertionNote();
+    private void updateInsertionElement() {
+        var insertionElement = editModeManager.getInsertionElement();
 
-        if (insertionNote != null) {
-            editModeManager.decorateNote(insertionNote);
+        if (insertionElement != null) {
+            editModeManager.decorateElement(insertionElement);
             callback.repaint();
         } else {
-            callback.setInsertionNote(editModeManager.makeInsertionNote());
+            callback.setInsertionElement(editModeManager.makeInsertionElement());
         }
     }
 
@@ -286,7 +303,7 @@ public final class ScoreMessageCoordinator {
             callback.clearSelection();
         }
 
-        callback.getHorizontalAdjustment().setEnabled(mode == Mode.NOTE_ADJUSTMENT);
+        callback.getHorizontalAdjustment().setEnabled(mode == Mode.ADJUSTMENT);
         callback.getVerticalAdjustment().setEnabled(mode == Mode.VERTICAL_ADJUSTMENT);
         callback.getLyricsAdjustment().setEnabled(mode == Mode.LYRICS_ADJUSTMENT);
         callback.repaint();
@@ -327,12 +344,12 @@ public final class ScoreMessageCoordinator {
     private void handleCopy() {
         var state = selectionCoordinator.getActiveSelection();
 
-        if (state != null && state.hasNoteSelection()) {
+        if (state != null && state.hasElementSelection()) {
             var line = state.getLine();
             clipboardManager.clear();
 
             for (var i = state.getSelectionBegin(); i <= state.getSelectionEnd(); i++) {
-                clipboardManager.addNote(line.getNote(i).clone());
+                clipboardManager.addElement(line.getElement(i).clone());
             }
 
             clipboardManager.setIntervalsCopyBuffer(line.copyIntervals(
@@ -346,7 +363,7 @@ public final class ScoreMessageCoordinator {
         var composition = callback.getComposition();
         var state = selectionCoordinator.getActiveSelection();
 
-        if (state != null && state.hasNoteSelection()) {
+        if (state != null && state.hasElementSelection()) {
             var line = state.getLine();
 
             for (var i = state.getSelectionEnd(); i >= state.getSelectionBegin(); i--) {
@@ -356,7 +373,7 @@ public final class ScoreMessageCoordinator {
             LyricsProcessor.spellLyrics(line);
         } else if (state != null && state.hasGlissandoSelection()) {
             var line = state.getLine();
-            line.getNote(state.getSelectedGlissandoNoteIndex()).removeGlissando();
+            line.getElement(state.getSelectedGlissandoElementIndex()).removeGlissando();
         } else if (callback.canDeleteLine()) {
             composition.removeLine(selectionCoordinator.getSelectedLine());
             LyricsProcessor.spellLyrics(composition);
@@ -369,7 +386,7 @@ public final class ScoreMessageCoordinator {
     private void handlePaste() {
         if (!clipboardManager.isEmpty()) {
             editModeManager.setPrevPasteControl(callback.getControl());
-            callback.setInsertionNote(Note.PASTE_NOTE);
+            callback.setInsertionElement(StaffElement.PASTE_PLACEHOLDER);
             callback.setControl(Control.MOUSE);
             selectionCoordinator.setInSelectMode(false);
             callback.repaint();
@@ -397,25 +414,25 @@ public final class ScoreMessageCoordinator {
 
     @SuppressWarnings("ObjectEquality")
     private static void deleteNote(int xIndex, @NotNull Line line) {
-        if (xIndex < (line.noteCount() - 1)) {
+        if (xIndex < (line.elementCount() - 1)) {
             var shift =
-                line.getNote(xIndex).getXPosSs() -
-                    line.getNote(xIndex + 1).getXPosSs();
+                line.getElement(xIndex).getXPosSs() -
+                    line.getElement(xIndex + 1).getXPosSs();
 
-            for (var i = xIndex + 1; i < line.noteCount(); i++) {
-                line.getNote(i).setXPosSs(line.getNote(i).getXPosSs() + shift);
+            for (var i = xIndex + 1; i < line.elementCount(); i++) {
+                line.getElement(i).setXPosSs(line.getElement(i).getXPosSs() + shift);
             }
         }
 
         // If the previous note has a glissando targeting this note, remove it
         if (xIndex > 0) {
-            var prevNote = line.getNote(xIndex - 1);
+            var prevElement = line.getElement(xIndex - 1);
 
-            if (prevNote.getGlissando() != Note.NO_GLISSANDO) {
-                prevNote.removeGlissando();
+            if (prevElement.getGlissando() != StaffElement.NO_GLISSANDO) {
+                prevElement.removeGlissando();
             }
         }
 
-        line.removeNote(xIndex);
+        line.removeElement(xIndex);
     }
 }

@@ -22,14 +22,14 @@ package songscribe.ui.action;
 
 import org.jetbrains.annotations.Nullable;
 
-import songscribe.music.Note;
+import songscribe.music.StaffElement;
 
 /**
  * Abstract base for actions whose attributes apply only to notes
- * (not rests or barlines). Provides a shared appliesTo implementation.
+ * (not rests or barlines). Provides a shared {@link #appliesTo} implementation.
  */
-public abstract class NoteOnlyAction extends InsertionNoteAction
-    implements UIAction.NoteModifiable {
+public abstract class NoteOnlyAction extends InsertionElementAction
+    implements UIAction.ElementModifiable {
 
     public NoteOnlyAction(
         @Nullable String name,
@@ -66,7 +66,7 @@ public abstract class NoteOnlyAction extends InsertionNoteAction
     }
 
     @Override
-    public boolean appliesTo(Note note) {
-        return note.getNoteType().isNote();
+    public boolean appliesTo(StaffElement element) {
+        return element.getType().isNote();
     }
 }

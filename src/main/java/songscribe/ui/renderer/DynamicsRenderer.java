@@ -29,15 +29,15 @@ import org.jetbrains.annotations.NotNull;
 
 import songscribe.data.DynamicsInterval;
 import songscribe.music.Line;
-import songscribe.music.Note;
+import songscribe.music.StaffElement;
 import songscribe.smufl.EngravingDefaults;
 import songscribe.smufl.SMuFLMetadata;
 import songscribe.smufl.StaffSpaces;
 import songscribe.ui.layout.Crescendo;
 import songscribe.ui.layout.Diminuendo;
 import songscribe.ui.layout.LayoutStylesheet;
-import songscribe.ui.layout2.ScaleContext;
 import songscribe.ui.layout.LineElement;
+import songscribe.ui.layout2.ScaleContext;
 
 /**
  * Renders crescendo and diminuendo hairpins.
@@ -61,7 +61,7 @@ public class DynamicsRenderer extends BaseElementRenderer<LineElement> {
     );
 
     // Crotchet width (from FughettaRenderer)
-    private static final double CROTCHET_WIDTH_PX = BaseElementRenderer.NOTE_FONT_SIZE / 3.6056337d;
+    private static final double CROTCHET_WIDTH_PX = BaseElementRenderer.FONT_SIZE / 3.6056337d;
 
     // Singleton instance
     private static final DynamicsRenderer INSTANCE = new DynamicsRenderer();
@@ -101,8 +101,8 @@ public class DynamicsRenderer extends BaseElementRenderer<LineElement> {
         @NotNull Graphics2D g2,
         @NotNull ElementRenderContext ctx
     ) {
-        var anchorNote = element.getAnchorNote();
-        var endNote = element.getEndNote();
+        var anchorNote = element.getAnchorElement();
+        var endNote = element.getEndElement();
 
         if (anchorNote == null || endNote == null) {
             return;
@@ -117,8 +117,8 @@ public class DynamicsRenderer extends BaseElementRenderer<LineElement> {
         @NotNull Graphics2D g2,
         @NotNull ElementRenderContext ctx
     ) {
-        var anchorNote = element.getAnchorNote();
-        var endNote = element.getEndNote();
+        var anchorNote = element.getAnchorElement();
+        var endNote = element.getEndElement();
 
         if (anchorNote == null || endNote == null) {
             return;
@@ -149,7 +149,7 @@ public class DynamicsRenderer extends BaseElementRenderer<LineElement> {
 
         // Calculate shift from default position
         double middleLineYSs = ctx.getMiddleLineYSs();
-        double defaultY = middleLineYSs - ScaleContext.getInstance().toRoundedPixels(6 * LayoutStylesheet.NOTE_Y_OFFSET);
+        double defaultY = middleLineYSs - ScaleContext.getInstance().toRoundedPixels(6 * LayoutStylesheet.STAFF_POSITION_OFFSET);
         return (int) (bounds.getTop() - defaultY);
     }
 
@@ -168,8 +168,8 @@ public class DynamicsRenderer extends BaseElementRenderer<LineElement> {
     public void renderHairpin(
         @NotNull Graphics2D g2,
         @NotNull ElementRenderContext ctx,
-        @NotNull Note startNote,
-        @NotNull Note endNote,
+        @NotNull StaffElement startNote,
+        @NotNull StaffElement endNote,
         boolean isCrescendo,
         double x1Shift,
         double x2Shift,
@@ -182,12 +182,12 @@ public class DynamicsRenderer extends BaseElementRenderer<LineElement> {
 
         // Y positions above the staff: center 1 staff space above top staff line
         // (top staff line = middleLineYSs - 4*NOTE_Y_OFFSET; 1 space = 2*NOTE_Y_OFFSET)
-        int yTop = (int) (middleLineYSs - ScaleContext.getInstance().toPixels(7 * LayoutStylesheet.NOTE_Y_OFFSET) + yShift);
-        int yBottom = (int) (middleLineYSs - ScaleContext.getInstance().toPixels(5 * LayoutStylesheet.NOTE_Y_OFFSET) + yShift);
-        int yMiddle = (int) (middleLineYSs - ScaleContext.getInstance().toPixels(6 * LayoutStylesheet.NOTE_Y_OFFSET) + yShift);
+        int yTop = (int) (middleLineYSs - ScaleContext.getInstance().toPixels(7 * LayoutStylesheet.STAFF_POSITION_OFFSET) + yShift);
+        int yBottom = (int) (middleLineYSs - ScaleContext.getInstance().toPixels(5 * LayoutStylesheet.STAFF_POSITION_OFFSET) + yShift);
+        int yMiddle = (int) (middleLineYSs - ScaleContext.getInstance().toPixels(6 * LayoutStylesheet.STAFF_POSITION_OFFSET) + yShift);
 
         try (var ignored = GraphicsState.save(g2, COLOR, STROKE)) {
-            g2.setColor(NOTE_COLOR);
+            g2.setColor(ELEMENT_COLOR);
             g2.setStroke(LINE_STROKE);
 
             if (isCrescendo) {
@@ -233,8 +233,8 @@ public class DynamicsRenderer extends BaseElementRenderer<LineElement> {
     ) {
         for (var iter = dynamics.listIterator(); iter.hasNext(); ) {
             var interval = iter.next();
-            var startNote = line.getNote(interval.getStart());
-            var endNote = line.getNote(interval.getEnd());
+            var startNote = line.getElement(interval.getStart());
+            var endNote = line.getElement(interval.getEnd());
 
             renderHairpin(g2, ctx, startNote, endNote, isCrescendo,
                 interval.getX1Shift(), interval.getX2Shift(), interval.getYShift());

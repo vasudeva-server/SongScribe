@@ -29,15 +29,15 @@ import org.jetbrains.annotations.Nullable;
 import kotlin.Pair;
 
 import songscribe.data.Interval;
-import songscribe.data.TupletInterval;
 import songscribe.data.IntervalSet;
+import songscribe.data.TupletInterval;
 import songscribe.music.Line;
-import songscribe.music.Note;
+import songscribe.music.StaffElement;
 
 /**
  * Per-line selection state and query methods.
  * <p>
- * Each LineComponent owns a LineSelectionState that tracks which notes (if any)
+ * Each LineComponent owns a LineSelectionState that tracks which elements (if any)
  * are selected on that line, and whether the line itself is selected for deletion.
  */
 public final class LineSelectionState {
@@ -48,7 +48,7 @@ public final class LineSelectionState {
     private int selectionEnd = -1;
     private int selectionAnchor = -1;
     private boolean lineSelected = false;
-    private int selectedGlissandoNoteIndex = -1;
+    private int selectedGlissandoElementIndex = -1;
 
     @Nullable
     private Boolean canTie = null;
@@ -80,7 +80,7 @@ public final class LineSelectionState {
         this.lineSelected = lineSelected;
 
         if (lineSelected) {
-            selectedGlissandoNoteIndex = -1;
+            selectedGlissandoElementIndex = -1;
         }
     }
 
@@ -88,22 +88,22 @@ public final class LineSelectionState {
      * Returns whether a glissando is selected on this line.
      */
     public boolean hasGlissandoSelection() {
-        return selectedGlissandoNoteIndex != -1;
+        return selectedGlissandoElementIndex != -1;
     }
 
     /**
-     * Returns the note index of the selected glissando, or -1 if none.
+     * Returns the element index of the selected glissando, or -1 if none.
      */
-    public int getSelectedGlissandoNoteIndex() {
-        return selectedGlissandoNoteIndex;
+    public int getSelectedGlissandoElementIndex() {
+        return selectedGlissandoElementIndex;
     }
 
     /**
-     * Selects the glissando owned by the note at the given index,
-     * clearing any note or line selection.
+     * Selects the glissando owned by the element at the given index,
+     * clearing any element or line selection.
      */
-    public void selectGlissando(int noteIndex) {
-        selectedGlissandoNoteIndex = noteIndex;
+    public void selectGlissando(int elementIndex) {
+        selectedGlissandoElementIndex = elementIndex;
         selectionBegin = -1;
         selectionEnd = -1;
         selectionAnchor = -1;
@@ -111,10 +111,10 @@ public final class LineSelectionState {
     }
 
     /**
-     * Returns whether the glissando at the given note index is selected.
+     * Returns whether the glissando at the given element index is selected.
      */
-    public boolean isGlissandoSelected(int noteIndex) {
-        return selectedGlissandoNoteIndex == noteIndex;
+    public boolean isGlissandoSelected(int elementIndex) {
+        return selectedGlissandoElementIndex == elementIndex;
     }
 
     @Nullable
@@ -149,39 +149,39 @@ public final class LineSelectionState {
         selectionEnd = -1;
         selectionAnchor = -1;
         lineSelected = false;
-        selectedGlissandoNoteIndex = -1;
+        selectedGlissandoElementIndex = -1;
     }
 
     /**
-     * Selects all notes on this line.
+     * Selects all elements on this line.
      */
     public void selectAll() {
-        if (line.noteCount() == 0) {
+        if (line.elementCount() == 0) {
             return;
         }
 
         selectionBegin = 0;
-        selectionEnd = line.noteCount() - 1;
+        selectionEnd = line.elementCount() - 1;
         selectionAnchor = 0;
-        selectedGlissandoNoteIndex = -1;
+        selectedGlissandoElementIndex = -1;
     }
 
     /**
-     * Returns whether any notes are selected on this line.
+     * Returns whether any elements are selected on this line.
      */
-    public boolean hasNoteSelection() {
+    public boolean hasElementSelection() {
         return selectionBegin != -1;
     }
 
     /**
-     * Returns whether the note at the given index is selected.
+     * Returns whether the element at the given index is selected.
      */
-    public boolean isNoteSelected(int noteIndex) {
-        return (selectionBegin <= noteIndex) && (noteIndex <= selectionEnd);
+    public boolean isElementSelected(int elementIndex) {
+        return (selectionBegin <= elementIndex) && (elementIndex <= selectionEnd);
     }
 
     /**
-     * Returns the number of notes in the current selection.
+     * Returns the number of elements in the current selection.
      */
     public int getSelectionSize() {
         if (selectionBegin == -1) {
@@ -195,39 +195,39 @@ public final class LineSelectionState {
      * Returns the current selection, or null if nothing is selected.
      */
     @Nullable
-    public NoteSelection getSelection() {
+    public ElementSelection getSelection() {
         if (lineSelected) {
-            return new NoteSelection(line, 0, line.noteCount() - 1);
+            return new ElementSelection(line, 0, line.elementCount() - 1);
         }
 
         if (selectionBegin != -1) {
-            return new NoteSelection(line, selectionBegin, selectionEnd);
+            return new ElementSelection(line, selectionBegin, selectionEnd);
         }
 
         return null;
     }
 
     /**
-     * Returns the single selected note if exactly one note is selected,
+     * Returns the single selected element if exactly one element is selected,
      * or null otherwise.
      */
     @Nullable
-    public Note getSingleSelectedNote() {
+    public StaffElement getSingleSelectedElement() {
         if ((selectionBegin != -1) && (selectionBegin == selectionEnd)) {
-            return line.getNote(selectionBegin);
+            return line.getElement(selectionBegin);
         }
 
         return null;
     }
 
     /**
-     * Sets the selection from a single click on a note.
+     * Sets the selection from a single click on an element.
      */
-    public void setSelectionFromClick(int noteIndex) {
-        selectionBegin = noteIndex;
-        selectionEnd = noteIndex;
-        selectionAnchor = noteIndex;
-        selectedGlissandoNoteIndex = -1;
+    public void setSelectionFromClick(int elementIndex) {
+        selectionBegin = elementIndex;
+        selectionEnd = elementIndex;
+        selectionAnchor = elementIndex;
+        selectedGlissandoElementIndex = -1;
     }
 
     /**
@@ -240,42 +240,42 @@ public final class LineSelectionState {
     /**
      * Sets the selection anchor independently (used by drag selection).
      */
-    public void setSelectionAnchor(int noteIndex) {
-        selectionAnchor = noteIndex;
+    public void setSelectionAnchor(int elementIndex) {
+        selectionAnchor = elementIndex;
     }
 
     /**
-     * Extends the selection from the anchor to the given note index.
+     * Extends the selection from the anchor to the given element index.
      * The anchor stays unchanged.
      */
-    public void extendSelectionTo(int noteIndex) {
+    public void extendSelectionTo(int elementIndex) {
         if (selectionAnchor == -1) {
             return;
         }
 
-        selectionBegin = Math.min(selectionAnchor, noteIndex);
-        selectionEnd = Math.max(selectionAnchor, noteIndex);
-        selectedGlissandoNoteIndex = -1;
+        selectionBegin = Math.min(selectionAnchor, elementIndex);
+        selectionEnd = Math.max(selectionAnchor, elementIndex);
+        selectedGlissandoElementIndex = -1;
     }
 
     /**
-     * Extends the selection to include the given note index (for drag selection).
+     * Extends the selection to include the given element index (for drag selection).
      * If no selection exists yet, starts the selection at that index.
      */
-    public void extendSelection(int noteIndex) {
+    public void extendSelection(int elementIndex) {
         if (selectionBegin == -1) {
-            selectionBegin = noteIndex;
+            selectionBegin = elementIndex;
         }
 
-        selectionEnd = noteIndex;
-        selectedGlissandoNoteIndex = -1;
+        selectionEnd = elementIndex;
+        selectedGlissandoElementIndex = -1;
     }
 
     /**
      * Resets selection begin/end to -1 without touching lineSelected.
      * Used before recalculating selection from drag.
      */
-    public void resetNoteSelection() {
+    public void resetElementSelection() {
         selectionBegin = -1;
         selectionEnd = -1;
     }
@@ -293,7 +293,7 @@ public final class LineSelectionState {
         }
 
         return IntStream.rangeClosed(selectionBegin, selectionEnd).allMatch(
-            i -> line.getNote(i).getNoteType().isBeamable()
+            i -> line.getElement(i).getType().isBeamable()
         );
     }
 
@@ -312,9 +312,9 @@ public final class LineSelectionState {
         Integer firstPitch = null;
 
         for (var i = selectionBegin; i <= selectionEnd; i++) {
-            var note = line.getNote(i);
+            var note = line.getElement(i);
 
-            if (!note.getNoteType().isRealNote()) {
+            if (!note.getType().isPitchedNote()) {
                 canTie = false;
                 return false;
             }
@@ -359,7 +359,7 @@ public final class LineSelectionState {
         TupletInterval firstInterval = null;
 
         for (var i = selectionBegin; i <= selectionEnd; i++) {
-            if (!line.getNote(i).getNoteType().isRealNote()) {
+            if (!line.getElement(i).getType().isPitchedNote()) {
                 return new Pair<>(false, false);
             }
 
@@ -384,17 +384,17 @@ public final class LineSelectionState {
         }
 
         return line
-            .getNotes(selectionBegin, selectionEnd)
+            .getElements(selectionBegin, selectionEnd)
             .stream()
-            .anyMatch(note -> note.getNoteType().isRealNote());
+            .anyMatch(element -> element.getType().isPitchedNote());
     }
 
     /**
      * Returns whether the current selection can toggle lyrics under rests.
      */
     public boolean canToggleLyricsUnderRests() {
-        var note = getSingleSelectedNote();
-        return (note != null) && note.getNoteType().isRest();
+        var element = getSingleSelectedElement();
+        return (element != null) && element.getType().isRest();
     }
 
     /**
@@ -406,9 +406,9 @@ public final class LineSelectionState {
         }
 
         return line
-            .getNotes(selectionBegin, selectionEnd)
+            .getElements(selectionBegin, selectionEnd)
             .stream()
-            .anyMatch(note -> !note.getNoteType().isRest());
+            .anyMatch(element -> !element.getType().isRest());
     }
 
     /**

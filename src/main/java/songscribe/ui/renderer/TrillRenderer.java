@@ -29,7 +29,7 @@ import java.awt.*;
 import org.jetbrains.annotations.NotNull;
 
 import songscribe.music.Line;
-import songscribe.music.Note;
+import songscribe.music.StaffElement;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
 import songscribe.smufl.StaffSpaces;
@@ -52,7 +52,7 @@ public class TrillRenderer extends BaseElementRenderer<Trill> {
     private static final double WIGGLE_SEGMENT_WIDTH_PX = StaffSpaces.toPixels(0.948);
 
     // Crotchet width
-    private static final double CROTCHET_WIDTH_PX = BaseElementRenderer.NOTE_FONT_SIZE / 3.6056337d;
+    private static final double CROTCHET_WIDTH_PX = BaseElementRenderer.FONT_SIZE / 3.6056337d;
 
     // Singleton instance
     private static final TrillRenderer INSTANCE = new TrillRenderer();
@@ -86,13 +86,13 @@ public class TrillRenderer extends BaseElementRenderer<Trill> {
         @NotNull Graphics2D g2,
         @NotNull ElementRenderContext ctx
     ) {
-        var anchorNote = element.getAnchorNote();
+        var anchorNote = element.getAnchorElement();
 
         if (anchorNote == null) {
             return;
         }
 
-        var endNote = element.getEndNote();
+        var endNote = element.getEndElement();
         int trillYPosSs = getEffectiveTrillYPosSs(element, ctx);
 
         renderTrill(g2, ctx, anchorNote, endNote, trillYPosSs);
@@ -126,8 +126,8 @@ public class TrillRenderer extends BaseElementRenderer<Trill> {
     public void renderTrill(
         @NotNull Graphics2D g2,
         @NotNull ElementRenderContext ctx,
-        @NotNull Note startNote,
-        Note endNote,
+        @NotNull StaffElement startNote,
+        StaffElement endNote,
         int trillYPosSs
     ) {
         double middleLineYSs = ctx.getMiddleLineYSs();
@@ -159,29 +159,29 @@ public class TrillRenderer extends BaseElementRenderer<Trill> {
     ) {
         int trillYPosPx = line.getTrillYPosPx();
 
-        for (int noteIndex = 0; noteIndex < line.noteCount(); noteIndex++) {
-            var note = line.getNote(noteIndex);
+        for (int elementIndex = 0; elementIndex < line.elementCount(); elementIndex++) {
+            var element = line.getElement(elementIndex);
 
-            if (!note.isTrill()) {
+            if (!element.isTrill()) {
                 continue;
             }
 
             // Only render if this is the start of a trill sequence
-            if (noteIndex > 0 && line.getNote(noteIndex - 1).isTrill()) {
+            if (elementIndex > 0 && line.getElement(elementIndex - 1).isTrill()) {
                 continue;
             }
 
             // Find the end of the trill sequence
-            int trillEnd = noteIndex + 1;
+            int trillEnd = elementIndex + 1;
 
-            while (trillEnd < line.noteCount() && line.getNote(trillEnd).isTrill()) {
+            while (trillEnd < line.elementCount() && line.getElement(trillEnd).isTrill()) {
                 trillEnd++;
             }
 
             trillEnd--;
 
-            Note endNote = (trillEnd > noteIndex) ? line.getNote(trillEnd) : null;
-            renderTrill(g2, ctx, note, endNote, trillYPosPx);
+            StaffElement endElement = (trillEnd > elementIndex) ? line.getElement(trillEnd) : null;
+            renderTrill(g2, ctx, element, endElement, trillYPosPx);
         }
     }
 
@@ -204,7 +204,7 @@ public class TrillRenderer extends BaseElementRenderer<Trill> {
 
         try (var ignored = GraphicsState.save(g2, TRANSFORM, FONT, COLOR)) {
             g2.setFont(BRAVURA_FONT);
-            g2.setColor(NOTE_COLOR);
+            g2.setColor(ELEMENT_COLOR);
             g2.translate(x1, y);
 
             double scale = length / WIGGLE_SEGMENT_WIDTH_PX / segments;

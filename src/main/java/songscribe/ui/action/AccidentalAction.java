@@ -20,14 +20,14 @@
 
 package songscribe.ui.action;
 
-import songscribe.music.Note;
+import songscribe.music.StaffElement;
 
 public class AccidentalAction extends NoteOnlyAction {
 
-    private final Note.Accidental accidental;
+    private final StaffElement.Accidental accidental;
 
     public AccidentalAction(
-        Note.Accidental accidental,
+        StaffElement.Accidental accidental,
         String name,
         String icon,
         int size,
@@ -38,7 +38,7 @@ public class AccidentalAction extends NoteOnlyAction {
     }
 
     public AccidentalAction(
-        Note.Accidental accidental,
+        StaffElement.Accidental accidental,
         String name,
         String icon,
         int size,
@@ -60,17 +60,17 @@ public class AccidentalAction extends NoteOnlyAction {
         setFlags(Flag.DISABLE_WHEN_EDITING_TEXT);
     }
 
-    public Note.Accidental getAccidental() {
+    public StaffElement.Accidental getAccidental() {
         return accidental;
     }
 
     @Override
-    public boolean matchesNote(Note note) {
-        return note.getAccidental() == accidental;
+    public boolean matchesElement(StaffElement element) {
+        return element.getAccidental() == accidental;
     }
 
     @Override
-    public void applyToNote(Note note, boolean selected) {
-        note.setAccidental(selected ? accidental : Note.Accidental.NONE);
+    public void applyToElement(StaffElement element, boolean selected) {
+        element.setAccidental(selected ? accidental : StaffElement.Accidental.NONE);
     }
 }

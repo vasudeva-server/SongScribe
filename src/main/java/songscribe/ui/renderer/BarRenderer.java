@@ -28,10 +28,9 @@ import java.awt.*;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import songscribe.music.Note;
-import songscribe.music.NoteType;
+import songscribe.music.ElementType;
+import songscribe.music.StaffElement;
 import songscribe.smufl.SMuFLGlyph;
-import songscribe.smufl.SMuFLMetadata;
 import songscribe.util.GraphicUtils;
 
 /**
@@ -47,7 +46,7 @@ import songscribe.util.GraphicUtils;
  *   <li>Left-right repeat</li>
  * </ul>
  */
-public class BarRenderer extends BaseElementRenderer<Note> {
+public class BarRenderer extends BaseElementRenderer<StaffElement> {
 
     // SMuFL barline glyphs extend upward from their origin at the bottom staff line.
     // From the middle line, the bottom staff line is 2 staff spaces below.
@@ -75,11 +74,11 @@ public class BarRenderer extends BaseElementRenderer<Note> {
 
     @Override
     protected void renderElement(
-        @NotNull Note element,
+        @NotNull StaffElement element,
         @NotNull Graphics2D g2,
         @NotNull ElementRenderContext ctx
     ) {
-        var noteType = element.getNoteType();
+        var noteType = element.getType();
 
         if (!noteType.isBarLine() && !noteType.isRepeat()) {
             return;
@@ -96,7 +95,7 @@ public class BarRenderer extends BaseElementRenderer<Note> {
     /**
      * Renders a bar line or repeat sign (static helper for delegation).
      */
-    public static void renderBarLineOrRepeat(@NotNull Graphics2D g2, @NotNull NoteType noteType) {
+    public static void renderBarLineOrRepeat(@NotNull Graphics2D g2, @NotNull ElementType noteType) {
         var glyph = glyphForNoteType(noteType);
 
         if (glyph == null) {
@@ -119,16 +118,16 @@ public class BarRenderer extends BaseElementRenderer<Note> {
      */
     private static double resolveBarXSs(
         @NotNull Graphics2D g2,
-        @NotNull Note note,
+        @NotNull StaffElement note,
         @NotNull ElementRenderContext ctx
     ) {
         double noteX;
 
-        if (ctx.hasOverrideNoteX()) {
-            noteX = ctx.getOverrideNoteXSs();
+        if (ctx.hasOverrideElementX()) {
+            noteX = ctx.getOverrideElementXSs();
         } else {
             var layoutResult = ctx.getLayoutResult();
-            noteX = (layoutResult != null) ? layoutResult.getNoteXSs(note) : note.getXPosSs();
+            noteX = (layoutResult != null) ? layoutResult.getElementXSs(note) : note.getXPosSs();
         }
 
         return GraphicUtils.snapXToDevicePixel(g2, noteX);
@@ -138,7 +137,7 @@ public class BarRenderer extends BaseElementRenderer<Note> {
      * Maps a note type to its corresponding SMuFL barline/repeat glyph.
      */
     @Nullable
-    private static SMuFLGlyph glyphForNoteType(@NotNull NoteType noteType) {
+    private static SMuFLGlyph glyphForNoteType(@NotNull ElementType noteType) {
         return switch (noteType) {
             case SINGLE_BARLINE -> SMuFLGlyph.BARLINE_SINGLE;
             case DOUBLE_BARLINE -> SMuFLGlyph.BARLINE_DOUBLE;

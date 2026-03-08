@@ -24,7 +24,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import songscribe.music.BeatChange;
-import songscribe.music.Note;
+import songscribe.music.StaffElement;
 
 /**
  * Represents a beat change (metric modulation) attachment on a note.
@@ -60,13 +60,13 @@ public class BeatChangeAttachment extends Attachment {
      * @param parent     The parent note
      * @param beatChange The beat change data
      */
-    public BeatChangeAttachment(@Nullable Note parent, @NotNull BeatChange beatChange) {
+    public BeatChangeAttachment(@Nullable StaffElement parent, @NotNull BeatChange beatChange) {
         this.beatChange = beatChange;
-        setParentNote(parent);
+        setOwnerElement(parent);
         setAlignment(Alignment.CENTER);
 
         if (parent != null) {
-            setParentElement(parent);
+            setOwnerElement(parent);
             setParentLine(parent.getParentLine());
         }
     }

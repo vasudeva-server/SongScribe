@@ -29,8 +29,8 @@ import java.util.EnumMap;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import songscribe.music.Note;
-import songscribe.music.NoteType;
+import songscribe.music.ElementType;
+import songscribe.music.StaffElement;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
 import songscribe.ui.layout.LayoutStylesheet;
@@ -44,21 +44,21 @@ import songscribe.util.GraphicUtils;
  * applied by LineComponent handles pixel conversion.
  * Rests don't have stems, flags, or accidentals.
  */
-public class RestRenderer extends BaseElementRenderer<Note> {
+public class RestRenderer extends BaseElementRenderer<StaffElement> {
 
     // ==========================================================================
     // Rest Glyphs (SMuFL/Bravura)
     // ==========================================================================
 
-    private static final EnumMap<NoteType, SMuFLGlyph> REST_GLYPHS = new EnumMap<>(NoteType.class);
+    private static final EnumMap<ElementType, SMuFLGlyph> REST_GLYPHS = new EnumMap<>(ElementType.class);
 
     static {
-        REST_GLYPHS.put(NoteType.SEMIBREVE_REST, SMuFLGlyph.REST_WHOLE);
-        REST_GLYPHS.put(NoteType.MINIM_REST, SMuFLGlyph.REST_HALF);
-        REST_GLYPHS.put(NoteType.CROTCHET_REST, SMuFLGlyph.REST_QUARTER);
-        REST_GLYPHS.put(NoteType.QUAVER_REST, SMuFLGlyph.REST_8TH);
-        REST_GLYPHS.put(NoteType.SEMIQUAVER_REST, SMuFLGlyph.REST_16TH);
-        REST_GLYPHS.put(NoteType.DEMI_SEMIQUAVER_REST, SMuFLGlyph.REST_32ND);
+        REST_GLYPHS.put(ElementType.SEMIBREVE_REST, SMuFLGlyph.REST_WHOLE);
+        REST_GLYPHS.put(ElementType.MINIM_REST, SMuFLGlyph.REST_HALF);
+        REST_GLYPHS.put(ElementType.CROTCHET_REST, SMuFLGlyph.REST_QUARTER);
+        REST_GLYPHS.put(ElementType.QUAVER_REST, SMuFLGlyph.REST_8TH);
+        REST_GLYPHS.put(ElementType.SEMIQUAVER_REST, SMuFLGlyph.REST_16TH);
+        REST_GLYPHS.put(ElementType.DEMI_SEMIQUAVER_REST, SMuFLGlyph.REST_32ND);
     }
 
     // Y position adjustment for whole and half rests (relative to middle line)
@@ -68,7 +68,7 @@ public class RestRenderer extends BaseElementRenderer<Note> {
     // Dot positioning derived from SMuFL metadata, in staff-space units.
     // The Graphics2D scale transform handles pixel conversion.
     private static final double DOT_GAP_SS = 0.5; // ss gap between rest glyph right edge and first dot
-    private static final EnumMap<NoteType, Float> FIRST_DOT_X_SS = new EnumMap<>(NoteType.class);
+    private static final EnumMap<ElementType, Float> FIRST_DOT_X_SS = new EnumMap<>(ElementType.class);
     private static final float DOT_SPACING_SS;
 
     static {
@@ -110,7 +110,7 @@ public class RestRenderer extends BaseElementRenderer<Note> {
      * @return The SMuFL glyph, or null if not a rest type
      */
     @Nullable
-    public static SMuFLGlyph getRestGlyph(@NotNull NoteType noteType) {
+    public static SMuFLGlyph getRestGlyph(@NotNull ElementType noteType) {
         return REST_GLYPHS.get(noteType);
     }
 
@@ -124,16 +124,16 @@ public class RestRenderer extends BaseElementRenderer<Note> {
      */
     private static double resolveRestXSs(
         @NotNull Graphics2D g2,
-        @NotNull Note note,
+        @NotNull StaffElement note,
         @NotNull ElementRenderContext ctx
     ) {
         double noteX;
 
-        if (ctx.hasOverrideNoteX()) {
-            noteX = ctx.getOverrideNoteXSs();
+        if (ctx.hasOverrideElementX()) {
+            noteX = ctx.getOverrideElementXSs();
         } else {
             var layoutResult = ctx.getLayoutResult();
-            noteX = (layoutResult != null) ? layoutResult.getNoteXSs(note) : note.getXPosSs();
+            noteX = (layoutResult != null) ? layoutResult.getElementXSs(note) : note.getXPosSs();
         }
 
         return GraphicUtils.snapXToDevicePixel(g2, noteX);
@@ -141,11 +141,11 @@ public class RestRenderer extends BaseElementRenderer<Note> {
 
     @Override
     protected void renderElement(
-        @NotNull Note element,
+        @NotNull StaffElement element,
         @NotNull Graphics2D g2,
         @NotNull ElementRenderContext ctx
     ) {
-        var noteType = element.getNoteType();
+        var noteType = element.getType();
 
         if (!noteType.isRest()) {
             return;
@@ -178,27 +178,27 @@ public class RestRenderer extends BaseElementRenderer<Note> {
      * Whole rests hang from the second line, half rests sit on the middle line.
      * Other rests are centered vertically on the staff.
      */
-    private double calculateRestYSs(@NotNull Note note, double middleLineYSs) {
-        var noteType = note.getNoteType();
+    private double calculateRestYSs(@NotNull StaffElement note, double middleLineYSs) {
+        var noteType = note.getType();
 
-        if (noteType == NoteType.SEMIBREVE_REST) {
+        if (noteType == ElementType.SEMIBREVE_REST) {
             // Whole rest hangs below the 4th line (second from top)
-            return middleLineYSs + SEMIBREVE_REST_Y_OFFSET * LayoutStylesheet.NOTE_Y_OFFSET;
+            return middleLineYSs + SEMIBREVE_REST_Y_OFFSET * LayoutStylesheet.STAFF_POSITION_OFFSET;
         }
 
-        if (noteType == NoteType.MINIM_REST) {
+        if (noteType == ElementType.MINIM_REST) {
             // Half rest sits on the middle line
-            return middleLineYSs + MINIM_REST_Y_OFFSET * LayoutStylesheet.NOTE_Y_OFFSET;
+            return middleLineYSs + MINIM_REST_Y_OFFSET * LayoutStylesheet.STAFF_POSITION_OFFSET;
         }
 
         // Other rests use standard note Y positioning
-        return middleLineYSs + note.getStaffPosition() * LayoutStylesheet.NOTE_Y_OFFSET;
+        return middleLineYSs + note.getStaffPosition() * LayoutStylesheet.STAFF_POSITION_OFFSET;
     }
 
     /**
      * Renders dots for dotted rests.
      */
-    private void renderDots(@NotNull Graphics2D g2, @NotNull Note note, @NotNull NoteType noteType) {
+    private void renderDots(@NotNull Graphics2D g2, @NotNull StaffElement note, @NotNull ElementType noteType) {
         if (note.getDotCount() == 0) {
             return;
         }

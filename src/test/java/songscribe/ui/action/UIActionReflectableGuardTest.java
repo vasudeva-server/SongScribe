@@ -20,20 +20,20 @@
 
 package songscribe.ui.action;
 
-import java.awt.event.ActionEvent;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.when;
+
+import java.awt.event.*;
+
+import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
 import songscribe.ui.Mode;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.Score;
 import songscribe.ui.selection.SelectionCoordinator;
-
-import org.junit.jupiter.api.Test;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.mockStatic;
-import static org.mockito.Mockito.when;
 
 class UIActionReflectableGuardTest extends UnitTest {
 
@@ -51,7 +51,7 @@ class UIActionReflectableGuardTest extends UnitTest {
 
             // FermataAction has DISABLE_IN_ADJUSTMENT_MODE, so adjustment mode
             // should disable it even when a selection is active.
-            when(mockScore.getMode()).thenReturn(Mode.NOTE_ADJUSTMENT);
+            when(mockScore.getMode()).thenReturn(Mode.ADJUSTMENT);
             when(mockScore.getSelectionSize()).thenReturn(2);
 
             var action = new FermataAction();
@@ -78,7 +78,7 @@ class UIActionReflectableGuardTest extends UnitTest {
 
             // Make enableInAdjustmentMode return false so the flag chain
             // short-circuits to false, proving normal logic ran.
-            when(mockScore.getMode()).thenReturn(Mode.NOTE_ADJUSTMENT);
+            when(mockScore.getMode()).thenReturn(Mode.ADJUSTMENT);
             when(mockScore.getSelectionSize()).thenReturn(0);
 
             var action = new FermataAction();
@@ -105,12 +105,13 @@ class UIActionReflectableGuardTest extends UnitTest {
 
             // Make enableInAdjustmentMode return false so the flag chain
             // short-circuits to false, proving normal logic ran despite selection > 0.
-            when(mockScore.getMode()).thenReturn(Mode.NOTE_ADJUSTMENT);
+            when(mockScore.getMode()).thenReturn(Mode.ADJUSTMENT);
             when(mockScore.getSelectionSize()).thenReturn(2);
 
             var nonReflectable = new UIAction("Test", null, 0, "test", "Test") {
                 @Override
-                public void actionPerformed(ActionEvent e) {}
+                public void actionPerformed(ActionEvent e) {
+                }
             };
             nonReflectable.setFlags(UIAction.Flag.DISABLE_IN_ADJUSTMENT_MODE);
             nonReflectable.setEnabled(true);

@@ -20,22 +20,21 @@
 
 package songscribe.e2e;
 
-import java.awt.event.InputEvent;
-import java.awt.event.KeyEvent;
+import static org.assertj.core.api.Assertions.assertThat;
+
+import java.awt.event.*;
 
 import org.assertj.swing.edt.GuiActionRunner;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 
 import songscribe.music.Composition;
+import songscribe.music.ElementType;
 import songscribe.music.Line;
-import songscribe.music.Note;
-import songscribe.music.NoteType;
+import songscribe.music.StaffElement;
 import songscribe.ui.action.Actions;
 import songscribe.ui.action.UIAction;
 import songscribe.ui.component.MainFrame;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * E2E tests for toolbar button reflection when notes are selected.
@@ -45,7 +44,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 @Order(7)
 class ToolbarReflectionTest extends E2ETest {
 
-    @Test @Order(1)
+    @Test
+    @Order(1)
     void testSingleNoteSelection() {
         buildComposition(crotchet(0));
         enterSelectMode();
@@ -65,9 +65,10 @@ class ToolbarReflectionTest extends E2ETest {
         assertButtonSelected(Actions.DOT_ACTION, false);
     }
 
-    @Test @Order(2)
+    @Test
+    @Order(2)
     void testSingleRestSelection() {
-        buildComposition(rest(NoteType.CROTCHET_REST, 0));
+        buildComposition(rest(ElementType.CROTCHET_REST, 0));
         enterSelectMode();
 
         clickAt(noteScreenPosition(0, 0));
@@ -83,7 +84,8 @@ class ToolbarReflectionTest extends E2ETest {
         assertActionSelected(Actions.STACCATO_ACTION, false);
     }
 
-    @Test @Order(3)
+    @Test
+    @Order(3)
     void testMultipleIdenticalNotes() {
         buildComposition(crotchet(0), crotchet(-2));
         enterSelectMode();
@@ -97,7 +99,8 @@ class ToolbarReflectionTest extends E2ETest {
         assertActionSelected(Actions.DOT_ACTION, false);
     }
 
-    @Test @Order(4)
+    @Test
+    @Order(4)
     void testMultipleDifferentDurations() {
         buildComposition(crotchet(0), minim(-2));
         enterSelectMode();
@@ -110,13 +113,14 @@ class ToolbarReflectionTest extends E2ETest {
         assertActionSelected(Actions.HALF_NOTE_ACTION, false);
     }
 
-    @Test @Order(5)
+    @Test
+    @Order(5)
     void testMultipleDifferentAccidentals() {
         var note1 = crotchet(0);
-        note1.setAccidental(Note.Accidental.FLAT);
+        note1.setAccidental(StaffElement.Accidental.FLAT);
 
         var note2 = crotchet(-2);
-        note2.setAccidental(Note.Accidental.DOUBLE_FLAT);
+        note2.setAccidental(StaffElement.Accidental.DOUBLE_FLAT);
 
         buildComposition(note1, note2);
         enterSelectMode();
@@ -130,9 +134,10 @@ class ToolbarReflectionTest extends E2ETest {
         assertActionSelected(Actions.QUARTER_NOTE_ACTION, true);
     }
 
-    @Test @Order(6)
+    @Test
+    @Order(6)
     void testNoteAndRestSelection() {
-        buildComposition(crotchet(0), rest(NoteType.CROTCHET_REST, -2));
+        buildComposition(crotchet(0), rest(ElementType.CROTCHET_REST, -2));
         enterSelectMode();
 
         clickAt(noteScreenPosition(0, 0));
@@ -146,9 +151,10 @@ class ToolbarReflectionTest extends E2ETest {
         assertActionSelected(Actions.FLAT_ACTION, false);
     }
 
-    @Test @Order(7)
+    @Test
+    @Order(7)
     void testDifferentDurationsAndRest() {
-        buildComposition(crotchet(0), minim(-2), rest(NoteType.CROTCHET_REST, -4));
+        buildComposition(crotchet(0), minim(-2), rest(ElementType.CROTCHET_REST, -4));
         enterSelectMode();
 
         clickAt(noteScreenPosition(0, 0));
@@ -160,12 +166,13 @@ class ToolbarReflectionTest extends E2ETest {
         assertActionSelected(Actions.FLAT_ACTION, false);
     }
 
-    @Test @Order(8)
+    @Test
+    @Order(8)
     void testSelectionClearedRestoresState() {
         // Use a minim so the flat action state changes are clearly visible.
         // Set flat on the note so reflection will select the flat action.
         var note = minim(0);
-        note.setAccidental(Note.Accidental.FLAT);
+        note.setAccidental(StaffElement.Accidental.FLAT);
         buildComposition(note);
         enterSelectMode();
 
@@ -186,19 +193,19 @@ class ToolbarReflectionTest extends E2ETest {
 
     // -- Note factory helpers --
 
-    private Note crotchet(int staffPositionSp) {
-        var note = NoteType.CROTCHET.newInstance();
+    private StaffElement crotchet(int staffPositionSp) {
+        var note = ElementType.CROTCHET.newInstance();
         note.setStaffPosition(staffPositionSp);
         return note;
     }
 
-    private Note minim(int staffPositionSp) {
-        var note = NoteType.MINIM.newInstance();
+    private StaffElement minim(int staffPositionSp) {
+        var note = ElementType.MINIM.newInstance();
         note.setStaffPosition(staffPositionSp);
         return note;
     }
 
-    private Note rest(NoteType restType, int staffPositionSp) {
+    private StaffElement rest(ElementType restType, int staffPositionSp) {
         var note = restType.newInstance();
         note.setStaffPosition(staffPositionSp);
         return note;
@@ -207,13 +214,13 @@ class ToolbarReflectionTest extends E2ETest {
 
     // -- Composition builder --
 
-    private void buildComposition(Note... notes) {
+    private void buildComposition(StaffElement... notes) {
         GuiActionRunner.execute(() -> {
             var composition = new Composition(MainFrame.getInstance());
             var line = new Line();
 
             for (var note : notes) {
-                line.addNote(note);
+                line.addElement(note);
             }
 
             composition.addLine(0, line);

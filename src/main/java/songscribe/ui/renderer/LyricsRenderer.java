@@ -34,7 +34,7 @@ import org.jetbrains.annotations.NotNull;
 import songscribe.data.Interval;
 import songscribe.data.IntervalSet;
 import songscribe.music.Line;
-import songscribe.music.Note;
+import songscribe.music.StaffElement;
 import songscribe.ui.Constants;
 import songscribe.util.MyFontUtils;
 
@@ -157,8 +157,8 @@ public class LyricsRenderer {
             // Track which syllables have been drawn (for relation handling)
             var drawnIndex = 0;
 
-            for (var noteIndex = 0; noteIndex < line.noteCount(); noteIndex++) {
-                var note = line.getNote(noteIndex);
+            for (var noteIndex = 0; noteIndex < line.elementCount(); noteIndex++) {
+                var note = line.getElement(noteIndex);
                 drawnIndex = renderNoteLyrics(
                     g2, line, ctx, isLastLine, noteIndex, note, drawnIndex
                 );
@@ -225,7 +225,7 @@ public class LyricsRenderer {
         @NotNull ElementRenderContext ctx,
         boolean isLastLine,
         int noteIndex,
-        @NotNull Note note,
+        @NotNull StaffElement note,
         int drawnIndex
     ) {
         var composition = ctx.getComposition();
@@ -245,7 +245,7 @@ public class LyricsRenderer {
         if (syllable != null && !syllable.equals(Constants.UNDERSCORE)) {
             syllableWidth = metrics.stringWidth(syllable);
             var layoutResult = ctx.getLayoutResult();
-            var noteX = (layoutResult != null) ? layoutResult.getNoteXSs(note) : note.getXPosSs();
+            var noteX = (layoutResult != null) ? layoutResult.getElementXSs(note) : note.getXPosSs();
             var lyricsX = (int) ((noteX + note.getContentCenterX()) -
                 (syllableWidth / 2) +
                 note.getSyllableMovement());
@@ -255,7 +255,7 @@ public class LyricsRenderer {
             }
 
             // Handle begin-of-line hyphen (continuation from previous line)
-            if (noteIndex == 0 && line.beginRelation == Note.SyllableRelation.ONE_DASH) {
+            if (noteIndex == 0 && line.beginRelation == StaffElement.SyllableRelation.ONE_DASH) {
                 try (var ignored = GraphicsState.save(g2, STROKE)) {
                     g2.setStroke(HYPHEN_STROKE);
                     g2.draw(new Line2D.Float(
@@ -270,8 +270,8 @@ public class LyricsRenderer {
 
         // Handle syllable relations (dashes, extenders)
         if (drawnIndex <= noteIndex &&
-            (note.properties.syllableRelation != Note.SyllableRelation.NO ||
-                (noteIndex == 0 && line.beginRelation == Note.SyllableRelation.EXTENDER))) {
+            (note.properties.syllableRelation != StaffElement.SyllableRelation.NO ||
+                (noteIndex == 0 && line.beginRelation == StaffElement.SyllableRelation.EXTENDER))) {
 
             drawnIndex = renderSyllableRelation(
                 g2, line, ctx, noteIndex, note, drawnIndex,
@@ -292,7 +292,7 @@ public class LyricsRenderer {
         @NotNull Line line,
         @NotNull ElementRenderContext ctx,
         int noteIndex,
-        @NotNull Note note,
+        @NotNull StaffElement note,
         int drawnIndex,
         int syllableWidth,
         float lyricsY,
@@ -302,7 +302,7 @@ public class LyricsRenderer {
         var metrics = g2.getFontMetrics();
 
         // Determine the relation type
-        var relation = (note.properties.syllableRelation != Note.SyllableRelation.NO)
+        var relation = (note.properties.syllableRelation != StaffElement.SyllableRelation.NO)
             ? note.properties.syllableRelation
             : line.beginRelation;
 
@@ -330,16 +330,16 @@ public class LyricsRenderer {
     private int findRelationEndIndex(
         @NotNull Line line,
         int noteIndex,
-        @NotNull Note.SyllableRelation relation
+        @NotNull StaffElement.SyllableRelation relation
     ) {
         int endIndex;
 
-        if (relation == Note.SyllableRelation.ONE_DASH) {
+        if (relation == StaffElement.SyllableRelation.ONE_DASH) {
             // Find next note with actual syllable (not underscore or empty)
             endIndex = noteIndex + 1;
 
-            while (endIndex < line.noteCount()) {
-                var nextSyllable = line.getNote(endIndex).properties.syllable;
+            while (endIndex < line.elementCount()) {
+                var nextSyllable = line.getElement(endIndex).properties.syllable;
 
                 if (!nextSyllable.equals(Constants.UNDERSCORE) && !nextSyllable.isEmpty()) {
                     break;
@@ -351,11 +351,11 @@ public class LyricsRenderer {
             // For extender, continue while same relation or empty syllable
             endIndex = noteIndex;
 
-            while (endIndex < line.noteCount()) {
-                var nextNote = line.getNote(endIndex);
+            while (endIndex < line.elementCount()) {
+                var nextElement = line.getElement(endIndex);
 
-                if (nextNote.properties.syllableRelation != relation &&
-                    !nextNote.properties.syllable.isEmpty()) {
+                if (nextElement.properties.syllableRelation != relation &&
+                    !nextElement.properties.syllable.isEmpty()) {
                     break;
                 }
 
@@ -372,11 +372,11 @@ public class LyricsRenderer {
     private int calculateRelationStartXPx(
         @NotNull Line line,
         int noteIndex,
-        @NotNull Note note,
+        @NotNull StaffElement note,
         int syllableWidth
     ) {
         // Begin-of-line extender starts before the note
-        if (noteIndex == 0 && line.beginRelation == Note.SyllableRelation.EXTENDER) {
+        if (noteIndex == 0 && line.beginRelation == StaffElement.SyllableRelation.EXTENDER) {
             return note.getXPosSs() - 10;
         }
 
@@ -397,23 +397,23 @@ public class LyricsRenderer {
         @NotNull songscribe.music.Composition composition,
         int noteIndex,
         int endIndex,
-        @NotNull Note.SyllableRelation relation,
+        @NotNull StaffElement.SyllableRelation relation,
         int startX
     ) {
         // At end of line
-        if (endIndex == line.noteCount()) {
-            return (relation == Note.SyllableRelation.ONE_DASH)
+        if (endIndex == line.elementCount()) {
+            return (relation == StaffElement.SyllableRelation.ONE_DASH)
                 ? startX + (int) (HYPHEN_WIDTH_PX * 2f)
                 : (int) composition.getLineWidth();
         }
 
-        var endNote = line.getNote(endIndex);
+        var endNote = line.getElement(endIndex);
 
-        if (relation == Note.SyllableRelation.EXTENDER) {
+        if (relation == StaffElement.SyllableRelation.EXTENDER) {
             return endNote.getXPosSs() + 12;
         }
 
-        if (relation == Note.SyllableRelation.ONE_DASH &&
+        if (relation == StaffElement.SyllableRelation.ONE_DASH &&
             endNote.properties.syllable.isEmpty()) {
             return startX + (int) (HYPHEN_WIDTH_PX * 2f);
         }
@@ -439,12 +439,12 @@ public class LyricsRenderer {
         @NotNull Line line,
         int startIndex,
         int endIndex,
-        @NotNull Note.SyllableRelation relation,
+        @NotNull StaffElement.SyllableRelation relation,
         int startX,
         int endX,
         float lyricsY,
         float dashY,
-        @NotNull Note note
+        @NotNull StaffElement note
     ) {
         switch (relation) {
             case EXTENDER -> drawExtender(g2, line, startIndex, endIndex, startX, endX, (int) lyricsY);
@@ -491,7 +491,7 @@ public class LyricsRenderer {
      */
     private void drawHyphen(
         @NotNull Graphics2D g2,
-        @NotNull Note note,
+        @NotNull StaffElement note,
         int startX,
         int endX,
         float dashY
@@ -531,11 +531,11 @@ public class LyricsRenderer {
         int startIndex,
         int endIndex
     ) {
-        var end = Math.min(line.noteCount(), endIndex);
+        var end = Math.min(line.elementCount(), endIndex);
 
         // Find notes with empty syllables
         var emptySyllables = IntStream.range(startIndex, end)
-            .filter(i -> line.getNote(i).properties.syllable.isEmpty())
+            .filter(i -> line.getElement(i).properties.syllable.isEmpty())
             .boxed()
             .collect(Collectors.toCollection(ArrayList::new));
 
@@ -558,11 +558,11 @@ public class LyricsRenderer {
 
             var drawX1 = (interval.getStart() == startIndex)
                 ? x1
-                : line.getNote(interval.getStart()).getXPosSs();
+                : line.getElement(interval.getStart()).getXPosSs();
 
             var drawX2 = (interval.getEnd() == end)
                 ? x2
-                : line.getNote(interval.getEnd() - 1).getXPosSs() + 12;
+                : line.getElement(interval.getEnd() - 1).getXPosSs() + 12;
 
             g2.drawLine(drawX1, y1, drawX2, y2);
         }

@@ -32,11 +32,10 @@ import java.util.List;
 
 import javax.swing.*;
 
-import net.engio.mbassy.listener.Handler;
-
 import org.jetbrains.annotations.NotNull;
 
 import com.formdev.flatlaf.util.SystemInfo;
+import net.engio.mbassy.listener.Handler;
 
 import songscribe.Version;
 import songscribe.prefs.RecentDocumentsManager;
@@ -73,7 +72,7 @@ public class MenuController {
     public static final String ABOUT_ACTION_NAME = "About";
 
     // We need to keep a reference to the instance to prevent it from being garbage collected
-    @SuppressWarnings({ "FieldCanBeLocal", "unused" })
+    @SuppressWarnings({"FieldCanBeLocal", "unused"})
     private static MenuController instance = null;
 
     private JMenu openRecentMenu;
@@ -93,7 +92,7 @@ public class MenuController {
         menuBar.add(initFileMenu());
         menuBar.add(initEditMenu());
         menuBar.add(InsertMenu.getInstance());
-        menuBar.add(new NotesMenu());
+        menuBar.add(new NotationMenu());
         menuBar.add(initModeMenu());
         menuBar.add(new PlayMenu());
         menuBar.add(initCompositionMenu());
@@ -204,16 +203,16 @@ public class MenuController {
     }
 
     private static void disambiguate(
-            List<Path> paths,
-            List<Integer> indices,
-            String filename,
-            String[] labels
+        List<Path> paths,
+        List<Integer> indices,
+        String filename,
+        String[] labels
     ) {
         var homePath = Path.of(System.getProperty("user.home"));
         var maxDepth = paths.stream()
-                .mapToInt(p -> p.getNameCount() - 1)
-                .max()
-                .orElse(0);
+            .mapToInt(p -> p.getNameCount() - 1)
+            .max()
+            .orElse(0);
 
         for (var depth = 1; depth <= maxDepth; depth++) {
             var suffixMap = new HashMap<Integer, String>();

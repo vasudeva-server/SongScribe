@@ -25,7 +25,7 @@ import java.awt.*;
 import org.jetbrains.annotations.NotNull;
 
 import songscribe.music.ArticulationType;
-import songscribe.music.Note;
+import songscribe.music.StaffElement;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
 import songscribe.smufl.StaffSpaces;
@@ -43,7 +43,7 @@ import songscribe.util.GraphicUtils;
  *   <li>Accent - emphasized attack (> symbol)</li>
  * </ul>
  */
-public class ArticulationRenderer extends BaseElementRenderer<Note> {
+public class ArticulationRenderer extends BaseElementRenderer<StaffElement> {
 
     // ==========================================================================
     // Constants
@@ -90,7 +90,7 @@ public class ArticulationRenderer extends BaseElementRenderer<Note> {
 
     @Override
     protected void renderElement(
-        @NotNull Note element,
+        @NotNull StaffElement element,
         @NotNull Graphics2D g2,
         @NotNull ElementRenderContext ctx
     ) {
@@ -111,7 +111,7 @@ public class ArticulationRenderer extends BaseElementRenderer<Note> {
      * Renders articulations using pre-computed positions from the layout engine.
      */
     private void renderFromLayout(
-        @NotNull Note note,
+        @NotNull StaffElement note,
         @NotNull Graphics2D g2,
         @NotNull ElementRenderContext ctx,
         @NotNull LayoutResult layoutResult
@@ -139,7 +139,7 @@ public class ArticulationRenderer extends BaseElementRenderer<Note> {
      * The Y is the top of the content box from the layout engine.
      */
     private void drawStaccatoFromLayout(
-        @NotNull Note note,
+        @NotNull StaffElement note,
         @NotNull Graphics2D g2,
         int contentTopY
     ) {
@@ -161,7 +161,7 @@ public class ArticulationRenderer extends BaseElementRenderer<Note> {
      * (e.g. insertion note preview).
      */
     private void renderFallback(
-        @NotNull Note element,
+        @NotNull StaffElement element,
         @NotNull Graphics2D g2,
         @NotNull ElementRenderContext ctx
     ) {
@@ -196,7 +196,7 @@ public class ArticulationRenderer extends BaseElementRenderer<Note> {
      * or the actual middleLineYPx for component-space coordinates.
      */
     public static int calculateAccentYPx(
-        @NotNull Note note, int middleLineYPx, int staccatoY, boolean hasStaccato
+        @NotNull StaffElement note, int middleLineYPx, int staccatoY, boolean hasStaccato
     ) {
         int dir = note.isUpper() ? 1 : -1;
         int staffPosition = note.getStaffPosition();
@@ -211,13 +211,13 @@ public class ArticulationRenderer extends BaseElementRenderer<Note> {
         // Offset = accent visual half-height + margin so the painted edge clears the reference.
         if (Math.abs(staffPosition) < 4) {
             // Within staff (not on edge lines) -- anchor to staff edge
-            int staffEdgeY = middleLineYPx + ScaleContext.getInstance().toRoundedPixels(dir * 4 * LayoutStylesheet.NOTE_Y_OFFSET);
+            int staffEdgeY = middleLineYPx + ScaleContext.getInstance().toRoundedPixels(dir * 4 * LayoutStylesheet.STAFF_POSITION_OFFSET);
 
             return staffEdgeY + dir * (ACCENT_HALF_HEIGHT_PX + margin);
         } else {
             // On staff edge or beyond (ledger lines) -- anchor to note head
-            int noteHeadY = middleLineYPx + ScaleContext.getInstance().toRoundedPixels(staffPosition * LayoutStylesheet.NOTE_Y_OFFSET);
-            int noteHeadRadius = ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.NOTE_Y_OFFSET);
+            int noteHeadY = middleLineYPx + ScaleContext.getInstance().toRoundedPixels(staffPosition * LayoutStylesheet.STAFF_POSITION_OFFSET);
+            int noteHeadRadius = ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.STAFF_POSITION_OFFSET);
 
             return noteHeadY + dir * (noteHeadRadius + margin + ACCENT_HALF_HEIGHT_PX);
         }
@@ -226,7 +226,7 @@ public class ArticulationRenderer extends BaseElementRenderer<Note> {
     /**
      * Draws an accent glyph centered vertically at the given Y position.
      */
-    private void drawAccent(@NotNull Note note, @NotNull Graphics2D g2, int accentY) {
+    private void drawAccent(@NotNull StaffElement note, @NotNull Graphics2D g2, int accentY) {
         double halfNoteWidth = getHalfNoteWidthForTiePx(note);
         double x = GraphicUtils.snapXToDevicePixel(
             g2, note.getXPosSs() + halfNoteWidth - ACCENT_WIDTH_PX / 2.0
@@ -252,7 +252,7 @@ public class ArticulationRenderer extends BaseElementRenderer<Note> {
      * Pass {@code middleLineYPx=0} for layout-space coordinates,
      * or the actual middleLineYPx for component-space coordinates.
      */
-    public static int calculateStaccatoYPx(@NotNull Note note, int middleLineYPx) {
+    public static int calculateStaccatoYPx(@NotNull StaffElement note, int middleLineYPx) {
         boolean isUpper = note.isUpper();
         int dir = isUpper ? 1 : -1;
         int staffPosition = note.getStaffPosition();
@@ -263,18 +263,19 @@ public class ArticulationRenderer extends BaseElementRenderer<Note> {
 
             return switch (Math.abs(staffPosition)) {
                 // B4/C5 or A4: fixed space near opposite staff edge
-                case 0, 1 -> middleLineYPx + ScaleContext.getInstance().toRoundedPixels(dir * 3 * LayoutStylesheet.NOTE_Y_OFFSET);
+                case 0, 1 ->
+                    middleLineYPx + ScaleContext.getInstance().toRoundedPixels(dir * 3 * LayoutStylesheet.STAFF_POSITION_OFFSET);
 
                 // D5/E5 or G4/F4: standard margin from staff edge
                 case 2, 3 -> {
-                    int staffEdgeY = middleLineYPx + ScaleContext.getInstance().toRoundedPixels(dir * 4 * LayoutStylesheet.NOTE_Y_OFFSET);
+                    int staffEdgeY = middleLineYPx + ScaleContext.getInstance().toRoundedPixels(dir * 4 * LayoutStylesheet.STAFF_POSITION_OFFSET);
                     yield staffEdgeY + dir * (STACCATO_HALF_HEIGHT_PX + margin);
                 }
 
                 // F5+ or E4+: standard margin from note head
                 default -> {
-                    int noteHeadY = middleLineYPx + ScaleContext.getInstance().toRoundedPixels(staffPosition * LayoutStylesheet.NOTE_Y_OFFSET);
-                    int noteHeadRadius = ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.NOTE_Y_OFFSET);
+                    int noteHeadY = middleLineYPx + ScaleContext.getInstance().toRoundedPixels(staffPosition * LayoutStylesheet.STAFF_POSITION_OFFSET);
+                    int noteHeadRadius = ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.STAFF_POSITION_OFFSET);
                     yield noteHeadY + dir * (noteHeadRadius + margin + STACCATO_HALF_HEIGHT_PX);
                 }
             };
@@ -290,14 +291,14 @@ public class ArticulationRenderer extends BaseElementRenderer<Note> {
             default -> staffPosition < 0 ? -3 : 3;  // beyond staff → E5 or F4 space
         };
 
-        return middleLineYPx + ScaleContext.getInstance().toRoundedPixels(targetStaffPosition * LayoutStylesheet.NOTE_Y_OFFSET);
+        return middleLineYPx + ScaleContext.getInstance().toRoundedPixels(targetStaffPosition * LayoutStylesheet.STAFF_POSITION_OFFSET);
     }
 
     /**
      * Renders a staccato glyph centered vertically at the computed Y position.
      */
     private void renderStaccato(
-        @NotNull Note note,
+        @NotNull StaffElement note,
         @NotNull Graphics2D g2,
         int middleLineYPx
     ) {
@@ -317,7 +318,7 @@ public class ArticulationRenderer extends BaseElementRenderer<Note> {
     /**
      * Returns half the width of a note for positioning.
      */
-    private double getHalfNoteWidthForTiePx(@NotNull Note note) {
+    private double getHalfNoteWidthForTiePx(@NotNull StaffElement note) {
         return note.getContentCenterX();
     }
 }

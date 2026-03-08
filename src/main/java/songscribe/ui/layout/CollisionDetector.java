@@ -20,7 +20,7 @@
 
 package songscribe.ui.layout;
 
-import java.awt.geom.Rectangle2D;
+import java.awt.geom.*;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -72,7 +72,7 @@ public final class CollisionDetector {
         var collisions = new ArrayList<Attachment>();
 
         // Check all notes for attachments (all are now positioned above the staff)
-        for (var note : line.getNotes()) {
+        for (var note : line.getElements()) {
             for (var attachment : note.getAttachments()) {
                 if (checkCollision(attachment, attribution)) {
                     collisions.add(attachment);
@@ -133,7 +133,7 @@ public final class CollisionDetector {
         double maxY = 0;  // Below staff (positive from middle)
 
         // Check all notes
-        for (var note : line.getNotes()) {
+        for (var note : line.getElements()) {
             var noteBounds = note.getMarginBounds();
             double noteTop = noteBounds.getMinY() - staffMiddleY;
             double noteBottom = noteBounds.getMaxY() - staffMiddleY;
@@ -222,7 +222,7 @@ public final class CollisionDetector {
         double y
     ) {
         // Check notes first (most common hit target)
-        for (var note : line.getNotes()) {
+        for (var note : line.getElements()) {
             if (note.containsPoint(x, y)) {
                 // Check children (attachments, articulations) first
                 for (var attachment : note.getAttachments()) {

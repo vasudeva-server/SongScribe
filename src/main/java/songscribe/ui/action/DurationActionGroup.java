@@ -30,9 +30,9 @@ import songscribe.ui.message.MessageCenter;
  * An action group that manages the duration actions.
  * Duration actions are mutually exclusive with any of the bar actions.
  */
-public class DurationActionGroup extends ActionGroup<NoteTypeAction> {
+public class DurationActionGroup extends ActionGroup<ElementTypeAction> {
 
-    DurationActionGroup(NoteTypeAction... actions) {
+    DurationActionGroup(ElementTypeAction... actions) {
         super(actions);
         MessageCenter.subscribe(this);
     }

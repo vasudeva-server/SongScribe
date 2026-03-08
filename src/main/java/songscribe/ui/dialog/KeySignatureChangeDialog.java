@@ -27,7 +27,7 @@ import songscribe.music.KeyType;
 
 public class KeySignatureChangeDialog extends StandardDialog {
 
-    private final JLabel indexOfSelectedNoteLabel = new JLabel();
+    private final JLabel indexOfSelectedElementLabel = new JLabel();
     private final JComboBox<KeyType> keysCombo;
     private final SpinnerModel keysSpinner = new SpinnerNumberModel(4, 0, 7, 1);
 
@@ -41,14 +41,14 @@ public class KeySignatureChangeDialog extends StandardDialog {
 
         var infoPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 5));
         infoPanel.add(new JLabel("Index of selected line:"));
-        infoPanel.add(indexOfSelectedNoteLabel);
+        infoPanel.add(indexOfSelectedElementLabel);
         infoPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
         center.add(infoPanel);
         center.add(Box.createRigidArea(large));
 
         var keysPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 10));
         keysCombo = new JComboBox<>(
-            new KeyType[] { KeyType.FLATS, KeyType.SHARPS }
+            new KeyType[]{KeyType.FLATS, KeyType.SHARPS}
         );
         keysCombo.setRenderer(new CompositionSettingsDialog.KeyCellRenderer());
         keysPanel.add(keysCombo);
@@ -71,7 +71,7 @@ public class KeySignatureChangeDialog extends StandardDialog {
     protected void getData() {
         var score = mainFrame.getScore();
         var line = score.getComposition().getLine(score.getSelectedLine());
-        indexOfSelectedNoteLabel.setText(
+        indexOfSelectedElementLabel.setText(
             Integer.toString(score.getComposition().indexOfLine(line) + 1)
         );
         keysCombo.setSelectedItem(line.getKeyType());

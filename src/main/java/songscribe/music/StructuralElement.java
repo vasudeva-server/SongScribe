@@ -24,7 +24,7 @@ import org.jetbrains.annotations.Nullable;
 /**
  * Base class for non-sounding elements in a line.
  * <p>
- * NonNote elements include:
+ * Non-pitched elements include:
  * <ul>
  *   <li>Bar lines (single, double, final, repeat variants)</li>
  *   <li>Breath marks</li>
@@ -35,37 +35,37 @@ import org.jetbrains.annotations.Nullable;
  * These elements are positioned on the staff but don't have
  * pitch-related properties like accidentals. Rests support dots.
  */
-public class NonNote extends Note {
+public class StructuralElement extends StaffElement {
 
-    NonNote() {
+    StructuralElement() {
     }
 
-    public NonNote(NoteType noteType) {
+    public StructuralElement(ElementType noteType) {
         super(noteType);
     }
 
-    NonNote(Note note) {
+    StructuralElement(StaffElement note) {
         super(note);
     }
 
     @Override
-    public NonNote clone() {
-        return new NonNote(this);
+    public StructuralElement clone() {
+        return new StructuralElement(this);
     }
 
     @Override
     public int getStaffPosition() {
-        return getNoteType().getDefaultStaffPosition();
+        return getType().getDefaultStaffPosition();
     }
 
     @Override
     public int getDotCount() {
-        return getNoteType().isRest() ? super.getDotCount() : 0;
+        return getType().isRest() ? super.getDotCount() : 0;
     }
 
     @Override
-    public Note.Accidental getAccidental() {
-        return Note.Accidental.NONE;
+    public StaffElement.Accidental getAccidental() {
+        return StaffElement.Accidental.NONE;
     }
 
     @Override

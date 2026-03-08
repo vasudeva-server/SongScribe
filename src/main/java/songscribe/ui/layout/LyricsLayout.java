@@ -29,7 +29,7 @@ import org.jetbrains.annotations.NotNull;
  * Layout information for a lyrics row (syllables under a staff line).
  * <p>
  * All syllables in a row share a common baseline Y coordinate.
- * Horizontal positions are aligned with their corresponding notes.
+ * Horizontal positions are aligned with their corresponding elements.
  */
 public final class LyricsLayout {
 
@@ -111,11 +111,11 @@ public final class LyricsLayout {
     }
 
     /**
-     * Returns the syllable for the given note index, or empty if none.
+     * Returns the syllable for the given element index, or empty if none.
      */
-    public Optional<SyllableLayout> getSyllableForNote(int noteIndex) {
+    public Optional<SyllableLayout> getSyllableForElement(int elementIndex) {
         return syllables.stream()
-            .filter(s -> s.getNoteIndex() == noteIndex)
+            .filter(s -> s.getElementIndex() == elementIndex)
             .findFirst();
     }
 

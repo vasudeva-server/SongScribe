@@ -23,7 +23,7 @@ package songscribe.ui.layout;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import songscribe.music.Note;
+import songscribe.music.StaffElement;
 
 /**
  * Represents a tie connecting two notes of the same pitch.
@@ -33,7 +33,7 @@ import songscribe.music.Note;
  */
 public class Tie extends RangeElement {
 
-    private @Nullable Note endNote;
+    private @Nullable StaffElement endNote;
 
     /**
      * Creates a new tie between two notes.
@@ -41,33 +41,33 @@ public class Tie extends RangeElement {
      * @param anchorNote The first (starting) note of the tie
      * @param endNote    The second (ending) note of the tie
      */
-    public Tie(@NotNull Note anchorNote, @NotNull Note endNote) {
-        setAnchorNote(anchorNote);
+    public Tie(@NotNull StaffElement anchorNote, @NotNull StaffElement endNote) {
+        setAnchorElement(anchorNote);
         this.endNote = endNote;
     }
 
     @Override
-    public @Nullable Note getEndNote() {
+    public @Nullable StaffElement getEndElement() {
         return endNote;
     }
 
     /**
      * Sets the end note of this tie.
      */
-    public void setEndNote(@Nullable Note endNote) {
+    public void setEndNote(@Nullable StaffElement endNote) {
         this.endNote = endNote;
     }
 
     @Override
     public int getNoteCount() {
-        var anchor = getAnchorNote();
+        var anchor = getAnchorElement();
 
         if (anchor == null || endNote == null) {
             return 0;
         }
 
-        int startIndex = getAnchorNoteIndex();
-        int endIndex = getEndNoteIndex();
+        int startIndex = getAnchorElementIndex();
+        int endIndex = getEndElementIndex();
 
         if (startIndex < 0 || endIndex < 0) {
             return 0;
@@ -79,14 +79,14 @@ public class Tie extends RangeElement {
     @Override
     public boolean isAbove() {
         // Ties go above if stem points down (upper=true), below if stem points up
-        var anchor = getAnchorNote();
+        var anchor = getAnchorElement();
 
         return anchor != null && anchor.isUpper();
     }
 
     @Override
     public double getContentWidth() {
-        var anchor = getAnchorNote();
+        var anchor = getAnchorElement();
 
         if (anchor == null || endNote == null) {
             return 0;

@@ -30,7 +30,7 @@ import org.jetbrains.annotations.NotNull;
  */
 public final class SyllableLayout {
 
-    private final int noteIndex;
+    private final int elementIndex;
     private final int x;
     private final @NotNull String text;
     private final @NotNull ElementBounds bounds;
@@ -39,20 +39,20 @@ public final class SyllableLayout {
     /**
      * Creates syllable layout.
      *
-     * @param noteIndex  Index of the associated note
-     * @param x          Horizontal position (aligned with note)
+     * @param elementIndex  Index of the associated element
+     * @param x             Horizontal position (aligned with element)
      * @param text       Syllable text
      * @param bounds     Element bounds with horizontal margins
      * @param hasMelisma True if followed by melisma line (held syllable)
      */
     public SyllableLayout(
-        int noteIndex,
+        int elementIndex,
         int x,
         @NotNull String text,
         @NotNull ElementBounds bounds,
         boolean hasMelisma
     ) {
-        this.noteIndex = noteIndex;
+        this.elementIndex = elementIndex;
         this.x = x;
         this.text = text;
         this.bounds = bounds;
@@ -63,19 +63,19 @@ public final class SyllableLayout {
      * Creates syllable layout without melisma.
      */
     public SyllableLayout(
-        int noteIndex,
+        int elementIndex,
         int x,
         @NotNull String text,
         @NotNull ElementBounds bounds
     ) {
-        this(noteIndex, x, text, bounds, false);
+        this(elementIndex, x, text, bounds, false);
     }
 
     /**
-     * Returns the index of the associated note.
+     * Returns the index of the associated element.
      */
-    public int getNoteIndex() {
-        return noteIndex;
+    public int getElementIndex() {
+        return elementIndex;
     }
 
     /**
@@ -116,7 +116,7 @@ public final class SyllableLayout {
     @Override
     public String toString() {
         return "SyllableLayout{" +
-            "noteIndex=" + noteIndex +
+            "elementIndex=" + elementIndex +
             ", x=" + x +
             ", text='" + text + "'" +
             (hasMelisma ? ", melisma" : "") +

@@ -20,6 +20,8 @@
 
 package songscribe.music;
 
+import static songscribe.ui.playback.PlaybackController.PPQ;
+
 import java.awt.*;
 import java.awt.event.*;
 import java.util.Map;
@@ -36,10 +38,8 @@ import songscribe.ui.layout2.LayoutConstants;
 import songscribe.util.FatalError;
 import songscribe.util.UIUtils;
 
-import static songscribe.ui.playback.PlaybackController.PPQ;
-
 @SuppressWarnings("ALL")
-public enum NoteType {
+public enum ElementType {
     // Notes
     SEMIBREVE("Whole note", KeyEvent.VK_6, 0, PPQ * 4, 0),
     MINIM("Half note", KeyEvent.VK_5, 0, PPQ * 2, 0),
@@ -70,27 +70,27 @@ public enum NoteType {
     FINAL_DOUBLE_BARLINE("Final double barline", 0, 0),
     PASTE(null, 0, 0),
     // IO aliases
-    SEMIBREVEREST(NoteType.SEMIBREVE_REST),
-    MINIMREST(NoteType.MINIM_REST),
-    CROTCHETREST(NoteType.CROTCHET_REST),
-    QUAVERREST(NoteType.QUAVER_REST),
-    SEMIQUAVERREST(NoteType.SEMIQUAVER_REST),
-    DEMISEMIQUAVERREST(NoteType.DEMI_SEMIQUAVER_REST),
-    GRACEQUAVER(NoteType.GRACE_QUAVER),
-    REPEATLEFT(NoteType.REPEAT_LEFT),
-    REPEATRIGHT(NoteType.REPEAT_RIGHT),
-    REPEATLEFTRIGHT(NoteType.REPEAT_LEFT_RIGHT),
-    BREATHMARK(NoteType.BREATH_MARK),
-    SINGLEBARLINE(NoteType.SINGLE_BARLINE),
-    DOUBLEBARLINE(NoteType.DOUBLE_BARLINE),
-    FINALDOUBLEBARLINE(NoteType.FINAL_DOUBLE_BARLINE);
+    SEMIBREVEREST(ElementType.SEMIBREVE_REST),
+    MINIMREST(ElementType.MINIM_REST),
+    CROTCHETREST(ElementType.CROTCHET_REST),
+    QUAVERREST(ElementType.QUAVER_REST),
+    SEMIQUAVERREST(ElementType.SEMIQUAVER_REST),
+    DEMISEMIQUAVERREST(ElementType.DEMI_SEMIQUAVER_REST),
+    GRACEQUAVER(ElementType.GRACE_QUAVER),
+    REPEATLEFT(ElementType.REPEAT_LEFT),
+    REPEATRIGHT(ElementType.REPEAT_RIGHT),
+    REPEATLEFTRIGHT(ElementType.REPEAT_LEFT_RIGHT),
+    BREATHMARK(ElementType.BREATH_MARK),
+    SINGLEBARLINE(ElementType.SINGLE_BARLINE),
+    DOUBLEBARLINE(ElementType.DOUBLE_BARLINE),
+    FINALDOUBLEBARLINE(ElementType.FINAL_DOUBLE_BARLINE);
 
     static {
         // Set up singleton markers
-        Note.GLISSANDO_NOTE.initNoteType(GLISSANDO);
-        Note.PASTE_NOTE.initNoteType(PASTE);
-        GLISSANDO.instance = Note.GLISSANDO_NOTE;
-        PASTE.instance = Note.PASTE_NOTE;
+        StaffElement.GLISSANDO_PLACEHOLDER.initType(GLISSANDO);
+        StaffElement.PASTE_PLACEHOLDER.initType(PASTE);
+        GLISSANDO.instance = StaffElement.GLISSANDO_PLACEHOLDER;
+        PASTE.instance = StaffElement.PASTE_PLACEHOLDER;
 
         // Create instances for canonical types
         for (var type : values()) {
@@ -108,11 +108,11 @@ public enum NoteType {
     }
 
     /**
-     * Maps each NoteType to its corresponding SMuFL glyph.
+     * Maps each ElementType to its corresponding SMuFL glyph.
      * Used for metadata-driven bounds computation and rendering.
      * Barline and repeat types are absent — they compute bounds from engraving defaults.
      */
-    private static final Map<NoteType, SMuFLGlyph> SMUFL_GLYPHS = Map.ofEntries(
+    private static final Map<ElementType, SMuFLGlyph> SMUFL_GLYPHS = Map.ofEntries(
         Map.entry(SEMIBREVE, SMuFLGlyph.NOTEHEAD_WHOLE),
         Map.entry(MINIM, SMuFLGlyph.NOTEHEAD_HALF),
         Map.entry(CROTCHET, SMuFLGlyph.NOTEHEAD_BLACK),
@@ -139,12 +139,12 @@ public enum NoteType {
             : 0;
     }
 
-    private Note instance;
+    private StaffElement instance;
     private final String name;
     private final KeyStroke acceleratorKey;
     private final int defaultDuration;
     private final int defaultStaffPosition;
-    private final NoteType aliasOf;
+    private final ElementType aliasOf;
     private double widthSs;
     private double noteheadWidthSs;
     private double heightUpSs;
@@ -152,7 +152,7 @@ public enum NoteType {
     private double topOffsetUpSs;
     private double topOffsetDownSs;
 
-    NoteType(
+    ElementType(
         String name,
         int keyCode,
         int modifiers,
@@ -175,7 +175,7 @@ public enum NoteType {
         }
     }
 
-    NoteType(
+    ElementType(
         String name,
         int defaultDuration,
         int defaultStaffPosition
@@ -183,7 +183,7 @@ public enum NoteType {
         this(name, 0, 0, defaultDuration, defaultStaffPosition);
     }
 
-    NoteType(NoteType aliasOf) {
+    ElementType(ElementType aliasOf) {
         this.aliasOf = aliasOf;
         this.name = aliasOf.name;
         this.acceleratorKey = aliasOf.acceleratorKey;
@@ -191,19 +191,19 @@ public enum NoteType {
         this.defaultStaffPosition = aliasOf.defaultStaffPosition;
     }
 
-    private Note createDefaultInstance() {
+    private StaffElement createDefaultInstance() {
         if (isRest() || isNonDuration()) {
-            return new NonNote(this);
+            return new StructuralElement(this);
         }
 
-        return new Note(this);
+        return new StaffElement(this);
     }
 
-    public Note getInstance() {
+    public StaffElement getInstance() {
         return instance;
     }
 
-    public Note newInstance() {
+    public StaffElement newInstance() {
         if (this == GLISSANDO || this == PASTE) {
             return instance;
         }
@@ -313,16 +313,16 @@ public enum NoteType {
         return SMUFL_GLYPHS.get(this);
     }
 
-    public boolean isRealNote() {
+    public boolean isPitchedNote() {
         //noinspection ConstantValue
         return (
             ordinal() >= SEMIBREVE.ordinal() &&
-            ordinal() <= DEMI_SEMIQUAVER.ordinal()
+                ordinal() <= DEMI_SEMIQUAVER.ordinal()
         );
     }
 
     public boolean isNote() {
-        return isRealNote() || isGraceNote();
+        return isPitchedNote() || isGraceNote();
     }
 
     public boolean isNoteWithStem() {
@@ -332,7 +332,7 @@ public enum NoteType {
     public boolean isRest() {
         return (
             ordinal() >= SEMIBREVE_REST.ordinal() &&
-            ordinal() <= DEMI_SEMIQUAVER_REST.ordinal()
+                ordinal() <= DEMI_SEMIQUAVER_REST.ordinal()
         );
     }
 
@@ -343,20 +343,20 @@ public enum NoteType {
     public boolean isRepeat() {
         return (
             this == REPEAT_LEFT ||
-            this == REPEAT_RIGHT ||
-            this == REPEAT_LEFT_RIGHT
+                this == REPEAT_RIGHT ||
+                this == REPEAT_LEFT_RIGHT
         );
     }
 
     public boolean isBarLine() {
         return (
             ordinal() >= SINGLE_BARLINE.ordinal() &&
-            ordinal() <= FINAL_DOUBLE_BARLINE.ordinal()
+                ordinal() <= FINAL_DOUBLE_BARLINE.ordinal()
         );
     }
 
     public boolean isDuration() {
-        return isRealNote() || isRest();
+        return isPitchedNote() || isRest();
     }
 
     public boolean isNonDuration() {
@@ -370,7 +370,7 @@ public enum NoteType {
     /**
      * Returns the rest equivalent of this type, or {@code this} if no rest counterpart exists.
      */
-    public NoteType toRest() {
+    public ElementType toRest() {
         return switch (this) {
             case SEMIBREVE -> SEMIBREVE_REST;
             case MINIM -> MINIM_REST;
@@ -385,7 +385,7 @@ public enum NoteType {
     /**
      * Returns the note equivalent of this type, or {@code this} if no note counterpart exists.
      */
-    public NoteType toNote() {
+    public ElementType toNote() {
         return switch (this) {
             case SEMIBREVE_REST -> SEMIBREVE;
             case MINIM_REST -> MINIM;
@@ -404,9 +404,9 @@ public enum NoteType {
     public boolean snapToEnd() {
         return (
             this == REPEAT_RIGHT ||
-            this == SINGLE_BARLINE ||
-            this == DOUBLE_BARLINE ||
-            this == FINAL_DOUBLE_BARLINE
+                this == SINGLE_BARLINE ||
+                this == DOUBLE_BARLINE ||
+                this == FINAL_DOUBLE_BARLINE
         );
     }
 
@@ -429,7 +429,7 @@ public enum NoteType {
     }
 
     @Nullable
-    private static SMuFLGlyph getStemUpFlagGlyph(NoteType type) {
+    private static SMuFLGlyph getStemUpFlagGlyph(ElementType type) {
         return type.getFlagGlyph(true);
     }
 
@@ -464,7 +464,7 @@ public enum NoteType {
         validateElementBounds();
     }
 
-    private static void computeNoteBoundsSs(SMuFLMetadata metadata, NoteType... types) {
+    private static void computeNoteBoundsSs(SMuFLMetadata metadata, ElementType... types) {
         for (var type : types) {
             var glyph = SMUFL_GLYPHS.get(type);
             var bbox = requireBBox(metadata, glyph, type);
@@ -515,7 +515,7 @@ public enum NoteType {
         }
     }
 
-    private static void computeGraceNoteBoundsSs(SMuFLMetadata metadata, NoteType type) {
+    private static void computeGraceNoteBoundsSs(SMuFLMetadata metadata, ElementType type) {
         var headBBox = requireBBox(metadata, SMuFLGlyph.NOTEHEAD_BLACK, type);
         double scale = LayoutConstants.GRACE_NOTE_SCALE;
 
@@ -561,7 +561,7 @@ public enum NoteType {
         this.topOffsetDownSs = topOffset;
     }
 
-    private void copyBoundsFrom(NoteType source) {
+    private void copyBoundsFrom(ElementType source) {
         this.widthSs = source.widthSs;
         this.noteheadWidthSs = source.noteheadWidthSs;
         this.heightUpSs = source.heightUpSs;
@@ -570,7 +570,7 @@ public enum NoteType {
         this.topOffsetDownSs = source.topOffsetDownSs;
     }
 
-    private static void computeGlyphBoundsSs(SMuFLMetadata metadata, NoteType... types) {
+    private static void computeGlyphBoundsSs(SMuFLMetadata metadata, ElementType... types) {
         for (var type : types) {
             var glyph = SMUFL_GLYPHS.get(type);
             var bbox = requireBBox(metadata, glyph, type);
@@ -609,7 +609,7 @@ public enum NoteType {
         REPEAT_LEFT_RIGHT.setSymmetricBounds(2 * singleRepeatWidth, staffHeight, topOffset);
     }
 
-    private static BBox requireBBox(SMuFLMetadata metadata, SMuFLGlyph glyph, NoteType context) {
+    private static BBox requireBBox(SMuFLMetadata metadata, SMuFLGlyph glyph, ElementType context) {
         var bbox = metadata.getBBox(glyph);
 
         FatalError.exitIfNull(bbox,

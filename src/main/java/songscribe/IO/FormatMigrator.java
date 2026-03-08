@@ -24,24 +24,24 @@ import org.jetbrains.annotations.NotNull;
 import songscribe.data.DynamicsInterval;
 import songscribe.data.EndingInterval;
 import songscribe.data.Interval;
-import songscribe.data.TupletInterval;
 import songscribe.data.IntervalSet;
+import songscribe.data.TupletInterval;
 import songscribe.music.Composition;
 import songscribe.music.Line;
-import songscribe.music.Note;
-import songscribe.ui.layout.LayoutStylesheet;
-import songscribe.ui.layout2.ScaleContext;
+import songscribe.music.StaffElement;
 import songscribe.ui.layout.AnnotationAttachment;
 import songscribe.ui.layout.BeatChangeAttachment;
 import songscribe.ui.layout.Crescendo;
 import songscribe.ui.layout.Diminuendo;
 import songscribe.ui.layout.Ending;
 import songscribe.ui.layout.FermataAttachment;
+import songscribe.ui.layout.LayoutStylesheet;
 import songscribe.ui.layout.RangeElement;
 import songscribe.ui.layout.TempoAttachment;
 import songscribe.ui.layout.Tie;
 import songscribe.ui.layout.Trill;
 import songscribe.ui.layout.Tuplet;
+import songscribe.ui.layout2.ScaleContext;
 
 /**
  * Migrates composition data from legacy format (version 1) to new format (version 2).
@@ -75,7 +75,8 @@ import songscribe.ui.layout.Tuplet;
  */
 public final class FormatMigrator {
 
-    private FormatMigrator() {}
+    private FormatMigrator() {
+    }
 
     /**
      * Migrates a composition from legacy format to new format.
@@ -138,11 +139,11 @@ public final class FormatMigrator {
             migrateDynamicsIntervals(line.getDiminuendos(), pps);
 
             // Glissando translates and per-instance attachment offsets
-            for (var i = 0; i < line.noteCount(); i++) {
-                var note = line.getNote(i);
+            for (var i = 0; i < line.elementCount(); i++) {
+                var note = line.getElement(i);
 
                 //noinspection ObjectEquality
-                if (note.getGlissando() != Note.NO_GLISSANDO) {
+                if (note.getGlissando() != StaffElement.NO_GLISSANDO) {
                     note.getGlissando().x1Translate /= pps;
                     note.getGlissando().x2Translate /= pps;
                 }
@@ -194,8 +195,8 @@ public final class FormatMigrator {
         migrateRangeElements(line);
 
         // Migrate Note attachments
-        for (var i = 0; i < line.noteCount(); i++) {
-            migrateNoteAttachments(line.getNote(i));
+        for (var i = 0; i < line.elementCount(); i++) {
+            migrateElementAttachments(line.getElement(i));
         }
 
         // Migrate line-level Y offsets to per-instance offsets (Phase 11)
@@ -219,8 +220,8 @@ public final class FormatMigrator {
         int tempoOffset = line.getTempoChangeYPosPx();
 
         if (tempoOffset != 0) {
-            for (var i = 0; i < line.noteCount(); i++) {
-                var note = line.getNote(i);
+            for (var i = 0; i < line.elementCount(); i++) {
+                var note = line.getElement(i);
 
                 if (note.getTempoChange() != null) {
                     // Find the TempoAttachment and add the line-level offset to its userYOffset
@@ -240,8 +241,8 @@ public final class FormatMigrator {
         if (beatChangeOffset != ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.BEAT_CHANGE_DEFAULT_Y)) {
             int delta = beatChangeOffset - ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.BEAT_CHANGE_DEFAULT_Y);
 
-            for (var i = 0; i < line.noteCount(); i++) {
-                var note = line.getNote(i);
+            for (var i = 0; i < line.elementCount(); i++) {
+                var note = line.getElement(i);
 
                 if (note.getBeatChange() != null) {
                     for (var attachment : note.getAttachments()) {
@@ -295,8 +296,8 @@ public final class FormatMigrator {
      * @param line The line containing annotations to migrate
      */
     private static void migrateAnnotationPositions(@NotNull Line line) {
-        for (var i = 0; i < line.noteCount(); i++) {
-            var annotation = line.getNote(i).getAnnotation();
+        for (var i = 0; i < line.elementCount(); i++) {
+            var annotation = line.getElement(i).getAnnotation();
 
             if (annotation == null) {
                 continue;
@@ -323,44 +324,44 @@ public final class FormatMigrator {
     private static void migrateRangeElements(@NotNull Line line) {
         // Convert ties
         migrateIntervalSet(line, line.getTies(), (l, interval) -> {
-            var startNote = l.getNote(interval.getStart());
-            var endNote = l.getNote(interval.getEnd());
+            var startElement = l.getElement(interval.getStart());
+            var endElement = l.getElement(interval.getEnd());
 
-            return new Tie(startNote, endNote);
+            return new Tie(startElement, endElement);
         });
 
         // Convert tuplets (with grade from interval data)
         migrateIntervalSet(line, line.getTuplets(), (l, interval) -> {
-            var startNote = l.getNote(interval.getStart());
-            var endNote = l.getNote(interval.getEnd());
+            var startElement = l.getElement(interval.getStart());
+            var endElement = l.getElement(interval.getEnd());
             int grade = extractTupletGrade((TupletInterval) interval);
 
-            return new Tuplet(startNote, endNote, grade);
+            return new Tuplet(startElement, endElement, grade);
         });
 
         // Convert first/second endings
         migrateIntervalSet(line, line.getFirstSecondEndings(), (l, interval) -> {
-            var startNote = l.getNote(interval.getStart());
-            var endNote = l.getNote(interval.getEnd());
+            var startElement = l.getElement(interval.getStart());
+            var endElement = l.getElement(interval.getEnd());
             var endingType = extractEndingType((EndingInterval) interval);
 
-            return new Ending(startNote, endNote, endingType);
+            return new Ending(startElement, endElement, endingType);
         });
 
         // Convert crescendos
         migrateIntervalSet(line, line.getCrescendos(), (l, interval) -> {
-            var startNote = l.getNote(interval.getStart());
-            var endNote = l.getNote(interval.getEnd());
+            var startElement = l.getElement(interval.getStart());
+            var endElement = l.getElement(interval.getEnd());
 
-            return new Crescendo(startNote, endNote);
+            return new Crescendo(startElement, endElement);
         });
 
         // Convert diminuendos
         migrateIntervalSet(line, line.getDiminuendos(), (l, interval) -> {
-            var startNote = l.getNote(interval.getStart());
-            var endNote = l.getNote(interval.getEnd());
+            var startElement = l.getElement(interval.getStart());
+            var endElement = l.getElement(interval.getEnd());
 
-            return new Diminuendo(startNote, endNote);
+            return new Diminuendo(startElement, endElement);
         });
 
         // Note: slurs are intentionally NOT migrated (being removed)
@@ -388,7 +389,7 @@ public final class FormatMigrator {
             var interval = (Interval) iter.next();
 
             // Validate interval bounds
-            if (interval.getStart() < 0 || interval.getEnd() >= line.noteCount()) {
+            if (interval.getStart() < 0 || interval.getEnd() >= line.elementCount()) {
                 continue;
             }
 
@@ -432,7 +433,7 @@ public final class FormatMigrator {
      *
      * @param note The note to migrate
      */
-    private static void migrateNoteAttachments(@NotNull Note note) {
+    private static void migrateElementAttachments(@NotNull StaffElement note) {
         // Tempo change attachment
         if (note.getTempoChange() != null) {
             var attachment = new TempoAttachment(note, note.getTempoChange());

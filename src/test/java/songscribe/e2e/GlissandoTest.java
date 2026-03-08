@@ -20,21 +20,21 @@
 
 package songscribe.e2e;
 
-import java.awt.Point;
-import java.awt.event.KeyEvent;
+import static org.assertj.core.api.Assertions.assertThat;
+
+import java.awt.*;
+import java.awt.event.*;
 
 import org.assertj.swing.edt.GuiActionRunner;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 
 import songscribe.music.Composition;
+import songscribe.music.ElementType;
 import songscribe.music.Line;
-import songscribe.music.Note;
-import songscribe.music.NoteType;
+import songscribe.music.StaffElement;
 import songscribe.ui.action.Actions;
 import songscribe.ui.component.MainFrame;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Milestone 3 E2E tests: glissando insert, select, delete, highlight, persistence.
@@ -42,7 +42,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 @Order(5)
 class GlissandoTest extends E2ETest {
 
-    @Test @Order(1)
+    @Test
+    @Order(1)
     void testInsertConnectedGlissando() {
         buildTwoNotesAtDifferentPitches();
 
@@ -53,13 +54,14 @@ class GlissandoTest extends E2ETest {
         clickAt(glissandoInsertionPoint(0));
         performLayout(0);
 
-        var note = composition().getLine(0).getNote(0);
+        var note = composition().getLine(0).getElement(0);
         //noinspection ObjectEquality
-        assertThat(note.getGlissando() != Note.NO_GLISSANDO).isTrue();
-        assertThat(note.getGlissando().type).isEqualTo(Note.Glissando.Type.CONNECTED);
+        assertThat(note.getGlissando() != StaffElement.NO_GLISSANDO).isTrue();
+        assertThat(note.getGlissando().type).isEqualTo(StaffElement.Glissando.Type.CONNECTED);
     }
 
-    @Test @Order(2)
+    @Test
+    @Order(2)
     void testInsertSlideOutGlissando() {
         buildTwoNotesAtDifferentPitches();
 
@@ -71,13 +73,14 @@ class GlissandoTest extends E2ETest {
         clickAt(glissandoInsertionPoint(0));
         performLayout(0);
 
-        var note = composition().getLine(0).getNote(0);
+        var note = composition().getLine(0).getElement(0);
         //noinspection ObjectEquality
-        assertThat(note.getGlissando() != Note.NO_GLISSANDO).isTrue();
-        assertThat(note.getGlissando().type).isEqualTo(Note.Glissando.Type.SLIDE_OUT);
+        assertThat(note.getGlissando() != StaffElement.NO_GLISSANDO).isTrue();
+        assertThat(note.getGlissando().type).isEqualTo(StaffElement.Glissando.Type.SLIDE_OUT);
     }
 
-    @Test @Order(3)
+    @Test
+    @Order(3)
     void testSelectGlissandoByClick() {
         buildNotesWithConnectedGlissando();
 
@@ -88,10 +91,11 @@ class GlissandoTest extends E2ETest {
 
         var lss = score().getLineComponent(0).getLineSelectionState();
         assertThat(lss.hasGlissandoSelection()).isTrue();
-        assertThat(lss.getSelectedGlissandoNoteIndex()).isEqualTo(0);
+        assertThat(lss.getSelectedGlissandoElementIndex()).isEqualTo(0);
     }
 
-    @Test @Order(4)
+    @Test
+    @Order(4)
     void testSelectSourceNoteHighlightsGlissando() {
         buildNotesWithConnectedGlissando();
 
@@ -102,15 +106,16 @@ class GlissandoTest extends E2ETest {
 
         // Source note is selected
         var lss = score().getLineComponent(0).getLineSelectionState();
-        assertThat(lss.isNoteSelected(0)).isTrue();
+        assertThat(lss.isElementSelected(0)).isTrue();
 
         // Glissando exists on that note (model-level check)
-        var note = composition().getLine(0).getNote(0);
+        var note = composition().getLine(0).getElement(0);
         //noinspection ObjectEquality
-        assertThat(note.getGlissando() != Note.NO_GLISSANDO).isTrue();
+        assertThat(note.getGlissando() != StaffElement.NO_GLISSANDO).isTrue();
     }
 
-    @Test @Order(5)
+    @Test
+    @Order(5)
     void testSelectTargetNoteHighlightsGlissando() {
         buildNotesWithConnectedGlissando();
 
@@ -121,14 +126,15 @@ class GlissandoTest extends E2ETest {
 
         // Target note is selected
         var lss = score().getLineComponent(0).getLineSelectionState();
-        assertThat(lss.isNoteSelected(1)).isTrue();
+        assertThat(lss.isElementSelected(1)).isTrue();
 
         // Previous note has a connected glissando pointing to it (model-level check)
-        var prevNote = composition().getLine(0).getNote(0);
-        assertThat(prevNote.getGlissando().type).isEqualTo(Note.Glissando.Type.CONNECTED);
+        var prevNote = composition().getLine(0).getElement(0);
+        assertThat(prevNote.getGlissando().type).isEqualTo(StaffElement.Glissando.Type.CONNECTED);
     }
 
-    @Test @Order(6)
+    @Test
+    @Order(6)
     void testDeleteSelectedGlissando() {
         buildNotesWithConnectedGlissando();
 
@@ -145,28 +151,30 @@ class GlissandoTest extends E2ETest {
         performLayout(0);
 
         // Glissando should be removed
-        var note = composition().getLine(0).getNote(0);
+        var note = composition().getLine(0).getElement(0);
         //noinspection ObjectEquality
-        assertThat(note.getGlissando()).isSameAs(Note.NO_GLISSANDO);
+        assertThat(note.getGlissando()).isSameAs(StaffElement.NO_GLISSANDO);
     }
 
-    @Test @Order(7)
+    @Test
+    @Order(7)
     void testGlissandoPersistsThroughSaveLoad() throws Exception {
         buildNotesWithConnectedGlissando();
 
-        var originalNote = composition().getLine(0).getNote(0);
+        var originalNote = composition().getLine(0).getElement(0);
         var originalType = originalNote.getGlissando().type;
 
         // Round-trip save/load
         var reloaded = roundTrip(composition());
 
-        var reloadedNote = reloaded.getLine(0).getNote(0);
+        var reloadedNote = reloaded.getLine(0).getElement(0);
         //noinspection ObjectEquality
-        assertThat(reloadedNote.getGlissando() != Note.NO_GLISSANDO).isTrue();
+        assertThat(reloadedNote.getGlissando() != StaffElement.NO_GLISSANDO).isTrue();
         assertThat(reloadedNote.getGlissando().type).isEqualTo(originalType);
     }
 
-    @Test @Order(8)
+    @Test
+    @Order(8)
     void testDeleteSourceNoteRemovesConnectedGlissando() {
         buildNotesWithConnectedGlissando();
 
@@ -181,14 +189,15 @@ class GlissandoTest extends E2ETest {
 
         // Note 0 was removed, only 1 note remains
         var line = composition().getLine(0);
-        assertThat(line.noteCount()).isEqualTo(1);
+        assertThat(line.elementCount()).isEqualTo(1);
 
         // The remaining note should have no orphaned glissando
         //noinspection ObjectEquality
-        assertThat(line.getNote(0).getGlissando()).isSameAs(Note.NO_GLISSANDO);
+        assertThat(line.getElement(0).getGlissando()).isSameAs(StaffElement.NO_GLISSANDO);
     }
 
-    @Test @Order(9)
+    @Test
+    @Order(9)
     void testDeleteSourceNoteRemovesSlideOut() {
         buildNoteWithSlideOut();
 
@@ -203,10 +212,11 @@ class GlissandoTest extends E2ETest {
 
         // Note was removed
         var line = composition().getLine(0);
-        assertThat(line.noteCount()).isEqualTo(0);
+        assertThat(line.elementCount()).isEqualTo(0);
     }
 
-    @Test @Order(10)
+    @Test
+    @Order(10)
     void testDeleteTargetNoteRemovesConnectedGlissando() {
         buildNotesWithConnectedGlissando();
 
@@ -221,19 +231,20 @@ class GlissandoTest extends E2ETest {
 
         // Only 1 note remains (the source)
         var line = composition().getLine(0);
-        assertThat(line.noteCount()).isEqualTo(1);
+        assertThat(line.elementCount()).isEqualTo(1);
 
         // The source note's glissando should be removed (no target to connect to)
         //noinspection ObjectEquality
-        assertThat(line.getNote(0).getGlissando()).isSameAs(Note.NO_GLISSANDO);
+        assertThat(line.getElement(0).getGlissando()).isSameAs(StaffElement.NO_GLISSANDO);
     }
 
-    @Test @Order(11)
+    @Test
+    @Order(11)
     void testDragToUnisonRemovesConnectedGlissando() {
         buildNotesWithConnectedGlissando();
 
         var line = composition().getLine(0);
-        var targetSp = line.getNote(1).getStaffPosition();
+        var targetSp = line.getElement(1).getStaffPosition();
 
         // Enter edit mode (drag works in edit mode)
         enterEditMode();
@@ -244,7 +255,7 @@ class GlissandoTest extends E2ETest {
 
         // Connected glissando should be removed (unison is meaningless)
         //noinspection ObjectEquality
-        assertThat(line.getNote(0).getGlissando()).isSameAs(Note.NO_GLISSANDO);
+        assertThat(line.getElement(0).getGlissando()).isSameAs(StaffElement.NO_GLISSANDO);
     }
 
 
@@ -279,13 +290,13 @@ class GlissandoTest extends E2ETest {
             var composition = new Composition(MainFrame.getInstance());
             var line = new Line();
 
-            var note1 = NoteType.CROTCHET.newInstance();
+            var note1 = ElementType.CROTCHET.newInstance();
             note1.setStaffPosition(0);
-            line.addNote(note1);
+            line.addElement(note1);
 
-            var note2 = NoteType.CROTCHET.newInstance();
+            var note2 = ElementType.CROTCHET.newInstance();
             note2.setStaffPosition(-4);
-            line.addNote(note2);
+            line.addElement(note2);
 
             composition.addLine(0, line);
             score().setComposition(composition);
@@ -299,14 +310,14 @@ class GlissandoTest extends E2ETest {
             var composition = new Composition(MainFrame.getInstance());
             var line = new Line();
 
-            var note1 = NoteType.CROTCHET.newInstance();
+            var note1 = ElementType.CROTCHET.newInstance();
             note1.setStaffPosition(0);
-            note1.setGlissando(Note.Glissando.Type.CONNECTED);
-            line.addNote(note1);
+            note1.setGlissando(StaffElement.Glissando.Type.CONNECTED);
+            line.addElement(note1);
 
-            var note2 = NoteType.CROTCHET.newInstance();
+            var note2 = ElementType.CROTCHET.newInstance();
             note2.setStaffPosition(-4);
-            line.addNote(note2);
+            line.addElement(note2);
 
             composition.addLine(0, line);
             score().setComposition(composition);
@@ -320,10 +331,10 @@ class GlissandoTest extends E2ETest {
             var composition = new Composition(MainFrame.getInstance());
             var line = new Line();
 
-            var note = NoteType.CROTCHET.newInstance();
+            var note = ElementType.CROTCHET.newInstance();
             note.setStaffPosition(0);
-            note.setGlissando(Note.Glissando.Type.SLIDE_OUT);
-            line.addNote(note);
+            note.setGlissando(StaffElement.Glissando.Type.SLIDE_OUT);
+            line.addElement(note);
 
             composition.addLine(0, line);
             score().setComposition(composition);

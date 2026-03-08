@@ -111,7 +111,7 @@ public class KeySignatureRenderer extends BaseElementRenderer<KeySignature> {
 
         try (var ignored = GraphicsState.save(g2, FONT, COLOR)) {
             g2.setFont(BRAVURA_FONT);
-            g2.setColor(NOTE_COLOR);
+            g2.setColor(ELEMENT_COLOR);
 
             // Get the starting X position from the element
             double xPosSs = element.getX();
@@ -169,7 +169,7 @@ public class KeySignatureRenderer extends BaseElementRenderer<KeySignature> {
 
         try (var ignored = GraphicsState.save(g2, COLOR, FONT)) {
             g2.setFont(BRAVURA_FONT);
-            g2.setColor(NOTE_COLOR);
+            g2.setColor(ELEMENT_COLOR);
 
             SMuFLGlyph glyph;
             int[] staffPositions;
@@ -280,7 +280,7 @@ public class KeySignatureRenderer extends BaseElementRenderer<KeySignature> {
     ) {
         try (var ignored = GraphicsState.save(g2, COLOR, FONT)) {
             g2.setFont(BRAVURA_FONT);
-            g2.setColor(NOTE_COLOR);
+            g2.setColor(ELEMENT_COLOR);
 
             var middleLineYSs = ctx.getMiddleLineYSs();
 

@@ -21,16 +21,15 @@ package songscribe.ui.playback;
 
 import javax.sound.midi.InvalidMidiDataException;
 import javax.sound.midi.ShortMessage;
-import songscribe.ui.component.MainFrame;
 
-public class PlayNoteThread extends Thread {
+public class PlayThread extends Thread {
 
     private static final int NOTE_DURATION_MS = 700;
 
     private final int pitch;
     private final boolean playNoteOn;
 
-    public PlayNoteThread(int pitch) {
+    public PlayThread(int pitch) {
         this(pitch, true);
     }
 
@@ -39,7 +38,7 @@ public class PlayNoteThread extends Thread {
      * @param playNoteOn if true, sends NOTE_ON before the delay; if false, only
      *                   schedules the NOTE_OFF (useful when a NOTE_ON is already sounding)
      */
-    public PlayNoteThread(int pitch, boolean playNoteOn) {
+    public PlayThread(int pitch, boolean playNoteOn) {
         this.pitch = pitch;
         this.playNoteOn = playNoteOn;
     }

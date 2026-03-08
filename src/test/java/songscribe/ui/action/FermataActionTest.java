@@ -20,12 +20,12 @@
 
 package songscribe.ui.action;
 
-import songscribe.UnitTest;
-import songscribe.music.NoteType;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.jupiter.api.Test;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import songscribe.UnitTest;
+import songscribe.music.ElementType;
 
 class FermataActionTest extends UnitTest {
 
@@ -33,29 +33,29 @@ class FermataActionTest extends UnitTest {
 
     @Test
     void testMatchesWhenFermataTrue() {
-        var note = NoteType.CROTCHET.newInstance();
+        var note = ElementType.CROTCHET.newInstance();
         note.setFermata(true);
-        assertThat(action.matchesNote(note)).isTrue();
+        assertThat(action.matchesElement(note)).isTrue();
     }
 
     @Test
     void testDoesNotMatchWhenFermataFalse() {
-        var note = NoteType.CROTCHET.newInstance();
-        assertThat(action.matchesNote(note)).isFalse();
+        var note = ElementType.CROTCHET.newInstance();
+        assertThat(action.matchesElement(note)).isFalse();
     }
 
     @Test
     void testApplyToNoteAppliesFermata() {
-        var note = NoteType.CROTCHET.newInstance();
-        action.applyToNote(note, true);
+        var note = ElementType.CROTCHET.newInstance();
+        action.applyToElement(note, true);
         assertThat(note.isFermata()).isTrue();
     }
 
     @Test
     void testApplyToNoteRemovesFermata() {
-        var note = NoteType.CROTCHET.newInstance();
+        var note = ElementType.CROTCHET.newInstance();
         note.setFermata(true);
-        action.applyToNote(note, false);
+        action.applyToElement(note, false);
         assertThat(note.isFermata()).isFalse();
     }
 }

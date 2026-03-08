@@ -20,9 +20,19 @@
 
 package songscribe.e2e;
 
+import static org.assertj.swing.core.MouseButton.LEFT_BUTTON;
+
 import java.awt.*;
+import java.io.File;
+import java.io.PrintWriter;
+import java.io.StringReader;
+import java.io.StringWriter;
+import java.util.Arrays;
+import java.util.List;
+import java.util.regex.Pattern;
 
 import javax.swing.*;
+import javax.xml.parsers.SAXParserFactory;
 
 import org.assertj.swing.core.BasicRobot;
 import org.assertj.swing.core.GenericTypeMatcher;
@@ -34,25 +44,13 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.api.extension.TestWatcher;
-
-import java.io.File;
-import java.io.PrintWriter;
-import java.io.StringReader;
-import java.io.StringWriter;
-import java.util.Arrays;
-import java.util.List;
-import java.util.regex.Pattern;
-
-import javax.xml.parsers.SAXParserFactory;
-
 import org.xml.sax.InputSource;
-
-import org.junit.jupiter.api.Test;
 
 import songscribe.io.CompositionIO;
 import songscribe.music.Composition;
@@ -63,8 +61,6 @@ import songscribe.ui.component.Score;
 import songscribe.ui.layout2.ScaleContext;
 import songscribe.util.RuntimeError;
 import songscribe.util.UIUtils;
-
-import static org.assertj.swing.core.MouseButton.LEFT_BUTTON;
 
 /**
  * Base class for E2E interaction tests using AssertJ Swing.
@@ -389,16 +385,16 @@ abstract class E2ETest {
         return GuiActionRunner.execute(() -> {
             var lc = score().getLineComponent(lineIndex);
             var line = lc.getLine();
-            var note = line.getNote(noteIndex);
+            var note = line.getElement(noteIndex);
 
             var layoutResult = lc.getLayoutResult();
-            var noteXSs = layoutResult != null ? layoutResult.getNoteXSs(note) : 0.0;
+            var noteXSs = layoutResult != null ? layoutResult.getElementXSs(note) : 0.0;
             var noteXPx = (int) Math.round(ScaleContext.getInstance().toPixels(noteXSs));
             var noteYPx = lc.staffPositionToYPx(note.getStaffPosition());
 
             var locationOnScreen = lc.getLocationOnScreen();
             return new Point(
-                locationOnScreen.x + noteXPx + (int) Math.round(ScaleContext.getInstance().toPixels(note.getNoteType().getNoteheadCenterXSs())),
+                locationOnScreen.x + noteXPx + (int) Math.round(ScaleContext.getInstance().toPixels(note.getType().getNoteheadCenterXSs())),
                 locationOnScreen.y + noteYPx
             );
         });
@@ -417,13 +413,13 @@ abstract class E2ETest {
 
             int xPx;
 
-            if (line.noteCount() == 0) {
+            if (line.elementCount() == 0) {
                 // Fixed offset from left edge for empty lines
                 xPx = 80;
             } else {
-                var lastNote = line.getNote(line.noteCount() - 1);
+                var lastNote = line.getElement(line.elementCount() - 1);
                 var layoutResult = lc.getLayoutResult();
-                var lastXSs = layoutResult != null ? layoutResult.getNoteXSs(lastNote) : 0.0;
+                var lastXSs = layoutResult != null ? layoutResult.getElementXSs(lastNote) : 0.0;
                 // Place 30px past the last note
                 xPx = (int) Math.round(ScaleContext.getInstance().toPixels(lastXSs)) + 30;
             }
@@ -491,17 +487,17 @@ abstract class E2ETest {
             if (component != null) {
                 var local = SwingUtilities.convertPoint(frame, relX, relY, component);
                 int modifiers = java.awt.event.InputEvent.SHIFT_DOWN_MASK
-                        | java.awt.event.InputEvent.BUTTON1_DOWN_MASK;
+                    | java.awt.event.InputEvent.BUTTON1_DOWN_MASK;
                 long now = System.currentTimeMillis();
 
                 for (int id : new int[]{
-                        java.awt.event.MouseEvent.MOUSE_PRESSED,
-                        java.awt.event.MouseEvent.MOUSE_RELEASED,
-                        java.awt.event.MouseEvent.MOUSE_CLICKED}) {
+                    java.awt.event.MouseEvent.MOUSE_PRESSED,
+                    java.awt.event.MouseEvent.MOUSE_RELEASED,
+                    java.awt.event.MouseEvent.MOUSE_CLICKED}) {
                     component.dispatchEvent(new java.awt.event.MouseEvent(
-                            component, id, now, modifiers,
-                            local.x, local.y, 1, false,
-                            java.awt.event.MouseEvent.BUTTON1));
+                        component, id, now, modifiers,
+                        local.x, local.y, 1, false,
+                        java.awt.event.MouseEvent.BUTTON1));
                 }
             }
         });

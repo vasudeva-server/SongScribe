@@ -39,8 +39,6 @@ import songscribe.ui.layout2.LayoutResult;
  */
 public class TieRenderer {
 
-    private static final Color NOTE_COLOR = Color.BLACK;
-
     // Singleton instance
     private static final TieRenderer INSTANCE = new TieRenderer();
 
@@ -124,12 +122,12 @@ public class TieRenderer {
         if (sp != null) {
             var li = ctx.getLineIndex();
 
-            if (sp.isNoteSelected(interval.getStart(), li)
-                    || sp.isNoteSelected(interval.getEnd(), li)) {
+            if (sp.isElementSelected(interval.getStart(), li)
+                || sp.isElementSelected(interval.getEnd(), li)) {
                 return ctx.getSelectionColor();
             }
         }
 
-        return NOTE_COLOR;
+        return BaseElementRenderer.ELEMENT_COLOR;
     }
 }

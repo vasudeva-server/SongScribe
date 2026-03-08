@@ -170,8 +170,8 @@ public class VerticalAdjustment extends Adjustment {
 
     private void adjustTempoChange(Line line, int diffY) {
         // Update per-instance offset on all tempo attachments in this line
-        for (var i = 0; i < line.noteCount(); i++) {
-            var note = line.getNote(i);
+        for (var i = 0; i < line.elementCount(); i++) {
+            var note = line.getElement(i);
 
             if (note.getTempoChange() != null) {
                 for (var attachment : note.getAttachments()) {
@@ -185,8 +185,8 @@ public class VerticalAdjustment extends Adjustment {
 
     private void adjustBeatChange(Line line, int diffY) {
         // Update per-instance offset on all beat change attachments in this line
-        for (var i = 0; i < line.noteCount(); i++) {
-            var note = line.getNote(i);
+        for (var i = 0; i < line.elementCount(); i++) {
+            var note = line.getElement(i);
 
             if (note.getBeatChange() != null) {
                 for (var attachment : note.getAttachments()) {
@@ -209,7 +209,7 @@ public class VerticalAdjustment extends Adjustment {
 
     private void adjustAnnotation(Line line, int diffY) {
         if (dragRect != null) {
-            var annotation = line.getNote(dragRect.xIndex).getAnnotation();
+            var annotation = line.getElement(dragRect.xIndex).getAnnotation();
             // Update user offset (delta from calculated position)
             annotation.setUserYOffset(annotation.getUserYOffset() + diffY);
             // Also update legacy yPos for backward compatibility
@@ -306,8 +306,8 @@ public class VerticalAdjustment extends Adjustment {
                     );
                 }
 
-                for (var n = 0; n < line.noteCount(); n++) {
-                    if (line.getNote(n).getAnnotation() != null) {
+                for (var n = 0; n < line.elementCount(); n++) {
+                    if (line.getElement(n).getAnnotation() != null) {
                         adjustRects.add(
                             new AdjustRect(l, AdjustType.ANNOTATION, n)
                         );
@@ -394,7 +394,7 @@ public class VerticalAdjustment extends Adjustment {
 
     private void getAdjustRect(AdjustRect adjustRect) {
         var line = score.getComposition().getLine(adjustRect.line);
-        var note = line.getNote(adjustRect.xIndex);
+        var note = line.getElement(adjustRect.xIndex);
 
         switch (adjustRect.type) {
             case ATTRIBUTION -> getAttributionAdjustRect(adjustRect);
@@ -428,8 +428,8 @@ public class VerticalAdjustment extends Adjustment {
                     return;
                 }
 
-                var startNote = line.getNote(interval.getStart());
-                var endNote = line.getNote(interval.getEnd());
+                var startNote = line.getElement(interval.getStart());
+                var endNote = line.getElement(interval.getEnd());
                 var layoutResult = getLayoutResultForLine(adjustRect.line);
                 var bounds = layoutResult.findRangeElementBounds(startNote, endNote, Ending.class);
 
@@ -457,8 +457,8 @@ public class VerticalAdjustment extends Adjustment {
                     .filter(e -> e instanceof Trill)
                     .map(e -> (Trill) e)
                     .filter(t -> {
-                        var anchorIdx = t.getAnchorNoteIndex();
-                        var endIdx = t.getEndNoteIndex();
+                        var anchorIdx = t.getAnchorElementIndex();
+                        var endIdx = t.getEndElementIndex();
                         return anchorIdx >= 0 && endIdx >= 0 &&
                             adjustRect.xIndex >= anchorIdx &&
                             adjustRect.xIndex <= endIdx;
@@ -470,8 +470,8 @@ public class VerticalAdjustment extends Adjustment {
                     return;
                 }
 
-                var startNote = trill.getAnchorNote();
-                var endNote = trill.getEndNote();
+                var startNote = trill.getAnchorElement();
+                var endNote = trill.getEndElement();
 
                 if (startNote == null || endNote == null) {
                     return;
@@ -495,8 +495,8 @@ public class VerticalAdjustment extends Adjustment {
                     return;
                 }
 
-                var startNote = line.getNote(interval.getStart());
-                var endNote = line.getNote(interval.getEnd());
+                var startNote = line.getElement(interval.getStart());
+                var endNote = line.getElement(interval.getEnd());
                 var layoutResult = getLayoutResultForLine(adjustRect.line);
                 var rangeClass = adjustRect.type == AdjustType.CRESCENDO_Y
                     ? Crescendo.class
@@ -520,8 +520,8 @@ public class VerticalAdjustment extends Adjustment {
                     return;
                 }
 
-                var startNote = line.getNote(interval.getStart());
-                var endNote = line.getNote(interval.getEnd());
+                var startNote = line.getElement(interval.getStart());
+                var endNote = line.getElement(interval.getEnd());
                 var layoutResult = getLayoutResultForLine(adjustRect.line);
                 var bounds = layoutResult.findRangeElementBounds(startNote, endNote, Tuplet.class);
 

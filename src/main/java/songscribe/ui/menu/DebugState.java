@@ -20,7 +20,7 @@
 
 package songscribe.ui.menu;
 
-import java.awt.Point;
+import java.awt.*;
 import java.util.Objects;
 
 import org.jetbrains.annotations.Nullable;
@@ -101,9 +101,9 @@ public class DebugState {
 
         private final ElementBounds bounds;
         private final String label;
-        private final ElementType type;
+        private final DebugElementType type;
 
-        public HoveredElement(ElementBounds bounds, String label, ElementType type) {
+        public HoveredElement(ElementBounds bounds, String label, DebugElementType type) {
             this.bounds = bounds;
             this.label = label;
             this.type = type;
@@ -117,7 +117,7 @@ public class DebugState {
             return label;
         }
 
-        public ElementType getType() {
+        public DebugElementType getType() {
             return type;
         }
 
@@ -133,8 +133,8 @@ public class DebugState {
 
             var that = (HoveredElement) o;
             return type == that.type &&
-                   label.equals(that.label) &&
-                   boundsEqual(bounds, that.bounds);
+                label.equals(that.label) &&
+                boundsEqual(bounds, that.bounds);
         }
 
         @Override
@@ -151,13 +151,13 @@ public class DebugState {
             var m1 = b1.getMarginBounds();
             var m2 = b2.getMarginBounds();
             return m1.getX() == m2.getX() &&
-                   m1.getY() == m2.getY() &&
-                   m1.getWidth() == m2.getWidth() &&
-                   m1.getHeight() == m2.getHeight();
+                m1.getY() == m2.getY() &&
+                m1.getWidth() == m2.getWidth() &&
+                m1.getHeight() == m2.getHeight();
         }
     }
 
-    public enum ElementType {
+    public enum DebugElementType {
         NOTE,
         ATTACHMENT,
         RANGE,

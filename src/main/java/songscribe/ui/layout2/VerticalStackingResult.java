@@ -26,7 +26,7 @@ import java.util.Map;
 
 import org.jetbrains.annotations.NotNull;
 
-import songscribe.music.Note;
+import songscribe.music.StaffElement;
 import songscribe.ui.layout.LineElement;
 
 /**
@@ -43,7 +43,7 @@ import songscribe.ui.layout.LineElement;
 public final class VerticalStackingResult {
 
     /** Map from note to map of element positions (element -> position). */
-    private final @NotNull Map<Note, Map<LineElement, Point2D>> elementPositions;
+    private final @NotNull Map<StaffElement, Map<LineElement, Point2D>> elementPositions;
 
     /** Maximum height reached above the staff top (negative Y value). */
     private final double maxHeightAboveStaffPx;
@@ -63,7 +63,7 @@ public final class VerticalStackingResult {
      * @param lineHeightPx          Total line height in pixels
      */
     public VerticalStackingResult(
-        @NotNull Map<Note, Map<LineElement, Point2D>> elementPositions,
+        @NotNull Map<StaffElement, Map<LineElement, Point2D>> elementPositions,
         double maxHeightAboveStaffPx,
         double lyricsBaselineYPx,
         double lineHeightPx) {
@@ -80,7 +80,7 @@ public final class VerticalStackingResult {
      *
      * @return Unmodifiable map of element positions
      */
-    public @NotNull Map<Note, Map<LineElement, Point2D>> getElementPositions() {
+    public @NotNull Map<StaffElement, Map<LineElement, Point2D>> getElementPositions() {
         return Collections.unmodifiableMap(elementPositions);
     }
 
@@ -121,7 +121,7 @@ public final class VerticalStackingResult {
      * @param element The element
      * @return The position, or null if not found
      */
-    public Point2D getElementPosition(@NotNull Note note, @NotNull LineElement element) {
+    public Point2D getElementPosition(@NotNull StaffElement note, @NotNull LineElement element) {
         var noteElements = elementPositions.get(note);
 
         if (noteElements == null) {

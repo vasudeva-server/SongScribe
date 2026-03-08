@@ -98,13 +98,13 @@ public class Tempo {
     }
 
     public enum Type {
-        SEMI_BREVE(NoteType.SEMIBREVE.newInstance()), // Whole note
-        MINIM_DOTTED(NoteType.MINIM.newInstance()), // Dotted half note
-        MINIM(NoteType.MINIM.newInstance()), // Half note
-        CROTCHET_DOTTED(NoteType.CROTCHET.newInstance()), // Dotted quarter note
-        CROTCHET(NoteType.CROTCHET.newInstance()), // Quarter note
-        QUAVER_DOTTED(NoteType.QUAVER.newInstance()), // Dotted eighth note
-        QUAVER(NoteType.QUAVER.newInstance()), // Eighth note
+        SEMI_BREVE(ElementType.SEMIBREVE.newInstance()), // Whole note
+        MINIM_DOTTED(ElementType.MINIM.newInstance()), // Dotted half note
+        MINIM(ElementType.MINIM.newInstance()), // Half note
+        CROTCHET_DOTTED(ElementType.CROTCHET.newInstance()), // Dotted quarter note
+        CROTCHET(ElementType.CROTCHET.newInstance()), // Quarter note
+        QUAVER_DOTTED(ElementType.QUAVER.newInstance()), // Dotted eighth note
+        QUAVER(ElementType.QUAVER.newInstance()), // Eighth note
 
         // IO values
         SEMIBREVE(Type.SEMI_BREVE),
@@ -112,7 +112,7 @@ public class Tempo {
         CROTCHETDOTTED(Type.CROTCHET_DOTTED),
         QUAVERDOTTED(Type.QUAVER_DOTTED);
 
-        private final Note note;
+        private final StaffElement note;
 
         static {
             MINIM_DOTTED.note.setDotCount(1);
@@ -123,7 +123,7 @@ public class Tempo {
             QUAVER_DOTTED.note.setStaffPosition(1);
         }
 
-        Type(Note note) {
+        Type(StaffElement note) {
             this.note = note;
         }
 
@@ -131,7 +131,7 @@ public class Tempo {
             note = type.note;
         }
 
-        public Note getNote() {
+        public StaffElement getNote() {
             return note;
         }
     }

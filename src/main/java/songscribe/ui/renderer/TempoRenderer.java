@@ -32,8 +32,8 @@ import java.util.Map;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import songscribe.music.Note;
-import songscribe.music.NoteType;
+import songscribe.music.ElementType;
+import songscribe.music.StaffElement;
 import songscribe.music.Tempo;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.ui.layout.TempoAttachment;
@@ -44,7 +44,7 @@ import songscribe.ui.layout.TempoAttachment;
  * Tempo markings show the beat note and tempo in BPM, e.g., "♩ = 120".
  * They appear above the staff at the specified note position.
  */
-public class TempoRenderer extends BaseElementRenderer<Note> {
+public class TempoRenderer extends BaseElementRenderer<StaffElement> {
 
     // ==========================================================================
     // Constants
@@ -57,16 +57,16 @@ public class TempoRenderer extends BaseElementRenderer<Note> {
      * Maps note types to their SMuFL metronome glyph (stem-up, since tempo notes
      * always display stem-up).
      */
-    private static final Map<NoteType, SMuFLGlyph> METRONOME_GLYPHS;
+    private static final Map<ElementType, SMuFLGlyph> METRONOME_GLYPHS;
 
     static {
-        METRONOME_GLYPHS = new EnumMap<>(NoteType.class);
-        METRONOME_GLYPHS.put(NoteType.SEMIBREVE, SMuFLGlyph.MET_NOTE_WHOLE);
-        METRONOME_GLYPHS.put(NoteType.MINIM, SMuFLGlyph.MET_NOTE_HALF_UP);
-        METRONOME_GLYPHS.put(NoteType.CROTCHET, SMuFLGlyph.MET_NOTE_QUARTER_UP);
-        METRONOME_GLYPHS.put(NoteType.QUAVER, SMuFLGlyph.MET_NOTE_8TH_UP);
-        METRONOME_GLYPHS.put(NoteType.SEMIQUAVER, SMuFLGlyph.MET_NOTE_16TH_UP);
-        METRONOME_GLYPHS.put(NoteType.DEMI_SEMIQUAVER, SMuFLGlyph.MET_NOTE_32ND_UP);
+        METRONOME_GLYPHS = new EnumMap<>(ElementType.class);
+        METRONOME_GLYPHS.put(ElementType.SEMIBREVE, SMuFLGlyph.MET_NOTE_WHOLE);
+        METRONOME_GLYPHS.put(ElementType.MINIM, SMuFLGlyph.MET_NOTE_HALF_UP);
+        METRONOME_GLYPHS.put(ElementType.CROTCHET, SMuFLGlyph.MET_NOTE_QUARTER_UP);
+        METRONOME_GLYPHS.put(ElementType.QUAVER, SMuFLGlyph.MET_NOTE_8TH_UP);
+        METRONOME_GLYPHS.put(ElementType.SEMIQUAVER, SMuFLGlyph.MET_NOTE_16TH_UP);
+        METRONOME_GLYPHS.put(ElementType.DEMI_SEMIQUAVER, SMuFLGlyph.MET_NOTE_32ND_UP);
     }
 
     // Singleton instance
@@ -103,9 +103,9 @@ public class TempoRenderer extends BaseElementRenderer<Note> {
     public static Rectangle2D getTempoNoteBounds(
         FontRenderContext frc,
         Font font,
-        Note note
+        StaffElement note
     ) {
-        var metGlyph = METRONOME_GLYPHS.get(note.getNoteType());
+        var metGlyph = METRONOME_GLYPHS.get(note.getType());
 
         if (metGlyph == null) {
             return null;
@@ -138,7 +138,7 @@ public class TempoRenderer extends BaseElementRenderer<Note> {
 
     @Override
     protected void renderElement(
-        @NotNull Note element,
+        @NotNull StaffElement element,
         @NotNull Graphics2D g2,
         @NotNull ElementRenderContext ctx
     ) {
@@ -160,7 +160,7 @@ public class TempoRenderer extends BaseElementRenderer<Note> {
      */
     public void renderTempo(
         @NotNull Graphics2D g2,
-        @NotNull Note note,
+        @NotNull StaffElement note,
         @NotNull ElementRenderContext ctx
     ) {
         render(note, g2, ctx);
@@ -179,7 +179,7 @@ public class TempoRenderer extends BaseElementRenderer<Note> {
      */
     public void renderInitialTempo(
         @NotNull Graphics2D g2,
-        @NotNull Note note,
+        @NotNull StaffElement note,
         @NotNull Tempo tempo,
         @NotNull ElementRenderContext ctx
     ) {
@@ -192,7 +192,7 @@ public class TempoRenderer extends BaseElementRenderer<Note> {
     private void renderTempoChange(
         @NotNull Graphics2D g2,
         @NotNull Tempo tempo,
-        @NotNull Note note,
+        @NotNull StaffElement note,
         @NotNull ElementRenderContext ctx
     ) {
         var composition = ctx.getComposition();
@@ -224,11 +224,11 @@ public class TempoRenderer extends BaseElementRenderer<Note> {
         tempoBuilder.append(tempo.getTempoDescription());
 
         g2.setFont(composition.getAttributionFont());
-        g2.setColor(NOTE_COLOR);
+        g2.setColor(ELEMENT_COLOR);
 
         if (tempo.shouldShowTempo()) {
             // Compute the scaled width of the metronome glyph to position the text after it
-            var metGlyph = METRONOME_GLYPHS.get(tempoTypeNote.getNoteType());
+            var metGlyph = METRONOME_GLYPHS.get(tempoTypeNote.getType());
 
             if (metGlyph != null) {
                 var frc = g2.getFontRenderContext();
@@ -251,13 +251,13 @@ public class TempoRenderer extends BaseElementRenderer<Note> {
      */
     private void drawTempoChangeNote(
         @NotNull Graphics2D g2,
-        @NotNull Note tempoNote,
+        @NotNull StaffElement tempoNote,
         int x,
         int y
     ) {
         var transform = g2.getTransform();
 
-        g2.translate(x, y - ((NOTE_FONT_SIZE * TEMPO_CHANGE_ZOOM_Y) / 8.0));
+        g2.translate(x, y - ((FONT_SIZE * TEMPO_CHANGE_ZOOM_Y) / 8.0));
         g2.scale(TEMPO_CHANGE_ZOOM_X, TEMPO_CHANGE_ZOOM_Y);
 
         paintSimpleTempoNote(g2, tempoNote);
@@ -269,15 +269,15 @@ public class TempoRenderer extends BaseElementRenderer<Note> {
      * Paints a simple note for tempo display using a pre-composed SMuFL
      * metronome glyph (notehead + stem + flag in a single codepoint).
      */
-    private void paintSimpleTempoNote(@NotNull Graphics2D g2, @NotNull Note note) {
-        var metGlyph = METRONOME_GLYPHS.get(note.getNoteType());
+    private void paintSimpleTempoNote(@NotNull Graphics2D g2, @NotNull StaffElement note) {
+        var metGlyph = METRONOME_GLYPHS.get(note.getType());
 
         if (metGlyph == null) {
             return;
         }
 
         try (var ignored = GraphicsState.save(g2, COLOR, FONT)) {
-            g2.setColor(NOTE_COLOR);
+            g2.setColor(ELEMENT_COLOR);
             g2.setFont(BRAVURA_FONT);
             g2.drawString(metGlyph.asString(), 0f, 0f);
 
@@ -298,7 +298,7 @@ public class TempoRenderer extends BaseElementRenderer<Note> {
      * component coordinates (relative to component top).
      */
     private int getEffectiveTempoChangeYPosSs(
-        @NotNull Note note,
+        @NotNull StaffElement note,
         @NotNull ElementRenderContext ctx
     ) {
         var layoutResult = ctx.getLayoutResult();

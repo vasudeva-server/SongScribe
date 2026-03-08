@@ -31,16 +31,15 @@ import static songscribe.ui.action.Actions.TOGGLE_TUPLET_ACTIONS;
 import javax.swing.*;
 
 import songscribe.ui.action.FirstSecondEndingAction;
-import songscribe.ui.action.FlipStemDirectionAction;
 import songscribe.ui.action.ToggleLyricsUnderRestsAction;
 import songscribe.ui.action.ToggleTrillAction;
 import songscribe.ui.message.MessageCenter;
 
-public class NotesMenu extends JMenu {
+public class NotationMenu extends JMenu {
 
-    public static final String NAME = "Notes";
+    public static final String NAME = "Notation";
 
-    public NotesMenu() {
+    public NotationMenu() {
         super(NAME);
         add(new JMenuItem(TOGGLE_BEAM_ACTION));
         add(new JMenuItem(TOGGLE_TIE_ACTION));

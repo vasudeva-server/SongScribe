@@ -29,9 +29,7 @@ import java.awt.*;
 import org.jetbrains.annotations.NotNull;
 
 import songscribe.music.BeatChange;
-import songscribe.music.Note;
-import songscribe.music.NoteType;
-import songscribe.smufl.SMuFLGlyph;
+import songscribe.music.StaffElement;
 import songscribe.ui.layout.BeatChangeAttachment;
 
 /**
@@ -41,13 +39,13 @@ import songscribe.ui.layout.BeatChangeAttachment;
  * indicating that the quarter note of the old tempo equals the dotted
  * eighth note of the new tempo.
  */
-public class BeatChangeRenderer extends BaseElementRenderer<Note> {
+public class BeatChangeRenderer extends BaseElementRenderer<StaffElement> {
 
     // ==========================================================================
     // Constants
     // ==========================================================================
 
-    private static final float NOTE_FONT_SIZE = BaseElementRenderer.NOTE_FONT_SIZE;
+    private static final float NOTE_FONT_SIZE = BaseElementRenderer.FONT_SIZE;
     private static final double TEMPO_CHANGE_ZOOM_X = BaseElementRenderer.TEMPO_CHANGE_ZOOM_X;
     private static final double TEMPO_CHANGE_ZOOM_Y = BaseElementRenderer.TEMPO_CHANGE_ZOOM_Y;
     private static final double CROTCHET_WIDTH_PX = NOTE_FONT_SIZE / 3.6056337d;
@@ -74,7 +72,7 @@ public class BeatChangeRenderer extends BaseElementRenderer<Note> {
 
     @Override
     protected void renderElement(
-        @NotNull Note element,
+        @NotNull StaffElement element,
         @NotNull Graphics2D g2,
         @NotNull ElementRenderContext ctx
     ) {
@@ -96,7 +94,7 @@ public class BeatChangeRenderer extends BaseElementRenderer<Note> {
      */
     public void renderBeatChange(
         @NotNull Graphics2D g2,
-        @NotNull Note note,
+        @NotNull StaffElement note,
         @NotNull ElementRenderContext ctx
     ) {
         render(note, g2, ctx);
@@ -108,7 +106,7 @@ public class BeatChangeRenderer extends BaseElementRenderer<Note> {
     private void renderBeatChange(
         @NotNull Graphics2D g2,
         @NotNull BeatChange beatChange,
-        @NotNull Note note,
+        @NotNull StaffElement note,
         @NotNull ElementRenderContext ctx
     ) {
         var composition = ctx.getComposition();
@@ -128,7 +126,7 @@ public class BeatChangeRenderer extends BaseElementRenderer<Note> {
      * Gets the Y position for beat change from layout result.
      */
     private int getEffectiveBeatChangeYPosPx(
-        @NotNull Note note,
+        @NotNull StaffElement note,
         @NotNull ElementRenderContext ctx
     ) {
         var layoutResult = ctx.getLayoutResult();
@@ -163,16 +161,16 @@ public class BeatChangeRenderer extends BaseElementRenderer<Note> {
         @NotNull songscribe.music.Composition composition
     ) {
         // Draw first note
-        drawTempoChangeNote(g2, beatChange.getFirstNote(), xPosSs, yPosPx);
+        drawTempoChangeNote(g2, beatChange.getFirstElement(), xPosSs, yPosPx);
 
         // Draw equals sign
         g2.setFont(composition.getAttributionFont());
-        g2.setColor(NOTE_COLOR);
+        g2.setColor(ELEMENT_COLOR);
         int eqXPosSs = xPosSs + (int) CROTCHET_WIDTH_PX + 7;
         g2.drawString("=", (float) eqXPosSs, yPosPx);
 
         // Draw second note
-        drawTempoChangeNote(g2, beatChange.getSecondNote(), (int) Math.round(eqXPosSs + 12), yPosPx);
+        drawTempoChangeNote(g2, beatChange.getSecondElement(), (int) Math.round(eqXPosSs + 12), yPosPx);
     }
 
     /**
@@ -180,7 +178,7 @@ public class BeatChangeRenderer extends BaseElementRenderer<Note> {
      */
     private void drawTempoChangeNote(
         @NotNull Graphics2D g2,
-        @NotNull Note tempoNote,
+        @NotNull StaffElement tempoNote,
         int x,
         int y
     ) {
@@ -198,8 +196,8 @@ public class BeatChangeRenderer extends BaseElementRenderer<Note> {
     /**
      * Paints a simple note for tempo display (no accidentals, ledger lines, etc.).
      */
-    private void paintSimpleTempoNote(@NotNull Graphics2D g2, @NotNull Note note) {
-        var noteType = note.getNoteType();
+    private void paintSimpleTempoNote(@NotNull Graphics2D g2, @NotNull StaffElement note) {
+        var noteType = note.getType();
         String headChar = NoteRenderer.getNoteHeadChar(noteType);
 
         if (headChar == null) {
@@ -207,7 +205,7 @@ public class BeatChangeRenderer extends BaseElementRenderer<Note> {
         }
 
         try (var ignored = GraphicsState.save(g2, COLOR)) {
-            g2.setColor(NOTE_COLOR);
+            g2.setColor(ELEMENT_COLOR);
             g2.drawString(headChar, 0f, 0f);
 
             // Draw stem if needed (tempo notes have stems up)

@@ -20,19 +20,17 @@
 
 package songscribe.ui.renderer;
 
-import java.awt.geom.Area;
-import java.awt.geom.Ellipse2D;
-import java.awt.geom.Rectangle2D;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.within;
 
-import songscribe.UnitTest;
-import songscribe.music.Line;
-import songscribe.music.Note;
-import songscribe.music.NoteType;
+import java.awt.geom.*;
 
 import org.junit.jupiter.api.Test;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.within;
+import songscribe.UnitTest;
+import songscribe.music.ElementType;
+import songscribe.music.Line;
+import songscribe.music.StaffElement;
 
 class GlissandoRendererTest extends UnitTest {
 
@@ -174,7 +172,7 @@ class GlissandoRendererTest extends UnitTest {
 
     @Test
     void testBuildNoteAreaQuarterNoteNoExtras() {
-        var note = NoteType.CROTCHET.newInstance();
+        var note = ElementType.CROTCHET.newInstance();
         note.setUpper(true);
         var area = RENDERER.buildNoteArea(note, false);
 
@@ -183,11 +181,11 @@ class GlissandoRendererTest extends UnitTest {
 
     @Test
     void testBuildNoteAreaWithDotsIsWider() {
-        var noteNoDots = NoteType.CROTCHET.newInstance();
+        var noteNoDots = ElementType.CROTCHET.newInstance();
         noteNoDots.setUpper(true);
         var areaNoDots = RENDERER.buildNoteArea(noteNoDots, false);
 
-        var noteWithDots = NoteType.CROTCHET.newInstance();
+        var noteWithDots = ElementType.CROTCHET.newInstance();
         noteWithDots.setUpper(true);
         noteWithDots.setDotCount(1);
         var areaWithDots = RENDERER.buildNoteArea(noteWithDots, false);
@@ -198,12 +196,12 @@ class GlissandoRendererTest extends UnitTest {
 
     @Test
     void testBuildNoteAreaWithTwoDotsIsWiderThanOne() {
-        var noteOneDot = NoteType.CROTCHET.newInstance();
+        var noteOneDot = ElementType.CROTCHET.newInstance();
         noteOneDot.setUpper(true);
         noteOneDot.setDotCount(1);
         var areaOneDot = RENDERER.buildNoteArea(noteOneDot, false);
 
-        var noteTwoDots = NoteType.CROTCHET.newInstance();
+        var noteTwoDots = ElementType.CROTCHET.newInstance();
         noteTwoDots.setUpper(true);
         noteTwoDots.setDotCount(2);
         var areaTwoDots = RENDERER.buildNoteArea(noteTwoDots, false);
@@ -214,13 +212,13 @@ class GlissandoRendererTest extends UnitTest {
 
     @Test
     void testBuildNoteAreaWithAccidentalExtendsLeft() {
-        var noteNoAcc = NoteType.CROTCHET.newInstance();
+        var noteNoAcc = ElementType.CROTCHET.newInstance();
         noteNoAcc.setUpper(true);
         var areaNoAcc = RENDERER.buildNoteArea(noteNoAcc, false);
 
-        var noteWithAcc = NoteType.CROTCHET.newInstance();
+        var noteWithAcc = ElementType.CROTCHET.newInstance();
         noteWithAcc.setUpper(true);
-        noteWithAcc.setAccidental(Note.Accidental.SHARP);
+        noteWithAcc.setAccidental(StaffElement.Accidental.SHARP);
         // Accidental widths must be initialized before use
         NoteRenderer.initializeAccidentalWidths(
             new java.awt.image.BufferedImage(1, 1, java.awt.image.BufferedImage.TYPE_INT_ARGB)
@@ -233,14 +231,14 @@ class GlissandoRendererTest extends UnitTest {
 
     @Test
     void testBuildNoteAreaWithLedgerLinesAboveStaff() {
-        var note = NoteType.CROTCHET.newInstance();
+        var note = ElementType.CROTCHET.newInstance();
         note.setUpper(true);
         note.setStaffPosition(-8); // above staff, needs ledger lines
 
         var area = RENDERER.buildNoteArea(note, false);
 
         // Area should include ledger line rects, making it wider than just the notehead
-        var noteOnStaff = NoteType.CROTCHET.newInstance();
+        var noteOnStaff = ElementType.CROTCHET.newInstance();
         noteOnStaff.setUpper(true);
         noteOnStaff.setStaffPosition(0); // on staff, no ledger lines
 
@@ -253,7 +251,7 @@ class GlissandoRendererTest extends UnitTest {
 
     @Test
     void testBuildNoteAreaWithLedgerLinesBelowStaff() {
-        var note = NoteType.CROTCHET.newInstance();
+        var note = ElementType.CROTCHET.newInstance();
         note.setUpper(false);
         note.setStaffPosition(8); // below staff, needs ledger lines
 
@@ -267,7 +265,7 @@ class GlissandoRendererTest extends UnitTest {
 
     @Test
     void testAreaCacheReturnsSameInstanceWhenNoteUnchanged() {
-        var note = NoteType.CROTCHET.newInstance();
+        var note = ElementType.CROTCHET.newInstance();
         note.setUpper(true);
 
         var entry1 = RENDERER.getOrBuildArea(note, false);
@@ -278,7 +276,7 @@ class GlissandoRendererTest extends UnitTest {
 
     @Test
     void testAreaCacheRebuildsWhenDotCountChanges() {
-        var note = NoteType.CROTCHET.newInstance();
+        var note = ElementType.CROTCHET.newInstance();
         note.setUpper(true);
 
         var entry1 = RENDERER.getOrBuildArea(note, false);
@@ -290,14 +288,14 @@ class GlissandoRendererTest extends UnitTest {
 
     @Test
     void testAreaCacheRebuildsWhenAccidentalChanges() {
-        var note = NoteType.CROTCHET.newInstance();
+        var note = ElementType.CROTCHET.newInstance();
         note.setUpper(true);
         NoteRenderer.initializeAccidentalWidths(
             new java.awt.image.BufferedImage(1, 1, java.awt.image.BufferedImage.TYPE_INT_ARGB)
                 .createGraphics());
 
         var entry1 = RENDERER.getOrBuildArea(note, false);
-        note.setAccidental(Note.Accidental.SHARP);
+        note.setAccidental(StaffElement.Accidental.SHARP);
         var entry2 = RENDERER.getOrBuildArea(note, false);
 
         assertThat(entry2).isNotSameAs(entry1);
@@ -305,7 +303,7 @@ class GlissandoRendererTest extends UnitTest {
 
     @Test
     void testAreaCacheRebuildsWhenStemDirectionChanges() {
-        var note = NoteType.CROTCHET.newInstance();
+        var note = ElementType.CROTCHET.newInstance();
         note.setUpper(true);
 
         var entry1 = RENDERER.getOrBuildArea(note, false);
@@ -317,7 +315,7 @@ class GlissandoRendererTest extends UnitTest {
 
     @Test
     void testAreaCacheRebuildsWhenBeamedStateChanges() {
-        var note = NoteType.QUAVER.newInstance();
+        var note = ElementType.QUAVER.newInstance();
         note.setUpper(true);
 
         var entry1 = RENDERER.getOrBuildArea(note, false);
@@ -328,7 +326,7 @@ class GlissandoRendererTest extends UnitTest {
 
     @Test
     void testAreaCacheRebuildsWhenLedgerLineStatusChanges() {
-        var note = NoteType.CROTCHET.newInstance();
+        var note = ElementType.CROTCHET.newInstance();
         note.setUpper(true);
         note.setStaffPosition(0); // on staff
 
@@ -341,7 +339,7 @@ class GlissandoRendererTest extends UnitTest {
 
     @Test
     void testAreaCacheRebuildsWhenLedgerLineCountChanges() {
-        var note = NoteType.CROTCHET.newInstance();
+        var note = ElementType.CROTCHET.newInstance();
         note.setUpper(true);
         note.setStaffPosition(-8); // 2 ledger lines
 
@@ -357,7 +355,7 @@ class GlissandoRendererTest extends UnitTest {
         // Staff positions -6 and -7 both have 1 ledger line, but the ledger line's
         // y-offset relative to the notehead differs (0.0 vs 0.5 ss), so the area
         // shape is different and the cache must rebuild.
-        var note = NoteType.CROTCHET.newInstance();
+        var note = ElementType.CROTCHET.newInstance();
         note.setUpper(true);
         note.setStaffPosition(-6); // ledger line at y=0.0 relative to notehead
 
@@ -370,7 +368,7 @@ class GlissandoRendererTest extends UnitTest {
 
     @Test
     void testAreaCacheRetainsCacheWhenStaffPositionChangesWithinStaff() {
-        var note = NoteType.CROTCHET.newInstance();
+        var note = ElementType.CROTCHET.newInstance();
         note.setUpper(true);
         note.setStaffPosition(0);
 
@@ -387,7 +385,7 @@ class GlissandoRendererTest extends UnitTest {
 
     @Test
     void testGetLedgerLineCountOnStaff() {
-        var note = NoteType.CROTCHET.newInstance();
+        var note = ElementType.CROTCHET.newInstance();
 
         // Positions within the staff: 0, ±1, ±2, ±3, ±4, ±5
         for (int sp = -5; sp <= 5; sp++) {
@@ -400,7 +398,7 @@ class GlissandoRendererTest extends UnitTest {
 
     @Test
     void testGetLedgerLineCountAboveStaff() {
-        var note = NoteType.CROTCHET.newInstance();
+        var note = ElementType.CROTCHET.newInstance();
 
         // -6 → 1 ledger line, -7 → 1, -8 → 2, -10 → 3
         note.setStaffPosition(-6);
@@ -418,7 +416,7 @@ class GlissandoRendererTest extends UnitTest {
 
     @Test
     void testGetLedgerLineCountBelowStaff() {
-        var note = NoteType.CROTCHET.newInstance();
+        var note = ElementType.CROTCHET.newInstance();
 
         // +6 → 1 ledger line, +7 → 1, +8 → 2, +10 → 3
         note.setStaffPosition(6);
@@ -443,9 +441,9 @@ class GlissandoRendererTest extends UnitTest {
      * Angle is in degrees for readability; the method converts to radians internally.
      */
     private static void setCachedGeometry(
-            Note.Glissando glissando,
-            double startXSs, double startYSs,
-            double angleDeg, double lengthSs) {
+        StaffElement.Glissando glissando,
+        double startXSs, double startYSs,
+        double angleDeg, double lengthSs) {
         var angleRad = Math.toRadians(angleDeg);
         glissando.cachedStartX = startXSs;
         glissando.cachedStartY = startYSs;
@@ -459,8 +457,8 @@ class GlissandoRendererTest extends UnitTest {
     @Test
     void testHitTestGlissando_pointOnLine_returnsNoteIndex() {
         // Horizontal glissando (angle=0) from (5.0, 3.0) with length 10.0
-        var line = makeTwoNoteLineWithGlissando(0, Note.Accidental.NONE, -2, Note.Accidental.NONE);
-        setCachedGeometry(line.getNote(0).getGlissando(), 5.0, 3.0, 0.0, 10.0);
+        var line = makeTwoNoteLineWithGlissando(0, StaffElement.Accidental.NONE, -2, StaffElement.Accidental.NONE);
+        setCachedGeometry(line.getElement(0).getGlissando(), 5.0, 3.0, 0.0, 10.0);
 
         // Click at the midpoint: localX=5, localY=0 — well within hit bounds
         assertThat(RENDERER.hitTestGlissando(10.0, 3.0, line)).isEqualTo(0);
@@ -469,16 +467,16 @@ class GlissandoRendererTest extends UnitTest {
     @Test
     void testHitTestGlissando_pointBesideLine_returnsMinusOne() {
         // Same glissando, but click is 1.0 ss above (> halfHitSs = 0.5)
-        var line = makeTwoNoteLineWithGlissando(0, Note.Accidental.NONE, -2, Note.Accidental.NONE);
-        setCachedGeometry(line.getNote(0).getGlissando(), 5.0, 3.0, 0.0, 10.0);
+        var line = makeTwoNoteLineWithGlissando(0, StaffElement.Accidental.NONE, -2, StaffElement.Accidental.NONE);
+        setCachedGeometry(line.getElement(0).getGlissando(), 5.0, 3.0, 0.0, 10.0);
 
         assertThat(RENDERER.hitTestGlissando(10.0, 4.0, line)).isEqualTo(-1);
     }
 
     @Test
     void testHitTestGlissando_pointBeforeStart_returnsMinusOne() {
-        var line = makeTwoNoteLineWithGlissando(0, Note.Accidental.NONE, -2, Note.Accidental.NONE);
-        setCachedGeometry(line.getNote(0).getGlissando(), 5.0, 3.0, 0.0, 10.0);
+        var line = makeTwoNoteLineWithGlissando(0, StaffElement.Accidental.NONE, -2, StaffElement.Accidental.NONE);
+        setCachedGeometry(line.getElement(0).getGlissando(), 5.0, 3.0, 0.0, 10.0);
 
         // localX = 4.9 - 5.0 = -0.1 < 0
         assertThat(RENDERER.hitTestGlissando(4.9, 3.0, line)).isEqualTo(-1);
@@ -486,8 +484,8 @@ class GlissandoRendererTest extends UnitTest {
 
     @Test
     void testHitTestGlissando_pointAfterEnd_returnsMinusOne() {
-        var line = makeTwoNoteLineWithGlissando(0, Note.Accidental.NONE, -2, Note.Accidental.NONE);
-        setCachedGeometry(line.getNote(0).getGlissando(), 5.0, 3.0, 0.0, 10.0);
+        var line = makeTwoNoteLineWithGlissando(0, StaffElement.Accidental.NONE, -2, StaffElement.Accidental.NONE);
+        setCachedGeometry(line.getElement(0).getGlissando(), 5.0, 3.0, 0.0, 10.0);
 
         // localX = 15.1 - 5.0 = 10.1 > cachedLength (10.0)
         assertThat(RENDERER.hitTestGlissando(15.1, 3.0, line)).isEqualTo(-1);
@@ -496,7 +494,7 @@ class GlissandoRendererTest extends UnitTest {
     @Test
     void testHitTestGlissando_noCachedGeometry_skipped() {
         // Note has a Glissando object but hasCachedGeometry is false (default) — must be skipped
-        var line = makeTwoNoteLineWithGlissando(0, Note.Accidental.NONE, -2, Note.Accidental.NONE);
+        var line = makeTwoNoteLineWithGlissando(0, StaffElement.Accidental.NONE, -2, StaffElement.Accidental.NONE);
 
         assertThat(RENDERER.hitTestGlissando(10.0, 3.0, line)).isEqualTo(-1);
     }
@@ -504,8 +502,8 @@ class GlissandoRendererTest extends UnitTest {
     @Test
     void testHitTestGlissando_diagonalLine_returnsNoteIndex() {
         // 45° glissando from (0, 0), length 10; midpoint in world coords: (5·cos45°, 5·sin45°)
-        var line = makeTwoNoteLineWithGlissando(0, Note.Accidental.NONE, -2, Note.Accidental.NONE);
-        setCachedGeometry(line.getNote(0).getGlissando(), 0.0, 0.0, 45.0, 10.0);
+        var line = makeTwoNoteLineWithGlissando(0, StaffElement.Accidental.NONE, -2, StaffElement.Accidental.NONE);
+        setCachedGeometry(line.getElement(0).getGlissando(), 0.0, 0.0, 45.0, 10.0);
 
         double mid = 5.0 * Math.cos(Math.toRadians(45.0));
         assertThat(RENDERER.hitTestGlissando(mid, mid, line)).isEqualTo(0);
@@ -514,18 +512,18 @@ class GlissandoRendererTest extends UnitTest {
     @Test
     void testHitTestGlissando_secondNoteGlissando_returnsCorrectIndex() {
         // Three-note line; only note at index 1 has a cached glissando
-        var note0 = NoteType.CROTCHET.newInstance();
+        var note0 = ElementType.CROTCHET.newInstance();
         note0.setUpper(true);
-        var note1 = NoteType.CROTCHET.newInstance();
+        var note1 = ElementType.CROTCHET.newInstance();
         note1.setUpper(true);
-        note1.setGlissando(Note.Glissando.Type.CONNECTED);
-        var note2 = NoteType.CROTCHET.newInstance();
+        note1.setGlissando(StaffElement.Glissando.Type.CONNECTED);
+        var note2 = ElementType.CROTCHET.newInstance();
         note2.setUpper(true);
 
         var line = new Line();
-        line.addNote(note0);
-        line.addNote(note1);
-        line.addNote(note2);
+        line.addElement(note0);
+        line.addElement(note1);
+        line.addElement(note2);
 
         setCachedGeometry(note1.getGlissando(), 5.0, 3.0, 0.0, 10.0);
 
@@ -543,22 +541,22 @@ class GlissandoRendererTest extends UnitTest {
      * Creates a line with two notes at the given staff positions and accidentals.
      */
     private static Line makeTwoNoteLineWithGlissando(
-            int staffPos1, Note.Accidental acc1,
-            int staffPos2, Note.Accidental acc2) {
-        var note1 = NoteType.CROTCHET.newInstance();
+        int staffPos1, StaffElement.Accidental acc1,
+        int staffPos2, StaffElement.Accidental acc2) {
+        var note1 = ElementType.CROTCHET.newInstance();
         note1.setUpper(true);
         note1.setStaffPosition(staffPos1);
         note1.setAccidental(acc1);
-        note1.setGlissando(Note.Glissando.Type.CONNECTED);
+        note1.setGlissando(StaffElement.Glissando.Type.CONNECTED);
 
-        var note2 = NoteType.CROTCHET.newInstance();
+        var note2 = ElementType.CROTCHET.newInstance();
         note2.setUpper(true);
         note2.setStaffPosition(staffPos2);
         note2.setAccidental(acc2);
 
         var line = new Line();
-        line.addNote(note1);
-        line.addNote(note2);
+        line.addElement(note1);
+        line.addElement(note2);
 
         return line;
     }
@@ -566,9 +564,9 @@ class GlissandoRendererTest extends UnitTest {
     @Test
     void testUnisonConnectedGlissandoSamePitch() {
         // Two notes at same staff position, no accidentals — same MIDI pitch
-        var line = makeTwoNoteLineWithGlissando(0, Note.Accidental.NONE, 0, Note.Accidental.NONE);
-        var note1 = line.getNote(0);
-        var note2 = line.getNote(1);
+        var line = makeTwoNoteLineWithGlissando(0, StaffElement.Accidental.NONE, 0, StaffElement.Accidental.NONE);
+        var note1 = line.getElement(0);
+        var note2 = line.getElement(1);
 
         assertThat(note1.getPitch()).isEqualTo(note2.getPitch());
     }
@@ -576,9 +574,9 @@ class GlissandoRendererTest extends UnitTest {
     @Test
     void testNonUnisonConnectedGlissandoDifferentPosition() {
         // Two notes at different staff positions — different MIDI pitch
-        var line = makeTwoNoteLineWithGlissando(0, Note.Accidental.NONE, -2, Note.Accidental.NONE);
-        var note1 = line.getNote(0);
-        var note2 = line.getNote(1);
+        var line = makeTwoNoteLineWithGlissando(0, StaffElement.Accidental.NONE, -2, StaffElement.Accidental.NONE);
+        var note1 = line.getElement(0);
+        var note2 = line.getElement(1);
 
         assertThat(note1.getPitch()).isNotEqualTo(note2.getPitch());
     }
@@ -587,9 +585,9 @@ class GlissandoRendererTest extends UnitTest {
     void testNonUnisonConnectedGlissandoSamePositionDifferentAccidental() {
         // Same staff position but natural vs sharp — different MIDI pitch
         // This confirms getPitch() is used, not getStaffPosition()
-        var line = makeTwoNoteLineWithGlissando(0, Note.Accidental.NATURAL, 0, Note.Accidental.SHARP);
-        var note1 = line.getNote(0);
-        var note2 = line.getNote(1);
+        var line = makeTwoNoteLineWithGlissando(0, StaffElement.Accidental.NATURAL, 0, StaffElement.Accidental.SHARP);
+        var note1 = line.getElement(0);
+        var note2 = line.getElement(1);
 
         assertThat(note1.getStaffPosition()).isEqualTo(note2.getStaffPosition());
         assertThat(note1.getPitch()).isNotEqualTo(note2.getPitch());

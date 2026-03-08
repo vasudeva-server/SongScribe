@@ -24,7 +24,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import songscribe.music.Line;
-import songscribe.music.Note;
+import songscribe.music.StaffElement;
 import songscribe.ui.action.UIAction;
 
 /**
@@ -44,13 +44,13 @@ public final class ReflectionTestHelper {
      * injected as the reflectable actions list.
      */
     public static SelectionCoordinator createCoordinator(
-            List<Note> notes,
-            List<UIAction.Reflectable> actions
+        List<StaffElement> notes,
+        List<UIAction.Reflectable> actions
     ) {
         var line = new Line();
 
         for (var note : notes) {
-            line.addNote(note);
+            line.addElement(note);
         }
 
         var coordinator = new SelectionCoordinator(() -> null);
@@ -74,14 +74,14 @@ public final class ReflectionTestHelper {
      * managed actions injected.
      */
     public static SelectionCoordinator createCoordinator(
-            List<Note> notes,
-            List<UIAction.Reflectable> actions,
-            List<UIAction> managedActions
+        List<StaffElement> notes,
+        List<UIAction.Reflectable> actions,
+        List<UIAction> managedActions
     ) {
         var line = new Line();
 
         for (var note : notes) {
-            line.addNote(note);
+            line.addElement(note);
         }
 
         var coordinator = new SelectionCoordinator(() -> null);
@@ -93,9 +93,9 @@ public final class ReflectionTestHelper {
     }
 
     private static SelectionCoordinator createCoordinator(
-            SelectionCoordinator coordinator,
-            List<UIAction.Reflectable> actions,
-            List<UIAction> managedActions
+        SelectionCoordinator coordinator,
+        List<UIAction.Reflectable> actions,
+        List<UIAction> managedActions
     ) {
         try {
             var reflField = SelectionCoordinator.class.getDeclaredField("reflectableActions");
@@ -105,8 +105,7 @@ public final class ReflectionTestHelper {
             var managedField = SelectionCoordinator.class.getDeclaredField("managedActions");
             managedField.setAccessible(true);
             managedField.set(coordinator, new ArrayList<>(managedActions));
-        }
-        catch (NoSuchFieldException | IllegalAccessException e) {
+        } catch (NoSuchFieldException | IllegalAccessException e) {
             throw new RuntimeException("Failed to inject test actions", e);
         }
 

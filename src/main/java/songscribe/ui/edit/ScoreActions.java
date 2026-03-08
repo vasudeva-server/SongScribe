@@ -24,7 +24,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import songscribe.music.Line;
-import songscribe.music.Note;
+import songscribe.music.StaffElement;
 import songscribe.ui.Control;
 
 /**
@@ -51,7 +51,7 @@ public interface ScoreActions {
      *
      * @param insertionNote The note to set as the insertion note
      */
-    void setInsertionNote(@Nullable Note insertionNote);
+    void setInsertionElement(@Nullable StaffElement insertionNote);
 
     /**
      * Adjusts the drawing width if the line is wider than the current width.

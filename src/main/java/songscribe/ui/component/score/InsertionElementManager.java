@@ -29,9 +29,9 @@ import org.jetbrains.annotations.Nullable;
 import net.engio.mbassy.listener.Handler;
 
 import songscribe.data.BeamInterval;
+import songscribe.music.ElementType;
 import songscribe.music.Line;
-import songscribe.music.Note;
-import songscribe.music.NoteType;
+import songscribe.music.StaffElement;
 import songscribe.ui.Control;
 import songscribe.ui.Mode;
 import songscribe.ui.action.Actions;
@@ -46,13 +46,13 @@ import songscribe.ui.message.MessageCenter;
 import songscribe.ui.message.ModeChangedMessage;
 
 /**
- * Manages the insertion note subsystem for {@link LineComponent}.
+ * Manages the insertion element subsystem for {@link LineComponent}.
  * <p>
- * This class owns all static cross-instance state for insertion note tracking,
- * cursor management, and note mutation logic. Only one insertion note can be
+ * This class owns all static cross-instance state for insertion element tracking,
+ * cursor management, and element mutation logic. Only one insertion element can be
  * active across all LineComponents at a time.
  */
-public class InsertionNoteManager {
+public class InsertionElementManager {
 
     // ==========================================================================
     // Constants
@@ -72,18 +72,18 @@ public class InsertionNoteManager {
     // ==========================================================================
 
     /**
-     * The LineComponent that currently has the insertion note.
+     * The LineComponent that currently has the insertion element.
      * <p>
-     * Only one line can show the insertion note at a time. When the mouse moves
-     * to a different line, the old line is repainted to clear the insertion note.
+     * Only one line can show the insertion element at a time. When the mouse moves
+     * to a different line, the old line is repainted to clear the insertion element.
      */
     @Nullable
     private static LineComponent currentInsertionLine = null;
 
-    /** Current insertion index (0 to noteCount inclusive). */
+    /** Current insertion index (0 to elementCount inclusive). */
     private static int currentXIndex = -1;
 
-    /** Current Y position on the staff (in note units, not pixels). */
+    /** Current Y position on the staff (in staff position units, not pixels). */
     private static int currentStaffPosition = 0;
 
     /** Whether the Alt key is currently held down. */
@@ -94,14 +94,14 @@ public class InsertionNoteManager {
     private static LineComponent currentMouseLine = null;
 
     /** Whether the mouse X (in staff spaces) is within the horizontal bounds of a note head. */
-    private static boolean xPosSsMatchesNote = false;
+    private static boolean xPosSsMatchesElement = false;
 
     /** Whether the mouse Y (staff position) is within the vertical bounds of that note head. */
-    private static boolean yPosSpMatchesNote = false;
+    private static boolean yPosSpMatchesElement = false;
 
     /** The glissando zone type determined by mouse position (null if no valid zone). */
     @Nullable
-    private static Note.Glissando.Type currentGlissandoZone = null;
+    private static StaffElement.Glissando.Type currentGlissandoZone = null;
 
     /** Strong reference to prevent garbage collection by the weak-reference message bus. */
     private static final ModeChangeListener MODE_CHANGE_LISTENER = new ModeChangeListener();
@@ -122,7 +122,7 @@ public class InsertionNoteManager {
     }
 
     // Prevent instantiation
-    private InsertionNoteManager() {
+    private InsertionElementManager() {
     }
 
     // ==========================================================================
@@ -130,36 +130,36 @@ public class InsertionNoteManager {
     // ==========================================================================
 
     /**
-     * Hides the insertion note preview and optionally clears position tracking state.
+     * Hides the insertion element preview and optionally clears position tracking state.
      *
      * @param clear true to also clear position state (e.g., window deactivated);
-     *              false to only hide the visual (e.g., hovering over an existing note head)
+     *              false to only hide the visual (e.g., hovering over an existing element head)
      */
-    public static void hideInsertionNote(boolean clear) {
+    public static void hideInsertionElement(boolean clear) {
         if (clear) {
-            clearInsertionNote();
+            clearInsertionElement();
         }
 
         var editModeManager = EditModeManager.getInstance();
 
         if (editModeManager != null) {
-            editModeManager.setInsertionNoteVisible(false);
+            editModeManager.setInsertionElementVisible(false);
         }
     }
 
     /**
-     * Clears the insertion note from all lines.
+     * Clears the insertion element from all lines.
      * <p>
      * Call this when exiting edit mode or when the mouse leaves the score area.
      */
-    static void clearInsertionNote() {
+    static void clearInsertionElement() {
         if (currentInsertionLine != null) {
             var oldLine = currentInsertionLine;
             currentInsertionLine = null;
             currentXIndex = -1;
             currentStaffPosition = 0;
-            xPosSsMatchesNote = false;
-            yPosSpMatchesNote = false;
+            xPosSsMatchesElement = false;
+            yPosSpMatchesElement = false;
             currentGlissandoZone = null;
             oldLine.repaint();
         }
@@ -173,24 +173,24 @@ public class InsertionNoteManager {
     static void setAltPressed(boolean pressed) {
         altPressed = pressed;
 
-        // When Alt is released, re-trigger insertion note from current mouse position
+        // When Alt is released, re-trigger insertion element from current mouse position
         if (!pressed && currentMouseLine != null) {
-            restoreInsertionNote(currentMouseLine);
+            restoreInsertionElement(currentMouseLine);
         }
     }
 
     /**
-     * Called when the score mode changes. Restores insertion note if switching
+     * Called when the score mode changes. Restores insertion element if switching
      * back to NOTE_EDIT mode.
      */
     static void onModeChanged() {
         if (currentMouseLine != null) {
-            restoreInsertionNote(currentMouseLine);
+            restoreInsertionElement(currentMouseLine);
         }
     }
 
     /**
-     * Returns the current insertion line, or null if no insertion note is active.
+     * Returns the current insertion line, or null if no insertion element is active.
      */
     @Nullable
     static LineComponent getCurrentInsertionLine() {
@@ -212,27 +212,27 @@ public class InsertionNoteManager {
     }
 
     /**
-     * Returns the line index of the note currently highlighted by insertion-note hover,
-     * or -1 if the insertion note is not hovering over an existing note head.
+     * Returns the line index of the element currently highlighted by insertion element hover,
+     * or -1 if the insertion element is not hovering over an existing element head.
      */
-    public static int getHoveredNoteLineIndex() {
-        return (xPosSsMatchesNote && yPosSpMatchesNote && currentInsertionLine != null)
+    public static int getHoveredElementLineIndex() {
+        return (xPosSsMatchesElement && yPosSpMatchesElement && currentInsertionLine != null)
             ? currentInsertionLine.getLineIndex()
             : -1;
     }
 
     /**
-     * Returns the note index of the note currently highlighted by insertion-note hover,
-     * or -1 if the insertion note is not hovering over an existing note head.
+     * Returns the element index of the element currently highlighted by insertion element hover,
+     * or -1 if the insertion element is not hovering over an existing element head.
      */
-    public static int getHoveredNoteIndex() {
-        return (xPosSsMatchesNote && yPosSpMatchesNote) ? currentXIndex : -1;
+    public static int getHoveredElementIndex() {
+        return (xPosSsMatchesElement && yPosSpMatchesElement) ? currentXIndex : -1;
     }
 
     /**
-     * Returns whether the given line currently has the insertion note.
+     * Returns whether the given line currently has the insertion element.
      */
-    static boolean hasInsertionNote(LineComponent lc) {
+    static boolean hasInsertionElement(LineComponent lc) {
         return currentInsertionLine == lc;
     }
 
@@ -240,8 +240,8 @@ public class InsertionNoteManager {
      * Returns whether the mouse is currently hovering over an existing note head
      * (both X and Y match).
      */
-    public static boolean isHoveringOverNoteHead() {
-        return xPosSsMatchesNote && yPosSpMatchesNote;
+    public static boolean isHoveringOverElementHead() {
+        return xPosSsMatchesElement && yPosSpMatchesElement;
     }
 
     /**
@@ -258,7 +258,7 @@ public class InsertionNoteManager {
      * Returns the current glissando zone type, or null if no valid zone exists.
      */
     @Nullable
-    static Note.Glissando.Type getGlissandoZone() {
+    static StaffElement.Glissando.Type getGlissandoZone() {
         return currentGlissandoZone;
     }
 
@@ -272,15 +272,15 @@ public class InsertionNoteManager {
      * or null if neither glissando action is selected.
      */
     @Nullable
-    private static Note.Glissando.Type getSelectedGlissandoType() {
+    private static StaffElement.Glissando.Type getSelectedGlissandoType() {
         var selected = Actions.DURATION_ACTION_GROUP.getSelected();
 
         if (selected == Actions.GLISSANDO_ACTION) {
-            return Note.Glissando.Type.CONNECTED;
+            return StaffElement.Glissando.Type.CONNECTED;
         }
 
         if (selected == Actions.SLIDE_OUT_ACTION) {
-            return Note.Glissando.Type.SLIDE_OUT;
+            return StaffElement.Glissando.Type.SLIDE_OUT;
         }
 
         return null;
@@ -299,11 +299,11 @@ public class InsertionNoteManager {
      * @return The zone type, or null if no valid zone
      */
     @Nullable
-    private static Note.Glissando.Type computeGlissandoZone(
-            @NotNull Line line,
-            int xIndex) {
+    private static StaffElement.Glissando.Type computeGlissandoZone(
+        @NotNull Line line,
+        int xIndex) {
         // xIndex=0 means to the left of the first note — no source note to draw from
-        if (xIndex <= 0 || line.noteCount() == 0) {
+        if (xIndex <= 0 || line.elementCount() == 0) {
             return null;
         }
 
@@ -313,14 +313,14 @@ public class InsertionNoteManager {
             return null;
         }
 
-        if (intendedType == Note.Glissando.Type.CONNECTED) {
+        if (intendedType == StaffElement.Glissando.Type.CONNECTED) {
             // Connected requires a note to the right
-            if (xIndex >= line.noteCount()) {
+            if (xIndex >= line.elementCount()) {
                 return null;
             }
 
             // Same-pitch connected glissando is musically meaningless
-            if (line.getNote(xIndex - 1).getPitch() == line.getNote(xIndex).getPitch()) {
+            if (line.getElement(xIndex - 1).getPitch() == line.getElement(xIndex).getPitch()) {
                 return null;
             }
         }
@@ -334,16 +334,16 @@ public class InsertionNoteManager {
     // ==========================================================================
 
     /**
-     * Handles mouse movement over a line, updating insertion note position.
-     * Replaces the insertion-note logic formerly inline in {@code LineComponent.mouseMoved()}.
+     * Handles mouse movement over a line, updating insertion element position.
+     * Replaces the insertion element logic formerly inline in {@code LineComponent.mouseMoved()}.
      */
     static void trackMouse(LineComponent lc, MouseEvent e) {
         if (e.isAltDown()) {
-            clearInsertionNote();
+            clearInsertionElement();
             return;
         }
 
-        if (!shouldHandleInsertionNote(lc)) {
+        if (!shouldHandleInsertionElement(lc)) {
             return;
         }
 
@@ -358,49 +358,49 @@ public class InsertionNoteManager {
         if (!isValidStaffPosition(staffPosition)) {
             // Mouse is outside valid range, clear insertion note if on this line
             if (currentInsertionLine == lc) {
-                clearInsertionNote();
+                clearInsertionElement();
             }
 
             return;
         }
 
-        // Calculate X index and note-head match from mouse using layout result
+        // Calculate X index and element-head match from mouse using layout result
         var layoutResult = lc.getLayoutResult();
         var line = lc.getLine();
 
         if (layoutResult == null || line == null) {
             // Layout is being recalculated (e.g., mid-drag). Clear stale hover state
-            // so that the next repaint does not show a highlight on the wrong note.
-            xPosSsMatchesNote = false;
-            yPosSpMatchesNote = false;
+            // so that the next repaint does not show a highlight on the wrong element.
+            xPosSsMatchesElement = false;
+            yPosSpMatchesElement = false;
             return;
         }
 
         int xIndex = layoutResult.findInsertionIndex(mouseXss, line);
-        int noteAtX = layoutResult.findNoteAtXSs(mouseXss, line);
+        int elementAtX = layoutResult.findElementAtXSs(mouseXss, line);
 
         // Compute new position match flags before the early-return check, so that a
-        // change in hover state (e.g., mouse slides from gap into note-head bounds at
+        // change in hover state (e.g., mouse slides from gap into element-head bounds at
         // the same xIndex) is not silently dropped.
-        boolean newXMatch = noteAtX >= 0;
+        boolean newXMatch = elementAtX >= 0;
         boolean newYMatch = newXMatch
-            && Math.abs(staffPosition - line.getNote(noteAtX).getStaffPosition()) <= 1;
+            && Math.abs(staffPosition - line.getElement(elementAtX).getStaffPosition()) <= 1;
 
         // Compute glissando zone before change detection so zone changes trigger repaints.
-        // Only compute when not over a note head (noteAtX < 0), as hovering over a note
-        // head means there is no valid glissando target to the left.
+        // Only compute when not over an element head (elementAtX < 0), as hovering over an
+        // element head means there is no valid glissando target to the left.
         var editModeManager = EditModeManager.getInstance();
-        Note.Glissando.Type newGlissandoZone = null;
+        StaffElement.Glissando.Type newGlissandoZone = null;
 
-        if (editModeManager != null && editModeManager.getInsertionNote() == Note.GLISSANDO_NOTE
-                && noteAtX < 0) {
+        if (editModeManager != null && editModeManager.getInsertionElement() == StaffElement.GLISSANDO_PLACEHOLDER
+            && elementAtX < 0) {
             newGlissandoZone = computeGlissandoZone(line, xIndex);
         }
 
         // Check if position actually changed
         if (lc == currentInsertionLine && xIndex == currentXIndex
             && staffPosition == currentStaffPosition
-            && newXMatch == xPosSsMatchesNote && newYMatch == yPosSpMatchesNote
+            && newXMatch == xPosSsMatchesElement && newYMatch == yPosSpMatchesElement
             && newGlissandoZone == currentGlissandoZone) {
             return;  // No change, no repaint
         }
@@ -414,31 +414,31 @@ public class InsertionNoteManager {
         currentInsertionLine = lc;
         currentXIndex = xIndex;
         currentStaffPosition = staffPosition;
-        xPosSsMatchesNote = newXMatch;
-        yPosSpMatchesNote = newYMatch;
+        xPosSsMatchesElement = newXMatch;
+        yPosSpMatchesElement = newYMatch;
         currentGlissandoZone = newGlissandoZone;
 
         if (editModeManager != null) {
-            var insertionNote = editModeManager.getInsertionNote();
+            var insertionElement = editModeManager.getInsertionElement();
 
-            if (insertionNote == Note.GLISSANDO_NOTE) {
-                // No note-head preview for glissando tool — renderInsertionNote draws the preview line.
+            if (insertionElement == StaffElement.GLISSANDO_PLACEHOLDER) {
+                // No note-head preview for glissando tool — renderInsertionElement draws the preview line.
                 lc.repaint();
                 return;
             }
 
-            // Hide the insertion note only when both X and Y match: the hover highlight on the
-            // existing note already signals what will be replaced. When only X matches, show the
-            // preview so the user can see the pitch that will replace the existing note.
-            if (xPosSsMatchesNote && yPosSpMatchesNote) {
-                editModeManager.setInsertionNoteVisible(false);
+            // Hide the insertion element only when both X and Y match: the hover highlight on the
+            // existing element already signals what will be replaced. When only X matches, show the
+            // preview so the user can see the pitch that will replace the existing element.
+            if (xPosSsMatchesElement && yPosSpMatchesElement) {
+                editModeManager.setInsertionElementVisible(false);
             } else {
-                editModeManager.setInsertionNoteVisible(true);
+                editModeManager.setInsertionElementVisible(true);
             }
 
-            // Update the insertion note's Y position
-            if (insertionNote != null) {
-                insertionNote.setStaffPosition(staffPosition);
+            // Update the insertion element's Y position
+            if (insertionElement != null) {
+                insertionElement.setStaffPosition(staffPosition);
             }
         }
 
@@ -447,15 +447,15 @@ public class InsertionNoteManager {
     }
 
     /**
-     * Handles a click on the insertion note, performing the appropriate action
+     * Handles a click on the insertion element, performing the appropriate action
      * (append, insert, or modify). Called from {@code LineComponent.mouseClicked()}.
      */
     static void handleClick(LineComponent lc) {
-        if (!shouldHandleInsertionNote(lc)) {
+        if (!shouldHandleInsertionElement(lc)) {
             return;
         }
 
-        // Only handle if this line has the insertion note
+        // Only handle if this line has the insertion element
         var line = lc.getLine();
 
         if (currentInsertionLine != lc || line == null) {
@@ -465,16 +465,16 @@ public class InsertionNoteManager {
         var editModeManager = EditModeManager.getInstance();
 
         if (editModeManager != null) {
-            var insertionNote = editModeManager.getInsertionNote();
+            var insertionElement = editModeManager.getInsertionElement();
 
-            if (insertionNote == Note.GLISSANDO_NOTE) {
+            if (insertionElement == StaffElement.GLISSANDO_PLACEHOLDER) {
                 var zoneType = currentGlissandoZone;
 
                 if (zoneType == null) {
                     return;  // No valid zone = click is a no-op
                 }
 
-                var sourceNote = line.getNote(currentXIndex - 1);
+                var sourceNote = line.getElement(currentXIndex - 1);
                 sourceNote.setGlissando(zoneType);
 
                 var composition = line.getComposition();
@@ -490,48 +490,48 @@ public class InsertionNoteManager {
         }
 
         // Determine action based on position
-        if (currentXIndex == line.noteCount()) {
-            addInsertionNote(lc, line);
-        } else if (xPosSsMatchesNote) {
-            modifyExistingNote(lc, currentXIndex, line);
+        if (currentXIndex == line.elementCount()) {
+            addInsertionElement(lc, line);
+        } else if (xPosSsMatchesElement) {
+            modifyExistingElement(lc, currentXIndex, line);
         } else {
-            insertNote(lc, currentXIndex, line);
+            insertElement(lc, currentXIndex, line);
         }
     }
 
     /**
-     * Handles mouse entering a line. Sets up cursor and insertion note visibility.
+     * Handles mouse entering a line. Sets up cursor and insertion element visibility.
      */
     static void mouseEnteredLine(LineComponent lc) {
         currentMouseLine = lc;
 
         var editModeManager = EditModeManager.getInstance();
 
-        if (shouldHandleInsertionNote(lc) && editModeManager != null) {
-            var insertionNote = editModeManager.getInsertionNote();
+        if (shouldHandleInsertionElement(lc) && editModeManager != null) {
+            var insertionElement = editModeManager.getInsertionElement();
 
-            if (insertionNote != Note.GLISSANDO_NOTE) {
-                editModeManager.setInsertionNoteVisible(true);
+            if (insertionElement != StaffElement.GLISSANDO_PLACEHOLDER) {
+                editModeManager.setInsertionElementVisible(true);
             }
         }
     }
 
     /**
-     * Handles mouse exiting a line. Clears cursor and insertion note.
+     * Handles mouse exiting a line. Clears cursor and insertion element.
      */
     static void mouseExitedLine(LineComponent lc) {
         currentMouseLine = null;
         lc.setCursor(DEFAULT_CURSOR);
 
-        // Clear insertion note when mouse leaves this line
+        // Clear insertion element when mouse leaves this line
         if (currentInsertionLine == lc) {
-            clearInsertionNote();
+            clearInsertionElement();
         }
 
         var editModeManager = EditModeManager.getInstance();
 
         if (editModeManager != null) {
-            editModeManager.setInsertionNoteVisible(false);
+            editModeManager.setInsertionElementVisible(false);
         }
     }
 
@@ -540,14 +540,14 @@ public class InsertionNoteManager {
     // ==========================================================================
 
     /**
-     * Returns whether insertion note handling should be active for the given line.
+     * Returns whether insertion element handling should be active for the given line.
      * <p>
-     * Requires: edit mode enabled, MOUSE control, NOTE_EDIT mode, and an insertion note set.
+     * Requires: edit mode enabled, MOUSE control, NOTE_EDIT mode, and an insertion element set.
      */
-    private static boolean shouldHandleInsertionNote(LineComponent lc) {
+    private static boolean shouldHandleInsertionElement(LineComponent lc) {
         var editModeManager = EditModeManager.getInstance();
 
-        if (!lc.isEditMode() || editModeManager == null || !editModeManager.hasInsertionNote()) {
+        if (!lc.isEditMode() || editModeManager == null || !editModeManager.hasInsertionElement()) {
             return false;
         }
 
@@ -557,16 +557,16 @@ public class InsertionNoteManager {
             return false;
         }
 
-        return score.getControl() == Control.MOUSE && score.getMode() == Mode.NOTE_EDIT;
+        return score.getControl() == Control.MOUSE && score.getMode() == Mode.EDIT;
     }
 
     /**
-     * Restores the insertion note from the current mouse position.
-     * Called when Alt is released to immediately show the insertion note
+     * Restores the insertion element from the current mouse position.
+     * Called when Alt is released to immediately show the insertion element
      * without requiring mouse movement.
      */
-    static void restoreInsertionNote(LineComponent lc) {
-        if (!shouldHandleInsertionNote(lc)) {
+    static void restoreInsertionElement(LineComponent lc) {
+        if (!shouldHandleInsertionElement(lc)) {
             return;
         }
 
@@ -591,20 +591,20 @@ public class InsertionNoteManager {
     }
 
     /**
-     * Calculates the staff position (in note units) from a mouse Y coordinate.
+     * Calculates the staff position from a mouse Y coordinate.
      *
-     * @param mouseYss    Mouse Y coordinate in staff-space units
+     * @param mouseYss      Mouse Y coordinate in staff-space units
      * @param middleLineYSs Y coordinate of the middle staff line in staff-space units
-     * @return Staff position in note units
+     * @return Staff position
      */
     static int calculateStaffPositionFromMouse(double mouseYss, double middleLineYSs) {
-        return (int) Math.round((mouseYss - middleLineYSs) / LayoutStylesheet.NOTE_Y_OFFSET);
+        return (int) Math.round((mouseYss - middleLineYSs) / LayoutStylesheet.STAFF_POSITION_OFFSET);
     }
 
     /**
-     * Returns whether the given Y position is within the valid range for notes.
+     * Returns whether the given staff position is within the valid range for elements.
      *
-     * @param staffPosition Staff position in note units
+     * @param staffPosition Staff position
      * @return true if the position is valid
      */
     static boolean isValidStaffPosition(int staffPosition) {
@@ -614,16 +614,16 @@ public class InsertionNoteManager {
     }
 
     // ==========================================================================
-    // Note Mutation Methods
+    // Element Mutation Methods
     // ==========================================================================
 
     /**
-     * Adds an insertion note to the end of the line.
+     * Adds an insertion element to the end of the line.
      *
      * @param lc   The LineComponent
-     * @param line The line to add the note to
+     * @param line The line to add the element to
      */
-    private static void addInsertionNote(LineComponent lc, @NotNull Line line) {
+    private static void addInsertionElement(LineComponent lc, @NotNull Line line) {
         var score = lc.getScore();
 
         if (score == null) {
@@ -636,34 +636,34 @@ public class InsertionNoteManager {
             return;
         }
 
-        var insertionNote = editModeManager.getInsertionNote();
+        var insertionElement = editModeManager.getInsertionElement();
 
-        if (insertionNote == null) {
+        if (insertionElement == null) {
             return;
         }
 
-        if (editModeManager.noteWasModified(line, line.noteCount())) {
-            editModeManager.insertionNoteDidChange(line, line.noteCount() - 1);
+        if (editModeManager.elementWasModified(line, line.elementCount())) {
+            editModeManager.insertionElementDidChange(line, line.elementCount() - 1);
             return;
         }
 
-        insertionNote.setXPosSs((int) Math.round(
-            InsertionSpacingCalculator.calculateAppendPositionSs(line, insertionNote)));
-        line.addNote(insertionNote);
+        insertionElement.setXPosSs((int) Math.round(
+            InsertionSpacingCalculator.calculateAppendPositionSs(line, insertionElement)));
+        line.addElement(insertionElement);
 
-        applyAutomaticBeaming(line, line.noteCount() - 1);
+        applyAutomaticBeaming(line, line.elementCount() - 1);
 
-        editModeManager.insertionNoteDidChange(line, line.noteCount() - 1);
+        editModeManager.insertionElementDidChange(line, line.elementCount() - 1);
     }
 
     /**
-     * Inserts an insertion note at the specified index in the line.
+     * Inserts an insertion element at the specified index in the line.
      *
      * @param lc     The LineComponent
      * @param xIndex The index to insert at
      * @param line   The line to insert into
      */
-    private static void insertNote(LineComponent lc, int xIndex, @NotNull Line line) {
+    private static void insertElement(LineComponent lc, int xIndex, @NotNull Line line) {
         var score = lc.getScore();
 
         if (score == null) {
@@ -676,14 +676,14 @@ public class InsertionNoteManager {
             return;
         }
 
-        var insertionNote = editModeManager.getInsertionNote();
+        var insertionElement = editModeManager.getInsertionElement();
 
-        if (insertionNote == null) {
+        if (insertionElement == null) {
             return;
         }
 
-        if (editModeManager.noteWasModified(line, xIndex)) {
-            editModeManager.insertionNoteDidChange(line, xIndex);
+        if (editModeManager.elementWasModified(line, xIndex)) {
+            editModeManager.insertionElementDidChange(line, xIndex);
             return;
         }
 
@@ -696,46 +696,46 @@ public class InsertionNoteManager {
         }
 
         line.removeInterval(xIndex - 1, xIndex);
-        var insertion = InsertionSpacingCalculator.calculateInsertion(line, insertionNote, xIndex);
-        insertionNote.setXPosSs((int) Math.round(insertion.insertedNoteXSs()));
-        line.addNote(xIndex, insertionNote);
-        var shift = (int) Math.round(insertion.shiftForSubsequentNotesSs());
+        var insertion = InsertionSpacingCalculator.calculateInsertion(line, insertionElement, xIndex);
+        insertionElement.setXPosSs((int) Math.round(insertion.insertedElementXSs()));
+        line.addElement(xIndex, insertionElement);
+        var shift = (int) Math.round(insertion.shiftForSubsequentElementsSs());
 
-        for (var i = xIndex + 1; i < line.noteCount(); i++) {
-            line.getNote(i).setXPosSs(line.getNote(i).getXPosSs() + shift);
+        for (var i = xIndex + 1; i < line.elementCount(); i++) {
+            line.getElement(i).setXPosSs(line.getElement(i).getXPosSs() + shift);
         }
 
         applyAutomaticBeaming(line, xIndex);
-        editModeManager.insertionNoteDidChange(line, xIndex);
+        editModeManager.insertionElementDidChange(line, xIndex);
     }
 
     /**
-     * Applies automatic beaming for the note at the given index.
-     * Scans backward from the note to find beamable neighbors and creates
+     * Applies automatic beaming for the element at the given index.
+     * Scans backward from the element to find beamable neighbors and creates
      * a beam interval if the rhythmic grouping conditions are met.
      *
-     * @param line      The line containing the note
-     * @param noteIndex The index of the just-inserted note
+     * @param line         The line containing the element
+     * @param elementIndex The index of the just-inserted element
      */
-    private static void applyAutomaticBeaming(@NotNull Line line, int noteIndex) {
-        var note = line.getNote(noteIndex);
+    private static void applyAutomaticBeaming(@NotNull Line line, int elementIndex) {
+        var element = line.getElement(elementIndex);
 
         if (
-            !note.getNoteType().isBeamable() ||
-                (noteIndex < 1) ||
-                (line.getTuplets().findInterval(noteIndex - 1) != null)
+            !element.getType().isBeamable() ||
+                (elementIndex < 1) ||
+                (line.getTuplets().findInterval(elementIndex - 1) != null)
         ) {
             return;
         }
 
         var sum = 0;
 
-        for (var i = noteIndex - 1; i >= 0; i--) {
-            if (line.getNote(i).getNoteType() == NoteType.QUAVER) {
+        for (var i = elementIndex - 1; i >= 0; i--) {
+            if (line.getElement(i).getType() == ElementType.QUAVER) {
                 sum += 2;
             } else if (
-                (line.getNote(i).getNoteType() == NoteType.SEMIQUAVER) ||
-                    (line.getNote(i).getNoteType() == NoteType.DEMI_SEMIQUAVER)
+                (line.getElement(i).getType() == ElementType.SEMIQUAVER) ||
+                    (line.getElement(i).getType() == ElementType.DEMI_SEMIQUAVER)
             ) {
                 sum += 1;
             } else {
@@ -750,32 +750,32 @@ public class InsertionNoteManager {
         }
 
         if (
-            ((note.getNoteType() == NoteType.QUAVER) &&
+            ((element.getType() == ElementType.QUAVER) &&
                 (sum > 0) &&
                 ((sum % 2) == 0) &&
                 ((sum % 4) != 0)) ||
-                (((note.getNoteType() == NoteType.SEMIQUAVER) ||
-                    (note.getNoteType() == NoteType.DEMI_SEMIQUAVER)) &&
+                (((element.getType() == ElementType.SEMIQUAVER) ||
+                    (element.getType() == ElementType.DEMI_SEMIQUAVER)) &&
                     (sum > 0) &&
                     ((sum % 4) != 0))
         ) {
             line
                 .getBeamings()
-                .addInterval(new BeamInterval(noteIndex - 1, noteIndex));
+                .addInterval(new BeamInterval(elementIndex - 1, elementIndex));
         }
     }
 
     /**
-     * Replaces an existing note entirely with the current insertion note.
-     * Only the x position is preserved from the existing note; all other attributes
-     * (type, duration, dots, beaming, ties) come from the insertion note.
-     * Called when the user clicks on an existing note head with the insertion note active.
+     * Replaces an existing element entirely with the current insertion element.
+     * Only the x position is preserved from the existing element; all other attributes
+     * (type, duration, dots, beaming, ties) come from the insertion element.
+     * Called when the user clicks on an existing element head with the insertion element active.
      *
-     * @param lc        The LineComponent
-     * @param noteIndex The index of the note to replace
-     * @param line      The line containing the note
+     * @param lc           The LineComponent
+     * @param elementIndex The index of the element to replace
+     * @param line         The line containing the element
      */
-    private static void modifyExistingNote(LineComponent lc, int noteIndex, @NotNull Line line) {
+    private static void modifyExistingElement(LineComponent lc, int elementIndex, @NotNull Line line) {
         var score = lc.getScore();
 
         if (score == null) {
@@ -788,52 +788,52 @@ public class InsertionNoteManager {
             return;
         }
 
-        var insertionNote = editModeManager.getInsertionNote();
+        var insertionElement = editModeManager.getInsertionElement();
 
-        if (insertionNote == null) {
+        if (insertionElement == null) {
             return;
         }
 
-        if (editModeManager.noteWasModified(line, noteIndex)) {
-            editModeManager.insertionNoteDidChange(line, noteIndex);
+        if (editModeManager.elementWasModified(line, elementIndex)) {
+            editModeManager.insertionElementDidChange(line, elementIndex);
             return;
         }
 
-        // Preserve the existing note's x position
-        insertionNote.setXPosSs(line.getNote(noteIndex).getXPosSs());
-        insertionNote.setStaffPosition(currentStaffPosition);
+        // Preserve the existing element's x position
+        insertionElement.setXPosSs(line.getElement(elementIndex).getXPosSs());
+        insertionElement.setStaffPosition(currentStaffPosition);
 
-        if (insertionNote.isStemDirectionAuto()) {
-            insertionNote.setUpper(Score.defaultUpperNote(insertionNote));
+        if (insertionElement.isStemDirectionAuto()) {
+            insertionElement.setUpper(Score.defaultUpperNote(insertionElement));
         }
 
-        // Remove all beam intervals touching this note — the new note type may differ
-        var beam = line.getBeamings().findInterval(noteIndex);
+        // Remove all beam intervals touching this element — the new element type may differ
+        var beam = line.getBeamings().findInterval(elementIndex);
 
         while (beam != null) {
             line.getBeamings().removeInterval(beam);
-            beam = line.getBeamings().findInterval(noteIndex);
+            beam = line.getBeamings().findInterval(elementIndex);
         }
 
-        // Remove all tie intervals touching this note
-        var tie = line.getTies().findInterval(noteIndex);
+        // Remove all tie intervals touching this element
+        var tie = line.getTies().findInterval(elementIndex);
 
         while (tie != null) {
             line.getTies().removeInterval(tie);
-            tie = line.getTies().findInterval(noteIndex);
+            tie = line.getTies().findInterval(elementIndex);
         }
 
-        // Replace the note entirely (line.setNote marks the composition modified)
-        line.setNote(noteIndex, insertionNote);
+        // Replace the element entirely (line.setElement marks the composition modified)
+        line.setElement(elementIndex, insertionElement);
 
-        applyAutomaticBeaming(line, noteIndex);
+        applyAutomaticBeaming(line, elementIndex);
 
-        // Also check the note after the replaced one: when noteIndex is the start of a beam,
+        // Also check the element after the replaced one: when elementIndex is the start of a beam,
         // applyAutomaticBeaming only scans backward and misses the forward neighbor.
-        if (noteIndex + 1 < line.noteCount()) {
-            applyAutomaticBeaming(line, noteIndex + 1);
+        if (elementIndex + 1 < line.elementCount()) {
+            applyAutomaticBeaming(line, elementIndex + 1);
         }
 
-        editModeManager.insertionNoteDidChange(line, noteIndex);
+        editModeManager.insertionElementDidChange(line, elementIndex);
     }
 }

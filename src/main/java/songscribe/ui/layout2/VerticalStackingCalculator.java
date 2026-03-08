@@ -29,7 +29,7 @@ import java.util.Map;
 import org.jetbrains.annotations.NotNull;
 
 import songscribe.music.Line;
-import songscribe.music.Note;
+import songscribe.music.StaffElement;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
 import songscribe.smufl.StaffSpaces;
@@ -86,16 +86,16 @@ public class VerticalStackingCalculator {
      * @return VerticalStackingResult containing all calculated positions
      */
     public @NotNull VerticalStackingResult calculateVerticalPositions(
-        @NotNull List<NoteColumn> columns,
+        @NotNull List<ElementColumn> columns,
         @NotNull Line line,
         Graphics2D g2) {
 
-        var elementPositions = new HashMap<Note, Map<LineElement, Point2D>>();
+        var elementPositions = new HashMap<StaffElement, Map<LineElement, Point2D>>();
         var maxHeightAboveStaffPx = 0.0;
 
         // Process each column
         for (var column : columns) {
-            var note = column.getNote();
+            var note = column.getElement();
             var noteElementPositions = new HashMap<LineElement, Point2D>();
             elementPositions.put(note, noteElementPositions);
 
@@ -147,7 +147,7 @@ public class VerticalStackingCalculator {
         var lyricsBaselineYPx = lowestNoteYPx + ScaleContext.getInstance().toPixels(LayoutConstants.LYRICS_BASELINE_OFFSET_SS);
 
         // Calculate line height
-        var hasLyrics = columns.stream().anyMatch(NoteColumn::hasSyllable);
+        var hasLyrics = columns.stream().anyMatch(ElementColumn::hasSyllable);
         var lyricsHeightPx = hasLyrics ? 20.0 : 0.0; // TODO: Measure actual lyric height
         var interLineMarginPx = 10.0; // TODO: Get from LayoutConstants
 
@@ -178,11 +178,11 @@ public class VerticalStackingCalculator {
      * @return Minimum Y position reached (most negative)
      */
     private double stackArticulations(
-        @NotNull NoteColumn column,
+        @NotNull ElementColumn column,
         @NotNull Area accumulated,
         @NotNull Map<LineElement, Point2D> noteElementPositions) {
 
-        var note = column.getNote();
+        var note = column.getElement();
         var articulations = note.getArticulations();
 
         if (articulations.isEmpty()) {
@@ -256,11 +256,11 @@ public class VerticalStackingCalculator {
      * @return Minimum Y position reached (most negative)
      */
     private double stackTrill(
-        @NotNull NoteColumn column,
+        @NotNull ElementColumn column,
         @NotNull Area accumulated,
         @NotNull Map<LineElement, Point2D> noteElementPositions) {
 
-        var note = column.getNote();
+        var note = column.getElement();
 
         // TODO: In future phases, check for TrillAttachment in new hierarchy
         if (!note.isTrill()) {
@@ -297,11 +297,11 @@ public class VerticalStackingCalculator {
      * @return Minimum Y position reached (most negative)
      */
     private double stackFermata(
-        @NotNull NoteColumn column,
+        @NotNull ElementColumn column,
         @NotNull Area accumulated,
         @NotNull Map<LineElement, Point2D> noteElementPositions) {
 
-        var note = column.getNote();
+        var note = column.getElement();
         var minYPx = accumulated.getBounds2D().getMinY();
 
         // Check new attachment hierarchy first
@@ -360,7 +360,7 @@ public class VerticalStackingCalculator {
      * @return Minimum Y position reached (most negative)
      */
     private double stackDynamics(
-        @NotNull NoteColumn column,
+        @NotNull ElementColumn column,
         @NotNull Area accumulated,
         @NotNull Map<LineElement, Point2D> noteElementPositions) {
 
@@ -378,11 +378,11 @@ public class VerticalStackingCalculator {
      * @return Minimum Y position reached (most negative)
      */
     private double stackTempo(
-        @NotNull NoteColumn column,
+        @NotNull ElementColumn column,
         @NotNull Area accumulated,
         @NotNull Map<LineElement, Point2D> noteElementPositions) {
 
-        var note = column.getNote();
+        var note = column.getElement();
         var minYPx = accumulated.getBounds2D().getMinY();
 
         // Check for tempo change (legacy property)
@@ -445,11 +445,11 @@ public class VerticalStackingCalculator {
      * @return Minimum Y position reached (most negative)
      */
     private double stackAnnotations(
-        @NotNull NoteColumn column,
+        @NotNull ElementColumn column,
         @NotNull Area accumulated,
         @NotNull Map<LineElement, Point2D> noteElementPositions) {
 
-        var note = column.getNote();
+        var note = column.getElement();
         var minYPx = accumulated.getBounds2D().getMinY();
 
         // Check for annotation (legacy property)
@@ -487,8 +487,8 @@ public class VerticalStackingCalculator {
      * @param column The note column
      * @return Bounding area for the note
      */
-    private @NotNull Area getNoteBoundingArea(@NotNull NoteColumn column) {
-        var note = column.getNote();
+    private @NotNull Area getNoteBoundingArea(@NotNull ElementColumn column) {
+        var note = column.getElement();
 
         // Get stem bounds
         var stemTopPx = column.getStemTopSs();
@@ -611,7 +611,7 @@ public class VerticalStackingCalculator {
      * @param columns List of note columns
      * @return Lowest Y position (maximum Y value)
      */
-    private double findLowestNoteBoundingYPx(@NotNull List<NoteColumn> columns) {
+    private double findLowestNoteBoundingYPx(@NotNull List<ElementColumn> columns) {
         var lowestYPx = 0.0;
 
         for (var column : columns) {

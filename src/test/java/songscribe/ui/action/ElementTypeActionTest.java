@@ -20,85 +20,85 @@
 
 package songscribe.ui.action;
 
-import songscribe.UnitTest;
-import songscribe.music.NoteType;
+import static org.assertj.core.api.Assertions.assertThat;
+import static songscribe.ui.action.ElementTypeAction.Kind;
 
 import org.junit.jupiter.api.Test;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static songscribe.ui.action.NoteTypeAction.Kind;
+import songscribe.UnitTest;
+import songscribe.music.ElementType;
 
-class NoteTypeActionTest extends UnitTest {
+class ElementTypeActionTest extends UnitTest {
 
-    private final NoteTypeAction durationAction = new NoteTypeAction(
-            Kind.DURATION, NoteType.CROTCHET, "Quarter", null, 0, "quarter", "Quarter note", 0, 0
+    private final ElementTypeAction durationAction = new ElementTypeAction(
+        Kind.DURATION, ElementType.CROTCHET, "Quarter", null, 0, "quarter", "Quarter note", 0, 0
     );
 
-    private final NoteTypeAction nonDurationAction = new NoteTypeAction(
-            Kind.NON_DURATION, NoteType.SINGLE_BARLINE, "Barline", null, 0, "barline", "Single barline", 0, 0
+    private final ElementTypeAction nonDurationAction = new ElementTypeAction(
+        Kind.NON_DURATION, ElementType.SINGLE_BARLINE, "Barline", null, 0, "barline", "Single barline", 0, 0
     );
 
     // A1: DURATION action applies to notes
     @Test
     void testDurationAppliesToNote() {
-        var note = NoteType.CROTCHET.newInstance();
-        assertThat(durationAction.appliesTo(note)).isTrue();
+        var element = ElementType.CROTCHET.newInstance();
+        assertThat(durationAction.appliesTo(element)).isTrue();
     }
 
     // A2: DURATION action applies to rests
     @Test
     void testDurationAppliesToRest() {
-        var note = NoteType.CROTCHET_REST.newInstance();
-        assertThat(durationAction.appliesTo(note)).isTrue();
+        var element = ElementType.CROTCHET_REST.newInstance();
+        assertThat(durationAction.appliesTo(element)).isTrue();
     }
 
     // A3: DURATION action does not apply to barlines
     @Test
     void testDurationDoesNotApplyToBarline() {
-        var note = NoteType.SINGLE_BARLINE.newInstance();
-        assertThat(durationAction.appliesTo(note)).isFalse();
+        var element = ElementType.SINGLE_BARLINE.newInstance();
+        assertThat(durationAction.appliesTo(element)).isFalse();
     }
 
     // A3b: DURATION action does not apply to grace notes
     @Test
     void testDurationDoesNotApplyToGraceNote() {
-        var note = NoteType.GRACE_QUAVER.newInstance();
-        assertThat(durationAction.appliesTo(note)).isFalse();
+        var element = ElementType.GRACE_QUAVER.newInstance();
+        assertThat(durationAction.appliesTo(element)).isFalse();
     }
 
     // A4: NON_DURATION action does not apply to notes
     @Test
     void testNonDurationDoesNotApplyToNote() {
-        var note = NoteType.CROTCHET.newInstance();
-        assertThat(nonDurationAction.appliesTo(note)).isFalse();
+        var element = ElementType.CROTCHET.newInstance();
+        assertThat(nonDurationAction.appliesTo(element)).isFalse();
     }
 
     // A5: NON_DURATION action does not apply to rests
     @Test
     void testNonDurationDoesNotApplyToRest() {
-        var note = NoteType.CROTCHET_REST.newInstance();
-        assertThat(nonDurationAction.appliesTo(note)).isFalse();
+        var element = ElementType.CROTCHET_REST.newInstance();
+        assertThat(nonDurationAction.appliesTo(element)).isFalse();
     }
 
     // A6: NON_DURATION action applies to barlines
     @Test
     void testNonDurationAppliesToBarline() {
-        var note = NoteType.SINGLE_BARLINE.newInstance();
-        assertThat(nonDurationAction.appliesTo(note)).isTrue();
+        var element = ElementType.SINGLE_BARLINE.newInstance();
+        assertThat(nonDurationAction.appliesTo(element)).isTrue();
     }
 
-    // M1: matchesNote returns true when NoteType matches
+    // M1: matchesElement returns true when ElementType matches
     @Test
-    void testMatchesNoteWhenTypeMatches() {
-        var note = NoteType.CROTCHET.newInstance();
-        assertThat(durationAction.matchesNote(note)).isTrue();
+    void testMatchesElementWhenTypeMatches() {
+        var element = ElementType.CROTCHET.newInstance();
+        assertThat(durationAction.matchesElement(element)).isTrue();
     }
 
-    // M2: matchesNote returns false when NoteType differs
+    // M2: matchesElement returns false when ElementType differs
     @Test
-    void testDoesNotMatchNoteWhenTypeDiffers() {
-        var note = NoteType.MINIM.newInstance();
-        assertThat(durationAction.matchesNote(note)).isFalse();
+    void testDoesNotMatchElementWhenTypeDiffers() {
+        var element = ElementType.MINIM.newInstance();
+        assertThat(durationAction.matchesElement(element)).isFalse();
     }
 
     // T1: DURATION kind has correct flags (no DISABLE_IN_REST_MODE)
@@ -122,37 +122,37 @@ class NoteTypeActionTest extends UnitTest {
     // CR1: createReplacement returns null when selected == false
     @Test
     void testCreateReplacementReturnsNullWhenNotSelected() {
-        var note = NoteType.CROTCHET.newInstance();
-        assertThat(durationAction.createReplacement(note, false)).isNull();
+        var element = ElementType.CROTCHET.newInstance();
+        assertThat(durationAction.createReplacement(element, false)).isNull();
     }
 
     // CR2: createReplacement preserves note kind (note stays note)
     @Test
     void testCreateReplacementPreservesNoteKind() {
-        var note = NoteType.MINIM.newInstance();
-        var replacement = durationAction.createReplacement(note, true);
+        var element = ElementType.MINIM.newInstance();
+        var replacement = durationAction.createReplacement(element, true);
         assertThat(replacement).isNotNull();
-        assertThat(replacement.getNoteType()).isEqualTo(NoteType.CROTCHET);
+        assertThat(replacement.getType()).isEqualTo(ElementType.CROTCHET);
     }
 
     // CR3: createReplacement preserves rest kind (rest stays rest)
     @Test
     void testCreateReplacementPreservesRestKind() {
-        var note = NoteType.MINIM_REST.newInstance();
-        var replacement = durationAction.createReplacement(note, true);
+        var element = ElementType.MINIM_REST.newInstance();
+        var replacement = durationAction.createReplacement(element, true);
         assertThat(replacement).isNotNull();
-        assertThat(replacement.getNoteType()).isEqualTo(NoteType.CROTCHET_REST);
+        assertThat(replacement.getType()).isEqualTo(ElementType.CROTCHET_REST);
     }
 
     // CR4: createReplacement with grace note (toNote/toRest returns this)
     @Test
     void testCreateReplacementWithGraceNote() {
-        var graceAction = new NoteTypeAction(
-            Kind.DURATION, NoteType.GRACE_QUAVER, "Grace", null, 0, "grace", "Grace note", 0, 0
+        var graceAction = new ElementTypeAction(
+            Kind.DURATION, ElementType.GRACE_QUAVER, "Grace", null, 0, "grace", "Grace note", 0, 0
         );
-        var note = NoteType.CROTCHET.newInstance();
-        var replacement = graceAction.createReplacement(note, true);
+        var element = ElementType.CROTCHET.newInstance();
+        var replacement = graceAction.createReplacement(element, true);
         assertThat(replacement).isNotNull();
-        assertThat(replacement.getNoteType()).isEqualTo(NoteType.GRACE_QUAVER);
+        assertThat(replacement.getType()).isEqualTo(ElementType.GRACE_QUAVER);
     }
 }

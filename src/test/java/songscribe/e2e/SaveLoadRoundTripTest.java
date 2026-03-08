@@ -20,16 +20,16 @@
 
 package songscribe.e2e;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 
 import songscribe.music.Composition;
+import songscribe.music.ElementType;
 import songscribe.music.KeyType;
 import songscribe.music.Line;
-import songscribe.music.NoteType;
 import songscribe.ui.component.MainFrame;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Milestone 1 E2E tests: programmatic save/load round-trip, model equality.
@@ -37,18 +37,19 @@ import static org.assertj.core.api.Assertions.assertThat;
 @Order(6)
 class SaveLoadRoundTripTest extends E2ETest {
 
-    @Test @Order(1)
+    @Test
+    @Order(1)
     void testSaveAndReloadPreservesNotes() throws Exception {
         // Build a composition with notes of different types and staff positions
         var original = buildTestComposition();
         var originalLine = original.getLine(0);
-        var noteCount = originalLine.noteCount();
-        var originalTypes = new NoteType[noteCount];
+        var noteCount = originalLine.elementCount();
+        var originalTypes = new ElementType[noteCount];
         var originalPositions = new int[noteCount];
 
         for (var i = 0; i < noteCount; i++) {
-            var note = originalLine.getNote(i);
-            originalTypes[i] = note.getNoteType();
+            var note = originalLine.getElement(i);
+            originalTypes[i] = note.getType();
             originalPositions[i] = note.getStaffPosition();
         }
 
@@ -59,12 +60,12 @@ class SaveLoadRoundTripTest extends E2ETest {
         assertThat(reloaded.lineCount()).isEqualTo(original.lineCount());
 
         var reloadedLine = reloaded.getLine(0);
-        assertThat(reloadedLine.noteCount()).isEqualTo(noteCount);
+        assertThat(reloadedLine.elementCount()).isEqualTo(noteCount);
 
         // Verify each note's type and staff position
         for (var i = 0; i < noteCount; i++) {
-            var note = reloadedLine.getNote(i);
-            assertThat(note.getNoteType())
+            var note = reloadedLine.getElement(i);
+            assertThat(note.getType())
                 .as("NoteType at index %d", i)
                 .isEqualTo(originalTypes[i]);
             assertThat(note.getStaffPosition())
@@ -73,7 +74,8 @@ class SaveLoadRoundTripTest extends E2ETest {
         }
     }
 
-    @Test @Order(2)
+    @Test
+    @Order(2)
     void testSaveAndReloadPreservesKeySignature() throws Exception {
         var original = new Composition(MainFrame.getInstance());
         original.setDefaultKeyType(KeyType.SHARPS);
@@ -81,9 +83,9 @@ class SaveLoadRoundTripTest extends E2ETest {
 
         // Add a line so the composition is non-empty
         var line = new Line();
-        var note = NoteType.CROTCHET.newInstance();
+        var note = ElementType.CROTCHET.newInstance();
         note.setStaffPosition(0);
-        line.addNote(note);
+        line.addElement(note);
         original.addLine(line);
 
         var reloaded = roundTrip(original);
@@ -100,24 +102,24 @@ class SaveLoadRoundTripTest extends E2ETest {
         var line = new Line();
 
         // Quarter at middle line
-        var quarter = NoteType.CROTCHET.newInstance();
+        var quarter = ElementType.CROTCHET.newInstance();
         quarter.setStaffPosition(0);
-        line.addNote(quarter);
+        line.addElement(quarter);
 
         // Eighth below
-        var eighth = NoteType.QUAVER.newInstance();
+        var eighth = ElementType.QUAVER.newInstance();
         eighth.setStaffPosition(-4);
-        line.addNote(eighth);
+        line.addElement(eighth);
 
         // Half above
-        var half = NoteType.MINIM.newInstance();
+        var half = ElementType.MINIM.newInstance();
         half.setStaffPosition(4);
-        line.addNote(half);
+        line.addElement(half);
 
         // Sixteenth far below
-        var sixteenth = NoteType.SEMIQUAVER.newInstance();
+        var sixteenth = ElementType.SEMIQUAVER.newInstance();
         sixteenth.setStaffPosition(-8);
-        line.addNote(sixteenth);
+        line.addElement(sixteenth);
 
         composition.addLine(line);
         return composition;

@@ -20,21 +20,20 @@
 
 package songscribe.e2e;
 
-import java.awt.Point;
-import java.awt.event.InputEvent;
-import java.awt.event.KeyEvent;
+import static org.assertj.core.api.Assertions.assertThat;
+
+import java.awt.*;
+import java.awt.event.*;
 
 import org.assertj.swing.edt.GuiActionRunner;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 
 import songscribe.music.Composition;
+import songscribe.music.ElementType;
 import songscribe.music.Line;
-import songscribe.music.NoteType;
 import songscribe.ui.Mode;
 import songscribe.ui.component.MainFrame;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Milestone 1 E2E tests: click-to-select, shift-click range, deselect.
@@ -42,25 +41,27 @@ import static org.assertj.core.api.Assertions.assertThat;
 @Order(2)
 class SelectionTest extends E2ETest {
 
-    @Test @Order(1)
+    @Test
+    @Order(1)
     void testClickToSelectNote() {
         buildThreeNoteComposition();
         enterSelectMode();
 
         clickAt(noteScreenPosition(0, 1));
 
-        assertThat(score().getSingleSelectedNote())
-            .isEqualTo(composition().getLine(0).getNote(1));
+        assertThat(score().getSingleSelectedElement())
+            .isEqualTo(composition().getLine(0).getElement(1));
     }
 
-    @Test @Order(2)
+    @Test
+    @Order(2)
     void testClickEmptySpaceDeselects() {
         buildThreeNoteComposition();
         enterSelectMode();
 
         // Select a note first
         clickAt(noteScreenPosition(0, 0));
-        assertThat(score().getSingleSelectedNote()).isNotNull();
+        assertThat(score().getSingleSelectedElement()).isNotNull();
 
         // Click below the staff, towards the end of the line
         var emptyPoint = GuiActionRunner.execute(() -> {
@@ -73,11 +74,12 @@ class SelectionTest extends E2ETest {
         assertThat(score().getSelectionSize()).isEqualTo(0);
     }
 
-    @Test @Order(3)
+    @Test
+    @Order(3)
     void testModeToggle() {
         // Start in edit mode (default after reset)
         enterEditMode();
-        assertThat(score().getMode()).isEqualTo(Mode.NOTE_EDIT);
+        assertThat(score().getMode()).isEqualTo(Mode.EDIT);
 
         // Switch to select mode
         enterSelectMode();
@@ -85,10 +87,11 @@ class SelectionTest extends E2ETest {
 
         // Switch back to edit mode
         enterEditMode();
-        assertThat(score().getMode()).isEqualTo(Mode.NOTE_EDIT);
+        assertThat(score().getMode()).isEqualTo(Mode.EDIT);
     }
 
-    @Test @Order(4)
+    @Test
+    @Order(4)
     void testShiftClickExtendsSelection() {
         buildThreeNoteComposition();
         enterSelectMode();
@@ -104,7 +107,8 @@ class SelectionTest extends E2ETest {
         assertThat(score().getSelectionSize()).isEqualTo(3);
     }
 
-    @Test @Order(5)
+    @Test
+    @Order(5)
     void testShiftClickShrinksSelection() {
         buildThreeNoteComposition();
         enterSelectMode();
@@ -118,12 +122,13 @@ class SelectionTest extends E2ETest {
         shiftClickAt(noteScreenPosition(0, 1));
 
         assertThat(score().getSelectionSize()).isEqualTo(2);
-        assertThat(score().isNoteSelected(0, 0)).isTrue();
-        assertThat(score().isNoteSelected(1, 0)).isTrue();
-        assertThat(score().isNoteSelected(2, 0)).isFalse();
+        assertThat(score().isElementSelected(0, 0)).isTrue();
+        assertThat(score().isElementSelected(1, 0)).isTrue();
+        assertThat(score().isElementSelected(2, 0)).isFalse();
     }
 
-    @Test @Order(6)
+    @Test
+    @Order(6)
     void testMetaDDeselectsAll() {
         buildThreeNoteComposition();
         enterSelectMode();
@@ -139,7 +144,8 @@ class SelectionTest extends E2ETest {
     }
 
 
-    @Test @Order(7)
+    @Test
+    @Order(7)
     void testClickInStaffSelectsLine() {
         buildThreeNoteComposition();
         enterSelectMode();
@@ -167,9 +173,9 @@ class SelectionTest extends E2ETest {
             var positions = new int[]{0, -2, -4};
 
             for (var sp : positions) {
-                var note = NoteType.CROTCHET.newInstance();
+                var note = ElementType.CROTCHET.newInstance();
                 note.setStaffPosition(sp);
-                line.addNote(note);
+                line.addElement(note);
             }
 
             composition.addLine(0, line);

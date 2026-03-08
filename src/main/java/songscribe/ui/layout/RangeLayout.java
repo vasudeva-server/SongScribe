@@ -20,7 +20,7 @@
 
 package songscribe.ui.layout;
 
-import java.awt.geom.Path2D;
+import java.awt.geom.*;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -58,8 +58,8 @@ public final class RangeLayout {
     }
 
     private final @NotNull Type type;
-    private final int startNoteIndex;
-    private final int endNoteIndex;
+    private final int startElementIndex;
+    private final int endElementIndex;
     private final boolean above;
     private final @NotNull ElementBounds bounds;
     private final @Nullable Path2D path;
@@ -69,25 +69,25 @@ public final class RangeLayout {
      * Creates range layout.
      *
      * @param type           Type of range element
-     * @param startNoteIndex Index of first note in range
-     * @param endNoteIndex   Index of last note in range
-     * @param above          True if placed above notes, false if below
+     * @param startElementIndex Index of first element in range
+     * @param endElementIndex   Index of last element in range
+     * @param above             True if placed above elements, false if below
      * @param bounds         Element bounds for hit testing
      * @param path           Rendered curve/line path (may be null for some types)
      * @param data           Type-specific data (e.g., tuplet number, ending number)
      */
     public RangeLayout(
         @NotNull Type type,
-        int startNoteIndex,
-        int endNoteIndex,
+        int startElementIndex,
+        int endElementIndex,
         boolean above,
         @NotNull ElementBounds bounds,
         @Nullable Path2D path,
         @Nullable Object data
     ) {
         this.type = type;
-        this.startNoteIndex = startNoteIndex;
-        this.endNoteIndex = endNoteIndex;
+        this.startElementIndex = startElementIndex;
+        this.endElementIndex = endElementIndex;
         this.above = above;
         this.bounds = bounds;
         this.path = path;
@@ -99,12 +99,12 @@ public final class RangeLayout {
      */
     public RangeLayout(
         @NotNull Type type,
-        int startNoteIndex,
-        int endNoteIndex,
+        int startElementIndex,
+        int endElementIndex,
         boolean above,
         @NotNull ElementBounds bounds
     ) {
-        this(type, startNoteIndex, endNoteIndex, above, bounds, null, null);
+        this(type, startElementIndex, endElementIndex, above, bounds, null, null);
     }
 
     /**
@@ -117,15 +117,15 @@ public final class RangeLayout {
     /**
      * Returns the index of the first note in the range.
      */
-    public int getStartNoteIndex() {
-        return startNoteIndex;
+    public int getStartElementIndex() {
+        return startElementIndex;
     }
 
     /**
      * Returns the index of the last note in the range.
      */
-    public int getEndNoteIndex() {
-        return endNoteIndex;
+    public int getEndElementIndex() {
+        return endElementIndex;
     }
 
     /**
@@ -185,15 +185,15 @@ public final class RangeLayout {
     /**
      * Returns the number of notes spanned by this range.
      */
-    public int getNoteCount() {
-        return endNoteIndex - startNoteIndex + 1;
+    public int getElementCount() {
+        return endElementIndex - startElementIndex + 1;
     }
 
     /**
-     * Returns whether the given note index is within this range.
+     * Returns whether the given element index is within this range.
      */
-    public boolean containsNote(int noteIndex) {
-        return noteIndex >= startNoteIndex && noteIndex <= endNoteIndex;
+    public boolean containsElement(int elementIndex) {
+        return elementIndex >= startElementIndex && elementIndex <= endElementIndex;
     }
 
     /**
@@ -207,7 +207,7 @@ public final class RangeLayout {
     public String toString() {
         return "RangeLayout{" +
             "type=" + type +
-            ", range=[" + startNoteIndex + ".." + endNoteIndex + "]" +
+            ", range=[" + startElementIndex + ".." + endElementIndex + "]" +
             ", above=" + above +
             (data != null ? ", data=" + data : "") +
             "}";

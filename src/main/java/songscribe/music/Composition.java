@@ -243,12 +243,12 @@ public final class Composition {
             var currentLine = lines.get(i);
 
             for (
-                var n = lastLine ? noteIndex : (currentLine.noteCount() - 1);
+                var n = lastLine ? noteIndex : (currentLine.elementCount() - 1);
                 n >= 0;
                 n--
             ) {
-                if (currentLine.getNote(n).getTempoChange() != null) {
-                    return currentLine.getNote(n).getTempoChange();
+                if (currentLine.getElement(n).getTempoChange() != null) {
+                    return currentLine.getElement(n).getTempoChange();
                 }
             }
 

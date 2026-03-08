@@ -29,7 +29,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import songscribe.data.Interval;
-import songscribe.music.Note;
+import songscribe.music.StaffElement;
 import songscribe.ui.layout.Bounds;
 import songscribe.ui.layout.LineElement;
 
@@ -52,14 +52,14 @@ import songscribe.ui.layout.LineElement;
 public final class LayoutResult {
 
     /**
-     * Offset for positioning an insertion note before the first note in the line (ss).
+     * Offset for positioning an insertion element before the first element in the line (ss).
      */
     private static final double INSERTION_BEFORE_FIRST_OFFSET_SS = 1.875;  // 15px
 
-    private final @NotNull Map<Note, NoteColumn> noteColumns;
+    private final @NotNull Map<StaffElement, ElementColumn> elementColumns;
     private final @NotNull Map<LineElement, Bounds> elementBounds;
     private final @NotNull Map<Interval, BeamLayout> beamLayouts;
-    private final @NotNull Map<Note, StemLayout> stemLayouts;
+    private final @NotNull Map<StaffElement, StemLayout> stemLayouts;
     private final @NotNull Map<Interval, TieLayout> tieLayouts;
     private final double lineHeightSs;
     private final double staffTopYSs;
@@ -71,7 +71,7 @@ public final class LayoutResult {
      * <p>
      * Use {@link Builder} rather than calling this constructor directly.
      *
-     * @param noteColumns      Map of notes to their columns with positions
+     * @param elementColumns   Map of elements to their columns with positions
      * @param elementBounds    Map of line elements to their bounds
      * @param beamLayouts      Map of beam intervals to their computed beam geometry
      * @param stemLayouts      Map of unbeamed notes to their computed stem geometry
@@ -82,16 +82,16 @@ public final class LayoutResult {
      * @param lyricBaselineYSs   Y position of the lyric baseline in staff spaces (0 if no lyrics)
      */
     private LayoutResult(
-        @NotNull Map<Note, NoteColumn> noteColumns,
+        @NotNull Map<StaffElement, ElementColumn> elementColumns,
         @NotNull Map<LineElement, Bounds> elementBounds,
         @NotNull Map<Interval, BeamLayout> beamLayouts,
-        @NotNull Map<Note, StemLayout> stemLayouts,
+        @NotNull Map<StaffElement, StemLayout> stemLayouts,
         @NotNull Map<Interval, TieLayout> tieLayouts,
         double lineHeightSs,
         double staffTopYSs,
         double staffBottomYSs,
         double lyricBaselineYSs) {
-        this.noteColumns = Map.copyOf(noteColumns);
+        this.elementColumns = Map.copyOf(elementColumns);
         this.elementBounds = Map.copyOf(elementBounds);
         this.beamLayouts = Map.copyOf(beamLayouts);
         this.stemLayouts = Map.copyOf(stemLayouts);
@@ -107,43 +107,43 @@ public final class LayoutResult {
     // ==========================================================================
 
     /**
-     * Returns the note column for a specific note.
+     * Returns the element column for a specific element.
      *
-     * @param note The note to look up
-     * @return The note column, or null if the note was not laid out
+     * @param element The element to look up
+     * @return The element column, or null if the element was not laid out
      */
-    public @Nullable NoteColumn getNoteColumn(@NotNull Note note) {
-        return noteColumns.get(note);
+    public @Nullable ElementColumn getElementColumn(@NotNull StaffElement element) {
+        return elementColumns.get(element);
     }
 
     /**
-     * Returns the X position of a note's note head left edge (glyph origin).
+     * Returns the X position of an element's head left edge (glyph origin).
      *
-     * @param note The note to look up
-     * @return The X position, or 0 if the note was not laid out
+     * @param element The element to look up
+     * @return The X position, or 0 if the element was not laid out
      */
-    public double getNoteXSs(@NotNull Note note) {
-        var column = noteColumns.get(note);
+    public double getElementXSs(@NotNull StaffElement element) {
+        var column = elementColumns.get(element);
         return column != null ? column.getXSs() : 0;
     }
 
     /**
-     * Returns an unmodifiable view of all note columns.
+     * Returns an unmodifiable view of all element columns.
      *
-     * @return Map of notes to their columns
+     * @return Map of elements to their columns
      */
-    public @NotNull Map<Note, NoteColumn> getNoteColumns() {
-        return noteColumns;
+    public @NotNull Map<StaffElement, ElementColumn> getElementColumns() {
+        return elementColumns;
     }
 
     /**
-     * Returns whether a note was laid out.
+     * Returns whether an element was laid out.
      *
-     * @param note The note to check
-     * @return true if the note has a column
+     * @param element The element to check
+     * @return true if the element has a column
      */
-    public boolean hasNote(@NotNull Note note) {
-        return noteColumns.containsKey(note);
+    public boolean hasElement(@NotNull StaffElement element) {
+        return elementColumns.containsKey(element);
     }
 
     // ==========================================================================
@@ -161,24 +161,24 @@ public final class LayoutResult {
     }
 
     /**
-     * Returns the stem geometry for a note.
+     * Returns the stem geometry for an element.
      * <p>
-     * Checks beamed stem layouts first (notes inside a beam group), then falls back
-     * to the standalone stem layouts for unbeamed notes.
+     * Checks beamed stem layouts first (elements inside a beam group), then falls back
+     * to the standalone stem layouts for unbeamed elements.
      *
-     * @param note The note to look up
+     * @param element The element to look up
      * @return The stem layout, or null if not computed
      */
-    public @Nullable StemLayout getStemLayout(@NotNull Note note) {
+    public @Nullable StemLayout getStemLayout(@NotNull StaffElement element) {
         for (var beamLayout : beamLayouts.values()) {
-            var stemLayout = beamLayout.stems().get(note);
+            var stemLayout = beamLayout.stems().get(element);
 
             if (stemLayout != null) {
                 return stemLayout;
             }
         }
 
-        return stemLayouts.get(note);
+        return stemLayouts.get(element);
     }
 
     // ==========================================================================
@@ -270,17 +270,17 @@ public final class LayoutResult {
     }
 
     /**
-     * Finds bounds for an attachment with the given parent note and type.
+     * Finds bounds for an attachment with the given parent element and type.
      * <p>
      * Used by renderers that need to look up layout results for attachments
      * but don't have direct access to the attachment object created during layout.
      *
-     * @param parentNote     The note the attachment is attached to
+     * @param parentElement  The element the attachment is attached to
      * @param attachmentType The type of attachment to find
      * @return The bounds if found, null otherwise
      */
     public @Nullable Bounds findAttachmentBounds(
-        @NotNull Note parentNote,
+        @NotNull StaffElement parentElement,
         @NotNull Class<? extends songscribe.ui.layout.Attachment> attachmentType) {
 
         for (var entry : elementBounds.entrySet()) {
@@ -289,7 +289,7 @@ public final class LayoutResult {
             if (attachmentType.isInstance(element)) {
                 var attachment = (songscribe.ui.layout.Attachment) element;
 
-                if (attachment.getParentNote() == parentNote) {
+                if (attachment.getOwnerElement() == parentElement) {
                     return entry.getValue();
                 }
             }
@@ -299,25 +299,25 @@ public final class LayoutResult {
     }
 
     /**
-     * Finds the attachment object with the given parent note and type.
+     * Finds the attachment object with the given parent element and type.
      * <p>
      * Used by renderers that need access to the attachment object created during layout.
      *
-     * @param parentNote     The note the attachment is attached to
+     * @param parentElement  The element the attachment is attached to
      * @param attachmentType The type of attachment to find
      * @param <A>            The attachment type
      * @return The attachment if found, null otherwise
      */
     @SuppressWarnings("unchecked")
     public @Nullable <A extends songscribe.ui.layout.Attachment> A findAttachment(
-        @NotNull Note parentNote,
+        @NotNull StaffElement parentElement,
         @NotNull Class<A> attachmentType) {
 
         for (var element : elementBounds.keySet()) {
             if (attachmentType.isInstance(element)) {
                 var attachment = (songscribe.ui.layout.Attachment) element;
 
-                if (attachment.getParentNote() == parentNote) {
+                if (attachment.getOwnerElement() == parentElement) {
                     return (A) attachment;
                 }
             }
@@ -327,19 +327,19 @@ public final class LayoutResult {
     }
 
     /**
-     * Finds bounds for a range element with the given anchor and end notes.
+     * Finds bounds for a range element with the given anchor and end elements.
      * <p>
      * Used by renderers that need to look up layout results for range elements
      * but don't have direct access to the range element object created during layout.
      *
-     * @param anchorNote       The anchor (start) note of the range
-     * @param endNote          The end note of the range
+     * @param anchorElement    The anchor (start) element of the range
+     * @param endElement       The end element of the range
      * @param rangeElementType The type of range element to find
      * @return The bounds if found, null otherwise
      */
     public @Nullable Bounds findRangeElementBounds(
-        @NotNull Note anchorNote,
-        @NotNull Note endNote,
+        @NotNull StaffElement anchorElement,
+        @NotNull StaffElement endElement,
         @NotNull Class<? extends songscribe.ui.layout.RangeElement> rangeElementType) {
 
         for (var entry : elementBounds.entrySet()) {
@@ -348,8 +348,8 @@ public final class LayoutResult {
             if (rangeElementType.isInstance(element)) {
                 var rangeElement = (songscribe.ui.layout.RangeElement) element;
 
-                if (rangeElement.getAnchorNote() == anchorNote &&
-                    rangeElement.getEndNote() == endNote) {
+                if (rangeElement.getAnchorElement() == anchorElement &&
+                    rangeElement.getEndElement() == endElement) {
                     return entry.getValue();
                 }
             }
@@ -418,14 +418,14 @@ public final class LayoutResult {
     /**
      * Returns the width of this line (rightmost X position).
      * <p>
-     * Calculates the rightmost edge of all note columns in the line.
+     * Calculates the rightmost edge of all element columns in the line.
      *
      * @return Line width in staff-space units, or 0 if no columns
      */
     public double getLineWidthSs() {
         double maxX = 0;
 
-        for (var column : noteColumns.values()) {
+        for (var column : elementColumns.values()) {
             double rightEdge = column.getRightEdgeXSs();
 
             if (rightEdge > maxX) {
@@ -437,31 +437,31 @@ public final class LayoutResult {
     }
 
     // ==========================================================================
-    // Insertion Note Positioning (Edit Mode)
+    // Insertion Element Positioning (Edit Mode)
     // ==========================================================================
 
     /**
-     * Returns the index of the note whose head contains {@code mouseXSs}, or {@code -1} if none.
+     * Returns the index of the element whose head contains {@code mouseXSs}, or {@code -1} if none.
      * <p>
      * Only the horizontal (X) dimension is checked; Y position is ignored.
-     * The hit zone is the actual note head body: {@code [xSs, xSs + rightExtentSs]}.
+     * The hit zone is the actual element head body: {@code [xSs, xSs + rightExtentSs]}.
      *
      * @param mouseXSs Mouse X coordinate in staff-space units
-     * @param line     The line containing the notes
-     * @return Note index, or {@code -1} if mouseXSs is not within any note head's horizontal bounds
+     * @param line     The line containing the elements
+     * @return Element index, or {@code -1} if mouseXSs is not within any element head's horizontal bounds
      */
-    public int findNoteAtXSs(double mouseXSs, @NotNull songscribe.music.Line line) {
-        for (var i = 0; i < line.noteCount(); i++) {
-            var note = line.getNote(i);
-            var column = noteColumns.get(note);
+    public int findElementAtXSs(double mouseXSs, @NotNull songscribe.music.Line line) {
+        for (var i = 0; i < line.elementCount(); i++) {
+            var element = line.getElement(i);
+            var column = elementColumns.get(element);
 
             if (column == null) {
                 continue;
             }
 
-            var noteX = column.getXSs();
+            var elementX = column.getXSs();
 
-            if (mouseXSs >= noteX && mouseXSs <= noteX + column.getRightExtentSs()) {
+            if (mouseXSs >= elementX && mouseXSs <= elementX + column.getRightExtentSs()) {
                 return i;
             }
         }
@@ -472,38 +472,38 @@ public final class LayoutResult {
     /**
      * Finds which insertion slot a mouse X coordinate falls into.
      * <p>
-     * Insertion slots are the positions where a note can be inserted or replaced:
+     * Insertion slots are the positions where an element can be inserted or replaced:
      * <ul>
-     *   <li>Index 0 to noteCount-1: over an existing note (for replacement)</li>
-     *   <li>Index noteCount: after the last note (for appending)</li>
+     *   <li>Index 0 to elementCount-1: over an existing element (for replacement)</li>
+     *   <li>Index elementCount: after the last element (for appending)</li>
      * </ul>
      * <p>
-     * If the mouse is within the horizontal bounds of a note head, returns that note's index
-     * to indicate replacement. Otherwise, returns the insertion slot between notes.
+     * If the mouse is within the horizontal bounds of an element head, returns that element's index
+     * to indicate replacement. Otherwise, returns the insertion slot between elements.
      *
-     * @param mouseX Mouse X coordinate in staff-space units
-     * @param line   The line containing the notes
-     * @return Insertion index (0 to noteCount inclusive)
+     * @param mouseXSs Mouse X coordinate in staff-space units
+     * @param line     The line containing the elements
+     * @return Insertion index (0 to elementCount inclusive)
      */
     public int findInsertionIndex(double mouseXSs, @NotNull songscribe.music.Line line) {
-        int noteCount = line.noteCount();
+        int elementCount = line.elementCount();
 
-        if (noteCount == 0) {
+        if (elementCount == 0) {
             return 0;
         }
 
-        // Check each note to see if mouse is within its note head bounds
-        int noteAtX = findNoteAtXSs(mouseXSs, line);
+        // Check each element to see if mouse is within its head bounds
+        int elementAtX = findElementAtXSs(mouseXSs, line);
 
-        if (noteAtX >= 0) {
-            return noteAtX;
+        if (elementAtX >= 0) {
+            return elementAtX;
         }
 
-        // Mouse is not over any note head - find insertion slot between notes
+        // Mouse is not over any element head - find insertion slot between elements
 
-        // Check if before first note
-        var firstNote = line.getNote(0);
-        var firstColumn = noteColumns.get(firstNote);
+        // Check if before first element
+        var firstElement = line.getElement(0);
+        var firstColumn = elementColumns.get(firstElement);
 
         if (firstColumn == null) {
             return 0;
@@ -513,25 +513,25 @@ public final class LayoutResult {
             return 0;
         }
 
-        // Check if after last note
-        var lastNote = line.getNote(noteCount - 1);
-        var lastColumn = noteColumns.get(lastNote);
+        // Check if after last element
+        var lastElement = line.getElement(elementCount - 1);
+        var lastColumn = elementColumns.get(lastElement);
 
         if (lastColumn == null) {
-            return noteCount;
+            return elementCount;
         }
 
         if (mouseXSs > lastColumn.getRightEdgeXSs()) {
-            return noteCount;
+            return elementCount;
         }
 
-        // Find the slot between notes (excluding note head bounds)
-        for (var i = 0; i < noteCount - 1; i++) {
-            var currentNote = line.getNote(i);
-            var nextNote = line.getNote(i + 1);
+        // Find the slot between elements (excluding element head bounds)
+        for (var i = 0; i < elementCount - 1; i++) {
+            var currentElement = line.getElement(i);
+            var nextElement = line.getElement(i + 1);
 
-            var currentColumn = noteColumns.get(currentNote);
-            var nextColumn = noteColumns.get(nextNote);
+            var currentColumn = elementColumns.get(currentElement);
+            var nextColumn = elementColumns.get(nextElement);
 
             if (currentColumn == null || nextColumn == null) {
                 continue;
@@ -540,64 +540,64 @@ public final class LayoutResult {
             var currentRight = currentColumn.getRightEdgeXSs();
             var nextLeft = nextColumn.getXSs();
 
-            // Check if mouseXSs is in the gap between note heads
+            // Check if mouseXSs is in the gap between element heads
             if (mouseXSs > currentRight && mouseXSs < nextLeft) {
                 return i + 1;
             }
         }
 
-        // Fallback: return position after last note
-        return noteCount;
+        // Fallback: return position after last element
+        return elementCount;
     }
 
     /**
-     * Calculates the X position for rendering an insertion note at a given index.
+     * Calculates the X position for rendering an insertion element at a given index.
      * <p>
-     * If the mouse is within the horizontal bounds of a note head, snaps to that note's position.
-     * Otherwise, positions between notes or after the last note as appropriate.
+     * If the mouse is within the horizontal bounds of an element head, snaps to that element's position.
+     * Otherwise, positions between elements or after the last element as appropriate.
      *
-     * @param insertionIndex The insertion index (0 to noteCount inclusive)
-     * @param mouseX         Mouse X coordinate in staff-space units (used to detect if over a note head)
-     * @param insertionNote  The note to be inserted (used to calculate extents for after-last-note positioning)
-     * @param line           The line containing the notes
-     * @return X position in staff-space units for rendering the insertion note
+     * @param insertionIndex   The insertion index (0 to elementCount inclusive)
+     * @param mouseXSs         Mouse X coordinate in staff-space units (used to detect if over an element head)
+     * @param insertionElement The element to be inserted (used to calculate extents for after-last positioning)
+     * @param line             The line containing the elements
+     * @return X position in staff-space units for rendering the insertion element
      */
     public double calculateInsertionXSs(
         int insertionIndex,
         double mouseXSs,
-        @NotNull Note insertionNote,
+        @NotNull StaffElement insertionElement,
         @NotNull songscribe.music.Line line) {
 
-        int noteCount = line.noteCount();
+        int elementCount = line.elementCount();
 
-        // Empty line - use first note position (clef + key signature + offset)
-        if (noteCount == 0) {
-            return LayoutConstants.calculateFirstNoteXSs(line.getKeyAccidentalCount());
+        // Empty line - use first element position (clef + key signature + offset)
+        if (elementCount == 0) {
+            return LayoutConstants.calculateFirstElementXSs(line.getKeyAccidentalCount());
         }
 
-        // Check if mouse is over any note head - if so, snap to that note's position
-        for (var i = 0; i < noteCount; i++) {
-            var note = line.getNote(i);
-            var column = noteColumns.get(note);
+        // Check if mouse is over any element head - if so, snap to that element's position
+        for (var i = 0; i < elementCount; i++) {
+            var element = line.getElement(i);
+            var column = elementColumns.get(element);
 
             if (column == null) {
                 continue;
             }
 
-            var noteX = column.getXSs();
+            var elementX = column.getXSs();
 
-            if (mouseXSs >= noteX && mouseXSs <= noteX + column.getRightExtentSs()) {
-                // Mouse is over this note head - snap to its position
-                return noteX;
+            if (mouseXSs >= elementX && mouseXSs <= elementX + column.getRightExtentSs()) {
+                // Mouse is over this element head - snap to its position
+                return elementX;
             }
         }
 
-        // Mouse is not over a note head - handle insertion
+        // Mouse is not over an element head - handle insertion
 
-        // Before first note - position to the left
+        // Before first element - position to the left
         if (insertionIndex == 0) {
-            var firstNote = line.getNote(0);
-            var firstColumn = noteColumns.get(firstNote);
+            var firstElement = line.getElement(0);
+            var firstColumn = elementColumns.get(firstElement);
 
             if (firstColumn == null) {
                 return LayoutConstants.FIRST_NOTE_OFFSET_SS;
@@ -606,21 +606,21 @@ public final class LayoutResult {
             return firstColumn.getXSs() - INSERTION_BEFORE_FIRST_OFFSET_SS;
         }
 
-        // After last note - use same spacing logic as layout engine
-        if (insertionIndex >= noteCount) {
-            var lastNote = line.getNote(noteCount - 1);
-            var lastColumn = noteColumns.get(lastNote);
+        // After last element - use same spacing logic as layout engine
+        if (insertionIndex >= elementCount) {
+            var lastElement = line.getElement(elementCount - 1);
+            var lastColumn = elementColumns.get(lastElement);
 
             if (lastColumn == null) {
                 return LayoutConstants.FIRST_NOTE_OFFSET_SS;
             }
 
-            // Build a temporary column for the insertion note to calculate proper spacing
-            var insertionColumn = new NoteColumn(
-                insertionNote,
+            // Build a temporary column for the insertion element to calculate proper spacing
+            var insertionColumn = new ElementColumn(
+                insertionElement,
                 java.util.Collections.emptyList(),
-                NoteColumnBuilder.calculateLeftExtentSs(insertionNote),
-                NoteColumnBuilder.calculateRightExtentSs(insertionNote, false, true),
+                ElementColumnBuilder.calculateLeftExtentSs(insertionElement),
+                ElementColumnBuilder.calculateRightExtentSs(insertionElement, false, true),
                 0,
                 0,
                 null,
@@ -632,12 +632,12 @@ public final class LayoutResult {
             return HorizontalSpacingCalculator.calculateNextColumnXSs(lastColumn, insertionColumn);
         }
 
-        // Between notes - use midpoint
-        var prevNote = line.getNote(insertionIndex - 1);
-        var currNote = line.getNote(insertionIndex);
+        // Between elements - use midpoint
+        var prevElement = line.getElement(insertionIndex - 1);
+        var currElement = line.getElement(insertionIndex);
 
-        var prevColumn = noteColumns.get(prevNote);
-        var currColumn = noteColumns.get(currNote);
+        var prevColumn = elementColumns.get(prevElement);
+        var currColumn = elementColumns.get(currElement);
 
         if (prevColumn == null || currColumn == null) {
             return LayoutConstants.FIRST_NOTE_OFFSET_SS;
@@ -651,10 +651,10 @@ public final class LayoutResult {
     // ==========================================================================
 
     /**
-     * Returns the number of note columns in this result.
+     * Returns the number of element columns in this result.
      */
-    public int getNoteColumnCount() {
-        return noteColumns.size();
+    public int getElementColumnCount() {
+        return elementColumns.size();
     }
 
     /**
@@ -673,10 +673,10 @@ public final class LayoutResult {
      */
     public static class Builder {
 
-        private final Map<Note, NoteColumn> noteColumns;
+        private final Map<StaffElement, ElementColumn> elementColumns;
         private final Map<LineElement, Bounds> elementBounds;
         private final Map<Interval, BeamLayout> beamLayouts;
-        private final Map<Note, StemLayout> stemLayouts;
+        private final Map<StaffElement, StemLayout> stemLayouts;
         private final Map<Interval, TieLayout> tieLayouts;
         private double lineHeightSs = 0;
         private double staffTopYSs = 0;
@@ -684,7 +684,7 @@ public final class LayoutResult {
         private double lyricBaselineYSs = 0;
 
         public Builder() {
-            this.noteColumns = new HashMap<>();
+            this.elementColumns = new HashMap<>();
             this.elementBounds = new HashMap<>();
             this.beamLayouts = new HashMap<>();
             this.stemLayouts = new HashMap<>();
@@ -692,14 +692,14 @@ public final class LayoutResult {
         }
 
         /**
-         * Adds a note column to the result.
+         * Adds an element column to the result.
          *
-         * @param note   The note
-         * @param column The note's column with position
+         * @param element The element
+         * @param column  The element's column with position
          * @return This builder for chaining
          */
-        public Builder putNoteColumn(@NotNull Note note, @NotNull NoteColumn column) {
-            noteColumns.put(note, column);
+        public Builder putElementColumn(@NotNull StaffElement element, @NotNull ElementColumn column) {
+            elementColumns.put(element, column);
             return this;
         }
 
@@ -763,14 +763,14 @@ public final class LayoutResult {
         }
 
         /**
-         * Adds computed stem geometry for an unbeamed note.
+         * Adds computed stem geometry for an unbeamed element.
          *
-         * @param note       The note
+         * @param element    The element
          * @param stemLayout The computed stem geometry
          * @return This builder for chaining
          */
-        public Builder putStemLayout(@NotNull Note note, @NotNull StemLayout stemLayout) {
-            stemLayouts.put(note, stemLayout);
+        public Builder putStemLayout(@NotNull StaffElement element, @NotNull StemLayout stemLayout) {
+            stemLayouts.put(element, stemLayout);
             return this;
         }
 
@@ -793,7 +793,7 @@ public final class LayoutResult {
          */
         public LayoutResult build() {
             return new LayoutResult(
-                noteColumns,
+                elementColumns,
                 elementBounds,
                 beamLayouts,
                 stemLayouts,
@@ -819,7 +819,7 @@ public final class LayoutResult {
     public String toString() {
         return String.format(
             "LayoutResult{columns=%d, elements=%d, height=%.1f, staff=[%.1f, %.1f], lyrics=%.1f}",
-            noteColumns.size(),
+            elementColumns.size(),
             elementBounds.size(),
             lineHeightSs,
             staffTopYSs,
@@ -833,7 +833,7 @@ public final class LayoutResult {
     // ==========================================================================
 
     /**
-     * Immutable stem geometry for a single note, computed during layout.
+     * Immutable stem geometry for a single element, computed during layout.
      * <p>
      * All values are in staff-space units.
      *
@@ -855,18 +855,18 @@ public final class LayoutResult {
      * All values are in staff-space units unless noted.
      *
      * @param slope      Beam slope in staff-space units per staff-space unit (dimensionless)
-     * @param startYSs     Beam Y position at the first note's X coordinate
+     * @param startYSs     Beam Y position at the first element's X coordinate
      * @param stemsUp    True if stems point upward (beam below noteheads)
      * @param thickeningSs Extra beam thickness from the {@code 1/cos(angle)} raster correction (ss);
      *                   added symmetrically to the nominal {@code BEAM_DEPTH}
-     * @param stems      Stem geometry keyed by note, for every note in this beam group
+     * @param stems      Stem geometry keyed by element, for every element in this beam group
      */
     public record BeamLayout(
         double slope,
         double startYSs,
         boolean stemsUp,
         double thickeningSs,
-        @NotNull Map<Note, StemLayout> stems) {}
+        @NotNull Map<StaffElement, StemLayout> stems) {}
 
     /**
      * Immutable tie geometry, computed during layout.

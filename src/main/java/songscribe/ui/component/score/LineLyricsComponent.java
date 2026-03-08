@@ -111,7 +111,7 @@ public class LineLyricsComponent extends ScoreComponent {
             return;
         }
 
-        if (line.noteCount() == 0) {
+        if (line.elementCount() == 0) {
             return;
         }
 
@@ -148,8 +148,8 @@ public class LineLyricsComponent extends ScoreComponent {
      * @return true if the line has lyrics
      */
     private boolean hasLyrics() {
-        for (var i = 0; i < line.noteCount(); i++) {
-            var syllable = line.getNote(i).properties.syllable;
+        for (var i = 0; i < line.elementCount(); i++) {
+            var syllable = line.getElement(i).properties.syllable;
 
             if (syllable != null && !syllable.isEmpty() && !syllable.equals("_")) {
                 return true;

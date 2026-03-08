@@ -231,7 +231,7 @@ public final class DebugInspector {
         int x,
         int y,
         String label,
-        DebugState.ElementType type
+        DebugState.DebugElementType type
     ) {
         var bounds = section.getBounds();
 

@@ -22,7 +22,7 @@ package songscribe.ui.layout;
 
 import org.jetbrains.annotations.Nullable;
 
-import songscribe.music.Note;
+import songscribe.music.StaffElement;
 
 /**
  * Represents a fermata (pause/hold) attachment on a note.
@@ -47,12 +47,12 @@ public class FermataAttachment extends Attachment {
      *
      * @param parent The parent note
      */
-    public FermataAttachment(@Nullable Note parent) {
-        setParentNote(parent);
+    public FermataAttachment(@Nullable StaffElement parent) {
+        setOwnerElement(parent);
         setAlignment(Alignment.CENTER);
 
         if (parent != null) {
-            setParentElement(parent);
+            setOwnerElement(parent);
             setParentLine(parent.getParentLine());
         }
     }

@@ -20,22 +20,23 @@
 
 package songscribe.e2e;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import org.assertj.swing.edt.GuiActionRunner;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 
-import songscribe.music.NoteType;
+import songscribe.music.ElementType;
 import songscribe.ui.action.Actions;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
 /**
- * Milestone 1 E2E tests: note insertion, replacement, and pitch drag.
+ * Milestone 1 E2E tests: element insertion, replacement, and pitch drag.
  */
 @Order(1)
-class NoteInsertionTest extends E2ETest {
+class ElementInsertionTest extends E2ETest {
 
-    @Test @Order(1)
+    @Test
+    @Order(1)
     void testInsertQuarterNote() {
         selectDuration(Actions.QUARTER_NOTE_ACTION);
         var staffPositionSp = 0;
@@ -45,14 +46,15 @@ class NoteInsertionTest extends E2ETest {
         performLayout(0);
 
         var line = composition().getLine(0);
-        assertThat(line.noteCount()).isEqualTo(1);
+        assertThat(line.elementCount()).isEqualTo(1);
 
-        var note = line.getNote(0);
-        assertThat(note.getNoteType()).isEqualTo(NoteType.CROTCHET);
-        assertThat(note.getStaffPosition()).isEqualTo(staffPositionSp);
+        var element = line.getElement(0);
+        assertThat(element.getType()).isEqualTo(ElementType.CROTCHET);
+        assertThat(element.getStaffPosition()).isEqualTo(staffPositionSp);
     }
 
-    @Test @Order(2)
+    @Test
+    @Order(2)
     void testInsertEighthNote() {
         selectDuration(Actions.EIGHTH_NOTE_ACTION);
         var staffPositionSp = -2;
@@ -62,14 +64,15 @@ class NoteInsertionTest extends E2ETest {
         performLayout(0);
 
         var line = composition().getLine(0);
-        assertThat(line.noteCount()).isEqualTo(1);
+        assertThat(line.elementCount()).isEqualTo(1);
 
-        var note = line.getNote(0);
-        assertThat(note.getNoteType()).isEqualTo(NoteType.QUAVER);
-        assertThat(note.getStaffPosition()).isEqualTo(staffPositionSp);
+        var element = line.getElement(0);
+        assertThat(element.getType()).isEqualTo(ElementType.QUAVER);
+        assertThat(element.getStaffPosition()).isEqualTo(staffPositionSp);
     }
 
-    @Test @Order(3)
+    @Test
+    @Order(3)
     void testInsertHalfNote() {
         selectDuration(Actions.HALF_NOTE_ACTION);
         var staffPositionSp = 2;
@@ -79,14 +82,15 @@ class NoteInsertionTest extends E2ETest {
         performLayout(0);
 
         var line = composition().getLine(0);
-        assertThat(line.noteCount()).isEqualTo(1);
+        assertThat(line.elementCount()).isEqualTo(1);
 
-        var note = line.getNote(0);
-        assertThat(note.getNoteType()).isEqualTo(NoteType.MINIM);
-        assertThat(note.getStaffPosition()).isEqualTo(staffPositionSp);
+        var element = line.getElement(0);
+        assertThat(element.getType()).isEqualTo(ElementType.MINIM);
+        assertThat(element.getStaffPosition()).isEqualTo(staffPositionSp);
     }
 
-    @Test @Order(4)
+    @Test
+    @Order(4)
     void testInsertNoteAtDifferentStaffPositions() {
         selectDuration(Actions.QUARTER_NOTE_ACTION);
         var positions = new int[]{0, -4, 4, -8};
@@ -98,14 +102,15 @@ class NoteInsertionTest extends E2ETest {
         }
 
         var line = composition().getLine(0);
-        assertThat(line.noteCount()).isEqualTo(positions.length);
+        assertThat(line.elementCount()).isEqualTo(positions.length);
 
         for (var i = 0; i < positions.length; i++) {
-            assertThat(line.getNote(i).getStaffPosition()).isEqualTo(positions[i]);
+            assertThat(line.getElement(i).getStaffPosition()).isEqualTo(positions[i]);
         }
     }
 
-    @Test @Order(5)
+    @Test
+    @Order(5)
     void testInsertRest() {
         selectDuration(Actions.QUARTER_NOTE_ACTION);
         enableRestMode();
@@ -115,11 +120,12 @@ class NoteInsertionTest extends E2ETest {
         performLayout(0);
 
         var line = composition().getLine(0);
-        assertThat(line.noteCount()).isEqualTo(1);
-        assertThat(line.getNote(0).getNoteType().isRest()).isTrue();
+        assertThat(line.elementCount()).isEqualTo(1);
+        assertThat(line.getElement(0).getType().isRest()).isTrue();
     }
 
-    @Test @Order(6)
+    @Test
+    @Order(6)
     void testReplaceNoteAtSameXDifferentPitch() {
         // Insert a quarter note
         selectDuration(Actions.QUARTER_NOTE_ACTION);
@@ -128,7 +134,7 @@ class NoteInsertionTest extends E2ETest {
         performLayout(0);
 
         var line = composition().getLine(0);
-        assertThat(line.noteCount()).isEqualTo(1);
+        assertThat(line.elementCount()).isEqualTo(1);
 
         // Now select half note and click at the same X but different staff position
         selectDuration(Actions.HALF_NOTE_ACTION);
@@ -145,15 +151,16 @@ class NoteInsertionTest extends E2ETest {
         clickAt(replacementPoint);
         performLayout(0);
 
-        // Note count should remain the same (replacement, not addition)
-        assertThat(line.noteCount()).isEqualTo(1);
+        // Element count should remain the same (replacement, not addition)
+        assertThat(line.elementCount()).isEqualTo(1);
 
-        var note = line.getNote(0);
-        assertThat(note.getNoteType()).isEqualTo(NoteType.MINIM);
-        assertThat(note.getStaffPosition()).isEqualTo(newStaffPositionSp);
+        var element = line.getElement(0);
+        assertThat(element.getType()).isEqualTo(ElementType.MINIM);
+        assertThat(element.getStaffPosition()).isEqualTo(newStaffPositionSp);
     }
 
-    @Test @Order(7)
+    @Test
+    @Order(7)
     void testDragNoteToNewStaffPosition() {
         // Insert a quarter note at staff position 0
         selectDuration(Actions.QUARTER_NOTE_ACTION);
@@ -162,8 +169,8 @@ class NoteInsertionTest extends E2ETest {
         performLayout(0);
 
         var line = composition().getLine(0);
-        assertThat(line.noteCount()).isEqualTo(1);
-        var note = line.getNote(0);
+        assertThat(line.elementCount()).isEqualTo(1);
+        var element = line.getElement(0);
 
         // Click the note head to start a drag in edit mode
         var notePoint = noteScreenPosition(0, 0);
@@ -174,9 +181,9 @@ class NoteInsertionTest extends E2ETest {
         dragNote(0, 0, targetStaffPositionSp);
         performLayout(0);
 
-        // Same note object, updated staff position
-        assertThat(line.noteCount()).isEqualTo(1);
-        assertThat(note.getStaffPosition()).isEqualTo(targetStaffPositionSp);
+        // Same element object, updated staff position
+        assertThat(line.elementCount()).isEqualTo(1);
+        assertThat(element.getStaffPosition()).isEqualTo(targetStaffPositionSp);
     }
 
 

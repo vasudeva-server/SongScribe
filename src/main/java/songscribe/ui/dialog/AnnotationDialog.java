@@ -30,15 +30,15 @@ import org.jdesktop.layout.GroupLayout;
 import org.jdesktop.layout.LayoutStyle;
 
 import songscribe.music.Annotation;
-import songscribe.music.Note;
+import songscribe.music.StaffElement;
 import songscribe.util.FileUtils;
 
 /**
- * A dialog for adding or modifying an annotation to a note.
+ * A dialog for adding or modifying an annotation on an element.
  */
 public class AnnotationDialog extends StandardDialog {
 
-    private Note selectedNote = null;
+    private StaffElement selectedElement = null;
     private final JComboBox<String> annotationCombo;
     private final JButton removeButton;
     private final JRadioButton aboveButton;
@@ -60,7 +60,7 @@ public class AnnotationDialog extends StandardDialog {
         xPanel.setBorder(
             BorderFactory.createTitledBorder(
                 BorderFactory.createEtchedBorder(),
-                "Alignment for note"
+                "Alignment for element"
             )
         );
 
@@ -276,7 +276,7 @@ public class AnnotationDialog extends StandardDialog {
         removeButton = new JButton("Remove");
         removeButton.addActionListener(_ -> {
             var score = mainFrame.getScore();
-            selectedNote.setAnnotation(null);
+            selectedElement.setAnnotation(null);
             setVisible(false);
             score.repaint();
             mainFrame.setDocumentModified(true);
@@ -294,10 +294,10 @@ public class AnnotationDialog extends StandardDialog {
         var score = mainFrame.getScore();
         Annotation annotation = null;
         var hasExistingAnnotation = false;
-        selectedNote = score.getSingleSelectedNote();
+        selectedElement = score.getSingleSelectedElement();
 
-        if (selectedNote != null) {
-            annotation = selectedNote.getAnnotation();
+        if (selectedElement != null) {
+            annotation = selectedElement.getAnnotation();
         }
         if (annotation == null) {
             annotation = new Annotation("fine");
@@ -367,7 +367,7 @@ public class AnnotationDialog extends StandardDialog {
             annotation.setYPosPx(yPosPx);
         }
 
-        selectedNote.setAnnotation(annotation);
+        selectedElement.setAnnotation(annotation);
         mainFrame.setDocumentModified(true);
     }
 

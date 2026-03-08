@@ -205,7 +205,7 @@ public final class CompositionIO {
         private String lastTag;
 
         private final StringBuilder value = new StringBuilder(200);
-        private NoteIO.NoteReader noteReader = null;
+        private StaffElementIO.StaffElementReader noteReader = null;
         private TempoIO.TempoReader tempoReader = null;
         private LineIO.LineReader lineReader = null;
         private ViewIO.ViewReader viewReader = null;
@@ -241,7 +241,7 @@ public final class CompositionIO {
                         where = Where.COMPOSITION;
 
                         if ((majorVersion == 1) && (minorVersion == 0)) {
-                            noteReader = new NoteIO.NoteReader();
+                            noteReader = new StaffElementIO.StaffElementReader();
                             tempoReader = new TempoIO.TempoReader();
                         } else if ((majorVersion == 1) && (minorVersion == 1)) {
                             lineReader = new LineIO.LineReader();
@@ -458,7 +458,7 @@ public final class CompositionIO {
                     note.setXPosSs((int) Math.round(
                         InsertionSpacingCalculator.calculateAppendPositionSs(line, note)));
                     note.setUpper(Score.defaultUpperNote(note));
-                    line.addNote(note);
+                    line.addElement(note);
                 }
             } else if (where == Where.TEMPO_CHANGE) {
                 var tc = tempoReader.endElement10(qName);
@@ -467,24 +467,24 @@ public final class CompositionIO {
                     if (tempoReader.getPos10() == 0) {
                         composition.setTempo(tc);
                     } else {
-                        var firstNoteInLine = 0;
+                        var firstElementInLine = 0;
 
                         for (var l = 0; l < composition.lineCount(); l++) {
                             var line = composition.getLine(l);
 
                             if (
                                 tempoReader.getPos10() <
-                                    (firstNoteInLine + line.noteCount())
+                                    (firstElementInLine + line.elementCount())
                             ) {
                                 line
-                                    .getNote(
-                                        tempoReader.getPos10() - firstNoteInLine
+                                    .getElement(
+                                        tempoReader.getPos10() - firstElementInLine
                                     )
                                     .setTempoChange(tc);
                                 break;
                             }
 
-                            firstNoteInLine += line.noteCount() + 1;
+                            firstElementInLine += line.elementCount() + 1;
                         }
                     }
                 }
@@ -524,9 +524,9 @@ public final class CompositionIO {
             if ((where == Where.LINES) && (composition.lineCount() > 0)) {
                 var lastLine = composition.getLine(composition.lineCount() - 1);
 
-                for (var i = 0; i < lastLine.noteCount(); i++) {
-                    if (lastLine.getNote(i).getNoteType().isGraceNote()) {
-                        lastLine.getNote(i).setUpper(true);
+                for (var i = 0; i < lastLine.elementCount(); i++) {
+                    if (lastLine.getElement(i).getType().isGraceNote()) {
+                        lastLine.getElement(i).setUpper(true);
                     }
                 }
             }
@@ -885,7 +885,7 @@ public final class CompositionIO {
             // Reset them to 0 since layout will recalculate positions dynamically.
             if (!composition.hasBeenDynamicallyLaidOut()) {
                 for (var line : composition.getLines()) {
-                    for (var i = 0; i < line.noteCount(); i++) {
+                    for (var i = 0; i < line.elementCount(); i++) {
                         // line.getNote(i).setXPosSs(0);
                     }
                 }

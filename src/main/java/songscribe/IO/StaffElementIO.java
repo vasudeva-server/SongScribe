@@ -30,12 +30,12 @@ import org.xml.sax.Attributes;
 import songscribe.music.ArticulationType;
 import songscribe.music.BeatChange;
 import songscribe.music.DurationArticulation;
+import songscribe.music.ElementType;
 import songscribe.music.ForceArticulation;
-import songscribe.music.Note;
-import songscribe.music.NoteType;
+import songscribe.music.StaffElement;
 import songscribe.ui.layout.Articulation;
 
-public final class NoteIO {
+public final class StaffElementIO {
 
     // version 1.0
     private static final String XML_NOTE = "note";
@@ -69,18 +69,18 @@ public final class NoteIO {
     private static final String XML_STEM_DIRECTION_AUTO = "stemDirectionAuto";
     private static final String XML_INVERT_FRACTION_BEAM_ORIENTATION =
         "invertfractionbeamorientation";
-    private static final Map<String, Note.Accidental> NOTE_ACCIDENTAL_MAP =
+    private static final Map<String, StaffElement.Accidental> ACCIDENTAL_MAP =
         new HashMap<>();
     private static final Map<String, BeatChange> BEAT_CHANGE_MAP =
         new HashMap<>();
 
     static {
-        for (var accidental : Note.Accidental.values()) {
+        for (var accidental : StaffElement.Accidental.values()) {
             var accidentalName = accidental.name();
-            NOTE_ACCIDENTAL_MAP.put(accidentalName, accidental);
+            ACCIDENTAL_MAP.put(accidentalName, accidental);
 
             if (accidentalName.contains("_")) {
-                NOTE_ACCIDENTAL_MAP.put(
+                ACCIDENTAL_MAP.put(
                     accidentalName.replace("_", ""),
                     accidental
                 );
@@ -112,44 +112,44 @@ public final class NoteIO {
         );
     }
 
-    private NoteIO() {
+    private StaffElementIO() {
     }
 
-    public static void writeNote(Note note, PrintWriter writer) {
+    public static void writeElement(StaffElement element, PrintWriter writer) {
         writer.println(
             "          <" +
                 XML_NOTE +
                 ' ' +
                 XML_TYPE +
                 "=\"" +
-                note.getNoteType().name() +
+                element.getType().name() +
                 "\">"
         );
         XML.setIndent(12);
 
-        if (note.getXOffset() != 0) {
-            XML.writeValue(writer, XML_XPOS, Integer.toString(note.getXOffset()));
+        if (element.getXOffset() != 0) {
+            XML.writeValue(writer, XML_XPOS, Integer.toString(element.getXOffset()));
         }
 
-        XML.writeValue(writer, XML_STAFF_POSITION, Integer.toString(note.getStaffPosition()));
+        XML.writeValue(writer, XML_STAFF_POSITION, Integer.toString(element.getStaffPosition()));
 
-        if (note.getDotCount() != 0) {
+        if (element.getDotCount() != 0) {
             XML.writeValue(
                 writer,
                 XML_DOTTED,
-                Integer.toString(note.getDotCount())
+                Integer.toString(element.getDotCount())
             );
         }
 
-        if (note.getAccidental() != Note.Accidental.NONE) {
-            XML.writeValue(writer, XML_PREFIX, note.getAccidental().name());
+        if (element.getAccidental() != StaffElement.Accidental.NONE) {
+            XML.writeValue(writer, XML_PREFIX, element.getAccidental().name());
         }
 
-        if (note.isAccidentalInParentheses()) {
+        if (element.isAccidentalInParentheses()) {
             XML.writeEmptyTag(writer, XML_PREFIX_IN_PARENTHESIS);
         }
 
-        for (var articulation : note.getArticulations()) {
+        for (var articulation : element.getArticulations()) {
             switch (articulation.getType()) {
                 case ACCENT -> XML.writeValue(
                     writer,
@@ -165,79 +165,79 @@ public final class NoteIO {
         }
 
         //noinspection ObjectEquality
-        if (note.getGlissando() != Note.NO_GLISSANDO) {
+        if (element.getGlissando() != StaffElement.NO_GLISSANDO) {
             XML.writeValue(
                 writer,
                 XML_GLISSANDO,
-                note.getGlissando().type.name()
+                element.getGlissando().type.name()
             );
 
-            if (note.getGlissando().x1Translate != 0) {
+            if (element.getGlissando().x1Translate != 0) {
                 XML.writeValue(
                     writer,
                     XML_GLISSANDO_X1_TRANSLATE,
-                    Double.toString(note.getGlissando().x1Translate)
+                    Double.toString(element.getGlissando().x1Translate)
                 );
             }
 
-            if (note.getGlissando().x2Translate != 0) {
+            if (element.getGlissando().x2Translate != 0) {
                 XML.writeValue(
                     writer,
                     XML_GLISSANDO_X2_TRANSLATE,
-                    Double.toString(note.getGlissando().x2Translate)
+                    Double.toString(element.getGlissando().x2Translate)
                 );
             }
         }
 
-        if (!note.isStemDirectionAuto()) {
+        if (!element.isStemDirectionAuto()) {
             XML.writeEmptyTag(writer, XML_STEM_DIRECTION_AUTO);
         }
 
-        if (note.isUpper()) {
+        if (element.isUpper()) {
             XML.writeEmptyTag(writer, XML_UPPER);
         }
 
-        if (note.getSyllableMovement() != 0) {
+        if (element.getSyllableMovement() != 0) {
             XML.writeValue(
                 writer,
                 XML_SYLLABLE_MOVEMENT,
-                Integer.toString(note.getSyllableMovement())
+                Integer.toString(element.getSyllableMovement())
             );
         }
 
-        if (note.getSyllableRelationMovement() != 0) {
+        if (element.getSyllableRelationMovement() != 0) {
             XML.writeValue(
                 writer,
                 XML_SYLLABLE_RELATION_MOVEMENT,
-                Integer.toString(note.getSyllableRelationMovement())
+                Integer.toString(element.getSyllableRelationMovement())
             );
         }
 
-        if (note.getTempoChange() != null) {
-            TempoIO.writeTempo(note.getTempoChange(), writer, 12);
+        if (element.getTempoChange() != null) {
+            TempoIO.writeTempo(element.getTempoChange(), writer, 12);
         }
 
-        if (note.getAnnotation() != null) {
-            AnnotationIO.writeAnnotation(note.getAnnotation(), writer, 12);
+        if (element.getAnnotation() != null) {
+            AnnotationIO.writeAnnotation(element.getAnnotation(), writer, 12);
         }
 
-        if (note.isTrill()) {
+        if (element.isTrill()) {
             XML.writeEmptyTag(writer, XML_TRILL);
         }
 
-        if (note.isFermata()) {
+        if (element.isFermata()) {
             XML.writeEmptyTag(writer, XML_FERMATA);
         }
 
-        if (note.isForceSyllable()) {
+        if (element.isForceSyllable()) {
             XML.writeEmptyTag(writer, XML_FORCE_SYLLABLE);
         }
 
-        if (note.getBeatChange() != null) {
+        if (element.getBeatChange() != null) {
             XML.writeValue(
                 writer,
                 XML_BEAT_CHANGE,
-                note.getBeatChange().name()
+                element.getBeatChange().name()
             );
         }
 
@@ -245,9 +245,9 @@ public final class NoteIO {
         writer.println("          </" + XML_NOTE + '>');
     }
 
-    public static class NoteReader {
+    public static class StaffElementReader {
 
-        private Note note = null;
+        private StaffElement element = null;
 
         @Nullable
         private String lastTag;
@@ -263,7 +263,7 @@ public final class NoteIO {
             throws NewLineException {
             if (qName.equals(XML_NOTE)) {
                 lastTag = null;
-                where = Where.NOTE;
+                where = Where.ELEMENT;
                 var type = attributes.getValue(XML_TYPE);
 
                 if (type.equals("NEWLINE")) {
@@ -271,15 +271,15 @@ public final class NoteIO {
                     throw new NewLineException();
                 }
                 if (type.equals("LINE")) {
-                    type = NoteType.SINGLE_BARLINE.name();
+                    type = ElementType.SINGLE_BARLINE.name();
                 }
                 if (type.equals("GRACE_SEMIQUAVER") ||
                     type.equals("GRACE_SEMIQUAVER_EDIT_STEP1") ||
                     type.equals("GRACESEMIQUAVER")) {
-                    type = NoteType.GRACE_QUAVER.name();
+                    type = ElementType.GRACE_QUAVER.name();
                 }
 
-                note = NoteType.valueOf(type).newInstance();
+                element = ElementType.valueOf(type).newInstance();
             } else {
                 lastTag = qName;
             }
@@ -294,19 +294,19 @@ public final class NoteIO {
                 annotationReader.startElement11(qName);
             } else if (qName.equals(XML_NOTE)) {
                 lastTag = null;
-                where = Where.NOTE;
+                where = Where.ELEMENT;
 
                 var type = attributes.getValue(XML_TYPE);
 
                 if (type.equals("VERTICALLINE")) {
-                    note = NoteType.SINGLE_BARLINE.newInstance();
+                    element = ElementType.SINGLE_BARLINE.newInstance();
                 } else {
                     if (type.equals("GRACE_SEMIQUAVER") ||
                         type.equals("GRACE_SEMIQUAVER_EDIT_STEP1")) {
-                        type = NoteType.GRACE_QUAVER.name();
+                        type = ElementType.GRACE_QUAVER.name();
                     }
 
-                    note = NoteType.valueOf(type).newInstance();
+                    element = ElementType.valueOf(type).newInstance();
                 }
             } else if (qName.equals(TempoIO.XML_TEMPO)) {
                 where = Where.TEMPO_CHANGE;
@@ -316,7 +316,7 @@ public final class NoteIO {
                 where = Where.ANNOTATION;
                 annotationReader = new AnnotationIO.AnnotationReader();
                 annotationReader.startElement11(qName);
-            } else if (where == Where.NOTE) {
+            } else if (where == Where.ELEMENT) {
                 lastTag = qName;
             }
 
@@ -324,100 +324,100 @@ public final class NoteIO {
         }
 
         @Nullable
-        public Note endElement10(String qName) {
+        public StaffElement endElement10(String qName) {
             return endElement11(qName);
         }
 
         @Nullable
-        public Note endElement11(String qName) {
+        public StaffElement endElement11(String qName) {
             if (where == Where.TEMPO_CHANGE) {
                 var t = tempoReader.endElement11(qName);
 
                 if (t != null) {
-                    note.setTempoChange(t);
-                    where = Where.NOTE;
+                    element.setTempoChange(t);
+                    where = Where.ELEMENT;
                 }
             } else if (where == Where.ANNOTATION) {
                 var a = annotationReader.endElement11(qName);
 
                 if (a != null) {
-                    note.setAnnotation(a);
-                    where = Where.NOTE;
+                    element.setAnnotation(a);
+                    where = Where.ELEMENT;
                 }
-            } else if (where == Where.NOTE) {
+            } else if (where == Where.ELEMENT) {
                 if (qName.equals(XML_NOTE)) {
-                    return note;
+                    return element;
                 }
                 if (qName.equals(lastTag)) {
                     var str = value.toString();
 
                     if (lastTag.equals(XML_XPOS)) {
-                        note.setXPosSs(Integer.parseInt(str));
+                        element.setXPosSs(Integer.parseInt(str));
                     } else if (lastTag.equals(XML_STAFF_POSITION) ||
                         lastTag.equals(XML_YPOS)) {
-                        note.setStaffPosition(Integer.parseInt(str));
+                        element.setStaffPosition(Integer.parseInt(str));
                     } else if (lastTag.equals(XML_DOTTED)) {
-                        note.setDotCount(Integer.parseInt(str));
+                        element.setDotCount(Integer.parseInt(str));
                     } else if (lastTag.equals(XML_PREFIX)) {
-                        note.setAccidental(NOTE_ACCIDENTAL_MAP.get(str));
+                        element.setAccidental(ACCIDENTAL_MAP.get(str));
                     } else if (lastTag.equals(XML_PREFIX_IN_PARENTHESIS)) {
-                        note.setAccidentalInParentheses(true);
+                        element.setAccidentalInParentheses(true);
                     } else if (
                         lastTag.equals(XML_VOLUME) && str.equals("LOUDER")
                     ) { //old
-                        note.setForceArticulation(ForceArticulation.ACCENT);
-                        note.addArticulation(
-                            new Articulation(note, ArticulationType.ACCENT)
+                        element.setForceArticulation(ForceArticulation.ACCENT);
+                        element.addArticulation(
+                            new Articulation(element, ArticulationType.ACCENT)
                         );
                     } else if (lastTag.equals(XML_FORCE_ARTICULATION)) {
-                        note.setForceArticulation(
+                        element.setForceArticulation(
                             ForceArticulation.valueOf(str)
                         );
-                        note.addArticulation(
-                            new Articulation(note, ArticulationType.ACCENT)
+                        element.addArticulation(
+                            new Articulation(element, ArticulationType.ACCENT)
                         );
                     } else if (lastTag.equals(XML_DURATION_ARTICULATION)) {
-                        note.setDurationArticulation(
+                        element.setDurationArticulation(
                             DurationArticulation.valueOf(str)
                         );
-                        note.addArticulation(
-                            new Articulation(note, ArticulationType.STACCATO)
+                        element.addArticulation(
+                            new Articulation(element, ArticulationType.STACCATO)
                         );
                     } else if (lastTag.equals(XML_GLISSANDO)) {
                         // Legacy files stored an integer pitch; treat those as CONNECTED.
-                        Note.Glissando.Type type;
+                        StaffElement.Glissando.Type type;
 
                         try {
-                            type = Note.Glissando.Type.valueOf(str);
+                            type = StaffElement.Glissando.Type.valueOf(str);
                         } catch (IllegalArgumentException e) {
-                            type = Note.Glissando.Type.CONNECTED;
+                            type = StaffElement.Glissando.Type.CONNECTED;
                         }
 
-                        note.setGlissando(type);
+                        element.setGlissando(type);
                     } else if (lastTag.equals(XML_GLISSANDO_X1_TRANSLATE)) {
-                        note.getGlissando().x1Translate = Double.parseDouble(str);
+                        element.getGlissando().x1Translate = Double.parseDouble(str);
                     } else if (lastTag.equals(XML_GLISSANDO_X2_TRANSLATE)) {
-                        note.getGlissando().x2Translate = Double.parseDouble(str);
+                        element.getGlissando().x2Translate = Double.parseDouble(str);
                     } else if (lastTag.equals(XML_UPPER)) {
-                        note.setUpper(true);
+                        element.setUpper(true);
                     } else if (lastTag.equals(XML_SYLLABLE_MOVEMENT)) {
-                        note.setSyllableMovement(Integer.parseInt(str));
+                        element.setSyllableMovement(Integer.parseInt(str));
                     } else if (lastTag.equals(XML_SYLLABLE_RELATION_MOVEMENT)) {
-                        note.setSyllableRelationMovement(Integer.parseInt(str));
+                        element.setSyllableRelationMovement(Integer.parseInt(str));
                     } else if (lastTag.equals(XML_TRILL)) {
-                        note.setTrill(true);
+                        element.setTrill(true);
                     } else if (lastTag.equals(XML_FERMATA)) {
-                        note.setFermata(true);
+                        element.setFermata(true);
                     } else if (lastTag.equals(XML_FORCE_SYLLABLE)) {
-                        note.setForceSyllable(true);
+                        element.setForceSyllable(true);
                     } else if (lastTag.equals(XML_STEM_DIRECTION_AUTO)) {
-                        note.setStemDirectionAuto(false);
+                        element.setStemDirectionAuto(false);
                     } else if (
                         lastTag.equals(XML_INVERT_FRACTION_BEAM_ORIENTATION)
                     ) {
                         // Silently ignored — partial beam stub direction is now automatic.
                     } else if (lastTag.equals(XML_BEAT_CHANGE)) {
-                        note.setBeatChange(BEAT_CHANGE_MAP.get(str));
+                        element.setBeatChange(BEAT_CHANGE_MAP.get(str));
                     }
                 }
             }
@@ -432,13 +432,13 @@ public final class NoteIO {
                 tempoReader.characters(ch, start, lenght);
             } else if (where == Where.ANNOTATION) {
                 annotationReader.characters(ch, start, lenght);
-            } else if ((where == Where.NOTE) && (lastTag != null)) {
+            } else if ((where == Where.ELEMENT) && (lastTag != null)) {
                 value.append(ch, start, lenght);
             }
         }
 
         private enum Where {
-            NOTE,
+            ELEMENT,
             TEMPO_CHANGE,
             ANNOTATION,
         }

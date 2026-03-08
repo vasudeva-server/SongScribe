@@ -66,7 +66,7 @@ public final class AttachmentLayout {
     }
 
     private final @NotNull Type type;
-    private final int noteIndex;
+    private final int elementIndex;
     private final @NotNull Point position;
     private final @NotNull ElementBounds bounds;
     private final @Nullable Object data;
@@ -75,20 +75,20 @@ public final class AttachmentLayout {
      * Creates attachment layout.
      *
      * @param type      Type of attachment
-     * @param noteIndex Index of the note this attaches to
+     * @param elementIndex Index of the element this attaches to
      * @param position  Rendered position (X, Y)
      * @param bounds    Element bounds for hit testing
      * @param data      Type-specific data (e.g., tempo value, annotation text)
      */
     public AttachmentLayout(
         @NotNull Type type,
-        int noteIndex,
+        int elementIndex,
         @NotNull Point position,
         @NotNull ElementBounds bounds,
         @Nullable Object data
     ) {
         this.type = type;
-        this.noteIndex = noteIndex;
+        this.elementIndex = elementIndex;
         this.position = position;
         this.bounds = bounds;
         this.data = data;
@@ -99,11 +99,11 @@ public final class AttachmentLayout {
      */
     public AttachmentLayout(
         @NotNull Type type,
-        int noteIndex,
+        int elementIndex,
         @NotNull Point position,
         @NotNull ElementBounds bounds
     ) {
-        this(type, noteIndex, position, bounds, null);
+        this(type, elementIndex, position, bounds, null);
     }
 
     /**
@@ -116,8 +116,8 @@ public final class AttachmentLayout {
     /**
      * Returns the index of the note this attachment belongs to.
      */
-    public int getNoteIndex() {
-        return noteIndex;
+    public int getElementIndex() {
+        return elementIndex;
     }
 
     /**
@@ -199,7 +199,7 @@ public final class AttachmentLayout {
     public String toString() {
         return "AttachmentLayout{" +
             "type=" + type +
-            ", noteIndex=" + noteIndex +
+            ", elementIndex=" + elementIndex +
             ", pos=(" + position.x + "," + position.y + ")" +
             (data != null ? ", data=" + data : "") +
             "}";

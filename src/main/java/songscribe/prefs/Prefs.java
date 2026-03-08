@@ -57,7 +57,8 @@ public final class Prefs {
 
     static {
         var map = new HashMap<String, String>();
-        map.put("playinsertingnote", "playInsertingNote");
+        map.put("playinsertingnote", "playInsertedNote");
+        map.put("playInsertingNote", "playInsertedNote");
         map.put("withrepeat", "playWithRepeats");
         map.put("defaultprofile", "defaultProfile");
         map.put("strip-short-a", "stripShortA");

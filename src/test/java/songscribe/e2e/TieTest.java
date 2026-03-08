@@ -20,20 +20,20 @@
 
 package songscribe.e2e;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import org.assertj.swing.edt.GuiActionRunner;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 
+import songscribe.data.TieInterval;
 import songscribe.music.Composition;
+import songscribe.music.ElementType;
 import songscribe.music.KeyType;
 import songscribe.music.Line;
-import songscribe.music.Note.Accidental;
-import songscribe.music.NoteType;
-import songscribe.data.TieInterval;
+import songscribe.music.StaffElement.Accidental;
 import songscribe.ui.action.Actions;
 import songscribe.ui.component.MainFrame;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Milestone 3 E2E tests: tie creation, removal, selection semantics, drag.
@@ -41,7 +41,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 @Order(4)
 class TieTest extends E2ETest {
 
-    @Test @Order(1)
+    @Test
+    @Order(1)
     void testCreateTieViaSelection() {
         buildTwoAdjacentNotes();
 
@@ -68,7 +69,8 @@ class TieTest extends E2ETest {
         assertThat(tie.getEnd()).isEqualTo(1);
     }
 
-    @Test @Order(2)
+    @Test
+    @Order(2)
     void testRemoveTieViaToggle() {
         buildTiedNotes();
 
@@ -90,7 +92,8 @@ class TieTest extends E2ETest {
         assertThat(isTied(0, 1)).isFalse();
     }
 
-    @Test @Order(3)
+    @Test
+    @Order(3)
     void testTiePersistsThroughSaveLoad() throws Exception {
         buildTiedNotes();
 
@@ -108,7 +111,8 @@ class TieTest extends E2ETest {
         assertThat(reloadedTie.getEnd()).isEqualTo(tie.getEnd());
     }
 
-    @Test @Order(4)
+    @Test
+    @Order(4)
     void testSelectTiedNotesEnablesTieToggle() {
         buildTiedNotes();
 
@@ -127,12 +131,13 @@ class TieTest extends E2ETest {
         assertThat(lss.getTieInterval()).isNotNull();
     }
 
-    @Test @Order(5)
+    @Test
+    @Order(5)
     void testDragTiedNoteMovesOther() {
         buildTiedNotes();
 
         var line = composition().getLine(0);
-        var originalSp = line.getNote(0).getStaffPosition();
+        var originalSp = line.getElement(0).getStaffPosition();
 
         // Enter edit mode (drag works in edit mode)
         enterEditMode();
@@ -143,12 +148,13 @@ class TieTest extends E2ETest {
         performLayout(0);
 
         // Both tied notes should have moved to the new staff position
-        assertThat(line.getNote(0).getStaffPosition()).isEqualTo(targetSp);
-        assertThat(line.getNote(1).getStaffPosition()).isEqualTo(targetSp);
+        assertThat(line.getElement(0).getStaffPosition()).isEqualTo(targetSp);
+        assertThat(line.getElement(1).getStaffPosition()).isEqualTo(targetSp);
     }
 
 
-    @Test @Order(6)
+    @Test
+    @Order(6)
     void testCannotTieSamePositionDifferentAccidental() {
         // B natural (sp=0) and B# (sp=0) — same staff position, different pitch
         buildNotes(0, Accidental.NATURAL, 0, Accidental.SHARP);
@@ -161,7 +167,8 @@ class TieTest extends E2ETest {
         assertThat(lss.canToggleTie()).isFalse();
     }
 
-    @Test @Order(7)
+    @Test
+    @Order(7)
     void testCanTieEnharmonicNotes() {
         // B# (sp=0, pitch 72) and C (sp=-1, pitch 72) — different position, same pitch
         buildNotes(0, Accidental.SHARP, -1, Accidental.NONE);
@@ -174,7 +181,8 @@ class TieTest extends E2ETest {
         assertThat(lss.canToggleTie()).isTrue();
     }
 
-    @Test @Order(8)
+    @Test
+    @Order(8)
     void testCanTieWithInheritedAccidental() {
         // F# (sp=4, explicit sharp) then F (sp=4, NONE) — inherits sharp, same pitch
         buildNotes(4, Accidental.SHARP, 4, Accidental.NONE);
@@ -187,7 +195,8 @@ class TieTest extends E2ETest {
         assertThat(lss.canToggleTie()).isTrue();
     }
 
-    @Test @Order(9)
+    @Test
+    @Order(9)
     void testCannotTieWhenNaturalCancelsInheritedAccidental() {
         // F# (sp=4), F (sp=4, NONE inherits sharp), F natural (sp=4, explicit natural)
         // Tying last two: F# vs F natural — different pitch
@@ -201,7 +210,8 @@ class TieTest extends E2ETest {
         assertThat(lss.canToggleTie()).isFalse();
     }
 
-    @Test @Order(10)
+    @Test
+    @Order(10)
     void testCanTieWithKeySignatureAccidental() {
         // Db major (5 flats): B at sp=0 gets Bb from key signature.
         // Two notes at sp=0 with NONE accidental should both resolve to Bb.
@@ -215,7 +225,8 @@ class TieTest extends E2ETest {
         assertThat(lss.canToggleTie()).isTrue();
     }
 
-    @Test @Order(11)
+    @Test
+    @Order(11)
     void testCanTieAfterNaturalFlatResetsToKeySignature() {
         // Db major: G at sp=-5 is Gb from key signature.
         // G (Gb from key sig), Gbb, G natural-flat (Gb), G (inherits natural-flat = Gb).
@@ -226,23 +237,23 @@ class TieTest extends E2ETest {
             line.setKeyType(KeyType.FLATS);
             line.setKeyAccidentalCount(5);
 
-            var note1 = NoteType.CROTCHET.newInstance();
+            var note1 = ElementType.CROTCHET.newInstance();
             note1.setStaffPosition(-5);
-            line.addNote(note1);
+            line.addElement(note1);
 
-            var note2 = NoteType.CROTCHET.newInstance();
+            var note2 = ElementType.CROTCHET.newInstance();
             note2.setStaffPosition(-5);
             note2.setAccidental(Accidental.DOUBLE_FLAT);
-            line.addNote(note2);
+            line.addElement(note2);
 
-            var note3 = NoteType.CROTCHET.newInstance();
+            var note3 = ElementType.CROTCHET.newInstance();
             note3.setStaffPosition(-5);
             note3.setAccidental(Accidental.NATURAL_FLAT);
-            line.addNote(note3);
+            line.addElement(note3);
 
-            var note4 = NoteType.CROTCHET.newInstance();
+            var note4 = ElementType.CROTCHET.newInstance();
             note4.setStaffPosition(-5);
-            line.addNote(note4);
+            line.addElement(note4);
 
             composition.addLine(0, line);
             score().setComposition(composition);
@@ -265,13 +276,13 @@ class TieTest extends E2ETest {
             var composition = new Composition(MainFrame.getInstance());
             var line = new Line();
 
-            var note1 = NoteType.CROTCHET.newInstance();
+            var note1 = ElementType.CROTCHET.newInstance();
             note1.setStaffPosition(0);
-            line.addNote(note1);
+            line.addElement(note1);
 
-            var note2 = NoteType.CROTCHET.newInstance();
+            var note2 = ElementType.CROTCHET.newInstance();
             note2.setStaffPosition(0);
-            line.addNote(note2);
+            line.addElement(note2);
 
             composition.addLine(0, line);
             score().setComposition(composition);
@@ -285,13 +296,13 @@ class TieTest extends E2ETest {
             var composition = new Composition(MainFrame.getInstance());
             var line = new Line();
 
-            var note1 = NoteType.CROTCHET.newInstance();
+            var note1 = ElementType.CROTCHET.newInstance();
             note1.setStaffPosition(0);
-            line.addNote(note1);
+            line.addElement(note1);
 
-            var note2 = NoteType.CROTCHET.newInstance();
+            var note2 = ElementType.CROTCHET.newInstance();
             note2.setStaffPosition(0);
-            line.addNote(note2);
+            line.addElement(note2);
 
             line.getTies().addInterval(new TieInterval(0, 1));
 
@@ -307,15 +318,15 @@ class TieTest extends E2ETest {
             var composition = new Composition(MainFrame.getInstance());
             var line = new Line();
 
-            var note1 = NoteType.CROTCHET.newInstance();
+            var note1 = ElementType.CROTCHET.newInstance();
             note1.setStaffPosition(sp1);
             note1.setAccidental(acc1);
-            line.addNote(note1);
+            line.addElement(note1);
 
-            var note2 = NoteType.CROTCHET.newInstance();
+            var note2 = ElementType.CROTCHET.newInstance();
             note2.setStaffPosition(sp2);
             note2.setAccidental(acc2);
-            line.addNote(note2);
+            line.addElement(note2);
 
             composition.addLine(0, line);
             score().setComposition(composition);
@@ -329,19 +340,19 @@ class TieTest extends E2ETest {
             var composition = new Composition(MainFrame.getInstance());
             var line = new Line();
 
-            var note1 = NoteType.CROTCHET.newInstance();
+            var note1 = ElementType.CROTCHET.newInstance();
             note1.setStaffPosition(4);
             note1.setAccidental(Accidental.SHARP);
-            line.addNote(note1);
+            line.addElement(note1);
 
-            var note2 = NoteType.CROTCHET.newInstance();
+            var note2 = ElementType.CROTCHET.newInstance();
             note2.setStaffPosition(4);
-            line.addNote(note2);
+            line.addElement(note2);
 
-            var note3 = NoteType.CROTCHET.newInstance();
+            var note3 = ElementType.CROTCHET.newInstance();
             note3.setStaffPosition(4);
             note3.setAccidental(Accidental.NATURAL);
-            line.addNote(note3);
+            line.addElement(note3);
 
             composition.addLine(0, line);
             score().setComposition(composition);
@@ -360,15 +371,15 @@ class TieTest extends E2ETest {
             line.setKeyType(keyType);
             line.setKeyAccidentalCount(keyCount);
 
-            var note1 = NoteType.CROTCHET.newInstance();
+            var note1 = ElementType.CROTCHET.newInstance();
             note1.setStaffPosition(sp1);
             note1.setAccidental(acc1);
-            line.addNote(note1);
+            line.addElement(note1);
 
-            var note2 = NoteType.CROTCHET.newInstance();
+            var note2 = ElementType.CROTCHET.newInstance();
             note2.setStaffPosition(sp2);
             note2.setAccidental(acc2);
-            line.addNote(note2);
+            line.addElement(note2);
 
             composition.addLine(0, line);
             score().setComposition(composition);

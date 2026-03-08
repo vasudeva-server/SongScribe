@@ -55,7 +55,8 @@ public final class LineIO {
     private static final String XML_CRESCENDO = "crescendo";
     private static final String XML_DIMINUENDO = "diminuendo";
 
-    private LineIO() {}
+    private LineIO() {
+    }
 
     public static void writeLine(Line l, PrintWriter pw) {
         pw.println("    <" + XML_LINE + '>');
@@ -64,7 +65,7 @@ public final class LineIO {
         if (
             (l.getKeyAccidentalCount() !=
                 l.getComposition().getDefaultKeyAccidentalCount()) ||
-            (l.getKeyType() != l.getComposition().getDefaultKeyType())
+                (l.getKeyType() != l.getComposition().getDefaultKeyType())
         ) {
             XML.writeValue(
                 pw,
@@ -74,11 +75,11 @@ public final class LineIO {
             XML.writeValue(pw, XML_KEYTYPE, l.getKeyType().name());
         }
 
-        if (l.getNoteDistChangeRatio() != 1f) {
+        if (l.getElementDistChangeRatio() != 1f) {
             XML.writeValue(
                 pw,
                 XML_NOTE_DIST_CHANGE,
-                Float.toString(l.getNoteDistChangeRatio())
+                Float.toString(l.getElementDistChangeRatio())
             );
         }
 
@@ -132,8 +133,8 @@ public final class LineIO {
 
         pw.println("      <" + XML_NOTES + '>');
 
-        for (var i = 0; i < l.noteCount(); i++) {
-            NoteIO.writeNote(l.getNote(i), pw);
+        for (var i = 0; i < l.elementCount(); i++) {
+            StaffElementIO.writeElement(l.getElement(i), pw);
         }
 
         pw.println("      </" + XML_NOTES + '>');
@@ -143,7 +144,7 @@ public final class LineIO {
     private static String intervalToString(IntervalSet<? extends Interval> is) {
         var sb = new StringBuilder(27);
 
-        for (var li = is.listIterator(); li.hasNext();) {
+        for (var li = is.listIterator(); li.hasNext(); ) {
             var i = li.next();
             sb.append(i.getStart());
             sb.append(',');
@@ -163,7 +164,7 @@ public final class LineIO {
     private static String tupletIntervalToString(IntervalSet<TupletInterval> is) {
         var sb = new StringBuilder(27);
 
-        for (var li = is.listIterator(); li.hasNext();) {
+        for (var li = is.listIterator(); li.hasNext(); ) {
             var i = li.next();
             sb.append(i.getStart());
             sb.append(',');
@@ -185,7 +186,7 @@ public final class LineIO {
     private static String dynamicsIntervalToString(IntervalSet<DynamicsInterval> is) {
         var sb = new StringBuilder(27);
 
-        for (var li = is.listIterator(); li.hasNext();) {
+        for (var li = is.listIterator(); li.hasNext(); ) {
             var i = li.next();
             sb.append(i.getStart());
             sb.append(',');
@@ -213,7 +214,7 @@ public final class LineIO {
         @Nullable
         private String lastTag;
 
-        private NoteIO.NoteReader noteReader = null;
+        private StaffElementIO.StaffElementReader noteReader = null;
         private final StringBuilder value = new StringBuilder(20);
 
         @Nullable
@@ -401,7 +402,7 @@ public final class LineIO {
                     where = Where.LINE;
                     line = new Line();
                     lastTag = null;
-                    noteReader = new NoteIO.NoteReader();
+                    noteReader = new StaffElementIO.StaffElementReader();
                 }
             } else if (where == Where.NOTES) {
                 noteReader.startElement11(qName, attributes);
@@ -424,7 +425,7 @@ public final class LineIO {
                 var n = noteReader.endElement11(qName);
 
                 if (n != null) {
-                    line.addNote(n);
+                    line.addElement(n);
                 }
             } else if (where == Where.LINE) {
                 if (qName.equals(XML_LINE)) {
@@ -441,7 +442,7 @@ public final class LineIO {
                         case XML_KEYTYPE -> line.setKeyType(
                             KeyType.valueOf(str)
                         );
-                        case XML_NOTE_DIST_CHANGE -> line.mulNoteDistChange(
+                        case XML_NOTE_DIST_CHANGE -> line.mulElementDistChange(
                             Float.parseFloat(str)
                         );
                         case XML_TEMPO_CHANGE_YPOS -> line.setTempoChangeYPosPx(
@@ -468,7 +469,8 @@ public final class LineIO {
                             str
                         );
                         // Slurs no longer supported - ignore for backwards compatibility
-                        case "slurs" -> {}
+                        case "slurs" -> {
+                        }
                         case XML_CRESCENDO -> stringToDynamicsIntervalSet(
                             line.getCrescendos(),
                             str
