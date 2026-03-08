@@ -68,7 +68,6 @@ elif [[ "$1" == -Dtest=* ]]; then
     PATTERN="${1#-Dtest=}"
     PATTERN="${PATTERN//\*/.*}"
     LAUNCHER_ARGS+=("--scan-classpath=$TEST_DIR" "--include-classname=$PATTERN")
-    JVM_ARGS+=("-Dtestclasses=$PATTERN")
 else
     PATTERNS=()
     HAS_METHOD_SELECT=false
@@ -94,7 +93,6 @@ else
     if [ "$HAS_METHOD_SELECT" = false ]; then
         LAUNCHER_ARGS+=("--scan-classpath=$TEST_DIR")
     fi
-    JVM_ARGS+=("-Dtestclasses=$(IFS=,; echo "${PATTERNS[*]}")")
 fi
 
 # Run tests

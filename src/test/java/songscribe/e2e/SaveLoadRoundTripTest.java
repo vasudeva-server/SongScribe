@@ -22,7 +22,6 @@ package songscribe.e2e;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 
 import songscribe.music.Composition;
@@ -34,11 +33,9 @@ import songscribe.ui.component.MainFrame;
 /**
  * Milestone 1 E2E tests: programmatic save/load round-trip, model equality.
  */
-@Order(6)
 class SaveLoadRoundTripTest extends E2ETest {
 
     @Test
-    @Order(1)
     void testSaveAndReloadPreservesNotes() throws Exception {
         // Build a composition with notes of different types and staff positions
         var original = buildTestComposition();
@@ -75,7 +72,6 @@ class SaveLoadRoundTripTest extends E2ETest {
     }
 
     @Test
-    @Order(2)
     void testSaveAndReloadPreservesKeySignature() throws Exception {
         var original = new Composition(MainFrame.getInstance());
         original.setDefaultKeyType(KeyType.SHARPS);

@@ -23,7 +23,7 @@ package songscribe.e2e;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.assertj.swing.edt.GuiActionRunner;
-import org.junit.jupiter.api.Order;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import songscribe.data.BeamInterval;
@@ -36,11 +36,9 @@ import songscribe.ui.component.MainFrame;
 /**
  * Milestone 2 E2E tests: automatic beaming, manual toggle, stem direction.
  */
-@Order(3)
 class BeamingTest extends E2ETest {
 
     @Test
-    @Order(1)
     void testAutoBeamingOnInsertion() {
         enterEditMode();
         selectDuration(Actions.EIGHTH_NOTE_ACTION);
@@ -65,115 +63,118 @@ class BeamingTest extends E2ETest {
         assertThat(beam.getEnd()).isEqualTo(1);
     }
 
-    @Test
-    @Order(2)
-    void testToggleBeamingOnSelection() {
-        // Build composition with two unbeamed eighth notes
-        buildUnbeamedEighthNotes();
+    @Nested
+    class ManualBeamToggle {
 
-        var line = composition().getLine(0);
-        assertThat(line.getBeamings().isEmpty()).isTrue();
+        @Test
+        void testToggleBeamingOnSelection() {
+            // Build composition with two unbeamed eighth notes
+            buildUnbeamedEighthNotes();
 
-        // Select both notes
-        enterSelectMode();
-        clickAt(noteScreenPosition(0, 0));
-        shiftClickAt(noteScreenPosition(0, 1));
-        assertThat(score().getSelectionSize()).isEqualTo(2);
+            var line = composition().getLine(0);
+            assertThat(line.getBeamings().isEmpty()).isTrue();
 
-        // Toggle beam on
-        triggerAction(Actions.TOGGLE_BEAM_ACTION);
-        performLayout(0);
+            // Select both notes
+            enterSelectMode();
+            clickAt(noteScreenPosition(0, 0));
+            shiftClickAt(noteScreenPosition(0, 1));
+            assertThat(score().getSelectionSize()).isEqualTo(2);
 
-        // Beam interval should now exist
-        assertThat(isBeamed(0, 0)).isTrue();
-        assertThat(isBeamed(0, 1)).isTrue();
+            // Toggle beam on
+            triggerAction(Actions.TOGGLE_BEAM_ACTION);
+            performLayout(0);
+
+            // Beam interval should now exist
+            assertThat(isBeamed(0, 0)).isTrue();
+            assertThat(isBeamed(0, 1)).isTrue();
+        }
+
+        @Test
+        void testToggleBeamingRemovesExistingBeam() {
+            // Build composition with beamed eighth notes
+            buildBeamedEighthNotes();
+
+            var line = composition().getLine(0);
+            assertThat(line.getBeamings().isEmpty()).isFalse();
+
+            // Select the beamed notes
+            enterSelectMode();
+            clickAt(noteScreenPosition(0, 0));
+            shiftClickAt(noteScreenPosition(0, 1));
+            assertThat(score().getSelectionSize()).isEqualTo(2);
+
+            // Toggle beam off
+            triggerAction(Actions.TOGGLE_BEAM_ACTION);
+            performLayout(0);
+
+            // Beam interval should be removed
+            assertThat(isBeamed(0, 0)).isFalse();
+            assertThat(isBeamed(0, 1)).isFalse();
+        }
     }
 
-    @Test
-    @Order(3)
-    void testToggleBeamingRemovesExistingBeam() {
-        // Build composition with beamed eighth notes
-        buildBeamedEighthNotes();
+    @Nested
+    class StemDirection {
 
-        var line = composition().getLine(0);
-        assertThat(line.getBeamings().isEmpty()).isFalse();
+        @Test
+        void testFlipStemDirection() {
+            // Build composition with beamed eighth notes
+            buildBeamedEighthNotes();
 
-        // Select the beamed notes
-        enterSelectMode();
-        clickAt(noteScreenPosition(0, 0));
-        shiftClickAt(noteScreenPosition(0, 1));
-        assertThat(score().getSelectionSize()).isEqualTo(2);
+            var note = composition().getLine(0).getElement(0);
+            assertThat(note.isStemDirectionAuto()).isTrue();
+            var originalUpper = note.isUpper();
 
-        // Toggle beam off
-        triggerAction(Actions.TOGGLE_BEAM_ACTION);
-        performLayout(0);
+            // Select the note and flip stem
+            enterSelectMode();
+            clickAt(noteScreenPosition(0, 0));
 
-        // Beam interval should be removed
-        assertThat(isBeamed(0, 0)).isFalse();
-        assertThat(isBeamed(0, 1)).isFalse();
-    }
+            triggerAction(Actions.FLIP_STEM_DIRECTION_ACTION);
 
-    @Test
-    @Order(4)
-    void testFlipStemDirection() {
-        // Build composition with beamed eighth notes
-        buildBeamedEighthNotes();
+            assertThat(note.isStemDirectionAuto()).isFalse();
+            assertThat(note.isUpper()).isNotEqualTo(originalUpper);
+        }
 
-        var note = composition().getLine(0).getElement(0);
-        assertThat(note.isStemDirectionAuto()).isTrue();
-        var originalUpper = note.isUpper();
+        @Test
+        void testFlipStemDirectionUnbeamed() {
+            // Build composition with unbeamed quarter notes
+            buildTwoQuarterNotes();
 
-        // Select the note and flip stem
-        enterSelectMode();
-        clickAt(noteScreenPosition(0, 0));
+            var note = composition().getLine(0).getElement(0);
+            assertThat(note.isStemDirectionAuto()).isTrue();
+            var originalUpper = note.isUpper();
 
-        triggerAction(Actions.FLIP_STEM_DIRECTION_ACTION);
+            // Select the note and flip stem
+            enterSelectMode();
+            clickAt(noteScreenPosition(0, 0));
 
-        assertThat(note.isStemDirectionAuto()).isFalse();
-        assertThat(note.isUpper()).isNotEqualTo(originalUpper);
-    }
+            triggerAction(Actions.FLIP_STEM_DIRECTION_ACTION);
 
-    @Test
-    @Order(5)
-    void testFlipStemDirectionUnbeamed() {
-        // Build composition with unbeamed quarter notes
-        buildTwoQuarterNotes();
+            assertThat(note.isStemDirectionAuto()).isFalse();
+            assertThat(note.isUpper()).isNotEqualTo(originalUpper);
+        }
 
-        var note = composition().getLine(0).getElement(0);
-        assertThat(note.isStemDirectionAuto()).isTrue();
-        var originalUpper = note.isUpper();
+        @Test
+        void testStemDirectionPersistsThroughSaveLoad() throws Exception {
+            // Build composition and flip a note's stem
+            buildTwoQuarterNotes();
 
-        // Select the note and flip stem
-        enterSelectMode();
-        clickAt(noteScreenPosition(0, 0));
+            var originalNote = composition().getLine(0).getElement(0);
+            enterSelectMode();
+            clickAt(noteScreenPosition(0, 0));
 
-        triggerAction(Actions.FLIP_STEM_DIRECTION_ACTION);
+            triggerAction(Actions.FLIP_STEM_DIRECTION_ACTION);
 
-        assertThat(note.isStemDirectionAuto()).isFalse();
-        assertThat(note.isUpper()).isNotEqualTo(originalUpper);
-    }
+            var flippedUpper = originalNote.isUpper();
+            assertThat(originalNote.isStemDirectionAuto()).isFalse();
 
-    @Test
-    @Order(6)
-    void testStemDirectionPersistsThroughSaveLoad() throws Exception {
-        // Build composition and flip a note's stem
-        buildTwoQuarterNotes();
+            // Round-trip save/load
+            var reloaded = roundTrip(composition());
 
-        var originalNote = composition().getLine(0).getElement(0);
-        enterSelectMode();
-        clickAt(noteScreenPosition(0, 0));
-
-        triggerAction(Actions.FLIP_STEM_DIRECTION_ACTION);
-
-        var flippedUpper = originalNote.isUpper();
-        assertThat(originalNote.isStemDirectionAuto()).isFalse();
-
-        // Round-trip save/load
-        var reloaded = roundTrip(composition());
-
-        var reloadedNote = reloaded.getLine(0).getElement(0);
-        assertThat(reloadedNote.isStemDirectionAuto()).isFalse();
-        assertThat(reloadedNote.isUpper()).isEqualTo(flippedUpper);
+            var reloadedNote = reloaded.getLine(0).getElement(0);
+            assertThat(reloadedNote.isStemDirectionAuto()).isFalse();
+            assertThat(reloadedNote.isUpper()).isEqualTo(flippedUpper);
+        }
     }
 
 

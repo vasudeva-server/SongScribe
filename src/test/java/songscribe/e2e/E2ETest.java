@@ -23,13 +23,9 @@ package songscribe.e2e;
 import static org.assertj.swing.core.MouseButton.LEFT_BUTTON;
 
 import java.awt.*;
-import java.io.File;
 import java.io.PrintWriter;
 import java.io.StringReader;
 import java.io.StringWriter;
-import java.util.Arrays;
-import java.util.List;
-import java.util.regex.Pattern;
 
 import javax.swing.*;
 import javax.xml.parsers.SAXParserFactory;
@@ -71,12 +67,12 @@ import songscribe.util.UIUtils;
  */
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @ExtendWith(E2ETest.ResultTracker.class)
-abstract class E2ETest {
+public abstract class E2ETest {
 
     private static final boolean DEBUG_MODE = Boolean.getBoolean("e2e.debug");
 
     /** Delay in ms between UI actions so you can watch what's happening. Set to 0 for full speed. */
-    private static final int ACTION_DELAY_MS = DEBUG_MODE ? 250 : 100;
+    private static final int ACTION_DELAY_MS = DEBUG_MODE ? 250 : 10;
 
     private static final String[] DEBUG_OPTIONS = {"Stop", "Skip", "OK"};
     private static final int DEBUG_STOP = 0;
@@ -88,78 +84,16 @@ abstract class E2ETest {
     private static int testCounter = 0;
     private static int passCount = 0;
     private static int failCount = 0;
-    private static int totalE2eTests = -1;
-
-    private static int getTotalE2eTests() {
-        if (totalE2eTests < 0) {
-            totalE2eTests = countTestMethods();
-        }
-
-        return totalE2eTests;
-    }
-
-    private static int countTestMethods() {
-        var testClassesProperty = System.getProperty("testclasses");
-        List<Pattern> filters = null;
-
-        if (testClassesProperty != null && !testClassesProperty.isBlank()) {
-            filters = Arrays.stream(testClassesProperty.split(","))
-                .map(Pattern::compile)
-                .toList();
-        }
-
-        var count = 0;
-        var packageName = E2ETest.class.getPackageName();
-        var packagePath = packageName.replace('.', '/');
-        var url = E2ETest.class.getClassLoader().getResource(packagePath);
-
-        if (url == null) {
-            return 0;
-        }
-
-        var dir = new File(url.getFile());
-        var files = dir.listFiles((d, name) -> name.endsWith(".class"));
-
-        if (files == null) {
-            return 0;
-        }
-
-        for (var file : files) {
-            var className = packageName + "." + file.getName().replace(".class", "");
-
-            if (filters != null && filters.stream().noneMatch(p -> p.matcher(className).matches())) {
-                continue;
-            }
-
-            try {
-                var clazz = Class.forName(className);
-
-                if (!E2ETest.class.isAssignableFrom(clazz) || clazz == E2ETest.class) {
-                    continue;
-                }
-
-                for (var method : clazz.getDeclaredMethods()) {
-                    if (method.isAnnotationPresent(Test.class)) {
-                        count++;
-                    }
-                }
-            } catch (ClassNotFoundException e) {
-                // skip
-            }
-        }
-
-        return count;
-    }
-
     private static JWindow statusOverlay;
     private static JLabel statusLabel;
+    private String currentClassName;
     private String currentTestName;
 
     protected Robot robot;
     protected FrameFixture window;
 
     @BeforeAll
-    void setUpOnce() {
+    protected void setUpOnce() {
         RuntimeError.setSuppressDialogs(false);
         FailOnThreadViolationRepaintManager.install();
         robot = BasicRobot.robotWithCurrentAwtHierarchy();
@@ -186,12 +120,21 @@ abstract class E2ETest {
     }
 
     @BeforeEach
-    void resetComposition(TestInfo testInfo) {
+    protected void resetComposition(TestInfo testInfo) {
         Assumptions.assumeFalse(skipClass, "Skipping class");
 
         testCounter++;
-        currentTestName = testInfo.getDisplayName().replaceAll("\\(\\)$", "");
+        var rawClassName = getClass().getSimpleName().replaceAll("Test$", "");
+        var classWords = rawClassName.replaceAll("([a-z])([A-Z])", "$1 $2").toLowerCase();
+        currentClassName = Character.toUpperCase(classWords.charAt(0)) + classWords.substring(1);
+        var rawName = testInfo.getDisplayName().replaceAll("\\(\\)$", "");
+        var camel = (rawName.startsWith("test") && rawName.length() > 4)
+            ? Character.toLowerCase(rawName.charAt(4)) + rawName.substring(5)
+            : rawName;
+        var words = camel.replaceAll("([a-z])([A-Z])", "$1 $2").toLowerCase();
+        currentTestName = Character.toUpperCase(words.charAt(0)) + words.substring(1);
 
+        enterEditMode();
         deselectRestMode();
 
         GuiActionRunner.execute(() -> {
@@ -201,11 +144,11 @@ abstract class E2ETest {
         });
 
         pause();
-        debugConfirm("Test " + testCounter + " of " + getTotalE2eTests() + ": " + currentTestName);
+        debugConfirm("Test " + testCounter + " of " + E2ETestCountListener.getTotalTests() + ": " + currentTestName);
     }
 
     @AfterAll
-    void tearDownOnce() {
+    protected void tearDownOnce() {
         GuiActionRunner.execute(() -> {
             if (statusOverlay != null) {
                 statusOverlay.dispose();
@@ -234,13 +177,13 @@ abstract class E2ETest {
 
     private void updateStatusOverlay() {
         var sb = new StringBuilder("  ");
-        sb.append(testCounter).append(" of ").append(getTotalE2eTests());
+        sb.append(testCounter).append(" of ").append(E2ETestCountListener.getTotalTests());
 
         if (passCount > 0 || failCount > 0) {
             sb.append(" [+").append(passCount).append("/-").append(failCount).append("]");
         }
 
-        sb.append("  —  ").append(currentTestName).append("  ");
+        sb.append("  —  ").append(currentClassName).append("  |  ").append(currentTestName).append("  ");
         statusLabel.setText(sb.toString());
         statusOverlay.pack();
         positionOverlay();

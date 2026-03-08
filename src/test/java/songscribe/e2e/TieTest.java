@@ -23,7 +23,7 @@ package songscribe.e2e;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.assertj.swing.edt.GuiActionRunner;
-import org.junit.jupiter.api.Order;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import songscribe.data.TieInterval;
@@ -38,62 +38,81 @@ import songscribe.ui.component.MainFrame;
 /**
  * Milestone 3 E2E tests: tie creation, removal, selection semantics, drag.
  */
-@Order(4)
 class TieTest extends E2ETest {
 
-    @Test
-    @Order(1)
-    void testCreateTieViaSelection() {
-        buildTwoAdjacentNotes();
+    @Nested
+    class BasicOperations {
 
-        var line = composition().getLine(0);
-        assertThat(line.getTies().isEmpty()).isTrue();
+        @Test
+        void testCreateTieViaSelection() {
+            buildTwoAdjacentNotes();
 
-        // Select both notes
-        enterSelectMode();
-        clickAt(noteScreenPosition(0, 0));
-        shiftClickAt(noteScreenPosition(0, 1));
-        assertThat(score().getSelectionSize()).isEqualTo(2);
+            var line = composition().getLine(0);
+            assertThat(line.getTies().isEmpty()).isTrue();
 
-        // Toggle tie on
-        triggerAction(Actions.TOGGLE_TIE_ACTION);
-        performLayout(0);
+            // Select both notes
+            enterSelectMode();
+            clickAt(noteScreenPosition(0, 0));
+            shiftClickAt(noteScreenPosition(0, 1));
+            assertThat(score().getSelectionSize()).isEqualTo(2);
 
-        // Tie interval should now exist covering both notes
-        assertThat(isTied(0, 0)).isTrue();
-        assertThat(isTied(0, 1)).isTrue();
+            // Toggle tie on
+            triggerAction(Actions.TOGGLE_TIE_ACTION);
+            performLayout(0);
 
-        var tie = line.getTies().findInterval(0);
-        assertThat(tie).isNotNull();
-        assertThat(tie.getStart()).isEqualTo(0);
-        assertThat(tie.getEnd()).isEqualTo(1);
+            // Tie interval should now exist covering both notes
+            assertThat(isTied(0, 0)).isTrue();
+            assertThat(isTied(0, 1)).isTrue();
+
+            var tie = line.getTies().findInterval(0);
+            assertThat(tie).isNotNull();
+            assertThat(tie.getStart()).isEqualTo(0);
+            assertThat(tie.getEnd()).isEqualTo(1);
+        }
+
+        @Test
+        void testRemoveTieViaToggle() {
+            buildTiedNotes();
+
+            var line = composition().getLine(0);
+            assertThat(line.getTies().isEmpty()).isFalse();
+
+            // Select the tied notes
+            enterSelectMode();
+            clickAt(noteScreenPosition(0, 0));
+            shiftClickAt(noteScreenPosition(0, 1));
+            assertThat(score().getSelectionSize()).isEqualTo(2);
+
+            // Toggle tie off
+            triggerAction(Actions.TOGGLE_TIE_ACTION);
+            performLayout(0);
+
+            // Tie interval should be removed
+            assertThat(isTied(0, 0)).isFalse();
+            assertThat(isTied(0, 1)).isFalse();
+        }
+
+        @Test
+        void testSelectTiedNotesEnablesTieToggle() {
+            buildTiedNotes();
+
+            enterSelectMode();
+
+            // Select both tied notes
+            clickAt(noteScreenPosition(0, 0));
+            shiftClickAt(noteScreenPosition(0, 1));
+
+            var lss = score().getLineComponent(0).getLineSelectionState();
+            assertThat(lss.getSelectionSize()).isEqualTo(2);
+
+            // canToggleTie populates canTie and should return true for tied notes
+            assertThat(lss.canToggleTie()).isTrue();
+            assertThat(lss.getCanTie()).isTrue();
+            assertThat(lss.getTieInterval()).isNotNull();
+        }
     }
 
     @Test
-    @Order(2)
-    void testRemoveTieViaToggle() {
-        buildTiedNotes();
-
-        var line = composition().getLine(0);
-        assertThat(line.getTies().isEmpty()).isFalse();
-
-        // Select the tied notes
-        enterSelectMode();
-        clickAt(noteScreenPosition(0, 0));
-        shiftClickAt(noteScreenPosition(0, 1));
-        assertThat(score().getSelectionSize()).isEqualTo(2);
-
-        // Toggle tie off
-        triggerAction(Actions.TOGGLE_TIE_ACTION);
-        performLayout(0);
-
-        // Tie interval should be removed
-        assertThat(isTied(0, 0)).isFalse();
-        assertThat(isTied(0, 1)).isFalse();
-    }
-
-    @Test
-    @Order(3)
     void testTiePersistsThroughSaveLoad() throws Exception {
         buildTiedNotes();
 
@@ -112,27 +131,6 @@ class TieTest extends E2ETest {
     }
 
     @Test
-    @Order(4)
-    void testSelectTiedNotesEnablesTieToggle() {
-        buildTiedNotes();
-
-        enterSelectMode();
-
-        // Select both tied notes
-        clickAt(noteScreenPosition(0, 0));
-        shiftClickAt(noteScreenPosition(0, 1));
-
-        var lss = score().getLineComponent(0).getLineSelectionState();
-        assertThat(lss.getSelectionSize()).isEqualTo(2);
-
-        // canToggleTie populates canTie and should return true for tied notes
-        assertThat(lss.canToggleTie()).isTrue();
-        assertThat(lss.getCanTie()).isTrue();
-        assertThat(lss.getTieInterval()).isNotNull();
-    }
-
-    @Test
-    @Order(5)
     void testDragTiedNoteMovesOther() {
         buildTiedNotes();
 
@@ -152,121 +150,118 @@ class TieTest extends E2ETest {
         assertThat(line.getElement(1).getStaffPosition()).isEqualTo(targetSp);
     }
 
+    @Nested
+    class PitchValidation {
 
-    @Test
-    @Order(6)
-    void testCannotTieSamePositionDifferentAccidental() {
-        // B natural (sp=0) and B# (sp=0) — same staff position, different pitch
-        buildNotes(0, Accidental.NATURAL, 0, Accidental.SHARP);
+        @Test
+        void testCannotTieSamePositionDifferentAccidental() {
+            // B natural (sp=0) and B# (sp=0) — same staff position, different pitch
+            buildNotes(0, Accidental.NATURAL, 0, Accidental.SHARP);
 
-        enterSelectMode();
-        clickAt(noteScreenPosition(0, 0));
-        shiftClickAt(noteScreenPosition(0, 1));
+            enterSelectMode();
+            clickAt(noteScreenPosition(0, 0));
+            shiftClickAt(noteScreenPosition(0, 1));
 
-        var lss = score().getLineComponent(0).getLineSelectionState();
-        assertThat(lss.canToggleTie()).isFalse();
-    }
+            var lss = score().getLineComponent(0).getLineSelectionState();
+            assertThat(lss.canToggleTie()).isFalse();
+        }
 
-    @Test
-    @Order(7)
-    void testCanTieEnharmonicNotes() {
-        // B# (sp=0, pitch 72) and C (sp=-1, pitch 72) — different position, same pitch
-        buildNotes(0, Accidental.SHARP, -1, Accidental.NONE);
+        @Test
+        void testCanTieEnharmonicNotes() {
+            // B# (sp=0, pitch 72) and C (sp=-1, pitch 72) — different position, same pitch
+            buildNotes(0, Accidental.SHARP, -1, Accidental.NONE);
 
-        enterSelectMode();
-        clickAt(noteScreenPosition(0, 0));
-        shiftClickAt(noteScreenPosition(0, 1));
+            enterSelectMode();
+            clickAt(noteScreenPosition(0, 0));
+            shiftClickAt(noteScreenPosition(0, 1));
 
-        var lss = score().getLineComponent(0).getLineSelectionState();
-        assertThat(lss.canToggleTie()).isTrue();
-    }
+            var lss = score().getLineComponent(0).getLineSelectionState();
+            assertThat(lss.canToggleTie()).isTrue();
+        }
 
-    @Test
-    @Order(8)
-    void testCanTieWithInheritedAccidental() {
-        // F# (sp=4, explicit sharp) then F (sp=4, NONE) — inherits sharp, same pitch
-        buildNotes(4, Accidental.SHARP, 4, Accidental.NONE);
+        @Test
+        void testCanTieWithInheritedAccidental() {
+            // F# (sp=4, explicit sharp) then F (sp=4, NONE) — inherits sharp, same pitch
+            buildNotes(4, Accidental.SHARP, 4, Accidental.NONE);
 
-        enterSelectMode();
-        clickAt(noteScreenPosition(0, 0));
-        shiftClickAt(noteScreenPosition(0, 1));
+            enterSelectMode();
+            clickAt(noteScreenPosition(0, 0));
+            shiftClickAt(noteScreenPosition(0, 1));
 
-        var lss = score().getLineComponent(0).getLineSelectionState();
-        assertThat(lss.canToggleTie()).isTrue();
-    }
+            var lss = score().getLineComponent(0).getLineSelectionState();
+            assertThat(lss.canToggleTie()).isTrue();
+        }
 
-    @Test
-    @Order(9)
-    void testCannotTieWhenNaturalCancelsInheritedAccidental() {
-        // F# (sp=4), F (sp=4, NONE inherits sharp), F natural (sp=4, explicit natural)
-        // Tying last two: F# vs F natural — different pitch
-        buildThreeNotes();
+        @Test
+        void testCannotTieWhenNaturalCancelsInheritedAccidental() {
+            // F# (sp=4), F (sp=4, NONE inherits sharp), F natural (sp=4, explicit natural)
+            // Tying last two: F# vs F natural — different pitch
+            buildThreeNotes();
 
-        enterSelectMode();
-        clickAt(noteScreenPosition(0, 1));
-        shiftClickAt(noteScreenPosition(0, 2));
+            enterSelectMode();
+            clickAt(noteScreenPosition(0, 1));
+            shiftClickAt(noteScreenPosition(0, 2));
 
-        var lss = score().getLineComponent(0).getLineSelectionState();
-        assertThat(lss.canToggleTie()).isFalse();
-    }
+            var lss = score().getLineComponent(0).getLineSelectionState();
+            assertThat(lss.canToggleTie()).isFalse();
+        }
 
-    @Test
-    @Order(10)
-    void testCanTieWithKeySignatureAccidental() {
-        // Db major (5 flats): B at sp=0 gets Bb from key signature.
-        // Two notes at sp=0 with NONE accidental should both resolve to Bb.
-        buildNotesWithKeySignature(KeyType.FLATS, 5, 0, Accidental.NONE, 0, Accidental.NONE);
+        @Test
+        void testCanTieWithKeySignatureAccidental() {
+            // Db major (5 flats): B at sp=0 gets Bb from key signature.
+            // Two notes at sp=0 with NONE accidental should both resolve to Bb.
+            buildNotesWithKeySignature(KeyType.FLATS, 5, 0, Accidental.NONE, 0, Accidental.NONE);
 
-        enterSelectMode();
-        clickAt(noteScreenPosition(0, 0));
-        shiftClickAt(noteScreenPosition(0, 1));
+            enterSelectMode();
+            clickAt(noteScreenPosition(0, 0));
+            shiftClickAt(noteScreenPosition(0, 1));
 
-        var lss = score().getLineComponent(0).getLineSelectionState();
-        assertThat(lss.canToggleTie()).isTrue();
-    }
+            var lss = score().getLineComponent(0).getLineSelectionState();
+            assertThat(lss.canToggleTie()).isTrue();
+        }
 
-    @Test
-    @Order(11)
-    void testCanTieAfterNaturalFlatResetsToKeySignature() {
-        // Db major: G at sp=-5 is Gb from key signature.
-        // G (Gb from key sig), Gbb, G natural-flat (Gb), G (inherits natural-flat = Gb).
-        // Tying last two: both resolve to Gb.
-        GuiActionRunner.execute(() -> {
-            var composition = new Composition(MainFrame.getInstance());
-            var line = new Line();
-            line.setKeyType(KeyType.FLATS);
-            line.setKeyAccidentalCount(5);
+        @Test
+        void testCanTieAfterNaturalFlatResetsToKeySignature() {
+            // Db major: G at sp=-5 is Gb from key signature.
+            // G (Gb from key sig), Gbb, G natural-flat (Gb), G (inherits natural-flat = Gb).
+            // Tying last two: both resolve to Gb.
+            GuiActionRunner.execute(() -> {
+                var composition = new Composition(MainFrame.getInstance());
+                var line = new Line();
+                line.setKeyType(KeyType.FLATS);
+                line.setKeyAccidentalCount(5);
 
-            var note1 = ElementType.CROTCHET.newInstance();
-            note1.setStaffPosition(-5);
-            line.addElement(note1);
+                var note1 = ElementType.CROTCHET.newInstance();
+                note1.setStaffPosition(-5);
+                line.addElement(note1);
 
-            var note2 = ElementType.CROTCHET.newInstance();
-            note2.setStaffPosition(-5);
-            note2.setAccidental(Accidental.DOUBLE_FLAT);
-            line.addElement(note2);
+                var note2 = ElementType.CROTCHET.newInstance();
+                note2.setStaffPosition(-5);
+                note2.setAccidental(Accidental.DOUBLE_FLAT);
+                line.addElement(note2);
 
-            var note3 = ElementType.CROTCHET.newInstance();
-            note3.setStaffPosition(-5);
-            note3.setAccidental(Accidental.NATURAL_FLAT);
-            line.addElement(note3);
+                var note3 = ElementType.CROTCHET.newInstance();
+                note3.setStaffPosition(-5);
+                note3.setAccidental(Accidental.NATURAL_FLAT);
+                line.addElement(note3);
 
-            var note4 = ElementType.CROTCHET.newInstance();
-            note4.setStaffPosition(-5);
-            line.addElement(note4);
+                var note4 = ElementType.CROTCHET.newInstance();
+                note4.setStaffPosition(-5);
+                line.addElement(note4);
 
-            composition.addLine(0, line);
-            score().setComposition(composition);
-        });
+                composition.addLine(0, line);
+                score().setComposition(composition);
+            });
 
-        performLayout(0);
+            performLayout(0);
 
-        enterSelectMode();
-        clickAt(noteScreenPosition(0, 2));
-        shiftClickAt(noteScreenPosition(0, 3));
+            enterSelectMode();
+            clickAt(noteScreenPosition(0, 2));
+            shiftClickAt(noteScreenPosition(0, 3));
 
-        var lss = score().getLineComponent(0).getLineSelectionState();
-        assertThat(lss.canToggleTie()).isTrue();
+            var lss = score().getLineComponent(0).getLineSelectionState();
+            assertThat(lss.canToggleTie()).isTrue();
+        }
     }
 
     // -- Helpers --

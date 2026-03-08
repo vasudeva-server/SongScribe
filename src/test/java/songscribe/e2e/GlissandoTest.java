@@ -26,7 +26,7 @@ import java.awt.*;
 import java.awt.event.*;
 
 import org.assertj.swing.edt.GuiActionRunner;
-import org.junit.jupiter.api.Order;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import songscribe.music.Composition;
@@ -39,125 +39,191 @@ import songscribe.ui.component.MainFrame;
 /**
  * Milestone 3 E2E tests: glissando insert, select, delete, highlight, persistence.
  */
-@Order(5)
 class GlissandoTest extends E2ETest {
 
-    @Test
-    @Order(1)
-    void testInsertConnectedGlissando() {
-        buildTwoNotesAtDifferentPitches();
+    @Nested
+    class Insertion {
 
-        enterEditMode();
-        selectDuration(Actions.GLISSANDO_ACTION);
+        @Test
+        void testInsertConnectedGlissando() {
+            buildTwoNotesAtDifferentPitches();
 
-        // Click between the two notes (past the first note)
-        clickAt(glissandoInsertionPoint(0));
-        performLayout(0);
+            enterEditMode();
+            selectDuration(Actions.GLISSANDO_ACTION);
 
-        var note = composition().getLine(0).getElement(0);
-        //noinspection ObjectEquality
-        assertThat(note.getGlissando() != StaffElement.NO_GLISSANDO).isTrue();
-        assertThat(note.getGlissando().type).isEqualTo(StaffElement.Glissando.Type.CONNECTED);
+            // Click between the two notes (past the first note)
+            clickAt(glissandoInsertionPoint(0));
+            performLayout(0);
+
+            var note = composition().getLine(0).getElement(0);
+            //noinspection ObjectEquality
+            assertThat(note.getGlissando() != StaffElement.NO_GLISSANDO).isTrue();
+            assertThat(note.getGlissando().type).isEqualTo(StaffElement.Glissando.Type.CONNECTED);
+        }
+
+        @Test
+        void testInsertSlideOutGlissando() {
+            buildTwoNotesAtDifferentPitches();
+
+            enterEditMode();
+            selectDuration(Actions.SLIDE_OUT_ACTION);
+
+            // Click past the last note (slide out doesn't require a target note,
+            // but the insertion point must be after a note)
+            clickAt(glissandoInsertionPoint(0));
+            performLayout(0);
+
+            var note = composition().getLine(0).getElement(0);
+            //noinspection ObjectEquality
+            assertThat(note.getGlissando() != StaffElement.NO_GLISSANDO).isTrue();
+            assertThat(note.getGlissando().type).isEqualTo(StaffElement.Glissando.Type.SLIDE_OUT);
+        }
+    }
+
+    @Nested
+    class Selection {
+
+        @Test
+        void testSelectGlissandoByClick() {
+            buildNotesWithConnectedGlissando();
+
+            enterSelectMode();
+
+            // Click on the glissando line (midpoint between the two notes)
+            clickAt(glissandoMidpoint(0));
+
+            var lss = score().getLineComponent(0).getLineSelectionState();
+            assertThat(lss.hasGlissandoSelection()).isTrue();
+            assertThat(lss.getSelectedGlissandoElementIndex()).isEqualTo(0);
+        }
+
+        @Test
+        void testSelectSourceNoteHighlightsGlissando() {
+            buildNotesWithConnectedGlissando();
+
+            enterSelectMode();
+
+            // Select the source note (note 0)
+            clickAt(noteScreenPosition(0, 0));
+
+            // Source note is selected
+            var lss = score().getLineComponent(0).getLineSelectionState();
+            assertThat(lss.isElementSelected(0)).isTrue();
+
+            // Glissando exists on that note (model-level check)
+            var note = composition().getLine(0).getElement(0);
+            //noinspection ObjectEquality
+            assertThat(note.getGlissando() != StaffElement.NO_GLISSANDO).isTrue();
+        }
+
+        @Test
+        void testSelectTargetNoteHighlightsGlissando() {
+            buildNotesWithConnectedGlissando();
+
+            enterSelectMode();
+
+            // Select the target note (note 1)
+            clickAt(noteScreenPosition(0, 1));
+
+            // Target note is selected
+            var lss = score().getLineComponent(0).getLineSelectionState();
+            assertThat(lss.isElementSelected(1)).isTrue();
+
+            // Previous note has a connected glissando pointing to it (model-level check)
+            var prevNote = composition().getLine(0).getElement(0);
+            assertThat(prevNote.getGlissando().type).isEqualTo(StaffElement.Glissando.Type.CONNECTED);
+        }
+    }
+
+    @Nested
+    class Deletion {
+
+        @Test
+        void testDeleteSelectedGlissando() {
+            buildNotesWithConnectedGlissando();
+
+            enterSelectMode();
+
+            // Select the glissando by clicking on it
+            clickAt(glissandoMidpoint(0));
+
+            var lss = score().getLineComponent(0).getLineSelectionState();
+            assertThat(lss.hasGlissandoSelection()).isTrue();
+
+            // Press Delete
+            robot.pressAndReleaseKey(KeyEvent.VK_DELETE);
+            performLayout(0);
+
+            // Glissando should be removed
+            var note = composition().getLine(0).getElement(0);
+            //noinspection ObjectEquality
+            assertThat(note.getGlissando()).isSameAs(StaffElement.NO_GLISSANDO);
+        }
+
+        @Test
+        void testDeleteSourceNoteRemovesConnectedGlissando() {
+            buildNotesWithConnectedGlissando();
+
+            enterSelectMode();
+
+            // Select the source note (note 0)
+            clickAt(noteScreenPosition(0, 0));
+
+            // Delete it
+            robot.pressAndReleaseKey(KeyEvent.VK_DELETE);
+            performLayout(0);
+
+            // Note 0 was removed, only 1 note remains
+            var line = composition().getLine(0);
+            assertThat(line.elementCount()).isEqualTo(1);
+
+            // The remaining note should have no orphaned glissando
+            //noinspection ObjectEquality
+            assertThat(line.getElement(0).getGlissando()).isSameAs(StaffElement.NO_GLISSANDO);
+        }
+
+        @Test
+        void testDeleteSourceNoteRemovesSlideOut() {
+            buildNoteWithSlideOut();
+
+            enterSelectMode();
+
+            // Select the note with slide-out
+            clickAt(noteScreenPosition(0, 0));
+
+            // Delete it
+            robot.pressAndReleaseKey(KeyEvent.VK_DELETE);
+            performLayout(0);
+
+            // Note was removed
+            var line = composition().getLine(0);
+            assertThat(line.elementCount()).isEqualTo(0);
+        }
+
+        @Test
+        void testDeleteTargetNoteRemovesConnectedGlissando() {
+            buildNotesWithConnectedGlissando();
+
+            enterSelectMode();
+
+            // Select the target note (note 1)
+            clickAt(noteScreenPosition(0, 1));
+
+            // Delete it
+            robot.pressAndReleaseKey(KeyEvent.VK_DELETE);
+            performLayout(0);
+
+            // Only 1 note remains (the source)
+            var line = composition().getLine(0);
+            assertThat(line.elementCount()).isEqualTo(1);
+
+            // The source note's glissando should be removed (no target to connect to)
+            //noinspection ObjectEquality
+            assertThat(line.getElement(0).getGlissando()).isSameAs(StaffElement.NO_GLISSANDO);
+        }
     }
 
     @Test
-    @Order(2)
-    void testInsertSlideOutGlissando() {
-        buildTwoNotesAtDifferentPitches();
-
-        enterEditMode();
-        selectDuration(Actions.SLIDE_OUT_ACTION);
-
-        // Click past the last note (slide out doesn't require a target note,
-        // but the insertion point must be after a note)
-        clickAt(glissandoInsertionPoint(0));
-        performLayout(0);
-
-        var note = composition().getLine(0).getElement(0);
-        //noinspection ObjectEquality
-        assertThat(note.getGlissando() != StaffElement.NO_GLISSANDO).isTrue();
-        assertThat(note.getGlissando().type).isEqualTo(StaffElement.Glissando.Type.SLIDE_OUT);
-    }
-
-    @Test
-    @Order(3)
-    void testSelectGlissandoByClick() {
-        buildNotesWithConnectedGlissando();
-
-        enterSelectMode();
-
-        // Click on the glissando line (midpoint between the two notes)
-        clickAt(glissandoMidpoint(0));
-
-        var lss = score().getLineComponent(0).getLineSelectionState();
-        assertThat(lss.hasGlissandoSelection()).isTrue();
-        assertThat(lss.getSelectedGlissandoElementIndex()).isEqualTo(0);
-    }
-
-    @Test
-    @Order(4)
-    void testSelectSourceNoteHighlightsGlissando() {
-        buildNotesWithConnectedGlissando();
-
-        enterSelectMode();
-
-        // Select the source note (note 0)
-        clickAt(noteScreenPosition(0, 0));
-
-        // Source note is selected
-        var lss = score().getLineComponent(0).getLineSelectionState();
-        assertThat(lss.isElementSelected(0)).isTrue();
-
-        // Glissando exists on that note (model-level check)
-        var note = composition().getLine(0).getElement(0);
-        //noinspection ObjectEquality
-        assertThat(note.getGlissando() != StaffElement.NO_GLISSANDO).isTrue();
-    }
-
-    @Test
-    @Order(5)
-    void testSelectTargetNoteHighlightsGlissando() {
-        buildNotesWithConnectedGlissando();
-
-        enterSelectMode();
-
-        // Select the target note (note 1)
-        clickAt(noteScreenPosition(0, 1));
-
-        // Target note is selected
-        var lss = score().getLineComponent(0).getLineSelectionState();
-        assertThat(lss.isElementSelected(1)).isTrue();
-
-        // Previous note has a connected glissando pointing to it (model-level check)
-        var prevNote = composition().getLine(0).getElement(0);
-        assertThat(prevNote.getGlissando().type).isEqualTo(StaffElement.Glissando.Type.CONNECTED);
-    }
-
-    @Test
-    @Order(6)
-    void testDeleteSelectedGlissando() {
-        buildNotesWithConnectedGlissando();
-
-        enterSelectMode();
-
-        // Select the glissando by clicking on it
-        clickAt(glissandoMidpoint(0));
-
-        var lss = score().getLineComponent(0).getLineSelectionState();
-        assertThat(lss.hasGlissandoSelection()).isTrue();
-
-        // Press Delete
-        robot.pressAndReleaseKey(KeyEvent.VK_DELETE);
-        performLayout(0);
-
-        // Glissando should be removed
-        var note = composition().getLine(0).getElement(0);
-        //noinspection ObjectEquality
-        assertThat(note.getGlissando()).isSameAs(StaffElement.NO_GLISSANDO);
-    }
-
-    @Test
-    @Order(7)
     void testGlissandoPersistsThroughSaveLoad() throws Exception {
         buildNotesWithConnectedGlissando();
 
@@ -174,72 +240,6 @@ class GlissandoTest extends E2ETest {
     }
 
     @Test
-    @Order(8)
-    void testDeleteSourceNoteRemovesConnectedGlissando() {
-        buildNotesWithConnectedGlissando();
-
-        enterSelectMode();
-
-        // Select the source note (note 0)
-        clickAt(noteScreenPosition(0, 0));
-
-        // Delete it
-        robot.pressAndReleaseKey(KeyEvent.VK_DELETE);
-        performLayout(0);
-
-        // Note 0 was removed, only 1 note remains
-        var line = composition().getLine(0);
-        assertThat(line.elementCount()).isEqualTo(1);
-
-        // The remaining note should have no orphaned glissando
-        //noinspection ObjectEquality
-        assertThat(line.getElement(0).getGlissando()).isSameAs(StaffElement.NO_GLISSANDO);
-    }
-
-    @Test
-    @Order(9)
-    void testDeleteSourceNoteRemovesSlideOut() {
-        buildNoteWithSlideOut();
-
-        enterSelectMode();
-
-        // Select the note with slide-out
-        clickAt(noteScreenPosition(0, 0));
-
-        // Delete it
-        robot.pressAndReleaseKey(KeyEvent.VK_DELETE);
-        performLayout(0);
-
-        // Note was removed
-        var line = composition().getLine(0);
-        assertThat(line.elementCount()).isEqualTo(0);
-    }
-
-    @Test
-    @Order(10)
-    void testDeleteTargetNoteRemovesConnectedGlissando() {
-        buildNotesWithConnectedGlissando();
-
-        enterSelectMode();
-
-        // Select the target note (note 1)
-        clickAt(noteScreenPosition(0, 1));
-
-        // Delete it
-        robot.pressAndReleaseKey(KeyEvent.VK_DELETE);
-        performLayout(0);
-
-        // Only 1 note remains (the source)
-        var line = composition().getLine(0);
-        assertThat(line.elementCount()).isEqualTo(1);
-
-        // The source note's glissando should be removed (no target to connect to)
-        //noinspection ObjectEquality
-        assertThat(line.getElement(0).getGlissando()).isSameAs(StaffElement.NO_GLISSANDO);
-    }
-
-    @Test
-    @Order(11)
     void testDragToUnisonRemovesConnectedGlissando() {
         buildNotesWithConnectedGlissando();
 

@@ -25,7 +25,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.awt.event.*;
 
 import org.assertj.swing.edt.GuiActionRunner;
-import org.junit.jupiter.api.Order;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import songscribe.music.Composition;
@@ -41,133 +41,136 @@ import songscribe.ui.component.MainFrame;
  * Verifies that selecting notes in select mode causes the toolbar buttons
  * to reflect the attributes of the selected notes.
  */
-@Order(7)
 class ToolbarReflectionTest extends E2ETest {
 
-    @Test
-    @Order(1)
-    void testSingleNoteSelection() {
-        buildComposition(crotchet(0));
-        enterSelectMode();
+    @Nested
+    class SingleElementReflection {
 
-        clickAt(noteScreenPosition(0, 0));
+        @Test
+        void testSingleNoteSelection() {
+            buildComposition(crotchet(0));
+            enterSelectMode();
 
-        assertActionSelected(Actions.QUARTER_NOTE_ACTION, true);
-        assertActionSelected(Actions.HALF_NOTE_ACTION, false);
-        assertActionSelected(Actions.EIGHTH_NOTE_ACTION, false);
-        assertActionSelected(Actions.FLAT_ACTION, false);
-        assertActionSelected(Actions.SHARP_ACTION, false);
-        assertActionSelected(Actions.DOT_ACTION, false);
+            clickAt(noteScreenPosition(0, 0));
 
-        // Verify toolbar button model mirrors the action state
-        assertButtonSelected(Actions.QUARTER_NOTE_ACTION, true);
-        assertButtonSelected(Actions.FLAT_ACTION, false);
-        assertButtonSelected(Actions.DOT_ACTION, false);
+            assertActionSelected(Actions.QUARTER_NOTE_ACTION, true);
+            assertActionSelected(Actions.HALF_NOTE_ACTION, false);
+            assertActionSelected(Actions.EIGHTH_NOTE_ACTION, false);
+            assertActionSelected(Actions.FLAT_ACTION, false);
+            assertActionSelected(Actions.SHARP_ACTION, false);
+            assertActionSelected(Actions.DOT_ACTION, false);
+
+            // Verify toolbar button model mirrors the action state
+            assertButtonSelected(Actions.QUARTER_NOTE_ACTION, true);
+            assertButtonSelected(Actions.FLAT_ACTION, false);
+            assertButtonSelected(Actions.DOT_ACTION, false);
+        }
+
+        @Test
+        void testSingleRestSelection() {
+            buildComposition(rest(ElementType.CROTCHET_REST, 0));
+            enterSelectMode();
+
+            clickAt(noteScreenPosition(0, 0));
+
+            // DURATION actions: appliesTo=true but matchesNote=false (CROTCHET_REST != CROTCHET)
+            assertActionSelected(Actions.QUARTER_NOTE_ACTION, false);
+            assertActionSelected(Actions.HALF_NOTE_ACTION, false);
+            assertActionSelected(Actions.EIGHTH_NOTE_ACTION, false);
+
+            // NoteOnlyAction subclasses: appliesTo=false for rests
+            assertActionSelected(Actions.FLAT_ACTION, false);
+            assertActionSelected(Actions.FERMATA_ACTION, false);
+            assertActionSelected(Actions.STACCATO_ACTION, false);
+        }
+    }
+
+    @Nested
+    class MultiElementReflection {
+
+        @Test
+        void testMultipleIdenticalNotes() {
+            buildComposition(crotchet(0), crotchet(-2));
+            enterSelectMode();
+
+            clickAt(noteScreenPosition(0, 0));
+            shiftClickAt(noteScreenPosition(0, 1));
+
+            assertThat(score().getSelectionSize()).isEqualTo(2);
+            assertActionSelected(Actions.QUARTER_NOTE_ACTION, true);
+            assertActionSelected(Actions.FLAT_ACTION, false);
+            assertActionSelected(Actions.DOT_ACTION, false);
+        }
+
+        @Test
+        void testMultipleDifferentDurations() {
+            buildComposition(crotchet(0), minim(-2));
+            enterSelectMode();
+
+            clickAt(noteScreenPosition(0, 0));
+            shiftClickAt(noteScreenPosition(0, 1));
+
+            assertThat(score().getSelectionSize()).isEqualTo(2);
+            assertActionSelected(Actions.QUARTER_NOTE_ACTION, false);
+            assertActionSelected(Actions.HALF_NOTE_ACTION, false);
+        }
+
+        @Test
+        void testMultipleDifferentAccidentals() {
+            var note1 = crotchet(0);
+            note1.setAccidental(StaffElement.Accidental.FLAT);
+
+            var note2 = crotchet(-2);
+            note2.setAccidental(StaffElement.Accidental.DOUBLE_FLAT);
+
+            buildComposition(note1, note2);
+            enterSelectMode();
+
+            clickAt(noteScreenPosition(0, 0));
+            shiftClickAt(noteScreenPosition(0, 1));
+
+            assertThat(score().getSelectionSize()).isEqualTo(2);
+            assertActionSelected(Actions.FLAT_ACTION, false);
+            assertActionSelected(Actions.DOUBLE_FLAT_ACTION, false);
+            assertActionSelected(Actions.QUARTER_NOTE_ACTION, true);
+        }
+    }
+
+    @Nested
+    class MixedTypeReflection {
+
+        @Test
+        void testNoteAndRestSelection() {
+            buildComposition(crotchet(0), rest(ElementType.CROTCHET_REST, -2));
+            enterSelectMode();
+
+            clickAt(noteScreenPosition(0, 0));
+            shiftClickAt(noteScreenPosition(0, 1));
+
+            assertThat(score().getSelectionSize()).isEqualTo(2);
+
+            // CROTCHET action: applicable to both (DURATION appliesTo=true for all),
+            // but matchesNote=false for the rest (CROTCHET_REST != CROTCHET)
+            assertActionSelected(Actions.QUARTER_NOTE_ACTION, false);
+            assertActionSelected(Actions.FLAT_ACTION, false);
+        }
+
+        @Test
+        void testDifferentDurationsAndRest() {
+            buildComposition(crotchet(0), minim(-2), rest(ElementType.CROTCHET_REST, -4));
+            enterSelectMode();
+
+            clickAt(noteScreenPosition(0, 0));
+            shiftClickAt(noteScreenPosition(0, 2));
+
+            assertThat(score().getSelectionSize()).isEqualTo(3);
+            assertActionSelected(Actions.QUARTER_NOTE_ACTION, false);
+            assertActionSelected(Actions.HALF_NOTE_ACTION, false);
+            assertActionSelected(Actions.FLAT_ACTION, false);
+        }
     }
 
     @Test
-    @Order(2)
-    void testSingleRestSelection() {
-        buildComposition(rest(ElementType.CROTCHET_REST, 0));
-        enterSelectMode();
-
-        clickAt(noteScreenPosition(0, 0));
-
-        // DURATION actions: appliesTo=true but matchesNote=false (CROTCHET_REST != CROTCHET)
-        assertActionSelected(Actions.QUARTER_NOTE_ACTION, false);
-        assertActionSelected(Actions.HALF_NOTE_ACTION, false);
-        assertActionSelected(Actions.EIGHTH_NOTE_ACTION, false);
-
-        // NoteOnlyAction subclasses: appliesTo=false for rests
-        assertActionSelected(Actions.FLAT_ACTION, false);
-        assertActionSelected(Actions.FERMATA_ACTION, false);
-        assertActionSelected(Actions.STACCATO_ACTION, false);
-    }
-
-    @Test
-    @Order(3)
-    void testMultipleIdenticalNotes() {
-        buildComposition(crotchet(0), crotchet(-2));
-        enterSelectMode();
-
-        clickAt(noteScreenPosition(0, 0));
-        shiftClickAt(noteScreenPosition(0, 1));
-
-        assertThat(score().getSelectionSize()).isEqualTo(2);
-        assertActionSelected(Actions.QUARTER_NOTE_ACTION, true);
-        assertActionSelected(Actions.FLAT_ACTION, false);
-        assertActionSelected(Actions.DOT_ACTION, false);
-    }
-
-    @Test
-    @Order(4)
-    void testMultipleDifferentDurations() {
-        buildComposition(crotchet(0), minim(-2));
-        enterSelectMode();
-
-        clickAt(noteScreenPosition(0, 0));
-        shiftClickAt(noteScreenPosition(0, 1));
-
-        assertThat(score().getSelectionSize()).isEqualTo(2);
-        assertActionSelected(Actions.QUARTER_NOTE_ACTION, false);
-        assertActionSelected(Actions.HALF_NOTE_ACTION, false);
-    }
-
-    @Test
-    @Order(5)
-    void testMultipleDifferentAccidentals() {
-        var note1 = crotchet(0);
-        note1.setAccidental(StaffElement.Accidental.FLAT);
-
-        var note2 = crotchet(-2);
-        note2.setAccidental(StaffElement.Accidental.DOUBLE_FLAT);
-
-        buildComposition(note1, note2);
-        enterSelectMode();
-
-        clickAt(noteScreenPosition(0, 0));
-        shiftClickAt(noteScreenPosition(0, 1));
-
-        assertThat(score().getSelectionSize()).isEqualTo(2);
-        assertActionSelected(Actions.FLAT_ACTION, false);
-        assertActionSelected(Actions.DOUBLE_FLAT_ACTION, false);
-        assertActionSelected(Actions.QUARTER_NOTE_ACTION, true);
-    }
-
-    @Test
-    @Order(6)
-    void testNoteAndRestSelection() {
-        buildComposition(crotchet(0), rest(ElementType.CROTCHET_REST, -2));
-        enterSelectMode();
-
-        clickAt(noteScreenPosition(0, 0));
-        shiftClickAt(noteScreenPosition(0, 1));
-
-        assertThat(score().getSelectionSize()).isEqualTo(2);
-
-        // CROTCHET action: applicable to both (DURATION appliesTo=true for all),
-        // but matchesNote=false for the rest (CROTCHET_REST != CROTCHET)
-        assertActionSelected(Actions.QUARTER_NOTE_ACTION, false);
-        assertActionSelected(Actions.FLAT_ACTION, false);
-    }
-
-    @Test
-    @Order(7)
-    void testDifferentDurationsAndRest() {
-        buildComposition(crotchet(0), minim(-2), rest(ElementType.CROTCHET_REST, -4));
-        enterSelectMode();
-
-        clickAt(noteScreenPosition(0, 0));
-        shiftClickAt(noteScreenPosition(0, 2));
-
-        assertThat(score().getSelectionSize()).isEqualTo(3);
-        assertActionSelected(Actions.QUARTER_NOTE_ACTION, false);
-        assertActionSelected(Actions.HALF_NOTE_ACTION, false);
-        assertActionSelected(Actions.FLAT_ACTION, false);
-    }
-
-    @Test
-    @Order(8)
     void testSelectionClearedRestoresState() {
         // Use a minim so the flat action state changes are clearly visible.
         // Set flat on the note so reflection will select the flat action.
