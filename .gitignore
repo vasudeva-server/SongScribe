@@ -1,6 +1,6 @@
 # No maven stuff
 target/
-src/main/java/songscribe/Version.java
+**/Version.java
 out/
 jpackage
 

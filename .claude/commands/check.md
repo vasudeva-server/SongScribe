@@ -2,7 +2,7 @@
 
 Review code for reuse, quality, and efficiency. Fix any issues found.
 
-IMPORTANT: All reviews MUST apply the rules in .claude/rules/code-styles/java+kotlin.md in addition to the criteria below.
+IMPORTANT: All reviews MUST apply the rules in .claude/rules/code-styles/java-kotlin.md in addition to the criteria below.
 
 ## Phase 1: Determine Scope
 

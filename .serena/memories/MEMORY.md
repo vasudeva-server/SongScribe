@@ -5,7 +5,7 @@
 **Before planning or implementing any Java/Kotlin changes**, always read:
 
 ```
-.claude/rules/code-styles/java+kotlin.md
+.claude/rules/code-styles/java-kotlin.md
 ```
 
 This file contains critical rules including no logic duplication, unit suffixes (Ss/Px), `var` usage, file headers, import ordering, nullability annotations, and formatting conventions. Do not skip this step — it is not optional.

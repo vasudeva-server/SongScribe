@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Check Java/Kotlin source file for mechanical code style violations.
 # Covers rules that can be verified without semantic understanding.
-# See .claude/rules/code-styles/java+kotlin.md for full rules.
+# See .claude/rules/code-styles/java-kotlin.md for full rules.
 #
 # Usage: check-style.sh <file>
 # Exit 1 if violations found.
@@ -35,6 +35,6 @@ if [[ -n "$violations" ]]; then
     echo "Style violations in $(basename "$file"):"
     echo -e "$violations"
     echo "Note: naming, structure, and annotation rules require Claude review."
-    echo "See .claude/rules/code-styles/java+kotlin.md"
+    echo "See .claude/rules/code-styles/java-kotlin.md"
     exit 1
 fi
