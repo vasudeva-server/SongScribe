@@ -6,8 +6,8 @@
 #   ./scripts/test.sh e2e                                    # Run only e2e tests
 #   ./scripts/test.sh unit                                   # Run only unit tests (excludes e2e)
 #   ./scripts/test.sh --debug e2e                            # Run e2e tests, pausing between each test
-#   ./scripts/test.sh SMuFLMetadataTest                      # Run specific test class
-#   ./scripts/test.sh BeamingTest.testFlipStemDirection       # Run specific test method
+#   ./scripts/test.sh SMuFLMetadataTest                      # Run specific test class (multiple space-separated classes and/or methods allowed)
+#   ./scripts/test.sh BeamingTest.testFlipStemDirection      # Run specific test method (multiple space-separated methods and/or classes allowed)
 #   ./scripts/test.sh -Dtest=*Test                           # Run with Maven pattern
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
