@@ -29,6 +29,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedConstruction;
 import org.mockito.MockedStatic;
 
 import songscribe.UnitTest;
@@ -96,6 +97,17 @@ class DialogsTest extends UnitTest {
             Dialogs.setSuppressDialogs(false);
         }
 
+        private void stubScreenBounds(MockedStatic<GraphicsEnvironment> geMock) {
+            var gc = mock(GraphicsConfiguration.class);
+            when(gc.getBounds()).thenReturn(new Rectangle(0, 0, 1920, 1080));
+            var device = mock(GraphicsDevice.class);
+            when(device.getDefaultConfiguration()).thenReturn(gc);
+            var env = mock(GraphicsEnvironment.class);
+            when(env.getDefaultScreenDevice()).thenReturn(device);
+            geMock.when(GraphicsEnvironment::getLocalGraphicsEnvironment).thenReturn(env);
+            geMock.when(GraphicsEnvironment::isHeadless).thenReturn(false);
+        }
+
         @Test
         void testShowConfirmDialogDelegatesToJOptionPane() {
             try (var jopMock = mockStatic(JOptionPane.class)) {
@@ -117,36 +129,42 @@ class DialogsTest extends UnitTest {
         @Test
         void testShowErrorMessageDelegatesToJOptionPane() {
             var toolkit = mock(Toolkit.class);
+            var mockDialog = mock(JDialog.class);
+            when(mockDialog.getSize()).thenReturn(new Dimension(200, 100));
 
             try (
                 var tkMock = mockStatic(Toolkit.class);
-                var jopMock = mockStatic(JOptionPane.class)
+                var geMock = mockStatic(GraphicsEnvironment.class);
+                var construction = mockConstruction(JOptionPane.class, (pane, context) ->
+                    when(pane.createDialog(any(), anyString())).thenReturn(mockDialog))
             ) {
                 tkMock.when(Toolkit::getDefaultToolkit).thenReturn(toolkit);
+                stubScreenBounds(geMock);
 
                 Dialogs.showErrorMessage(null, "Error Title", "Error text");
 
                 verify(toolkit).beep();
-                jopMock.verify(
-                    () -> JOptionPane.showMessageDialog(
-                        isNull(), eq("Error text"), eq("Error Title"),
-                        eq(JOptionPane.ERROR_MESSAGE)
-                    )
-                );
+                assertThat(construction.constructed()).hasSize(1);
+                verify(mockDialog).setVisible(true);
             }
         }
 
         @Test
         void testShowInfoMessageDelegatesToJOptionPane() {
-            try (var jopMock = mockStatic(JOptionPane.class)) {
+            var mockDialog = mock(JDialog.class);
+            when(mockDialog.getSize()).thenReturn(new Dimension(200, 100));
+
+            try (
+                var geMock = mockStatic(GraphicsEnvironment.class);
+                var construction = mockConstruction(JOptionPane.class, (pane, context) ->
+                    when(pane.createDialog(any(), anyString())).thenReturn(mockDialog))
+            ) {
+                stubScreenBounds(geMock);
+
                 Dialogs.showInfoMessage(null, "Info Title", "Info text");
 
-                jopMock.verify(
-                    () -> JOptionPane.showMessageDialog(
-                        isNull(), eq("Info text"), eq("Info Title"),
-                        eq(JOptionPane.INFORMATION_MESSAGE)
-                    )
-                );
+                assertThat(construction.constructed()).hasSize(1);
+                verify(mockDialog).setVisible(true);
             }
         }
 
@@ -213,25 +231,19 @@ class DialogsTest extends UnitTest {
 
         @Test
         void testShowErrorMessageDoesNotShowDialog() {
-            try (var jopMock = mockStatic(JOptionPane.class)) {
+            try (var construction = mockConstruction(JOptionPane.class)) {
                 Dialogs.showErrorMessage(null, "Title", "Error message");
 
-                jopMock.verify(
-                    () -> JOptionPane.showMessageDialog(any(), any(), any(), anyInt()),
-                    never()
-                );
+                assertThat(construction.constructed()).isEmpty();
             }
         }
 
         @Test
         void testShowInfoMessageDoesNotShowDialog() {
-            try (var jopMock = mockStatic(JOptionPane.class)) {
+            try (var construction = mockConstruction(JOptionPane.class)) {
                 Dialogs.showInfoMessage(null, "Title", "Info message");
 
-                jopMock.verify(
-                    () -> JOptionPane.showMessageDialog(any(), any(), any(), anyInt()),
-                    never()
-                );
+                assertThat(construction.constructed()).isEmpty();
             }
         }
 

@@ -251,7 +251,9 @@ public final class Dialogs {
     }
 
     private static @NotNull Rectangle getScreenBounds(@Nullable Component parent) {
-        Window window = parent instanceof Window w ? w : SwingUtilities.getWindowAncestor(parent);
+        Window window = parent instanceof Window w
+            ? w
+            : parent != null ? SwingUtilities.getWindowAncestor(parent) : null;
 
         if (window != null) {
             return window.getGraphicsConfiguration().getBounds();
