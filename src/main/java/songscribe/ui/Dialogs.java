@@ -22,6 +22,7 @@ package songscribe.ui;
 
 import java.awt.*;
 import java.io.File;
+import java.util.function.Consumer;
 
 import javax.swing.*;
 
@@ -58,17 +59,7 @@ public final class Dialogs {
         String title,
         String message
     ) {
-        Log.info(message);
-
-        if (isSuppressed()) {
-            return;
-        }
-
-        try {
-            JOptionPane.showMessageDialog(parent, message, title, JOptionPane.INFORMATION_MESSAGE);
-        } catch (HeadlessException e) {
-            Log.error("HeadlessException showing info dialog: " + e.getMessage());
-        }
+        showMessageDialog(parent, title, message, JOptionPane.INFORMATION_MESSAGE, Log::info, false);
     }
 
     /**
@@ -80,19 +71,7 @@ public final class Dialogs {
         String title,
         String message
     ) {
-        Log.error(message);
-
-        if (isSuppressed()) {
-            return;
-        }
-
-        Toolkit.getDefaultToolkit().beep();
-
-        try {
-            JOptionPane.showMessageDialog(parent, message, title, JOptionPane.ERROR_MESSAGE);
-        } catch (HeadlessException e) {
-            Log.error("HeadlessException showing error dialog: " + e.getMessage());
-        }
+        showMessageDialog(parent, title, message, JOptionPane.ERROR_MESSAGE, Log::error, true);
     }
 
     public static void showWarningMessage(
@@ -100,17 +79,7 @@ public final class Dialogs {
         String title,
         String message
     ) {
-        Log.warning(message);
-
-        if (isSuppressed()) {
-            return;
-        }
-
-        try {
-            JOptionPane.showMessageDialog(parent, message, title, JOptionPane.WARNING_MESSAGE);
-        } catch (HeadlessException e) {
-            Log.error("HeadlessException showing warning dialog: " + e.getMessage());
-        }
+        showMessageDialog(parent, title, message, JOptionPane.WARNING_MESSAGE, Log::warning, false);
     }
 
     public static int showConfirmDialog(
@@ -234,6 +203,31 @@ public final class Dialogs {
     // ------------------------------------------------------------------
     // Private
     // ------------------------------------------------------------------
+
+    private static void showMessageDialog(
+        @Nullable Component parent,
+        String title,
+        String message,
+        int messageType,
+        Consumer<String> logger,
+        boolean beep
+    ) {
+        logger.accept(message);
+
+        if (isSuppressed()) {
+            return;
+        }
+
+        if (beep) {
+            Toolkit.getDefaultToolkit().beep();
+        }
+
+        try {
+            JOptionPane.showMessageDialog(parent, message, title, messageType);
+        } catch (HeadlessException e) {
+            Log.error("HeadlessException showing message dialog: " + e.getMessage());
+        }
+    }
 
     private static boolean isSuppressed() {
         return GraphicsEnvironment.isHeadless() || suppressDialogs;
