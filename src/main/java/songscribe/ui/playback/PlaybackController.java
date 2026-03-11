@@ -28,8 +28,10 @@ import javax.sound.midi.Sequencer;
 
 import org.jetbrains.annotations.Nullable;
 
+import songscribe.Strings;
 import songscribe.midi.MidiSequenceBuilder;
 import songscribe.midi.PlaybackSettings;
+import songscribe.ui.Dialogs;
 import songscribe.music.Composition;
 import songscribe.prefs.Prefs;
 import songscribe.ui.component.MainFrame;
@@ -281,8 +283,10 @@ public final class PlaybackController {
             playbackDidStart();
             sequencer.start();
         } catch (InvalidMidiDataException e1) {
-            mainFrame.showErrorMessage(
-                "Could not play back the song because of an unexpected error."
+            Dialogs.showErrorMessage(
+                null,
+                Strings.get(Strings.DIALOG_TITLE_PLAYBACK_ERROR),
+                Strings.get(Strings.ERROR_PLAYBACK_UNEXPECTED)
             );
         }
     }

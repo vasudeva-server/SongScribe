@@ -36,8 +36,10 @@ import javax.swing.*;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import songscribe.Strings;
 import songscribe.music.Tempo;
 import songscribe.prefs.Prefs;
+import songscribe.ui.Dialogs;
 import songscribe.ui.action.Actions;
 import songscribe.ui.component.IMainFrame;
 import songscribe.util.Utils;
@@ -65,7 +67,9 @@ public class ProfileManager {
         } else if (!existingProfiles.isEmpty()) {
             setDefaultProfile(existingProfiles.getFirst());
         } else {
-            mainFrame.showErrorMessage(
+            Dialogs.showErrorMessage(
+                null,
+                Strings.get(Strings.DIALOG_TITLE_PROFILE_ERROR),
                 "There is not a single profile in your installation. Try reinstalling " + Constants.PACKAGE_NAME
             );
             System.exit(-1);
@@ -131,7 +135,9 @@ public class ProfileManager {
 
             return props;
         } catch (IOException e) {
-            mainFrame.showErrorMessage(
+            Dialogs.showErrorMessage(
+                null,
+                Strings.get(Strings.DIALOG_TITLE_PROFILE_ERROR),
                 "Could not load the profile " + name
             );
         }

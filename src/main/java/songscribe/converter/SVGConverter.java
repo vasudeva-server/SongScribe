@@ -59,7 +59,7 @@ public class SVGConverter {
 
             try {
                 var path = FileUtils.getPathWithoutExtension(file) + ".svg";
-                score.createSVG(new File(path), false);
+                score.createSVG(new File(path));
             } catch (IOException e) {
                 Log.error("Could not convert " + file.getName(), e);
             }

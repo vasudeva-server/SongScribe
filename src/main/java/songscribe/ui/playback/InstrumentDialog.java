@@ -34,6 +34,7 @@ import javax.swing.*;
 
 import songscribe.Strings;
 import songscribe.prefs.Prefs;
+import songscribe.ui.Dialogs;
 import songscribe.ui.dialog.StandardDialog;
 import songscribe.util.MyFontUtils;
 
@@ -249,7 +250,11 @@ public class InstrumentDialog extends StandardDialog {
                 MidiController.sequencer.addMetaEventListener(endListener);
                 MidiController.sequencer.start();
             } catch (InvalidMidiDataException ex) {
-                mainFrame.showErrorMessage(Strings.get(Strings.ERROR_SCALE_PLAY));
+                Dialogs.showErrorMessage(
+                    mainFrame,
+                    Strings.get(Strings.DIALOG_TITLE_PLAYBACK_ERROR),
+                    Strings.get(Strings.ERROR_SCALE_PLAY)
+                );
             }
         }
     }

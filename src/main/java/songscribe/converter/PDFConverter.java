@@ -157,7 +157,7 @@ public class PDFConverter {
 
             try {
                 var path = FileUtils.getPathWithoutExtension(file) + ".pdf";
-                ExportPDFAction.createPDF(data, new File(path), false);
+                ExportPDFAction.createPDF(data, new File(path));
             } catch (IOException e) {
                 Log.error("Could not convert " + file.getName(), e);
             }

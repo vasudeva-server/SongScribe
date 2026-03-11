@@ -26,9 +26,12 @@ import java.awt.*;
 import java.io.PrintWriter;
 import java.io.StringReader;
 import java.io.StringWriter;
+import java.util.Set;
 
 import javax.swing.*;
 import javax.xml.parsers.SAXParserFactory;
+
+import org.jetbrains.annotations.Nullable;
 
 import org.assertj.swing.core.BasicRobot;
 import org.assertj.swing.core.GenericTypeMatcher;
@@ -40,9 +43,10 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestInstance;
+import org.junit.jupiter.api.extension.ConditionEvaluationResult;
+import org.junit.jupiter.api.extension.ExecutionCondition;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.api.extension.TestWatcher;
@@ -50,12 +54,13 @@ import org.xml.sax.InputSource;
 
 import songscribe.io.CompositionIO;
 import songscribe.music.Composition;
+import songscribe.music.StaffElement.Accidental;
+import songscribe.ui.Dialogs;
 import songscribe.ui.action.Actions;
 import songscribe.ui.action.UIAction;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.Score;
 import songscribe.ui.layout2.ScaleContext;
-import songscribe.util.RuntimeError;
 import songscribe.util.UIUtils;
 
 /**
@@ -70,9 +75,11 @@ import songscribe.util.UIUtils;
 public abstract class E2ETest {
 
     private static final boolean DEBUG_MODE = Boolean.getBoolean("e2e.debug");
+    private static final boolean SLOW_MODE = Boolean.getBoolean("e2e.slow");
+    private static final boolean FAIL_FAST = Boolean.getBoolean("e2e.failFast");
 
     /** Delay in ms between UI actions so you can watch what's happening. Set to 0 for full speed. */
-    private static final int ACTION_DELAY_MS = DEBUG_MODE ? 250 : 10;
+    private static final int ACTION_DELAY_MS = SLOW_MODE ? 1000 : DEBUG_MODE ? 250 : 10;
 
     private static final String[] DEBUG_OPTIONS = {"Stop", "Skip", "OK"};
     private static final int DEBUG_STOP = 0;
@@ -94,7 +101,7 @@ public abstract class E2ETest {
 
     @BeforeAll
     protected void setUpOnce() {
-        RuntimeError.setSuppressDialogs(false);
+        Dialogs.setSuppressDialogs(false);
         FailOnThreadViolationRepaintManager.install();
         robot = BasicRobot.robotWithCurrentAwtHierarchy();
 
@@ -300,21 +307,120 @@ public abstract class E2ETest {
         clickToolbarButton(Actions.REST_ACTION);
     }
 
+    /**
+     * Selects the given duration and inserts notes at the given staff positions on line 0.
+     */
+    protected void buildNotes(UIAction durationAction, int... staffPositions) {
+        selectDuration(durationAction);
+
+        for (var sp : staffPositions) {
+            clickAt(insertionPoint(0, sp));
+            performLayout(0);
+        }
+    }
+
+
+    // -- Accidental helpers --
+
+    // SHARP, DOUBLE_SHARP, NATURAL_SHARP have no toolbar button -- reached via Insert > Accidental menu.
+    private static final Set<UIAction> MENU_ONLY_ACCIDENTALS = Set.of(
+        Actions.SHARP_ACTION,
+        Actions.DOUBLE_SHARP_ACTION,
+        Actions.NATURAL_SHARP_ACTION
+    );
+
+    protected void clickAccidentalAction(UIAction action) {
+        if (MENU_ONLY_ACCIDENTALS.contains(action)) {
+            clickMenuItem(action);
+        } else {
+            clickToolbarButton(action);
+        }
+    }
+
+    protected void selectAccidental(Accidental accidental) {
+        deselectAccidental();
+
+        if (accidental != Accidental.NONE) {
+            clickAccidentalAction(accidentalActionFor(accidental));
+        }
+    }
+
+    protected void deselectAccidental() {
+        var selected = GuiActionRunner.execute(() -> {
+            for (var action : accidentalActions()) {
+                if (((UIAction.Selectable) action).isSelected()) {
+                    return action;
+                }
+            }
+
+            return null;
+        });
+
+        if (selected != null) {
+            clickAccidentalAction(selected);
+        }
+    }
+
+    protected UIAction accidentalActionFor(Accidental accidental) {
+        return switch (accidental) {
+            case FLAT -> Actions.FLAT_ACTION;
+            case DOUBLE_FLAT -> Actions.DOUBLE_FLAT_ACTION;
+            case NATURAL_FLAT -> Actions.NATURAL_FLAT_ACTION;
+            case NATURAL -> Actions.NATURAL_ACTION;
+            case SHARP -> Actions.SHARP_ACTION;
+            case DOUBLE_SHARP -> Actions.DOUBLE_SHARP_ACTION;
+            case NATURAL_SHARP -> Actions.NATURAL_SHARP_ACTION;
+            default -> throw new IllegalArgumentException("No action for " + accidental);
+        };
+    }
+
+    protected UIAction[] accidentalActions() {
+        return new UIAction[]{
+            Actions.FLAT_ACTION, Actions.DOUBLE_FLAT_ACTION, Actions.NATURAL_FLAT_ACTION,
+            Actions.NATURAL_ACTION, Actions.SHARP_ACTION, Actions.DOUBLE_SHARP_ACTION,
+            Actions.NATURAL_SHARP_ACTION
+        };
+    }
+
 
     // -- Menu helpers --
 
     /**
-     * Clicks a menu item by searching the entire menu bar recursively.
-     * Finds and clicks the first item whose text matches {@code itemName}.
+     * Triggers a menu-only action by finding its {@link JMenuItem} and calling
+     * {@link JMenuItem#doClick()}, bypassing AssertJ Swing's menu traversal
+     * (which waits up to 10 s for the AWT event queue to idle after each menu level).
+     * {@code doClick()} fires the full button-model state change — identical to a real
+     * click — without opening any parent menus.
      */
-    protected void clickMenuItem(String itemName) {
-        window.menuItem(new GenericTypeMatcher<JMenuItem>(JMenuItem.class) {
-            @Override
-            protected boolean isMatching(JMenuItem item) {
-                return itemName.equals(item.getText());
+    protected void clickMenuItem(UIAction action) {
+        GuiActionRunner.execute(() -> {
+            var menuBar = MainFrame.getInstance().getJMenuBar();
+            var item = findMenuItemForAction(menuBar, action);
+
+            if (item == null) {
+                throw new IllegalArgumentException("No JMenuItem found for action: " + action.getName());
             }
-        }).click();
+
+            item.doClick();
+        });
         pause();
+    }
+
+    @Nullable
+    private JMenuItem findMenuItemForAction(MenuElement parent, UIAction action) {
+        for (var element : parent.getSubElements()) {
+            if (element instanceof JMenuItem item && item.getAction() == action) {
+                return item;
+            }
+
+            var found = findMenuItemForAction(element, action);
+
+            if (found != null) {
+                return found;
+            }
+        }
+
+        return null;
     }
 
 
@@ -366,6 +472,30 @@ public abstract class E2ETest {
                 // Place 30px past the last note
                 xPx = (int) Math.round(ScaleContext.getInstance().toPixels(lastXSs)) + 30;
             }
+
+            var yPx = lc.staffPositionToYPx(staffPositionSp);
+
+            var locationOnScreen = lc.getLocationOnScreen();
+            return new Point(
+                locationOnScreen.x + xPx,
+                locationOnScreen.y + yPx
+            );
+        });
+    }
+
+    /**
+     * Computes a screen-coordinate insertion point just before the specified element.
+     * The x coordinate is placed a few pixels to the left of the element's layout position.
+     */
+    protected Point insertionPointBefore(int lineIndex, int elementIndex, int staffPositionSp) {
+        return GuiActionRunner.execute(() -> {
+            var lc = score().getLineComponent(lineIndex);
+            var line = lc.getLine();
+            var layoutResult = lc.getLayoutResult();
+
+            var element = line.getElement(elementIndex);
+            var elementXSs = layoutResult != null ? layoutResult.getElementXSs(element) : 0.0;
+            int xPx = (int) Math.round(ScaleContext.getInstance().toPixels(elementXSs)) - 10;
 
             var yPx = lc.staffPositionToYPx(staffPositionSp);
 
@@ -480,6 +610,7 @@ public abstract class E2ETest {
         }
     }
 
+
     /**
      * In debug mode, shows a confirm dialog with Stop/Skip/OK buttons.
      * Stop aborts the entire test run, Skip skips the remaining tests in the current class.
@@ -493,10 +624,10 @@ public abstract class E2ETest {
         var latch = new java.util.concurrent.CountDownLatch(1);
 
         SwingUtilities.invokeLater(() -> {
-            result[0] = JOptionPane.showOptionDialog(
+            result[0] = Dialogs.showOptionDialog(
                 MainFrame.getInstance(),
-                message,
                 "E2E Debug",
+                message,
                 JOptionPane.DEFAULT_OPTION,
                 JOptionPane.QUESTION_MESSAGE,
                 null,
@@ -559,7 +690,7 @@ public abstract class E2ETest {
 
     // -- Test result tracking --
 
-    static class ResultTracker implements TestWatcher {
+    static class ResultTracker implements TestWatcher, ExecutionCondition {
 
         @Override
         public void testSuccessful(ExtensionContext context) {
@@ -569,6 +700,15 @@ public abstract class E2ETest {
         @Override
         public void testFailed(ExtensionContext context, Throwable cause) {
             failCount++;
+        }
+
+        @Override
+        public ConditionEvaluationResult evaluateExecutionCondition(ExtensionContext context) {
+            if (FAIL_FAST && failCount > 0) {
+                return ConditionEvaluationResult.disabled("Fail-fast: a previous test failed");
+            }
+
+            return ConditionEvaluationResult.enabled("");
         }
     }
 }

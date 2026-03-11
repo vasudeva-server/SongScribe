@@ -25,7 +25,9 @@ import java.awt.event.*;
 
 import org.jetbrains.annotations.NotNull;
 
+import songscribe.Strings;
 import songscribe.music.StaffElement;
+import songscribe.ui.Dialogs;
 import songscribe.ui.Mode;
 import songscribe.ui.layout2.ScaleContext;
 import songscribe.ui.playback.MidiController;
@@ -86,6 +88,12 @@ class SelectionHandler {
         var glissandoIndex = hitTestGlissandoAtPoint(point);
 
         if (glissandoIndex != -1) {
+            var line = lc.getLineSelectionState().getLine();
+
+            if (line.getElement(glissandoIndex).getType().isGraceNote()) {
+                return new HitResult.GraceGlissando();
+            }
+
             return new HitResult.Glissando(glissandoIndex);
         }
 
@@ -138,6 +146,15 @@ class SelectionHandler {
                 prepareSelection();
                 lineSelectionState.selectGlissando(elementIndex);
                 lc.getScore().selectionChanged();
+                pressHandled = true;
+            }
+
+            case HitResult.GraceGlissando() -> {
+                Dialogs.showWarningMessage(
+                    null,
+                    Strings.get(Strings.DIALOG_TITLE_GRACE_NOTE_WARNING),
+                    Strings.get(Strings.WARNING_GRACE_GLISSANDO_NOT_SELECTABLE)
+                );
                 pressHandled = true;
             }
 

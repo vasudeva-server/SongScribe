@@ -20,9 +20,6 @@
 package songscribe.ui.action;
 
 import java.awt.event.*;
-import java.io.File;
-
-import javax.swing.*;
 
 import songscribe.Strings;
 import songscribe.data.MyFileFilter;
@@ -46,33 +43,12 @@ public class ExportSVGAction extends UIAction {
 
     @Override
     public void actionPerformed(ActionEvent e) {
-        var mainFrame = MainFrame.getInstance();
+        var saveFile = FileUtils.showExportDialog(fileDialog, "svg");
 
-        fileDialog.setFile(
-            FileUtils.getSongFileNameForFileChooser(mainFrame.getScore())
-        );
-
-        if (fileDialog.showDialog()) {
-            var saveFile = fileDialog.getFile();
-
-            if (!saveFile.getName().toLowerCase().endsWith(".svg")) {
-                saveFile = new File(saveFile.getAbsolutePath() + ".svg");
-            }
-
-            if (saveFile.exists()) {
-                var response = JOptionPane.showConfirmDialog(
-                    mainFrame,
-                    Strings.get(Strings.CONFIRM_FILE_OVERWRITE, saveFile.getName()),
-                    mainFrame.appName,
-                    JOptionPane.YES_NO_OPTION
-                );
-
-                if (response == JOptionPane.NO_OPTION) {
-                    return;
-                }
-            }
-
-            mainFrame.getScore().createSVG(saveFile, true);
+        if (saveFile == null) {
+            return;
         }
+
+        MainFrame.getInstance().getScore().createSVG(saveFile);
     }
 }

@@ -28,12 +28,14 @@ import net.engio.mbassy.listener.Handler;
 
 import songscribe.Strings;
 import songscribe.music.Composition;
+import songscribe.ui.Dialogs;
 import songscribe.music.Line;
 import songscribe.music.LyricsProcessor;
 import songscribe.music.MusicEditOperations;
 import songscribe.music.StaffElement;
 import songscribe.ui.Control;
 import songscribe.ui.Mode;
+import songscribe.ui.action.Actions;
 import songscribe.ui.action.InsertLineAction;
 import songscribe.ui.adjustment.HorizontalAdjustment;
 import songscribe.ui.adjustment.LyricsAdjustment;
@@ -147,6 +149,14 @@ public final class ScoreMessageCoordinator {
         updateInsertionElement();
     }
 
+    private void syncInsertionElementWithSelectedDuration() {
+        var selected = Actions.DURATION_ACTION_GROUP.getSelected();
+
+        if (selected != null) {
+            callback.setInsertionElement(editModeManager.makeInsertionElement(selected.getType()));
+        }
+    }
+
     private void updateInsertionElement() {
         var insertionElement = editModeManager.getInsertionElement();
 
@@ -173,7 +183,11 @@ public final class ScoreMessageCoordinator {
             mainFrame.setDocumentModified(true);
             callback.repaint();
         } else {
-            mainFrame.showErrorMessage(Strings.get(Strings.ERROR_LINE_NO_SELECTION));
+            Dialogs.showErrorMessage(
+                null,
+                Strings.get(Strings.DIALOG_TITLE_LINE_ERROR),
+                Strings.get(Strings.ERROR_LINE_NO_SELECTION)
+            );
         }
     }
 
@@ -304,6 +318,13 @@ public final class ScoreMessageCoordinator {
             callback.clearSelection();
         }
 
+        // When entering edit mode, sync the insertion element with the currently
+        // selected duration button. Reflection may have changed the selected button
+        // while in select mode without posting a DurationSelectedMessage.
+        if (mode == Mode.EDIT) {
+            syncInsertionElementWithSelectedDuration();
+        }
+
         callback.getHorizontalAdjustment().setEnabled(mode == Mode.ADJUSTMENT);
         callback.getVerticalAdjustment().setEnabled(mode == Mode.VERTICAL_ADJUSTMENT);
         callback.getLyricsAdjustment().setEnabled(mode == Mode.LYRICS_ADJUSTMENT);
@@ -380,6 +401,10 @@ public final class ScoreMessageCoordinator {
             LyricsProcessor.spellLyrics(composition);
         }
 
+        // Discard saved action states — the composition has changed, so restoring
+        // pre-selection states would be stale. Individual action handlers will
+        // re-evaluate their enabled state from the current context.
+        selectionCoordinator.clearSavedActionStates();
         callback.clearSelection();
         callback.repaint();
     }

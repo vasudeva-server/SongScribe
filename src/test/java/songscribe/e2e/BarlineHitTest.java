@@ -22,14 +22,11 @@ package songscribe.e2e;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import org.assertj.swing.edt.GuiActionRunner;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
-import songscribe.music.Composition;
-import songscribe.music.ElementType;
-import songscribe.music.Line;
-import songscribe.ui.component.MainFrame;
+import songscribe.ui.action.Actions;
+import songscribe.ui.action.UIAction;
 
 /**
  * E2E tests verifying that barlines and repeats are clickable (hit-testable)
@@ -42,7 +39,7 @@ class BarlineHitTest extends E2ETest {
 
         @Test
         void testClickSingleBarline() {
-            buildLineWithElement(ElementType.SINGLE_BARLINE);
+            buildLineWithElement(Actions.BARLINE_ACTIONS[2]);
             enterSelectMode();
 
             clickAt(noteScreenPosition(0, 1));
@@ -53,7 +50,7 @@ class BarlineHitTest extends E2ETest {
 
         @Test
         void testClickDoubleBarline() {
-            buildLineWithElement(ElementType.DOUBLE_BARLINE);
+            buildLineWithElement(Actions.BARLINE_ACTIONS[1]);
             enterSelectMode();
 
             clickAt(noteScreenPosition(0, 1));
@@ -64,7 +61,7 @@ class BarlineHitTest extends E2ETest {
 
         @Test
         void testClickFinalDoubleBarline() {
-            buildLineWithElement(ElementType.FINAL_DOUBLE_BARLINE);
+            buildLineWithElement(Actions.BARLINE_ACTIONS[0]);
             enterSelectMode();
 
             clickAt(noteScreenPosition(0, 1));
@@ -79,7 +76,7 @@ class BarlineHitTest extends E2ETest {
 
         @Test
         void testClickRepeatLeft() {
-            buildLineWithElement(ElementType.REPEAT_LEFT);
+            buildLineWithElement(Actions.REPEAT_ACTIONS[0]);
             enterSelectMode();
 
             clickAt(noteScreenPosition(0, 1));
@@ -90,7 +87,7 @@ class BarlineHitTest extends E2ETest {
 
         @Test
         void testClickRepeatRight() {
-            buildLineWithElement(ElementType.REPEAT_RIGHT);
+            buildLineWithElement(Actions.REPEAT_ACTIONS[1]);
             enterSelectMode();
 
             clickAt(noteScreenPosition(0, 1));
@@ -101,7 +98,7 @@ class BarlineHitTest extends E2ETest {
 
         @Test
         void testClickRepeatLeftRight() {
-            buildLineWithElement(ElementType.REPEAT_LEFT_RIGHT);
+            buildLineWithElement(Actions.REPEAT_ACTIONS[2]);
             enterSelectMode();
 
             clickAt(noteScreenPosition(0, 1));
@@ -118,23 +115,13 @@ class BarlineHitTest extends E2ETest {
      * Builds a composition with a crotchet followed by the given element type.
      * The crotchet ensures the element is not at x=0 and has proper spacing.
      */
-    private void buildLineWithElement(ElementType elementType) {
-        GuiActionRunner.execute(() -> {
-            var composition = new Composition(MainFrame.getInstance());
-            var line = new Line();
+    private void buildLineWithElement(UIAction elementAction) {
+        selectDuration(Actions.QUARTER_NOTE_ACTION);
+        clickAt(insertionPoint(0, 0));
+        performLayout(0);
 
-            var crotchet = ElementType.CROTCHET.newInstance();
-            crotchet.setStaffPosition(0);
-            line.addElement(crotchet);
-
-            var element = elementType.newInstance();
-            element.setStaffPosition(0);
-            line.addElement(element);
-
-            composition.addLine(0, line);
-            score().setComposition(composition);
-        });
-
+        selectDuration(elementAction);
+        clickAt(insertionPoint(0, 0));
         performLayout(0);
     }
 }

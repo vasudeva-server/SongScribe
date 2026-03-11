@@ -23,6 +23,7 @@ import java.io.File;
 
 import songscribe.Strings;
 import songscribe.data.PageLayoutData;
+import songscribe.ui.Dialogs;
 import songscribe.util.GraphicUtils;
 
 /**
@@ -39,12 +40,10 @@ public class PDFExporter {
      *
      * @param data the page layout data containing margins and paper size
      * @param outputFile the file to write the PDF to
-     * @param isGUI whether this export is being run from the GUI (affects error reporting)
      */
     public static void createPDF(
         PageLayoutData data,
-        File outputFile,
-        Boolean isGUI
+        File outputFile
     ) {
         var resolution = 72f / GraphicUtils.getDpi();
         var paperWidth = data.paperWidth * resolution;
@@ -80,12 +79,10 @@ public class PDFExporter {
         }
 
         // PDF export not yet implemented with component-based rendering
-        if (isGUI) {
-            mainFrame.showErrorMessage(
-                Strings.get(Strings.ERROR_EXPORT_NOT_IMPLEMENTED, "PDF")
-            );
-        } else {
-            System.err.println("ERROR: PDF export is not yet implemented");
-        }
+        Dialogs.showErrorMessage(
+            null,
+            Strings.get(Strings.DIALOG_TITLE_EXPORT_ERROR),
+            Strings.get(Strings.ERROR_EXPORT_NOT_IMPLEMENTED, "PDF")
+        );
     }
 }

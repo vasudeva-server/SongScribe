@@ -35,7 +35,10 @@ public class PrintAction extends UIAction {
             KeyEvent.VK_P,
             UIUtils.MENU_SHORTCUT_MASK
         );
-        setFlags(Flag.DISABLE_WHEN_PLAYING);
+        setFlags(
+            Flag.DISABLE_WHEN_PLAYING,
+            Flag.DISABLE_IN_GRACE_MODE
+        );
     }
 
     @Override

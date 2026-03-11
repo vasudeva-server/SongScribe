@@ -23,7 +23,9 @@ import java.awt.event.ActionEvent;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
+import songscribe.Strings;
 import songscribe.prefs.RecentDocumentsManager;
+import songscribe.ui.Dialogs;
 import songscribe.ui.component.MainFrame;
 
 public class OpenRecentAction extends UIAction {
@@ -32,14 +34,19 @@ public class OpenRecentAction extends UIAction {
 
     public OpenRecentAction(String label, Path path) {
         super(label, label);
-        setFlags(Flag.DISABLE_WHEN_PLAYING);
+        setFlags(
+            Flag.DISABLE_WHEN_PLAYING,
+            Flag.DISABLE_IN_GRACE_MODE
+        );
         this.path = path;
     }
 
     @Override
     public void actionPerformed(ActionEvent e) {
         if (!Files.exists(path)) {
-            MainFrame.getInstance().showErrorMessage(
+            Dialogs.showErrorMessage(
+                MainFrame.getInstance(),
+                Strings.get(Strings.DIALOG_TITLE_FILE_ERROR),
                 "The file \u201c" + path.getFileName() + "\u201d could not be opened because it no longer exists."
             );
             RecentDocumentsManager.getInstance().remove(path);

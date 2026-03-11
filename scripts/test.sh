@@ -1,13 +1,16 @@
 #!/usr/bin/env bash
 # Run tests with JUnit Console Launcher (tree-style output)
-# Usage: ./scripts/test.sh [--debug] [e2e|unit|test-pattern]
+# Usage: ./scripts/test.sh [--debug] [--slow] [--fail-fast] [e2e|unit|test-pattern]
 # Examples:
 #   ./scripts/test.sh                                        # Run all tests
 #   ./scripts/test.sh e2e                                    # Run only e2e tests
 #   ./scripts/test.sh unit                                   # Run only unit tests (excludes e2e)
 #   ./scripts/test.sh --debug e2e                            # Run e2e tests, pausing between each test
+#   ./scripts/test.sh --slow GlissandoTest                   # Run with 1s pause between UI actions
 #   ./scripts/test.sh SMuFLMetadataTest                      # Run specific test class (multiple space-separated classes and/or methods allowed)
 #   ./scripts/test.sh BeamingTest.testFlipStemDirection      # Run specific test method (multiple space-separated methods and/or classes allowed)
+#   ./scripts/test.sh 'GraceNoteTest$EdgeCases'             # Run all tests in a @Nested inner class (use single quotes)
+#   ./scripts/test.sh 'GraceNoteTest$EdgeCases.testFoo'     # Run specific method in a @Nested inner class
 #   ./scripts/test.sh -Dtest=*Test                           # Run with Maven pattern
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -15,12 +18,28 @@ PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 source "$SCRIPT_DIR/set-java-home.sh"
 
-# Parse --debug flag
+# Parse flags
 JVM_ARGS=()
-if [[ "$1" == "--debug" ]]; then
-    JVM_ARGS+=("-De2e.debug=true")
-    shift
-fi
+EXTRA_LAUNCHER_ARGS=()
+while [[ "$1" == --* ]]; do
+    case "$1" in
+        --debug)
+            JVM_ARGS+=("-De2e.debug=true")
+            shift
+            ;;
+        --slow)
+            JVM_ARGS+=("-De2e.slow=true")
+            shift
+            ;;
+        --fail-fast)
+            JVM_ARGS+=("-De2e.failFast=true")
+            shift
+            ;;
+        *)
+            break
+            ;;
+    esac
+done
 
 # JVM args for module access (from surefire config) and agent loading (Mockito)
 JVM_ARGS+=(

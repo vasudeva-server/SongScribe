@@ -31,6 +31,7 @@ import org.jdesktop.layout.LayoutStyle;
 
 import songscribe.Strings;
 import songscribe.music.Annotation;
+import songscribe.ui.Dialogs;
 import songscribe.music.StaffElement;
 import songscribe.util.FileUtils;
 
@@ -340,9 +341,12 @@ public class AnnotationDialog extends StandardDialog {
                 .orElse(null);
 
             if (horizontalAlignment == null) {
-                var message =
-                    "Programmer's error: no such horizontal annotation.";
-                mainFrame.showErrorMessage(message);
+                var message = Strings.get(Strings.ERROR_PROGRAMMER_NO_HORIZONTAL_ANNOTATION);
+                Dialogs.showErrorMessage(
+                    mainFrame,
+                    Strings.get(Strings.DIALOG_TITLE_ANNOTATION_ERROR),
+                    message
+                );
                 throw new RuntimeException(message);
             }
 
@@ -359,9 +363,12 @@ public class AnnotationDialog extends StandardDialog {
             } else if (belowButton.isSelected()) {
                 yPosPx = Annotation.BELOW;
             } else {
-                var message =
-                    "Programmer's error: no such vertical annotation.";
-                mainFrame.showErrorMessage(message);
+                var message = Strings.get(Strings.ERROR_PROGRAMMER_NO_VERTICAL_ANNOTATION);
+                Dialogs.showErrorMessage(
+                    mainFrame,
+                    Strings.get(Strings.DIALOG_TITLE_ANNOTATION_ERROR),
+                    message
+                );
                 throw new RuntimeException(message);
             }
 

@@ -21,10 +21,8 @@ package songscribe.export;
 
 import java.io.File;
 
-import org.jetbrains.annotations.NotNull;
-
 import songscribe.Strings;
-import songscribe.ui.component.MainFrame;
+import songscribe.ui.Dialogs;
 
 /**
  * Utility class for exporting music scores as ABC notation files.
@@ -42,18 +40,13 @@ public class ABCExporter {
      * Exports the score to an ABC notation file.
      *
      * @param outputFile the file to write the ABC notation to
-     * @param isGUI whether this export is being run from the GUI (affects error reporting)
      */
-    public static void createABC(File outputFile, @NotNull Boolean isGUI) {
-        var mainFrame = MainFrame.getInstance();
-
+    public static void createABC(File outputFile) {
         // ABC export is not supported
-        if (isGUI) {
-            mainFrame.showErrorMessage(
-                Strings.get(Strings.ERROR_ABC_NOT_SUPPORTED)
-            );
-        } else {
-            System.err.println("ERROR: ABC export is not currently supported");
-        }
+        Dialogs.showErrorMessage(
+            null,
+            Strings.get(Strings.DIALOG_TITLE_EXPORT_ERROR),
+            Strings.get(Strings.ERROR_ABC_NOT_SUPPORTED)
+        );
     }
 }

@@ -40,12 +40,11 @@ import javax.sound.midi.ShortMessage;
 import javax.sound.midi.Soundbank;
 import javax.sound.midi.Synthesizer;
 import javax.sound.midi.SysexMessage;
-import javax.swing.*;
-
 import org.jetbrains.annotations.Nullable;
 
 import songscribe.Strings;
 import songscribe.ui.Constants;
+import songscribe.ui.Dialogs;
 import songscribe.util.Log;
 
 @SuppressWarnings("StaticNonFinalField")
@@ -75,11 +74,10 @@ public final class MidiController {
             sequencer.open();
         } catch (Exception e) {
             Log.warning("MIDI initialization failed: " + e.getMessage());
-            JOptionPane.showMessageDialog(
+            Dialogs.showWarningMessage(
                 null,
-                Strings.get(Strings.ERROR_MIDI_INIT, Constants.PACKAGE_NAME),
-                Constants.PACKAGE_NAME,
-                JOptionPane.WARNING_MESSAGE
+                Strings.get(Strings.DIALOG_TITLE_PLAYBACK_ERROR),
+                Strings.get(Strings.ERROR_MIDI_INIT, Constants.PACKAGE_NAME)
             );
         }
     }

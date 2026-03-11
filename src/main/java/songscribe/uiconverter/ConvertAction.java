@@ -36,6 +36,7 @@ import org.jetbrains.annotations.Nullable;
 
 import songscribe.Strings;
 import songscribe.io.CompositionIO;
+import songscribe.ui.Dialogs;
 import songscribe.ui.component.MyBorder;
 import songscribe.ui.dialog.ProcessDialog;
 import songscribe.ui.playback.PlaybackController;
@@ -62,14 +63,14 @@ public class ConvertAction extends AbstractAction {
     @Override
     public void actionPerformed(ActionEvent e) {
         if (songsDirectory.getText().isEmpty()) {
-            uiConverter.showErrorMessage(Strings.get(Strings.ERROR_CONVERTER_NO_FOLDER));
+            Dialogs.showErrorMessage(uiConverter, Strings.get(Strings.DIALOG_TITLE_CONVERSION_ERROR), Strings.get(Strings.ERROR_CONVERTER_NO_FOLDER));
             return;
         }
 
         var songDirectoryFile = new File(songsDirectory.getText());
 
         if (!songDirectoryFile.exists()) {
-            uiConverter.showErrorMessage(Strings.get(Strings.ERROR_CONVERTER_FOLDER_NOT_EXIST));
+            Dialogs.showErrorMessage(uiConverter, Strings.get(Strings.DIALOG_TITLE_CONVERSION_ERROR), Strings.get(Strings.ERROR_CONVERTER_FOLDER_NOT_EXIST));
             return;
         }
 
@@ -78,7 +79,7 @@ public class ConvertAction extends AbstractAction {
         );
 
         if ((songFiles == null) || (songFiles.length == 0)) {
-            uiConverter.showErrorMessage(Strings.get(Strings.ERROR_CONVERTER_NO_FILES));
+            Dialogs.showErrorMessage(uiConverter, Strings.get(Strings.DIALOG_TITLE_CONVERSION_ERROR), Strings.get(Strings.ERROR_CONVERTER_NO_FILES));
             return;
         }
 
@@ -218,7 +219,9 @@ public class ConvertAction extends AbstractAction {
                             );
                         } catch (Exception e) {
                             imageFile = null;
-                            uiConverter.showErrorMessage(
+                            Dialogs.showErrorMessage(
+                                processDialog,
+                                Strings.get(Strings.DIALOG_TITLE_CONVERSION_ERROR),
                                 Strings.get(Strings.ERROR_CONVERTER_IMAGE, songFile.getName())
                             );
                         } finally {
@@ -244,7 +247,9 @@ public class ConvertAction extends AbstractAction {
                         MidiSystem.write(sequence, 1, midiFile);
                     } catch (IOException | InvalidMidiDataException e) {
                         midiFile = null;
-                        uiConverter.showErrorMessage(
+                        Dialogs.showErrorMessage(
+                            processDialog,
+                            Strings.get(Strings.DIALOG_TITLE_CONVERSION_ERROR),
                             Strings.get(Strings.ERROR_CONVERTER_MIDI, songFile.getName())
                         );
                     } finally {
@@ -258,15 +263,16 @@ public class ConvertAction extends AbstractAction {
                     processDialog.nextValue();
                 }
 
-                JOptionPane.showMessageDialog(
+                Dialogs.showInfoMessage(
                     processDialog,
+                    Strings.get(Strings.DIALOG_TITLE_CONVERSION_COMPLETE),
                     Strings.get(Strings.CONFIRM_CONVERSION_COMPLETE)
                 );
                 //Utilities.openWebPage(uiConverter, uiConverter.getProperties().getProperty
                 // (Constants
                 // .BOOK_UPLOAD_URL));
             } catch (IOException e) {
-                uiConverter.showErrorMessage(Strings.get(Strings.ERROR_CONVERTER_ZIP));
+                Dialogs.showErrorMessage(null, Strings.get(Strings.DIALOG_TITLE_CONVERSION_ERROR), Strings.get(Strings.ERROR_CONVERTER_ZIP));
             } finally {
                 processDialog.setVisible(false);
             }

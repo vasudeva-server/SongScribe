@@ -27,12 +27,6 @@ import songscribe.MusicChangeListener;
 import songscribe.ui.ProfileManager;
 
 public interface IMainFrame {
-    void showInfoMessage(String message);
-
-    void showErrorMessage(String message);
-
-    int showConfirmDialog(String message, int optionType, int messageType);
-
     ProfileManager getProfileManager();
 
     void addMusicChangeListener(MusicChangeListener listener);

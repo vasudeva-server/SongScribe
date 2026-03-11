@@ -26,6 +26,7 @@ import javax.swing.*;
 
 import songscribe.Strings;
 import songscribe.music.BeatChange;
+import songscribe.ui.Dialogs;
 import songscribe.music.StaffElement;
 import songscribe.ui.renderer.BeatChangeRenderer;
 
@@ -132,7 +133,9 @@ public class BeatChangeDialog extends StandardDialog {
     @Override
     protected void setData() {
         if (bg.getSelection() == null) {
-            mainFrame.showErrorMessage(
+            Dialogs.showErrorMessage(
+                mainFrame,
+                Strings.get(Strings.DIALOG_TITLE_BEAT_CHANGE_ERROR),
                 Strings.get(Strings.ERROR_BEAT_CHANGE_NO_SELECTION)
             );
             return;

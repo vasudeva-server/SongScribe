@@ -25,10 +25,13 @@ import java.awt.event.*;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import songscribe.Strings;
 import songscribe.data.TieInterval;
 import songscribe.music.Line;
 import songscribe.music.StaffElement;
+import songscribe.ui.Dialogs;
 import songscribe.ui.Mode;
+import songscribe.ui.action.Actions;
 import songscribe.ui.component.Score;
 import songscribe.ui.edit.EditModeManager;
 import songscribe.ui.layout2.ScaleContext;
@@ -210,12 +213,30 @@ class ElementDragHandler {
             // Remove connected glissandos that became unison after the pitch drag
             removeUnisonConnectedGlissandos(dragLine, dragElementIndex);
 
+            // A grace note dragged to the same pitch as its following note is invalid — remove it
+            var draggedElement = dragLine.getElement(dragElementIndex);
+
+            if (draggedElement.getType().isGraceNote()
+                && dragElementIndex + 1 < dragLine.elementCount()
+                && draggedElement.getPitch() == dragLine.getElement(dragElementIndex + 1).getPitch()) {
+                Dialogs.showWarningMessage(
+                    null,
+                    Strings.get(Strings.DIALOG_TITLE_GRACE_NOTE_WARNING),
+                    Strings.get(Strings.WARNING_GRACE_NOTE_SAME_PITCH)
+                );
+                dragLine.removeElement(dragElementIndex);
+            }
+
             // Finalize: notify layout and mark composition modified
             MessageCenter.post(LayoutChangeMessage.scoreContent(dragLine));
             lc.getComposition().setModified(true);
             // TODO: push to undo stack when undo system is re-enabled
         } else {
-            // No drag — revert the tentative change (there was none, but guard anyway)
+            // No drag — click on a note head selects it, switch to select mode
+            // (same as alt-click in LineComponent.mousePressed)
+            Actions.SELECT_MODE_ACTION.perform(lc);
+
+            // No position change occurred, but guard against floating-point drift
             int rangeStart;
             int rangeEnd;
 

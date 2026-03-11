@@ -26,6 +26,7 @@ import javax.swing.*;
 
 import songscribe.prefs.Prefs;
 import songscribe.Strings;
+import songscribe.ui.Dialogs;
 import songscribe.ui.component.NumericTextField;
 import songscribe.util.GraphicUtils;
 import songscribe.util.UIUtils;
@@ -157,7 +158,11 @@ public class LineWidthChangeDialog
         try {
             width = getEnteredWidthInInches(getSelectedUnit());
         } catch (NumberFormatException e) {
-            mainFrame.showErrorMessage(Strings.get(Strings.ERROR_LINE_WIDTH_INVALID));
+            Dialogs.showErrorMessage(
+                mainFrame,
+                Strings.get(Strings.DIALOG_TITLE_LINE_WIDTH_ERROR),
+                Strings.get(Strings.ERROR_LINE_WIDTH_INVALID)
+            );
             return -1;
         }
 
@@ -176,7 +181,9 @@ public class LineWidthChangeDialog
             max *= GraphicUtils.CM_PER_INCH;
         }
 
-        mainFrame.showErrorMessage(
+        Dialogs.showErrorMessage(
+            mainFrame,
+            Strings.get(Strings.DIALOG_TITLE_LINE_WIDTH_ERROR),
             Strings.get(
                 Strings.ERROR_LINE_WIDTH_RANGE,
                 min,

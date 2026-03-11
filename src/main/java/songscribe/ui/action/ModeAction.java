@@ -61,7 +61,10 @@ public class ModeAction extends SelectableUIAction {
             modifiers
         );
         this.mode = mode;
-        setFlags(Flag.DISABLE_WHEN_PLAYING);
+        setFlags(
+            Flag.DISABLE_WHEN_PLAYING,
+            Flag.DISABLE_IN_GRACE_MODE
+        );
     }
 
     public Mode getMode() {

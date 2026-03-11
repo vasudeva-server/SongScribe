@@ -28,6 +28,7 @@ import org.jetbrains.annotations.NotNull;
 
 import songscribe.Strings;
 import songscribe.prefs.Prefs;
+import songscribe.ui.Dialogs;
 import songscribe.ui.ProfileManager;
 import songscribe.ui.action.InsertLineAction;
 import songscribe.ui.component.IMainFrame;
@@ -446,7 +447,9 @@ public final class Composition {
         if (strip && SHORT_A_PATTERN.matcher(text).find()) {
             if (!shortANotified) {
                 shortANotified = true;
-                mainFrame.showInfoMessage(
+                Dialogs.showInfoMessage(
+                    null,
+                    Strings.get(Strings.DIALOG_TITLE_INFORMATION),
                     Strings.get(Strings.INFO_CHARACTER_REPLACEMENT)
                 );
             }
@@ -727,6 +730,10 @@ public final class Composition {
 
     public double getLineWidth() {
         return lineWidth;
+    }
+
+    public double getLineWidthSs() {
+        return ScaleContext.getInstance().fromPixels(lineWidth);
     }
 
     /**

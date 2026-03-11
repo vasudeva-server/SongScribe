@@ -149,6 +149,14 @@ public class HorizontalSpacingCalculator {
         @NotNull ElementColumn prevColumn,
         @NotNull ElementColumn currColumn) {
 
+        // Grace note → host note: use tight grace note spacing
+        if (prevColumn.getElement().getType().isGraceNote()) {
+            double spacingSs = prevColumn.getRightExtentSs()
+                + LayoutConstants.GRACE_NOTE_GAP_SS
+                + Math.abs(currColumn.getLeftExtentSs());
+            return prevColumn.getXSs() + spacingSs;
+        }
+
         // Calculate minimum spacing (from previous column's right extent)
         double minimumSpacingSs = calculateMinimumColumnSpacingSs(prevColumn, currColumn);
 

@@ -30,6 +30,8 @@ import songscribe.music.Line;
 import songscribe.ui.Mode;
 import songscribe.ui.action.Actions;
 import songscribe.ui.component.ComponentNames;
+import songscribe.ui.edit.EditModeManager;
+import songscribe.ui.edit.GraceModeManager;
 import songscribe.ui.component.Score;
 import songscribe.ui.layout.CollisionDetector;
 import songscribe.ui.layout.LayoutStylesheet;
@@ -594,11 +596,19 @@ public class LineComponent extends ScoreComponent
 
     @Override
     public void mouseMoved(MouseEvent e) {
+        if (getGraceModeManager().mouseMoved(this, e)) {
+            return;
+        }
+
         InsertionElementManager.trackMouse(this, e);
     }
 
     @Override
     public void mouseDragged(MouseEvent e) {
+        if (getGraceModeManager().mouseDragged(this, e)) {
+            return;
+        }
+
         if (elementDragHandler.isDragActive()) {
             elementDragHandler.handleDrag(e);
             return;
@@ -612,6 +622,11 @@ public class LineComponent extends ScoreComponent
     @Override
     public void mouseClicked(MouseEvent e) {
         if (e.getButton() != MouseEvent.BUTTON1) {
+            return;
+        }
+
+        // Grace mode handles its own click logic. Returns true to consume the event.
+        if (getGraceModeManager().mouseClicked(this, e)) {
             return;
         }
 
@@ -636,6 +651,10 @@ public class LineComponent extends ScoreComponent
             return;
         }
 
+        if (getGraceModeManager().mousePressed(this, e)) {
+            return;
+        }
+
         if (elementDragHandler.handlePress(e)) {
             return;
         }
@@ -652,6 +671,10 @@ public class LineComponent extends ScoreComponent
 
     @Override
     public void mouseReleased(MouseEvent e) {
+        if (getGraceModeManager().mouseReleased(this, e)) {
+            return;
+        }
+
         if (elementDragHandler.isDragActive()) {
             elementDragHandler.handleRelease();
             return;
@@ -681,6 +704,13 @@ public class LineComponent extends ScoreComponent
     Score getScore() {
         FatalError.exitIfNull(score, "Score reference not set on LineComponent");
         return score;
+    }
+
+    @NotNull
+    private GraceModeManager getGraceModeManager() {
+        var emm = EditModeManager.getInstance();
+        FatalError.exitIfNull(emm, "EditModeManager not initialized");
+        return emm.getGraceModeManager();
     }
 
     /**

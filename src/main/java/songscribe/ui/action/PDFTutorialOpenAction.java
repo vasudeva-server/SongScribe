@@ -28,7 +28,9 @@ import javax.swing.*;
 
 import com.formdev.flatlaf.util.SystemInfo;
 
+import songscribe.Strings;
 import songscribe.data.MyDesktop;
+import songscribe.ui.Dialogs;
 import songscribe.ui.component.MainFrame;
 import songscribe.util.Utils;
 
@@ -56,16 +58,17 @@ public class PDFTutorialOpenAction extends AbstractAction {
                 throw new RuntimeException();
             }
         } catch (Exception error) {
-            MainFrame.getInstance()
-                .showErrorMessage(
-                    "Could not open the external PDF file.\n" +
-                    "Please navigate to " +
-                    TUTORIAL_FILE.getAbsolutePath() +
-                    " with " +
-                    (SystemInfo.isMacOS ? "Finder" : "Explorer") +
-                    " and open it.\n" +
-                    "Also you can try to upgrade your Java version to 1.6 (or higher)."
-                );
+            Dialogs.showErrorMessage(
+                MainFrame.getInstance(),
+                Strings.get(Strings.DIALOG_TITLE_FILE_ERROR),
+                "Could not open the external PDF file.\n" +
+                "Please navigate to " +
+                TUTORIAL_FILE.getAbsolutePath() +
+                " with " +
+                (SystemInfo.isMacOS ? "Finder" : "Explorer") +
+                " and open it.\n" +
+                "Also you can try to upgrade your Java version to 1.6 (or higher)."
+            );
         }
     }
 }

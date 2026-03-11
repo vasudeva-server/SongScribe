@@ -30,6 +30,7 @@ import songscribe.smufl.SMuFLMetadata;
 import songscribe.ui.Mode;
 import songscribe.ui.component.Score;
 import songscribe.ui.edit.EditModeManager;
+import songscribe.ui.edit.GraceModeManager;
 import songscribe.ui.layout.TempoAttachment;
 import songscribe.ui.layout2.ScaleContext;
 import songscribe.ui.renderer.AnnotationRenderer;
@@ -347,6 +348,17 @@ class LineRenderer {
             return INSERTION_NOTE_COLOR;
         }
 
+        // Grace note pending cancellation (drag-left past slop)
+        var line = lc.getLine();
+
+        if (line != null) {
+            var element = line.getElement(elementIndex);
+
+            if (GraceModeManager.isPendingCancel(element)) {
+                return Color.RED;
+            }
+        }
+
         return Color.BLACK;
     }
 
@@ -601,24 +613,32 @@ class LineRenderer {
         }
 
         // Calculate X position from insertion index
-        // Pass mouse X so it can snap to note heads when mouse is over them
         double x = 0;
-        double mouseX = 0;
-
-        // Get the last mouse X position (stored when mouseMoved was called)
-        var mousePos = lc.getMousePosition();
-
-        if (mousePos != null) {
-            mouseX = ScaleContext.getInstance().fromPixels(mousePos.getX());
-        }
-
-        var layoutResult = lc.getLayoutResult();
-        var line = lc.getLine();
         var currentXIndex = InsertionElementManager.getCurrentXIndex();
         var currentStaffPosition = InsertionElementManager.getCurrentStaffPosition();
 
-        if (layoutResult != null && line != null) {
-            x = layoutResult.calculateInsertionXSs(currentXIndex, mouseX, insertionElement, line);
+        // In grace mode, use the locked x position directly — it already accounts
+        // for grace note spacing. The standard calculateInsertionXSs would apply
+        // normal inter-element spacing instead.
+        var graceModeManager = editModeManager.getGraceModeManager();
+
+        if (graceModeManager.isInProgress()) {
+            x = graceModeManager.getLockedInsertionXSs();
+        } else {
+            // Pass mouse X so it can snap to note heads when mouse is over them
+            double mouseX = 0;
+            var mousePos = lc.getMousePosition();
+
+            if (mousePos != null) {
+                mouseX = ScaleContext.getInstance().fromPixels(mousePos.getX());
+            }
+
+            var layoutResult = lc.getLayoutResult();
+            var line = lc.getLine();
+
+            if (layoutResult != null && line != null) {
+                x = layoutResult.calculateInsertionXSs(currentXIndex, mouseX, insertionElement, line);
+            }
         }
 
         // Set the insertion element position

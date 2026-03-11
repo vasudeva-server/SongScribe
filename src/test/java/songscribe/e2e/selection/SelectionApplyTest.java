@@ -27,13 +27,10 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import songscribe.e2e.E2ETest;
-import songscribe.music.Composition;
 import songscribe.music.ElementType;
-import songscribe.music.Line;
 import songscribe.music.StaffElement;
 import songscribe.ui.action.Actions;
 import songscribe.ui.action.UIAction;
-import songscribe.ui.component.MainFrame;
 
 /**
  * E2E tests for applying toolbar actions to a selection.
@@ -47,7 +44,7 @@ class SelectionApplyTest extends E2ETest {
 
         @Test
         void testSelectNotesClickDurationVerifyChanged() {
-            buildComposition(quaver(0), quaver(-2), quaver(-4));
+            buildNotes(Actions.EIGHTH_NOTE_ACTION, 0, -2, -4);
             enterSelectMode();
 
             // Select all three notes
@@ -69,7 +66,19 @@ class SelectionApplyTest extends E2ETest {
 
         @Test
         void testDurationChangePreservesNoteRestKind() {
-            buildComposition(quaver(0), rest(ElementType.QUAVER_REST), quaver(-4));
+            // Quaver, quaver rest, quaver
+            selectDuration(Actions.EIGHTH_NOTE_ACTION);
+            clickAt(insertionPoint(0, 0));
+            performLayout(0);
+
+            enableRestMode();
+            clickAt(insertionPoint(0, 0));
+            performLayout(0);
+            deselectRestMode();
+
+            clickAt(insertionPoint(0, -4));
+            performLayout(0);
+
             enterSelectMode();
 
             clickAt(noteScreenPosition(0, 0));
@@ -89,7 +98,7 @@ class SelectionApplyTest extends E2ETest {
 
         @Test
         void testSelectNotesClickAccidentalVerifyApplied() {
-            buildComposition(crotchet(0), crotchet(-2));
+            buildNotes(Actions.QUARTER_NOTE_ACTION, 0, -2);
             enterSelectMode();
 
             clickAt(noteScreenPosition(0, 0));
@@ -108,7 +117,7 @@ class SelectionApplyTest extends E2ETest {
 
         @Test
         void testSelectNotesClickNaturalToolbarVerifyApplied() {
-            buildComposition(crotchet(0), crotchet(-2));
+            buildNotes(Actions.QUARTER_NOTE_ACTION, 0, -2);
             enterSelectMode();
 
             clickAt(noteScreenPosition(0, 0));
@@ -131,7 +140,19 @@ class SelectionApplyTest extends E2ETest {
 
         @Test
         void testSelectNotesAndRestsClickDotVerifyBothGetDots() {
-            buildComposition(crotchet(0), rest(ElementType.CROTCHET_REST), crotchet(-4));
+            // Crotchet, crotchet rest, crotchet
+            selectDuration(Actions.QUARTER_NOTE_ACTION);
+            clickAt(insertionPoint(0, 0));
+            performLayout(0);
+
+            enableRestMode();
+            clickAt(insertionPoint(0, 0));
+            performLayout(0);
+            deselectRestMode();
+
+            clickAt(insertionPoint(0, -4));
+            performLayout(0);
+
             enterSelectMode();
 
             clickAt(noteScreenPosition(0, 0));
@@ -149,19 +170,19 @@ class SelectionApplyTest extends E2ETest {
 
         @Test
         void testApplyFermataThenRemove() {
-            buildComposition(crotchet(0), crotchet(-2));
+            buildNotes(Actions.QUARTER_NOTE_ACTION, 0, -2);
             enterSelectMode();
 
             clickAt(noteScreenPosition(0, 0));
             shiftClickAt(noteScreenPosition(0, 1));
 
             // Apply fermata via Insert menu
-            clickMenuItem("Fermata");
+            clickMenuItem(Actions.FERMATA_ACTION);
             verifyFermata(0, 0, true);
             verifyFermata(0, 1, true);
 
             // Remove fermata (clicking again toggles it off)
-            clickMenuItem("Fermata");
+            clickMenuItem(Actions.FERMATA_ACTION);
             verifyFermata(0, 0, false);
             verifyFermata(0, 1, false);
         }
@@ -172,8 +193,19 @@ class SelectionApplyTest extends E2ETest {
 
         @Test
         void testSelectNotesAndBarlineVerifyMutualExclusivity() {
-            // Note, barline, note — select first two elements
-            buildComposition(crotchet(0), barline(), crotchet(-4));
+            // Note, barline, note
+            selectDuration(Actions.QUARTER_NOTE_ACTION);
+            clickAt(insertionPoint(0, 0));
+            performLayout(0);
+
+            selectDuration(Actions.BARLINE_ACTIONS[2]);
+            clickAt(insertionPoint(0, 0));
+            performLayout(0);
+
+            selectDuration(Actions.QUARTER_NOTE_ACTION);
+            clickAt(insertionPoint(0, -4));
+            performLayout(0);
+
             enterSelectMode();
 
             // Select the note, then shift-click the barline
@@ -191,7 +223,16 @@ class SelectionApplyTest extends E2ETest {
         @Test
         void testSelectOnlyBarlinesDisablesDurationActions() {
             // Two barlines with a note after (so we have clickable positions)
-            buildComposition(barline(), barline(), crotchet(-4));
+            selectDuration(Actions.BARLINE_ACTIONS[2]);
+            clickAt(insertionPoint(0, 0));
+            performLayout(0);
+            clickAt(insertionPoint(0, 0));
+            performLayout(0);
+
+            selectDuration(Actions.QUARTER_NOTE_ACTION);
+            clickAt(insertionPoint(0, -4));
+            performLayout(0);
+
             enterSelectMode();
 
             // Select only the two barlines
@@ -211,50 +252,6 @@ class SelectionApplyTest extends E2ETest {
         }
     }
 
-
-    // -- Note factory helpers --
-
-    private StaffElement crotchet(int staffPositionSp) {
-        var note = ElementType.CROTCHET.newInstance();
-        note.setStaffPosition(staffPositionSp);
-        return note;
-    }
-
-    private StaffElement quaver(int staffPositionSp) {
-        var note = ElementType.QUAVER.newInstance();
-        note.setStaffPosition(staffPositionSp);
-        return note;
-    }
-
-    private StaffElement rest(ElementType restType) {
-        return restType.newInstance();
-    }
-
-    private StaffElement barline() {
-        return ElementType.SINGLE_BARLINE.newInstance();
-    }
-
-
-    // -- Composition builder --
-
-    private void buildComposition(StaffElement... notes) {
-        GuiActionRunner.execute(() -> {
-            var composition = new Composition(MainFrame.getInstance());
-            var line = new Line();
-
-            for (var note : notes) {
-                line.addElement(note);
-            }
-
-            composition.addLine(0, line);
-            score().setComposition(composition);
-        });
-
-        performLayout(0);
-    }
-
-
-    // -- Action helpers --
 
     // -- Assertion helpers --
 

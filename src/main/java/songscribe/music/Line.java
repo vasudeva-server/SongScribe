@@ -281,6 +281,38 @@ public class Line {
     }
 
     /**
+     * Returns whether inserting at the given index would conflict with a paired grace note.
+     * A grace note is paired when it has a {@link StaffElement.Glissando.Type#CONNECTED} glissando
+     * linking it to the following note.
+     * <p>
+     * This returns {@code true} in two cases:
+     * <ul>
+     *   <li>The element at {@code index} is itself a paired grace note (clicking on it)</li>
+     *   <li>The element at {@code index - 1} is a paired grace note (clicking between it and its host)</li>
+     * </ul>
+     */
+    public boolean isInsideGraceHostPair(int index) {
+        return isPairedGraceNote(index) || isPairedGraceNote(index - 1);
+    }
+
+    private boolean isPairedGraceNote(int index) {
+        if (index < 0 || index >= elements.size()) {
+            return false;
+        }
+
+        var element = elements.get(index);
+
+        if (!element.getType().isGraceNote()) {
+            return false;
+        }
+
+        var glissando = element.getGlissando();
+        //noinspection ObjectEquality
+        return glissando != StaffElement.NO_GLISSANDO
+            && glissando.type == StaffElement.Glissando.Type.CONNECTED;
+    }
+
+    /**
      * @param pitchType 0 for B, 1 for C, 2 for D, ..., 6 for A
      * @return true if there is a leading key for that pitch type
      */

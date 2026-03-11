@@ -20,8 +20,7 @@
 package songscribe.ui.action;
 
 import java.awt.event.*;
-import java.io.File;
-import javax.swing.*;
+
 import songscribe.Strings;
 import songscribe.data.MyFileFilter;
 import songscribe.ui.component.MainFrame;
@@ -44,41 +43,19 @@ public class ExportMidiAction extends UIAction {
         );
     }
 
-    // TODO: This method can probably be refactored among all of the save/export actions
     @Override
     public void actionPerformed(ActionEvent e) {
-        var mainFrame = MainFrame.getInstance();
+        var saveFile = FileUtils.showExportDialog(fileDialog, "mid");
 
-        fileDialog.setFile(
-            FileUtils.getSongFileNameForFileChooser(mainFrame.getScore())
-        );
-
-        if (fileDialog.showDialog()) {
-            var saveFile = fileDialog.getFile();
-
-            if (!saveFile.getName().toLowerCase().endsWith(".mid")) {
-                saveFile = new File(saveFile.getAbsolutePath() + ".mid");
-            }
-
-            if (saveFile.exists()) {
-                var response = JOptionPane.showConfirmDialog(
-                    mainFrame,
-                    Strings.get(Strings.CONFIRM_FILE_OVERWRITE, saveFile.getName()),
-                    mainFrame.appName,
-                    JOptionPane.YES_NO_OPTION
-                );
-
-                if (response == JOptionPane.NO_OPTION) {
-                    return;
-                }
-            }
-
-            if (exportMidiDialog == null) {
-                exportMidiDialog = new ExportMidiDialog();
-            }
-
-            exportMidiDialog.setSaveFile(saveFile);
-            exportMidiDialog.setVisible(true);
+        if (saveFile == null) {
+            return;
         }
+
+        if (exportMidiDialog == null) {
+            exportMidiDialog = new ExportMidiDialog();
+        }
+
+        exportMidiDialog.setSaveFile(saveFile);
+        exportMidiDialog.setVisible(true);
     }
 }

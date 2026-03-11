@@ -35,11 +35,16 @@ import javax.swing.*;
 
 import com.formdev.flatlaf.util.SystemInfo;
 
+import org.jetbrains.annotations.Nullable;
+
 import songscribe.Strings;
 import songscribe.data.MyDesktop;
+import songscribe.ui.Dialogs;
 import songscribe.ui.Constants;
 import songscribe.ui.component.IMainFrame;
+import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.Score;
+import songscribe.ui.dialog.PlatformFileDialog;
 
 public final class FileUtils {
 
@@ -104,6 +109,42 @@ public final class FileUtils {
         return sb.toString();
     }
 
+    public static File ensureExtension(File file, String... extensions) {
+        var name = file.getName().toLowerCase();
+
+        for (var ext : extensions) {
+            var dotExt = ext.startsWith(".") ? ext : "." + ext;
+
+            if (name.endsWith(dotExt)) {
+                return file;
+            }
+        }
+
+        var dotExt = extensions[0].startsWith(".") ? extensions[0] : "." + extensions[0];
+        return new File(file.getAbsolutePath() + dotExt);
+    }
+
+    @Nullable
+    public static File showExportDialog(
+        PlatformFileDialog fileDialog,
+        String... extensions
+    ) {
+        var mainFrame = MainFrame.getInstance();
+        fileDialog.setFile(getSongFileNameForFileChooser(mainFrame.getScore()));
+
+        if (!fileDialog.showDialog()) {
+            return null;
+        }
+
+        var saveFile = ensureExtension(fileDialog.getFile(), extensions);
+
+        if (!Dialogs.confirmFileOverwrite(mainFrame, mainFrame.appName, saveFile)) {
+            return null;
+        }
+
+        return saveFile;
+    }
+
     public static File getDocumentsDirectory() {
         var directory = new File(System.getProperty("user.home"), "Documents");
 
@@ -142,11 +183,10 @@ public final class FileUtils {
                 }
             }
         } catch (IOException e) {
-            JOptionPane.showMessageDialog(
+            Dialogs.showErrorMessage(
                 null,
-                Strings.get(Strings.ERROR_FILE_REINSTALL),
-                Constants.PACKAGE_NAME,
-                JOptionPane.ERROR_MESSAGE
+                Strings.get(Strings.DIALOG_TITLE_FILE_ERROR),
+                Strings.get(Strings.ERROR_FILE_REINSTALL)
             );
         }
     }
@@ -176,7 +216,9 @@ public final class FileUtils {
                 return;
             }
 
-            var answer = mainFrame.showConfirmDialog(
+            var answer = Dialogs.showConfirmDialog(
+                null,
+                Strings.get(Strings.DIALOG_TITLE_FILE_ERROR),
                 Strings.get(Strings.CONFIRM_FILE_OPEN),
                 JOptionPane.YES_NO_OPTION,
                 JOptionPane.QUESTION_MESSAGE
@@ -186,7 +228,11 @@ public final class FileUtils {
                 try {
                     desktop.open(file);
                 } catch (Exception e) {
-                    mainFrame.showErrorMessage(Strings.get(Strings.ERROR_FILE_OPEN));
+                    Dialogs.showErrorMessage(
+                        null,
+                        Strings.get(Strings.DIALOG_TITLE_FILE_ERROR),
+                        Strings.get(Strings.ERROR_FILE_OPEN)
+                    );
                 }
             }
         }

@@ -32,8 +32,10 @@ import net.engio.mbassy.listener.Handler;
 import songscribe.music.StaffElement;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.Score;
+import songscribe.ui.edit.GraceModeManager;
 import songscribe.ui.message.BarSelectedMessage;
 import songscribe.ui.message.DurationSelectedMessage;
+import songscribe.ui.message.GraceModeStateChangedMessage;
 import songscribe.ui.message.LayoutChangeMessage;
 import songscribe.ui.message.Message;
 import songscribe.ui.message.MessageCenter;
@@ -63,7 +65,9 @@ public class UIAction extends AbstractAction {
         DISABLE_IN_ADJUSTMENT_MODE(1 << 9),
         DISABLE_WHEN_BAR_SELECTED(1 << 10),
         ENABLE_WHEN_DURATION_SELECTED(1 << 11),
-        DISABLE_WHEN_COMPOSITION_EMPTY(1 << 12);
+        DISABLE_WHEN_COMPOSITION_EMPTY(1 << 12),
+        DISABLE_IN_GRACE_MODE(1 << 13),
+        DISABLE_IN_SELECT_MODE(1 << 14);
 
         private final int value;
 
@@ -288,15 +292,17 @@ public class UIAction extends AbstractAction {
         // toggleOnKeyboardShortcut(e) for keyboard shortcut support.
     }
 
-    protected boolean updateEnabledState() {
+    public boolean updateEnabledState() {
         // If an action is going to be enabled based on a single flag,
         // we have to check the entire context to see if the action can in fact be enabled.
         var score = MainFrame.getInstance().getScore();
         var activeSelection = hasActiveSelection();
         var enable =
             enableInAdjustmentMode(score) &&
+                enableInSelectMode(score) &&
                 enableFromTextEditingState() &&
                 enableFromPlaybackState() &&
+                enableFromGraceModeState() &&
                 enableInRestMode() &&
                 enableFromSelectionSize(score) &&
                 enableFromBarSelection(activeSelection) &&
@@ -316,6 +322,13 @@ public class UIAction extends AbstractAction {
         return (
             !hasFlag(Flag.DISABLE_IN_ADJUSTMENT_MODE) ||
                 !score.getMode().isAdjustmentMode()
+        );
+    }
+
+    protected boolean enableInSelectMode(Score score) {
+        return (
+            !hasFlag(Flag.DISABLE_IN_SELECT_MODE) ||
+                !score.getSelectionCoordinator().isInSelectMode()
         );
     }
 
@@ -379,6 +392,15 @@ public class UIAction extends AbstractAction {
                 (PlaybackController.getState() !=
                     PlaybackController.PlaybackState.PLAYING)
         );
+    }
+
+    @Handler(priority = Message.MEDIUM_PRIORITY)
+    public void graceModeStateDidChange(GraceModeStateChangedMessage message) {
+        updateEnabledState();
+    }
+
+    protected boolean enableFromGraceModeState() {
+        return !hasFlag(Flag.DISABLE_IN_GRACE_MODE) || !GraceModeManager.isActive();
     }
 
     @Handler(priority = Message.MEDIUM_PRIORITY)

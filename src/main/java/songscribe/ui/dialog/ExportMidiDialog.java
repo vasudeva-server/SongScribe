@@ -29,6 +29,7 @@ import javax.swing.*;
 
 import songscribe.prefs.Prefs;
 import songscribe.Strings;
+import songscribe.ui.Dialogs;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.playback.InstrumentDialog;
 import songscribe.ui.playback.PlaybackController;
@@ -92,7 +93,11 @@ public class ExportMidiDialog extends StandardDialog {
                 PlaybackController.setTempoChangePercent(savedSettings.tempoChangePercent());
             }
         } catch (IOException | InvalidMidiDataException e1) {
-            mainFrame.showErrorMessage(Strings.get(Strings.ERROR_FILE_SAVE));
+            Dialogs.showErrorMessage(
+                mainFrame,
+                Strings.get(Strings.DIALOG_TITLE_EXPORT_ERROR),
+                Strings.get(Strings.ERROR_FILE_SAVE)
+            );
         }
     }
 }

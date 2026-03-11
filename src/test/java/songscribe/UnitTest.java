@@ -20,7 +20,7 @@
 
 package songscribe;
 
-import songscribe.util.RuntimeError;
+import songscribe.ui.Dialogs;
 
 import org.junit.jupiter.api.BeforeAll;
 
@@ -32,6 +32,6 @@ public abstract class UnitTest {
 
     @BeforeAll
     static void suppressDialogs() {
-        RuntimeError.setSuppressDialogs(true);
+        Dialogs.setSuppressDialogs(true);
     }
 }

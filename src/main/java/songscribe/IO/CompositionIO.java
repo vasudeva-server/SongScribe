@@ -33,6 +33,7 @@ import songscribe.music.Line;
 import songscribe.ui.component.IMainFrame;
 import songscribe.ui.component.Score;
 import songscribe.ui.layout2.InsertionSpacingCalculator;
+import songscribe.ui.layout2.ScaleContext;
 
 public final class CompositionIO {
 
@@ -455,7 +456,7 @@ public final class CompositionIO {
                     }
 
                     var line = composition.getLine(composition.lineCount() - 1);
-                    note.setXPosSs((int) Math.round(
+                    note.setXPosSs(ScaleContext.getInstance().toRoundedPixels(
                         InsertionSpacingCalculator.calculateAppendPositionSs(line, note)));
                     note.setUpper(Score.defaultUpperNote(note));
                     line.addElement(note);

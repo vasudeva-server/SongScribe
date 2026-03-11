@@ -35,6 +35,7 @@ import org.jetbrains.annotations.NotNull;
 
 import songscribe.Version;
 import songscribe.Strings;
+import songscribe.ui.Dialogs;
 import songscribe.data.MyFileFilter;
 import songscribe.music.Annotation;
 import songscribe.music.ArticulationType;
@@ -103,37 +104,21 @@ public class ExportABCAction extends UIAction {
 
     @Override
     public void actionPerformed(ActionEvent e) {
-        var mainFrame = MainFrame.getInstance();
+        var saveFile = FileUtils.showExportDialog(fileDialog, "abc");
 
-        fileDialog.setFile(
-            FileUtils.getSongFileNameForFileChooser(mainFrame.getScore())
-        );
+        if (saveFile == null) {
+            return;
+        }
 
-        if (fileDialog.showDialog()) {
-            var saveFile = fileDialog.getFile();
-
-            if (!saveFile.getName().toLowerCase().endsWith(".abc")) {
-                saveFile = new File(saveFile.getAbsolutePath() + ".abc");
-            }
-
-            if (saveFile.exists()) {
-                var response = JOptionPane.showConfirmDialog(
-                    mainFrame,
-                    Strings.get(Strings.CONFIRM_FILE_OVERWRITE, saveFile.getName()),
-                    mainFrame.appName,
-                    JOptionPane.YES_NO_OPTION
-                );
-
-                if (response == JOptionPane.NO_OPTION) {
-                    return;
-                }
-            }
-
-            try (var writer = new PrintWriter(saveFile)) {
-                writeABC(mainFrame.getScore().getComposition(), writer);
-            } catch (IOException e1) {
-                mainFrame.showErrorMessage(Strings.get(Strings.ERROR_FILE_SAVE));
-            }
+        try (var writer = new PrintWriter(saveFile)) {
+            var composition = MainFrame.getInstance().getScore().getComposition();
+            writeABC(composition, writer);
+        } catch (IOException e1) {
+            Dialogs.showErrorMessage(
+                null,
+                Strings.get(Strings.DIALOG_TITLE_EXPORT_ERROR),
+                Strings.get(Strings.ERROR_FILE_SAVE)
+            );
         }
     }
 

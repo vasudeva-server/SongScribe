@@ -45,7 +45,8 @@ public class AddDynamicsAction extends UIAction {
             Flag.DISABLE_WHEN_BAR_SELECTED,
             Flag.DISABLE_WHEN_PLAYING,
             Flag.DISABLE_WHEN_EDITING_TEXT,
-            Flag.DISABLE_IN_ADJUSTMENT_MODE
+            Flag.DISABLE_IN_ADJUSTMENT_MODE,
+            Flag.DISABLE_IN_GRACE_MODE
         );
     }
 

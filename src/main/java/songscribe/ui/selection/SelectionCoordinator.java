@@ -633,6 +633,92 @@ public final class SelectionCoordinator {
         }
     }
 
+    // -------------------------------------------------------------------------
+    // Action state save/restore
+    // -------------------------------------------------------------------------
+
+    /**
+     * Saves the current selected and enabled state of all managed actions.
+     * Does nothing if states have already been saved (prevents overwriting
+     * a previous save).
+     */
+    public void saveActionStates() {
+        if (!savedActionStates.isEmpty()) {
+            return;
+        }
+
+        for (var action : getManagedActions()) {
+            var selected = (action instanceof UIAction.Selectable selectable)
+                && selectable.isSelected();
+            savedActionStates.put(action, new ActionState(selected, action.isEnabled()));
+        }
+    }
+
+    /**
+     * Restores all managed actions to their previously saved states and clears
+     * the saved state map. Does nothing if no states have been saved.
+     */
+    public void restoreActionStates() {
+        if (savedActionStates.isEmpty()) {
+            return;
+        }
+
+        for (var entry : savedActionStates.entrySet()) {
+            var action = entry.getKey();
+            var state = entry.getValue();
+
+            if (action instanceof UIAction.Selectable selectable) {
+                selectable.setSelected(state.selected());
+            }
+
+            action.setEnabled(state.enabled());
+        }
+
+        savedActionStates.clear();
+    }
+
+    /**
+     * Clears saved action states without restoring them.
+     * Used when the operation that saved states completes successfully
+     * and the current state should be kept.
+     */
+    public void clearSavedActionStates() {
+        savedActionStates.clear();
+    }
+
+    /**
+     * Restores only the actions that have the given flag to their previously
+     * saved state, then clears all saved states. Actions without the flag
+     * are left at their current state.
+     */
+    public void restoreActionStatesWithFlag(@NotNull UIAction.Flag flag) {
+        if (savedActionStates.isEmpty()) {
+            return;
+        }
+
+        for (var entry : savedActionStates.entrySet()) {
+            var action = entry.getKey();
+
+            if (!action.hasFlag(flag)) {
+                continue;
+            }
+
+            var state = entry.getValue();
+
+            if (action instanceof UIAction.Selectable selectable) {
+                selectable.setSelected(state.selected());
+            }
+
+            action.setEnabled(state.enabled());
+        }
+
+        savedActionStates.clear();
+    }
+
+    // -------------------------------------------------------------------------
+    // Selection reflection
+    // -------------------------------------------------------------------------
+
     /**
      * Reflects the current selection onto all reflectable toolbar actions.
      * Fires at LOW_PRIORITY so it runs after all UIAction handlers have processed
@@ -646,22 +732,7 @@ public final class SelectionCoordinator {
         // Selection cleared — restore saved state
         if (selection == null) {
             lastReflectedSelection = null;
-
-            if (!savedActionStates.isEmpty()) {
-                for (var entry : savedActionStates.entrySet()) {
-                    var action = entry.getKey();
-                    var state = entry.getValue();
-
-                    if (action instanceof UIAction.Selectable selectable) {
-                        selectable.setSelected(state.selected());
-                    }
-
-                    action.setEnabled(state.enabled());
-                }
-
-                savedActionStates.clear();
-            }
-
+            restoreActionStates();
             return;
         }
 
@@ -673,16 +744,11 @@ public final class SelectionCoordinator {
         lastReflectedSelection = selection;
 
         // Selection just became active — save current state for all managed actions
-        if (savedActionStates.isEmpty()) {
-            for (var action : getManagedActions()) {
-                var selected = (action instanceof UIAction.Selectable selectable)
-                    && selectable.isSelected();
-                savedActionStates.put(action, new ActionState(selected, action.isEnabled()));
-            }
-        }
+        saveActionStates();
 
         // Reflect selection attributes onto toolbar actions
         var line = selection.line();
+        var hasGraceNote = false;
 
         for (var reflectable : actions) {
             var applicable = false;
@@ -690,6 +756,10 @@ public final class SelectionCoordinator {
 
             for (var i = selection.begin(); i <= selection.end(); i++) {
                 var element = line.getElement(i);
+
+                if (element.getType().isGraceNote()) {
+                    hasGraceNote = true;
+                }
 
                 if (!reflectable.appliesTo(element)) {
                     continue;
@@ -705,5 +775,27 @@ public final class SelectionCoordinator {
 
             reflectable.setSelected(applicable && matched);
         }
+
+        updateGraceNoteActionEnabled(hasGraceNote);
+    }
+
+    /**
+     * Reflects a single element's attributes onto all reflectable toolbar actions.
+     * Used when grace note pairing is complete to mirror the host note's attributes.
+     */
+    public void reflectElement(@NotNull StaffElement element) {
+        for (var reflectable : getReflectableActions()) {
+            reflectable.setSelected(
+                reflectable.appliesTo(element) && reflectable.matchesElement(element)
+            );
+        }
+
+        updateGraceNoteActionEnabled(element.getType().isGraceNote());
+    }
+
+    // Grace notes can only be inserted, not applied to existing notes.
+    // In select mode the action is unconditionally disabled.
+    private void updateGraceNoteActionEnabled(boolean hasGraceNote) {
+        Actions.GRACE_EIGHTH_NOTE_ACTION.setEnabled(!inSelectMode && hasGraceNote);
     }
 }

@@ -41,7 +41,8 @@ public class FirstSecondEndingAction extends UIAction {
             Flag.REQUIRES_MULTIPLE_SELECTION,
             Flag.DISABLE_IN_REST_MODE,
             Flag.DISABLE_WHEN_PLAYING,
-            Flag.DISABLE_WHEN_EDITING_TEXT
+            Flag.DISABLE_WHEN_EDITING_TEXT,
+            Flag.DISABLE_IN_GRACE_MODE
         );
         // TODO: Determine if make action should be enabled/disabled based on selection
     }

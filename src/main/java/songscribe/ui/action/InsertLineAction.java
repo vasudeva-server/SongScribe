@@ -40,7 +40,11 @@ public class InsertLineAction extends UIAction {
             (shift == ADD) ? UIUtils.MENU_SHORTCUT_MASK : 0
         );
         this.shift = shift;
-        setFlags(Flag.DISABLE_WHEN_PLAYING, Flag.DISABLE_WHEN_EDITING_TEXT);
+        setFlags(
+            Flag.DISABLE_WHEN_PLAYING,
+            Flag.DISABLE_WHEN_EDITING_TEXT,
+            Flag.DISABLE_IN_GRACE_MODE
+        );
     }
 
     private static String getActionCommand(int shift) {

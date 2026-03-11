@@ -4,9 +4,9 @@ Read `.claude/testing-common.md` first for shared conventions.
 
 ## Core Principle
 
-E2E tests simulate exactly what the user does. Never call `UIAction.actionPerformed()`, `ActionGroup` selection mutating methods, or mutate the model directly to trigger the behavior under test. Always click toolbar buttons or select menu items.
+E2E tests simulate exactly what the user does. **All tests that simulate user actions must use real clicks, not direct API calls.** This ensures the entire event handling pipeline is exercised as part of the test. For example, when adding notes to a line, use `clickAt()` rather than calling model methods directly.
 
-**Exception:** Direct model setup via `GuiActionRunner.execute()` is acceptable for establishing preconditions when the test is not verifying the setup path.
+Never call `UIAction.actionPerformed()`, `ActionGroup` selection mutating methods, or mutate the model directly — not even for precondition setup. Directly mutating the model (e.g. `line.addElement()`) skips the full UI update pipeline (layout, selection state, rendering caches), which can produce subtle false positives or false negatives. Always use real clicks via `clickAt()`, toolbar helpers, and menu helpers.
 
 ## Structure
 
@@ -39,8 +39,12 @@ The base class handles per-class MainFrame boot, per-test composition reset, edi
 | `deselectRestMode()`         | Toggle rest mode off (if active)                    |
 | `enterEditMode()`            | Switch to edit mode (if not already)                |
 | `enterSelectMode()`          | Switch to select mode (if not already)              |
-| `clickMenuItem(itemName)`    | Click a menu item by its text label                 |
+| `clickMenuItem(action)`      | Trigger a menu-only action via `doClick()`          |
 | `findButtonByName(name)`     | Find a toolbar button component by name             |
+
+Not every action has a toolbar button. Before writing a test that calls `clickToolbarButton(action)`, verify the action's component name appears in the toolbar by checking the relevant `Toolbar` subclass in `src/main/java/songscribe/ui/component/toolbar/`. If the button is absent, use `clickMenuItem(action)` instead.
+
+`clickMenuItem` finds the `JMenuItem` bound to the action anywhere in the menu bar and calls `doClick()` on it directly. This fires the full button-model state change — identical to a real user click — without opening any parent menus or triggering AssertJ Swing's menu traversal, which waits up to 10 s for the AWT event queue to idle after each menu level.
 
 ## Coordinate Helpers
 
@@ -92,9 +96,19 @@ isEqualTo(1);
 
 ## Building Preconditions
 
-When setting up initial state (not the feature under test), build directly via the model:
+Even when setting up initial state (not the feature under test), use real clicks to insert notes. This ensures the full event handling pipeline runs, keeping layout, selection state, and rendering caches consistent.
 
 ```java
+// Good — uses the same pipeline as the user
+private void buildTwoQuarterNotes() {
+    selectDuration(Actions.QUARTER_NOTE_ACTION);
+    clickAt(insertionPoint(0, 0));
+    performLayout(0);
+    clickAt(insertionPoint(0, 2));
+    performLayout(0);
+}
+
+// Bad — skips UI updates, can cause false positives/negatives
 private void buildTwoQuarterNotes() {
     GuiActionRunner.execute(() -> {
         var composition = new Composition(MainFrame.getInstance());

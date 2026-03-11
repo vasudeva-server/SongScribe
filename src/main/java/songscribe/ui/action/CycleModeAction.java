@@ -44,7 +44,7 @@ public class CycleModeAction extends UIAction {
 
     public CycleModeAction() {
         super(null, "cycle-mode", KeyEvent.VK_E, 0);
-        setFlags(Flag.DISABLE_WHEN_EDITING_TEXT);
+        setFlags(Flag.DISABLE_WHEN_EDITING_TEXT, Flag.DISABLE_IN_GRACE_MODE);
         currentIndex = 0;
     }
 

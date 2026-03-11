@@ -41,6 +41,7 @@ import com.intellij.uiDesigner.core.Spacer;
 
 import songscribe.Strings;
 import songscribe.data.FileExtensions;
+import songscribe.ui.Dialogs;
 import songscribe.ui.action.QuitAction;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.Score;
@@ -731,12 +732,13 @@ public class UIConverter extends MainFrame {
             var selectedSong = (String) rejectList.getSelectedValue();
 
             if (selectedSong == null) {
-                showErrorMessage(Strings.get(Strings.ERROR_CONVERTER_NO_REJECTED_SONG));
+                Dialogs.showErrorMessage(UIConverter.this, Strings.get(Strings.DIALOG_TITLE_CONVERSION_ERROR), Strings.get(Strings.ERROR_CONVERTER_NO_REJECTED_SONG));
                 return;
             }
 
-            var numberStr = JOptionPane.showInputDialog(
+            var numberStr = Dialogs.showInputDialog(
                 UIConverter.this,
+                Strings.get(Strings.DIALOG_TITLE_NUMBER_SONGS),
                 Strings.get(Strings.DIALOG_CONVERTER_ENTER_NUMBER)
             );
 
@@ -749,12 +751,12 @@ public class UIConverter extends MainFrame {
             try {
                 number = Integer.parseInt(numberStr);
             } catch (NumberFormatException nfe) {
-                showErrorMessage(Strings.get(Strings.ERROR_CONVERTER_NUMBER_INVALID));
+                Dialogs.showErrorMessage(UIConverter.this, Strings.get(Strings.DIALOG_TITLE_CONVERSION_ERROR), Strings.get(Strings.ERROR_CONVERTER_NUMBER_INVALID));
                 return;
             }
 
             if ((number < 1) || (number > 999)) {
-                showErrorMessage(Strings.get(Strings.ERROR_CONVERTER_NUMBER_RANGE));
+                Dialogs.showErrorMessage(UIConverter.this, Strings.get(Strings.DIALOG_TITLE_CONVERSION_ERROR), Strings.get(Strings.ERROR_CONVERTER_NUMBER_RANGE));
                 return;
             }
 
@@ -769,14 +771,14 @@ public class UIConverter extends MainFrame {
             );
 
             if (!isLegalFileName(renamedSongFile.getName())) {
-                showErrorMessage(Strings.get(Strings.ERROR_CONVERTER_NUMBER_FAILED));
+                Dialogs.showErrorMessage(UIConverter.this, Strings.get(Strings.DIALOG_TITLE_CONVERSION_ERROR), Strings.get(Strings.ERROR_CONVERTER_NUMBER_FAILED));
                 return;
             }
 
             var renameSuccessful = originalSongFile.renameTo(renamedSongFile);
 
             if (!renameSuccessful) {
-                showErrorMessage(Strings.get(Strings.ERROR_CONVERTER_RENAME_FAILED));
+                Dialogs.showErrorMessage(UIConverter.this, Strings.get(Strings.DIALOG_TITLE_CONVERSION_ERROR), Strings.get(Strings.ERROR_CONVERTER_RENAME_FAILED));
                 return;
             }
 

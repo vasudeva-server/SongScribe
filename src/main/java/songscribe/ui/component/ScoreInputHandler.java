@@ -187,10 +187,12 @@ public final class ScoreInputHandler
             LineComponent.clearInsertionElement();
             LineComponent.setAltPressed(true);
             callback.repaint();
-        } else if (e.getKeyCode() == KeyEvent.VK_ESCAPE
-            && callback.getMode() == Mode.SELECT
-            && !UIUtils.isEditingText()) {
-            MessageCenter.post(new DeselectMessage());
+        } else if (e.getKeyCode() == KeyEvent.VK_ESCAPE) {
+            if (editModeManager.getGraceModeManager().isInProgress()) {
+                editModeManager.getGraceModeManager().keyPressed(e);
+            } else if (callback.getMode() == Mode.SELECT && !UIUtils.isEditingText()) {
+                MessageCenter.post(new DeselectMessage());
+            }
         }
     }
 

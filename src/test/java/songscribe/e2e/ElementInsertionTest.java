@@ -171,10 +171,6 @@ class ElementInsertionTest extends E2ETest {
             assertThat(line.elementCount()).isEqualTo(1);
             var element = line.getElement(0);
 
-            // Click the note head to start a drag in edit mode
-            var notePoint = noteScreenPosition(0, 0);
-            clickAt(notePoint);
-
             // Drag the note to a new staff position
             var targetStaffPositionSp = -4;
             dragNote(0, 0, targetStaffPositionSp);

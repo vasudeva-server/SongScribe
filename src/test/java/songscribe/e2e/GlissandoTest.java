@@ -25,16 +25,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.awt.*;
 import java.awt.event.*;
 
-import org.assertj.swing.edt.GuiActionRunner;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
-import songscribe.music.Composition;
-import songscribe.music.ElementType;
-import songscribe.music.Line;
 import songscribe.music.StaffElement;
 import songscribe.ui.action.Actions;
-import songscribe.ui.component.MainFrame;
 
 /**
  * Milestone 3 E2E tests: glissando insert, select, delete, highlight, persistence.
@@ -184,7 +179,7 @@ class GlissandoTest extends E2ETest {
 
         @Test
         void testDeleteSourceNoteRemovesSlideOut() {
-            buildNoteWithSlideOut();
+            buildNotesWithSlideOut();
 
             enterSelectMode();
 
@@ -195,9 +190,13 @@ class GlissandoTest extends E2ETest {
             robot.pressAndReleaseKey(KeyEvent.VK_DELETE);
             performLayout(0);
 
-            // Note was removed
+            // Source note was removed, only the second note remains
             var line = composition().getLine(0);
-            assertThat(line.elementCount()).isEqualTo(0);
+            assertThat(line.elementCount()).isEqualTo(1);
+
+            // The remaining note should have no glissando
+            //noinspection ObjectEquality
+            assertThat(line.getElement(0).getGlissando()).isSameAs(StaffElement.NO_GLISSANDO);
         }
 
         @Test
@@ -286,60 +285,28 @@ class GlissandoTest extends E2ETest {
     // -- Composition builders --
 
     private void buildTwoNotesAtDifferentPitches() {
-        GuiActionRunner.execute(() -> {
-            var composition = new Composition(MainFrame.getInstance());
-            var line = new Line();
-
-            var note1 = ElementType.CROTCHET.newInstance();
-            note1.setStaffPosition(0);
-            line.addElement(note1);
-
-            var note2 = ElementType.CROTCHET.newInstance();
-            note2.setStaffPosition(-4);
-            line.addElement(note2);
-
-            composition.addLine(0, line);
-            score().setComposition(composition);
-        });
-
+        selectDuration(Actions.QUARTER_NOTE_ACTION);
+        clickAt(insertionPoint(0, 0));
+        performLayout(0);
+        clickAt(insertionPoint(0, -4));
         performLayout(0);
     }
 
     private void buildNotesWithConnectedGlissando() {
-        GuiActionRunner.execute(() -> {
-            var composition = new Composition(MainFrame.getInstance());
-            var line = new Line();
+        buildTwoNotesAtDifferentPitches();
 
-            var note1 = ElementType.CROTCHET.newInstance();
-            note1.setStaffPosition(0);
-            note1.setGlissando(StaffElement.Glissando.Type.CONNECTED);
-            line.addElement(note1);
-
-            var note2 = ElementType.CROTCHET.newInstance();
-            note2.setStaffPosition(-4);
-            line.addElement(note2);
-
-            composition.addLine(0, line);
-            score().setComposition(composition);
-        });
-
+        enterEditMode();
+        selectDuration(Actions.GLISSANDO_ACTION);
+        clickAt(glissandoInsertionPoint(0));
         performLayout(0);
     }
 
-    private void buildNoteWithSlideOut() {
-        GuiActionRunner.execute(() -> {
-            var composition = new Composition(MainFrame.getInstance());
-            var line = new Line();
+    private void buildNotesWithSlideOut() {
+        buildTwoNotesAtDifferentPitches();
 
-            var note = ElementType.CROTCHET.newInstance();
-            note.setStaffPosition(0);
-            note.setGlissando(StaffElement.Glissando.Type.SLIDE_OUT);
-            line.addElement(note);
-
-            composition.addLine(0, line);
-            score().setComposition(composition);
-        });
-
+        enterEditMode();
+        selectDuration(Actions.SLIDE_OUT_ACTION);
+        clickAt(glissandoInsertionPoint(0));
         performLayout(0);
     }
 

@@ -20,17 +20,19 @@
 
 package songscribe.ui.component;
 
+import static songscribe.ui.action.Actions.CYCLE_MODE_ACTION;
+import static songscribe.ui.action.Actions.MODE_ACTION_GROUP;
+
 import net.engio.mbassy.listener.Handler;
 
 import songscribe.ui.action.ModeAction;
+import songscribe.ui.edit.GraceModeManager;
+import songscribe.ui.message.GraceModeStateChangedMessage;
 import songscribe.ui.message.MessageCenter;
 import songscribe.ui.message.ModeChangedMessage;
 import songscribe.ui.playback.PlaybackController;
 import songscribe.ui.playback.PlaybackStateChangedMessage;
 import songscribe.util.UIUtils;
-
-import static songscribe.ui.action.Actions.CYCLE_MODE_ACTION;
-import static songscribe.ui.action.Actions.MODE_ACTION_GROUP;
 
 /**
  * A button that cycles between Edit Mode and Select Mode on each click,
@@ -68,6 +70,11 @@ public class ModeCycleButton extends ToolbarToggleButton {
         setEnabled(
             message.getState() != PlaybackController.PlaybackState.PLAYING
         );
+    }
+
+    @Handler
+    public void graceModeStateDidChange(GraceModeStateChangedMessage message) {
+        setEnabled(!GraceModeManager.isActive());
     }
 
     private void updateButton(ModeAction action) {

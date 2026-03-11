@@ -134,7 +134,11 @@ public final class Actions {
 
     // Grace note and rest mode are mutually exclusive
     static {
-        GRACE_EIGHTH_NOTE_ACTION.setFlags(UIAction.Flag.DISABLE_IN_REST_MODE);
+        GRACE_EIGHTH_NOTE_ACTION.setFlags(
+            UIAction.Flag.DISABLE_IN_GRACE_MODE,
+            UIAction.Flag.DISABLE_IN_REST_MODE,
+            UIAction.Flag.DISABLE_IN_SELECT_MODE
+        );
     }
 
 

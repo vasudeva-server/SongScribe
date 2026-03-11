@@ -34,6 +34,7 @@ import songscribe.music.Line;
 import songscribe.music.LyricsProcessor;
 import songscribe.music.StaffElement;
 import songscribe.ui.Control;
+import songscribe.ui.Dialogs;
 import songscribe.ui.action.Actions;
 import songscribe.ui.clipboard.ClipboardManager;
 import songscribe.ui.component.IMainFrame;
@@ -76,6 +77,7 @@ public final class EditModeManager {
     private final ClipboardManager clipboardManager;
     private final SelectionCoordinator selectionCoordinator;
     private final ScoreActions scoreActions;
+    private final GraceModeManager graceModeManager;
 
     // Whether the insertion element is visible (based on mouse position in mouse mode)
     private boolean insertionElementIsVisible = false;
@@ -112,7 +114,16 @@ public final class EditModeManager {
         this.clipboardManager = clipboardManager;
         this.selectionCoordinator = selectionCoordinator;
         this.scoreActions = scoreActions;
+        this.graceModeManager = new GraceModeManager(this, selectionCoordinator);
         instance = this;
+    }
+
+    /**
+     * Returns the GraceModeManager that manages grace note pairing.
+     */
+    @NotNull
+    public GraceModeManager getGraceModeManager() {
+        return graceModeManager;
     }
 
     // -------------------------------------------------------------------------
@@ -331,7 +342,11 @@ public final class EditModeManager {
             var iv = line.getTuplets().findInterval(elementIndex - 1);
 
             if ((iv != null) && ((elementIndex - 1) < iv.getEnd())) {
-                mainFrame.showErrorMessage(Strings.get(Strings.ERROR_TRIPLET_INSERT));
+                Dialogs.showErrorMessage(
+                    null,
+                    Strings.get(Strings.DIALOG_TITLE_EDIT_ERROR),
+                    Strings.get(Strings.ERROR_TRIPLET_INSERT)
+                );
                 return true;
             }
 
@@ -393,15 +408,7 @@ public final class EditModeManager {
         var insertedElement = line.getElement(elementIndex);
         var shouldPlayNote = playInsertedNote && insertedElement.getType().isNote();
 
-        StaffElement nextElement;
-
-        if (insertionElement.getType().isGraceNote()) {
-            // Grace note two-step: after inserting a grace note, auto-switch to glissando tool
-            // so the user can connect it.
-            nextElement = ElementType.GLISSANDO.newInstance();
-        } else {
-            nextElement = insertionElement.getType().newInstance();
-        }
+        var nextElement = insertionElement.getType().newInstance();
 
         // After inserting an element, turn off fermata and accidental parentheses
         Actions.FERMATA_ACTION.setSelected(false);

@@ -34,6 +34,7 @@ import songscribe.music.ElementType;
 import songscribe.music.Line;
 import songscribe.music.StaffElement;
 import songscribe.ui.Control;
+import songscribe.ui.Dialogs;
 import songscribe.ui.Mode;
 import songscribe.ui.action.Actions;
 import songscribe.ui.component.Score;
@@ -201,7 +202,7 @@ public class InsertionElementManager {
     /**
      * Returns the current insertion X index.
      */
-    static int getCurrentXIndex() {
+    public static int getCurrentXIndex() {
         return currentXIndex;
     }
 
@@ -350,8 +351,17 @@ public class InsertionElementManager {
 
         // Convert mouse pixel coordinates to staff-space units
         var scale = ScaleContext.getInstance();
-        var mouseXss = scale.fromPixels(e.getX());
         var mouseYss = scale.fromPixels(e.getY());
+
+        // In grace mode, lock the x-position to the host note slot
+        var editModeManager = EditModeManager.getInstance();
+        double mouseXss;
+
+        if (editModeManager != null && editModeManager.getGraceModeManager().isInProgress()) {
+            mouseXss = editModeManager.getGraceModeManager().getLockedInsertionXSs();
+        } else {
+            mouseXss = scale.fromPixels(e.getX());
+        }
 
         // Calculate Y position from mouse (in staff-space coordinates)
         int staffPosition = calculateStaffPositionFromMouse(mouseYss, lc.getMiddleLineYSs());
@@ -380,6 +390,20 @@ public class InsertionElementManager {
         int xIndex = layoutResult.findInsertionIndex(mouseXss, line);
         int elementAtX = layoutResult.findElementAtXSs(mouseXss, line);
 
+        var insertionElement = editModeManager != null ? editModeManager.getInsertionElement() : null;
+
+        // Hide the insertion element when a grace note is selected and the mouse
+        // is between an existing grace/host pair — insertion there is not allowed.
+        if (insertionElement != null
+            && insertionElement.getType().isGraceNote()
+            && line.isInsideGraceHostPair(xIndex)) {
+            if (currentInsertionLine == lc) {
+                clearInsertionElement();
+            }
+
+            return;
+        }
+
         // Compute new position match flags before the early-return check, so that a
         // change in hover state (e.g., mouse slides from gap into element-head bounds at
         // the same xIndex) is not silently dropped.
@@ -390,11 +414,9 @@ public class InsertionElementManager {
         // Compute glissando zone before change detection so zone changes trigger repaints.
         // Only compute when not over an element head (elementAtX < 0), as hovering over an
         // element head means there is no valid glissando target to the left.
-        var editModeManager = EditModeManager.getInstance();
         StaffElement.Glissando.Type newGlissandoZone = null;
 
-        if (editModeManager != null && editModeManager.getInsertionElement() == StaffElement.GLISSANDO_PLACEHOLDER
-            && elementAtX < 0) {
+        if (insertionElement == StaffElement.GLISSANDO_PLACEHOLDER && elementAtX < 0) {
             newGlissandoZone = computeGlissandoZone(line, xIndex);
         }
 
@@ -420,8 +442,6 @@ public class InsertionElementManager {
         currentGlissandoZone = newGlissandoZone;
 
         if (editModeManager != null) {
-            var insertionElement = editModeManager.getInsertionElement();
-
             if (insertionElement == StaffElement.GLISSANDO_PLACEHOLDER) {
                 // No note-head preview for glissando tool — renderInsertionElement draws the preview line.
                 lc.repaint();
@@ -451,7 +471,7 @@ public class InsertionElementManager {
      * Handles a click on the insertion element, performing the appropriate action
      * (append, insert, or modify). Called from {@code LineComponent.mouseClicked()}.
      */
-    static void handleClick(LineComponent lc) {
+    public static void handleClick(LineComponent lc) {
         if (!shouldHandleInsertionElement(lc)) {
             return;
         }
@@ -566,7 +586,7 @@ public class InsertionElementManager {
      * Called when Alt is released to immediately show the insertion element
      * without requiring mouse movement.
      */
-    static void restoreInsertionElement(LineComponent lc) {
+    public static void restoreInsertionElement(LineComponent lc) {
         if (!shouldHandleInsertionElement(lc)) {
             return;
         }
@@ -619,6 +639,50 @@ public class InsertionElementManager {
     // ==========================================================================
 
     /**
+     * Returns the active insertion element from {@link EditModeManager},
+     * or null if the manager or element is unavailable.
+     */
+    @Nullable
+    private static StaffElement getActiveInsertionElement() {
+        var editModeManager = EditModeManager.getInstance();
+
+        if (editModeManager == null) {
+            return null;
+        }
+
+        return editModeManager.getInsertionElement();
+    }
+
+    /**
+     * Calculates the insertion result for adding an element to a line.
+     * If the element would not fit within the line width, shows an error
+     * message and returns null.
+     *
+     * @param line    The line to insert into
+     * @param element The element to insert
+     * @param index   The insertion index
+     * @return The insertion result, or null if the line is full
+     */
+    @Nullable
+    private static InsertionSpacingCalculator.InsertionResult calculateInsertionOrShowError(
+        @NotNull Line line, @NotNull StaffElement element, int index
+    ) {
+        var insertion = InsertionSpacingCalculator.calculateInsertion(line, element, index);
+        var composition = line.getComposition();
+
+        if (composition != null && !insertion.fitsWithinLine(composition.getLineWidthSs())) {
+            Dialogs.showErrorMessage(
+                null,
+                Strings.get(Strings.DIALOG_TITLE_INSERT_ERROR),
+                Strings.get(Strings.ERROR_LINE_FULL)
+            );
+            return null;
+        }
+
+        return insertion;
+    }
+
+    /**
      * Adds an insertion element to the end of the line.
      *
      * @param lc   The LineComponent
@@ -631,25 +695,26 @@ public class InsertionElementManager {
             return;
         }
 
-        var editModeManager = EditModeManager.getInstance();
-
-        if (editModeManager == null) {
-            return;
-        }
-
-        var insertionElement = editModeManager.getInsertionElement();
+        var insertionElement = getActiveInsertionElement();
 
         if (insertionElement == null) {
             return;
         }
+
+        var editModeManager = EditModeManager.getInstance();
 
         if (editModeManager.elementWasModified(line, line.elementCount())) {
             editModeManager.insertionElementDidChange(line, line.elementCount() - 1);
             return;
         }
 
-        insertionElement.setXPosSs((int) Math.round(
-            InsertionSpacingCalculator.calculateAppendPositionSs(line, insertionElement)));
+        var insertion = calculateInsertionOrShowError(line, insertionElement, line.elementCount());
+
+        if (insertion == null) {
+            return;
+        }
+
+        insertionElement.setXPosSs(ScaleContext.getInstance().toRoundedPixels(insertion.insertedElementXSs()));
         line.addElement(insertionElement);
 
         applyAutomaticBeaming(line, line.elementCount() - 1);
@@ -671,17 +736,13 @@ public class InsertionElementManager {
             return;
         }
 
-        var editModeManager = EditModeManager.getInstance();
-
-        if (editModeManager == null) {
-            return;
-        }
-
-        var insertionElement = editModeManager.getInsertionElement();
+        var insertionElement = getActiveInsertionElement();
 
         if (insertionElement == null) {
             return;
         }
+
+        var editModeManager = EditModeManager.getInstance();
 
         if (editModeManager.elementWasModified(line, xIndex)) {
             editModeManager.insertionElementDidChange(line, xIndex);
@@ -692,15 +753,24 @@ public class InsertionElementManager {
         var iv = line.getTuplets().findInterval(xIndex - 1);
 
         if ((iv != null) && ((xIndex - 1) < iv.getEnd())) {
-            score.getMainFrame().showErrorMessage(Strings.get(Strings.ERROR_TRIPLET_INSERT));
+            Dialogs.showErrorMessage(
+                null,
+                Strings.get(Strings.DIALOG_TITLE_INSERT_ERROR),
+                Strings.get(Strings.ERROR_TRIPLET_INSERT)
+            );
             return;
         }
 
         line.removeInterval(xIndex - 1, xIndex);
-        var insertion = InsertionSpacingCalculator.calculateInsertion(line, insertionElement, xIndex);
-        insertionElement.setXPosSs((int) Math.round(insertion.insertedElementXSs()));
+        var insertion = calculateInsertionOrShowError(line, insertionElement, xIndex);
+
+        if (insertion == null) {
+            return;
+        }
+
+        insertionElement.setXPosSs(ScaleContext.getInstance().toRoundedPixels(insertion.insertedElementXSs()));
         line.addElement(xIndex, insertionElement);
-        var shift = (int) Math.round(insertion.shiftForSubsequentElementsSs());
+        var shift = ScaleContext.getInstance().toRoundedPixels(insertion.shiftForSubsequentElementsSs());
 
         for (var i = xIndex + 1; i < line.elementCount(); i++) {
             line.getElement(i).setXPosSs(line.getElement(i).getXPosSs() + shift);
@@ -709,6 +779,7 @@ public class InsertionElementManager {
         applyAutomaticBeaming(line, xIndex);
         editModeManager.insertionElementDidChange(line, xIndex);
     }
+
 
     /**
      * Applies automatic beaming for the element at the given index.
@@ -783,17 +854,13 @@ public class InsertionElementManager {
             return;
         }
 
-        var editModeManager = EditModeManager.getInstance();
-
-        if (editModeManager == null) {
-            return;
-        }
-
-        var insertionElement = editModeManager.getInsertionElement();
+        var insertionElement = getActiveInsertionElement();
 
         if (insertionElement == null) {
             return;
         }
+
+        var editModeManager = EditModeManager.getInstance();
 
         if (editModeManager.elementWasModified(line, elementIndex)) {
             editModeManager.insertionElementDidChange(line, elementIndex);

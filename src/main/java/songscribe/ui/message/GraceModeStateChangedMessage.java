@@ -18,22 +18,21 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package songscribe.ui.component.score;
+package songscribe.ui.message;
 
 /**
- * Result of a hit test against selectable elements in a {@link LineComponent}.
- * <p>
- * The cascade tests note heads first, then glissandos, then staff-line proximity.
- * If nothing is hit, {@link Nothing} is returned.
+ * Posted when the grace mode state changes (active/inactive).
+ * Triggers UIAction enabled-state recalculation for the DISABLE_IN_GRACE_MODE flag.
  */
-sealed interface HitResult {
-    record ElementHead(int index) implements HitResult {}
+public class GraceModeStateChangedMessage extends Message {
 
-    record Glissando(int elementIndex) implements HitResult {}
+    private final boolean active;
 
-    record GraceGlissando() implements HitResult {}
+    public GraceModeStateChangedMessage(boolean active) {
+        this.active = active;
+    }
 
-    record StaffLine() implements HitResult {}
-
-    record Nothing() implements HitResult {}
+    public boolean isActive() {
+        return active;
+    }
 }

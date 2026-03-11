@@ -122,9 +122,9 @@ public final class LayoutConstants {
     public static final double GRACE_NOTE_MIN_WIDTH_SS = 1.0;  // 8px per grace note
 
     /**
-     * Gap between grace notes in a group.
+     * Gap between a grace note and its host note.
      */
-    public static final double GRACE_NOTE_GAP_SS = 0.25;  // 2px
+    public static final double GRACE_NOTE_GAP_SS = 2.0;  // 16px
 
     // ==========================================================================
     // HORIZONTAL SPACING - Beam Groups

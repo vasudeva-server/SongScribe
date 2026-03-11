@@ -48,7 +48,7 @@ import songscribe.io.CompositionIO;
 import songscribe.music.Composition;
 import songscribe.prefs.Prefs;
 import songscribe.prefs.RecentDocumentsManager;
-import songscribe.ui.Constants;
+import songscribe.ui.Dialogs;
 import songscribe.ui.ProfileManager;
 import songscribe.ui.action.Actions;
 import songscribe.ui.action.SaveAction;
@@ -85,11 +85,10 @@ public class MainFrame extends JFrame implements IMainFrame, Printable {
 
     static {
         if (!SONGSCRIBE_DIR.exists() && !SONGSCRIBE_DIR.mkdir()) {
-            JOptionPane.showMessageDialog(
+            Dialogs.showErrorMessage(
                 null,
-                Strings.get(Strings.ERROR_DIRECTORY_CREATE),
-                Constants.PACKAGE_NAME,
-                JOptionPane.ERROR_MESSAGE
+                Strings.get(Strings.DIALOG_TITLE_INITIALIZATION_ERROR),
+                Strings.get(Strings.ERROR_DIRECTORY_CREATE)
             );
         }
 
@@ -387,10 +386,10 @@ public class MainFrame extends JFrame implements IMainFrame, Printable {
         }
 
         var docName = (currentFile != null) ? currentFile.getName() : Strings.get(Strings.DOCUMENT_UNTITLED);
-        var answer = JOptionPane.showConfirmDialog(
+        var answer = Dialogs.showConfirmDialog(
             this,
+            Strings.get(Strings.DIALOG_TITLE_SAVE_CHANGES),
             Strings.get(Strings.CONFIRM_SAVE_MODIFIED, docName),
-            appName,
             JOptionPane.YES_NO_CANCEL_OPTION,
             JOptionPane.QUESTION_MESSAGE
         );
@@ -400,42 +399,6 @@ public class MainFrame extends JFrame implements IMainFrame, Printable {
         }
 
         return answer != JOptionPane.CANCEL_OPTION;
-    }
-
-    @Override
-    public void showErrorMessage(String message) {
-        Toolkit.getDefaultToolkit().beep();
-        JOptionPane.showMessageDialog(
-            this,
-            message,
-            appName,
-            JOptionPane.ERROR_MESSAGE
-        );
-    }
-
-    @Override
-    public void showInfoMessage(String message) {
-        JOptionPane.showMessageDialog(
-            this,
-            message,
-            appName,
-            JOptionPane.INFORMATION_MESSAGE
-        );
-    }
-
-    @Override
-    public int showConfirmDialog(
-        String message,
-        int optionType,
-        int messageType
-    ) {
-        return JOptionPane.showConfirmDialog(
-            this,
-            message,
-            appName,
-            optionType,
-            messageType
-        );
     }
 
     @Override
@@ -590,8 +553,11 @@ public class MainFrame extends JFrame implements IMainFrame, Printable {
             try {
                 printerJob.print();
             } catch (PrinterException e1) {
-                MainFrame.getInstance()
-                    .showErrorMessage(Strings.get(Strings.ERROR_PRINT));
+                Dialogs.showErrorMessage(
+                    MainFrame.getInstance(),
+                    Strings.get(Strings.DIALOG_TITLE_PRINT_ERROR),
+                    Strings.get(Strings.ERROR_PRINT)
+                );
             }
         }
     }
@@ -657,7 +623,11 @@ public class MainFrame extends JFrame implements IMainFrame, Printable {
             printWriter.close();
             setDocumentModified(false);
         } catch (IOException e1) {
-            showErrorMessage(Strings.get(Strings.ERROR_FILE_SAVE));
+            Dialogs.showErrorMessage(
+                this,
+                Strings.get(Strings.DIALOG_TITLE_FILE_ERROR),
+                Strings.get(Strings.ERROR_FILE_SAVE)
+            );
         }
     }
 
@@ -682,28 +652,10 @@ public class MainFrame extends JFrame implements IMainFrame, Printable {
         if (fileDialog.showDialog()) {
             var saveFile = fileDialog.getFile();
 
-            if (
-                !saveFile
-                    .getName()
-                    .toLowerCase()
-                    .endsWith(FileExtensions.SONGWRITER)
-            ) {
-                saveFile = new File(
-                    saveFile.getAbsolutePath() + FileExtensions.SONGWRITER
-                );
-            }
+            saveFile = FileUtils.ensureExtension(saveFile, FileExtensions.SONGWRITER);
 
-            if (saveFile.exists()) {
-                var response = JOptionPane.showConfirmDialog(
-                    this,
-                    Strings.get(Strings.CONFIRM_FILE_OVERWRITE, saveFile.getName()),
-                    appName,
-                    JOptionPane.YES_NO_OPTION
-                );
-
-                if (response == JOptionPane.NO_OPTION) {
-                    return;
-                }
+            if (!Dialogs.confirmFileOverwrite(this, appName, saveFile)) {
+                return;
             }
 
             setCurrentFile(saveFile);

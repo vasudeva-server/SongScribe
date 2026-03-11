@@ -39,6 +39,7 @@ import songscribe.data.EndingInterval;
 import songscribe.data.Interval;
 import songscribe.data.TieInterval;
 import songscribe.data.TupletInterval;
+import songscribe.ui.Dialogs;
 import songscribe.ui.component.IMainFrame;
 import songscribe.ui.selection.LineSelectionState;
 import songscribe.ui.selection.SelectionCoordinator;
@@ -261,7 +262,9 @@ public final class MusicEditOperations {
         ).anyMatch(i -> line.getElement(i).getType() == ElementType.REPEAT_RIGHT);
 
         if (!repeatExists) {
-            var answer = mainFrame.showConfirmDialog(
+            var answer = Dialogs.showConfirmDialog(
+                null,
+                Strings.get(Strings.DIALOG_TITLE_FIRST_SECOND_ENDING),
                 Strings.get(Strings.CONFIRM_ENDING_NO_REPEAT),
                 JOptionPane.YES_NO_OPTION,
                 JOptionPane.WARNING_MESSAGE
@@ -347,7 +350,9 @@ public final class MusicEditOperations {
         var state = coordinator.getActiveSelection();
 
         if (state == null) {
-            mainFrame.showInfoMessage(
+            Dialogs.showInfoMessage(
+                null,
+                Strings.get(Strings.DIALOG_TITLE_STEM_DIRECTION),
                 Strings.get(Strings.ERROR_STEM_NO_SELECTION)
             );
             return;
@@ -366,17 +371,12 @@ public final class MusicEditOperations {
             }
 
             var beamInterval = line.getBeamings().findInterval(i);
-            System.out.println("[flipStem] note[" + i + "] auto=" + note.isStemDirectionAuto()
-                + " upper=" + note.isUpper() + " beamInterval=" + beamInterval);
 
             if (beamInterval != null) {
                 // Flip the whole beam group together, once per group.
                 if (processedBeamIntervals.add(beamInterval)) {
                     var firstElement = line.getElement(beamInterval.getStart());
                     boolean newUpper = !firstElement.isUpper();
-                    System.out.println("[flipStem] flipping beam group " + beamInterval.getStart()
-                        + "-" + beamInterval.getEnd() + " firstElement.upper=" + firstElement.isUpper()
-                        + " -> newUpper=" + newUpper);
 
                     for (var j = beamInterval.getStart(); j <= beamInterval.getEnd(); j++) {
                         var beamElement = line.getElement(j);
@@ -385,7 +385,6 @@ public final class MusicEditOperations {
                     }
                 }
             } else {
-                System.out.println("[flipStem] standalone note[" + i + "] -> setUpper(" + !note.isUpper() + ")");
                 note.setStemDirectionAuto(false);
                 note.setUpper(!note.isUpper());
             }

@@ -25,11 +25,8 @@ import static org.mockito.Mockito.mock;
 import java.awt.*;
 import java.io.File;
 
-import javax.swing.*;
-
 import songscribe.MusicChangeListener;
 import songscribe.ui.ProfileManager;
-import songscribe.util.Log;
 import songscribe.ui.component.IMainFrame;
 import songscribe.ui.component.LyricsPanel;
 import songscribe.ui.component.Score;
@@ -42,26 +39,6 @@ public class ConverterMainFrame implements IMainFrame {
 
     public ConverterMainFrame() {
         profileManager = new ProfileManager(this);
-    }
-
-    @Override
-    public void showInfoMessage(String message) {
-        Log.info(message);
-    }
-
-    @Override
-    public void showErrorMessage(String message) {
-        Log.error(message);
-    }
-
-    @Override
-    public int showConfirmDialog(
-        String message,
-        int optionType,
-        int messageType
-    ) {
-        Log.info(message);
-        return JOptionPane.YES_OPTION;
     }
 
     @Override

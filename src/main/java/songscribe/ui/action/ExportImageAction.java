@@ -28,6 +28,7 @@ import javax.swing.*;
 
 import songscribe.Strings;
 import songscribe.data.MyFileFilter;
+import songscribe.ui.Dialogs;
 import songscribe.prefs.Prefs;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.dialog.PlatformFileDialog;
@@ -74,27 +75,14 @@ public class ExportImageAction extends UIAction {
             var saveFile = fileDialog.getFile();
             var extension = filter.getExtension(0);
 
-            if (
-                !(saveFile.getName().toLowerCase().endsWith(extension) ||
-                    (extension.equals("jpg") &&
-                        saveFile.getName().toLowerCase().endsWith(".jpeg")))
-            ) {
-                saveFile = new File(
-                    saveFile.getAbsolutePath() + '.' + extension
-                );
+            if (extension.equals("jpg")) {
+                saveFile = FileUtils.ensureExtension(saveFile, "jpg", "jpeg");
+            } else {
+                saveFile = FileUtils.ensureExtension(saveFile, extension);
             }
 
-            if (saveFile.exists()) {
-                var response = JOptionPane.showConfirmDialog(
-                    mainFrame,
-                    Strings.get(Strings.CONFIRM_FILE_OVERWRITE, saveFile.getName()),
-                    mainFrame.appName,
-                    JOptionPane.YES_NO_OPTION
-                );
-
-                if (response == JOptionPane.NO_OPTION) {
-                    return;
-                }
+            if (!Dialogs.confirmFileOverwrite(mainFrame, mainFrame.appName, saveFile)) {
+                return;
             }
 
             if (resolutionDialog == null) {
@@ -137,16 +125,24 @@ public class ExportImageAction extends UIAction {
                 );
 
                 if (!successful) {
-                    mainFrame.showErrorMessage(
+                    Dialogs.showErrorMessage(
+                        null,
+                        Strings.get(Strings.DIALOG_TITLE_EXPORT_ERROR),
                         Strings.get(Strings.ERROR_IMAGE_EXPORT)
                     );
                 } else {
                     FileUtils.openExportFile(mainFrame, saveFile);
                 }
             } catch (IOException e1) {
-                mainFrame.showErrorMessage(Strings.get(Strings.ERROR_FILE_SAVE));
+                Dialogs.showErrorMessage(
+                    null,
+                    Strings.get(Strings.DIALOG_TITLE_EXPORT_ERROR),
+                    Strings.get(Strings.ERROR_FILE_SAVE)
+                );
             } catch (OutOfMemoryError e1) {
-                mainFrame.showErrorMessage(
+                Dialogs.showErrorMessage(
+                    null,
+                    Strings.get(Strings.DIALOG_TITLE_EXPORT_ERROR),
                     Strings.get(Strings.ERROR_IMAGE_MEMORY)
                 );
             } finally {

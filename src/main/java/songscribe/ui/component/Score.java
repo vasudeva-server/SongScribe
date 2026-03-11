@@ -38,6 +38,7 @@ import kotlin.Pair;
 import org.xml.sax.SAXException;
 
 import songscribe.MusicChangeListener;
+import songscribe.Strings;
 import songscribe.io.CompositionIO;
 import songscribe.music.Composition;
 import songscribe.music.Line;
@@ -47,6 +48,7 @@ import songscribe.music.StaffElement;
 import songscribe.prefs.Prefs;
 import songscribe.ui.Constants;
 import songscribe.ui.Control;
+import songscribe.ui.Dialogs;
 import songscribe.ui.Mode;
 import songscribe.ui.action.Actions;
 import songscribe.ui.adjustment.HorizontalAdjustment;
@@ -232,7 +234,9 @@ public final class Score
         try {
             saxParser = SAXParserFactory.newInstance().newSAXParser();
         } catch (Exception e) {
-            mainFrame.showErrorMessage(
+            Dialogs.showErrorMessage(
+                null,
+                Strings.get(Strings.DIALOG_TITLE_INITIALIZATION_ERROR),
                 Constants.PACKAGE_NAME +
                     " cannot start because of an initialization error."
             );
@@ -243,8 +247,8 @@ public final class Score
         addKeyListener(inputHandler);
     }
 
-    public void createSVG(File outputFile, @NotNull Boolean isGUI) {
-        songscribe.export.SVGExporter.createSVG(outputFile, isGUI);
+    public void createSVG(File outputFile) {
+        songscribe.export.SVGExporter.createSVG(outputFile);
     }
 
     public void init() {
@@ -465,13 +469,19 @@ public final class Score
                 "Could not open the file “" +
                     file.getName() +
                     "” because it is damaged.";
-            mainFrame.showErrorMessage(message);
+            Dialogs.showErrorMessage(
+                null,
+                Strings.get(Strings.DIALOG_TITLE_FILE_ERROR),
+                message
+            );
             Log.error(message, e);
             mainFrame.setDocumentModified(previousModifiedDocument);
             return false;
         } catch (IOException e) {
             var message = "Could not open the file “" + file.getName() + '”';
-            mainFrame.showErrorMessage(
+            Dialogs.showErrorMessage(
+                null,
+                Strings.get(Strings.DIALOG_TITLE_FILE_ERROR),
                 message + ". Check if you have the permission to open it."
             );
             Log.error(message, e);

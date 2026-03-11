@@ -30,11 +30,8 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import songscribe.e2e.E2ETest;
-import songscribe.music.Composition;
-import songscribe.music.ElementType;
-import songscribe.music.Line;
 import songscribe.ui.Mode;
-import songscribe.ui.component.MainFrame;
+import songscribe.ui.action.Actions;
 
 /**
  * Milestone 1 E2E tests: click-to-select, shift-click range, deselect.
@@ -171,22 +168,7 @@ class SelectionTest extends E2ETest {
     // -- Helpers --
 
     private void buildThreeNoteComposition() {
-        GuiActionRunner.execute(() -> {
-            var composition = new Composition(MainFrame.getInstance());
-            var line = new Line();
-            var positions = new int[]{0, -2, -4};
-
-            for (var sp : positions) {
-                var note = ElementType.CROTCHET.newInstance();
-                note.setStaffPosition(sp);
-                line.addElement(note);
-            }
-
-            composition.addLine(0, line);
-            score().setComposition(composition);
-        });
-
-        performLayout(0);
+        buildNotes(Actions.QUARTER_NOTE_ACTION, 0, -2, -4);
     }
 
 }

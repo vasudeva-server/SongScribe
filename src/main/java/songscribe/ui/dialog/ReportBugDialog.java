@@ -28,6 +28,7 @@ import org.jetbrains.annotations.NotNull;
 
 import songscribe.Strings;
 import songscribe.Version;
+import songscribe.ui.Dialogs;
 import songscribe.data.MyDesktop;
 import songscribe.ui.component.MainFrame;
 import songscribe.util.Utils;
@@ -47,10 +48,10 @@ public class ReportBugDialog extends StandardDialog {
         if (MyDesktop.isDesktopSupported()) {
             var sendBug = new JButton(Strings.get(Strings.DIALOG_BUG_REPORT_SEND));
             sendBug.addActionListener(_ -> {
-                var answer = JOptionPane.showOptionDialog(
+                var answer = Dialogs.showOptionDialog(
                     contentPanel,
+                    Strings.get(Strings.DIALOG_BUG_REPORT_TITLE),
                     Strings.get(Strings.DIALOG_BUG_REPORT_WHAT_TO_SEND),
-                    mainFrame.appName,
                     JOptionPane.YES_NO_OPTION,
                     JOptionPane.QUESTION_MESSAGE,
                     null,
@@ -90,7 +91,9 @@ public class ReportBugDialog extends StandardDialog {
                 try {
                     Utils.openEmail(mainFrame, sb.toString());
                 } catch (Exception e1) {
-                    mainFrame.showErrorMessage(
+                    Dialogs.showErrorMessage(
+                        mainFrame,
+                        Strings.get(Strings.DIALOG_TITLE_EMAIL_ERROR),
                         Strings.get(Strings.ERROR_EMAIL_OPEN_REPORT)
                     );
                 }

@@ -22,16 +22,10 @@ package songscribe.e2e;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import org.assertj.swing.edt.GuiActionRunner;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
-import songscribe.data.BeamInterval;
-import songscribe.music.Composition;
-import songscribe.music.ElementType;
-import songscribe.music.Line;
 import songscribe.ui.action.Actions;
-import songscribe.ui.component.MainFrame;
 
 /**
  * Milestone 2 E2E tests: automatic beaming, manual toggle, stem direction.
@@ -181,64 +175,35 @@ class BeamingTest extends E2ETest {
     // -- Helpers --
 
     private void buildUnbeamedEighthNotes() {
-        GuiActionRunner.execute(() -> {
-            var composition = new Composition(MainFrame.getInstance());
-            var line = new Line();
-
-            var note1 = ElementType.QUAVER.newInstance();
-            note1.setStaffPosition(0);
-            line.addElement(note1);
-
-            var note2 = ElementType.QUAVER.newInstance();
-            note2.setStaffPosition(-2);
-            line.addElement(note2);
-
-            composition.addLine(0, line);
-            score().setComposition(composition);
-        });
-
+        // Insert two eighths (auto-beams them), then remove the beam
+        selectDuration(Actions.EIGHTH_NOTE_ACTION);
+        clickAt(insertionPoint(0, 0));
         performLayout(0);
+        clickAt(insertionPoint(0, -2));
+        performLayout(0);
+
+        enterSelectMode();
+        clickAt(noteScreenPosition(0, 0));
+        shiftClickAt(noteScreenPosition(0, 1));
+        triggerAction(Actions.TOGGLE_BEAM_ACTION);
+        performLayout(0);
+        enterEditMode();
     }
 
     private void buildBeamedEighthNotes() {
-        GuiActionRunner.execute(() -> {
-            var composition = new Composition(MainFrame.getInstance());
-            var line = new Line();
-
-            var note1 = ElementType.QUAVER.newInstance();
-            note1.setStaffPosition(0);
-            line.addElement(note1);
-
-            var note2 = ElementType.QUAVER.newInstance();
-            note2.setStaffPosition(-2);
-            line.addElement(note2);
-
-            line.getBeamings().addInterval(new BeamInterval(0, 1));
-
-            composition.addLine(0, line);
-            score().setComposition(composition);
-        });
-
+        // Insert two consecutive eighths — auto-beaming creates the beam
+        selectDuration(Actions.EIGHTH_NOTE_ACTION);
+        clickAt(insertionPoint(0, 0));
+        performLayout(0);
+        clickAt(insertionPoint(0, -2));
         performLayout(0);
     }
 
     private void buildTwoQuarterNotes() {
-        GuiActionRunner.execute(() -> {
-            var composition = new Composition(MainFrame.getInstance());
-            var line = new Line();
-
-            var note1 = ElementType.CROTCHET.newInstance();
-            note1.setStaffPosition(0);
-            line.addElement(note1);
-
-            var note2 = ElementType.CROTCHET.newInstance();
-            note2.setStaffPosition(-2);
-            line.addElement(note2);
-
-            composition.addLine(0, line);
-            score().setComposition(composition);
-        });
-
+        selectDuration(Actions.QUARTER_NOTE_ACTION);
+        clickAt(insertionPoint(0, 0));
+        performLayout(0);
+        clickAt(insertionPoint(0, -2));
         performLayout(0);
     }
 

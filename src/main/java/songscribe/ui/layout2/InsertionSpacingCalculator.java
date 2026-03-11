@@ -24,6 +24,8 @@ import java.util.Collections;
 
 import org.jetbrains.annotations.NotNull;
 
+import songscribe.music.Composition;
+import songscribe.music.ElementType;
 import songscribe.music.Line;
 import songscribe.music.StaffElement;
 
@@ -42,17 +44,42 @@ import songscribe.music.StaffElement;
 public class InsertionSpacingCalculator {
 
     /**
-     * Result of an insertion spacing calculation, providing both the X position for the
-     * inserted element and the shift amount for subsequent elements.
+     * Result of an insertion spacing calculation, providing the X position for the
+     * inserted element, the shift amount for subsequent elements, and the projected
+     * line width after the insertion.
      *
      * @param insertedElementXSs          X position where the inserted element should be placed
      * @param shiftForSubsequentElementsSs Amount to shift all elements after the insertion point (always >= 0)
+     * @param newLineWidthSs              Projected line width after the insertion
      */
-    public record InsertionResult(double insertedElementXSs, double shiftForSubsequentElementsSs) {}
+    public record InsertionResult(
+        double insertedElementXSs,
+        double shiftForSubsequentElementsSs,
+        double newLineWidthSs
+    ) {
+        /**
+         * Returns whether the insertion fits within the given right margin.
+         *
+         * @param staffRightMarginSs The maximum allowed line width in staff spaces
+         * @return {@code true} if the projected line width does not exceed the margin
+         */
+        public boolean fitsWithinLine(double staffRightMarginSs) {
+            return newLineWidthSs <= staffRightMarginSs;
+        }
+    }
 
     private InsertionSpacingCalculator() {
         // Prevent instantiation - utility class with static methods only
     }
+
+    /**
+     * Converts an element's pixel position (stored in {@code getXPosSs()}, a legacy misnomer)
+     * to true staff spaces.
+     */
+    private static double elementXSs(@NotNull StaffElement element) {
+        return ScaleContext.getInstance().fromPixels(element.getXPosSs());
+    }
+
 
     /**
      * Calculates the X position for appending an element to the end of a line.
@@ -63,22 +90,22 @@ public class InsertionSpacingCalculator {
      *
      * @param line            The line to append to
      * @param elementToAppend The element being appended
-     * @return X position in pixels where the element should be placed
+     * @return X position in staff spaces where the element should be placed
      */
     public static double calculateAppendPositionSs(@NotNull Line line, @NotNull StaffElement elementToAppend) {
         var elementCount = line.elementCount();
 
         if (elementCount == 0) {
             // First element on the line - use standard first element positioning
-            return ScaleContext.getInstance().toPixels(LayoutConstants.calculateFirstElementXSs(line.getKeyAccidentalCount()));
+            return LayoutConstants.calculateFirstElementXSs(line.getKeyAccidentalCount());
         }
 
         // Get the last element and create a column for it
         var lastElement = line.getElement(elementCount - 1);
         var lastColumn = createLightweightColumn(lastElement);
 
-        // Use the last element's actual X position
-        lastColumn.setXSs(lastElement.getXPosSs());
+        // Convert element's pixel position to staff spaces
+        lastColumn.setXSs(elementXSs(lastElement));
 
         // Create column for element to append
         var appendColumn = createLightweightColumn(elementToAppend);
@@ -100,7 +127,7 @@ public class InsertionSpacingCalculator {
      */
     public static double calculateNextElementXSs(@NotNull StaffElement currentElement, @NotNull StaffElement nextElement) {
         var currentColumn = createLightweightColumn(currentElement);
-        currentColumn.setXSs(currentElement.getXPosSs());
+        currentColumn.setXSs(elementXSs(currentElement));
         var nextColumn = createLightweightColumn(nextElement);
         return HorizontalSpacingCalculator.calculateNextColumnXSs(currentColumn, nextColumn);
     }
@@ -131,7 +158,10 @@ public class InsertionSpacingCalculator {
 
         // If inserting at end, no shift needed (use calculateAppendPosition instead)
         if (insertIndex == elementCount) {
-            return new InsertionResult(calculateAppendPositionSs(line, insertedElement), 0);
+            double appendXSs = calculateAppendPositionSs(line, insertedElement);
+            var appendColumn = createLightweightColumn(insertedElement);
+            appendColumn.setXSs(appendXSs);
+            return new InsertionResult(appendXSs, 0, appendColumn.getRightEdgeXSs());
         }
 
         // Create column for inserted element
@@ -142,7 +172,7 @@ public class InsertionSpacingCalculator {
 
         if (insertIndex == 0) {
             // Inserting at beginning - calculate space from line start
-            insertedElementXSs = ScaleContext.getInstance().toPixels(LayoutConstants.calculateFirstElementXSs(line.getKeyAccidentalCount()));
+            insertedElementXSs = LayoutConstants.calculateFirstElementXSs(line.getKeyAccidentalCount());
             var nextElement = line.getElement(0);
             var nextColumn = createLightweightColumn(nextElement);
 
@@ -152,7 +182,7 @@ public class InsertionSpacingCalculator {
                 insertedColumn, nextColumn);
 
             // Shift = (where first element needs to be) - (where it currently is)
-            requiredSpaceSs = insertedToNextSs - nextElement.getXPosSs();
+            requiredSpaceSs = insertedToNextSs - elementXSs(nextElement);
         } else {
             // Inserting in middle - calculate space between prev and next
             var prevElement = line.getElement(insertIndex - 1);
@@ -161,7 +191,7 @@ public class InsertionSpacingCalculator {
             var prevColumn = createLightweightColumn(prevElement);
             var nextColumn = createLightweightColumn(nextElement);
 
-            prevColumn.setXSs(prevElement.getXPosSs());
+            prevColumn.setXSs(elementXSs(prevElement));
 
             // Calculate: prev → inserted → next
             insertedElementXSs = HorizontalSpacingCalculator.calculateNextColumnXSs(
@@ -172,10 +202,24 @@ public class InsertionSpacingCalculator {
                 insertedColumn, nextColumn);
 
             // Shift = (where next needs to be) - (where it currently is)
-            requiredSpaceSs = insertedToNextSs - nextElement.getXPosSs();
+            requiredSpaceSs = insertedToNextSs - elementXSs(nextElement);
         }
 
-        return new InsertionResult(insertedElementXSs, Math.max(0, requiredSpaceSs));
+        double shiftSs = Math.max(0, requiredSpaceSs);
+
+        // Compute projected line width: max of inserted element's right edge
+        // and the last element's right edge shifted by the insertion shift
+        insertedColumn.setXSs(insertedElementXSs);
+        double newLineWidthSs = insertedColumn.getRightEdgeXSs();
+
+        if (elementCount > 0) {
+            var lastElement = line.getElement(elementCount - 1);
+            var lastColumn = createLightweightColumn(lastElement);
+            lastColumn.setXSs(elementXSs(lastElement) + shiftSs);
+            newLineWidthSs = Math.max(newLineWidthSs, lastColumn.getRightEdgeXSs());
+        }
+
+        return new InsertionResult(insertedElementXSs, shiftSs, newLineWidthSs);
     }
 
     /**
@@ -195,6 +239,83 @@ public class InsertionSpacingCalculator {
         int insertIndex) {
 
         return calculateInsertion(line, insertedElement, insertIndex).shiftForSubsequentElementsSs();
+    }
+
+    /**
+     * Determines whether a grace note and its host note will both fit on a line
+     * when inserted at the given index.
+     * <p>
+     * This creates representative grace and host note elements, computes the spacing
+     * for both insertions, and checks whether the projected line width fits within
+     * the composition's line width.
+     *
+     * @param line    The line to check (before insertion)
+     * @param atIndex The index where the grace note would be inserted
+     * @return {@code true} if both the grace note and host note fit on the line
+     */
+    public static boolean hasRoomForGraceNotePair(@NotNull Line line, int atIndex) {
+        Composition composition = line.getComposition();
+
+        if (composition == null) {
+            return false;
+        }
+
+        double staffRightMarginSs = composition.getLineWidthSs();
+        int elementCount = line.elementCount();
+
+        // Create representative elements
+        var graceNote = ElementType.GRACE_QUAVER.newInstance();
+        var hostNote = ElementType.CROTCHET.newInstance();
+
+        // Check if the grace note fits
+        var graceResult = calculateInsertion(line, graceNote, atIndex);
+
+        if (!graceResult.fitsWithinLine(staffRightMarginSs)) {
+            return false;
+        }
+
+        // Position the grace column to compute host note placement
+        var graceColumn = createLightweightColumn(graceNote);
+        graceColumn.setXSs(graceResult.insertedElementXSs());
+
+        var hostColumn = createLightweightColumn(hostNote);
+
+        // Grace-to-host spacing: grace right extent + gap + host left extent
+        double hostXSs = graceColumn.getXSs()
+            + graceColumn.getRightExtentSs()
+            + LayoutConstants.GRACE_NOTE_GAP_SS
+            + Math.abs(hostColumn.getLeftExtentSs());
+
+        hostColumn.setXSs(hostXSs);
+
+        // Compute projected line width after both insertions.
+        // The element currently at atIndex will follow the host note.
+        double newLineWidthSs;
+
+        if (atIndex >= elementCount) {
+            // Both are appended — host right edge is the new width
+            newLineWidthSs = hostColumn.getRightEdgeXSs();
+        } else {
+            // Middle insert — account for shift of existing elements
+            double graceShiftSs = graceResult.shiftForSubsequentElementsSs();
+
+            // Additional shift: where the element at atIndex needs to be after the host
+            var nextElement = line.getElement(atIndex);
+            var nextColumn = createLightweightColumn(nextElement);
+            double nextCurrentXSs = elementXSs(nextElement) + graceShiftSs;
+            double hostToNextSs = HorizontalSpacingCalculator.calculateNextColumnXSs(
+                hostColumn, nextColumn);
+            double hostShiftSs = Math.max(0, hostToNextSs - nextCurrentXSs);
+            double totalShiftSs = graceShiftSs + hostShiftSs;
+
+            // Projected width: max of host right edge and shifted last element right edge
+            var lastElement = line.getElement(elementCount - 1);
+            var lastColumn = createLightweightColumn(lastElement);
+            lastColumn.setXSs(elementXSs(lastElement) + totalShiftSs);
+            newLineWidthSs = Math.max(hostColumn.getRightEdgeXSs(), lastColumn.getRightEdgeXSs());
+        }
+
+        return newLineWidthSs <= staffRightMarginSs;
     }
 
     /**

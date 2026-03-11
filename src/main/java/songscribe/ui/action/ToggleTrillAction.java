@@ -38,7 +38,8 @@ public class ToggleTrillAction extends UIAction {
         setFlags(
             Flag.REQUIRES_SELECTION,
             Flag.DISABLE_WHEN_PLAYING,
-            Flag.DISABLE_WHEN_EDITING_TEXT
+            Flag.DISABLE_WHEN_EDITING_TEXT,
+            Flag.DISABLE_IN_GRACE_MODE
         );
     }
 

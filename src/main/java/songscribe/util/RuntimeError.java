@@ -24,20 +24,13 @@ import javax.swing.JOptionPane;
 
 import org.jetbrains.annotations.Nullable;
 
+import songscribe.ui.Dialogs;
+
 /**
  * Base class for runtime error reporting. Logs the error and shows
  * an alert dialog to the user.
  */
 public class RuntimeError {
-
-    private static boolean suppressDialogs = false;
-
-    /**
-     * Suppress error dialogs. Intended for use in unit tests.
-     */
-    public static void setSuppressDialogs(boolean suppress) {
-        suppressDialogs = suppress;
-    }
 
     /**
      * If the object is null, logs the message, shows an error alert, and returns true.
@@ -60,18 +53,16 @@ public class RuntimeError {
 
         Log.error(logMessage);
 
-        if (!suppressDialogs) {
-            JOptionPane.showOptionDialog(
-                null,
-                userMessage,
-                alertTitle,
-                JOptionPane.DEFAULT_OPTION,
-                JOptionPane.ERROR_MESSAGE,
-                null,
-                new String[]{"OK"},
-                "OK"
-            );
-        }
+        Dialogs.showOptionDialog(
+            null,
+            alertTitle,
+            userMessage,
+            JOptionPane.DEFAULT_OPTION,
+            JOptionPane.ERROR_MESSAGE,
+            null,
+            new String[]{"OK"},
+            "OK"
+        );
 
         return true;
     }

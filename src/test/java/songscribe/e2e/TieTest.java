@@ -26,14 +26,10 @@ import org.assertj.swing.edt.GuiActionRunner;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
-import songscribe.data.TieInterval;
-import songscribe.music.Composition;
-import songscribe.music.ElementType;
 import songscribe.music.KeyType;
-import songscribe.music.Line;
 import songscribe.music.StaffElement.Accidental;
 import songscribe.ui.action.Actions;
-import songscribe.ui.component.MainFrame;
+import songscribe.ui.action.UIAction;
 
 /**
  * Milestone 3 E2E tests: tie creation, removal, selection semantics, drag.
@@ -225,34 +221,27 @@ class TieTest extends E2ETest {
             // Db major: G at sp=-5 is Gb from key signature.
             // G (Gb from key sig), Gbb, G natural-flat (Gb), G (inherits natural-flat = Gb).
             // Tying last two: both resolve to Gb.
-            GuiActionRunner.execute(() -> {
-                var composition = new Composition(MainFrame.getInstance());
-                var line = new Line();
-                line.setKeyType(KeyType.FLATS);
-                line.setKeyAccidentalCount(5);
+            setKeySignature(KeyType.FLATS, 5);
 
-                var note1 = ElementType.CROTCHET.newInstance();
-                note1.setStaffPosition(-5);
-                line.addElement(note1);
+            selectDuration(Actions.QUARTER_NOTE_ACTION);
 
-                var note2 = ElementType.CROTCHET.newInstance();
-                note2.setStaffPosition(-5);
-                note2.setAccidental(Accidental.DOUBLE_FLAT);
-                line.addElement(note2);
+            // Note 1: sp=-5, NONE (gets Gb from key sig)
+            clickAt(insertionPoint(0, -5));
+            performLayout(0);
 
-                var note3 = ElementType.CROTCHET.newInstance();
-                note3.setStaffPosition(-5);
-                note3.setAccidental(Accidental.NATURAL_FLAT);
-                line.addElement(note3);
+            // Note 2: sp=-5, DOUBLE_FLAT
+            clickToolbarButton(Actions.DOUBLE_FLAT_ACTION);
+            clickAt(insertionPoint(0, -5));
+            performLayout(0);
 
-                var note4 = ElementType.CROTCHET.newInstance();
-                note4.setStaffPosition(-5);
-                line.addElement(note4);
+            // Note 3: sp=-5, NATURAL_FLAT
+            clickToolbarButton(Actions.NATURAL_FLAT_ACTION);
+            clickAt(insertionPoint(0, -5));
+            performLayout(0);
 
-                composition.addLine(0, line);
-                score().setComposition(composition);
-            });
-
+            // Note 4: sp=-5, NONE (inherits natural-flat = Gb)
+            clickToolbarButton(Actions.NATURAL_FLAT_ACTION);
+            clickAt(insertionPoint(0, -5));
             performLayout(0);
 
             enterSelectMode();
@@ -267,120 +256,86 @@ class TieTest extends E2ETest {
     // -- Helpers --
 
     private void buildTwoAdjacentNotes() {
-        GuiActionRunner.execute(() -> {
-            var composition = new Composition(MainFrame.getInstance());
-            var line = new Line();
-
-            var note1 = ElementType.CROTCHET.newInstance();
-            note1.setStaffPosition(0);
-            line.addElement(note1);
-
-            var note2 = ElementType.CROTCHET.newInstance();
-            note2.setStaffPosition(0);
-            line.addElement(note2);
-
-            composition.addLine(0, line);
-            score().setComposition(composition);
-        });
-
+        selectDuration(Actions.QUARTER_NOTE_ACTION);
+        clickAt(insertionPoint(0, 0));
+        performLayout(0);
+        clickAt(insertionPoint(0, 0));
         performLayout(0);
     }
 
     private void buildTiedNotes() {
-        GuiActionRunner.execute(() -> {
-            var composition = new Composition(MainFrame.getInstance());
-            var line = new Line();
+        buildTwoAdjacentNotes();
 
-            var note1 = ElementType.CROTCHET.newInstance();
-            note1.setStaffPosition(0);
-            line.addElement(note1);
-
-            var note2 = ElementType.CROTCHET.newInstance();
-            note2.setStaffPosition(0);
-            line.addElement(note2);
-
-            line.getTies().addInterval(new TieInterval(0, 1));
-
-            composition.addLine(0, line);
-            score().setComposition(composition);
-        });
-
+        enterSelectMode();
+        clickAt(noteScreenPosition(0, 0));
+        shiftClickAt(noteScreenPosition(0, 1));
+        triggerAction(Actions.TOGGLE_TIE_ACTION);
         performLayout(0);
+        enterEditMode();
     }
 
     private void buildNotes(int sp1, Accidental acc1, int sp2, Accidental acc2) {
-        GuiActionRunner.execute(() -> {
-            var composition = new Composition(MainFrame.getInstance());
-            var line = new Line();
+        selectDuration(Actions.QUARTER_NOTE_ACTION);
 
-            var note1 = ElementType.CROTCHET.newInstance();
-            note1.setStaffPosition(sp1);
-            note1.setAccidental(acc1);
-            line.addElement(note1);
-
-            var note2 = ElementType.CROTCHET.newInstance();
-            note2.setStaffPosition(sp2);
-            note2.setAccidental(acc2);
-            line.addElement(note2);
-
-            composition.addLine(0, line);
-            score().setComposition(composition);
-        });
-
+        selectAccidental(acc1);
+        clickAt(insertionPoint(0, sp1));
         performLayout(0);
+
+        selectAccidental(acc2);
+        clickAt(insertionPoint(0, sp2));
+        performLayout(0);
+
+        deselectAccidental();
     }
 
     private void buildThreeNotes() {
-        GuiActionRunner.execute(() -> {
-            var composition = new Composition(MainFrame.getInstance());
-            var line = new Line();
+        selectDuration(Actions.QUARTER_NOTE_ACTION);
 
-            var note1 = ElementType.CROTCHET.newInstance();
-            note1.setStaffPosition(4);
-            note1.setAccidental(Accidental.SHARP);
-            line.addElement(note1);
-
-            var note2 = ElementType.CROTCHET.newInstance();
-            note2.setStaffPosition(4);
-            line.addElement(note2);
-
-            var note3 = ElementType.CROTCHET.newInstance();
-            note3.setStaffPosition(4);
-            note3.setAccidental(Accidental.NATURAL);
-            line.addElement(note3);
-
-            composition.addLine(0, line);
-            score().setComposition(composition);
-        });
-
+        // Note 1: F# (sp=4, SHARP)
+        clickAccidentalAction(Actions.SHARP_ACTION);
+        clickAt(insertionPoint(0, 4));
         performLayout(0);
+
+        // Note 2: F (sp=4, NONE — inherits sharp from note 1)
+        clickAccidentalAction(Actions.SHARP_ACTION);
+        clickAt(insertionPoint(0, 4));
+        performLayout(0);
+
+        // Note 3: F natural (sp=4, NATURAL)
+        clickToolbarButton(Actions.NATURAL_ACTION);
+        clickAt(insertionPoint(0, 4));
+        performLayout(0);
+
+        clickToolbarButton(Actions.NATURAL_ACTION);
     }
 
     private void buildNotesWithKeySignature(
         KeyType keyType, int keyCount,
         int sp1, Accidental acc1, int sp2, Accidental acc2
     ) {
+        setKeySignature(keyType, keyCount);
+
+        selectDuration(Actions.QUARTER_NOTE_ACTION);
+
+        selectAccidental(acc1);
+        clickAt(insertionPoint(0, sp1));
+        performLayout(0);
+
+        selectAccidental(acc2);
+        clickAt(insertionPoint(0, sp2));
+        performLayout(0);
+
+        deselectAccidental();
+    }
+
+    private void setKeySignature(KeyType keyType, int keyCount) {
         GuiActionRunner.execute(() -> {
-            var composition = new Composition(MainFrame.getInstance());
-            var line = new Line();
+            var line = composition().getLine(0);
             line.setKeyType(keyType);
             line.setKeyAccidentalCount(keyCount);
-
-            var note1 = ElementType.CROTCHET.newInstance();
-            note1.setStaffPosition(sp1);
-            note1.setAccidental(acc1);
-            line.addElement(note1);
-
-            var note2 = ElementType.CROTCHET.newInstance();
-            note2.setStaffPosition(sp2);
-            note2.setAccidental(acc2);
-            line.addElement(note2);
-
-            composition.addLine(0, line);
-            score().setComposition(composition);
         });
-
         performLayout(0);
     }
+
 
 }

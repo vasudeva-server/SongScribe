@@ -36,7 +36,11 @@ public class DeselectAction extends UIAction {
             KeyEvent.VK_D,
             UIUtils.MENU_SHORTCUT_MASK
         );
-        setFlags(Flag.REQUIRES_SELECTION, Flag.DISABLE_WHEN_PLAYING);
+        setFlags(
+            Flag.REQUIRES_SELECTION,
+            Flag.DISABLE_WHEN_PLAYING,
+            Flag.DISABLE_IN_GRACE_MODE
+        );
     }
 
     @Override

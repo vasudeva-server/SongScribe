@@ -21,10 +21,8 @@ package songscribe.export;
 
 import java.io.File;
 
-import org.jetbrains.annotations.NotNull;
-
 import songscribe.Strings;
-import songscribe.ui.component.MainFrame;
+import songscribe.ui.Dialogs;
 
 /**
  * Utility class for exporting music scores as SVG files.
@@ -39,18 +37,13 @@ public class SVGExporter {
      * Exports the score to an SVG file.
      *
      * @param outputFile the file to write the SVG to
-     * @param isGUI whether this export is being run from the GUI (affects error reporting)
      */
-    public static void createSVG(File outputFile, @NotNull Boolean isGUI) {
-        var mainFrame = MainFrame.getInstance();
-
+    public static void createSVG(File outputFile) {
         // SVG export not yet implemented with component-based rendering
-        if (isGUI) {
-            mainFrame.showErrorMessage(
-                Strings.get(Strings.ERROR_EXPORT_NOT_IMPLEMENTED, "SVG")
-            );
-        } else {
-            System.err.println("ERROR: SVG export is not yet implemented");
-        }
+        Dialogs.showErrorMessage(
+            null,
+            Strings.get(Strings.DIALOG_TITLE_EXPORT_ERROR),
+            Strings.get(Strings.ERROR_EXPORT_NOT_IMPLEMENTED, "SVG")
+        );
     }
 }

@@ -35,6 +35,7 @@ import kotlin.Pair;
 
 import songscribe.Strings;
 import songscribe.music.Composition;
+import songscribe.ui.Dialogs;
 import songscribe.music.KeyType;
 import songscribe.music.Tempo;
 import songscribe.ui.ProfileManager;
@@ -845,11 +846,10 @@ public class CompositionSettingsDialog extends StandardDialog {
 
             composition.setNumber(numberField.getText());
         } catch (NumberFormatException e) {
-            JOptionPane.showMessageDialog(
+            Dialogs.showErrorMessage(
                 contentPanel,
-                Strings.get(Strings.ERROR_COMPOSITION_NUMBER),
-                mainFrame.appName,
-                JOptionPane.ERROR_MESSAGE
+                Strings.get(Strings.DIALOG_TITLE_COMPOSITION_SETTINGS),
+                Strings.get(Strings.ERROR_COMPOSITION_NUMBER)
             );
         }
 
@@ -865,11 +865,10 @@ public class CompositionSettingsDialog extends StandardDialog {
 
             composition.setYear(yearField.getText());
         } catch (NumberFormatException e) {
-            JOptionPane.showMessageDialog(
+            Dialogs.showErrorMessage(
                 contentPanel,
-                Strings.get(Strings.ERROR_COMPOSITION_YEAR),
-                mainFrame.appName,
-                JOptionPane.ERROR_MESSAGE
+                Strings.get(Strings.DIALOG_TITLE_COMPOSITION_SETTINGS),
+                Strings.get(Strings.ERROR_COMPOSITION_YEAR)
             );
         }
 
@@ -1237,8 +1236,11 @@ public class CompositionSettingsDialog extends StandardDialog {
 
                 sb.append(date);
             } else {
-                MainFrame.getInstance()
-                    .showErrorMessage(Strings.get(Strings.ERROR_COMPOSITION_YEAR_REQUIRED));
+                Dialogs.showErrorMessage(
+                    mainFrame,
+                    Strings.get(Strings.DIALOG_TITLE_COMPOSITION_SETTINGS),
+                    Strings.get(Strings.ERROR_COMPOSITION_YEAR_REQUIRED)
+                );
                 return;
             }
 
@@ -1250,8 +1252,11 @@ public class CompositionSettingsDialog extends StandardDialog {
 
                     sb.append(placeField.getText());
                 } else {
-                    MainFrame.getInstance()
-                        .showErrorMessage(Strings.get(Strings.ERROR_COMPOSITION_PLACE_REQUIRED));
+                    Dialogs.showErrorMessage(
+                        mainFrame,
+                        Strings.get(Strings.DIALOG_TITLE_COMPOSITION_SETTINGS),
+                        Strings.get(Strings.ERROR_COMPOSITION_PLACE_REQUIRED)
+                    );
                     return;
                 }
             }
@@ -1275,11 +1280,10 @@ public class CompositionSettingsDialog extends StandardDialog {
 
         @Override
         public void actionPerformed(ActionEvent e) {
-            var name = JOptionPane.showInputDialog(
+            var name = Dialogs.showInputDialog(
                 contentPanel,
-                Strings.get(Strings.DIALOG_COMPOSITION_SETTINGS_PROFILE_NAME),
-                mainFrame.appName,
-                JOptionPane.QUESTION_MESSAGE
+                Strings.get(Strings.DIALOG_TITLE_SAVE_PROFILE),
+                Strings.get(Strings.DIALOG_COMPOSITION_SETTINGS_PROFILE_NAME)
             );
 
             if (name == null) {
@@ -1291,11 +1295,10 @@ public class CompositionSettingsDialog extends StandardDialog {
                 profileCombo.addItem(name);
                 profileCombo.setSelectedItem(name);
             } catch (IOException e1) {
-                JOptionPane.showMessageDialog(
+                Dialogs.showErrorMessage(
                     contentPanel,
-                    Strings.get(Strings.ERROR_PROFILE_CREATE),
-                    mainFrame.appName,
-                    JOptionPane.ERROR_MESSAGE
+                    Strings.get(Strings.DIALOG_TITLE_PROFILE_ERROR),
+                    Strings.get(Strings.ERROR_PROFILE_CREATE)
                 );
             }
         }
@@ -1306,20 +1309,20 @@ public class CompositionSettingsDialog extends StandardDialog {
         @Override
         public void actionPerformed(ActionEvent e) {
             if (profileCombo.getItemCount() <= 1) {
-                JOptionPane.showMessageDialog(
+                Dialogs.showErrorMessage(
                     contentPanel,
-                    Strings.get(Strings.ERROR_PROFILE_DELETE_LAST),
-                    mainFrame.appName,
-                    JOptionPane.ERROR_MESSAGE
+                    Strings.get(Strings.DIALOG_TITLE_PROFILE_ERROR),
+                    Strings.get(Strings.ERROR_PROFILE_DELETE_LAST)
                 );
                 return;
             }
 
-            var answer = JOptionPane.showConfirmDialog(
+            var answer = Dialogs.showConfirmDialog(
                 contentPanel,
+                Strings.get(Strings.DIALOG_TITLE_DELETE_PROFILE),
                 Strings.get(Strings.CONFIRM_PROFILE_DELETE),
-                mainFrame.appName,
-                JOptionPane.YES_NO_OPTION
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.QUESTION_MESSAGE
             );
 
             if (answer == JOptionPane.YES_OPTION) {
@@ -1343,11 +1346,10 @@ public class CompositionSettingsDialog extends StandardDialog {
                         setAsDefaultButton.doClick();
                     }
                 } else {
-                    JOptionPane.showMessageDialog(
+                    Dialogs.showErrorMessage(
                         contentPanel,
-                        Strings.get(Strings.ERROR_PROFILE_DELETE),
-                        mainFrame.appName,
-                        JOptionPane.ERROR_MESSAGE
+                        Strings.get(Strings.DIALOG_TITLE_PROFILE_ERROR),
+                        Strings.get(Strings.ERROR_PROFILE_DELETE)
                     );
                 }
             }

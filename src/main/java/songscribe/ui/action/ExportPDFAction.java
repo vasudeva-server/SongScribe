@@ -22,8 +22,6 @@ package songscribe.ui.action;
 import java.awt.event.*;
 import java.io.File;
 
-import javax.swing.*;
-
 import songscribe.Strings;
 import songscribe.data.MyFileFilter;
 import songscribe.data.PageLayoutData;
@@ -50,41 +48,17 @@ public class ExportPDFAction extends UIAction {
 
     public static void createPDF(
         PageLayoutData data,
-        File outputFile,
-        Boolean isGUI
+        File outputFile
     ) {
-        PDFExporter.createPDF(data, outputFile, isGUI);
+        PDFExporter.createPDF(data, outputFile);
     }
 
     @Override
     public void actionPerformed(ActionEvent e) {
-        // TODO: This code can be shared with other export actions.
-        var mainFrame = MainFrame.getInstance();
-        fileDialog.setFile(
-            FileUtils.getSongFileNameForFileChooser(mainFrame.getScore())
-        );
+        var saveFile = FileUtils.showExportDialog(fileDialog, "pdf");
 
-        if (!fileDialog.showDialog()) {
+        if (saveFile == null) {
             return;
-        }
-
-        var saveFile = fileDialog.getFile();
-
-        if (!saveFile.getName().toLowerCase().endsWith(".pdf")) {
-            saveFile = new File(saveFile.getAbsolutePath() + ".pdf");
-        }
-
-        if (saveFile.exists()) {
-            var response = JOptionPane.showConfirmDialog(
-                mainFrame,
-                Strings.get(Strings.CONFIRM_FILE_OVERWRITE, saveFile.getName()),
-                mainFrame.appName,
-                JOptionPane.YES_NO_OPTION
-            );
-
-            if (response == JOptionPane.NO_OPTION) {
-                return;
-            }
         }
 
         if (exportPDFDialog == null) {
@@ -98,6 +72,6 @@ public class ExportPDFAction extends UIAction {
             return;
         }
 
-        createPDF(data, saveFile, true);
+        createPDF(data, saveFile);
     }
 }

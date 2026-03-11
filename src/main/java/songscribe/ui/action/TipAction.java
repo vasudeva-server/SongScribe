@@ -25,6 +25,7 @@ import java.io.IOException;
 import javax.swing.*;
 
 import songscribe.Strings;
+import songscribe.ui.Dialogs;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.TipFrame;
 
@@ -41,7 +42,11 @@ public class TipAction extends AbstractAction {
         try {
             new TipFrame(mainFrame);
         } catch (IOException e1) {
-            mainFrame.showErrorMessage(Strings.get(Strings.ERROR_TIP_READ));
+            Dialogs.showErrorMessage(
+                mainFrame,
+                Strings.get(Strings.DIALOG_TITLE_TIP_ERROR),
+                Strings.get(Strings.ERROR_TIP_READ)
+            );
         }
     }
 }
