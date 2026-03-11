@@ -32,25 +32,6 @@ class AccidentalInParensActionTest extends UnitTest {
 
     private final AccidentalInParensAction action = new AccidentalInParensAction();
 
-    // M15: matchesNote returns true when accidental is in parentheses
-    @Test
-    void testMatchesWhenInParentheses() {
-        var note = ElementType.CROTCHET.newInstance();
-        // Must set a non-NONE accidental first; setter is a no-op otherwise
-        note.setAccidental(StaffElement.Accidental.SHARP);
-        note.setAccidentalInParentheses(true);
-
-        assertThat(action.matchesElement(note)).isTrue();
-    }
-
-    // M16: matchesNote returns false when accidental is not in parentheses
-    @Test
-    void testDoesNotMatchWhenNotInParentheses() {
-        var note = ElementType.CROTCHET.newInstance();
-
-        assertThat(action.matchesElement(note)).isFalse();
-    }
-
     @Test
     void testApplyToNoteAppliesParentheses() {
         var note = ElementType.CROTCHET.newInstance();
@@ -65,5 +46,24 @@ class AccidentalInParensActionTest extends UnitTest {
         note.setAccidentalInParentheses(true);
         action.applyToElement(note, false);
         assertThat(note.isAccidentalInParentheses()).isFalse();
+    }
+
+    // M16: matchesNote returns false when accidental is not in parentheses
+    @Test
+    void testDoesNotMatchWhenNotInParentheses() {
+        var note = ElementType.CROTCHET.newInstance();
+
+        assertThat(action.matchesElement(note)).isFalse();
+    }
+
+    // M15: matchesNote returns true when accidental is in parentheses
+    @Test
+    void testMatchesWhenInParentheses() {
+        var note = ElementType.CROTCHET.newInstance();
+        // Must set a non-NONE accidental first; setter is a no-op otherwise
+        note.setAccidental(StaffElement.Accidental.SHARP);
+        note.setAccidentalInParentheses(true);
+
+        assertThat(action.matchesElement(note)).isTrue();
     }
 }

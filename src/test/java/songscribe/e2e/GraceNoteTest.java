@@ -48,56 +48,6 @@ import songscribe.util.Utils;
 class GraceNoteTest extends E2ETest {
 
     @Test
-    void testDragLeftCancelsAndRemovesGraceNote() {
-        buildEmptyLine();
-        selectDuration(Actions.GRACE_EIGHTH_NOTE_ACTION);
-
-        var insertPt = insertionPoint(0, 0);
-
-        // Drag left: mouseDown, wait for drag threshold, move left past cancel threshold, mouseUp
-        robot.pressMouse(insertPt, LEFT_BUTTON);
-        Utils.sleep(GraceModeManager.MIN_DRAG_MILLIS);
-        int cancelScreenX = GuiActionRunner.execute(() -> {
-            var lc = score().getLineComponent(0);
-            return lc.getLocationOnScreen().x + GraceModeManager.getCancelThresholdPx();
-        });
-        robot.moveMouse(new Point(cancelScreenX, insertPt.y));
-        pause();
-        robot.releaseMouseButtons();
-        pause();
-        performLayout(0);
-
-        // Grace note should be removed
-        var line = composition().getLine(0);
-        assertThat(line.elementCount()).isEqualTo(0);
-
-        assertGraceModeInactive();
-    }
-
-    @Test
-    void testEscapeDuringGraceNoteCancels() {
-        buildEmptyLine();
-        selectDuration(Actions.GRACE_EIGHTH_NOTE_ACTION);
-
-        // Click to insert grace note (enters GRACE_NOTE_INSERT)
-        clickAt(insertionPoint(0, 0));
-        performLayout(0);
-
-        // Grace note should be present
-        var line = composition().getLine(0);
-        assertThat(line.elementCount()).isEqualTo(1);
-
-        // Press Escape to cancel
-        robot.pressAndReleaseKey(KeyEvent.VK_ESCAPE);
-        pause();
-        performLayout(0);
-
-        // Grace note should be removed
-        assertThat(line.elementCount()).isEqualTo(0);
-        assertGraceModeInactive();
-    }
-
-    @Test
     void testClickClickInsertsGraceNoteAndHostWithGlissando() {
         buildEmptyLine();
         selectDuration(Actions.GRACE_EIGHTH_NOTE_ACTION);
@@ -127,6 +77,33 @@ class GraceNoteTest extends E2ETest {
         assertThat(graceNote.getGlissando().type).isEqualTo(StaffElement.Glissando.Type.CONNECTED);
 
         // Grace mode should be inactive after completion
+        assertGraceModeInactive();
+    }
+
+    @Test
+    void testDragLeftCancelsAndRemovesGraceNote() {
+        buildEmptyLine();
+        selectDuration(Actions.GRACE_EIGHTH_NOTE_ACTION);
+
+        var insertPt = insertionPoint(0, 0);
+
+        // Drag left: mouseDown, wait for drag threshold, move left past cancel threshold, mouseUp
+        robot.pressMouse(insertPt, LEFT_BUTTON);
+        Utils.sleep(GraceModeManager.MIN_DRAG_MILLIS);
+        int cancelScreenX = GuiActionRunner.execute(() -> {
+            var lc = score().getLineComponent(0);
+            return lc.getLocationOnScreen().x + GraceModeManager.getCancelThresholdPx();
+        });
+        robot.moveMouse(new Point(cancelScreenX, insertPt.y));
+        pause();
+        robot.releaseMouseButtons();
+        pause();
+        performLayout(0);
+
+        // Grace note should be removed
+        var line = composition().getLine(0);
+        assertThat(line.elementCount()).isEqualTo(0);
+
         assertGraceModeInactive();
     }
 
@@ -164,6 +141,58 @@ class GraceNoteTest extends E2ETest {
         assertThat(graceNote.getGlissando().type).isEqualTo(StaffElement.Glissando.Type.CONNECTED);
 
         assertGraceModeInactive();
+    }
+
+    @Test
+    void testEscapeDuringGraceNoteCancels() {
+        buildEmptyLine();
+        selectDuration(Actions.GRACE_EIGHTH_NOTE_ACTION);
+
+        // Click to insert grace note (enters GRACE_NOTE_INSERT)
+        clickAt(insertionPoint(0, 0));
+        performLayout(0);
+
+        // Grace note should be present
+        var line = composition().getLine(0);
+        assertThat(line.elementCount()).isEqualTo(1);
+
+        // Press Escape to cancel
+        robot.pressAndReleaseKey(KeyEvent.VK_ESCAPE);
+        pause();
+        performLayout(0);
+
+        // Grace note should be removed
+        assertThat(line.elementCount()).isEqualTo(0);
+        assertGraceModeInactive();
+    }
+
+    @Test
+    void testKeyChangeDurationDuringFlow() {
+        buildEmptyLine();
+        selectDuration(Actions.GRACE_EIGHTH_NOTE_ACTION);
+
+        // Click to insert grace note (enters GRACE_NOTE_INSERT)
+        clickAt(insertionPoint(0, 0));
+        performLayout(0);
+
+        // Press key to change to minim (half note)
+        selectDuration(Actions.HALF_NOTE_ACTION);
+
+        // Click to insert host note
+        clickAt(insertionPoint(0, -2));
+        performLayout(0);
+
+        // Host note should be a minim
+        var line = composition().getLine(0);
+        assertThat(line.elementCount()).isEqualTo(2);
+        assertThat(line.getElement(1).getType()).isEqualTo(ElementType.MINIM);
+
+        // Grace note should still be GRACE_QUAVER
+        assertThat(line.getElement(0).getType()).isEqualTo(ElementType.GRACE_QUAVER);
+
+        // Glissando should be connected
+        assertThat(line.getElement(0).getGlissando().type)
+            .isEqualTo(StaffElement.Glissando.Type.CONNECTED);
     }
 
     @Nested
@@ -221,35 +250,6 @@ class GraceNoteTest extends E2ETest {
 
             assertGraceModeInactive();
         }
-    }
-
-    @Test
-    void testKeyChangeDurationDuringFlow() {
-        buildEmptyLine();
-        selectDuration(Actions.GRACE_EIGHTH_NOTE_ACTION);
-
-        // Click to insert grace note (enters GRACE_NOTE_INSERT)
-        clickAt(insertionPoint(0, 0));
-        performLayout(0);
-
-        // Press key to change to minim (half note)
-        selectDuration(Actions.HALF_NOTE_ACTION);
-
-        // Click to insert host note
-        clickAt(insertionPoint(0, -2));
-        performLayout(0);
-
-        // Host note should be a minim
-        var line = composition().getLine(0);
-        assertThat(line.elementCount()).isEqualTo(2);
-        assertThat(line.getElement(1).getType()).isEqualTo(ElementType.MINIM);
-
-        // Grace note should still be GRACE_QUAVER
-        assertThat(line.getElement(0).getType()).isEqualTo(ElementType.GRACE_QUAVER);
-
-        // Glissando should be connected
-        assertThat(line.getElement(0).getGlissando().type)
-            .isEqualTo(StaffElement.Glissando.Type.CONNECTED);
     }
 
     @Nested

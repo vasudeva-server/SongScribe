@@ -38,100 +38,6 @@ import songscribe.ui.selection.SelectionCoordinator;
 
 class EnableFromSelectionTest extends UnitTest {
 
-    // -- enableFromSelection: no active selection --
-
-    @Test
-    void testNoSelectionReturnsTrue() {
-        try (var mainFrameMock = mockStatic(MainFrame.class)) {
-            var env = setupMockEnv(mainFrameMock);
-            when(env.coordinator.hasActiveSelection()).thenReturn(false);
-
-            var action = new FermataAction();
-
-            assertThat(action.enableFromSelection(
-                env.coordinator.hasActiveSelection(), env.score)).isTrue();
-        }
-    }
-
-    // -- enableFromSelection: reflectable actions --
-
-    @Test
-    void testReflectableApplicableReturnsTrue() {
-        try (var mainFrameMock = mockStatic(MainFrame.class)) {
-            var env = setupMockEnv(mainFrameMock);
-            when(env.coordinator.hasActiveSelection()).thenReturn(true);
-
-            var action = new FermataAction();
-            when(env.coordinator.isApplicableToSelection(action)).thenReturn(true);
-
-            assertThat(action.enableFromSelection(
-                env.coordinator.hasActiveSelection(), env.score)).isTrue();
-        }
-    }
-
-    @Test
-    void testReflectableInapplicableReturnsFalse() {
-        try (var mainFrameMock = mockStatic(MainFrame.class)) {
-            var env = setupMockEnv(mainFrameMock);
-            when(env.coordinator.hasActiveSelection()).thenReturn(true);
-
-            var action = new AccidentalAction(
-                StaffElement.Accidental.SHARP, "Sharp", null, 0, "sharp", "Sharp"
-            );
-            when(env.coordinator.isApplicableToSelection(action)).thenReturn(false);
-
-            assertThat(action.enableFromSelection(
-                env.coordinator.hasActiveSelection(), env.score)).isFalse();
-        }
-    }
-
-    // -- enableFromSelection: non-reflectable with DISABLE_WHEN_BAR_SELECTED --
-
-    @Test
-    void testNonReflectableWithFlagAndDurationsReturnsTrue() {
-        try (var mainFrameMock = mockStatic(MainFrame.class)) {
-            var env = setupMockEnv(mainFrameMock);
-            when(env.coordinator.hasActiveSelection()).thenReturn(true);
-            when(env.coordinator.selectionHasDurations()).thenReturn(true);
-
-            var action = createNonReflectableWithBarFlag();
-
-            assertThat(action.enableFromSelection(
-                env.coordinator.hasActiveSelection(), env.score)).isTrue();
-        }
-    }
-
-    @Test
-    void testNonReflectableWithFlagAndNoDurationsReturnsFalse() {
-        try (var mainFrameMock = mockStatic(MainFrame.class)) {
-            var env = setupMockEnv(mainFrameMock);
-            when(env.coordinator.hasActiveSelection()).thenReturn(true);
-            when(env.coordinator.selectionHasDurations()).thenReturn(false);
-
-            var action = createNonReflectableWithBarFlag();
-
-            assertThat(action.enableFromSelection(
-                env.coordinator.hasActiveSelection(), env.score)).isFalse();
-        }
-    }
-
-    @Test
-    void testNonReflectableWithoutFlagReturnsTrue() {
-        try (var mainFrameMock = mockStatic(MainFrame.class)) {
-            var env = setupMockEnv(mainFrameMock);
-            when(env.coordinator.hasActiveSelection()).thenReturn(true);
-
-            var action = new UIAction("Test", null, 0, "test", "Test") {
-                @Override
-                public void actionPerformed(ActionEvent e) {
-                }
-            };
-
-            assertThat(action.enableFromSelection(
-                env.coordinator.hasActiveSelection(), env.score)).isTrue();
-        }
-    }
-
     // -- enableFromBarSelection: defer during active selection --
 
     @Test
@@ -202,6 +108,100 @@ class EnableFromSelectionTest extends UnitTest {
             // No ENABLE_WHEN_DURATION_SELECTED flag -> returns true (no check needed)
             assertThat(action.enableFromDurationSelection(
                 env.coordinator.hasActiveSelection())).isTrue();
+        }
+    }
+
+    // -- enableFromSelection: no active selection --
+
+    @Test
+    void testNoSelectionReturnsTrue() {
+        try (var mainFrameMock = mockStatic(MainFrame.class)) {
+            var env = setupMockEnv(mainFrameMock);
+            when(env.coordinator.hasActiveSelection()).thenReturn(false);
+
+            var action = new FermataAction();
+
+            assertThat(action.enableFromSelection(
+                env.coordinator.hasActiveSelection(), env.score)).isTrue();
+        }
+    }
+
+    // -- enableFromSelection: non-reflectable with DISABLE_WHEN_BAR_SELECTED --
+
+    @Test
+    void testNonReflectableWithFlagAndDurationsReturnsTrue() {
+        try (var mainFrameMock = mockStatic(MainFrame.class)) {
+            var env = setupMockEnv(mainFrameMock);
+            when(env.coordinator.hasActiveSelection()).thenReturn(true);
+            when(env.coordinator.selectionHasDurations()).thenReturn(true);
+
+            var action = createNonReflectableWithBarFlag();
+
+            assertThat(action.enableFromSelection(
+                env.coordinator.hasActiveSelection(), env.score)).isTrue();
+        }
+    }
+
+    @Test
+    void testNonReflectableWithFlagAndNoDurationsReturnsFalse() {
+        try (var mainFrameMock = mockStatic(MainFrame.class)) {
+            var env = setupMockEnv(mainFrameMock);
+            when(env.coordinator.hasActiveSelection()).thenReturn(true);
+            when(env.coordinator.selectionHasDurations()).thenReturn(false);
+
+            var action = createNonReflectableWithBarFlag();
+
+            assertThat(action.enableFromSelection(
+                env.coordinator.hasActiveSelection(), env.score)).isFalse();
+        }
+    }
+
+    @Test
+    void testNonReflectableWithoutFlagReturnsTrue() {
+        try (var mainFrameMock = mockStatic(MainFrame.class)) {
+            var env = setupMockEnv(mainFrameMock);
+            when(env.coordinator.hasActiveSelection()).thenReturn(true);
+
+            var action = new UIAction("Test", null, 0, "test", "Test") {
+                @Override
+                public void actionPerformed(ActionEvent e) {
+                }
+            };
+
+            assertThat(action.enableFromSelection(
+                env.coordinator.hasActiveSelection(), env.score)).isTrue();
+        }
+    }
+
+    // -- enableFromSelection: reflectable actions --
+
+    @Test
+    void testReflectableApplicableReturnsTrue() {
+        try (var mainFrameMock = mockStatic(MainFrame.class)) {
+            var env = setupMockEnv(mainFrameMock);
+            when(env.coordinator.hasActiveSelection()).thenReturn(true);
+
+            var action = new FermataAction();
+            when(env.coordinator.isApplicableToSelection(action)).thenReturn(true);
+
+            assertThat(action.enableFromSelection(
+                env.coordinator.hasActiveSelection(), env.score)).isTrue();
+        }
+    }
+
+    @Test
+    void testReflectableInapplicableReturnsFalse() {
+        try (var mainFrameMock = mockStatic(MainFrame.class)) {
+            var env = setupMockEnv(mainFrameMock);
+            when(env.coordinator.hasActiveSelection()).thenReturn(true);
+
+            var action = new AccidentalAction(
+                StaffElement.Accidental.SHARP, "Sharp", null, 0, "sharp", "Sharp"
+            );
+            when(env.coordinator.isApplicableToSelection(action)).thenReturn(false);
+
+            assertThat(action.enableFromSelection(
+                env.coordinator.hasActiveSelection(), env.score)).isFalse();
         }
     }
 

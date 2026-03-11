@@ -38,6 +38,154 @@ import songscribe.ui.action.UIAction;
  */
 class ToolbarReflectionTest extends E2ETest {
 
+    @Test
+    void testSelectionClearedRestoresState() {
+        // Insert a minim with flat
+        selectDuration(Actions.HALF_NOTE_ACTION);
+        clickToolbarButton(Actions.FLAT_ACTION);
+        clickAt(insertionPoint(0, 0));
+        performLayout(0);
+        clickToolbarButton(Actions.FLAT_ACTION);
+
+        enterSelectMode();
+
+        // The flat action should be deselected before any selection
+        assertActionSelected(Actions.FLAT_ACTION, false);
+
+        // Select the note — reflection should select the flat action
+        clickAt(noteScreenPosition(0, 0));
+        assertActionSelected(Actions.FLAT_ACTION, true);
+
+        // Deselect all via Cmd+D — flat should be restored to deselected
+        robot.pressAndReleaseKey(KeyEvent.VK_D, InputEvent.META_DOWN_MASK);
+        pause();
+
+        assertActionSelected(Actions.FLAT_ACTION, false);
+    }
+
+    @Nested
+    class MixedTypeReflection {
+
+        @Test
+        void testDifferentDurationsAndRest() {
+            // Insert a crotchet, a minim, and a crotchet rest
+            selectDuration(Actions.QUARTER_NOTE_ACTION);
+            clickAt(insertionPoint(0, 0));
+            performLayout(0);
+
+            selectDuration(Actions.HALF_NOTE_ACTION);
+            clickAt(insertionPoint(0, -2));
+            performLayout(0);
+
+            selectDuration(Actions.QUARTER_NOTE_ACTION);
+            enableRestMode();
+            clickAt(insertionPoint(0, 0));
+            performLayout(0);
+            deselectRestMode();
+
+            enterSelectMode();
+
+            clickAt(noteScreenPosition(0, 0));
+            shiftClickAt(noteScreenPosition(0, 2));
+
+            assertThat(score().getSelectionSize()).isEqualTo(3);
+            assertActionSelected(Actions.QUARTER_NOTE_ACTION, false);
+            assertActionSelected(Actions.HALF_NOTE_ACTION, false);
+            assertActionSelected(Actions.FLAT_ACTION, false);
+        }
+
+        @Test
+        void testNoteAndRestSelection() {
+            // Insert a crotchet then a crotchet rest
+            selectDuration(Actions.QUARTER_NOTE_ACTION);
+            clickAt(insertionPoint(0, 0));
+            performLayout(0);
+
+            enableRestMode();
+            clickAt(insertionPoint(0, 0));
+            performLayout(0);
+            deselectRestMode();
+
+            enterSelectMode();
+
+            clickAt(noteScreenPosition(0, 0));
+            shiftClickAt(noteScreenPosition(0, 1));
+
+            assertThat(score().getSelectionSize()).isEqualTo(2);
+
+            // CROTCHET action: applicable to both (DURATION appliesTo=true for all),
+            // but matchesNote=false for the rest (CROTCHET_REST != CROTCHET)
+            assertActionSelected(Actions.QUARTER_NOTE_ACTION, false);
+            assertActionSelected(Actions.FLAT_ACTION, false);
+        }
+    }
+
+    @Nested
+    class MultiElementReflection {
+
+        @Test
+        void testMultipleDifferentAccidentals() {
+            // Insert crotchet with flat
+            selectDuration(Actions.QUARTER_NOTE_ACTION);
+            clickToolbarButton(Actions.FLAT_ACTION);
+            clickAt(insertionPoint(0, 0));
+            performLayout(0);
+
+            // Insert crotchet with double-flat (ActionGroup auto-deselects flat)
+            clickToolbarButton(Actions.DOUBLE_FLAT_ACTION);
+            clickAt(insertionPoint(0, -2));
+            performLayout(0);
+
+            // Deselect accidental
+            clickToolbarButton(Actions.DOUBLE_FLAT_ACTION);
+
+            enterSelectMode();
+
+            clickAt(noteScreenPosition(0, 0));
+            shiftClickAt(noteScreenPosition(0, 1));
+
+            assertThat(score().getSelectionSize()).isEqualTo(2);
+            assertActionSelected(Actions.FLAT_ACTION, false);
+            assertActionSelected(Actions.DOUBLE_FLAT_ACTION, false);
+            assertActionSelected(Actions.QUARTER_NOTE_ACTION, true);
+        }
+
+        @Test
+        void testMultipleDifferentDurations() {
+            // Insert a crotchet then a minim
+            selectDuration(Actions.QUARTER_NOTE_ACTION);
+            clickAt(insertionPoint(0, 0));
+            performLayout(0);
+
+            selectDuration(Actions.HALF_NOTE_ACTION);
+            clickAt(insertionPoint(0, -2));
+            performLayout(0);
+
+            enterSelectMode();
+
+            clickAt(noteScreenPosition(0, 0));
+            shiftClickAt(noteScreenPosition(0, 1));
+
+            assertThat(score().getSelectionSize()).isEqualTo(2);
+            assertActionSelected(Actions.QUARTER_NOTE_ACTION, false);
+            assertActionSelected(Actions.HALF_NOTE_ACTION, false);
+        }
+
+        @Test
+        void testMultipleIdenticalNotes() {
+            buildNotes(Actions.QUARTER_NOTE_ACTION, 0, -2);
+            enterSelectMode();
+
+            clickAt(noteScreenPosition(0, 0));
+            shiftClickAt(noteScreenPosition(0, 1));
+
+            assertThat(score().getSelectionSize()).isEqualTo(2);
+            assertActionSelected(Actions.QUARTER_NOTE_ACTION, true);
+            assertActionSelected(Actions.FLAT_ACTION, false);
+            assertActionSelected(Actions.DOT_ACTION, false);
+        }
+    }
+
     @Nested
     class SingleElementReflection {
 
@@ -84,154 +232,6 @@ class ToolbarReflectionTest extends E2ETest {
             assertActionSelected(Actions.FERMATA_ACTION, false);
             assertActionSelected(Actions.STACCATO_ACTION, false);
         }
-    }
-
-    @Nested
-    class MultiElementReflection {
-
-        @Test
-        void testMultipleIdenticalNotes() {
-            buildNotes(Actions.QUARTER_NOTE_ACTION, 0, -2);
-            enterSelectMode();
-
-            clickAt(noteScreenPosition(0, 0));
-            shiftClickAt(noteScreenPosition(0, 1));
-
-            assertThat(score().getSelectionSize()).isEqualTo(2);
-            assertActionSelected(Actions.QUARTER_NOTE_ACTION, true);
-            assertActionSelected(Actions.FLAT_ACTION, false);
-            assertActionSelected(Actions.DOT_ACTION, false);
-        }
-
-        @Test
-        void testMultipleDifferentDurations() {
-            // Insert a crotchet then a minim
-            selectDuration(Actions.QUARTER_NOTE_ACTION);
-            clickAt(insertionPoint(0, 0));
-            performLayout(0);
-
-            selectDuration(Actions.HALF_NOTE_ACTION);
-            clickAt(insertionPoint(0, -2));
-            performLayout(0);
-
-            enterSelectMode();
-
-            clickAt(noteScreenPosition(0, 0));
-            shiftClickAt(noteScreenPosition(0, 1));
-
-            assertThat(score().getSelectionSize()).isEqualTo(2);
-            assertActionSelected(Actions.QUARTER_NOTE_ACTION, false);
-            assertActionSelected(Actions.HALF_NOTE_ACTION, false);
-        }
-
-        @Test
-        void testMultipleDifferentAccidentals() {
-            // Insert crotchet with flat
-            selectDuration(Actions.QUARTER_NOTE_ACTION);
-            clickToolbarButton(Actions.FLAT_ACTION);
-            clickAt(insertionPoint(0, 0));
-            performLayout(0);
-
-            // Insert crotchet with double-flat (ActionGroup auto-deselects flat)
-            clickToolbarButton(Actions.DOUBLE_FLAT_ACTION);
-            clickAt(insertionPoint(0, -2));
-            performLayout(0);
-
-            // Deselect accidental
-            clickToolbarButton(Actions.DOUBLE_FLAT_ACTION);
-
-            enterSelectMode();
-
-            clickAt(noteScreenPosition(0, 0));
-            shiftClickAt(noteScreenPosition(0, 1));
-
-            assertThat(score().getSelectionSize()).isEqualTo(2);
-            assertActionSelected(Actions.FLAT_ACTION, false);
-            assertActionSelected(Actions.DOUBLE_FLAT_ACTION, false);
-            assertActionSelected(Actions.QUARTER_NOTE_ACTION, true);
-        }
-    }
-
-    @Nested
-    class MixedTypeReflection {
-
-        @Test
-        void testNoteAndRestSelection() {
-            // Insert a crotchet then a crotchet rest
-            selectDuration(Actions.QUARTER_NOTE_ACTION);
-            clickAt(insertionPoint(0, 0));
-            performLayout(0);
-
-            enableRestMode();
-            clickAt(insertionPoint(0, 0));
-            performLayout(0);
-            deselectRestMode();
-
-            enterSelectMode();
-
-            clickAt(noteScreenPosition(0, 0));
-            shiftClickAt(noteScreenPosition(0, 1));
-
-            assertThat(score().getSelectionSize()).isEqualTo(2);
-
-            // CROTCHET action: applicable to both (DURATION appliesTo=true for all),
-            // but matchesNote=false for the rest (CROTCHET_REST != CROTCHET)
-            assertActionSelected(Actions.QUARTER_NOTE_ACTION, false);
-            assertActionSelected(Actions.FLAT_ACTION, false);
-        }
-
-        @Test
-        void testDifferentDurationsAndRest() {
-            // Insert a crotchet, a minim, and a crotchet rest
-            selectDuration(Actions.QUARTER_NOTE_ACTION);
-            clickAt(insertionPoint(0, 0));
-            performLayout(0);
-
-            selectDuration(Actions.HALF_NOTE_ACTION);
-            clickAt(insertionPoint(0, -2));
-            performLayout(0);
-
-            selectDuration(Actions.QUARTER_NOTE_ACTION);
-            enableRestMode();
-            clickAt(insertionPoint(0, 0));
-            performLayout(0);
-            deselectRestMode();
-
-            enterSelectMode();
-
-            clickAt(noteScreenPosition(0, 0));
-            shiftClickAt(noteScreenPosition(0, 2));
-
-            assertThat(score().getSelectionSize()).isEqualTo(3);
-            assertActionSelected(Actions.QUARTER_NOTE_ACTION, false);
-            assertActionSelected(Actions.HALF_NOTE_ACTION, false);
-            assertActionSelected(Actions.FLAT_ACTION, false);
-        }
-    }
-
-    @Test
-    void testSelectionClearedRestoresState() {
-        // Insert a minim with flat
-        selectDuration(Actions.HALF_NOTE_ACTION);
-        clickToolbarButton(Actions.FLAT_ACTION);
-        clickAt(insertionPoint(0, 0));
-        performLayout(0);
-        clickToolbarButton(Actions.FLAT_ACTION);
-
-        enterSelectMode();
-
-        // The flat action should be deselected before any selection
-        assertActionSelected(Actions.FLAT_ACTION, false);
-
-        // Select the note — reflection should select the flat action
-        clickAt(noteScreenPosition(0, 0));
-        assertActionSelected(Actions.FLAT_ACTION, true);
-
-        // Deselect all via Cmd+D — flat should be restored to deselected
-        robot.pressAndReleaseKey(KeyEvent.VK_D, InputEvent.META_DOWN_MASK);
-        pause();
-
-        assertActionSelected(Actions.FLAT_ACTION, false);
     }
 
 

@@ -36,6 +36,25 @@ import songscribe.ui.component.MainFrame;
 class SaveLoadRoundTripTest extends E2ETest {
 
     @Test
+    void testSaveAndReloadPreservesKeySignature() throws Exception {
+        var original = new Composition(MainFrame.getInstance());
+        original.setDefaultKeyType(KeyType.SHARPS);
+        original.setDefaultKeyAccidentalCount(3);
+
+        // Add a line so the composition is non-empty
+        var line = new Line();
+        var note = ElementType.CROTCHET.newInstance();
+        note.setStaffPosition(0);
+        line.addElement(note);
+        original.addLine(line);
+
+        var reloaded = roundTrip(original);
+
+        assertThat(reloaded.getDefaultKeyType()).isEqualTo(KeyType.SHARPS);
+        assertThat(reloaded.getDefaultKeyAccidentalCount()).isEqualTo(3);
+    }
+
+    @Test
     void testSaveAndReloadPreservesNotes() throws Exception {
         // Build a composition with notes of different types and staff positions
         var original = buildTestComposition();
@@ -69,25 +88,6 @@ class SaveLoadRoundTripTest extends E2ETest {
                 .as("staffPosition at index %d", i)
                 .isEqualTo(originalPositions[i]);
         }
-    }
-
-    @Test
-    void testSaveAndReloadPreservesKeySignature() throws Exception {
-        var original = new Composition(MainFrame.getInstance());
-        original.setDefaultKeyType(KeyType.SHARPS);
-        original.setDefaultKeyAccidentalCount(3);
-
-        // Add a line so the composition is non-empty
-        var line = new Line();
-        var note = ElementType.CROTCHET.newInstance();
-        note.setStaffPosition(0);
-        line.addElement(note);
-        original.addLine(line);
-
-        var reloaded = roundTrip(original);
-
-        assertThat(reloaded.getDefaultKeyType()).isEqualTo(KeyType.SHARPS);
-        assertThat(reloaded.getDefaultKeyAccidentalCount()).isEqualTo(3);
     }
 
 

@@ -35,11 +35,11 @@ import songscribe.ui.action.UIAction;
 class BarlineHitTest extends E2ETest {
 
     @Nested
-    class StandardBarlines {
+    class RepeatBarlines {
 
         @Test
-        void testClickSingleBarline() {
-            buildLineWithElement(Actions.BARLINE_ACTIONS[2]);
+        void testClickRepeatLeft() {
+            buildLineWithElement(Actions.REPEAT_ACTIONS[0]);
             enterSelectMode();
 
             clickAt(noteScreenPosition(0, 1));
@@ -47,6 +47,32 @@ class BarlineHitTest extends E2ETest {
             assertThat(score().getSingleSelectedElement())
                 .isEqualTo(composition().getLine(0).getElement(1));
         }
+
+        @Test
+        void testClickRepeatLeftRight() {
+            buildLineWithElement(Actions.REPEAT_ACTIONS[2]);
+            enterSelectMode();
+
+            clickAt(noteScreenPosition(0, 1));
+
+            assertThat(score().getSingleSelectedElement())
+                .isEqualTo(composition().getLine(0).getElement(1));
+        }
+
+        @Test
+        void testClickRepeatRight() {
+            buildLineWithElement(Actions.REPEAT_ACTIONS[1]);
+            enterSelectMode();
+
+            clickAt(noteScreenPosition(0, 1));
+
+            assertThat(score().getSingleSelectedElement())
+                .isEqualTo(composition().getLine(0).getElement(1));
+        }
+    }
+
+    @Nested
+    class StandardBarlines {
 
         @Test
         void testClickDoubleBarline() {
@@ -69,36 +95,10 @@ class BarlineHitTest extends E2ETest {
             assertThat(score().getSingleSelectedElement())
                 .isEqualTo(composition().getLine(0).getElement(1));
         }
-    }
-
-    @Nested
-    class RepeatBarlines {
 
         @Test
-        void testClickRepeatLeft() {
-            buildLineWithElement(Actions.REPEAT_ACTIONS[0]);
-            enterSelectMode();
-
-            clickAt(noteScreenPosition(0, 1));
-
-            assertThat(score().getSingleSelectedElement())
-                .isEqualTo(composition().getLine(0).getElement(1));
-        }
-
-        @Test
-        void testClickRepeatRight() {
-            buildLineWithElement(Actions.REPEAT_ACTIONS[1]);
-            enterSelectMode();
-
-            clickAt(noteScreenPosition(0, 1));
-
-            assertThat(score().getSingleSelectedElement())
-                .isEqualTo(composition().getLine(0).getElement(1));
-        }
-
-        @Test
-        void testClickRepeatLeftRight() {
-            buildLineWithElement(Actions.REPEAT_ACTIONS[2]);
+        void testClickSingleBarline() {
+            buildLineWithElement(Actions.BARLINE_ACTIONS[2]);
             enterSelectMode();
 
             clickAt(noteScreenPosition(0, 1));

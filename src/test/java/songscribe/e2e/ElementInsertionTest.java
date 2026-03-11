@@ -35,24 +35,67 @@ import songscribe.ui.action.Actions;
 class ElementInsertionTest extends E2ETest {
 
     @Nested
-    class NoteInsertion {
+    class EditOperations {
 
         @Test
-        void testInsertQuarterNote() {
+        void testDragNoteToNewStaffPosition() {
+            // Insert a quarter note at staff position 0
             selectDuration(Actions.QUARTER_NOTE_ACTION);
-            var staffPositionSp = 0;
+            var point = insertionPoint(0, 0);
+            clickAt(point);
+            performLayout(0);
 
-            var point = insertionPoint(0, staffPositionSp);
+            var line = composition().getLine(0);
+            assertThat(line.elementCount()).isEqualTo(1);
+            var element = line.getElement(0);
+
+            // Drag the note to a new staff position
+            var targetStaffPositionSp = -4;
+            dragNote(0, 0, targetStaffPositionSp);
+            performLayout(0);
+
+            // Same element object, updated staff position
+            assertThat(line.elementCount()).isEqualTo(1);
+            assertThat(element.getStaffPosition()).isEqualTo(targetStaffPositionSp);
+        }
+
+        @Test
+        void testReplaceNoteAtSameXDifferentPitch() {
+            // Insert a quarter note
+            selectDuration(Actions.QUARTER_NOTE_ACTION);
+            var point = insertionPoint(0, 0);
             clickAt(point);
             performLayout(0);
 
             var line = composition().getLine(0);
             assertThat(line.elementCount()).isEqualTo(1);
 
+            // Now select half note and click at the same X but different staff position
+            selectDuration(Actions.HALF_NOTE_ACTION);
+            var notePoint = noteScreenPosition(0, 0);
+            var newStaffPositionSp = -4;
+
+            var lc = score().getLineComponent(0);
+            var replacementPoint = GuiActionRunner.execute(() -> {
+                var yPx = lc.staffPositionToYPx(newStaffPositionSp);
+                var loc = lc.getLocationOnScreen();
+                return new java.awt.Point(notePoint.x, loc.y + yPx);
+            });
+
+            clickAt(replacementPoint);
+            performLayout(0);
+
+            // Element count should remain the same (replacement, not addition)
+            assertThat(line.elementCount()).isEqualTo(1);
+
             var element = line.getElement(0);
-            assertThat(element.getType()).isEqualTo(ElementType.CROTCHET);
-            assertThat(element.getStaffPosition()).isEqualTo(staffPositionSp);
+            assertThat(element.getType()).isEqualTo(ElementType.MINIM);
+            assertThat(element.getStaffPosition()).isEqualTo(newStaffPositionSp);
         }
+    }
+
+    @Nested
+    class NoteInsertion {
 
         @Test
         void testInsertEighthNote() {
@@ -108,6 +151,23 @@ class ElementInsertionTest extends E2ETest {
         }
 
         @Test
+        void testInsertQuarterNote() {
+            selectDuration(Actions.QUARTER_NOTE_ACTION);
+            var staffPositionSp = 0;
+
+            var point = insertionPoint(0, staffPositionSp);
+            clickAt(point);
+            performLayout(0);
+
+            var line = composition().getLine(0);
+            assertThat(line.elementCount()).isEqualTo(1);
+
+            var element = line.getElement(0);
+            assertThat(element.getType()).isEqualTo(ElementType.CROTCHET);
+            assertThat(element.getStaffPosition()).isEqualTo(staffPositionSp);
+        }
+
+        @Test
         void testInsertRest() {
             selectDuration(Actions.QUARTER_NOTE_ACTION);
             enableRestMode();
@@ -119,66 +179,6 @@ class ElementInsertionTest extends E2ETest {
             var line = composition().getLine(0);
             assertThat(line.elementCount()).isEqualTo(1);
             assertThat(line.getElement(0).getType().isRest()).isTrue();
-        }
-    }
-
-    @Nested
-    class EditOperations {
-
-        @Test
-        void testReplaceNoteAtSameXDifferentPitch() {
-            // Insert a quarter note
-            selectDuration(Actions.QUARTER_NOTE_ACTION);
-            var point = insertionPoint(0, 0);
-            clickAt(point);
-            performLayout(0);
-
-            var line = composition().getLine(0);
-            assertThat(line.elementCount()).isEqualTo(1);
-
-            // Now select half note and click at the same X but different staff position
-            selectDuration(Actions.HALF_NOTE_ACTION);
-            var notePoint = noteScreenPosition(0, 0);
-            var newStaffPositionSp = -4;
-
-            var lc = score().getLineComponent(0);
-            var replacementPoint = GuiActionRunner.execute(() -> {
-                var yPx = lc.staffPositionToYPx(newStaffPositionSp);
-                var loc = lc.getLocationOnScreen();
-                return new java.awt.Point(notePoint.x, loc.y + yPx);
-            });
-
-            clickAt(replacementPoint);
-            performLayout(0);
-
-            // Element count should remain the same (replacement, not addition)
-            assertThat(line.elementCount()).isEqualTo(1);
-
-            var element = line.getElement(0);
-            assertThat(element.getType()).isEqualTo(ElementType.MINIM);
-            assertThat(element.getStaffPosition()).isEqualTo(newStaffPositionSp);
-        }
-
-        @Test
-        void testDragNoteToNewStaffPosition() {
-            // Insert a quarter note at staff position 0
-            selectDuration(Actions.QUARTER_NOTE_ACTION);
-            var point = insertionPoint(0, 0);
-            clickAt(point);
-            performLayout(0);
-
-            var line = composition().getLine(0);
-            assertThat(line.elementCount()).isEqualTo(1);
-            var element = line.getElement(0);
-
-            // Drag the note to a new staff position
-            var targetStaffPositionSp = -4;
-            dragNote(0, 0, targetStaffPositionSp);
-            performLayout(0);
-
-            // Same element object, updated staff position
-            assertThat(line.elementCount()).isEqualTo(1);
-            assertThat(element.getStaffPosition()).isEqualTo(targetStaffPositionSp);
         }
     }
 

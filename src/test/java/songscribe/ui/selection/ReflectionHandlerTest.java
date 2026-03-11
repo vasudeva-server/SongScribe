@@ -34,105 +34,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class ReflectionHandlerTest extends UnitTest {
 
-    // -- Section A: State Transitions --
-
-    @Test
-    void testNoSelectionNoSavedStateIsNoOp() {
-        var note = ElementType.CROTCHET.newInstance();
-        note.setAccidental(StaffElement.Accidental.SHARP);
-
-        var action = new AccidentalAction(StaffElement.Accidental.SHARP, "Sharp", null, 0, "sharp", "Sharp");
-        var uiAction = (SelectableUIAction) action;
-        uiAction.setSelected(false);
-
-        var coordinator = ReflectionTestHelper.createCoordinator(
-            List.of(note),
-            List.of(action)
-        );
-
-        coordinator.reflectSelection(null);
-
-        assertThat(uiAction.isSelected()).isFalse();
-    }
-
-    @Test
-    void testClearSelectionRestoresSavedState() {
-        var note = ElementType.CROTCHET.newInstance();
-        note.setAccidental(StaffElement.Accidental.FLAT);
-
-        var action = new AccidentalAction(StaffElement.Accidental.SHARP, "Sharp", null, 0, "sharp", "Sharp");
-        var uiAction = (SelectableUIAction) action;
-        uiAction.setSelected(true);
-
-        var coordinator = ReflectionTestHelper.createCoordinator(
-            List.of(note),
-            List.of(action)
-        );
-
-        // Select and reflect — action becomes false (FLAT does not match SHARP)
-        ReflectionTestHelper.selectNote(coordinator, 0);
-        coordinator.reflectSelection(null);
-        assertThat(uiAction.isSelected()).isFalse();
-
-        // Clear and reflect — action restored to pre-selection value (true)
-        ReflectionTestHelper.clearSelection(coordinator);
-        coordinator.reflectSelection(null);
-        assertThat(uiAction.isSelected()).isTrue();
-    }
-
-    @Test
-    void testNewSelectionSavesState() {
-        var note = ElementType.CROTCHET.newInstance();
-        note.setAccidental(StaffElement.Accidental.SHARP);
-
-        var action = new AccidentalAction(StaffElement.Accidental.SHARP, "Sharp", null, 0, "sharp", "Sharp");
-        var uiAction = (SelectableUIAction) action;
-        uiAction.setSelected(false);
-
-        var coordinator = ReflectionTestHelper.createCoordinator(
-            List.of(note),
-            List.of(action)
-        );
-
-        // Select and reflect — action becomes true (SHARP matches)
-        ReflectionTestHelper.selectNote(coordinator, 0);
-        coordinator.reflectSelection(null);
-        assertThat(uiAction.isSelected()).isTrue();
-    }
-
-    @Test
-    void testChangedSelectionDoesNotResave() {
-        var note1 = ElementType.CROTCHET.newInstance();
-        note1.setAccidental(StaffElement.Accidental.SHARP);
-
-        var note2 = ElementType.CROTCHET.newInstance();
-        note2.setAccidental(StaffElement.Accidental.FLAT);
-
-        var action = new AccidentalAction(StaffElement.Accidental.SHARP, "Sharp", null, 0, "sharp", "Sharp");
-        var uiAction = (SelectableUIAction) action;
-        uiAction.setSelected(false);
-
-        var coordinator = ReflectionTestHelper.createCoordinator(
-            List.of(note1, note2),
-            List.of(action)
-        );
-
-        // Select note 0 only, reflect — action becomes true (SHARP matches)
-        ReflectionTestHelper.selectNote(coordinator, 0);
-        coordinator.reflectSelection(null);
-        assertThat(uiAction.isSelected()).isTrue();
-
-        // Extend selection to [0,1], reflect — action becomes false (FLAT mismatch)
-        ReflectionTestHelper.selectRange(coordinator, 0, 1);
-        coordinator.reflectSelection(null);
-        assertThat(uiAction.isSelected()).isFalse();
-
-        // Clear and reflect — should restore to original saved state (false)
-        ReflectionTestHelper.clearSelection(coordinator);
-        coordinator.reflectSelection(null);
-        assertThat(uiAction.isSelected()).isFalse();
-    }
-
     // -- Section B: Core Logic --
 
     @Test
@@ -202,6 +103,153 @@ class ReflectionHandlerTest extends UnitTest {
     }
 
     @Test
+    void testAllInapplicableDeselected() {
+        var rest1 = ElementType.CROTCHET_REST.newInstance();
+        var rest2 = ElementType.CROTCHET_REST.newInstance();
+
+        var action = new AccidentalAction(StaffElement.Accidental.SHARP, "Sharp", null, 0, "sharp", "Sharp");
+        var uiAction = (SelectableUIAction) action;
+
+        var coordinator = ReflectionTestHelper.createCoordinator(
+            List.of(rest1, rest2),
+            List.of(action)
+        );
+
+        ReflectionTestHelper.selectRange(coordinator, 0, 1);
+        coordinator.reflectSelection(null);
+
+        assertThat(uiAction.isSelected()).isFalse();
+    }
+
+    @Test
+    void testChangedSelectionDoesNotResave() {
+        var note1 = ElementType.CROTCHET.newInstance();
+        note1.setAccidental(StaffElement.Accidental.SHARP);
+
+        var note2 = ElementType.CROTCHET.newInstance();
+        note2.setAccidental(StaffElement.Accidental.FLAT);
+
+        var action = new AccidentalAction(StaffElement.Accidental.SHARP, "Sharp", null, 0, "sharp", "Sharp");
+        var uiAction = (SelectableUIAction) action;
+        uiAction.setSelected(false);
+
+        var coordinator = ReflectionTestHelper.createCoordinator(
+            List.of(note1, note2),
+            List.of(action)
+        );
+
+        // Select note 0 only, reflect — action becomes true (SHARP matches)
+        ReflectionTestHelper.selectNote(coordinator, 0);
+        coordinator.reflectSelection(null);
+        assertThat(uiAction.isSelected()).isTrue();
+
+        // Extend selection to [0,1], reflect — action becomes false (FLAT mismatch)
+        ReflectionTestHelper.selectRange(coordinator, 0, 1);
+        coordinator.reflectSelection(null);
+        assertThat(uiAction.isSelected()).isFalse();
+
+        // Clear and reflect — should restore to original saved state (false)
+        ReflectionTestHelper.clearSelection(coordinator);
+        coordinator.reflectSelection(null);
+        assertThat(uiAction.isSelected()).isFalse();
+    }
+
+    // -- Section F: Enabled State --
+
+    @Test
+    void testClearSelectionRestoresEnabledState() {
+        var note = ElementType.CROTCHET.newInstance();
+        note.setAccidental(StaffElement.Accidental.SHARP);
+
+        var action = new AccidentalAction(StaffElement.Accidental.SHARP, "Sharp", null, 0, "sharp", "Sharp");
+        var uiAction = (SelectableUIAction) action;
+
+        var coordinator = ReflectionTestHelper.createCoordinator(
+            List.of(note),
+            List.of(action)
+        );
+
+        // Select and reflect — saves state (selected=false, enabled=true)
+        ReflectionTestHelper.selectNote(coordinator, 0);
+        coordinator.reflectSelection(null);
+
+        // Manually disable the action during selection
+        uiAction.setEnabled(false);
+
+        // Clear and reflect — restores both selected and enabled from saved state
+        ReflectionTestHelper.clearSelection(coordinator);
+        coordinator.reflectSelection(null);
+
+        assertThat(uiAction.isEnabled()).isTrue();
+    }
+
+    // -- Section A: State Transitions --
+
+    @Test
+    void testClearSelectionRestoresSavedState() {
+        var note = ElementType.CROTCHET.newInstance();
+        note.setAccidental(StaffElement.Accidental.FLAT);
+
+        var action = new AccidentalAction(StaffElement.Accidental.SHARP, "Sharp", null, 0, "sharp", "Sharp");
+        var uiAction = (SelectableUIAction) action;
+        uiAction.setSelected(true);
+
+        var coordinator = ReflectionTestHelper.createCoordinator(
+            List.of(note),
+            List.of(action)
+        );
+
+        // Select and reflect — action becomes false (FLAT does not match SHARP)
+        ReflectionTestHelper.selectNote(coordinator, 0);
+        coordinator.reflectSelection(null);
+        assertThat(uiAction.isSelected()).isFalse();
+
+        // Clear and reflect — action restored to pre-selection value (true)
+        ReflectionTestHelper.clearSelection(coordinator);
+        coordinator.reflectSelection(null);
+        assertThat(uiAction.isSelected()).isTrue();
+    }
+
+    @Test
+    void testNewSelectionSavesState() {
+        var note = ElementType.CROTCHET.newInstance();
+        note.setAccidental(StaffElement.Accidental.SHARP);
+
+        var action = new AccidentalAction(StaffElement.Accidental.SHARP, "Sharp", null, 0, "sharp", "Sharp");
+        var uiAction = (SelectableUIAction) action;
+        uiAction.setSelected(false);
+
+        var coordinator = ReflectionTestHelper.createCoordinator(
+            List.of(note),
+            List.of(action)
+        );
+
+        // Select and reflect — action becomes true (SHARP matches)
+        ReflectionTestHelper.selectNote(coordinator, 0);
+        coordinator.reflectSelection(null);
+        assertThat(uiAction.isSelected()).isTrue();
+    }
+
+    @Test
+    void testNoSelectionNoSavedStateIsNoOp() {
+        var note = ElementType.CROTCHET.newInstance();
+        note.setAccidental(StaffElement.Accidental.SHARP);
+
+        var action = new AccidentalAction(StaffElement.Accidental.SHARP, "Sharp", null, 0, "sharp", "Sharp");
+        var uiAction = (SelectableUIAction) action;
+        uiAction.setSelected(false);
+
+        var coordinator = ReflectionTestHelper.createCoordinator(
+            List.of(note),
+            List.of(action)
+        );
+
+        coordinator.reflectSelection(null);
+
+        assertThat(uiAction.isSelected()).isFalse();
+    }
+
+    @Test
     void testNoteAndRestNoteMatchesSelected() {
         var note1 = ElementType.CROTCHET.newInstance();
         note1.setAccidental(StaffElement.Accidental.SHARP);
@@ -242,27 +290,6 @@ class ReflectionHandlerTest extends UnitTest {
 
         assertThat(uiAction.isSelected()).isFalse();
     }
-
-    @Test
-    void testAllInapplicableDeselected() {
-        var rest1 = ElementType.CROTCHET_REST.newInstance();
-        var rest2 = ElementType.CROTCHET_REST.newInstance();
-
-        var action = new AccidentalAction(StaffElement.Accidental.SHARP, "Sharp", null, 0, "sharp", "Sharp");
-        var uiAction = (SelectableUIAction) action;
-
-        var coordinator = ReflectionTestHelper.createCoordinator(
-            List.of(rest1, rest2),
-            List.of(action)
-        );
-
-        ReflectionTestHelper.selectRange(coordinator, 0, 1);
-        coordinator.reflectSelection(null);
-
-        assertThat(uiAction.isSelected()).isFalse();
-    }
-
-    // -- Section F: Enabled State --
 
     @Test
     void testReflectionDoesNotForceEnable() {
@@ -329,32 +356,5 @@ class ReflectionHandlerTest extends UnitTest {
         assertThat(uiAction1.isEnabled()).as("action1 enabled").isTrue();
         assertThat(uiAction2.isSelected()).as("action2 selected").isFalse();
         assertThat(uiAction2.isEnabled()).as("action2 enabled").isFalse();
-    }
-
-    @Test
-    void testClearSelectionRestoresEnabledState() {
-        var note = ElementType.CROTCHET.newInstance();
-        note.setAccidental(StaffElement.Accidental.SHARP);
-
-        var action = new AccidentalAction(StaffElement.Accidental.SHARP, "Sharp", null, 0, "sharp", "Sharp");
-        var uiAction = (SelectableUIAction) action;
-
-        var coordinator = ReflectionTestHelper.createCoordinator(
-            List.of(note),
-            List.of(action)
-        );
-
-        // Select and reflect — saves state (selected=false, enabled=true)
-        ReflectionTestHelper.selectNote(coordinator, 0);
-        coordinator.reflectSelection(null);
-
-        // Manually disable the action during selection
-        uiAction.setEnabled(false);
-
-        // Clear and reflect — restores both selected and enabled from saved state
-        ReflectionTestHelper.clearSelection(coordinator);
-        coordinator.reflectSelection(null);
-
-        assertThat(uiAction.isEnabled()).isTrue();
     }
 }

@@ -34,12 +34,12 @@ class RuntimeErrorTest extends UnitTest {
     }
 
     @Test
-    void testLogNullReturnsTrueForNull() {
-        assertThat(RuntimeError.logNull(null, "Title", "log", "user")).isTrue();
+    void testLogNullReturnsFalseForNonNullObject() {
+        assertThat(RuntimeError.logNull(42, "Title", "log", "user")).isFalse();
     }
 
     @Test
-    void testLogNullReturnsFalseForNonNullObject() {
-        assertThat(RuntimeError.logNull(42, "Title", "log", "user")).isFalse();
+    void testLogNullReturnsTrueForNull() {
+        assertThat(RuntimeError.logNull(null, "Title", "log", "user")).isTrue();
     }
 }

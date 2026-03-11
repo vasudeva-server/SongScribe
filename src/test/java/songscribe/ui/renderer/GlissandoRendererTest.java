@@ -39,8 +39,259 @@ class GlissandoRendererTest extends UnitTest {
     private static final GlissandoRenderer RENDERER = GlissandoRenderer.getInstance();
 
     // ======================================================================
+    // getOrBuildArea cache tests
+    // ======================================================================
+
+    @Test
+    void testAreaCacheRebuildsWhenAccidentalChanges() {
+        var note = ElementType.CROTCHET.newInstance();
+        note.setUpper(true);
+        NoteRenderer.initializeAccidentalWidths(
+            new java.awt.image.BufferedImage(1, 1, java.awt.image.BufferedImage.TYPE_INT_ARGB)
+                .createGraphics());
+
+        var entry1 = RENDERER.getOrBuildArea(note, false);
+        note.setAccidental(StaffElement.Accidental.SHARP);
+        var entry2 = RENDERER.getOrBuildArea(note, false);
+
+        assertThat(entry2).isNotSameAs(entry1);
+    }
+
+    @Test
+    void testAreaCacheRebuildsWhenBeamedStateChanges() {
+        var note = ElementType.QUAVER.newInstance();
+        note.setUpper(true);
+
+        var entry1 = RENDERER.getOrBuildArea(note, false);
+        var entry2 = RENDERER.getOrBuildArea(note, true);
+
+        assertThat(entry2).isNotSameAs(entry1);
+    }
+
+    @Test
+    void testAreaCacheRebuildsWhenDotCountChanges() {
+        var note = ElementType.CROTCHET.newInstance();
+        note.setUpper(true);
+
+        var entry1 = RENDERER.getOrBuildArea(note, false);
+        note.setDotCount(1);
+        var entry2 = RENDERER.getOrBuildArea(note, false);
+
+        assertThat(entry2).isNotSameAs(entry1);
+    }
+
+    @Test
+    void testAreaCacheRebuildsWhenLedgerLineCountChanges() {
+        var note = ElementType.CROTCHET.newInstance();
+        note.setUpper(true);
+        note.setStaffPosition(-8); // 2 ledger lines
+
+        var entry1 = RENDERER.getOrBuildArea(note, false);
+        note.setStaffPosition(-10); // 3 ledger lines — different count
+        var entry2 = RENDERER.getOrBuildArea(note, false);
+
+        assertThat(entry2).isNotSameAs(entry1);
+    }
+
+    @Test
+    void testAreaCacheRebuildsWhenLedgerLineStatusChanges() {
+        var note = ElementType.CROTCHET.newInstance();
+        note.setUpper(true);
+        note.setStaffPosition(0); // on staff
+
+        var entry1 = RENDERER.getOrBuildArea(note, false);
+        note.setStaffPosition(-8); // above staff, needs ledger lines
+        var entry2 = RENDERER.getOrBuildArea(note, false);
+
+        assertThat(entry2).isNotSameAs(entry1);
+    }
+
+    @Test
+    void testAreaCacheRebuildsWhenStaffPositionChangesWithinLedgerTier() {
+        // Staff positions -6 and -7 both have 1 ledger line, but the ledger line's
+        // y-offset relative to the notehead differs (0.0 vs 0.5 ss), so the area
+        // shape is different and the cache must rebuild.
+        var note = ElementType.CROTCHET.newInstance();
+        note.setUpper(true);
+        note.setStaffPosition(-6); // ledger line at y=0.0 relative to notehead
+
+        var entry1 = RENDERER.getOrBuildArea(note, false);
+        note.setStaffPosition(-7); // ledger line at y=0.5 relative to notehead
+        var entry2 = RENDERER.getOrBuildArea(note, false);
+
+        assertThat(entry2).isNotSameAs(entry1);
+    }
+
+    @Test
+    void testAreaCacheRebuildsWhenStemDirectionChanges() {
+        var note = ElementType.CROTCHET.newInstance();
+        note.setUpper(true);
+
+        var entry1 = RENDERER.getOrBuildArea(note, false);
+        note.setUpper(false);
+        var entry2 = RENDERER.getOrBuildArea(note, false);
+
+        assertThat(entry2).isNotSameAs(entry1);
+    }
+
+    @Test
+    void testAreaCacheRetainsCacheWhenStaffPositionChangesWithinStaff() {
+        var note = ElementType.CROTCHET.newInstance();
+        note.setUpper(true);
+        note.setStaffPosition(0);
+
+        var entry1 = RENDERER.getOrBuildArea(note, false);
+        note.setStaffPosition(4); // still on staff
+        var entry2 = RENDERER.getOrBuildArea(note, false);
+
+        assertThat(entry2).isSameAs(entry1);
+    }
+
+    @Test
+    void testAreaCacheReturnsSameInstanceWhenNoteUnchanged() {
+        var note = ElementType.CROTCHET.newInstance();
+        note.setUpper(true);
+
+        var entry1 = RENDERER.getOrBuildArea(note, false);
+        var entry2 = RENDERER.getOrBuildArea(note, false);
+
+        assertThat(entry2).isSameAs(entry1);
+    }
+
+    // ======================================================================
+    // buildNoteArea tests
+    // ======================================================================
+
+    @Test
+    void testBuildNoteAreaQuarterNoteNoExtras() {
+        var note = ElementType.CROTCHET.newInstance();
+        note.setUpper(true);
+        var area = RENDERER.buildNoteArea(note, false);
+
+        assertThat(area.isEmpty()).isFalse();
+    }
+
+    @Test
+    void testBuildNoteAreaWithAccidentalExtendsLeft() {
+        var noteNoAcc = ElementType.CROTCHET.newInstance();
+        noteNoAcc.setUpper(true);
+        var areaNoAcc = RENDERER.buildNoteArea(noteNoAcc, false);
+
+        var noteWithAcc = ElementType.CROTCHET.newInstance();
+        noteWithAcc.setUpper(true);
+        noteWithAcc.setAccidental(StaffElement.Accidental.SHARP);
+        // Accidental widths must be initialized before use
+        NoteRenderer.initializeAccidentalWidths(
+            new java.awt.image.BufferedImage(1, 1, java.awt.image.BufferedImage.TYPE_INT_ARGB)
+                .createGraphics());
+        var areaWithAcc = RENDERER.buildNoteArea(noteWithAcc, false);
+
+        assertThat(areaWithAcc.getBounds2D().getMinX())
+            .isLessThan(areaNoAcc.getBounds2D().getMinX());
+    }
+
+    @Test
+    void testBuildNoteAreaWithDotsIsWider() {
+        var noteNoDots = ElementType.CROTCHET.newInstance();
+        noteNoDots.setUpper(true);
+        var areaNoDots = RENDERER.buildNoteArea(noteNoDots, false);
+
+        var noteWithDots = ElementType.CROTCHET.newInstance();
+        noteWithDots.setUpper(true);
+        noteWithDots.setDotCount(1);
+        var areaWithDots = RENDERER.buildNoteArea(noteWithDots, false);
+
+        assertThat(areaWithDots.getBounds2D().getMaxX())
+            .isGreaterThan(areaNoDots.getBounds2D().getMaxX());
+    }
+
+    @Test
+    void testBuildNoteAreaWithLedgerLinesAboveStaff() {
+        var note = ElementType.CROTCHET.newInstance();
+        note.setUpper(true);
+        note.setStaffPosition(-8); // above staff, needs ledger lines
+
+        var area = RENDERER.buildNoteArea(note, false);
+
+        // Area should include ledger line rects, making it wider than just the notehead
+        var noteOnStaff = ElementType.CROTCHET.newInstance();
+        noteOnStaff.setUpper(true);
+        noteOnStaff.setStaffPosition(0); // on staff, no ledger lines
+
+        var areaOnStaff = RENDERER.buildNoteArea(noteOnStaff, false);
+
+        // Ledger lines extend beyond notehead on both sides
+        assertThat(area.getBounds2D().getWidth())
+            .isGreaterThan(areaOnStaff.getBounds2D().getWidth());
+    }
+
+    @Test
+    void testBuildNoteAreaWithLedgerLinesBelowStaff() {
+        var note = ElementType.CROTCHET.newInstance();
+        note.setUpper(false);
+        note.setStaffPosition(8); // below staff, needs ledger lines
+
+        var area = RENDERER.buildNoteArea(note, false);
+        assertThat(area.isEmpty()).isFalse();
+    }
+
+    @Test
+    void testBuildNoteAreaWithTwoDotsIsWiderThanOne() {
+        var noteOneDot = ElementType.CROTCHET.newInstance();
+        noteOneDot.setUpper(true);
+        noteOneDot.setDotCount(1);
+        var areaOneDot = RENDERER.buildNoteArea(noteOneDot, false);
+
+        var noteTwoDots = ElementType.CROTCHET.newInstance();
+        noteTwoDots.setUpper(true);
+        noteTwoDots.setDotCount(2);
+        var areaTwoDots = RENDERER.buildNoteArea(noteTwoDots, false);
+
+        assertThat(areaTwoDots.getBounds2D().getMaxX())
+            .isGreaterThan(areaOneDot.getBounds2D().getMaxX());
+    }
+
+    // ======================================================================
+    // computeFarBoundsT tests
+    // ======================================================================
+
+    @Test
+    void testComputeFarBoundsTDiagonal() {
+        // Bounds from (0, 0) to (4, 2), center at (2, 1), going at 45° (nx=ny=1/√2)
+        // tx = (4-2) / (1/√2) = 2√2 ≈ 2.83
+        // ty = (2-1) / (1/√2) = √2 ≈ 1.41
+        // Expected: min = ty ≈ 1.41
+        var bounds = new Rectangle2D.Double(0, 0, 4, 2);
+        double inv = 1.0 / Math.sqrt(2);
+        double t = GlissandoRenderer.computeFarBoundsT(bounds, 2, 1, inv, inv);
+        assertThat(t).isCloseTo(Math.sqrt(2), within(STEP_SS));
+    }
+
+    @Test
+    void testComputeFarBoundsTRightward() {
+        // Bounds from (-2, -1) to (3, 1), center at (0, 0), going right (nx=1, ny=0)
+        // Expected: t = (maxX - cx) / nx = (3 - 0) / 1 = 3.0
+        var bounds = new Rectangle2D.Double(-2, -1, 5, 2);
+        double t = GlissandoRenderer.computeFarBoundsT(bounds, 0, 0, 1, 0);
+        assertThat(t).isCloseTo(3.0, within(STEP_SS));
+    }
+
+    // ======================================================================
     // createOffsetArea tests
     // ======================================================================
+
+    @Test
+    void testCreateOffsetAreaContainsOriginal() {
+        var square = new Rectangle2D.Double(-0.5, -0.5, 1.0, 1.0);
+        float offsetSs = 0.3f;
+        var offsetArea = GlissandoRenderer.createOffsetArea(square, offsetSs);
+
+        // All corners of the original should be contained in the offset area
+        assertThat(offsetArea.contains(-0.5, -0.5)).isTrue();
+        assertThat(offsetArea.contains(0.5, -0.5)).isTrue();
+        assertThat(offsetArea.contains(-0.5, 0.5)).isTrue();
+        assertThat(offsetArea.contains(0.5, 0.5)).isTrue();
+    }
 
     @Test
     void testCreateOffsetAreaExpandsShape() {
@@ -56,44 +307,6 @@ class GlissandoRendererTest extends UnitTest {
         assertThat(offsetBounds.getMaxX()).isGreaterThan(origBounds.getMaxX() + offsetSs * 0.5);
         assertThat(offsetBounds.getMinY()).isLessThan(origBounds.getMinY() - offsetSs * 0.5);
         assertThat(offsetBounds.getMaxY()).isGreaterThan(origBounds.getMaxY() + offsetSs * 0.5);
-    }
-
-    @Test
-    void testCreateOffsetAreaContainsOriginal() {
-        var square = new Rectangle2D.Double(-0.5, -0.5, 1.0, 1.0);
-        float offsetSs = 0.3f;
-        var offsetArea = GlissandoRenderer.createOffsetArea(square, offsetSs);
-
-        // All corners of the original should be contained in the offset area
-        assertThat(offsetArea.contains(-0.5, -0.5)).isTrue();
-        assertThat(offsetArea.contains(0.5, -0.5)).isTrue();
-        assertThat(offsetArea.contains(-0.5, 0.5)).isTrue();
-        assertThat(offsetArea.contains(0.5, 0.5)).isTrue();
-    }
-
-    // ======================================================================
-    // computeFarBoundsT tests
-    // ======================================================================
-
-    @Test
-    void testComputeFarBoundsTRightward() {
-        // Bounds from (-2, -1) to (3, 1), center at (0, 0), going right (nx=1, ny=0)
-        // Expected: t = (maxX - cx) / nx = (3 - 0) / 1 = 3.0
-        var bounds = new Rectangle2D.Double(-2, -1, 5, 2);
-        double t = GlissandoRenderer.computeFarBoundsT(bounds, 0, 0, 1, 0);
-        assertThat(t).isCloseTo(3.0, within(STEP_SS));
-    }
-
-    @Test
-    void testComputeFarBoundsTDiagonal() {
-        // Bounds from (0, 0) to (4, 2), center at (2, 1), going at 45° (nx=ny=1/√2)
-        // tx = (4-2) / (1/√2) = 2√2 ≈ 2.83
-        // ty = (2-1) / (1/√2) = √2 ≈ 1.41
-        // Expected: min = ty ≈ 1.41
-        var bounds = new Rectangle2D.Double(0, 0, 4, 2);
-        double inv = 1.0 / Math.sqrt(2);
-        double t = GlissandoRenderer.computeFarBoundsT(bounds, 2, 1, inv, inv);
-        assertThat(t).isCloseTo(Math.sqrt(2), within(STEP_SS));
     }
 
     // ======================================================================
@@ -167,234 +380,8 @@ class GlissandoRendererTest extends UnitTest {
     }
 
     // ======================================================================
-    // buildNoteArea tests
-    // ======================================================================
-
-    @Test
-    void testBuildNoteAreaQuarterNoteNoExtras() {
-        var note = ElementType.CROTCHET.newInstance();
-        note.setUpper(true);
-        var area = RENDERER.buildNoteArea(note, false);
-
-        assertThat(area.isEmpty()).isFalse();
-    }
-
-    @Test
-    void testBuildNoteAreaWithDotsIsWider() {
-        var noteNoDots = ElementType.CROTCHET.newInstance();
-        noteNoDots.setUpper(true);
-        var areaNoDots = RENDERER.buildNoteArea(noteNoDots, false);
-
-        var noteWithDots = ElementType.CROTCHET.newInstance();
-        noteWithDots.setUpper(true);
-        noteWithDots.setDotCount(1);
-        var areaWithDots = RENDERER.buildNoteArea(noteWithDots, false);
-
-        assertThat(areaWithDots.getBounds2D().getMaxX())
-            .isGreaterThan(areaNoDots.getBounds2D().getMaxX());
-    }
-
-    @Test
-    void testBuildNoteAreaWithTwoDotsIsWiderThanOne() {
-        var noteOneDot = ElementType.CROTCHET.newInstance();
-        noteOneDot.setUpper(true);
-        noteOneDot.setDotCount(1);
-        var areaOneDot = RENDERER.buildNoteArea(noteOneDot, false);
-
-        var noteTwoDots = ElementType.CROTCHET.newInstance();
-        noteTwoDots.setUpper(true);
-        noteTwoDots.setDotCount(2);
-        var areaTwoDots = RENDERER.buildNoteArea(noteTwoDots, false);
-
-        assertThat(areaTwoDots.getBounds2D().getMaxX())
-            .isGreaterThan(areaOneDot.getBounds2D().getMaxX());
-    }
-
-    @Test
-    void testBuildNoteAreaWithAccidentalExtendsLeft() {
-        var noteNoAcc = ElementType.CROTCHET.newInstance();
-        noteNoAcc.setUpper(true);
-        var areaNoAcc = RENDERER.buildNoteArea(noteNoAcc, false);
-
-        var noteWithAcc = ElementType.CROTCHET.newInstance();
-        noteWithAcc.setUpper(true);
-        noteWithAcc.setAccidental(StaffElement.Accidental.SHARP);
-        // Accidental widths must be initialized before use
-        NoteRenderer.initializeAccidentalWidths(
-            new java.awt.image.BufferedImage(1, 1, java.awt.image.BufferedImage.TYPE_INT_ARGB)
-                .createGraphics());
-        var areaWithAcc = RENDERER.buildNoteArea(noteWithAcc, false);
-
-        assertThat(areaWithAcc.getBounds2D().getMinX())
-            .isLessThan(areaNoAcc.getBounds2D().getMinX());
-    }
-
-    @Test
-    void testBuildNoteAreaWithLedgerLinesAboveStaff() {
-        var note = ElementType.CROTCHET.newInstance();
-        note.setUpper(true);
-        note.setStaffPosition(-8); // above staff, needs ledger lines
-
-        var area = RENDERER.buildNoteArea(note, false);
-
-        // Area should include ledger line rects, making it wider than just the notehead
-        var noteOnStaff = ElementType.CROTCHET.newInstance();
-        noteOnStaff.setUpper(true);
-        noteOnStaff.setStaffPosition(0); // on staff, no ledger lines
-
-        var areaOnStaff = RENDERER.buildNoteArea(noteOnStaff, false);
-
-        // Ledger lines extend beyond notehead on both sides
-        assertThat(area.getBounds2D().getWidth())
-            .isGreaterThan(areaOnStaff.getBounds2D().getWidth());
-    }
-
-    @Test
-    void testBuildNoteAreaWithLedgerLinesBelowStaff() {
-        var note = ElementType.CROTCHET.newInstance();
-        note.setUpper(false);
-        note.setStaffPosition(8); // below staff, needs ledger lines
-
-        var area = RENDERER.buildNoteArea(note, false);
-        assertThat(area.isEmpty()).isFalse();
-    }
-
-    // ======================================================================
-    // getOrBuildArea cache tests
-    // ======================================================================
-
-    @Test
-    void testAreaCacheReturnsSameInstanceWhenNoteUnchanged() {
-        var note = ElementType.CROTCHET.newInstance();
-        note.setUpper(true);
-
-        var entry1 = RENDERER.getOrBuildArea(note, false);
-        var entry2 = RENDERER.getOrBuildArea(note, false);
-
-        assertThat(entry2).isSameAs(entry1);
-    }
-
-    @Test
-    void testAreaCacheRebuildsWhenDotCountChanges() {
-        var note = ElementType.CROTCHET.newInstance();
-        note.setUpper(true);
-
-        var entry1 = RENDERER.getOrBuildArea(note, false);
-        note.setDotCount(1);
-        var entry2 = RENDERER.getOrBuildArea(note, false);
-
-        assertThat(entry2).isNotSameAs(entry1);
-    }
-
-    @Test
-    void testAreaCacheRebuildsWhenAccidentalChanges() {
-        var note = ElementType.CROTCHET.newInstance();
-        note.setUpper(true);
-        NoteRenderer.initializeAccidentalWidths(
-            new java.awt.image.BufferedImage(1, 1, java.awt.image.BufferedImage.TYPE_INT_ARGB)
-                .createGraphics());
-
-        var entry1 = RENDERER.getOrBuildArea(note, false);
-        note.setAccidental(StaffElement.Accidental.SHARP);
-        var entry2 = RENDERER.getOrBuildArea(note, false);
-
-        assertThat(entry2).isNotSameAs(entry1);
-    }
-
-    @Test
-    void testAreaCacheRebuildsWhenStemDirectionChanges() {
-        var note = ElementType.CROTCHET.newInstance();
-        note.setUpper(true);
-
-        var entry1 = RENDERER.getOrBuildArea(note, false);
-        note.setUpper(false);
-        var entry2 = RENDERER.getOrBuildArea(note, false);
-
-        assertThat(entry2).isNotSameAs(entry1);
-    }
-
-    @Test
-    void testAreaCacheRebuildsWhenBeamedStateChanges() {
-        var note = ElementType.QUAVER.newInstance();
-        note.setUpper(true);
-
-        var entry1 = RENDERER.getOrBuildArea(note, false);
-        var entry2 = RENDERER.getOrBuildArea(note, true);
-
-        assertThat(entry2).isNotSameAs(entry1);
-    }
-
-    @Test
-    void testAreaCacheRebuildsWhenLedgerLineStatusChanges() {
-        var note = ElementType.CROTCHET.newInstance();
-        note.setUpper(true);
-        note.setStaffPosition(0); // on staff
-
-        var entry1 = RENDERER.getOrBuildArea(note, false);
-        note.setStaffPosition(-8); // above staff, needs ledger lines
-        var entry2 = RENDERER.getOrBuildArea(note, false);
-
-        assertThat(entry2).isNotSameAs(entry1);
-    }
-
-    @Test
-    void testAreaCacheRebuildsWhenLedgerLineCountChanges() {
-        var note = ElementType.CROTCHET.newInstance();
-        note.setUpper(true);
-        note.setStaffPosition(-8); // 2 ledger lines
-
-        var entry1 = RENDERER.getOrBuildArea(note, false);
-        note.setStaffPosition(-10); // 3 ledger lines — different count
-        var entry2 = RENDERER.getOrBuildArea(note, false);
-
-        assertThat(entry2).isNotSameAs(entry1);
-    }
-
-    @Test
-    void testAreaCacheRebuildsWhenStaffPositionChangesWithinLedgerTier() {
-        // Staff positions -6 and -7 both have 1 ledger line, but the ledger line's
-        // y-offset relative to the notehead differs (0.0 vs 0.5 ss), so the area
-        // shape is different and the cache must rebuild.
-        var note = ElementType.CROTCHET.newInstance();
-        note.setUpper(true);
-        note.setStaffPosition(-6); // ledger line at y=0.0 relative to notehead
-
-        var entry1 = RENDERER.getOrBuildArea(note, false);
-        note.setStaffPosition(-7); // ledger line at y=0.5 relative to notehead
-        var entry2 = RENDERER.getOrBuildArea(note, false);
-
-        assertThat(entry2).isNotSameAs(entry1);
-    }
-
-    @Test
-    void testAreaCacheRetainsCacheWhenStaffPositionChangesWithinStaff() {
-        var note = ElementType.CROTCHET.newInstance();
-        note.setUpper(true);
-        note.setStaffPosition(0);
-
-        var entry1 = RENDERER.getOrBuildArea(note, false);
-        note.setStaffPosition(4); // still on staff
-        var entry2 = RENDERER.getOrBuildArea(note, false);
-
-        assertThat(entry2).isSameAs(entry1);
-    }
-
-    // ======================================================================
     // getLedgerLineCount() boundary tests
     // ======================================================================
-
-    @Test
-    void testGetLedgerLineCountOnStaff() {
-        var note = ElementType.CROTCHET.newInstance();
-
-        // Positions within the staff: 0, ±1, ±2, ±3, ±4, ±5
-        for (int sp = -5; sp <= 5; sp++) {
-            note.setStaffPosition(sp);
-            assertThat(note.getLedgerLineCount())
-                .as("staffPosition %d", sp)
-                .isEqualTo(0);
-        }
-    }
 
     @Test
     void testGetLedgerLineCountAboveStaff() {
@@ -432,6 +419,19 @@ class GlissandoRendererTest extends UnitTest {
         assertThat(note.getLedgerLineCount()).isEqualTo(3);
     }
 
+    @Test
+    void testGetLedgerLineCountOnStaff() {
+        var note = ElementType.CROTCHET.newInstance();
+
+        // Positions within the staff: 0, ±1, ±2, ±3, ±4, ±5
+        for (int sp = -5; sp <= 5; sp++) {
+            note.setStaffPosition(sp);
+            assertThat(note.getLedgerLineCount())
+                .as("staffPosition %d", sp)
+                .isEqualTo(0);
+        }
+    }
+
     // ======================================================================
     // hitTestGlissando tests
     // ======================================================================
@@ -455,31 +455,21 @@ class GlissandoRendererTest extends UnitTest {
     }
 
     @Test
-    void testHitTestGlissando_pointOnLine_returnsNoteIndex() {
-        // Horizontal glissando (angle=0) from (5.0, 3.0) with length 10.0
+    void testHitTestGlissando_diagonalLine_returnsNoteIndex() {
+        // 45° glissando from (0, 0), length 10; midpoint in world coords: (5·cos45°, 5·sin45°)
         var line = makeTwoNoteLineWithGlissando(0, StaffElement.Accidental.NONE, -2, StaffElement.Accidental.NONE);
-        setCachedGeometry(line.getElement(0).getGlissando(), 5.0, 3.0, 0.0, 10.0);
+        setCachedGeometry(line.getElement(0).getGlissando(), 0.0, 0.0, 45.0, 10.0);
 
-        // Click at the midpoint: localX=5, localY=0 — well within hit bounds
-        assertThat(RENDERER.hitTestGlissando(10.0, 3.0, line)).isEqualTo(0);
+        double mid = 5.0 * Math.cos(Math.toRadians(45.0));
+        assertThat(RENDERER.hitTestGlissando(mid, mid, line)).isEqualTo(0);
     }
 
     @Test
-    void testHitTestGlissando_pointBesideLine_returnsMinusOne() {
-        // Same glissando, but click is 1.0 ss above (> halfHitSs = 0.5)
+    void testHitTestGlissando_noCachedGeometry_skipped() {
+        // Note has a Glissando object but hasCachedGeometry is false (default) — must be skipped
         var line = makeTwoNoteLineWithGlissando(0, StaffElement.Accidental.NONE, -2, StaffElement.Accidental.NONE);
-        setCachedGeometry(line.getElement(0).getGlissando(), 5.0, 3.0, 0.0, 10.0);
 
-        assertThat(RENDERER.hitTestGlissando(10.0, 4.0, line)).isEqualTo(-1);
-    }
-
-    @Test
-    void testHitTestGlissando_pointBeforeStart_returnsMinusOne() {
-        var line = makeTwoNoteLineWithGlissando(0, StaffElement.Accidental.NONE, -2, StaffElement.Accidental.NONE);
-        setCachedGeometry(line.getElement(0).getGlissando(), 5.0, 3.0, 0.0, 10.0);
-
-        // localX = 4.9 - 5.0 = -0.1 < 0
-        assertThat(RENDERER.hitTestGlissando(4.9, 3.0, line)).isEqualTo(-1);
+        assertThat(RENDERER.hitTestGlissando(10.0, 3.0, line)).isEqualTo(-1);
     }
 
     @Test
@@ -492,21 +482,31 @@ class GlissandoRendererTest extends UnitTest {
     }
 
     @Test
-    void testHitTestGlissando_noCachedGeometry_skipped() {
-        // Note has a Glissando object but hasCachedGeometry is false (default) — must be skipped
+    void testHitTestGlissando_pointBeforeStart_returnsMinusOne() {
         var line = makeTwoNoteLineWithGlissando(0, StaffElement.Accidental.NONE, -2, StaffElement.Accidental.NONE);
+        setCachedGeometry(line.getElement(0).getGlissando(), 5.0, 3.0, 0.0, 10.0);
 
-        assertThat(RENDERER.hitTestGlissando(10.0, 3.0, line)).isEqualTo(-1);
+        // localX = 4.9 - 5.0 = -0.1 < 0
+        assertThat(RENDERER.hitTestGlissando(4.9, 3.0, line)).isEqualTo(-1);
     }
 
     @Test
-    void testHitTestGlissando_diagonalLine_returnsNoteIndex() {
-        // 45° glissando from (0, 0), length 10; midpoint in world coords: (5·cos45°, 5·sin45°)
+    void testHitTestGlissando_pointBesideLine_returnsMinusOne() {
+        // Same glissando, but click is 1.0 ss above (> halfHitSs = 0.5)
         var line = makeTwoNoteLineWithGlissando(0, StaffElement.Accidental.NONE, -2, StaffElement.Accidental.NONE);
-        setCachedGeometry(line.getElement(0).getGlissando(), 0.0, 0.0, 45.0, 10.0);
+        setCachedGeometry(line.getElement(0).getGlissando(), 5.0, 3.0, 0.0, 10.0);
 
-        double mid = 5.0 * Math.cos(Math.toRadians(45.0));
-        assertThat(RENDERER.hitTestGlissando(mid, mid, line)).isEqualTo(0);
+        assertThat(RENDERER.hitTestGlissando(10.0, 4.0, line)).isEqualTo(-1);
+    }
+
+    @Test
+    void testHitTestGlissando_pointOnLine_returnsNoteIndex() {
+        // Horizontal glissando (angle=0) from (5.0, 3.0) with length 10.0
+        var line = makeTwoNoteLineWithGlissando(0, StaffElement.Accidental.NONE, -2, StaffElement.Accidental.NONE);
+        setCachedGeometry(line.getElement(0).getGlissando(), 5.0, 3.0, 0.0, 10.0);
+
+        // Click at the midpoint: localX=5, localY=0 — well within hit bounds
+        assertThat(RENDERER.hitTestGlissando(10.0, 3.0, line)).isEqualTo(0);
     }
 
     @Test
@@ -562,16 +562,6 @@ class GlissandoRendererTest extends UnitTest {
     }
 
     @Test
-    void testUnisonConnectedGlissandoSamePitch() {
-        // Two notes at same staff position, no accidentals — same MIDI pitch
-        var line = makeTwoNoteLineWithGlissando(0, StaffElement.Accidental.NONE, 0, StaffElement.Accidental.NONE);
-        var note1 = line.getElement(0);
-        var note2 = line.getElement(1);
-
-        assertThat(note1.getPitch()).isEqualTo(note2.getPitch());
-    }
-
-    @Test
     void testNonUnisonConnectedGlissandoDifferentPosition() {
         // Two notes at different staff positions — different MIDI pitch
         var line = makeTwoNoteLineWithGlissando(0, StaffElement.Accidental.NONE, -2, StaffElement.Accidental.NONE);
@@ -591,5 +581,15 @@ class GlissandoRendererTest extends UnitTest {
 
         assertThat(note1.getStaffPosition()).isEqualTo(note2.getStaffPosition());
         assertThat(note1.getPitch()).isNotEqualTo(note2.getPitch());
+    }
+
+    @Test
+    void testUnisonConnectedGlissandoSamePitch() {
+        // Two notes at same staff position, no accidentals — same MIDI pitch
+        var line = makeTwoNoteLineWithGlissando(0, StaffElement.Accidental.NONE, 0, StaffElement.Accidental.NONE);
+        var note1 = line.getElement(0);
+        var note2 = line.getElement(1);
+
+        assertThat(note1.getPitch()).isEqualTo(note2.getPitch());
     }
 }

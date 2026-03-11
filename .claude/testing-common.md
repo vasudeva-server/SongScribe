@@ -18,6 +18,7 @@
 - Test classes: `*Test.java`, mirror the source package structure
 - Test methods: `test*` prefix describing condition and expected outcome (e.g., `testApplyToNoteAppliesAccidental`)
 - Use `@Nested` inner classes to group related tests — but only when there are multiple related tests to group. Do not wrap a single test method in a `@Nested` class.
+- Alphabetize top-level test methods and `@Nested` class declarations within a test class. Alphabetize test methods within each `@Nested` class as well.
 
 ## Assertions
 

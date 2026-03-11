@@ -36,21 +36,6 @@ class ForceArticulationActionTest extends UnitTest {
         );
 
     @Test
-    void testMatchesWhenArticulationPresent() {
-        var note = ElementType.CROTCHET.newInstance();
-        note.setForceArticulation(ForceArticulation.ACCENT);
-
-        assertThat(action.matchesElement(note)).isTrue();
-    }
-
-    @Test
-    void testDoesNotMatchWhenArticulationNull() {
-        var note = ElementType.CROTCHET.newInstance();
-
-        assertThat(action.matchesElement(note)).isFalse();
-    }
-
-    @Test
     void testApplyToNoteAppliesArticulation() {
         var note = ElementType.CROTCHET.newInstance();
         action.applyToElement(note, true);
@@ -63,5 +48,20 @@ class ForceArticulationActionTest extends UnitTest {
         note.setForceArticulation(ForceArticulation.ACCENT);
         action.applyToElement(note, false);
         assertThat(note.getForceArticulation()).isNull();
+    }
+
+    @Test
+    void testDoesNotMatchWhenArticulationNull() {
+        var note = ElementType.CROTCHET.newInstance();
+
+        assertThat(action.matchesElement(note)).isFalse();
+    }
+
+    @Test
+    void testMatchesWhenArticulationPresent() {
+        var note = ElementType.CROTCHET.newInstance();
+        note.setForceArticulation(ForceArticulation.ACCENT);
+
+        assertThat(action.matchesElement(note)).isTrue();
     }
 }

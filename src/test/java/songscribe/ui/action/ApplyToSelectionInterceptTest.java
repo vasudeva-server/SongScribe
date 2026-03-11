@@ -41,35 +41,20 @@ import songscribe.ui.selection.SelectionCoordinator;
 
 class ApplyToSelectionInterceptTest extends UnitTest {
 
-    // -- applyToSelectionIfActive: reflectable with active selection --
+    // -- applyToSelectionIfActive: non-reflectable --
 
     @Test
-    void testReflectableWithSelectionReturnsTrue() {
+    void testNonReflectableReturnsFalse() {
         try (var mainFrameMock = mockStatic(MainFrame.class)) {
             var env = setupMockEnv(mainFrameMock);
-            var selection = new ElementSelection(mock(Line.class), 0, 2);
-            when(env.coordinator.getSelection()).thenReturn(selection);
 
-            var action = new FermataAction();
-            action.setSelected(true);
+            var action = new UIAction("Test", null, 0, "test", "Test") {
+                @Override
+                public void actionPerformed(ActionEvent e) {
+                }
+            };
 
-            assertThat(action.applyToSelectionIfActive()).isTrue();
-            verify(env.coordinator).applyActionToSelection(action, true);
-        }
-    }
-
-    @Test
-    void testReflectableWithSelectionPassesSelectedFalse() {
-        try (var mainFrameMock = mockStatic(MainFrame.class)) {
-            var env = setupMockEnv(mainFrameMock);
-            var selection = new ElementSelection(mock(Line.class), 0, 2);
-            when(env.coordinator.getSelection()).thenReturn(selection);
-
-            var action = new FermataAction();
-            action.setSelected(false);
-
-            assertThat(action.applyToSelectionIfActive()).isTrue();
-            verify(env.coordinator).applyActionToSelection(action, false);
+            assertThat(action.applyToSelectionIfActive()).isFalse();
         }
     }
 
@@ -91,20 +76,35 @@ class ApplyToSelectionInterceptTest extends UnitTest {
         }
     }
 
-    // -- applyToSelectionIfActive: non-reflectable --
+    // -- applyToSelectionIfActive: reflectable with active selection --
 
     @Test
-    void testNonReflectableReturnsFalse() {
+    void testReflectableWithSelectionPassesSelectedFalse() {
         try (var mainFrameMock = mockStatic(MainFrame.class)) {
             var env = setupMockEnv(mainFrameMock);
+            var selection = new ElementSelection(mock(Line.class), 0, 2);
+            when(env.coordinator.getSelection()).thenReturn(selection);
 
-            var action = new UIAction("Test", null, 0, "test", "Test") {
-                @Override
-                public void actionPerformed(ActionEvent e) {
-                }
-            };
+            var action = new FermataAction();
+            action.setSelected(false);
 
-            assertThat(action.applyToSelectionIfActive()).isFalse();
+            assertThat(action.applyToSelectionIfActive()).isTrue();
+            verify(env.coordinator).applyActionToSelection(action, false);
+        }
+    }
+
+    @Test
+    void testReflectableWithSelectionReturnsTrue() {
+        try (var mainFrameMock = mockStatic(MainFrame.class)) {
+            var env = setupMockEnv(mainFrameMock);
+            var selection = new ElementSelection(mock(Line.class), 0, 2);
+            when(env.coordinator.getSelection()).thenReturn(selection);
+
+            var action = new FermataAction();
+            action.setSelected(true);
+
+            assertThat(action.applyToSelectionIfActive()).isTrue();
+            verify(env.coordinator).applyActionToSelection(action, true);
         }
     }
 

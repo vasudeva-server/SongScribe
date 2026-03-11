@@ -71,6 +71,26 @@ class BatchMutationTest extends UnitTest {
         return coordinator.getActiveSelection().getLine();
     }
 
+    // -- Inapplicable notes are skipped --
+
+    @Test
+    void testAccidentalSkipsRests() {
+        var notes = List.of(
+            ElementType.CROTCHET.newInstance(),
+            ElementType.CROTCHET_REST.newInstance(),
+            ElementType.CROTCHET.newInstance()
+        );
+        var coordinator = createCoordinator(notes, List.of(SHARP_ACTION));
+        ReflectionTestHelper.selectRange(coordinator, 0, 2);
+
+        coordinator.applyActionToSelection(SHARP_ACTION, true);
+
+        var line = getLine(coordinator);
+        assertThat(line.getElement(0).getAccidental()).isEqualTo(StaffElement.Accidental.SHARP);
+        assertThat(line.getElement(1).getAccidental()).isEqualTo(StaffElement.Accidental.NONE);
+        assertThat(line.getElement(2).getAccidental()).isEqualTo(StaffElement.Accidental.SHARP);
+    }
+
     // -- Apply attribute (in-place mutation) --
 
     @Test
@@ -94,189 +114,85 @@ class BatchMutationTest extends UnitTest {
         }
     }
 
-    @Test
-    void testRemoveFermataFromSelection() {
-        var notes = List.of(
-            ElementType.CROTCHET.newInstance(),
-            ElementType.CROTCHET.newInstance(),
-            ElementType.CROTCHET.newInstance()
-        );
-
-        for (var note : notes) {
-            note.setFermata(true);
-        }
-
-        var coordinator = createCoordinator(notes, List.of(FERMATA_ACTION));
-        ReflectionTestHelper.selectRange(coordinator, 0, 2);
-
-        coordinator.applyActionToSelection(FERMATA_ACTION, false);
-
-        var line = getLine(coordinator);
-
-        for (int i = 0; i <= 2; i++) {
-            assertThat(line.getElement(i).isFermata())
-                .as("note %d should not have fermata", i)
-                .isFalse();
-        }
-    }
-
-    // -- Inapplicable notes are skipped --
-
-    @Test
-    void testAccidentalSkipsRests() {
-        var notes = List.of(
-            ElementType.CROTCHET.newInstance(),
-            ElementType.CROTCHET_REST.newInstance(),
-            ElementType.CROTCHET.newInstance()
-        );
-        var coordinator = createCoordinator(notes, List.of(SHARP_ACTION));
-        ReflectionTestHelper.selectRange(coordinator, 0, 2);
-
-        coordinator.applyActionToSelection(SHARP_ACTION, true);
-
-        var line = getLine(coordinator);
-        assertThat(line.getElement(0).getAccidental()).isEqualTo(StaffElement.Accidental.SHARP);
-        assertThat(line.getElement(1).getAccidental()).isEqualTo(StaffElement.Accidental.NONE);
-        assertThat(line.getElement(2).getAccidental()).isEqualTo(StaffElement.Accidental.SHARP);
-    }
-
-    // -- Duration change replaces notes --
-
-    @Test
-    void testDurationChangeReplacesNotes() {
-        var notes = List.of(
-            ElementType.QUAVER.newInstance(),
-            ElementType.QUAVER.newInstance()
-        );
-        var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
-        ReflectionTestHelper.selectRange(coordinator, 0, 1);
-
-        coordinator.applyActionToSelection(QUARTER_ACTION, true);
-
-        var line = getLine(coordinator);
-        assertThat(line.getElement(0).getType()).isEqualTo(ElementType.CROTCHET);
-        assertThat(line.getElement(1).getType()).isEqualTo(ElementType.CROTCHET);
-    }
-
-    @Test
-    void testDurationChangePreservesNoteRestKind() {
-        var notes = List.of(
-            ElementType.QUAVER.newInstance(),
-            ElementType.QUAVER_REST.newInstance(),
-            ElementType.QUAVER.newInstance()
-        );
-        var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
-        ReflectionTestHelper.selectRange(coordinator, 0, 2);
-
-        coordinator.applyActionToSelection(QUARTER_ACTION, true);
-
-        var line = getLine(coordinator);
-        assertThat(line.getElement(0).getType()).isEqualTo(ElementType.CROTCHET);
-        assertThat(line.getElement(1).getType()).isEqualTo(ElementType.CROTCHET_REST);
-        assertThat(line.getElement(2).getType()).isEqualTo(ElementType.CROTCHET);
-    }
-
-    @Test
-    void testDurationChangePreservesAttributes() {
-        var note = ElementType.QUAVER.newInstance();
-        note.setFermata(true);
-        note.setAccidental(StaffElement.Accidental.SHARP);
-
-        var coordinator = createCoordinator(List.of(note), List.of(QUARTER_ACTION));
-        ReflectionTestHelper.selectNote(coordinator, 0);
-
-        coordinator.applyActionToSelection(QUARTER_ACTION, true);
-
-        var replaced = getLine(coordinator).getElement(0);
-        assertThat(replaced.getType()).isEqualTo(ElementType.CROTCHET);
-        assertThat(replaced.isFermata()).isTrue();
-        assertThat(replaced.getAccidental()).isEqualTo(StaffElement.Accidental.SHARP);
-    }
-
-    // -- Duration un-apply is a no-op --
-
-    @Test
-    void testDurationUnApplyIsNoOp() {
-        var notes = List.of(
-            ElementType.QUAVER.newInstance(),
-            ElementType.QUAVER.newInstance()
-        );
-        var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
-        ReflectionTestHelper.selectRange(coordinator, 0, 1);
-
-        coordinator.applyActionToSelection(QUARTER_ACTION, false);
-
-        var line = getLine(coordinator);
-        assertThat(line.getElement(0).getType()).isEqualTo(ElementType.QUAVER);
-        assertThat(line.getElement(1).getType()).isEqualTo(ElementType.QUAVER);
-    }
-
-    // -- Composition is marked modified --
-
-    @Test
-    void testCompositionMarkedModified() {
-        var notes = List.of(ElementType.CROTCHET.newInstance());
-        var coordinator = createCoordinator(notes, List.of(FERMATA_ACTION));
-        ReflectionTestHelper.selectNote(coordinator, 0);
-
-        coordinator.applyActionToSelection(FERMATA_ACTION, true);
-
-        var composition = getLine(coordinator).getComposition();
-        verify(composition).setModified(true);
-    }
-
-    // -- Selection remains active after mutation --
-
-    @Test
-    void testSelectionRemainsActiveAfterMutation() {
-        var notes = List.of(
-            ElementType.CROTCHET.newInstance(),
-            ElementType.CROTCHET.newInstance()
-        );
-        var coordinator = createCoordinator(notes, List.of(FERMATA_ACTION));
-        ReflectionTestHelper.selectRange(coordinator, 0, 1);
-
-        coordinator.applyActionToSelection(FERMATA_ACTION, true);
-
-        assertThat(coordinator.getSelection()).isNotNull();
-        assertThat(coordinator.getSelection().begin()).isEqualTo(0);
-        assertThat(coordinator.getSelection().end()).isEqualTo(1);
-    }
-
-    // -- No selection is a no-op --
-
-    @Test
-    void testNoSelectionIsNoOp() {
-        var notes = List.of(ElementType.CROTCHET.newInstance());
-        var coordinator = createCoordinator(notes, List.of(FERMATA_ACTION));
-
-        // No selection set -- should not throw
-        coordinator.applyActionToSelection(FERMATA_ACTION, true);
-
-        assertThat(getLine(coordinator).getElement(0).isFermata()).isFalse();
-    }
-
-    // -- Duration change skips barlines --
-
-    @Test
-    void testDurationChangeSkipsBarlines() {
-        var notes = List.of(
-            ElementType.QUAVER.newInstance(),
-            ElementType.SINGLE_BARLINE.newInstance(),
-            ElementType.QUAVER.newInstance()
-        );
-        var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
-        ReflectionTestHelper.selectRange(coordinator, 0, 2);
-
-        coordinator.applyActionToSelection(QUARTER_ACTION, true);
-
-        var line = getLine(coordinator);
-        assertThat(line.getElement(0).getType()).isEqualTo(ElementType.CROTCHET);
-        assertThat(line.getElement(1).getType()).isEqualTo(ElementType.SINGLE_BARLINE);
-        assertThat(line.getElement(2).getType()).isEqualTo(ElementType.CROTCHET);
-    }
-
     // -- Beam interval validation --
+
+    @Test
+    void testBeamDissolvedWhenAllNonBeamable() {
+        var notes = List.of(
+            ElementType.QUAVER.newInstance(),
+            ElementType.QUAVER.newInstance(),
+            ElementType.QUAVER.newInstance()
+        );
+        var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
+        var line = getLine(coordinator);
+        line.getBeamings().addInterval(new BeamInterval(0, 2));
+
+        ReflectionTestHelper.selectRange(coordinator, 0, 2);
+        coordinator.applyActionToSelection(QUARTER_ACTION, true);
+
+        assertThat(line.getBeamings().isEmpty()).isTrue();
+    }
+
+    @Test
+    void testBeamDissolvedWhenSubgroupTooSmall() {
+        var notes = List.of(
+            ElementType.QUAVER.newInstance(),
+            ElementType.QUAVER.newInstance()
+        );
+        var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
+        var line = getLine(coordinator);
+        line.getBeamings().addInterval(new BeamInterval(0, 1));
+
+        ReflectionTestHelper.selectNote(coordinator, 0);
+        coordinator.applyActionToSelection(QUARTER_ACTION, true);
+
+        assertThat(line.getBeamings().findInterval(0)).isNull();
+        assertThat(line.getBeamings().findInterval(1)).isNull();
+    }
+
+    @Test
+    void testBeamShrunkFromEnd() {
+        var notes = List.of(
+            ElementType.QUAVER.newInstance(),
+            ElementType.QUAVER.newInstance(),
+            ElementType.QUAVER.newInstance(),
+            ElementType.QUAVER.newInstance()
+        );
+        var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
+        var line = getLine(coordinator);
+        line.getBeamings().addInterval(new BeamInterval(0, 3));
+
+        ReflectionTestHelper.selectNote(coordinator, 3);
+        coordinator.applyActionToSelection(QUARTER_ACTION, true);
+
+        var beam = line.getBeamings().findInterval(0);
+        assertThat(beam).isNotNull();
+        assertThat(beam.start).isEqualTo(0);
+        assertThat(beam.end).isEqualTo(2);
+        assertThat(line.getBeamings().findInterval(3)).isNull();
+    }
+
+    @Test
+    void testBeamShrunkFromStart() {
+        var notes = List.of(
+            ElementType.QUAVER.newInstance(),
+            ElementType.QUAVER.newInstance(),
+            ElementType.QUAVER.newInstance(),
+            ElementType.QUAVER.newInstance()
+        );
+        var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
+        var line = getLine(coordinator);
+        line.getBeamings().addInterval(new BeamInterval(0, 3));
+
+        ReflectionTestHelper.selectNote(coordinator, 0);
+        coordinator.applyActionToSelection(QUARTER_ACTION, true);
+
+        var beam = line.getBeamings().findInterval(1);
+        assertThat(beam).isNotNull();
+        assertThat(beam.start).isEqualTo(1);
+        assertThat(beam.end).isEqualTo(3);
+        assertThat(line.getBeamings().findInterval(0)).isNull();
+    }
 
     @Test
     void testBeamSplitAroundNonBeamable() {
@@ -309,82 +225,166 @@ class BatchMutationTest extends UnitTest {
         assertThat(line.getBeamings().findInterval(2)).isNull();
     }
 
-    @Test
-    void testBeamDissolvedWhenSubgroupTooSmall() {
-        var notes = List.of(
-            ElementType.QUAVER.newInstance(),
-            ElementType.QUAVER.newInstance()
-        );
-        var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
-        var line = getLine(coordinator);
-        line.getBeamings().addInterval(new BeamInterval(0, 1));
+    // -- Composition is marked modified --
 
+    @Test
+    void testCompositionMarkedModified() {
+        var notes = List.of(ElementType.CROTCHET.newInstance());
+        var coordinator = createCoordinator(notes, List.of(FERMATA_ACTION));
         ReflectionTestHelper.selectNote(coordinator, 0);
+
+        coordinator.applyActionToSelection(FERMATA_ACTION, true);
+
+        var composition = getLine(coordinator).getComposition();
+        verify(composition).setModified(true);
+    }
+
+    // -- Duration change replaces notes --
+
+    @Test
+    void testDurationChangePreservesAttributes() {
+        var note = ElementType.QUAVER.newInstance();
+        note.setFermata(true);
+        note.setAccidental(StaffElement.Accidental.SHARP);
+
+        var coordinator = createCoordinator(List.of(note), List.of(QUARTER_ACTION));
+        ReflectionTestHelper.selectNote(coordinator, 0);
+
         coordinator.applyActionToSelection(QUARTER_ACTION, true);
 
-        assertThat(line.getBeamings().findInterval(0)).isNull();
-        assertThat(line.getBeamings().findInterval(1)).isNull();
+        var replaced = getLine(coordinator).getElement(0);
+        assertThat(replaced.getType()).isEqualTo(ElementType.CROTCHET);
+        assertThat(replaced.isFermata()).isTrue();
+        assertThat(replaced.getAccidental()).isEqualTo(StaffElement.Accidental.SHARP);
     }
 
     @Test
-    void testBeamDissolvedWhenAllNonBeamable() {
+    void testDurationChangePreservesNoteRestKind() {
         var notes = List.of(
             ElementType.QUAVER.newInstance(),
-            ElementType.QUAVER.newInstance(),
+            ElementType.QUAVER_REST.newInstance(),
             ElementType.QUAVER.newInstance()
         );
         var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
-        var line = getLine(coordinator);
-        line.getBeamings().addInterval(new BeamInterval(0, 2));
-
         ReflectionTestHelper.selectRange(coordinator, 0, 2);
+
         coordinator.applyActionToSelection(QUARTER_ACTION, true);
 
-        assertThat(line.getBeamings().isEmpty()).isTrue();
+        var line = getLine(coordinator);
+        assertThat(line.getElement(0).getType()).isEqualTo(ElementType.CROTCHET);
+        assertThat(line.getElement(1).getType()).isEqualTo(ElementType.CROTCHET_REST);
+        assertThat(line.getElement(2).getType()).isEqualTo(ElementType.CROTCHET);
     }
 
     @Test
-    void testBeamShrunkFromStart() {
+    void testDurationChangeReplacesNotes() {
         var notes = List.of(
-            ElementType.QUAVER.newInstance(),
-            ElementType.QUAVER.newInstance(),
             ElementType.QUAVER.newInstance(),
             ElementType.QUAVER.newInstance()
         );
         var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
-        var line = getLine(coordinator);
-        line.getBeamings().addInterval(new BeamInterval(0, 3));
+        ReflectionTestHelper.selectRange(coordinator, 0, 1);
 
-        ReflectionTestHelper.selectNote(coordinator, 0);
         coordinator.applyActionToSelection(QUARTER_ACTION, true);
 
-        var beam = line.getBeamings().findInterval(1);
-        assertThat(beam).isNotNull();
-        assertThat(beam.start).isEqualTo(1);
-        assertThat(beam.end).isEqualTo(3);
-        assertThat(line.getBeamings().findInterval(0)).isNull();
+        var line = getLine(coordinator);
+        assertThat(line.getElement(0).getType()).isEqualTo(ElementType.CROTCHET);
+        assertThat(line.getElement(1).getType()).isEqualTo(ElementType.CROTCHET);
     }
 
+    // -- Duration change skips barlines --
+
     @Test
-    void testBeamShrunkFromEnd() {
+    void testDurationChangeSkipsBarlines() {
         var notes = List.of(
             ElementType.QUAVER.newInstance(),
-            ElementType.QUAVER.newInstance(),
+            ElementType.SINGLE_BARLINE.newInstance(),
+            ElementType.QUAVER.newInstance()
+        );
+        var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
+        ReflectionTestHelper.selectRange(coordinator, 0, 2);
+
+        coordinator.applyActionToSelection(QUARTER_ACTION, true);
+
+        var line = getLine(coordinator);
+        assertThat(line.getElement(0).getType()).isEqualTo(ElementType.CROTCHET);
+        assertThat(line.getElement(1).getType()).isEqualTo(ElementType.SINGLE_BARLINE);
+        assertThat(line.getElement(2).getType()).isEqualTo(ElementType.CROTCHET);
+    }
+
+    // -- Duration un-apply is a no-op --
+
+    @Test
+    void testDurationUnApplyIsNoOp() {
+        var notes = List.of(
             ElementType.QUAVER.newInstance(),
             ElementType.QUAVER.newInstance()
         );
         var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
+        ReflectionTestHelper.selectRange(coordinator, 0, 1);
+
+        coordinator.applyActionToSelection(QUARTER_ACTION, false);
+
         var line = getLine(coordinator);
-        line.getBeamings().addInterval(new BeamInterval(0, 3));
+        assertThat(line.getElement(0).getType()).isEqualTo(ElementType.QUAVER);
+        assertThat(line.getElement(1).getType()).isEqualTo(ElementType.QUAVER);
+    }
 
-        ReflectionTestHelper.selectNote(coordinator, 3);
-        coordinator.applyActionToSelection(QUARTER_ACTION, true);
+    // -- No selection is a no-op --
 
-        var beam = line.getBeamings().findInterval(0);
-        assertThat(beam).isNotNull();
-        assertThat(beam.start).isEqualTo(0);
-        assertThat(beam.end).isEqualTo(2);
-        assertThat(line.getBeamings().findInterval(3)).isNull();
+    @Test
+    void testNoSelectionIsNoOp() {
+        var notes = List.of(ElementType.CROTCHET.newInstance());
+        var coordinator = createCoordinator(notes, List.of(FERMATA_ACTION));
+
+        // No selection set -- should not throw
+        coordinator.applyActionToSelection(FERMATA_ACTION, true);
+
+        assertThat(getLine(coordinator).getElement(0).isFermata()).isFalse();
+    }
+
+    @Test
+    void testRemoveFermataFromSelection() {
+        var notes = List.of(
+            ElementType.CROTCHET.newInstance(),
+            ElementType.CROTCHET.newInstance(),
+            ElementType.CROTCHET.newInstance()
+        );
+
+        for (var note : notes) {
+            note.setFermata(true);
+        }
+
+        var coordinator = createCoordinator(notes, List.of(FERMATA_ACTION));
+        ReflectionTestHelper.selectRange(coordinator, 0, 2);
+
+        coordinator.applyActionToSelection(FERMATA_ACTION, false);
+
+        var line = getLine(coordinator);
+
+        for (int i = 0; i <= 2; i++) {
+            assertThat(line.getElement(i).isFermata())
+                .as("note %d should not have fermata", i)
+                .isFalse();
+        }
+    }
+
+    // -- Selection remains active after mutation --
+
+    @Test
+    void testSelectionRemainsActiveAfterMutation() {
+        var notes = List.of(
+            ElementType.CROTCHET.newInstance(),
+            ElementType.CROTCHET.newInstance()
+        );
+        var coordinator = createCoordinator(notes, List.of(FERMATA_ACTION));
+        ReflectionTestHelper.selectRange(coordinator, 0, 1);
+
+        coordinator.applyActionToSelection(FERMATA_ACTION, true);
+
+        assertThat(coordinator.getSelection()).isNotNull();
+        assertThat(coordinator.getSelection().begin()).isEqualTo(0);
+        assertThat(coordinator.getSelection().end()).isEqualTo(1);
     }
 
     // -- Tie interval validation --

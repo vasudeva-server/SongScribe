@@ -35,19 +35,6 @@ class DurationArticulationActionTest extends UnitTest {
     );
 
     @Test
-    void testMatchesWhenArticulationMatches() {
-        var note = ElementType.CROTCHET.newInstance();
-        note.setDurationArticulation(DurationArticulation.STACCATO);
-        assertThat(action.matchesElement(note)).isTrue();
-    }
-
-    @Test
-    void testDoesNotMatchWhenArticulationNull() {
-        var note = ElementType.CROTCHET.newInstance();
-        assertThat(action.matchesElement(note)).isFalse();
-    }
-
-    @Test
     void testApplyToNoteAppliesArticulation() {
         var note = ElementType.CROTCHET.newInstance();
         action.applyToElement(note, true);
@@ -60,5 +47,18 @@ class DurationArticulationActionTest extends UnitTest {
         note.setDurationArticulation(DurationArticulation.STACCATO);
         action.applyToElement(note, false);
         assertThat(note.getDurationArticulation()).isNull();
+    }
+
+    @Test
+    void testDoesNotMatchWhenArticulationNull() {
+        var note = ElementType.CROTCHET.newInstance();
+        assertThat(action.matchesElement(note)).isFalse();
+    }
+
+    @Test
+    void testMatchesWhenArticulationMatches() {
+        var note = ElementType.CROTCHET.newInstance();
+        note.setDurationArticulation(DurationArticulation.STACCATO);
+        assertThat(action.matchesElement(note)).isTrue();
     }
 }

@@ -39,17 +39,17 @@ class NoteOnlyActionAppliesToTest extends UnitTest {
         assertThat(action.appliesTo(note)).isTrue();
     }
 
-    // A8: appliesTo returns false for rests
-    @Test
-    void testDoesNotApplyToRest() {
-        var note = ElementType.CROTCHET_REST.newInstance();
-        assertThat(action.appliesTo(note)).isFalse();
-    }
-
     // A9: appliesTo returns false for barlines
     @Test
     void testDoesNotApplyToBarline() {
         var note = ElementType.SINGLE_BARLINE.newInstance();
+        assertThat(action.appliesTo(note)).isFalse();
+    }
+
+    // A8: appliesTo returns false for rests
+    @Test
+    void testDoesNotApplyToRest() {
+        var note = ElementType.CROTCHET_REST.newInstance();
         assertThat(action.appliesTo(note)).isFalse();
     }
 }

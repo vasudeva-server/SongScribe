@@ -35,6 +35,38 @@ import songscribe.ui.layout2.ScaleContext;
 
 class ElementTypeTest extends UnitTest {
 
+    @Test
+    void testAllVisualTypesHaveNonZeroBounds() {
+        for (var type : ElementType.values()) {
+            if (type == ElementType.GLISSANDO || type == ElementType.PASTE) {
+                continue;
+            }
+
+            // IO aliases have the same bounds as their canonical type
+            assertThat(type.getElementWidthSs())
+                .as("widthSs of %s", type)
+                .isGreaterThan(0);
+            assertThat(type.getElementHeightSs(true))
+                .as("heightUpSs of %s", type)
+                .isGreaterThan(0);
+            assertThat(type.getElementHeightSs(false))
+                .as("heightDownSs of %s", type)
+                .isGreaterThan(0);
+        }
+    }
+
+    @Test
+    void testCenterXIsHalfWidth() {
+        for (var type : new ElementType[]{
+            ElementType.CROTCHET, ElementType.SEMIBREVE, ElementType.QUAVER_REST,
+            ElementType.SINGLE_BARLINE, ElementType.REPEAT_LEFT, ElementType.BREATH_MARK
+        }) {
+            assertThat(type.getCenterXSs())
+                .as("CenterX of %s", type)
+                .isCloseTo(type.getElementWidthSs() / 2, within(1e-9));
+        }
+    }
+
     // T7: getFlagGlyph(upper) returns the correct glyph for each flagged type × direction
     @Test
     void testGetFlagGlyphReturnsCorrectGlyphForFlaggedTypes() {
@@ -67,13 +99,30 @@ class ElementTypeTest extends UnitTest {
     }
 
     @Test
-    void testToRestReturnsRestEquivalentForNoteTypes() {
-        assertThat(ElementType.SEMIBREVE.toRest()).isEqualTo(ElementType.SEMIBREVE_REST);
-        assertThat(ElementType.MINIM.toRest()).isEqualTo(ElementType.MINIM_REST);
-        assertThat(ElementType.CROTCHET.toRest()).isEqualTo(ElementType.CROTCHET_REST);
-        assertThat(ElementType.QUAVER.toRest()).isEqualTo(ElementType.QUAVER_REST);
-        assertThat(ElementType.SEMIQUAVER.toRest()).isEqualTo(ElementType.SEMIQUAVER_REST);
-        assertThat(ElementType.DEMI_SEMIQUAVER.toRest()).isEqualTo(ElementType.DEMI_SEMIQUAVER_REST);
+    void testIsDurationExcludesGraceNotes() {
+        // Grace notes are not durations — they are tied to the following note
+        assertThat(ElementType.GRACE_QUAVER.isDuration()).isFalse();
+    }
+
+    @Test
+    void testIsDurationExcludesNonDurations() {
+        assertThat(ElementType.SINGLE_BARLINE.isDuration()).isFalse();
+        assertThat(ElementType.GLISSANDO.isDuration()).isFalse();
+        assertThat(ElementType.BREATH_MARK.isDuration()).isFalse();
+    }
+
+    @Test
+    void testIsDurationIncludesNotesAndRests() {
+        assertThat(ElementType.CROTCHET.isDuration()).isTrue();
+        assertThat(ElementType.QUAVER.isDuration()).isTrue();
+        assertThat(ElementType.CROTCHET_REST.isDuration()).isTrue();
+        assertThat(ElementType.QUAVER_REST.isDuration()).isTrue();
+    }
+
+    @Test
+    void testToNoteIsIdempotentForNoteTypes() {
+        assertThat(ElementType.CROTCHET.toNote()).isEqualTo(ElementType.CROTCHET);
+        assertThat(ElementType.QUAVER.toNote()).isEqualTo(ElementType.QUAVER);
     }
 
     @Test
@@ -84,16 +133,6 @@ class ElementTypeTest extends UnitTest {
         assertThat(ElementType.QUAVER_REST.toNote()).isEqualTo(ElementType.QUAVER);
         assertThat(ElementType.SEMIQUAVER_REST.toNote()).isEqualTo(ElementType.SEMIQUAVER);
         assertThat(ElementType.DEMI_SEMIQUAVER_REST.toNote()).isEqualTo(ElementType.DEMI_SEMIQUAVER);
-    }
-
-    @Test
-    void testToRestReturnsSelfForNonPairedTypes() {
-        assertThat(ElementType.GRACE_QUAVER.toRest()).isEqualTo(ElementType.GRACE_QUAVER);
-        assertThat(ElementType.GLISSANDO.toRest()).isEqualTo(ElementType.GLISSANDO);
-        assertThat(ElementType.SINGLE_BARLINE.toRest()).isEqualTo(ElementType.SINGLE_BARLINE);
-        assertThat(ElementType.DOUBLE_BARLINE.toRest()).isEqualTo(ElementType.DOUBLE_BARLINE);
-        assertThat(ElementType.REPEAT_LEFT.toRest()).isEqualTo(ElementType.REPEAT_LEFT);
-        assertThat(ElementType.BREATH_MARK.toRest()).isEqualTo(ElementType.BREATH_MARK);
     }
 
     @Test
@@ -113,145 +152,58 @@ class ElementTypeTest extends UnitTest {
     }
 
     @Test
-    void testToNoteIsIdempotentForNoteTypes() {
-        assertThat(ElementType.CROTCHET.toNote()).isEqualTo(ElementType.CROTCHET);
-        assertThat(ElementType.QUAVER.toNote()).isEqualTo(ElementType.QUAVER);
+    void testToRestReturnsRestEquivalentForNoteTypes() {
+        assertThat(ElementType.SEMIBREVE.toRest()).isEqualTo(ElementType.SEMIBREVE_REST);
+        assertThat(ElementType.MINIM.toRest()).isEqualTo(ElementType.MINIM_REST);
+        assertThat(ElementType.CROTCHET.toRest()).isEqualTo(ElementType.CROTCHET_REST);
+        assertThat(ElementType.QUAVER.toRest()).isEqualTo(ElementType.QUAVER_REST);
+        assertThat(ElementType.SEMIQUAVER.toRest()).isEqualTo(ElementType.SEMIQUAVER_REST);
+        assertThat(ElementType.DEMI_SEMIQUAVER.toRest()).isEqualTo(ElementType.DEMI_SEMIQUAVER_REST);
     }
 
     @Test
-    void testIsDurationExcludesGraceNotes() {
-        // Grace notes are not durations — they are tied to the following note
-        assertThat(ElementType.GRACE_QUAVER.isDuration()).isFalse();
-    }
-
-    @Test
-    void testIsDurationIncludesNotesAndRests() {
-        assertThat(ElementType.CROTCHET.isDuration()).isTrue();
-        assertThat(ElementType.QUAVER.isDuration()).isTrue();
-        assertThat(ElementType.CROTCHET_REST.isDuration()).isTrue();
-        assertThat(ElementType.QUAVER_REST.isDuration()).isTrue();
-    }
-
-    @Test
-    void testIsDurationExcludesNonDurations() {
-        assertThat(ElementType.SINGLE_BARLINE.isDuration()).isFalse();
-        assertThat(ElementType.GLISSANDO.isDuration()).isFalse();
-        assertThat(ElementType.BREATH_MARK.isDuration()).isFalse();
+    void testToRestReturnsSelfForNonPairedTypes() {
+        assertThat(ElementType.GRACE_QUAVER.toRest()).isEqualTo(ElementType.GRACE_QUAVER);
+        assertThat(ElementType.GLISSANDO.toRest()).isEqualTo(ElementType.GLISSANDO);
+        assertThat(ElementType.SINGLE_BARLINE.toRest()).isEqualTo(ElementType.SINGLE_BARLINE);
+        assertThat(ElementType.DOUBLE_BARLINE.toRest()).isEqualTo(ElementType.DOUBLE_BARLINE);
+        assertThat(ElementType.REPEAT_LEFT.toRest()).isEqualTo(ElementType.REPEAT_LEFT);
+        assertThat(ElementType.BREATH_MARK.toRest()).isEqualTo(ElementType.BREATH_MARK);
     }
 
 
     // --- Element bounds tests (Step 10) ---
 
     @Nested
-    class ElementWidthTests {
+    class ElementContentDelegationTests {
 
         @Test
-        void testStemmedNoteWidthIncludesFlagExtent() {
-            // Flagged notes should be wider than unflagged due to flag extent
-            assertThat(ElementType.QUAVER.getElementWidthSs())
-                .isGreaterThan(ElementType.CROTCHET.getElementWidthSs());
-
-            // 16th flag extends further than 8th
-            assertThat(ElementType.SEMIQUAVER.getElementWidthSs())
-                .isGreaterThanOrEqualTo(ElementType.QUAVER.getElementWidthSs());
+        void testElementGetContentCenterXReturnsPx() {
+            var element = ElementType.QUAVER.newInstance();
+            var sc = ScaleContext.getInstance();
+            double expectedPx = sc.toPixels(ElementType.QUAVER.getCenterXSs());
+            assertThat(element.getContentCenterX()).isCloseTo(expectedPx, within(1e-9));
         }
 
         @Test
-        void testStemmedNoteNoteheadWidthExcludesFlag() {
-            // Notehead width should be the same for all stemmed notes (same notehead glyph)
-            assertThat(ElementType.QUAVER.getNoteheadWidthSs())
-                .isEqualTo(ElementType.CROTCHET.getNoteheadWidthSs());
-            assertThat(ElementType.SEMIQUAVER.getNoteheadWidthSs())
-                .isEqualTo(ElementType.CROTCHET.getNoteheadWidthSs());
+        void testElementGetContentHeightReturnsPx() {
+            var element = ElementType.CROTCHET.newInstance();
+            var sc = ScaleContext.getInstance();
+            double expectedPx = sc.toPixels(ElementType.CROTCHET.getElementHeightSs(element.isUpper()));
+            assertThat(element.getContentHeight()).isCloseTo(expectedPx, within(1e-9));
         }
 
         @Test
-        void testSemibreveWidthFromBBox() {
-            // Semibreve has no stem or flag — width comes from bbox
-            assertThat(ElementType.SEMIBREVE.getElementWidthSs()).isGreaterThan(0);
-            // Semibreve notehead width equals element width (no flag)
-            assertThat(ElementType.SEMIBREVE.getNoteheadWidthSs())
-                .isEqualTo(ElementType.SEMIBREVE.getElementWidthSs());
-        }
-
-        @Test
-        void testRestWidthsFromBBox() {
-            for (var type : new ElementType[]{
-                ElementType.SEMIBREVE_REST, ElementType.MINIM_REST, ElementType.CROTCHET_REST,
-                ElementType.QUAVER_REST, ElementType.SEMIQUAVER_REST, ElementType.DEMI_SEMIQUAVER_REST
-            }) {
-                assertThat(type.getElementWidthSs())
-                    .as("Width of %s", type)
-                    .isGreaterThan(0);
-            }
-        }
-
-        @Test
-        void testGraceNoteWidthIsScaled() {
-            // Grace note width should be smaller than the equivalent regular note
-            assertThat(ElementType.GRACE_QUAVER.getElementWidthSs())
-                .isLessThan(ElementType.QUAVER.getElementWidthSs());
-        }
-
-        @Test
-        void testSingleBarlineWidth() {
-            var defaults = SMuFLMetadata.getInstance().getEngravingDefaults();
-            assertThat(ElementType.SINGLE_BARLINE.getElementWidthSs())
-                .isCloseTo(defaults.thinBarlineThickness(), within(1e-9));
-        }
-
-        @Test
-        void testDoubleBarlineWidth() {
-            var defaults = SMuFLMetadata.getInstance().getEngravingDefaults();
-            double expected = 2 * defaults.thinBarlineThickness() + defaults.barlineSeparation();
-            assertThat(ElementType.DOUBLE_BARLINE.getElementWidthSs())
-                .isCloseTo(expected, within(1e-9));
-        }
-
-        @Test
-        void testFinalDoubleBarlineWidth() {
-            var defaults = SMuFLMetadata.getInstance().getEngravingDefaults();
-            double expected = defaults.thinBarlineThickness() + defaults.thickBarlineThickness()
-                + defaults.barlineSeparation();
-            assertThat(ElementType.FINAL_DOUBLE_BARLINE.getElementWidthSs())
-                .isCloseTo(expected, within(1e-9));
-        }
-
-        @Test
-        void testRepeatLeftRightWidth() {
-            // Repeat left and right have the same width
-            assertThat(ElementType.REPEAT_LEFT.getElementWidthSs())
-                .isEqualTo(ElementType.REPEAT_RIGHT.getElementWidthSs());
-
-            // Repeat left/right is double the single repeat width
-            assertThat(ElementType.REPEAT_LEFT_RIGHT.getElementWidthSs())
-                .isCloseTo(2 * ElementType.REPEAT_LEFT.getElementWidthSs(), within(1e-9));
-        }
-
-        @Test
-        void testBreathMarkWidth() {
-            assertThat(ElementType.BREATH_MARK.getElementWidthSs()).isGreaterThan(0);
+        void testElementGetContentWidthReturnsPx() {
+            var element = ElementType.CROTCHET.newInstance();
+            var sc = ScaleContext.getInstance();
+            double expectedPx = sc.toPixels(ElementType.CROTCHET.getElementWidthSs());
+            assertThat(element.getContentWidth()).isCloseTo(expectedPx, within(1e-9));
         }
     }
 
     @Nested
     class ElementHeightTests {
-
-        @Test
-        void testStemmedNoteHeightIsDirectionDependent() {
-            // Up and down heights differ for stemmed notes
-            var type = ElementType.CROTCHET;
-            assertThat(type.getElementHeightSs(true)).isGreaterThan(0);
-            assertThat(type.getElementHeightSs(false)).isGreaterThan(0);
-            // Both should include stem length, so they should be similar but not necessarily equal
-            // (stem anchor positions differ between up and down)
-        }
-
-        @Test
-        void testSemibreveHeightIsSameBothDirections() {
-            assertThat(ElementType.SEMIBREVE.getElementHeightSs(true))
-                .isEqualTo(ElementType.SEMIBREVE.getElementHeightSs(false));
-        }
 
         @Test
         void testBarlineHeightEqualsStaffHeight() {
@@ -276,32 +228,118 @@ class ElementTypeTest extends UnitTest {
             assertThat(ElementType.REPEAT_LEFT_RIGHT.getElementHeightSs(true))
                 .isCloseTo(staffHeight, within(1e-9));
         }
+
+        @Test
+        void testSemibreveHeightIsSameBothDirections() {
+            assertThat(ElementType.SEMIBREVE.getElementHeightSs(true))
+                .isEqualTo(ElementType.SEMIBREVE.getElementHeightSs(false));
+        }
+
+        @Test
+        void testStemmedNoteHeightIsDirectionDependent() {
+            // Up and down heights differ for stemmed notes
+            var type = ElementType.CROTCHET;
+            assertThat(type.getElementHeightSs(true)).isGreaterThan(0);
+            assertThat(type.getElementHeightSs(false)).isGreaterThan(0);
+            // Both should include stem length, so they should be similar but not necessarily equal
+            // (stem anchor positions differ between up and down)
+        }
     }
 
     @Nested
-    class CenterXTests {
+    class ElementWidthTests {
 
         @Test
-        void testCenterXIsHalfWidth() {
+        void testBreathMarkWidth() {
+            assertThat(ElementType.BREATH_MARK.getElementWidthSs()).isGreaterThan(0);
+        }
+
+        @Test
+        void testDoubleBarlineWidth() {
+            var defaults = SMuFLMetadata.getInstance().getEngravingDefaults();
+            double expected = 2 * defaults.thinBarlineThickness() + defaults.barlineSeparation();
+            assertThat(ElementType.DOUBLE_BARLINE.getElementWidthSs())
+                .isCloseTo(expected, within(1e-9));
+        }
+
+        @Test
+        void testFinalDoubleBarlineWidth() {
+            var defaults = SMuFLMetadata.getInstance().getEngravingDefaults();
+            double expected = defaults.thinBarlineThickness() + defaults.thickBarlineThickness()
+                + defaults.barlineSeparation();
+            assertThat(ElementType.FINAL_DOUBLE_BARLINE.getElementWidthSs())
+                .isCloseTo(expected, within(1e-9));
+        }
+
+        @Test
+        void testGraceNoteWidthIsScaled() {
+            // Grace note width should be smaller than the equivalent regular note
+            assertThat(ElementType.GRACE_QUAVER.getElementWidthSs())
+                .isLessThan(ElementType.QUAVER.getElementWidthSs());
+        }
+
+        @Test
+        void testRepeatLeftRightWidth() {
+            // Repeat left and right have the same width
+            assertThat(ElementType.REPEAT_LEFT.getElementWidthSs())
+                .isEqualTo(ElementType.REPEAT_RIGHT.getElementWidthSs());
+
+            // Repeat left/right is double the single repeat width
+            assertThat(ElementType.REPEAT_LEFT_RIGHT.getElementWidthSs())
+                .isCloseTo(2 * ElementType.REPEAT_LEFT.getElementWidthSs(), within(1e-9));
+        }
+
+        @Test
+        void testRestWidthsFromBBox() {
             for (var type : new ElementType[]{
-                ElementType.CROTCHET, ElementType.SEMIBREVE, ElementType.QUAVER_REST,
-                ElementType.SINGLE_BARLINE, ElementType.REPEAT_LEFT, ElementType.BREATH_MARK
+                ElementType.SEMIBREVE_REST, ElementType.MINIM_REST, ElementType.CROTCHET_REST,
+                ElementType.QUAVER_REST, ElementType.SEMIQUAVER_REST, ElementType.DEMI_SEMIQUAVER_REST
             }) {
-                assertThat(type.getCenterXSs())
-                    .as("CenterX of %s", type)
-                    .isCloseTo(type.getElementWidthSs() / 2, within(1e-9));
+                assertThat(type.getElementWidthSs())
+                    .as("Width of %s", type)
+                    .isGreaterThan(0);
             }
+        }
+
+        @Test
+        void testSemibreveWidthFromBBox() {
+            // Semibreve has no stem or flag — width comes from bbox
+            assertThat(ElementType.SEMIBREVE.getElementWidthSs()).isGreaterThan(0);
+            // Semibreve notehead width equals element width (no flag)
+            assertThat(ElementType.SEMIBREVE.getNoteheadWidthSs())
+                .isEqualTo(ElementType.SEMIBREVE.getElementWidthSs());
+        }
+
+        @Test
+        void testSingleBarlineWidth() {
+            var defaults = SMuFLMetadata.getInstance().getEngravingDefaults();
+            assertThat(ElementType.SINGLE_BARLINE.getElementWidthSs())
+                .isCloseTo(defaults.thinBarlineThickness(), within(1e-9));
+        }
+
+        @Test
+        void testStemmedNoteNoteheadWidthExcludesFlag() {
+            // Notehead width should be the same for all stemmed notes (same notehead glyph)
+            assertThat(ElementType.QUAVER.getNoteheadWidthSs())
+                .isEqualTo(ElementType.CROTCHET.getNoteheadWidthSs());
+            assertThat(ElementType.SEMIQUAVER.getNoteheadWidthSs())
+                .isEqualTo(ElementType.CROTCHET.getNoteheadWidthSs());
+        }
+
+        @Test
+        void testStemmedNoteWidthIncludesFlagExtent() {
+            // Flagged notes should be wider than unflagged due to flag extent
+            assertThat(ElementType.QUAVER.getElementWidthSs())
+                .isGreaterThan(ElementType.CROTCHET.getElementWidthSs());
+
+            // 16th flag extends further than 8th
+            assertThat(ElementType.SEMIQUAVER.getElementWidthSs())
+                .isGreaterThanOrEqualTo(ElementType.QUAVER.getElementWidthSs());
         }
     }
 
     @Nested
     class UnsupportedTypesTests {
-
-        @Test
-        void testGlissandoThrowsOnWidth() {
-            assertThatThrownBy(() -> ElementType.GLISSANDO.getElementWidthSs())
-                .isInstanceOf(UnsupportedOperationException.class);
-        }
 
         @Test
         void testGlissandoThrowsOnHeight() {
@@ -310,8 +348,8 @@ class ElementTypeTest extends UnitTest {
         }
 
         @Test
-        void testPasteThrowsOnWidth() {
-            assertThatThrownBy(() -> ElementType.PASTE.getElementWidthSs())
+        void testGlissandoThrowsOnWidth() {
+            assertThatThrownBy(() -> ElementType.GLISSANDO.getElementWidthSs())
                 .isInstanceOf(UnsupportedOperationException.class);
         }
 
@@ -320,57 +358,11 @@ class ElementTypeTest extends UnitTest {
             assertThatThrownBy(() -> ElementType.PASTE.getElementHeightSs(false))
                 .isInstanceOf(UnsupportedOperationException.class);
         }
-    }
-
-    @Nested
-    class ElementContentDelegationTests {
 
         @Test
-        void testElementGetContentWidthReturnsPx() {
-            var element = ElementType.CROTCHET.newInstance();
-            var sc = ScaleContext.getInstance();
-            double expectedPx = sc.toPixels(ElementType.CROTCHET.getElementWidthSs());
-            assertThat(element.getContentWidth()).isCloseTo(expectedPx, within(1e-9));
-        }
-
-        @Test
-        void testElementGetContentHeightReturnsPx() {
-            var element = ElementType.CROTCHET.newInstance();
-            var sc = ScaleContext.getInstance();
-            double expectedPx = sc.toPixels(ElementType.CROTCHET.getElementHeightSs(element.isUpper()));
-            assertThat(element.getContentHeight()).isCloseTo(expectedPx, within(1e-9));
-        }
-
-        @Test
-        void testElementGetContentCenterXReturnsPx() {
-            var element = ElementType.QUAVER.newInstance();
-            var sc = ScaleContext.getInstance();
-            double expectedPx = sc.toPixels(ElementType.QUAVER.getCenterXSs());
-            assertThat(element.getContentCenterX()).isCloseTo(expectedPx, within(1e-9));
-        }
-    }
-
-    @Nested
-    class StartupValidationTests {
-
-        @Test
-        void testAllVisualTypesHaveNonZeroBounds() {
-            for (var type : ElementType.values()) {
-                if (type == ElementType.GLISSANDO || type == ElementType.PASTE) {
-                    continue;
-                }
-
-                // IO aliases have the same bounds as their canonical type
-                assertThat(type.getElementWidthSs())
-                    .as("widthSs of %s", type)
-                    .isGreaterThan(0);
-                assertThat(type.getElementHeightSs(true))
-                    .as("heightUpSs of %s", type)
-                    .isGreaterThan(0);
-                assertThat(type.getElementHeightSs(false))
-                    .as("heightDownSs of %s", type)
-                    .isGreaterThan(0);
-            }
+        void testPasteThrowsOnWidth() {
+            assertThatThrownBy(() -> ElementType.PASTE.getElementWidthSs())
+                .isInstanceOf(UnsupportedOperationException.class);
         }
     }
 }

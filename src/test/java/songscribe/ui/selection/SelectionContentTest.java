@@ -34,6 +34,88 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class SelectionContentTest extends UnitTest {
 
+    // -- isApplicableToSelection --
+
+    @Test
+    void testActionNotApplicableToBarlines() {
+        // AccidentalAction does not apply to barlines
+        var action = new AccidentalAction(StaffElement.Accidental.SHARP, "Sharp", null, 0, "sharp", "Sharp");
+        var coordinator = ReflectionTestHelper.createCoordinator(
+            List.of(ElementType.SINGLE_BARLINE.newInstance()),
+            List.of(action)
+        );
+
+        ReflectionTestHelper.selectNote(coordinator, 0);
+
+        assertThat(coordinator.isApplicableToSelection(action)).isFalse();
+    }
+
+    @Test
+    void testApplicableActionWithApplicableNotesReturnsTrue() {
+        var action = new AccidentalAction(StaffElement.Accidental.SHARP, "Sharp", null, 0, "sharp", "Sharp");
+        var coordinator = ReflectionTestHelper.createCoordinator(
+            List.of(ElementType.CROTCHET.newInstance()),
+            List.of(action)
+        );
+
+        ReflectionTestHelper.selectNote(coordinator, 0);
+
+        assertThat(coordinator.isApplicableToSelection(action)).isTrue();
+    }
+
+    @Test
+    void testApplicableActionWithMixedNotesReturnsTrue() {
+        // AccidentalAction applies to the note but not the rest
+        var action = new AccidentalAction(StaffElement.Accidental.SHARP, "Sharp", null, 0, "sharp", "Sharp");
+        var coordinator = ReflectionTestHelper.createCoordinator(
+            List.of(ElementType.CROTCHET.newInstance(), ElementType.CROTCHET_REST.newInstance()),
+            List.of(action)
+        );
+
+        ReflectionTestHelper.selectRange(coordinator, 0, 1);
+
+        assertThat(coordinator.isApplicableToSelection(action)).isTrue();
+    }
+
+    @Test
+    void testApplicableActionWithNoApplicableNotesReturnsFalse() {
+        // AccidentalAction applies only to notes, not rests
+        var action = new AccidentalAction(StaffElement.Accidental.SHARP, "Sharp", null, 0, "sharp", "Sharp");
+        var coordinator = ReflectionTestHelper.createCoordinator(
+            List.of(ElementType.CROTCHET_REST.newInstance()),
+            List.of(action)
+        );
+
+        ReflectionTestHelper.selectNote(coordinator, 0);
+
+        assertThat(coordinator.isApplicableToSelection(action)).isFalse();
+    }
+
+    @Test
+    void testDotActionAppliesToDurations() {
+        // DotAction applies to both notes and rests (durations)
+        var action = new DotAction(DotAction.DotLevel.SINGLE, "Dot", null, 0, "dot", "Dot", 0, 0);
+        var coordinator = ReflectionTestHelper.createCoordinator(
+            List.of(ElementType.CROTCHET_REST.newInstance()),
+            List.of(action)
+        );
+
+        ReflectionTestHelper.selectNote(coordinator, 0);
+
+        assertThat(coordinator.isApplicableToSelection(action)).isTrue();
+    }
+
+    @Test
+    void testNoSelectionIsNotApplicable() {
+        var action = new AccidentalAction(StaffElement.Accidental.SHARP, "Sharp", null, 0, "sharp", "Sharp");
+        var coordinator = ReflectionTestHelper.createCoordinator(
+            List.of(ElementType.CROTCHET.newInstance()),
+            List.of(action)
+        );
+
+        assertThat(coordinator.isApplicableToSelection(action)).isFalse();
+    }
+
     // -- hasActiveSelection --
 
     @Test
@@ -46,18 +128,6 @@ class SelectionContentTest extends UnitTest {
         assertThat(coordinator.hasActiveSelection()).isFalse();
     }
 
-    @Test
-    void testWithSelectionReturnsActiveSelection() {
-        var coordinator = ReflectionTestHelper.createCoordinator(
-            List.of(ElementType.CROTCHET.newInstance()),
-            List.of()
-        );
-
-        ReflectionTestHelper.selectNote(coordinator, 0);
-
-        assertThat(coordinator.hasActiveSelection()).isTrue();
-    }
-
     // -- selectionHasDurations --
 
     @Test
@@ -68,6 +138,18 @@ class SelectionContentTest extends UnitTest {
         );
 
         assertThat(coordinator.selectionHasDurations()).isFalse();
+    }
+
+    @Test
+    void testSelectionWithMixedContentHasDurations() {
+        var coordinator = ReflectionTestHelper.createCoordinator(
+            List.of(ElementType.CROTCHET.newInstance(), ElementType.SINGLE_BARLINE.newInstance()),
+            List.of()
+        );
+
+        ReflectionTestHelper.selectRange(coordinator, 0, 1);
+
+        assertThat(coordinator.selectionHasDurations()).isTrue();
     }
 
     @Test
@@ -95,96 +177,14 @@ class SelectionContentTest extends UnitTest {
     }
 
     @Test
-    void testSelectionWithMixedContentHasDurations() {
+    void testWithSelectionReturnsActiveSelection() {
         var coordinator = ReflectionTestHelper.createCoordinator(
-            List.of(ElementType.CROTCHET.newInstance(), ElementType.SINGLE_BARLINE.newInstance()),
+            List.of(ElementType.CROTCHET.newInstance()),
             List.of()
         );
 
-        ReflectionTestHelper.selectRange(coordinator, 0, 1);
-
-        assertThat(coordinator.selectionHasDurations()).isTrue();
-    }
-
-    // -- isApplicableToSelection --
-
-    @Test
-    void testNoSelectionIsNotApplicable() {
-        var action = new AccidentalAction(StaffElement.Accidental.SHARP, "Sharp", null, 0, "sharp", "Sharp");
-        var coordinator = ReflectionTestHelper.createCoordinator(
-            List.of(ElementType.CROTCHET.newInstance()),
-            List.of(action)
-        );
-
-        assertThat(coordinator.isApplicableToSelection(action)).isFalse();
-    }
-
-    @Test
-    void testApplicableActionWithApplicableNotesReturnsTrue() {
-        var action = new AccidentalAction(StaffElement.Accidental.SHARP, "Sharp", null, 0, "sharp", "Sharp");
-        var coordinator = ReflectionTestHelper.createCoordinator(
-            List.of(ElementType.CROTCHET.newInstance()),
-            List.of(action)
-        );
-
         ReflectionTestHelper.selectNote(coordinator, 0);
 
-        assertThat(coordinator.isApplicableToSelection(action)).isTrue();
-    }
-
-    @Test
-    void testApplicableActionWithNoApplicableNotesReturnsFalse() {
-        // AccidentalAction applies only to notes, not rests
-        var action = new AccidentalAction(StaffElement.Accidental.SHARP, "Sharp", null, 0, "sharp", "Sharp");
-        var coordinator = ReflectionTestHelper.createCoordinator(
-            List.of(ElementType.CROTCHET_REST.newInstance()),
-            List.of(action)
-        );
-
-        ReflectionTestHelper.selectNote(coordinator, 0);
-
-        assertThat(coordinator.isApplicableToSelection(action)).isFalse();
-    }
-
-    @Test
-    void testApplicableActionWithMixedNotesReturnsTrue() {
-        // AccidentalAction applies to the note but not the rest
-        var action = new AccidentalAction(StaffElement.Accidental.SHARP, "Sharp", null, 0, "sharp", "Sharp");
-        var coordinator = ReflectionTestHelper.createCoordinator(
-            List.of(ElementType.CROTCHET.newInstance(), ElementType.CROTCHET_REST.newInstance()),
-            List.of(action)
-        );
-
-        ReflectionTestHelper.selectRange(coordinator, 0, 1);
-
-        assertThat(coordinator.isApplicableToSelection(action)).isTrue();
-    }
-
-    @Test
-    void testDotActionAppliesToDurations() {
-        // DotAction applies to both notes and rests (durations)
-        var action = new DotAction(DotAction.DotLevel.SINGLE, "Dot", null, 0, "dot", "Dot", 0, 0);
-        var coordinator = ReflectionTestHelper.createCoordinator(
-            List.of(ElementType.CROTCHET_REST.newInstance()),
-            List.of(action)
-        );
-
-        ReflectionTestHelper.selectNote(coordinator, 0);
-
-        assertThat(coordinator.isApplicableToSelection(action)).isTrue();
-    }
-
-    @Test
-    void testActionNotApplicableToBarlines() {
-        // AccidentalAction does not apply to barlines
-        var action = new AccidentalAction(StaffElement.Accidental.SHARP, "Sharp", null, 0, "sharp", "Sharp");
-        var coordinator = ReflectionTestHelper.createCoordinator(
-            List.of(ElementType.SINGLE_BARLINE.newInstance()),
-            List.of(action)
-        );
-
-        ReflectionTestHelper.selectNote(coordinator, 0);
-
-        assertThat(coordinator.isApplicableToSelection(action)).isFalse();
+        assertThat(coordinator.hasActiveSelection()).isTrue();
     }
 }

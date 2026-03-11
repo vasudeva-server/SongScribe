@@ -29,12 +29,49 @@ import org.junit.jupiter.api.Test;
 import songscribe.music.KeyType;
 import songscribe.music.StaffElement.Accidental;
 import songscribe.ui.action.Actions;
-import songscribe.ui.action.UIAction;
 
 /**
  * Milestone 3 E2E tests: tie creation, removal, selection semantics, drag.
  */
 class TieTest extends E2ETest {
+
+    @Test
+    void testDragTiedNoteMovesOther() {
+        buildTiedNotes();
+
+        var line = composition().getLine(0);
+        var originalSp = line.getElement(0).getStaffPosition();
+
+        // Enter edit mode (drag works in edit mode)
+        enterEditMode();
+
+        // Drag the first note to a different staff position
+        var targetSp = originalSp - 4;
+        dragNote(0, 0, targetSp);
+        performLayout(0);
+
+        // Both tied notes should have moved to the new staff position
+        assertThat(line.getElement(0).getStaffPosition()).isEqualTo(targetSp);
+        assertThat(line.getElement(1).getStaffPosition()).isEqualTo(targetSp);
+    }
+
+    @Test
+    void testTiePersistsThroughSaveLoad() throws Exception {
+        buildTiedNotes();
+
+        var line = composition().getLine(0);
+        var tie = line.getTies().findInterval(0);
+        assertThat(tie).isNotNull();
+
+        // Round-trip save/load
+        var reloaded = roundTrip(composition());
+
+        var reloadedLine = reloaded.getLine(0);
+        var reloadedTie = reloadedLine.getTies().findInterval(0);
+        assertThat(reloadedTie).isNotNull();
+        assertThat(reloadedTie.getStart()).isEqualTo(tie.getStart());
+        assertThat(reloadedTie.getEnd()).isEqualTo(tie.getEnd());
+    }
 
     @Nested
     class BasicOperations {
@@ -108,113 +145,8 @@ class TieTest extends E2ETest {
         }
     }
 
-    @Test
-    void testTiePersistsThroughSaveLoad() throws Exception {
-        buildTiedNotes();
-
-        var line = composition().getLine(0);
-        var tie = line.getTies().findInterval(0);
-        assertThat(tie).isNotNull();
-
-        // Round-trip save/load
-        var reloaded = roundTrip(composition());
-
-        var reloadedLine = reloaded.getLine(0);
-        var reloadedTie = reloadedLine.getTies().findInterval(0);
-        assertThat(reloadedTie).isNotNull();
-        assertThat(reloadedTie.getStart()).isEqualTo(tie.getStart());
-        assertThat(reloadedTie.getEnd()).isEqualTo(tie.getEnd());
-    }
-
-    @Test
-    void testDragTiedNoteMovesOther() {
-        buildTiedNotes();
-
-        var line = composition().getLine(0);
-        var originalSp = line.getElement(0).getStaffPosition();
-
-        // Enter edit mode (drag works in edit mode)
-        enterEditMode();
-
-        // Drag the first note to a different staff position
-        var targetSp = originalSp - 4;
-        dragNote(0, 0, targetSp);
-        performLayout(0);
-
-        // Both tied notes should have moved to the new staff position
-        assertThat(line.getElement(0).getStaffPosition()).isEqualTo(targetSp);
-        assertThat(line.getElement(1).getStaffPosition()).isEqualTo(targetSp);
-    }
-
     @Nested
     class PitchValidation {
-
-        @Test
-        void testCannotTieSamePositionDifferentAccidental() {
-            // B natural (sp=0) and B# (sp=0) — same staff position, different pitch
-            buildNotes(0, Accidental.NATURAL, 0, Accidental.SHARP);
-
-            enterSelectMode();
-            clickAt(noteScreenPosition(0, 0));
-            shiftClickAt(noteScreenPosition(0, 1));
-
-            var lss = score().getLineComponent(0).getLineSelectionState();
-            assertThat(lss.canToggleTie()).isFalse();
-        }
-
-        @Test
-        void testCanTieEnharmonicNotes() {
-            // B# (sp=0, pitch 72) and C (sp=-1, pitch 72) — different position, same pitch
-            buildNotes(0, Accidental.SHARP, -1, Accidental.NONE);
-
-            enterSelectMode();
-            clickAt(noteScreenPosition(0, 0));
-            shiftClickAt(noteScreenPosition(0, 1));
-
-            var lss = score().getLineComponent(0).getLineSelectionState();
-            assertThat(lss.canToggleTie()).isTrue();
-        }
-
-        @Test
-        void testCanTieWithInheritedAccidental() {
-            // F# (sp=4, explicit sharp) then F (sp=4, NONE) — inherits sharp, same pitch
-            buildNotes(4, Accidental.SHARP, 4, Accidental.NONE);
-
-            enterSelectMode();
-            clickAt(noteScreenPosition(0, 0));
-            shiftClickAt(noteScreenPosition(0, 1));
-
-            var lss = score().getLineComponent(0).getLineSelectionState();
-            assertThat(lss.canToggleTie()).isTrue();
-        }
-
-        @Test
-        void testCannotTieWhenNaturalCancelsInheritedAccidental() {
-            // F# (sp=4), F (sp=4, NONE inherits sharp), F natural (sp=4, explicit natural)
-            // Tying last two: F# vs F natural — different pitch
-            buildThreeNotes();
-
-            enterSelectMode();
-            clickAt(noteScreenPosition(0, 1));
-            shiftClickAt(noteScreenPosition(0, 2));
-
-            var lss = score().getLineComponent(0).getLineSelectionState();
-            assertThat(lss.canToggleTie()).isFalse();
-        }
-
-        @Test
-        void testCanTieWithKeySignatureAccidental() {
-            // Db major (5 flats): B at sp=0 gets Bb from key signature.
-            // Two notes at sp=0 with NONE accidental should both resolve to Bb.
-            buildNotesWithKeySignature(KeyType.FLATS, 5, 0, Accidental.NONE, 0, Accidental.NONE);
-
-            enterSelectMode();
-            clickAt(noteScreenPosition(0, 0));
-            shiftClickAt(noteScreenPosition(0, 1));
-
-            var lss = score().getLineComponent(0).getLineSelectionState();
-            assertThat(lss.canToggleTie()).isTrue();
-        }
 
         @Test
         void testCanTieAfterNaturalFlatResetsToKeySignature() {
@@ -250,6 +182,73 @@ class TieTest extends E2ETest {
 
             var lss = score().getLineComponent(0).getLineSelectionState();
             assertThat(lss.canToggleTie()).isTrue();
+        }
+
+        @Test
+        void testCanTieEnharmonicNotes() {
+            // B# (sp=0, pitch 72) and C (sp=-1, pitch 72) — different position, same pitch
+            buildNotes(0, Accidental.SHARP, -1, Accidental.NONE);
+
+            enterSelectMode();
+            clickAt(noteScreenPosition(0, 0));
+            shiftClickAt(noteScreenPosition(0, 1));
+
+            var lss = score().getLineComponent(0).getLineSelectionState();
+            assertThat(lss.canToggleTie()).isTrue();
+        }
+
+        @Test
+        void testCanTieWithInheritedAccidental() {
+            // F# (sp=4, explicit sharp) then F (sp=4, NONE) — inherits sharp, same pitch
+            buildNotes(4, Accidental.SHARP, 4, Accidental.NONE);
+
+            enterSelectMode();
+            clickAt(noteScreenPosition(0, 0));
+            shiftClickAt(noteScreenPosition(0, 1));
+
+            var lss = score().getLineComponent(0).getLineSelectionState();
+            assertThat(lss.canToggleTie()).isTrue();
+        }
+
+        @Test
+        void testCanTieWithKeySignatureAccidental() {
+            // Db major (5 flats): B at sp=0 gets Bb from key signature.
+            // Two notes at sp=0 with NONE accidental should both resolve to Bb.
+            buildNotesWithKeySignature(KeyType.FLATS, 5, 0, Accidental.NONE, 0, Accidental.NONE);
+
+            enterSelectMode();
+            clickAt(noteScreenPosition(0, 0));
+            shiftClickAt(noteScreenPosition(0, 1));
+
+            var lss = score().getLineComponent(0).getLineSelectionState();
+            assertThat(lss.canToggleTie()).isTrue();
+        }
+
+        @Test
+        void testCannotTieSamePositionDifferentAccidental() {
+            // B natural (sp=0) and B# (sp=0) — same staff position, different pitch
+            buildNotes(0, Accidental.NATURAL, 0, Accidental.SHARP);
+
+            enterSelectMode();
+            clickAt(noteScreenPosition(0, 0));
+            shiftClickAt(noteScreenPosition(0, 1));
+
+            var lss = score().getLineComponent(0).getLineSelectionState();
+            assertThat(lss.canToggleTie()).isFalse();
+        }
+
+        @Test
+        void testCannotTieWhenNaturalCancelsInheritedAccidental() {
+            // F# (sp=4), F (sp=4, NONE inherits sharp), F natural (sp=4, explicit natural)
+            // Tying last two: F# vs F natural — different pitch
+            buildThreeNotes();
+
+            enterSelectMode();
+            clickAt(noteScreenPosition(0, 1));
+            shiftClickAt(noteScreenPosition(0, 2));
+
+            var lss = score().getLineComponent(0).getLineSelectionState();
+            assertThat(lss.canToggleTie()).isFalse();
         }
     }
 

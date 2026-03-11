@@ -40,60 +40,6 @@ import songscribe.ui.action.UIAction;
 class SelectionApplyTest extends E2ETest {
 
     @Nested
-    class DurationChanges {
-
-        @Test
-        void testSelectNotesClickDurationVerifyChanged() {
-            buildNotes(Actions.EIGHTH_NOTE_ACTION, 0, -2, -4);
-            enterSelectMode();
-
-            // Select all three notes
-            clickAt(noteScreenPosition(0, 0));
-            shiftClickAt(noteScreenPosition(0, 2));
-            assertThat(score().getSelectionSize()).isEqualTo(3);
-
-            // Click the quarter note toolbar button
-            clickToolbarButton(Actions.QUARTER_NOTE_ACTION);
-
-            // All notes should now be crotchets
-            verifyNoteType(0, 0, ElementType.CROTCHET);
-            verifyNoteType(0, 1, ElementType.CROTCHET);
-            verifyNoteType(0, 2, ElementType.CROTCHET);
-
-            // Selection should remain active
-            assertThat(score().getSelectionSize()).isEqualTo(3);
-        }
-
-        @Test
-        void testDurationChangePreservesNoteRestKind() {
-            // Quaver, quaver rest, quaver
-            selectDuration(Actions.EIGHTH_NOTE_ACTION);
-            clickAt(insertionPoint(0, 0));
-            performLayout(0);
-
-            enableRestMode();
-            clickAt(insertionPoint(0, 0));
-            performLayout(0);
-            deselectRestMode();
-
-            clickAt(insertionPoint(0, -4));
-            performLayout(0);
-
-            enterSelectMode();
-
-            clickAt(noteScreenPosition(0, 0));
-            shiftClickAt(noteScreenPosition(0, 2));
-
-            // Change all to half notes
-            clickToolbarButton(Actions.HALF_NOTE_ACTION);
-
-            verifyNoteType(0, 0, ElementType.MINIM);
-            verifyNoteType(0, 1, ElementType.MINIM_REST);
-            verifyNoteType(0, 2, ElementType.MINIM);
-        }
-    }
-
-    @Nested
     class AccidentalChanges {
 
         @Test
@@ -139,6 +85,25 @@ class SelectionApplyTest extends E2ETest {
     class ArticulationChanges {
 
         @Test
+        void testApplyFermataThenRemove() {
+            buildNotes(Actions.QUARTER_NOTE_ACTION, 0, -2);
+            enterSelectMode();
+
+            clickAt(noteScreenPosition(0, 0));
+            shiftClickAt(noteScreenPosition(0, 1));
+
+            // Apply fermata via Insert menu
+            clickMenuItem(Actions.FERMATA_ACTION);
+            verifyFermata(0, 0, true);
+            verifyFermata(0, 1, true);
+
+            // Remove fermata (clicking again toggles it off)
+            clickMenuItem(Actions.FERMATA_ACTION);
+            verifyFermata(0, 0, false);
+            verifyFermata(0, 1, false);
+        }
+
+        @Test
         void testSelectNotesAndRestsClickDotVerifyBothGetDots() {
             // Crotchet, crotchet rest, crotchet
             selectDuration(Actions.QUARTER_NOTE_ACTION);
@@ -167,24 +132,59 @@ class SelectionApplyTest extends E2ETest {
             verifyDotCount(0, 1, 1);
             verifyDotCount(0, 2, 1);
         }
+    }
+
+    @Nested
+    class DurationChanges {
 
         @Test
-        void testApplyFermataThenRemove() {
-            buildNotes(Actions.QUARTER_NOTE_ACTION, 0, -2);
+        void testDurationChangePreservesNoteRestKind() {
+            // Quaver, quaver rest, quaver
+            selectDuration(Actions.EIGHTH_NOTE_ACTION);
+            clickAt(insertionPoint(0, 0));
+            performLayout(0);
+
+            enableRestMode();
+            clickAt(insertionPoint(0, 0));
+            performLayout(0);
+            deselectRestMode();
+
+            clickAt(insertionPoint(0, -4));
+            performLayout(0);
+
             enterSelectMode();
 
             clickAt(noteScreenPosition(0, 0));
-            shiftClickAt(noteScreenPosition(0, 1));
+            shiftClickAt(noteScreenPosition(0, 2));
 
-            // Apply fermata via Insert menu
-            clickMenuItem(Actions.FERMATA_ACTION);
-            verifyFermata(0, 0, true);
-            verifyFermata(0, 1, true);
+            // Change all to half notes
+            clickToolbarButton(Actions.HALF_NOTE_ACTION);
 
-            // Remove fermata (clicking again toggles it off)
-            clickMenuItem(Actions.FERMATA_ACTION);
-            verifyFermata(0, 0, false);
-            verifyFermata(0, 1, false);
+            verifyNoteType(0, 0, ElementType.MINIM);
+            verifyNoteType(0, 1, ElementType.MINIM_REST);
+            verifyNoteType(0, 2, ElementType.MINIM);
+        }
+
+        @Test
+        void testSelectNotesClickDurationVerifyChanged() {
+            buildNotes(Actions.EIGHTH_NOTE_ACTION, 0, -2, -4);
+            enterSelectMode();
+
+            // Select all three notes
+            clickAt(noteScreenPosition(0, 0));
+            shiftClickAt(noteScreenPosition(0, 2));
+            assertThat(score().getSelectionSize()).isEqualTo(3);
+
+            // Click the quarter note toolbar button
+            clickToolbarButton(Actions.QUARTER_NOTE_ACTION);
+
+            // All notes should now be crotchets
+            verifyNoteType(0, 0, ElementType.CROTCHET);
+            verifyNoteType(0, 1, ElementType.CROTCHET);
+            verifyNoteType(0, 2, ElementType.CROTCHET);
+
+            // Selection should remain active
+            assertThat(score().getSelectionSize()).isEqualTo(3);
         }
     }
 

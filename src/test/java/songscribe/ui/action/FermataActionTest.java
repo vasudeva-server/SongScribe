@@ -32,19 +32,6 @@ class FermataActionTest extends UnitTest {
     private final FermataAction action = new FermataAction();
 
     @Test
-    void testMatchesWhenFermataTrue() {
-        var note = ElementType.CROTCHET.newInstance();
-        note.setFermata(true);
-        assertThat(action.matchesElement(note)).isTrue();
-    }
-
-    @Test
-    void testDoesNotMatchWhenFermataFalse() {
-        var note = ElementType.CROTCHET.newInstance();
-        assertThat(action.matchesElement(note)).isFalse();
-    }
-
-    @Test
     void testApplyToNoteAppliesFermata() {
         var note = ElementType.CROTCHET.newInstance();
         action.applyToElement(note, true);
@@ -57,5 +44,18 @@ class FermataActionTest extends UnitTest {
         note.setFermata(true);
         action.applyToElement(note, false);
         assertThat(note.isFermata()).isFalse();
+    }
+
+    @Test
+    void testDoesNotMatchWhenFermataFalse() {
+        var note = ElementType.CROTCHET.newInstance();
+        assertThat(action.matchesElement(note)).isFalse();
+    }
+
+    @Test
+    void testMatchesWhenFermataTrue() {
+        var note = ElementType.CROTCHET.newInstance();
+        note.setFermata(true);
+        assertThat(action.matchesElement(note)).isTrue();
     }
 }

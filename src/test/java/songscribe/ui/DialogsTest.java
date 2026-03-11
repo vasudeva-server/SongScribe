@@ -50,76 +50,41 @@ class DialogsTest extends UnitTest {
     }
 
     @Nested
-    class WhenSuppressed {
+    class ConfirmFileOverwrite {
 
         @Test
-        void testShowInfoMessageDoesNotShowDialog() {
-            try (var jopMock = mockStatic(JOptionPane.class)) {
-                Dialogs.showInfoMessage(null, "Title", "Info message");
+        void testExistingFileReturnsFalseWhenUserDeclinesAndNotSuppressed() {
+            Dialogs.setSuppressDialogs(false);
 
-                jopMock.verify(
-                    () -> JOptionPane.showMessageDialog(any(), any(), any(), anyInt()),
-                    never()
-                );
+            var file = mock(File.class);
+            when(file.exists()).thenReturn(true);
+            when(file.getName()).thenReturn("test.txt");
+
+            try (var jopMock = mockStatic(JOptionPane.class)) {
+                jopMock.when(
+                    () -> JOptionPane.showConfirmDialog(
+                        any(), any(), any(), anyInt(), anyInt()
+                    )
+                ).thenReturn(JOptionPane.NO_OPTION);
+
+                assertThat(Dialogs.confirmFileOverwrite(null, "Title", file)).isFalse();
             }
         }
 
         @Test
-        void testShowErrorMessageDoesNotShowDialog() {
-            try (var jopMock = mockStatic(JOptionPane.class)) {
-                Dialogs.showErrorMessage(null, "Title", "Error message");
+        void testExistingFileReturnsTrueWhenSuppressed() {
+            var file = mock(File.class);
+            when(file.exists()).thenReturn(true);
+            when(file.getName()).thenReturn("test.txt");
 
-                jopMock.verify(
-                    () -> JOptionPane.showMessageDialog(any(), any(), any(), anyInt()),
-                    never()
-                );
-            }
+            assertThat(Dialogs.confirmFileOverwrite(null, "Title", file)).isTrue();
         }
 
         @Test
-        void testShowConfirmDialogReturnsNoOptionByDefault() {
-            var result = Dialogs.showConfirmDialog(
-                null, "Title", "Confirm?",
-                JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE
-            );
+        void testNonExistentFileReturnsTrue() {
+            var file = new File("/nonexistent/path/file.txt");
 
-            assertThat(result).isEqualTo(JOptionPane.NO_OPTION);
-        }
-
-        @Test
-        void testShowConfirmDialogReturnsSuppressedDefault() {
-            var result = Dialogs.showConfirmDialog(
-                null, "Title", "Confirm?",
-                JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE,
-                JOptionPane.YES_OPTION
-            );
-
-            assertThat(result).isEqualTo(JOptionPane.YES_OPTION);
-        }
-
-        @Test
-        void testShowInputDialogReturnsNullByDefault() {
-            var result = Dialogs.showInputDialog(null, "Title", "Enter value:");
-
-            assertThat(result).isNull();
-        }
-
-        @Test
-        void testShowInputDialogReturnsSuppressedDefault() {
-            var result = Dialogs.showInputDialog(null, "Title", "Enter value:", "default");
-
-            assertThat(result).isEqualTo("default");
-        }
-
-        @Test
-        void testShowOptionDialogReturnsClosedOption() {
-            var result = Dialogs.showOptionDialog(
-                null, "Title", "Message",
-                JOptionPane.DEFAULT_OPTION, JOptionPane.QUESTION_MESSAGE,
-                null, new String[]{"OK"}, "OK"
-            );
-
-            assertThat(result).isEqualTo(JOptionPane.CLOSED_OPTION);
+            assertThat(Dialogs.confirmFileOverwrite(null, "Title", file)).isTrue();
         }
     }
 
@@ -132,16 +97,20 @@ class DialogsTest extends UnitTest {
         }
 
         @Test
-        void testShowInfoMessageDelegatesToJOptionPane() {
+        void testShowConfirmDialogDelegatesToJOptionPane() {
             try (var jopMock = mockStatic(JOptionPane.class)) {
-                Dialogs.showInfoMessage(null, "Info Title", "Info text");
-
-                jopMock.verify(
-                    () -> JOptionPane.showMessageDialog(
-                        isNull(), eq("Info text"), eq("Info Title"),
-                        eq(JOptionPane.INFORMATION_MESSAGE)
+                jopMock.when(
+                    () -> JOptionPane.showConfirmDialog(
+                        any(), any(), any(), anyInt(), anyInt()
                     )
+                ).thenReturn(JOptionPane.YES_OPTION);
+
+                var result = Dialogs.showConfirmDialog(
+                    null, "Confirm Title", "Confirm?",
+                    JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE
                 );
+
+                assertThat(result).isEqualTo(JOptionPane.YES_OPTION);
             }
         }
 
@@ -168,20 +137,16 @@ class DialogsTest extends UnitTest {
         }
 
         @Test
-        void testShowConfirmDialogDelegatesToJOptionPane() {
+        void testShowInfoMessageDelegatesToJOptionPane() {
             try (var jopMock = mockStatic(JOptionPane.class)) {
-                jopMock.when(
-                    () -> JOptionPane.showConfirmDialog(
-                        any(), any(), any(), anyInt(), anyInt()
+                Dialogs.showInfoMessage(null, "Info Title", "Info text");
+
+                jopMock.verify(
+                    () -> JOptionPane.showMessageDialog(
+                        isNull(), eq("Info text"), eq("Info Title"),
+                        eq(JOptionPane.INFORMATION_MESSAGE)
                     )
-                ).thenReturn(JOptionPane.YES_OPTION);
-
-                var result = Dialogs.showConfirmDialog(
-                    null, "Confirm Title", "Confirm?",
-                    JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE
                 );
-
-                assertThat(result).isEqualTo(JOptionPane.YES_OPTION);
             }
         }
 
@@ -223,41 +188,76 @@ class DialogsTest extends UnitTest {
     }
 
     @Nested
-    class ConfirmFileOverwrite {
+    class WhenSuppressed {
 
         @Test
-        void testNonExistentFileReturnsTrue() {
-            var file = new File("/nonexistent/path/file.txt");
+        void testShowConfirmDialogReturnsNoOptionByDefault() {
+            var result = Dialogs.showConfirmDialog(
+                null, "Title", "Confirm?",
+                JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE
+            );
 
-            assertThat(Dialogs.confirmFileOverwrite(null, "Title", file)).isTrue();
+            assertThat(result).isEqualTo(JOptionPane.NO_OPTION);
         }
 
         @Test
-        void testExistingFileReturnsTrueWhenSuppressed() {
-            var file = mock(File.class);
-            when(file.exists()).thenReturn(true);
-            when(file.getName()).thenReturn("test.txt");
+        void testShowConfirmDialogReturnsSuppressedDefault() {
+            var result = Dialogs.showConfirmDialog(
+                null, "Title", "Confirm?",
+                JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE,
+                JOptionPane.YES_OPTION
+            );
 
-            assertThat(Dialogs.confirmFileOverwrite(null, "Title", file)).isTrue();
+            assertThat(result).isEqualTo(JOptionPane.YES_OPTION);
         }
 
         @Test
-        void testExistingFileReturnsFalseWhenUserDeclinesAndNotSuppressed() {
-            Dialogs.setSuppressDialogs(false);
-
-            var file = mock(File.class);
-            when(file.exists()).thenReturn(true);
-            when(file.getName()).thenReturn("test.txt");
-
+        void testShowErrorMessageDoesNotShowDialog() {
             try (var jopMock = mockStatic(JOptionPane.class)) {
-                jopMock.when(
-                    () -> JOptionPane.showConfirmDialog(
-                        any(), any(), any(), anyInt(), anyInt()
-                    )
-                ).thenReturn(JOptionPane.NO_OPTION);
+                Dialogs.showErrorMessage(null, "Title", "Error message");
 
-                assertThat(Dialogs.confirmFileOverwrite(null, "Title", file)).isFalse();
+                jopMock.verify(
+                    () -> JOptionPane.showMessageDialog(any(), any(), any(), anyInt()),
+                    never()
+                );
             }
+        }
+
+        @Test
+        void testShowInfoMessageDoesNotShowDialog() {
+            try (var jopMock = mockStatic(JOptionPane.class)) {
+                Dialogs.showInfoMessage(null, "Title", "Info message");
+
+                jopMock.verify(
+                    () -> JOptionPane.showMessageDialog(any(), any(), any(), anyInt()),
+                    never()
+                );
+            }
+        }
+
+        @Test
+        void testShowInputDialogReturnsNullByDefault() {
+            var result = Dialogs.showInputDialog(null, "Title", "Enter value:");
+
+            assertThat(result).isNull();
+        }
+
+        @Test
+        void testShowInputDialogReturnsSuppressedDefault() {
+            var result = Dialogs.showInputDialog(null, "Title", "Enter value:", "default");
+
+            assertThat(result).isEqualTo("default");
+        }
+
+        @Test
+        void testShowOptionDialogReturnsClosedOption() {
+            var result = Dialogs.showOptionDialog(
+                null, "Title", "Message",
+                JOptionPane.DEFAULT_OPTION, JOptionPane.QUESTION_MESSAGE,
+                null, new String[]{"OK"}, "OK"
+            );
+
+            assertThat(result).isEqualTo(JOptionPane.CLOSED_OPTION);
         }
     }
 }

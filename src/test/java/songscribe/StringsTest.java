@@ -34,22 +34,18 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class StringsTest extends UnitTest {
 
-    // Every constant in Strings.class must correspond to a key in the bundle
+    // Template string: doubled apostrophe produces a literal apostrophe
     @Test
-    void testEveryConstantHasABundleKey() throws Exception {
-        var bundle = ResourceBundle.getBundle("songscribe.strings");
-        var bundleKeys = bundle.keySet();
+    void testApostropheEscapingInTemplateString() {
+        assertThat(Strings.get(Strings.TEST_TEMPLATE_APOSTROPHE, "file.txt")).isEqualTo("Can't find file.txt");
+    }
 
-        for (var field : Strings.class.getFields()) {
-            if (!isStringConstant(field)) {
-                continue;
-            }
-
-            var key = (String) field.get(null);
-            assertThat(bundleKeys)
-                .as("Constant %s = \"%s\" has no matching key in strings.properties", field.getName(), key)
-                .contains(key);
-        }
+    // Template string: choice formatting for pluralization
+    @Test
+    void testChoiceTemplateFormatting() {
+        assertThat(Strings.get(Strings.TEST_TEMPLATE_CHOICE, 0)).isEqualTo("no items");
+        assertThat(Strings.get(Strings.TEST_TEMPLATE_CHOICE, 1)).isEqualTo("one item");
+        assertThat(Strings.get(Strings.TEST_TEMPLATE_CHOICE, 5)).isEqualTo("5 items");
     }
 
     // Every key in the bundle must have a corresponding constant in Strings.class
@@ -72,24 +68,28 @@ class StringsTest extends UnitTest {
         }
     }
 
+    // Every constant in Strings.class must correspond to a key in the bundle
+    @Test
+    void testEveryConstantHasABundleKey() throws Exception {
+        var bundle = ResourceBundle.getBundle("songscribe.strings");
+        var bundleKeys = bundle.keySet();
+
+        for (var field : Strings.class.getFields()) {
+            if (!isStringConstant(field)) {
+                continue;
+            }
+
+            var key = (String) field.get(null);
+            assertThat(bundleKeys)
+                .as("Constant %s = \"%s\" has no matching key in strings.properties", field.getName(), key)
+                .contains(key);
+        }
+    }
+
     // Template string: simple positional substitution
     @Test
     void testSimpleTemplateSubstitution() {
         assertThat(Strings.get(Strings.TEST_TEMPLATE_SIMPLE, "world")).isEqualTo("Hello world");
-    }
-
-    // Template string: choice formatting for pluralization
-    @Test
-    void testChoiceTemplateFormatting() {
-        assertThat(Strings.get(Strings.TEST_TEMPLATE_CHOICE, 0)).isEqualTo("no items");
-        assertThat(Strings.get(Strings.TEST_TEMPLATE_CHOICE, 1)).isEqualTo("one item");
-        assertThat(Strings.get(Strings.TEST_TEMPLATE_CHOICE, 5)).isEqualTo("5 items");
-    }
-
-    // Template string: doubled apostrophe produces a literal apostrophe
-    @Test
-    void testApostropheEscapingInTemplateString() {
-        assertThat(Strings.get(Strings.TEST_TEMPLATE_APOSTROPHE, "file.txt")).isEqualTo("Can't find file.txt");
     }
 
     private static boolean isStringConstant(Field field) {

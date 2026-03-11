@@ -34,16 +34,6 @@ class ElementColumnBuilderTest extends UnitTest {
         return type.newInstance();
     }
 
-    // T1: Unbeamed quaver right extent > notehead-only extent
-    @Test
-    void testUnbeamedQuaverExtentExceedsNoteheadOnly() {
-        var quaver = element(ElementType.QUAVER);
-        double noteheadOnly = ElementColumnBuilder.NOTE_HEAD_WIDTH_SS;
-        double extent = ElementColumnBuilder.calculateRightExtentSs(quaver, false, true);
-
-        assertThat(extent).isGreaterThan(noteheadOnly);
-    }
-
     // T2: Beamed quaver right extent equals notehead-only extent (no flag contribution)
     @Test
     void testBeamedQuaverExtentEqualsNoteheadOnly() {
@@ -52,6 +42,36 @@ class ElementColumnBuilderTest extends UnitTest {
         double extent = ElementColumnBuilder.calculateRightExtentSs(quaver, true, true);
 
         assertThat(extent).isEqualTo(noteheadOnly);
+    }
+
+    // T6: Dotted quaver extent is >= both notehead+dots extent and flag extent individually
+    @Test
+    void testDottedQuaverExtentIsMaxOfDotsAndFlag() {
+        var dottedQuaver = element(ElementType.QUAVER);
+        dottedQuaver.setDotCount(1);
+
+        double dotsOnlyExtent = ElementColumnBuilder.NOTE_HEAD_WIDTH_SS + 0.25 + 0.5; // DOT_GAP + DOT_WIDTH
+
+        var undottedQuaver = element(ElementType.QUAVER);
+        double flagOnlyExtent = ElementColumnBuilder.calculateRightExtentSs(undottedQuaver, false, true);
+
+        double actual = ElementColumnBuilder.calculateRightExtentSs(dottedQuaver, false, true);
+
+        assertThat(actual)
+            .isGreaterThanOrEqualTo(dotsOnlyExtent)
+            .isGreaterThanOrEqualTo(flagOnlyExtent);
+    }
+
+    // T5: Grace quaver gets a scaled flag width (smaller than regular quaver)
+    @Test
+    void testGraceQuaverExtentSmallerThanRegularQuaver() {
+        var graceQuaver = element(ElementType.GRACE_QUAVER);
+        var regularQuaver = element(ElementType.QUAVER);
+
+        double graceExtent = ElementColumnBuilder.calculateRightExtentSs(graceQuaver, false, true);
+        double regularExtent = ElementColumnBuilder.calculateRightExtentSs(regularQuaver, false, true);
+
+        assertThat(graceExtent).isLessThan(regularExtent);
     }
 
     // T3: Non-flagged types (CROTCHET, MINIM, SEMIBREVE) are unchanged by beamed/upper
@@ -82,33 +102,13 @@ class ElementColumnBuilderTest extends UnitTest {
         assertThat(upExtent).isNotEqualTo(downExtent);
     }
 
-    // T5: Grace quaver gets a scaled flag width (smaller than regular quaver)
+    // T1: Unbeamed quaver right extent > notehead-only extent
     @Test
-    void testGraceQuaverExtentSmallerThanRegularQuaver() {
-        var graceQuaver = element(ElementType.GRACE_QUAVER);
-        var regularQuaver = element(ElementType.QUAVER);
+    void testUnbeamedQuaverExtentExceedsNoteheadOnly() {
+        var quaver = element(ElementType.QUAVER);
+        double noteheadOnly = ElementColumnBuilder.NOTE_HEAD_WIDTH_SS;
+        double extent = ElementColumnBuilder.calculateRightExtentSs(quaver, false, true);
 
-        double graceExtent = ElementColumnBuilder.calculateRightExtentSs(graceQuaver, false, true);
-        double regularExtent = ElementColumnBuilder.calculateRightExtentSs(regularQuaver, false, true);
-
-        assertThat(graceExtent).isLessThan(regularExtent);
-    }
-
-    // T6: Dotted quaver extent is >= both notehead+dots extent and flag extent individually
-    @Test
-    void testDottedQuaverExtentIsMaxOfDotsAndFlag() {
-        var dottedQuaver = element(ElementType.QUAVER);
-        dottedQuaver.setDotCount(1);
-
-        double dotsOnlyExtent = ElementColumnBuilder.NOTE_HEAD_WIDTH_SS + 0.25 + 0.5; // DOT_GAP + DOT_WIDTH
-
-        var undottedQuaver = element(ElementType.QUAVER);
-        double flagOnlyExtent = ElementColumnBuilder.calculateRightExtentSs(undottedQuaver, false, true);
-
-        double actual = ElementColumnBuilder.calculateRightExtentSs(dottedQuaver, false, true);
-
-        assertThat(actual)
-            .isGreaterThanOrEqualTo(dotsOnlyExtent)
-            .isGreaterThanOrEqualTo(flagOnlyExtent);
+        assertThat(extent).isGreaterThan(noteheadOnly);
     }
 }

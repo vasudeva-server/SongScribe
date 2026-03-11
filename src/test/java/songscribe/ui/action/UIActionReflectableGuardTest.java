@@ -38,7 +38,7 @@ import songscribe.ui.selection.SelectionCoordinator;
 class UIActionReflectableGuardTest extends UnitTest {
 
     @Test
-    void testReflectableWithSelectionStillRunsFlagLogic() {
+    void testNonReflectableWithSelectionRunsNormalLogic() {
         try (var mainFrameMock = mockStatic(MainFrame.class)) {
             var mockFrame = mock(MainFrame.class);
             var mockScore = mock(Score.class);
@@ -49,18 +49,23 @@ class UIActionReflectableGuardTest extends UnitTest {
             when(mockScore.getSelectionCoordinator()).thenReturn(mockCoordinator);
             when(mockCoordinator.getSelectionSize()).thenReturn(2);
 
-            // FermataAction has DISABLE_IN_ADJUSTMENT_MODE, so adjustment mode
-            // should disable it even when a selection is active.
+            // Make enableInAdjustmentMode return false so the flag chain
+            // short-circuits to false, proving normal logic ran despite selection > 0.
             when(mockScore.getMode()).thenReturn(Mode.ADJUSTMENT);
             when(mockScore.getSelectionSize()).thenReturn(2);
 
-            var action = new FermataAction();
-            action.setEnabled(true);
+            var nonReflectable = new UIAction("Test", null, 0, "test", "Test") {
+                @Override
+                public void actionPerformed(ActionEvent e) {
+                }
+            };
+            nonReflectable.setFlags(UIAction.Flag.DISABLE_IN_ADJUSTMENT_MODE);
+            nonReflectable.setEnabled(true);
 
-            var result = action.updateEnabledState();
+            var result = nonReflectable.updateEnabledState();
 
             assertThat(result).isFalse();
-            assertThat(action.isEnabled()).isFalse();
+            assertThat(nonReflectable.isEnabled()).isFalse();
         }
     }
 
@@ -92,7 +97,7 @@ class UIActionReflectableGuardTest extends UnitTest {
     }
 
     @Test
-    void testNonReflectableWithSelectionRunsNormalLogic() {
+    void testReflectableWithSelectionStillRunsFlagLogic() {
         try (var mainFrameMock = mockStatic(MainFrame.class)) {
             var mockFrame = mock(MainFrame.class);
             var mockScore = mock(Score.class);
@@ -103,23 +108,18 @@ class UIActionReflectableGuardTest extends UnitTest {
             when(mockScore.getSelectionCoordinator()).thenReturn(mockCoordinator);
             when(mockCoordinator.getSelectionSize()).thenReturn(2);
 
-            // Make enableInAdjustmentMode return false so the flag chain
-            // short-circuits to false, proving normal logic ran despite selection > 0.
+            // FermataAction has DISABLE_IN_ADJUSTMENT_MODE, so adjustment mode
+            // should disable it even when a selection is active.
             when(mockScore.getMode()).thenReturn(Mode.ADJUSTMENT);
             when(mockScore.getSelectionSize()).thenReturn(2);
 
-            var nonReflectable = new UIAction("Test", null, 0, "test", "Test") {
-                @Override
-                public void actionPerformed(ActionEvent e) {
-                }
-            };
-            nonReflectable.setFlags(UIAction.Flag.DISABLE_IN_ADJUSTMENT_MODE);
-            nonReflectable.setEnabled(true);
+            var action = new FermataAction();
+            action.setEnabled(true);
 
-            var result = nonReflectable.updateEnabledState();
+            var result = action.updateEnabledState();
 
             assertThat(result).isFalse();
-            assertThat(nonReflectable.isEnabled()).isFalse();
+            assertThat(action.isEnabled()).isFalse();
         }
     }
 }

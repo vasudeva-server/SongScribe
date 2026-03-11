@@ -33,20 +33,6 @@ class AccidentalActionTest extends UnitTest {
         new AccidentalAction(StaffElement.Accidental.SHARP, "Sharp", null, 0, "sharp", "Sharp");
 
     @Test
-    void testMatchesWhenAccidentalMatches() {
-        var note = ElementType.CROTCHET.newInstance();
-        note.setAccidental(StaffElement.Accidental.SHARP);
-        assertThat(action.matchesElement(note)).isTrue();
-    }
-
-    @Test
-    void testDoesNotMatchWhenAccidentalDiffers() {
-        var note = ElementType.CROTCHET.newInstance();
-        note.setAccidental(StaffElement.Accidental.FLAT);
-        assertThat(action.matchesElement(note)).isFalse();
-    }
-
-    @Test
     void testApplyToNoteAppliesAccidental() {
         var note = ElementType.CROTCHET.newInstance();
         action.applyToElement(note, true);
@@ -59,5 +45,19 @@ class AccidentalActionTest extends UnitTest {
         note.setAccidental(StaffElement.Accidental.SHARP);
         action.applyToElement(note, false);
         assertThat(note.getAccidental()).isEqualTo(StaffElement.Accidental.NONE);
+    }
+
+    @Test
+    void testDoesNotMatchWhenAccidentalDiffers() {
+        var note = ElementType.CROTCHET.newInstance();
+        note.setAccidental(StaffElement.Accidental.FLAT);
+        assertThat(action.matchesElement(note)).isFalse();
+    }
+
+    @Test
+    void testMatchesWhenAccidentalMatches() {
+        var note = ElementType.CROTCHET.newInstance();
+        note.setAccidental(StaffElement.Accidental.SHARP);
+        assertThat(action.matchesElement(note)).isTrue();
     }
 }

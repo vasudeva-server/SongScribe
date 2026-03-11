@@ -85,9 +85,9 @@ class InsertionSpacingCalculatorTest extends UnitTest {
     class FitsWithinLine {
 
         @Test
-        void testInsertWithPlentyOfRoom() {
-            var line = lineWithCrotchets(2);
-            var result = InsertionSpacingCalculator.calculateInsertion(line, crotchet(), 1);
+        void testAppendToEmptyLine() {
+            var line = lineWithCrotchets(0);
+            var result = InsertionSpacingCalculator.calculateInsertion(line, crotchet(), 0);
             assertThat(result.fitsWithinLine(500)).isTrue();
         }
 
@@ -99,9 +99,9 @@ class InsertionSpacingCalculatorTest extends UnitTest {
         }
 
         @Test
-        void testAppendToEmptyLine() {
-            var line = lineWithCrotchets(0);
-            var result = InsertionSpacingCalculator.calculateInsertion(line, crotchet(), 0);
+        void testInsertWithPlentyOfRoom() {
+            var line = lineWithCrotchets(2);
+            var result = InsertionSpacingCalculator.calculateInsertion(line, crotchet(), 1);
             assertThat(result.fitsWithinLine(500)).isTrue();
         }
     }
@@ -110,10 +110,20 @@ class InsertionSpacingCalculatorTest extends UnitTest {
     class HasRoomForGraceNotePair {
 
         @Test
-        void testLineWithPlentyOfRoom() {
-            var line = lineWithCrotchets(2);
+        void testEmptyLine() {
+            var line = lineWithCrotchets(0);
             setLineWidth(line, 500);
-            assertThat(InsertionSpacingCalculator.hasRoomForGraceNotePair(line, 1)).isTrue();
+            assertThat(InsertionSpacingCalculator.hasRoomForGraceNotePair(line, 0)).isTrue();
+        }
+
+        @Test
+        void testLineExactlyFull() {
+            var line = lineWithCrotchets(3);
+            double currentWidthSs = lastElementRightEdgeSs(line);
+            setLineWidth(line, currentWidthSs);
+
+            assertThat(InsertionSpacingCalculator.hasRoomForGraceNotePair(
+                line, line.elementCount())).isFalse();
         }
 
         @Test
@@ -129,20 +139,10 @@ class InsertionSpacingCalculatorTest extends UnitTest {
         }
 
         @Test
-        void testLineExactlyFull() {
-            var line = lineWithCrotchets(3);
-            double currentWidthSs = lastElementRightEdgeSs(line);
-            setLineWidth(line, currentWidthSs);
-
-            assertThat(InsertionSpacingCalculator.hasRoomForGraceNotePair(
-                line, line.elementCount())).isFalse();
-        }
-
-        @Test
-        void testEmptyLine() {
-            var line = lineWithCrotchets(0);
+        void testLineWithPlentyOfRoom() {
+            var line = lineWithCrotchets(2);
             setLineWidth(line, 500);
-            assertThat(InsertionSpacingCalculator.hasRoomForGraceNotePair(line, 0)).isTrue();
+            assertThat(InsertionSpacingCalculator.hasRoomForGraceNotePair(line, 1)).isTrue();
         }
 
         @Test

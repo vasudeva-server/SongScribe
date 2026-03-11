@@ -78,19 +78,18 @@ class ReflectionIntegrationTest extends UnitTest {
     }
 
     @Test
-    void testTwoCrotchetsSharpNoDot() {
+    void testCrotchetAndCrotchetRest() {
         var note1 = ElementType.CROTCHET.newInstance();
         note1.setAccidental(StaffElement.Accidental.SHARP);
-        var note2 = ElementType.CROTCHET.newInstance();
-        note2.setAccidental(StaffElement.Accidental.SHARP);
+        var rest = ElementType.CROTCHET_REST.newInstance();
 
         var coordinator = ReflectionTestHelper.createCoordinator(
-            List.of(note1, note2), allActions()
+            List.of(note1, rest), allActions()
         );
         ReflectionTestHelper.selectRange(coordinator, 0, 1);
         coordinator.reflectSelection(null);
 
-        assertSelected(crotchetAction, true);
+        assertSelected(crotchetAction, false);
         assertSelected(minimAction, false);
         assertSelected(barlineAction, false);
         assertSelected(sharpAction, true);
@@ -126,25 +125,26 @@ class ReflectionIntegrationTest extends UnitTest {
     }
 
     @Test
-    void testCrotchetAndCrotchetRest() {
-        var note1 = ElementType.CROTCHET.newInstance();
-        note1.setAccidental(StaffElement.Accidental.SHARP);
-        var rest = ElementType.CROTCHET_REST.newInstance();
+    void testSingleCrotchetSharpDottedFermata() {
+        var note = ElementType.CROTCHET.newInstance();
+        note.setAccidental(StaffElement.Accidental.SHARP);
+        note.setDotCount(1);
+        note.setFermata(true);
 
         var coordinator = ReflectionTestHelper.createCoordinator(
-            List.of(note1, rest), allActions()
+            List.of(note), allActions()
         );
-        ReflectionTestHelper.selectRange(coordinator, 0, 1);
+        ReflectionTestHelper.selectNote(coordinator, 0);
         coordinator.reflectSelection(null);
 
-        assertSelected(crotchetAction, false);
+        assertSelected(crotchetAction, true);
         assertSelected(minimAction, false);
         assertSelected(barlineAction, false);
         assertSelected(sharpAction, true);
         assertSelected(flatAction, false);
-        assertSelected(dotAction, false);
+        assertSelected(dotAction, true);
         assertSelected(doubleDotAction, false);
-        assertSelected(fermataAction, false);
+        assertSelected(fermataAction, true);
         assertSelected(staccatoAction, false);
     }
 
@@ -171,6 +171,30 @@ class ReflectionIntegrationTest extends UnitTest {
     }
 
     @Test
+    void testTwoCrotchetsSharpNoDot() {
+        var note1 = ElementType.CROTCHET.newInstance();
+        note1.setAccidental(StaffElement.Accidental.SHARP);
+        var note2 = ElementType.CROTCHET.newInstance();
+        note2.setAccidental(StaffElement.Accidental.SHARP);
+
+        var coordinator = ReflectionTestHelper.createCoordinator(
+            List.of(note1, note2), allActions()
+        );
+        ReflectionTestHelper.selectRange(coordinator, 0, 1);
+        coordinator.reflectSelection(null);
+
+        assertSelected(crotchetAction, true);
+        assertSelected(minimAction, false);
+        assertSelected(barlineAction, false);
+        assertSelected(sharpAction, true);
+        assertSelected(flatAction, false);
+        assertSelected(dotAction, false);
+        assertSelected(doubleDotAction, false);
+        assertSelected(fermataAction, false);
+        assertSelected(staccatoAction, false);
+    }
+
+    @Test
     void testTwoSingleBarlines() {
         var barline1 = ElementType.SINGLE_BARLINE.newInstance();
         var barline2 = ElementType.SINGLE_BARLINE.newInstance();
@@ -189,30 +213,6 @@ class ReflectionIntegrationTest extends UnitTest {
         assertSelected(dotAction, false);
         assertSelected(doubleDotAction, false);
         assertSelected(fermataAction, false);
-        assertSelected(staccatoAction, false);
-    }
-
-    @Test
-    void testSingleCrotchetSharpDottedFermata() {
-        var note = ElementType.CROTCHET.newInstance();
-        note.setAccidental(StaffElement.Accidental.SHARP);
-        note.setDotCount(1);
-        note.setFermata(true);
-
-        var coordinator = ReflectionTestHelper.createCoordinator(
-            List.of(note), allActions()
-        );
-        ReflectionTestHelper.selectNote(coordinator, 0);
-        coordinator.reflectSelection(null);
-
-        assertSelected(crotchetAction, true);
-        assertSelected(minimAction, false);
-        assertSelected(barlineAction, false);
-        assertSelected(sharpAction, true);
-        assertSelected(flatAction, false);
-        assertSelected(dotAction, true);
-        assertSelected(doubleDotAction, false);
-        assertSelected(fermataAction, true);
         assertSelected(staccatoAction, false);
     }
 }

@@ -38,6 +38,50 @@ class ElementTypeActionTest extends UnitTest {
         Kind.NON_DURATION, ElementType.SINGLE_BARLINE, "Barline", null, 0, "barline", "Single barline", 0, 0
     );
 
+    // CR2: createReplacement preserves note kind (note stays note)
+    @Test
+    void testCreateReplacementPreservesNoteKind() {
+        var element = ElementType.MINIM.newInstance();
+        var replacement = durationAction.createReplacement(element, true);
+        assertThat(replacement).isNotNull();
+        assertThat(replacement.getType()).isEqualTo(ElementType.CROTCHET);
+    }
+
+    // CR3: createReplacement preserves rest kind (rest stays rest)
+    @Test
+    void testCreateReplacementPreservesRestKind() {
+        var element = ElementType.MINIM_REST.newInstance();
+        var replacement = durationAction.createReplacement(element, true);
+        assertThat(replacement).isNotNull();
+        assertThat(replacement.getType()).isEqualTo(ElementType.CROTCHET_REST);
+    }
+
+    // CR1: createReplacement returns null when selected == false
+    @Test
+    void testCreateReplacementReturnsNullWhenNotSelected() {
+        var element = ElementType.CROTCHET.newInstance();
+        assertThat(durationAction.createReplacement(element, false)).isNull();
+    }
+
+    // CR4: createReplacement with grace note (toNote/toRest returns this)
+    @Test
+    void testCreateReplacementWithGraceNote() {
+        var graceAction = new ElementTypeAction(
+            Kind.DURATION, ElementType.GRACE_QUAVER, "Grace", null, 0, "grace", "Grace note", 0, 0
+        );
+        var element = ElementType.CROTCHET.newInstance();
+        var replacement = graceAction.createReplacement(element, true);
+        assertThat(replacement).isNotNull();
+        assertThat(replacement.getType()).isEqualTo(ElementType.GRACE_QUAVER);
+    }
+
+    // M2: matchesElement returns false when ElementType differs
+    @Test
+    void testDoesNotMatchElementWhenTypeDiffers() {
+        var element = ElementType.MINIM.newInstance();
+        assertThat(durationAction.matchesElement(element)).isFalse();
+    }
+
     // A1: DURATION action applies to notes
     @Test
     void testDurationAppliesToNote() {
@@ -66,6 +110,29 @@ class ElementTypeActionTest extends UnitTest {
         assertThat(durationAction.appliesTo(element)).isFalse();
     }
 
+    // T1: DURATION kind has correct flags (no DISABLE_IN_REST_MODE)
+    @Test
+    void testDurationKindHasCorrectFlags() {
+        assertThat(durationAction.hasFlag(UIAction.Flag.DISABLE_IN_REST_MODE)).isFalse();
+        assertThat(durationAction.hasFlag(UIAction.Flag.DISABLE_WHEN_PLAYING)).isTrue();
+        assertThat(durationAction.hasFlag(UIAction.Flag.DISABLE_IN_ADJUSTMENT_MODE)).isTrue();
+        assertThat(durationAction.hasFlag(UIAction.Flag.DISABLE_WHEN_EDITING_TEXT)).isTrue();
+    }
+
+    // M1: matchesElement returns true when ElementType matches
+    @Test
+    void testMatchesElementWhenTypeMatches() {
+        var element = ElementType.CROTCHET.newInstance();
+        assertThat(durationAction.matchesElement(element)).isTrue();
+    }
+
+    // A6: NON_DURATION action applies to barlines
+    @Test
+    void testNonDurationAppliesToBarline() {
+        var element = ElementType.SINGLE_BARLINE.newInstance();
+        assertThat(nonDurationAction.appliesTo(element)).isTrue();
+    }
+
     // A4: NON_DURATION action does not apply to notes
     @Test
     void testNonDurationDoesNotApplyToNote() {
@@ -80,36 +147,6 @@ class ElementTypeActionTest extends UnitTest {
         assertThat(nonDurationAction.appliesTo(element)).isFalse();
     }
 
-    // A6: NON_DURATION action applies to barlines
-    @Test
-    void testNonDurationAppliesToBarline() {
-        var element = ElementType.SINGLE_BARLINE.newInstance();
-        assertThat(nonDurationAction.appliesTo(element)).isTrue();
-    }
-
-    // M1: matchesElement returns true when ElementType matches
-    @Test
-    void testMatchesElementWhenTypeMatches() {
-        var element = ElementType.CROTCHET.newInstance();
-        assertThat(durationAction.matchesElement(element)).isTrue();
-    }
-
-    // M2: matchesElement returns false when ElementType differs
-    @Test
-    void testDoesNotMatchElementWhenTypeDiffers() {
-        var element = ElementType.MINIM.newInstance();
-        assertThat(durationAction.matchesElement(element)).isFalse();
-    }
-
-    // T1: DURATION kind has correct flags (no DISABLE_IN_REST_MODE)
-    @Test
-    void testDurationKindHasCorrectFlags() {
-        assertThat(durationAction.hasFlag(UIAction.Flag.DISABLE_IN_REST_MODE)).isFalse();
-        assertThat(durationAction.hasFlag(UIAction.Flag.DISABLE_WHEN_PLAYING)).isTrue();
-        assertThat(durationAction.hasFlag(UIAction.Flag.DISABLE_IN_ADJUSTMENT_MODE)).isTrue();
-        assertThat(durationAction.hasFlag(UIAction.Flag.DISABLE_WHEN_EDITING_TEXT)).isTrue();
-    }
-
     // T2: NON_DURATION kind has correct flags (includes DISABLE_IN_REST_MODE)
     @Test
     void testNonDurationKindHasCorrectFlags() {
@@ -117,42 +154,5 @@ class ElementTypeActionTest extends UnitTest {
         assertThat(nonDurationAction.hasFlag(UIAction.Flag.DISABLE_WHEN_PLAYING)).isTrue();
         assertThat(nonDurationAction.hasFlag(UIAction.Flag.DISABLE_IN_ADJUSTMENT_MODE)).isTrue();
         assertThat(nonDurationAction.hasFlag(UIAction.Flag.DISABLE_WHEN_EDITING_TEXT)).isTrue();
-    }
-
-    // CR1: createReplacement returns null when selected == false
-    @Test
-    void testCreateReplacementReturnsNullWhenNotSelected() {
-        var element = ElementType.CROTCHET.newInstance();
-        assertThat(durationAction.createReplacement(element, false)).isNull();
-    }
-
-    // CR2: createReplacement preserves note kind (note stays note)
-    @Test
-    void testCreateReplacementPreservesNoteKind() {
-        var element = ElementType.MINIM.newInstance();
-        var replacement = durationAction.createReplacement(element, true);
-        assertThat(replacement).isNotNull();
-        assertThat(replacement.getType()).isEqualTo(ElementType.CROTCHET);
-    }
-
-    // CR3: createReplacement preserves rest kind (rest stays rest)
-    @Test
-    void testCreateReplacementPreservesRestKind() {
-        var element = ElementType.MINIM_REST.newInstance();
-        var replacement = durationAction.createReplacement(element, true);
-        assertThat(replacement).isNotNull();
-        assertThat(replacement.getType()).isEqualTo(ElementType.CROTCHET_REST);
-    }
-
-    // CR4: createReplacement with grace note (toNote/toRest returns this)
-    @Test
-    void testCreateReplacementWithGraceNote() {
-        var graceAction = new ElementTypeAction(
-            Kind.DURATION, ElementType.GRACE_QUAVER, "Grace", null, 0, "grace", "Grace note", 0, 0
-        );
-        var element = ElementType.CROTCHET.newInstance();
-        var replacement = graceAction.createReplacement(element, true);
-        assertThat(replacement).isNotNull();
-        assertThat(replacement.getType()).isEqualTo(ElementType.GRACE_QUAVER);
     }
 }

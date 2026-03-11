@@ -42,17 +42,6 @@ class SelectionTest extends E2ETest {
     class BasicSelection {
 
         @Test
-        void testClickToSelectNote() {
-            buildThreeNoteComposition();
-            enterSelectMode();
-
-            clickAt(noteScreenPosition(0, 1));
-
-            assertThat(score().getSingleSelectedElement())
-                .isEqualTo(composition().getLine(0).getElement(1));
-        }
-
-        @Test
         void testClickEmptySpaceDeselects() {
             buildThreeNoteComposition();
             enterSelectMode();
@@ -73,6 +62,17 @@ class SelectionTest extends E2ETest {
         }
 
         @Test
+        void testClickToSelectNote() {
+            buildThreeNoteComposition();
+            enterSelectMode();
+
+            clickAt(noteScreenPosition(0, 1));
+
+            assertThat(score().getSingleSelectedElement())
+                .isEqualTo(composition().getLine(0).getElement(1));
+        }
+
+        @Test
         void testModeToggle() {
             // Start in edit mode (default after reset)
             enterEditMode();
@@ -85,6 +85,43 @@ class SelectionTest extends E2ETest {
             // Switch back to edit mode
             enterEditMode();
             assertThat(score().getMode()).isEqualTo(Mode.EDIT);
+        }
+    }
+
+    @Nested
+    class DeselectAndLineSelection {
+
+        @Test
+        void testClickInStaffSelectsLine() {
+            buildThreeNoteComposition();
+            enterSelectMode();
+
+            // Click within the staff but to the right of all notes
+            var clickPoint = GuiActionRunner.execute(() -> {
+                var lc = score().getLineComponent(0);
+                var loc = lc.getLocationOnScreen();
+                var yPx = lc.staffPositionToYPx(0);
+                return new Point(loc.x + lc.getWidth() - 10, loc.y + yPx);
+            });
+
+            clickAt(clickPoint);
+
+            assertThat(score().isLineSelected(0)).isTrue();
+        }
+
+        @Test
+        void testMetaDDeselectsAll() {
+            buildThreeNoteComposition();
+            enterSelectMode();
+
+            // Select all 3 notes
+            clickAt(noteScreenPosition(0, 0));
+            shiftClickAt(noteScreenPosition(0, 2));
+            assertThat(score().getSelectionSize()).isEqualTo(3);
+
+            // Press Cmd+D (Meta+D) to deselect all
+            robot.pressAndReleaseKey(KeyEvent.VK_D, InputEvent.META_DOWN_MASK);
+            assertThat(score().getSelectionSize()).isEqualTo(0);
         }
     }
 
@@ -124,43 +161,6 @@ class SelectionTest extends E2ETest {
             assertThat(score().isElementSelected(0, 0)).isTrue();
             assertThat(score().isElementSelected(1, 0)).isTrue();
             assertThat(score().isElementSelected(2, 0)).isFalse();
-        }
-    }
-
-    @Nested
-    class DeselectAndLineSelection {
-
-        @Test
-        void testMetaDDeselectsAll() {
-            buildThreeNoteComposition();
-            enterSelectMode();
-
-            // Select all 3 notes
-            clickAt(noteScreenPosition(0, 0));
-            shiftClickAt(noteScreenPosition(0, 2));
-            assertThat(score().getSelectionSize()).isEqualTo(3);
-
-            // Press Cmd+D (Meta+D) to deselect all
-            robot.pressAndReleaseKey(KeyEvent.VK_D, InputEvent.META_DOWN_MASK);
-            assertThat(score().getSelectionSize()).isEqualTo(0);
-        }
-
-        @Test
-        void testClickInStaffSelectsLine() {
-            buildThreeNoteComposition();
-            enterSelectMode();
-
-            // Click within the staff but to the right of all notes
-            var clickPoint = GuiActionRunner.execute(() -> {
-                var lc = score().getLineComponent(0);
-                var loc = lc.getLocationOnScreen();
-                var yPx = lc.staffPositionToYPx(0);
-                return new Point(loc.x + lc.getWidth() - 10, loc.y + yPx);
-            });
-
-            clickAt(clickPoint);
-
-            assertThat(score().isLineSelected(0)).isTrue();
         }
     }
 

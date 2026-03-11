@@ -34,6 +34,28 @@ class DotActionTest extends UnitTest {
         new DotAction(DotAction.DotLevel.DOUBLE, "Double Dot", null, 0, "double-dot", "Add double dot", 0, 0);
 
     @Test
+    void testApplyToNoteDoubleDotApplies() {
+        var note = ElementType.CROTCHET.newInstance();
+        doubleDotAction.applyToElement(note, true);
+        assertThat(note.getDotCount()).isEqualTo(2);
+    }
+
+    @Test
+    void testApplyToNoteRemovesDot() {
+        var note = ElementType.CROTCHET.newInstance();
+        note.setDotCount(1);
+        singleDotAction.applyToElement(note, false);
+        assertThat(note.getDotCount()).isEqualTo(0);
+    }
+
+    @Test
+    void testApplyToNoteSingleDotApplies() {
+        var note = ElementType.CROTCHET.newInstance();
+        singleDotAction.applyToElement(note, true);
+        assertThat(note.getDotCount()).isEqualTo(1);
+    }
+
+    @Test
     void testAppliesToNote() {
         var note = ElementType.CROTCHET.newInstance();
         assertThat(singleDotAction.appliesTo(note)).isTrue();
@@ -52,17 +74,10 @@ class DotActionTest extends UnitTest {
     }
 
     @Test
-    void testSingleDotMatchesDotCount1() {
+    void testDoubleDotDoesNotMatchDotCount1() {
         var note = ElementType.CROTCHET.newInstance();
         note.setDotCount(1);
-        assertThat(singleDotAction.matchesElement(note)).isTrue();
-    }
-
-    @Test
-    void testSingleDotDoesNotMatchDotCount0() {
-        var note = ElementType.CROTCHET.newInstance();
-        note.setDotCount(0);
-        assertThat(singleDotAction.matchesElement(note)).isFalse();
+        assertThat(doubleDotAction.matchesElement(note)).isFalse();
     }
 
     @Test
@@ -73,31 +88,16 @@ class DotActionTest extends UnitTest {
     }
 
     @Test
-    void testDoubleDotDoesNotMatchDotCount1() {
+    void testSingleDotDoesNotMatchDotCount0() {
+        var note = ElementType.CROTCHET.newInstance();
+        note.setDotCount(0);
+        assertThat(singleDotAction.matchesElement(note)).isFalse();
+    }
+
+    @Test
+    void testSingleDotMatchesDotCount1() {
         var note = ElementType.CROTCHET.newInstance();
         note.setDotCount(1);
-        assertThat(doubleDotAction.matchesElement(note)).isFalse();
-    }
-
-    @Test
-    void testApplyToNoteSingleDotApplies() {
-        var note = ElementType.CROTCHET.newInstance();
-        singleDotAction.applyToElement(note, true);
-        assertThat(note.getDotCount()).isEqualTo(1);
-    }
-
-    @Test
-    void testApplyToNoteDoubleDotApplies() {
-        var note = ElementType.CROTCHET.newInstance();
-        doubleDotAction.applyToElement(note, true);
-        assertThat(note.getDotCount()).isEqualTo(2);
-    }
-
-    @Test
-    void testApplyToNoteRemovesDot() {
-        var note = ElementType.CROTCHET.newInstance();
-        note.setDotCount(1);
-        singleDotAction.applyToElement(note, false);
-        assertThat(note.getDotCount()).isEqualTo(0);
+        assertThat(singleDotAction.matchesElement(note)).isTrue();
     }
 }
