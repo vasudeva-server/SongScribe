@@ -133,14 +133,8 @@ class ElementInsertionTest extends E2ETest {
 
         @Test
         void testInsertNoteAtDifferentStaffPositions() {
-            selectDuration(Actions.QUARTER_NOTE_ACTION);
             var positions = new int[]{0, -4, 4, -8};
-
-            for (var staffPositionSp : positions) {
-                var point = insertionPoint(0, staffPositionSp);
-                clickAt(point);
-                performLayout(0);
-            }
+            buildNotes(Actions.QUARTER_NOTE_ACTION, positions);
 
             var line = composition().getLine(0);
             assertThat(line.elementCount()).isEqualTo(positions.length);

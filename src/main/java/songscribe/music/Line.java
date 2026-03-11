@@ -295,7 +295,7 @@ public class Line {
         return isPairedGraceNote(index) || isPairedGraceNote(index - 1);
     }
 
-    private boolean isPairedGraceNote(int index) {
+    public boolean isPairedGraceNote(int index) {
         if (index < 0 || index >= elements.size()) {
             return false;
         }

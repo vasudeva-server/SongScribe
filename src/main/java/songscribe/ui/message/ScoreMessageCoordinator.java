@@ -440,9 +440,17 @@ public final class ScoreMessageCoordinator {
 
     @SuppressWarnings("ObjectEquality")
     private static void deleteNote(int xIndex, @NotNull Line line) {
+        // If the preceding note is a paired grace note, it becomes orphaned when
+        // this note is deleted and must be removed along with it.
+        var hasPrecedingPairedGraceNote = xIndex > 0 && line.isPairedGraceNote(xIndex - 1);
+
+        // Determine the left edge of the deletion — if a paired grace note precedes
+        // the deleted note, it is also being removed, so the gap starts there.
+        var firstDeletedIndex = hasPrecedingPairedGraceNote ? xIndex - 1 : xIndex;
+
         if (xIndex < (line.elementCount() - 1)) {
             var shift =
-                line.getElement(xIndex).getXPosSs() -
+                line.getElement(firstDeletedIndex).getXPosSs() -
                     line.getElement(xIndex + 1).getXPosSs();
 
             for (var i = xIndex + 1; i < line.elementCount(); i++) {
@@ -450,8 +458,10 @@ public final class ScoreMessageCoordinator {
             }
         }
 
-        // If the previous note has a glissando targeting this note, remove it
-        if (xIndex > 0) {
+        // If the previous note is a paired grace note, it disappears entirely —
+        // no need to strip its glissando separately. Otherwise remove any standalone
+        // incoming glissando from the previous note.
+        if (!hasPrecedingPairedGraceNote && xIndex > 0) {
             var prevElement = line.getElement(xIndex - 1);
 
             if (prevElement.getGlissando() != StaffElement.NO_GLISSANDO) {
@@ -459,6 +469,12 @@ public final class ScoreMessageCoordinator {
             }
         }
 
+        // Remove the host note first (higher index), then the orphaned grace note.
+        // Removing the higher index first keeps xIndex - 1 valid.
         line.removeElement(xIndex);
+
+        if (hasPrecedingPairedGraceNote) {
+            line.removeElement(xIndex - 1);
+        }
     }
 }

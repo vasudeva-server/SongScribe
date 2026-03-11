@@ -195,6 +195,24 @@ class GraceNoteTest extends E2ETest {
             .isEqualTo(StaffElement.Glissando.Type.CONNECTED);
     }
 
+    @Test
+    void testDeleteHostNoteAlsoDeletesGraceNote() {
+        buildGraceNotePair();
+
+        enterSelectMode();
+
+        // Select the host note (index 1)
+        clickAt(noteScreenPosition(0, 1));
+
+        // Delete it
+        robot.pressAndReleaseKey(KeyEvent.VK_DELETE);
+        performLayout(0);
+
+        // Both the host note and the now-orphaned grace note should be removed
+        var line = composition().getLine(0);
+        assertThat(line.elementCount()).isEqualTo(0);
+    }
+
     @Nested
     class EdgeCases {
 
@@ -346,11 +364,14 @@ class GraceNoteTest extends E2ETest {
         performLayout(0);
     }
 
+    private void buildGraceNotePair() {
+        buildEmptyLine();
+        buildNotes(Actions.GRACE_EIGHTH_NOTE_ACTION, 0, -2);
+    }
+
     private void buildLineWithOneNote() {
         buildEmptyLine();
-        selectDuration(Actions.QUARTER_NOTE_ACTION);
-        clickAt(insertionPoint(0, 0));
-        performLayout(0);
+        buildNotes(Actions.QUARTER_NOTE_ACTION, 0);
     }
 
     private int fullLineNoteCount;

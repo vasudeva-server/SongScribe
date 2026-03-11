@@ -285,11 +285,7 @@ class GlissandoTest extends E2ETest {
     // -- Composition builders --
 
     private void buildTwoNotesAtDifferentPitches() {
-        selectDuration(Actions.QUARTER_NOTE_ACTION);
-        clickAt(insertionPoint(0, 0));
-        performLayout(0);
-        clickAt(insertionPoint(0, -4));
-        performLayout(0);
+        buildNotes(Actions.QUARTER_NOTE_ACTION, 0, -4);
     }
 
     private void buildNotesWithConnectedGlissando() {

@@ -176,11 +176,7 @@ class BeamingTest extends E2ETest {
 
     private void buildUnbeamedEighthNotes() {
         // Insert two eighths (auto-beams them), then remove the beam
-        selectDuration(Actions.EIGHTH_NOTE_ACTION);
-        clickAt(insertionPoint(0, 0));
-        performLayout(0);
-        clickAt(insertionPoint(0, -2));
-        performLayout(0);
+        buildNotes(Actions.EIGHTH_NOTE_ACTION, 0, -2);
 
         enterSelectMode();
         clickAt(noteScreenPosition(0, 0));
@@ -192,19 +188,11 @@ class BeamingTest extends E2ETest {
 
     private void buildBeamedEighthNotes() {
         // Insert two consecutive eighths — auto-beaming creates the beam
-        selectDuration(Actions.EIGHTH_NOTE_ACTION);
-        clickAt(insertionPoint(0, 0));
-        performLayout(0);
-        clickAt(insertionPoint(0, -2));
-        performLayout(0);
+        buildNotes(Actions.EIGHTH_NOTE_ACTION, 0, -2);
     }
 
     private void buildTwoQuarterNotes() {
-        selectDuration(Actions.QUARTER_NOTE_ACTION);
-        clickAt(insertionPoint(0, 0));
-        performLayout(0);
-        clickAt(insertionPoint(0, -2));
-        performLayout(0);
+        buildNotes(Actions.QUARTER_NOTE_ACTION, 0, -2);
     }
 
 }

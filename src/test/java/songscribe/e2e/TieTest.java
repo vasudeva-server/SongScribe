@@ -255,11 +255,7 @@ class TieTest extends E2ETest {
     // -- Helpers --
 
     private void buildTwoAdjacentNotes() {
-        selectDuration(Actions.QUARTER_NOTE_ACTION);
-        clickAt(insertionPoint(0, 0));
-        performLayout(0);
-        clickAt(insertionPoint(0, 0));
-        performLayout(0);
+        buildNotes(Actions.QUARTER_NOTE_ACTION, 0, 0);
     }
 
     private void buildTiedNotes() {
