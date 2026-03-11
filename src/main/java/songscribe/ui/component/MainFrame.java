@@ -123,17 +123,20 @@ public class MainFrame extends JFrame implements IMainFrame, Printable {
 
     // UI components
     private LyricsPanel lyricsPanel = null;
+    @Nullable
+    private JLabel titleBarLabel = null;
 
+    private static final int MAC_TITLE_BAR_HEIGHT = 28;
+    private static final int MAC_TITLE_FONT_SIZE = 13;
     private static final double PRINT_EXTRA_MARGIN = 0.25 * 72;
     private PrinterJob printerJob = null;
 
     public MainFrame() {
         // We would like the cool transparent title bar on macOS
         if (SystemInfo.isMacOS && SystemInfo.isMacFullWindowContentSupported) {
-            rootPane.putClientProperty(
-                "apple.awt.transparentTitleBar",
-                Boolean.TRUE
-            );
+            rootPane.putClientProperty("apple.awt.fullWindowContent", true);
+            rootPane.putClientProperty("apple.awt.transparentTitleBar", true);
+            rootPane.putClientProperty("apple.awt.windowTitleVisible", false);
         }
 
         appName = Strings.get(Strings.APP_SONGWRITER);
@@ -342,7 +345,33 @@ public class MainFrame extends JFrame implements IMainFrame, Printable {
         // +---------------------+
         var contentPane = getContentPane();
         contentPane.setLayout(new BorderLayout());
-        contentPane.add(new MainToolbarPanel(), BorderLayout.NORTH);
+
+        var toolbarPanel = new MainToolbarPanel();
+
+        // On macOS with full window content, draw a custom title in the
+        // title bar area and place it above the toolbar.
+        if (SystemInfo.isMacOS && SystemInfo.isMacFullWindowContentSupported) {
+            var titleBar = new JPanel(new BorderLayout()) {
+                @Override
+                public void updateUI() {
+                    super.updateUI();
+                    setBackground(UIManager.getColor("ToolBar.background"));
+                }
+            };
+            titleBar.setPreferredSize(new Dimension(0, MAC_TITLE_BAR_HEIGHT));
+
+            titleBarLabel = new JLabel("", SwingConstants.CENTER);
+            // macOS private system UI font for native title bar appearance
+            titleBarLabel.setFont(new Font(".AppleSystemUIFont", Font.BOLD, MAC_TITLE_FONT_SIZE));
+            titleBar.add(titleBarLabel, BorderLayout.CENTER);
+
+            var northPanel = new JPanel(new BorderLayout());
+            northPanel.add(titleBar, BorderLayout.NORTH);
+            northPanel.add(toolbarPanel, BorderLayout.CENTER);
+            contentPane.add(northPanel, BorderLayout.NORTH);
+        } else {
+            contentPane.add(toolbarPanel, BorderLayout.NORTH);
+        }
 
         score.init();
         contentPane.add(createCenterContent(), BorderLayout.CENTER);
@@ -408,7 +437,12 @@ public class MainFrame extends JFrame implements IMainFrame, Printable {
 
     private void updateTitle() {
         var name = (currentFile != null) ? currentFile.getName() : Strings.get(Strings.DOCUMENT_UNTITLED);
-        setTitle(documentModified ? '•' + name : name);
+        var title = documentModified ? '•' + name : name;
+        setTitle(title);
+
+        if (titleBarLabel != null) {
+            titleBarLabel.setText(title);
+        }
     }
 
     @Override

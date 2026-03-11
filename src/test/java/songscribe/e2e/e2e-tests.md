@@ -455,6 +455,14 @@ The status overlay shows the test counter and the test name.
 5. Verify the grace note has a CONNECTED glissando to the host.
 6. Verify grace mode is inactive after completion.
 
+### testDeleteHostNoteAlsoDeletesGraceNote
+**Goal:** Verify that deleting the host note also removes the orphaned grace note.
+**Steps:**
+1. Build a grace note pair (grace note + host note with connected glissando).
+2. Switch to select mode, select the host note (index 1).
+3. Press Delete.
+4. Verify the line has 0 elements (both grace note and host removed).
+
 ### testDragLeftCancelsAndRemovesGraceNote
 **Goal:** Verify that dragging left past the cancel threshold during grace note insertion cancels the insertion and removes the grace note.
 **Steps:**

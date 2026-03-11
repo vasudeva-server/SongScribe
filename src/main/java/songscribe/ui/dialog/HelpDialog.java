@@ -93,21 +93,18 @@ public class HelpDialog
             ((JPanel) lo.component).add(label);
         }
 
-        ((JComponent) lo.component).setBorder(null);
-        lo.component.setBackground(
-            ((index % 2) == 0) ? Color.white : new Color(238, 246, 255)
-        );
-
-        ((JPanel) lo.component).getComponent(0).setForeground(Color.black);
-
         if (isSelected) {
-            lo.component.setBackground(Color.blue);
-            ((JPanel) lo.component).getComponent(0).setForeground(Color.white);
-        } else if (cellHasFocus) {
-            ((JComponent) lo.component).setBorder(
-                    BorderFactory.createLineBorder(Color.black)
-                );
+            lo.component.setBackground(list.getSelectionBackground());
+            ((JPanel) lo.component).getComponent(0).setForeground(list.getSelectionForeground());
+        } else {
+            lo.component.setBackground(list.getBackground());
+            ((JPanel) lo.component).getComponent(0).setForeground(list.getForeground());
         }
+
+        var border = cellHasFocus
+            ? UIManager.getBorder("List.focusCellHighlightBorder")
+            : null;
+        ((JComponent) lo.component).setBorder(border);
 
         return lo.component;
     }

@@ -222,7 +222,7 @@ public class CompositionSettingsDialog extends StandardDialog {
             attributionFontPreview,
             annotationFontPreview,
         }) {
-            preview.setBackground(Color.WHITE);
+            preview.setBackground(UIManager.getColor("TextField.background"));
             preview.setOpaque(true);
 
             if (preview instanceof JTextArea text) {
@@ -1001,7 +1001,7 @@ public class CompositionSettingsDialog extends StandardDialog {
 
             // If index == -1, it's drawing the combo box, otherwise the popup
             if (index == -1) {
-                color = Color.white;
+                color = list.getBackground();
             } else {
                 color = isSelected
                     ? list.getSelectionBackground()

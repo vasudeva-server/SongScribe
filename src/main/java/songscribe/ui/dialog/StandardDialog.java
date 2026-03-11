@@ -94,7 +94,7 @@ public abstract class StandardDialog {
         cancelButton = new JButton(Strings.get(Strings.DIALOG_BUTTON_CANCEL));
         cancelButton.addActionListener(_ -> setVisible(false));
 
-        buttonPanel.setBorder(BorderFactory.createEmptyBorder(18, 0, 18, 13));
+        buttonPanel.setBorder(BorderFactory.createEmptyBorder(18, 0, 18, 6));
         buttonPanel.add(cancelButton);
         buttonPanel.add(applyButton);
         buttonPanel.add(okButton);

@@ -326,12 +326,28 @@ public final class Score
     private void initScorePanel() {
         scorePanel = new ScorePanel(marginPanel);
         scrollPane = new JScrollPane(scorePanel);
-        scrollPane.setBorder(
-            BorderFactory.createMatteBorder(1, 0, 1, 0, UIManager.getColor("ToolBar.separatorColor"))
-        );
-        var backgroundColor = Color.lightGray;
-        scrollPane.setBackground(backgroundColor);
-        scrollPane.getViewport().setBackground(backgroundColor);
+        scrollPane.setBorder(new ThemeAwareMatteBorder(1, 0, 1, 0, "ToolBar.separatorColor"));
+        updateScoreSurroundBackground();
+    }
+
+    @Override
+    public void updateUI() {
+        super.updateUI();
+
+        if (scrollPane != null) {
+            updateScoreSurroundBackground();
+        }
+    }
+
+    private void updateScoreSurroundBackground() {
+        var color = UIManager.getColor(ScorePanel.BACKGROUND_KEY);
+
+        if (color == null) {
+            color = Color.LIGHT_GRAY;
+        }
+
+        scrollPane.setBackground(color);
+        scrollPane.getViewport().setBackground(color);
     }
 
     private void initMainPanel() {

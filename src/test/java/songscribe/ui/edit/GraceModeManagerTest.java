@@ -491,27 +491,23 @@ class GraceModeManagerTest extends UnitTest {
     // Normal edit mode unaffected
     // -------------------------------------------------------------------------
 
-    @Nested
-    class NormalEditModeUnaffected {
+    @Test
+    void testMouseEventsPassThroughWhenInactive() {
+        var lineComponent = mock(LineComponent.class);
 
-        @Test
-        void testMouseEventsPassThroughWhenInactive() {
-            var lineComponent = mock(LineComponent.class);
+        var pressEvent = mouseEvent(lineComponent, MouseEvent.MOUSE_PRESSED, 100, 100, MouseEvent.BUTTON1);
+        var releaseEvent = mouseEvent(lineComponent, MouseEvent.MOUSE_RELEASED, 100, 100, MouseEvent.BUTTON1);
+        var movedEvent = mouseEvent(lineComponent, MouseEvent.MOUSE_MOVED, 100, 100, MouseEvent.NOBUTTON);
+        var clickEvent = mouseEvent(lineComponent, MouseEvent.MOUSE_CLICKED, 100, 100, MouseEvent.BUTTON1);
 
-            var pressEvent = mouseEvent(lineComponent, MouseEvent.MOUSE_PRESSED, 100, 100, MouseEvent.BUTTON1);
-            var releaseEvent = mouseEvent(lineComponent, MouseEvent.MOUSE_RELEASED, 100, 100, MouseEvent.BUTTON1);
-            var movedEvent = mouseEvent(lineComponent, MouseEvent.MOUSE_MOVED, 100, 100, MouseEvent.NOBUTTON);
-            var clickEvent = mouseEvent(lineComponent, MouseEvent.MOUSE_CLICKED, 100, 100, MouseEvent.BUTTON1);
+        // Non-grace element set — mousePressed does not trigger entry
+        when(mockEditModeManager.getInsertionElement())
+            .thenReturn(ElementType.CROTCHET.newInstance());
 
-            // Non-grace element set — mousePressed does not trigger entry
-            when(mockEditModeManager.getInsertionElement())
-                .thenReturn(ElementType.CROTCHET.newInstance());
-
-            assertThat(graceModeManager.mousePressed(lineComponent, pressEvent)).isFalse();
-            assertThat(graceModeManager.mouseReleased(lineComponent, releaseEvent)).isFalse();
-            assertThat(graceModeManager.mouseMoved(lineComponent, movedEvent)).isFalse();
-            assertThat(graceModeManager.mouseClicked(lineComponent, clickEvent)).isFalse();
-        }
+        assertThat(graceModeManager.mousePressed(lineComponent, pressEvent)).isFalse();
+        assertThat(graceModeManager.mouseReleased(lineComponent, releaseEvent)).isFalse();
+        assertThat(graceModeManager.mouseMoved(lineComponent, movedEvent)).isFalse();
+        assertThat(graceModeManager.mouseClicked(lineComponent, clickEvent)).isFalse();
     }
 
     // -------------------------------------------------------------------------

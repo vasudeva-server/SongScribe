@@ -147,7 +147,7 @@ public class AboutDialog extends StandardDialog {
         web.setText(WEB);
 
         if (MyDesktop.isDesktopSupported()) {
-            web.setForeground(new Color(0, 0, 204));
+            web.setForeground(UIManager.getColor("Component.linkColor"));
             web.addMouseListener(
                 new MouseAdapter() {
                     @Override
@@ -176,7 +176,7 @@ public class AboutDialog extends StandardDialog {
         email.setText(ReportBugDialog.BUG_EMAIL);
 
         if (MyDesktop.isDesktopSupported()) {
-            email.setForeground(new Color(0, 0, 204));
+            email.setForeground(UIManager.getColor("Component.linkColor"));
             email.addMouseListener(
                 new MouseAdapter() {
                     @Override

@@ -55,6 +55,7 @@ public class SplashWindow extends JWindow {
 
         // Add a panel for the version number and copyright
         var infoPanel = new JPanel(new BorderLayout());
+        infoPanel.setBackground(Color.WHITE);
 
         // Give the panel a little padding
         infoPanel.setBorder(BorderFactory.createEmptyBorder(13, 13, 13, 13));

@@ -109,8 +109,8 @@ public class MenuController {
 
         if (SystemInfo.isMacOS) {
             // Desktop.getDesktop().setDefaultMenuBar(menuBar) is broken in macOS.
-            // We have to use setJMenuBar() in conjunction with:
-            // System.setProperty("apple.laf.useScreenMenuBar", "true");
+            // We have to use setJMenuBar() in conjunction with
+            // apple.laf.useScreenMenuBar (set in SongScribe.main).
             mainFrame.setJMenuBar(menuBar);
         }
 

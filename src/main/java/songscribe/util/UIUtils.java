@@ -32,11 +32,10 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import com.formdev.flatlaf.FlatLaf;
-import com.formdev.flatlaf.FlatLightLaf;
 import com.formdev.flatlaf.extras.FlatInspector;
 import com.formdev.flatlaf.extras.FlatUIDefaultsInspector;
-import com.formdev.flatlaf.themes.FlatMacLightLaf;
-import com.formdev.flatlaf.util.SystemInfo;
+
+import songscribe.ui.AppearanceManager;
 
 import songscribe.font.SourceSans3Font;
 import songscribe.ui.action.Actions;
@@ -358,10 +357,6 @@ public final class UIUtils {
 
     public static void initLaf() {
         try {
-            if (SystemInfo.isMacOS) {
-                System.setProperty("apple.laf.useScreenMenuBar", "true");
-            }
-
             // Enable anti-aliasing and sub-pixel rendering for fonts
             System.setProperty("swing.aatext", "true");
             System.setProperty("awt.useSystemAAFontSettings", "lcd");
@@ -382,13 +377,7 @@ public final class UIUtils {
 
             FlatLaf.registerCustomDefaultsSource("songscribe");
 
-            if (SystemInfo.isMacOS) {
-                UIManager.setLookAndFeel(new FlatMacLightLaf());
-                FlatMacLightLaf.setup();
-            } else {
-                UIManager.setLookAndFeel(new FlatLightLaf());
-                FlatLightLaf.setup();
-            }
+            AppearanceManager.init();
 
             // In DEBUG mode, install FlatLaf's inspectors
             if (System.getenv("DEBUG") != null) {

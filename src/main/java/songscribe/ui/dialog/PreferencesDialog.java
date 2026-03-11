@@ -25,28 +25,64 @@ import java.util.Hashtable;
 
 import javax.swing.*;
 
-import songscribe.prefs.Prefs;
 import songscribe.Strings;
+import songscribe.prefs.Prefs;
+import songscribe.ui.Appearance;
+import songscribe.ui.AppearanceManager;
 
 public class PreferencesDialog extends StandardDialog {
 
-    // Playback
+    // General tab
     private final JSlider durationSlider = new JSlider(34, 100);
     private final JCheckBox playInsertingNoteCheck = new JCheckBox(
         Strings.get(Strings.LABEL_PREFS_PLAY_INSERTED_NOTE)
     );
 
+    // Appearance tab
+    private final JRadioButton systemRadio = new JRadioButton(
+        Strings.get(Strings.LABEL_PREFS_APPEARANCE_SYSTEM)
+    );
+    private final JRadioButton lightRadio = new JRadioButton(
+        Strings.get(Strings.LABEL_PREFS_APPEARANCE_LIGHT)
+    );
+    private final JRadioButton darkRadio = new JRadioButton(
+        Strings.get(Strings.LABEL_PREFS_APPEARANCE_DARK)
+    );
+
     public PreferencesDialog() {
         super(Strings.get(Strings.DIALOG_PREFERENCES_TITLE));
-        var playbackPanel = new JPanel();
-        playbackPanel.setLayout(new BoxLayout(playbackPanel, BoxLayout.Y_AXIS));
-        playbackPanel.setBorder(BorderFactory.createEmptyBorder(15, 15, 0, 15));
+
+        var group = new ButtonGroup();
+        group.add(systemRadio);
+        group.add(lightRadio);
+        group.add(darkRadio);
+
+        var tabbedPane = createTabbedPane();
+        tabbedPane.addTab(
+            Strings.get(Strings.LABEL_PREFS_TAB_GENERAL),
+            createGeneralTab()
+        );
+        tabbedPane.addTab(
+            Strings.get(Strings.LABEL_PREFS_TAB_APPEARANCE),
+            createAppearanceTab()
+        );
+
+        contentPanel.add(BorderLayout.CENTER, tabbedPane);
+
+        buttonPanel.remove(applyButton);
+        contentPanel.add(BorderLayout.SOUTH, buttonPanel);
+    }
+
+    private JPanel createGeneralTab() {
+        var panel = new JPanel();
+        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
+        panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 0, 20));
 
         var label = new JLabel(Strings.get(Strings.LABEL_PREFS_PLAYBACK_DURATION));
         label.setAlignmentX(Component.LEFT_ALIGNMENT);
-        playbackPanel.add(label);
+        panel.add(label);
 
-        playbackPanel.add(Box.createVerticalStrut(10));
+        panel.add(Box.createVerticalStrut(10));
 
         durationSlider.setMajorTickSpacing(33);
         durationSlider.setMinorTickSpacing(11);
@@ -60,16 +96,43 @@ public class PreferencesDialog extends StandardDialog {
         labels.put(100, new JLabel(Strings.get(Strings.LABEL_PREFS_LEGATO)));
         durationSlider.setLabelTable(labels);
         durationSlider.setAlignmentX(Component.LEFT_ALIGNMENT);
-        playbackPanel.add(durationSlider);
+        panel.add(durationSlider);
 
-        playbackPanel.add(Box.createVerticalStrut(20));
+        panel.add(Box.createVerticalStrut(20));
 
-        playbackPanel.add(playInsertingNoteCheck);
+        panel.add(playInsertingNoteCheck);
 
-        contentPanel.add(BorderLayout.CENTER, playbackPanel);
+        return panel;
+    }
 
-        buttonPanel.remove(applyButton);
-        contentPanel.add(BorderLayout.SOUTH, buttonPanel);
+    private JPanel createAppearanceTab() {
+        var panel = new JPanel(new GridBagLayout());
+        panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 0, 20));
+
+        var gbc = new GridBagConstraints();
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        gbc.anchor = GridBagConstraints.CENTER;
+
+        var description = new JLabel(
+            Strings.get(Strings.LABEL_PREFS_APPEARANCE_DESCRIPTION)
+        );
+        description.setBorder(BorderFactory.createEmptyBorder(0, 7, 0, 7));
+        panel.add(description, gbc);
+
+        gbc.gridy = 1;
+        gbc.insets = new Insets(15, 0, 0, 0);
+
+        var radioPanel = new JPanel();
+        radioPanel.setLayout(new BoxLayout(radioPanel, BoxLayout.Y_AXIS));
+        radioPanel.add(systemRadio);
+        radioPanel.add(Box.createVerticalStrut(5));
+        radioPanel.add(lightRadio);
+        radioPanel.add(Box.createVerticalStrut(5));
+        radioPanel.add(darkRadio);
+        panel.add(radioPanel, gbc);
+
+        return panel;
     }
 
     @Override
@@ -77,6 +140,12 @@ public class PreferencesDialog extends StandardDialog {
         var prefs = Prefs.getInstance();
         durationSlider.setValue(prefs.getInt("playbackNoteDuration"));
         playInsertingNoteCheck.setSelected(prefs.getBoolean("playInsertedNote"));
+
+        (switch (AppearanceManager.getPreference()) {
+            case LIGHT -> lightRadio;
+            case DARK -> darkRadio;
+            case SYSTEM -> systemRadio;
+        }).setSelected(true);
     }
 
     @Override
@@ -85,5 +154,17 @@ public class PreferencesDialog extends StandardDialog {
         prefs.put("playbackNoteDuration", durationSlider.getValue());
         prefs.put("playInsertedNote", playInsertingNoteCheck.isSelected());
         mainFrame.fireMusicChanged(this);
+
+        Appearance newAppearance;
+
+        if (darkRadio.isSelected()) {
+            newAppearance = Appearance.DARK;
+        } else if (lightRadio.isSelected()) {
+            newAppearance = Appearance.LIGHT;
+        } else {
+            newAppearance = Appearance.SYSTEM;
+        }
+
+        AppearanceManager.switchTheme(newAppearance);
     }
 }

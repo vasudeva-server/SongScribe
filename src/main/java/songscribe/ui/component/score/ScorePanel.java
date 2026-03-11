@@ -28,14 +28,24 @@ import org.jetbrains.annotations.NotNull;
 
 public class ScorePanel extends JPanel implements Scrollable {
 
+    public static final String BACKGROUND_KEY = "SongScribe.scorePanel.background";
+
     private final Component content;
 
     public ScorePanel(Component content) {
         this.content = content;
         setLayout(new GridBagLayout());
         setBorder(BorderFactory.createEmptyBorder());
-        setBackground(Color.lightGray);
         add(content);
+    }
+
+    @Override
+    public void updateUI() {
+        // setUI() (called by super) triggers updateUI() before our fields are initialized
+        super.updateUI();
+
+        var color = UIManager.getColor(BACKGROUND_KEY);
+        setBackground(color != null ? color : Color.LIGHT_GRAY);
     }
 
     @Override

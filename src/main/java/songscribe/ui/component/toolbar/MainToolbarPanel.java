@@ -26,6 +26,7 @@ import javax.swing.*;
 
 import songscribe.ui.component.InsertPopupButton;
 import songscribe.ui.component.ModeCycleButton;
+import songscribe.ui.component.ThemeAwareMatteBorder;
 
 /**
  * This class creates the main toolbar panel for the application.
@@ -41,17 +42,11 @@ public final class MainToolbarPanel extends JPanel {
     private static final int LEFT_BORDER = 1;
     private static final int RIGHT_BORDER = 1 << 1;
 
+    private static final String BACKGROUND_KEY = "ToolBar.background";
+
     public MainToolbarPanel() {
         setLayout(new BorderLayout());
-        setBorder(
-            BorderFactory.createMatteBorder(
-                1,
-                0,
-                0,
-                0,
-                UIManager.getColor("ToolBar.separatorColor")
-            )
-        );
+        setBorder(new ThemeAwareMatteBorder(1, 0, 0, 0, "ToolBar.separatorColor"));
         var toolsPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
         toolsPanel.add(createModeToolbarPanel());
         toolsPanel.add(createDurationToolbarPanel());
@@ -69,16 +64,22 @@ public final class MainToolbarPanel extends JPanel {
         add(createPlaybackToolbarPanel(), BorderLayout.EAST);
     }
 
+    @Override
+    public void updateUI() {
+        super.updateUI();
+        setBackground(UIManager.getColor(BACKGROUND_KEY));
+    }
+
     private static JPanel createToolbarPanel(int borders) {
         var panel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
 
         panel.setBorder(
-            BorderFactory.createMatteBorder(
+            new ThemeAwareMatteBorder(
                 0,
                 ((borders & LEFT_BORDER) != 0) ? 1 : 0,
                 0,
                 ((borders & RIGHT_BORDER) != 0) ? 1 : 0,
-                UIManager.getColor("ToolBar.separatorColor")
+                "ToolBar.separatorColor"
             )
         );
 

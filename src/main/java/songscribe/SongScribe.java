@@ -21,6 +21,8 @@ package songscribe;
 
 import org.jetbrains.annotations.NotNull;
 
+import com.formdev.flatlaf.util.SystemInfo;
+
 import songscribe.converter.AbcConverter;
 import songscribe.converter.ImageConverter;
 import songscribe.converter.MidiConverter;
@@ -35,6 +37,13 @@ public final class SongScribe {
     private SongScribe() {}
 
     public static void main(@NotNull String[] args) {
+        // macOS system properties must be set on the main thread before
+        // AWT/Swing is initialized — setting them later has no effect.
+        if (SystemInfo.isMacOS) {
+            System.setProperty("apple.laf.useScreenMenuBar", "true");
+            System.setProperty("apple.awt.application.appearance", "system");
+        }
+
         Log.configureDebugLogging();
 
         // Figure out which app to start. The default is Song Writer.

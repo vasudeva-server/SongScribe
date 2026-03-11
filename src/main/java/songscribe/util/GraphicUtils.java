@@ -42,6 +42,15 @@ import songscribe.ui.graphics.HiDPIScaledImage;
 import songscribe.ui.graphics.RetinaImage;
 
 public final class GraphicUtils {
+    private static final FlatSVGIcon.ColorFilter THEME_AWARE_SVG_ICON_FILTER =
+        new FlatSVGIcon.ColorFilter(
+            (component, color) -> {
+                var foreground = component != null
+                    ? component.getForeground()
+                    : UIManager.getColor("Component.foreground");
+                return foreground != null ? foreground : color;
+            }
+        );
 
     public enum Unit {
         UNDETERMINED(-1),
@@ -284,6 +293,7 @@ public final class GraphicUtils {
 
     public static FlatSVGIcon getScaledSVGIcon(String filename, int size) {
         var icon = new FlatSVGIcon("icons/" + filename);
+        icon.setColorFilter(THEME_AWARE_SVG_ICON_FILTER);
         return getScaledSVGIcon(icon, size);
     }
 

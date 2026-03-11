@@ -248,6 +248,24 @@ if (note != null) { ... }
 10. Protected/private methods
 11. Inner classes
 
+### No Nested Ternaries
+
+Never nest ternary expressions. Use `if`/`else if`/`else` instead.
+
+```java
+// Bad
+var result = a ? x : b ? y : z;
+
+// Good
+if (a) {
+    result = x;
+} else if (b) {
+    result = y;
+} else {
+    result = z;
+}
+```
+
 ### Formatting
 
 **Indentation**
