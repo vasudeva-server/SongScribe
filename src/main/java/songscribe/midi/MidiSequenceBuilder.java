@@ -143,6 +143,12 @@ public class MidiSequenceBuilder {
             currentTempo = result.getSecond();
         }
 
+        // Place END_OF_TRACK at the end of the last note's full written duration.
+        // Without this, Java's Track auto-places it at the last event (the note-off),
+        // which is earlier than the duration end due to staccato/articulation.
+        var endOfTrack = new MetaMessage(MidiMetaMessageTypes.END_OF_TRACK, new byte[0], 0);
+        track.add(new MidiEvent(endOfTrack, ticks));
+
         return sequence;
     }
 

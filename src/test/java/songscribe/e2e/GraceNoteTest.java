@@ -25,12 +25,21 @@ import static org.assertj.swing.core.MouseButton.LEFT_BUTTON;
 
 import java.awt.*;
 import java.awt.event.*;
+import java.util.ArrayList;
+import java.util.List;
+
+import javax.sound.midi.MidiEvent;
+import javax.sound.midi.Sequence;
+import javax.sound.midi.ShortMessage;
+import javax.sound.midi.Track;
 
 import org.assertj.swing.edt.GuiActionRunner;
 import org.assertj.swing.finder.JOptionPaneFinder;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
+import songscribe.midi.GlissandoMidiHelper;
+import songscribe.midi.PlaybackSettings;
 import songscribe.music.Composition;
 import songscribe.music.ElementType;
 import songscribe.music.Line;
@@ -48,7 +57,7 @@ import songscribe.util.Utils;
 class GraceNoteTest extends E2ETest {
 
     @Test
-    void testClickClickInsertsGraceNoteAndHostWithGlissando() {
+    void testClickClickInsertsGraceNoteAndHostWithGlissando() throws Exception {
         buildEmptyLine();
         selectDuration(Actions.GRACE_EIGHTH_NOTE_ACTION);
 
@@ -78,6 +87,50 @@ class GraceNoteTest extends E2ETest {
 
         // Grace mode should be inactive after completion
         assertGraceModeInactive();
+
+        // MIDI: grace note produces no sound, only a slide-in on the host note
+        var tempo = line.getElement(0).getTempoChange();
+        var hostDuration = line.getElementDurationWithTuplet(1, tempo);
+        var slideTicks = Math.min(GlissandoMidiHelper.GRACE_SLIDE_TICKS, hostDuration);
+        var gracePitch = graceNote.getPitch();
+        var hostPitch = line.getElement(1).getPitch();
+
+        var track = buildMidiTrack();
+        var noteOnEvents = getEventsByCommand(track, ShortMessage.NOTE_ON);
+        var bendEvents = getEventsByCommand(track, ShortMessage.PITCH_BEND);
+        var ccEvents = getEventsByCommand(track, ShortMessage.CONTROL_CHANGE);
+
+        // Only one NOTE_ON (the host note) — grace note produces no sound
+        assertThat(noteOnEvents).hasSize(1);
+        assertThat(((ShortMessage) noteOnEvents.getFirst().getMessage()).getData1())
+            .isEqualTo(hostPitch);
+
+        // Pitch bend starts at the NOTE_ON tick (slide-in begins immediately)
+        var noteOnTick = noteOnEvents.getFirst().getTick();
+        assertThat(bendEvents.getFirst().getTick()).isEqualTo(noteOnTick);
+
+        // First bend value is offset toward grace pitch (away from center)
+        var firstBend = getBendValue(bendEvents.getFirst());
+
+        if (gracePitch > hostPitch) {
+            assertThat(firstBend).isGreaterThan(GlissandoMidiHelper.PITCH_BEND_CENTER);
+        } else {
+            assertThat(firstBend).isLessThan(GlissandoMidiHelper.PITCH_BEND_CENTER);
+        }
+
+        // Pitch bend reset at end of slide (1/3 of host duration)
+        var resetEvent = bendEvents.getLast();
+        assertThat(resetEvent.getTick()).isEqualTo(noteOnTick + slideTicks);
+        assertThat(getBendValue(resetEvent)).isEqualTo(GlissandoMidiHelper.PITCH_BEND_CENTER);
+
+        // RPN sensitivity matches the interval between grace and host pitches
+        var expectedSensitivity = GlissandoMidiHelper.calculateSensitivity(gracePitch, hostPitch);
+        var cc6Event = ccEvents.stream()
+            .filter(e -> ((ShortMessage) e.getMessage()).getData1() == 6)
+            .findFirst()
+            .orElseThrow();
+        assertThat(((ShortMessage) cc6Event.getMessage()).getData2())
+            .isEqualTo(expectedSensitivity);
     }
 
     @Test
@@ -403,5 +456,37 @@ class GraceNoteTest extends E2ETest {
 
     private int getFullLineNoteCount() {
         return fullLineNoteCount;
+    }
+
+
+    // -- MIDI helpers --
+
+    private Track buildMidiTrack() throws Exception {
+        var line = composition().getLine(0);
+        var tempo = line.getElement(0).getTempoChange();
+        var sequence = new Sequence(Sequence.PPQ, 96);
+        var track = sequence.createTrack();
+        var settings = new PlaybackSettings(0, 100, 100, false, false);
+        line.addToTrack(track, 0, 0, tempo, settings);
+        return track;
+    }
+
+    private static List<MidiEvent> getEventsByCommand(Track track, int command) {
+        var events = new ArrayList<MidiEvent>();
+
+        for (var i = 0; i < track.size(); i++) {
+            var event = track.get(i);
+
+            if (event.getMessage() instanceof ShortMessage sm && sm.getCommand() == command) {
+                events.add(event);
+            }
+        }
+
+        return events;
+    }
+
+    private static int getBendValue(MidiEvent event) {
+        var sm = (ShortMessage) event.getMessage();
+        return sm.getData1() | (sm.getData2() << 7);
     }
 }

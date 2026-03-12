@@ -292,10 +292,19 @@ public class StaffElement extends LineElement implements Cloneable {
         return false;
     }
 
+    // TODO: Temporary fix — the data model fields (forceArticulation, durationArticulation)
+    //  and the layout articulations list are not kept in sync by UI actions. When the layout
+    //  system is rewritten (see specs/rendering-rewrite.md), unify into a single source of truth.
+
     /**
      * Returns true if this note has an articulation of the given type.
+     * Checks both the layout articulations list and the data model fields.
      */
     public boolean hasArticulation(@NotNull ArticulationType type) {
+        if (type == ArticulationType.ACCENT && forceArticulation == ForceArticulation.ACCENT) {
+            return true;
+        }
+
         for (var articulation : articulations) {
             if (articulation.getType() == type) {
                 return true;
@@ -308,8 +317,13 @@ public class StaffElement extends LineElement implements Cloneable {
     /**
      * Returns the MIDI duration percentage from the first articulation that overrides duration,
      * or -1 if no articulation overrides duration.
+     * Checks both the layout articulations list and the data model field.
      */
     public int findMidiDurationOverride() {
+        if (durationArticulation != null) {
+            return durationArticulation.getDuration();
+        }
+
         for (var articulation : articulations) {
             if (articulation.getType().hasMidiDurationOverride()) {
                 return articulation.getType().getMidiDurationPercent();

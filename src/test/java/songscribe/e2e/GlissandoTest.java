@@ -24,10 +24,19 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.awt.*;
 import java.awt.event.*;
+import java.util.ArrayList;
+import java.util.List;
+
+import javax.sound.midi.MidiEvent;
+import javax.sound.midi.Sequence;
+import javax.sound.midi.ShortMessage;
+import javax.sound.midi.Track;
 
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
+import songscribe.midi.GlissandoMidiHelper;
+import songscribe.midi.PlaybackSettings;
 import songscribe.music.StaffElement;
 import songscribe.ui.action.Actions;
 
@@ -53,6 +62,14 @@ class GlissandoTest extends E2ETest {
         // Connected glissando should be removed (unison is meaningless)
         //noinspection ObjectEquality
         assertThat(line.getElement(0).getGlissando()).isSameAs(StaffElement.NO_GLISSANDO);
+    }
+
+    @Test
+    void testNoPitchBendWithoutGlissando() throws Exception {
+        buildTwoNotesAtDifferentPitches();
+
+        var track = buildMidiTrack();
+        assertThat(getEventsByCommand(track, ShortMessage.PITCH_BEND)).isEmpty();
     }
 
     @Test
@@ -167,7 +184,7 @@ class GlissandoTest extends E2ETest {
     class Insertion {
 
         @Test
-        void testInsertConnectedGlissando() {
+        void testInsertConnectedGlissando() throws Exception {
             buildTwoNotesAtDifferentPitches();
 
             enterEditMode();
@@ -181,10 +198,40 @@ class GlissandoTest extends E2ETest {
             //noinspection ObjectEquality
             assertThat(note.getGlissando() != StaffElement.NO_GLISSANDO).isTrue();
             assertThat(note.getGlissando().type).isEqualTo(StaffElement.Glissando.Type.CONNECTED);
+
+            // MIDI: verify pitch bend and timing
+            var line = composition().getLine(0);
+            var tempo = line.getElement(0).getTempoChange();
+            var duration = line.getElementDurationWithTuplet(0, tempo);
+            var sustainTicks = GlissandoMidiHelper.calculateSustainTicks(duration);
+
+            var track = buildMidiTrack();
+            var noteOnTick = getEventsByCommand(track, ShortMessage.NOTE_ON).getFirst().getTick();
+            var noteOffTick = getEventsByCommand(track, ShortMessage.NOTE_OFF).getFirst().getTick();
+            var bendEvents = getEventsByCommand(track, ShortMessage.PITCH_BEND);
+            var ccEvents = getEventsByCommand(track, ShortMessage.CONTROL_CHANGE);
+
+            // NOTE_OFF at full written duration (connected ignores staccato)
+            assertThat(noteOffTick - noteOnTick).isEqualTo(duration);
+
+            var staccatoTrack = buildMidiTrack(new PlaybackSettings(0, 100, 50, false, false));
+            var staccatoOnTick = getEventsByCommand(staccatoTrack, ShortMessage.NOTE_ON).getFirst().getTick();
+            var staccatoOffTick = getEventsByCommand(staccatoTrack, ShortMessage.NOTE_OFF).getFirst().getTick();
+            assertThat(staccatoOffTick - staccatoOnTick).isEqualTo(duration);
+
+            // Pitch bend starts after sustain portion
+            assertThat(bendEvents.getFirst().getTick() - noteOnTick).isEqualTo(sustainTicks);
+
+            // RPN 0 sequence present: CC 101=0, CC 100=0, CC 6=sensitivity, CC 38=0
+            assertThat(ccEvents).hasSizeGreaterThanOrEqualTo(4);
+            var controllers = ccEvents.stream()
+                .map(e -> ((ShortMessage) e.getMessage()).getData1())
+                .toList();
+            assertThat(controllers.subList(0, 4)).containsExactly(101, 100, 6, 38);
         }
 
         @Test
-        void testInsertSlideOutGlissando() {
+        void testInsertSlideOutGlissando() throws Exception {
             buildTwoNotesAtDifferentPitches();
 
             enterEditMode();
@@ -199,6 +246,42 @@ class GlissandoTest extends E2ETest {
             //noinspection ObjectEquality
             assertThat(note.getGlissando() != StaffElement.NO_GLISSANDO).isTrue();
             assertThat(note.getGlissando().type).isEqualTo(StaffElement.Glissando.Type.SLIDE_OUT);
+
+            // MIDI: verify slide-out pitch bend and timing
+            var line = composition().getLine(0);
+            var tempo = line.getElement(0).getTempoChange();
+            var duration = line.getElementDurationWithTuplet(0, tempo);
+
+            var track = buildMidiTrack();
+            var noteOnTick = getEventsByCommand(track, ShortMessage.NOTE_ON).getFirst().getTick();
+            var noteOffTick = getEventsByCommand(track, ShortMessage.NOTE_OFF).getFirst().getTick();
+            var bendEvents = getEventsByCommand(track, ShortMessage.PITCH_BEND);
+            var ccEvents = getEventsByCommand(track, ShortMessage.CONTROL_CHANGE);
+
+            // NOTE_OFF at full sounding duration (100% with default settings)
+            assertThat(noteOffTick - noteOnTick).isEqualTo(duration);
+
+            // With staccato, NOTE_OFF respects noteDurationPercent
+            var staccatoTrack = buildMidiTrack(new PlaybackSettings(0, 100, 50, false, false));
+            var staccatoOnTick = getEventsByCommand(staccatoTrack, ShortMessage.NOTE_ON).getFirst().getTick();
+            var staccatoOffTick = getEventsByCommand(staccatoTrack, ShortMessage.NOTE_OFF).getFirst().getTick();
+            var expectedSounding = (int) ((duration * 50L) / 100f);
+            assertThat(staccatoOffTick - staccatoOnTick).isEqualTo(expectedSounding);
+
+            // Pitch bend slides downward (last slide event below center, excluding reset)
+            var slideEvents = bendEvents.subList(0, bendEvents.size() - 1);
+            assertThat(getBendValue(slideEvents.getFirst()))
+                .isEqualTo(GlissandoMidiHelper.PITCH_BEND_CENTER);
+            assertThat(getBendValue(slideEvents.getLast()))
+                .isLessThan(GlissandoMidiHelper.PITCH_BEND_CENTER);
+
+            // RPN sensitivity matches SLIDE_OUT_SEMITONES
+            var cc6Event = ccEvents.stream()
+                .filter(e -> ((ShortMessage) e.getMessage()).getData1() == 6)
+                .findFirst()
+                .orElseThrow();
+            assertThat(((ShortMessage) cc6Event.getMessage()).getData2())
+                .isEqualTo(GlissandoMidiHelper.SLIDE_OUT_SEMITONES);
         }
     }
 
@@ -307,4 +390,41 @@ class GlissandoTest extends E2ETest {
     }
 
 
+    // -- MIDI helpers --
+
+    private static final PlaybackSettings DEFAULT_SETTINGS = new PlaybackSettings(
+        0, 100, 100, false, false
+    );
+
+    private Track buildMidiTrack() throws Exception {
+        return buildMidiTrack(DEFAULT_SETTINGS);
+    }
+
+    private Track buildMidiTrack(PlaybackSettings settings) throws Exception {
+        var line = composition().getLine(0);
+        var tempo = line.getElement(0).getTempoChange();
+        var sequence = new Sequence(Sequence.PPQ, 96);
+        var track = sequence.createTrack();
+        line.addToTrack(track, 0, 0, tempo, settings);
+        return track;
+    }
+
+    private static List<MidiEvent> getEventsByCommand(Track track, int command) {
+        var events = new ArrayList<MidiEvent>();
+
+        for (var i = 0; i < track.size(); i++) {
+            var event = track.get(i);
+
+            if (event.getMessage() instanceof ShortMessage sm && sm.getCommand() == command) {
+                events.add(event);
+            }
+        }
+
+        return events;
+    }
+
+    private static int getBendValue(MidiEvent event) {
+        var sm = (ShortMessage) event.getMessage();
+        return sm.getData1() | (sm.getData2() << 7);
+    }
 }

@@ -31,9 +31,9 @@ import org.jetbrains.annotations.Nullable;
 import songscribe.Strings;
 import songscribe.midi.MidiSequenceBuilder;
 import songscribe.midi.PlaybackSettings;
-import songscribe.ui.Dialogs;
 import songscribe.music.Composition;
 import songscribe.prefs.Prefs;
+import songscribe.ui.Dialogs;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.Score;
 import songscribe.ui.component.score.LineComponent;
@@ -53,13 +53,13 @@ public final class PlaybackController {
     public static final int PPQ = 96;
 
     // The MIDI velocity values for normal and accented notes
-    public static final int NOTE_VELOCITY = 98;
+    public static final int NOTE_VELOCITY = 100;
     public static final int ACCENTED_NOTE_VELOCITY = 127;
 
     private static PlaybackState state = PlaybackState.STOPPED;
     private static int previousPlayingLine = -1;
     private static int previousPlayingNote = -1;
-    private static ElementSelection pausedSelection = null;
+
     private static final int MINIMUM_PLAYBACK_TEMPO = 20;
     private static final int MAXIMUM_PLAYBACK_TEMPO = 180;
 
@@ -157,16 +157,6 @@ public final class PlaybackController {
     public static void playbackDidPause() {
         state = PlaybackState.PAUSED;
         stopSequencer();
-
-        // Remember what was playing when we paused so we can resume from the same position
-        var mainFrame = MainFrame.getInstance();
-        if (mainFrame != null) {
-            var score = mainFrame.getScore();
-            if (score != null) {
-                pausedSelection = score.getSelection();
-            }
-        }
-
         MessageCenter.post(new PlaybackStateChangedMessage(state));
     }
 
@@ -174,7 +164,7 @@ public final class PlaybackController {
         state = PlaybackState.STOPPED;
         stopSequencer();
         clearPlayingHighlight();
-        pausedSelection = null;
+
         MessageCenter.post(new PlaybackStateChangedMessage(state));
     }
 
@@ -266,17 +256,7 @@ public final class PlaybackController {
                 noteSelection = score.getSelection();
             }
 
-            // Only rebuild the sequence if:
-            // 1. We're not resuming from pause, OR
-            // 2. We're resuming from pause but the selection has changed
-            var isResumingWithSameSelection =
-                (state == PlaybackState.PAUSED) &&
-                    ((noteSelection == null && pausedSelection == null) ||
-                        (noteSelection != null && noteSelection.equals(pausedSelection)));
-
-            if (!isResumingWithSameSelection) {
-                setSequenceToPlayFromSelection(noteSelection, score, sequencer);
-            }
+            setSequenceToPlayFromSelection(noteSelection, score, sequencer);
 
             setLoopSequence(noteSelection, mainFrame, sequencer);
             MidiController.reinitChannels();
