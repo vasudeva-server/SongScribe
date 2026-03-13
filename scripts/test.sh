@@ -41,6 +41,14 @@ while [[ "$1" == --* ]]; do
     esac
 done
 
+# macOS: set screen menu bar and appearance before AWT initializes
+if [[ "$(uname)" == "Darwin" ]]; then
+    JVM_ARGS+=(
+        "-Dapple.laf.useScreenMenuBar=true"
+        "-Dapple.awt.application.appearance=system"
+    )
+fi
+
 # JVM args for module access (from surefire config) and agent loading (Mockito)
 JVM_ARGS+=(
     "--enable-native-access=ALL-UNNAMED"
