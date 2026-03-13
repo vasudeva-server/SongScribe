@@ -410,19 +410,30 @@ public class MainFrame extends JFrame implements IMainFrame, Printable {
         }
 
         var docName = (currentFile != null) ? currentFile.getName() : Strings.get(Strings.DOCUMENT_UNTITLED);
-        var answer = Dialogs.showConfirmDialog(
+        var saveIdx = 0;
+        var dontSaveIdx = 1;
+        var cancelIdx = 2;
+        var options = new Object[]{
+            Strings.get(Strings.BUTTON_SAVE),
+            Strings.get(Strings.BUTTON_DONT_SAVE),
+            Strings.get(Strings.BUTTON_CANCEL)
+        };
+        var answer = Dialogs.showOptionDialog(
             this,
             Strings.get(Strings.DIALOG_TITLE_SAVE_CHANGES),
             Strings.get(Strings.CONFIRM_SAVE_MODIFIED, docName),
             JOptionPane.YES_NO_CANCEL_OPTION,
-            JOptionPane.QUESTION_MESSAGE
+            JOptionPane.QUESTION_MESSAGE,
+            null,
+            options,
+            options[saveIdx]
         );
 
-        if (answer == JOptionPane.YES_OPTION) {
+        if (answer == saveIdx) {
             new SaveAction().perform(this);
         }
 
-        return answer != JOptionPane.CANCEL_OPTION;
+        return answer == saveIdx || answer == dontSaveIdx;
     }
 
     @Override
