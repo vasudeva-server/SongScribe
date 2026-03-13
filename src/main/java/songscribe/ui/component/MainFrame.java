@@ -110,8 +110,6 @@ public class MainFrame extends JFrame implements IMainFrame, Printable {
     // The current open file
     protected File currentFile = null;
 
-    private boolean documentModified = false;
-
     // UI components
     private LyricsPanel lyricsPanel = null;
     @Nullable
@@ -408,7 +406,7 @@ public class MainFrame extends JFrame implements IMainFrame, Printable {
     }
 
     private boolean showSaveDialog() {
-        if (!documentModified) {
+        if (!score.getComposition().isModified()) {
             return true;
         }
 
@@ -439,23 +437,23 @@ public class MainFrame extends JFrame implements IMainFrame, Printable {
         return answer == saveIdx || answer == dontSaveIdx;
     }
 
-    @Override
-    public boolean isDocumentModified() {
-        return documentModified;
-    }
-
     private void updateTitle() {
+        if (score == null) {
+            return;
+        }
+
         if (!SwingUtilities.isEventDispatchThread()) {
             SwingUtilities.invokeLater(this::updateTitle);
             return;
         }
 
         var name = (currentFile != null) ? currentFile.getName() : Strings.get(Strings.DOCUMENT_UNTITLED);
-        var title = documentModified ? '•' + name : name;
+        var isModified = score.getComposition().isModified();
+        var title = isModified ? '•' + name : name;
         setTitle(title);
 
         if (titleBarLabel != null) {
-            if (documentModified) {
+            if (isModified) {
                 var titleColor = UIManager.getColor("Label.foreground");
                 var editedColor = UIManager.getColor("Label.disabledForeground");
                 var hexTitleColor = String.format("#%06x", titleColor.getRGB() & 0xFFFFFF);
@@ -471,11 +469,6 @@ public class MainFrame extends JFrame implements IMainFrame, Printable {
 
     @Handler
     public void onDocumentWasModified(DocumentWasModifiedMessage message) {
-        setDocumentModified(message.isModified());
-    }
-
-    private void setDocumentModified(boolean documentWasModified) {
-        documentModified = documentWasModified;
         updateTitle();
     }
 
@@ -505,7 +498,10 @@ public class MainFrame extends JFrame implements IMainFrame, Printable {
     @Override
     public void setCurrentFile(File saveFile) {
         currentFile = saveFile;
-        setDocumentModified(false);
+
+        if (score != null) {
+            score.getComposition().setModified(false);
+        }
     }
 
     @Handler
@@ -517,7 +513,7 @@ public class MainFrame extends JFrame implements IMainFrame, Printable {
         setCurrentFile(null);
 
         if (score != null) {
-            score.setComposition(new Composition(this));
+            score.setComposition(new Composition(getProfileManager()));
             score.requestFocusInWindow();
         }
     }
@@ -677,7 +673,7 @@ public class MainFrame extends JFrame implements IMainFrame, Printable {
             );
             CompositionIO.writeComposition(score.getComposition(), printWriter);
             printWriter.close();
-            setDocumentModified(false);
+            score.getComposition().setModified(false);
         } catch (IOException e1) {
             Dialogs.showErrorMessage(
                 this,
@@ -716,7 +712,7 @@ public class MainFrame extends JFrame implements IMainFrame, Printable {
             setCurrentFile(saveFile);
             saveCurrentFile();
 
-            if (!isDocumentModified()) {
+            if (!score.getComposition().isModified()) {
                 RecentDocumentsManager.getInstance().add(saveFile.toPath().toAbsolutePath());
             }
         }

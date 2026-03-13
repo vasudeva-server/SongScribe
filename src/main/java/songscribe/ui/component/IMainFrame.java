@@ -37,7 +37,6 @@ public interface IMainFrame {
 
     Component getFocusOwner();
 
-    boolean isDocumentModified();
 
     Score getScore();
 

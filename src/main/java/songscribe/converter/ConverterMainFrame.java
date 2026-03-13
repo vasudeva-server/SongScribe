@@ -45,11 +45,6 @@ public class ConverterMainFrame implements IMainFrame {
     public void setCurrentFile(File saveFile) {}
 
     @Override
-    public boolean isDocumentModified() {
-        return false;
-    }
-
-    @Override
     public void setFrameSize() {}
 
     @Override

@@ -31,7 +31,6 @@ import songscribe.prefs.Prefs;
 import songscribe.ui.Dialogs;
 import songscribe.ui.ProfileManager;
 import songscribe.ui.action.InsertLineAction;
-import songscribe.ui.component.IMainFrame;
 import songscribe.ui.component.Score;
 import songscribe.ui.layout.LayoutStylesheet;
 import songscribe.ui.layout2.ScaleContext;
@@ -165,15 +164,13 @@ public final class Composition {
      */
     private int formatVersion = 1;
 
-    private final IMainFrame mainFrame;
+    private boolean modified;
 
     /** Whether the user has already been notified about short-ă replacement in this session. */
     private boolean shortANotified;
 
-    public Composition(@NotNull IMainFrame mainFrame) {
-        this.mainFrame = mainFrame;
-
-        var profile = mainFrame.getProfileManager();
+    public Composition(@NotNull ProfileManager profileManager) {
+        var profile = profileManager;
         attribution = profile.getDefaultProperty(
             ProfileManager.ProfileKey.ATTRIBUTION
         );
@@ -486,14 +483,15 @@ public final class Composition {
     }
 
     public boolean isModified() {
-        return mainFrame.isDocumentModified();
+        return modified;
     }
 
     public void setModified(boolean modified) {
-        if (modified == mainFrame.isDocumentModified()) {
+        if (modified == this.modified) {
             return;
         }
 
+        this.modified = modified;
         MessageCenter.post(new DocumentWasModifiedMessage(modified));
     }
 

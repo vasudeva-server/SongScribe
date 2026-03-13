@@ -30,7 +30,7 @@ import org.xml.sax.helpers.DefaultHandler;
 import songscribe.music.Composition;
 import songscribe.music.KeyType;
 import songscribe.music.Line;
-import songscribe.ui.component.IMainFrame;
+import songscribe.ui.ProfileManager;
 import songscribe.ui.component.Score;
 import songscribe.ui.layout2.InsertionSpacingCalculator;
 import songscribe.ui.layout2.ScaleContext;
@@ -212,10 +212,10 @@ public final class CompositionIO {
         private ViewIO.ViewReader viewReader = null;
         private Composition composition = null;
         private int majorVersion = 0, minorVersion = 0;
-        private final IMainFrame mainFrame;
+        private final ProfileManager profileManager;
 
-        public DocumentReader(IMainFrame mainFrame) {
-            this.mainFrame = mainFrame;
+        public DocumentReader(ProfileManager profileManager) {
+            this.profileManager = profileManager;
         }
 
         @Override
@@ -236,7 +236,7 @@ public final class CompositionIO {
                         minorVersion = Integer.parseInt(
                             version.substring(dotIndex + 1)
                         );
-                        composition = new Composition(mainFrame);
+                        composition = new Composition(profileManager);
                         composition.setTopPadding(0, false);
                         composition.removeLine(0);
                         where = Where.COMPOSITION;
@@ -247,37 +247,37 @@ public final class CompositionIO {
                         } else if ((majorVersion == 1) && (minorVersion == 1)) {
                             lineReader = new LineIO.LineReader();
                             viewReader = new ViewIO.ViewReader(
-                                mainFrame.getProfileManager()
+                                profileManager
                             );
                         } else if ((majorVersion == 1) && (minorVersion == 2)) {
                             lineReader = new LineIO.LineReader();
                             viewReader = new ViewIO.ViewReader(
-                                mainFrame.getProfileManager()
+                                profileManager
                             );
                         } else if ((majorVersion == 1) && (minorVersion == 3)) {
                             lineReader = new LineIO.LineReader();
                             viewReader = new ViewIO.ViewReader(
-                                mainFrame.getProfileManager()
+                                profileManager
                             );
                         } else if ((majorVersion == 1) && (minorVersion == 4)) {
                             lineReader = new LineIO.LineReader();
                             viewReader = new ViewIO.ViewReader(
-                                mainFrame.getProfileManager()
+                                profileManager
                             );
                         } else if ((majorVersion == 2) && (minorVersion == 0)) {
                             lineReader = new LineIO.LineReader();
                             viewReader = new ViewIO.ViewReader(
-                                mainFrame.getProfileManager()
+                                profileManager
                             );
                         } else if ((majorVersion == 2) && (minorVersion == 1)) {
                             lineReader = new LineIO.LineReader();
                             viewReader = new ViewIO.ViewReader(
-                                mainFrame.getProfileManager()
+                                profileManager
                             );
                         } else if ((majorVersion == 2) && (minorVersion == 2)) {
                             lineReader = new LineIO.LineReader();
                             viewReader = new ViewIO.ViewReader(
-                                mainFrame.getProfileManager()
+                                profileManager
                             );
                         } else {
                             throw new SAXException(
@@ -324,12 +324,6 @@ public final class CompositionIO {
                 try {
                     noteReader.startElement10(qName, attributes);
                 } catch (NewLineException e) {
-                    mainFrame
-                        .getScore()
-                        .drawWidthIfWiderLine(
-                            composition.getLine(composition.lineCount() - 1),
-                            true
-                        );
                     composition.addLine(new Line());
                 }
             } else if (where == Where.TEMPO_CHANGE) {

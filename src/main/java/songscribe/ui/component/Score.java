@@ -254,7 +254,7 @@ public final class Score
         setName(ComponentNames.SCORE);
 
         // Create initial composition
-        composition = new Composition(mainFrame);
+        composition = new Composition(mainFrame.getProfileManager());
 
         // Initialize UI components
         initView();
@@ -464,11 +464,11 @@ public final class Score
         // Even though most of this code references the mainFrame, it is in this class
         // because this class is always the same whereas there are multiple implementations
         // of IMainFrame.
-        var previousModifiedDocument = mainFrame.isDocumentModified();
-        MessageCenter.post(new DocumentWasModifiedMessage(false));
+        var previousModified = composition.isModified();
+        composition.setModified(false);
 
         try {
-            var reader = new CompositionIO.DocumentReader(mainFrame);
+            var reader = new CompositionIO.DocumentReader(mainFrame.getProfileManager());
             saxParser.parse(file, reader);
             setComposition(reader.getComposition());
 
@@ -488,7 +488,7 @@ public final class Score
                 message
             );
             Log.error(message, e);
-            MessageCenter.post(new DocumentWasModifiedMessage(previousModifiedDocument));
+            composition.setModified(previousModified);
             return false;
         } catch (IOException e) {
             var message = "Could not open the file “" + file.getName() + '”';
@@ -498,7 +498,7 @@ public final class Score
                 message + ". Check if you have the permission to open it."
             );
             Log.error(message, e);
-            MessageCenter.post(new DocumentWasModifiedMessage(previousModifiedDocument));
+            composition.setModified(previousModified);
             return false;
         }
     }
