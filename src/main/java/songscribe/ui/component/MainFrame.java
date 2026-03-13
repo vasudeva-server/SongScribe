@@ -294,7 +294,6 @@ public class MainFrame extends JFrame implements IMainFrame, Printable {
         }
 
         setFrameSize();
-        setLocationRelativeTo(null);
         setVisible(true);
         ActivationGate.install(this);
 
@@ -395,10 +394,12 @@ public class MainFrame extends JFrame implements IMainFrame, Printable {
         var scrollBarWidth = ((Integer) UIManager.get("ScrollBar.width"));
         var maxBounds = GraphicsEnvironment.getLocalGraphicsEnvironment()
             .getMaximumWindowBounds();
-        setSize(
-            Math.min(size.width + scrollBarWidth, maxBounds.width),
-            Math.min(size.height, maxBounds.height)
-        );
+
+        int width = Math.min(size.width + scrollBarWidth, maxBounds.width);
+        int height = maxBounds.height;
+        int x = maxBounds.x + (maxBounds.width - width) / 2;
+
+        setBounds(x, maxBounds.y, width, height);
 
         var minSize = getLayout().minimumLayoutSize(this);
         setMinimumSize(new Dimension(minSize.width, MIN_WINDOW_HEIGHT));

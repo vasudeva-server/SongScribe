@@ -475,7 +475,6 @@ public final class Score
             var reader = new CompositionIO.DocumentReader(mainFrame);
             saxParser.parse(file, reader);
             setComposition(reader.getComposition());
-            mainFrame.setFrameSize();
 
             if (setTitle) {
                 mainFrame.setCurrentFile(file);
