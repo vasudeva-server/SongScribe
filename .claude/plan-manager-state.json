@@ -13,24 +13,6 @@
       "subdirectory": "migrations/rendering-rewrite",
       "active": false,
       "description": "Rewrite rendering and layout pipeline with staff-space coordinate system, abc2svg algorithms"
-    },
-    {
-      "path": "plans/issue-80-implementation-plan.md",
-      "subdirectory": null,
-      "active": false,
-      "description": "Implement toolbar button state reflection based on selected notes (issue #80)"
-    },
-    {
-      "path": "plans/features/selection-apply.md",
-      "subdirectory": null,
-      "active": false,
-      "description": "Apply toolbar actions to all applicable notes in a selection (issue #81)"
-    },
-    {
-      "path": "plans/remove-legacy-note-rectangles.md",
-      "subdirectory": null,
-      "active": true,
-      "description": "Remove legacy Note/NoteType rectangle and point constants, replacing with SMuFL-based bounds computation"
     }
   ],
   "subPlans": [
