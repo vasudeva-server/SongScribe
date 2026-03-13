@@ -20,10 +20,10 @@
 
 package songscribe.ui.component;
 
+import module java.desktop;
+
 import java.util.Arrays;
 import java.util.List;
-
-import javax.swing.*;
 
 import net.engio.mbassy.listener.Handler;
 

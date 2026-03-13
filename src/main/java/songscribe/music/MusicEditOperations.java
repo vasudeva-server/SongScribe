@@ -20,12 +20,12 @@
 
 package songscribe.music;
 
+import module java.desktop;
+
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.TreeSet;
 import java.util.stream.IntStream;
-
-import javax.swing.*;
 
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;

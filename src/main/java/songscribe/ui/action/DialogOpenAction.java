@@ -21,7 +21,7 @@ package songscribe.ui.action;
 
 import static songscribe.util.StringUtils.toKebabCase;
 
-import java.awt.event.*;
+import module java.desktop;
 
 import songscribe.ui.dialog.StandardDialog;
 import songscribe.util.Log;

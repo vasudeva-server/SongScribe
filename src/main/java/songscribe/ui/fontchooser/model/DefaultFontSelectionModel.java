@@ -19,11 +19,9 @@
  */
 package songscribe.ui.fontchooser.model;
 
-import java.awt.*;
-import java.util.Objects;
+import module java.desktop;
 
-import javax.swing.*;
-import javax.swing.event.*;
+import java.util.Objects;
 
 /**
  * A generic implementation of {@code FontSelectionModel}.

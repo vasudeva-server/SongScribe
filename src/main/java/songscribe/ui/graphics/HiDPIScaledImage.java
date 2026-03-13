@@ -20,8 +20,7 @@
 
 package songscribe.ui.graphics;
 
-import java.awt.*;
-import java.awt.image.*;
+import module java.desktop;
 
 import songscribe.util.GraphicUtils;
 

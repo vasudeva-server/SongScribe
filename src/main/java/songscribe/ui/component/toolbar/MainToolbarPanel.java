@@ -20,9 +20,7 @@
 
 package songscribe.ui.component.toolbar;
 
-import java.awt.*;
-
-import javax.swing.*;
+import module java.desktop;
 
 import songscribe.ui.component.InsertPopupButton;
 import songscribe.ui.component.ModeCycleButton;

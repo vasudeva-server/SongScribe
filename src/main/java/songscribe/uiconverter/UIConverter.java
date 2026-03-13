@@ -21,19 +21,11 @@ package songscribe.uiconverter;
 
 import static songscribe.util.UIUtils.setupDesktopHandlers;
 
-import java.awt.*;
-import java.awt.event.*;
-import java.beans.PropertyChangeEvent;
-import java.beans.PropertyChangeListener;
+import module java.desktop;
+
 import java.io.File;
 import java.util.Locale;
 import java.util.Objects;
-
-import javax.swing.*;
-import javax.swing.border.*;
-import javax.swing.plaf.*;
-import javax.swing.table.*;
-import javax.swing.text.*;
 
 import com.intellij.uiDesigner.core.GridConstraints;
 import com.intellij.uiDesigner.core.GridLayoutManager;

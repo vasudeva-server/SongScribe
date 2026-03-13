@@ -19,11 +19,9 @@
  */
 package songscribe.ui.fontchooser;
 
-import java.awt.*;
-import java.awt.event.*;
-import java.util.Optional;
+import module java.desktop;
 
-import javax.swing.*;
+import java.util.Optional;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;

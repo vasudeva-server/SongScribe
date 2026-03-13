@@ -20,11 +20,10 @@
 
 package songscribe.ui.action;
 
-import java.awt.event.*;
+import module java.desktop;
+
 import java.io.File;
 import java.util.Objects;
-
-import javax.swing.*;
 
 import com.formdev.flatlaf.util.SystemInfo;
 

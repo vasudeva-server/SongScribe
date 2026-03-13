@@ -20,12 +20,7 @@
 
 package songscribe.ui.renderer;
 
-import java.awt.Color;
-import java.awt.Font;
-import java.awt.Graphics2D;
-import java.awt.RenderingHints;
-import java.awt.Stroke;
-import java.awt.geom.AffineTransform;
+import module java.desktop;
 
 import org.jetbrains.annotations.NotNull;
 

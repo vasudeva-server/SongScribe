@@ -19,7 +19,8 @@
  */
 package songscribe.ui.action;
 
-import java.awt.event.*;
+import module java.desktop;
+
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -28,8 +29,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-
-import javax.swing.*;
 
 import org.jetbrains.annotations.NotNull;
 

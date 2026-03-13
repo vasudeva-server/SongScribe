@@ -19,11 +19,10 @@
  */
 package songscribe.converter;
 
-import java.awt.*;
+import module java.desktop;
+
 import java.io.File;
 import java.io.IOException;
-
-import javax.imageio.ImageIO;
 
 import songscribe.ui.component.MyBorder;
 import songscribe.ui.component.Score;

@@ -20,11 +20,11 @@
 
 package songscribe.ui.component;
 
-import java.awt.*;
-import java.awt.event.*;
-import java.util.Objects;
+import module java.desktop;
+// Disambiguates from org.w3c.dom.events.MouseEvent (java.xml module)
+import java.awt.event.MouseEvent;
 
-import javax.swing.*;
+import java.util.Objects;
 
 import org.jetbrains.annotations.NotNull;
 

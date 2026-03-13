@@ -19,11 +19,7 @@
  */
 package songscribe.ui.dialog;
 
-import java.awt.*;
-
-import javax.swing.*;
-import javax.swing.border.*;
-import javax.swing.event.*;
+import module java.desktop;
 
 import com.intellij.uiDesigner.core.GridConstraints;
 import com.intellij.uiDesigner.core.GridLayoutManager;

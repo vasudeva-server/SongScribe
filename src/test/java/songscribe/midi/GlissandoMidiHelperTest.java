@@ -20,14 +20,10 @@
 
 package songscribe.midi;
 
+import module java.desktop;
+
 import java.util.ArrayList;
 import java.util.List;
-
-import javax.sound.midi.InvalidMidiDataException;
-import javax.sound.midi.MidiEvent;
-import javax.sound.midi.Sequence;
-import javax.sound.midi.ShortMessage;
-import javax.sound.midi.Track;
 
 import songscribe.UnitTest;
 import songscribe.music.StaffElement.Glissando;

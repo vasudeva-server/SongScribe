@@ -23,9 +23,8 @@ package songscribe.ui.renderer;
 import static songscribe.ui.renderer.GraphicsState.Property.COLOR;
 import static songscribe.ui.renderer.GraphicsState.Property.TRANSFORM;
 
-import java.awt.*;
-import java.awt.font.*;
-import java.awt.geom.*;
+import module java.desktop;
+
 import java.util.EnumMap;
 import java.util.Map;
 import java.util.WeakHashMap;

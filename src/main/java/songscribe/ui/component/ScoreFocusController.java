@@ -20,9 +20,8 @@
 
 package songscribe.ui.component;
 
-import java.awt.Component;
-import java.awt.event.FocusEvent;
-import java.awt.event.FocusListener;
+import module java.desktop;
+
 import java.util.ArrayList;
 
 import org.jetbrains.annotations.NotNull;

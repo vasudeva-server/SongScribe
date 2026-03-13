@@ -19,8 +19,8 @@
  */
 package songscribe.music;
 
-import java.awt.*;
-import java.awt.image.*;
+import module java.desktop;
+
 import java.util.ArrayList;
 import java.util.regex.Pattern;
 
@@ -137,7 +137,6 @@ public final class Composition {
 
     // The lines of the score
     private final ArrayList<Line> lines = new ArrayList<>();
-
 
     /**
      * Indicates whether this composition has been dynamically laid out.

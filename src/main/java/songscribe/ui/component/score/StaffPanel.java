@@ -20,11 +20,10 @@
 
 package songscribe.ui.component.score;
 
-import java.awt.*;
+import module java.desktop;
+
 import java.util.ArrayList;
 import java.util.List;
-
-import javax.swing.*;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;

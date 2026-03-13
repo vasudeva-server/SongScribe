@@ -24,8 +24,8 @@ import static songscribe.ui.renderer.GraphicsState.Property.COLOR;
 import static songscribe.ui.renderer.GraphicsState.Property.FONT;
 import static songscribe.ui.renderer.GraphicsState.Property.TRANSFORM;
 
-import java.awt.*;
-import java.awt.geom.*;
+import module java.desktop;
+
 import java.util.EnumMap;
 import java.util.function.BiConsumer;
 
@@ -78,7 +78,6 @@ public class NoteRenderer extends BaseElementRenderer<StaffElement> {
     // so they don't peek past the outer edge when the beam is angled.
     private static final double HALF_BEAM_THICKNESS_SS =
         METADATA.getEngravingDefaults().beamThickness() / 2.0;
-
 
     // Dot positioning (using SMuFL augmentation dot glyph), in staff-space units
     static final float FIRST_DOT_X_SS = 1.6375f; // 13.1px / 8 px/ss
@@ -465,7 +464,6 @@ public class NoteRenderer extends BaseElementRenderer<StaffElement> {
             g2.drawString(flagGlyph.asString(), flagX, flagY);
         }
     }
-
 
     // ==========================================================================
     // Dot Rendering

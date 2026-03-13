@@ -19,13 +19,10 @@
  */
 package songscribe.ui.dialog;
 
-import java.awt.*;
+import module java.desktop;
+
 import java.io.File;
 import java.io.IOException;
-
-import javax.sound.midi.InvalidMidiDataException;
-import javax.sound.midi.MidiSystem;
-import javax.swing.*;
 
 import songscribe.prefs.Prefs;
 import songscribe.Strings;

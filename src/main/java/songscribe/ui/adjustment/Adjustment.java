@@ -19,8 +19,9 @@
  */
 package songscribe.ui.adjustment;
 
-import java.awt.*;
-import java.awt.event.*;
+import module java.desktop;
+// Disambiguates from org.w3c.dom.events.MouseEvent (java.xml module)
+import java.awt.event.MouseEvent;
 
 import songscribe.ui.component.Score;
 

@@ -20,11 +20,9 @@
 
 package songscribe.ui.playback;
 
-import java.util.ArrayList;
+import module java.desktop;
 
-import javax.sound.midi.InvalidMidiDataException;
-import javax.sound.midi.MetaMessage;
-import javax.sound.midi.Sequencer;
+import java.util.ArrayList;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;

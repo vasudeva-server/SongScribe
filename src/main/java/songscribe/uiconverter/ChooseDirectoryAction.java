@@ -19,9 +19,7 @@
  */
 package songscribe.uiconverter;
 
-import java.awt.event.*;
-
-import javax.swing.*;
+import module java.desktop;
 
 import songscribe.Strings;
 import songscribe.data.MyFileFilter;

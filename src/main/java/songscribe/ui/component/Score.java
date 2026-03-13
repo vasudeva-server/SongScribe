@@ -20,13 +20,11 @@
 
 package songscribe.ui.component;
 
-import java.awt.*;
-import java.awt.event.*;
-import java.awt.image.*;
+import module java.desktop;
+
 import java.io.File;
 import java.io.IOException;
 
-import javax.swing.*;
 import javax.xml.parsers.SAXParser;
 import javax.xml.parsers.SAXParserFactory;
 
@@ -364,11 +362,9 @@ public final class Score
         return (note.getStaffPosition() > 0) || note.getType().isGraceNote();
     }
 
-
     public IMainFrame getMainFrame() {
         return mainFrame;
     }
-
 
     /**
      * Sets up selection provider and initial state for all LineComponents.
@@ -949,11 +945,9 @@ public final class Score
         return selectionCoordinator.getSelection();
     }
 
-
     public void allowFocusInComponent(Component component) {
         focusController.allowFocusInComponent(component);
     }
-
 
     @NotNull
     public BufferedImage createImageForExport(

@@ -22,11 +22,9 @@ package songscribe.music;
 
 import static songscribe.ui.playback.PlaybackController.PPQ;
 
-import java.awt.*;
-import java.awt.event.*;
-import java.util.Map;
+import module java.desktop;
 
-import javax.swing.*;
+import java.util.Map;
 
 import org.jetbrains.annotations.Nullable;
 

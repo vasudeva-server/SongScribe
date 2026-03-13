@@ -20,10 +20,7 @@
 
 package songscribe.ui.component;
 
-import java.awt.*;
-
-import javax.swing.*;
-import javax.swing.border.AbstractBorder;
+import module java.desktop;
 
 import org.jetbrains.annotations.NotNull;
 

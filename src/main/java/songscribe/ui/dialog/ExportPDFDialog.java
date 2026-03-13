@@ -19,7 +19,7 @@
  */
 package songscribe.ui.dialog;
 
-import java.awt.*;
+import module java.desktop;
 
 import songscribe.Strings;
 import songscribe.data.PageLayoutData;

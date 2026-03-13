@@ -19,7 +19,8 @@
  */
 package songscribe.ui.adjustment;
 
-import java.awt.*;
+import module java.desktop;
+
 import java.util.ArrayList;
 
 import org.jetbrains.annotations.Nullable;

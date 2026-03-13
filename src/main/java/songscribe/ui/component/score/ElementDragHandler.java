@@ -20,7 +20,9 @@
 
 package songscribe.ui.component.score;
 
-import java.awt.event.*;
+import module java.desktop;
+// Disambiguates from org.w3c.dom.events.MouseEvent (java.xml module)
+import java.awt.event.MouseEvent;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;

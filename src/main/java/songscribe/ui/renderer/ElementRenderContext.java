@@ -20,7 +20,7 @@
 
 package songscribe.ui.renderer;
 
-import java.awt.*;
+import module java.desktop;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;

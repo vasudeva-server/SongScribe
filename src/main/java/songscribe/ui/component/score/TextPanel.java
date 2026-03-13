@@ -20,9 +20,7 @@
 
 package songscribe.ui.component.score;
 
-import java.awt.*;
-
-import javax.swing.*;
+import module java.desktop;
 
 import org.jetbrains.annotations.NotNull;
 

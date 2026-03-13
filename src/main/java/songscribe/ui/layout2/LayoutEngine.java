@@ -20,8 +20,8 @@
 
 package songscribe.ui.layout2;
 
-import java.awt.*;
-import java.awt.geom.*;
+import module java.desktop;
+
 import java.util.HashMap;
 import java.util.List;
 
@@ -669,7 +669,6 @@ public class LayoutEngine {
             ));
         }
     }
-
 
     /**
      * Returns the number of beams (flag levels) for a note type.

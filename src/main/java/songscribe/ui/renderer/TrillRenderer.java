@@ -24,7 +24,7 @@ import static songscribe.ui.renderer.GraphicsState.Property.COLOR;
 import static songscribe.ui.renderer.GraphicsState.Property.FONT;
 import static songscribe.ui.renderer.GraphicsState.Property.TRANSFORM;
 
-import java.awt.*;
+import module java.desktop;
 
 import org.jetbrains.annotations.NotNull;
 

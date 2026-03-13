@@ -20,13 +20,12 @@
 
 package songscribe.util;
 
-import java.awt.event.*;
+import module java.desktop;
+
 import java.net.URI;
 import java.nio.file.Paths;
 import java.util.Calendar;
 import java.util.stream.IntStream;
-
-import javax.swing.*;
 
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;

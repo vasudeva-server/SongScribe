@@ -19,9 +19,7 @@
  */
 package songscribe.ui.menu;
 
-import java.awt.event.*;
-
-import javax.swing.*;
+import module java.desktop;
 
 import songscribe.ui.component.Score;
 

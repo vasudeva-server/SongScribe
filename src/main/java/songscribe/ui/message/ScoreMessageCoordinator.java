@@ -20,7 +20,7 @@
 
 package songscribe.ui.message;
 
-import javax.swing.*;
+import module java.desktop;
 
 import org.jetbrains.annotations.NotNull;
 

@@ -20,7 +20,8 @@
 
 package songscribe.util;
 
-import java.awt.*;
+import module java.desktop;
+
 import java.text.Normalizer;
 import java.util.ArrayList;
 import java.util.Arrays;

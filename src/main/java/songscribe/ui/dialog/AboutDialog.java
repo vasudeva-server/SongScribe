@@ -19,12 +19,12 @@
  */
 package songscribe.ui.dialog;
 
-import java.awt.*;
-import java.awt.event.*;
+import module java.desktop;
+// Disambiguates from org.w3c.dom.events.MouseEvent (java.xml module)
+import java.awt.event.MouseEvent;
+
 import java.io.IOException;
 import java.util.Calendar;
-
-import javax.swing.*;
 
 import org.jdesktop.layout.GroupLayout;
 import org.jdesktop.layout.LayoutStyle;

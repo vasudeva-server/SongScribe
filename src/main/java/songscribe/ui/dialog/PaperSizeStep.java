@@ -19,13 +19,11 @@
  */
 package songscribe.ui.dialog;
 
-import java.awt.*;
-import java.awt.event.*;
+import module java.desktop;
+
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
-
-import javax.swing.*;
 
 import org.jetbrains.annotations.NotNull;
 

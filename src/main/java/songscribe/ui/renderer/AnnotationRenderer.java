@@ -23,7 +23,7 @@ package songscribe.ui.renderer;
 import static songscribe.ui.renderer.GraphicsState.Property.COLOR;
 import static songscribe.ui.renderer.GraphicsState.Property.FONT;
 
-import java.awt.*;
+import module java.desktop;
 
 import org.jetbrains.annotations.NotNull;
 

@@ -20,8 +20,8 @@
 
 package songscribe.ui.layout2;
 
-import java.awt.*;
-import java.awt.geom.*;
+import module java.desktop;
+
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;

@@ -22,15 +22,10 @@ package songscribe.e2e;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.awt.*;
-import java.awt.event.*;
+import module java.desktop;
+
 import java.util.ArrayList;
 import java.util.List;
-
-import javax.sound.midi.MidiEvent;
-import javax.sound.midi.Sequence;
-import javax.sound.midi.ShortMessage;
-import javax.sound.midi.Track;
 
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -340,7 +335,6 @@ class GlissandoTest extends E2ETest {
         }
     }
 
-
     // -- Coordinate helpers --
 
     /**
@@ -363,7 +357,6 @@ class GlissandoTest extends E2ETest {
         var p1 = noteScreenPosition(lineIndex, 1);
         return new Point((p0.x + p1.x) / 2, (p0.y + p1.y) / 2);
     }
-
 
     // -- Composition builders --
 
@@ -388,7 +381,6 @@ class GlissandoTest extends E2ETest {
         clickAt(glissandoInsertionPoint(0));
         performLayout(0);
     }
-
 
     // -- MIDI helpers --
 

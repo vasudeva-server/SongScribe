@@ -20,12 +20,12 @@
 
 package songscribe.ui.component;
 
-import java.awt.*;
+import module java.desktop;
+// Disambiguates from javax.print.attribute.AttributeSet (also in java.desktop)
+import javax.swing.text.AttributeSet;
+
 import java.text.ParseException;
 import java.util.regex.Pattern;
-
-import javax.swing.*;
-import javax.swing.text.*;
 
 public final class InputUtils {
 

@@ -20,8 +20,8 @@
 
 package songscribe.music;
 
-import java.awt.*;
-import java.awt.geom.*;
+import module java.desktop;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;

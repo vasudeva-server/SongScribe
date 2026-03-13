@@ -23,7 +23,8 @@ package songscribe.ui.selection;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 
-import java.awt.event.*;
+import module java.desktop;
+
 import java.util.ArrayList;
 import java.util.List;
 

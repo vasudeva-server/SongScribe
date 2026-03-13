@@ -19,11 +19,10 @@
  */
 package songscribe.ui.dialog;
 
-import java.awt.*;
+import module java.desktop;
+
 import java.util.Dictionary;
 import java.util.Hashtable;
-
-import javax.swing.*;
 
 import songscribe.Strings;
 import songscribe.prefs.Prefs;

@@ -22,13 +22,15 @@ package songscribe.e2e;
 
 import static org.assertj.swing.core.MouseButton.LEFT_BUTTON;
 
-import java.awt.*;
+import module java.desktop;
+// Disambiguates from org.w3c.dom.events.MouseEvent (java.xml module)
+import java.awt.event.MouseEvent;
+
 import java.io.PrintWriter;
 import java.io.StringReader;
 import java.io.StringWriter;
 import java.util.Set;
 
-import javax.swing.*;
 import javax.xml.parsers.SAXParserFactory;
 
 import org.jetbrains.annotations.Nullable;
@@ -164,7 +166,6 @@ public abstract class E2ETest {
         window.cleanUp();
     }
 
-
     // -- Status overlay --
 
     private void createStatusOverlay() {
@@ -208,7 +209,6 @@ public abstract class E2ETest {
         statusOverlay.setSize(overlaySize);
     }
 
-
     // -- Accessors --
 
     protected Score score() {
@@ -218,7 +218,6 @@ public abstract class E2ETest {
     protected Composition composition() {
         return score().getComposition();
     }
-
 
     // -- Toolbar button helpers --
 
@@ -319,7 +318,6 @@ public abstract class E2ETest {
         }
     }
 
-
     // -- Accidental helpers --
 
     // SHARP, DOUBLE_SHARP, NATURAL_SHARP have no toolbar button -- reached via Insert > Accidental menu.
@@ -382,7 +380,6 @@ public abstract class E2ETest {
         };
     }
 
-
     // -- Menu helpers --
 
     /**
@@ -422,7 +419,6 @@ public abstract class E2ETest {
 
         return null;
     }
-
 
     // -- Coordinate helpers --
 
@@ -528,7 +524,6 @@ public abstract class E2ETest {
         pause();
     }
 
-
     // -- Click helpers --
 
     /**
@@ -578,7 +573,6 @@ public abstract class E2ETest {
         pause();
     }
 
-
     // -- Layout synchronization --
 
     /**
@@ -594,7 +588,6 @@ public abstract class E2ETest {
         pause();
     }
 
-
     /**
      * Pauses for {@link #ACTION_DELAY_MS} so you can watch the test visually.
      */
@@ -609,7 +602,6 @@ public abstract class E2ETest {
             }
         }
     }
-
 
     /**
      * In debug mode, shows a confirm dialog with Stop/Skip/OK buttons.
@@ -652,7 +644,6 @@ public abstract class E2ETest {
         }
     }
 
-
     // -- Model query helpers --
 
     protected boolean isBeamed(int lineIndex, int noteIndex) {
@@ -668,7 +659,6 @@ public abstract class E2ETest {
             return line.getTies().findInterval(noteIndex) != null;
         });
     }
-
 
     // -- Save/load round-trip --
 
@@ -686,7 +676,6 @@ public abstract class E2ETest {
 
         return reader.getComposition();
     }
-
 
     // -- Test result tracking --
 

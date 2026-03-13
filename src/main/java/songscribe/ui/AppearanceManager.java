@@ -19,10 +19,10 @@
 */
 package songscribe.ui;
 
+import module java.desktop;
+
 import java.util.function.Consumer;
 import java.util.logging.Logger;
-
-import javax.swing.*;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;

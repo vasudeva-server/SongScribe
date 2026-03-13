@@ -20,9 +20,7 @@
 
 package songscribe.ui.action;
 
-import java.awt.event.*;
-
-import javax.swing.*;
+import module java.desktop;
 
 /**
  * An abstract UIAction that does not toggle its selected state off if triggered

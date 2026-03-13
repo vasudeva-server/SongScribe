@@ -19,18 +19,14 @@
  */
 package songscribe.uiconverter;
 
-import java.awt.*;
-import java.awt.event.*;
+import module java.desktop;
+
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.zip.ZipOutputStream;
-
-import javax.sound.midi.InvalidMidiDataException;
-import javax.sound.midi.MidiSystem;
-import javax.swing.*;
 
 import org.jetbrains.annotations.Nullable;
 

@@ -20,11 +20,7 @@
 
 package songscribe.ui.fontchooser.panes;
 
-import java.awt.*;
-
-import javax.swing.*;
-import javax.swing.event.*;
-import javax.swing.plaf.*;
+import module java.desktop;
 
 import songscribe.ui.component.InputUtils;
 

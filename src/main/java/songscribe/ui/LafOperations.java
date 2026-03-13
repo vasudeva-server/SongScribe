@@ -1,6 +1,6 @@
 package songscribe.ui;
 
-import javax.swing.*;
+import module java.desktop;
 
 import org.jetbrains.annotations.NotNull;
 

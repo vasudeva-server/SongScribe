@@ -25,7 +25,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 
-import java.awt.event.*;
+import module java.desktop;
 
 import org.junit.jupiter.api.Test;
 

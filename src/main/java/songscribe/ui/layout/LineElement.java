@@ -20,8 +20,8 @@
 
 package songscribe.ui.layout;
 
-import java.awt.geom.Point2D;
-import java.awt.geom.Rectangle2D;
+import module java.desktop;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;

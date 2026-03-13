@@ -20,7 +20,8 @@
 
 package songscribe.ui.component;
 
-import java.awt.*;
+import module java.desktop;
+
 import java.io.File;
 
 import songscribe.ui.ProfileManager;

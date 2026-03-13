@@ -23,15 +23,10 @@ package songscribe.e2e;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.swing.core.MouseButton.LEFT_BUTTON;
 
-import java.awt.*;
-import java.awt.event.*;
+import module java.desktop;
+
 import java.util.ArrayList;
 import java.util.List;
-
-import javax.sound.midi.MidiEvent;
-import javax.sound.midi.Sequence;
-import javax.sound.midi.ShortMessage;
-import javax.sound.midi.Track;
 
 import org.assertj.swing.edt.GuiActionRunner;
 import org.assertj.swing.finder.JOptionPaneFinder;
@@ -381,7 +376,6 @@ class GraceNoteTest extends E2ETest {
         }
     }
 
-
     // -- Assertion helpers --
 
     private void assertGraceModeInactive() {
@@ -403,7 +397,6 @@ class GraceNoteTest extends E2ETest {
             .as("Action '%s' selected state", action.getActionCommand())
             .isEqualTo(expected);
     }
-
 
     // -- Composition builders --
 
@@ -457,7 +450,6 @@ class GraceNoteTest extends E2ETest {
     private int getFullLineNoteCount() {
         return fullLineNoteCount;
     }
-
 
     // -- MIDI helpers --
 

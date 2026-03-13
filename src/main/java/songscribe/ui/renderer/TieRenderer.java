@@ -23,8 +23,7 @@ package songscribe.ui.renderer;
 import static songscribe.ui.renderer.GraphicsState.Property.COLOR;
 import static songscribe.ui.renderer.GraphicsState.Property.TRANSFORM;
 
-import java.awt.*;
-import java.awt.geom.*;
+import module java.desktop;
 
 import org.jetbrains.annotations.NotNull;
 

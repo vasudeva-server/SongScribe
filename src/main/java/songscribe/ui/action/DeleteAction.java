@@ -20,9 +20,7 @@
 
 package songscribe.ui.action;
 
-import java.awt.event.*;
-
-import javax.swing.*;
+import module java.desktop;
 
 import songscribe.Strings;
 import songscribe.util.UIUtils;

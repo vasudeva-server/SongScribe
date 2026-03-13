@@ -19,11 +19,12 @@
  */
 package songscribe.data;
 
+import module java.desktop;
+
 import java.io.File;
 import java.io.FilenameFilter;
 import java.util.ArrayList;
 import java.util.List;
-import javax.swing.filechooser.*;
 import songscribe.util.FileUtils;
 
 public class MyFileFilter extends FileFilter implements FilenameFilter {

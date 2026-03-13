@@ -20,7 +20,8 @@
 
 package songscribe.ui.fontchooser;
 
-import java.awt.*;
+import module java.desktop;
+
 import java.io.Serializable;
 import java.util.Comparator;
 

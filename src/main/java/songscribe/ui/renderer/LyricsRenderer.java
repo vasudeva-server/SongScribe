@@ -23,8 +23,8 @@ package songscribe.ui.renderer;
 import static songscribe.ui.renderer.GraphicsState.Property.FONT;
 import static songscribe.ui.renderer.GraphicsState.Property.STROKE;
 
-import java.awt.*;
-import java.awt.geom.*;
+import module java.desktop;
+
 import java.util.ArrayList;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;

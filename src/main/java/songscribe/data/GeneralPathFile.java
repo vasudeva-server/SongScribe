@@ -19,8 +19,8 @@
  */
 package songscribe.data;
 
-import java.awt.*;
-import java.awt.geom.*;
+import module java.desktop;
+
 import java.io.File;
 import java.util.logging.Logger;
 import java.io.FileInputStream;
@@ -30,8 +30,6 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.util.Properties;
-
-import javax.swing.*;
 
 import songscribe.util.Utils;
 

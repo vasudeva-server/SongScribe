@@ -20,12 +20,10 @@
 
 package songscribe.ui.component;
 
-import java.awt.event.*;
+import module java.desktop;
+
 import java.util.List;
 import java.util.Objects;
-
-import javax.swing.*;
-import javax.swing.event.*;
 
 import songscribe.ui.action.UIAction;
 import songscribe.ui.message.MenuWillOpenMessage;

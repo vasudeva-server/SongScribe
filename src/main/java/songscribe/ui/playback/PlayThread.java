@@ -19,8 +19,7 @@
  */
 package songscribe.ui.playback;
 
-import javax.sound.midi.InvalidMidiDataException;
-import javax.sound.midi.ShortMessage;
+import module java.desktop;
 
 public class PlayThread extends Thread {
 

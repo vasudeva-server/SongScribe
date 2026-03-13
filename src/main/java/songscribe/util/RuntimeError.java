@@ -20,7 +20,7 @@
 
 package songscribe.util;
 
-import javax.swing.JOptionPane;
+import module java.desktop;
 
 import org.jetbrains.annotations.Nullable;
 

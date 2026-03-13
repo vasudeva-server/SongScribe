@@ -20,7 +20,8 @@
 
 package songscribe.ui.menu;
 
-import java.awt.*;
+import module java.desktop;
+
 import java.util.Objects;
 
 import org.jetbrains.annotations.Nullable;

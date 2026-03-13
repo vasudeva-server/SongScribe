@@ -19,9 +19,7 @@
  */
 package songscribe.ui.dialog;
 
-import java.awt.*;
-
-import javax.swing.*;
+import module java.desktop;
 
 import songscribe.Strings;
 import songscribe.music.KeyType;

@@ -22,7 +22,8 @@ package songscribe.ui.action;
 
 import static songscribe.util.UIUtils.MENU_SHORTCUT_MASK;
 
-import java.awt.event.*;
+import module java.desktop;
+
 import java.util.Arrays;
 import java.util.List;
 
@@ -140,7 +141,6 @@ public final class Actions {
             UIAction.Flag.DISABLE_IN_SELECT_MODE
         );
     }
-
 
     public static final ElementTypeAction THIRTY_SECOND_NOTE_ACTION =
         new ElementTypeAction(

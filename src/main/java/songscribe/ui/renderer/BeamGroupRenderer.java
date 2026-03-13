@@ -22,8 +22,8 @@ package songscribe.ui.renderer;
 
 import static songscribe.ui.renderer.GraphicsState.Property.COLOR;
 
-import java.awt.*;
-import java.awt.geom.*;
+import module java.desktop;
+
 import java.util.logging.Logger;
 
 import org.jetbrains.annotations.NotNull;

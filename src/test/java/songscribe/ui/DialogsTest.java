@@ -20,10 +20,9 @@
 
 package songscribe.ui;
 
-import java.awt.*;
-import java.io.File;
+import module java.desktop;
 
-import javax.swing.*;
+import java.io.File;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;

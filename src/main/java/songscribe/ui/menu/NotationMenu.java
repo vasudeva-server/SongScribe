@@ -28,7 +28,7 @@ import static songscribe.ui.action.Actions.TOGGLE_BEAM_ACTION;
 import static songscribe.ui.action.Actions.TOGGLE_TIE_ACTION;
 import static songscribe.ui.action.Actions.TOGGLE_TUPLET_ACTIONS;
 
-import javax.swing.*;
+import module java.desktop;
 
 import songscribe.Strings;
 import songscribe.ui.action.FirstSecondEndingAction;

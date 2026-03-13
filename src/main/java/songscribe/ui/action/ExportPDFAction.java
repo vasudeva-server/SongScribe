@@ -19,7 +19,8 @@
  */
 package songscribe.ui.action;
 
-import java.awt.event.*;
+import module java.desktop;
+
 import java.io.File;
 
 import songscribe.Strings;

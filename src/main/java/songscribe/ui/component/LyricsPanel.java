@@ -19,10 +19,7 @@
  */
 package songscribe.ui.component;
 
-import java.awt.*;
-import java.awt.event.*;
-
-import javax.swing.*;
+import module java.desktop;
 
 import com.intellij.uiDesigner.core.GridConstraints;
 import com.intellij.uiDesigner.core.GridLayoutManager;

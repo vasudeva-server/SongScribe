@@ -20,9 +20,7 @@
 
 package songscribe.ui.component;
 
-import java.awt.*;
-
-import javax.swing.*;
+import module java.desktop;
 
 import songscribe.Strings;
 import songscribe.ui.Constants;

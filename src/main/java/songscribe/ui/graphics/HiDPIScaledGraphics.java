@@ -20,11 +20,8 @@
 
 package songscribe.ui.graphics;
 
-import java.awt.*;
-import java.awt.font.*;
-import java.awt.geom.*;
-import java.awt.image.*;
-import java.awt.image.renderable.*;
+import module java.desktop;
+
 import java.text.AttributedCharacterIterator;
 import java.util.Map;
 

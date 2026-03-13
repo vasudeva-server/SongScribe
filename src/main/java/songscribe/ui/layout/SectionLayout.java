@@ -20,7 +20,8 @@
 
 package songscribe.ui.layout;
 
-import java.awt.*;
+import module java.desktop;
+
 import java.util.List;
 
 import org.jetbrains.annotations.NotNull;

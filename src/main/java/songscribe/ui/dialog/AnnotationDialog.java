@@ -19,10 +19,9 @@
  */
 package songscribe.ui.dialog;
 
-import java.awt.*;
-import java.util.Arrays;
+import module java.desktop;
 
-import javax.swing.*;
+import java.util.Arrays;
 
 import org.jetbrains.annotations.Nullable;
 

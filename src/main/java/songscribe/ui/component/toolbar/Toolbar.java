@@ -20,9 +20,7 @@
 
 package songscribe.ui.component.toolbar;
 
-import java.awt.*;
-
-import javax.swing.*;
+import module java.desktop;
 
 public class Toolbar extends JToolBar {
 

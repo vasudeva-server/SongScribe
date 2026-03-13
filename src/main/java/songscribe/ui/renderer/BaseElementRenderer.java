@@ -23,8 +23,8 @@ package songscribe.ui.renderer;
 import static songscribe.ui.renderer.GraphicsState.Property.COLOR;
 import static songscribe.ui.renderer.GraphicsState.Property.FONT;
 
-import java.awt.*;
-import java.awt.geom.*;
+import module java.desktop;
+
 import java.util.Objects;
 import java.util.function.DoubleConsumer;
 
@@ -73,7 +73,6 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
      * (4.0 ss * 8 px/ss = 32px).
      */
     public static final float FONT_SIZE = 4.0f;
-
 
     /**
      * Horizontal scale factor for tempo change note display.

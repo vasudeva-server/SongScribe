@@ -19,9 +19,7 @@
  */
 package songscribe.ui.playback;
 
-import java.awt.event.*;
-
-import javax.swing.*;
+import module java.desktop;
 
 import songscribe.Strings;
 import songscribe.ui.message.MessageCenter;

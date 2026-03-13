@@ -20,7 +20,7 @@
 
 package songscribe.ui.layout2;
 
-import java.awt.geom.AffineTransform;
+import module java.desktop;
 
 /**
  * Central scale context that defines the mapping between staff-space units

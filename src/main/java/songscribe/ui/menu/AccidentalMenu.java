@@ -19,7 +19,7 @@
  */
 package songscribe.ui.menu;
 
-import javax.swing.*;
+import module java.desktop;
 
 import songscribe.Strings;
 import songscribe.music.StaffElement;

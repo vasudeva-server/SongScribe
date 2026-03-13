@@ -19,10 +19,7 @@
  */
 package songscribe.ui.dialog;
 
-import java.awt.*;
-import java.awt.event.*;
-
-import javax.swing.*;
+import module java.desktop;
 
 import songscribe.prefs.Prefs;
 import songscribe.Strings;

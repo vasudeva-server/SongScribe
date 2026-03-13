@@ -19,10 +19,7 @@
  */
 package songscribe.ui.fontchooser;
 
-import java.awt.*;
-
-import javax.swing.*;
-import javax.swing.event.*;
+import module java.desktop;
 
 import songscribe.Strings;
 import songscribe.ui.fontchooser.listeners.FamilyListSelectionListener;

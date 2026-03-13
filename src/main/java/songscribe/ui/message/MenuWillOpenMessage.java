@@ -20,7 +20,7 @@
 
 package songscribe.ui.message;
 
-import javax.swing.*;
+import module java.desktop;
 
 public class MenuWillOpenMessage extends Message {
 

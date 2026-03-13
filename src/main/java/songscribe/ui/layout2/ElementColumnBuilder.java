@@ -20,7 +20,8 @@
 
 package songscribe.ui.layout2;
 
-import java.awt.*;
+import module java.desktop;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;

@@ -19,7 +19,8 @@
  */
 package songscribe.io;
 
-import java.awt.*;
+import module java.desktop;
+
 import java.io.PrintWriter;
 
 import org.jetbrains.annotations.Nullable;

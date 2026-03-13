@@ -20,7 +20,7 @@
 
 package songscribe.ui.fontchooser.listeners;
 
-import javax.swing.event.*;
+import module java.desktop;
 
 import org.jetbrains.annotations.NotNull;
 

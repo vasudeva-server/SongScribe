@@ -20,16 +20,12 @@
 
 package songscribe.ui.component;
 
-import java.awt.*;
-import java.awt.desktop.*;
-import java.awt.event.*;
-import java.awt.image.*;
-import java.awt.print.*;
+import module java.desktop;
+
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.nio.charset.StandardCharsets;
-import javax.swing.*;
 
 import org.jetbrains.annotations.Nullable;
 

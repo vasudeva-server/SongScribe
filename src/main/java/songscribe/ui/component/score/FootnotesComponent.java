@@ -20,7 +20,7 @@
 
 package songscribe.ui.component.score;
 
-import java.awt.*;
+import module java.desktop;
 
 import songscribe.ui.layout.LayoutStylesheet;
 import songscribe.ui.layout2.ScaleContext;

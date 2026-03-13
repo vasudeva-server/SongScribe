@@ -22,7 +22,8 @@ package songscribe.converter;
 
 import static org.mockito.Mockito.mock;
 
-import java.awt.*;
+import module java.desktop;
+
 import java.io.File;
 
 import songscribe.ui.ProfileManager;

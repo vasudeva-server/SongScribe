@@ -22,6 +22,8 @@ package songscribe.ui.menu;
 
 import static songscribe.util.UIUtils.setupDesktopHandlers;
 
+import module java.desktop;
+
 import java.io.File;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -29,8 +31,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
-
-import javax.swing.*;
 
 import org.jetbrains.annotations.NotNull;
 

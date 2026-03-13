@@ -21,11 +21,7 @@ package songscribe.ui.dialog;
 
 import static songscribe.util.UIUtils.MENU_SHORTCUT_MASK;
 
-import java.awt.*;
-import java.awt.event.*;
-
-import javax.swing.*;
-import javax.swing.border.*;
+import module java.desktop;
 
 import com.intellij.uiDesigner.core.GridConstraints;
 import com.intellij.uiDesigner.core.GridLayoutManager;

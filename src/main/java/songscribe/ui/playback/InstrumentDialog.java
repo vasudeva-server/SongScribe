@@ -19,18 +19,10 @@
  */
 package songscribe.ui.playback;
 
-import java.awt.*;
-import java.awt.event.*;
+import module java.desktop;
+
 import java.util.ArrayList;
 import java.util.Map;
-
-import javax.sound.midi.InvalidMidiDataException;
-import javax.sound.midi.MetaEventListener;
-import javax.sound.midi.MetaMessage;
-import javax.sound.midi.MidiEvent;
-import javax.sound.midi.Sequence;
-import javax.sound.midi.ShortMessage;
-import javax.swing.*;
 
 import songscribe.Strings;
 import songscribe.prefs.Prefs;

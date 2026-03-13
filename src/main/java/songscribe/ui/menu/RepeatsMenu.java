@@ -21,7 +21,7 @@ package songscribe.ui.menu;
 
 import static songscribe.ui.action.Actions.REPEAT_ACTIONS;
 
-import javax.swing.*;
+import module java.desktop;
 
 import songscribe.Strings;
 

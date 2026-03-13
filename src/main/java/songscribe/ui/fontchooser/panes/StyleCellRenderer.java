@@ -20,9 +20,7 @@
 
 package songscribe.ui.fontchooser.panes;
 
-import java.awt.*;
-
-import javax.swing.*;
+import module java.desktop;
 
 public class StyleCellRenderer extends DefaultListCellRenderer {
 

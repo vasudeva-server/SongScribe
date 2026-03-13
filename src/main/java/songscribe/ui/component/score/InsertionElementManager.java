@@ -20,8 +20,9 @@
 
 package songscribe.ui.component.score;
 
-import java.awt.*;
-import java.awt.event.*;
+import module java.desktop;
+// Disambiguates from org.w3c.dom.events.MouseEvent (java.xml module)
+import java.awt.event.MouseEvent;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -264,7 +265,6 @@ public class InsertionElementManager {
         return currentGlissandoZone;
     }
 
-
     // ==========================================================================
     // Private Helpers
     // ==========================================================================
@@ -329,7 +329,6 @@ public class InsertionElementManager {
 
         return intendedType;
     }
-
 
     // ==========================================================================
     // Delegation Entry Points (called from LineComponent mouse handlers)
@@ -779,7 +778,6 @@ public class InsertionElementManager {
         applyAutomaticBeaming(line, xIndex);
         editModeManager.insertionElementDidChange(line, xIndex);
     }
-
 
     /**
      * Applies automatic beaming for the element at the given index.

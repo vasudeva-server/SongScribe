@@ -19,7 +19,7 @@
  */
 package songscribe.music;
 
-import java.awt.*;
+import module java.desktop;
 
 import songscribe.ui.component.Score;
 

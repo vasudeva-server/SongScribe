@@ -20,7 +20,7 @@
 
 package songscribe.ui.layout;
 
-import java.awt.geom.Rectangle2D;
+import module java.desktop;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;

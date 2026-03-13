@@ -20,7 +20,7 @@
 
 package songscribe.ui.layout;
 
-import java.awt.Graphics2D;
+import module java.desktop;
 
 import org.jetbrains.annotations.NotNull;
 

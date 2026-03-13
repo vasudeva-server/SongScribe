@@ -20,7 +20,7 @@
 
 package songscribe.ui;
 
-import javax.swing.*;
+import module java.desktop;
 
 import com.formdev.flatlaf.FlatDarkLaf;
 import com.formdev.flatlaf.FlatLightLaf;

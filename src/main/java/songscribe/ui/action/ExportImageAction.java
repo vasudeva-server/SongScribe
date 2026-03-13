@@ -19,12 +19,10 @@
  */
 package songscribe.ui.action;
 
-import java.awt.*;
-import java.awt.event.*;
+import module java.desktop;
+
 import java.io.File;
 import java.io.IOException;
-
-import javax.swing.*;
 
 import songscribe.Strings;
 import songscribe.data.MyFileFilter;

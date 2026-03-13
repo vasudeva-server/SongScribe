@@ -19,10 +19,9 @@
  */
 package songscribe.ui.action;
 
-import java.awt.event.*;
-import java.io.IOException;
+import module java.desktop;
 
-import javax.swing.*;
+import java.io.IOException;
 
 import songscribe.Strings;
 import songscribe.ui.Dialogs;

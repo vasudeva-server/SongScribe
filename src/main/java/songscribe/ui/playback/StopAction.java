@@ -19,7 +19,7 @@
  */
 package songscribe.ui.playback;
 
-import java.awt.event.*;
+import module java.desktop;
 
 import songscribe.Strings;
 import songscribe.util.UIUtils;

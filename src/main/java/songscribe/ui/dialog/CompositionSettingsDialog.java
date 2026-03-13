@@ -19,15 +19,13 @@
  */
 package songscribe.ui.dialog;
 
-import java.awt.*;
-import java.awt.event.*;
+import module java.desktop;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.EnumMap;
 import java.util.stream.Collectors;
-
-import javax.swing.*;
 
 import org.jetbrains.annotations.NotNull;
 

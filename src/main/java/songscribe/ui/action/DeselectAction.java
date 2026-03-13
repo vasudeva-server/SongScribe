@@ -20,7 +20,7 @@
 
 package songscribe.ui.action;
 
-import java.awt.event.*;
+import module java.desktop;
 
 import songscribe.ui.message.DeselectMessage;
 import songscribe.Strings;

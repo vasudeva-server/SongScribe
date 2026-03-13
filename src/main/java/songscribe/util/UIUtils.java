@@ -20,12 +20,9 @@
 
 package songscribe.util;
 
-import java.awt.*;
-import java.awt.event.*;
-import java.util.Arrays;
+import module java.desktop;
 
-import javax.swing.*;
-import javax.swing.text.*;
+import java.util.Arrays;
 
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;

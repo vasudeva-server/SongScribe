@@ -20,14 +20,13 @@
 
 package songscribe.ui.action;
 
-import java.awt.event.*;
+import module java.desktop;
+
 import java.util.ArrayList;
 
 import songscribe.Strings;
 import java.util.Arrays;
 import java.util.List;
-
-import javax.swing.*;
 
 public class LaunchAction extends AbstractAction {
 

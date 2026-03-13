@@ -19,7 +19,8 @@
  */
 package songscribe.ui;
 
-import java.awt.*;
+import module java.desktop;
+
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -30,8 +31,6 @@ import java.util.Arrays;
 import java.util.Objects;
 import java.util.Properties;
 import java.util.stream.Collectors;
-
-import javax.swing.*;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;

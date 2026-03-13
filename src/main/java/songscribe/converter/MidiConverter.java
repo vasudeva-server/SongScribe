@@ -19,11 +19,10 @@
  */
 package songscribe.converter;
 
+import module java.desktop;
+
 import java.io.File;
 import java.io.IOException;
-
-import javax.sound.midi.InvalidMidiDataException;
-import javax.sound.midi.MidiSystem;
 
 import songscribe.ui.component.Score;
 import songscribe.ui.playback.PlaybackController;

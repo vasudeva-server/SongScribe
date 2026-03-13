@@ -23,7 +23,7 @@ package songscribe.ui.renderer;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
 
-import java.awt.geom.*;
+import module java.desktop;
 
 import org.junit.jupiter.api.Test;
 

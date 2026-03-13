@@ -19,10 +19,9 @@
  */
 package songscribe.ui.dialog;
 
-import java.awt.*;
-import java.util.prefs.Preferences;
+import module java.desktop;
 
-import javax.swing.*;
+import java.util.prefs.Preferences;
 
 public class DoNotShowMessage extends StandardDialog {
 

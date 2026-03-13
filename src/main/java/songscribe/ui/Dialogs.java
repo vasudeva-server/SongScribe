@@ -20,11 +20,10 @@
 
 package songscribe.ui;
 
-import java.awt.*;
+import module java.desktop;
+
 import java.io.File;
 import java.util.function.Consumer;
-
-import javax.swing.*;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;

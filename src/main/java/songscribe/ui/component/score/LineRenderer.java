@@ -20,8 +20,7 @@
 
 package songscribe.ui.component.score;
 
-import java.awt.*;
-import java.awt.geom.*;
+import module java.desktop;
 
 import org.jetbrains.annotations.NotNull;
 
@@ -71,10 +70,8 @@ class LineRenderer {
     private static final double STAFF_LINE_THICKNESS =
         SMuFLMetadata.getInstance().getEngravingDefaults().staffLineThickness();
 
-
     /** Color for the insertion note preview — defined in Score for shared access across renderers. */
     private static final Color INSERTION_NOTE_COLOR = Score.INSERTION_NOTE_COLOR;
-
 
     /** The stroke used to draw the selection rectangle border. */
     private static final BasicStroke SELECTION_RECT_STROKE = new BasicStroke(2.0f);

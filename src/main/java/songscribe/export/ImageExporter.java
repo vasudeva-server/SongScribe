@@ -19,8 +19,7 @@
  */
 package songscribe.export;
 
-import java.awt.*;
-import java.awt.image.*;
+import module java.desktop;
 
 import org.jetbrains.annotations.NotNull;
 

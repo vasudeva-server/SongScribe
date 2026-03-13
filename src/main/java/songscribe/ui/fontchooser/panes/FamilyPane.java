@@ -20,10 +20,7 @@
 
 package songscribe.ui.fontchooser.panes;
 
-import java.awt.*;
-
-import javax.swing.*;
-import javax.swing.event.*;
+import module java.desktop;
 
 import com.formdev.flatlaf.FlatClientProperties;
 import com.formdev.flatlaf.icons.FlatSearchIcon;

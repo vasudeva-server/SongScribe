@@ -22,8 +22,7 @@ package songscribe.e2e.selection;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.awt.*;
-import java.awt.event.*;
+import module java.desktop;
 
 import org.assertj.swing.edt.GuiActionRunner;
 import org.junit.jupiter.api.Nested;
@@ -163,7 +162,6 @@ class SelectionTest extends E2ETest {
             assertThat(score().isElementSelected(2, 0)).isFalse();
         }
     }
-
 
     // -- Helpers --
 

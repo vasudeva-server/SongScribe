@@ -20,10 +20,9 @@
 
 package songscribe.ui.component;
 
-import java.awt.*;
-import java.awt.event.MouseAdapter;
+import module java.desktop;
+// Disambiguates from org.w3c.dom.events.MouseEvent (java.xml module)
 import java.awt.event.MouseEvent;
-import javax.swing.*;
 
 /**
  * Suppresses the mouse click that brings the application window to the foreground.

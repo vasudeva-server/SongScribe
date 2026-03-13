@@ -20,11 +20,7 @@
 
 package songscribe.ui.menu;
 
-import java.awt.Toolkit;
-import java.awt.event.InputEvent;
-import java.awt.event.KeyEvent;
-
-import javax.swing.*;
+import module java.desktop;
 
 import songscribe.ui.component.Score;
 

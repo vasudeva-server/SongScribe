@@ -20,7 +20,7 @@
 
 package songscribe.ui.component;
 
-import javax.swing.*;
+import module java.desktop;
 
 import net.engio.mbassy.listener.Handler;
 

@@ -19,14 +19,12 @@
  */
 package songscribe.ui.component;
 
-import java.awt.*;
-import java.awt.event.*;
+import module java.desktop;
+
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
-
-import javax.swing.*;
 
 import org.jdesktop.layout.GroupLayout;
 import org.jdesktop.layout.LayoutStyle;

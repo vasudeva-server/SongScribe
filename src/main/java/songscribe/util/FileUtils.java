@@ -20,7 +20,7 @@
 
 package songscribe.util;
 
-import java.awt.Component;
+import module java.desktop;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -32,8 +32,6 @@ import java.io.InputStreamReader;
 import java.nio.file.Paths;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
-
-import javax.swing.*;
 
 import com.formdev.flatlaf.util.SystemInfo;
 

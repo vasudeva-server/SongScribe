@@ -22,7 +22,7 @@ package songscribe.e2e;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.awt.event.*;
+import module java.desktop;
 
 import org.assertj.swing.edt.GuiActionRunner;
 import org.junit.jupiter.api.Nested;
@@ -233,7 +233,6 @@ class ToolbarReflectionTest extends E2ETest {
             assertActionSelected(Actions.STACCATO_ACTION, false);
         }
     }
-
 
     // -- Assertion helpers --
 
