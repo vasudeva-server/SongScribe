@@ -31,6 +31,7 @@ import org.jetbrains.annotations.Nullable;
 
 import songscribe.Strings;
 import songscribe.util.Log;
+import songscribe.util.UIUtils;
 
 /**
  * Centralized dialog utility. All user-facing dialogs in the application
@@ -110,7 +111,15 @@ public final class Dialogs {
         }
 
         try {
-            return JOptionPane.showConfirmDialog(parent, message, title, optionType, messageType);
+            var result = JOptionPane.showConfirmDialog(parent, message, title, optionType, messageType);
+
+            if (result == JOptionPane.CLOSED_OPTION) {
+                return optionType == JOptionPane.YES_NO_CANCEL_OPTION
+                    ? JOptionPane.CANCEL_OPTION
+                    : JOptionPane.NO_OPTION;
+            }
+
+            return result;
         } catch (HeadlessException e) {
             Log.error("HeadlessException showing confirm dialog: " + e.getMessage());
             return suppressedDefault;
@@ -229,6 +238,7 @@ public final class Dialogs {
             var pane = new JOptionPane(message, messageType);
             var dialog = pane.createDialog(parent, title);
             positionDialog(dialog, parent);
+            UIUtils.addStandardDialogKeyBindings(dialog);
             dialog.setVisible(true);
         } catch (HeadlessException e) {
             Log.error("HeadlessException showing message dialog: " + e.getMessage());

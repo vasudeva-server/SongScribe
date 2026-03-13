@@ -127,10 +127,55 @@ class DialogsTest extends UnitTest {
         }
 
         @Test
+        void testShowConfirmDialogTranslatesClosedOptionToCancelForYesNoCancelOption() {
+            try (var jopMock = mockStatic(JOptionPane.class)) {
+                jopMock.when(
+                    () -> JOptionPane.showConfirmDialog(
+                        any(), any(), any(), anyInt(), anyInt()
+                    )
+                ).thenReturn(JOptionPane.CLOSED_OPTION);
+
+                var result = Dialogs.showConfirmDialog(
+                    null, "Confirm Title", "Save?",
+                    JOptionPane.YES_NO_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE
+                );
+
+                assertThat(result).isEqualTo(JOptionPane.CANCEL_OPTION);
+            }
+        }
+
+        @Test
+        void testShowConfirmDialogTranslatesClosedOptionToNoForYesNoOption() {
+            try (var jopMock = mockStatic(JOptionPane.class)) {
+                jopMock.when(
+                    () -> JOptionPane.showConfirmDialog(
+                        any(), any(), any(), anyInt(), anyInt()
+                    )
+                ).thenReturn(JOptionPane.CLOSED_OPTION);
+
+                var result = Dialogs.showConfirmDialog(
+                    null, "Confirm Title", "Continue?",
+                    JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE
+                );
+
+                assertThat(result).isEqualTo(JOptionPane.NO_OPTION);
+            }
+        }
+
+        private JDialog mockDialogWithRootPane() {
+            var mockDialog = mock(JDialog.class);
+            var mockRootPane = mock(JRootPane.class);
+            when(mockDialog.getSize()).thenReturn(new Dimension(200, 100));
+            when(mockDialog.getRootPane()).thenReturn(mockRootPane);
+            when(mockRootPane.getInputMap(anyInt())).thenReturn(mock(InputMap.class));
+            when(mockRootPane.getActionMap()).thenReturn(mock(ActionMap.class));
+            return mockDialog;
+        }
+
+        @Test
         void testShowErrorMessageDelegatesToJOptionPane() {
             var toolkit = mock(Toolkit.class);
-            var mockDialog = mock(JDialog.class);
-            when(mockDialog.getSize()).thenReturn(new Dimension(200, 100));
+            var mockDialog = mockDialogWithRootPane();
 
             try (
                 var tkMock = mockStatic(Toolkit.class);
@@ -151,8 +196,7 @@ class DialogsTest extends UnitTest {
 
         @Test
         void testShowInfoMessageDelegatesToJOptionPane() {
-            var mockDialog = mock(JDialog.class);
-            when(mockDialog.getSize()).thenReturn(new Dimension(200, 100));
+            var mockDialog = mockDialogWithRootPane();
 
             try (
                 var geMock = mockStatic(GraphicsEnvironment.class);
