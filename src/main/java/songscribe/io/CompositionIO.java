@@ -30,7 +30,6 @@ import org.xml.sax.helpers.DefaultHandler;
 import songscribe.music.Composition;
 import songscribe.music.KeyType;
 import songscribe.music.Line;
-import songscribe.ui.ProfileManager;
 import songscribe.ui.component.Score;
 import songscribe.ui.layout2.InsertionSpacingCalculator;
 import songscribe.ui.layout2.ScaleContext;
@@ -212,11 +211,6 @@ public final class CompositionIO {
         private ViewIO.ViewReader viewReader = null;
         private Composition composition = null;
         private int majorVersion = 0, minorVersion = 0;
-        private final ProfileManager profileManager;
-
-        public DocumentReader(ProfileManager profileManager) {
-            this.profileManager = profileManager;
-        }
 
         @Override
         public void startElement(
@@ -236,7 +230,8 @@ public final class CompositionIO {
                         minorVersion = Integer.parseInt(
                             version.substring(dotIndex + 1)
                         );
-                        composition = new Composition(profileManager);
+                        composition = new Composition();
+                        composition.setLoading(true);
                         composition.setTopPadding(0, false);
                         composition.removeLine(0);
                         where = Where.COMPOSITION;
@@ -244,41 +239,12 @@ public final class CompositionIO {
                         if ((majorVersion == 1) && (minorVersion == 0)) {
                             noteReader = new StaffElementIO.StaffElementReader();
                             tempoReader = new TempoIO.TempoReader();
-                        } else if ((majorVersion == 1) && (minorVersion == 1)) {
+                        } else if (
+                            (majorVersion == 1 && minorVersion >= 1) ||
+                            (majorVersion == 2 && minorVersion <= 2)
+                        ) {
                             lineReader = new LineIO.LineReader();
-                            viewReader = new ViewIO.ViewReader(
-                                profileManager
-                            );
-                        } else if ((majorVersion == 1) && (minorVersion == 2)) {
-                            lineReader = new LineIO.LineReader();
-                            viewReader = new ViewIO.ViewReader(
-                                profileManager
-                            );
-                        } else if ((majorVersion == 1) && (minorVersion == 3)) {
-                            lineReader = new LineIO.LineReader();
-                            viewReader = new ViewIO.ViewReader(
-                                profileManager
-                            );
-                        } else if ((majorVersion == 1) && (minorVersion == 4)) {
-                            lineReader = new LineIO.LineReader();
-                            viewReader = new ViewIO.ViewReader(
-                                profileManager
-                            );
-                        } else if ((majorVersion == 2) && (minorVersion == 0)) {
-                            lineReader = new LineIO.LineReader();
-                            viewReader = new ViewIO.ViewReader(
-                                profileManager
-                            );
-                        } else if ((majorVersion == 2) && (minorVersion == 1)) {
-                            lineReader = new LineIO.LineReader();
-                            viewReader = new ViewIO.ViewReader(
-                                profileManager
-                            );
-                        } else if ((majorVersion == 2) && (minorVersion == 2)) {
-                            lineReader = new LineIO.LineReader();
-                            viewReader = new ViewIO.ViewReader(
-                                profileManager
-                            );
+                            viewReader = new ViewIO.ViewReader();
                         } else {
                             throw new SAXException(
                                 "Unsupported version number."
@@ -294,20 +260,8 @@ public final class CompositionIO {
             } else {
                 if ((majorVersion == 1) && (minorVersion == 0)) {
                     startElement10(uri, localName, qName, attributes);
-                } else if ((majorVersion == 1) && (minorVersion == 1)) {
+                } else {
                     startElement11(uri, localName, qName, attributes);
-                } else if ((majorVersion == 1) && (minorVersion == 2)) {
-                    startElement12(uri, localName, qName, attributes);
-                } else if ((majorVersion == 1) && (minorVersion == 3)) {
-                    startElement13(uri, localName, qName, attributes);
-                } else if ((majorVersion == 1) && (minorVersion == 4)) {
-                    startElement14(uri, localName, qName, attributes);
-                } else if ((majorVersion == 2) && (minorVersion == 0)) {
-                    startElement20(uri, localName, qName, attributes);
-                } else if ((majorVersion == 2) && (minorVersion == 1)) {
-                    startElement21(uri, localName, qName, attributes);
-                } else if ((majorVersion == 2) && (minorVersion == 2)) {
-                    startElement21(uri, localName, qName, attributes);
                 }
             }
 
@@ -365,74 +319,14 @@ public final class CompositionIO {
             }
         }
 
-        public void startElement12(
-            String uri,
-            String localName,
-            String qName,
-            Attributes attributes
-        ) {
-            // No changes
-            startElement11(uri, localName, qName, attributes);
-        }
-
-        public void startElement13(
-            String uri,
-            String localName,
-            String qName,
-            Attributes attributes
-        ) {
-            // No changes from 1.2
-            startElement12(uri, localName, qName, attributes);
-        }
-
-        public void startElement14(
-            String uri,
-            String localName,
-            String qName,
-            Attributes attributes
-        ) {
-            // No changes from 1.3
-            startElement13(uri, localName, qName, attributes);
-        }
-
-        public void startElement20(
-            String uri,
-            String localName,
-            String qName,
-            Attributes attributes
-        ) {
-            // No changes from 1.4
-            startElement14(uri, localName, qName, attributes);
-        }
-
-        public void startElement21(
-            String uri,
-            String localName,
-            String qName,
-            Attributes attributes
-        ) {
-            // No changes from 2.0
-            startElement20(uri, localName, qName, attributes);
-        }
-
         @Override
         public void endElement(String uri, String localName, String qName) {
             if ((majorVersion == 1) && (minorVersion == 0)) {
                 endElement10(qName);
             } else if ((majorVersion == 1) && (minorVersion == 1)) {
                 endElement11(qName);
-            } else if ((majorVersion == 1) && (minorVersion == 2)) {
+            } else {
                 endElement12(qName);
-            } else if ((majorVersion == 1) && (minorVersion == 3)) {
-                endElement13(qName);
-            } else if ((majorVersion == 1) && (minorVersion == 4)) {
-                endElement14(qName);
-            } else if ((majorVersion == 2) && (minorVersion == 0)) {
-                endElement20(qName);
-            } else if ((majorVersion == 2) && (minorVersion == 1)) {
-                endElement21(qName);
-            } else if ((majorVersion == 2) && (minorVersion == 2)) {
-                endElement21(qName);
             }
         }
 
@@ -549,82 +443,7 @@ public final class CompositionIO {
             } else if (where == Where.COMPOSITION) {
                 if (qName.equals(lastTag)) {
                     var str = value.toString();
-
-                    switch (lastTag) {
-                        case XML_KEYS -> composition.setDefaultKeyAccidentalCount(
-                            Integer.parseInt(str)
-                        );
-                        case XML_KEYTYPE -> composition.setDefaultKeyType(
-                            KeyType.valueOf(str)
-                        );
-                        case XML_NUMBER -> composition.setNumber(str);
-                        case XML_TITLE -> composition.setTitle(
-                            str.isEmpty() ? "Untitled" : str
-                        );
-                        case XML_PLACE -> composition.setPlace(str);
-                        case XML_YEAR -> composition.setYear(str);
-                        case XML_MONTH -> composition.setMonth(
-                            Integer.parseInt(str)
-                        );
-                        case XML_DAY -> composition.setDay(
-                            Integer.parseInt(str)
-                        );
-                        case XML_LYRICS -> composition.setLyrics(str);
-                        case XML_UNDERLYRICS -> composition.setUnderLyrics(str);
-                        case XML_BANGLA_LYRICS -> composition.setBanglaLyrics(
-                            str
-                        );
-                        case XML_TRANSLATED_LYRICS -> composition.setTranslatedLyrics(
-                            str
-                        );
-                        case XML_FOOTNOTES -> composition.setFootnotes(str);
-                        case XML_INFO -> composition.setAttribution(str);
-                        case XML_TOP_SPACE -> composition.setTopPadding(
-                            Integer.parseInt(str),
-                            false
-                        );
-                        case XML_INFO_STARTY -> composition.setAttributionStartY(
-                            Integer.parseInt(str)
-                        );
-                        case XML_ROW_HEIGHT -> composition.setRowHeightAdjustment(
-                            Integer.parseInt(str)
-                        );
-                        case XML_LINE_WIDTH -> {
-                            // The line width is stored as logical pixels in the UI resolution
-                            composition.setLineWidth(Integer.parseInt(str));
-                        }
-                    }
-                }
-            } else if (where == Where.VIEW) {
-                viewReader.endElement11(qName);
-            }
-
-            value.delete(0, value.length());
-            lastTag = null;
-        }
-
-        public void endElement13(String qName) {
-            if (qName.equals(XML_LINES)) {
-                where = Where.COMPOSITION;
-            } else if (qName.equals(XML_VIEW)) {
-                viewReader.setAttributes(composition);
-                where = Where.COMPOSITION;
-            } else if (where == Where.LINES) {
-                var l = lineReader.endElement11(qName);
-
-                if (l != null) {
-                    composition.addLine(l);
-                }
-            } else if (where == Where.TEMPO) {
-                var t = tempoReader.endElement11(qName);
-
-                if (t != null) {
-                    composition.setTempo(t);
-                    where = Where.COMPOSITION;
-                }
-            } else if (where == Where.COMPOSITION) {
-                if (qName.equals(lastTag)) {
-                    var str = value.toString();
+                    var useDouble = majorVersion >= 2 && minorVersion >= 1;
 
                     switch (lastTag) {
                         case XML_KEYS -> composition.setDefaultKeyAccidentalCount(
@@ -659,183 +478,17 @@ public final class CompositionIO {
                         case XML_FOOTNOTES -> composition.setFootnotes(str);
                         case XML_INFO -> composition.setAttribution(str);
                         case XML_TOP_SPACE -> composition.setTopPadding(
-                            Integer.parseInt(str),
+                            useDouble ? Double.parseDouble(str) : Integer.parseInt(str),
                             false
                         );
                         case XML_INFO_STARTY -> composition.setAttributionStartY(
-                            Integer.parseInt(str)
+                            useDouble ? Double.parseDouble(str) : Integer.parseInt(str)
                         );
                         case XML_ROW_HEIGHT -> composition.setRowHeightAdjustment(
-                            Integer.parseInt(str)
-                        );
-                        case XML_LINE_WIDTH -> {
-                            // The line width is stored as logical pixels in the UI resolution
-                            composition.setLineWidth(Integer.parseInt(str));
-                        }
-                    }
-                }
-            } else if (where == Where.VIEW) {
-                viewReader.endElement11(qName);
-            }
-
-            value.delete(0, value.length());
-            lastTag = null;
-        }
-
-        public void endElement14(String qName) {
-            // No changes from 1.3
-            endElement13(qName);
-        }
-
-        public void endElement20(String qName) {
-            if (qName.equals(XML_LINES)) {
-                where = Where.COMPOSITION;
-            } else if (qName.equals(XML_VIEW)) {
-                viewReader.setAttributes(composition);
-                where = Where.COMPOSITION;
-            } else if (where == Where.LINES) {
-                var l = lineReader.endElement11(qName);
-
-                if (l != null) {
-                    composition.addLine(l);
-                }
-            } else if (where == Where.TEMPO) {
-                var t = tempoReader.endElement11(qName);
-
-                if (t != null) {
-                    composition.setTempo(t);
-                    where = Where.COMPOSITION;
-                }
-            } else if (where == Where.COMPOSITION) {
-                if (qName.equals(lastTag)) {
-                    var str = value.toString();
-
-                    switch (lastTag) {
-                        case XML_KEYS -> composition.setDefaultKeyAccidentalCount(
-                            Integer.parseInt(str)
-                        );
-                        case XML_KEYTYPE -> composition.setDefaultKeyType(
-                            KeyType.valueOf(str)
-                        );
-                        case XML_NUMBER -> composition.setNumber(str);
-                        case XML_TITLE -> composition.setTitle(
-                            str.isEmpty() ? "Untitled" : str
-                        );
-                        case XML_PLACE -> composition.setPlace(str);
-                        case XML_YEAR -> composition.setYear(str);
-                        case XML_MONTH -> composition.setMonth(
-                            Integer.parseInt(str)
-                        );
-                        case XML_DAY -> composition.setDay(
-                            Integer.parseInt(str)
-                        );
-                        case XML_LYRICS -> composition.setLyrics(str);
-                        case XML_UNDERLYRICS -> composition.setUnderLyrics(str);
-                        case XML_BANGLA_LYRICS -> composition.setBanglaLyrics(
-                            str
-                        );
-                        case XML_TRANSLATED_LYRICS -> composition.setTranslatedLyrics(
-                            str
-                        );
-                        case XML_UNOFFICIAL_TRANSLATION -> composition.setUnofficialTranslation(
-                            Boolean.parseBoolean(str)
-                        );
-                        case XML_FOOTNOTES -> composition.setFootnotes(str);
-                        case XML_INFO -> composition.setAttribution(str);
-                        case XML_TOP_SPACE -> composition.setTopPadding(
-                            Integer.parseInt(str),
-                            false
-                        );
-                        case XML_INFO_STARTY -> composition.setAttributionStartY(
-                            Integer.parseInt(str)
-                        );
-                        case XML_ROW_HEIGHT -> composition.setRowHeightAdjustment(
-                            Integer.parseInt(str)
-                        );
-                        case XML_LINE_WIDTH -> {
-                            // The line width is stored as logical pixels in the UI resolution
-                            composition.setLineWidth(Integer.parseInt(str));
-                        }
-                        case XML_DYNAMIC_LAYOUT -> composition.setHasBeenDynamicallyLaidOut(
-                            Boolean.parseBoolean(str)
-                        );
-                    }
-                }
-            } else if (where == Where.VIEW) {
-                viewReader.endElement11(qName);
-            }
-
-            value.delete(0, value.length());
-            lastTag = null;
-        }
-
-        public void endElement21(String qName) {
-            if (qName.equals(XML_LINES)) {
-                where = Where.COMPOSITION;
-            } else if (qName.equals(XML_VIEW)) {
-                viewReader.setAttributes(composition);
-                where = Where.COMPOSITION;
-            } else if (where == Where.LINES) {
-                var l = lineReader.endElement11(qName);
-
-                if (l != null) {
-                    composition.addLine(l);
-                }
-            } else if (where == Where.TEMPO) {
-                var t = tempoReader.endElement11(qName);
-
-                if (t != null) {
-                    composition.setTempo(t);
-                    where = Where.COMPOSITION;
-                }
-            } else if (where == Where.COMPOSITION) {
-                if (qName.equals(lastTag)) {
-                    var str = value.toString();
-
-                    switch (lastTag) {
-                        case XML_KEYS -> composition.setDefaultKeyAccidentalCount(
-                            Integer.parseInt(str)
-                        );
-                        case XML_KEYTYPE -> composition.setDefaultKeyType(
-                            KeyType.valueOf(str)
-                        );
-                        case XML_NUMBER -> composition.setNumber(str);
-                        case XML_TITLE -> composition.setTitle(
-                            str.isEmpty() ? "Untitled" : str
-                        );
-                        case XML_PLACE -> composition.setPlace(str);
-                        case XML_YEAR -> composition.setYear(str);
-                        case XML_MONTH -> composition.setMonth(
-                            Integer.parseInt(str)
-                        );
-                        case XML_DAY -> composition.setDay(
-                            Integer.parseInt(str)
-                        );
-                        case XML_LYRICS -> composition.setLyrics(str);
-                        case XML_UNDERLYRICS -> composition.setUnderLyrics(str);
-                        case XML_BANGLA_LYRICS -> composition.setBanglaLyrics(
-                            str
-                        );
-                        case XML_TRANSLATED_LYRICS -> composition.setTranslatedLyrics(
-                            str
-                        );
-                        case XML_UNOFFICIAL_TRANSLATION -> composition.setUnofficialTranslation(
-                            Boolean.parseBoolean(str)
-                        );
-                        case XML_FOOTNOTES -> composition.setFootnotes(str);
-                        case XML_INFO -> composition.setAttribution(str);
-                        case XML_TOP_SPACE -> composition.setTopPadding(
-                            Double.parseDouble(str),
-                            false
-                        );
-                        case XML_INFO_STARTY -> composition.setAttributionStartY(
-                            Double.parseDouble(str)
-                        );
-                        case XML_ROW_HEIGHT -> composition.setRowHeightAdjustment(
-                            Double.parseDouble(str)
+                            useDouble ? Double.parseDouble(str) : Integer.parseInt(str)
                         );
                         case XML_LINE_WIDTH -> composition.setLineWidth(
-                            Double.parseDouble(str)
+                            useDouble ? Double.parseDouble(str) : Integer.parseInt(str)
                         );
                         case XML_DYNAMIC_LAYOUT -> composition.setHasBeenDynamicallyLaidOut(
                             Boolean.parseBoolean(str)
@@ -868,6 +521,8 @@ public final class CompositionIO {
         }
 
         public Composition getComposition() {
+            composition.setLoading(false);
+
             // Legacy fallback: if topPadding wasn't set in file, calculate initial value.
             // Layout calculation will recalculate this properly, but this provides
             // a reasonable default for any code that accesses topPadding before layout.

@@ -402,7 +402,7 @@ class GraceNoteTest extends E2ETest {
 
     private void buildEmptyLine() {
         GuiActionRunner.execute(() -> {
-            var composition = new Composition(MainFrame.getInstance().getProfileManager());
+            var composition = new Composition();
             composition.addLine(0, new Line());
             score().setComposition(composition);
         });

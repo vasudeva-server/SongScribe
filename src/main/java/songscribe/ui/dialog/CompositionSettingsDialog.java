@@ -21,11 +21,8 @@ package songscribe.ui.dialog;
 
 import module java.desktop;
 
-import java.io.File;
-import java.io.IOException;
 import java.util.Arrays;
 import java.util.EnumMap;
-import java.util.stream.Collectors;
 
 import org.jetbrains.annotations.NotNull;
 
@@ -36,7 +33,7 @@ import songscribe.music.Composition;
 import songscribe.ui.Dialogs;
 import songscribe.music.KeyType;
 import songscribe.music.Tempo;
-import songscribe.ui.ProfileManager;
+import songscribe.prefs.Prefs;
 import songscribe.ui.action.UIAction;
 import songscribe.ui.component.InputUtils;
 import songscribe.ui.component.MainFrame;
@@ -47,7 +44,6 @@ import songscribe.ui.fontchooser.FontDialog;
 import songscribe.util.FileUtils;
 import songscribe.util.MyFontUtils;
 import songscribe.util.UIUtils;
-import songscribe.util.Utils;
 
 public class CompositionSettingsDialog extends StandardDialog {
 
@@ -157,13 +153,6 @@ public class CompositionSettingsDialog extends StandardDialog {
         "D.C. al fine (a tempo)"
     );
 
-    // Profile tab
-    private JComboBox<Object> profileCombo = null;
-    private final JLabel profileInfoLabel = new JLabel();
-    private final JButton setAsDefaultButton = new JButton(
-        Strings.get(Strings.DIALOG_COMPOSITION_SETTINGS_SET_AS_DEFAULT)
-    );
-
     public CompositionSettingsDialog() {
         super(Strings.get(Strings.DIALOG_COMPOSITION_SETTINGS_TITLE));
         initFields();
@@ -178,13 +167,10 @@ public class CompositionSettingsDialog extends StandardDialog {
             new MusicTab()
         );
 
-        if (System.getenv("DEBUG") != null) {
-            tabbedPane.addTab(
-                Strings.get(Strings.DIALOG_COMPOSITION_SETTINGS_TAB_FONTS),
-                new FontTab()
-            );
-            // tabbedPane.addTab("Profile", new ProfileTab());
-        }
+        tabbedPane.addTab(
+            Strings.get(Strings.DIALOG_COMPOSITION_SETTINGS_TAB_FONTS),
+            new FontTab()
+        );
 
         contentPanel.add(BorderLayout.CENTER, tabbedPane);
         contentPanel.add(BorderLayout.SOUTH, buttonPanel);
@@ -681,95 +667,53 @@ public class CompositionSettingsDialog extends StandardDialog {
 
             @Override
             public void actionPerformed(ActionEvent e) {
-                var pm = mainFrame.getProfileManager();
+                var prefs = Prefs.getInstance();
                 resetFont(
-                    pm,
+                    prefs,
                     titleFontLabel,
                     titleFontPreview,
-                    ProfileManager.ProfileKey.TITLE_FONT,
-                    ProfileManager.ProfileKey.TITLE_FONT_SIZE
+                    "titleFont",
+                    "titleFontSize"
                 );
                 resetFont(
-                    pm,
+                    prefs,
                     lyricsFontLabel,
                     lyricsFontPreview,
-                    ProfileManager.ProfileKey.LYRICS_FONT,
-                    ProfileManager.ProfileKey.LYRICS_FONT_SIZE
+                    "lyricsFont",
+                    "lyricsFontSize"
                 );
-
                 resetFont(
-                    pm,
+                    prefs,
                     attributionFontLabel,
                     attributionFontPreview,
-                    ProfileManager.ProfileKey.ATTRIBUTION_FONT,
-                    ProfileManager.ProfileKey.ATTRIBUTION_FONT_SIZE
+                    "attributionFont",
+                    "attributionFontSize"
+                );
+                resetFont(
+                    prefs,
+                    annotationFontLabel,
+                    annotationFontPreview,
+                    "annotationFont",
+                    "annotationFontSize"
                 );
                 revalidate();
                 repaint();
             }
 
             private static void resetFont(
-                ProfileManager pm,
+                Prefs prefs,
                 JLabel fontLabel,
                 JComponent preview,
-                ProfileManager.ProfileKey fontKey,
-                ProfileManager.ProfileKey sizeKey
+                String fontKey,
+                String sizeKey
             ) {
                 var font = MyFontUtils.createFont(
-                    pm.getDefaultProperty(fontKey),
-                    Integer.parseInt(pm.getDefaultProperty(sizeKey))
+                    prefs.getString(fontKey),
+                    prefs.getInt(sizeKey)
                 );
                 fontLabel.setText(MyFontUtils.getFullFontDescription(font));
                 preview.setFont(font);
             }
-        }
-    }
-
-    private final class ProfileTab extends StandardDialog.Tab {
-
-        @Override
-        protected void initContents() {
-            add(createProfilesPanel());
-            add(createProfileInfoPanel());
-        }
-
-        @NotNull
-        private JPanel createProfilesPanel() {
-            var panel = new JPanel();
-            panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
-            panel.setBorder(BorderFactory.createEmptyBorder(0, 0, 20, 0));
-            StandardDialog.addLabelToBox(panel, "Available profiles:", 5);
-
-            var pm = mainFrame.getProfileManager();
-            profileCombo = new JComboBox<>(pm.enumerateProfiles().toArray());
-            profileCombo.addActionListener(new ProfileComboAction());
-            profileCombo.setSelectedItem(pm.getDefaultProfileName());
-
-            return panel;
-        }
-
-        @NotNull
-        private JPanel createProfileInfoPanel() {
-            var panel = new JPanel(new BorderLayout());
-            profileInfoLabel.setVerticalAlignment(SwingConstants.TOP);
-            profileInfoLabel.setBorder(
-                BorderFactory.createTitledBorder(Strings.get(Strings.DIALOG_COMPOSITION_SETTINGS_PROFILE_PROPERTIES))
-            );
-            panel.add(BorderLayout.CENTER, profileInfoLabel);
-            //            var southProfilePanel = new JPanel();
-            //            setAsDefaultButton.addActionListener(
-            //                new SetAsDefaultProfileAction()
-            //            );
-            //            southProfilePanel.add(setAsDefaultButton);
-            //            var newProfileButton = new JButton("New profile");
-            //            newProfileButton.addActionListener(new NewProfileAction());
-            //            southProfilePanel.add(newProfileButton);
-            //            var deleteProfileButton = new JButton("Delete profile");
-            //            deleteProfileButton.addActionListener(new DeleteProfileAction());
-            //            southProfilePanel.add(deleteProfileButton);
-            //            panel.add(BorderLayout.SOUTH, southProfilePanel);
-
-            return panel;
         }
     }
 
@@ -1263,159 +1207,4 @@ public class CompositionSettingsDialog extends StandardDialog {
         }
     }
 
-    private class SetAsDefaultProfileAction implements ActionListener {
-
-        @Override
-        public void actionPerformed(ActionEvent e) {
-            mainFrame
-                .getProfileManager()
-                .setDefaultProfile((String) profileCombo.getSelectedItem());
-            setAsDefaultButton.setEnabled(false);
-        }
-    }
-
-    private class NewProfileAction implements ActionListener {
-
-        @Override
-        public void actionPerformed(ActionEvent e) {
-            var name = Dialogs.showInputDialog(
-                contentPanel,
-                Strings.get(Strings.DIALOG_TITLE_SAVE_PROFILE),
-                Strings.get(Strings.DIALOG_COMPOSITION_SETTINGS_PROFILE_NAME)
-            );
-
-            if (name == null) {
-                return;
-            }
-
-            try {
-                mainFrame.getProfileManager().saveProfile(name);
-                profileCombo.addItem(name);
-                profileCombo.setSelectedItem(name);
-            } catch (IOException e1) {
-                Dialogs.showErrorMessage(
-                    contentPanel,
-                    Strings.get(Strings.DIALOG_TITLE_PROFILE_ERROR),
-                    Strings.get(Strings.ERROR_PROFILE_CREATE)
-                );
-            }
-        }
-    }
-
-    private class DeleteProfileAction implements ActionListener {
-
-        @Override
-        public void actionPerformed(ActionEvent e) {
-            if (profileCombo.getItemCount() <= 1) {
-                Dialogs.showErrorMessage(
-                    contentPanel,
-                    Strings.get(Strings.DIALOG_TITLE_PROFILE_ERROR),
-                    Strings.get(Strings.ERROR_PROFILE_DELETE_LAST)
-                );
-                return;
-            }
-
-            var answer = Dialogs.showConfirmDialog(
-                contentPanel,
-                Strings.get(Strings.DIALOG_TITLE_DELETE_PROFILE),
-                Strings.get(Strings.CONFIRM_PROFILE_DELETE),
-                JOptionPane.YES_NO_OPTION,
-                JOptionPane.QUESTION_MESSAGE
-            );
-
-            if (answer == JOptionPane.YES_OPTION) {
-                var selected = (String) profileCombo.getSelectedItem();
-
-                if (
-                    (selected != null) &&
-                    new File(
-                        Utils.getResourcePath("profiles/" + selected)
-                    ).delete()
-                ) {
-                    profileCombo.removeItem(selected);
-
-                    if (
-                        selected.equals(
-                            mainFrame
-                                .getProfileManager()
-                                .getDefaultProfileName()
-                        )
-                    ) {
-                        setAsDefaultButton.doClick();
-                    }
-                } else {
-                    Dialogs.showErrorMessage(
-                        contentPanel,
-                        Strings.get(Strings.DIALOG_TITLE_PROFILE_ERROR),
-                        Strings.get(Strings.ERROR_PROFILE_DELETE)
-                    );
-                }
-            }
-        }
-    }
-
-    private class ProfileComboAction implements ActionListener {
-
-        final StringBuilder sb = new StringBuilder(200);
-
-        @NotNull
-        private static String splitKey(@NotNull String key) {
-            var split = new StringBuilder(27);
-
-            for (var i = 0; i < key.length(); ++i) {
-                var c = key.charAt(i);
-
-                if ((i > 0) && Character.isUpperCase(c)) {
-                    split.append(' ').append(Character.toLowerCase(c));
-                } else {
-                    split.append(c);
-                }
-            }
-
-            return split.toString();
-        }
-
-        @Override
-        public void actionPerformed(ActionEvent e) {
-            var selected = (String) profileCombo.getSelectedItem();
-
-            if (selected == null) {
-                return;
-            }
-
-            var props = mainFrame.getProfileManager().getProfile(selected);
-
-            if (props == null) {
-                return;
-            }
-
-            sb.delete(0, sb.length());
-
-            sb.append(
-                Arrays.stream(ProfileManager.ProfileKey.values())
-                    .map(
-                        pk ->
-                            "<tr><td>" +
-                            splitKey(pk.getKey()) +
-                            ":</td><td>" +
-                            props.getProperty(pk.getKey()) +
-                            "</td></tr>"
-                    )
-                    .collect(
-                        Collectors.joining(
-                            "",
-                            "<html><table border=0>",
-                            "</table></html>"
-                        )
-                    )
-            );
-
-            profileInfoLabel.setText(sb.toString());
-            setAsDefaultButton.setEnabled(
-                !selected.equals(
-                    mainFrame.getProfileManager().getDefaultProfileName()
-                )
-            );
-        }
-    }
 }

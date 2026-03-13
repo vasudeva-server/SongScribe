@@ -42,7 +42,6 @@ import songscribe.music.Composition;
 import songscribe.prefs.Prefs;
 import songscribe.prefs.RecentDocumentsManager;
 import songscribe.ui.Dialogs;
-import songscribe.ui.ProfileManager;
 import songscribe.ui.action.Actions;
 import songscribe.ui.action.SaveAction;
 import songscribe.ui.component.score.InsertionElementManager;
@@ -98,8 +97,6 @@ public class MainFrame extends JFrame implements IMainFrame, Printable {
 
     // Splash screen
     private static JWindow splashWindow = null;
-
-    private final ProfileManager profileManager = new ProfileManager(this);
 
     // This class is shared by several applications. This is the name of the application.
     public String appName;
@@ -438,7 +435,7 @@ public class MainFrame extends JFrame implements IMainFrame, Printable {
     }
 
     private void updateTitle() {
-        if (score == null) {
+        if (score == null || score.getComposition() == null) {
             return;
         }
 
@@ -486,11 +483,6 @@ public class MainFrame extends JFrame implements IMainFrame, Printable {
         return lyricsPanel;
     }
 
-    @Override
-    public ProfileManager getProfileManager() {
-        return profileManager;
-    }
-
     public File getCurrentFile() {
         return currentFile;
     }
@@ -513,7 +505,7 @@ public class MainFrame extends JFrame implements IMainFrame, Printable {
         setCurrentFile(null);
 
         if (score != null) {
-            score.setComposition(new Composition(getProfileManager()));
+            score.setComposition(new Composition());
             score.requestFocusInWindow();
         }
     }

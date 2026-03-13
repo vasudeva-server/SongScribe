@@ -29,7 +29,6 @@ import org.jetbrains.annotations.NotNull;
 import songscribe.Strings;
 import songscribe.prefs.Prefs;
 import songscribe.ui.Dialogs;
-import songscribe.ui.ProfileManager;
 import songscribe.ui.action.InsertLineAction;
 import songscribe.ui.component.Score;
 import songscribe.ui.layout.LayoutStylesheet;
@@ -164,41 +163,37 @@ public final class Composition {
      */
     private int formatVersion = 1;
 
+    private boolean loading;
     private boolean modified;
 
     /** Whether the user has already been notified about short-ă replacement in this session. */
     private boolean shortANotified;
 
-    public Composition(@NotNull ProfileManager profileManager) {
-        var profile = profileManager;
-        attribution = profile.getDefaultProperty(
-            ProfileManager.ProfileKey.ATTRIBUTION
-        );
-        tempo = Tempo.getTempoFromProfile(profile);
-        defaultKeyAccidentalCount = Integer.parseInt(
-            profile.getDefaultProperty(ProfileManager.ProfileKey.KEYS)
-        );
-        defaultKeyType = KeyType.valueOf(
-            profile.getDefaultProperty(ProfileManager.ProfileKey.KEY_TYPE)
-        );
+    public Composition() {
+        attribution = "Words and Music\nby Sri Chinmoy\n";
+        tempo = new Tempo();
+        defaultKeyAccidentalCount = 5;
+        defaultKeyType = KeyType.FLATS;
+
+        var prefs = Prefs.getInstance();
 
         // Create a 1x1 image to get the graphics object
         var img = new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB);
         var g = img.getGraphics();
 
-        titleFont = MyFontUtils.getLocalFont("LatoPlus-Bold.otf", 30);
+        titleFont = MyFontUtils.createFont(prefs.getString("titleFont"), prefs.getInt("titleFontSize"));
         titleFontMetrics = g.getFontMetrics(titleFont);
 
-        lyricsFont = MyFontUtils.getLocalFont("LatoPlus-Regular.otf", 17);
+        lyricsFont = MyFontUtils.createFont(prefs.getString("lyricsFont"), prefs.getInt("lyricsFontSize"));
         lyricsFontMetrics = g.getFontMetrics(lyricsFont);
 
         banglaFont = MyFontUtils.getLocalFont("TiroBangla-Regular.ttf", 17);
         banglaFontMetrics = g.getFontMetrics(banglaFont);
 
-        attributionFont = MyFontUtils.getLocalFont("LatoPlus-Regular.otf", 15);
+        attributionFont = MyFontUtils.createFont(prefs.getString("attributionFont"), prefs.getInt("attributionFontSize"));
         attributionFontMetrics = g.getFontMetrics(attributionFont);
 
-        annotationFont = MyFontUtils.getLocalFont("LatoPlus-Regular.otf", 15);
+        annotationFont = MyFontUtils.createFont(prefs.getString("annotationFont"), prefs.getInt("annotationFontSize"));
         annotationFontMetrics = g.getFontMetrics(annotationFont);
 
         footnoteFont = MyFontUtils.getLocalFont("LatoPlus-Italic.otf", 15);
@@ -482,6 +477,14 @@ public final class Composition {
         this.defaultKeyType = defaultKeyType;
     }
 
+    public boolean isLoading() {
+        return loading;
+    }
+
+    public void setLoading(boolean loading) {
+        this.loading = loading;
+    }
+
     public boolean isModified() {
         return modified;
     }
@@ -559,15 +562,16 @@ public final class Composition {
     public void setTitleFont(Font font) {
         titleFont = font;
         titleFontMetrics = MyFontUtils.getFontMetrics(titleFont);
-        // Note: attributionStartY recalculation removed - layout calculation
-        // handles this via the LayoutChangeMessage below
-        setModified(true);
 
-        MessageCenter.post(new LayoutChangeMessage(
-            LayoutChangeMessage.Section.TITLE,
-            LayoutChangeMessage.ChangeType.FONT,
-            true
-        ));
+        if (!loading) {
+            setModified(true);
+
+            MessageCenter.post(new LayoutChangeMessage(
+                LayoutChangeMessage.Section.TITLE,
+                LayoutChangeMessage.ChangeType.FONT,
+                true
+            ));
+        }
     }
 
     public FontMetrics getTitleFontMetrics() {
@@ -581,13 +585,16 @@ public final class Composition {
     public void setLyricsFont(Font font) {
         lyricsFont = font;
         lyricsFontMetrics = MyFontUtils.getFontMetrics(lyricsFont);
-        setModified(true);
 
-        MessageCenter.post(new LayoutChangeMessage(
-            LayoutChangeMessage.Section.LYRICS,
-            LayoutChangeMessage.ChangeType.FONT,
-            true
-        ));
+        if (!loading) {
+            setModified(true);
+
+            MessageCenter.post(new LayoutChangeMessage(
+                LayoutChangeMessage.Section.LYRICS,
+                LayoutChangeMessage.ChangeType.FONT,
+                true
+            ));
+        }
     }
 
     public FontMetrics getLyricsFontMetrics() {
@@ -601,13 +608,16 @@ public final class Composition {
     public void setAttributionFont(Font font) {
         attributionFont = font;
         attributionFontMetrics = MyFontUtils.getFontMetrics(attributionFont);
-        setModified(true);
 
-        MessageCenter.post(new LayoutChangeMessage(
-            LayoutChangeMessage.Section.ATTRIBUTION,
-            LayoutChangeMessage.ChangeType.FONT,
-            true
-        ));
+        if (!loading) {
+            setModified(true);
+
+            MessageCenter.post(new LayoutChangeMessage(
+                LayoutChangeMessage.Section.ATTRIBUTION,
+                LayoutChangeMessage.ChangeType.FONT,
+                true
+            ));
+        }
     }
 
     public FontMetrics getAttributionFontMetrics() {
@@ -621,7 +631,10 @@ public final class Composition {
     public void setAnnotationFont(Font font) {
         annotationFont = font;
         annotationFontMetrics = MyFontUtils.getFontMetrics(annotationFont);
-        setModified(true);
+
+        if (!loading) {
+            setModified(true);
+        }
     }
 
     public FontMetrics getAnnotationFontMetrics() {

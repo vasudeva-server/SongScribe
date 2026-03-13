@@ -19,7 +19,6 @@
  */
 package songscribe.music;
 
-import songscribe.ui.ProfileManager;
 import songscribe.ui.playback.PlaybackController;
 
 public class Tempo {
@@ -28,19 +27,6 @@ public class Tempo {
     private Type tempoType;
     private String tempoDescription;
     private boolean showTempo;
-
-    public static Tempo getTempoFromProfile(ProfileManager pm) {
-        return new Tempo(
-            Integer.parseInt(
-                pm.getDefaultProperty(ProfileManager.ProfileKey.TEMPO)
-            ),
-            Tempo.Type.valueOf(
-                pm.getDefaultProperty(ProfileManager.ProfileKey.TEMPO_TYPE)
-            ),
-            pm.getDefaultProperty(ProfileManager.ProfileKey.TEMPO_DESCRIPTION),
-            true
-        );
-    }
 
     public Tempo() {
         this(120, Type.CROTCHET, "Moderate", true);

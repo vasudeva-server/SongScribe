@@ -26,19 +26,19 @@ import java.io.PrintWriter;
 import org.jetbrains.annotations.Nullable;
 
 import songscribe.music.Composition;
-import songscribe.ui.ProfileManager;
+import songscribe.prefs.Prefs;
 import songscribe.util.MyFontUtils;
 
 public final class ViewIO {
 
     private static final String XML_TITLE_FONT = "titlefont";
     private static final String XML_TITLE_FONT_SIZE = "titlefontsize";
-    private static final String XML_TITLE_FONT_STYLE = "titlefontstyle";
     private static final String XML_LYRICS_FONT = "lyricsfont";
     private static final String XML_LYRICS_FONT_SIZE = "lyricsfontsize";
-    private static final String XML_LYRICS_FONT_STYLE = "lyricsfontstyle";
     private static final String XML_GENERAL_FONT = "generalfont";
     private static final String XML_GENERAL_FONT_SIZE = "generalfontsize";
+    private static final String XML_ANNOTATION_FONT = "annotationfont";
+    private static final String XML_ANNOTATION_FONT_SIZE = "annotationfontsize";
 
     private ViewIO() {}
 
@@ -50,19 +50,23 @@ public final class ViewIO {
             XML_TITLE_FONT_SIZE,
             String.valueOf(c.getTitleFont().getSize())
         );
-        XML.writeValue(pw, XML_TITLE_FONT_STYLE, ProfileManager.PLAIN);
         XML.writeValue(pw, XML_LYRICS_FONT, c.getLyricsFont().getPSName());
         XML.writeValue(
             pw,
             XML_LYRICS_FONT_SIZE,
             Integer.toString(c.getLyricsFont().getSize())
         );
-        XML.writeValue(pw, XML_LYRICS_FONT_STYLE, ProfileManager.PLAIN);
         XML.writeValue(pw, XML_GENERAL_FONT, c.getAttributionFont().getPSName());
         XML.writeValue(
             pw,
             XML_GENERAL_FONT_SIZE,
             Integer.toString(c.getAttributionFont().getSize())
+        );
+        XML.writeValue(pw, XML_ANNOTATION_FONT, c.getAnnotationFont().getPSName());
+        XML.writeValue(
+            pw,
+            XML_ANNOTATION_FONT_SIZE,
+            Integer.toString(c.getAnnotationFont().getSize())
         );
     }
 
@@ -75,21 +79,25 @@ public final class ViewIO {
         private final StringFont title;
         private final StringFont lyrics;
         private final StringFont general;
+        private final StringFont annotation;
 
-        public ViewReader(ProfileManager pm) {
+        public ViewReader() {
+            var prefs = Prefs.getInstance();
             title = new StringFont(
-                pm.getDefaultProperty(ProfileManager.ProfileKey.TITLE_FONT),
-                pm.getDefaultProperty(ProfileManager.ProfileKey.TITLE_FONT_SIZE)
+                prefs.getString("titleFont"),
+                Integer.toString(prefs.getInt("titleFontSize"))
             );
             lyrics = new StringFont(
-                pm.getDefaultProperty(ProfileManager.ProfileKey.LYRICS_FONT),
-                pm.getDefaultProperty(
-                    ProfileManager.ProfileKey.LYRICS_FONT_SIZE
-                )
+                prefs.getString("lyricsFont"),
+                Integer.toString(prefs.getInt("lyricsFontSize"))
             );
             general = new StringFont(
-                pm.getDefaultProperty(ProfileManager.ProfileKey.ATTRIBUTION_FONT),
-                pm.getDefaultProperty(ProfileManager.ProfileKey.ATTRIBUTION_FONT_SIZE)
+                prefs.getString("attributionFont"),
+                Integer.toString(prefs.getInt("attributionFontSize"))
+            );
+            annotation = new StringFont(
+                prefs.getString("annotationFont"),
+                Integer.toString(prefs.getInt("annotationFontSize"))
             );
         }
 
@@ -109,6 +117,8 @@ public final class ViewIO {
                     case XML_LYRICS_FONT_SIZE -> lyrics.size = str;
                     case XML_GENERAL_FONT -> general.name = str;
                     case XML_GENERAL_FONT_SIZE -> general.size = str;
+                    case XML_ANNOTATION_FONT -> annotation.name = str;
+                    case XML_ANNOTATION_FONT_SIZE -> annotation.size = str;
                 }
             }
 
@@ -123,12 +133,10 @@ public final class ViewIO {
         }
 
         public void setAttributes(Composition c) {
-            // We are not supporting custom fonts for now
-
-            // c.setSongTitleFont(title.getFont());
-            // c.setLyricsFont(lyrics.getFont());
-            // c.setLyricsItalicFont(lyricsItalic.getFont());
-            // c.setAttributionFont(general.getFont());
+            c.setTitleFont(title.getFont());
+            c.setLyricsFont(lyrics.getFont());
+            c.setAttributionFont(general.getFont());
+            c.setAnnotationFont(annotation.getFont());
         }
 
         private static class StringFont {

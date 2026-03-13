@@ -37,7 +37,7 @@ class SaveLoadRoundTripTest extends E2ETest {
 
     @Test
     void testSaveAndReloadPreservesKeySignature() throws Exception {
-        var original = new Composition(MainFrame.getInstance().getProfileManager());
+        var original = new Composition();
         original.setDefaultKeyType(KeyType.SHARPS);
         original.setDefaultKeyAccidentalCount(3);
 
@@ -94,7 +94,7 @@ class SaveLoadRoundTripTest extends E2ETest {
     // -- Helpers --
 
     private Composition buildTestComposition() {
-        var composition = new Composition(MainFrame.getInstance().getProfileManager());
+        var composition = new Composition();
         var line = new Line();
 
         // Quarter at middle line

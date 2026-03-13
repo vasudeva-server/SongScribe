@@ -147,7 +147,7 @@ public abstract class E2ETest {
         deselectRestMode();
 
         GuiActionRunner.execute(() -> {
-            var composition = new Composition(MainFrame.getInstance().getProfileManager());
+            var composition = new Composition();
             score().setComposition(composition);
             updateStatusOverlay();
         });
@@ -671,7 +671,7 @@ public abstract class E2ETest {
 
         var factory = SAXParserFactory.newInstance();
         var parser = factory.newSAXParser();
-        var reader = new CompositionIO.DocumentReader(MainFrame.getInstance().getProfileManager());
+        var reader = new CompositionIO.DocumentReader();
         parser.parse(new InputSource(new StringReader(xml)), reader);
 
         return reader.getComposition();

@@ -253,7 +253,7 @@ public final class Score
         setName(ComponentNames.SCORE);
 
         // Create initial composition
-        composition = new Composition(mainFrame.getProfileManager());
+        composition = new Composition();
 
         // Initialize UI components
         initView();
@@ -467,7 +467,7 @@ public final class Score
         composition.setModified(false);
 
         try {
-            var reader = new CompositionIO.DocumentReader(mainFrame.getProfileManager());
+            var reader = new CompositionIO.DocumentReader();
             saxParser.parse(file, reader);
             setComposition(reader.getComposition());
 

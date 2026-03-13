@@ -60,7 +60,6 @@ public final class Prefs {
         map.put("playinsertingnote", "playInsertedNote");
         map.put("playInsertingNote", "playInsertedNote");
         map.put("withrepeat", "playWithRepeats");
-        map.put("defaultprofile", "defaultProfile");
         map.put("strip-short-a", "stripShortA");
         map.put("autosave-after-strip-short-a", "autoSaveAfterStripShortA");
         map.put("tipindex", "tipIndex");
@@ -78,6 +77,8 @@ public final class Prefs {
         MIGRATION_MAP = Collections.unmodifiableMap(map);
     }
 
+    private static final List<String> OBSOLETE_KEYS = List.of("defaultProfile");
+
     // Initialized last to ensure all static fields above are ready before the constructor runs.
     private static final Prefs INSTANCE = new Prefs();
 
@@ -89,6 +90,7 @@ public final class Prefs {
         prefsFile = resolvePrefsFile();
         defaults = loadDefaults();
         store = loadStore();
+        removeObsoleteKeys();
         migrate();
     }
 
@@ -164,6 +166,20 @@ public final class Prefs {
     public void resetAll() {
         store.clear();
         save();
+    }
+
+    private void removeObsoleteKeys() {
+        var removed = false;
+
+        for (var key : OBSOLETE_KEYS) {
+            if (store.remove(key) != null) {
+                removed = true;
+            }
+        }
+
+        if (removed) {
+            save();
+        }
     }
 
     private static Path resolvePrefsFile() {

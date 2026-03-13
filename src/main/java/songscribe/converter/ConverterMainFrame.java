@@ -26,7 +26,6 @@ import module java.desktop;
 
 import java.io.File;
 
-import songscribe.ui.ProfileManager;
 import songscribe.ui.component.IMainFrame;
 import songscribe.ui.component.LyricsPanel;
 import songscribe.ui.component.Score;
@@ -35,22 +34,11 @@ public class ConverterMainFrame implements IMainFrame {
 
     private Score score = null;
 
-    private final ProfileManager profileManager;
-
-    public ConverterMainFrame() {
-        profileManager = new ProfileManager(this);
-    }
-
     @Override
     public void setCurrentFile(File saveFile) {}
 
     @Override
     public void setFrameSize() {}
-
-    @Override
-    public ProfileManager getProfileManager() {
-        return profileManager;
-    }
 
     @Override
     public LyricsPanel getLyricsModePanel() {

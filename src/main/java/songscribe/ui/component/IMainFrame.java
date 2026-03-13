@@ -24,11 +24,7 @@ import module java.desktop;
 
 import java.io.File;
 
-import songscribe.ui.ProfileManager;
-
 public interface IMainFrame {
-    ProfileManager getProfileManager();
-
     void setCurrentFile(File saveFile);
 
     LyricsPanel getLyricsModePanel();
