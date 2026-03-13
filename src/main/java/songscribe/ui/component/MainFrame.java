@@ -354,7 +354,13 @@ public class MainFrame extends JFrame implements IMainFrame, Printable {
             };
             titleBar.setPreferredSize(new Dimension(0, MAC_TITLE_BAR_HEIGHT));
 
-            titleBarLabel = new JLabel("", SwingConstants.CENTER);
+            titleBarLabel = new JLabel("", SwingConstants.CENTER) {
+                @Override
+                public void updateUI() {
+                    super.updateUI();
+                    updateTitle();   // re-render with fresh UIManager colors
+                }
+            };
             // macOS private system UI font for native title bar appearance
             titleBarLabel.setFont(new Font(".AppleSystemUIFont", Font.BOLD, MAC_TITLE_FONT_SIZE));
             titleBar.add(titleBarLabel, BorderLayout.CENTER);
@@ -453,7 +459,17 @@ public class MainFrame extends JFrame implements IMainFrame, Printable {
         setTitle(title);
 
         if (titleBarLabel != null) {
-            titleBarLabel.setText(title);
+            if (documentModified) {
+                var titleColor = UIManager.getColor("Label.foreground");
+                var editedColor = UIManager.getColor("Label.disabledForeground");
+                var hexTitleColor = String.format("#%06x", titleColor.getRGB() & 0xFFFFFF);
+                var hexEditedColor = String.format("#%06x", editedColor.getRGB() & 0xFFFFFF);
+                titleBarLabel.setText(
+                    Strings.get(Strings.LABEL_TITLE_EDITED, hexTitleColor, name, hexEditedColor)
+                );
+            } else {
+                titleBarLabel.setText(name);
+            }
         }
     }
 
