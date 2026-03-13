@@ -29,8 +29,6 @@ import com.intellij.uiDesigner.core.Spacer;
 
 import songscribe.Strings;
 import songscribe.music.LyricsProcessor;
-import songscribe.ui.message.DocumentWasModifiedMessage;
-import songscribe.ui.message.MessageCenter;
 import songscribe.ui.Constants;
 import songscribe.ui.component.MyJTextArea;
 import songscribe.util.StringUtils;
@@ -178,7 +176,7 @@ public class LyricsDialog extends StandardDialog {
         composition.setUnderLyrics(underSongArea.getText());
         composition.setTranslatedLyrics(translatedArea.getText());
         LyricsProcessor.spellLyrics(composition);
-        MessageCenter.post(new DocumentWasModifiedMessage(true));
+        composition.setModified(true);
         mainFrame.getLyricsModePanel().getData();
     }
 

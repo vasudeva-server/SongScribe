@@ -62,7 +62,6 @@ import songscribe.ui.layout.LayoutStylesheet;
 import songscribe.ui.layout2.LayoutConstants;
 import songscribe.ui.layout2.ScaleContext;
 import songscribe.ui.menu.DebugState;
-import songscribe.ui.message.DocumentWasModifiedMessage;
 import songscribe.ui.message.MessageCenter;
 import songscribe.ui.message.MusicSelectionChangedMessage;
 import songscribe.ui.message.ScoreMessageCoordinator;
@@ -277,7 +276,7 @@ public final class Score
 
         MessageCenter.subscribe(this);
         syncPlaybackPrefs();
-        MessageCenter.post(new DocumentWasModifiedMessage(false));
+        composition.setModified(false);
 
         // Create operations and message coordinator (requires mainPanel to be set)
         operations = new MusicEditOperations(composition, selectionCoordinator, mainFrame);
