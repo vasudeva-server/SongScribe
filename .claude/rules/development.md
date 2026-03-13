@@ -14,18 +14,24 @@ The `-debug` script variants (`crun-debug.sh`, `run-debug.sh`) set the `DEBUG` e
 
 ## Development Workflow
 
-After making code changes, compile first to verify, then run separately:
+After making code changes, if there is no need to run the application for verification, compile:
 
 ```bash
 ./scripts/compile.sh    # Compile and verify
-./scripts/run.sh        # Run the application
 ```
 
-If you have not already compiled and want to compile and run in one step:
+If you **do** need to run the application:
 
 ```bash
+# If you have not already compiled
 ./scripts/crun.sh
+
+# If you have already compiled and just want to run
+./scripts/run.sh
 ```
+
+**IMPORTANT:** Never pipe `compile.sh` or `crun.sh` output through `tail`, `head`, `grep`, or any filter. Always capture the full output — failure details and error messages appear before the summary.
+
 
 ### All Available Scripts
 
@@ -42,9 +48,9 @@ If you have not already compiled and want to compile and run in one step:
 
 ALWAYS use `./scripts/test.sh` to run tests. NEVER invoke `mvn test` directly.
 
-**IMPORTANT:** Never pipe output through `tail`, `head`, `grep`, or any filter. Always capture the full output — failure details, stack traces, and assertion messages appear before the summary.
-
 **IMPORTANT:** Never run e2e tests concurrently in separate Bash invocations. E2E tests launch a shared GUI and will interfere with each other. Run them sequentially in a single `./scripts/test.sh` call.
+
+To determine the pass/fail status of tests, run `test.sh`. If there are failures, run `test.sh --verbose` to determine which test caused a failure.
 
 ```bash
 ./scripts/test.sh                                    # Run all tests
@@ -53,6 +59,7 @@ ALWAYS use `./scripts/test.sh` to run tests. NEVER invoke `mvn test` directly.
 ./scripts/test.sh --debug e2e                        # Run e2e tests, pausing between each test
 ./scripts/test.sh --slow GlissandoTest               # Run with 1s pause between UI actions
 ./scripts/test.sh --fail-fast e2e                    # Stop after the first test failure
+./scripts/test.sh --verbose e2e                      # Show tree-style output for each test
 ./scripts/test.sh SMuFLMetadataTest                  # Run specific test class
 ./scripts/test.sh BeamingTest.testFlipStemDirection  # Run specific test method
 ./scripts/test.sh 'GraceNoteTest$EdgeCases'          # Run all tests in a @Nested inner class (single quotes prevent shell $ expansion)

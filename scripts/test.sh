@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 # Run tests with JUnit Console Launcher (tree-style output)
-# Usage: ./scripts/test.sh [--debug] [--slow] [--fail-fast] [e2e|unit|test-pattern]
+# Usage: ./scripts/test.sh [--debug] [--slow] [--fail-fast] [--verbose] [e2e|unit|test-pattern]
 # Examples:
 #   ./scripts/test.sh                                        # Run all tests
 #   ./scripts/test.sh e2e                                    # Run only e2e tests
 #   ./scripts/test.sh unit                                   # Run only unit tests (excludes e2e)
+#   ./scripts/test.sh --verbose                               # Run all tests with tree-style output
 #   ./scripts/test.sh --debug e2e                            # Run e2e tests, pausing between each test
 #   ./scripts/test.sh --slow GlissandoTest                   # Run with 1s pause between UI actions
 #   ./scripts/test.sh SMuFLMetadataTest                      # Run specific test class (multiple space-separated classes and/or methods allowed)
@@ -20,7 +21,7 @@ source "$SCRIPT_DIR/set-java-home.sh"
 
 # Parse flags
 JVM_ARGS=()
-EXTRA_LAUNCHER_ARGS=()
+DETAILS="summary"
 while [[ "$1" == --* ]]; do
     case "$1" in
         --debug)
@@ -33,6 +34,10 @@ while [[ "$1" == --* ]]; do
             ;;
         --fail-fast)
             JVM_ARGS+=("-De2e.failFast=true")
+            shift
+            ;;
+        --verbose)
+            DETAILS="tree"
             shift
             ;;
         *)
@@ -80,7 +85,7 @@ TEST_DIR="$PROJECT_DIR/target/test-classes"
 LAUNCHER_ARGS=(
     "execute"
     "--disable-banner"
-    "--details=tree"
+    "--details=$DETAILS"
     "--details-theme=unicode"
 )
 
