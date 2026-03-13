@@ -18,27 +18,14 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package songscribe.ui.component;
+package songscribe.ui.playback;
 
-import java.awt.*;
-import java.io.File;
+import songscribe.ui.message.Message;
 
-import songscribe.ui.ProfileManager;
-
-public interface IMainFrame {
-    ProfileManager getProfileManager();
-
-    void setCurrentFile(File saveFile);
-
-    LyricsPanel getLyricsModePanel();
-
-    //    void setMode(Mode noteEdit);
-
-    Component getFocusOwner();
-
-    boolean isDocumentModified();
-
-    Score getScore();
-
-    void setFrameSize();
+/**
+ * Base class for messages that indicate a playback preference has changed.
+ * Subscribers that need to re-sync all playback prefs can handle this type
+ * to catch all three subtypes with a single handler.
+ */
+public abstract class PlaybackPrefsChangedMessage extends Message {
 }

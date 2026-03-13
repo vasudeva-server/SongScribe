@@ -20,6 +20,8 @@
 
 package songscribe.util;
 
+import java.awt.Component;
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
@@ -42,7 +44,6 @@ import songscribe.data.MyDesktop;
 import songscribe.ui.Dialogs;
 import songscribe.ui.Constants;
 import songscribe.ui.component.IMainFrame;
-import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.Score;
 import songscribe.ui.dialog.PlatformFileDialog;
 
@@ -126,11 +127,12 @@ public final class FileUtils {
 
     @Nullable
     public static File showExportDialog(
+        Component parent,
+        Score score,
         PlatformFileDialog fileDialog,
         String... extensions
     ) {
-        var mainFrame = MainFrame.getInstance();
-        fileDialog.setFile(getSongFileNameForFileChooser(mainFrame.getScore()));
+        fileDialog.setFile(getSongFileNameForFileChooser(score));
 
         if (!fileDialog.showDialog()) {
             return null;
@@ -138,7 +140,7 @@ public final class FileUtils {
 
         var saveFile = ensureExtension(fileDialog.getFile(), extensions);
 
-        if (!Dialogs.confirmFileOverwrite(mainFrame, mainFrame.appName, saveFile)) {
+        if (!Dialogs.confirmFileOverwrite(parent, Constants.PACKAGE_NAME, saveFile)) {
             return null;
         }
 

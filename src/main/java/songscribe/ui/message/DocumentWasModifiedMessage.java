@@ -17,10 +17,18 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-package songscribe;
 
-// TODO: Replace with MusicChangeMessage and MessageCenter
-@FunctionalInterface
-public interface MusicChangeListener {
-    void musicDidChange();
+package songscribe.ui.message;
+
+public class DocumentWasModifiedMessage extends Message {
+
+    private final boolean modified;
+
+    public DocumentWasModifiedMessage(boolean modified) {
+        this.modified = modified;
+    }
+
+    public boolean isModified() {
+        return modified;
+    }
 }

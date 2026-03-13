@@ -20,7 +20,6 @@
 package songscribe.music;
 
 import songscribe.ui.ProfileManager;
-import songscribe.ui.component.MainFrame;
 import songscribe.ui.playback.PlaybackController;
 
 public class Tempo {
@@ -30,9 +29,7 @@ public class Tempo {
     private String tempoDescription;
     private boolean showTempo;
 
-    public static Tempo getTempoFromProfile() {
-        var pm = MainFrame.getInstance().getProfileManager();
-
+    public static Tempo getTempoFromProfile(ProfileManager pm) {
         return new Tempo(
             Integer.parseInt(
                 pm.getDefaultProperty(ProfileManager.ProfileKey.TEMPO)

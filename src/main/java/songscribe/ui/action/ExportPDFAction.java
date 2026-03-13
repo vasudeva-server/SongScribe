@@ -26,7 +26,6 @@ import songscribe.Strings;
 import songscribe.data.MyFileFilter;
 import songscribe.data.PageLayoutData;
 import songscribe.export.PDFExporter;
-import songscribe.ui.component.MainFrame;
 import songscribe.ui.dialog.ExportPDFDialog;
 import songscribe.ui.dialog.PlatformFileDialog;
 import songscribe.util.FileUtils;
@@ -39,7 +38,7 @@ public class ExportPDFAction extends UIAction {
     public ExportPDFAction() {
         super(Strings.get(Strings.ACTION_EXPORT_PDF), "export-pdf");
         fileDialog = new PlatformFileDialog(
-            MainFrame.getInstance(),
+            mainFrame,
             "Export PDF",
             false,
             new MyFileFilter(Strings.get(Strings.FILTER_PDF), "pdf")
@@ -55,7 +54,7 @@ public class ExportPDFAction extends UIAction {
 
     @Override
     public void actionPerformed(ActionEvent e) {
-        var saveFile = FileUtils.showExportDialog(fileDialog, "pdf");
+        var saveFile = FileUtils.showExportDialog(mainFrame, mainFrame.getScore(), fileDialog, "pdf");
 
         if (saveFile == null) {
             return;

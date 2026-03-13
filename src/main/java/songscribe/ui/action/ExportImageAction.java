@@ -49,7 +49,6 @@ public class ExportImageAction extends UIAction {
 
     public ExportImageAction() {
         super(Strings.get(Strings.ACTION_EXPORT_IMAGE), "export-image");
-        var mainFrame = MainFrame.getInstance();
         fileDialog = new PlatformFileDialog(
             mainFrame,
             NAME,
@@ -61,7 +60,6 @@ public class ExportImageAction extends UIAction {
 
     @Override
     public void actionPerformed(ActionEvent e) {
-        var mainFrame = MainFrame.getInstance();
         var score = mainFrame.getScore();
 
         fileDialog.setFile(FileUtils.getSongFileNameForFileChooser(score));

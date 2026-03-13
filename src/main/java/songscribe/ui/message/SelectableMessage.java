@@ -20,15 +20,6 @@
 
 package songscribe.ui.message;
 
-public class SelectableMessage extends Message {
-
-    private final boolean selected;
-
-    public SelectableMessage(boolean selected) {
-        this.selected = selected;
-    }
-
-    public boolean isSelected() {
-        return selected;
-    }
+public interface SelectableMessage {
+    boolean isSelected();
 }

@@ -46,7 +46,6 @@ import songscribe.music.Line;
 import songscribe.music.StaffElement;
 import songscribe.music.Tempo;
 import songscribe.ui.Constants;
-import songscribe.ui.component.MainFrame;
 import songscribe.ui.dialog.PlatformFileDialog;
 import songscribe.ui.playback.PlaybackController;
 import songscribe.util.FileUtils;
@@ -95,7 +94,7 @@ public class ExportABCAction extends UIAction {
     public ExportABCAction() {
         super(Strings.get(Strings.ACTION_EXPORT_ABC), "export-abc");
         fileDialog = new PlatformFileDialog(
-            MainFrame.getInstance(),
+            mainFrame,
             "Export ABC",
             false,
             new MyFileFilter(Strings.get(Strings.FILTER_ABC), "abc")
@@ -104,14 +103,14 @@ public class ExportABCAction extends UIAction {
 
     @Override
     public void actionPerformed(ActionEvent e) {
-        var saveFile = FileUtils.showExportDialog(fileDialog, "abc");
+        var saveFile = FileUtils.showExportDialog(mainFrame, mainFrame.getScore(), fileDialog, "abc");
 
         if (saveFile == null) {
             return;
         }
 
         try (var writer = new PrintWriter(saveFile)) {
-            var composition = MainFrame.getInstance().getScore().getComposition();
+            var composition = mainFrame.getScore().getComposition();
             writeABC(composition, writer);
         } catch (IOException e1) {
             Dialogs.showErrorMessage(

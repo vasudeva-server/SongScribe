@@ -23,25 +23,27 @@ import java.awt.event.*;
 
 import javax.swing.*;
 
-import songscribe.ui.component.MainFrame;
+import songscribe.ui.component.Score;
 
 public class FermataMenuItem
     extends JCheckBoxMenuItem
     implements ActionListener {
 
-    public FermataMenuItem() {
+    private final Score score;
+
+    public FermataMenuItem(Score score) {
         super("Fermata");
+        this.score = score;
         addActionListener(this);
     }
 
     @Override
     public void actionPerformed(ActionEvent e) {
-        var mainFrame = MainFrame.getInstance();
-        var insertionNote = mainFrame.getScore().getInsertionElement();
+        var insertionNote = score.getInsertionElement();
 
         if (insertionNote != null) {
             insertionNote.setFermata(isSelected());
-            mainFrame.getScore().repaint();
+            score.repaint();
         }
     }
 }

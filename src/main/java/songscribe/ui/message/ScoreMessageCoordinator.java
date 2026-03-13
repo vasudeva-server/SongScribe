@@ -180,7 +180,7 @@ public final class ScoreMessageCoordinator {
                 : InsertLineAction.ADD;
             composition.addLine(index, new Line());
             callback.clearSelection();
-            mainFrame.setDocumentModified(true);
+            MessageCenter.post(new DocumentWasModifiedMessage(true));
             callback.repaint();
         } else {
             Dialogs.showErrorMessage(

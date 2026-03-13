@@ -145,6 +145,8 @@ public class UIAction extends AbstractAction {
     public static final String FONT_ICON_KEY = "font-icon";
     public static final String FONT_KEY = "font";
 
+    protected final MainFrame mainFrame;
+
     private int flags = 0;
 
     public UIAction(String name, String actionCommand) {
@@ -180,6 +182,7 @@ public class UIAction extends AbstractAction {
         int modifiers
     ) {
         super(name);
+        mainFrame = MainFrame.getInstance();
         putValue(ACTION_COMMAND_KEY, actionCommand);
         putValue(SHORT_DESCRIPTION, tooltip);
         setIcon(icon, size);
@@ -295,7 +298,7 @@ public class UIAction extends AbstractAction {
     public boolean updateEnabledState() {
         // If an action is going to be enabled based on a single flag,
         // we have to check the entire context to see if the action can in fact be enabled.
-        var score = MainFrame.getInstance().getScore();
+        var score = mainFrame.getScore();
         var activeSelection = hasActiveSelection();
         var enable =
             enableInAdjustmentMode(score) &&
@@ -486,7 +489,7 @@ public class UIAction extends AbstractAction {
             return false;
         }
 
-        var score = MainFrame.getInstance().getScore();
+        var score = mainFrame.getScore();
         var coordinator = score.getSelectionCoordinator();
         var selection = coordinator.getSelection();
 
@@ -499,7 +502,7 @@ public class UIAction extends AbstractAction {
     }
 
     private boolean hasActiveSelection() {
-        return MainFrame.getInstance()
+        return mainFrame
             .getScore()
             .getSelectionCoordinator()
             .hasActiveSelection();
@@ -510,7 +513,7 @@ public class UIAction extends AbstractAction {
             return true;
         }
 
-        var composition = MainFrame.getInstance().getScore().getComposition();
+        var composition = mainFrame.getScore().getComposition();
         return composition != null && !composition.isEmpty();
     }
 }

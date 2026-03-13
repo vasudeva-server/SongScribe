@@ -24,14 +24,12 @@ import javax.swing.*;
 
 import net.engio.mbassy.listener.Handler;
 
-import songscribe.MusicChangeListener;
 import songscribe.Strings;
 import songscribe.prefs.Prefs;
 import songscribe.ui.action.DialogOpenAction;
-import songscribe.ui.component.MainFrame;
 import songscribe.ui.message.MessageCenter;
 
-public class PlayMenu extends JMenu implements MusicChangeListener {
+public class PlayMenu extends JMenu {
 
     private final JCheckBoxMenuItem playWithRepeatsItem;
     private final JMenuItem instrumentItem;
@@ -70,8 +68,8 @@ public class PlayMenu extends JMenu implements MusicChangeListener {
         );
         add(instrumentItem);
 
-        MainFrame.getInstance().addMusicChangeListener(this);
         MessageCenter.subscribe(this);
+        syncPlaybackPrefs();
     }
 
     @Handler
@@ -82,9 +80,7 @@ public class PlayMenu extends JMenu implements MusicChangeListener {
         instrumentItem.setEnabled(!running);
     }
 
-    // TODO: Use message center
-    @Override
-    public void musicDidChange() {
+    public void syncPlaybackPrefs() {
         var prefs = Prefs.getInstance();
         playWithRepeatsItem.setSelected(prefs.getBoolean("playWithRepeats"));
         loopPlaybackItem.setSelected(prefs.getBoolean("loopPlayback"));
@@ -104,5 +100,10 @@ public class PlayMenu extends JMenu implements MusicChangeListener {
                 tempoChangeGroup.setSelected(menuItem.getModel(), true);
             }
         }
+    }
+
+    @Handler
+    public void onPlaybackPrefsChanged(PlaybackPrefsChangedMessage message) {
+        syncPlaybackPrefs();
     }
 }

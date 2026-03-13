@@ -35,6 +35,7 @@ import songscribe.ui.component.IMainFrame;
 import songscribe.ui.component.Score;
 import songscribe.ui.layout.LayoutStylesheet;
 import songscribe.ui.layout2.ScaleContext;
+import songscribe.ui.message.DocumentWasModifiedMessage;
 import songscribe.ui.message.LayoutChangeMessage;
 import songscribe.ui.message.MessageCenter;
 import songscribe.util.MyFontUtils;
@@ -177,7 +178,7 @@ public final class Composition {
         attribution = profile.getDefaultProperty(
             ProfileManager.ProfileKey.ATTRIBUTION
         );
-        tempo = Tempo.getTempoFromProfile();
+        tempo = Tempo.getTempoFromProfile(profile);
         defaultKeyAccidentalCount = Integer.parseInt(
             profile.getDefaultProperty(ProfileManager.ProfileKey.KEYS)
         );
@@ -490,7 +491,11 @@ public final class Composition {
     }
 
     public void setModified(boolean modified) {
-        mainFrame.setDocumentModified(modified);
+        if (modified == mainFrame.isDocumentModified()) {
+            return;
+        }
+
+        MessageCenter.post(new DocumentWasModifiedMessage(modified));
     }
 
     public void addLine(Line line) {

@@ -24,8 +24,8 @@ import java.awt.image.*;
 
 import org.jetbrains.annotations.NotNull;
 
-import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.MyBorder;
+import songscribe.ui.component.Score;
 
 /**
  * Utility class for exporting music scores as images.
@@ -39,6 +39,7 @@ public class ImageExporter {
     /**
      * Creates a BufferedImage for export with the specified parameters.
      *
+     * @param score the score to export
      * @param background the background color
      * @param scale the scale factor
      * @param border the border settings
@@ -46,11 +47,11 @@ public class ImageExporter {
      */
     @NotNull
     public static BufferedImage createImageForExport(
+        @NotNull Score score,
         Color background,
         double scale,
         @NotNull MyBorder border
     ) {
-        var score = MainFrame.getInstance().getScore();
         var image = new BufferedImage(
             (int) ((score.getSheetWidthPx()) * scale) + border.getWidth(),
             (int) ((score.getSheetHeightPx()) * scale) + border.getHeight(),

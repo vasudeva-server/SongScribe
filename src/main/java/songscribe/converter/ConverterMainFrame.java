@@ -25,7 +25,6 @@ import static org.mockito.Mockito.mock;
 import java.awt.*;
 import java.io.File;
 
-import songscribe.MusicChangeListener;
 import songscribe.ui.ProfileManager;
 import songscribe.ui.component.IMainFrame;
 import songscribe.ui.component.LyricsPanel;
@@ -50,9 +49,6 @@ public class ConverterMainFrame implements IMainFrame {
     }
 
     @Override
-    public void setDocumentModified(boolean documentWasModified) {}
-
-    @Override
     public void setFrameSize() {}
 
     @Override
@@ -61,15 +57,9 @@ public class ConverterMainFrame implements IMainFrame {
     }
 
     @Override
-    public void addMusicChangeListener(MusicChangeListener listener) {}
-
-    @Override
     public LyricsPanel getLyricsModePanel() {
         return mock(LyricsPanel.class);
     }
-
-    @Override
-    public void fireMusicChanged(Object source) {}
 
     @Override
     public Component getFocusOwner() {

@@ -126,7 +126,7 @@ public class InstrumentDialog extends StandardDialog {
     protected void setData() {
         var index = instrumentList.getSelectedIndex();
         Prefs.getInstance().put("instrument", index >= 0 ? INSTRUMENT_PROGRAMS[index] : 0);
-        mainFrame.fireMusicChanged(this);
+        mainFrame.getScore().syncPlaybackPrefs();
     }
 
     @Override

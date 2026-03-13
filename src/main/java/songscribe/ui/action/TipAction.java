@@ -31,14 +31,15 @@ import songscribe.ui.component.TipFrame;
 
 public class TipAction extends AbstractAction {
 
-    public TipAction() {
+    private final MainFrame mainFrame;
+
+    public TipAction(MainFrame mainFrame) {
         putValue(Action.NAME, Strings.get(Strings.ACTION_TIP));
+        this.mainFrame = mainFrame;
     }
 
     @Override
     public void actionPerformed(ActionEvent e) {
-        var mainFrame = MainFrame.getInstance();
-
         try {
             new TipFrame(mainFrame);
         } catch (IOException e1) {

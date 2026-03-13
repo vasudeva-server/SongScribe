@@ -18,27 +18,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package songscribe.ui.component;
+package songscribe.ui.message;
 
-import java.awt.*;
-import java.io.File;
-
-import songscribe.ui.ProfileManager;
-
-public interface IMainFrame {
-    ProfileManager getProfileManager();
-
-    void setCurrentFile(File saveFile);
-
-    LyricsPanel getLyricsModePanel();
-
-    //    void setMode(Mode noteEdit);
-
-    Component getFocusOwner();
-
-    boolean isDocumentModified();
-
-    Score getScore();
-
-    void setFrameSize();
+public class ShowOpenDialogMessage extends Message {
 }

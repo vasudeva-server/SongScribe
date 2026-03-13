@@ -31,6 +31,8 @@ import org.jdesktop.layout.LayoutStyle;
 
 import songscribe.Strings;
 import songscribe.music.Annotation;
+import songscribe.ui.message.DocumentWasModifiedMessage;
+import songscribe.ui.message.MessageCenter;
 import songscribe.ui.Dialogs;
 import songscribe.music.StaffElement;
 import songscribe.util.FileUtils;
@@ -281,7 +283,7 @@ public class AnnotationDialog extends StandardDialog {
             selectedElement.setAnnotation(null);
             setVisible(false);
             score.repaint();
-            mainFrame.setDocumentModified(true);
+            MessageCenter.post(new DocumentWasModifiedMessage(true));
         });
 
         south.add(okButton);
@@ -376,7 +378,7 @@ public class AnnotationDialog extends StandardDialog {
         }
 
         selectedElement.setAnnotation(annotation);
-        mainFrame.setDocumentModified(true);
+        MessageCenter.post(new DocumentWasModifiedMessage(true));
     }
 
     private enum Alignment {

@@ -40,8 +40,11 @@ public class PDFTutorialOpenAction extends AbstractAction {
         Utils.getResourcePath("help/tutorial.pdf")
     );
 
-    public PDFTutorialOpenAction(String name) {
+    private final MainFrame mainFrame;
+
+    public PDFTutorialOpenAction(String name, MainFrame mainFrame) {
         super(name);
+        this.mainFrame = mainFrame;
     }
 
     @SuppressWarnings(
@@ -59,7 +62,7 @@ public class PDFTutorialOpenAction extends AbstractAction {
             }
         } catch (Exception error) {
             Dialogs.showErrorMessage(
-                MainFrame.getInstance(),
+                mainFrame,
                 Strings.get(Strings.DIALOG_TITLE_FILE_ERROR),
                 "Could not open the external PDF file.\n" +
                 "Please navigate to " +

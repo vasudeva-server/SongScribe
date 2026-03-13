@@ -26,6 +26,7 @@ import javax.sound.midi.InvalidMidiDataException;
 import javax.sound.midi.MetaMessage;
 import javax.sound.midi.Sequencer;
 
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import songscribe.Strings;
@@ -34,7 +35,7 @@ import songscribe.midi.PlaybackSettings;
 import songscribe.music.Composition;
 import songscribe.prefs.Prefs;
 import songscribe.ui.Dialogs;
-import songscribe.ui.component.MainFrame;
+import songscribe.ui.component.IMainFrame;
 import songscribe.ui.component.Score;
 import songscribe.ui.component.score.LineComponent;
 import songscribe.ui.message.MessageCenter;
@@ -55,6 +56,8 @@ public final class PlaybackController {
     // The MIDI velocity values for normal and accented notes
     public static final int NOTE_VELOCITY = 100;
     public static final int ACCENTED_NOTE_VELOCITY = 127;
+
+    private static IMainFrame registeredMainFrame;
 
     private static PlaybackState state = PlaybackState.STOPPED;
     private static int previousPlayingLine = -1;
@@ -96,6 +99,10 @@ public final class PlaybackController {
         new LoopPlaybackAction();
 
     private PlaybackController() {
+    }
+
+    public static void register(@NotNull IMainFrame mainFrame) {
+        registeredMainFrame = mainFrame;
     }
 
     public static PlaybackState getState() {
@@ -145,11 +152,11 @@ public final class PlaybackController {
     }
 
     private static LineComponent getLineComponent(int lineIndex) {
-        var mainFrame = MainFrame.getInstance();
-        if (mainFrame == null) return null;
+        var score = registeredMainFrame.getScore();
 
-        var score = mainFrame.getScore();
-        if (score == null) return null;
+        if (score == null) {
+            return null;
+        }
 
         return score.getLineComponent(lineIndex);
     }
@@ -239,7 +246,6 @@ public final class PlaybackController {
     }
 
     public static void play(@Nullable ElementSelection selection) {
-        var mainFrame = MainFrame.getInstance();
         var sequencer = MidiController.sequencer;
 
         try {
@@ -247,7 +253,7 @@ public final class PlaybackController {
                 return;
             }
 
-            var score = mainFrame.getScore();
+            var score = registeredMainFrame.getScore();
             ElementSelection noteSelection;
 
             if (selection != null) {
@@ -258,7 +264,7 @@ public final class PlaybackController {
 
             setSequenceToPlayFromSelection(noteSelection, score, sequencer);
 
-            setLoopSequence(noteSelection, mainFrame, sequencer);
+            setLoopSequence(noteSelection, sequencer);
             MidiController.reinitChannels();
             playbackDidStart();
             sequencer.start();
@@ -277,7 +283,6 @@ public final class PlaybackController {
 
     private static void setLoopSequence(
         ElementSelection noteSelection,
-        MainFrame mainFrame,
         Sequencer sequencer
     ) {
         var loopPlayback =

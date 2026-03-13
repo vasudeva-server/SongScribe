@@ -22,9 +22,16 @@ package songscribe.ui.playback;
 
 import songscribe.ui.message.SelectableMessage;
 
-public class LoopPlaybackMessage extends SelectableMessage {
+public class LoopPlaybackMessage extends PlaybackPrefsChangedMessage
+    implements SelectableMessage {
+
+    private final boolean selected;
 
     public LoopPlaybackMessage(boolean selected) {
-        super(selected);
+        this.selected = selected;
+    }
+
+    public boolean isSelected() {
+        return selected;
     }
 }

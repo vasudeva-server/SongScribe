@@ -41,31 +41,32 @@ class ScorePanelTest extends UnitTest {
     }
 
     @Test
-    void testUpdateUIFallsBackToLightGrayWhenKeyMissing() {
-        var panel = new ScorePanel(new JPanel());
-
-        assertThat(panel.getBackground()).isEqualTo(Color.LIGHT_GRAY);
+    void testUpdateUIFallsBackToLightGrayWhenKeyMissing() throws Exception {
+        var bg = new Color[1];
+        SwingUtilities.invokeAndWait(() -> bg[0] = new ScorePanel(new JPanel()).getBackground());
+        assertThat(bg[0]).isEqualTo(Color.LIGHT_GRAY);
     }
 
     @Test
-    void testUpdateUIReadsBackgroundFromUIManager() {
+    void testUpdateUIReadsBackgroundFromUIManager() throws Exception {
         var customColor = new Color(0x404040);
         UIManager.put(BACKGROUND_KEY, customColor);
 
-        var panel = new ScorePanel(new JPanel());
-
-        assertThat(panel.getBackground()).isEqualTo(customColor);
+        var bg = new Color[1];
+        SwingUtilities.invokeAndWait(() -> bg[0] = new ScorePanel(new JPanel()).getBackground());
+        assertThat(bg[0]).isEqualTo(customColor);
     }
 
     @Test
-    void testUpdateUIRespondsToColorChange() {
-        var panel = new ScorePanel(new JPanel());
-        assertThat(panel.getBackground()).isEqualTo(Color.LIGHT_GRAY);
+    void testUpdateUIRespondsToColorChange() throws Exception {
+        var panelRef = new ScorePanel[1];
+        SwingUtilities.invokeAndWait(() -> panelRef[0] = new ScorePanel(new JPanel()));
+        assertThat(panelRef[0].getBackground()).isEqualTo(Color.LIGHT_GRAY);
 
         var darkColor = new Color(0x404040);
         UIManager.put(BACKGROUND_KEY, darkColor);
-        panel.updateUI();
+        SwingUtilities.invokeAndWait(() -> panelRef[0].updateUI());
 
-        assertThat(panel.getBackground()).isEqualTo(darkColor);
+        assertThat(panelRef[0].getBackground()).isEqualTo(darkColor);
     }
 }

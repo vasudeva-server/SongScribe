@@ -20,9 +20,7 @@
 
 package songscribe.ui.playback;
 
-import songscribe.ui.message.Message;
-
-public class PlaybackTempoChangedMessage extends Message {
+public class PlaybackTempoChangedMessage extends PlaybackPrefsChangedMessage {
 
     private final int ratio;
 

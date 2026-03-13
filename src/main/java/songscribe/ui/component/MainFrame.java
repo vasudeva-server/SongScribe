@@ -29,8 +29,6 @@ import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-
 import javax.swing.*;
 
 import org.jetbrains.annotations.Nullable;
@@ -39,7 +37,6 @@ import com.formdev.flatlaf.util.SystemFileChooser;
 import com.formdev.flatlaf.util.SystemInfo;
 import net.engio.mbassy.listener.Handler;
 
-import songscribe.MusicChangeListener;
 import songscribe.Strings;
 import songscribe.Version;
 import songscribe.data.FileExtensions;
@@ -59,6 +56,7 @@ import songscribe.ui.dialog.PropertiesStateStore;
 import songscribe.ui.dialog.WhatsNewDialog;
 import songscribe.ui.menu.MenuController;
 import songscribe.ui.message.CloseWindowMessage;
+import songscribe.ui.message.DocumentWasModifiedMessage;
 import songscribe.ui.message.MessageCenter;
 import songscribe.ui.message.MessageLogger;
 import songscribe.ui.message.NewFileMessage;
@@ -66,9 +64,11 @@ import songscribe.ui.message.OpenFileMessage;
 import songscribe.ui.message.PrintMessage;
 import songscribe.ui.message.SaveAsMessage;
 import songscribe.ui.message.SaveMessage;
+import songscribe.ui.message.ShowOpenDialogMessage;
 import songscribe.ui.playback.LoopPlaybackMessage;
 import songscribe.ui.playback.MidiController;
 import songscribe.ui.playback.PlayWithRepeatsMessage;
+import songscribe.ui.playback.PlaybackController;
 import songscribe.ui.playback.PlaybackTempoChangedMessage;
 import songscribe.util.FileUtils;
 import songscribe.util.Log;
@@ -115,11 +115,6 @@ public class MainFrame extends JFrame implements IMainFrame, Printable {
     protected File currentFile = null;
 
     private boolean documentModified = false;
-
-    // A list of listeners that are notified when a property changes that changes the music
-    // TODO: Replace with Message
-    private final ArrayList<MusicChangeListener> musicChangeListeners =
-        new ArrayList<>();
 
     // UI components
     private LyricsPanel lyricsPanel = null;
@@ -252,9 +247,10 @@ public class MainFrame extends JFrame implements IMainFrame, Printable {
 
         // A lot of init code depends on this being set
         score = new Score(this);
+        PlaybackController.register(this);
 
         initContent();
-        MenuController.init();
+        MenuController.init(this);
         Actions.CONTROL_ACTION_GROUP.selectNext();
 
         // When the application goes to the background, hide the insertion note
@@ -303,7 +299,6 @@ public class MainFrame extends JFrame implements IMainFrame, Printable {
         ActivationGate.install(this);
 
         score.requestFocusInWindow();
-        fireMusicChanged(this);
     }
 
     private void hideInsertionNote() {
@@ -409,7 +404,7 @@ public class MainFrame extends JFrame implements IMainFrame, Printable {
         setMinimumSize(new Dimension(minSize.width, MIN_WINDOW_HEIGHT));
     }
 
-    public boolean showSaveDialog() {
+    private boolean showSaveDialog() {
         if (!documentModified) {
             return true;
         }
@@ -436,6 +431,11 @@ public class MainFrame extends JFrame implements IMainFrame, Printable {
     }
 
     private void updateTitle() {
+        if (!SwingUtilities.isEventDispatchThread()) {
+            SwingUtilities.invokeLater(this::updateTitle);
+            return;
+        }
+
         var name = (currentFile != null) ? currentFile.getName() : Strings.get(Strings.DOCUMENT_UNTITLED);
         var title = documentModified ? '•' + name : name;
         setTitle(title);
@@ -445,8 +445,12 @@ public class MainFrame extends JFrame implements IMainFrame, Printable {
         }
     }
 
-    @Override
-    public void setDocumentModified(boolean documentWasModified) {
+    @Handler
+    public void onDocumentWasModified(DocumentWasModifiedMessage message) {
+        setDocumentModified(message.isModified());
+    }
+
+    private void setDocumentModified(boolean documentWasModified) {
         documentModified = documentWasModified;
         updateTitle();
     }
@@ -468,23 +472,6 @@ public class MainFrame extends JFrame implements IMainFrame, Printable {
     @Override
     public ProfileManager getProfileManager() {
         return profileManager;
-    }
-
-    // TODO: Use message center instead of this
-    @Override
-    public void addMusicChangeListener(MusicChangeListener listener) {
-        musicChangeListeners.add(listener);
-    }
-
-    // TODO: Use message center instead of this
-    @Override
-    public void fireMusicChanged(Object source) {
-        for (var listener : musicChangeListeners) {
-            //noinspection ObjectEquality
-            if (listener != source) {
-                listener.musicDidChange();
-            }
-        }
     }
 
     public File getCurrentFile() {
@@ -539,8 +526,13 @@ public class MainFrame extends JFrame implements IMainFrame, Printable {
 
     @Handler
     public void onOpenFile(OpenFileMessage message) {
+        handleOpenFile(message.getFile());
+    }
+
+    @Handler
+    public void onShowOpenDialog(ShowOpenDialogMessage message) {
         var dialog = new PlatformFileDialog(
-            MainFrame.getInstance(),
+            this,
             Strings.get(Strings.DIALOG_OPEN_TITLE),
             true,
             new MyFileFilter(
@@ -588,7 +580,7 @@ public class MainFrame extends JFrame implements IMainFrame, Printable {
                 printerJob.print();
             } catch (PrinterException e1) {
                 Dialogs.showErrorMessage(
-                    MainFrame.getInstance(),
+                    this,
                     Strings.get(Strings.DIALOG_TITLE_PRINT_ERROR),
                     Strings.get(Strings.ERROR_PRINT)
                 );
@@ -640,14 +632,20 @@ public class MainFrame extends JFrame implements IMainFrame, Printable {
     }
 
     @Handler
-    public void onSave(@Nullable SaveMessage message) {
-        // If there is no current file (meaning this is a new document that has not yet
-        // been saved), then do a Save As instead.
+    public void onSave(SaveMessage message) {
         if (currentFile == null) {
-            onSaveAs(null);
-            return;
+            saveAsNewFile();
+        } else {
+            saveCurrentFile();
         }
+    }
 
+    @Handler
+    public void onSaveAs(SaveAsMessage message) {
+        saveAsNewFile();
+    }
+
+    private void saveCurrentFile() {
         try {
             var printWriter = new PrintWriter(
                 currentFile,
@@ -665,8 +663,7 @@ public class MainFrame extends JFrame implements IMainFrame, Printable {
         }
     }
 
-    @Handler
-    public void onSaveAs(@Nullable SaveAsMessage message) {
+    private void saveAsNewFile() {
         var fileDialog = new PlatformFileDialog(
             this,
             Strings.get(Strings.DIALOG_SAVE_AS_TITLE),
@@ -693,7 +690,7 @@ public class MainFrame extends JFrame implements IMainFrame, Printable {
             }
 
             setCurrentFile(saveFile);
-            onSave(null);
+            saveCurrentFile();
 
             if (!isDocumentModified()) {
                 RecentDocumentsManager.getInstance().add(saveFile.toPath().toAbsolutePath());
@@ -702,20 +699,17 @@ public class MainFrame extends JFrame implements IMainFrame, Printable {
     }
 
     @Handler
-    public void loopPlaybackDidChange(LoopPlaybackMessage message) {
+    public void onLoopPlaybackChanged(LoopPlaybackMessage message) {
         Prefs.getInstance().put("loopPlayback", message.isSelected());
-        fireMusicChanged(this);
     }
 
     @Handler
-    public void playWithRepeatsDidChange(PlayWithRepeatsMessage message) {
+    public void onPlayWithRepeatsChanged(PlayWithRepeatsMessage message) {
         Prefs.getInstance().put("playWithRepeats", message.isSelected());
-        fireMusicChanged(this);
     }
 
     @Handler
-    public void playbackTempoDidChange(PlaybackTempoChangedMessage message) {
+    public void onPlaybackTempoChanged(PlaybackTempoChangedMessage message) {
         Prefs.getInstance().put("tempoChangePercent", message.getRatio());
-        fireMusicChanged(this);
     }
 }

@@ -48,34 +48,34 @@ class GlissandoMidiHelperTest extends UnitTest {
         @Test
         void testAtEndReachesFull() {
             // 7 semitones up, sensitivity = 7 => full bend at t=1.0
-            var bend = calculateBendValue(1.0, 60, 67, 7);
+            var bend = calculateBendValue(1.0, 60, 67, 7, true);
             assertThat(bend).isEqualTo(PITCH_BEND_MAX);
         }
 
         @Test
         void testAtStartReturnsCenter() {
-            var bend = calculateBendValue(0.0, 60, 72, 12);
+            var bend = calculateBendValue(0.0, 60, 72, 12, true);
             assertThat(bend).isEqualTo(PITCH_BEND_CENTER);
         }
 
         @Test
         void testClampedToMaximum() {
             // Sensitivity smaller than interval would overshoot — should clamp
-            var bend = calculateBendValue(1.0, 60, 72, 6);
+            var bend = calculateBendValue(1.0, 60, 72, 6, true);
             assertThat(bend).isEqualTo(PITCH_BEND_MAX);
         }
 
         @Test
         void testClampedToMinimum() {
             // Slide down with sensitivity smaller than interval
-            var bend = calculateBendValue(1.0, 72, 60, 6);
+            var bend = calculateBendValue(1.0, 72, 60, 6, true);
             assertThat(bend).isEqualTo(0);
         }
 
         @Test
         void testDownwardSlide() {
             // Slide down: target < source => bend below center
-            var bend = calculateBendValue(1.0, 67, 60, 7);
+            var bend = calculateBendValue(1.0, 67, 60, 7, true);
             assertThat(bend).isEqualTo(0);
         }
 
@@ -83,7 +83,7 @@ class GlissandoMidiHelperTest extends UnitTest {
         void testQuadraticCurveAt50Percent() {
             // t=0.5, curve = 0.25, interval = 12, sensitivity = 12
             // bend = 8192 + 0.25 * 8192 = 10240
-            var bend = calculateBendValue(0.5, 60, 72, 12);
+            var bend = calculateBendValue(0.5, 60, 72, 12, false);
             assertThat(bend).isEqualTo(10240);
         }
 
@@ -91,7 +91,7 @@ class GlissandoMidiHelperTest extends UnitTest {
         void testQuadraticCurveAt75Percent() {
             // t=0.75, curve = 0.5625, interval = 12, sensitivity = 12
             // bend = 8192 + 0.5625 * 8192 = 12800
-            var bend = calculateBendValue(0.75, 60, 72, 12);
+            var bend = calculateBendValue(0.75, 60, 72, 12, false);
             assertThat(bend).isEqualTo(12800);
         }
 
@@ -99,7 +99,7 @@ class GlissandoMidiHelperTest extends UnitTest {
         void testQuarterPosition() {
             // t=0.25, curve = 0.0625, interval = 12, sensitivity = 12
             // bend = 8192 + 0.0625 * 8192 = 8704
-            var bend = calculateBendValue(0.25, 60, 72, 12);
+            var bend = calculateBendValue(0.25, 60, 72, 12, false);
             assertThat(bend).isEqualTo(8704);
         }
     }
@@ -117,10 +117,10 @@ class GlissandoMidiHelperTest extends UnitTest {
 
         @Test
         void testEmitsCorrectNumberOfEvents() throws InvalidMidiDataException {
-            // slideDuration=12, step=3 => ticks 0,3,6,9,12 => 5 events
+            // slideDuration=12, step=2 => ticks 0,2,4,6,8,10,12 => 7 events
             createPitchBendMessages(track, 100, 12, 0, 60, 72, 12, false);
             var events = getPitchBendEvents(track);
-            assertThat(events).hasSize(5);
+            assertThat(events).hasSize(7);
         }
 
         @Test

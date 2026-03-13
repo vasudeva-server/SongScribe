@@ -35,9 +35,9 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import kotlin.Pair;
+import net.engio.mbassy.listener.Handler;
 import org.xml.sax.SAXException;
 
-import songscribe.MusicChangeListener;
 import songscribe.Strings;
 import songscribe.io.CompositionIO;
 import songscribe.music.Composition;
@@ -64,9 +64,11 @@ import songscribe.ui.layout.LayoutStylesheet;
 import songscribe.ui.layout2.LayoutConstants;
 import songscribe.ui.layout2.ScaleContext;
 import songscribe.ui.menu.DebugState;
+import songscribe.ui.message.DocumentWasModifiedMessage;
 import songscribe.ui.message.MessageCenter;
 import songscribe.ui.message.MusicSelectionChangedMessage;
 import songscribe.ui.message.ScoreMessageCoordinator;
+import songscribe.ui.playback.PlaybackPrefsChangedMessage;
 import songscribe.ui.playback.PlaybackController;
 import songscribe.ui.renderer.RenderContext;
 import songscribe.ui.selection.ElementSelection;
@@ -87,7 +89,6 @@ public final class Score
     FocusRestorationCallback,
     InputHandlerCallback,
     LineComponent.SelectionProvider,
-    MusicChangeListener,
     RenderContext,
     ScoreMessageCoordinator.Callback,
     songscribe.ui.edit.ScoreActions {
@@ -276,8 +277,9 @@ public final class Score
         // Initialize insertion note with default type
         setInsertionElement(editModeManager.makeInsertionElement());
 
-        mainFrame.addMusicChangeListener(this);
-        mainFrame.setDocumentModified(false);
+        MessageCenter.subscribe(this);
+        syncPlaybackPrefs();
+        MessageCenter.post(new DocumentWasModifiedMessage(false));
 
         // Create operations and message coordinator (requires mainPanel to be set)
         operations = new MusicEditOperations(composition, selectionCoordinator, mainFrame);
@@ -467,7 +469,7 @@ public final class Score
         // because this class is always the same whereas there are multiple implementations
         // of IMainFrame.
         var previousModifiedDocument = mainFrame.isDocumentModified();
-        mainFrame.setDocumentModified(false);
+        MessageCenter.post(new DocumentWasModifiedMessage(false));
 
         try {
             var reader = new CompositionIO.DocumentReader(mainFrame);
@@ -491,7 +493,7 @@ public final class Score
                 message
             );
             Log.error(message, e);
-            mainFrame.setDocumentModified(previousModifiedDocument);
+            MessageCenter.post(new DocumentWasModifiedMessage(previousModifiedDocument));
             return false;
         } catch (IOException e) {
             var message = "Could not open the file “" + file.getName() + '”';
@@ -501,14 +503,12 @@ public final class Score
                 message + ". Check if you have the permission to open it."
             );
             Log.error(message, e);
-            mainFrame.setDocumentModified(previousModifiedDocument);
+            MessageCenter.post(new DocumentWasModifiedMessage(previousModifiedDocument));
             return false;
         }
     }
 
-    // TODO: Use mbassador instead of this
-    @Override
-    public void musicDidChange() {
+    public void syncPlaybackPrefs() {
         var prefs = Prefs.getInstance();
         editModeManager.setPlayInsertedNote(prefs.getBoolean("playInsertedNote"));
         playWithRepeats = prefs.getBoolean("playWithRepeats");
@@ -519,8 +519,11 @@ public final class Score
         PlaybackController.setNoteDurationPercent(prefs.getInt("playbackNoteDuration"));
         PlaybackController.setColorizeNotes(prefs.getBoolean("colorizeNote"));
         PlaybackController.setPlayWithRepeats(playWithRepeats);
+    }
 
-        composition.musicChanged();
+    @Handler
+    public void onPlaybackPrefsChanged(PlaybackPrefsChangedMessage message) {
+        syncPlaybackPrefs();
     }
 
     public void viewChanged() {
@@ -770,7 +773,7 @@ public final class Score
         composition.setModified(false);
 
         // mainFrame.setMode(Mode.NOTE_EDIT);
-        mainFrame.fireMusicChanged(null);
+        syncPlaybackPrefs();
         viewChanged();
         repaint();
     }
@@ -960,6 +963,7 @@ public final class Score
         @NotNull MyBorder border
     ) {
         return songscribe.export.ImageExporter.createImageForExport(
+            this,
             background,
             scale,
             border

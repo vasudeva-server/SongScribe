@@ -23,7 +23,7 @@ import java.awt.event.*;
 
 import songscribe.Strings;
 import songscribe.ui.message.MessageCenter;
-import songscribe.ui.message.OpenFileMessage;
+import songscribe.ui.message.ShowOpenDialogMessage;
 import songscribe.util.UIUtils;
 
 public class OpenAction extends UIAction {
@@ -40,6 +40,6 @@ public class OpenAction extends UIAction {
 
     @Override
     public void actionPerformed(ActionEvent e) {
-        MessageCenter.post(new OpenFileMessage());
+        MessageCenter.post(new ShowOpenDialogMessage());
     }
 }

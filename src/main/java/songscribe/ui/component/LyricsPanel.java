@@ -29,6 +29,8 @@ import com.intellij.uiDesigner.core.GridLayoutManager;
 
 import songscribe.music.LyricsProcessor;
 import songscribe.ui.dialog.LyricsDialog;
+import songscribe.ui.message.DocumentWasModifiedMessage;
+import songscribe.ui.message.MessageCenter;
 
 @SuppressWarnings("NonStaticInitializer")
 public class LyricsPanel extends LyricsDialog {
@@ -136,7 +138,7 @@ public class LyricsPanel extends LyricsDialog {
                     LyricsProcessor.spellLyrics(score.getComposition());
                 }
 
-                mainFrame.setDocumentModified(true);
+                MessageCenter.post(new DocumentWasModifiedMessage(true));
                 score.repaint();
             });
         }

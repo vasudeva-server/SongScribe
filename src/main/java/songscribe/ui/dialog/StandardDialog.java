@@ -63,11 +63,19 @@ public abstract class StandardDialog {
     private JDialog dialog = null;
 
     protected StandardDialog(String title) {
-        this(title, true);
+        this(title, MainFrame.getInstance());
     }
 
     protected StandardDialog(String title, boolean isModal) {
-        mainFrame = MainFrame.getInstance();
+        this(title, isModal, MainFrame.getInstance());
+    }
+
+    protected StandardDialog(String title, MainFrame mainFrame) {
+        this(title, true, mainFrame);
+    }
+
+    protected StandardDialog(String title, boolean isModal, MainFrame mainFrame) {
+        this.mainFrame = mainFrame;
         var score = mainFrame.getScore();
         dialogTitle = title;
         this.isModal = isModal;

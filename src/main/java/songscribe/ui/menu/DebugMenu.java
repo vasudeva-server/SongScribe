@@ -26,7 +26,7 @@ import java.awt.event.KeyEvent;
 
 import javax.swing.*;
 
-import songscribe.ui.component.MainFrame;
+import songscribe.ui.component.Score;
 
 /**
  * Debug menu for Chrome DevTools-style inspector.
@@ -34,8 +34,11 @@ import songscribe.ui.component.MainFrame;
  */
 public class DebugMenu extends JMenu {
 
-    public DebugMenu() {
+    private final Score score;
+
+    public DebugMenu(Score score) {
         super("Debug");
+        this.score = score;
 
         var inspectorItem = new JCheckBoxMenuItem("Enable Inspector");
         inspectorItem.setAccelerator(
@@ -46,7 +49,7 @@ public class DebugMenu extends JMenu {
         );
         inspectorItem.addActionListener(e -> {
             DebugState.setInspectorEnabled(inspectorItem.isSelected());
-            MainFrame.getInstance().getScore().repaint();
+            score.repaint();
         });
         add(inspectorItem);
     }

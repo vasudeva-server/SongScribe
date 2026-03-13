@@ -76,13 +76,15 @@ public class MenuController {
     @SuppressWarnings({"FieldCanBeLocal", "unused"})
     private static MenuController instance = null;
 
+    private final MainFrame mainFrame;
     private JMenu openRecentMenu;
 
-    public static void init() {
-        instance = new MenuController();
+    public static void init(MainFrame mainFrame) {
+        instance = new MenuController(mainFrame);
     }
 
-    public MenuController() {
+    public MenuController(MainFrame mainFrame) {
+        this.mainFrame = mainFrame;
         initMenus();
         MessageCenter.subscribe(this);
     }
@@ -102,10 +104,8 @@ public class MenuController {
         //        var launchMenu = initLaunchMenu();
 
         if (DebugState.isDebugEnabled()) {
-            menuBar.add(new DebugMenu());
+            menuBar.add(new DebugMenu(mainFrame.getScore()));
         }
-
-        var mainFrame = MainFrame.getInstance();
 
         if (SystemInfo.isMacOS) {
             // Desktop.getDesktop().setDefaultMenuBar(menuBar) is broken in macOS.
@@ -262,7 +262,6 @@ public class MenuController {
 
     private static JMenu initEditMenu() {
         var menu = new JMenu(Strings.get(Strings.MENU_EDIT));
-        var score = MainFrame.getInstance().getScore();
 
         menu.add(Actions.CUT_ACTION);
         menu.add(Actions.COPY_ACTION);
@@ -317,8 +316,8 @@ public class MenuController {
         menu.add(
             new DialogOpenAction<>(Strings.get(Strings.ACTION_HELP_TUTORIAL), TutorialDialog.class)
         );
-        menu.add(new PDFTutorialOpenAction(Strings.get(Strings.ACTION_HELP_EXTENDED_TUTORIAL)));
-        menu.add(new TipAction());
+        menu.add(new PDFTutorialOpenAction(Strings.get(Strings.ACTION_HELP_EXTENDED_TUTORIAL), mainFrame));
+        menu.add(new TipAction(mainFrame));
         menu.add(new DialogOpenAction<>(Strings.get(Strings.ACTION_HELP_KEYMAP), KeyMapDialog.class));
 
         menu.addSeparator();
