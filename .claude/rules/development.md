@@ -32,7 +32,6 @@ If you **do** need to run the application:
 
 **IMPORTANT:** Never pipe `compile.sh` or `crun.sh` output through `tail`, `head`, `grep`, or any filter. Always capture the full output — failure details and error messages appear before the summary.
 
-
 ### All Available Scripts
 
 | Script                    | Purpose                                                                   |
@@ -67,6 +66,8 @@ To determine the pass/fail status of tests, run `test.sh`. If there are failures
 ./scripts/test.sh SMuFLMetadataTest BeamingTest      # Multiple classes (space-separated)
 ./scripts/test.sh -Dtest=*Test                       # Run with Maven pattern
 ```
+
+**IMPORTANT:** If tests fail, do NOT assume the failures are pre-existing just because you didn't touch the failing code. Always investigate test failures and fix them before proceeding with new changes.
 
 ### Writing Tests
 
