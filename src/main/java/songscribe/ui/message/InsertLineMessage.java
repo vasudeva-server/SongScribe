@@ -20,6 +20,8 @@
 
 package songscribe.ui.message;
 
+import songscribe.message.Message;
+
 public class InsertLineMessage extends Message {
 
     private final int shift;

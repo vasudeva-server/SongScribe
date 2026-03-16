@@ -83,7 +83,7 @@ public class BeatChangeDialog extends StandardDialog {
         var south = new JPanel();
         removeButton = new JButton(Strings.get(Strings.LABEL_BUTTON_REMOVE));
         removeButton.addActionListener(_ -> {
-            var score = mainFrame.getScore();
+            var score = getScore();
             selectedElement.setBeatChange(null);
             setVisible(false);
             score.repaint();
@@ -98,7 +98,7 @@ public class BeatChangeDialog extends StandardDialog {
 
     @Override
     protected void getData() {
-        var score = mainFrame.getScore();
+        var score = getScore();
         selectedElement = score.getSingleSelectedElement();
         BeatChange beatChange = null;
 
@@ -133,7 +133,7 @@ public class BeatChangeDialog extends StandardDialog {
     protected void setData() {
         if (bg.getSelection() == null) {
             Dialogs.showErrorMessage(
-                mainFrame,
+                getMainFrame(),
                 Strings.get(Strings.DIALOG_TITLE_BEAT_CHANGE_ERROR),
                 Strings.get(Strings.ERROR_BEAT_CHANGE_NO_SELECTION)
             );
@@ -166,7 +166,7 @@ public class BeatChangeDialog extends StandardDialog {
                 // .VALUE_ANTIALIAS_ON);
                 // g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints
                 // .VALUE_TEXT_ANTIALIAS_ON);
-                var composition = mainFrame.getScore().getComposition();
+                var composition = getComposition();
                 BeatChangeRenderer.getInstance().drawBeatChange(g2, beatChange, 2, 27, composition);
             }
         };

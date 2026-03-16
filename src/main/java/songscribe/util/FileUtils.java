@@ -41,7 +41,7 @@ import songscribe.Strings;
 import songscribe.data.MyDesktop;
 import songscribe.ui.Dialogs;
 import songscribe.ui.Constants;
-import songscribe.ui.component.IMainFrame;
+
 import songscribe.ui.component.Score;
 import songscribe.ui.dialog.PlatformFileDialog;
 
@@ -208,7 +208,7 @@ public final class FileUtils {
         }
     }
 
-    public static void openExportFile(IMainFrame mainFrame, File file) {
+    public static void openExportFile(File file) {
         if (MyDesktop.isDesktopSupported()) {
             var desktop = MyDesktop.getDesktop();
 

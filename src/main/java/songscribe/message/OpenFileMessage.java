@@ -18,6 +18,23 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package songscribe.ui.message;
+package songscribe.message;
 
-public class NewFileMessage extends Message {}
+import java.io.File;
+
+import org.jetbrains.annotations.NotNull;
+
+public class OpenFileMessage extends Message {
+
+    @NotNull
+    private final File file;
+
+    public OpenFileMessage(@NotNull File file) {
+        this.file = file;
+    }
+
+    @NotNull
+    public File getFile() {
+        return file;
+    }
+}

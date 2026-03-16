@@ -27,8 +27,8 @@ import java.nio.file.Path;
 import songscribe.Strings;
 import songscribe.prefs.RecentDocumentsManager;
 import songscribe.ui.Dialogs;
-import songscribe.ui.message.MessageCenter;
-import songscribe.ui.message.OpenFileMessage;
+import songscribe.message.MessageCenter;
+import songscribe.message.OpenFileMessage;
 
 public class OpenRecentAction extends UIAction {
 
@@ -47,7 +47,7 @@ public class OpenRecentAction extends UIAction {
     public void actionPerformed(ActionEvent e) {
         if (!Files.exists(path)) {
             Dialogs.showErrorMessage(
-                mainFrame,
+                getMainFrame(),
                 Strings.get(Strings.DIALOG_TITLE_FILE_ERROR),
                 "The file \u201c" + path.getFileName() + "\u201d could not be opened because it no longer exists."
             );

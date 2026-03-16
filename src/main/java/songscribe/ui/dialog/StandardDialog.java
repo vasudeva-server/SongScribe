@@ -26,7 +26,9 @@ import org.jetbrains.annotations.NotNull;
 import org.intellij.lang.annotations.MagicConstant;
 
 import songscribe.Strings;
+import songscribe.music.Composition;
 import songscribe.ui.component.MainFrame;
+import songscribe.ui.component.Score;
 import songscribe.util.UIUtils;
 
 /**
@@ -45,7 +47,7 @@ public abstract class StandardDialog {
     protected static final Dimension HORIZONTAL_SPACER = new Dimension(5, 5);
     protected static final Dimension VERTICAL_SPACER = new Dimension(15, 15);
 
-    protected MainFrame mainFrame;
+    private final MainFrame mainFrame;
     protected final String dialogTitle;
     protected final boolean isModal;
     protected final JPanel contentPanel = new JPanel(new BorderLayout());
@@ -59,19 +61,11 @@ public abstract class StandardDialog {
     private JDialog dialog = null;
 
     protected StandardDialog(String title) {
-        this(title, MainFrame.getInstance());
+        this(title, true);
     }
 
     protected StandardDialog(String title, boolean isModal) {
-        this(title, isModal, MainFrame.getInstance());
-    }
-
-    protected StandardDialog(String title, MainFrame mainFrame) {
-        this(title, true, mainFrame);
-    }
-
-    protected StandardDialog(String title, boolean isModal, MainFrame mainFrame) {
-        this.mainFrame = mainFrame;
+        this.mainFrame = MainFrame.getInstance();
         var score = mainFrame.getScore();
         dialogTitle = title;
         this.isModal = isModal;
@@ -196,6 +190,18 @@ public abstract class StandardDialog {
 
     protected void pack() {
         dialog.pack();
+    }
+
+    protected MainFrame getMainFrame() {
+        return mainFrame;
+    }
+
+    protected Score getScore() {
+        return mainFrame.getScore();
+    }
+
+    protected Composition getComposition() {
+        return mainFrame.getScore().getComposition();
     }
 
     public static Insets getStandardStackedLabelInsets() {

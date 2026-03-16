@@ -20,4 +20,6 @@
 
 package songscribe.ui.message;
 
+import songscribe.message.Message;
+
 public class ToggleLyricsUnderRestsMessage extends Message {}

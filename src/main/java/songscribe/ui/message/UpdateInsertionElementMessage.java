@@ -20,6 +20,8 @@
 
 package songscribe.ui.message;
 
+import songscribe.message.Message;
+
 /**
  * This class is the superclass of any message that will modify
  * the music sheet's active note. This allows the Score class

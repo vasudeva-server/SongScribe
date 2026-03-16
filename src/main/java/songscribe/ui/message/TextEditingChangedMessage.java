@@ -20,6 +20,8 @@
 
 package songscribe.ui.message;
 
+import songscribe.message.Message;
+
 public class TextEditingChangedMessage extends Message {
 
     private final boolean editing;

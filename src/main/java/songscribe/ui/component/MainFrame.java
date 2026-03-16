@@ -50,15 +50,16 @@ import songscribe.ui.dialog.PlatformFileDialog;
 import songscribe.ui.dialog.PropertiesStateStore;
 import songscribe.ui.dialog.WhatsNewDialog;
 import songscribe.ui.menu.MenuController;
+import songscribe.message.CompositionChangedMessage;
+import songscribe.message.DocumentSaved;
+import songscribe.message.MessageCenter;
 import songscribe.ui.message.CloseWindowMessage;
-import songscribe.ui.message.DocumentWasModifiedMessage;
-import songscribe.ui.message.MessageCenter;
-import songscribe.ui.message.MessageLogger;
-import songscribe.ui.message.NewFileMessage;
-import songscribe.ui.message.OpenFileMessage;
-import songscribe.ui.message.PrintMessage;
-import songscribe.ui.message.SaveAsMessage;
-import songscribe.ui.message.SaveMessage;
+import songscribe.message.MessageLogger;
+import songscribe.message.NewFileMessage;
+import songscribe.message.OpenFileMessage;
+import songscribe.message.PrintMessage;
+import songscribe.message.SaveAsMessage;
+import songscribe.message.SaveMessage;
 import songscribe.ui.message.ShowOpenDialogMessage;
 import songscribe.ui.playback.LoopPlaybackMessage;
 import songscribe.ui.playback.MidiController;
@@ -68,7 +69,7 @@ import songscribe.ui.playback.PlaybackTempoChangedMessage;
 import songscribe.util.FileUtils;
 import songscribe.util.Log;
 
-public class MainFrame extends JFrame implements IMainFrame, Printable {
+public class MainFrame extends JFrame implements Printable {
 
     // This directory is used to store preferences and logs
     public static final File SONGSCRIBE_DIR = new File(
@@ -237,8 +238,8 @@ public class MainFrame extends JFrame implements IMainFrame, Printable {
         setAppIcon();
 
         // A lot of init code depends on this being set
-        score = new Score(this);
-        PlaybackController.register(this);
+        score = new Score(this::setCurrentFile);
+        PlaybackController.register(score);
 
         initContent();
         MenuController.init(this);
@@ -385,7 +386,6 @@ public class MainFrame extends JFrame implements IMainFrame, Printable {
         return pane;
     }
 
-    @Override
     public void setFrameSize() {
         var size = getLayout().preferredLayoutSize(this);
         var scrollBarWidth = ((Integer) UIManager.get("ScrollBar.width"));
@@ -465,11 +465,15 @@ public class MainFrame extends JFrame implements IMainFrame, Printable {
     }
 
     @Handler
-    public void onDocumentWasModified(DocumentWasModifiedMessage message) {
+    public void onCompositionChanged(CompositionChangedMessage message) {
         updateTitle();
     }
 
-    @Override
+    @Handler
+    public void onDocumentSaved(DocumentSaved message) {
+        updateTitle();
+    }
+
     public Score getScore() {
         return score;
     }
@@ -478,22 +482,13 @@ public class MainFrame extends JFrame implements IMainFrame, Printable {
         this.score = score;
     }
 
-    @Override
-    public LyricsPanel getLyricsModePanel() {
-        return lyricsPanel;
-    }
 
     public File getCurrentFile() {
         return currentFile;
     }
 
-    @Override
     public void setCurrentFile(File saveFile) {
         currentFile = saveFile;
-
-        if (score != null) {
-            score.getComposition().setModified(false);
-        }
     }
 
     @Handler
@@ -563,7 +558,7 @@ public class MainFrame extends JFrame implements IMainFrame, Printable {
             return;
         }
 
-        var opened = score.openFile(this, file, true);
+        var opened = score.openFile(file, true);
 
         // Reset the mode to edit mode
         Actions.MODE_ACTION_GROUP.select(Actions.EDIT_MODE_ACTION, this);
@@ -665,7 +660,7 @@ public class MainFrame extends JFrame implements IMainFrame, Printable {
             );
             CompositionIO.writeComposition(score.getComposition(), printWriter);
             printWriter.close();
-            score.getComposition().setModified(false);
+            MessageCenter.post(new DocumentSaved());
         } catch (IOException e1) {
             Dialogs.showErrorMessage(
                 this,

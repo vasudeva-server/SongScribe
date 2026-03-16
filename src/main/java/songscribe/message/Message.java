@@ -1,4 +1,4 @@
-package songscribe.ui.message;
+package songscribe.message;
 
 public class Message {
     public static final int HIGH_PRIORITY = 27;

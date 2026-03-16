@@ -23,8 +23,8 @@ package songscribe.ui.action;
 import net.engio.mbassy.listener.Handler;
 
 import songscribe.ui.message.DurationSelectedMessage;
-import songscribe.ui.message.Message;
-import songscribe.ui.message.MessageCenter;
+import songscribe.message.Message;
+import songscribe.message.MessageCenter;
 
 /**
  * An action group that manages non-duration actions (bars and breath mark).

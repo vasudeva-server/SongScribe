@@ -24,6 +24,8 @@ import module java.desktop;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Optional;
+import java.util.function.Consumer;
 
 import javax.xml.parsers.SAXParser;
 import javax.xml.parsers.SAXParserFactory;
@@ -37,6 +39,7 @@ import net.engio.mbassy.listener.Handler;
 import org.xml.sax.SAXException;
 
 import songscribe.Strings;
+import songscribe.export.ExportOptions;
 import songscribe.io.CompositionIO;
 import songscribe.music.Composition;
 import songscribe.music.Line;
@@ -62,9 +65,9 @@ import songscribe.ui.layout.LayoutStylesheet;
 import songscribe.ui.layout2.LayoutConstants;
 import songscribe.ui.layout2.ScaleContext;
 import songscribe.ui.menu.DebugState;
-import songscribe.ui.message.MessageCenter;
+import songscribe.message.CompositionChangedMessage;
+import songscribe.message.MessageCenter;
 import songscribe.ui.message.MusicSelectionChangedMessage;
-import songscribe.ui.message.ScoreMessageCoordinator;
 import songscribe.ui.playback.PlaybackPrefsChangedMessage;
 import songscribe.ui.playback.PlaybackController;
 import songscribe.ui.renderer.RenderContext;
@@ -87,7 +90,6 @@ public final class Score
     InputHandlerCallback,
     LineComponent.SelectionProvider,
     RenderContext,
-    ScoreMessageCoordinator.Callback,
     songscribe.ui.edit.ScoreActions {
 
     // The number of lines in a staff
@@ -131,8 +133,8 @@ public final class Score
     private VerticalAdjustment verticalAdjustment = null;
     private LyricsAdjustment lyricsAdjustment = null;
 
-    // The frame that contains the score
-    private final IMainFrame mainFrame;
+    // Called when a file is successfully opened (e.g. to update the window title)
+    @Nullable private final Consumer<File> onFileOpened;
 
     // The current editing mode
     private Mode mode = Mode.EDIT;
@@ -191,43 +193,44 @@ public final class Score
     // Preferred size of the margin panel
     private final Dimension preferredSizeWithMargin = new Dimension();
 
-    // Manages focus behavior to keep the score in focus
-    private final ScoreFocusController focusController;
+    // Manages focus behavior to keep the score in focus (empty in headless mode)
+    private final Optional<ScoreFocusController> focusController;
 
-    // Navigates the component hierarchy
-    private final ComponentHierarchyNavigator hierarchyNavigator;
+    // Navigates the component hierarchy (empty in headless mode)
+    private final Optional<ComponentHierarchyNavigator> hierarchyNavigator;
 
-    // Handles mouse and keyboard input
-    private ScoreInputHandler inputHandler = null;
+    // Handles mouse and keyboard input (empty in headless mode)
+    private final Optional<ScoreInputHandler> inputHandler;
+
+    // True after init() has been called (interactive mode only)
+    private boolean initialized = false;
 
     // If true, the score is played with repeats
     private boolean playWithRepeats = false;
 
-    public Score(@NotNull IMainFrame mainFrame) {
-        this.mainFrame = mainFrame;
+    /**
+     * Creates a Score with core infrastructure (SAX parser, selection, clipboard,
+     * edit mode). This is sufficient for headless use (converters pass {@code null}).
+     * <p>
+     * For interactive use, call {@link #init()} after construction to create the
+     * UI components (view, panels, message coordinator) and the initial Composition.
+     *
+     * @param onFileOpened callback invoked when a file is successfully opened,
+     *                     or {@code null} for headless (converter) use
+     */
+    public Score(@Nullable Consumer<File> onFileOpened) {
+        this.onFileOpened = onFileOpened;
+        var headless = onFileOpened == null;
         control = Control.valueOf(Prefs.getInstance().getString("control"));
-
-        // Initialize focus controller
-        focusController = new ScoreFocusController(this);
-
-        // Initialize hierarchy navigator
-        hierarchyNavigator = new ComponentHierarchyNavigator(this);
 
         selectionCoordinator = new SelectionCoordinator(this::getComposition);
         clipboardManager = new ClipboardManager();
         editModeManager = new EditModeManager(
             this::getComposition,
-            mainFrame,
             clipboardManager,
             selectionCoordinator,
             this
         );
-
-        // Initialize input handler
-        inputHandler = new ScoreInputHandler(this, editModeManager);
-
-        // Set layout for Phase 2 component hierarchy integration
-        setLayout(new BorderLayout());
 
         try {
             saxParser = SAXParserFactory.newInstance().newSAXParser();
@@ -241,14 +244,30 @@ public final class Score
             System.exit(0);
         }
 
-        setFocusable(true);
-        addKeyListener(inputHandler);
+        if (headless) {
+            focusController = Optional.empty();
+            hierarchyNavigator = Optional.empty();
+            inputHandler = Optional.empty();
+        } else {
+            focusController = Optional.of(new ScoreFocusController(this));
+            hierarchyNavigator = Optional.of(new ComponentHierarchyNavigator(this));
+            var handler = new ScoreInputHandler(this, editModeManager);
+            inputHandler = Optional.of(handler);
+            setLayout(new BorderLayout());
+            setFocusable(true);
+            addKeyListener(handler);
+        }
     }
 
     public void createSVG(File outputFile) {
         songscribe.export.SVGExporter.createSVG(outputFile);
     }
 
+    /**
+     * Initializes the interactive UI: view, panels, message coordinator,
+     * and the initial Composition. Must be called exactly once after construction
+     * for interactive (non-converter) use. Not needed for headless converters.
+     */
     public void init() {
         setName(ComponentNames.SCORE);
 
@@ -263,9 +282,8 @@ public final class Score
         initMainPanel();
 
         setLineWidth((int) composition.getLineWidth());
-        addMouseMotionListener(inputHandler);
-        addMouseListener(inputHandler);
-        addFocusListener(focusController);
+        inputHandler.ifPresent(h -> { addMouseMotionListener(h); addMouseListener(h); });
+        focusController.ifPresent(this::addFocusListener);
 
         initEditPopup();
         selectionChanged();
@@ -279,7 +297,7 @@ public final class Score
         composition.setModified(false);
 
         // Create operations and message coordinator (requires mainPanel to be set)
-        operations = new MusicEditOperations(composition, selectionCoordinator, mainFrame);
+        operations = new MusicEditOperations(composition, selectionCoordinator);
         messageCoordinator = new ScoreMessageCoordinator(
             this,
             operations,
@@ -287,6 +305,8 @@ public final class Score
             selectionCoordinator,
             clipboardManager
         );
+
+        initialized = true;
     }
 
     private void initKeys() {
@@ -361,10 +381,6 @@ public final class Score
         return (note.getStaffPosition() > 0) || note.getType().isGraceNote();
     }
 
-    public IMainFrame getMainFrame() {
-        return mainFrame;
-    }
-
     /**
      * Sets up selection provider and initial state for all LineComponents.
      * <p>
@@ -372,7 +388,7 @@ public final class Score
      * note coloring in the component-based rendering.
      */
     void setupLineComponentState() {
-        hierarchyNavigator.setupLineComponentState(this, this);
+        hierarchyNavigator.ifPresent(nav -> nav.setupLineComponentState(this, this));
     }
 
     /**
@@ -405,11 +421,11 @@ public final class Score
     }
 
     ScoreFocusController getFocusController() {
-        return focusController;
+        return focusController.orElseThrow();
     }
 
     ScoreInputHandler getInputHandler() {
-        return inputHandler;
+        return inputHandler.orElseThrow();
     }
 
     EditModeManager getEditModeManager() {
@@ -430,7 +446,9 @@ public final class Score
      */
     @Nullable
     public LineComponent getLineComponent(int lineIndex) {
-        return hierarchyNavigator.getLineComponent(lineIndex);
+        return hierarchyNavigator
+            .map(nav -> nav.getLineComponent(lineIndex))
+            .orElse(null);
     }
 
     void initMargin() {
@@ -455,24 +473,20 @@ public final class Score
         viewChanged();
     }
 
-    public boolean openFile(
-        @NotNull IMainFrame mainFrame,
-        File file,
-        boolean setTitle
-    ) {
-        // Even though most of this code references the mainFrame, it is in this class
-        // because this class is always the same whereas there are multiple implementations
-        // of IMainFrame.
-        var previousModified = composition.isModified();
-        composition.setModified(false);
+    public boolean openFile(File file, boolean updateCurrentFile) {
+        var previousModified = composition != null && composition.isModified();
+
+        if (composition != null) {
+            composition.setModified(false);
+        }
 
         try {
             var reader = new CompositionIO.DocumentReader();
             saxParser.parse(file, reader);
             setComposition(reader.getComposition());
 
-            if (setTitle) {
-                mainFrame.setCurrentFile(file);
+            if (updateCurrentFile && onFileOpened != null) {
+                onFileOpened.accept(file);
             }
 
             return true;
@@ -487,7 +501,9 @@ public final class Score
                 message
             );
             Log.error(message, e);
-            composition.setModified(previousModified);
+            if (composition != null) {
+                composition.setModified(previousModified);
+            }
             return false;
         } catch (IOException e) {
             var message = "Could not open the file “" + file.getName() + '”';
@@ -497,7 +513,9 @@ public final class Score
                 message + ". Check if you have the permission to open it."
             );
             Log.error(message, e);
-            composition.setModified(previousModified);
+            if (composition != null) {
+                composition.setModified(previousModified);
+            }
             return false;
         }
     }
@@ -545,10 +563,12 @@ public final class Score
      * rather than a separate layout manager.
      */
     private void updateLayoutFromComponents() {
-        hierarchyNavigator.updateLayoutFromComponents(layout -> {
-            middleLineYPx = layout[0];
-            rowHeightPx = layout[1];
-        });
+        hierarchyNavigator.ifPresent(nav ->
+            nav.updateLayoutFromComponents(layout -> {
+                middleLineYPx = layout[0];
+                rowHeightPx = layout[1];
+            })
+        );
     }
 
     public JScrollPane getScoreScrollPane() {
@@ -725,10 +745,24 @@ public final class Score
             return;
         }
 
-        // Initialize operations handler
-        operations = new MusicEditOperations(composition, selectionCoordinator, mainFrame);
+        // Core setup needed for both headless and interactive modes
+        setLineWidth((int) composition.getLineWidth());
 
-        // Initialize or update message coordinator
+        for (var i = 0; i < composition.lineCount(); i++) {
+            drawWidthIfWiderLine(composition.getLine(i), true);
+        }
+
+        LyricsProcessor.spellLyrics(composition);
+        composition.setModified(false);
+
+        if (!initialized) {
+            return;
+        }
+
+        // Interactive-only setup below
+
+        operations = new MusicEditOperations(composition, selectionCoordinator);
+
         if (messageCoordinator == null) {
             messageCoordinator = new ScoreMessageCoordinator(
                 this,
@@ -738,37 +772,25 @@ public final class Score
                 clipboardManager
             );
         } else {
-            // Update operations reference for new composition
             messageCoordinator.setOperations(operations);
         }
 
-        // Reset the playing state
         PlaybackController.stop();
         selectionCoordinator.clearSelection();
-        setLineWidth((int) composition.getLineWidth());
 
-        for (var i = 0; i < composition.lineCount(); i++) {
-            drawWidthIfWiderLine(composition.getLine(i), true);
-        }
+        mainPanel.setComposition(composition);
+        setupLineComponentState();
 
-        if (mainFrame.getLyricsModePanel() != null) {
-            mainFrame.getLyricsModePanel().getData();
-        }
-
-        LyricsProcessor.spellLyrics(composition);
-
-        // Update the MainPanel with the new composition
-        if (mainPanel != null) {
-            mainPanel.setComposition(composition);
-            setupLineComponentState();
-        }
-
-        // Reset modified flag - initialization above is not a user change
-        composition.setModified(false);
-
-        // mainFrame.setMode(Mode.NOTE_EDIT);
         syncPlaybackPrefs();
         viewChanged();
+
+        // Notify all subscribers (LyricsPanel, ScoreMessageCoordinator, UIActions, etc.)
+        // that the composition has been fully replaced. This must happen after all
+        // Score state is consistent.
+        MessageCenter.post(new CompositionChangedMessage(
+            CompositionChangedMessage.ChangeType.FULL, composition
+        ));
+
         repaint();
     }
 
@@ -793,6 +815,20 @@ public final class Score
 
     public int getSheetHeightPx() {
         // TODO: Calculate from component hierarchy
+        return getHeight();
+    }
+
+    /**
+     * Returns the sheet height in pixels, adjusted for the given export options.
+     * When the rendering pipeline is fully implemented, this will calculate
+     * the height without including excluded sections (lyrics, title, attribution).
+     *
+     * @param options controls which content sections to include in the measurement
+     * @return the sheet height in pixels
+     */
+    public int getSheetHeightPx(@NotNull ExportOptions options) {
+        // TODO: Calculate height based on options without relying on component layout.
+        // For now, returns full height since rendering is not yet implemented.
         return getHeight();
     }
 
@@ -945,34 +981,22 @@ public final class Score
     }
 
     public void allowFocusInComponent(Component component) {
-        focusController.allowFocusInComponent(component);
+        focusController.ifPresent(fc -> fc.allowFocusInComponent(component));
     }
 
     @NotNull
     public BufferedImage createImageForExport(
         Color background,
         double scale,
-        @NotNull MyBorder border
+        @NotNull MyBorder border,
+        @NotNull ExportOptions options
     ) {
         return songscribe.export.ImageExporter.createImageForExport(
             this,
             background,
             scale,
-            border
-        );
-    }
-
-    public void createImageForExport(
-        @NotNull BufferedImage image,
-        Color background,
-        double scale,
-        @NotNull MyBorder border
-    ) {
-        songscribe.export.ImageExporter.createImageForExport(
-            image,
-            background,
-            scale,
-            border
+            border,
+            options
         );
     }
 

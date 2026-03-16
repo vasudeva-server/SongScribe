@@ -31,6 +31,7 @@ import java.util.zip.ZipOutputStream;
 import org.jetbrains.annotations.Nullable;
 
 import songscribe.Strings;
+import songscribe.export.ExportOptions;
 import songscribe.io.CompositionIO;
 import songscribe.ui.Dialogs;
 import songscribe.ui.component.MyBorder;
@@ -146,8 +147,7 @@ public class ConvertAction extends AbstractAction {
                 for (var songFile : songFiles) {
                     // load file
                     var score = uiConverter.getScore();
-                    score.setComposition(null);
-                    score.openFile(uiConverter, songFile, false);
+                    score.openFile(songFile, false);
                     var composition = score.getComposition();
 
                     // ensure we have the latest format by writing the mssw file again
@@ -177,11 +177,7 @@ public class ConvertAction extends AbstractAction {
                     processDialog.nextValue();
 
                     // produce images
-                    composition.setUnderLyrics("");
-                    composition.setTranslatedLyrics("");
-                    composition.setTitle("");
-                    composition.setAttribution("");
-
+                    var exportOptions = ExportOptions.NONE;
                     var fileName = songFile.getName();
                     var dotPos = fileName.lastIndexOf('.');
 
@@ -197,7 +193,8 @@ public class ConvertAction extends AbstractAction {
                         var image = score.createImageForExport(
                             Color.WHITE,
                             scale,
-                            myBorders[i]
+                            myBorders[i],
+                            exportOptions
                         );
                         @Nullable
                         var imageFile = new File(

@@ -58,12 +58,13 @@ import songscribe.ui.action.SaveAction;
 import songscribe.ui.action.SaveAsAction;
 import songscribe.ui.action.TipAction;
 import songscribe.ui.component.MainFrame;
+import songscribe.ui.component.Score;
 import songscribe.ui.dialog.KeyMapDialog;
 import songscribe.ui.dialog.LineWidthChangeDialog;
 import songscribe.ui.dialog.ReportBugDialog;
 import songscribe.ui.dialog.TutorialDialog;
 import songscribe.ui.dialog.WhatsNewDialog;
-import songscribe.ui.message.MessageCenter;
+import songscribe.message.MessageCenter;
 import songscribe.ui.message.RecentDocumentsChangedMessage;
 import songscribe.ui.playback.PlayMenu;
 
@@ -77,6 +78,7 @@ public class MenuController {
     private static MenuController instance = null;
 
     private final MainFrame mainFrame;
+    private final Score score;
     private JMenu openRecentMenu;
 
     public static void init(MainFrame mainFrame) {
@@ -85,6 +87,7 @@ public class MenuController {
 
     public MenuController(MainFrame mainFrame) {
         this.mainFrame = mainFrame;
+        this.score = mainFrame.getScore();
         initMenus();
         MessageCenter.subscribe(this);
     }
@@ -104,7 +107,7 @@ public class MenuController {
         //        var launchMenu = initLaunchMenu();
 
         if (DebugState.isDebugEnabled()) {
-            menuBar.add(new DebugMenu(mainFrame.getScore()));
+            menuBar.add(new DebugMenu(score));
         }
 
         if (SystemInfo.isMacOS) {

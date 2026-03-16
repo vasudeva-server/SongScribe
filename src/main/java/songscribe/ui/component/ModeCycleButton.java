@@ -28,7 +28,7 @@ import net.engio.mbassy.listener.Handler;
 import songscribe.ui.action.ModeAction;
 import songscribe.ui.edit.GraceModeManager;
 import songscribe.ui.message.GraceModeStateChangedMessage;
-import songscribe.ui.message.MessageCenter;
+import songscribe.message.MessageCenter;
 import songscribe.ui.message.ModeChangedMessage;
 import songscribe.ui.playback.PlaybackController;
 import songscribe.ui.playback.PlaybackStateChangedMessage;

@@ -28,6 +28,8 @@ import org.jetbrains.annotations.Nullable;
 
 import songscribe.data.DynamicsInterval;
 import songscribe.data.IntervalSet;
+import songscribe.message.LayoutUpdate;
+import songscribe.message.MessageCenter;
 import songscribe.music.Line;
 import songscribe.ui.component.Score;
 import songscribe.ui.layout.AnnotationAttachment;
@@ -39,8 +41,6 @@ import songscribe.ui.layout.TempoAttachment;
 import songscribe.ui.layout.Trill;
 import songscribe.ui.layout.Tuplet;
 import songscribe.ui.layout2.LayoutResult;
-import songscribe.ui.message.LayoutChangeMessage;
-import songscribe.ui.message.MessageCenter;
 
 public class VerticalAdjustment extends Adjustment {
 
@@ -123,50 +123,23 @@ public class VerticalAdjustment extends Adjustment {
         }
 
         score.viewChanged();
-        score.getComposition().setModified(true);
         revalidateRects();
         score.repaint();
     }
 
     private void adjustAttribution(int diffY) {
-        score
-            .getComposition()
-            .setAttributionStartY(score.getComposition().getAttributionStartY() + diffY);
-
-        MessageCenter.post(new LayoutChangeMessage(
-            LayoutChangeMessage.Section.ATTRIBUTION,
-            LayoutChangeMessage.ChangeType.SIZE,
-            true
-        ));
+        var newY = score.getComposition().getAttributionStartY() + diffY;
+        MessageCenter.post(new LayoutUpdate(null, null, null, null, newY));
     }
 
     private void adjustTopSpace(int diffY) {
-        score
-            .getComposition()
-            .setTopPadding(
-                score.getComposition().getTopPadding() + diffY,
-                true
-            );
-
-        MessageCenter.post(new LayoutChangeMessage(
-            LayoutChangeMessage.Section.TITLE,
-            LayoutChangeMessage.ChangeType.SIZE,
-            true
-        ));
+        var newPadding = score.getComposition().getTopPadding() + diffY;
+        MessageCenter.post(new LayoutUpdate(newPadding, true, null, null, null));
     }
 
     private void adjustRowHeight(int diffY) {
-        score
-            .getComposition()
-            .setRowHeightAdjustment(
-                score.getComposition().getRowHeightAdjustment() + diffY
-            );
-
-        MessageCenter.post(new LayoutChangeMessage(
-            LayoutChangeMessage.Section.SCORE,
-            LayoutChangeMessage.ChangeType.SIZE,
-            true
-        ));
+        var newAdjustment = score.getComposition().getRowHeightAdjustment() + diffY;
+        MessageCenter.post(new LayoutUpdate(null, null, newAdjustment, null, null));
     }
 
     private void adjustTempoChange(Line line, int diffY) {

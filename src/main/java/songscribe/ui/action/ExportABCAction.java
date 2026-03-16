@@ -93,7 +93,7 @@ public class ExportABCAction extends UIAction {
     public ExportABCAction() {
         super(Strings.get(Strings.ACTION_EXPORT_ABC), "export-abc");
         fileDialog = new PlatformFileDialog(
-            mainFrame,
+            getMainFrame(),
             "Export ABC",
             false,
             new MyFileFilter(Strings.get(Strings.FILTER_ABC), "abc")
@@ -102,14 +102,14 @@ public class ExportABCAction extends UIAction {
 
     @Override
     public void actionPerformed(ActionEvent e) {
-        var saveFile = FileUtils.showExportDialog(mainFrame, mainFrame.getScore(), fileDialog, "abc");
+        var saveFile = FileUtils.showExportDialog(getMainFrame(), getScore(), fileDialog, "abc");
 
         if (saveFile == null) {
             return;
         }
 
         try (var writer = new PrintWriter(saveFile)) {
-            var composition = mainFrame.getScore().getComposition();
+            var composition = getComposition();
             writeABC(composition, writer);
         } catch (IOException e1) {
             Dialogs.showErrorMessage(

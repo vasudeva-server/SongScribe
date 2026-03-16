@@ -125,7 +125,6 @@ public class LyricsAdjustment extends Adjustment {
         }
 
         score.viewChanged();
-        score.getComposition().setModified(true);
         revalidateRects();
         score.repaint();
     }

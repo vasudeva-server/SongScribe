@@ -18,6 +18,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package songscribe.ui.message;
+package songscribe.message;
 
 public class SaveAsMessage extends Message {}

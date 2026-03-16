@@ -19,7 +19,10 @@
  */
 package songscribe.io;
 
+import java.awt.Font;
 import java.io.PrintWriter;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.jetbrains.annotations.Nullable;
 
@@ -27,12 +30,15 @@ import org.xml.sax.Attributes;
 import org.xml.sax.SAXException;
 import org.xml.sax.helpers.DefaultHandler;
 
+import songscribe.message.CompositionData;
 import songscribe.music.Composition;
 import songscribe.music.KeyType;
 import songscribe.music.Line;
+import songscribe.music.Tempo;
 import songscribe.ui.component.Score;
 import songscribe.ui.layout2.InsertionSpacingCalculator;
 import songscribe.ui.layout2.ScaleContext;
+import songscribe.util.Utils;
 
 public final class CompositionIO {
 
@@ -209,8 +215,31 @@ public final class CompositionIO {
         private TempoIO.TempoReader tempoReader = null;
         private LineIO.LineReader lineReader = null;
         private ViewIO.ViewReader viewReader = null;
-        private Composition composition = null;
         private int majorVersion = 0, minorVersion = 0;
+
+        // Parsed composition data (replaces direct Composition mutation)
+        private Tempo tempo = new Tempo();
+        private String number = Composition.DEFAULT_NUMBER;
+        private String title = Composition.DEFAULT_TITLE;
+        private String place = "";
+        private int month = 0;
+        private int day = 0;
+        private String year = "";
+        private String lyrics = "";
+        private String underLyrics = "";
+        private String banglaLyrics = "";
+        private String translatedLyrics = "";
+        private String attribution = Composition.DEFAULT_ATTRIBUTION;
+        private String footnotes = "";
+        private boolean unofficialTranslation = false;
+        private int defaultKeyAccidentalCount = Composition.DEFAULT_KEY_ACCIDENTAL_COUNT;
+        private KeyType defaultKeyType = Composition.DEFAULT_KEY_TYPE;
+        private double topPadding = 0;
+        private double attributionStartY = 0;
+        private double rowHeightAdjustment = 0;
+        private double lineWidth = Score.PAGE_CONTENT_SIZE.width;
+        private boolean hasBeenDynamicallyLaidOut = false;
+        private final List<Line> parsedLines = new ArrayList<>();
 
         @Override
         public void startElement(
@@ -230,10 +259,6 @@ public final class CompositionIO {
                         minorVersion = Integer.parseInt(
                             version.substring(dotIndex + 1)
                         );
-                        composition = new Composition();
-                        composition.setLoading(true);
-                        composition.setTopPadding(0, false);
-                        composition.removeLine(0);
                         where = Where.COMPOSITION;
 
                         if ((majorVersion == 1) && (minorVersion == 0)) {
@@ -278,7 +303,7 @@ public final class CompositionIO {
                 try {
                     noteReader.startElement10(qName, attributes);
                 } catch (NewLineException e) {
-                    composition.addLine(new Line());
+                    parsedLines.add(new Line());
                 }
             } else if (where == Where.TEMPO_CHANGE) {
                 tempoReader.startElement10(qName);
@@ -339,11 +364,11 @@ public final class CompositionIO {
                 var note = noteReader.endElement10(qName);
 
                 if (note != null) {
-                    if (composition.lineCount() == 0) {
-                        composition.addLine(new Line());
+                    if (parsedLines.isEmpty()) {
+                        parsedLines.add(new Line());
                     }
 
-                    var line = composition.getLine(composition.lineCount() - 1);
+                    var line = parsedLines.get(parsedLines.size() - 1);
                     note.setXPosSs(ScaleContext.getInstance().toRoundedPixels(
                         InsertionSpacingCalculator.calculateAppendPositionSs(line, note)));
                     note.setUpper(Score.defaultUpperNote(note));
@@ -354,12 +379,12 @@ public final class CompositionIO {
 
                 if (tc != null) {
                     if (tempoReader.getPos10() == 0) {
-                        composition.setTempo(tc);
+                        tempo = tc;
                     } else {
                         var firstElementInLine = 0;
 
-                        for (var l = 0; l < composition.lineCount(); l++) {
-                            var line = composition.getLine(l);
+                        for (var l = 0; l < parsedLines.size(); l++) {
+                            var line = parsedLines.get(l);
 
                             if (
                                 tempoReader.getPos10() <
@@ -378,25 +403,20 @@ public final class CompositionIO {
                     }
                 }
             } else if (where == Where.COMPOSITION) {
-                if (qName.equals(XML_COMPOSITION)) {
-                    composition.setModified(true);
-                } else if (qName.equals(lastTag)) {
+                if (qName.equals(lastTag)) {
                     var str = value.toString();
 
                     switch (lastTag) {
-                        case XML_KEYS -> composition.setDefaultKeyAccidentalCount(
-                            Integer.parseInt(str)
-                        );
-                        case XML_KEYTYPE -> composition.setDefaultKeyType(
-                            KeyType.valueOf(str)
-                        );
-                        case XML_NUMBER -> composition.setNumber(str);
-                        case XML_TITLE -> composition.setTitle(
-                            str.isEmpty() ? "Untitled" : str
-                        );
-                        case XML_LYRICS -> composition.setLyrics(str);
-                        case XML_INFO -> composition.setAttribution(str);
-                        case XML_FOOTNOTES -> composition.setFootnotes(str);
+                        case XML_KEYS -> defaultKeyAccidentalCount =
+                            Integer.parseInt(str);
+                        case XML_KEYTYPE -> defaultKeyType =
+                            KeyType.valueOf(str);
+                        case XML_NUMBER -> number = str;
+                        case XML_TITLE -> title =
+                            str.isEmpty() ? "Untitled" : str;
+                        case XML_LYRICS -> lyrics = str;
+                        case XML_INFO -> attribution = str;
+                        case XML_FOOTNOTES -> footnotes = str;
                     }
                 }
             }
@@ -406,12 +426,12 @@ public final class CompositionIO {
         }
 
         public void endElement11(String qName) {
-            // No change except end the end of the line reading we set
+            // No change except at the end of the line reading we set
             // the quaver notes to upper position.
             endElement12(qName);
 
-            if ((where == Where.LINES) && (composition.lineCount() > 0)) {
-                var lastLine = composition.getLine(composition.lineCount() - 1);
+            if ((where == Where.LINES) && !parsedLines.isEmpty()) {
+                var lastLine = parsedLines.get(parsedLines.size() - 1);
 
                 for (var i = 0; i < lastLine.elementCount(); i++) {
                     if (lastLine.getElement(i).getType().isGraceNote()) {
@@ -425,19 +445,18 @@ public final class CompositionIO {
             if (qName.equals(XML_LINES)) {
                 where = Where.COMPOSITION;
             } else if (qName.equals(XML_VIEW)) {
-                viewReader.setAttributes(composition);
                 where = Where.COMPOSITION;
             } else if (where == Where.LINES) {
                 var l = lineReader.endElement11(qName);
 
                 if (l != null) {
-                    composition.addLine(l);
+                    parsedLines.add(l);
                 }
             } else if (where == Where.TEMPO) {
                 var t = tempoReader.endElement11(qName);
 
                 if (t != null) {
-                    composition.setTempo(t);
+                    tempo = t;
                     where = Where.COMPOSITION;
                 }
             } else if (where == Where.COMPOSITION) {
@@ -446,53 +465,37 @@ public final class CompositionIO {
                     var useDouble = majorVersion >= 2 && minorVersion >= 1;
 
                     switch (lastTag) {
-                        case XML_KEYS -> composition.setDefaultKeyAccidentalCount(
-                            Integer.parseInt(str)
-                        );
-                        case XML_KEYTYPE -> composition.setDefaultKeyType(
-                            KeyType.valueOf(str)
-                        );
-                        case XML_NUMBER -> composition.setNumber(str);
-                        case XML_TITLE -> composition.setTitle(
-                            str.isEmpty() ? "Untitled" : str
-                        );
-                        case XML_PLACE -> composition.setPlace(str);
-                        case XML_YEAR -> composition.setYear(str);
-                        case XML_MONTH -> composition.setMonth(
-                            Integer.parseInt(str)
-                        );
-                        case XML_DAY -> composition.setDay(
-                            Integer.parseInt(str)
-                        );
-                        case XML_LYRICS -> composition.setLyrics(str);
-                        case XML_UNDERLYRICS -> composition.setUnderLyrics(str);
-                        case XML_BANGLA_LYRICS -> composition.setBanglaLyrics(
-                            str
-                        );
-                        case XML_TRANSLATED_LYRICS -> composition.setTranslatedLyrics(
-                            str
-                        );
-                        case XML_UNOFFICIAL_TRANSLATION -> composition.setUnofficialTranslation(
-                            Boolean.parseBoolean(str)
-                        );
-                        case XML_FOOTNOTES -> composition.setFootnotes(str);
-                        case XML_INFO -> composition.setAttribution(str);
-                        case XML_TOP_SPACE -> composition.setTopPadding(
-                            useDouble ? Double.parseDouble(str) : Integer.parseInt(str),
-                            false
-                        );
-                        case XML_INFO_STARTY -> composition.setAttributionStartY(
-                            useDouble ? Double.parseDouble(str) : Integer.parseInt(str)
-                        );
-                        case XML_ROW_HEIGHT -> composition.setRowHeightAdjustment(
-                            useDouble ? Double.parseDouble(str) : Integer.parseInt(str)
-                        );
-                        case XML_LINE_WIDTH -> composition.setLineWidth(
-                            useDouble ? Double.parseDouble(str) : Integer.parseInt(str)
-                        );
-                        case XML_DYNAMIC_LAYOUT -> composition.setHasBeenDynamicallyLaidOut(
-                            Boolean.parseBoolean(str)
-                        );
+                        case XML_KEYS -> defaultKeyAccidentalCount =
+                            Integer.parseInt(str);
+                        case XML_KEYTYPE -> defaultKeyType =
+                            KeyType.valueOf(str);
+                        case XML_NUMBER -> number = str;
+                        case XML_TITLE -> title =
+                            str.isEmpty() ? "Untitled" : str;
+                        case XML_PLACE -> place = str;
+                        case XML_YEAR -> year = str;
+                        case XML_MONTH -> month =
+                            Integer.parseInt(str);
+                        case XML_DAY -> day =
+                            Integer.parseInt(str);
+                        case XML_LYRICS -> lyrics = str;
+                        case XML_UNDERLYRICS -> underLyrics = str;
+                        case XML_BANGLA_LYRICS -> banglaLyrics = str;
+                        case XML_TRANSLATED_LYRICS -> translatedLyrics = str;
+                        case XML_UNOFFICIAL_TRANSLATION -> unofficialTranslation =
+                            Boolean.parseBoolean(str);
+                        case XML_FOOTNOTES -> footnotes = str;
+                        case XML_INFO -> attribution = str;
+                        case XML_TOP_SPACE -> topPadding =
+                            useDouble ? Double.parseDouble(str) : Integer.parseInt(str);
+                        case XML_INFO_STARTY -> attributionStartY =
+                            useDouble ? Double.parseDouble(str) : Integer.parseInt(str);
+                        case XML_ROW_HEIGHT -> rowHeightAdjustment =
+                            useDouble ? Double.parseDouble(str) : Integer.parseInt(str);
+                        case XML_LINE_WIDTH -> lineWidth =
+                            useDouble ? Double.parseDouble(str) : Integer.parseInt(str);
+                        case XML_DYNAMIC_LAYOUT -> hasBeenDynamicallyLaidOut =
+                            Boolean.parseBoolean(str);
                     }
                 }
             } else if (where == Where.VIEW) {
@@ -521,48 +524,87 @@ public final class CompositionIO {
         }
 
         public Composition getComposition() {
-            composition.setLoading(false);
-
-            // Legacy fallback: if topPadding wasn't set in file, calculate initial value.
-            // Layout calculation will recalculate this properly, but this provides
-            // a reasonable default for any code that accesses topPadding before layout.
-            if (composition.getTopPadding() == 0) {
-                //noinspection deprecation
-                composition.recalcTopPadding();
-            }
-
-            // For legacy files (pre-2.0), xPos values were absolute positions.
-            // Reset them to 0 since layout will recalculate positions dynamically.
-            if (!composition.hasBeenDynamicallyLaidOut()) {
-                for (var line : composition.getLines()) {
-                    for (var i = 0; i < line.elementCount(); i++) {
-                        // line.getNote(i).setXPosSs(0);
-                    }
-                }
-            }
-
-            // Mark the composition's format version so FormatMigrator skips
-            // migrations that have already been applied in v2.x files.
-            if (majorVersion >= 2) {
-                composition.setFormatVersion(2);
-            }
+            // Determine format version for migration
+            int formatVersion = majorVersion >= 2 ? 2 : 1;
 
             // Migrate from legacy format (IntervalSets, inline Note attachments)
             // to new format (RangeElements, Attachment objects).
-            // This populates the new data structures from the legacy data.
-            FormatMigrator.migrate(composition);
+            FormatMigrator.migrate(parsedLines, formatVersion);
+
+            // After migration, format version is always 2
+            formatVersion = 2;
 
             // For pre-v2.1 files, convert pixel-based positions to staff-space units.
             // v2.1+ files already store values in staff-space units.
             if (majorVersion < 2 || (majorVersion == 2 && minorVersion < 1)) {
-                FormatMigrator.migratePixelsToStaffSpace(composition);
+                var pps = ScaleContext.DEFAULT_PIXELS_PER_STAFF_SPACE;
+
+                // Composition-level pixel-to-ss conversion
+                topPadding /= pps;
+                lineWidth /= pps;
+                rowHeightAdjustment /= pps;
+                attributionStartY /= pps;
+
+                // Line-level pixel-to-ss conversion
+                FormatMigrator.migratePixelsToStaffSpace(parsedLines);
             }
 
-            // v2.1 → v2.2: No migration needed. stemDirectionAuto defaults to true,
-            // so absence of <stemDirectionAuto/> in existing v2.1 files is correct.
-            // Re-saving a v2.1 file stamps it as v2.2. See FormatMigrator Javadoc.
+            // Extract fonts from ViewReader (null for v1.0 files without View section)
+            Font titleFont = viewReader != null ? viewReader.getTitleFont() : null;
+            Font lyricsFont = viewReader != null ? viewReader.getLyricsFont() : null;
+            Font attributionFont = viewReader != null ? viewReader.getAttributionFont() : null;
+            Font annotationFont = viewReader != null ? viewReader.getAnnotationFont() : null;
 
-            return composition;
+            // Legacy fallback: if topPadding wasn't set in file, calculate initial value.
+            // Layout calculation will recalculate this properly, but this provides
+            // a reasonable default for any code that accesses topPadding before layout.
+            if (topPadding == 0) {
+                var tf = titleFont != null ? titleFont : defaultFontFromPrefs("titleFont", "titleFontSize");
+                var af = attributionFont != null ? attributionFont : defaultFontFromPrefs("attributionFont", "attributionFontSize");
+                topPadding = ((2 * tf.getSize()) +
+                    (Utils.lineCount(attribution) * af.getSize())) -
+                    ScaleContext.getInstance().toRoundedPixels(2.0);
+            }
+
+            var data = new CompositionData(
+                tempo,
+                number,
+                title,
+                place,
+                month,
+                day,
+                year,
+                lyrics,
+                underLyrics,
+                banglaLyrics,
+                translatedLyrics,
+                attribution,
+                footnotes,
+                unofficialTranslation,
+                defaultKeyAccidentalCount,
+                defaultKeyType,
+                titleFont,
+                lyricsFont,
+                attributionFont,
+                annotationFont,
+                topPadding,
+                attributionStartY,
+                rowHeightAdjustment,
+                lineWidth,
+                parsedLines,
+                hasBeenDynamicallyLaidOut,
+                formatVersion
+            );
+
+            // Use the loading constructor to avoid the wasted work of the
+            // no-arg constructor (default line, attributionStartY calculation).
+            return new Composition(data);
+        }
+
+        private static Font defaultFontFromPrefs(String nameKey, String sizeKey) {
+            var prefs = songscribe.prefs.Prefs.getInstance();
+            return songscribe.util.MyFontUtils.createFont(
+                prefs.getString(nameKey), prefs.getInt(sizeKey));
         }
 
         private enum Where {

@@ -26,6 +26,7 @@ import java.io.IOException;
 
 import songscribe.Strings;
 import songscribe.data.MyFileFilter;
+import songscribe.export.ExportOptions;
 import songscribe.ui.Dialogs;
 import songscribe.prefs.Prefs;
 import songscribe.ui.component.MainFrame;
@@ -48,7 +49,7 @@ public class ExportImageAction extends UIAction {
     public ExportImageAction() {
         super(Strings.get(Strings.ACTION_EXPORT_IMAGE), "export-image");
         fileDialog = new PlatformFileDialog(
-            mainFrame,
+            getMainFrame(),
             NAME,
             false,
             myFileFilters,
@@ -58,7 +59,7 @@ public class ExportImageAction extends UIAction {
 
     @Override
     public void actionPerformed(ActionEvent e) {
-        var score = mainFrame.getScore();
+        var score = getScore();
 
         fileDialog.setFile(FileUtils.getSongFileNameForFileChooser(score));
 
@@ -77,7 +78,7 @@ public class ExportImageAction extends UIAction {
                 saveFile = FileUtils.ensureExtension(saveFile, extension);
             }
 
-            if (!Dialogs.confirmFileOverwrite(mainFrame, mainFrame.appName, saveFile)) {
+            if (!Dialogs.confirmFileOverwrite(getMainFrame(), getMainFrame().appName, saveFile)) {
                 return;
             }
 
@@ -94,25 +95,18 @@ public class ExportImageAction extends UIAction {
             var scale =
                 (double) resolutionDialog.getResolution() /
                 (double) GraphicUtils.getDpi();
-            var composition = score.getComposition();
-            var underLyrics = composition.getUnderLyrics();
-            var transletedLyrics = composition.getTranslatedLyrics();
-            var songTitle = composition.getTitle();
-
-            if (resolutionDialog.isWithoutLyrics()) {
-                composition.setUnderLyrics("");
-                composition.setTranslatedLyrics("");
-            }
-
-            if (resolutionDialog.isWithoutTitle()) {
-                composition.setTitle("");
-            }
+            var options = new ExportOptions(
+                !resolutionDialog.isWithoutLyrics(),
+                !resolutionDialog.isWithoutTitle(),
+                true
+            );
 
             try {
                 var sheetImageForExport = score.createImageForExport(
                     Color.white,
                     scale,
-                    resolutionDialog.getBorder()
+                    resolutionDialog.getBorder(),
+                    options
                 );
                 var successful = GraphicUtils.writeImage(
                     sheetImageForExport,
@@ -127,7 +121,7 @@ public class ExportImageAction extends UIAction {
                         Strings.get(Strings.ERROR_IMAGE_EXPORT)
                     );
                 } else {
-                    FileUtils.openExportFile(mainFrame, saveFile);
+                    FileUtils.openExportFile(saveFile);
                 }
             } catch (IOException e1) {
                 Dialogs.showErrorMessage(
@@ -141,15 +135,6 @@ public class ExportImageAction extends UIAction {
                     Strings.get(Strings.DIALOG_TITLE_EXPORT_ERROR),
                     Strings.get(Strings.ERROR_IMAGE_MEMORY)
                 );
-            } finally {
-                if (resolutionDialog.isWithoutLyrics()) {
-                    composition.setUnderLyrics(underLyrics);
-                    composition.setTranslatedLyrics(transletedLyrics);
-                }
-                if (resolutionDialog.isWithoutTitle()) {
-                    composition.setTitle(songTitle);
-                }
-                score.repaint();
             }
         }
     }

@@ -28,7 +28,7 @@ import net.engio.mbassy.listener.Handler;
 
 import songscribe.Strings;
 import songscribe.ui.message.FlipStemDirectionMessage;
-import songscribe.ui.message.MessageCenter;
+import songscribe.message.MessageCenter;
 import songscribe.ui.message.MusicSelectionChangedMessage;
 
 public class FlipStemDirectionAction extends UIAction {

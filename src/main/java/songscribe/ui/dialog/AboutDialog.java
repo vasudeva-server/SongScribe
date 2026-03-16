@@ -105,11 +105,11 @@ public class AboutDialog extends StandardDialog {
         var emailLabel = new JLabel();
         var email = new JLabel();
 
-        iconLabel.setIcon(new ImageIcon(mainFrame.getIconImage()));
+        iconLabel.setIcon(new ImageIcon(getMainFrame().getIconImage()));
 
         progNameLabel.setFont(new Font("Arial", Font.PLAIN, 30));
         progNameLabel.setHorizontalAlignment(SwingConstants.CENTER);
-        progNameLabel.setText(mainFrame.appName);
+        progNameLabel.setText(getMainFrame().appName);
 
         versionLabel.setFont(new Font("Arial", Font.BOLD, 14));
         versionLabel.setHorizontalAlignment(SwingConstants.TRAILING);
@@ -396,12 +396,12 @@ public class AboutDialog extends StandardDialog {
     }
 
     private void webMouseClicked() {
-        Utils.openWebPage(mainFrame, WEB);
+        Utils.openWebPage(getMainFrame(), WEB);
     }
 
     private void emailMouseClicked() {
         Utils.openEmail(
-            mainFrame,
+            getMainFrame(),
             ReportBugDialog.BUG_EMAIL + "?SUBJECT=SongScribe comment"
         );
     }

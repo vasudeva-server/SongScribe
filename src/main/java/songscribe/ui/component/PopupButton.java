@@ -27,7 +27,7 @@ import java.util.Objects;
 
 import songscribe.ui.action.UIAction;
 import songscribe.ui.message.MenuWillOpenMessage;
-import songscribe.ui.message.MessageCenter;
+import songscribe.message.MessageCenter;
 import songscribe.util.UIUtils;
 
 /**

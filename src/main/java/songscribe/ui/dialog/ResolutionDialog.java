@@ -25,6 +25,7 @@ import com.intellij.uiDesigner.core.GridConstraints;
 import com.intellij.uiDesigner.core.GridLayoutManager;
 import com.intellij.uiDesigner.core.Spacer;
 
+import songscribe.export.ExportOptions;
 import songscribe.prefs.Prefs;
 import songscribe.Strings;
 import songscribe.ui.component.BorderPanel;
@@ -66,23 +67,19 @@ public class ResolutionDialog extends StandardDialog implements ChangeListener {
     protected void getData() {
         approved = false;
         resolutionSpinner.setValue(Prefs.getInstance().getInt("exportDpi"));
-        var score = mainFrame.getScore();
+        var score = getScore();
         var composition = score.getComposition();
         sheetWidth = score.getSheetWidthPx();
         sheetHeight = score.getSheetHeightPx();
 
+        var noLyricsOptions = new ExportOptions(false, true, true);
+        sheetHeightWithoutLyrics = sheetHeight - score.getSheetHeightPx(noLyricsOptions);
+
+        var noTitleOptions = new ExportOptions(true, false, true);
+        sheetHeightWithoutTitle = sheetHeight - score.getSheetHeightPx(noTitleOptions);
+
         var underLyrics = composition.getUnderLyrics();
         var translatedLyrics = composition.getTranslatedLyrics();
-        composition.setUnderLyrics("");
-        composition.setTranslatedLyrics("");
-        sheetHeightWithoutLyrics = sheetHeight - score.getSheetHeightPx();
-        composition.setUnderLyrics(underLyrics);
-        composition.setTranslatedLyrics(translatedLyrics);
-
-        var songTitle = composition.getTitle();
-        composition.setTitle("");
-        sheetHeightWithoutTitle = sheetHeight - score.getSheetHeightPx();
-        composition.setTitle(songTitle);
 
         if (underLyrics.isEmpty() && translatedLyrics.isEmpty()) {
             withoutLyricsCheck.setSelected(false);

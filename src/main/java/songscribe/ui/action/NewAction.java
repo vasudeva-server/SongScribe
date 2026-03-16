@@ -22,8 +22,8 @@ package songscribe.ui.action;
 import module java.desktop;
 
 import songscribe.Strings;
-import songscribe.ui.message.MessageCenter;
-import songscribe.ui.message.NewFileMessage;
+import songscribe.message.MessageCenter;
+import songscribe.message.NewFileMessage;
 import songscribe.util.UIUtils;
 
 public class NewAction extends UIAction {

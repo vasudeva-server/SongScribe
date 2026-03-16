@@ -20,5 +20,7 @@
 
 package songscribe.ui.message;
 
+import songscribe.message.Message;
+
 public class ShowOpenDialogMessage extends Message {
 }

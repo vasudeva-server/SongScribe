@@ -24,7 +24,7 @@ import module java.desktop;
 import net.engio.mbassy.listener.Handler;
 
 import songscribe.Strings;
-import songscribe.ui.message.Message;
+import songscribe.message.Message;
 
 public class PlayPauseAction extends SequencerAction {
 

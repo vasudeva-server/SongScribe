@@ -40,7 +40,6 @@ import songscribe.data.Interval;
 import songscribe.data.TieInterval;
 import songscribe.data.TupletInterval;
 import songscribe.ui.Dialogs;
-import songscribe.ui.component.IMainFrame;
 import songscribe.ui.selection.LineSelectionState;
 import songscribe.ui.selection.SelectionCoordinator;
 
@@ -52,16 +51,13 @@ public final class MusicEditOperations {
 
     private final Composition composition;
     private final SelectionCoordinator coordinator;
-    private final IMainFrame mainFrame;
 
     public MusicEditOperations(
         @NotNull Composition composition,
-        @NotNull SelectionCoordinator coordinator,
-        @NotNull IMainFrame mainFrame
+        @NotNull SelectionCoordinator coordinator
     ) {
         this.composition = composition;
         this.coordinator = coordinator;
-        this.mainFrame = mainFrame;
     }
 
     // ========== Beaming Operations ==========

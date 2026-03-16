@@ -24,7 +24,7 @@ import module java.desktop;
 
 import org.jetbrains.annotations.Nullable;
 
-import songscribe.ui.message.MessageCenter;
+import songscribe.message.MessageCenter;
 import songscribe.ui.message.UpdateInsertionElementMessage;
 
 /**

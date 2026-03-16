@@ -26,7 +26,8 @@ import songscribe.data.EndingInterval;
 import songscribe.data.Interval;
 import songscribe.data.IntervalSet;
 import songscribe.data.TupletInterval;
-import songscribe.music.Composition;
+import java.util.List;
+
 import songscribe.music.Line;
 import songscribe.music.StaffElement;
 import songscribe.ui.layout.AnnotationAttachment;
@@ -79,49 +80,39 @@ public final class FormatMigrator {
     }
 
     /**
-     * Migrates a composition from legacy format to new format.
+     * Migrates lines from legacy format to new format.
      * <p>
-     * If the composition is already in the new format (version 2+), this method does nothing.
+     * If the format version is already 2+, this method does nothing.
+     * The caller is responsible for setting the format version on the resulting data.
      *
-     * @param composition The composition to migrate
+     * @param lines The lines to migrate
+     * @param formatVersion The current format version (migration is skipped if >= 2)
      */
-    public static void migrate(@NotNull Composition composition) {
-        if (composition.getFormatVersion() >= 2) {
-            // Already in new format
+    public static void migrate(@NotNull List<Line> lines, int formatVersion) {
+        if (formatVersion >= 2) {
             return;
         }
 
-        // Migrate each line
-        for (var line : composition.getLines()) {
+        for (var line : lines) {
             migrateLine(line);
         }
-
-        // Mark as migrated
-        composition.setFormatVersion(2);
     }
 
     /**
-     * Converts pixel-based position values to staff-space units.
+     * Converts pixel-based line-level position values to staff-space units.
      * <p>
-     * Called when loading a v2.0 file (which stores positions in pixels).
-     * Divides all position/offset fields by the legacy pixelsPerStaffSpace (8.0)
-     * to convert to staff-space units.
+     * Called when loading a pre-v2.1 file (which stores positions in pixels).
+     * Composition-level pixel-to-ss conversion is handled by the caller.
      * <p>
      * Fields that are already unit-agnostic (e.g. Note.staffPosition, which is a
      * diatonic step count) are NOT converted.
      *
-     * @param composition The composition with pixel values to convert
+     * @param lines The lines with pixel values to convert
      */
-    public static void migratePixelsToStaffSpace(@NotNull Composition composition) {
+    public static void migratePixelsToStaffSpace(@NotNull List<Line> lines) {
         var pps = ScaleContext.DEFAULT_PIXELS_PER_STAFF_SPACE;
 
-        // Composition-level fields
-        composition.setTopPadding(composition.getTopPadding() / pps, false);
-        composition.setLineWidth(composition.getLineWidth() / pps);
-        composition.setRowHeightAdjustment(composition.getRowHeightAdjustment() / pps);
-        composition.setAttributionStartY(composition.getAttributionStartY() / pps);
-
-        for (var line : composition.getLines()) {
+        for (var line : lines) {
             // Line-level fields
             line.setLyricsYPosSs(line.getLyricsYPosSs() / pps);
 

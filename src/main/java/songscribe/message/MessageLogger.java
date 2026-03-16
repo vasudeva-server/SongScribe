@@ -18,45 +18,27 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package songscribe.converter;
+package songscribe.message;
 
-import static org.mockito.Mockito.mock;
+import net.engio.mbassy.listener.Handler;
 
-import module java.desktop;
+import songscribe.util.Log;
 
-import java.io.File;
+public final class MessageLogger {
 
-import songscribe.ui.component.IMainFrame;
-import songscribe.ui.component.LyricsPanel;
-import songscribe.ui.component.Score;
+    @SuppressWarnings("StaticNonFinalField")
+    public static MessageLogger instance = null;
 
-public class ConverterMainFrame implements IMainFrame {
-
-    private Score score = null;
-
-    @Override
-    public void setCurrentFile(File saveFile) {}
-
-    @Override
-    public void setFrameSize() {}
-
-    @Override
-    public LyricsPanel getLyricsModePanel() {
-        return mock(LyricsPanel.class);
+    public static void init() {
+        instance = new MessageLogger();
     }
 
-    @Override
-    public Component getFocusOwner() {
-        return mock(Component.class);
+    private MessageLogger() {
+        MessageCenter.subscribe(this);
     }
 
-    @Override
-    public Score getScore() {
-        return score;
+    @Handler
+    public void logMessage(Message message) {
+        Log.info(message.toString());
     }
-
-    public void setScore(Score score) {
-        this.score = score;
-    }
-
 }

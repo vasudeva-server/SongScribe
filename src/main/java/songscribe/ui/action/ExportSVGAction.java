@@ -33,7 +33,7 @@ public class ExportSVGAction extends UIAction {
     public ExportSVGAction() {
         super(Strings.get(Strings.ACTION_EXPORT_SVG), "export-svg");
         fileDialog = new PlatformFileDialog(
-            mainFrame,
+            getMainFrame(),
             NAME,
             false,
             new MyFileFilter("Portable Document Format", "svg")
@@ -42,12 +42,12 @@ public class ExportSVGAction extends UIAction {
 
     @Override
     public void actionPerformed(ActionEvent e) {
-        var saveFile = FileUtils.showExportDialog(mainFrame, mainFrame.getScore(), fileDialog, "svg");
+        var saveFile = FileUtils.showExportDialog(getMainFrame(), getScore(), fileDialog, "svg");
 
         if (saveFile == null) {
             return;
         }
 
-        mainFrame.getScore().createSVG(saveFile);
+        getScore().createSVG(saveFile);
     }
 }

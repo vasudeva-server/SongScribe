@@ -22,7 +22,7 @@ package songscribe.ui.action;
 import module java.desktop;
 
 import songscribe.ui.message.InsertLineMessage;
-import songscribe.ui.message.MessageCenter;
+import songscribe.message.MessageCenter;
 import songscribe.util.UIUtils;
 
 public class InsertLineAction extends UIAction {

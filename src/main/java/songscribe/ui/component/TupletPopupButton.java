@@ -26,7 +26,7 @@ import net.engio.mbassy.listener.Handler;
 
 import songscribe.ui.action.Actions;
 import songscribe.ui.action.UIAction;
-import songscribe.ui.message.MessageCenter;
+import songscribe.message.MessageCenter;
 import songscribe.ui.message.MusicSelectionChangedMessage;
 
 public class TupletPopupButton extends PopupButton {

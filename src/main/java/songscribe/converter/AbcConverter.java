@@ -22,8 +22,8 @@ package songscribe.converter;
 import java.io.File;
 import java.io.PrintWriter;
 
+import songscribe.io.CompositionLoader;
 import songscribe.ui.action.ExportABCAction;
-import songscribe.ui.component.Score;
 import songscribe.util.Log;
 
 public class AbcConverter {
@@ -32,20 +32,17 @@ public class AbcConverter {
     public File file = null;
 
     public static void main(String[] args) {
-        Log.setNameWithoutExtension("abc-converter");
         var reader = new ArgumentReader<>(args, AbcConverter.class);
         reader.getObj().convert(new PrintWriter(System.out));
     }
 
     public void convert(PrintWriter writer) {
-        var mainFrame = new ConverterMainFrame();
-        var score = new Score(mainFrame);
-        mainFrame.setScore(score);
-
-        score.setComposition(null);
-        score.openFile(mainFrame, file, false);
-
-        ExportABCAction.writeABC(score.getComposition(), writer);
-        writer.close();
+        try {
+            var composition = CompositionLoader.load(file);
+            ExportABCAction.writeABC(composition, writer);
+            writer.close();
+        } catch (Exception e) {
+            Log.error("Could not convert " + file.getName(), e);
+        }
     }
 }

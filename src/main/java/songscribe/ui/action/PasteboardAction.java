@@ -26,7 +26,7 @@ import org.jetbrains.annotations.NotNull;
 
 import net.engio.mbassy.listener.Handler;
 
-import songscribe.ui.message.MessageCenter;
+import songscribe.message.MessageCenter;
 import songscribe.ui.message.MusicSelectionChangedMessage;
 import songscribe.ui.message.PasteboardOpMessage;
 

@@ -92,9 +92,8 @@ public class LineWidthChangeDialog
             );
 
             if (lineWidth != originalWidth) {
-                var score = mainFrame.getScore();
+                var score = getScore();
                 score.setLineWidth(lineWidth);
-                score.getComposition().setModified(true);
             }
 
             originalOkAction.actionPerformed(null);
@@ -129,7 +128,7 @@ public class LineWidthChangeDialog
 
     @Override
     protected void getData() {
-        originalWidth = (int) mainFrame.getScore().getComposition().getLineWidth();
+        originalWidth = (int) getComposition().getLineWidth();
         actionPerformed(null);
     }
 
@@ -156,7 +155,7 @@ public class LineWidthChangeDialog
             width = getEnteredWidthInInches(getSelectedUnit());
         } catch (NumberFormatException e) {
             Dialogs.showErrorMessage(
-                mainFrame,
+                getMainFrame(),
                 Strings.get(Strings.DIALOG_TITLE_LINE_WIDTH_ERROR),
                 Strings.get(Strings.ERROR_LINE_WIDTH_INVALID)
             );
@@ -179,7 +178,7 @@ public class LineWidthChangeDialog
         }
 
         Dialogs.showErrorMessage(
-            mainFrame,
+            getMainFrame(),
             Strings.get(Strings.DIALOG_TITLE_LINE_WIDTH_ERROR),
             Strings.get(
                 Strings.ERROR_LINE_WIDTH_RANGE,
@@ -207,7 +206,7 @@ public class LineWidthChangeDialog
         double value;
 
         if (text.isEmpty()) {
-            var composition = mainFrame.getScore().getComposition();
+            var composition = getComposition();
             value = (double) composition.getLineWidth() / UIUtils.RESOLUTION;
         } else {
             try {

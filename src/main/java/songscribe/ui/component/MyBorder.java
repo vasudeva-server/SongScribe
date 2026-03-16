@@ -49,6 +49,38 @@ public class MyBorder {
         this.right = right;
     }
 
+    /**
+     * Creates a border with a default size, then applies per-edge overrides.
+     * A value of -1 means "use the default size".
+     */
+    public static MyBorder withOverrides(
+        int defaultSize,
+        int top,
+        int left,
+        int bottom,
+        int right
+    ) {
+        var border = new MyBorder(defaultSize);
+
+        if (top > -1) {
+            border.top = top;
+        }
+
+        if (left > -1) {
+            border.left = left;
+        }
+
+        if (bottom > -1) {
+            border.bottom = bottom;
+        }
+
+        if (right > -1) {
+            border.right = right;
+        }
+
+        return border;
+    }
+
     public int getTop() {
         return top;
     }

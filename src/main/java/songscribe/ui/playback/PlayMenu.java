@@ -27,7 +27,7 @@ import net.engio.mbassy.listener.Handler;
 import songscribe.Strings;
 import songscribe.prefs.Prefs;
 import songscribe.ui.action.DialogOpenAction;
-import songscribe.ui.message.MessageCenter;
+import songscribe.message.MessageCenter;
 
 public class PlayMenu extends JMenu {
 

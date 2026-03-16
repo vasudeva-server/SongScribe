@@ -24,7 +24,7 @@ import module java.desktop;
 
 import songscribe.Strings;
 
-import songscribe.ui.message.MessageCenter;
+import songscribe.message.MessageCenter;
 import songscribe.ui.message.RestModeChangedMessage;
 
 public class RestModeAction extends SelectableUIAction {

@@ -37,11 +37,10 @@ import songscribe.ui.Control;
 import songscribe.ui.Dialogs;
 import songscribe.ui.action.Actions;
 import songscribe.ui.clipboard.ClipboardManager;
-import songscribe.ui.component.IMainFrame;
 import songscribe.ui.layout.Articulation;
 import songscribe.ui.layout2.InsertionSpacingCalculator;
-import songscribe.ui.message.LayoutChangeMessage;
-import songscribe.ui.message.MessageCenter;
+import songscribe.message.CompositionChangedMessage;
+import songscribe.message.MessageCenter;
 import songscribe.ui.playback.PlayThread;
 import songscribe.ui.selection.SelectionCoordinator;
 
@@ -73,7 +72,6 @@ public final class EditModeManager {
 
     // Dependencies
     private final Supplier<Composition> compositionSupplier;
-    private final IMainFrame mainFrame;
     private final ClipboardManager clipboardManager;
     private final SelectionCoordinator selectionCoordinator;
     private final ScoreActions scoreActions;
@@ -97,20 +95,17 @@ public final class EditModeManager {
      * Creates a new EditModeManager and registers it as the global instance.
      *
      * @param compositionSupplier Supplier for getting the current composition
-     * @param mainFrame The main frame for showing error messages
      * @param clipboardManager The clipboard manager for paste operations
      * @param selectionCoordinator The selection coordinator for selection operations
      * @param scoreActions Callback interface for Score actions
      */
     public EditModeManager(
         @NotNull Supplier<Composition> compositionSupplier,
-        @NotNull IMainFrame mainFrame,
         @NotNull ClipboardManager clipboardManager,
         @NotNull SelectionCoordinator selectionCoordinator,
         @NotNull ScoreActions scoreActions
     ) {
         this.compositionSupplier = compositionSupplier;
-        this.mainFrame = mainFrame;
         this.clipboardManager = clipboardManager;
         this.selectionCoordinator = selectionCoordinator;
         this.scoreActions = scoreActions;
@@ -420,7 +415,8 @@ public final class EditModeManager {
         LyricsProcessor.spellLyrics(line);
         scoreActions.drawWidthIfWiderLine(line, false);
 
-        MessageCenter.post(LayoutChangeMessage.scoreContent(line));
+        var composition = compositionSupplier.get();
+        MessageCenter.post(new CompositionChangedMessage(CompositionChangedMessage.ChangeType.CONTENT, composition, line));
 
         scoreActions.repaint();
 

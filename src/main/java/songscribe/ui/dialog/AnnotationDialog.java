@@ -276,7 +276,7 @@ public class AnnotationDialog extends StandardDialog {
         var south = new JPanel();
         removeButton = new JButton(Strings.get(Strings.LABEL_BUTTON_REMOVE));
         removeButton.addActionListener(_ -> {
-            var score = mainFrame.getScore();
+            var score = getScore();
             selectedElement.setAnnotation(null);
             setVisible(false);
             score.getComposition().setModified(true);
@@ -292,7 +292,7 @@ public class AnnotationDialog extends StandardDialog {
 
     @Override
     protected void getData() {
-        var score = mainFrame.getScore();
+        var score = getScore();
         Annotation annotation = null;
         var hasExistingAnnotation = false;
         selectedElement = score.getSingleSelectedElement();
@@ -342,7 +342,7 @@ public class AnnotationDialog extends StandardDialog {
             if (horizontalAlignment == null) {
                 var message = Strings.get(Strings.ERROR_PROGRAMMER_NO_HORIZONTAL_ANNOTATION);
                 Dialogs.showErrorMessage(
-                    mainFrame,
+                    getMainFrame(),
                     Strings.get(Strings.DIALOG_TITLE_ANNOTATION_ERROR),
                     message
                 );
@@ -364,7 +364,7 @@ public class AnnotationDialog extends StandardDialog {
             } else {
                 var message = Strings.get(Strings.ERROR_PROGRAMMER_NO_VERTICAL_ANNOTATION);
                 Dialogs.showErrorMessage(
-                    mainFrame,
+                    getMainFrame(),
                     Strings.get(Strings.DIALOG_TITLE_ANNOTATION_ERROR),
                     message
                 );
@@ -375,7 +375,7 @@ public class AnnotationDialog extends StandardDialog {
         }
 
         selectedElement.setAnnotation(annotation);
-        mainFrame.getScore().getComposition().setModified(true);
+        getComposition().setModified(true);
     }
 
     private enum Alignment {

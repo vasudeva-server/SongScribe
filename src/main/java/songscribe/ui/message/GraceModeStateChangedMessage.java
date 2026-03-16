@@ -20,6 +20,8 @@
 
 package songscribe.ui.message;
 
+import songscribe.message.Message;
+
 /**
  * Posted when the grace mode state changes (active/inactive).
  * Triggers UIAction enabled-state recalculation for the DISABLE_IN_GRACE_MODE flag.

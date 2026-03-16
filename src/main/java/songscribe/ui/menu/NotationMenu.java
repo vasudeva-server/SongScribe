@@ -34,7 +34,7 @@ import songscribe.Strings;
 import songscribe.ui.action.FirstSecondEndingAction;
 import songscribe.ui.action.ToggleLyricsUnderRestsAction;
 import songscribe.ui.action.ToggleTrillAction;
-import songscribe.ui.message.MessageCenter;
+import songscribe.message.MessageCenter;
 
 public class NotationMenu extends JMenu {
 

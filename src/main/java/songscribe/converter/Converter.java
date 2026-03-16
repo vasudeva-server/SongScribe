@@ -23,24 +23,34 @@ package songscribe.converter;
 import java.io.File;
 
 import songscribe.music.Composition;
-import songscribe.ui.component.IMainFrame;
+import songscribe.ui.component.Score;
 
 public final class Converter {
 
     private Converter() {}
 
-    public static Composition getCompositionFromFile(
-        File file,
-        IMainFrame mainFrame,
-        boolean withoutLyrics,
-        boolean withoutSongTitle,
-        boolean withoutCopyright
-    ) {
-        var score = mainFrame.getScore();
-        score.setComposition(null);
-        score.openFile(mainFrame, file, false);
-        var composition = score.getComposition();
+    /**
+     * Loads a composition from a file into the given score.
+     *
+     * @return the loaded composition
+     */
+    public static Composition loadComposition(File file, Score score) {
+        score.openFile(file, false);
+        return score.getComposition();
+    }
 
+    /**
+     * Applies export exclusions by mutating the composition directly.
+     * <p>
+     * TODO: Pass ExportOptions through the export pipeline instead of mutating
+     * Composition. This is a temporary measure until the rendering pipeline
+     * supports ExportOptions natively (for PDF and SVG export).
+     */
+    public static void applyExportExclusions(
+        Composition composition,
+        boolean withoutLyrics,
+        boolean withoutSongTitle
+    ) {
         if (withoutLyrics) {
             composition.setUnderLyrics("");
             composition.setTranslatedLyrics("");
@@ -49,11 +59,5 @@ public final class Converter {
         if (withoutSongTitle) {
             composition.setTitle("");
         }
-
-        if (withoutCopyright) {
-            composition.setAttribution("");
-        }
-
-        return composition;
     }
 }

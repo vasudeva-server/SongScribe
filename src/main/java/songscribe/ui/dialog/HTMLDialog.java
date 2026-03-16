@@ -60,7 +60,7 @@ public class HTMLDialog extends StandardDialog {
             );
         } catch (IOException e) {
             Dialogs.showErrorMessage(
-                mainFrame,
+                getMainFrame(),
                 Strings.get(Strings.DIALOG_TITLE_HELP_ERROR),
                 Strings.get(Strings.ERROR_HELP_OPEN)
             );

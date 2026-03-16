@@ -27,7 +27,6 @@ import java.io.IOException;
 import songscribe.prefs.Prefs;
 import songscribe.Strings;
 import songscribe.ui.Dialogs;
-import songscribe.ui.component.MainFrame;
 import songscribe.ui.playback.InstrumentDialog;
 import songscribe.ui.playback.PlaybackController;
 import songscribe.util.FileUtils;
@@ -70,7 +69,7 @@ public class ExportMidiDialog extends StandardDialog {
     @Override
     protected void setData() {
         try {
-            var score = mainFrame.getScore();
+            var score = getScore();
             var savedSettings = PlaybackController.getPlaybackSettings();
 
             // Apply export-specific overrides
@@ -82,7 +81,7 @@ public class ExportMidiDialog extends StandardDialog {
             try {
                 var sequence = PlaybackController.buildSequence(score.getComposition());
                 MidiSystem.write(sequence, 1, saveFile);
-                FileUtils.openExportFile(mainFrame, saveFile);
+                FileUtils.openExportFile(saveFile);
             } finally {
                 // Restore previous playback settings
                 PlaybackController.setPlayWithRepeats(savedSettings.playWithRepeats());
@@ -91,7 +90,7 @@ public class ExportMidiDialog extends StandardDialog {
             }
         } catch (IOException | InvalidMidiDataException e1) {
             Dialogs.showErrorMessage(
-                mainFrame,
+                getMainFrame(),
                 Strings.get(Strings.DIALOG_TITLE_EXPORT_ERROR),
                 Strings.get(Strings.ERROR_FILE_SAVE)
             );

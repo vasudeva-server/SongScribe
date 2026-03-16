@@ -18,16 +18,19 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package songscribe.ui.message;
+package songscribe.ui.component;
 
 import module java.desktop;
+
+import songscribe.message.CompositionChangedMessage;
+import songscribe.message.Message;
+import songscribe.message.MessageCenter;
 
 import org.jetbrains.annotations.NotNull;
 
 import net.engio.mbassy.listener.Handler;
 
 import songscribe.Strings;
-import songscribe.music.Composition;
 import songscribe.ui.Dialogs;
 import songscribe.music.Line;
 import songscribe.music.LyricsProcessor;
@@ -37,14 +40,26 @@ import songscribe.ui.Control;
 import songscribe.ui.Mode;
 import songscribe.ui.action.Actions;
 import songscribe.ui.action.InsertLineAction;
-import songscribe.ui.adjustment.HorizontalAdjustment;
-import songscribe.ui.adjustment.LyricsAdjustment;
-import songscribe.ui.adjustment.VerticalAdjustment;
 import songscribe.ui.clipboard.ClipboardManager;
-import songscribe.ui.component.IMainFrame;
-import songscribe.ui.component.score.MainPanel;
 import songscribe.ui.edit.EditModeManager;
-import songscribe.ui.menu.DebugState;
+import songscribe.ui.message.AddDynamicsMessage;
+import songscribe.ui.message.ControlChangedMessage;
+import songscribe.ui.message.DeselectMessage;
+import songscribe.ui.message.ElementTypeSelectedMessage;
+import songscribe.ui.message.FirstSecondEndingMessage;
+import songscribe.ui.message.FlipStemDirectionMessage;
+import songscribe.ui.message.InsertLineMessage;
+import songscribe.ui.message.ModeChangedMessage;
+import songscribe.ui.message.PasteboardOpMessage;
+import songscribe.ui.message.RemoveDynamicsMessage;
+import songscribe.ui.message.RestModeChangedMessage;
+import songscribe.ui.message.SelectLineMessage;
+import songscribe.ui.message.ToggleBeamMessage;
+import songscribe.ui.message.ToggleLyricsUnderRestsMessage;
+import songscribe.ui.message.ToggleTieMessage;
+import songscribe.ui.message.ToggleTrillMessage;
+import songscribe.ui.message.ToggleTupletMessage;
+import songscribe.ui.message.UpdateInsertionElementMessage;
 import songscribe.ui.playback.MidiController;
 import songscribe.ui.playback.PlaybackController;
 import songscribe.ui.playback.PlaybackStateChangedMessage;
@@ -59,48 +74,7 @@ public final class ScoreMessageCoordinator {
     // Delay in milliseconds for debouncing repaint when layout changes occur
     private static final int REPAINT_DEBOUNCE_DELAY_MS = 300;
 
-    /**
-     * Callback interface for ScoreMessageCoordinator to communicate with Score.
-     */
-    public interface Callback {
-        void repaint();
-
-        void clearSelection();
-
-        void selectionChanged();
-
-        void setMode(Mode mode);
-
-        void setControl(Control control);
-
-        void setInsertionElement(StaffElement insertionNote);
-
-        Composition getComposition();
-
-        void setComposition(Composition composition);
-
-        boolean requestFocusInWindow();
-
-        boolean isFocusOwner();
-
-        MainPanel getMainPanel();
-
-        IMainFrame getMainFrame();
-
-        HorizontalAdjustment getHorizontalAdjustment();
-
-        VerticalAdjustment getVerticalAdjustment();
-
-        LyricsAdjustment getLyricsAdjustment();
-
-        Control getControl();
-
-        boolean canDeleteLine();
-
-        void setInSelectMode(boolean inSelectMode);
-    }
-
-    private final Callback callback;
+    private final Score score;
     private MusicEditOperations operations;
     private final EditModeManager editModeManager;
     private final SelectionCoordinator selectionCoordinator;
@@ -110,13 +84,13 @@ public final class ScoreMessageCoordinator {
     private Timer repaintDebounceTimer = null;
 
     public ScoreMessageCoordinator(
-        @NotNull Callback callback,
+        @NotNull Score score,
         @NotNull MusicEditOperations operations,
         @NotNull EditModeManager editModeManager,
         @NotNull SelectionCoordinator selectionCoordinator,
         @NotNull ClipboardManager clipboardManager
     ) {
-        this.callback = callback;
+        this.score = score;
         this.operations = operations;
         this.editModeManager = editModeManager;
         this.selectionCoordinator = selectionCoordinator;
@@ -136,12 +110,12 @@ public final class ScoreMessageCoordinator {
 
     @Handler
     public void noteTypeWasSelected(@NotNull ElementTypeSelectedMessage message) {
-        callback.setInsertionElement(editModeManager.makeInsertionElement(message.getNoteType()));
+        score.setInsertionElement(editModeManager.makeInsertionElement(message.getNoteType()));
     }
 
     @Handler
     public void restModeDidChange(RestModeChangedMessage message) {
-        callback.setInsertionElement(editModeManager.makeInsertionElement());
+        score.setInsertionElement(editModeManager.makeInsertionElement());
     }
 
     @Handler
@@ -153,7 +127,7 @@ public final class ScoreMessageCoordinator {
         var selected = Actions.DURATION_ACTION_GROUP.getSelected();
 
         if (selected != null) {
-            callback.setInsertionElement(editModeManager.makeInsertionElement(selected.getType()));
+            score.setInsertionElement(editModeManager.makeInsertionElement(selected.getType()));
         }
     }
 
@@ -162,25 +136,24 @@ public final class ScoreMessageCoordinator {
 
         if (insertionElement != null) {
             editModeManager.decorateElement(insertionElement);
-            callback.repaint();
+            score.repaint();
         } else {
-            callback.setInsertionElement(editModeManager.makeInsertionElement());
+            score.setInsertionElement(editModeManager.makeInsertionElement());
         }
     }
 
     @Handler
     public void onInsertLine(@NotNull InsertLineMessage message) {
         var shift = message.getShift();
-        var composition = callback.getComposition();
-        var mainFrame = callback.getMainFrame();
+        var composition = score.getComposition();
 
         if ((selectionCoordinator.getSelectedLine() != -1) || (shift == InsertLineAction.ADD)) {
             var index = (shift >= 0)
                 ? (selectionCoordinator.getSelectedLine() + shift)
                 : InsertLineAction.ADD;
             composition.addLine(index, new Line());
-            callback.clearSelection();
-            callback.repaint();
+            score.clearSelection();
+            score.repaint();
         } else {
             Dialogs.showErrorMessage(
                 null,
@@ -198,7 +171,7 @@ public final class ScoreMessageCoordinator {
         var selection = selectionCoordinator.getActiveSelection();
         var line = (selection != null) ? selection.getLine() : null;
         operations.toggleBeaming();
-        MessageCenter.post(LayoutChangeMessage.scoreContent(line));
+        MessageCenter.post(new CompositionChangedMessage(CompositionChangedMessage.ChangeType.CONTENT, score.getComposition(), line));
     }
 
     @Handler
@@ -210,7 +183,7 @@ public final class ScoreMessageCoordinator {
     @Handler
     public void onToggleTuplet(@NotNull ToggleTupletMessage message) {
         operations.toggleTuplet(message.getTupletSize());
-        callback.selectionChanged();
+        score.selectionChanged();
         postSelectionContentChanged();
     }
 
@@ -248,7 +221,7 @@ public final class ScoreMessageCoordinator {
         ToggleLyricsUnderRestsMessage message
     ) {
         operations.toggleLyricsUnderRests();
-        MessageCenter.post(LayoutChangeMessage.scoreContent());
+        MessageCenter.post(new CompositionChangedMessage(CompositionChangedMessage.ChangeType.CONTENT, score.getComposition()));
     }
 
     @Handler
@@ -259,15 +232,21 @@ public final class ScoreMessageCoordinator {
 
     private void postSelectionContentChanged() {
         var state = selectionCoordinator.getActiveSelection();
-        MessageCenter.post(LayoutChangeMessage.scoreContent(state != null ? state.getLine() : null));
+        MessageCenter.post(new CompositionChangedMessage(
+            CompositionChangedMessage.ChangeType.CONTENT,
+            score.getComposition(),
+            state != null ? state.getLine() : null
+        ));
     }
 
     @Handler
-    public void onLayoutChanged(@NotNull LayoutChangeMessage message) {
-        var mainPanel = callback.getMainPanel();
+    public void onCompositionChanged(@NotNull CompositionChangedMessage message) {
+        var mainPanel = score.getMainPanel();
 
-        // Invalidate layout for affected lines when content changes
-        if (message.getChangeType() == LayoutChangeMessage.ChangeType.CONTENT) {
+        // Invalidate layout for affected lines on content or structure changes
+        if (message.hasChangeType(CompositionChangedMessage.ChangeType.CONTENT)
+            || message.hasChangeType(CompositionChangedMessage.ChangeType.STRUCTURE)
+            || message.hasChangeType(CompositionChangedMessage.ChangeType.FULL)) {
             var staffPanel = mainPanel.getStaffPanel();
 
             if (staffPanel != null) {
@@ -285,17 +264,16 @@ public final class ScoreMessageCoordinator {
             }
         }
 
-        // Clear inspector hover immediately when layout changes to avoid stale bounds
-        if (DebugState.isInspectorEnabled() && DebugState.getHoveredElement() != null) {
-            DebugState.setHoveredElement(null);
-            // Force immediate repaint to clear stale visualization
-            callback.repaint();
-            return;
+        // Font, metadata, and layout changes require a full relayout
+        if (message.hasChangeType(CompositionChangedMessage.ChangeType.FONT)
+            || message.hasChangeType(CompositionChangedMessage.ChangeType.METADATA)
+            || message.hasChangeType(CompositionChangedMessage.ChangeType.LAYOUT)) {
+            score.viewChanged();
         }
 
         // Debounce repaints to batch multiple rapid changes
         if (repaintDebounceTimer == null) {
-            repaintDebounceTimer = new Timer(REPAINT_DEBOUNCE_DELAY_MS, e -> callback.repaint());
+            repaintDebounceTimer = new Timer(REPAINT_DEBOUNCE_DELAY_MS, e -> score.repaint());
             repaintDebounceTimer.setRepeats(false);
         }
 
@@ -304,17 +282,17 @@ public final class ScoreMessageCoordinator {
 
     @Handler
     public void controlDidChange(@NotNull ControlChangedMessage message) {
-        callback.setControl(message.getControl());
+        score.setControl(message.getControl());
     }
 
     @Handler(priority = Message.HIGH_PRIORITY)
     public void modeDidChange(@NotNull ModeChangedMessage message) {
         var mode = message.getMode();
-        callback.setMode(mode);
-        callback.setInSelectMode(mode == Mode.SELECT);
+        score.setMode(mode);
+        score.setInSelectMode(mode == Mode.SELECT);
 
         if (mode != Mode.SELECT) {
-            callback.clearSelection();
+            score.clearSelection();
         }
 
         // When entering edit mode, sync the insertion element with the currently
@@ -324,10 +302,10 @@ public final class ScoreMessageCoordinator {
             syncInsertionElementWithSelectedDuration();
         }
 
-        callback.getHorizontalAdjustment().setEnabled(mode == Mode.ADJUSTMENT);
-        callback.getVerticalAdjustment().setEnabled(mode == Mode.VERTICAL_ADJUSTMENT);
-        callback.getLyricsAdjustment().setEnabled(mode == Mode.LYRICS_ADJUSTMENT);
-        callback.repaint();
+        score.getHorizontalAdjustment().setEnabled(mode == Mode.ADJUSTMENT);
+        score.getVerticalAdjustment().setEnabled(mode == Mode.VERTICAL_ADJUSTMENT);
+        score.getLyricsAdjustment().setEnabled(mode == Mode.LYRICS_ADJUSTMENT);
+        score.repaint();
     }
 
     @Handler
@@ -338,14 +316,14 @@ public final class ScoreMessageCoordinator {
             if (MidiController.sequencer != null) {
                 MidiController.sequencer.setTickPosition(0);
             }
-            callback.repaint();
+            score.repaint();
         }
     }
 
     @Handler
     public void onPasteboardOp(PasteboardOpMessage message) {
         // Make sure this component has focus
-        if (!callback.isFocusOwner()) {
+        if (!score.isFocusOwner()) {
             return;
         }
 
@@ -381,7 +359,7 @@ public final class ScoreMessageCoordinator {
     }
 
     private void handleDelete() {
-        var composition = callback.getComposition();
+        var composition = score.getComposition();
         var state = selectionCoordinator.getActiveSelection();
 
         if (state != null && state.hasElementSelection()) {
@@ -395,7 +373,7 @@ public final class ScoreMessageCoordinator {
         } else if (state != null && state.hasGlissandoSelection()) {
             var line = state.getLine();
             line.getElement(state.getSelectedGlissandoElementIndex()).removeGlissando();
-        } else if (callback.canDeleteLine()) {
+        } else if (score.canDeleteLine()) {
             composition.removeLine(selectionCoordinator.getSelectedLine());
             LyricsProcessor.spellLyrics(composition);
         }
@@ -404,25 +382,25 @@ public final class ScoreMessageCoordinator {
         // pre-selection states would be stale. Individual action handlers will
         // re-evaluate their enabled state from the current context.
         selectionCoordinator.clearSavedActionStates();
-        callback.clearSelection();
-        callback.repaint();
+        score.clearSelection();
+        score.repaint();
     }
 
     private void handlePaste() {
         if (!clipboardManager.isEmpty()) {
-            editModeManager.setPrevPasteControl(callback.getControl());
-            callback.setInsertionElement(StaffElement.PASTE_PLACEHOLDER);
-            callback.setControl(Control.MOUSE);
+            editModeManager.setPrevPasteControl(score.getControl());
+            score.setInsertionElement(StaffElement.PASTE_PLACEHOLDER);
+            score.setControl(Control.MOUSE);
             selectionCoordinator.setInSelectMode(false);
-            callback.repaint();
+            score.repaint();
         }
     }
 
     @Handler
     public void onDeselect(DeselectMessage message) {
-        if (callback.isFocusOwner()) {
-            callback.clearSelection();
-            callback.repaint();
+        if (score.isFocusOwner()) {
+            score.clearSelection();
+            score.repaint();
         }
     }
 
@@ -432,8 +410,8 @@ public final class ScoreMessageCoordinator {
 
         if (state != null) {
             state.selectAll();
-            callback.selectionChanged();
-            callback.repaint();
+            score.selectionChanged();
+            score.repaint();
         }
     }
 

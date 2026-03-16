@@ -20,6 +20,8 @@
 
 package songscribe.ui.message;
 
+import songscribe.message.Message;
+
 import songscribe.ui.component.Score;
 
 public class MusicSelectionChangedMessage extends Message {

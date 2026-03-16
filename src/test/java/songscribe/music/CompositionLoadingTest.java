@@ -37,40 +37,31 @@ class CompositionLoadingTest extends UnitTest {
         composition = new Composition();
         // Reset modified flag from constructor's addLine() call
         composition.setModified(false);
-        composition.setLoading(true);
     }
 
     @Test
-    void testSetAnnotationFontDoesNotSetModifiedWhenLoading() {
+    void testSetAnnotationFontSetsModified() {
         var font = MyFontUtils.createFont("LatoPlus-Bold", 20);
         composition.setAnnotationFont(font);
-        assertThat(composition.isModified()).isFalse();
+        assertThat(composition.isModified()).isTrue();
     }
 
     @Test
-    void testSetAttributionFontDoesNotSetModifiedWhenLoading() {
+    void testSetAttributionFontSetsModified() {
         var font = MyFontUtils.createFont("LatoPlus-Bold", 20);
         composition.setAttributionFont(font);
-        assertThat(composition.isModified()).isFalse();
+        assertThat(composition.isModified()).isTrue();
     }
 
     @Test
-    void testSetLyricsFontDoesNotSetModifiedWhenLoading() {
+    void testSetLyricsFontSetsModified() {
         var font = MyFontUtils.createFont("LatoPlus-Bold", 20);
         composition.setLyricsFont(font);
-        assertThat(composition.isModified()).isFalse();
+        assertThat(composition.isModified()).isTrue();
     }
 
     @Test
-    void testSetTitleFontDoesNotSetModifiedWhenLoading() {
-        var font = MyFontUtils.createFont("LatoPlus-Bold", 20);
-        composition.setTitleFont(font);
-        assertThat(composition.isModified()).isFalse();
-    }
-
-    @Test
-    void testSetTitleFontSetsModifiedWhenNotLoading() {
-        composition.setLoading(false);
+    void testSetTitleFontSetsModified() {
         var font = MyFontUtils.createFont("LatoPlus-Bold", 20);
         composition.setTitleFont(font);
         assertThat(composition.isModified()).isTrue();

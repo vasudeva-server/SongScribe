@@ -29,14 +29,18 @@ import org.jetbrains.annotations.NotNull;
 import kotlin.Pair;
 
 import songscribe.Strings;
+import songscribe.message.FontUpdate;
+import songscribe.message.KeySignatureUpdate;
+import songscribe.message.MessageCenter;
+import songscribe.message.MetadataUpdate;
+import songscribe.message.TempoUpdate;
 import songscribe.music.Composition;
-import songscribe.ui.Dialogs;
 import songscribe.music.KeyType;
 import songscribe.music.Tempo;
 import songscribe.prefs.Prefs;
+import songscribe.ui.Dialogs;
 import songscribe.ui.action.UIAction;
 import songscribe.ui.component.InputUtils;
-import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.MyJTextArea;
 import songscribe.ui.component.MyJTextField;
 import songscribe.ui.component.NumericTextField;
@@ -273,7 +277,7 @@ public class CompositionSettingsDialog extends StandardDialog {
             var action = new TakeFirstLyricsWordAction();
             var takeButton = new JButton(action);
             action.setEnabled(
-                !mainFrame.getScore().getComposition().getLyrics().isEmpty()
+                !getComposition().getLyrics().isEmpty()
             );
             panel.add(takeButton);
 
@@ -719,7 +723,7 @@ public class CompositionSettingsDialog extends StandardDialog {
 
     @Override
     protected void getData() {
-        var composition = mainFrame.getScore().getComposition();
+        var composition = getComposition();
 
         numberField.setText(composition.getNumber());
         titleField.setText(composition.getTitle());
@@ -778,84 +782,70 @@ public class CompositionSettingsDialog extends StandardDialog {
 
     @Override
     protected void setData() {
-        var score = mainFrame.getScore();
-        var composition = score.getComposition();
+        // Validate number field
+        String number = numberField.getText();
 
         try {
-            if (!numberField.getText().isEmpty()) {
-                Integer.parseInt(numberField.getText());
+            if (!number.isEmpty()) {
+                Integer.parseInt(number);
             }
-
-            composition.setNumber(numberField.getText());
         } catch (NumberFormatException e) {
             Dialogs.showErrorMessage(
                 contentPanel,
                 Strings.get(Strings.DIALOG_TITLE_COMPOSITION_SETTINGS),
                 Strings.get(Strings.ERROR_COMPOSITION_NUMBER)
             );
+            number = null;
         }
 
-        composition.setTitle(titleField.getText());
-        composition.setPlace(placeField.getText());
-        composition.setMonth(monthCombo.getSelectedIndex());
-        composition.setDay(dayCombo.getSelectedIndex());
+        // Validate year field
+        String year = yearField.getText();
 
         try {
-            if (!yearField.getText().isEmpty()) {
-                Integer.parseInt(yearField.getText());
+            if (!year.isEmpty()) {
+                Integer.parseInt(year);
             }
-
-            composition.setYear(yearField.getText());
         } catch (NumberFormatException e) {
             Dialogs.showErrorMessage(
                 contentPanel,
                 Strings.get(Strings.DIALOG_TITLE_COMPOSITION_SETTINGS),
                 Strings.get(Strings.ERROR_COMPOSITION_YEAR)
             );
+            year = null;
         }
 
-        composition.setAttribution(attributionArea.getText());
-        composition
-            .getTempo()
-            .setTempoType((Tempo.Type) tempoTypeCombo.getSelectedItem());
-        composition
-            .getTempo()
-            .setVisibleTempo((Integer) tempoSpinnerModel.getValue());
-        composition
-            .getTempo()
-            .setTempoDescription(
-                (String) tempoDescriptionCombo.getSelectedItem()
-            );
-        composition
-            .getTempo()
-            .setShowTempo(!showOnlyDescriptionCheckBox.isSelected());
-        var oldKeyType = composition.getDefaultKeyType();
-        var oldAccidentalCount = composition.getDefaultKeyAccidentalCount();
+        MessageCenter.post(new MetadataUpdate(
+            titleField.getText(),
+            placeField.getText(),
+            year,
+            number,
+            attributionArea.getText(),
+            monthCombo.getSelectedIndex(),
+            dayCombo.getSelectedIndex(),
+            null
+        ));
+
+        MessageCenter.post(new TempoUpdate(
+            (Tempo.Type) tempoTypeCombo.getSelectedItem(),
+            (Integer) tempoSpinnerModel.getValue(),
+            (String) tempoDescriptionCombo.getSelectedItem(),
+            !showOnlyDescriptionCheckBox.isSelected()
+        ));
+
         var typeAndCount = getKeyTypeAndCountFromCombo();
-        composition.setDefaultKeyType(typeAndCount.getFirst());
-        composition.setDefaultKeyAccidentalCount(typeAndCount.getSecond());
 
-        for (var i = 0; i < composition.lineCount(); i++) {
-            var line = composition.getLine(i);
+        MessageCenter.post(new KeySignatureUpdate(
+            null,
+            typeAndCount.getFirst(),
+            typeAndCount.getSecond()
+        ));
 
-            if (
-                (line.getKeyAccidentalCount() == oldAccidentalCount) &&
-                (line.getKeyType() == oldKeyType)
-            ) {
-                line.setKeyAccidentalCount(
-                    composition.getDefaultKeyAccidentalCount()
-                );
-                line.setKeyType(composition.getDefaultKeyType());
-            }
-        }
-
-        composition.setTitleFont(titleFontPreview.getFont());
-        composition.setLyricsFont(lyricsFontPreview.getFont());
-        composition.setAttributionFont(attributionFontPreview.getFont());
-        composition.setAnnotationFont(annotationFontPreview.getFont());
-        // Note: topPadding is recalculated by layout calculation when triggered
-        // by the LayoutChangeMessage posted by setTitleFont/setAttributionFont
-        score.viewChanged();
+        MessageCenter.post(new FontUpdate(
+            titleFontPreview.getFont(),
+            lyricsFontPreview.getFont(),
+            attributionFontPreview.getFont(),
+            annotationFontPreview.getFont()
+        ));
     }
 
     // SongScribe stores a key signature as a KeyType + the number of flats or sharps
@@ -1102,7 +1092,7 @@ public class CompositionSettingsDialog extends StandardDialog {
 
         @Override
         public void actionPerformed(ActionEvent e) {
-            var lyrics = mainFrame.getScore().getComposition().getLyrics();
+            var lyrics = getComposition().getLyrics();
             var words = new StringBuilder(50);
             var wordCount = 0;
             var firstLetter = false;
@@ -1179,7 +1169,7 @@ public class CompositionSettingsDialog extends StandardDialog {
                 sb.append(date);
             } else {
                 Dialogs.showErrorMessage(
-                    mainFrame,
+                    getMainFrame(),
                     Strings.get(Strings.DIALOG_TITLE_COMPOSITION_SETTINGS),
                     Strings.get(Strings.ERROR_COMPOSITION_YEAR_REQUIRED)
                 );
@@ -1195,7 +1185,7 @@ public class CompositionSettingsDialog extends StandardDialog {
                     sb.append(placeField.getText());
                 } else {
                     Dialogs.showErrorMessage(
-                        mainFrame,
+                        getMainFrame(),
                         Strings.get(Strings.DIALOG_TITLE_COMPOSITION_SETTINGS),
                         Strings.get(Strings.ERROR_COMPOSITION_PLACE_REQUIRED)
                     );

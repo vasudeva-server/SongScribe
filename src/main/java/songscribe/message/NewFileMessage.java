@@ -18,27 +18,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package songscribe.ui.message;
+package songscribe.message;
 
-import net.engio.mbassy.listener.Handler;
-
-import songscribe.util.Log;
-
-public final class MessageLogger {
-
-    @SuppressWarnings("StaticNonFinalField")
-    public static MessageLogger instance = null;
-
-    public static void init() {
-        instance = new MessageLogger();
-    }
-
-    private MessageLogger() {
-        MessageCenter.subscribe(this);
-    }
-
-    @Handler
-    public void logMessage(Message message) {
-        Log.info(message.toString());
-    }
-}
+public class NewFileMessage extends Message {}

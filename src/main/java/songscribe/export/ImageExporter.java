@@ -26,6 +26,8 @@ import org.jetbrains.annotations.NotNull;
 import songscribe.ui.component.MyBorder;
 import songscribe.ui.component.Score;
 
+import static songscribe.export.ExportOptions.ALL;
+
 /**
  * Utility class for exporting music scores as images.
  */
@@ -42,6 +44,7 @@ public class ImageExporter {
      * @param background the background color
      * @param scale the scale factor
      * @param border the border settings
+     * @param options controls which content sections to include
      * @return a new BufferedImage containing the exported score
      */
     @NotNull
@@ -49,14 +52,15 @@ public class ImageExporter {
         @NotNull Score score,
         Color background,
         double scale,
-        @NotNull MyBorder border
+        @NotNull MyBorder border,
+        @NotNull ExportOptions options
     ) {
         var image = new BufferedImage(
             (int) ((score.getSheetWidthPx()) * scale) + border.getWidth(),
-            (int) ((score.getSheetHeightPx()) * scale) + border.getHeight(),
+            (int) ((score.getSheetHeightPx(options)) * scale) + border.getHeight(),
             BufferedImage.TYPE_BYTE_GRAY
         );
-        createImageForExport(image, background, scale, border);
+        createImageForExport(image, background, scale, border, options);
         return image;
     }
 
@@ -67,14 +71,17 @@ public class ImageExporter {
      * @param background the background color
      * @param scale the scale factor
      * @param border the border settings
+     * @param options controls which content sections to include
      */
     public static void createImageForExport(
         @NotNull BufferedImage image,
         Color background,
         double scale,
-        @NotNull MyBorder border
+        @NotNull MyBorder border,
+        @NotNull ExportOptions options
     ) {
-        // Image export not yet implemented with component-based rendering
+        // TODO: When component-based rendering is implemented, use options to
+        // skip excluded sections (lyrics, title, attribution) without mutating Composition
         var g2 = image.createGraphics();
         g2.setRenderingHint(
             RenderingHints.KEY_ANTIALIASING,

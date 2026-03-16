@@ -23,16 +23,26 @@ import module java.desktop;
 
 import com.intellij.uiDesigner.core.GridConstraints;
 import com.intellij.uiDesigner.core.GridLayoutManager;
+import net.engio.mbassy.listener.Handler;
 
-import songscribe.music.LyricsProcessor;
+import songscribe.message.CompositionChangedMessage;
+import songscribe.message.LyricsUpdate;
+import songscribe.message.MessageCenter;
 import songscribe.ui.dialog.LyricsDialog;
 
 @SuppressWarnings("NonStaticInitializer")
 public class LyricsPanel extends LyricsDialog {
 
+    private static final int DEBOUNCE_DELAY_MS = 300;
+
+    @SuppressWarnings("FieldCanBeLocal")
+    private final Object subscriberRef = this;
+
     private JPanel lyricsModePanel;
     private JSplitPane lyricsSplitPane;
     private JSplitPane subSplitPane;
+    private final Timer debounceTimer;
+    private boolean updatingFromMessage;
 
     public LyricsPanel() {
         super();
@@ -41,13 +51,28 @@ public class LyricsPanel extends LyricsDialog {
         subSplitPane.setTopComponent(underLyricsPanel);
         subSplitPane.setBottomComponent(translatedLyricsPanel);
         subSplitPane.setDividerSize(20);
-        var score = mainFrame.getScore();
+        var score = getScore();
         score.allowFocusInComponent(lyricsArea);
         score.allowFocusInComponent(underSongArea);
         score.allowFocusInComponent(translatedArea);
-        lyricsArea.addKeyListener(new LyricsKeyListener(true));
-        underSongArea.addKeyListener(new LyricsKeyListener(false));
-        translatedArea.addKeyListener(new LyricsKeyListener(false));
+
+        debounceTimer = new Timer(DEBOUNCE_DELAY_MS, _ -> postLyricsUpdate());
+        debounceTimer.setRepeats(false);
+
+        var keyListener = new KeyAdapter() {
+            @Override
+            public void keyTyped(KeyEvent e) {
+                if (!updatingFromMessage) {
+                    debounceTimer.restart();
+                }
+            }
+        };
+
+        lyricsArea.addKeyListener(keyListener);
+        underSongArea.addKeyListener(keyListener);
+        translatedArea.addKeyListener(keyListener);
+
+        MessageCenter.subscribe(this);
     }
 
     public JPanel getLyricsModePanel() {
@@ -110,32 +135,31 @@ public class LyricsPanel extends LyricsDialog {
         return lyricsModePanel;
     }
 
-    private final class LyricsKeyListener extends KeyAdapter {
+    private void postLyricsUpdate() {
+        MessageCenter.post(new LyricsUpdate(
+            lyricsArea.getText(),
+            underSongArea.getText(),
+            translatedArea.getText(),
+            null
+        ));
+    }
 
-        private final boolean spellLyricsNecessary;
-
-        private LyricsKeyListener(boolean spellLyricsNecessary) {
-            this.spellLyricsNecessary = spellLyricsNecessary;
+    @Handler
+    public void onCompositionChanged(CompositionChangedMessage message) {
+        if (!message.hasChangeType(CompositionChangedMessage.ChangeType.LYRICS)
+            && !message.hasChangeType(CompositionChangedMessage.ChangeType.FULL)) {
+            return;
         }
 
-        @Override
-        public void keyTyped(KeyEvent e) {
-            SwingUtilities.invokeLater(() -> {
-                // TODO: Replace with message post
-                var score = mainFrame.getScore();
-                score.getComposition().setLyrics(lyricsArea.getText());
-                score.getComposition().setUnderLyrics(underSongArea.getText());
-                score
-                    .getComposition()
-                    .setTranslatedLyrics(translatedArea.getText());
+        updatingFromMessage = true;
 
-                if (spellLyricsNecessary) {
-                    LyricsProcessor.spellLyrics(score.getComposition());
-                }
-
-                score.getComposition().setModified(true);
-                score.repaint();
-            });
+        try {
+            var composition = message.getComposition();
+            lyricsArea.setText(composition.getLyrics());
+            underSongArea.setText(composition.getUnderLyrics());
+            translatedArea.setText(composition.getTranslatedLyrics());
+        } finally {
+            updatingFromMessage = false;
         }
     }
 }

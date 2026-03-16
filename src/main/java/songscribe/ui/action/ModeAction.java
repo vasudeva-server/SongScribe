@@ -23,7 +23,7 @@ package songscribe.ui.action;
 import module java.desktop;
 
 import songscribe.ui.Mode;
-import songscribe.ui.message.MessageCenter;
+import songscribe.message.MessageCenter;
 import songscribe.ui.message.ModeChangedMessage;
 
 public class ModeAction extends SelectableUIAction {

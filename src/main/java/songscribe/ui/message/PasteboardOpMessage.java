@@ -20,6 +20,8 @@
 
 package songscribe.ui.message;
 
+import songscribe.message.Message;
+
 import songscribe.ui.action.PasteboardAction;
 
 public class PasteboardOpMessage extends Message {

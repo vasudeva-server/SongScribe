@@ -124,7 +124,7 @@ public class HelpDialog
                 );
             } catch (IOException e1) {
                 Dialogs.showErrorMessage(
-                    mainFrame,
+                    getMainFrame(),
                     Strings.get(Strings.DIALOG_TITLE_HELP_ERROR),
                     Strings.get(Strings.ERROR_HELP_OPEN)
                 );

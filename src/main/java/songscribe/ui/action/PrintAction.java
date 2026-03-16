@@ -22,8 +22,8 @@ package songscribe.ui.action;
 import module java.desktop;
 
 import songscribe.Strings;
-import songscribe.ui.message.MessageCenter;
-import songscribe.ui.message.PrintMessage;
+import songscribe.message.MessageCenter;
+import songscribe.message.PrintMessage;
 import songscribe.util.UIUtils;
 
 public class PrintAction extends UIAction {

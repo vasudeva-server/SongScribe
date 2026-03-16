@@ -27,15 +27,25 @@ import java.util.regex.Pattern;
 import org.jetbrains.annotations.NotNull;
 
 import songscribe.Strings;
+import net.engio.mbassy.listener.Handler;
+
+import songscribe.message.CompositionChangedMessage;
+import songscribe.message.CompositionChangedMessage.ChangeType;
+import songscribe.message.DocumentSaved;
+import songscribe.message.FontUpdate;
+import songscribe.message.KeySignatureUpdate;
+import songscribe.message.CompositionData;
+import songscribe.message.LayoutUpdate;
+import songscribe.message.LyricsUpdate;
+import songscribe.message.MessageCenter;
+import songscribe.message.MetadataUpdate;
+import songscribe.message.TempoUpdate;
 import songscribe.prefs.Prefs;
 import songscribe.ui.Dialogs;
 import songscribe.ui.action.InsertLineAction;
 import songscribe.ui.component.Score;
 import songscribe.ui.layout.LayoutStylesheet;
 import songscribe.ui.layout2.ScaleContext;
-import songscribe.ui.message.DocumentWasModifiedMessage;
-import songscribe.ui.message.LayoutChangeMessage;
-import songscribe.ui.message.MessageCenter;
 import songscribe.util.MyFontUtils;
 import songscribe.util.StringUtils;
 import songscribe.util.Utils;
@@ -61,6 +71,13 @@ public final class Composition {
 
     // Used to replace the characters "ă" and "Ă" with "a" and "A" respectively
     private static final Pattern SHORT_A_PATTERN = Pattern.compile("[ăĂ]");
+
+    // Canonical defaults shared between Composition constructor and CompositionIO.DocumentReader
+    public static final String DEFAULT_NUMBER = "1";
+    public static final String DEFAULT_TITLE = "Untitled";
+    public static final String DEFAULT_ATTRIBUTION = "Words and Music\nby Sri Chinmoy\n";
+    public static final int DEFAULT_KEY_ACCIDENTAL_COUNT = 5;
+    public static final KeyType DEFAULT_KEY_TYPE = KeyType.FLATS;
 
     // The base tempo of the composition
     private Tempo tempo;
@@ -163,18 +180,49 @@ public final class Composition {
      */
     private int formatVersion = 1;
 
-    private boolean loading;
     private boolean modified;
 
     /** Whether the user has already been notified about short-ă replacement in this session. */
     private boolean shortANotified;
 
-    public Composition() {
-        attribution = "Words and Music\nby Sri Chinmoy\n";
-        tempo = new Tempo();
-        defaultKeyAccidentalCount = 5;
-        defaultKeyType = KeyType.FLATS;
 
+    public Composition() {
+        attribution = DEFAULT_ATTRIBUTION;
+        tempo = new Tempo();
+        defaultKeyAccidentalCount = DEFAULT_KEY_ACCIDENTAL_COUNT;
+        defaultKeyType = DEFAULT_KEY_TYPE;
+        initFontsFromPrefs();
+
+        // Initial topPadding of 0 - layout calculation will set the correct value
+        // attributionStartY is calculated from title, will be recalculated on layout
+        attributionStartY = calculateAttributionStartY();
+
+        // Add initial line directly (not via addLine) to avoid posting
+        // a spurious STRUCTURE message before the composition is installed.
+        var initialLine = new Line();
+        lines.add(initialLine);
+        initialLine.setComposition(this);
+        initialLine.setKeyAccidentalCount(defaultKeyAccidentalCount);
+        initialLine.setKeyType(defaultKeyType);
+        initialLine.setTempoChangeYPosPx(
+            ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.TEMPO_DEFAULT_Y_FIRST_LINE)
+        );
+
+        MessageCenter.subscribe(this);
+    }
+
+    /**
+     * Loading constructor. Initializes fonts from preferences, applies the
+     * parsed data, and subscribes to the message bus. Avoids the wasted work
+     * of the no-arg constructor (default line, attributionStartY calculation).
+     */
+    public Composition(@NotNull CompositionData data) {
+        initFontsFromPrefs();
+        loadFrom(data);
+        MessageCenter.subscribe(this);
+    }
+
+    private void initFontsFromPrefs() {
         var prefs = Prefs.getInstance();
 
         // Create a 1x1 image to get the graphics object
@@ -200,24 +248,105 @@ public final class Composition {
         footnoteFontMetrics = g.getFontMetrics(footnoteFont);
 
         g.dispose();
-
-        // Initial topPadding of 0 - layout calculation will set the correct value
-        // attributionStartY is calculated from title, will be recalculated on layout
-        attributionStartY = calculateAttributionStartY();
-        addLine(new Line());
     }
 
-    public void musicChanged() {
-        // Intentionally does not set modified — this is called when preferences
-        // change (e.g. playback settings), not when the document is edited.
+    @Handler
+    public void onDocumentSaved(DocumentSaved message) {
+        setModified(false);
     }
+
+    /**
+     * Applies all fields from a {@link CompositionData} snapshot atomically,
+     * then posts a single {@link CompositionChangedMessage} with
+     * {@code ChangeType.FULL}.
+     * <p>
+     * Called by {@link songscribe.io.CompositionIO.DocumentReader#getComposition()}
+     * after parsing a file. This is a direct method call rather than a message
+     * handler because loading targets a specific Composition instance.
+     *
+     * @param data the parsed composition data to apply
+     */
+    public void loadFrom(@NotNull CompositionData data) {
+        // Apply all scalar fields using apply methods (no individual message posting)
+        this.tempo = data.tempo();
+        applyNumber(data.number());
+        applyTitle(data.title());
+        applyPlace(data.place());
+        applyMonth(data.month());
+        applyDay(data.day());
+        applyYear(data.year());
+        applyLyrics(data.lyrics());
+        applyUnderLyrics(data.underLyrics());
+        applyBanglaLyrics(data.banglaLyrics());
+        applyTranslatedLyrics(data.translatedLyrics());
+        applyAttribution(data.attribution());
+        applyFootnotes(data.footnotes());
+        applyUnofficialTranslation(data.unofficialTranslation());
+        applyDefaultKeyAccidentalCount(data.defaultKeyAccidentalCount());
+        applyDefaultKeyType(data.defaultKeyType());
+
+        // Apply fonts (null means keep defaults from constructor/prefs)
+        if (data.titleFont() != null) {
+            applyTitleFont(data.titleFont());
+        }
+
+        if (data.lyricsFont() != null) {
+            applyLyricsFont(data.lyricsFont());
+        }
+
+        if (data.attributionFont() != null) {
+            applyAttributionFont(data.attributionFont());
+        }
+
+        if (data.annotationFont() != null) {
+            applyAnnotationFont(data.annotationFont());
+        }
+
+        // Apply layout
+        applyTopPadding(data.topPadding(), false);
+        applyAttributionStartY(data.attributionStartY());
+        applyRowHeightAdjustment(data.rowHeightAdjustment());
+        applyLineWidth(data.lineWidth());
+
+        // Replace lines
+        lines.clear();
+
+        for (var line : data.lines()) {
+            lines.add(line);
+            line.setComposition(this);
+
+            if (
+                (line.getKeyAccidentalCount() == 0) && (line.getKeyType() == null)
+            ) {
+                line.setKeyAccidentalCount(defaultKeyAccidentalCount);
+                line.setKeyType(defaultKeyType);
+            }
+
+            if (line.getTempoChangeYPosPx() == 0) {
+                var lineIndex = lines.indexOf(line);
+                line.setTempoChangeYPosPx(
+                    (lineIndex == 0)
+                        ? ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.TEMPO_DEFAULT_Y_FIRST_LINE)
+                        : ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.TEMPO_DEFAULT_Y_OTHER_LINES)
+                );
+            }
+        }
+
+        this.hasBeenDynamicallyLaidOut = data.hasBeenDynamicallyLaidOut();
+        this.formatVersion = data.formatVersion();
+
+        // Loaded file starts unmodified
+        modified = false;
+
+        // Note: CompositionChanged(FULL) is NOT posted here because the
+        // composition hasn't been installed into Score yet. Score.setComposition()
+        // posts the FULL message after all state is consistent.
+    }
+
+    // ========== Getters (public, read-only API) ==========
 
     public Tempo getTempo() {
         return tempo;
-    }
-
-    public void setTempo(Tempo tempo) {
-        this.tempo = tempo;
     }
 
     /**
@@ -256,75 +385,202 @@ public final class Composition {
         return title;
     }
 
-    public void setTitle(String text) {
-        if (title.equals(text)) {
-            return;
-        }
-
-        var strippedTitle = StringUtils.collapseMultipleSpaces(
-            StringUtils.stripLinefeeds(text)
-        );
-        title = processText(strippedTitle);
-        // Note: attributionStartY recalculation removed - layout calculation
-        // handles this via the LayoutChangeMessage below
-
-        MessageCenter.post(new LayoutChangeMessage(
-            LayoutChangeMessage.Section.TITLE,
-            LayoutChangeMessage.ChangeType.CONTENT,
-            true
-        ));
-    }
-
     public String getPlace() {
         return place;
-    }
-
-    public void setPlace(@NotNull String place) {
-        this.place = place.trim();
     }
 
     public String getYear() {
         return year;
     }
 
-    public void setYear(@NotNull String year) {
-        this.year = year.trim();
-    }
-
     public int getMonth() {
         return month;
-    }
-
-    public void setMonth(int month) {
-        this.month = month;
     }
 
     public int getDay() {
         return day;
     }
 
-    public void setDay(int day) {
-        this.day = day;
-    }
-
     public LANGUAGE getLanguage() {
         return language;
-    }
-
-    public void setLanguage(LANGUAGE language) {
-        this.language = language;
     }
 
     public String getLyrics() {
         return lyrics;
     }
 
-    public void setLyrics(@NotNull String text) {
-        lyrics = processText(text);
-    }
-
     public String getUnderLyrics() {
         return underLyrics;
+    }
+
+    public String getBanglaLyrics() {
+        return banglaLyrics;
+    }
+
+    public String getTranslatedLyrics() {
+        return translatedLyrics;
+    }
+
+    public String getFootnotes() {
+        return footnotes;
+    }
+
+    public boolean isUnofficialTranslation() {
+        return unofficialTranslation;
+    }
+
+    public String getAttribution() {
+        return attribution;
+    }
+
+    public String getNumber() {
+        return number;
+    }
+
+    public int getDefaultKeyAccidentalCount() {
+        return defaultKeyAccidentalCount;
+    }
+
+    public KeyType getDefaultKeyType() {
+        return defaultKeyType;
+    }
+
+    public boolean isModified() {
+        return modified;
+    }
+
+    public Line getLine(int index) {
+        return lines.get(index);
+    }
+
+    public ArrayList<Line> getLines() {
+        return lines;
+    }
+
+    public int lineCount() {
+        return lines.size();
+    }
+
+    public int indexOfLine(Line line) {
+        return lines.indexOf(line);
+    }
+
+    public boolean isEmpty() {
+        return lines.isEmpty() || lines.stream().allMatch(Line::isEmpty);
+    }
+
+    public Font getTitleFont() {
+        return titleFont;
+    }
+
+    public FontMetrics getTitleFontMetrics() {
+        return titleFontMetrics;
+    }
+
+    public Font getLyricsFont() {
+        return lyricsFont;
+    }
+
+    public FontMetrics getLyricsFontMetrics() {
+        return lyricsFontMetrics;
+    }
+
+    public Font getAttributionFont() {
+        return attributionFont;
+    }
+
+    public FontMetrics getAttributionFontMetrics() {
+        return attributionFontMetrics;
+    }
+
+    public Font getAnnotationFont() {
+        return annotationFont;
+    }
+
+    public FontMetrics getAnnotationFontMetrics() {
+        return annotationFontMetrics;
+    }
+
+    public Font getBanglaFont() {
+        return banglaFont;
+    }
+
+    public FontMetrics getBanglaFontMetrics() {
+        return banglaFontMetrics;
+    }
+
+    public Font getFootnoteFont() {
+        return footnoteFont;
+    }
+
+    public FontMetrics getFootnoteFontMetrics() {
+        return footnoteFontMetrics;
+    }
+
+    public double getTopPadding() {
+        return topPadding;
+    }
+
+    public boolean userSetTopPadding() {
+        return userSetTopPadding;
+    }
+
+    public double getAttributionStartY() {
+        return attributionStartY;
+    }
+
+    public double getRowHeightAdjustment() {
+        return rowHeightAdjustment;
+    }
+
+    public double getLineWidth() {
+        return lineWidth;
+    }
+
+    public double getLineWidthSs() {
+        return ScaleContext.getInstance().fromPixels(lineWidth);
+    }
+
+    public boolean hasBeenDynamicallyLaidOut() {
+        return hasBeenDynamicallyLaidOut;
+    }
+
+    public int getFormatVersion() {
+        return formatVersion;
+    }
+
+    // ========== Setters (mutate + setModified + post) ==========
+
+    public void setTempo(Tempo tempo) {
+        mutateAndPost(ChangeType.CONTENT, () -> { this.tempo = tempo; });
+    }
+
+    public void setTitle(String text) {
+        if (title.equals(text)) {
+            return;
+        }
+
+        mutateAndPost(ChangeType.METADATA, () -> applyTitle(text));
+    }
+
+    public void setPlace(@NotNull String place) {
+        mutateAndPost(ChangeType.METADATA, () -> applyPlace(place));
+    }
+
+    public void setYear(@NotNull String year) {
+        mutateAndPost(ChangeType.METADATA, () -> applyYear(year));
+    }
+
+    public void setMonth(int month) {
+        mutateAndPost(ChangeType.METADATA, () -> applyMonth(month));
+    }
+
+    public void setDay(int day) {
+        mutateAndPost(ChangeType.METADATA, () -> applyDay(day));
+    }
+
+    public void setLyrics(@NotNull String text) {
+        mutateAndPost(ChangeType.LYRICS, () -> applyLyrics(text));
     }
 
     public void setUnderLyrics(@NotNull String text) {
@@ -334,17 +590,7 @@ public final class Composition {
             return;
         }
 
-        underLyrics = newLyrics;
-
-        MessageCenter.post(new LayoutChangeMessage(
-            LayoutChangeMessage.Section.LYRICS,
-            LayoutChangeMessage.ChangeType.CONTENT,
-            true
-        ));
-    }
-
-    public String getBanglaLyrics() {
-        return banglaLyrics;
+        mutateAndPost(ChangeType.LYRICS, () -> applyUnderLyrics(text));
     }
 
     public void setBanglaLyrics(@NotNull String text) {
@@ -354,20 +600,9 @@ public final class Composition {
             return;
         }
 
-        banglaLyrics = newLyrics;
-
-        MessageCenter.post(new LayoutChangeMessage(
-            LayoutChangeMessage.Section.BANGLA_LYRICS,
-            LayoutChangeMessage.ChangeType.CONTENT,
-            true
-        ));
+        mutateAndPost(ChangeType.LYRICS, () -> applyBanglaLyrics(text));
     }
 
-    public String getTranslatedLyrics() {
-        return translatedLyrics;
-    }
-
-    // Convert ă => a and Ă => A and trim
     public void setTranslatedLyrics(@NotNull String text) {
         var newLyrics = text.trim();
 
@@ -375,17 +610,7 @@ public final class Composition {
             return;
         }
 
-        translatedLyrics = newLyrics;
-
-        MessageCenter.post(new LayoutChangeMessage(
-            LayoutChangeMessage.Section.TRANSLATION,
-            LayoutChangeMessage.ChangeType.CONTENT,
-            true
-        ));
-    }
-
-    public String getFootnotes() {
-        return footnotes;
+        mutateAndPost(ChangeType.LYRICS, () -> applyTranslatedLyrics(text));
     }
 
     public void setFootnotes(@NotNull String text) {
@@ -395,25 +620,11 @@ public final class Composition {
             return;
         }
 
-        footnotes = newFootnotes;
-
-        MessageCenter.post(new LayoutChangeMessage(
-            LayoutChangeMessage.Section.FOOTNOTES,
-            LayoutChangeMessage.ChangeType.CONTENT,
-            true
-        ));
-    }
-
-    public boolean isUnofficialTranslation() {
-        return unofficialTranslation;
+        mutateAndPost(ChangeType.METADATA, () -> applyFootnotes(text));
     }
 
     public void setUnofficialTranslation(boolean unofficial) {
-        unofficialTranslation = unofficial;
-    }
-
-    public String getAttribution() {
-        return attribution;
+        mutateAndPost(ChangeType.METADATA, () -> applyUnofficialTranslation(unofficial));
     }
 
     public void setAttribution(@NotNull String text) {
@@ -423,80 +634,74 @@ public final class Composition {
             return;
         }
 
-        attribution = newAttribution;
-
-        MessageCenter.post(new LayoutChangeMessage(
-            LayoutChangeMessage.Section.ATTRIBUTION,
-            LayoutChangeMessage.ChangeType.CONTENT,
-            true
-        ));
-    }
-
-    @NotNull
-    private String processText(@NotNull String text) {
-        var strip = Prefs.getInstance().getBoolean("stripShortA");
-
-        if (strip && SHORT_A_PATTERN.matcher(text).find()) {
-            if (!shortANotified) {
-                shortANotified = true;
-                Dialogs.showInfoMessage(
-                    null,
-                    Strings.get(Strings.DIALOG_TITLE_INFORMATION),
-                    Strings.get(Strings.INFO_CHARACTER_REPLACEMENT)
-                );
-            }
-
-            setModified(true);
-            return text.replace("ă", "a").replace("Ă", "A");
-        }
-
-        return text.trim();
-    }
-
-    public String getNumber() {
-        return number;
+        mutateAndPost(ChangeType.METADATA, () -> applyAttribution(text));
     }
 
     public void setNumber(@NotNull String text) {
-        number = text.trim();
-    }
-
-    public int getDefaultKeyAccidentalCount() {
-        return defaultKeyAccidentalCount;
+        mutateAndPost(ChangeType.METADATA, () -> applyNumber(text));
     }
 
     public void setDefaultKeyAccidentalCount(int defaultKeyAccidentalCount) {
-        this.defaultKeyAccidentalCount = defaultKeyAccidentalCount;
-    }
-
-    public KeyType getDefaultKeyType() {
-        return defaultKeyType;
+        mutateAndPost(ChangeType.CONTENT, () -> applyDefaultKeyAccidentalCount(defaultKeyAccidentalCount));
     }
 
     public void setDefaultKeyType(KeyType defaultKeyType) {
-        this.defaultKeyType = defaultKeyType;
+        mutateAndPost(ChangeType.CONTENT, () -> applyDefaultKeyType(defaultKeyType));
     }
 
-    public boolean isLoading() {
-        return loading;
+    // -- Font setters --
+
+    public void setTitleFont(Font font) {
+        mutateAndPost(ChangeType.FONT, () -> applyTitleFont(font));
     }
 
-    public void setLoading(boolean loading) {
-        this.loading = loading;
+    public void setLyricsFont(Font font) {
+        mutateAndPost(ChangeType.FONT, () -> applyLyricsFont(font));
     }
 
-    public boolean isModified() {
-        return modified;
+    public void setAttributionFont(Font font) {
+        mutateAndPost(ChangeType.FONT, () -> applyAttributionFont(font));
     }
 
-    public void setModified(boolean modified) {
-        if (modified == this.modified) {
+    public void setAnnotationFont(Font font) {
+        mutateAndPost(ChangeType.FONT, () -> applyAnnotationFont(font));
+    }
+
+    public void setBanglaFont(Font font) {
+        mutateAndPost(ChangeType.FONT, () -> applyBanglaFont(font));
+    }
+
+    public void setFootnoteFont(Font font) {
+        mutateAndPost(ChangeType.FONT, () -> applyFootnoteFont(font));
+    }
+
+    // -- Layout setters --
+
+    public void setTopPadding(double padding, boolean setByUser) {
+        mutateAndPost(ChangeType.LAYOUT, () -> applyTopPadding(padding, setByUser));
+    }
+
+    public void setAttributionStartY(double attributionStartY) {
+        mutateAndPost(ChangeType.LAYOUT, () -> applyAttributionStartY(attributionStartY));
+    }
+
+    public void setRowHeightAdjustment(double rowHeightAdjustment) {
+        mutateAndPost(ChangeType.LAYOUT, () -> applyRowHeightAdjustment(rowHeightAdjustment));
+    }
+
+    /**
+     * Do not call this directly unless you know what you are doing.
+     * Instead, use score.setLineWidth.
+     */
+    public void setLineWidth(double lineWidth) {
+        if (this.lineWidth == lineWidth) {
             return;
         }
 
-        this.modified = modified;
-        MessageCenter.post(new DocumentWasModifiedMessage(modified));
+        mutateAndPost(ChangeType.LAYOUT, () -> applyLineWidth(lineWidth));
     }
+
+    // -- Structure setters --
 
     public void addLine(Line line) {
         addLine(InsertLineAction.ADD, line);
@@ -528,175 +733,344 @@ public final class Composition {
         }
 
         setModified(true);
+
+        postChanged(ChangeType.STRUCTURE);
     }
 
     public void removeLine(int index) {
         lines.remove(index);
         setModified(true);
+
+        postChanged(ChangeType.STRUCTURE);
     }
 
-    public Line getLine(int index) {
-        return lines.get(index);
+    // -- IO/internal setters (remain public, no message posting) --
+
+    public void setModified(boolean modified) {
+        if (modified == this.modified) {
+            return;
+        }
+
+        this.modified = modified;
     }
 
-    public ArrayList<Line> getLines() {
-        return lines;
+    /**
+     * Sets whether this composition has been dynamically laid out.
+     * <p>
+     * Should be set to true when saving.
+     *
+     * @param hasBeenDynamicallyLaidOut true if dynamically laid out
+     */
+    public void setHasBeenDynamicallyLaidOut(boolean hasBeenDynamicallyLaidOut) {
+        this.hasBeenDynamicallyLaidOut = hasBeenDynamicallyLaidOut;
     }
 
-    public int lineCount() {
-        return lines.size();
+    /**
+     * Sets the data format version of this composition.
+     * <p>
+     * This is typically called by FormatMigrator after migrating from legacy format.
+     *
+     * @param formatVersion the format version to set
+     */
+    public void setFormatVersion(int formatVersion) {
+        this.formatVersion = formatVersion;
     }
 
-    public int indexOfLine(Line line) {
-        return lines.indexOf(line);
+    // ========== Update record handlers ==========
+
+    @Handler
+    public void onLyricsUpdate(LyricsUpdate update) {
+        mutateAndPost(ChangeType.LYRICS, () -> {
+            if (update.getLyrics() != null) {
+                applyLyrics(update.getLyrics());
+            }
+
+            if (update.getUnderLyrics() != null) {
+                applyUnderLyrics(update.getUnderLyrics());
+            }
+
+            if (update.getTranslatedLyrics() != null) {
+                applyTranslatedLyrics(update.getTranslatedLyrics());
+            }
+
+            if (update.getBanglaLyrics() != null) {
+                applyBanglaLyrics(update.getBanglaLyrics());
+            }
+        });
+
+        LyricsProcessor.spellLyrics(this);
     }
 
-    public boolean isEmpty() {
-        return lines.isEmpty() || lines.stream().allMatch(Line::isEmpty);
+    @Handler
+    public void onMetadataUpdate(MetadataUpdate update) {
+        mutateAndPost(ChangeType.METADATA, () -> {
+            if (update.getTitle() != null) {
+                applyTitle(update.getTitle());
+            }
+
+            if (update.getPlace() != null) {
+                applyPlace(update.getPlace());
+            }
+
+            if (update.getYear() != null) {
+                applyYear(update.getYear());
+            }
+
+            if (update.getNumber() != null) {
+                applyNumber(update.getNumber());
+            }
+
+            if (update.getAttribution() != null) {
+                applyAttribution(update.getAttribution());
+            }
+
+            if (update.getMonth() != null) {
+                applyMonth(update.getMonth());
+            }
+
+            if (update.getDay() != null) {
+                applyDay(update.getDay());
+            }
+
+            if (update.getUnofficialTranslation() != null) {
+                applyUnofficialTranslation(update.getUnofficialTranslation());
+            }
+        });
     }
 
-    public Font getTitleFont() {
-        return titleFont;
+    @Handler
+    public void onFontUpdate(FontUpdate update) {
+        mutateAndPost(ChangeType.FONT, () -> {
+            if (update.getTitleFont() != null) {
+                applyTitleFont(update.getTitleFont());
+            }
+
+            if (update.getLyricsFont() != null) {
+                applyLyricsFont(update.getLyricsFont());
+            }
+
+            if (update.getAttributionFont() != null) {
+                applyAttributionFont(update.getAttributionFont());
+            }
+
+            if (update.getAnnotationFont() != null) {
+                applyAnnotationFont(update.getAnnotationFont());
+            }
+        });
     }
 
-    public void setTitleFont(Font font) {
+    @Handler
+    public void onTempoUpdate(TempoUpdate update) {
+        mutateAndPost(ChangeType.CONTENT, () -> {
+            if (update.getTempoType() != null) {
+                tempo.setTempoType(update.getTempoType());
+            }
+
+            if (update.getVisibleTempo() != null) {
+                tempo.setVisibleTempo(update.getVisibleTempo());
+            }
+
+            if (update.getTempoDescription() != null) {
+                tempo.setTempoDescription(update.getTempoDescription());
+            }
+
+            if (update.getShowTempo() != null) {
+                tempo.setShowTempo(update.getShowTempo());
+            }
+        });
+    }
+
+    @Handler
+    public void onKeySignatureUpdate(KeySignatureUpdate update) {
+        mutateAndPost(ChangeType.CONTENT, () -> {
+            if (update.getLineIndex() == null) {
+                // Composition-level default with propagation to matching lines
+                var oldKeyType = defaultKeyType;
+                var oldAccidentalCount = defaultKeyAccidentalCount;
+                applyDefaultKeyType(update.getKeyType());
+                applyDefaultKeyAccidentalCount(update.getAccidentalCount());
+
+                for (var i = 0; i < lineCount(); i++) {
+                    var line = getLine(i);
+
+                    if (
+                        line.getKeyAccidentalCount() == oldAccidentalCount
+                            && line.getKeyType() == oldKeyType
+                    ) {
+                        line.setKeyAccidentalCount(defaultKeyAccidentalCount);
+                        line.setKeyType(defaultKeyType);
+                    }
+                }
+            } else {
+                // Per-line update
+                var line = getLine(update.getLineIndex());
+                line.setKeyType(update.getKeyType());
+                line.setKeyAccidentalCount(update.getAccidentalCount());
+            }
+        });
+    }
+
+    @Handler
+    public void onLayoutUpdate(LayoutUpdate update) {
+        mutateAndPost(ChangeType.LAYOUT, () -> {
+            if (update.getTopPadding() != null) {
+                applyTopPadding(
+                    update.getTopPadding(),
+                    update.getTopPaddingSetByUser() != null && update.getTopPaddingSetByUser()
+                );
+            }
+
+            if (update.getRowHeightAdjustment() != null) {
+                applyRowHeightAdjustment(update.getRowHeightAdjustment());
+            }
+
+            if (update.getLineWidth() != null) {
+                applyLineWidth(update.getLineWidth());
+            }
+
+            if (update.getAttributionStartY() != null) {
+                applyAttributionStartY(update.getAttributionStartY());
+            }
+        });
+    }
+
+    // ========== Private helpers ==========
+
+    private void mutateAndPost(@NotNull ChangeType changeType, @NotNull Runnable mutation) {
+        mutation.run();
+        setModified(true);
+        postChanged(changeType);
+    }
+
+    // -- Apply methods (field mutation only, no side effects) --
+
+    private void applyTitle(String text) {
+        title = processText(StringUtils.collapseMultipleSpaces(
+            StringUtils.stripLinefeeds(text)));
+    }
+
+    private void applyPlace(String place) {
+        this.place = place.trim();
+    }
+
+    private void applyYear(String year) {
+        this.year = year.trim();
+    }
+
+    private void applyMonth(int month) {
+        this.month = month;
+    }
+
+    private void applyDay(int day) {
+        this.day = day;
+    }
+
+    private void applyLyrics(String text) {
+        lyrics = processText(text);
+    }
+
+    private void applyUnderLyrics(String text) {
+        underLyrics = processText(text);
+    }
+
+    private void applyBanglaLyrics(String text) {
+        banglaLyrics = text.trim();
+    }
+
+    private void applyTranslatedLyrics(String text) {
+        translatedLyrics = text.trim();
+    }
+
+    private void applyFootnotes(String text) {
+        footnotes = text.trim();
+    }
+
+    private void applyUnofficialTranslation(boolean unofficial) {
+        unofficialTranslation = unofficial;
+    }
+
+    private void applyAttribution(String text) {
+        attribution = text.trim();
+    }
+
+    private void applyNumber(String text) {
+        number = text.trim();
+    }
+
+    private void applyDefaultKeyType(KeyType keyType) {
+        this.defaultKeyType = keyType;
+    }
+
+    private void applyDefaultKeyAccidentalCount(int count) {
+        this.defaultKeyAccidentalCount = count;
+    }
+
+    private void applyTitleFont(Font font) {
         titleFont = font;
         titleFontMetrics = MyFontUtils.getFontMetrics(titleFont);
-
-        if (!loading) {
-            setModified(true);
-
-            MessageCenter.post(new LayoutChangeMessage(
-                LayoutChangeMessage.Section.TITLE,
-                LayoutChangeMessage.ChangeType.FONT,
-                true
-            ));
-        }
     }
 
-    public FontMetrics getTitleFontMetrics() {
-        return titleFontMetrics;
-    }
-
-    public Font getLyricsFont() {
-        return lyricsFont;
-    }
-
-    public void setLyricsFont(Font font) {
+    private void applyLyricsFont(Font font) {
         lyricsFont = font;
         lyricsFontMetrics = MyFontUtils.getFontMetrics(lyricsFont);
-
-        if (!loading) {
-            setModified(true);
-
-            MessageCenter.post(new LayoutChangeMessage(
-                LayoutChangeMessage.Section.LYRICS,
-                LayoutChangeMessage.ChangeType.FONT,
-                true
-            ));
-        }
     }
 
-    public FontMetrics getLyricsFontMetrics() {
-        return lyricsFontMetrics;
-    }
-
-    public Font getAttributionFont() {
-        return attributionFont;
-    }
-
-    public void setAttributionFont(Font font) {
+    private void applyAttributionFont(Font font) {
         attributionFont = font;
         attributionFontMetrics = MyFontUtils.getFontMetrics(attributionFont);
-
-        if (!loading) {
-            setModified(true);
-
-            MessageCenter.post(new LayoutChangeMessage(
-                LayoutChangeMessage.Section.ATTRIBUTION,
-                LayoutChangeMessage.ChangeType.FONT,
-                true
-            ));
-        }
     }
 
-    public FontMetrics getAttributionFontMetrics() {
-        return attributionFontMetrics;
-    }
-
-    public Font getAnnotationFont() {
-        return annotationFont;
-    }
-
-    public void setAnnotationFont(Font font) {
+    private void applyAnnotationFont(Font font) {
         annotationFont = font;
         annotationFontMetrics = MyFontUtils.getFontMetrics(annotationFont);
-
-        if (!loading) {
-            setModified(true);
-        }
     }
 
-    public FontMetrics getAnnotationFontMetrics() {
-        return annotationFontMetrics;
-    }
-
-    public Font getBanglaFont() {
-        return banglaFont;
-    }
-
-    public FontMetrics getBanglaFontMetrics() {
-        return banglaFontMetrics;
-    }
-
-    public void setBanglaFont(Font font) {
+    private void applyBanglaFont(Font font) {
         banglaFont = font;
         banglaFontMetrics = MyFontUtils.getFontMetrics(banglaFont);
-        setModified(true);
-
-        MessageCenter.post(new LayoutChangeMessage(
-            LayoutChangeMessage.Section.BANGLA_LYRICS,
-            LayoutChangeMessage.ChangeType.FONT,
-            true
-        ));
     }
 
-    public Font getFootnoteFont() {
-        return footnoteFont;
-    }
-
-    public FontMetrics getFootnoteFontMetrics() {
-        return footnoteFontMetrics;
-    }
-
-    public void setFootnoteFont(Font font) {
+    private void applyFootnoteFont(Font font) {
         footnoteFont = font;
         footnoteFontMetrics = MyFontUtils.getFontMetrics(footnoteFont);
-        setModified(true);
-
-        MessageCenter.post(new LayoutChangeMessage(
-            LayoutChangeMessage.Section.FOOTNOTES,
-            LayoutChangeMessage.ChangeType.FONT,
-            true
-        ));
     }
 
-    public void setTopPadding(double padding, boolean setByUser) {
+    private void applyTopPadding(double padding, boolean setByUser) {
         topPadding = padding;
         userSetTopPadding = userSetTopPadding || setByUser;
-        setModified(true);
     }
 
-    public double getTopPadding() {
-        return topPadding;
-    }
-
-    public double getAttributionStartY() {
-        return attributionStartY;
-    }
-
-    public void setAttributionStartY(double attributionStartY) {
+    private void applyAttributionStartY(double attributionStartY) {
         this.attributionStartY = attributionStartY;
+    }
+
+    private void applyRowHeightAdjustment(double rowHeightAdjustment) {
+        this.rowHeightAdjustment = rowHeightAdjustment;
+    }
+
+    private void applyLineWidth(double lineWidth) {
+        this.lineWidth = lineWidth;
+    }
+
+    @NotNull
+    private String processText(@NotNull String text) {
+        var strip = Prefs.getInstance().getBoolean("stripShortA");
+
+        if (strip && SHORT_A_PATTERN.matcher(text).find()) {
+            if (!shortANotified) {
+                shortANotified = true;
+                Dialogs.showInfoMessage(
+                    null,
+                    Strings.get(Strings.DIALOG_TITLE_INFORMATION),
+                    Strings.get(Strings.INFO_CHARACTER_REPLACEMENT)
+                );
+            }
+
+            setModified(true);
+            return text.replace("ă", "a").replace("Ă", "A");
+        }
+
+        return text.trim();
     }
 
     /**
@@ -714,98 +1088,7 @@ public final class Composition {
         return (lineHeight * lineCount) + (lineHeight / 2);
     }
 
-    /**
-     * Recalculates topPadding based on font sizes.
-     * <p>
-     * @deprecated This method is deprecated and will be removed in a future version.
-     * Layout calculation now handles topPadding. This method is only
-     * called by CompositionIO.getComposition() for legacy file handling.
-     */
-    @Deprecated
-    public void recalcTopPadding() {
-        if (!userSetTopPadding) {
-            topPadding = (((2 * titleFont.getSize()) +
-                (Utils.lineCount(attribution) * attributionFont.getSize())) -
-                ScaleContext.getInstance().toRoundedPixels(2.0));
-        }
-    }
-
-    public boolean userSetTopPadding() {
-        return userSetTopPadding;
-    }
-
-    public double getRowHeightAdjustment() {
-        return rowHeightAdjustment;
-    }
-
-    public void setRowHeightAdjustment(double rowHeightAdjustment) {
-        this.rowHeightAdjustment = rowHeightAdjustment;
-        setModified(true);
-    }
-
-    public double getLineWidth() {
-        return lineWidth;
-    }
-
-    public double getLineWidthSs() {
-        return ScaleContext.getInstance().fromPixels(lineWidth);
-    }
-
-    /**
-     * Do not call this directly unless you know what you are doing.
-     * Instead, use score.setLineWidth.
-     */
-    public void setLineWidth(double lineWidth) {
-        if (this.lineWidth == lineWidth) {
-            return;
-        }
-
-        this.lineWidth = lineWidth;
-    }
-
-    /**
-     * Returns whether this composition has been dynamically laid out.
-     * <p>
-     * When false (legacy file), xPos values should be ignored on load.
-     * When true, xPos values are relative offsets from calculated positions.
-     *
-     * @return true if this composition has been dynamically laid out
-     */
-    public boolean hasBeenDynamicallyLaidOut() {
-        return hasBeenDynamicallyLaidOut;
-    }
-
-    /**
-     * Sets whether this composition has been dynamically laid out.
-     * <p>
-     * Should be set to true when saving.
-     *
-     * @param hasBeenDynamicallyLaidOut true if dynamically laid out
-     */
-    public void setHasBeenDynamicallyLaidOut(boolean hasBeenDynamicallyLaidOut) {
-        this.hasBeenDynamicallyLaidOut = hasBeenDynamicallyLaidOut;
-    }
-
-    /**
-     * Returns the data format version of this composition.
-     * <p>
-     * Version 1 indicates legacy format (IntervalSet ranges, inline Note attachments).
-     * Version 2 indicates LineElement format (RangeElement objects, Attachment objects).
-     *
-     * @return the format version (1 or 2)
-     */
-    public int getFormatVersion() {
-        return formatVersion;
-    }
-
-    /**
-     * Sets the data format version of this composition.
-     * <p>
-     * This is typically called by FormatMigrator after migrating from legacy format.
-     *
-     * @param formatVersion the format version to set
-     */
-    public void setFormatVersion(int formatVersion) {
-        this.formatVersion = formatVersion;
+    private void postChanged(@NotNull ChangeType changeType) {
+        MessageCenter.post(new CompositionChangedMessage(changeType, this));
     }
 }

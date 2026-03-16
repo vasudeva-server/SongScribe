@@ -20,6 +20,8 @@
 
 package songscribe.ui.message;
 
+import songscribe.message.Message;
+
 public class AddDynamicsMessage extends Message {
 
     private final boolean isCrescendo;

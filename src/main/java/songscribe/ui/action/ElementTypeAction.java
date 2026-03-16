@@ -28,7 +28,7 @@ import songscribe.music.ElementType;
 import songscribe.music.StaffElement;
 import songscribe.ui.message.BarSelectedMessage;
 import songscribe.ui.message.DurationSelectedMessage;
-import songscribe.ui.message.MessageCenter;
+import songscribe.message.MessageCenter;
 
 public class ElementTypeAction extends StickyUIAction implements UIAction.ElementReplaceable {
 

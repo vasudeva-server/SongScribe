@@ -18,23 +18,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package songscribe.ui.component;
+package songscribe.message;
 
-import module java.desktop;
-
-import java.io.File;
-
-public interface IMainFrame {
-    void setCurrentFile(File saveFile);
-
-    LyricsPanel getLyricsModePanel();
-
-    //    void setMode(Mode noteEdit);
-
-    Component getFocusOwner();
-
-
-    Score getScore();
-
-    void setFrameSize();
-}
+public class PrintMessage extends Message {}

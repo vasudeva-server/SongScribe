@@ -24,7 +24,7 @@ import java.util.ArrayList;
 import java.util.List;
 import org.jetbrains.annotations.NotNull;
 
-import songscribe.ui.message.MessageCenter;
+import songscribe.message.MessageCenter;
 import songscribe.ui.message.RecentDocumentsChangedMessage;
 
 public final class RecentDocumentsManager {

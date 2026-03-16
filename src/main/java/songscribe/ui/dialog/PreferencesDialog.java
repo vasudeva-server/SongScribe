@@ -152,7 +152,7 @@ public class PreferencesDialog extends StandardDialog {
         var prefs = Prefs.getInstance();
         prefs.put("playbackNoteDuration", durationSlider.getValue());
         prefs.put("playInsertedNote", playInsertingNoteCheck.isSelected());
-        mainFrame.getScore().syncPlaybackPrefs();
+        getScore().syncPlaybackPrefs();
 
         Appearance newAppearance;
 

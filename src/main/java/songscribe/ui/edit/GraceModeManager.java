@@ -20,7 +20,7 @@
 
 package songscribe.ui.edit;
 
-import static songscribe.ui.message.MessageCenter.post;
+import static songscribe.message.MessageCenter.post;
 
 import module java.desktop;
 // Disambiguates from org.w3c.dom.events.MouseEvent (java.xml module)
@@ -42,8 +42,8 @@ import songscribe.ui.layout2.ElementColumnBuilder;
 import songscribe.ui.layout2.InsertionSpacingCalculator;
 import songscribe.ui.layout2.LayoutConstants;
 import songscribe.ui.layout2.ScaleContext;
+import songscribe.message.CompositionChangedMessage;
 import songscribe.ui.message.GraceModeStateChangedMessage;
-import songscribe.ui.message.LayoutChangeMessage;
 import songscribe.ui.selection.SelectionCoordinator;
 
 /**
@@ -553,7 +553,11 @@ public final class GraceModeManager {
         }
 
         if (graceLine != null) {
-            post(LayoutChangeMessage.scoreContent(graceLine));
+            var composition = graceLine.getComposition();
+
+            if (composition != null) {
+                post(new CompositionChangedMessage(CompositionChangedMessage.ChangeType.CONTENT, composition, graceLine));
+            }
         }
 
         // Restore only DISABLE_IN_GRACE_MODE actions to their pre-grace-mode state.

@@ -20,7 +20,7 @@
 
 package songscribe.ui.playback;
 
-import songscribe.ui.message.Message;
+import songscribe.message.Message;
 
 /**
  * Base class for messages that indicate a playback preference has changed.

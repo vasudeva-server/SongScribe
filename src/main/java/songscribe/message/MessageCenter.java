@@ -1,4 +1,4 @@
-package songscribe.ui.message;
+package songscribe.message;
 
 import net.engio.mbassy.bus.MBassador;
 import net.engio.mbassy.bus.error.IPublicationErrorHandler;

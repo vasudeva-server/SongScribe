@@ -86,7 +86,7 @@ public class TempoChangeDialog extends StandardDialog {
         var south = new JPanel(new FlowLayout(FlowLayout.RIGHT, 13, 0));
         removeButton = new JButton(Strings.get(Strings.LABEL_BUTTON_REMOVE));
         removeButton.addActionListener(_ -> {
-            var score = mainFrame.getScore();
+            var score = getScore();
             selectedElement.setTempoChange(null);
             setVisible(false);
             score.repaint();
@@ -101,7 +101,7 @@ public class TempoChangeDialog extends StandardDialog {
 
     @Override
     protected void getData() {
-        var score = mainFrame.getScore();
+        var score = getScore();
         selectedElement = score.getSingleSelectedElement();
 
         // This should never happen, but make Java happy
@@ -151,6 +151,6 @@ public class TempoChangeDialog extends StandardDialog {
                 !showOnlyDescriptionCheckBox.isSelected()
             )
         );
-        mainFrame.getScore().getComposition().setModified(true);
+        getComposition().setModified(true);
     }
 }

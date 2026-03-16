@@ -22,7 +22,7 @@ package songscribe.ui.playback;
 import module java.desktop;
 
 import songscribe.Strings;
-import songscribe.ui.message.MessageCenter;
+import songscribe.message.MessageCenter;
 
 public class TempoChangeAction extends AbstractAction {
 

@@ -35,7 +35,7 @@ import songscribe.ui.debug.DebugInspector;
 import songscribe.ui.edit.EditModeManager;
 import songscribe.ui.menu.DebugState;
 import songscribe.ui.message.DeselectMessage;
-import songscribe.ui.message.MessageCenter;
+import songscribe.message.MessageCenter;
 import songscribe.ui.playback.MidiController;
 import songscribe.util.UIUtils;
 

@@ -44,18 +44,11 @@ public class SVGConverter {
     }
 
     public void convert() {
-        var mainFrame = new ConverterMainFrame();
-        var score = new Score(mainFrame);
-        mainFrame.setScore(score);
+        var score = new Score(null);
 
         for (var file : files) {
-            var composition = Converter.getCompositionFromFile(
-                file,
-                mainFrame,
-                withoutLyrics,
-                withoutSongTitle,
-                false
-            );
+            Converter.loadComposition(file, score);
+            Converter.applyExportExclusions(score.getComposition(), withoutLyrics, withoutSongTitle);
 
             try {
                 var path = FileUtils.getPathWithoutExtension(file) + ".svg";

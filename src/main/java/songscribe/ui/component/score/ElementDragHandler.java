@@ -37,8 +37,8 @@ import songscribe.ui.action.Actions;
 import songscribe.ui.component.Score;
 import songscribe.ui.edit.EditModeManager;
 import songscribe.ui.layout2.ScaleContext;
-import songscribe.ui.message.LayoutChangeMessage;
-import songscribe.ui.message.MessageCenter;
+import songscribe.message.CompositionChangedMessage;
+import songscribe.message.MessageCenter;
 import songscribe.ui.playback.MidiController;
 import songscribe.ui.playback.PlayThread;
 
@@ -230,8 +230,9 @@ class ElementDragHandler {
             }
 
             // Finalize: notify layout and mark composition modified
-            MessageCenter.post(LayoutChangeMessage.scoreContent(dragLine));
-            lc.getComposition().setModified(true);
+            var composition = lc.getComposition();
+            MessageCenter.post(new CompositionChangedMessage(CompositionChangedMessage.ChangeType.CONTENT, composition, dragLine));
+            composition.setModified(true);
             // TODO: push to undo stack when undo system is re-enabled
         } else {
             // No drag — click on a note head selects it, switch to select mode

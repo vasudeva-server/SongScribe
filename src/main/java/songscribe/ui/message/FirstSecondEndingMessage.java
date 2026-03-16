@@ -20,6 +20,8 @@
 
 package songscribe.ui.message;
 
+import songscribe.message.Message;
+
 public class FirstSecondEndingMessage extends Message {
 
     private final boolean makeEnding;

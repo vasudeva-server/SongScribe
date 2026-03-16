@@ -24,7 +24,9 @@ import module java.desktop;
 import java.io.File;
 import java.io.IOException;
 
-import songscribe.ui.component.Score;
+import org.xml.sax.SAXException;
+
+import songscribe.io.CompositionLoader;
 import songscribe.ui.playback.PlaybackController;
 import songscribe.util.FileUtils;
 import songscribe.util.Log;
@@ -45,7 +47,6 @@ public class MidiConverter {
     public final File[] files = new File[0];
 
     public static void main(String[] args) {
-        Log.setNameWithoutExtension("midi-converter");
         var reader = new ArgumentReader<>(args, MidiConverter.class);
         reader.getObj().convert();
     }
@@ -62,20 +63,14 @@ public class MidiConverter {
             return;
         }
 
-        var mainFrame = new ConverterMainFrame();
-        var score = new Score(mainFrame);
-        mainFrame.setScore(score);
-
         PlaybackController.setPlayWithRepeats(withRepeat);
         PlaybackController.setInstrument(instrument);
         PlaybackController.setTempoChangePercent(tempoChange);
 
         for (var file : files) {
             try {
-                score.setComposition(null);
-                score.openFile(mainFrame, file, false);
-
-                var sequence = PlaybackController.buildSequence(score.getComposition());
+                var composition = CompositionLoader.load(file);
+                var sequence = PlaybackController.buildSequence(composition);
                 MidiSystem.write(
                     sequence,
                     1,
@@ -83,7 +78,7 @@ public class MidiConverter {
                         FileUtils.getPathWithoutExtension(file) + ".midi"
                     )
                 );
-            } catch (IOException | InvalidMidiDataException e) {
+            } catch (IOException | InvalidMidiDataException | SAXException e) {
                 Log.error("Could not convert " + file.getName(), e);
             }
         }

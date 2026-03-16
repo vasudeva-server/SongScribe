@@ -35,7 +35,7 @@ public class ExportMidiAction extends UIAction {
     public ExportMidiAction() {
         super(Strings.get(Strings.ACTION_EXPORT_MIDI), "export-midi");
         fileDialog = new PlatformFileDialog(
-            mainFrame,
+            getMainFrame(),
             "Export MIDI",
             false,
             new MyFileFilter(Strings.get(Strings.FILTER_MIDI), "mid")
@@ -44,7 +44,7 @@ public class ExportMidiAction extends UIAction {
 
     @Override
     public void actionPerformed(ActionEvent e) {
-        var saveFile = FileUtils.showExportDialog(mainFrame, mainFrame.getScore(), fileDialog, "mid");
+        var saveFile = FileUtils.showExportDialog(getMainFrame(), getScore(), fileDialog, "mid");
 
         if (saveFile == null) {
             return;

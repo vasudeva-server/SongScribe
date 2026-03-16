@@ -60,31 +60,30 @@ public class PDFConverter {
         "Top margin. If not present, the size of margin parameter is applied."
     )
     @NoDefault
-    public static final int topMargin = -1;
+    public int topMargin = -1;
 
     @ArgumentDescribe(
         "Left margin. If not present, the size of margin parameter is applied."
     )
     @NoDefault
-    public static final int leftMargin = -1;
+    public int leftMargin = -1;
 
     @ArgumentDescribe(
         "Bottom margin. If not present, the size of margin parameter is applied."
     )
     @NoDefault
-    public static final int bottomMargin = -1;
+    public int bottomMargin = -1;
 
     @ArgumentDescribe(
         "Right margin. If not present, the size of margin parameter is applied."
     )
     @NoDefault
-    public static final int rightMargin = -1;
+    public int rightMargin = -1;
 
     @FileArgument
     public File[] files = null;
 
     public static void main(String[] args) {
-        Log.setNameWithoutExtension("pdf-converter");
         var reader = new ArgumentReader<>(args, PDFConverter.class);
         reader.getObj().convert();
     }
@@ -117,43 +116,17 @@ public class PDFConverter {
             }
         }
 
-        var mainFrame = new ConverterMainFrame();
-        var score = new Score(mainFrame);
-        mainFrame.setScore(score);
+        var score = new Score(null);
 
         var data = new PageLayoutData();
         data.paperWidth = paperWidth;
         data.paperHeight = paperHeight;
-        data.topMargin = 75;
-        data.bottomMargin = 75;
-        data.leftInnerMargin = 75;
-        data.rightOuterMargin = 75;
-        data.mainFrame = mainFrame;
-
-        if (topMargin > -1) {
-            data.topMargin = topMargin;
-        }
-
-        if (leftMargin > -1) {
-            data.leftInnerMargin = leftMargin;
-        }
-
-        if (bottomMargin > -1) {
-            data.bottomMargin = bottomMargin;
-        }
-
-        if (rightMargin > -1) {
-            data.rightOuterMargin = rightMargin;
-        }
+        data.score = score;
+        data.applyMarginOverrides(75, topMargin, leftMargin, bottomMargin, rightMargin);
 
         for (var file : files) {
-            var composition = Converter.getCompositionFromFile(
-                file,
-                mainFrame,
-                withoutLyrics,
-                withoutSongTitle,
-                false
-            );
+            var composition = Converter.loadComposition(file, score);
+            Converter.applyExportExclusions(composition, withoutLyrics, withoutSongTitle);
 
             try {
                 var path = FileUtils.getPathWithoutExtension(file) + ".pdf";

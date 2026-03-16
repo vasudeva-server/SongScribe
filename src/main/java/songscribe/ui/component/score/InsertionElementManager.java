@@ -44,8 +44,8 @@ import songscribe.ui.layout.LayoutStylesheet;
 import songscribe.ui.layout2.InsertionSpacingCalculator;
 import songscribe.ui.layout2.LayoutResult;
 import songscribe.ui.layout2.ScaleContext;
-import songscribe.ui.message.LayoutChangeMessage;
-import songscribe.ui.message.MessageCenter;
+import songscribe.message.CompositionChangedMessage;
+import songscribe.message.MessageCenter;
 import songscribe.ui.message.ModeChangedMessage;
 
 /**
@@ -501,9 +501,8 @@ public class InsertionElementManager {
 
                 if (composition != null) {
                     composition.setModified(true);
+                    MessageCenter.post(new CompositionChangedMessage(CompositionChangedMessage.ChangeType.CONTENT, composition, line));
                 }
-
-                MessageCenter.post(LayoutChangeMessage.scoreContent(line));
                 lc.repaint();
                 return;  // Stay in glissando mode
             }

@@ -33,10 +33,9 @@ import songscribe.midi.PlaybackSettings;
 import songscribe.music.Composition;
 import songscribe.prefs.Prefs;
 import songscribe.ui.Dialogs;
-import songscribe.ui.component.IMainFrame;
 import songscribe.ui.component.Score;
 import songscribe.ui.component.score.LineComponent;
-import songscribe.ui.message.MessageCenter;
+import songscribe.message.MessageCenter;
 import songscribe.ui.selection.ElementSelection;
 
 public final class PlaybackController {
@@ -55,7 +54,7 @@ public final class PlaybackController {
     public static final int NOTE_VELOCITY = 100;
     public static final int ACCENTED_NOTE_VELOCITY = 127;
 
-    private static IMainFrame registeredMainFrame;
+    private static Score registeredScore;
 
     private static PlaybackState state = PlaybackState.STOPPED;
     private static int previousPlayingLine = -1;
@@ -99,8 +98,8 @@ public final class PlaybackController {
     private PlaybackController() {
     }
 
-    public static void register(@NotNull IMainFrame mainFrame) {
-        registeredMainFrame = mainFrame;
+    public static void register(@NotNull Score score) {
+        registeredScore = score;
     }
 
     public static PlaybackState getState() {
@@ -150,13 +149,7 @@ public final class PlaybackController {
     }
 
     private static LineComponent getLineComponent(int lineIndex) {
-        var score = registeredMainFrame.getScore();
-
-        if (score == null) {
-            return null;
-        }
-
-        return score.getLineComponent(lineIndex);
+        return registeredScore.getLineComponent(lineIndex);
     }
 
     public static void playbackDidPause() {
@@ -251,7 +244,7 @@ public final class PlaybackController {
                 return;
             }
 
-            var score = registeredMainFrame.getScore();
+            var score = registeredScore;
             ElementSelection noteSelection;
 
             if (selection != null) {

@@ -25,8 +25,14 @@ import module java.desktop;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.EnumSet;
+
 import net.engio.mbassy.listener.Handler;
 
+import songscribe.message.CompositionChangedMessage;
+import songscribe.message.Message;
+import songscribe.message.MessageCenter;
+import songscribe.music.Composition;
 import songscribe.music.StaffElement;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.Score;
@@ -34,9 +40,6 @@ import songscribe.ui.edit.GraceModeManager;
 import songscribe.ui.message.BarSelectedMessage;
 import songscribe.ui.message.DurationSelectedMessage;
 import songscribe.ui.message.GraceModeStateChangedMessage;
-import songscribe.ui.message.LayoutChangeMessage;
-import songscribe.ui.message.Message;
-import songscribe.ui.message.MessageCenter;
 import songscribe.ui.message.ModeChangedMessage;
 import songscribe.ui.message.MusicSelectionChangedMessage;
 import songscribe.ui.message.RestModeChangedMessage;
@@ -143,7 +146,7 @@ public class UIAction extends AbstractAction {
     public static final String FONT_ICON_KEY = "font-icon";
     public static final String FONT_KEY = "font";
 
-    protected final MainFrame mainFrame;
+    private final MainFrame mainFrame;
 
     private int flags = 0;
 
@@ -195,6 +198,18 @@ public class UIAction extends AbstractAction {
         }
 
         MessageCenter.subscribe(this);
+    }
+
+    protected MainFrame getMainFrame() {
+        return mainFrame;
+    }
+
+    protected Score getScore() {
+        return mainFrame.getScore();
+    }
+
+    protected Composition getComposition() {
+        return mainFrame.getScore().getComposition();
     }
 
     public void setFlags(@NotNull Flag... flags) {
@@ -296,7 +311,7 @@ public class UIAction extends AbstractAction {
     public boolean updateEnabledState() {
         // If an action is going to be enabled based on a single flag,
         // we have to check the entire context to see if the action can in fact be enabled.
-        var score = mainFrame.getScore();
+        var score = getScore();
         var activeSelection = hasActiveSelection();
         var enable =
             enableInAdjustmentMode(score) &&
@@ -473,8 +488,22 @@ public class UIAction extends AbstractAction {
     }
 
     @Handler(priority = Message.MEDIUM_PRIORITY)
-    public void layoutDidChange(LayoutChangeMessage message) {
-        updateEnabledState();
+    public void compositionDidChange(CompositionChangedMessage message) {
+        if (message.getChangeTypes().stream().anyMatch(getRelevantChangeTypes()::contains)) {
+            updateEnabledState();
+        }
+    }
+
+    /**
+     * Returns the set of CompositionChangedMessage.ChangeType values that are relevant
+     * to this action. Subclasses can override to narrow the filter.
+     */
+    protected EnumSet<CompositionChangedMessage.ChangeType> getRelevantChangeTypes() {
+        return EnumSet.of(
+            CompositionChangedMessage.ChangeType.CONTENT,
+            CompositionChangedMessage.ChangeType.STRUCTURE,
+            CompositionChangedMessage.ChangeType.FULL
+        );
     }
 
     /**
@@ -487,7 +516,7 @@ public class UIAction extends AbstractAction {
             return false;
         }
 
-        var score = mainFrame.getScore();
+        var score = getScore();
         var coordinator = score.getSelectionCoordinator();
         var selection = coordinator.getSelection();
 
@@ -500,8 +529,7 @@ public class UIAction extends AbstractAction {
     }
 
     private boolean hasActiveSelection() {
-        return mainFrame
-            .getScore()
+        return getScore()
             .getSelectionCoordinator()
             .hasActiveSelection();
     }
@@ -511,7 +539,7 @@ public class UIAction extends AbstractAction {
             return true;
         }
 
-        var composition = mainFrame.getScore().getComposition();
+        var composition = getComposition();
         return composition != null && !composition.isEmpty();
     }
 }

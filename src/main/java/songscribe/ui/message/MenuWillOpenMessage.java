@@ -20,6 +20,8 @@
 
 package songscribe.ui.message;
 
+import songscribe.message.Message;
+
 import module java.desktop;
 
 public class MenuWillOpenMessage extends Message {

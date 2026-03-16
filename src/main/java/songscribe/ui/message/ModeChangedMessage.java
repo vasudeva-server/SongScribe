@@ -20,6 +20,8 @@
 
 package songscribe.ui.message;
 
+import songscribe.message.Message;
+
 import org.jetbrains.annotations.NotNull;
 import songscribe.ui.Mode;
 import songscribe.ui.action.ModeAction;

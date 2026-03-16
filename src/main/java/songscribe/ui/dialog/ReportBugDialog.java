@@ -88,10 +88,10 @@ public class ReportBugDialog extends StandardDialog {
                 );
 
                 try {
-                    Utils.openEmail(mainFrame, sb.toString());
+                    Utils.openEmail(getMainFrame(), sb.toString());
                 } catch (Exception e1) {
                     Dialogs.showErrorMessage(
-                        mainFrame,
+                        getMainFrame(),
                         Strings.get(Strings.DIALOG_TITLE_EMAIL_ERROR),
                         Strings.get(Strings.ERROR_EMAIL_OPEN_REPORT)
                     );

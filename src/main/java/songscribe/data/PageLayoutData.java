@@ -22,7 +22,7 @@ package songscribe.data;
 import java.io.File;
 import java.util.ArrayList;
 
-import songscribe.ui.component.IMainFrame;
+import songscribe.ui.component.Score;
 
 public class PageLayoutData {
 
@@ -31,5 +31,38 @@ public class PageLayoutData {
         0, rightOuterMargin = 0, topMargin = 0, bottomMargin = 0;
     public boolean mirrored = false;
     public int songsPerPage = 2;
-    public IMainFrame mainFrame = null;
+    public Score score = null;
+
+    /**
+     * Sets all four margins to a default, then applies per-edge overrides.
+     * A value of -1 means "use the default".
+     */
+    public void applyMarginOverrides(
+        int defaultMargin,
+        int top,
+        int left,
+        int bottom,
+        int right
+    ) {
+        topMargin = defaultMargin;
+        bottomMargin = defaultMargin;
+        leftInnerMargin = defaultMargin;
+        rightOuterMargin = defaultMargin;
+
+        if (top > -1) {
+            topMargin = top;
+        }
+
+        if (left > -1) {
+            leftInnerMargin = left;
+        }
+
+        if (bottom > -1) {
+            bottomMargin = bottom;
+        }
+
+        if (right > -1) {
+            rightOuterMargin = right;
+        }
+    }
 }

@@ -132,11 +132,20 @@ public final class ViewIO {
             }
         }
 
-        public void setAttributes(Composition c) {
-            c.setTitleFont(title.getFont());
-            c.setLyricsFont(lyrics.getFont());
-            c.setAttributionFont(general.getFont());
-            c.setAnnotationFont(annotation.getFont());
+        public Font getTitleFont() {
+            return title.getFont();
+        }
+
+        public Font getLyricsFont() {
+            return lyrics.getFont();
+        }
+
+        public Font getAttributionFont() {
+            return general.getFont();
+        }
+
+        public Font getAnnotationFont() {
+            return annotation.getFont();
         }
 
         private static class StringFont {

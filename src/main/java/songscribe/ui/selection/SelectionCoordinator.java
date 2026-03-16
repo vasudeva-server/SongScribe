@@ -40,9 +40,9 @@ import songscribe.music.Line;
 import songscribe.music.StaffElement;
 import songscribe.ui.action.Actions;
 import songscribe.ui.action.UIAction;
-import songscribe.ui.message.LayoutChangeMessage;
-import songscribe.ui.message.Message;
-import songscribe.ui.message.MessageCenter;
+import songscribe.message.CompositionChangedMessage;
+import songscribe.message.Message;
+import songscribe.message.MessageCenter;
 import songscribe.ui.message.MusicSelectionChangedMessage;
 import songscribe.util.RuntimeError;
 
@@ -554,8 +554,9 @@ public final class SelectionCoordinator {
         contentCacheSelection = null;
         applicabilityCacheSelection = null;
         applicabilityCache.clear();
-        line.getComposition().setModified(true);
-        MessageCenter.post(LayoutChangeMessage.scoreContent(line));
+        var composition = line.getComposition();
+        composition.setModified(true);
+        MessageCenter.post(new CompositionChangedMessage(CompositionChangedMessage.ChangeType.CONTENT, composition, line));
     }
 
     /**

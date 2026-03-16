@@ -40,10 +40,10 @@ import songscribe.data.TupletInterval;
 import songscribe.midi.GlissandoMidiHelper;
 import songscribe.midi.PlaybackSettings;
 import songscribe.ui.layout.LayoutStylesheet;
+import songscribe.message.CompositionChangedMessage;
+import songscribe.message.MessageCenter;
 import songscribe.ui.layout.RangeElement;
 import songscribe.ui.layout2.ScaleContext;
-import songscribe.ui.message.LayoutChangeMessage;
-import songscribe.ui.message.MessageCenter;
 import songscribe.ui.playback.MidiMetaMessageTypes;
 import songscribe.ui.playback.PlaybackController;
 
@@ -201,8 +201,8 @@ public class Line {
     }
 
     /**
-     * Replaces the element at the given index without posting LayoutChangeMessage.
-     * The caller is responsible for posting a single LayoutChangeMessage after batch operations.
+     * Replaces the element at the given index without posting CompositionChangedMessage.
+     * The caller is responsible for posting a single CompositionChangedMessage after batch operations.
      */
     public void replaceElementQuietly(int index, StaffElement element) {
         element.setLine(this);
@@ -254,12 +254,8 @@ public class Line {
     private void modifiedComposition() {
         if (composition != null) {
             composition.setModified(true);
-
-            MessageCenter.post(new LayoutChangeMessage(
-                LayoutChangeMessage.Section.SCORE,
-                LayoutChangeMessage.ChangeType.CONTENT,
-                true,
-                this
+            MessageCenter.post(new CompositionChangedMessage(
+                CompositionChangedMessage.ChangeType.CONTENT, composition, this
             ));
         }
     }

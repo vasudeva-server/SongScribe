@@ -24,6 +24,7 @@ import module java.desktop;
 import java.io.File;
 import java.io.IOException;
 
+import songscribe.export.ExportOptions;
 import songscribe.ui.component.MyBorder;
 import songscribe.ui.component.Score;
 import songscribe.util.FileUtils;
@@ -82,7 +83,6 @@ public class ImageConverter {
     public final File[] files = new File[0];
 
     public static void main(String[] args) {
-        Log.setNameWithoutExtension("image-converter");
         var reader = new ArgumentReader<>(args, ImageConverter.class);
         var converter = reader.getObj();
 
@@ -93,40 +93,22 @@ public class ImageConverter {
 
     @SuppressWarnings("ConstantValue")
     private void convert() {
-        var mainFrame = new ConverterMainFrame();
-        var score = new Score(mainFrame);
-        mainFrame.setScore(score);
-        var myBorder = new MyBorder(margin);
-
-        if (topmargin > -1) {
-            myBorder.setTop(topmargin);
-        }
-
-        if (leftmargin > -1) {
-            myBorder.setLeft(leftmargin);
-        }
-
-        if (bottommargin > -1) {
-            myBorder.setBottom(bottommargin);
-        }
-
-        if (rightmargin > -1) {
-            myBorder.setRight(rightmargin);
-        }
+        var score = new Score(null);
+        var myBorder = MyBorder.withOverrides(
+            margin, topmargin, leftmargin, bottommargin, rightmargin
+        );
+        var exportOptions = new ExportOptions(
+            !withoutLyrics, !withoutSongTitle, !withoutCopyright
+        );
 
         for (var file : files) {
-            var composition = Converter.getCompositionFromFile(
-                file,
-                mainFrame,
-                withoutLyrics,
-                withoutSongTitle,
-                withoutCopyright
-            );
+            Converter.loadComposition(file, score);
 
             var image = score.createImageForExport(
                 Color.WHITE,
                 (double) resolution / GraphicUtils.getDpi(),
-                myBorder
+                myBorder,
+                exportOptions
             );
 
             try {
