@@ -44,7 +44,7 @@ public class ExportMidiAction extends UIAction {
 
     @Override
     public void actionPerformed(ActionEvent e) {
-        var saveFile = FileUtils.showExportDialog(getMainFrame(), getScore(), fileDialog, "mid");
+        var saveFile = FileUtils.showExportDialog(getScore(), fileDialog, "mid");
 
         if (saveFile == null) {
             return;

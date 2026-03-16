@@ -42,7 +42,7 @@ public class ExportSVGAction extends UIAction {
 
     @Override
     public void actionPerformed(ActionEvent e) {
-        var saveFile = FileUtils.showExportDialog(getMainFrame(), getScore(), fileDialog, "svg");
+        var saveFile = FileUtils.showExportDialog(getScore(), fileDialog, "svg");
 
         if (saveFile == null) {
             return;

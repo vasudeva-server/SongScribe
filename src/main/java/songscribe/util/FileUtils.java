@@ -125,7 +125,6 @@ public final class FileUtils {
 
     @Nullable
     public static File showExportDialog(
-        Component parent,
         Score score,
         PlatformFileDialog fileDialog,
         String... extensions
@@ -137,10 +136,6 @@ public final class FileUtils {
         }
 
         var saveFile = ensureExtension(fileDialog.getFile(), extensions);
-
-        if (!Dialogs.confirmFileOverwrite(parent, Constants.PACKAGE_NAME, saveFile)) {
-            return null;
-        }
 
         return saveFile;
     }

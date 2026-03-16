@@ -102,7 +102,7 @@ public class ExportABCAction extends UIAction {
 
     @Override
     public void actionPerformed(ActionEvent e) {
-        var saveFile = FileUtils.showExportDialog(getMainFrame(), getScore(), fileDialog, "abc");
+        var saveFile = FileUtils.showExportDialog(getScore(), fileDialog, "abc");
 
         if (saveFile == null) {
             return;

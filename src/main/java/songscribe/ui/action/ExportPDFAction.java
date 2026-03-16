@@ -55,7 +55,7 @@ public class ExportPDFAction extends UIAction {
 
     @Override
     public void actionPerformed(ActionEvent e) {
-        var saveFile = FileUtils.showExportDialog(getMainFrame(), getScore(), fileDialog, "pdf");
+        var saveFile = FileUtils.showExportDialog(getScore(), fileDialog, "pdf");
 
         if (saveFile == null) {
             return;

@@ -78,10 +78,6 @@ public class ExportImageAction extends UIAction {
                 saveFile = FileUtils.ensureExtension(saveFile, extension);
             }
 
-            if (!Dialogs.confirmFileOverwrite(getMainFrame(), getMainFrame().appName, saveFile)) {
-                return;
-            }
-
             if (resolutionDialog == null) {
                 resolutionDialog = new ResolutionDialog();
             }

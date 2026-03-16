@@ -22,7 +22,6 @@ package songscribe.ui;
 
 import module java.desktop;
 
-import java.io.File;
 import java.util.function.Consumer;
 
 import org.jetbrains.annotations.NotNull;
@@ -184,32 +183,6 @@ public final class Dialogs {
     // ------------------------------------------------------------------
     // Convenience methods
     // ------------------------------------------------------------------
-
-    /**
-     * Confirms overwriting an existing file. Returns true if the file
-     * does not exist or the user confirms overwrite. When suppressed,
-     * returns true (allows overwrite).
-     */
-    public static boolean confirmFileOverwrite(
-        @Nullable Component parent,
-        String title,
-        File file
-    ) {
-        if (!file.exists()) {
-            return true;
-        }
-
-        var response = showConfirmDialog(
-            parent,
-            title,
-            Strings.get(Strings.CONFIRM_FILE_OVERWRITE, file.getName()),
-            JOptionPane.YES_NO_OPTION,
-            JOptionPane.QUESTION_MESSAGE,
-            JOptionPane.YES_OPTION
-        );
-
-        return response == JOptionPane.YES_OPTION;
-    }
 
     // ------------------------------------------------------------------
     // Private

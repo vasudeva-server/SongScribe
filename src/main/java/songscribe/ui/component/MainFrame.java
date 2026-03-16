@@ -660,6 +660,7 @@ public class MainFrame extends JFrame implements Printable {
             );
             CompositionIO.writeComposition(score.getComposition(), printWriter);
             printWriter.close();
+            score.getComposition().setModified(false);
             MessageCenter.post(new DocumentSaved());
         } catch (IOException e1) {
             Dialogs.showErrorMessage(
@@ -691,10 +692,6 @@ public class MainFrame extends JFrame implements Printable {
             var saveFile = fileDialog.getFile();
 
             saveFile = FileUtils.ensureExtension(saveFile, FileExtensions.SONGWRITER);
-
-            if (!Dialogs.confirmFileOverwrite(this, appName, saveFile)) {
-                return;
-            }
 
             setCurrentFile(saveFile);
             saveCurrentFile();

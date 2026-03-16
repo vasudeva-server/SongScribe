@@ -22,8 +22,6 @@ package songscribe.ui;
 
 import module java.desktop;
 
-import java.io.File;
-
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -47,45 +45,6 @@ class DialogsTest extends UnitTest {
     @AfterEach
     void tearDown() {
         Dialogs.setSuppressDialogs(true);
-    }
-
-    @Nested
-    class ConfirmFileOverwrite {
-
-        @Test
-        void testExistingFileReturnsFalseWhenUserDeclinesAndNotSuppressed() {
-            Dialogs.setSuppressDialogs(false);
-
-            var file = mock(File.class);
-            when(file.exists()).thenReturn(true);
-            when(file.getName()).thenReturn("test.txt");
-
-            try (var jopMock = mockStatic(JOptionPane.class)) {
-                jopMock.when(
-                    () -> JOptionPane.showConfirmDialog(
-                        any(), any(), any(), anyInt(), anyInt()
-                    )
-                ).thenReturn(JOptionPane.NO_OPTION);
-
-                assertThat(Dialogs.confirmFileOverwrite(null, "Title", file)).isFalse();
-            }
-        }
-
-        @Test
-        void testExistingFileReturnsTrueWhenSuppressed() {
-            var file = mock(File.class);
-            when(file.exists()).thenReturn(true);
-            when(file.getName()).thenReturn("test.txt");
-
-            assertThat(Dialogs.confirmFileOverwrite(null, "Title", file)).isTrue();
-        }
-
-        @Test
-        void testNonExistentFileReturnsTrue() {
-            var file = new File("/nonexistent/path/file.txt");
-
-            assertThat(Dialogs.confirmFileOverwrite(null, "Title", file)).isTrue();
-        }
     }
 
     @Nested
