@@ -25,7 +25,6 @@ import module java.desktop;
 import org.jetbrains.annotations.NotNull;
 
 import songscribe.music.Composition;
-import songscribe.util.GraphicUtils;
 
 /**
  * Container panel for under-lyrics text sections.
@@ -126,7 +125,7 @@ public class TextPanel extends JPanel {
 
             if (unionWidth > 0) {
                 var contentX = (float) Math.round(
-                    (composition.getLineWidth() - unionWidth) / 2
+                    (composition.getLineWidthPx() - unionWidth) / 2
                 );
                 underLyricsComponent.setContentX(contentX);
                 banglaLyricsComponent.setContentX(contentX);

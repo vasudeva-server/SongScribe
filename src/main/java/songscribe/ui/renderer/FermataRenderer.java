@@ -122,7 +122,7 @@ public class FermataRenderer extends BaseElementRenderer<StaffElement> {
 
         // Fallback: compute position directly from note position
         int fermataStaffPosition = getFermataStaffPosition(note);
-        return (int) (ctx.getMiddleLineYSs() + ScaleContext.getInstance().toRoundedPixels(fermataStaffPosition * LayoutStylesheet.STAFF_POSITION_OFFSET));
+        return (int) (ctx.getMiddleLineYSs() + ScaleContext.getInstance().toRoundedPixels(fermataStaffPosition * LayoutStylesheet.STAFF_POSITION_OFFSET_SS));
     }
 
     /**

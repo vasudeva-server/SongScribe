@@ -62,7 +62,7 @@ public class HorizontalAdjustment extends Adjustment {
 
         var composition = score.getComposition();
         var line = composition.getLine(draggingRect.line);
-        var lineWidth = composition.getLineWidth();
+        var lineWidth = composition.getLineWidthPx();
 
         if (
             draggingRect.horizontalAdjustmentType ==
@@ -191,9 +191,9 @@ public class HorizontalAdjustment extends Adjustment {
 
         if (
             note.getType().snapToEnd() &&
-                ((composition.getLineWidth() - endPoint.x) < END_SNAP_LIMIT)
+                ((composition.getLineWidthPx() - endPoint.x) < END_SNAP_LIMIT)
         ) {
-            endPoint.x = (int) (composition.getLineWidth() - note.getContentWidth());
+            endPoint.x = (int) (composition.getLineWidthPx() - note.getContentWidth());
         }
 
         var diffX = draggingRect.rect.x + (draggingRect.rect.width / 2);
@@ -265,7 +265,7 @@ public class HorizontalAdjustment extends Adjustment {
             ).findInterval(draggingRect.xIndex);
 
             if (interval != null) {
-                interval.setX1Shift((interval.getX1Shift() + endPoint.x) - diffX);
+                interval.setX1ShiftSs((interval.getX1ShiftSs() + endPoint.x) - diffX);
             }
         } else if (
             (draggingRect.horizontalAdjustmentType ==
@@ -279,7 +279,7 @@ public class HorizontalAdjustment extends Adjustment {
             ).findInterval(draggingRect.xIndex);
 
             if (interval != null) {
-                interval.setX2Shift((interval.getX2Shift() + endPoint.x) - diffX);
+                interval.setX2ShiftSs((interval.getX2ShiftSs() + endPoint.x) - diffX);
             }
         }
 
@@ -483,9 +483,9 @@ public class HorizontalAdjustment extends Adjustment {
 
                 if (x1Interval != null) {
                     rect.rect.x = (int) ((line.getElement(rect.xIndex).getXPosSs() - 12) +
-                        x1Interval.getX1Shift());
+                        x1Interval.getX1ShiftSs());
                     rect.rect.y = (int) ((score.getNoteYPosPx(6, rect.line) - 4) +
-                        x1Interval.getYShift());
+                        x1Interval.getYShiftSs());
                 }
             }
             case CRESCENDO_END, DIMINUENDO_END -> {
@@ -497,9 +497,9 @@ public class HorizontalAdjustment extends Adjustment {
                 if (x2Interval != null) {
                     rect.rect.x = (int) (line.getElement(rect.xIndex).getXPosSs() +
                         16 +
-                        x2Interval.getX2Shift());
+                        x2Interval.getX2ShiftSs());
                     rect.rect.y = (int) ((score.getNoteYPosPx(6, rect.line) - 4) +
-                        x2Interval.getYShift());
+                        x2Interval.getYShiftSs());
                 }
             }
             default -> rect.rect.x = note.getXPosSs() + 1;

@@ -21,47 +21,47 @@ package songscribe.data;
 
 public class DynamicsInterval extends Interval {
 
-    private double x1Shift;
-    private double x2Shift;
-    private double yShift;
+    private double x1ShiftSs;
+    private double x2ShiftSs;
+    private double yShiftSs;
 
     public DynamicsInterval(int start, int end) {
         super(start, end, null);
-        this.x1Shift = 0;
-        this.x2Shift = 0;
-        this.yShift = 0;
+        this.x1ShiftSs = 0;
+        this.x2ShiftSs = 0;
+        this.yShiftSs = 0;
     }
 
-    public double getX1Shift() {
-        return x1Shift;
+    public double getX1ShiftSs() {
+        return x1ShiftSs;
     }
 
-    public void setX1Shift(double x1Shift) {
-        this.x1Shift = x1Shift;
+    public void setX1ShiftSs(double x1Shift) {
+        this.x1ShiftSs = x1Shift;
     }
 
-    public double getX2Shift() {
-        return x2Shift;
+    public double getX2ShiftSs() {
+        return x2ShiftSs;
     }
 
-    public void setX2Shift(double x2Shift) {
-        this.x2Shift = x2Shift;
+    public void setX2ShiftSs(double x2Shift) {
+        this.x2ShiftSs = x2Shift;
     }
 
-    public double getYShift() {
-        return yShift;
+    public double getYShiftSs() {
+        return yShiftSs;
     }
 
-    public void setYShift(double yShift) {
-        this.yShift = yShift;
+    public void setYShiftSs(double yShift) {
+        this.yShiftSs = yShift;
     }
 
     @Override
     public DynamicsInterval copyRange(int newStart, int newEnd) {
         var copy = new DynamicsInterval(newStart, newEnd);
-        copy.setX1Shift(x1Shift);
-        copy.setX2Shift(x2Shift);
-        copy.setYShift(yShift);
+        copy.setX1ShiftSs(x1ShiftSs);
+        copy.setX2ShiftSs(x2ShiftSs);
+        copy.setYShiftSs(yShiftSs);
         return copy;
     }
 }

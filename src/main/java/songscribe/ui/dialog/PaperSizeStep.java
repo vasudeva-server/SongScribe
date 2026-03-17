@@ -204,16 +204,16 @@ public class PaperSizeStep extends Step {
 
     @Override
     public void end() {
-        pageLayoutData.paperWidth = getValueInPixels(widthSpinnerModel);
-        pageLayoutData.paperHeight = getValueInPixels(heightSpinnerModel);
-        pageLayoutData.leftInnerMargin = getValueInPixels(
+        pageLayoutData.paperWidthPx = getValueInPixels(widthSpinnerModel);
+        pageLayoutData.paperHeightPx = getValueInPixels(heightSpinnerModel);
+        pageLayoutData.leftInnerMarginPx = getValueInPixels(
             leftInnerSpinnerModel
         );
-        pageLayoutData.rightOuterMargin = getValueInPixels(
+        pageLayoutData.rightOuterMarginPx = getValueInPixels(
             rightOuterSpinnerModel
         );
-        pageLayoutData.topMargin = getValueInPixels(topSpinnerModel);
-        pageLayoutData.bottomMargin = getValueInPixels(bottomSpinnerModel);
+        pageLayoutData.topMarginPx = getValueInPixels(topSpinnerModel);
+        pageLayoutData.bottomMarginPx = getValueInPixels(bottomSpinnerModel);
         pageLayoutData.mirrored = mirroredCheck.isSelected();
 
         if (unitsCombo.getSelectedItem() instanceof TemplateObject) {

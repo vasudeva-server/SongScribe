@@ -245,7 +245,7 @@ class LineRenderer {
 
         g2.setColor(staffSelected ? Score.SELECTION_STROKE_COLOR : STAFF_LINE_COLOR);
 
-        var lineWidth = lc.getComposition().getLineWidth();
+        var lineWidth = lc.getComposition().getLineWidthSs();
         var middleLineYSs = lc.getMiddleLineYSs();
 
         // Staff has 5 lines, middle line (B) is at index 2.
@@ -444,7 +444,7 @@ class LineRenderer {
             g2,
             line,
             nextLine,
-            composition.getLineWidth(),
+            composition.getLineWidthSs(),
             ctx
         );
     }

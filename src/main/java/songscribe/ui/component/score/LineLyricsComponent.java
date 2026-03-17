@@ -59,7 +59,7 @@ public class LineLyricsComponent extends ScoreComponent {
      */
     public LineLyricsComponent() {
         super();
-        setMarginTop(ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.LYRICS_ROW_MARGIN));
+        setMarginTop(ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.LYRICS_ROW_MARGIN_SS));
     }
 
     /**
@@ -173,6 +173,6 @@ public class LineLyricsComponent extends ScoreComponent {
         var metrics = getFontMetrics(font);
         var height = metrics.getHeight();
 
-        return new Dimension((int) composition.getLineWidth(), height + marginTop);
+        return new Dimension(composition.getLineWidthPx(), height + marginTop);
     }
 }

@@ -54,8 +54,8 @@ public final class AnnotationIO {
         XML.writeValue(pw, XML_YPOS, Integer.toString(a.getYPosPx()));
 
         // Write userYOffset if non-zero (Phase 11)
-        if (a.getUserYOffset() != 0) {
-            XML.writeValue(pw, XML_USER_Y_OFFSET, Double.toString(a.getUserYOffset()));
+        if (a.getUserYOffsetSs() != 0) {
+            XML.writeValue(pw, XML_USER_Y_OFFSET, Double.toString(a.getUserYOffsetSs()));
         }
 
         for (var i = 0; i < indent; i++) {
@@ -99,7 +99,7 @@ public final class AnnotationIO {
                         Float.parseFloat(str)
                     );
                     case XML_YPOS -> annotation.setYPosPx(Integer.parseInt(str));
-                    case XML_USER_Y_OFFSET -> annotation.setUserYOffset(
+                    case XML_USER_Y_OFFSET -> annotation.setUserYOffsetSs(
                         Double.parseDouble(str)
                     );
                 }

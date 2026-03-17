@@ -34,11 +34,11 @@ public class Annotation {
     /**
      * User's manual vertical offset from the layout-calculated position.
      * <p>
-     * Final Y position = calculated position + userYOffset
+     * Final Y position = calculated position + userYOffsetSs
      * <p>
      * Default is 0 (no user adjustment). Positive values move down, negative up.
      */
-    private double userYOffset = 0;
+    private double userYOffsetSs = 0;
 
     public Annotation(String annotation) {
         this.annotation = annotation;
@@ -73,11 +73,11 @@ public class Annotation {
         this.yPosPx = yPosPx;
     }
 
-    public double getUserYOffset() {
-        return userYOffset;
+    public double getUserYOffsetSs() {
+        return userYOffsetSs;
     }
 
-    public void setUserYOffset(double userYOffset) {
-        this.userYOffset = userYOffset;
+    public void setUserYOffsetSs(double userYOffsetSs) {
+        this.userYOffsetSs = userYOffsetSs;
     }
 }

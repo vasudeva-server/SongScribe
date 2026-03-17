@@ -149,7 +149,7 @@ public class DynamicsRenderer extends BaseElementRenderer<LineElement> {
 
         // Calculate shift from default position
         double middleLineYSs = ctx.getMiddleLineYSs();
-        double defaultY = middleLineYSs - ScaleContext.getInstance().toRoundedPixels(6 * LayoutStylesheet.STAFF_POSITION_OFFSET);
+        double defaultY = middleLineYSs - ScaleContext.getInstance().toRoundedPixels(6 * LayoutStylesheet.STAFF_POSITION_OFFSET_SS);
         return (int) (bounds.getTop() - defaultY);
     }
 
@@ -182,9 +182,9 @@ public class DynamicsRenderer extends BaseElementRenderer<LineElement> {
 
         // Y positions above the staff: center 1 staff space above top staff line
         // (top staff line = middleLineYSs - 4*NOTE_Y_OFFSET; 1 space = 2*NOTE_Y_OFFSET)
-        int yTop = (int) (middleLineYSs - ScaleContext.getInstance().toPixels(7 * LayoutStylesheet.STAFF_POSITION_OFFSET) + yShift);
-        int yBottom = (int) (middleLineYSs - ScaleContext.getInstance().toPixels(5 * LayoutStylesheet.STAFF_POSITION_OFFSET) + yShift);
-        int yMiddle = (int) (middleLineYSs - ScaleContext.getInstance().toPixels(6 * LayoutStylesheet.STAFF_POSITION_OFFSET) + yShift);
+        int yTop = (int) (middleLineYSs - ScaleContext.getInstance().toPixels(7 * LayoutStylesheet.STAFF_POSITION_OFFSET_SS) + yShift);
+        int yBottom = (int) (middleLineYSs - ScaleContext.getInstance().toPixels(5 * LayoutStylesheet.STAFF_POSITION_OFFSET_SS) + yShift);
+        int yMiddle = (int) (middleLineYSs - ScaleContext.getInstance().toPixels(6 * LayoutStylesheet.STAFF_POSITION_OFFSET_SS) + yShift);
 
         try (var ignored = GraphicsState.save(g2, COLOR, STROKE)) {
             g2.setColor(ELEMENT_COLOR);
@@ -237,7 +237,7 @@ public class DynamicsRenderer extends BaseElementRenderer<LineElement> {
             var endNote = line.getElement(interval.getEnd());
 
             renderHairpin(g2, ctx, startNote, endNote, isCrescendo,
-                interval.getX1Shift(), interval.getX2Shift(), interval.getYShift());
+                interval.getX1ShiftSs(), interval.getX2ShiftSs(), interval.getYShiftSs());
         }
     }
 }

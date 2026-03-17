@@ -223,10 +223,10 @@ public class LayoutEngine {
                 bounds = new Bounds(
                     contentBounds,
                     new Rectangle2D.Double(
-                        position.getX() - element.getMarginLeft(),
-                        position.getY() - element.getMarginTop(),
-                        element.getContentWidth() + element.getMarginLeft() + element.getMarginRight(),
-                        element.getContentHeight() + element.getMarginTop() + element.getMarginBottom()
+                        position.getX() - element.getMarginLeftSs(),
+                        position.getY() - element.getMarginTopSs(),
+                        element.getContentWidth() + element.getMarginLeftSs() + element.getMarginRightSs(),
+                        element.getContentHeight() + element.getMarginTopSs() + element.getMarginBottomSs()
                     )
                 );
 
@@ -240,9 +240,10 @@ public class LayoutEngine {
 
         builder.setStaffGeometrySs(staffTopYSs, staffBottomYSs);
 
-        // Set line height and lyrics baseline from vertical result
-        builder.setLineHeightSs(verticalResult.getLineHeightPx());
-        builder.setLyricBaselineYSs(verticalResult.getLyricsBaselineYPx());
+        // Set line height and lyrics baseline from vertical result (convert px → ss)
+        var scale = ScaleContext.getInstance();
+        builder.setLineHeightSs(scale.fromPixels(verticalResult.getLineHeightPx()));
+        builder.setLyricBaselineYSs(scale.fromPixels(verticalResult.getLyricsBaselineYPx()));
 
         return builder.build();
     }

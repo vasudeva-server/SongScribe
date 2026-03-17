@@ -25,6 +25,7 @@ import songscribe.prefs.Prefs;
 import songscribe.Strings;
 import songscribe.ui.Dialogs;
 import songscribe.ui.component.NumericTextField;
+import songscribe.ui.layout2.ScaleContext;
 import songscribe.util.GraphicUtils;
 import songscribe.util.UIUtils;
 import songscribe.util.Utils;
@@ -50,7 +51,7 @@ public class LineWidthChangeDialog
     );
 
     private GraphicUtils.Unit currentUnit = GraphicUtils.Unit.UNDETERMINED;
-    private int originalWidth = 0;
+    private int originalWidthPx = 0;
 
     public LineWidthChangeDialog() {
         super(Strings.get(Strings.DIALOG_LINE_WIDTH_TITLE));
@@ -91,9 +92,9 @@ public class LineWidthChangeDialog
                 widthInInches * UIUtils.RESOLUTION
             );
 
-            if (lineWidth != originalWidth) {
+            if (lineWidth != originalWidthPx) {
                 var score = getScore();
-                score.setLineWidth(lineWidth);
+                score.setLineWidthPx(lineWidth);
             }
 
             originalOkAction.actionPerformed(null);
@@ -128,7 +129,7 @@ public class LineWidthChangeDialog
 
     @Override
     protected void getData() {
-        originalWidth = (int) getComposition().getLineWidth();
+        originalWidthPx = ScaleContext.getInstance().toRoundedPixels(getComposition().getLineWidthSs());
         actionPerformed(null);
     }
 
@@ -207,7 +208,7 @@ public class LineWidthChangeDialog
 
         if (text.isEmpty()) {
             var composition = getComposition();
-            value = (double) composition.getLineWidth() / UIUtils.RESOLUTION;
+            value = ScaleContext.getInstance().toPixels(composition.getLineWidthSs()) / UIUtils.RESOLUTION;
         } else {
             try {
                 // The value in the text field is in the previously selected unit

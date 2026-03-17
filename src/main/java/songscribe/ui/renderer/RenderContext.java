@@ -60,7 +60,7 @@ public interface RenderContext {
     /**
      * Returns the vertical distance between staff rows.
      */
-    int getRowHeight();
+    int getRowHeightPx();
 
     /**
      * Calculates the Y position for an element at the given staff position and line index.
@@ -84,7 +84,7 @@ public interface RenderContext {
     /**
      * Returns the X position where key signature accidentals are drawn.
      */
-    int getLeadingKeysPos();
+    int getLeadingKeysPosPx();
 
     // -------------------------------------------------------------------------
     // Selection state (for highlighting)

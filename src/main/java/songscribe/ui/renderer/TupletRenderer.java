@@ -201,7 +201,7 @@ public class TupletRenderer extends BaseElementRenderer<Tuplet> {
 
         // The layout result provides absolute Y, but renderTuplet uses a vertical adjustment
         // TODO: Refactor renderTuplet to use absolute Y from layout result
-        return element.getVerticalPosition();
+        return element.getVerticalPositionSs();
     }
 
     /**
@@ -231,14 +231,14 @@ public class TupletRenderer extends BaseElementRenderer<Tuplet> {
             && line.getBeamings().findInterval(endIndex) != null;
 
         // Top staff line: 4 positions above middle line
-        double staffTopY = middleLineYSs - ScaleContext.getInstance().toPixels(4 * LayoutStylesheet.STAFF_POSITION_OFFSET);
+        double staffTopY = middleLineYSs - ScaleContext.getInstance().toPixels(4 * LayoutStylesheet.STAFF_POSITION_OFFSET_SS);
 
         // Find the highest extent across ALL notes in the tuplet group
         double highestRefY = staffTopY;
 
         for (var i = startIndex; i <= endIndex; i++) {
             var element = line.getElement(i);
-            double elementYSs = element.getStaffPosition() * LayoutStylesheet.STAFF_POSITION_OFFSET;
+            double elementYSs = element.getStaffPosition() * LayoutStylesheet.STAFF_POSITION_OFFSET_SS;
             double refY;
 
             var stemLayout = layoutResult != null ? layoutResult.getStemLayout(element) : null;
@@ -353,7 +353,7 @@ public class TupletRenderer extends BaseElementRenderer<Tuplet> {
     ) {
         for (var iter = line.getTuplets().listIterator(); iter.hasNext(); ) {
             var interval = iter.next();
-            renderTuplet(g2, line, ctx, interval.getStart(), interval.getEnd(), interval.getGrade(), interval.getVerticalPosition());
+            renderTuplet(g2, line, ctx, interval.getStart(), interval.getEnd(), interval.getGrade(), interval.getVerticalPositionSs());
         }
     }
 

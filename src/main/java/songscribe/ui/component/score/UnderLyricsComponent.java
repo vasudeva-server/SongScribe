@@ -22,8 +22,6 @@ package songscribe.ui.component.score;
 
 import module java.desktop;
 
-import org.jetbrains.annotations.NotNull;
-
 import songscribe.util.GraphicUtils;
 
 /**
@@ -120,7 +118,7 @@ public class UnderLyricsComponent extends ScoreComponent {
                 x = contentX;
             } else {
                 var textWidth = GraphicUtils.getTextBlockWidth(lyrics, g2);
-                x = (float) ((composition.getLineWidth() - textWidth) / 2);
+                x = (float) ((composition.getLineWidthPx() - textWidth) / 2);
             }
 
             var y = (float) metrics.getAscent();
@@ -154,6 +152,6 @@ public class UnderLyricsComponent extends ScoreComponent {
         var lineHeight = metrics.getHeight();
         var height = lineHeight * lines.length;
 
-        return new Dimension((int) composition.getLineWidth(), height);
+        return new Dimension(composition.getLineWidthPx(), height);
     }
 }

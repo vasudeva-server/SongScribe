@@ -123,7 +123,7 @@ public class Trill extends RangeElement {
             return anchor.getContentWidth();
         }
 
-        return Math.abs(endNote.getX() - anchor.getX()) + endNote.getContentWidth();
+        return Math.abs(endNote.getXSs() - anchor.getXSs()) + endNote.getContentWidth();
     }
 
     @Override

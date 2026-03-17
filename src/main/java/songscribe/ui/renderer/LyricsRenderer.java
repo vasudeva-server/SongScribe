@@ -404,7 +404,7 @@ public class LyricsRenderer {
         if (endIndex == line.elementCount()) {
             return (relation == StaffElement.SyllableRelation.ONE_DASH)
                 ? startX + (int) (HYPHEN_WIDTH_PX * 2f)
-                : (int) composition.getLineWidth();
+                : composition.getLineWidthPx();
         }
 
         var endNote = line.getElement(endIndex);

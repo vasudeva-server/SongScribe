@@ -174,7 +174,7 @@ public final class LineIO {
 
             if (i.isVerticallyAdjusted()) {
                 sb.append(',');
-                sb.append(i.getVerticalPosition());
+                sb.append(i.getVerticalPositionSs());
             }
 
             sb.append(';');
@@ -192,13 +192,13 @@ public final class LineIO {
             sb.append(',');
             sb.append(i.getEnd());
 
-            if (i.getX1Shift() != 0 || i.getX2Shift() != 0 || i.getYShift() != 0) {
+            if (i.getX1ShiftSs() != 0 || i.getX2ShiftSs() != 0 || i.getYShiftSs() != 0) {
                 sb.append(',');
-                sb.append(i.getX1Shift());
+                sb.append(i.getX1ShiftSs());
                 sb.append(',');
-                sb.append(i.getX2Shift());
+                sb.append(i.getX2ShiftSs());
                 sb.append(',');
-                sb.append(i.getYShift());
+                sb.append(i.getYShiftSs());
             }
 
             sb.append(';');
@@ -320,7 +320,7 @@ public final class LineIO {
                 }
 
                 var tuplet = new TupletInterval(a, b, grade);
-                tuplet.setVerticalPosition(vertPos);
+                tuplet.setVerticalPositionSs(vertPos);
                 is.addInterval(tuplet);
                 begin = str.indexOf(';', begin) + 1;
                 end = str.indexOf(';', begin);
@@ -356,9 +356,9 @@ public final class LineIO {
 
                     if (parts.length >= 3) {
                         try {
-                            dynamics.setX1Shift(Double.parseDouble(parts[0]));
-                            dynamics.setX2Shift(Double.parseDouble(parts[1]));
-                            dynamics.setYShift(Double.parseDouble(parts[2]));
+                            dynamics.setX1ShiftSs(Double.parseDouble(parts[0]));
+                            dynamics.setX2ShiftSs(Double.parseDouble(parts[1]));
+                            dynamics.setYShiftSs(Double.parseDouble(parts[2]));
                         } catch (NumberFormatException ignored) {
                             // Leave shifts at 0
                         }

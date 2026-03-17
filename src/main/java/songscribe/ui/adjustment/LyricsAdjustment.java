@@ -64,7 +64,7 @@ public class LyricsAdjustment extends Adjustment {
                 bottomRightDragBounds.setLocation(
                     (draggingRect.xIndex < (line.elementCount() - 1))
                         ? line.getElement(draggingRect.xIndex + 1).getXPosSs()
-                        : score.getComposition().getLineWidth(),
+                        : score.getComposition().getLineWidthSs(),
                     draggingRect.rectangle.y
                 );
             } else if (
@@ -75,7 +75,7 @@ public class LyricsAdjustment extends Adjustment {
                     draggingRect.rectangle.y
                 );
                 bottomRightDragBounds.setLocation(
-                    score.getComposition().getLineWidth(),
+                    score.getComposition().getLineWidthSs(),
                     draggingRect.rectangle.y
                 );
             } else if (draggingRect.adjustType == AdjustType.LYRICS_YPOS) {

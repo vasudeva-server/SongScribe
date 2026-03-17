@@ -93,7 +93,7 @@ public class Tie extends RangeElement {
         }
 
         // Width spans from anchor to end note
-        return Math.abs(endNote.getX() - anchor.getX()) + endNote.getContentWidth();
+        return Math.abs(endNote.getXSs() - anchor.getXSs()) + endNote.getContentWidth();
     }
 
     @Override

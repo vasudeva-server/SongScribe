@@ -211,13 +211,13 @@ public class ArticulationRenderer extends BaseElementRenderer<StaffElement> {
         // Offset = accent visual half-height + margin so the painted edge clears the reference.
         if (Math.abs(staffPosition) < 4) {
             // Within staff (not on edge lines) -- anchor to staff edge
-            int staffEdgeY = middleLineYPx + ScaleContext.getInstance().toRoundedPixels(dir * 4 * LayoutStylesheet.STAFF_POSITION_OFFSET);
+            int staffEdgeY = middleLineYPx + ScaleContext.getInstance().toRoundedPixels(dir * 4 * LayoutStylesheet.STAFF_POSITION_OFFSET_SS);
 
             return staffEdgeY + dir * (ACCENT_HALF_HEIGHT_PX + margin);
         } else {
             // On staff edge or beyond (ledger lines) -- anchor to note head
-            int noteHeadY = middleLineYPx + ScaleContext.getInstance().toRoundedPixels(staffPosition * LayoutStylesheet.STAFF_POSITION_OFFSET);
-            int noteHeadRadius = ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.STAFF_POSITION_OFFSET);
+            int noteHeadY = middleLineYPx + ScaleContext.getInstance().toRoundedPixels(staffPosition * LayoutStylesheet.STAFF_POSITION_OFFSET_SS);
+            int noteHeadRadius = ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.STAFF_POSITION_OFFSET_SS);
 
             return noteHeadY + dir * (noteHeadRadius + margin + ACCENT_HALF_HEIGHT_PX);
         }
@@ -264,18 +264,18 @@ public class ArticulationRenderer extends BaseElementRenderer<StaffElement> {
             return switch (Math.abs(staffPosition)) {
                 // B4/C5 or A4: fixed space near opposite staff edge
                 case 0, 1 ->
-                    middleLineYPx + ScaleContext.getInstance().toRoundedPixels(dir * 3 * LayoutStylesheet.STAFF_POSITION_OFFSET);
+                    middleLineYPx + ScaleContext.getInstance().toRoundedPixels(dir * 3 * LayoutStylesheet.STAFF_POSITION_OFFSET_SS);
 
                 // D5/E5 or G4/F4: standard margin from staff edge
                 case 2, 3 -> {
-                    int staffEdgeY = middleLineYPx + ScaleContext.getInstance().toRoundedPixels(dir * 4 * LayoutStylesheet.STAFF_POSITION_OFFSET);
+                    int staffEdgeY = middleLineYPx + ScaleContext.getInstance().toRoundedPixels(dir * 4 * LayoutStylesheet.STAFF_POSITION_OFFSET_SS);
                     yield staffEdgeY + dir * (STACCATO_HALF_HEIGHT_PX + margin);
                 }
 
                 // F5+ or E4+: standard margin from note head
                 default -> {
-                    int noteHeadY = middleLineYPx + ScaleContext.getInstance().toRoundedPixels(staffPosition * LayoutStylesheet.STAFF_POSITION_OFFSET);
-                    int noteHeadRadius = ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.STAFF_POSITION_OFFSET);
+                    int noteHeadY = middleLineYPx + ScaleContext.getInstance().toRoundedPixels(staffPosition * LayoutStylesheet.STAFF_POSITION_OFFSET_SS);
+                    int noteHeadRadius = ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.STAFF_POSITION_OFFSET_SS);
                     yield noteHeadY + dir * (noteHeadRadius + margin + STACCATO_HALF_HEIGHT_PX);
                 }
             };
@@ -291,7 +291,7 @@ public class ArticulationRenderer extends BaseElementRenderer<StaffElement> {
             default -> staffPosition < 0 ? -3 : 3;  // beyond staff → E5 or F4 space
         };
 
-        return middleLineYPx + ScaleContext.getInstance().toRoundedPixels(targetStaffPosition * LayoutStylesheet.STAFF_POSITION_OFFSET);
+        return middleLineYPx + ScaleContext.getInstance().toRoundedPixels(targetStaffPosition * LayoutStylesheet.STAFF_POSITION_OFFSET_SS);
     }
 
     /**

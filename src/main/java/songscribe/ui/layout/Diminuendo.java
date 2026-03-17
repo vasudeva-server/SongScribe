@@ -136,7 +136,7 @@ public class Diminuendo extends RangeElement {
             return 0;
         }
 
-        return Math.abs(endNote.getX() - anchor.getX()) + endNote.getContentWidth() + x1Shift + x2Shift;
+        return Math.abs(endNote.getXSs() - anchor.getXSs()) + endNote.getContentWidth() + x1Shift + x2Shift;
     }
 
     @Override

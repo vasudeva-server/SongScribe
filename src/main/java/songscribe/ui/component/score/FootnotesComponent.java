@@ -42,7 +42,7 @@ public class FootnotesComponent extends ScoreComponent {
      */
     public FootnotesComponent() {
         super();
-        setMarginTop(ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.FOOTNOTES_MIN_MARGIN_TOP));
+        setMarginTop(ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.FOOTNOTES_MIN_MARGIN_TOP_SS));
     }
 
     @Override
@@ -71,11 +71,11 @@ public class FootnotesComponent extends ScoreComponent {
 
             // Calculate text width (capped at max width)
             var textWidth = GraphicUtils.getTextBlockWidth(footnotes, g2);
-            var maxWidth = composition.getLineWidth() * MAX_WIDTH_PERCENTAGE;
+            var maxWidth = composition.getLineWidthPx() * MAX_WIDTH_PERCENTAGE;
             var actualWidth = Math.min(textWidth, maxWidth);
 
             // Center horizontally
-            var x = (float) ((composition.getLineWidth() - actualWidth) / 2);
+            var x = (float) ((composition.getLineWidthPx() - actualWidth) / 2);
             var y = (float) (marginTop + metrics.getAscent());
 
             // Draw each line
@@ -107,6 +107,6 @@ public class FootnotesComponent extends ScoreComponent {
         var lineHeight = metrics.getHeight();
         var height = marginTop + (lineHeight * lines.length);
 
-        return new Dimension((int) composition.getLineWidth(), height);
+        return new Dimension(composition.getLineWidthPx(), height);
     }
 }

@@ -125,8 +125,8 @@ public class PDFConverter {
         var score = new Score(null);
 
         var data = new PageLayoutData();
-        data.paperWidth = paperWidth;
-        data.paperHeight = paperHeight;
+        data.paperWidthPx = paperWidth;
+        data.paperHeightPx = paperHeight;
         data.score = score;
         data.applyMarginOverrides(75, topMargin, leftMargin, bottomMargin, rightMargin);
 

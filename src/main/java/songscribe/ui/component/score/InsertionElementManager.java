@@ -617,7 +617,7 @@ public class InsertionElementManager {
      * @return Staff position
      */
     static int calculateStaffPositionFromMouse(double mouseYss, double middleLineYSs) {
-        return (int) Math.round((mouseYss - middleLineYSs) / LayoutStylesheet.STAFF_POSITION_OFFSET);
+        return (int) Math.round((mouseYss - middleLineYSs) / LayoutStylesheet.STAFF_POSITION_OFFSET_SS);
     }
 
     /**

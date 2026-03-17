@@ -128,17 +128,17 @@ public class VerticalAdjustment extends Adjustment {
     }
 
     private void adjustAttribution(int diffY) {
-        var newY = score.getComposition().getAttributionStartY() + diffY;
+        var newY = score.getComposition().getAttributionStartYSs() + diffY;
         MessageCenter.post(new LayoutUpdate(null, null, null, null, newY));
     }
 
     private void adjustTopSpace(int diffY) {
-        var newPadding = score.getComposition().getTopPadding() + diffY;
+        var newPadding = score.getComposition().getTopPaddingSs() + diffY;
         MessageCenter.post(new LayoutUpdate(newPadding, true, null, null, null));
     }
 
     private void adjustRowHeight(int diffY) {
-        var newAdjustment = score.getComposition().getRowHeightAdjustment() + diffY;
+        var newAdjustment = score.getComposition().getRowHeightAdjustmentSs() + diffY;
         MessageCenter.post(new LayoutUpdate(null, null, newAdjustment, null, null));
     }
 
@@ -150,7 +150,7 @@ public class VerticalAdjustment extends Adjustment {
             if (note.getTempoChange() != null) {
                 for (var attachment : note.getAttachments()) {
                     if (attachment instanceof songscribe.ui.layout.TempoAttachment) {
-                        attachment.setUserYOffset(attachment.getUserYOffset() + diffY);
+                        attachment.setUserYOffsetSs(attachment.getUserYOffsetSs() + diffY);
                     }
                 }
             }
@@ -165,7 +165,7 @@ public class VerticalAdjustment extends Adjustment {
             if (note.getBeatChange() != null) {
                 for (var attachment : note.getAttachments()) {
                     if (attachment instanceof songscribe.ui.layout.BeatChangeAttachment) {
-                        attachment.setUserYOffset(attachment.getUserYOffset() + diffY);
+                        attachment.setUserYOffsetSs(attachment.getUserYOffsetSs() + diffY);
                     }
                 }
             }
@@ -185,7 +185,7 @@ public class VerticalAdjustment extends Adjustment {
         if (dragRect != null) {
             var annotation = line.getElement(dragRect.xIndex).getAnnotation();
             // Update user offset (delta from calculated position)
-            annotation.setUserYOffset(annotation.getUserYOffset() + diffY);
+            annotation.setUserYOffsetSs(annotation.getUserYOffsetSs() + diffY);
             // Also update legacy yPos for backward compatibility
             annotation.setYPosPx(annotation.getYPosPx() + diffY);
         }
@@ -210,7 +210,7 @@ public class VerticalAdjustment extends Adjustment {
         );
 
         if (interval != null) {
-            interval.setYShift(interval.getYShift() + diffY);
+            interval.setYShiftSs(interval.getYShiftSs() + diffY);
         }
     }
 
@@ -222,7 +222,7 @@ public class VerticalAdjustment extends Adjustment {
         var interval = line.getTuplets().findInterval(dragRect.xIndex);
 
         if (interval != null) {
-            interval.setVerticalPosition(interval.getVerticalPosition() + diffY);
+            interval.setVerticalPositionSs(interval.getVerticalPositionSs() + diffY);
         }
     }
 
@@ -514,7 +514,7 @@ public class VerticalAdjustment extends Adjustment {
 
     private void getAttributionAdjustRect(AdjustRect adjustRect) {
         adjustRect.rect.x = score.getSheetWidthPx() - 8;
-        adjustRect.rect.y = (int) score.getComposition().getAttributionStartY();
+        adjustRect.rect.y = (int) score.getComposition().getAttributionStartYSs();
     }
 
     private void getHeightAdjustRect(AdjustRect adjustRect) {

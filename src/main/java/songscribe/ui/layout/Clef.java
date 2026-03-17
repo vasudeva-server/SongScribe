@@ -49,7 +49,7 @@ public class Clef extends LineElement {
      */
     public Clef() {
         // Default margin from clef to key signature
-        setMarginRight(ScaleContext.getInstance().toRoundedPixels(0.5));
+        setMarginRightSs(ScaleContext.getInstance().toRoundedPixels(0.5));
     }
 
     /**

@@ -46,8 +46,8 @@ public class PDFExporter {
         File outputFile
     ) {
         var resolution = 72f / GraphicUtils.getDpi();
-        var paperWidth = data.paperWidth * resolution;
-        var paperHeight = data.paperHeight * resolution;
+        var paperWidth = data.paperWidthPx * resolution;
+        var paperHeight = data.paperHeightPx * resolution;
         var score = data.score;
         var composition = score.getComposition();
 
@@ -55,12 +55,12 @@ public class PDFExporter {
         var sheetWidth = score.getSheetWidthPx();
         var sheetHeight = score.getSheetHeightPx();
         var horizontalMargin =
-            (data.leftInnerMargin + data.rightOuterMargin) * resolution;
+            (data.leftInnerMarginPx + data.rightOuterMarginPx) * resolution;
         var horizontalScale = (paperWidth - horizontalMargin) / sheetWidth;
-        var verticalMargin = (data.topMargin + data.bottomMargin) * resolution;
+        var verticalMargin = (data.topMarginPx + data.bottomMarginPx) * resolution;
         var verticalScale = (paperHeight - verticalMargin) / sheetHeight;
         double scale;
-        double leftMargin = data.leftInnerMargin * resolution;
+        double leftMargin = data.leftInnerMarginPx * resolution;
 
         if (horizontalScale < verticalScale) {
             scale = horizontalScale;
@@ -72,8 +72,8 @@ public class PDFExporter {
             scale = verticalScale;
             var scaledMargin = paperWidth - (sheetWidth * scale);
             var leftMarginFactor =
-                (double) data.leftInnerMargin /
-                    (double) (data.leftInnerMargin + data.rightOuterMargin);
+                (double) data.leftInnerMarginPx /
+                    (double) (data.leftInnerMarginPx + data.rightOuterMarginPx);
             leftMargin = scaledMargin * leftMarginFactor;
         }
 

@@ -31,6 +31,9 @@ import org.xml.sax.SAXException;
 import org.xml.sax.helpers.DefaultHandler;
 
 import songscribe.message.CompositionData;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import songscribe.music.Composition;
 import songscribe.music.KeyType;
 import songscribe.music.Line;
@@ -41,6 +44,8 @@ import songscribe.ui.layout2.ScaleContext;
 import songscribe.util.Utils;
 
 public final class CompositionIO {
+
+    private static final Logger LOG = LoggerFactory.getLogger(CompositionIO.class);
 
     public static final int IO_MAJOR_VERSION = 2;
     public static final int IO_MINOR_VERSION = 2;
@@ -166,26 +171,26 @@ public final class CompositionIO {
             XML.writeValue(
                 pw,
                 XML_TOP_SPACE,
-                Double.toString(c.getTopPadding())
+                Double.toString(c.getTopPaddingSs())
             );
         }
 
         XML.writeValue(
             pw,
             XML_INFO_STARTY,
-            Double.toString(c.getAttributionStartY())
+            Double.toString(c.getAttributionStartYSs())
         );
 
-        if (c.getRowHeightAdjustment() != 0) {
+        if (c.getRowHeightAdjustmentSs() != 0) {
             XML.writeValue(
                 pw,
                 XML_ROW_HEIGHT,
-                Double.toString(c.getRowHeightAdjustment())
+                Double.toString(c.getRowHeightAdjustmentSs())
             );
         }
 
         // Line width in staff-space units
-        XML.writeValue(pw, XML_LINE_WIDTH, Double.toString(c.getLineWidth()));
+        XML.writeValue(pw, XML_LINE_WIDTH, Double.toString(c.getLineWidthSs()));
 
         // Always write dynamicLayout=true for new documents
         XML.writeValue(pw, XML_DYNAMIC_LAYOUT, Boolean.toString(true));
@@ -234,10 +239,10 @@ public final class CompositionIO {
         private boolean unofficialTranslation = false;
         private int defaultKeyAccidentalCount = Composition.DEFAULT_KEY_ACCIDENTAL_COUNT;
         private KeyType defaultKeyType = Composition.DEFAULT_KEY_TYPE;
-        private double topPadding = 0;
-        private double attributionStartY = 0;
-        private double rowHeightAdjustment = 0;
-        private double lineWidth = Score.PAGE_CONTENT_SIZE.width;
+        private double topPaddingSs = 0;
+        private double attributionStartYSs = 0;
+        private double rowHeightAdjustmentSs = 0;
+        private double lineWidthSs = ScaleContext.getInstance().fromPixels(Score.PAGE_CONTENT_SIZE.width);
         private boolean hasBeenDynamicallyLaidOut = false;
         private final List<Line> parsedLines = new ArrayList<>();
 
@@ -486,14 +491,26 @@ public final class CompositionIO {
                             Boolean.parseBoolean(str);
                         case XML_FOOTNOTES -> footnotes = str;
                         case XML_INFO -> attribution = str;
-                        case XML_TOP_SPACE -> topPadding =
-                            useDouble ? Double.parseDouble(str) : Integer.parseInt(str);
-                        case XML_INFO_STARTY -> attributionStartY =
-                            useDouble ? Double.parseDouble(str) : Integer.parseInt(str);
-                        case XML_ROW_HEIGHT -> rowHeightAdjustment =
-                            useDouble ? Double.parseDouble(str) : Integer.parseInt(str);
-                        case XML_LINE_WIDTH -> lineWidth =
-                            useDouble ? Double.parseDouble(str) : Integer.parseInt(str);
+                        case XML_TOP_SPACE -> {
+                            topPaddingSs =
+                                useDouble ? Double.parseDouble(str) : Integer.parseInt(str);
+                            LOG.trace("[PARSE] topPadding raw='{}' useDouble={} parsed={}", str, useDouble, topPaddingSs);
+                        }
+                        case XML_INFO_STARTY -> {
+                            attributionStartYSs =
+                                useDouble ? Double.parseDouble(str) : Integer.parseInt(str);
+                            LOG.trace("[PARSE] attributionStartY raw='{}' useDouble={} parsed={}", str, useDouble, attributionStartYSs);
+                        }
+                        case XML_ROW_HEIGHT -> {
+                            rowHeightAdjustmentSs =
+                                useDouble ? Double.parseDouble(str) : Integer.parseInt(str);
+                            LOG.trace("[PARSE] rowHeightAdjustment raw='{}' useDouble={} parsed={}", str, useDouble, rowHeightAdjustmentSs);
+                        }
+                        case XML_LINE_WIDTH -> {
+                            lineWidthSs =
+                                useDouble ? Double.parseDouble(str) : Integer.parseInt(str);
+                            LOG.trace("[PARSE] lineWidth raw='{}' useDouble={} parsed={}", str, useDouble, lineWidthSs);
+                        }
                         case XML_DYNAMIC_LAYOUT -> hasBeenDynamicallyLaidOut =
                             Boolean.parseBoolean(str);
                     }
@@ -524,6 +541,21 @@ public final class CompositionIO {
         }
 
         public Composition getComposition() {
+            LOG.trace("[LOAD] getComposition() version={}.{} lines={}", majorVersion, minorVersion, parsedLines.size());
+            LOG.trace("[LOAD] BEFORE migration: lineWidth={} topPadding={} attributionStartY={} rowHeightAdjustment={}",
+                lineWidthSs, topPaddingSs, attributionStartYSs, rowHeightAdjustmentSs);
+
+            // Log per-line values before migration
+            for (var i = 0; i < parsedLines.size(); i++) {
+                var l = parsedLines.get(i);
+                LOG.trace("[LOAD] line[{}] lyricsYPos={} elementCount={}", i, l.getLyricsYPosSs(), l.elementCount());
+
+                for (var j = 0; j < l.elementCount(); j++) {
+                    var note = l.getElement(j);
+                    LOG.trace("[LOAD]   note[{}] type={} xPos={} staffPos={}", j, note.getType(), note.getXPosSs(), note.getStaffPosition());
+                }
+            }
+
             // Determine format version for migration
             int formatVersion = majorVersion >= 2 ? 2 : 1;
 
@@ -538,12 +570,19 @@ public final class CompositionIO {
             // v2.1+ files already store values in staff-space units.
             if (majorVersion < 2 || (majorVersion == 2 && minorVersion < 1)) {
                 var pps = ScaleContext.DEFAULT_PIXELS_PER_STAFF_SPACE;
+                LOG.trace("[LOAD] pre-v2.1 pixel->ss conversion, pps={}", pps);
 
                 // Composition-level pixel-to-ss conversion
-                topPadding /= pps;
-                lineWidth /= pps;
-                rowHeightAdjustment /= pps;
-                attributionStartY /= pps;
+                LOG.trace("[LOAD] BEFORE px->ss: lineWidth={} topPadding={} attributionStartY={} rowHeightAdjustment={}",
+                    lineWidthSs, topPaddingSs, attributionStartYSs, rowHeightAdjustmentSs);
+
+                topPaddingSs /= pps;
+                lineWidthSs /= pps;
+                rowHeightAdjustmentSs /= pps;
+                attributionStartYSs /= pps;
+
+                LOG.trace("[LOAD] AFTER px->ss: lineWidth={} topPadding={} attributionStartY={} rowHeightAdjustment={}",
+                    lineWidthSs, topPaddingSs, attributionStartYSs, rowHeightAdjustmentSs);
 
                 // Line-level pixel-to-ss conversion
                 FormatMigrator.migratePixelsToStaffSpace(parsedLines);
@@ -558,10 +597,10 @@ public final class CompositionIO {
             // Legacy fallback: if topPadding wasn't set in file, calculate initial value.
             // Layout calculation will recalculate this properly, but this provides
             // a reasonable default for any code that accesses topPadding before layout.
-            if (topPadding == 0) {
+            if (topPaddingSs == 0) {
                 var tf = titleFont != null ? titleFont : defaultFontFromPrefs("titleFont", "titleFontSize");
                 var af = attributionFont != null ? attributionFont : defaultFontFromPrefs("attributionFont", "attributionFontSize");
-                topPadding = ((2 * tf.getSize()) +
+                topPaddingSs = ((2 * tf.getSize()) +
                     (Utils.lineCount(attribution) * af.getSize())) -
                     ScaleContext.getInstance().toRoundedPixels(2.0);
             }
@@ -587,14 +626,17 @@ public final class CompositionIO {
                 lyricsFont,
                 attributionFont,
                 annotationFont,
-                topPadding,
-                attributionStartY,
-                rowHeightAdjustment,
-                lineWidth,
+                topPaddingSs,
+                attributionStartYSs,
+                rowHeightAdjustmentSs,
+                lineWidthSs,
                 parsedLines,
                 hasBeenDynamicallyLaidOut,
                 formatVersion
             );
+
+            LOG.trace("[LOAD] CompositionData lineWidth={} topPadding={} attributionStartY={} rowHeightAdjustment={} dynamicLayout={}",
+                data.lineWidthSs(), data.topPaddingSs(), data.attributionStartYSs(), data.rowHeightAdjustmentSs(), data.hasBeenDynamicallyLaidOut());
 
             // Use the loading constructor to avoid the wasted work of the
             // no-arg constructor (default line, attributionStartY calculation).

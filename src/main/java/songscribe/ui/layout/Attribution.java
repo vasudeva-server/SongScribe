@@ -54,11 +54,11 @@ public class Attribution extends LineElement {
      */
     public Attribution(@NotNull String text) {
         this.text = text;
-        setMargin(
-            ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.ATTRIBUTION_PADDING),
-            ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.ATTRIBUTION_PADDING),
-            ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.ATTRIBUTION_MARGIN_BOTTOM),
-            ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.ATTRIBUTION_PADDING)
+        setMarginSs(
+            ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.ATTRIBUTION_PADDING_SS),
+            ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.ATTRIBUTION_PADDING_SS),
+            ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.ATTRIBUTION_MARGIN_BOTTOM_SS),
+            ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.ATTRIBUTION_PADDING_SS)
         );
     }
 

@@ -99,7 +99,7 @@ public final class Score
     public static final int STAFF_LINE_COUNT = 5;
 
     // The vertical distance between whole tones on the staff (e.g. A to B)
-    public static final float STAFF_POSITION_OFFSET_PX = (float) ScaleContext.getInstance().toPixels(LayoutStylesheet.STAFF_POSITION_OFFSET);
+    public static final float STAFF_POSITION_OFFSET_PX = (float) ScaleContext.getInstance().toPixels(LayoutStylesheet.STAFF_POSITION_OFFSET_SS);
 
     // The content width and height in inches, excluding page margins
     public static final float PAGE_CONTENT_WIDTH = 7;
@@ -284,7 +284,7 @@ public final class Score
         initScorePanel();
         initMainPanel();
 
-        setLineWidth((int) composition.getLineWidth());
+        setLineWidthPx(ScaleContext.getInstance().toRoundedPixels(composition.getLineWidthSs()));
         inputHandler.ifPresent(h -> { addMouseMotionListener(h); addMouseListener(h); });
         focusController.ifPresent(this::addFocusListener);
 
@@ -484,9 +484,13 @@ public final class Score
         }
 
         try {
+            LOG.trace("[SCORE] openFile: {}", file.getName());
             var reader = new CompositionIO.DocumentReader();
             saxParser.parse(file, reader);
-            setComposition(reader.getComposition());
+            LOG.trace("[SCORE] openFile: SAX parse complete, calling getComposition()");
+            var newComposition = reader.getComposition();
+            LOG.trace("[SCORE] openFile: getComposition() returned, lineWidth={}", newComposition.getLineWidthSs());
+            setComposition(newComposition);
 
             if (updateCurrentFile && onFileOpened != null) {
                 onFileOpened.accept(file);
@@ -749,8 +753,12 @@ public final class Score
             return;
         }
 
+        var lineWidthPx = ScaleContext.getInstance().toRoundedPixels(composition.getLineWidthSs());
+        LOG.trace("[SCORE] setComposition: composition.lineWidthSs={} lineWidthPx={}",
+            composition.getLineWidthSs(), lineWidthPx);
+
         // Core setup needed for both headless and interactive modes
-        setLineWidth((int) composition.getLineWidth());
+        setLineWidthPx(lineWidthPx);
 
         for (var i = 0; i < composition.lineCount(); i++) {
             drawWidthIfWiderLine(composition.getLine(i), true);
@@ -814,7 +822,9 @@ public final class Score
     }
 
     public int getSheetWidthPx() {
-        return (int) composition.getLineWidth();
+        var result = ScaleContext.getInstance().toRoundedPixels(composition.getLineWidthSs());
+        LOG.trace("[SCORE] getSheetWidthPx: composition.lineWidthSs={} result={}", composition.getLineWidthSs(), result);
+        return result;
     }
 
     public int getSheetHeightPx() {
@@ -847,13 +857,17 @@ public final class Score
                 idealSpace = (float) ScaleContext.getInstance().toPixels(LayoutConstants.DEFAULT_COLUMN_GAP_SS) + 20;
             }
 
+            // Note: getXPosSs() is a legacy misnomer — it stores pixels.
+            // Use getLineWidthPx() to compare in the same unit.
+            var lineWidthPx = composition.getLineWidthPx();
+
             if (
                 line.getElement(line.elementCount() - 1).getXPosSs() >
-                    (composition.getLineWidth() - idealSpace)
+                    (lineWidthPx - idealSpace)
             ) {
                 var firstX = line.getElement(0).getXPosSs();
                 var ratio =
-                    (composition.getLineWidth() - idealSpace - firstX) /
+                    (lineWidthPx - idealSpace - firstX) /
                         (endNote.getXPosSs() - firstX);
 
                 for (var i = 1; i < line.elementCount(); i++) {
@@ -905,7 +919,7 @@ public final class Score
     }
 
     @Override
-    public int getLeadingKeysPos() {
+    public int getLeadingKeysPosPx() {
         return leadingKeysPosPx;
     }
 
@@ -914,7 +928,7 @@ public final class Score
     }
 
     @Override
-    public int getRowHeight() {
+    public int getRowHeightPx() {
         return rowHeightPx;
     }
 
@@ -939,8 +953,11 @@ public final class Score
         Prefs.getInstance().put("control", control.name());
     }
 
-    public void setLineWidth(int lineWidth) {
-        composition.setLineWidth(lineWidth);
+    public void setLineWidthPx(int lineWidthPx) {
+        LOG.trace("[SCORE] setLineWidthPx({}) PAGE_CONTENT_SIZE.width={}", lineWidthPx, PAGE_CONTENT_SIZE.width);
+
+        composition.setLineWidthSs(ScaleContext.getInstance().fromPixels(lineWidthPx));
+        var lineWidth = lineWidthPx;
         preferredSize.width = lineWidth;
         preferredSize.height = Math.round(
             (lineWidth > PAGE_CONTENT_SIZE.width)
@@ -949,11 +966,15 @@ public final class Score
         );
         setPreferredSize(preferredSize);
 
+        LOG.trace("[SCORE] setLineWidth: preferredSize={}x{}", preferredSize.width, preferredSize.height);
+
         if (marginPanel != null) {
             var width = Math.max(lineWidth, PAGE_CONTENT_SIZE.width);
             preferredSizeWithMargin.width = width + PAGE_MARGIN_PX;
             preferredSizeWithMargin.height = preferredSize.height + PAGE_MARGIN_PX;
             marginPanel.setPreferredSize(preferredSizeWithMargin);
+            LOG.trace("[SCORE] setLineWidth: marginPreferredSize={}x{} calling scrollPane.validate()",
+                preferredSizeWithMargin.width, preferredSizeWithMargin.height);
             invalidate();
             marginPanel.invalidate();
             scorePanel.invalidate();

@@ -58,26 +58,26 @@ public abstract class LineElement {
     /**
      * User's manual horizontal offset from the layout-calculated position.
      * <p>
-     * Final X position = calculated position + userXOffset
+     * Final X position = calculated position + userXOffsetSs
      * <p>
      * Default is 0 (no user adjustment). Positive values move right, negative left.
      */
-    private double userXOffset = 0;
+    private double userXOffsetSs = 0;
 
     /**
      * User's manual vertical offset from the layout-calculated position.
      * <p>
-     * Final Y position = calculated position + userYOffset
+     * Final Y position = calculated position + userYOffsetSs
      * <p>
      * Default is 0 (no user adjustment). Positive values move down, negative up.
      */
-    private double userYOffset = 0;
+    private double userYOffsetSs = 0;
 
-    /** CSS-style margins: top, right, bottom, left (in pixels). */
-    private double marginTop = 0;
-    private double marginRight = 0;
-    private double marginBottom = 0;
-    private double marginLeft = 0;
+    /** CSS-style margins: top, right, bottom, left (in staff spaces). */
+    private double marginTopSs = 0;
+    private double marginRightSs = 0;
+    private double marginBottomSs = 0;
+    private double marginLeftSs = 0;
 
     /** Child elements (for composite elements like notes with articulations). */
     private final List<LineElement> children = new ArrayList<>();
@@ -144,14 +144,14 @@ public abstract class LineElement {
     /**
      * Returns the X position relative to the parent line origin.
      */
-    public double getX() {
+    public double getXSs() {
         return position.getX();
     }
 
     /**
      * Returns the Y position relative to the parent line origin.
      */
-    public double getY() {
+    public double getYSs() {
         return position.getY();
     }
 
@@ -176,29 +176,29 @@ public abstract class LineElement {
     /**
      * Returns the user's horizontal offset from the calculated position.
      */
-    public double getUserXOffset() {
-        return userXOffset;
+    public double getUserXOffsetSs() {
+        return userXOffsetSs;
     }
 
     /**
      * Sets the user's horizontal offset from the calculated position.
      */
-    public void setUserXOffset(double userXOffset) {
-        this.userXOffset = userXOffset;
+    public void setUserXOffsetSs(double userXOffsetSs) {
+        this.userXOffsetSs = userXOffsetSs;
     }
 
     /**
      * Returns the user's vertical offset from the calculated position.
      */
-    public double getUserYOffset() {
-        return userYOffset;
+    public double getUserYOffsetSs() {
+        return userYOffsetSs;
     }
 
     /**
      * Sets the user's vertical offset from the calculated position.
      */
-    public void setUserYOffset(double userYOffset) {
-        this.userYOffset = userYOffset;
+    public void setUserYOffsetSs(double userYOffsetSs) {
+        this.userYOffsetSs = userYOffsetSs;
     }
 
     // ========================================================================
@@ -208,58 +208,58 @@ public abstract class LineElement {
     /**
      * Sets uniform margin on all sides.
      */
-    public void setMargin(double margin) {
-        this.marginTop = margin;
-        this.marginRight = margin;
-        this.marginBottom = margin;
-        this.marginLeft = margin;
+    public void setMarginSs(double margin) {
+        this.marginTopSs = margin;
+        this.marginRightSs = margin;
+        this.marginBottomSs = margin;
+        this.marginLeftSs = margin;
     }
 
     /**
      * Sets CSS-style margins.
      *
-     * @param top    Top margin in pixels
-     * @param right  Right margin in pixels
-     * @param bottom Bottom margin in pixels
-     * @param left   Left margin in pixels
+     * @param top    Top margin in staff spaces
+     * @param right  Right margin in staff spaces
+     * @param bottom Bottom margin in staff spaces
+     * @param left   Left margin in staff spaces
      */
-    public void setMargin(double top, double right, double bottom, double left) {
-        this.marginTop = top;
-        this.marginRight = right;
-        this.marginBottom = bottom;
-        this.marginLeft = left;
+    public void setMarginSs(double top, double right, double bottom, double left) {
+        this.marginTopSs = top;
+        this.marginRightSs = right;
+        this.marginBottomSs = bottom;
+        this.marginLeftSs = left;
     }
 
-    public double getMarginTop() {
-        return marginTop;
+    public double getMarginTopSs() {
+        return marginTopSs;
     }
 
-    public void setMarginTop(double marginTop) {
-        this.marginTop = marginTop;
+    public void setMarginTopSs(double marginTopSs) {
+        this.marginTopSs = marginTopSs;
     }
 
-    public double getMarginRight() {
-        return marginRight;
+    public double getMarginRightSs() {
+        return marginRightSs;
     }
 
-    public void setMarginRight(double marginRight) {
-        this.marginRight = marginRight;
+    public void setMarginRightSs(double marginRightSs) {
+        this.marginRightSs = marginRightSs;
     }
 
-    public double getMarginBottom() {
-        return marginBottom;
+    public double getMarginBottomSs() {
+        return marginBottomSs;
     }
 
-    public void setMarginBottom(double marginBottom) {
-        this.marginBottom = marginBottom;
+    public void setMarginBottomSs(double marginBottomSs) {
+        this.marginBottomSs = marginBottomSs;
     }
 
-    public double getMarginLeft() {
-        return marginLeft;
+    public double getMarginLeftSs() {
+        return marginLeftSs;
     }
 
-    public void setMarginLeft(double marginLeft) {
-        this.marginLeft = marginLeft;
+    public void setMarginLeftSs(double marginLeftSs) {
+        this.marginLeftSs = marginLeftSs;
     }
 
     // ========================================================================
@@ -283,10 +283,10 @@ public abstract class LineElement {
      */
     public @NotNull Rectangle2D getMarginBounds() {
         return new Rectangle2D.Double(
-            position.getX() - marginLeft,
-            position.getY() - marginTop,
-            getContentWidth() + marginLeft + marginRight,
-            getContentHeight() + marginTop + marginBottom
+            position.getX() - marginLeftSs,
+            position.getY() - marginTopSs,
+            getContentWidth() + marginLeftSs + marginRightSs,
+            getContentHeight() + marginTopSs + marginBottomSs
         );
     }
 
@@ -339,7 +339,7 @@ public abstract class LineElement {
      * @return The effective margin between the two elements
      */
     public double collapsedVerticalMarginWith(@NotNull LineElement below) {
-        return Math.max(this.marginBottom, below.marginTop);
+        return Math.max(this.marginBottomSs, below.marginTopSs);
     }
 
     /**
@@ -350,7 +350,7 @@ public abstract class LineElement {
      * @return The effective margin between the two elements
      */
     public double collapsedHorizontalMarginWith(@NotNull LineElement right) {
-        return Math.max(this.marginRight, right.marginLeft);
+        return Math.max(this.marginRightSs, right.marginLeftSs);
     }
 
     // ========================================================================

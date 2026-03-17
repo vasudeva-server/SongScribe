@@ -137,7 +137,7 @@ public class Ending extends RangeElement {
             return 0;
         }
 
-        return Math.abs(endNote.getX() - anchor.getX()) + endNote.getContentWidth();
+        return Math.abs(endNote.getXSs() - anchor.getXSs()) + endNote.getContentWidth();
     }
 
     @Override

@@ -27,8 +27,8 @@ import songscribe.ui.component.Score;
 public class PageLayoutData {
 
     public ArrayList<File> files = null;
-    public int paperWidth = 0, paperHeight = 0, leftInnerMargin =
-        0, rightOuterMargin = 0, topMargin = 0, bottomMargin = 0;
+    public int paperWidthPx = 0, paperHeightPx = 0, leftInnerMarginPx =
+        0, rightOuterMarginPx = 0, topMarginPx = 0, bottomMarginPx = 0;
     public boolean mirrored = false;
     public int songsPerPage = 2;
     public Score score = null;
@@ -44,25 +44,25 @@ public class PageLayoutData {
         int bottom,
         int right
     ) {
-        topMargin = defaultMargin;
-        bottomMargin = defaultMargin;
-        leftInnerMargin = defaultMargin;
-        rightOuterMargin = defaultMargin;
+        topMarginPx = defaultMargin;
+        bottomMarginPx = defaultMargin;
+        leftInnerMarginPx = defaultMargin;
+        rightOuterMarginPx = defaultMargin;
 
         if (top > -1) {
-            topMargin = top;
+            topMarginPx = top;
         }
 
         if (left > -1) {
-            leftInnerMargin = left;
+            leftInnerMarginPx = left;
         }
 
         if (bottom > -1) {
-            bottomMargin = bottom;
+            bottomMarginPx = bottom;
         }
 
         if (right > -1) {
-            rightOuterMargin = right;
+            rightOuterMarginPx = right;
         }
     }
 }

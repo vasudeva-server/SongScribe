@@ -24,11 +24,11 @@ import org.jetbrains.annotations.Nullable;
 
 public class LayoutUpdate extends Message {
 
-    @Nullable private final Double topPadding;
+    @Nullable private final Double topPaddingSs;
     @Nullable private final Boolean topPaddingSetByUser;
-    @Nullable private final Double rowHeightAdjustment;
-    @Nullable private final Double lineWidth;
-    @Nullable private final Double attributionStartY;
+    @Nullable private final Double rowHeightAdjustmentSs;
+    @Nullable private final Double lineWidthSs;
+    @Nullable private final Double attributionStartYSs;
 
     public LayoutUpdate(
         @Nullable Double topPadding,
@@ -37,16 +37,16 @@ public class LayoutUpdate extends Message {
         @Nullable Double lineWidth,
         @Nullable Double attributionStartY
     ) {
-        this.topPadding = topPadding;
+        this.topPaddingSs = topPadding;
         this.topPaddingSetByUser = topPaddingSetByUser;
-        this.rowHeightAdjustment = rowHeightAdjustment;
-        this.lineWidth = lineWidth;
-        this.attributionStartY = attributionStartY;
+        this.rowHeightAdjustmentSs = rowHeightAdjustment;
+        this.lineWidthSs = lineWidth;
+        this.attributionStartYSs = attributionStartY;
     }
 
     @Nullable
-    public Double getTopPadding() {
-        return topPadding;
+    public Double getTopPaddingSs() {
+        return topPaddingSs;
     }
 
     @Nullable
@@ -55,17 +55,17 @@ public class LayoutUpdate extends Message {
     }
 
     @Nullable
-    public Double getRowHeightAdjustment() {
-        return rowHeightAdjustment;
+    public Double getRowHeightAdjustmentSs() {
+        return rowHeightAdjustmentSs;
     }
 
     @Nullable
-    public Double getLineWidth() {
-        return lineWidth;
+    public Double getLineWidthSs() {
+        return lineWidthSs;
     }
 
     @Nullable
-    public Double getAttributionStartY() {
-        return attributionStartY;
+    public Double getAttributionStartYSs() {
+        return attributionStartYSs;
     }
 }

@@ -115,13 +115,13 @@ public final class ComponentHierarchyNavigator {
         var composition = provider.getComposition();
 
         if (mainPanel == null) {
-            return (int) (y - composition.getTopPadding()) / rowHeight;
+            return (int) (y - composition.getTopPaddingSs()) / rowHeight;
         }
 
         var staffPanel = mainPanel.getStaffPanel();
 
         if (staffPanel == null) {
-            return (int) (y - composition.getTopPadding()) / rowHeight;
+            return (int) (y - composition.getTopPaddingSs()) / rowHeight;
         }
 
         // Convert Score Y to StaffPanel Y
@@ -200,7 +200,7 @@ public final class ComponentHierarchyNavigator {
         } else {
             var linePanel = linePanels.get(0);
             rowHeight = linePanel.getLineComponent().getHeight()
-                + ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.LINE_MARGIN_BOTTOM);
+                + ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.LINE_MARGIN_BOTTOM_SS);
         }
 
         layoutUpdater.accept(new int[]{middleLineY, rowHeight});

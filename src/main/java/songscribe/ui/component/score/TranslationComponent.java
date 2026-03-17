@@ -22,7 +22,6 @@ package songscribe.ui.component.score;
 
 import module java.desktop;
 
-import songscribe.ui.component.Score;
 import songscribe.ui.layout2.ScaleContext;
 import songscribe.util.GraphicUtils;
 
@@ -151,7 +150,7 @@ public class TranslationComponent extends ScoreComponent {
                 x = contentX;
             } else {
                 var headerWidth = GraphicUtils.getTextBlockWidth(headerText, g2);
-                x = (float) ((composition.getLineWidth() - headerWidth) / 2);
+                x = (float) ((composition.getLineWidthPx() - headerWidth) / 2);
             }
 
             var y = (float) (marginTop + headerMetrics.getAscent());
@@ -202,6 +201,6 @@ public class TranslationComponent extends ScoreComponent {
         var lines = translation.split("\n");
         height += textMetrics.getHeight() * lines.length;
 
-        return new Dimension((int) composition.getLineWidth(), (int) height);
+        return new Dimension(composition.getLineWidthPx(), (int) height);
     }
 }

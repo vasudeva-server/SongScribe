@@ -26,6 +26,9 @@ import java.util.regex.Pattern;
 
 import org.jetbrains.annotations.NotNull;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import songscribe.Strings;
 import net.engio.mbassy.listener.Handler;
 
@@ -55,6 +58,8 @@ import songscribe.util.Utils;
  * SongScribe files.
  */
 public final class Composition {
+
+    private static final Logger LOG = LoggerFactory.getLogger(Composition.class);
 
     public enum LANGUAGE {
         // Not used, the ordinals of the actual languages start at 1
@@ -142,13 +147,13 @@ public final class Composition {
     // When the title is set, it is wrapped into lines and stored here
     private final ArrayList<String> titleLines = new ArrayList<>();
 
-    private double topPadding = 0;
+    private double topPaddingSs = 0;
     private boolean userSetTopPadding = false;
-    private double attributionStartY;
-    private double rowHeightAdjustment = 0;
+    private double attributionStartYSs;
+    private double rowHeightAdjustmentSs = 0;
 
     // The width of a staff line in staff-space units
-    private double lineWidth = Score.PAGE_CONTENT_SIZE.width;
+    private double lineWidthSs = ScaleContext.getInstance().fromPixels(Score.PAGE_CONTENT_SIZE.width);
 
     // The lines of the score
     private final ArrayList<Line> lines = new ArrayList<>();
@@ -195,7 +200,7 @@ public final class Composition {
 
         // Initial topPadding of 0 - layout calculation will set the correct value
         // attributionStartY is calculated from title, will be recalculated on layout
-        attributionStartY = calculateAttributionStartY();
+        attributionStartYSs = calculateAttributionStartY();
 
         // Add initial line directly (not via addLine) to avoid posting
         // a spurious STRUCTURE message before the composition is installed.
@@ -205,7 +210,7 @@ public final class Composition {
         initialLine.setKeyAccidentalCount(defaultKeyAccidentalCount);
         initialLine.setKeyType(defaultKeyType);
         initialLine.setTempoChangeYPosPx(
-            ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.TEMPO_DEFAULT_Y_FIRST_LINE)
+            ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.TEMPO_DEFAULT_Y_FIRST_LINE_SS)
         );
 
         MessageCenter.subscribe(this);
@@ -267,6 +272,9 @@ public final class Composition {
      * @param data the parsed composition data to apply
      */
     public void loadFrom(@NotNull CompositionData data) {
+        LOG.trace("[COMP] loadFrom: lineWidth={} topPadding={} attributionStartY={} rowHeightAdj={} lines={}",
+            data.lineWidthSs(), data.topPaddingSs(), data.attributionStartYSs(), data.rowHeightAdjustmentSs(), data.lines().size());
+
         // Apply all scalar fields using apply methods (no individual message posting)
         this.tempo = data.tempo();
         applyNumber(data.number());
@@ -303,10 +311,13 @@ public final class Composition {
         }
 
         // Apply layout
-        applyTopPadding(data.topPadding(), false);
-        applyAttributionStartY(data.attributionStartY());
-        applyRowHeightAdjustment(data.rowHeightAdjustment());
-        applyLineWidth(data.lineWidth());
+        applyTopPaddingSs(data.topPaddingSs(), false);
+        applyAttributionStartYSs(data.attributionStartYSs());
+        applyRowHeightAdjustmentSs(data.rowHeightAdjustmentSs());
+        applyLineWidthSs(data.lineWidthSs());
+
+        LOG.trace("[COMP] after apply: lineWidth={} topPadding={} attributionStartY={} rowHeightAdj={}",
+            this.lineWidthSs, this.topPaddingSs, this.attributionStartYSs, this.rowHeightAdjustmentSs);
 
         // Replace lines
         lines.clear();
@@ -326,8 +337,8 @@ public final class Composition {
                 var lineIndex = lines.indexOf(line);
                 line.setTempoChangeYPosPx(
                     (lineIndex == 0)
-                        ? ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.TEMPO_DEFAULT_Y_FIRST_LINE)
-                        : ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.TEMPO_DEFAULT_Y_OTHER_LINES)
+                        ? ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.TEMPO_DEFAULT_Y_FIRST_LINE_SS)
+                        : ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.TEMPO_DEFAULT_Y_OTHER_LINES_SS)
                 );
             }
         }
@@ -517,28 +528,28 @@ public final class Composition {
         return footnoteFontMetrics;
     }
 
-    public double getTopPadding() {
-        return topPadding;
+    public double getTopPaddingSs() {
+        return topPaddingSs;
     }
 
     public boolean userSetTopPadding() {
         return userSetTopPadding;
     }
 
-    public double getAttributionStartY() {
-        return attributionStartY;
+    public double getAttributionStartYSs() {
+        return attributionStartYSs;
     }
 
-    public double getRowHeightAdjustment() {
-        return rowHeightAdjustment;
-    }
-
-    public double getLineWidth() {
-        return lineWidth;
+    public double getRowHeightAdjustmentSs() {
+        return rowHeightAdjustmentSs;
     }
 
     public double getLineWidthSs() {
-        return ScaleContext.getInstance().fromPixels(lineWidth);
+        return lineWidthSs;
+    }
+
+    public int getLineWidthPx() {
+        return ScaleContext.getInstance().toRoundedPixels(lineWidthSs);
     }
 
     public boolean hasBeenDynamicallyLaidOut() {
@@ -677,28 +688,28 @@ public final class Composition {
 
     // -- Layout setters --
 
-    public void setTopPadding(double padding, boolean setByUser) {
-        mutateAndPost(ChangeType.LAYOUT, () -> applyTopPadding(padding, setByUser));
+    public void setTopPaddingSs(double padding, boolean setByUser) {
+        mutateAndPost(ChangeType.LAYOUT, () -> applyTopPaddingSs(padding, setByUser));
     }
 
-    public void setAttributionStartY(double attributionStartY) {
-        mutateAndPost(ChangeType.LAYOUT, () -> applyAttributionStartY(attributionStartY));
+    public void setAttributionStartYSs(double attributionStartY) {
+        mutateAndPost(ChangeType.LAYOUT, () -> applyAttributionStartYSs(attributionStartY));
     }
 
-    public void setRowHeightAdjustment(double rowHeightAdjustment) {
-        mutateAndPost(ChangeType.LAYOUT, () -> applyRowHeightAdjustment(rowHeightAdjustment));
+    public void setRowHeightAdjustmentSs(double rowHeightAdjustment) {
+        mutateAndPost(ChangeType.LAYOUT, () -> applyRowHeightAdjustmentSs(rowHeightAdjustment));
     }
 
     /**
      * Do not call this directly unless you know what you are doing.
      * Instead, use score.setLineWidth.
      */
-    public void setLineWidth(double lineWidth) {
-        if (this.lineWidth == lineWidth) {
+    public void setLineWidthSs(double lineWidth) {
+        if (this.lineWidthSs == lineWidth) {
             return;
         }
 
-        mutateAndPost(ChangeType.LAYOUT, () -> applyLineWidth(lineWidth));
+        mutateAndPost(ChangeType.LAYOUT, () -> applyLineWidthSs(lineWidth));
     }
 
     // -- Structure setters --
@@ -727,8 +738,8 @@ public final class Composition {
         if (line.getTempoChangeYPosPx() == 0) {
             line.setTempoChangeYPosPx(
                 (lineIndex == 0)
-                    ? ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.TEMPO_DEFAULT_Y_FIRST_LINE)
-                    : ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.TEMPO_DEFAULT_Y_OTHER_LINES)
+                    ? ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.TEMPO_DEFAULT_Y_FIRST_LINE_SS)
+                    : ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.TEMPO_DEFAULT_Y_OTHER_LINES_SS)
             );
         }
 
@@ -913,23 +924,23 @@ public final class Composition {
     @Handler
     public void onLayoutUpdate(LayoutUpdate update) {
         mutateAndPost(ChangeType.LAYOUT, () -> {
-            if (update.getTopPadding() != null) {
-                applyTopPadding(
-                    update.getTopPadding(),
+            if (update.getTopPaddingSs() != null) {
+                applyTopPaddingSs(
+                    update.getTopPaddingSs(),
                     update.getTopPaddingSetByUser() != null && update.getTopPaddingSetByUser()
                 );
             }
 
-            if (update.getRowHeightAdjustment() != null) {
-                applyRowHeightAdjustment(update.getRowHeightAdjustment());
+            if (update.getRowHeightAdjustmentSs() != null) {
+                applyRowHeightAdjustmentSs(update.getRowHeightAdjustmentSs());
             }
 
-            if (update.getLineWidth() != null) {
-                applyLineWidth(update.getLineWidth());
+            if (update.getLineWidthSs() != null) {
+                applyLineWidthSs(update.getLineWidthSs());
             }
 
-            if (update.getAttributionStartY() != null) {
-                applyAttributionStartY(update.getAttributionStartY());
+            if (update.getAttributionStartYSs() != null) {
+                applyAttributionStartYSs(update.getAttributionStartYSs());
             }
         });
     }
@@ -1035,21 +1046,21 @@ public final class Composition {
         footnoteFontMetrics = MyFontUtils.getFontMetrics(footnoteFont);
     }
 
-    private void applyTopPadding(double padding, boolean setByUser) {
-        topPadding = padding;
+    private void applyTopPaddingSs(double padding, boolean setByUser) {
+        topPaddingSs = padding;
         userSetTopPadding = userSetTopPadding || setByUser;
     }
 
-    private void applyAttributionStartY(double attributionStartY) {
-        this.attributionStartY = attributionStartY;
+    private void applyAttributionStartYSs(double attributionStartY) {
+        this.attributionStartYSs = attributionStartY;
     }
 
-    private void applyRowHeightAdjustment(double rowHeightAdjustment) {
-        this.rowHeightAdjustment = rowHeightAdjustment;
+    private void applyRowHeightAdjustmentSs(double rowHeightAdjustment) {
+        this.rowHeightAdjustmentSs = rowHeightAdjustment;
     }
 
-    private void applyLineWidth(double lineWidth) {
-        this.lineWidth = lineWidth;
+    private void applyLineWidthSs(double lineWidth) {
+        this.lineWidthSs = lineWidth;
     }
 
     @NotNull

@@ -61,7 +61,7 @@ public class ClefRenderer extends BaseElementRenderer<Clef> {
         @NotNull ElementRenderContext ctx
     ) {
         // The clef's position comes from the element
-        double x = element.getX();
+        double x = element.getXSs();
 
         // The SMuFL G clef origin is on the G line (second line from bottom,
         // one staff space below the middle line)

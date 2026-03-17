@@ -28,6 +28,9 @@ import songscribe.data.IntervalSet;
 import songscribe.data.TupletInterval;
 import java.util.List;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import songscribe.music.Line;
 import songscribe.music.StaffElement;
 import songscribe.ui.layout.AnnotationAttachment;
@@ -76,6 +79,8 @@ import songscribe.ui.layout2.ScaleContext;
  */
 public final class FormatMigrator {
 
+    private static final Logger LOG = LoggerFactory.getLogger(FormatMigrator.class);
+
     private FormatMigrator() {
     }
 
@@ -111,17 +116,22 @@ public final class FormatMigrator {
      */
     public static void migratePixelsToStaffSpace(@NotNull List<Line> lines) {
         var pps = ScaleContext.DEFAULT_PIXELS_PER_STAFF_SPACE;
+        LOG.trace("[MIGRATE] migratePixelsToStaffSpace pps={} lineCount={}", pps, lines.size());
 
-        for (var line : lines) {
+        for (var lineIdx = 0; lineIdx < lines.size(); lineIdx++) {
+            var line = lines.get(lineIdx);
+
             // Line-level fields
+            LOG.trace("[MIGRATE] line[{}] lyricsYPos BEFORE={}", lineIdx, line.getLyricsYPosSs());
             line.setLyricsYPosSs(line.getLyricsYPosSs() / pps);
+            LOG.trace("[MIGRATE] line[{}] lyricsYPos AFTER={}", lineIdx, line.getLyricsYPosSs());
 
             // TupletInterval.verticalPosition
             for (var iter = line.getTuplets().listIterator(); iter.hasNext(); ) {
                 var tuplet = iter.next();
 
                 if (tuplet.isVerticallyAdjusted()) {
-                    tuplet.setVerticalPosition(tuplet.getVerticalPosition() / pps);
+                    tuplet.setVerticalPositionSs(tuplet.getVerticalPositionSs() / pps);
                 }
             }
 
@@ -133,6 +143,8 @@ public final class FormatMigrator {
             for (var i = 0; i < line.elementCount(); i++) {
                 var note = line.getElement(i);
 
+                LOG.trace("[MIGRATE] line[{}] note[{}] xPos BEFORE reset={}", lineIdx, i, note.getXPosSs());
+
                 //noinspection ObjectEquality
                 if (note.getGlissando() != StaffElement.NO_GLISSANDO) {
                     note.getGlissando().x1Translate /= pps;
@@ -141,13 +153,14 @@ public final class FormatMigrator {
 
                 // Convert per-instance attachment offsets created by migrateLineLevelOffsets()
                 for (var attachment : note.getAttachments()) {
-                    if (attachment.getUserYOffset() != 0) {
-                        attachment.setUserYOffset(attachment.getUserYOffset() / pps);
+                    if (attachment.getUserYOffsetSs() != 0) {
+                        attachment.setUserYOffsetSs(attachment.getUserYOffsetSs() / pps);
                     }
                 }
 
                 // Reset stale layout pixel xPos — layout now writes to LayoutResult, not Note
                 note.setXPosSs(0);
+                LOG.trace("[MIGRATE] line[{}] note[{}] xPos AFTER reset=0", lineIdx, i);
             }
 
             // Convert per-instance RangeElement offsets (Ending, Trill)
@@ -168,10 +181,10 @@ public final class FormatMigrator {
         for (var iter = intervals.listIterator(); iter.hasNext(); ) {
             var interval = iter.next();
 
-            if (interval.getX1Shift() != 0 || interval.getX2Shift() != 0 || interval.getYShift() != 0) {
-                interval.setX1Shift(interval.getX1Shift() / pps);
-                interval.setX2Shift(interval.getX2Shift() / pps);
-                interval.setYShift(interval.getYShift() / pps);
+            if (interval.getX1ShiftSs() != 0 || interval.getX2ShiftSs() != 0 || interval.getYShiftSs() != 0) {
+                interval.setX1ShiftSs(interval.getX1ShiftSs() / pps);
+                interval.setX2ShiftSs(interval.getX2ShiftSs() / pps);
+                interval.setYShiftSs(interval.getYShiftSs() / pps);
             }
         }
     }
@@ -218,7 +231,7 @@ public final class FormatMigrator {
                     // Find the TempoAttachment and add the line-level offset to its userYOffset
                     for (var attachment : note.getAttachments()) {
                         if (attachment instanceof TempoAttachment) {
-                            attachment.setUserYOffset(attachment.getUserYOffset() + tempoOffset);
+                            attachment.setUserYOffsetSs(attachment.getUserYOffsetSs() + tempoOffset);
                         }
                     }
                 }
@@ -229,8 +242,8 @@ public final class FormatMigrator {
         int beatChangeOffset = line.getBeatChangeYPosPx();
 
         // BeatChange has a default offset, only migrate if different
-        if (beatChangeOffset != ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.BEAT_CHANGE_DEFAULT_Y)) {
-            int delta = beatChangeOffset - ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.BEAT_CHANGE_DEFAULT_Y);
+        if (beatChangeOffset != ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.BEAT_CHANGE_DEFAULT_Y_SS)) {
+            int delta = beatChangeOffset - ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.BEAT_CHANGE_DEFAULT_Y_SS);
 
             for (var i = 0; i < line.elementCount(); i++) {
                 var note = line.getElement(i);
@@ -238,7 +251,7 @@ public final class FormatMigrator {
                 if (note.getBeatChange() != null) {
                     for (var attachment : note.getAttachments()) {
                         if (attachment instanceof BeatChangeAttachment) {
-                            attachment.setUserYOffset(attachment.getUserYOffset() + delta);
+                            attachment.setUserYOffsetSs(attachment.getUserYOffsetSs() + delta);
                         }
                     }
                 }
@@ -248,8 +261,8 @@ public final class FormatMigrator {
         // Migrate first/second ending offset to per-instance
         int endingOffset = line.getFirstSecondEndingYPosPx();
 
-        if (endingOffset != ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.ENDING_DEFAULT_Y)) {
-            int delta = endingOffset - ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.ENDING_DEFAULT_Y);
+        if (endingOffset != ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.ENDING_DEFAULT_Y_SS)) {
+            int delta = endingOffset - ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.ENDING_DEFAULT_Y_SS);
 
             for (var element : line.getRangeElements()) {
                 if (element instanceof Ending ending) {
@@ -261,8 +274,8 @@ public final class FormatMigrator {
         // Migrate trill offset to per-instance
         int trillOffset = line.getTrillYPosPx();
 
-        if (trillOffset != ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.TRILL_DEFAULT_Y)) {
-            int delta = trillOffset - ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.TRILL_DEFAULT_Y);
+        if (trillOffset != ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.TRILL_DEFAULT_Y_SS)) {
+            int delta = trillOffset - ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.TRILL_DEFAULT_Y_SS);
 
             for (var element : line.getRangeElements()) {
                 if (element instanceof Trill trill) {
@@ -301,7 +314,7 @@ public final class FormatMigrator {
                 // Below-staff annotation: convert to above-staff with offset
                 // The visual position difference is: BELOW - ABOVE = yPosPx - ABOVE
                 double offset = yPosPx - songscribe.music.Annotation.ABOVE;
-                annotation.setUserYOffset(annotation.getUserYOffset() + offset);
+                annotation.setUserYOffsetSs(annotation.getUserYOffsetSs() + offset);
                 annotation.setYPosPx(songscribe.music.Annotation.ABOVE);
             }
         }

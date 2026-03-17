@@ -22,12 +22,12 @@ package songscribe.data;
 public class TupletInterval extends Interval {
 
     private int grade;
-    private double verticalPosition;
+    private double verticalPositionSs;
 
     public TupletInterval(int start, int end, int grade) {
         super(start, end, null);
         this.grade = grade;
-        this.verticalPosition = 0;
+        this.verticalPositionSs = 0;
     }
 
     public int getGrade() {
@@ -38,22 +38,22 @@ public class TupletInterval extends Interval {
         this.grade = grade;
     }
 
-    public double getVerticalPosition() {
-        return verticalPosition;
+    public double getVerticalPositionSs() {
+        return verticalPositionSs;
     }
 
-    public void setVerticalPosition(double verticalPosition) {
-        this.verticalPosition = verticalPosition;
+    public void setVerticalPositionSs(double verticalPosition) {
+        this.verticalPositionSs = verticalPosition;
     }
 
     public boolean isVerticallyAdjusted() {
-        return verticalPosition != 0;
+        return verticalPositionSs != 0;
     }
 
     @Override
     public TupletInterval copyRange(int newStart, int newEnd) {
         var copy = new TupletInterval(newStart, newEnd, grade);
-        copy.setVerticalPosition(verticalPosition);
+        copy.setVerticalPositionSs(verticalPositionSs);
         return copy;
     }
 }

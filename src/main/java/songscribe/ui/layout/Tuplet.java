@@ -39,7 +39,7 @@ public class Tuplet extends RangeElement {
 
     private @Nullable StaffElement endNote;
     private int grade = 3;
-    private int verticalPosition = 0;
+    private int verticalPositionSs = 0;
 
     /**
      * Creates a tuplet grouping.
@@ -98,15 +98,15 @@ public class Tuplet extends RangeElement {
     /**
      * Returns the user-adjustable Y offset for this tuplet bracket.
      */
-    public int getVerticalPosition() {
-        return verticalPosition;
+    public int getVerticalPositionSs() {
+        return verticalPositionSs;
     }
 
     /**
      * Sets the user-adjustable Y offset for this tuplet bracket.
      */
-    public void setVerticalPosition(int verticalPosition) {
-        this.verticalPosition = verticalPosition;
+    public void setVerticalPositionSs(int verticalPosition) {
+        this.verticalPositionSs = verticalPosition;
     }
 
     @Override
@@ -117,7 +117,7 @@ public class Tuplet extends RangeElement {
             return 0;
         }
 
-        return Math.abs(endNote.getX() - anchor.getX()) + endNote.getContentWidth();
+        return Math.abs(endNote.getXSs() - anchor.getXSs()) + endNote.getContentWidth();
     }
 
     @Override

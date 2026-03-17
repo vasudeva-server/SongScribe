@@ -114,7 +114,7 @@ public class KeySignatureRenderer extends BaseElementRenderer<KeySignature> {
             g2.setColor(ELEMENT_COLOR);
 
             // Get the starting X position from the element
-            double xPosSs = element.getX();
+            double xPosSs = element.getXSs();
             double middleLineYSs = ctx.getMiddleLineYSs();
 
             // Determine glyph and Y positions based on key type

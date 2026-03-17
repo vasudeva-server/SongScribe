@@ -66,7 +66,7 @@ public class Staff extends LineElement {
 
     @Override
     public double getContentHeight() {
-        return ScaleContext.getInstance().toPixels(LayoutStylesheet.STAFF_HEIGHT);
+        return ScaleContext.getInstance().toPixels(LayoutStylesheet.STAFF_HEIGHT_SS);
     }
 
     /**

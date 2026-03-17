@@ -42,7 +42,7 @@ public class TitleComponent extends ScoreComponent {
      */
     public TitleComponent() {
         super();
-        setMarginBottom(ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.TITLE_MARGIN_BOTTOM));
+        setMarginBottom(ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.TITLE_MARGIN_BOTTOM_SS));
     }
 
     @Override
@@ -74,7 +74,7 @@ public class TitleComponent extends ScoreComponent {
             var metrics = g2.getFontMetrics();
 
         // Wrap the title to fit in the maximum width
-        var maxWidth = (int) (composition.getLineWidth() * TITLE_MAX_WIDTH_PERCENTAGE);
+        var maxWidth = (int) (composition.getLineWidthPx() * TITLE_MAX_WIDTH_PERCENTAGE);
         var titleLines = StringUtils.wrapText(title, metrics, maxWidth);
 
         // Calculate max width of wrapped lines for centering
@@ -85,7 +85,7 @@ public class TitleComponent extends ScoreComponent {
         }
 
         // Center the title horizontally within the component
-        var lineWidth = (int) composition.getLineWidth();
+        var lineWidth = composition.getLineWidthPx();
         var startX = (lineWidth - actualMaxWidth) / 2;
 
             // Draw each line
@@ -123,12 +123,12 @@ public class TitleComponent extends ScoreComponent {
         var metrics = getFontMetrics(font);
 
         // Wrap the title to calculate height
-        var maxWidth = (int) (composition.getLineWidth() * TITLE_MAX_WIDTH_PERCENTAGE);
+        var maxWidth = (int) (composition.getLineWidthPx() * TITLE_MAX_WIDTH_PERCENTAGE);
         var titleLines = StringUtils.wrapText(title, metrics, maxWidth);
 
         var lineHeight = metrics.getHeight();
         var height = lineHeight * titleLines.size();
 
-        return new Dimension((int) composition.getLineWidth(), height + marginBottom);
+        return new Dimension(composition.getLineWidthPx(), height + marginBottom);
     }
 }

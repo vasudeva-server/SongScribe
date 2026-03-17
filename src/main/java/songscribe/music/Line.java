@@ -121,7 +121,7 @@ public class Line {
      *             Retained for backward compatibility with legacy documents.
      */
     @Deprecated
-    private int beatChangeYPosPx = ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.BEAT_CHANGE_DEFAULT_Y);
+    private int beatChangeYPosPx = ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.BEAT_CHANGE_DEFAULT_Y_SS);
 
     /**
      * Y offset for lyrics display (default: 50, below staff).
@@ -129,7 +129,7 @@ public class Line {
      * Note: This field is still in active use for line-level lyrics positioning.
      * Per-instance lyrics offsets are not yet implemented.
      */
-    private double lyricsYPosSs = LayoutStylesheet.LYRICS_DEFAULT_Y;
+    private double lyricsYPosSs = LayoutStylesheet.LYRICS_DEFAULT_Y_SS;
 
     /**
      * Y offset for first/second ending display (default: -25, above staff).
@@ -138,7 +138,7 @@ public class Line {
      *             Retained for backward compatibility with legacy documents.
      */
     @Deprecated
-    private int firstSecondEndingYPosPx = ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.ENDING_DEFAULT_Y);
+    private int firstSecondEndingYPosPx = ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.ENDING_DEFAULT_Y_SS);
 
     /**
      * Y offset for trill display (default: -27, above staff).
@@ -147,7 +147,7 @@ public class Line {
      *             Retained for backward compatibility with legacy documents.
      */
     @Deprecated
-    private int trillYPosPx = ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.TRILL_DEFAULT_Y);
+    private int trillYPosPx = ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.TRILL_DEFAULT_Y_SS);
 
     /** Ratio multiplier for horizontal element spacing (default: 1.0, user-adjustable). */
     private float elementDistChangeRatio = 1f;

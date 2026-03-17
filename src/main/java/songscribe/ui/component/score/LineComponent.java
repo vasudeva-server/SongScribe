@@ -27,6 +27,9 @@ import java.awt.event.MouseEvent;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import songscribe.music.Line;
 import songscribe.ui.Mode;
 import songscribe.ui.action.Actions;
@@ -139,6 +142,8 @@ public class LineComponent extends ScoreComponent
     // ==========================================================================
     // Constants
     // ==========================================================================
+
+    private static final Logger LOG = LoggerFactory.getLogger(LineComponent.class);
 
     /** Number of lines in a staff. */
     private static final int STAFF_LINE_COUNT = 5;
@@ -333,13 +338,17 @@ public class LineComponent extends ScoreComponent
         }
 
         var lyricsFont = composition.getLyricsFont();
-        var staffRightMarginSs = composition.getLineWidth();
+        var staffRightMarginSs = composition.getLineWidthSs();
+        LOG.trace("[LINE] performLayout line[{}]: staffRightMarginSs={} (composition.lineWidth={})",
+            lineIndex, staffRightMarginSs, composition.getLineWidthSs());
         layoutEngine = new LayoutEngine(g2, lyricsFont, staffRightMarginSs);
         layoutResult = layoutEngine.layout(line);
 
         if (layoutResult == null) {
             var error = layoutEngine.getLastError();
             System.err.println("Layout failed for line " + lineIndex + ": " + error);
+        } else {
+            LOG.trace("[LINE] performLayout line[{}]: layout success, lineWidthSs={}", lineIndex, layoutResult.getLineWidthSs());
         }
 
         layoutDirty = false;
@@ -363,6 +372,7 @@ public class LineComponent extends ScoreComponent
         // All downstream drawing uses staff-space coordinates.
         var savedTransform = g2.getTransform();
         var scale = ScaleContext.getInstance().getPixelsPerStaffSpace();
+        LOG.trace("[LINE] render line[{}]: applying g2.scale({}, {}), middleLineYSs={}", lineIndex, scale, scale, middleLineYSs);
         g2.scale(scale, scale);
 
         try {
@@ -389,10 +399,13 @@ public class LineComponent extends ScoreComponent
         // Convert to pixels at the Swing boundary
         var scale = ScaleContext.getInstance();
 
-        return new Dimension(
+        var dim = new Dimension(
             (int) Math.ceil(scale.toPixels(widthSs)),
             (int) Math.ceil(scale.toPixels(heightSs))
         );
+        LOG.trace("[LINE] getPreferredSize line[{}]: widthSs={} heightSs={} -> {}x{} px (pps={})",
+            lineIndex, widthSs, heightSs, dim.width, dim.height, scale.getPixelsPerStaffSpace());
+        return dim;
     }
 
     /**
@@ -453,13 +466,13 @@ public class LineComponent extends ScoreComponent
      */
     private double calculateLineWidthSs() {
         if (line == null || line.isEmpty() || layoutResult == null) {
-            return composition.getLineWidth();
+            return composition.getLineWidthSs();
         }
 
         // Use the greater of composition width or calculated width from layout
         double calculatedWidth = layoutResult.getLineWidthSs();
 
-        return Math.max(composition.getLineWidth(), calculatedWidth);
+        return Math.max(composition.getLineWidthSs(), calculatedWidth);
     }
 
     /**
@@ -485,7 +498,7 @@ public class LineComponent extends ScoreComponent
         // All values in staff-space units
         double defaultSpaceAbove = Score.STAFF_LINES_ABOVE;  // 3.0 ss
         double defaultSpaceBelow = Score.STAFF_LINES_BELOW;  // 4.0 ss
-        double staffHeight = LayoutStylesheet.STAFF_HEIGHT;   // 4.0 ss
+        double staffHeight = LayoutStylesheet.STAFF_HEIGHT_SS;   // 4.0 ss
 
         double spaceAbove = MIN_SPACE_ABOVE_SS;
         double spaceBelow = defaultSpaceBelow;
@@ -509,7 +522,7 @@ public class LineComponent extends ScoreComponent
             var tempoChangeYPosSs = ScaleContext.getInstance().fromPixels(
                 (line != null) ? line.getTempoChangeYPosPx() : 0
             );
-            var tempoYOffset = -7.0 * LayoutStylesheet.STAFF_POSITION_OFFSET + tempoChangeYPosSs;
+            var tempoYOffset = -7.0 * LayoutStylesheet.STAFF_POSITION_OFFSET_SS + tempoChangeYPosSs;
             // Approximate tempo content height (note symbol + text ascent): ~3.125 ss
             var tempoContentHeight = 3.125;
             var tempoSpaceAbove = Math.abs(tempoYOffset) + tempoContentHeight - 2.0;
