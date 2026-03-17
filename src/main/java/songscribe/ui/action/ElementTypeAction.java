@@ -70,6 +70,10 @@ public class ElementTypeAction extends StickyUIAction implements UIAction.Elemen
             if (type.isGraceNote() || type == ElementType.GLISSANDO) {
                 setFlags(Flag.DISABLE_IN_GRACE_MODE);
             }
+
+            if (type == ElementType.GLISSANDO) {
+                setFlags(Flag.REQUIRES_EMPTY_SELECTION);
+            }
         }
     }
 
@@ -90,7 +94,7 @@ public class ElementTypeAction extends StickyUIAction implements UIAction.Elemen
 
     @Override
     public boolean matchesElement(StaffElement element) {
-        return element.getType() == type;
+        return element.getType().toNote() == type;
     }
 
     @Override

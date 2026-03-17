@@ -23,11 +23,12 @@ package songscribe.ui.action;
 import module java.desktop;
 
 import songscribe.Strings;
+import songscribe.music.StaffElement;
 
 import songscribe.message.MessageCenter;
 import songscribe.ui.message.RestModeChangedMessage;
 
-public class RestModeAction extends SelectableUIAction {
+public class RestModeAction extends SelectableUIAction implements UIAction.Reflectable {
 
     public RestModeAction() {
         super(
@@ -40,6 +41,7 @@ public class RestModeAction extends SelectableUIAction {
             0
         );
         setFlags(
+            Flag.REQUIRES_EMPTY_SELECTION,
             Flag.DISABLE_WHEN_PLAYING,
             Flag.DISABLE_IN_ADJUSTMENT_MODE,
             Flag.DISABLE_WHEN_BAR_SELECTED,
@@ -47,6 +49,16 @@ public class RestModeAction extends SelectableUIAction {
             Flag.DISABLE_WHEN_EDITING_TEXT,
             Flag.DISABLE_IN_GRACE_MODE
         );
+    }
+
+    @Override
+    public boolean appliesTo(StaffElement element) {
+        return element.getType().isDuration();
+    }
+
+    @Override
+    public boolean matchesElement(StaffElement element) {
+        return element.getType().isRest();
     }
 
     @Override

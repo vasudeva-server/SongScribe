@@ -721,6 +721,22 @@ public final class SelectionCoordinator {
     // -------------------------------------------------------------------------
 
     /**
+     * Saves or restores action states at HIGH_PRIORITY, before UIAction handlers
+     * run at MEDIUM_PRIORITY. This ensures save captures the true pre-selection
+     * state and restore puts it back before updateEnabledState recomputes.
+     */
+    @Handler(priority = Message.HIGH_PRIORITY)
+    public void saveOrRestoreActionStates(MusicSelectionChangedMessage message) {
+        var selection = getSelection();
+
+        if (selection == null) {
+            restoreActionStates();
+        } else if (!selection.equals(lastReflectedSelection)) {
+            saveActionStates();
+        }
+    }
+
+    /**
      * Reflects the current selection onto all reflectable toolbar actions.
      * Fires at LOW_PRIORITY so it runs after all UIAction handlers have processed
      * the selection-changed message.
@@ -730,10 +746,9 @@ public final class SelectionCoordinator {
         var actions = getReflectableActions();
         var selection = getSelection();
 
-        // Selection cleared — restore saved state
+        // Selection cleared
         if (selection == null) {
             lastReflectedSelection = null;
-            restoreActionStates();
             return;
         }
 
@@ -743,9 +758,6 @@ public final class SelectionCoordinator {
         }
 
         lastReflectedSelection = selection;
-
-        // Selection just became active — save current state for all managed actions
-        saveActionStates();
 
         // Reflect selection attributes onto toolbar actions
         var line = selection.line();
