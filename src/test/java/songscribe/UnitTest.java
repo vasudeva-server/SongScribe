@@ -20,6 +20,7 @@
 
 package songscribe;
 
+import songscribe.SongScribe;
 import songscribe.ui.Dialogs;
 
 import org.junit.jupiter.api.BeforeAll;
@@ -30,8 +31,15 @@ import org.junit.jupiter.api.BeforeAll;
  */
 public abstract class UnitTest {
 
+    private static volatile boolean bannerShown = false;
+
     @BeforeAll
     static void suppressDialogs() {
         Dialogs.setSuppressDialogs(true);
+
+        if (!bannerShown) {
+            bannerShown = true;
+            SongScribe.logBanner("SongScribe (Unit Tests)");
+        }
     }
 }

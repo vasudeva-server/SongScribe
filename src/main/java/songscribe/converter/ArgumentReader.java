@@ -26,10 +26,12 @@ import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 
 import org.jetbrains.annotations.Nullable;
-
-import songscribe.util.Log;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class ArgumentReader<T> {
+
+    private static final Logger LOG = LoggerFactory.getLogger(ArgumentReader.class);
 
     private final String[] args;
     private final Class<? extends T> klass;
@@ -171,7 +173,7 @@ public class ArgumentReader<T> {
                 }
             }
         } catch (InstantiationException | IllegalAccessException e) {
-            Log.error("Could not parse arguments", e);
+            LOG.error("Could not parse arguments", e);
         } catch (InvocationTargetException | NoSuchMethodException e) {
             throw new RuntimeException(e);
         }
@@ -201,11 +203,9 @@ public class ArgumentReader<T> {
                 field.set(obj, value);
             }
         } catch (IllegalAccessException e) {
-            Log.error("Error setting argument value", e);
+            LOG.error("Error setting argument value", e);
         } catch (NumberFormatException e) {
-            Log.error(
-                "Not a number given for parameter " + field.getName()
-            );
+            LOG.error("Not a number given for parameter {}", field.getName());
         }
     }
 

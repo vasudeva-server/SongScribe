@@ -27,6 +27,8 @@ import java.util.Arrays;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.formdev.flatlaf.FlatLaf;
 import com.formdev.flatlaf.extras.FlatInspector;
@@ -41,6 +43,8 @@ import songscribe.ui.component.MainFrame;
 
 @SuppressWarnings("ParameterNameDiffersFromOverriddenParameter")
 public final class UIUtils {
+
+    private static final Logger LOG = LoggerFactory.getLogger(UIUtils.class);
 
     // Constants
     public static final int MENU_SHORTCUT_MASK = Toolkit.getDefaultToolkit()
@@ -382,7 +386,7 @@ public final class UIUtils {
                 FlatInspector.install("ctrl shift alt X");
             }
         } catch (Exception e) {
-            Log.error("Error initializing laf", e);
+            LOG.error("Error initializing laf", e);
         }
     }
 

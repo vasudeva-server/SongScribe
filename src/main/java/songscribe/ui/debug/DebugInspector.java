@@ -20,7 +20,8 @@
 
 package songscribe.ui.debug;
 
-import java.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import org.jetbrains.annotations.Nullable;
 
@@ -38,7 +39,7 @@ import songscribe.ui.menu.DebugState;
  */
 public final class DebugInspector {
 
-    private static final Logger LOG = Logger.getLogger(DebugInspector.class.getName());
+    private static final Logger LOG = LoggerFactory.getLogger(DebugInspector.class);
 
     private DebugInspector() {
         // Utility class - prevent instantiation
@@ -249,19 +250,5 @@ public final class DebugInspector {
      * @param element The hovered element to log, or null to log hover cleared
      */
     public static void logInspectorHover(@Nullable DebugState.HoveredElement element) {
-        if (element == null) {
-            LOG.fine("[Inspector] Hover cleared");
-            return;
-        }
-
-        var bounds = element.getBounds();
-        LOG.fine(String.format(
-            "[Inspector] %s (%s) | Size: %s | Padding: %s | Margin: %s",
-            element.getLabel(),
-            element.getType(),
-            bounds.getContentSizeString(),
-            bounds.getPaddingCss(),
-            bounds.getMarginCss()
-        ));
     }
 }

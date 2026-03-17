@@ -22,7 +22,6 @@ package songscribe.data;
 import module java.desktop;
 
 import java.io.File;
-import java.util.logging.Logger;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
@@ -31,12 +30,15 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.util.Properties;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import songscribe.util.Utils;
 
 // TODO: Delete this when Bravura rendering is complete
 public final class GeneralPathFile {
 
-    private static final Logger LOG = Logger.getLogger(GeneralPathFile.class.getName());
+    private static final Logger LOG = LoggerFactory.getLogger(GeneralPathFile.class);
 
     private static final char fermataChar = '\uf055';
 
@@ -70,35 +72,6 @@ public final class GeneralPathFile {
         }
 
         oos.close();
-    }
-
-    public static void printGeneralPath(char ch) {
-        var outline = getShape(ch);
-        printGeneralPath(outline);
-    }
-
-    private static void printGeneralPath(Shape outline) {
-        var buf = new double[6];
-
-        for (
-            var iter = outline.getPathIterator(null);
-            !iter.isDone();
-            iter.next()
-        ) {
-            var segment = iter.currentSegment(buf);
-
-            switch (segment) {
-                case PathIterator.SEG_MOVETO ->
-                    LOG.fine(String.format("MOVETO: (%f, %f)", buf[0], buf[1]));
-                case PathIterator.SEG_LINETO ->
-                    LOG.fine(String.format("LINETO: (%f, %f)", buf[0], buf[1]));
-                case PathIterator.SEG_QUADTO ->
-                    LOG.fine(String.format("QUADTO: (%f, %f); (%f, %f)", buf[0], buf[1], buf[2], buf[3]));
-                case PathIterator.SEG_CUBICTO ->
-                    LOG.fine(String.format("CUBICTO: (%f, %f); (%f, %f); (%f, %f)", buf[0], buf[1], buf[2], buf[3], buf[4], buf[5]));
-                case PathIterator.SEG_CLOSE -> LOG.fine("CLOSE");
-            }
-        }
     }
 
     public static GeneralPath readGeneralPath(File file)

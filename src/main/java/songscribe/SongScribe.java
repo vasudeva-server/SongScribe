@@ -19,7 +19,15 @@
  */
 package songscribe;
 
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.formdev.flatlaf.util.SystemInfo;
 
@@ -29,22 +37,98 @@ import songscribe.converter.MidiConverter;
 import songscribe.converter.PDFConverter;
 import songscribe.ui.component.MainFrame;
 import songscribe.uiconverter.UIConverter;
-import songscribe.util.Log;
 import songscribe.util.UIUtils;
 
 public final class SongScribe {
 
     private SongScribe() {}
 
+    private static @Nullable String resolveLogDir() {
+        String dir;
+
+        if (SystemInfo.isMacOS) {
+            dir = System.getProperty("user.home") + "/Library/Logs/SongScribe";
+        } else if (SystemInfo.isWindows) {
+            var appData = System.getenv("APPDATA");
+            dir = (appData != null ? appData : System.getProperty("user.home")) + "/SongScribe/Logs";
+        } else {
+            dir = System.getProperty("user.home") + "/.songscribe/logs";
+        }
+
+        var logDir = new File(dir);
+
+        if (!logDir.exists() && !logDir.mkdirs()) {
+            System.out.println("Warning: could not create log directory: " + dir);
+            return null;
+        }
+
+        return dir;
+    }
+
+    public static void configureLogging() {
+        if (System.getenv("CONSOLE_LOG") != null) {
+            var url = SongScribe.class.getResource("/logback-console.xml");
+
+            if (url != null) {
+                System.setProperty("logback.configurationFile", url.toString());
+            }
+        } else {
+            var logDir = resolveLogDir();
+
+            if (logDir != null) {
+                System.setProperty("songscribe.log.dir", logDir);
+            }
+
+            // If logDir is null, songscribe.log.dir stays unset → FILE appender
+            // fails to initialize → only CONSOLE appender activates.
+        }
+
+        var logLevel = System.getenv("LOG_LEVEL");
+
+        if (logLevel != null) {
+            System.setProperty("songscribe.log.level", logLevel.toUpperCase());
+        }
+    }
+
+    private static void truncateLogIfRequested() {
+        if (System.getenv("TRUNCATE_LOG") == null) {
+            return;
+        }
+
+        // Delete the log file before Logback initializes so it starts fresh.
+        // songscribe.log.dir is set by configureLogging() — if unset, logging
+        // goes to the console and there is nothing to delete.
+        var logDir = System.getProperty("songscribe.log.dir");
+
+        if (logDir == null) {
+            return;
+        }
+
+        try {
+            Files.deleteIfExists(Path.of(logDir, "songscribe.log"));
+        } catch (IOException e) {
+            System.err.println("Failed to delete log file: " + e.getMessage());
+        }
+    }
+
+    public static void logBanner(String appName) {
+        Logger log = LoggerFactory.getLogger(SongScribe.class);
+        var border = "*".repeat(40);
+        log.info(border);
+        log.info("* {} {}", appName, Version.PUBLIC_VERSION);
+        log.info(border);
+        log.info("Log level: {}", System.getProperty("songscribe.log.level", "INFO"));
+    }
+
     public static void main(@NotNull String[] args) {
+        configureLogging();
+
         // macOS system properties must be set on the main thread before
         // AWT/Swing is initialized — setting them later has no effect.
         if (SystemInfo.isMacOS) {
             System.setProperty("apple.laf.useScreenMenuBar", "true");
             System.setProperty("apple.awt.application.appearance", "system");
         }
-
-        Log.configureDebugLogging();
 
         // Figure out which app to start. The default is Song Writer.
         String app;
@@ -60,6 +144,9 @@ public final class SongScribe {
         // which indicates more than one property has changed.
         System.setProperty("swing.actions.reconfigureOnNull", "true");
 
+        truncateLogIfRequested();
+        logBanner(app.contains("converter") ? "SongScribe Converter" : "SongScribe");
+
         switch (app) {
             case "image_converter" -> ImageConverter.main(args);
             case "midi_converter" -> MidiConverter.main(args);
@@ -67,8 +154,6 @@ public final class SongScribe {
             case "ui_converter" -> UIConverter.main(args);
             case "abc_converter" -> AbcConverter.main(args);
             default -> {
-                Log.setNameWithoutExtension("songscribe-writer");
-
                 // This has to be done before any Swing components are created
                 UIUtils.initLaf();
                 MainFrame.main(args);

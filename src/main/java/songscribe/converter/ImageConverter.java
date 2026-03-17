@@ -24,15 +24,20 @@ import module java.desktop;
 import java.io.File;
 import java.io.IOException;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import songscribe.SongScribe;
 import songscribe.export.ExportOptions;
 import songscribe.ui.component.MyBorder;
 import songscribe.ui.component.Score;
 import songscribe.util.FileUtils;
 import songscribe.util.GraphicUtils;
-import songscribe.util.Log;
 
 @SuppressWarnings("FieldMayBeStatic")
 public class ImageConverter {
+
+    private static final Logger LOG = LoggerFactory.getLogger(ImageConverter.class);
 
     @ArgumentDescribe("The type of resulting image. Values: [ jpg | png ]")
     public static final String type = "png";
@@ -83,6 +88,7 @@ public class ImageConverter {
     public final File[] files = new File[0];
 
     public static void main(String[] args) {
+        SongScribe.configureLogging();
         var reader = new ArgumentReader<>(args, ImageConverter.class);
         var converter = reader.getObj();
 
@@ -118,8 +124,9 @@ public class ImageConverter {
                     type.toUpperCase(),
                     new File(path + '.' + type.toLowerCase())
                 );
+                LOG.info("Converted {} to {} image", file.getName(), type.toUpperCase());
             } catch (IOException e) {
-                Log.error("Could not convert " + file.getName(), e);
+                LOG.error("Could not convert {}", file.getName(), e);
             }
         }
     }

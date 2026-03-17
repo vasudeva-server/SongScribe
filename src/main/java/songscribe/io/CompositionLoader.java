@@ -30,7 +30,6 @@ import org.jetbrains.annotations.NotNull;
 import org.xml.sax.SAXException;
 
 import songscribe.music.Composition;
-import songscribe.util.Log;
 
 /**
  * Loads a {@link Composition} from a file without requiring a {@link songscribe.ui.component.Score}.

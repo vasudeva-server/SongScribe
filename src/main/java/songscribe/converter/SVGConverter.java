@@ -22,12 +22,17 @@ package songscribe.converter;
 import java.io.File;
 import java.io.IOException;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import songscribe.SongScribe;
 import songscribe.ui.component.Score;
 import songscribe.util.FileUtils;
-import songscribe.util.Log;
 
 @SuppressWarnings("FieldMayBeStatic")
 public class SVGConverter {
+
+    private static final Logger LOG = LoggerFactory.getLogger(SVGConverter.class);
 
     @ArgumentDescribe("Export SVG without lyrics under the song")
     public final boolean withoutLyrics = false;
@@ -39,6 +44,7 @@ public class SVGConverter {
     public File[] files = new File[0];
 
     public static void main(String[] args) {
+        SongScribe.configureLogging();
         var reader = new ArgumentReader<>(args, SVGConverter.class);
         reader.getObj().convert();
     }
@@ -53,8 +59,9 @@ public class SVGConverter {
             try {
                 var path = FileUtils.getPathWithoutExtension(file) + ".svg";
                 score.createSVG(new File(path));
+                LOG.info("Converted {} to SVG", file.getName());
             } catch (IOException e) {
-                Log.error("Could not convert " + file.getName(), e);
+                LOG.error("Could not convert {}", file.getName(), e);
             }
         }
     }

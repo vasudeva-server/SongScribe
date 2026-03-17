@@ -22,7 +22,9 @@ package songscribe.ui;
 import module java.desktop;
 
 import java.util.function.Consumer;
-import java.util.logging.Logger;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -45,7 +47,7 @@ import songscribe.prefs.Prefs;
  */
 public final class AppearanceManager {
 
-    private static final Logger LOGGER = Logger.getLogger(AppearanceManager.class.getName());
+    private static final Logger LOG = LoggerFactory.getLogger(AppearanceManager.class);
     private static final String PREF_KEY = "appearance";
 
     private static LafOperations lafOps = new DefaultLafOperations();
@@ -70,6 +72,8 @@ public final class AppearanceManager {
             throw new IllegalStateException("Failed to install initial look and feel: " + e.getMessage(), e);
         }
 
+        LOG.info("Theme: {} ({})", isDark ? "dark" : "light", laf.getClass().getSimpleName());
+
         if (preference == Appearance.SYSTEM) {
             registerOsListener();
         }
@@ -92,6 +96,8 @@ public final class AppearanceManager {
             Prefs.getInstance().put(PREF_KEY, currentPreference.key());
             return;
         }
+
+        LOG.info("Theme switched to: {}", preference.key());
 
         if (preference == Appearance.SYSTEM) {
             registerOsListener();
@@ -140,7 +146,7 @@ public final class AppearanceManager {
         try {
             return OsThemeDetector.getDetector().isDark();
         } catch (Exception e) {
-            LOGGER.warning("OS theme detection unavailable, falling back to light: " + e.getMessage());
+            LOG.warn("OS theme detection unavailable, falling back to light: {}", e.getMessage());
             return false;
         }
     }
@@ -164,7 +170,7 @@ public final class AppearanceManager {
             lafOps.hideSnapshotWithAnimation();
             return true;
         } catch (UnsupportedLookAndFeelException | RuntimeException e) {
-            LOGGER.warning("Failed to switch theme: " + e.getMessage());
+            LOG.warn("Failed to switch theme: {}", e.getMessage());
             return false;
         }
     }
@@ -180,7 +186,7 @@ public final class AppearanceManager {
             detector.registerListener(osThemeListener);
             listenerRegistered = true;
         } catch (Exception e) {
-            LOGGER.warning("Failed to register OS theme listener: " + e.getMessage());
+            LOG.warn("Failed to register OS theme listener: {}", e.getMessage());
         }
     }
 
@@ -195,7 +201,7 @@ public final class AppearanceManager {
             osThemeListener = null;
             listenerRegistered = false;
         } catch (Exception e) {
-            LOGGER.warning("Failed to unregister OS theme listener: " + e.getMessage());
+            LOG.warn("Failed to unregister OS theme listener: {}", e.getMessage());
         }
     }
 

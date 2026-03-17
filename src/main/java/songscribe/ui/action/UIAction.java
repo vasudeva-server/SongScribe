@@ -28,6 +28,8 @@ import org.jetbrains.annotations.Nullable;
 import java.util.EnumSet;
 
 import net.engio.mbassy.listener.Handler;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import songscribe.message.CompositionChangedMessage;
 import songscribe.message.Message;
@@ -47,7 +49,6 @@ import songscribe.ui.message.TextEditingChangedMessage;
 import songscribe.ui.playback.PlaybackController;
 import songscribe.ui.playback.PlaybackStateChangedMessage;
 import songscribe.util.GraphicUtils;
-import songscribe.util.Log;
 import songscribe.util.UIUtils;
 
 public class UIAction extends AbstractAction {
@@ -142,6 +143,8 @@ public class UIAction extends AbstractAction {
          */
         @Nullable StaffElement createReplacement(StaffElement element, boolean selected);
     }
+
+    private static final Logger LOG = LoggerFactory.getLogger(UIAction.class);
 
     public static final String FONT_ICON_KEY = "font-icon";
     public static final String FONT_KEY = "font";
@@ -251,7 +254,7 @@ public class UIAction extends AbstractAction {
             if (svgIcon != null) {
                 putValue(LARGE_ICON_KEY, svgIcon);
             } else {
-                Log.warning("Icon not found: " + icon);
+                LOG.warn("Icon not found: {}", icon);
             }
         } else {
             // Should be a tagged Unicode icon
@@ -312,6 +315,12 @@ public class UIAction extends AbstractAction {
         // If an action is going to be enabled based on a single flag,
         // we have to check the entire context to see if the action can in fact be enabled.
         var score = getScore();
+
+        if (score == null) {
+            setEnabled(false);
+            return false;
+        }
+
         var activeSelection = hasActiveSelection();
         var enable =
             enableInAdjustmentMode(score) &&

@@ -22,9 +22,12 @@ package songscribe.message;
 
 import net.engio.mbassy.listener.Handler;
 
-import songscribe.util.Log;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public final class MessageLogger {
+
+    private static final Logger LOG = LoggerFactory.getLogger(MessageLogger.class);
 
     @SuppressWarnings("StaticNonFinalField")
     public static MessageLogger instance = null;
@@ -39,6 +42,6 @@ public final class MessageLogger {
 
     @Handler
     public void logMessage(Message message) {
-        Log.info(message.toString());
+        LOG.trace("{}", message);
     }
 }

@@ -33,14 +33,16 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.jetbrains.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import songscribe.Strings;
 import songscribe.ui.Constants;
 import songscribe.ui.Dialogs;
-import songscribe.util.Log;
-
 @SuppressWarnings("StaticNonFinalField")
 public final class MidiController {
+
+    private static final Logger LOG = LoggerFactory.getLogger(MidiController.class);
 
     // MIDI
     public static Sequencer sequencer = null;
@@ -64,8 +66,9 @@ public final class MidiController {
             sequencer = MidiSystem.getSequencer(false);
             sequencer.getTransmitter().setReceiver(midiReceiver);
             sequencer.open();
+            LOG.info("MIDI initialized");
         } catch (Exception e) {
-            Log.warning("MIDI initialization failed: " + e.getMessage());
+            LOG.warn("MIDI initialization failed", e);
             Dialogs.showWarningMessage(
                 null,
                 Strings.get(Strings.DIALOG_TITLE_PLAYBACK_ERROR),
@@ -109,8 +112,8 @@ public final class MidiController {
                         throw new IllegalStateException("loadAllInstruments returned false");
                     }
 
-                    Log.info("Loaded soundfont: " + soundbank.getName() +
-                            " into synth: " + synth.getDeviceInfo().getName());
+                    LOG.info("Loaded soundfont: {} into synth: {}",
+                            soundbank.getName(), synth.getDeviceInfo().getName());
                 }
 
                 return synth;
@@ -155,15 +158,15 @@ public final class MidiController {
             var soundbank = MidiSystem.getSoundbank(sf2File);
 
             if (soundbank == null) {
-                Log.warning("MidiSystem could not parse bundled soundfont");
+                LOG.warn("MidiSystem could not parse bundled soundfont");
                 return null;
             }
 
             return soundbank;
         } catch (FileNotFoundException e) {
-            Log.warning("Bundled soundfont not found: " + SOUNDFONT_RESOURCE);
+            LOG.warn("Bundled soundfont not found: {}", SOUNDFONT_RESOURCE);
         } catch (InvalidMidiDataException | IOException e) {
-            Log.warning("Failed to load bundled soundfont: " + e.getMessage());
+            LOG.warn("Failed to load bundled soundfont", e);
         }
 
         return null;
@@ -207,7 +210,7 @@ public final class MidiController {
                 }
             }
         } catch (InvalidMidiDataException e) {
-            Log.warning("Failed to initialize MIDI channels: " + e.getMessage());
+            LOG.warn("Failed to initialize MIDI channels", e);
         }
     }
 
@@ -257,6 +260,8 @@ public final class MidiController {
         if (synthesizer != null) {
             synthesizer.close();
         }
+
+        LOG.info("MIDI resources released");
     }
 
     public static boolean isPlaying() {

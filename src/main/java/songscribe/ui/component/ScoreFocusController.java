@@ -25,8 +25,8 @@ import module java.desktop;
 import java.util.ArrayList;
 
 import org.jetbrains.annotations.NotNull;
-
-import songscribe.util.Log;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 interface FocusRestorationCallback {
 
@@ -34,6 +34,8 @@ interface FocusRestorationCallback {
 }
 
 public final class ScoreFocusController implements FocusListener {
+
+    private static final Logger LOG = LoggerFactory.getLogger(ScoreFocusController.class);
 
     // Except for clicks on a few components such as lyrics fields, we don't want
     // the score to lose focus when other parts of the UI are clicked. When the score
@@ -70,7 +72,7 @@ public final class ScoreFocusController implements FocusListener {
             try {
                 sleep(500);
             } catch (InterruptedException e) {
-                Log.error(e.toString());
+                LOG.error("Focus restoration interrupted", e);
             }
 
             callback.requestFocusInWindow();

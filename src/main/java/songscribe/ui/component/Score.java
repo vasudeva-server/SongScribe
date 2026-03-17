@@ -36,6 +36,8 @@ import org.jetbrains.annotations.Nullable;
 
 import kotlin.Pair;
 import net.engio.mbassy.listener.Handler;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.xml.sax.SAXException;
 
 import songscribe.Strings;
@@ -74,7 +76,6 @@ import songscribe.ui.renderer.RenderContext;
 import songscribe.ui.selection.ElementSelection;
 import songscribe.ui.selection.SelectionCoordinator;
 import songscribe.util.GraphicUtils;
-import songscribe.util.Log;
 import songscribe.util.UIUtils;
 
 /**
@@ -91,6 +92,8 @@ public final class Score
     LineComponent.SelectionProvider,
     RenderContext,
     songscribe.ui.edit.ScoreActions {
+
+    private static final Logger LOG = LoggerFactory.getLogger(Score.class);
 
     // The number of lines in a staff
     public static final int STAFF_LINE_COUNT = 5;
@@ -489,6 +492,7 @@ public final class Score
                 onFileOpened.accept(file);
             }
 
+            LOG.info("Composition loaded: {}", file.getName());
             return true;
         } catch (SAXException e) {
             var message =
@@ -500,7 +504,7 @@ public final class Score
                 Strings.get(Strings.DIALOG_TITLE_FILE_ERROR),
                 message
             );
-            Log.error(message, e);
+            LOG.error(message, e);
             if (composition != null) {
                 composition.setModified(previousModified);
             }
@@ -512,7 +516,7 @@ public final class Score
                 Strings.get(Strings.DIALOG_TITLE_FILE_ERROR),
                 message + ". Check if you have the permission to open it."
             );
-            Log.error(message, e);
+            LOG.error(message, e);
             if (composition != null) {
                 composition.setModified(previousModified);
             }

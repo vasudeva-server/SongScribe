@@ -33,12 +33,16 @@ import java.util.regex.Pattern;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.formdev.flatlaf.util.FontUtils;
 import kotlin.Pair;
 
 @SuppressWarnings("SameReturnValue")
 public final class MyFontUtils {
+
+    private static final Logger LOG = LoggerFactory.getLogger(MyFontUtils.class);
 
     private static final Pattern STYLE_PATTERN = Pattern.compile(
         "^(?:(?:Extra)?Light|Regular|Medium|Semi[Bb]old|(?:Extra)?Bold|Black|(?:Extra)" +
@@ -211,7 +215,7 @@ public final class MyFontUtils {
 
             return font;
         } catch (Exception e) {
-            Log.error("Could not get font", e);
+            LOG.error("Could not get font", e);
         }
 
         return null;
@@ -237,7 +241,7 @@ public final class MyFontUtils {
             .anyMatch(f -> f.getPSName().equals(psName));
 
         if (!alreadyRegistered && !ge.registerFont(font)) {
-            Log.error("Could not register font: " + fontName);
+            LOG.error("Could not register font: {}", fontName);
         }
     }
 

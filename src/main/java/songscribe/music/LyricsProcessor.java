@@ -15,7 +15,8 @@
 
 package songscribe.music;
 
-import java.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import org.jetbrains.annotations.NotNull;
 
@@ -29,7 +30,7 @@ import songscribe.ui.Constants;
  */
 public class LyricsProcessor {
 
-    private static final Logger LOG = Logger.getLogger(LyricsProcessor.class.getName());
+    private static final Logger LOG = LoggerFactory.getLogger(LyricsProcessor.class);
 
     private LyricsProcessor() {
         // Utility class
@@ -168,16 +169,6 @@ public class LyricsProcessor {
             }
         }
 
-        LOG.fine("Line: " + composition.indexOfLine(line));
-        LOG.fine("BeginRelation: " + line.beginRelation);
-
-        for (var i = 0; i < line.elementCount(); i++) {
-            LOG.fine(
-                line.getElement(i).properties.syllable +
-                    "   Relation: " +
-                    line.getElement(i).properties.syllableRelation.name()
-            );
-        }
     }
 
     private static int setSyllableForNextElement(

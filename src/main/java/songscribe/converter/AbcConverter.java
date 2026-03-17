@@ -22,16 +22,22 @@ package songscribe.converter;
 import java.io.File;
 import java.io.PrintWriter;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import songscribe.SongScribe;
 import songscribe.io.CompositionLoader;
 import songscribe.ui.action.ExportABCAction;
-import songscribe.util.Log;
 
 public class AbcConverter {
+
+    private static final Logger LOG = LoggerFactory.getLogger(AbcConverter.class);
 
     @FileArgument
     public File file = null;
 
     public static void main(String[] args) {
+        SongScribe.configureLogging();
         var reader = new ArgumentReader<>(args, AbcConverter.class);
         reader.getObj().convert(new PrintWriter(System.out));
     }
@@ -41,8 +47,9 @@ public class AbcConverter {
             var composition = CompositionLoader.load(file);
             ExportABCAction.writeABC(composition, writer);
             writer.close();
+            LOG.info("Converted {} to ABC", file.getName());
         } catch (Exception e) {
-            Log.error("Could not convert " + file.getName(), e);
+            LOG.error("Could not convert {}", file.getName(), e);
         }
     }
 }

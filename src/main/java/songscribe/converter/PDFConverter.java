@@ -22,14 +22,19 @@ package songscribe.converter;
 import java.io.File;
 import java.io.IOException;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import songscribe.SongScribe;
 import songscribe.data.PageLayoutData;
 import songscribe.ui.action.ExportPDFAction;
 import songscribe.ui.component.Score;
 import songscribe.util.FileUtils;
-import songscribe.util.Log;
 
 @SuppressWarnings({ "ConstantValue", "FieldMayBeStatic" })
 public class PDFConverter {
+
+    private static final Logger LOG = LoggerFactory.getLogger(PDFConverter.class);
 
     @ArgumentDescribe("Paper size: a4, letter, legal, custom")
     @NoDefault
@@ -84,6 +89,7 @@ public class PDFConverter {
     public File[] files = null;
 
     public static void main(String[] args) {
+        SongScribe.configureLogging();
         var reader = new ArgumentReader<>(args, PDFConverter.class);
         reader.getObj().convert();
     }
@@ -106,12 +112,12 @@ public class PDFConverter {
             }
             case "custom" -> {
                 if ((paperWidth <= 0) || (paperHeight <= 0)) {
-                    Log.warning("paperWidth and paperHeight must be specified for custom paperSize");
+                    LOG.warn("paperWidth and paperHeight must be specified for custom paperSize");
                     return;
                 }
             }
             default -> {
-                Log.warning("invalid paperSize");
+                LOG.warn("invalid paperSize");
                 return;
             }
         }
@@ -131,8 +137,9 @@ public class PDFConverter {
             try {
                 var path = FileUtils.getPathWithoutExtension(file) + ".pdf";
                 ExportPDFAction.createPDF(data, new File(path));
+                LOG.info("Converted {} to PDF (paper: {})", file.getName(), paperSize);
             } catch (IOException e) {
-                Log.error("Could not convert " + file.getName(), e);
+                LOG.error("Could not convert {}", file.getName(), e);
             }
         }
     }

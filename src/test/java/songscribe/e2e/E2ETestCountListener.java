@@ -25,6 +25,8 @@ import org.junit.platform.engine.support.descriptor.MethodSource;
 import org.junit.platform.launcher.TestExecutionListener;
 import org.junit.platform.launcher.TestPlan;
 
+import songscribe.SongScribe;
+
 /**
  * Counts the total number of e2e leaf tests from JUnit's TestPlan so that the
  * status overlay in E2ETest can display an accurate "N of M" counter.
@@ -46,6 +48,10 @@ public class E2ETestCountListener implements TestExecutionListener {
         }
 
         totalTests = count;
+
+        if (count > 0) {
+            SongScribe.logBanner("SongScribe (E2E Tests)");
+        }
     }
 
     private int countLeafTests(TestPlan testPlan, org.junit.platform.launcher.TestIdentifier node) {

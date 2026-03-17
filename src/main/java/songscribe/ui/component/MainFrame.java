@@ -29,6 +29,9 @@ import java.nio.charset.StandardCharsets;
 
 import org.jetbrains.annotations.Nullable;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.formdev.flatlaf.util.SystemFileChooser;
 import com.formdev.flatlaf.util.SystemInfo;
 import net.engio.mbassy.listener.Handler;
@@ -67,9 +70,10 @@ import songscribe.ui.playback.PlayWithRepeatsMessage;
 import songscribe.ui.playback.PlaybackController;
 import songscribe.ui.playback.PlaybackTempoChangedMessage;
 import songscribe.util.FileUtils;
-import songscribe.util.Log;
 
 public class MainFrame extends JFrame implements Printable {
+
+    private static final Logger LOG = LoggerFactory.getLogger(MainFrame.class);
 
     // This directory is used to store preferences and logs
     public static final File SONGSCRIBE_DIR = new File(
@@ -159,10 +163,7 @@ public class MainFrame extends JFrame implements Printable {
         try {
             showSplash();
 
-            if (System.getenv("DEBUG") != null) {
-                MessageLogger.init();
-            }
-
+            MessageLogger.init();
             MidiController.openMidi();
             var instance = getInstance();
             instance.initFrame();
@@ -187,7 +188,7 @@ public class MainFrame extends JFrame implements Printable {
                 }
             }
         } catch (Exception e) {
-            Log.error(e);
+            LOG.error("Application startup failed", e);
         }
 
         hideSplash();
@@ -288,6 +289,7 @@ public class MainFrame extends JFrame implements Printable {
         setFrameSize();
         setVisible(true);
         ActivationGate.install(this);
+        LOG.info("Application UI ready");
 
         score.requestFocusInWindow();
     }
@@ -503,6 +505,8 @@ public class MainFrame extends JFrame implements Printable {
             score.setComposition(new Composition());
             score.requestFocusInWindow();
         }
+
+        LOG.info("New composition");
     }
 
     public static void handlePrefs() throws IllegalStateException {
@@ -521,6 +525,7 @@ public class MainFrame extends JFrame implements Printable {
         }
 
         MidiController.closeMidi();
+        LOG.info("Application shutting down");
         return true;
     }
 
@@ -661,6 +666,7 @@ public class MainFrame extends JFrame implements Printable {
             CompositionIO.writeComposition(score.getComposition(), printWriter);
             printWriter.close();
             score.getComposition().setModified(false);
+            LOG.info("Saved: {}", currentFile.getName());
             MessageCenter.post(new DocumentSaved());
         } catch (IOException e1) {
             Dialogs.showErrorMessage(

@@ -118,7 +118,6 @@
       <option name="ignoreInterfacesThatOnlyDeclareConstants" value="false" />
     </inspection_tool>
     <inspection_tool class="IteratorNextDoesNotThrowNoSuchElementException" enabled="true" level="WARNING" enabled_by_default="true" />
-    <inspection_tool class="JavaCollectionWithNullableTypeArgument" enabled="true" level="WARNING" enabled_by_default="true" />
     <inspection_tool class="JoinDeclarationAndAssignmentJava" enabled="true" level="WARNING" enabled_by_default="true" editorAttributes="WARNING_ATTRIBUTES" />
     <inspection_tool class="KeySetIterationMayUseEntrySet" enabled="true" level="WARNING" enabled_by_default="true" />
     <inspection_tool class="LambdaBodyCanBeCodeBlock" enabled="false" level="INFORMATION" enabled_by_default="false" />
@@ -325,6 +324,7 @@
           <option value="SongScribe" />
           <option value="SongScribe" />
           <option value="SongScribe" />
+          <option value="SongScribe" />
         </list>
       </option>
       <option name="ignoredPackages">
@@ -342,10 +342,12 @@
           <option value="jdom:jdom:1.0" />
           <option value="org.springframework:spring-core:5.3.25" />
           <option value="org.apache.tomcat.embed:tomcat-embed-websocket:9.0.71" />
+          <option value="junit:junit:4.12" />
         </list>
       </option>
       <option name="ignoredReasons">
         <list>
+          <option value="Not exploitable" />
           <option value="Not exploitable" />
           <option value="Not exploitable" />
           <option value="Not exploitable" />

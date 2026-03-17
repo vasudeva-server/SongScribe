@@ -1,0 +1,16 @@
+<configuration>
+
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %-9level [%logger{0}] %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- Suppress noisy OS-detection fallback warnings from jSystemThemeDetector -->
+    <logger name="oshi.software.os.mac.MacOperatingSystem" level="ERROR"/>
+
+    <root level="${songscribe.log.level:-INFO}">
+        <appender-ref ref="CONSOLE"/>
+    </root>
+
+</configuration>

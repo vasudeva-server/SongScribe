@@ -35,11 +35,11 @@ import songscribe.Strings;
 import songscribe.data.FileExtensions;
 import songscribe.ui.Dialogs;
 import songscribe.ui.action.QuitAction;
+import songscribe.SongScribe;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.Score;
 import songscribe.ui.playback.MidiController;
 import songscribe.util.GraphicUtils;
-import songscribe.util.Log;
 
 @SuppressWarnings("NonStaticInitializer")
 public class UIConverter extends MainFrame {
@@ -91,7 +91,7 @@ public class UIConverter extends MainFrame {
 
     @SuppressWarnings("MethodOverridesStaticMethodOfSuperclass")
     public static void main(String[] args) {
-        Log.setNameWithoutExtension("ui-converter");
+        SongScribe.configureLogging();
         MidiController.openMidi();
         new UIConverter();
     }

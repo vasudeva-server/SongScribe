@@ -24,7 +24,8 @@ import static songscribe.ui.renderer.GraphicsState.Property.COLOR;
 
 import module java.desktop;
 
-import java.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -66,7 +67,7 @@ public class BeamGroupRenderer extends BaseElementRenderer<LineElement> {
         ElementType.QUAVER,
     };
 
-    private static final Logger LOG = Logger.getLogger(BeamGroupRenderer.class.getName());
+    private static final Logger LOG = LoggerFactory.getLogger(BeamGroupRenderer.class);
 
     // Singleton instance
     private static final BeamGroupRenderer INSTANCE = new BeamGroupRenderer();
@@ -108,8 +109,6 @@ public class BeamGroupRenderer extends BaseElementRenderer<LineElement> {
         int beginIndex,
         int endIndex
     ) {
-        LOG.fine("[BeamRenderer] ============================================");
-        LOG.fine("[BeamRenderer] renderBeams: beginIndex=" + beginIndex + " endIndex=" + endIndex);
         int level = getBeamLevel(line, beginIndex, endIndex);
         var highlightColor = getBeamHighlightColor(ctx, beginIndex, endIndex);
         drawBeams(g2, level, line, ctx, beginIndex, endIndex, highlightColor != null,
@@ -182,15 +181,12 @@ public class BeamGroupRenderer extends BaseElementRenderer<LineElement> {
             for (int j = 0; j < BEAM_LEVELS.length; j++) {
                 if (noteType == BEAM_LEVELS[j]) {
                     var level = BEAM_LEVELS.length - 1 - j;
-                    LOG.fine("[BeamRenderer] getBeamLevel: note[" + i + "] type=" + noteType
-                        + " beamLevelIndex=" + j + " level=" + level);
                     maxLevel = Math.max(maxLevel, level);
                     break;
                 }
             }
         }
 
-        LOG.fine("[BeamRenderer] getBeamLevel: maxLevel=" + maxLevel);
         return maxLevel;
     }
 
@@ -229,16 +225,7 @@ public class BeamGroupRenderer extends BaseElementRenderer<LineElement> {
         @Nullable LayoutResult.BeamLayout beamLayout,
         @NotNull Color selectionColor
     ) {
-        String indent = "  ".repeat(recursionLevel);
-        LOG.fine("[BeamRenderer] " + indent + "doDrawBeams: level=" + level
-            + " beginIndex=" + beginIndex + " endIndex=" + endIndex
-            + " prevBegin=" + prevBeginIndex + " prevEnd=" + prevEndIndex
-            + " isPrevLeftOriented=" + isPrevLeftOriented
-            + " recursionLevel=" + recursionLevel
-            + " outerNotes=(" + outerNotes.x + "," + outerNotes.y + ")");
-
         if (level == -1) {
-            LOG.fine("[BeamRenderer] " + indent + "  -> level=-1, returning");
             return;
         }
 
@@ -249,7 +236,6 @@ public class BeamGroupRenderer extends BaseElementRenderer<LineElement> {
         // Half beam (single note at this level)
         if (beginIndex == endIndex) {
             if (beginNote.getType().isGraceNote()) {
-                LOG.fine("[BeamRenderer] " + indent + "  -> grace note, skipping half beam");
                 return;
             }
 
@@ -270,13 +256,10 @@ public class BeamGroupRenderer extends BaseElementRenderer<LineElement> {
             }
 
             var type = leftOriented ? BeamType.ATTACH_RIGHT : BeamType.ATTACH_LEFT;
-            LOG.fine("[BeamRenderer] " + indent + "  -> HALF beam: leftOriented=" + leftOriented
-                + " type=" + type + " drawBeam(" + begin + "," + end + ") isUpper=" + isUpper);
             drawBeam(g2, line, ctx, begin, end, isUpper, type, recursionLevel, selected, beamLayout, selectionColor);
         }
         // Full beam
         else {
-            LOG.fine("[BeamRenderer] " + indent + "  -> FULL beam: drawBeam(" + beginIndex + "," + endIndex + ") isUpper=" + isUpper);
             drawBeam(g2, line, ctx, beginIndex, endIndex, isUpper, BeamType.FULL, recursionLevel, selected, beamLayout, selectionColor);
         }
 
@@ -284,22 +267,13 @@ public class BeamGroupRenderer extends BaseElementRenderer<LineElement> {
         var beamLevel = recursionLevel + 1;
         var startSubBeam = -1;
 
-        LOG.fine("[BeamRenderer] " + indent + "  scanning sub-beams at beamLevel=" + beamLevel);
-
         for (var i = beginIndex; i <= endIndex + 1; i++) {
             if (i <= endIndex && isNoteTypeInLevel(line, i, beamLevel)) {
-                LOG.fine("[BeamRenderer] " + indent + "    note[" + i + "] IS in level " + beamLevel
-                    + " (type=" + line.getElement(i).getType() + ")");
                 if (startSubBeam == -1) {
                     startSubBeam = i;
                 }
             } else {
-                if (i <= endIndex) {
-                    LOG.fine("[BeamRenderer] " + indent + "    note[" + i + "] NOT in level " + beamLevel
-                        + " (type=" + line.getElement(i).getType() + ")");
-                }
                 if (startSubBeam != -1) {
-                    LOG.fine("[BeamRenderer] " + indent + "    -> sub-beam range: " + startSubBeam + " to " + (i - 1));
                     doDrawBeams(g2, beamLevel, line, ctx, outerNotes,
                         startSubBeam, i - 1, beginIndex, endIndex,
                         leftOriented, recursionLevel + 1, selected, beamLayout, selectionColor);
@@ -315,14 +289,9 @@ public class BeamGroupRenderer extends BaseElementRenderer<LineElement> {
         if (!type.isGraceNote()) {
             for (int i = 0; i < BEAM_LEVELS.length; i++) {
                 if (BEAM_LEVELS[i] == type) {
-                    var result = i <= (BEAM_LEVELS.length - 1 - level);
-                    LOG.fine("[BeamRenderer]       isNoteTypeInLevel: note[" + noteIndex + "] type=" + type
-                        + " beamLevelIndex=" + i + " threshold=" + (BEAM_LEVELS.length - 1 - level)
-                        + " -> " + result);
-                    return result;
+                    return i <= (BEAM_LEVELS.length - 1 - level);
                 }
             }
-            LOG.fine("[BeamRenderer]       isNoteTypeInLevel: note[" + noteIndex + "] type=" + type + " NOT beamable -> false");
             return false;
         }
 
@@ -338,10 +307,8 @@ public class BeamGroupRenderer extends BaseElementRenderer<LineElement> {
             end++;
         }
 
-        var result = begin >= 0 && isNoteTypeInLevel(line, begin, level) &&
+        return begin >= 0 && isNoteTypeInLevel(line, begin, level) &&
             end < line.elementCount() && isNoteTypeInLevel(line, end, level);
-        LOG.fine("[BeamRenderer]       isNoteTypeInLevel: grace note[" + noteIndex + "] -> " + result);
-        return result;
     }
 
     private void drawBeam(
@@ -362,9 +329,6 @@ public class BeamGroupRenderer extends BaseElementRenderer<LineElement> {
         var layoutResult = ctx.getLayoutResult();
         double middleLineYSs = ctx.getMiddleLineYSs();
         double halfStemWidthSs = LayoutConstants.STEM_WIDTH_SS / 2.0;
-
-        LOG.fine("[BeamRenderer]   drawBeam: type=" + type + " beginIndex=" + beginIndex + " endIndex=" + endIndex
-            + " isUpper=" + isUpper + " recursionLevel=" + recursionLevel);
 
         // --- Thickening (from BeamLayout, zero if unavailable) ---
         double thickeningSs = (beamLayout != null) ? beamLayout.thickeningSs() : 0.0;
@@ -395,9 +359,6 @@ public class BeamGroupRenderer extends BaseElementRenderer<LineElement> {
         double lastOuterY = GraphicUtils.snapYToDevicePixel(
             g2, middleLineYSs + lastTipYSs + innerBeamOffsetSs);
         double lastInnerY = GraphicUtils.snapYToDevicePixel(g2, lastOuterY + beamDepthSs);
-
-        LOG.fine("[BeamRenderer]     firstX=" + firstX + " firstOuterY=" + firstOuterY
-            + " lastX=" + lastX + " lastOuterY=" + lastOuterY);
 
         // --- Build and draw parallelogram ---
         var beam = new Path2D.Double(Path2D.WIND_NON_ZERO, 4);

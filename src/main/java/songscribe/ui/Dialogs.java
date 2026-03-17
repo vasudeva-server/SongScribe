@@ -24,11 +24,13 @@ import module java.desktop;
 
 import java.util.function.Consumer;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import songscribe.Strings;
-import songscribe.util.Log;
 import songscribe.util.UIUtils;
 
 /**
@@ -37,6 +39,8 @@ import songscribe.util.UIUtils;
  * test contexts.
  */
 public final class Dialogs {
+
+    private static final Logger LOG = LoggerFactory.getLogger(Dialogs.class);
 
     private static final int SCREEN_MARGIN_PX = 20;
 
@@ -61,7 +65,7 @@ public final class Dialogs {
         String title,
         String message
     ) {
-        showMessageDialog(parent, title, message, JOptionPane.INFORMATION_MESSAGE, Log::info, false);
+        showMessageDialog(parent, title, message, JOptionPane.INFORMATION_MESSAGE, LOG::trace, false);
     }
 
     /**
@@ -73,7 +77,7 @@ public final class Dialogs {
         String title,
         String message
     ) {
-        showMessageDialog(parent, title, message, JOptionPane.ERROR_MESSAGE, Log::error, true);
+        showMessageDialog(parent, title, message, JOptionPane.ERROR_MESSAGE, LOG::error, true);
     }
 
     public static void showWarningMessage(
@@ -81,7 +85,7 @@ public final class Dialogs {
         String title,
         String message
     ) {
-        showMessageDialog(parent, title, message, JOptionPane.WARNING_MESSAGE, Log::warning, false);
+        showMessageDialog(parent, title, message, JOptionPane.WARNING_MESSAGE, LOG::warn, false);
     }
 
     public static int showConfirmDialog(
@@ -102,7 +106,7 @@ public final class Dialogs {
         int messageType,
         int suppressedDefault
     ) {
-        Log.info(message);
+        LOG.trace(message);
 
         if (isSuppressed()) {
             return suppressedDefault;
@@ -119,7 +123,7 @@ public final class Dialogs {
 
             return result;
         } catch (HeadlessException e) {
-            Log.error("HeadlessException showing confirm dialog: " + e.getMessage());
+            LOG.error("HeadlessException showing confirm dialog", e);
             return suppressedDefault;
         }
     }
@@ -138,7 +142,7 @@ public final class Dialogs {
         String message,
         @Nullable String suppressedDefault
     ) {
-        Log.info(message);
+        LOG.trace(message);
 
         if (isSuppressed()) {
             return suppressedDefault;
@@ -149,7 +153,7 @@ public final class Dialogs {
                 parent, message, title, JOptionPane.QUESTION_MESSAGE, null, null, null
             );
         } catch (HeadlessException e) {
-            Log.error("HeadlessException showing input dialog: " + e.getMessage());
+            LOG.error("HeadlessException showing input dialog", e);
             return suppressedDefault;
         }
     }
@@ -164,7 +168,7 @@ public final class Dialogs {
         @Nullable Object[] options,
         @Nullable Object initialValue
     ) {
-        Log.info(String.valueOf(message));
+        LOG.trace("{}", message);
 
         if (isSuppressed()) {
             return JOptionPane.CLOSED_OPTION;
@@ -175,7 +179,7 @@ public final class Dialogs {
                 parent, message, title, optionType, messageType, icon, options, initialValue
             );
         } catch (HeadlessException e) {
-            Log.error("HeadlessException showing option dialog: " + e.getMessage());
+            LOG.error("HeadlessException showing option dialog", e);
             return JOptionPane.CLOSED_OPTION;
         }
     }
@@ -213,7 +217,7 @@ public final class Dialogs {
             UIUtils.addStandardDialogKeyBindings(dialog);
             dialog.setVisible(true);
         } catch (HeadlessException e) {
-            Log.error("HeadlessException showing message dialog: " + e.getMessage());
+            LOG.error("HeadlessException showing message dialog", e);
         }
     }
 

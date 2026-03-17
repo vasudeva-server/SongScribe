@@ -32,21 +32,21 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-
 import com.formdev.flatlaf.util.SystemInfo;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 public final class Prefs {
 
-    private static final Logger LOGGER = Logger.getLogger(Prefs.class.getName());
+    private static final Logger LOG = LoggerFactory.getLogger(Prefs.class);
     private static final String DEFAULTS_RESOURCE = "/conf/defaults.json";
     private static final File OLD_PROPS_FILE =
             new File(System.getProperty("user.home"), ".songscribe/props");
@@ -202,7 +202,7 @@ public final class Prefs {
         var stream = Prefs.class.getResourceAsStream(DEFAULTS_RESOURCE);
 
         if (stream == null) {
-            LOGGER.severe("Missing defaults resource: " + DEFAULTS_RESOURCE);
+            LOG.error("Missing defaults resource: {}", DEFAULTS_RESOURCE);
             return result;
         }
 
@@ -225,8 +225,10 @@ public final class Prefs {
                     }
                 }
             }
+
+            LOG.info("Default preferences loaded");
         } catch (IOException e) {
-            LOGGER.log(Level.SEVERE, "Failed to load defaults", e);
+            LOG.error("Failed to load defaults", e);
         }
 
         return result;
@@ -266,8 +268,10 @@ public final class Prefs {
                     result.put(entry.getKey(), list);
                 }
             }
+
+            LOG.info("Preferences loaded from: {}", prefsFile);
         } catch (IOException e) {
-            LOGGER.log(Level.WARNING, "Failed to load preferences from " + prefsFile, e);
+            LOG.warn("Failed to load preferences from {}", prefsFile, e);
         }
 
         return result;
@@ -302,7 +306,7 @@ public final class Prefs {
             var gson = new GsonBuilder().setPrettyPrinting().create();
             Files.writeString(prefsFile, gson.toJson(json), StandardCharsets.UTF_8);
         } catch (IOException e) {
-            LOGGER.log(Level.WARNING, "Failed to save preferences to " + prefsFile, e);
+            LOG.warn("Failed to save preferences to {}", prefsFile, e);
         }
     }
 
@@ -327,7 +331,7 @@ public final class Prefs {
         try (var reader = Files.newBufferedReader(OLD_PROPS_FILE.toPath())) {
             oldProps.load(reader);
         } catch (IOException e) {
-            LOGGER.log(Level.WARNING, "Failed to load old props file for migration", e);
+            LOG.warn("Failed to load old props file for migration", e);
             return;
         }
 
@@ -363,7 +367,7 @@ public final class Prefs {
         save();
 
         if (!OLD_PROPS_FILE.delete()) {
-            LOGGER.warning("Failed to delete old props file: " + OLD_PROPS_FILE);
+            LOG.warn("Failed to delete old props file: {}", OLD_PROPS_FILE);
         }
     }
 
@@ -374,7 +378,7 @@ public final class Prefs {
             try {
                 store.put(key, Long.parseLong(value));
             } catch (NumberFormatException e) {
-                LOGGER.warning("Invalid numeric value for key " + key + ": " + value);
+                LOG.warn("Invalid numeric value for key {}: {}", key, value);
             }
         } else {
             store.put(key, value);

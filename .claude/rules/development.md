@@ -6,12 +6,6 @@
 
 NEVER invoke `mvn compile`, `mvn test`, `javac`, `kotlinc`, `java -cp`, `mvn exec:java`, or any other raw build/run/test commands. ALWAYS use the provided shell scripts described below.
 
-### Debug Scripts
-
-The `-debug` script variants (`crun-debug.sh`, `run-debug.sh`) set the `DEBUG` environment variable. This only affects code that explicitly checks for it (debug drawing, `Log.fine()` output, etc.).
-
-**NEVER use `-debug` variants unless the user has requested debug output OR `DEBUG`-dependent output is needed to diagnose a problem.** The default is ALWAYS the non-debug variant.
-
 ## Development Workflow
 
 After making code changes, if there is no need to run the application for verification, compile:
@@ -34,14 +28,25 @@ If you **do** need to run the application:
 
 ### All Available Scripts
 
-| Script                    | Purpose                                                                   |
-|---------------------------|---------------------------------------------------------------------------|
-| `./scripts/compile.sh`    | Compile Java/Kotlin sources                                               |
-| `./scripts/run.sh`        | Run the application (MUST compile first)                                  |
-| `./scripts/run-debug.sh`  | Run with DEBUG env var (use only when debug output is needed)             |
-| `./scripts/crun.sh`       | Compile and run in one step                                               |
-| `./scripts/crun-debug.sh` | Compile and run with DEBUG env var (use only when debug output is needed) |
-| `./scripts/test.sh`       | Run tests (see examples below)                                            |
+| Script                 | Purpose                                  |
+|------------------------|------------------------------------------|
+| `./scripts/compile.sh` | Compile Java/Kotlin sources              |
+| `./scripts/run.sh`     | Run the application (MUST compile first) |
+| `./scripts/crun.sh`    | Compile and run in one step              |
+| `./scripts/test.sh`    | Run tests (see examples below)           |
+
+`run.sh` and `crun.sh` accept these options:
+
+| Option | Effect |
+|---|---|
+| `--log-level=debug\|info\|warn\|error\|trace` | Override the log level for this run |
+| `--truncate-log` | Truncate the log file before logging begins |
+
+To enable UI debug features (FlatLaf inspector, debug drawing), set `DEBUG=1` manually:
+
+```bash
+DEBUG=1 ./scripts/run.sh
+```
 
 ### Running Tests
 

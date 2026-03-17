@@ -23,6 +23,8 @@ package songscribe.util;
 import module java.desktop;
 
 import org.jetbrains.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import songscribe.ui.Dialogs;
 
@@ -31,6 +33,8 @@ import songscribe.ui.Dialogs;
  * an alert dialog to the user.
  */
 public class RuntimeError {
+
+    private static final Logger LOG = LoggerFactory.getLogger(RuntimeError.class);
 
     /**
      * If the object is null, logs the message, shows an error alert, and returns true.
@@ -51,7 +55,7 @@ public class RuntimeError {
             return false;
         }
 
-        Log.error(logMessage);
+        LOG.error(logMessage);
 
         Dialogs.showOptionDialog(
             null,

@@ -24,15 +24,19 @@ import module java.desktop;
 import java.io.File;
 import java.io.IOException;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.xml.sax.SAXException;
 
+import songscribe.SongScribe;
 import songscribe.io.CompositionLoader;
 import songscribe.ui.playback.PlaybackController;
 import songscribe.util.FileUtils;
-import songscribe.util.Log;
 
 @SuppressWarnings("FieldMayBeStatic")
 public class MidiConverter {
+
+    private static final Logger LOG = LoggerFactory.getLogger(MidiConverter.class);
 
     @ArgumentDescribe("MIDI Instrument (0-127)")
     public final int instrument = 0;
@@ -47,6 +51,7 @@ public class MidiConverter {
     public final File[] files = new File[0];
 
     public static void main(String[] args) {
+        SongScribe.configureLogging();
         var reader = new ArgumentReader<>(args, MidiConverter.class);
         reader.getObj().convert();
     }
@@ -54,12 +59,12 @@ public class MidiConverter {
     @SuppressWarnings("ConstantValue")
     public void convert() {
         if ((instrument < 0) || (instrument > 127)) {
-            Log.warning("The instrument must be in range of 0-127");
+            LOG.warn("The instrument must be in range of 0-127");
             return;
         }
 
         if ((tempoChange <= 0) || (tempoChange > 200)) {
-            Log.warning("The tempo change must be in range of 1-200");
+            LOG.warn("The tempo change must be in range of 1-200");
             return;
         }
 
@@ -78,8 +83,9 @@ public class MidiConverter {
                         FileUtils.getPathWithoutExtension(file) + ".midi"
                     )
                 );
+                LOG.info("Converted {} to MIDI", file.getName());
             } catch (IOException | InvalidMidiDataException | SAXException e) {
-                Log.error("Could not convert " + file.getName(), e);
+                LOG.error("Could not convert {}", file.getName(), e);
             }
         }
     }

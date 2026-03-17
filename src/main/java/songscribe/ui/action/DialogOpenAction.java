@@ -23,13 +23,17 @@ import static songscribe.util.StringUtils.toKebabCase;
 
 import module java.desktop;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import songscribe.ui.dialog.StandardDialog;
-import songscribe.util.Log;
 
 /**
  * An action that opens a standard dialog.
  */
 public class DialogOpenAction<T extends StandardDialog> extends UIAction {
+
+    private static final Logger LOG = LoggerFactory.getLogger(DialogOpenAction.class);
 
     private T dialog = null;
     private final Class<? extends T> dialogClass;
@@ -58,7 +62,7 @@ public class DialogOpenAction<T extends StandardDialog> extends UIAction {
             try {
                 dialog = dialogClass.getConstructor().newInstance();
             } catch (Exception error) {
-                Log.error("Error creating dialog", error);
+                LOG.error("Error creating dialog", error);
             }
         }
 

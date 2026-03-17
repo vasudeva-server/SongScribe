@@ -30,6 +30,8 @@ import java.util.Arrays;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.formdev.flatlaf.extras.FlatSVGIcon;
 
@@ -37,6 +39,9 @@ import songscribe.ui.graphics.HiDPIScaledImage;
 import songscribe.ui.graphics.RetinaImage;
 
 public final class GraphicUtils {
+
+    private static final Logger LOG = LoggerFactory.getLogger(GraphicUtils.class);
+
     private static final FlatSVGIcon.ColorFilter THEME_AWARE_SVG_ICON_FILTER =
         new FlatSVGIcon.ColorFilter(
             (component, color) -> {
@@ -158,10 +163,10 @@ public final class GraphicUtils {
             }
             return ImageIO.read(stream);
         } catch (FileNotFoundException e) {
-            Log.error("Image resource not found: " + path);
+            LOG.error("Image resource not found: {}", path);
             return null;
         } catch (IOException e) {
-            Log.error("Error reading image resource '" + path + '\'', e);
+            LOG.error("Error reading image resource '{}'", path, e);
             return null;
         }
     }
