@@ -31,7 +31,7 @@ import songscribe.music.StaffElement;
 public abstract class NoteOnlyAction extends InsertionElementAction
     implements UIAction.ElementModifiable {
 
-    public static final Flag[] FLAGS = {
+    public static final Flag[] FLAGS = new Flag[]{
         Flag.DISABLE_IN_REST_MODE,
         Flag.DISABLE_WHEN_PLAYING,
         Flag.DISABLE_IN_ADJUSTMENT_MODE,
@@ -39,7 +39,7 @@ public abstract class NoteOnlyAction extends InsertionElementAction
         Flag.ENABLE_WHEN_DURATION_SELECTED,
     };
 
-    public NoteOnlyAction(
+    protected NoteOnlyAction(
         @Nullable String name,
         @Nullable String icon,
         int size,
@@ -50,7 +50,7 @@ public abstract class NoteOnlyAction extends InsertionElementAction
         super(name, icon, size, actionCommand, tooltip, flags);
     }
 
-    public NoteOnlyAction(
+    protected NoteOnlyAction(
         @Nullable String name,
         @Nullable String icon,
         int size,
