@@ -26,9 +26,6 @@ import java.util.regex.Pattern;
 
 import org.jetbrains.annotations.NotNull;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import songscribe.Strings;
 import net.engio.mbassy.listener.Handler;
 
@@ -58,8 +55,6 @@ import songscribe.util.Utils;
  * SongScribe files.
  */
 public final class Composition {
-
-    private static final Logger LOG = LoggerFactory.getLogger(Composition.class);
 
     public enum LANGUAGE {
         // Not used, the ordinals of the actual languages start at 1
@@ -272,9 +267,6 @@ public final class Composition {
      * @param data the parsed composition data to apply
      */
     public void loadFrom(@NotNull CompositionData data) {
-        LOG.trace("[COMP] loadFrom: lineWidth={} topPadding={} attributionStartY={} rowHeightAdj={} lines={}",
-            data.lineWidthSs(), data.topPaddingSs(), data.attributionStartYSs(), data.rowHeightAdjustmentSs(), data.lines().size());
-
         // Apply all scalar fields using apply methods (no individual message posting)
         this.tempo = data.tempo();
         applyNumber(data.number());
@@ -315,9 +307,6 @@ public final class Composition {
         applyAttributionStartYSs(data.attributionStartYSs());
         applyRowHeightAdjustmentSs(data.rowHeightAdjustmentSs());
         applyLineWidthSs(data.lineWidthSs());
-
-        LOG.trace("[COMP] after apply: lineWidth={} topPadding={} attributionStartY={} rowHeightAdj={}",
-            this.lineWidthSs, this.topPaddingSs, this.attributionStartYSs, this.rowHeightAdjustmentSs);
 
         // Replace lines
         lines.clear();

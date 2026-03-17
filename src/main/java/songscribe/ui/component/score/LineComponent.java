@@ -27,9 +27,6 @@ import java.awt.event.MouseEvent;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import songscribe.music.Line;
 import songscribe.ui.Mode;
 import songscribe.ui.action.Actions;
@@ -142,8 +139,6 @@ public class LineComponent extends ScoreComponent
     // ==========================================================================
     // Constants
     // ==========================================================================
-
-    private static final Logger LOG = LoggerFactory.getLogger(LineComponent.class);
 
     /** Number of lines in a staff. */
     private static final int STAFF_LINE_COUNT = 5;
@@ -339,16 +334,12 @@ public class LineComponent extends ScoreComponent
 
         var lyricsFont = composition.getLyricsFont();
         var staffRightMarginSs = composition.getLineWidthSs();
-        LOG.trace("[LINE] performLayout line[{}]: staffRightMarginSs={} (composition.lineWidth={})",
-            lineIndex, staffRightMarginSs, composition.getLineWidthSs());
         layoutEngine = new LayoutEngine(g2, lyricsFont, staffRightMarginSs);
         layoutResult = layoutEngine.layout(line);
 
         if (layoutResult == null) {
             var error = layoutEngine.getLastError();
             System.err.println("Layout failed for line " + lineIndex + ": " + error);
-        } else {
-            LOG.trace("[LINE] performLayout line[{}]: layout success, lineWidthSs={}", lineIndex, layoutResult.getLineWidthSs());
         }
 
         layoutDirty = false;
@@ -372,7 +363,6 @@ public class LineComponent extends ScoreComponent
         // All downstream drawing uses staff-space coordinates.
         var savedTransform = g2.getTransform();
         var scale = ScaleContext.getInstance().getPixelsPerStaffSpace();
-        LOG.trace("[LINE] render line[{}]: applying g2.scale({}, {}), middleLineYSs={}", lineIndex, scale, scale, middleLineYSs);
         g2.scale(scale, scale);
 
         try {
@@ -403,8 +393,6 @@ public class LineComponent extends ScoreComponent
             (int) Math.ceil(scale.toPixels(widthSs)),
             (int) Math.ceil(scale.toPixels(heightSs))
         );
-        LOG.trace("[LINE] getPreferredSize line[{}]: widthSs={} heightSs={} -> {}x{} px (pps={})",
-            lineIndex, widthSs, heightSs, dim.width, dim.height, scale.getPixelsPerStaffSpace());
         return dim;
     }
 

@@ -28,9 +28,6 @@ import songscribe.data.IntervalSet;
 import songscribe.data.TupletInterval;
 import java.util.List;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import songscribe.music.Line;
 import songscribe.music.StaffElement;
 import songscribe.ui.layout.AnnotationAttachment;
@@ -79,8 +76,6 @@ import songscribe.ui.layout2.ScaleContext;
  */
 public final class FormatMigrator {
 
-    private static final Logger LOG = LoggerFactory.getLogger(FormatMigrator.class);
-
     private FormatMigrator() {
     }
 
@@ -116,15 +111,12 @@ public final class FormatMigrator {
      */
     public static void migratePixelsToStaffSpace(@NotNull List<Line> lines) {
         var pps = ScaleContext.DEFAULT_PIXELS_PER_STAFF_SPACE;
-        LOG.trace("[MIGRATE] migratePixelsToStaffSpace pps={} lineCount={}", pps, lines.size());
 
         for (var lineIdx = 0; lineIdx < lines.size(); lineIdx++) {
             var line = lines.get(lineIdx);
 
             // Line-level fields
-            LOG.trace("[MIGRATE] line[{}] lyricsYPos BEFORE={}", lineIdx, line.getLyricsYPosSs());
             line.setLyricsYPosSs(line.getLyricsYPosSs() / pps);
-            LOG.trace("[MIGRATE] line[{}] lyricsYPos AFTER={}", lineIdx, line.getLyricsYPosSs());
 
             // TupletInterval.verticalPosition
             for (var iter = line.getTuplets().listIterator(); iter.hasNext(); ) {
@@ -143,8 +135,6 @@ public final class FormatMigrator {
             for (var i = 0; i < line.elementCount(); i++) {
                 var note = line.getElement(i);
 
-                LOG.trace("[MIGRATE] line[{}] note[{}] xPos BEFORE reset={}", lineIdx, i, note.getXPosSs());
-
                 //noinspection ObjectEquality
                 if (note.getGlissando() != StaffElement.NO_GLISSANDO) {
                     note.getGlissando().x1Translate /= pps;
@@ -160,7 +150,6 @@ public final class FormatMigrator {
 
                 // Reset stale layout pixel xPos — layout now writes to LayoutResult, not Note
                 note.setXPosSs(0);
-                LOG.trace("[MIGRATE] line[{}] note[{}] xPos AFTER reset=0", lineIdx, i);
             }
 
             // Convert per-instance RangeElement offsets (Ending, Trill)

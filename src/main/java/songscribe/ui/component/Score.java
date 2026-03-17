@@ -484,12 +484,9 @@ public final class Score
         }
 
         try {
-            LOG.trace("[SCORE] openFile: {}", file.getName());
             var reader = new CompositionIO.DocumentReader();
             saxParser.parse(file, reader);
-            LOG.trace("[SCORE] openFile: SAX parse complete, calling getComposition()");
             var newComposition = reader.getComposition();
-            LOG.trace("[SCORE] openFile: getComposition() returned, lineWidth={}", newComposition.getLineWidthSs());
             setComposition(newComposition);
 
             if (updateCurrentFile && onFileOpened != null) {
@@ -754,8 +751,6 @@ public final class Score
         }
 
         var lineWidthPx = ScaleContext.getInstance().toRoundedPixels(composition.getLineWidthSs());
-        LOG.trace("[SCORE] setComposition: composition.lineWidthSs={} lineWidthPx={}",
-            composition.getLineWidthSs(), lineWidthPx);
 
         // Core setup needed for both headless and interactive modes
         setLineWidthPx(lineWidthPx);
@@ -822,9 +817,7 @@ public final class Score
     }
 
     public int getSheetWidthPx() {
-        var result = ScaleContext.getInstance().toRoundedPixels(composition.getLineWidthSs());
-        LOG.trace("[SCORE] getSheetWidthPx: composition.lineWidthSs={} result={}", composition.getLineWidthSs(), result);
-        return result;
+        return ScaleContext.getInstance().toRoundedPixels(composition.getLineWidthSs());
     }
 
     public int getSheetHeightPx() {
@@ -954,8 +947,6 @@ public final class Score
     }
 
     public void setLineWidthPx(int lineWidthPx) {
-        LOG.trace("[SCORE] setLineWidthPx({}) PAGE_CONTENT_SIZE.width={}", lineWidthPx, PAGE_CONTENT_SIZE.width);
-
         composition.setLineWidthSs(ScaleContext.getInstance().fromPixels(lineWidthPx));
         var lineWidth = lineWidthPx;
         preferredSize.width = lineWidth;
@@ -966,15 +957,11 @@ public final class Score
         );
         setPreferredSize(preferredSize);
 
-        LOG.trace("[SCORE] setLineWidth: preferredSize={}x{}", preferredSize.width, preferredSize.height);
-
         if (marginPanel != null) {
             var width = Math.max(lineWidth, PAGE_CONTENT_SIZE.width);
             preferredSizeWithMargin.width = width + PAGE_MARGIN_PX;
             preferredSizeWithMargin.height = preferredSize.height + PAGE_MARGIN_PX;
             marginPanel.setPreferredSize(preferredSizeWithMargin);
-            LOG.trace("[SCORE] setLineWidth: marginPreferredSize={}x{} calling scrollPane.validate()",
-                preferredSizeWithMargin.width, preferredSizeWithMargin.height);
             invalidate();
             marginPanel.invalidate();
             scorePanel.invalidate();
