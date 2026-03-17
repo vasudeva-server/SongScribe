@@ -409,7 +409,7 @@ public class MainFrame extends JFrame implements Printable {
             return true;
         }
 
-        var docName = (currentFile != null) ? currentFile.getName() : Strings.get(Strings.DOCUMENT_UNTITLED);
+        var docName = getDisplayName();
         var saveIdx = 0;
         var dontSaveIdx = 1;
         var cancelIdx = 2;
@@ -446,7 +446,7 @@ public class MainFrame extends JFrame implements Printable {
             return;
         }
 
-        var name = (currentFile != null) ? currentFile.getName() : Strings.get(Strings.DOCUMENT_UNTITLED);
+        var name = getDisplayName();
         var isModified = score.getComposition().isModified();
         var title = isModified ? '•' + name : name;
         setTitle(title);
@@ -491,6 +491,15 @@ public class MainFrame extends JFrame implements Printable {
 
     public void setCurrentFile(File saveFile) {
         currentFile = saveFile;
+        updateTitle();
+    }
+
+    private String getDisplayName() {
+        if (currentFile == null) {
+            return Strings.get(Strings.DOCUMENT_UNTITLED);
+        }
+
+        return FileUtils.getPathWithoutExtension(currentFile.getName());
     }
 
     @Handler
