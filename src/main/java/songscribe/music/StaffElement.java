@@ -112,8 +112,6 @@ public class StaffElement extends LineElement implements Cloneable {
     protected BeatChange beatChange = null;
     protected Annotation annotation = null;
     protected boolean upper = false;
-    protected ForceArticulation forceArticulation = null;
-    protected DurationArticulation durationArticulation = null;
     protected boolean trill = false;
     protected boolean fermata = false;
     protected int syllableMovement = 0;
@@ -168,8 +166,6 @@ public class StaffElement extends LineElement implements Cloneable {
             this.accidental = source.accidental;
             this.isAccidentalInParentheses = source.isAccidentalInParentheses;
             this.glissando = source.glissando;
-            this.forceArticulation = source.forceArticulation;
-            this.durationArticulation = source.durationArticulation;
             this.trill = source.trill;
             this.upper = source.upper;
             this.stemDirectionAuto = source.stemDirectionAuto;
@@ -199,8 +195,6 @@ public class StaffElement extends LineElement implements Cloneable {
         beatChange = note.beatChange;
         upper = note.upper;
         glissando = note.glissando;
-        forceArticulation = note.forceArticulation;
-        durationArticulation = note.durationArticulation;
         annotation = note.annotation;
         trill = note.trill;
         fermata = note.fermata;
@@ -292,19 +286,10 @@ public class StaffElement extends LineElement implements Cloneable {
         return false;
     }
 
-    // TODO: Temporary fix — the data model fields (forceArticulation, durationArticulation)
-    //  and the layout articulations list are not kept in sync by UI actions. When the layout
-    //  system is rewritten (see specs/rendering-rewrite.md), unify into a single source of truth.
-
     /**
      * Returns true if this note has an articulation of the given type.
-     * Checks both the layout articulations list and the data model fields.
      */
     public boolean hasArticulation(@NotNull ArticulationType type) {
-        if (type == ArticulationType.ACCENT && forceArticulation == ForceArticulation.ACCENT) {
-            return true;
-        }
-
         for (var articulation : articulations) {
             if (articulation.getType() == type) {
                 return true;
@@ -317,13 +302,8 @@ public class StaffElement extends LineElement implements Cloneable {
     /**
      * Returns the MIDI duration percentage from the first articulation that overrides duration,
      * or -1 if no articulation overrides duration.
-     * Checks both the layout articulations list and the data model field.
      */
     public int findMidiDurationOverride() {
-        if (durationArticulation != null) {
-            return durationArticulation.getDuration();
-        }
-
         for (var articulation : articulations) {
             if (articulation.getType().hasMidiDurationOverride()) {
                 return articulation.getType().getMidiDurationPercent();
@@ -556,25 +536,6 @@ public class StaffElement extends LineElement implements Cloneable {
         this.annotation = annotation;
     }
 
-    public ForceArticulation getForceArticulation() {
-        return forceArticulation;
-    }
-
-    public void setForceArticulation(
-        @Nullable ForceArticulation forceArticulation
-    ) {
-        this.forceArticulation = forceArticulation;
-    }
-
-    public DurationArticulation getDurationArticulation() {
-        return durationArticulation;
-    }
-
-    public void setDurationArticulation(
-        DurationArticulation durationArticulation
-    ) {
-        this.durationArticulation = durationArticulation;
-    }
 
     public boolean isTrill() {
         return trill;

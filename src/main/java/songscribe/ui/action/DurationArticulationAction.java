@@ -20,15 +20,16 @@
 
 package songscribe.ui.action;
 
-import songscribe.music.DurationArticulation;
+import songscribe.music.ArticulationType;
 import songscribe.music.StaffElement;
+import songscribe.ui.layout.Articulation;
 
 public class DurationArticulationAction extends NoteOnlyAction {
 
-    private final DurationArticulation articulation;
+    private final ArticulationType articulationType;
 
     public DurationArticulationAction(
-        DurationArticulation articulation,
+        ArticulationType articulationType,
         String name,
         String icon,
         int size,
@@ -36,20 +37,25 @@ public class DurationArticulationAction extends NoteOnlyAction {
         String tooltip
     ) {
         super(name, icon, size, actionCommand, tooltip);
-        this.articulation = articulation;
-    }
-
-    public DurationArticulation getArticulation() {
-        return articulation;
+        this.articulationType = articulationType;
     }
 
     @Override
     public boolean matchesElement(StaffElement element) {
-        return element.getDurationArticulation() == articulation;
+        return element.hasArticulation(articulationType);
     }
 
     @Override
     public void applyToElement(StaffElement element, boolean selected) {
-        element.setDurationArticulation(selected ? articulation : null);
+        for (var a : element.getArticulations()) {
+            if (a.getType() == articulationType) {
+                element.removeArticulation(a);
+                break;
+            }
+        }
+
+        if (selected) {
+            element.addArticulation(new Articulation(element, articulationType));
+        }
     }
 }

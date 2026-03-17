@@ -29,9 +29,7 @@ import org.xml.sax.Attributes;
 
 import songscribe.music.ArticulationType;
 import songscribe.music.BeatChange;
-import songscribe.music.DurationArticulation;
 import songscribe.music.ElementType;
-import songscribe.music.ForceArticulation;
 import songscribe.music.StaffElement;
 import songscribe.ui.layout.Articulation;
 
@@ -365,21 +363,14 @@ public final class StaffElementIO {
                     } else if (
                         lastTag.equals(XML_VOLUME) && str.equals("LOUDER")
                     ) { //old
-                        element.setForceArticulation(ForceArticulation.ACCENT);
                         element.addArticulation(
                             new Articulation(element, ArticulationType.ACCENT)
                         );
                     } else if (lastTag.equals(XML_FORCE_ARTICULATION)) {
-                        element.setForceArticulation(
-                            ForceArticulation.valueOf(str)
-                        );
                         element.addArticulation(
                             new Articulation(element, ArticulationType.ACCENT)
                         );
                     } else if (lastTag.equals(XML_DURATION_ARTICULATION)) {
-                        element.setDurationArticulation(
-                            DurationArticulation.valueOf(str)
-                        );
                         element.addArticulation(
                             new Articulation(element, ArticulationType.STACCATO)
                         );

@@ -29,7 +29,6 @@ import songscribe.Strings;
 import songscribe.music.ArticulationType;
 import songscribe.music.Composition;
 import songscribe.music.ElementType;
-import songscribe.music.ForceArticulation;
 import songscribe.music.Line;
 import songscribe.music.LyricsProcessor;
 import songscribe.music.StaffElement;
@@ -264,22 +263,8 @@ public final class EditModeManager {
             Actions.ACCIDENTAL_IN_PARENS_ACTION.isSelected()
         );
 
-        element.setForceArticulation(
-            Actions.ACCENT_ACTION.isSelected() ? ForceArticulation.ACCENT : null
-        );
-
-        var durationArticulationAction =
-            Actions.ARTICULATION_ACTION_GROUP.getSelected();
-
-        element.setDurationArticulation(
-            (durationArticulationAction != null)
-                ? durationArticulationAction.getArticulation()
-                : null
-        );
-
         element.setFermata(Actions.FERMATA_ACTION.isSelected());
 
-        // Dual-write: populate new Articulation list alongside old properties
         element.clearArticulations();
 
         if (Actions.ACCENT_ACTION.isSelected()) {
@@ -287,6 +272,9 @@ public final class EditModeManager {
                 new Articulation(element, ArticulationType.ACCENT)
             );
         }
+
+        var durationArticulationAction =
+            Actions.ARTICULATION_ACTION_GROUP.getSelected();
 
         if (durationArticulationAction != null) {
             element.addArticulation(

@@ -20,15 +20,16 @@
 
 package songscribe.ui.action;
 
-import songscribe.music.ForceArticulation;
+import songscribe.music.ArticulationType;
 import songscribe.music.StaffElement;
+import songscribe.ui.layout.Articulation;
 
 public class ForceArticulationAction extends NoteOnlyAction {
 
-    private final ForceArticulation articulation;
+    private final ArticulationType articulationType;
 
     public ForceArticulationAction(
-        ForceArticulation articulation,
+        ArticulationType articulationType,
         String name,
         String icon,
         int size,
@@ -36,20 +37,25 @@ public class ForceArticulationAction extends NoteOnlyAction {
         String tooltip
     ) {
         super(name, icon, size, actionCommand, tooltip);
-        this.articulation = articulation;
-    }
-
-    public ForceArticulation getArticulation() {
-        return articulation;
+        this.articulationType = articulationType;
     }
 
     @Override
     public boolean matchesElement(StaffElement element) {
-        return element.getForceArticulation() == articulation;
+        return element.hasArticulation(articulationType);
     }
 
     @Override
     public void applyToElement(StaffElement element, boolean selected) {
-        element.setForceArticulation(selected ? articulation : null);
+        for (var a : element.getArticulations()) {
+            if (a.getType() == articulationType) {
+                element.removeArticulation(a);
+                break;
+            }
+        }
+
+        if (selected) {
+            element.addArticulation(new Articulation(element, articulationType));
+        }
     }
 }

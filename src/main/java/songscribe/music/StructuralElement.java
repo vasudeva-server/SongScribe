@@ -68,15 +68,4 @@ public class StructuralElement extends StaffElement {
         return StaffElement.Accidental.NONE;
     }
 
-    @Override
-    @Nullable
-    public ForceArticulation getForceArticulation() {
-        return null;
-    }
-
-    @Override
-    @Nullable
-    public DurationArticulation getDurationArticulation() {
-        return null;
-    }
 }

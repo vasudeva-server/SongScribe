@@ -28,9 +28,8 @@ import java.util.Arrays;
 import java.util.List;
 
 import songscribe.Strings;
-import songscribe.music.DurationArticulation;
+import songscribe.music.ArticulationType;
 import songscribe.music.ElementType;
-import songscribe.music.ForceArticulation;
 import songscribe.music.StaffElement;
 import songscribe.ui.Control;
 import songscribe.ui.Mode;
@@ -463,7 +462,7 @@ public final class Actions {
 
     public static final ForceArticulationAction ACCENT_ACTION =
         new ForceArticulationAction(
-            ForceArticulation.ACCENT,
+            ArticulationType.ACCENT,
             Strings.get(Strings.ACTION_ACCENT),
             "@\uF38C",
             22,
@@ -473,7 +472,7 @@ public final class Actions {
 
     public static final DurationArticulationAction STACCATO_ACTION =
         new DurationArticulationAction(
-            DurationArticulation.STACCATO,
+            ArticulationType.STACCATO,
             Strings.get(Strings.ACTION_STACCATO),
             "@\uF38E",
             22,
