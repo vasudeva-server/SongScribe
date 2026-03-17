@@ -293,8 +293,8 @@ public class InsertionElementManager {
      * <p>
      * Returns null if the mouse is to the left of the first note (no source note).
      * Otherwise validates whether the selected glissando type can be inserted at
-     * the given index: CONNECTED requires a note to the right with a different pitch,
-     * SLIDE_OUT only requires a source note to the left.
+     * the given index: CONNECTED requires a pitched note to the right with a different pitch,
+     * SLIDE_OUT only requires a pitched source note to the left.
      *
      * @param line   The line containing the notes
      * @param xIndex Insertion index from {@link LayoutResult#findInsertionIndex}
@@ -315,9 +315,19 @@ public class InsertionElementManager {
             return null;
         }
 
+        // Rests cannot be glissando source or target
+        if (line.getElement(xIndex - 1).getType().isRest()) {
+            return null;
+        }
+
         if (intendedType == StaffElement.Glissando.Type.CONNECTED) {
             // Connected requires a note to the right
             if (xIndex >= line.elementCount()) {
+                return null;
+            }
+
+            // Target cannot be a rest
+            if (line.getElement(xIndex).getType().isRest()) {
                 return null;
             }
 
