@@ -59,12 +59,14 @@ public class InsertionSpacingCalculator {
     ) {
         /**
          * Returns whether the insertion fits within the given right margin.
+         * Requires at least the default column gap after the last element
+         * so notes don't butt up against the end of the line.
          *
          * @param staffRightMarginSs The maximum allowed line width in staff spaces
          * @return {@code true} if the projected line width does not exceed the margin
          */
         public boolean fitsWithinLine(double staffRightMarginSs) {
-            return newLineWidthSs <= staffRightMarginSs;
+            return newLineWidthSs + LayoutConstants.DEFAULT_COLUMN_GAP_SS <= staffRightMarginSs;
         }
     }
 
@@ -315,7 +317,7 @@ public class InsertionSpacingCalculator {
             newLineWidthSs = Math.max(hostColumn.getRightEdgeXSs(), lastColumn.getRightEdgeXSs());
         }
 
-        return newLineWidthSs <= staffRightMarginSs;
+        return newLineWidthSs + LayoutConstants.DEFAULT_COLUMN_GAP_SS <= staffRightMarginSs;
     }
 
     /**

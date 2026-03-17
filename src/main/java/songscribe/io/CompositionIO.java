@@ -31,9 +31,6 @@ import org.xml.sax.SAXException;
 import org.xml.sax.helpers.DefaultHandler;
 
 import songscribe.message.CompositionData;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import songscribe.music.Composition;
 import songscribe.music.KeyType;
 import songscribe.music.Line;
@@ -44,8 +41,6 @@ import songscribe.ui.layout2.ScaleContext;
 import songscribe.util.Utils;
 
 public final class CompositionIO {
-
-    private static final Logger LOG = LoggerFactory.getLogger(CompositionIO.class);
 
     public static final int IO_MAJOR_VERSION = 2;
     public static final int IO_MINOR_VERSION = 2;
@@ -111,9 +106,7 @@ public final class CompositionIO {
         TempoIO.writeTempo(c.getTempo(), pw, 2);
         XML.setIndent(2);
 
-        if (!c.getNumber().isEmpty()) {
-            XML.writeValue(pw, XML_NUMBER, c.getNumber());
-        }
+        XML.writeValue(pw, XML_NUMBER, c.getNumber());
 
         if (!c.getTitle().isEmpty()) {
             XML.writeValue(pw, XML_TITLE, c.getTitle());
@@ -491,26 +484,14 @@ public final class CompositionIO {
                             Boolean.parseBoolean(str);
                         case XML_FOOTNOTES -> footnotes = str;
                         case XML_INFO -> attribution = str;
-                        case XML_TOP_SPACE -> {
-                            topPaddingSs =
-                                useDouble ? Double.parseDouble(str) : Integer.parseInt(str);
-                            LOG.trace("[PARSE] topPadding raw='{}' useDouble={} parsed={}", str, useDouble, topPaddingSs);
-                        }
-                        case XML_INFO_STARTY -> {
-                            attributionStartYSs =
-                                useDouble ? Double.parseDouble(str) : Integer.parseInt(str);
-                            LOG.trace("[PARSE] attributionStartY raw='{}' useDouble={} parsed={}", str, useDouble, attributionStartYSs);
-                        }
-                        case XML_ROW_HEIGHT -> {
-                            rowHeightAdjustmentSs =
-                                useDouble ? Double.parseDouble(str) : Integer.parseInt(str);
-                            LOG.trace("[PARSE] rowHeightAdjustment raw='{}' useDouble={} parsed={}", str, useDouble, rowHeightAdjustmentSs);
-                        }
-                        case XML_LINE_WIDTH -> {
-                            lineWidthSs =
-                                useDouble ? Double.parseDouble(str) : Integer.parseInt(str);
-                            LOG.trace("[PARSE] lineWidth raw='{}' useDouble={} parsed={}", str, useDouble, lineWidthSs);
-                        }
+                        case XML_TOP_SPACE -> topPaddingSs =
+                            useDouble ? Double.parseDouble(str) : Integer.parseInt(str);
+                        case XML_INFO_STARTY -> attributionStartYSs =
+                            useDouble ? Double.parseDouble(str) : Integer.parseInt(str);
+                        case XML_ROW_HEIGHT -> rowHeightAdjustmentSs =
+                            useDouble ? Double.parseDouble(str) : Integer.parseInt(str);
+                        case XML_LINE_WIDTH -> lineWidthSs =
+                            useDouble ? Double.parseDouble(str) : Integer.parseInt(str);
                         case XML_DYNAMIC_LAYOUT -> hasBeenDynamicallyLaidOut =
                             Boolean.parseBoolean(str);
                     }
@@ -541,21 +522,6 @@ public final class CompositionIO {
         }
 
         public Composition getComposition() {
-            LOG.trace("[LOAD] getComposition() version={}.{} lines={}", majorVersion, minorVersion, parsedLines.size());
-            LOG.trace("[LOAD] BEFORE migration: lineWidth={} topPadding={} attributionStartY={} rowHeightAdjustment={}",
-                lineWidthSs, topPaddingSs, attributionStartYSs, rowHeightAdjustmentSs);
-
-            // Log per-line values before migration
-            for (var i = 0; i < parsedLines.size(); i++) {
-                var l = parsedLines.get(i);
-                LOG.trace("[LOAD] line[{}] lyricsYPos={} elementCount={}", i, l.getLyricsYPosSs(), l.elementCount());
-
-                for (var j = 0; j < l.elementCount(); j++) {
-                    var note = l.getElement(j);
-                    LOG.trace("[LOAD]   note[{}] type={} xPos={} staffPos={}", j, note.getType(), note.getXPosSs(), note.getStaffPosition());
-                }
-            }
-
             // Determine format version for migration
             int formatVersion = majorVersion >= 2 ? 2 : 1;
 
@@ -570,19 +536,12 @@ public final class CompositionIO {
             // v2.1+ files already store values in staff-space units.
             if (majorVersion < 2 || (majorVersion == 2 && minorVersion < 1)) {
                 var pps = ScaleContext.DEFAULT_PIXELS_PER_STAFF_SPACE;
-                LOG.trace("[LOAD] pre-v2.1 pixel->ss conversion, pps={}", pps);
 
                 // Composition-level pixel-to-ss conversion
-                LOG.trace("[LOAD] BEFORE px->ss: lineWidth={} topPadding={} attributionStartY={} rowHeightAdjustment={}",
-                    lineWidthSs, topPaddingSs, attributionStartYSs, rowHeightAdjustmentSs);
-
                 topPaddingSs /= pps;
                 lineWidthSs /= pps;
                 rowHeightAdjustmentSs /= pps;
                 attributionStartYSs /= pps;
-
-                LOG.trace("[LOAD] AFTER px->ss: lineWidth={} topPadding={} attributionStartY={} rowHeightAdjustment={}",
-                    lineWidthSs, topPaddingSs, attributionStartYSs, rowHeightAdjustmentSs);
 
                 // Line-level pixel-to-ss conversion
                 FormatMigrator.migratePixelsToStaffSpace(parsedLines);
@@ -634,9 +593,6 @@ public final class CompositionIO {
                 hasBeenDynamicallyLaidOut,
                 formatVersion
             );
-
-            LOG.trace("[LOAD] CompositionData lineWidth={} topPadding={} attributionStartY={} rowHeightAdjustment={} dynamicLayout={}",
-                data.lineWidthSs(), data.topPaddingSs(), data.attributionStartYSs(), data.rowHeightAdjustmentSs(), data.hasBeenDynamicallyLaidOut());
 
             // Use the loading constructor to avoid the wasted work of the
             // no-arg constructor (default line, attributionStartY calculation).
