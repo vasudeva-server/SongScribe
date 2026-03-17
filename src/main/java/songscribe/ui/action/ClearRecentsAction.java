@@ -26,9 +26,14 @@ import songscribe.prefs.RecentDocumentsManager;
 
 public class ClearRecentsAction extends UIAction {
 
-    public ClearRecentsAction() {
-        super(Strings.get(Strings.ACTION_EDIT_CLEAR_RECENTS), "clear-recents");
-        setFlags(
+    public static ClearRecentsAction createAction() {
+        return new ClearRecentsAction();
+    }
+
+    private ClearRecentsAction() {
+        super(
+            Strings.get(Strings.ACTION_EDIT_CLEAR_RECENTS),
+            "clear-recents",
             Flag.DISABLE_WHEN_PLAYING,
             Flag.DISABLE_IN_GRACE_MODE
         );

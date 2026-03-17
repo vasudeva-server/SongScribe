@@ -30,7 +30,11 @@ public class ExportSVGAction extends UIAction {
 
     private final PlatformFileDialog fileDialog;
 
-    public ExportSVGAction() {
+    public static ExportSVGAction createAction() {
+        return new ExportSVGAction();
+    }
+
+    private ExportSVGAction() {
         super(Strings.get(Strings.ACTION_EXPORT_SVG), "export-svg");
         fileDialog = new PlatformFileDialog(
             getMainFrame(),

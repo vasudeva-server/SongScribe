@@ -27,7 +27,11 @@ import songscribe.message.MessageCenter;
 
 public class CloseWindowAction extends UIAction {
 
-    public CloseWindowAction() {
+    public static CloseWindowAction createAction() {
+        return new CloseWindowAction();
+    }
+
+    private CloseWindowAction() {
         super(Strings.get(Strings.ACTION_FILE_CLOSE), null);
     }
 

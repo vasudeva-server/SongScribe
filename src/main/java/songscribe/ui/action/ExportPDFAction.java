@@ -36,7 +36,11 @@ public class ExportPDFAction extends UIAction {
     private final PlatformFileDialog fileDialog;
     private ExportPDFDialog exportPDFDialog = null;
 
-    public ExportPDFAction() {
+    public static ExportPDFAction createAction() {
+        return new ExportPDFAction();
+    }
+
+    private ExportPDFAction() {
         super(Strings.get(Strings.ACTION_EXPORT_PDF), "export-pdf");
         fileDialog = new PlatformFileDialog(
             getMainFrame(),

@@ -29,14 +29,16 @@ import songscribe.util.UIUtils;
 
 public class DeselectAction extends UIAction {
 
-    public DeselectAction() {
+    public static DeselectAction createAction() {
+        return new DeselectAction();
+    }
+
+    private DeselectAction() {
         super(
             Strings.get(Strings.ACTION_EDIT_DESELECT),
             "deselect",
             KeyEvent.VK_D,
-            UIUtils.MENU_SHORTCUT_MASK
-        );
-        setFlags(
+            UIUtils.MENU_SHORTCUT_MASK,
             Flag.REQUIRES_SELECTION,
             Flag.DISABLE_WHEN_PLAYING,
             Flag.DISABLE_IN_GRACE_MODE

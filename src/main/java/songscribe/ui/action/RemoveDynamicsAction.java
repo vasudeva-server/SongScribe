@@ -33,15 +33,17 @@ import songscribe.ui.message.RemoveDynamicsMessage;
 
 public class RemoveDynamicsAction extends UIAction {
 
-    public RemoveDynamicsAction() {
+    public static RemoveDynamicsAction createAction() {
+        return new RemoveDynamicsAction();
+    }
+
+    private RemoveDynamicsAction() {
         super(
             Strings.get(Strings.ACTION_DYNAMICS_REMOVE),
             null,
             0,
             "remove-dynamics",
-            Strings.get(Strings.ACTION_DYNAMICS_REMOVE_TOOLTIP)
-        );
-        setFlags(
+            Strings.get(Strings.ACTION_DYNAMICS_REMOVE_TOOLTIP),
             Flag.REQUIRES_SELECTION,
             Flag.DISABLE_WHEN_PLAYING,
             Flag.DISABLE_WHEN_EDITING_TEXT,

@@ -27,7 +27,11 @@ import songscribe.util.UIUtils;
 
 public class PasteAction extends PasteboardAction {
 
-    public PasteAction() {
+    public static PasteAction createAction() {
+        return new PasteAction();
+    }
+
+    private PasteAction() {
         super(
             Operation.PASTE,
             Strings.get(Strings.ACTION_EDIT_PASTE),

@@ -38,7 +38,11 @@ public class PlayPauseAction extends SequencerAction {
 
     private static final int ICON_SIZE = 20;
 
-    public PlayPauseAction() {
+    public static PlayPauseAction createAction() {
+        return new PlayPauseAction();
+    }
+
+    private PlayPauseAction() {
         super(
             PLAY_NAME,
             PLAY_ICON,
@@ -46,9 +50,7 @@ public class PlayPauseAction extends SequencerAction {
             "play",
             PLAY_TOOLTIP,
             KeyEvent.VK_SPACE,
-            0
-        );
-        setFlags(
+            0,
             Flag.DISABLE_WHEN_EDITING_TEXT,
             Flag.DISABLE_IN_ADJUSTMENT_MODE,
             Flag.DISABLE_WHEN_COMPOSITION_EMPTY

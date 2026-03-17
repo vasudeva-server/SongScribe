@@ -32,15 +32,15 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
+import songscribe.music.ArticulationType;
 import songscribe.music.Composition;
-import songscribe.music.DurationArticulation;
 import songscribe.music.ElementType;
 import songscribe.music.StaffElement;
+import songscribe.ui.layout.Articulation;
 import songscribe.ui.action.AccidentalAction;
 import songscribe.ui.action.DotAction;
 import songscribe.ui.action.DurationArticulationAction;
 import songscribe.ui.action.ElementTypeAction;
-import songscribe.ui.action.ElementTypeAction.Kind;
 import songscribe.ui.action.FermataAction;
 import songscribe.ui.action.UIAction;
 
@@ -53,35 +53,30 @@ class SelectionApplyIntegrationTest extends UnitTest {
 
     // -- Shared action instances --
 
-    private static final ElementTypeAction QUARTER_ACTION = new ElementTypeAction(
-        Kind.DURATION, ElementType.CROTCHET, "Quarter", null, 0, "quarter", "Quarter note", 0, 0
-    );
+    private static final ElementTypeAction QUARTER_ACTION =
+        ElementTypeAction.createQuarterNoteAction();
 
-    private static final ElementTypeAction HALF_ACTION = new ElementTypeAction(
-        Kind.DURATION, ElementType.MINIM, "Half", null, 0, "half", "Half note", 0, 0
-    );
+    private static final ElementTypeAction HALF_ACTION =
+        ElementTypeAction.createHalfNoteAction();
 
-    private static final ElementTypeAction BARLINE_ACTION = new ElementTypeAction(
-        Kind.NON_DURATION, ElementType.SINGLE_BARLINE, "Barline", null, 0, "barline", "Single barline", 0, 0
-    );
+    private static final ElementTypeAction BARLINE_ACTION =
+        ElementTypeAction.createSingleBarlineAction();
 
-    private static final ElementTypeAction DOUBLE_BARLINE_ACTION = new ElementTypeAction(
-        Kind.NON_DURATION, ElementType.DOUBLE_BARLINE, "Double Barline", null, 0, "double-barline", "Double barline", 0, 0
-    );
+    private static final ElementTypeAction DOUBLE_BARLINE_ACTION =
+        ElementTypeAction.createDoubleBarlineAction();
 
     private static final AccidentalAction SHARP_ACTION =
-        new AccidentalAction(StaffElement.Accidental.SHARP, "Sharp", null, 0, "sharp", "Sharp");
+        AccidentalAction.createSharpAction();
 
     private static final AccidentalAction FLAT_ACTION =
-        new AccidentalAction(StaffElement.Accidental.FLAT, "Flat", null, 0, "flat", "Flat");
+        AccidentalAction.createFlatAction();
 
-    private static final DotAction DOT_ACTION =
-        new DotAction(DotAction.DotLevel.SINGLE, "Dot", null, 0, "dot", "Dot", 0, 0);
+    private static final DotAction DOT_ACTION = DotAction.createDotAction();
 
-    private static final FermataAction FERMATA_ACTION = new FermataAction();
+    private static final FermataAction FERMATA_ACTION = FermataAction.createAction();
 
     private static final DurationArticulationAction STACCATO_ACTION =
-        new DurationArticulationAction(DurationArticulation.STACCATO, "Staccato", null, 0, "staccato", "Staccato");
+        DurationArticulationAction.createStaccatoAction();
 
     private SelectionCoordinator createCoordinator(
         List<StaffElement> notes,
@@ -152,7 +147,7 @@ class SelectionApplyIntegrationTest extends UnitTest {
             note.setAccidental(StaffElement.Accidental.SHARP);
             note.setDotCount(1);
             note.setFermata(true);
-            note.setDurationArticulation(DurationArticulation.STACCATO);
+            note.addArticulation(new Articulation(note, ArticulationType.STACCATO));
 
             var coordinator = createCoordinator(List.of(note), List.of(QUARTER_ACTION));
             var line = coordinator.getActiveSelection().getLine();
@@ -165,7 +160,7 @@ class SelectionApplyIntegrationTest extends UnitTest {
             assertThat(replaced.getAccidental()).isEqualTo(StaffElement.Accidental.SHARP);
             assertThat(replaced.getDotCount()).isEqualTo(1);
             assertThat(replaced.isFermata()).isTrue();
-            assertThat(replaced.getDurationArticulation()).isEqualTo(DurationArticulation.STACCATO);
+            assertThat(replaced.hasArticulation(ArticulationType.STACCATO)).isTrue();
         }
 
         @Test
@@ -464,8 +459,8 @@ class SelectionApplyIntegrationTest extends UnitTest {
                     .as("note %d accidental", i).isEqualTo(StaffElement.Accidental.SHARP);
                 assertThat(note.isFermata())
                     .as("note %d fermata", i).isTrue();
-                assertThat(note.getDurationArticulation())
-                    .as("note %d staccato", i).isEqualTo(DurationArticulation.STACCATO);
+                assertThat(note.hasArticulation(ArticulationType.STACCATO))
+                    .as("note %d staccato", i).isTrue();
             }
 
             // Selection remains active throughout
@@ -504,7 +499,7 @@ class SelectionApplyIntegrationTest extends UnitTest {
         void testManagedActionsIncludeNonReflectableWithFlag() {
             var note = ElementType.CROTCHET.newInstance();
 
-            var fermataAction = new FermataAction();
+            var fermataAction = FermataAction.createAction();
             var flaggedAction = new UIAction("Beam", null, 0, "beam", "Toggle beam") {
                 @Override
                 public void actionPerformed(ActionEvent e) {
@@ -549,12 +544,8 @@ class SelectionApplyIntegrationTest extends UnitTest {
             var note = ElementType.CROTCHET.newInstance();
             note.setAccidental(StaffElement.Accidental.FLAT);
 
-            var sharpAction = new AccidentalAction(
-                StaffElement.Accidental.SHARP, "Sharp", null, 0, "sharp", "Sharp"
-            );
-            var flatAction = new AccidentalAction(
-                StaffElement.Accidental.FLAT, "Flat", null, 0, "flat", "Flat"
-            );
+            var sharpAction = AccidentalAction.createSharpAction();
+            var flatAction = AccidentalAction.createFlatAction();
             // Pre-selection state
             sharpAction.setSelected(false);
             sharpAction.setEnabled(true);

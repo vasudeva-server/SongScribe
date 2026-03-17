@@ -28,14 +28,12 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.music.DurationArticulation;
 import songscribe.music.ElementType;
 import songscribe.music.StaffElement;
 import songscribe.ui.action.AccidentalAction;
 import songscribe.ui.action.DotAction;
 import songscribe.ui.action.DurationArticulationAction;
 import songscribe.ui.action.ElementTypeAction;
-import songscribe.ui.action.ElementTypeAction.Kind;
 import songscribe.ui.action.FermataAction;
 import songscribe.ui.action.UIAction;
 
@@ -53,15 +51,15 @@ class ReflectionIntegrationTest extends UnitTest {
 
     @BeforeEach
     void setUp() {
-        crotchetAction = new ElementTypeAction(Kind.DURATION, ElementType.CROTCHET, "Quarter", null, 0, "quarter", "Quarter note", 0, 0);
-        minimAction = new ElementTypeAction(Kind.DURATION, ElementType.MINIM, "Half", null, 0, "half", "Half note", 0, 0);
-        barlineAction = new ElementTypeAction(Kind.NON_DURATION, ElementType.SINGLE_BARLINE, "Barline", null, 0, "barline", "Single barline", 0, 0);
-        sharpAction = new AccidentalAction(StaffElement.Accidental.SHARP, "Sharp", null, 0, "sharp", "Sharp");
-        flatAction = new AccidentalAction(StaffElement.Accidental.FLAT, "Flat", null, 0, "flat", "Flat");
-        dotAction = new DotAction(DotAction.DotLevel.SINGLE, "Dot", null, 0, "dot", "Add dot", 0, 0);
-        doubleDotAction = new DotAction(DotAction.DotLevel.DOUBLE, "Double Dot", null, 0, "double-dot", "Add double dot", 0, 0);
-        fermataAction = new FermataAction();
-        staccatoAction = new DurationArticulationAction(DurationArticulation.STACCATO, "Staccato", null, 0, "staccato", "Add staccato");
+        crotchetAction = ElementTypeAction.createQuarterNoteAction();
+        minimAction = ElementTypeAction.createHalfNoteAction();
+        barlineAction = ElementTypeAction.createSingleBarlineAction();
+        sharpAction = AccidentalAction.createSharpAction();
+        flatAction = AccidentalAction.createFlatAction();
+        dotAction = DotAction.createDotAction();
+        doubleDotAction = DotAction.createDoubleDotAction();
+        fermataAction = FermataAction.createAction();
+        staccatoAction = DurationArticulationAction.createStaccatoAction();
     }
 
     private List<UIAction.Reflectable> allActions() {
@@ -89,7 +87,7 @@ class ReflectionIntegrationTest extends UnitTest {
         ReflectionTestHelper.selectRange(coordinator, 0, 1);
         coordinator.reflectSelection(null);
 
-        assertSelected(crotchetAction, false);
+        assertSelected(crotchetAction, true);
         assertSelected(minimAction, false);
         assertSelected(barlineAction, false);
         assertSelected(sharpAction, true);
@@ -159,7 +157,7 @@ class ReflectionIntegrationTest extends UnitTest {
         ReflectionTestHelper.selectRange(coordinator, 0, 1);
         coordinator.reflectSelection(null);
 
-        assertSelected(crotchetAction, false);
+        assertSelected(crotchetAction, true);
         assertSelected(minimAction, false);
         assertSelected(barlineAction, false);
         assertSelected(sharpAction, false);

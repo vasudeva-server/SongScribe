@@ -56,16 +56,41 @@ public class TupletAction extends UIAction {
 
     private final Tuplet tuplet;
 
-    public TupletAction(Tuplet tuplet) {
+    public static TupletAction createDupletAction() {
+        return new TupletAction(Tuplet.DUPLET);
+    }
+
+    public static TupletAction createTripletAction() {
+        return new TupletAction(Tuplet.TRIPLET);
+    }
+
+    public static TupletAction createQuadrupletAction() {
+        return new TupletAction(Tuplet.QUADRUPLET);
+    }
+
+    public static TupletAction createQuintupletAction() {
+        return new TupletAction(Tuplet.QUINTUPLET);
+    }
+
+    public static TupletAction createSextupletAction() {
+        return new TupletAction(Tuplet.SEXTUPLET);
+    }
+
+    public static TupletAction createSeptupletAction() {
+        return new TupletAction(Tuplet.SEPTUPLET);
+    }
+
+    public static TupletAction createRemoveAction() {
+        return new TupletAction(Tuplet.REMOVE);
+    }
+
+    private TupletAction(Tuplet tuplet) {
         super(
             getName(tuplet),
             "@\uF376",
             18,
             getName(tuplet).toLowerCase(),
-            getTooltip(tuplet)
-        );
-        this.tuplet = tuplet;
-        setFlags(
+            getTooltip(tuplet),
             Flag.REQUIRES_MULTIPLE_SELECTION,
             Flag.DISABLE_WHEN_BAR_SELECTED,
             Flag.DISABLE_WHEN_PLAYING,
@@ -73,6 +98,7 @@ public class TupletAction extends UIAction {
             Flag.DISABLE_IN_ADJUSTMENT_MODE,
             Flag.DISABLE_IN_GRACE_MODE
         );
+        this.tuplet = tuplet;
     }
 
     public Tuplet getTuplet() {

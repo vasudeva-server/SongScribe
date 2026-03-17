@@ -30,16 +30,21 @@ public class AddDynamicsAction extends UIAction {
 
     private final boolean isCrescendo;
 
-    public AddDynamicsAction(boolean isCrescendo) {
+    public static AddDynamicsAction createCrescendoAction() {
+        return new AddDynamicsAction(true);
+    }
+
+    public static AddDynamicsAction createDiminuendoAction() {
+        return new AddDynamicsAction(false);
+    }
+
+    private AddDynamicsAction(boolean isCrescendo) {
         super(
             Strings.get(isCrescendo ? Strings.ACTION_DYNAMICS_CRESCENDO : Strings.ACTION_DYNAMICS_DIMINUENDO),
             null,
             0,
             isCrescendo ? "add-crescendo" : "add-diminuendo",
-            Strings.get(isCrescendo ? Strings.ACTION_DYNAMICS_CRESCENDO_TOOLTIP : Strings.ACTION_DYNAMICS_DIMINUENDO_TOOLTIP)
-        );
-        this.isCrescendo = isCrescendo;
-        setFlags(
+            Strings.get(isCrescendo ? Strings.ACTION_DYNAMICS_CRESCENDO_TOOLTIP : Strings.ACTION_DYNAMICS_DIMINUENDO_TOOLTIP),
             Flag.REQUIRES_MULTIPLE_SELECTION,
             Flag.DISABLE_IN_REST_MODE,
             Flag.DISABLE_WHEN_BAR_SELECTED,
@@ -48,6 +53,7 @@ public class AddDynamicsAction extends UIAction {
             Flag.DISABLE_IN_ADJUSTMENT_MODE,
             Flag.DISABLE_IN_GRACE_MODE
         );
+        this.isCrescendo = isCrescendo;
     }
 
     public boolean isCrescendo() {

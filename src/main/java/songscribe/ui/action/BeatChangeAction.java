@@ -27,9 +27,14 @@ import songscribe.ui.dialog.BeatChangeDialog;
 
 public class BeatChangeAction extends UIAction {
 
-    public BeatChangeAction() {
-        super(Strings.get(Strings.ACTION_BEAT_CHANGE), "beat-change");
-        setFlags(
+    public static BeatChangeAction createAction() {
+        return new BeatChangeAction();
+    }
+
+    private BeatChangeAction() {
+        super(
+            Strings.get(Strings.ACTION_BEAT_CHANGE),
+            "beat-change",
             Flag.REQUIRES_SINGLE_SELECTION,
             Flag.DISABLE_WHEN_PLAYING,
             Flag.DISABLE_WHEN_EDITING_TEXT,

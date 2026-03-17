@@ -30,7 +30,6 @@ import module java.desktop;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.music.StaffElement;
 import songscribe.ui.Mode;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.Score;
@@ -119,7 +118,7 @@ class EnableFromSelectionTest extends UnitTest {
             var env = setupMockEnv(mainFrameMock);
             when(env.coordinator.hasActiveSelection()).thenReturn(false);
 
-            var action = new FermataAction();
+            var action = FermataAction.createAction();
 
             assertThat(action.enableFromSelection(
                 env.coordinator.hasActiveSelection(), env.score)).isTrue();
@@ -181,7 +180,7 @@ class EnableFromSelectionTest extends UnitTest {
             var env = setupMockEnv(mainFrameMock);
             when(env.coordinator.hasActiveSelection()).thenReturn(true);
 
-            var action = new FermataAction();
+            var action = FermataAction.createAction();
             when(env.coordinator.isApplicableToSelection(action)).thenReturn(true);
 
             assertThat(action.enableFromSelection(
@@ -195,9 +194,7 @@ class EnableFromSelectionTest extends UnitTest {
             var env = setupMockEnv(mainFrameMock);
             when(env.coordinator.hasActiveSelection()).thenReturn(true);
 
-            var action = new AccidentalAction(
-                StaffElement.Accidental.SHARP, "Sharp", null, 0, "sharp", "Sharp"
-            );
+            var action = AccidentalAction.createSharpAction();
             when(env.coordinator.isApplicableToSelection(action)).thenReturn(false);
 
             assertThat(action.enableFromSelection(

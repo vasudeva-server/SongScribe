@@ -90,7 +90,11 @@ public class ExportABCAction extends UIAction {
 
     private final PlatformFileDialog fileDialog;
 
-    public ExportABCAction() {
+    public static ExportABCAction createAction() {
+        return new ExportABCAction();
+    }
+
+    private ExportABCAction() {
         super(Strings.get(Strings.ACTION_EXPORT_ABC), "export-abc");
         fileDialog = new PlatformFileDialog(
             getMainFrame(),

@@ -123,25 +123,25 @@ public class MenuController {
 
     private JMenu initFileMenu() {
         var menu = new JMenu(Strings.get(Strings.MENU_FILE));
-        menu.add(new NewAction());
-        menu.add(new OpenAction());
+        menu.add(NewAction.createAction());
+        menu.add(OpenAction.createAction());
         openRecentMenu = new JMenu(Strings.get(Strings.MENU_FILE_OPEN_RECENT));
         rebuildOpenRecentMenu();
         menu.add(openRecentMenu);
-        menu.add(new CloseWindowAction());
+        menu.add(CloseWindowAction.createAction());
 
         menu.addSeparator();
 
-        menu.add(new SaveAction());
-        menu.add(new SaveAsAction());
+        menu.add(SaveAction.createAction());
+        menu.add(SaveAsAction.createAction());
 
         menu.addSeparator();
 
-        menu.add(new ExportMidiAction());
-        menu.add(new ExportImageAction());
-        menu.add(new ExportPDFAction());
-        menu.add(new ExportSVGAction());
-        menu.add(new ExportABCAction());
+        menu.add(ExportMidiAction.createAction());
+        menu.add(ExportImageAction.createAction());
+        menu.add(ExportPDFAction.createAction());
+        menu.add(ExportSVGAction.createAction());
+        menu.add(ExportABCAction.createAction());
 
         menu.addSeparator();
 
@@ -173,7 +173,7 @@ public class MenuController {
             }
 
             openRecentMenu.addSeparator();
-            openRecentMenu.add(new ClearRecentsAction());
+            openRecentMenu.add(ClearRecentsAction.createAction());
         }
     }
 

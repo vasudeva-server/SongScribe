@@ -29,8 +29,7 @@ import songscribe.music.ElementType;
 import songscribe.music.StaffElement;
 
 class AccidentalActionTest extends UnitTest {
-    private final AccidentalAction action =
-        new AccidentalAction(StaffElement.Accidental.SHARP, "Sharp", null, 0, "sharp", "Sharp");
+    private final AccidentalAction action = AccidentalAction.createSharpAction();
 
     @Test
     void testApplyToNoteAppliesAccidental() {

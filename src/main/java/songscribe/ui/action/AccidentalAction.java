@@ -20,24 +20,74 @@
 
 package songscribe.ui.action;
 
+import module java.desktop;
+
+import songscribe.Strings;
 import songscribe.music.StaffElement;
 
 public class AccidentalAction extends NoteOnlyAction {
 
     private final StaffElement.Accidental accidental;
 
-    public AccidentalAction(
-        StaffElement.Accidental accidental,
-        String name,
-        String icon,
-        int size,
-        String actionCommand,
-        String tooltip
-    ) {
-        this(accidental, name, icon, size, actionCommand, tooltip, 0, 0);
+    public static AccidentalAction createFlatAction() {
+        return new AccidentalAction(
+            StaffElement.Accidental.FLAT,
+            Strings.get(Strings.ACTION_ACCIDENTAL_FLAT), "@\uF388", 18,
+            "flat", Strings.get(Strings.ACTION_ACCIDENTAL_FLAT_TOOLTIP), 0, 0
+        );
     }
 
-    public AccidentalAction(
+    public static AccidentalAction createDoubleFlatAction() {
+        return new AccidentalAction(
+            StaffElement.Accidental.DOUBLE_FLAT,
+            Strings.get(Strings.ACTION_ACCIDENTAL_DOUBLE_FLAT), "@\uF389", 18,
+            "double-flat", Strings.get(Strings.ACTION_ACCIDENTAL_DOUBLE_FLAT_TOOLTIP),
+            KeyEvent.VK_F, 0
+        );
+    }
+
+    public static AccidentalAction createNaturalFlatAction() {
+        return new AccidentalAction(
+            StaffElement.Accidental.NATURAL_FLAT,
+            Strings.get(Strings.ACTION_ACCIDENTAL_NATURAL_FLAT), "#\uE267", 32,
+            "natural-flat", Strings.get(Strings.ACTION_ACCIDENTAL_NATURAL_FLAT_TOOLTIP), 0, 0
+        );
+    }
+
+    public static AccidentalAction createNaturalAction() {
+        return new AccidentalAction(
+            StaffElement.Accidental.NATURAL,
+            Strings.get(Strings.ACTION_ACCIDENTAL_NATURAL), "@\uF387", 18,
+            "natural", Strings.get(Strings.ACTION_ACCIDENTAL_NATURAL_TOOLTIP),
+            KeyEvent.VK_N, 0
+        );
+    }
+
+    public static AccidentalAction createSharpAction() {
+        return new AccidentalAction(
+            StaffElement.Accidental.SHARP,
+            Strings.get(Strings.ACTION_ACCIDENTAL_SHARP), "@\uF386", 18,
+            "sharp", Strings.get(Strings.ACTION_ACCIDENTAL_SHARP_TOOLTIP), 0, 0
+        );
+    }
+
+    public static AccidentalAction createDoubleSharpAction() {
+        return new AccidentalAction(
+            StaffElement.Accidental.DOUBLE_SHARP,
+            Strings.get(Strings.ACTION_ACCIDENTAL_DOUBLE_SHARP), "@\uF38A", 18,
+            "double-sharp", Strings.get(Strings.ACTION_ACCIDENTAL_DOUBLE_SHARP_TOOLTIP), 0, 0
+        );
+    }
+
+    public static AccidentalAction createNaturalSharpAction() {
+        return new AccidentalAction(
+            StaffElement.Accidental.NATURAL_SHARP,
+            Strings.get(Strings.ACTION_ACCIDENTAL_NATURAL_SHARP), "#\uE268", 32,
+            "natural-sharp", Strings.get(Strings.ACTION_ACCIDENTAL_NATURAL_SHARP_TOOLTIP), 0, 0
+        );
+    }
+
+    private AccidentalAction(
         StaffElement.Accidental accidental,
         String name,
         String icon,
@@ -54,10 +104,10 @@ public class AccidentalAction extends NoteOnlyAction {
             actionCommand,
             tooltip,
             virtualKey,
-            modifiers
+            modifiers,
+            withFlags(NoteOnlyAction.FLAGS, Flag.DISABLE_WHEN_EDITING_TEXT)
         );
         this.accidental = accidental;
-        setFlags(Flag.DISABLE_WHEN_EDITING_TEXT);
     }
 
     public StaffElement.Accidental getAccidental() {

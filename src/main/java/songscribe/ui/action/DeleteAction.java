@@ -27,7 +27,11 @@ import songscribe.util.UIUtils;
 
 public class DeleteAction extends PasteboardAction {
 
-    public DeleteAction() {
+    public static DeleteAction createAction() {
+        return new DeleteAction();
+    }
+
+    private DeleteAction() {
         super(Operation.DELETE, Strings.get(Strings.ACTION_EDIT_DELETE), "edit-delete", 0, 0);
         var keystrokes = new KeyStroke[] {
             KeyStroke.getKeyStroke(KeyEvent.VK_DELETE, 0),

@@ -33,12 +33,14 @@ import songscribe.ui.message.ToggleLyricsUnderRestsMessage;
 
 public class ToggleLyricsUnderRestsAction extends UIAction {
 
-    public ToggleLyricsUnderRestsAction() {
+    public static ToggleLyricsUnderRestsAction createAction() {
+        return new ToggleLyricsUnderRestsAction();
+    }
+
+    private ToggleLyricsUnderRestsAction() {
         super(
             Strings.get(Strings.ACTION_LYRICS_UNDER_RESTS),
-            "toggle-lyrics-under-rests"
-        );
-        setFlags(
+            "toggle-lyrics-under-rests",
             Flag.REQUIRES_SINGLE_SELECTION,
             Flag.DISABLE_WHEN_PLAYING,
             Flag.DISABLE_WHEN_EDITING_TEXT,

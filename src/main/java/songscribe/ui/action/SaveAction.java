@@ -28,7 +28,11 @@ import songscribe.util.UIUtils;
 
 public class SaveAction extends UIAction {
 
-    public SaveAction() {
+    public static SaveAction createAction() {
+        return new SaveAction();
+    }
+
+    private SaveAction() {
         super(Strings.get(Strings.ACTION_FILE_SAVE), "save", KeyEvent.VK_S, UIUtils.MENU_SHORTCUT_MASK);
     }
 

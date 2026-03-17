@@ -25,29 +25,28 @@ import static org.assertj.core.api.Assertions.assertThat;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
+import songscribe.music.ArticulationType;
 import songscribe.music.ElementType;
-import songscribe.music.ForceArticulation;
+import songscribe.ui.layout.Articulation;
 
 class ForceArticulationActionTest extends UnitTest {
 
     private final ForceArticulationAction action =
-        new ForceArticulationAction(
-            ForceArticulation.ACCENT, "Accent", null, 0, "accent", "Add accent"
-        );
+        ForceArticulationAction.createAccentAction();
 
     @Test
     void testApplyToNoteAppliesArticulation() {
         var note = ElementType.CROTCHET.newInstance();
         action.applyToElement(note, true);
-        assertThat(note.getForceArticulation()).isEqualTo(ForceArticulation.ACCENT);
+        assertThat(note.hasArticulation(ArticulationType.ACCENT)).isTrue();
     }
 
     @Test
     void testApplyToNoteRemovesArticulation() {
         var note = ElementType.CROTCHET.newInstance();
-        note.setForceArticulation(ForceArticulation.ACCENT);
+        note.addArticulation(new Articulation(note, ArticulationType.ACCENT));
         action.applyToElement(note, false);
-        assertThat(note.getForceArticulation()).isNull();
+        assertThat(note.hasArticulation(ArticulationType.ACCENT)).isFalse();
     }
 
     @Test
@@ -60,7 +59,7 @@ class ForceArticulationActionTest extends UnitTest {
     @Test
     void testMatchesWhenArticulationPresent() {
         var note = ElementType.CROTCHET.newInstance();
-        note.setForceArticulation(ForceArticulation.ACCENT);
+        note.addArticulation(new Articulation(note, ArticulationType.ACCENT));
 
         assertThat(action.matchesElement(note)).isTrue();
     }

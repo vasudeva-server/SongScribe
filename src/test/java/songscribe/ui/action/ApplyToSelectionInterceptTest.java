@@ -66,7 +66,7 @@ class ApplyToSelectionInterceptTest extends UnitTest {
             var env = setupMockEnv(mainFrameMock);
             when(env.coordinator.getSelection()).thenReturn(null);
 
-            var action = new FermataAction();
+            var action = FermataAction.createAction();
 
             assertThat(action.applyToSelectionIfActive()).isFalse();
             verify(env.coordinator, never()).applyActionToSelection(
@@ -85,7 +85,7 @@ class ApplyToSelectionInterceptTest extends UnitTest {
             var selection = new ElementSelection(mock(Line.class), 0, 2);
             when(env.coordinator.getSelection()).thenReturn(selection);
 
-            var action = new FermataAction();
+            var action = FermataAction.createAction();
             action.setSelected(false);
 
             assertThat(action.applyToSelectionIfActive()).isTrue();
@@ -100,7 +100,7 @@ class ApplyToSelectionInterceptTest extends UnitTest {
             var selection = new ElementSelection(mock(Line.class), 0, 2);
             when(env.coordinator.getSelection()).thenReturn(selection);
 
-            var action = new FermataAction();
+            var action = FermataAction.createAction();
             action.setSelected(true);
 
             assertThat(action.applyToSelectionIfActive()).isTrue();

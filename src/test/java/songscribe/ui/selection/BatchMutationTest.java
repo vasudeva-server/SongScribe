@@ -23,7 +23,6 @@ package songscribe.ui.selection;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
-import static songscribe.ui.action.ElementTypeAction.Kind;
 
 import java.util.List;
 
@@ -44,14 +43,13 @@ import songscribe.ui.action.UIAction;
 
 class BatchMutationTest extends UnitTest {
 
-    private static final FermataAction FERMATA_ACTION = new FermataAction();
+    private static final FermataAction FERMATA_ACTION = FermataAction.createAction();
 
     private static final AccidentalAction SHARP_ACTION =
-        new AccidentalAction(StaffElement.Accidental.SHARP, "Sharp", null, 0, "sharp", "Sharp");
+        AccidentalAction.createSharpAction();
 
-    private static final ElementTypeAction QUARTER_ACTION = new ElementTypeAction(
-        Kind.DURATION, ElementType.CROTCHET, "Quarter", null, 0, "quarter", "Quarter note", 0, 0
-    );
+    private static final ElementTypeAction QUARTER_ACTION =
+        ElementTypeAction.createQuarterNoteAction();
 
     /**
      * Creates a coordinator with a composition mock on the line,

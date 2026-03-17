@@ -33,9 +33,14 @@ import songscribe.ui.message.ToggleTrillMessage;
 
 public class ToggleTrillAction extends UIAction {
 
-    public ToggleTrillAction() {
-        super(Strings.get(Strings.ACTION_TRILL_TOGGLE), "toggle-trill");
-        setFlags(
+    public static ToggleTrillAction createAction() {
+        return new ToggleTrillAction();
+    }
+
+    private ToggleTrillAction() {
+        super(
+            Strings.get(Strings.ACTION_TRILL_TOGGLE),
+            "toggle-trill",
             Flag.REQUIRES_SELECTION,
             Flag.DISABLE_WHEN_PLAYING,
             Flag.DISABLE_WHEN_EDITING_TEXT,

@@ -30,7 +30,11 @@ import songscribe.ui.message.RestModeChangedMessage;
 
 public class RestModeAction extends SelectableUIAction implements UIAction.Reflectable {
 
-    public RestModeAction() {
+    public static RestModeAction createAction() {
+        return new RestModeAction();
+    }
+
+    private RestModeAction() {
         super(
             Strings.get(Strings.ACTION_REST_MODE),
             "@\uF371",
@@ -38,9 +42,7 @@ public class RestModeAction extends SelectableUIAction implements UIAction.Refle
             "rest-mode",
             Strings.get(Strings.ACTION_REST_MODE_TOOLTIP),
             KeyEvent.VK_R,
-            0
-        );
-        setFlags(
+            0,
             Flag.REQUIRES_EMPTY_SELECTION,
             Flag.DISABLE_WHEN_PLAYING,
             Flag.DISABLE_IN_ADJUSTMENT_MODE,

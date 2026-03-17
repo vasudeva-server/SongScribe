@@ -20,6 +20,9 @@
 
 package songscribe.ui.action;
 
+import module java.desktop;
+
+import songscribe.Strings;
 import org.jetbrains.annotations.Nullable;
 
 import songscribe.music.StaffElement;
@@ -28,7 +31,25 @@ public class DotAction extends InsertionElementAction implements UIAction.Elemen
 
     private final DotLevel dotLevel;
 
-    public DotAction(
+    public static DotAction createDotAction() {
+        return new DotAction(
+            DotLevel.SINGLE,
+            Strings.get(Strings.ACTION_DOT_SINGLE), "@\uF372", 18,
+            "add-dot", Strings.get(Strings.ACTION_DOT_SINGLE_TOOLTIP),
+            KeyEvent.VK_PERIOD, 0
+        );
+    }
+
+    public static DotAction createDoubleDotAction() {
+        return new DotAction(
+            DotLevel.DOUBLE,
+            Strings.get(Strings.ACTION_DOT_DOUBLE), "@\uF395", 18,
+            "add-double-dot", Strings.get(Strings.ACTION_DOT_DOUBLE_TOOLTIP),
+            0, 0
+        );
+    }
+
+    private DotAction(
         DotLevel dotLevel,
         @Nullable String name,
         @Nullable String icon,
@@ -45,16 +66,14 @@ public class DotAction extends InsertionElementAction implements UIAction.Elemen
             actionCommand,
             tooltip,
             virtualKey,
-            modifiers
-        );
-        this.dotLevel = dotLevel;
-        setFlags(
+            modifiers,
             Flag.DISABLE_WHEN_PLAYING,
             Flag.DISABLE_IN_ADJUSTMENT_MODE,
             Flag.DISABLE_WHEN_BAR_SELECTED,
             Flag.ENABLE_WHEN_DURATION_SELECTED,
             Flag.DISABLE_WHEN_EDITING_TEXT
         );
+        this.dotLevel = dotLevel;
     }
 
     public DotLevel getDotLevel() {

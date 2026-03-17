@@ -45,18 +45,18 @@ public class NotationMenu extends JMenu {
         add(new JMenuItem(TOGGLE_BEAM_ACTION));
         add(new JMenuItem(TOGGLE_TIE_ACTION));
         add(createTupletMenu());
-        add(new JMenuItem(new ToggleTrillAction()));
+        add(new JMenuItem(ToggleTrillAction.createAction()));
 
         addSeparator();
 
         add(createDynamicsMenu());
-        add(new FirstSecondEndingAction(true));
-        add(new FirstSecondEndingAction(false));
+        add(FirstSecondEndingAction.createMakeEndingAction());
+        add(FirstSecondEndingAction.createRemoveEndingAction());
 
         addSeparator();
 
         add(new JMenuItem(FLIP_STEM_DIRECTION_ACTION));
-        add(new ToggleLyricsUnderRestsAction());
+        add(ToggleLyricsUnderRestsAction.createAction());
 
         MessageCenter.subscribe(this);
     }

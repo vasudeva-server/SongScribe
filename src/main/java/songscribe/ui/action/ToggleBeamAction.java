@@ -33,7 +33,11 @@ import songscribe.ui.message.ToggleBeamMessage;
 
 public class ToggleBeamAction extends UIAction {
 
-    public ToggleBeamAction() {
+    public static ToggleBeamAction createAction() {
+        return new ToggleBeamAction();
+    }
+
+    private ToggleBeamAction() {
         super(
             Strings.get(Strings.ACTION_BEAM_TOGGLE),
             "beam.svg",
@@ -41,9 +45,7 @@ public class ToggleBeamAction extends UIAction {
             "toggle-beam",
             Strings.get(Strings.ACTION_BEAM_TOGGLE_TOOLTIP),
             KeyEvent.VK_B,
-            0
-        );
-        setFlags(
+            0,
             Flag.REQUIRES_MULTIPLE_SELECTION,
             Flag.DISABLE_WHEN_BAR_SELECTED,
             Flag.DISABLE_WHEN_PLAYING,

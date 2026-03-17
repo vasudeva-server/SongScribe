@@ -26,9 +26,17 @@ import songscribe.ui.dialog.AnnotationDialog;
 
 public class AnnotationAction extends UIAction {
 
-    public AnnotationAction() {
-        super(Strings.get(Strings.ACTION_ANNOTATION), null, 0, "annotation", Strings.get(Strings.ACTION_ANNOTATION_TOOLTIP));
-        setFlags(
+    public static AnnotationAction createAction() {
+        return new AnnotationAction();
+    }
+
+    private AnnotationAction() {
+        super(
+            Strings.get(Strings.ACTION_ANNOTATION),
+            null,
+            0,
+            "annotation",
+            Strings.get(Strings.ACTION_ANNOTATION_TOOLTIP),
             Flag.REQUIRES_SINGLE_SELECTION,
             Flag.DISABLE_WHEN_PLAYING,
             Flag.DISABLE_WHEN_EDITING_TEXT,

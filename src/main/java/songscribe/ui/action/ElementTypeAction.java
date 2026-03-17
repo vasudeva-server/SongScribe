@@ -24,6 +24,7 @@ import module java.desktop;
 
 import org.jetbrains.annotations.Nullable;
 
+import songscribe.Strings;
 import songscribe.music.ElementType;
 import songscribe.music.StaffElement;
 import songscribe.ui.message.BarSelectedMessage;
@@ -37,7 +38,151 @@ public class ElementTypeAction extends StickyUIAction implements UIAction.Elemen
     private final ElementType type;
     private final Kind kind;
 
-    public ElementTypeAction(
+    public static ElementTypeAction createGraceEighthNoteAction() {
+        return new ElementTypeAction(
+            Kind.DURATION, ElementType.GRACE_QUAVER,
+            Strings.get(Strings.ACTION_DURATION_GRACE), "grace.svg", 26,
+            "duration-grace-eighth", Strings.get(Strings.ACTION_DURATION_GRACE_TOOLTIP),
+            KeyEvent.VK_G, InputEvent.SHIFT_DOWN_MASK
+        );
+    }
+
+    public static ElementTypeAction createThirtySecondNoteAction() {
+        return new ElementTypeAction(
+            Kind.DURATION, ElementType.DEMI_SEMIQUAVER,
+            Strings.get(Strings.ACTION_DURATION_THIRTY_SECOND), "@\uF36B", 18,
+            "duration-thirty-second", Strings.get(Strings.ACTION_DURATION_THIRTY_SECOND_TOOLTIP),
+            KeyEvent.VK_1, 0
+        );
+    }
+
+    public static ElementTypeAction createSixteenthNoteAction() {
+        return new ElementTypeAction(
+            Kind.DURATION, ElementType.SEMIQUAVER,
+            Strings.get(Strings.ACTION_DURATION_SIXTEENTH), "@\uF36A", 18,
+            "duration-sixteenth", Strings.get(Strings.ACTION_DURATION_SIXTEENTH_TOOLTIP),
+            KeyEvent.VK_2, 0
+        );
+    }
+
+    public static ElementTypeAction createEighthNoteAction() {
+        return new ElementTypeAction(
+            Kind.DURATION, ElementType.QUAVER,
+            Strings.get(Strings.ACTION_DURATION_EIGHTH), "@\uF369", 18,
+            "duration-eighth", Strings.get(Strings.ACTION_DURATION_EIGHTH_TOOLTIP),
+            KeyEvent.VK_3, 0
+        );
+    }
+
+    public static ElementTypeAction createQuarterNoteAction() {
+        return new ElementTypeAction(
+            Kind.DURATION, ElementType.CROTCHET,
+            Strings.get(Strings.ACTION_DURATION_QUARTER), "@\uF368", 18,
+            "duration-quarter", Strings.get(Strings.ACTION_DURATION_QUARTER_TOOLTIP),
+            KeyEvent.VK_4, 0
+        );
+    }
+
+    public static ElementTypeAction createHalfNoteAction() {
+        return new ElementTypeAction(
+            Kind.DURATION, ElementType.MINIM,
+            Strings.get(Strings.ACTION_DURATION_HALF), "@\uF367", 18,
+            "duration-half", Strings.get(Strings.ACTION_DURATION_HALF_TOOLTIP),
+            KeyEvent.VK_5, 0
+        );
+    }
+
+    public static ElementTypeAction createWholeNoteAction() {
+        return new ElementTypeAction(
+            Kind.DURATION, ElementType.SEMIBREVE,
+            Strings.get(Strings.ACTION_DURATION_WHOLE), "@\uF366", 18,
+            "duration-whole", Strings.get(Strings.ACTION_DURATION_WHOLE_TOOLTIP),
+            KeyEvent.VK_6, 0
+        );
+    }
+
+    public static ElementTypeAction createGlissandoAction() {
+        return new ElementTypeAction(
+            Kind.DURATION, ElementType.GLISSANDO,
+            Strings.get(Strings.ACTION_DURATION_GLISSANDO), "connecting-glissando.svg", 26,
+            "glissando", Strings.get(Strings.ACTION_DURATION_GLISSANDO_TOOLTIP),
+            KeyEvent.VK_G, 0
+        );
+    }
+
+    public static ElementTypeAction createSlideOutAction() {
+        return new ElementTypeAction(
+            Kind.DURATION, ElementType.GLISSANDO,
+            Strings.get(Strings.ACTION_DURATION_SLIDE_OUT), "slide-out.svg", 26,
+            "slide-out", Strings.get(Strings.ACTION_DURATION_SLIDE_OUT_TOOLTIP),
+            KeyEvent.VK_G, InputEvent.SHIFT_DOWN_MASK | InputEvent.META_DOWN_MASK
+        );
+    }
+
+    public static ElementTypeAction createLeftRepeatAction() {
+        return new ElementTypeAction(
+            Kind.NON_DURATION, ElementType.REPEAT_LEFT,
+            Strings.get(Strings.ACTION_REPEAT_LEFT), "@\uEF68", 24,
+            "left-repeat", Strings.get(Strings.ACTION_REPEAT_LEFT_TOOLTIP),
+            KeyEvent.VK_L, 0
+        );
+    }
+
+    public static ElementTypeAction createRightRepeatAction() {
+        return new ElementTypeAction(
+            Kind.NON_DURATION, ElementType.REPEAT_RIGHT,
+            Strings.get(Strings.ACTION_REPEAT_RIGHT), "@\uF345", 24,
+            "right-repeat", Strings.get(Strings.ACTION_REPEAT_RIGHT_TOOLTIP),
+            KeyEvent.VK_R, InputEvent.SHIFT_DOWN_MASK
+        );
+    }
+
+    public static ElementTypeAction createLeftRightRepeatAction() {
+        return new ElementTypeAction(
+            Kind.NON_DURATION, ElementType.REPEAT_LEFT_RIGHT,
+            Strings.get(Strings.ACTION_REPEAT_LEFT_RIGHT), "@\uF34B", 24,
+            "left-right-repeat", Strings.get(Strings.ACTION_REPEAT_LEFT_RIGHT_TOOLTIP),
+            0, 0
+        );
+    }
+
+    public static ElementTypeAction createFinalDoubleBarlineAction() {
+        return new ElementTypeAction(
+            Kind.NON_DURATION, ElementType.FINAL_DOUBLE_BARLINE,
+            Strings.get(Strings.ACTION_BARLINE_FINAL_DOUBLE), "@\uF34A", 24,
+            "final-double-barline", Strings.get(Strings.ACTION_BARLINE_FINAL_DOUBLE_TOOLTIP),
+            KeyEvent.VK_F, InputEvent.SHIFT_DOWN_MASK
+        );
+    }
+
+    public static ElementTypeAction createDoubleBarlineAction() {
+        return new ElementTypeAction(
+            Kind.NON_DURATION, ElementType.DOUBLE_BARLINE,
+            Strings.get(Strings.ACTION_BARLINE_DOUBLE_FINE), "@\uF347", 24,
+            "double-barline", Strings.get(Strings.ACTION_BARLINE_DOUBLE_FINE_TOOLTIP),
+            KeyEvent.VK_D, 0
+        );
+    }
+
+    public static ElementTypeAction createSingleBarlineAction() {
+        return new ElementTypeAction(
+            Kind.NON_DURATION, ElementType.SINGLE_BARLINE,
+            Strings.get(Strings.ACTION_BARLINE_SINGLE), "@\uF346", 24,
+            "single-barline", Strings.get(Strings.ACTION_BARLINE_SINGLE_TOOLTIP),
+            0, 0
+        );
+    }
+
+    public static ElementTypeAction createBreathMarkAction() {
+        return new ElementTypeAction(
+            Kind.NON_DURATION, ElementType.BREATH_MARK,
+            Strings.get(Strings.ACTION_BREATH_MARK), null, 0,
+            "breath-mark", Strings.get(Strings.ACTION_BREATH_MARK_TOOLTIP),
+            0, 0
+        );
+    }
+
+    private ElementTypeAction(
         Kind kind,
         ElementType type,
         String name,
@@ -48,33 +193,48 @@ public class ElementTypeAction extends StickyUIAction implements UIAction.Elemen
         int virtualKey,
         int modifiers
     ) {
-        super(name, icon, size, actionCommand, tooltip, virtualKey, modifiers);
+        super(name, icon, size, actionCommand, tooltip, virtualKey, modifiers, computeFlags(kind, type));
         this.kind = kind;
         this.type = type;
+    }
 
+    private static Flag[] computeFlags(Kind kind, ElementType type) {
         if (kind == Kind.NON_DURATION) {
-            setFlags(
+            return new Flag[]{
                 Flag.DISABLE_IN_REST_MODE,
                 Flag.DISABLE_WHEN_PLAYING,
                 Flag.DISABLE_IN_ADJUSTMENT_MODE,
                 Flag.DISABLE_WHEN_EDITING_TEXT,
-                Flag.DISABLE_IN_GRACE_MODE
-            );
-        } else {
-            setFlags(
+                Flag.DISABLE_IN_GRACE_MODE,
+            };
+        }
+
+        if (type == ElementType.GLISSANDO) {
+            return new Flag[]{
                 Flag.DISABLE_WHEN_PLAYING,
                 Flag.DISABLE_IN_ADJUSTMENT_MODE,
-                Flag.DISABLE_WHEN_EDITING_TEXT
-            );
-
-            if (type.isGraceNote() || type == ElementType.GLISSANDO) {
-                setFlags(Flag.DISABLE_IN_GRACE_MODE);
-            }
-
-            if (type == ElementType.GLISSANDO) {
-                setFlags(Flag.REQUIRES_EMPTY_SELECTION);
-            }
+                Flag.DISABLE_WHEN_EDITING_TEXT,
+                Flag.DISABLE_IN_GRACE_MODE,
+                Flag.REQUIRES_EMPTY_SELECTION,
+            };
         }
+
+        if (type.isGraceNote()) {
+            return new Flag[]{
+                Flag.DISABLE_IN_REST_MODE,
+                Flag.DISABLE_IN_SELECT_MODE,
+                Flag.DISABLE_WHEN_PLAYING,
+                Flag.DISABLE_IN_ADJUSTMENT_MODE,
+                Flag.DISABLE_WHEN_EDITING_TEXT,
+                Flag.DISABLE_IN_GRACE_MODE,
+            };
+        }
+
+        return new Flag[]{
+            Flag.DISABLE_WHEN_PLAYING,
+            Flag.DISABLE_IN_ADJUSTMENT_MODE,
+            Flag.DISABLE_WHEN_EDITING_TEXT,
+        };
     }
 
     public ElementType getType() {

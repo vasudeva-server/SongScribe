@@ -86,7 +86,7 @@ class UIActionReflectableGuardTest extends UnitTest {
             when(mockScore.getMode()).thenReturn(Mode.ADJUSTMENT);
             when(mockScore.getSelectionSize()).thenReturn(0);
 
-            var action = new FermataAction();
+            var action = FermataAction.createAction();
             action.setEnabled(true);
 
             var result = action.updateEnabledState();
@@ -113,7 +113,7 @@ class UIActionReflectableGuardTest extends UnitTest {
             when(mockScore.getMode()).thenReturn(Mode.ADJUSTMENT);
             when(mockScore.getSelectionSize()).thenReturn(2);
 
-            var action = new FermataAction();
+            var action = FermataAction.createAction();
             action.setEnabled(true);
 
             var result = action.updateEnabledState();

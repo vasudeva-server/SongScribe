@@ -27,7 +27,11 @@ import songscribe.util.UIUtils;
 
 public class CutAction extends PasteboardAction {
 
-    public CutAction() {
+    public static CutAction createAction() {
+        return new CutAction();
+    }
+
+    private CutAction() {
         super(
             Operation.CUT,
             Strings.get(Strings.ACTION_EDIT_CUT),

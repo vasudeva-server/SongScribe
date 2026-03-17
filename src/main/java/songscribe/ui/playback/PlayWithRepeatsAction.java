@@ -27,15 +27,17 @@ import songscribe.message.MessageCenter;
 
 public class PlayWithRepeatsAction extends SelectableUIAction {
 
-    public PlayWithRepeatsAction() {
+    public static PlayWithRepeatsAction createAction() {
+        return new PlayWithRepeatsAction();
+    }
+
+    private PlayWithRepeatsAction() {
         super(
             Strings.get(Strings.ACTION_PLAY_REPEATS),
             "@\uF345",
             20,
             "play-with-repeats",
-            Strings.get(Strings.ACTION_PLAY_REPEATS_TOOLTIP)
-        );
-        setFlags(
+            Strings.get(Strings.ACTION_PLAY_REPEATS_TOOLTIP),
             Flag.DISABLE_WHEN_PLAYING,
             Flag.DISABLE_WHEN_EDITING_TEXT,
             Flag.DISABLE_IN_ADJUSTMENT_MODE,

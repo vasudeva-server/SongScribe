@@ -46,7 +46,11 @@ public class ExportImageAction extends UIAction {
         new MyFileFilter(Strings.get(Strings.FILTER_PNG), "png"),
     };
 
-    public ExportImageAction() {
+    public static ExportImageAction createAction() {
+        return new ExportImageAction();
+    }
+
+    private ExportImageAction() {
         super(Strings.get(Strings.ACTION_EXPORT_IMAGE), "export-image");
         fileDialog = new PlatformFileDialog(
             getMainFrame(),

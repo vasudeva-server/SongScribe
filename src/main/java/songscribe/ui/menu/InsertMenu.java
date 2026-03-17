@@ -25,6 +25,7 @@ import songscribe.Strings;
 import songscribe.ui.action.Actions;
 import songscribe.ui.action.InsertLineAction;
 
+
 public final class InsertMenu extends JMenu {
 
     private static final InsertMenu instance = new InsertMenu();
@@ -58,9 +59,9 @@ public final class InsertMenu extends JMenu {
         addSeparator();
 
         var lineMenu = new JMenu(Strings.get(Strings.MENU_INSERT_LINE));
-        lineMenu.add(new InsertLineAction(Strings.get(Strings.MENU_INSERT_LINE_AT_END), -1));
-        lineMenu.add(new InsertLineAction(Strings.get(Strings.MENU_INSERT_LINE_BEFORE), 0));
-        lineMenu.add(new InsertLineAction(Strings.get(Strings.MENU_INSERT_LINE_AFTER), 1));
+        lineMenu.add(InsertLineAction.createAddLineAction());
+        lineMenu.add(InsertLineAction.createInsertLineBeforeAction());
+        lineMenu.add(InsertLineAction.createInsertLineAfterAction());
         add(lineMenu);
     }
 }

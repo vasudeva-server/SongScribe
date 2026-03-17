@@ -32,7 +32,11 @@ public class ExportMidiAction extends UIAction {
     private final PlatformFileDialog fileDialog;
     private ExportMidiDialog exportMidiDialog = null;
 
-    public ExportMidiAction() {
+    public static ExportMidiAction createAction() {
+        return new ExportMidiAction();
+    }
+
+    private ExportMidiAction() {
         super(Strings.get(Strings.ACTION_EXPORT_MIDI), "export-midi");
         fileDialog = new PlatformFileDialog(
             getMainFrame(),

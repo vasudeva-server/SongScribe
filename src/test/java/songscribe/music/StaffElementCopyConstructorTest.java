@@ -37,8 +37,6 @@ class StaffElementCopyConstructorTest extends UnitTest {
         element.setFermata(true);
         element.setTrill(true);
         element.setUpper(true);
-        element.setForceArticulation(ForceArticulation.ACCENT);
-        element.setDurationArticulation(DurationArticulation.STACCATO);
         element.setStemDirectionAuto(false);
         element.setStaffPosition(-3);
         element.setSyllableMovement(2);
@@ -68,8 +66,6 @@ class StaffElementCopyConstructorTest extends UnitTest {
         assertThat(copy.isAccidentalInParentheses()).isTrue();
         assertThat(copy.isTrill()).isTrue();
         assertThat(copy.isUpper()).isTrue();
-        assertThat(copy.getForceArticulation()).isEqualTo(ForceArticulation.ACCENT);
-        assertThat(copy.getDurationArticulation()).isEqualTo(DurationArticulation.STACCATO);
         assertThat(copy.isStemDirectionAuto()).isFalse();
         assertThat(copy.getStaffPosition()).isEqualTo(-3);
 
@@ -99,8 +95,6 @@ class StaffElementCopyConstructorTest extends UnitTest {
         assertThat(copy.isAccidentalInParentheses()).isFalse();
         assertThat(copy.isTrill()).isFalse();
         assertThat(copy.isUpper()).isFalse();
-        assertThat(copy.getForceArticulation()).isNull();
-        assertThat(copy.getDurationArticulation()).isNull();
         assertThat(copy.isStemDirectionAuto()).isTrue();
         assertThat(copy.getArticulations()).isEmpty();
 

@@ -25,6 +25,7 @@ import module java.desktop;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.Arrays;
 import java.util.EnumSet;
 
 import net.engio.mbassy.listener.Handler;
@@ -153,17 +154,18 @@ public class UIAction extends AbstractAction {
 
     private int flags = 0;
 
-    public UIAction(String name, String actionCommand) {
-        this(name, null, 0, actionCommand, null, 0, 0);
+    public UIAction(String name, String actionCommand, Flag... flags) {
+        this(name, null, 0, actionCommand, null, 0, 0, flags);
     }
 
     public UIAction(
         String name,
         String actionCommand,
         int virtualKey,
-        int modifiers
+        int modifiers,
+        Flag... flags
     ) {
-        this(name, null, 0, actionCommand, null, virtualKey, modifiers);
+        this(name, null, 0, actionCommand, null, virtualKey, modifiers, flags);
     }
 
     public UIAction(
@@ -171,9 +173,10 @@ public class UIAction extends AbstractAction {
         @Nullable String icon,
         int size,
         String actionCommand,
-        String tooltip
+        String tooltip,
+        Flag... flags
     ) {
-        this(name, icon, size, actionCommand, tooltip, 0, 0);
+        this(name, icon, size, actionCommand, tooltip, 0, 0, flags);
     }
 
     public UIAction(
@@ -183,7 +186,8 @@ public class UIAction extends AbstractAction {
         String actionCommand,
         String tooltip,
         int virtualKey,
-        int modifiers
+        int modifiers,
+        Flag... flags
     ) {
         super(name);
         mainFrame = MainFrame.getInstance();
@@ -201,6 +205,13 @@ public class UIAction extends AbstractAction {
         }
 
         MessageCenter.subscribe(this);
+        setFlags(flags);
+    }
+
+    protected static Flag[] withFlags(Flag[] base, Flag... extra) {
+        var merged = Arrays.copyOf(base, base.length + extra.length);
+        System.arraycopy(extra, 0, merged, base.length, extra.length);
+        return merged;
     }
 
     protected MainFrame getMainFrame() {

@@ -31,19 +31,25 @@ public class FirstSecondEndingAction extends UIAction {
 
     private final boolean makeEnding;
 
-    public FirstSecondEndingAction(boolean makeEnding) {
+    public static FirstSecondEndingAction createMakeEndingAction() {
+        return new FirstSecondEndingAction(true);
+    }
+
+    public static FirstSecondEndingAction createRemoveEndingAction() {
+        return new FirstSecondEndingAction(false);
+    }
+
+    private FirstSecondEndingAction(boolean makeEnding) {
         super(
             Strings.get(makeEnding ? Strings.ACTION_ENDING_MAKE : Strings.ACTION_ENDING_REMOVE),
-            "first-second-ending"
-        );
-        this.makeEnding = makeEnding;
-        setFlags(
+            "first-second-ending",
             Flag.REQUIRES_MULTIPLE_SELECTION,
             Flag.DISABLE_IN_REST_MODE,
             Flag.DISABLE_WHEN_PLAYING,
             Flag.DISABLE_WHEN_EDITING_TEXT,
             Flag.DISABLE_IN_GRACE_MODE
         );
+        this.makeEnding = makeEnding;
         // TODO: Determine if make action should be enabled/disabled based on selection
     }
 

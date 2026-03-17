@@ -28,9 +28,18 @@ import songscribe.util.UIUtils;
 
 public class NewAction extends UIAction {
 
-    public NewAction() {
-        super(Strings.get(Strings.ACTION_FILE_NEW), "new-document", KeyEvent.VK_N, UIUtils.MENU_SHORTCUT_MASK);
-        setFlags(Flag.DISABLE_WHEN_PLAYING);
+    public static NewAction createAction() {
+        return new NewAction();
+    }
+
+    private NewAction() {
+        super(
+            Strings.get(Strings.ACTION_FILE_NEW),
+            "new-document",
+            KeyEvent.VK_N,
+            UIUtils.MENU_SHORTCUT_MASK,
+            Flag.DISABLE_WHEN_PLAYING
+        );
     }
 
     @Override

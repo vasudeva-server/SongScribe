@@ -21,7 +21,6 @@
 package songscribe.ui.action;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static songscribe.ui.action.ElementTypeAction.Kind;
 
 import org.junit.jupiter.api.Test;
 
@@ -30,13 +29,11 @@ import songscribe.music.ElementType;
 
 class ElementTypeActionTest extends UnitTest {
 
-    private final ElementTypeAction durationAction = new ElementTypeAction(
-        Kind.DURATION, ElementType.CROTCHET, "Quarter", null, 0, "quarter", "Quarter note", 0, 0
-    );
+    private final ElementTypeAction durationAction =
+        ElementTypeAction.createQuarterNoteAction();
 
-    private final ElementTypeAction nonDurationAction = new ElementTypeAction(
-        Kind.NON_DURATION, ElementType.SINGLE_BARLINE, "Barline", null, 0, "barline", "Single barline", 0, 0
-    );
+    private final ElementTypeAction nonDurationAction =
+        ElementTypeAction.createSingleBarlineAction();
 
     // CR2: createReplacement preserves note kind (note stays note)
     @Test
@@ -66,9 +63,7 @@ class ElementTypeActionTest extends UnitTest {
     // CR4: createReplacement with grace note (toNote/toRest returns this)
     @Test
     void testCreateReplacementWithGraceNote() {
-        var graceAction = new ElementTypeAction(
-            Kind.DURATION, ElementType.GRACE_QUAVER, "Grace", null, 0, "grace", "Grace note", 0, 0
-        );
+        var graceAction = ElementTypeAction.createGraceEighthNoteAction();
         var element = ElementType.CROTCHET.newInstance();
         var replacement = graceAction.createReplacement(element, true);
         assertThat(replacement).isNotNull();

@@ -21,6 +21,7 @@ package songscribe.ui.action;
 
 import module java.desktop;
 
+import songscribe.Strings;
 import songscribe.ui.message.InsertLineMessage;
 import songscribe.message.MessageCenter;
 import songscribe.util.UIUtils;
@@ -32,19 +33,29 @@ public class InsertLineAction extends UIAction {
 
     private final int shift;
 
-    public InsertLineAction(String name, int shift) {
+    public static InsertLineAction createAddLineAction() {
+        return new InsertLineAction(Strings.get(Strings.MENU_INSERT_LINE_AT_END), ADD);
+    }
+
+    public static InsertLineAction createInsertLineBeforeAction() {
+        return new InsertLineAction(Strings.get(Strings.MENU_INSERT_LINE_BEFORE), 0);
+    }
+
+    public static InsertLineAction createInsertLineAfterAction() {
+        return new InsertLineAction(Strings.get(Strings.MENU_INSERT_LINE_AFTER), 1);
+    }
+
+    private InsertLineAction(String name, int shift) {
         super(
             name,
             getActionCommand(shift),
             (shift == ADD) ? KeyEvent.VK_ENTER : 0,
-            (shift == ADD) ? UIUtils.MENU_SHORTCUT_MASK : 0
-        );
-        this.shift = shift;
-        setFlags(
+            (shift == ADD) ? UIUtils.MENU_SHORTCUT_MASK : 0,
             Flag.DISABLE_WHEN_PLAYING,
             Flag.DISABLE_WHEN_EDITING_TEXT,
             Flag.DISABLE_IN_GRACE_MODE
         );
+        this.shift = shift;
     }
 
     private static String getActionCommand(int shift) {

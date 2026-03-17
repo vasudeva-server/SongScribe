@@ -28,14 +28,18 @@ import songscribe.util.UIUtils;
 
 public class OpenAction extends UIAction {
 
-    public OpenAction() {
+    public static OpenAction createAction() {
+        return new OpenAction();
+    }
+
+    private OpenAction() {
         super(
             Strings.get(Strings.ACTION_FILE_OPEN),
             "open-document",
             KeyEvent.VK_O,
-            UIUtils.MENU_SHORTCUT_MASK
+            UIUtils.MENU_SHORTCUT_MASK,
+            Flag.DISABLE_WHEN_PLAYING
         );
-        setFlags(Flag.DISABLE_WHEN_PLAYING);
     }
 
     @Override

@@ -33,7 +33,11 @@ import songscribe.ui.message.ToggleTieMessage;
 
 public class ToggleTieAction extends UIAction {
 
-    public ToggleTieAction() {
+    public static ToggleTieAction createAction() {
+        return new ToggleTieAction();
+    }
+
+    private ToggleTieAction() {
         super(
             Strings.get(Strings.ACTION_TIE_TOGGLE),
             "@\uF373",
@@ -41,9 +45,7 @@ public class ToggleTieAction extends UIAction {
             "toggle-tie",
             Strings.get(Strings.ACTION_TIE_TOGGLE_TOOLTIP),
             KeyEvent.VK_T,
-            0
-        );
-        setFlags(
+            0,
             Flag.REQUIRES_MULTIPLE_SELECTION,
             Flag.DISABLE_WHEN_BAR_SELECTED,
             Flag.DISABLE_WHEN_PLAYING,

@@ -30,7 +30,11 @@ public class QuitAction extends UIAction {
 
     public static final String NAME = SystemInfo.isMacOS ? Strings.get(Strings.ACTION_FILE_QUIT) : Strings.get(Strings.ACTION_FILE_EXIT);
 
-    public QuitAction() {
+    public static QuitAction createAction() {
+        return new QuitAction();
+    }
+
+    protected QuitAction() {
         // On macOS, the system sets the accelerator for the Quit menu item
         super(
             NAME,

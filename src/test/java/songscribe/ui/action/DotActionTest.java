@@ -28,10 +28,8 @@ import songscribe.UnitTest;
 import songscribe.music.ElementType;
 
 class DotActionTest extends UnitTest {
-    private final DotAction singleDotAction =
-        new DotAction(DotAction.DotLevel.SINGLE, "Dot", null, 0, "dot", "Add dot", 0, 0);
-    private final DotAction doubleDotAction =
-        new DotAction(DotAction.DotLevel.DOUBLE, "Double Dot", null, 0, "double-dot", "Add double dot", 0, 0);
+    private final DotAction singleDotAction = DotAction.createDotAction();
+    private final DotAction doubleDotAction = DotAction.createDoubleDotAction();
 
     @Test
     void testApplyToNoteDoubleDotApplies() {

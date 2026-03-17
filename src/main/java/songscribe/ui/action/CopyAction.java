@@ -27,7 +27,11 @@ import songscribe.util.UIUtils;
 
 public class CopyAction extends PasteboardAction {
 
-    public CopyAction() {
+    public static CopyAction createAction() {
+        return new CopyAction();
+    }
+
+    private CopyAction() {
         super(
             Operation.COPY,
             Strings.get(Strings.ACTION_EDIT_COPY),

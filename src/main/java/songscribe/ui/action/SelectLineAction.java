@@ -29,14 +29,16 @@ import songscribe.util.UIUtils;
 
 public class SelectLineAction extends UIAction {
 
-    public SelectLineAction() {
+    public static SelectLineAction createAction() {
+        return new SelectLineAction();
+    }
+
+    private SelectLineAction() {
         super(
             Strings.get(Strings.ACTION_EDIT_SELECT_LINE),
             "select-line",
             KeyEvent.VK_L,
-            InputEvent.SHIFT_DOWN_MASK + UIUtils.MENU_SHORTCUT_MASK
-        );
-        setFlags(
+            InputEvent.SHIFT_DOWN_MASK + UIUtils.MENU_SHORTCUT_MASK,
             Flag.REQUIRES_SELECTION,
             Flag.DISABLE_WHEN_PLAYING,
             Flag.DISABLE_IN_GRACE_MODE

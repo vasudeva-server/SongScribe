@@ -26,7 +26,11 @@ import songscribe.util.UIUtils;
 
 public class StopAction extends SequencerAction {
 
-    public StopAction() {
+    public static StopAction createAction() {
+        return new StopAction();
+    }
+
+    private StopAction() {
         super(
             Strings.get(Strings.ACTION_PLAY_STOP),
             "@\uF447",
@@ -34,9 +38,7 @@ public class StopAction extends SequencerAction {
             "stop",
             Strings.get(Strings.ACTION_PLAY_STOP_TOOLTIP),
             KeyEvent.VK_PERIOD,
-            UIUtils.MENU_SHORTCUT_MASK
-        );
-        setFlags(
+            UIUtils.MENU_SHORTCUT_MASK,
             Flag.DISABLE_WHEN_EDITING_TEXT,
             Flag.DISABLE_IN_ADJUSTMENT_MODE,
             Flag.DISABLE_WHEN_COMPOSITION_EMPTY

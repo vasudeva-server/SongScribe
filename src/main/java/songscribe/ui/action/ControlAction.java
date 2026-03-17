@@ -29,7 +29,15 @@ public class ControlAction extends SelectableUIAction {
 
     public final Control control;
 
-    public ControlAction(Control control) {
+    public static ControlAction createMouseControlAction() {
+        return new ControlAction(Control.MOUSE);
+    }
+
+    public static ControlAction createKeyboardControlAction() {
+        return new ControlAction(Control.KEYBOARD);
+    }
+
+    private ControlAction(Control control) {
         super(
             control.getDescription(),
             null,

@@ -430,7 +430,7 @@ public class MainFrame extends JFrame implements Printable {
         );
 
         if (answer == saveIdx) {
-            new SaveAction().perform(this);
+            SaveAction.createAction().perform(this);
         }
 
         return answer == saveIdx || answer == dontSaveIdx;

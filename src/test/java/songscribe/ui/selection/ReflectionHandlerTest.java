@@ -44,7 +44,7 @@ class ReflectionHandlerTest extends UnitTest {
         var note2 = ElementType.CROTCHET.newInstance();
         note2.setAccidental(StaffElement.Accidental.SHARP);
 
-        var action = new AccidentalAction(StaffElement.Accidental.SHARP, "Sharp", null, 0, "sharp", "Sharp");
+        var action = AccidentalAction.createSharpAction();
         var uiAction = (SelectableUIAction) action;
 
         var coordinator = ReflectionTestHelper.createCoordinator(
@@ -66,7 +66,7 @@ class ReflectionHandlerTest extends UnitTest {
         var note2 = ElementType.CROTCHET.newInstance();
         note2.setAccidental(StaffElement.Accidental.SHARP);
 
-        var action = new AccidentalAction(StaffElement.Accidental.SHARP, "Sharp", null, 0, "sharp", "Sharp");
+        var action = AccidentalAction.createSharpAction();
         var uiAction = (SelectableUIAction) action;
 
         var coordinator = ReflectionTestHelper.createCoordinator(
@@ -88,7 +88,7 @@ class ReflectionHandlerTest extends UnitTest {
         var note2 = ElementType.CROTCHET.newInstance();
         note2.setAccidental(StaffElement.Accidental.FLAT);
 
-        var action = new AccidentalAction(StaffElement.Accidental.SHARP, "Sharp", null, 0, "sharp", "Sharp");
+        var action = AccidentalAction.createSharpAction();
         var uiAction = (SelectableUIAction) action;
 
         var coordinator = ReflectionTestHelper.createCoordinator(
@@ -107,7 +107,7 @@ class ReflectionHandlerTest extends UnitTest {
         var rest1 = ElementType.CROTCHET_REST.newInstance();
         var rest2 = ElementType.CROTCHET_REST.newInstance();
 
-        var action = new AccidentalAction(StaffElement.Accidental.SHARP, "Sharp", null, 0, "sharp", "Sharp");
+        var action = AccidentalAction.createSharpAction();
         var uiAction = (SelectableUIAction) action;
 
         var coordinator = ReflectionTestHelper.createCoordinator(
@@ -129,7 +129,7 @@ class ReflectionHandlerTest extends UnitTest {
         var note2 = ElementType.CROTCHET.newInstance();
         note2.setAccidental(StaffElement.Accidental.FLAT);
 
-        var action = new AccidentalAction(StaffElement.Accidental.SHARP, "Sharp", null, 0, "sharp", "Sharp");
+        var action = AccidentalAction.createSharpAction();
         var uiAction = (SelectableUIAction) action;
         uiAction.setSelected(false);
 
@@ -161,7 +161,7 @@ class ReflectionHandlerTest extends UnitTest {
         var note = ElementType.CROTCHET.newInstance();
         note.setAccidental(StaffElement.Accidental.SHARP);
 
-        var action = new AccidentalAction(StaffElement.Accidental.SHARP, "Sharp", null, 0, "sharp", "Sharp");
+        var action = AccidentalAction.createSharpAction();
         var uiAction = (SelectableUIAction) action;
 
         var coordinator = ReflectionTestHelper.createCoordinator(
@@ -190,7 +190,7 @@ class ReflectionHandlerTest extends UnitTest {
         var note = ElementType.CROTCHET.newInstance();
         note.setAccidental(StaffElement.Accidental.FLAT);
 
-        var action = new AccidentalAction(StaffElement.Accidental.SHARP, "Sharp", null, 0, "sharp", "Sharp");
+        var action = AccidentalAction.createSharpAction();
         var uiAction = (SelectableUIAction) action;
         uiAction.setSelected(true);
 
@@ -215,7 +215,7 @@ class ReflectionHandlerTest extends UnitTest {
         var note = ElementType.CROTCHET.newInstance();
         note.setAccidental(StaffElement.Accidental.SHARP);
 
-        var action = new AccidentalAction(StaffElement.Accidental.SHARP, "Sharp", null, 0, "sharp", "Sharp");
+        var action = AccidentalAction.createSharpAction();
         var uiAction = (SelectableUIAction) action;
         uiAction.setSelected(false);
 
@@ -235,7 +235,7 @@ class ReflectionHandlerTest extends UnitTest {
         var note = ElementType.CROTCHET.newInstance();
         note.setAccidental(StaffElement.Accidental.SHARP);
 
-        var action = new AccidentalAction(StaffElement.Accidental.SHARP, "Sharp", null, 0, "sharp", "Sharp");
+        var action = AccidentalAction.createSharpAction();
         var uiAction = (SelectableUIAction) action;
         uiAction.setSelected(false);
 
@@ -256,7 +256,7 @@ class ReflectionHandlerTest extends UnitTest {
 
         var rest = ElementType.CROTCHET_REST.newInstance();
 
-        var action = new AccidentalAction(StaffElement.Accidental.SHARP, "Sharp", null, 0, "sharp", "Sharp");
+        var action = AccidentalAction.createSharpAction();
         var uiAction = (SelectableUIAction) action;
 
         var coordinator = ReflectionTestHelper.createCoordinator(
@@ -277,7 +277,7 @@ class ReflectionHandlerTest extends UnitTest {
 
         var rest = ElementType.CROTCHET_REST.newInstance();
 
-        var action = new AccidentalAction(StaffElement.Accidental.SHARP, "Sharp", null, 0, "sharp", "Sharp");
+        var action = AccidentalAction.createSharpAction();
         var uiAction = (SelectableUIAction) action;
 
         var coordinator = ReflectionTestHelper.createCoordinator(
@@ -296,8 +296,8 @@ class ReflectionHandlerTest extends UnitTest {
         var note = ElementType.CROTCHET.newInstance();
         note.setAccidental(StaffElement.Accidental.SHARP);
 
-        var action1 = new AccidentalAction(StaffElement.Accidental.SHARP, "Sharp", null, 0, "sharp", "Sharp");
-        var action2 = new AccidentalAction(StaffElement.Accidental.FLAT, "Flat", null, 0, "flat", "Flat");
+        var action1 = AccidentalAction.createSharpAction();
+        var action2 = AccidentalAction.createFlatAction();
         var uiAction1 = (SelectableUIAction) action1;
         var uiAction2 = (SelectableUIAction) action2;
         uiAction1.setEnabled(false);
@@ -322,8 +322,8 @@ class ReflectionHandlerTest extends UnitTest {
         var note = ElementType.CROTCHET.newInstance();
         note.setAccidental(StaffElement.Accidental.SHARP);
 
-        var action1 = new AccidentalAction(StaffElement.Accidental.SHARP, "Sharp", null, 0, "sharp", "Sharp");
-        var action2 = new AccidentalAction(StaffElement.Accidental.FLAT, "Flat", null, 0, "flat", "Flat");
+        var action1 = AccidentalAction.createSharpAction();
+        var action2 = AccidentalAction.createFlatAction();
         var uiAction1 = (SelectableUIAction) action1;
         var uiAction2 = (SelectableUIAction) action2;
 

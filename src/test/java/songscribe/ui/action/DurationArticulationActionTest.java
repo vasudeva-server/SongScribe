@@ -25,28 +25,28 @@ import static org.assertj.core.api.Assertions.assertThat;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.music.DurationArticulation;
+import songscribe.music.ArticulationType;
 import songscribe.music.ElementType;
+import songscribe.ui.layout.Articulation;
 
 class DurationArticulationActionTest extends UnitTest {
 
-    private final DurationArticulationAction action = new DurationArticulationAction(
-        DurationArticulation.STACCATO, "Staccato", null, 0, "staccato", "Add staccato"
-    );
+    private final DurationArticulationAction action =
+        DurationArticulationAction.createStaccatoAction();
 
     @Test
     void testApplyToNoteAppliesArticulation() {
         var note = ElementType.CROTCHET.newInstance();
         action.applyToElement(note, true);
-        assertThat(note.getDurationArticulation()).isEqualTo(DurationArticulation.STACCATO);
+        assertThat(note.hasArticulation(ArticulationType.STACCATO)).isTrue();
     }
 
     @Test
     void testApplyToNoteRemovesArticulation() {
         var note = ElementType.CROTCHET.newInstance();
-        note.setDurationArticulation(DurationArticulation.STACCATO);
+        note.addArticulation(new Articulation(note, ArticulationType.STACCATO));
         action.applyToElement(note, false);
-        assertThat(note.getDurationArticulation()).isNull();
+        assertThat(note.hasArticulation(ArticulationType.STACCATO)).isFalse();
     }
 
     @Test
@@ -58,7 +58,7 @@ class DurationArticulationActionTest extends UnitTest {
     @Test
     void testMatchesWhenArticulationMatches() {
         var note = ElementType.CROTCHET.newInstance();
-        note.setDurationArticulation(DurationArticulation.STACCATO);
+        note.addArticulation(new Articulation(note, ArticulationType.STACCATO));
         assertThat(action.matchesElement(note)).isTrue();
     }
 }

@@ -32,17 +32,18 @@ import songscribe.ui.message.UpdateInsertionElementMessage;
  */
 public class InsertionElementAction extends SelectableUIAction {
 
-    public InsertionElementAction(String name, String actionCommand) {
-        super(name, actionCommand);
+    public InsertionElementAction(String name, String actionCommand, Flag... flags) {
+        super(name, actionCommand, flags);
     }
 
     public InsertionElementAction(
         String name,
         String actionCommand,
         int virtualKey,
-        int modifiers
+        int modifiers,
+        Flag... flags
     ) {
-        super(name, actionCommand, virtualKey, modifiers);
+        super(name, actionCommand, virtualKey, modifiers, flags);
     }
 
     public InsertionElementAction(
@@ -50,9 +51,10 @@ public class InsertionElementAction extends SelectableUIAction {
         @Nullable String icon,
         int size,
         String actionCommand,
-        String tooltip
+        String tooltip,
+        Flag... flags
     ) {
-        super(name, icon, size, actionCommand, tooltip);
+        super(name, icon, size, actionCommand, tooltip, flags);
     }
 
     public InsertionElementAction(
@@ -62,7 +64,8 @@ public class InsertionElementAction extends SelectableUIAction {
         String actionCommand,
         String tooltip,
         int virtualKey,
-        int modifiers
+        int modifiers,
+        Flag... flags
     ) {
         super(
             name,
@@ -71,7 +74,8 @@ public class InsertionElementAction extends SelectableUIAction {
             actionCommand,
             tooltip,
             virtualKey,
-            modifiers
+            modifiers,
+            flags
         );
     }
 

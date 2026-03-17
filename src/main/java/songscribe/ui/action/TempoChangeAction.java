@@ -30,15 +30,17 @@ import songscribe.ui.message.MusicSelectionChangedMessage;
 
 public class TempoChangeAction extends UIAction {
 
-    public TempoChangeAction() {
+    public static TempoChangeAction createAction() {
+        return new TempoChangeAction();
+    }
+
+    private TempoChangeAction() {
         super(
             "Tempo Change...",
             null,
             0,
             "tempo-change",
-            "Insert tempo change"
-        );
-        setFlags(
+            "Insert tempo change",
             Flag.REQUIRES_SINGLE_SELECTION,
             Flag.DISABLE_WHEN_BAR_SELECTED,
             Flag.DISABLE_WHEN_PLAYING,

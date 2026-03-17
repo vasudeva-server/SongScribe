@@ -32,7 +32,8 @@ class SequencerAction extends UIAction {
         @Nullable String actionCommand,
         @Nullable String tooltip,
         int virtualKey,
-        int modifiers
+        int modifiers,
+        Flag... flags
     ) {
         super(
             name,
@@ -41,7 +42,8 @@ class SequencerAction extends UIAction {
             actionCommand,
             tooltip,
             virtualKey,
-            modifiers
+            modifiers,
+            flags
         );
     }
 }

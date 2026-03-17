@@ -30,7 +30,7 @@ import songscribe.music.StaffElement;
 
 class AccidentalInParensActionTest extends UnitTest {
 
-    private final AccidentalInParensAction action = new AccidentalInParensAction();
+    private final AccidentalInParensAction action = AccidentalInParensAction.createAction();
 
     @Test
     void testApplyToNoteAppliesParentheses() {

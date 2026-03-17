@@ -27,15 +27,17 @@ import songscribe.message.MessageCenter;
 
 public class LoopPlaybackAction extends SelectableUIAction {
 
-    public LoopPlaybackAction() {
+    public static LoopPlaybackAction createAction() {
+        return new LoopPlaybackAction();
+    }
+
+    private LoopPlaybackAction() {
         super(
             Strings.get(Strings.ACTION_PLAY_LOOP),
             "@\uF358",
             20,
             "loop-playback",
-            Strings.get(Strings.ACTION_PLAY_LOOP_TOOLTIP)
-        );
-        setFlags(
+            Strings.get(Strings.ACTION_PLAY_LOOP_TOOLTIP),
             Flag.DISABLE_WHEN_PLAYING,
             Flag.DISABLE_WHEN_EDITING_TEXT,
             Flag.DISABLE_IN_ADJUSTMENT_MODE,

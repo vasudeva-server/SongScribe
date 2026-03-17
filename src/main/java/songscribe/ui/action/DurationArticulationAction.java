@@ -20,6 +20,7 @@
 
 package songscribe.ui.action;
 
+import songscribe.Strings;
 import songscribe.music.ArticulationType;
 import songscribe.music.StaffElement;
 import songscribe.ui.layout.Articulation;
@@ -28,7 +29,15 @@ public class DurationArticulationAction extends NoteOnlyAction {
 
     private final ArticulationType articulationType;
 
-    public DurationArticulationAction(
+    public static DurationArticulationAction createStaccatoAction() {
+        return new DurationArticulationAction(
+            ArticulationType.STACCATO,
+            Strings.get(Strings.ACTION_STACCATO), "@\uF38E", 22,
+            "staccato", Strings.get(Strings.ACTION_STACCATO_TOOLTIP)
+        );
+    }
+
+    private DurationArticulationAction(
         ArticulationType articulationType,
         String name,
         String icon,
@@ -36,7 +45,7 @@ public class DurationArticulationAction extends NoteOnlyAction {
         String actionCommand,
         String tooltip
     ) {
-        super(name, icon, size, actionCommand, tooltip);
+        super(name, icon, size, actionCommand, tooltip, NoteOnlyAction.FLAGS);
         this.articulationType = articulationType;
     }
 

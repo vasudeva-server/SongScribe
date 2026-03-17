@@ -20,6 +20,7 @@
 
 package songscribe.ui.action;
 
+import songscribe.Strings;
 import songscribe.music.ArticulationType;
 import songscribe.music.StaffElement;
 import songscribe.ui.layout.Articulation;
@@ -28,7 +29,15 @@ public class ForceArticulationAction extends NoteOnlyAction {
 
     private final ArticulationType articulationType;
 
-    public ForceArticulationAction(
+    public static ForceArticulationAction createAccentAction() {
+        return new ForceArticulationAction(
+            ArticulationType.ACCENT,
+            Strings.get(Strings.ACTION_ACCENT), "@\uF38C", 22,
+            "accent", Strings.get(Strings.ACTION_ACCENT_TOOLTIP)
+        );
+    }
+
+    private ForceArticulationAction(
         ArticulationType articulationType,
         String name,
         String icon,
@@ -36,7 +45,7 @@ public class ForceArticulationAction extends NoteOnlyAction {
         String actionCommand,
         String tooltip
     ) {
-        super(name, icon, size, actionCommand, tooltip);
+        super(name, icon, size, actionCommand, tooltip, NoteOnlyAction.FLAGS);
         this.articulationType = articulationType;
     }
 

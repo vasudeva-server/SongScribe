@@ -85,15 +85,15 @@ public final class PlaybackController {
     }
 
     public static final PlayPauseAction PLAY_PAUSE_ACTION =
-        new PlayPauseAction();
+        PlayPauseAction.createAction();
 
-    public static final StopAction STOP_ACTION = new StopAction();
+    public static final StopAction STOP_ACTION = StopAction.createAction();
 
     public static final PlayWithRepeatsAction PLAY_WITH_REPEATS_ACTION =
-        new PlayWithRepeatsAction();
+        PlayWithRepeatsAction.createAction();
 
     public static final LoopPlaybackAction LOOP_PLAYBACK_ACTION =
-        new LoopPlaybackAction();
+        LoopPlaybackAction.createAction();
 
     private PlaybackController() {
     }

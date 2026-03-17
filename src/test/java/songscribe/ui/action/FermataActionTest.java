@@ -29,7 +29,7 @@ import songscribe.music.ElementType;
 
 class FermataActionTest extends UnitTest {
 
-    private final FermataAction action = new FermataAction();
+    private final FermataAction action = FermataAction.createAction();
 
     @Test
     void testApplyToNoteAppliesFermata() {

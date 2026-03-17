@@ -116,6 +116,8 @@ public final class ReflectionTestHelper {
      * Selects notes [fromIndex..toIndex] inclusive on the coordinator's active line.
      */
     public static void selectRange(SelectionCoordinator coordinator, int fromIndex, int toIndex) {
+        coordinator.saveActionStates();
+
         var state = coordinator.getActiveSelection();
         state.setSelectionFromClick(fromIndex);
 
@@ -136,5 +138,6 @@ public final class ReflectionTestHelper {
      */
     public static void clearSelection(SelectionCoordinator coordinator) {
         coordinator.getActiveSelection().clearSelection();
+        coordinator.restoreActionStates();
     }
 }

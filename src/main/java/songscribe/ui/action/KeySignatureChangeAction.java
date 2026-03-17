@@ -32,15 +32,17 @@ import songscribe.ui.message.MusicSelectionChangedMessage;
 
 public class KeySignatureChangeAction extends UIAction {
 
-    public KeySignatureChangeAction() {
+    public static KeySignatureChangeAction createAction() {
+        return new KeySignatureChangeAction();
+    }
+
+    private KeySignatureChangeAction() {
         super(
             Strings.get(Strings.ACTION_KEY_SIGNATURE_CHANGE),
             null,
             0,
             "key-signature-change",
-            Strings.get(Strings.ACTION_KEY_SIGNATURE_CHANGE_TOOLTIP)
-        );
-        setFlags(
+            Strings.get(Strings.ACTION_KEY_SIGNATURE_CHANGE_TOOLTIP),
             Flag.DISABLE_WHEN_BAR_SELECTED,
             Flag.DISABLE_WHEN_PLAYING,
             Flag.DISABLE_WHEN_EDITING_TEXT,

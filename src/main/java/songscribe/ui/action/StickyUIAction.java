@@ -36,7 +36,8 @@ public class StickyUIAction extends SelectableUIAction {
         String actionCommand,
         String tooltip,
         int virtualKey,
-        int modifiers
+        int modifiers,
+        Flag... flags
     ) {
         super(
             name,
@@ -45,9 +46,9 @@ public class StickyUIAction extends SelectableUIAction {
             actionCommand,
             tooltip,
             virtualKey,
-            modifiers
+            modifiers,
+            flags
         );
-        setFlags(Flag.DISABLE_WHEN_PLAYING);
     }
 
     // Subclasses should call this method in their actionPerformed() method,

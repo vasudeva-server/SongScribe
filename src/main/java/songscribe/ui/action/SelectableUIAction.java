@@ -32,17 +32,18 @@ public abstract class SelectableUIAction extends UIAction
 
     { putValue(SELECTED_KEY, false); }
 
-    protected SelectableUIAction(String name, String actionCommand) {
-        super(name, actionCommand);
+    protected SelectableUIAction(String name, String actionCommand, Flag... flags) {
+        super(name, actionCommand, flags);
     }
 
     protected SelectableUIAction(
         String name,
         String actionCommand,
         int virtualKey,
-        int modifiers
+        int modifiers,
+        Flag... flags
     ) {
-        super(name, actionCommand, virtualKey, modifiers);
+        super(name, actionCommand, virtualKey, modifiers, flags);
     }
 
     protected SelectableUIAction(
@@ -50,9 +51,10 @@ public abstract class SelectableUIAction extends UIAction
         @Nullable String icon,
         int size,
         String actionCommand,
-        String tooltip
+        String tooltip,
+        Flag... flags
     ) {
-        super(name, icon, size, actionCommand, tooltip);
+        super(name, icon, size, actionCommand, tooltip, flags);
     }
 
     protected SelectableUIAction(
@@ -62,9 +64,10 @@ public abstract class SelectableUIAction extends UIAction
         String actionCommand,
         String tooltip,
         int virtualKey,
-        int modifiers
+        int modifiers,
+        Flag... flags
     ) {
-        super(name, icon, size, actionCommand, tooltip, virtualKey, modifiers);
+        super(name, icon, size, actionCommand, tooltip, virtualKey, modifiers, flags);
     }
 
     @Override

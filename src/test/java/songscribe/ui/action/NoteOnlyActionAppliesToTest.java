@@ -30,7 +30,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class NoteOnlyActionAppliesToTest extends UnitTest {
 
     // Use FermataAction as the simplest concrete NoteOnlyAction subclass
-    private final FermataAction action = new FermataAction();
+    private final FermataAction action = FermataAction.createAction();
 
     // A7: appliesTo returns true for notes
     @Test

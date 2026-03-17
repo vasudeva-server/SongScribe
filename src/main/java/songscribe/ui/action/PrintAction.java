@@ -28,14 +28,16 @@ import songscribe.util.UIUtils;
 
 public class PrintAction extends UIAction {
 
-    public PrintAction() {
+    public static PrintAction createAction() {
+        return new PrintAction();
+    }
+
+    private PrintAction() {
         super(
             Strings.get(Strings.ACTION_FILE_PRINT),
             "print-document",
             KeyEvent.VK_P,
-            UIUtils.MENU_SHORTCUT_MASK
-        );
-        setFlags(
+            UIUtils.MENU_SHORTCUT_MASK,
             Flag.DISABLE_WHEN_PLAYING,
             Flag.DISABLE_IN_GRACE_MODE
         );

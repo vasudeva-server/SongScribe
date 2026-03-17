@@ -28,14 +28,16 @@ import songscribe.util.UIUtils;
 
 public class SaveAsAction extends UIAction {
 
-    public SaveAsAction() {
+    public static SaveAsAction createAction() {
+        return new SaveAsAction();
+    }
+
+    private SaveAsAction() {
         super(
             Strings.get(Strings.ACTION_FILE_SAVE_AS),
             "save-as",
             KeyEvent.VK_S,
-            InputEvent.SHIFT_DOWN_MASK + UIUtils.MENU_SHORTCUT_MASK
-        );
-        setFlags(
+            InputEvent.SHIFT_DOWN_MASK + UIUtils.MENU_SHORTCUT_MASK,
             Flag.DISABLE_WHEN_PLAYING,
             Flag.DISABLE_IN_GRACE_MODE
         );

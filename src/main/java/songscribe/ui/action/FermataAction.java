@@ -25,9 +25,19 @@ import songscribe.music.StaffElement;
 
 public class FermataAction extends NoteOnlyAction {
 
-    public FermataAction() {
-        super(Strings.get(Strings.ACTION_FERMATA), null, 0, "fermata", Strings.get(Strings.ACTION_FERMATA_TOOLTIP));
-        setFlags(Flag.DISABLE_WHEN_EDITING_TEXT);
+    public static FermataAction createAction() {
+        return new FermataAction();
+    }
+
+    private FermataAction() {
+        super(
+            Strings.get(Strings.ACTION_FERMATA),
+            null,
+            0,
+            "fermata",
+            Strings.get(Strings.ACTION_FERMATA_TOOLTIP),
+            withFlags(NoteOnlyAction.FLAGS, Flag.DISABLE_WHEN_EDITING_TEXT)
+        );
     }
 
     @Override

@@ -35,11 +35,7 @@ public class OpenRecentAction extends UIAction {
     private final Path path;
 
     public OpenRecentAction(String label, Path path) {
-        super(label, label);
-        setFlags(
-            Flag.DISABLE_WHEN_PLAYING,
-            Flag.DISABLE_IN_GRACE_MODE
-        );
+        super(label, label, Flag.DISABLE_WHEN_PLAYING, Flag.DISABLE_IN_GRACE_MODE);
         this.path = path;
     }
 

@@ -24,13 +24,18 @@ import songscribe.music.StaffElement;
 
 public class AccidentalInParensAction extends NoteOnlyAction {
 
-    public AccidentalInParensAction() {
+    public static AccidentalInParensAction createAction() {
+        return new AccidentalInParensAction();
+    }
+
+    private AccidentalInParensAction() {
         super(
             "In Parentheses",
             null,
             0,
             "accidental-in-parens",
-            "Add accidental in parentheses"
+            "Add accidental in parentheses",
+            NoteOnlyAction.FLAGS
         );
     }
 
