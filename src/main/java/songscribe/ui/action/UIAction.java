@@ -411,10 +411,11 @@ public class UIAction extends AbstractAction {
     }
 
     protected boolean enableInRestMode() {
-        return (
-            !hasFlag(Flag.DISABLE_IN_REST_MODE) ||
-                !Actions.REST_ACTION.isSelected()
-        );
+        if (!hasFlag(Flag.DISABLE_IN_REST_MODE)) {
+            return true;
+        }
+
+        return !Actions.REST_ACTION.isSelected() && !getScore().getSelectionCoordinator().selectionHasRests();
     }
 
     @Handler(priority = Message.MEDIUM_PRIORITY)

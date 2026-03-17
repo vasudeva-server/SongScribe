@@ -81,6 +81,7 @@ public final class SelectionCoordinator {
     private ElementSelection contentCacheSelection = null;
     private boolean hasDurations;
     private boolean hasNonDurations;
+    private boolean hasRests;
 
     // Applicability cache: maps action to whether it applies to any element in the selection.
     private ElementSelection applicabilityCacheSelection = null;
@@ -372,6 +373,19 @@ public final class SelectionCoordinator {
     }
 
     /**
+     * Returns whether the current selection contains any rests.
+     * Returns {@code false} if there is no active selection.
+     */
+    public boolean selectionHasRests() {
+        if (!hasActiveSelection()) {
+            return false;
+        }
+
+        ensureContentComputed();
+        return hasRests;
+    }
+
+    /**
      * Returns whether the given reflectable action is applicable to any element
      * in the current selection. Results are cached per selection.
      * Returns {@code false} if there is no active selection.
@@ -404,7 +418,7 @@ public final class SelectionCoordinator {
 
     /**
      * Computes and caches the content flags for the current selection.
-     * Short-circuits when both flags are set.
+     * Short-circuits when all flags are set.
      */
     private void ensureContentComputed() {
         var selection = getSelection();
@@ -415,6 +429,7 @@ public final class SelectionCoordinator {
 
         hasDurations = false;
         hasNonDurations = false;
+        hasRests = false;
         contentCacheSelection = selection;
 
         var line = selection.line();
@@ -424,11 +439,15 @@ public final class SelectionCoordinator {
 
             if (elementType.isDuration()) {
                 hasDurations = true;
+
+                if (elementType.isRest()) {
+                    hasRests = true;
+                }
             } else {
                 hasNonDurations = true;
             }
 
-            if (hasDurations && hasNonDurations) {
+            if (hasDurations && hasNonDurations && hasRests) {
                 break;
             }
         }

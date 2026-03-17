@@ -35,6 +35,20 @@ public class ElementTypeAction extends StickyUIAction implements UIAction.Elemen
 
     public enum Kind {DURATION, NON_DURATION}
 
+    private static final Flag[] DURATION_FLAGS = new Flag[]{
+        Flag.DISABLE_WHEN_PLAYING,
+        Flag.DISABLE_IN_ADJUSTMENT_MODE,
+        Flag.DISABLE_WHEN_EDITING_TEXT,
+    };
+
+    private static final Flag[] NON_DURATION_FLAGS = new Flag[]{
+        Flag.DISABLE_IN_REST_MODE,
+        Flag.DISABLE_WHEN_PLAYING,
+        Flag.DISABLE_IN_ADJUSTMENT_MODE,
+        Flag.DISABLE_WHEN_EDITING_TEXT,
+        Flag.DISABLE_IN_GRACE_MODE,
+    };
+
     private final ElementType type;
     private final Kind kind;
 
@@ -43,7 +57,8 @@ public class ElementTypeAction extends StickyUIAction implements UIAction.Elemen
             Kind.DURATION, ElementType.GRACE_QUAVER,
             Strings.get(Strings.ACTION_DURATION_GRACE), "grace.svg", 26,
             "duration-grace-eighth", Strings.get(Strings.ACTION_DURATION_GRACE_TOOLTIP),
-            KeyEvent.VK_G, InputEvent.SHIFT_DOWN_MASK
+            KeyEvent.VK_G, InputEvent.SHIFT_DOWN_MASK,
+            withFlags(DURATION_FLAGS, Flag.DISABLE_IN_REST_MODE, Flag.DISABLE_IN_SELECT_MODE, Flag.DISABLE_IN_GRACE_MODE)
         );
     }
 
@@ -52,7 +67,8 @@ public class ElementTypeAction extends StickyUIAction implements UIAction.Elemen
             Kind.DURATION, ElementType.DEMI_SEMIQUAVER,
             Strings.get(Strings.ACTION_DURATION_THIRTY_SECOND), "@\uF36B", 18,
             "duration-thirty-second", Strings.get(Strings.ACTION_DURATION_THIRTY_SECOND_TOOLTIP),
-            KeyEvent.VK_1, 0
+            KeyEvent.VK_1, 0,
+            DURATION_FLAGS
         );
     }
 
@@ -61,7 +77,8 @@ public class ElementTypeAction extends StickyUIAction implements UIAction.Elemen
             Kind.DURATION, ElementType.SEMIQUAVER,
             Strings.get(Strings.ACTION_DURATION_SIXTEENTH), "@\uF36A", 18,
             "duration-sixteenth", Strings.get(Strings.ACTION_DURATION_SIXTEENTH_TOOLTIP),
-            KeyEvent.VK_2, 0
+            KeyEvent.VK_2, 0,
+            DURATION_FLAGS
         );
     }
 
@@ -70,7 +87,8 @@ public class ElementTypeAction extends StickyUIAction implements UIAction.Elemen
             Kind.DURATION, ElementType.QUAVER,
             Strings.get(Strings.ACTION_DURATION_EIGHTH), "@\uF369", 18,
             "duration-eighth", Strings.get(Strings.ACTION_DURATION_EIGHTH_TOOLTIP),
-            KeyEvent.VK_3, 0
+            KeyEvent.VK_3, 0,
+            DURATION_FLAGS
         );
     }
 
@@ -79,7 +97,8 @@ public class ElementTypeAction extends StickyUIAction implements UIAction.Elemen
             Kind.DURATION, ElementType.CROTCHET,
             Strings.get(Strings.ACTION_DURATION_QUARTER), "@\uF368", 18,
             "duration-quarter", Strings.get(Strings.ACTION_DURATION_QUARTER_TOOLTIP),
-            KeyEvent.VK_4, 0
+            KeyEvent.VK_4, 0,
+            DURATION_FLAGS
         );
     }
 
@@ -88,7 +107,8 @@ public class ElementTypeAction extends StickyUIAction implements UIAction.Elemen
             Kind.DURATION, ElementType.MINIM,
             Strings.get(Strings.ACTION_DURATION_HALF), "@\uF367", 18,
             "duration-half", Strings.get(Strings.ACTION_DURATION_HALF_TOOLTIP),
-            KeyEvent.VK_5, 0
+            KeyEvent.VK_5, 0,
+            DURATION_FLAGS
         );
     }
 
@@ -97,7 +117,8 @@ public class ElementTypeAction extends StickyUIAction implements UIAction.Elemen
             Kind.DURATION, ElementType.SEMIBREVE,
             Strings.get(Strings.ACTION_DURATION_WHOLE), "@\uF366", 18,
             "duration-whole", Strings.get(Strings.ACTION_DURATION_WHOLE_TOOLTIP),
-            KeyEvent.VK_6, 0
+            KeyEvent.VK_6, 0,
+            DURATION_FLAGS
         );
     }
 
@@ -106,7 +127,8 @@ public class ElementTypeAction extends StickyUIAction implements UIAction.Elemen
             Kind.DURATION, ElementType.GLISSANDO,
             Strings.get(Strings.ACTION_DURATION_GLISSANDO), "connecting-glissando.svg", 26,
             "glissando", Strings.get(Strings.ACTION_DURATION_GLISSANDO_TOOLTIP),
-            KeyEvent.VK_G, 0
+            KeyEvent.VK_G, 0,
+            NON_DURATION_FLAGS // Glissandos do not have a duration
         );
     }
 
@@ -115,7 +137,8 @@ public class ElementTypeAction extends StickyUIAction implements UIAction.Elemen
             Kind.DURATION, ElementType.GLISSANDO,
             Strings.get(Strings.ACTION_DURATION_SLIDE_OUT), "slide-out.svg", 26,
             "slide-out", Strings.get(Strings.ACTION_DURATION_SLIDE_OUT_TOOLTIP),
-            KeyEvent.VK_G, InputEvent.SHIFT_DOWN_MASK | InputEvent.META_DOWN_MASK
+            KeyEvent.VK_G, InputEvent.SHIFT_DOWN_MASK | InputEvent.META_DOWN_MASK,
+            NON_DURATION_FLAGS // Glissandos do not have a duration
         );
     }
 
@@ -124,7 +147,8 @@ public class ElementTypeAction extends StickyUIAction implements UIAction.Elemen
             Kind.NON_DURATION, ElementType.REPEAT_LEFT,
             Strings.get(Strings.ACTION_REPEAT_LEFT), "@\uEF68", 24,
             "left-repeat", Strings.get(Strings.ACTION_REPEAT_LEFT_TOOLTIP),
-            KeyEvent.VK_L, 0
+            KeyEvent.VK_L, 0,
+            NON_DURATION_FLAGS
         );
     }
 
@@ -133,7 +157,8 @@ public class ElementTypeAction extends StickyUIAction implements UIAction.Elemen
             Kind.NON_DURATION, ElementType.REPEAT_RIGHT,
             Strings.get(Strings.ACTION_REPEAT_RIGHT), "@\uF345", 24,
             "right-repeat", Strings.get(Strings.ACTION_REPEAT_RIGHT_TOOLTIP),
-            KeyEvent.VK_R, InputEvent.SHIFT_DOWN_MASK
+            KeyEvent.VK_R, InputEvent.SHIFT_DOWN_MASK,
+            NON_DURATION_FLAGS
         );
     }
 
@@ -142,7 +167,8 @@ public class ElementTypeAction extends StickyUIAction implements UIAction.Elemen
             Kind.NON_DURATION, ElementType.REPEAT_LEFT_RIGHT,
             Strings.get(Strings.ACTION_REPEAT_LEFT_RIGHT), "@\uF34B", 24,
             "left-right-repeat", Strings.get(Strings.ACTION_REPEAT_LEFT_RIGHT_TOOLTIP),
-            0, 0
+            0, 0,
+            NON_DURATION_FLAGS
         );
     }
 
@@ -151,7 +177,8 @@ public class ElementTypeAction extends StickyUIAction implements UIAction.Elemen
             Kind.NON_DURATION, ElementType.FINAL_DOUBLE_BARLINE,
             Strings.get(Strings.ACTION_BARLINE_FINAL_DOUBLE), "@\uF34A", 24,
             "final-double-barline", Strings.get(Strings.ACTION_BARLINE_FINAL_DOUBLE_TOOLTIP),
-            KeyEvent.VK_F, InputEvent.SHIFT_DOWN_MASK
+            KeyEvent.VK_F, InputEvent.SHIFT_DOWN_MASK,
+            NON_DURATION_FLAGS
         );
     }
 
@@ -160,7 +187,8 @@ public class ElementTypeAction extends StickyUIAction implements UIAction.Elemen
             Kind.NON_DURATION, ElementType.DOUBLE_BARLINE,
             Strings.get(Strings.ACTION_BARLINE_DOUBLE_FINE), "@\uF347", 24,
             "double-barline", Strings.get(Strings.ACTION_BARLINE_DOUBLE_FINE_TOOLTIP),
-            KeyEvent.VK_D, 0
+            KeyEvent.VK_D, 0,
+            NON_DURATION_FLAGS
         );
     }
 
@@ -169,7 +197,8 @@ public class ElementTypeAction extends StickyUIAction implements UIAction.Elemen
             Kind.NON_DURATION, ElementType.SINGLE_BARLINE,
             Strings.get(Strings.ACTION_BARLINE_SINGLE), "@\uF346", 24,
             "single-barline", Strings.get(Strings.ACTION_BARLINE_SINGLE_TOOLTIP),
-            0, 0
+            0, 0,
+            NON_DURATION_FLAGS
         );
     }
 
@@ -178,7 +207,8 @@ public class ElementTypeAction extends StickyUIAction implements UIAction.Elemen
             Kind.NON_DURATION, ElementType.BREATH_MARK,
             Strings.get(Strings.ACTION_BREATH_MARK), null, 0,
             "breath-mark", Strings.get(Strings.ACTION_BREATH_MARK_TOOLTIP),
-            0, 0
+            0, 0,
+            NON_DURATION_FLAGS
         );
     }
 
@@ -191,50 +221,12 @@ public class ElementTypeAction extends StickyUIAction implements UIAction.Elemen
         String actionCommand,
         String tooltip,
         int virtualKey,
-        int modifiers
+        int modifiers,
+        Flag... flags
     ) {
-        super(name, icon, size, actionCommand, tooltip, virtualKey, modifiers, computeFlags(kind, type));
+        super(name, icon, size, actionCommand, tooltip, virtualKey, modifiers, flags);
         this.kind = kind;
         this.type = type;
-    }
-
-    private static Flag[] computeFlags(Kind kind, ElementType type) {
-        if (kind == Kind.NON_DURATION) {
-            return new Flag[]{
-                Flag.DISABLE_IN_REST_MODE,
-                Flag.DISABLE_WHEN_PLAYING,
-                Flag.DISABLE_IN_ADJUSTMENT_MODE,
-                Flag.DISABLE_WHEN_EDITING_TEXT,
-                Flag.DISABLE_IN_GRACE_MODE,
-            };
-        }
-
-        if (type == ElementType.GLISSANDO) {
-            return new Flag[]{
-                Flag.DISABLE_WHEN_PLAYING,
-                Flag.DISABLE_IN_ADJUSTMENT_MODE,
-                Flag.DISABLE_WHEN_EDITING_TEXT,
-                Flag.DISABLE_IN_GRACE_MODE,
-                Flag.REQUIRES_EMPTY_SELECTION,
-            };
-        }
-
-        if (type.isGraceNote()) {
-            return new Flag[]{
-                Flag.DISABLE_IN_REST_MODE,
-                Flag.DISABLE_IN_SELECT_MODE,
-                Flag.DISABLE_WHEN_PLAYING,
-                Flag.DISABLE_IN_ADJUSTMENT_MODE,
-                Flag.DISABLE_WHEN_EDITING_TEXT,
-                Flag.DISABLE_IN_GRACE_MODE,
-            };
-        }
-
-        return new Flag[]{
-            Flag.DISABLE_WHEN_PLAYING,
-            Flag.DISABLE_IN_ADJUSTMENT_MODE,
-            Flag.DISABLE_WHEN_EDITING_TEXT,
-        };
     }
 
     public ElementType getType() {
