@@ -25,7 +25,7 @@ import module java.desktop;
 import net.engio.mbassy.listener.Handler;
 
 import songscribe.message.Message;
-import songscribe.notification.ModeDidChangeNotification;
+import songscribe.message.notification.ModeDidChangeNotification;
 
 /**
  * An action that cycles between Edit Mode and Select Mode on each invocation.

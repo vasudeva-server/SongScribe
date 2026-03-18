@@ -25,7 +25,7 @@ import module java.desktop;
 import net.engio.mbassy.listener.Handler;
 
 import songscribe.ui.dialog.TempoChangeDialog;
-import songscribe.notification.MusicSelectionDidChangeNotification;
+import songscribe.message.notification.MusicSelectionDidChangeNotification;
 
 public class TempoChangeAction extends UIAction {
 

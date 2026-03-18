@@ -35,8 +35,8 @@ import songscribe.music.ElementType;
 import songscribe.music.StaffElement;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
-import songscribe.ui.layout2.LayoutConstants;
-import songscribe.util.FatalError;
+import songscribe.ui.layout.LayoutConstants;
+import songscribe.error.FatalError;
 import songscribe.util.GraphicUtils;
 
 /**

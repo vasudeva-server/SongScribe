@@ -23,7 +23,7 @@ import module java.desktop;
 
 import songscribe.message.MessageCenter;
 import songscribe.ui.Control;
-import songscribe.notification.ControlDidChangeNotification;
+import songscribe.message.notification.ControlDidChangeNotification;
 
 public class ControlAction extends SelectableUIAction {
 

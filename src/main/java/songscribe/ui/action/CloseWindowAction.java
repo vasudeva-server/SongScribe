@@ -23,7 +23,7 @@ import module java.desktop;
 
 import songscribe.Strings;
 import songscribe.message.MessageCenter;
-import songscribe.command.CloseWindowCommand;
+import songscribe.message.command.CloseWindowCommand;
 
 public class CloseWindowAction extends UIAction {
 

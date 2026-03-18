@@ -33,7 +33,7 @@ import songscribe.Strings;
 import songscribe.music.Annotation;
 import songscribe.ui.Dialogs;
 import songscribe.music.StaffElement;
-import songscribe.util.FileUtils;
+import songscribe.file.FileUtils;
 
 /**
  * A dialog for adding or modifying an annotation on an element.

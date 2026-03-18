@@ -37,7 +37,7 @@ import org.jspecify.annotations.Nullable;
 import songscribe.Version;
 import songscribe.Strings;
 import songscribe.ui.Dialogs;
-import songscribe.data.MyFileFilter;
+import songscribe.file.MyFileFilter;
 import songscribe.music.Annotation;
 import songscribe.music.ArticulationType;
 import songscribe.music.Composition;
@@ -49,7 +49,7 @@ import songscribe.music.Tempo;
 import songscribe.ui.Constants;
 import songscribe.ui.dialog.PlatformFileDialog;
 import songscribe.ui.playback.PlaybackController;
-import songscribe.util.FileUtils;
+import songscribe.file.FileUtils;
 
 /**
  * The following features are not supported in abc 2.1

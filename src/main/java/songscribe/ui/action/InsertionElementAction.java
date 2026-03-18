@@ -25,7 +25,7 @@ import module java.desktop;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.message.MessageCenter;
-import songscribe.command.UpdateInsertionElementCommand;
+import songscribe.message.command.UpdateInsertionElementCommand;
 
 /**
  * This class is the superclass for all actions that change the insertion element.

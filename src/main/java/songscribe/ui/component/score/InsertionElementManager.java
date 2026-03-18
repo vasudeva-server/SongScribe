@@ -29,8 +29,8 @@ import org.jspecify.annotations.Nullable;
 import net.engio.mbassy.listener.Handler;
 
 import songscribe.Strings;
-import songscribe.data.BeamInterval;
-import songscribe.notification.CompositionDidChangeNotification;
+import songscribe.music.BeamInterval;
+import songscribe.message.notification.CompositionDidChangeNotification;
 import songscribe.message.MessageCenter;
 import songscribe.music.ElementType;
 import songscribe.music.Line;
@@ -42,10 +42,10 @@ import songscribe.ui.action.Actions;
 import songscribe.ui.component.Score;
 import songscribe.ui.edit.EditModeManager;
 import songscribe.ui.layout.LayoutStylesheet;
-import songscribe.ui.layout2.InsertionSpacingCalculator;
-import songscribe.ui.layout2.LayoutResult;
-import songscribe.ui.layout2.ScaleContext;
-import songscribe.notification.ModeDidChangeNotification;
+import songscribe.ui.layout.InsertionSpacingCalculator;
+import songscribe.ui.layout.LayoutResult;
+import songscribe.ui.layout.ScaleContext;
+import songscribe.message.notification.ModeDidChangeNotification;
 
 /**
  * Manages the insertion element subsystem for {@link LineComponent}.

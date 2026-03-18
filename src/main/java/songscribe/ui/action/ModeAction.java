@@ -25,7 +25,7 @@ import module java.desktop;
 import songscribe.Strings;
 import songscribe.message.MessageCenter;
 import songscribe.ui.Mode;
-import songscribe.notification.ModeDidChangeNotification;
+import songscribe.message.notification.ModeDidChangeNotification;
 
 public class ModeAction extends SelectableUIAction {
 

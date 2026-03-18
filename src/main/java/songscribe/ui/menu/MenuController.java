@@ -40,7 +40,7 @@ import net.engio.mbassy.listener.Handler;
 import songscribe.Strings;
 import songscribe.Version;
 import songscribe.message.MessageCenter;
-import songscribe.notification.RecentDocumentsDidChangeNotification;
+import songscribe.message.notification.RecentDocumentsDidChangeNotification;
 import songscribe.prefs.RecentDocumentsManager;
 import songscribe.ui.action.Actions;
 import songscribe.ui.action.ClearRecentsAction;

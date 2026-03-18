@@ -28,7 +28,7 @@ import java.util.List;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.music.Line;
-import songscribe.ui.layout2.ScaleContext;
+import songscribe.ui.layout.ScaleContext;
 
 /**
  * Detects collisions between layout elements and calculates extent bounds.

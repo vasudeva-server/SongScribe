@@ -24,7 +24,7 @@ import module java.desktop;
 
 
 import songscribe.music.StaffElement;
-import songscribe.ui.layout2.ScaleContext;
+import songscribe.ui.layout.ScaleContext;
 
 /**
  * Static hit-testing utilities for note heads in a {@link LineComponent}.

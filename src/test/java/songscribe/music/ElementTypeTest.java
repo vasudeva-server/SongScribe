@@ -30,8 +30,8 @@ import org.junit.jupiter.api.Test;
 import songscribe.UnitTest;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
-import songscribe.ui.layout2.LayoutConstants;
-import songscribe.ui.layout2.ScaleContext;
+import songscribe.ui.layout.LayoutConstants;
+import songscribe.ui.layout.ScaleContext;
 
 class ElementTypeTest extends UnitTest {
 

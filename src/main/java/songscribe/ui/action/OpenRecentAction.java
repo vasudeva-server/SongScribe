@@ -26,7 +26,7 @@ import java.nio.file.Path;
 
 import songscribe.Strings;
 import songscribe.message.MessageCenter;
-import songscribe.command.OpenFileCommand;
+import songscribe.message.command.OpenFileCommand;
 import songscribe.prefs.RecentDocumentsManager;
 import songscribe.ui.Dialogs;
 

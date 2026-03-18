@@ -22,7 +22,7 @@ package songscribe.export;
 import java.io.File;
 
 import songscribe.Strings;
-import songscribe.data.PageLayoutData;
+import songscribe.export.PageLayoutData;
 import songscribe.ui.Dialogs;
 import songscribe.util.GraphicUtils;
 

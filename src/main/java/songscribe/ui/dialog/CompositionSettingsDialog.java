@@ -31,11 +31,11 @@ import org.jspecify.annotations.Nullable;
 import kotlin.Pair;
 
 import songscribe.Strings;
-import songscribe.notification.FontDidChangeNotification;
-import songscribe.notification.KeySignatureDidChangeNotification;
+import songscribe.message.notification.FontDidChangeNotification;
+import songscribe.message.notification.KeySignatureDidChangeNotification;
 import songscribe.message.MessageCenter;
-import songscribe.notification.MetadataDidChangeNotification;
-import songscribe.notification.TempoDidChangeNotification;
+import songscribe.message.notification.MetadataDidChangeNotification;
+import songscribe.message.notification.TempoDidChangeNotification;
 import songscribe.music.Composition;
 import songscribe.music.KeyType;
 import songscribe.music.Tempo;
@@ -47,7 +47,7 @@ import songscribe.ui.component.MyJTextArea;
 import songscribe.ui.component.MyJTextField;
 import songscribe.ui.component.NumericTextField;
 import songscribe.ui.fontchooser.FontDialog;
-import songscribe.util.FileUtils;
+import songscribe.file.FileUtils;
 import songscribe.util.MyFontUtils;
 import songscribe.util.UIUtils;
 

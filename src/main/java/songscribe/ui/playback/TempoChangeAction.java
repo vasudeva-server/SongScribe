@@ -23,7 +23,7 @@ import module java.desktop;
 
 import songscribe.Strings;
 import songscribe.message.MessageCenter;
-import songscribe.notification.PlaybackTempoDidChangeNotification;
+import songscribe.message.notification.PlaybackTempoDidChangeNotification;
 
 public class TempoChangeAction extends AbstractAction {
 

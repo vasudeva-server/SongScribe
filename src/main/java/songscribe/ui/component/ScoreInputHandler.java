@@ -34,7 +34,7 @@ import songscribe.ui.component.score.LineComponent;
 import songscribe.ui.debug.DebugInspector;
 import songscribe.ui.edit.EditModeManager;
 import songscribe.ui.menu.DebugState;
-import songscribe.command.DeselectCommand;
+import songscribe.message.command.DeselectCommand;
 import songscribe.ui.playback.MidiController;
 import songscribe.util.UIUtils;
 

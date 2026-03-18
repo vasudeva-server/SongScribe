@@ -24,7 +24,7 @@ import module java.desktop;
 
 import songscribe.Strings;
 import songscribe.message.MessageCenter;
-import songscribe.command.FirstSecondEndingCommand;
+import songscribe.message.command.FirstSecondEndingCommand;
 
 public class FirstSecondEndingAction extends UIAction {
 

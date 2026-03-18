@@ -25,7 +25,7 @@ import net.engio.mbassy.listener.Handler;
 
 import songscribe.Strings;
 import songscribe.message.Message;
-import songscribe.notification.PlaybackStateDidChangeNotification;
+import songscribe.message.notification.PlaybackStateDidChangeNotification;
 
 public class PlayPauseAction extends SequencerAction {
 

@@ -50,8 +50,8 @@ import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.Score;
 import songscribe.ui.component.score.InsertionElementManager;
 import songscribe.ui.component.score.LineComponent;
-import songscribe.ui.layout2.InsertionSpacingCalculator;
-import songscribe.ui.layout2.LayoutResult;
+import songscribe.ui.layout.InsertionSpacingCalculator;
+import songscribe.ui.layout.LayoutResult;
 import songscribe.ui.selection.SelectionCoordinator;
 
 class GraceModeManagerTest extends UnitTest {
@@ -716,7 +716,7 @@ class GraceModeManagerTest extends UnitTest {
      */
     private void setupLayoutForInsert(LineComponent lineComponent, StaffElement graceNote) {
         var mockLayout = mock(LayoutResult.class);
-        var mockColumn = mock(songscribe.ui.layout2.ElementColumn.class);
+        var mockColumn = mock(songscribe.ui.layout.ElementColumn.class);
 
         when(lineComponent.getLayoutResult()).thenReturn(mockLayout);
         when(mockLayout.getElementColumn(graceNote)).thenReturn(mockColumn);

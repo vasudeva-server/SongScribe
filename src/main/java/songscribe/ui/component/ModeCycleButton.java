@@ -28,10 +28,10 @@ import net.engio.mbassy.listener.Handler;
 import songscribe.message.MessageCenter;
 import songscribe.ui.action.ModeAction;
 import songscribe.ui.edit.GraceModeManager;
-import songscribe.notification.GraceModeStateDidChangeNotification;
-import songscribe.notification.ModeDidChangeNotification;
+import songscribe.message.notification.GraceModeStateDidChangeNotification;
+import songscribe.message.notification.ModeDidChangeNotification;
 import songscribe.ui.playback.PlaybackController;
-import songscribe.notification.PlaybackStateDidChangeNotification;
+import songscribe.message.notification.PlaybackStateDidChangeNotification;
 import songscribe.util.UIUtils;
 
 /**

@@ -27,8 +27,8 @@ import net.engio.mbassy.listener.Handler;
 
 import songscribe.message.Message;
 import songscribe.message.MessageCenter;
-import songscribe.notification.MusicSelectionDidChangeNotification;
-import songscribe.command.ToggleTupletCommand;
+import songscribe.message.notification.MusicSelectionDidChangeNotification;
+import songscribe.message.command.ToggleTupletCommand;
 import songscribe.util.StringUtils;
 
 public class TupletAction extends UIAction {

@@ -33,7 +33,7 @@ import songscribe.Strings;
 import songscribe.ui.Dialogs;
 import songscribe.ui.playback.InstrumentDialog;
 import songscribe.ui.playback.PlaybackController;
-import songscribe.util.FileUtils;
+import songscribe.file.FileUtils;
 
 public class ExportMidiDialog extends StandardDialog {
 

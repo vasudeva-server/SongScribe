@@ -31,7 +31,7 @@ import songscribe.smufl.SMuFLMetadata;
 import songscribe.smufl.StaffSpaces;
 import songscribe.ui.layout.FermataAttachment;
 import songscribe.ui.layout.LayoutStylesheet;
-import songscribe.ui.layout2.ScaleContext;
+import songscribe.ui.layout.ScaleContext;
 import songscribe.util.GraphicUtils;
 
 /**

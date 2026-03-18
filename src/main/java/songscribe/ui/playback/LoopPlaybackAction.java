@@ -23,7 +23,7 @@ import module java.desktop;
 
 import songscribe.Strings;
 import songscribe.message.MessageCenter;
-import songscribe.command.ToggleLoopPlaybackCommand;
+import songscribe.message.command.ToggleLoopPlaybackCommand;
 import songscribe.ui.action.SelectableUIAction;
 
 public class LoopPlaybackAction extends SelectableUIAction {

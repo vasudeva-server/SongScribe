@@ -27,7 +27,7 @@ import com.formdev.flatlaf.util.SystemFileChooser;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.data.MyFileFilter;
+import songscribe.file.MyFileFilter;
 import songscribe.ui.component.MainFrame;
 
 public class PlatformFileDialog {

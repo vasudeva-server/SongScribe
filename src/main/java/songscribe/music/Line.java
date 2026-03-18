@@ -31,19 +31,19 @@ import org.jspecify.annotations.Nullable;
 
 import kotlin.Pair;
 
-import songscribe.data.BeamInterval;
-import songscribe.data.DynamicsInterval;
-import songscribe.data.EndingInterval;
-import songscribe.data.IntervalSet;
-import songscribe.data.TieInterval;
-import songscribe.data.TupletInterval;
-import songscribe.notification.CompositionDidChangeNotification;
+import songscribe.music.BeamInterval;
+import songscribe.music.DynamicsInterval;
+import songscribe.music.EndingInterval;
+import songscribe.music.IntervalSet;
+import songscribe.music.TieInterval;
+import songscribe.music.TupletInterval;
+import songscribe.message.notification.CompositionDidChangeNotification;
 import songscribe.message.MessageCenter;
 import songscribe.midi.GlissandoMidiHelper;
 import songscribe.midi.PlaybackSettings;
 import songscribe.ui.layout.LayoutStylesheet;
 import songscribe.ui.layout.RangeElement;
-import songscribe.ui.layout2.ScaleContext;
+import songscribe.ui.layout.ScaleContext;
 import songscribe.ui.playback.MidiMetaMessageTypes;
 import songscribe.ui.playback.PlaybackController;
 

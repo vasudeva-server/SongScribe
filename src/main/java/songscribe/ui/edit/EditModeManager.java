@@ -25,7 +25,7 @@ import java.util.function.Supplier;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
-import songscribe.notification.CompositionDidChangeNotification;
+import songscribe.message.notification.CompositionDidChangeNotification;
 import songscribe.message.MessageCenter;
 import songscribe.music.ArticulationType;
 import songscribe.music.Composition;
@@ -38,7 +38,7 @@ import songscribe.ui.Dialogs;
 import songscribe.ui.action.Actions;
 import songscribe.ui.clipboard.ClipboardManager;
 import songscribe.ui.layout.Articulation;
-import songscribe.ui.layout2.InsertionSpacingCalculator;
+import songscribe.ui.layout.InsertionSpacingCalculator;
 import songscribe.ui.playback.PlayThread;
 import songscribe.ui.selection.SelectionCoordinator;
 

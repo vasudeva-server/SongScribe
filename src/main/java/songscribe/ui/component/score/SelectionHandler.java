@@ -30,7 +30,7 @@ import songscribe.Strings;
 import songscribe.music.StaffElement;
 import songscribe.ui.Dialogs;
 import songscribe.ui.Mode;
-import songscribe.ui.layout2.ScaleContext;
+import songscribe.ui.layout.ScaleContext;
 import songscribe.ui.playback.MidiController;
 import songscribe.ui.playback.PlayThread;
 import songscribe.ui.renderer.GlissandoRenderer;

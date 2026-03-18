@@ -38,7 +38,7 @@ import songscribe.ui.Mode;
 import songscribe.ui.action.Actions;
 import songscribe.ui.action.UIAction;
 import songscribe.ui.component.score.InsertionElementManager;
-import songscribe.ui.layout2.ScaleContext;
+import songscribe.ui.layout.ScaleContext;
 
 /**
  * Consolidated E2E test for selection mechanics, toolbar reflection,

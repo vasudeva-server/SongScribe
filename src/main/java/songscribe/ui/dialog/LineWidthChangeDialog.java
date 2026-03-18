@@ -29,7 +29,7 @@ import songscribe.prefs.Prefs;
 import songscribe.Strings;
 import songscribe.ui.Dialogs;
 import songscribe.ui.component.NumericTextField;
-import songscribe.ui.layout2.ScaleContext;
+import songscribe.ui.layout.ScaleContext;
 import songscribe.util.GraphicUtils;
 import songscribe.util.UIUtils;
 import songscribe.util.Utils;

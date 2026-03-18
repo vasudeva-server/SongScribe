@@ -27,7 +27,7 @@ import com.intellij.uiDesigner.core.GridLayoutManager;
 import com.intellij.uiDesigner.core.Spacer;
 
 import songscribe.Strings;
-import songscribe.notification.LyricsDidChangeNotification;
+import songscribe.message.notification.LyricsDidChangeNotification;
 import songscribe.message.MessageCenter;
 import songscribe.ui.Constants;
 import songscribe.ui.component.MyJTextArea;

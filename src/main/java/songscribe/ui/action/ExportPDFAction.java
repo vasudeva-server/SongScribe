@@ -27,12 +27,12 @@ import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
-import songscribe.data.MyFileFilter;
-import songscribe.data.PageLayoutData;
+import songscribe.file.MyFileFilter;
+import songscribe.export.PageLayoutData;
 import songscribe.export.PDFExporter;
 import songscribe.ui.dialog.ExportPDFDialog;
 import songscribe.ui.dialog.PlatformFileDialog;
-import songscribe.util.FileUtils;
+import songscribe.file.FileUtils;
 
 public class ExportPDFAction extends UIAction {
 

@@ -30,7 +30,7 @@ import net.engio.mbassy.listener.Handler;
 import songscribe.message.MessageCenter;
 import songscribe.ui.action.Actions;
 import songscribe.ui.action.UIAction;
-import songscribe.notification.MusicSelectionDidChangeNotification;
+import songscribe.message.notification.MusicSelectionDidChangeNotification;
 import songscribe.util.GraphicUtils;
 
 public class InsertPopupButton extends PopupButton {

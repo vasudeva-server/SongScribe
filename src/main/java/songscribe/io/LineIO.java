@@ -26,13 +26,13 @@ import org.jspecify.annotations.Nullable;
 
 import org.xml.sax.Attributes;
 
-import songscribe.data.BeamInterval;
-import songscribe.data.DynamicsInterval;
-import songscribe.data.EndingInterval;
-import songscribe.data.Interval;
-import songscribe.data.IntervalSet;
-import songscribe.data.TieInterval;
-import songscribe.data.TupletInterval;
+import songscribe.music.BeamInterval;
+import songscribe.music.DynamicsInterval;
+import songscribe.music.EndingInterval;
+import songscribe.music.Interval;
+import songscribe.music.IntervalSet;
+import songscribe.music.TieInterval;
+import songscribe.music.TupletInterval;
 import songscribe.music.KeyType;
 import songscribe.music.Line;
 

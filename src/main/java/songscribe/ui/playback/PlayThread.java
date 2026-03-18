@@ -21,7 +21,7 @@ package songscribe.ui.playback;
 
 import module java.desktop;
 
-import songscribe.util.FatalError;
+import songscribe.error.FatalError;
 
 public class PlayThread extends Thread {
 

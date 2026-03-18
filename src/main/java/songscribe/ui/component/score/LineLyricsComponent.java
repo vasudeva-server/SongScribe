@@ -26,7 +26,7 @@ import org.jspecify.annotations.Nullable;
 
 import songscribe.music.Line;
 import songscribe.ui.layout.LayoutStylesheet;
-import songscribe.ui.layout2.ScaleContext;
+import songscribe.ui.layout.ScaleContext;
 import songscribe.ui.renderer.ElementRenderContext;
 import songscribe.ui.renderer.LyricsRenderer;
 

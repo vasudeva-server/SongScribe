@@ -28,7 +28,7 @@ import java.awt.event.MouseEvent;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
-import songscribe.notification.CompositionDidChangeNotification;
+import songscribe.message.notification.CompositionDidChangeNotification;
 import songscribe.music.ElementType;
 import songscribe.music.Line;
 import songscribe.music.StaffElement;
@@ -37,11 +37,11 @@ import songscribe.ui.action.Actions;
 import songscribe.ui.action.UIAction;
 import songscribe.ui.component.score.InsertionElementManager;
 import songscribe.ui.component.score.LineComponent;
-import songscribe.ui.layout2.ElementColumnBuilder;
-import songscribe.ui.layout2.InsertionSpacingCalculator;
-import songscribe.ui.layout2.LayoutConstants;
-import songscribe.ui.layout2.ScaleContext;
-import songscribe.notification.GraceModeStateDidChangeNotification;
+import songscribe.ui.layout.ElementColumnBuilder;
+import songscribe.ui.layout.InsertionSpacingCalculator;
+import songscribe.ui.layout.LayoutConstants;
+import songscribe.ui.layout.ScaleContext;
+import songscribe.message.notification.GraceModeStateDidChangeNotification;
 import songscribe.ui.selection.SelectionCoordinator;
 
 /**

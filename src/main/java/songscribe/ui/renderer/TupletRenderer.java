@@ -37,9 +37,9 @@ import songscribe.smufl.SMuFLMetadata;
 import songscribe.smufl.StaffSpaces;
 import songscribe.ui.layout.LayoutStylesheet;
 import songscribe.ui.layout.Tuplet;
-import songscribe.ui.layout2.LayoutConstants;
-import songscribe.ui.layout2.LayoutResult;
-import songscribe.ui.layout2.ScaleContext;
+import songscribe.ui.layout.LayoutConstants;
+import songscribe.ui.layout.LayoutResult;
+import songscribe.ui.layout.ScaleContext;
 import songscribe.util.GraphicUtils;
 
 /**

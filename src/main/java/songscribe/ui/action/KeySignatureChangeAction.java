@@ -27,7 +27,7 @@ import net.engio.mbassy.listener.Handler;
 import songscribe.Strings;
 import songscribe.message.Message;
 import songscribe.ui.dialog.KeySignatureChangeDialog;
-import songscribe.notification.MusicSelectionDidChangeNotification;
+import songscribe.message.notification.MusicSelectionDidChangeNotification;
 
 public class KeySignatureChangeAction extends UIAction {
 

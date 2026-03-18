@@ -26,7 +26,8 @@ import static songscribe.ui.renderer.GraphicsState.Property.STROKE;
 import module java.desktop;
 
 
-import songscribe.data.DynamicsInterval;
+import songscribe.music.DynamicsInterval;
+import songscribe.music.IntervalSet;
 import songscribe.music.Line;
 import songscribe.music.StaffElement;
 import songscribe.smufl.EngravingDefaults;
@@ -36,7 +37,7 @@ import songscribe.ui.layout.Crescendo;
 import songscribe.ui.layout.Diminuendo;
 import songscribe.ui.layout.LayoutStylesheet;
 import songscribe.ui.layout.LineElement;
-import songscribe.ui.layout2.ScaleContext;
+import songscribe.ui.layout.ScaleContext;
 
 /**
  * Renders crescendo and diminuendo hairpins.
@@ -227,7 +228,7 @@ public class DynamicsRenderer extends BaseElementRenderer<LineElement> {
         Graphics2D g2,
         Line line,
         ElementRenderContext ctx,
-        songscribe.data.IntervalSet<DynamicsInterval> dynamics,
+        IntervalSet<DynamicsInterval> dynamics,
         boolean isCrescendo
     ) {
         for (var iter = dynamics.listIterator(); iter.hasNext(); ) {

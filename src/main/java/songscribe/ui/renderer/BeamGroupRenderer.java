@@ -36,8 +36,8 @@ import songscribe.smufl.SMuFLMetadata;
 import songscribe.ui.component.Score;
 import songscribe.ui.component.score.InsertionElementManager;
 import songscribe.ui.layout.LineElement;
-import songscribe.ui.layout2.LayoutConstants;
-import songscribe.ui.layout2.LayoutResult;
+import songscribe.ui.layout.LayoutConstants;
+import songscribe.ui.layout.LayoutResult;
 import songscribe.util.GraphicUtils;
 
 /**

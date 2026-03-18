@@ -20,7 +20,7 @@
 
 package songscribe.ui.layout;
 
-import songscribe.ui.layout2.ScaleContext;
+import songscribe.ui.layout.ScaleContext;
 
 /**
  * Represents the 5 horizontal staff lines within a Line.

@@ -29,7 +29,7 @@ import org.jspecify.annotations.Nullable;
 
 import songscribe.message.MessageCenter;
 import songscribe.ui.action.UIAction;
-import songscribe.notification.MenuWillOpenNotification;
+import songscribe.message.notification.MenuWillOpenNotification;
 import songscribe.util.UIUtils;
 
 /**

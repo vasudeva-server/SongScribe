@@ -22,7 +22,7 @@ package songscribe.ui.layout;
 
 import module java.desktop;
 
-import songscribe.ui.layout2.ScaleContext;
+import songscribe.ui.layout.ScaleContext;
 
 /**
  * Centralized layout constants (CSS-like stylesheet).

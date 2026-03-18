@@ -31,12 +31,12 @@ import java.util.stream.IntStream;
 import kotlin.Pair;
 
 import songscribe.Strings;
-import songscribe.data.BeamInterval;
-import songscribe.data.DynamicsInterval;
-import songscribe.data.EndingInterval;
-import songscribe.data.Interval;
-import songscribe.data.TieInterval;
-import songscribe.data.TupletInterval;
+import songscribe.music.BeamInterval;
+import songscribe.music.DynamicsInterval;
+import songscribe.music.EndingInterval;
+import songscribe.music.Interval;
+import songscribe.music.TieInterval;
+import songscribe.music.TupletInterval;
 import songscribe.ui.Dialogs;
 import songscribe.ui.selection.LineSelectionState;
 import songscribe.ui.selection.SelectionCoordinator;

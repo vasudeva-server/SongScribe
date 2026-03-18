@@ -30,7 +30,7 @@ import org.jspecify.annotations.Nullable;
 
 import songscribe.music.Composition;
 import songscribe.ui.layout.LayoutStylesheet;
-import songscribe.ui.layout2.ScaleContext;
+import songscribe.ui.layout.ScaleContext;
 
 /**
  * Panel containing all staff lines of a composition.

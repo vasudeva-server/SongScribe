@@ -39,9 +39,9 @@ import songscribe.music.StaffElement;
 import songscribe.smufl.EngravingDefaults;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
-import songscribe.ui.layout2.LayoutConstants;
-import songscribe.ui.layout2.LayoutResult;
-import songscribe.ui.layout2.ScaleContext;
+import songscribe.ui.layout.LayoutConstants;
+import songscribe.ui.layout.LayoutResult;
+import songscribe.ui.layout.ScaleContext;
 
 /**
  * Renders glissando lines connecting notes as filled rectangles.

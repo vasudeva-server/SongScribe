@@ -22,7 +22,7 @@ package songscribe.ui.layout;
 
 
 import songscribe.music.KeyType;
-import songscribe.ui.layout2.ScaleContext;
+import songscribe.ui.layout.ScaleContext;
 
 /**
  * Represents the key signature (sharps or flats) at the start of a staff line.

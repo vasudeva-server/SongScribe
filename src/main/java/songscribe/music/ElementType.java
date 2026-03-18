@@ -33,8 +33,8 @@ import songscribe.smufl.BBox;
 import songscribe.smufl.EngravingDefaults;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
-import songscribe.ui.layout2.LayoutConstants;
-import songscribe.util.FatalError;
+import songscribe.ui.layout.LayoutConstants;
+import songscribe.error.FatalError;
 import songscribe.util.UIUtils;
 
 @SuppressWarnings("ALL")

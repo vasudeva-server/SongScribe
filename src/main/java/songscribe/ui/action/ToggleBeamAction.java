@@ -27,8 +27,8 @@ import net.engio.mbassy.listener.Handler;
 
 import songscribe.Strings;
 import songscribe.message.MessageCenter;
-import songscribe.notification.MusicSelectionDidChangeNotification;
-import songscribe.command.ToggleBeamCommand;
+import songscribe.message.notification.MusicSelectionDidChangeNotification;
+import songscribe.message.command.ToggleBeamCommand;
 
 public class ToggleBeamAction extends UIAction {
 

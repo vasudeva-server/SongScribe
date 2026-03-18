@@ -24,7 +24,7 @@ import module java.desktop;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
-import songscribe.data.PageLayoutData;
+import songscribe.export.PageLayoutData;
 public class ExportPDFDialog extends StandardDialog {
 
     private final PaperSizeStep paperSizePanel;

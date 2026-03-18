@@ -20,11 +20,11 @@
 package songscribe.io;
 
 
-import songscribe.data.DynamicsInterval;
-import songscribe.data.EndingInterval;
-import songscribe.data.Interval;
-import songscribe.data.IntervalSet;
-import songscribe.data.TupletInterval;
+import songscribe.music.DynamicsInterval;
+import songscribe.music.EndingInterval;
+import songscribe.music.Interval;
+import songscribe.music.IntervalSet;
+import songscribe.music.TupletInterval;
 import java.util.List;
 
 import songscribe.music.Line;
@@ -41,7 +41,7 @@ import songscribe.ui.layout.TempoAttachment;
 import songscribe.ui.layout.Tie;
 import songscribe.ui.layout.Trill;
 import songscribe.ui.layout.Tuplet;
-import songscribe.ui.layout2.ScaleContext;
+import songscribe.ui.layout.ScaleContext;
 
 /**
  * Migrates composition data from legacy format (version 1) to new format (version 2).

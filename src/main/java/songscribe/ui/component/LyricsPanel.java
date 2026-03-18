@@ -28,8 +28,8 @@ import com.intellij.uiDesigner.core.GridLayoutManager;
 import net.engio.mbassy.listener.Handler;
 
 import songscribe.message.MessageCenter;
-import songscribe.notification.CompositionDidChangeNotification;
-import songscribe.notification.LyricsDidChangeNotification;
+import songscribe.message.notification.CompositionDidChangeNotification;
+import songscribe.message.notification.LyricsDidChangeNotification;
 import songscribe.ui.dialog.LyricsDialog;
 
 @SuppressWarnings("NonStaticInitializer")

@@ -24,7 +24,7 @@ import java.util.ArrayList;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.data.IntervalSet;
+import songscribe.music.IntervalSet;
 import songscribe.music.StaffElement;
 
 /**

@@ -24,7 +24,7 @@ import module java.desktop;
 
 import songscribe.Strings;
 import songscribe.message.MessageCenter;
-import songscribe.command.DeselectCommand;
+import songscribe.message.command.DeselectCommand;
 import songscribe.util.UIUtils;
 
 public class DeselectAction extends UIAction {

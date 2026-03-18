@@ -27,10 +27,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import songscribe.SongScribe;
-import songscribe.data.PageLayoutData;
+import songscribe.export.PageLayoutData;
 import songscribe.ui.action.ExportPDFAction;
 import songscribe.ui.component.Score;
-import songscribe.util.FileUtils;
+import songscribe.file.FileUtils;
 
 @SuppressWarnings({ "ConstantValue", "FieldMayBeStatic" })
 public class PDFConverter {

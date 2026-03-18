@@ -36,11 +36,11 @@ import songscribe.ui.component.Score;
 import songscribe.ui.layout.CollisionDetector;
 import songscribe.ui.layout.LayoutStylesheet;
 import songscribe.ui.layout.TempoAttachment;
-import songscribe.ui.layout2.LayoutEngine;
-import songscribe.ui.layout2.LayoutResult;
-import songscribe.ui.layout2.ScaleContext;
+import songscribe.ui.layout.LayoutEngine;
+import songscribe.ui.layout.LayoutResult;
+import songscribe.ui.layout.ScaleContext;
 import songscribe.ui.selection.LineSelectionState;
-import songscribe.util.FatalError;
+import songscribe.error.FatalError;
 
 /**
  * Component that renders a single staff line with its musical content.

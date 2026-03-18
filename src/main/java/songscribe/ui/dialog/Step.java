@@ -23,7 +23,7 @@ import module java.desktop;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.data.PageLayoutData;
+import songscribe.export.PageLayoutData;
 
 public class Step extends JPanel {
 

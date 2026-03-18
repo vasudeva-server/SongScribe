@@ -32,7 +32,7 @@ import com.formdev.flatlaf.util.SystemInfo;
 
 import songscribe.Strings;
 import songscribe.ui.Dialogs;
-import songscribe.data.MyDesktop;
+import songscribe.util.DesktopUtils;
 import songscribe.ui.component.MainFrame;
 
 public final class Utils {
@@ -70,8 +70,8 @@ public final class Utils {
     }
 
     public static void openWebPage(MainFrame mainFrame, String webPage) {
-        if (MyDesktop.isDesktopSupported()) {
-            var desktop = MyDesktop.getDesktop();
+        if (DesktopUtils.isDesktopSupported()) {
+            var desktop = DesktopUtils.getDesktop();
 
             if (desktop == null) {
                 return;
@@ -90,8 +90,8 @@ public final class Utils {
     }
 
     public static void openEmail(MainFrame mainFrame, String email) {
-        if (MyDesktop.isDesktopSupported()) {
-            var desktop = MyDesktop.getDesktop();
+        if (DesktopUtils.isDesktopSupported()) {
+            var desktop = DesktopUtils.getDesktop();
 
             if (desktop == null) {
                 return;

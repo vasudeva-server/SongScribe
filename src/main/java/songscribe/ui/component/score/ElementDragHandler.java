@@ -27,8 +27,8 @@ import java.awt.event.MouseEvent;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
-import songscribe.data.TieInterval;
-import songscribe.notification.CompositionDidChangeNotification;
+import songscribe.music.TieInterval;
+import songscribe.message.notification.CompositionDidChangeNotification;
 import songscribe.message.MessageCenter;
 import songscribe.music.Line;
 import songscribe.music.StaffElement;
@@ -37,7 +37,7 @@ import songscribe.ui.Mode;
 import songscribe.ui.action.Actions;
 import songscribe.ui.component.Score;
 import songscribe.ui.edit.EditModeManager;
-import songscribe.ui.layout2.ScaleContext;
+import songscribe.ui.layout.ScaleContext;
 import songscribe.ui.playback.MidiController;
 import songscribe.ui.playback.PlayThread;
 

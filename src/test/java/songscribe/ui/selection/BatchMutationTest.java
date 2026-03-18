@@ -30,9 +30,9 @@ import java.util.Objects;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.data.BeamInterval;
-import songscribe.data.TieInterval;
-import songscribe.data.TupletInterval;
+import songscribe.music.BeamInterval;
+import songscribe.music.TieInterval;
+import songscribe.music.TupletInterval;
 import songscribe.music.Composition;
 import songscribe.music.ElementType;
 import songscribe.music.Line;

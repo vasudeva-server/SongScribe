@@ -28,7 +28,7 @@ import org.jspecify.annotations.Nullable;
 
 import songscribe.music.Composition;
 import songscribe.ui.layout.LayoutStylesheet;
-import songscribe.ui.layout2.ScaleContext;
+import songscribe.ui.layout.ScaleContext;
 
 /**
  * Top-level panel for the score component hierarchy.

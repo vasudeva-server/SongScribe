@@ -26,10 +26,10 @@ import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
-import songscribe.data.MyFileFilter;
+import songscribe.file.MyFileFilter;
 import songscribe.ui.dialog.ExportMidiDialog;
 import songscribe.ui.dialog.PlatformFileDialog;
-import songscribe.util.FileUtils;
+import songscribe.file.FileUtils;
 
 public class ExportMidiAction extends UIAction {
 

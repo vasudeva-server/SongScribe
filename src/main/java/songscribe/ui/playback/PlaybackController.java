@@ -28,7 +28,7 @@ import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
 import songscribe.message.MessageCenter;
-import songscribe.notification.PlaybackStateDidChangeNotification;
+import songscribe.message.notification.PlaybackStateDidChangeNotification;
 import songscribe.midi.MidiSequenceBuilder;
 import songscribe.midi.PlaybackSettings;
 import songscribe.music.Composition;

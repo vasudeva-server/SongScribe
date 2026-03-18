@@ -28,8 +28,8 @@ import org.jspecify.annotations.Nullable;
 import songscribe.Strings;
 import songscribe.music.StaffElement;
 import songscribe.music.Tempo;
-import songscribe.util.FatalError;
-import songscribe.util.FileUtils;
+import songscribe.error.FatalError;
+import songscribe.file.FileUtils;
 
 public class TempoChangeDialog extends StandardDialog {
 

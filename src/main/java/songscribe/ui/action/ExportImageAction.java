@@ -28,14 +28,14 @@ import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
-import songscribe.data.MyFileFilter;
+import songscribe.file.MyFileFilter;
 import songscribe.export.ExportOptions;
 import songscribe.ui.Dialogs;
 import songscribe.prefs.Prefs;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.dialog.PlatformFileDialog;
 import songscribe.ui.dialog.ResolutionDialog;
-import songscribe.util.FileUtils;
+import songscribe.file.FileUtils;
 import songscribe.util.GraphicUtils;
 import songscribe.util.Utils;
 

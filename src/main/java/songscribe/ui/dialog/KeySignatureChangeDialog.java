@@ -24,7 +24,7 @@ import module java.desktop;
 import java.util.Objects;
 
 import songscribe.Strings;
-import songscribe.notification.KeySignatureDidChangeNotification;
+import songscribe.message.notification.KeySignatureDidChangeNotification;
 import songscribe.message.MessageCenter;
 import songscribe.music.KeyType;
 

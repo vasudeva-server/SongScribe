@@ -23,7 +23,7 @@ import module java.desktop;
 
 import songscribe.Strings;
 import songscribe.message.MessageCenter;
-import songscribe.command.ShowOpenDialogCommand;
+import songscribe.message.command.ShowOpenDialogCommand;
 import songscribe.util.UIUtils;
 
 public class OpenAction extends UIAction {

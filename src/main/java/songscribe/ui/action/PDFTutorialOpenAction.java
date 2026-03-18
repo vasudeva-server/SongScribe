@@ -28,7 +28,7 @@ import java.util.Objects;
 import com.formdev.flatlaf.util.SystemInfo;
 
 import songscribe.Strings;
-import songscribe.data.MyDesktop;
+import songscribe.util.DesktopUtils;
 import songscribe.ui.Dialogs;
 import songscribe.ui.component.MainFrame;
 import songscribe.util.Utils;
@@ -52,8 +52,8 @@ public class PDFTutorialOpenAction extends AbstractAction {
     @Override
     public void actionPerformed(ActionEvent e) {
         try {
-            if (MyDesktop.isDesktopSupported()) {
-                Objects.requireNonNull(MyDesktop.getDesktop()).open(
+            if (DesktopUtils.isDesktopSupported()) {
+                Objects.requireNonNull(DesktopUtils.getDesktop()).open(
                     TUTORIAL_FILE
                 );
             } else {

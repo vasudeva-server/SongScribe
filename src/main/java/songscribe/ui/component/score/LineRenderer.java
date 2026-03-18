@@ -30,7 +30,7 @@ import songscribe.ui.component.Score;
 import songscribe.ui.edit.EditModeManager;
 import songscribe.ui.edit.GraceModeManager;
 import songscribe.ui.layout.TempoAttachment;
-import songscribe.ui.layout2.ScaleContext;
+import songscribe.ui.layout.ScaleContext;
 import songscribe.ui.renderer.AnnotationRenderer;
 import songscribe.ui.renderer.ArticulationRenderer;
 import songscribe.ui.renderer.BeamGroupRenderer;

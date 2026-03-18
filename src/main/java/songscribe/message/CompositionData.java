@@ -28,7 +28,7 @@ import org.jspecify.annotations.Nullable;
 import songscribe.music.KeyType;
 import songscribe.music.Line;
 import songscribe.music.Tempo;
-import songscribe.notification.CompositionDidChangeNotification;
+import songscribe.message.notification.CompositionDidChangeNotification;
 
 /**
  * Immutable snapshot of all composition-level fields, built by

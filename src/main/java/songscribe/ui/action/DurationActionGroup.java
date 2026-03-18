@@ -24,7 +24,7 @@ import net.engio.mbassy.listener.Handler;
 
 import songscribe.message.Message;
 import songscribe.message.MessageCenter;
-import songscribe.notification.BarWasSelectedNotification;
+import songscribe.message.notification.BarWasSelectedNotification;
 
 /**
  * An action group that manages the duration actions.

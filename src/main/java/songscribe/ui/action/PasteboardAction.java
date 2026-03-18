@@ -26,8 +26,8 @@ import module java.desktop;
 import net.engio.mbassy.listener.Handler;
 
 import songscribe.message.MessageCenter;
-import songscribe.notification.MusicSelectionDidChangeNotification;
-import songscribe.command.PasteboardOpCommand;
+import songscribe.message.notification.MusicSelectionDidChangeNotification;
+import songscribe.message.command.PasteboardOpCommand;
 
 public class PasteboardAction extends UIAction {
 

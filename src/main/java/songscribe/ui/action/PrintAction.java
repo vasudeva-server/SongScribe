@@ -23,7 +23,7 @@ import module java.desktop;
 
 import songscribe.Strings;
 import songscribe.message.MessageCenter;
-import songscribe.command.PrintCommand;
+import songscribe.message.command.PrintCommand;
 import songscribe.util.UIUtils;
 
 public class PrintAction extends UIAction {

@@ -31,7 +31,7 @@ import org.xml.sax.SAXException;
 import songscribe.SongScribe;
 import songscribe.io.CompositionLoader;
 import songscribe.ui.playback.PlaybackController;
-import songscribe.util.FileUtils;
+import songscribe.file.FileUtils;
 
 @SuppressWarnings("FieldMayBeStatic")
 public class MidiConverter {

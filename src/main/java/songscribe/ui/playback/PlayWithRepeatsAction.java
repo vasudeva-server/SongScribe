@@ -23,7 +23,7 @@ import module java.desktop;
 
 import songscribe.Strings;
 import songscribe.message.MessageCenter;
-import songscribe.command.TogglePlayWithRepeatsCommand;
+import songscribe.message.command.TogglePlayWithRepeatsCommand;
 import songscribe.ui.action.SelectableUIAction;
 
 public class PlayWithRepeatsAction extends SelectableUIAction {

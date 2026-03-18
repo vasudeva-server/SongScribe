@@ -25,12 +25,12 @@ import java.util.ArrayList;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.data.DynamicsInterval;
-import songscribe.data.IntervalSet;
+import songscribe.music.DynamicsInterval;
+import songscribe.music.IntervalSet;
 import songscribe.music.Line;
 import songscribe.music.StaffElement;
 import songscribe.ui.component.Score;
-import songscribe.ui.layout2.ScaleContext;
+import songscribe.ui.layout.ScaleContext;
 import songscribe.ui.renderer.GlissandoRenderer;
 
 public class HorizontalAdjustment extends Adjustment {

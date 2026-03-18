@@ -1,0 +1,706 @@
+/*
+    SongScribe song notation program
+    Copyright (C) Sri Chinmoy Centres International
+
+    This file is part of SongScribe.
+
+    SongScribe is free software; you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; either version 3 of the License, or
+    (at your option) any later version.
+
+    SongScribe is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
+package songscribe.ui.layout;
+
+import module java.desktop;
+
+import java.util.HashMap;
+import java.util.List;
+
+import org.jspecify.annotations.Nullable;
+
+import songscribe.music.Line;
+import songscribe.music.StaffElement;
+import songscribe.ui.layout.Bounds;
+
+/**
+ * Orchestrates the complete layout pipeline for a staff line.
+ * <p>
+ * The LayoutEngine coordinates all layout calculators to produce a final {@link LayoutResult}
+ * containing positioned elements ready for rendering. The pipeline executes in this order:
+ * <ol>
+ *   <li>{@link ElementColumnBuilder} - Creates note columns from the line's notes</li>
+ *   <li>{@link HorizontalSpacingCalculator} - Positions columns horizontally (lyric-driven)</li>
+ *   <li>{@link VerticalStackingCalculator} - Positions elements vertically (layer-by-layer)</li>
+ *   <li>{@link LineJustificationCalculator} - Compresses spacing if line exceeds margin</li>
+ * </ol>
+ * <p>
+ * Usage:
+ * <pre>{@code
+ * var engine = new LayoutEngine(g2, lyricsFont, staffRightMarginSs);
+ * LayoutResult result = engine.layout(line);
+ *
+ * if (result == null) {
+ *     // Layout failed (line justification error)
+ *     String error = engine.getLastError();
+ *     // Display error to user
+ * } else {
+ *     // Use result for rendering
+ * }
+ * }</pre>
+ */
+public class LayoutEngine {
+
+    // Staff height in staff-space units (from LayoutConstants)
+    private static final double STAFF_HEIGHT_SS = LayoutConstants.STAFF_HEIGHT_SS;
+
+    // Beam geometry constants (staff-space units unless noted)
+    private static final double BEAM_DEPTH_SS = 0.4;        // beam thickness
+    private static final double BEAM_SHIFT_SS = 0.625;      // gap between stacked beam levels
+    private static final double BEAM_STUB_SS = 1.0;         // partial beam stub length
+    private static final double BEAM_SLOPE_MAX = 0.4;    // hyperbolic saturation limit (dimensionless)
+    private static final double MIN_STEM_SS = LayoutConstants.STEM_LENGTH_SS;
+
+    // Tie geometry constants (MuseScore port, staff-space units unless noted)
+    private static final double TIE_SHOULDER_W = 0.6;                // shoulder width fraction of tie span
+    private static final double TIE_MIN_SHOULDER_HEIGHT_SS = 0.3;   // minimum arc height
+    private static final double TIE_MAX_SHOULDER_HEIGHT_SS = 2.0;   // maximum arc height
+    private static final double TIE_SHOULDER_HEIGHT_SCALE = 0.3;    // sqrt scaling factor for arc height
+    private static final double TIE_MID_THICKNESS_SS = 0.16;        // midpoint half-thickness (midWidth - endWidth)
+    private static final double TIE_COLLISION_FACTOR = 0.65;        // interior deflection scaling
+    private static final double TIE_COLLISION_PUSH = 0.45;          // midpoint push-up ratio on collision
+    private static final double TIE_NOTEHEAD_HALF_WIDTH_SS = 0.6;   // visual half-width of notehead
+    private static final double TIE_ENDPOINT_Y_OFFSET_SS = 0.7;    // y offset from note center (noteHeight/2 + 0.2)
+
+    private final Graphics2D g2;
+    private final Font lyricsFont;
+    private final double staffRightMarginSs;
+
+    // Calculators
+    private final ElementColumnBuilder columnBuilder;
+    private final HorizontalSpacingCalculator horizontalCalculator;
+    private final VerticalStackingCalculator verticalCalculator;
+    private final LineJustificationCalculator justificationCalculator;
+
+    // Error tracking
+    @Nullable
+    private String lastError;
+
+    /**
+     * Creates a new LayoutEngine.
+     *
+     * @param g2               Graphics context for text measurement
+     * @param lyricsFont       Font to use for lyrics (for measuring syllable widths)
+     * @param staffRightMarginSs Right margin of the staff in staff-space units
+     */
+    public LayoutEngine(
+        Graphics2D g2,
+        Font lyricsFont,
+        double staffRightMarginSs) {
+        this.g2 = g2;
+        this.lyricsFont = lyricsFont;
+        this.staffRightMarginSs = staffRightMarginSs;
+
+        // Initialize calculators
+        this.columnBuilder = new ElementColumnBuilder(g2, lyricsFont);
+        this.horizontalCalculator = new HorizontalSpacingCalculator();
+        this.verticalCalculator = new VerticalStackingCalculator();
+        this.justificationCalculator = new LineJustificationCalculator();
+
+        this.lastError = null;
+    }
+
+    /**
+     * Executes the complete layout pipeline for a line.
+     * <p>
+     * This is the main entry point for layout. It orchestrates all calculators
+     * and produces a final LayoutResult ready for rendering.
+     *
+     * @param line The line to lay out
+     * @return LayoutResult with all positioned elements, or null if layout fails
+     */
+    public @Nullable LayoutResult layout(Line line) {
+        lastError = null;
+
+        // Step 1: Build note columns
+        List<ElementColumn> columns = columnBuilder.buildColumns(line);
+
+        if (columns.isEmpty()) {
+            // Empty line - return empty result
+            return LayoutResult.builder()
+                .setLineHeightSs(STAFF_HEIGHT_SS)
+                .setStaffGeometrySs(0, STAFF_HEIGHT_SS)
+                .setLyricBaselineYSs(0)
+                .build();
+        }
+
+        // Step 2: Calculate horizontal positions
+        horizontalCalculator.calculatePositions(columns, line);
+
+        // Step 3: Apply line justification (compression if needed)
+        var justificationResult = justificationCalculator.justifyLine(columns, staffRightMarginSs);
+
+        if (!justificationResult.isSuccess()) {
+            // Line cannot fit within margin while maintaining minimum spacing
+            lastError = justificationResult.getErrorMessage();
+            return null;
+        }
+
+        // Step 4: Calculate vertical positions
+        var verticalResult = verticalCalculator.calculateVerticalPositions(columns, line, g2);
+
+        var builder = LayoutResult.builder();
+
+        // Step 5: Calculate beam layouts for beamed note groups
+        calculateBeams(line, columns, builder);
+
+        // Step 6: Calculate stem layouts for unbeamed notes
+        calculateUnbeamedStems(line, columns, builder);
+
+        // Step 7: Calculate tie geometry for all tie intervals
+        calculateTies(line, columns, builder);
+
+        // Step 8: Build final LayoutResult
+        return buildLayoutResult(columns, verticalResult, line, builder);
+    }
+
+    /**
+     * Returns the last error message from a failed layout attempt.
+     *
+     * @return Error message, or null if no error
+     */
+    public @Nullable String getLastError() {
+        return lastError;
+    }
+
+    /**
+     * Builds the final LayoutResult from calculated positions.
+     * Populates the given builder with note columns, element bounds, and staff geometry,
+     * then returns the built result.
+     */
+    private LayoutResult buildLayoutResult(
+        List<ElementColumn> columns,
+        VerticalStackingResult verticalResult,
+        Line line,
+        LayoutResult.Builder builder) {
+
+        // Add element columns
+        for (var column : columns) {
+            builder.putElementColumn(column.getElement(), column);
+        }
+
+        // Add element bounds from vertical stacking result
+        var elementPositions = verticalResult.getElementPositions();
+
+        for (var staffElementEntry : elementPositions.entrySet()) {
+            var staffElement = staffElementEntry.getKey();
+            var elementMap = staffElementEntry.getValue();
+
+            for (var elementEntry : elementMap.entrySet()) {
+                var element = elementEntry.getKey();
+                var position = elementEntry.getValue();
+
+                // Create bounds for this element
+                // For now, use simple rectangular bounds based on element content size
+                var contentBounds = new Rectangle2D.Double(
+                    position.getX(),
+                    position.getY(),
+                    element.getContentWidth(),
+                    element.getContentHeight()
+                );
+
+                var bounds = element.getBounds();
+
+                // Update bounds position to match calculated position
+                bounds = new Bounds(
+                    contentBounds,
+                    new Rectangle2D.Double(
+                        position.getX() - element.getMarginLeftSs(),
+                        position.getY() - element.getMarginTopSs(),
+                        element.getContentWidth() + element.getMarginLeftSs() + element.getMarginRightSs(),
+                        element.getContentHeight() + element.getMarginTopSs() + element.getMarginBottomSs()
+                    )
+                );
+
+                builder.putElementBounds(element, bounds);
+            }
+        }
+
+        // Set staff geometry
+        double staffTopYSs = 0;
+        double staffBottomYSs = STAFF_HEIGHT_SS;
+
+        builder.setStaffGeometrySs(staffTopYSs, staffBottomYSs);
+
+        // Set line height and lyrics baseline from vertical result (convert px → ss)
+        var scale = ScaleContext.getInstance();
+        builder.setLineHeightSs(scale.fromPixels(verticalResult.getLineHeightPx()));
+        builder.setLyricBaselineYSs(scale.fromPixels(verticalResult.getLyricsBaselineYPx()));
+
+        return builder.build();
+    }
+
+    /**
+     * Calculates beam geometry for all beamed note groups in the line.
+     * Populates {@code builder} with a {@link LayoutResult.BeamLayout} for each beam interval.
+     */
+    private void calculateBeams(
+        Line line,
+        List<ElementColumn> columns,
+        LayoutResult.Builder builder) {
+        var beamings = line.getBeamings();
+
+        // Build an element→column map for fast X lookups inside the loop.
+        var elementToColumn = new HashMap<StaffElement, ElementColumn>(columns.size() * 2);
+
+        for (var column : columns) {
+            elementToColumn.put(column.getElement(), column);
+        }
+
+        var it = beamings.listIterator();
+
+        while (it.hasNext()) {
+            var interval = it.next();
+
+            // Determine stem direction from the pitch contour of the group.
+            // Staff position 0 = middle line; positive = below midpoint (Y-down) → stems up.
+            // We compare (min + max) to 0 rather than dividing to keep integer arithmetic.
+            int minStaffPos = Integer.MAX_VALUE;
+            int maxStaffPos = Integer.MIN_VALUE;
+
+            for (int i = interval.getStart(); i <= interval.getEnd(); i++) {
+                int pos = line.getElement(i).getStaffPosition();
+
+                if (pos < minStaffPos) {
+                    minStaffPos = pos;
+                }
+
+                if (pos > maxStaffPos) {
+                    maxStaffPos = pos;
+                }
+            }
+
+            // Scan for any manual override in the group; first one wins.
+            Boolean manualDirection = null;
+
+            for (int i = interval.getStart(); i <= interval.getEnd(); i++) {
+                var n = line.getElement(i);
+
+                if (!n.isStemDirectionAuto()) {
+                    manualDirection = n.isUpper();
+                    break;
+                }
+            }
+
+            boolean stemsUp = (manualDirection != null)
+                ? manualDirection
+                : (minStaffPos + maxStaffPos) > 0;
+
+            // Normalize auto-direction notes to the group stem direction.
+            // Manual overrides are left untouched.
+            for (int i = interval.getStart(); i <= interval.getEnd(); i++) {
+                var n = line.getElement(i);
+
+                if (n.isStemDirectionAuto()) {
+                    n.setUpper(stemsUp);
+                }
+            }
+
+            // Compute beam slope (abc2svg algorithm with hyperbolic dampening).
+            // Staff positions are in half-staff-spaces; ×0.5 converts to staff-space units.
+            var firstElement = line.getElement(interval.getStart());
+            var lastElement = line.getElement(interval.getEnd());
+            var firstColumn = elementToColumn.get(firstElement);
+            var lastColumn = elementToColumn.get(lastElement);
+
+            double slope = 0.0;
+
+            if (firstColumn != null && lastColumn != null) {
+                double dxSs = lastColumn.getXSs() - firstColumn.getXSs();
+
+                if (dxSs != 0.0) {
+                    double rawSlope =
+                        (lastElement.getStaffPosition() - firstElement.getStaffPosition()) * 0.5 / dxSs;
+
+                    // Hyperbolic dampening saturates extreme slopes without hard clamping.
+                    slope = BEAM_SLOPE_MAX * rawSlope / (BEAM_SLOPE_MAX + Math.abs(rawSlope));
+                }
+            }
+
+            // Compute y-intercept so beam passes through the anchor note's stem tip at MIN_STEM_SS.
+            // The anchor is the note whose stem would be shortest — i.e., closest to the beam.
+            //   stemsUp  → note with min staffPosition (highest pitch in Y-down, closest to beam above)
+            //   stemsDown → note with max staffPosition (lowest pitch in Y-down, closest to beam below)
+            // All Y values are in staff-space with Y-down positive (positive staffPos = below center).
+            double startYSs = 0.0;
+
+            if (firstColumn != null) {
+                double firstXSs = firstColumn.getXSs();
+
+                int anchorIdx = interval.getStart();
+                int anchorStaffPos = firstElement.getStaffPosition();
+
+                for (int i = interval.getStart() + 1; i <= interval.getEnd(); i++) {
+                    int pos = line.getElement(i).getStaffPosition();
+
+                    if (stemsUp ? pos < anchorStaffPos : pos > anchorStaffPos) {
+                        anchorStaffPos = pos;
+                        anchorIdx = i;
+                    }
+                }
+
+                var anchorElement = line.getElement(anchorIdx);
+                var anchorColumn = elementToColumn.get(anchorElement);
+                double anchorXSs = (anchorColumn != null) ? anchorColumn.getXSs() : firstXSs;
+                double anchorElementYSs = anchorElement.getStaffPosition() * 0.5;
+
+                // Place beam exactly MIN_STEM_SS from the anchor notehead.
+                // Y-down: beam above notehead = smaller Y (subtract); beam below = larger Y (add).
+                double beamYAtAnchorSs = stemsUp
+                    ? anchorElementYSs - MIN_STEM_SS
+                    : anchorElementYSs + MIN_STEM_SS;
+
+                startYSs = beamYAtAnchorSs - slope * (anchorXSs - firstXSs);
+
+                // Iteratively reduce slope until all stems are at least MIN_STEM_SS, or give up
+                // after 20 iterations.
+                for (int iter = 0; iter < 20; iter++) {
+                    boolean allOk = true;
+
+                    for (int i = interval.getStart(); i <= interval.getEnd(); i++) {
+                        var element = line.getElement(i);
+                        var col = elementToColumn.get(element);
+
+                        if (col == null) {
+                            continue;
+                        }
+
+                        double elementYSs = element.getStaffPosition() * 0.5;
+                        double beamYSs = slope * (col.getXSs() - firstXSs) + startYSs;
+                        double stemLenSs = stemsUp ? (elementYSs - beamYSs) : (beamYSs - elementYSs);
+
+                        if (stemLenSs < MIN_STEM_SS - 1e-9) {
+                            allOk = false;
+                            break;
+                        }
+                    }
+
+                    if (allOk) {
+                        break;
+                    }
+
+                    // Reduce slope and reanchor so the anchor note still has exactly MIN_STEM_SS.
+                    slope *= 0.85;
+                    beamYAtAnchorSs = stemsUp
+                        ? anchorElementYSs - MIN_STEM_SS
+                        : anchorElementYSs + MIN_STEM_SS;
+                    startYSs = beamYAtAnchorSs - slope * (anchorXSs - firstXSs);
+                }
+
+                // After slope reduction, shift beam vertically to cover any remaining deficit.
+                double maxDeficitSs = 0.0;
+
+                for (int i = interval.getStart(); i <= interval.getEnd(); i++) {
+                    var element = line.getElement(i);
+                    var col = elementToColumn.get(element);
+
+                    if (col == null) {
+                        continue;
+                    }
+
+                    double elementYSs = element.getStaffPosition() * 0.5;
+                    double beamYSs = slope * (col.getXSs() - firstXSs) + startYSs;
+                    double stemLenSs = stemsUp ? (elementYSs - beamYSs) : (beamYSs - elementYSs);
+                    double deficitSs = MIN_STEM_SS - stemLenSs;
+
+                    if (deficitSs > maxDeficitSs) {
+                        maxDeficitSs = deficitSs;
+                    }
+                }
+
+                if (maxDeficitSs > 0.0) {
+                    startYSs += stemsUp ? -maxDeficitSs : maxDeficitSs;
+                }
+            }
+
+            // Flat beam snapping: when slope is near zero, snap the outer beam edge to
+            // the nearest staff line or space boundary (0.5 ss grid) so the beam sits
+            // cleanly on the grid. startYSs is the outer edge (top for stems-up,
+            // bottom for stems-down), so rounding to the nearest 0.5 ss aligns it
+            // with a line or space center.
+            if (Math.abs(slope) < 0.05) {
+                startYSs = Math.round(startYSs * 2.0) / 2.0;
+            }
+
+            // Beam thickening: angled beams appear thinner due to raster aliasing.
+            // Compensate by increasing BEAM_DEPTH proportionally to 1/cos(angle),
+            // clamped to a 3.3–8.8% increase over the nominal beam depth.
+            double angle = Math.atan(slope);
+            double factor = Math.clamp(1.0 / Math.cos(angle), 1.033, 1.088);
+            double thickeningSs = BEAM_DEPTH_SS * (factor - 1.0);
+
+            // Build StemLayout for each element in the beam group and accumulate into a map
+            // for the BeamLayout.  All Y values are in staff-space with Y-down positive.
+            //   stemsUp:   topYSs = beamYSs (above notehead, smaller Y),  bottomYSs = elementAnchorYSs
+            //   stemsDown: topYSs = elementAnchorYSs,                     bottomYSs = beamYSs (below notehead, larger Y)
+            var stemLayouts = new HashMap<StaffElement, LayoutResult.StemLayout>();
+
+            if (firstColumn != null) {
+                double firstXSs = firstColumn.getXSs();
+
+                for (int i = interval.getStart(); i <= interval.getEnd(); i++) {
+                    var element = line.getElement(i);
+                    var col = elementToColumn.get(element);
+
+                    if (col == null) {
+                        continue;
+                    }
+
+                    double elementYSs = element.getStaffPosition() * 0.5;
+                    double beamYSs = slope * (col.getXSs() - firstXSs) + startYSs;
+                    double stemLenSs = stemsUp ? (elementYSs - beamYSs) : (beamYSs - elementYSs);
+                    double lengtheningSs = stemLenSs - MIN_STEM_SS;
+
+                    double topYSs = stemsUp ? beamYSs : elementYSs;
+                    double bottomYSs = stemsUp ? elementYSs : beamYSs;
+
+                    // Determine stub direction for partial-beam elements.
+                    // A stub is needed at beam level L when neither neighbour shares level L.
+                    int myBeams = beamCount(element);
+                    int leftBeams = i > interval.getStart() ? beamCount(line.getElement(i - 1)) : 0;
+                    int rightBeams = i < interval.getEnd() ? beamCount(line.getElement(i + 1)) : 0;
+
+                    boolean hasStub = false;
+
+                    for (int level = 2; level <= myBeams; level++) {
+                        if (leftBeams < level && rightBeams < level) {
+                            hasStub = true;
+                            break;
+                        }
+                    }
+
+                    boolean stubRight = false;
+
+                    if (hasStub) {
+                        if (i == interval.getStart()) {
+                            stubRight = true;                   // first element → stub right
+                        } else if (i == interval.getEnd()) {
+                            stubRight = false;                  // last element → stub left
+                        } else if (rightBeams < myBeams) {
+                            stubRight = false;                  // element before a beam break → left
+                        } else if (leftBeams < myBeams) {
+                            stubRight = true;                   // element at a beam break → right
+                        } else {
+                            stubRight = rightBeams >= leftBeams; // toward neighbour with more beams
+                        }
+                    }
+
+                    stemLayouts.put(element, new LayoutResult.StemLayout(topYSs, bottomYSs, lengtheningSs, stubRight));
+                }
+            }
+
+            var beamLayout = new LayoutResult.BeamLayout(slope, startYSs, stemsUp, thickeningSs, stemLayouts);
+            builder.putBeamLayout(interval, beamLayout);
+        }
+    }
+
+    /**
+     * Calculates stem geometry for all elements not covered by a beam group.
+     * Populates {@code builder} with a {@link LayoutResult.StemLayout} for each such element.
+     */
+    private void calculateUnbeamedStems(
+        Line line,
+        List<ElementColumn> columns,
+        LayoutResult.Builder builder) {
+        for (var col : columns) {
+            var element = col.getElement();
+
+            if (col.isBeamed() || !element.getType().isNoteWithStem()) {
+                continue;
+            }
+
+            // Set auto stem direction: elements below the middle line (staffPosition > 0) get stems up.
+            // This matches Score.defaultUpperNote: upper=true means stem up.
+            if (element.isStemDirectionAuto()) {
+                element.setUpper(element.getStaffPosition() > 0);
+            }
+
+            // isUpper() → stem up (upper=true means stem goes up)
+            boolean stemsUp = element.isUpper();
+            double elementYSs = element.getStaffPosition() * 0.5;
+
+            // Y increases downward: stem-up tip has smaller Y; stem-down tip has larger Y.
+            double topYSs = stemsUp ? elementYSs - MIN_STEM_SS : elementYSs;
+            double bottomYSs = stemsUp ? elementYSs : elementYSs + MIN_STEM_SS;
+
+            builder.putStemLayout(element, new LayoutResult.StemLayout(topYSs, bottomYSs, 0.0, false));
+        }
+    }
+
+    /**
+     * Calculates tie geometry for all tie intervals in the line.
+     * <p>
+     * Ports MuseScore's tie layout algorithm to SongScribe's staff-space coordinate system.
+     * Each tie produces a filled lens shape defined by an outer and an inner cubic Bezier curve
+     * that share start/end points, creating natural tapering at the endpoints.
+     * Populates {@code builder} with a {@link LayoutResult.TieLayout} for each tie interval.
+     */
+    private void calculateTies(
+        Line line,
+        List<ElementColumn> columns,
+        LayoutResult.Builder builder) {
+
+        var ties = line.getTies();
+
+        if (ties.isEmpty()) {
+            return;
+        }
+
+        // Build an element → column map for fast X lookups.
+        var elementToColumn = new HashMap<StaffElement, ElementColumn>(columns.size() * 2);
+
+        for (var column : columns) {
+            elementToColumn.put(column.getElement(), column);
+        }
+
+        var it = ties.listIterator();
+
+        while (it.hasNext()) {
+            var interval = it.next();
+
+            var startElement = line.getElement(interval.getStart());
+            var endElement = line.getElement(interval.getEnd());
+            var startColumn = elementToColumn.get(startElement);
+            var endColumn = elementToColumn.get(endElement);
+
+            if (startColumn == null || endColumn == null) {
+                continue;
+            }
+
+            // Tie direction: stem-up elements tie below (+1), stem-down elements tie above (-1).
+            // Y increases downward, so direction = +1 → arc bulges downward.
+            int direction = startElement.isUpper() ? 1 : -1;
+
+            // Tie attachment points: centered on notehead horizontally.
+            double startXSs = startColumn.getXSs() + TIE_NOTEHEAD_HALF_WIDTH_SS;
+            double endXSs = endColumn.getXSs() + TIE_NOTEHEAD_HALF_WIDTH_SS;
+            double startYSs = startElement.getStaffPosition() * 0.5 + direction * TIE_ENDPOINT_Y_OFFSET_SS;
+            double endYSs = endElement.getStaffPosition() * 0.5 + direction * TIE_ENDPOINT_Y_OFFSET_SS;
+
+            double tieWidthSs = endXSs - startXSs;
+
+            // Shoulder height: sqrt growth curve, short ties are relatively tall, long ties flatten.
+            double shoulderHSs = TIE_MIN_SHOULDER_HEIGHT_SS
+                + TIE_SHOULDER_HEIGHT_SCALE * Math.sqrt(Math.max(tieWidthSs - 1, 0));
+            shoulderHSs = Math.clamp(shoulderHSs, TIE_MIN_SHOULDER_HEIGHT_SS, TIE_MAX_SHOULDER_HEIGHT_SS);
+
+            // Control point X positions: at 20% and 80% of tie width (shoulderW = 0.6).
+            double marginFraction = (1.0 - TIE_SHOULDER_W) * 0.5;
+            double cp1XSs = startXSs + tieWidthSs * marginFraction;
+            double cp2XSs = startXSs + tieWidthSs * (marginFraction + TIE_SHOULDER_W);
+
+            // Control point Y: both at shoulder height from the baseline.
+            // Baseline is the midpoint Y of the two endpoints (identical for ties).
+            double baseYSs = (startYSs + endYSs) * 0.5;
+            double shoulderYSs = baseYSs + direction * shoulderHSs;
+
+            // Outer curve control points: offset away from notes by midThickness.
+            double outerCpYSs = shoulderYSs + direction * TIE_MID_THICKNESS_SS;
+
+            // Inner curve control points: offset toward notes by midThickness.
+            double innerCpYSs = shoulderYSs - direction * TIE_MID_THICKNESS_SS;
+
+            // Interior note collision avoidance: only for ties spanning 3+ notes.
+            if (interval.getEnd() - interval.getStart() >= 2) {
+                double maxDeflection = 0.0;
+
+                for (int i = interval.getStart() + 1; i < interval.getEnd(); i++) {
+                    var interiorElement = line.getElement(i);
+                    var interiorColumn = elementToColumn.get(interiorElement);
+
+                    if (interiorColumn == null) {
+                        continue;
+                    }
+
+                    double elementXSs = interiorColumn.getXSs();
+                    double elementYSs = interiorElement.getStaffPosition() * 0.5;
+
+                    // Evaluate outer cubic Bezier at approximate t (linear X interpolation).
+                    double t = tieWidthSs > 0
+                        ? Math.clamp((elementXSs - startXSs) / tieWidthSs, 0.0, 1.0) : 0.5;
+                    double mt = 1.0 - t;
+                    double tieYAtElementSs =
+                        mt * mt * mt * startYSs +
+                            3 * mt * mt * t * outerCpYSs +
+                            3 * mt * t * t * outerCpYSs +
+                            t * t * t * endYSs;
+
+                    // Deflection: how much the element protrudes into the tie arc.
+                    double deflection = (tieYAtElementSs - elementYSs) * direction;
+
+                    if (deflection > maxDeflection) {
+                        maxDeflection = deflection;
+                    }
+                }
+
+                if (maxDeflection > 0.0) {
+                    double push = TIE_COLLISION_PUSH * TIE_COLLISION_FACTOR * maxDeflection;
+                    shoulderHSs += push;
+                    shoulderYSs = baseYSs + direction * shoulderHSs;
+                    outerCpYSs = shoulderYSs + direction * TIE_MID_THICKNESS_SS;
+                    innerCpYSs = shoulderYSs - direction * TIE_MID_THICKNESS_SS;
+                }
+            }
+
+            builder.putTieLayout(interval, new LayoutResult.TieLayout(
+                startXSs, startYSs,
+                endXSs, endYSs,
+                cp1XSs, outerCpYSs,
+                cp2XSs, outerCpYSs,
+                cp1XSs, innerCpYSs,
+                cp2XSs, innerCpYSs
+            ));
+        }
+    }
+
+    /**
+     * Returns the number of beams (flag levels) for a note type.
+     * QUAVER = 1, SEMIQUAVER = 2, DEMI_SEMIQUAVER = 3.
+     */
+    private static int beamCount(StaffElement note) {
+        return switch (note.getType()) {
+            case SEMIQUAVER -> 2;
+            case DEMI_SEMIQUAVER -> 3;
+            default -> 1;
+        };
+    }
+
+    /**
+     * Returns the graphics context used by this engine.
+     */
+    public Graphics2D getGraphics() {
+        return g2;
+    }
+
+    /**
+     * Returns the lyrics font used by this engine.
+     */
+    public Font getLyricsFont() {
+        return lyricsFont;
+    }
+
+    /**
+     * Returns the staff right margin used by this engine.
+     */
+    public double getStaffRightMarginSs() {
+        return staffRightMarginSs;
+    }
+}

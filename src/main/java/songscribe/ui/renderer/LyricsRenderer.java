@@ -30,8 +30,8 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 
-import songscribe.data.Interval;
-import songscribe.data.IntervalSet;
+import songscribe.music.Interval;
+import songscribe.music.IntervalSet;
 import songscribe.music.Line;
 import songscribe.music.StaffElement;
 import songscribe.ui.Constants;

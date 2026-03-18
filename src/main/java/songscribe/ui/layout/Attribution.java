@@ -21,7 +21,7 @@
 package songscribe.ui.layout;
 
 
-import songscribe.ui.layout2.ScaleContext;
+import songscribe.ui.layout.ScaleContext;
 
 /**
  * Represents attribution text (composer/arranger) displayed on the staff.

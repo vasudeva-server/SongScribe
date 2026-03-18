@@ -27,7 +27,7 @@ import java.io.File;
 import songscribe.Strings;
 import songscribe.Version;
 import songscribe.ui.Dialogs;
-import songscribe.data.MyDesktop;
+import songscribe.util.DesktopUtils;
 import songscribe.ui.component.MainFrame;
 import songscribe.util.Utils;
 
@@ -43,7 +43,7 @@ public class ReportBugDialog extends StandardDialog {
         buttonPanel.remove(applyButton);
         buttonPanel.remove(cancelButton);
 
-        if (MyDesktop.isDesktopSupported()) {
+        if (DesktopUtils.isDesktopSupported()) {
             var sendBug = new JButton(Strings.get(Strings.DIALOG_BUG_REPORT_SEND));
             sendBug.addActionListener(_ -> {
                 var answer = Dialogs.showOptionDialog(

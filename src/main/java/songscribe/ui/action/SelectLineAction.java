@@ -24,7 +24,7 @@ import module java.desktop;
 
 import songscribe.Strings;
 import songscribe.message.MessageCenter;
-import songscribe.command.SelectLineCommand;
+import songscribe.message.command.SelectLineCommand;
 import songscribe.util.UIUtils;
 
 public class SelectLineAction extends UIAction {

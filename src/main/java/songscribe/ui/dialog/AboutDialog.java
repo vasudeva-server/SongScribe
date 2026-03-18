@@ -31,7 +31,7 @@ import org.jdesktop.layout.LayoutStyle;
 
 import songscribe.Strings;
 import songscribe.Version;
-import songscribe.data.MyDesktop;
+import songscribe.util.DesktopUtils;
 import songscribe.util.Utils;
 
 public class AboutDialog extends StandardDialog {
@@ -146,7 +146,7 @@ public class AboutDialog extends StandardDialog {
         web.setFont(new Font("Arial", Font.PLAIN, 14));
         web.setText(WEB);
 
-        if (MyDesktop.isDesktopSupported()) {
+        if (DesktopUtils.isDesktopSupported()) {
             web.setForeground(UIManager.getColor("Component.linkColor"));
             web.addMouseListener(
                 new MouseAdapter() {
@@ -175,7 +175,7 @@ public class AboutDialog extends StandardDialog {
         email.setFont(new Font("Arial", Font.PLAIN, 12));
         email.setText(ReportBugDialog.BUG_EMAIL);
 
-        if (MyDesktop.isDesktopSupported()) {
+        if (DesktopUtils.isDesktopSupported()) {
             email.setForeground(UIManager.getColor("Component.linkColor"));
             email.addMouseListener(
                 new MouseAdapter() {

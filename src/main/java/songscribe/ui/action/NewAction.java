@@ -23,7 +23,7 @@ import module java.desktop;
 
 import songscribe.Strings;
 import songscribe.message.MessageCenter;
-import songscribe.command.NewFileCommand;
+import songscribe.message.command.NewFileCommand;
 import songscribe.util.UIUtils;
 
 public class NewAction extends UIAction {

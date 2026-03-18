@@ -24,7 +24,7 @@ import module java.desktop;
 
 
 import songscribe.message.MessageCenter;
-import songscribe.notification.TextEditingDidChangeNotification;
+import songscribe.message.notification.TextEditingDidChangeNotification;
 
 /*
  * This is a delegate class that handles focus events for text components.

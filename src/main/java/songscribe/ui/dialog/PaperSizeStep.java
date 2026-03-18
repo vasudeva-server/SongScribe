@@ -28,7 +28,7 @@ import java.io.IOException;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
-import songscribe.data.PageLayoutData;
+import songscribe.export.PageLayoutData;
 import songscribe.prefs.Prefs;
 import songscribe.util.GraphicUtils;
 import songscribe.util.Utils;

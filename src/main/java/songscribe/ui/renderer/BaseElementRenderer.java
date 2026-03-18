@@ -34,7 +34,7 @@ import songscribe.smufl.EngravingDefaults;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
 import songscribe.ui.layout.LineElement;
-import songscribe.ui.layout2.LayoutConstants;
+import songscribe.ui.layout.LayoutConstants;
 import songscribe.util.GraphicUtils;
 import songscribe.util.MyFontUtils;
 

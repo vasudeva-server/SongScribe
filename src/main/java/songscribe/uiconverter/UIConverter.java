@@ -32,7 +32,7 @@ import com.intellij.uiDesigner.core.GridLayoutManager;
 import com.intellij.uiDesigner.core.Spacer;
 
 import songscribe.Strings;
-import songscribe.data.FileExtensions;
+import songscribe.file.FileExtensions;
 import songscribe.ui.Dialogs;
 import songscribe.ui.action.QuitAction;
 import songscribe.SongScribe;

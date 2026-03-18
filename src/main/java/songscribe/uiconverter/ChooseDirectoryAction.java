@@ -22,7 +22,7 @@ package songscribe.uiconverter;
 import module java.desktop;
 
 import songscribe.Strings;
-import songscribe.data.MyFileFilter;
+import songscribe.file.MyFileFilter;
 import songscribe.ui.dialog.PlatformFileDialog;
 
 public class ChooseDirectoryAction extends AbstractAction {

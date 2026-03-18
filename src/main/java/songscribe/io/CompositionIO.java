@@ -36,8 +36,8 @@ import songscribe.music.KeyType;
 import songscribe.music.Line;
 import songscribe.music.Tempo;
 import songscribe.ui.component.Score;
-import songscribe.ui.layout2.InsertionSpacingCalculator;
-import songscribe.ui.layout2.ScaleContext;
+import songscribe.ui.layout.InsertionSpacingCalculator;
+import songscribe.ui.layout.ScaleContext;
 import songscribe.util.Utils;
 
 public final class CompositionIO {

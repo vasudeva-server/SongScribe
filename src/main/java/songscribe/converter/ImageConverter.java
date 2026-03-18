@@ -31,7 +31,7 @@ import songscribe.SongScribe;
 import songscribe.export.ExportOptions;
 import songscribe.ui.component.MyBorder;
 import songscribe.ui.component.Score;
-import songscribe.util.FileUtils;
+import songscribe.file.FileUtils;
 import songscribe.util.GraphicUtils;
 
 @SuppressWarnings("FieldMayBeStatic")

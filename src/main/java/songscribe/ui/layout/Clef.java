@@ -20,7 +20,7 @@
 
 package songscribe.ui.layout;
 
-import songscribe.ui.layout2.ScaleContext;
+import songscribe.ui.layout.ScaleContext;
 
 /**
  * Represents the treble clef at the start of a staff line.

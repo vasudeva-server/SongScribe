@@ -28,8 +28,8 @@ import songscribe.music.Composition;
 import songscribe.music.Line;
 import songscribe.ui.component.Score;
 import songscribe.ui.component.score.LineComponent;
-import songscribe.ui.layout2.LayoutResult;
-import songscribe.ui.layout2.ScaleContext;
+import songscribe.ui.layout.LayoutResult;
+import songscribe.ui.layout.ScaleContext;
 import songscribe.ui.menu.DebugState;
 
 /**

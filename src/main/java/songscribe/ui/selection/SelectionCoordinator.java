@@ -33,18 +33,18 @@ import org.jspecify.annotations.Nullable;
 
 import net.engio.mbassy.listener.Handler;
 
-import songscribe.data.Interval;
-import songscribe.data.IntervalSet;
+import songscribe.music.Interval;
+import songscribe.music.IntervalSet;
 import songscribe.message.Message;
 import songscribe.message.MessageCenter;
 import songscribe.music.Composition;
 import songscribe.music.Line;
 import songscribe.music.StaffElement;
-import songscribe.notification.CompositionDidChangeNotification;
-import songscribe.notification.MusicSelectionDidChangeNotification;
+import songscribe.message.notification.CompositionDidChangeNotification;
+import songscribe.message.notification.MusicSelectionDidChangeNotification;
 import songscribe.ui.action.Actions;
 import songscribe.ui.action.UIAction;
-import songscribe.util.RuntimeError;
+import songscribe.error.RuntimeError;
 
 /**
  * Lightweight score-level coordinator that tracks which line (if any) has

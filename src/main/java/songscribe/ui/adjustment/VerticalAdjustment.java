@@ -25,9 +25,9 @@ import java.util.ArrayList;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.data.DynamicsInterval;
-import songscribe.data.IntervalSet;
-import songscribe.notification.LayoutDidChangeNotification;
+import songscribe.music.DynamicsInterval;
+import songscribe.music.IntervalSet;
+import songscribe.message.notification.LayoutDidChangeNotification;
 import songscribe.message.MessageCenter;
 import songscribe.music.Line;
 import songscribe.ui.component.Score;
@@ -39,7 +39,7 @@ import songscribe.ui.layout.Ending;
 import songscribe.ui.layout.TempoAttachment;
 import songscribe.ui.layout.Trill;
 import songscribe.ui.layout.Tuplet;
-import songscribe.ui.layout2.LayoutResult;
+import songscribe.ui.layout.LayoutResult;
 
 public class VerticalAdjustment extends Adjustment {
 

@@ -32,7 +32,7 @@ import org.jspecify.annotations.Nullable;
 import songscribe.ui.layout.Articulation;
 import songscribe.ui.layout.Attachment;
 import songscribe.ui.layout.LineElement;
-import songscribe.ui.layout2.ScaleContext;
+import songscribe.ui.layout.ScaleContext;
 
 @SuppressWarnings("StaticInitializerReferencesSubClass")
 public class StaffElement extends LineElement implements Cloneable {

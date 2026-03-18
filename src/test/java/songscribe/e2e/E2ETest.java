@@ -61,7 +61,7 @@ import songscribe.ui.action.Actions;
 import songscribe.ui.action.UIAction;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.Score;
-import songscribe.ui.layout2.ScaleContext;
+import songscribe.ui.layout.ScaleContext;
 import songscribe.util.UIUtils;
 
 /**

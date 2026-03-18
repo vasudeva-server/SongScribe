@@ -26,8 +26,8 @@ import net.engio.mbassy.listener.Handler;
 
 import songscribe.Strings;
 import songscribe.message.MessageCenter;
-import songscribe.notification.PlaybackPrefsDidChangeNotification;
-import songscribe.notification.PlaybackStateDidChangeNotification;
+import songscribe.message.notification.PlaybackPrefsDidChangeNotification;
+import songscribe.message.notification.PlaybackStateDidChangeNotification;
 import songscribe.prefs.Prefs;
 import songscribe.ui.action.DialogOpenAction;
 

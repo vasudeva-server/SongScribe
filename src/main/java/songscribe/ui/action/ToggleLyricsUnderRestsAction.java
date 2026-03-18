@@ -27,8 +27,8 @@ import net.engio.mbassy.listener.Handler;
 
 import songscribe.Strings;
 import songscribe.message.MessageCenter;
-import songscribe.notification.MusicSelectionDidChangeNotification;
-import songscribe.command.ToggleLyricsUnderRestsCommand;
+import songscribe.message.notification.MusicSelectionDidChangeNotification;
+import songscribe.message.command.ToggleLyricsUnderRestsCommand;
 
 public class ToggleLyricsUnderRestsAction extends UIAction {
 

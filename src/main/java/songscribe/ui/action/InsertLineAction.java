@@ -23,7 +23,7 @@ import module java.desktop;
 
 import songscribe.Strings;
 import songscribe.message.MessageCenter;
-import songscribe.command.InsertLineCommand;
+import songscribe.message.command.InsertLineCommand;
 import songscribe.util.UIUtils;
 
 public class InsertLineAction extends UIAction {

@@ -24,9 +24,9 @@ import module java.desktop;
 import java.util.Objects;
 
 import songscribe.Strings;
-import songscribe.data.MyFileFilter;
+import songscribe.file.MyFileFilter;
 import songscribe.ui.dialog.PlatformFileDialog;
-import songscribe.util.FileUtils;
+import songscribe.file.FileUtils;
 
 public class ExportSVGAction extends UIAction {
 

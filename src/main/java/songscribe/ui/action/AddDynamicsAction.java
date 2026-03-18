@@ -24,7 +24,7 @@ import module java.desktop;
 
 import songscribe.Strings;
 import songscribe.message.MessageCenter;
-import songscribe.command.AddDynamicsCommand;
+import songscribe.message.command.AddDynamicsCommand;
 
 public class AddDynamicsAction extends UIAction {
 

@@ -28,7 +28,7 @@ import songscribe.music.Composition;
 import songscribe.ui.component.score.LineComponent;
 import songscribe.ui.component.score.MainPanel;
 import songscribe.ui.layout.LayoutStylesheet;
-import songscribe.ui.layout2.ScaleContext;
+import songscribe.ui.layout.ScaleContext;
 
 interface ComponentHierarchyProvider {
 

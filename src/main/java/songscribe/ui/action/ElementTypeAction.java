@@ -28,8 +28,8 @@ import songscribe.Strings;
 import songscribe.message.MessageCenter;
 import songscribe.music.ElementType;
 import songscribe.music.StaffElement;
-import songscribe.notification.BarWasSelectedNotification;
-import songscribe.notification.DurationWasSelectedNotification;
+import songscribe.message.notification.BarWasSelectedNotification;
+import songscribe.message.notification.DurationWasSelectedNotification;
 
 public class ElementTypeAction extends StickyUIAction implements UIAction.ElementReplaceable {
 

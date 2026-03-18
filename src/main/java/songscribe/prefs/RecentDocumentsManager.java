@@ -25,7 +25,7 @@ import java.util.List;
 
 
 import songscribe.message.MessageCenter;
-import songscribe.notification.RecentDocumentsDidChangeNotification;
+import songscribe.message.notification.RecentDocumentsDidChangeNotification;
 
 public final class RecentDocumentsManager {
 
