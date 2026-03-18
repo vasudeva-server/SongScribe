@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<composition version="2.2">
+  <keys>5</keys>
+  <keytype>FLATS</keytype>
+  <tempo>
+    <visibletempo>120</visibletempo>
+    <tempotype>CROTCHET</tempotype>
+    <tempodescription>Moderate</tempodescription>
+  </tempo>
+  <number>1</number>
+  <songtitle>Untitled</songtitle>
+  <rightinfo>Words and Music
+by Sri Chinmoy
+</rightinfo>
+  <rightinfostarty>55.0</rightinfostarty>
+  <linewidth>94.5</linewidth>
+  <dynamicLayout>true</dynamicLayout>
+  <lines>
+    <line>
+      <lyricsypos>6.25</lyricsypos>
+      <notes>
+          <note type="CROTCHET">
+            <xpos>96</xpos>
+            <staffposition>0</staffposition>
+            <tempo>
+              <visibletempo>120</visibletempo>
+              <tempotype>CROTCHET</tempotype>
+              <tempodescription>Moderate</tempodescription>
+            </tempo>
+          </note>
+          <note type="CROTCHET">
+            <xpos>125</xpos>
+            <staffposition>0</staffposition>
+          </note>
+          <note type="CROTCHET">
+            <xpos>154</xpos>
+            <staffposition>0</staffposition>
+          </note>
+          <note type="CROTCHET">
+            <xpos>183</xpos>
+            <staffposition>0</staffposition>
+          </note>
+          <note type="CROTCHET">
+            <xpos>212</xpos>
+            <staffposition>0</staffposition>
+          </note>
+          <note type="CROTCHET">
+            <xpos>241</xpos>
+            <staffposition>1</staffposition>
+            <upper />
+          </note>
+          <note type="CROTCHET">
+            <xpos>270</xpos>
+            <staffposition>-1</staffposition>
+          </note>
+          <note type="CROTCHET">
+            <xpos>299</xpos>
+            <staffposition>0</staffposition>
+          </note>
+          <note type="CROTCHET">
+            <xpos>328</xpos>
+            <staffposition>0</staffposition>
+          </note>
+          <note type="CROTCHET">
+            <xpos>357</xpos>
+            <staffposition>0</staffposition>
+          </note>
+          <note type="CROTCHET">
+            <xpos>386</xpos>
+            <staffposition>0</staffposition>
+          </note>
+          <note type="CROTCHET">
+            <xpos>415</xpos>
+            <staffposition>0</staffposition>
+          </note>
+          <note type="CROTCHET">
+            <xpos>444</xpos>
+            <staffposition>0</staffposition>
+          </note>
+          <note type="CROTCHET">
+            <xpos>473</xpos>
+            <staffposition>0</staffposition>
+          </note>
+          <note type="CROTCHET">
+            <xpos>502</xpos>
+            <staffposition>0</staffposition>
+          </note>
+          <note type="CROTCHET">
+            <xpos>531</xpos>
+            <staffposition>0</staffposition>
+          </note>
+          <note type="CROTCHET">
+            <xpos>560</xpos>
+            <staffposition>0</staffposition>
+          </note>
+          <note type="CROTCHET">
+            <xpos>589</xpos>
+            <staffposition>0</staffposition>
+          </note>
+          <note type="CROTCHET">
+            <xpos>618</xpos>
+            <staffposition>0</staffposition>
+          </note>
+          <note type="CROTCHET">
+            <xpos>647</xpos>
+            <staffposition>0</staffposition>
+          </note>
+          <note type="CROTCHET">
+            <xpos>676</xpos>
+            <staffposition>0</staffposition>
+          </note>
+          <note type="CROTCHET">
+            <xpos>705</xpos>
+            <staffposition>0</staffposition>
+          </note>
+      </notes>
+    </line>
+  </lines>
+  <view>
+    <titlefont>LatoPlus-Bold</titlefont>
+    <titlefontsize>30</titlefontsize>
+    <lyricsfont>LatoPlus-Regular</lyricsfont>
+    <lyricsfontsize>17</lyricsfontsize>
+    <generalfont>LatoPlus-Regular</generalfont>
+    <generalfontsize>15</generalfontsize>
+    <annotationfont>LatoPlus-Regular</annotationfont>
+    <annotationfontsize>15</annotationfontsize>
+  </view>
+</composition>

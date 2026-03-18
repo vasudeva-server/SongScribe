@@ -67,12 +67,11 @@ class ElementHitTest {
         @NotNull Rectangle out
     ) {
         var elementType = element.getType();
-        var upper = element.isUpper();
         var sc = ScaleContext.getInstance();
 
-        // Use notehead width (excludes flag extent); apply 4px minimum for narrow elements (AD-10)
+        // Use notehead bounds (excludes stem and flag); apply 4px minimum for narrow elements (AD-10)
         var widthPx = Math.max((int) Math.round(sc.toPixels(elementType.getNoteheadWidthSs())), 4);
-        var heightPx = (int) Math.round(sc.toPixels(elementType.getElementHeightSs(upper)));
+        var heightPx = Math.max((int) Math.round(sc.toPixels(elementType.getNoteheadHeightSs())), 4);
 
         // Get element X from LayoutResult (staff-space) and convert to pixels, so the
         // hit rect is in pixel coordinates consistent with the mouse-event point.
@@ -80,7 +79,7 @@ class ElementHitTest {
         var elementXSs = layoutResult != null ? layoutResult.getElementXSs(element) : 0.0;
         var elementXPx = (int) Math.round(sc.toPixels(elementXSs));
         var elementY = lc.staffPositionToYPx(element.getStaffPosition());
-        var topOffsetPx = (int) Math.round(sc.toPixels(elementType.getTopYOffsetSs(upper)));
+        var topOffsetPx = (int) Math.round(sc.toPixels(elementType.getNoteheadTopOffsetSs()));
         out.setBounds(elementXPx, elementY + topOffsetPx, widthPx, heightPx);
     }
 }

@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<composition version="2.2">
+  <keys>5</keys>
+  <keytype>FLATS</keytype>
+  <tempo>
+    <visibletempo>120</visibletempo>
+    <tempotype>CROTCHET</tempotype>
+    <tempodescription>Moderate</tempodescription>
+  </tempo>
+  <number></number>
+  <songtitle>Connections</songtitle>
+  <rightinfo>Words and Music
+by Sri Chinmoy</rightinfo>
+  <rightinfostarty>55.0</rightinfostarty>
+  <linewidth>94.5</linewidth>
+  <dynamicLayout>true</dynamicLayout>
+  <lines>
+    <line>
+      <lyricsypos>6.25</lyricsypos>
+      <ties>3,4;</ties>
+      <notes>
+          <note type="CROTCHET">
+            <xpos>96</xpos>
+            <staffposition>1</staffposition>
+            <upper />
+            <tempo>
+              <visibletempo>120</visibletempo>
+              <tempotype>CROTCHET</tempotype>
+              <tempodescription>Moderate</tempodescription>
+            </tempo>
+          </note>
+          <note type="QUAVER">
+            <xpos>125</xpos>
+            <staffposition>2</staffposition>
+            <upper />
+          </note>
+          <note type="QUAVER">
+            <xpos>163</xpos>
+            <staffposition>2</staffposition>
+            <upper />
+          </note>
+          <note type="CROTCHET">
+            <xpos>201</xpos>
+            <staffposition>-1</staffposition>
+          </note>
+          <note type="CROTCHET">
+            <xpos>230</xpos>
+            <staffposition>-1</staffposition>
+          </note>
+          <note type="CROTCHET">
+            <xpos>259</xpos>
+            <staffposition>2</staffposition>
+            <upper />
+          </note>
+          <note type="CROTCHET">
+            <xpos>288</xpos>
+            <staffposition>-1</staffposition>
+          </note>
+          <note type="CROTCHET">
+            <xpos>317</xpos>
+            <staffposition>2</staffposition>
+            <glissando>CONNECTED</glissando>
+            <upper />
+          </note>
+          <note type="CROTCHET">
+            <xpos>346</xpos>
+            <staffposition>-1</staffposition>
+          </note>
+          <note type="CROTCHET">
+            <xpos>375</xpos>
+            <staffposition>-4</staffposition>
+            <glissando>CONNECTED</glissando>
+          </note>
+          <note type="CROTCHET">
+            <xpos>404</xpos>
+            <staffposition>-1</staffposition>
+          </note>
+          <note type="CROTCHET">
+            <xpos>433</xpos>
+            <staffposition>2</staffposition>
+            <glissando>CONNECTED</glissando>
+            <upper />
+          </note>
+          <note type="CROTCHET">
+            <xpos>462</xpos>
+            <staffposition>-1</staffposition>
+          </note>
+          <note type="CROTCHET">
+            <xpos>491</xpos>
+            <staffposition>5</staffposition>
+            <glissando>CONNECTED</glissando>
+            <upper />
+          </note>
+          <note type="CROTCHET">
+            <xpos>520</xpos>
+            <staffposition>2</staffposition>
+            <upper />
+          </note>
+          <note type="CROTCHET">
+            <xpos>549</xpos>
+            <staffposition>-4</staffposition>
+            <glissando>CONNECTED</glissando>
+          </note>
+          <note type="CROTCHET">
+            <xpos>578</xpos>
+            <staffposition>-2</staffposition>
+          </note>
+          <note type="CROTCHET">
+            <xpos>607</xpos>
+            <staffposition>1</staffposition>
+            <glissando>SLIDE_OUT</glissando>
+            <upper />
+          </note>
+      </notes>
+    </line>
+  </lines>
+  <view>
+    <titlefont>LatoPlus-Bold</titlefont>
+    <titlefontsize>30</titlefontsize>
+    <lyricsfont>LatoPlus-Regular</lyricsfont>
+    <lyricsfontsize>17</lyricsfontsize>
+    <generalfont>LatoPlus-Regular</generalfont>
+    <generalfontsize>15</generalfontsize>
+    <annotationfont>LatoPlus-Regular</annotationfont>
+    <annotationfontsize>15</annotationfontsize>
+  </view>
+</composition>

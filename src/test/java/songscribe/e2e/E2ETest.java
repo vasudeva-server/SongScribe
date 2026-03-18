@@ -29,8 +29,6 @@ import java.awt.event.MouseEvent;
 import java.io.PrintWriter;
 import java.io.StringReader;
 import java.io.StringWriter;
-import java.util.Set;
-
 import javax.xml.parsers.SAXParserFactory;
 
 import org.jetbrains.annotations.Nullable;
@@ -54,9 +52,9 @@ import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.api.extension.TestWatcher;
 import org.xml.sax.InputSource;
 
+import songscribe.UnitTest;
 import songscribe.io.CompositionIO;
 import songscribe.music.Composition;
-import songscribe.music.StaffElement.Accidental;
 import songscribe.ui.Dialogs;
 import songscribe.ui.action.Actions;
 import songscribe.ui.action.UIAction;
@@ -83,10 +81,10 @@ public abstract class E2ETest {
     /** Delay in ms between UI actions so you can watch what's happening. Set to 0 for full speed. */
     private static final int ACTION_DELAY_MS = SLOW_MODE ? 1000 : DEBUG_MODE ? 250 : 10;
 
-    private static final String[] DEBUG_OPTIONS = {"Stop", "Skip", "OK"};
-    private static final int DEBUG_STOP = 0;
+    private static final String[] DEBUG_OPTIONS = {"OK", "Skip", "Stop"};
+    private static final int DEBUG_OK = 0;
     private static final int DEBUG_SKIP = 1;
-    private static final int DEBUG_OK = 2;
+    private static final int DEBUG_STOP = 2;
 
     private static boolean frameInitialized = false;
     private static boolean skipClass = false;
@@ -154,6 +152,7 @@ public abstract class E2ETest {
 
         pause();
         debugConfirm("Test " + testCounter + " of " + E2ETestCountListener.getTotalTests() + ": " + currentTestName);
+        Assumptions.assumeFalse(skipClass, "Skipping class");
     }
 
     @AfterAll
@@ -319,58 +318,6 @@ public abstract class E2ETest {
     }
 
     // -- Accidental helpers --
-
-    // SHARP, DOUBLE_SHARP, NATURAL_SHARP have no toolbar button -- reached via Insert > Accidental menu.
-    private static final Set<UIAction> MENU_ONLY_ACCIDENTALS = Set.of(
-        Actions.SHARP_ACTION,
-        Actions.DOUBLE_SHARP_ACTION,
-        Actions.NATURAL_SHARP_ACTION
-    );
-
-    protected void clickAccidentalAction(UIAction action) {
-        if (MENU_ONLY_ACCIDENTALS.contains(action)) {
-            clickMenuItem(action);
-        } else {
-            clickToolbarButton(action);
-        }
-    }
-
-    protected void selectAccidental(Accidental accidental) {
-        deselectAccidental();
-
-        if (accidental != Accidental.NONE) {
-            clickAccidentalAction(accidentalActionFor(accidental));
-        }
-    }
-
-    protected void deselectAccidental() {
-        var selected = GuiActionRunner.execute(() -> {
-            for (var action : accidentalActions()) {
-                if (((UIAction.Selectable) action).isSelected()) {
-                    return action;
-                }
-            }
-
-            return null;
-        });
-
-        if (selected != null) {
-            clickAccidentalAction(selected);
-        }
-    }
-
-    protected UIAction accidentalActionFor(Accidental accidental) {
-        return switch (accidental) {
-            case FLAT -> Actions.FLAT_ACTION;
-            case DOUBLE_FLAT -> Actions.DOUBLE_FLAT_ACTION;
-            case NATURAL_FLAT -> Actions.NATURAL_FLAT_ACTION;
-            case NATURAL -> Actions.NATURAL_ACTION;
-            case SHARP -> Actions.SHARP_ACTION;
-            case DOUBLE_SHARP -> Actions.DOUBLE_SHARP_ACTION;
-            case NATURAL_SHARP -> Actions.NATURAL_SHARP_ACTION;
-            default -> throw new IllegalArgumentException("No action for " + accidental);
-        };
-    }
 
     protected UIAction[] accidentalActions() {
         return new UIAction[]{
@@ -573,6 +520,32 @@ public abstract class E2ETest {
         pause();
     }
 
+    // -- Key event helpers --
+
+    /**
+     * Dispatches a key press+release directly to the focused component on the EDT.
+     * <p>
+     * The robot's {@code pressAndReleaseKey} maps virtual key codes to physical keys,
+     * which produces wrong characters on non-QWERTY keyboard layouts (e.g. Dvorak).
+     * This method dispatches synthetic {@link KeyEvent}s with the logical key code,
+     * bypassing the physical layout mapping.
+     */
+    protected void pressKey(int keyCode, int modifiers) {
+        GuiActionRunner.execute(() -> {
+            var target = score();
+            target.requestFocusInWindow();
+            long now = System.currentTimeMillis();
+
+            target.dispatchEvent(new KeyEvent(
+                target, KeyEvent.KEY_PRESSED, now, modifiers,
+                keyCode, KeyEvent.CHAR_UNDEFINED));
+            target.dispatchEvent(new KeyEvent(
+                target, KeyEvent.KEY_RELEASED, now, modifiers,
+                keyCode, KeyEvent.CHAR_UNDEFINED));
+        });
+        pause();
+    }
+
     // -- Layout synchronization --
 
     /**
@@ -604,14 +577,73 @@ public abstract class E2ETest {
     }
 
     /**
-     * In debug mode, shows a confirm dialog with Stop/Skip/OK buttons.
-     * Stop aborts the entire test run, Skip skips the remaining tests in the current class.
+     * Functional interface for test steps that may throw checked exceptions.
+     */
+    @FunctionalInterface
+    protected interface TestStep {
+        void run() throws Exception;
+    }
+
+    /**
+     * Executes a logical step within a test. Updates the status overlay,
+     * then in debug mode shows a confirm dialog: OK runs the step, Skip
+     * skips it and continues to the next step, Stop exits the JVM.
+     * In slow mode, adds extra delay before the step.
+     *
+     * @param description short label for the step (shown in overlay and dialog)
+     * @param step the action and assertions to run
+     */
+    protected void debugStep(String description, TestStep step) throws Exception {
+        currentTestName = description;
+        GuiActionRunner.execute(() -> updateStatusOverlay());
+
+        if (SLOW_MODE && !DEBUG_MODE) {
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        }
+
+        if (DEBUG_MODE) {
+            int result = showDebugConfirm(description);
+
+            if (result == DEBUG_STOP) {
+                System.exit(0);
+            }
+
+            if (result == DEBUG_SKIP) {
+                return;
+            }
+        }
+
+        step.run();
+    }
+
+    /**
+     * In debug mode, shows a confirm dialog with OK/Skip/Stop buttons.
+     * Stop exits the JVM. Skip sets {@code skipClass = true}.
      */
     private void debugConfirm(String message) {
         if (!DEBUG_MODE) {
             return;
         }
 
+        int result = showDebugConfirm(message);
+
+        if (result == DEBUG_STOP) {
+            System.exit(0);
+        }
+
+        if (result == DEBUG_SKIP) {
+            skipClass = true;
+        }
+    }
+
+    /**
+     * Shows a confirm dialog with OK/Skip/Stop buttons and returns the chosen option.
+     */
+    private int showDebugConfirm(String message) {
         var result = new int[1];
         var latch = new java.util.concurrent.CountDownLatch(1);
 
@@ -635,13 +667,7 @@ public abstract class E2ETest {
             Thread.currentThread().interrupt();
         }
 
-        switch (result[0]) {
-            case DEBUG_STOP -> System.exit(0);
-            case DEBUG_SKIP -> {
-                skipClass = true;
-                Assumptions.assumeFalse(true, "Skipping class");
-            }
-        }
+        return result[0];
     }
 
     // -- Model query helpers --
@@ -658,6 +684,23 @@ public abstract class E2ETest {
             var line = composition().getLine(lineIndex);
             return line.getTies().findInterval(noteIndex) != null;
         });
+    }
+
+    // -- Fixture loading --
+
+    /**
+     * Loads a fixture file and replaces the current composition.
+     * The fixture is deserialized via the same path as File > Open, then set
+     * on the score and laid out.
+     */
+    protected Composition loadFixture(String fixtureName) throws Exception {
+        var composition = GuiActionRunner.execute(() -> {
+            var loaded = UnitTest.loadFixture(fixtureName);
+            score().setComposition(loaded);
+            return loaded;
+        });
+        performLayout(0);
+        return composition;
     }
 
     // -- Save/load round-trip --

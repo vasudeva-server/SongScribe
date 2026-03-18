@@ -145,6 +145,8 @@ public enum ElementType {
     private final ElementType aliasOf;
     private double widthSs;
     private double noteheadWidthSs;
+    private double noteheadHeightSs;
+    private double noteheadTopOffsetSs;
     private double heightUpSs;
     private double heightDownSs;
     private double topOffsetUpSs;
@@ -276,6 +278,29 @@ public enum ElementType {
      */
     public double getNoteheadCenterXSs() {
         return getNoteheadWidthSs() / 2;
+    }
+
+    /**
+     * Returns the notehead height in staff spaces (excludes the stem).
+     * For non-stemmed elements this equals the full element height.
+     *
+     * @throws UnsupportedOperationException for GLISSANDO and PASTE (no visual bounds)
+     */
+    public double getNoteheadHeightSs() {
+        requireVisualBounds();
+        return noteheadHeightSs;
+    }
+
+    /**
+     * Returns the Y offset in staff spaces from the notehead center to the top of the notehead.
+     * The returned value is negative (the top is above the note center).
+     * For non-stemmed elements this equals {@link #getTopYOffsetSs(boolean)}.
+     *
+     * @throws UnsupportedOperationException for GLISSANDO and PASTE (no visual bounds)
+     */
+    public double getNoteheadTopOffsetSs() {
+        requireVisualBounds();
+        return noteheadTopOffsetSs;
     }
 
     /**
@@ -491,6 +516,8 @@ public enum ElementType {
 
                 type.widthSs = width;
                 type.noteheadWidthSs = headRight;
+                type.noteheadHeightSs = headBottom - headTop;
+                type.noteheadTopOffsetSs = headTop;
 
                 // Height up: from top of stem to bottom of notehead
                 double upTop = stemUpY - LayoutConstants.STEM_LENGTH_SS;
@@ -505,6 +532,8 @@ public enum ElementType {
                 // No stem (semibreve)
                 type.widthSs = bbox.right();
                 type.noteheadWidthSs = bbox.right();
+                type.noteheadHeightSs = bbox.height();
+                type.noteheadTopOffsetSs = bbox.top();
                 type.heightUpSs = bbox.height();
                 type.heightDownSs = bbox.height();
                 type.topOffsetUpSs = bbox.top();
@@ -538,10 +567,13 @@ public enum ElementType {
             width = Math.max(width, stemUpX + flagBBox.right() * scale);
         }
 
+        double headTop = headBBox.top() * scale;
         double height = headBottom - upTop;
 
         type.setSymmetricBounds(width, height, upTop);
         type.noteheadWidthSs = headRight;
+        type.noteheadHeightSs = headBottom - headTop;
+        type.noteheadTopOffsetSs = headTop;
     }
 
     /**
@@ -553,6 +585,8 @@ public enum ElementType {
     ) {
         this.widthSs = width;
         this.noteheadWidthSs = width;
+        this.noteheadHeightSs = height;
+        this.noteheadTopOffsetSs = topOffset;
         this.heightUpSs = height;
         this.heightDownSs = height;
         this.topOffsetUpSs = topOffset;
@@ -562,6 +596,8 @@ public enum ElementType {
     private void copyBoundsFrom(ElementType source) {
         this.widthSs = source.widthSs;
         this.noteheadWidthSs = source.noteheadWidthSs;
+        this.noteheadHeightSs = source.noteheadHeightSs;
+        this.noteheadTopOffsetSs = source.noteheadTopOffsetSs;
         this.heightUpSs = source.heightUpSs;
         this.heightDownSs = source.heightDownSs;
         this.topOffsetUpSs = source.topOffsetUpSs;

@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<composition version="2.2">
+  <keys>5</keys>
+  <keytype>FLATS</keytype>
+  <tempo>
+    <visibletempo>120</visibletempo>
+    <tempotype>CROTCHET</tempotype>
+    <tempodescription>Moderate</tempodescription>
+  </tempo>
+  <number></number>
+  <songtitle>Selection 2</songtitle>
+  <rightinfo>Words and Music
+by Sri Chinmoy</rightinfo>
+  <rightinfostarty>55.0</rightinfostarty>
+  <linewidth>94.5</linewidth>
+  <dynamicLayout>true</dynamicLayout>
+  <lines>
+    <line>
+      <lyricsypos>6.25</lyricsypos>
+      <ties>3,4;</ties>
+      <notes>
+          <note type="CROTCHET">
+            <xpos>96</xpos>
+            <staffposition>6</staffposition>
+            <durationarticulation>STACCATO</durationarticulation>
+            <upper />
+          </note>
+          <note type="CROTCHET">
+            <xpos>125</xpos>
+            <staffposition>-6</staffposition>
+            <forcearticulation>ACCENT</forcearticulation>
+          </note>
+          <note type="CROTCHET">
+            <xpos>154</xpos>
+            <staffposition>2</staffposition>
+            <upper />
+            <fermata />
+          </note>
+          <note type="CROTCHET">
+            <xpos>183</xpos>
+            <staffposition>-2</staffposition>
+          </note>
+          <note type="CROTCHET">
+            <xpos>212</xpos>
+            <staffposition>-2</staffposition>
+          </note>
+          <note type="SEMIBREVE_REST">
+            <xpos>241</xpos>
+            <staffposition>-1</staffposition>
+          </note>
+          <note type="MINIM_REST">
+            <xpos>270</xpos>
+            <staffposition>0</staffposition>
+          </note>
+          <note type="CROTCHET_REST">
+            <xpos>299</xpos>
+            <staffposition>0</staffposition>
+          </note>
+          <note type="QUAVER_REST">
+            <xpos>328</xpos>
+            <staffposition>0</staffposition>
+          </note>
+          <note type="SEMIQUAVER_REST">
+            <xpos>357</xpos>
+            <staffposition>0</staffposition>
+          </note>
+          <note type="DEMI_SEMIQUAVER_REST">
+            <xpos>386</xpos>
+            <staffposition>0</staffposition>
+          </note>
+          <note type="CROTCHET">
+            <xpos>416</xpos>
+            <staffposition>0</staffposition>
+          </note>
+          <note type="SINGLE_BARLINE">
+            <xpos>446</xpos>
+            <staffposition>0</staffposition>
+          </note>
+          <note type="DOUBLE_BARLINE">
+            <xpos>475</xpos>
+            <staffposition>0</staffposition>
+          </note>
+          <note type="FINAL_DOUBLE_BARLINE">
+            <xpos>504</xpos>
+            <staffposition>0</staffposition>
+          </note>
+          <note type="REPEAT_LEFT">
+            <xpos>533</xpos>
+            <staffposition>0</staffposition>
+          </note>
+          <note type="REPEAT_RIGHT">
+            <xpos>562</xpos>
+            <staffposition>0</staffposition>
+          </note>
+          <note type="REPEAT_LEFT_RIGHT">
+            <xpos>591</xpos>
+            <staffposition>0</staffposition>
+          </note>
+          <note type="BREATH_MARK">
+            <xpos>620</xpos>
+            <staffposition>-7</staffposition>
+          </note>
+      </notes>
+    </line>
+  </lines>
+  <view>
+    <titlefont>LatoPlus-Bold</titlefont>
+    <titlefontsize>30</titlefontsize>
+    <lyricsfont>LatoPlus-Regular</lyricsfont>
+    <lyricsfontsize>17</lyricsfontsize>
+    <generalfont>LatoPlus-Regular</generalfont>
+    <generalfontsize>15</generalfontsize>
+    <annotationfont>LatoPlus-Regular</annotationfont>
+    <annotationfontsize>15</annotationfontsize>
+  </view>
+</composition>

@@ -20,7 +20,12 @@
 
 package songscribe;
 
+import java.io.File;
+import java.net.URISyntaxException;
+
 import songscribe.SongScribe;
+import songscribe.io.CompositionLoader;
+import songscribe.music.Composition;
 import songscribe.ui.Dialogs;
 
 import org.junit.jupiter.api.BeforeAll;
@@ -41,5 +46,19 @@ public abstract class UnitTest {
             bannerShown = true;
             SongScribe.logBanner("SongScribe (Unit Tests)");
         }
+    }
+
+    /**
+     * Loads a fixture file and returns the parsed composition.
+     * Fixture files live in {@code src/test/resources/fixtures/{name}.mssw}.
+     */
+    public static Composition loadFixture(String fixtureName) throws IllegalArgumentException, java.io.IOException, org.xml.sax.SAXException, URISyntaxException {
+        var url = UnitTest.class.getClassLoader().getResource("fixtures/" + fixtureName + ".mssw");
+
+        if (url == null) {
+            throw new IllegalArgumentException("Fixture not found: " + fixtureName);
+        }
+
+        return CompositionLoader.load(new File(url.toURI()));
     }
 }

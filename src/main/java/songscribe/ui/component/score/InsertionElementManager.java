@@ -253,7 +253,7 @@ public class InsertionElementManager {
      * True when the mouse is in a valid glissando zone (not over a note head, not to the
      * left of the first note). The preview is shown for both insertion and removal modes.
      */
-    static boolean shouldShowGlissandoPreview() {
+    public static boolean shouldShowGlissandoPreview() {
         return currentGlissandoZone != null;
     }
 

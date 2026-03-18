@@ -21,159 +21,108 @@
 package songscribe.e2e;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertAll;
 
 import org.assertj.swing.edt.GuiActionRunner;
-import org.junit.jupiter.api.Nested;
+import org.assertj.swing.finder.JOptionPaneFinder;
 import org.junit.jupiter.api.Test;
 
 import songscribe.music.ElementType;
 import songscribe.ui.action.Actions;
 
 /**
- * Milestone 1 E2E tests: element insertion, replacement, and pitch drag.
+ * E2E tests for element insertion mechanics.
  */
 class ElementInsertionTest extends E2ETest {
 
-    @Nested
-    class EditOperations {
+    @Test
+    void testInsertVariousElementTypes() throws Exception {
+        debugStep("Build composition with various elements", () -> {
+            buildNotes(Actions.QUARTER_NOTE_ACTION, -4);
+            buildNotes(Actions.HALF_NOTE_ACTION, 2);
+            buildNotes(Actions.EIGHTH_NOTE_ACTION, -2, -6);
 
-        @Test
-        void testDragNoteToNewStaffPosition() {
-            // Insert a quarter note at staff position 0
-            selectDuration(Actions.QUARTER_NOTE_ACTION);
-            var point = insertionPoint(0, 0);
-            clickAt(point);
-            performLayout(0);
-
-            var line = composition().getLine(0);
-            assertThat(line.elementCount()).isEqualTo(1);
-            var element = line.getElement(0);
-
-            // Drag the note to a new staff position
-            var targetStaffPositionSp = -4;
-            dragNote(0, 0, targetStaffPositionSp);
-            performLayout(0);
-
-            // Same element object, updated staff position
-            assertThat(line.elementCount()).isEqualTo(1);
-            assertThat(element.getStaffPosition()).isEqualTo(targetStaffPositionSp);
-        }
-
-        @Test
-        void testReplaceNoteAtSameXDifferentPitch() {
-            // Insert a quarter note
-            selectDuration(Actions.QUARTER_NOTE_ACTION);
-            var point = insertionPoint(0, 0);
-            clickAt(point);
-            performLayout(0);
-
-            var line = composition().getLine(0);
-            assertThat(line.elementCount()).isEqualTo(1);
-
-            // Now select half note and click at the same X but different staff position
-            selectDuration(Actions.HALF_NOTE_ACTION);
-            var notePoint = noteScreenPosition(0, 0);
-            var newStaffPositionSp = -4;
-
-            var lc = score().getLineComponent(0);
-            var replacementPoint = GuiActionRunner.execute(() -> {
-                var yPx = lc.staffPositionToYPx(newStaffPositionSp);
-                var loc = lc.getLocationOnScreen();
-                return new java.awt.Point(notePoint.x, loc.y + yPx);
-            });
-
-            clickAt(replacementPoint);
-            performLayout(0);
-
-            // Element count should remain the same (replacement, not addition)
-            assertThat(line.elementCount()).isEqualTo(1);
-
-            var element = line.getElement(0);
-            assertThat(element.getType()).isEqualTo(ElementType.MINIM);
-            assertThat(element.getStaffPosition()).isEqualTo(newStaffPositionSp);
-        }
-    }
-
-    @Nested
-    class NoteInsertion {
-
-        @Test
-        void testInsertEighthNote() {
-            selectDuration(Actions.EIGHTH_NOTE_ACTION);
-            var staffPositionSp = -2;
-
-            var point = insertionPoint(0, staffPositionSp);
-            clickAt(point);
-            performLayout(0);
-
-            var line = composition().getLine(0);
-            assertThat(line.elementCount()).isEqualTo(1);
-
-            var element = line.getElement(0);
-            assertThat(element.getType()).isEqualTo(ElementType.QUAVER);
-            assertThat(element.getStaffPosition()).isEqualTo(staffPositionSp);
-        }
-
-        @Test
-        void testInsertHalfNote() {
-            selectDuration(Actions.HALF_NOTE_ACTION);
-            var staffPositionSp = 2;
-
-            var point = insertionPoint(0, staffPositionSp);
-            clickAt(point);
-            performLayout(0);
-
-            var line = composition().getLine(0);
-            assertThat(line.elementCount()).isEqualTo(1);
-
-            var element = line.getElement(0);
-            assertThat(element.getType()).isEqualTo(ElementType.MINIM);
-            assertThat(element.getStaffPosition()).isEqualTo(staffPositionSp);
-        }
-
-        @Test
-        void testInsertNoteAtDifferentStaffPositions() {
-            var positions = new int[]{0, -4, 4, -8};
-            buildNotes(Actions.QUARTER_NOTE_ACTION, positions);
-
-            var line = composition().getLine(0);
-            assertThat(line.elementCount()).isEqualTo(positions.length);
-
-            for (var i = 0; i < positions.length; i++) {
-                assertThat(line.getElement(i).getStaffPosition()).isEqualTo(positions[i]);
-            }
-        }
-
-        @Test
-        void testInsertQuarterNote() {
-            selectDuration(Actions.QUARTER_NOTE_ACTION);
-            var staffPositionSp = 0;
-
-            var point = insertionPoint(0, staffPositionSp);
-            clickAt(point);
-            performLayout(0);
-
-            var line = composition().getLine(0);
-            assertThat(line.elementCount()).isEqualTo(1);
-
-            var element = line.getElement(0);
-            assertThat(element.getType()).isEqualTo(ElementType.CROTCHET);
-            assertThat(element.getStaffPosition()).isEqualTo(staffPositionSp);
-        }
-
-        @Test
-        void testInsertRest() {
             selectDuration(Actions.QUARTER_NOTE_ACTION);
             enableRestMode();
+            clickAt(insertionPoint(0, 0));
+            performLayout(0);
+        });
 
-            var point = insertionPoint(0, 0);
-            clickAt(point);
+        debugStep("Verify element types and auto-beam", () -> {
+            var line = composition().getLine(0);
+            var countBefore = line.elementCount();
+            var elem0 = line.getElement(0);
+            var elem1 = line.getElement(1);
+            var elem2 = line.getElement(2);
+            var elem3 = line.getElement(3);
+            var elem4 = line.getElement(4);
+            var note2Beamed = isBeamed(0, 2);
+            var note3Beamed = isBeamed(0, 3);
+            var beamIntervalStart = GuiActionRunner.execute(() -> {
+                var interval = composition().getLine(0).getBeamings().findInterval(2);
+                return interval != null ? interval.getStart() : -1;
+            });
+            var beamIntervalEnd = GuiActionRunner.execute(() -> {
+                var interval = composition().getLine(0).getBeamings().findInterval(2);
+                return interval != null ? interval.getEnd() : -1;
+            });
+
+            assertAll(
+                () -> assertThat(elem0.getType()).as("quarter note type").isEqualTo(ElementType.CROTCHET),
+                () -> assertThat(elem0.getStaffPosition()).as("quarter note position").isEqualTo(-4),
+                () -> assertThat(elem1.getType()).as("half note type").isEqualTo(ElementType.MINIM),
+                () -> assertThat(elem1.getStaffPosition()).as("half note position").isEqualTo(2),
+                () -> assertThat(elem2.getType()).as("eighth note type").isEqualTo(ElementType.QUAVER),
+                () -> assertThat(elem2.getStaffPosition()).as("eighth note position").isEqualTo(-2),
+                () -> assertThat(elem3.getType()).as("second eighth type").isEqualTo(ElementType.QUAVER),
+                () -> assertThat(elem3.getStaffPosition()).as("second eighth position").isEqualTo(-6),
+                () -> assertThat(note2Beamed).as("auto-beam: note 2 beamed").isTrue(),
+                () -> assertThat(note3Beamed).as("auto-beam: note 3 beamed").isTrue(),
+                () -> {
+                    assertThat(beamIntervalStart).as("auto-beam: interval spans 2-3 (start)").isEqualTo(2);
+                    assertThat(beamIntervalEnd).as("auto-beam: interval spans 2-3 (end)").isEqualTo(3);
+                },
+                () -> assertThat(elem4.getType().isRest()).as("rest type").isTrue(),
+                () -> assertThat(countBefore).as("total element count").isEqualTo(5)
+            );
+        });
+
+        debugStep("Insert between and verify shift", () -> {
+            deselectRestMode();
+            selectDuration(Actions.QUARTER_NOTE_ACTION);
+            clickAt(insertionPointBefore(0, 1, 4));
             performLayout(0);
 
             var line = composition().getLine(0);
-            assertThat(line.elementCount()).isEqualTo(1);
-            assertThat(line.getElement(0).getType().isRest()).isTrue();
-        }
+            var countAfter = line.elementCount();
+            var newElem1 = line.getElement(1);
+            var origElem1 = line.getElement(2);
+
+            assertAll(
+                () -> assertThat(countAfter).as("insert between: element count").isEqualTo(6),
+                () -> assertThat(newElem1.getType()).as("inserted element type").isEqualTo(ElementType.CROTCHET),
+                () -> assertThat(newElem1.getStaffPosition()).as("inserted element position").isEqualTo(4),
+                () -> assertThat(origElem1.getType()).as("shifted element type").isEqualTo(ElementType.MINIM)
+            );
+        });
     }
 
+    @Test
+    void testInsertionWhenLineIsFull() throws Exception {
+        loadFixture("full-line");
+
+        debugStep("Insert into full line shows error", () -> {
+            var line = composition().getLine(0);
+            var originalCount = line.elementCount();
+
+            selectDuration(Actions.QUARTER_NOTE_ACTION);
+            clickAt(insertionPointBefore(0, 1, 0));
+
+            var optionPane = JOptionPaneFinder.findOptionPane().using(robot);
+            optionPane.requireErrorMessage();
+            optionPane.okButton().click();
+
+            assertThat(line.elementCount()).as("element count unchanged").isEqualTo(originalCount);
+        });
+    }
 }

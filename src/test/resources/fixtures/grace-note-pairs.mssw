@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<composition version="2.2">
+  <keys>5</keys>
+  <keytype>FLATS</keytype>
+  <tempo>
+    <visibletempo>120</visibletempo>
+    <tempotype>CROTCHET</tempotype>
+    <tempodescription>Moderate</tempodescription>
+  </tempo>
+  <number></number>
+  <songtitle>Grace notes</songtitle>
+  <rightinfo>Words and Music
+by Sri Chinmoy</rightinfo>
+  <rightinfostarty>55.0</rightinfostarty>
+  <linewidth>94.5</linewidth>
+  <dynamicLayout>true</dynamicLayout>
+  <lines>
+    <line>
+      <lyricsypos>6.25</lyricsypos>
+      <notes>
+          <note type="CROTCHET">
+            <xpos>96</xpos>
+            <staffposition>0</staffposition>
+            <tempo>
+              <visibletempo>120</visibletempo>
+              <tempotype>CROTCHET</tempotype>
+              <tempodescription>Moderate</tempodescription>
+            </tempo>
+          </note>
+          <note type="GRACE_QUAVER">
+            <xpos>125</xpos>
+            <staffposition>3</staffposition>
+            <glissando>CONNECTED</glissando>
+            <upper />
+          </note>
+          <note type="CROTCHET">
+            <xpos>157</xpos>
+            <staffposition>-2</staffposition>
+          </note>
+          <note type="GRACE_QUAVER">
+            <xpos>186</xpos>
+            <staffposition>1</staffposition>
+            <glissando>CONNECTED</glissando>
+            <upper />
+          </note>
+          <note type="CROTCHET">
+            <xpos>218</xpos>
+            <staffposition>-2</staffposition>
+          </note>
+          <note type="GRACE_QUAVER">
+            <xpos>247</xpos>
+            <staffposition>4</staffposition>
+            <glissando>CONNECTED</glissando>
+            <upper />
+          </note>
+          <note type="CROTCHET">
+            <xpos>279</xpos>
+            <staffposition>0</staffposition>
+          </note>
+          <note type="CROTCHET">
+            <xpos>308</xpos>
+            <staffposition>-3</staffposition>
+          </note>
+      </notes>
+    </line>
+  </lines>
+  <view>
+    <titlefont>LatoPlus-Bold</titlefont>
+    <titlefontsize>30</titlefontsize>
+    <lyricsfont>LatoPlus-Regular</lyricsfont>
+    <lyricsfontsize>17</lyricsfontsize>
+    <generalfont>LatoPlus-Regular</generalfont>
+    <generalfontsize>15</generalfontsize>
+    <annotationfont>LatoPlus-Regular</annotationfont>
+    <annotationfontsize>15</annotationfontsize>
+  </view>
+</composition>
