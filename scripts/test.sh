@@ -20,7 +20,6 @@ PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 source "$SCRIPT_DIR/set-java-home.sh"
 
-# Parse flags
 JVM_ARGS=()
 DETAILS="summary"
 KEEP_GOING=false
@@ -58,7 +57,6 @@ JVM_ARGS+=(
   "--add-opens" "java.base/java.util=ALL-UNNAMED"
 )
 
-# Compile test code
 echo "Compiling..."
 
 if ! mvn -q test-compile -f "$PROJECT_DIR/pom.xml"; then
@@ -66,14 +64,12 @@ if ! mvn -q test-compile -f "$PROJECT_DIR/pom.xml"; then
   exit 1
 fi
 
-# Build classpath
 CP_FILE=$(mktemp)
 trap 'rm -f "$CP_FILE"' EXIT
 mvn -q dependency:build-classpath -f "$PROJECT_DIR/pom.xml" \
   -DincludeScope=test -Dmdep.outputFile="$CP_FILE" || exit 1
 CLASSPATH="$PROJECT_DIR/target/classes:$PROJECT_DIR/target/test-classes:$(cat "$CP_FILE")"
 
-# Launcher constants
 TEST_DIR="$PROJECT_DIR/target/test-classes"
 SCAN_CLASSPATH="--scan-classpath=$TEST_DIR"
 UNIT_FILTER="--exclude-package=songscribe.e2e"
