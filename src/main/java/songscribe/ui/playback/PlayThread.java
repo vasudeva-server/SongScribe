@@ -21,6 +21,8 @@ package songscribe.ui.playback;
 
 import module java.desktop;
 
+import songscribe.util.FatalError;
+
 public class PlayThread extends Thread {
 
     private static final int NOTE_DURATION_MS = 700;
@@ -62,18 +64,25 @@ public class PlayThread extends Thread {
      * No-op if {@code midiReceiver} is null.
      */
     private static void setupInstrument() throws InvalidMidiDataException {
+        var receiver = MidiController.midiReceiver;
+
+        if (receiver == null) {
+            FatalError.exit("setupInstrument() called with null midiReceiver");
+            throw new AssertionError("unreachable");
+        }
+
         var bankMsb = new ShortMessage();
         bankMsb.setMessage(ShortMessage.CONTROL_CHANGE, 0, 0, 0);
-        MidiController.midiReceiver.send(bankMsb, -1);
+        receiver.send(bankMsb, -1);
 
         var bankLsb = new ShortMessage();
         bankLsb.setMessage(ShortMessage.CONTROL_CHANGE, 0, 32, 0);
-        MidiController.midiReceiver.send(bankLsb, -1);
+        receiver.send(bankLsb, -1);
 
         var programChange = new ShortMessage();
         var instrument = PlaybackController.getPlaybackSettings().instrument();
         programChange.setMessage(ShortMessage.PROGRAM_CHANGE, 0, instrument, 0);
-        MidiController.midiReceiver.send(programChange, -1);
+        receiver.send(programChange, -1);
     }
 
     /**

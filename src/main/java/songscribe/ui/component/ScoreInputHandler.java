@@ -25,7 +25,7 @@ import module java.desktop;
 import java.awt.event.MouseEvent;
 import java.util.Objects;
 
-import org.jetbrains.annotations.NotNull;
+import org.jspecify.annotations.Nullable;
 
 import songscribe.message.MessageCenter;
 import songscribe.ui.Control;
@@ -49,7 +49,7 @@ interface InputHandlerCallback {
 
     Mode getMode();
 
-    JPopupMenu getEditPopup();
+    @Nullable JPopupMenu getEditPopup();
 
     boolean requestFocusInWindow();
 }
@@ -68,8 +68,8 @@ public final class ScoreInputHandler
     private final EditModeManager editModeManager;
 
     public ScoreInputHandler(
-        @NotNull InputHandlerCallback callback,
-        @NotNull EditModeManager editModeManager
+        InputHandlerCallback callback,
+        EditModeManager editModeManager
     ) {
         this.callback = callback;
         this.editModeManager = editModeManager;
@@ -79,7 +79,7 @@ public final class ScoreInputHandler
     // MouseListener methods
     //***************************
     @Override
-    public void mouseClicked(@NotNull MouseEvent e) {
+    public void mouseClicked(MouseEvent e) {
         if (DebugState.isInspectorEnabled()) {
             return;
         }
@@ -96,24 +96,32 @@ public final class ScoreInputHandler
     }
 
     @Override
-    public void mousePressed(@NotNull MouseEvent e) {
+    public void mousePressed(MouseEvent e) {
         if (DebugState.isInspectorEnabled()) {
             return;
         }
 
         if (e.isPopupTrigger()) {
-            callback.getEditPopup().show((Component) e.getSource(), e.getX(), e.getY());
+            var popup = callback.getEditPopup();
+
+            if (popup != null) {
+                popup.show((Component) e.getSource(), e.getX(), e.getY());
+            }
         }
     }
 
     @Override
-    public void mouseReleased(@NotNull MouseEvent e) {
+    public void mouseReleased(MouseEvent e) {
         if (DebugState.isInspectorEnabled()) {
             return;
         }
 
         if (e.isPopupTrigger()) {
-            callback.getEditPopup().show((Component) e.getSource(), e.getX(), e.getY());
+            var popup = callback.getEditPopup();
+
+            if (popup != null) {
+                popup.show((Component) e.getSource(), e.getX(), e.getY());
+            }
         }
     }
 
@@ -181,7 +189,7 @@ public final class ScoreInputHandler
     // KeyListener methods
     //***********************
     @Override
-    public void keyPressed(@NotNull KeyEvent e) {
+    public void keyPressed(KeyEvent e) {
         if (e.getKeyCode() == KeyEvent.VK_ALT) {
             LineComponent.clearInsertionElement();
             LineComponent.setAltPressed(true);
@@ -196,7 +204,7 @@ public final class ScoreInputHandler
     }
 
     @Override
-    public void keyReleased(@NotNull KeyEvent e) {
+    public void keyReleased(KeyEvent e) {
         if (e.getKeyCode() == KeyEvent.VK_ALT) {
             LineComponent.setAltPressed(false);
         }
@@ -220,8 +228,8 @@ public final class ScoreInputHandler
         private final int code;
 
         KeyAction(
-            @NotNull InputHandlerCallback callback,
-            @NotNull EditModeManager editModeManager,
+            InputHandlerCallback callback,
+            EditModeManager editModeManager,
             int code
         ) {
             this.callback = callback;

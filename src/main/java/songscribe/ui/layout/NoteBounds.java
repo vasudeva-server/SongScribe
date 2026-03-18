@@ -22,8 +22,7 @@ package songscribe.ui.layout;
 
 import module java.desktop;
 
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Represents the hierarchical bounding boxes for a note.
@@ -40,9 +39,9 @@ import org.jetbrains.annotations.Nullable;
  */
 public final class NoteBounds {
 
-    private final @NotNull Rectangle2D noteHeadBounds;
-    private final @NotNull Rectangle2D noteWithStemBounds;
-    private final @NotNull Rectangle2D noteWithArticulationsBounds;
+    private final Rectangle2D noteHeadBounds;
+    private final Rectangle2D noteWithStemBounds;
+    private final Rectangle2D noteWithArticulationsBounds;
     private final boolean stemUp;
 
     /**
@@ -54,9 +53,9 @@ public final class NoteBounds {
      * @param stemUp                      True if stem points up
      */
     public NoteBounds(
-        @NotNull Rectangle2D noteHeadBounds,
-        @NotNull Rectangle2D noteWithStemBounds,
-        @NotNull Rectangle2D noteWithArticulationsBounds,
+        Rectangle2D noteHeadBounds,
+        Rectangle2D noteWithStemBounds,
+        Rectangle2D noteWithArticulationsBounds,
         boolean stemUp
     ) {
         this.noteHeadBounds = noteHeadBounds;
@@ -68,7 +67,7 @@ public final class NoteBounds {
     /**
      * Creates note bounds for a note without stem or articulations (e.g., whole note).
      */
-    public static NoteBounds headOnly(@NotNull Rectangle2D noteHeadBounds, boolean stemUp) {
+    public static NoteBounds headOnly(Rectangle2D noteHeadBounds, boolean stemUp) {
         return new NoteBounds(noteHeadBounds, noteHeadBounds, noteHeadBounds, stemUp);
     }
 
@@ -76,8 +75,8 @@ public final class NoteBounds {
      * Creates note bounds for a note with stem but no articulations.
      */
     public static NoteBounds withStem(
-        @NotNull Rectangle2D noteHeadBounds,
-        @NotNull Rectangle2D noteWithStemBounds,
+        Rectangle2D noteHeadBounds,
+        Rectangle2D noteWithStemBounds,
         boolean stemUp
     ) {
         return new NoteBounds(noteHeadBounds, noteWithStemBounds, noteWithStemBounds, stemUp);
@@ -86,21 +85,21 @@ public final class NoteBounds {
     /**
      * Returns bounds for just the note head.
      */
-    public @NotNull Rectangle2D getNoteHeadBounds() {
+    public Rectangle2D getNoteHeadBounds() {
         return noteHeadBounds;
     }
 
     /**
      * Returns bounds for note head + stem.
      */
-    public @NotNull Rectangle2D getNoteWithStemBounds() {
+    public Rectangle2D getNoteWithStemBounds() {
         return noteWithStemBounds;
     }
 
     /**
      * Returns bounds for full note including articulations.
      */
-    public @NotNull Rectangle2D getNoteWithArticulationsBounds() {
+    public Rectangle2D getNoteWithArticulationsBounds() {
         return noteWithArticulationsBounds;
     }
 
@@ -117,7 +116,7 @@ public final class NoteBounds {
      * For stem up: returns upper half of note bounds.
      * For stem down: returns lower half of note bounds.
      */
-    public @NotNull Rectangle2D getStemSideBounds() {
+    public Rectangle2D getStemSideBounds() {
         if (stemUp) {
             return new Rectangle2D.Double(
                 noteWithArticulationsBounds.getX(),
@@ -142,7 +141,7 @@ public final class NoteBounds {
      * For stem up: returns lower half (articulation side).
      * For stem down: returns upper half (articulation side).
      */
-    public @NotNull Rectangle2D getOppositeFromStemBounds() {
+    public Rectangle2D getOppositeFromStemBounds() {
         if (stemUp) {
             var headCenterY = noteHeadBounds.getCenterY();
             return new Rectangle2D.Double(

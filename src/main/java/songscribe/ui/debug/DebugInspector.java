@@ -23,7 +23,7 @@ package songscribe.ui.debug;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import songscribe.ui.layout.SectionLayout;
 import songscribe.ui.menu.DebugState;
@@ -249,6 +249,6 @@ public final class DebugInspector {
      *
      * @param element The hovered element to log, or null to log hover cleared
      */
-    public static void logInspectorHover(@Nullable DebugState.HoveredElement element) {
+    public static void logInspectorHover(DebugState.@Nullable HoveredElement element) {
     }
 }

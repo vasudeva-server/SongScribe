@@ -24,7 +24,9 @@ import module java.desktop;
 import java.util.Arrays;
 import java.util.EnumMap;
 
-import org.jetbrains.annotations.NotNull;
+import java.util.Objects;
+
+import org.jspecify.annotations.Nullable;
 
 import kotlin.Pair;
 
@@ -76,7 +78,7 @@ public class CompositionSettingsDialog extends StandardDialog {
             Strings.get(Strings.MONTH_DECEMBER),
         }
     );
-    private JComboBox<String> dayCombo = null;
+    private JComboBox<String> dayCombo;
     private final NumericTextField yearField = new NumericTextField(5);
 
     // Attribution panel
@@ -157,6 +159,7 @@ public class CompositionSettingsDialog extends StandardDialog {
         "D.C. al fine (a tempo)"
     );
 
+    @SuppressWarnings("NullAway.Init")
     public CompositionSettingsDialog() {
         super(Strings.get(Strings.DIALOG_COMPOSITION_SETTINGS_TITLE));
         initFields();
@@ -230,7 +233,6 @@ public class CompositionSettingsDialog extends StandardDialog {
             add(createInfoSection());
         }
 
-        @NotNull
         private JPanel createTitleSection() {
             var section = new StandardDialog.TitledSection(
                 Strings.get(Strings.DIALOG_COMPOSITION_SETTINGS_SECTION_TITLE_OF_SONG)
@@ -269,7 +271,6 @@ public class CompositionSettingsDialog extends StandardDialog {
             return section;
         }
 
-        @NotNull
         private JPanel createTakePanel() {
             var panel = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 0));
             panel.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -299,7 +300,6 @@ public class CompositionSettingsDialog extends StandardDialog {
             return panel;
         }
 
-        @NotNull
         private JPanel createPlaceAndDateSection() {
             var section = new StandardDialog.TitledSection(
                 Strings.get(Strings.DIALOG_COMPOSITION_SETTINGS_SECTION_PLACE_AND_DATE)
@@ -345,7 +345,6 @@ public class CompositionSettingsDialog extends StandardDialog {
             return section;
         }
 
-        @NotNull
         private JPanel createInfoSection() {
             var section = new StandardDialog.TitledSection(
                 Strings.get(Strings.DIALOG_COMPOSITION_SETTINGS_SECTION_ATTRIBUTION),
@@ -410,7 +409,6 @@ public class CompositionSettingsDialog extends StandardDialog {
             add(createKeySignatureSection());
         }
 
-        @NotNull
         private JPanel createTempoSection() {
             var section = new StandardDialog.TitledSection(
                 Strings.get(Strings.DIALOG_COMPOSITION_SETTINGS_SECTION_TEMPO)
@@ -461,7 +459,6 @@ public class CompositionSettingsDialog extends StandardDialog {
             return section;
         }
 
-        @NotNull
         private JPanel createKeySignatureSection() {
             var section = new StandardDialog.TitledSection(
                 Strings.get(Strings.DIALOG_COMPOSITION_SETTINGS_SECTION_KEY_SIGNATURE)
@@ -536,11 +533,10 @@ public class CompositionSettingsDialog extends StandardDialog {
             add(new JButton(new ResetFontsAction()));
         }
 
-        @NotNull
         private static JPanel createFontSection(
-            @NotNull String title,
-            @NotNull JLabel fontLabel,
-            @NotNull JComponent preview,
+            String title,
+            JLabel fontLabel,
+            JComponent preview,
             boolean isLarge
         ) {
             var container = new JPanel();
@@ -760,7 +756,7 @@ public class CompositionSettingsDialog extends StandardDialog {
         annotationFontLabel.setText(MyFontUtils.getFullFontDescription(font));
     }
 
-    public void setKeyComboFromComposition(@NotNull Composition composition) {
+    public void setKeyComboFromComposition(Composition composition) {
         var keyType = composition.getDefaultKeyType();
         var accidentalCount = composition.getDefaultKeyAccidentalCount();
 
@@ -867,10 +863,9 @@ public class CompositionSettingsDialog extends StandardDialog {
         return new Pair<>(KeyType.SHARPS, index - 7);
     }
 
-    @NotNull
     private static JPanel createTitleAndInputPanel(
         String title,
-        @NotNull JComponent input
+        JComponent input
     ) {
         var panel = new JPanel();
         panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
@@ -880,7 +875,6 @@ public class CompositionSettingsDialog extends StandardDialog {
         return panel;
     }
 
-    @NotNull
     private String getDateString() {
         var year = yearField.getText();
 
@@ -1001,7 +995,7 @@ public class CompositionSettingsDialog extends StandardDialog {
                 int index,
                 boolean isSelected
             ) {
-                super(tempoMap.get(tempo), list, index, isSelected);
+                super(Objects.requireNonNull(tempoMap.get(tempo)), list, index, isSelected);
                 this.tempo = tempo;
                 setPreferredSize(CELL_SIZE);
                 setMinimumSize(CELL_SIZE);

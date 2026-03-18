@@ -21,7 +21,6 @@ package songscribe.ui.component;
 
 import module java.desktop;
 
-import org.jetbrains.annotations.NotNull;
 
 public class MyJTextArea extends JTextArea {
 
@@ -46,7 +45,7 @@ public class MyJTextArea extends JTextArea {
     }
 
     @Override
-    protected void processKeyEvent(@NotNull KeyEvent e) {
+    protected void processKeyEvent(KeyEvent e) {
         if (!delegate.processKeyEvent(e)) {
             super.processKeyEvent(e);
         }

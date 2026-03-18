@@ -24,12 +24,11 @@ import module java.desktop;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Consumer;
 
-import org.jetbrains.annotations.Contract;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import kotlin.Pair;
 import net.engio.mbassy.listener.Handler;
@@ -123,13 +122,18 @@ public final class Score
     public static final int STAFF_LINES_BELOW = 4;
 
     // Edit popup
+    @Nullable
     private JPopupMenu popup = null;
 
-    private SAXParser saxParser = null;
+    @Nullable
+    private SAXParser saxParser;
     private Dimension sheetSize = new Dimension();
 
+    @Nullable
     private HorizontalAdjustment horizontalAdjustment = null;
+    @Nullable
     private VerticalAdjustment verticalAdjustment = null;
+    @Nullable
     private LyricsAdjustment lyricsAdjustment = null;
 
     // Called when a file is successfully opened (e.g. to update the window title)
@@ -146,15 +150,19 @@ public final class Score
     private boolean dragDisabled = false;
 
     // The model for the score
+    @Nullable
     private Composition composition = null;
 
     // The scroll pane that contains the score + margin
+    @Nullable
     private JScrollPane scrollPane = null;
 
     // Inside the scroll pane is a panel that provides the margin around the score
+    @Nullable
     private JPanel marginPanel = null;
 
     // The score itself
+    @Nullable
     private JPanel scorePanel = null;
 
     // TODO: Not sure why this is here. It really should be in the renderer, and should be based
@@ -170,21 +178,24 @@ public final class Score
     private int middleLineYPx = 0;
 
     // Coordinates selection state across lines
-    private SelectionCoordinator selectionCoordinator = null;
+    private SelectionCoordinator selectionCoordinator;
 
     // Handles music editing operations
+    @Nullable
     private MusicEditOperations operations = null;
 
     // Manages clipboard state for copy/paste operations
-    private ClipboardManager clipboardManager = null;
+    private ClipboardManager clipboardManager;
 
     // Manages edit mode state (insertion note and position)
-    private EditModeManager editModeManager = null;
+    private EditModeManager editModeManager;
 
     // New JComponent-based score panel (Phase 2 hierarchy)
+    @Nullable
     private MainPanel mainPanel = null;
 
     // Coordinates message handling
+    @Nullable
     private ScoreMessageCoordinator messageCoordinator = null;
 
     // Preferred size of the score panel
@@ -346,7 +357,7 @@ public final class Score
     }
 
     private void initScorePanel() {
-        scorePanel = new ScorePanel(marginPanel);
+        scorePanel = new ScorePanel(Objects.requireNonNull(marginPanel));
         scrollPane = new JScrollPane(scorePanel);
         scrollPane.setBorder(new ThemeAwareMatteBorder(1, 0, 1, 0, "ToolBar.separatorColor"));
         updateScoreSurroundBackground();
@@ -362,6 +373,10 @@ public final class Score
     }
 
     private void updateScoreSurroundBackground() {
+        if (scrollPane == null) {
+            return;
+        }
+
         var color = UIManager.getColor(ScorePanel.BACKGROUND_KEY);
 
         if (color == null) {
@@ -374,13 +389,13 @@ public final class Score
 
     private void initMainPanel() {
         mainPanel = new MainPanel();
-        mainPanel.setComposition(composition);
+        mainPanel.setComposition(getComposition());
         mainPanel.setVisible(true);
         add(mainPanel, BorderLayout.CENTER);
         setupLineComponentState();
     }
 
-    public static boolean defaultUpperNote(@NotNull StaffElement note) {
+    public static boolean defaultUpperNote(StaffElement note) {
         return (note.getStaffPosition() > 0) || note.getType().isGraceNote();
     }
 
@@ -399,7 +414,7 @@ public final class Score
      * <p>
      * This is the top-level panel for the Phase 2 JComponent-based rendering.
      */
-    public MainPanel getMainPanel() {
+    public @Nullable MainPanel getMainPanel() {
         return mainPanel;
     }
 
@@ -407,7 +422,7 @@ public final class Score
         this.mainPanel = mainPanel;
     }
 
-    JPanel getMarginPanel() {
+    @Nullable JPanel getMarginPanel() {
         return marginPanel;
     }
 
@@ -440,7 +455,7 @@ public final class Score
     }
 
     @Override
-    public JPopupMenu getEditPopup() {
+    public @Nullable JPopupMenu getEditPopup() {
         return popup;
     }
 
@@ -485,7 +500,7 @@ public final class Score
 
         try {
             var reader = new CompositionIO.DocumentReader();
-            saxParser.parse(file, reader);
+            Objects.requireNonNull(saxParser).parse(file, reader);
             var newComposition = reader.getComposition();
             setComposition(newComposition);
 
@@ -576,7 +591,7 @@ public final class Score
         );
     }
 
-    public JScrollPane getScoreScrollPane() {
+    public @Nullable JScrollPane getScoreScrollPane() {
         return scrollPane;
     }
 
@@ -606,7 +621,8 @@ public final class Score
             songscribe.ui.renderer.GraphicsState.Property.COLOR
         )) {
             g2.setColor(LayoutStylesheet.SCORE_BACKGROUND);
-            g2.fillRect(0, 0, marginPanel.getWidth(), marginPanel.getHeight());
+            var mp = Objects.requireNonNull(marginPanel);
+            g2.fillRect(0, 0, mp.getWidth(), mp.getHeight());
         }
 
         // Derive coordinates from positioned components
@@ -623,11 +639,11 @@ public final class Score
 
         if (mode == Mode.EDIT) {
             // Insertion note rendering is now handled by LineComponent
-        } else if (mode == Mode.ADJUSTMENT) {
+        } else if (mode == Mode.ADJUSTMENT && horizontalAdjustment != null) {
             horizontalAdjustment.repaint(g2);
-        } else if (mode == Mode.VERTICAL_ADJUSTMENT) {
+        } else if (mode == Mode.VERTICAL_ADJUSTMENT && verticalAdjustment != null) {
             verticalAdjustment.repaint(g2);
-        } else if (mode == Mode.LYRICS_ADJUSTMENT) {
+        } else if (mode == Mode.LYRICS_ADJUSTMENT && lyricsAdjustment != null) {
             lyricsAdjustment.repaint(g2);
         }
     }
@@ -650,6 +666,7 @@ public final class Score
         return 0;
     }
 
+    @Nullable
     public StaffElement getInsertionElement() {
         return editModeManager.getInsertionElement();
     }
@@ -700,47 +717,53 @@ public final class Score
         return selectionCoordinator.getSelectionSize();
     }
 
+    private MusicEditOperations requireOperations() {
+        return Objects.requireNonNull(operations, "operations not initialized");
+    }
+
     public boolean canToggleBeaming() {
-        return operations.canToggleBeaming();
+        return requireOperations().canToggleBeaming();
     }
 
     public boolean canToggleTie() {
-        return operations.canToggleTie();
+        return requireOperations().canToggleTie();
     }
 
-    @NotNull
-    @Contract(" -> new")
     public Pair<Boolean, Boolean> canToggleTuplet() {
-        return operations.canToggleTuplet();
+        return requireOperations().canToggleTuplet();
     }
 
     public boolean canRemoveDynamicsFromSelection() {
-        return operations.canRemoveDynamicsFromSelection();
+        return requireOperations().canRemoveDynamicsFromSelection();
     }
 
     public boolean canMakeFirstSecondEnding() {
-        return operations.canMakeFirstSecondEnding();
+        return requireOperations().canMakeFirstSecondEnding();
     }
 
     public boolean canChangeTempo() {
-        return operations.canChangeTempo();
+        return requireOperations().canChangeTempo();
     }
 
     public boolean canToggleTrill() {
-        return operations.canToggleTrill();
+        return requireOperations().canToggleTrill();
     }
 
     public boolean canToggleLyricsUnderRests() {
-        return operations.canToggleLyricsUnderRests();
+        return requireOperations().canToggleLyricsUnderRests();
     }
 
     public boolean canFlipStemDirection() {
-        return operations.canFlipStemDirection();
+        return requireOperations().canFlipStemDirection();
+    }
+
+    public boolean isInitialized() {
+        return composition != null;
     }
 
     @Override
     public Composition getComposition() {
-        return composition;
+        return Objects.requireNonNull(composition, "composition not initialized");
     }
 
     public void setComposition(Composition composition) {
@@ -785,7 +808,7 @@ public final class Score
         PlaybackController.stop();
         selectionCoordinator.clearSelection();
 
-        mainPanel.setComposition(composition);
+        Objects.requireNonNull(mainPanel).setComposition(getComposition());
         setupLineComponentState();
 
         syncPlaybackPrefs();
@@ -817,7 +840,7 @@ public final class Score
     }
 
     public int getSheetWidthPx() {
-        return ScaleContext.getInstance().toRoundedPixels(composition.getLineWidthSs());
+        return ScaleContext.getInstance().toRoundedPixels(getComposition().getLineWidthSs());
     }
 
     public int getSheetHeightPx() {
@@ -833,13 +856,13 @@ public final class Score
      * @param options controls which content sections to include in the measurement
      * @return the sheet height in pixels
      */
-    public int getSheetHeightPx(@NotNull ExportOptions options) {
+    public int getSheetHeightPx(ExportOptions options) {
         // TODO: Calculate height based on options without relying on component layout.
         // For now, returns full height since rendering is not yet implemented.
         return getHeight();
     }
 
-    public void drawWidthIfWiderLine(@NotNull Line line, boolean strict) {
+    public void drawWidthIfWiderLine(Line line, boolean strict) {
         if (line.elementCount() > 1) {
             var endNote = line.getElement(line.elementCount() - 1);
             float idealSpace;
@@ -852,7 +875,7 @@ public final class Score
 
             // Note: getXPosSs() is a legacy misnomer — it stores pixels.
             // Use getLineWidthPx() to compare in the same unit.
-            var lineWidthPx = composition.getLineWidthPx();
+            var lineWidthPx = getComposition().getLineWidthPx();
 
             if (
                 line.getElement(line.elementCount() - 1).getXPosSs() >
@@ -899,15 +922,15 @@ public final class Score
         this.mode = mode;
     }
 
-    public HorizontalAdjustment getHorizontalAdjustment() {
+    public @Nullable HorizontalAdjustment getHorizontalAdjustment() {
         return horizontalAdjustment;
     }
 
-    public VerticalAdjustment getVerticalAdjustment() {
+    public @Nullable VerticalAdjustment getVerticalAdjustment() {
         return verticalAdjustment;
     }
 
-    public LyricsAdjustment getLyricsAdjustment() {
+    public @Nullable LyricsAdjustment getLyricsAdjustment() {
         return lyricsAdjustment;
     }
 
@@ -947,7 +970,7 @@ public final class Score
     }
 
     public void setLineWidthPx(int lineWidthPx) {
-        composition.setLineWidthSs(ScaleContext.getInstance().fromPixels(lineWidthPx));
+        getComposition().setLineWidthSs(ScaleContext.getInstance().fromPixels(lineWidthPx));
         var lineWidth = lineWidthPx;
         preferredSize.width = lineWidth;
         preferredSize.height = Math.round(
@@ -964,8 +987,15 @@ public final class Score
             marginPanel.setPreferredSize(preferredSizeWithMargin);
             invalidate();
             marginPanel.invalidate();
-            scorePanel.invalidate();
-            scrollPane.validate();
+
+            if (scorePanel != null) {
+                scorePanel.invalidate();
+            }
+
+            if (scrollPane != null) {
+                scrollPane.validate();
+            }
+
             repaint();
         }
     }
@@ -996,12 +1026,11 @@ public final class Score
         focusController.ifPresent(fc -> fc.allowFocusInComponent(component));
     }
 
-    @NotNull
     public BufferedImage createImageForExport(
         Color background,
         double scale,
-        @NotNull MyBorder border,
-        @NotNull ExportOptions options
+        MyBorder border,
+        ExportOptions options
     ) {
         return songscribe.export.ImageExporter.createImageForExport(
             this,

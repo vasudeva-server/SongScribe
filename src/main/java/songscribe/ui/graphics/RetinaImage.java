@@ -22,6 +22,8 @@ package songscribe.ui.graphics;
 
 import module java.desktop;
 
+import org.jspecify.annotations.Nullable;
+
 import songscribe.util.GraphicUtils;
 
 /**
@@ -76,7 +78,7 @@ public final class RetinaImage {
     }
 
     private static BufferedImage create(
-        Image image,
+        @Nullable Image image,
         int width,
         int height,
         int type

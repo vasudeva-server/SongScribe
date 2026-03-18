@@ -26,7 +26,6 @@ import static songscribe.ui.renderer.GraphicsState.Property.TRANSFORM;
 
 import module java.desktop;
 
-import org.jetbrains.annotations.NotNull;
 
 import songscribe.music.BeatChange;
 import songscribe.music.StaffElement;
@@ -62,7 +61,7 @@ public class BeatChangeRenderer extends BaseElementRenderer<StaffElement> {
     /**
      * Returns the singleton instance.
      */
-    public static @NotNull BeatChangeRenderer getInstance() {
+    public static BeatChangeRenderer getInstance() {
         return INSTANCE;
     }
 
@@ -72,9 +71,9 @@ public class BeatChangeRenderer extends BaseElementRenderer<StaffElement> {
 
     @Override
     protected void renderElement(
-        @NotNull StaffElement element,
-        @NotNull Graphics2D g2,
-        @NotNull ElementRenderContext ctx
+        StaffElement element,
+        Graphics2D g2,
+        ElementRenderContext ctx
     ) {
         var beatChange = element.getBeatChange();
 
@@ -93,9 +92,9 @@ public class BeatChangeRenderer extends BaseElementRenderer<StaffElement> {
      * @param ctx  Render context
      */
     public void renderBeatChange(
-        @NotNull Graphics2D g2,
-        @NotNull StaffElement note,
-        @NotNull ElementRenderContext ctx
+        Graphics2D g2,
+        StaffElement note,
+        ElementRenderContext ctx
     ) {
         render(note, g2, ctx);
     }
@@ -104,10 +103,10 @@ public class BeatChangeRenderer extends BaseElementRenderer<StaffElement> {
      * Renders the beat change indicator.
      */
     private void renderBeatChange(
-        @NotNull Graphics2D g2,
-        @NotNull BeatChange beatChange,
-        @NotNull StaffElement note,
-        @NotNull ElementRenderContext ctx
+        Graphics2D g2,
+        BeatChange beatChange,
+        StaffElement note,
+        ElementRenderContext ctx
     ) {
         var composition = ctx.getComposition();
         var line = ctx.getCurrentLine();
@@ -126,8 +125,8 @@ public class BeatChangeRenderer extends BaseElementRenderer<StaffElement> {
      * Gets the Y position for beat change from layout result.
      */
     private int getEffectiveBeatChangeYPosPx(
-        @NotNull StaffElement note,
-        @NotNull ElementRenderContext ctx
+        StaffElement note,
+        ElementRenderContext ctx
     ) {
         var layoutResult = ctx.getLayoutResult();
 
@@ -154,11 +153,11 @@ public class BeatChangeRenderer extends BaseElementRenderer<StaffElement> {
      * @param composition The composition (for font access)
      */
     public void drawBeatChange(
-        @NotNull Graphics2D g2,
-        @NotNull BeatChange beatChange,
+        Graphics2D g2,
+        BeatChange beatChange,
         int xPosSs,
         int yPosPx,
-        @NotNull songscribe.music.Composition composition
+        songscribe.music.Composition composition
     ) {
         // Draw first note
         drawTempoChangeNote(g2, beatChange.getFirstElement(), xPosSs, yPosPx);
@@ -177,8 +176,8 @@ public class BeatChangeRenderer extends BaseElementRenderer<StaffElement> {
      * Draws a tempo note (scaled smaller than regular notes).
      */
     private void drawTempoChangeNote(
-        @NotNull Graphics2D g2,
-        @NotNull StaffElement tempoNote,
+        Graphics2D g2,
+        StaffElement tempoNote,
         int x,
         int y
     ) {
@@ -196,7 +195,7 @@ public class BeatChangeRenderer extends BaseElementRenderer<StaffElement> {
     /**
      * Paints a simple note for tempo display (no accidentals, ledger lines, etc.).
      */
-    private void paintSimpleTempoNote(@NotNull Graphics2D g2, @NotNull StaffElement note) {
+    private void paintSimpleTempoNote(Graphics2D g2, StaffElement note) {
         var noteType = note.getType();
         String headChar = NoteRenderer.getNoteHeadChar(noteType);
 

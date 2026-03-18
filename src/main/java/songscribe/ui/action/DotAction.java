@@ -23,7 +23,7 @@ package songscribe.ui.action;
 import module java.desktop;
 
 import songscribe.Strings;
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import songscribe.music.StaffElement;
 

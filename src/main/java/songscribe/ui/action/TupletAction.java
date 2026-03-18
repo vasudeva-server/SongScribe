@@ -22,7 +22,6 @@ package songscribe.ui.action;
 
 import module java.desktop;
 
-import org.jetbrains.annotations.NotNull;
 
 import net.engio.mbassy.listener.Handler;
 
@@ -118,7 +117,7 @@ public class TupletAction extends UIAction {
     @Override
     @Handler(priority = Message.HIGH_PRIORITY)
     public void musicSelectionDidChange(
-        @NotNull MusicSelectionDidChangeNotification message
+        MusicSelectionDidChangeNotification message
     ) {
         if (updateEnabledState()) {
             var toggleInfo = message.getScore().canToggleTuplet();

@@ -25,7 +25,6 @@ import java.io.IOException;
 import javax.xml.parsers.SAXParser;
 import javax.xml.parsers.SAXParserFactory;
 
-import org.jetbrains.annotations.NotNull;
 
 import org.xml.sax.SAXException;
 
@@ -52,8 +51,7 @@ public final class CompositionLoader {
      * @throws IOException if the file cannot be read
      * @throws SAXException if the file is malformed
      */
-    @NotNull
-    public static Composition load(@NotNull File file) throws IOException, SAXException {
+    public static Composition load(File file) throws IOException, SAXException {
         try {
             SAXParser parser = PARSER_FACTORY.newSAXParser();
             var reader = new CompositionIO.DocumentReader();

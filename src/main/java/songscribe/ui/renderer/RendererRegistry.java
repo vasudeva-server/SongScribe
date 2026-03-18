@@ -23,8 +23,7 @@ package songscribe.ui.renderer;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import songscribe.ui.layout.Clef;
 import songscribe.ui.layout.KeySignature;
@@ -54,7 +53,7 @@ public class RendererRegistry {
     /**
      * Returns the singleton instance.
      */
-    public static @NotNull RendererRegistry getInstance() {
+    public static RendererRegistry getInstance() {
         return INSTANCE;
     }
 
@@ -93,8 +92,8 @@ public class RendererRegistry {
      * @param <T>          The element type
      */
     public <T extends LineElement> void register(
-        @NotNull Class<T> elementClass,
-        @NotNull ElementRenderer<T> renderer
+        Class<T> elementClass,
+        ElementRenderer<T> renderer
     ) {
         renderers.put(elementClass, renderer);
     }
@@ -107,7 +106,7 @@ public class RendererRegistry {
      * @return The renderer, or null if none registered
      */
     @SuppressWarnings("unchecked")
-    public @Nullable <T extends LineElement> ElementRenderer<T> getRenderer(@NotNull T element) {
+    public @Nullable <T extends LineElement> ElementRenderer<T> getRenderer(T element) {
         return (ElementRenderer<T>) renderers.get(element.getClass());
     }
 
@@ -120,7 +119,7 @@ public class RendererRegistry {
      */
     @SuppressWarnings("unchecked")
     public @Nullable <T extends LineElement> ElementRenderer<T> getRenderer(
-        @NotNull Class<T> elementClass
+        Class<T> elementClass
     ) {
         return (ElementRenderer<T>) renderers.get(elementClass);
     }
@@ -131,7 +130,7 @@ public class RendererRegistry {
      * @param elementClass The element class to check
      * @return true if a renderer is registered
      */
-    public boolean hasRenderer(@NotNull Class<? extends LineElement> elementClass) {
+    public boolean hasRenderer(Class<? extends LineElement> elementClass) {
         return renderers.containsKey(elementClass);
     }
 
@@ -142,7 +141,7 @@ public class RendererRegistry {
      *
      * @param elementClass The element class to unregister
      */
-    public void unregister(@NotNull Class<? extends LineElement> elementClass) {
+    public void unregister(Class<? extends LineElement> elementClass) {
         renderers.remove(elementClass);
     }
 

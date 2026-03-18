@@ -55,6 +55,7 @@ public class LyricsDialog extends StandardDialog {
     protected JPanel underLyricsPanel;
     protected JPanel translatedLyricsPanel;
 
+    @SuppressWarnings("NullAway.Init")
     public LyricsDialog() {
         super(Strings.get(Strings.DIALOG_LYRICS_TITLE));
         charsPanel.setLayout(

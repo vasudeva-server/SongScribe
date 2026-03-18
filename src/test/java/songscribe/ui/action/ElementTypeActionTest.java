@@ -22,6 +22,8 @@ package songscribe.ui.action;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.Objects;
+
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
@@ -39,8 +41,7 @@ class ElementTypeActionTest extends UnitTest {
     @Test
     void testCreateReplacementPreservesNoteKind() {
         var element = ElementType.MINIM.newInstance();
-        var replacement = durationAction.createReplacement(element, true);
-        assertThat(replacement).isNotNull();
+        var replacement = Objects.requireNonNull(durationAction.createReplacement(element, true));
         assertThat(replacement.getType()).isEqualTo(ElementType.CROTCHET);
     }
 
@@ -48,8 +49,7 @@ class ElementTypeActionTest extends UnitTest {
     @Test
     void testCreateReplacementPreservesRestKind() {
         var element = ElementType.MINIM_REST.newInstance();
-        var replacement = durationAction.createReplacement(element, true);
-        assertThat(replacement).isNotNull();
+        var replacement = Objects.requireNonNull(durationAction.createReplacement(element, true));
         assertThat(replacement.getType()).isEqualTo(ElementType.CROTCHET_REST);
     }
 
@@ -65,8 +65,7 @@ class ElementTypeActionTest extends UnitTest {
     void testCreateReplacementWithGraceNote() {
         var graceAction = ElementTypeAction.createGraceEighthNoteAction();
         var element = ElementType.CROTCHET.newInstance();
-        var replacement = graceAction.createReplacement(element, true);
-        assertThat(replacement).isNotNull();
+        var replacement = Objects.requireNonNull(graceAction.createReplacement(element, true));
         assertThat(replacement.getType()).isEqualTo(ElementType.GRACE_QUAVER);
     }
 

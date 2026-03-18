@@ -20,8 +20,7 @@
 
 package songscribe.ui.edit;
 
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import songscribe.music.Line;
 import songscribe.music.StaffElement;
@@ -59,14 +58,13 @@ public interface ScoreActions {
      * @param line The line to check
      * @param revalidateOnly Whether to only revalidate without changing width
      */
-    void drawWidthIfWiderLine(@NotNull Line line, boolean revalidateOnly);
+    void drawWidthIfWiderLine(Line line, boolean revalidateOnly);
 
     /**
      * Returns the current control state.
      *
      * @return The current control state
      */
-    @NotNull
     Control getControl();
 
     /**
@@ -74,5 +72,5 @@ public interface ScoreActions {
      *
      * @param control The control state to set
      */
-    void setControl(@NotNull Control control);
+    void setControl(Control control);
 }

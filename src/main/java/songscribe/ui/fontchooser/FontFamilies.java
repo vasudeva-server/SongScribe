@@ -27,14 +27,12 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.TreeMap;
 
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 
 public class FontFamilies implements Iterable<FontFamily>, Serializable {
 
     private static final FontFamilies INSTANCE = createFontFamilies();
 
-    @NotNull
     private static FontFamilies createFontFamilies() {
         return FontFamiliesFactory.create();
     }
@@ -45,13 +43,12 @@ public class FontFamilies implements Iterable<FontFamily>, Serializable {
 
     private final Map<String, FontFamily> families = new TreeMap<>();
 
-    public void add(@NotNull Font font) {
+    public void add(Font font) {
         var family = font.getFamily();
         var fontFamily = families.computeIfAbsent(family, FontFamily::new);
         fontFamily.add(font);
     }
 
-    @NotNull
     @Override
     public Iterator<FontFamily> iterator() {
         return families.values().iterator();

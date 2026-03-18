@@ -21,13 +21,15 @@ package songscribe.ui.dialog;
 
 import module java.desktop;
 
+import org.jspecify.annotations.Nullable;
+
 import songscribe.Strings;
 import songscribe.data.PageLayoutData;
 public class ExportPDFDialog extends StandardDialog {
 
     private final PaperSizeStep paperSizePanel;
     private final PageLayoutData paperSizePageLayoutDataPrivate;
-    private PageLayoutData paperSizePageLayoutData = null;
+    private @Nullable PageLayoutData paperSizePageLayoutData = null;
 
     public ExportPDFDialog() {
         super(Strings.get(Strings.DIALOG_EXPORT_PDF_TITLE));
@@ -51,7 +53,7 @@ public class ExportPDFDialog extends StandardDialog {
         paperSizePageLayoutData = paperSizePageLayoutDataPrivate;
     }
 
-    public PageLayoutData getPaperSizeData() {
+    public @Nullable PageLayoutData getPaperSizeData() {
         return paperSizePageLayoutData;
     }
 }

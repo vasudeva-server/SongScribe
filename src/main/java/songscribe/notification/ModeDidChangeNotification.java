@@ -20,7 +20,6 @@
 
 package songscribe.notification;
 
-import org.jetbrains.annotations.NotNull;
 
 import songscribe.message.Message;
 import songscribe.ui.Mode;
@@ -49,7 +48,6 @@ public class ModeDidChangeNotification extends Message {
         return adjustmentMode;
     }
 
-    @NotNull
     @Override
     public String toString() {
         return (

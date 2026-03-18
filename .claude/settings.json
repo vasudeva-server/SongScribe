@@ -3,6 +3,7 @@
     "allow": [
       "Bash(./gradlew compileJava:*)",
       "Bash(./scripts/compile.sh:*)",
+      "Bash(./scripts/nullaway-warnings.sh:*)",
       "Bash(./scripts/check-style.sh:*)",
       "Bash(if echo:*)",
       "Bash(file=$:*)",

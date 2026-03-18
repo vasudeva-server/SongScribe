@@ -47,7 +47,7 @@ public class FontChooser extends JPanel implements FontContainer {
 
     private static final String SELECTION_MODEL_PROPERTY = "selectionModel";
 
-    private FontSelectionModel selectionModel = null;
+    private FontSelectionModel selectionModel;
 
     private final JLabel familyLabel = new JLabel(Strings.get(Strings.LABEL_FONT_FAMILY));
 
@@ -106,6 +106,7 @@ public class FontChooser extends JPanel implements FontContainer {
      *
      * @param model the {@code FontSelectionModel} to be used
      */
+    @SuppressWarnings("NullAway.Init")
     public FontChooser(FontSelectionModel model) {
         setSelectionModel(model);
         setLayout(new BorderLayout());

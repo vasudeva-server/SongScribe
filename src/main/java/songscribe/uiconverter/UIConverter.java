@@ -41,6 +41,8 @@ import songscribe.ui.component.Score;
 import songscribe.ui.playback.MidiController;
 import songscribe.util.GraphicUtils;
 
+import org.jspecify.annotations.Nullable;
+
 @SuppressWarnings("NonStaticInitializer")
 public class UIConverter extends MainFrame {
 
@@ -56,8 +58,10 @@ public class UIConverter extends MainFrame {
         new DefaultTableModel();
     private final DefaultListModel<Object> rejectListModel =
         new DefaultListModel<>();
+    @Nullable
     private File currentDir = null;
 
+    @SuppressWarnings("NullAway.Init")
     public UIConverter() {
         appName = "Song Converter";
         setTitle(appName);
@@ -620,8 +624,9 @@ public class UIConverter extends MainFrame {
     /**
      * @noinspection ALL
      */
+    @Nullable
     private Font $$$getFont$$$(
-        String fontName,
+        @Nullable String fontName,
         int style,
         int size,
         Font currentFont

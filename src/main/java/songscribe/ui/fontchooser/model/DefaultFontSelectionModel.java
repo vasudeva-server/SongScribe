@@ -23,6 +23,8 @@ import module java.desktop;
 
 import java.util.Objects;
 
+import org.jspecify.annotations.Nullable;
+
 /**
  * A generic implementation of {@code FontSelectionModel}.
  *
@@ -45,7 +47,7 @@ public class DefaultFontSelectionModel implements FontSelectionModel {
      * since the event's only (read-only) state is the source property.
      * The source of events generated here is always "this".
      */
-    private transient ChangeEvent changeEvent = null;
+    private transient @Nullable ChangeEvent changeEvent = null;
 
     private Font selectedFont;
 

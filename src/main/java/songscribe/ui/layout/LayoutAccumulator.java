@@ -22,7 +22,6 @@ package songscribe.ui.layout;
 
 import module java.desktop;
 
-import org.jetbrains.annotations.NotNull;
 
 /**
  * Accumulates layout bounds using java.awt.geom.Area for complex shape handling.
@@ -48,7 +47,7 @@ public class LayoutAccumulator {
      *
      * @param rect The rectangle to add
      */
-    public void add(@NotNull Rectangle2D rect) {
+    public void add(Rectangle2D rect) {
         var area = new Area(rect);
         accumulatedArea.add(area);
 
@@ -63,7 +62,7 @@ public class LayoutAccumulator {
      *
      * @param area The area to add
      */
-    public void add(@NotNull Area area) {
+    public void add(Area area) {
         accumulatedArea.add(area);
 
         if (DEBUG_COLLISION) {
@@ -79,7 +78,7 @@ public class LayoutAccumulator {
      * @param area The area to test
      * @return true if the areas intersect
      */
-    public boolean intersects(@NotNull Area area) {
+    public boolean intersects(Area area) {
         Area testArea = new Area(area);
         testArea.intersect(accumulatedArea);
         boolean result = !testArea.isEmpty();
@@ -99,7 +98,7 @@ public class LayoutAccumulator {
      * @param rect The rectangle to test
      * @return true if the rectangle intersects
      */
-    public boolean intersects(@NotNull Rectangle2D rect) {
+    public boolean intersects(Rectangle2D rect) {
         return intersects(new Area(rect));
     }
 
@@ -124,7 +123,7 @@ public class LayoutAccumulator {
      *
      * @return A new Area containing the accumulated bounds
      */
-    public @NotNull Area getArea() {
+    public Area getArea() {
         return new Area(accumulatedArea);
     }
 }

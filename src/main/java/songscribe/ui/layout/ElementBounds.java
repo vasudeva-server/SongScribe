@@ -22,8 +22,7 @@ package songscribe.ui.layout;
 
 import module java.desktop;
 
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Represents the complete box model for a layout element (CSS-like).
@@ -42,9 +41,9 @@ import org.jetbrains.annotations.Nullable;
  */
 public final class ElementBounds {
 
-    private final @NotNull Rectangle2D contentBounds;
-    private final @NotNull Rectangle2D paddingBounds;
-    private final @NotNull Rectangle2D marginBounds;
+    private final Rectangle2D contentBounds;
+    private final Rectangle2D paddingBounds;
+    private final Rectangle2D marginBounds;
     private final @Nullable Rectangle2D visualBounds;
 
     /**
@@ -56,9 +55,9 @@ public final class ElementBounds {
      * @param visualBounds  Full visual extent (decorative overflow), null if same as margin
      */
     public ElementBounds(
-        @NotNull Rectangle2D contentBounds,
-        @NotNull Rectangle2D paddingBounds,
-        @NotNull Rectangle2D marginBounds,
+        Rectangle2D contentBounds,
+        Rectangle2D paddingBounds,
+        Rectangle2D marginBounds,
         @Nullable Rectangle2D visualBounds
     ) {
         this.contentBounds = contentBounds;
@@ -71,9 +70,9 @@ public final class ElementBounds {
      * Creates element bounds where visual bounds equals margin bounds.
      */
     public ElementBounds(
-        @NotNull Rectangle2D contentBounds,
-        @NotNull Rectangle2D paddingBounds,
-        @NotNull Rectangle2D marginBounds
+        Rectangle2D contentBounds,
+        Rectangle2D paddingBounds,
+        Rectangle2D marginBounds
     ) {
         this(contentBounds, paddingBounds, marginBounds, null);
     }
@@ -82,8 +81,8 @@ public final class ElementBounds {
      * Creates element bounds with no padding (padding equals content).
      */
     public static ElementBounds withMarginOnly(
-        @NotNull Rectangle2D contentBounds,
-        @NotNull Rectangle2D marginBounds
+        Rectangle2D contentBounds,
+        Rectangle2D marginBounds
     ) {
         return new ElementBounds(contentBounds, contentBounds, marginBounds);
     }
@@ -96,7 +95,7 @@ public final class ElementBounds {
      * @param margin        Uniform margin in pixels (added to padding bounds)
      */
     public static ElementBounds uniform(
-        @NotNull Rectangle2D contentBounds,
+        Rectangle2D contentBounds,
         double padding,
         double margin
     ) {
@@ -120,28 +119,28 @@ public final class ElementBounds {
     /**
      * Creates element bounds with content only (no padding or margin).
      */
-    public static ElementBounds contentOnly(@NotNull Rectangle2D contentBounds) {
+    public static ElementBounds contentOnly(Rectangle2D contentBounds) {
         return new ElementBounds(contentBounds, contentBounds, contentBounds);
     }
 
     /**
      * Returns the content bounds (actual drawn pixels).
      */
-    public @NotNull Rectangle2D getContentBounds() {
+    public Rectangle2D getContentBounds() {
         return contentBounds;
     }
 
     /**
      * Returns the padding bounds (content + padding, used for hit testing).
      */
-    public @NotNull Rectangle2D getPaddingBounds() {
+    public Rectangle2D getPaddingBounds() {
         return paddingBounds;
     }
 
     /**
      * Returns the margin bounds (padding + margin, used for layout spacing).
      */
-    public @NotNull Rectangle2D getMarginBounds() {
+    public Rectangle2D getMarginBounds() {
         return marginBounds;
     }
 
@@ -149,7 +148,7 @@ public final class ElementBounds {
      * Returns the visual bounds (full visual extent including decorative elements).
      * Falls back to margin bounds if not explicitly set.
      */
-    public @NotNull Rectangle2D getVisualBounds() {
+    public Rectangle2D getVisualBounds() {
         return visualBounds != null ? visualBounds : marginBounds;
     }
 
@@ -205,14 +204,14 @@ public final class ElementBounds {
     /**
      * Returns whether this element's margin bounds intersect with another's.
      */
-    public boolean intersectsMargin(@NotNull ElementBounds other) {
+    public boolean intersectsMargin(ElementBounds other) {
         return marginBounds.intersects(other.marginBounds);
     }
 
     /**
      * Returns whether this element's padding bounds intersect with another's.
      */
-    public boolean intersectsPadding(@NotNull ElementBounds other) {
+    public boolean intersectsPadding(ElementBounds other) {
         return paddingBounds.intersects(other.paddingBounds);
     }
 

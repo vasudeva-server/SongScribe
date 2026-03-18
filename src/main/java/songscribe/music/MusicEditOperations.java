@@ -27,8 +27,6 @@ import java.util.HashSet;
 import java.util.TreeSet;
 import java.util.stream.IntStream;
 
-import org.jetbrains.annotations.Contract;
-import org.jetbrains.annotations.NotNull;
 
 import kotlin.Pair;
 
@@ -53,8 +51,8 @@ public final class MusicEditOperations {
     private final SelectionCoordinator coordinator;
 
     public MusicEditOperations(
-        @NotNull Composition composition,
-        @NotNull SelectionCoordinator coordinator
+        Composition composition,
+        SelectionCoordinator coordinator
     ) {
         this.composition = composition;
         this.coordinator = coordinator;
@@ -120,8 +118,6 @@ public final class MusicEditOperations {
 
     // ========== Tuplet Operations ==========
 
-    @NotNull
-    @Contract(" -> new")
     public Pair<Boolean, Boolean> canToggleTuplet() {
         var state = coordinator.getActiveSelection();
         return (state != null) ? state.canToggleTuplet() : new Pair<>(false, false);
@@ -209,12 +205,10 @@ public final class MusicEditOperations {
         composition.setModified(true);
     }
 
-    @NotNull
-    @Contract("_ -> new")
     private Pair<
         ArrayList<DynamicsInterval>,
         ArrayList<DynamicsInterval>
-        > getDynamicsIntervalsFromSelection(@NotNull LineSelectionState state) {
+        > getDynamicsIntervalsFromSelection(LineSelectionState state) {
         var line = state.getLine();
         var crescendos = line.getCrescendos();
         var diminuendos = line.getDiminuendos();

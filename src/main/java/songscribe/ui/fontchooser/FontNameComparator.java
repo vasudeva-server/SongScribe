@@ -25,12 +25,11 @@ import module java.desktop;
 import java.io.Serializable;
 import java.util.Comparator;
 
-import org.jetbrains.annotations.NotNull;
 
 public class FontNameComparator implements Comparator<Font>, Serializable {
 
     @Override
-    public int compare(@NotNull Font font1, @NotNull Font font2) {
+    public int compare(Font font1, Font font2) {
         return font1.getName().compareTo(font2.getName());
     }
 }

@@ -23,7 +23,6 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.jetbrains.annotations.NotNull;
 
 import songscribe.message.MessageCenter;
 import songscribe.notification.RecentDocumentsDidChangeNotification;
@@ -58,7 +57,7 @@ public final class RecentDocumentsManager {
         return List.copyOf(paths);
     }
 
-    public void add(@NotNull Path absolutePath) {
+    public void add(Path absolutePath) {
         var normalized = absolutePath.normalize();
 
         paths.remove(normalized);
@@ -72,7 +71,7 @@ public final class RecentDocumentsManager {
         MessageCenter.post(new RecentDocumentsDidChangeNotification());
     }
 
-    public void remove(@NotNull Path absolutePath) {
+    public void remove(Path absolutePath) {
         var normalized = absolutePath.normalize();
 
         paths.remove(normalized);

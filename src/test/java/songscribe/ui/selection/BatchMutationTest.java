@@ -25,6 +25,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
 import java.util.List;
+import java.util.Objects;
 
 import org.junit.jupiter.api.Test;
 
@@ -60,13 +61,13 @@ class BatchMutationTest extends UnitTest {
         List<UIAction.Reflectable> actions
     ) {
         var coordinator = ReflectionTestHelper.createCoordinator(notes, actions);
-        var line = coordinator.getActiveSelection().getLine();
+        var line = Objects.requireNonNull(coordinator.getActiveSelection()).getLine();
         line.setComposition(mock(Composition.class));
         return coordinator;
     }
 
     private Line getLine(SelectionCoordinator coordinator) {
-        return coordinator.getActiveSelection().getLine();
+        return Objects.requireNonNull(coordinator.getActiveSelection()).getLine();
     }
 
     // -- Inapplicable notes are skipped --
@@ -163,8 +164,7 @@ class BatchMutationTest extends UnitTest {
         ReflectionTestHelper.selectNote(coordinator, 3);
         coordinator.applyActionToSelection(QUARTER_ACTION, true);
 
-        var beam = line.getBeamings().findInterval(0);
-        assertThat(beam).isNotNull();
+        var beam = Objects.requireNonNull(line.getBeamings().findInterval(0));
         assertThat(beam.start).isEqualTo(0);
         assertThat(beam.end).isEqualTo(2);
         assertThat(line.getBeamings().findInterval(3)).isNull();
@@ -185,8 +185,7 @@ class BatchMutationTest extends UnitTest {
         ReflectionTestHelper.selectNote(coordinator, 0);
         coordinator.applyActionToSelection(QUARTER_ACTION, true);
 
-        var beam = line.getBeamings().findInterval(1);
-        assertThat(beam).isNotNull();
+        var beam = Objects.requireNonNull(line.getBeamings().findInterval(1));
         assertThat(beam.start).isEqualTo(1);
         assertThat(beam.end).isEqualTo(3);
         assertThat(line.getBeamings().findInterval(0)).isNull();
@@ -210,13 +209,11 @@ class BatchMutationTest extends UnitTest {
 
         assertThat(line.getElement(2).getType()).isEqualTo(ElementType.CROTCHET);
 
-        var beam0 = line.getBeamings().findInterval(0);
-        assertThat(beam0).isNotNull();
+        var beam0 = Objects.requireNonNull(line.getBeamings().findInterval(0));
         assertThat(beam0.start).isEqualTo(0);
         assertThat(beam0.end).isEqualTo(1);
 
-        var beam3 = line.getBeamings().findInterval(3);
-        assertThat(beam3).isNotNull();
+        var beam3 = Objects.requireNonNull(line.getBeamings().findInterval(3));
         assertThat(beam3.start).isEqualTo(3);
         assertThat(beam3.end).isEqualTo(4);
 
@@ -380,9 +377,9 @@ class BatchMutationTest extends UnitTest {
 
         coordinator.applyActionToSelection(FERMATA_ACTION, true);
 
-        assertThat(coordinator.getSelection()).isNotNull();
-        assertThat(coordinator.getSelection().begin()).isEqualTo(0);
-        assertThat(coordinator.getSelection().end()).isEqualTo(1);
+        var selection = Objects.requireNonNull(coordinator.getSelection());
+        assertThat(selection.begin()).isEqualTo(0);
+        assertThat(selection.end()).isEqualTo(1);
     }
 
     // -- Tie interval validation --
@@ -419,13 +416,11 @@ class BatchMutationTest extends UnitTest {
         ReflectionTestHelper.selectRange(coordinator, 0, 4);
         coordinator.applyActionToSelection(QUARTER_ACTION, true);
 
-        var tie0 = line.getTies().findInterval(0);
-        assertThat(tie0).isNotNull();
+        var tie0 = Objects.requireNonNull(line.getTies().findInterval(0));
         assertThat(tie0.start).isEqualTo(0);
         assertThat(tie0.end).isEqualTo(1);
 
-        var tie3 = line.getTies().findInterval(3);
-        assertThat(tie3).isNotNull();
+        var tie3 = Objects.requireNonNull(line.getTies().findInterval(3));
         assertThat(tie3.start).isEqualTo(3);
         assertThat(tie3.end).isEqualTo(4);
 
@@ -467,13 +462,11 @@ class BatchMutationTest extends UnitTest {
         ReflectionTestHelper.selectRange(coordinator, 0, 4);
         coordinator.applyActionToSelection(QUARTER_ACTION, true);
 
-        var tuplet0 = line.getTuplets().findInterval(0);
-        assertThat(tuplet0).isNotNull();
+        var tuplet0 = Objects.requireNonNull(line.getTuplets().findInterval(0));
         assertThat(tuplet0.start).isEqualTo(0);
         assertThat(tuplet0.end).isEqualTo(1);
 
-        var tuplet3 = line.getTuplets().findInterval(3);
-        assertThat(tuplet3).isNotNull();
+        var tuplet3 = Objects.requireNonNull(line.getTuplets().findInterval(3));
         assertThat(tuplet3.start).isEqualTo(3);
         assertThat(tuplet3.end).isEqualTo(4);
 

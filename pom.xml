@@ -173,10 +173,9 @@
             <version>7.0.3</version>
         </dependency>
         <dependency>
-            <groupId>org.jetbrains</groupId>
-            <artifactId>annotations</artifactId>
-            <version>25.0.0</version>
-            <scope>provided</scope>
+            <groupId>org.jspecify</groupId>
+            <artifactId>jspecify</artifactId>
+            <version>1.0.0</version>
         </dependency>
         <dependency>
             <groupId>com.google.code.gson</groupId>
@@ -551,11 +550,38 @@
                     </execution>
                 </executions>
                 <configuration>
-                    <fork>true</fork>
                     <encoding>UTF-8</encoding>
-                    <verbose>true</verbose>
+                    <verbose>false</verbose>
                     <source>25</source>
                     <target>25</target>
+                    <compilerArgs>
+                        <arg>-XDcompilePolicy=simple</arg>
+                        <arg>--should-stop=ifError=FLOW</arg>
+                        <arg>-Xplugin:ErrorProne
+                            -XepDisableAllChecks
+                            -Xep:NullAway:ERROR
+                            -XepOpt:NullAway:OnlyNullMarked=true
+                            -XepOpt:NullAway:JSpecifyMode=true
+                            -XepDisableWarningsInGeneratedCode
+                        </arg>
+                    </compilerArgs>
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>com.google.guava</groupId>
+                            <artifactId>guava</artifactId>
+                            <version>33.5.0-jre</version>
+                        </path>
+                        <path>
+                            <groupId>com.google.errorprone</groupId>
+                            <artifactId>error_prone_core</artifactId>
+                            <version>2.42.0</version>
+                        </path>
+                        <path>
+                            <groupId>com.uber.nullaway</groupId>
+                            <artifactId>nullaway</artifactId>
+                            <version>0.12.11</version>
+                        </path>
+                    </annotationProcessorPaths>
                 </configuration>
             </plugin>
         </plugins>

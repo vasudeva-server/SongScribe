@@ -24,8 +24,7 @@ import module java.desktop;
 
 import java.awt.event.MouseEvent;
 
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
 import songscribe.data.TieInterval;
@@ -59,12 +58,13 @@ class ElementDragHandler {
     private int originalStaffPosition;
     private boolean originalUpper;
     private int lastPlayedStaffPosition;
+    @Nullable
     private Line dragLine;
 
     @Nullable
     private TieInterval tieInterval;
 
-    ElementDragHandler(@NotNull LineComponent lc) {
+    ElementDragHandler(LineComponent lc) {
         this.lc = lc;
     }
 
@@ -106,7 +106,7 @@ class ElementDragHandler {
      * Handles a mouse press. Returns {@code true} if a pitch-drag was initiated
      * and the event should not be processed further.
      */
-    boolean handlePress(@NotNull MouseEvent e) {
+    boolean handlePress(MouseEvent e) {
         pressHandled = false;
 
         var score = lc.getScore();
@@ -128,6 +128,11 @@ class ElementDragHandler {
         }
 
         var line = lc.getLine();
+
+        if (line == null) {
+            return false;
+        }
+
         var note = line.getElement(hitIndex);
 
         if (!note.getType().isNote()) {
@@ -161,11 +166,15 @@ class ElementDragHandler {
     /**
      * Handles mouse drag while a pitch-drag is active.
      */
-    void handleDrag(@NotNull MouseEvent e) {
+    void handleDrag(MouseEvent e) {
         var mouseYss = ScaleContext.getInstance().fromPixels(e.getY());
         var newPosition = InsertionElementManager.calculateStaffPositionFromMouse(mouseYss, lc.getMiddleLineYSs());
 
         if (newPosition == lastPlayedStaffPosition || !InsertionElementManager.isValidStaffPosition(newPosition)) {
+            return;
+        }
+
+        if (dragLine == null) {
             return;
         }
 
@@ -205,6 +214,10 @@ class ElementDragHandler {
      * Handles mouse release, finalizing or reverting the pitch change.
      */
     void handleRelease() {
+        if (dragLine == null) {
+            return;
+        }
+
         if (dragMoved) {
             // The last drag noteOn is still sounding — schedule a noteOff after the standard duration
             new PlayThread(dragLine.getElement(dragElementIndex).getPitch(), false).start();
@@ -271,7 +284,7 @@ class ElementDragHandler {
      * Checks the glissando FROM the dragged note (to the next note) and
      * the glissando TO the dragged note (from the previous note).
      */
-    private static void removeUnisonConnectedGlissandos(@NotNull Line line, int elementIndex) {
+    private static void removeUnisonConnectedGlissandos(Line line, int elementIndex) {
         var element = line.getElement(elementIndex);
 
         // Glissando FROM the dragged note to the next note

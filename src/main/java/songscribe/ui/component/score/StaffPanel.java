@@ -24,9 +24,9 @@ import module java.desktop;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import songscribe.music.Composition;
 import songscribe.ui.layout.LayoutStylesheet;
@@ -43,6 +43,7 @@ import songscribe.ui.layout2.ScaleContext;
 public class StaffPanel extends JPanel {
 
     /** The composition model. */
+    @Nullable
     private Composition composition;
 
     /** List of line panels, one per staff line. */
@@ -67,7 +68,7 @@ public class StaffPanel extends JPanel {
      *
      * @param composition The composition
      */
-    public void setComposition(@NotNull Composition composition) {
+    public void setComposition(Composition composition) {
         this.composition = composition;
         rebuildLayout();
     }
@@ -76,7 +77,7 @@ public class StaffPanel extends JPanel {
      * Returns the composition.
      */
     public Composition getComposition() {
-        return composition;
+        return Objects.requireNonNull(composition, "composition not initialized");
     }
 
     /**
@@ -144,7 +145,7 @@ public class StaffPanel extends JPanel {
      * @return The line panel, or null if point is not in any line
      */
     @Nullable
-    public LinePanel getLinePanelAt(@NotNull Point point) {
+    public LinePanel getLinePanelAt(Point point) {
         for (var linePanel : linePanels) {
             if (linePanel.getBounds().contains(point)) {
                 return linePanel;

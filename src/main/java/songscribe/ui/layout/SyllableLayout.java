@@ -20,7 +20,6 @@
 
 package songscribe.ui.layout;
 
-import org.jetbrains.annotations.NotNull;
 
 /**
  * Layout information for a single lyric syllable.
@@ -32,8 +31,8 @@ public final class SyllableLayout {
 
     private final int elementIndex;
     private final int x;
-    private final @NotNull String text;
-    private final @NotNull ElementBounds bounds;
+    private final String text;
+    private final ElementBounds bounds;
     private final boolean hasMelisma;
 
     /**
@@ -48,8 +47,8 @@ public final class SyllableLayout {
     public SyllableLayout(
         int elementIndex,
         int x,
-        @NotNull String text,
-        @NotNull ElementBounds bounds,
+        String text,
+        ElementBounds bounds,
         boolean hasMelisma
     ) {
         this.elementIndex = elementIndex;
@@ -65,8 +64,8 @@ public final class SyllableLayout {
     public SyllableLayout(
         int elementIndex,
         int x,
-        @NotNull String text,
-        @NotNull ElementBounds bounds
+        String text,
+        ElementBounds bounds
     ) {
         this(elementIndex, x, text, bounds, false);
     }
@@ -88,14 +87,14 @@ public final class SyllableLayout {
     /**
      * Returns the syllable text.
      */
-    public @NotNull String getText() {
+    public String getText() {
         return text;
     }
 
     /**
      * Returns the element bounds.
      */
-    public @NotNull ElementBounds getBounds() {
+    public ElementBounds getBounds() {
         return bounds;
     }
 

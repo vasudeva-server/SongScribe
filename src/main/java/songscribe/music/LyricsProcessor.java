@@ -15,10 +15,11 @@
 
 package songscribe.music;
 
+import java.util.Objects;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.jetbrains.annotations.NotNull;
 
 import songscribe.ui.Constants;
 
@@ -41,7 +42,7 @@ public class LyricsProcessor {
      *
      * @param composition The composition containing lines to process
      */
-    public static void spellLyrics(@NotNull Composition composition) {
+    public static void spellLyrics(Composition composition) {
         for (var l = 0; l < composition.lineCount(); l++) {
             spellLyrics(composition.getLine(l));
         }
@@ -52,7 +53,7 @@ public class LyricsProcessor {
      *
      * @param line The line to process
      */
-    public static void spellLyrics(@NotNull Line line) {
+    public static void spellLyrics(Line line) {
         // delete the current values
         line.beginRelation = StaffElement.SyllableRelation.NO;
 
@@ -64,7 +65,7 @@ public class LyricsProcessor {
 
         // get the lyrics slice
         var beginIndex = 0;
-        var composition = line.getComposition();
+        var composition = Objects.requireNonNull(line.getComposition());
 
         for (var j = composition.indexOfLine(line); j > 0; j--) {
             beginIndex = composition.getLyrics().indexOf('\n', beginIndex) + 1;
@@ -172,7 +173,7 @@ public class LyricsProcessor {
     }
 
     private static int setSyllableForNextElement(
-        @NotNull Line line,
+        Line line,
         int noteIndex,
         String syllable,
         StaffElement.SyllableRelation syllableRelation

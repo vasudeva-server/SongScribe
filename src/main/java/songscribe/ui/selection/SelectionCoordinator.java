@@ -25,11 +25,11 @@ import java.util.HashMap;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import net.engio.mbassy.listener.Handler;
 
@@ -66,30 +66,35 @@ public final class SelectionCoordinator {
     private boolean inSelectMode = false;
 
     // Lazy-initialized list of all reflectable actions discovered from Actions.
+    @Nullable
     private List<UIAction.Reflectable> reflectableActions = null;
 
     // Lazy-initialized list of all actions whose state is managed during selection.
+    @Nullable
     private List<UIAction> managedActions = null;
 
     // Saved action states (selected + enabled) before a selection becomes active.
     private final Map<UIAction, ActionState> savedActionStates = new IdentityHashMap<>();
 
     // Last reflected selection range, used to skip redundant reflection.
+    @Nullable
     private ElementSelection lastReflectedSelection = null;
 
     // Content cache: lazily computed flags about what the current selection contains.
+    @Nullable
     private ElementSelection contentCacheSelection = null;
     private boolean hasDurations;
     private boolean hasNonDurations;
     private boolean hasRests;
 
     // Applicability cache: maps action to whether it applies to any element in the selection.
+    @Nullable
     private ElementSelection applicabilityCacheSelection = null;
     private final Map<UIAction.Reflectable, Boolean> applicabilityCache = new IdentityHashMap<>();
 
     record ActionState(boolean selected, boolean enabled) {}
 
-    public SelectionCoordinator(@NotNull Supplier<Composition> compositionSupplier) {
+    public SelectionCoordinator(Supplier<Composition> compositionSupplier) {
         this.compositionSupplier = compositionSupplier;
         MessageCenter.subscribe(this);
     }
@@ -102,7 +107,7 @@ public final class SelectionCoordinator {
      * Registers a LineSelectionState for the given line index.
      * Called by LineComponent when it is set up.
      */
-    public void registerLineState(int lineIndex, @NotNull LineSelectionState state) {
+    public void registerLineState(int lineIndex, LineSelectionState state) {
         lineStates.put(lineIndex, state);
     }
 
@@ -390,7 +395,7 @@ public final class SelectionCoordinator {
      * in the current selection. Results are cached per selection.
      * Returns {@code false} if there is no active selection.
      */
-    public boolean isApplicableToSelection(@NotNull UIAction.Reflectable action) {
+    public boolean isApplicableToSelection(UIAction.Reflectable action) {
         var selection = getSelection();
 
         if (selection == null) {
@@ -573,7 +578,7 @@ public final class SelectionCoordinator {
         contentCacheSelection = null;
         applicabilityCacheSelection = null;
         applicabilityCache.clear();
-        var composition = line.getComposition();
+        var composition = Objects.requireNonNull(line.getComposition());
         composition.setModified(true);
         MessageCenter.post(new CompositionDidChangeNotification(CompositionDidChangeNotification.ChangeType.CONTENT, composition, line));
     }
@@ -711,7 +716,7 @@ public final class SelectionCoordinator {
      * saved state, then clears all saved states. Actions without the flag
      * are left at their current state.
      */
-    public void restoreActionStatesWithFlag(@NotNull UIAction.Flag flag) {
+    public void restoreActionStatesWithFlag(UIAction.Flag flag) {
         if (savedActionStates.isEmpty()) {
             return;
         }
@@ -761,7 +766,7 @@ public final class SelectionCoordinator {
      * the selection-changed message.
      */
     @Handler(priority = Message.LOW_PRIORITY)
-    public void musicSelectionDidChangeReflectSelection(MusicSelectionDidChangeNotification message) {
+    public void musicSelectionDidChangeReflectSelection(@Nullable MusicSelectionDidChangeNotification message) {
         var actions = getReflectableActions();
         var selection = getSelection();
 
@@ -815,7 +820,7 @@ public final class SelectionCoordinator {
      * Reflects a single element's attributes onto all reflectable toolbar actions.
      * Used when grace note pairing is complete to mirror the host note's attributes.
      */
-    public void reflectElement(@NotNull StaffElement element) {
+    public void reflectElement(StaffElement element) {
         for (var reflectable : getReflectableActions()) {
             reflectable.setSelected(
                 reflectable.appliesTo(element) && reflectable.matchesElement(element)

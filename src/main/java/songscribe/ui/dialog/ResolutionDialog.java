@@ -25,6 +25,10 @@ import com.intellij.uiDesigner.core.GridConstraints;
 import com.intellij.uiDesigner.core.GridLayoutManager;
 import com.intellij.uiDesigner.core.Spacer;
 
+import java.util.Objects;
+
+import org.jspecify.annotations.Nullable;
+
 import songscribe.export.ExportOptions;
 import songscribe.prefs.Prefs;
 import songscribe.Strings;
@@ -48,6 +52,7 @@ public class ResolutionDialog extends StandardDialog implements ChangeListener {
     private int sheetHeightWithoutLyrics = 0;
     private int sheetHeightWithoutTitle = 0;
 
+    @SuppressWarnings("NullAway.Init")
     public ResolutionDialog() {
         super(Strings.get(Strings.DIALOG_RESOLUTION_TITLE));
         borderPanel.setPackListener(_ -> pack());
@@ -67,7 +72,7 @@ public class ResolutionDialog extends StandardDialog implements ChangeListener {
     protected void getData() {
         approved = false;
         resolutionSpinner.setValue(Prefs.getInstance().getInt("exportDpi"));
-        var score = getScore();
+        var score = Objects.requireNonNull(getScore());
         var composition = score.getComposition();
         sheetWidth = score.getSheetWidthPx();
         sheetHeight = score.getSheetHeightPx();
@@ -126,7 +131,7 @@ public class ResolutionDialog extends StandardDialog implements ChangeListener {
     }
 
     @Override
-    public void stateChanged(ChangeEvent e) {
+    public void stateChanged(@Nullable ChangeEvent e) {
         handleResolutionChange();
     }
 

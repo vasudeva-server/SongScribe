@@ -22,7 +22,6 @@ package songscribe.ui.renderer;
 
 import module java.desktop;
 
-import org.jetbrains.annotations.NotNull;
 
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.ui.layout.Clef;
@@ -50,15 +49,15 @@ public class ClefRenderer extends BaseElementRenderer<Clef> {
     /**
      * Returns the singleton instance.
      */
-    public static @NotNull ClefRenderer getInstance() {
+    public static ClefRenderer getInstance() {
         return INSTANCE;
     }
 
     @Override
     protected void renderElement(
-        @NotNull Clef element,
-        @NotNull Graphics2D g2,
-        @NotNull ElementRenderContext ctx
+        Clef element,
+        Graphics2D g2,
+        ElementRenderContext ctx
     ) {
         // The clef's position comes from the element
         double x = element.getXSs();
@@ -79,8 +78,8 @@ public class ClefRenderer extends BaseElementRenderer<Clef> {
      * @param ctx Render context
      */
     public void renderClef(
-        @NotNull Graphics2D g2,
-        @NotNull ElementRenderContext ctx
+        Graphics2D g2,
+        ElementRenderContext ctx
     ) {
         double baseline = ctx.getMiddleLineYSs() + 1.0;
         drawBravuraGlyph(g2, SMuFLGlyph.G_CLEF, CLEF_X_POSITION_SS, baseline);

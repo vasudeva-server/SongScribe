@@ -22,7 +22,6 @@ package songscribe.ui.component.score;
 
 import module java.desktop;
 
-import org.jetbrains.annotations.NotNull;
 
 public class ScorePanel extends JPanel implements Scrollable {
 
@@ -47,7 +46,6 @@ public class ScorePanel extends JPanel implements Scrollable {
     }
 
     @Override
-    @NotNull
     public Dimension getPreferredSize() {
         var contentSize = content.getPreferredSize();
         var parentSize = getParent().getSize();
@@ -56,7 +54,6 @@ public class ScorePanel extends JPanel implements Scrollable {
     }
 
     @Override
-    @NotNull
     public Dimension getPreferredScrollableViewportSize() {
         // Return the content's natural preferred size so the JScrollPane can compute its own
         // preferred size without feedback from the current viewport width. If we delegated to

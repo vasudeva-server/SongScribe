@@ -26,8 +26,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import songscribe.music.Line;
 
@@ -53,7 +52,7 @@ public abstract class LineElement {
     private @Nullable LineElement parentElement;
 
     /** Position relative to parent line origin. */
-    private @NotNull Point2D position = new Point2D.Double(0, 0);
+    private Point2D position = new Point2D.Double(0, 0);
 
     /**
      * User's manual horizontal offset from the layout-calculated position.
@@ -137,7 +136,7 @@ public abstract class LineElement {
     /**
      * Returns the position relative to the parent line origin.
      */
-    public @NotNull Point2D getPosition() {
+    public Point2D getPosition() {
         return position;
     }
 
@@ -158,7 +157,7 @@ public abstract class LineElement {
     /**
      * Sets the position relative to the parent line origin.
      */
-    public void setPosition(@NotNull Point2D position) {
+    public void setPosition(Point2D position) {
         this.position = position;
     }
 
@@ -269,7 +268,7 @@ public abstract class LineElement {
     /**
      * Returns the content bounds (actual drawn content) in line-relative coordinates.
      */
-    public @NotNull Rectangle2D getContentBounds() {
+    public Rectangle2D getContentBounds() {
         return new Rectangle2D.Double(
             position.getX(),
             position.getY(),
@@ -281,7 +280,7 @@ public abstract class LineElement {
     /**
      * Returns the margin bounds (content + margin) in line-relative coordinates.
      */
-    public @NotNull Rectangle2D getMarginBounds() {
+    public Rectangle2D getMarginBounds() {
         return new Rectangle2D.Double(
             position.getX() - marginLeftSs,
             position.getY() - marginTopSs,
@@ -293,7 +292,7 @@ public abstract class LineElement {
     /**
      * Returns the complete Bounds object for this element.
      */
-    public @NotNull Bounds getBounds() {
+    public Bounds getBounds() {
         return new Bounds(getContentBounds(), getMarginBounds());
     }
 
@@ -338,7 +337,7 @@ public abstract class LineElement {
      * @param below The element below this one
      * @return The effective margin between the two elements
      */
-    public double collapsedVerticalMarginWith(@NotNull LineElement below) {
+    public double collapsedVerticalMarginWith(LineElement below) {
         return Math.max(this.marginBottomSs, below.marginTopSs);
     }
 
@@ -349,7 +348,7 @@ public abstract class LineElement {
      * @param right The element to the right of this one
      * @return The effective margin between the two elements
      */
-    public double collapsedHorizontalMarginWith(@NotNull LineElement right) {
+    public double collapsedHorizontalMarginWith(LineElement right) {
         return Math.max(this.marginRightSs, right.marginLeftSs);
     }
 
@@ -360,7 +359,7 @@ public abstract class LineElement {
     /**
      * Returns an unmodifiable view of this element's children.
      */
-    public @NotNull List<LineElement> getChildren() {
+    public List<LineElement> getChildren() {
         return Collections.unmodifiableList(children);
     }
 
@@ -383,7 +382,7 @@ public abstract class LineElement {
      *
      * @param child The element to add
      */
-    public void addChild(@NotNull LineElement child) {
+    public void addChild(LineElement child) {
         child.setParentElement(this);
         child.setParentLine(this.parentLine);
         children.add(child);
@@ -395,7 +394,7 @@ public abstract class LineElement {
      * @param child The element to remove
      * @return true if the child was removed
      */
-    public boolean removeChild(@NotNull LineElement child) {
+    public boolean removeChild(LineElement child) {
         if (children.remove(child)) {
             child.setParentElement(null);
             return true;
@@ -422,7 +421,7 @@ public abstract class LineElement {
      * @return The child element
      * @throws IndexOutOfBoundsException if index is out of range
      */
-    public @NotNull LineElement getChild(int index) {
+    public LineElement getChild(int index) {
         return children.get(index);
     }
 }

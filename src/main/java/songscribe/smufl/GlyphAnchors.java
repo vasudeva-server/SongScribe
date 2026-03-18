@@ -20,7 +20,7 @@
 
 package songscribe.smufl;
 
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Anchor points for a SMuFL glyph, in staff spaces with Y-down (screen) convention.

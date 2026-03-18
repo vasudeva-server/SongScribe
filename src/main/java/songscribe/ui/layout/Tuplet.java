@@ -20,8 +20,7 @@
 
 package songscribe.ui.layout;
 
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import songscribe.music.StaffElement;
 
@@ -48,7 +47,7 @@ public class Tuplet extends RangeElement {
      * @param endNote    The last note in the tuplet
      * @param grade      The tuplet number (3 for triplet, 5 for quintuplet, etc.)
      */
-    public Tuplet(@NotNull StaffElement anchorNote, @NotNull StaffElement endNote, int grade) {
+    public Tuplet(StaffElement anchorNote, StaffElement endNote, int grade) {
         setAnchorElement(anchorNote);
         this.endNote = endNote;
         this.grade = grade;

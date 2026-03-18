@@ -22,8 +22,9 @@ package songscribe.ui.dialog;
 import module java.desktop;
 
 import java.util.Arrays;
+import java.util.Objects;
 
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import org.jdesktop.layout.GroupLayout;
 import org.jdesktop.layout.LayoutStyle;
@@ -39,7 +40,7 @@ import songscribe.util.FileUtils;
  */
 public class AnnotationDialog extends StandardDialog {
 
-    private StaffElement selectedElement = null;
+    private @Nullable StaffElement selectedElement = null;
     private final JComboBox<String> annotationCombo;
     private final JButton removeButton;
     private final JRadioButton aboveButton;
@@ -276,8 +277,8 @@ public class AnnotationDialog extends StandardDialog {
         var south = new JPanel();
         removeButton = new JButton(Strings.get(Strings.LABEL_BUTTON_REMOVE));
         removeButton.addActionListener(_ -> {
-            var score = getScore();
-            selectedElement.setAnnotation(null);
+            var score = Objects.requireNonNull(getScore());
+            Objects.requireNonNull(selectedElement).setAnnotation(null);
             setVisible(false);
             score.getComposition().setModified(true);
             score.repaint();
@@ -292,7 +293,7 @@ public class AnnotationDialog extends StandardDialog {
 
     @Override
     protected void getData() {
-        var score = getScore();
+        var score = Objects.requireNonNull(getScore());
         Annotation annotation = null;
         var hasExistingAnnotation = false;
         selectedElement = score.getSingleSelectedElement();
@@ -374,7 +375,7 @@ public class AnnotationDialog extends StandardDialog {
             annotation.setYPosPx(yPosPx);
         }
 
-        selectedElement.setAnnotation(annotation);
+        Objects.requireNonNull(selectedElement).setAnnotation(annotation);
         getComposition().setModified(true);
     }
 

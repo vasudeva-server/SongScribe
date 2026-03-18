@@ -28,7 +28,6 @@ import module java.desktop;
 import java.util.Objects;
 import java.util.function.DoubleConsumer;
 
-import org.jetbrains.annotations.NotNull;
 
 import songscribe.music.ElementType;
 import songscribe.smufl.EngravingDefaults;
@@ -172,9 +171,9 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
      */
     @Override
     public final void render(
-        @NotNull T element,
-        @NotNull Graphics2D g2,
-        @NotNull ElementRenderContext ctx
+        T element,
+        Graphics2D g2,
+        ElementRenderContext ctx
     ) {
         renderElement(element, g2, ctx);
         // Note: Debug/inspector visualization is handled separately by DebugRenderer,
@@ -190,9 +189,9 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
      * @param ctx     Rendering context
      */
     protected abstract void renderElement(
-        @NotNull T element,
-        @NotNull Graphics2D g2,
-        @NotNull ElementRenderContext ctx
+        T element,
+        Graphics2D g2,
+        ElementRenderContext ctx
     );
 
     // ==========================================================================
@@ -213,8 +212,8 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
      * @return The Y coordinate in component space
      */
     protected static double layoutYToComponentYSs(
-        @NotNull songscribe.ui.layout.Bounds bounds,
-        @NotNull ElementRenderContext ctx
+        songscribe.ui.layout.Bounds bounds,
+        ElementRenderContext ctx
     ) {
         return ctx.getMiddleLineYSs() + bounds.getTop();
     }
@@ -228,7 +227,7 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
      * @param bounds The layout bounds
      * @return The X coordinate in component space
      */
-    protected static double layoutXToComponentXSs(@NotNull songscribe.ui.layout.Bounds bounds) {
+    protected static double layoutXToComponentXSs(songscribe.ui.layout.Bounds bounds) {
         return bounds.getLeft();
     }
 
@@ -248,9 +247,9 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
      * @param ctx     Rendering context
      */
     protected void renderDebug(
-        @NotNull T element,
-        @NotNull Graphics2D g2,
-        @NotNull ElementRenderContext ctx
+        T element,
+        Graphics2D g2,
+        ElementRenderContext ctx
     ) {
         var contentBounds = element.getContentBounds();
         var marginBounds = element.getMarginBounds();
@@ -289,9 +288,9 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
      * @param contentBounds The element's content bounds
      */
     private void drawElementLabel(
-        @NotNull T element,
-        @NotNull Graphics2D g2,
-        @NotNull Rectangle2D contentBounds
+        T element,
+        Graphics2D g2,
+        Rectangle2D contentBounds
     ) {
         String typeName = element.getClass().getSimpleName();
         Font labelFont = new Font(Font.SANS_SERIF, Font.PLAIN, 9);
@@ -321,9 +320,9 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
      * Subclasses can override if rendered bounds differ from logical bounds.
      */
     @Override
-    public @NotNull Rectangle2D getBounds(
-        @NotNull T element,
-        @NotNull ElementRenderContext ctx
+    public Rectangle2D getBounds(
+        T element,
+        ElementRenderContext ctx
     ) {
         return element.getContentBounds();
     }
@@ -345,7 +344,7 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
      * @param y     Y position of the ledger line
      * @param width Width of the ledger line
      */
-    protected void drawLedgerLine(@NotNull Graphics2D g2, double x, double y, double width) {
+    protected void drawLedgerLine(Graphics2D g2, double x, double y, double width) {
         // Color is intentionally not set — inherited from caller so insertion notes
         // draw ledger lines in their own color.
         var thicknessSs = ENGRAVING_DEFAULTS.legerLineThickness();
@@ -371,8 +370,8 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
      * @param y     Y position
      */
     protected void drawBravuraGlyph(
-        @NotNull Graphics2D g2,
-        @NotNull SMuFLGlyph glyph,
+        Graphics2D g2,
+        SMuFLGlyph glyph,
         double x,
         double y
     ) {
@@ -389,8 +388,8 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
      * @param preserveColor If true, preserves the current graphics color instead of setting ELEMENT_COLOR
      */
     protected void drawBravuraGlyph(
-        @NotNull Graphics2D g2,
-        @NotNull SMuFLGlyph glyph,
+        Graphics2D g2,
+        SMuFLGlyph glyph,
         double x,
         double y,
         boolean preserveColor
@@ -457,7 +456,7 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
      * @param staffPosition The note's staff position (integer index along the Y axis)
      * @param consumer      Called once per ledger line with the Y offset in staff spaces
      */
-    static void forEachLedgerLineYSs(int staffPosition, @NotNull DoubleConsumer consumer) {
+    static void forEachLedgerLineYSs(int staffPosition, DoubleConsumer consumer) {
         int i = staffPosition;
 
         if ((staffPosition % 2) != 0) {
@@ -472,7 +471,7 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
         }
     }
 
-    protected static double stemCenterXOffsetSs(@NotNull ElementType noteType, boolean upper) {
+    protected static double stemCenterXOffsetSs(ElementType noteType, boolean upper) {
         boolean isMinim = noteType == ElementType.MINIM;
         double anchorX = upper
             ? (isMinim ? LayoutConstants.STEM_UP_SE_HALF.x() : LayoutConstants.STEM_UP_SE_BLACK.x())

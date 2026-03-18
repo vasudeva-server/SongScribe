@@ -21,6 +21,7 @@
 package songscribe.message;
 
 import net.engio.mbassy.listener.Handler;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -29,7 +30,7 @@ public final class MessageLogger {
     private static final Logger LOG = LoggerFactory.getLogger(MessageLogger.class);
 
     @SuppressWarnings("StaticNonFinalField")
-    public static MessageLogger instance = null;
+    public static @Nullable MessageLogger instance = null;
 
     public static void init() {
         instance = new MessageLogger();

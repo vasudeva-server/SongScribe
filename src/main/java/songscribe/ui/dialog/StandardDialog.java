@@ -21,7 +21,9 @@ package songscribe.ui.dialog;
 
 import module java.desktop;
 
-import org.jetbrains.annotations.NotNull;
+import java.util.Objects;
+
+import org.jspecify.annotations.Nullable;
 
 import org.intellij.lang.annotations.MagicConstant;
 
@@ -57,13 +59,14 @@ public abstract class StandardDialog {
     protected final JButton okButton;
     protected final JButton applyButton;
     protected final JButton cancelButton;
-    private Point savedLocation = null;
-    private JDialog dialog = null;
+    private @Nullable Point savedLocation = null;
+    private JDialog dialog;
 
     protected StandardDialog(String title) {
         this(title, true);
     }
 
+    @SuppressWarnings("NullAway.Init")
     protected StandardDialog(String title, boolean isModal) {
         this.mainFrame = MainFrame.getInstance();
         var score = mainFrame.getScore();
@@ -137,7 +140,7 @@ public abstract class StandardDialog {
     }
 
     protected static void addLabelToBox(
-        @NotNull JPanel box,
+        JPanel box,
         String text,
         int gapHeight
     ) {
@@ -196,12 +199,12 @@ public abstract class StandardDialog {
         return mainFrame;
     }
 
-    protected Score getScore() {
+    protected @Nullable Score getScore() {
         return mainFrame.getScore();
     }
 
     protected Composition getComposition() {
-        return mainFrame.getScore().getComposition();
+        return Objects.requireNonNull(mainFrame.getScore()).getComposition();
     }
 
     public static Insets getStandardStackedLabelInsets() {
@@ -307,7 +310,7 @@ public abstract class StandardDialog {
         }
 
         @Override
-        public Insets getBorderInsets(Component c, @NotNull Insets insets) {
+        public Insets getBorderInsets(Component c, Insets insets) {
             insets.left = INSETS.left;
             insets.right = INSETS.right;
             insets.top = INSETS.top;

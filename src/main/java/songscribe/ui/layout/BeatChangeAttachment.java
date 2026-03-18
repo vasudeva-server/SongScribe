@@ -20,8 +20,7 @@
 
 package songscribe.ui.layout;
 
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import songscribe.music.BeatChange;
 import songscribe.music.StaffElement;
@@ -42,14 +41,14 @@ public class BeatChangeAttachment extends Attachment {
     private static final double DEFAULT_HEIGHT = 20.0;
 
     /** The beat change data. */
-    private @NotNull BeatChange beatChange;
+    private BeatChange beatChange;
 
     /**
      * Creates a beat change attachment with the specified change.
      *
      * @param beatChange The beat change data
      */
-    public BeatChangeAttachment(@NotNull BeatChange beatChange) {
+    public BeatChangeAttachment(BeatChange beatChange) {
         this.beatChange = beatChange;
         setAlignment(Alignment.CENTER);
     }
@@ -60,7 +59,7 @@ public class BeatChangeAttachment extends Attachment {
      * @param parent     The parent note
      * @param beatChange The beat change data
      */
-    public BeatChangeAttachment(@Nullable StaffElement parent, @NotNull BeatChange beatChange) {
+    public BeatChangeAttachment(@Nullable StaffElement parent, BeatChange beatChange) {
         this.beatChange = beatChange;
         setOwnerElement(parent);
         setAlignment(Alignment.CENTER);
@@ -74,14 +73,14 @@ public class BeatChangeAttachment extends Attachment {
     /**
      * Returns the beat change data.
      */
-    public @NotNull BeatChange getBeatChange() {
+    public BeatChange getBeatChange() {
         return beatChange;
     }
 
     /**
      * Sets the beat change data.
      */
-    public void setBeatChange(@NotNull BeatChange beatChange) {
+    public void setBeatChange(BeatChange beatChange) {
         this.beatChange = beatChange;
     }
 

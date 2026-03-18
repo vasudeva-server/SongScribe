@@ -20,8 +20,7 @@
 
 package songscribe.ui.layout;
 
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import songscribe.music.StaffElement;
 
@@ -45,7 +44,7 @@ public class Diminuendo extends RangeElement {
      * @param anchorNote The starting note of the diminuendo
      * @param endNote    The ending note of the diminuendo
      */
-    public Diminuendo(@NotNull StaffElement anchorNote, @NotNull StaffElement endNote) {
+    public Diminuendo(StaffElement anchorNote, StaffElement endNote) {
         setAnchorElement(anchorNote);
         this.endNote = endNote;
     }

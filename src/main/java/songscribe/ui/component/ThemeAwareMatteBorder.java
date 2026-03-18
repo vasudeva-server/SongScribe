@@ -22,7 +22,7 @@ package songscribe.ui.component;
 
 import module java.desktop;
 
-import org.jetbrains.annotations.NotNull;
+import org.jspecify.annotations.Nullable;
 
 /**
  * A matte border that lazily reads its color from a UIManager key on each paint,
@@ -38,7 +38,7 @@ public class ThemeAwareMatteBorder extends AbstractBorder {
     private final int right;
     private final String colorKey;
 
-    public ThemeAwareMatteBorder(int top, int left, int bottom, int right, @NotNull String colorKey) {
+    public ThemeAwareMatteBorder(int top, int left, int bottom, int right, String colorKey) {
         this.top = top;
         this.left = left;
         this.bottom = bottom;
@@ -47,7 +47,7 @@ public class ThemeAwareMatteBorder extends AbstractBorder {
     }
 
     @Override
-    public void paintBorder(Component c, Graphics g, int x, int y, int width, int height) {
+    public void paintBorder(@Nullable Component c, Graphics g, int x, int y, int width, int height) {
         var color = UIManager.getColor(colorKey);
 
         if (color == null) {
@@ -74,14 +74,12 @@ public class ThemeAwareMatteBorder extends AbstractBorder {
     }
 
     @Override
-    @NotNull
-    public Insets getBorderInsets(Component c) {
+    public Insets getBorderInsets(@Nullable Component c) {
         return new Insets(top, left, bottom, right);
     }
 
     @Override
-    @NotNull
-    public Insets getBorderInsets(Component c, Insets insets) {
+    public Insets getBorderInsets(@Nullable Component c, Insets insets) {
         insets.set(top, left, bottom, right);
         return insets;
     }

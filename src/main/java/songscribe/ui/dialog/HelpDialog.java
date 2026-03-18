@@ -23,6 +23,8 @@ import module java.desktop;
 
 import java.io.IOException;
 
+import org.jspecify.annotations.Nullable;
+
 import songscribe.Strings;
 import songscribe.ui.Dialogs;
 import songscribe.util.Utils;
@@ -136,7 +138,7 @@ public class HelpDialog
 
         final String name;
         final String html;
-        Component component = null;
+        @Nullable Component component = null;
 
         ListObject(String name, String html) {
             this.name = name;

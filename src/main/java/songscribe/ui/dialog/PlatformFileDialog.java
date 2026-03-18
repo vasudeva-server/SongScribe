@@ -25,6 +25,8 @@ import java.util.List;
 
 import com.formdev.flatlaf.util.SystemFileChooser;
 
+import org.jspecify.annotations.Nullable;
+
 import songscribe.data.MyFileFilter;
 import songscribe.ui.component.MainFrame;
 
@@ -34,9 +36,9 @@ public class PlatformFileDialog {
     private final MainFrame mainFrame;
     private final boolean isOpenDialog;
     private final boolean directoriesOnly;
-    private MyFileFilter[] originalFilters = null;
+    private MyFileFilter @Nullable [] originalFilters = null;
     private int initialFilterIndex = 0;
-    private SystemFileChooser.FileNameExtensionFilter[] convertedFilters = null;
+    private SystemFileChooser.FileNameExtensionFilter @Nullable [] convertedFilters = null;
 
     private static SystemFileChooser.FileNameExtensionFilter convertFilter(MyFileFilter maf) {
         List<String> extensions = maf.getExtensions();
@@ -126,7 +128,7 @@ public class PlatformFileDialog {
         this.convertedFilters = new SystemFileChooser.FileNameExtensionFilter[] { filter };
     }
 
-    public MyFileFilter getFileFilter() {
+    public @Nullable MyFileFilter getFileFilter() {
         // First, try to infer format from the filename extension
         // This is more reliable than the filter dropdown on macOS native dialogs
         var selectedFile = chooser.getSelectedFile();
@@ -143,7 +145,7 @@ public class PlatformFileDialog {
 
         // Fall back to filter dropdown selection
         var selectedFilter = chooser.getFileFilter();
-        if (convertedFilters != null && selectedFilter != null) {
+        if (originalFilters != null && convertedFilters != null && selectedFilter != null) {
             String selectedDescription = selectedFilter.getDescription();
             for (int i = 0; i < convertedFilters.length; i++) {
                 if (convertedFilters[i].getDescription().equals(selectedDescription)) {

@@ -26,8 +26,9 @@ import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.nio.charset.StandardCharsets;
+import java.util.Objects;
 
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import com.formdev.flatlaf.util.SystemFileChooser;
 import com.formdev.flatlaf.util.SystemInfo;
@@ -68,6 +69,7 @@ import songscribe.ui.dialog.WhatsNewDialog;
 import songscribe.ui.menu.MenuController;
 import songscribe.ui.playback.MidiController;
 import songscribe.ui.playback.PlaybackController;
+import songscribe.util.FatalError;
 import songscribe.util.FileUtils;
 
 public class MainFrame extends JFrame implements Printable {
@@ -100,18 +102,22 @@ public class MainFrame extends JFrame implements Printable {
     }
 
     // Splash screen
+    @Nullable
     private static JWindow splashWindow = null;
 
     // This class is shared by several applications. This is the name of the application.
     public String appName;
 
     // The music sheet that is displayed in the main window
+    @Nullable
     protected Score score = null;
 
     // The current open file
+    @Nullable
     protected File currentFile = null;
 
     // UI components
+    @Nullable
     private LyricsPanel lyricsPanel = null;
     @Nullable
     private JLabel titleBarLabel = null;
@@ -119,6 +125,7 @@ public class MainFrame extends JFrame implements Printable {
     private static final int MAC_TITLE_BAR_HEIGHT = 28;
     private static final int MAC_TITLE_FONT_SIZE = 13;
     private static final double PRINT_EXTRA_MARGIN = 0.25 * 72;
+    @Nullable
     private PrinterJob printerJob = null;
 
     public MainFrame() {
@@ -208,6 +215,10 @@ public class MainFrame extends JFrame implements Printable {
     }
 
     public static void hideSplash() {
+        if (splashWindow == null) {
+            return;
+        }
+
         splashWindow.setVisible(false);
         splashWindow.dispose();
     }
@@ -234,6 +245,7 @@ public class MainFrame extends JFrame implements Printable {
     }
 
     public void initFrame() {
+
         setTitle(appName);
         setAppIcon();
 
@@ -241,9 +253,13 @@ public class MainFrame extends JFrame implements Printable {
         score = new Score(this::setCurrentFile);
         PlaybackController.register(score);
 
+
         initContent();
+
         MenuController.init(this);
+
         Actions.CONTROL_ACTION_GROUP.selectNext();
+
 
         // When the application goes to the background, hide the insertion note
         // and activate the glass pane so the reactivation click is consumed.
@@ -333,11 +349,15 @@ public class MainFrame extends JFrame implements Printable {
         var contentPane = getContentPane();
         contentPane.setLayout(new BorderLayout());
 
+
         var toolbarPanel = new MainToolbarPanel();
+
+
 
         // On macOS with full window content, draw a custom title in the
         // title bar area and place it above the toolbar.
         if (SystemInfo.isMacOS && SystemInfo.isMacFullWindowContentSupported) {
+
             var titleBar = new JPanel(new BorderLayout()) {
                 @Override
                 public void updateUI() {
@@ -363,10 +383,13 @@ public class MainFrame extends JFrame implements Printable {
             northPanel.add(toolbarPanel, BorderLayout.CENTER);
             contentPane.add(northPanel, BorderLayout.NORTH);
         } else {
+
             contentPane.add(toolbarPanel, BorderLayout.NORTH);
         }
 
-        score.init();
+
+        Objects.requireNonNull(score).init();
+
         contentPane.add(createCenterContent(), BorderLayout.CENTER);
 
     }
@@ -382,7 +405,7 @@ public class MainFrame extends JFrame implements Printable {
         pane.setResizeWeight(SystemInfo.isLinux ? 0.85 : 1.0);
         pane.setBorder(BorderFactory.createEmptyBorder());
         pane.setDividerSize(20);
-        pane.setTopComponent(score.getScoreScrollPane());
+        pane.setTopComponent(Objects.requireNonNull(score).getScoreScrollPane());
         pane.setBottomComponent(lyricsPanel.getLyricsModePanel());
         return pane;
     }
@@ -404,7 +427,7 @@ public class MainFrame extends JFrame implements Printable {
     }
 
     private boolean showSaveDialog() {
-        if (!score.getComposition().isModified()) {
+        if (score == null || !score.getComposition().isModified()) {
             return true;
         }
 
@@ -436,7 +459,7 @@ public class MainFrame extends JFrame implements Printable {
     }
 
     private void updateTitle() {
-        if (score == null || score.getComposition() == null) {
+        if (score == null || !score.isInitialized()) {
             return;
         }
 
@@ -475,6 +498,7 @@ public class MainFrame extends JFrame implements Printable {
         updateTitle();
     }
 
+    @Nullable
     public Score getScore() {
         return score;
     }
@@ -484,11 +508,12 @@ public class MainFrame extends JFrame implements Printable {
     }
 
 
+    @Nullable
     public File getCurrentFile() {
         return currentFile;
     }
 
-    public void setCurrentFile(File saveFile) {
+    public void setCurrentFile(@Nullable File saveFile) {
         currentFile = saveFile;
         updateTitle();
     }
@@ -518,7 +543,14 @@ public class MainFrame extends JFrame implements Printable {
     }
 
     public static void handlePrefs() throws IllegalStateException {
-        Actions.PREFERENCES_ACTION.getDialog().setVisible(true);
+        var dialog = Actions.PREFERENCES_ACTION.getDialog();
+
+        if (dialog == null) {
+            FatalError.exit("Preferences dialog could not be created");
+            throw new AssertionError("unreachable");
+        }
+
+        dialog.setVisible(true);
     }
 
     public boolean handleQuit() {
@@ -567,7 +599,7 @@ public class MainFrame extends JFrame implements Printable {
     }
 
     public void handleOpenFile(File file) {
-        if (!showSaveDialog()) {
+        if (!showSaveDialog() || score == null) {
             return;
         }
 
@@ -614,7 +646,7 @@ public class MainFrame extends JFrame implements Printable {
             return NO_SUCH_PAGE;
         }
 
-        var format = printerJob.validatePage(pageFormat);
+        var format = Objects.requireNonNull(printerJob).validatePage(pageFormat);
         var paper = format.getPaper();
 
         // Add 1/4 inch margin to ensure it's within the printable area
@@ -666,6 +698,10 @@ public class MainFrame extends JFrame implements Printable {
     }
 
     private void saveCurrentFile() {
+        if (currentFile == null || score == null) {
+            return;
+        }
+
         try {
             var printWriter = new PrintWriter(
                 currentFile,
@@ -686,6 +722,10 @@ public class MainFrame extends JFrame implements Printable {
     }
 
     private void saveAsNewFile() {
+        if (score == null) {
+            return;
+        }
+
         var fileDialog = new PlatformFileDialog(
             this,
             Strings.get(Strings.DIALOG_SAVE_AS_TITLE),

@@ -49,6 +49,11 @@ public class PDFExporter {
         var paperWidth = data.paperWidthPx * resolution;
         var paperHeight = data.paperHeightPx * resolution;
         var score = data.score;
+
+        if (score == null) {
+            return;
+        }
+
         var composition = score.getComposition();
 
         // Scale to fit

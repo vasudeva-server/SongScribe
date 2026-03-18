@@ -22,7 +22,7 @@ package songscribe.notification;
 
 import songscribe.message.Message;
 
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 
 public class LyricsDidChangeNotification extends Message {
 

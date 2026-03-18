@@ -22,16 +22,18 @@ package songscribe.data;
 import java.io.File;
 import java.util.ArrayList;
 
+import org.jspecify.annotations.Nullable;
+
 import songscribe.ui.component.Score;
 
 public class PageLayoutData {
 
-    public ArrayList<File> files = null;
+    public @Nullable ArrayList<File> files = null;
     public int paperWidthPx = 0, paperHeightPx = 0, leftInnerMarginPx =
         0, rightOuterMarginPx = 0, topMarginPx = 0, bottomMarginPx = 0;
     public boolean mirrored = false;
     public int songsPerPage = 2;
-    public Score score = null;
+    public @Nullable Score score = null;
 
     /**
      * Sets all four margins to a default, then applies per-edge overrides.

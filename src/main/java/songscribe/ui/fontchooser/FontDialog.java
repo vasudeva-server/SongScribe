@@ -23,8 +23,7 @@ import module java.desktop;
 
 import java.util.Optional;
 
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
 import songscribe.util.UIUtils;
@@ -38,9 +37,10 @@ import songscribe.util.UIUtils;
 public class FontDialog extends JDialog {
 
     public static Optional<Font> showDialog(
-        @NotNull Component component,
+        Component component,
         @Nullable Point location
     ) {
+        @SuppressWarnings("NullAway") // JDialog accepts null Frame owner
         var dialog = new FontDialog((Frame) null, Strings.get(Strings.DIALOG_FONT_CHOOSER_TITLE), true);
 
         // Make the dialog a little taller than the default size

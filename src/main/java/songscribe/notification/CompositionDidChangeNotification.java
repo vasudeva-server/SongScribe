@@ -24,8 +24,7 @@ import songscribe.message.Message;
 
 import java.util.EnumSet;
 
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import songscribe.music.Composition;
 import songscribe.music.Line;
@@ -48,15 +47,15 @@ public class CompositionDidChangeNotification extends Message {
     private final Line line;
 
     public CompositionDidChangeNotification(
-        @NotNull ChangeType changeType,
-        @NotNull Composition composition
+        ChangeType changeType,
+        Composition composition
     ) {
         this(changeType, composition, null);
     }
 
     public CompositionDidChangeNotification(
-        @NotNull ChangeType changeType,
-        @NotNull Composition composition,
+        ChangeType changeType,
+        Composition composition,
         @Nullable Line line
     ) {
         this.changeTypes = EnumSet.of(changeType);
@@ -65,24 +64,22 @@ public class CompositionDidChangeNotification extends Message {
     }
 
     public CompositionDidChangeNotification(
-        @NotNull EnumSet<ChangeType> changeTypes,
-        @NotNull Composition composition
+        EnumSet<ChangeType> changeTypes,
+        Composition composition
     ) {
         this.changeTypes = changeTypes;
         this.composition = composition;
         this.line = null;
     }
 
-    @NotNull
     public EnumSet<ChangeType> getChangeTypes() {
         return changeTypes;
     }
 
-    public boolean hasChangeType(@NotNull ChangeType type) {
+    public boolean hasChangeType(ChangeType type) {
         return changeTypes.contains(type);
     }
 
-    @NotNull
     public Composition getComposition() {
         return composition;
     }

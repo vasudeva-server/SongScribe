@@ -26,7 +26,8 @@ import static songscribe.ui.renderer.GraphicsState.Property.STROKE;
 
 import module java.desktop;
 
-import org.jetbrains.annotations.NotNull;
+import java.util.Objects;
+
 
 import songscribe.music.Line;
 import songscribe.music.StaffElement;
@@ -88,8 +89,9 @@ public class TupletRenderer extends BaseElementRenderer<Tuplet> {
     private static final double RIGHT_GAP_PX;
 
     static {
-        double advancePx = StaffSpaces.toPixels(METADATA.getAdvanceWidth(SMuFLGlyph.TUPLET_3))
-            * TUPLET_NUMBER_SCALE;
+        double advancePx = StaffSpaces.toPixels(
+            Objects.requireNonNull(METADATA.getAdvanceWidth(SMuFLGlyph.TUPLET_3), "advance width must exist for TUPLET_3")
+        ) * TUPLET_NUMBER_SCALE;
         var bbox = METADATA.getBBox(SMuFLGlyph.TUPLET_3);
         double rightOverhang = bbox != null
             ? (StaffSpaces.toPixels(bbox.right()) - advancePx) * TUPLET_NUMBER_SCALE
@@ -107,8 +109,7 @@ public class TupletRenderer extends BaseElementRenderer<Tuplet> {
     private static final double DOWN_STEM_NOTEHEAD_SHIFT_SS = LayoutConstants.STEM_WIDTH_SS / 2.0;
 
     static {
-        var bbox = METADATA.getBBox(SMuFLGlyph.NOTEHEAD_BLACK);
-        assert bbox != null;
+        var bbox = Objects.requireNonNull(METADATA.getBBox(SMuFLGlyph.NOTEHEAD_BLACK), "bounding box must exist for NOTEHEAD_BLACK");
         NOTEHEAD_LEFT_PX = StaffSpaces.toPixels(bbox.left());
         NOTEHEAD_RIGHT_PX = StaffSpaces.toPixels(bbox.right());
     }
@@ -142,7 +143,7 @@ public class TupletRenderer extends BaseElementRenderer<Tuplet> {
     /**
      * Returns the singleton instance.
      */
-    public static @NotNull TupletRenderer getInstance() {
+    public static TupletRenderer getInstance() {
         return INSTANCE;
     }
 
@@ -152,9 +153,9 @@ public class TupletRenderer extends BaseElementRenderer<Tuplet> {
 
     @Override
     protected void renderElement(
-        @NotNull Tuplet element,
-        @NotNull Graphics2D g2,
-        @NotNull ElementRenderContext ctx
+        Tuplet element,
+        Graphics2D g2,
+        ElementRenderContext ctx
     ) {
         var anchorNote = element.getAnchorElement();
         var endNote = element.getEndElement();
@@ -184,8 +185,8 @@ public class TupletRenderer extends BaseElementRenderer<Tuplet> {
      * Gets the vertical position for a tuplet from layout result.
      */
     private int getEffectiveTupletVerticalPos(
-        @NotNull Tuplet element,
-        @NotNull ElementRenderContext ctx
+        Tuplet element,
+        ElementRenderContext ctx
     ) {
         var layoutResult = ctx.getLayoutResult();
 
@@ -208,9 +209,9 @@ public class TupletRenderer extends BaseElementRenderer<Tuplet> {
      * Renders a tuplet bracket from interval data.
      */
     public void renderTuplet(
-        @NotNull Graphics2D g2,
-        @NotNull Line line,
-        @NotNull ElementRenderContext ctx,
+        Graphics2D g2,
+        Line line,
+        ElementRenderContext ctx,
         int startIndex,
         int endIndex,
         int grade,
@@ -347,9 +348,9 @@ public class TupletRenderer extends BaseElementRenderer<Tuplet> {
      * Renders tuplets from Line's interval data.
      */
     public void renderTupletsFromLine(
-        @NotNull Graphics2D g2,
-        @NotNull Line line,
-        @NotNull ElementRenderContext ctx
+        Graphics2D g2,
+        Line line,
+        ElementRenderContext ctx
     ) {
         for (var iter = line.getTuplets().listIterator(); iter.hasNext(); ) {
             var interval = iter.next();
@@ -367,7 +368,7 @@ public class TupletRenderer extends BaseElementRenderer<Tuplet> {
      * @param layoutResult the layout result containing note positions
      * @return stem center X in staff spaces
      */
-    private double stemXSs(@NotNull StaffElement note, @NotNull LayoutResult layoutResult) {
+    private double stemXSs(StaffElement note, LayoutResult layoutResult) {
         double noteXSs = layoutResult.getElementXSs(note);
         double offsetSs = stemCenterXOffsetSs(note.getType(), note.isUpper());
         return noteXSs + offsetSs;
@@ -377,7 +378,7 @@ public class TupletRenderer extends BaseElementRenderer<Tuplet> {
      * Draws the tuplet number centered in the bracket gap using SMuFL glyphs.
      */
     private void drawTupletNumber(
-        @NotNull Graphics2D g2,
+        Graphics2D g2,
         int grade,
         double cx,
         double bracketY
@@ -438,8 +439,8 @@ public class TupletRenderer extends BaseElementRenderer<Tuplet> {
      * Draws a tuplet glyph at the scaled tuplet font size.
      */
     private void drawTupletGlyph(
-        @NotNull Graphics2D g2,
-        @NotNull SMuFLGlyph glyph,
+        Graphics2D g2,
+        SMuFLGlyph glyph,
         double x,
         double y
     ) {

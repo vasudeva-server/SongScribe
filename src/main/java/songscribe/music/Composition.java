@@ -24,7 +24,7 @@ import module java.desktop;
 import java.util.ArrayList;
 import java.util.regex.Pattern;
 
-import org.jetbrains.annotations.NotNull;
+import org.jspecify.annotations.Nullable;
 
 import net.engio.mbassy.listener.Handler;
 
@@ -113,6 +113,7 @@ public final class Composition {
     private String translatedLyrics = "";
 
     // The composer, date and place where the song was composed
+    @Nullable
     private String attribution;
 
     // Additional info about the song
@@ -123,6 +124,7 @@ public final class Composition {
 
     // The number of accidentals in the key signature and the type of key (flats or sharps)
     private int defaultKeyAccidentalCount;
+    @Nullable
     private KeyType defaultKeyType;
 
     // Fonts and their associated metrics used to display the song title, lyrics, info, etc.
@@ -130,13 +132,17 @@ public final class Composition {
     private FontMetrics titleFontMetrics;
     private Font lyricsFont;
     private FontMetrics lyricsFontMetrics;
+    @Nullable
     private Font banglaFont;
+    @Nullable
     private FontMetrics banglaFontMetrics;
     private Font attributionFont;
     private FontMetrics attributionFontMetrics;
     private Font annotationFont;
     private FontMetrics annotationFontMetrics;
+    @Nullable
     private Font footnoteFont;
+    @Nullable
     private FontMetrics footnoteFontMetrics;
 
     // When the title is set, it is wrapped into lines and stored here
@@ -216,7 +222,7 @@ public final class Composition {
      * parsed data, and subscribes to the message bus. Avoids the wasted work
      * of the no-arg constructor (default line, attributionStartY calculation).
      */
-    public Composition(@NotNull CompositionData data) {
+    public Composition(CompositionData data) {
         initFontsFromPrefs();
         loadFrom(data);
         MessageCenter.subscribe(this);
@@ -266,7 +272,7 @@ public final class Composition {
      *
      * @param data the parsed composition data to apply
      */
-    public void loadFrom(@NotNull CompositionData data) {
+    public void loadFrom(CompositionData data) {
         // Apply all scalar fields using apply methods (no individual message posting)
         this.tempo = data.tempo();
         applyNumber(data.number());
@@ -370,8 +376,10 @@ public final class Composition {
                 n >= 0;
                 n--
             ) {
-                if (currentLine.getElement(n).getTempoChange() != null) {
-                    return currentLine.getElement(n).getTempoChange();
+                var tc = currentLine.getElement(n).getTempoChange();
+
+                if (tc != null) {
+                    return tc;
                 }
             }
 
@@ -429,7 +437,7 @@ public final class Composition {
         return unofficialTranslation;
     }
 
-    public String getAttribution() {
+    public @Nullable String getAttribution() {
         return attribution;
     }
 
@@ -441,7 +449,7 @@ public final class Composition {
         return defaultKeyAccidentalCount;
     }
 
-    public KeyType getDefaultKeyType() {
+    public @Nullable KeyType getDefaultKeyType() {
         return defaultKeyType;
     }
 
@@ -501,19 +509,19 @@ public final class Composition {
         return annotationFontMetrics;
     }
 
-    public Font getBanglaFont() {
+    public @Nullable Font getBanglaFont() {
         return banglaFont;
     }
 
-    public FontMetrics getBanglaFontMetrics() {
+    public @Nullable FontMetrics getBanglaFontMetrics() {
         return banglaFontMetrics;
     }
 
-    public Font getFootnoteFont() {
+    public @Nullable Font getFootnoteFont() {
         return footnoteFont;
     }
 
-    public FontMetrics getFootnoteFontMetrics() {
+    public @Nullable FontMetrics getFootnoteFontMetrics() {
         return footnoteFontMetrics;
     }
 
@@ -563,11 +571,11 @@ public final class Composition {
         mutateAndPost(ChangeType.METADATA, () -> applyTitle(text));
     }
 
-    public void setPlace(@NotNull String place) {
+    public void setPlace(String place) {
         mutateAndPost(ChangeType.METADATA, () -> applyPlace(place));
     }
 
-    public void setYear(@NotNull String year) {
+    public void setYear(String year) {
         mutateAndPost(ChangeType.METADATA, () -> applyYear(year));
     }
 
@@ -579,11 +587,11 @@ public final class Composition {
         mutateAndPost(ChangeType.METADATA, () -> applyDay(day));
     }
 
-    public void setLyrics(@NotNull String text) {
+    public void setLyrics(String text) {
         mutateAndPost(ChangeType.LYRICS, () -> applyLyrics(text));
     }
 
-    public void setUnderLyrics(@NotNull String text) {
+    public void setUnderLyrics(String text) {
         var newLyrics = processText(text);
 
         if (underLyrics.equals(newLyrics)) {
@@ -593,7 +601,7 @@ public final class Composition {
         mutateAndPost(ChangeType.LYRICS, () -> applyUnderLyrics(text));
     }
 
-    public void setBanglaLyrics(@NotNull String text) {
+    public void setBanglaLyrics(String text) {
         var newLyrics = text.trim();
 
         if (banglaLyrics.equals(newLyrics)) {
@@ -603,7 +611,7 @@ public final class Composition {
         mutateAndPost(ChangeType.LYRICS, () -> applyBanglaLyrics(text));
     }
 
-    public void setTranslatedLyrics(@NotNull String text) {
+    public void setTranslatedLyrics(String text) {
         var newLyrics = text.trim();
 
         if (translatedLyrics.equals(newLyrics)) {
@@ -613,7 +621,7 @@ public final class Composition {
         mutateAndPost(ChangeType.LYRICS, () -> applyTranslatedLyrics(text));
     }
 
-    public void setFootnotes(@NotNull String text) {
+    public void setFootnotes(String text) {
         var newFootnotes = text.trim();
 
         if (footnotes.equals(newFootnotes)) {
@@ -627,17 +635,17 @@ public final class Composition {
         mutateAndPost(ChangeType.METADATA, () -> applyUnofficialTranslation(unofficial));
     }
 
-    public void setAttribution(@NotNull String text) {
+    public void setAttribution(String text) {
         var newAttribution = text.trim();
 
-        if (attribution.equals(newAttribution)) {
+        if (newAttribution.equals(attribution)) {
             return;
         }
 
         mutateAndPost(ChangeType.METADATA, () -> applyAttribution(text));
     }
 
-    public void setNumber(@NotNull String text) {
+    public void setNumber(String text) {
         mutateAndPost(ChangeType.METADATA, () -> applyNumber(text));
     }
 
@@ -936,7 +944,7 @@ public final class Composition {
 
     // ========== Private helpers ==========
 
-    private void mutateAndPost(@NotNull ChangeType changeType, @NotNull Runnable mutation) {
+    private void mutateAndPost(ChangeType changeType, Runnable mutation) {
         mutation.run();
         setModified(true);
         postChanged(changeType);
@@ -1052,8 +1060,7 @@ public final class Composition {
         this.lineWidthSs = lineWidth;
     }
 
-    @NotNull
-    private String processText(@NotNull String text) {
+    private String processText(String text) {
         var strip = Prefs.getInstance().getBoolean("stripShortA");
 
         if (strip && SHORT_A_PATTERN.matcher(text).find()) {
@@ -1088,7 +1095,7 @@ public final class Composition {
         return (lineHeight * lineCount) + (lineHeight / 2);
     }
 
-    private void postChanged(@NotNull ChangeType changeType) {
+    private void postChanged(ChangeType changeType) {
         MessageCenter.post(new CompositionDidChangeNotification(changeType, this));
     }
 }

@@ -20,7 +20,7 @@
 
 package songscribe.ui.layout;
 
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import songscribe.music.StaffElement;
 

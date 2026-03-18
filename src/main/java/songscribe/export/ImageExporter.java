@@ -21,7 +21,6 @@ package songscribe.export;
 
 import module java.desktop;
 
-import org.jetbrains.annotations.NotNull;
 
 import songscribe.ui.component.MyBorder;
 import songscribe.ui.component.Score;
@@ -47,13 +46,12 @@ public class ImageExporter {
      * @param options controls which content sections to include
      * @return a new BufferedImage containing the exported score
      */
-    @NotNull
     public static BufferedImage createImageForExport(
-        @NotNull Score score,
+        Score score,
         Color background,
         double scale,
-        @NotNull MyBorder border,
-        @NotNull ExportOptions options
+        MyBorder border,
+        ExportOptions options
     ) {
         var image = new BufferedImage(
             (int) ((score.getSheetWidthPx()) * scale) + border.getWidth(),
@@ -74,11 +72,11 @@ public class ImageExporter {
      * @param options controls which content sections to include
      */
     public static void createImageForExport(
-        @NotNull BufferedImage image,
+        BufferedImage image,
         Color background,
         double scale,
-        @NotNull MyBorder border,
-        @NotNull ExportOptions options
+        MyBorder border,
+        ExportOptions options
     ) {
         // TODO: When component-based rendering is implemented, use options to
         // skip excluded sections (lyrics, title, attribution) without mutating Composition

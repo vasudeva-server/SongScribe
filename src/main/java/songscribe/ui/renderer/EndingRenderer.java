@@ -28,7 +28,6 @@ import module java.desktop;
 
 import java.util.stream.IntStream;
 
-import org.jetbrains.annotations.NotNull;
 
 import songscribe.music.ElementType;
 import songscribe.music.Line;
@@ -80,7 +79,7 @@ public class EndingRenderer extends BaseElementRenderer<LineElement> {
     /**
      * Returns the singleton instance.
      */
-    public static @NotNull EndingRenderer getInstance() {
+    public static EndingRenderer getInstance() {
         return INSTANCE;
     }
 
@@ -90,9 +89,9 @@ public class EndingRenderer extends BaseElementRenderer<LineElement> {
 
     @Override
     protected void renderElement(
-        @NotNull LineElement element,
-        @NotNull Graphics2D g2,
-        @NotNull ElementRenderContext ctx
+        LineElement element,
+        Graphics2D g2,
+        ElementRenderContext ctx
     ) {
         // EndingRenderer is called directly with Line, not through element interface
         // This method is a placeholder for the interface requirement
@@ -107,10 +106,10 @@ public class EndingRenderer extends BaseElementRenderer<LineElement> {
      * @param ctx       Render context
      */
     public void renderEndings(
-        @NotNull Graphics2D g2,
-        @NotNull Line line,
+        Graphics2D g2,
+        Line line,
         int lineIndex,
-        @NotNull ElementRenderContext ctx
+        ElementRenderContext ctx
     ) {
         for (var iter = line.getFirstSecondEndings().listIterator(); iter.hasNext(); ) {
             var interval = iter.next();
@@ -229,15 +228,15 @@ public class EndingRenderer extends BaseElementRenderer<LineElement> {
      * @param endNote   The last note of the ending
      */
     private void drawEnding(
-        @NotNull Graphics2D g2,
-        @NotNull Line line,
+        Graphics2D g2,
+        Line line,
         int lineIndex,
-        @NotNull ElementRenderContext ctx,
+        ElementRenderContext ctx,
         double x1,
         double x2,
         int number,
-        @NotNull StaffElement startNote,
-        @NotNull StaffElement endNote
+        StaffElement startNote,
+        StaffElement endNote
     ) {
         int y = getEffectiveEndingYPosPx(ctx, startNote, endNote);
         int fontHeight = BaseElementRenderer.ENDING_FONT.getSize() + 2;
@@ -268,9 +267,9 @@ public class EndingRenderer extends BaseElementRenderer<LineElement> {
      * Gets the Y position for an ending bracket from layout result.
      */
     private int getEffectiveEndingYPosPx(
-        @NotNull ElementRenderContext ctx,
-        @NotNull StaffElement startNote,
-        @NotNull StaffElement endNote
+        ElementRenderContext ctx,
+        StaffElement startNote,
+        StaffElement endNote
     ) {
         var layoutResult = ctx.getLayoutResult();
 

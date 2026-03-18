@@ -23,8 +23,7 @@ package songscribe.message;
 import java.awt.*;
 import java.util.List;
 
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import songscribe.music.KeyType;
 import songscribe.music.Line;
@@ -43,22 +42,22 @@ import songscribe.notification.CompositionDidChangeNotification;
  * when null, the Composition retains its default (preferences-based) fonts.
  */
 public record CompositionData(
-    @NotNull Tempo tempo,
-    @NotNull String number,
-    @NotNull String title,
-    @NotNull String place,
+    Tempo tempo,
+    String number,
+    String title,
+    String place,
     int month,
     int day,
-    @NotNull String year,
-    @NotNull String lyrics,
-    @NotNull String underLyrics,
-    @NotNull String banglaLyrics,
-    @NotNull String translatedLyrics,
-    @NotNull String attribution,
-    @NotNull String footnotes,
+    String year,
+    String lyrics,
+    String underLyrics,
+    String banglaLyrics,
+    String translatedLyrics,
+    String attribution,
+    String footnotes,
     boolean unofficialTranslation,
     int defaultKeyAccidentalCount,
-    @NotNull KeyType defaultKeyType,
+    KeyType defaultKeyType,
     @Nullable Font titleFont,
     @Nullable Font lyricsFont,
     @Nullable Font attributionFont,
@@ -67,7 +66,7 @@ public record CompositionData(
     double attributionStartYSs,
     double rowHeightAdjustmentSs,
     double lineWidthSs,
-    @NotNull List<Line> lines,
+    List<Line> lines,
     boolean hasBeenDynamicallyLaidOut,
     int formatVersion
 ) {}

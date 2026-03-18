@@ -22,13 +22,15 @@ package songscribe.ui.component;
 
 import module java.desktop;
 
+import org.jspecify.annotations.Nullable;
+
 import songscribe.ui.action.UIAction;
 import songscribe.ui.component.toolbar.Toolbar;
 import songscribe.util.UIUtils;
 
 public class ToolbarToggleButton extends JToggleButton {
 
-    public ToolbarToggleButton(UIAction action) {
+    public ToolbarToggleButton(@Nullable UIAction action) {
         super(action);
         UIUtils.initToolbarButton(this, Toolbar.BUTTON_DIMENSION);
     }

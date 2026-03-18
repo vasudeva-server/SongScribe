@@ -22,7 +22,7 @@ package songscribe.ui.clipboard;
 
 import java.util.ArrayList;
 
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import songscribe.data.IntervalSet;
 import songscribe.music.StaffElement;
@@ -39,7 +39,7 @@ public final class ClipboardManager {
     private final ArrayList<StaffElement> pasteboard = new ArrayList<>();
 
     // Associated interval sets (ties, etc.) for the copied elements
-    private IntervalSet[] intervalSetsCopyBuffer = null;
+    private IntervalSet @Nullable [] intervalSetsCopyBuffer = null;
 
     // -------------------------------------------------------------------------
     // Pasteboard accessors
@@ -96,8 +96,7 @@ public final class ClipboardManager {
      *
      * @return The interval sets array, or null if none
      */
-    @Nullable
-    public IntervalSet[] getIntervalsCopyBuffer() {
+    public IntervalSet @Nullable [] getIntervalsCopyBuffer() {
         return intervalSetsCopyBuffer;
     }
 

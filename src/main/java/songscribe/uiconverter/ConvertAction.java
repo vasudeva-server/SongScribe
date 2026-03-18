@@ -28,8 +28,6 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.zip.ZipOutputStream;
 
-import org.jetbrains.annotations.Nullable;
-
 import songscribe.Strings;
 import songscribe.export.ExportOptions;
 import songscribe.io.CompositionIO;
@@ -37,6 +35,7 @@ import songscribe.ui.Dialogs;
 import songscribe.ui.component.MyBorder;
 import songscribe.ui.dialog.ProcessDialog;
 import songscribe.ui.playback.PlaybackController;
+import songscribe.util.FatalError;
 import songscribe.util.FileUtils;
 import songscribe.util.GraphicUtils;
 
@@ -138,15 +137,17 @@ public class ConvertAction extends AbstractAction {
                     ? new ZipOutputStream(fileOutputStream)
                     : null
             ) {
-                byte[] buf = null;
-
-                if (CREATE_ZIP) {
-                    buf = new byte[1024];
-                }
+                var buf = new byte[1024];
 
                 for (var songFile : songFiles) {
                     // load file
                     var score = uiConverter.getScore();
+
+                    if (score == null) {
+                        FatalError.exit("score is null in ConvertAction");
+                        throw new AssertionError("unreachable");
+                    }
+
                     score.openFile(songFile, false);
                     var composition = score.getComposition();
 
@@ -196,7 +197,6 @@ public class ConvertAction extends AbstractAction {
                             myBorders[i],
                             exportOptions
                         );
-                        @Nullable
                         var imageFile = new File(
                             songDirectory,
                             fileName +
@@ -229,7 +229,6 @@ public class ConvertAction extends AbstractAction {
                     }
 
                     // produce MIDI
-                    @Nullable
                     var midiFile = new File(
                         songDirectory,
                         fileName + ".mid"

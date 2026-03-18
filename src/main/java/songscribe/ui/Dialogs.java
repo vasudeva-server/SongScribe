@@ -27,8 +27,7 @@ import java.util.function.Consumer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
 import songscribe.util.UIUtils;
@@ -223,7 +222,7 @@ public final class Dialogs {
 
     // Position the dialog at 3/8 of the way down the screen, centered horizontally,
     // clamped to the screen bounds with a 20px margin on all sides.
-    private static void positionDialog(@NotNull JDialog dialog, @Nullable Component parent) {
+    private static void positionDialog(JDialog dialog, @Nullable Component parent) {
         var screen = getScreenBounds(parent);
         var size = dialog.getSize();
 
@@ -236,7 +235,7 @@ public final class Dialogs {
         dialog.setLocation(x, y);
     }
 
-    private static @NotNull Rectangle getScreenBounds(@Nullable Component parent) {
+    private static Rectangle getScreenBounds(@Nullable Component parent) {
         Window window = parent instanceof Window w
             ? w
             : parent != null ? SwingUtilities.getWindowAncestor(parent) : null;

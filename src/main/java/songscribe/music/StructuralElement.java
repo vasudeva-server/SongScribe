@@ -19,7 +19,7 @@
  */
 package songscribe.music;
 
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Base class for non-sounding elements in a line.

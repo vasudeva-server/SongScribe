@@ -29,14 +29,14 @@ import module java.desktop;
 import java.util.EnumMap;
 import java.util.function.BiConsumer;
 
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import songscribe.music.ElementType;
 import songscribe.music.StaffElement;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
 import songscribe.ui.layout2.LayoutConstants;
+import songscribe.util.FatalError;
 import songscribe.util.GraphicUtils;
 
 /**
@@ -138,9 +138,9 @@ public class NoteRenderer extends BaseElementRenderer<StaffElement> {
     }
 
     // Cached accidental widths (computed on first use)
-    private static float[] baseAccidentalWidthsSs = null;
-    private static float[] baseAccidentalParenthesisWidthsSs = null;
-    private static float[] smallAccidentalWidthsSs = null;
+    private static float @Nullable [] baseAccidentalWidthsSs = null;
+    private static float @Nullable [] baseAccidentalParenthesisWidthsSs = null;
+    private static float @Nullable [] smallAccidentalWidthsSs = null;
     private static float beginParenthesisWidthSs = 0.0f;
     private static float endParenthesisWidthSs = 0.0f;
 
@@ -156,7 +156,7 @@ public class NoteRenderer extends BaseElementRenderer<StaffElement> {
     /**
      * Returns the singleton instance.
      */
-    public static @NotNull NoteRenderer getInstance() {
+    public static NoteRenderer getInstance() {
         return INSTANCE;
     }
 
@@ -191,9 +191,9 @@ public class NoteRenderer extends BaseElementRenderer<StaffElement> {
      * </ol>
      */
     private static double resolveNoteXSs(
-        @NotNull Graphics2D g2,
-        @NotNull StaffElement note,
-        @NotNull ElementRenderContext ctx
+        Graphics2D g2,
+        StaffElement note,
+        ElementRenderContext ctx
     ) {
         double noteX;
 
@@ -209,9 +209,9 @@ public class NoteRenderer extends BaseElementRenderer<StaffElement> {
 
     @Override
     protected void renderElement(
-        @NotNull StaffElement element,
-        @NotNull Graphics2D g2,
-        @NotNull ElementRenderContext ctx
+        StaffElement element,
+        Graphics2D g2,
+        ElementRenderContext ctx
     ) {
         var noteType = element.getType();
 
@@ -252,9 +252,9 @@ public class NoteRenderer extends BaseElementRenderer<StaffElement> {
      * Renders with full render context.
      */
     public void render(
-        @NotNull Graphics2D g2,
-        @NotNull StaffElement note,
-        @NotNull ElementRenderContext ctx
+        Graphics2D g2,
+        StaffElement note,
+        ElementRenderContext ctx
     ) {
         render(note, g2, ctx);
     }
@@ -264,9 +264,9 @@ public class NoteRenderer extends BaseElementRenderer<StaffElement> {
     // ==========================================================================
 
     private void renderBreathMark(
-        @NotNull StaffElement element,
-        @NotNull Graphics2D g2,
-        @NotNull ElementRenderContext ctx
+        StaffElement element,
+        Graphics2D g2,
+        ElementRenderContext ctx
     ) {
         var noteX = resolveNoteXSs(g2, element, ctx);
 
@@ -287,10 +287,10 @@ public class NoteRenderer extends BaseElementRenderer<StaffElement> {
     // ==========================================================================
 
     private void renderNoteHead(
-        @NotNull Graphics2D g2,
-        @NotNull StaffElement note,
+        Graphics2D g2,
+        StaffElement note,
         boolean beamed,
-        @NotNull ElementRenderContext ctx
+        ElementRenderContext ctx
     ) {
         var noteType = note.getType();
         var glyph = NOTE_HEAD.get(noteType);
@@ -331,14 +331,13 @@ public class NoteRenderer extends BaseElementRenderer<StaffElement> {
     // ==========================================================================
 
     // Returns the flag attachment point (x = stem left edge, y = stem tip), or null if no stem.
-    @Nullable
-    private Point2D.Double renderStem(
-        @NotNull Graphics2D g2,
-        @NotNull StaffElement note,
+    private Point2D.@Nullable Double renderStem(
+        Graphics2D g2,
+        StaffElement note,
         boolean upper,
         boolean beamed,
-        @NotNull ElementType noteType,
-        @NotNull ElementRenderContext ctx
+        ElementType noteType,
+        ElementRenderContext ctx
     ) {
         if (!noteType.isNoteWithStem()) {
             return null;
@@ -427,11 +426,11 @@ public class NoteRenderer extends BaseElementRenderer<StaffElement> {
     // ==========================================================================
 
     private void renderFlags(
-        @NotNull Graphics2D g2,
-        @NotNull StaffElement note,
+        Graphics2D g2,
+        StaffElement note,
         boolean upper,
-        @NotNull ElementType noteType,
-        @Nullable Point2D.Double stemTip
+        ElementType noteType,
+        Point2D.@Nullable Double stemTip
     ) {
         if (stemTip == null) {
             return;
@@ -470,8 +469,8 @@ public class NoteRenderer extends BaseElementRenderer<StaffElement> {
     // ==========================================================================
 
     private void renderDots(
-        @NotNull Graphics2D g2,
-        @NotNull StaffElement note,
+        Graphics2D g2,
+        StaffElement note,
         boolean beamed,
         boolean upper
     ) {
@@ -493,8 +492,8 @@ public class NoteRenderer extends BaseElementRenderer<StaffElement> {
      * relative to the note's glyph origin.
      */
     static void forEachDotPosition(
-        @NotNull StaffElement note, boolean beamed, boolean upper,
-        @NotNull BiConsumer<Double, Double> consumer
+        StaffElement note, boolean beamed, boolean upper,
+        BiConsumer<Double, Double> consumer
     ) {
         if (note.getDotCount() == 0) {
             return;
@@ -528,7 +527,7 @@ public class NoteRenderer extends BaseElementRenderer<StaffElement> {
     // Ledger Line Rendering
     // ==========================================================================
 
-    private void renderLedgerLines(@NotNull Graphics2D g2, @NotNull StaffElement note) {
+    private void renderLedgerLines(Graphics2D g2, StaffElement note) {
         double extensionSs = LayoutConstants.getLedgerLineOverhangSs(note);
 
         if (extensionSs == 0.0) {
@@ -548,9 +547,9 @@ public class NoteRenderer extends BaseElementRenderer<StaffElement> {
     // ==========================================================================
 
     private void renderAccidental(
-        @NotNull Graphics2D g2,
-        @NotNull StaffElement note,
-        @NotNull ElementRenderContext ctx
+        Graphics2D g2,
+        StaffElement note,
+        ElementRenderContext ctx
     ) {
         var accidental = note.getAccidental().ordinal();
 
@@ -588,8 +587,8 @@ public class NoteRenderer extends BaseElementRenderer<StaffElement> {
      * Returns the X position after the last glyph.
      */
     private float renderAccidentalComponents(
-        @NotNull Graphics2D g2,
-        @NotNull SMuFLGlyph[] components,
+        Graphics2D g2,
+        SMuFLGlyph[] components,
         float x
     ) {
         for (var i = 0; i < components.length; i++) {
@@ -607,7 +606,7 @@ public class NoteRenderer extends BaseElementRenderer<StaffElement> {
      * Draws a single SMuFL glyph at the given X position.
      * Returns the X position advanced by the glyph's advance width.
      */
-    private float drawGlyph(@NotNull Graphics2D g2, @NotNull SMuFLGlyph glyph, float x) {
+    private float drawGlyph(Graphics2D g2, SMuFLGlyph glyph, float x) {
         g2.drawString(glyph.asString(), x, 0f);
         var advanceWidth = SMuFLMetadata.getInstance().getAdvanceWidth(glyph);
         return x + (advanceWidth != null ? advanceWidth.floatValue() : 0f);
@@ -633,7 +632,7 @@ public class NoteRenderer extends BaseElementRenderer<StaffElement> {
     // Utility Methods
     // ==========================================================================
 
-    private boolean isNoteBeamed(@NotNull StaffElement note, @NotNull ElementRenderContext ctx) {
+    private boolean isNoteBeamed(StaffElement note, ElementRenderContext ctx) {
         var line = ctx.getCurrentLine();
 
         if (line == null) {
@@ -653,7 +652,7 @@ public class NoteRenderer extends BaseElementRenderer<StaffElement> {
      * Initializes the cached accidental widths from SMuFL metadata advance widths.
      * This must be called once before using getAccidentalWidthSs() or getAccidentalComponentWidthSs().
      */
-    public static void initializeAccidentalWidths(@NotNull Graphics2D g2) {
+    public static void initializeAccidentalWidths(Graphics2D g2) {
         if (baseAccidentalWidthsSs != null) {
             return;
         }
@@ -680,8 +679,8 @@ public class NoteRenderer extends BaseElementRenderer<StaffElement> {
     }
 
     private static float[] computeComponentWidths(
-        @NotNull SMuFLMetadata metadata,
-        @NotNull SMuFLGlyph[][] componentTable
+        SMuFLMetadata metadata,
+        SMuFLGlyph[][] componentTable
     ) {
         var widths = new float[componentTable.length];
 
@@ -708,27 +707,45 @@ public class NoteRenderer extends BaseElementRenderer<StaffElement> {
      * Returns the width of the accidental for a note.
      * Grace notes use pre-sized small accidental glyphs.
      */
-    public static float getAccidentalWidthSs(@NotNull StaffElement note) {
+    public static float getAccidentalWidthSs(StaffElement note) {
         var ordinal = note.getAccidental().ordinal();
 
         if (note.getType().isGraceNote()) {
-            return smallAccidentalWidthsSs[ordinal];
+            var widths = smallAccidentalWidthsSs;
+
+            if (widths == null) {
+                FatalError.exit("getAccidentalWidthSs() called before initializeAccidentalWidths()");
+                throw new AssertionError("unreachable");
+            }
+
+            return widths[ordinal];
+        }
+
+        var baseWidths = baseAccidentalWidthsSs;
+        var parenWidths = baseAccidentalParenthesisWidthsSs;
+
+        if (baseWidths == null || parenWidths == null) {
+            FatalError.exit("getAccidentalWidthSs() called before initializeAccidentalWidths()");
+            throw new AssertionError("unreachable");
         }
 
         return note.isAccidentalInParentheses()
-            ? baseAccidentalParenthesisWidthsSs[ordinal]
-            : baseAccidentalWidthsSs[ordinal];
+            ? parenWidths[ordinal]
+            : baseWidths[ordinal];
     }
 
     /**
      * Returns the width of a specific accidental component.
      */
-    public static float getAccidentalComponentWidthSs(@NotNull StaffElement note, int component) {
-        if (baseAccidentalWidthsSs == null) {
-            getAccidentalWidthSs(note);
+    public static float getAccidentalComponentWidthSs(StaffElement note, int component) {
+        var widths = baseAccidentalWidthsSs;
+
+        if (widths == null) {
+            FatalError.exit("getAccidentalComponentWidthSs() called before initializeAccidentalWidths()");
+            throw new AssertionError("unreachable");
         }
 
-        return baseAccidentalWidthsSs[note.getAccidental().getComponent(component) + 1];
+        return widths[note.getAccidental().getComponent(component) + 1];
     }
 
     /**
@@ -742,7 +759,7 @@ public class NoteRenderer extends BaseElementRenderer<StaffElement> {
      * @param upper    Whether the stem points up
      * @return The X offset in staff spaces (negative for stem-down, 0 otherwise)
      */
-    public static float getNoteheadXOffsetSs(@NotNull ElementType noteType, boolean upper) {
+    public static float getNoteheadXOffsetSs(ElementType noteType, boolean upper) {
         if (noteType.isNoteWithStem() && !upper) {
             return (float) -(LayoutConstants.STEM_WIDTH_SS / 2);
         }
@@ -759,7 +776,7 @@ public class NoteRenderer extends BaseElementRenderer<StaffElement> {
      * @param note The note whose notehead right edge is needed
      * @return Right edge of the notehead in staff-space units (relative to note X)
      */
-    public static double getNoteheadRightEdgeSs(@NotNull StaffElement note) {
+    public static double getNoteheadRightEdgeSs(StaffElement note) {
         var glyph = note.getType().getSMuFLGlyph();
 
         if (glyph != null) {

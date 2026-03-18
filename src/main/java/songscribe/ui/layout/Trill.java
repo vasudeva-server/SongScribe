@@ -20,8 +20,7 @@
 
 package songscribe.ui.layout;
 
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import songscribe.music.StaffElement;
 
@@ -42,7 +41,7 @@ public class Trill extends RangeElement {
      * @param anchorNote The first note of the trill
      * @param endNote    The last note of the trill
      */
-    public Trill(@NotNull StaffElement anchorNote, @NotNull StaffElement endNote) {
+    public Trill(StaffElement anchorNote, StaffElement endNote) {
         setAnchorElement(anchorNote);
         this.endNote = endNote;
     }
@@ -52,7 +51,7 @@ public class Trill extends RangeElement {
      *
      * @param note The note with the trill
      */
-    public Trill(@NotNull StaffElement note) {
+    public Trill(StaffElement note) {
         this(note, note);
     }
 

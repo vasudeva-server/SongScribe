@@ -24,6 +24,10 @@ import module java.desktop;
 import java.io.File;
 import java.io.IOException;
 
+import java.util.Objects;
+
+import org.jspecify.annotations.Nullable;
+
 import songscribe.prefs.Prefs;
 import songscribe.Strings;
 import songscribe.ui.Dialogs;
@@ -35,7 +39,7 @@ public class ExportMidiDialog extends StandardDialog {
 
     private final JComboBox<String> instrumentCombo;
     private final JCheckBox withRepeatCheck;
-    private File saveFile = null;
+    private @Nullable File saveFile = null;
 
     public ExportMidiDialog() {
         super(Strings.get(Strings.DIALOG_EXPORT_MIDI_TITLE));
@@ -69,7 +73,7 @@ public class ExportMidiDialog extends StandardDialog {
     @Override
     protected void setData() {
         try {
-            var score = getScore();
+            var score = Objects.requireNonNull(getScore());
             var savedSettings = PlaybackController.getPlaybackSettings();
 
             // Apply export-specific overrides
@@ -80,8 +84,9 @@ public class ExportMidiDialog extends StandardDialog {
 
             try {
                 var sequence = PlaybackController.buildSequence(score.getComposition());
-                MidiSystem.write(sequence, 1, saveFile);
-                FileUtils.openExportFile(saveFile);
+                var file = Objects.requireNonNull(saveFile, "saveFile must be set before export");
+                MidiSystem.write(sequence, 1, file);
+                FileUtils.openExportFile(file);
             } finally {
                 // Restore previous playback settings
                 PlaybackController.setPlayWithRepeats(savedSettings.playWithRepeats());

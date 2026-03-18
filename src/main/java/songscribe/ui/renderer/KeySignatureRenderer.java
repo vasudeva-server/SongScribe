@@ -25,8 +25,7 @@ import static songscribe.ui.renderer.GraphicsState.Property.FONT;
 
 import module java.desktop;
 
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import songscribe.music.KeyType;
 import songscribe.music.Line;
@@ -84,7 +83,7 @@ public class KeySignatureRenderer extends BaseElementRenderer<KeySignature> {
     /**
      * Returns the singleton instance.
      */
-    public static @NotNull KeySignatureRenderer getInstance() {
+    public static KeySignatureRenderer getInstance() {
         return INSTANCE;
     }
 
@@ -94,9 +93,9 @@ public class KeySignatureRenderer extends BaseElementRenderer<KeySignature> {
 
     @Override
     protected void renderElement(
-        @NotNull KeySignature element,
-        @NotNull Graphics2D g2,
-        @NotNull ElementRenderContext ctx
+        KeySignature element,
+        Graphics2D g2,
+        ElementRenderContext ctx
     ) {
         if (!element.hasAccidentals()) {
             return;
@@ -156,12 +155,12 @@ public class KeySignatureRenderer extends BaseElementRenderer<KeySignature> {
      * @param ctx             Render context for font access
      */
     public void renderKeySignature(
-        @NotNull Graphics2D g2,
-        @NotNull KeyType keyType,
+        Graphics2D g2,
+        KeyType keyType,
         int accidentalCount,
         double xPosSs,
         double middleLineYSs,
-        @NotNull ElementRenderContext ctx
+        ElementRenderContext ctx
     ) {
         if (keyType == KeyType.NONE || accidentalCount == 0) {
             return;
@@ -212,11 +211,11 @@ public class KeySignatureRenderer extends BaseElementRenderer<KeySignature> {
      * @param ctx       Render context
      */
     public void renderKeyChange(
-        @NotNull Graphics2D g2,
-        @NotNull Line line,
-        @NotNull Line nextLine,
+        Graphics2D g2,
+        Line line,
+        Line nextLine,
         double lineWidth,
-        @NotNull ElementRenderContext ctx
+        ElementRenderContext ctx
     ) {
         // If key signature is identical, nothing to draw
         if (nextLine.getKeyAccidentalCount() == line.getKeyAccidentalCount()
@@ -225,7 +224,7 @@ public class KeySignatureRenderer extends BaseElementRenderer<KeySignature> {
         }
 
         // Prepare arrays for up to 2 key signatures (naturals + new key)
-        var keyTypes = new KeyType[2];
+        @Nullable KeyType[] keyTypes = new KeyType[2];
         var accidentalCounts = new int[2];
         var startingOffsets = new int[2];
         var isNaturals = new boolean[2];
@@ -270,13 +269,13 @@ public class KeySignatureRenderer extends BaseElementRenderer<KeySignature> {
      * @param ctx             Render context
      */
     private void renderKeySignatureChange(
-        @NotNull Graphics2D g2,
-        @NotNull KeyType @Nullable [] keyTypes,
-        int @NotNull [] accidentalCounts,
-        int @NotNull [] startingOffsets,
-        boolean @NotNull [] isNaturals,
+        Graphics2D g2,
+        @Nullable KeyType [] keyTypes,
+        int [] accidentalCounts,
+        int [] startingOffsets,
+        boolean [] isNaturals,
         double lineWidth,
-        @NotNull ElementRenderContext ctx
+        ElementRenderContext ctx
     ) {
         try (var ignored = GraphicsState.save(g2, COLOR, FONT)) {
             g2.setFont(BRAVURA_FONT);
@@ -323,7 +322,7 @@ public class KeySignatureRenderer extends BaseElementRenderer<KeySignature> {
     /**
      * Returns the glyph for the given key type.
      */
-    private @NotNull SMuFLGlyph getGlyphForKeyType(@NotNull KeyType keyType) {
+    private SMuFLGlyph getGlyphForKeyType(KeyType keyType) {
         return switch (keyType) {
             case FLATS -> FLAT_GLYPH;
             case SHARPS -> SHARP_GLYPH;

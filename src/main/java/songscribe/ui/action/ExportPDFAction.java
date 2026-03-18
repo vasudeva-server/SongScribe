@@ -22,6 +22,9 @@ package songscribe.ui.action;
 import module java.desktop;
 
 import java.io.File;
+import java.util.Objects;
+
+import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
 import songscribe.data.MyFileFilter;
@@ -34,7 +37,7 @@ import songscribe.util.FileUtils;
 public class ExportPDFAction extends UIAction {
 
     private final PlatformFileDialog fileDialog;
-    private ExportPDFDialog exportPDFDialog = null;
+    private @Nullable ExportPDFDialog exportPDFDialog = null;
 
     public static ExportPDFAction createAction() {
         return new ExportPDFAction();
@@ -59,7 +62,7 @@ public class ExportPDFAction extends UIAction {
 
     @Override
     public void actionPerformed(ActionEvent e) {
-        var saveFile = FileUtils.showExportDialog(getScore(), fileDialog, "pdf");
+        var saveFile = FileUtils.showExportDialog(Objects.requireNonNull(getScore()), fileDialog, "pdf");
 
         if (saveFile == null) {
             return;

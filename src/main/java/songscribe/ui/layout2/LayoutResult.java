@@ -26,8 +26,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import songscribe.data.Interval;
 import songscribe.music.StaffElement;
@@ -57,11 +56,11 @@ public final class LayoutResult {
      */
     private static final double INSERTION_BEFORE_FIRST_OFFSET_SS = 1.875;  // 15px
 
-    private final @NotNull Map<StaffElement, ElementColumn> elementColumns;
-    private final @NotNull Map<LineElement, Bounds> elementBounds;
-    private final @NotNull Map<Interval, BeamLayout> beamLayouts;
-    private final @NotNull Map<StaffElement, StemLayout> stemLayouts;
-    private final @NotNull Map<Interval, TieLayout> tieLayouts;
+    private final Map<StaffElement, ElementColumn> elementColumns;
+    private final Map<LineElement, Bounds> elementBounds;
+    private final Map<Interval, BeamLayout> beamLayouts;
+    private final Map<StaffElement, StemLayout> stemLayouts;
+    private final Map<Interval, TieLayout> tieLayouts;
     private final double lineHeightSs;
     private final double staffTopYSs;
     private final double staffBottomYSs;
@@ -83,11 +82,11 @@ public final class LayoutResult {
      * @param lyricBaselineYSs   Y position of the lyric baseline in staff spaces (0 if no lyrics)
      */
     private LayoutResult(
-        @NotNull Map<StaffElement, ElementColumn> elementColumns,
-        @NotNull Map<LineElement, Bounds> elementBounds,
-        @NotNull Map<Interval, BeamLayout> beamLayouts,
-        @NotNull Map<StaffElement, StemLayout> stemLayouts,
-        @NotNull Map<Interval, TieLayout> tieLayouts,
+        Map<StaffElement, ElementColumn> elementColumns,
+        Map<LineElement, Bounds> elementBounds,
+        Map<Interval, BeamLayout> beamLayouts,
+        Map<StaffElement, StemLayout> stemLayouts,
+        Map<Interval, TieLayout> tieLayouts,
         double lineHeightSs,
         double staffTopYSs,
         double staffBottomYSs,
@@ -113,7 +112,7 @@ public final class LayoutResult {
      * @param element The element to look up
      * @return The element column, or null if the element was not laid out
      */
-    public @Nullable ElementColumn getElementColumn(@NotNull StaffElement element) {
+    public @Nullable ElementColumn getElementColumn(StaffElement element) {
         return elementColumns.get(element);
     }
 
@@ -123,7 +122,7 @@ public final class LayoutResult {
      * @param element The element to look up
      * @return The X position, or 0 if the element was not laid out
      */
-    public double getElementXSs(@NotNull StaffElement element) {
+    public double getElementXSs(StaffElement element) {
         var column = elementColumns.get(element);
         return column != null ? column.getXSs() : 0;
     }
@@ -133,7 +132,7 @@ public final class LayoutResult {
      *
      * @return Map of elements to their columns
      */
-    public @NotNull Map<StaffElement, ElementColumn> getElementColumns() {
+    public Map<StaffElement, ElementColumn> getElementColumns() {
         return elementColumns;
     }
 
@@ -143,7 +142,7 @@ public final class LayoutResult {
      * @param element The element to check
      * @return true if the element has a column
      */
-    public boolean hasElement(@NotNull StaffElement element) {
+    public boolean hasElement(StaffElement element) {
         return elementColumns.containsKey(element);
     }
 
@@ -157,7 +156,7 @@ public final class LayoutResult {
      * @param interval The beam interval to look up
      * @return The beam layout, or null if not computed
      */
-    public @Nullable BeamLayout getBeamLayout(@NotNull Interval interval) {
+    public @Nullable BeamLayout getBeamLayout(Interval interval) {
         return beamLayouts.get(interval);
     }
 
@@ -170,7 +169,7 @@ public final class LayoutResult {
      * @param element The element to look up
      * @return The stem layout, or null if not computed
      */
-    public @Nullable StemLayout getStemLayout(@NotNull StaffElement element) {
+    public @Nullable StemLayout getStemLayout(StaffElement element) {
         for (var beamLayout : beamLayouts.values()) {
             var stemLayout = beamLayout.stems().get(element);
 
@@ -196,7 +195,7 @@ public final class LayoutResult {
      * @param interval The tie interval to look up
      * @return An Optional containing the tie layout, or empty if not computed
      */
-    public @NotNull Optional<TieLayout> getTieLayout(@NotNull Interval interval) {
+    public Optional<TieLayout> getTieLayout(Interval interval) {
         return Optional.ofNullable(tieLayouts.get(interval));
     }
 
@@ -210,7 +209,7 @@ public final class LayoutResult {
      * @param element The element to look up
      * @return The bounds, or null if the element was not laid out
      */
-    public @Nullable Bounds getElementBounds(@NotNull LineElement element) {
+    public @Nullable Bounds getElementBounds(LineElement element) {
         return elementBounds.get(element);
     }
 
@@ -220,7 +219,7 @@ public final class LayoutResult {
      * @param element The element to look up
      * @return The position, or null if the element was not laid out
      */
-    public @Nullable Point2D getElementPosition(@NotNull LineElement element) {
+    public @Nullable Point2D getElementPosition(LineElement element) {
         var bounds = elementBounds.get(element);
 
         if (bounds == null) {
@@ -235,7 +234,7 @@ public final class LayoutResult {
      *
      * @return Map of line elements to their bounds
      */
-    public @NotNull Map<LineElement, Bounds> getElementBounds() {
+    public Map<LineElement, Bounds> getElementBounds() {
         return elementBounds;
     }
 
@@ -245,7 +244,7 @@ public final class LayoutResult {
      * @param element The element to check
      * @return true if the element has bounds
      */
-    public boolean hasElement(@NotNull LineElement element) {
+    public boolean hasElement(LineElement element) {
         return elementBounds.containsKey(element);
     }
 
@@ -262,7 +261,7 @@ public final class LayoutResult {
      * @param element The element to look up
      * @return The bounds, or null if the element was not laid out
      */
-    public @Nullable Bounds getBounds(@NotNull Object element) {
+    public @Nullable Bounds getBounds(Object element) {
         if (element instanceof LineElement) {
             return elementBounds.get((LineElement) element);
         }
@@ -281,8 +280,8 @@ public final class LayoutResult {
      * @return The bounds if found, null otherwise
      */
     public @Nullable Bounds findAttachmentBounds(
-        @NotNull StaffElement parentElement,
-        @NotNull Class<? extends songscribe.ui.layout.Attachment> attachmentType) {
+        StaffElement parentElement,
+        Class<? extends songscribe.ui.layout.Attachment> attachmentType) {
 
         for (var entry : elementBounds.entrySet()) {
             var element = entry.getKey();
@@ -311,8 +310,8 @@ public final class LayoutResult {
      */
     @SuppressWarnings("unchecked")
     public @Nullable <A extends songscribe.ui.layout.Attachment> A findAttachment(
-        @NotNull StaffElement parentElement,
-        @NotNull Class<A> attachmentType) {
+        StaffElement parentElement,
+        Class<A> attachmentType) {
 
         for (var element : elementBounds.keySet()) {
             if (attachmentType.isInstance(element)) {
@@ -339,9 +338,9 @@ public final class LayoutResult {
      * @return The bounds if found, null otherwise
      */
     public @Nullable Bounds findRangeElementBounds(
-        @NotNull StaffElement anchorElement,
-        @NotNull StaffElement endElement,
-        @NotNull Class<? extends songscribe.ui.layout.RangeElement> rangeElementType) {
+        StaffElement anchorElement,
+        StaffElement endElement,
+        Class<? extends songscribe.ui.layout.RangeElement> rangeElementType) {
 
         for (var entry : elementBounds.entrySet()) {
             var element = entry.getKey();
@@ -367,7 +366,7 @@ public final class LayoutResult {
      * @param element The element to check
      * @return true if bounds exist for this element
      */
-    public boolean contains(@NotNull Object element) {
+    public boolean contains(Object element) {
         if (element instanceof LineElement) {
             return elementBounds.containsKey((LineElement) element);
         }
@@ -451,7 +450,7 @@ public final class LayoutResult {
      * @param line     The line containing the elements
      * @return Element index, or {@code -1} if mouseXSs is not within any element head's horizontal bounds
      */
-    public int findElementAtXSs(double mouseXSs, @NotNull songscribe.music.Line line) {
+    public int findElementAtXSs(double mouseXSs, songscribe.music.Line line) {
         for (var i = 0; i < line.elementCount(); i++) {
             var element = line.getElement(i);
             var column = elementColumns.get(element);
@@ -486,7 +485,7 @@ public final class LayoutResult {
      * @param line     The line containing the elements
      * @return Insertion index (0 to elementCount inclusive)
      */
-    public int findInsertionIndex(double mouseXSs, @NotNull songscribe.music.Line line) {
+    public int findInsertionIndex(double mouseXSs, songscribe.music.Line line) {
         int elementCount = line.elementCount();
 
         if (elementCount == 0) {
@@ -566,8 +565,8 @@ public final class LayoutResult {
     public double calculateInsertionXSs(
         int insertionIndex,
         double mouseXSs,
-        @NotNull StaffElement insertionElement,
-        @NotNull songscribe.music.Line line) {
+        StaffElement insertionElement,
+        songscribe.music.Line line) {
 
         int elementCount = line.elementCount();
 
@@ -699,7 +698,7 @@ public final class LayoutResult {
          * @param column  The element's column with position
          * @return This builder for chaining
          */
-        public Builder putElementColumn(@NotNull StaffElement element, @NotNull ElementColumn column) {
+        public Builder putElementColumn(StaffElement element, ElementColumn column) {
             elementColumns.put(element, column);
             return this;
         }
@@ -711,7 +710,7 @@ public final class LayoutResult {
          * @param bounds  The element's bounds
          * @return This builder for chaining
          */
-        public Builder putElementBounds(@NotNull LineElement element, @NotNull Bounds bounds) {
+        public Builder putElementBounds(LineElement element, Bounds bounds) {
             elementBounds.put(element, bounds);
             return this;
         }
@@ -758,7 +757,7 @@ public final class LayoutResult {
          * @param beamLayout The computed beam geometry
          * @return This builder for chaining
          */
-        public Builder putBeamLayout(@NotNull Interval interval, @NotNull BeamLayout beamLayout) {
+        public Builder putBeamLayout(Interval interval, BeamLayout beamLayout) {
             beamLayouts.put(interval, beamLayout);
             return this;
         }
@@ -770,7 +769,7 @@ public final class LayoutResult {
          * @param stemLayout The computed stem geometry
          * @return This builder for chaining
          */
-        public Builder putStemLayout(@NotNull StaffElement element, @NotNull StemLayout stemLayout) {
+        public Builder putStemLayout(StaffElement element, StemLayout stemLayout) {
             stemLayouts.put(element, stemLayout);
             return this;
         }
@@ -782,7 +781,7 @@ public final class LayoutResult {
          * @param tieLayout The computed tie geometry
          * @return This builder for chaining
          */
-        public Builder putTieLayout(@NotNull Interval interval, @NotNull TieLayout tieLayout) {
+        public Builder putTieLayout(Interval interval, TieLayout tieLayout) {
             tieLayouts.put(interval, tieLayout);
             return this;
         }
@@ -867,7 +866,7 @@ public final class LayoutResult {
         double startYSs,
         boolean stemsUp,
         double thickeningSs,
-        @NotNull Map<StaffElement, StemLayout> stems) {}
+        Map<StaffElement, StemLayout> stems) {}
 
     /**
      * Immutable tie geometry, computed during layout.

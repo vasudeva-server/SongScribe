@@ -21,9 +21,9 @@
 package songscribe.ui.layout2;
 
 import java.util.List;
+import java.util.Objects;
 
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Handles line justification by compressing spacing when the line exceeds the staff right margin.
@@ -66,10 +66,11 @@ public class LineJustificationCalculator {
      */
     public static class JustificationResult {
         private final boolean success;
+        @Nullable
         private final String errorMessage;
         private final boolean compressionApplied;
 
-        private JustificationResult(boolean success, String errorMessage, boolean compressionApplied) {
+        private JustificationResult(boolean success, @Nullable String errorMessage, boolean compressionApplied) {
             this.success = success;
             this.errorMessage = errorMessage;
             this.compressionApplied = compressionApplied;
@@ -92,7 +93,7 @@ public class LineJustificationCalculator {
         /**
          * Creates a failure result with an error message.
          */
-        public static JustificationResult failure(@NotNull String errorMessage) {
+        public static JustificationResult failure(String errorMessage) {
             return new JustificationResult(false, errorMessage, false);
         }
 
@@ -124,8 +125,8 @@ public class LineJustificationCalculator {
      * @param staffRightMarginSs The right margin of the staff in staff-space units
      * @return JustificationResult indicating success or failure
      */
-    public @NotNull JustificationResult justifyLine(
-        @NotNull List<ElementColumn> columns,
+    public JustificationResult justifyLine(
+        List<ElementColumn> columns,
         double staffRightMarginSs) {
 
         if (columns.isEmpty()) {
@@ -156,8 +157,8 @@ public class LineJustificationCalculator {
      * @param staffRightMarginSs Right margin in staff-space units
      * @return JustificationResult indicating success or failure
      */
-    private @NotNull JustificationResult compressLine(
-        @NotNull List<ElementColumn> columns,
+    private JustificationResult compressLine(
+        List<ElementColumn> columns,
         double staffRightMarginSs) {
 
         // Calculate compression ratio
@@ -180,7 +181,8 @@ public class LineJustificationCalculator {
         var validation = validateCompression(columns, compressionRatio);
 
         if (!validation.isValid()) {
-            return JustificationResult.failure(validation.getErrorMessage());
+            return JustificationResult.failure(
+                Objects.requireNonNull(validation.getErrorMessage()));
         }
 
         // Apply compression uniformly
@@ -194,9 +196,10 @@ public class LineJustificationCalculator {
      */
     private static class CompressionValidation {
         private final boolean valid;
+        @Nullable
         private final String errorMessage;
 
-        private CompressionValidation(boolean valid, String errorMessage) {
+        private CompressionValidation(boolean valid, @Nullable String errorMessage) {
             this.valid = valid;
             this.errorMessage = errorMessage;
         }
@@ -205,7 +208,7 @@ public class LineJustificationCalculator {
             return new CompressionValidation(true, null);
         }
 
-        static CompressionValidation invalid(@NotNull String errorMessage) {
+        static CompressionValidation invalid(String errorMessage) {
             return new CompressionValidation(false, errorMessage);
         }
 
@@ -225,8 +228,8 @@ public class LineJustificationCalculator {
      * @param compressionRatio The compression ratio to apply
      * @return CompressionValidation result
      */
-    private @NotNull CompressionValidation validateCompression(
-        @NotNull List<ElementColumn> columns,
+    private CompressionValidation validateCompression(
+        List<ElementColumn> columns,
         double compressionRatio) {
 
         double minColumnGapSs = LayoutConstants.COMPRESSED_MIN_COLUMN_GAP_SS;
@@ -280,8 +283,8 @@ public class LineJustificationCalculator {
      * @return Syllable gap in staff-space units
      */
     private double calculateSyllableGapSs(
-        @NotNull ElementColumn prevColumn,
-        @NotNull ElementColumn currColumn,
+        ElementColumn prevColumn,
+        ElementColumn currColumn,
         double compressionRatio) {
 
         // Current distance between column centers
@@ -309,7 +312,7 @@ public class LineJustificationCalculator {
      * @param compressionRatio The compression ratio to apply
      */
     private void applyCompression(
-        @NotNull List<ElementColumn> columns,
+        List<ElementColumn> columns,
         double compressionRatio) {
 
         if (columns.isEmpty()) {

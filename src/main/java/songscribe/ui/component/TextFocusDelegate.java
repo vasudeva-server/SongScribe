@@ -22,7 +22,6 @@ package songscribe.ui.component;
 
 import module java.desktop;
 
-import org.jetbrains.annotations.NotNull;
 
 import songscribe.message.MessageCenter;
 import songscribe.notification.TextEditingDidChangeNotification;
@@ -55,7 +54,7 @@ public class TextFocusDelegate implements FocusListener {
         MessageCenter.post(new TextEditingDidChangeNotification(false));
     }
 
-    public boolean processKeyEvent(@NotNull KeyEvent e) {
+    public boolean processKeyEvent(KeyEvent e) {
         // JTextFields don't need special tab handling
         if (host instanceof JTextField) {
             ignoreTabKey = false;

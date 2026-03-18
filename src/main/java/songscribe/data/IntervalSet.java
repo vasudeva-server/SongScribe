@@ -22,12 +22,13 @@ package songscribe.data;
 import java.util.LinkedList;
 import java.util.ListIterator;
 
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 
 public class IntervalSet<T extends Interval> {
 
     private final LinkedList<T> intervals = new LinkedList<>();
 
+    @Nullable
     @SuppressWarnings("unchecked")
     public T addInterval(int start, int end) {
         return addInterval(start, end, null);
@@ -35,7 +36,7 @@ public class IntervalSet<T extends Interval> {
 
     @Nullable
     @SuppressWarnings("unchecked")
-    public T addInterval(int start, int end, String data) {
+    public T addInterval(int start, int end, @Nullable String data) {
         if (start >= end) {
             return null;
         }
@@ -178,7 +179,7 @@ public class IntervalSet<T extends Interval> {
         return result;
     }
 
-    private void removeIfInvalid(T interval) {
+    private void removeIfInvalid(@Nullable T interval) {
         if ((interval != null) && (interval.start >= interval.end)) {
             intervals.remove(interval);
         }

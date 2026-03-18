@@ -22,7 +22,7 @@ package songscribe.ui.component.score;
 
 import module java.desktop;
 
-import org.jetbrains.annotations.NotNull;
+import org.jspecify.annotations.Nullable;
 
 import songscribe.music.Line;
 import songscribe.ui.layout.LayoutStylesheet;
@@ -46,6 +46,7 @@ import songscribe.ui.renderer.LyricsRenderer;
 public class LineLyricsComponent extends ScoreComponent {
 
     /** The line whose lyrics to render. */
+    @Nullable
     private Line line;
 
     /** Index of the line within the composition. */
@@ -68,7 +69,7 @@ public class LineLyricsComponent extends ScoreComponent {
      * @param line      The line
      * @param lineIndex Index of the line
      */
-    public void setLine(@NotNull Line line, int lineIndex) {
+    public void setLine(Line line, int lineIndex) {
         this.line = line;
         this.lineIndex = lineIndex;
         revalidate();
@@ -78,7 +79,7 @@ public class LineLyricsComponent extends ScoreComponent {
     /**
      * Returns the line whose lyrics are being rendered.
      */
-    public Line getLine() {
+    public @Nullable Line getLine() {
         return line;
     }
 
@@ -148,6 +149,10 @@ public class LineLyricsComponent extends ScoreComponent {
      * @return true if the line has lyrics
      */
     private boolean hasLyrics() {
+        if (line == null) {
+            return false;
+        }
+
         for (var i = 0; i < line.elementCount(); i++) {
             var syllable = line.getElement(i).properties.syllable;
 

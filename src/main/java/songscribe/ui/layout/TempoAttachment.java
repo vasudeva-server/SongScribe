@@ -20,8 +20,7 @@
 
 package songscribe.ui.layout;
 
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import songscribe.music.StaffElement;
 import songscribe.music.Tempo;
@@ -41,14 +40,14 @@ public class TempoAttachment extends Attachment {
     private static final double DEFAULT_HEIGHT = 20.0;
 
     /** The tempo data. */
-    private @NotNull Tempo tempo;
+    private Tempo tempo;
 
     /**
      * Creates a tempo attachment with the specified tempo.
      *
      * @param tempo The tempo data
      */
-    public TempoAttachment(@NotNull Tempo tempo) {
+    public TempoAttachment(Tempo tempo) {
         this.tempo = tempo;
         setAlignment(Alignment.LEFT);
     }
@@ -59,7 +58,7 @@ public class TempoAttachment extends Attachment {
      * @param parent The parent note
      * @param tempo  The tempo data
      */
-    public TempoAttachment(@Nullable StaffElement parent, @NotNull Tempo tempo) {
+    public TempoAttachment(@Nullable StaffElement parent, Tempo tempo) {
         this.tempo = tempo;
         setOwnerElement(parent);
         setAlignment(Alignment.LEFT);
@@ -73,14 +72,14 @@ public class TempoAttachment extends Attachment {
     /**
      * Returns the tempo data.
      */
-    public @NotNull Tempo getTempo() {
+    public Tempo getTempo() {
         return tempo;
     }
 
     /**
      * Sets the tempo data.
      */
-    public void setTempo(@NotNull Tempo tempo) {
+    public void setTempo(Tempo tempo) {
         this.tempo = tempo;
     }
 

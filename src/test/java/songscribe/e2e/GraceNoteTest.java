@@ -28,6 +28,7 @@ import module java.desktop;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 import org.assertj.swing.edt.GuiActionRunner;
 import org.assertj.swing.finder.JOptionPaneFinder;
@@ -106,10 +107,10 @@ class GraceNoteTest extends E2ETest {
 
             robot.pressMouse(insertPt, LEFT_BUTTON);
             Utils.sleep(GraceModeManager.MIN_DRAG_MILLIS);
-            int cancelScreenX = GuiActionRunner.execute(() -> {
-                var lc = score().getLineComponent(0);
+            int cancelScreenX = Objects.requireNonNull(GuiActionRunner.execute(() -> {
+                var lc = Objects.requireNonNull(score().getLineComponent(0));
                 return lc.getLocationOnScreen().x + GraceModeManager.getCancelThresholdPx();
-            });
+            }));
             robot.moveMouse(new Point(cancelScreenX, insertPt.y));
             pause();
             robot.releaseMouseButtons();
@@ -247,17 +248,17 @@ class GraceNoteTest extends E2ETest {
 
             // Click at midpoint between last pair host and standalone, at a different pitch
             var mid = midpoint(0, Element.PAIR_C_HOST.ordinal(), Element.STANDALONE.ordinal());
-            var insertPt = new Point(mid.x, GuiActionRunner.execute(() -> {
-                var lc = score().getLineComponent(0);
+            var insertPt = new Point(mid.x, Objects.requireNonNull(GuiActionRunner.execute(() -> {
+                var lc = Objects.requireNonNull(score().getLineComponent(0));
                 return lc.getLocationOnScreen().y + lc.staffPositionToYPx(-2);
-            }));
+            })));
 
             robot.pressMouse(insertPt, LEFT_BUTTON);
             Utils.sleep(GraceModeManager.MIN_DRAG_MILLIS);
-            int connectScreenX = GuiActionRunner.execute(() -> {
-                var lc = score().getLineComponent(0);
+            int connectScreenX = Objects.requireNonNull(GuiActionRunner.execute(() -> {
+                var lc = Objects.requireNonNull(score().getLineComponent(0));
                 return lc.getLocationOnScreen().x + GraceModeManager.getConnectThresholdPx();
-            });
+            }));
             robot.moveMouse(new Point(connectScreenX, insertPt.y));
             pause();
             robot.releaseMouseButtons();
@@ -320,16 +321,16 @@ class GraceNoteTest extends E2ETest {
     // -- Assertion helpers --
 
     private boolean isGraceModeActive() {
-        return GuiActionRunner.execute(() -> GraceModeManager.isActive());
+        return Objects.requireNonNull(GuiActionRunner.execute(() -> GraceModeManager.isActive()));
     }
 
     private boolean isActionEnabled(UIAction action) {
-        return GuiActionRunner.execute(() -> action.isEnabled());
+        return Objects.requireNonNull(GuiActionRunner.execute(() -> action.isEnabled()));
     }
 
     private boolean isActionSelected(UIAction action) {
         var selectable = (UIAction.Selectable) action;
-        return GuiActionRunner.execute(() -> selectable.isSelected());
+        return Objects.requireNonNull(GuiActionRunner.execute(() -> selectable.isSelected()));
     }
 
     // -- Coordinate helpers --
@@ -348,7 +349,7 @@ class GraceNoteTest extends E2ETest {
 
     private Track buildMidiTrack() throws Exception {
         var line = composition().getLine(0);
-        var tempo = line.getElement(0).getTempoChange();
+        var tempo = Objects.requireNonNull(line.getElement(0).getTempoChange());
         var sequence = new Sequence(Sequence.PPQ, 96);
         var track = sequence.createTrack();
         line.addToTrack(track, 0, 0, tempo, DEFAULT_SETTINGS);

@@ -20,8 +20,7 @@
 
 package songscribe.ui.layout;
 
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import songscribe.music.StaffElement;
 
@@ -41,7 +40,7 @@ public class Tie extends RangeElement {
      * @param anchorNote The first (starting) note of the tie
      * @param endNote    The second (ending) note of the tie
      */
-    public Tie(@NotNull StaffElement anchorNote, @NotNull StaffElement endNote) {
+    public Tie(StaffElement anchorNote, StaffElement endNote) {
         setAnchorElement(anchorNote);
         this.endNote = endNote;
     }

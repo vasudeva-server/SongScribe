@@ -22,7 +22,6 @@ package songscribe.ui.renderer;
 
 import module java.desktop;
 
-import org.jetbrains.annotations.NotNull;
 
 /**
  * Saves and restores {@link Graphics2D} properties using try-with-resources.
@@ -56,7 +55,8 @@ public final class GraphicsState implements AutoCloseable {
     private Object antialiasing;
     private Object strokeControl;
 
-    private GraphicsState(@NotNull Graphics2D g2, int propertyMask) {
+    @SuppressWarnings("NullAway.Init")
+    private GraphicsState(Graphics2D g2, int propertyMask) {
         this.g2 = g2;
         this.propertyMask = propertyMask;
     }
@@ -68,9 +68,9 @@ public final class GraphicsState implements AutoCloseable {
      * @param properties the properties to save and restore
      * @return an {@link AutoCloseable} that restores the saved properties when closed
      */
-    public static @NotNull GraphicsState save(
-        @NotNull Graphics2D g2,
-        @NotNull Property @NotNull ... properties
+    public static GraphicsState save(
+        Graphics2D g2,
+        Property ... properties
     ) {
         int mask = 0;
 
@@ -134,7 +134,7 @@ public final class GraphicsState implements AutoCloseable {
         }
     }
 
-    private boolean has(@NotNull Property property) {
+    private boolean has(Property property) {
         return (propertyMask & (1 << property.ordinal())) != 0;
     }
 }

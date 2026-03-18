@@ -41,8 +41,7 @@ import com.google.gson.JsonParser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 
 public final class Prefs {
 
@@ -98,29 +97,27 @@ public final class Prefs {
         return INSTANCE;
     }
 
-    @NotNull
-    public String getString(@NotNull String key) {
+    public String getString(String key) {
         var value = store.get(key);
         return value != null ? value.toString() : (String) getDefault(key);
     }
 
-    public int getInt(@NotNull String key) {
+    public int getInt(String key) {
         var value = store.get(key);
         return value != null ? ((Number) value).intValue() : ((Number) getDefault(key)).intValue();
     }
 
-    public long getLong(@NotNull String key) {
+    public long getLong(String key) {
         var value = store.get(key);
         return value != null ? ((Number) value).longValue() : ((Number) getDefault(key)).longValue();
     }
 
-    public boolean getBoolean(@NotNull String key) {
+    public boolean getBoolean(String key) {
         var value = store.get(key);
         return value != null ? (Boolean) value : (Boolean) getDefault(key);
     }
 
-    @NotNull
-    public List<String> getStringList(@NotNull String key) {
+    public List<String> getStringList(String key) {
         var value = store.get(key);
 
         if (value instanceof List<?> list) {
@@ -132,33 +129,33 @@ public final class Prefs {
         return Collections.emptyList();
     }
 
-    public void putStringList(@NotNull String key, @NotNull List<String> value) {
+    public void putStringList(String key, List<String> value) {
         store.put(key, new ArrayList<>(value));
         save();
     }
 
-    public void put(@NotNull String key, @NotNull String value) {
+    public void put(String key, String value) {
         store.put(key, value);
         save();
     }
 
-    public void put(@NotNull String key, int value) {
+    public void put(String key, int value) {
         // Store as Long for consistency with JSON round-tripping
         store.put(key, (long) value);
         save();
     }
 
-    public void put(@NotNull String key, long value) {
+    public void put(String key, long value) {
         store.put(key, value);
         save();
     }
 
-    public void put(@NotNull String key, boolean value) {
+    public void put(String key, boolean value) {
         store.put(key, value);
         save();
     }
 
-    public void reset(@NotNull String key) {
+    public void reset(String key) {
         store.remove(key);
         save();
     }
@@ -196,7 +193,6 @@ public final class Prefs {
         return dir.resolve("prefs.json");
     }
 
-    @NotNull
     private Map<String, Object> loadDefaults() {
         var result = new HashMap<String, Object>();
         var stream = Prefs.class.getResourceAsStream(DEFAULTS_RESOURCE);
@@ -234,7 +230,6 @@ public final class Prefs {
         return result;
     }
 
-    @NotNull
     private Map<String, Object> loadStore() {
         var result = new HashMap<String, Object>();
 
@@ -310,8 +305,7 @@ public final class Prefs {
         }
     }
 
-    @NotNull
-    private Object getDefault(@NotNull String key) {
+    private Object getDefault(String key) {
         var value = defaults.get(key);
 
         if (value == null) {
@@ -371,7 +365,7 @@ public final class Prefs {
         }
     }
 
-    private void writeTyped(@NotNull String key, @NotNull String value, @Nullable Object defaultValue) {
+    private void writeTyped(String key, String value, @Nullable Object defaultValue) {
         if (defaultValue instanceof Boolean) {
             store.put(key, Boolean.parseBoolean(value));
         } else if (defaultValue instanceof Long) {

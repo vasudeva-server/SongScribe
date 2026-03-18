@@ -22,7 +22,6 @@ package songscribe.ui.component.score;
 
 import module java.desktop;
 
-import org.jetbrains.annotations.NotNull;
 
 import songscribe.music.StaffElement;
 import songscribe.ui.layout2.ScaleContext;
@@ -42,8 +41,13 @@ class ElementHitTest {
      * Iterates all elements in the line and returns the index of the first element
      * whose hit rectangle contains {@code point}, or -1 if none.
      */
-    static int hitTestElement(@NotNull LineComponent lc, @NotNull Point point) {
+    static int hitTestElement(LineComponent lc, Point point) {
         var line = lc.getLine();
+
+        if (line == null) {
+            return -1;
+        }
+
         var helper = new Rectangle();
 
         for (var elementIndex = 0; elementIndex < line.elementCount(); elementIndex++) {
@@ -62,9 +66,9 @@ class ElementHitTest {
      * Builds the pixel-coordinate hit rectangle for the given element into {@code out}.
      */
     static void buildElementHitRect(
-        @NotNull LineComponent lc,
-        @NotNull StaffElement element,
-        @NotNull Rectangle out
+        LineComponent lc,
+        StaffElement element,
+        Rectangle out
     ) {
         var elementType = element.getType();
         var sc = ScaleContext.getInstance();

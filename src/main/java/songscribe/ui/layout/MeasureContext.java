@@ -22,7 +22,6 @@ package songscribe.ui.layout;
 
 import module java.desktop;
 
-import org.jetbrains.annotations.NotNull;
 
 import songscribe.music.Composition;
 
@@ -33,14 +32,14 @@ import songscribe.music.Composition;
  * needed to calculate element sizes.
  */
 public record MeasureContext(
-    @NotNull Graphics2D graphics,
-    @NotNull Composition composition
+    Graphics2D graphics,
+    Composition composition
 ) {
 
     /**
      * Returns the font metrics for measuring text.
      */
-    public @NotNull java.awt.FontMetrics getFontMetrics() {
+    public java.awt.FontMetrics getFontMetrics() {
         return graphics.getFontMetrics();
     }
 }

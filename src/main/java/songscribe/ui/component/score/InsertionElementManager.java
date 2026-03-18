@@ -24,8 +24,7 @@ import module java.desktop;
 
 import java.awt.event.MouseEvent;
 
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import net.engio.mbassy.listener.Handler;
 
@@ -103,8 +102,7 @@ public class InsertionElementManager {
     private static boolean yPosSpMatchesElement = false;
 
     /** The glissando zone type determined by mouse position (null if no valid zone). */
-    @Nullable
-    private static StaffElement.Glissando.Type currentGlissandoZone = null;
+    private static StaffElement.Glissando.@Nullable Type currentGlissandoZone = null;
 
     /** Strong reference to prevent garbage collection by the weak-reference message bus. */
     private static final ModeChangeListener MODE_CHANGE_LISTENER = new ModeChangeListener();
@@ -260,8 +258,7 @@ public class InsertionElementManager {
     /**
      * Returns the current glissando zone type, or null if no valid zone exists.
      */
-    @Nullable
-    static StaffElement.Glissando.Type getGlissandoZone() {
+    static StaffElement.Glissando.@Nullable Type getGlissandoZone() {
         return currentGlissandoZone;
     }
 
@@ -273,8 +270,7 @@ public class InsertionElementManager {
      * Returns the glissando type corresponding to the currently selected action,
      * or null if neither glissando action is selected.
      */
-    @Nullable
-    private static StaffElement.Glissando.Type getSelectedGlissandoType() {
+    private static StaffElement.Glissando.@Nullable Type getSelectedGlissandoType() {
         var selected = Actions.DURATION_ACTION_GROUP.getSelected();
 
         if (selected == Actions.GLISSANDO_ACTION) {
@@ -300,9 +296,8 @@ public class InsertionElementManager {
      * @param xIndex Insertion index from {@link LayoutResult#findInsertionIndex}
      * @return The zone type, or null if no valid zone
      */
-    @Nullable
-    private static StaffElement.Glissando.Type computeGlissandoZone(
-        @NotNull Line line,
+    private static StaffElement.Glissando.@Nullable Type computeGlissandoZone(
+        Line line,
         int xIndex) {
         // xIndex=0 means to the left of the first note — no source note to draw from
         if (xIndex <= 0 || line.elementCount() == 0) {
@@ -671,9 +666,8 @@ public class InsertionElementManager {
      * @param index   The insertion index
      * @return The insertion result, or null if the line is full
      */
-    @Nullable
-    private static InsertionSpacingCalculator.InsertionResult calculateInsertionOrShowError(
-        @NotNull Line line, @NotNull StaffElement element, int index
+    private static InsertionSpacingCalculator.@Nullable InsertionResult calculateInsertionOrShowError(
+        Line line, StaffElement element, int index
     ) {
         var insertion = InsertionSpacingCalculator.calculateInsertion(line, element, index);
         var composition = line.getComposition();
@@ -696,7 +690,7 @@ public class InsertionElementManager {
      * @param lc   The LineComponent
      * @param line The line to add the element to
      */
-    private static void addInsertionElement(LineComponent lc, @NotNull Line line) {
+    private static void addInsertionElement(LineComponent lc, Line line) {
         var score = lc.getScore();
 
         if (score == null) {
@@ -711,7 +705,7 @@ public class InsertionElementManager {
 
         var editModeManager = EditModeManager.getInstance();
 
-        if (editModeManager.elementWasModified(line, line.elementCount())) {
+        if (editModeManager != null && editModeManager.elementWasModified(line, line.elementCount())) {
             editModeManager.insertionElementDidChange(line, line.elementCount() - 1);
             return;
         }
@@ -727,7 +721,9 @@ public class InsertionElementManager {
 
         applyAutomaticBeaming(line, line.elementCount() - 1);
 
-        editModeManager.insertionElementDidChange(line, line.elementCount() - 1);
+        if (editModeManager != null) {
+            editModeManager.insertionElementDidChange(line, line.elementCount() - 1);
+        }
     }
 
     /**
@@ -737,7 +733,7 @@ public class InsertionElementManager {
      * @param xIndex The index to insert at
      * @param line   The line to insert into
      */
-    private static void insertElement(LineComponent lc, int xIndex, @NotNull Line line) {
+    private static void insertElement(LineComponent lc, int xIndex, Line line) {
         var score = lc.getScore();
 
         if (score == null) {
@@ -752,7 +748,7 @@ public class InsertionElementManager {
 
         var editModeManager = EditModeManager.getInstance();
 
-        if (editModeManager.elementWasModified(line, xIndex)) {
+        if (editModeManager != null && editModeManager.elementWasModified(line, xIndex)) {
             editModeManager.insertionElementDidChange(line, xIndex);
             return;
         }
@@ -785,7 +781,10 @@ public class InsertionElementManager {
         }
 
         applyAutomaticBeaming(line, xIndex);
-        editModeManager.insertionElementDidChange(line, xIndex);
+
+        if (editModeManager != null) {
+            editModeManager.insertionElementDidChange(line, xIndex);
+        }
     }
 
     /**
@@ -796,7 +795,7 @@ public class InsertionElementManager {
      * @param line         The line containing the element
      * @param elementIndex The index of the just-inserted element
      */
-    private static void applyAutomaticBeaming(@NotNull Line line, int elementIndex) {
+    private static void applyAutomaticBeaming(Line line, int elementIndex) {
         var element = line.getElement(elementIndex);
 
         if (
@@ -854,7 +853,7 @@ public class InsertionElementManager {
      * @param elementIndex The index of the element to replace
      * @param line         The line containing the element
      */
-    private static void modifyExistingElement(LineComponent lc, int elementIndex, @NotNull Line line) {
+    private static void modifyExistingElement(LineComponent lc, int elementIndex, Line line) {
         var score = lc.getScore();
 
         if (score == null) {
@@ -869,7 +868,7 @@ public class InsertionElementManager {
 
         var editModeManager = EditModeManager.getInstance();
 
-        if (editModeManager.elementWasModified(line, elementIndex)) {
+        if (editModeManager != null && editModeManager.elementWasModified(line, elementIndex)) {
             editModeManager.insertionElementDidChange(line, elementIndex);
             return;
         }
@@ -909,6 +908,8 @@ public class InsertionElementManager {
             applyAutomaticBeaming(line, elementIndex + 1);
         }
 
-        editModeManager.insertionElementDidChange(line, elementIndex);
+        if (editModeManager != null) {
+            editModeManager.insertionElementDidChange(line, elementIndex);
+        }
     }
 }

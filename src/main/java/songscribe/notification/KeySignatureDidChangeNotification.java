@@ -22,8 +22,7 @@ package songscribe.notification;
 
 import songscribe.message.Message;
 
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import songscribe.music.KeyType;
 
@@ -31,13 +30,12 @@ public class KeySignatureDidChangeNotification extends Message {
 
     @Nullable
     private final Integer lineIndex;
-    @NotNull
     private final KeyType keyType;
     private final int accidentalCount;
 
     public KeySignatureDidChangeNotification(
         @Nullable Integer lineIndex,
-        @NotNull KeyType keyType,
+        KeyType keyType,
         int accidentalCount
     ) {
         this.lineIndex = lineIndex;
@@ -50,7 +48,6 @@ public class KeySignatureDidChangeNotification extends Message {
         return lineIndex;
     }
 
-    @NotNull
     public KeyType getKeyType() {
         return keyType;
     }

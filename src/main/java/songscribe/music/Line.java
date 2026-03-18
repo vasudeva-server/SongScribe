@@ -27,7 +27,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.stream.IntStream;
 
-import org.jetbrains.annotations.NotNull;
+import org.jspecify.annotations.Nullable;
 
 import kotlin.Pair;
 
@@ -84,8 +84,10 @@ public class Line {
 
     // acceleration
     public StaffElement.SyllableRelation beginRelation = StaffElement.SyllableRelation.NO;
+    @Nullable
     private Composition composition = null;
     private int keys = 0;
+    @Nullable
     private KeyType keyType = null;
     private final List<StaffElement> elements = new ArrayList<>();
 
@@ -152,7 +154,7 @@ public class Line {
     /** Ratio multiplier for horizontal element spacing (default: 1.0, user-adjustable). */
     private float elementDistChangeRatio = 1f;
 
-    public Composition getComposition() {
+    public @Nullable Composition getComposition() {
         return composition;
     }
 
@@ -169,11 +171,11 @@ public class Line {
         this.keys = keys;
     }
 
-    public KeyType getKeyType() {
+    public @Nullable KeyType getKeyType() {
         return keyType;
     }
 
-    public void setKeyType(KeyType keyType) {
+    public void setKeyType(@Nullable KeyType keyType) {
         modifiedComposition();
         this.keyType = keyType;
     }
@@ -310,8 +312,13 @@ public class Line {
      */
     @SuppressWarnings("BooleanMethodIsAlwaysInverted")
     public boolean keyExists(int pitchType) {
+        if (keyType == null) {
+            return false;
+        }
+
+        var kt = keyType;
         return IntStream.range(0, keys).anyMatch(
-            i -> FLAT_SHARP_ORDINAL[keyType.ordinal() - 1][i] == pitchType
+            i -> FLAT_SHARP_ORDINAL[kt.ordinal() - 1][i] == pitchType
         );
     }
 
@@ -463,7 +470,7 @@ public class Line {
     }
 
     public int getFirstTempoChange() {
-        if ((composition.indexOfLine(this) == 0) && (elementCount() > 0)) {
+        if (composition != null && (composition.indexOfLine(this) == 0) && (elementCount() > 0)) {
             return 0;
         }
 
@@ -502,7 +509,7 @@ public class Line {
      *
      * @param element The range element to add
      */
-    public void addRangeElement(@NotNull RangeElement element) {
+    public void addRangeElement(RangeElement element) {
         element.setParentLine(this);
         rangeElements.add(element);
         modifiedComposition();
@@ -514,7 +521,7 @@ public class Line {
      * @param element The range element to remove
      * @return true if the element was removed
      */
-    public boolean removeRangeElement(@NotNull RangeElement element) {
+    public boolean removeRangeElement(RangeElement element) {
         if (rangeElements.remove(element)) {
             element.setParentLine(null);
             modifiedComposition();
@@ -528,7 +535,7 @@ public class Line {
     /**
      * Returns an unmodifiable view of the range elements in this line.
      */
-    public @NotNull List<RangeElement> getRangeElements() {
+    public List<RangeElement> getRangeElements() {
         return Collections.unmodifiableList(rangeElements);
     }
 
@@ -538,7 +545,7 @@ public class Line {
      * @param elementIndex The element index to search for
      * @return List of range elements containing the element
      */
-    public @NotNull List<RangeElement> findRangeElementsAt(int elementIndex) {
+    public List<RangeElement> findRangeElementsAt(int elementIndex) {
         var result = new ArrayList<RangeElement>();
 
         for (var element : rangeElements) {
@@ -560,7 +567,7 @@ public class Line {
      * @return List of range elements of the specified type
      */
     @SuppressWarnings("unchecked")
-    public <T extends RangeElement> @NotNull List<T> findRangeElements(@NotNull Class<T> type) {
+    public <T extends RangeElement> List<T> findRangeElements(Class<T> type) {
         var result = new ArrayList<T>();
 
         for (var element : rangeElements) {

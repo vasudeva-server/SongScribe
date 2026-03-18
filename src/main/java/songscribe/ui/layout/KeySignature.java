@@ -20,7 +20,6 @@
 
 package songscribe.ui.layout;
 
-import org.jetbrains.annotations.NotNull;
 
 import songscribe.music.KeyType;
 import songscribe.ui.layout2.ScaleContext;
@@ -42,7 +41,7 @@ public class KeySignature extends LineElement {
     private static final double ACCIDENTAL_HEIGHT = 24.0;
 
     /** The type of key signature (sharps or flats). */
-    private @NotNull KeyType keyType;
+    private KeyType keyType;
 
     /** Number of accidentals (0-7). */
     private int accidentalCount;
@@ -60,7 +59,7 @@ public class KeySignature extends LineElement {
      * @param keyType         Type of accidentals (SHARPS or FLATS)
      * @param accidentalCount Number of accidentals (0-7)
      */
-    public KeySignature(@NotNull KeyType keyType, int accidentalCount) {
+    public KeySignature(KeyType keyType, int accidentalCount) {
         this.keyType = keyType;
         this.accidentalCount = Math.max(0, Math.min(7, accidentalCount));
 
@@ -71,14 +70,14 @@ public class KeySignature extends LineElement {
     /**
      * Returns the key type (SHARPS, FLATS, or NONE).
      */
-    public @NotNull KeyType getKeyType() {
+    public KeyType getKeyType() {
         return keyType;
     }
 
     /**
      * Sets the key type.
      */
-    public void setKeyType(@NotNull KeyType keyType) {
+    public void setKeyType(KeyType keyType) {
         this.keyType = keyType;
     }
 

@@ -21,7 +21,7 @@ package songscribe.io;
 
 import java.io.PrintWriter;
 
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import songscribe.music.Tempo;
 
@@ -67,6 +67,7 @@ public final class TempoIO {
 
     public static class TempoReader {
 
+        @Nullable
         private Tempo tempo = null;
         private int pos10 = 0;
 
@@ -102,7 +103,10 @@ public final class TempoIO {
             if (qName.equals(XML_TEMPO_CHANGE)) {
                 return tempo;
             }
-            if (qName.equals(lastTag)) {
+            if (tempo == null) {
+                return null;
+            }
+            if (lastTag != null && qName.equals(lastTag)) {
                 var str = value.toString();
 
                 switch (lastTag) {
@@ -138,7 +142,10 @@ public final class TempoIO {
             if (qName.equals(XML_TEMPO)) {
                 return tempo;
             }
-            if (qName.equals(lastTag)) {
+            if (tempo == null) {
+                return null;
+            }
+            if (lastTag != null && qName.equals(lastTag)) {
                 var str = value.toString();
 
                 switch (lastTag) {

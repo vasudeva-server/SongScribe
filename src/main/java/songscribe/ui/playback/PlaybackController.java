@@ -24,8 +24,7 @@ import module java.desktop;
 
 import java.util.ArrayList;
 
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
 import songscribe.message.MessageCenter;
@@ -55,6 +54,7 @@ public final class PlaybackController {
     public static final int NOTE_VELOCITY = 100;
     public static final int ACCENTED_NOTE_VELOCITY = 127;
 
+    @Nullable
     private static Score registeredScore;
 
     private static PlaybackState state = PlaybackState.STOPPED;
@@ -99,7 +99,7 @@ public final class PlaybackController {
     private PlaybackController() {
     }
 
-    public static void register(@NotNull Score score) {
+    public static void register(Score score) {
         registeredScore = score;
     }
 
@@ -149,7 +149,12 @@ public final class PlaybackController {
         previousPlayingNote = noteIndex;
     }
 
+    @Nullable
     private static LineComponent getLineComponent(int lineIndex) {
+        if (registeredScore == null) {
+            return null;
+        }
+
         return registeredScore.getLineComponent(lineIndex);
     }
 
@@ -246,6 +251,11 @@ public final class PlaybackController {
             }
 
             var score = registeredScore;
+
+            if (score == null) {
+                return;
+            }
+
             ElementSelection noteSelection;
 
             if (selection != null) {
@@ -274,7 +284,7 @@ public final class PlaybackController {
     }
 
     private static void setLoopSequence(
-        ElementSelection noteSelection,
+        @Nullable ElementSelection noteSelection,
         Sequencer sequencer
     ) {
         var loopPlayback =
@@ -288,7 +298,7 @@ public final class PlaybackController {
     }
 
     private static void setSequenceToPlayFromSelection(
-        ElementSelection noteSelection,
+        @Nullable ElementSelection noteSelection,
         Score score,
         Sequencer sequencer
     ) throws InvalidMidiDataException {

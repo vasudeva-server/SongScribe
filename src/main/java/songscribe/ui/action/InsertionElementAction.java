@@ -22,7 +22,7 @@ package songscribe.ui.action;
 
 import module java.desktop;
 
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import songscribe.message.MessageCenter;
 import songscribe.command.UpdateInsertionElementCommand;

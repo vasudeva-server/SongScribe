@@ -24,7 +24,7 @@ import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import org.xml.sax.Attributes;
 import org.xml.sax.SAXException;
@@ -102,7 +102,11 @@ public final class CompositionIO {
             XML_KEYS,
             Integer.toString(c.getDefaultKeyAccidentalCount())
         );
-        XML.writeValue(pw, XML_KEYTYPE, c.getDefaultKeyType().name());
+        var keyType = c.getDefaultKeyType();
+
+        if (keyType != null) {
+            XML.writeValue(pw, XML_KEYTYPE, keyType.name());
+        }
         TempoIO.writeTempo(c.getTempo(), pw, 2);
         XML.setIndent(2);
 
@@ -152,8 +156,10 @@ public final class CompositionIO {
             );
         }
 
-        if (!c.getAttribution().isEmpty()) {
-            XML.writeValue(pw, XML_INFO, c.getAttribution());
+        var attribution = c.getAttribution();
+
+        if (attribution != null && !attribution.isEmpty()) {
+            XML.writeValue(pw, XML_INFO, attribution);
         }
 
         if (!c.getFootnotes().isEmpty()) {
@@ -203,16 +209,18 @@ public final class CompositionIO {
 
     public static class DocumentReader extends DefaultHandler {
 
+        @Nullable
         private Where where = null;
 
         @Nullable
         private String lastTag;
 
         private final StringBuilder value = new StringBuilder(200);
-        private StaffElementIO.StaffElementReader noteReader = null;
-        private TempoIO.TempoReader tempoReader = null;
-        private LineIO.LineReader lineReader = null;
-        private ViewIO.ViewReader viewReader = null;
+
+        private StaffElementIO.@Nullable StaffElementReader noteReader = null;
+        private TempoIO.@Nullable TempoReader tempoReader = null;
+        private LineIO.@Nullable LineReader lineReader = null;
+        private ViewIO.@Nullable ViewReader viewReader = null;
         private int majorVersion = 0, minorVersion = 0;
 
         // Parsed composition data (replaces direct Composition mutation)
@@ -298,12 +306,16 @@ public final class CompositionIO {
             Attributes attributes
         ) {
             if (where == Where.NOTES) {
+                if (noteReader == null) return;
+
                 try {
                     noteReader.startElement10(qName, attributes);
                 } catch (NewLineException e) {
                     parsedLines.add(new Line());
                 }
             } else if (where == Where.TEMPO_CHANGE) {
+                if (tempoReader == null) return;
+
                 tempoReader.startElement10(qName);
             } else if (where == Where.COMPOSITION) {
                 if (qName.equals(XML_NOTES)) {
@@ -323,10 +335,16 @@ public final class CompositionIO {
             Attributes attributes
         ) {
             if (where == Where.LINES) {
+                if (lineReader == null) return;
+
                 lineReader.startElement11(qName, attributes);
             } else if (where == Where.VIEW) {
+                if (viewReader == null) return;
+
                 viewReader.startElement11(qName);
             } else if (where == Where.TEMPO) {
+                if (tempoReader == null) return;
+
                 tempoReader.startElement11(qName);
             } else if (where == Where.COMPOSITION) {
                 switch (qName) {
@@ -359,6 +377,8 @@ public final class CompositionIO {
             } else if (qName.equals(XML_TEMPO_CHANGES)) {
                 where = Where.COMPOSITION;
             } else if (where == Where.NOTES) {
+                if (noteReader == null) return;
+
                 var note = noteReader.endElement10(qName);
 
                 if (note != null) {
@@ -373,6 +393,8 @@ public final class CompositionIO {
                     line.addElement(note);
                 }
             } else if (where == Where.TEMPO_CHANGE) {
+                if (tempoReader == null) return;
+
                 var tc = tempoReader.endElement10(qName);
 
                 if (tc != null) {
@@ -401,7 +423,7 @@ public final class CompositionIO {
                     }
                 }
             } else if (where == Where.COMPOSITION) {
-                if (qName.equals(lastTag)) {
+                if (lastTag != null && qName.equals(lastTag)) {
                     var str = value.toString();
 
                     switch (lastTag) {
@@ -445,12 +467,16 @@ public final class CompositionIO {
             } else if (qName.equals(XML_VIEW)) {
                 where = Where.COMPOSITION;
             } else if (where == Where.LINES) {
+                if (lineReader == null) return;
+
                 var l = lineReader.endElement11(qName);
 
                 if (l != null) {
                     parsedLines.add(l);
                 }
             } else if (where == Where.TEMPO) {
+                if (tempoReader == null) return;
+
                 var t = tempoReader.endElement11(qName);
 
                 if (t != null) {
@@ -458,7 +484,7 @@ public final class CompositionIO {
                     where = Where.COMPOSITION;
                 }
             } else if (where == Where.COMPOSITION) {
-                if (qName.equals(lastTag)) {
+                if (lastTag != null && qName.equals(lastTag)) {
                     var str = value.toString();
                     var useDouble = majorVersion >= 2 && minorVersion >= 1;
 
@@ -497,6 +523,8 @@ public final class CompositionIO {
                     }
                 }
             } else if (where == Where.VIEW) {
+                if (viewReader == null) return;
+
                 viewReader.endElement11(qName);
             }
 
@@ -507,15 +535,15 @@ public final class CompositionIO {
         @Override
         public void characters(char[] ch, int start, int length) {
             if (where == Where.LINES) {
-                lineReader.characters(ch, start, length);
+                if (lineReader != null) lineReader.characters(ch, start, length);
             } else if (where == Where.VIEW) {
-                viewReader.characters(ch, start, length);
+                if (viewReader != null) viewReader.characters(ch, start, length);
             } else if (where == Where.NOTES) {
-                noteReader.characters(ch, start, length);
+                if (noteReader != null) noteReader.characters(ch, start, length);
             } else if (where == Where.TEMPO_CHANGE) {
-                tempoReader.characters(ch, start, length);
+                if (tempoReader != null) tempoReader.characters(ch, start, length);
             } else if (where == Where.TEMPO) {
-                tempoReader.characters(ch, start, length);
+                if (tempoReader != null) tempoReader.characters(ch, start, length);
             } else if ((where == Where.COMPOSITION) && (lastTag != null)) {
                 value.append(ch, start, length);
             }

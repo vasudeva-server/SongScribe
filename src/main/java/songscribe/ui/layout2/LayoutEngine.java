@@ -25,8 +25,7 @@ import module java.desktop;
 import java.util.HashMap;
 import java.util.List;
 
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import songscribe.music.Line;
 import songscribe.music.StaffElement;
@@ -92,6 +91,7 @@ public class LayoutEngine {
     private final LineJustificationCalculator justificationCalculator;
 
     // Error tracking
+    @Nullable
     private String lastError;
 
     /**
@@ -102,8 +102,8 @@ public class LayoutEngine {
      * @param staffRightMarginSs Right margin of the staff in staff-space units
      */
     public LayoutEngine(
-        @NotNull Graphics2D g2,
-        @NotNull Font lyricsFont,
+        Graphics2D g2,
+        Font lyricsFont,
         double staffRightMarginSs) {
         this.g2 = g2;
         this.lyricsFont = lyricsFont;
@@ -127,7 +127,7 @@ public class LayoutEngine {
      * @param line The line to lay out
      * @return LayoutResult with all positioned elements, or null if layout fails
      */
-    public @Nullable LayoutResult layout(@NotNull Line line) {
+    public @Nullable LayoutResult layout(Line line) {
         lastError = null;
 
         // Step 1: Build note columns
@@ -187,10 +187,10 @@ public class LayoutEngine {
      * then returns the built result.
      */
     private LayoutResult buildLayoutResult(
-        @NotNull List<ElementColumn> columns,
-        @NotNull VerticalStackingResult verticalResult,
-        @NotNull Line line,
-        @NotNull LayoutResult.Builder builder) {
+        List<ElementColumn> columns,
+        VerticalStackingResult verticalResult,
+        Line line,
+        LayoutResult.Builder builder) {
 
         // Add element columns
         for (var column : columns) {
@@ -253,9 +253,9 @@ public class LayoutEngine {
      * Populates {@code builder} with a {@link LayoutResult.BeamLayout} for each beam interval.
      */
     private void calculateBeams(
-        @NotNull Line line,
-        @NotNull List<ElementColumn> columns,
-        @NotNull LayoutResult.Builder builder) {
+        Line line,
+        List<ElementColumn> columns,
+        LayoutResult.Builder builder) {
         var beamings = line.getBeamings();
 
         // Build an element→column map for fast X lookups inside the loop.
@@ -517,9 +517,9 @@ public class LayoutEngine {
      * Populates {@code builder} with a {@link LayoutResult.StemLayout} for each such element.
      */
     private void calculateUnbeamedStems(
-        @NotNull Line line,
-        @NotNull List<ElementColumn> columns,
-        @NotNull LayoutResult.Builder builder) {
+        Line line,
+        List<ElementColumn> columns,
+        LayoutResult.Builder builder) {
         for (var col : columns) {
             var element = col.getElement();
 
@@ -554,9 +554,9 @@ public class LayoutEngine {
      * Populates {@code builder} with a {@link LayoutResult.TieLayout} for each tie interval.
      */
     private void calculateTies(
-        @NotNull Line line,
-        @NotNull List<ElementColumn> columns,
-        @NotNull LayoutResult.Builder builder) {
+        Line line,
+        List<ElementColumn> columns,
+        LayoutResult.Builder builder) {
 
         var ties = line.getTies();
 
@@ -675,7 +675,7 @@ public class LayoutEngine {
      * Returns the number of beams (flag levels) for a note type.
      * QUAVER = 1, SEMIQUAVER = 2, DEMI_SEMIQUAVER = 3.
      */
-    private static int beamCount(@NotNull StaffElement note) {
+    private static int beamCount(StaffElement note) {
         return switch (note.getType()) {
             case SEMIQUAVER -> 2;
             case DEMI_SEMIQUAVER -> 3;
@@ -686,14 +686,14 @@ public class LayoutEngine {
     /**
      * Returns the graphics context used by this engine.
      */
-    public @NotNull Graphics2D getGraphics() {
+    public Graphics2D getGraphics() {
         return g2;
     }
 
     /**
      * Returns the lyrics font used by this engine.
      */
-    public @NotNull Font getLyricsFont() {
+    public Font getLyricsFont() {
         return lyricsFont;
     }
 

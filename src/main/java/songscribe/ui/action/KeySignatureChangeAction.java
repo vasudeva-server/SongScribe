@@ -21,7 +21,6 @@ package songscribe.ui.action;
 
 import module java.desktop;
 
-import org.jetbrains.annotations.NotNull;
 
 import net.engio.mbassy.listener.Handler;
 
@@ -54,7 +53,7 @@ public class KeySignatureChangeAction extends UIAction {
     @Override
     @Handler(priority = Message.MEDIUM_PRIORITY)
     public void musicSelectionDidChange(
-        @NotNull MusicSelectionDidChangeNotification message
+        MusicSelectionDidChangeNotification message
     ) {
         if (updateEnabledState()) {
             // Key signature changes can only be made when a line is selected

@@ -23,7 +23,7 @@ import module java.desktop;
 
 import java.util.ArrayList;
 
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import songscribe.music.StaffElement;
 import songscribe.ui.Constants;
@@ -161,17 +161,10 @@ public class LyricsAdjustment extends Adjustment {
                 var foundLyrics = -1;
 
                 for (var n = 0; n < line.elementCount(); n++) {
-                    if (
-                        (line.getElement(n).properties.syllable != null) &&
-                            !line.getElement(n).properties.syllable.isEmpty()
-                    ) {
-                        if (
-                            !line
-                                .getElement(n)
-                                .properties.syllable.equals(
-                                    Constants.UNDERSCORE
-                                )
-                        ) {
+                    var syllable = line.getElement(n).properties.syllable;
+
+                    if (syllable != null && !syllable.isEmpty()) {
+                        if (!syllable.equals(Constants.UNDERSCORE)) {
                             adjustRects.add(
                                 new AdjustRect(
                                     l,

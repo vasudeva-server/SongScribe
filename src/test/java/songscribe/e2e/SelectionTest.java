@@ -24,6 +24,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.swing.core.MouseButton.LEFT_BUTTON;
 import static org.junit.jupiter.api.Assertions.assertAll;
 
+import java.util.Objects;
+
 import module java.desktop;
 
 import org.assertj.swing.edt.GuiActionRunner;
@@ -124,11 +126,11 @@ class SelectionTest extends E2ETest {
         });
 
         debugStep("5: Click empty space deselects", () -> {
-            var emptyPoint = GuiActionRunner.execute(() -> {
-                var lc = score().getLineComponent(0);
+            var emptyPoint = Objects.requireNonNull(GuiActionRunner.execute(() -> {
+                var lc = Objects.requireNonNull(score().getLineComponent(0));
                 var loc = lc.getLocationOnScreen();
                 return new Point(loc.x + lc.getWidth() - 10, loc.y + lc.getHeight() - 5);
-            });
+            }));
             clickAt(emptyPoint);
             assertThat(score().getSelectionSize()).as("5: click empty deselects").isEqualTo(0);
         });
@@ -170,9 +172,9 @@ class SelectionTest extends E2ETest {
 
         debugStep("10: Click past elements selects line", () -> {
             enterSelectMode();
-            var lineClickPoint = GuiActionRunner.execute(() -> {
-                var lc = score().getLineComponent(0);
-                var line = lc.getLine();
+            var lineClickPoint = Objects.requireNonNull(GuiActionRunner.execute(() -> {
+                var lc = Objects.requireNonNull(score().getLineComponent(0));
+                var line = Objects.requireNonNull(lc.getLine());
                 var layoutResult = lc.getLayoutResult();
                 var lastElement = line.getElement(line.elementCount() - 1);
                 var lastXSs = layoutResult != null ? layoutResult.getElementXSs(lastElement) : 0.0;
@@ -180,7 +182,7 @@ class SelectionTest extends E2ETest {
                 var loc = lc.getLocationOnScreen();
                 var yPx = lc.staffPositionToYPx(0);
                 return new Point(loc.x + pastLastXPx, loc.y + yPx);
-            });
+            }));
             clickAt(lineClickPoint);
             assertThat(score().isLineSelected(0)).as("10: line selected").isTrue();
         });
@@ -384,14 +386,14 @@ class SelectionTest extends E2ETest {
             shiftClickAt(noteScreenPosition(0, Sel2.CROTCHET_REST.ordinal()));
             clickToolbarButton(Actions.HALF_NOTE_ACTION);
 
-            var staccatoType = GuiActionRunner.execute(
-                () -> composition().getLine(0).getElement(Sel2.STACCATO.ordinal()).getType());
-            var accentType = GuiActionRunner.execute(
-                () -> composition().getLine(0).getElement(Sel2.ACCENT.ordinal()).getType());
-            var fermataType = GuiActionRunner.execute(
-                () -> composition().getLine(0).getElement(Sel2.FERMATA.ordinal()).getType());
-            var restType = GuiActionRunner.execute(
-                () -> composition().getLine(0).getElement(Sel2.CROTCHET_REST.ordinal()).getType());
+            var staccatoType = Objects.requireNonNull(GuiActionRunner.execute(
+                () -> composition().getLine(0).getElement(Sel2.STACCATO.ordinal()).getType()));
+            var accentType = Objects.requireNonNull(GuiActionRunner.execute(
+                () -> composition().getLine(0).getElement(Sel2.ACCENT.ordinal()).getType()));
+            var fermataType = Objects.requireNonNull(GuiActionRunner.execute(
+                () -> composition().getLine(0).getElement(Sel2.FERMATA.ordinal()).getType()));
+            var restType = Objects.requireNonNull(GuiActionRunner.execute(
+                () -> composition().getLine(0).getElement(Sel2.CROTCHET_REST.ordinal()).getType()));
 
             assertAll(
                 () -> assertThat(staccatoType).as("59a: staccato is minim").isEqualTo(ElementType.MINIM),
@@ -453,10 +455,10 @@ class SelectionTest extends E2ETest {
         });
 
         debugStep("68-69: Drag note to new position", () -> {
-            var countBefore = GuiActionRunner.execute(() -> composition().getLine(0).elementCount());
-            var originalSp = GuiActionRunner.execute(
+            var countBefore = Objects.requireNonNull(GuiActionRunner.execute(() -> composition().getLine(0).elementCount()));
+            var originalSp = Objects.requireNonNull(GuiActionRunner.execute(
                 () -> composition().getLine(0).getElement(Sel2.NOTE.ordinal()).getStaffPosition()
-            );
+            ));
             var targetSp = originalSp - 4;
 
             enterEditMode();
@@ -474,9 +476,9 @@ class SelectionTest extends E2ETest {
         });
 
         debugStep("70-71: Drag tied note moves partner", () -> {
-            var originalSp = GuiActionRunner.execute(
+            var originalSp = Objects.requireNonNull(GuiActionRunner.execute(
                 () -> composition().getLine(0).getElement(Sel2.TIED_1.ordinal()).getStaffPosition()
-            );
+            ));
             var targetSp = originalSp - 4;
 
             dragNote(0, Sel2.TIED_1.ordinal(), targetSp);
@@ -493,10 +495,10 @@ class SelectionTest extends E2ETest {
         });
 
         debugStep("72-74: Replace via click", () -> {
-            var countBeforeReplace = GuiActionRunner.execute(() -> composition().getLine(0).elementCount());
-            var originalSp = GuiActionRunner.execute(
+            var countBeforeReplace = Objects.requireNonNull(GuiActionRunner.execute(() -> composition().getLine(0).elementCount()));
+            var originalSp = Objects.requireNonNull(GuiActionRunner.execute(
                 () -> composition().getLine(0).getElement(Sel2.STACCATO.ordinal()).getStaffPosition()
-            );
+            ));
             var targetSp = originalSp - 4;
 
             selectDuration(Actions.EIGHTH_NOTE_ACTION);
@@ -504,11 +506,11 @@ class SelectionTest extends E2ETest {
 
             // Use noteScreenPosition for X (accurate hit), compute Y for the target staff position
             var existingPos = noteScreenPosition(0, Sel2.STACCATO.ordinal());
-            var replacePoint = GuiActionRunner.execute(() -> {
-                var lc = score().getLineComponent(0);
+            var replacePoint = Objects.requireNonNull(GuiActionRunner.execute(() -> {
+                var lc = Objects.requireNonNull(score().getLineComponent(0));
                 var loc = lc.getLocationOnScreen();
                 return new Point(existingPos.x, loc.y + lc.staffPositionToYPx(targetSp));
-            });
+            }));
 
             clickAt(replacePoint);
             performLayout(0);
@@ -618,9 +620,9 @@ class SelectionTest extends E2ETest {
      * Moves the mouse to the midpoint between two elements on the given line.
      */
     private void hoverBetween(int lineIdx, int leftIdx, int rightIdx) {
-        var midpoint = GuiActionRunner.execute(() -> {
-            var lc = score().getLineComponent(lineIdx);
-            var line = lc.getLine();
+        var midpoint = Objects.requireNonNull(GuiActionRunner.execute(() -> {
+            var lc = Objects.requireNonNull(score().getLineComponent(lineIdx));
+            var line = Objects.requireNonNull(lc.getLine());
             var layoutResult = lc.getLayoutResult();
             var leftElement = line.getElement(leftIdx);
             var rightElement = line.getElement(rightIdx);
@@ -633,7 +635,7 @@ class SelectionTest extends E2ETest {
 
             var loc = lc.getLocationOnScreen();
             return new Point(loc.x + midXPx, loc.y + yPx);
-        });
+        }));
 
         robot.moveMouse(midpoint);
         pause();

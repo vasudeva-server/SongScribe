@@ -25,7 +25,6 @@ import static songscribe.ui.renderer.GraphicsState.Property.FONT;
 
 import module java.desktop;
 
-import org.jetbrains.annotations.NotNull;
 
 import songscribe.music.StaffElement;
 import songscribe.ui.layout.AnnotationAttachment;
@@ -57,7 +56,7 @@ public class AnnotationRenderer extends BaseElementRenderer<StaffElement> {
     /**
      * Returns the singleton instance.
      */
-    public static @NotNull AnnotationRenderer getInstance() {
+    public static AnnotationRenderer getInstance() {
         return INSTANCE;
     }
 
@@ -67,9 +66,9 @@ public class AnnotationRenderer extends BaseElementRenderer<StaffElement> {
 
     @Override
     protected void renderElement(
-        @NotNull StaffElement element,
-        @NotNull Graphics2D g2,
-        @NotNull ElementRenderContext ctx
+        StaffElement element,
+        Graphics2D g2,
+        ElementRenderContext ctx
     ) {
         var annotation = element.getAnnotation();
 
@@ -107,9 +106,9 @@ public class AnnotationRenderer extends BaseElementRenderer<StaffElement> {
      * @param ctx  Render context
      */
     public void renderAnnotation(
-        @NotNull Graphics2D g2,
-        @NotNull StaffElement note,
-        @NotNull ElementRenderContext ctx
+        Graphics2D g2,
+        StaffElement note,
+        ElementRenderContext ctx
     ) {
         render(note, g2, ctx);
     }
@@ -117,7 +116,7 @@ public class AnnotationRenderer extends BaseElementRenderer<StaffElement> {
     /**
      * Calculates the X position for an annotation, centering it over the note.
      */
-    private double getAnnotationXPosPx(@NotNull Graphics2D g2, @NotNull StaffElement note) {
+    private double getAnnotationXPosPx(Graphics2D g2, StaffElement note) {
         var annotation = note.getAnnotation();
 
         if (annotation == null) {
@@ -135,8 +134,8 @@ public class AnnotationRenderer extends BaseElementRenderer<StaffElement> {
      * Gets the Y position for an annotation from layout result.
      */
     private float getAnnotationYPosPx(
-        @NotNull StaffElement note,
-        @NotNull ElementRenderContext ctx
+        StaffElement note,
+        ElementRenderContext ctx
     ) {
         var layoutResult = ctx.getLayoutResult();
 

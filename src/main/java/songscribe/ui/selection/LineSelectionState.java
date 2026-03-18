@@ -22,9 +22,7 @@ package songscribe.ui.selection;
 
 import java.util.stream.IntStream;
 
-import org.jetbrains.annotations.Contract;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import kotlin.Pair;
 
@@ -56,7 +54,7 @@ public final class LineSelectionState {
     @Nullable
     private IntervalSet tieInterval = null;
 
-    public LineSelectionState(@NotNull Line line) {
+    public LineSelectionState(Line line) {
         this.line = line;
     }
 
@@ -132,7 +130,6 @@ public final class LineSelectionState {
         tieInterval = null;
     }
 
-    @NotNull
     public Line getLine() {
         return line;
     }
@@ -347,8 +344,6 @@ public final class LineSelectionState {
      *   - The first Boolean indicates whether the selection can be tupleted/untupleted.
      *   - The second Boolean indicates whether the selection is currently tupleted.
      */
-    @NotNull
-    @Contract(" -> new")
     @SuppressWarnings("ObjectEquality")
     public Pair<Boolean, Boolean> canToggleTuplet() {
         if (getSelectionSize() < 2) {
@@ -414,7 +409,7 @@ public final class LineSelectionState {
     /**
      * Returns whether the selection should connect (add) or disconnect (remove) an interval.
      */
-    public boolean shouldConnectSelection(@NotNull IntervalSet intervals) {
+    public boolean shouldConnectSelection(IntervalSet intervals) {
         var beginInterval = intervals.findInterval(selectionBegin);
         var endInterval = intervals.findInterval(selectionEnd);
 

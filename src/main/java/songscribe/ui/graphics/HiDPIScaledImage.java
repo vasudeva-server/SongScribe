@@ -22,6 +22,8 @@ package songscribe.ui.graphics;
 
 import module java.desktop;
 
+import org.jspecify.annotations.Nullable;
+
 import songscribe.util.GraphicUtils;
 
 /**
@@ -30,18 +32,18 @@ import songscribe.util.GraphicUtils;
 public class HiDPIScaledImage extends BufferedImage {
 
     private static final int scale = GraphicUtils.getScreenScaleFactor();
-    private final Image myImage;
+    private final @Nullable Image myImage;
 
     public HiDPIScaledImage(int width, int height, int imageType) {
         this(null, scale * width, scale * height, imageType);
     }
 
-    public HiDPIScaledImage(Image image, int width, int height, int imageType) {
+    public HiDPIScaledImage(@Nullable Image image, int width, int height, int imageType) {
         super(width, height, imageType);
         myImage = image;
     }
 
-    public Image getDelegate() {
+    public @Nullable Image getDelegate() {
         return myImage;
     }
 

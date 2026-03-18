@@ -21,6 +21,8 @@ package songscribe.ui.component;
 
 import module java.desktop;
 
+import java.util.Objects;
+
 import com.intellij.uiDesigner.core.GridConstraints;
 import com.intellij.uiDesigner.core.GridLayoutManager;
 import net.engio.mbassy.listener.Handler;
@@ -44,6 +46,7 @@ public class LyricsPanel extends LyricsDialog {
     private final Timer debounceTimer;
     private boolean updatingFromMessage;
 
+    @SuppressWarnings("NullAway.Init")
     public LyricsPanel() {
         super();
         lyricsSplitPane.setLeftComponent(syllabifiedLyricsPanel);
@@ -51,7 +54,7 @@ public class LyricsPanel extends LyricsDialog {
         subSplitPane.setTopComponent(underLyricsPanel);
         subSplitPane.setBottomComponent(translatedLyricsPanel);
         subSplitPane.setDividerSize(20);
-        var score = getScore();
+        var score = Objects.requireNonNull(getScore());
         score.allowFocusInComponent(lyricsArea);
         score.allowFocusInComponent(underSongArea);
         score.allowFocusInComponent(translatedArea);

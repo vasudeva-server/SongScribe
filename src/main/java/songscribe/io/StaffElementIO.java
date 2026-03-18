@@ -22,8 +22,9 @@ package songscribe.io;
 import java.io.PrintWriter;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import org.xml.sax.Attributes;
 
@@ -245,12 +246,16 @@ public final class StaffElementIO {
 
     public static class StaffElementReader {
 
+        @Nullable
         private StaffElement element = null;
 
         @Nullable
         private String lastTag;
 
+        @org.jetbrains.annotations.Nullable
         private TempoIO.TempoReader tempoReader = null;
+
+        @org.jetbrains.annotations.Nullable
         private AnnotationIO.AnnotationReader annotationReader = null;
         private final StringBuilder value = new StringBuilder(20);
 
@@ -287,8 +292,12 @@ public final class StaffElementIO {
 
         public void startElement11(String qName, Attributes attributes) {
             if (where == Where.TEMPO_CHANGE) {
+                if (tempoReader == null) return;
+
                 tempoReader.startElement11(qName);
             } else if (where == Where.ANNOTATION) {
+                if (annotationReader == null) return;
+
                 annotationReader.startElement11(qName);
             } else if (qName.equals(XML_NOTE)) {
                 lastTag = null;
@@ -329,6 +338,8 @@ public final class StaffElementIO {
         @Nullable
         public StaffElement endElement11(String qName) {
             if (where == Where.TEMPO_CHANGE) {
+                if (tempoReader == null || element == null) return null;
+
                 var t = tempoReader.endElement11(qName);
 
                 if (t != null) {
@@ -336,6 +347,8 @@ public final class StaffElementIO {
                     where = Where.ELEMENT;
                 }
             } else if (where == Where.ANNOTATION) {
+                if (annotationReader == null || element == null) return null;
+
                 var a = annotationReader.endElement11(qName);
 
                 if (a != null) {
@@ -343,10 +356,11 @@ public final class StaffElementIO {
                     where = Where.ELEMENT;
                 }
             } else if (where == Where.ELEMENT) {
+                if (element == null) return null;
                 if (qName.equals(XML_NOTE)) {
                     return element;
                 }
-                if (qName.equals(lastTag)) {
+                if (lastTag != null && qName.equals(lastTag)) {
                     var str = value.toString();
 
                     if (lastTag.equals(XML_XPOS)) {
@@ -357,7 +371,9 @@ public final class StaffElementIO {
                     } else if (lastTag.equals(XML_DOTTED)) {
                         element.setDotCount(Integer.parseInt(str));
                     } else if (lastTag.equals(XML_PREFIX)) {
-                        element.setAccidental(ACCIDENTAL_MAP.get(str));
+                        element.setAccidental(
+                            Objects.requireNonNull(ACCIDENTAL_MAP.get(str),
+                                "Unknown accidental: " + str));
                     } else if (lastTag.equals(XML_PREFIX_IN_PARENTHESIS)) {
                         element.setAccidentalInParentheses(true);
                     } else if (
@@ -408,7 +424,9 @@ public final class StaffElementIO {
                     ) {
                         // Silently ignored — partial beam stub direction is now automatic.
                     } else if (lastTag.equals(XML_BEAT_CHANGE)) {
-                        element.setBeatChange(BEAT_CHANGE_MAP.get(str));
+                        element.setBeatChange(
+                            Objects.requireNonNull(BEAT_CHANGE_MAP.get(str),
+                                "Unknown beat change: " + str));
                     }
                 }
             }
@@ -420,9 +438,9 @@ public final class StaffElementIO {
 
         public void characters(char[] ch, int start, int lenght) {
             if (where == Where.TEMPO_CHANGE) {
-                tempoReader.characters(ch, start, lenght);
+                if (tempoReader != null) tempoReader.characters(ch, start, lenght);
             } else if (where == Where.ANNOTATION) {
-                annotationReader.characters(ch, start, lenght);
+                if (annotationReader != null) annotationReader.characters(ch, start, lenght);
             } else if ((where == Where.ELEMENT) && (lastTag != null)) {
                 value.append(ch, start, lenght);
             }

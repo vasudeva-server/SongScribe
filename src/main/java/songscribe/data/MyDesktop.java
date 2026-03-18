@@ -24,12 +24,12 @@ import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.net.URI;
 
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 
 public final class MyDesktop {
 
     private static boolean supported = false;
-    private static Class<?> klass = null;
+    private static @Nullable Class<?> klass = null;
     private final Object desktop;
 
     private MyDesktop(Object desktop) {
@@ -63,7 +63,7 @@ public final class MyDesktop {
 
     @Nullable
     public static MyDesktop getDesktop() {
-        if (isDesktopSupported()) {
+        if (isDesktopSupported() && klass != null) {
             try {
                 return new MyDesktop(
                     klass.getMethod("getDesktop").invoke(null)
@@ -76,6 +76,10 @@ public final class MyDesktop {
     }
 
     public void browse(URI uri) {
+        if (klass == null) {
+            return;
+        }
+
         if (isSupported(Action.BROWSE)) {
             try {
                 klass.getMethod("browse", URI.class).invoke(desktop, uri);
@@ -86,6 +90,10 @@ public final class MyDesktop {
     }
 
     public void mail(URI uri) {
+        if (klass == null) {
+            return;
+        }
+
         if (isSupported(Action.MAIL)) {
             try {
                 klass.getMethod("mail", URI.class).invoke(desktop, uri);
@@ -96,6 +104,10 @@ public final class MyDesktop {
     }
 
     public void open(File file) throws IOException {
+        if (klass == null) {
+            return;
+        }
+
         if (isSupported(Action.OPEN)) {
             try {
                 klass.getMethod("open", File.class).invoke(desktop, file);
@@ -108,6 +120,10 @@ public final class MyDesktop {
     }
 
     private boolean isSupported(Action p) {
+        if (klass == null) {
+            return false;
+        }
+
         if (isDesktopSupported()) {
             try {
                 var actionClass = Class.forName("java.awt.Desktop$Action");

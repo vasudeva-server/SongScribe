@@ -7,8 +7,7 @@ import java.util.List;
 
 import javax.swing.Action;
 
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 
 public class ActionGroup<T extends UIAction> implements PropertyChangeListener {
 
@@ -26,7 +25,6 @@ public class ActionGroup<T extends UIAction> implements PropertyChangeListener {
         }
     }
 
-    @NotNull
     public List<T> getActions() {
         return actions;
     }
@@ -41,7 +39,7 @@ public class ActionGroup<T extends UIAction> implements PropertyChangeListener {
         return previousSelected;
     }
 
-    public void add(@NotNull T action) {
+    public void add(T action) {
         if (!actions.contains(action)) {
             actions.add(action);
         }
@@ -49,7 +47,7 @@ public class ActionGroup<T extends UIAction> implements PropertyChangeListener {
         action.addPropertyChangeListener(this);
     }
 
-    public void insert(int index, @NotNull T action) {
+    public void insert(int index, T action) {
         if (!actions.contains(action)) {
             actions.add(index, action);
         }
@@ -57,7 +55,7 @@ public class ActionGroup<T extends UIAction> implements PropertyChangeListener {
         action.addPropertyChangeListener(this);
     }
 
-    public void remove(@NotNull T action) {
+    public void remove(T action) {
         actions.remove(action);
         action.removePropertyChangeListener(this);
     }
@@ -69,7 +67,7 @@ public class ActionGroup<T extends UIAction> implements PropertyChangeListener {
         }
     }
 
-    public boolean contains(@NotNull T action) {
+    public boolean contains(T action) {
         return actions.contains(action);
     }
 
@@ -79,7 +77,7 @@ public class ActionGroup<T extends UIAction> implements PropertyChangeListener {
         );
     }
 
-    public void setSelected(@NotNull T action, boolean value) {
+    public void setSelected(T action, boolean value) {
         if (!actions.contains(action)) {
             System.out.println("Action is not part of this group");
             return;
@@ -109,7 +107,7 @@ public class ActionGroup<T extends UIAction> implements PropertyChangeListener {
         selectLevel--;
     }
 
-    public void select(@NotNull T action, @NotNull Object source) {
+    public void select(T action, Object source) {
         setSelected(action, true);
         action.perform(source);
     }
@@ -130,13 +128,13 @@ public class ActionGroup<T extends UIAction> implements PropertyChangeListener {
         setSelected(actions.get(index), true);
     }
 
-    public boolean isSelected(@NotNull T action) {
+    public boolean isSelected(T action) {
         return selected == action;
     }
 
     @Override
     @SuppressWarnings("unchecked")
-    public void propertyChange(@NotNull PropertyChangeEvent e) {
+    public void propertyChange(PropertyChangeEvent e) {
         if (selectLevel == 0 && Action.SELECTED_KEY.equals(e.getPropertyName())) {
             setSelected((T) e.getSource(), (Boolean) e.getNewValue());
         }

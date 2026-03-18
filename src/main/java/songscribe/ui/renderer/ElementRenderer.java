@@ -22,7 +22,6 @@ package songscribe.ui.renderer;
 
 import module java.desktop;
 
-import org.jetbrains.annotations.NotNull;
 
 import songscribe.ui.layout.LineElement;
 
@@ -43,7 +42,7 @@ public interface ElementRenderer<T extends LineElement> {
      * @param g2      The graphics context
      * @param ctx     Rendering context (fonts, debug mode, etc.)
      */
-    void render(@NotNull T element, @NotNull Graphics2D g2, @NotNull ElementRenderContext ctx);
+    void render(T element, Graphics2D g2, ElementRenderContext ctx);
 
     /**
      * Calculates the bounds of the rendered element.
@@ -55,6 +54,5 @@ public interface ElementRenderer<T extends LineElement> {
      * @param ctx     Rendering context
      * @return The visual bounds
      */
-    @NotNull
-    Rectangle2D getBounds(@NotNull T element, @NotNull ElementRenderContext ctx);
+    Rectangle2D getBounds(T element, ElementRenderContext ctx);
 }

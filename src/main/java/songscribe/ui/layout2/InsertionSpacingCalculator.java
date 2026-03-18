@@ -22,7 +22,6 @@ package songscribe.ui.layout2;
 
 import java.util.Collections;
 
-import org.jetbrains.annotations.NotNull;
 
 import songscribe.music.Composition;
 import songscribe.music.ElementType;
@@ -78,7 +77,7 @@ public class InsertionSpacingCalculator {
      * Converts an element's pixel position (stored in {@code getXPosSs()}, a legacy misnomer)
      * to true staff spaces.
      */
-    private static double elementXSs(@NotNull StaffElement element) {
+    private static double elementXSs(StaffElement element) {
         return ScaleContext.getInstance().fromPixels(element.getXPosSs());
     }
 
@@ -94,7 +93,7 @@ public class InsertionSpacingCalculator {
      * @param elementToAppend The element being appended
      * @return X position in staff spaces where the element should be placed
      */
-    public static double calculateAppendPositionSs(@NotNull Line line, @NotNull StaffElement elementToAppend) {
+    public static double calculateAppendPositionSs(Line line, StaffElement elementToAppend) {
         var elementCount = line.elementCount();
 
         if (elementCount == 0) {
@@ -127,7 +126,7 @@ public class InsertionSpacingCalculator {
      * @param nextElement    The element to be placed after currentElement
      * @return X position where nextElement should be placed
      */
-    public static double calculateNextElementXSs(@NotNull StaffElement currentElement, @NotNull StaffElement nextElement) {
+    public static double calculateNextElementXSs(StaffElement currentElement, StaffElement nextElement) {
         var currentColumn = createLightweightColumn(currentElement);
         currentColumn.setXSs(elementXSs(currentElement));
         var nextColumn = createLightweightColumn(nextElement);
@@ -145,9 +144,9 @@ public class InsertionSpacingCalculator {
      * @param insertIndex   The index where the element will be inserted (0-based)
      * @return An {@link InsertionResult} with the element's X position and the shift for subsequent elements
      */
-    public static @NotNull InsertionResult calculateInsertion(
-        @NotNull Line line,
-        @NotNull StaffElement insertedElement,
+    public static InsertionResult calculateInsertion(
+        Line line,
+        StaffElement insertedElement,
         int insertIndex) {
 
         var elementCount = line.elementCount();
@@ -236,8 +235,8 @@ public class InsertionSpacingCalculator {
      * @return Shift amount in pixels (positive = shift right)
      */
     public static double calculateInsertionShiftSs(
-        @NotNull Line line,
-        @NotNull StaffElement insertedElement,
+        Line line,
+        StaffElement insertedElement,
         int insertIndex) {
 
         return calculateInsertion(line, insertedElement, insertIndex).shiftForSubsequentElementsSs();
@@ -255,7 +254,7 @@ public class InsertionSpacingCalculator {
      * @param atIndex The index where the grace note would be inserted
      * @return {@code true} if both the grace note and host note fit on the line
      */
-    public static boolean hasRoomForGraceNotePair(@NotNull Line line, int atIndex) {
+    public static boolean hasRoomForGraceNotePair(Line line, int atIndex) {
         Composition composition = line.getComposition();
 
         if (composition == null) {
@@ -329,7 +328,7 @@ public class InsertionSpacingCalculator {
      * @param element The element to create a column for
      * @return An ElementColumn with geometric extents but no syllable data
      */
-    private static @NotNull ElementColumn createLightweightColumn(@NotNull StaffElement element) {
+    private static ElementColumn createLightweightColumn(StaffElement element) {
         // Calculate geometric extents using ElementColumnBuilder's static methods
         double leftExtentSs = ElementColumnBuilder.calculateLeftExtentSs(element);
         double rightExtentSs = ElementColumnBuilder.calculateRightExtentSs(element, false, element.isUpper());

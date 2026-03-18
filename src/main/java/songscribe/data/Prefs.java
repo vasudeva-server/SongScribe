@@ -22,7 +22,9 @@ package songscribe.data;
 
 import java.util.prefs.Preferences;
 
+import org.jspecify.annotations.Nullable;
+
 public class Prefs {
 
-    private static final Preferences preferences = null;
+    private static final @Nullable Preferences preferences = null;
 }

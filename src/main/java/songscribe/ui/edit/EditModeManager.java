@@ -22,8 +22,7 @@ package songscribe.ui.edit;
 
 import java.util.function.Supplier;
 
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
 import songscribe.notification.CompositionDidChangeNotification;
@@ -99,10 +98,10 @@ public final class EditModeManager {
      * @param scoreActions Callback interface for Score actions
      */
     public EditModeManager(
-        @NotNull Supplier<Composition> compositionSupplier,
-        @NotNull ClipboardManager clipboardManager,
-        @NotNull SelectionCoordinator selectionCoordinator,
-        @NotNull ScoreActions scoreActions
+        Supplier<Composition> compositionSupplier,
+        ClipboardManager clipboardManager,
+        SelectionCoordinator selectionCoordinator,
+        ScoreActions scoreActions
     ) {
         this.compositionSupplier = compositionSupplier;
         this.clipboardManager = clipboardManager;
@@ -115,7 +114,6 @@ public final class EditModeManager {
     /**
      * Returns the GraceModeManager that manages grace note pairing.
      */
-    @NotNull
     public GraceModeManager getGraceModeManager() {
         return graceModeManager;
     }
@@ -198,7 +196,6 @@ public final class EditModeManager {
      *
      * @return The newly created insertion element
      */
-    @NotNull
     public StaffElement makeInsertionElement() {
         var elementType = ElementType.CROTCHET;
         var durationAction = Actions.DURATION_ACTION_GROUP.getSelected();
@@ -222,8 +219,7 @@ public final class EditModeManager {
      * @param elementType The type of element to create
      * @return The newly created insertion element
      */
-    @NotNull
-    public StaffElement makeInsertionElement(@NotNull ElementType elementType) {
+    public StaffElement makeInsertionElement(ElementType elementType) {
         // Make a new element or rest of the given type
         var type = elementType;
 
@@ -241,7 +237,7 @@ public final class EditModeManager {
      *
      * @param element The element to decorate
      */
-    public void decorateElement(@NotNull StaffElement element) {
+    public void decorateElement(StaffElement element) {
         var dotAction = Actions.DOT_ACTION_GROUP.getSelected();
         element.setDotCount(
             (dotAction != null) ? dotAction.getDotLevel().ordinal() + 1 : 0
@@ -295,7 +291,11 @@ public final class EditModeManager {
      * @param elementIndex The index at which to insert
      * @return true if the element was modified, false if normal insertion should proceed
      */
-    public boolean elementWasModified(@NotNull Line line, int elementIndex) {
+    public boolean elementWasModified(Line line, int elementIndex) {
+        if (insertionElement == null) {
+            return false;
+        }
+
         scoreActions.clearSelection();
 
         if (
@@ -348,7 +348,11 @@ public final class EditModeManager {
                 line.addElement(elementIndex + i, element.clone());
             }
 
-            line.pasteIntervals(clipboardManager.getIntervalsCopyBuffer(), elementIndex);
+            var intervalsCopy = clipboardManager.getIntervalsCopyBuffer();
+
+            if (intervalsCopy != null) {
+                line.pasteIntervals(intervalsCopy, elementIndex);
+            }
 
             // Calculate shift for elements after the pasted block
             var afterPasteIndex = elementIndex + copySize;
@@ -369,7 +373,10 @@ public final class EditModeManager {
             }
 
             var control = scoreActions.getControl();
-            scoreActions.setControl(prevPasteControl);
+
+            if (prevPasteControl != null) {
+                scoreActions.setControl(prevPasteControl);
+            }
 
             for (var i = elementIndex; i < (elementIndex + copySize); i++) {
                 var interval = line.getBeamings().findInterval(i);
@@ -386,7 +393,11 @@ public final class EditModeManager {
         return false;
     }
 
-    public void insertionElementDidChange(@NotNull Line line, int elementIndex) {
+    public void insertionElementDidChange(Line line, int elementIndex) {
+        if (insertionElement == null) {
+            return;
+        }
+
         // Capture the inserted element before insertionElement is updated for the next insertion.
         var insertedElement = line.getElement(elementIndex);
         var shouldPlayNote = playInsertedNote && insertedElement.getType().isNote();

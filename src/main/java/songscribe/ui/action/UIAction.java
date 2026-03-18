@@ -24,9 +24,9 @@ import module java.desktop;
 
 import java.util.Arrays;
 import java.util.EnumSet;
+import java.util.Objects;
 
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import net.engio.mbassy.listener.Handler;
 import org.slf4j.Logger;
@@ -154,13 +154,13 @@ public class UIAction extends AbstractAction {
 
     private int flags = 0;
 
-    public UIAction(String name, String actionCommand, Flag... flags) {
+    public UIAction(@Nullable String name, @Nullable String actionCommand, Flag... flags) {
         this(name, null, 0, actionCommand, null, 0, 0, flags);
     }
 
     public UIAction(
-        String name,
-        String actionCommand,
+        @Nullable String name,
+        @Nullable String actionCommand,
         int virtualKey,
         int modifiers,
         Flag... flags
@@ -172,8 +172,8 @@ public class UIAction extends AbstractAction {
         @Nullable String name,
         @Nullable String icon,
         int size,
-        String actionCommand,
-        String tooltip,
+        @Nullable String actionCommand,
+        @Nullable String tooltip,
         Flag... flags
     ) {
         this(name, icon, size, actionCommand, tooltip, 0, 0, flags);
@@ -183,8 +183,8 @@ public class UIAction extends AbstractAction {
         @Nullable String name,
         @Nullable String icon,
         int size,
-        String actionCommand,
-        String tooltip,
+        @Nullable String actionCommand,
+        @Nullable String tooltip,
         int virtualKey,
         int modifiers,
         Flag... flags
@@ -218,15 +218,15 @@ public class UIAction extends AbstractAction {
         return mainFrame;
     }
 
-    protected Score getScore() {
+    protected @Nullable Score getScore() {
         return mainFrame.getScore();
     }
 
     protected Composition getComposition() {
-        return mainFrame.getScore().getComposition();
+        return Objects.requireNonNull(mainFrame.getScore()).getComposition();
     }
 
-    public void setFlags(@NotNull Flag... flags) {
+    public void setFlags(Flag... flags) {
         for (var flag : flags) {
             this.flags |= flag.getValue();
         }
@@ -244,7 +244,7 @@ public class UIAction extends AbstractAction {
         }
     }
 
-    public boolean hasFlag(@NotNull Flag flag) {
+    public boolean hasFlag(Flag flag) {
         return (flags & flag.getValue()) != 0;
     }
 
@@ -272,6 +272,10 @@ public class UIAction extends AbstractAction {
             var info = UIUtils.getTaggedString(icon);
             putValue(FONT_ICON_KEY, info.text());
             var font = info.font();
+
+            if (font == null) {
+                return;
+            }
 
             if (font.getSize() == size) {
                 putValue(FONT_KEY, font);
@@ -306,7 +310,7 @@ public class UIAction extends AbstractAction {
         return (KeyStroke) getValue(ACCELERATOR_KEY);
     }
 
-    public void perform(Object source) {
+    public void perform(@Nullable Object source) {
         actionPerformed(
             new ActionEvent(
                 (source != null) ? source : this,
@@ -370,12 +374,12 @@ public class UIAction extends AbstractAction {
 
     @Handler(priority = Message.MEDIUM_PRIORITY)
     public void musicSelectionDidChange(
-        @NotNull MusicSelectionDidChangeNotification message
+        MusicSelectionDidChangeNotification message
     ) {
         updateEnabledState();
     }
 
-    protected boolean enableFromSelectionSize(@NotNull Score score) {
+    protected boolean enableFromSelectionSize(Score score) {
         var size = score.getSelectionSize();
 
         if (hasFlag(Flag.REQUIRES_SELECTION)) {
@@ -415,7 +419,7 @@ public class UIAction extends AbstractAction {
             return true;
         }
 
-        return !Actions.REST_ACTION.isSelected() && !getScore().getSelectionCoordinator().selectionHasRests();
+        return !Actions.REST_ACTION.isSelected() && !Objects.requireNonNull(getScore()).getSelectionCoordinator().selectionHasRests();
     }
 
     @Handler(priority = Message.MEDIUM_PRIORITY)
@@ -537,7 +541,7 @@ public class UIAction extends AbstractAction {
             return false;
         }
 
-        var score = getScore();
+        var score = Objects.requireNonNull(getScore());
         var coordinator = score.getSelectionCoordinator();
         var selection = coordinator.getSelection();
 
@@ -550,7 +554,7 @@ public class UIAction extends AbstractAction {
     }
 
     private boolean hasActiveSelection() {
-        return getScore()
+        return Objects.requireNonNull(getScore())
             .getSelectionCoordinator()
             .hasActiveSelection();
     }
@@ -560,7 +564,7 @@ public class UIAction extends AbstractAction {
             return true;
         }
 
-        var composition = getComposition();
-        return composition != null && !composition.isEmpty();
+        var score = getScore();
+        return score != null && score.isInitialized() && !score.getComposition().isEmpty();
     }
 }

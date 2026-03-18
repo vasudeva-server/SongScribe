@@ -22,6 +22,7 @@ package songscribe.ui.selection;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 import songscribe.music.Line;
 import songscribe.music.StaffElement;
@@ -118,7 +119,7 @@ public final class ReflectionTestHelper {
     public static void selectRange(SelectionCoordinator coordinator, int fromIndex, int toIndex) {
         coordinator.saveActionStates();
 
-        var state = coordinator.getActiveSelection();
+        var state = Objects.requireNonNull(coordinator.getActiveSelection());
         state.setSelectionFromClick(fromIndex);
 
         if (toIndex != fromIndex) {
@@ -137,7 +138,7 @@ public final class ReflectionTestHelper {
      * Clears the selection on the coordinator's active line.
      */
     public static void clearSelection(SelectionCoordinator coordinator) {
-        coordinator.getActiveSelection().clearSelection();
+        Objects.requireNonNull(coordinator.getActiveSelection()).clearSelection();
         coordinator.restoreActionStates();
     }
 }

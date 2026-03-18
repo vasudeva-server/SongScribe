@@ -24,7 +24,6 @@ import module java.desktop;
 
 import java.util.ArrayList;
 
-import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -46,7 +45,7 @@ public final class ScoreFocusController implements FocusListener {
 
     private final FocusRestorationCallback callback;
 
-    public ScoreFocusController(@NotNull FocusRestorationCallback callback) {
+    public ScoreFocusController(FocusRestorationCallback callback) {
         this.callback = callback;
     }
 
@@ -55,7 +54,7 @@ public final class ScoreFocusController implements FocusListener {
     }
 
     @Override
-    public void focusLost(@NotNull FocusEvent e) {
+    public void focusLost(FocusEvent e) {
         if (!componentsAllowedToGainFocus.contains(e.getOppositeComponent())) {
             new FocusLostThread().start();
         }

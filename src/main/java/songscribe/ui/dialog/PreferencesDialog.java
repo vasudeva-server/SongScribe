@@ -23,6 +23,7 @@ import module java.desktop;
 
 import java.util.Dictionary;
 import java.util.Hashtable;
+import java.util.Objects;
 
 import songscribe.Strings;
 import songscribe.prefs.Prefs;
@@ -152,7 +153,7 @@ public class PreferencesDialog extends StandardDialog {
         var prefs = Prefs.getInstance();
         prefs.put("playbackNoteDuration", durationSlider.getValue());
         prefs.put("playInsertedNote", playInsertingNoteCheck.isSelected());
-        getScore().syncPlaybackPrefs();
+        Objects.requireNonNull(getScore()).syncPlaybackPrefs();
 
         Appearance newAppearance;
 

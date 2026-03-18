@@ -20,7 +20,6 @@
 
 package songscribe.ui.renderer;
 
-import org.jetbrains.annotations.NotNull;
 
 import songscribe.music.Composition;
 
@@ -45,7 +44,6 @@ public interface RenderContext {
     /**
      * Returns the composition (music model) to render.
      */
-    @NotNull
     Composition getComposition();
 
     // -------------------------------------------------------------------------

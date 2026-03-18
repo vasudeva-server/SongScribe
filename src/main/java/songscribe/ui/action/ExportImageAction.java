@@ -23,6 +23,9 @@ import module java.desktop;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Objects;
+
+import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
 import songscribe.data.MyFileFilter;
@@ -39,7 +42,7 @@ import songscribe.util.Utils;
 public class ExportImageAction extends UIAction {
 
     private final PlatformFileDialog fileDialog;
-    private ResolutionDialog resolutionDialog = null;
+    private @Nullable ResolutionDialog resolutionDialog = null;
 
     private final MyFileFilter[] myFileFilters = new MyFileFilter[] {
         new MyFileFilter(Strings.get(Strings.FILTER_JPEG), "jpg"),
@@ -63,12 +66,17 @@ public class ExportImageAction extends UIAction {
 
     @Override
     public void actionPerformed(ActionEvent e) {
-        var score = getScore();
+        var score = Objects.requireNonNull(getScore());
 
         fileDialog.setFile(FileUtils.getSongFileNameForFileChooser(score));
 
         if (fileDialog.showDialog()) {
             var filter = fileDialog.getFileFilter();
+
+            if (filter == null) {
+                return;
+            }
+
             Prefs.getInstance().put(
                 "imageExportFilter",
                 Utils.arrayIndexOf(myFileFilters, filter)

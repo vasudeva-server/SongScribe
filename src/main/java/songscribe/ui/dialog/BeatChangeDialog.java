@@ -22,6 +22,9 @@ package songscribe.ui.dialog;
 import module java.desktop;
 // Disambiguates from org.w3c.dom.events.MouseEvent (java.xml module)
 import java.awt.event.MouseEvent;
+import java.util.Objects;
+
+import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
 import songscribe.music.BeatChange;
@@ -31,7 +34,7 @@ import songscribe.ui.renderer.BeatChangeRenderer;
 
 public class BeatChangeDialog extends StandardDialog {
 
-    private StaffElement selectedElement = null;
+    private @Nullable StaffElement selectedElement = null;
     private final JButton removeButton;
     private final ButtonGroup bg;
 
@@ -83,8 +86,8 @@ public class BeatChangeDialog extends StandardDialog {
         var south = new JPanel();
         removeButton = new JButton(Strings.get(Strings.LABEL_BUTTON_REMOVE));
         removeButton.addActionListener(_ -> {
-            var score = getScore();
-            selectedElement.setBeatChange(null);
+            var score = Objects.requireNonNull(getScore());
+            Objects.requireNonNull(selectedElement).setBeatChange(null);
             setVisible(false);
             score.repaint();
             score.getComposition().setModified(true);
@@ -98,7 +101,7 @@ public class BeatChangeDialog extends StandardDialog {
 
     @Override
     protected void getData() {
-        var score = getScore();
+        var score = Objects.requireNonNull(getScore());
         selectedElement = score.getSingleSelectedElement();
         BeatChange beatChange = null;
 
@@ -140,7 +143,7 @@ public class BeatChangeDialog extends StandardDialog {
             return;
         }
 
-        selectedElement.setBeatChange(
+        Objects.requireNonNull(selectedElement).setBeatChange(
             BeatChange.valueOf(bg.getSelection().getActionCommand())
         );
     }

@@ -23,8 +23,8 @@ package songscribe.ui.component.score;
 import module java.desktop;
 // Disambiguates from org.w3c.dom.events.MouseEvent (java.xml module)
 import java.awt.event.MouseEvent;
+import java.util.Objects;
 
-import org.jetbrains.annotations.NotNull;
 
 import songscribe.Strings;
 import songscribe.music.StaffElement;
@@ -53,7 +53,7 @@ class SelectionHandler {
     private final Point dragStart = new Point();
     private final Rectangle dragRectangle = new Rectangle();
 
-    SelectionHandler(@NotNull LineComponent lc) {
+    SelectionHandler(LineComponent lc) {
         this.lc = lc;
     }
 
@@ -79,7 +79,7 @@ class SelectionHandler {
      * The cascade tests note heads first, then glissandos, then staff-line proximity.
      * If nothing is hit, {@link HitResult.Nothing} is returned.
      */
-    HitResult hitTest(@NotNull Point point) {
+    HitResult hitTest(Point point) {
         var elementIndex = ElementHitTest.hitTestElement(lc, point);
 
         if (elementIndex != -1) {
@@ -89,7 +89,13 @@ class SelectionHandler {
         var glissandoIndex = hitTestGlissandoAtPoint(point);
 
         if (glissandoIndex != -1) {
-            var line = lc.getLineSelectionState().getLine();
+            var selState = lc.getLineSelectionState();
+
+            if (selState == null) {
+                return new HitResult.Nothing();
+            }
+
+            var line = selState.getLine();
 
             if (line.getElement(glissandoIndex).getType().isGraceNote()) {
                 return new HitResult.GraceGlissando();
@@ -111,7 +117,7 @@ class SelectionHandler {
     // Public delegation entry points
     // ======================================================================
 
-    void handlePress(@NotNull MouseEvent e) {
+    void handlePress(MouseEvent e) {
         dragging = false;
         pressHandled = false;
         dragStart.setLocation(e.getPoint());
@@ -122,7 +128,7 @@ class SelectionHandler {
         var lineSelectionState = lc.getLineSelectionState();
 
         // Don't clear selection on shift+click (preserve for extend)
-        if (!e.isShiftDown() || lineSelectionState.getSelectionAnchor() == -1) {
+        if (!e.isShiftDown() || lineSelectionState == null || lineSelectionState.getSelectionAnchor() == -1) {
             lc.getScore().clearSelection();
 
             if (MidiController.sequencer != null) {
@@ -144,10 +150,12 @@ class SelectionHandler {
             }
 
             case HitResult.Glissando(var elementIndex) -> {
-                prepareSelection();
-                lineSelectionState.selectGlissando(elementIndex);
-                lc.getScore().selectionChanged();
-                pressHandled = true;
+                if (lineSelectionState != null) {
+                    prepareSelection();
+                    lineSelectionState.selectGlissando(elementIndex);
+                    lc.getScore().selectionChanged();
+                    pressHandled = true;
+                }
             }
 
             case HitResult.GraceGlissando() -> {
@@ -160,10 +168,12 @@ class SelectionHandler {
             }
 
             case HitResult.StaffLine() -> {
-                prepareSelection();
-                lineSelectionState.setLineSelected(true);
-                lc.getScore().selectionChanged();
-                pressHandled = true;
+                if (lineSelectionState != null) {
+                    prepareSelection();
+                    lineSelectionState.setLineSelected(true);
+                    lc.getScore().selectionChanged();
+                    pressHandled = true;
+                }
             }
 
             case HitResult.Nothing() -> lc.repaint();
@@ -174,7 +184,7 @@ class SelectionHandler {
         }
     }
 
-    void handleDrag(@NotNull MouseEvent e) {
+    void handleDrag(MouseEvent e) {
         if (pressHandled) {
             return;
         }
@@ -201,7 +211,7 @@ class SelectionHandler {
      *
      * @return true if the event was handled (selection was active), false to fall through
      */
-    boolean handleClick(@NotNull MouseEvent e) {
+    boolean handleClick(MouseEvent e) {
         if (!isSelectionActive(e)) {
             return false;
         }
@@ -212,10 +222,12 @@ class SelectionHandler {
         }
 
         // Shift+click on a note head: extend selection from anchor
+        var lineSelectionState = lc.getLineSelectionState();
+
         if (e.isShiftDown()
             && pressHitResult instanceof HitResult.ElementHead(var index)
-            && lc.getLineSelectionState().getSelectionAnchor() != -1) {
-            var lineSelectionState = lc.getLineSelectionState();
+            && lineSelectionState != null
+            && lineSelectionState.getSelectionAnchor() != -1) {
             lineSelectionState.extendSelectionTo(index);
             lc.getScore().selectionChanged();
             playNoteIfPitched(index);
@@ -251,7 +263,7 @@ class SelectionHandler {
      * @param e The mouse event (alt key check retained for backwards compatibility)
      * @return true if selection handling should be active
      */
-    boolean isSelectionActive(@NotNull MouseEvent e) {
+    boolean isSelectionActive(MouseEvent e) {
         var score = lc.getScore();
         var line = lc.getLine();
 
@@ -291,7 +303,8 @@ class SelectionHandler {
      */
     void selectElementAtIndex(int elementIndex) {
         prepareSelection();
-        lc.getLineSelectionState().setSelectionFromClick(elementIndex);
+        var selState = Objects.requireNonNull(lc.getLineSelectionState());
+        selState.setSelectionFromClick(elementIndex);
         lc.getScore().selectionChanged();
     }
 
@@ -307,7 +320,13 @@ class SelectionHandler {
      * Plays the element at the given index if it is a pitched note (not a rest).
      */
     private void playNoteIfPitched(int elementIndex) {
-        var element = lc.getLine().getElement(elementIndex);
+        var line = lc.getLine();
+
+        if (line == null) {
+            return;
+        }
+
+        var element = line.getElement(elementIndex);
 
         if (element.getType().isNote()) {
             new PlayThread(element.getPitch()).start();
@@ -318,24 +337,35 @@ class SelectionHandler {
     // Private helpers
     // ======================================================================
 
-    private int hitTestGlissandoAtPoint(@NotNull Point point) {
+    private int hitTestGlissandoAtPoint(Point point) {
         var scaleContext = ScaleContext.getInstance();
         var clickXSs = scaleContext.fromPixels(point.x);
         var clickYSs = scaleContext.fromPixels(point.y);
+        var selState = Objects.requireNonNull(lc.getLineSelectionState());
         return GlissandoRenderer.getInstance().hitTestGlissando(
-            clickXSs, clickYSs, lc.getLineSelectionState().getLine()
+            clickXSs, clickYSs, selState.getLine()
         );
     }
 
-    private void buildElementHitRect(@NotNull StaffElement element, @NotNull Rectangle out) {
+    private void buildElementHitRect(StaffElement element, Rectangle out) {
         ElementHitTest.buildElementHitRect(lc, element, out);
     }
 
-    private void calculateLineSelectionFromDrag(@NotNull Rectangle dragRect) {
+    private void calculateLineSelectionFromDrag(Rectangle dragRect) {
         var score = lc.getScore();
         var line = lc.getLine();
         var lineSelectionState = lc.getLineSelectionState();
+
+        if (line == null || lineSelectionState == null) {
+            return;
+        }
+
         var coordinator = score.getSelectionCoordinator();
+
+        if (coordinator == null) {
+            return;
+        }
+
         coordinator.activateLine(lc.getLineIndex());
         lineSelectionState.clearSelection();
 

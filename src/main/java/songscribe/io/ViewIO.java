@@ -23,7 +23,7 @@ import module java.desktop;
 
 import java.io.PrintWriter;
 
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import songscribe.music.Composition;
 import songscribe.prefs.Prefs;
@@ -107,7 +107,7 @@ public final class ViewIO {
         }
 
         public void endElement11(String qName) {
-            if (qName.equals(lastTag)) {
+            if (lastTag != null && qName.equals(lastTag)) {
                 var str = value.toString();
 
                 switch (lastTag) {

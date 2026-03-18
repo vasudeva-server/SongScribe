@@ -22,8 +22,9 @@ package songscribe.ui.component.score;
 
 import module java.desktop;
 
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
+import java.util.Objects;
+
+import org.jspecify.annotations.Nullable;
 
 import songscribe.music.Composition;
 import songscribe.ui.layout.LayoutStylesheet;
@@ -59,6 +60,7 @@ public class MainPanel extends JPanel {
     private final FootnotesComponent footnotesComponent;
 
     /** The composition model. */
+    @Nullable
     private Composition composition;
 
     /** Spacing between title and score. */
@@ -98,7 +100,7 @@ public class MainPanel extends JPanel {
      *
      * @param composition The composition
      */
-    public void setComposition(@NotNull Composition composition) {
+    public void setComposition(Composition composition) {
         this.composition = composition;
         titleComponent.setComposition(composition);
         staffPanel.setComposition(composition);
@@ -112,7 +114,7 @@ public class MainPanel extends JPanel {
      * Returns the composition.
      */
     public Composition getComposition() {
-        return composition;
+        return Objects.requireNonNull(composition, "composition not initialized");
     }
 
     /**
@@ -161,7 +163,7 @@ public class MainPanel extends JPanel {
      * @return The line panel, or null
      */
     @Nullable
-    public LinePanel getLinePanelAt(@NotNull Point point) {
+    public LinePanel getLinePanelAt(Point point) {
         var scoreBounds = staffPanel.getBounds();
 
         if (scoreBounds.contains(point)) {

@@ -25,8 +25,7 @@ import static songscribe.message.MessageCenter.post;
 
 import java.awt.event.MouseEvent;
 
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
 import songscribe.notification.CompositionDidChangeNotification;
@@ -139,8 +138,8 @@ public final class GraceModeManager {
     private boolean pendingConnect = false;
 
     public GraceModeManager(
-        @NotNull EditModeManager editModeManager,
-        @NotNull SelectionCoordinator selectionCoordinator
+        EditModeManager editModeManager,
+        SelectionCoordinator selectionCoordinator
     ) {
         this.editModeManager = editModeManager;
         this.selectionCoordinator = selectionCoordinator;
@@ -163,7 +162,7 @@ public final class GraceModeManager {
      * Returns whether the given element is a grace note flagged for cancellation.
      * Used by {@code LineRenderer.getElementColor()} to draw the note in red.
      */
-    public static boolean isPendingCancel(@NotNull StaffElement element) {
+    public static boolean isPendingCancel(StaffElement element) {
         return instance != null && instance.pendingCancel && element == instance.graceNote;
     }
 
@@ -222,7 +221,7 @@ public final class GraceModeManager {
     // Public event methods
     // -------------------------------------------------------------------------
 
-    public boolean mousePressed(@NotNull LineComponent lineComponent, @NotNull MouseEvent e) {
+    public boolean mousePressed(LineComponent lineComponent, MouseEvent e) {
         if (state == State.GRACE_NOTE_INSERT) {
             return true;  // Consume — prevent selection/drag handling during insert phase
         }
@@ -266,7 +265,7 @@ public final class GraceModeManager {
         return true;
     }
 
-    public boolean mouseReleased(@NotNull LineComponent lineComponent, @NotNull MouseEvent e) {
+    public boolean mouseReleased(LineComponent lineComponent, MouseEvent e) {
         if (state == State.GRACE_NOTE_INSERT) {
             return true;  // Consume — actual click logic is in mouseClicked
         }
@@ -308,7 +307,7 @@ public final class GraceModeManager {
         return true;
     }
 
-    public boolean mouseMoved(@NotNull LineComponent lineComponent, @NotNull MouseEvent e) {
+    public boolean mouseMoved(LineComponent lineComponent, MouseEvent e) {
         if (state != State.GRACE_NOTE) {
             return false;
         }
@@ -317,7 +316,7 @@ public final class GraceModeManager {
         return true;
     }
 
-    public boolean mouseDragged(@NotNull LineComponent lineComponent, @NotNull MouseEvent e) {
+    public boolean mouseDragged(LineComponent lineComponent, MouseEvent e) {
         if (state == State.GRACE_NOTE_INSERT) {
             return true;  // No drag behavior in insert phase
         }
@@ -340,7 +339,7 @@ public final class GraceModeManager {
 
         if (pendingConnect && !hasGlissando && graceNote != null) {
             graceNote.setGlissando(StaffElement.Glissando.Type.CONNECTED);
-        } else if (!pendingConnect && hasGlissando) {
+        } else if (!pendingConnect && hasGlissando && graceNote != null) {
             graceNote.removeGlissando();
         }
 
@@ -352,7 +351,7 @@ public final class GraceModeManager {
         return true;
     }
 
-    public boolean mouseClicked(@NotNull LineComponent lineComponent, @NotNull MouseEvent e) {
+    public boolean mouseClicked(LineComponent lineComponent, MouseEvent e) {
         if (!isInProgress()) {
             return false;
         }
@@ -397,7 +396,7 @@ public final class GraceModeManager {
         return true;
     }
 
-    public boolean keyPressed(@NotNull KeyEvent e) {
+    public boolean keyPressed(KeyEvent e) {
         if (!isInProgress()) {
             return false;
         }
@@ -416,8 +415,8 @@ public final class GraceModeManager {
     // -------------------------------------------------------------------------
 
     private void enterGraceNote(
-        @NotNull LineComponent lineComponent,
-        @NotNull MouseEvent e
+        LineComponent lineComponent,
+        MouseEvent e
     ) {
         // Save action states before modifying anything
         selectionCoordinator.saveActionStates();
@@ -496,6 +495,10 @@ public final class GraceModeManager {
 
         // graceLineComponent is guaranteed non-null here: getLockedInsertionXSs()
         // returns 0 when it is null, so reaching this point means it is non-null.
+        if (graceLineComponent == null) {
+            throw new AssertionError("graceLineComponent must be non-null here");
+        }
+
         InsertionElementManager.restoreInsertionElement(graceLineComponent);
     }
 
@@ -595,7 +598,7 @@ public final class GraceModeManager {
      * of the grace note's left edge. Used for cancel detection during drag and
      * click in the insert phase.
      */
-    private boolean isMouseLeftOfGraceNote(@NotNull MouseEvent e) {
+    private boolean isMouseLeftOfGraceNote(MouseEvent e) {
         int threshold = internalGetCancelThresholdPx();
         return threshold >= 0 && e.getX() <= threshold;
     }
@@ -604,7 +607,7 @@ public final class GraceModeManager {
      * Returns whether the mouse is at least {@link #GRACE_SLOP_PX} to the right
      * of the grace note's right edge. Used for connect detection during drag.
      */
-    private boolean isMouseRightOfGraceNote(@NotNull MouseEvent e) {
+    private boolean isMouseRightOfGraceNote(MouseEvent e) {
         int threshold = internalGetConnectThresholdPx();
         return threshold >= 0 && e.getX() >= threshold;
     }
@@ -659,7 +662,7 @@ public final class GraceModeManager {
             && graceLine.getElement(nextIndex).getType().isPitchedNote();
     }
 
-    private void hideInsertionAndSetDefaultCursor(@NotNull LineComponent lineComponent) {
+    private void hideInsertionAndSetDefaultCursor(LineComponent lineComponent) {
         InsertionElementManager.hideInsertionElement(false);
         lineComponent.setCursor(Cursor.getDefaultCursor());
     }

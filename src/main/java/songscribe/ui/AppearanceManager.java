@@ -26,9 +26,7 @@ import java.util.function.Consumer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
-import org.jetbrains.annotations.VisibleForTesting;
+import org.jspecify.annotations.Nullable;
 
 import com.formdev.flatlaf.FlatDarkLaf;
 import com.formdev.flatlaf.FlatLaf;
@@ -83,7 +81,7 @@ public final class AppearanceManager {
      * Switches to the theme indicated by the given preference. Called when the
      * user changes the appearance preference.
      */
-    public static void switchTheme(@NotNull Appearance preference) {
+    public static void switchTheme(Appearance preference) {
         var currentPreference = getPreference();
 
         if (preference == currentPreference) {
@@ -109,7 +107,6 @@ public final class AppearanceManager {
     /**
      * Returns the current appearance preference.
      */
-    @NotNull
     public static Appearance getPreference() {
         return Appearance.fromKey(Prefs.getInstance().getString(PREF_KEY));
     }
@@ -117,7 +114,7 @@ public final class AppearanceManager {
     /**
      * Resolves a preference to whether dark mode should be used.
      */
-    static boolean resolveIsDark(@NotNull Appearance preference) {
+    static boolean resolveIsDark(Appearance preference) {
         return switch (preference) {
             case DARK -> true;
             case LIGHT -> false;
@@ -128,15 +125,13 @@ public final class AppearanceManager {
     /**
      * Replaces the LAF operations implementation. Used by tests to inject mocks.
      */
-    @VisibleForTesting
-    static void setLafOperations(@NotNull LafOperations ops) {
+    static void setLafOperations(LafOperations ops) {
         lafOps = ops;
     }
 
     /**
      * Resets internal state. Used by tests.
      */
-    @VisibleForTesting
     static void reset() {
         unregisterOsListener();
         lafOps = new DefaultLafOperations();
@@ -151,7 +146,6 @@ public final class AppearanceManager {
         }
     }
 
-    @NotNull
     static LookAndFeel createLaf(boolean isDark) {
         if (SystemInfo.isMacOS) {
             return isDark ? new FlatMacDarkLaf() : new FlatMacLightLaf();
@@ -207,7 +201,7 @@ public final class AppearanceManager {
 
     private static class DefaultLafOperations implements LafOperations {
         @Override
-        public void installLaf(@NotNull LookAndFeel laf) throws UnsupportedLookAndFeelException {
+        public void installLaf(LookAndFeel laf) throws UnsupportedLookAndFeelException {
             UIManager.setLookAndFeel(laf);
         }
 

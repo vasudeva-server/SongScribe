@@ -24,7 +24,7 @@ import module java.desktop;
 
 import java.util.Objects;
 
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import songscribe.ui.layout.ElementBounds;
 
@@ -34,8 +34,8 @@ import songscribe.ui.layout.ElementBounds;
 public class DebugState {
 
     private static boolean inspectorEnabled = false;
-    private static HoveredElement hoveredElement = null;
-    private static Point mousePosition = null;
+    private static @Nullable HoveredElement hoveredElement = null;
+    private static @Nullable Point mousePosition = null;
 
     public static boolean isInspectorEnabled() {
         return inspectorEnabled;

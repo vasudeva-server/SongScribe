@@ -20,8 +20,7 @@
 
 package songscribe.ui.layout;
 
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import songscribe.music.StaffElement;
 
@@ -52,7 +51,7 @@ public abstract class Attachment extends LineElement {
     private @Nullable StaffElement ownerElement;
 
     /** Horizontal alignment relative to the owner element. */
-    private @NotNull Alignment alignment = Alignment.CENTER;
+    private Alignment alignment = Alignment.CENTER;
 
     /**
      * Returns the staff element this attachment belongs to.
@@ -71,14 +70,14 @@ public abstract class Attachment extends LineElement {
     /**
      * Returns the horizontal alignment relative to the note.
      */
-    public @NotNull Alignment getAlignment() {
+    public Alignment getAlignment() {
         return alignment;
     }
 
     /**
      * Sets the horizontal alignment relative to the note.
      */
-    public void setAlignment(@NotNull Alignment alignment) {
+    public void setAlignment(Alignment alignment) {
         this.alignment = alignment;
     }
 }

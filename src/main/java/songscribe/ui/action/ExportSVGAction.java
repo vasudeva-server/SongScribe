@@ -21,6 +21,8 @@ package songscribe.ui.action;
 
 import module java.desktop;
 
+import java.util.Objects;
+
 import songscribe.Strings;
 import songscribe.data.MyFileFilter;
 import songscribe.ui.dialog.PlatformFileDialog;
@@ -46,12 +48,13 @@ public class ExportSVGAction extends UIAction {
 
     @Override
     public void actionPerformed(ActionEvent e) {
-        var saveFile = FileUtils.showExportDialog(getScore(), fileDialog, "svg");
+        var score = Objects.requireNonNull(getScore());
+        var saveFile = FileUtils.showExportDialog(score, fileDialog, "svg");
 
         if (saveFile == null) {
             return;
         }
 
-        getScore().createSVG(saveFile);
+        score.createSVG(saveFile);
     }
 }

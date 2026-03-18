@@ -25,6 +25,8 @@ import module java.desktop;
 import java.util.List;
 import java.util.Objects;
 
+import org.jspecify.annotations.Nullable;
+
 import songscribe.message.MessageCenter;
 import songscribe.ui.action.UIAction;
 import songscribe.notification.MenuWillOpenNotification;
@@ -46,16 +48,16 @@ public class PopupButton
 
     // The action that is currently selected in the popup menu and is used
     // to configure the button's appearance.
-    private UIAction currentAction;
+    private @Nullable UIAction currentAction;
 
     public PopupButton(
         List<? extends UIAction> actions,
-        UIAction defaultAction
+        @Nullable UIAction defaultAction
     ) {
         this(actions.toArray(new UIAction[0]), defaultAction);
     }
 
-    public PopupButton(UIAction[] actions, UIAction defaultAction) {
+    public PopupButton(UIAction[] actions, @Nullable UIAction defaultAction) {
         super(null);
         popup = new JPopupMenu();
 
@@ -81,12 +83,17 @@ public class PopupButton
         popup.add(item);
     }
 
-    public Action getCurrentAction() {
+    public @Nullable Action getCurrentAction() {
         return currentAction;
     }
 
-    public void setCurrentAction(UIAction action) {
+    public void setCurrentAction(@Nullable UIAction action) {
         currentAction = action;
+
+        if (action == null) {
+            return;
+        }
+
         configureButtonFromAction(action);
 
         if (action instanceof UIAction.Selectable selectable) {

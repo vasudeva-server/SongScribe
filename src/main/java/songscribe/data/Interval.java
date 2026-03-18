@@ -19,12 +19,15 @@
  */
 package songscribe.data;
 
+import org.jspecify.annotations.Nullable;
+
 public class Interval {
 
     public int start, end;
+    @Nullable
     public String data;
 
-    public Interval(int start, int end, String data) {
+    public Interval(int start, int end, @Nullable String data) {
         this.start = start;
         this.end = end;
         this.data = data;
@@ -38,11 +41,12 @@ public class Interval {
         return end;
     }
 
+    @Nullable
     public String getData() {
         return data;
     }
 
-    public void setData(String data) {
+    public void setData(@Nullable String data) {
         this.data = data;
     }
 

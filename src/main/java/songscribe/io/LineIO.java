@@ -20,8 +20,9 @@
 package songscribe.io;
 
 import java.io.PrintWriter;
+import java.util.Objects;
 
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import org.xml.sax.Attributes;
 
@@ -62,17 +63,22 @@ public final class LineIO {
         pw.println("    <" + XML_LINE + '>');
         XML.setIndent(6);
 
+        var composition = Objects.requireNonNull(l.getComposition());
+        var lineKeyType = l.getKeyType();
+
         if (
-            (l.getKeyAccidentalCount() !=
-                l.getComposition().getDefaultKeyAccidentalCount()) ||
-                (l.getKeyType() != l.getComposition().getDefaultKeyType())
+            (l.getKeyAccidentalCount() != composition.getDefaultKeyAccidentalCount()) ||
+                (lineKeyType != composition.getDefaultKeyType())
         ) {
             XML.writeValue(
                 pw,
                 XML_KEYS,
                 Integer.toString(l.getKeyAccidentalCount())
             );
-            XML.writeValue(pw, XML_KEYTYPE, l.getKeyType().name());
+
+            if (lineKeyType != null) {
+                XML.writeValue(pw, XML_KEYTYPE, lineKeyType.name());
+            }
         }
 
         if (l.getElementDistChangeRatio() != 1f) {
@@ -209,11 +215,13 @@ public final class LineIO {
 
     public static class LineReader {
 
+        @Nullable
         private Line line = null;
 
         @Nullable
         private String lastTag;
 
+        @org.jetbrains.annotations.Nullable
         private StaffElementIO.StaffElementReader noteReader = null;
         private final StringBuilder value = new StringBuilder(20);
 
@@ -404,7 +412,7 @@ public final class LineIO {
                     lastTag = null;
                     noteReader = new StaffElementIO.StaffElementReader();
                 }
-            } else if (where == Where.NOTES) {
+            } else if (where == Where.NOTES && noteReader != null) {
                 noteReader.startElement11(qName, attributes);
             } else {
                 if (qName.equals(XML_NOTES)) {
@@ -419,6 +427,10 @@ public final class LineIO {
 
         @Nullable
         public Line endElement11(String qName) {
+            if (line == null || noteReader == null) {
+                return null;
+            }
+
             if (qName.equals(XML_NOTES)) {
                 where = Where.LINE;
             } else if (where == Where.NOTES) {
@@ -432,7 +444,7 @@ public final class LineIO {
                     where = null;
                     return line;
                 }
-                if (qName.equals(lastTag)) {
+                if (lastTag != null && qName.equals(lastTag)) {
                     var str = value.toString();
 
                     switch (lastTag) {
@@ -497,7 +509,7 @@ public final class LineIO {
         }
 
         public void characters(char[] ch, int start, int lenght) {
-            if (where == Where.NOTES) {
+            if (where == Where.NOTES && noteReader != null) {
                 noteReader.characters(ch, start, lenght);
             } else if (lastTag != null) {
                 value.append(ch, start, lenght);

@@ -27,8 +27,6 @@ import java.nio.file.Paths;
 import java.util.Calendar;
 import java.util.stream.IntStream;
 
-import org.jetbrains.annotations.Contract;
-import org.jetbrains.annotations.NotNull;
 
 import com.formdev.flatlaf.util.SystemInfo;
 
@@ -48,15 +46,14 @@ public final class Utils {
 
     private Utils() {}
 
-    @Contract(pure = true)
-    public static int arrayIndexOf(@NotNull Object[] array, Object element) {
+    public static int arrayIndexOf(Object[] array, Object element) {
         return IntStream.range(0, array.length)
             .filter(i -> element.equals(array[i]))
             .findFirst()
             .orElse(-1);
     }
 
-    public static int lineCount(@NotNull String str) {
+    public static int lineCount(String str) {
         if (str.isEmpty()) {
             return 0;
         }
@@ -120,8 +117,7 @@ public final class Utils {
         }
     }
 
-    @NotNull
-    public static String getPlatformKeyStrokeString(@NotNull KeyStroke key) {
+    public static String getPlatformKeyStrokeString(KeyStroke key) {
         var sb = new StringBuilder(20);
         var modifiers = key.getModifiers();
         var isMac = SystemInfo.isMacOS;
@@ -172,8 +168,7 @@ public final class Utils {
         return sb.toString();
     }
 
-    @NotNull
-    public static String getResourcePath(@NotNull String resourcePath) {
+    public static String getResourcePath(String resourcePath) {
         // Strip a leading "/" from the resource path
         var path = resourcePath;
 

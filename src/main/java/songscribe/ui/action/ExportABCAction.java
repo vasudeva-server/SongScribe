@@ -30,7 +30,9 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import org.jetbrains.annotations.NotNull;
+import java.util.Objects;
+
+import org.jspecify.annotations.Nullable;
 
 import songscribe.Version;
 import songscribe.Strings;
@@ -106,7 +108,7 @@ public class ExportABCAction extends UIAction {
 
     @Override
     public void actionPerformed(ActionEvent e) {
-        var saveFile = FileUtils.showExportDialog(getScore(), fileDialog, "abc");
+        var saveFile = FileUtils.showExportDialog(Objects.requireNonNull(getScore()), fileDialog, "abc");
 
         if (saveFile == null) {
             return;
@@ -142,7 +144,6 @@ public class ExportABCAction extends UIAction {
         return maxValueEntry.getKey();
     }
 
-    @NotNull
     private static Map<Integer, Integer> getUnitLengthMap(
         Composition composition
     ) {
@@ -182,7 +183,8 @@ public class ExportABCAction extends UIAction {
         writer.println("X:1");
         writer.println("T:" + composition.getTitle().replace('\n', ' '));
         writer.println("W:" + composition.getUnderLyrics().replace('\n', ' '));
-        writer.println("C:" + composition.getAttribution().replace('\n', ' '));
+        var attribution = Objects.requireNonNullElse(composition.getAttribution(), "");
+        writer.println("C:" + attribution.replace('\n', ' '));
         writer.println("Q:" + translateTempo(composition.getTempo()));
         writer.println(
             "L:" +
@@ -196,7 +198,7 @@ public class ExportABCAction extends UIAction {
         writer.println(
             "K:" +
                 translateKey(
-                    composition.getDefaultKeyType(),
+                    Objects.requireNonNullElse(composition.getDefaultKeyType(), KeyType.SHARPS),
                     composition.getDefaultKeyAccidentalCount()
                 )
         );
@@ -328,7 +330,7 @@ public class ExportABCAction extends UIAction {
         return sb.toString();
     }
 
-    static String translateAnnotation(Annotation annotation) {
+    static String translateAnnotation(@Nullable Annotation annotation) {
         if (annotation != null) {
             var aboveDiff = Math.abs(annotation.getYPosPx() - Annotation.ABOVE);
             var belowDiff = Math.abs(annotation.getYPosPx() - Annotation.BELOW);
@@ -500,7 +502,11 @@ public class ExportABCAction extends UIAction {
         return sb.toString();
     }
 
-    static String translateSyllable(String syllable) {
+    static String translateSyllable(@Nullable String syllable) {
+        if (syllable == null) {
+            return "";
+        }
+
         if (
             Constants.UNDERSCORE.equals(syllable) ||
                 Constants.HYPHEN.equals(syllable)
@@ -529,7 +535,7 @@ public class ExportABCAction extends UIAction {
         }
 
         @Override
-        public @NotNull String toString() {
+        public String toString() {
             return asAbcString();
         }
     }

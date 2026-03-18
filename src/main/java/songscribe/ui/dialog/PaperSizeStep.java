@@ -25,7 +25,7 @@ import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
 
-import org.jetbrains.annotations.NotNull;
+import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
 import songscribe.data.PageLayoutData;
@@ -226,7 +226,7 @@ public class PaperSizeStep extends Step {
         }
     }
 
-    public int getValueInPixels(@NotNull SpinnerModel model) {
+    public int getValueInPixels(SpinnerModel model) {
         return currentUnit.convertToPixels((Double) model.getValue());
     }
 
@@ -353,7 +353,7 @@ public class PaperSizeStep extends Step {
     private class TemplateAction implements ActionListener {
 
         @Override
-        public void actionPerformed(ActionEvent e) {
+        public void actionPerformed(@Nullable ActionEvent e) {
             if (templates.getSelectedItem() instanceof TemplateObject to) {
                 widthSpinnerModel.setValue(to.width);
                 heightSpinnerModel.setValue(to.height);
@@ -370,7 +370,7 @@ public class PaperSizeStep extends Step {
     private class MirroredAction implements ActionListener {
 
         @Override
-        public void actionPerformed(ActionEvent e) {
+        public void actionPerformed(@Nullable ActionEvent e) {
             leftInnerLabel.setText(
                 mirroredCheck.isSelected()
                     ? Strings.get(Strings.DIALOG_PAPER_SIZE_INNER)

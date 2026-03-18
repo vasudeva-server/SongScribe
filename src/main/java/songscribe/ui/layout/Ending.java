@@ -20,8 +20,7 @@
 
 package songscribe.ui.layout;
 
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import songscribe.music.StaffElement;
 
@@ -42,7 +41,7 @@ public class Ending extends RangeElement {
     }
 
     private @Nullable StaffElement endNote;
-    private @NotNull Type type = Type.FIRST;
+    private Type type = Type.FIRST;
     private int yPositionSs = 0;
 
     /**
@@ -52,7 +51,7 @@ public class Ending extends RangeElement {
      * @param endNote    The last note of the ending
      * @param type       Whether this is a first or second ending
      */
-    public Ending(@NotNull StaffElement anchorNote, @NotNull StaffElement endNote, @NotNull Type type) {
+    public Ending(StaffElement anchorNote, StaffElement endNote, Type type) {
         setAnchorElement(anchorNote);
         this.endNote = endNote;
         this.type = type;
@@ -97,14 +96,14 @@ public class Ending extends RangeElement {
     /**
      * Returns the ending type (first or second).
      */
-    public @NotNull Type getType() {
+    public Type getType() {
         return type;
     }
 
     /**
      * Sets the ending type.
      */
-    public void setType(@NotNull Type type) {
+    public void setType(Type type) {
         this.type = type;
     }
 
@@ -125,7 +124,7 @@ public class Ending extends RangeElement {
     /**
      * Returns the label text for this ending ("1." or "2.").
      */
-    public @NotNull String getLabel() {
+    public String getLabel() {
         return type == Type.FIRST ? "1." : "2.";
     }
 

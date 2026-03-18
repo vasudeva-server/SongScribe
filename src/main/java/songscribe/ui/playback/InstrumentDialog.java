@@ -23,6 +23,9 @@ import module java.desktop;
 
 import java.util.ArrayList;
 import java.util.Map;
+import java.util.Objects;
+
+import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
 import songscribe.prefs.Prefs;
@@ -118,7 +121,7 @@ public class InstrumentDialog extends StandardDialog {
     protected void setData() {
         var index = instrumentList.getSelectedIndex();
         Prefs.getInstance().put("instrument", index >= 0 ? INSTRUMENT_PROGRAMS[index] : 0);
-        getScore().syncPlaybackPrefs();
+        Objects.requireNonNull(getScore()).syncPlaybackPrefs();
     }
 
     @Override
@@ -137,7 +140,7 @@ public class InstrumentDialog extends StandardDialog {
 
     private class ScaleAction extends AbstractAction {
 
-        private MetaEventListener endListener = null;
+        private @Nullable MetaEventListener endListener = null;
 
         // Db major scale: Db4, Eb4, F4, Gb4, Ab4, Bb4, C5, Db5
         private final int[] SCALE = new int[] {
@@ -157,11 +160,13 @@ public class InstrumentDialog extends StandardDialog {
         }
 
         void stop() {
-            if (MidiController.sequencer != null && MidiController.sequencer.isRunning()) {
-                MidiController.sequencer.stop();
+            var seq = MidiController.sequencer;
+
+            if (seq != null && seq.isRunning()) {
+                seq.stop();
 
                 if (endListener != null) {
-                    MidiController.sequencer.removeMetaEventListener(endListener);
+                    seq.removeMetaEventListener(endListener);
                     endListener = null;
                 }
 
@@ -171,11 +176,13 @@ public class InstrumentDialog extends StandardDialog {
 
         @Override
         public void actionPerformed(ActionEvent e) {
-            if (MidiController.sequencer == null) {
+            var seq = MidiController.sequencer;
+
+            if (seq == null) {
                 return;
             }
 
-            if (MidiController.sequencer.isRunning()) {
+            if (seq.isRunning()) {
                 stop();
                 return;
             }
@@ -226,21 +233,21 @@ public class InstrumentDialog extends StandardDialog {
                     track.add(new MidiEvent(up, ticks));
                 }
 
-                MidiController.sequencer.setSequence(sequence);
-                MidiController.sequencer.setTickPosition(0);
+                seq.setSequence(sequence);
+                seq.setTickPosition(0);
 
                 setScalePlaying(true);
 
                 endListener = message -> {
                     if (message.getType() == MidiMetaMessageTypes.END_OF_TRACK) {
-                        MidiController.sequencer.removeMetaEventListener(endListener);
+                        seq.removeMetaEventListener(endListener);
                         endListener = null;
                         SwingUtilities.invokeLater(() -> setScalePlaying(false));
                     }
                 };
 
-                MidiController.sequencer.addMetaEventListener(endListener);
-                MidiController.sequencer.start();
+                seq.addMetaEventListener(endListener);
+                seq.start();
             } catch (InvalidMidiDataException ex) {
                 Dialogs.showErrorMessage(
                     getMainFrame(),

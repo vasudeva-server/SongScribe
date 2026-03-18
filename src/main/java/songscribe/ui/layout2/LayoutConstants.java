@@ -20,7 +20,8 @@
 
 package songscribe.ui.layout2;
 
-import org.jetbrains.annotations.NotNull;
+import java.util.Objects;
+
 
 import songscribe.music.ElementType;
 import songscribe.music.StaffElement;
@@ -43,6 +44,7 @@ import songscribe.smufl.SMuFLMetadata;
  *   <li>Accidentals only increase spacing when minimum clearance would be violated</li>
  * </ul>
  */
+@SuppressWarnings("NullAway.Init")
 public final class LayoutConstants {
 
     private LayoutConstants() {
@@ -324,16 +326,13 @@ public final class LayoutConstants {
         var metadata = SMuFLMetadata.getInstance();
         STEM_WIDTH_SS = metadata.getEngravingDefaults().stemThickness();
 
-        var blackAnchors = metadata.getAnchors(SMuFLGlyph.NOTEHEAD_BLACK);
-        var halfAnchors = metadata.getAnchors(SMuFLGlyph.NOTEHEAD_HALF);
+        var blackAnchors = Objects.requireNonNull(metadata.getAnchors(SMuFLGlyph.NOTEHEAD_BLACK));
+        var halfAnchors = Objects.requireNonNull(metadata.getAnchors(SMuFLGlyph.NOTEHEAD_HALF));
 
-        assert blackAnchors != null && blackAnchors.stemUpSE() != null && blackAnchors.stemDownNW() != null;
-        assert halfAnchors != null && halfAnchors.stemUpSE() != null && halfAnchors.stemDownNW() != null;
-
-        STEM_UP_SE_BLACK = blackAnchors.stemUpSE();
-        STEM_DOWN_NW_BLACK = blackAnchors.stemDownNW();
-        STEM_UP_SE_HALF = halfAnchors.stemUpSE();
-        STEM_DOWN_NW_HALF = halfAnchors.stemDownNW();
+        STEM_UP_SE_BLACK = Objects.requireNonNull(blackAnchors.stemUpSE());
+        STEM_DOWN_NW_BLACK = Objects.requireNonNull(blackAnchors.stemDownNW());
+        STEM_UP_SE_HALF = Objects.requireNonNull(halfAnchors.stemUpSE());
+        STEM_DOWN_NW_HALF = Objects.requireNonNull(halfAnchors.stemDownNW());
         STEM_UP_SE_BLACK_SMALL = new GlyphAnchors.Anchor(
             STEM_UP_SE_BLACK.x() * GRACE_NOTE_SCALE,
             STEM_UP_SE_BLACK.y() * GRACE_NOTE_SCALE
@@ -358,7 +357,7 @@ public final class LayoutConstants {
      * @param note The note to check
      * @return The overhang in staff-space units, or 0 if no ledger lines are needed
      */
-    public static double getLedgerLineOverhangSs(@NotNull StaffElement note) {
+    public static double getLedgerLineOverhangSs(StaffElement note) {
         if (Math.abs(note.getStaffPosition()) <= 5 || !note.getType().drawStaveLongitude()) {
             return 0.0;
         }
@@ -400,8 +399,7 @@ public final class LayoutConstants {
      * @param upper    true for stem-up, false for stem-down
      * @return The base stem geometry
      */
-    @NotNull
-    public static StemGeometry computeBaseStemGeometry(@NotNull ElementType noteType, boolean upper) {
+    public static StemGeometry computeBaseStemGeometry(ElementType noteType, boolean upper) {
         boolean isMinim = noteType == ElementType.MINIM;
         boolean isGrace = noteType.isGraceNote();
 

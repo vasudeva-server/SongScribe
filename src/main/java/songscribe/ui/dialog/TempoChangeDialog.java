@@ -21,14 +21,19 @@ package songscribe.ui.dialog;
 
 import module java.desktop;
 
+import java.util.Objects;
+
+import org.jspecify.annotations.Nullable;
+
 import songscribe.Strings;
 import songscribe.music.StaffElement;
 import songscribe.music.Tempo;
+import songscribe.util.FatalError;
 import songscribe.util.FileUtils;
 
 public class TempoChangeDialog extends StandardDialog {
 
-    private StaffElement selectedElement = null;
+    private @Nullable StaffElement selectedElement = null;
     private final JLabel indexOfSelectedElementLabel = new JLabel();
     private final JComboBox<?> tempoTypeCombo;
     private final SpinnerModel tempoSpinner = new SpinnerNumberModel(
@@ -86,8 +91,8 @@ public class TempoChangeDialog extends StandardDialog {
         var south = new JPanel(new FlowLayout(FlowLayout.RIGHT, 13, 0));
         removeButton = new JButton(Strings.get(Strings.LABEL_BUTTON_REMOVE));
         removeButton.addActionListener(_ -> {
-            var score = getScore();
-            selectedElement.setTempoChange(null);
+            var score = Objects.requireNonNull(getScore());
+            Objects.requireNonNull(selectedElement).setTempoChange(null);
             setVisible(false);
             score.repaint();
             score.getComposition().setModified(true);
@@ -101,35 +106,44 @@ public class TempoChangeDialog extends StandardDialog {
 
     @Override
     protected void getData() {
-        var score = getScore();
-        selectedElement = score.getSingleSelectedElement();
+        var score = Objects.requireNonNull(getScore());
+        var element = score.getSingleSelectedElement();
+        selectedElement = element;
 
         // This should never happen, but make Java happy
-        if (selectedElement == null) {
+        if (element == null) {
             return;
         }
 
-        var tempoChange = selectedElement.getTempoChange();
+        var tempoChange = element.getTempoChange();
         var addingTempoChange = tempoChange == null;
 
         if (addingTempoChange) {
             tempoChange = new Tempo(144, Tempo.Type.CROTCHET, "Slower", true);
         }
 
+        var line = element.getLine();
+
+        if (line == null) {
+            FatalError.exit("Selected element has no line");
+            throw new AssertionError("unreachable");
+        }
+
         indexOfSelectedElementLabel.setText(
             Strings.get(
                 Strings.DIALOG_TEMPO_CHANGE_INDEX,
-                score.getComposition().indexOfLine(selectedElement.getLine()) + 1,
-                selectedElement.getLine().getElementIndex(selectedElement) + 1
+                score.getComposition().indexOfLine(line) + 1,
+                line.getElementIndex(element) + 1
             )
         );
 
-        tempoTypeCombo.setSelectedIndex(tempoChange.getTempoType().ordinal());
-        tempoSpinner.setValue(tempoChange.getVisibleTempo());
+        var resolvedTempoChange = Objects.requireNonNull(tempoChange);
+        tempoTypeCombo.setSelectedIndex(resolvedTempoChange.getTempoType().ordinal());
+        tempoSpinner.setValue(resolvedTempoChange.getVisibleTempo());
         tempoDescriptionCombo.setSelectedItem(
-            tempoChange.getTempoDescription()
+            resolvedTempoChange.getTempoDescription()
         );
-        showOnlyDescriptionCheckBox.setSelected(!tempoChange.shouldShowTempo());
+        showOnlyDescriptionCheckBox.setSelected(!resolvedTempoChange.shouldShowTempo());
         removeButton.setEnabled(!addingTempoChange);
 
         if (addingTempoChange) {
@@ -143,7 +157,7 @@ public class TempoChangeDialog extends StandardDialog {
 
     @Override
     protected void setData() {
-        selectedElement.setTempoChange(
+        Objects.requireNonNull(selectedElement).setTempoChange(
             new Tempo(
                 ((Integer) tempoSpinner.getValue()),
                 (Tempo.Type) tempoTypeCombo.getSelectedItem(),

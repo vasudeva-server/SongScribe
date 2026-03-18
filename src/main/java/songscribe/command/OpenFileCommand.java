@@ -24,18 +24,15 @@ import songscribe.message.Message;
 
 import java.io.File;
 
-import org.jetbrains.annotations.NotNull;
 
 public class OpenFileCommand extends Message {
 
-    @NotNull
     private final File file;
 
-    public OpenFileCommand(@NotNull File file) {
+    public OpenFileCommand(File file) {
         this.file = file;
     }
 
-    @NotNull
     public File getFile() {
         return file;
     }

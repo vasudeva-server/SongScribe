@@ -25,9 +25,9 @@ import module java.desktop;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import songscribe.ui.layout.Articulation;
 import songscribe.ui.layout.Attachment;
@@ -108,8 +108,11 @@ public class StaffElement extends LineElement implements Cloneable {
     protected int dotCount = 0;
     protected Accidental accidental = Accidental.NONE;
     protected boolean isAccidentalInParentheses = false;
+    @Nullable
     protected Tempo tempoChange = null;
+    @Nullable
     protected BeatChange beatChange = null;
+    @Nullable
     protected Annotation annotation = null;
     protected boolean upper = false;
     protected boolean trill = false;
@@ -120,6 +123,7 @@ public class StaffElement extends LineElement implements Cloneable {
     private boolean stemDirectionAuto = true;
 
     // The line which owns this note
+    @Nullable
     protected Line line = null;
 
     // ========================================================================
@@ -132,6 +136,7 @@ public class StaffElement extends LineElement implements Cloneable {
     /** Attachments on this note (tempo, fermata, dynamics, etc.) */
     private final List<Attachment> attachments = new ArrayList<>();
 
+    @Nullable
     private ElementType type;
 
     protected StaffElement() {
@@ -146,7 +151,7 @@ public class StaffElement extends LineElement implements Cloneable {
      * Uses a whitelist strategy: new attributes added to Note in the future default to
      * missing (visible, safe) rather than stale (invisible, potentially corrupt).
      */
-    public StaffElement(@NotNull ElementType targetType, @NotNull StaffElement source) {
+    public StaffElement(ElementType targetType, StaffElement source) {
         this.type = targetType;
 
         // Always copy
@@ -183,7 +188,7 @@ public class StaffElement extends LineElement implements Cloneable {
         setParentLine(source.getParentLine());
     }
 
-    protected StaffElement(@NotNull StaffElement note) {
+    protected StaffElement(StaffElement note) {
         type = note.type;
         xOffset = note.xOffset;
         staffPosition = note.staffPosition;
@@ -213,7 +218,7 @@ public class StaffElement extends LineElement implements Cloneable {
     }
 
     public ElementType getType() {
-        return type;
+        return Objects.requireNonNull(type, "type not initialized");
     }
 
     void initType(ElementType noteType) {
@@ -226,7 +231,7 @@ public class StaffElement extends LineElement implements Cloneable {
     }
 
     public int getDefaultDuration() {
-        return type.getDefaultDuration();
+        return getType().getDefaultDuration();
     }
 
     // ========================================================================
@@ -238,16 +243,16 @@ public class StaffElement extends LineElement implements Cloneable {
 
     @Override
     public double getContentWidth() {
-        return ScaleContext.getInstance().toPixels(type.getElementWidthSs());
+        return ScaleContext.getInstance().toPixels(getType().getElementWidthSs());
     }
 
     public double getContentCenterX() {
-        return ScaleContext.getInstance().toPixels(type.getCenterXSs());
+        return ScaleContext.getInstance().toPixels(getType().getCenterXSs());
     }
 
     @Override
     public double getContentHeight() {
-        return ScaleContext.getInstance().toPixels(type.getElementHeightSs(upper));
+        return ScaleContext.getInstance().toPixels(getType().getElementHeightSs(upper));
     }
 
     // ========================================================================
@@ -257,14 +262,14 @@ public class StaffElement extends LineElement implements Cloneable {
     /**
      * Returns an unmodifiable view of the articulations on this note.
      */
-    public @NotNull List<Articulation> getArticulations() {
+    public List<Articulation> getArticulations() {
         return Collections.unmodifiableList(articulations);
     }
 
     /**
      * Adds an articulation to this element.
      */
-    public void addArticulation(@NotNull Articulation articulation) {
+    public void addArticulation(Articulation articulation) {
         articulation.setOwnerElement(this);
         articulation.setParentElement(this);
         articulation.setParentLine(getParentLine());
@@ -275,7 +280,7 @@ public class StaffElement extends LineElement implements Cloneable {
     /**
      * Removes an articulation from this element.
      */
-    public boolean removeArticulation(@NotNull Articulation articulation) {
+    public boolean removeArticulation(Articulation articulation) {
         if (articulations.remove(articulation)) {
             articulation.setOwnerElement(null);
             removeChild(articulation);
@@ -289,7 +294,7 @@ public class StaffElement extends LineElement implements Cloneable {
     /**
      * Returns true if this note has an articulation of the given type.
      */
-    public boolean hasArticulation(@NotNull ArticulationType type) {
+    public boolean hasArticulation(ArticulationType type) {
         for (var articulation : articulations) {
             if (articulation.getType() == type) {
                 return true;
@@ -332,14 +337,14 @@ public class StaffElement extends LineElement implements Cloneable {
     /**
      * Returns an unmodifiable view of the attachments on this note.
      */
-    public @NotNull List<Attachment> getAttachments() {
+    public List<Attachment> getAttachments() {
         return Collections.unmodifiableList(attachments);
     }
 
     /**
      * Adds an attachment to this note.
      */
-    public void addAttachment(@NotNull Attachment attachment) {
+    public void addAttachment(Attachment attachment) {
         attachment.setOwnerElement(this);
         attachment.setOwnerElement(this);
         attachment.setParentLine(getParentLine());
@@ -350,7 +355,7 @@ public class StaffElement extends LineElement implements Cloneable {
     /**
      * Removes an attachment from this note.
      */
-    public boolean removeAttachment(@NotNull Attachment attachment) {
+    public boolean removeAttachment(Attachment attachment) {
         if (attachments.remove(attachment)) {
             attachment.setOwnerElement(null);
             removeChild(attachment);
@@ -377,7 +382,7 @@ public class StaffElement extends LineElement implements Cloneable {
      * Finds the first attachment of the specified type.
      */
     @SuppressWarnings("unchecked")
-    public <T extends Attachment> @Nullable T findAttachment(@NotNull Class<T> type) {
+    public <T extends Attachment> @Nullable T findAttachment(Class<T> type) {
         for (var attachment : attachments) {
             if (type.isInstance(attachment)) {
                 return (T) attachment;
@@ -504,19 +509,19 @@ public class StaffElement extends LineElement implements Cloneable {
         glissando = NO_GLISSANDO;
     }
 
-    public Tempo getTempoChange() {
+    public @Nullable Tempo getTempoChange() {
         return tempoChange;
     }
 
-    public void setTempoChange(Tempo tempoChange) {
+    public void setTempoChange(@Nullable Tempo tempoChange) {
         this.tempoChange = tempoChange;
     }
 
-    public BeatChange getBeatChange() {
+    public @Nullable BeatChange getBeatChange() {
         return beatChange;
     }
 
-    public void setBeatChange(BeatChange beatChange) {
+    public void setBeatChange(@Nullable BeatChange beatChange) {
         this.beatChange = beatChange;
     }
 
@@ -528,11 +533,11 @@ public class StaffElement extends LineElement implements Cloneable {
         this.upper = upper;
     }
 
-    public Annotation getAnnotation() {
+    public @Nullable Annotation getAnnotation() {
         return annotation;
     }
 
-    public void setAnnotation(Annotation annotation) {
+    public void setAnnotation(@Nullable Annotation annotation) {
         this.annotation = annotation;
     }
 
@@ -611,7 +616,6 @@ public class StaffElement extends LineElement implements Cloneable {
         return accidental;
     }
 
-    @NotNull
     private Accidental getAccidental(Line line) {
         if (line.keyExists(getPitchIndex())) {
             return (line.getKeyType() == KeyType.FLATS)
@@ -639,7 +643,7 @@ public class StaffElement extends LineElement implements Cloneable {
         return (int) (getDefaultDurationWithDots() * (fermata ? 1.5f : 1.0f));
     }
 
-    public Line getLine() {
+    public @Nullable Line getLine() {
         return line;
     }
 
@@ -648,6 +652,10 @@ public class StaffElement extends LineElement implements Cloneable {
     }
 
     public Accidental findLastAccidental() {
+        if (line == null) {
+            return Accidental.NONE;
+        }
+
         for (var i = line.getElementIndex(this) - 1; i >= 0; i--) {
             var note = line.getElement(i);
 
@@ -673,12 +681,13 @@ public class StaffElement extends LineElement implements Cloneable {
         NATURAL_FLAT("Natural flat", 2, 0, 1),
         NATURAL_SHARP("Natural sharp", 2, 0, 2);
 
+        @Nullable
         private final String displayName;
         private final int widthFactor;
         private final int[] components = new int[2];
 
         Accidental(
-            String displayName,
+            @Nullable String displayName,
             int widthFactor,
             int firstComponent,
             int secondComponent
@@ -689,7 +698,7 @@ public class StaffElement extends LineElement implements Cloneable {
             components[1] = secondComponent;
         }
 
-        public String getDisplayName() {
+        public @Nullable String getDisplayName() {
             return displayName;
         }
 
@@ -752,7 +761,9 @@ public class StaffElement extends LineElement implements Cloneable {
     public static class Properties {
 
         // Lyrics
+        @Nullable
         public String syllable = null;
+        @Nullable
         public SyllableRelation syllableRelation = null;
         public float longDashPosition = 0.0F;
 

@@ -24,7 +24,7 @@ import songscribe.message.Message;
 
 import java.awt.*;
 
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 
 public class FontDidChangeNotification extends Message {
 

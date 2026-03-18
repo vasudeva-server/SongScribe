@@ -25,7 +25,6 @@ import static songscribe.ui.renderer.GraphicsState.Property.STROKE;
 
 import module java.desktop;
 
-import org.jetbrains.annotations.NotNull;
 
 import songscribe.data.DynamicsInterval;
 import songscribe.music.Line;
@@ -75,7 +74,7 @@ public class DynamicsRenderer extends BaseElementRenderer<LineElement> {
     /**
      * Returns the singleton instance.
      */
-    public static @NotNull DynamicsRenderer getInstance() {
+    public static DynamicsRenderer getInstance() {
         return INSTANCE;
     }
 
@@ -85,9 +84,9 @@ public class DynamicsRenderer extends BaseElementRenderer<LineElement> {
 
     @Override
     protected void renderElement(
-        @NotNull LineElement element,
-        @NotNull Graphics2D g2,
-        @NotNull ElementRenderContext ctx
+        LineElement element,
+        Graphics2D g2,
+        ElementRenderContext ctx
     ) {
         if (element instanceof Crescendo crescendo) {
             renderCrescendo(crescendo, g2, ctx);
@@ -97,9 +96,9 @@ public class DynamicsRenderer extends BaseElementRenderer<LineElement> {
     }
 
     private void renderCrescendo(
-        @NotNull Crescendo element,
-        @NotNull Graphics2D g2,
-        @NotNull ElementRenderContext ctx
+        Crescendo element,
+        Graphics2D g2,
+        ElementRenderContext ctx
     ) {
         var anchorNote = element.getAnchorElement();
         var endNote = element.getEndElement();
@@ -113,9 +112,9 @@ public class DynamicsRenderer extends BaseElementRenderer<LineElement> {
     }
 
     private void renderDiminuendo(
-        @NotNull Diminuendo element,
-        @NotNull Graphics2D g2,
-        @NotNull ElementRenderContext ctx
+        Diminuendo element,
+        Graphics2D g2,
+        ElementRenderContext ctx
     ) {
         var anchorNote = element.getAnchorElement();
         var endNote = element.getEndElement();
@@ -132,8 +131,8 @@ public class DynamicsRenderer extends BaseElementRenderer<LineElement> {
      * Gets the Y shift for a dynamics element from layout result.
      */
     private int getEffectiveDynamicsYShiftPx(
-        @NotNull LineElement element,
-        @NotNull ElementRenderContext ctx
+        LineElement element,
+        ElementRenderContext ctx
     ) {
         var layoutResult = ctx.getLayoutResult();
 
@@ -166,10 +165,10 @@ public class DynamicsRenderer extends BaseElementRenderer<LineElement> {
      * @param yShift       Vertical shift
      */
     public void renderHairpin(
-        @NotNull Graphics2D g2,
-        @NotNull ElementRenderContext ctx,
-        @NotNull StaffElement startNote,
-        @NotNull StaffElement endNote,
+        Graphics2D g2,
+        ElementRenderContext ctx,
+        StaffElement startNote,
+        StaffElement endNote,
         boolean isCrescendo,
         double x1Shift,
         double x2Shift,
@@ -206,9 +205,9 @@ public class DynamicsRenderer extends BaseElementRenderer<LineElement> {
      * Renders crescendos from Line's interval data.
      */
     public void renderCrescendosFromLine(
-        @NotNull Graphics2D g2,
-        @NotNull Line line,
-        @NotNull ElementRenderContext ctx
+        Graphics2D g2,
+        Line line,
+        ElementRenderContext ctx
     ) {
         renderDynamicsFromInterval(g2, line, ctx, line.getCrescendos(), true);
     }
@@ -217,18 +216,18 @@ public class DynamicsRenderer extends BaseElementRenderer<LineElement> {
      * Renders diminuendos from Line's interval data.
      */
     public void renderDiminuendosFromLine(
-        @NotNull Graphics2D g2,
-        @NotNull Line line,
-        @NotNull ElementRenderContext ctx
+        Graphics2D g2,
+        Line line,
+        ElementRenderContext ctx
     ) {
         renderDynamicsFromInterval(g2, line, ctx, line.getDiminuendos(), false);
     }
 
     private void renderDynamicsFromInterval(
-        @NotNull Graphics2D g2,
-        @NotNull Line line,
-        @NotNull ElementRenderContext ctx,
-        @NotNull songscribe.data.IntervalSet<DynamicsInterval> dynamics,
+        Graphics2D g2,
+        Line line,
+        ElementRenderContext ctx,
+        songscribe.data.IntervalSet<DynamicsInterval> dynamics,
         boolean isCrescendo
     ) {
         for (var iter = dynamics.listIterator(); iter.hasNext(); ) {

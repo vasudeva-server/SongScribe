@@ -25,7 +25,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,16 +35,16 @@ public class ArgumentReader<T> {
 
     private final String[] args;
     private final Class<? extends T> klass;
-    private T obj = null;
+    private @Nullable T obj = null;
     private FileType fileType = FileType.NONE;
-    private Field fileField = null;
+    private @Nullable Field fileField = null;
 
     public ArgumentReader(String[] args, Class<? extends T> klass) {
         this.args = args;
         this.klass = klass;
     }
 
-    public T getObj() {
+    public @Nullable T getObj() {
         if (obj == null) {
             parseArguments();
         }
@@ -128,14 +128,14 @@ public class ArgumentReader<T> {
                 if (f == null) {
                     System.out.println("Bad argument: " + arg);
                     System.exit(-1);
+                } else {
+                    setField(
+                        f,
+                        (equalPos < arg.length())
+                            ? arg.substring(equalPos + 1)
+                            : null
+                    );
                 }
-
-                setField(
-                    f,
-                    (equalPos < arg.length())
-                        ? arg.substring(equalPos + 1)
-                        : null
-                );
             }
 
             // Read the files
@@ -166,10 +166,12 @@ public class ArgumentReader<T> {
                     System.exit(-1);
                 }
 
-                if (fileType == FileType.SINGLE) {
-                    fileField.set(obj, files.getFirst());
-                } else {
-                    fileField.set(obj, files.toArray(new File[0]));
+                if (fileField != null) {
+                    if (fileType == FileType.SINGLE) {
+                        fileField.set(obj, files.getFirst());
+                    } else {
+                        fileField.set(obj, files.toArray(new File[0]));
+                    }
                 }
             }
         } catch (InstantiationException | IllegalAccessException e) {
@@ -188,7 +190,7 @@ public class ArgumentReader<T> {
         }
     }
 
-    private void setField(Field field, String value) {
+    private void setField(Field field, @Nullable String value) {
         var t = field.getType().getSimpleName();
 
         try {

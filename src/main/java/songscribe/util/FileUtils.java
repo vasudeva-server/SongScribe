@@ -35,7 +35,7 @@ import java.util.zip.ZipOutputStream;
 
 import com.formdev.flatlaf.util.SystemInfo;
 
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
 import songscribe.data.MyDesktop;
@@ -236,7 +236,7 @@ public final class FileUtils {
     public static void zipFile(
         ZipOutputStream zos,
         File file,
-        String requestName,
+        @Nullable String requestName,
         byte[] buf
     ) throws IOException, FileNotFoundException {
         var fileName = (requestName == null) ? file.getName() : requestName;

@@ -22,6 +22,7 @@ package songscribe.converter;
 import java.io.File;
 import java.io.PrintWriter;
 
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -34,15 +35,27 @@ public class AbcConverter {
     private static final Logger LOG = LoggerFactory.getLogger(AbcConverter.class);
 
     @FileArgument
-    public File file = null;
+    public @Nullable File file = null;
 
     public static void main(String[] args) {
         SongScribe.configureLogging();
         var reader = new ArgumentReader<>(args, AbcConverter.class);
-        reader.getObj().convert(new PrintWriter(System.out));
+        var converter = reader.getObj();
+
+        if (converter == null) {
+            LOG.error("Failed to parse arguments");
+            return;
+        }
+
+        converter.convert(new PrintWriter(System.out));
     }
 
     public void convert(PrintWriter writer) {
+        if (file == null) {
+            LOG.error("No file specified");
+            return;
+        }
+
         try {
             var composition = CompositionLoader.load(file);
             ExportABCAction.writeABC(composition, writer);

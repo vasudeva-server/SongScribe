@@ -22,7 +22,6 @@ package songscribe.midi;
 
 import module java.desktop;
 
-import org.jetbrains.annotations.NotNull;
 
 import songscribe.music.Composition;
 import songscribe.music.ElementType;
@@ -48,7 +47,7 @@ public class MidiSequenceBuilder {
      * @param composition The composition to build a sequence from
      * @param settings Playback settings (instrument, tempo adjustment, note duration, colorize)
      */
-    public MidiSequenceBuilder(@NotNull Composition composition, @NotNull PlaybackSettings settings) {
+    public MidiSequenceBuilder(Composition composition, PlaybackSettings settings) {
         this.composition = composition;
         this.settings = settings;
     }

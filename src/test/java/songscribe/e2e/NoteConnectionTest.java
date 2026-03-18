@@ -27,6 +27,7 @@ import module java.desktop;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 import org.assertj.swing.edt.GuiActionRunner;
 import org.junit.jupiter.api.Test;
@@ -76,11 +77,11 @@ class NoteConnectionTest extends E2ETest {
             enterSelectMode();
             clickAt(midpoint(0, Element.PAIR_B_SRC.ordinal(), Element.PAIR_B_TGT.ordinal()));
 
-            var lss = score().getLineComponent(0).getLineSelectionState();
+            var lss = Objects.requireNonNull(score().getLineComponent(0)).getLineSelectionState();
             assertAll(
-                () -> assertThat(lss.hasGlissandoSelection())
+                () -> assertThat(Objects.requireNonNull(lss).hasGlissandoSelection())
                     .as("1: glissando selected by click").isTrue(),
-                () -> assertThat(lss.getSelectedGlissandoElementIndex())
+                () -> assertThat(Objects.requireNonNull(lss).getSelectedGlissandoElementIndex())
                     .as("2: correct element index").isEqualTo(Element.PAIR_B_SRC.ordinal())
             );
         });
@@ -88,8 +89,8 @@ class NoteConnectionTest extends E2ETest {
         debugStep("3: Source note selection", () -> {
             clickAt(noteScreenPosition(0, Element.PAIR_B_SRC.ordinal()));
 
-            var lss = score().getLineComponent(0).getLineSelectionState();
-            assertThat(lss.isElementSelected(Element.PAIR_B_SRC.ordinal()))
+            var lss = Objects.requireNonNull(score().getLineComponent(0)).getLineSelectionState();
+            assertThat(Objects.requireNonNull(lss).isElementSelected(Element.PAIR_B_SRC.ordinal()))
                 .as("3: source note selected").isTrue();
 
             var note = composition().getLine(0).getElement(Element.PAIR_B_SRC.ordinal());
@@ -101,8 +102,8 @@ class NoteConnectionTest extends E2ETest {
         debugStep("4: Target note selection", () -> {
             clickAt(noteScreenPosition(0, Element.PAIR_B_TGT.ordinal()));
 
-            var lss = score().getLineComponent(0).getLineSelectionState();
-            assertThat(lss.isElementSelected(Element.PAIR_B_TGT.ordinal()))
+            var lss = Objects.requireNonNull(score().getLineComponent(0)).getLineSelectionState();
+            assertThat(Objects.requireNonNull(lss).isElementSelected(Element.PAIR_B_TGT.ordinal()))
                 .as("4: target note selected").isTrue();
 
             var sourceNote = composition().getLine(0).getElement(Element.PAIR_B_SRC.ordinal());
@@ -128,8 +129,8 @@ class NoteConnectionTest extends E2ETest {
             var reloadedTie = reloadedLine.getTies().findInterval(Element.TIED_1.ordinal());
             assertAll(
                 () -> assertThat(reloadedTie).as("6: save/load: tie preserved").isNotNull(),
-                () -> assertThat(reloadedTie.getStart()).as("7: tie start").isEqualTo(Element.TIED_1.ordinal()),
-                () -> assertThat(reloadedTie.getEnd()).as("7: tie end").isEqualTo(Element.TIED_2.ordinal())
+                () -> assertThat(Objects.requireNonNull(reloadedTie).getStart()).as("7: tie start").isEqualTo(Element.TIED_1.ordinal()),
+                () -> assertThat(Objects.requireNonNull(reloadedTie).getEnd()).as("7: tie end").isEqualTo(Element.TIED_2.ordinal())
             );
         });
 
@@ -217,11 +218,11 @@ class NoteConnectionTest extends E2ETest {
             triggerAction(Actions.TOGGLE_TIE_ACTION);
             performLayout(0);
 
-            var lss = score().getLineComponent(0).getLineSelectionState();
+            var lss = Objects.requireNonNull(score().getLineComponent(0)).getLineSelectionState();
             assertAll(
                 () -> assertThat(isTied(0, Element.EIGHTH_1.ordinal())).as("16a: note 1 tied").isTrue(),
                 () -> assertThat(isTied(0, Element.EIGHTH_2.ordinal())).as("16b: note 2 tied").isTrue(),
-                () -> assertThat(lss.canToggleTie()).as("17: can toggle tie").isTrue()
+                () -> assertThat(Objects.requireNonNull(lss).canToggleTie()).as("17: can toggle tie").isTrue()
             );
         });
 
@@ -333,9 +334,9 @@ class NoteConnectionTest extends E2ETest {
 
         debugStep("29: Drag to unison removes glissando", () -> {
             enterEditMode();
-            var targetSp = GuiActionRunner.execute(
+            var targetSp = Objects.requireNonNull(GuiActionRunner.execute(
                 () -> composition().getLine(0).getElement(Element.PAIR_C_TGT.ordinal()).getStaffPosition()
-            );
+            ));
 
             dragNote(0, Element.PAIR_C_SRC.ordinal(), targetSp);
             performLayout(0);
@@ -352,8 +353,8 @@ class NoteConnectionTest extends E2ETest {
             enterSelectMode();
             clickAt(midpoint(0, Element.PAIR_D_SRC.ordinal(), Element.PAIR_D_TGT.ordinal()));
 
-            var lss = score().getLineComponent(0).getLineSelectionState();
-            assertThat(lss.hasGlissandoSelection()).as("30: glissando selected").isTrue();
+            var lss = Objects.requireNonNull(score().getLineComponent(0)).getLineSelectionState();
+            assertThat(Objects.requireNonNull(lss).hasGlissandoSelection()).as("30: glissando selected").isTrue();
 
             robot.pressAndReleaseKey(KeyEvent.VK_DELETE);
             performLayout(0);
@@ -365,9 +366,9 @@ class NoteConnectionTest extends E2ETest {
         });
 
         debugStep("31: Delete source note (pair E)", () -> {
-            var countBefore = GuiActionRunner.execute(
+            var countBefore = Objects.requireNonNull(GuiActionRunner.execute(
                 () -> composition().getLine(0).elementCount()
-            );
+            ));
 
             clickAt(noteScreenPosition(0, Element.PAIR_E_SRC.ordinal()));
             robot.pressAndReleaseKey(KeyEvent.VK_DELETE);
@@ -385,9 +386,9 @@ class NoteConnectionTest extends E2ETest {
 
         debugStep("32: Delete target note (pair F)", () -> {
             // After previous deletion: pair F source and target each shifted down by 1
-            var countBefore = GuiActionRunner.execute(
+            var countBefore = Objects.requireNonNull(GuiActionRunner.execute(
                 () -> composition().getLine(0).elementCount()
-            );
+            ));
 
             clickAt(noteScreenPosition(0, Element.PAIR_F_TGT.ordinal() - 1));
             robot.pressAndReleaseKey(KeyEvent.VK_DELETE);
@@ -413,13 +414,13 @@ class NoteConnectionTest extends E2ETest {
      * UI actions, which must happen on the EDT.
      */
     private Composition roundTripOnEdt() {
-        return GuiActionRunner.execute(() -> {
+        return Objects.requireNonNull(GuiActionRunner.execute(() -> {
             try {
                 return roundTrip(composition());
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }
-        });
+        }));
     }
 
     // -- Coordinate helpers --
@@ -442,7 +443,7 @@ class NoteConnectionTest extends E2ETest {
 
     private Track buildMidiTrack() throws Exception {
         var line = composition().getLine(0);
-        var tempo = line.getElement(0).getTempoChange();
+        var tempo = Objects.requireNonNull(line.getElement(0).getTempoChange());
         var sequence = new Sequence(Sequence.PPQ, 96);
         var track = sequence.createTrack();
         line.addToTrack(track, 0, 0, tempo, DEFAULT_SETTINGS);

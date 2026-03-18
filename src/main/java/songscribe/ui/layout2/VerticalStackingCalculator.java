@@ -25,8 +25,8 @@ import module java.desktop;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
-import org.jetbrains.annotations.NotNull;
 
 import songscribe.music.Line;
 import songscribe.music.StaffElement;
@@ -62,11 +62,11 @@ public class VerticalStackingCalculator {
     // Note head dimensions from SMuFL noteheadBlack bounding box
     private static final double NOTE_HEAD_WIDTH_PX =
         StaffSpaces.toPixels(
-            SMuFLMetadata.getInstance().getBBox(SMuFLGlyph.NOTEHEAD_BLACK).width());
+            Objects.requireNonNull(SMuFLMetadata.getInstance().getBBox(SMuFLGlyph.NOTEHEAD_BLACK)).width());
 
     private static final double NOTE_HEAD_HEIGHT_PX =
         StaffSpaces.toPixels(
-            SMuFLMetadata.getInstance().getBBox(SMuFLGlyph.NOTEHEAD_BLACK).height());
+            Objects.requireNonNull(SMuFLMetadata.getInstance().getBBox(SMuFLGlyph.NOTEHEAD_BLACK)).height());
 
     /**
      * Creates a new vertical stacking calculator.
@@ -85,9 +85,9 @@ public class VerticalStackingCalculator {
      * @param g2      Graphics context for text measurement (may be null if no text elements)
      * @return VerticalStackingResult containing all calculated positions
      */
-    public @NotNull VerticalStackingResult calculateVerticalPositions(
-        @NotNull List<ElementColumn> columns,
-        @NotNull Line line,
+    public VerticalStackingResult calculateVerticalPositions(
+        List<ElementColumn> columns,
+        Line line,
         Graphics2D g2) {
 
         var elementPositions = new HashMap<StaffElement, Map<LineElement, Point2D>>();
@@ -178,9 +178,9 @@ public class VerticalStackingCalculator {
      * @return Minimum Y position reached (most negative)
      */
     private double stackArticulations(
-        @NotNull ElementColumn column,
-        @NotNull Area accumulated,
-        @NotNull Map<LineElement, Point2D> noteElementPositions) {
+        ElementColumn column,
+        Area accumulated,
+        Map<LineElement, Point2D> noteElementPositions) {
 
         var note = column.getElement();
         var articulations = note.getArticulations();
@@ -256,9 +256,9 @@ public class VerticalStackingCalculator {
      * @return Minimum Y position reached (most negative)
      */
     private double stackTrill(
-        @NotNull ElementColumn column,
-        @NotNull Area accumulated,
-        @NotNull Map<LineElement, Point2D> noteElementPositions) {
+        ElementColumn column,
+        Area accumulated,
+        Map<LineElement, Point2D> noteElementPositions) {
 
         var note = column.getElement();
 
@@ -297,9 +297,9 @@ public class VerticalStackingCalculator {
      * @return Minimum Y position reached (most negative)
      */
     private double stackFermata(
-        @NotNull ElementColumn column,
-        @NotNull Area accumulated,
-        @NotNull Map<LineElement, Point2D> noteElementPositions) {
+        ElementColumn column,
+        Area accumulated,
+        Map<LineElement, Point2D> noteElementPositions) {
 
         var note = column.getElement();
         var minYPx = accumulated.getBounds2D().getMinY();
@@ -360,9 +360,9 @@ public class VerticalStackingCalculator {
      * @return Minimum Y position reached (most negative)
      */
     private double stackDynamics(
-        @NotNull ElementColumn column,
-        @NotNull Area accumulated,
-        @NotNull Map<LineElement, Point2D> noteElementPositions) {
+        ElementColumn column,
+        Area accumulated,
+        Map<LineElement, Point2D> noteElementPositions) {
 
         // TODO: Implement when DynamicAttachment is ready
         // For now, dynamics are deferred
@@ -378,9 +378,9 @@ public class VerticalStackingCalculator {
      * @return Minimum Y position reached (most negative)
      */
     private double stackTempo(
-        @NotNull ElementColumn column,
-        @NotNull Area accumulated,
-        @NotNull Map<LineElement, Point2D> noteElementPositions) {
+        ElementColumn column,
+        Area accumulated,
+        Map<LineElement, Point2D> noteElementPositions) {
 
         var note = column.getElement();
         var minYPx = accumulated.getBounds2D().getMinY();
@@ -445,9 +445,9 @@ public class VerticalStackingCalculator {
      * @return Minimum Y position reached (most negative)
      */
     private double stackAnnotations(
-        @NotNull ElementColumn column,
-        @NotNull Area accumulated,
-        @NotNull Map<LineElement, Point2D> noteElementPositions) {
+        ElementColumn column,
+        Area accumulated,
+        Map<LineElement, Point2D> noteElementPositions) {
 
         var note = column.getElement();
         var minYPx = accumulated.getBounds2D().getMinY();
@@ -487,7 +487,7 @@ public class VerticalStackingCalculator {
      * @param column The note column
      * @return Bounding area for the note
      */
-    private @NotNull Area getNoteBoundingArea(@NotNull ElementColumn column) {
+    private Area getNoteBoundingArea(ElementColumn column) {
         var note = column.getElement();
 
         // Get stem bounds
@@ -519,9 +519,9 @@ public class VerticalStackingCalculator {
      * @return Y position for the element (top-left corner) in pixels
      */
     private double findClearYPositionPx(
-        @NotNull LineElement element,
+        LineElement element,
         double x,
-        @NotNull Area accumulated,
+        Area accumulated,
         double marginPx) {
 
         // Start from top of accumulated bounding area
@@ -570,10 +570,10 @@ public class VerticalStackingCalculator {
      * @param noteElementPositions Map to store the position
      */
     private void positionElement(
-        @NotNull LineElement element,
+        LineElement element,
         double x,
         double y,
-        @NotNull Map<LineElement, Point2D> noteElementPositions) {
+        Map<LineElement, Point2D> noteElementPositions) {
 
         var position = new Point2D.Double(x, y);
         element.setPosition(position);
@@ -589,10 +589,10 @@ public class VerticalStackingCalculator {
      * @param accumulated Accumulated bounding area to update
      */
     private void addToAccumulated(
-        @NotNull LineElement element,
+        LineElement element,
         double x,
         double y,
-        @NotNull Area accumulated) {
+        Area accumulated) {
 
         var bounds = new Rectangle2D.Double(
             x - element.getContentWidth() / 2,
@@ -611,7 +611,7 @@ public class VerticalStackingCalculator {
      * @param columns List of note columns
      * @return Lowest Y position (maximum Y value)
      */
-    private double findLowestNoteBoundingYPx(@NotNull List<ElementColumn> columns) {
+    private double findLowestNoteBoundingYPx(List<ElementColumn> columns) {
         var lowestYPx = 0.0;
 
         for (var column : columns) {

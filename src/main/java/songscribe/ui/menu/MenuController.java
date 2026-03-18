@@ -30,8 +30,9 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Objects;
 
-import org.jetbrains.annotations.NotNull;
+import org.jspecify.annotations.Nullable;
 
 import com.formdev.flatlaf.util.SystemInfo;
 import net.engio.mbassy.listener.Handler;
@@ -74,7 +75,7 @@ public class MenuController {
 
     // We need to keep a reference to the instance to prevent it from being garbage collected
     @SuppressWarnings({"FieldCanBeLocal", "unused"})
-    private static MenuController instance = null;
+    private static @Nullable MenuController instance = null;
 
     private final MainFrame mainFrame;
     private final Score score;
@@ -84,9 +85,10 @@ public class MenuController {
         instance = new MenuController(mainFrame);
     }
 
+    @SuppressWarnings("NullAway.Init")
     public MenuController(MainFrame mainFrame) {
         this.mainFrame = mainFrame;
-        this.score = mainFrame.getScore();
+        this.score = Objects.requireNonNull(mainFrame.getScore());
         initMenus();
         MessageCenter.subscribe(this);
     }
@@ -223,7 +225,7 @@ public class MenuController {
             var allUnique = true;
 
             for (var idx : indices) {
-                var parent = paths.get(idx).getParent();
+                var parent = Objects.requireNonNull(paths.get(idx).getParent());
                 var nameCount = parent.getNameCount();
                 var start = Math.max(0, nameCount - depth);
                 var suffix = parent.subpath(start, nameCount).toString();
@@ -311,7 +313,6 @@ public class MenuController {
         return menu;
     }
 
-    @NotNull
     private JMenu initHelpMenu() {
         // TODO: Help needs updating for the new app
         var menu = new JMenu(Strings.get(Strings.MENU_HELP));
@@ -345,7 +346,6 @@ public class MenuController {
         }
     }
 
-    @NotNull
     private static JMenu initLaunchMenu() {
         var menu = new JMenu(Strings.get(Strings.MENU_LAUNCH));
         menu.add(new LaunchAction(LaunchAction.App.SONGBOOK));

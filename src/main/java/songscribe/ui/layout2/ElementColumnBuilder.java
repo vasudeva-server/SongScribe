@@ -25,9 +25,9 @@ import module java.desktop;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import songscribe.music.Line;
 import songscribe.music.StaffElement;
@@ -59,11 +59,11 @@ public class ElementColumnBuilder {
 
     // Note head width from SMuFL noteheadBlack bounding box (ss)
     public static final double NOTE_HEAD_WIDTH_SS =
-        METADATA.getBBox(SMuFLGlyph.NOTEHEAD_BLACK).width();
+        Objects.requireNonNull(METADATA.getBBox(SMuFLGlyph.NOTEHEAD_BLACK)).width();
 
     // Small note head width from SMuFL noteheadBlackSmall bounding box (ss)
     public static final double NOTE_HEAD_SMALL_WIDTH_SS =
-        METADATA.getBBox(SMuFLGlyph.NOTEHEAD_BLACK_SMALL).width();
+        Objects.requireNonNull(METADATA.getBBox(SMuFLGlyph.NOTEHEAD_BLACK_SMALL)).width();
 
     // Half note head width (for left/right extent calculation) (ss)
     static final double HALF_NOTE_HEAD_SS = NOTE_HEAD_WIDTH_SS / 2.0;
@@ -78,7 +78,7 @@ public class ElementColumnBuilder {
      * @param g2         Graphics context for measuring text
      * @param lyricsFont Font used for lyrics (for measuring syllable widths)
      */
-    public ElementColumnBuilder(@NotNull Graphics2D g2, @NotNull Font lyricsFont) {
+    public ElementColumnBuilder(Graphics2D g2, Font lyricsFont) {
         this.g2 = g2;
         this.lyricsFont = lyricsFont;
         this.lyricsFontMetrics = g2.getFontMetrics(lyricsFont);
@@ -90,7 +90,7 @@ public class ElementColumnBuilder {
      * @param line The line to process
      * @return List of ElementColumns in element order
      */
-    public @NotNull List<ElementColumn> buildColumns(@NotNull Line line) {
+    public List<ElementColumn> buildColumns(Line line) {
         var elementCount = line.elementCount();
 
         if (elementCount == 0) {
@@ -115,7 +115,7 @@ public class ElementColumnBuilder {
      * @param line    The line containing the element (for beaming lookup)
      * @return The constructed ElementColumn
      */
-    public @NotNull ElementColumn buildColumn(@NotNull StaffElement element, @NotNull Line line) {
+    public ElementColumn buildColumn(StaffElement element, Line line) {
         // Determine beam membership first — needed for right extent calculation
         int elementIndex = line.getElementIndex(element);
         boolean beamed = line.getBeamings().findInterval(elementIndex) != null;
@@ -160,7 +160,7 @@ public class ElementColumnBuilder {
      * @return Left extent in ss relative to element head left edge (glyph origin);
      *         0.0 with no accidental, negative when an accidental is present
      */
-    public static double calculateLeftExtentSs(@NotNull StaffElement element) {
+    public static double calculateLeftExtentSs(StaffElement element) {
         // Element head left edge is at xSs (the glyph origin), so the base extent is 0
         double extentSs = 0.0;
 
@@ -183,7 +183,7 @@ public class ElementColumnBuilder {
      * @param upper   {@code true} if the stem goes up; affects which stem anchor is used
      * @return Right extent in ss relative to element head left edge (glyph origin)
      */
-    public static double calculateRightExtentSs(@NotNull StaffElement element, boolean beamed, boolean upper) {
+    public static double calculateRightExtentSs(StaffElement element, boolean beamed, boolean upper) {
         // Element head right edge: use small notehead width for grace notes
         double noteheadRightExtent = element.getType().isGraceNote()
             ? NOTE_HEAD_SMALL_WIDTH_SS
@@ -237,7 +237,7 @@ public class ElementColumnBuilder {
      * @param element The element
      * @return Stem top Y position in ss (relative to staff, negative = above)
      */
-    private double calculateStemTopSs(@NotNull StaffElement element) {
+    private double calculateStemTopSs(StaffElement element) {
         var elementType = element.getType();
 
         // Rests and stemless elements: use element head top
@@ -262,7 +262,7 @@ public class ElementColumnBuilder {
      * @param element The element
      * @return Stem bottom Y position in ss (relative to staff, positive = below)
      */
-    private double calculateStemBottomSs(@NotNull StaffElement element) {
+    private double calculateStemBottomSs(StaffElement element) {
         var elementType = element.getType();
 
         // Rests and stemless elements: use element head bottom
@@ -289,7 +289,7 @@ public class ElementColumnBuilder {
      * @param element The element
      * @return Syllable text, or null if none
      */
-    private @Nullable String getSyllable(@NotNull StaffElement element) {
+    private @Nullable String getSyllable(StaffElement element) {
         return element.properties.syllable;
     }
 
@@ -322,7 +322,7 @@ public class ElementColumnBuilder {
      * @param element The main element
      * @return List of grace notes (empty for now)
      */
-    private @NotNull List<StaffElement> getGraceNotes(@NotNull StaffElement element) {
+    private List<StaffElement> getGraceNotes(StaffElement element) {
         // TODO: Implement grace note retrieval when data model supports it
         // Grace notes would be stored on the main element or looked up from the line
         return Collections.emptyList();

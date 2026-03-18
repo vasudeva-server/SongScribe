@@ -26,7 +26,10 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.Optional;
+
+import org.jspecify.annotations.Nullable;
 
 import songscribe.ui.fontchooser.FontFamilies;
 
@@ -34,30 +37,31 @@ public class FamilyListModel extends AbstractListModel<String> {
 
     private final FontFamilies fontFamilies = FontFamilies.getInstance();
 
-    private List<String> fontFamilyNames = null;
+    private @Nullable List<String> fontFamilyNames = null;
 
     @Override
     public int getSize() {
-        initialize();
-        return fontFamilyNames.size();
+        return getInitializedNames().size();
     }
 
     @Override
     public String getElementAt(int index) {
-        initialize();
-        return fontFamilyNames.get(index);
+        return getInitializedNames().get(index);
     }
 
     public Optional<String> findFirst(CharSequence searchString) {
-        initialize();
-
-        for (var family : fontFamilyNames) {
+        for (var family : getInitializedNames()) {
             if (family.toLowerCase(Locale.ENGLISH).contains(searchString)) {
                 return Optional.of(family);
             }
         }
 
         return Optional.empty();
+    }
+
+    private List<String> getInitializedNames() {
+        initialize();
+        return Objects.requireNonNull(fontFamilyNames, "fontFamilyNames not initialized");
     }
 
     private void initialize() {

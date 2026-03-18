@@ -25,8 +25,9 @@ import static songscribe.ui.playback.PlaybackController.PPQ;
 import module java.desktop;
 
 import java.util.Map;
+import java.util.Objects;
 
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import songscribe.smufl.BBox;
 import songscribe.smufl.EngravingDefaults;
@@ -137,11 +138,15 @@ public enum ElementType {
             : 0;
     }
 
+    @Nullable
     private StaffElement instance;
+    @Nullable
     private final String name;
+    @Nullable
     private final KeyStroke acceleratorKey;
     private final int defaultDuration;
     private final int defaultStaffPosition;
+    @Nullable
     private final ElementType aliasOf;
     private double widthSs;
     private double noteheadWidthSs;
@@ -153,7 +158,7 @@ public enum ElementType {
     private double topOffsetDownSs;
 
     ElementType(
-        String name,
+        @Nullable String name,
         int keyCode,
         int modifiers,
         int defaultDuration,
@@ -176,7 +181,7 @@ public enum ElementType {
     }
 
     ElementType(
-        String name,
+        @Nullable String name,
         int defaultDuration,
         int defaultStaffPosition
     ) {
@@ -199,27 +204,31 @@ public enum ElementType {
         return new StaffElement(this);
     }
 
-    public StaffElement getInstance() {
+    public @Nullable StaffElement getInstance() {
         return instance;
     }
 
     public StaffElement newInstance() {
         if (this == GLISSANDO || this == PASTE) {
-            return instance;
+            return Objects.requireNonNull(instance, this + ".instance not initialized");
         }
 
-        return instance.clone();
+        return Objects.requireNonNull(instance, this + ".instance not initialized").clone();
     }
 
-    public String getName() {
+    public @Nullable String getName() {
         return name;
     }
 
-    public String getTip() {
+    public @Nullable String getTip() {
+        if (name == null) {
+            return null;
+        }
+
         return UIUtils.makeTooltipWithKeystroke(name, acceleratorKey);
     }
 
-    public KeyStroke getAcceleratorKey() {
+    public @Nullable KeyStroke getAcceleratorKey() {
         return acceleratorKey;
     }
 
@@ -491,9 +500,9 @@ public enum ElementType {
         for (var type : types) {
             var glyph = SMUFL_GLYPHS.get(type);
             var bbox = requireBBox(metadata, glyph, type);
-            var anchors = metadata.getAnchors(glyph);
+            var anchors = (glyph != null) ? metadata.getAnchors(glyph) : null;
 
-            if (anchors != null && anchors.stemUpSE() != null) {
+            if (anchors != null && anchors.stemUpSE() != null && anchors.stemDownNW() != null) {
                 // Stemmed note
                 double headTop = bbox.top();
                 double headBottom = bbox.bottom();
@@ -553,6 +562,7 @@ public enum ElementType {
 
         if (anchors == null || anchors.stemUpSE() == null) {
             FatalError.exit("Missing stem anchors for NOTEHEAD_BLACK (needed for grace notes)");
+            throw new AssertionError("unreachable");
         }
 
         double stemUpX = anchors.stemUpSE().x() * scale;
@@ -643,11 +653,13 @@ public enum ElementType {
         REPEAT_LEFT_RIGHT.setSymmetricBounds(2 * singleRepeatWidth, staffHeight, topOffset);
     }
 
-    private static BBox requireBBox(SMuFLMetadata metadata, SMuFLGlyph glyph, ElementType context) {
-        var bbox = metadata.getBBox(glyph);
+    private static BBox requireBBox(SMuFLMetadata metadata, @Nullable SMuFLGlyph glyph, ElementType context) {
+        var bbox = (glyph != null) ? metadata.getBBox(glyph) : null;
 
-        FatalError.exitIfNull(bbox,
-            "Missing SMuFL bounding box for " + glyph + " (needed by " + context + ")");
+        if (bbox == null) {
+            FatalError.exit("Missing SMuFL bounding box for " + glyph + " (needed by " + context + ")");
+            throw new AssertionError("unreachable");
+        }
 
         return bbox;
     }

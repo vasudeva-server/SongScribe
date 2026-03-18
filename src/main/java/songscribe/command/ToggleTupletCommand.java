@@ -20,7 +20,6 @@
 
 package songscribe.command;
 
-import org.jetbrains.annotations.NotNull;
 
 import songscribe.message.Message;
 import songscribe.ui.action.TupletAction;
@@ -41,7 +40,6 @@ public class ToggleTupletCommand extends Message {
         return action.getTuplet().getSize();
     }
 
-    @NotNull
     @Override
     public String toString() {
         return super.toString() + "(tuplet = " + getTupletSize() + ')';

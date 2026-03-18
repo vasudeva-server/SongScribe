@@ -22,8 +22,7 @@ package songscribe.ui.layout;
 
 import module java.desktop;
 
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Layout information for range elements (ties, beams, tuplets, endings).
@@ -57,11 +56,11 @@ public final class RangeLayout {
         DIMINUENDO
     }
 
-    private final @NotNull Type type;
+    private final Type type;
     private final int startElementIndex;
     private final int endElementIndex;
     private final boolean above;
-    private final @NotNull ElementBounds bounds;
+    private final ElementBounds bounds;
     private final @Nullable Path2D path;
     private final @Nullable Object data;
 
@@ -77,11 +76,11 @@ public final class RangeLayout {
      * @param data           Type-specific data (e.g., tuplet number, ending number)
      */
     public RangeLayout(
-        @NotNull Type type,
+        Type type,
         int startElementIndex,
         int endElementIndex,
         boolean above,
-        @NotNull ElementBounds bounds,
+        ElementBounds bounds,
         @Nullable Path2D path,
         @Nullable Object data
     ) {
@@ -98,11 +97,11 @@ public final class RangeLayout {
      * Creates range layout without path or data.
      */
     public RangeLayout(
-        @NotNull Type type,
+        Type type,
         int startElementIndex,
         int endElementIndex,
         boolean above,
-        @NotNull ElementBounds bounds
+        ElementBounds bounds
     ) {
         this(type, startElementIndex, endElementIndex, above, bounds, null, null);
     }
@@ -110,7 +109,7 @@ public final class RangeLayout {
     /**
      * Returns the range element type.
      */
-    public @NotNull Type getType() {
+    public Type getType() {
         return type;
     }
 
@@ -138,7 +137,7 @@ public final class RangeLayout {
     /**
      * Returns the element bounds.
      */
-    public @NotNull ElementBounds getBounds() {
+    public ElementBounds getBounds() {
         return bounds;
     }
 
@@ -171,7 +170,7 @@ public final class RangeLayout {
     /**
      * Returns the vertical order for stacking.
      */
-    public @NotNull VerticalOrder getVerticalOrder() {
+    public VerticalOrder getVerticalOrder() {
         if (above) {
             return switch (type) {
                 case ENDING -> VerticalOrder.ENDINGS;

@@ -20,8 +20,7 @@
 
 package songscribe.ui.layout;
 
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import songscribe.music.StaffElement;
 
@@ -75,14 +74,14 @@ public class DynamicAttachment extends Attachment {
     }
 
     /** The dynamic type. */
-    private @NotNull DynamicType type;
+    private DynamicType type;
 
     /**
      * Creates a dynamic attachment with the specified type.
      *
      * @param type The dynamic type
      */
-    public DynamicAttachment(@NotNull DynamicType type) {
+    public DynamicAttachment(DynamicType type) {
         this.type = type;
         setAlignment(Alignment.CENTER);
     }
@@ -93,7 +92,7 @@ public class DynamicAttachment extends Attachment {
      * @param parent The parent note
      * @param type   The dynamic type
      */
-    public DynamicAttachment(@Nullable StaffElement parent, @NotNull DynamicType type) {
+    public DynamicAttachment(@Nullable StaffElement parent, DynamicType type) {
         this.type = type;
         setOwnerElement(parent);
         setAlignment(Alignment.CENTER);
@@ -107,21 +106,21 @@ public class DynamicAttachment extends Attachment {
     /**
      * Returns the dynamic type.
      */
-    public @NotNull DynamicType getType() {
+    public DynamicType getType() {
         return type;
     }
 
     /**
      * Sets the dynamic type.
      */
-    public void setType(@NotNull DynamicType type) {
+    public void setType(DynamicType type) {
         this.type = type;
     }
 
     /**
      * Returns the symbol text for this dynamic.
      */
-    public @NotNull String getSymbol() {
+    public String getSymbol() {
         return type.getSymbol();
     }
 

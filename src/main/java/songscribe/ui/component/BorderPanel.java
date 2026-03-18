@@ -26,6 +26,8 @@ import com.intellij.uiDesigner.core.GridConstraints;
 import com.intellij.uiDesigner.core.GridLayoutManager;
 import com.intellij.uiDesigner.core.Spacer;
 
+import org.jspecify.annotations.Nullable;
+
 import songscribe.Strings;
 
 @SuppressWarnings("NonStaticInitializer")
@@ -41,8 +43,9 @@ public class BorderPanel extends JPanel {
     private JSpinner borderSpinner;
     private JPanel borderPanel;
     private boolean exportBorder = false;
-    private ActionListener packListener = null;
+    private @Nullable ActionListener packListener = null;
 
+    @SuppressWarnings("NullAway.Init")
     public BorderPanel() {
         borderSpinner.setValue(10);
         expertBorderButton.addActionListener(_ -> {

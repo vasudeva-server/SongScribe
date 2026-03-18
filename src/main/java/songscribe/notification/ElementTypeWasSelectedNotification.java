@@ -20,7 +20,6 @@
 
 package songscribe.notification;
 
-import org.jetbrains.annotations.NotNull;
 
 import songscribe.message.Message;
 import songscribe.music.ElementType;
@@ -37,7 +36,6 @@ public class ElementTypeWasSelectedNotification extends Message {
         return noteType;
     }
 
-    @NotNull
     @Override
     public String toString() {
         return super.toString() + "(noteType = " + noteType.getName() + ')';

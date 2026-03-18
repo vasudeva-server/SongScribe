@@ -25,7 +25,6 @@ import static songscribe.ui.renderer.GraphicsState.Property.TRANSFORM;
 
 import module java.desktop;
 
-import org.jetbrains.annotations.NotNull;
 
 import songscribe.data.Interval;
 import songscribe.ui.layout2.LayoutResult;
@@ -50,7 +49,7 @@ public class TieRenderer {
     /**
      * Returns the singleton instance.
      */
-    public static @NotNull TieRenderer getInstance() {
+    public static TieRenderer getInstance() {
         return INSTANCE;
     }
 
@@ -69,9 +68,9 @@ public class TieRenderer {
      * @param ctx      Render context
      */
     public void renderTie(
-        @NotNull Graphics2D g2,
-        @NotNull Interval interval,
-        @NotNull ElementRenderContext ctx
+        Graphics2D g2,
+        Interval interval,
+        ElementRenderContext ctx
     ) {
         var layoutResult = ctx.getLayoutResult();
 
@@ -114,8 +113,7 @@ public class TieRenderer {
         }
     }
 
-    @NotNull
-    private Color determineTieColor(@NotNull Interval interval, @NotNull ElementRenderContext ctx) {
+    private Color determineTieColor(Interval interval, ElementRenderContext ctx) {
         var sp = ctx.getSelectionProvider();
 
         if (sp != null) {

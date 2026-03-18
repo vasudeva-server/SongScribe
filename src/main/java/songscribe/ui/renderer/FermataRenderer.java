@@ -22,7 +22,8 @@ package songscribe.ui.renderer;
 
 import module java.desktop;
 
-import org.jetbrains.annotations.NotNull;
+import java.util.Objects;
+
 
 import songscribe.music.StaffElement;
 import songscribe.smufl.SMuFLGlyph;
@@ -50,7 +51,7 @@ public class FermataRenderer extends BaseElementRenderer<StaffElement> {
     private static final double FERMATA_HEIGHT_PX;
 
     static {
-        var bbox = SMuFLMetadata.getInstance().getBBox(SMuFLGlyph.FERMATA_ABOVE);
+        var bbox = Objects.requireNonNull(SMuFLMetadata.getInstance().getBBox(SMuFLGlyph.FERMATA_ABOVE));
         FERMATA_WIDTH_PX = StaffSpaces.toPixels(bbox.width());
         FERMATA_HEIGHT_PX = StaffSpaces.toPixels(bbox.height());
     }
@@ -67,7 +68,7 @@ public class FermataRenderer extends BaseElementRenderer<StaffElement> {
     /**
      * Returns the singleton instance.
      */
-    public static @NotNull FermataRenderer getInstance() {
+    public static FermataRenderer getInstance() {
         return INSTANCE;
     }
 
@@ -77,9 +78,9 @@ public class FermataRenderer extends BaseElementRenderer<StaffElement> {
 
     @Override
     protected void renderElement(
-        @NotNull StaffElement element,
-        @NotNull Graphics2D g2,
-        @NotNull ElementRenderContext ctx
+        StaffElement element,
+        Graphics2D g2,
+        ElementRenderContext ctx
     ) {
         if (!element.isFermata()) {
             return;
@@ -107,8 +108,8 @@ public class FermataRenderer extends BaseElementRenderer<StaffElement> {
      * (e.g. for the insertion note preview).
      */
     private int getEffectiveFermataYPosPx(
-        @NotNull StaffElement note,
-        @NotNull ElementRenderContext ctx
+        StaffElement note,
+        ElementRenderContext ctx
     ) {
         var layoutResult = ctx.getLayoutResult();
 
@@ -133,9 +134,9 @@ public class FermataRenderer extends BaseElementRenderer<StaffElement> {
      * @param ctx         Render context
      */
     public void renderFermata(
-        @NotNull Graphics2D g2,
-        @NotNull StaffElement note,
-        @NotNull ElementRenderContext ctx
+        Graphics2D g2,
+        StaffElement note,
+        ElementRenderContext ctx
     ) {
         render(note, g2, ctx);
     }
@@ -144,7 +145,7 @@ public class FermataRenderer extends BaseElementRenderer<StaffElement> {
      * Calculates the Y position for the fermata based on note position.
      * Fermata is placed above the note, further up for higher notes.
      */
-    private int getFermataStaffPosition(@NotNull StaffElement note) {
+    private int getFermataStaffPosition(StaffElement note) {
         int staffPosition = note.getStaffPosition();
 
         // For notes above the staff, place fermata higher

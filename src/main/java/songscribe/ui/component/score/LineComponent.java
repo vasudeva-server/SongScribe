@@ -24,8 +24,7 @@ import module java.desktop;
 // Disambiguates from org.w3c.dom.events.MouseEvent (java.xml module)
 import java.awt.event.MouseEvent;
 
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import songscribe.music.Line;
 import songscribe.ui.Mode;
@@ -98,30 +97,36 @@ public class LineComponent extends ScoreComponent
     // ==========================================================================
 
     /** The line model containing staff elements. */
+    @Nullable
     private Line line;
 
     /** Index of this line within the composition. */
     private int lineIndex;
 
     /** Per-line selection state. */
+    @Nullable
     private LineSelectionState lineSelectionState;
 
     /** Y coordinate of the middle staff line (B line) in staff-space units. */
     private double middleLineYSs;
 
     /** Provider for checking note selection state. */
+    @Nullable
     private SelectionProvider selectionProvider;
 
     /** Reference to the Score for accessing composition and services. */
-    private songscribe.ui.component.Score score;
+    @Nullable
+    private Score score;
 
     /** Index of the currently playing note (-1 if not playing). */
     private int playingNoteIndex = -1;
 
     /** The layout engine for calculating element positions. */
+    @Nullable
     private LayoutEngine layoutEngine;
 
     /** Cached layout result from the last layout pass. */
+    @Nullable
     private LayoutResult layoutResult;
 
     /** Whether layout needs to be recalculated. */
@@ -158,7 +163,7 @@ public class LineComponent extends ScoreComponent
      * @param line      The line model
      * @param lineIndex Index of the line in the composition
      */
-    public void setLine(@NotNull Line line, int lineIndex) {
+    public void setLine(Line line, int lineIndex) {
         this.line = line;
         this.lineIndex = lineIndex;
         setName(ComponentNames.line(lineIndex));
@@ -182,7 +187,7 @@ public class LineComponent extends ScoreComponent
     /**
      * Returns the line model.
      */
-    public Line getLine() {
+    public @Nullable Line getLine() {
         return line;
     }
 
@@ -257,7 +262,7 @@ public class LineComponent extends ScoreComponent
      *
      * @param score The Score component
      */
-    public void setScore(@NotNull songscribe.ui.component.Score score) {
+    public void setScore(Score score) {
         this.score = score;
 
         // Register LineSelectionState with coordinator when score is set
@@ -327,7 +332,7 @@ public class LineComponent extends ScoreComponent
      *
      * @param g2 Graphics context for font metrics
      */
-    private void performLayout(@NotNull Graphics2D g2) {
+    private void performLayout(Graphics2D g2) {
         if (composition == null || line == null) {
             return;
         }
@@ -453,14 +458,16 @@ public class LineComponent extends ScoreComponent
      * @return Width in staff-space units
      */
     private double calculateLineWidthSs() {
+        var comp = getComposition();
+
         if (line == null || line.isEmpty() || layoutResult == null) {
-            return composition.getLineWidthSs();
+            return comp.getLineWidthSs();
         }
 
         // Use the greater of composition width or calculated width from layout
         double calculatedWidth = layoutResult.getLineWidthSs();
 
-        return Math.max(composition.getLineWidthSs(), calculatedWidth);
+        return Math.max(comp.getLineWidthSs(), calculatedWidth);
     }
 
     /**
@@ -529,7 +536,7 @@ public class LineComponent extends ScoreComponent
      */
     private boolean hasTempo() {
         // Check for initial tempo on first line (even if empty)
-        if (lineIndex == 0 && composition.getTempo() != null) {
+        if (lineIndex == 0 && getComposition().getTempo() != null) {
             return true;
         }
 
@@ -702,23 +709,30 @@ public class LineComponent extends ScoreComponent
     /**
      * Returns the Score reference.
      */
-    @NotNull
     Score getScore() {
-        FatalError.exitIfNull(score, "Score reference not set on LineComponent");
+        if (score == null) {
+            FatalError.exit("Score reference not set on LineComponent");
+            throw new AssertionError("unreachable");
+        }
+
         return score;
     }
 
-    @NotNull
     private GraceModeManager getGraceModeManager() {
         var emm = EditModeManager.getInstance();
-        FatalError.exitIfNull(emm, "EditModeManager not initialized");
+
+        if (emm == null) {
+            FatalError.exit("EditModeManager not initialized");
+            throw new AssertionError("unreachable");
+        }
+
         return emm.getGraceModeManager();
     }
 
     /**
      * Returns the selection provider.
      */
-    SelectionProvider getSelectionProvider() {
+    @Nullable SelectionProvider getSelectionProvider() {
         return selectionProvider;
     }
 

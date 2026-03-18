@@ -22,7 +22,6 @@ package songscribe.ui.layout;
 
 import module java.desktop;
 
-import org.jetbrains.annotations.NotNull;
 
 /**
  * Simplified box model with 2 layers: content and margin.
@@ -41,8 +40,8 @@ public final class Bounds {
     /** Default expansion for hit testing (in pixels). */
     public static final double DEFAULT_HIT_EXPANSION = 3.0;
 
-    private final @NotNull Rectangle2D contentBounds;
-    private final @NotNull Rectangle2D marginBounds;
+    private final Rectangle2D contentBounds;
+    private final Rectangle2D marginBounds;
 
     /**
      * Creates bounds with content and margin layers.
@@ -50,7 +49,7 @@ public final class Bounds {
      * @param contentBounds Actual drawn pixels (ink bounds)
      * @param marginBounds  Content + margin (layout spacing)
      */
-    public Bounds(@NotNull Rectangle2D contentBounds, @NotNull Rectangle2D marginBounds) {
+    public Bounds(Rectangle2D contentBounds, Rectangle2D marginBounds) {
         this.contentBounds = contentBounds;
         this.marginBounds = marginBounds;
     }
@@ -58,7 +57,7 @@ public final class Bounds {
     /**
      * Creates bounds with content only (no margin).
      */
-    public static Bounds contentOnly(@NotNull Rectangle2D contentBounds) {
+    public static Bounds contentOnly(Rectangle2D contentBounds) {
         return new Bounds(contentBounds, contentBounds);
     }
 
@@ -68,7 +67,7 @@ public final class Bounds {
      * @param contentBounds The content rectangle
      * @param margin        Uniform margin in pixels
      */
-    public static Bounds withUniformMargin(@NotNull Rectangle2D contentBounds, double margin) {
+    public static Bounds withUniformMargin(Rectangle2D contentBounds, double margin) {
         var marginBounds = new Rectangle2D.Double(
             contentBounds.getX() - margin,
             contentBounds.getY() - margin,
@@ -88,7 +87,7 @@ public final class Bounds {
      * @param left          Left margin in pixels
      */
     public static Bounds withMargin(
-        @NotNull Rectangle2D contentBounds,
+        Rectangle2D contentBounds,
         double top,
         double right,
         double bottom,
@@ -111,7 +110,7 @@ public final class Bounds {
      * @param margin        The margin specification
      * @return New bounds with the specified margins
      */
-    public static Bounds withMargin(@NotNull Rectangle2D contentBounds, @NotNull Margin margin) {
+    public static Bounds withMargin(Rectangle2D contentBounds, Margin margin) {
         var marginBounds = new Rectangle2D.Double(
             contentBounds.getX() - margin.left(),
             contentBounds.getY(),
@@ -124,14 +123,14 @@ public final class Bounds {
     /**
      * Returns the content bounds (actual drawn pixels).
      */
-    public @NotNull Rectangle2D getContentBounds() {
+    public Rectangle2D getContentBounds() {
         return contentBounds;
     }
 
     /**
      * Returns the margin bounds (content + margin, used for layout spacing).
      */
-    public @NotNull Rectangle2D getMarginBounds() {
+    public Rectangle2D getMarginBounds() {
         return marginBounds;
     }
 
@@ -230,7 +229,7 @@ public final class Bounds {
     /**
      * Returns whether this element's margin bounds intersect with another's.
      */
-    public boolean intersectsMargin(@NotNull Bounds other) {
+    public boolean intersectsMargin(Bounds other) {
         return marginBounds.intersects(other.marginBounds);
     }
 
@@ -260,7 +259,7 @@ public final class Bounds {
      * @param below The element below this one
      * @return The effective margin between the two elements
      */
-    public double collapsedMarginWith(@NotNull Bounds below) {
+    public double collapsedMarginWith(Bounds below) {
         double thisBottomMargin = getMarginBottom() - getBottom();
         double belowTopMargin = below.getTop() - below.getMarginTop();
         return Math.max(thisBottomMargin, belowTopMargin);
@@ -272,7 +271,7 @@ public final class Bounds {
      *
      * @return An Area representing the margin bounds
      */
-    public @NotNull Area toArea() {
+    public Area toArea() {
         return new Area(marginBounds);
     }
 

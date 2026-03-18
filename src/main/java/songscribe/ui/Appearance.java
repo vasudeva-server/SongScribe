@@ -19,7 +19,6 @@
 */
 package songscribe.ui;
 
-import org.jetbrains.annotations.NotNull;
 
 /**
  * Appearance preference for the application theme.
@@ -31,17 +30,15 @@ public enum Appearance {
 
     private final String key;
 
-    Appearance(@NotNull String key) {
+    Appearance(String key) {
         this.key = key;
     }
 
-    @NotNull
     public String key() {
         return key;
     }
 
-    @NotNull
-    public static Appearance fromKey(@NotNull String key) {
+    public static Appearance fromKey(String key) {
         for (var value : values()) {
             if (value.key.equals(key)) {
                 return value;

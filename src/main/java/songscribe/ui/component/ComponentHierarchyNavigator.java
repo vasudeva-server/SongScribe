@@ -22,8 +22,7 @@ package songscribe.ui.component;
 
 import java.util.function.Consumer;
 
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import songscribe.music.Composition;
 import songscribe.ui.component.score.LineComponent;
@@ -36,7 +35,6 @@ interface ComponentHierarchyProvider {
     @Nullable
     MainPanel getMainPanel();
 
-    @NotNull
     Composition getComposition();
 }
 
@@ -44,7 +42,7 @@ public final class ComponentHierarchyNavigator {
 
     private final ComponentHierarchyProvider provider;
 
-    public ComponentHierarchyNavigator(@NotNull ComponentHierarchyProvider provider) {
+    public ComponentHierarchyNavigator(ComponentHierarchyProvider provider) {
         this.provider = provider;
     }
 

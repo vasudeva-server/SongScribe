@@ -27,9 +27,7 @@ import java.io.IOException;
 import java.net.URL;
 import java.util.Arrays;
 
-import org.jetbrains.annotations.Contract;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -78,8 +76,6 @@ public final class GraphicUtils {
                 .orElse(UNDETERMINED);
         }
 
-        @NotNull
-        @Contract(pure = true)
         public String description() {
             return switch (this) {
                 case INCH -> "inch";
@@ -146,9 +142,7 @@ public final class GraphicUtils {
         return Math.round(desiredWidth * screenScaleFactor);
     }
 
-    @NotNull
-    @Contract(pure = true)
-    public static String getScaledImagePath(@NotNull String path) {
+    public static String getScaledImagePath(String path) {
         // Add @<scaleFactor>x to the path.
         return path.replace(".png", "@" + screenScaleFactor + "x.png");
     }
@@ -171,6 +165,7 @@ public final class GraphicUtils {
         }
     }
 
+    @Nullable
     public static BufferedImage readImage(String path) {
         return readImage(new File(Utils.getResourcePath("images/" + path)));
     }
@@ -201,7 +196,7 @@ public final class GraphicUtils {
         return ImageIO.write(image, extension, file);
     }
 
-    public static void setRenderingHints(@NotNull Graphics2D g2) {
+    public static void setRenderingHints(Graphics2D g2) {
         g2.setRenderingHint(
             RenderingHints.KEY_ANTIALIASING,
             RenderingHints.VALUE_ANTIALIAS_ON
@@ -257,7 +252,8 @@ public final class GraphicUtils {
         }
     }
 
-    public static Image getImage(@NotNull File file) {
+    @Nullable
+    public static Image getImage(File file) {
         return getImage(file.getAbsolutePath());
     }
 
@@ -298,7 +294,7 @@ public final class GraphicUtils {
     }
 
     public static FlatSVGIcon getScaledSVGIcon(
-        @NotNull FlatSVGIcon icon,
+        FlatSVGIcon icon,
         int size
     ) {
         var scale =
@@ -325,7 +321,7 @@ public final class GraphicUtils {
      * @param localX the X coordinate in local (user) space
      * @return the adjusted X coordinate in local space, snapped to a device pixel
      */
-    public static double snapXToDevicePixel(@NotNull Graphics2D g2, double localX) {
+    public static double snapXToDevicePixel(Graphics2D g2, double localX) {
         var transform = g2.getTransform();
         var devicePt = new Point2D.Double();
         transform.transform(new Point2D.Double(localX, 0), devicePt);
@@ -350,7 +346,7 @@ public final class GraphicUtils {
      * @param localY the Y coordinate in local (user) space
      * @return the adjusted Y coordinate in local space, snapped to a device pixel
      */
-    public static double snapYToDevicePixel(@NotNull Graphics2D g2, double localY) {
+    public static double snapYToDevicePixel(Graphics2D g2, double localY) {
         var transform = g2.getTransform();
         var devicePt = new Point2D.Double();
         transform.transform(new Point2D.Double(0, localY), devicePt);
@@ -397,8 +393,8 @@ public final class GraphicUtils {
      * Given a text block with one or more lines, calculates the width.
      */
     public static double getTextBlockWidth(
-        @NotNull String text,
-        @NotNull Graphics2D g2
+        String text,
+        Graphics2D g2
     ) {
         if (text.isEmpty()) {
             return 0d;

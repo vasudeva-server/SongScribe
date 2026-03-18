@@ -29,9 +29,10 @@ import java.awt.event.MouseEvent;
 import java.io.PrintWriter;
 import java.io.StringReader;
 import java.io.StringWriter;
+import java.util.Objects;
 import javax.xml.parsers.SAXParserFactory;
 
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import org.assertj.swing.core.BasicRobot;
 import org.assertj.swing.core.GenericTypeMatcher;
@@ -91,8 +92,8 @@ public abstract class E2ETest {
     private static int testCounter = 0;
     private static int passCount = 0;
     private static int failCount = 0;
-    private static JWindow statusOverlay;
-    private static JLabel statusLabel;
+    @Nullable private static JWindow statusOverlay;
+    @Nullable private static JLabel statusLabel;
     private String currentClassName;
     private String currentTestName;
 
@@ -191,27 +192,28 @@ public abstract class E2ETest {
         }
 
         sb.append("  —  ").append(currentClassName).append("  |  ").append(currentTestName).append("  ");
-        statusLabel.setText(sb.toString());
-        statusOverlay.pack();
+        Objects.requireNonNull(statusLabel).setText(sb.toString());
+        Objects.requireNonNull(statusOverlay).pack();
         positionOverlay();
     }
 
     private void positionOverlay() {
+        var overlay = Objects.requireNonNull(statusOverlay);
         var score = score();
         var scoreLoc = score.getLocationOnScreen();
         var scoreSize = score.getSize();
-        var overlaySize = statusOverlay.getPreferredSize();
-        statusOverlay.setLocation(
+        var overlaySize = overlay.getPreferredSize();
+        overlay.setLocation(
             scoreLoc.x + (scoreSize.width - overlaySize.width) / 2,
             scoreLoc.y + scoreSize.height - overlaySize.height - 8
         );
-        statusOverlay.setSize(overlaySize);
+        overlay.setSize(overlaySize);
     }
 
     // -- Accessors --
 
     protected Score score() {
-        return MainFrame.getInstance().getScore();
+        return Objects.requireNonNull(MainFrame.getInstance().getScore());
     }
 
     protected Composition composition() {
@@ -374,9 +376,9 @@ public abstract class E2ETest {
      * suitable for robot clicks.
      */
     protected Point noteScreenPosition(int lineIndex, int noteIndex) {
-        return GuiActionRunner.execute(() -> {
-            var lc = score().getLineComponent(lineIndex);
-            var line = lc.getLine();
+        return Objects.requireNonNull(GuiActionRunner.execute(() -> {
+            var lc = Objects.requireNonNull(score().getLineComponent(lineIndex));
+            var line = Objects.requireNonNull(lc.getLine());
             var note = line.getElement(noteIndex);
 
             var layoutResult = lc.getLayoutResult();
@@ -389,7 +391,7 @@ public abstract class E2ETest {
                 locationOnScreen.x + noteXPx + (int) Math.round(ScaleContext.getInstance().toPixels(note.getType().getNoteheadCenterXSs())),
                 locationOnScreen.y + noteYPx
             );
-        });
+        }));
     }
 
     /**
@@ -399,9 +401,9 @@ public abstract class E2ETest {
      * X is placed past the last note (or at a fixed offset if the line is empty).
      */
     protected Point insertionPoint(int lineIndex, int staffPositionSp) {
-        return GuiActionRunner.execute(() -> {
-            var lc = score().getLineComponent(lineIndex);
-            var line = lc.getLine();
+        return Objects.requireNonNull(GuiActionRunner.execute(() -> {
+            var lc = Objects.requireNonNull(score().getLineComponent(lineIndex));
+            var line = Objects.requireNonNull(lc.getLine());
 
             int xPx;
 
@@ -423,7 +425,7 @@ public abstract class E2ETest {
                 locationOnScreen.x + xPx,
                 locationOnScreen.y + yPx
             );
-        });
+        }));
     }
 
     /**
@@ -431,9 +433,9 @@ public abstract class E2ETest {
      * The x coordinate is placed a few pixels to the left of the element's layout position.
      */
     protected Point insertionPointBefore(int lineIndex, int elementIndex, int staffPositionSp) {
-        return GuiActionRunner.execute(() -> {
-            var lc = score().getLineComponent(lineIndex);
-            var line = lc.getLine();
+        return Objects.requireNonNull(GuiActionRunner.execute(() -> {
+            var lc = Objects.requireNonNull(score().getLineComponent(lineIndex));
+            var line = Objects.requireNonNull(lc.getLine());
             var layoutResult = lc.getLayoutResult();
 
             var element = line.getElement(elementIndex);
@@ -447,7 +449,7 @@ public abstract class E2ETest {
                 locationOnScreen.x + xPx,
                 locationOnScreen.y + yPx
             );
-        });
+        }));
     }
 
     /**
@@ -456,12 +458,12 @@ public abstract class E2ETest {
     protected void dragNote(int lineIndex, int noteIndex, int targetStaffPositionSp) {
         var startPoint = noteScreenPosition(lineIndex, noteIndex);
 
-        var endPoint = GuiActionRunner.execute(() -> {
-            var lc = score().getLineComponent(lineIndex);
+        var endPoint = Objects.requireNonNull(GuiActionRunner.execute(() -> {
+            var lc = Objects.requireNonNull(score().getLineComponent(lineIndex));
             var endYPx = lc.staffPositionToYPx(targetStaffPositionSp);
             var locationOnScreen = lc.getLocationOnScreen();
             return new Point(startPoint.x, locationOnScreen.y + endYPx);
-        });
+        }));
 
         robot.pressMouse(startPoint, LEFT_BUTTON);
         pause();
@@ -554,7 +556,7 @@ public abstract class E2ETest {
      */
     protected void performLayout(int lineIndex) {
         GuiActionRunner.execute(() -> {
-            var lc = score().getLineComponent(lineIndex);
+            var lc = Objects.requireNonNull(score().getLineComponent(lineIndex));
             lc.invalidateLayout();
             lc.paintImmediately(lc.getBounds());
         });
@@ -673,17 +675,17 @@ public abstract class E2ETest {
     // -- Model query helpers --
 
     protected boolean isBeamed(int lineIndex, int noteIndex) {
-        return GuiActionRunner.execute(() -> {
+        return Boolean.TRUE.equals(GuiActionRunner.execute(() -> {
             var line = composition().getLine(lineIndex);
             return line.getBeamings().findInterval(noteIndex) != null;
-        });
+        }));
     }
 
     protected boolean isTied(int lineIndex, int noteIndex) {
-        return GuiActionRunner.execute(() -> {
+        return Boolean.TRUE.equals(GuiActionRunner.execute(() -> {
             var line = composition().getLine(lineIndex);
             return line.getTies().findInterval(noteIndex) != null;
-        });
+        }));
     }
 
     // -- Fixture loading --
@@ -694,11 +696,11 @@ public abstract class E2ETest {
      * on the score and laid out.
      */
     protected Composition loadFixture(String fixtureName) throws Exception {
-        var composition = GuiActionRunner.execute(() -> {
+        var composition = Objects.requireNonNull(GuiActionRunner.execute(() -> {
             var loaded = UnitTest.loadFixture(fixtureName);
             score().setComposition(loaded);
             return loaded;
-        });
+        }));
         performLayout(0);
         return composition;
     }

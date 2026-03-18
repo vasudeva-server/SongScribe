@@ -21,7 +21,7 @@ package songscribe.ui.dialog;
 
 import module java.desktop;
 
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import songscribe.data.PageLayoutData;
 

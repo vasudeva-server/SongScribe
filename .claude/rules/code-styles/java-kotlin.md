@@ -98,7 +98,7 @@ import java.awt.geom.*;
 import java.util.ArrayList;
 
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 ```
 
 ### Naming Conventions

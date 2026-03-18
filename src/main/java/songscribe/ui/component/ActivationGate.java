@@ -24,6 +24,8 @@ import module java.desktop;
 // Disambiguates from org.w3c.dom.events.MouseEvent (java.xml module)
 import java.awt.event.MouseEvent;
 
+import org.jspecify.annotations.Nullable;
+
 /**
  * Suppresses the mouse click that brings the application window to the foreground.
  * <p>
@@ -34,8 +36,8 @@ import java.awt.event.MouseEvent;
  */
 public final class ActivationGate {
     private static final int CMD_TAB_DELAY_MS = 300;
-    private static JPanel glassPane;
-    private static Timer cmdTabTimer;
+    private static @Nullable JPanel glassPane;
+    private static @Nullable Timer cmdTabTimer;
 
     private ActivationGate() {
     }

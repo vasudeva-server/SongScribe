@@ -29,8 +29,6 @@ import java.util.List;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import org.jetbrains.annotations.Contract;
-import org.jetbrains.annotations.NotNull;
 
 public final class StringUtils {
 
@@ -98,9 +96,7 @@ public final class StringUtils {
         return LF_PATTERN.matcher(str).replaceAll(" ");
     }
 
-    @NotNull
-    @Contract(pure = true)
-    public static String trimEnd(@NotNull String str) {
+    public static String trimEnd(String str) {
         return TRIM_END_PATTERN.matcher(str).replaceAll("");
     }
 
@@ -108,8 +104,7 @@ public final class StringUtils {
         return MULTIPLE_SPACES_PATTERN.matcher(str).replaceAll(" ");
     }
 
-    @NotNull
-    public static String removeSyllabifyMarkings(@NotNull String lyrics) {
+    public static String removeSyllabifyMarkings(String lyrics) {
         // Remove characters inside parentheses
         var result = IN_PARENTHESES_PATTERN.matcher(lyrics).replaceAll("");
 
@@ -117,10 +112,9 @@ public final class StringUtils {
         return HYPHEN_UNDERSCORE_PATTERN.matcher(result).replaceAll("");
     }
 
-    @NotNull
     public static List<String> wrapText(
-        @NotNull String text,
-        @NotNull FontMetrics metrics,
+        String text,
+        FontMetrics metrics,
         int maxWidth
     ) {
         // Wrap the text into lines that fit within the maximum width

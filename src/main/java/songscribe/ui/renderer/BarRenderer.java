@@ -25,8 +25,7 @@ import static songscribe.ui.renderer.GraphicsState.Property.TRANSFORM;
 
 import module java.desktop;
 
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import songscribe.music.ElementType;
 import songscribe.music.StaffElement;
@@ -64,7 +63,7 @@ public class BarRenderer extends BaseElementRenderer<StaffElement> {
     /**
      * Returns the singleton instance.
      */
-    public static @NotNull BarRenderer getInstance() {
+    public static BarRenderer getInstance() {
         return INSTANCE;
     }
 
@@ -74,9 +73,9 @@ public class BarRenderer extends BaseElementRenderer<StaffElement> {
 
     @Override
     protected void renderElement(
-        @NotNull StaffElement element,
-        @NotNull Graphics2D g2,
-        @NotNull ElementRenderContext ctx
+        StaffElement element,
+        Graphics2D g2,
+        ElementRenderContext ctx
     ) {
         var noteType = element.getType();
 
@@ -95,7 +94,7 @@ public class BarRenderer extends BaseElementRenderer<StaffElement> {
     /**
      * Renders a bar line or repeat sign (static helper for delegation).
      */
-    public static void renderBarLineOrRepeat(@NotNull Graphics2D g2, @NotNull ElementType noteType) {
+    public static void renderBarLineOrRepeat(Graphics2D g2, ElementType noteType) {
         var glyph = glyphForNoteType(noteType);
 
         if (glyph == null) {
@@ -117,9 +116,9 @@ public class BarRenderer extends BaseElementRenderer<StaffElement> {
      * snapped to device pixels for crisp rendering.
      */
     private static double resolveBarXSs(
-        @NotNull Graphics2D g2,
-        @NotNull StaffElement note,
-        @NotNull ElementRenderContext ctx
+        Graphics2D g2,
+        StaffElement note,
+        ElementRenderContext ctx
     ) {
         double noteX;
 
@@ -137,7 +136,7 @@ public class BarRenderer extends BaseElementRenderer<StaffElement> {
      * Maps a note type to its corresponding SMuFL barline/repeat glyph.
      */
     @Nullable
-    private static SMuFLGlyph glyphForNoteType(@NotNull ElementType noteType) {
+    private static SMuFLGlyph glyphForNoteType(ElementType noteType) {
         return switch (noteType) {
             case SINGLE_BARLINE -> SMuFLGlyph.BARLINE_SINGLE;
             case DOUBLE_BARLINE -> SMuFLGlyph.BARLINE_DOUBLE;

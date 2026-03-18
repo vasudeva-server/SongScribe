@@ -20,7 +20,7 @@
 
 package songscribe.ui.action;
 
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Base class for actions that have a toggle selected state

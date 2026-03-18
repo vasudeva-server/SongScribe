@@ -22,7 +22,7 @@ package songscribe.ui.component;
 
 import module java.desktop;
 
-import org.jetbrains.annotations.NotNull;
+import org.jspecify.annotations.Nullable;
 
 import net.engio.mbassy.listener.Handler;
 
@@ -80,14 +80,15 @@ public final class ScoreMessageCoordinator {
     private final ClipboardManager clipboardManager;
 
     // Timer for debouncing repaints when layout changes occur
+    @Nullable
     private Timer repaintDebounceTimer = null;
 
     public ScoreMessageCoordinator(
-        @NotNull Score score,
-        @NotNull MusicEditOperations operations,
-        @NotNull EditModeManager editModeManager,
-        @NotNull SelectionCoordinator selectionCoordinator,
-        @NotNull ClipboardManager clipboardManager
+        Score score,
+        MusicEditOperations operations,
+        EditModeManager editModeManager,
+        SelectionCoordinator selectionCoordinator,
+        ClipboardManager clipboardManager
     ) {
         this.score = score;
         this.operations = operations;
@@ -103,12 +104,12 @@ public final class ScoreMessageCoordinator {
      * Updates the operations reference when a new composition is set.
      * This is necessary because operations is recreated for each composition.
      */
-    public void setOperations(@NotNull MusicEditOperations operations) {
+    public void setOperations(MusicEditOperations operations) {
         this.operations = operations;
     }
 
     @Handler
-    public void noteTypeWasSelected(@NotNull ElementTypeWasSelectedNotification message) {
+    public void noteTypeWasSelected(ElementTypeWasSelectedNotification message) {
         score.setInsertionElement(editModeManager.makeInsertionElement(message.getNoteType()));
     }
 
@@ -142,7 +143,7 @@ public final class ScoreMessageCoordinator {
     }
 
     @Handler
-    public void handleInsertLine(@NotNull InsertLineCommand message) {
+    public void handleInsertLine(InsertLineCommand message) {
         var shift = message.getShift();
         var composition = score.getComposition();
 
@@ -180,26 +181,26 @@ public final class ScoreMessageCoordinator {
     }
 
     @Handler
-    public void handleToggleTuplet(@NotNull ToggleTupletCommand message) {
+    public void handleToggleTuplet(ToggleTupletCommand message) {
         operations.toggleTuplet(message.getTupletSize());
         score.selectionChanged();
         postSelectionContentChanged();
     }
 
     @Handler
-    public void handleAddDynamics(@NotNull AddDynamicsCommand message) {
+    public void handleAddDynamics(AddDynamicsCommand message) {
         operations.addDynamicsToSelection(message.isCrescendo());
         postSelectionContentChanged();
     }
 
     @Handler
-    public void handleRemoveDynamics(@NotNull RemoveDynamicsCommand message) {
+    public void handleRemoveDynamics(RemoveDynamicsCommand message) {
         operations.removeDynamicsFromSelection();
         postSelectionContentChanged();
     }
 
     @Handler
-    public void handleFirstSecondEnding(@NotNull FirstSecondEndingCommand message) {
+    public void handleFirstSecondEnding(FirstSecondEndingCommand message) {
         if (message.isMakeEnding()) {
             operations.makeFirstSecondEnding();
         } else {
@@ -239,8 +240,12 @@ public final class ScoreMessageCoordinator {
     }
 
     @Handler
-    public void compositionDidChange(@NotNull CompositionDidChangeNotification message) {
+    public void compositionDidChange(CompositionDidChangeNotification message) {
         var mainPanel = score.getMainPanel();
+
+        if (mainPanel == null) {
+            return;
+        }
 
         // Invalidate layout for affected lines on content or structure changes
         if (message.hasChangeType(CompositionDidChangeNotification.ChangeType.CONTENT)
@@ -280,12 +285,12 @@ public final class ScoreMessageCoordinator {
     }
 
     @Handler
-    public void controlDidChange(@NotNull ControlDidChangeNotification message) {
+    public void controlDidChange(ControlDidChangeNotification message) {
         score.setControl(message.getControl());
     }
 
     @Handler(priority = Message.HIGH_PRIORITY)
-    public void modeDidChange(@NotNull ModeDidChangeNotification message) {
+    public void modeDidChange(ModeDidChangeNotification message) {
         var mode = message.getMode();
         score.setMode(mode);
         score.setInSelectMode(mode == Mode.SELECT);
@@ -301,15 +306,27 @@ public final class ScoreMessageCoordinator {
             syncInsertionElementWithSelectedDuration();
         }
 
-        score.getHorizontalAdjustment().setEnabled(mode == Mode.ADJUSTMENT);
-        score.getVerticalAdjustment().setEnabled(mode == Mode.VERTICAL_ADJUSTMENT);
-        score.getLyricsAdjustment().setEnabled(mode == Mode.LYRICS_ADJUSTMENT);
+        var ha = score.getHorizontalAdjustment();
+        var va = score.getVerticalAdjustment();
+        var la = score.getLyricsAdjustment();
+
+        if (ha != null) {
+            ha.setEnabled(mode == Mode.ADJUSTMENT);
+        }
+
+        if (va != null) {
+            va.setEnabled(mode == Mode.VERTICAL_ADJUSTMENT);
+        }
+
+        if (la != null) {
+            la.setEnabled(mode == Mode.LYRICS_ADJUSTMENT);
+        }
         score.repaint();
     }
 
     @Handler
     public void playbackStateDidChange(
-        @NotNull PlaybackStateDidChangeNotification message
+        PlaybackStateDidChangeNotification message
     ) {
         if (message.getState() == PlaybackController.PlaybackState.STOPPED) {
             if (MidiController.sequencer != null) {
@@ -415,7 +432,7 @@ public final class ScoreMessageCoordinator {
     }
 
     @SuppressWarnings("ObjectEquality")
-    private static void deleteNote(int xIndex, @NotNull Line line) {
+    private static void deleteNote(int xIndex, Line line) {
         // If the preceding note is a paired grace note, it becomes orphaned when
         // this note is deleted and must be removed along with it.
         var hasPrecedingPairedGraceNote = xIndex > 0 && line.isPairedGraceNote(xIndex - 1);

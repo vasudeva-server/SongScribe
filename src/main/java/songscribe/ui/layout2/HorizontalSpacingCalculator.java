@@ -23,7 +23,7 @@ package songscribe.ui.layout2;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.jetbrains.annotations.NotNull;
+import org.jspecify.annotations.Nullable;
 
 import songscribe.music.Line;
 import songscribe.music.StaffElement;
@@ -85,7 +85,7 @@ public class HorizontalSpacingCalculator {
      * @param columns List of NoteColumns to position (in note order)
      * @param line    The line containing these columns (for key signature info)
      */
-    public void calculatePositions(@NotNull List<ElementColumn> columns, @NotNull Line line) {
+    public void calculatePositions(List<ElementColumn> columns, Line line) {
         if (columns.isEmpty()) {
             return;
         }
@@ -127,7 +127,7 @@ public class HorizontalSpacingCalculator {
      * @param line The line (for key signature info)
      * @return X position in ss
      */
-    private double calculateFirstNoteXSs(@NotNull Line line) {
+    private double calculateFirstNoteXSs(Line line) {
         return LayoutConstants.calculateFirstElementXSs(line.getKeyAccidentalCount());
     }
 
@@ -146,8 +146,8 @@ public class HorizontalSpacingCalculator {
      * @return X position for current column
      */
     public static double calculateNextColumnXSs(
-        @NotNull ElementColumn prevColumn,
-        @NotNull ElementColumn currColumn) {
+        ElementColumn prevColumn,
+        ElementColumn currColumn) {
 
         // Grace note → host note: use tight grace note spacing
         if (prevColumn.getElement().getType().isGraceNote()) {
@@ -204,8 +204,8 @@ public class HorizontalSpacingCalculator {
      * @return Minimum spacing in ss
      */
     private static double calculateMinimumColumnSpacingSs(
-        @NotNull ElementColumn prevColumn,
-        @NotNull ElementColumn currColumn) {
+        ElementColumn prevColumn,
+        ElementColumn currColumn) {
 
         // Distance from previous column's center to current column's center
         // = previous column's right extent + MIN_COLUMN_GAP + abs(current column's left extent)
@@ -222,8 +222,8 @@ public class HorizontalSpacingCalculator {
      * @return Lyric spacing in ss, or 0 if no syllables
      */
     private static double calculateLyricSpacingSs(
-        @NotNull ElementColumn prevColumn,
-        @NotNull ElementColumn currColumn) {
+        ElementColumn prevColumn,
+        ElementColumn currColumn) {
 
         if (!prevColumn.hasSyllable() && !currColumn.hasSyllable()) {
             return 0;
@@ -245,8 +245,8 @@ public class HorizontalSpacingCalculator {
      * @return Default spacing in ss
      */
     private static double calculateDefaultColumnSpacingSs(
-        @NotNull ElementColumn prevColumn,
-        @NotNull ElementColumn currColumn) {
+        ElementColumn prevColumn,
+        ElementColumn currColumn) {
 
         return prevColumn.getRightExtentSs() + LayoutConstants.DEFAULT_COLUMN_GAP_SS + Math.abs(currColumn.getLeftExtentSs());
     }
@@ -260,8 +260,8 @@ public class HorizontalSpacingCalculator {
      * @return true if accidental clearance would be violated
      */
     private static boolean needsAccidentalPush(
-        @NotNull ElementColumn prevColumn,
-        @NotNull ElementColumn currColumn,
+        ElementColumn prevColumn,
+        ElementColumn currColumn,
         double currXSs) {
 
         // Only check if current note has an accidental
@@ -297,7 +297,7 @@ public class HorizontalSpacingCalculator {
      * The glissando must fit within "gap".
      */
     private static double ensureGlissandoSpacing(
-        @NotNull ElementColumn prev, @NotNull ElementColumn curr, double spacingSs
+        ElementColumn prev, ElementColumn curr, double spacingSs
     ) {
         if (!prev.hasGlissando()) return spacingSs;
 
@@ -353,7 +353,7 @@ public class HorizontalSpacingCalculator {
      * @param columns List of columns
      * @return List of beam group ranges
      */
-    private @NotNull List<BeamGroupRange> identifyBeamGroupRanges(@NotNull List<ElementColumn> columns) {
+    private List<BeamGroupRange> identifyBeamGroupRanges(List<ElementColumn> columns) {
         var ranges = new ArrayList<BeamGroupRange>();
 
         for (var i = 0; i < columns.size(); i++) {
@@ -387,8 +387,8 @@ public class HorizontalSpacingCalculator {
      * @param index  Column index
      * @return BeamGroupRange if found, null otherwise
      */
-    private BeamGroupRange findBeamGroupStartingAt(
-        @NotNull List<BeamGroupRange> ranges,
+    private @Nullable BeamGroupRange findBeamGroupStartingAt(
+        List<BeamGroupRange> ranges,
         int index) {
 
         for (var range : ranges) {
@@ -416,8 +416,8 @@ public class HorizontalSpacingCalculator {
      * @param prevColumnXSs  X position in staff spaces of the column before the beam group
      */
     private void handleBeamGroup(
-        @NotNull List<ElementColumn> columns,
-        @NotNull BeamGroupRange range,
+        List<ElementColumn> columns,
+        BeamGroupRange range,
         double prevColumnXSs) {
 
         var beamColumns = columns.subList(range.start, range.end + 1);

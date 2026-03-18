@@ -63,7 +63,13 @@ public final class GeneralPathFile {
         for (var pi = outline.getPathIterator(null); !pi.isDone(); pi.next()) {
             var seg = pi.currentSegment(ret);
             //noinspection UseOfPropertiesAsHashtable
-            int parNum = (Integer) valueNum.get(seg);
+            var parNumObj = (Integer) valueNum.get(seg);
+
+            if (parNumObj == null) {
+                continue;
+            }
+
+            int parNum = parNumObj;
             oos.writeInt(seg);
 
             for (var i = 0; i < parNum; i++) {

@@ -20,8 +20,7 @@
 
 package songscribe.ui.layout;
 
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import songscribe.music.ArticulationType;
 import songscribe.music.StaffElement;
@@ -45,14 +44,14 @@ public class Articulation extends LineElement {
     private @Nullable StaffElement ownerElement;
 
     /** The type of articulation (STACCATO, ACCENT, etc.). */
-    private @NotNull ArticulationType type;
+    private ArticulationType type;
 
     /**
      * Creates a new articulation of the specified type.
      *
      * @param type The articulation type
      */
-    public Articulation(@NotNull ArticulationType type) {
+    public Articulation(ArticulationType type) {
         this.type = type;
     }
 
@@ -62,7 +61,7 @@ public class Articulation extends LineElement {
      * @param parent The owner element
      * @param type   The articulation type
      */
-    public Articulation(@Nullable StaffElement parent, @NotNull ArticulationType type) {
+    public Articulation(@Nullable StaffElement parent, ArticulationType type) {
         this.ownerElement = parent;
         this.type = type;
 
@@ -89,14 +88,14 @@ public class Articulation extends LineElement {
     /**
      * Returns the articulation type.
      */
-    public @NotNull ArticulationType getType() {
+    public ArticulationType getType() {
         return type;
     }
 
     /**
      * Sets the articulation type.
      */
-    public void setType(@NotNull ArticulationType type) {
+    public void setType(ArticulationType type) {
         this.type = type;
     }
 

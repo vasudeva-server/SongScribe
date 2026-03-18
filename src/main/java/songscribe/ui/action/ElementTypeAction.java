@@ -22,7 +22,7 @@ package songscribe.ui.action;
 
 import module java.desktop;
 
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
 import songscribe.message.MessageCenter;
@@ -216,7 +216,7 @@ public class ElementTypeAction extends StickyUIAction implements UIAction.Elemen
         Kind kind,
         ElementType type,
         String name,
-        String icon,
+        @Nullable String icon,
         int size,
         String actionCommand,
         String tooltip,

@@ -23,6 +23,8 @@ import module java.desktop;
 // Disambiguates from org.w3c.dom.events.MouseEvent (java.xml module)
 import java.awt.event.MouseEvent;
 
+import org.jspecify.annotations.Nullable;
+
 import songscribe.ui.component.Score;
 
 public abstract class Adjustment extends MouseAdapter {
@@ -30,6 +32,7 @@ public abstract class Adjustment extends MouseAdapter {
     protected final Score score;
     protected boolean enabled = false;
     protected boolean startedDrag = false;
+    @Nullable
     protected Point startPoint = null;
     protected final Point endPoint = new Point();
     protected final Point topLeftDragBounds = new Point();

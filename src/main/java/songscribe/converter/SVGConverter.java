@@ -46,7 +46,14 @@ public class SVGConverter {
     public static void main(String[] args) {
         SongScribe.configureLogging();
         var reader = new ArgumentReader<>(args, SVGConverter.class);
-        reader.getObj().convert();
+        var converter = reader.getObj();
+
+        if (converter == null) {
+            LOG.error("Failed to parse arguments");
+            return;
+        }
+
+        converter.convert();
     }
 
     public void convert() {

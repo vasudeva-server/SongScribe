@@ -24,9 +24,7 @@ import module java.desktop;
 
 import java.util.Arrays;
 
-import org.jetbrains.annotations.Contract;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -64,7 +62,7 @@ public final class UIUtils {
 
     public static String makeTooltipWithKeystroke(
         String name,
-        KeyStroke acceleratorKey
+        @Nullable KeyStroke acceleratorKey
     ) {
         var result = name;
 
@@ -174,7 +172,7 @@ public final class UIUtils {
         }
     }
 
-    public static void registerActionKeystroke(KeyStroke keyStroke, @NotNull UIAction action) {
+    public static void registerActionKeystroke(KeyStroke keyStroke, UIAction action) {
         var actionCommand = action.getActionCommand();
         var rootPane = MainFrame.getInstance().getRootPane();
         rootPane.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW)
@@ -222,17 +220,14 @@ public final class UIUtils {
     // Components
     //
 
-    @NotNull
     public static JPanel padComponent(JComponent component, int padding) {
         return padComponent(component, padding, padding, padding, padding);
     }
 
-    @NotNull
     public static JPanel padComponent(JComponent component, int paddingX, int paddingY) {
         return padComponent(component, paddingY, paddingX, paddingY, paddingX);
     }
 
-    @NotNull
     public static JPanel padComponent(
         JComponent component,
         int top,
@@ -273,7 +268,7 @@ public final class UIUtils {
     }
 
     public static void initToolbarButton(
-        @NotNull AbstractButton button,
+        AbstractButton button,
         Dimension buttonSize
     ) {
         // We don't want focus leaving the music sheet
@@ -336,7 +331,7 @@ public final class UIUtils {
         return getParentFrame(focusOwner);
     }
 
-    public static void addStandardDialogKeyBindings(@NotNull JDialog dialog) {
+    public static void addStandardDialogKeyBindings(JDialog dialog) {
         var escapeKeyStroke = KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0);
         var actionKey = "action:WINDOW_CLOSING";
 
@@ -410,11 +405,9 @@ public final class UIUtils {
         return manager.getFocusOwner() instanceof JTextComponent;
     }
 
-    public record TaggedString(String text, Font font) {
+    public record TaggedString(String text, @Nullable Font font) {
     }
 
-    @NotNull
-    @Contract("_ -> new")
     public static TaggedString getTaggedString(String taggedText) {
         // If the text starts with "@", use the icon font.
         // If the text starts with "#", use the note font.

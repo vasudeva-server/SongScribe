@@ -22,8 +22,7 @@ package songscribe.ui.layout2;
 
 import java.util.List;
 
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import songscribe.music.StaffElement;
 
@@ -44,8 +43,8 @@ import songscribe.music.StaffElement;
  */
 public final class ElementColumn {
 
-    private final @NotNull StaffElement element;
-    private final @NotNull List<StaffElement> graceNotes;
+    private final StaffElement element;
+    private final List<StaffElement> graceNotes;
     private final double leftExtentSs;
     private final double rightExtentSs;
     private final double stemTopSs;
@@ -72,8 +71,8 @@ public final class ElementColumn {
      * @param beamed          Whether this element is part of a beam group
      */
     public ElementColumn(
-        @NotNull StaffElement element,
-        @NotNull List<StaffElement> graceNotes,
+        StaffElement element,
+        List<StaffElement> graceNotes,
         double leftExtentSs,
         double rightExtentSs,
         double stemTopSs,
@@ -99,7 +98,7 @@ public final class ElementColumn {
     /**
      * Returns the primary element (note, rest, barline, etc.) for this column.
      */
-    public @NotNull StaffElement getElement() {
+    public StaffElement getElement() {
         return element;
     }
 
@@ -127,7 +126,7 @@ public final class ElementColumn {
      *
      * @return Unmodifiable list of grace notes (empty if none)
      */
-    public @NotNull List<StaffElement> getGraceNotes() {
+    public List<StaffElement> getGraceNotes() {
         return graceNotes;
     }
 

@@ -24,7 +24,7 @@ import module java.desktop;
 
 import java.util.Objects;
 
-import org.jetbrains.annotations.NotNull;
+import org.jspecify.annotations.Nullable;
 
 import songscribe.ui.fontchooser.FontFamilies;
 import songscribe.ui.fontchooser.model.FontSelectionModel;
@@ -35,7 +35,7 @@ public class StylePane extends JScrollPane implements ChangeListener {
 
     private final DefaultListModel<StyleEntry> styleListModel;
 
-    private String family = null;
+    private @Nullable String family = null;
 
     public StylePane() {
         styleListModel = new DefaultListModel<>();
@@ -89,7 +89,7 @@ public class StylePane extends JScrollPane implements ChangeListener {
         }
     }
 
-    private void updateListModel(@NotNull Iterable<? extends Font> fonts) {
+    private void updateListModel(Iterable<? extends Font> fonts) {
         styleListModel.clear();
 
         for (var font : fonts) {
@@ -98,7 +98,7 @@ public class StylePane extends JScrollPane implements ChangeListener {
     }
 
     private void addSelectionListeners(
-        @NotNull ListSelectionListener[] selectionListeners
+        ListSelectionListener[] selectionListeners
     ) {
         for (var listener : selectionListeners) {
             styleList.addListSelectionListener(listener);
@@ -106,7 +106,7 @@ public class StylePane extends JScrollPane implements ChangeListener {
     }
 
     private void removeSelectionListeners(
-        @NotNull ListSelectionListener[] selectionListeners
+        ListSelectionListener[] selectionListeners
     ) {
         for (var listener : selectionListeners) {
             styleList.removeListSelectionListener(listener);

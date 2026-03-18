@@ -24,8 +24,7 @@ import module java.desktop;
 
 import java.util.List;
 
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Layout information for a text section (title, attribution, lyrics block, etc.).
@@ -35,8 +34,8 @@ import org.jetbrains.annotations.Nullable;
  */
 public final class SectionLayout {
 
-    private final @NotNull ElementBounds bounds;
-    private final @NotNull List<String> lines;
+    private final ElementBounds bounds;
+    private final List<String> lines;
     private final @Nullable Font font;
     private final int baselineY;
 
@@ -49,8 +48,8 @@ public final class SectionLayout {
      * @param baselineY Y coordinate of first text baseline
      */
     public SectionLayout(
-        @NotNull ElementBounds bounds,
-        @NotNull List<String> lines,
+        ElementBounds bounds,
+        List<String> lines,
         @Nullable Font font,
         int baselineY
     ) {
@@ -64,8 +63,8 @@ public final class SectionLayout {
      * Creates section layout for single-line text.
      */
     public SectionLayout(
-        @NotNull ElementBounds bounds,
-        @NotNull String text,
+        ElementBounds bounds,
+        String text,
         @Nullable Font font,
         int baselineY
     ) {
@@ -85,21 +84,21 @@ public final class SectionLayout {
     /**
      * Returns the element bounds.
      */
-    public @NotNull ElementBounds getBounds() {
+    public ElementBounds getBounds() {
         return bounds;
     }
 
     /**
      * Returns the text lines.
      */
-    public @NotNull List<String> getLines() {
+    public List<String> getLines() {
         return lines;
     }
 
     /**
      * Returns the first text line, or empty string if none.
      */
-    public @NotNull String getText() {
+    public String getText() {
         return lines.isEmpty() ? "" : lines.get(0);
     }
 

@@ -19,7 +19,6 @@
 */
 package songscribe.export;
 
-import org.jetbrains.annotations.NotNull;
 
 /**
  * Controls what content is included in an export (image, PDF, etc.).
@@ -37,10 +36,8 @@ public record ExportOptions(
 ) {
 
     /** Include all content. */
-    @NotNull
     public static final ExportOptions ALL = new ExportOptions(true, true, true);
 
     /** Exclude all optional content. */
-    @NotNull
     public static final ExportOptions NONE = new ExportOptions(false, false, false);
 }

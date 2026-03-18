@@ -20,8 +20,7 @@
 
 package songscribe.ui.layout;
 
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import songscribe.music.Annotation;
 import songscribe.music.StaffElement;
@@ -41,14 +40,14 @@ public class AnnotationAttachment extends Attachment {
     private static final double DEFAULT_HEIGHT = 14.0;
 
     /** The annotation data. */
-    private @NotNull Annotation annotation;
+    private Annotation annotation;
 
     /**
      * Creates an annotation attachment with the specified text.
      *
      * @param text The annotation text
      */
-    public AnnotationAttachment(@NotNull String text) {
+    public AnnotationAttachment(String text) {
         this.annotation = new Annotation(text);
         setAlignment(Alignment.LEFT);
     }
@@ -58,7 +57,7 @@ public class AnnotationAttachment extends Attachment {
      *
      * @param annotation The annotation data
      */
-    public AnnotationAttachment(@NotNull Annotation annotation) {
+    public AnnotationAttachment(Annotation annotation) {
         this.annotation = annotation;
         setAlignment(Alignment.LEFT);
     }
@@ -69,7 +68,7 @@ public class AnnotationAttachment extends Attachment {
      * @param parent     The parent note
      * @param annotation The annotation data
      */
-    public AnnotationAttachment(@Nullable StaffElement parent, @NotNull Annotation annotation) {
+    public AnnotationAttachment(@Nullable StaffElement parent, Annotation annotation) {
         this.annotation = annotation;
         setOwnerElement(parent);
         setAlignment(Alignment.LEFT);
@@ -83,28 +82,28 @@ public class AnnotationAttachment extends Attachment {
     /**
      * Returns the annotation data.
      */
-    public @NotNull Annotation getAnnotation() {
+    public Annotation getAnnotation() {
         return annotation;
     }
 
     /**
      * Sets the annotation data.
      */
-    public void setAnnotation(@NotNull Annotation annotation) {
+    public void setAnnotation(Annotation annotation) {
         this.annotation = annotation;
     }
 
     /**
      * Returns the annotation text.
      */
-    public @NotNull String getText() {
+    public String getText() {
         return annotation.getAnnotation();
     }
 
     /**
      * Sets the annotation text.
      */
-    public void setText(@NotNull String text) {
+    public void setText(String text) {
         annotation.setAnnotation(text);
     }
 

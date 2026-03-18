@@ -24,8 +24,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -120,7 +119,7 @@ public final class SongScribe {
         log.info("Log level: {}", System.getProperty("songscribe.log.level", "INFO"));
     }
 
-    public static void main(@NotNull String[] args) {
+    public static void main(String[] args) {
         configureLogging();
 
         // macOS system properties must be set on the main thread before

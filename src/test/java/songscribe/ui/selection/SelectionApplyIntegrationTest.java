@@ -26,6 +26,7 @@ import static org.mockito.Mockito.mock;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -82,7 +83,7 @@ class SelectionApplyIntegrationTest extends UnitTest {
         List<UIAction.Reflectable> actions
     ) {
         var coordinator = ReflectionTestHelper.createCoordinator(notes, actions);
-        var line = coordinator.getActiveSelection().getLine();
+        var line = Objects.requireNonNull(coordinator.getActiveSelection()).getLine();
         line.setComposition(mock(Composition.class));
         return coordinator;
     }
@@ -93,7 +94,7 @@ class SelectionApplyIntegrationTest extends UnitTest {
         List<UIAction> managedActions
     ) {
         var coordinator = ReflectionTestHelper.createCoordinator(notes, actions, managedActions);
-        var line = coordinator.getActiveSelection().getLine();
+        var line = Objects.requireNonNull(coordinator.getActiveSelection()).getLine();
         line.setComposition(mock(Composition.class));
         return coordinator;
     }
@@ -113,7 +114,7 @@ class SelectionApplyIntegrationTest extends UnitTest {
                 List.of(note, rest, barline),
                 List.of(SHARP_ACTION)
             );
-            var line = coordinator.getActiveSelection().getLine();
+            var line = Objects.requireNonNull(coordinator.getActiveSelection()).getLine();
 
             ReflectionTestHelper.selectRange(coordinator, 0, 2);
             coordinator.applyActionToSelection(SHARP_ACTION, true);
@@ -131,7 +132,7 @@ class SelectionApplyIntegrationTest extends UnitTest {
                 ElementType.QUAVER_REST.newInstance()
             );
             var coordinator = createCoordinator(notes, List.of(HALF_ACTION));
-            var line = coordinator.getActiveSelection().getLine();
+            var line = Objects.requireNonNull(coordinator.getActiveSelection()).getLine();
 
             ReflectionTestHelper.selectRange(coordinator, 0, 1);
             coordinator.applyActionToSelection(HALF_ACTION, true);
@@ -149,7 +150,7 @@ class SelectionApplyIntegrationTest extends UnitTest {
             note.addArticulation(new Articulation(note, ArticulationType.STACCATO));
 
             var coordinator = createCoordinator(List.of(note), List.of(QUARTER_ACTION));
-            var line = coordinator.getActiveSelection().getLine();
+            var line = Objects.requireNonNull(coordinator.getActiveSelection()).getLine();
 
             ReflectionTestHelper.selectNote(coordinator, 0);
             coordinator.applyActionToSelection(QUARTER_ACTION, true);
@@ -171,7 +172,7 @@ class SelectionApplyIntegrationTest extends UnitTest {
                 ElementType.QUAVER.newInstance()
             );
             var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
-            var line = coordinator.getActiveSelection().getLine();
+            var line = Objects.requireNonNull(coordinator.getActiveSelection()).getLine();
 
             ReflectionTestHelper.selectRange(coordinator, 0, 1);
             coordinator.applyActionToSelection(QUARTER_ACTION, true);
@@ -193,7 +194,7 @@ class SelectionApplyIntegrationTest extends UnitTest {
                 ElementType.SINGLE_BARLINE.newInstance()
             );
             var coordinator = createCoordinator(notes, List.of(DOUBLE_BARLINE_ACTION));
-            var line = coordinator.getActiveSelection().getLine();
+            var line = Objects.requireNonNull(coordinator.getActiveSelection()).getLine();
 
             ReflectionTestHelper.selectRange(coordinator, 0, 1);
             coordinator.applyActionToSelection(DOUBLE_BARLINE_ACTION, true);
@@ -213,7 +214,7 @@ class SelectionApplyIntegrationTest extends UnitTest {
                 ElementType.QUAVER.newInstance()
             );
             var coordinator = createCoordinator(notes, List.of(DOT_ACTION));
-            var line = coordinator.getActiveSelection().getLine();
+            var line = Objects.requireNonNull(coordinator.getActiveSelection()).getLine();
 
             ReflectionTestHelper.selectRange(coordinator, 0, 2);
 
@@ -235,7 +236,7 @@ class SelectionApplyIntegrationTest extends UnitTest {
             var notes = List.of(note1, note2);
 
             var coordinator = createCoordinator(notes, List.of(SHARP_ACTION, FLAT_ACTION));
-            var line = coordinator.getActiveSelection().getLine();
+            var line = Objects.requireNonNull(coordinator.getActiveSelection()).getLine();
 
             ReflectionTestHelper.selectRange(coordinator, 0, 1);
 
@@ -261,7 +262,7 @@ class SelectionApplyIntegrationTest extends UnitTest {
             );
             var actions = List.<UIAction.Reflectable>of(QUARTER_ACTION, HALF_ACTION);
             var coordinator = createCoordinator(notes, actions);
-            var line = coordinator.getActiveSelection().getLine();
+            var line = Objects.requireNonNull(coordinator.getActiveSelection()).getLine();
 
             // Select all notes
             ReflectionTestHelper.selectRange(coordinator, 0, 2);
@@ -404,7 +405,7 @@ class SelectionApplyIntegrationTest extends UnitTest {
                 ElementType.QUAVER.newInstance()
             );
             var coordinator = createCoordinator(notes, List.of(DOT_ACTION, QUARTER_ACTION));
-            var line = coordinator.getActiveSelection().getLine();
+            var line = Objects.requireNonNull(coordinator.getActiveSelection()).getLine();
 
             ReflectionTestHelper.selectRange(coordinator, 0, 1);
 
@@ -433,7 +434,7 @@ class SelectionApplyIntegrationTest extends UnitTest {
                 QUARTER_ACTION, SHARP_ACTION, FERMATA_ACTION, STACCATO_ACTION
             );
             var coordinator = createCoordinator(notes, actions);
-            var line = coordinator.getActiveSelection().getLine();
+            var line = Objects.requireNonNull(coordinator.getActiveSelection()).getLine();
 
             ReflectionTestHelper.selectRange(coordinator, 0, 1);
 
@@ -473,7 +474,7 @@ class SelectionApplyIntegrationTest extends UnitTest {
                 ElementType.CROTCHET.newInstance()
             );
             var coordinator = createCoordinator(notes, List.of(FERMATA_ACTION));
-            var line = coordinator.getActiveSelection().getLine();
+            var line = Objects.requireNonNull(coordinator.getActiveSelection()).getLine();
 
             ReflectionTestHelper.selectRange(coordinator, 0, 1);
 
@@ -566,7 +567,7 @@ class SelectionApplyIntegrationTest extends UnitTest {
 
             // Apply sharp — mutates the note
             coordinator.applyActionToSelection(sharpAction, true);
-            var line = coordinator.getActiveSelection().getLine();
+            var line = Objects.requireNonNull(coordinator.getActiveSelection()).getLine();
             assertThat(line.getElement(0).getAccidental()).isEqualTo(StaffElement.Accidental.SHARP);
 
             // Simulate disabled state during selection (flag chain would do this)

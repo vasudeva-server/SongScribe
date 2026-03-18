@@ -27,8 +27,7 @@ import module java.desktop;
 
 import java.util.EnumMap;
 
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import songscribe.music.ElementType;
 import songscribe.music.StaffElement;
@@ -100,7 +99,7 @@ public class RestRenderer extends BaseElementRenderer<StaffElement> {
     /**
      * Returns the singleton instance.
      */
-    public static @NotNull RestRenderer getInstance() {
+    public static RestRenderer getInstance() {
         return INSTANCE;
     }
 
@@ -111,7 +110,7 @@ public class RestRenderer extends BaseElementRenderer<StaffElement> {
      * @return The SMuFL glyph, or null if not a rest type
      */
     @Nullable
-    public static SMuFLGlyph getRestGlyph(@NotNull ElementType noteType) {
+    public static SMuFLGlyph getRestGlyph(ElementType noteType) {
         return REST_GLYPHS.get(noteType);
     }
 
@@ -124,9 +123,9 @@ public class RestRenderer extends BaseElementRenderer<StaffElement> {
      * snapped to device pixels for crisp rendering.
      */
     private static double resolveRestXSs(
-        @NotNull Graphics2D g2,
-        @NotNull StaffElement note,
-        @NotNull ElementRenderContext ctx
+        Graphics2D g2,
+        StaffElement note,
+        ElementRenderContext ctx
     ) {
         double noteX;
 
@@ -142,9 +141,9 @@ public class RestRenderer extends BaseElementRenderer<StaffElement> {
 
     @Override
     protected void renderElement(
-        @NotNull StaffElement element,
-        @NotNull Graphics2D g2,
-        @NotNull ElementRenderContext ctx
+        StaffElement element,
+        Graphics2D g2,
+        ElementRenderContext ctx
     ) {
         var noteType = element.getType();
 
@@ -179,7 +178,7 @@ public class RestRenderer extends BaseElementRenderer<StaffElement> {
      * Whole rests hang from the second line, half rests sit on the middle line.
      * Other rests are centered vertically on the staff.
      */
-    private double calculateRestYSs(@NotNull StaffElement note, double middleLineYSs) {
+    private double calculateRestYSs(StaffElement note, double middleLineYSs) {
         var noteType = note.getType();
 
         if (noteType == ElementType.SEMIBREVE_REST) {
@@ -199,7 +198,7 @@ public class RestRenderer extends BaseElementRenderer<StaffElement> {
     /**
      * Renders dots for dotted rests.
      */
-    private void renderDots(@NotNull Graphics2D g2, @NotNull StaffElement note, @NotNull ElementType noteType) {
+    private void renderDots(Graphics2D g2, StaffElement note, ElementType noteType) {
         if (note.getDotCount() == 0) {
             return;
         }

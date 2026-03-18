@@ -21,7 +21,6 @@ package songscribe.ui.component;
 
 import module java.desktop;
 
-import org.jetbrains.annotations.NotNull;
 
 public class MyJTextField extends JTextField {
 
@@ -46,7 +45,7 @@ public class MyJTextField extends JTextField {
     }
 
     @Override
-    protected void processKeyEvent(@NotNull KeyEvent e) {
+    protected void processKeyEvent(KeyEvent e) {
         if (!focusDelegate.processKeyEvent(e)) {
             super.processKeyEvent(e);
         }

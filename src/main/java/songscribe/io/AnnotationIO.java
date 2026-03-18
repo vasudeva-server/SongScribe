@@ -21,7 +21,7 @@ package songscribe.io;
 
 import java.io.PrintWriter;
 
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import songscribe.music.Annotation;
 
@@ -67,6 +67,7 @@ public final class AnnotationIO {
 
     public static class AnnotationReader {
 
+        @Nullable
         private Annotation annotation = null;
 
         @Nullable
@@ -90,7 +91,9 @@ public final class AnnotationIO {
             if (qName.equals(XML_ANNOTATION)) {
                 return annotation;
             }
-            if (qName.equals(lastTag)) {
+            if (annotation == null) return null;
+
+            if (lastTag != null && qName.equals(lastTag)) {
                 var str = value.toString();
 
                 switch (lastTag) {

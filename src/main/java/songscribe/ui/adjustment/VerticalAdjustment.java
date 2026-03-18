@@ -23,8 +23,7 @@ import module java.desktop;
 
 import java.util.ArrayList;
 
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import songscribe.data.DynamicsInterval;
 import songscribe.data.IntervalSet;
@@ -184,6 +183,11 @@ public class VerticalAdjustment extends Adjustment {
     private void adjustAnnotation(Line line, int diffY) {
         if (dragRect != null) {
             var annotation = line.getElement(dragRect.xIndex).getAnnotation();
+
+            if (annotation == null) {
+                return;
+            }
+
             // Update user offset (delta from calculated position)
             annotation.setUserYOffsetSs(annotation.getUserYOffsetSs() + diffY);
             // Also update legacy yPos for backward compatibility
@@ -253,7 +257,9 @@ public class VerticalAdjustment extends Adjustment {
         if (enabled) {
             var c = score.getComposition();
 
-            if (!c.getAttribution().isEmpty()) {
+            var attribution = c.getAttribution();
+
+            if (attribution != null && !attribution.isEmpty()) {
                 adjustRects.add(new AdjustRect(-1, AdjustType.ATTRIBUTION, -1));
             }
 
@@ -535,7 +541,6 @@ public class VerticalAdjustment extends Adjustment {
      * @return The layout result
      * @throws IllegalStateException if layout result is not available
      */
-    @NotNull
     private LayoutResult getLayoutResultForLine(int lineIndex) {
         var mainPanel = score.getMainPanel();
 

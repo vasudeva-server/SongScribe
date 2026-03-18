@@ -27,8 +27,7 @@ import module java.desktop;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import songscribe.music.ElementType;
 import songscribe.music.Line;
@@ -81,7 +80,7 @@ public class BeamGroupRenderer extends BaseElementRenderer<LineElement> {
     /**
      * Returns the singleton instance.
      */
-    public static @NotNull BeamGroupRenderer getInstance() {
+    public static BeamGroupRenderer getInstance() {
         return INSTANCE;
     }
 
@@ -91,9 +90,9 @@ public class BeamGroupRenderer extends BaseElementRenderer<LineElement> {
 
     @Override
     protected void renderElement(
-        @NotNull LineElement element,
-        @NotNull Graphics2D g2,
-        @NotNull ElementRenderContext ctx
+        LineElement element,
+        Graphics2D g2,
+        ElementRenderContext ctx
     ) {
     }
 
@@ -103,9 +102,9 @@ public class BeamGroupRenderer extends BaseElementRenderer<LineElement> {
      * Entry point for rendering beams directly from a Line's beaming intervals.
      */
     public void renderBeams(
-        @NotNull Graphics2D g2,
-        @NotNull Line line,
-        @NotNull ElementRenderContext ctx,
+        Graphics2D g2,
+        Line line,
+        ElementRenderContext ctx,
         int beginIndex,
         int endIndex
     ) {
@@ -123,7 +122,7 @@ public class BeamGroupRenderer extends BaseElementRenderer<LineElement> {
      */
     @Nullable
     private Color getBeamHighlightColor(
-        @NotNull ElementRenderContext ctx,
+        ElementRenderContext ctx,
         int beginIndex,
         int endIndex
     ) {
@@ -133,6 +132,11 @@ public class BeamGroupRenderer extends BaseElementRenderer<LineElement> {
 
         var selectionProvider = ctx.getSelectionProvider();
         var line = ctx.getCurrentLine();
+
+        if (line == null) {
+            return null;
+        }
+
         var lineIndex = ctx.getLineIndex();
         var hoveredLineIndex = InsertionElementManager.getHoveredElementLineIndex();
         var hoveredNoteIndex = InsertionElementManager.getHoveredElementIndex();
@@ -172,7 +176,7 @@ public class BeamGroupRenderer extends BaseElementRenderer<LineElement> {
     /**
      * Determines the beam level based on the shortest note in the range.
      */
-    private int getBeamLevel(@NotNull Line line, int beginIndex, int endIndex) {
+    private int getBeamLevel(Line line, int beginIndex, int endIndex) {
         int maxLevel = 0;
 
         for (int i = beginIndex; i <= endIndex; i++) {
@@ -191,14 +195,14 @@ public class BeamGroupRenderer extends BaseElementRenderer<LineElement> {
     }
 
     private void drawBeams(
-        @NotNull Graphics2D g2,
+        Graphics2D g2,
         int level,
-        @NotNull Line line,
-        @NotNull ElementRenderContext ctx,
+        Line line,
+        ElementRenderContext ctx,
         int beginIndex,
         int endIndex,
         boolean selected,
-        @NotNull Color selectionColor
+        Color selectionColor
     ) {
         var outerNotes = new Point(beginIndex, endIndex);
         var layoutResult = ctx.getLayoutResult();
@@ -210,11 +214,11 @@ public class BeamGroupRenderer extends BaseElementRenderer<LineElement> {
     }
 
     private void doDrawBeams(
-        @NotNull Graphics2D g2,
+        Graphics2D g2,
         int level,
-        @NotNull Line line,
-        @NotNull ElementRenderContext ctx,
-        @NotNull Point outerNotes,
+        Line line,
+        ElementRenderContext ctx,
+        Point outerNotes,
         int beginIndex,
         int endIndex,
         int prevBeginIndex,
@@ -222,8 +226,8 @@ public class BeamGroupRenderer extends BaseElementRenderer<LineElement> {
         boolean isPrevLeftOriented,
         int recursionLevel,
         boolean selected,
-        @Nullable LayoutResult.BeamLayout beamLayout,
-        @NotNull Color selectionColor
+        LayoutResult.@Nullable BeamLayout beamLayout,
+        Color selectionColor
     ) {
         if (level == -1) {
             return;
@@ -283,7 +287,7 @@ public class BeamGroupRenderer extends BaseElementRenderer<LineElement> {
         }
     }
 
-    private boolean isNoteTypeInLevel(@NotNull Line line, int noteIndex, int level) {
+    private boolean isNoteTypeInLevel(Line line, int noteIndex, int level) {
         var type = line.getElement(noteIndex).getType();
 
         if (!type.isGraceNote()) {
@@ -312,17 +316,17 @@ public class BeamGroupRenderer extends BaseElementRenderer<LineElement> {
     }
 
     private void drawBeam(
-        @NotNull Graphics2D g2,
-        @NotNull Line line,
-        @NotNull ElementRenderContext ctx,
+        Graphics2D g2,
+        Line line,
+        ElementRenderContext ctx,
         int beginIndex,
         int endIndex,
         boolean isUpper,
-        @NotNull BeamType type,
+        BeamType type,
         int recursionLevel,
         boolean selected,
-        @Nullable LayoutResult.BeamLayout beamLayout,
-        @NotNull Color selectionColor
+        LayoutResult.@Nullable BeamLayout beamLayout,
+        Color selectionColor
     ) {
         var beginNote = line.getElement(beginIndex);
         var endNote = line.getElement(endIndex);
@@ -403,9 +407,9 @@ public class BeamGroupRenderer extends BaseElementRenderer<LineElement> {
      * @param element fallback element for staff-position estimate when layout is null
      */
     private static double stemTipYSsOffset(
-        @Nullable LayoutResult.StemLayout layout,
+        LayoutResult.@Nullable StemLayout layout,
         boolean isUpper,
-        @NotNull StaffElement element
+        StaffElement element
     ) {
         if (layout != null) {
             // topYSs = smaller Y (higher screen) = stem tip for stem-up

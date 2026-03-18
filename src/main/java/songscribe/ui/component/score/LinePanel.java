@@ -22,7 +22,6 @@ package songscribe.ui.component.score;
 
 import module java.desktop;
 
-import org.jetbrains.annotations.NotNull;
 
 import songscribe.music.Composition;
 import songscribe.music.Line;
@@ -58,8 +57,8 @@ public class LinePanel extends JPanel {
      * @param lineIndex   Index of the line
      */
     public LinePanel(
-        @NotNull Composition composition,
-        @NotNull Line line,
+        Composition composition,
+        Line line,
         int lineIndex
     ) {
         this(composition, line, lineIndex, lineIndex == composition.lineCount() - 1);
@@ -74,8 +73,8 @@ public class LinePanel extends JPanel {
      * @param isLastLine  Whether this is the last line in the composition
      */
     public LinePanel(
-        @NotNull Composition composition,
-        @NotNull Line line,
+        Composition composition,
+        Line line,
         int lineIndex,
         boolean isLastLine
     ) {
@@ -135,7 +134,7 @@ public class LinePanel extends JPanel {
      *
      * @param composition The composition
      */
-    public void setComposition(@NotNull Composition composition) {
+    public void setComposition(Composition composition) {
         lineComponent.setComposition(composition);
         lyricsComponent.setComposition(composition);
     }
@@ -146,7 +145,7 @@ public class LinePanel extends JPanel {
      * @param line      The line
      * @param lineIndex Index of the line
      */
-    public void setLine(@NotNull Line line, int lineIndex) {
+    public void setLine(Line line, int lineIndex) {
         this.line = line;
         this.lineIndex = lineIndex;
         lineComponent.setLine(line, lineIndex);

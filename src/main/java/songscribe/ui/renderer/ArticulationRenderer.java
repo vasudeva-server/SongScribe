@@ -22,7 +22,8 @@ package songscribe.ui.renderer;
 
 import module java.desktop;
 
-import org.jetbrains.annotations.NotNull;
+import java.util.Objects;
+
 
 import songscribe.music.ArticulationType;
 import songscribe.music.StaffElement;
@@ -59,11 +60,11 @@ public class ArticulationRenderer extends BaseElementRenderer<StaffElement> {
     static {
         var metadata = SMuFLMetadata.getInstance();
 
-        var accentBBox = metadata.getBBox(SMuFLGlyph.ARTIC_ACCENT_ABOVE);
+        var accentBBox = Objects.requireNonNull(metadata.getBBox(SMuFLGlyph.ARTIC_ACCENT_ABOVE));
         ACCENT_HALF_HEIGHT_PX = (int) Math.round(StaffSpaces.toPixels(accentBBox.height()) / 2.0);
         ACCENT_WIDTH_PX = StaffSpaces.toPixels(accentBBox.width());
 
-        var staccatoBBox = metadata.getBBox(SMuFLGlyph.ARTIC_STACCATO_ABOVE);
+        var staccatoBBox = Objects.requireNonNull(metadata.getBBox(SMuFLGlyph.ARTIC_STACCATO_ABOVE));
         STACCATO_HALF_HEIGHT_PX = (int) Math.round(StaffSpaces.toPixels(staccatoBBox.height()) / 2.0);
         STACCATO_WIDTH_PX = StaffSpaces.toPixels(staccatoBBox.width());
     }
@@ -80,7 +81,7 @@ public class ArticulationRenderer extends BaseElementRenderer<StaffElement> {
     /**
      * Returns the singleton instance.
      */
-    public static @NotNull ArticulationRenderer getInstance() {
+    public static ArticulationRenderer getInstance() {
         return INSTANCE;
     }
 
@@ -90,9 +91,9 @@ public class ArticulationRenderer extends BaseElementRenderer<StaffElement> {
 
     @Override
     protected void renderElement(
-        @NotNull StaffElement element,
-        @NotNull Graphics2D g2,
-        @NotNull ElementRenderContext ctx
+        StaffElement element,
+        Graphics2D g2,
+        ElementRenderContext ctx
     ) {
         if (element.getArticulations().isEmpty()) {
             return;
@@ -111,10 +112,10 @@ public class ArticulationRenderer extends BaseElementRenderer<StaffElement> {
      * Renders articulations using pre-computed positions from the layout engine.
      */
     private void renderFromLayout(
-        @NotNull StaffElement note,
-        @NotNull Graphics2D g2,
-        @NotNull ElementRenderContext ctx,
-        @NotNull LayoutResult layoutResult
+        StaffElement note,
+        Graphics2D g2,
+        ElementRenderContext ctx,
+        LayoutResult layoutResult
     ) {
         for (var articulation : note.getArticulations()) {
             var bounds = layoutResult.getElementBounds(articulation);
@@ -139,8 +140,8 @@ public class ArticulationRenderer extends BaseElementRenderer<StaffElement> {
      * The Y is the top of the content box from the layout engine.
      */
     private void drawStaccatoFromLayout(
-        @NotNull StaffElement note,
-        @NotNull Graphics2D g2,
+        StaffElement note,
+        Graphics2D g2,
         int contentTopY
     ) {
         double halfNoteWidth = getHalfNoteWidthForTiePx(note);
@@ -150,7 +151,7 @@ public class ArticulationRenderer extends BaseElementRenderer<StaffElement> {
 
         // SMuFL "above" glyph origin is at the bottom; offset by glyph height
         double y = contentTopY + StaffSpaces.toPixels(
-            SMuFLMetadata.getInstance().getBBox(SMuFLGlyph.ARTIC_STACCATO_ABOVE).height()
+            Objects.requireNonNull(SMuFLMetadata.getInstance().getBBox(SMuFLGlyph.ARTIC_STACCATO_ABOVE)).height()
         );
 
         drawBravuraGlyph(g2, SMuFLGlyph.ARTIC_STACCATO_ABOVE, x, y);
@@ -161,9 +162,9 @@ public class ArticulationRenderer extends BaseElementRenderer<StaffElement> {
      * (e.g. insertion note preview).
      */
     private void renderFallback(
-        @NotNull StaffElement element,
-        @NotNull Graphics2D g2,
-        @NotNull ElementRenderContext ctx
+        StaffElement element,
+        Graphics2D g2,
+        ElementRenderContext ctx
     ) {
         var hasAccent = element.hasArticulation(ArticulationType.ACCENT);
         var hasStaccato = element.hasArticulation(ArticulationType.STACCATO);
@@ -196,7 +197,7 @@ public class ArticulationRenderer extends BaseElementRenderer<StaffElement> {
      * or the actual middleLineYPx for component-space coordinates.
      */
     public static int calculateAccentYPx(
-        @NotNull StaffElement note, int middleLineYPx, int staccatoY, boolean hasStaccato
+        StaffElement note, int middleLineYPx, int staccatoY, boolean hasStaccato
     ) {
         int dir = note.isUpper() ? 1 : -1;
         int staffPosition = note.getStaffPosition();
@@ -226,7 +227,7 @@ public class ArticulationRenderer extends BaseElementRenderer<StaffElement> {
     /**
      * Draws an accent glyph centered vertically at the given Y position.
      */
-    private void drawAccent(@NotNull StaffElement note, @NotNull Graphics2D g2, int accentY) {
+    private void drawAccent(StaffElement note, Graphics2D g2, int accentY) {
         double halfNoteWidth = getHalfNoteWidthForTiePx(note);
         double x = GraphicUtils.snapXToDevicePixel(
             g2, note.getXPosSs() + halfNoteWidth - ACCENT_WIDTH_PX / 2.0
@@ -252,7 +253,7 @@ public class ArticulationRenderer extends BaseElementRenderer<StaffElement> {
      * Pass {@code middleLineYPx=0} for layout-space coordinates,
      * or the actual middleLineYPx for component-space coordinates.
      */
-    public static int calculateStaccatoYPx(@NotNull StaffElement note, int middleLineYPx) {
+    public static int calculateStaccatoYPx(StaffElement note, int middleLineYPx) {
         boolean isUpper = note.isUpper();
         int dir = isUpper ? 1 : -1;
         int staffPosition = note.getStaffPosition();
@@ -298,8 +299,8 @@ public class ArticulationRenderer extends BaseElementRenderer<StaffElement> {
      * Renders a staccato glyph centered vertically at the computed Y position.
      */
     private void renderStaccato(
-        @NotNull StaffElement note,
-        @NotNull Graphics2D g2,
+        StaffElement note,
+        Graphics2D g2,
         int middleLineYPx
     ) {
         int centerY = calculateStaccatoYPx(note, middleLineYPx);
@@ -318,7 +319,7 @@ public class ArticulationRenderer extends BaseElementRenderer<StaffElement> {
     /**
      * Returns half the width of a note for positioning.
      */
-    private double getHalfNoteWidthForTiePx(@NotNull StaffElement note) {
+    private double getHalfNoteWidthForTiePx(StaffElement note) {
         return note.getContentCenterX();
     }
 }

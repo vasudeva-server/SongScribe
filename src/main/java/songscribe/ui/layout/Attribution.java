@@ -20,7 +20,6 @@
 
 package songscribe.ui.layout;
 
-import org.jetbrains.annotations.NotNull;
 
 import songscribe.ui.layout2.ScaleContext;
 
@@ -36,7 +35,7 @@ import songscribe.ui.layout2.ScaleContext;
 public class Attribution extends LineElement {
 
     /** The attribution text (composer, arranger, etc.). */
-    private @NotNull String text;
+    private String text;
 
     /** Whether the text is right-aligned (default: true). */
     private boolean isRightAligned = true;
@@ -52,7 +51,7 @@ public class Attribution extends LineElement {
      *
      * @param text The attribution text
      */
-    public Attribution(@NotNull String text) {
+    public Attribution(String text) {
         this.text = text;
         setMarginSs(
             ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.ATTRIBUTION_PADDING_SS),
@@ -65,7 +64,7 @@ public class Attribution extends LineElement {
     /**
      * Returns the attribution text.
      */
-    public @NotNull String getText() {
+    public String getText() {
         return text;
     }
 
@@ -74,7 +73,7 @@ public class Attribution extends LineElement {
      *
      * @param text The attribution text
      */
-    public void setText(@NotNull String text) {
+    public void setText(String text) {
         this.text = text;
     }
 

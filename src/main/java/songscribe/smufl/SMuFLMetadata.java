@@ -31,7 +31,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Lazy singleton that parses bravura_metadata.json and provides typed access
@@ -150,8 +150,7 @@ public final class SMuFLMetadata {
         return map;
     }
 
-    @Nullable
-    private static GlyphAnchors.Anchor parseAnchor(JsonObject entry, String key) {
+    private static GlyphAnchors.@Nullable Anchor parseAnchor(JsonObject entry, String key) {
         var arr = entry.getAsJsonArray(key);
 
         if (arr == null) {

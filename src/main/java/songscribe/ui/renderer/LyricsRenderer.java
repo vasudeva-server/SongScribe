@@ -29,7 +29,6 @@ import java.util.ArrayList;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import org.jetbrains.annotations.NotNull;
 
 import songscribe.data.Interval;
 import songscribe.data.IntervalSet;
@@ -119,7 +118,7 @@ public class LyricsRenderer {
     /**
      * Returns the singleton instance.
      */
-    public static @NotNull LyricsRenderer getInstance() {
+    public static LyricsRenderer getInstance() {
         return INSTANCE;
     }
 
@@ -142,9 +141,9 @@ public class LyricsRenderer {
      * @param isLastLine Whether this is the last line in the composition
      */
     public void renderLyrics(
-        @NotNull Graphics2D g2,
-        @NotNull Line line,
-        @NotNull ElementRenderContext ctx,
+        Graphics2D g2,
+        Line line,
+        ElementRenderContext ctx,
         boolean isLastLine
     ) {
         initializeMetrics(g2, ctx);
@@ -174,8 +173,8 @@ public class LyricsRenderer {
      * Gets the Y position for lyrics from layout result.
      */
     private int getEffectiveLyricsYPosPx(
-        @NotNull Line line,
-        @NotNull ElementRenderContext ctx
+        Line line,
+        ElementRenderContext ctx
     ) {
         var layoutResult = ctx.getLayoutResult();
 
@@ -195,7 +194,7 @@ public class LyricsRenderer {
     /**
      * Initializes font metrics on first call.
      */
-    private void initializeMetrics(@NotNull Graphics2D g2, @NotNull ElementRenderContext ctx) {
+    private void initializeMetrics(Graphics2D g2, ElementRenderContext ctx) {
         if (lyricsMaxDescentPx != 0) {
             return;
         }
@@ -220,12 +219,12 @@ public class LyricsRenderer {
      * @return Updated drawn index for tracking relation rendering
      */
     private int renderNoteLyrics(
-        @NotNull Graphics2D g2,
-        @NotNull Line line,
-        @NotNull ElementRenderContext ctx,
+        Graphics2D g2,
+        Line line,
+        ElementRenderContext ctx,
         boolean isLastLine,
         int noteIndex,
-        @NotNull StaffElement note,
+        StaffElement note,
         int drawnIndex
     ) {
         var composition = ctx.getComposition();
@@ -288,11 +287,11 @@ public class LyricsRenderer {
      * @return Updated drawn index
      */
     private int renderSyllableRelation(
-        @NotNull Graphics2D g2,
-        @NotNull Line line,
-        @NotNull ElementRenderContext ctx,
+        Graphics2D g2,
+        Line line,
+        ElementRenderContext ctx,
         int noteIndex,
-        @NotNull StaffElement note,
+        StaffElement note,
         int drawnIndex,
         int syllableWidth,
         float lyricsY,
@@ -302,8 +301,9 @@ public class LyricsRenderer {
         var metrics = g2.getFontMetrics();
 
         // Determine the relation type
-        var relation = (note.properties.syllableRelation != StaffElement.SyllableRelation.NO)
-            ? note.properties.syllableRelation
+        var noteRelation = note.properties.syllableRelation;
+        var relation = (noteRelation != null && noteRelation != StaffElement.SyllableRelation.NO)
+            ? noteRelation
             : line.beginRelation;
 
         // Find the end note index for this relation
@@ -328,9 +328,9 @@ public class LyricsRenderer {
      * Finds the end note index for a syllable relation.
      */
     private int findRelationEndIndex(
-        @NotNull Line line,
+        Line line,
         int noteIndex,
-        @NotNull StaffElement.SyllableRelation relation
+        StaffElement.SyllableRelation relation
     ) {
         int endIndex;
 
@@ -340,6 +340,11 @@ public class LyricsRenderer {
 
             while (endIndex < line.elementCount()) {
                 var nextSyllable = line.getElement(endIndex).properties.syllable;
+
+                if (nextSyllable == null) {
+                    endIndex++;
+                    continue;
+                }
 
                 if (!nextSyllable.equals(Constants.UNDERSCORE) && !nextSyllable.isEmpty()) {
                     break;
@@ -354,8 +359,10 @@ public class LyricsRenderer {
             while (endIndex < line.elementCount()) {
                 var nextElement = line.getElement(endIndex);
 
+                var nextSyllable = nextElement.properties.syllable;
+
                 if (nextElement.properties.syllableRelation != relation &&
-                    !nextElement.properties.syllable.isEmpty()) {
+                    (nextSyllable == null || !nextSyllable.isEmpty())) {
                     break;
                 }
 
@@ -370,9 +377,9 @@ public class LyricsRenderer {
      * Calculates the start X position for a relation line.
      */
     private int calculateRelationStartXPx(
-        @NotNull Line line,
+        Line line,
         int noteIndex,
-        @NotNull StaffElement note,
+        StaffElement note,
         int syllableWidth
     ) {
         // Begin-of-line extender starts before the note
@@ -392,12 +399,12 @@ public class LyricsRenderer {
      * Calculates the end X position for a relation line.
      */
     private int calculateRelationEndXPx(
-        @NotNull Graphics2D g2,
-        @NotNull Line line,
-        @NotNull songscribe.music.Composition composition,
+        Graphics2D g2,
+        Line line,
+        songscribe.music.Composition composition,
         int noteIndex,
         int endIndex,
-        @NotNull StaffElement.SyllableRelation relation,
+        StaffElement.SyllableRelation relation,
         int startX
     ) {
         // At end of line
@@ -413,8 +420,10 @@ public class LyricsRenderer {
             return endNote.getXPosSs() + 12;
         }
 
+        var endNoteSyllable = endNote.properties.syllable;
+
         if (relation == StaffElement.SyllableRelation.ONE_DASH &&
-            endNote.properties.syllable.isEmpty()) {
+            (endNoteSyllable == null || endNoteSyllable.isEmpty())) {
             return startX + (int) (HYPHEN_WIDTH_PX * 2f);
         }
 
@@ -435,16 +444,16 @@ public class LyricsRenderer {
      * - Extender = duration only
      */
     private void drawRelation(
-        @NotNull Graphics2D g2,
-        @NotNull Line line,
+        Graphics2D g2,
+        Line line,
         int startIndex,
         int endIndex,
-        @NotNull StaffElement.SyllableRelation relation,
+        StaffElement.SyllableRelation relation,
         int startX,
         int endX,
         float lyricsY,
         float dashY,
-        @NotNull StaffElement note
+        StaffElement note
     ) {
         switch (relation) {
             case EXTENDER -> drawExtender(g2, line, startIndex, endIndex, startX, endX, (int) lyricsY);
@@ -462,8 +471,8 @@ public class LyricsRenderer {
      * Following Gould/Ross: extender indicates duration only.
      */
     private void drawExtender(
-        @NotNull Graphics2D g2,
-        @NotNull Line line,
+        Graphics2D g2,
+        Line line,
         int startIndex,
         int endIndex,
         int startX,
@@ -490,8 +499,8 @@ public class LyricsRenderer {
      * Following Gould/Ross: hyphen indicates syllable division only.
      */
     private void drawHyphen(
-        @NotNull Graphics2D g2,
-        @NotNull StaffElement note,
+        Graphics2D g2,
+        StaffElement note,
         int startX,
         int endX,
         float dashY
@@ -522,12 +531,12 @@ public class LyricsRenderer {
      * Empty syllables indicate "breathing room" where the line shouldn't be drawn.
      */
     private void drawWithEmptySyllablesExclusion(
-        @NotNull Graphics2D g2,
+        Graphics2D g2,
         int x1,
         int y1,
         int x2,
         int y2,
-        @NotNull Line line,
+        Line line,
         int startIndex,
         int endIndex
     ) {
@@ -535,7 +544,10 @@ public class LyricsRenderer {
 
         // Find notes with empty syllables
         var emptySyllables = IntStream.range(startIndex, end)
-            .filter(i -> line.getElement(i).properties.syllable.isEmpty())
+            .filter(i -> {
+                var s = line.getElement(i).properties.syllable;
+                return s == null || s.isEmpty();
+            })
             .boxed()
             .collect(Collectors.toCollection(ArrayList::new));
 

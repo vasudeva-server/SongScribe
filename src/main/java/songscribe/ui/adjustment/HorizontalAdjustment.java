@@ -23,7 +23,7 @@ import module java.desktop;
 
 import java.util.ArrayList;
 
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import songscribe.data.DynamicsInterval;
 import songscribe.data.IntervalSet;
@@ -41,7 +41,7 @@ public class HorizontalAdjustment extends Adjustment {
     @Nullable
     private AdjustRect draggingRect;
 
-    private float[] stretchHelper = null;
+    private float @Nullable [] stretchHelper;
 
     public HorizontalAdjustment(Score score) {
         super(score);
@@ -206,10 +206,12 @@ public class HorizontalAdjustment extends Adjustment {
             var ratio = (float) endPoint.x / note.getXPosSs();
             var firstX = line.getElement(0).getXPosSs();
 
-            for (var i = 0; i < line.elementCount(); i++) {
-                stretchHelper[i] = firstX +
-                    ((stretchHelper[i] - firstX) * ratio);
-                line.getElement(i).setXPosSs(Math.round(stretchHelper[i]));
+            if (stretchHelper != null) {
+                for (var i = 0; i < line.elementCount(); i++) {
+                    stretchHelper[i] = firstX +
+                        ((stretchHelper[i] - firstX) * ratio);
+                    line.getElement(i).setXPosSs(Math.round(stretchHelper[i]));
+                }
             }
 
             line.mulElementDistChange(ratio);
@@ -448,33 +450,46 @@ public class HorizontalAdjustment extends Adjustment {
         rect.rect.y = yPosPx + ScaleContext.getInstance().toRoundedPixels(
             note.getType().getTopYOffsetSs(note.isUpper()));
         var lineComponent = score.getLineComponent(rect.line);
+
+        if (lineComponent == null) {
+            return;
+        }
+
         var layoutResult = lineComponent.getLayoutResult();
 
         switch (rect.horizontalAdjustmentType) {
-            case GLISSANDO_START -> rect.rect.x = (int) Math.round(
-                ScaleContext.getInstance().toPixels(
-                    GlissandoRenderer.getGlissandoX1Ss(
-                        rect.xIndex,
-                        note.getGlissando(),
-                        rect.line,
-                        score.getComposition(),
-                        layoutResult,
-                        lineComponent.getMiddleLineYSs()
-                    )
-                )
-            ) - 4;
-            case GLISSANDO_END -> rect.rect.x = (int) Math.round(
-                ScaleContext.getInstance().toPixels(
-                    GlissandoRenderer.getGlissandoX2Ss(
-                        rect.xIndex,
-                        note.getGlissando(),
-                        rect.line,
-                        score.getComposition(),
-                        layoutResult,
-                        lineComponent.getMiddleLineYSs()
-                    )
-                )
-            ) - 4;
+            case GLISSANDO_START -> {
+                if (layoutResult != null) {
+                    rect.rect.x = (int) Math.round(
+                        ScaleContext.getInstance().toPixels(
+                            GlissandoRenderer.getGlissandoX1Ss(
+                                rect.xIndex,
+                                note.getGlissando(),
+                                rect.line,
+                                score.getComposition(),
+                                layoutResult,
+                                lineComponent.getMiddleLineYSs()
+                            )
+                        )
+                    ) - 4;
+                }
+            }
+            case GLISSANDO_END -> {
+                if (layoutResult != null) {
+                    rect.rect.x = (int) Math.round(
+                        ScaleContext.getInstance().toPixels(
+                            GlissandoRenderer.getGlissandoX2Ss(
+                                rect.xIndex,
+                                note.getGlissando(),
+                                rect.line,
+                                score.getComposition(),
+                                layoutResult,
+                                lineComponent.getMiddleLineYSs()
+                            )
+                        )
+                    ) - 4;
+                }
+            }
             case CRESCENDO_START, DIMINUENDO_START -> {
                 var x1Interval = getDynamicIntervalSet(
                     line,

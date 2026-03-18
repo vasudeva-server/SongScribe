@@ -22,8 +22,7 @@ package songscribe.ui.renderer;
 
 import module java.desktop;
 
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import songscribe.music.Composition;
 import songscribe.music.Line;
@@ -49,12 +48,14 @@ public class ElementRenderContext {
     public static final double DEFAULT_LEADING_KEYS_POS_SS = 4.0;
 
     private final Composition composition;
+    @Nullable
     private Line currentLine;
     private double middleLineYSs;
     private int lineIndex;
     private double leadingKeysPosSs = DEFAULT_LEADING_KEYS_POS_SS;
+    @Nullable
     private LayoutResult layoutResult;
-    private LineComponent.SelectionProvider selectionProvider;
+    private LineComponent.@Nullable SelectionProvider selectionProvider;
     private boolean editMode;
     private Color selectionColor = Score.SELECTION_STROKE_COLOR;
     private double overrideElementXSs = Double.NaN;
@@ -64,14 +65,14 @@ public class ElementRenderContext {
      *
      * @param composition The composition being rendered
      */
-    public ElementRenderContext(@NotNull Composition composition) {
+    public ElementRenderContext(Composition composition) {
         this.composition = composition;
     }
 
     /**
      * Returns the composition being rendered.
      */
-    public @NotNull Composition getComposition() {
+    public Composition getComposition() {
         return composition;
     }
 
@@ -80,7 +81,7 @@ public class ElementRenderContext {
      * <p>
      * This font contains glyphs for notes, rests, accidentals, clefs, etc.
      */
-    public @NotNull Font getMusicFont() {
+    public Font getMusicFont() {
         return BaseElementRenderer.MUSIC_FONT;
     }
 
@@ -185,7 +186,7 @@ public class ElementRenderContext {
      *
      * @return The selection provider, or null if not available
      */
-    public @Nullable LineComponent.SelectionProvider getSelectionProvider() {
+    public LineComponent.@Nullable SelectionProvider getSelectionProvider() {
         return selectionProvider;
     }
 
@@ -194,7 +195,7 @@ public class ElementRenderContext {
      *
      * @param selectionProvider The selection provider from LineComponent
      */
-    public void setSelectionProvider(@Nullable LineComponent.SelectionProvider selectionProvider) {
+    public void setSelectionProvider(LineComponent.@Nullable SelectionProvider selectionProvider) {
         this.selectionProvider = selectionProvider;
     }
 
@@ -219,7 +220,7 @@ public class ElementRenderContext {
      * Defaults to {@link Score#SELECTION_STROKE_COLOR}; override during an
      * element pitch-drag to use {@code INSERTION_NOTE_COLOR} instead.
      */
-    public @NotNull Color getSelectionColor() {
+    public Color getSelectionColor() {
         return selectionColor;
     }
 
@@ -228,7 +229,7 @@ public class ElementRenderContext {
      *
      * @param selectionColor the color to use
      */
-    public void setSelectionColor(@NotNull Color selectionColor) {
+    public void setSelectionColor(Color selectionColor) {
         this.selectionColor = selectionColor;
     }
 

@@ -30,9 +30,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.regex.Pattern;
 
-import org.jetbrains.annotations.Contract;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -70,32 +68,39 @@ public final class MyFontUtils {
 
     private static final Set<String> familyNames = new HashSet<>();
     private static final Map<String, Font> psFonts = new HashMap<>();
-    private static Font[] allFonts = null;
+    private static Font @Nullable [] allFonts;
 
+    @Nullable
     private static Font noteFont = null;
+
+    @Nullable
     private static Font iconFont = null;
 
     private MyFontUtils() {}
 
-    @NotNull
     public static Font[] getAllFonts() {
         if (allFonts == null) {
-            allFonts = FontUtils.getAllFonts();
+            var fonts = Objects.requireNonNull(
+                FontUtils.getAllFonts(),
+                "FontUtils.getAllFonts() returned null"
+            );
             Map<TextAttribute, Object> attributes = new HashMap<>();
             attributes.put(TextAttribute.KERNING, TextAttribute.KERNING_ON);
 
-            for (var i = 0; i < allFonts.length; i++) {
-                var font = allFonts[i];
+            for (var i = 0; i < fonts.length; i++) {
+                var font = Objects.requireNonNull(fonts[i], "Font at index " + i + " is null");
                 familyNames.add(font.getFamily());
 
                 // We want kerning to be on for all fonts!
                 var kernedFont = font.deriveFont(attributes);
-                allFonts[i] = kernedFont;
+                fonts[i] = kernedFont;
                 psFonts.put(font.getPSName(), kernedFont);
             }
+
+            allFonts = fonts;
         }
 
-        return allFonts;
+        return Objects.requireNonNull(allFonts);
     }
 
     private static Set<String> getFamilyNames() {
@@ -112,7 +117,6 @@ public final class MyFontUtils {
       This method attempts to create a font from the given PS name and size. If the font is
       not found, the method will return the label font.
     */
-    @NotNull
     public static Font createFont(String psName, int size) {
         return createFont(psName, size, "Label.font");
     }
@@ -122,11 +126,10 @@ public final class MyFontUtils {
       the method will return the font with the given UIManager key. If no font with that key
       exists, the default JLabel font is returned.
     */
-    @NotNull
     public static Font createFont(
         String psName,
         int size,
-        @NotNull String fallbackKey
+        String fallbackKey
     ) {
         // Is it a known PostScript name?
         var font = getPSFonts().get(psName);
@@ -137,15 +140,13 @@ public final class MyFontUtils {
         ).deriveFont((float) size);
     }
 
-    @NotNull
-    public static Font deriveKernedFont(@NotNull Font font) {
+    public static Font deriveKernedFont(Font font) {
         Map<TextAttribute, Object> attributes = new HashMap<>();
         attributes.put(TextAttribute.KERNING, TextAttribute.KERNING_ON);
         return font.deriveFont(attributes);
     }
 
-    @NotNull
-    private static Font getUIFont(@NotNull String key) {
+    private static Font getUIFont(String key) {
         var font = UIManager.getFont(key);
 
         if (font == null) {
@@ -155,29 +156,30 @@ public final class MyFontUtils {
         return font;
     }
 
-    @NotNull
     public static Font getNoteFont() {
         if (noteFont == null) {
-            noteFont = getLocalFont("Bravura.otf", 20);
-            assert noteFont != null;
+            noteFont = Objects.requireNonNull(
+                getLocalFont("Bravura.otf", 20),
+                "Could not load Bravura.otf"
+            );
         }
 
         return noteFont;
     }
 
-    @NotNull
     public static Font getIconFont() {
         if (iconFont == null) {
-            iconFont = getLocalFont("MusescoreIcon.otf", 20);
-            assert iconFont != null;
+            iconFont = Objects.requireNonNull(
+                getLocalFont("MusescoreIcon.otf", 20),
+                "Could not load MusescoreIcon.otf"
+            );
         }
 
         return iconFont;
     }
 
-    @NotNull
     public static Font deriveBaselineShiftedFont(
-        @NotNull Font font,
+        Font font,
         int shift
     ) {
         if (shift == 0) {
@@ -190,7 +192,7 @@ public final class MyFontUtils {
     }
 
     @Nullable
-    public static Font getLocalFont(@NotNull String filename) {
+    public static Font getLocalFont(String filename) {
         return getLocalFont(filename, 0);
     }
 
@@ -198,7 +200,7 @@ public final class MyFontUtils {
      * Loads but does not register a local font. If size == 0, the default 1pt size is returned.
      */
     @Nullable
-    public static Font getLocalFont(@NotNull String filename, float size) {
+    public static Font getLocalFont(String filename, float size) {
         try (
             var stream =
                 MyFontUtils.class.getResourceAsStream("/fonts/" + filename)
@@ -221,11 +223,11 @@ public final class MyFontUtils {
         return null;
     }
 
-    public static void installLocalFont(@NotNull String fontName) {
+    public static void installLocalFont(String fontName) {
         installLocalFont(fontName, 0);
     }
 
-    public static void installLocalFont(@NotNull String fontName, float size) {
+    public static void installLocalFont(String fontName, float size) {
         var font = getLocalFont(fontName, size);
 
         if (font == null) {
@@ -250,8 +252,7 @@ public final class MyFontUtils {
     // will return a pair of strings, the first being the family name and the second being
     // the style name. If the style name contains hyphens, they will be removed.
     // If no style name is found, the second string will be empty.
-    @NotNull
-    public static Pair<String, String> parsePSName(@NotNull String psName) {
+    public static Pair<String, String> parsePSName(String psName) {
         // First split on "_". Everthing before the first "_" is the family name,
         // and everything after is the style name.
         var parts = Arrays.asList(psName.split("_"));
@@ -287,15 +288,13 @@ public final class MyFontUtils {
         );
     }
 
-    @NotNull
-    public static String getFullFontDescription(@NotNull Font font) {
+    public static String getFullFontDescription(Font font) {
         var family = font.getFamily();
         var style = getStyleDescription(font);
         return family + ' ' + style + ' ' + font.getSize() + " pt";
     }
 
-    @NotNull
-    public static String getStyleDescription(@NotNull Font font) {
+    public static String getStyleDescription(Font font) {
         var parsed = parsePSName(font.getPSName());
         var psFamily = parsed.getFirst();
         var psStyle = parsed.getSecond();
@@ -364,9 +363,7 @@ public final class MyFontUtils {
         return styles;
     }
 
-    @NotNull
-    @Contract(pure = true)
-    private static String parseStyle(@NotNull String style) {
+    private static String parseStyle(String style) {
         // Replace some camel case style names that should not be separated
         var result = OSF_PATTERN.matcher(style).replaceAll("Oldstyle Figures");
 
@@ -391,7 +388,7 @@ public final class MyFontUtils {
         return result;
     }
 
-    public static FontMetrics getFontMetrics(@NotNull Font font) {
+    public static FontMetrics getFontMetrics(Font font) {
         var g = new BufferedImage(
             1,
             1,
@@ -403,7 +400,7 @@ public final class MyFontUtils {
         return metrics;
     }
 
-    public static float getXHeight(@NotNull Graphics2D g2) {
+    public static float getXHeight(Graphics2D g2) {
         var layout = new TextLayout(
             "x",
             g2.getFont(),

@@ -23,6 +23,7 @@ import static songscribe.util.StringUtils.toKebabCase;
 
 import module java.desktop;
 
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,7 +36,7 @@ public class DialogOpenAction<T extends StandardDialog> extends UIAction {
 
     private static final Logger LOG = LoggerFactory.getLogger(DialogOpenAction.class);
 
-    private T dialog = null;
+    private @Nullable T dialog = null;
     private final Class<? extends T> dialogClass;
 
     public DialogOpenAction(String name, Class<? extends T> dialogClass) {
@@ -54,10 +55,14 @@ public class DialogOpenAction<T extends StandardDialog> extends UIAction {
 
     @Override
     public void actionPerformed(ActionEvent e) {
-        getDialog().setVisible(true);
+        var d = getDialog();
+
+        if (d != null) {
+            d.setVisible(true);
+        }
     }
 
-    public T getDialog() {
+    public @Nullable T getDialog() {
         if (dialog == null) {
             try {
                 dialog = dialogClass.getConstructor().newInstance();

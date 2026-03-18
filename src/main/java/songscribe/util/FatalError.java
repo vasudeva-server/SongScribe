@@ -20,8 +20,6 @@
 
 package songscribe.util;
 
-import org.jetbrains.annotations.Nullable;
-
 /**
  * Handles fatal application errors caused by violated invariants
  * (e.g. a critical object is null). Logs the error, warns the user,
@@ -39,17 +37,7 @@ public final class FatalError extends RuntimeError {
      * @param message Description of the violated invariant
      */
     public static void exit(String message) {
-        exitIfNull(null, message);
-    }
-
-    /**
-     * If the object is null, logs the message, warns the user, and exits.
-     *
-     * @param object  The object to check
-     * @param message Description of the violated invariant
-     */
-    public static void exitIfNull(@Nullable Object object, String message) {
-        if (logNull(object, ALERT_TITLE, "Fatal: " + message, USER_MESSAGE)) {
+        if (logNull(null, ALERT_TITLE, "Fatal: " + message, USER_MESSAGE)) {
             System.exit(-1);
         }
     }

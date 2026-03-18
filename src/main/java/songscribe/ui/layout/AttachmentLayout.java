@@ -22,8 +22,7 @@ package songscribe.ui.layout;
 
 import module java.desktop;
 
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Layout information for a note attachment (tempo, fermata, trill, annotation, etc.).
@@ -65,10 +64,10 @@ public final class AttachmentLayout {
         DIMINUENDO
     }
 
-    private final @NotNull Type type;
+    private final Type type;
     private final int elementIndex;
-    private final @NotNull Point position;
-    private final @NotNull ElementBounds bounds;
+    private final Point position;
+    private final ElementBounds bounds;
     private final @Nullable Object data;
 
     /**
@@ -81,10 +80,10 @@ public final class AttachmentLayout {
      * @param data      Type-specific data (e.g., tempo value, annotation text)
      */
     public AttachmentLayout(
-        @NotNull Type type,
+        Type type,
         int elementIndex,
-        @NotNull Point position,
-        @NotNull ElementBounds bounds,
+        Point position,
+        ElementBounds bounds,
         @Nullable Object data
     ) {
         this.type = type;
@@ -98,10 +97,10 @@ public final class AttachmentLayout {
      * Creates attachment layout without additional data.
      */
     public AttachmentLayout(
-        @NotNull Type type,
+        Type type,
         int elementIndex,
-        @NotNull Point position,
-        @NotNull ElementBounds bounds
+        Point position,
+        ElementBounds bounds
     ) {
         this(type, elementIndex, position, bounds, null);
     }
@@ -109,7 +108,7 @@ public final class AttachmentLayout {
     /**
      * Returns the attachment type.
      */
-    public @NotNull Type getType() {
+    public Type getType() {
         return type;
     }
 
@@ -123,7 +122,7 @@ public final class AttachmentLayout {
     /**
      * Returns the rendered position.
      */
-    public @NotNull Point getPosition() {
+    public Point getPosition() {
         return position;
     }
 
@@ -144,7 +143,7 @@ public final class AttachmentLayout {
     /**
      * Returns the element bounds for hit testing.
      */
-    public @NotNull ElementBounds getBounds() {
+    public ElementBounds getBounds() {
         return bounds;
     }
 
@@ -170,7 +169,7 @@ public final class AttachmentLayout {
     /**
      * Returns the vertical order for stacking.
      */
-    public @NotNull VerticalOrder getVerticalOrder() {
+    public VerticalOrder getVerticalOrder() {
         return switch (type) {
             case TEMPO -> VerticalOrder.TEMPO;
             case BEAT_CHANGE -> VerticalOrder.BEAT_CHANGE;

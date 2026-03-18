@@ -22,7 +22,9 @@ package songscribe.ui.component.score;
 
 import module java.desktop;
 
-import org.jetbrains.annotations.NotNull;
+import java.util.Objects;
+
+import org.jspecify.annotations.Nullable;
 
 import songscribe.music.Composition;
 import songscribe.ui.menu.DebugState;
@@ -43,6 +45,7 @@ import songscribe.ui.menu.DebugState;
 public abstract class ScoreComponent extends JComponent {
 
     /** Reference to the composition model. */
+    @Nullable
     protected Composition composition;
 
     /** Margin values (top, right, bottom, left) in pixels. */
@@ -63,7 +66,7 @@ public abstract class ScoreComponent extends JComponent {
      *
      * @param composition The composition to render
      */
-    public void setComposition(@NotNull Composition composition) {
+    public void setComposition(Composition composition) {
         this.composition = composition;
         revalidate();
         repaint();
@@ -73,7 +76,7 @@ public abstract class ScoreComponent extends JComponent {
      * Returns the composition model.
      */
     public Composition getComposition() {
-        return composition;
+        return Objects.requireNonNull(composition, "composition not initialized");
     }
 
     /**

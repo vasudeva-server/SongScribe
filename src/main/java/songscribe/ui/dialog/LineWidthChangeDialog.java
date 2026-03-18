@@ -21,6 +21,10 @@ package songscribe.ui.dialog;
 
 import module java.desktop;
 
+import java.util.Objects;
+
+import org.jspecify.annotations.Nullable;
+
 import songscribe.prefs.Prefs;
 import songscribe.Strings;
 import songscribe.ui.Dialogs;
@@ -93,7 +97,7 @@ public class LineWidthChangeDialog
             );
 
             if (lineWidth != originalWidthPx) {
-                var score = getScore();
+                var score = Objects.requireNonNull(getScore());
                 score.setLineWidthPx(lineWidth);
             }
 
@@ -194,7 +198,7 @@ public class LineWidthChangeDialog
 
     // Called when a value in the unit combo is selected
     @Override
-    public void actionPerformed(ActionEvent e) {
+    public void actionPerformed(@Nullable ActionEvent e) {
         handleUnitChange();
     }
 

@@ -21,6 +21,8 @@ package songscribe.ui.dialog;
 
 import module java.desktop;
 
+import java.util.Objects;
+
 import songscribe.Strings;
 import songscribe.notification.KeySignatureDidChangeNotification;
 import songscribe.message.MessageCenter;
@@ -70,7 +72,7 @@ public class KeySignatureChangeDialog extends StandardDialog {
 
     @Override
     protected void getData() {
-        var score = getScore();
+        var score = Objects.requireNonNull(getScore());
         var line = score.getComposition().getLine(score.getSelectedLine());
         indexOfSelectedElementLabel.setText(
             Integer.toString(score.getComposition().indexOfLine(line) + 1)
@@ -82,7 +84,7 @@ public class KeySignatureChangeDialog extends StandardDialog {
     @Override
     protected void setData() {
         MessageCenter.post(new KeySignatureDidChangeNotification(
-            getScore().getSelectedLine(),
+            Objects.requireNonNull(getScore()).getSelectedLine(),
             (KeyType) keysCombo.getSelectedItem(),
             (Integer) keysSpinner.getValue()
         ));

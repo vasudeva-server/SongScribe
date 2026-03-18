@@ -25,7 +25,7 @@ import module java.desktop;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.jetbrains.annotations.NotNull;
+import org.jspecify.annotations.Nullable;
 
 import songscribe.music.Line;
 import songscribe.ui.layout2.ScaleContext;
@@ -50,8 +50,8 @@ public final class CollisionDetector {
      * @return true if the elements' margin bounds overlap
      */
     public static boolean checkCollision(
-        @NotNull LineElement element1,
-        @NotNull LineElement element2
+        LineElement element1,
+        LineElement element2
     ) {
         var bounds1 = element1.getMarginBounds();
         var bounds2 = element2.getMarginBounds();
@@ -66,9 +66,9 @@ public final class CollisionDetector {
      * @param attribution The attribution element
      * @return List of attachments that collide with attribution
      */
-    public static @NotNull List<Attachment> findAttributionCollisions(
-        @NotNull Line line,
-        @NotNull Attribution attribution
+    public static List<Attachment> findAttributionCollisions(
+        Line line,
+        Attribution attribution
     ) {
         var collisions = new ArrayList<Attachment>();
 
@@ -95,8 +95,8 @@ public final class CollisionDetector {
      * @return Vertical offset in pixels (0 if no collision)
      */
     public static double calculateAttributionOffset(
-        @NotNull Line line,
-        @NotNull Attribution attribution
+        Line line,
+        Attribution attribution
     ) {
         var collisions = findAttributionCollisions(line, attribution);
 
@@ -126,8 +126,8 @@ public final class CollisionDetector {
      * @param staffMiddleY Y position of the staff middle line
      * @return Rectangle with: y=minY above staff, height=total extent
      */
-    public static @NotNull Rectangle2D calculateNoteExtent(
-        @NotNull Line line,
+    public static Rectangle2D calculateNoteExtent(
+        Line line,
         double staffMiddleY
     ) {
         double minY = 0;  // Above staff (negative from middle)
@@ -189,7 +189,7 @@ public final class CollisionDetector {
      * @return Total height in pixels
      */
     public static double calculateLineHeight(
-        @NotNull Line line,
+        Line line,
         double staffMiddleY
     ) {
         // Start with staff height
@@ -217,8 +217,8 @@ public final class CollisionDetector {
      * @param y    Y coordinate
      * @return The element containing the point, or null if none
      */
-    public static LineElement findElementAt(
-        @NotNull Line line,
+    public static @Nullable LineElement findElementAt(
+        Line line,
         double x,
         double y
     ) {

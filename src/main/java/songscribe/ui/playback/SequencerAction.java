@@ -19,7 +19,7 @@
  */
 package songscribe.ui.playback;
 
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import songscribe.ui.action.UIAction;
 

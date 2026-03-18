@@ -26,7 +26,7 @@ import static songscribe.ui.renderer.GraphicsState.Property.TRANSFORM;
 
 import module java.desktop;
 
-import org.jetbrains.annotations.NotNull;
+import org.jspecify.annotations.Nullable;
 
 import songscribe.music.Line;
 import songscribe.music.StaffElement;
@@ -72,7 +72,7 @@ public class TrillRenderer extends BaseElementRenderer<Trill> {
     /**
      * Returns the singleton instance.
      */
-    public static @NotNull TrillRenderer getInstance() {
+    public static TrillRenderer getInstance() {
         return INSTANCE;
     }
 
@@ -82,9 +82,9 @@ public class TrillRenderer extends BaseElementRenderer<Trill> {
 
     @Override
     protected void renderElement(
-        @NotNull Trill element,
-        @NotNull Graphics2D g2,
-        @NotNull ElementRenderContext ctx
+        Trill element,
+        Graphics2D g2,
+        ElementRenderContext ctx
     ) {
         var anchorNote = element.getAnchorElement();
 
@@ -102,8 +102,8 @@ public class TrillRenderer extends BaseElementRenderer<Trill> {
      * Gets the Y position for a trill from layout result.
      */
     private int getEffectiveTrillYPosSs(
-        @NotNull Trill element,
-        @NotNull ElementRenderContext ctx
+        Trill element,
+        ElementRenderContext ctx
     ) {
         var layoutResult = ctx.getLayoutResult();
 
@@ -124,10 +124,10 @@ public class TrillRenderer extends BaseElementRenderer<Trill> {
      * Renders a trill at a note.
      */
     public void renderTrill(
-        @NotNull Graphics2D g2,
-        @NotNull ElementRenderContext ctx,
-        @NotNull StaffElement startNote,
-        StaffElement endNote,
+        Graphics2D g2,
+        ElementRenderContext ctx,
+        StaffElement startNote,
+        @Nullable StaffElement endNote,
         int trillYPosSs
     ) {
         double middleLineYSs = ctx.getMiddleLineYSs();
@@ -153,9 +153,9 @@ public class TrillRenderer extends BaseElementRenderer<Trill> {
      * Renders trills from a Line, checking for consecutive trill notes.
      */
     public void renderTrillsFromLine(
-        @NotNull Graphics2D g2,
-        @NotNull Line line,
-        @NotNull ElementRenderContext ctx
+        Graphics2D g2,
+        Line line,
+        ElementRenderContext ctx
     ) {
         int trillYPosPx = line.getTrillYPosPx();
 
@@ -189,7 +189,7 @@ public class TrillRenderer extends BaseElementRenderer<Trill> {
      * Draws a wavy trill extension line using tiled WIGGLE_TRILL glyphs.
      */
     private void drawWavyLine(
-        @NotNull Graphics2D g2,
+        Graphics2D g2,
         double x1,
         int y,
         double x2

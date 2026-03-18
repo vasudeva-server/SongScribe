@@ -22,7 +22,9 @@ package songscribe.ui.component.score;
 
 import module java.desktop;
 
-import org.jetbrains.annotations.NotNull;
+import java.util.Objects;
+
+import org.jspecify.annotations.Nullable;
 
 import songscribe.music.Composition;
 
@@ -50,6 +52,7 @@ public class TextPanel extends JPanel {
     private final TranslationComponent translationComponent;
 
     /** The composition model. */
+    @Nullable
     private Composition composition;
 
     /**
@@ -79,7 +82,7 @@ public class TextPanel extends JPanel {
      *
      * @param composition The composition
      */
-    public void setComposition(@NotNull Composition composition) {
+    public void setComposition(Composition composition) {
         this.composition = composition;
         underLyricsComponent.setComposition(composition);
         banglaLyricsComponent.setComposition(composition);
@@ -92,7 +95,7 @@ public class TextPanel extends JPanel {
      * Returns the composition.
      */
     public Composition getComposition() {
-        return composition;
+        return Objects.requireNonNull(composition, "composition not initialized");
     }
 
     /**

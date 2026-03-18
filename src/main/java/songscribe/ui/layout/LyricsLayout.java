@@ -23,7 +23,6 @@ package songscribe.ui.layout;
 import java.util.List;
 import java.util.Optional;
 
-import org.jetbrains.annotations.NotNull;
 
 /**
  * Layout information for a lyrics row (syllables under a staff line).
@@ -34,8 +33,8 @@ import org.jetbrains.annotations.NotNull;
 public final class LyricsLayout {
 
     private final int baselineY;
-    private final @NotNull List<SyllableLayout> syllables;
-    private final @NotNull ElementBounds bounds;
+    private final List<SyllableLayout> syllables;
+    private final ElementBounds bounds;
 
     /**
      * Creates lyrics layout with syllables.
@@ -46,8 +45,8 @@ public final class LyricsLayout {
      */
     public LyricsLayout(
         int baselineY,
-        @NotNull List<SyllableLayout> syllables,
-        @NotNull ElementBounds bounds
+        List<SyllableLayout> syllables,
+        ElementBounds bounds
     ) {
         this.baselineY = baselineY;
         this.syllables = List.copyOf(syllables);
@@ -74,14 +73,14 @@ public final class LyricsLayout {
     /**
      * Returns the list of syllable layouts.
      */
-    public @NotNull List<SyllableLayout> getSyllables() {
+    public List<SyllableLayout> getSyllables() {
         return syllables;
     }
 
     /**
      * Returns the combined bounds of all syllables.
      */
-    public @NotNull ElementBounds getBounds() {
+    public ElementBounds getBounds() {
         return bounds;
     }
 

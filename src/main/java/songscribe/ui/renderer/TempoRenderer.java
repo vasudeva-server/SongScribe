@@ -28,8 +28,7 @@ import module java.desktop;
 import java.util.EnumMap;
 import java.util.Map;
 
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import songscribe.music.ElementType;
 import songscribe.music.StaffElement;
@@ -80,7 +79,7 @@ public class TempoRenderer extends BaseElementRenderer<StaffElement> {
     /**
      * Returns the singleton instance.
      */
-    public static @NotNull TempoRenderer getInstance() {
+    public static TempoRenderer getInstance() {
         return INSTANCE;
     }
 
@@ -137,9 +136,9 @@ public class TempoRenderer extends BaseElementRenderer<StaffElement> {
 
     @Override
     protected void renderElement(
-        @NotNull StaffElement element,
-        @NotNull Graphics2D g2,
-        @NotNull ElementRenderContext ctx
+        StaffElement element,
+        Graphics2D g2,
+        ElementRenderContext ctx
     ) {
         var tempo = element.getTempoChange();
 
@@ -158,9 +157,9 @@ public class TempoRenderer extends BaseElementRenderer<StaffElement> {
      * @param ctx  Render context
      */
     public void renderTempo(
-        @NotNull Graphics2D g2,
-        @NotNull StaffElement note,
-        @NotNull ElementRenderContext ctx
+        Graphics2D g2,
+        StaffElement note,
+        ElementRenderContext ctx
     ) {
         render(note, g2, ctx);
     }
@@ -177,10 +176,10 @@ public class TempoRenderer extends BaseElementRenderer<StaffElement> {
      * @param ctx   Render context
      */
     public void renderInitialTempo(
-        @NotNull Graphics2D g2,
-        @NotNull StaffElement note,
-        @NotNull Tempo tempo,
-        @NotNull ElementRenderContext ctx
+        Graphics2D g2,
+        StaffElement note,
+        Tempo tempo,
+        ElementRenderContext ctx
     ) {
         renderTempoChange(g2, tempo, note, ctx);
     }
@@ -189,10 +188,10 @@ public class TempoRenderer extends BaseElementRenderer<StaffElement> {
      * Renders the tempo change indicator.
      */
     private void renderTempoChange(
-        @NotNull Graphics2D g2,
-        @NotNull Tempo tempo,
-        @NotNull StaffElement note,
-        @NotNull ElementRenderContext ctx
+        Graphics2D g2,
+        Tempo tempo,
+        StaffElement note,
+        ElementRenderContext ctx
     ) {
         var composition = ctx.getComposition();
         var line = ctx.getCurrentLine();
@@ -249,8 +248,8 @@ public class TempoRenderer extends BaseElementRenderer<StaffElement> {
      * Draws a tempo note (scaled smaller than regular notes).
      */
     private void drawTempoChangeNote(
-        @NotNull Graphics2D g2,
-        @NotNull StaffElement tempoNote,
+        Graphics2D g2,
+        StaffElement tempoNote,
         int x,
         int y
     ) {
@@ -268,7 +267,7 @@ public class TempoRenderer extends BaseElementRenderer<StaffElement> {
      * Paints a simple note for tempo display using a pre-composed SMuFL
      * metronome glyph (notehead + stem + flag in a single codepoint).
      */
-    private void paintSimpleTempoNote(@NotNull Graphics2D g2, @NotNull StaffElement note) {
+    private void paintSimpleTempoNote(Graphics2D g2, StaffElement note) {
         var metGlyph = METRONOME_GLYPHS.get(note.getType());
 
         if (metGlyph == null) {
@@ -297,8 +296,8 @@ public class TempoRenderer extends BaseElementRenderer<StaffElement> {
      * component coordinates (relative to component top).
      */
     private int getEffectiveTempoChangeYPosSs(
-        @NotNull StaffElement note,
-        @NotNull ElementRenderContext ctx
+        StaffElement note,
+        ElementRenderContext ctx
     ) {
         var layoutResult = ctx.getLayoutResult();
 

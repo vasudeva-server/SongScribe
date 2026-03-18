@@ -19,7 +19,6 @@
  */
 package songscribe.io;
 
-import org.jetbrains.annotations.NotNull;
 
 import songscribe.data.DynamicsInterval;
 import songscribe.data.EndingInterval;
@@ -88,7 +87,7 @@ public final class FormatMigrator {
      * @param lines The lines to migrate
      * @param formatVersion The current format version (migration is skipped if >= 2)
      */
-    public static void migrate(@NotNull List<Line> lines, int formatVersion) {
+    public static void migrate(List<Line> lines, int formatVersion) {
         if (formatVersion >= 2) {
             return;
         }
@@ -109,7 +108,7 @@ public final class FormatMigrator {
      *
      * @param lines The lines with pixel values to convert
      */
-    public static void migratePixelsToStaffSpace(@NotNull List<Line> lines) {
+    public static void migratePixelsToStaffSpace(List<Line> lines) {
         var pps = ScaleContext.DEFAULT_PIXELS_PER_STAFF_SPACE;
 
         for (var lineIdx = 0; lineIdx < lines.size(); lineIdx++) {
@@ -164,7 +163,7 @@ public final class FormatMigrator {
     }
 
     private static void migrateDynamicsIntervals(
-        @NotNull IntervalSet<DynamicsInterval> intervals,
+        IntervalSet<DynamicsInterval> intervals,
         double pps
     ) {
         for (var iter = intervals.listIterator(); iter.hasNext(); ) {
@@ -183,7 +182,7 @@ public final class FormatMigrator {
      *
      * @param line The line to migrate
      */
-    private static void migrateLine(@NotNull Line line) {
+    private static void migrateLine(Line line) {
         // Migrate IntervalSets to RangeElements
         migrateRangeElements(line);
 
@@ -208,7 +207,7 @@ public final class FormatMigrator {
      * @param line The line to migrate
      */
     @SuppressWarnings("deprecation")
-    private static void migrateLineLevelOffsets(@NotNull Line line) {
+    private static void migrateLineLevelOffsets(Line line) {
         // Migrate tempo change offset to per-instance
         int tempoOffset = line.getTempoChangeYPosPx();
 
@@ -288,7 +287,7 @@ public final class FormatMigrator {
      *
      * @param line The line containing annotations to migrate
      */
-    private static void migrateAnnotationPositions(@NotNull Line line) {
+    private static void migrateAnnotationPositions(Line line) {
         for (var i = 0; i < line.elementCount(); i++) {
             var annotation = line.getElement(i).getAnnotation();
 
@@ -314,7 +313,7 @@ public final class FormatMigrator {
      *
      * @param line The line containing the IntervalSets
      */
-    private static void migrateRangeElements(@NotNull Line line) {
+    private static void migrateRangeElements(Line line) {
         // Convert ties
         migrateIntervalSet(line, line.getTies(), (l, interval) -> {
             var startElement = l.getElement(interval.getStart());
@@ -374,9 +373,9 @@ public final class FormatMigrator {
      */
     @SuppressWarnings("rawtypes")
     private static void migrateIntervalSet(
-        @NotNull Line line,
-        @NotNull IntervalSet intervalSet,
-        @NotNull RangeElementFactory factory
+        Line line,
+        IntervalSet intervalSet,
+        RangeElementFactory factory
     ) {
         for (var iter = intervalSet.listIterator(); iter.hasNext(); ) {
             var interval = (Interval) iter.next();
@@ -404,7 +403,7 @@ public final class FormatMigrator {
      * @param interval The interval containing tuplet data
      * @return The tuplet grade (3, 5, 6, 7, etc.)
      */
-    private static int extractTupletGrade(@NotNull TupletInterval interval) {
+    private static int extractTupletGrade(TupletInterval interval) {
         return interval.getGrade();
     }
 
@@ -417,7 +416,7 @@ public final class FormatMigrator {
      * @param interval The interval containing ending data
      * @return The ending type
      */
-    private static Ending.Type extractEndingType(@NotNull EndingInterval interval) {
+    private static Ending.Type extractEndingType(EndingInterval interval) {
         return interval.getEndingNumber() == 2 ? Ending.Type.SECOND : Ending.Type.FIRST;
     }
 
@@ -426,7 +425,7 @@ public final class FormatMigrator {
      *
      * @param note The note to migrate
      */
-    private static void migrateElementAttachments(@NotNull StaffElement note) {
+    private static void migrateElementAttachments(StaffElement note) {
         // Tempo change attachment
         if (note.getTempoChange() != null) {
             var attachment = new TempoAttachment(note, note.getTempoChange());

@@ -22,7 +22,6 @@ package songscribe.ui.component.score;
 
 import module java.desktop;
 
-import org.jetbrains.annotations.NotNull;
 
 import songscribe.music.StaffElement;
 import songscribe.smufl.SMuFLMetadata;
@@ -100,7 +99,7 @@ class LineRenderer {
      *
      * @param lineComponent The LineComponent to render for
      */
-    LineRenderer(@NotNull LineComponent lineComponent) {
+    LineRenderer(LineComponent lineComponent) {
         this.lc = lineComponent;
     }
 
@@ -271,13 +270,23 @@ class LineRenderer {
     private void renderLineBeginning(Graphics2D g2, ElementRenderContext ctx) {
         var line = lc.getLine();
 
+        if (line == null) {
+            return;
+        }
+
         // Render treble clef
         ClefRenderer.getInstance().renderClef(g2, ctx);
 
         // Render key signature
+        var keyType = line.getKeyType();
+
+        if (keyType == null) {
+            return;
+        }
+
         KeySignatureRenderer.getInstance().renderKeySignature(
             g2,
-            line.getKeyType(),
+            keyType,
             line.getKeyAccidentalCount(),
             ctx.getLeadingKeysPosSs(),
             ctx.getMiddleLineYSs(),
@@ -298,6 +307,10 @@ class LineRenderer {
     private void renderElements(Graphics2D g2, ElementRenderContext ctx) {
         var noteRenderer = NoteRenderer.getInstance();
         var line = lc.getLine();
+
+        if (line == null) {
+            return;
+        }
 
         for (var i = 0; i < line.elementCount(); i++) {
             var element = line.getElement(i);
@@ -370,7 +383,13 @@ class LineRenderer {
      * @param ctx Render context
      */
     private void renderGlissandos(Graphics2D g2, ElementRenderContext ctx) {
-        GlissandoRenderer.getInstance().renderGlissandosFromLine(g2, lc.getLine(), ctx);
+        var line = lc.getLine();
+
+        if (line == null) {
+            return;
+        }
+
+        GlissandoRenderer.getInstance().renderGlissandosFromLine(g2, line, ctx);
     }
 
     /**
@@ -382,6 +401,11 @@ class LineRenderer {
     private void renderBeams(Graphics2D g2, ElementRenderContext ctx) {
         var beamRenderer = BeamGroupRenderer.getInstance();
         var line = lc.getLine();
+
+        if (line == null) {
+            return;
+        }
+
         var beamings = line.getBeamings();
 
         for (var iter = beamings.listIterator(); iter.hasNext(); ) {
@@ -399,6 +423,11 @@ class LineRenderer {
     private void renderTies(Graphics2D g2, ElementRenderContext ctx) {
         var tieRenderer = TieRenderer.getInstance();
         var line = lc.getLine();
+
+        if (line == null) {
+            return;
+        }
+
         var ties = line.getTies();
 
         for (var iter = ties.listIterator(); iter.hasNext(); ) {
@@ -414,7 +443,13 @@ class LineRenderer {
      * @param ctx Render context
      */
     private void renderTuplets(Graphics2D g2, ElementRenderContext ctx) {
-        TupletRenderer.getInstance().renderTupletsFromLine(g2, lc.getLine(), ctx);
+        var line = lc.getLine();
+
+        if (line == null) {
+            return;
+        }
+
+        TupletRenderer.getInstance().renderTupletsFromLine(g2, line, ctx);
     }
 
     /**
@@ -437,6 +472,10 @@ class LineRenderer {
             return;
         }
 
+        if (line == null) {
+            return;
+        }
+
         var nextLine = composition.getLine(lineIndex + 1);
 
         // Delegate to KeySignatureRenderer
@@ -456,8 +495,13 @@ class LineRenderer {
      * @param ctx Render context
      */
     private void renderDynamics(Graphics2D g2, ElementRenderContext ctx) {
-        var dynamicsRenderer = DynamicsRenderer.getInstance();
         var line = lc.getLine();
+
+        if (line == null) {
+            return;
+        }
+
+        var dynamicsRenderer = DynamicsRenderer.getInstance();
         dynamicsRenderer.renderCrescendosFromLine(g2, line, ctx);
         dynamicsRenderer.renderDiminuendosFromLine(g2, line, ctx);
     }
@@ -469,8 +513,14 @@ class LineRenderer {
      * @param ctx Render context
      */
     private void renderEndings(Graphics2D g2, ElementRenderContext ctx) {
+        var line = lc.getLine();
+
+        if (line == null) {
+            return;
+        }
+
         EndingRenderer.getInstance().renderEndings(
-            g2, lc.getLine(), lc.getLineIndex(), ctx
+            g2, line, lc.getLineIndex(), ctx
         );
     }
 
@@ -493,6 +543,10 @@ class LineRenderer {
         var articulationRenderer = ArticulationRenderer.getInstance();
         var line = lc.getLine();
         var layoutResult = lc.getLayoutResult();
+
+        if (line == null) {
+            return;
+        }
 
         g2.setColor(Color.BLACK);
 

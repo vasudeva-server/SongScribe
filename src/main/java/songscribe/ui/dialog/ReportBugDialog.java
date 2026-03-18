@@ -23,7 +23,6 @@ import module java.desktop;
 
 import java.io.File;
 
-import org.jetbrains.annotations.NotNull;
 
 import songscribe.Strings;
 import songscribe.Version;
@@ -104,7 +103,6 @@ public class ReportBugDialog extends StandardDialog {
         contentPanel.add(BorderLayout.SOUTH, buttonPanel);
     }
 
-    @NotNull
     private JEditorPane getjEditorPane(File logFile) {
         var area = new JEditorPane(
             "text/html",

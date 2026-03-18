@@ -22,6 +22,7 @@ package songscribe.converter;
 import java.io.File;
 import java.io.IOException;
 
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,7 +39,7 @@ public class PDFConverter {
 
     @ArgumentDescribe("Paper size: a4, letter, legal, custom")
     @NoDefault
-    public String paperSize = null;
+    public @Nullable String paperSize = null;
 
     @ArgumentDescribe(
         "Paper width in 100ths of an inch, ignored if paperSize is not 'custom'"
@@ -86,18 +87,31 @@ public class PDFConverter {
     public int rightMargin = -1;
 
     @FileArgument
-    public File[] files = null;
+    public File[] files = new File[0];
 
     public static void main(String[] args) {
         SongScribe.configureLogging();
         var reader = new ArgumentReader<>(args, PDFConverter.class);
-        reader.getObj().convert();
+        var converter = reader.getObj();
+
+        if (converter == null) {
+            LOG.error("Failed to parse arguments");
+            return;
+        }
+
+        converter.convert();
     }
 
     public void convert() {
-        paperSize = paperSize.toLowerCase();
+        if (paperSize == null) {
+            LOG.error("No paper size specified");
+            return;
+        }
 
-        switch (paperSize) {
+        var size = paperSize.toLowerCase();
+        paperSize = size;
+
+        switch (size) {
             case "a4" -> {
                 paperWidth = 827;
                 paperHeight = 1169;
@@ -129,6 +143,11 @@ public class PDFConverter {
         data.paperHeightPx = paperHeight;
         data.score = score;
         data.applyMarginOverrides(75, topMargin, leftMargin, bottomMargin, rightMargin);
+
+        if (files.length == 0) {
+            LOG.error("No files specified");
+            return;
+        }
 
         for (var file : files) {
             var composition = Converter.loadComposition(file, score);

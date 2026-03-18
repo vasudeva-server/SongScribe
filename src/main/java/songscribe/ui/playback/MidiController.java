@@ -32,7 +32,7 @@ import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -45,9 +45,9 @@ public final class MidiController {
     private static final Logger LOG = LoggerFactory.getLogger(MidiController.class);
 
     // MIDI
-    public static Sequencer sequencer = null;
-    public static Receiver midiReceiver = null;
-    public static Synthesizer synthesizer = null;
+    public static @Nullable Sequencer sequencer = null;
+    public static @Nullable Receiver midiReceiver = null;
+    public static @Nullable Synthesizer synthesizer = null;
 
     private MidiController() {}
 

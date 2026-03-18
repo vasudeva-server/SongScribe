@@ -22,7 +22,6 @@ package songscribe.ui.fontchooser.listeners;
 
 import module java.desktop;
 
-import org.jetbrains.annotations.NotNull;
 
 import songscribe.ui.fontchooser.FontContainer;
 
@@ -39,7 +38,7 @@ public class FamilyListSelectionListener implements ListSelectionListener {
     }
 
     @Override
-    public void valueChanged(@NotNull ListSelectionEvent e) {
+    public void valueChanged(ListSelectionEvent e) {
         if (!e.getValueIsAdjusting()) {
             var oldFont = fontContainer.getSelectedFont();
             var newFont = new Font(
