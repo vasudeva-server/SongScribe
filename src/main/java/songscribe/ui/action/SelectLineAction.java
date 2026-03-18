@@ -24,7 +24,7 @@ import module java.desktop;
 
 import songscribe.Strings;
 import songscribe.message.MessageCenter;
-import songscribe.ui.message.SelectLineMessage;
+import songscribe.command.SelectLineCommand;
 import songscribe.util.UIUtils;
 
 public class SelectLineAction extends UIAction {
@@ -47,6 +47,6 @@ public class SelectLineAction extends UIAction {
 
     @Override
     public void actionPerformed(ActionEvent e) {
-        MessageCenter.post(new SelectLineMessage());
+        MessageCenter.post(new SelectLineCommand());
     }
 }

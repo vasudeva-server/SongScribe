@@ -21,9 +21,10 @@ package songscribe.ui.playback;
 
 import module java.desktop;
 
-import songscribe.ui.action.SelectableUIAction;
 import songscribe.Strings;
 import songscribe.message.MessageCenter;
+import songscribe.command.ToggleLoopPlaybackCommand;
+import songscribe.ui.action.SelectableUIAction;
 
 public class LoopPlaybackAction extends SelectableUIAction {
 
@@ -47,6 +48,6 @@ public class LoopPlaybackAction extends SelectableUIAction {
 
     @Override
     public void actionPerformed(ActionEvent e) {
-        MessageCenter.post(new LoopPlaybackMessage(isSelected()));
+        MessageCenter.post(new ToggleLoopPlaybackCommand(isSelected()));
     }
 }

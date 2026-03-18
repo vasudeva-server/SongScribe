@@ -28,6 +28,8 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import songscribe.Strings;
+import songscribe.message.MessageCenter;
+import songscribe.notification.PlaybackStateDidChangeNotification;
 import songscribe.midi.MidiSequenceBuilder;
 import songscribe.midi.PlaybackSettings;
 import songscribe.music.Composition;
@@ -35,7 +37,6 @@ import songscribe.prefs.Prefs;
 import songscribe.ui.Dialogs;
 import songscribe.ui.component.Score;
 import songscribe.ui.component.score.LineComponent;
-import songscribe.message.MessageCenter;
 import songscribe.ui.selection.ElementSelection;
 
 public final class PlaybackController {
@@ -109,7 +110,7 @@ public final class PlaybackController {
     public static void playbackDidStart() {
         state = PlaybackState.PLAYING;
         registerMetaListener();
-        MessageCenter.post(new PlaybackStateChangedMessage(state));
+        MessageCenter.post(new PlaybackStateDidChangeNotification(state));
     }
 
     private static void registerMetaListener() {
@@ -155,7 +156,7 @@ public final class PlaybackController {
     public static void playbackDidPause() {
         state = PlaybackState.PAUSED;
         stopSequencer();
-        MessageCenter.post(new PlaybackStateChangedMessage(state));
+        MessageCenter.post(new PlaybackStateDidChangeNotification(state));
     }
 
     public static void playbackDidStop() {
@@ -163,7 +164,7 @@ public final class PlaybackController {
         stopSequencer();
         clearPlayingHighlight();
 
-        MessageCenter.post(new PlaybackStateChangedMessage(state));
+        MessageCenter.post(new PlaybackStateDidChangeNotification(state));
     }
 
     private static void clearPlayingHighlight() {

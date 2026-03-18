@@ -35,15 +35,15 @@ import net.engio.mbassy.listener.Handler;
 
 import songscribe.data.Interval;
 import songscribe.data.IntervalSet;
+import songscribe.message.Message;
+import songscribe.message.MessageCenter;
 import songscribe.music.Composition;
 import songscribe.music.Line;
 import songscribe.music.StaffElement;
+import songscribe.notification.CompositionDidChangeNotification;
+import songscribe.notification.MusicSelectionDidChangeNotification;
 import songscribe.ui.action.Actions;
 import songscribe.ui.action.UIAction;
-import songscribe.message.CompositionChangedMessage;
-import songscribe.message.Message;
-import songscribe.message.MessageCenter;
-import songscribe.ui.message.MusicSelectionChangedMessage;
 import songscribe.util.RuntimeError;
 
 /**
@@ -575,7 +575,7 @@ public final class SelectionCoordinator {
         applicabilityCache.clear();
         var composition = line.getComposition();
         composition.setModified(true);
-        MessageCenter.post(new CompositionChangedMessage(CompositionChangedMessage.ChangeType.CONTENT, composition, line));
+        MessageCenter.post(new CompositionDidChangeNotification(CompositionDidChangeNotification.ChangeType.CONTENT, composition, line));
     }
 
     /**
@@ -745,7 +745,7 @@ public final class SelectionCoordinator {
      * state and restore puts it back before updateEnabledState recomputes.
      */
     @Handler(priority = Message.HIGH_PRIORITY)
-    public void saveOrRestoreActionStates(MusicSelectionChangedMessage message) {
+    public void musicSelectionDidChangeSaveRestoreActionStates(MusicSelectionDidChangeNotification message) {
         var selection = getSelection();
 
         if (selection == null) {
@@ -761,7 +761,7 @@ public final class SelectionCoordinator {
      * the selection-changed message.
      */
     @Handler(priority = Message.LOW_PRIORITY)
-    public void reflectSelection(MusicSelectionChangedMessage message) {
+    public void musicSelectionDidChangeReflectSelection(MusicSelectionDidChangeNotification message) {
         var actions = getReflectableActions();
         var selection = getSelection();
 

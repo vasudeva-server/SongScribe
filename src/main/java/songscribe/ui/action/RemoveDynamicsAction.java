@@ -28,8 +28,8 @@ import net.engio.mbassy.listener.Handler;
 
 import songscribe.Strings;
 import songscribe.message.MessageCenter;
-import songscribe.ui.message.MusicSelectionChangedMessage;
-import songscribe.ui.message.RemoveDynamicsMessage;
+import songscribe.notification.MusicSelectionDidChangeNotification;
+import songscribe.command.RemoveDynamicsCommand;
 
 public class RemoveDynamicsAction extends UIAction {
 
@@ -55,7 +55,7 @@ public class RemoveDynamicsAction extends UIAction {
     @Override
     @Handler
     public void musicSelectionDidChange(
-        @NotNull MusicSelectionChangedMessage message
+        @NotNull MusicSelectionDidChangeNotification message
     ) {
         if (updateEnabledState()) {
             setEnabled(message.getScore().canRemoveDynamicsFromSelection());
@@ -64,6 +64,6 @@ public class RemoveDynamicsAction extends UIAction {
 
     @Override
     public void actionPerformed(ActionEvent e) {
-        MessageCenter.post(new RemoveDynamicsMessage());
+        MessageCenter.post(new RemoveDynamicsCommand());
     }
 }

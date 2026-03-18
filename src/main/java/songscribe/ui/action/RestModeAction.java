@@ -23,10 +23,9 @@ package songscribe.ui.action;
 import module java.desktop;
 
 import songscribe.Strings;
-import songscribe.music.StaffElement;
-
 import songscribe.message.MessageCenter;
-import songscribe.ui.message.RestModeChangedMessage;
+import songscribe.music.StaffElement;
+import songscribe.notification.RestModeDidChangeNotification;
 
 public class RestModeAction extends SelectableUIAction implements UIAction.Reflectable {
 
@@ -66,6 +65,6 @@ public class RestModeAction extends SelectableUIAction implements UIAction.Refle
     @Override
     public void actionPerformed(ActionEvent e) {
         toggleOnKeyboardShortcut(e);
-        MessageCenter.post(new RestModeChangedMessage());
+        MessageCenter.post(new RestModeDidChangeNotification());
     }
 }

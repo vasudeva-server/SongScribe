@@ -127,6 +127,10 @@ public class ResolutionDialog extends StandardDialog implements ChangeListener {
 
     @Override
     public void stateChanged(ChangeEvent e) {
+        handleResolutionChange();
+    }
+
+    private void handleResolutionChange() {
         var scale = (float) getResolution() / (float) GraphicUtils.getDpi();
         var myBorder = borderPanel.getMyBorder();
         widthField.setText(

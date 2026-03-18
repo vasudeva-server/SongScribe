@@ -311,6 +311,10 @@ public class PaperSizeStep extends Step {
 
         @Override
         public void actionPerformed(ActionEvent e) {
+            handleUnitChange();
+        }
+
+        private void handleUnitChange() {
             if (currentUnit == GraphicUtils.Unit.UNDETERMINED) {
                 currentUnit = GraphicUtils.Unit.fromValue(
                     unitsCombo.getSelectedIndex()

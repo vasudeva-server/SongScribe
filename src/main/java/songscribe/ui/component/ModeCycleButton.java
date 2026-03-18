@@ -25,13 +25,13 @@ import static songscribe.ui.action.Actions.MODE_ACTION_GROUP;
 
 import net.engio.mbassy.listener.Handler;
 
+import songscribe.message.MessageCenter;
 import songscribe.ui.action.ModeAction;
 import songscribe.ui.edit.GraceModeManager;
-import songscribe.ui.message.GraceModeStateChangedMessage;
-import songscribe.message.MessageCenter;
-import songscribe.ui.message.ModeChangedMessage;
+import songscribe.notification.GraceModeStateDidChangeNotification;
+import songscribe.notification.ModeDidChangeNotification;
 import songscribe.ui.playback.PlaybackController;
-import songscribe.ui.playback.PlaybackStateChangedMessage;
+import songscribe.notification.PlaybackStateDidChangeNotification;
 import songscribe.util.UIUtils;
 
 /**
@@ -59,21 +59,21 @@ public class ModeCycleButton extends ToolbarToggleButton {
     }
 
     @Handler
-    public void modeDidChange(ModeChangedMessage message) {
+    public void modeDidChange(ModeDidChangeNotification message) {
         if (!message.isAdjustmentMode()) {
             updateButton(message.getAction());
         }
     }
 
     @Handler
-    public void playbackStateDidChange(PlaybackStateChangedMessage message) {
+    public void playbackStateDidChange(PlaybackStateDidChangeNotification message) {
         setEnabled(
             message.getState() != PlaybackController.PlaybackState.PLAYING
         );
     }
 
     @Handler
-    public void graceModeStateDidChange(GraceModeStateChangedMessage message) {
+    public void graceModeStateDidChange(GraceModeStateDidChangeNotification message) {
         setEnabled(!GraceModeManager.isActive());
     }
 

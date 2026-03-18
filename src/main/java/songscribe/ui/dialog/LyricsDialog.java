@@ -19,16 +19,15 @@
  */
 package songscribe.ui.dialog;
 
-import static songscribe.util.UIUtils.MENU_SHORTCUT_MASK;
-
 import module java.desktop;
+import static songscribe.util.UIUtils.MENU_SHORTCUT_MASK;
 
 import com.intellij.uiDesigner.core.GridConstraints;
 import com.intellij.uiDesigner.core.GridLayoutManager;
 import com.intellij.uiDesigner.core.Spacer;
 
 import songscribe.Strings;
-import songscribe.message.LyricsUpdate;
+import songscribe.notification.LyricsDidChangeNotification;
 import songscribe.message.MessageCenter;
 import songscribe.ui.Constants;
 import songscribe.ui.component.MyJTextArea;
@@ -38,9 +37,9 @@ import songscribe.util.UIUtils;
 @SuppressWarnings("NonStaticInitializer")
 public class LyricsDialog extends StandardDialog {
 
-    private static final char[][] specialChars = new char[][] {
-        new char[] { 'ā', 'ñ', 'â', 'ũ', 'ã' },
-        new char[] { 'Ā', 'Ñ', 'Â', 'Ũ', 'Ã' },
+    private static final char[][] specialChars = new char[][]{
+        new char[]{'ā', 'ñ', 'â', 'ũ', 'ã'},
+        new char[]{'Ā', 'Ñ', 'Â', 'Ũ', 'Ã'},
     };
 
     protected MyJTextArea lyricsArea;
@@ -91,8 +90,8 @@ public class LyricsDialog extends StandardDialog {
 
                 button.addActionListener(action);
 
-                var specCharStroke = new KeyStroke[][] {
-                    new KeyStroke[] {
+                var specCharStroke = new KeyStroke[][]{
+                    new KeyStroke[]{
                         KeyStroke.getKeyStroke(
                             KeyEvent.VK_A,
                             InputEvent.ALT_DOWN_MASK
@@ -105,11 +104,11 @@ public class LyricsDialog extends StandardDialog {
                         null,
                         null,
                     },
-                    new KeyStroke[] {
+                    new KeyStroke[]{
                         KeyStroke.getKeyStroke(
                             KeyEvent.VK_A,
                             InputEvent.ALT_DOWN_MASK |
-                            InputEvent.SHIFT_DOWN_MASK
+                                InputEvent.SHIFT_DOWN_MASK
                         ),
                         KeyStroke.getKeyStroke(
                             KeyEvent.VK_N,
@@ -172,7 +171,7 @@ public class LyricsDialog extends StandardDialog {
 
     @Override
     protected void setData() {
-        MessageCenter.post(new LyricsUpdate(
+        MessageCenter.post(new LyricsDidChangeNotification(
             lyricsArea.getText(),
             underSongArea.getText(),
             translatedArea.getText(),
@@ -213,9 +212,9 @@ public class LyricsDialog extends StandardDialog {
                 GridConstraints.ANCHOR_CENTER,
                 GridConstraints.FILL_BOTH,
                 GridConstraints.SIZEPOLICY_CAN_SHRINK |
-                GridConstraints.SIZEPOLICY_CAN_GROW,
+                    GridConstraints.SIZEPOLICY_CAN_GROW,
                 GridConstraints.SIZEPOLICY_CAN_SHRINK |
-                GridConstraints.SIZEPOLICY_CAN_GROW,
+                    GridConstraints.SIZEPOLICY_CAN_GROW,
                 null,
                 null,
                 null,
@@ -244,9 +243,9 @@ public class LyricsDialog extends StandardDialog {
                 GridConstraints.ANCHOR_CENTER,
                 GridConstraints.FILL_BOTH,
                 GridConstraints.SIZEPOLICY_CAN_SHRINK |
-                GridConstraints.SIZEPOLICY_WANT_GROW,
+                    GridConstraints.SIZEPOLICY_WANT_GROW,
                 GridConstraints.SIZEPOLICY_CAN_SHRINK |
-                GridConstraints.SIZEPOLICY_WANT_GROW,
+                    GridConstraints.SIZEPOLICY_WANT_GROW,
                 null,
                 null,
                 null,
@@ -273,9 +272,9 @@ public class LyricsDialog extends StandardDialog {
                 GridConstraints.ANCHOR_CENTER,
                 GridConstraints.FILL_BOTH,
                 GridConstraints.SIZEPOLICY_CAN_SHRINK |
-                GridConstraints.SIZEPOLICY_CAN_GROW,
+                    GridConstraints.SIZEPOLICY_CAN_GROW,
                 GridConstraints.SIZEPOLICY_CAN_SHRINK |
-                GridConstraints.SIZEPOLICY_CAN_GROW,
+                    GridConstraints.SIZEPOLICY_CAN_GROW,
                 null,
                 null,
                 null,
@@ -295,9 +294,9 @@ public class LyricsDialog extends StandardDialog {
                 GridConstraints.ANCHOR_CENTER,
                 GridConstraints.FILL_BOTH,
                 GridConstraints.SIZEPOLICY_CAN_SHRINK |
-                GridConstraints.SIZEPOLICY_CAN_GROW,
+                    GridConstraints.SIZEPOLICY_CAN_GROW,
                 GridConstraints.SIZEPOLICY_CAN_SHRINK |
-                GridConstraints.SIZEPOLICY_CAN_GROW,
+                    GridConstraints.SIZEPOLICY_CAN_GROW,
                 null,
                 null,
                 null,
@@ -357,9 +356,9 @@ public class LyricsDialog extends StandardDialog {
                 GridConstraints.ANCHOR_CENTER,
                 GridConstraints.FILL_BOTH,
                 GridConstraints.SIZEPOLICY_CAN_SHRINK |
-                GridConstraints.SIZEPOLICY_CAN_GROW,
+                    GridConstraints.SIZEPOLICY_CAN_GROW,
                 GridConstraints.SIZEPOLICY_CAN_SHRINK |
-                GridConstraints.SIZEPOLICY_CAN_GROW,
+                    GridConstraints.SIZEPOLICY_CAN_GROW,
                 null,
                 null,
                 null,
@@ -379,7 +378,7 @@ public class LyricsDialog extends StandardDialog {
                 GridConstraints.ANCHOR_CENTER,
                 GridConstraints.FILL_HORIZONTAL,
                 GridConstraints.SIZEPOLICY_CAN_SHRINK |
-                GridConstraints.SIZEPOLICY_CAN_GROW,
+                    GridConstraints.SIZEPOLICY_CAN_GROW,
                 GridConstraints.SIZEPOLICY_FIXED,
                 null,
                 null,
@@ -438,7 +437,7 @@ public class LyricsDialog extends StandardDialog {
                 GridConstraints.ANCHOR_EAST,
                 GridConstraints.FILL_NONE,
                 GridConstraints.SIZEPOLICY_CAN_SHRINK |
-                GridConstraints.SIZEPOLICY_CAN_GROW,
+                    GridConstraints.SIZEPOLICY_CAN_GROW,
                 GridConstraints.SIZEPOLICY_FIXED,
                 null,
                 null,
@@ -461,9 +460,9 @@ public class LyricsDialog extends StandardDialog {
                 GridConstraints.ANCHOR_CENTER,
                 GridConstraints.FILL_BOTH,
                 GridConstraints.SIZEPOLICY_CAN_SHRINK |
-                GridConstraints.SIZEPOLICY_CAN_GROW,
+                    GridConstraints.SIZEPOLICY_CAN_GROW,
                 GridConstraints.SIZEPOLICY_CAN_SHRINK |
-                GridConstraints.SIZEPOLICY_CAN_GROW,
+                    GridConstraints.SIZEPOLICY_CAN_GROW,
                 null,
                 null,
                 null,
@@ -485,9 +484,9 @@ public class LyricsDialog extends StandardDialog {
                 GridConstraints.ANCHOR_CENTER,
                 GridConstraints.FILL_BOTH,
                 GridConstraints.SIZEPOLICY_CAN_SHRINK |
-                GridConstraints.SIZEPOLICY_CAN_GROW,
+                    GridConstraints.SIZEPOLICY_CAN_GROW,
                 GridConstraints.SIZEPOLICY_CAN_SHRINK |
-                GridConstraints.SIZEPOLICY_CAN_GROW,
+                    GridConstraints.SIZEPOLICY_CAN_GROW,
                 null,
                 null,
                 null,
@@ -509,9 +508,9 @@ public class LyricsDialog extends StandardDialog {
                 GridConstraints.ANCHOR_CENTER,
                 GridConstraints.FILL_BOTH,
                 GridConstraints.SIZEPOLICY_CAN_SHRINK |
-                GridConstraints.SIZEPOLICY_CAN_GROW,
+                    GridConstraints.SIZEPOLICY_CAN_GROW,
                 GridConstraints.SIZEPOLICY_CAN_SHRINK |
-                GridConstraints.SIZEPOLICY_CAN_GROW,
+                    GridConstraints.SIZEPOLICY_CAN_GROW,
                 null,
                 null,
                 null,
@@ -540,9 +539,9 @@ public class LyricsDialog extends StandardDialog {
                 GridConstraints.ANCHOR_CENTER,
                 GridConstraints.FILL_BOTH,
                 GridConstraints.SIZEPOLICY_CAN_SHRINK |
-                GridConstraints.SIZEPOLICY_WANT_GROW,
+                    GridConstraints.SIZEPOLICY_WANT_GROW,
                 GridConstraints.SIZEPOLICY_CAN_SHRINK |
-                GridConstraints.SIZEPOLICY_WANT_GROW,
+                    GridConstraints.SIZEPOLICY_WANT_GROW,
                 null,
                 null,
                 null,
@@ -567,7 +566,7 @@ public class LyricsDialog extends StandardDialog {
                 GridConstraints.ANCHOR_CENTER,
                 GridConstraints.FILL_NONE,
                 GridConstraints.SIZEPOLICY_CAN_SHRINK |
-                GridConstraints.SIZEPOLICY_CAN_GROW,
+                    GridConstraints.SIZEPOLICY_CAN_GROW,
                 GridConstraints.SIZEPOLICY_FIXED,
                 null,
                 null,
@@ -590,9 +589,9 @@ public class LyricsDialog extends StandardDialog {
                 GridConstraints.ANCHOR_CENTER,
                 GridConstraints.FILL_BOTH,
                 GridConstraints.SIZEPOLICY_CAN_SHRINK |
-                GridConstraints.SIZEPOLICY_CAN_GROW,
+                    GridConstraints.SIZEPOLICY_CAN_GROW,
                 GridConstraints.SIZEPOLICY_CAN_SHRINK |
-                GridConstraints.SIZEPOLICY_CAN_GROW,
+                    GridConstraints.SIZEPOLICY_CAN_GROW,
                 null,
                 null,
                 null,
@@ -621,9 +620,9 @@ public class LyricsDialog extends StandardDialog {
                 GridConstraints.ANCHOR_CENTER,
                 GridConstraints.FILL_BOTH,
                 GridConstraints.SIZEPOLICY_CAN_SHRINK |
-                GridConstraints.SIZEPOLICY_WANT_GROW,
+                    GridConstraints.SIZEPOLICY_WANT_GROW,
                 GridConstraints.SIZEPOLICY_CAN_SHRINK |
-                GridConstraints.SIZEPOLICY_WANT_GROW,
+                    GridConstraints.SIZEPOLICY_WANT_GROW,
                 null,
                 null,
                 null,

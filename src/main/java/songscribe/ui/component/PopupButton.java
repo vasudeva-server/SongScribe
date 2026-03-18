@@ -25,9 +25,9 @@ import module java.desktop;
 import java.util.List;
 import java.util.Objects;
 
-import songscribe.ui.action.UIAction;
-import songscribe.ui.message.MenuWillOpenMessage;
 import songscribe.message.MessageCenter;
+import songscribe.ui.action.UIAction;
+import songscribe.notification.MenuWillOpenNotification;
 import songscribe.util.UIUtils;
 
 /**
@@ -119,7 +119,7 @@ public class PopupButton
 
     @Override
     public void popupMenuWillBecomeVisible(PopupMenuEvent e) {
-        MessageCenter.post(new MenuWillOpenMessage(popup));
+        MessageCenter.post(new MenuWillOpenNotification(popup));
     }
 
     // This is called before popupMenuWillBecomeInvisible

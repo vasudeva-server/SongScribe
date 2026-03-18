@@ -25,9 +25,11 @@ import module java.desktop;
 import net.engio.mbassy.listener.Handler;
 
 import songscribe.Strings;
+import songscribe.message.MessageCenter;
+import songscribe.notification.PlaybackPrefsDidChangeNotification;
+import songscribe.notification.PlaybackStateDidChangeNotification;
 import songscribe.prefs.Prefs;
 import songscribe.ui.action.DialogOpenAction;
-import songscribe.message.MessageCenter;
 
 public class PlayMenu extends JMenu {
 
@@ -73,7 +75,7 @@ public class PlayMenu extends JMenu {
     }
 
     @Handler
-    public void playbackStateDidChange(PlaybackStateChangedMessage message) {
+    public void playbackStateDidChange(PlaybackStateDidChangeNotification message) {
         var running =
             message.getState() == PlaybackController.PlaybackState.PLAYING;
         tempoChangeMenu.setEnabled(!running);
@@ -95,7 +97,7 @@ public class PlayMenu extends JMenu {
 
             if (
                 ((TempoChangeAction) menuItem.getAction()).getRatio() ==
-                tempoChange
+                    tempoChange
             ) {
                 tempoChangeGroup.setSelected(menuItem.getModel(), true);
             }
@@ -103,7 +105,7 @@ public class PlayMenu extends JMenu {
     }
 
     @Handler
-    public void onPlaybackPrefsChanged(PlaybackPrefsChangedMessage message) {
+    public void playbackPrefsDidChange(PlaybackPrefsDidChangeNotification message) {
         syncPlaybackPrefs();
     }
 }

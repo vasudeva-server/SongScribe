@@ -28,8 +28,8 @@ import net.engio.mbassy.listener.Handler;
 
 import songscribe.Strings;
 import songscribe.message.MessageCenter;
-import songscribe.ui.message.MusicSelectionChangedMessage;
-import songscribe.ui.message.ToggleLyricsUnderRestsMessage;
+import songscribe.notification.MusicSelectionDidChangeNotification;
+import songscribe.command.ToggleLyricsUnderRestsCommand;
 
 public class ToggleLyricsUnderRestsAction extends UIAction {
 
@@ -51,7 +51,7 @@ public class ToggleLyricsUnderRestsAction extends UIAction {
     @Override
     @Handler
     public void musicSelectionDidChange(
-        @NotNull MusicSelectionChangedMessage message
+        @NotNull MusicSelectionDidChangeNotification message
     ) {
         if (updateEnabledState()) {
             setEnabled(message.getScore().canToggleLyricsUnderRests());
@@ -61,6 +61,6 @@ public class ToggleLyricsUnderRestsAction extends UIAction {
     @Override
     public void actionPerformed(ActionEvent e) {
         super.actionPerformed(e);
-        MessageCenter.post(new ToggleLyricsUnderRestsMessage());
+        MessageCenter.post(new ToggleLyricsUnderRestsCommand());
     }
 }

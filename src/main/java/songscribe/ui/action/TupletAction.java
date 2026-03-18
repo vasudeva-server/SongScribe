@@ -28,8 +28,8 @@ import net.engio.mbassy.listener.Handler;
 
 import songscribe.message.Message;
 import songscribe.message.MessageCenter;
-import songscribe.ui.message.MusicSelectionChangedMessage;
-import songscribe.ui.message.ToggleTupletMessage;
+import songscribe.notification.MusicSelectionDidChangeNotification;
+import songscribe.command.ToggleTupletCommand;
 import songscribe.util.StringUtils;
 
 public class TupletAction extends UIAction {
@@ -118,7 +118,7 @@ public class TupletAction extends UIAction {
     @Override
     @Handler(priority = Message.HIGH_PRIORITY)
     public void musicSelectionDidChange(
-        @NotNull MusicSelectionChangedMessage message
+        @NotNull MusicSelectionDidChangeNotification message
     ) {
         if (updateEnabledState()) {
             var toggleInfo = message.getScore().canToggleTuplet();
@@ -132,6 +132,6 @@ public class TupletAction extends UIAction {
 
     @Override
     public void actionPerformed(ActionEvent e) {
-        MessageCenter.post(new ToggleTupletMessage(this));
+        MessageCenter.post(new ToggleTupletCommand(this));
     }
 }

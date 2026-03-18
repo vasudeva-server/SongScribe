@@ -27,8 +27,8 @@ import org.jetbrains.annotations.NotNull;
 import net.engio.mbassy.listener.Handler;
 
 import songscribe.message.MessageCenter;
-import songscribe.ui.message.MusicSelectionChangedMessage;
-import songscribe.ui.message.PasteboardOpMessage;
+import songscribe.notification.MusicSelectionDidChangeNotification;
+import songscribe.command.PasteboardOpCommand;
 
 public class PasteboardAction extends UIAction {
 
@@ -55,7 +55,7 @@ public class PasteboardAction extends UIAction {
     @Override
     @Handler
     public void musicSelectionDidChange(
-        @NotNull MusicSelectionChangedMessage message
+        @NotNull MusicSelectionDidChangeNotification message
     ) {
         if (updateEnabledState()) {
             switch (op) {
@@ -65,8 +65,8 @@ public class PasteboardAction extends UIAction {
                 // Allow lines to be deleted
                 case DELETE -> setEnabled(
                     (message.getSelectionSize() > 0) ||
-                    message.hasGlissandoSelection() ||
-                    (message.getScore().canDeleteLine())
+                        message.hasGlissandoSelection() ||
+                        (message.getScore().canDeleteLine())
                 );
                 case null, default -> setEnabled(
                     message.getSelectionSize() > 0
@@ -79,6 +79,6 @@ public class PasteboardAction extends UIAction {
 
     @Override
     public void actionPerformed(ActionEvent e) {
-        MessageCenter.post(new PasteboardOpMessage(op));
+        MessageCenter.post(new PasteboardOpCommand(op));
     }
 }

@@ -26,6 +26,8 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import songscribe.Strings;
+import songscribe.notification.CompositionDidChangeNotification;
+import songscribe.message.MessageCenter;
 import songscribe.music.ArticulationType;
 import songscribe.music.Composition;
 import songscribe.music.ElementType;
@@ -38,8 +40,6 @@ import songscribe.ui.action.Actions;
 import songscribe.ui.clipboard.ClipboardManager;
 import songscribe.ui.layout.Articulation;
 import songscribe.ui.layout2.InsertionSpacingCalculator;
-import songscribe.message.CompositionChangedMessage;
-import songscribe.message.MessageCenter;
 import songscribe.ui.playback.PlayThread;
 import songscribe.ui.selection.SelectionCoordinator;
 
@@ -404,7 +404,7 @@ public final class EditModeManager {
         scoreActions.drawWidthIfWiderLine(line, false);
 
         var composition = compositionSupplier.get();
-        MessageCenter.post(new CompositionChangedMessage(CompositionChangedMessage.ChangeType.CONTENT, composition, line));
+        MessageCenter.post(new CompositionDidChangeNotification(CompositionDidChangeNotification.ChangeType.CONTENT, composition, line));
 
         scoreActions.repaint();
 

@@ -27,9 +27,6 @@ import java.io.IOException;
 import java.util.Optional;
 import java.util.function.Consumer;
 
-import javax.xml.parsers.SAXParser;
-import javax.xml.parsers.SAXParserFactory;
-
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -38,16 +35,19 @@ import kotlin.Pair;
 import net.engio.mbassy.listener.Handler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.xml.sax.SAXException;
 
 import songscribe.Strings;
 import songscribe.export.ExportOptions;
 import songscribe.io.CompositionIO;
+import songscribe.message.MessageCenter;
 import songscribe.music.Composition;
 import songscribe.music.Line;
 import songscribe.music.LyricsProcessor;
 import songscribe.music.MusicEditOperations;
 import songscribe.music.StaffElement;
+import songscribe.notification.CompositionDidChangeNotification;
+import songscribe.notification.MusicSelectionDidChangeNotification;
+import songscribe.notification.PlaybackPrefsDidChangeNotification;
 import songscribe.prefs.Prefs;
 import songscribe.ui.Constants;
 import songscribe.ui.Control;
@@ -67,10 +67,6 @@ import songscribe.ui.layout.LayoutStylesheet;
 import songscribe.ui.layout2.LayoutConstants;
 import songscribe.ui.layout2.ScaleContext;
 import songscribe.ui.menu.DebugState;
-import songscribe.message.CompositionChangedMessage;
-import songscribe.message.MessageCenter;
-import songscribe.ui.message.MusicSelectionChangedMessage;
-import songscribe.ui.playback.PlaybackPrefsChangedMessage;
 import songscribe.ui.playback.PlaybackController;
 import songscribe.ui.renderer.RenderContext;
 import songscribe.ui.selection.ElementSelection;
@@ -137,7 +133,8 @@ public final class Score
     private LyricsAdjustment lyricsAdjustment = null;
 
     // Called when a file is successfully opened (e.g. to update the window title)
-    @Nullable private final Consumer<File> onFileOpened;
+    @Nullable
+    private final Consumer<File> onFileOpened;
 
     // The current editing mode
     private Mode mode = Mode.EDIT;
@@ -285,7 +282,10 @@ public final class Score
         initMainPanel();
 
         setLineWidthPx(ScaleContext.getInstance().toRoundedPixels(composition.getLineWidthSs()));
-        inputHandler.ifPresent(h -> { addMouseMotionListener(h); addMouseListener(h); });
+        inputHandler.ifPresent(h -> {
+            addMouseMotionListener(h);
+            addMouseListener(h);
+        });
         focusController.ifPresent(this::addFocusListener);
 
         initEditPopup();
@@ -539,7 +539,7 @@ public final class Score
     }
 
     @Handler
-    public void onPlaybackPrefsChanged(PlaybackPrefsChangedMessage message) {
+    public void playbackPrefsDidChange(PlaybackPrefsDidChangeNotification message) {
         syncPlaybackPrefs();
     }
 
@@ -693,7 +693,7 @@ public final class Score
     }
 
     public void selectionChanged() {
-        MessageCenter.post(new MusicSelectionChangedMessage(this));
+        MessageCenter.post(new MusicSelectionDidChangeNotification(this));
     }
 
     public int getSelectionSize() {
@@ -794,8 +794,8 @@ public final class Score
         // Notify all subscribers (LyricsPanel, ScoreMessageCoordinator, UIActions, etc.)
         // that the composition has been fully replaced. This must happen after all
         // Score state is consistent.
-        MessageCenter.post(new CompositionChangedMessage(
-            CompositionChangedMessage.ChangeType.FULL, composition
+        MessageCenter.post(new CompositionDidChangeNotification(
+            CompositionDidChangeNotification.ChangeType.FULL, composition
         ));
 
         repaint();

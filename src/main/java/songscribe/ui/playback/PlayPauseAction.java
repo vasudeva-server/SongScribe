@@ -25,6 +25,7 @@ import net.engio.mbassy.listener.Handler;
 
 import songscribe.Strings;
 import songscribe.message.Message;
+import songscribe.notification.PlaybackStateDidChangeNotification;
 
 public class PlayPauseAction extends SequencerAction {
 
@@ -60,7 +61,7 @@ public class PlayPauseAction extends SequencerAction {
     // We need to know if playback stopped
     @Override
     @Handler(priority = Message.MEDIUM_PRIORITY)
-    public void playbackStateDidChange(PlaybackStateChangedMessage message) {
+    public void playbackStateDidChange(PlaybackStateDidChangeNotification message) {
         super.playbackStateDidChange(message);
 
         if (message.getState() == PlaybackController.PlaybackState.STOPPED) {

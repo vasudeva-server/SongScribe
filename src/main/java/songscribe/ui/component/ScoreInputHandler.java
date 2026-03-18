@@ -21,21 +21,20 @@
 package songscribe.ui.component;
 
 import module java.desktop;
-// Disambiguates from org.w3c.dom.events.MouseEvent (java.xml module)
-import java.awt.event.MouseEvent;
 
+import java.awt.event.MouseEvent;
 import java.util.Objects;
 
 import org.jetbrains.annotations.NotNull;
 
+import songscribe.message.MessageCenter;
 import songscribe.ui.Control;
 import songscribe.ui.Mode;
 import songscribe.ui.component.score.LineComponent;
 import songscribe.ui.debug.DebugInspector;
 import songscribe.ui.edit.EditModeManager;
 import songscribe.ui.menu.DebugState;
-import songscribe.ui.message.DeselectMessage;
-import songscribe.message.MessageCenter;
+import songscribe.command.DeselectCommand;
 import songscribe.ui.playback.MidiController;
 import songscribe.util.UIUtils;
 
@@ -191,7 +190,7 @@ public final class ScoreInputHandler
             if (editModeManager.getGraceModeManager().isInProgress()) {
                 editModeManager.getGraceModeManager().keyPressed(e);
             } else if (callback.getMode() == Mode.SELECT && !UIUtils.isEditingText()) {
-                MessageCenter.post(new DeselectMessage());
+                MessageCenter.post(new DeselectCommand());
             }
         }
     }
@@ -232,6 +231,10 @@ public final class ScoreInputHandler
 
         @Override
         public void actionPerformed(ActionEvent e) {
+            handlePitchAdjustment();
+        }
+
+        private void handlePitchAdjustment() {
             if ((callback.getMode() != Mode.EDIT) || (callback.getControl() != Control.KEYBOARD)) {
                 return;
             }

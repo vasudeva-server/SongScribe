@@ -679,41 +679,44 @@ public class UIConverter extends MainFrame {
         @Override
         public void propertyChange(PropertyChangeEvent evt) {
             if (evt.getPropertyName().equals("directorychange")) {
-                var newDir = (File) evt.getNewValue();
-                currentDir = newDir;
-                songsFolder.setText(newDir.getAbsolutePath());
-                acceptedTableModel.setRowCount(0);
-                rejectListModel.clear();
+                handleDirectoryChange((File) evt.getNewValue());
+            }
+        }
 
-                for (var file : Objects.requireNonNull(newDir.listFiles())) {
-                    var fileName = file.getName();
+        private void handleDirectoryChange(File newDir) {
+            currentDir = newDir;
+            songsFolder.setText(newDir.getAbsolutePath());
+            acceptedTableModel.setRowCount(0);
+            rejectListModel.clear();
 
-                    if (isLegalFileName(fileName)) {
-                        acceptedTableModel.addRow(
-                            new Object[] {
-                                fileName.substring(0, 3),
-                                fileName.substring(
-                                    4,
-                                    fileName.length() -
-                                    FileExtensions.SONGWRITER.length()
-                                ),
-                            }
-                        );
-                    } else if (fileName.endsWith(FileExtensions.SONGWRITER)) {
-                        rejectListModel.addElement(
+            for (var file : Objects.requireNonNull(newDir.listFiles())) {
+                var fileName = file.getName();
+
+                if (isLegalFileName(fileName)) {
+                    acceptedTableModel.addRow(
+                        new Object[] {
+                            fileName.substring(0, 3),
                             fileName.substring(
-                                0,
+                                4,
                                 fileName.length() -
                                 FileExtensions.SONGWRITER.length()
-                            )
-                        );
-                    }
+                            ),
+                        }
+                    );
+                } else if (fileName.endsWith(FileExtensions.SONGWRITER)) {
+                    rejectListModel.addElement(
+                        fileName.substring(
+                            0,
+                            fileName.length() -
+                            FileExtensions.SONGWRITER.length()
+                        )
+                    );
                 }
-
-                songsSummaryPanel.setVisible(true);
-                pack();
-                setLocationRelativeTo(null);
             }
+
+            songsSummaryPanel.setVisible(true);
+            pack();
+            setLocationRelativeTo(null);
         }
     }
 
@@ -721,6 +724,10 @@ public class UIConverter extends MainFrame {
 
         @Override
         public void actionPerformed(ActionEvent e) {
+            handleNumberSong();
+        }
+
+        private void handleNumberSong() {
             var selectedSong = (String) rejectList.getSelectedValue();
 
             if (selectedSong == null) {

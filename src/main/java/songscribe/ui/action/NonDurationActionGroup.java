@@ -22,9 +22,9 @@ package songscribe.ui.action;
 
 import net.engio.mbassy.listener.Handler;
 
-import songscribe.ui.message.DurationSelectedMessage;
 import songscribe.message.Message;
 import songscribe.message.MessageCenter;
+import songscribe.notification.DurationWasSelectedNotification;
 
 /**
  * An action group that manages non-duration actions (bars and breath mark).
@@ -46,7 +46,7 @@ public class NonDurationActionGroup extends ActionGroup<ElementTypeAction> {
     // It's important for this to happen first, so that the non-duration actions
     // are deselected before any other handlers are called.
     @Handler(priority = Message.HIGH_PRIORITY)
-    public void durationWasSelected(DurationSelectedMessage message) {
+    public void durationWasSelected(DurationWasSelectedNotification message) {
         clearSelection();
     }
 }

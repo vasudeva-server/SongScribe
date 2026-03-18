@@ -20,16 +20,16 @@
 
 package songscribe.ui.edit;
 
+import module java.desktop;
 import static songscribe.message.MessageCenter.post;
 
-import module java.desktop;
-// Disambiguates from org.w3c.dom.events.MouseEvent (java.xml module)
 import java.awt.event.MouseEvent;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import songscribe.Strings;
+import songscribe.notification.CompositionDidChangeNotification;
 import songscribe.music.ElementType;
 import songscribe.music.Line;
 import songscribe.music.StaffElement;
@@ -42,8 +42,7 @@ import songscribe.ui.layout2.ElementColumnBuilder;
 import songscribe.ui.layout2.InsertionSpacingCalculator;
 import songscribe.ui.layout2.LayoutConstants;
 import songscribe.ui.layout2.ScaleContext;
-import songscribe.message.CompositionChangedMessage;
-import songscribe.ui.message.GraceModeStateChangedMessage;
+import songscribe.notification.GraceModeStateDidChangeNotification;
 import songscribe.ui.selection.SelectionCoordinator;
 
 /**
@@ -470,7 +469,7 @@ public final class GraceModeManager {
         state = State.GRACE_NOTE;
 
         // Post message to disable flagged actions
-        post(new GraceModeStateChangedMessage(true));
+        post(new GraceModeStateDidChangeNotification(true));
 
         // Hide the insertion element that was shown by the DurationSelectedMessage
         // handler triggered by perform() above. It will be re-shown at the correct
@@ -556,7 +555,7 @@ public final class GraceModeManager {
             var composition = graceLine.getComposition();
 
             if (composition != null) {
-                post(new CompositionChangedMessage(CompositionChangedMessage.ChangeType.CONTENT, composition, graceLine));
+                post(new CompositionDidChangeNotification(CompositionDidChangeNotification.ChangeType.CONTENT, composition, graceLine));
             }
         }
 
@@ -568,7 +567,7 @@ public final class GraceModeManager {
         // sees the correct state when re-enabling DISABLE_IN_GRACE_MODE actions.
         state = State.INACTIVE;
 
-        post(new GraceModeStateChangedMessage(false));
+        post(new GraceModeStateDidChangeNotification(false));
 
         // Re-enable the grace note action (it was deselected when entering grace mode
         // and the GraceModeStateChangedMessage handler may have left it disabled).

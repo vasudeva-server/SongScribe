@@ -23,7 +23,7 @@ import module java.desktop;
 
 import songscribe.Strings;
 import songscribe.message.MessageCenter;
-import songscribe.message.NewFileMessage;
+import songscribe.command.NewFileCommand;
 import songscribe.util.UIUtils;
 
 public class NewAction extends UIAction {
@@ -44,6 +44,6 @@ public class NewAction extends UIAction {
 
     @Override
     public void actionPerformed(ActionEvent e) {
-        MessageCenter.post(new NewFileMessage());
+        MessageCenter.post(new NewFileCommand());
     }
 }

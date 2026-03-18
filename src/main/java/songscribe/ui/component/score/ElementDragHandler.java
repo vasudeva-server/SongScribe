@@ -21,7 +21,7 @@
 package songscribe.ui.component.score;
 
 import module java.desktop;
-// Disambiguates from org.w3c.dom.events.MouseEvent (java.xml module)
+
 import java.awt.event.MouseEvent;
 
 import org.jetbrains.annotations.NotNull;
@@ -29,6 +29,8 @@ import org.jetbrains.annotations.Nullable;
 
 import songscribe.Strings;
 import songscribe.data.TieInterval;
+import songscribe.notification.CompositionDidChangeNotification;
+import songscribe.message.MessageCenter;
 import songscribe.music.Line;
 import songscribe.music.StaffElement;
 import songscribe.ui.Dialogs;
@@ -37,8 +39,6 @@ import songscribe.ui.action.Actions;
 import songscribe.ui.component.Score;
 import songscribe.ui.edit.EditModeManager;
 import songscribe.ui.layout2.ScaleContext;
-import songscribe.message.CompositionChangedMessage;
-import songscribe.message.MessageCenter;
 import songscribe.ui.playback.MidiController;
 import songscribe.ui.playback.PlayThread;
 
@@ -231,7 +231,7 @@ class ElementDragHandler {
 
             // Finalize: notify layout and mark composition modified
             var composition = lc.getComposition();
-            MessageCenter.post(new CompositionChangedMessage(CompositionChangedMessage.ChangeType.CONTENT, composition, dragLine));
+            MessageCenter.post(new CompositionDidChangeNotification(CompositionDidChangeNotification.ChangeType.CONTENT, composition, dragLine));
             composition.setModified(true);
             // TODO: push to undo stack when undo system is re-enabled
         } else {

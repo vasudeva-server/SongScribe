@@ -20,7 +20,7 @@
 
 package songscribe.message;
 
-import java.awt.Font;
+import java.awt.*;
 import java.util.List;
 
 import org.jetbrains.annotations.NotNull;
@@ -29,6 +29,7 @@ import org.jetbrains.annotations.Nullable;
 import songscribe.music.KeyType;
 import songscribe.music.Line;
 import songscribe.music.Tempo;
+import songscribe.notification.CompositionDidChangeNotification;
 
 /**
  * Immutable snapshot of all composition-level fields, built by
@@ -36,7 +37,7 @@ import songscribe.music.Tempo;
  * <p>
  * Passed to {@link songscribe.music.Composition#loadFrom(CompositionData)} so that
  * Composition can apply all fields atomically and post a single
- * {@link CompositionChangedMessage} with {@code ChangeType.FULL}.
+ * {@link CompositionDidChangeNotification} with {@code ChangeType.FULL}.
  * <p>
  * Font fields are {@code @Nullable} because v1.0 files have no View section;
  * when null, the Composition retains its default (preferences-based) fonts.

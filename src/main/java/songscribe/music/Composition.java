@@ -26,20 +26,20 @@ import java.util.regex.Pattern;
 
 import org.jetbrains.annotations.NotNull;
 
-import songscribe.Strings;
 import net.engio.mbassy.listener.Handler;
 
-import songscribe.message.CompositionChangedMessage;
-import songscribe.message.CompositionChangedMessage.ChangeType;
-import songscribe.message.DocumentSaved;
-import songscribe.message.FontUpdate;
-import songscribe.message.KeySignatureUpdate;
+import songscribe.Strings;
 import songscribe.message.CompositionData;
-import songscribe.message.LayoutUpdate;
-import songscribe.message.LyricsUpdate;
 import songscribe.message.MessageCenter;
-import songscribe.message.MetadataUpdate;
-import songscribe.message.TempoUpdate;
+import songscribe.notification.CompositionDidChangeNotification;
+import songscribe.notification.CompositionDidChangeNotification.ChangeType;
+import songscribe.notification.DocumentWasSavedNotification;
+import songscribe.notification.FontDidChangeNotification;
+import songscribe.notification.KeySignatureDidChangeNotification;
+import songscribe.notification.LayoutDidChangeNotification;
+import songscribe.notification.LyricsDidChangeNotification;
+import songscribe.notification.MetadataDidChangeNotification;
+import songscribe.notification.TempoDidChangeNotification;
 import songscribe.prefs.Prefs;
 import songscribe.ui.Dialogs;
 import songscribe.ui.action.InsertLineAction;
@@ -251,13 +251,13 @@ public final class Composition {
     }
 
     @Handler
-    public void onDocumentSaved(DocumentSaved message) {
+    public void documentWasSaved(DocumentWasSavedNotification message) {
         setModified(false);
     }
 
     /**
      * Applies all fields from a {@link CompositionData} snapshot atomically,
-     * then posts a single {@link CompositionChangedMessage} with
+     * then posts a single {@link CompositionDidChangeNotification} with
      * {@code ChangeType.FULL}.
      * <p>
      * Called by {@link songscribe.io.CompositionIO.DocumentReader#getComposition()}
@@ -552,7 +552,7 @@ public final class Composition {
     // ========== Setters (mutate + setModified + post) ==========
 
     public void setTempo(Tempo tempo) {
-        mutateAndPost(ChangeType.CONTENT, () -> { this.tempo = tempo; });
+        mutateAndPost(ChangeType.CONTENT, () -> {this.tempo = tempo;});
     }
 
     public void setTitle(String text) {
@@ -779,7 +779,7 @@ public final class Composition {
     // ========== Update record handlers ==========
 
     @Handler
-    public void onLyricsUpdate(LyricsUpdate update) {
+    public void lyricsDidChange(LyricsDidChangeNotification update) {
         mutateAndPost(ChangeType.LYRICS, () -> {
             if (update.getLyrics() != null) {
                 applyLyrics(update.getLyrics());
@@ -802,7 +802,7 @@ public final class Composition {
     }
 
     @Handler
-    public void onMetadataUpdate(MetadataUpdate update) {
+    public void metadataDidChange(MetadataDidChangeNotification update) {
         mutateAndPost(ChangeType.METADATA, () -> {
             if (update.getTitle() != null) {
                 applyTitle(update.getTitle());
@@ -839,7 +839,7 @@ public final class Composition {
     }
 
     @Handler
-    public void onFontUpdate(FontUpdate update) {
+    public void fontDidChange(FontDidChangeNotification update) {
         mutateAndPost(ChangeType.FONT, () -> {
             if (update.getTitleFont() != null) {
                 applyTitleFont(update.getTitleFont());
@@ -860,7 +860,7 @@ public final class Composition {
     }
 
     @Handler
-    public void onTempoUpdate(TempoUpdate update) {
+    public void tempoDidChange(TempoDidChangeNotification update) {
         mutateAndPost(ChangeType.CONTENT, () -> {
             if (update.getTempoType() != null) {
                 tempo.setTempoType(update.getTempoType());
@@ -881,7 +881,7 @@ public final class Composition {
     }
 
     @Handler
-    public void onKeySignatureUpdate(KeySignatureUpdate update) {
+    public void keySignatureDidChange(KeySignatureDidChangeNotification update) {
         mutateAndPost(ChangeType.CONTENT, () -> {
             if (update.getLineIndex() == null) {
                 // Composition-level default with propagation to matching lines
@@ -911,7 +911,7 @@ public final class Composition {
     }
 
     @Handler
-    public void onLayoutUpdate(LayoutUpdate update) {
+    public void layoutDidChange(LayoutDidChangeNotification update) {
         mutateAndPost(ChangeType.LAYOUT, () -> {
             if (update.getTopPaddingSs() != null) {
                 applyTopPaddingSs(
@@ -1089,6 +1089,6 @@ public final class Composition {
     }
 
     private void postChanged(@NotNull ChangeType changeType) {
-        MessageCenter.post(new CompositionChangedMessage(changeType, this));
+        MessageCenter.post(new CompositionDidChangeNotification(changeType, this));
     }
 }

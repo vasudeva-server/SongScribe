@@ -22,17 +22,17 @@ package songscribe.ui.action;
 
 import module java.desktop;
 
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
-
 import java.util.Arrays;
 import java.util.EnumSet;
+
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import net.engio.mbassy.listener.Handler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import songscribe.message.CompositionChangedMessage;
+import songscribe.notification.CompositionDidChangeNotification;
 import songscribe.message.Message;
 import songscribe.message.MessageCenter;
 import songscribe.music.Composition;
@@ -40,15 +40,15 @@ import songscribe.music.StaffElement;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.Score;
 import songscribe.ui.edit.GraceModeManager;
-import songscribe.ui.message.BarSelectedMessage;
-import songscribe.ui.message.DurationSelectedMessage;
-import songscribe.ui.message.GraceModeStateChangedMessage;
-import songscribe.ui.message.ModeChangedMessage;
-import songscribe.ui.message.MusicSelectionChangedMessage;
-import songscribe.ui.message.RestModeChangedMessage;
-import songscribe.ui.message.TextEditingChangedMessage;
+import songscribe.notification.BarWasSelectedNotification;
+import songscribe.notification.DurationWasSelectedNotification;
+import songscribe.notification.GraceModeStateDidChangeNotification;
+import songscribe.notification.ModeDidChangeNotification;
+import songscribe.notification.MusicSelectionDidChangeNotification;
+import songscribe.notification.RestModeDidChangeNotification;
+import songscribe.notification.TextEditingDidChangeNotification;
 import songscribe.ui.playback.PlaybackController;
-import songscribe.ui.playback.PlaybackStateChangedMessage;
+import songscribe.notification.PlaybackStateDidChangeNotification;
 import songscribe.util.GraphicUtils;
 import songscribe.util.UIUtils;
 
@@ -350,7 +350,7 @@ public class UIAction extends AbstractAction {
     }
 
     @Handler(priority = Message.MEDIUM_PRIORITY)
-    public void modeDidChange(ModeChangedMessage message) {
+    public void modeDidChange(ModeDidChangeNotification message) {
         updateEnabledState();
     }
 
@@ -370,7 +370,7 @@ public class UIAction extends AbstractAction {
 
     @Handler(priority = Message.MEDIUM_PRIORITY)
     public void musicSelectionDidChange(
-        @NotNull MusicSelectionChangedMessage message
+        @NotNull MusicSelectionDidChangeNotification message
     ) {
         updateEnabledState();
     }
@@ -406,7 +406,7 @@ public class UIAction extends AbstractAction {
     }
 
     @Handler(priority = Message.MEDIUM_PRIORITY)
-    public void restModeDidChange(RestModeChangedMessage message) {
+    public void restModeDidChange(RestModeDidChangeNotification message) {
         updateEnabledState();
     }
 
@@ -419,7 +419,7 @@ public class UIAction extends AbstractAction {
     }
 
     @Handler(priority = Message.MEDIUM_PRIORITY)
-    public void playbackStateDidChange(PlaybackStateChangedMessage message) {
+    public void playbackStateDidChange(PlaybackStateDidChangeNotification message) {
         updateEnabledState();
     }
 
@@ -432,7 +432,7 @@ public class UIAction extends AbstractAction {
     }
 
     @Handler(priority = Message.MEDIUM_PRIORITY)
-    public void graceModeStateDidChange(GraceModeStateChangedMessage message) {
+    public void graceModeStateDidChange(GraceModeStateDidChangeNotification message) {
         updateEnabledState();
     }
 
@@ -441,7 +441,7 @@ public class UIAction extends AbstractAction {
     }
 
     @Handler(priority = Message.MEDIUM_PRIORITY)
-    public void textEditingDidChange(TextEditingChangedMessage message) {
+    public void textEditingDidChange(TextEditingDidChangeNotification message) {
         updateEnabledState();
     }
 
@@ -452,7 +452,7 @@ public class UIAction extends AbstractAction {
     }
 
     @Handler(priority = Message.MEDIUM_PRIORITY)
-    protected void barWasSelected(BarSelectedMessage message) {
+    protected void barWasSelected(BarWasSelectedNotification message) {
         updateEnabledState();
     }
 
@@ -486,7 +486,7 @@ public class UIAction extends AbstractAction {
     }
 
     @Handler(priority = Message.MEDIUM_PRIORITY)
-    public void durationWasSelected(DurationSelectedMessage message) {
+    public void durationWasSelected(DurationWasSelectedNotification message) {
         updateEnabledState();
     }
 
@@ -509,7 +509,7 @@ public class UIAction extends AbstractAction {
     }
 
     @Handler(priority = Message.MEDIUM_PRIORITY)
-    public void compositionDidChange(CompositionChangedMessage message) {
+    public void compositionDidChange(CompositionDidChangeNotification message) {
         if (message.getChangeTypes().stream().anyMatch(getRelevantChangeTypes()::contains)) {
             updateEnabledState();
         }
@@ -519,11 +519,11 @@ public class UIAction extends AbstractAction {
      * Returns the set of CompositionChangedMessage.ChangeType values that are relevant
      * to this action. Subclasses can override to narrow the filter.
      */
-    protected EnumSet<CompositionChangedMessage.ChangeType> getRelevantChangeTypes() {
+    protected EnumSet<CompositionDidChangeNotification.ChangeType> getRelevantChangeTypes() {
         return EnumSet.of(
-            CompositionChangedMessage.ChangeType.CONTENT,
-            CompositionChangedMessage.ChangeType.STRUCTURE,
-            CompositionChangedMessage.ChangeType.FULL
+            CompositionDidChangeNotification.ChangeType.CONTENT,
+            CompositionDidChangeNotification.ChangeType.STRUCTURE,
+            CompositionDidChangeNotification.ChangeType.FULL
         );
     }
 

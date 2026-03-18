@@ -23,7 +23,7 @@ import module java.desktop;
 
 import songscribe.Strings;
 import songscribe.message.MessageCenter;
-import songscribe.message.SaveMessage;
+import songscribe.command.SaveCommand;
 import songscribe.util.UIUtils;
 
 public class SaveAction extends UIAction {
@@ -38,6 +38,6 @@ public class SaveAction extends UIAction {
 
     @Override
     public void actionPerformed(ActionEvent e) {
-        MessageCenter.post(new SaveMessage());
+        MessageCenter.post(new SaveCommand());
     }
 }

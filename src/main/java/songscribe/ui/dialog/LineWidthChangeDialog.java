@@ -195,6 +195,10 @@ public class LineWidthChangeDialog
     // Called when a value in the unit combo is selected
     @Override
     public void actionPerformed(ActionEvent e) {
+        handleUnitChange();
+    }
+
+    private void handleUnitChange() {
         // This method could be called when the current unit is reselected
         var selectedUnit = getSelectedUnit();
 

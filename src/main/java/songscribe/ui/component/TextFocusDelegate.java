@@ -25,7 +25,7 @@ import module java.desktop;
 import org.jetbrains.annotations.NotNull;
 
 import songscribe.message.MessageCenter;
-import songscribe.ui.message.TextEditingChangedMessage;
+import songscribe.notification.TextEditingDidChangeNotification;
 
 /*
  * This is a delegate class that handles focus events for text components.
@@ -47,12 +47,12 @@ public class TextFocusDelegate implements FocusListener {
     @Override
     public void focusGained(FocusEvent e) {
         ignoreTabKey = true;
-        MessageCenter.post(new TextEditingChangedMessage(true));
+        MessageCenter.post(new TextEditingDidChangeNotification(true));
     }
 
     @Override
     public void focusLost(FocusEvent e) {
-        MessageCenter.post(new TextEditingChangedMessage(false));
+        MessageCenter.post(new TextEditingDidChangeNotification(false));
     }
 
     public boolean processKeyEvent(@NotNull KeyEvent e) {

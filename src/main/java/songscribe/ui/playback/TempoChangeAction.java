@@ -23,6 +23,7 @@ import module java.desktop;
 
 import songscribe.Strings;
 import songscribe.message.MessageCenter;
+import songscribe.notification.PlaybackTempoDidChangeNotification;
 
 public class TempoChangeAction extends AbstractAction {
 
@@ -45,6 +46,6 @@ public class TempoChangeAction extends AbstractAction {
 
     @Override
     public void actionPerformed(ActionEvent e) {
-        MessageCenter.post(new PlaybackTempoChangedMessage(ratio));
+        MessageCenter.post(new PlaybackTempoDidChangeNotification(ratio));
     }
 }

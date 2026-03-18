@@ -25,11 +25,11 @@ import module java.desktop;
 import org.jetbrains.annotations.Nullable;
 
 import songscribe.Strings;
+import songscribe.message.MessageCenter;
 import songscribe.music.ElementType;
 import songscribe.music.StaffElement;
-import songscribe.ui.message.BarSelectedMessage;
-import songscribe.ui.message.DurationSelectedMessage;
-import songscribe.message.MessageCenter;
+import songscribe.notification.BarWasSelectedNotification;
+import songscribe.notification.DurationWasSelectedNotification;
 
 public class ElementTypeAction extends StickyUIAction implements UIAction.ElementReplaceable {
 
@@ -271,9 +271,9 @@ public class ElementTypeAction extends StickyUIAction implements UIAction.Elemen
         }
 
         if (kind == Kind.DURATION) {
-            MessageCenter.post(new DurationSelectedMessage(type));
+            MessageCenter.post(new DurationWasSelectedNotification(type));
         } else {
-            MessageCenter.post(new BarSelectedMessage(type));
+            MessageCenter.post(new BarWasSelectedNotification(type));
         }
     }
 }

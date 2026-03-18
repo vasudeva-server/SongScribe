@@ -21,7 +21,6 @@
 package songscribe.message;
 
 import net.engio.mbassy.listener.Handler;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,7 +40,7 @@ public final class MessageLogger {
     }
 
     @Handler
-    public void logMessage(Message message) {
+    public void onMessage(Message message) {
         LOG.trace("{}", message);
     }
 }

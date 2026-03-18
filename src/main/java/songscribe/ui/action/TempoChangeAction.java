@@ -26,7 +26,7 @@ import org.jetbrains.annotations.NotNull;
 import net.engio.mbassy.listener.Handler;
 
 import songscribe.ui.dialog.TempoChangeDialog;
-import songscribe.ui.message.MusicSelectionChangedMessage;
+import songscribe.notification.MusicSelectionDidChangeNotification;
 
 public class TempoChangeAction extends UIAction {
 
@@ -53,7 +53,7 @@ public class TempoChangeAction extends UIAction {
     @Override
     @Handler
     public void musicSelectionDidChange(
-        @NotNull MusicSelectionChangedMessage message
+        @NotNull MusicSelectionDidChangeNotification message
     ) {
         if (updateEnabledState()) {
             setEnabled(message.getScore().canChangeTempo());

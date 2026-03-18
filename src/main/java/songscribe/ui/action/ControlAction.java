@@ -21,9 +21,9 @@ package songscribe.ui.action;
 
 import module java.desktop;
 
-import songscribe.ui.Control;
-import songscribe.ui.message.ControlChangedMessage;
 import songscribe.message.MessageCenter;
+import songscribe.ui.Control;
+import songscribe.notification.ControlDidChangeNotification;
 
 public class ControlAction extends SelectableUIAction {
 
@@ -50,6 +50,6 @@ public class ControlAction extends SelectableUIAction {
 
     @Override
     public void actionPerformed(ActionEvent e) {
-        MessageCenter.post(new ControlChangedMessage(control));
+        MessageCenter.post(new ControlDidChangeNotification(control));
     }
 }

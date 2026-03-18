@@ -25,7 +25,7 @@ import module java.desktop;
 import net.engio.mbassy.listener.Handler;
 
 import songscribe.message.Message;
-import songscribe.ui.message.ModeChangedMessage;
+import songscribe.notification.ModeDidChangeNotification;
 
 /**
  * An action that cycles between Edit Mode and Select Mode on each invocation.
@@ -62,7 +62,7 @@ public class CycleModeAction extends UIAction {
 
     @Handler(priority = Message.MEDIUM_PRIORITY)
     @Override
-    public void modeDidChange(ModeChangedMessage message) {
+    public void modeDidChange(ModeDidChangeNotification message) {
         super.modeDidChange(message);
 
         if (message.isAdjustmentMode()) {

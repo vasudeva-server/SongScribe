@@ -22,9 +22,9 @@ package songscribe.ui.action;
 
 import module java.desktop;
 
-import songscribe.ui.message.DeselectMessage;
 import songscribe.Strings;
 import songscribe.message.MessageCenter;
+import songscribe.command.DeselectCommand;
 import songscribe.util.UIUtils;
 
 public class DeselectAction extends UIAction {
@@ -47,6 +47,6 @@ public class DeselectAction extends UIAction {
 
     @Override
     public void actionPerformed(ActionEvent e) {
-        MessageCenter.post(new DeselectMessage());
+        MessageCenter.post(new DeselectCommand());
     }
 }

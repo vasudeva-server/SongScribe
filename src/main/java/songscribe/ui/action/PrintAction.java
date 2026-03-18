@@ -23,7 +23,7 @@ import module java.desktop;
 
 import songscribe.Strings;
 import songscribe.message.MessageCenter;
-import songscribe.message.PrintMessage;
+import songscribe.command.PrintCommand;
 import songscribe.util.UIUtils;
 
 public class PrintAction extends UIAction {
@@ -45,6 +45,6 @@ public class PrintAction extends UIAction {
 
     @Override
     public void actionPerformed(ActionEvent e) {
-        MessageCenter.post(new PrintMessage());
+        MessageCenter.post(new PrintCommand());
     }
 }

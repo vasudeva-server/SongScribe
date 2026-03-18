@@ -85,7 +85,7 @@ class ReflectionIntegrationTest extends UnitTest {
             List.of(note1, rest), allActions()
         );
         ReflectionTestHelper.selectRange(coordinator, 0, 1);
-        coordinator.reflectSelection(null);
+        coordinator.musicSelectionDidChangeReflectSelection(null);
 
         assertSelected(crotchetAction, true);
         assertSelected(minimAction, false);
@@ -109,7 +109,7 @@ class ReflectionIntegrationTest extends UnitTest {
             List.of(note1, note2), allActions()
         );
         ReflectionTestHelper.selectRange(coordinator, 0, 1);
-        coordinator.reflectSelection(null);
+        coordinator.musicSelectionDidChangeReflectSelection(null);
 
         assertSelected(crotchetAction, false);
         assertSelected(minimAction, false);
@@ -133,7 +133,7 @@ class ReflectionIntegrationTest extends UnitTest {
             List.of(note), allActions()
         );
         ReflectionTestHelper.selectNote(coordinator, 0);
-        coordinator.reflectSelection(null);
+        coordinator.musicSelectionDidChangeReflectSelection(null);
 
         assertSelected(crotchetAction, true);
         assertSelected(minimAction, false);
@@ -155,7 +155,7 @@ class ReflectionIntegrationTest extends UnitTest {
             List.of(rest1, rest2), allActions()
         );
         ReflectionTestHelper.selectRange(coordinator, 0, 1);
-        coordinator.reflectSelection(null);
+        coordinator.musicSelectionDidChangeReflectSelection(null);
 
         assertSelected(crotchetAction, true);
         assertSelected(minimAction, false);
@@ -179,7 +179,7 @@ class ReflectionIntegrationTest extends UnitTest {
             List.of(note1, note2), allActions()
         );
         ReflectionTestHelper.selectRange(coordinator, 0, 1);
-        coordinator.reflectSelection(null);
+        coordinator.musicSelectionDidChangeReflectSelection(null);
 
         assertSelected(crotchetAction, true);
         assertSelected(minimAction, false);
@@ -201,7 +201,7 @@ class ReflectionIntegrationTest extends UnitTest {
             List.of(barline1, barline2), allActions()
         );
         ReflectionTestHelper.selectRange(coordinator, 0, 1);
-        coordinator.reflectSelection(null);
+        coordinator.musicSelectionDidChangeReflectSelection(null);
 
         assertSelected(crotchetAction, false);
         assertSelected(minimAction, false);

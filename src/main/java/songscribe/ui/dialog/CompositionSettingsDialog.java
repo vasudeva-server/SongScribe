@@ -29,11 +29,11 @@ import org.jetbrains.annotations.NotNull;
 import kotlin.Pair;
 
 import songscribe.Strings;
-import songscribe.message.FontUpdate;
-import songscribe.message.KeySignatureUpdate;
+import songscribe.notification.FontDidChangeNotification;
+import songscribe.notification.KeySignatureDidChangeNotification;
 import songscribe.message.MessageCenter;
-import songscribe.message.MetadataUpdate;
-import songscribe.message.TempoUpdate;
+import songscribe.notification.MetadataDidChangeNotification;
+import songscribe.notification.TempoDidChangeNotification;
 import songscribe.music.Composition;
 import songscribe.music.KeyType;
 import songscribe.music.Tempo;
@@ -60,7 +60,7 @@ public class CompositionSettingsDialog extends StandardDialog {
     // Place and date panel
     private final MyJTextField placeField = new MyJTextField(27);
     private final JComboBox<String> monthCombo = new JComboBox<>(
-        new String[] {
+        new String[]{
             "",
             Strings.get(Strings.MONTH_JANUARY),
             Strings.get(Strings.MONTH_FEBRUARY),
@@ -106,7 +106,7 @@ public class CompositionSettingsDialog extends StandardDialog {
 
     // Key signature panel
     public final JComboBox<String> keyCombo = new JComboBox<>(
-        new String[] {
+        new String[]{
             // MusescoreIcon font
             "\uF377", // No flats or sharps
             "\uF37F", // One flat
@@ -135,21 +135,21 @@ public class CompositionSettingsDialog extends StandardDialog {
     private final JLabel lyricsFontLabel = new JLabel();
     public final JLabel lyricsFontPreview = new JLabel(
         """
-        <html>I shall bind myself at Your Feet.<br>
-        With this hope I have come to You<br>
-        &nbsp;&nbsp;&nbsp;With tear-filled eyes.<br>
-        I shall worship You within the tumult<br>
-        &nbsp;&nbsp;&nbsp;Of this life.<br>
-        I shall satisfy You on the strength<br>
-        &nbsp;&nbsp;&nbsp;Of my surrender.</html>
-        """
+            <html>I shall bind myself at Your Feet.<br>
+            With this hope I have come to You<br>
+            &nbsp;&nbsp;&nbsp;With tear-filled eyes.<br>
+            I shall worship You within the tumult<br>
+            &nbsp;&nbsp;&nbsp;Of this life.<br>
+            I shall satisfy You on the strength<br>
+            &nbsp;&nbsp;&nbsp;Of my surrender.</html>
+            """
     );
 
     private final JLabel attributionFontLabel = new JLabel();
     public final JTextArea attributionFontPreview = new JTextArea(
         """
-        Words and music
-        by Sri Chinmoy"""
+            Words and music
+            by Sri Chinmoy"""
     );
 
     private final JLabel annotationFontLabel = new JLabel();
@@ -204,7 +204,7 @@ public class CompositionSettingsDialog extends StandardDialog {
         keyCombo.setSelectedIndex(5);
         keyCombo.setMaximumRowCount(7);
 
-        for (var preview : new JComponent[] {
+        for (var preview : new JComponent[]{
             titleFontPreview,
             lyricsFontPreview,
             attributionFontPreview,
@@ -814,7 +814,7 @@ public class CompositionSettingsDialog extends StandardDialog {
             year = null;
         }
 
-        MessageCenter.post(new MetadataUpdate(
+        MessageCenter.post(new MetadataDidChangeNotification(
             titleField.getText(),
             placeField.getText(),
             year,
@@ -825,7 +825,7 @@ public class CompositionSettingsDialog extends StandardDialog {
             null
         ));
 
-        MessageCenter.post(new TempoUpdate(
+        MessageCenter.post(new TempoDidChangeNotification(
             (Tempo.Type) tempoTypeCombo.getSelectedItem(),
             (Integer) tempoSpinnerModel.getValue(),
             (String) tempoDescriptionCombo.getSelectedItem(),
@@ -834,13 +834,13 @@ public class CompositionSettingsDialog extends StandardDialog {
 
         var typeAndCount = getKeyTypeAndCountFromCombo();
 
-        MessageCenter.post(new KeySignatureUpdate(
+        MessageCenter.post(new KeySignatureDidChangeNotification(
             null,
             typeAndCount.getFirst(),
             typeAndCount.getSecond()
         ));
 
-        MessageCenter.post(new FontUpdate(
+        MessageCenter.post(new FontDidChangeNotification(
             titleFontPreview.getFont(),
             lyricsFontPreview.getFont(),
             attributionFontPreview.getFont(),
@@ -969,7 +969,8 @@ public class CompositionSettingsDialog extends StandardDialog {
             tempoMap.put(Tempo.Type.SEMI_BREVE, "\uE1D2");
         }
 
-        NoteCellRenderer() {}
+        NoteCellRenderer() {
+        }
 
         @Override
         public Component getListCellRendererComponent(
@@ -1098,14 +1099,15 @@ public class CompositionSettingsDialog extends StandardDialog {
             var firstLetter = false;
             var lastHyphen = false;
 
-            goThruString:for (var i = 0; i < lyrics.length(); i++) {
+            goThruString:
+            for (var i = 0; i < lyrics.length(); i++) {
                 switch (lyrics.charAt(i)) {
                     case ' ', '\n' -> {
                         wordCount++;
 
                         if (
                             wordCount >=
-                            ((Number) takeFirstWordsSpinnerModel.getValue()).intValue()
+                                ((Number) takeFirstWordsSpinnerModel.getValue()).intValue()
                         ) {
                             break goThruString;
                         }
@@ -1122,7 +1124,8 @@ public class CompositionSettingsDialog extends StandardDialog {
 
                         lastHyphen = !lastHyphen;
                     }
-                    case '_' -> {}
+                    case '_' -> {
+                    }
                     default -> {
                         if (firstLetter) {
                             words.append(

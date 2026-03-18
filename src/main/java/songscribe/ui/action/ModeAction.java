@@ -23,9 +23,9 @@ package songscribe.ui.action;
 import module java.desktop;
 
 import songscribe.Strings;
-import songscribe.ui.Mode;
 import songscribe.message.MessageCenter;
-import songscribe.ui.message.ModeChangedMessage;
+import songscribe.ui.Mode;
+import songscribe.notification.ModeDidChangeNotification;
 
 public class ModeAction extends SelectableUIAction {
 
@@ -113,6 +113,6 @@ public class ModeAction extends SelectableUIAction {
     @Override
     public void actionPerformed(ActionEvent e) {
         toggleOnKeyboardShortcut(e);
-        MessageCenter.post(new ModeChangedMessage(this));
+        MessageCenter.post(new ModeDidChangeNotification(this));
     }
 }

@@ -22,47 +22,46 @@ package songscribe.ui.component;
 
 import module java.desktop;
 
-import songscribe.message.CompositionChangedMessage;
-import songscribe.message.Message;
-import songscribe.message.MessageCenter;
-
 import org.jetbrains.annotations.NotNull;
 
 import net.engio.mbassy.listener.Handler;
 
 import songscribe.Strings;
-import songscribe.ui.Dialogs;
+import songscribe.command.AddDynamicsCommand;
+import songscribe.command.DeselectCommand;
+import songscribe.command.FirstSecondEndingCommand;
+import songscribe.command.FlipStemDirectionCommand;
+import songscribe.command.InsertLineCommand;
+import songscribe.command.PasteboardOpCommand;
+import songscribe.command.RemoveDynamicsCommand;
+import songscribe.command.SelectLineCommand;
+import songscribe.command.ToggleBeamCommand;
+import songscribe.command.ToggleLyricsUnderRestsCommand;
+import songscribe.command.ToggleTieCommand;
+import songscribe.command.ToggleTrillCommand;
+import songscribe.command.ToggleTupletCommand;
+import songscribe.command.UpdateInsertionElementCommand;
+import songscribe.message.Message;
+import songscribe.message.MessageCenter;
 import songscribe.music.Line;
 import songscribe.music.LyricsProcessor;
 import songscribe.music.MusicEditOperations;
 import songscribe.music.StaffElement;
+import songscribe.notification.CompositionDidChangeNotification;
+import songscribe.notification.ControlDidChangeNotification;
+import songscribe.notification.ElementTypeWasSelectedNotification;
+import songscribe.notification.ModeDidChangeNotification;
+import songscribe.notification.PlaybackStateDidChangeNotification;
+import songscribe.notification.RestModeDidChangeNotification;
 import songscribe.ui.Control;
+import songscribe.ui.Dialogs;
 import songscribe.ui.Mode;
 import songscribe.ui.action.Actions;
 import songscribe.ui.action.InsertLineAction;
 import songscribe.ui.clipboard.ClipboardManager;
 import songscribe.ui.edit.EditModeManager;
-import songscribe.ui.message.AddDynamicsMessage;
-import songscribe.ui.message.ControlChangedMessage;
-import songscribe.ui.message.DeselectMessage;
-import songscribe.ui.message.ElementTypeSelectedMessage;
-import songscribe.ui.message.FirstSecondEndingMessage;
-import songscribe.ui.message.FlipStemDirectionMessage;
-import songscribe.ui.message.InsertLineMessage;
-import songscribe.ui.message.ModeChangedMessage;
-import songscribe.ui.message.PasteboardOpMessage;
-import songscribe.ui.message.RemoveDynamicsMessage;
-import songscribe.ui.message.RestModeChangedMessage;
-import songscribe.ui.message.SelectLineMessage;
-import songscribe.ui.message.ToggleBeamMessage;
-import songscribe.ui.message.ToggleLyricsUnderRestsMessage;
-import songscribe.ui.message.ToggleTieMessage;
-import songscribe.ui.message.ToggleTrillMessage;
-import songscribe.ui.message.ToggleTupletMessage;
-import songscribe.ui.message.UpdateInsertionElementMessage;
 import songscribe.ui.playback.MidiController;
 import songscribe.ui.playback.PlaybackController;
-import songscribe.ui.playback.PlaybackStateChangedMessage;
 import songscribe.ui.selection.SelectionCoordinator;
 
 /**
@@ -109,17 +108,17 @@ public final class ScoreMessageCoordinator {
     }
 
     @Handler
-    public void noteTypeWasSelected(@NotNull ElementTypeSelectedMessage message) {
+    public void noteTypeWasSelected(@NotNull ElementTypeWasSelectedNotification message) {
         score.setInsertionElement(editModeManager.makeInsertionElement(message.getNoteType()));
     }
 
     @Handler
-    public void restModeDidChange(RestModeChangedMessage message) {
+    public void restModeDidChange(RestModeDidChangeNotification message) {
         score.setInsertionElement(editModeManager.makeInsertionElement());
     }
 
     @Handler
-    public void onUpdateInsertionElement(UpdateInsertionElementMessage message) {
+    public void handleUpdateInsertionElement(UpdateInsertionElementCommand message) {
         updateInsertionElement();
     }
 
@@ -143,7 +142,7 @@ public final class ScoreMessageCoordinator {
     }
 
     @Handler
-    public void onInsertLine(@NotNull InsertLineMessage message) {
+    public void handleInsertLine(@NotNull InsertLineCommand message) {
         var shift = message.getShift();
         var composition = score.getComposition();
 
@@ -164,43 +163,43 @@ public final class ScoreMessageCoordinator {
     }
 
     @Handler
-    public void onToggleBeaming(ToggleBeamMessage message) {
+    public void handleToggleBeaming(ToggleBeamCommand message) {
         // Capture line before the operation in case selection changes.
         // Invalidate layout so LayoutEngine recomputes BeamLayout for the new/removed interval.
         // Without this, BeamGroupRenderer draws beams with null BeamLayout (no thickening or slope).
         var selection = selectionCoordinator.getActiveSelection();
         var line = (selection != null) ? selection.getLine() : null;
         operations.toggleBeaming();
-        MessageCenter.post(new CompositionChangedMessage(CompositionChangedMessage.ChangeType.CONTENT, score.getComposition(), line));
+        MessageCenter.post(new CompositionDidChangeNotification(CompositionDidChangeNotification.ChangeType.CONTENT, score.getComposition(), line));
     }
 
     @Handler
-    public void onToggleTie(ToggleTieMessage message) {
+    public void handleToggleTie(ToggleTieCommand message) {
         operations.toggleTie();
         postSelectionContentChanged();
     }
 
     @Handler
-    public void onToggleTuplet(@NotNull ToggleTupletMessage message) {
+    public void handleToggleTuplet(@NotNull ToggleTupletCommand message) {
         operations.toggleTuplet(message.getTupletSize());
         score.selectionChanged();
         postSelectionContentChanged();
     }
 
     @Handler
-    public void onAddDynamics(@NotNull AddDynamicsMessage message) {
+    public void handleAddDynamics(@NotNull AddDynamicsCommand message) {
         operations.addDynamicsToSelection(message.isCrescendo());
         postSelectionContentChanged();
     }
 
     @Handler
-    public void onRemoveDynamics(@NotNull RemoveDynamicsMessage message) {
+    public void handleRemoveDynamics(@NotNull RemoveDynamicsCommand message) {
         operations.removeDynamicsFromSelection();
         postSelectionContentChanged();
     }
 
     @Handler
-    public void onFirstSecondEnding(@NotNull FirstSecondEndingMessage message) {
+    public void handleFirstSecondEnding(@NotNull FirstSecondEndingCommand message) {
         if (message.isMakeEnding()) {
             operations.makeFirstSecondEnding();
         } else {
@@ -211,42 +210,42 @@ public final class ScoreMessageCoordinator {
     }
 
     @Handler
-    public void onToggleTrill(ToggleTrillMessage message) {
+    public void handleToggleTrill(ToggleTrillCommand message) {
         operations.toggleTrill();
         postSelectionContentChanged();
     }
 
     @Handler
-    public void onToggleLyricsUnderRests(
-        ToggleLyricsUnderRestsMessage message
+    public void handleToggleLyricsUnderRests(
+        ToggleLyricsUnderRestsCommand message
     ) {
         operations.toggleLyricsUnderRests();
-        MessageCenter.post(new CompositionChangedMessage(CompositionChangedMessage.ChangeType.CONTENT, score.getComposition()));
+        MessageCenter.post(new CompositionDidChangeNotification(CompositionDidChangeNotification.ChangeType.CONTENT, score.getComposition()));
     }
 
     @Handler
-    public void onFlipStemDirection(FlipStemDirectionMessage message) {
+    public void handleFlipStemDirection(FlipStemDirectionCommand message) {
         operations.flipStemDirection();
         postSelectionContentChanged();
     }
 
     private void postSelectionContentChanged() {
         var state = selectionCoordinator.getActiveSelection();
-        MessageCenter.post(new CompositionChangedMessage(
-            CompositionChangedMessage.ChangeType.CONTENT,
+        MessageCenter.post(new CompositionDidChangeNotification(
+            CompositionDidChangeNotification.ChangeType.CONTENT,
             score.getComposition(),
             state != null ? state.getLine() : null
         ));
     }
 
     @Handler
-    public void onCompositionChanged(@NotNull CompositionChangedMessage message) {
+    public void compositionDidChange(@NotNull CompositionDidChangeNotification message) {
         var mainPanel = score.getMainPanel();
 
         // Invalidate layout for affected lines on content or structure changes
-        if (message.hasChangeType(CompositionChangedMessage.ChangeType.CONTENT)
-            || message.hasChangeType(CompositionChangedMessage.ChangeType.STRUCTURE)
-            || message.hasChangeType(CompositionChangedMessage.ChangeType.FULL)) {
+        if (message.hasChangeType(CompositionDidChangeNotification.ChangeType.CONTENT)
+            || message.hasChangeType(CompositionDidChangeNotification.ChangeType.STRUCTURE)
+            || message.hasChangeType(CompositionDidChangeNotification.ChangeType.FULL)) {
             var staffPanel = mainPanel.getStaffPanel();
 
             if (staffPanel != null) {
@@ -265,9 +264,9 @@ public final class ScoreMessageCoordinator {
         }
 
         // Font, metadata, and layout changes require a full relayout
-        if (message.hasChangeType(CompositionChangedMessage.ChangeType.FONT)
-            || message.hasChangeType(CompositionChangedMessage.ChangeType.METADATA)
-            || message.hasChangeType(CompositionChangedMessage.ChangeType.LAYOUT)) {
+        if (message.hasChangeType(CompositionDidChangeNotification.ChangeType.FONT)
+            || message.hasChangeType(CompositionDidChangeNotification.ChangeType.METADATA)
+            || message.hasChangeType(CompositionDidChangeNotification.ChangeType.LAYOUT)) {
             score.viewChanged();
         }
 
@@ -281,12 +280,12 @@ public final class ScoreMessageCoordinator {
     }
 
     @Handler
-    public void controlDidChange(@NotNull ControlChangedMessage message) {
+    public void controlDidChange(@NotNull ControlDidChangeNotification message) {
         score.setControl(message.getControl());
     }
 
     @Handler(priority = Message.HIGH_PRIORITY)
-    public void modeDidChange(@NotNull ModeChangedMessage message) {
+    public void modeDidChange(@NotNull ModeDidChangeNotification message) {
         var mode = message.getMode();
         score.setMode(mode);
         score.setInSelectMode(mode == Mode.SELECT);
@@ -310,7 +309,7 @@ public final class ScoreMessageCoordinator {
 
     @Handler
     public void playbackStateDidChange(
-        @NotNull PlaybackStateChangedMessage message
+        @NotNull PlaybackStateDidChangeNotification message
     ) {
         if (message.getState() == PlaybackController.PlaybackState.STOPPED) {
             if (MidiController.sequencer != null) {
@@ -321,7 +320,7 @@ public final class ScoreMessageCoordinator {
     }
 
     @Handler
-    public void onPasteboardOp(PasteboardOpMessage message) {
+    public void handlePasteboardOp(PasteboardOpCommand message) {
         // Make sure this component has focus
         if (!score.isFocusOwner()) {
             return;
@@ -397,7 +396,7 @@ public final class ScoreMessageCoordinator {
     }
 
     @Handler
-    public void onDeselect(DeselectMessage message) {
+    public void handleDeselect(DeselectCommand message) {
         if (score.isFocusOwner()) {
             score.clearSelection();
             score.repaint();
@@ -405,7 +404,7 @@ public final class ScoreMessageCoordinator {
     }
 
     @Handler
-    public void onSelectLine(SelectLineMessage message) {
+    public void handleSelectLine(SelectLineCommand message) {
         var state = selectionCoordinator.getActiveSelection();
 
         if (state != null) {

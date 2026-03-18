@@ -25,9 +25,9 @@ import com.intellij.uiDesigner.core.GridConstraints;
 import com.intellij.uiDesigner.core.GridLayoutManager;
 import net.engio.mbassy.listener.Handler;
 
-import songscribe.message.CompositionChangedMessage;
-import songscribe.message.LyricsUpdate;
 import songscribe.message.MessageCenter;
+import songscribe.notification.CompositionDidChangeNotification;
+import songscribe.notification.LyricsDidChangeNotification;
 import songscribe.ui.dialog.LyricsDialog;
 
 @SuppressWarnings("NonStaticInitializer")
@@ -111,9 +111,9 @@ public class LyricsPanel extends LyricsDialog {
                 GridConstraints.ANCHOR_CENTER,
                 GridConstraints.FILL_BOTH,
                 GridConstraints.SIZEPOLICY_CAN_SHRINK |
-                GridConstraints.SIZEPOLICY_CAN_GROW,
+                    GridConstraints.SIZEPOLICY_CAN_GROW,
                 GridConstraints.SIZEPOLICY_CAN_SHRINK |
-                GridConstraints.SIZEPOLICY_CAN_GROW,
+                    GridConstraints.SIZEPOLICY_CAN_GROW,
                 null,
                 new Dimension(200, 200),
                 null,
@@ -136,7 +136,7 @@ public class LyricsPanel extends LyricsDialog {
     }
 
     private void postLyricsUpdate() {
-        MessageCenter.post(new LyricsUpdate(
+        MessageCenter.post(new LyricsDidChangeNotification(
             lyricsArea.getText(),
             underSongArea.getText(),
             translatedArea.getText(),
@@ -145,9 +145,9 @@ public class LyricsPanel extends LyricsDialog {
     }
 
     @Handler
-    public void onCompositionChanged(CompositionChangedMessage message) {
-        if (!message.hasChangeType(CompositionChangedMessage.ChangeType.LYRICS)
-            && !message.hasChangeType(CompositionChangedMessage.ChangeType.FULL)) {
+    public void compositionDidChange(CompositionDidChangeNotification message) {
+        if (!message.hasChangeType(CompositionDidChangeNotification.ChangeType.LYRICS)
+            && !message.hasChangeType(CompositionDidChangeNotification.ChangeType.FULL)) {
             return;
         }
 

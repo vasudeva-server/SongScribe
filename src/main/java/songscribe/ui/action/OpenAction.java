@@ -23,7 +23,7 @@ import module java.desktop;
 
 import songscribe.Strings;
 import songscribe.message.MessageCenter;
-import songscribe.ui.message.ShowOpenDialogMessage;
+import songscribe.command.ShowOpenDialogCommand;
 import songscribe.util.UIUtils;
 
 public class OpenAction extends UIAction {
@@ -44,6 +44,6 @@ public class OpenAction extends UIAction {
 
     @Override
     public void actionPerformed(ActionEvent e) {
-        MessageCenter.post(new ShowOpenDialogMessage());
+        MessageCenter.post(new ShowOpenDialogCommand());
     }
 }

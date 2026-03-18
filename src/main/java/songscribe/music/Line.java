@@ -37,11 +37,11 @@ import songscribe.data.EndingInterval;
 import songscribe.data.IntervalSet;
 import songscribe.data.TieInterval;
 import songscribe.data.TupletInterval;
+import songscribe.notification.CompositionDidChangeNotification;
+import songscribe.message.MessageCenter;
 import songscribe.midi.GlissandoMidiHelper;
 import songscribe.midi.PlaybackSettings;
 import songscribe.ui.layout.LayoutStylesheet;
-import songscribe.message.CompositionChangedMessage;
-import songscribe.message.MessageCenter;
 import songscribe.ui.layout.RangeElement;
 import songscribe.ui.layout2.ScaleContext;
 import songscribe.ui.playback.MidiMetaMessageTypes;
@@ -254,8 +254,8 @@ public class Line {
     private void modifiedComposition() {
         if (composition != null) {
             composition.setModified(true);
-            MessageCenter.post(new CompositionChangedMessage(
-                CompositionChangedMessage.ChangeType.CONTENT, composition, this
+            MessageCenter.post(new CompositionDidChangeNotification(
+                CompositionDidChangeNotification.ChangeType.CONTENT, composition, this
             ));
         }
     }
@@ -769,7 +769,7 @@ public class Line {
             var glissando = element.getGlissando();
 
             if (glissando != StaffElement.NO_GLISSANDO
-                    && glissando.type == StaffElement.Glissando.Type.CONNECTED) {
+                && glissando.type == StaffElement.Glissando.Type.CONNECTED) {
                 // Grace note with connected glissando: zero duration,
                 // just store the pitch for the next note's slide-in
                 glissandoHelper.setPendingGracePitch(element.getPitch());
@@ -987,7 +987,7 @@ public class Line {
      * Adds a note-on MIDI message to the track with an explicit velocity.
      */
     private void addNoteOn(Track track, int ticks, StaffElement note, int velocity)
-            throws InvalidMidiDataException {
+        throws InvalidMidiDataException {
         var down = new ShortMessage();
         down.setMessage(ShortMessage.NOTE_ON, 0, note.getPitch(), velocity);
         track.add(new MidiEvent(down, ticks));

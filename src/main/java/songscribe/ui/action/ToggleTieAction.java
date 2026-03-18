@@ -28,8 +28,8 @@ import net.engio.mbassy.listener.Handler;
 
 import songscribe.Strings;
 import songscribe.message.MessageCenter;
-import songscribe.ui.message.MusicSelectionChangedMessage;
-import songscribe.ui.message.ToggleTieMessage;
+import songscribe.notification.MusicSelectionDidChangeNotification;
+import songscribe.command.ToggleTieCommand;
 
 public class ToggleTieAction extends UIAction {
 
@@ -58,7 +58,7 @@ public class ToggleTieAction extends UIAction {
     @Override
     @Handler
     public void musicSelectionDidChange(
-        @NotNull MusicSelectionChangedMessage message
+        @NotNull MusicSelectionDidChangeNotification message
     ) {
         if (updateEnabledState()) {
             setEnabled(message.getScore().canToggleTie());
@@ -67,6 +67,6 @@ public class ToggleTieAction extends UIAction {
 
     @Override
     public void actionPerformed(ActionEvent e) {
-        MessageCenter.post(new ToggleTieMessage());
+        MessageCenter.post(new ToggleTieCommand());
     }
 }

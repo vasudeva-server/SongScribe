@@ -24,10 +24,10 @@ import module java.desktop;
 
 import net.engio.mbassy.listener.Handler;
 
+import songscribe.message.MessageCenter;
 import songscribe.ui.action.Actions;
 import songscribe.ui.action.UIAction;
-import songscribe.message.MessageCenter;
-import songscribe.ui.message.MusicSelectionChangedMessage;
+import songscribe.notification.MusicSelectionDidChangeNotification;
 
 public class TupletPopupButton extends PopupButton {
 
@@ -52,7 +52,7 @@ public class TupletPopupButton extends PopupButton {
     }
 
     @Handler
-    public void musicSelectionDidChange(MusicSelectionChangedMessage message) {
+    public void musicSelectionDidChange(MusicSelectionDidChangeNotification message) {
         // Disable button if none of its actions are enabled
         setEnabled(
             Actions.TOGGLE_TUPLET_ACTIONS.stream().anyMatch(UIAction::isEnabled)

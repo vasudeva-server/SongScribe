@@ -22,10 +22,11 @@ package songscribe.prefs;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+
 import org.jetbrains.annotations.NotNull;
 
 import songscribe.message.MessageCenter;
-import songscribe.ui.message.RecentDocumentsChangedMessage;
+import songscribe.notification.RecentDocumentsDidChangeNotification;
 
 public final class RecentDocumentsManager {
 
@@ -68,7 +69,7 @@ public final class RecentDocumentsManager {
         }
 
         persist();
-        MessageCenter.post(new RecentDocumentsChangedMessage());
+        MessageCenter.post(new RecentDocumentsDidChangeNotification());
     }
 
     public void remove(@NotNull Path absolutePath) {
@@ -76,13 +77,13 @@ public final class RecentDocumentsManager {
 
         paths.remove(normalized);
         persist();
-        MessageCenter.post(new RecentDocumentsChangedMessage());
+        MessageCenter.post(new RecentDocumentsDidChangeNotification());
     }
 
     public void clear() {
         paths.clear();
         persist();
-        MessageCenter.post(new RecentDocumentsChangedMessage());
+        MessageCenter.post(new RecentDocumentsDidChangeNotification());
     }
 
     private void persist() {

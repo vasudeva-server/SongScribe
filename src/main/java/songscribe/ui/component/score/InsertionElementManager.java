@@ -21,7 +21,7 @@
 package songscribe.ui.component.score;
 
 import module java.desktop;
-// Disambiguates from org.w3c.dom.events.MouseEvent (java.xml module)
+
 import java.awt.event.MouseEvent;
 
 import org.jetbrains.annotations.NotNull;
@@ -31,6 +31,8 @@ import net.engio.mbassy.listener.Handler;
 
 import songscribe.Strings;
 import songscribe.data.BeamInterval;
+import songscribe.notification.CompositionDidChangeNotification;
+import songscribe.message.MessageCenter;
 import songscribe.music.ElementType;
 import songscribe.music.Line;
 import songscribe.music.StaffElement;
@@ -44,9 +46,7 @@ import songscribe.ui.layout.LayoutStylesheet;
 import songscribe.ui.layout2.InsertionSpacingCalculator;
 import songscribe.ui.layout2.LayoutResult;
 import songscribe.ui.layout2.ScaleContext;
-import songscribe.message.CompositionChangedMessage;
-import songscribe.message.MessageCenter;
-import songscribe.ui.message.ModeChangedMessage;
+import songscribe.notification.ModeDidChangeNotification;
 
 /**
  * Manages the insertion element subsystem for {@link LineComponent}.
@@ -119,7 +119,7 @@ public class InsertionElementManager {
      */
     private static class ModeChangeListener {
         @Handler
-        public void modeDidChange(ModeChangedMessage message) {
+        public void modeDidChange(ModeDidChangeNotification message) {
             onModeChanged();
         }
     }
@@ -511,7 +511,7 @@ public class InsertionElementManager {
 
                 if (composition != null) {
                     composition.setModified(true);
-                    MessageCenter.post(new CompositionChangedMessage(CompositionChangedMessage.ChangeType.CONTENT, composition, line));
+                    MessageCenter.post(new CompositionDidChangeNotification(CompositionDidChangeNotification.ChangeType.CONTENT, composition, line));
                 }
                 lc.repaint();
                 return;  // Stay in glissando mode

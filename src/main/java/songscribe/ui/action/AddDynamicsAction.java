@@ -23,8 +23,8 @@ package songscribe.ui.action;
 import module java.desktop;
 
 import songscribe.Strings;
-import songscribe.ui.message.AddDynamicsMessage;
 import songscribe.message.MessageCenter;
+import songscribe.command.AddDynamicsCommand;
 
 public class AddDynamicsAction extends UIAction {
 
@@ -62,6 +62,6 @@ public class AddDynamicsAction extends UIAction {
 
     @Override
     public void actionPerformed(ActionEvent e) {
-        MessageCenter.post(new AddDynamicsMessage(isCrescendo));
+        MessageCenter.post(new AddDynamicsCommand(isCrescendo));
     }
 }

@@ -29,19 +29,32 @@ import java.nio.charset.StandardCharsets;
 
 import org.jetbrains.annotations.Nullable;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.formdev.flatlaf.util.SystemFileChooser;
 import com.formdev.flatlaf.util.SystemInfo;
 import net.engio.mbassy.listener.Handler;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import songscribe.Strings;
 import songscribe.Version;
+import songscribe.command.CloseWindowCommand;
+import songscribe.command.NewFileCommand;
+import songscribe.command.OpenFileCommand;
+import songscribe.command.PrintCommand;
+import songscribe.command.SaveAsCommand;
+import songscribe.command.SaveCommand;
+import songscribe.command.ShowOpenDialogCommand;
+import songscribe.command.ToggleLoopPlaybackCommand;
+import songscribe.command.TogglePlayWithRepeatsCommand;
 import songscribe.data.FileExtensions;
 import songscribe.data.MyFileFilter;
 import songscribe.io.CompositionIO;
+import songscribe.message.MessageCenter;
+import songscribe.message.MessageLogger;
 import songscribe.music.Composition;
+import songscribe.notification.CompositionDidChangeNotification;
+import songscribe.notification.DocumentWasSavedNotification;
+import songscribe.notification.PlaybackTempoDidChangeNotification;
 import songscribe.prefs.Prefs;
 import songscribe.prefs.RecentDocumentsManager;
 import songscribe.ui.Dialogs;
@@ -53,22 +66,8 @@ import songscribe.ui.dialog.PlatformFileDialog;
 import songscribe.ui.dialog.PropertiesStateStore;
 import songscribe.ui.dialog.WhatsNewDialog;
 import songscribe.ui.menu.MenuController;
-import songscribe.message.CompositionChangedMessage;
-import songscribe.message.DocumentSaved;
-import songscribe.message.MessageCenter;
-import songscribe.ui.message.CloseWindowMessage;
-import songscribe.message.MessageLogger;
-import songscribe.message.NewFileMessage;
-import songscribe.message.OpenFileMessage;
-import songscribe.message.PrintMessage;
-import songscribe.message.SaveAsMessage;
-import songscribe.message.SaveMessage;
-import songscribe.ui.message.ShowOpenDialogMessage;
-import songscribe.ui.playback.LoopPlaybackMessage;
 import songscribe.ui.playback.MidiController;
-import songscribe.ui.playback.PlayWithRepeatsMessage;
 import songscribe.ui.playback.PlaybackController;
-import songscribe.ui.playback.PlaybackTempoChangedMessage;
 import songscribe.util.FileUtils;
 
 public class MainFrame extends JFrame implements Printable {
@@ -467,12 +466,12 @@ public class MainFrame extends JFrame implements Printable {
     }
 
     @Handler
-    public void onCompositionChanged(CompositionChangedMessage message) {
+    public void compositionDidChange(CompositionDidChangeNotification message) {
         updateTitle();
     }
 
     @Handler
-    public void onDocumentSaved(DocumentSaved message) {
+    public void documentWasSaved(DocumentWasSavedNotification message) {
         updateTitle();
     }
 
@@ -503,7 +502,7 @@ public class MainFrame extends JFrame implements Printable {
     }
 
     @Handler
-    public void onNewDocument(NewFileMessage message) {
+    public void handleNewDocument(NewFileCommand message) {
         if (!showSaveDialog()) {
             return;
         }
@@ -539,19 +538,19 @@ public class MainFrame extends JFrame implements Printable {
     }
 
     @Handler
-    public void onCloseWindow(CloseWindowMessage message) {
+    public void handleCloseWindow(CloseWindowCommand message) {
         if (handleQuit()) {
             System.exit(0);
         }
     }
 
     @Handler
-    public void onOpenFile(OpenFileMessage message) {
+    public void handleOpenFile(OpenFileCommand message) {
         handleOpenFile(message.getFile());
     }
 
     @Handler
-    public void onShowOpenDialog(ShowOpenDialogMessage message) {
+    public void handleShowOpenDialog(ShowOpenDialogCommand message) {
         var dialog = new PlatformFileDialog(
             this,
             Strings.get(Strings.DIALOG_OPEN_TITLE),
@@ -588,7 +587,7 @@ public class MainFrame extends JFrame implements Printable {
     }
 
     @Handler
-    public void onPrint(PrintMessage message) {
+    public void handlePrint(PrintCommand message) {
         handlePrint();
     }
 
@@ -653,7 +652,7 @@ public class MainFrame extends JFrame implements Printable {
     }
 
     @Handler
-    public void onSave(SaveMessage message) {
+    public void handleSave(SaveCommand message) {
         if (currentFile == null) {
             saveAsNewFile();
         } else {
@@ -662,7 +661,7 @@ public class MainFrame extends JFrame implements Printable {
     }
 
     @Handler
-    public void onSaveAs(SaveAsMessage message) {
+    public void handleSaveAs(SaveAsCommand message) {
         saveAsNewFile();
     }
 
@@ -676,7 +675,7 @@ public class MainFrame extends JFrame implements Printable {
             printWriter.close();
             score.getComposition().setModified(false);
             LOG.info("Saved: {}", currentFile.getName());
-            MessageCenter.post(new DocumentSaved());
+            MessageCenter.post(new DocumentWasSavedNotification());
         } catch (IOException e1) {
             Dialogs.showErrorMessage(
                 this,
@@ -718,17 +717,17 @@ public class MainFrame extends JFrame implements Printable {
     }
 
     @Handler
-    public void onLoopPlaybackChanged(LoopPlaybackMessage message) {
+    public void handleToggleLoopPlayback(ToggleLoopPlaybackCommand message) {
         Prefs.getInstance().put("loopPlayback", message.isSelected());
     }
 
     @Handler
-    public void onPlayWithRepeatsChanged(PlayWithRepeatsMessage message) {
+    public void handleTogglePlayWithRepeats(TogglePlayWithRepeatsCommand message) {
         Prefs.getInstance().put("playWithRepeats", message.isSelected());
     }
 
     @Handler
-    public void onPlaybackTempoChanged(PlaybackTempoChangedMessage message) {
+    public void playbackTempoDidChange(PlaybackTempoDidChangeNotification message) {
         Prefs.getInstance().put("tempoChangePercent", message.getRatio());
     }
 }

@@ -27,10 +27,10 @@ import java.util.List;
 
 import net.engio.mbassy.listener.Handler;
 
+import songscribe.message.MessageCenter;
 import songscribe.ui.action.Actions;
 import songscribe.ui.action.UIAction;
-import songscribe.message.MessageCenter;
-import songscribe.ui.message.MusicSelectionChangedMessage;
+import songscribe.notification.MusicSelectionDidChangeNotification;
 import songscribe.util.GraphicUtils;
 
 public class InsertPopupButton extends PopupButton {
@@ -52,7 +52,7 @@ public class InsertPopupButton extends PopupButton {
     }
 
     @Handler
-    public void musicSelectionDidChange(MusicSelectionChangedMessage message) {
+    public void musicSelectionDidChange(MusicSelectionDidChangeNotification message) {
         // Enable only if one of the actions is enabled
         setEnabled(ACTIONS.stream().anyMatch(AbstractAction::isEnabled));
     }

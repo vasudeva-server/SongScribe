@@ -25,10 +25,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 import songscribe.Strings;
+import songscribe.message.MessageCenter;
+import songscribe.command.OpenFileCommand;
 import songscribe.prefs.RecentDocumentsManager;
 import songscribe.ui.Dialogs;
-import songscribe.message.MessageCenter;
-import songscribe.message.OpenFileMessage;
 
 public class OpenRecentAction extends UIAction {
 
@@ -51,6 +51,6 @@ public class OpenRecentAction extends UIAction {
             return;
         }
 
-        MessageCenter.post(new OpenFileMessage(path.toFile()));
+        MessageCenter.post(new OpenFileCommand(path.toFile()));
     }
 }

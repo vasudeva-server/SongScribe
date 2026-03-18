@@ -28,7 +28,7 @@ import org.jetbrains.annotations.Nullable;
 
 import songscribe.data.DynamicsInterval;
 import songscribe.data.IntervalSet;
-import songscribe.message.LayoutUpdate;
+import songscribe.notification.LayoutDidChangeNotification;
 import songscribe.message.MessageCenter;
 import songscribe.music.Line;
 import songscribe.ui.component.Score;
@@ -129,17 +129,17 @@ public class VerticalAdjustment extends Adjustment {
 
     private void adjustAttribution(int diffY) {
         var newY = score.getComposition().getAttributionStartYSs() + diffY;
-        MessageCenter.post(new LayoutUpdate(null, null, null, null, newY));
+        MessageCenter.post(new LayoutDidChangeNotification(null, null, null, null, newY));
     }
 
     private void adjustTopSpace(int diffY) {
         var newPadding = score.getComposition().getTopPaddingSs() + diffY;
-        MessageCenter.post(new LayoutUpdate(newPadding, true, null, null, null));
+        MessageCenter.post(new LayoutDidChangeNotification(newPadding, true, null, null, null));
     }
 
     private void adjustRowHeight(int diffY) {
         var newAdjustment = score.getComposition().getRowHeightAdjustmentSs() + diffY;
-        MessageCenter.post(new LayoutUpdate(null, null, newAdjustment, null, null));
+        MessageCenter.post(new LayoutDidChangeNotification(null, null, newAdjustment, null, null));
     }
 
     private void adjustTempoChange(Line line, int diffY) {

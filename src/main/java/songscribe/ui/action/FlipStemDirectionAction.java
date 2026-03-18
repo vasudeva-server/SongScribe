@@ -27,9 +27,9 @@ import org.jetbrains.annotations.NotNull;
 import net.engio.mbassy.listener.Handler;
 
 import songscribe.Strings;
-import songscribe.ui.message.FlipStemDirectionMessage;
 import songscribe.message.MessageCenter;
-import songscribe.ui.message.MusicSelectionChangedMessage;
+import songscribe.command.FlipStemDirectionCommand;
+import songscribe.notification.MusicSelectionDidChangeNotification;
 
 public class FlipStemDirectionAction extends UIAction {
 
@@ -56,7 +56,7 @@ public class FlipStemDirectionAction extends UIAction {
     @Override
     @Handler
     public void musicSelectionDidChange(
-        @NotNull MusicSelectionChangedMessage message
+        @NotNull MusicSelectionDidChangeNotification message
     ) {
         if (updateEnabledState()) {
             setEnabled(message.getScore().canFlipStemDirection());
@@ -66,6 +66,6 @@ public class FlipStemDirectionAction extends UIAction {
     @Override
     public void actionPerformed(ActionEvent e) {
         super.actionPerformed(e);
-        MessageCenter.post(new FlipStemDirectionMessage());
+        MessageCenter.post(new FlipStemDirectionCommand());
     }
 }

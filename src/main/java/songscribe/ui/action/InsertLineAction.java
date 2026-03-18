@@ -22,8 +22,8 @@ package songscribe.ui.action;
 import module java.desktop;
 
 import songscribe.Strings;
-import songscribe.ui.message.InsertLineMessage;
 import songscribe.message.MessageCenter;
+import songscribe.command.InsertLineCommand;
 import songscribe.util.UIUtils;
 
 public class InsertLineAction extends UIAction {
@@ -68,6 +68,6 @@ public class InsertLineAction extends UIAction {
 
     @Override
     public void actionPerformed(ActionEvent e) {
-        MessageCenter.post(new InsertLineMessage(shift));
+        MessageCenter.post(new InsertLineCommand(shift));
     }
 }

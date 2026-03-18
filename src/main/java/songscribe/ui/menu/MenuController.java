@@ -20,9 +20,8 @@
 
 package songscribe.ui.menu;
 
-import static songscribe.util.UIUtils.setupDesktopHandlers;
-
 import module java.desktop;
+import static songscribe.util.UIUtils.setupDesktopHandlers;
 
 import java.io.File;
 import java.nio.file.Path;
@@ -39,6 +38,8 @@ import net.engio.mbassy.listener.Handler;
 
 import songscribe.Strings;
 import songscribe.Version;
+import songscribe.message.MessageCenter;
+import songscribe.notification.RecentDocumentsDidChangeNotification;
 import songscribe.prefs.RecentDocumentsManager;
 import songscribe.ui.action.Actions;
 import songscribe.ui.action.ClearRecentsAction;
@@ -64,8 +65,6 @@ import songscribe.ui.dialog.LineWidthChangeDialog;
 import songscribe.ui.dialog.ReportBugDialog;
 import songscribe.ui.dialog.TutorialDialog;
 import songscribe.ui.dialog.WhatsNewDialog;
-import songscribe.message.MessageCenter;
-import songscribe.ui.message.RecentDocumentsChangedMessage;
 import songscribe.ui.playback.PlayMenu;
 
 public class MenuController {
@@ -178,7 +177,7 @@ public class MenuController {
     }
 
     @Handler
-    public void onRecentDocumentsChanged(RecentDocumentsChangedMessage message) {
+    public void recentDocumentsDidChange(RecentDocumentsDidChangeNotification message) {
         rebuildOpenRecentMenu();
     }
 

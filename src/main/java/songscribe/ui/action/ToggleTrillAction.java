@@ -28,8 +28,8 @@ import net.engio.mbassy.listener.Handler;
 
 import songscribe.Strings;
 import songscribe.message.MessageCenter;
-import songscribe.ui.message.MusicSelectionChangedMessage;
-import songscribe.ui.message.ToggleTrillMessage;
+import songscribe.notification.MusicSelectionDidChangeNotification;
+import songscribe.command.ToggleTrillCommand;
 
 public class ToggleTrillAction extends UIAction {
 
@@ -51,7 +51,7 @@ public class ToggleTrillAction extends UIAction {
     @Override
     @Handler
     public void musicSelectionDidChange(
-        @NotNull MusicSelectionChangedMessage message
+        @NotNull MusicSelectionDidChangeNotification message
     ) {
         if (updateEnabledState()) {
             setEnabled(message.getScore().canToggleTrill());
@@ -60,6 +60,6 @@ public class ToggleTrillAction extends UIAction {
 
     @Override
     public void actionPerformed(ActionEvent e) {
-        MessageCenter.post(new ToggleTrillMessage());
+        MessageCenter.post(new ToggleTrillCommand());
     }
 }

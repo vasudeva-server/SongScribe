@@ -21,9 +21,10 @@ package songscribe.ui.playback;
 
 import module java.desktop;
 
-import songscribe.ui.action.SelectableUIAction;
 import songscribe.Strings;
 import songscribe.message.MessageCenter;
+import songscribe.command.TogglePlayWithRepeatsCommand;
+import songscribe.ui.action.SelectableUIAction;
 
 public class PlayWithRepeatsAction extends SelectableUIAction {
 
@@ -47,6 +48,6 @@ public class PlayWithRepeatsAction extends SelectableUIAction {
 
     @Override
     public void actionPerformed(ActionEvent e) {
-        MessageCenter.post(new PlayWithRepeatsMessage(isSelected()));
+        MessageCenter.post(new TogglePlayWithRepeatsCommand(isSelected()));
     }
 }

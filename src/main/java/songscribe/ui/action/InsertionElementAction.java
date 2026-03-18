@@ -25,7 +25,7 @@ import module java.desktop;
 import org.jetbrains.annotations.Nullable;
 
 import songscribe.message.MessageCenter;
-import songscribe.ui.message.UpdateInsertionElementMessage;
+import songscribe.command.UpdateInsertionElementCommand;
 
 /**
  * This class is the superclass for all actions that change the insertion element.
@@ -87,6 +87,6 @@ public class InsertionElementAction extends SelectableUIAction {
             return;
         }
 
-        MessageCenter.post(new UpdateInsertionElementMessage());
+        MessageCenter.post(new UpdateInsertionElementCommand());
     }
 }

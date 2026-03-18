@@ -20,17 +20,17 @@
 
 package songscribe.ui.selection;
 
-import java.util.List;
+import static org.assertj.core.api.Assertions.assertThat;
 
-import songscribe.UnitTest;
-import songscribe.music.StaffElement;
-import songscribe.music.ElementType;
-import songscribe.ui.action.AccidentalAction;
-import songscribe.ui.action.SelectableUIAction;
+import java.util.List;
 
 import org.junit.jupiter.api.Test;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import songscribe.UnitTest;
+import songscribe.music.ElementType;
+import songscribe.music.StaffElement;
+import songscribe.ui.action.AccidentalAction;
+import songscribe.ui.action.SelectableUIAction;
 
 class ReflectionHandlerTest extends UnitTest {
 
@@ -53,7 +53,7 @@ class ReflectionHandlerTest extends UnitTest {
         );
 
         ReflectionTestHelper.selectRange(coordinator, 0, 1);
-        coordinator.reflectSelection(null);
+        coordinator.musicSelectionDidChangeReflectSelection(null);
 
         assertThat(uiAction.isSelected()).isTrue();
     }
@@ -75,7 +75,7 @@ class ReflectionHandlerTest extends UnitTest {
         );
 
         ReflectionTestHelper.selectRange(coordinator, 0, 1);
-        coordinator.reflectSelection(null);
+        coordinator.musicSelectionDidChangeReflectSelection(null);
 
         assertThat(uiAction.isSelected()).isFalse();
     }
@@ -97,7 +97,7 @@ class ReflectionHandlerTest extends UnitTest {
         );
 
         ReflectionTestHelper.selectRange(coordinator, 0, 1);
-        coordinator.reflectSelection(null);
+        coordinator.musicSelectionDidChangeReflectSelection(null);
 
         assertThat(uiAction.isSelected()).isFalse();
     }
@@ -116,7 +116,7 @@ class ReflectionHandlerTest extends UnitTest {
         );
 
         ReflectionTestHelper.selectRange(coordinator, 0, 1);
-        coordinator.reflectSelection(null);
+        coordinator.musicSelectionDidChangeReflectSelection(null);
 
         assertThat(uiAction.isSelected()).isFalse();
     }
@@ -140,17 +140,17 @@ class ReflectionHandlerTest extends UnitTest {
 
         // Select note 0 only, reflect — action becomes true (SHARP matches)
         ReflectionTestHelper.selectNote(coordinator, 0);
-        coordinator.reflectSelection(null);
+        coordinator.musicSelectionDidChangeReflectSelection(null);
         assertThat(uiAction.isSelected()).isTrue();
 
         // Extend selection to [0,1], reflect — action becomes false (FLAT mismatch)
         ReflectionTestHelper.selectRange(coordinator, 0, 1);
-        coordinator.reflectSelection(null);
+        coordinator.musicSelectionDidChangeReflectSelection(null);
         assertThat(uiAction.isSelected()).isFalse();
 
         // Clear and reflect — should restore to original saved state (false)
         ReflectionTestHelper.clearSelection(coordinator);
-        coordinator.reflectSelection(null);
+        coordinator.musicSelectionDidChangeReflectSelection(null);
         assertThat(uiAction.isSelected()).isFalse();
     }
 
@@ -171,14 +171,14 @@ class ReflectionHandlerTest extends UnitTest {
 
         // Select and reflect — saves state (selected=false, enabled=true)
         ReflectionTestHelper.selectNote(coordinator, 0);
-        coordinator.reflectSelection(null);
+        coordinator.musicSelectionDidChangeReflectSelection(null);
 
         // Manually disable the action during selection
         uiAction.setEnabled(false);
 
         // Clear and reflect — restores both selected and enabled from saved state
         ReflectionTestHelper.clearSelection(coordinator);
-        coordinator.reflectSelection(null);
+        coordinator.musicSelectionDidChangeReflectSelection(null);
 
         assertThat(uiAction.isEnabled()).isTrue();
     }
@@ -201,12 +201,12 @@ class ReflectionHandlerTest extends UnitTest {
 
         // Select and reflect — action becomes false (FLAT does not match SHARP)
         ReflectionTestHelper.selectNote(coordinator, 0);
-        coordinator.reflectSelection(null);
+        coordinator.musicSelectionDidChangeReflectSelection(null);
         assertThat(uiAction.isSelected()).isFalse();
 
         // Clear and reflect — action restored to pre-selection value (true)
         ReflectionTestHelper.clearSelection(coordinator);
-        coordinator.reflectSelection(null);
+        coordinator.musicSelectionDidChangeReflectSelection(null);
         assertThat(uiAction.isSelected()).isTrue();
     }
 
@@ -226,7 +226,7 @@ class ReflectionHandlerTest extends UnitTest {
 
         // Select and reflect — action becomes true (SHARP matches)
         ReflectionTestHelper.selectNote(coordinator, 0);
-        coordinator.reflectSelection(null);
+        coordinator.musicSelectionDidChangeReflectSelection(null);
         assertThat(uiAction.isSelected()).isTrue();
     }
 
@@ -244,7 +244,7 @@ class ReflectionHandlerTest extends UnitTest {
             List.of(action)
         );
 
-        coordinator.reflectSelection(null);
+        coordinator.musicSelectionDidChangeReflectSelection(null);
 
         assertThat(uiAction.isSelected()).isFalse();
     }
@@ -265,7 +265,7 @@ class ReflectionHandlerTest extends UnitTest {
         );
 
         ReflectionTestHelper.selectRange(coordinator, 0, 1);
-        coordinator.reflectSelection(null);
+        coordinator.musicSelectionDidChangeReflectSelection(null);
 
         assertThat(uiAction.isSelected()).isTrue();
     }
@@ -286,7 +286,7 @@ class ReflectionHandlerTest extends UnitTest {
         );
 
         ReflectionTestHelper.selectRange(coordinator, 0, 1);
-        coordinator.reflectSelection(null);
+        coordinator.musicSelectionDidChangeReflectSelection(null);
 
         assertThat(uiAction.isSelected()).isFalse();
     }
@@ -309,7 +309,7 @@ class ReflectionHandlerTest extends UnitTest {
         );
 
         ReflectionTestHelper.selectNote(coordinator, 0);
-        coordinator.reflectSelection(null);
+        coordinator.musicSelectionDidChangeReflectSelection(null);
 
         // Reflection only sets selected state, not enabled state.
         // Enabled state is managed by flag-based logic in updateEnabledState().
@@ -340,7 +340,7 @@ class ReflectionHandlerTest extends UnitTest {
 
         // Select and reflect — saves both selected and enabled for each action
         ReflectionTestHelper.selectNote(coordinator, 0);
-        coordinator.reflectSelection(null);
+        coordinator.musicSelectionDidChangeReflectSelection(null);
 
         // During selection, states have changed:
         // action1: selected=true (SHARP matches), action2: selected=false (FLAT doesn't match)
@@ -350,7 +350,7 @@ class ReflectionHandlerTest extends UnitTest {
 
         // Clear and reflect — restores original states
         ReflectionTestHelper.clearSelection(coordinator);
-        coordinator.reflectSelection(null);
+        coordinator.musicSelectionDidChangeReflectSelection(null);
 
         assertThat(uiAction1.isSelected()).as("action1 selected").isTrue();
         assertThat(uiAction1.isEnabled()).as("action1 enabled").isTrue();
