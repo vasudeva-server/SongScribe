@@ -262,8 +262,7 @@ public final class StaffElementIO {
         @Nullable
         private Where where;
 
-        public void startElement10(String qName, Attributes attributes)
-            throws NewLineException {
+        public boolean startElement10(String qName, Attributes attributes) {
             if (qName.equals(XML_NOTE)) {
                 lastTag = null;
                 where = Where.ELEMENT;
@@ -271,7 +270,7 @@ public final class StaffElementIO {
 
                 if (type.equals("NEWLINE")) {
                     where = null;
-                    throw new NewLineException();
+                    return true;
                 }
                 if (type.equals("LINE")) {
                     type = ElementType.SINGLE_BARLINE.name();
@@ -288,6 +287,7 @@ public final class StaffElementIO {
             }
 
             value.delete(0, value.length());
+            return false;
         }
 
         public void startElement11(String qName, Attributes attributes) {

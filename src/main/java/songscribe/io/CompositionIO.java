@@ -308,9 +308,7 @@ public final class CompositionIO {
             if (where == Where.NOTES) {
                 if (noteReader == null) return;
 
-                try {
-                    noteReader.startElement10(qName, attributes);
-                } catch (NewLineException e) {
+                if (noteReader.startElement10(qName, attributes)) {
                     parsedLines.add(new Line());
                 }
             } else if (where == Where.TEMPO_CHANGE) {
