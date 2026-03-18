@@ -18,5 +18,6 @@ for arg in "$@"; do
 done
 
 java --enable-native-access=ALL-UNNAMED \
+  -XX:+UseZGC \
   -cp "target/classes:$(mvn dependency:build-classpath -q -Dmdep.outputFile=/dev/stdout)" \
   songscribe.SongScribe "${java_args[@]}"
