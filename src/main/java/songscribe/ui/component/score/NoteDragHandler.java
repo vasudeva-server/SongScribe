@@ -47,7 +47,7 @@ import songscribe.ui.playback.PlayThread;
  * One instance per {@link LineComponent}. The owning component delegates its
  * mouse events here before passing them on to other handlers.
  */
-class ElementDragHandler {
+class NoteDragHandler {
 
     private final LineComponent lc;
 
@@ -64,7 +64,7 @@ class ElementDragHandler {
     @Nullable
     private TieInterval tieInterval;
 
-    ElementDragHandler(LineComponent lc) {
+    NoteDragHandler(LineComponent lc) {
         this.lc = lc;
     }
 

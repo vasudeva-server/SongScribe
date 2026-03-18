@@ -130,7 +130,7 @@ class LineRenderer {
         ctx.setEditMode(lc.isEditMode());
 
         // Override selection color when a pitch drag is in progress
-        if (lc.getElementDragHandler().isDragActive()) {
+        if (lc.getNoteDragHandler().isDragActive()) {
             ctx.setSelectionColor(INSERTION_NOTE_COLOR);
         }
 

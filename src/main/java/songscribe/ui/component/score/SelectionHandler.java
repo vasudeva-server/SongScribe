@@ -299,7 +299,7 @@ class SelectionHandler {
 
     /**
      * Selects the element at the given index in this line, clearing any prior selection.
-     * Used by both the press handler and {@link ElementDragHandler}.
+     * Used by both the press handler and {@link NoteDragHandler}.
      */
     void selectElementAtIndex(int elementIndex) {
         prepareSelection();

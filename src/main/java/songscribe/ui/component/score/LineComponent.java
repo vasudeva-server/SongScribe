@@ -136,7 +136,7 @@ public class LineComponent extends ScoreComponent
     private final SelectionHandler selectionHandler = new SelectionHandler(this);
 
     /** Handles press/drag/release for pitch-dragging a note in NOTE_EDIT mode. */
-    private final ElementDragHandler elementDragHandler = new ElementDragHandler(this);
+    private final NoteDragHandler noteDragHandler = new NoteDragHandler(this);
 
     /** Renderer that handles all drawing for this line. */
     private final LineRenderer lineRenderer = new LineRenderer(this);
@@ -618,8 +618,8 @@ public class LineComponent extends ScoreComponent
             return;
         }
 
-        if (elementDragHandler.isDragActive()) {
-            elementDragHandler.handleDrag(e);
+        if (noteDragHandler.isDragActive()) {
+            noteDragHandler.handleDrag(e);
             return;
         }
 
@@ -639,13 +639,13 @@ public class LineComponent extends ScoreComponent
             return;
         }
 
-        if (elementDragHandler.wasDragPerformed()) {
+        if (noteDragHandler.wasDragPerformed()) {
             return;
         }
 
         // Press was on a note head in NOTE_EDIT mode but no drag occurred —
         // the note was already selected and played in handlePress, nothing more to do.
-        if (elementDragHandler.wasPressCaptured()) {
+        if (noteDragHandler.wasPressCaptured()) {
             return;
         }
 
@@ -664,7 +664,7 @@ public class LineComponent extends ScoreComponent
             return;
         }
 
-        if (elementDragHandler.handlePress(e)) {
+        if (noteDragHandler.handlePress(e)) {
             return;
         }
 
@@ -684,8 +684,8 @@ public class LineComponent extends ScoreComponent
             return;
         }
 
-        if (elementDragHandler.isDragActive()) {
-            elementDragHandler.handleRelease();
+        if (noteDragHandler.isDragActive()) {
+            noteDragHandler.handleRelease();
             return;
         }
 
@@ -746,8 +746,8 @@ public class LineComponent extends ScoreComponent
     /**
      * Returns the note pitch-drag handler for this line.
      */
-    ElementDragHandler getElementDragHandler() {
-        return elementDragHandler;
+    NoteDragHandler getNoteDragHandler() {
+        return noteDragHandler;
     }
 
     /**
