@@ -31,12 +31,6 @@ import org.jspecify.annotations.Nullable;
 
 import kotlin.Pair;
 
-import songscribe.music.BeamInterval;
-import songscribe.music.DynamicsInterval;
-import songscribe.music.EndingInterval;
-import songscribe.music.IntervalSet;
-import songscribe.music.TieInterval;
-import songscribe.music.TupletInterval;
 import songscribe.message.notification.CompositionDidChangeNotification;
 import songscribe.message.MessageCenter;
 import songscribe.midi.GlissandoMidiHelper;
@@ -167,7 +161,7 @@ public class Line {
     }
 
     public void setKeyAccidentalCount(int keys) {
-        modifiedComposition();
+        compositionModified();
         this.keys = keys;
     }
 
@@ -176,7 +170,7 @@ public class Line {
     }
 
     public void setKeyType(@Nullable KeyType keyType) {
-        modifiedComposition();
+        compositionModified();
         this.keyType = keyType;
     }
 
@@ -184,7 +178,7 @@ public class Line {
         element.setLine(this);
         elements.add(element);
         attachInitialTempoIfNeeded(element);
-        modifiedComposition();
+        compositionModified();
     }
 
     public void addElement(int index, StaffElement element) {
@@ -192,11 +186,11 @@ public class Line {
         elements.add(index, element);
         shiftIntervals(intervalSets, index, 1);
         attachInitialTempoIfNeeded(element);
-        modifiedComposition();
+        compositionModified();
     }
 
     public void setElement(int index, StaffElement element) {
-        modifiedComposition();
+        compositionModified();
         element.setLine(this);
         elements.set(index, element);
         attachInitialTempoIfNeeded(element);
@@ -248,12 +242,12 @@ public class Line {
     }
 
     public void removeElement(int index) {
-        modifiedComposition();
+        compositionModified();
         elements.remove(index);
         shiftIntervals(intervalSets, index, -1);
     }
 
-    private void modifiedComposition() {
+    private void compositionModified() {
         if (composition != null) {
             composition.setModified(true);
             MessageCenter.post(new CompositionDidChangeNotification(
@@ -336,7 +330,7 @@ public class Line {
     @Deprecated
     public void setTempoChangeYPosPx(int tempoChangeYPosPx) {
         this.tempoChangeYPosPx = tempoChangeYPosPx;
-        modifiedComposition();
+        compositionModified();
     }
 
     /**
@@ -353,7 +347,7 @@ public class Line {
     @Deprecated
     public void setBeatChangeYPosPx(int beatChangeYPosPx) {
         this.beatChangeYPosPx = beatChangeYPosPx;
-        modifiedComposition();
+        compositionModified();
     }
 
     public double getLyricsYPosSs() {
@@ -362,7 +356,7 @@ public class Line {
 
     public void setLyricsYPosSs(double lyricsYPosSs) {
         this.lyricsYPosSs = lyricsYPosSs;
-        modifiedComposition();
+        compositionModified();
     }
 
     /**
@@ -379,7 +373,7 @@ public class Line {
     @Deprecated
     public void setFirstSecondEndingYPosPx(int fsEndingYPosPx) {
         firstSecondEndingYPosPx = fsEndingYPosPx;
-        modifiedComposition();
+        compositionModified();
     }
 
     /**
@@ -396,12 +390,12 @@ public class Line {
     @Deprecated
     public void setTrillYPosPx(int trillYPosPx) {
         this.trillYPosPx = trillYPosPx;
-        modifiedComposition();
+        compositionModified();
     }
 
     public void mulElementDistChange(float ratio) {
         elementDistChangeRatio *= ratio;
-        modifiedComposition();
+        compositionModified();
     }
 
     public float getElementDistChangeRatio() {
@@ -512,7 +506,7 @@ public class Line {
     public void addRangeElement(RangeElement element) {
         element.setParentLine(this);
         rangeElements.add(element);
-        modifiedComposition();
+        compositionModified();
     }
 
     /**
@@ -524,7 +518,7 @@ public class Line {
     public boolean removeRangeElement(RangeElement element) {
         if (rangeElements.remove(element)) {
             element.setParentLine(null);
-            modifiedComposition();
+            compositionModified();
 
             return true;
         }

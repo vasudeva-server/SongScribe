@@ -20,15 +20,10 @@
 
 package songscribe.ui.edit;
 
-import java.util.function.Supplier;
-
 import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
-import songscribe.message.notification.CompositionDidChangeNotification;
-import songscribe.message.MessageCenter;
 import songscribe.music.ArticulationType;
-import songscribe.music.Composition;
 import songscribe.music.ElementType;
 import songscribe.music.Line;
 import songscribe.music.LyricsProcessor;
@@ -69,7 +64,6 @@ public final class EditModeManager {
     }
 
     // Dependencies
-    private final Supplier<Composition> compositionSupplier;
     private final ClipboardManager clipboardManager;
     private final SelectionCoordinator selectionCoordinator;
     private final ScoreActions scoreActions;
@@ -92,18 +86,15 @@ public final class EditModeManager {
     /**
      * Creates a new EditModeManager and registers it as the global instance.
      *
-     * @param compositionSupplier Supplier for getting the current composition
      * @param clipboardManager The clipboard manager for paste operations
      * @param selectionCoordinator The selection coordinator for selection operations
      * @param scoreActions Callback interface for Score actions
      */
     public EditModeManager(
-        Supplier<Composition> compositionSupplier,
         ClipboardManager clipboardManager,
         SelectionCoordinator selectionCoordinator,
         ScoreActions scoreActions
     ) {
-        this.compositionSupplier = compositionSupplier;
         this.clipboardManager = clipboardManager;
         this.selectionCoordinator = selectionCoordinator;
         this.scoreActions = scoreActions;
@@ -413,10 +404,6 @@ public final class EditModeManager {
         scoreActions.setInsertionElement(nextElement);
         LyricsProcessor.spellLyrics(line);
         scoreActions.drawWidthIfWiderLine(line, false);
-
-        var composition = compositionSupplier.get();
-        MessageCenter.post(new CompositionDidChangeNotification(CompositionDidChangeNotification.ChangeType.CONTENT, composition, line));
-
         scoreActions.repaint();
 
         if (shouldPlayNote) {

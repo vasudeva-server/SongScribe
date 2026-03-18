@@ -237,7 +237,6 @@ public final class Score
         selectionCoordinator = new SelectionCoordinator(this::getComposition);
         clipboardManager = new ClipboardManager();
         editModeManager = new EditModeManager(
-            this::getComposition,
             clipboardManager,
             selectionCoordinator,
             this
