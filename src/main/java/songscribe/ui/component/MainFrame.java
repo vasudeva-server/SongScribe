@@ -28,16 +28,22 @@ import java.io.PrintWriter;
 import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 
-import org.jspecify.annotations.Nullable;
-
 import com.formdev.flatlaf.util.SystemFileChooser;
 import com.formdev.flatlaf.util.SystemInfo;
 import net.engio.mbassy.listener.Handler;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import songscribe.Strings;
 import songscribe.Version;
+import songscribe.error.FatalError;
+import songscribe.file.FileExtensions;
+import songscribe.file.FileUtils;
+import songscribe.file.MyFileFilter;
+import songscribe.io.CompositionIO;
+import songscribe.message.MessageCenter;
+import songscribe.message.MessageLogger;
 import songscribe.message.command.CloseWindowCommand;
 import songscribe.message.command.NewFileCommand;
 import songscribe.message.command.OpenFileCommand;
@@ -47,15 +53,10 @@ import songscribe.message.command.SaveCommand;
 import songscribe.message.command.ShowOpenDialogCommand;
 import songscribe.message.command.ToggleLoopPlaybackCommand;
 import songscribe.message.command.TogglePlayWithRepeatsCommand;
-import songscribe.file.FileExtensions;
-import songscribe.file.MyFileFilter;
-import songscribe.io.CompositionIO;
-import songscribe.message.MessageCenter;
-import songscribe.message.MessageLogger;
-import songscribe.music.Composition;
 import songscribe.message.notification.CompositionDidChangeNotification;
 import songscribe.message.notification.DocumentWasSavedNotification;
 import songscribe.message.notification.PlaybackTempoDidChangeNotification;
+import songscribe.music.Composition;
 import songscribe.prefs.Prefs;
 import songscribe.prefs.RecentDocumentsManager;
 import songscribe.ui.Dialogs;
@@ -69,8 +70,6 @@ import songscribe.ui.dialog.WhatsNewDialog;
 import songscribe.ui.menu.MenuController;
 import songscribe.ui.playback.MidiController;
 import songscribe.ui.playback.PlaybackController;
-import songscribe.error.FatalError;
-import songscribe.file.FileUtils;
 
 public class MainFrame extends JFrame implements Printable {
 
@@ -223,24 +222,9 @@ public class MainFrame extends JFrame implements Printable {
         splashWindow.dispose();
     }
 
+    // Reserve for future use, such as showing a welcome message
+    // or tutorial on the first run
     private void firstRun() {
-        // Copy the example files
-        var documentsDirectory = FileUtils.getSongScribeDirectory();
-        var created = documentsDirectory.mkdir();
-
-        if (created) {
-            var examples = new File("examples").listFiles();
-
-            if (examples != null) {
-                for (var file : examples) {
-                    FileUtils.copyFile(
-                        file,
-                        new File(documentsDirectory, file.getName())
-                    );
-                }
-            }
-        }
-
         Prefs.getInstance().put("firstRun", false);
     }
 
@@ -351,7 +335,6 @@ public class MainFrame extends JFrame implements Printable {
 
 
         var toolbarPanel = new MainToolbarPanel();
-
 
 
         // On macOS with full window content, draw a custom title in the
