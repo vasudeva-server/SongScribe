@@ -24,7 +24,7 @@ If you **do** need to run the application:
 ./scripts/run.sh
 ```
 
-**IMPORTANT:** Never pipe `compile.sh` or `crun.sh` output through `tail`, `head`, `grep`, or any filter. Always capture the full output — failure details and error messages appear before the summary.
+**IMPORTANT:** NEVER pipe `compile.sh` or `crun.sh` output through `tail`, `head`, `grep`, a filter, or follow with an echo of the status. Always capture the full output — failure details and error messages appear before the summary.
 
 ### All Available Scripts
 
@@ -72,7 +72,7 @@ To determine the pass/fail status of tests, run `test.sh`. If there are failures
 ./scripts/test.sh -Dtest=*Test                       # Run with Maven pattern
 ```
 
-**IMPORTANT:** If tests fail, do NOT assume the failures are pre-existing just because you didn't touch the failing code. Always investigate test failures and fix them before proceeding with new changes.
+**IMPORTANT:** If tests fail, NEVER assume the failures are pre-existing just because you didn't touch the failing code. Always investigate test failures and fix them before proceeding with new changes.
 
 ### Writing Tests
 
