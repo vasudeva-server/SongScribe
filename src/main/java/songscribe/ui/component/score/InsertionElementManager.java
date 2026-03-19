@@ -452,18 +452,13 @@ public class InsertionElementManager {
                 return;
             }
 
-            // Hide the insertion element only when both X and Y match: the hover highlight on the
-            // existing element already signals what will be replaced. When only X matches, show the
-            // preview so the user can see the pitch that will replace the existing element.
-            if (xPosSsMatchesElement && yPosSpMatchesElement) {
-                editModeManager.setInsertionElementVisible(false);
-            } else {
-                editModeManager.setInsertionElementVisible(true);
-            }
+            // Always show the ghost preview — even when hovering over an existing element head.
+            // The preview shows the user what pitch/type will replace the existing element.
+            editModeManager.setInsertionElementVisible(true);
 
-            // Update the insertion element's Y position
+            // Rests snap to their default staff position; pitched notes follow the mouse Y
             if (insertionElement != null) {
-                insertionElement.setStaffPosition(staffPosition);
+                applyStaffPosition(insertionElement, staffPosition);
             }
         }
 
@@ -623,6 +618,18 @@ public class InsertionElementManager {
      */
     static int calculateStaffPositionFromMouse(double mouseYss, double middleLineYSs) {
         return (int) Math.round((mouseYss - middleLineYSs) / LayoutStylesheet.STAFF_POSITION_OFFSET_SS);
+    }
+
+    /**
+     * Sets the staff position on an element: rests snap to their type's default
+     * position, pitched notes use the given mouse-derived position.
+     */
+    private static void applyStaffPosition(StaffElement element, int staffPositionSp) {
+        if (element.getType().isRest()) {
+            element.setStaffPosition(element.getType().getDefaultStaffPosition());
+        } else {
+            element.setStaffPosition(staffPositionSp);
+        }
     }
 
     /**
@@ -875,7 +882,9 @@ public class InsertionElementManager {
 
         // Preserve the existing element's x position
         insertionElement.setXPosSs(line.getElement(elementIndex).getXPosSs());
-        insertionElement.setStaffPosition(currentStaffPosition);
+
+        // Rests snap to their default staff position; pitched notes use the mouse Y position
+        applyStaffPosition(insertionElement, currentStaffPosition);
 
         if (insertionElement.isStemDirectionAuto()) {
             insertionElement.setUpper(Score.defaultUpperNote(insertionElement));
@@ -906,6 +915,17 @@ public class InsertionElementManager {
         // applyAutomaticBeaming only scans backward and misses the forward neighbor.
         if (elementIndex + 1 < line.elementCount()) {
             applyAutomaticBeaming(line, elementIndex + 1);
+        }
+
+        // Grace note cleanup: if the preceding element is a paired grace note (grace + connected
+        // glissando to the replaced host), and the replacement is not a pitched note, remove the
+        // grace note. For pitched note replacements the glissando reattaches automatically since
+        // setElement preserves the element index.
+        if (elementIndex > 0
+                && line.isPairedGraceNote(elementIndex - 1)
+                && !insertionElement.getType().isPitchedNote()) {
+            line.removeElement(elementIndex - 1);
+            elementIndex--;
         }
 
         if (editModeManager != null) {

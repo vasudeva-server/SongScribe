@@ -161,7 +161,7 @@ public class Line {
     }
 
     public void setKeyAccidentalCount(int keys) {
-        compositionModified();
+        compositionWasModified();
         this.keys = keys;
     }
 
@@ -170,7 +170,7 @@ public class Line {
     }
 
     public void setKeyType(@Nullable KeyType keyType) {
-        compositionModified();
+        compositionWasModified();
         this.keyType = keyType;
     }
 
@@ -178,7 +178,7 @@ public class Line {
         element.setLine(this);
         elements.add(element);
         attachInitialTempoIfNeeded(element);
-        compositionModified();
+        compositionWasModified();
     }
 
     public void addElement(int index, StaffElement element) {
@@ -186,11 +186,11 @@ public class Line {
         elements.add(index, element);
         shiftIntervals(intervalSets, index, 1);
         attachInitialTempoIfNeeded(element);
-        compositionModified();
+        compositionWasModified();
     }
 
     public void setElement(int index, StaffElement element) {
-        compositionModified();
+        compositionWasModified();
         element.setLine(this);
         elements.set(index, element);
         attachInitialTempoIfNeeded(element);
@@ -242,12 +242,12 @@ public class Line {
     }
 
     public void removeElement(int index) {
-        compositionModified();
+        compositionWasModified();
         elements.remove(index);
         shiftIntervals(intervalSets, index, -1);
     }
 
-    private void compositionModified() {
+    private void compositionWasModified() {
         if (composition != null) {
             composition.setModified(true);
             MessageCenter.post(new CompositionDidChangeNotification(
@@ -330,7 +330,7 @@ public class Line {
     @Deprecated
     public void setTempoChangeYPosPx(int tempoChangeYPosPx) {
         this.tempoChangeYPosPx = tempoChangeYPosPx;
-        compositionModified();
+        compositionWasModified();
     }
 
     /**
@@ -347,7 +347,7 @@ public class Line {
     @Deprecated
     public void setBeatChangeYPosPx(int beatChangeYPosPx) {
         this.beatChangeYPosPx = beatChangeYPosPx;
-        compositionModified();
+        compositionWasModified();
     }
 
     public double getLyricsYPosSs() {
@@ -356,7 +356,7 @@ public class Line {
 
     public void setLyricsYPosSs(double lyricsYPosSs) {
         this.lyricsYPosSs = lyricsYPosSs;
-        compositionModified();
+        compositionWasModified();
     }
 
     /**
@@ -373,7 +373,7 @@ public class Line {
     @Deprecated
     public void setFirstSecondEndingYPosPx(int fsEndingYPosPx) {
         firstSecondEndingYPosPx = fsEndingYPosPx;
-        compositionModified();
+        compositionWasModified();
     }
 
     /**
@@ -390,12 +390,12 @@ public class Line {
     @Deprecated
     public void setTrillYPosPx(int trillYPosPx) {
         this.trillYPosPx = trillYPosPx;
-        compositionModified();
+        compositionWasModified();
     }
 
     public void mulElementDistChange(float ratio) {
         elementDistChangeRatio *= ratio;
-        compositionModified();
+        compositionWasModified();
     }
 
     public float getElementDistChangeRatio() {
@@ -506,7 +506,7 @@ public class Line {
     public void addRangeElement(RangeElement element) {
         element.setParentLine(this);
         rangeElements.add(element);
-        compositionModified();
+        compositionWasModified();
     }
 
     /**
@@ -518,7 +518,7 @@ public class Line {
     public boolean removeRangeElement(RangeElement element) {
         if (rangeElements.remove(element)) {
             element.setParentLine(null);
-            compositionModified();
+            compositionWasModified();
 
             return true;
         }

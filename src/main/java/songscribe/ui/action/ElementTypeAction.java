@@ -239,9 +239,16 @@ public class ElementTypeAction extends StickyUIAction implements UIAction.Elemen
 
     @Override
     public boolean appliesTo(StaffElement element) {
-        return kind == Kind.DURATION
-            ? element.getType().isDuration()
-            : element.getType().isNonDuration();
+        if (kind == Kind.DURATION) {
+            return element.getType().isDuration();
+        }
+
+        // Breath marks and barlines/repeats are distinct non-duration subcategories
+        if (type == ElementType.BREATH_MARK) {
+            return element.getType() == ElementType.BREATH_MARK;
+        }
+
+        return element.getType().isBarLine() || element.getType().isRepeat();
     }
 
     @Override

@@ -639,16 +639,6 @@ public class LineComponent extends ScoreComponent
             return;
         }
 
-        if (noteDragHandler.wasDragPerformed()) {
-            return;
-        }
-
-        // Press was on a note head in NOTE_EDIT mode but no drag occurred —
-        // the note was already selected and played in handlePress, nothing more to do.
-        if (noteDragHandler.wasPressCaptured()) {
-            return;
-        }
-
         if (!selectionHandler.handleClick(e)) {
             InsertionElementManager.handleClick(this);
         }
@@ -664,13 +654,14 @@ public class LineComponent extends ScoreComponent
             return;
         }
 
-        if (noteDragHandler.handlePress(e)) {
-            return;
+        // Alt+click in EDIT mode: switch to SELECT, then fall through to normal handling
+        if (e.isAltDown() && score != null && score.getMode() == Mode.EDIT) {
+            Actions.SELECT_MODE_ACTION.perform(this);
         }
 
-        // If Alt is pressed, fully switch to Select mode
-        if (e.isAltDown() && score != null && score.getMode() != Mode.SELECT) {
-            Actions.SELECT_MODE_ACTION.perform(this);
+        // In SELECT mode, note head press starts a pitch drag
+        if (noteDragHandler.handlePress(e)) {
+            return;
         }
 
         if (selectionHandler.isSelectionActive(e)) {

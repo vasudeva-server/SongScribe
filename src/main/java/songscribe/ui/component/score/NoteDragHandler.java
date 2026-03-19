@@ -34,7 +34,6 @@ import songscribe.music.Line;
 import songscribe.music.StaffElement;
 import songscribe.ui.Dialogs;
 import songscribe.ui.Mode;
-import songscribe.ui.action.Actions;
 import songscribe.ui.component.Score;
 import songscribe.ui.edit.EditModeManager;
 import songscribe.ui.layout.ScaleContext;
@@ -42,7 +41,7 @@ import songscribe.ui.playback.MidiController;
 import songscribe.ui.playback.PlayThread;
 
 /**
- * Handles press/drag/release for pitch-dragging a note head in NOTE_EDIT mode.
+ * Handles press/drag/release for pitch-dragging a note head in SELECT mode.
  * <p>
  * One instance per {@link LineComponent}. The owning component delegates its
  * mouse events here before passing them on to other handlers.
@@ -76,19 +75,6 @@ class NoteDragHandler {
         return dragActive;
     }
 
-    boolean wasDragPerformed() {
-        return dragMoved;
-    }
-
-    /**
-     * Returns whether the last press was captured by this handler (i.e. the user
-     * pressed on a note head in NOTE_EDIT mode). This is true regardless of
-     * whether a drag subsequently occurred.
-     */
-    boolean wasPressCaptured() {
-        return pressHandled;
-    }
-
     int getDragElementIndex() {
         return dragElementIndex;
     }
@@ -111,11 +97,16 @@ class NoteDragHandler {
 
         var score = lc.getScore();
 
-        if (score == null || score.getMode() != Mode.EDIT) {
+        if (score == null || score.getMode() != Mode.SELECT) {
             return false;
         }
 
-        if (e.isAltDown() || MidiController.isPlaying()) {
+        if (MidiController.isPlaying()) {
+            return false;
+        }
+
+        // Shift+click extends selection — let the selection handler manage it
+        if (e.isShiftDown()) {
             return false;
         }
 
@@ -222,9 +213,6 @@ class NoteDragHandler {
             // The last drag noteOn is still sounding — schedule a noteOff after the standard duration
             new PlayThread(dragLine.getElement(dragElementIndex).getPitch(), false).start();
 
-            // Clear selection so the note doesn't appear highlighted after drag
-            lc.getScore().clearSelection();
-
             // Remove connected glissandos that became unison after the pitch drag
             removeUnisonConnectedGlissandos(dragLine, dragElementIndex);
 
@@ -247,28 +235,6 @@ class NoteDragHandler {
             MessageCenter.post(new CompositionDidChangeNotification(CompositionDidChangeNotification.ChangeType.CONTENT, composition, dragLine));
             composition.setModified(true);
             // TODO: push to undo stack when undo system is re-enabled
-        } else {
-            // No drag — click on a note head selects it, switch to select mode
-            // (same as alt-click in LineComponent.mousePressed)
-            Actions.SELECT_MODE_ACTION.perform(lc);
-
-            // No position change occurred, but guard against floating-point drift
-            int rangeStart;
-            int rangeEnd;
-
-            if (tieInterval != null) {
-                rangeStart = tieInterval.getStart();
-                rangeEnd = tieInterval.getEnd();
-            } else {
-                rangeStart = dragElementIndex;
-                rangeEnd = dragElementIndex;
-            }
-
-            for (var i = rangeStart; i <= rangeEnd; i++) {
-                var note = dragLine.getElement(i);
-                note.setStaffPosition(originalStaffPosition);
-                note.setUpper(originalUpper);
-            }
         }
 
         dragActive = false;

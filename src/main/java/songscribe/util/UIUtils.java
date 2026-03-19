@@ -283,6 +283,17 @@ public final class UIUtils {
         button.setMinimumSize(buttonSize);
     }
 
+    /**
+     * Returns the deepest component at the given screen point within the frame.
+     */
+    @Nullable
+    public static Component getDeepestComponentAt(JFrame frame, Point screenPoint) {
+        var frameLocation = frame.getLocationOnScreen();
+        int relX = screenPoint.x - frameLocation.x;
+        int relY = screenPoint.y - frameLocation.y;
+        return SwingUtilities.getDeepestComponentAt(frame, relX, relY);
+    }
+
     // Returns the deepest component under the mouse
     @Nullable
     public static Component getComponentUnderMouse() {

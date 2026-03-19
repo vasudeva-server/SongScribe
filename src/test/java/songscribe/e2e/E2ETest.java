@@ -488,23 +488,89 @@ public abstract class E2ETest {
     /**
      * Shift-clicks at an absolute screen position.
      * <p>
-     * Dispatches synthetic MOUSE_PRESSED, MOUSE_RELEASED, and MOUSE_CLICKED
-     * events with the shift modifier set. The robot is not used because it
-     * does not reliably carry keyboard modifiers on synthesized click events.
+     * Uses synthetic events because the robot does not reliably carry
+     * keyboard modifiers on synthesized click events.
      */
     protected void shiftClickAt(Point screenPoint) {
+        dispatchSyntheticClick(screenPoint, java.awt.event.InputEvent.SHIFT_DOWN_MASK);
+    }
+
+    /**
+     * Alt-clicks at an absolute screen position.
+     * <p>
+     * Uses synthetic events because the robot does not reliably carry
+     * keyboard modifiers on synthesized click events.
+     */
+    protected void altClickAt(Point screenPoint) {
+        dispatchSyntheticClick(screenPoint, java.awt.event.InputEvent.ALT_DOWN_MASK);
+    }
+
+    /**
+     * Alt-drags from one screen point to another.
+     * <p>
+     * Dispatches synthetic MOUSE_PRESSED at the start point, MOUSE_DRAGGED
+     * at the end point, and MOUSE_RELEASED at the end point, all with the
+     * alt modifier set. Uses synthetic events because the robot does not
+     * reliably carry keyboard modifiers.
+     */
+    protected void altDrag(Point startPoint, Point endPoint) {
         GuiActionRunner.execute(() -> {
             var frame = MainFrame.getInstance();
             var frameLocation = frame.getLocationOnScreen();
-            int relX = screenPoint.x - frameLocation.x;
-            int relY = screenPoint.y - frameLocation.y;
+            int modifiers = java.awt.event.InputEvent.ALT_DOWN_MASK
+                | java.awt.event.InputEvent.BUTTON1_DOWN_MASK;
+            long now = System.currentTimeMillis();
 
-            var component = SwingUtilities.getDeepestComponentAt(frame, relX, relY);
+            // All events go to the component under the start point (drag capture)
+            var component = UIUtils.getDeepestComponentAt(frame, startPoint);
+
+            if (component == null) {
+                return;
+            }
+
+            // Press at start
+            var startLocal = SwingUtilities.convertPoint(frame,
+                startPoint.x - frameLocation.x, startPoint.y - frameLocation.y,
+                component);
+            component.dispatchEvent(new java.awt.event.MouseEvent(
+                component, java.awt.event.MouseEvent.MOUSE_PRESSED, now, modifiers,
+                startLocal.x, startLocal.y, 1, false,
+                java.awt.event.MouseEvent.BUTTON1));
+
+            // Drag to end
+            var endLocal = SwingUtilities.convertPoint(frame,
+                endPoint.x - frameLocation.x, endPoint.y - frameLocation.y,
+                component);
+            component.dispatchEvent(new java.awt.event.MouseEvent(
+                component, java.awt.event.MouseEvent.MOUSE_DRAGGED, now, modifiers,
+                endLocal.x, endLocal.y, 0, false,
+                java.awt.event.MouseEvent.BUTTON1));
+
+            // Release at end
+            component.dispatchEvent(new java.awt.event.MouseEvent(
+                component, java.awt.event.MouseEvent.MOUSE_RELEASED, now, modifiers,
+                endLocal.x, endLocal.y, 1, false,
+                java.awt.event.MouseEvent.BUTTON1));
+        });
+
+        pause();
+    }
+
+    /**
+     * Dispatches synthetic MOUSE_PRESSED, MOUSE_RELEASED, and MOUSE_CLICKED
+     * events with the given modifier mask at the given screen point.
+     */
+    private void dispatchSyntheticClick(Point screenPoint, int modifierMask) {
+        GuiActionRunner.execute(() -> {
+            var frame = MainFrame.getInstance();
+            var frameLocation = frame.getLocationOnScreen();
+            var component = UIUtils.getDeepestComponentAt(frame, screenPoint);
 
             if (component != null) {
-                var local = SwingUtilities.convertPoint(frame, relX, relY, component);
-                int modifiers = java.awt.event.InputEvent.SHIFT_DOWN_MASK
-                    | java.awt.event.InputEvent.BUTTON1_DOWN_MASK;
+                var local = SwingUtilities.convertPoint(frame,
+                    screenPoint.x - frameLocation.x, screenPoint.y - frameLocation.y,
+                    component);
+                int modifiers = modifierMask | java.awt.event.InputEvent.BUTTON1_DOWN_MASK;
                 long now = System.currentTimeMillis();
 
                 for (int id : new int[]{
@@ -521,6 +587,7 @@ public abstract class E2ETest {
 
         pause();
     }
+
 
     // -- Key event helpers --
 
@@ -583,7 +650,7 @@ public abstract class E2ETest {
      */
     @FunctionalInterface
     protected interface TestStep {
-        void run() throws Exception;
+        void run(int step) throws Exception;
     }
 
     /**
@@ -592,11 +659,12 @@ public abstract class E2ETest {
      * skips it and continues to the next step, Stop exits the JVM.
      * In slow mode, adds extra delay before the step.
      *
+     * @param stepNumber auto-incremented step number (pass {@code ++step})
      * @param description short label for the step (shown in overlay and dialog)
      * @param step the action and assertions to run
      */
-    protected void debugStep(String description, TestStep step) throws Exception {
-        currentTestName = description;
+    protected void debugStep(int stepNumber, String description, TestStep step) throws Exception {
+        currentTestName = stepNumber + ": " + description;
         GuiActionRunner.execute(() -> updateStatusOverlay());
 
         if (SLOW_MODE && !DEBUG_MODE) {
@@ -617,9 +685,12 @@ public abstract class E2ETest {
             if (result == DEBUG_SKIP) {
                 return;
             }
+
+            // Let the debug dialog fully dispose before running the step
+            pause();
         }
 
-        step.run();
+        step.run(stepNumber);
     }
 
     /**

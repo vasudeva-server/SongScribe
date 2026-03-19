@@ -31,6 +31,7 @@ import module java.desktop;
 import org.assertj.swing.edt.GuiActionRunner;
 import org.junit.jupiter.api.Test;
 
+import songscribe.music.ArticulationType;
 import songscribe.music.ElementType;
 import songscribe.music.StaffElement;
 import songscribe.music.StaffElement.Accidental;
@@ -106,51 +107,45 @@ class SelectionTest extends E2ETest {
     @Test
     void testSelectionOperations() throws Exception {
         loadFixture("selection1");
+        int stepCounter = 0;
 
-        debugStep("1-2: Mode toggle", () -> {
+        debugStep(++stepCounter, "Mode toggle", (step) -> {
             enterSelectMode();
-            assertThat(score().getMode()).as("1: select mode").isEqualTo(Mode.SELECT);
+            assertThat(score().getMode()).as(step + ": select mode").isEqualTo(Mode.SELECT);
 
             enterEditMode();
-            assertThat(score().getMode()).as("2: edit mode").isEqualTo(Mode.EDIT);
+            assertThat(score().getMode()).as(step + ": edit mode").isEqualTo(Mode.EDIT);
         });
 
-        debugStep("3-4: Click note auto-selects", () -> {
+        debugStep(++stepCounter, "Click empty space deselects", (step) -> {
+            enterSelectMode();
             clickAt(noteScreenPosition(0, Sel1.WHOLE.ordinal()));
-            assertAll(
-                () -> assertThat(score().getMode()).as("3: auto-enters select mode").isEqualTo(Mode.SELECT),
-                () -> assertThat(score().getSingleSelectedElement())
-                    .as("4: single selected element")
-                    .isEqualTo(composition().getLine(0).getElement(Sel1.WHOLE.ordinal()))
-            );
-        });
-
-        debugStep("5: Click empty space deselects", () -> {
             var emptyPoint = Objects.requireNonNull(GuiActionRunner.execute(() -> {
                 var lc = Objects.requireNonNull(score().getLineComponent(0));
                 var loc = lc.getLocationOnScreen();
                 return new Point(loc.x + lc.getWidth() - 10, loc.y + lc.getHeight() - 5);
             }));
             clickAt(emptyPoint);
-            assertThat(score().getSelectionSize()).as("5: click empty deselects").isEqualTo(0);
+            assertThat(score().getSelectionSize()).as(step + ": click empty deselects").isEqualTo(0);
         });
 
-        debugStep("6: Shift-click extends selection", () -> {
+        debugStep(++stepCounter, "Shift-click extends selection", (step) -> {
+            enterSelectMode();
             clickAt(noteScreenPosition(0, Sel1.WHOLE.ordinal()));
             shiftClickAt(noteScreenPosition(0, Sel1.QUARTER.ordinal()));
-            assertThat(score().getSelectionSize()).as("6: shift-click range").isEqualTo(3);
+            assertThat(score().getSelectionSize()).as(step + ": shift-click range").isEqualTo(3);
         });
 
-        debugStep("7: Shift-click shrinks selection", () -> {
+        debugStep(++stepCounter, "Shift-click shrinks selection", (step) -> {
             shiftClickAt(noteScreenPosition(0, Sel1.HALF.ordinal()));
             assertAll(
-                () -> assertThat(score().getSelectionSize()).as("7: shrunk range size").isEqualTo(2),
+                () -> assertThat(score().getSelectionSize()).as(step + ": shrunk range size").isEqualTo(2),
                 () -> assertThat(score().isElementSelected(Sel1.QUARTER.ordinal(), 0))
-                    .as("7: index 3 not selected").isFalse()
+                    .as(step + ": index 3 not selected").isFalse()
             );
         });
 
-        debugStep("8: Drag-select", () -> {
+        debugStep(++stepCounter, "Drag-select", (step) -> {
             enterSelectMode();
             var note1Pos = noteScreenPosition(0, Sel1.WHOLE.ordinal());
             var note3Pos = noteScreenPosition(0, Sel1.QUARTER.ordinal());
@@ -162,15 +157,15 @@ class SelectionTest extends E2ETest {
             pause();
             robot.releaseMouseButtons();
             pause();
-            assertThat(score().getSelectionSize()).as("8: drag-select").isGreaterThanOrEqualTo(3);
+            assertThat(score().getSelectionSize()).as(step + ": drag-select").isGreaterThanOrEqualTo(3);
         });
 
-        debugStep("9: Cmd+D deselects", () -> {
+        debugStep(++stepCounter, "Cmd+D deselects", (step) -> {
             clickMenuItem(Actions.DESELECT_ACTION);
-            assertThat(score().getSelectionSize()).as("9: Cmd+D deselects").isEqualTo(0);
+            assertThat(score().getSelectionSize()).as(step + ": Cmd+D deselects").isEqualTo(0);
         });
 
-        debugStep("10: Click past elements selects line", () -> {
+        debugStep(++stepCounter, "Click past elements selects line", (step) -> {
             enterSelectMode();
             var lineClickPoint = Objects.requireNonNull(GuiActionRunner.execute(() -> {
                 var lc = Objects.requireNonNull(score().getLineComponent(0));
@@ -184,119 +179,119 @@ class SelectionTest extends E2ETest {
                 return new Point(loc.x + pastLastXPx, loc.y + yPx);
             }));
             clickAt(lineClickPoint);
-            assertThat(score().isLineSelected(0)).as("10: line selected").isTrue();
+            assertThat(score().isLineSelected(0)).as(step + ": line selected").isTrue();
         });
 
-        debugStep("11-16: Duration reflection", () -> {
-            assertDurationReflected(Sel1.WHOLE.ordinal(), Actions.WHOLE_NOTE_ACTION);
-            assertDurationReflected(Sel1.HALF.ordinal(), Actions.HALF_NOTE_ACTION);
-            assertDurationReflected(Sel1.QUARTER.ordinal(), Actions.QUARTER_NOTE_ACTION);
-            assertDurationReflected(Sel1.EIGHTH.ordinal(), Actions.EIGHTH_NOTE_ACTION);
-            assertDurationReflected(Sel1.SIXTEENTH.ordinal(), Actions.SIXTEENTH_NOTE_ACTION);
-            assertDurationReflected(Sel1.THIRTY_SECOND.ordinal(), Actions.THIRTY_SECOND_NOTE_ACTION);
+        debugStep(++stepCounter, "Duration reflection", (step) -> {
+            assertDurationReflected(step, Sel1.WHOLE.ordinal(), Actions.WHOLE_NOTE_ACTION);
+            assertDurationReflected(step, Sel1.HALF.ordinal(), Actions.HALF_NOTE_ACTION);
+            assertDurationReflected(step, Sel1.QUARTER.ordinal(), Actions.QUARTER_NOTE_ACTION);
+            assertDurationReflected(step, Sel1.EIGHTH.ordinal(), Actions.EIGHTH_NOTE_ACTION);
+            assertDurationReflected(step, Sel1.SIXTEENTH.ordinal(), Actions.SIXTEENTH_NOTE_ACTION);
+            assertDurationReflected(step, Sel1.THIRTY_SECOND.ordinal(), Actions.THIRTY_SECOND_NOTE_ACTION);
         });
 
-        debugStep("17-23: Accidental reflection", () -> {
-            assertAccidentalReflected(Sel1.FLAT.ordinal(), Actions.FLAT_ACTION);
-            assertAccidentalReflected(Sel1.DOUBLE_FLAT.ordinal(), Actions.DOUBLE_FLAT_ACTION);
-            assertAccidentalReflected(Sel1.NATURAL_FLAT.ordinal(), Actions.NATURAL_FLAT_ACTION);
-            assertAccidentalReflected(Sel1.NATURAL.ordinal(), Actions.NATURAL_ACTION);
-            assertAccidentalReflected(Sel1.SHARP.ordinal(), Actions.SHARP_ACTION);
-            assertAccidentalReflected(Sel1.DOUBLE_SHARP.ordinal(), Actions.DOUBLE_SHARP_ACTION);
-            assertAccidentalReflected(Sel1.NATURAL_SHARP.ordinal(), Actions.NATURAL_SHARP_ACTION);
+        debugStep(++stepCounter, "Accidental reflection", (step) -> {
+            assertAccidentalReflected(step, Sel1.FLAT.ordinal(), Actions.FLAT_ACTION);
+            assertAccidentalReflected(step, Sel1.DOUBLE_FLAT.ordinal(), Actions.DOUBLE_FLAT_ACTION);
+            assertAccidentalReflected(step, Sel1.NATURAL_FLAT.ordinal(), Actions.NATURAL_FLAT_ACTION);
+            assertAccidentalReflected(step, Sel1.NATURAL.ordinal(), Actions.NATURAL_ACTION);
+            assertAccidentalReflected(step, Sel1.SHARP.ordinal(), Actions.SHARP_ACTION);
+            assertAccidentalReflected(step, Sel1.DOUBLE_SHARP.ordinal(), Actions.DOUBLE_SHARP_ACTION);
+            assertAccidentalReflected(step, Sel1.NATURAL_SHARP.ordinal(), Actions.NATURAL_SHARP_ACTION);
         });
 
-        debugStep("24: Accidental-in-parens reflection", () -> {
+        debugStep(++stepCounter, "Accidental-in-parens reflection", (step) -> {
             clickAt(noteScreenPosition(0, Sel1.FLAT_IN_PARENS.ordinal()));
-            assertActionSelected(Actions.FLAT_ACTION, true, "24: underlying flat selected");
-            assertActionSelected(Actions.ACCIDENTAL_IN_PARENS_ACTION, true, "24: in-parens selected");
+            assertActionSelected(Actions.FLAT_ACTION, true, step + ": underlying flat selected");
+            assertActionSelected(Actions.ACCIDENTAL_IN_PARENS_ACTION, true, step + ": in-parens selected");
         });
 
-        debugStep("25: Dot reflection", () -> {
+        debugStep(++stepCounter, "Dot reflection", (step) -> {
             clickAt(noteScreenPosition(0, Sel1.DOTTED.ordinal()));
-            assertActionSelected(Actions.DOT_ACTION, true, "25: dot selected");
-            assertActionSelected(Actions.DOUBLE_DOT_ACTION, false, "25: double-dot not selected");
+            assertActionSelected(Actions.DOT_ACTION, true, step + ": dot selected");
+            assertActionSelected(Actions.DOUBLE_DOT_ACTION, false, step + ": double-dot not selected");
         });
 
-        debugStep("26: Double-dot reflection", () -> {
+        debugStep(++stepCounter, "Double-dot reflection", (step) -> {
             clickAt(noteScreenPosition(0, Sel1.DOUBLE_DOTTED.ordinal()));
-            assertActionSelected(Actions.DOUBLE_DOT_ACTION, true, "26: double-dot selected");
-            assertActionSelected(Actions.DOT_ACTION, false, "26: dot not selected");
+            assertActionSelected(Actions.DOUBLE_DOT_ACTION, true, step + ": double-dot selected");
+            assertActionSelected(Actions.DOT_ACTION, false, step + ": dot not selected");
         });
 
-        debugStep("27: Single quarter elements reflect quarter", () -> {
+        debugStep(++stepCounter, "Single quarter elements reflect quarter", (step) -> {
             clickAt(noteScreenPosition(0, Sel1.QUARTER_TEMPO.ordinal()));
-            assertActionSelected(Actions.QUARTER_NOTE_ACTION, true, "27a: index 0 is quarter");
+            assertActionSelected(Actions.QUARTER_NOTE_ACTION, true, step + "a: index 0 is quarter");
             clickAt(noteScreenPosition(0, Sel1.QUARTER.ordinal()));
-            assertActionSelected(Actions.QUARTER_NOTE_ACTION, true, "27b: index 3 is quarter");
+            assertActionSelected(Actions.QUARTER_NOTE_ACTION, true, step + "b: index 3 is quarter");
         });
 
-        debugStep("28: Mixed durations deselect both", () -> {
+        debugStep(++stepCounter, "Mixed durations deselect both", (step) -> {
             clickAt(noteScreenPosition(0, Sel1.QUARTER.ordinal()));
             shiftClickAt(noteScreenPosition(0, Sel1.HALF.ordinal()));
             assertAll(
-                () -> assertActionSelected(Actions.QUARTER_NOTE_ACTION, false, "28: quarter not selected"),
-                () -> assertActionSelected(Actions.HALF_NOTE_ACTION, false, "28: half not selected")
+                () -> assertActionSelected(Actions.QUARTER_NOTE_ACTION, false, step + ": quarter not selected"),
+                () -> assertActionSelected(Actions.HALF_NOTE_ACTION, false, step + ": half not selected")
             );
         });
 
-        debugStep("29: Mixed accidentals deselect both", () -> {
+        debugStep(++stepCounter, "Mixed accidentals deselect both", (step) -> {
             clickAt(noteScreenPosition(0, Sel1.FLAT.ordinal()));
             shiftClickAt(noteScreenPosition(0, Sel1.DOUBLE_FLAT.ordinal()));
             assertAll(
-                () -> assertActionSelected(Actions.FLAT_ACTION, false, "29: flat not selected"),
-                () -> assertActionSelected(Actions.DOUBLE_FLAT_ACTION, false, "29: double-flat not selected")
+                () -> assertActionSelected(Actions.FLAT_ACTION, false, step + ": flat not selected"),
+                () -> assertActionSelected(Actions.DOUBLE_FLAT_ACTION, false, step + ": double-flat not selected")
             );
         });
 
         loadFixture("selection2");
 
-        debugStep("30: Rest reflects duration + rest mode", () -> {
+        debugStep(++stepCounter, "Rest reflects duration + rest mode", (step) -> {
             enterSelectMode();
 
             // Select crotchet rest — large enough to click reliably
             clickAt(noteScreenPosition(0, Sel2.CROTCHET_REST.ordinal()));
-            assertDurationReflected(Sel2.CROTCHET_REST.ordinal(), Actions.QUARTER_NOTE_ACTION);
-            assertActionSelected(Actions.REST_ACTION, true, "30: rest mode selected");
+            assertDurationReflected(step, Sel2.CROTCHET_REST.ordinal(), Actions.QUARTER_NOTE_ACTION);
+            assertActionSelected(Actions.REST_ACTION, true, step + ": rest mode selected");
         });
 
-        debugStep("36-38: Articulation reflection", () -> {
+        debugStep(++stepCounter, "Articulation reflection", (step) -> {
             clickAt(noteScreenPosition(0, Sel2.STACCATO.ordinal()));
-            assertActionSelected(Actions.STACCATO_ACTION, true, "36: staccato selected");
+            assertActionSelected(Actions.STACCATO_ACTION, true, step + ": staccato selected");
 
             clickAt(noteScreenPosition(0, Sel2.ACCENT.ordinal()));
-            assertActionSelected(Actions.ACCENT_ACTION, true, "37: accent selected");
+            assertActionSelected(Actions.ACCENT_ACTION, true, step + ": accent selected");
 
             clickAt(noteScreenPosition(0, Sel2.FERMATA.ordinal()));
-            assertActionSelected(Actions.FERMATA_ACTION, true, "38: fermata selected");
+            assertActionSelected(Actions.FERMATA_ACTION, true, step + ": fermata selected");
         });
 
-        debugStep("39: Single barline disables durations", () -> {
+        debugStep(++stepCounter, "Single barline disables durations", (step) -> {
             clickAt(noteScreenPosition(0, Sel2.SINGLE_BARLINE.ordinal()));
             assertAll(
-                () -> verifyDurationsDisabled("39"),
-                () -> assertActionEnabled(Actions.BARLINE_ACTIONS[2], true, "39: barline action enabled")
+                () -> verifyDurationsDisabled(step + ""),
+                () -> assertActionEnabled(Actions.BARLINE_ACTIONS[2], true, step + ": barline action enabled")
             );
         });
 
-        debugStep("40-44: Other barlines/repeats disable durations", () -> {
+        debugStep(++stepCounter, "Other barlines/repeats disable durations", (step) -> {
             clickAt(noteScreenPosition(0, Sel2.DOUBLE_BARLINE.ordinal()));
-            verifyDurationsDisabled("40");
+            verifyDurationsDisabled(step + ": double");
 
             clickAt(noteScreenPosition(0, Sel2.FINAL_DOUBLE_BARLINE.ordinal()));
-            verifyDurationsDisabled("41");
+            verifyDurationsDisabled(step + ": final double");
 
             clickAt(noteScreenPosition(0, Sel2.REPEAT_LEFT.ordinal()));
-            verifyDurationsDisabled("42");
+            verifyDurationsDisabled(step + ": repeat left");
 
             clickAt(noteScreenPosition(0, Sel2.REPEAT_RIGHT.ordinal()));
-            verifyDurationsDisabled("43");
+            verifyDurationsDisabled(step + ": repeat right");
 
             clickAt(noteScreenPosition(0, Sel2.REPEAT_LEFT_RIGHT.ordinal()));
-            verifyDurationsDisabled("44");
+            verifyDurationsDisabled(step + ": repeat left-right");
         });
 
-        debugStep("45: Breath mark disables durations", () -> {
+        debugStep(++stepCounter, "Breath mark disables durations and barlines", (step) -> {
             // Breath marks are very small — use drag-select to reliably select
             var bmPos = noteScreenPosition(0, Sel2.BREATH_MARK.ordinal());
             var dragStart = new Point(bmPos.x - 10, bmPos.y - 10);
@@ -307,81 +302,94 @@ class SelectionTest extends E2ETest {
             pause();
             robot.releaseMouseButtons();
             pause();
-            verifyDurationsDisabled("45");
+            assertAll(
+                () -> verifyDurationsDisabled(step + ""),
+                () -> assertActionEnabled(Actions.BARLINE_ACTIONS[2], false, step + ": barline disabled"),
+                () -> assertActionEnabled(Actions.BREATH_MARK_ACTION, true, step + ": breath mark enabled")
+            );
         });
 
-        debugStep("46: Note + rest enables durations", () -> {
+        debugStep(++stepCounter, "Note + rest enables durations", (step) -> {
             clickAt(noteScreenPosition(0, Sel2.CROTCHET_REST.ordinal()));
             shiftClickAt(noteScreenPosition(0, Sel2.NOTE.ordinal()));
-            assertActionEnabled(Actions.QUARTER_NOTE_ACTION, true, "46: duration enabled for note+rest");
+            assertActionEnabled(Actions.QUARTER_NOTE_ACTION, true, step + ": duration enabled for note+rest");
         });
 
-        debugStep("47-48: Note + barline enables both", () -> {
+        debugStep(++stepCounter, "Note + barline enables both", (step) -> {
             clickAt(noteScreenPosition(0, Sel2.NOTE.ordinal()));
             shiftClickAt(noteScreenPosition(0, Sel2.SINGLE_BARLINE.ordinal()));
             assertAll(
-                () -> assertActionEnabled(Actions.QUARTER_NOTE_ACTION, true, "47: duration enabled"),
-                () -> assertActionEnabled(Actions.BARLINE_ACTIONS[2], true, "48: barline enabled")
+                () -> assertActionEnabled(Actions.QUARTER_NOTE_ACTION, true, step + ": duration enabled"),
+                () -> assertActionEnabled(Actions.BARLINE_ACTIONS[2], true, step + ": barline enabled")
             );
         });
 
-        debugStep("49-51: Barlines only disables durations", () -> {
+        debugStep(++stepCounter, "Barlines only disables durations", (step) -> {
             clickAt(noteScreenPosition(0, Sel2.SINGLE_BARLINE.ordinal()));
             shiftClickAt(noteScreenPosition(0, Sel2.DOUBLE_BARLINE.ordinal()));
             assertAll(
-                () -> assertActionEnabled(Actions.QUARTER_NOTE_ACTION, false, "49: duration disabled"),
-                () -> assertActionEnabled(Actions.DOT_ACTION, false, "50: dot disabled"),
-                () -> assertActionEnabled(Actions.BARLINE_ACTIONS[2], true, "51: barline enabled")
+                () -> assertActionEnabled(Actions.QUARTER_NOTE_ACTION, false, step + ": duration disabled"),
+                () -> assertActionEnabled(Actions.DOT_ACTION, false, step + ": dot disabled"),
+                () -> assertActionEnabled(Actions.BARLINE_ACTIONS[2], true, step + ": barline enabled")
             );
         });
 
-        debugStep("52: Deselect clears selection", () -> {
+        debugStep(++stepCounter, "Deselect clears selection", (step) -> {
             clickMenuItem(Actions.DESELECT_ACTION);
-            assertThat(score().getSelectionSize()).as("52: selection cleared").isEqualTo(0);
+            assertThat(score().getSelectionSize()).as(step + ": selection cleared").isEqualTo(0);
         });
 
-        debugStep("53: Glissando suppressed when target is rest", () -> {
+        debugStep(++stepCounter, "Glissando suppressed when target is rest", (step) -> {
             enterEditMode();
             clickToolbarButton(Actions.GLISSANDO_ACTION);
             hoverBetween(0, Sel2.TIED_2.ordinal(), Sel2.SEMIBREVE_REST.ordinal());
             assertThat(GuiActionRunner.execute(() -> InsertionElementManager.shouldShowGlissandoPreview()))
-                .as("53: target is rest").isFalse();
+                .as(step + ": target is rest").isFalse();
         });
 
-        debugStep("54: Glissando suppressed when source is rest", () -> {
+        debugStep(++stepCounter, "Glissando suppressed when source is rest", (step) -> {
             hoverBetween(0, Sel2.DEMI_SEMIQUAVER_REST.ordinal(), Sel2.NOTE.ordinal());
             assertThat(GuiActionRunner.execute(() -> InsertionElementManager.shouldShowGlissandoPreview()))
-                .as("54: source is rest").isFalse();
+                .as(step + ": source is rest").isFalse();
         });
 
-        debugStep("55: Glissando suppressed when both are rests", () -> {
+        debugStep(++stepCounter, "Glissando suppressed when both are rests", (step) -> {
             hoverBetween(0, Sel2.SEMIBREVE_REST.ordinal(), Sel2.MINIM_REST.ordinal());
             assertThat(GuiActionRunner.execute(() -> InsertionElementManager.shouldShowGlissandoPreview()))
-                .as("55: both rests").isFalse();
+                .as(step + ": both rests").isFalse();
         });
 
-        debugStep("56: Slide-out suppressed when source is rest", () -> {
+        debugStep(++stepCounter, "Slide-out suppressed when source is rest", (step) -> {
             clickToolbarButton(Actions.SLIDE_OUT_ACTION);
             hoverBetween(0, Sel2.DEMI_SEMIQUAVER_REST.ordinal(), Sel2.NOTE.ordinal());
             assertThat(GuiActionRunner.execute(() -> InsertionElementManager.shouldShowGlissandoPreview()))
-                .as("56: source is rest").isFalse();
+                .as(step + ": source is rest").isFalse();
             selectDuration(Actions.QUARTER_NOTE_ACTION);
         });
 
-        debugStep("57-58: Apply quarter to selection", () -> {
+        debugStep(++stepCounter, "Apply eighth preserves decorations", (step) -> {
             enterSelectMode();
             clickAt(noteScreenPosition(0, Sel2.STACCATO.ordinal()));
             shiftClickAt(noteScreenPosition(0, Sel2.FERMATA.ordinal()));
-            clickToolbarButton(Actions.QUARTER_NOTE_ACTION);
+            clickToolbarButton(Actions.EIGHTH_NOTE_ACTION);
             assertAll(
-                () -> verifyNoteType(0, Sel2.STACCATO.ordinal(), ElementType.CROTCHET, "57a"),
-                () -> verifyNoteType(0, Sel2.ACCENT.ordinal(), ElementType.CROTCHET, "57b"),
-                () -> verifyNoteType(0, Sel2.FERMATA.ordinal(), ElementType.CROTCHET, "57c"),
-                () -> assertThat(score().getSelectionSize()).as("58: selection preserved").isEqualTo(3)
+                () -> verifyNoteType(0, Sel2.STACCATO.ordinal(), ElementType.QUAVER, step + "a: type"),
+                () -> verifyNoteType(0, Sel2.ACCENT.ordinal(), ElementType.QUAVER, step + "b: type"),
+                () -> verifyNoteType(0, Sel2.FERMATA.ordinal(), ElementType.QUAVER, step + "c: type"),
+                () -> assertThat(GuiActionRunner.execute(
+                    () -> composition().getLine(0).getElement(Sel2.STACCATO.ordinal())
+                        .hasArticulation(ArticulationType.STACCATO)))
+                    .as(step + "a: staccato preserved").isTrue(),
+                () -> assertThat(GuiActionRunner.execute(
+                    () -> composition().getLine(0).getElement(Sel2.ACCENT.ordinal())
+                        .hasArticulation(ArticulationType.ACCENT)))
+                    .as(step + "b: accent preserved").isTrue(),
+                () -> verifyFermata(0, Sel2.FERMATA.ordinal(), true, step + "c: fermata preserved"),
+                () -> assertThat(score().getSelectionSize()).as(step + ": selection preserved").isEqualTo(3)
             );
         });
 
-        debugStep("59-61: Apply half preserves note/rest kind", () -> {
+        debugStep(++stepCounter, "Apply half preserves note/rest kind", (step) -> {
             clickAt(noteScreenPosition(0, Sel2.STACCATO.ordinal()));
             shiftClickAt(noteScreenPosition(0, Sel2.CROTCHET_REST.ordinal()));
             clickToolbarButton(Actions.HALF_NOTE_ACTION);
@@ -396,135 +404,154 @@ class SelectionTest extends E2ETest {
                 () -> composition().getLine(0).getElement(Sel2.CROTCHET_REST.ordinal()).getType()));
 
             assertAll(
-                () -> assertThat(staccatoType).as("59a: staccato is minim").isEqualTo(ElementType.MINIM),
-                () -> assertThat(accentType).as("59b: accent is minim").isEqualTo(ElementType.MINIM),
-                () -> assertThat(fermataType).as("59c: fermata is minim").isEqualTo(ElementType.MINIM),
-                () -> assertThat(restType).as("60: rest is minim rest").isEqualTo(ElementType.MINIM_REST),
-                () -> assertThat(staccatoType.isRest()).as("61a: staccato is still a note").isFalse(),
-                () -> assertThat(restType.isRest()).as("61b: rest is still a rest").isTrue()
+                () -> assertThat(staccatoType).as(step + "a: staccato is minim").isEqualTo(ElementType.MINIM),
+                () -> assertThat(accentType).as(step + "b: accent is minim").isEqualTo(ElementType.MINIM),
+                () -> assertThat(fermataType).as(step + "c: fermata is minim").isEqualTo(ElementType.MINIM),
+                () -> assertThat(restType).as(step + ": rest is minim rest").isEqualTo(ElementType.MINIM_REST),
+                () -> assertThat(staccatoType.isRest()).as(step + ": staccato is still a note").isFalse(),
+                () -> assertThat(restType.isRest()).as(step + ": rest is still a rest").isTrue()
             );
         });
 
-        debugStep("62-63: Apply flat to selection", () -> {
+        debugStep(++stepCounter, "Apply flat to selection", (step) -> {
             clickAt(noteScreenPosition(0, Sel2.STACCATO.ordinal()));
             shiftClickAt(noteScreenPosition(0, Sel2.ACCENT.ordinal()));
             clickToolbarButton(Actions.FLAT_ACTION);
             assertAll(
-                () -> verifyAccidental(0, Sel2.STACCATO.ordinal(), Accidental.FLAT, "62a"),
-                () -> verifyAccidental(0, Sel2.ACCENT.ordinal(), Accidental.FLAT, "62b"),
-                () -> assertThat(score().getSelectionSize()).as("63: selection preserved").isEqualTo(2)
+                () -> verifyAccidental(0, Sel2.STACCATO.ordinal(), Accidental.FLAT, step + "a"),
+                () -> verifyAccidental(0, Sel2.ACCENT.ordinal(), Accidental.FLAT, step + "b"),
+                () -> assertThat(score().getSelectionSize()).as(step + ": selection preserved").isEqualTo(2)
             );
         });
 
-        debugStep("64: Apply natural to same selection", () -> {
+        debugStep(++stepCounter, "Apply natural to same selection", (step) -> {
             clickToolbarButton(Actions.NATURAL_ACTION);
             assertAll(
-                () -> verifyAccidental(0, Sel2.STACCATO.ordinal(), Accidental.NATURAL, "64a"),
-                () -> verifyAccidental(0, Sel2.ACCENT.ordinal(), Accidental.NATURAL, "64b")
+                () -> verifyAccidental(0, Sel2.STACCATO.ordinal(), Accidental.NATURAL, step + "a"),
+                () -> verifyAccidental(0, Sel2.ACCENT.ordinal(), Accidental.NATURAL, step + "b")
             );
         });
 
-        debugStep("65: Apply dot to notes and rest", () -> {
+        debugStep(++stepCounter, "Apply dot to notes and rest", (step) -> {
             clickAt(noteScreenPosition(0, Sel2.STACCATO.ordinal()));
             shiftClickAt(noteScreenPosition(0, Sel2.CROTCHET_REST.ordinal()));
             clickToolbarButton(Actions.DOT_ACTION);
             assertAll(
-                () -> verifyDotCount(0, Sel2.STACCATO.ordinal(), 1, "65a"),
-                () -> verifyDotCount(0, Sel2.ACCENT.ordinal(), 1, "65b"),
-                () -> verifyDotCount(0, Sel2.FERMATA.ordinal(), 1, "65c"),
-                () -> verifyDotCount(0, Sel2.CROTCHET_REST.ordinal(), 1, "65d")
+                () -> verifyDotCount(0, Sel2.STACCATO.ordinal(), 1, step + "a"),
+                () -> verifyDotCount(0, Sel2.ACCENT.ordinal(), 1, step + "b"),
+                () -> verifyDotCount(0, Sel2.FERMATA.ordinal(), 1, step + "c"),
+                () -> verifyDotCount(0, Sel2.CROTCHET_REST.ordinal(), 1, step + "d")
             );
         });
 
-        debugStep("66: Apply fermata", () -> {
+        debugStep(++stepCounter, "Apply fermata", (step) -> {
             clickAt(noteScreenPosition(0, Sel2.STACCATO.ordinal()));
             shiftClickAt(noteScreenPosition(0, Sel2.ACCENT.ordinal()));
             clickMenuItem(Actions.FERMATA_ACTION);
             assertAll(
-                () -> verifyFermata(0, Sel2.STACCATO.ordinal(), true, "66a"),
-                () -> verifyFermata(0, Sel2.ACCENT.ordinal(), true, "66b")
+                () -> verifyFermata(0, Sel2.STACCATO.ordinal(), true, step + "a"),
+                () -> verifyFermata(0, Sel2.ACCENT.ordinal(), true, step + "b")
             );
         });
 
-        debugStep("67: Toggle fermata off", () -> {
+        debugStep(++stepCounter, "Toggle fermata off", (step) -> {
             clickMenuItem(Actions.FERMATA_ACTION);
             assertAll(
-                () -> verifyFermata(0, Sel2.STACCATO.ordinal(), false, "67a"),
-                () -> verifyFermata(0, Sel2.ACCENT.ordinal(), false, "67b")
+                () -> verifyFermata(0, Sel2.STACCATO.ordinal(), false, step + "a"),
+                () -> verifyFermata(0, Sel2.ACCENT.ordinal(), false, step + "b")
             );
         });
 
-        debugStep("68-69: Drag note to new position", () -> {
+        debugStep(++stepCounter, "Alt+drag tied note from EDIT mode", (step) -> {
+            enterEditMode();
+            var originalSp = Objects.requireNonNull(GuiActionRunner.execute(
+                () -> composition().getLine(0).getElement(Sel2.TIED_1.ordinal()).getStaffPosition()
+            ));
+            var targetSp = originalSp - 4;
+
+            var startPoint = noteScreenPosition(0, Sel2.TIED_1.ordinal());
+            var endPoint = Objects.requireNonNull(GuiActionRunner.execute(() -> {
+                var lc = Objects.requireNonNull(score().getLineComponent(0));
+                var endYPx = lc.staffPositionToYPx(targetSp);
+                var locationOnScreen = lc.getLocationOnScreen();
+                return new Point(startPoint.x, locationOnScreen.y + endYPx);
+            }));
+
+            altDrag(startPoint, endPoint);
+            performLayout(0);
+
+            assertAll(
+                () -> assertThat(score().getMode()).as(step + ": mode is SELECT").isEqualTo(Mode.SELECT),
+                () -> assertThat(GuiActionRunner.execute(
+                    () -> composition().getLine(0).getElement(Sel2.TIED_1.ordinal()).getStaffPosition()
+                )).as(step + ": tied note source moved").isEqualTo(targetSp),
+                () -> assertThat(GuiActionRunner.execute(
+                    () -> composition().getLine(0).getElement(Sel2.TIED_2.ordinal()).getStaffPosition()
+                )).as(step + ": tied note partner moved").isEqualTo(targetSp)
+            );
+        });
+
+        debugStep(++stepCounter, "Drag note in SELECT mode", (step) -> {
             var countBefore = Objects.requireNonNull(GuiActionRunner.execute(() -> composition().getLine(0).elementCount()));
             var originalSp = Objects.requireNonNull(GuiActionRunner.execute(
                 () -> composition().getLine(0).getElement(Sel2.NOTE.ordinal()).getStaffPosition()
             ));
             var targetSp = originalSp - 4;
 
-            enterEditMode();
             dragNote(0, Sel2.NOTE.ordinal(), targetSp);
             performLayout(0);
 
             assertAll(
                 () -> assertThat(GuiActionRunner.execute(
                     () -> composition().getLine(0).getElement(Sel2.NOTE.ordinal()).getStaffPosition()
-                )).as("68: staffPosition updated").isEqualTo(targetSp),
+                )).as(step + ": staffPosition updated").isEqualTo(targetSp),
                 () -> assertThat(GuiActionRunner.execute(
                     () -> composition().getLine(0).elementCount()
-                )).as("69: elementCount unchanged").isEqualTo(countBefore)
+                )).as(step + ": elementCount unchanged").isEqualTo(countBefore)
             );
         });
 
-        debugStep("70-71: Drag tied note moves partner", () -> {
-            var originalSp = Objects.requireNonNull(GuiActionRunner.execute(
-                () -> composition().getLine(0).getElement(Sel2.TIED_1.ordinal()).getStaffPosition()
-            ));
-            var targetSp = originalSp - 4;
-
-            dragNote(0, Sel2.TIED_1.ordinal(), targetSp);
-            performLayout(0);
-
-            assertAll(
-                () -> assertThat(GuiActionRunner.execute(
-                    () -> composition().getLine(0).getElement(Sel2.TIED_1.ordinal()).getStaffPosition()
-                )).as("70: tied note source moved").isEqualTo(targetSp),
-                () -> assertThat(GuiActionRunner.execute(
-                    () -> composition().getLine(0).getElement(Sel2.TIED_2.ordinal()).getStaffPosition()
-                )).as("71: tied note partner moved").isEqualTo(targetSp)
-            );
-        });
-
-        debugStep("72-74: Replace via click", () -> {
-            var countBeforeReplace = Objects.requireNonNull(GuiActionRunner.execute(() -> composition().getLine(0).elementCount()));
-            var originalSp = Objects.requireNonNull(GuiActionRunner.execute(
-                () -> composition().getLine(0).getElement(Sel2.STACCATO.ordinal()).getStaffPosition()
-            ));
-            var targetSp = originalSp - 4;
-
-            selectDuration(Actions.EIGHTH_NOTE_ACTION);
-            performLayout(0);
-
-            // Use noteScreenPosition for X (accurate hit), compute Y for the target staff position
-            var existingPos = noteScreenPosition(0, Sel2.STACCATO.ordinal());
-            var replacePoint = Objects.requireNonNull(GuiActionRunner.execute(() -> {
+        debugStep(++stepCounter, "Alt+click on empty space enters SELECT, no selection", (step) -> {
+            enterEditMode();
+            var emptyPoint = Objects.requireNonNull(GuiActionRunner.execute(() -> {
                 var lc = Objects.requireNonNull(score().getLineComponent(0));
                 var loc = lc.getLocationOnScreen();
-                return new Point(existingPos.x, loc.y + lc.staffPositionToYPx(targetSp));
+                return new Point(loc.x + lc.getWidth() - 10, loc.y + lc.getHeight() / 2);
             }));
-
-            clickAt(replacePoint);
-            performLayout(0);
-
-            var replacedType = GuiActionRunner.execute(
-                () -> composition().getLine(0).getElement(Sel2.STACCATO.ordinal()).getType());
-            var replacedSp = GuiActionRunner.execute(
-                () -> composition().getLine(0).getElement(Sel2.STACCATO.ordinal()).getStaffPosition());
-            var countAfterReplace = GuiActionRunner.execute(() -> composition().getLine(0).elementCount());
-
+            altClickAt(emptyPoint);
             assertAll(
-                () -> assertThat(countAfterReplace).as("72: elementCount unchanged").isEqualTo(countBeforeReplace),
-                () -> assertThat(replacedType).as("73: type changed").isEqualTo(ElementType.QUAVER),
-                () -> assertThat(replacedSp).as("74: staffPosition updated").isEqualTo(targetSp)
+                () -> assertThat(score().getMode()).as(step + ": mode is SELECT").isEqualTo(Mode.SELECT),
+                () -> assertThat(score().getSelectionSize()).as(step + ": no selection").isEqualTo(0)
+            );
+        });
+
+        debugStep(++stepCounter, "Click note in SELECT mode selects it", (step) -> {
+            enterSelectMode();
+            clickAt(noteScreenPosition(0, Sel2.NOTE.ordinal()));
+            assertAll(
+                () -> assertThat(score().getSingleSelectedElement())
+                    .as(step + ": note selected")
+                    .isEqualTo(composition().getLine(0).getElement(Sel2.NOTE.ordinal())),
+                () -> assertThat(score().getMode()).as(step + ": mode stays SELECT").isEqualTo(Mode.SELECT)
+            );
+        });
+
+        debugStep(++stepCounter, "Alt+click in SELECT mode same as click", (step) -> {
+            enterSelectMode();
+            altClickAt(noteScreenPosition(0, Sel2.STACCATO.ordinal()));
+            assertThat(score().getSingleSelectedElement())
+                .as(step + ": note selected via alt+click")
+                .isEqualTo(composition().getLine(0).getElement(Sel2.STACCATO.ordinal()));
+        });
+
+        debugStep(++stepCounter, "Release without drag keeps selection", (step) -> {
+            enterSelectMode();
+            clickAt(noteScreenPosition(0, Sel2.NOTE.ordinal()));
+            assertAll(
+                () -> assertThat(score().getSingleSelectedElement())
+                    .as(step + ": note stays selected")
+                    .isEqualTo(composition().getLine(0).getElement(Sel2.NOTE.ordinal())),
+                () -> assertThat(score().getMode()).as(step + ": mode stays SELECT").isEqualTo(Mode.SELECT)
             );
         });
     }
@@ -574,13 +601,13 @@ class SelectionTest extends E2ETest {
      * Selects a single element and verifies the given duration action is selected
      * while all other duration actions are deselected.
      */
-    private void assertDurationReflected(int elementIndex, UIAction expectedAction) {
+    private void assertDurationReflected(int step, int elementIndex, UIAction expectedAction) {
         clickAt(noteScreenPosition(0, elementIndex));
 
         for (var action : DURATION_ACTIONS) {
             boolean expected = (action == expectedAction);
             assertActionSelected(action, expected,
-                (10 + elementIndex) + ": duration reflection for index " + elementIndex);
+                step + ": duration reflection for index " + elementIndex);
         }
     }
 
@@ -588,22 +615,22 @@ class SelectionTest extends E2ETest {
      * Selects a single element and verifies the given accidental action is selected
      * while all other accidental actions are deselected.
      */
-    private void assertAccidentalReflected(int elementIndex, UIAction expectedAction) {
+    private void assertAccidentalReflected(int step, int elementIndex, UIAction expectedAction) {
         clickAt(noteScreenPosition(0, elementIndex));
 
         for (var action : accidentalActions()) {
             boolean expected = (action == expectedAction);
             assertActionSelected(action, expected,
-                (10 + elementIndex) + ": accidental reflection for index " + elementIndex);
+                step + ": accidental reflection for index " + elementIndex);
         }
     }
 
     /**
      * Verifies all duration actions are deselected.
      */
-    private void verifyNoDurationSelected(int assertionNum) {
+    private void verifyNoDurationSelected(String label) {
         for (var action : DURATION_ACTIONS) {
-            assertActionSelected(action, false, assertionNum + ": no duration selected");
+            assertActionSelected(action, false, label + ": no duration selected");
         }
     }
 

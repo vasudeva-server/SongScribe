@@ -70,7 +70,7 @@ class LineRenderer {
         SMuFLMetadata.getInstance().getEngravingDefaults().staffLineThickness();
 
     /** Color for the insertion note preview — defined in Score for shared access across renderers. */
-    private static final Color INSERTION_NOTE_COLOR = Score.INSERTION_NOTE_COLOR;
+    private static final Color INSERTION_NOTE_COLOR = Score.INSERTION_ELEMENT_COLOR;
 
     /** The stroke used to draw the selection rectangle border. */
     private static final BasicStroke SELECTION_RECT_STROKE = new BasicStroke(2.0f);
@@ -129,10 +129,6 @@ class LineRenderer {
         ctx.setSelectionProvider(lc.getSelectionProvider());
         ctx.setEditMode(lc.isEditMode());
 
-        // Override selection color when a pitch drag is in progress
-        if (lc.getNoteDragHandler().isDragActive()) {
-            ctx.setSelectionColor(INSERTION_NOTE_COLOR);
-        }
 
         // Ensure NoteRenderer metrics are initialized
         NoteRenderer.initializeAccidentalWidths(g2);
