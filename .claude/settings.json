@@ -1,9 +1,11 @@
 {
+  "env": {
+    "CLAUDE_CODE_TASK_LIST_ID": "SongScribe"
+  },
   "permissions": {
     "allow": [
       "Bash(./gradlew compileJava:*)",
       "Bash(./scripts/compile.sh:*)",
-      "Bash(./scripts/nullaway-warnings.sh:*)",
       "Bash(./scripts/check-style.sh:*)",
       "Bash(if echo:*)",
       "Bash(file=$:*)",
@@ -12,14 +14,6 @@
       "Bash(cat:*)",
       "Bash(done)",
       "Bash(find:*)",
-      "Bash(git add:*)",
-      "Bash(git checkout:*)",
-      "Bash(git commit:*)",
-      "Bash(git diff:*)",
-      "Bash(git log:*)",
-      "Bash(git mv:*)",
-      "Bash(git push:*)",
-      "Bash(git show:*)",
       "Bash(java:*)",
       "Bash(javac:*)",
       "Bash(javap:*)",
@@ -70,8 +64,5 @@
       }
     ]
   },
-  "plansDirectory": "plans",
-  "env": {
-    "CLAUDE_CODE_TASK_LIST_ID": "SongScribe"
-  }
+  "plansDirectory": "plans"
 }
