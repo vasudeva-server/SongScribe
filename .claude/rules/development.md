@@ -26,6 +26,8 @@ If you **do** need to run the application:
 
 **IMPORTANT:** NEVER pipe `compile.sh` or `crun.sh` output through `tail`, `head`, `grep`, a filter, or follow with an echo of the status. Always capture the full output — failure details and error messages appear before the summary.
 
+**IMPORTANT:** NEVER depend on the output of `compile.sh` or `crun.sh` to indicate success or failure. ALWAYS check the exit status of **the Bash tool**.
+
 ### All Available Scripts
 
 | Script                 | Purpose                                  |
