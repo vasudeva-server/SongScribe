@@ -80,4 +80,8 @@ public abstract class SelectableUIAction extends UIAction
     public void setSelected(boolean selected) {
         putValue(SELECTED_KEY, selected);
     }
+
+    public void reset() {
+        setSelected(false);
+    }
 }

@@ -588,14 +588,6 @@ public class MainFrame extends JFrame implements Printable {
 
         var opened = score.openFile(file, true);
 
-        // Reset the mode to edit mode
-        Actions.MODE_ACTION_GROUP.select(Actions.EDIT_MODE_ACTION, this);
-
-        // Select quarter not duration, turn off dot and rest mode
-        Actions.DURATION_ACTION_GROUP.select(Actions.QUARTER_NOTE_ACTION, this);
-        Actions.DOT_ACTION_GROUP.setSelected(Actions.DOT_ACTION, false);
-        Actions.REST_ACTION.setSelected(false);
-
         if (opened) {
             RecentDocumentsManager.getInstance().add(file.toPath().toAbsolutePath());
         }

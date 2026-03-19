@@ -14,6 +14,7 @@ public class ActionGroup<T extends UIAction> implements PropertyChangeListener {
     private final List<T> actions = new ArrayList<>();
     @Nullable private T selected = null;
     @Nullable private T previousSelected = null;
+    @Nullable private T defaultAction = null;
     private int selectLevel = 0;
 
     public ActionGroup() {}
@@ -60,10 +61,22 @@ public class ActionGroup<T extends UIAction> implements PropertyChangeListener {
         action.removePropertyChangeListener(this);
     }
 
+    public void setDefaultAction(@Nullable T defaultAction) {
+        this.defaultAction = defaultAction;
+    }
+
     public void clearSelection() {
         if (selected != null) {
             selected.putValue(Action.SELECTED_KEY, false);
             selected = null;
+        }
+    }
+
+    public void reset() {
+        if (defaultAction != null) {
+            setSelected(defaultAction, true);
+        } else {
+            clearSelection();
         }
     }
 

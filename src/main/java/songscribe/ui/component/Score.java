@@ -820,6 +820,11 @@ public final class Score
             CompositionDidChangeNotification.ChangeType.FULL, composition
         ));
 
+        // Reset scroll position to top-left for the new/opened composition
+        if (scrollPane != null) {
+            scrollPane.getViewport().setViewPosition(new Point(0, 0));
+        }
+
         repaint();
     }
 

@@ -26,7 +26,12 @@ import module java.desktop;
 
 import java.util.List;
 
+import net.engio.mbassy.listener.Handler;
+
 import songscribe.Strings;
+import songscribe.message.Message;
+import songscribe.message.MessageCenter;
+import songscribe.message.notification.CompositionDidChangeNotification;
 import songscribe.ui.dialog.AboutDialog;
 import songscribe.ui.dialog.CompositionSettingsDialog;
 import songscribe.ui.dialog.LyricsDialog;
@@ -277,6 +282,42 @@ public final class Actions {
     public static final DeleteAction DELETE_ACTION = DeleteAction.createAction();
     public static final SelectLineAction SELECT_LINE_ACTION = SelectLineAction.createAction();
     public static final DeselectAction DESELECT_ACTION = DeselectAction.createAction();
+
+    // Strong reference prevents GC (mbassy uses weak references)
+    private static final ResetHandler RESET_HANDLER = new ResetHandler();
+
+    static {
+        DURATION_ACTION_GROUP.setDefaultAction(QUARTER_NOTE_ACTION);
+        MessageCenter.subscribe(RESET_HANDLER);
+    }
+
+    static void resetToDefaults() {
+        // Non-silent resets — these need perform() to update downstream state
+        // (Score.mode via ModeDidChangeNotification, insertion element via
+        // UpdateInsertionElementCommand)
+        MODE_ACTION_GROUP.select(EDIT_MODE_ACTION, EDIT_MODE_ACTION);
+        DURATION_ACTION_GROUP.select(QUARTER_NOTE_ACTION, QUARTER_NOTE_ACTION);
+
+        // Silent resets — no downstream state to update
+        ACCIDENTAL_ACTION_GROUP.reset();
+        ARTICULATION_ACTION_GROUP.reset();
+        DOT_ACTION_GROUP.reset();
+        NON_DURATION_ACTION_GROUP.reset();
+
+        // Standalone toggles
+        REST_ACTION.reset();
+        FERMATA_ACTION.reset();
+        ACCIDENTAL_IN_PARENS_ACTION.reset();
+    }
+
+    private static class ResetHandler {
+        @Handler(priority = Message.HIGH_PRIORITY)
+        public void onCompositionDidChange(CompositionDidChangeNotification message) {
+            if (message.hasChangeType(CompositionDidChangeNotification.ChangeType.FULL)) {
+                resetToDefaults();
+            }
+        }
+    }
 
     private Actions() {
     }
