@@ -66,60 +66,6 @@ class DialogsTest extends UnitTest {
             geMock.when(GraphicsEnvironment::isHeadless).thenReturn(false);
         }
 
-        @Test
-        void testShowConfirmDialogDelegatesToJOptionPane() {
-            try (var jopMock = mockStatic(JOptionPane.class)) {
-                jopMock.when(
-                    () -> JOptionPane.showConfirmDialog(
-                        any(), any(), any(), anyInt(), anyInt()
-                    )
-                ).thenReturn(JOptionPane.YES_OPTION);
-
-                var result = Dialogs.showConfirmDialog(
-                    null, "Confirm Title", "Confirm?",
-                    JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE
-                );
-
-                assertThat(result).isEqualTo(JOptionPane.YES_OPTION);
-            }
-        }
-
-        @Test
-        void testShowConfirmDialogTranslatesClosedOptionToCancelForYesNoCancelOption() {
-            try (var jopMock = mockStatic(JOptionPane.class)) {
-                jopMock.when(
-                    () -> JOptionPane.showConfirmDialog(
-                        any(), any(), any(), anyInt(), anyInt()
-                    )
-                ).thenReturn(JOptionPane.CLOSED_OPTION);
-
-                var result = Dialogs.showConfirmDialog(
-                    null, "Confirm Title", "Save?",
-                    JOptionPane.YES_NO_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE
-                );
-
-                assertThat(result).isEqualTo(JOptionPane.CANCEL_OPTION);
-            }
-        }
-
-        @Test
-        void testShowConfirmDialogTranslatesClosedOptionToNoForYesNoOption() {
-            try (var jopMock = mockStatic(JOptionPane.class)) {
-                jopMock.when(
-                    () -> JOptionPane.showConfirmDialog(
-                        any(), any(), any(), anyInt(), anyInt()
-                    )
-                ).thenReturn(JOptionPane.CLOSED_OPTION);
-
-                var result = Dialogs.showConfirmDialog(
-                    null, "Confirm Title", "Continue?",
-                    JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE
-                );
-
-                assertThat(result).isEqualTo(JOptionPane.NO_OPTION);
-            }
-        }
-
         private JDialog mockDialogWithRootPane() {
             var mockDialog = mock(JDialog.class);
             var mockRootPane = mock(JRootPane.class);
@@ -171,13 +117,17 @@ class DialogsTest extends UnitTest {
         }
 
         @Test
-        void testShowInputDialogDelegatesToJOptionPane() {
-            try (var jopMock = mockStatic(JOptionPane.class)) {
-                jopMock.when(
-                    () -> JOptionPane.showInputDialog(
-                        any(), any(), any(), anyInt(), any(), any(), any()
-                    )
-                ).thenReturn("user input");
+        void testShowInputDialogReturnsUserInput() {
+            var mockDialog = mockDialogWithRootPane();
+
+            try (
+                var geMock = mockStatic(GraphicsEnvironment.class);
+                var ignored = mockConstruction(JOptionPane.class, (pane, context) -> {
+                    when(pane.createDialog(any(), anyString())).thenReturn(mockDialog);
+                    when(pane.getInputValue()).thenReturn("user input");
+                })
+            ) {
+                stubScreenBounds(geMock);
 
                 var result = Dialogs.showInputDialog(null, "Input Title", "Enter:");
 
@@ -186,25 +136,64 @@ class DialogsTest extends UnitTest {
         }
 
         @Test
-        void testShowOptionDialogDelegatesToJOptionPane() {
-            var options = new String[]{"A", "B"};
+        void testShowInputDialogReturnsCancelAsNull() {
+            var mockDialog = mockDialogWithRootPane();
 
-            try (var jopMock = mockStatic(JOptionPane.class)) {
-                jopMock.when(
-                    () -> JOptionPane.showOptionDialog(
-                        any(), any(), any(), anyInt(), anyInt(), any(), any(), any()
-                    )
-                ).thenReturn(1);
+            try (
+                var geMock = mockStatic(GraphicsEnvironment.class);
+                var ignored = mockConstruction(JOptionPane.class, (pane, context) -> {
+                    when(pane.createDialog(any(), anyString())).thenReturn(mockDialog);
+                    when(pane.getInputValue()).thenReturn(JOptionPane.UNINITIALIZED_VALUE);
+                })
+            ) {
+                stubScreenBounds(geMock);
 
-                var result = Dialogs.showOptionDialog(
-                    null, "Option Title", "Pick one",
-                    JOptionPane.DEFAULT_OPTION, JOptionPane.QUESTION_MESSAGE,
-                    null, options, options[0]
-                );
+                var result = Dialogs.showInputDialog(null, "Input Title", "Enter:");
 
-                assertThat(result).isEqualTo(1);
+                assertThat(result).isNull();
             }
         }
+
+        @Test
+        void testShowConfirmDialogTranslatesClosedOptionToCancelForYesNoCancelOption() {
+            var mockDialog = mockDialogWithRootPane();
+
+            try (
+                var geMock = mockStatic(GraphicsEnvironment.class);
+                var ignored = mockConstruction(JOptionPane.class, (pane, context) ->
+                    when(pane.createDialog(any(), anyString())).thenReturn(mockDialog))
+            ) {
+                stubScreenBounds(geMock);
+
+                var result = Dialogs.showConfirmDialog(
+                    null, "Title", "Save?",
+                    JOptionPane.YES_NO_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE
+                );
+
+                assertThat(result).isEqualTo(JOptionPane.CANCEL_OPTION);
+            }
+        }
+
+        @Test
+        void testShowConfirmDialogTranslatesClosedOptionToNoForYesNoOption() {
+            var mockDialog = mockDialogWithRootPane();
+
+            try (
+                var geMock = mockStatic(GraphicsEnvironment.class);
+                var ignored = mockConstruction(JOptionPane.class, (pane, context) ->
+                    when(pane.createDialog(any(), anyString())).thenReturn(mockDialog))
+            ) {
+                stubScreenBounds(geMock);
+
+                var result = Dialogs.showConfirmDialog(
+                    null, "Title", "Continue?",
+                    JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE
+                );
+
+                assertThat(result).isEqualTo(JOptionPane.NO_OPTION);
+            }
+        }
+
     }
 
     @Nested

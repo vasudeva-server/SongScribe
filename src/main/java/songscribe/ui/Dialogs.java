@@ -112,7 +112,11 @@ public final class Dialogs {
         }
 
         try {
-            var result = JOptionPane.showConfirmDialog(parent, message, title, optionType, messageType);
+            var pane = new JOptionPane(message, messageType, optionType);
+            showOptionPane(pane, parent, title);
+
+            var value = pane.getValue();
+            int result = value instanceof Integer i ? i : JOptionPane.CLOSED_OPTION;
 
             if (result == JOptionPane.CLOSED_OPTION) {
                 return optionType == JOptionPane.YES_NO_CANCEL_OPTION
@@ -148,9 +152,14 @@ public final class Dialogs {
         }
 
         try {
-            return (String) JOptionPane.showInputDialog(
-                parent, message, title, JOptionPane.QUESTION_MESSAGE, null, null, null
+            var pane = new JOptionPane(
+                message, JOptionPane.QUESTION_MESSAGE, JOptionPane.OK_CANCEL_OPTION, null, null, null
             );
+            pane.setWantsInput(true);
+            showOptionPane(pane, parent, title);
+
+            var value = pane.getInputValue();
+            return value == JOptionPane.UNINITIALIZED_VALUE ? null : (String) value;
         } catch (HeadlessException e) {
             LOG.error("HeadlessException showing input dialog", e);
             return suppressedDefault;
@@ -174,9 +183,9 @@ public final class Dialogs {
         }
 
         try {
-            return JOptionPane.showOptionDialog(
-                parent, message, title, optionType, messageType, icon, options, initialValue
-            );
+            var pane = new JOptionPane(message, messageType, optionType, icon, options, initialValue);
+            showOptionPane(pane, parent, title);
+            return getOptionPaneResult(pane, options);
         } catch (HeadlessException e) {
             LOG.error("HeadlessException showing option dialog", e);
             return JOptionPane.CLOSED_OPTION;
@@ -211,23 +220,31 @@ public final class Dialogs {
 
         try {
             var pane = new JOptionPane(message, messageType);
-            var dialog = pane.createDialog(parent, title);
-            positionDialog(dialog, parent);
-            UIUtils.addStandardDialogKeyBindings(dialog);
-            dialog.setVisible(true);
+            showOptionPane(pane, parent, title);
         } catch (HeadlessException e) {
             LOG.error("HeadlessException showing message dialog", e);
         }
     }
 
-    // Position the dialog at 3/8 of the way down the screen, centered horizontally,
-    // clamped to the screen bounds with a 20px margin on all sides.
+    private static void showOptionPane(JOptionPane pane, @Nullable Component parent, String title) {
+        var dialog = pane.createDialog(parent, title);
+        positionDialog(dialog, parent);
+        UIUtils.addStandardDialogKeyBindings(dialog);
+        pane.selectInitialValue();
+        dialog.setVisible(true);
+        dialog.dispose();
+    }
+
+    // Position the dialog at 3/8 of the way down the parent window (or screen if no
+    // parent), centered horizontally, clamped to the screen bounds with a 20px margin.
     private static void positionDialog(JDialog dialog, @Nullable Component parent) {
-        var screen = getScreenBounds(parent);
+        var window = getParentWindow(parent);
+        var screen = getScreenBounds(window);
+        var bounds = window != null ? window.getBounds() : screen;
         var size = dialog.getSize();
 
-        var x = screen.x + (screen.width - size.width) / 2;
-        var y = screen.y + screen.height * 3 / 8 - size.height / 2;
+        var x = bounds.x + (bounds.width - size.width) / 2;
+        var y = bounds.y + bounds.height * 3 / 8 - size.height / 2;
 
         x = Math.max(screen.x + SCREEN_MARGIN_PX, Math.min(x, screen.x + screen.width - size.width - SCREEN_MARGIN_PX));
         y = Math.max(screen.y + SCREEN_MARGIN_PX, Math.min(y, screen.y + screen.height - size.height - SCREEN_MARGIN_PX));
@@ -235,11 +252,12 @@ public final class Dialogs {
         dialog.setLocation(x, y);
     }
 
-    private static Rectangle getScreenBounds(@Nullable Component parent) {
-        Window window = parent instanceof Window w
-            ? w
-            : parent != null ? SwingUtilities.getWindowAncestor(parent) : null;
+    private static @Nullable Window getParentWindow(@Nullable Component parent) {
+        if (parent instanceof Window w) return w;
+        return parent != null ? SwingUtilities.getWindowAncestor(parent) : null;
+    }
 
+    private static Rectangle getScreenBounds(@Nullable Window window) {
         if (window != null) {
             return window.getGraphicsConfiguration().getBounds();
         }
@@ -248,6 +266,26 @@ public final class Dialogs {
             .getDefaultScreenDevice()
             .getDefaultConfiguration()
             .getBounds();
+    }
+
+    private static int getOptionPaneResult(JOptionPane pane, @Nullable Object[] options) {
+        var value = pane.getValue();
+
+        if (value == null) {
+            return JOptionPane.CLOSED_OPTION;
+        }
+
+        if (options == null) {
+            return value instanceof Integer i ? i : JOptionPane.CLOSED_OPTION;
+        }
+
+        for (var i = 0; i < options.length; i++) {
+            if (value.equals(options[i])) {
+                return i;
+            }
+        }
+
+        return JOptionPane.CLOSED_OPTION;
     }
 
     private static boolean isSuppressed() {
