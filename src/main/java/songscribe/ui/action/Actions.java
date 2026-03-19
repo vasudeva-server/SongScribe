@@ -305,6 +305,7 @@ public final class Actions {
         NON_DURATION_ACTION_GROUP.reset();
 
         // Standalone toggles
+        ACCENT_ACTION.reset();
         REST_ACTION.reset();
         FERMATA_ACTION.reset();
         ACCIDENTAL_IN_PARENS_ACTION.reset();
@@ -312,7 +313,7 @@ public final class Actions {
 
     private static class ResetHandler {
         @Handler(priority = Message.HIGH_PRIORITY)
-        public void onCompositionDidChange(CompositionDidChangeNotification message) {
+        public void compositionDidChange(CompositionDidChangeNotification message) {
             if (message.hasChangeType(CompositionDidChangeNotification.ChangeType.FULL)) {
                 resetToDefaults();
             }
