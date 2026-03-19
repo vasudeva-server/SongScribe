@@ -26,6 +26,7 @@ import java.util.Optional;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
+import songscribe.ui.Dialogs;
 import songscribe.util.UIUtils;
 
 /**
@@ -52,7 +53,7 @@ public class FontDialog extends JDialog {
         if (location != null) {
             dialog.setLocation(location);
         } else {
-            dialog.setLocationRelativeTo(null);
+            Dialogs.positionDialog(dialog, component);
         }
 
         dialog.setVisible(true);

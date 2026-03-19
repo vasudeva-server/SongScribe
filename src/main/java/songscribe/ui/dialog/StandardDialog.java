@@ -29,6 +29,7 @@ import org.intellij.lang.annotations.MagicConstant;
 
 import songscribe.Strings;
 import songscribe.music.Composition;
+import songscribe.ui.Dialogs;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.Score;
 import songscribe.util.UIUtils;
@@ -176,7 +177,7 @@ public abstract class StandardDialog {
                 dialog.setMinimumSize(dialog.getPreferredSize());
 
                 if (savedLocation == null) {
-                    dialog.setLocationRelativeTo(null);
+                    Dialogs.positionDialog(dialog, mainFrame);
                 } else {
                     dialog.setLocation(savedLocation);
                 }

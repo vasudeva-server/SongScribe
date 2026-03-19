@@ -22,6 +22,7 @@ package songscribe.ui.dialog;
 import module java.desktop;
 
 import songscribe.Strings;
+import songscribe.ui.Dialogs;
 
 public class ProcessDialog extends JDialog {
 
@@ -43,7 +44,7 @@ public class ProcessDialog extends JDialog {
 
     public void packAndPos() {
         pack();
-        setLocationRelativeTo(null);
+        Dialogs.positionDialog(this, getOwner());
     }
 
     private void init(int maximum, String label) {
