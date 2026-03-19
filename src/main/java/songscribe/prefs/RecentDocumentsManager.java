@@ -19,6 +19,7 @@
 */
 package songscribe.prefs;
 
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -46,6 +47,14 @@ public final class RecentDocumentsManager {
             } catch (Exception e) {
                 // Skip entries that cannot be converted to a Path
             }
+        }
+
+        // Remove paths that no longer exist on disk
+        var sizeBefore = paths.size();
+        paths.removeIf(path -> !Files.exists(path));
+
+        if (paths.size() < sizeBefore) {
+            persist();
         }
     }
 
