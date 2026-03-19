@@ -319,7 +319,7 @@ class SelectionHandler {
     /**
      * Plays the element at the given index if it is a pitched note (not a rest).
      */
-    private void playNoteIfPitched(int elementIndex) {
+    void playNoteIfPitched(int elementIndex) {
         var line = lc.getLine();
 
         if (line == null) {

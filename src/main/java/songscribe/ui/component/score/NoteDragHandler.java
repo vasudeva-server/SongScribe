@@ -23,11 +23,13 @@ package songscribe.ui.component.score;
 import module java.desktop;
 
 import java.awt.event.MouseEvent;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
+import java.util.List;
 
 import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
-import songscribe.music.TieInterval;
 import songscribe.message.notification.CompositionDidChangeNotification;
 import songscribe.message.MessageCenter;
 import songscribe.music.Line;
@@ -48,20 +50,28 @@ import songscribe.ui.playback.PlayThread;
  */
 class NoteDragHandler {
 
+    /**
+     * Captures the original state of a single note in the drag group.
+     */
+    private record DragEntry(int index, int originalStaffPositionSp, boolean originalUpper) {}
+
     private final LineComponent lc;
 
     private boolean dragActive = false;
     private boolean dragMoved = false;
     private boolean pressHandled = false;
+    private boolean pressPreservedMultiSelection = false;
     private int dragElementIndex = -1;
-    private int originalStaffPosition;
-    private boolean originalUpper;
-    private int lastPlayedStaffPosition;
+
+    /** Original staff position of the directly dragged note — used to compute deltaSp. */
+    private int originalDragStaffPositionSp;
+
+    private int lastPlayedStaffPositionSp;
     @Nullable
     private Line dragLine;
 
-    @Nullable
-    private TieInterval tieInterval;
+    /** All notes (plus tie-chain expansions) that move together during drag. */
+    private final List<DragEntry> dragGroup = new ArrayList<>();
 
     NoteDragHandler(LineComponent lc) {
         this.lc = lc;
@@ -77,11 +87,6 @@ class NoteDragHandler {
 
     int getDragElementIndex() {
         return dragElementIndex;
-    }
-
-    @Nullable
-    TieInterval getTieInterval() {
-        return tieInterval;
     }
 
     // ======================================================================
@@ -130,15 +135,69 @@ class NoteDragHandler {
             return false;
         }
 
-        lc.getSelectionHandler().selectAndPlayElement(hitIndex);
+        var selectionState = lc.getLineSelectionState();
+
+        if (selectionState != null && selectionState.isElementSelected(hitIndex)) {
+            // Note is already part of a multi-selection — preserve the selection for a potential drag
+            lc.getSelectionHandler().playNoteIfPitched(hitIndex);
+            pressPreservedMultiSelection = true;
+        } else {
+            // Note is not selected — reset to single selection
+            lc.getSelectionHandler().selectAndPlayElement(hitIndex);
+            pressPreservedMultiSelection = false;
+        }
+
+        // Build the drag group from the current selection (which may be multi-note)
+        dragGroup.clear();
+        selectionState = lc.getLineSelectionState();
+
+        int begin;
+        int end;
+
+        if (selectionState != null && selectionState.hasElementSelection()) {
+            begin = selectionState.getSelectionBegin();
+            end = selectionState.getSelectionEnd();
+        } else {
+            begin = hitIndex;
+            end = hitIndex;
+        }
+
+        // Collect all unique indices, expanding each selected note's tie chain
+        var groupIndices = new LinkedHashSet<Integer>();
+
+        for (var i = begin; i <= end; i++) {
+            var element = line.getElement(i);
+
+            if (!element.getType().isNote()) {
+                continue;
+            }
+
+            var tie = line.getTies().findInterval(i);
+
+            if (tie != null) {
+                for (var j = tie.getStart(); j <= tie.getEnd(); j++) {
+                    groupIndices.add(j);
+                }
+            } else {
+                groupIndices.add(i);
+            }
+        }
+
+        // Fall back to just the dragged note if nothing was collected
+        if (groupIndices.isEmpty()) {
+            groupIndices.add(hitIndex);
+        }
+
+        for (var idx : groupIndices) {
+            var groupNote = line.getElement(idx);
+            dragGroup.add(new DragEntry(idx, groupNote.getStaffPosition(), groupNote.isUpper()));
+        }
 
         // Save state for possible revert on a press+release without drag
         dragElementIndex = hitIndex;
-        originalStaffPosition = note.getStaffPosition();
-        originalUpper = note.isUpper();
-        lastPlayedStaffPosition = originalStaffPosition;
+        originalDragStaffPositionSp = note.getStaffPosition();
+        lastPlayedStaffPositionSp = originalDragStaffPositionSp;
         dragLine = line;
-        tieInterval = line.getTies().findInterval(hitIndex);
 
         InsertionElementManager.clearInsertionElement();
 
@@ -159,9 +218,9 @@ class NoteDragHandler {
      */
     void handleDrag(MouseEvent e) {
         var mouseYss = ScaleContext.getInstance().fromPixels(e.getY());
-        var newPosition = InsertionElementManager.calculateStaffPositionFromMouse(mouseYss, lc.getMiddleLineYSs());
+        var newPositionSp = InsertionElementManager.calculateStaffPositionFromMouse(mouseYss, lc.getMiddleLineYSs());
 
-        if (newPosition == lastPlayedStaffPosition || !InsertionElementManager.isValidStaffPosition(newPosition)) {
+        if (newPositionSp == lastPlayedStaffPositionSp) {
             return;
         }
 
@@ -169,32 +228,40 @@ class NoteDragHandler {
             return;
         }
 
+        // Compute raw delta from the dragged note's original position
+        var deltaSp = newPositionSp - originalDragStaffPositionSp;
+
+        // Clamp delta so no note in the group exits the valid staff range
+        var minDelta = Integer.MIN_VALUE;
+        var maxDelta = Integer.MAX_VALUE;
+
+        for (var entry : dragGroup) {
+            minDelta = Math.max(minDelta, InsertionElementManager.MIN_STAFF_POSITION_SP - entry.originalStaffPositionSp());
+            maxDelta = Math.min(maxDelta, InsertionElementManager.MAX_STAFF_POSITION_SP - entry.originalStaffPositionSp());
+        }
+
+        deltaSp = Math.clamp(deltaSp, minDelta, maxDelta);
+
+        // If the clamped delta produces no movement, skip
+        if (originalDragStaffPositionSp + deltaSp == lastPlayedStaffPositionSp) {
+            return;
+        }
+
         // Send NOTE_OFF for the pitch we were playing
         var oldNote = dragLine.getElement(dragElementIndex);
         PlayThread.sendNoteOff(oldNote.getPitch());
 
-        // Update the dragged note (and all tied notes if in a tie)
-        int rangeStart;
-        int rangeEnd;
-
-        if (tieInterval != null) {
-            rangeStart = tieInterval.getStart();
-            rangeEnd = tieInterval.getEnd();
-        } else {
-            rangeStart = dragElementIndex;
-            rangeEnd = dragElementIndex;
+        // Apply clamped delta to all group entries
+        for (var entry : dragGroup) {
+            var groupNote = dragLine.getElement(entry.index());
+            groupNote.setStaffPosition(entry.originalStaffPositionSp() + deltaSp);
+            groupNote.setUpper(Score.defaultUpperNote(groupNote));
         }
 
-        for (var i = rangeStart; i <= rangeEnd; i++) {
-            var note = dragLine.getElement(i);
-            note.setStaffPosition(newPosition);
-            note.setUpper(Score.defaultUpperNote(note));
-        }
-
-        // Play NOTE_ON for the new pitch
+        // Play NOTE_ON for the new pitch of the dragged note
         var newPitch = dragLine.getElement(dragElementIndex).getPitch();
         PlayThread.sendNoteOn(newPitch);
-        lastPlayedStaffPosition = newPosition;
+        lastPlayedStaffPositionSp = originalDragStaffPositionSp + deltaSp;
 
         lc.invalidateLayout();
         lc.repaint();
@@ -209,25 +276,52 @@ class NoteDragHandler {
             return;
         }
 
+        if (!dragMoved && pressPreservedMultiSelection) {
+            // Click without drag on a note in a multi-selection — collapse to single selection
+            lc.getSelectionHandler().selectAndPlayElement(dragElementIndex);
+        }
+
         if (dragMoved) {
             // The last drag noteOn is still sounding — schedule a noteOff after the standard duration
             new PlayThread(dragLine.getElement(dragElementIndex).getPitch(), false).start();
 
             // Remove connected glissandos that became unison after the pitch drag
-            removeUnisonConnectedGlissandos(dragLine, dragElementIndex);
+            for (var entry : dragGroup) {
+                removeUnisonConnectedGlissandos(dragLine, entry.index());
+            }
 
-            // A grace note dragged to the same pitch as its following note is invalid — remove it
-            var draggedElement = dragLine.getElement(dragElementIndex);
+            // Grace note validity checks — iterate in reverse index order to avoid index shifting from removals
+            var sortedEntries = dragGroup.stream()
+                    .sorted((a, b) -> Integer.compare(b.index(), a.index()))
+                    .toList();
 
-            if (draggedElement.getType().isGraceNote()
-                && dragElementIndex + 1 < dragLine.elementCount()
-                && draggedElement.getPitch() == dragLine.getElement(dragElementIndex + 1).getPitch()) {
-                Dialogs.showWarningMessage(
-                    null,
-                    Strings.get(Strings.DIALOG_TITLE_GRACE_NOTE_WARNING),
-                    Strings.get(Strings.WARNING_GRACE_NOTE_SAME_PITCH)
-                );
-                dragLine.removeElement(dragElementIndex);
+            for (var entry : sortedEntries) {
+                var idx = entry.index();
+                var element = dragLine.getElement(idx);
+
+                if (element.getType().isGraceNote()
+                        && idx + 1 < dragLine.elementCount()
+                        && element.getPitch() == dragLine.getElement(idx + 1).getPitch()) {
+                    // Grace note dragged to the same pitch as its following note — remove the grace note
+                    Dialogs.showWarningMessage(
+                            null,
+                            Strings.get(Strings.DIALOG_TITLE_GRACE_NOTE_WARNING),
+                            Strings.get(Strings.WARNING_GRACE_NOTE_SAME_PITCH)
+                    );
+                    dragLine.removeElement(idx);
+                } else if (!element.getType().isGraceNote() && idx > 0) {
+                    // Host note dragged to the same pitch as its preceding grace note — remove the grace note
+                    var prev = dragLine.getElement(idx - 1);
+
+                    if (prev.getType().isGraceNote() && prev.getPitch() == element.getPitch()) {
+                        Dialogs.showWarningMessage(
+                                null,
+                                Strings.get(Strings.DIALOG_TITLE_GRACE_NOTE_WARNING),
+                                Strings.get(Strings.WARNING_GRACE_NOTE_SAME_PITCH)
+                        );
+                        dragLine.removeElement(idx - 1);
+                    }
+                }
             }
 
             // Finalize: notify layout and mark composition modified
@@ -240,7 +334,7 @@ class NoteDragHandler {
         dragActive = false;
         dragElementIndex = -1;
         dragLine = null;
-        tieInterval = null;
+        dragGroup.clear();
 
         InsertionElementManager.restoreInsertionElement(lc);
     }

@@ -47,20 +47,32 @@ import songscribe.util.Utils;
  * Replaces the old GraceNoteTest (minus "no room" edge case, which moved
  * to ElementInsertionTest).
  */
+@SuppressWarnings("ValueOfIncrementOrDecrementUsed")
 class GraceNoteTest extends E2ETest {
 
-    // Element indices for grace-note-pairs.mssw (ordinals match fixture order)
+    // Element indices for grace-note-pairs.mssw.
+    // Multiple constants may share the same index to name positions at different
+    // points in the test (e.g., STANDALONE and PAIR_D_GRACE both map to 7 because
+    // step 7 inserts a grace note at STANDALONE's original position).
     private enum Element {
-        TEMPO,
-        PAIR_A_GRACE,
-        PAIR_A_HOST,
-        PAIR_B_GRACE,
-        PAIR_B_HOST,
-        PAIR_C_GRACE,
-        PAIR_C_HOST,
-        PAIR_D_GRACE,
-        PAIR_D_HOST,
-        STANDALONE,
+        TEMPO(0),
+        PAIR_A_GRACE(1),
+        PAIR_A_HOST(2),
+        PAIR_B_GRACE(3),
+        PAIR_B_HOST(4),
+        PAIR_C_GRACE(5),
+        PAIR_C_HOST(6),
+        STANDALONE(7),
+        // After step 7 inserts a grace note before STANDALONE via drag-connect
+        PAIR_D_GRACE(7),
+        PAIR_D_HOST(8),
+        ;
+
+        final int index;
+
+        Element(int index) {
+            this.index = index;
+        }
     }
 
     /** Elements removed by deleting pair B (grace + host). */
@@ -259,7 +271,7 @@ class GraceNoteTest extends E2ETest {
             selectDuration(Actions.GRACE_EIGHTH_NOTE_ACTION);
 
             // Click at midpoint between last pair host and standalone, at a different pitch
-            var mid = midpoint(0, Element.PAIR_D_HOST.ordinal(), Element.STANDALONE.ordinal());
+            var mid = midpoint(0, Element.PAIR_C_HOST.index, Element.STANDALONE.index);
             var insertPt = new Point(mid.x, Objects.requireNonNull(GuiActionRunner.execute(() -> {
                 var lc = Objects.requireNonNull(score().getLineComponent(0));
                 return lc.getLocationOnScreen().y + lc.staffPositionToYPx(-2);
@@ -279,7 +291,7 @@ class GraceNoteTest extends E2ETest {
 
             var line = composition().getLine(0);
             // The grace note was inserted before standalone, shifting it right
-            var graceIdx = Element.STANDALONE.ordinal();
+            var graceIdx = Element.PAIR_D_GRACE.index;
 
             assertAll(
                 () -> assertThat(line.elementCount())
@@ -297,7 +309,7 @@ class GraceNoteTest extends E2ETest {
             var countBefore = composition().getLine(0).elementCount();
 
             enterSelectMode();
-            clickAt(noteScreenPosition(0, Element.PAIR_B_HOST.ordinal()));
+            clickAt(noteScreenPosition(0, Element.PAIR_B_HOST.index));
             robot.pressAndReleaseKey(KeyEvent.VK_DELETE);
             performLayout(0);
 
@@ -311,7 +323,7 @@ class GraceNoteTest extends E2ETest {
 
         debugStep(++stepCounter, "Delete grace note (pair C)", (step) -> {
             // After pair B deletion, pair C indices shifted down
-            var pairCGraceIdx = Element.PAIR_C_GRACE.ordinal() - AFTER_PAIR_B_DELETED;
+            var pairCGraceIdx = Element.PAIR_C_GRACE.index - AFTER_PAIR_B_DELETED;
             var countBefore = composition().getLine(0).elementCount();
 
             enterSelectMode();
@@ -333,7 +345,7 @@ class GraceNoteTest extends E2ETest {
         // Pair A intact at indices 1,2. Pair D at original 7,8 shifted to 4,5.
 
         debugStep(++stepCounter, "Replace grace note host with rest removes grace note", (step) -> {
-            var pairAHostIdx = Element.PAIR_A_HOST.ordinal();
+            var pairAHostIdx = Element.PAIR_A_HOST.index;
             var countBefore = composition().getLine(0).elementCount();
 
             enterEditMode();
@@ -357,8 +369,8 @@ class GraceNoteTest extends E2ETest {
 
         debugStep(++stepCounter, "Replace grace note host with pitched note preserves glissando", (step) -> {
             // After previous step: pair A grace removed (-1 more)
-            var pairDGraceIdx = Element.PAIR_D_GRACE.ordinal() - AFTER_PAIR_A_GRACE_DELETED;
-            var pairDHostIdx = Element.PAIR_D_HOST.ordinal() - AFTER_PAIR_A_GRACE_DELETED;
+            var pairDGraceIdx = Element.PAIR_D_GRACE.index - AFTER_PAIR_A_GRACE_DELETED;
+            var pairDHostIdx = Element.PAIR_D_HOST.index - AFTER_PAIR_A_GRACE_DELETED;
             var countBefore = composition().getLine(0).elementCount();
 
             enterEditMode();

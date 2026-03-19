@@ -66,6 +66,12 @@ public class InsertionElementManager {
     /** Number of ledger lines below the staff. */
     private static final int STAFF_LINES_BELOW = 4;
 
+    /** Minimum (highest-pitched) valid staff position. */
+    static final int MIN_STAFF_POSITION_SP = -(STAFF_LINES_ABOVE + 2) * 2;
+
+    /** Maximum (lowest-pitched) valid staff position. */
+    static final int MAX_STAFF_POSITION_SP = (STAFF_LINES_BELOW + 2) * 2;
+
     /** Default cursor. */
     private static final Cursor DEFAULT_CURSOR = Cursor.getDefaultCursor();
 
@@ -639,9 +645,7 @@ public class InsertionElementManager {
      * @return true if the position is valid
      */
     static boolean isValidStaffPosition(int staffPosition) {
-        var minY = -(STAFF_LINES_ABOVE + 2) * 2;
-        var maxY = (STAFF_LINES_BELOW + 2) * 2;
-        return staffPosition >= minY && staffPosition <= maxY;
+        return staffPosition >= MIN_STAFF_POSITION_SP && staffPosition <= MAX_STAFF_POSITION_SP;
     }
 
     // ==========================================================================
