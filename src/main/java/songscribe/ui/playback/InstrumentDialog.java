@@ -84,6 +84,18 @@ public class InstrumentDialog extends StandardDialog {
         center.add(new JScrollPane(instrumentList));
         center.add(Box.createHorizontalStrut(20));
         scaleAction = new ScaleAction();
+
+        instrumentList.addListSelectionListener(e -> {
+            if (!e.getValueIsAdjusting()) {
+                var seq = MidiController.sequencer;
+
+                if (seq != null && seq.isRunning()) {
+                    scaleAction.stop();
+                    scaleAction.play();
+                }
+            }
+        });
+
         scaleButton = new JButton(scaleAction);
         defaultButtonBackground = scaleButton.getBackground();
         scaleButton.setText("\uEF4E");
@@ -142,6 +154,8 @@ public class InstrumentDialog extends StandardDialog {
 
         private @Nullable MetaEventListener endListener = null;
 
+        private static final int SCALE_VELOCITY = 70;
+
         // Db major scale: Db4, Eb4, F4, Gb4, Ab4, Bb4, C5, Db5
         private final int[] SCALE = new int[] {
             61,
@@ -187,6 +201,16 @@ public class InstrumentDialog extends StandardDialog {
                 return;
             }
 
+            play();
+        }
+
+        void play() {
+            var seq = MidiController.sequencer;
+
+            if (seq == null) {
+                return;
+            }
+
             try {
                 var sequence = new Sequence(Sequence.PPQ, PlaybackController.PPQ, 0);
                 var track = sequence.createTrack();
@@ -219,7 +243,7 @@ public class InstrumentDialog extends StandardDialog {
                     down.setMessage(
                         ShortMessage.NOTE_ON,
                         pitch,
-                        PlaybackController.NOTE_VELOCITY
+                        SCALE_VELOCITY
                     );
                     track.add(new MidiEvent(down, ticks));
 
@@ -240,9 +264,10 @@ public class InstrumentDialog extends StandardDialog {
 
                 endListener = message -> {
                     if (message.getType() == MidiMetaMessageTypes.END_OF_TRACK) {
-                        seq.removeMetaEventListener(endListener);
-                        endListener = null;
-                        SwingUtilities.invokeLater(() -> setScalePlaying(false));
+                        SwingUtilities.invokeLater(() -> {
+                            seq.setTickPosition(0);
+                            seq.start();
+                        });
                     }
                 };
 
