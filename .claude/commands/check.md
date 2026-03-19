@@ -71,14 +71,12 @@ Review the same code for efficiency:
 
 Wait for all three agents to complete, then:
 
-1. **Present findings.** Output all findings from the three agents in a single organized summary.
+1. **Present findings.** Output all findings from the three agents in a single organized summary, and add an empty line followed by "Ready for questions."
 
-2. **Dummy prompt.** Immediately present a prompt with the text "Press Enter to continue". Do NOT use AskUserQuestion for this prompt. Do WAIT for the user to press Enter. Do not act on the response.
+2. **Clarifying questions.** If any findings need clarification (ambiguous code intent, unclear whether something is intentional, etc.), ask them via AskUserQuestion.
 
-3. **Clarifying questions.** If any findings need clarification (ambiguous code intent, unclear whether something is intentional, etc.), ask them via AskUserQuestion.
+3. **Questionable findings.** For any findings you believe are false positives or not worth addressing, present them via AskUserQuestion and ask whether the user wants them fixed anyway. Do not silently skip findings.
 
-4. **Questionable findings.** For any findings you believe are false positives or not worth addressing, present them via AskUserQuestion and ask whether the user wants them fixed anyway. Do not silently skip findings.
+4. **Approval.** Once all questions are resolved, use AskUserQuestion to present the final list of issues to fix and ask for approval to proceed (or for further discussion).
 
-5. **Approval.** Once all questions are resolved, use AskUserQuestion to present the final list of issues to fix and ask for approval to proceed (or for further discussion).
-
-6. **Fix.** After approval, fix the approved issues. Briefly summarize what was fixed when done.
+5. **Fix.** After approval, fix the approved issues. Briefly summarize what was fixed when done.
