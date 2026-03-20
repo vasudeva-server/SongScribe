@@ -123,10 +123,11 @@ public class InstrumentDialog extends StandardDialog {
     }
 
     @Override
-    protected void getData() {
+    protected boolean getData() {
         var index = programToIndex(Prefs.getInstance().getInt("instrument"));
         instrumentList.setSelectedIndex(index);
         instrumentList.ensureIndexIsVisible(index);
+        return true;
     }
 
     @Override

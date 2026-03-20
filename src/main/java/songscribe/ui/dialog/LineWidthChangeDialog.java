@@ -132,9 +132,10 @@ public class LineWidthChangeDialog
     }
 
     @Override
-    protected void getData() {
+    protected boolean getData() {
         originalWidthPx = ScaleContext.getInstance().toRoundedPixels(getComposition().getLineWidthSs());
         actionPerformed(null);
+        return true;
     }
 
     @Override

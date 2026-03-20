@@ -59,7 +59,7 @@ public class DoNotShowMessage extends StandardDialog {
     }
 
     @Override
-    protected void getData() {}
+    protected boolean getData() { return true; }
 
     @Override
     protected void setData() {

@@ -136,7 +136,7 @@ public class PreferencesDialog extends StandardDialog {
     }
 
     @Override
-    protected void getData() {
+    protected boolean getData() {
         var prefs = Prefs.getInstance();
         durationSlider.setValue(prefs.getInt("playbackNoteDuration"));
         playInsertingNoteCheck.setSelected(prefs.getBoolean("playInsertedNote"));
@@ -146,6 +146,7 @@ public class PreferencesDialog extends StandardDialog {
             case DARK -> darkRadio;
             case SYSTEM -> systemRadio;
         }).setSelected(true);
+        return true;
     }
 
     @Override

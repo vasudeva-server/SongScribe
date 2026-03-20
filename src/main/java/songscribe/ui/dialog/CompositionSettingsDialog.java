@@ -718,7 +718,7 @@ public class CompositionSettingsDialog extends StandardDialog {
     }
 
     @Override
-    protected void getData() {
+    protected boolean getData() {
         var composition = getComposition();
 
         numberField.setText(composition.getNumber());
@@ -754,6 +754,7 @@ public class CompositionSettingsDialog extends StandardDialog {
         font = composition.getAnnotationFont();
         annotationFontPreview.setFont(font);
         annotationFontLabel.setText(MyFontUtils.getFullFontDescription(font));
+        return true;
     }
 
     public void setKeyComboFromComposition(Composition composition) {

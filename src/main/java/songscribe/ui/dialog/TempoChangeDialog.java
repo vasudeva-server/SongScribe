@@ -105,14 +105,14 @@ public class TempoChangeDialog extends StandardDialog {
     }
 
     @Override
-    protected void getData() {
+    protected boolean getData() {
         var score = Objects.requireNonNull(getScore());
         var element = score.getSingleSelectedElement();
         selectedElement = element;
 
         // This should never happen, but make Java happy
         if (element == null) {
-            return;
+            return true;
         }
 
         var tempoChange = element.getTempoChange();
@@ -153,6 +153,8 @@ public class TempoChangeDialog extends StandardDialog {
             okButton.setText(Strings.get(Strings.LABEL_BUTTON_MODIFY));
             applyButton.setText(Strings.get(Strings.LABEL_BUTTON_APPLY_MODIFICATION));
         }
+
+        return true;
     }
 
     @Override

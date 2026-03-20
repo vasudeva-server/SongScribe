@@ -292,7 +292,7 @@ public class AnnotationDialog extends StandardDialog {
     }
 
     @Override
-    protected void getData() {
+    protected boolean getData() {
         var score = Objects.requireNonNull(getScore());
         Annotation annotation = null;
         var hasExistingAnnotation = false;
@@ -323,6 +323,7 @@ public class AnnotationDialog extends StandardDialog {
         removeButton.setEnabled(hasExistingAnnotation);
 
         okButton.setText(Strings.get(hasExistingAnnotation ? Strings.LABEL_BUTTON_MODIFY : Strings.LABEL_BUTTON_ADD));
+        return true;
     }
 
     @Override

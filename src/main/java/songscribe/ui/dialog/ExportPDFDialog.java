@@ -43,8 +43,9 @@ public class ExportPDFDialog extends StandardDialog {
     }
 
     @Override
-    protected void getData() {
+    protected boolean getData() {
         paperSizePanel.start();
+        return true;
     }
 
     @Override

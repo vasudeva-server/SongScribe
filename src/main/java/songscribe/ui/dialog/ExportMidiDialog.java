@@ -64,10 +64,11 @@ public class ExportMidiDialog extends StandardDialog {
     }
 
     @Override
-    protected void getData() {
+    protected boolean getData() {
         var prefs = Prefs.getInstance();
         instrumentCombo.setSelectedIndex(InstrumentDialog.programToIndex(prefs.getInt("instrument")));
         withRepeatCheck.setSelected(prefs.getBoolean("playWithRepeats"));
+        return true;
     }
 
     @Override

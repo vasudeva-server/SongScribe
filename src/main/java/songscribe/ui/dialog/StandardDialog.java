@@ -171,21 +171,21 @@ public abstract class StandardDialog {
             dialog.setContentPane(contentPanel);
             dialog.getRootPane().setDefaultButton(okButton);
 
-            try {
-                getData();
-                dialog.pack();
-                dialog.setMinimumSize(dialog.getPreferredSize());
-
-                if (savedLocation == null) {
-                    Dialogs.positionDialog(dialog, mainFrame);
-                } else {
-                    dialog.setLocation(savedLocation);
-                }
-
-                dialog.setVisible(true);
-            } catch (DoNotShowException e) {
-                // Ignore
+            if (!getData()) {
+                dialog.dispose();
+                return;
             }
+
+            dialog.pack();
+            dialog.setMinimumSize(dialog.getPreferredSize());
+
+            if (savedLocation == null) {
+                Dialogs.positionDialog(dialog, mainFrame);
+            } else {
+                dialog.setLocation(savedLocation);
+            }
+
+            dialog.setVisible(true);
         } else {
             savedLocation = new Point(dialog.getLocation());
             dialog.dispose();
@@ -212,7 +212,7 @@ public abstract class StandardDialog {
         return new Insets(0, 4, 2, 0);
     }
 
-    protected abstract void getData() throws DoNotShowException;
+    protected abstract boolean getData();
 
     protected abstract void setData();
 

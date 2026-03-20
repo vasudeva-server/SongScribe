@@ -69,7 +69,7 @@ public class ResolutionDialog extends StandardDialog implements ChangeListener {
     }
 
     @Override
-    protected void getData() {
+    protected boolean getData() {
         approved = false;
         resolutionSpinner.setValue(Prefs.getInstance().getInt("exportDpi"));
         var score = Objects.requireNonNull(getScore());
@@ -102,6 +102,7 @@ public class ResolutionDialog extends StandardDialog implements ChangeListener {
 
         borderPanel.setExpertBorder(false);
         stateChanged(null);
+        return true;
     }
 
     @Override

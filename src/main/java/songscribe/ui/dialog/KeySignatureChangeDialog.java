@@ -71,7 +71,7 @@ public class KeySignatureChangeDialog extends StandardDialog {
     }
 
     @Override
-    protected void getData() {
+    protected boolean getData() {
         var score = Objects.requireNonNull(getScore());
         var line = score.getComposition().getLine(score.getSelectedLine());
         indexOfSelectedElementLabel.setText(
@@ -79,6 +79,7 @@ public class KeySignatureChangeDialog extends StandardDialog {
         );
         keysCombo.setSelectedItem(line.getKeyType());
         keysSpinner.setValue(line.getKeyAccidentalCount());
+        return true;
     }
 
     @Override

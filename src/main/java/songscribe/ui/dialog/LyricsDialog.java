@@ -163,11 +163,12 @@ public class LyricsDialog extends StandardDialog {
     }
 
     @Override
-    public void getData() {
+    public boolean getData() {
         var composition = getComposition();
         lyricsArea.setText(composition.getLyrics());
         underSongArea.setText(composition.getUnderLyrics());
         translatedArea.setText(composition.getTranslatedLyrics());
+        return true;
     }
 
     @Override

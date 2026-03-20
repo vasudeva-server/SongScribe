@@ -60,10 +60,8 @@ public class WhatsNewDialog extends StandardDialog {
     }
 
     @Override
-    protected void getData() throws DoNotShowException {
-        if (noReleaseNotes) {
-            throw new DoNotShowException();
-        }
+    protected boolean getData() {
+        return !noReleaseNotes;
     }
 
     @Override

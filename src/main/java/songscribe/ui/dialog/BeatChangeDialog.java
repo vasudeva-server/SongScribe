@@ -100,7 +100,7 @@ public class BeatChangeDialog extends StandardDialog {
     }
 
     @Override
-    protected void getData() {
+    protected boolean getData() {
         var score = Objects.requireNonNull(getScore());
         selectedElement = score.getSingleSelectedElement();
         BeatChange beatChange = null;
@@ -130,6 +130,8 @@ public class BeatChangeDialog extends StandardDialog {
             okButton.setText(Strings.get(Strings.LABEL_BUTTON_MODIFY));
             applyButton.setText(Strings.get(Strings.LABEL_BUTTON_APPLY_MODIFICATION));
         }
+
+        return true;
     }
 
     @Override
