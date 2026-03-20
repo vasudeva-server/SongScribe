@@ -21,7 +21,7 @@ package songscribe.ui.playback;
 
 import module java.desktop;
 
-import songscribe.error.FatalError;
+import songscribe.error.RuntimeError;
 
 public class PlayThread extends Thread {
 
@@ -67,7 +67,7 @@ public class PlayThread extends Thread {
         var receiver = MidiController.midiReceiver;
 
         if (receiver == null) {
-            FatalError.exit("setupInstrument() called with null midiReceiver");
+            RuntimeError.exit("setupInstrument() called with null midiReceiver");
             throw new AssertionError("unreachable");
         }
 

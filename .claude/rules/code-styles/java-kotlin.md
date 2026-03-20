@@ -48,7 +48,7 @@ When adding new code that resembles existing code, **refactor the existing code 
 
 **NEVER** accept `@Nullable` on a parameter or dependency that is required for correct behavior, and **NEVER** write fallback logic that silently degrades when a critical object is null. If an object is needed, declare it `@NotNull`.
 
-If null is truly impossible to prevent further up the call chain, catch the condition **as early as possible**: log the error, warn the user, and exit the application. A null critical object means the application is in an unstable state — silent degradation only masks the bug and produces incorrect results downstream.
+If null is truly impossible to prevent further up the call chain, catch the condition **as early as possible** and call `RuntimeError.exit`. A null critical object means the application is in an unstable state — silent degradation only masks the bug and produces incorrect results downstream.
 
 ```java
 // Bad — fallback hides a bug and produces wrong results

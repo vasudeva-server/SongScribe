@@ -29,12 +29,15 @@ import org.slf4j.LoggerFactory;
 import songscribe.ui.Dialogs;
 
 /**
- * Base class for runtime error reporting. Logs the error and shows
- * an alert dialog to the user.
+ * Runtime error reporting. Logs the error and shows an alert dialog to the user.
  */
-public class RuntimeError {
+public final class RuntimeError {
 
     private static final Logger LOG = LoggerFactory.getLogger(RuntimeError.class);
+
+    private static final String FATAL_ALERT_TITLE = "Fatal Error";
+    private static final String FATAL_USER_MESSAGE =
+        "Sorry, but a fatal error has occurred and the application must quit.";
 
     /**
      * If the object is null, logs the message, shows an error alert, and returns true.
@@ -71,5 +74,16 @@ public class RuntimeError {
         return true;
     }
 
-    protected RuntimeError() {}
+    /**
+     * Logs the message, shows an error dialog to the user, and exits.
+     *
+     * @param message Description of the violated invariant
+     */
+    public static void exit(String message) {
+        if (logNull(null, FATAL_ALERT_TITLE, "Fatal: " + message, FATAL_USER_MESSAGE)) {
+            System.exit(-1);
+        }
+    }
+
+    private RuntimeError() {}
 }

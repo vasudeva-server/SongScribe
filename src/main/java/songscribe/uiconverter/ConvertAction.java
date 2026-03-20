@@ -35,7 +35,7 @@ import songscribe.ui.Dialogs;
 import songscribe.ui.component.MyBorder;
 import songscribe.ui.dialog.ProcessDialog;
 import songscribe.ui.playback.PlaybackController;
-import songscribe.error.FatalError;
+import songscribe.error.RuntimeError;
 import songscribe.file.FileUtils;
 import songscribe.util.GraphicUtils;
 
@@ -144,7 +144,7 @@ public class ConvertAction extends AbstractAction {
                     var score = uiConverter.getScore();
 
                     if (score == null) {
-                        FatalError.exit("score is null in ConvertAction");
+                        RuntimeError.exit("score is null in ConvertAction");
                         throw new AssertionError("unreachable");
                     }
 

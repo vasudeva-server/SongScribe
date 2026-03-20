@@ -34,7 +34,7 @@ import songscribe.smufl.EngravingDefaults;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
 import songscribe.ui.layout.LayoutConstants;
-import songscribe.error.FatalError;
+import songscribe.error.RuntimeError;
 import songscribe.util.UIUtils;
 
 @SuppressWarnings("ALL")
@@ -561,7 +561,7 @@ public enum ElementType {
         var anchors = metadata.getAnchors(SMuFLGlyph.NOTEHEAD_BLACK);
 
         if (anchors == null || anchors.stemUpSE() == null) {
-            FatalError.exit("Missing stem anchors for NOTEHEAD_BLACK (needed for grace notes)");
+            RuntimeError.exit("Missing stem anchors for NOTEHEAD_BLACK (needed for grace notes)");
             throw new AssertionError("unreachable");
         }
 
@@ -657,7 +657,7 @@ public enum ElementType {
         var bbox = (glyph != null) ? metadata.getBBox(glyph) : null;
 
         if (bbox == null) {
-            FatalError.exit("Missing SMuFL bounding box for " + glyph + " (needed by " + context + ")");
+            RuntimeError.exit("Missing SMuFL bounding box for " + glyph + " (needed by " + context + ")");
             throw new AssertionError("unreachable");
         }
 
@@ -671,7 +671,7 @@ public enum ElementType {
             }
 
             if (type.widthSs <= 0 || type.heightUpSs <= 0 || type.heightDownSs <= 0) {
-                FatalError.exit("Invalid element bounds for " + type +
+                RuntimeError.exit("Invalid element bounds for " + type +
                     ": widthSs=" + type.widthSs +
                     ", heightUpSs=" + type.heightUpSs +
                     ", heightDownSs=" + type.heightDownSs);

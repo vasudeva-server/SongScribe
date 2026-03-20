@@ -36,7 +36,7 @@ import songscribe.music.StaffElement;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
 import songscribe.ui.layout.LayoutConstants;
-import songscribe.error.FatalError;
+import songscribe.error.RuntimeError;
 import songscribe.util.GraphicUtils;
 
 /**
@@ -714,7 +714,7 @@ public class NoteRenderer extends BaseElementRenderer<StaffElement> {
             var widths = smallAccidentalWidthsSs;
 
             if (widths == null) {
-                FatalError.exit("getAccidentalWidthSs() called before initializeAccidentalWidths()");
+                RuntimeError.exit("getAccidentalWidthSs() called before initializeAccidentalWidths()");
                 throw new AssertionError("unreachable");
             }
 
@@ -725,7 +725,7 @@ public class NoteRenderer extends BaseElementRenderer<StaffElement> {
         var parenWidths = baseAccidentalParenthesisWidthsSs;
 
         if (baseWidths == null || parenWidths == null) {
-            FatalError.exit("getAccidentalWidthSs() called before initializeAccidentalWidths()");
+            RuntimeError.exit("getAccidentalWidthSs() called before initializeAccidentalWidths()");
             throw new AssertionError("unreachable");
         }
 
@@ -741,7 +741,7 @@ public class NoteRenderer extends BaseElementRenderer<StaffElement> {
         var widths = baseAccidentalWidthsSs;
 
         if (widths == null) {
-            FatalError.exit("getAccidentalComponentWidthSs() called before initializeAccidentalWidths()");
+            RuntimeError.exit("getAccidentalComponentWidthSs() called before initializeAccidentalWidths()");
             throw new AssertionError("unreachable");
         }
 

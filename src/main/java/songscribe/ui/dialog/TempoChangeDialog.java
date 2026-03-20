@@ -28,7 +28,7 @@ import org.jspecify.annotations.Nullable;
 import songscribe.Strings;
 import songscribe.music.StaffElement;
 import songscribe.music.Tempo;
-import songscribe.error.FatalError;
+import songscribe.error.RuntimeError;
 import songscribe.file.FileUtils;
 
 public class TempoChangeDialog extends StandardDialog {
@@ -125,7 +125,7 @@ public class TempoChangeDialog extends StandardDialog {
         var line = element.getLine();
 
         if (line == null) {
-            FatalError.exit("Selected element has no line");
+            RuntimeError.exit("Selected element has no line");
             throw new AssertionError("unreachable");
         }
 

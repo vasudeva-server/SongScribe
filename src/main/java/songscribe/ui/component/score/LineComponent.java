@@ -40,7 +40,7 @@ import songscribe.ui.layout.LayoutEngine;
 import songscribe.ui.layout.LayoutResult;
 import songscribe.ui.layout.ScaleContext;
 import songscribe.ui.selection.LineSelectionState;
-import songscribe.error.FatalError;
+import songscribe.error.RuntimeError;
 
 /**
  * Component that renders a single staff line with its musical content.
@@ -702,7 +702,7 @@ public class LineComponent extends ScoreComponent
      */
     Score getScore() {
         if (score == null) {
-            FatalError.exit("Score reference not set on LineComponent");
+            RuntimeError.exit("Score reference not set on LineComponent");
             throw new AssertionError("unreachable");
         }
 
@@ -713,7 +713,7 @@ public class LineComponent extends ScoreComponent
         var emm = EditModeManager.getInstance();
 
         if (emm == null) {
-            FatalError.exit("EditModeManager not initialized");
+            RuntimeError.exit("EditModeManager not initialized");
             throw new AssertionError("unreachable");
         }
 

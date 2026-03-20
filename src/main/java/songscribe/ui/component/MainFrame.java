@@ -37,7 +37,7 @@ import org.slf4j.LoggerFactory;
 
 import songscribe.Strings;
 import songscribe.Version;
-import songscribe.error.FatalError;
+import songscribe.error.RuntimeError;
 import songscribe.file.FileExtensions;
 import songscribe.file.FileUtils;
 import songscribe.file.MyFileFilter;
@@ -529,7 +529,7 @@ public class MainFrame extends JFrame implements Printable {
         var dialog = Actions.PREFERENCES_ACTION.getDialog();
 
         if (dialog == null) {
-            FatalError.exit("Preferences dialog could not be created");
+            RuntimeError.exit("Preferences dialog could not be created");
             throw new AssertionError("unreachable");
         }
 
