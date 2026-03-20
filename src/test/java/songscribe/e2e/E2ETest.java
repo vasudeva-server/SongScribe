@@ -60,6 +60,7 @@ import songscribe.ui.Dialogs;
 import songscribe.ui.action.Actions;
 import songscribe.ui.action.UIAction;
 import songscribe.ui.component.MainFrame;
+import songscribe.ui.component.score.ElementHitTest;
 import songscribe.ui.component.Score;
 import songscribe.ui.layout.ScaleContext;
 import songscribe.util.UIUtils;
@@ -380,24 +381,14 @@ public abstract class E2ETest {
             var lc = Objects.requireNonNull(score().getLineComponent(lineIndex));
             var line = Objects.requireNonNull(lc.getLine());
             var note = line.getElement(noteIndex);
-            var type = note.getType();
-            var sc = ScaleContext.getInstance();
 
-            var layoutResult = lc.getLayoutResult();
-            var noteXSs = layoutResult != null ? layoutResult.getElementXSs(note) : 0.0;
-            var noteXPx = (int) Math.round(sc.toPixels(noteXSs));
-            var noteYPx = lc.staffPositionToYPx(note.getStaffPosition());
-
-            // Compute the center of the element's hit rect (as built by ElementHitTest)
-            // so the click always lands inside it.
-            var widthPx = Math.max((int) Math.round(sc.toPixels(type.getNoteheadWidthSs())), 4);
-            var heightPx = Math.max((int) Math.round(sc.toPixels(type.getNoteheadHeightSs())), 4);
-            var topOffsetPx = (int) Math.round(sc.toPixels(type.getNoteheadTopOffsetSs()));
+            var hitRect = new Rectangle();
+            ElementHitTest.buildElementHitRect(lc, note, hitRect);
 
             var locationOnScreen = lc.getLocationOnScreen();
             return new Point(
-                locationOnScreen.x + noteXPx + widthPx / 2,
-                locationOnScreen.y + noteYPx + topOffsetPx + heightPx / 2
+                locationOnScreen.x + hitRect.x + hitRect.width / 2,
+                locationOnScreen.y + hitRect.y + hitRect.height / 2
             );
         }));
     }
@@ -422,8 +413,9 @@ public abstract class E2ETest {
                 var lastNote = line.getElement(line.elementCount() - 1);
                 var layoutResult = lc.getLayoutResult();
                 var lastXSs = layoutResult != null ? layoutResult.getElementXSs(lastNote) : 0.0;
+                var sc = ScaleContext.getInstance();
                 // Place 30px past the last note
-                xPx = (int) Math.round(ScaleContext.getInstance().toPixels(lastXSs)) + 30;
+                xPx = (int) Math.round(sc.toPixels(lastXSs)) + 30;
             }
 
             var yPx = lc.staffPositionToYPx(staffPositionSp);
@@ -448,7 +440,8 @@ public abstract class E2ETest {
 
             var element = line.getElement(elementIndex);
             var elementXSs = layoutResult != null ? layoutResult.getElementXSs(element) : 0.0;
-            int xPx = (int) Math.round(ScaleContext.getInstance().toPixels(elementXSs)) - 10;
+            var sc = ScaleContext.getInstance();
+            var xPx = (int) Math.round(sc.toPixels(elementXSs)) - 10;
 
             var yPx = lc.staffPositionToYPx(staffPositionSp);
 

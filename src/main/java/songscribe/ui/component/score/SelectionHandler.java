@@ -87,7 +87,11 @@ class SelectionHandler {
             return new HitResult.ElementHead(elementIndex);
         }
 
-        var glissandoIndex = hitTestGlissandoAtPoint(point);
+        var scaleCtx = ScaleContext.getInstance();
+        var clickXSs = scaleCtx.fromPixels(point.x);
+        var clickYSs = scaleCtx.fromPixels(point.y);
+
+        var glissandoIndex = hitTestGlissandoAtPoint(clickXSs, clickYSs);
 
         if (glissandoIndex != -1) {
             var selState = lc.getLineSelectionState();
@@ -104,10 +108,6 @@ class SelectionHandler {
 
             return new HitResult.Glissando(glissandoIndex);
         }
-
-        var scaleCtx = ScaleContext.getInstance();
-        var clickXSs = scaleCtx.fromPixels(point.x);
-        var clickYSs = scaleCtx.fromPixels(point.y);
 
         if (Math.abs(clickYSs - lc.getMiddleLineYSs()) <= STAFF_HIT_RADIUS_SS
                 && clickXSs <= headerRightEdgeSs()) {
@@ -347,15 +347,11 @@ class SelectionHandler {
      */
     private double headerRightEdgeSs() {
         var line = lc.getLine();
-        int keyAccidentalCount = line != null ? line.getKeyAccidentalCount() : 0;
-        return LayoutConstants.calculateFirstElementXSs(keyAccidentalCount)
-                - LayoutConstants.FIRST_NOTE_OFFSET_SS;
+        var keyAccidentalCount = line != null ? line.getKeyAccidentalCount() : 0;
+        return LayoutConstants.calculateHeaderRightEdgeSs(keyAccidentalCount);
     }
 
-    private int hitTestGlissandoAtPoint(Point point) {
-        var scaleContext = ScaleContext.getInstance();
-        var clickXSs = scaleContext.fromPixels(point.x);
-        var clickYSs = scaleContext.fromPixels(point.y);
+    private int hitTestGlissandoAtPoint(double clickXSs, double clickYSs) {
         var selState = Objects.requireNonNull(lc.getLineSelectionState());
         return GlissandoRenderer.getInstance().hitTestGlissando(
             clickXSs, clickYSs, selState.getLine()

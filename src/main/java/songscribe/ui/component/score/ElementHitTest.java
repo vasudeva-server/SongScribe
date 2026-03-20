@@ -32,7 +32,7 @@ import songscribe.ui.layout.ScaleContext;
  * Extracted from {@link SelectionHandler} so that {@link NoteDragHandler} can
  * share the same logic without duplicating it.
  */
-class ElementHitTest {
+public class ElementHitTest {
 
     private ElementHitTest() {
     }
@@ -65,7 +65,7 @@ class ElementHitTest {
     /**
      * Builds the pixel-coordinate hit rectangle for the given element into {@code out}.
      */
-    static void buildElementHitRect(
+    public static void buildElementHitRect(
         LineComponent lc,
         StaffElement element,
         Rectangle out

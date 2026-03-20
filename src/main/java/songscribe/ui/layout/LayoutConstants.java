@@ -80,7 +80,18 @@ public final class LayoutConstants {
      * @return X position in staff-space units where the first note should be placed
      */
     public static double calculateFirstElementXSs(int keyAccidentalCount) {
-        return CLEF_WIDTH_SS + keyAccidentalCount * KEY_ACCIDENTAL_WIDTH_SS + FIRST_NOTE_OFFSET_SS;
+        return calculateHeaderRightEdgeSs(keyAccidentalCount) + FIRST_NOTE_OFFSET_SS;
+    }
+
+    /**
+     * Returns the X position of the right edge of the staff header
+     * (clef + optional key signature), in staff-space units.
+     *
+     * @param keyAccidentalCount Number of accidentals in the key signature
+     * @return X position in staff-space units of the header's right edge
+     */
+    public static double calculateHeaderRightEdgeSs(int keyAccidentalCount) {
+        return CLEF_WIDTH_SS + keyAccidentalCount * KEY_ACCIDENTAL_WIDTH_SS;
     }
 
     // ==========================================================================
