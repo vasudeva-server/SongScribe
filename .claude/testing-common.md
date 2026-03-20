@@ -31,19 +31,3 @@ import static org.assertj.core.api.Assertions.within;
 ## Running Tests
 
 Always use `./scripts/test.sh`. Never invoke `mvn test` directly.
-
-**IMPORTANT:** Always capture the full test output (do NOT pipe through `tail` or `head`). You need to see the complete output including failure details, stack traces, and assertion messages — not just the summary at the end.
-
-```bash
-./scripts/test.sh                                    # Run all tests
-./scripts/test.sh e2e                                # Run only e2e tests
-./scripts/test.sh unit                               # Run only unit tests (excludes e2e)
-./scripts/test.sh --debug e2e                        # Run e2e tests, pausing between each test
-./scripts/test.sh --slow GlissandoTest               # Run with 1s pause between UI actions
-./scripts/test.sh --fail-fast e2e                    # Stop after the first test failure
-./scripts/test.sh SMuFLMetadataTest                  # Run specific test class (multiple space-separated classes and/or methods allowed)
-./scripts/test.sh BeamingTest.testFlipStemDirection  # Run specific test method (multiple space-separated methods and/or classes allowed)
-./scripts/test.sh 'GraceNoteTest$EdgeCases'          # Run all tests in a @Nested inner class (single quotes prevent shell $ expansion)
-./scripts/test.sh 'GraceNoteTest$EdgeCases.testFoo'  # Run specific method in a @Nested inner class
-./scripts/test.sh -Dtest=*Test                       # Run with Maven pattern
-```

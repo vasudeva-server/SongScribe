@@ -24,10 +24,6 @@ If you **do** need to run the application:
 ./scripts/run.sh
 ```
 
-**IMPORTANT:** NEVER pipe `compile.sh` or `crun.sh` output through `tail`, `head`, `grep`, a filter, or follow with an echo of the status. Always capture the full output — failure details and error messages appear before the summary.
-
-**IMPORTANT:** NEVER depend on the output of `compile.sh` or `crun.sh` to indicate success or failure. ALWAYS check the exit status of **the Bash tool**.
-
 ### All Available Scripts
 
 | Script                 | Purpose                                  |
@@ -112,8 +108,3 @@ When debugging UI interactions and state management issues, favor adding `System
 
 Always remove debug prints after the issue is resolved.
 
-## GitHub Issue Workflow
-
-- Use `refs #<number>` in commit messages to reference an issue without closing it.
-- Only use `Closes #<number>` when the user explicitly says to close the issue as part of a commit.
-- Use `gh` CLI for all GitHub operations (issues, PRs, etc.).
