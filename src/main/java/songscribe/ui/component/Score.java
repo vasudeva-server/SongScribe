@@ -199,10 +199,10 @@ public final class Score
     private ScoreMessageCoordinator messageCoordinator = null;
 
     // Preferred size of the score panel
-    private final Dimension preferredSize = new Dimension();
+    private final Dimension preferredSizePx = new Dimension();
 
     // Preferred size of the margin panel
-    private final Dimension preferredSizeWithMargin = new Dimension();
+    private final Dimension preferredSizeWithMarginPx = new Dimension();
 
     // Manages focus behavior to keep the score in focus (empty in headless mode)
     private final Optional<ScoreFocusController> focusController;
@@ -976,19 +976,19 @@ public final class Score
     public void setLineWidthPx(int lineWidthPx) {
         getComposition().setLineWidthSs(ScaleContext.getInstance().fromPixels(lineWidthPx));
         var lineWidth = lineWidthPx;
-        preferredSize.width = lineWidth;
-        preferredSize.height = Math.round(
+        preferredSizePx.width = lineWidth;
+        preferredSizePx.height = Math.round(
             (lineWidth > PAGE_CONTENT_SIZE.width)
                 ? (lineWidth * (PAGE_CONTENT_HEIGHT / PAGE_CONTENT_WIDTH))
                 : PAGE_CONTENT_SIZE.height
         );
-        setPreferredSize(preferredSize);
+        setPreferredSize(preferredSizePx);
 
         if (marginPanel != null) {
             var width = Math.max(lineWidth, PAGE_CONTENT_SIZE.width);
-            preferredSizeWithMargin.width = width + PAGE_MARGIN_PX;
-            preferredSizeWithMargin.height = preferredSize.height + PAGE_MARGIN_PX;
-            marginPanel.setPreferredSize(preferredSizeWithMargin);
+            preferredSizeWithMarginPx.width = width + PAGE_MARGIN_PX;
+            preferredSizeWithMarginPx.height = preferredSizePx.height + PAGE_MARGIN_PX;
+            marginPanel.setPreferredSize(preferredSizeWithMarginPx);
             invalidate();
             marginPanel.invalidate();
 
