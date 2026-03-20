@@ -46,14 +46,14 @@ When adding new code that resembles existing code, **refactor the existing code 
 
 ## CRITICAL: No Nullable Fallbacks for Critical Objects
 
-**NEVER** accept `@Nullable` on a parameter or dependency that is required for correct behavior, and **NEVER** write fallback logic that silently degrades when a critical object is null. If an object is needed, declare it `@NotNull`.
+**NEVER** mark a parameter or dependency `@Nullable` when it is required for correct behavior, and **NEVER** write fallback logic that silently degrades when a critical object is null. Under `@NullMarked`, parameters are non-null by default — leave them unannotated.
 
 If null is truly impossible to prevent further up the call chain, catch the condition **as early as possible** and call `RuntimeError.exit`. A null critical object means the application is in an unstable state — silent degradation only masks the bug and produces incorrect results downstream.
 
 ```java
 // Bad — fallback hides a bug and produces wrong results
 private static double getRightExtentSs(
-    @NotNull Note note,
+    Note note,
     @Nullable LayoutResult layoutResult   // nullable "just in case"
 ) {
     var noteColumn = layoutResult != null ? layoutResult.getNoteColumn(note) : null;
@@ -65,10 +65,10 @@ private static double getRightExtentSs(
     return someWrongFallbackValue;  // silently wrong
 }
 
-// Good — declare @NotNull and let callers guarantee it
+// Good — non-null by default, callers must guarantee it
 private static double getRightExtentSs(
-    @NotNull Note note,
-    @NotNull LayoutResult layoutResult
+    Note note,
+    LayoutResult layoutResult
 ) {
     return layoutResult.getNoteColumn(note).getRightExtentSs();
 }
@@ -87,7 +87,7 @@ All Java files must start with @../../../file-header.txt.
 ### Package & Import Organization
 
 - One package declaration per file
-- Imports grouped in order: `java.*` → `javax.*` → third-party → `org.jetbrains.annotations`
+- Imports grouped in order: `java.*` → `javax.*` → third-party → `org.jspecify.annotations`
 - Static imports grouped separately at the end
 - No wildcard imports
 - Example:
@@ -97,7 +97,6 @@ import java.awt.*;
 import java.awt.geom.*;
 import java.util.ArrayList;
 
-import org.jetbrains.annotations.NotNull;
 import org.jspecify.annotations.Nullable;
 ```
 
@@ -110,7 +109,7 @@ import org.jspecify.annotations.Nullable;
 - Suffixes for specialized classes:
     - `*Exception` for exception classes
     - `*Dialog` for UI dialogs
-    - `*Message` for event/message classes
+    - `*Notification` / `*Command` for message classes (see Messaging System below)
     - `*Toolbar` for toolbar components
     - `*Button` for custom button components
 
@@ -199,39 +198,22 @@ for (var i = 0; i < 10; i++) {
 var tempDirectory = System.getProperty("java.io.tmpdir");
 ```
 
-### Annotations
+### Nullability (NullAway + jspecify)
 
-- Use `@NotNull` and `@Nullable` from `org.jetbrains.annotations` for nullability clarity
-- Apply to method parameters, return types, and fields where nullability matters
-- Use `@SuppressWarnings` sparingly, with explanation when necessary
-- Example:
+The project uses [NullAway](https://github.com/uber/NullAway) for compile-time null safety, with [jspecify](https://jspecify.dev/) annotations.
 
-```
-public Note getNote(@NotNull String name)
-
-@Nullable
-public String getOptionalValue()
-```
-
-**Optional vs @Nullable**
-
-Use `Optional` as a return type when the caller must explicitly handle the absent case and the allocation cost is acceptable (e.g., non-hot-path lookups). Avoid `Optional` in tight inner loops or allocation-sensitive rendering paths where `@Nullable` with a null check is cheaper.
+- Every package has a `package-info.java` with `@NullMarked`, so **all types are non-null by default**.
+- There is no `@NotNull` annotation — non-null is the default; do not annotate it.
+- Use `@Nullable` from `org.jspecify.annotations` when null is a valid value for a parameter, return type, or field.
+- Use `@SuppressWarnings("NullAway")` sparingly, with an explanation when necessary.
 
 ```java
-// Good: non-hot-path lookup, caller must handle Optional
-public Optional<Note> findNoteByName(String name) { ... }
+// Non-null by default — no annotation needed
+public Note getNote(String name)
 
-var note = findNoteByName("C4");
-if (note.isPresent()) { ... }
-
-// Good: hot path, allocation-sensitive rendering code
+// Nullable must be explicit
 @Nullable
-private Note getCachedNote(int index) {
-    return cache[index];  // null if not cached
-}
-
-var note = getCachedNote(0);
-if (note != null) { ... }
+public String getOptionalValue()
 ```
 
 ### Class Structure Order
@@ -371,8 +353,22 @@ builder
 
 ### Messaging System
 
-- Event messages located in `src/main/java/songscribe/ui/message/`
-- Class names: `*Message` (e.g., `DurationSelectedMessage`, `BarSelectedMessage`)
+- All messages extend `songscribe.message.Message`
+- Notifications in `songscribe/message/notification/`, commands in `songscribe/message/command/`
+- Class names: `*Notification` for state-change events, `*Command` for action requests
 - Messages represent UI events or state changes
 - Immutable message design preferred
 
+### Handler Methods
+
+#### Mbassador `@Handler` methods
+
+`@Handler` methods always take a subclass of `Message` as their first parameter:
+- If the message class has a "Notification" suffix, the method name is the class name minus the suffix
+- If the message class has a "Command" suffix, the method name is "handle" + class name minus the suffix
+- If the method is a catch-all handler, the method name begins with "on"
+- If the same message class must be handled at different priorities, follow the above rules, but append a suffix indicating the purpose, e.g. `musicSelectionDidChangeSaveRestoreActionStates`/`musicSelectionDidChangeReflectSelection`
+
+#### Non-`@Handler` methods
+
+Only methods that are listener callbacks for built-in notification systems (e.g. property change listeners) or are directly invoked by an action should use the "on" prefix, e.g. `onActionPropertyChanged`.
