@@ -37,6 +37,7 @@ import songscribe.music.Composition;
 import songscribe.music.ElementType;
 import songscribe.music.Line;
 import songscribe.prefs.Prefs;
+import songscribe.prefs.PrefsKey;
 import songscribe.util.MyFontUtils;
 
 class ViewIOTest extends UnitTest {
@@ -110,20 +111,20 @@ class ViewIOTest extends UnitTest {
             var prefs = Prefs.getInstance();
             assertThat(composition.getTitleFont().getPSName())
                 .isEqualTo(MyFontUtils.createFont(
-                    prefs.getString("titleFont"),
-                    prefs.getInt("titleFontSize")
+                    prefs.getString(PrefsKey.TITLE_FONT),
+                    prefs.getInt(PrefsKey.TITLE_FONT_SIZE)
                 ).getPSName());
             assertThat(composition.getTitleFont().getSize())
-                .isEqualTo(prefs.getInt("titleFontSize"));
+                .isEqualTo(prefs.getInt(PrefsKey.TITLE_FONT_SIZE));
             assertThat(composition.getLyricsFont().getPSName())
                 .isEqualTo(MyFontUtils.createFont(
-                    prefs.getString("lyricsFont"),
-                    prefs.getInt("lyricsFontSize")
+                    prefs.getString(PrefsKey.LYRICS_FONT),
+                    prefs.getInt(PrefsKey.LYRICS_FONT_SIZE)
                 ).getPSName());
             assertThat(composition.getAnnotationFont().getPSName())
                 .isEqualTo(MyFontUtils.createFont(
-                    prefs.getString("annotationFont"),
-                    prefs.getInt("annotationFontSize")
+                    prefs.getString(PrefsKey.ANNOTATION_FONT),
+                    prefs.getInt(PrefsKey.ANNOTATION_FONT_SIZE)
                 ).getPSName());
         }
     }

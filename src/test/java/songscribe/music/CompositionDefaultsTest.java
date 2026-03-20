@@ -26,6 +26,7 @@ import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
 import songscribe.prefs.Prefs;
+import songscribe.prefs.PrefsKey;
 import songscribe.util.MyFontUtils;
 
 class CompositionDefaultsTest extends UnitTest {
@@ -34,8 +35,8 @@ class CompositionDefaultsTest extends UnitTest {
     void testAnnotationFontMatchesPrefs() {
         var prefs = Prefs.getInstance();
         var expectedFont = MyFontUtils.createFont(
-            prefs.getString("annotationFont"),
-            prefs.getInt("annotationFontSize")
+            prefs.getString(PrefsKey.ANNOTATION_FONT),
+            prefs.getInt(PrefsKey.ANNOTATION_FONT_SIZE)
         );
 
         var composition = new Composition();
@@ -49,8 +50,8 @@ class CompositionDefaultsTest extends UnitTest {
     void testAttributionFontMatchesPrefs() {
         var prefs = Prefs.getInstance();
         var expectedFont = MyFontUtils.createFont(
-            prefs.getString("attributionFont"),
-            prefs.getInt("attributionFontSize")
+            prefs.getString(PrefsKey.ATTRIBUTION_FONT),
+            prefs.getInt(PrefsKey.ATTRIBUTION_FONT_SIZE)
         );
 
         var composition = new Composition();
@@ -86,8 +87,8 @@ class CompositionDefaultsTest extends UnitTest {
     void testLyricsFontMatchesPrefs() {
         var prefs = Prefs.getInstance();
         var expectedFont = MyFontUtils.createFont(
-            prefs.getString("lyricsFont"),
-            prefs.getInt("lyricsFontSize")
+            prefs.getString(PrefsKey.LYRICS_FONT),
+            prefs.getInt(PrefsKey.LYRICS_FONT_SIZE)
         );
 
         var composition = new Composition();
@@ -107,8 +108,8 @@ class CompositionDefaultsTest extends UnitTest {
     void testTitleFontMatchesPrefs() {
         var prefs = Prefs.getInstance();
         var expectedFont = MyFontUtils.createFont(
-            prefs.getString("titleFont"),
-            prefs.getInt("titleFontSize")
+            prefs.getString(PrefsKey.TITLE_FONT),
+            prefs.getInt(PrefsKey.TITLE_FONT_SIZE)
         );
 
         var composition = new Composition();

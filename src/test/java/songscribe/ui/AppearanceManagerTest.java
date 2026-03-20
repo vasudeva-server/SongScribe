@@ -30,6 +30,7 @@ import com.jthemedetecor.OsThemeDetector;
 
 import songscribe.UnitTest;
 import songscribe.prefs.Prefs;
+import songscribe.prefs.PrefsKey;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -102,7 +103,7 @@ class AppearanceManagerTest extends UnitTest {
 
         @Test
         void testInitInstallsLafFromPreference() throws Exception {
-            when(mockPrefs.getString("appearance")).thenReturn(Appearance.LIGHT.key());
+            when(mockPrefs.getString(PrefsKey.APPEARANCE)).thenReturn(Appearance.LIGHT.key());
 
             AppearanceManager.init();
 
@@ -111,7 +112,7 @@ class AppearanceManagerTest extends UnitTest {
 
         @Test
         void testInitRegistersOsListenerForSystemPreference() throws Exception {
-            when(mockPrefs.getString("appearance")).thenReturn(Appearance.SYSTEM.key());
+            when(mockPrefs.getString(PrefsKey.APPEARANCE)).thenReturn(Appearance.SYSTEM.key());
             when(mockDetector.isDark()).thenReturn(false);
 
             AppearanceManager.init();
@@ -122,7 +123,7 @@ class AppearanceManagerTest extends UnitTest {
 
         @Test
         void testInitSkipsOsListenerForNonSystemPreference() throws Exception {
-            when(mockPrefs.getString("appearance")).thenReturn(Appearance.DARK.key());
+            when(mockPrefs.getString(PrefsKey.APPEARANCE)).thenReturn(Appearance.DARK.key());
 
             AppearanceManager.init();
 
@@ -168,7 +169,7 @@ class AppearanceManagerTest extends UnitTest {
 
         @Test
         void testNoOpWhenPreferenceUnchanged() throws Exception {
-            when(mockPrefs.getString("appearance")).thenReturn(Appearance.LIGHT.key());
+            when(mockPrefs.getString(PrefsKey.APPEARANCE)).thenReturn(Appearance.LIGHT.key());
 
             AppearanceManager.switchTheme(Appearance.LIGHT);
 
@@ -178,7 +179,7 @@ class AppearanceManagerTest extends UnitTest {
 
         @Test
         void testSwitchCallsLafOpsInOrder() throws Exception {
-            when(mockPrefs.getString("appearance")).thenReturn(Appearance.LIGHT.key());
+            when(mockPrefs.getString(PrefsKey.APPEARANCE)).thenReturn(Appearance.LIGHT.key());
 
             AppearanceManager.switchTheme(Appearance.DARK);
 
@@ -192,13 +193,13 @@ class AppearanceManagerTest extends UnitTest {
         @Test
         void testSwitchFromSystemUnregistersOsListener() {
             // First set up as system to register the listener
-            when(mockPrefs.getString("appearance")).thenReturn(Appearance.LIGHT.key());
+            when(mockPrefs.getString(PrefsKey.APPEARANCE)).thenReturn(Appearance.LIGHT.key());
             when(mockDetector.isDark()).thenReturn(false);
             AppearanceManager.switchTheme(Appearance.SYSTEM);
             verify(mockDetector).registerListener(any());
 
             // Now switch away from system
-            when(mockPrefs.getString("appearance")).thenReturn(Appearance.SYSTEM.key());
+            when(mockPrefs.getString(PrefsKey.APPEARANCE)).thenReturn(Appearance.SYSTEM.key());
             AppearanceManager.switchTheme(Appearance.DARK);
 
             verify(mockDetector).removeListener(any());
@@ -206,16 +207,16 @@ class AppearanceManagerTest extends UnitTest {
 
         @Test
         void testSwitchSavesNewPreference() {
-            when(mockPrefs.getString("appearance")).thenReturn(Appearance.LIGHT.key());
+            when(mockPrefs.getString(PrefsKey.APPEARANCE)).thenReturn(Appearance.LIGHT.key());
 
             AppearanceManager.switchTheme(Appearance.DARK);
 
-            verify(mockPrefs).put("appearance", Appearance.DARK.key());
+            verify(mockPrefs).put(PrefsKey.APPEARANCE, Appearance.DARK.key());
         }
 
         @Test
         void testSwitchToSystemRegistersOsListener() {
-            when(mockPrefs.getString("appearance")).thenReturn(Appearance.LIGHT.key());
+            when(mockPrefs.getString(PrefsKey.APPEARANCE)).thenReturn(Appearance.LIGHT.key());
             when(mockDetector.isDark()).thenReturn(false);
 
             AppearanceManager.switchTheme(Appearance.SYSTEM);

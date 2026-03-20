@@ -21,7 +21,6 @@
 package songscribe.prefs;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import org.junit.jupiter.api.Test;
 
@@ -30,25 +29,16 @@ import songscribe.UnitTest;
 class PrefsTest extends UnitTest {
 
     @Test
-    void testDefaultProfileKeyIsObsolete() {
-        // defaultProfile was removed from defaults.json and added to OBSOLETE_KEYS.
-        // Accessing it should throw because it exists in neither defaults nor store.
-        assertThatThrownBy(() -> Prefs.getInstance().getString("defaultProfile"))
-            .isInstanceOf(IllegalArgumentException.class)
-            .hasMessageContaining("defaultProfile");
-    }
-
-    @Test
     void testFontDefaultsExist() {
         var prefs = Prefs.getInstance();
 
-        assertThat(prefs.getString("titleFont")).isEqualTo("LatoPlus-Bold");
-        assertThat(prefs.getInt("titleFontSize")).isEqualTo(30);
-        assertThat(prefs.getString("lyricsFont")).isEqualTo("LatoPlus-Regular");
-        assertThat(prefs.getInt("lyricsFontSize")).isEqualTo(17);
-        assertThat(prefs.getString("attributionFont")).isEqualTo("LatoPlus-Regular");
-        assertThat(prefs.getInt("attributionFontSize")).isEqualTo(15);
-        assertThat(prefs.getString("annotationFont")).isEqualTo("LatoPlus-Regular");
-        assertThat(prefs.getInt("annotationFontSize")).isEqualTo(15);
+        assertThat(prefs.getString(PrefsKey.TITLE_FONT)).isEqualTo("LatoPlus-Bold");
+        assertThat(prefs.getInt(PrefsKey.TITLE_FONT_SIZE)).isEqualTo(30);
+        assertThat(prefs.getString(PrefsKey.LYRICS_FONT)).isEqualTo("LatoPlus-Regular");
+        assertThat(prefs.getInt(PrefsKey.LYRICS_FONT_SIZE)).isEqualTo(17);
+        assertThat(prefs.getString(PrefsKey.ATTRIBUTION_FONT)).isEqualTo("LatoPlus-Regular");
+        assertThat(prefs.getInt(PrefsKey.ATTRIBUTION_FONT_SIZE)).isEqualTo(15);
+        assertThat(prefs.getString(PrefsKey.ANNOTATION_FONT)).isEqualTo("LatoPlus-Regular");
+        assertThat(prefs.getInt(PrefsKey.ANNOTATION_FONT_SIZE)).isEqualTo(15);
     }
 }
