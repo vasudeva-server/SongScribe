@@ -57,9 +57,7 @@ jet_brains_find_symbol(name_path_pattern="UIAction/updateEnabledState", include_
 ### When NOT to Use Serena
 
 - Reading non-code files (markdown, config files, etc.)
-- Reading full file content when you need context around multiple symbols
 - Editing code (use `Edit` tool so user can see the diff)
-- Quick line-based edits (changing a single line or two within a method)
 
 ### Key Principle
 

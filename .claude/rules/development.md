@@ -36,6 +36,7 @@ If you **do** need to run the application:
 | `./scripts/run.sh`     | Run the application (MUST compile first) |
 | `./scripts/crun.sh`    | Compile and run in one step              |
 | `./scripts/test.sh`    | Run tests (see examples below)           |
+| `./scripts/check-style.sh <file>` | Check a single file for style violations |
 
 `run.sh` and `crun.sh` accept these options:
 
@@ -110,6 +111,12 @@ The project requires Java 25+. To set `JAVA_HOME` correctly:
 ```bash
 source ./scripts/set-java-home.sh
 ```
+
+## Generated Files
+
+Do not edit files in `target/generated-sources/`. Key generated files:
+- `Strings.java` — generated from `strings.properties` (see [strings rules](strings.md))
+- `Version.java` — generated from `pom.xml` version during build
 
 ## Debugging
 

@@ -1,3 +1,6 @@
+# Local Claude config
+.claude.local.md
+
 # No maven stuff
 target/
 **/Version.java
