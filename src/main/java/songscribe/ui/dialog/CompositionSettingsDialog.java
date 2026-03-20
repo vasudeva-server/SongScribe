@@ -40,6 +40,7 @@ import songscribe.music.Composition;
 import songscribe.music.KeyType;
 import songscribe.music.Tempo;
 import songscribe.prefs.Prefs;
+import songscribe.prefs.PrefsKey;
 import songscribe.ui.Dialogs;
 import songscribe.ui.action.UIAction;
 import songscribe.ui.component.InputUtils;
@@ -672,29 +673,29 @@ public class CompositionSettingsDialog extends StandardDialog {
                     prefs,
                     titleFontLabel,
                     titleFontPreview,
-                    "titleFont",
-                    "titleFontSize"
+                    PrefsKey.TITLE_FONT,
+                    PrefsKey.TITLE_FONT_SIZE
                 );
                 resetFont(
                     prefs,
                     lyricsFontLabel,
                     lyricsFontPreview,
-                    "lyricsFont",
-                    "lyricsFontSize"
+                    PrefsKey.LYRICS_FONT,
+                    PrefsKey.LYRICS_FONT_SIZE
                 );
                 resetFont(
                     prefs,
                     attributionFontLabel,
                     attributionFontPreview,
-                    "attributionFont",
-                    "attributionFontSize"
+                    PrefsKey.ATTRIBUTION_FONT,
+                    PrefsKey.ATTRIBUTION_FONT_SIZE
                 );
                 resetFont(
                     prefs,
                     annotationFontLabel,
                     annotationFontPreview,
-                    "annotationFont",
-                    "annotationFontSize"
+                    PrefsKey.ANNOTATION_FONT,
+                    PrefsKey.ANNOTATION_FONT_SIZE
                 );
                 revalidate();
                 repaint();
@@ -704,8 +705,8 @@ public class CompositionSettingsDialog extends StandardDialog {
                 Prefs prefs,
                 JLabel fontLabel,
                 JComponent preview,
-                String fontKey,
-                String sizeKey
+                PrefsKey fontKey,
+                PrefsKey sizeKey
             ) {
                 var font = MyFontUtils.createFont(
                     prefs.getString(fontKey),

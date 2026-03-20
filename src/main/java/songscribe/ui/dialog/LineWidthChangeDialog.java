@@ -26,6 +26,7 @@ import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.prefs.Prefs;
+import songscribe.prefs.PrefsKey;
 import songscribe.Strings;
 import songscribe.ui.Dialogs;
 import songscribe.ui.component.NumericTextField;
@@ -120,7 +121,7 @@ public class LineWidthChangeDialog
     }
 
     private boolean propIsMetric() {
-        return Prefs.getInstance().getBoolean("metric");
+        return Prefs.getInstance().getBoolean(PrefsKey.METRIC);
     }
 
     private boolean isMetric() {
@@ -140,7 +141,7 @@ public class LineWidthChangeDialog
 
     @Override
     protected void setData() {
-        Prefs.getInstance().put("metric", isMetric());
+        Prefs.getInstance().put(PrefsKey.METRIC, isMetric());
     }
 
     private double getEnteredWidthInInches(GraphicUtils.Unit unit)

@@ -58,6 +58,7 @@ import songscribe.message.notification.DocumentWasSavedNotification;
 import songscribe.message.notification.PlaybackTempoDidChangeNotification;
 import songscribe.music.Composition;
 import songscribe.prefs.Prefs;
+import songscribe.prefs.PrefsKey;
 import songscribe.prefs.RecentDocumentsManager;
 import songscribe.ui.Dialogs;
 import songscribe.ui.action.Actions;
@@ -141,7 +142,7 @@ public class MainFrame extends JFrame implements Printable {
         Prefs.getInstance();
 
         // There are some tasks we need to perform the first time the app is run
-        if (Prefs.getInstance().getBoolean("firstRun")) {
+        if (Prefs.getInstance().getBoolean(PrefsKey.FIRST_RUN)) {
             firstRun();
         }
 
@@ -174,12 +175,12 @@ public class MainFrame extends JFrame implements Printable {
             instance.initFrame();
             if (
                 !Version.PUBLIC_VERSION.equals(
-                    Prefs.getInstance().getString("lastSeenWhatsNewVersion")
+                    Prefs.getInstance().getString(PrefsKey.LAST_SEEN_WHATS_NEW_VERSION)
                 ) &&
                     new File(WhatsNewDialog.WHATS_NEW_FILE).exists()
             ) {
                 Prefs.getInstance().put(
-                    "lastSeenWhatsNewVersion",
+                    PrefsKey.LAST_SEEN_WHATS_NEW_VERSION,
                     Version.PUBLIC_VERSION
                 );
                 new WhatsNewDialog().setVisible(true);
@@ -225,7 +226,7 @@ public class MainFrame extends JFrame implements Printable {
     // Reserve for future use, such as showing a welcome message
     // or tutorial on the first run
     private void firstRun() {
-        Prefs.getInstance().put("firstRun", false);
+        Prefs.getInstance().put(PrefsKey.FIRST_RUN, false);
     }
 
     public void initFrame() {
@@ -733,16 +734,16 @@ public class MainFrame extends JFrame implements Printable {
 
     @Handler
     public void handleToggleLoopPlayback(ToggleLoopPlaybackCommand message) {
-        Prefs.getInstance().put("loopPlayback", message.isSelected());
+        Prefs.getInstance().put(PrefsKey.LOOP_PLAYBACK, message.isSelected());
     }
 
     @Handler
     public void handleTogglePlayWithRepeats(TogglePlayWithRepeatsCommand message) {
-        Prefs.getInstance().put("playWithRepeats", message.isSelected());
+        Prefs.getInstance().put(PrefsKey.PLAY_WITH_REPEATS, message.isSelected());
     }
 
     @Handler
     public void playbackTempoDidChange(PlaybackTempoDidChangeNotification message) {
-        Prefs.getInstance().put("tempoChangePercent", message.getRatio());
+        Prefs.getInstance().put(PrefsKey.TEMPO_CHANGE_PERCENT, message.getRatio());
     }
 }

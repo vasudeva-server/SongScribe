@@ -38,6 +38,7 @@ import com.formdev.flatlaf.util.SystemInfo;
 import com.jthemedetecor.OsThemeDetector;
 
 import songscribe.prefs.Prefs;
+import songscribe.prefs.PrefsKey;
 
 /**
  * Manages application appearance (light/dark theme) based on user preference
@@ -46,7 +47,6 @@ import songscribe.prefs.Prefs;
 public final class AppearanceManager {
 
     private static final Logger LOG = LoggerFactory.getLogger(AppearanceManager.class);
-    private static final String PREF_KEY = "appearance";
 
     private static LafOperations lafOps = new DefaultLafOperations();
     private static boolean listenerRegistered = false;
@@ -88,10 +88,10 @@ public final class AppearanceManager {
             return;
         }
 
-        Prefs.getInstance().put(PREF_KEY, preference.key());
+        Prefs.getInstance().put(PrefsKey.APPEARANCE, preference.key());
 
         if (!applyTheme(resolveIsDark(preference))) {
-            Prefs.getInstance().put(PREF_KEY, currentPreference.key());
+            Prefs.getInstance().put(PrefsKey.APPEARANCE, currentPreference.key());
             return;
         }
 
@@ -108,7 +108,7 @@ public final class AppearanceManager {
      * Returns the current appearance preference.
      */
     public static Appearance getPreference() {
-        return Appearance.fromKey(Prefs.getInstance().getString(PREF_KEY));
+        return Appearance.fromKey(Prefs.getInstance().getString(PrefsKey.APPEARANCE));
     }
 
     /**

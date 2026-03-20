@@ -32,6 +32,7 @@ import songscribe.file.MyFileFilter;
 import songscribe.export.ExportOptions;
 import songscribe.ui.Dialogs;
 import songscribe.prefs.Prefs;
+import songscribe.prefs.PrefsKey;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.dialog.PlatformFileDialog;
 import songscribe.ui.dialog.ResolutionDialog;
@@ -60,7 +61,7 @@ public class ExportImageAction extends UIAction {
             NAME,
             false,
             myFileFilters,
-            Prefs.getInstance().getInt("imageExportFilter")
+            Prefs.getInstance().getInt(PrefsKey.IMAGE_EXPORT_FILTER)
         );
     }
 
@@ -78,7 +79,7 @@ public class ExportImageAction extends UIAction {
             }
 
             Prefs.getInstance().put(
-                "imageExportFilter",
+                PrefsKey.IMAGE_EXPORT_FILTER,
                 Utils.arrayIndexOf(myFileFilters, filter)
             );
             var saveFile = fileDialog.getFile();

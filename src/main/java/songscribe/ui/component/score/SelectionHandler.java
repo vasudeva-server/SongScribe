@@ -28,6 +28,8 @@ import java.util.Objects;
 
 import songscribe.Strings;
 import songscribe.music.StaffElement;
+import songscribe.prefs.Prefs;
+import songscribe.prefs.PrefsKey;
 import songscribe.ui.Dialogs;
 import songscribe.ui.Mode;
 import songscribe.ui.layout.LayoutConstants;
@@ -324,6 +326,10 @@ class SelectionHandler {
      * Plays the element at the given index if it is a pitched note (not a rest).
      */
     void playNoteIfPitched(int elementIndex) {
+        if (!Prefs.getInstance().getBoolean(PrefsKey.PLAY_SELECTED_NOTE)) {
+            return;
+        }
+
         var line = lc.getLine();
 
         if (line == null) {

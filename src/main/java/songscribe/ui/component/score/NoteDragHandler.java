@@ -29,6 +29,8 @@ import java.util.List;
 
 import org.jspecify.annotations.Nullable;
 
+import songscribe.prefs.Prefs;
+import songscribe.prefs.PrefsKey;
 import songscribe.Strings;
 import songscribe.message.notification.CompositionDidChangeNotification;
 import songscribe.message.MessageCenter;
@@ -247,9 +249,14 @@ class NoteDragHandler {
             return;
         }
 
+        boolean playSelected = Prefs.getInstance().getBoolean(PrefsKey.PLAY_SELECTED_NOTE);
+
         // Send NOTE_OFF for the pitch we were playing
         var oldNote = dragLine.getElement(dragElementIndex);
-        PlayThread.sendNoteOff(oldNote.getPitch());
+
+        if (playSelected) {
+            PlayThread.sendNoteOff(oldNote.getPitch());
+        }
 
         // Apply clamped delta to all group entries
         for (var entry : dragGroup) {
@@ -260,7 +267,10 @@ class NoteDragHandler {
 
         // Play NOTE_ON for the new pitch of the dragged note
         var newPitch = dragLine.getElement(dragElementIndex).getPitch();
-        PlayThread.sendNoteOn(newPitch);
+
+        if (playSelected) {
+            PlayThread.sendNoteOn(newPitch);
+        }
         lastPlayedStaffPositionSp = originalDragStaffPositionSp + deltaSp;
 
         lc.invalidateLayout();
@@ -282,8 +292,10 @@ class NoteDragHandler {
         }
 
         if (dragMoved) {
-            // The last drag noteOn is still sounding — schedule a noteOff after the standard duration
-            new PlayThread(dragLine.getElement(dragElementIndex).getPitch(), false).start();
+            if (Prefs.getInstance().getBoolean(PrefsKey.PLAY_SELECTED_NOTE)) {
+                // The last drag noteOn is still sounding — schedule a noteOff after the standard duration
+                new PlayThread(dragLine.getElement(dragElementIndex).getPitch(), false).start();
+            }
 
             // Remove connected glissandos that became unison after the pitch drag
             for (var entry : dragGroup) {

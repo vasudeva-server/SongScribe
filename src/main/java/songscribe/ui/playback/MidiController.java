@@ -247,6 +247,48 @@ public final class MidiController {
         }
     }
 
+    /**
+     * Sets the playback volume on all MIDI channels.
+     *
+     * @param percent volume percentage in the range 50–100,
+     *                linearly scaled to MIDI CC7 values ~64–127
+     */
+    public static void setPlaybackVolume(int percent) {
+        if (midiReceiver == null) {
+            return;
+        }
+
+        int midiValue = Math.round(Math.clamp(percent, 50, 100) / 100f * 127);
+
+        try {
+            for (int ch = 0; ch < 16; ch++) {
+                cc(midiReceiver, ch, 7, midiValue);
+            }
+        } catch (InvalidMidiDataException e) {
+            LOG.warn("Failed to set playback volume", e);
+        }
+    }
+
+    /**
+     * Sends a Program Change on channel 0 so the correct instrument sounds
+     * even when the sequencer resumes past the Program Change event at tick 0.
+     *
+     * @param program MIDI program number (0–127)
+     */
+    public static void setPlaybackInstrument(int program) {
+        if (midiReceiver == null) {
+            return;
+        }
+
+        try {
+            var msg = new ShortMessage();
+            msg.setMessage(ShortMessage.PROGRAM_CHANGE, 0, Math.clamp(program, 0, 127), 0);
+            midiReceiver.send(msg, -1);
+        } catch (InvalidMidiDataException e) {
+            LOG.warn("Failed to set playback instrument", e);
+        }
+    }
+
     // Close MIDI resources so other applications can use them
     public static void closeMidi() {
         if (midiReceiver != null) {

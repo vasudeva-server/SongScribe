@@ -22,9 +22,9 @@ package songscribe.ui.playback;
 
 import module java.desktop;
 
-import java.util.ArrayList;
-
 import org.jspecify.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import songscribe.Strings;
 import songscribe.message.MessageCenter;
@@ -33,6 +33,7 @@ import songscribe.midi.MidiSequenceBuilder;
 import songscribe.midi.PlaybackSettings;
 import songscribe.music.Composition;
 import songscribe.prefs.Prefs;
+import songscribe.prefs.PrefsKey;
 import songscribe.ui.Dialogs;
 import songscribe.ui.component.Score;
 import songscribe.ui.component.score.LineComponent;
@@ -54,6 +55,8 @@ public final class PlaybackController {
     public static final int NOTE_VELOCITY = 100;
     public static final int ACCENTED_NOTE_VELOCITY = 127;
 
+    private static final Logger LOG = LoggerFactory.getLogger(PlaybackController.class);
+
     @Nullable
     private static Score registeredScore;
 
@@ -61,29 +64,14 @@ public final class PlaybackController {
     private static int previousPlayingLine = -1;
     private static int previousPlayingNote = -1;
 
-    private static final int MINIMUM_PLAYBACK_TEMPO = 20;
-    private static final int MAXIMUM_PLAYBACK_TEMPO = 180;
-
-    private static final int PLAYBACK_TEMPO_STEP = 20;
-
     private static int instrument = 0;
     private static int tempoChangePercent = 100;
     private static int noteDurationPercent = 100;
     private static boolean colorizeNotes = false;
     private static boolean playWithRepeats = false;
 
-    public static final ArrayList<TempoChangeAction> PLAYBACK_TEMPO_ACTIONS =
-        new ArrayList<>();
-
-    static {
-        for (
-            var i = MINIMUM_PLAYBACK_TEMPO;
-            i <= MAXIMUM_PLAYBACK_TEMPO;
-            i += PLAYBACK_TEMPO_STEP
-        ) {
-            PLAYBACK_TEMPO_ACTIONS.add(new TempoChangeAction(i));
-        }
-    }
+    @Nullable
+    private static ElementSelection activeSelection;
 
     public static final PlayPauseAction PLAY_PAUSE_ACTION =
         PlayPauseAction.createAction();
@@ -166,6 +154,7 @@ public final class PlaybackController {
 
     public static void playbackDidStop() {
         state = PlaybackState.STOPPED;
+        activeSelection = null;
         stopSequencer();
         clearPlayingHighlight();
 
@@ -264,10 +253,12 @@ public final class PlaybackController {
                 noteSelection = score.getSelection();
             }
 
+            activeSelection = noteSelection;
             setSequenceToPlayFromSelection(noteSelection, score, sequencer);
 
             setLoopSequence(noteSelection, sequencer);
             MidiController.reinitChannels();
+            applyVolumeFromPrefs();
             playbackDidStart();
             sequencer.start();
         } catch (InvalidMidiDataException e1) {
@@ -283,6 +274,56 @@ public final class PlaybackController {
         STOP_ACTION.perform(null);
     }
 
+    public static void applyVolumeFromPrefs() {
+        MidiController.setPlaybackVolume(Prefs.getInstance().getInt(PrefsKey.PLAYBACK_VOLUME));
+    }
+
+    /**
+     * Rebuilds and reloads the MIDI sequence during active playback so that
+     * changes to tempo, note duration, or instrument take effect immediately.
+     * Does nothing if playback is not in the PLAYING state.
+     */
+    public static void applyPrefsDuringPlayback() {
+        if (state != PlaybackState.PLAYING) {
+            return;
+        }
+
+        var sequencer = MidiController.sequencer;
+
+        if (sequencer == null || registeredScore == null) {
+            return;
+        }
+
+        try {
+            var savedTick = sequencer.getTickPosition();
+            sequencer.stop();
+
+            // Spin until the sequencer's internal thread is fully stopped.
+            // sequencer.stop() is asynchronous — without this gate,
+            // setSequence()/start() can race with the PlayThread that is
+            // still winding down, causing missed note-offs or silent playback.
+            // The wait is typically < 1 ms so EDT impact is negligible.
+            while (sequencer.isRunning()) {
+                Thread.onSpinWait();
+            }
+
+            var composition = registeredScore.getComposition();
+            var sequence = buildSequenceForSelection(composition, activeSelection);
+            sequencer.setSequence(sequence);
+            sequencer.setTickPosition(Math.min(savedTick, sequencer.getTickLength()));
+
+            // Skip reinitChannels() here — the GM System On reset invalidates the
+            // SoftSynthesizer's receiver while the sequencer thread is still sending
+            // notes-off. Just restore the instrument and volume directly.
+            MidiController.setPlaybackInstrument(instrument);
+            applyVolumeFromPrefs();
+            sequencer.start();
+        } catch (InvalidMidiDataException e) {
+            LOG.error("Failed to rebuild sequence during playback", e);
+            playbackDidStop();
+        }
+    }
+
     private static void setLoopSequence(
         @Nullable ElementSelection noteSelection,
         Sequencer sequencer
@@ -290,11 +331,27 @@ public final class PlaybackController {
         var loopPlayback =
             ((noteSelection == null) ||
                 (noteSelection.begin() != noteSelection.end())) &&
-                Prefs.getInstance().getBoolean("loopPlayback");
+                Prefs.getInstance().getBoolean(PrefsKey.LOOP_PLAYBACK);
 
         // If a single note is selected, do not loop playback
 
         sequencer.setLoopCount(loopPlayback ? Sequencer.LOOP_CONTINUOUSLY : 0);
+    }
+
+    private static Sequence buildSequenceForSelection(
+        Composition composition,
+        @Nullable ElementSelection selection
+    ) throws InvalidMidiDataException {
+        if (selection == null) {
+            return buildSequence(composition);
+        }
+
+        return buildSelectionSequence(
+            composition,
+            composition.getLines().indexOf(selection.line()),
+            selection.begin(),
+            selection.end()
+        );
     }
 
     private static void setSequenceToPlayFromSelection(
@@ -302,14 +359,8 @@ public final class PlaybackController {
         Score score,
         Sequencer sequencer
     ) throws InvalidMidiDataException {
-        var composition = score.getComposition();
-        var sequence = (noteSelection == null)
-            ? buildSequence(composition)
-            : buildSelectionSequence(
-            composition,
-            score.getComposition().getLines().indexOf(noteSelection.line()),
-            noteSelection.begin(),
-            noteSelection.end()
+        var sequence = buildSequenceForSelection(
+            score.getComposition(), noteSelection
         );
 
         //noinspection ObjectEquality

@@ -27,6 +27,7 @@ import org.jspecify.annotations.Nullable;
 
 import songscribe.music.Composition;
 import songscribe.prefs.Prefs;
+import songscribe.prefs.PrefsKey;
 import songscribe.util.MyFontUtils;
 
 public final class ViewIO {
@@ -84,20 +85,20 @@ public final class ViewIO {
         public ViewReader() {
             var prefs = Prefs.getInstance();
             title = new StringFont(
-                prefs.getString("titleFont"),
-                Integer.toString(prefs.getInt("titleFontSize"))
+                prefs.getString(PrefsKey.TITLE_FONT),
+                Integer.toString(prefs.getInt(PrefsKey.TITLE_FONT_SIZE))
             );
             lyrics = new StringFont(
-                prefs.getString("lyricsFont"),
-                Integer.toString(prefs.getInt("lyricsFontSize"))
+                prefs.getString(PrefsKey.LYRICS_FONT),
+                Integer.toString(prefs.getInt(PrefsKey.LYRICS_FONT_SIZE))
             );
             general = new StringFont(
-                prefs.getString("attributionFont"),
-                Integer.toString(prefs.getInt("attributionFontSize"))
+                prefs.getString(PrefsKey.ATTRIBUTION_FONT),
+                Integer.toString(prefs.getInt(PrefsKey.ATTRIBUTION_FONT_SIZE))
             );
             annotation = new StringFont(
-                prefs.getString("annotationFont"),
-                Integer.toString(prefs.getInt("annotationFontSize"))
+                prefs.getString(PrefsKey.ANNOTATION_FONT),
+                Integer.toString(prefs.getInt(PrefsKey.ANNOTATION_FONT_SIZE))
             );
         }
 

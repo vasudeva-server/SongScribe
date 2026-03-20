@@ -31,6 +31,7 @@ import org.jspecify.annotations.Nullable;
 
 import songscribe.export.ExportOptions;
 import songscribe.prefs.Prefs;
+import songscribe.prefs.PrefsKey;
 import songscribe.Strings;
 import songscribe.ui.component.BorderPanel;
 import songscribe.ui.component.MyBorder;
@@ -71,7 +72,7 @@ public class ResolutionDialog extends StandardDialog implements ChangeListener {
     @Override
     protected boolean getData() {
         approved = false;
-        resolutionSpinner.setValue(Prefs.getInstance().getInt("exportDpi"));
+        resolutionSpinner.setValue(Prefs.getInstance().getInt(PrefsKey.EXPORT_DPI));
         var score = Objects.requireNonNull(getScore());
         var composition = score.getComposition();
         sheetWidth = score.getSheetWidthPx();
@@ -108,7 +109,7 @@ public class ResolutionDialog extends StandardDialog implements ChangeListener {
     @Override
     protected void setData() {
         approved = true;
-        Prefs.getInstance().put("exportDpi", (int) resolutionSpinner.getValue());
+        Prefs.getInstance().put(PrefsKey.EXPORT_DPI, (int) resolutionSpinner.getValue());
     }
 
     public boolean isApproved() {

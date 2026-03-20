@@ -343,9 +343,6 @@ public final class UIUtils {
     }
 
     public static void addStandardDialogKeyBindings(JDialog dialog) {
-        var escapeKeyStroke = KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0);
-        var actionKey = "action:WINDOW_CLOSING";
-
         var dispatchClosing = new AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -355,11 +352,16 @@ public final class UIUtils {
             }
         };
 
-        var root = dialog.getRootPane();
-        root
-            .getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW)
-            .put(escapeKeyStroke, actionKey);
-        root.getActionMap().put(actionKey, dispatchClosing);
+        var actionKey = "action:WINDOW_CLOSING";
+        var inputMap = dialog.getRootPane()
+            .getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW);
+
+        inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0), actionKey);
+        inputMap.put(KeyStroke.getKeyStroke(
+            KeyEvent.VK_W, Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx()
+        ), actionKey);
+
+        dialog.getRootPane().getActionMap().put(actionKey, dispatchClosing);
     }
 
     public static void initLaf() {

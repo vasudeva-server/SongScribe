@@ -29,9 +29,9 @@ import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.prefs.Prefs;
+import songscribe.prefs.PrefsKey;
 import songscribe.Strings;
 import songscribe.ui.Dialogs;
-import songscribe.ui.playback.InstrumentDialog;
 import songscribe.ui.playback.PlaybackController;
 import songscribe.file.FileUtils;
 
@@ -47,7 +47,7 @@ public class ExportMidiDialog extends StandardDialog {
         center.setLayout(new BoxLayout(center, BoxLayout.Y_AXIS));
         center.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
         StandardDialog.addLabelToBox(center, Strings.get(Strings.LABEL_INSTRUMENT), 5);
-        instrumentCombo = new JComboBox<>(InstrumentDialog.INSTRUMENT_STRING);
+        instrumentCombo = new JComboBox<>(PreferencesDialog.getInstrumentStrings());
         instrumentCombo.setAlignmentX(Component.LEFT_ALIGNMENT);
         center.add(instrumentCombo);
         center.add(Box.createVerticalStrut(15));
@@ -66,8 +66,8 @@ public class ExportMidiDialog extends StandardDialog {
     @Override
     protected boolean getData() {
         var prefs = Prefs.getInstance();
-        instrumentCombo.setSelectedIndex(InstrumentDialog.programToIndex(prefs.getInt("instrument")));
-        withRepeatCheck.setSelected(prefs.getBoolean("playWithRepeats"));
+        instrumentCombo.setSelectedIndex(PreferencesDialog.programToIndex(prefs.getInt(PrefsKey.INSTRUMENT)));
+        withRepeatCheck.setSelected(prefs.getBoolean(PrefsKey.PLAY_WITH_REPEATS));
         return true;
     }
 
@@ -80,7 +80,7 @@ public class ExportMidiDialog extends StandardDialog {
             // Apply export-specific overrides
             PlaybackController.setPlayWithRepeats(withRepeatCheck.isSelected());
             var index = instrumentCombo.getSelectedIndex();
-            PlaybackController.setInstrument(index >= 0 ? InstrumentDialog.INSTRUMENT_PROGRAMS[index] : 0);
+            PlaybackController.setInstrument(index >= 0 ? PreferencesDialog.getInstrumentPrograms()[index] : 0);
             PlaybackController.setTempoChangePercent(100);
 
             try {

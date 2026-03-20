@@ -583,8 +583,8 @@ public final class CompositionIO {
             // Layout calculation will recalculate this properly, but this provides
             // a reasonable default for any code that accesses topPadding before layout.
             if (topPaddingSs == 0) {
-                var tf = titleFont != null ? titleFont : defaultFontFromPrefs("titleFont", "titleFontSize");
-                var af = attributionFont != null ? attributionFont : defaultFontFromPrefs("attributionFont", "attributionFontSize");
+                var tf = titleFont != null ? titleFont : defaultFontFromPrefs(songscribe.prefs.PrefsKey.TITLE_FONT, songscribe.prefs.PrefsKey.TITLE_FONT_SIZE);
+                var af = attributionFont != null ? attributionFont : defaultFontFromPrefs(songscribe.prefs.PrefsKey.ATTRIBUTION_FONT, songscribe.prefs.PrefsKey.ATTRIBUTION_FONT_SIZE);
                 topPaddingSs = ((2 * tf.getSize()) +
                     (Utils.lineCount(attribution) * af.getSize())) -
                     ScaleContext.getInstance().toRoundedPixels(2.0);
@@ -625,7 +625,7 @@ public final class CompositionIO {
             return new Composition(data);
         }
 
-        private static Font defaultFontFromPrefs(String nameKey, String sizeKey) {
+        private static Font defaultFontFromPrefs(songscribe.prefs.PrefsKey nameKey, songscribe.prefs.PrefsKey sizeKey) {
             var prefs = songscribe.prefs.Prefs.getInstance();
             return songscribe.util.MyFontUtils.createFont(
                 prefs.getString(nameKey), prefs.getInt(sizeKey));

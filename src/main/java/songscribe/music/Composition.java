@@ -41,6 +41,7 @@ import songscribe.message.notification.LyricsDidChangeNotification;
 import songscribe.message.notification.MetadataDidChangeNotification;
 import songscribe.message.notification.TempoDidChangeNotification;
 import songscribe.prefs.Prefs;
+import songscribe.prefs.PrefsKey;
 import songscribe.ui.Dialogs;
 import songscribe.ui.action.InsertLineAction;
 import songscribe.ui.component.Score;
@@ -235,19 +236,19 @@ public final class Composition {
         var img = new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB);
         var g = img.getGraphics();
 
-        titleFont = MyFontUtils.createFont(prefs.getString("titleFont"), prefs.getInt("titleFontSize"));
+        titleFont = MyFontUtils.createFont(prefs.getString(PrefsKey.TITLE_FONT), prefs.getInt(PrefsKey.TITLE_FONT_SIZE));
         titleFontMetrics = g.getFontMetrics(titleFont);
 
-        lyricsFont = MyFontUtils.createFont(prefs.getString("lyricsFont"), prefs.getInt("lyricsFontSize"));
+        lyricsFont = MyFontUtils.createFont(prefs.getString(PrefsKey.LYRICS_FONT), prefs.getInt(PrefsKey.LYRICS_FONT_SIZE));
         lyricsFontMetrics = g.getFontMetrics(lyricsFont);
 
         banglaFont = MyFontUtils.getLocalFont("TiroBangla-Regular.ttf", 17);
         banglaFontMetrics = g.getFontMetrics(banglaFont);
 
-        attributionFont = MyFontUtils.createFont(prefs.getString("attributionFont"), prefs.getInt("attributionFontSize"));
+        attributionFont = MyFontUtils.createFont(prefs.getString(PrefsKey.ATTRIBUTION_FONT), prefs.getInt(PrefsKey.ATTRIBUTION_FONT_SIZE));
         attributionFontMetrics = g.getFontMetrics(attributionFont);
 
-        annotationFont = MyFontUtils.createFont(prefs.getString("annotationFont"), prefs.getInt("annotationFontSize"));
+        annotationFont = MyFontUtils.createFont(prefs.getString(PrefsKey.ANNOTATION_FONT), prefs.getInt(PrefsKey.ANNOTATION_FONT_SIZE));
         annotationFontMetrics = g.getFontMetrics(annotationFont);
 
         footnoteFont = MyFontUtils.getLocalFont("LatoPlus-Italic.otf", 15);
@@ -1061,7 +1062,7 @@ public final class Composition {
     }
 
     private String processText(String text) {
-        var strip = Prefs.getInstance().getBoolean("stripShortA");
+        var strip = Prefs.getInstance().getBoolean(PrefsKey.STRIP_SHORT_A);
 
         if (strip && SHORT_A_PATTERN.matcher(text).find()) {
             if (!shortANotified) {

@@ -31,6 +31,7 @@ import org.jdesktop.layout.LayoutStyle;
 
 import songscribe.Strings;
 import songscribe.prefs.Prefs;
+import songscribe.prefs.PrefsKey;
 import songscribe.ui.Dialogs;
 import songscribe.util.Utils;
 
@@ -59,7 +60,7 @@ public class TipFrame extends JFrame {
                 }
             }
         );
-        index = Prefs.getInstance().getInt("tipIndex");
+        index = Prefs.getInstance().getInt(PrefsKey.TIP_INDEX);
         initComponents();
         showTip();
         setLocationRelativeTo(null);
@@ -82,7 +83,7 @@ public class TipFrame extends JFrame {
         tipPane.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 16));
         tipScroll.setViewportView(tipPane);
 
-        showTip.setSelected(Prefs.getInstance().getBoolean("showTips"));
+        showTip.setSelected(Prefs.getInstance().getBoolean(PrefsKey.SHOW_TIPS));
         showTip.setText(Strings.get(Strings.LABEL_TIP_SHOW_ON_STARTUP));
         showTip.setBorder(BorderFactory.createEmptyBorder());
         showTip.setMargin(new Insets(0, 0, 0, 0));
@@ -220,7 +221,7 @@ public class TipFrame extends JFrame {
     }
 
     private void closeWindow() {
-        Prefs.getInstance().put("showTips", showTip.isSelected());
+        Prefs.getInstance().put(PrefsKey.SHOW_TIPS, showTip.isSelected());
         setVisible(false);
         dispose();
     }
@@ -253,6 +254,6 @@ public class TipFrame extends JFrame {
         }
 
         tipPane.setText(tipBuffer.toString());
-        Prefs.getInstance().put("tipIndex", index);
+        Prefs.getInstance().put(PrefsKey.TIP_INDEX, index);
     }
 }

@@ -65,3 +65,42 @@ new File(outDir, 'Strings.java').withWriter('UTF-8') { out ->
 }
 
 println "Generated Strings.java with ${constantToKey.size()} constants."
+
+// Audit: check that every constant is referenced somewhere in the Java sources.
+// Keys with these prefixes are intentionally unreferenced (test fixtures, etc.).
+def EXEMPT_PREFIXES = ['test.', 'month.']
+
+def sourceDirs = [
+    new File("${project.basedir}/src/main/java"),
+    new File("${project.basedir}/src/test/java"),
+]
+
+def allSource = new StringBuilder()
+
+sourceDirs.each { dir ->
+    dir.eachFileRecurse { file ->
+        if (file.name.endsWith('.java')) {
+            allSource.append(file.getText('UTF-8'))
+        }
+    }
+}
+
+def sourceText = allSource.toString()
+def deadKeys = []
+
+constantToKey.each { constant, key ->
+    if (EXEMPT_PREFIXES.any { key.startsWith(it) }) {
+        return
+    }
+
+    if (!sourceText.contains("Strings.${constant}")) {
+        deadKeys << key
+    }
+}
+
+if (deadKeys) {
+    System.err.println("ERROR: ${deadKeys.size()} dead string key(s) found in strings.properties:")
+    deadKeys.sort().each { System.err.println("  ${it}") }
+    System.err.println("\nRemove these keys or add references to them.")
+    System.exit(1)
+}

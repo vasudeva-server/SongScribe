@@ -27,12 +27,12 @@ import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import songscribe.ui.dialog.StandardDialog;
+import songscribe.ui.dialog.BaseDialog;
 
 /**
- * An action that opens a standard dialog.
+ * An action that opens a dialog.
  */
-public class DialogOpenAction<T extends StandardDialog> extends UIAction {
+public class DialogOpenAction<T extends BaseDialog> extends UIAction {
 
     private static final Logger LOG = LoggerFactory.getLogger(DialogOpenAction.class);
 

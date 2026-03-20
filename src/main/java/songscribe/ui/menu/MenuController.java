@@ -66,8 +66,6 @@ import songscribe.ui.dialog.LineWidthChangeDialog;
 import songscribe.ui.dialog.ReportBugDialog;
 import songscribe.ui.dialog.TutorialDialog;
 import songscribe.ui.dialog.WhatsNewDialog;
-import songscribe.ui.playback.PlayMenu;
-
 public class MenuController {
 
     // Actions
@@ -101,7 +99,6 @@ public class MenuController {
         menuBar.add(InsertMenu.getInstance());
         menuBar.add(new NotationMenu());
         menuBar.add(initModeMenu());
-        menuBar.add(new PlayMenu());
         menuBar.add(initCompositionMenu());
         //        menuBar.add(launchMenu);
         //        menuBar.add(initHelpMenu());

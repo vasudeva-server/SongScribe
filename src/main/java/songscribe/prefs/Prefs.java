@@ -50,29 +50,29 @@ public final class Prefs {
     private static final File OLD_PROPS_FILE =
             new File(System.getProperty("user.home"), ".songscribe/props");
 
-    // Maps old flat-properties key names to new camelCase key names.
+    // Maps old flat-properties key names to PrefsKey values.
     // Used only during one-time migration from ~/.songscribe/props.
-    private static final Map<String, String> MIGRATION_MAP;
+    private static final Map<String, PrefsKey> MIGRATION_MAP;
 
     static {
-        var map = new HashMap<String, String>();
-        map.put("playinsertingnote", "playInsertedNote");
-        map.put("playInsertingNote", "playInsertedNote");
-        map.put("withrepeat", "playWithRepeats");
-        map.put("strip-short-a", "stripShortA");
-        map.put("autosave-after-strip-short-a", "autoSaveAfterStripShortA");
-        map.put("tipindex", "tipIndex");
-        map.put("tempochange", "tempoChangePercent");
-        map.put("dpi", "exportDpi");
-        map.put("showtip", "showTips");
-        map.put("playcontinuously", "loopPlayback");
-        map.put("control", "control");
-        map.put("imageexportfilter", "imageExportFilter");
-        map.put("durationshortitude", "playbackNoteDuration");
-        map.put("colorizenote", "colorizeNote");
-        map.put("instrument", "instrument");
-        map.put("metric", "metric");
-        map.put("firstrun", "firstRun");
+        var map = new HashMap<String, PrefsKey>();
+        map.put("playinsertingnote", PrefsKey.PLAY_INSERTED_NOTE);
+        map.put("playInsertingNote", PrefsKey.PLAY_INSERTED_NOTE);
+        map.put("withrepeat", PrefsKey.PLAY_WITH_REPEATS);
+        map.put("strip-short-a", PrefsKey.STRIP_SHORT_A);
+        map.put("autosave-after-strip-short-a", PrefsKey.AUTO_SAVE_AFTER_STRIP_SHORT_A);
+        map.put("tipindex", PrefsKey.TIP_INDEX);
+        map.put("tempochange", PrefsKey.TEMPO_CHANGE_PERCENT);
+        map.put("dpi", PrefsKey.EXPORT_DPI);
+        map.put("showtip", PrefsKey.SHOW_TIPS);
+        map.put("playcontinuously", PrefsKey.LOOP_PLAYBACK);
+        map.put("control", PrefsKey.CONTROL);
+        map.put("imageexportfilter", PrefsKey.IMAGE_EXPORT_FILTER);
+        map.put("durationshortitude", PrefsKey.PLAYBACK_NOTE_DURATION);
+        map.put("colorizenote", PrefsKey.COLORIZE_NOTE);
+        map.put("instrument", PrefsKey.INSTRUMENT);
+        map.put("metric", PrefsKey.METRIC);
+        map.put("firstrun", PrefsKey.FIRST_RUN);
         MIGRATION_MAP = Collections.unmodifiableMap(map);
     }
 
@@ -97,28 +97,28 @@ public final class Prefs {
         return INSTANCE;
     }
 
-    public String getString(String key) {
-        var value = store.get(key);
+    public String getString(PrefsKey key) {
+        var value = store.get(key.key());
         return value != null ? value.toString() : (String) getDefault(key);
     }
 
-    public int getInt(String key) {
-        var value = store.get(key);
+    public int getInt(PrefsKey key) {
+        var value = store.get(key.key());
         return value != null ? ((Number) value).intValue() : ((Number) getDefault(key)).intValue();
     }
 
-    public long getLong(String key) {
-        var value = store.get(key);
+    public long getLong(PrefsKey key) {
+        var value = store.get(key.key());
         return value != null ? ((Number) value).longValue() : ((Number) getDefault(key)).longValue();
     }
 
-    public boolean getBoolean(String key) {
-        var value = store.get(key);
+    public boolean getBoolean(PrefsKey key) {
+        var value = store.get(key.key());
         return value != null ? (Boolean) value : (Boolean) getDefault(key);
     }
 
-    public List<String> getStringList(String key) {
-        var value = store.get(key);
+    public List<String> getStringList(PrefsKey key) {
+        var value = store.get(key.key());
 
         if (value instanceof List<?> list) {
             return list.stream()
@@ -129,34 +129,42 @@ public final class Prefs {
         return Collections.emptyList();
     }
 
-    public void putStringList(String key, List<String> value) {
-        store.put(key, new ArrayList<>(value));
+    public void putStringList(PrefsKey key, List<String> value) {
+        store.put(key.key(), new ArrayList<>(value));
         save();
     }
 
-    public void put(String key, String value) {
-        store.put(key, value);
+    public void put(PrefsKey key, String value) {
+        store.put(key.key(), value);
         save();
     }
 
-    public void put(String key, int value) {
+    public void put(PrefsKey key, int value) {
         // Store as Long for consistency with JSON round-tripping
-        store.put(key, (long) value);
+        store.put(key.key(), (long) value);
         save();
     }
 
-    public void put(String key, long value) {
-        store.put(key, value);
+    public void put(PrefsKey key, long value) {
+        store.put(key.key(), value);
         save();
     }
 
-    public void put(String key, boolean value) {
-        store.put(key, value);
+    public void put(PrefsKey key, boolean value) {
+        store.put(key.key(), value);
         save();
     }
 
-    public void reset(String key) {
-        store.remove(key);
+    /**
+     * Updates the in-memory store without writing to disk.
+     * Call {@link #save()} explicitly when the batch is complete.
+     */
+    public void putTransient(PrefsKey key, int value) {
+        store.put(key.key(), (long) value);
+    }
+
+    public void reset(PrefsKey key) {
+        store.remove(key.key());
         save();
     }
 
@@ -272,7 +280,7 @@ public final class Prefs {
         return result;
     }
 
-    private void save() {
+    public void save() {
         try {
             Files.createDirectories(prefsFile.getParent());
             var json = new JsonObject();
@@ -305,11 +313,11 @@ public final class Prefs {
         }
     }
 
-    private Object getDefault(String key) {
-        var value = defaults.get(key);
+    private Object getDefault(PrefsKey key) {
+        var value = defaults.get(key.key());
 
         if (value == null) {
-            throw new IllegalArgumentException("Unknown preference key: " + key);
+            throw new IllegalArgumentException("Unknown preference key: " + key.key());
         }
 
         return value;
@@ -335,7 +343,7 @@ public final class Prefs {
             var value = oldProps.getProperty(oldKey);
 
             if (value != null) {
-                writeTyped(newKey, value, defaults.get(newKey));
+                writeTyped(newKey.key(), value, defaults.get(newKey.key()));
             }
         }
 
@@ -355,7 +363,7 @@ public final class Prefs {
         }
 
         if (lastSeenVersion != null) {
-            store.put("lastSeenWhatsNewVersion", lastSeenVersion);
+            store.put(PrefsKey.LAST_SEEN_WHATS_NEW_VERSION.key(), lastSeenVersion);
         }
 
         save();

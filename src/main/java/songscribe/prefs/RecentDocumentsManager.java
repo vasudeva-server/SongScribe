@@ -38,7 +38,7 @@ public final class RecentDocumentsManager {
     private final List<Path> paths;
 
     private RecentDocumentsManager() {
-        var strings = Prefs.getInstance().getStringList("recentFiles");
+        var strings = Prefs.getInstance().getStringList(PrefsKey.RECENT_FILES);
         paths = new ArrayList<>();
 
         for (var str : strings) {
@@ -96,6 +96,6 @@ public final class RecentDocumentsManager {
 
     private void persist() {
         var strings = paths.stream().map(Path::toString).toList();
-        Prefs.getInstance().putStringList("recentFiles", strings);
+        Prefs.getInstance().putStringList(PrefsKey.RECENT_FILES, strings);
     }
 }

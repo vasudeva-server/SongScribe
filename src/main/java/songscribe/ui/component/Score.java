@@ -48,6 +48,7 @@ import songscribe.message.notification.CompositionDidChangeNotification;
 import songscribe.message.notification.MusicSelectionDidChangeNotification;
 import songscribe.message.notification.PlaybackPrefsDidChangeNotification;
 import songscribe.prefs.Prefs;
+import songscribe.prefs.PrefsKey;
 import songscribe.ui.Constants;
 import songscribe.ui.Control;
 import songscribe.ui.Dialogs;
@@ -232,7 +233,7 @@ public final class Score
     public Score(@Nullable Consumer<File> onFileOpened) {
         this.onFileOpened = onFileOpened;
         var headless = onFileOpened == null;
-        control = Control.valueOf(Prefs.getInstance().getString("control"));
+        control = Control.valueOf(Prefs.getInstance().getString(PrefsKey.CONTROL));
 
         selectionCoordinator = new SelectionCoordinator(this::getComposition);
         clipboardManager = new ClipboardManager();
@@ -541,15 +542,17 @@ public final class Score
 
     public void syncPlaybackPrefs() {
         var prefs = Prefs.getInstance();
-        editModeManager.setPlayInsertedNote(prefs.getBoolean("playInsertedNote"));
-        playWithRepeats = prefs.getBoolean("playWithRepeats");
+        editModeManager.setPlayInsertedNote(prefs.getBoolean(PrefsKey.PLAY_INSERTED_NOTE));
+        playWithRepeats = prefs.getBoolean(PrefsKey.PLAY_WITH_REPEATS);
 
         // Delegate playback settings to PlaybackController
-        PlaybackController.setInstrument(prefs.getInt("instrument"));
-        PlaybackController.setTempoChangePercent(prefs.getInt("tempoChangePercent"));
-        PlaybackController.setNoteDurationPercent(prefs.getInt("playbackNoteDuration"));
-        PlaybackController.setColorizeNotes(prefs.getBoolean("colorizeNote"));
+        PlaybackController.setInstrument(prefs.getInt(PrefsKey.INSTRUMENT));
+        PlaybackController.setTempoChangePercent(prefs.getInt(PrefsKey.TEMPO_CHANGE_PERCENT));
+        PlaybackController.setNoteDurationPercent(prefs.getInt(PrefsKey.PLAYBACK_NOTE_DURATION));
+        PlaybackController.setColorizeNotes(prefs.getBoolean(PrefsKey.COLORIZE_NOTE));
         PlaybackController.setPlayWithRepeats(playWithRepeats);
+        PlaybackController.applyVolumeFromPrefs();
+        PlaybackController.applyPrefsDuringPlayback();
     }
 
     @Handler
@@ -970,7 +973,7 @@ public final class Score
     }
 
     public void saveProperties() {
-        Prefs.getInstance().put("control", control.name());
+        Prefs.getInstance().put(PrefsKey.CONTROL, control.name());
     }
 
     public void setLineWidthPx(int lineWidthPx) {

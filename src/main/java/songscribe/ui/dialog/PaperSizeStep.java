@@ -30,6 +30,7 @@ import org.jspecify.annotations.Nullable;
 import songscribe.Strings;
 import songscribe.export.PageLayoutData;
 import songscribe.prefs.Prefs;
+import songscribe.prefs.PrefsKey;
 import songscribe.util.GraphicUtils;
 import songscribe.util.Utils;
 
@@ -191,7 +192,7 @@ public class PaperSizeStep extends Step {
 
     @Override
     public void start() {
-        var metric = Prefs.getInstance().getBoolean("metric");
+        var metric = Prefs.getInstance().getBoolean(PrefsKey.METRIC);
 
         for (var i = 0; i < templates.getSize(); i++) {
             if (templates.getElementAt(i).metric == metric) {
@@ -218,11 +219,11 @@ public class PaperSizeStep extends Step {
 
         if (unitsCombo.getSelectedItem() instanceof TemplateObject) {
             Prefs.getInstance().put(
-                "metric",
+                PrefsKey.METRIC,
                 ((TemplateObject) unitsCombo.getSelectedItem()).metric
             );
         } else {
-            Prefs.getInstance().put("metric", unitsCombo.getSelectedIndex() != 0);
+            Prefs.getInstance().put(PrefsKey.METRIC, unitsCombo.getSelectedIndex() != 0);
         }
     }
 
@@ -239,7 +240,7 @@ public class PaperSizeStep extends Step {
         int bottomMargin,
         boolean mirroredMargin
     ) {
-        var metric = GraphicUtils.Unit.create(Prefs.getInstance().getBoolean("metric"));
+        var metric = GraphicUtils.Unit.create(Prefs.getInstance().getBoolean(PrefsKey.METRIC));
         unitsCombo.setSelectedIndex(metric.ordinal());
         widthSpinnerModel.setValue(
             GraphicUtils.convertFromPixels(pageWidth, metric)
