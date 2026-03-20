@@ -39,6 +39,7 @@ import songscribe.ui.Mode;
 import songscribe.ui.action.Actions;
 import songscribe.ui.action.UIAction;
 import songscribe.ui.component.score.InsertionElementManager;
+import songscribe.ui.layout.LayoutConstants;
 import songscribe.ui.layout.ScaleContext;
 
 /**
@@ -48,6 +49,7 @@ import songscribe.ui.layout.ScaleContext;
  * ToolbarReflectionTest, BarlineHitTest, and parts of TieTest and
  * ElementInsertionTest.
  */
+@SuppressWarnings("ValueOfIncrementOrDecrementUsed")
 class SelectionTest extends E2ETest {
 
     // Element indices for selection1.mssw (ordinals match fixture order)
@@ -122,7 +124,7 @@ class SelectionTest extends E2ETest {
     @Test
     void testSelectionOperations() throws Exception {
         loadFixture("selection1");
-        int stepCounter = 0;
+        var stepCounter = 0;
 
         debugStep(++stepCounter, "Mode toggle", (step) -> {
             enterSelectMode();
@@ -180,7 +182,22 @@ class SelectionTest extends E2ETest {
             assertThat(score().getSelectionSize()).as(step + ": Cmd+D deselects").isEqualTo(0);
         });
 
-        debugStep(++stepCounter, "Click past elements selects line", (step) -> {
+        debugStep(++stepCounter, "Click in staff header selects line", (step) -> {
+            enterSelectMode();
+            var lineClickPoint = Objects.requireNonNull(GuiActionRunner.execute(() -> {
+                var lc = Objects.requireNonNull(score().getLineComponent(0));
+                var loc = lc.getLocationOnScreen();
+                // Click at the midpoint of the clef — squarely inside the header region
+                int clefMidXPx = (int) Math.round(
+                        ScaleContext.getInstance().toPixels(LayoutConstants.CLEF_WIDTH_SS / 2.0));
+                var yPx = lc.staffPositionToYPx(0);
+                return new Point(loc.x + clefMidXPx, loc.y + yPx);
+            }));
+            clickAt(lineClickPoint);
+            assertThat(score().isLineSelected(0)).as(step + ": line selected").isTrue();
+        });
+
+        debugStep(++stepCounter, "Click past elements does not select line", (step) -> {
             enterSelectMode();
             var lineClickPoint = Objects.requireNonNull(GuiActionRunner.execute(() -> {
                 var lc = Objects.requireNonNull(score().getLineComponent(0));
@@ -194,7 +211,7 @@ class SelectionTest extends E2ETest {
                 return new Point(loc.x + pastLastXPx, loc.y + yPx);
             }));
             clickAt(lineClickPoint);
-            assertThat(score().isLineSelected(0)).as(step + ": line selected").isTrue();
+            assertThat(score().isLineSelected(0)).as(step + ": line not selected past music").isFalse();
         });
 
         debugStep(++stepCounter, "Duration reflection", (step) -> {
@@ -377,7 +394,7 @@ class SelectionTest extends E2ETest {
         debugStep(++stepCounter, "Slide-out suppressed when source is rest", (step) -> {
             clickToolbarButton(Actions.SLIDE_OUT_ACTION);
             hoverBetween(0, Sel2.DEMI_SEMIQUAVER_REST.index, Sel2.NOTE.index);
-            assertThat(GuiActionRunner.execute(() -> InsertionElementManager.shouldShowGlissandoPreview()))
+            assertThat(GuiActionRunner.execute(InsertionElementManager::shouldShowGlissandoPreview))
                 .as(step + ": source is rest").isFalse();
             selectDuration(Actions.QUARTER_NOTE_ACTION);
         });
@@ -446,6 +463,8 @@ class SelectionTest extends E2ETest {
                 () -> verifyAccidental(0, Sel2.ACCENT.index, Accidental.NATURAL, step + "b")
             );
         });
+
+        performLayout(0);
 
         debugStep(++stepCounter, "Apply dot to notes and rest", (step) -> {
             clickAt(noteScreenPosition(0, Sel2.STACCATO.index));

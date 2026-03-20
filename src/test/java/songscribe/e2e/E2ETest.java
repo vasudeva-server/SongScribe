@@ -380,16 +380,24 @@ public abstract class E2ETest {
             var lc = Objects.requireNonNull(score().getLineComponent(lineIndex));
             var line = Objects.requireNonNull(lc.getLine());
             var note = line.getElement(noteIndex);
+            var type = note.getType();
+            var sc = ScaleContext.getInstance();
 
             var layoutResult = lc.getLayoutResult();
             var noteXSs = layoutResult != null ? layoutResult.getElementXSs(note) : 0.0;
-            var noteXPx = (int) Math.round(ScaleContext.getInstance().toPixels(noteXSs));
+            var noteXPx = (int) Math.round(sc.toPixels(noteXSs));
             var noteYPx = lc.staffPositionToYPx(note.getStaffPosition());
+
+            // Compute the center of the element's hit rect (as built by ElementHitTest)
+            // so the click always lands inside it.
+            var widthPx = Math.max((int) Math.round(sc.toPixels(type.getNoteheadWidthSs())), 4);
+            var heightPx = Math.max((int) Math.round(sc.toPixels(type.getNoteheadHeightSs())), 4);
+            var topOffsetPx = (int) Math.round(sc.toPixels(type.getNoteheadTopOffsetSs()));
 
             var locationOnScreen = lc.getLocationOnScreen();
             return new Point(
-                locationOnScreen.x + noteXPx + (int) Math.round(ScaleContext.getInstance().toPixels(note.getType().getNoteheadCenterXSs())),
-                locationOnScreen.y + noteYPx
+                locationOnScreen.x + noteXPx + widthPx / 2,
+                locationOnScreen.y + noteYPx + topOffsetPx + heightPx / 2
             );
         }));
     }

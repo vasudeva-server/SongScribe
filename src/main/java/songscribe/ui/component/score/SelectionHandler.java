@@ -30,6 +30,7 @@ import songscribe.Strings;
 import songscribe.music.StaffElement;
 import songscribe.ui.Dialogs;
 import songscribe.ui.Mode;
+import songscribe.ui.layout.LayoutConstants;
 import songscribe.ui.layout.ScaleContext;
 import songscribe.ui.playback.MidiController;
 import songscribe.ui.playback.PlayThread;
@@ -104,9 +105,12 @@ class SelectionHandler {
             return new HitResult.Glissando(glissandoIndex);
         }
 
-        var clickYSs = ScaleContext.getInstance().fromPixels(point.y);
+        var scaleCtx = ScaleContext.getInstance();
+        var clickXSs = scaleCtx.fromPixels(point.x);
+        var clickYSs = scaleCtx.fromPixels(point.y);
 
-        if (Math.abs(clickYSs - lc.getMiddleLineYSs()) <= STAFF_HIT_RADIUS_SS) {
+        if (Math.abs(clickYSs - lc.getMiddleLineYSs()) <= STAFF_HIT_RADIUS_SS
+                && clickXSs <= headerRightEdgeSs()) {
             return new HitResult.StaffLine();
         }
 
@@ -336,6 +340,17 @@ class SelectionHandler {
     // ======================================================================
     // Private helpers
     // ======================================================================
+
+    /**
+     * Returns the right edge of the staff header (clef + optional key signature)
+     * in staff-space units. Clicks at or before this X select the staff lines.
+     */
+    private double headerRightEdgeSs() {
+        var line = lc.getLine();
+        int keyAccidentalCount = line != null ? line.getKeyAccidentalCount() : 0;
+        return LayoutConstants.calculateFirstElementXSs(keyAccidentalCount)
+                - LayoutConstants.FIRST_NOTE_OFFSET_SS;
+    }
 
     private int hitTestGlissandoAtPoint(Point point) {
         var scaleContext = ScaleContext.getInstance();
