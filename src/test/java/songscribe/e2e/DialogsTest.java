@@ -32,6 +32,7 @@ import org.jspecify.annotations.Nullable;
 
 import org.assertj.swing.core.GenericTypeMatcher;
 import org.assertj.swing.finder.JOptionPaneFinder;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import songscribe.ui.Dialogs;
@@ -42,104 +43,118 @@ import songscribe.ui.component.MainFrame;
  */
 class DialogsTest extends E2ETest {
 
-    @Test
-    void testConfirmDialogClickYesReturnsYesOption() throws InterruptedException {
-        var result = new AtomicInteger();
-        var latch = new CountDownLatch(1);
+    @Nested
+    class ConfirmDialog {
 
-        SwingUtilities.invokeLater(() -> {
-            result.set(Dialogs.showConfirmDialog(
-                MainFrame.getInstance(), "Test", "Choose",
-                JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE
-            ));
-            latch.countDown();
-        });
+        @Test
+        void testClickYesReturnsYesOption() throws InterruptedException {
+            var result = new AtomicInteger();
+            var latch = new CountDownLatch(1);
 
-        JOptionPaneFinder.findOptionPane().using(robot).yesButton().click();
-        latch.await();
+            SwingUtilities.invokeLater(() -> {
+                result.set(Dialogs.showConfirmDialog(
+                    MainFrame.getInstance(), "Test", "Choose",
+                    JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE
+                ));
+                latch.countDown();
+            });
 
-        assertThat(result.get()).isEqualTo(JOptionPane.YES_OPTION);
+            JOptionPaneFinder.findOptionPane().using(robot).yesButton().click();
+            latch.await();
+
+            assertThat(result.get()).isEqualTo(JOptionPane.YES_OPTION);
+        }
+
+        @Test
+        void testCloseWithYesNoOptionReturnsNoOption() throws InterruptedException {
+            var result = new AtomicInteger();
+            var latch = new CountDownLatch(1);
+
+            SwingUtilities.invokeLater(() -> {
+                result.set(Dialogs.showConfirmDialog(
+                    MainFrame.getInstance(), "Test", "Choose",
+                    JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE
+                ));
+                latch.countDown();
+            });
+
+            JOptionPaneFinder.findOptionPane().using(robot).pressAndReleaseKeys(KeyEvent.VK_ESCAPE);
+            latch.await();
+
+            assertThat(result.get()).isEqualTo(JOptionPane.NO_OPTION);
+        }
+
+        @Test
+        void testCloseWithYesNoCancelOptionReturnsCancelOption() throws InterruptedException {
+            var result = new AtomicInteger();
+            var latch = new CountDownLatch(1);
+
+            SwingUtilities.invokeLater(() -> {
+                result.set(Dialogs.showConfirmDialog(
+                    MainFrame.getInstance(), "Test", "Choose",
+                    JOptionPane.YES_NO_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE
+                ));
+                latch.countDown();
+            });
+
+            JOptionPaneFinder.findOptionPane().using(robot).pressAndReleaseKeys(KeyEvent.VK_ESCAPE);
+            latch.await();
+
+            assertThat(result.get()).isEqualTo(JOptionPane.CANCEL_OPTION);
+        }
     }
 
-    @Test
-    void testConfirmDialogCloseWithYesNoOptionReturnsNoOption() throws InterruptedException {
-        var result = new AtomicInteger();
-        var latch = new CountDownLatch(1);
 
-        SwingUtilities.invokeLater(() -> {
-            result.set(Dialogs.showConfirmDialog(
-                MainFrame.getInstance(), "Test", "Choose",
-                JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE
-            ));
-            latch.countDown();
-        });
+    @Nested
+    class InputDialog {
 
-        JOptionPaneFinder.findOptionPane().using(robot).pressAndReleaseKeys(KeyEvent.VK_ESCAPE);
-        latch.await();
+        @Test
+        void testReturnsTypedText() throws InterruptedException {
+            AtomicReference<@Nullable String> resultRef = new AtomicReference<>();
+            var latch = new CountDownLatch(1);
 
-        assertThat(result.get()).isEqualTo(JOptionPane.NO_OPTION);
+            SwingUtilities.invokeLater(() -> {
+                resultRef.set(Dialogs.showInputDialog(MainFrame.getInstance(), "Test", "Enter text:"));
+                latch.countDown();
+            });
+
+            var optionPane = JOptionPaneFinder.findOptionPane().using(robot);
+            optionPane.textBox().setText("hello");
+            optionPane.okButton().click();
+            latch.await();
+
+            assertThat(resultRef.get()).isEqualTo("hello");
+        }
     }
 
-    @Test
-    void testConfirmDialogCloseWithYesNoCancelOptionReturnsCancelOption() throws InterruptedException {
-        var result = new AtomicInteger();
-        var latch = new CountDownLatch(1);
 
-        SwingUtilities.invokeLater(() -> {
-            result.set(Dialogs.showConfirmDialog(
-                MainFrame.getInstance(), "Test", "Choose",
-                JOptionPane.YES_NO_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE
-            ));
-            latch.countDown();
-        });
+    @Nested
+    class OptionDialog {
 
-        JOptionPaneFinder.findOptionPane().using(robot).pressAndReleaseKeys(KeyEvent.VK_ESCAPE);
-        latch.await();
+        @Test
+        void testReturnsIndexOfClickedOption() throws InterruptedException {
+            var result = new AtomicInteger();
+            var latch = new CountDownLatch(1);
+            var options = new String[]{"Option A", "Option B"};
 
-        assertThat(result.get()).isEqualTo(JOptionPane.CANCEL_OPTION);
-    }
+            SwingUtilities.invokeLater(() -> {
+                result.set(Dialogs.showOptionDialog(
+                    MainFrame.getInstance(), "Test", "Choose one",
+                    JOptionPane.DEFAULT_OPTION, JOptionPane.QUESTION_MESSAGE,
+                    null, options, options[0]
+                ));
+                latch.countDown();
+            });
 
-    @Test
-    void testInputDialogReturnsTypedText() throws InterruptedException {
-        AtomicReference<@Nullable String> resultRef = new AtomicReference<>();
-        var latch = new CountDownLatch(1);
+            JOptionPaneFinder.findOptionPane().using(robot).button(new GenericTypeMatcher<JButton>(JButton.class) {
+                @Override
+                protected boolean isMatching(JButton button) {
+                    return button.getText().equals("Option B");
+                }
+            }).click();
+            latch.await();
 
-        SwingUtilities.invokeLater(() -> {
-            resultRef.set(Dialogs.showInputDialog(MainFrame.getInstance(), "Test", "Enter text:"));
-            latch.countDown();
-        });
-
-        var optionPane = JOptionPaneFinder.findOptionPane().using(robot);
-        optionPane.textBox().setText("hello");
-        optionPane.okButton().click();
-        latch.await();
-
-        assertThat(resultRef.get()).isEqualTo("hello");
-    }
-
-    @Test
-    void testOptionDialogReturnsIndexOfClickedOption() throws InterruptedException {
-        var result = new AtomicInteger();
-        var latch = new CountDownLatch(1);
-        var options = new String[]{"Option A", "Option B"};
-
-        SwingUtilities.invokeLater(() -> {
-            result.set(Dialogs.showOptionDialog(
-                MainFrame.getInstance(), "Test", "Choose one",
-                JOptionPane.DEFAULT_OPTION, JOptionPane.QUESTION_MESSAGE,
-                null, options, options[0]
-            ));
-            latch.countDown();
-        });
-
-        JOptionPaneFinder.findOptionPane().using(robot).button(new GenericTypeMatcher<JButton>(JButton.class) {
-            @Override
-            protected boolean isMatching(JButton button) {
-                return button.getText().equals("Option B");
-            }
-        }).click();
-        latch.await();
-
-        assertThat(result.get()).isEqualTo(1);
+            assertThat(result.get()).isEqualTo(1);
+        }
     }
 }

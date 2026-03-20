@@ -32,7 +32,14 @@ import java.util.Objects;
 
 import org.assertj.swing.edt.GuiActionRunner;
 import org.assertj.swing.finder.JOptionPaneFinder;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInstance;
+import org.junit.jupiter.api.TestMethodOrder;
 
 import songscribe.midi.PlaybackSettings;
 import songscribe.music.ElementType;
@@ -47,7 +54,6 @@ import songscribe.util.Utils;
  * Replaces the old GraceNoteTest (minus "no room" edge case, which moved
  * to ElementInsertionTest).
  */
-@SuppressWarnings("ValueOfIncrementOrDecrementUsed")
 class GraceNoteTest extends E2ETest {
 
     // Element indices for grace-note-pairs.mssw.
@@ -81,17 +87,26 @@ class GraceNoteTest extends E2ETest {
     /** Elements removed by deleting pair C grace (on top of pair B deletion). */
     private static final int AFTER_PAIR_C_GRACE_DELETED = AFTER_PAIR_B_DELETED + 1;
 
-    /** Elements removed by also deleting pair A grace (rest-replace of host). */
-    private static final int AFTER_PAIR_A_GRACE_DELETED = AFTER_PAIR_C_GRACE_DELETED + 1;
+    /** No elements removed — Order(1) replaces pair A host with a pitched note. */
 
-    @Test
-    void testGraceNoteOperations() throws Exception {
-        loadFixture("grace-note-pairs");
-        int stepCounter = 0;
 
-        // --- Cancellation and rejection (insert at end of line) ---
+    @Nested
+    @TestInstance(TestInstance.Lifecycle.PER_CLASS)
+    class Cancellation {
 
-        debugStep(++stepCounter, "Escape cancels + toolbar state", (step) -> {
+        @BeforeAll
+        void setUp() throws Exception {
+            resetComposition();
+            loadFixture("grace-note-pairs");
+        }
+
+        @BeforeEach
+        void resetState() {
+            deselectSelection();
+        }
+
+        @Test
+        void testEscapeCancels() {
             var countBefore = composition().getLine(0).elementCount();
 
             selectDuration(Actions.GRACE_EIGHTH_NOTE_ACTION);
@@ -101,14 +116,14 @@ class GraceNoteTest extends E2ETest {
             // Verify toolbar state while in grace mode (before cancelling)
             assertAll(
                 () -> assertThat(isActionEnabled(Actions.GLISSANDO_ACTION))
-                    .as(step + ": glissando disabled").isFalse(),
+                    .as("glissando disabled").isFalse(),
                 () -> assertThat(isActionEnabled(Actions.REST_ACTION))
-                    .as(step + ": rest disabled").isFalse(),
+                    .as("rest disabled").isFalse(),
                 () -> assertThat(isActionEnabled(Actions.GRACE_EIGHTH_NOTE_ACTION))
-                    .as(step + ": grace note disabled").isFalse(),
+                    .as("grace note disabled").isFalse(),
                 () -> assertThat(isActionEnabled(Actions.QUARTER_NOTE_ACTION)
                     && isActionEnabled(Actions.HALF_NOTE_ACTION))
-                    .as(step + ": durations enabled").isTrue()
+                    .as("durations enabled").isTrue()
             );
 
             robot.pressAndReleaseKey(KeyEvent.VK_ESCAPE);
@@ -117,13 +132,14 @@ class GraceNoteTest extends E2ETest {
 
             assertAll(
                 () -> assertThat(composition().getLine(0).elementCount())
-                    .as(step + ": escape cancels").isEqualTo(countBefore),
+                    .as("escape cancels").isEqualTo(countBefore),
                 () -> assertThat(isGraceModeActive())
-                    .as(step + ": escape: mode inactive").isFalse()
+                    .as("escape: mode inactive").isFalse()
             );
-        });
+        }
 
-        debugStep(++stepCounter, "Drag-left cancels", (step) -> {
+        @Test
+        void testDragLeftCancels() {
             var countBefore = composition().getLine(0).elementCount();
 
             selectDuration(Actions.GRACE_EIGHTH_NOTE_ACTION);
@@ -143,13 +159,14 @@ class GraceNoteTest extends E2ETest {
 
             assertAll(
                 () -> assertThat(composition().getLine(0).elementCount())
-                    .as(step + ": drag-left cancels").isEqualTo(countBefore),
+                    .as("drag-left cancels").isEqualTo(countBefore),
                 () -> assertThat(isGraceModeActive())
-                    .as(step + ": drag-left: mode inactive").isFalse()
+                    .as("drag-left: mode inactive").isFalse()
             );
-        });
+        }
 
-        debugStep(++stepCounter, "Same pitch error", (step) -> {
+        @Test
+        void testSamePitchError() {
             var countBefore = composition().getLine(0).elementCount();
 
             selectDuration(Actions.GRACE_EIGHTH_NOTE_ACTION);
@@ -166,15 +183,28 @@ class GraceNoteTest extends E2ETest {
 
             assertAll(
                 () -> assertThat(composition().getLine(0).elementCount())
-                    .as(step + ": same pitch: error shown").isEqualTo(countBefore),
+                    .as("same pitch: error shown").isEqualTo(countBefore),
                 () -> assertThat(isGraceModeActive())
-                    .as(step + ": same pitch: grace removed").isFalse()
+                    .as("same pitch: grace removed").isFalse()
             );
-        });
+        }
+    }
 
-        // --- Insertion flows with toolbar verification (insert at end of line) ---
 
-        debugStep(++stepCounter, "Click-click insertion", (step) -> {
+    @Nested
+    @TestInstance(TestInstance.Lifecycle.PER_CLASS)
+    @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
+    class Insertion {
+
+        @BeforeAll
+        void setUp() throws Exception {
+            resetComposition();
+            loadFixture("grace-note-pairs");
+        }
+
+        @Order(1)
+        @Test
+        void testClickClickInsertion() {
             var countBefore = composition().getLine(0).elementCount();
 
             selectDuration(Actions.GRACE_EIGHTH_NOTE_ACTION);
@@ -190,22 +220,24 @@ class GraceNoteTest extends E2ETest {
 
             assertAll(
                 () -> assertThat(line.elementCount())
-                    .as(step + ": element count").isEqualTo(countBefore + 2),
+                    .as("element count").isEqualTo(countBefore + 2),
                 () -> assertThat(line.getElement(graceIdx).getType())
-                    .as(step + ": grace type").isEqualTo(ElementType.GRACE_QUAVER),
+                    .as("grace type").isEqualTo(ElementType.GRACE_QUAVER),
                 () -> assertThat(line.getElement(hostIdx).getType().isPitchedNote())
-                    .as(step + ": host type").isTrue(),
+                    .as("host type").isTrue(),
                 () -> assertThat(line.getElement(graceIdx).getGlissando().type)
-                    .as(step + ": glissando").isEqualTo(StaffElement.Glissando.Type.CONNECTED),
+                    .as("glissando").isEqualTo(StaffElement.Glissando.Type.CONNECTED),
                 () -> assertThat(isGraceModeActive())
-                    .as(step + ": grace mode inactive").isFalse(),
+                    .as("grace mode inactive").isFalse(),
                 () -> assertThat(isActionEnabled(Actions.GLISSANDO_ACTION)
                     && isActionEnabled(Actions.REST_ACTION))
-                    .as(step + ": actions re-enabled").isTrue()
+                    .as("actions re-enabled").isTrue()
             );
-        });
+        }
 
-        debugStep(++stepCounter, "Click-click MIDI", (step) -> {
+        @Order(2)
+        @Test
+        void testClickClickMidi() throws Exception {
             var line = composition().getLine(0);
 
             // Count non-grace pitched notes — only these should produce NOTE_ONs
@@ -226,12 +258,14 @@ class GraceNoteTest extends E2ETest {
             var expectedNoteOns = pitchedNonGraceCount;
             assertAll(
                 () -> assertThat(noteOnEvents)
-                    .as(step + ": only host NOTE_ON").hasSize(expectedNoteOns),
-                () -> assertThat(bendEvents).as(step + ": slide-in pitch bend").isNotEmpty()
+                    .as("only host NOTE_ON").hasSize(expectedNoteOns),
+                () -> assertThat(bendEvents).as("slide-in pitch bend").isNotEmpty()
             );
-        });
+        }
 
-        debugStep(++stepCounter, "Duration change during flow", (step) -> {
+        @Order(3)
+        @Test
+        void testDurationChangeDuringFlow() {
             var countBefore = composition().getLine(0).elementCount();
 
             selectDuration(Actions.GRACE_EIGHTH_NOTE_ACTION);
@@ -250,21 +284,31 @@ class GraceNoteTest extends E2ETest {
 
             assertAll(
                 () -> assertThat(line.getElement(graceIdx).getType())
-                    .as(step + ": grace is quaver").isEqualTo(ElementType.GRACE_QUAVER),
+                    .as("grace is quaver").isEqualTo(ElementType.GRACE_QUAVER),
                 () -> assertThat(line.getElement(hostIdx).getType())
-                    .as(step + ": host is minim").isEqualTo(ElementType.MINIM),
+                    .as("host is minim").isEqualTo(ElementType.MINIM),
                 () -> assertThat(line.getElement(graceIdx).getGlissando().type)
-                    .as(step + ": glissando connected").isEqualTo(StaffElement.Glissando.Type.CONNECTED),
+                    .as("glissando connected").isEqualTo(StaffElement.Glissando.Type.CONNECTED),
                 () -> assertThat(isActionSelected(Actions.HALF_NOTE_ACTION))
-                    .as(step + ": half note selected").isTrue(),
+                    .as("half note selected").isTrue(),
                 () -> assertThat(isActionSelected(Actions.QUARTER_NOTE_ACTION))
-                    .as(step + ": quarter deselected").isFalse()
+                    .as("quarter deselected").isFalse()
             );
-        });
+        }
+    }
 
-        // --- Drag-to-connect and manipulation (fixture pairs) ---
 
-        debugStep(++stepCounter, "Drag-connect to standalone note", (step) -> {
+    @Nested
+    class DragConnect {
+
+        @BeforeEach
+        void setUp() throws Exception {
+            resetComposition();
+            loadFixture("grace-note-pairs");
+        }
+
+        @Test
+        void testDragConnectToStandaloneNote() {
             var countBefore = composition().getLine(0).elementCount();
 
             enterEditMode();
@@ -295,17 +339,64 @@ class GraceNoteTest extends E2ETest {
 
             assertAll(
                 () -> assertThat(line.elementCount())
-                    .as(step + ": drag connect: count").isEqualTo(countBefore + 1),
+                    .as("drag connect: count").isEqualTo(countBefore + 1),
                 () -> assertThat(line.getElement(graceIdx).getType())
-                    .as(step + ": drag connect: grace type").isEqualTo(ElementType.GRACE_QUAVER),
+                    .as("drag connect: grace type").isEqualTo(ElementType.GRACE_QUAVER),
                 () -> assertThat(line.getElement(graceIdx).getGlissando().type)
-                    .as(step + ": drag connect: glissando").isEqualTo(StaffElement.Glissando.Type.CONNECTED),
+                    .as("drag connect: glissando").isEqualTo(StaffElement.Glissando.Type.CONNECTED),
                 () -> assertThat(isGraceModeActive())
-                    .as(step + ": drag connect: mode inactive").isFalse()
+                    .as("drag connect: mode inactive").isFalse()
             );
-        });
+        }
+    }
 
-        debugStep(++stepCounter, "Delete host removes both (pair B)", (step) -> {
+
+    @Nested
+    @TestInstance(TestInstance.Lifecycle.PER_CLASS)
+    @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
+    class Deletion {
+
+        @BeforeAll
+        void setUp() throws Exception {
+            resetComposition();
+            loadFixture("grace-note-pairs");
+        }
+
+        @Order(1)
+        @Test
+        void testReplaceHostWithPitchedNotePreservesGlissando() {
+            var pairAGraceIdx = Element.PAIR_A_GRACE.index;
+            var pairAHostIdx = Element.PAIR_A_HOST.index;
+            var countBefore = composition().getLine(0).elementCount();
+
+            enterEditMode();
+            selectDuration(Actions.HALF_NOTE_ACTION);
+
+            // Click on pair A host at a different pitch
+            var existingPos = noteScreenPosition(0, pairAHostIdx);
+            var replacePoint = Objects.requireNonNull(GuiActionRunner.execute(() -> {
+                var lc = Objects.requireNonNull(score().getLineComponent(0));
+                var loc = lc.getLocationOnScreen();
+                return new Point(existingPos.x, loc.y + lc.staffPositionToYPx(-4));
+            }));
+
+            clickAt(replacePoint);
+            performLayout(0);
+
+            var line = composition().getLine(0);
+            assertAll(
+                () -> assertThat(line.elementCount())
+                    .as("element count unchanged").isEqualTo(countBefore),
+                () -> assertThat(line.getElement(pairAHostIdx).getType())
+                    .as("host replaced with half note").isEqualTo(ElementType.MINIM),
+                () -> assertThat(line.getElement(pairAGraceIdx).getGlissando().type)
+                    .as("glissando still connected").isEqualTo(StaffElement.Glissando.Type.CONNECTED)
+            );
+        }
+
+        @Order(2)
+        @Test
+        void testDeleteHostRemovesBoth() {
             var countBefore = composition().getLine(0).elementCount();
 
             enterSelectMode();
@@ -315,13 +406,15 @@ class GraceNoteTest extends E2ETest {
 
             assertAll(
                 () -> assertThat(composition().getLine(0).elementCount())
-                    .as(step + ": delete host removes both").isEqualTo(countBefore - 2),
+                    .as("delete host removes both").isEqualTo(countBefore - 2),
                 () -> assertThat(composition().getLine(0).elementCount())
-                    .as(step + ": pair B removed from count").isEqualTo(countBefore - 2)
+                    .as("pair B removed from count").isEqualTo(countBefore - 2)
             );
-        });
+        }
 
-        debugStep(++stepCounter, "Delete grace note (pair C)", (step) -> {
+        @Order(3)
+        @Test
+        void testDeleteGraceNote() {
             // After pair B deletion, pair C indices shifted down
             var pairCGraceIdx = Element.PAIR_C_GRACE.index - AFTER_PAIR_B_DELETED;
             var countBefore = composition().getLine(0).elementCount();
@@ -335,16 +428,16 @@ class GraceNoteTest extends E2ETest {
             // Grace note deleted, host preserved; host shifts to pairCGraceIdx
             assertAll(
                 () -> assertThat(line.elementCount())
-                    .as(step + ": delete grace removes grace").isEqualTo(countBefore - 1),
+                    .as("delete grace removes grace").isEqualTo(countBefore - 1),
                 () -> assertThat(line.getElement(pairCGraceIdx).getType().isPitchedNote())
-                    .as(step + ": host preserved").isTrue()
+                    .as("host preserved").isTrue()
             );
-        });
+        }
 
-        // After steps above: pair B deleted (-2), pair C grace deleted (-1) = -3 total shift
-        // Pair A intact at indices 1,2. Pair D at original 7,8 shifted to 4,5.
-
-        debugStep(++stepCounter, "Replace grace note host with rest removes grace note", (step) -> {
+        @Order(4)
+        @Test
+        void testReplaceHostWithRestRemovesGrace() {
+            // After steps above: pair B deleted (-2), pair C grace deleted (-1) = -3 total shift
             var pairAHostIdx = Element.PAIR_A_HOST.index;
             var countBefore = composition().getLine(0).elementCount();
 
@@ -359,45 +452,16 @@ class GraceNoteTest extends E2ETest {
             // Grace note removed, rest now occupies the position where grace was
             assertAll(
                 () -> assertThat(line.elementCount())
-                    .as(step + ": grace note removed, count decreased by 1").isEqualTo(countBefore - 1),
+                    .as("grace note removed, count decreased by 1").isEqualTo(countBefore - 1),
                 () -> assertThat(line.getElement(pairAHostIdx - 1).getType().isRest())
-                    .as(step + ": host replaced with rest").isTrue()
+                    .as("host replaced with rest").isTrue()
             );
 
             deselectRestMode();
-        });
+        }
 
-        debugStep(++stepCounter, "Replace grace note host with pitched note preserves glissando", (step) -> {
-            // After previous step: pair A grace removed (-1 more)
-            var pairDGraceIdx = Element.PAIR_D_GRACE.index - AFTER_PAIR_A_GRACE_DELETED;
-            var pairDHostIdx = Element.PAIR_D_HOST.index - AFTER_PAIR_A_GRACE_DELETED;
-            var countBefore = composition().getLine(0).elementCount();
-
-            enterEditMode();
-            selectDuration(Actions.HALF_NOTE_ACTION);
-
-            // Click on pair D host at a different pitch
-            var existingPos = noteScreenPosition(0, pairDHostIdx);
-            var replacePoint = Objects.requireNonNull(GuiActionRunner.execute(() -> {
-                var lc = Objects.requireNonNull(score().getLineComponent(0));
-                var loc = lc.getLocationOnScreen();
-                return new Point(existingPos.x, loc.y + lc.staffPositionToYPx(-4));
-            }));
-
-            clickAt(replacePoint);
-            performLayout(0);
-
-            var line = composition().getLine(0);
-            assertAll(
-                () -> assertThat(line.elementCount())
-                    .as(step + ": element count unchanged").isEqualTo(countBefore),
-                () -> assertThat(line.getElement(pairDHostIdx).getType())
-                    .as(step + ": host replaced with half note").isEqualTo(ElementType.MINIM),
-                () -> assertThat(line.getElement(pairDGraceIdx).getGlissando().type)
-                    .as(step + ": glissando still connected").isEqualTo(StaffElement.Glissando.Type.CONNECTED)
-            );
-        });
     }
+
 
     // -- Assertion helpers --
 

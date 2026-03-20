@@ -41,11 +41,9 @@ import org.assertj.swing.edt.FailOnThreadViolationRepaintManager;
 import org.assertj.swing.edt.GuiActionRunner;
 import org.assertj.swing.fixture.FrameFixture;
 import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestInstance;
+import org.junit.jupiter.api.extension.BeforeTestExecutionCallback;
 import org.junit.jupiter.api.extension.ConditionEvaluationResult;
 import org.junit.jupiter.api.extension.ExecutionCondition;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -53,6 +51,7 @@ import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.api.extension.TestWatcher;
 import org.xml.sax.InputSource;
 
+import songscribe.SongScribe;
 import songscribe.UnitTest;
 import songscribe.io.CompositionIO;
 import songscribe.music.Composition;
@@ -77,26 +76,17 @@ import songscribe.util.UIUtils;
 public abstract class E2ETest {
 
     private static final boolean DEBUG_MODE = Boolean.getBoolean("e2e.debug");
-    private static final boolean SLOW_MODE = Boolean.getBoolean("e2e.slow");
+    private static boolean slowMode = Boolean.getBoolean("e2e.slow");
     private static final boolean FAIL_FAST = Boolean.getBoolean("e2e.failFast");
 
-    /** Delay in ms between UI actions so you can watch what's happening. Set to 0 for full speed. */
-    private static final int ACTION_DELAY_MS = SLOW_MODE ? 1000 : DEBUG_MODE ? 250 : 10;
-
-    private static final String[] DEBUG_OPTIONS = {"OK", "Skip", "Stop"};
-    private static final int DEBUG_OK = 0;
-    private static final int DEBUG_SKIP = 1;
-    private static final int DEBUG_STOP = 2;
+    /** Base delay in ms between UI actions (before slow mode is considered). */
+    private static final int BASE_ACTION_DELAY_MS = DEBUG_MODE ? 250 : 10;
 
     private static boolean frameInitialized = false;
-    private static boolean skipClass = false;
-    private static int testCounter = 0;
     private static int passCount = 0;
     private static int failCount = 0;
     @Nullable private static JWindow statusOverlay;
     @Nullable private static JLabel statusLabel;
-    private String currentClassName;
-    private String currentTestName;
 
     protected Robot robot;
     protected FrameFixture window;
@@ -108,6 +98,8 @@ public abstract class E2ETest {
         robot = BasicRobot.robotWithCurrentAwtHierarchy();
 
         if (!frameInitialized) {
+            SongScribe.logBanner("SongScribe (E2E Tests)");
+
             GuiActionRunner.execute(() -> {
                 UIUtils.initLaf();
 
@@ -123,38 +115,16 @@ public abstract class E2ETest {
         window.show();
 
         GuiActionRunner.execute(this::createStatusOverlay);
-
-        skipClass = false;
-        debugConfirm("About to run: " + getClass().getSimpleName());
     }
 
-    @BeforeEach
-    protected void resetComposition(TestInfo testInfo) {
-        Assumptions.assumeFalse(skipClass, "Skipping class");
-
-        testCounter++;
-        var rawClassName = getClass().getSimpleName().replaceAll("Test$", "");
-        var classWords = rawClassName.replaceAll("([a-z])([A-Z])", "$1 $2").toLowerCase();
-        currentClassName = Character.toUpperCase(classWords.charAt(0)) + classWords.substring(1);
-        var rawName = testInfo.getDisplayName().replaceAll("\\(\\)$", "");
-        var camel = (rawName.startsWith("test") && rawName.length() > 4)
-            ? Character.toLowerCase(rawName.charAt(4)) + rawName.substring(5)
-            : rawName;
-        var words = camel.replaceAll("([a-z])([A-Z])", "$1 $2").toLowerCase();
-        currentTestName = Character.toUpperCase(words.charAt(0)) + words.substring(1);
-
+    protected void resetComposition() {
         enterEditMode();
         deselectRestMode();
 
         GuiActionRunner.execute(() -> {
             var composition = new Composition();
             score().setComposition(composition);
-            updateStatusOverlay();
         });
-
-        pause();
-        debugConfirm("Test " + testCounter + " of " + E2ETestCountListener.getTotalTests() + ": " + currentTestName);
-        Assumptions.assumeFalse(skipClass, "Skipping class");
     }
 
     @AfterAll
@@ -184,23 +154,9 @@ public abstract class E2ETest {
         statusOverlay.setVisible(true);
     }
 
-    private void updateStatusOverlay() {
-        var sb = new StringBuilder("  ");
-        sb.append(testCounter).append(" of ").append(E2ETestCountListener.getTotalTests());
-
-        if (passCount > 0 || failCount > 0) {
-            sb.append(" [+").append(passCount).append("/-").append(failCount).append("]");
-        }
-
-        sb.append("  —  ").append(currentClassName).append("  |  ").append(currentTestName).append("  ");
-        Objects.requireNonNull(statusLabel).setText(sb.toString());
-        Objects.requireNonNull(statusOverlay).pack();
-        positionOverlay();
-    }
-
-    private void positionOverlay() {
+    private static void positionOverlay() {
         var overlay = Objects.requireNonNull(statusOverlay);
-        var score = score();
+        var score = Objects.requireNonNull(MainFrame.getInstance().getScore());
         var scoreLoc = score.getLocationOnScreen();
         var scoreSize = score.getSize();
         var overlaySize = overlay.getPreferredSize();
@@ -272,6 +228,11 @@ public abstract class E2ETest {
     /**
      * Deselects rest mode by clicking the toolbar button if it is currently active.
      */
+    protected static void deselectSelection() {
+        GuiActionRunner.execute(() -> Actions.DESELECT_ACTION.actionPerformed(
+            new ActionEvent(Actions.DESELECT_ACTION, ActionEvent.ACTION_PERFORMED, "")));
+    }
+
     protected void deselectRestMode() {
         if (Actions.REST_ACTION.isSelected()) {
             clickToolbarButton(Actions.REST_ACTION);
@@ -632,116 +593,27 @@ public abstract class E2ETest {
     }
 
     /**
-     * Pauses for {@link #ACTION_DELAY_MS} so you can watch the test visually.
+     * Returns the current delay in ms between UI actions, accounting for slow mode.
+     */
+    private static int getActionDelayMs() {
+        return slowMode ? 1000 : BASE_ACTION_DELAY_MS;
+    }
+
+    /**
+     * Pauses for {@link #getActionDelayMs()} so you can watch the test visually.
      */
     protected void pause() {
-        if (ACTION_DELAY_MS > 0) {
+        var delayMs = getActionDelayMs();
+
+        if (delayMs > 0) {
             robot.waitForIdle();
 
             try {
-                Thread.sleep(ACTION_DELAY_MS);
+                Thread.sleep(delayMs);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
             }
         }
-    }
-
-    /**
-     * Functional interface for test steps that may throw checked exceptions.
-     */
-    @FunctionalInterface
-    protected interface TestStep {
-        void run(int step) throws Exception;
-    }
-
-    /**
-     * Executes a logical step within a test. Updates the status overlay,
-     * then in debug mode shows a confirm dialog: OK runs the step, Skip
-     * skips it and continues to the next step, Stop exits the JVM.
-     * In slow mode, adds extra delay before the step.
-     *
-     * @param stepNumber auto-incremented step number (pass {@code ++step})
-     * @param description short label for the step (shown in overlay and dialog)
-     * @param step the action and assertions to run
-     */
-    protected void debugStep(int stepNumber, String description, TestStep step) throws Exception {
-        currentTestName = stepNumber + ": " + description;
-        GuiActionRunner.execute(() -> updateStatusOverlay());
-
-        if (SLOW_MODE && !DEBUG_MODE) {
-            try {
-                Thread.sleep(1000);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-            }
-        }
-
-        if (DEBUG_MODE) {
-            int result = showDebugConfirm(description);
-
-            if (result == DEBUG_STOP) {
-                System.exit(0);
-            }
-
-            if (result == DEBUG_SKIP) {
-                return;
-            }
-
-            // Let the debug dialog fully dispose before running the step
-            pause();
-        }
-
-        step.run(stepNumber);
-    }
-
-    /**
-     * In debug mode, shows a confirm dialog with OK/Skip/Stop buttons.
-     * Stop exits the JVM. Skip sets {@code skipClass = true}.
-     */
-    private void debugConfirm(String message) {
-        if (!DEBUG_MODE) {
-            return;
-        }
-
-        int result = showDebugConfirm(message);
-
-        if (result == DEBUG_STOP) {
-            System.exit(0);
-        }
-
-        if (result == DEBUG_SKIP) {
-            skipClass = true;
-        }
-    }
-
-    /**
-     * Shows a confirm dialog with OK/Skip/Stop buttons and returns the chosen option.
-     */
-    private int showDebugConfirm(String message) {
-        var result = new int[1];
-        var latch = new java.util.concurrent.CountDownLatch(1);
-
-        SwingUtilities.invokeLater(() -> {
-            result[0] = Dialogs.showOptionDialog(
-                MainFrame.getInstance(),
-                "E2E Debug",
-                message,
-                JOptionPane.DEFAULT_OPTION,
-                JOptionPane.QUESTION_MESSAGE,
-                null,
-                DEBUG_OPTIONS,
-                DEBUG_OPTIONS[DEBUG_OK]
-            );
-            latch.countDown();
-        });
-
-        try {
-            latch.await();
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
-
-        return result[0];
     }
 
     // -- Model query helpers --
@@ -796,16 +668,40 @@ public abstract class E2ETest {
 
     // -- Test result tracking --
 
-    static class ResultTracker implements TestWatcher, ExecutionCondition {
+    static class ResultTracker implements TestWatcher, ExecutionCondition, BeforeTestExecutionCallback {
+
+        private boolean continueMode = false;
+
+        @Override
+        public void beforeTestExecution(ExtensionContext context) {
+            var testIdentity = buildTestIdentity(context);
+            GuiActionRunner.execute(() -> updateStatusOverlay(testIdentity));
+
+            if (DEBUG_MODE && !continueMode) {
+                showDebugDialog(testIdentity);
+            }
+
+            if (slowMode) {
+                try {
+                    Thread.sleep(1000);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+        }
 
         @Override
         public void testSuccessful(ExtensionContext context) {
             passCount++;
+            var testIdentity = buildTestIdentity(context);
+            GuiActionRunner.execute(() -> updateStatusOverlay(testIdentity));
         }
 
         @Override
         public void testFailed(ExtensionContext context, Throwable cause) {
             failCount++;
+            var testIdentity = buildTestIdentity(context);
+            GuiActionRunner.execute(() -> updateStatusOverlay(testIdentity));
         }
 
         @Override
@@ -815,6 +711,137 @@ public abstract class E2ETest {
             }
 
             return ConditionEvaluationResult.enabled("");
+        }
+
+        /**
+         * Builds a display string like "OuterClass > NestedClass > methodName"
+         * from the ExtensionContext parent chain.
+         */
+        private static String buildTestIdentity(ExtensionContext context) {
+            var parts = new java.util.ArrayList<String>();
+            var current = context;
+
+            while (current != null) {
+                var displayName = current.getDisplayName();
+
+                // Skip the engine-level context (e.g. "JUnit Jupiter")
+                if (current.getParent().isEmpty()) {
+                    break;
+                }
+
+                // Strip trailing "()" from method display names
+                if (displayName.endsWith("()")) {
+                    displayName = displayName.substring(0, displayName.length() - 2);
+                }
+
+                parts.addFirst(displayName);
+                current = current.getParent().orElse(null);
+            }
+
+            return String.join(" > ", parts);
+        }
+
+        private static void updateStatusOverlay(String testIdentity) {
+            if (statusLabel == null || statusOverlay == null) {
+                return;
+            }
+
+            var text = String.format(
+                "<html>&nbsp;&nbsp;<font color='#4caf50'>+%d</font>&nbsp;<font color='#f44336'>-%d</font>"
+                    + "&nbsp;&nbsp;&mdash;&nbsp;&nbsp;%s&nbsp;&nbsp;</html>",
+                passCount,
+                failCount,
+                testIdentity.replace(">", "&gt;")
+            );
+
+            statusLabel.setText(text);
+            statusOverlay.pack();
+            positionOverlay();
+        }
+
+        private enum DebugAction { OK, CONTINUE, STOP }
+
+        /**
+         * Shows a custom 4-button debug dialog: OK / Slow / Continue / Stop.
+         * OK runs the test and pauses at the next one.
+         * Slow toggles slow mode on/off (dialog stays open).
+         * Continue sets continueMode and dismisses.
+         * Stop exits the JVM.
+         */
+        private void showDebugDialog(String testIdentity) {
+            var result = new DebugAction[]{DebugAction.OK};
+            var latch = new java.util.concurrent.CountDownLatch(1);
+
+            SwingUtilities.invokeLater(() -> {
+                var dialog = new JDialog(MainFrame.getInstance(), "E2E Debug", true);
+                dialog.setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
+
+                var messageLabel = new JLabel(testIdentity);
+                messageLabel.setBorder(BorderFactory.createEmptyBorder(12, 16, 12, 16));
+
+                var okButton = new JButton("OK");
+                var slowButton = new JButton(slowMode ? "Slow Off" : "Slow On");
+                var continueButton = new JButton("Continue");
+                var stopButton = new JButton("Stop");
+
+                okButton.addActionListener(_ -> {
+                    result[0] = DebugAction.OK;
+                    dialog.dispose();
+                    latch.countDown();
+                });
+
+                slowButton.addActionListener(_ -> {
+                    slowMode = !slowMode;
+                    slowButton.setText(slowMode ? "Slow Off" : "Slow On");
+                });
+
+                continueButton.addActionListener(_ -> {
+                    result[0] = DebugAction.CONTINUE;
+                    dialog.dispose();
+                    latch.countDown();
+                });
+
+                stopButton.addActionListener(_ -> {
+                    result[0] = DebugAction.STOP;
+                    dialog.dispose();
+                    latch.countDown();
+                });
+
+                var buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 13, 0));
+                buttonPanel.setBorder(BorderFactory.createEmptyBorder(0, 16, 13, 16));
+                buttonPanel.add(stopButton);
+                buttonPanel.add(continueButton);
+                buttonPanel.add(slowButton);
+                buttonPanel.add(okButton);
+
+                dialog.getRootPane().setDefaultButton(okButton);
+                dialog.setLayout(new BorderLayout());
+                dialog.add(messageLabel, BorderLayout.CENTER);
+                dialog.add(buttonPanel, BorderLayout.SOUTH);
+                dialog.pack();
+                dialog.setLocationRelativeTo(MainFrame.getInstance());
+                dialog.addWindowListener(new java.awt.event.WindowAdapter() {
+                    @Override
+                    public void windowOpened(java.awt.event.WindowEvent e) {
+                        okButton.requestFocusInWindow();
+                    }
+                });
+                dialog.setVisible(true);
+            });
+
+            try {
+                latch.await();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+
+            if (result[0] == DebugAction.STOP) {
+                System.exit(0);
+            }
+
+            if (result[0] == DebugAction.CONTINUE) {
+                continueMode = true;
+            }
         }
     }
 }

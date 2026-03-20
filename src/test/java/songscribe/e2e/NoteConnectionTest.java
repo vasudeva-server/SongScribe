@@ -30,7 +30,14 @@ import java.util.List;
 import java.util.Objects;
 
 import org.assertj.swing.edt.GuiActionRunner;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInstance;
+import org.junit.jupiter.api.TestMethodOrder;
 
 import songscribe.midi.GlissandoMidiHelper;
 import songscribe.midi.PlaybackSettings;
@@ -80,79 +87,92 @@ class NoteConnectionTest extends E2ETest {
         }
     }
 
-    @Test
-    void testNoteConnectionOperations() throws Exception {
-        loadFixture("connections");
-        int stepCounter = 0;
 
-        // --- Non-mutating: Glissando selection and MIDI ---
+    @Nested
+    @TestInstance(TestInstance.Lifecycle.PER_CLASS)
+    class GlissandoSelection {
 
-        debugStep(++stepCounter, "Click-select glissando", (step) -> {
+        @BeforeAll
+        void setUp() throws Exception {
+            resetComposition();
+            loadFixture("connections");
+        }
+
+        @BeforeEach
+        void resetState() {
+            deselectSelection();
+        }
+
+        @Test
+        void testClickSelectGlissando() {
             enterSelectMode();
             clickAt(midpoint(0, Element.PAIR_B_SRC.index, Element.PAIR_B_TGT.index));
 
             var lss = Objects.requireNonNull(score().getLineComponent(0)).getLineSelectionState();
             assertAll(
                 () -> assertThat(Objects.requireNonNull(lss).hasGlissandoSelection())
-                    .as(step + ": glissando selected by click").isTrue(),
+                    .as("glissando selected by click").isTrue(),
                 () -> assertThat(Objects.requireNonNull(lss).getSelectedGlissandoElementIndex())
-                    .as(step + ": correct element index").isEqualTo(Element.PAIR_B_SRC.index)
+                    .as("correct element index").isEqualTo(Element.PAIR_B_SRC.index)
             );
-        });
+        }
 
-        debugStep(++stepCounter, "Source note selection", (step) -> {
+        @Test
+        void testSelectSourceNote() {
+            enterSelectMode();
             clickAt(noteScreenPosition(0, Element.PAIR_B_SRC.index));
 
             var lss = Objects.requireNonNull(score().getLineComponent(0)).getLineSelectionState();
             assertThat(Objects.requireNonNull(lss).isElementSelected(Element.PAIR_B_SRC.index))
-                .as(step + ": source note selected").isTrue();
+                .as("source note selected").isTrue();
 
             var note = composition().getLine(0).getElement(Element.PAIR_B_SRC.index);
             //noinspection ObjectEquality
             assertThat(note.getGlissando() != StaffElement.NO_GLISSANDO)
-                .as(step + ": source has glissando").isTrue();
-        });
+                .as("source has glissando").isTrue();
+        }
 
-        debugStep(++stepCounter, "Target note selection", (step) -> {
+        @Test
+        void testSelectTargetNote() {
+            enterSelectMode();
             clickAt(noteScreenPosition(0, Element.PAIR_B_TGT.index));
 
             var lss = Objects.requireNonNull(score().getLineComponent(0)).getLineSelectionState();
             assertThat(Objects.requireNonNull(lss).isElementSelected(Element.PAIR_B_TGT.index))
-                .as(step + ": target note selected").isTrue();
+                .as("target note selected").isTrue();
 
             var sourceNote = composition().getLine(0).getElement(Element.PAIR_B_SRC.index);
             assertThat(sourceNote.getGlissando().type)
-                .as(step + ": source has connected glissando pointing to target")
+                .as("source has connected glissando pointing to target")
                 .isEqualTo(StaffElement.Glissando.Type.CONNECTED);
-        });
+        }
 
-        debugStep(++stepCounter, "No pitch bend without glissando", (step) -> {
+        @Test
+        void testNoPitchBendWithoutGlissando() {
             var note = composition().getLine(0).getElement(Element.PAIR_A_SRC.index);
             //noinspection ObjectEquality
             assertThat(note.getGlissando() == StaffElement.NO_GLISSANDO)
-                .as(step + ": pair A source has no glissando").isTrue();
-        });
+                .as("pair A source has no glissando").isTrue();
+        }
+    }
 
-        debugStep(++stepCounter, "Tie persistence through save/load", (step) -> {
-            var line = composition().getLine(0);
-            var tie = line.getTies().findInterval(Element.TIED_1.index);
-            assertThat(tie).as(step + ": pre-tied pair exists").isNotNull();
 
-            var reloaded = roundTripOnEdt();
-            var reloadedLine = reloaded.getLine(0);
-            var reloadedTie = reloadedLine.getTies().findInterval(Element.TIED_1.index);
-            assertAll(
-                () -> assertThat(reloadedTie).as(step + ": save/load: tie preserved").isNotNull(),
-                () -> assertThat(Objects.requireNonNull(reloadedTie).getStart()).as(step + ": tie start").isEqualTo(Element.TIED_1.index),
-                () -> assertThat(Objects.requireNonNull(reloadedTie).getEnd()).as(step + ": tie end").isEqualTo(Element.TIED_2.index)
-            );
-        });
+    @Nested
+    @TestInstance(TestInstance.Lifecycle.PER_CLASS)
+    @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
+    class Beaming {
 
-        // --- Mutating: Beam and stem operations (eighth notes) ---
+        private boolean originalUpper;
 
-        var originalUpper = new boolean[1];
+        @BeforeAll
+        void setUp() throws Exception {
+            resetComposition();
+            loadFixture("connections");
+        }
 
-        debugStep(++stepCounter, "Toggle beam on", (step) -> {
+        @Order(1)
+        @Test
+        void testToggleBeamOn() {
             enterSelectMode();
             clickAt(noteScreenPosition(0, Element.EIGHTH_1.index));
             shiftClickAt(noteScreenPosition(0, Element.EIGHTH_2.index));
@@ -161,52 +181,60 @@ class NoteConnectionTest extends E2ETest {
             performLayout(0);
 
             assertAll(
-                () -> assertThat(isBeamed(0, Element.EIGHTH_1.index)).as(step + "a: note 1 beamed").isTrue(),
-                () -> assertThat(isBeamed(0, Element.EIGHTH_2.index)).as(step + "b: note 2 beamed").isTrue()
+                () -> assertThat(isBeamed(0, Element.EIGHTH_1.index)).as("note 1 beamed").isTrue(),
+                () -> assertThat(isBeamed(0, Element.EIGHTH_2.index)).as("note 2 beamed").isTrue()
             );
-        });
+        }
 
-        debugStep(++stepCounter, "Flip stem (beamed)", (step) -> {
+        @Order(2)
+        @Test
+        void testFlipStemWhileBeamed() {
             var note = composition().getLine(0).getElement(Element.EIGHTH_1.index);
-            originalUpper[0] = note.isUpper();
+            originalUpper = note.isUpper();
 
             triggerAction(Actions.FLIP_STEM_DIRECTION_ACTION);
 
             assertAll(
                 () -> assertThat(note.isStemDirectionAuto())
-                    .as(step + ": stem direction not auto").isFalse(),
+                    .as("stem direction not auto").isFalse(),
                 () -> assertThat(note.isUpper())
-                    .as(step + ": isUpper changed").isNotEqualTo(originalUpper[0])
+                    .as("isUpper changed").isNotEqualTo(originalUpper)
             );
-        });
+        }
 
-        debugStep(++stepCounter, "Flip stem back (beamed)", (step) -> {
+        @Order(3)
+        @Test
+        void testFlipStemBackWhileBeamed() {
             var note = composition().getLine(0).getElement(Element.EIGHTH_1.index);
 
             triggerAction(Actions.FLIP_STEM_DIRECTION_ACTION);
 
             assertThat(note.isUpper())
-                .as(step + ": isUpper restored").isEqualTo(originalUpper[0]);
-        });
+                .as("isUpper restored").isEqualTo(originalUpper);
+        }
 
-        debugStep(++stepCounter, "Toggle beam off", (step) -> {
+        @Order(4)
+        @Test
+        void testToggleBeamOff() {
             triggerAction(Actions.TOGGLE_BEAM_ACTION);
             performLayout(0);
 
             assertAll(
-                () -> assertThat(isBeamed(0, Element.EIGHTH_1.index)).as(step + "a: note 1 unbeamed").isFalse(),
-                () -> assertThat(isBeamed(0, Element.EIGHTH_2.index)).as(step + "b: note 2 unbeamed").isFalse()
+                () -> assertThat(isBeamed(0, Element.EIGHTH_1.index)).as("note 1 unbeamed").isFalse(),
+                () -> assertThat(isBeamed(0, Element.EIGHTH_2.index)).as("note 2 unbeamed").isFalse()
             );
-        });
+        }
 
-        debugStep(++stepCounter, "Flip stem (unbeamed) + persistence", (step) -> {
+        @Order(5)
+        @Test
+        void testFlipStemUnbeamedWithPersistence() {
             var note = composition().getLine(0).getElement(Element.EIGHTH_1.index);
             var upperBefore = note.isUpper();
 
             triggerAction(Actions.FLIP_STEM_DIRECTION_ACTION);
 
-            assertThat(note.isStemDirectionAuto()).as(step + ": stem direction not auto").isFalse();
-            assertThat(note.isUpper()).as(step + ": isUpper changed").isNotEqualTo(upperBefore);
+            assertThat(note.isStemDirectionAuto()).as("stem direction not auto").isFalse();
+            assertThat(note.isUpper()).as("isUpper changed").isNotEqualTo(upperBefore);
 
             var flippedUpper = note.isUpper();
             var reloaded = roundTripOnEdt();
@@ -214,15 +242,45 @@ class NoteConnectionTest extends E2ETest {
 
             assertAll(
                 () -> assertThat(reloadedNote.isStemDirectionAuto())
-                    .as(step + ": save/load: not auto").isFalse(),
+                    .as("save/load: not auto").isFalse(),
                 () -> assertThat(reloadedNote.isUpper())
-                    .as(step + ": save/load: isUpper preserved").isEqualTo(flippedUpper)
+                    .as("save/load: isUpper preserved").isEqualTo(flippedUpper)
             );
-        });
+        }
+    }
 
-        // --- Mutating: Tie operations (eighth notes) ---
 
-        debugStep(++stepCounter, "Tie creation", (step) -> {
+    @Nested
+    @TestInstance(TestInstance.Lifecycle.PER_CLASS)
+    @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
+    class Ties {
+
+        @BeforeAll
+        void setUp() throws Exception {
+            resetComposition();
+            loadFixture("connections");
+        }
+
+        @Order(1)
+        @Test
+        void testTiePersistsThroughSaveLoad() {
+            var line = composition().getLine(0);
+            var tie = line.getTies().findInterval(Element.TIED_1.index);
+            assertThat(tie).as("pre-tied pair exists").isNotNull();
+
+            var reloaded = roundTripOnEdt();
+            var reloadedLine = reloaded.getLine(0);
+            var reloadedTie = reloadedLine.getTies().findInterval(Element.TIED_1.index);
+            assertAll(
+                () -> assertThat(reloadedTie).as("save/load: tie preserved").isNotNull(),
+                () -> assertThat(Objects.requireNonNull(reloadedTie).getStart()).as("tie start").isEqualTo(Element.TIED_1.index),
+                () -> assertThat(Objects.requireNonNull(reloadedTie).getEnd()).as("tie end").isEqualTo(Element.TIED_2.index)
+            );
+        }
+
+        @Order(2)
+        @Test
+        void testTieCreation() {
             enterSelectMode();
             clickAt(noteScreenPosition(0, Element.EIGHTH_1.index));
             shiftClickAt(noteScreenPosition(0, Element.EIGHTH_2.index));
@@ -232,34 +290,51 @@ class NoteConnectionTest extends E2ETest {
 
             var lss = Objects.requireNonNull(score().getLineComponent(0)).getLineSelectionState();
             assertAll(
-                () -> assertThat(isTied(0, Element.EIGHTH_1.index)).as(step + "a: note 1 tied").isTrue(),
-                () -> assertThat(isTied(0, Element.EIGHTH_2.index)).as(step + "b: note 2 tied").isTrue(),
-                () -> assertThat(Objects.requireNonNull(lss).canToggleTie()).as(step + ": can toggle tie").isTrue()
+                () -> assertThat(isTied(0, Element.EIGHTH_1.index)).as("note 1 tied").isTrue(),
+                () -> assertThat(isTied(0, Element.EIGHTH_2.index)).as("note 2 tied").isTrue(),
+                () -> assertThat(Objects.requireNonNull(lss).canToggleTie()).as("can toggle tie").isTrue()
             );
-        });
+        }
 
-        debugStep(++stepCounter, "Flip stem (tied)", (step) -> {
+        @Order(3)
+        @Test
+        void testFlipStemWhileTied() {
             var note = composition().getLine(0).getElement(Element.EIGHTH_1.index);
             var upperBefore = note.isUpper();
 
             triggerAction(Actions.FLIP_STEM_DIRECTION_ACTION);
 
-            assertThat(note.isUpper()).as(step + ": stem flipped while tied").isNotEqualTo(upperBefore);
-        });
+            assertThat(note.isUpper()).as("stem flipped while tied").isNotEqualTo(upperBefore);
+        }
 
-        debugStep(++stepCounter, "Tie removal", (step) -> {
+        @Order(4)
+        @Test
+        void testTieRemoval() {
             triggerAction(Actions.TOGGLE_TIE_ACTION);
             performLayout(0);
 
             assertAll(
-                () -> assertThat(isTied(0, Element.EIGHTH_1.index)).as(step + "a: note 1 untied").isFalse(),
-                () -> assertThat(isTied(0, Element.EIGHTH_2.index)).as(step + "b: note 2 untied").isFalse()
+                () -> assertThat(isTied(0, Element.EIGHTH_1.index)).as("note 1 untied").isFalse(),
+                () -> assertThat(isTied(0, Element.EIGHTH_2.index)).as("note 2 untied").isFalse()
             );
-        });
+        }
+    }
 
-        // --- Mutating: Glissando insertion and MIDI (pair A) ---
 
-        debugStep(++stepCounter, "Insert connected glissando on pair A", (step) -> {
+    @Nested
+    @TestInstance(TestInstance.Lifecycle.PER_CLASS)
+    @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
+    class GlissandoInsertion {
+
+        @BeforeAll
+        void setUp() throws Exception {
+            resetComposition();
+            loadFixture("connections");
+        }
+
+        @Order(1)
+        @Test
+        void testInsertConnectedGlissando() {
             enterEditMode();
             selectDuration(Actions.GLISSANDO_ACTION);
             clickAt(midpoint(0, Element.PAIR_A_SRC.index, Element.PAIR_A_TGT.index));
@@ -268,32 +343,36 @@ class NoteConnectionTest extends E2ETest {
             var note = composition().getLine(0).getElement(Element.PAIR_A_SRC.index);
             assertAll(
                 () -> assertThat(note.getGlissando())
-                    .as(step + ": has glissando").isNotSameAs(StaffElement.NO_GLISSANDO),
+                    .as("has glissando").isNotSameAs(StaffElement.NO_GLISSANDO),
                 () -> assertThat(note.getGlissando().type)
-                    .as(step + ": type is CONNECTED").isEqualTo(StaffElement.Glissando.Type.CONNECTED)
+                    .as("type is CONNECTED").isEqualTo(StaffElement.Glissando.Type.CONNECTED)
             );
-        });
+        }
 
-        debugStep(++stepCounter, "Connected glissando MIDI", (step) -> {
+        @Order(2)
+        @Test
+        void testConnectedGlissandoMidi() throws Exception {
             var track = buildMidiTrack();
             var bendEvents = getEventsByCommand(track, ShortMessage.PITCH_BEND);
             var ccEvents = getEventsByCommand(track, ShortMessage.CONTROL_CHANGE);
 
             assertAll(
-                () -> assertThat(bendEvents).as(step + ": pitch bend present").isNotEmpty(),
-                () -> assertThat(ccEvents).as(step + ": CC events present").hasSizeGreaterThanOrEqualTo(4),
+                () -> assertThat(bendEvents).as("pitch bend present").isNotEmpty(),
+                () -> assertThat(ccEvents).as("CC events present").hasSizeGreaterThanOrEqualTo(4),
                 () -> {
                     var controllers = ccEvents.stream()
                         .map(e -> ((ShortMessage) e.getMessage()).getData1())
                         .toList();
                     assertThat(controllers.subList(0, 4))
-                        .as(step + ": RPN 0 sequence")
+                        .as("RPN 0 sequence")
                         .containsExactly(101, 100, 6, 38);
                 }
             );
-        });
+        }
 
-        debugStep(++stepCounter, "Insert slide-out on pair A target", (step) -> {
+        @Order(3)
+        @Test
+        void testInsertSlideOut() {
             selectDuration(Actions.SLIDE_OUT_ACTION);
             clickAt(midpoint(0, Element.PAIR_A_TGT.index, Element.PAIR_B_SRC.index));
             performLayout(0);
@@ -301,13 +380,15 @@ class NoteConnectionTest extends E2ETest {
             var note = composition().getLine(0).getElement(Element.PAIR_A_TGT.index);
             assertAll(
                 () -> assertThat(note.getGlissando())
-                    .as(step + ": has glissando").isNotSameAs(StaffElement.NO_GLISSANDO),
+                    .as("has glissando").isNotSameAs(StaffElement.NO_GLISSANDO),
                 () -> assertThat(note.getGlissando().type)
-                    .as(step + ": type is SLIDE_OUT").isEqualTo(StaffElement.Glissando.Type.SLIDE_OUT)
+                    .as("type is SLIDE_OUT").isEqualTo(StaffElement.Glissando.Type.SLIDE_OUT)
             );
-        });
+        }
 
-        debugStep(++stepCounter, "Slide-out MIDI", (step) -> {
+        @Order(4)
+        @Test
+        void testSlideOutMidi() throws Exception {
             var track = buildMidiTrack();
             var bendEvents = getEventsByCommand(track, ShortMessage.PITCH_BEND);
             var ccEvents = getEventsByCommand(track, ShortMessage.CONTROL_CHANGE);
@@ -320,15 +401,15 @@ class NoteConnectionTest extends E2ETest {
                     == GlissandoMidiHelper.SLIDE_OUT_SEMITONES);
 
             assertAll(
-                () -> assertThat(bendEvents).as(step + ": slide-out pitch bend present").isNotEmpty(),
+                () -> assertThat(bendEvents).as("slide-out pitch bend present").isNotEmpty(),
                 () -> assertThat(hasSlideOutSensitivity)
-                    .as(step + ": RPN sensitivity includes slide-out semitones").isTrue()
+                    .as("RPN sensitivity includes slide-out semitones").isTrue()
             );
-        });
+        }
 
-        // --- Mutating: Glissando persistence ---
-
-        debugStep(++stepCounter, "Glissando persistence", (step) -> {
+        @Order(5)
+        @Test
+        void testGlissandoPersistence() {
             var originalNote = composition().getLine(0).getElement(Element.PAIR_A_SRC.index);
             var originalType = originalNote.getGlissando().type;
 
@@ -336,15 +417,28 @@ class NoteConnectionTest extends E2ETest {
             var reloadedNote = reloaded.getLine(0).getElement(Element.PAIR_A_SRC.index);
             assertAll(
                 () -> assertThat(reloadedNote.getGlissando())
-                    .as(step + ": save/load: glissando preserved").isNotSameAs(StaffElement.NO_GLISSANDO),
+                    .as("save/load: glissando preserved").isNotSameAs(StaffElement.NO_GLISSANDO),
                 () -> assertThat(reloadedNote.getGlissando().type)
-                    .as(step + ": save/load: glissando type preserved").isEqualTo(originalType)
+                    .as("save/load: glissando type preserved").isEqualTo(originalType)
             );
-        });
+        }
+    }
 
-        // --- Mutating: Drag to unison ---
 
-        debugStep(++stepCounter, "Drag to unison removes glissando", (step) -> {
+    @Nested
+    @TestInstance(TestInstance.Lifecycle.PER_CLASS)
+    @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
+    class GlissandoDeletion {
+
+        @BeforeAll
+        void setUp() throws Exception {
+            resetComposition();
+            loadFixture("connections");
+        }
+
+        @Order(1)
+        @Test
+        void testDragToUnisonRemovesGlissando() {
             enterSelectMode();
             var targetSp = Objects.requireNonNull(GuiActionRunner.execute(
                 () -> composition().getLine(0).getElement(Element.PAIR_C_TGT.index).getStaffPosition()
@@ -356,17 +450,17 @@ class NoteConnectionTest extends E2ETest {
             var note = composition().getLine(0).getElement(Element.PAIR_C_SRC.index);
             //noinspection ObjectEquality
             assertThat(note.getGlissando())
-                .as(step + ": glissando removed on unison").isSameAs(StaffElement.NO_GLISSANDO);
-        });
+                .as("glissando removed on unison").isSameAs(StaffElement.NO_GLISSANDO);
+        }
 
-        // --- Mutating: Glissando deletion ---
-
-        debugStep(++stepCounter, "Delete selected glissando (pair D)", (step) -> {
+        @Order(2)
+        @Test
+        void testDeleteSelectedGlissando() {
             enterSelectMode();
             clickAt(midpoint(0, Element.PAIR_D_SRC.index, Element.PAIR_D_TGT.index));
 
             var lss = Objects.requireNonNull(score().getLineComponent(0)).getLineSelectionState();
-            assertThat(Objects.requireNonNull(lss).hasGlissandoSelection()).as(step + ": glissando selected").isTrue();
+            assertThat(Objects.requireNonNull(lss).hasGlissandoSelection()).as("glissando selected").isTrue();
 
             robot.pressAndReleaseKey(KeyEvent.VK_DELETE);
             performLayout(0);
@@ -374,10 +468,12 @@ class NoteConnectionTest extends E2ETest {
             var note = composition().getLine(0).getElement(Element.PAIR_D_SRC.index);
             //noinspection ObjectEquality
             assertThat(note.getGlissando())
-                .as(step + ": delete selected glissando").isSameAs(StaffElement.NO_GLISSANDO);
-        });
+                .as("delete selected glissando").isSameAs(StaffElement.NO_GLISSANDO);
+        }
 
-        debugStep(++stepCounter, "Delete source note (pair E)", (step) -> {
+        @Order(3)
+        @Test
+        void testDeleteSourceNoteRemovesGlissando() {
             var countBefore = Objects.requireNonNull(GuiActionRunner.execute(
                 () -> composition().getLine(0).elementCount()
             ));
@@ -390,13 +486,15 @@ class NoteConnectionTest extends E2ETest {
             // After deleting PAIR_E_SRC: former pair E target shifts down by 1
             assertAll(
                 () -> assertThat(line.elementCount())
-                    .as(step + ": element count decreased").isEqualTo(countBefore - 1),
+                    .as("element count decreased").isEqualTo(countBefore - 1),
                 () -> assertThat(line.getElement(Element.PAIR_E_TGT_SHIFTED.index).getGlissando())
-                    .as(step + ": remaining note has no glissando").isSameAs(StaffElement.NO_GLISSANDO)
+                    .as("remaining note has no glissando").isSameAs(StaffElement.NO_GLISSANDO)
             );
-        });
+        }
 
-        debugStep(++stepCounter, "Delete target note (pair F)", (step) -> {
+        @Order(4)
+        @Test
+        void testDeleteTargetNoteRemovesGlissando() {
             // After previous deletion: pair F source and target each shifted down
             var countBefore = Objects.requireNonNull(GuiActionRunner.execute(
                 () -> composition().getLine(0).elementCount()
@@ -410,13 +508,13 @@ class NoteConnectionTest extends E2ETest {
             // Pair F source should have glissando removed (target deleted)
             assertAll(
                 () -> assertThat(line.elementCount())
-                    .as(step + ": element count decreased").isEqualTo(countBefore - 1),
+                    .as("element count decreased").isEqualTo(countBefore - 1),
                 () -> assertThat(line.getElement(Element.PAIR_F_SRC_SHIFTED.index).getGlissando())
-                    .as(step + ": source glissando removed").isSameAs(StaffElement.NO_GLISSANDO)
+                    .as("source glissando removed").isSameAs(StaffElement.NO_GLISSANDO)
             );
-        });
-
+        }
     }
+
 
     // -- Round-trip helper --
 

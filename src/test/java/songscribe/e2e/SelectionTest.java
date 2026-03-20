@@ -29,7 +29,16 @@ import java.util.Objects;
 import module java.desktop;
 
 import org.assertj.swing.edt.GuiActionRunner;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.ClassOrderer;
+import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestClassOrder;
+import org.junit.jupiter.api.TestInstance;
+import org.junit.jupiter.api.TestMethodOrder;
 
 import songscribe.music.ArticulationType;
 import songscribe.music.ElementType;
@@ -49,10 +58,9 @@ import songscribe.ui.layout.ScaleContext;
  * ToolbarReflectionTest, BarlineHitTest, and parts of TieTest and
  * ElementInsertionTest.
  */
-@SuppressWarnings("ValueOfIncrementOrDecrementUsed")
+@TestClassOrder(ClassOrderer.OrderAnnotation.class)
 class SelectionTest extends E2ETest {
 
-    // Element indices for selection1.mssw (ordinals match fixture order)
     // Element indices for selection1.mssw
     private enum Sel1 {
         QUARTER_TEMPO(0),
@@ -121,20 +129,34 @@ class SelectionTest extends E2ETest {
         Actions.THIRTY_SECOND_NOTE_ACTION,
     };
 
-    @Test
-    void testSelectionOperations() throws Exception {
-        loadFixture("selection1");
-        var stepCounter = 0;
 
-        debugStep(++stepCounter, "Mode toggle", (step) -> {
+    @Nested
+    @Order(1)
+    @TestInstance(TestInstance.Lifecycle.PER_CLASS)
+    class BasicSelection {
+
+        @BeforeAll
+        void setUp() throws Exception {
+            resetComposition();
+            loadFixture("selection1");
+        }
+
+        @BeforeEach
+        void resetState() {
+            deselectSelection();
+        }
+
+        @Test
+        void testModeToggle() {
             enterSelectMode();
-            assertThat(score().getMode()).as(step + ": select mode").isEqualTo(Mode.SELECT);
+            assertThat(score().getMode()).as("select mode").isEqualTo(Mode.SELECT);
 
             enterEditMode();
-            assertThat(score().getMode()).as(step + ": edit mode").isEqualTo(Mode.EDIT);
-        });
+            assertThat(score().getMode()).as("edit mode").isEqualTo(Mode.EDIT);
+        }
 
-        debugStep(++stepCounter, "Click empty space deselects", (step) -> {
+        @Test
+        void testClickEmptySpaceDeselects() {
             enterSelectMode();
             clickAt(noteScreenPosition(0, Sel1.WHOLE.index));
             var emptyPoint = Objects.requireNonNull(GuiActionRunner.execute(() -> {
@@ -143,26 +165,46 @@ class SelectionTest extends E2ETest {
                 return new Point(loc.x + lc.getWidth() - 10, loc.y + lc.getHeight() - 5);
             }));
             clickAt(emptyPoint);
-            assertThat(score().getSelectionSize()).as(step + ": click empty deselects").isEqualTo(0);
-        });
+            assertThat(score().getSelectionSize()).as("click empty deselects").isEqualTo(0);
+        }
+    }
 
-        debugStep(++stepCounter, "Shift-click extends selection", (step) -> {
+
+    @Nested
+    @Order(2)
+    @TestInstance(TestInstance.Lifecycle.PER_CLASS)
+    @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
+    class RangeSelection {
+
+        @BeforeAll
+        void setUp() throws Exception {
+            resetComposition();
+            loadFixture("selection1");
+        }
+
+        @Order(1)
+        @Test
+        void testShiftClickExtendsSelection() {
             enterSelectMode();
             clickAt(noteScreenPosition(0, Sel1.WHOLE.index));
             shiftClickAt(noteScreenPosition(0, Sel1.QUARTER.index));
-            assertThat(score().getSelectionSize()).as(step + ": shift-click range").isEqualTo(3);
-        });
+            assertThat(score().getSelectionSize()).as("shift-click range").isEqualTo(3);
+        }
 
-        debugStep(++stepCounter, "Shift-click shrinks selection", (step) -> {
+        @Order(2)
+        @Test
+        void testShiftClickShrinksSelection() {
             shiftClickAt(noteScreenPosition(0, Sel1.HALF.index));
             assertAll(
-                () -> assertThat(score().getSelectionSize()).as(step + ": shrunk range size").isEqualTo(2),
+                () -> assertThat(score().getSelectionSize()).as("shrunk range size").isEqualTo(2),
                 () -> assertThat(score().isElementSelected(Sel1.QUARTER.index, 0))
-                    .as(step + ": index 3 not selected").isFalse()
+                    .as("index 3 not selected").isFalse()
             );
-        });
+        }
 
-        debugStep(++stepCounter, "Drag-select", (step) -> {
+        @Order(3)
+        @Test
+        void testDragSelect() {
             enterSelectMode();
             var note1Pos = noteScreenPosition(0, Sel1.WHOLE.index);
             var note3Pos = noteScreenPosition(0, Sel1.QUARTER.index);
@@ -174,30 +216,52 @@ class SelectionTest extends E2ETest {
             pause();
             robot.releaseMouseButtons();
             pause();
-            assertThat(score().getSelectionSize()).as(step + ": drag-select").isGreaterThanOrEqualTo(3);
-        });
+            assertThat(score().getSelectionSize()).as("drag-select").isGreaterThanOrEqualTo(3);
+        }
 
-        debugStep(++stepCounter, "Cmd+D deselects", (step) -> {
+        @Order(4)
+        @Test
+        void testDeselectAll() {
             clickMenuItem(Actions.DESELECT_ACTION);
-            assertThat(score().getSelectionSize()).as(step + ": Cmd+D deselects").isEqualTo(0);
-        });
+            assertThat(score().getSelectionSize()).as("Cmd+D deselects").isEqualTo(0);
+        }
+    }
 
-        debugStep(++stepCounter, "Click in staff header selects line", (step) -> {
+
+    @Nested
+    @Order(3)
+    @TestInstance(TestInstance.Lifecycle.PER_CLASS)
+    class LineSelection {
+
+        @BeforeAll
+        void setUp() throws Exception {
+            resetComposition();
+            loadFixture("selection1");
+        }
+
+        @BeforeEach
+        void resetState() {
+            deselectSelection();
+        }
+
+        @Test
+        void testClickInStaffHeaderSelectsLine() {
             enterSelectMode();
             var lineClickPoint = Objects.requireNonNull(GuiActionRunner.execute(() -> {
                 var lc = Objects.requireNonNull(score().getLineComponent(0));
                 var loc = lc.getLocationOnScreen();
                 // Click at the midpoint of the clef — squarely inside the header region
                 int clefMidXPx = (int) Math.round(
-                        ScaleContext.getInstance().toPixels(LayoutConstants.CLEF_WIDTH_SS / 2.0));
+                    ScaleContext.getInstance().toPixels(LayoutConstants.CLEF_WIDTH_SS / 2.0));
                 var yPx = lc.staffPositionToYPx(0);
                 return new Point(loc.x + clefMidXPx, loc.y + yPx);
             }));
             clickAt(lineClickPoint);
-            assertThat(score().isLineSelected(0)).as(step + ": line selected").isTrue();
-        });
+            assertThat(score().isLineSelected(0)).as("line selected").isTrue();
+        }
 
-        debugStep(++stepCounter, "Click past elements does not select line", (step) -> {
+        @Test
+        void testClickPastElementsDoesNotSelectLine() {
             enterSelectMode();
             var lineClickPoint = Objects.requireNonNull(GuiActionRunner.execute(() -> {
                 var lc = Objects.requireNonNull(score().getLineComponent(0));
@@ -211,119 +275,233 @@ class SelectionTest extends E2ETest {
                 return new Point(loc.x + pastLastXPx, loc.y + yPx);
             }));
             clickAt(lineClickPoint);
-            assertThat(score().isLineSelected(0)).as(step + ": line not selected past music").isFalse();
-        });
+            assertThat(score().isLineSelected(0)).as("line not selected past music").isFalse();
+        }
+    }
 
-        debugStep(++stepCounter, "Duration reflection", (step) -> {
-            assertDurationReflected(step, Sel1.WHOLE.index, Actions.WHOLE_NOTE_ACTION);
-            assertDurationReflected(step, Sel1.HALF.index, Actions.HALF_NOTE_ACTION);
-            assertDurationReflected(step, Sel1.QUARTER.index, Actions.QUARTER_NOTE_ACTION);
-            assertDurationReflected(step, Sel1.EIGHTH.index, Actions.EIGHTH_NOTE_ACTION);
-            assertDurationReflected(step, Sel1.SIXTEENTH.index, Actions.SIXTEENTH_NOTE_ACTION);
-            assertDurationReflected(step, Sel1.THIRTY_SECOND.index, Actions.THIRTY_SECOND_NOTE_ACTION);
-        });
 
-        debugStep(++stepCounter, "Accidental reflection", (step) -> {
-            assertAccidentalReflected(step, Sel1.FLAT.index, Actions.FLAT_ACTION);
-            assertAccidentalReflected(step, Sel1.DOUBLE_FLAT.index, Actions.DOUBLE_FLAT_ACTION);
-            assertAccidentalReflected(step, Sel1.NATURAL_FLAT.index, Actions.NATURAL_FLAT_ACTION);
-            assertAccidentalReflected(step, Sel1.NATURAL.index, Actions.NATURAL_ACTION);
-            assertAccidentalReflected(step, Sel1.SHARP.index, Actions.SHARP_ACTION);
-            assertAccidentalReflected(step, Sel1.DOUBLE_SHARP.index, Actions.DOUBLE_SHARP_ACTION);
-            assertAccidentalReflected(step, Sel1.NATURAL_SHARP.index, Actions.NATURAL_SHARP_ACTION);
-        });
+    @Nested
+    @Order(4)
+    @TestInstance(TestInstance.Lifecycle.PER_CLASS)
+    class ToolbarReflection {
 
-        debugStep(++stepCounter, "Accidental-in-parens reflection", (step) -> {
+        @BeforeAll
+        void setUp() throws Exception {
+            resetComposition();
+            loadFixture("selection1");
+        }
+
+        @BeforeEach
+        void resetState() {
+            deselectSelection();
+        }
+
+        @Test
+        void testDurationReflection() {
+            enterSelectMode();
+            assertDurationReflected(Sel1.WHOLE.index, Actions.WHOLE_NOTE_ACTION);
+            assertDurationReflected(Sel1.HALF.index, Actions.HALF_NOTE_ACTION);
+            assertDurationReflected(Sel1.QUARTER.index, Actions.QUARTER_NOTE_ACTION);
+            assertDurationReflected(Sel1.EIGHTH.index, Actions.EIGHTH_NOTE_ACTION);
+            assertDurationReflected(Sel1.SIXTEENTH.index, Actions.SIXTEENTH_NOTE_ACTION);
+            assertDurationReflected(Sel1.THIRTY_SECOND.index, Actions.THIRTY_SECOND_NOTE_ACTION);
+        }
+
+        @Test
+        void testAccidentalReflection() {
+            enterSelectMode();
+            assertAccidentalReflected(Sel1.FLAT.index, Actions.FLAT_ACTION);
+            assertAccidentalReflected(Sel1.DOUBLE_FLAT.index, Actions.DOUBLE_FLAT_ACTION);
+            assertAccidentalReflected(Sel1.NATURAL_FLAT.index, Actions.NATURAL_FLAT_ACTION);
+            assertAccidentalReflected(Sel1.NATURAL.index, Actions.NATURAL_ACTION);
+            assertAccidentalReflected(Sel1.SHARP.index, Actions.SHARP_ACTION);
+            assertAccidentalReflected(Sel1.DOUBLE_SHARP.index, Actions.DOUBLE_SHARP_ACTION);
+            assertAccidentalReflected(Sel1.NATURAL_SHARP.index, Actions.NATURAL_SHARP_ACTION);
+        }
+
+        @Test
+        void testAccidentalInParensReflection() {
+            enterSelectMode();
             clickAt(noteScreenPosition(0, Sel1.FLAT_IN_PARENS.index));
-            assertActionSelected(Actions.FLAT_ACTION, true, step + ": underlying flat selected");
-            assertActionSelected(Actions.ACCIDENTAL_IN_PARENS_ACTION, true, step + ": in-parens selected");
-        });
+            assertActionSelected(Actions.FLAT_ACTION, true, "underlying flat selected");
+            assertActionSelected(Actions.ACCIDENTAL_IN_PARENS_ACTION, true, "in-parens selected");
+        }
 
-        debugStep(++stepCounter, "Dot reflection", (step) -> {
+        @Test
+        void testDotReflection() {
+            enterSelectMode();
             clickAt(noteScreenPosition(0, Sel1.DOTTED.index));
-            assertActionSelected(Actions.DOT_ACTION, true, step + ": dot selected");
-            assertActionSelected(Actions.DOUBLE_DOT_ACTION, false, step + ": double-dot not selected");
-        });
+            assertActionSelected(Actions.DOT_ACTION, true, "dot selected");
+            assertActionSelected(Actions.DOUBLE_DOT_ACTION, false, "double-dot not selected");
+        }
 
-        debugStep(++stepCounter, "Double-dot reflection", (step) -> {
+        @Test
+        void testDoubleDotReflection() {
+            enterSelectMode();
             clickAt(noteScreenPosition(0, Sel1.DOUBLE_DOTTED.index));
-            assertActionSelected(Actions.DOUBLE_DOT_ACTION, true, step + ": double-dot selected");
-            assertActionSelected(Actions.DOT_ACTION, false, step + ": dot not selected");
-        });
+            assertActionSelected(Actions.DOUBLE_DOT_ACTION, true, "double-dot selected");
+            assertActionSelected(Actions.DOT_ACTION, false, "dot not selected");
+        }
 
-        debugStep(++stepCounter, "Single quarter elements reflect quarter", (step) -> {
+        @Test
+        void testSingleElementReflectsQuarter() {
+            enterSelectMode();
             clickAt(noteScreenPosition(0, Sel1.QUARTER_TEMPO.index));
-            assertActionSelected(Actions.QUARTER_NOTE_ACTION, true, step + "a: index 0 is quarter");
+            assertActionSelected(Actions.QUARTER_NOTE_ACTION, true, "index 0 is quarter");
             clickAt(noteScreenPosition(0, Sel1.QUARTER.index));
-            assertActionSelected(Actions.QUARTER_NOTE_ACTION, true, step + "b: index 3 is quarter");
-        });
+            assertActionSelected(Actions.QUARTER_NOTE_ACTION, true, "index 3 is quarter");
+        }
+    }
 
-        debugStep(++stepCounter, "Mixed durations deselect both", (step) -> {
+
+    @Nested
+    @Order(5)
+    @TestInstance(TestInstance.Lifecycle.PER_CLASS)
+    class MultiSelectionReflection {
+
+        @BeforeAll
+        void setUp() throws Exception {
+            resetComposition();
+            loadFixture("selection1");
+        }
+
+        @BeforeEach
+        void resetState() {
+            deselectSelection();
+        }
+
+        @Test
+        void testMixedDurationsDeselectBoth() {
+            enterSelectMode();
             clickAt(noteScreenPosition(0, Sel1.QUARTER.index));
             shiftClickAt(noteScreenPosition(0, Sel1.HALF.index));
             assertAll(
-                () -> assertActionSelected(Actions.QUARTER_NOTE_ACTION, false, step + ": quarter not selected"),
-                () -> assertActionSelected(Actions.HALF_NOTE_ACTION, false, step + ": half not selected")
+                () -> assertActionSelected(Actions.QUARTER_NOTE_ACTION, false, "quarter not selected"),
+                () -> assertActionSelected(Actions.HALF_NOTE_ACTION, false, "half not selected")
             );
-        });
+        }
 
-        debugStep(++stepCounter, "Mixed accidentals deselect both", (step) -> {
+        @Test
+        void testMixedAccidentalsDeselectBoth() {
+            enterSelectMode();
             clickAt(noteScreenPosition(0, Sel1.FLAT.index));
             shiftClickAt(noteScreenPosition(0, Sel1.DOUBLE_FLAT.index));
             assertAll(
-                () -> assertActionSelected(Actions.FLAT_ACTION, false, step + ": flat not selected"),
-                () -> assertActionSelected(Actions.DOUBLE_FLAT_ACTION, false, step + ": double-flat not selected")
+                () -> assertActionSelected(Actions.FLAT_ACTION, false, "flat not selected"),
+                () -> assertActionSelected(Actions.DOUBLE_FLAT_ACTION, false, "double-flat not selected")
             );
-        });
+        }
+    }
 
-        loadFixture("selection2");
 
-        debugStep(++stepCounter, "Rest reflects duration + rest mode", (step) -> {
+    @Nested
+    @Order(6)
+    @TestInstance(TestInstance.Lifecycle.PER_CLASS)
+    class MixedElements {
+
+        @BeforeAll
+        void setUp() throws Exception {
+            resetComposition();
+            loadFixture("selection2");
+        }
+
+        @BeforeEach
+        void resetState() {
+            deselectSelection();
+        }
+
+        @Test
+        void testRestReflectsDurationAndRestMode() {
             enterSelectMode();
 
             // Select crotchet rest — large enough to click reliably
             clickAt(noteScreenPosition(0, Sel2.CROTCHET_REST.index));
-            assertDurationReflected(step, Sel2.CROTCHET_REST.index, Actions.QUARTER_NOTE_ACTION);
-            assertActionSelected(Actions.REST_ACTION, true, step + ": rest mode selected");
-        });
+            assertDurationReflected(Sel2.CROTCHET_REST.index, Actions.QUARTER_NOTE_ACTION);
+            assertActionSelected(Actions.REST_ACTION, true, "rest mode selected");
+        }
 
-        debugStep(++stepCounter, "Articulation reflection", (step) -> {
+        @Test
+        void testArticulationReflection() {
+            enterSelectMode();
             clickAt(noteScreenPosition(0, Sel2.STACCATO.index));
-            assertActionSelected(Actions.STACCATO_ACTION, true, step + ": staccato selected");
+            assertActionSelected(Actions.STACCATO_ACTION, true, "staccato selected");
 
             clickAt(noteScreenPosition(0, Sel2.ACCENT.index));
-            assertActionSelected(Actions.ACCENT_ACTION, true, step + ": accent selected");
+            assertActionSelected(Actions.ACCENT_ACTION, true, "accent selected");
 
             clickAt(noteScreenPosition(0, Sel2.FERMATA.index));
-            assertActionSelected(Actions.FERMATA_ACTION, true, step + ": fermata selected");
-        });
+            assertActionSelected(Actions.FERMATA_ACTION, true, "fermata selected");
+        }
 
-        debugStep(++stepCounter, "Single barline disables durations", (step) -> {
+        @Test
+        void testNoteAndRestEnablesDurations() {
+            enterSelectMode();
+            clickAt(noteScreenPosition(0, Sel2.CROTCHET_REST.index));
+            shiftClickAt(noteScreenPosition(0, Sel2.NOTE.index));
+            assertActionEnabled(Actions.QUARTER_NOTE_ACTION, true, "duration enabled for note+rest");
+        }
+
+        @Test
+        void testNoteAndBarlineEnablesBoth() {
+            enterSelectMode();
+            clickAt(noteScreenPosition(0, Sel2.NOTE.index));
+            shiftClickAt(noteScreenPosition(0, Sel2.SINGLE_BARLINE.index));
+            assertAll(
+                () -> assertActionEnabled(Actions.QUARTER_NOTE_ACTION, true, "duration enabled"),
+                () -> assertActionEnabled(Actions.BARLINE_ACTIONS[2], true, "barline enabled")
+            );
+        }
+    }
+
+
+    @Nested
+    @Order(7)
+    @TestInstance(TestInstance.Lifecycle.PER_CLASS)
+    class BarlineSelection {
+
+        @BeforeAll
+        void setUp() throws Exception {
+            resetComposition();
+            loadFixture("selection2");
+        }
+
+        @BeforeEach
+        void resetState() {
+            deselectSelection();
+        }
+
+        @Test
+        void testSingleBarlineDisablesDurations() {
+            enterSelectMode();
             clickAt(noteScreenPosition(0, Sel2.SINGLE_BARLINE.index));
             assertAll(
-                () -> verifyDurationsDisabled(step + ""),
-                () -> assertActionEnabled(Actions.BARLINE_ACTIONS[2], true, step + ": barline action enabled")
+                () -> verifyDurationsDisabled("single barline"),
+                () -> assertActionEnabled(Actions.BARLINE_ACTIONS[2], true, "barline action enabled")
             );
-        });
+        }
 
-        debugStep(++stepCounter, "Other barlines/repeats disable durations", (step) -> {
+        @Test
+        void testOtherBarlinesDisableDurations() {
+            enterSelectMode();
             clickAt(noteScreenPosition(0, Sel2.DOUBLE_BARLINE.index));
-            verifyDurationsDisabled(step + ": double");
+            verifyDurationsDisabled("double");
 
             clickAt(noteScreenPosition(0, Sel2.FINAL_DOUBLE_BARLINE.index));
-            verifyDurationsDisabled(step + ": final double");
+            verifyDurationsDisabled("final double");
 
             clickAt(noteScreenPosition(0, Sel2.REPEAT_LEFT.index));
-            verifyDurationsDisabled(step + ": repeat left");
+            verifyDurationsDisabled("repeat left");
 
             clickAt(noteScreenPosition(0, Sel2.REPEAT_RIGHT.index));
-            verifyDurationsDisabled(step + ": repeat right");
+            verifyDurationsDisabled("repeat right");
 
             clickAt(noteScreenPosition(0, Sel2.REPEAT_LEFT_RIGHT.index));
-            verifyDurationsDisabled(step + ": repeat left-right");
-        });
+            verifyDurationsDisabled("repeat left-right");
+        }
 
-        debugStep(++stepCounter, "Breath mark disables durations and barlines", (step) -> {
+        @Test
+        void testBreathMarkDisablesDurationsAndBarlines() {
+            enterSelectMode();
             // Breath marks are very small — use drag-select to reliably select
             var bmPos = noteScreenPosition(0, Sel2.BREATH_MARK.index);
             var dragStart = new Point(bmPos.x - 10, bmPos.y - 10);
@@ -335,93 +513,124 @@ class SelectionTest extends E2ETest {
             robot.releaseMouseButtons();
             pause();
             assertAll(
-                () -> verifyDurationsDisabled(step + ""),
-                () -> assertActionEnabled(Actions.BARLINE_ACTIONS[2], false, step + ": barline disabled"),
-                () -> assertActionEnabled(Actions.BREATH_MARK_ACTION, true, step + ": breath mark enabled")
+                () -> verifyDurationsDisabled("breath mark"),
+                () -> assertActionEnabled(Actions.BARLINE_ACTIONS[2], false, "barline disabled"),
+                () -> assertActionEnabled(Actions.BREATH_MARK_ACTION, true, "breath mark enabled")
             );
-        });
+        }
 
-        debugStep(++stepCounter, "Note + rest enables durations", (step) -> {
-            clickAt(noteScreenPosition(0, Sel2.CROTCHET_REST.index));
-            shiftClickAt(noteScreenPosition(0, Sel2.NOTE.index));
-            assertActionEnabled(Actions.QUARTER_NOTE_ACTION, true, step + ": duration enabled for note+rest");
-        });
-
-        debugStep(++stepCounter, "Note + barline enables both", (step) -> {
-            clickAt(noteScreenPosition(0, Sel2.NOTE.index));
-            shiftClickAt(noteScreenPosition(0, Sel2.SINGLE_BARLINE.index));
-            assertAll(
-                () -> assertActionEnabled(Actions.QUARTER_NOTE_ACTION, true, step + ": duration enabled"),
-                () -> assertActionEnabled(Actions.BARLINE_ACTIONS[2], true, step + ": barline enabled")
-            );
-        });
-
-        debugStep(++stepCounter, "Barlines only disables durations", (step) -> {
+        @Test
+        void testBarlinesOnlyDisablesDurations() {
+            enterSelectMode();
             clickAt(noteScreenPosition(0, Sel2.SINGLE_BARLINE.index));
             shiftClickAt(noteScreenPosition(0, Sel2.DOUBLE_BARLINE.index));
             assertAll(
-                () -> assertActionEnabled(Actions.QUARTER_NOTE_ACTION, false, step + ": duration disabled"),
-                () -> assertActionEnabled(Actions.DOT_ACTION, false, step + ": dot disabled"),
-                () -> assertActionEnabled(Actions.BARLINE_ACTIONS[2], true, step + ": barline enabled")
+                () -> assertActionEnabled(Actions.QUARTER_NOTE_ACTION, false, "duration disabled"),
+                () -> assertActionEnabled(Actions.DOT_ACTION, false, "dot disabled"),
+                () -> assertActionEnabled(Actions.BARLINE_ACTIONS[2], true, "barline enabled")
             );
-        });
+        }
 
-        debugStep(++stepCounter, "Deselect clears selection", (step) -> {
+        @Test
+        void testDeselectClearsSelection() {
+            enterSelectMode();
+            clickAt(noteScreenPosition(0, Sel2.SINGLE_BARLINE.index));
+            shiftClickAt(noteScreenPosition(0, Sel2.DOUBLE_BARLINE.index));
             clickMenuItem(Actions.DESELECT_ACTION);
-            assertThat(score().getSelectionSize()).as(step + ": selection cleared").isEqualTo(0);
-        });
+            assertThat(score().getSelectionSize()).as("selection cleared").isEqualTo(0);
+        }
+    }
 
-        debugStep(++stepCounter, "Glissando suppressed when target is rest", (step) -> {
-            enterEditMode();
+
+    @Nested
+    @Order(8)
+    @TestInstance(TestInstance.Lifecycle.PER_CLASS)
+    class GlissandoSuppression {
+
+        @BeforeAll
+        void setUp() throws Exception {
+            resetComposition();
+            loadFixture("selection2");
+        }
+
+        @BeforeEach
+        void resetState() {
+            deselectSelection();
+        }
+
+        @Test
+        void testGlissandoSuppressedWhenTargetIsRest() {
             clickToolbarButton(Actions.GLISSANDO_ACTION);
             hoverBetween(0, Sel2.TIED_2.index, Sel2.SEMIBREVE_REST.index);
             assertThat(GuiActionRunner.execute(() -> InsertionElementManager.shouldShowGlissandoPreview()))
-                .as(step + ": target is rest").isFalse();
-        });
+                .as("target is rest").isFalse();
+        }
 
-        debugStep(++stepCounter, "Glissando suppressed when source is rest", (step) -> {
+        @Test
+        void testGlissandoSuppressedWhenSourceIsRest() {
+            clickToolbarButton(Actions.GLISSANDO_ACTION);
             hoverBetween(0, Sel2.DEMI_SEMIQUAVER_REST.index, Sel2.NOTE.index);
             assertThat(GuiActionRunner.execute(() -> InsertionElementManager.shouldShowGlissandoPreview()))
-                .as(step + ": source is rest").isFalse();
-        });
+                .as("source is rest").isFalse();
+        }
 
-        debugStep(++stepCounter, "Glissando suppressed when both are rests", (step) -> {
+        @Test
+        void testGlissandoSuppressedWhenBothAreRests() {
+            clickToolbarButton(Actions.GLISSANDO_ACTION);
             hoverBetween(0, Sel2.SEMIBREVE_REST.index, Sel2.MINIM_REST.index);
             assertThat(GuiActionRunner.execute(() -> InsertionElementManager.shouldShowGlissandoPreview()))
-                .as(step + ": both rests").isFalse();
-        });
+                .as("both rests").isFalse();
+        }
 
-        debugStep(++stepCounter, "Slide-out suppressed when source is rest", (step) -> {
+        @Test
+        void testSlideOutSuppressedWhenSourceIsRest() {
             clickToolbarButton(Actions.SLIDE_OUT_ACTION);
             hoverBetween(0, Sel2.DEMI_SEMIQUAVER_REST.index, Sel2.NOTE.index);
             assertThat(GuiActionRunner.execute(InsertionElementManager::shouldShowGlissandoPreview))
-                .as(step + ": source is rest").isFalse();
-            selectDuration(Actions.QUARTER_NOTE_ACTION);
-        });
+                .as("source is rest").isFalse();
+        }
+    }
 
-        debugStep(++stepCounter, "Apply eighth preserves decorations", (step) -> {
+
+    @Nested
+    @Order(9)
+    @TestInstance(TestInstance.Lifecycle.PER_CLASS)
+    @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
+    class ActionApplication {
+
+        @BeforeAll
+        void setUp() throws Exception {
+            resetComposition();
+            loadFixture("selection2");
+        }
+
+        @Order(1)
+        @Test
+        void testApplyEighthPreservesDecorations() {
             enterSelectMode();
             clickAt(noteScreenPosition(0, Sel2.STACCATO.index));
             shiftClickAt(noteScreenPosition(0, Sel2.FERMATA.index));
             clickToolbarButton(Actions.EIGHTH_NOTE_ACTION);
             assertAll(
-                () -> verifyNoteType(0, Sel2.STACCATO.index, ElementType.QUAVER, step + "a: type"),
-                () -> verifyNoteType(0, Sel2.ACCENT.index, ElementType.QUAVER, step + "b: type"),
-                () -> verifyNoteType(0, Sel2.FERMATA.index, ElementType.QUAVER, step + "c: type"),
+                () -> verifyNoteType(0, Sel2.STACCATO.index, ElementType.QUAVER, "staccato type"),
+                () -> verifyNoteType(0, Sel2.ACCENT.index, ElementType.QUAVER, "accent type"),
+                () -> verifyNoteType(0, Sel2.FERMATA.index, ElementType.QUAVER, "fermata type"),
                 () -> assertThat(GuiActionRunner.execute(
                     () -> composition().getLine(0).getElement(Sel2.STACCATO.index)
                         .hasArticulation(ArticulationType.STACCATO)))
-                    .as(step + "a: staccato preserved").isTrue(),
+                    .as("staccato preserved").isTrue(),
                 () -> assertThat(GuiActionRunner.execute(
                     () -> composition().getLine(0).getElement(Sel2.ACCENT.index)
                         .hasArticulation(ArticulationType.ACCENT)))
-                    .as(step + "b: accent preserved").isTrue(),
-                () -> verifyFermata(0, Sel2.FERMATA.index, true, step + "c: fermata preserved"),
-                () -> assertThat(score().getSelectionSize()).as(step + ": selection preserved").isEqualTo(3)
+                    .as("accent preserved").isTrue(),
+                () -> verifyFermata(0, Sel2.FERMATA.index, true, "fermata preserved"),
+                () -> assertThat(score().getSelectionSize()).as("selection preserved").isEqualTo(3)
             );
-        });
+        }
 
-        debugStep(++stepCounter, "Apply half preserves note/rest kind", (step) -> {
+        @Order(2)
+        @Test
+        void testApplyHalfPreservesNoteRestKind() {
             clickAt(noteScreenPosition(0, Sel2.STACCATO.index));
             shiftClickAt(noteScreenPosition(0, Sel2.CROTCHET_REST.index));
             clickToolbarButton(Actions.HALF_NOTE_ACTION);
@@ -436,67 +645,188 @@ class SelectionTest extends E2ETest {
                 () -> composition().getLine(0).getElement(Sel2.CROTCHET_REST.index).getType()));
 
             assertAll(
-                () -> assertThat(staccatoType).as(step + "a: staccato is minim").isEqualTo(ElementType.MINIM),
-                () -> assertThat(accentType).as(step + "b: accent is minim").isEqualTo(ElementType.MINIM),
-                () -> assertThat(fermataType).as(step + "c: fermata is minim").isEqualTo(ElementType.MINIM),
-                () -> assertThat(restType).as(step + ": rest is minim rest").isEqualTo(ElementType.MINIM_REST),
-                () -> assertThat(staccatoType.isRest()).as(step + ": staccato is still a note").isFalse(),
-                () -> assertThat(restType.isRest()).as(step + ": rest is still a rest").isTrue()
+                () -> assertThat(staccatoType).as("staccato is minim").isEqualTo(ElementType.MINIM),
+                () -> assertThat(accentType).as("accent is minim").isEqualTo(ElementType.MINIM),
+                () -> assertThat(fermataType).as("fermata is minim").isEqualTo(ElementType.MINIM),
+                () -> assertThat(restType).as("rest is minim rest").isEqualTo(ElementType.MINIM_REST),
+                () -> assertThat(staccatoType.isRest()).as("staccato is still a note").isFalse(),
+                () -> assertThat(restType.isRest()).as("rest is still a rest").isTrue()
             );
-        });
+        }
 
-        debugStep(++stepCounter, "Apply flat to selection", (step) -> {
+        @Order(3)
+        @Test
+        void testApplyFlatToSelection() {
             clickAt(noteScreenPosition(0, Sel2.STACCATO.index));
             shiftClickAt(noteScreenPosition(0, Sel2.ACCENT.index));
             clickToolbarButton(Actions.FLAT_ACTION);
             assertAll(
-                () -> verifyAccidental(0, Sel2.STACCATO.index, Accidental.FLAT, step + "a"),
-                () -> verifyAccidental(0, Sel2.ACCENT.index, Accidental.FLAT, step + "b"),
-                () -> assertThat(score().getSelectionSize()).as(step + ": selection preserved").isEqualTo(2)
+                () -> verifyAccidental(0, Sel2.STACCATO.index, Accidental.FLAT, "staccato"),
+                () -> verifyAccidental(0, Sel2.ACCENT.index, Accidental.FLAT, "accent"),
+                () -> assertThat(score().getSelectionSize()).as("selection preserved").isEqualTo(2)
             );
-        });
+        }
 
-        debugStep(++stepCounter, "Apply natural to same selection", (step) -> {
+        @Order(4)
+        @Test
+        void testApplyNaturalToSelection() {
             clickToolbarButton(Actions.NATURAL_ACTION);
             assertAll(
-                () -> verifyAccidental(0, Sel2.STACCATO.index, Accidental.NATURAL, step + "a"),
-                () -> verifyAccidental(0, Sel2.ACCENT.index, Accidental.NATURAL, step + "b")
+                () -> verifyAccidental(0, Sel2.STACCATO.index, Accidental.NATURAL, "staccato"),
+                () -> verifyAccidental(0, Sel2.ACCENT.index, Accidental.NATURAL, "accent")
             );
-        });
+        }
 
-        performLayout(0);
+        @Order(5)
+        @Test
+        void testApplyDotToNotesAndRest() {
+            performLayout(0);
 
-        debugStep(++stepCounter, "Apply dot to notes and rest", (step) -> {
             clickAt(noteScreenPosition(0, Sel2.STACCATO.index));
             shiftClickAt(noteScreenPosition(0, Sel2.CROTCHET_REST.index));
             clickToolbarButton(Actions.DOT_ACTION);
             assertAll(
-                () -> verifyDotCount(0, Sel2.STACCATO.index, 1, step + "a"),
-                () -> verifyDotCount(0, Sel2.ACCENT.index, 1, step + "b"),
-                () -> verifyDotCount(0, Sel2.FERMATA.index, 1, step + "c"),
-                () -> verifyDotCount(0, Sel2.CROTCHET_REST.index, 1, step + "d")
+                () -> verifyDotCount(0, Sel2.STACCATO.index, 1, "staccato"),
+                () -> verifyDotCount(0, Sel2.ACCENT.index, 1, "accent"),
+                () -> verifyDotCount(0, Sel2.FERMATA.index, 1, "fermata"),
+                () -> verifyDotCount(0, Sel2.CROTCHET_REST.index, 1, "crotchet rest")
             );
-        });
+        }
 
-        debugStep(++stepCounter, "Apply fermata", (step) -> {
+        @Order(6)
+        @Test
+        void testApplyFermata() {
             clickAt(noteScreenPosition(0, Sel2.STACCATO.index));
             shiftClickAt(noteScreenPosition(0, Sel2.ACCENT.index));
             clickMenuItem(Actions.FERMATA_ACTION);
             assertAll(
-                () -> verifyFermata(0, Sel2.STACCATO.index, true, step + "a"),
-                () -> verifyFermata(0, Sel2.ACCENT.index, true, step + "b")
+                () -> verifyFermata(0, Sel2.STACCATO.index, true, "staccato"),
+                () -> verifyFermata(0, Sel2.ACCENT.index, true, "accent")
             );
-        });
+        }
 
-        debugStep(++stepCounter, "Toggle fermata off", (step) -> {
+        @Order(7)
+        @Test
+        void testToggleFermataOff() {
             clickMenuItem(Actions.FERMATA_ACTION);
             assertAll(
-                () -> verifyFermata(0, Sel2.STACCATO.index, false, step + "a"),
-                () -> verifyFermata(0, Sel2.ACCENT.index, false, step + "b")
+                () -> verifyFermata(0, Sel2.STACCATO.index, false, "staccato"),
+                () -> verifyFermata(0, Sel2.ACCENT.index, false, "accent")
             );
-        });
+        }
+    }
 
-        debugStep(++stepCounter, "Alt+drag tied note from EDIT mode", (step) -> {
+
+    @Nested
+    @Order(10)
+    @TestInstance(TestInstance.Lifecycle.PER_CLASS)
+    class ClickAndMode {
+
+        @BeforeAll
+        void setUp() throws Exception {
+            resetComposition();
+            loadFixture("selection2");
+        }
+
+        @BeforeEach
+        void resetState() {
+            deselectSelection();
+        }
+
+        @Test
+        void testAltClickEmptySpaceEntersSelectWithNoSelection() {
+            enterEditMode();
+            var emptyPoint = Objects.requireNonNull(GuiActionRunner.execute(() -> {
+                var lc = Objects.requireNonNull(score().getLineComponent(0));
+                var loc = lc.getLocationOnScreen();
+                return new Point(loc.x + lc.getWidth() - 10, loc.y + lc.getHeight() / 2);
+            }));
+            altClickAt(emptyPoint);
+            assertAll(
+                () -> assertThat(score().getMode()).as("mode is SELECT").isEqualTo(Mode.SELECT),
+                () -> assertThat(score().getSelectionSize()).as("no selection").isEqualTo(0)
+            );
+        }
+
+        @Test
+        void testClickNoteInSelectModeSelectsIt() {
+            enterSelectMode();
+            clickAt(noteScreenPosition(0, Sel2.NOTE.index));
+            assertAll(
+                () -> assertThat(score().getSingleSelectedElement())
+                    .as("note selected")
+                    .isEqualTo(composition().getLine(0).getElement(Sel2.NOTE.index)),
+                () -> assertThat(score().getMode()).as("mode stays SELECT").isEqualTo(Mode.SELECT)
+            );
+        }
+
+        @Test
+        void testAltClickInSelectModeSameAsClick() {
+            enterSelectMode();
+            altClickAt(noteScreenPosition(0, Sel2.STACCATO.index));
+            assertThat(score().getSingleSelectedElement())
+                .as("note selected via alt+click")
+                .isEqualTo(composition().getLine(0).getElement(Sel2.STACCATO.index));
+        }
+
+        @Test
+        void testReleaseWithoutDragKeepsSelection() {
+            enterSelectMode();
+            clickAt(noteScreenPosition(0, Sel2.NOTE.index));
+            assertAll(
+                () -> assertThat(score().getSingleSelectedElement())
+                    .as("note stays selected")
+                    .isEqualTo(composition().getLine(0).getElement(Sel2.NOTE.index)),
+                () -> assertThat(score().getMode()).as("mode stays SELECT").isEqualTo(Mode.SELECT)
+            );
+        }
+    }
+
+
+    @Nested
+    @Order(11)
+    @TestInstance(TestInstance.Lifecycle.PER_CLASS)
+    @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
+    class Drag {
+
+        @BeforeAll
+        void setUp() throws Exception {
+            resetComposition();
+            loadFixture("selection2");
+        }
+
+        @BeforeEach
+        void resetState() {
+            deselectSelection();
+        }
+
+        @Order(1)
+        @Test
+        void testDragNoteInSelectMode() {
+            enterSelectMode();
+            var countBefore = Objects.requireNonNull(GuiActionRunner.execute(
+                () -> composition().getLine(0).elementCount()));
+            var originalSp = Objects.requireNonNull(GuiActionRunner.execute(
+                () -> composition().getLine(0).getElement(Sel2.NOTE.index).getStaffPosition()
+            ));
+            var targetSp = originalSp - 4;
+
+            dragNote(0, Sel2.NOTE.index, targetSp);
+            performLayout(0);
+
+            assertAll(
+                () -> assertThat(GuiActionRunner.execute(
+                    () -> composition().getLine(0).getElement(Sel2.NOTE.index).getStaffPosition()
+                )).as("staffPosition updated").isEqualTo(targetSp),
+                () -> assertThat(GuiActionRunner.execute(
+                    () -> composition().getLine(0).elementCount()
+                )).as("elementCount unchanged").isEqualTo(countBefore)
+            );
+        }
+
+        @Order(2)
+        @Test
+        void testAltDragTiedNoteFromEditMode() {
             enterEditMode();
             var originalSp = Objects.requireNonNull(GuiActionRunner.execute(
                 () -> composition().getLine(0).getElement(Sel2.TIED_1.index).getStaffPosition()
@@ -515,81 +845,19 @@ class SelectionTest extends E2ETest {
             performLayout(0);
 
             assertAll(
-                () -> assertThat(score().getMode()).as(step + ": mode is SELECT").isEqualTo(Mode.SELECT),
+                () -> assertThat(score().getMode()).as("mode is SELECT").isEqualTo(Mode.SELECT),
                 () -> assertThat(GuiActionRunner.execute(
                     () -> composition().getLine(0).getElement(Sel2.TIED_1.index).getStaffPosition()
-                )).as(step + ": tied note source moved").isEqualTo(targetSp),
+                )).as("tied note source moved").isEqualTo(targetSp),
                 () -> assertThat(GuiActionRunner.execute(
                     () -> composition().getLine(0).getElement(Sel2.TIED_2.index).getStaffPosition()
-                )).as(step + ": tied note partner moved").isEqualTo(targetSp)
+                )).as("tied note partner moved").isEqualTo(targetSp)
             );
-        });
+        }
 
-        debugStep(++stepCounter, "Drag note in SELECT mode", (step) -> {
-            var countBefore = Objects.requireNonNull(GuiActionRunner.execute(() -> composition().getLine(0).elementCount()));
-            var originalSp = Objects.requireNonNull(GuiActionRunner.execute(
-                () -> composition().getLine(0).getElement(Sel2.NOTE.index).getStaffPosition()
-            ));
-            var targetSp = originalSp - 4;
-
-            dragNote(0, Sel2.NOTE.index, targetSp);
-            performLayout(0);
-
-            assertAll(
-                () -> assertThat(GuiActionRunner.execute(
-                    () -> composition().getLine(0).getElement(Sel2.NOTE.index).getStaffPosition()
-                )).as(step + ": staffPosition updated").isEqualTo(targetSp),
-                () -> assertThat(GuiActionRunner.execute(
-                    () -> composition().getLine(0).elementCount()
-                )).as(step + ": elementCount unchanged").isEqualTo(countBefore)
-            );
-        });
-
-        debugStep(++stepCounter, "Alt+click on empty space enters SELECT, no selection", (step) -> {
-            enterEditMode();
-            var emptyPoint = Objects.requireNonNull(GuiActionRunner.execute(() -> {
-                var lc = Objects.requireNonNull(score().getLineComponent(0));
-                var loc = lc.getLocationOnScreen();
-                return new Point(loc.x + lc.getWidth() - 10, loc.y + lc.getHeight() / 2);
-            }));
-            altClickAt(emptyPoint);
-            assertAll(
-                () -> assertThat(score().getMode()).as(step + ": mode is SELECT").isEqualTo(Mode.SELECT),
-                () -> assertThat(score().getSelectionSize()).as(step + ": no selection").isEqualTo(0)
-            );
-        });
-
-        debugStep(++stepCounter, "Click note in SELECT mode selects it", (step) -> {
-            enterSelectMode();
-            clickAt(noteScreenPosition(0, Sel2.NOTE.index));
-            assertAll(
-                () -> assertThat(score().getSingleSelectedElement())
-                    .as(step + ": note selected")
-                    .isEqualTo(composition().getLine(0).getElement(Sel2.NOTE.index)),
-                () -> assertThat(score().getMode()).as(step + ": mode stays SELECT").isEqualTo(Mode.SELECT)
-            );
-        });
-
-        debugStep(++stepCounter, "Alt+click in SELECT mode same as click", (step) -> {
-            enterSelectMode();
-            altClickAt(noteScreenPosition(0, Sel2.STACCATO.index));
-            assertThat(score().getSingleSelectedElement())
-                .as(step + ": note selected via alt+click")
-                .isEqualTo(composition().getLine(0).getElement(Sel2.STACCATO.index));
-        });
-
-        debugStep(++stepCounter, "Release without drag keeps selection", (step) -> {
-            enterSelectMode();
-            clickAt(noteScreenPosition(0, Sel2.NOTE.index));
-            assertAll(
-                () -> assertThat(score().getSingleSelectedElement())
-                    .as(step + ": note stays selected")
-                    .isEqualTo(composition().getLine(0).getElement(Sel2.NOTE.index)),
-                () -> assertThat(score().getMode()).as(step + ": mode stays SELECT").isEqualTo(Mode.SELECT)
-            );
-        });
-
-        debugStep(++stepCounter, "Multi-note shift-select + drag", (step) -> {
+        @Order(3)
+        @Test
+        void testMultiNoteShiftSelectAndDrag() {
             enterSelectMode();
             clickAt(noteScreenPosition(0, Sel2.STACCATO.index));
             shiftClickAt(noteScreenPosition(0, Sel2.FERMATA.index));
@@ -608,17 +876,19 @@ class SelectionTest extends E2ETest {
             assertAll(
                 () -> assertThat(GuiActionRunner.execute(
                     () -> composition().getLine(0).getElement(Sel2.STACCATO.index).getStaffPosition()
-                )).as(step + ": staccato moved by -2").isEqualTo(originalStaccatoSp - 2),
+                )).as("staccato moved by -2").isEqualTo(originalStaccatoSp - 2),
                 () -> assertThat(GuiActionRunner.execute(
                     () -> composition().getLine(0).getElement(Sel2.ACCENT.index).getStaffPosition()
-                )).as(step + ": accent moved by -2").isEqualTo(originalAccentSp - 2),
+                )).as("accent moved by -2").isEqualTo(originalAccentSp - 2),
                 () -> assertThat(GuiActionRunner.execute(
                     () -> composition().getLine(0).getElement(Sel2.FERMATA.index).getStaffPosition()
-                )).as(step + ": fermata moved by -2").isEqualTo(originalFermataSp - 2)
+                )).as("fermata moved by -2").isEqualTo(originalFermataSp - 2)
             );
-        });
+        }
 
-        debugStep(++stepCounter, "Tie chain expansion during multi-note drag", (step) -> {
+        @Order(4)
+        @Test
+        void testTieChainExpansionDuringMultiNoteDrag() {
             enterSelectMode();
             clickAt(noteScreenPosition(0, Sel2.FERMATA.index));
             shiftClickAt(noteScreenPosition(0, Sel2.TIED_1.index));
@@ -637,17 +907,19 @@ class SelectionTest extends E2ETest {
             assertAll(
                 () -> assertThat(GuiActionRunner.execute(
                     () -> composition().getLine(0).getElement(Sel2.FERMATA.index).getStaffPosition()
-                )).as(step + ": fermata moved by +2").isEqualTo(currentFermataSp + 2),
+                )).as("fermata moved by +2").isEqualTo(currentFermataSp + 2),
                 () -> assertThat(GuiActionRunner.execute(
                     () -> composition().getLine(0).getElement(Sel2.TIED_1.index).getStaffPosition()
-                )).as(step + ": tied_1 moved by +2").isEqualTo(currentTied1Sp + 2),
+                )).as("tied_1 moved by +2").isEqualTo(currentTied1Sp + 2),
                 () -> assertThat(GuiActionRunner.execute(
                     () -> composition().getLine(0).getElement(Sel2.TIED_2.index).getStaffPosition()
-                )).as(step + ": tied_2 moved by +2 (tie expansion)").isEqualTo(currentTied2Sp + 2)
+                )).as("tied_2 moved by +2 (tie expansion)").isEqualTo(currentTied2Sp + 2)
             );
-        });
+        }
 
-        debugStep(++stepCounter, "Drag with note+rest selection moves only the note", (step) -> {
+        @Order(5)
+        @Test
+        void testDragWithNoteAndRestSelectionMovesOnlyNote() {
             enterSelectMode();
             clickAt(noteScreenPosition(0, Sel2.DEMI_SEMIQUAVER_REST.index));
             shiftClickAt(noteScreenPosition(0, Sel2.NOTE.index));
@@ -664,15 +936,16 @@ class SelectionTest extends E2ETest {
             assertAll(
                 () -> assertThat(GuiActionRunner.execute(
                     () -> composition().getLine(0).getElement(Sel2.NOTE.index).getStaffPosition()
-                )).as(step + ": note moved by -2").isEqualTo(currentNoteSp - 2),
+                )).as("note moved by -2").isEqualTo(currentNoteSp - 2),
                 () -> assertThat(GuiActionRunner.execute(
                     () -> composition().getLine(0).getElement(Sel2.DEMI_SEMIQUAVER_REST.index).getStaffPosition()
-                )).as(step + ": rest unchanged").isEqualTo(currentRestSp),
+                )).as("rest unchanged").isEqualTo(currentRestSp),
                 () -> assertThat(score().getSelectionSize())
-                    .as(step + ": both remain selected").isEqualTo(2)
+                    .as("both remain selected").isEqualTo(2)
             );
-        });
+        }
     }
+
 
     // -- Assertion helpers --
 
@@ -719,13 +992,12 @@ class SelectionTest extends E2ETest {
      * Selects a single element and verifies the given duration action is selected
      * while all other duration actions are deselected.
      */
-    private void assertDurationReflected(int step, int elementIndex, UIAction expectedAction) {
+    private void assertDurationReflected(int elementIndex, UIAction expectedAction) {
         clickAt(noteScreenPosition(0, elementIndex));
 
         for (var action : DURATION_ACTIONS) {
-            boolean expected = (action == expectedAction);
-            assertActionSelected(action, expected,
-                step + ": duration reflection for index " + elementIndex);
+            assertActionSelected(action, action == expectedAction,
+                "duration reflection for element[0][" + elementIndex + "]");
         }
     }
 
@@ -733,13 +1005,12 @@ class SelectionTest extends E2ETest {
      * Selects a single element and verifies the given accidental action is selected
      * while all other accidental actions are deselected.
      */
-    private void assertAccidentalReflected(int step, int elementIndex, UIAction expectedAction) {
+    private void assertAccidentalReflected(int elementIndex, UIAction expectedAction) {
         clickAt(noteScreenPosition(0, elementIndex));
 
         for (var action : accidentalActions()) {
-            boolean expected = (action == expectedAction);
-            assertActionSelected(action, expected,
-                step + ": accidental reflection for index " + elementIndex);
+            assertActionSelected(action, action == expectedAction,
+                "accidental reflection for element[0][" + elementIndex + "]");
         }
     }
 
