@@ -510,7 +510,7 @@ public class MainFrame extends JFrame implements Printable {
     }
 
     @Handler
-    public void handleNewDocument(NewFileCommand message) {
+    public void handleNewFile(NewFileCommand message) {
         if (!showSaveDialog()) {
             return;
         }

@@ -22,11 +22,12 @@ package songscribe.ui.component;
 
 import module java.desktop;
 
+import net.engio.mbassy.listener.Handler;
 import org.jspecify.annotations.Nullable;
 
-import net.engio.mbassy.listener.Handler;
-
 import songscribe.Strings;
+import songscribe.message.Message;
+import songscribe.message.MessageCenter;
 import songscribe.message.command.AddDynamicsCommand;
 import songscribe.message.command.DeselectCommand;
 import songscribe.message.command.FirstSecondEndingCommand;
@@ -41,18 +42,16 @@ import songscribe.message.command.ToggleTieCommand;
 import songscribe.message.command.ToggleTrillCommand;
 import songscribe.message.command.ToggleTupletCommand;
 import songscribe.message.command.UpdateInsertionElementCommand;
-import songscribe.message.Message;
-import songscribe.message.MessageCenter;
-import songscribe.music.Line;
-import songscribe.music.LyricsProcessor;
-import songscribe.music.MusicEditOperations;
-import songscribe.music.StaffElement;
 import songscribe.message.notification.CompositionDidChangeNotification;
 import songscribe.message.notification.ControlDidChangeNotification;
 import songscribe.message.notification.ElementTypeWasSelectedNotification;
 import songscribe.message.notification.ModeDidChangeNotification;
 import songscribe.message.notification.PlaybackStateDidChangeNotification;
 import songscribe.message.notification.RestModeDidChangeNotification;
+import songscribe.music.Line;
+import songscribe.music.LyricsProcessor;
+import songscribe.music.MusicEditOperations;
+import songscribe.music.StaffElement;
 import songscribe.ui.Control;
 import songscribe.ui.Dialogs;
 import songscribe.ui.Mode;
@@ -109,7 +108,7 @@ public final class ScoreMessageCoordinator {
     }
 
     @Handler
-    public void noteTypeWasSelected(ElementTypeWasSelectedNotification message) {
+    public void elementTypeWasSelected(ElementTypeWasSelectedNotification message) {
         score.setInsertionElement(editModeManager.makeInsertionElement(message.getNoteType()));
     }
 
@@ -164,7 +163,7 @@ public final class ScoreMessageCoordinator {
     }
 
     @Handler
-    public void handleToggleBeaming(ToggleBeamCommand message) {
+    public void handleToggleBeam(ToggleBeamCommand message) {
         // Capture line before the operation in case selection changes.
         // Invalidate layout so LayoutEngine recomputes BeamLayout for the new/removed interval.
         // Without this, BeamGroupRenderer draws beams with null BeamLayout (no thickening or slope).
