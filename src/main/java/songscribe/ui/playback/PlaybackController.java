@@ -224,11 +224,26 @@ public final class PlaybackController {
     }
 
     public static void togglePlayPause() {
-        if (state != PlaybackState.PLAYING) {
-            play(null);
-        } else {
+        if (state == PlaybackState.PLAYING) {
             playbackDidPause();
+        } else if (state == PlaybackState.PAUSED) {
+            resume();
+        } else {
+            play(null);
         }
+    }
+
+    private static void resume() {
+        var sequencer = MidiController.sequencer;
+
+        if (sequencer == null) {
+            return;
+        }
+
+        MidiController.reinitChannels();
+        applyVolumeFromPrefs();
+        playbackDidStart();
+        sequencer.start();
     }
 
     public static void play(@Nullable ElementSelection selection) {
