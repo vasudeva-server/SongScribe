@@ -52,6 +52,8 @@ ALWAYS use `./scripts/test.sh` to run tests. NEVER invoke `mvn test` directly.
 
 **IMPORTANT:** Never run e2e tests concurrently in separate Bash invocations. E2E tests launch a shared GUI and will interfere with each other. Run them sequentially in a single `./scripts/test.sh` call.
 
+**IMPORTANT:** Never run e2e tests without waiting for the user's approval; they will take control of the user's mouse and keyboard, and may cause unintended consequences if run without the user's knowledge.
+
 To determine the pass/fail status of tests, run `test.sh`. If there are failures, run `test.sh --verbose` to determine which test caused a failure.
 
 ```bash
@@ -70,7 +72,10 @@ To determine the pass/fail status of tests, run `test.sh`. If there are failures
 ./scripts/test.sh -Dtest=*Test                       # Run with Maven pattern
 ```
 
-**IMPORTANT:** If tests fail, NEVER assume the failures are pre-existing just because you didn't touch the failing code. Always investigate test failures and fix them before proceeding with new changes.
+**IMPORTANT:** If tests fail:
+- NEVER assume the failures are pre-existing just because you didn't touch the failing code.
+- Always investigate test failures; if the bug is not immediately apparent, ask the user for permission to run the failing test with the `--debug` option.
+- Fix tests failures before proceeding with new changes.
 
 ### Writing Tests
 
@@ -107,4 +112,3 @@ source ./scripts/set-java-home.sh
 When debugging UI interactions and state management issues, favor adding `System.out.println` debug statements over static code analysis. UI state flows through event handlers, message buses, and callbacks in ways that are difficult to reason about statically. Running the application with debug prints and reading the actual execution trace is faster and more reliable than trying to mentally simulate the flow.
 
 Always remove debug prints after the issue is resolved.
-
