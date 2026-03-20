@@ -86,6 +86,7 @@ class ActionsResetTest extends UnitTest {
         Actions.ARTICULATION_ACTION_GROUP.setSelected(Actions.STACCATO_ACTION, true);
         Actions.DOT_ACTION_GROUP.setSelected(Actions.DOT_ACTION, true);
         Actions.NON_DURATION_ACTION_GROUP.setSelected(Actions.BARLINE_ACTIONS[0], true);
+        Actions.ACCENT_ACTION.setSelected(true);
         Actions.REST_ACTION.setSelected(true);
         Actions.FERMATA_ACTION.setSelected(true);
         Actions.ACCIDENTAL_IN_PARENS_ACTION.setSelected(true);
@@ -149,6 +150,10 @@ class ActionsResetTest extends UnitTest {
         assertThat(Actions.NON_DURATION_ACTION_GROUP.getSelected())
             .as("non-duration group should be cleared")
             .isNull();
+
+        assertThat(Actions.ACCENT_ACTION.isSelected())
+            .as("accent toggle should be off")
+            .isFalse();
 
         assertThat(Actions.REST_ACTION.isSelected())
             .as("rest toggle should be off")

@@ -121,8 +121,12 @@ public class ActionGroup<T extends UIAction> implements PropertyChangeListener {
     }
 
     public void select(T action, Object source) {
+        boolean changed = selected != action;
         setSelected(action, true);
-        action.perform(source);
+
+        if (changed) {
+            action.perform(source);
+        }
     }
 
     public void selectNext() {

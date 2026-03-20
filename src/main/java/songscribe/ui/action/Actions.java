@@ -291,7 +291,7 @@ public final class Actions {
         MessageCenter.subscribe(RESET_HANDLER);
     }
 
-    static void resetToDefaults() {
+    private static void resetToDefaults() {
         // Non-silent resets — these need perform() to update downstream state
         // (Score.mode via ModeDidChangeNotification, insertion element via
         // UpdateInsertionElementCommand)
@@ -311,6 +311,9 @@ public final class Actions {
         ACCIDENTAL_IN_PARENS_ACTION.reset();
     }
 
+    private Actions() {
+    }
+
     private static class ResetHandler {
         @Handler(priority = Message.HIGH_PRIORITY)
         public void compositionDidChange(CompositionDidChangeNotification message) {
@@ -318,8 +321,5 @@ public final class Actions {
                 resetToDefaults();
             }
         }
-    }
-
-    private Actions() {
     }
 }
