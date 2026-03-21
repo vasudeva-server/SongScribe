@@ -33,6 +33,9 @@ import org.slf4j.LoggerFactory;
 
 import com.formdev.flatlaf.extras.FlatSVGIcon;
 
+import oshi.SystemInfo;
+import oshi.util.EdidUtil;
+
 import songscribe.ui.graphics.HiDPIScaledImage;
 import songscribe.ui.graphics.RetinaImage;
 
@@ -88,10 +91,6 @@ public final class GraphicUtils {
             return GraphicUtils.convertToPixels(length, this);
         }
 
-        public double convertFromPixels(int pixels) {
-            return GraphicUtils.convertFromPixels(pixels, this);
-        }
-
         public boolean isMetric() {
             return this == CM;
         }
@@ -111,10 +110,36 @@ public final class GraphicUtils {
 
     static {
         var ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
-        var config = ge.getDefaultScreenDevice().getDefaultConfiguration();
+        var gd = ge.getDefaultScreenDevice();
+        var config = gd.getDefaultConfiguration();
         screenScaleFactor = (int) config.getDefaultTransform().getScaleX();
         isRetina = screenScaleFactor > 1;
-        dpi = Toolkit.getDefaultToolkit().getScreenResolution();
+        dpi = computePhysicalDpi(gd);
+    }
+
+    /**
+     * Computes the physical DPI of the default screen using EDID data.
+     * Falls back to {@link Toolkit#getScreenResolution()} if EDID is unavailable.
+     */
+    private static int computePhysicalDpi(GraphicsDevice gd) {
+        try {
+            var displays = new SystemInfo().getHardware().getDisplays();
+
+            if (!displays.isEmpty()) {
+                var edid = displays.getFirst().getEdid();
+                int widthCm = EdidUtil.getHcm(edid);
+
+                if (widthCm > 0) {
+                    double widthInches = widthCm / CM_PER_INCH;
+                    int logicalPixelWidth = gd.getDefaultConfiguration().getBounds().width;
+                    return (int) Math.round(logicalPixelWidth / widthInches);
+                }
+            }
+        } catch (Exception e) {
+            LOG.warn("Could not determine physical DPI from EDID, using system default", e);
+        }
+
+        return Toolkit.getDefaultToolkit().getScreenResolution();
     }
 
     private GraphicUtils() {}

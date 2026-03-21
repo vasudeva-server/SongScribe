@@ -44,8 +44,8 @@ import songscribe.prefs.Prefs;
 import songscribe.prefs.PrefsKey;
 import songscribe.ui.Dialogs;
 import songscribe.ui.action.InsertLineAction;
-import songscribe.ui.component.Score;
 import songscribe.ui.layout.LayoutStylesheet;
+import songscribe.ui.layout.PageModel;
 import songscribe.ui.layout.ScaleContext;
 import songscribe.util.MyFontUtils;
 import songscribe.util.StringUtils;
@@ -155,7 +155,7 @@ public final class Composition {
     private double rowHeightAdjustmentSs = 0;
 
     // The width of a staff line in staff-space units
-    private double lineWidthSs = ScaleContext.getInstance().fromPixels(Score.PAGE_CONTENT_SIZE.width);
+    private double lineWidthSs = PageModel.getInstance().getDefaultLineWidthSs();
 
     // The lines of the score
     private final ArrayList<Line> lines = new ArrayList<>();

@@ -29,11 +29,14 @@ import java.util.Map;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
+import songscribe.message.MessageCenter;
+import songscribe.message.notification.PageSizeDidChangeNotification;
 import songscribe.prefs.Prefs;
 import songscribe.prefs.PrefsKey;
 import songscribe.ui.Appearance;
 import songscribe.ui.AppearanceManager;
 import songscribe.ui.Dialogs;
+import songscribe.ui.layout.PageModel;
 import songscribe.ui.playback.MidiController;
 import songscribe.ui.playback.MidiMetaMessageTypes;
 import songscribe.ui.playback.PlaybackController;
@@ -73,7 +76,23 @@ public class PreferencesDialog extends BaseDialog {
     private final JSlider volumeSlider = new JSlider(VOLUME_MIN, VOLUME_MAX);
     private final JSlider tempoSlider = new JSlider(TEMPO_MIN, TEMPO_MAX);
 
-    // Appearance tab
+    // General tab — Page Size section
+    private final JRadioButton letterRadio = new JRadioButton(
+        Strings.get(Strings.LABEL_PREFS_PAGE_SIZE_LETTER)
+    );
+    private final JRadioButton a4Radio = new JRadioButton(
+        Strings.get(Strings.LABEL_PREFS_PAGE_SIZE_A4)
+    );
+
+    // General tab — Measurement Units section
+    private final JRadioButton inchesRadio = new JRadioButton(
+        Strings.get(Strings.LABEL_PREFS_UNITS_INCHES)
+    );
+    private final JRadioButton centimetersRadio = new JRadioButton(
+        Strings.get(Strings.LABEL_PREFS_UNITS_CENTIMETERS)
+    );
+
+    // General tab — Appearance section
     private final JRadioButton systemRadio = new JRadioButton(
         Strings.get(Strings.LABEL_PREFS_APPEARANCE_SYSTEM)
     );
@@ -93,18 +112,30 @@ public class PreferencesDialog extends BaseDialog {
     public PreferencesDialog() {
         super(Strings.get(Strings.DIALOG_PREFERENCES_TITLE), false);
 
-        var group = new ButtonGroup();
-        group.add(systemRadio);
-        group.add(lightRadio);
-        group.add(darkRadio);
+        var pageSizeGroup = new ButtonGroup();
+        pageSizeGroup.add(letterRadio);
+        pageSizeGroup.add(a4Radio);
+
+        var unitsGroup = new ButtonGroup();
+        unitsGroup.add(inchesRadio);
+        unitsGroup.add(centimetersRadio);
+
+        var appearanceGroup = new ButtonGroup();
+        appearanceGroup.add(systemRadio);
+        appearanceGroup.add(lightRadio);
+        appearanceGroup.add(darkRadio);
 
         ensureInstrumentsLoaded();
         instrumentList = new JList<>(instrumentStrings);
         scaleAction = new ScaleAction();
         scaleButton = new JButton(scaleAction);
 
-        var instrumentsTabIndex = 1;
+        var instrumentsTabIndex = 2;
         tabbedPane = createTabbedPane();
+        tabbedPane.addTab(
+            Strings.get(Strings.LABEL_PREFS_TAB_GENERAL),
+            new GeneralTab()
+        );
         tabbedPane.addTab(
             Strings.get(Strings.LABEL_PREFS_TAB_PLAY),
             new PlayTab()
@@ -112,10 +143,6 @@ public class PreferencesDialog extends BaseDialog {
         tabbedPane.addTab(
             Strings.get(Strings.LABEL_PREFS_TAB_INSTRUMENTS),
             new InstrumentsTab()
-        );
-        tabbedPane.addTab(
-            Strings.get(Strings.LABEL_PREFS_TAB_APPEARANCE),
-            createAppearanceTab()
         );
 
         tabbedPane.addChangeListener(_ -> {
@@ -272,6 +299,29 @@ public class PreferencesDialog extends BaseDialog {
             }
         });
 
+        // Page Size
+        var pageSizeListener = new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                Prefs.getInstance().put(PrefsKey.PAGE_SIZE, a4Radio.isSelected() ? "a4" : "letter");
+                MessageCenter.post(new PageSizeDidChangeNotification());
+            }
+        };
+
+        letterRadio.addActionListener(pageSizeListener);
+        a4Radio.addActionListener(pageSizeListener);
+
+        // Measurement Units
+        var metricListener = new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                Prefs.getInstance().put(PrefsKey.METRIC, centimetersRadio.isSelected());
+            }
+        };
+
+        inchesRadio.addActionListener(metricListener);
+        centimetersRadio.addActionListener(metricListener);
+
         // Appearance
         var appearanceListener = new ActionListener() {
             @Override
@@ -303,47 +353,29 @@ public class PreferencesDialog extends BaseDialog {
         }
     }
 
-    private JPanel createAppearanceTab() {
-        var panel = new JPanel(new GridBagLayout());
-        panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 0, 20));
-
-        var gbc = new GridBagConstraints();
-        gbc.gridx = 0;
-        gbc.gridy = 0;
-        gbc.anchor = GridBagConstraints.NORTH;
-
-        var description = new JLabel(
-            Strings.get(Strings.LABEL_PREFS_APPEARANCE_DESCRIPTION)
-        );
-        description.setBorder(BorderFactory.createEmptyBorder(0, 7, 0, 7));
-        panel.add(description, gbc);
-
-        gbc.gridy = 1;
-        gbc.weighty = 1.0;
-        gbc.insets = new Insets(15, 0, 0, 0);
-
-        var radioPanel = new JPanel();
-        radioPanel.setLayout(new BoxLayout(radioPanel, BoxLayout.Y_AXIS));
-        radioPanel.add(systemRadio);
-        radioPanel.add(Box.createVerticalStrut(5));
-        radioPanel.add(lightRadio);
-        radioPanel.add(Box.createVerticalStrut(5));
-        radioPanel.add(darkRadio);
-        panel.add(radioPanel, gbc);
-
-        return panel;
-    }
-
     @Override
     protected boolean getData() {
         tabbedPane.setSelectedIndex(0);
         var prefs = Prefs.getInstance();
 
-        // Feedback
+        // General — Page Size
+        (PageModel.getInstance().getSize() == PageModel.Size.A4 ? a4Radio : letterRadio).setSelected(true);
+
+        // General — Measurement Units
+        (prefs.getBoolean(PrefsKey.METRIC) ? centimetersRadio : inchesRadio).setSelected(true);
+
+        // General — Appearance
+        (switch (AppearanceManager.getPreference()) {
+            case LIGHT -> lightRadio;
+            case DARK -> darkRadio;
+            case SYSTEM -> systemRadio;
+        }).setSelected(true);
+
+        // Play — Feedback
         playInsertingNoteCheck.setSelected(prefs.getBoolean(PrefsKey.PLAY_INSERTED_NOTE));
         playSelectedNoteCheck.setSelected(prefs.getBoolean(PrefsKey.PLAY_SELECTED_NOTE));
 
-        // Playback
+        // Play — Playback
         durationSlider.setValue(snapToNearestDurationStop(prefs.getInt(PrefsKey.PLAYBACK_NOTE_DURATION)));
         volumeSlider.setValue(prefs.getInt(PrefsKey.PLAYBACK_VOLUME));
         tempoSlider.setValue(snapToNearestTempoStop(prefs.getInt(PrefsKey.TEMPO_CHANGE_PERCENT)));
@@ -353,12 +385,6 @@ public class PreferencesDialog extends BaseDialog {
         instrumentList.setSelectedIndex(instrumentIndex);
         instrumentList.ensureIndexIsVisible(instrumentIndex);
 
-        // Appearance
-        (switch (AppearanceManager.getPreference()) {
-            case LIGHT -> lightRadio;
-            case DARK -> darkRadio;
-            case SYSTEM -> systemRadio;
-        }).setSelected(true);
         return true;
     }
 
@@ -399,6 +425,46 @@ public class PreferencesDialog extends BaseDialog {
         return labels;
     }
 
+    private final class GeneralTab extends Tab {
+
+        @Override
+        protected void initContents() {
+            add(createPageSizeSection());
+            addSeparator();
+            add(createMeasurementUnitsSection());
+            addSeparator();
+            add(createAppearanceSection());
+        }
+
+        private JPanel createPageSizeSection() {
+            var section = new TitledSection(Strings.get(Strings.LABEL_PREFS_SECTION_PAGE_SIZE));
+            section.add(letterRadio);
+            section.addSeparator();
+            section.add(a4Radio);
+            return section;
+        }
+
+        private JPanel createMeasurementUnitsSection() {
+            var section = new TitledSection(
+                Strings.get(Strings.LABEL_PREFS_SECTION_MEASUREMENT_UNITS)
+            );
+            section.add(inchesRadio);
+            section.addSeparator();
+            section.add(centimetersRadio);
+            return section;
+        }
+
+        private JPanel createAppearanceSection() {
+            var section = new TitledSection(Strings.get(Strings.LABEL_PREFS_SECTION_APPEARANCE));
+            section.add(systemRadio);
+            section.addSeparator();
+            section.add(lightRadio);
+            section.addSeparator();
+            section.add(darkRadio);
+            return section;
+        }
+    }
+
     private final class InstrumentsTab extends Tab {
 
         @Override
@@ -429,6 +495,7 @@ public class PreferencesDialog extends BaseDialog {
     private final class PlayTab extends Tab {
 
         private static final int SLIDER_SPACING = 20;
+        private static final int SLIDER_EXTRA_WIDTH = 50;
 
         @Override
         protected void initContents() {
@@ -457,58 +524,47 @@ public class PreferencesDialog extends BaseDialog {
             var border = (StandardTitledBorder) section.getBorder();
             border.setInsets(new Insets(35, 20, 20, 20));
 
-            // Duration slider
-            addLabeledField(
-                section,
-                Strings.get(Strings.LABEL_PREFS_PLAYBACK_DURATION),
-                durationSlider,
-                LabelPosition.TOP
-            );
-
             //noinspection UseOfObsoleteCollectionType
             var durationLabels = new Hashtable<Integer, JLabel>();
             durationLabels.put(32, new JLabel(Strings.get(Strings.LABEL_PREFS_STACCATO)));
             durationLabels.put(66, new JLabel(Strings.get(Strings.LABEL_PREFS_NORMAL)));
             durationLabels.put(100, new JLabel(Strings.get(Strings.LABEL_PREFS_LEGATO)));
-            configureSlider(durationSlider, DURATION_STEP, durationLabels);
+            addSlider(section, Strings.get(Strings.LABEL_PREFS_PLAYBACK_DURATION), durationSlider, DURATION_STEP, durationLabels);
 
             section.add(Box.createVerticalStrut(SLIDER_SPACING));
             section.add(new JSeparator());
             section.add(Box.createVerticalStrut(SLIDER_SPACING));
-
-            // Volume slider
-            addLabeledField(
-                section,
-                Strings.get(Strings.LABEL_PREFS_PLAYBACK_VOLUME),
-                volumeSlider,
-                LabelPosition.TOP
-            );
 
             //noinspection UseOfObsoleteCollectionType
             var volumeLabels = new Hashtable<Integer, JLabel>();
             volumeLabels.put(50, new JLabel(Strings.get(Strings.LABEL_PREFS_SOFTER)));
             volumeLabels.put(75, new JLabel(Strings.get(Strings.LABEL_PREFS_SOFT)));
             volumeLabels.put(100, new JLabel(Strings.get(Strings.LABEL_PREFS_FULL)));
-            configureSlider(volumeSlider, VOLUME_MAJOR_TICK, volumeLabels);
+            addSlider(section, Strings.get(Strings.LABEL_PREFS_PLAYBACK_VOLUME), volumeSlider, VOLUME_MAJOR_TICK, volumeLabels);
 
             section.add(Box.createVerticalStrut(SLIDER_SPACING));
             section.add(new JSeparator());
             section.add(Box.createVerticalStrut(SLIDER_SPACING));
 
-            // Tempo slider
-            addLabeledField(
-                section,
-                Strings.get(Strings.LABEL_PREFS_PLAYBACK_TEMPO),
-                tempoSlider,
-                LabelPosition.TOP
-            );
-
-            configureSlider(
-                tempoSlider, TEMPO_MAJOR_TICK,
-                createPercentLabels(TEMPO_MIN, TEMPO_MAX, TEMPO_MAJOR_TICK)
+            addSlider(
+                section, Strings.get(Strings.LABEL_PREFS_PLAYBACK_TEMPO), tempoSlider,
+                TEMPO_MAJOR_TICK, createPercentLabels(TEMPO_MIN, TEMPO_MAX, TEMPO_MAJOR_TICK)
             );
 
             return section;
+        }
+
+        private void addSlider(
+            JPanel section,
+            String labelText,
+            JSlider slider,
+            int tickSpacing,
+            Dictionary<Integer, JLabel> labels
+        ) {
+            addLabeledField(section, labelText, slider, LabelPosition.TOP);
+            configureSlider(slider, tickSpacing, labels);
+            var size = slider.getPreferredSize();
+            slider.setPreferredSize(new Dimension(size.width + SLIDER_EXTRA_WIDTH, size.height));
         }
     }
 

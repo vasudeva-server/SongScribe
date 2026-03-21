@@ -38,6 +38,7 @@ public enum PrefsKey {
     LYRICS_FONT("lyricsFont"),
     LYRICS_FONT_SIZE("lyricsFontSize"),
     METRIC("metric"),
+    PAGE_SIZE("pageSize"),
     PLAY_INSERTED_NOTE("playInsertedNote"),
     PLAY_SELECTED_NOTE("playSelectedNote"),
     PLAY_WITH_REPEATS("playWithRepeats"),

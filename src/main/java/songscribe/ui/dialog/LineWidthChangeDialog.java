@@ -30,18 +30,14 @@ import songscribe.prefs.PrefsKey;
 import songscribe.Strings;
 import songscribe.ui.Dialogs;
 import songscribe.ui.component.NumericTextField;
+import songscribe.ui.layout.PageModel;
 import songscribe.ui.layout.ScaleContext;
 import songscribe.util.GraphicUtils;
-import songscribe.util.UIUtils;
 import songscribe.util.Utils;
 
 public class LineWidthChangeDialog
     extends StandardDialog
     implements ActionListener {
-
-    // The minimum/maximum staff line width in inches
-    public static final double MIN_LINE_WIDTH_IN_INCHES = 5.0;
-    public static final double MAX_LINE_WIDTH_IN_INCHES = 10.0;
 
     private final NumericTextField lineWidthField = new NumericTextField(
         6,
@@ -94,12 +90,12 @@ public class LineWidthChangeDialog
             }
 
             var lineWidth = (int) Math.round(
-                widthInInches * UIUtils.RESOLUTION
+                widthInInches * GraphicUtils.getDpi()
             );
 
             if (lineWidth != originalWidthPx) {
                 var score = Objects.requireNonNull(getScore());
-                score.setLineWidthPx(lineWidth);
+                score.updatePageLayout(lineWidth);
             }
 
             originalOkAction.actionPerformed(null);
@@ -170,14 +166,14 @@ public class LineWidthChangeDialog
         }
 
         if (
-            (width >= MIN_LINE_WIDTH_IN_INCHES) &&
-            (width <= MAX_LINE_WIDTH_IN_INCHES)
+            (width >= PageModel.MIN_LINE_WIDTH_INCHES) &&
+            (width <= PageModel.MAX_LINE_WIDTH_INCHES)
         ) {
             return width;
         }
 
-        var min = MIN_LINE_WIDTH_IN_INCHES;
-        var max = MAX_LINE_WIDTH_IN_INCHES;
+        var min = PageModel.MIN_LINE_WIDTH_INCHES;
+        var max = PageModel.MAX_LINE_WIDTH_INCHES;
 
         if (isMetric()) {
             min *= GraphicUtils.CM_PER_INCH;
@@ -218,7 +214,7 @@ public class LineWidthChangeDialog
 
         if (text.isEmpty()) {
             var composition = getComposition();
-            value = ScaleContext.getInstance().toPixels(composition.getLineWidthSs()) / UIUtils.RESOLUTION;
+            value = ScaleContext.getInstance().toPixels(composition.getLineWidthSs()) / GraphicUtils.getDpi();
         } else {
             try {
                 // The value in the text field is in the previously selected unit

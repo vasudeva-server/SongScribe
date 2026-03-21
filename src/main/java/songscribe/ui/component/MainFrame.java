@@ -173,6 +173,7 @@ public class MainFrame extends JFrame implements Printable {
             MidiController.openMidi();
             var instance = getInstance();
             instance.initFrame();
+
             if (
                 !Version.PUBLIC_VERSION.equals(
                     Prefs.getInstance().getString(PrefsKey.LAST_SEEN_WHATS_NEW_VERSION)

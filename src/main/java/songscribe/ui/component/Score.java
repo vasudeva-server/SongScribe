@@ -46,6 +46,7 @@ import songscribe.music.MusicEditOperations;
 import songscribe.music.StaffElement;
 import songscribe.message.notification.CompositionDidChangeNotification;
 import songscribe.message.notification.MusicSelectionDidChangeNotification;
+import songscribe.message.notification.PageSizeDidChangeNotification;
 import songscribe.message.notification.PlaybackPrefsDidChangeNotification;
 import songscribe.prefs.Prefs;
 import songscribe.prefs.PrefsKey;
@@ -61,22 +62,35 @@ import songscribe.ui.clipboard.ClipboardManager;
 import songscribe.ui.component.score.LineComponent;
 import songscribe.ui.component.score.MainPanel;
 import songscribe.ui.component.score.ScorePanel;
-import songscribe.ui.dialog.LineWidthChangeDialog;
 import songscribe.ui.edit.EditModeManager;
 import songscribe.ui.layout.LayoutStylesheet;
 import songscribe.ui.layout.LayoutConstants;
+import songscribe.ui.layout.PageModel;
 import songscribe.ui.layout.ScaleContext;
+import songscribe.util.GraphicUtils;
 import songscribe.ui.menu.DebugState;
 import songscribe.ui.playback.PlaybackController;
 import songscribe.ui.renderer.RenderContext;
 import songscribe.ui.selection.ElementSelection;
 import songscribe.ui.selection.SelectionCoordinator;
-import songscribe.util.GraphicUtils;
-import songscribe.util.UIUtils;
 
 /**
  * This class is responsible for managing and drawing the music score
  * and its lyrics. It also handles user input for editing the score.
+ *
+ * <pre>
+ * Page layout hierarchy:
+ *
+ *   JScrollPane
+ *   └── ScorePanel [GridBagLayout, gray background]
+ *       └── Score [BorderLayout, white background, full page size]
+ *           │  EmptyBorder: top/bottom = 0.5", left/right = horizontal margin
+ *           └── MainPanel [BoxLayout Y_AXIS, CENTER]
+ *               ├── TitleComponent
+ *               ├── StaffPanel
+ *               ├── TextPanel
+ *               └── FootnotesComponent
+ * </pre>
  */
 
 public final class Score
@@ -96,17 +110,6 @@ public final class Score
 
     // The vertical distance between whole tones on the staff (e.g. A to B)
     public static final float STAFF_POSITION_OFFSET_PX = (float) ScaleContext.getInstance().toPixels(LayoutStylesheet.STAFF_POSITION_OFFSET_SS);
-
-    // The content width and height in inches, excluding page margins
-    public static final float PAGE_CONTENT_WIDTH = 7;
-    public static final float PAGE_CONTENT_HEIGHT = 9.5f;
-    public static final Dimension PAGE_CONTENT_SIZE = new Dimension(
-        GraphicUtils.Unit.INCH.convertToPixels(PAGE_CONTENT_WIDTH),
-        GraphicUtils.Unit.INCH.convertToPixels(PAGE_CONTENT_HEIGHT)
-    );
-
-    // The page margin in dpi
-    public static final int PAGE_MARGIN_PX = 80;
 
     // Delay in milliseconds for debouncing repaint when layout changes occur
     private static final int REPAINT_DEBOUNCE_DELAY_MS = 300;
@@ -158,10 +161,6 @@ public final class Score
     @Nullable
     private JScrollPane scrollPane = null;
 
-    // Inside the scroll pane is a panel that provides the margin around the score
-    @Nullable
-    private JPanel marginPanel = null;
-
     // The score itself
     @Nullable
     private JPanel scorePanel = null;
@@ -201,9 +200,6 @@ public final class Score
 
     // Preferred size of the score panel
     private final Dimension preferredSizePx = new Dimension();
-
-    // Preferred size of the margin panel
-    private final Dimension preferredSizeWithMarginPx = new Dimension();
 
     // Manages focus behavior to keep the score in focus (empty in headless mode)
     private final Optional<ScoreFocusController> focusController;
@@ -288,11 +284,10 @@ public final class Score
         // Initialize UI components
         initView();
         initAdjustments();
-        initMargin();
         initScorePanel();
         initMainPanel();
 
-        setLineWidthPx(ScaleContext.getInstance().toRoundedPixels(composition.getLineWidthSs()));
+        updatePageLayout(ScaleContext.getInstance().toRoundedPixels(composition.getLineWidthSs()));
         inputHandler.ifPresent(h -> {
             addMouseMotionListener(h);
             addMouseListener(h);
@@ -357,7 +352,7 @@ public final class Score
     }
 
     private void initScorePanel() {
-        scorePanel = new ScorePanel(Objects.requireNonNull(marginPanel));
+        scorePanel = new ScorePanel(this);
         scrollPane = new JScrollPane(scorePanel);
         scrollPane.setBorder(new ThemeAwareMatteBorder(1, 0, 1, 0, "ToolBar.separatorColor"));
         updateScoreSurroundBackground();
@@ -422,10 +417,6 @@ public final class Score
         this.mainPanel = mainPanel;
     }
 
-    @Nullable JPanel getMarginPanel() {
-        return marginPanel;
-    }
-
     void setScorePanel(JPanel scorePanel) {
         this.scorePanel = scorePanel;
     }
@@ -469,14 +460,6 @@ public final class Score
             .orElse(null);
     }
 
-    void initMargin() {
-        // The margin between the composition and the edge of the page
-        marginPanel = new JPanel();
-        marginPanel.setBorder(BorderFactory.createEmptyBorder(40, 40, 40, 40));
-        marginPanel.setBackground(LayoutStylesheet.SCORE_BACKGROUND);
-        marginPanel.add(this);
-    }
-
     void initAdjustments() {
         horizontalAdjustment = new HorizontalAdjustment(this);
         verticalAdjustment = new VerticalAdjustment(this);
@@ -484,10 +467,6 @@ public final class Score
     }
 
     void initView() {
-        var width = (int) Math.round(
-            LineWidthChangeDialog.MAX_LINE_WIDTH_IN_INCHES * UIUtils.RESOLUTION
-        );
-
         viewChanged();
     }
 
@@ -502,6 +481,30 @@ public final class Score
             var reader = new CompositionIO.DocumentReader();
             Objects.requireNonNull(saxParser).parse(file, reader);
             var newComposition = reader.getComposition();
+            var lineWidthInches =
+                ScaleContext.getInstance().toPixels(newComposition.getLineWidthSs()) /
+                    GraphicUtils.getDpi();
+
+            if (lineWidthInches > PageModel.MAX_LINE_WIDTH_INCHES) {
+                Dialogs.showErrorMessage(
+                    null,
+                    Strings.get(Strings.DIALOG_TITLE_FILE_ERROR),
+                    Strings.get(Strings.ERROR_LINE_WIDTH_TOO_LARGE)
+                );
+                LOG.error(
+                    "Refused to open {}: line width {} inches exceeds maximum {}",
+                    file.getName(),
+                    lineWidthInches,
+                    PageModel.MAX_LINE_WIDTH_INCHES
+                );
+
+                if (composition != null) {
+                    composition.setModified(previousModified);
+                }
+
+                return false;
+            }
+
             setComposition(newComposition);
 
             if (updateCurrentFile && onFileOpened != null) {
@@ -623,8 +626,7 @@ public final class Score
             songscribe.ui.renderer.GraphicsState.Property.COLOR
         )) {
             g2.setColor(LayoutStylesheet.SCORE_BACKGROUND);
-            var mp = Objects.requireNonNull(marginPanel);
-            g2.fillRect(0, 0, mp.getWidth(), mp.getHeight());
+            g2.fillRect(0, 0, getWidth(), getHeight());
         }
 
         // Derive coordinates from positioned components
@@ -778,7 +780,7 @@ public final class Score
         var lineWidthPx = ScaleContext.getInstance().toRoundedPixels(composition.getLineWidthSs());
 
         // Core setup needed for both headless and interactive modes
-        setLineWidthPx(lineWidthPx);
+        updatePageLayout(lineWidthPx);
 
         for (var i = 0; i < composition.lineCount(); i++) {
             drawWidthIfWiderLine(composition.getLine(i), true);
@@ -976,34 +978,42 @@ public final class Score
         Prefs.getInstance().put(PrefsKey.CONTROL, control.name());
     }
 
-    public void setLineWidthPx(int lineWidthPx) {
+    public void updatePageLayout(int lineWidthPx) {
         getComposition().setLineWidthSs(ScaleContext.getInstance().fromPixels(lineWidthPx));
-        var lineWidth = lineWidthPx;
-        preferredSizePx.width = lineWidth;
-        preferredSizePx.height = Math.round(
-            (lineWidth > PAGE_CONTENT_SIZE.width)
-                ? (lineWidth * (PAGE_CONTENT_HEIGHT / PAGE_CONTENT_WIDTH))
-                : PAGE_CONTENT_SIZE.height
-        );
+
+        var pageModel = PageModel.getInstance();
+        int pageWidthPx = pageModel.getPageWidthPx();
+        int contentHeight = (mainPanel != null) ? mainPanel.getPreferredSize().height : 0;
+        int minPageHeight = contentHeight + pageModel.getTopMarginPx() + pageModel.getBottomMarginPx();
+
+        preferredSizePx.width = pageWidthPx;
+        preferredSizePx.height = Math.max(pageModel.getPageHeightPx(), minPageHeight);
         setPreferredSize(preferredSizePx);
 
-        if (marginPanel != null) {
-            var width = Math.max(lineWidth, PAGE_CONTENT_SIZE.width);
-            preferredSizeWithMarginPx.width = width + PAGE_MARGIN_PX;
-            preferredSizeWithMarginPx.height = preferredSizePx.height + PAGE_MARGIN_PX;
-            marginPanel.setPreferredSize(preferredSizeWithMarginPx);
-            invalidate();
-            marginPanel.invalidate();
+        int horizontalMarginPx = pageModel.getHorizontalMarginPx(lineWidthPx);
+        setBorder(BorderFactory.createEmptyBorder(
+            pageModel.getTopMarginPx(),
+            horizontalMarginPx,
+            pageModel.getBottomMarginPx(),
+            horizontalMarginPx
+        ));
+        invalidate();
 
-            if (scorePanel != null) {
-                scorePanel.invalidate();
-            }
+        if (scorePanel != null) {
+            scorePanel.invalidate();
+        }
 
-            if (scrollPane != null) {
-                scrollPane.validate();
-            }
+        if (scrollPane != null) {
+            scrollPane.validate();
+        }
 
-            repaint();
+        repaint();
+    }
+
+    @Handler
+    public void pageSizeDidChange(PageSizeDidChangeNotification message) {
+        if (composition != null) {
+            updatePageLayout(ScaleContext.getInstance().toRoundedPixels(composition.getLineWidthSs()));
         }
     }
 

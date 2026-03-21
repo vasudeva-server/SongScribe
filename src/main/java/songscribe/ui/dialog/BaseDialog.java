@@ -132,6 +132,7 @@ public abstract class BaseDialog {
         slider.setLabelTable(labels);
     }
 
+
     public void setVisible(boolean visible) {
         if (visible) {
             dialog = new JDialog(mainFrame, dialogTitle, isModal);

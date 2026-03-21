@@ -16,6 +16,7 @@
   "lyricsFont": "LatoPlus-Regular",
   "lyricsFontSize": 17,
   "metric": false,
+  "pageSize": "letter",
   "playSelectedNote": true,
   "playInsertedNote": true,
   "playWithRepeats": false,

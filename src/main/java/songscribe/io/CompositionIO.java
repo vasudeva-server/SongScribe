@@ -37,6 +37,7 @@ import songscribe.music.Line;
 import songscribe.music.Tempo;
 import songscribe.ui.component.Score;
 import songscribe.ui.layout.InsertionSpacingCalculator;
+import songscribe.ui.layout.PageModel;
 import songscribe.ui.layout.ScaleContext;
 import songscribe.util.Utils;
 
@@ -243,7 +244,7 @@ public final class CompositionIO {
         private double topPaddingSs = 0;
         private double attributionStartYSs = 0;
         private double rowHeightAdjustmentSs = 0;
-        private double lineWidthSs = ScaleContext.getInstance().fromPixels(Score.PAGE_CONTENT_SIZE.width);
+        private double lineWidthSs = PageModel.getInstance().getDefaultLineWidthSs();
         private boolean hasBeenDynamicallyLaidOut = false;
         private final List<Line> parsedLines = new ArrayList<>();
 

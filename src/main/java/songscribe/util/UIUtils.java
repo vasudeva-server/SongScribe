@@ -48,9 +48,6 @@ public final class UIUtils {
     public static final int MENU_SHORTCUT_MASK = Toolkit.getDefaultToolkit()
         .getMenuShortcutKeyMaskEx();
 
-    // The resolution of the score UI in logical pixels per inch
-    public static final int RESOLUTION = 100;
-
     private static final Dimension LABEL_SPACER = new Dimension(5, 5);
 
     private UIUtils() {
