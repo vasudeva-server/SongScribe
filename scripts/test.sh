@@ -1,8 +1,11 @@
 #!/usr/bin/env bash
 # Run tests with JUnit Console Launcher (tree-style output)
-# Usage: ./scripts/test.sh [--debug] [--slow] [--keep-going] [--verbose] [e2e|unit|test-pattern]
+# Usage: ./scripts/test.sh [--debug] [--slow] [--keep-going] [--verbose] [list|e2e|unit|test-pattern]
 # Examples:
 #   ./scripts/test.sh                           # Run all tests (unit then e2e, stops on first failure)
+#   ./scripts/test.sh list                      # List all tests in execution order (no run)
+#   ./scripts/test.sh list e2e                  # List only e2e tests
+#   ./scripts/test.sh list SelectionTest        # List tests in a specific class
 #   ./scripts/test.sh e2e                       # Run only e2e tests
 #   ./scripts/test.sh unit                      # Run only unit tests (excludes e2e)
 #   ./scripts/test.sh --verbose                 # Run all tests with tree-style output
@@ -76,15 +79,15 @@ TEST_DIR="$PROJECT_DIR/target/test-classes"
 SCAN_CLASSPATH="--scan-classpath=$TEST_DIR"
 UNIT_FILTER="--exclude-package=songscribe.e2e"
 E2E_FILTER="--include-package=songscribe.e2e"
+SUBCOMMAND="execute"
 BASE_LAUNCHER_ARGS=(
-  "execute"
   "--disable-banner"
   "--details=$DETAILS"
   "--details-theme=unicode"
 )
 
 run_tests() {
-  local launcher_args=("${BASE_LAUNCHER_ARGS[@]}" "$@")
+  local launcher_args=("$SUBCOMMAND" "${BASE_LAUNCHER_ARGS[@]}" "$@")
   java "${JVM_ARGS[@]}" -cp "$CLASSPATH" \
     org.junit.platform.console.ConsoleLauncher "${launcher_args[@]}"
 }
@@ -104,6 +107,12 @@ resolve_fqcn() {
 
   echo "$fqcn"
 }
+
+if [[ "${1:-}" == "list" ]]; then
+  SUBCOMMAND="discover"
+  BASE_LAUNCHER_ARGS=("--disable-banner" "--details=tree" "--details-theme=unicode")
+  shift
+fi
 
 if [ $# -eq 0 ]; then
   # Separate JVM invocations prevent e2e FlatLaf from contaminating unit tests

@@ -32,10 +32,12 @@ import java.util.Objects;
 import org.assertj.swing.edt.GuiActionRunner;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.ClassOrderer;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestClassOrder;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.TestMethodOrder;
 
@@ -50,7 +52,14 @@ import songscribe.ui.action.Actions;
  * Replaces BeamingTest, TieTest (minus pitch validation and drag),
  * and GlissandoTest.
  */
+@TestClassOrder(ClassOrderer.OrderAnnotation.class)
 class NoteConnectionTest extends E2ETest {
+
+    @BeforeAll
+    void loadConnectionsFixture() throws Exception {
+        resetComposition();
+        loadFixture("connections");
+    }
 
     // Element indices for connections.mssw.
     // After PAIR_E_SRC is deleted, subsequent elements shift down by 1;
@@ -89,14 +98,9 @@ class NoteConnectionTest extends E2ETest {
 
 
     @Nested
+    @Order(1)
     @TestInstance(TestInstance.Lifecycle.PER_CLASS)
     class GlissandoSelection {
-
-        @BeforeAll
-        void setUp() throws Exception {
-            resetComposition();
-            loadFixture("connections");
-        }
 
         @BeforeEach
         void resetState() {
@@ -158,17 +162,12 @@ class NoteConnectionTest extends E2ETest {
 
 
     @Nested
+    @Order(2)
     @TestInstance(TestInstance.Lifecycle.PER_CLASS)
     @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
     class Beaming {
 
         private boolean originalUpper;
-
-        @BeforeAll
-        void setUp() throws Exception {
-            resetComposition();
-            loadFixture("connections");
-        }
 
         @Order(1)
         @Test
@@ -251,15 +250,10 @@ class NoteConnectionTest extends E2ETest {
 
 
     @Nested
+    @Order(3)
     @TestInstance(TestInstance.Lifecycle.PER_CLASS)
     @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
     class Ties {
-
-        @BeforeAll
-        void setUp() throws Exception {
-            resetComposition();
-            loadFixture("connections");
-        }
 
         @Order(1)
         @Test
@@ -322,15 +316,10 @@ class NoteConnectionTest extends E2ETest {
 
 
     @Nested
+    @Order(4)
     @TestInstance(TestInstance.Lifecycle.PER_CLASS)
     @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
     class GlissandoInsertion {
-
-        @BeforeAll
-        void setUp() throws Exception {
-            resetComposition();
-            loadFixture("connections");
-        }
 
         @Order(1)
         @Test
@@ -426,15 +415,10 @@ class NoteConnectionTest extends E2ETest {
 
 
     @Nested
+    @Order(5)
     @TestInstance(TestInstance.Lifecycle.PER_CLASS)
     @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
     class GlissandoDeletion {
-
-        @BeforeAll
-        void setUp() throws Exception {
-            resetComposition();
-            loadFixture("connections");
-        }
 
         @Order(1)
         @Test

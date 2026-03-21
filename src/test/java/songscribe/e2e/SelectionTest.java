@@ -61,6 +61,12 @@ import songscribe.ui.layout.ScaleContext;
 @TestClassOrder(ClassOrderer.OrderAnnotation.class)
 class SelectionTest extends E2ETest {
 
+    @BeforeAll
+    void loadSelection1Fixture() throws Exception {
+        resetComposition();
+        loadFixture("selection1");
+    }
+
     // Element indices for selection1.mssw
     private enum Sel1 {
         QUARTER_TEMPO(0),
@@ -135,12 +141,6 @@ class SelectionTest extends E2ETest {
     @TestInstance(TestInstance.Lifecycle.PER_CLASS)
     class BasicSelection {
 
-        @BeforeAll
-        void setUp() throws Exception {
-            resetComposition();
-            loadFixture("selection1");
-        }
-
         @BeforeEach
         void resetState() {
             deselectSelection();
@@ -175,12 +175,6 @@ class SelectionTest extends E2ETest {
     @TestInstance(TestInstance.Lifecycle.PER_CLASS)
     @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
     class RangeSelection {
-
-        @BeforeAll
-        void setUp() throws Exception {
-            resetComposition();
-            loadFixture("selection1");
-        }
 
         @Order(1)
         @Test
@@ -233,12 +227,6 @@ class SelectionTest extends E2ETest {
     @TestInstance(TestInstance.Lifecycle.PER_CLASS)
     class LineSelection {
 
-        @BeforeAll
-        void setUp() throws Exception {
-            resetComposition();
-            loadFixture("selection1");
-        }
-
         @BeforeEach
         void resetState() {
             deselectSelection();
@@ -284,12 +272,6 @@ class SelectionTest extends E2ETest {
     @Order(4)
     @TestInstance(TestInstance.Lifecycle.PER_CLASS)
     class ToolbarReflection {
-
-        @BeforeAll
-        void setUp() throws Exception {
-            resetComposition();
-            loadFixture("selection1");
-        }
 
         @BeforeEach
         void resetState() {
@@ -359,12 +341,6 @@ class SelectionTest extends E2ETest {
     @TestInstance(TestInstance.Lifecycle.PER_CLASS)
     class MultiSelectionReflection {
 
-        @BeforeAll
-        void setUp() throws Exception {
-            resetComposition();
-            loadFixture("selection1");
-        }
-
         @BeforeEach
         void resetState() {
             deselectSelection();
@@ -400,7 +376,7 @@ class SelectionTest extends E2ETest {
     class MixedElements {
 
         @BeforeAll
-        void setUp() throws Exception {
+        void loadSelection2Fixture() throws Exception {
             resetComposition();
             loadFixture("selection2");
         }
@@ -458,12 +434,6 @@ class SelectionTest extends E2ETest {
     @Order(7)
     @TestInstance(TestInstance.Lifecycle.PER_CLASS)
     class BarlineSelection {
-
-        @BeforeAll
-        void setUp() throws Exception {
-            resetComposition();
-            loadFixture("selection2");
-        }
 
         @BeforeEach
         void resetState() {
@@ -547,12 +517,6 @@ class SelectionTest extends E2ETest {
     @TestInstance(TestInstance.Lifecycle.PER_CLASS)
     class GlissandoSuppression {
 
-        @BeforeAll
-        void setUp() throws Exception {
-            resetComposition();
-            loadFixture("selection2");
-        }
-
         @BeforeEach
         void resetState() {
             deselectSelection();
@@ -597,12 +561,6 @@ class SelectionTest extends E2ETest {
     @TestInstance(TestInstance.Lifecycle.PER_CLASS)
     @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
     class ActionApplication {
-
-        @BeforeAll
-        void setUp() throws Exception {
-            resetComposition();
-            loadFixture("selection2");
-        }
 
         @Order(1)
         @Test
@@ -722,12 +680,6 @@ class SelectionTest extends E2ETest {
     @TestInstance(TestInstance.Lifecycle.PER_CLASS)
     class ClickAndMode {
 
-        @BeforeAll
-        void setUp() throws Exception {
-            resetComposition();
-            loadFixture("selection2");
-        }
-
         @BeforeEach
         void resetState() {
             deselectSelection();
@@ -788,12 +740,6 @@ class SelectionTest extends E2ETest {
     @TestInstance(TestInstance.Lifecycle.PER_CLASS)
     @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
     class Drag {
-
-        @BeforeAll
-        void setUp() throws Exception {
-            resetComposition();
-            loadFixture("selection2");
-        }
 
         @BeforeEach
         void resetState() {
