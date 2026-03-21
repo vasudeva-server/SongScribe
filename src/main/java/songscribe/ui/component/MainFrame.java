@@ -241,6 +241,7 @@ public class MainFrame extends JFrame implements Printable {
 
 
         initContent();
+        updateTitle();
 
         MenuController.init(this);
 
@@ -459,6 +460,8 @@ public class MainFrame extends JFrame implements Printable {
         setTitle(title);
 
         if (titleBarLabel != null) {
+            var labelFg = UIManager.getColor("Label.foreground");
+
             if (isModified) {
                 var titleColor = UIManager.getColor("Label.foreground");
                 var editedColor = UIManager.getColor("Label.disabledForeground");

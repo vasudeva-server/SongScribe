@@ -88,7 +88,7 @@ public class HelpDialog
         if (lo.component == null) {
             lo.component = new JPanel();
             var label = new JLabel(lo.name);
-            label.setFont(new Font(Font.SERIF, Font.PLAIN, 20));
+            label.putClientProperty("FlatLaf.styleClass", "h2.regular");
             label.setPreferredSize(new Dimension(200, 30));
             ((JPanel) lo.component).add(label);
         }

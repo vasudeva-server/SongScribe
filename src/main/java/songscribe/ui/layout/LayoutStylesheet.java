@@ -48,9 +48,20 @@ public final class LayoutStylesheet {
     // ==========================================================================
 
     /**
-     * Background color of the score page
+     * Returns the screen background color of the score page.
+     * Read from UIManager to support theming; callers should not cache this value.
      */
-    public static final Color SCORE_BACKGROUND = new Color(0xF9, 0xF9, 0xF9, 0xFF);
+    public static Color getScreenBackground() {
+        return UIManager.getColor("SongScribe.scorePage.screen.background");
+    }
+
+    /**
+     * Returns the print/export background color of the score page (always white).
+     * Read from UIManager to support theming; callers should not cache this value.
+     */
+    public static Color getPrintBackground() {
+        return UIManager.getColor("SongScribe.scorePage.print.background");
+    }
 
     // ==========================================================================
     // SECTION ELEMENTS (block flow layout)

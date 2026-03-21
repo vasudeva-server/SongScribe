@@ -47,10 +47,11 @@ class ResourceScanTest extends UnitTest {
         var lines = Files.readAllLines(FLATLAF_PROPS);
         var lightOnlyKeys = new ArrayList<String>();
 
-        // Collect all non-dark, non-comment, non-blank property lines
-        // that define custom SongScribe keys or color values
-        for (var line : lines) {
-            var trimmed = line.trim();
+        // Collect all non-dark SongScribe.* property lines that lack a [dark] variant.
+        // A property may be exempted by placing a "# no-dark-variant" comment on the
+        // immediately preceding line.
+        for (var i = 0; i < lines.size(); i++) {
+            var trimmed = lines.get(i).trim();
 
             if (trimmed.isEmpty() || trimmed.startsWith("#") || trimmed.startsWith("[")) {
                 continue;
@@ -64,17 +65,18 @@ class ResourceScanTest extends UnitTest {
 
             var key = trimmed.substring(0, eqIndex).trim();
 
-            // Only check keys that define color values (contain "Color", "background", etc.)
-            // and are custom SongScribe keys
             if (!key.startsWith("SongScribe.")) {
                 continue;
             }
 
-            // Check if a [dark] variant exists
+            // Check for explicit exemption on the preceding line
+            if (i > 0 && lines.get(i - 1).trim().startsWith("# no-dark-variant")) {
+                continue;
+            }
+
+            // Check if a [dark] variant exists anywhere in the file
             var darkKey = "[dark]" + key;
-            var hasDark = lines.stream().anyMatch(
-                l -> l.trim().startsWith(darkKey)
-            );
+            var hasDark = lines.stream().anyMatch(l -> l.trim().startsWith(darkKey));
 
             if (!hasDark) {
                 lightOnlyKeys.add(key);

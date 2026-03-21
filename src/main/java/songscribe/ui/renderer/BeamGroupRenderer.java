@@ -167,7 +167,7 @@ public class BeamGroupRenderer extends BaseElementRenderer<LineElement> {
         }
 
         if (anyHovered) {
-            return Score.INSERTION_ELEMENT_COLOR;
+            return Score.getInsertionElementColor();
         }
 
         return null;

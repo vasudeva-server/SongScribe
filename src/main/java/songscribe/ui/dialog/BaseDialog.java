@@ -48,7 +48,7 @@ public abstract class BaseDialog {
 
     // The standard horizontal and vertical padding used in the dialog
     protected static final Dimension HORIZONTAL_SPACER = new Dimension(5, 5);
-    protected static final Dimension VERTICAL_SPACER = new Dimension(15, 15);
+    protected static final Dimension VERTICAL_SPACER = new Dimension(15, 5);
 
     private final MainFrame mainFrame;
     protected final String dialogTitle;

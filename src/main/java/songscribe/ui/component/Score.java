@@ -114,11 +114,19 @@ public final class Score
     // Delay in milliseconds for debouncing repaint when layout changes occur
     private static final int REPAINT_DEBOUNCE_DELAY_MS = 300;
 
-    // Colors used to draw the music score in various states
-    public static final Color PLAYING_NOTE_COLOR = new Color(31, 204, 0);
-    public static final Color INSERTION_ELEMENT_COLOR = new Color(3, 136, 255);
+    // Colors used to draw the music score in various states — read from UIManager for theming.
+    // Callers should not cache these values; read at render time.
+    public static Color getPlayingNoteColor() {
+        return UIManager.getColor("SongScribe.score.playingNote.color");
+    }
 
-    public static final Color SELECTION_STROKE_COLOR = Color.magenta;
+    public static Color getInsertionElementColor() {
+        return UIManager.getColor("SongScribe.score.insertionElement.color");
+    }
+
+    public static Color getSelectionStrokeColor() {
+        return UIManager.getColor("SongScribe.score.selection.rect.border");
+    }
 
     // The maximum number of staff lines under a note that can be displayed above and below the staff.
     // The range of notes supported is C3 (3 lines below) to F6 (4 lines above).
@@ -625,7 +633,7 @@ public final class Score
             g2,
             songscribe.ui.renderer.GraphicsState.Property.COLOR
         )) {
-            g2.setColor(LayoutStylesheet.SCORE_BACKGROUND);
+            g2.setColor(LayoutStylesheet.getScreenBackground());
             g2.fillRect(0, 0, getWidth(), getHeight());
         }
 

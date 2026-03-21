@@ -39,7 +39,7 @@ public class SplashWindow extends JWindow {
     private void init() {
         var content = getContentPane();
         content.setLayout(new BorderLayout());
-        content.setBackground(Color.WHITE);
+        content.setBackground(UIManager.getColor("SongScribe.splashWindow.background"));
 
         // Get the main splash image
         var image = GraphicUtils.readImageResource("/images/splash.jpg");
@@ -53,7 +53,7 @@ public class SplashWindow extends JWindow {
 
         // Add a panel for the version number and copyright
         var infoPanel = new JPanel(new BorderLayout());
-        infoPanel.setBackground(Color.WHITE);
+        infoPanel.setBackground(UIManager.getColor("SongScribe.splashWindow.background"));
 
         // Give the panel a little padding
         infoPanel.setBorder(BorderFactory.createEmptyBorder(13, 13, 13, 13));
@@ -83,8 +83,7 @@ public class SplashWindow extends JWindow {
 
     private static JLabel createLabel(String text) {
         var label = new JLabel(text);
-        label.putClientProperty("FlatLaf.styleClass", "h3.regular");
-        label.setForeground(Color.BLACK);
+        label.setForeground(UIManager.getColor("SongScribe.splashWindow.foreground"));
         return label;
     }
 }

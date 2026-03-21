@@ -57,7 +57,7 @@ public class ElementRenderContext {
     private LayoutResult layoutResult;
     private LineComponent.@Nullable SelectionProvider selectionProvider;
     private boolean editMode;
-    private Color selectionColor = Score.SELECTION_STROKE_COLOR;
+    private Color selectionColor = Score.getSelectionStrokeColor();
     private double overrideElementXSs = Double.NaN;
 
     /**

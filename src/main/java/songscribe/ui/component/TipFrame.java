@@ -76,11 +76,11 @@ public class TipFrame extends JFrame {
         var nextButton = new JButton();
         var previousButton = new JButton();
 
-        didYouKnowLabel.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 18));
+        didYouKnowLabel.putClientProperty("FlatLaf.styleClass", "h2.regular");
         didYouKnowLabel.setText(Strings.get(Strings.LABEL_TIP_DID_YOU_KNOW));
 
         tipPane.setEditable(false);
-        tipPane.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 16));
+        tipPane.putClientProperty("FlatLaf.styleClass", "large");
         tipScroll.setViewportView(tipPane);
 
         showTip.setSelected(Prefs.getInstance().getBoolean(PrefsKey.SHOW_TIPS));

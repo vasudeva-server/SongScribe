@@ -69,19 +69,8 @@ class LineRenderer {
     private static final double STAFF_LINE_THICKNESS =
         SMuFLMetadata.getInstance().getEngravingDefaults().staffLineThickness();
 
-    /** Color for the insertion note preview — defined in Score for shared access across renderers. */
-    private static final Color INSERTION_NOTE_COLOR = Score.INSERTION_ELEMENT_COLOR;
-
     /** The stroke used to draw the selection rectangle border. */
     private static final BasicStroke SELECTION_RECT_STROKE = new BasicStroke(2.0f);
-
-    /** Fill color for selection rectangle (transparent version of selection stroke). */
-    private static final Color SELECTION_RECT_FILL_COLOR = new Color(
-        Score.SELECTION_STROKE_COLOR.getRed(),
-        Score.SELECTION_STROKE_COLOR.getGreen(),
-        Score.SELECTION_STROKE_COLOR.getBlue(),
-        8
-    );
 
     // ==========================================================================
     // Instance Fields
@@ -238,7 +227,7 @@ class LineRenderer {
             && selectionProvider != null
             && selectionProvider.isLineSelected(lineIndex);
 
-        g2.setColor(staffSelected ? Score.SELECTION_STROKE_COLOR : STAFF_LINE_COLOR);
+        g2.setColor(staffSelected ? Score.getSelectionStrokeColor() : STAFF_LINE_COLOR);
 
         var lineWidth = lc.getComposition().getLineWidthSs();
         var middleLineYSs = lc.getMiddleLineYSs();
@@ -335,7 +324,7 @@ class LineRenderer {
 
         // Check if element is currently playing
         if (lc.getPlayingNoteIndex() == elementIndex) {
-            return Score.PLAYING_NOTE_COLOR;
+            return Score.getPlayingNoteColor();
         }
 
         // Check if element is selected or highlighted by insertion element hover
@@ -351,7 +340,7 @@ class LineRenderer {
             && InsertionElementManager.getHoveredElementIndex() == elementIndex;
 
         if (isHovered) {
-            return INSERTION_NOTE_COLOR;
+            return Score.getInsertionElementColor();
         }
 
         // Grace note pending cancellation (drag-left past slop)
@@ -646,7 +635,7 @@ class LineRenderer {
                 return;  // Already has this glissando type — no preview needed
             }
 
-            g2.setColor(INSERTION_NOTE_COLOR);
+            g2.setColor(Score.getInsertionElementColor());
             GlissandoRenderer.getInstance().renderPreviewGlissando(
                 g2, sourceIndex, type, line, ctx
             );
@@ -699,7 +688,7 @@ class LineRenderer {
         var savedLayout = ctx.getLayoutResult();
         ctx.setOverrideElementXSs(x);
         ctx.setLayoutResult(null);
-        g2.setColor(INSERTION_NOTE_COLOR);
+        g2.setColor(Score.getInsertionElementColor());
         NoteRenderer.getInstance().render(g2, insertionElement, ctx);
         ctx.clearOverrideElementX();
 
@@ -736,12 +725,12 @@ class LineRenderer {
             return;
         }
 
-        g2.setColor(SELECTION_RECT_FILL_COLOR);
+        g2.setColor(UIManager.getColor("SongScribe.score.selection.rect.fill"));
         g2.fill(dragRectangle);
 
         var originalStroke = g2.getStroke();
         g2.setStroke(SELECTION_RECT_STROKE);
-        g2.setColor(Score.SELECTION_STROKE_COLOR);
+        g2.setColor(Score.getSelectionStrokeColor());
         g2.draw(dragRectangle);
         g2.setStroke(originalStroke);
     }

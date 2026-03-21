@@ -107,43 +107,38 @@ public class AboutDialog extends StandardDialog {
 
         iconLabel.setIcon(new ImageIcon(getMainFrame().getIconImage()));
 
-        progNameLabel.setFont(new Font("Arial", Font.PLAIN, 30));
+        progNameLabel.putClientProperty("FlatLaf.styleClass", "h1");
         progNameLabel.setHorizontalAlignment(SwingConstants.CENTER);
         progNameLabel.setText(getMainFrame().appName);
 
-        versionLabel.setFont(new Font("Arial", Font.BOLD, 14));
+        versionLabel.putClientProperty("FlatLaf.styleClass", "semibold");
         versionLabel.setHorizontalAlignment(SwingConstants.TRAILING);
         versionLabel.setText(Strings.get(Strings.LABEL_VERSION));
 
-        version.setFont(new Font("Arial", Font.PLAIN, 14));
         version.setText(Version.PUBLIC_VERSION);
 
-        copyrightLabel.setFont(new Font("Arial", Font.BOLD, 14));
+        copyrightLabel.putClientProperty("FlatLaf.styleClass", "semibold");
         copyrightLabel.setHorizontalAlignment(SwingConstants.TRAILING);
         copyrightLabel.setText(Strings.get(Strings.LABEL_COPYRIGHT));
 
-        copyRight1.setFont(new Font("Arial", Font.PLAIN, 14));
         copyRight1.setText(
             "© " +
                 Calendar.getInstance().get(Calendar.YEAR) +
                 " Sri Chinmoy Centres International"
         );
 
-        copyRight2.setFont(new Font("Arial", Font.PLAIN, 14));
         copyRight2.setText(Strings.get(Strings.LABEL_ALL_RIGHTS_RESERVED));
 
-        licenseLabel.setFont(new Font("Arial", Font.BOLD, 14));
+        licenseLabel.putClientProperty("FlatLaf.styleClass", "semibold");
         licenseLabel.setHorizontalAlignment(SwingConstants.TRAILING);
         licenseLabel.setText(Strings.get(Strings.LABEL_LICENSE));
 
-        license.setFont(new Font("Arial", Font.PLAIN, 14));
         license.setText(Strings.get(Strings.LABEL_GPL));
 
-        webLabel.setFont(new Font("Arial", Font.BOLD, 14));
+        webLabel.putClientProperty("FlatLaf.styleClass", "semibold");
         webLabel.setHorizontalAlignment(SwingConstants.TRAILING);
         webLabel.setText(Strings.get(Strings.LABEL_WEB));
 
-        web.setFont(new Font("Arial", Font.PLAIN, 14));
         web.setText(WEB);
 
         if (DesktopUtils.isDesktopSupported()) {
@@ -168,11 +163,11 @@ public class AboutDialog extends StandardDialog {
             );
         }
 
-        emailLabel.setFont(new Font("Arial", Font.BOLD, 14));
+        emailLabel.putClientProperty("FlatLaf.styleClass", "semibold");
         emailLabel.setHorizontalAlignment(SwingConstants.TRAILING);
         emailLabel.setText(Strings.get(Strings.LABEL_EMAIL));
 
-        email.setFont(new Font("Arial", Font.PLAIN, 12));
+        email.putClientProperty("FlatLaf.styleClass", "small");
         email.setText(ReportBugDialog.BUG_EMAIL);
 
         if (DesktopUtils.isDesktopSupported()) {
