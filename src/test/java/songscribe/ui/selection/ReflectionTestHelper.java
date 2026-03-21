@@ -135,6 +135,15 @@ public final class ReflectionTestHelper {
     }
 
     /**
+     * Selects the glissando owned by the element at the given index.
+     */
+    public static void selectGlissando(SelectionCoordinator coordinator, int elementIndex) {
+        coordinator.saveActionStates();
+        var state = Objects.requireNonNull(coordinator.getActiveSelection());
+        state.selectGlissando(elementIndex);
+    }
+
+    /**
      * Clears the selection on the coordinator's active line.
      */
     public static void clearSelection(SelectionCoordinator coordinator) {

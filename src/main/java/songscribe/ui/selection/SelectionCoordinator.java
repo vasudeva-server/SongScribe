@@ -754,7 +754,11 @@ public final class SelectionCoordinator {
         var selection = getSelection();
 
         if (selection == null) {
-            restoreActionStates();
+            if (hasGlissandoSelection()) {
+                saveActionStates();
+            } else {
+                restoreActionStates();
+            }
         } else if (!selection.equals(lastReflectedSelection)) {
             saveActionStates();
         }
@@ -773,6 +777,11 @@ public final class SelectionCoordinator {
         // Selection cleared
         if (selection == null) {
             lastReflectedSelection = null;
+
+            if (hasGlissandoSelection()) {
+                reflectGlissandoSelection();
+            }
+
             return;
         }
 
@@ -814,6 +823,34 @@ public final class SelectionCoordinator {
         }
 
         updateGraceNoteActionEnabled(hasGraceNote);
+    }
+
+    /**
+     * Reflects a standalone glissando selection onto toolbar actions.
+     * The matching glissando action is selected and enabled; all others are disabled.
+     */
+    private void reflectGlissandoSelection() {
+        var state = getActiveSelection();
+
+        if (state == null) {
+            return;
+        }
+
+        var elementIndex = state.getSelectedGlissandoElementIndex();
+        var element = state.getLine().getElement(elementIndex);
+        var glissando = element.getGlissando();
+
+        if (glissando == null) {
+            return;
+        }
+
+        var glissandoType = glissando.type;
+
+        for (var reflectable : getReflectableActions()) {
+            var matches = reflectable.matchesGlissandoType(glissandoType);
+            ((UIAction) reflectable).setEnabled(matches);
+            reflectable.setSelected(matches);
+        }
     }
 
     /**

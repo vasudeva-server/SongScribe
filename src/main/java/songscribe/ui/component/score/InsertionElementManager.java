@@ -39,6 +39,7 @@ import songscribe.ui.Control;
 import songscribe.ui.Dialogs;
 import songscribe.ui.Mode;
 import songscribe.ui.action.Actions;
+import songscribe.ui.action.ElementTypeAction;
 import songscribe.ui.component.Score;
 import songscribe.ui.edit.EditModeManager;
 import songscribe.ui.layout.LayoutStylesheet;
@@ -279,12 +280,8 @@ public class InsertionElementManager {
     private static StaffElement.Glissando.@Nullable Type getSelectedGlissandoType() {
         var selected = Actions.DURATION_ACTION_GROUP.getSelected();
 
-        if (selected == Actions.GLISSANDO_ACTION) {
-            return StaffElement.Glissando.Type.CONNECTED;
-        }
-
-        if (selected == Actions.SLIDE_OUT_ACTION) {
-            return StaffElement.Glissando.Type.SLIDE_OUT;
+        if (selected instanceof ElementTypeAction eta) {
+            return eta.getGlissandoType();
         }
 
         return null;

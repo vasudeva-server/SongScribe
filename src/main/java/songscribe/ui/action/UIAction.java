@@ -117,6 +117,14 @@ public class UIAction extends AbstractAction {
          * Only called when appliesTo() returns true.
          */
         boolean matchesElement(StaffElement element);
+
+        /**
+         * Whether this action matches the given glissando type.
+         * Only glissando/slide-out actions override this to return true.
+         */
+        default boolean matchesGlissandoType(StaffElement.Glissando.Type type) {
+            return false;
+        }
     }
 
     /**

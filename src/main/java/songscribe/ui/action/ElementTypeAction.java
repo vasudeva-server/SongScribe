@@ -51,6 +51,7 @@ public class ElementTypeAction extends StickyUIAction implements UIAction.Elemen
 
     private final ElementType type;
     private final Kind kind;
+    private final StaffElement.Glissando.@Nullable Type glissandoType;
 
     public static ElementTypeAction createGraceEighthNoteAction() {
         return new ElementTypeAction(
@@ -124,7 +125,7 @@ public class ElementTypeAction extends StickyUIAction implements UIAction.Elemen
 
     public static ElementTypeAction createGlissandoAction() {
         return new ElementTypeAction(
-            Kind.DURATION, ElementType.GLISSANDO,
+            Kind.DURATION, ElementType.GLISSANDO, StaffElement.Glissando.Type.CONNECTED,
             Strings.get(Strings.ACTION_DURATION_GLISSANDO), "connecting-glissando.svg", 26,
             "glissando", Strings.get(Strings.ACTION_DURATION_GLISSANDO_TOOLTIP),
             KeyEvent.VK_G, 0,
@@ -134,7 +135,7 @@ public class ElementTypeAction extends StickyUIAction implements UIAction.Elemen
 
     public static ElementTypeAction createSlideOutAction() {
         return new ElementTypeAction(
-            Kind.DURATION, ElementType.GLISSANDO,
+            Kind.DURATION, ElementType.GLISSANDO, StaffElement.Glissando.Type.SLIDE_OUT,
             Strings.get(Strings.ACTION_DURATION_SLIDE_OUT), "slide-out.svg", 26,
             "slide-out", Strings.get(Strings.ACTION_DURATION_SLIDE_OUT_TOOLTIP),
             KeyEvent.VK_G, InputEvent.SHIFT_DOWN_MASK | InputEvent.META_DOWN_MASK,
@@ -224,9 +225,26 @@ public class ElementTypeAction extends StickyUIAction implements UIAction.Elemen
         int modifiers,
         Flag... flags
     ) {
+        this(kind, type, null, name, icon, size, actionCommand, tooltip, virtualKey, modifiers, flags);
+    }
+
+    private ElementTypeAction(
+        Kind kind,
+        ElementType type,
+        StaffElement.Glissando.@Nullable Type glissandoType,
+        String name,
+        @Nullable String icon,
+        int size,
+        String actionCommand,
+        String tooltip,
+        int virtualKey,
+        int modifiers,
+        Flag... flags
+    ) {
         super(name, icon, size, actionCommand, tooltip, virtualKey, modifiers, flags);
         this.kind = kind;
         this.type = type;
+        this.glissandoType = glissandoType;
     }
 
     public ElementType getType() {
@@ -235,6 +253,15 @@ public class ElementTypeAction extends StickyUIAction implements UIAction.Elemen
 
     public Kind getKind() {
         return kind;
+    }
+
+    public StaffElement.Glissando.@Nullable Type getGlissandoType() {
+        return glissandoType;
+    }
+
+    @Override
+    public boolean matchesGlissandoType(StaffElement.Glissando.Type type) {
+        return glissandoType == type;
     }
 
     @Override
