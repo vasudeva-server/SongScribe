@@ -13,6 +13,12 @@
       "subdirectory": "migrations/rendering-rewrite",
       "active": false,
       "description": "Rewrite rendering and layout pipeline with staff-space coordinate system, abc2svg algorithms"
+    },
+    {
+      "path": "plans/e2e-to-unit-test-conversion.md",
+      "subdirectory": null,
+      "active": true,
+      "description": "Convert e2e tests to unit tests where possible, delete redundant e2e tests"
     }
   ],
   "subPlans": [
