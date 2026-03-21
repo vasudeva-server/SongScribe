@@ -262,7 +262,7 @@ class NoteDragHandlerTest extends UnitTest {
             handler.handleRelease();
 
             assertThat(line.getElement(0).getGlissando())
-                .isSameAs(StaffElement.NO_GLISSANDO);
+                .isNull();
         }
 
         @Test
@@ -279,7 +279,7 @@ class NoteDragHandlerTest extends UnitTest {
             handler.handleRelease();
 
             assertThat(line.getElement(0).getGlissando())
-                .isSameAs(StaffElement.NO_GLISSANDO);
+                .isNull();
         }
     }
 

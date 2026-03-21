@@ -641,8 +641,7 @@ class LineRenderer {
             var sourceIndex = InsertionElementManager.getCurrentXIndex() - 1;
             var sourceNote = line.getElement(sourceIndex);
 
-            //noinspection ObjectEquality
-            if (sourceNote.getGlissando() != StaffElement.NO_GLISSANDO
+            if (sourceNote.getGlissando() != null
                 && sourceNote.getGlissando().type == type) {
                 return;  // Already has this glissando type — no preview needed
             }

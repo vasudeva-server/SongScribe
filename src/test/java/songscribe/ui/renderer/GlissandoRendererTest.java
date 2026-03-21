@@ -23,6 +23,8 @@ package songscribe.ui.renderer;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
 
+import java.util.Objects;
+
 import module java.desktop;
 
 import org.junit.jupiter.api.Test;
@@ -458,7 +460,7 @@ class GlissandoRendererTest extends UnitTest {
     void testHitTestGlissando_diagonalLine_returnsNoteIndex() {
         // 45° glissando from (0, 0), length 10; midpoint in world coords: (5·cos45°, 5·sin45°)
         var line = makeTwoNoteLineWithGlissando(0, StaffElement.Accidental.NONE, -2, StaffElement.Accidental.NONE);
-        setCachedGeometry(line.getElement(0).getGlissando(), 0.0, 0.0, 45.0, 10.0);
+        setCachedGeometry(Objects.requireNonNull(line.getElement(0).getGlissando()), 0.0, 0.0, 45.0, 10.0);
 
         double mid = 5.0 * Math.cos(Math.toRadians(45.0));
         assertThat(RENDERER.hitTestGlissando(mid, mid, line)).isEqualTo(0);
@@ -475,7 +477,7 @@ class GlissandoRendererTest extends UnitTest {
     @Test
     void testHitTestGlissando_pointAfterEnd_returnsMinusOne() {
         var line = makeTwoNoteLineWithGlissando(0, StaffElement.Accidental.NONE, -2, StaffElement.Accidental.NONE);
-        setCachedGeometry(line.getElement(0).getGlissando(), 5.0, 3.0, 0.0, 10.0);
+        setCachedGeometry(Objects.requireNonNull(line.getElement(0).getGlissando()), 5.0, 3.0, 0.0, 10.0);
 
         // localX = 15.1 - 5.0 = 10.1 > cachedLength (10.0)
         assertThat(RENDERER.hitTestGlissando(15.1, 3.0, line)).isEqualTo(-1);
@@ -484,7 +486,7 @@ class GlissandoRendererTest extends UnitTest {
     @Test
     void testHitTestGlissando_pointBeforeStart_returnsMinusOne() {
         var line = makeTwoNoteLineWithGlissando(0, StaffElement.Accidental.NONE, -2, StaffElement.Accidental.NONE);
-        setCachedGeometry(line.getElement(0).getGlissando(), 5.0, 3.0, 0.0, 10.0);
+        setCachedGeometry(Objects.requireNonNull(line.getElement(0).getGlissando()), 5.0, 3.0, 0.0, 10.0);
 
         // localX = 4.9 - 5.0 = -0.1 < 0
         assertThat(RENDERER.hitTestGlissando(4.9, 3.0, line)).isEqualTo(-1);
@@ -494,7 +496,7 @@ class GlissandoRendererTest extends UnitTest {
     void testHitTestGlissando_pointBesideLine_returnsMinusOne() {
         // Same glissando, but click is 1.0 ss above (> halfHitSs = 0.5)
         var line = makeTwoNoteLineWithGlissando(0, StaffElement.Accidental.NONE, -2, StaffElement.Accidental.NONE);
-        setCachedGeometry(line.getElement(0).getGlissando(), 5.0, 3.0, 0.0, 10.0);
+        setCachedGeometry(Objects.requireNonNull(line.getElement(0).getGlissando()), 5.0, 3.0, 0.0, 10.0);
 
         assertThat(RENDERER.hitTestGlissando(10.0, 4.0, line)).isEqualTo(-1);
     }
@@ -503,7 +505,7 @@ class GlissandoRendererTest extends UnitTest {
     void testHitTestGlissando_pointOnLine_returnsNoteIndex() {
         // Horizontal glissando (angle=0) from (5.0, 3.0) with length 10.0
         var line = makeTwoNoteLineWithGlissando(0, StaffElement.Accidental.NONE, -2, StaffElement.Accidental.NONE);
-        setCachedGeometry(line.getElement(0).getGlissando(), 5.0, 3.0, 0.0, 10.0);
+        setCachedGeometry(Objects.requireNonNull(line.getElement(0).getGlissando()), 5.0, 3.0, 0.0, 10.0);
 
         // Click at the midpoint: localX=5, localY=0 — well within hit bounds
         assertThat(RENDERER.hitTestGlissando(10.0, 3.0, line)).isEqualTo(0);
@@ -525,7 +527,7 @@ class GlissandoRendererTest extends UnitTest {
         line.addElement(note1);
         line.addElement(note2);
 
-        setCachedGeometry(note1.getGlissando(), 5.0, 3.0, 0.0, 10.0);
+        setCachedGeometry(Objects.requireNonNull(note1.getGlissando()), 5.0, 3.0, 0.0, 10.0);
 
         assertThat(RENDERER.hitTestGlissando(10.0, 3.0, line)).isEqualTo(1);
     }

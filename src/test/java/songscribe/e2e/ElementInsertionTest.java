@@ -238,7 +238,7 @@ class ElementInsertionTest extends E2ETest {
                     .as("drag connect: count").isEqualTo(countBefore + 1),
                 () -> assertThat(line.getElement(graceIdx).getType())
                     .as("drag connect: grace type").isEqualTo(ElementType.GRACE_QUAVER),
-                () -> assertThat(line.getElement(graceIdx).getGlissando().type)
+                () -> assertThat(Objects.requireNonNull(line.getElement(graceIdx).getGlissando()).type)
                     .as("drag connect: glissando").isEqualTo(StaffElement.Glissando.Type.CONNECTED),
                 () -> assertThat(isGraceModeActive())
                     .as("drag connect: mode inactive").isFalse()
@@ -280,7 +280,7 @@ class ElementInsertionTest extends E2ETest {
                     .as("element count unchanged").isEqualTo(countBefore),
                 () -> assertThat(line.getElement(pairAHostIdx).getType())
                     .as("host replaced with half note").isEqualTo(ElementType.MINIM),
-                () -> assertThat(line.getElement(pairAGraceIdx).getGlissando().type)
+                () -> assertThat(Objects.requireNonNull(line.getElement(pairAGraceIdx).getGlissando()).type)
                     .as("glissando still connected").isEqualTo(StaffElement.Glissando.Type.CONNECTED)
             );
         }
@@ -382,7 +382,7 @@ class ElementInsertionTest extends E2ETest {
                     .as("grace type").isEqualTo(ElementType.GRACE_QUAVER),
                 () -> assertThat(line.getElement(hostIdx).getType().isPitchedNote())
                     .as("host type").isTrue(),
-                () -> assertThat(line.getElement(graceIdx).getGlissando().type)
+                () -> assertThat(Objects.requireNonNull(line.getElement(graceIdx).getGlissando()).type)
                     .as("glissando").isEqualTo(StaffElement.Glissando.Type.CONNECTED),
                 () -> assertThat(isGraceModeActive())
                     .as("grace mode inactive").isFalse(),
@@ -444,7 +444,7 @@ class ElementInsertionTest extends E2ETest {
                     .as("grace is quaver").isEqualTo(ElementType.GRACE_QUAVER),
                 () -> assertThat(line.getElement(hostIdx).getType())
                     .as("host is minim").isEqualTo(ElementType.MINIM),
-                () -> assertThat(line.getElement(graceIdx).getGlissando().type)
+                () -> assertThat(Objects.requireNonNull(line.getElement(graceIdx).getGlissando()).type)
                     .as("glissando connected").isEqualTo(StaffElement.Glissando.Type.CONNECTED),
                 () -> assertThat(isActionSelected(Actions.HALF_NOTE_ACTION))
                     .as("half note selected").isTrue(),

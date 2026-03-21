@@ -295,8 +295,7 @@ public class Line {
         }
 
         var glissando = element.getGlissando();
-        //noinspection ObjectEquality
-        return glissando != StaffElement.NO_GLISSANDO
+        return glissando != null
             && glissando.type == StaffElement.Glissando.Type.CONNECTED;
     }
 
@@ -769,7 +768,7 @@ public class Line {
         if (type.isGraceNote()) {
             var glissando = element.getGlissando();
 
-            if (glissando != StaffElement.NO_GLISSANDO
+            if (glissando != null
                 && glissando.type == StaffElement.Glissando.Type.CONNECTED) {
                 // Grace note with connected glissando: zero duration,
                 // just store the pitch for the next note's slide-in
@@ -800,7 +799,7 @@ public class Line {
                 if ((interval == null) || (interval.getEnd() == elementIndex)) {
                     var glissando = element.getGlissando();
 
-                    if (glissando != StaffElement.NO_GLISSANDO) {
+                    if (glissando != null) {
                         addGlissandoMessages(
                             track, trackTicks, duration, elementIndex,
                             element, glissando, settings, glissandoHelper

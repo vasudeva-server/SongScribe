@@ -134,8 +134,7 @@ public final class FormatMigrator {
             for (var i = 0; i < line.elementCount(); i++) {
                 var note = line.getElement(i);
 
-                //noinspection ObjectEquality
-                if (note.getGlissando() != StaffElement.NO_GLISSANDO) {
+                if (note.getGlissando() != null) {
                     note.getGlissando().x1Translate /= pps;
                     note.getGlissando().x2Translate /= pps;
                 }

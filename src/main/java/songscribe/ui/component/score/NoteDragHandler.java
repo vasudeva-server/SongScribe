@@ -360,7 +360,10 @@ class NoteDragHandler {
         var element = line.getElement(elementIndex);
 
         // Glissando FROM the dragged note to the next note
-        if (element.getGlissando().type == StaffElement.Glissando.Type.CONNECTED
+        var glissando = element.getGlissando();
+
+        if (glissando != null
+            && glissando.type == StaffElement.Glissando.Type.CONNECTED
             && elementIndex + 1 < line.elementCount()
             && element.getPitch() == line.getElement(elementIndex + 1).getPitch()) {
             element.removeGlissando();
@@ -369,8 +372,10 @@ class NoteDragHandler {
         // Glissando TO the dragged note from the previous note
         if (elementIndex > 0) {
             var prev = line.getElement(elementIndex - 1);
+            var prevGlissando = prev.getGlissando();
 
-            if (prev.getGlissando().type == StaffElement.Glissando.Type.CONNECTED
+            if (prevGlissando != null
+                && prevGlissando.type == StaffElement.Glissando.Type.CONNECTED
                 && prev.getPitch() == element.getPitch()) {
                 prev.removeGlissando();
             }

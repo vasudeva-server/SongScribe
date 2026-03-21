@@ -333,9 +333,8 @@ public final class GraceModeManager {
         pendingConnect = isDrag && !pendingCancel
             && isMouseRightOfGraceNote(e) && hasEligibleHostNote();
 
-        //noinspection ObjectEquality
         boolean hasGlissando = graceNote != null
-            && graceNote.getGlissando() != StaffElement.NO_GLISSANDO;
+            && graceNote.getGlissando() != null;
 
         if (pendingConnect && !hasGlissando && graceNote != null) {
             graceNote.setGlissando(StaffElement.Glissando.Type.CONNECTED);

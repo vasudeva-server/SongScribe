@@ -39,8 +39,7 @@ public class StaffElement extends LineElement implements Cloneable {
 
     public static final StaffElement GLISSANDO_PLACEHOLDER = new StructuralElement();
     public static final StaffElement PASTE_PLACEHOLDER = new StructuralElement();
-    public static final Glissando NO_GLISSANDO = new Glissando(Glissando.Type.CONNECTED);
-    protected Glissando glissando = NO_GLISSANDO;
+    protected @Nullable Glissando glissando;
 
     // MIDI pitches B4..A5, corresponding to the index returned by getPitchIndex()
     private static final int[] MIDI_PITCHES = new int[]{
@@ -492,13 +491,12 @@ public class StaffElement extends LineElement implements Cloneable {
             accidentalInParenthesis;
     }
 
-    public Glissando getGlissando() {
+    public @Nullable Glissando getGlissando() {
         return glissando;
     }
 
     public void setGlissando(Glissando.Type type) {
-        //noinspection ObjectEquality
-        if (glissando == NO_GLISSANDO) {
+        if (glissando == null) {
             glissando = new Glissando(type);
         } else {
             glissando.type = type;
@@ -506,7 +504,7 @@ public class StaffElement extends LineElement implements Cloneable {
     }
 
     public void removeGlissando() {
-        glissando = NO_GLISSANDO;
+        glissando = null;
     }
 
     public @Nullable Tempo getTempoChange() {

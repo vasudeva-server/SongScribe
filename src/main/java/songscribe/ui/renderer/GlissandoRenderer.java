@@ -295,8 +295,7 @@ public class GlissandoRenderer {
         for (var i = 0; i < line.elementCount(); i++) {
             var note = line.getElement(i);
 
-            //noinspection ObjectEquality
-            if (note.getGlissando() != StaffElement.NO_GLISSANDO) {
+            if (note.getGlissando() != null) {
                 renderGlissando(g2, line, note, i, ctx);
             }
         }
@@ -320,8 +319,7 @@ public class GlissandoRenderer {
     ) {
         var glissando = note.getGlissando();
 
-        //noinspection ObjectEquality
-        if (glissando == StaffElement.NO_GLISSANDO) {
+        if (glissando == null) {
             return;
         }
 
@@ -438,7 +436,7 @@ public class GlissandoRenderer {
         for (var i = 0; i < line.elementCount(); i++) {
             var glissando = line.getElement(i).getGlissando();
 
-            if (!glissando.hasCachedGeometry) {
+            if (glissando == null || !glissando.hasCachedGeometry) {
                 continue;
             }
 

@@ -22,6 +22,7 @@ package songscribe.ui.adjustment;
 import module java.desktop;
 
 import java.util.ArrayList;
+import java.util.Objects;
 
 import org.jspecify.annotations.Nullable;
 
@@ -249,12 +250,12 @@ public class HorizontalAdjustment extends Adjustment {
             draggingRect.horizontalAdjustmentType ==
                 HorizontalAdjustmentType.GLISSANDO_START
         ) {
-            note.getGlissando().x1Translate += endPoint.x - diffX;
+            Objects.requireNonNull(note.getGlissando()).x1Translate += endPoint.x - diffX;
         } else if (
             draggingRect.horizontalAdjustmentType ==
                 HorizontalAdjustmentType.GLISSANDO_END
         ) {
-            note.getGlissando().x2Translate += endPoint.x - diffX;
+            Objects.requireNonNull(note.getGlissando()).x2Translate += endPoint.x - diffX;
         } else if (
             (draggingRect.horizontalAdjustmentType ==
                 HorizontalAdjustmentType.CRESCENDO_START) ||
@@ -350,8 +351,7 @@ public class HorizontalAdjustment extends Adjustment {
                 for (var i = 0; i < line.elementCount(); i++) {
                     var note = line.getElement(i);
 
-                    //noinspection ObjectEquality
-                    if (note.getGlissando() != StaffElement.NO_GLISSANDO) {
+                    if (note.getGlissando() != null) {
                         adjustRects.add(
                             new AdjustRect(
                                 lineIndex,
@@ -464,7 +464,7 @@ public class HorizontalAdjustment extends Adjustment {
                         ScaleContext.getInstance().toPixels(
                             GlissandoRenderer.getGlissandoX1Ss(
                                 rect.xIndex,
-                                note.getGlissando(),
+                                Objects.requireNonNull(note.getGlissando()),
                                 rect.line,
                                 score.getComposition(),
                                 layoutResult,
@@ -480,7 +480,7 @@ public class HorizontalAdjustment extends Adjustment {
                         ScaleContext.getInstance().toPixels(
                             GlissandoRenderer.getGlissandoX2Ss(
                                 rect.xIndex,
-                                note.getGlissando(),
+                                Objects.requireNonNull(note.getGlissando()),
                                 rect.line,
                                 score.getComposition(),
                                 layoutResult,

@@ -131,9 +131,7 @@ class NoteConnectionTest extends E2ETest {
                 .as("source note selected").isTrue();
 
             var note = composition().getLine(0).getElement(Element.PAIR_B_SRC.index);
-            //noinspection ObjectEquality
-            assertThat(note.getGlissando() != StaffElement.NO_GLISSANDO)
-                .as("source has glissando").isTrue();
+            assertThat(note.getGlissando()).as("source has glissando").isNotNull();
         }
 
         @Test
@@ -146,7 +144,7 @@ class NoteConnectionTest extends E2ETest {
                 .as("target note selected").isTrue();
 
             var sourceNote = composition().getLine(0).getElement(Element.PAIR_B_SRC.index);
-            assertThat(sourceNote.getGlissando().type)
+            assertThat(Objects.requireNonNull(sourceNote.getGlissando()).type)
                 .as("source has connected glissando pointing to target")
                 .isEqualTo(StaffElement.Glissando.Type.CONNECTED);
         }
@@ -154,9 +152,7 @@ class NoteConnectionTest extends E2ETest {
         @Test
         void testNoPitchBendWithoutGlissando() {
             var note = composition().getLine(0).getElement(Element.PAIR_A_SRC.index);
-            //noinspection ObjectEquality
-            assertThat(note.getGlissando() == StaffElement.NO_GLISSANDO)
-                .as("pair A source has no glissando").isTrue();
+            assertThat(note.getGlissando()).as("pair A source has no glissando").isNull();
         }
     }
 
@@ -330,10 +326,10 @@ class NoteConnectionTest extends E2ETest {
             performLayout(0);
 
             var note = composition().getLine(0).getElement(Element.PAIR_A_SRC.index);
+            var glissando = note.getGlissando();
             assertAll(
-                () -> assertThat(note.getGlissando())
-                    .as("has glissando").isNotSameAs(StaffElement.NO_GLISSANDO),
-                () -> assertThat(note.getGlissando().type)
+                () -> assertThat(glissando).as("has glissando").isNotNull(),
+                () -> assertThat(Objects.requireNonNull(glissando).type)
                     .as("type is CONNECTED").isEqualTo(StaffElement.Glissando.Type.CONNECTED)
             );
         }
@@ -367,10 +363,10 @@ class NoteConnectionTest extends E2ETest {
             performLayout(0);
 
             var note = composition().getLine(0).getElement(Element.PAIR_A_TGT.index);
+            var glissando = note.getGlissando();
             assertAll(
-                () -> assertThat(note.getGlissando())
-                    .as("has glissando").isNotSameAs(StaffElement.NO_GLISSANDO),
-                () -> assertThat(note.getGlissando().type)
+                () -> assertThat(glissando).as("has glissando").isNotNull(),
+                () -> assertThat(Objects.requireNonNull(glissando).type)
                     .as("type is SLIDE_OUT").isEqualTo(StaffElement.Glissando.Type.SLIDE_OUT)
             );
         }
@@ -400,14 +396,14 @@ class NoteConnectionTest extends E2ETest {
         @Test
         void testGlissandoPersistence() {
             var originalNote = composition().getLine(0).getElement(Element.PAIR_A_SRC.index);
-            var originalType = originalNote.getGlissando().type;
+            var originalType = Objects.requireNonNull(originalNote.getGlissando()).type;
 
             var reloaded = roundTripOnEdt();
             var reloadedNote = reloaded.getLine(0).getElement(Element.PAIR_A_SRC.index);
+            var reloadedGlissando = reloadedNote.getGlissando();
             assertAll(
-                () -> assertThat(reloadedNote.getGlissando())
-                    .as("save/load: glissando preserved").isNotSameAs(StaffElement.NO_GLISSANDO),
-                () -> assertThat(reloadedNote.getGlissando().type)
+                () -> assertThat(reloadedGlissando).as("save/load: glissando preserved").isNotNull(),
+                () -> assertThat(Objects.requireNonNull(reloadedGlissando).type)
                     .as("save/load: glissando type preserved").isEqualTo(originalType)
             );
         }
@@ -432,9 +428,7 @@ class NoteConnectionTest extends E2ETest {
             performLayout(0);
 
             var note = composition().getLine(0).getElement(Element.PAIR_C_SRC.index);
-            //noinspection ObjectEquality
-            assertThat(note.getGlissando())
-                .as("glissando removed on unison").isSameAs(StaffElement.NO_GLISSANDO);
+            assertThat(note.getGlissando()).as("glissando removed on unison").isNull();
         }
 
         @Order(2)
@@ -450,9 +444,7 @@ class NoteConnectionTest extends E2ETest {
             performLayout(0);
 
             var note = composition().getLine(0).getElement(Element.PAIR_D_SRC.index);
-            //noinspection ObjectEquality
-            assertThat(note.getGlissando())
-                .as("delete selected glissando").isSameAs(StaffElement.NO_GLISSANDO);
+            assertThat(note.getGlissando()).as("delete selected glissando").isNull();
         }
 
         @Order(3)
@@ -472,7 +464,7 @@ class NoteConnectionTest extends E2ETest {
                 () -> assertThat(line.elementCount())
                     .as("element count decreased").isEqualTo(countBefore - 1),
                 () -> assertThat(line.getElement(Element.PAIR_E_TGT_SHIFTED.index).getGlissando())
-                    .as("remaining note has no glissando").isSameAs(StaffElement.NO_GLISSANDO)
+                    .as("remaining note has no glissando").isNull()
             );
         }
 
@@ -494,7 +486,7 @@ class NoteConnectionTest extends E2ETest {
                 () -> assertThat(line.elementCount())
                     .as("element count decreased").isEqualTo(countBefore - 1),
                 () -> assertThat(line.getElement(Element.PAIR_F_SRC_SHIFTED.index).getGlissando())
-                    .as("source glissando removed").isSameAs(StaffElement.NO_GLISSANDO)
+                    .as("source glissando removed").isNull()
             );
         }
     }

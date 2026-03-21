@@ -243,9 +243,8 @@ public final class ElementColumn {
     /**
      * Returns whether this element has an outgoing glissando.
      */
-    @SuppressWarnings("ObjectEquality")
     public boolean hasGlissando() {
-        return element.getGlissando() != StaffElement.NO_GLISSANDO;
+        return element.getGlissando() != null;
     }
 
     // ==========================================================================

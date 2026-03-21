@@ -430,7 +430,6 @@ public final class ScoreMessageCoordinator {
         }
     }
 
-    @SuppressWarnings("ObjectEquality")
     private static void deleteNote(int xIndex, Line line) {
         // If the preceding note is a paired grace note, it becomes orphaned when
         // this note is deleted and must be removed along with it.
@@ -456,7 +455,7 @@ public final class ScoreMessageCoordinator {
         if (!hasPrecedingPairedGraceNote && xIndex > 0) {
             var prevElement = line.getElement(xIndex - 1);
 
-            if (prevElement.getGlissando() != StaffElement.NO_GLISSANDO) {
+            if (prevElement.getGlissando() != null) {
                 prevElement.removeGlissando();
             }
         }

@@ -163,8 +163,7 @@ public final class StaffElementIO {
             }
         }
 
-        //noinspection ObjectEquality
-        if (element.getGlissando() != StaffElement.NO_GLISSANDO) {
+        if (element.getGlissando() != null) {
             XML.writeValue(
                 writer,
                 XML_GLISSANDO,
@@ -402,9 +401,9 @@ public final class StaffElementIO {
 
                         element.setGlissando(type);
                     } else if (lastTag.equals(XML_GLISSANDO_X1_TRANSLATE)) {
-                        element.getGlissando().x1Translate = Double.parseDouble(str);
+                        Objects.requireNonNull(element.getGlissando()).x1Translate = Double.parseDouble(str);
                     } else if (lastTag.equals(XML_GLISSANDO_X2_TRANSLATE)) {
-                        element.getGlissando().x2Translate = Double.parseDouble(str);
+                        Objects.requireNonNull(element.getGlissando()).x2Translate = Double.parseDouble(str);
                     } else if (lastTag.equals(XML_UPPER)) {
                         element.setUpper(true);
                     } else if (lastTag.equals(XML_SYLLABLE_MOVEMENT)) {

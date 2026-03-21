@@ -464,13 +464,11 @@ public class ExportABCAction extends UIAction {
 
     static boolean isGlissandoBegin(Line line, int n) {
         // Glissandos are represented as slurs in ABC format
-        //noinspection ObjectEquality
-        return line.getElement(n).getGlissando() != StaffElement.NO_GLISSANDO;
+        return line.getElement(n).getGlissando() != null;
     }
 
     static boolean isGlissandoEnd(Line line, int n) {
-        //noinspection ObjectEquality
-        return (n > 0) && (line.getElement(n - 1).getGlissando() != StaffElement.NO_GLISSANDO);
+        return (n > 0) && (line.getElement(n - 1).getGlissando() != null);
     }
 
     static String translateLyrics(Line line) {
