@@ -4,7 +4,7 @@ All user-facing strings must be externalized — never use string literals direc
 
 ### Source of truth
 
-`src/main/resources/songscribe/strings.properties` — edit this file to add, change, or remove strings.
+`src/main/resources/songscribe/strings.properties` — edit this file to add, change, or remove strings. The file is UTF-8 encoded; use Unicode characters directly (e.g. `'`, `"`, `é`) rather than `\uNNNN` escapes.
 
 - Keys use lowercase dot-separated segments where **each segment is a single English word** (or a recognized abbreviation/acronym such as `dpi`, `pdf`, `svg`, `midi`, `abc`, `gpl`, `px`). Never mash multiple words into one segment.
 
@@ -52,11 +52,11 @@ When removing code that references a `Strings.*` constant, check whether any oth
 
 ### Curly quotes in strings.properties
 
-The `Edit` tool cannot reliably write curly (typographic) quotes and apostrophes (U+2018, U+2019, U+201C, U+201D). When a string value contains these characters, use `python3` via `Bash` to write or modify the line. For example:
+The `Edit` tool cannot reliably write curly (typographic) quotes and apostrophes (‘’“”). When a string value contains these characters, use `python3` via `Bash` to write or modify the line, using the characters directly:
 
 ```bash
 python3 -c "
-line = 'some.key = It\u2019s a \u201csmart\u201d quote'
+line = 'some.key = It’s a “smart” quote'
 # append or use file manipulation to insert the line
 "
 ```
