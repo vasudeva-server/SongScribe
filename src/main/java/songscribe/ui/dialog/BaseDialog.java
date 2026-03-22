@@ -234,6 +234,8 @@ public abstract class BaseDialog {
         protected final GridBagConstraints constraints =
             new GridBagConstraints();
 
+        private boolean hasFillItem = false;
+
         protected Tab() {
             this(PADDING);
         }
@@ -256,12 +258,15 @@ public abstract class BaseDialog {
 
             initContents();
 
-            // Add glue at the bottom that will force the contents to the top
-            constraints.gridx = 0;
-            constraints.weightx = 1.0;
-            constraints.weighty = 1.0;
-            constraints.fill = GridBagConstraints.BOTH;
-            add(Box.createGlue(), constraints);
+            // Add glue at the bottom that will force the contents to the top,
+            // unless a fill item was added (which already claims all extra space)
+            if (!hasFillItem) {
+                constraints.gridx = 0;
+                constraints.weightx = 1.0;
+                constraints.weighty = 1.0;
+                constraints.fill = GridBagConstraints.BOTH;
+                add(Box.createGlue(), constraints);
+            }
         }
 
         /**
@@ -277,6 +282,30 @@ public abstract class BaseDialog {
 
         public void addSeparator() {
             add(Box.createVerticalStrut(SECTION_MARGIN), constraints);
+        }
+
+        /**
+         * Adds a component that expands to fill available space in the given
+         * direction ({@link GridBagConstraints#HORIZONTAL},
+         * {@link GridBagConstraints#VERTICAL}, or
+         * {@link GridBagConstraints#BOTH}). Use this instead of {@link #add}
+         * when a component should grow beyond its preferred size. At most one
+         * expanding component should be added per tab.
+         */
+        protected void addExpanding(
+            Component comp,
+            @MagicConstant(
+                intValues = { GridBagConstraints.HORIZONTAL, GridBagConstraints.VERTICAL, GridBagConstraints.BOTH }
+            ) int direction) {
+            var fillsHorizontally = direction == GridBagConstraints.HORIZONTAL
+                || direction == GridBagConstraints.BOTH;
+            var fillsVertically = direction == GridBagConstraints.VERTICAL
+                || direction == GridBagConstraints.BOTH;
+            constraints.fill = direction;
+            constraints.weightx = fillsHorizontally ? 1.0 : 0;
+            constraints.weighty = fillsVertically ? 1.0 : 0;
+            add(comp, constraints);
+            hasFillItem = true;
         }
     }
 

@@ -47,23 +47,6 @@ import songscribe.util.MyFontUtils;
 
 public class PreferencesDialog extends BaseDialog {
 
-    private static final int EXTRA_WIDTH = 100;
-    private static final int APPEARANCE_ICON_SIZE = 100;
-    private static final int APPEARANCE_ITEM_GAP = 40;
-    private static final int APPEARANCE_ICON_RADIO_GAP = 5;
-
-    private static final int[] VALID_VOLUME_STOPS = { 50, 63, 75, 88, 100 };
-    private static final int VOLUME_LABELED_STOP_INTERVAL = 2;
-
-    private static final int TEMPO_MIN = 50;
-    private static final int TEMPO_MAX = 150;
-    private static final int TEMPO_MAJOR_TICK = 25;
-
-    private static final int[] VALID_TEMPO_STOPS = { 50, 75, 100, 125, 150 };
-
-    private static final int DURATION_STEP = 17;
-    private static final int[] VALID_DURATION_STOPS = { 32, 49, 66, 83, 100 };
-
     private static String[] instrumentStrings = new String[0];
     private static int[] instrumentPrograms = new int[0];
     private static boolean instrumentsLoaded = false;
@@ -78,8 +61,8 @@ public class PreferencesDialog extends BaseDialog {
 
     // Play tab — Playback section
     private final JSlider durationSlider = new JSlider(32, 100);
-    private final JSlider volumeSlider = new JSlider(0, VALID_VOLUME_STOPS.length - 1);
-    private final JSlider tempoSlider = new JSlider(TEMPO_MIN, TEMPO_MAX);
+    private final JSlider volumeSlider = new JSlider(0, PlayTab.VALID_VOLUME_STOPS.length - 1);
+    private final JSlider tempoSlider = new JSlider(PlayTab.TEMPO_MIN, PlayTab.TEMPO_MAX);
 
     // General tab — Page Size section
     private final JRadioButton letterRadio = new JRadioButton(
@@ -162,11 +145,6 @@ public class PreferencesDialog extends BaseDialog {
         contentPanel.add(BorderLayout.CENTER, tabbedPane);
 
         addChangeListeners();
-    }
-
-    @Override
-    protected int getExtraWidth() {
-        return EXTRA_WIDTH;
     }
 
     @Override
@@ -265,7 +243,7 @@ public class PreferencesDialog extends BaseDialog {
         });
 
         volumeSlider.addChangeListener(_ -> {
-            var volume = VALID_VOLUME_STOPS[volumeSlider.getValue()];
+            var volume = PlayTab.VALID_VOLUME_STOPS[volumeSlider.getValue()];
             var prefs = Prefs.getInstance();
             prefs.putTransient(PrefsKey.PLAYBACK_VOLUME, volume);
             MidiController.setPlaybackVolume(volume);
@@ -411,15 +389,15 @@ public class PreferencesDialog extends BaseDialog {
     }
 
     private static int snapToNearestTempoStop(int value) {
-        return snapToNearest(value, VALID_TEMPO_STOPS);
+        return snapToNearest(value, PlayTab.VALID_TEMPO_STOPS);
     }
 
     private static int volumeToSliderIndex(int volume) {
         int closestIndex = 0;
-        int minDist = Math.abs(volume - VALID_VOLUME_STOPS[0]);
+        int minDist = Math.abs(volume - PlayTab.VALID_VOLUME_STOPS[0]);
 
-        for (int i = 1; i < VALID_VOLUME_STOPS.length; i++) {
-            int dist = Math.abs(volume - VALID_VOLUME_STOPS[i]);
+        for (int i = 1; i < PlayTab.VALID_VOLUME_STOPS.length; i++) {
+            int dist = Math.abs(volume - PlayTab.VALID_VOLUME_STOPS[i]);
 
             if (dist < minDist) {
                 minDist = dist;
@@ -431,7 +409,7 @@ public class PreferencesDialog extends BaseDialog {
     }
 
     private static int snapToNearestDurationStop(int value) {
-        return snapToNearest(value, VALID_DURATION_STOPS);
+        return snapToNearest(value, PlayTab.VALID_DURATION_STOPS);
     }
 
     private static Dictionary<Integer, JLabel> createPercentLabels(
@@ -448,6 +426,12 @@ public class PreferencesDialog extends BaseDialog {
     }
 
     private final class GeneralTab extends Tab {
+
+        private static final int APPEARANCE_ICON_SIZE = 100;
+        private static final int APPEARANCE_ITEM_GAP = 40;
+        private static final int APPEARANCE_ICON_RADIO_GAP = 5;
+        private static final int APPEARANCE_VERTICAL_PADDING_TOP = 7;
+        private static final int APPEARANCE_VERTICAL_PADDING_BOTTOM = 5;
 
         @Override
         protected void initContents() {
@@ -479,6 +463,7 @@ public class PreferencesDialog extends BaseDialog {
         private JPanel createAppearanceSection() {
             var section = new TitledSection(Strings.get(Strings.LABEL_PREFS_SECTION_APPEARANCE));
             var row = new JPanel(new FlowLayout(FlowLayout.CENTER, APPEARANCE_ITEM_GAP, 0));
+            row.setBorder(BorderFactory.createEmptyBorder(APPEARANCE_VERTICAL_PADDING_TOP, 0, APPEARANCE_VERTICAL_PADDING_BOTTOM, 0));
             row.setAlignmentX(Component.LEFT_ALIGNMENT);
             row.add(createAppearanceItem(
                 GraphicUtils.getScaledSVGIcon(new FlatSVGIcon("icons/appearance-system.svg"), APPEARANCE_ICON_SIZE),
@@ -513,33 +498,51 @@ public class PreferencesDialog extends BaseDialog {
 
         @Override
         protected void initContents() {
-            var panel = new JPanel();
-            panel.setLayout(new BoxLayout(panel, BoxLayout.X_AXIS));
+            var panel = new JPanel(new GridBagLayout());
+            var gc = new GridBagConstraints();
+            gc.gridy = 0;
+            gc.weighty = 1.0;
 
-            instrumentList.setAlignmentY(Component.CENTER_ALIGNMENT);
             instrumentList.setVisibleRowCount(10);
             instrumentList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-            panel.add(new JScrollPane(instrumentList));
-            panel.add(Box.createHorizontalStrut(HORIZONTAL_MARGIN * 4));
+            gc.gridx = 0;
+            gc.weightx = 0.5;
+            gc.fill = GridBagConstraints.BOTH;
+            panel.add(new JScrollPane(instrumentList), gc);
 
             scaleButton.setText("\uEF4E");
             scaleButton.setFont(MyFontUtils.getIconFont().deriveFont(24f));
             scaleButton.setMargin(new Insets(8, 8, 8, 8));
-            scaleButton.setAlignmentY(Component.CENTER_ALIGNMENT);
             scaleButton.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(
                 KeyStroke.getKeyStroke(KeyEvent.VK_SPACE, 0), "playScale"
             );
             scaleButton.getActionMap().put("playScale", scaleAction);
-            panel.add(scaleButton);
+            gc.gridx = 1;
+            gc.weightx = 0.5;
+            gc.fill = GridBagConstraints.NONE;
+            gc.anchor = GridBagConstraints.WEST;
+            gc.insets = new Insets(0, 20, 0, 0);
+            panel.add(scaleButton, gc);
 
-            add(panel);
+            addExpanding(panel, GridBagConstraints.BOTH);
         }
     }
 
     private final class PlayTab extends Tab {
 
         private static final int SLIDER_SPACING = 20;
-        private static final int SLIDER_EXTRA_WIDTH = 50;
+
+        private static final int[] VALID_VOLUME_STOPS = { 50, 63, 75, 88, 100 };
+        private static final int VOLUME_LABELED_STOP_INTERVAL = 2;
+
+        private static final int TEMPO_MIN = 50;
+        private static final int TEMPO_MAX = 150;
+        private static final int TEMPO_MAJOR_TICK = 25;
+
+        private static final int[] VALID_TEMPO_STOPS = { 50, 75, 100, 125, 150 };
+
+        private static final int DURATION_STEP = 17;
+        private static final int[] VALID_DURATION_STOPS = { 32, 49, 66, 83, 100 };
 
         @Override
         protected void initContents() {
@@ -607,8 +610,6 @@ public class PreferencesDialog extends BaseDialog {
         ) {
             addLabeledField(section, labelText, slider, LabelPosition.TOP);
             configureSlider(slider, tickSpacing, labels);
-            var size = slider.getPreferredSize();
-            slider.setPreferredSize(new Dimension(size.width + SLIDER_EXTRA_WIDTH, size.height));
         }
     }
 
