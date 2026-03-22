@@ -22,7 +22,7 @@ package songscribe.export;
 import java.io.File;
 
 import songscribe.Strings;
-import songscribe.ui.Dialogs;
+import songscribe.ui.OptionDialogs;
 
 /**
  * Utility class for exporting music scores as ABC notation files.
@@ -43,7 +43,7 @@ public class ABCExporter {
      */
     public static void createABC(File outputFile) {
         // ABC export is not supported
-        Dialogs.showErrorMessage(
+        OptionDialogs.showErrorMessage(
             null,
             Strings.get(Strings.DIALOG_TITLE_EXPORT_ERROR),
             Strings.get(Strings.ERROR_ABC_NOT_SUPPORTED)

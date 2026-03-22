@@ -24,7 +24,6 @@ import static org.assertj.swing.core.MouseButton.LEFT_BUTTON;
 
 import module java.desktop;
 // Disambiguates from org.w3c.dom.events.MouseEvent (java.xml module)
-import java.awt.event.MouseEvent;
 
 import java.io.PrintWriter;
 import java.io.StringReader;
@@ -56,7 +55,7 @@ import songscribe.SongScribe;
 import songscribe.UnitTest;
 import songscribe.io.CompositionIO;
 import songscribe.music.Composition;
-import songscribe.ui.Dialogs;
+import songscribe.ui.OptionDialogs;
 import songscribe.ui.action.Actions;
 import songscribe.ui.action.UIAction;
 import songscribe.ui.component.MainFrame;
@@ -94,7 +93,7 @@ public abstract class E2ETest {
 
     @BeforeAll
     protected void setUpOnce() {
-        Dialogs.setSuppressDialogs(false);
+        OptionDialogs.setSuppressDialogs(false);
         FailOnThreadViolationRepaintManager.install();
         robot = BasicRobot.robotWithCurrentAwtHierarchy();
 

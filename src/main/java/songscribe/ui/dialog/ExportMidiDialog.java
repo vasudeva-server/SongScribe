@@ -31,7 +31,7 @@ import org.jspecify.annotations.Nullable;
 import songscribe.prefs.Prefs;
 import songscribe.prefs.PrefsKey;
 import songscribe.Strings;
-import songscribe.ui.Dialogs;
+import songscribe.ui.OptionDialogs;
 import songscribe.ui.playback.PlaybackController;
 import songscribe.file.FileUtils;
 
@@ -95,7 +95,7 @@ public class ExportMidiDialog extends StandardDialog {
                 PlaybackController.setTempoChangePercent(savedSettings.tempoChangePercent());
             }
         } catch (IOException | InvalidMidiDataException e1) {
-            Dialogs.showErrorMessage(
+            OptionDialogs.showErrorMessage(
                 getMainFrame(),
                 Strings.get(Strings.DIALOG_TITLE_EXPORT_ERROR),
                 Strings.get(Strings.ERROR_FILE_SAVE)

@@ -36,7 +36,7 @@ import songscribe.message.notification.CompositionDidChangeNotification;
 import songscribe.message.MessageCenter;
 import songscribe.music.Line;
 import songscribe.music.StaffElement;
-import songscribe.ui.Dialogs;
+import songscribe.ui.OptionDialogs;
 import songscribe.ui.Mode;
 import songscribe.ui.component.Score;
 import songscribe.ui.edit.EditModeManager;
@@ -315,7 +315,7 @@ class NoteDragHandler {
                         && idx + 1 < dragLine.elementCount()
                         && element.getPitch() == dragLine.getElement(idx + 1).getPitch()) {
                     // Grace note dragged to the same pitch as its following note — remove the grace note
-                    Dialogs.showWarningMessage(
+                    OptionDialogs.showWarningMessage(
                             null,
                             Strings.get(Strings.DIALOG_TITLE_GRACE_NOTE_WARNING),
                             Strings.get(Strings.WARNING_GRACE_NOTE_SAME_PITCH)
@@ -326,7 +326,7 @@ class NoteDragHandler {
                     var prev = dragLine.getElement(idx - 1);
 
                     if (prev.getType().isGraceNote() && prev.getPitch() == element.getPitch()) {
-                        Dialogs.showWarningMessage(
+                        OptionDialogs.showWarningMessage(
                                 null,
                                 Strings.get(Strings.DIALOG_TITLE_GRACE_NOTE_WARNING),
                                 Strings.get(Strings.WARNING_GRACE_NOTE_SAME_PITCH)

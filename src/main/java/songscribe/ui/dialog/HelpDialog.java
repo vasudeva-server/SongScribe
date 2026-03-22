@@ -26,7 +26,7 @@ import java.io.IOException;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
-import songscribe.ui.Dialogs;
+import songscribe.ui.OptionDialogs;
 import songscribe.util.Utils;
 
 public class HelpDialog
@@ -125,7 +125,7 @@ public class HelpDialog
                     )
                 );
             } catch (IOException e1) {
-                Dialogs.showErrorMessage(
+                OptionDialogs.showErrorMessage(
                     getMainFrame(),
                     Strings.get(Strings.DIALOG_TITLE_HELP_ERROR),
                     Strings.get(Strings.ERROR_HELP_OPEN)

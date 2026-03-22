@@ -21,7 +21,6 @@ package songscribe.ui.action;
 
 import module java.desktop;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.AbstractMap;
@@ -36,7 +35,7 @@ import org.jspecify.annotations.Nullable;
 
 import songscribe.Version;
 import songscribe.Strings;
-import songscribe.ui.Dialogs;
+import songscribe.ui.OptionDialogs;
 import songscribe.file.MyFileFilter;
 import songscribe.music.Annotation;
 import songscribe.music.ArticulationType;
@@ -118,7 +117,7 @@ public class ExportABCAction extends UIAction {
             var composition = getComposition();
             writeABC(composition, writer);
         } catch (IOException e1) {
-            Dialogs.showErrorMessage(
+            OptionDialogs.showErrorMessage(
                 null,
                 Strings.get(Strings.DIALOG_TITLE_EXPORT_ERROR),
                 Strings.get(Strings.ERROR_FILE_SAVE)

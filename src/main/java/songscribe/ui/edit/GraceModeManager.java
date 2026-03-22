@@ -32,7 +32,7 @@ import songscribe.message.notification.CompositionDidChangeNotification;
 import songscribe.music.ElementType;
 import songscribe.music.Line;
 import songscribe.music.StaffElement;
-import songscribe.ui.Dialogs;
+import songscribe.ui.OptionDialogs;
 import songscribe.ui.action.Actions;
 import songscribe.ui.action.UIAction;
 import songscribe.ui.component.score.InsertionElementManager;
@@ -253,7 +253,7 @@ public final class GraceModeManager {
         }
 
         if (!InsertionSpacingCalculator.hasRoomForGraceNotePair(line, xIndex)) {
-            Dialogs.showErrorMessage(
+            OptionDialogs.showErrorMessage(
                 SwingUtilities.getWindowAncestor(lineComponent),
                 Strings.get(Strings.DIALOG_TITLE_GRACE_NOTE_ERROR),
                 Strings.get(Strings.ERROR_GRACE_NOTE_NO_ROOM)
@@ -524,7 +524,7 @@ public final class GraceModeManager {
                 graceLine.removeElement(hostNoteIndex);
             }
 
-            Dialogs.showErrorMessage(
+            OptionDialogs.showErrorMessage(
                 SwingUtilities.getWindowAncestor(graceLineComponent),
                 Strings.get(Strings.DIALOG_TITLE_GRACE_NOTE_ERROR),
                 Strings.get(Strings.ERROR_GRACE_NOTE_SAME_PITCH)

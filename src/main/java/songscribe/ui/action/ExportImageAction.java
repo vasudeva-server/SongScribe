@@ -21,7 +21,6 @@ package songscribe.ui.action;
 
 import module java.desktop;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.Objects;
 
@@ -30,10 +29,9 @@ import org.jspecify.annotations.Nullable;
 import songscribe.Strings;
 import songscribe.file.MyFileFilter;
 import songscribe.export.ExportOptions;
-import songscribe.ui.Dialogs;
+import songscribe.ui.OptionDialogs;
 import songscribe.prefs.Prefs;
 import songscribe.prefs.PrefsKey;
-import songscribe.ui.component.MainFrame;
 import songscribe.ui.dialog.PlatformFileDialog;
 import songscribe.ui.dialog.ResolutionDialog;
 import songscribe.file.FileUtils;
@@ -124,7 +122,7 @@ public class ExportImageAction extends UIAction {
                 );
 
                 if (!successful) {
-                    Dialogs.showErrorMessage(
+                    OptionDialogs.showErrorMessage(
                         null,
                         Strings.get(Strings.DIALOG_TITLE_EXPORT_ERROR),
                         Strings.get(Strings.ERROR_IMAGE_EXPORT)
@@ -133,13 +131,13 @@ public class ExportImageAction extends UIAction {
                     FileUtils.openExportFile(saveFile);
                 }
             } catch (IOException e1) {
-                Dialogs.showErrorMessage(
+                OptionDialogs.showErrorMessage(
                     null,
                     Strings.get(Strings.DIALOG_TITLE_EXPORT_ERROR),
                     Strings.get(Strings.ERROR_FILE_SAVE)
                 );
             } catch (OutOfMemoryError e1) {
-                Dialogs.showErrorMessage(
+                OptionDialogs.showErrorMessage(
                     null,
                     Strings.get(Strings.DIALOG_TITLE_EXPORT_ERROR),
                     Strings.get(Strings.ERROR_IMAGE_MEMORY)

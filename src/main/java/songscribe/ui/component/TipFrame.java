@@ -32,7 +32,7 @@ import org.jdesktop.layout.LayoutStyle;
 import songscribe.Strings;
 import songscribe.prefs.Prefs;
 import songscribe.prefs.PrefsKey;
-import songscribe.ui.Dialogs;
+import songscribe.ui.OptionDialogs;
 import songscribe.util.Utils;
 
 public class TipFrame extends JFrame {
@@ -96,7 +96,7 @@ public class TipFrame extends JFrame {
             try {
                 showTip();
             } catch (IOException e1) {
-                Dialogs.showErrorMessage(
+                OptionDialogs.showErrorMessage(
                     this,
                     Strings.get(Strings.DIALOG_TITLE_TIP_ERROR),
                     Strings.get(Strings.ERROR_TIP_READ)
@@ -112,7 +112,7 @@ public class TipFrame extends JFrame {
                     showTip();
                 }
             } catch (IOException e1) {
-                Dialogs.showErrorMessage(
+                OptionDialogs.showErrorMessage(
                     this,
                     Strings.get(Strings.DIALOG_TITLE_TIP_ERROR),
                     Strings.get(Strings.ERROR_TIP_READ)

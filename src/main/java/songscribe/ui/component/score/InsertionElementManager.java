@@ -36,7 +36,7 @@ import songscribe.music.ElementType;
 import songscribe.music.Line;
 import songscribe.music.StaffElement;
 import songscribe.ui.Control;
-import songscribe.ui.Dialogs;
+import songscribe.ui.OptionDialogs;
 import songscribe.ui.Mode;
 import songscribe.ui.action.Actions;
 import songscribe.ui.action.ElementTypeAction;
@@ -681,7 +681,7 @@ public class InsertionElementManager {
         var composition = line.getComposition();
 
         if (composition != null && !insertion.fitsWithinLine(composition.getLineWidthSs())) {
-            Dialogs.showErrorMessage(
+            OptionDialogs.showErrorMessage(
                 null,
                 Strings.get(Strings.DIALOG_TITLE_INSERT_ERROR),
                 Strings.get(Strings.ERROR_LINE_FULL)
@@ -765,7 +765,7 @@ public class InsertionElementManager {
         var iv = line.getTuplets().findInterval(xIndex - 1);
 
         if ((iv != null) && ((xIndex - 1) < iv.getEnd())) {
-            Dialogs.showErrorMessage(
+            OptionDialogs.showErrorMessage(
                 null,
                 Strings.get(Strings.DIALOG_TITLE_INSERT_ERROR),
                 Strings.get(Strings.ERROR_TRIPLET_INSERT)

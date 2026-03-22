@@ -60,7 +60,7 @@ import songscribe.music.Composition;
 import songscribe.prefs.Prefs;
 import songscribe.prefs.PrefsKey;
 import songscribe.prefs.RecentDocumentsManager;
-import songscribe.ui.Dialogs;
+import songscribe.ui.OptionDialogs;
 import songscribe.ui.action.Actions;
 import songscribe.ui.action.SaveAction;
 import songscribe.ui.component.score.InsertionElementManager;
@@ -86,7 +86,7 @@ public class MainFrame extends JFrame implements Printable {
 
     static {
         if (!SONGSCRIBE_DIR.exists() && !SONGSCRIBE_DIR.mkdir()) {
-            Dialogs.showErrorMessage(
+            OptionDialogs.showErrorMessage(
                 null,
                 Strings.get(Strings.DIALOG_TITLE_INITIALIZATION_ERROR),
                 Strings.get(Strings.ERROR_DIRECTORY_CREATE)
@@ -426,7 +426,7 @@ public class MainFrame extends JFrame implements Printable {
             Strings.get(Strings.BUTTON_DONT_SAVE),
             Strings.get(Strings.BUTTON_CANCEL)
         };
-        var answer = Dialogs.showOptionDialog(
+        var answer = OptionDialogs.showOptionDialog(
             this,
             Strings.get(Strings.DIALOG_TITLE_SAVE_CHANGES),
             Strings.get(Strings.CONFIRM_SAVE_MODIFIED, docName),
@@ -611,7 +611,7 @@ public class MainFrame extends JFrame implements Printable {
             try {
                 printerJob.print();
             } catch (PrinterException e1) {
-                Dialogs.showErrorMessage(
+                OptionDialogs.showErrorMessage(
                     this,
                     Strings.get(Strings.DIALOG_TITLE_PRINT_ERROR),
                     Strings.get(Strings.ERROR_PRINT)
@@ -693,7 +693,7 @@ public class MainFrame extends JFrame implements Printable {
             LOG.info("Saved: {}", currentFile.getName());
             MessageCenter.post(new DocumentWasSavedNotification());
         } catch (IOException e1) {
-            Dialogs.showErrorMessage(
+            OptionDialogs.showErrorMessage(
                 this,
                 Strings.get(Strings.DIALOG_TITLE_FILE_ERROR),
                 Strings.get(Strings.ERROR_FILE_SAVE)

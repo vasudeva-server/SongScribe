@@ -28,7 +28,7 @@ import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
 import songscribe.music.BeatChange;
-import songscribe.ui.Dialogs;
+import songscribe.ui.OptionDialogs;
 import songscribe.music.StaffElement;
 import songscribe.ui.renderer.BeatChangeRenderer;
 
@@ -137,7 +137,7 @@ public class BeatChangeDialog extends StandardDialog {
     @Override
     protected void setData() {
         if (bg.getSelection() == null) {
-            Dialogs.showErrorMessage(
+            OptionDialogs.showErrorMessage(
                 getMainFrame(),
                 Strings.get(Strings.DIALOG_TITLE_BEAT_CHANGE_ERROR),
                 Strings.get(Strings.ERROR_BEAT_CHANGE_NO_SELECTION)

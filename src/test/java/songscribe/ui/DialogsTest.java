@@ -26,7 +26,6 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.mockito.MockedConstruction;
 import org.mockito.MockedStatic;
 
 import songscribe.UnitTest;
@@ -43,12 +42,12 @@ class DialogsTest extends UnitTest {
 
     @BeforeEach
     void setUp() {
-        Dialogs.setSuppressDialogs(true);
+        OptionDialogs.setSuppressDialogs(true);
     }
 
     @AfterEach
     void tearDown() {
-        Dialogs.setSuppressDialogs(true);
+        OptionDialogs.setSuppressDialogs(true);
     }
 
     @Nested
@@ -56,7 +55,7 @@ class DialogsTest extends UnitTest {
 
         @BeforeEach
         void enableDialogs() {
-            Dialogs.setSuppressDialogs(false);
+            OptionDialogs.setSuppressDialogs(false);
         }
 
         private void stubScreenBounds(MockedStatic<GraphicsEnvironment> geMock) {
@@ -92,7 +91,7 @@ class DialogsTest extends UnitTest {
                 tkMock.when(Toolkit::getDefaultToolkit).thenReturn(toolkit);
                 stubScreenBounds(geMock);
 
-                Dialogs.showErrorMessage(null, "Error Title", "Error text");
+                OptionDialogs.showErrorMessage(null, "Error Title", "Error text");
 
                 verify(toolkit).beep();
                 assertThat(paneConstruction.constructed()).hasSize(1);
@@ -109,7 +108,7 @@ class DialogsTest extends UnitTest {
             ) {
                 stubScreenBounds(geMock);
 
-                Dialogs.showInfoMessage(null, "Info Title", "Info text");
+                OptionDialogs.showInfoMessage(null, "Info Title", "Info text");
 
                 assertThat(paneConstruction.constructed()).hasSize(1);
                 verify(dialogConstruction.constructed().get(0)).setVisible(true);
@@ -126,7 +125,7 @@ class DialogsTest extends UnitTest {
             ) {
                 stubScreenBounds(geMock);
 
-                var result = Dialogs.showInputDialog(null, "Input Title", "Enter:");
+                var result = OptionDialogs.showInputDialog(null, "Input Title", "Enter:");
 
                 assertThat(result).isEqualTo("user input");
             }
@@ -142,7 +141,7 @@ class DialogsTest extends UnitTest {
             ) {
                 stubScreenBounds(geMock);
 
-                var result = Dialogs.showInputDialog(null, "Input Title", "Enter:");
+                var result = OptionDialogs.showInputDialog(null, "Input Title", "Enter:");
 
                 assertThat(result).isNull();
             }
@@ -157,7 +156,7 @@ class DialogsTest extends UnitTest {
             ) {
                 stubScreenBounds(geMock);
 
-                var result = Dialogs.showConfirmDialog(
+                var result = OptionDialogs.showConfirmDialog(
                     null, "Title", "Save?",
                     JOptionPane.YES_NO_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE
                 );
@@ -175,7 +174,7 @@ class DialogsTest extends UnitTest {
             ) {
                 stubScreenBounds(geMock);
 
-                var result = Dialogs.showConfirmDialog(
+                var result = OptionDialogs.showConfirmDialog(
                     null, "Title", "Continue?",
                     JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE
                 );
@@ -191,7 +190,7 @@ class DialogsTest extends UnitTest {
 
         @Test
         void testShowConfirmDialogReturnsNoOptionByDefault() {
-            var result = Dialogs.showConfirmDialog(
+            var result = OptionDialogs.showConfirmDialog(
                 null, "Title", "Confirm?",
                 JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE
             );
@@ -201,7 +200,7 @@ class DialogsTest extends UnitTest {
 
         @Test
         void testShowConfirmDialogReturnsSuppressedDefault() {
-            var result = Dialogs.showConfirmDialog(
+            var result = OptionDialogs.showConfirmDialog(
                 null, "Title", "Confirm?",
                 JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE,
                 JOptionPane.YES_OPTION
@@ -213,7 +212,7 @@ class DialogsTest extends UnitTest {
         @Test
         void testShowErrorMessageDoesNotShowDialog() {
             try (var construction = mockConstruction(JOptionPane.class)) {
-                Dialogs.showErrorMessage(null, "Title", "Error message");
+                OptionDialogs.showErrorMessage(null, "Title", "Error message");
 
                 assertThat(construction.constructed()).isEmpty();
             }
@@ -222,7 +221,7 @@ class DialogsTest extends UnitTest {
         @Test
         void testShowInfoMessageDoesNotShowDialog() {
             try (var construction = mockConstruction(JOptionPane.class)) {
-                Dialogs.showInfoMessage(null, "Title", "Info message");
+                OptionDialogs.showInfoMessage(null, "Title", "Info message");
 
                 assertThat(construction.constructed()).isEmpty();
             }
@@ -230,21 +229,21 @@ class DialogsTest extends UnitTest {
 
         @Test
         void testShowInputDialogReturnsNullByDefault() {
-            var result = Dialogs.showInputDialog(null, "Title", "Enter value:");
+            var result = OptionDialogs.showInputDialog(null, "Title", "Enter value:");
 
             assertThat(result).isNull();
         }
 
         @Test
         void testShowInputDialogReturnsSuppressedDefault() {
-            var result = Dialogs.showInputDialog(null, "Title", "Enter value:", "default");
+            var result = OptionDialogs.showInputDialog(null, "Title", "Enter value:", "default");
 
             assertThat(result).isEqualTo("default");
         }
 
         @Test
         void testShowOptionDialogReturnsClosedOption() {
-            var result = Dialogs.showOptionDialog(
+            var result = OptionDialogs.showOptionDialog(
                 null, "Title", "Message",
                 JOptionPane.DEFAULT_OPTION, JOptionPane.QUESTION_MESSAGE,
                 null, new String[]{"OK"}, "OK"

@@ -22,7 +22,7 @@ package songscribe.export;
 import java.io.File;
 
 import songscribe.Strings;
-import songscribe.ui.Dialogs;
+import songscribe.ui.OptionDialogs;
 
 /**
  * Utility class for exporting music scores as SVG files.
@@ -40,7 +40,7 @@ public class SVGExporter {
      */
     public static void createSVG(File outputFile) {
         // SVG export not yet implemented with component-based rendering
-        Dialogs.showErrorMessage(
+        OptionDialogs.showErrorMessage(
             null,
             Strings.get(Strings.DIALOG_TITLE_EXPORT_ERROR),
             Strings.get(Strings.ERROR_EXPORT_NOT_IMPLEMENTED, "SVG")

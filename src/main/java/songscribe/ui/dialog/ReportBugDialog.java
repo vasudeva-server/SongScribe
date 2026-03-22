@@ -26,7 +26,7 @@ import java.io.File;
 
 import songscribe.Strings;
 import songscribe.Version;
-import songscribe.ui.Dialogs;
+import songscribe.ui.OptionDialogs;
 import songscribe.util.DesktopUtils;
 import songscribe.ui.component.MainFrame;
 import songscribe.util.Utils;
@@ -46,7 +46,7 @@ public class ReportBugDialog extends StandardDialog {
         if (DesktopUtils.isDesktopSupported()) {
             var sendBug = new JButton(Strings.get(Strings.DIALOG_BUG_REPORT_SEND));
             sendBug.addActionListener(_ -> {
-                var answer = Dialogs.showOptionDialog(
+                var answer = OptionDialogs.showOptionDialog(
                     contentPanel,
                     Strings.get(Strings.DIALOG_BUG_REPORT_TITLE),
                     Strings.get(Strings.DIALOG_BUG_REPORT_WHAT_TO_SEND),
@@ -89,7 +89,7 @@ public class ReportBugDialog extends StandardDialog {
                 try {
                     Utils.openEmail(getMainFrame(), sb.toString());
                 } catch (Exception e1) {
-                    Dialogs.showErrorMessage(
+                    OptionDialogs.showErrorMessage(
                         getMainFrame(),
                         Strings.get(Strings.DIALOG_TITLE_EMAIL_ERROR),
                         Strings.get(Strings.ERROR_EMAIL_OPEN_REPORT)

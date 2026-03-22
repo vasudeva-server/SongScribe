@@ -31,7 +31,7 @@ import org.jspecify.annotations.Nullable;
 import org.intellij.lang.annotations.MagicConstant;
 
 import songscribe.music.Composition;
-import songscribe.ui.Dialogs;
+import songscribe.ui.OptionDialogs;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.Score;
 import songscribe.util.UIUtils;
@@ -216,7 +216,7 @@ public abstract class BaseDialog {
             dialog.setMinimumSize(minSize);
 
             if (savedLocation == null) {
-                Dialogs.positionDialog(dialog, mainFrame);
+                OptionDialogs.positionDialog(dialog, mainFrame);
             } else {
                 dialog.setLocation(savedLocation);
             }

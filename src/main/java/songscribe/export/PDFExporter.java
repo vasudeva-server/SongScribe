@@ -22,8 +22,7 @@ package songscribe.export;
 import java.io.File;
 
 import songscribe.Strings;
-import songscribe.export.PageLayoutData;
-import songscribe.ui.Dialogs;
+import songscribe.ui.OptionDialogs;
 import songscribe.util.GraphicUtils;
 
 /**
@@ -83,7 +82,7 @@ public class PDFExporter {
         }
 
         // PDF export not yet implemented with component-based rendering
-        Dialogs.showErrorMessage(
+        OptionDialogs.showErrorMessage(
             null,
             Strings.get(Strings.DIALOG_TITLE_EXPORT_ERROR),
             Strings.get(Strings.ERROR_EXPORT_NOT_IMPLEMENTED, "PDF")

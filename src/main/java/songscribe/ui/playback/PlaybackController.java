@@ -34,7 +34,7 @@ import songscribe.midi.PlaybackSettings;
 import songscribe.music.Composition;
 import songscribe.prefs.Prefs;
 import songscribe.prefs.PrefsKey;
-import songscribe.ui.Dialogs;
+import songscribe.ui.OptionDialogs;
 import songscribe.ui.component.Score;
 import songscribe.ui.component.score.LineComponent;
 import songscribe.ui.selection.ElementSelection;
@@ -277,7 +277,7 @@ public final class PlaybackController {
             playbackDidStart();
             sequencer.start();
         } catch (InvalidMidiDataException e1) {
-            Dialogs.showErrorMessage(
+            OptionDialogs.showErrorMessage(
                 null,
                 Strings.get(Strings.DIALOG_TITLE_PLAYBACK_ERROR),
                 Strings.get(Strings.ERROR_PLAYBACK_UNEXPECTED)

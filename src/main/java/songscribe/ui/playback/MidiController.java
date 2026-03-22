@@ -27,7 +27,6 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
@@ -38,7 +37,7 @@ import org.slf4j.LoggerFactory;
 
 import songscribe.Strings;
 import songscribe.ui.Constants;
-import songscribe.ui.Dialogs;
+import songscribe.ui.OptionDialogs;
 @SuppressWarnings("StaticNonFinalField")
 public final class MidiController {
 
@@ -69,7 +68,7 @@ public final class MidiController {
             LOG.info("MIDI initialized");
         } catch (Exception e) {
             LOG.warn("MIDI initialization failed", e);
-            Dialogs.showWarningMessage(
+            OptionDialogs.showWarningMessage(
                 null,
                 Strings.get(Strings.DIALOG_TITLE_PLAYBACK_ERROR),
                 Strings.get(Strings.ERROR_MIDI_INIT, Constants.PACKAGE_NAME)

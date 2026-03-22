@@ -29,7 +29,7 @@ import com.formdev.flatlaf.util.SystemInfo;
 
 import songscribe.Strings;
 import songscribe.util.DesktopUtils;
-import songscribe.ui.Dialogs;
+import songscribe.ui.OptionDialogs;
 import songscribe.ui.component.MainFrame;
 import songscribe.util.Utils;
 
@@ -60,7 +60,7 @@ public class PDFTutorialOpenAction extends AbstractAction {
                 throw new RuntimeException();
             }
         } catch (Exception error) {
-            Dialogs.showErrorMessage(
+            OptionDialogs.showErrorMessage(
                 mainFrame,
                 Strings.get(Strings.DIALOG_TITLE_FILE_ERROR),
                 "Could not open the external PDF file.\n" +

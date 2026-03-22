@@ -40,7 +40,7 @@ import org.jspecify.annotations.Nullable;
 import songscribe.Strings;
 import songscribe.util.DesktopUtils;
 import songscribe.util.StringUtils;
-import songscribe.ui.Dialogs;
+import songscribe.ui.OptionDialogs;
 import songscribe.ui.Constants;
 
 import songscribe.ui.component.Score;
@@ -179,7 +179,7 @@ public final class FileUtils {
                 }
             }
         } catch (IOException e) {
-            Dialogs.showErrorMessage(
+            OptionDialogs.showErrorMessage(
                 null,
                 Strings.get(Strings.DIALOG_TITLE_FILE_ERROR),
                 Strings.get(Strings.ERROR_FILE_REINSTALL)
@@ -212,7 +212,7 @@ public final class FileUtils {
                 return;
             }
 
-            var answer = Dialogs.showConfirmDialog(
+            var answer = OptionDialogs.showConfirmDialog(
                 null,
                 Strings.get(Strings.DIALOG_TITLE_FILE_ERROR),
                 Strings.get(Strings.CONFIRM_FILE_OPEN),
@@ -224,7 +224,7 @@ public final class FileUtils {
                 try {
                     desktop.open(file);
                 } catch (Exception e) {
-                    Dialogs.showErrorMessage(
+                    OptionDialogs.showErrorMessage(
                         null,
                         Strings.get(Strings.DIALOG_TITLE_FILE_ERROR),
                         Strings.get(Strings.ERROR_FILE_OPEN)

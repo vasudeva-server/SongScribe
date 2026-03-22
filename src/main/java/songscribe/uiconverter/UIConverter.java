@@ -33,7 +33,7 @@ import com.intellij.uiDesigner.core.Spacer;
 
 import songscribe.Strings;
 import songscribe.file.FileExtensions;
-import songscribe.ui.Dialogs;
+import songscribe.ui.OptionDialogs;
 import songscribe.ui.action.QuitAction;
 import songscribe.SongScribe;
 import songscribe.ui.component.MainFrame;
@@ -736,11 +736,11 @@ public class UIConverter extends MainFrame {
             var selectedSong = (String) rejectList.getSelectedValue();
 
             if (selectedSong == null) {
-                Dialogs.showErrorMessage(UIConverter.this, Strings.get(Strings.DIALOG_TITLE_CONVERSION_ERROR), Strings.get(Strings.ERROR_CONVERTER_NO_REJECTED_SONG));
+                OptionDialogs.showErrorMessage(UIConverter.this, Strings.get(Strings.DIALOG_TITLE_CONVERSION_ERROR), Strings.get(Strings.ERROR_CONVERTER_NO_REJECTED_SONG));
                 return;
             }
 
-            var numberStr = Dialogs.showInputDialog(
+            var numberStr = OptionDialogs.showInputDialog(
                 UIConverter.this,
                 Strings.get(Strings.DIALOG_TITLE_NUMBER_SONGS),
                 Strings.get(Strings.DIALOG_CONVERTER_ENTER_NUMBER)
@@ -755,12 +755,12 @@ public class UIConverter extends MainFrame {
             try {
                 number = Integer.parseInt(numberStr);
             } catch (NumberFormatException nfe) {
-                Dialogs.showErrorMessage(UIConverter.this, Strings.get(Strings.DIALOG_TITLE_CONVERSION_ERROR), Strings.get(Strings.ERROR_CONVERTER_NUMBER_INVALID));
+                OptionDialogs.showErrorMessage(UIConverter.this, Strings.get(Strings.DIALOG_TITLE_CONVERSION_ERROR), Strings.get(Strings.ERROR_CONVERTER_NUMBER_INVALID));
                 return;
             }
 
             if ((number < 1) || (number > 999)) {
-                Dialogs.showErrorMessage(UIConverter.this, Strings.get(Strings.DIALOG_TITLE_CONVERSION_ERROR), Strings.get(Strings.ERROR_CONVERTER_NUMBER_RANGE));
+                OptionDialogs.showErrorMessage(UIConverter.this, Strings.get(Strings.DIALOG_TITLE_CONVERSION_ERROR), Strings.get(Strings.ERROR_CONVERTER_NUMBER_RANGE));
                 return;
             }
 
@@ -775,14 +775,14 @@ public class UIConverter extends MainFrame {
             );
 
             if (!isLegalFileName(renamedSongFile.getName())) {
-                Dialogs.showErrorMessage(UIConverter.this, Strings.get(Strings.DIALOG_TITLE_CONVERSION_ERROR), Strings.get(Strings.ERROR_CONVERTER_NUMBER_FAILED));
+                OptionDialogs.showErrorMessage(UIConverter.this, Strings.get(Strings.DIALOG_TITLE_CONVERSION_ERROR), Strings.get(Strings.ERROR_CONVERTER_NUMBER_FAILED));
                 return;
             }
 
             var renameSuccessful = originalSongFile.renameTo(renamedSongFile);
 
             if (!renameSuccessful) {
-                Dialogs.showErrorMessage(UIConverter.this, Strings.get(Strings.DIALOG_TITLE_CONVERSION_ERROR), Strings.get(Strings.ERROR_CONVERTER_RENAME_FAILED));
+                OptionDialogs.showErrorMessage(UIConverter.this, Strings.get(Strings.DIALOG_TITLE_CONVERSION_ERROR), Strings.get(Strings.ERROR_CONVERTER_RENAME_FAILED));
                 return;
             }
 

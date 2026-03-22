@@ -24,7 +24,7 @@ import module java.desktop;
 import java.io.IOException;
 
 import songscribe.Strings;
-import songscribe.ui.Dialogs;
+import songscribe.ui.OptionDialogs;
 import songscribe.util.Utils;
 
 public class HTMLDialog extends StandardDialog {
@@ -59,7 +59,7 @@ public class HTMLDialog extends StandardDialog {
                 "file:" + Utils.getResourcePath("help/" + htmlPage)
             );
         } catch (IOException e) {
-            Dialogs.showErrorMessage(
+            OptionDialogs.showErrorMessage(
                 getMainFrame(),
                 Strings.get(Strings.DIALOG_TITLE_HELP_ERROR),
                 Strings.get(Strings.ERROR_HELP_OPEN)

@@ -29,7 +29,7 @@ import songscribe.music.Line;
 import songscribe.music.LyricsProcessor;
 import songscribe.music.StaffElement;
 import songscribe.ui.Control;
-import songscribe.ui.Dialogs;
+import songscribe.ui.OptionDialogs;
 import songscribe.ui.action.Actions;
 import songscribe.ui.clipboard.ClipboardManager;
 import songscribe.ui.layout.Articulation;
@@ -316,7 +316,7 @@ public final class EditModeManager {
             var iv = line.getTuplets().findInterval(elementIndex - 1);
 
             if ((iv != null) && ((elementIndex - 1) < iv.getEnd())) {
-                Dialogs.showErrorMessage(
+                OptionDialogs.showErrorMessage(
                     null,
                     Strings.get(Strings.DIALOG_TITLE_EDIT_ERROR),
                     Strings.get(Strings.ERROR_TRIPLET_INSERT)

@@ -30,7 +30,7 @@ import songscribe.Strings;
 import songscribe.music.StaffElement;
 import songscribe.prefs.Prefs;
 import songscribe.prefs.PrefsKey;
-import songscribe.ui.Dialogs;
+import songscribe.ui.OptionDialogs;
 import songscribe.ui.Mode;
 import songscribe.ui.layout.LayoutConstants;
 import songscribe.ui.layout.ScaleContext;
@@ -165,7 +165,7 @@ class SelectionHandler {
             }
 
             case HitResult.GraceGlissando() -> {
-                Dialogs.showWarningMessage(
+                OptionDialogs.showWarningMessage(
                     null,
                     Strings.get(Strings.DIALOG_TITLE_GRACE_NOTE_WARNING),
                     Strings.get(Strings.WARNING_GRACE_GLISSANDO_NOT_SELECTABLE)

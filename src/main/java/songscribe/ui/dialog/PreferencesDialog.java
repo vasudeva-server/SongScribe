@@ -35,7 +35,7 @@ import songscribe.prefs.Prefs;
 import songscribe.prefs.PrefsKey;
 import songscribe.ui.Appearance;
 import songscribe.ui.AppearanceManager;
-import songscribe.ui.Dialogs;
+import songscribe.ui.OptionDialogs;
 import songscribe.ui.layout.PageModel;
 import songscribe.ui.playback.MidiController;
 import songscribe.ui.playback.MidiMetaMessageTypes;
@@ -785,7 +785,7 @@ public class PreferencesDialog extends BaseDialog {
                     seq.addMetaEventListener(endListener);
                     seq.start();
                 } catch (InvalidMidiDataException ex) {
-                    Dialogs.showErrorMessage(
+                    OptionDialogs.showErrorMessage(
                         getMainFrame(),
                         Strings.get(Strings.DIALOG_TITLE_PLAYBACK_ERROR),
                         Strings.get(Strings.ERROR_SCALE_PLAY)

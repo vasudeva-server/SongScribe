@@ -42,7 +42,7 @@ import songscribe.message.notification.MetadataDidChangeNotification;
 import songscribe.message.notification.TempoDidChangeNotification;
 import songscribe.prefs.Prefs;
 import songscribe.prefs.PrefsKey;
-import songscribe.ui.Dialogs;
+import songscribe.ui.OptionDialogs;
 import songscribe.ui.action.InsertLineAction;
 import songscribe.ui.layout.LayoutStylesheet;
 import songscribe.ui.layout.PageModel;
@@ -1067,7 +1067,7 @@ public final class Composition {
         if (strip && SHORT_A_PATTERN.matcher(text).find()) {
             if (!shortANotified) {
                 shortANotified = true;
-                Dialogs.showInfoMessage(
+                OptionDialogs.showInfoMessage(
                     null,
                     Strings.get(Strings.DIALOG_TITLE_INFORMATION),
                     Strings.get(Strings.INFO_CHARACTER_REPLACEMENT)

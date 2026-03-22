@@ -29,7 +29,6 @@ import org.slf4j.LoggerFactory;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.Strings;
 import songscribe.util.UIUtils;
 
 /**
@@ -37,15 +36,15 @@ import songscribe.util.UIUtils;
  * route through this class, which handles suppression in headless and
  * test contexts.
  */
-public final class Dialogs {
+public final class OptionDialogs {
 
-    private static final Logger LOG = LoggerFactory.getLogger(Dialogs.class);
+    private static final Logger LOG = LoggerFactory.getLogger(OptionDialogs.class);
 
     private static final int SCREEN_MARGIN_PX = 20;
 
     private static boolean suppressDialogs = false;
 
-    private Dialogs() {}
+    private OptionDialogs() {}
 
     /**
      * Controls dialog suppression for testing. When true, all dialog

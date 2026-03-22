@@ -35,7 +35,7 @@ import org.assertj.swing.finder.JOptionPaneFinder;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
-import songscribe.ui.Dialogs;
+import songscribe.ui.OptionDialogs;
 import songscribe.ui.component.MainFrame;
 
 /**
@@ -52,7 +52,7 @@ class DialogsTest extends E2ETest {
             var latch = new CountDownLatch(1);
 
             SwingUtilities.invokeLater(() -> {
-                result.set(Dialogs.showConfirmDialog(
+                result.set(OptionDialogs.showConfirmDialog(
                     MainFrame.getInstance(), "Test", "Choose",
                     JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE
                 ));
@@ -71,7 +71,7 @@ class DialogsTest extends E2ETest {
             var latch = new CountDownLatch(1);
 
             SwingUtilities.invokeLater(() -> {
-                result.set(Dialogs.showConfirmDialog(
+                result.set(OptionDialogs.showConfirmDialog(
                     MainFrame.getInstance(), "Test", "Choose",
                     JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE
                 ));
@@ -90,7 +90,7 @@ class DialogsTest extends E2ETest {
             var latch = new CountDownLatch(1);
 
             SwingUtilities.invokeLater(() -> {
-                result.set(Dialogs.showConfirmDialog(
+                result.set(OptionDialogs.showConfirmDialog(
                     MainFrame.getInstance(), "Test", "Choose",
                     JOptionPane.YES_NO_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE
                 ));
@@ -113,7 +113,7 @@ class DialogsTest extends E2ETest {
             var latch = new CountDownLatch(1);
 
             SwingUtilities.invokeLater(() -> {
-                resultRef.set(Dialogs.showInputDialog(MainFrame.getInstance(), "Test", "Enter text:"));
+                resultRef.set(OptionDialogs.showInputDialog(MainFrame.getInstance(), "Test", "Enter text:"));
                 latch.countDown();
             });
 
@@ -136,7 +136,7 @@ class DialogsTest extends E2ETest {
             var options = new String[]{"Option A", "Option B"};
 
             SwingUtilities.invokeLater(() -> {
-                result.set(Dialogs.showOptionDialog(
+                result.set(OptionDialogs.showOptionDialog(
                     MainFrame.getInstance(), "Test", "Choose one",
                     JOptionPane.DEFAULT_OPTION, JOptionPane.QUESTION_MESSAGE,
                     null, options, options[0]

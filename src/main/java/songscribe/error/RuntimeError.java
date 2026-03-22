@@ -26,7 +26,7 @@ import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import songscribe.ui.Dialogs;
+import songscribe.ui.OptionDialogs;
 
 /**
  * Runtime error reporting. Logs the error and shows an alert dialog to the user.
@@ -60,7 +60,7 @@ public final class RuntimeError {
 
         LOG.error(logMessage);
 
-        Dialogs.showOptionDialog(
+        OptionDialogs.showOptionDialog(
             null,
             alertTitle,
             userMessage,

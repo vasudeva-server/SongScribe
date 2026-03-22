@@ -31,8 +31,7 @@ import java.util.stream.IntStream;
 import com.formdev.flatlaf.util.SystemInfo;
 
 import songscribe.Strings;
-import songscribe.ui.Dialogs;
-import songscribe.util.DesktopUtils;
+import songscribe.ui.OptionDialogs;
 import songscribe.ui.component.MainFrame;
 
 public final class Utils {
@@ -80,7 +79,7 @@ public final class Utils {
             try {
                 desktop.browse(new URI(webPage));
             } catch (Exception e) {
-                Dialogs.showErrorMessage(
+                OptionDialogs.showErrorMessage(
                     null,
                     Strings.get(Strings.DIALOG_TITLE_BROWSER_ERROR),
                     Strings.get(Strings.ERROR_WEBPAGE_OPEN)
@@ -100,7 +99,7 @@ public final class Utils {
             try {
                 desktop.mail(new URI("mailto", email, null));
             } catch (Exception e) {
-                Dialogs.showErrorMessage(
+                OptionDialogs.showErrorMessage(
                     null,
                     Strings.get(Strings.DIALOG_TITLE_EMAIL_ERROR),
                     Strings.get(Strings.ERROR_EMAIL_OPEN)

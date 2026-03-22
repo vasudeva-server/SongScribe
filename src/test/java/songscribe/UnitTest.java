@@ -30,11 +30,10 @@ import javax.xml.parsers.SAXParserFactory;
 
 import org.xml.sax.InputSource;
 
-import songscribe.SongScribe;
 import songscribe.io.CompositionIO;
 import songscribe.io.CompositionLoader;
 import songscribe.music.Composition;
-import songscribe.ui.Dialogs;
+import songscribe.ui.OptionDialogs;
 
 import org.junit.jupiter.api.BeforeAll;
 
@@ -48,7 +47,7 @@ public abstract class UnitTest {
 
     @BeforeAll
     static void suppressDialogs() {
-        Dialogs.setSuppressDialogs(true);
+        OptionDialogs.setSuppressDialogs(true);
 
         if (!bannerShown) {
             bannerShown = true;

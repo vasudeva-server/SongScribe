@@ -31,13 +31,7 @@ import java.util.stream.IntStream;
 import kotlin.Pair;
 
 import songscribe.Strings;
-import songscribe.music.BeamInterval;
-import songscribe.music.DynamicsInterval;
-import songscribe.music.EndingInterval;
-import songscribe.music.Interval;
-import songscribe.music.TieInterval;
-import songscribe.music.TupletInterval;
-import songscribe.ui.Dialogs;
+import songscribe.ui.OptionDialogs;
 import songscribe.ui.selection.LineSelectionState;
 import songscribe.ui.selection.SelectionCoordinator;
 
@@ -252,7 +246,7 @@ public final class MusicEditOperations {
         ).anyMatch(i -> line.getElement(i).getType() == ElementType.REPEAT_RIGHT);
 
         if (!repeatExists) {
-            var answer = Dialogs.showConfirmDialog(
+            var answer = OptionDialogs.showConfirmDialog(
                 null,
                 Strings.get(Strings.DIALOG_TITLE_FIRST_SECOND_ENDING),
                 Strings.get(Strings.CONFIRM_ENDING_NO_REPEAT),
@@ -340,7 +334,7 @@ public final class MusicEditOperations {
         var state = coordinator.getActiveSelection();
 
         if (state == null) {
-            Dialogs.showInfoMessage(
+            OptionDialogs.showInfoMessage(
                 null,
                 Strings.get(Strings.DIALOG_TITLE_STEM_DIRECTION),
                 Strings.get(Strings.ERROR_STEM_NO_SELECTION)

@@ -52,7 +52,7 @@ import songscribe.prefs.Prefs;
 import songscribe.prefs.PrefsKey;
 import songscribe.ui.Constants;
 import songscribe.ui.Control;
-import songscribe.ui.Dialogs;
+import songscribe.ui.OptionDialogs;
 import songscribe.ui.Mode;
 import songscribe.ui.action.Actions;
 import songscribe.ui.adjustment.HorizontalAdjustment;
@@ -250,7 +250,7 @@ public final class Score
         try {
             saxParser = SAXParserFactory.newInstance().newSAXParser();
         } catch (Exception e) {
-            Dialogs.showErrorMessage(
+            OptionDialogs.showErrorMessage(
                 null,
                 Strings.get(Strings.DIALOG_TITLE_INITIALIZATION_ERROR),
                 Constants.PACKAGE_NAME +
@@ -494,7 +494,7 @@ public final class Score
                     GraphicUtils.getDpi();
 
             if (lineWidthInches > PageModel.MAX_LINE_WIDTH_INCHES) {
-                Dialogs.showErrorMessage(
+                OptionDialogs.showErrorMessage(
                     null,
                     Strings.get(Strings.DIALOG_TITLE_FILE_ERROR),
                     Strings.get(Strings.ERROR_LINE_WIDTH_TOO_LARGE)
@@ -526,7 +526,7 @@ public final class Score
                 "Could not open the file “" +
                     file.getName() +
                     "” because it is damaged.";
-            Dialogs.showErrorMessage(
+            OptionDialogs.showErrorMessage(
                 null,
                 Strings.get(Strings.DIALOG_TITLE_FILE_ERROR),
                 message
@@ -538,7 +538,7 @@ public final class Score
             return false;
         } catch (IOException e) {
             var message = "Could not open the file “" + file.getName() + '”';
-            Dialogs.showErrorMessage(
+            OptionDialogs.showErrorMessage(
                 null,
                 Strings.get(Strings.DIALOG_TITLE_FILE_ERROR),
                 message + ". Check if you have the permission to open it."

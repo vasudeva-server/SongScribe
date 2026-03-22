@@ -39,7 +39,7 @@ import songscribe.music.KeyType;
 import songscribe.music.Tempo;
 import songscribe.prefs.Prefs;
 import songscribe.prefs.PrefsKey;
-import songscribe.ui.Dialogs;
+import songscribe.ui.OptionDialogs;
 import songscribe.ui.action.UIAction;
 import songscribe.ui.component.InputUtils;
 import songscribe.ui.component.MyJTextArea;
@@ -327,7 +327,7 @@ public class CompositionSettingsDialog extends StandardDialog {
                     Integer.parseInt(number);
                 }
             } catch (NumberFormatException e) {
-                Dialogs.showErrorMessage(
+                OptionDialogs.showErrorMessage(
                     contentPanel,
                     Strings.get(Strings.DIALOG_TITLE_COMPOSITION_SETTINGS),
                     Strings.get(Strings.ERROR_COMPOSITION_NUMBER)
@@ -343,7 +343,7 @@ public class CompositionSettingsDialog extends StandardDialog {
                     Integer.parseInt(year);
                 }
             } catch (NumberFormatException e) {
-                Dialogs.showErrorMessage(
+                OptionDialogs.showErrorMessage(
                     contentPanel,
                     Strings.get(Strings.DIALOG_TITLE_COMPOSITION_SETTINGS),
                     Strings.get(Strings.ERROR_COMPOSITION_YEAR)
@@ -478,7 +478,7 @@ public class CompositionSettingsDialog extends StandardDialog {
 
                     sb.append(date);
                 } else {
-                    Dialogs.showErrorMessage(
+                    OptionDialogs.showErrorMessage(
                         getMainFrame(),
                         Strings.get(Strings.DIALOG_TITLE_COMPOSITION_SETTINGS),
                         Strings.get(Strings.ERROR_COMPOSITION_YEAR_REQUIRED)
@@ -494,7 +494,7 @@ public class CompositionSettingsDialog extends StandardDialog {
 
                         sb.append(placeField.getText());
                     } else {
-                        Dialogs.showErrorMessage(
+                        OptionDialogs.showErrorMessage(
                             getMainFrame(),
                             Strings.get(Strings.DIALOG_TITLE_COMPOSITION_SETTINGS),
                             Strings.get(Strings.ERROR_COMPOSITION_PLACE_REQUIRED)
@@ -830,7 +830,7 @@ public class CompositionSettingsDialog extends StandardDialog {
 
             var unit = Strings.get(isMetric ? Strings.LABEL_UNIT_CM : Strings.LABEL_UNIT_INCHES);
 
-            Dialogs.showErrorMessage(
+            OptionDialogs.showErrorMessage(
                 contentPanel,
                 Strings.get(Strings.DIALOG_TITLE_LINE_WIDTH_ERROR),
                 Strings.get(key, min, max, unit)

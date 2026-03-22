@@ -53,7 +53,7 @@ import songscribe.music.LyricsProcessor;
 import songscribe.music.MusicEditOperations;
 import songscribe.music.StaffElement;
 import songscribe.ui.Control;
-import songscribe.ui.Dialogs;
+import songscribe.ui.OptionDialogs;
 import songscribe.ui.Mode;
 import songscribe.ui.action.Actions;
 import songscribe.ui.action.InsertLineAction;
@@ -154,7 +154,7 @@ public final class ScoreMessageCoordinator {
             score.clearSelection();
             score.repaint();
         } else {
-            Dialogs.showErrorMessage(
+            OptionDialogs.showErrorMessage(
                 null,
                 Strings.get(Strings.DIALOG_TITLE_LINE_ERROR),
                 Strings.get(Strings.ERROR_LINE_NO_SELECTION)
