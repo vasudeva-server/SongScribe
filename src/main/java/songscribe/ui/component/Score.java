@@ -116,9 +116,7 @@ public final class Score
 
     // Colors used to draw the music score in various states — read from UIManager for theming.
     // Callers should not cache these values; read at render time.
-    public static Color getPlayingNoteColor() {
-        return UIManager.getColor("SongScribe.score.playingNote.color");
-    }
+    public static final String PLAYING_NOTE_COLOR_KEY = "SongScribe.score.playingNote.color";
 
     public static Color getInsertionElementColor() {
         return UIManager.getColor("SongScribe.score.insertionElement.color");
@@ -560,7 +558,6 @@ public final class Score
         PlaybackController.setInstrument(prefs.getInt(PrefsKey.INSTRUMENT));
         PlaybackController.setTempoChangePercent(prefs.getInt(PrefsKey.TEMPO_CHANGE_PERCENT));
         PlaybackController.setNoteDurationPercent(prefs.getInt(PrefsKey.PLAYBACK_NOTE_DURATION));
-        PlaybackController.setColorizeNotes(prefs.getBoolean(PrefsKey.COLORIZE_NOTE));
         PlaybackController.setPlayWithRepeats(playWithRepeats);
         PlaybackController.applyVolumeFromPrefs();
         PlaybackController.applyPrefsDuringPlayback();

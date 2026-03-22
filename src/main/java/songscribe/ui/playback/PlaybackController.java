@@ -62,12 +62,10 @@ public final class PlaybackController {
 
     private static PlaybackState state = PlaybackState.STOPPED;
     private static int previousPlayingLine = -1;
-    private static int previousPlayingNote = -1;
 
     private static int instrument = 0;
     private static int tempoChangePercent = 100;
     private static int noteDurationPercent = 100;
-    private static boolean colorizeNotes = false;
     private static boolean playWithRepeats = false;
 
     @Nullable
@@ -119,22 +117,29 @@ public final class PlaybackController {
     }
 
     private static void updatePlayingNote(int lineIndex, int noteIndex) {
+        var score = registeredScore;
+        if (score == null) {
+            return;
+        }
+
         // Clear previous line if different
         if (previousPlayingLine != -1 && previousPlayingLine != lineIndex) {
-            var prevLineComponent = getLineComponent(previousPlayingLine);
+            var prevLineComponent = score.getLineComponent(previousPlayingLine);
             if (prevLineComponent != null) {
                 prevLineComponent.setPlayingNoteIndex(-1);
+                prevLineComponent.setPlayingGraceNoteIndex(-1);
             }
         }
 
-        // Set new playing note
-        var lineComponent = getLineComponent(lineIndex);
+        // Set new playing note and its preceding grace note (if any)
+        var lineComponent = score.getLineComponent(lineIndex);
         if (lineComponent != null) {
+            var line = score.getComposition().getLine(lineIndex);
             lineComponent.setPlayingNoteIndex(noteIndex);
+            lineComponent.setPlayingGraceNoteIndex(line.precedingGraceNoteIndex(noteIndex));
         }
 
         previousPlayingLine = lineIndex;
-        previousPlayingNote = noteIndex;
     }
 
     @Nullable
@@ -166,10 +171,10 @@ public final class PlaybackController {
             var lineComponent = getLineComponent(previousPlayingLine);
             if (lineComponent != null) {
                 lineComponent.setPlayingNoteIndex(-1);
+                lineComponent.setPlayingGraceNoteIndex(-1);
             }
         }
         previousPlayingLine = -1;
-        previousPlayingNote = -1;
     }
 
     private static void stopSequencer() {
@@ -190,10 +195,6 @@ public final class PlaybackController {
         noteDurationPercent = value;
     }
 
-    public static void setColorizeNotes(boolean value) {
-        colorizeNotes = value;
-    }
-
     public static void setPlayWithRepeats(boolean value) {
         playWithRepeats = value;
     }
@@ -203,7 +204,6 @@ public final class PlaybackController {
             instrument,
             tempoChangePercent,
             noteDurationPercent,
-            colorizeNotes,
             playWithRepeats
         );
     }

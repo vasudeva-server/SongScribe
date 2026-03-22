@@ -121,6 +121,9 @@ public class LineComponent extends ScoreComponent
     /** Index of the currently playing note (-1 if not playing). */
     private int playingNoteIndex = -1;
 
+    /** Index of the grace note paired with the currently playing note (-1 if none). */
+    private int playingGraceNoteIndex = -1;
+
     /** The layout engine for calculating element positions. */
     @Nullable
     private LayoutEngine layoutEngine;
@@ -292,6 +295,25 @@ public class LineComponent extends ScoreComponent
      */
     public int getPlayingNoteIndex() {
         return playingNoteIndex;
+    }
+
+    /**
+     * Sets the index of the grace note paired with the currently playing note.
+     *
+     * @param index Grace note index, or -1 if none
+     */
+    public void setPlayingGraceNoteIndex(int index) {
+        if (playingGraceNoteIndex != index) {
+            playingGraceNoteIndex = index;
+            repaint();
+        }
+    }
+
+    /**
+     * Returns the index of the grace note paired with the currently playing note (-1 if none).
+     */
+    public int getPlayingGraceNoteIndex() {
+        return playingGraceNoteIndex;
     }
 
     /**

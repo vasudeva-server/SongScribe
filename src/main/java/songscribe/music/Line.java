@@ -283,6 +283,20 @@ public class Line {
         return isPairedGraceNote(index) || isPairedGraceNote(index - 1);
     }
 
+    /**
+     * If the element immediately before {@code index} is a grace note, returns its index.
+     * Returns -1 otherwise.
+     */
+    public int precedingGraceNoteIndex(int index) {
+        int candidateIndex = index - 1;
+
+        if (candidateIndex < 0) {
+            return -1;
+        }
+
+        return getElement(candidateIndex).getType().isGraceNote() ? candidateIndex : -1;
+    }
+
     public boolean isPairedGraceNote(int index) {
         if (index < 0 || index >= elements.size()) {
             return false;
@@ -687,10 +701,8 @@ public class Line {
                 addTempoMetaMessage(track, ticks, currentTempo, settings.tempoChangePercent());
             }
 
-            // Add colorize message if enabled
-            if (settings.colorizeNotes()) {
-                addColorizeMetaMessage(track, lineIndex, i, ticks);
-            }
+            // Always emit a colorize meta message for playback highlighting
+            addColorizeMetaMessage(track, lineIndex, i, ticks);
 
             // Add note on/off messages and update ticks
             ticks = addNoteMessages(track, i, ticks, currentTempo, settings, glissandoHelper);

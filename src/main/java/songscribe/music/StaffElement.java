@@ -71,12 +71,6 @@ public class StaffElement extends LineElement implements Cloneable {
         1.75f,
     };
 
-    // TODO: These can probably be removed since getColoredNote and getColoredImage are not used
-    private static final ArrayList<ColoredElement> coloredElements =
-        new ArrayList<>();
-    private static final ArrayList<ColoredImage> coloredImages =
-        new ArrayList<>();
-
     public final Properties properties = new Properties();
 
     /**
@@ -739,23 +733,6 @@ public class StaffElement extends LineElement implements Cloneable {
         }
 
     }
-
-    /**
-     * @param noteType key
-     * @param image    value
-     */
-    private record ColoredElement(
-        ElementType noteType,
-        Color color,
-        boolean upper,
-        Image image
-    ) {}
-
-    private record ColoredImage(
-        Image originalImage,
-        Color color,
-        Image coloredImage
-    ) {}
 
     public static class Properties {
 

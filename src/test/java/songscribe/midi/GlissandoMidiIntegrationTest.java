@@ -49,7 +49,7 @@ class GlissandoMidiIntegrationTest extends UnitTest {
     private static final int TEMPO_INDEX = 0;
 
     private static final PlaybackSettings DEFAULT_SETTINGS = new PlaybackSettings(
-        0, 100, 100, false, false
+        0, 100, 100, false
     );
 
     private static Line line;

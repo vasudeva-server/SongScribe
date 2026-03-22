@@ -24,6 +24,5 @@ public record PlaybackSettings(
     int instrument,
     int tempoChangePercent,   // percentage: e.g., 100 = normal, 120 = 20% faster
     int noteDurationPercent,  // percentage: 1-100
-    boolean colorizeNotes,
     boolean playWithRepeats
 ) {}

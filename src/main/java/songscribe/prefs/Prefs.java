@@ -74,14 +74,13 @@ public final class Prefs {
         map.put("control", PrefsKey.CONTROL);
         map.put("imageexportfilter", PrefsKey.IMAGE_EXPORT_FILTER);
         map.put("durationshortitude", PrefsKey.PLAYBACK_NOTE_DURATION);
-        map.put("colorizenote", PrefsKey.COLORIZE_NOTE);
         map.put("instrument", PrefsKey.INSTRUMENT);
         map.put("metric", PrefsKey.METRIC);
         map.put("firstrun", PrefsKey.FIRST_RUN);
         MIGRATION_MAP = Collections.unmodifiableMap(map);
     }
 
-    private static final List<String> OBSOLETE_KEYS = List.of("defaultProfile");
+    private static final List<String> OBSOLETE_KEYS = List.of("colorizeNote", "defaultProfile");
 
     // Initialized last to ensure all static fields above are ready before the constructor runs.
     private static final Prefs INSTANCE = new Prefs();

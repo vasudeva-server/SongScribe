@@ -673,7 +673,7 @@ class ElementInsertionTest extends E2ETest {
     // -- Grace note MIDI helpers --
 
     private static final PlaybackSettings DEFAULT_SETTINGS = new PlaybackSettings(
-        0, 100, 100, false, false
+        0, 100, 100, false
     );
 
     private Track buildMidiTrack() throws Exception {

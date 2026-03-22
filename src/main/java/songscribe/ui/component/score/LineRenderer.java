@@ -117,7 +117,8 @@ class LineRenderer {
         ctx.setLayoutResult(lc.getLayoutResult());
         ctx.setSelectionProvider(lc.getSelectionProvider());
         ctx.setEditMode(lc.isEditMode());
-
+        ctx.setPlayingNoteIndex(lc.getPlayingNoteIndex());
+        ctx.setPlayingGraceNoteIndex(lc.getPlayingGraceNoteIndex());
 
         // Ensure NoteRenderer metrics are initialized
         NoteRenderer.initializeAccidentalWidths(g2);
@@ -322,9 +323,9 @@ class LineRenderer {
             return Color.BLACK;
         }
 
-        // Check if element is currently playing
-        if (lc.getPlayingNoteIndex() == elementIndex) {
-            return Score.getPlayingNoteColor();
+        // Check if element is currently playing (primary note or grace note)
+        if (ctx.isElementPlaying(elementIndex)) {
+            return UIManager.getColor(Score.PLAYING_NOTE_COLOR_KEY);
         }
 
         // Check if element is selected or highlighted by insertion element hover

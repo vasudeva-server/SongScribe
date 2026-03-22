@@ -321,17 +321,18 @@ class NoteDragHandler {
                             Strings.get(Strings.WARNING_GRACE_NOTE_SAME_PITCH)
                     );
                     dragLine.removeElement(idx);
-                } else if (!element.getType().isGraceNote() && idx > 0) {
+                } else if (!element.getType().isGraceNote()) {
                     // Host note dragged to the same pitch as its preceding grace note — remove the grace note
-                    var prev = dragLine.getElement(idx - 1);
+                    int graceIdx = dragLine.precedingGraceNoteIndex(idx);
 
-                    if (prev.getType().isGraceNote() && prev.getPitch() == element.getPitch()) {
+                    if (graceIdx >= 0
+                            && dragLine.getElement(graceIdx).getPitch() == element.getPitch()) {
                         OptionDialogs.showWarningMessage(
                                 null,
                                 Strings.get(Strings.DIALOG_TITLE_GRACE_NOTE_WARNING),
                                 Strings.get(Strings.WARNING_GRACE_NOTE_SAME_PITCH)
                         );
-                        dragLine.removeElement(idx - 1);
+                        dragLine.removeElement(graceIdx);
                     }
                 }
             }

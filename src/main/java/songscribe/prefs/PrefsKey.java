@@ -32,7 +32,6 @@ public enum PrefsKey {
     ATTRIBUTION_FONT("attributionFont"),
     ATTRIBUTION_FONT_SIZE("attributionFontSize"),
     AUTO_SAVE_AFTER_STRIP_SHORT_A("autoSaveAfterStripShortA"),
-    COLORIZE_NOTE("colorizeNote"),
     CONTROL("control"),
     EXPORT_DPI("exportDpi"),
     FIRST_RUN("firstRun"),

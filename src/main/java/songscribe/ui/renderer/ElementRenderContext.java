@@ -58,6 +58,8 @@ public class ElementRenderContext {
     private LineComponent.@Nullable SelectionProvider selectionProvider;
     private boolean editMode;
     private Color selectionColor = Score.getSelectionStrokeColor();
+    private int playingNoteIndex = -1;
+    private int playingGraceNoteIndex = -1;
     private double overrideElementXSs = Double.NaN;
 
     /**
@@ -231,6 +233,49 @@ public class ElementRenderContext {
      */
     public void setSelectionColor(Color selectionColor) {
         this.selectionColor = selectionColor;
+    }
+
+    /**
+     * Returns the index of the currently playing note, or -1 if none.
+     */
+    public int getPlayingNoteIndex() {
+        return playingNoteIndex;
+    }
+
+    /**
+     * Sets the index of the currently playing note.
+     *
+     * @param playingNoteIndex the playing note index, or -1 if none
+     */
+    public void setPlayingNoteIndex(int playingNoteIndex) {
+        this.playingNoteIndex = playingNoteIndex;
+    }
+
+    /**
+     * Returns the index of the currently playing grace note, or -1 if none.
+     */
+    public int getPlayingGraceNoteIndex() {
+        return playingGraceNoteIndex;
+    }
+
+    /**
+     * Sets the index of the currently playing grace note.
+     *
+     * @param playingGraceNoteIndex the playing grace note index, or -1 if none
+     */
+    public void setPlayingGraceNoteIndex(int playingGraceNoteIndex) {
+        this.playingGraceNoteIndex = playingGraceNoteIndex;
+    }
+
+    /**
+     * Returns whether the given element index is currently playing
+     * (either as the primary note or as a grace note).
+     *
+     * @param elementIndex the element index to check
+     * @return true if the element is currently playing
+     */
+    public boolean isElementPlaying(int elementIndex) {
+        return elementIndex == playingNoteIndex || elementIndex == playingGraceNoteIndex;
     }
 
     /**

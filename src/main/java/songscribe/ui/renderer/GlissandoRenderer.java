@@ -39,6 +39,7 @@ import songscribe.music.StaffElement;
 import songscribe.smufl.EngravingDefaults;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
+import songscribe.ui.component.Score;
 import songscribe.ui.layout.LayoutConstants;
 import songscribe.ui.layout.LayoutResult;
 import songscribe.ui.layout.ScaleContext;
@@ -344,8 +345,9 @@ public class GlissandoRenderer {
     }
 
     /**
-     * Determines the color for a glissando based on selection state.
-     * Returns the selection color if the glissando or its attached notes are selected,
+     * Determines the color for a glissando based on playback and selection state.
+     * Returns the playing color if the source note is currently playing,
+     * the selection color if the glissando or its attached notes are selected,
      * otherwise black.
      */
     private Color determineGlissandoColor(
@@ -355,6 +357,11 @@ public class GlissandoRenderer {
     ) {
         if (!ctx.isEditMode()) {
             return Color.BLACK;
+        }
+
+        // Playback highlighting takes priority
+        if (ctx.isElementPlaying(noteIndex)) {
+            return UIManager.getColor(Score.PLAYING_NOTE_COLOR_KEY);
         }
 
         var selectionProvider = ctx.getSelectionProvider();
