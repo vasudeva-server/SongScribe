@@ -18,7 +18,10 @@ dialog.compositionsettings.resettodefaults = Reset to defaults
 action.keysignaturechange = Key Signature Change...
 ```
 - Strings are alphabetized within groups (by prefix: `action.*`, `confirm.*`, `dialog.*`, `error.*`, etc.)
-- Template strings use `java.text.MessageFormat` syntax: `error.line.width.range=Line width must be between {0} and {1} {2}.`
+- Template strings use `java.text.MessageFormat` syntax:
+  - Simple: `error.file.open=Error opening {0}`
+  - Numeric: `error.line.width.range=Width must be between {0,number,0.00} and {1,number,0.00}` — use `{N,number,pattern}` to format numbers inline rather than pre-formatting in Java code
+  - Choice: `status.deleted={0,choice,0#No notes|1#1 note|1<{0} notes} deleted`
 - Apostrophes in template strings must be doubled: `Can''t open {0}`
 
 ### Generated class
