@@ -88,17 +88,28 @@ public abstract class StandardDialog extends BaseDialog {
     }
 
     /**
-     * Returns true if the dialog's current field values are valid and
-     * may be committed. Subclasses override this to block OK/Apply when
-     * input is invalid. The default implementation always returns true.
+     * Returns true if all registered tabs report valid data.
+     * Subclasses may override to add dialog-level validation
+     * (call {@code super.isValidData()} to run tab iteration).
      */
     protected boolean isValidData() {
+        for (var tab : getTabs()) {
+            if (!tab.isValidData()) {
+                return false;
+            }
+        }
+
         return true;
     }
 
     /**
-     * Called when the user clicks OK or Apply. Subclasses should
-     * write their control values back to the data/model.
+     * Writes control values back to the model by iterating registered
+     * tabs. Subclasses may override to add dialog-level commit logic
+     * (call {@code super.setData()} to run tab iteration).
      */
-    protected abstract void setData();
+    protected void setData() {
+        for (var tab : getTabs()) {
+            tab.setData();
+        }
+    }
 }

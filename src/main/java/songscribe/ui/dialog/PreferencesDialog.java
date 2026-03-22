@@ -44,6 +44,7 @@ import com.formdev.flatlaf.extras.FlatSVGIcon;
 
 import songscribe.util.GraphicUtils;
 import songscribe.util.MyFontUtils;
+import songscribe.util.UIUtils;
 
 public class PreferencesDialog extends BaseDialog {
 
@@ -51,109 +52,28 @@ public class PreferencesDialog extends BaseDialog {
     private static int[] instrumentPrograms = new int[0];
     private static boolean instrumentsLoaded = false;
 
-    // Play tab — Feedback section
-    private final JCheckBox playInsertingNoteCheck = new JCheckBox(
-        Strings.get(Strings.LABEL_PREFS_PLAY_INSERTED_NOTE)
-    );
-    private final JCheckBox playSelectedNoteCheck = new JCheckBox(
-        Strings.get(Strings.LABEL_PREFS_PLAY_SELECTED_NOTE)
-    );
-
-    // Play tab — Playback section
-    private final JSlider durationSlider = new JSlider(32, 100);
-    private final JSlider volumeSlider = new JSlider(0, PlayTab.VALID_VOLUME_STOPS.length - 1);
-    private final JSlider tempoSlider = new JSlider(PlayTab.TEMPO_MIN, PlayTab.TEMPO_MAX);
-
-    // General tab — Page Size section
-    private final JRadioButton letterRadio = new JRadioButton(
-        Strings.get(Strings.LABEL_PREFS_PAGE_SIZE_LETTER)
-    );
-    private final JRadioButton a4Radio = new JRadioButton(
-        Strings.get(Strings.LABEL_PREFS_PAGE_SIZE_A4)
-    );
-
-    // General tab — Measurement Units section
-    private final JRadioButton inchesRadio = new JRadioButton(
-        Strings.get(Strings.LABEL_PREFS_UNITS_INCHES)
-    );
-    private final JRadioButton centimetersRadio = new JRadioButton(
-        Strings.get(Strings.LABEL_PREFS_UNITS_CENTIMETERS)
-    );
-
-    // General tab — Appearance section
-    private final JRadioButton systemRadio = new JRadioButton(
-        Strings.get(Strings.LABEL_PREFS_APPEARANCE_SYSTEM)
-    );
-    private final JRadioButton lightRadio = new JRadioButton(
-        Strings.get(Strings.LABEL_PREFS_APPEARANCE_LIGHT)
-    );
-    private final JRadioButton darkRadio = new JRadioButton(
-        Strings.get(Strings.LABEL_PREFS_APPEARANCE_DARK)
-    );
-
-    // Instruments tab
-    private final JTabbedPane tabbedPane;
-    private final JList<String> instrumentList;
-    private final JButton scaleButton;
-    private final ScaleAction scaleAction;
-
     public PreferencesDialog() {
         super(Strings.get(Strings.DIALOG_PREFERENCES_TITLE), false);
 
-        var pageSizeGroup = new ButtonGroup();
-        pageSizeGroup.add(letterRadio);
-        pageSizeGroup.add(a4Radio);
-
-        var unitsGroup = new ButtonGroup();
-        unitsGroup.add(inchesRadio);
-        unitsGroup.add(centimetersRadio);
-
-        var appearanceGroup = new ButtonGroup();
-        appearanceGroup.add(systemRadio);
-        appearanceGroup.add(lightRadio);
-        appearanceGroup.add(darkRadio);
-
-        ensureInstrumentsLoaded();
-        instrumentList = new JList<>(instrumentStrings);
-        scaleAction = new ScaleAction();
-        scaleButton = new JButton(scaleAction);
-
         var instrumentsTabIndex = 2;
-        tabbedPane = createTabbedPane();
-        tabbedPane.addTab(
+        var tabbedPane = createTabbedPane();
+        addTab(
+            tabbedPane,
             Strings.get(Strings.LABEL_PREFS_TAB_GENERAL),
             new GeneralTab()
         );
-        tabbedPane.addTab(
+        addTab(
+            tabbedPane,
             Strings.get(Strings.LABEL_PREFS_TAB_PLAY),
             new PlayTab()
         );
-        tabbedPane.addTab(
+        addTab(
+            tabbedPane,
             Strings.get(Strings.LABEL_PREFS_TAB_INSTRUMENTS),
-            new InstrumentsTab()
+            new InstrumentsTab(tabbedPane, instrumentsTabIndex)
         );
 
-        tabbedPane.addChangeListener(_ -> {
-            if (tabbedPane.getSelectedIndex() == instrumentsTabIndex) {
-                PlaybackController.stop();
-                instrumentList.requestFocusInWindow();
-            } else {
-                scaleAction.stop();
-            }
-        });
-
         contentPanel.add(BorderLayout.CENTER, tabbedPane);
-
-        addChangeListeners();
-    }
-
-    @Override
-    public void setVisible(boolean visible) {
-        if (!visible) {
-            scaleAction.stop();
-        }
-
-        super.setVisible(visible);
     }
 
     public static void ensureInstrumentsLoaded() {
@@ -214,216 +134,9 @@ public class PreferencesDialog extends BaseDialog {
         return instrumentPrograms;
     }
 
-    private void addChangeListeners() {
-        // Feedback
-        playInsertingNoteCheck.addActionListener(_ -> {
-            Prefs.getInstance().put(
-                PrefsKey.PLAY_INSERTED_NOTE, playInsertingNoteCheck.isSelected()
-            );
-            syncPlaybackPrefs();
-        });
-
-        playSelectedNoteCheck.addActionListener(_ -> {
-            Prefs.getInstance().put(
-                PrefsKey.PLAY_SELECTED_NOTE, playSelectedNoteCheck.isSelected()
-            );
-        });
-
-        // Playback — use putTransient during drag to avoid disk writes per tick,
-        // then save once on release.
-        durationSlider.addChangeListener(_ -> {
-            var prefs = Prefs.getInstance();
-            prefs.putTransient(PrefsKey.PLAYBACK_NOTE_DURATION, durationSlider.getValue());
-
-            if (!durationSlider.getValueIsAdjusting()) {
-                prefs.save();
-            }
-
-            syncPlaybackPrefs();
-        });
-
-        volumeSlider.addChangeListener(_ -> {
-            var volume = PlayTab.VALID_VOLUME_STOPS[volumeSlider.getValue()];
-            var prefs = Prefs.getInstance();
-            prefs.putTransient(PrefsKey.PLAYBACK_VOLUME, volume);
-            MidiController.setPlaybackVolume(volume);
-
-            if (!volumeSlider.getValueIsAdjusting()) {
-                prefs.save();
-            }
-        });
-
-        tempoSlider.addChangeListener(_ -> {
-            var prefs = Prefs.getInstance();
-            prefs.putTransient(PrefsKey.TEMPO_CHANGE_PERCENT, tempoSlider.getValue());
-
-            if (!tempoSlider.getValueIsAdjusting()) {
-                prefs.save();
-            }
-
-            syncPlaybackPrefs();
-        });
-
-        // Instruments
-        instrumentList.addListSelectionListener(e -> {
-            if (e.getValueIsAdjusting()) {
-                return;
-            }
-
-            var index = instrumentList.getSelectedIndex();
-            Prefs.getInstance().put(
-                PrefsKey.INSTRUMENT, index >= 0 ? instrumentPrograms[index] : 0
-            );
-            syncPlaybackPrefs();
-
-            // Restart scale if it was already playing
-            if (scaleAction.isPlaying()) {
-                scaleAction.stop();
-                scaleAction.play();
-            }
-        });
-
-        // Page Size
-        var pageSizeListener = new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                Prefs.getInstance().put(PrefsKey.PAGE_SIZE, a4Radio.isSelected() ? "a4" : "letter");
-                MessageCenter.post(new PageSizeDidChangeNotification());
-            }
-        };
-
-        letterRadio.addActionListener(pageSizeListener);
-        a4Radio.addActionListener(pageSizeListener);
-
-        // Measurement Units
-        var metricListener = new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                Prefs.getInstance().put(PrefsKey.METRIC, centimetersRadio.isSelected());
-            }
-        };
-
-        inchesRadio.addActionListener(metricListener);
-        centimetersRadio.addActionListener(metricListener);
-
-        // Appearance
-        var appearanceListener = new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                Appearance newAppearance;
-
-                if (darkRadio.isSelected()) {
-                    newAppearance = Appearance.DARK;
-                } else if (lightRadio.isSelected()) {
-                    newAppearance = Appearance.LIGHT;
-                } else {
-                    newAppearance = Appearance.SYSTEM;
-                }
-
-                AppearanceManager.switchTheme(newAppearance);
-            }
-        };
-
-        systemRadio.addActionListener(appearanceListener);
-        lightRadio.addActionListener(appearanceListener);
-        darkRadio.addActionListener(appearanceListener);
-    }
-
-    private void syncPlaybackPrefs() {
-        var score = getScore();
-
-        if (score != null) {
-            score.syncPlaybackPrefs();
-        }
-    }
-
-    @Override
-    protected boolean getData() {
-        tabbedPane.setSelectedIndex(0);
-        var prefs = Prefs.getInstance();
-
-        // General — Page Size
-        (PageModel.getInstance().getSize() == PageModel.Size.A4 ? a4Radio : letterRadio).setSelected(true);
-
-        // General — Measurement Units
-        (prefs.getBoolean(PrefsKey.METRIC) ? centimetersRadio : inchesRadio).setSelected(true);
-
-        // General — Appearance
-        (switch (AppearanceManager.getPreference()) {
-            case LIGHT -> lightRadio;
-            case DARK -> darkRadio;
-            case SYSTEM -> systemRadio;
-        }).setSelected(true);
-
-        // Play — Feedback
-        playInsertingNoteCheck.setSelected(prefs.getBoolean(PrefsKey.PLAY_INSERTED_NOTE));
-        playSelectedNoteCheck.setSelected(prefs.getBoolean(PrefsKey.PLAY_SELECTED_NOTE));
-
-        // Play — Playback
-        durationSlider.setValue(snapToNearestDurationStop(prefs.getInt(PrefsKey.PLAYBACK_NOTE_DURATION)));
-        volumeSlider.setValue(volumeToSliderIndex(prefs.getInt(PrefsKey.PLAYBACK_VOLUME)));
-        tempoSlider.setValue(snapToNearestTempoStop(prefs.getInt(PrefsKey.TEMPO_CHANGE_PERCENT)));
-
-        // Instruments
-        var instrumentIndex = programToIndex(prefs.getInt(PrefsKey.INSTRUMENT));
-        instrumentList.setSelectedIndex(instrumentIndex);
-        instrumentList.ensureIndexIsVisible(instrumentIndex);
-
-        return true;
-    }
-
-    private static int snapToNearest(int value, int[] stops) {
-        int closest = stops[0];
-        int minDist = Math.abs(value - closest);
-
-        for (int i = 1; i < stops.length; i++) {
-            int dist = Math.abs(value - stops[i]);
-
-            if (dist < minDist) {
-                minDist = dist;
-                closest = stops[i];
-            }
-        }
-
-        return closest;
-    }
-
-    private static int snapToNearestTempoStop(int value) {
-        return snapToNearest(value, PlayTab.VALID_TEMPO_STOPS);
-    }
-
-    private static int volumeToSliderIndex(int volume) {
-        int closestIndex = 0;
-        int minDist = Math.abs(volume - PlayTab.VALID_VOLUME_STOPS[0]);
-
-        for (int i = 1; i < PlayTab.VALID_VOLUME_STOPS.length; i++) {
-            int dist = Math.abs(volume - PlayTab.VALID_VOLUME_STOPS[i]);
-
-            if (dist < minDist) {
-                minDist = dist;
-                closestIndex = i;
-            }
-        }
-
-        return closestIndex;
-    }
-
-    private static int snapToNearestDurationStop(int value) {
-        return snapToNearest(value, PlayTab.VALID_DURATION_STOPS);
-    }
-
-    private static Dictionary<Integer, JLabel> createPercentLabels(
-        int min, int max, int step
-    ) {
-        //noinspection UseOfObsoleteCollectionType
-        var labels = new Hashtable<Integer, JLabel>();
-
-        for (int value = min; value <= max; value += step) {
-            labels.put(value, new JLabel(value + "%"));
-        }
-
-        return labels;
-    }
+    // -----------------------------------------------------------------------
+    // GeneralTab
+    // -----------------------------------------------------------------------
 
     private final class GeneralTab extends Tab {
 
@@ -433,13 +146,121 @@ public class PreferencesDialog extends BaseDialog {
         private static final int APPEARANCE_VERTICAL_PADDING_TOP = 7;
         private static final int APPEARANCE_VERTICAL_PADDING_BOTTOM = 5;
 
+        private final JRadioButton letterRadio = new JRadioButton(
+            Strings.get(Strings.LABEL_PREFS_PAGE_SIZE_LETTER)
+        );
+        private final JRadioButton a4Radio = new JRadioButton(
+            Strings.get(Strings.LABEL_PREFS_PAGE_SIZE_A4)
+        );
+        private final JRadioButton inchesRadio = new JRadioButton(
+            Strings.get(Strings.LABEL_PREFS_UNITS_INCHES)
+        );
+        private final JRadioButton centimetersRadio = new JRadioButton(
+            Strings.get(Strings.LABEL_PREFS_UNITS_CENTIMETERS)
+        );
+        private final JRadioButton systemRadio = new JRadioButton(
+            Strings.get(Strings.LABEL_PREFS_APPEARANCE_SYSTEM)
+        );
+        private final JRadioButton lightRadio = new JRadioButton(
+            Strings.get(Strings.LABEL_PREFS_APPEARANCE_LIGHT)
+        );
+        private final JRadioButton darkRadio = new JRadioButton(
+            Strings.get(Strings.LABEL_PREFS_APPEARANCE_DARK)
+        );
+
+        GeneralTab() {
+            build();
+        }
+
         @Override
         protected void initContents() {
+            var pageSizeGroup = new ButtonGroup();
+            pageSizeGroup.add(letterRadio);
+            pageSizeGroup.add(a4Radio);
+
+            var unitsGroup = new ButtonGroup();
+            unitsGroup.add(inchesRadio);
+            unitsGroup.add(centimetersRadio);
+
+            var appearanceGroup = new ButtonGroup();
+            appearanceGroup.add(systemRadio);
+            appearanceGroup.add(lightRadio);
+            appearanceGroup.add(darkRadio);
+
             add(createPageSizeSection());
             addSeparator();
             add(createMeasurementUnitsSection());
             addSeparator();
             add(createAppearanceSection());
+
+            addChangeListeners();
+        }
+
+        @Override
+        protected boolean getData() {
+            var prefs = Prefs.getInstance();
+
+            (PageModel.getInstance().getSize() == PageModel.Size.A4
+                ? a4Radio : letterRadio).setSelected(true);
+
+            (prefs.getBoolean(PrefsKey.METRIC)
+                ? centimetersRadio : inchesRadio).setSelected(true);
+
+            (switch (AppearanceManager.getPreference()) {
+                case LIGHT -> lightRadio;
+                case DARK -> darkRadio;
+                case SYSTEM -> systemRadio;
+            }).setSelected(true);
+
+            return true;
+        }
+
+        private void addChangeListeners() {
+            var pageSizeListener = new ActionListener() {
+                @Override
+                public void actionPerformed(ActionEvent e) {
+                    Prefs.getInstance().put(
+                        PrefsKey.PAGE_SIZE, a4Radio.isSelected() ? "a4" : "letter"
+                    );
+                    MessageCenter.post(new PageSizeDidChangeNotification());
+                }
+            };
+
+            letterRadio.addActionListener(pageSizeListener);
+            a4Radio.addActionListener(pageSizeListener);
+
+            var metricListener = new ActionListener() {
+                @Override
+                public void actionPerformed(ActionEvent e) {
+                    Prefs.getInstance().put(
+                        PrefsKey.METRIC, centimetersRadio.isSelected()
+                    );
+                }
+            };
+
+            inchesRadio.addActionListener(metricListener);
+            centimetersRadio.addActionListener(metricListener);
+
+            var appearanceListener = new ActionListener() {
+                @Override
+                public void actionPerformed(ActionEvent e) {
+                    Appearance newAppearance;
+
+                    if (darkRadio.isSelected()) {
+                        newAppearance = Appearance.DARK;
+                    } else if (lightRadio.isSelected()) {
+                        newAppearance = Appearance.LIGHT;
+                    } else {
+                        newAppearance = Appearance.SYSTEM;
+                    }
+
+                    AppearanceManager.switchTheme(newAppearance);
+                }
+            };
+
+            systemRadio.addActionListener(appearanceListener);
+            lightRadio.addActionListener(appearanceListener);
+            darkRadio.addActionListener(appearanceListener);
         }
 
         private JPanel createPageSizeSection() {
@@ -494,39 +315,9 @@ public class PreferencesDialog extends BaseDialog {
         }
     }
 
-    private final class InstrumentsTab extends Tab {
-
-        @Override
-        protected void initContents() {
-            var panel = new JPanel(new GridBagLayout());
-            var gc = new GridBagConstraints();
-            gc.gridy = 0;
-            gc.weighty = 1.0;
-
-            instrumentList.setVisibleRowCount(10);
-            instrumentList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-            gc.gridx = 0;
-            gc.weightx = 0.5;
-            gc.fill = GridBagConstraints.BOTH;
-            panel.add(new JScrollPane(instrumentList), gc);
-
-            scaleButton.setText("\uEF4E");
-            scaleButton.setFont(MyFontUtils.getIconFont().deriveFont(24f));
-            scaleButton.setMargin(new Insets(8, 8, 8, 8));
-            scaleButton.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(
-                KeyStroke.getKeyStroke(KeyEvent.VK_SPACE, 0), "playScale"
-            );
-            scaleButton.getActionMap().put("playScale", scaleAction);
-            gc.gridx = 1;
-            gc.weightx = 0.5;
-            gc.fill = GridBagConstraints.NONE;
-            gc.anchor = GridBagConstraints.WEST;
-            gc.insets = new Insets(0, 20, 0, 0);
-            panel.add(scaleButton, gc);
-
-            addExpanding(panel, GridBagConstraints.BOTH);
-        }
-    }
+    // -----------------------------------------------------------------------
+    // PlayTab
+    // -----------------------------------------------------------------------
 
     private final class PlayTab extends Tab {
 
@@ -544,11 +335,98 @@ public class PreferencesDialog extends BaseDialog {
         private static final int DURATION_STEP = 17;
         private static final int[] VALID_DURATION_STOPS = { 32, 49, 66, 83, 100 };
 
+        private final JCheckBox playInsertingNoteCheck = new JCheckBox(
+            Strings.get(Strings.LABEL_PREFS_PLAY_INSERTED_NOTE)
+        );
+        private final JCheckBox playSelectedNoteCheck = new JCheckBox(
+            Strings.get(Strings.LABEL_PREFS_PLAY_SELECTED_NOTE)
+        );
+        private final JSlider durationSlider = new JSlider(32, 100);
+        private final JSlider volumeSlider = new JSlider(0, VALID_VOLUME_STOPS.length - 1);
+        private final JSlider tempoSlider = new JSlider(TEMPO_MIN, TEMPO_MAX);
+
+        PlayTab() {
+            build();
+            addChangeListeners();
+        }
+
         @Override
         protected void initContents() {
             add(createFeedbackSection());
             addSeparator();
             add(createPlaybackSection());
+        }
+
+        @Override
+        protected boolean getData() {
+            var prefs = Prefs.getInstance();
+
+            playInsertingNoteCheck.setSelected(prefs.getBoolean(PrefsKey.PLAY_INSERTED_NOTE));
+            playSelectedNoteCheck.setSelected(prefs.getBoolean(PrefsKey.PLAY_SELECTED_NOTE));
+
+            durationSlider.setValue(snapToNearestDurationStop(prefs.getInt(PrefsKey.PLAYBACK_NOTE_DURATION)));
+            volumeSlider.setValue(volumeToSliderIndex(prefs.getInt(PrefsKey.PLAYBACK_VOLUME)));
+            tempoSlider.setValue(snapToNearestTempoStop(prefs.getInt(PrefsKey.TEMPO_CHANGE_PERCENT)));
+
+            return true;
+        }
+
+        private void addChangeListeners() {
+            playInsertingNoteCheck.addActionListener(_ -> {
+                Prefs.getInstance().put(
+                    PrefsKey.PLAY_INSERTED_NOTE, playInsertingNoteCheck.isSelected()
+                );
+                syncPlaybackPrefs();
+            });
+
+            playSelectedNoteCheck.addActionListener(_ -> {
+                Prefs.getInstance().put(
+                    PrefsKey.PLAY_SELECTED_NOTE, playSelectedNoteCheck.isSelected()
+                );
+            });
+
+            // Use putTransient during drag to avoid disk writes per tick,
+            // then save once on release.
+            durationSlider.addChangeListener(_ -> {
+                var prefs = Prefs.getInstance();
+                prefs.putTransient(PrefsKey.PLAYBACK_NOTE_DURATION, durationSlider.getValue());
+
+                if (!durationSlider.getValueIsAdjusting()) {
+                    prefs.save();
+                }
+
+                syncPlaybackPrefs();
+            });
+
+            volumeSlider.addChangeListener(_ -> {
+                var volume = VALID_VOLUME_STOPS[volumeSlider.getValue()];
+                var prefs = Prefs.getInstance();
+                prefs.putTransient(PrefsKey.PLAYBACK_VOLUME, volume);
+                MidiController.setPlaybackVolume(volume);
+
+                if (!volumeSlider.getValueIsAdjusting()) {
+                    prefs.save();
+                }
+            });
+
+            tempoSlider.addChangeListener(_ -> {
+                var prefs = Prefs.getInstance();
+                prefs.putTransient(PrefsKey.TEMPO_CHANGE_PERCENT, tempoSlider.getValue());
+
+                if (!tempoSlider.getValueIsAdjusting()) {
+                    prefs.save();
+                }
+
+                syncPlaybackPrefs();
+            });
+        }
+
+        private void syncPlaybackPrefs() {
+            var score = getScore();
+
+            if (score != null) {
+                score.syncPlaybackPrefs();
+            }
         }
 
         private JPanel createFeedbackSection() {
@@ -611,166 +489,324 @@ public class PreferencesDialog extends BaseDialog {
             addLabeledField(section, labelText, slider, LabelPosition.TOP);
             configureSlider(slider, tickSpacing, labels);
         }
+
+        private static int snapToNearest(int value, int[] stops) {
+            int closest = stops[0];
+            int minDist = Math.abs(value - closest);
+
+            for (int i = 1; i < stops.length; i++) {
+                int dist = Math.abs(value - stops[i]);
+
+                if (dist < minDist) {
+                    minDist = dist;
+                    closest = stops[i];
+                }
+            }
+
+            return closest;
+        }
+
+        private static int snapToNearestTempoStop(int value) {
+            return snapToNearest(value, VALID_TEMPO_STOPS);
+        }
+
+        private static int volumeToSliderIndex(int volume) {
+            int closestIndex = 0;
+            int minDist = Math.abs(volume - VALID_VOLUME_STOPS[0]);
+
+            for (int i = 1; i < VALID_VOLUME_STOPS.length; i++) {
+                int dist = Math.abs(volume - VALID_VOLUME_STOPS[i]);
+
+                if (dist < minDist) {
+                    minDist = dist;
+                    closestIndex = i;
+                }
+            }
+
+            return closestIndex;
+        }
+
+        private static int snapToNearestDurationStop(int value) {
+            return snapToNearest(value, VALID_DURATION_STOPS);
+        }
+
+        private static Dictionary<Integer, JLabel> createPercentLabels(
+            int min, int max, int step
+        ) {
+            //noinspection UseOfObsoleteCollectionType
+            var labels = new Hashtable<Integer, JLabel>();
+
+            for (int value = min; value <= max; value += step) {
+                labels.put(value, new JLabel(value + "%"));
+            }
+
+            return labels;
+        }
     }
 
-    private class ScaleAction extends AbstractAction {
+    // -----------------------------------------------------------------------
+    // InstrumentsTab
+    // -----------------------------------------------------------------------
 
-        private @Nullable MetaEventListener endListener = null;
+    private final class InstrumentsTab extends Tab {
 
-        private static final int SCALE_VELOCITY = 70;
+        private final JList<String> instrumentList = new JList<>();
+        private final ScaleAction scaleAction = new ScaleAction();
+        private final JButton scaleButton = new JButton(scaleAction);
 
-        // Db major scale: Db4, Eb4, F4, Gb4, Ab4, Bb4, C5, Db5
-        private static final int[] SCALE = new int[] {
-            61, 63, 65, 66, 68, 70, 72, 73,
-        };
+        InstrumentsTab(JTabbedPane tabbedPane, int tabIndex) {
+            build();
 
-        private @Nullable Color defaultButtonBackground;
+            tabbedPane.addChangeListener(_ -> {
+                if (tabbedPane.getSelectedIndex() == tabIndex) {
+                    PlaybackController.stop();
+                    instrumentList.requestFocusInWindow();
+                } else {
+                    scaleAction.stop();
+                }
+            });
 
-        private boolean playing = false;
-
-        ScaleAction() {
-            putValue(SHORT_DESCRIPTION, Strings.get(Strings.TOOLTIP_PLAY_INSTRUMENT));
-            setEnabled(MidiController.sequencer != null);
-        }
-
-        boolean isPlaying() {
-            return playing;
-        }
-
-        void stop() {
-            if (!playing) {
-                return;
-            }
-
-            var seq = MidiController.sequencer;
-
-            if (seq != null && seq.isRunning()) {
-                seq.stop();
-            }
-
-            if (seq != null && endListener != null) {
-                seq.removeMetaEventListener(endListener);
-                endListener = null;
-            }
-
-            setScalePlaying(false);
+            addChangeListener();
         }
 
         @Override
-        public void actionPerformed(ActionEvent e) {
-            var seq = MidiController.sequencer;
+        protected void initContents() {
+            var panel = new JPanel(new GridBagLayout());
+            var gc = new GridBagConstraints();
+            gc.gridy = 0;
+            gc.weighty = 1.0;
 
-            if (seq == null) {
-                return;
-            }
+            instrumentList.setVisibleRowCount(10);
+            instrumentList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+            gc.gridx = 0;
+            gc.weightx = 0.5;
+            gc.fill = GridBagConstraints.BOTH;
+            panel.add(new JScrollPane(instrumentList), gc);
 
-            if (seq.isRunning()) {
-                stop();
-                return;
-            }
+            scaleButton.setText("\uEF4E");
+            scaleButton.setFont(MyFontUtils.getIconFont().deriveFont(24f));
+            scaleButton.setMargin(new Insets(8, 8, 8, 8));
+            UIUtils.setToolTipText(scaleButton, scaleAction);
 
-            play();
+            var spaceKey = (KeyStroke) scaleAction.getValue(Action.ACCELERATOR_KEY);
+            scaleButton.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(spaceKey, "playScale");
+            scaleButton.getActionMap().put("playScale", scaleAction);
+            gc.gridx = 1;
+            gc.weightx = 0.5;
+            gc.fill = GridBagConstraints.NONE;
+            gc.anchor = GridBagConstraints.WEST;
+            gc.insets = new Insets(0, 20, 0, 0);
+            panel.add(scaleButton, gc);
+
+            addExpanding(panel, GridBagConstraints.BOTH);
         }
 
-        void play() {
-            var seq = MidiController.sequencer;
+        @Override
+        protected void tabWillShow() {
+            ensureInstrumentsLoaded();
 
-            if (seq == null) {
-                return;
-            }
+            var instrumentIndex = programToIndex(
+                Prefs.getInstance().getInt(PrefsKey.INSTRUMENT)
+            );
+            instrumentList.setListData(instrumentStrings);
+            instrumentList.setSelectedIndex(instrumentIndex);
+            instrumentList.ensureIndexIsVisible(instrumentIndex);
+        }
 
-            // Apply the user's volume preference
-            PlaybackController.applyVolumeFromPrefs();
+        @Override
+        protected void tabWillHide() {
+            scaleAction.stop();
+        }
 
-            // Stop score playback if it's running
-            if (PlaybackController.getState() == PlaybackController.PlaybackState.PLAYING) {
-                PlaybackController.stop();
-            }
-
-            try {
-                var sequence = new Sequence(Sequence.PPQ, PlaybackController.PPQ, 0);
-                var track = sequence.createTrack();
-                var selectedIndex = instrumentList.getSelectedIndex();
-                var program = selectedIndex >= 0 ? instrumentPrograms[selectedIndex] : 0;
-                var programChange = new ShortMessage();
-                programChange.setMessage(
-                    ShortMessage.PROGRAM_CHANGE,
-                    program,
-                    0
-                );
-                track.add(new MidiEvent(programChange, 0));
-                var tempoMessage = new MetaMessage();
-                var midiTempo = 60000000 / 120;
-                tempoMessage.setMessage(
-                    MidiMetaMessageTypes.SET_TEMPO,
-                    new byte[] {
-                        (byte) (midiTempo >> 16),
-                        (byte) (midiTempo >> 8),
-                        (byte) (midiTempo),
-                    },
-                    3
-                );
-                track.add(new MidiEvent(tempoMessage, 0));
-
-                var ticks = 0;
-
-                for (var pitch : SCALE) {
-                    var down = new ShortMessage();
-                    down.setMessage(
-                        ShortMessage.NOTE_ON,
-                        pitch,
-                        SCALE_VELOCITY
-                    );
-                    track.add(new MidiEvent(down, ticks));
-
-                    ticks += PlaybackController.PPQ / 2;
-                    var up = new ShortMessage();
-                    up.setMessage(
-                        ShortMessage.NOTE_OFF,
-                        pitch,
-                        0
-                    );
-                    track.add(new MidiEvent(up, ticks));
+        private void addChangeListener() {
+            instrumentList.addListSelectionListener(e -> {
+                if (e.getValueIsAdjusting()) {
+                    return;
                 }
 
-                seq.setSequence(sequence);
-                seq.setTickPosition(0);
-
-                setScalePlaying(true);
-
-                endListener = message -> {
-                    if (message.getType() == MidiMetaMessageTypes.END_OF_TRACK) {
-                        SwingUtilities.invokeLater(() -> {
-                            seq.setTickPosition(0);
-                            seq.start();
-                        });
-                    }
-                };
-
-                seq.addMetaEventListener(endListener);
-                seq.start();
-            } catch (InvalidMidiDataException ex) {
-                Dialogs.showErrorMessage(
-                    getMainFrame(),
-                    Strings.get(Strings.DIALOG_TITLE_PLAYBACK_ERROR),
-                    Strings.get(Strings.ERROR_SCALE_PLAY)
+                var index = instrumentList.getSelectedIndex();
+                Prefs.getInstance().put(
+                    PrefsKey.INSTRUMENT, index >= 0 ? instrumentPrograms[index] : 0
                 );
+                syncPlaybackPrefs();
+
+                // Restart scale if it was already playing
+                if (scaleAction.isPlaying()) {
+                    scaleAction.stop();
+                    scaleAction.play();
+                }
+            });
+        }
+
+        private void syncPlaybackPrefs() {
+            var score = getScore();
+
+            if (score != null) {
+                score.syncPlaybackPrefs();
             }
         }
 
-        private void setScalePlaying(boolean scalePlaying) {
-            playing = scalePlaying;
+        private class ScaleAction extends AbstractAction {
 
-            if (defaultButtonBackground == null) {
-                defaultButtonBackground = scaleButton.getBackground();
+            private @Nullable MetaEventListener endListener = null;
+
+            private static final int SCALE_VELOCITY = 70;
+
+            // Db major scale: Db4, Eb4, F4, Gb4, Ab4, Bb4, C5, Db5
+            private static final int[] SCALE = new int[] {
+                61, 63, 65, 66, 68, 70, 72, 73,
+            };
+
+            private @Nullable Color defaultButtonBackground;
+
+            private boolean playing = false;
+
+            ScaleAction() {
+                putValue(NAME, Strings.get(Strings.TOOLTIP_PLAY_INSTRUMENT_TITLE));
+                putValue(SHORT_DESCRIPTION, Strings.get(Strings.TOOLTIP_PLAY_INSTRUMENT));
+                putValue(ACCELERATOR_KEY, KeyStroke.getKeyStroke(KeyEvent.VK_SPACE, 0));
+                setEnabled(MidiController.sequencer != null);
             }
 
-            scaleButton.setBackground(
-                scalePlaying
-                    ? UIManager.getColor("ToggleButton.toolbar.selectedBackground")
-                    : defaultButtonBackground
-            );
-            scaleButton.repaint();
+            boolean isPlaying() {
+                return playing;
+            }
+
+            void stop() {
+                if (!playing) {
+                    return;
+                }
+
+                var seq = MidiController.sequencer;
+
+                if (seq != null && seq.isRunning()) {
+                    seq.stop();
+                }
+
+                if (seq != null && endListener != null) {
+                    seq.removeMetaEventListener(endListener);
+                    endListener = null;
+                }
+
+                setScalePlaying(false);
+            }
+
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                var seq = MidiController.sequencer;
+
+                if (seq == null) {
+                    return;
+                }
+
+                if (seq.isRunning()) {
+                    stop();
+                    return;
+                }
+
+                play();
+            }
+
+            void play() {
+                var seq = MidiController.sequencer;
+
+                if (seq == null) {
+                    return;
+                }
+
+                // Apply the user's volume preference
+                PlaybackController.applyVolumeFromPrefs();
+
+                // Stop score playback if it's running
+                if (PlaybackController.getState() == PlaybackController.PlaybackState.PLAYING) {
+                    PlaybackController.stop();
+                }
+
+                try {
+                    var sequence = new Sequence(Sequence.PPQ, PlaybackController.PPQ, 0);
+                    var track = sequence.createTrack();
+                    var selectedIndex = instrumentList.getSelectedIndex();
+                    var program = selectedIndex >= 0 ? instrumentPrograms[selectedIndex] : 0;
+                    var programChange = new ShortMessage();
+                    programChange.setMessage(
+                        ShortMessage.PROGRAM_CHANGE,
+                        program,
+                        0
+                    );
+                    track.add(new MidiEvent(programChange, 0));
+                    var tempoMessage = new MetaMessage();
+                    var midiTempo = 60000000 / 120;
+                    tempoMessage.setMessage(
+                        MidiMetaMessageTypes.SET_TEMPO,
+                        new byte[] {
+                            (byte) (midiTempo >> 16),
+                            (byte) (midiTempo >> 8),
+                            (byte) (midiTempo),
+                        },
+                        3
+                    );
+                    track.add(new MidiEvent(tempoMessage, 0));
+
+                    var ticks = 0;
+
+                    for (var pitch : SCALE) {
+                        var down = new ShortMessage();
+                        down.setMessage(
+                            ShortMessage.NOTE_ON,
+                            pitch,
+                            SCALE_VELOCITY
+                        );
+                        track.add(new MidiEvent(down, ticks));
+
+                        ticks += PlaybackController.PPQ / 2;
+                        var up = new ShortMessage();
+                        up.setMessage(
+                            ShortMessage.NOTE_OFF,
+                            pitch,
+                            0
+                        );
+                        track.add(new MidiEvent(up, ticks));
+                    }
+
+                    seq.setSequence(sequence);
+                    seq.setTickPosition(0);
+
+                    setScalePlaying(true);
+
+                    endListener = message -> {
+                        if (message.getType() == MidiMetaMessageTypes.END_OF_TRACK) {
+                            SwingUtilities.invokeLater(() -> {
+                                seq.setTickPosition(0);
+                                seq.start();
+                            });
+                        }
+                    };
+
+                    seq.addMetaEventListener(endListener);
+                    seq.start();
+                } catch (InvalidMidiDataException ex) {
+                    Dialogs.showErrorMessage(
+                        getMainFrame(),
+                        Strings.get(Strings.DIALOG_TITLE_PLAYBACK_ERROR),
+                        Strings.get(Strings.ERROR_SCALE_PLAY)
+                    );
+                }
+            }
+
+            private void setScalePlaying(boolean scalePlaying) {
+                playing = scalePlaying;
+
+                if (defaultButtonBackground == null) {
+                    defaultButtonBackground = scaleButton.getBackground();
+                }
+
+                scaleButton.setBackground(
+                    scalePlaying
+                        ? UIManager.getColor("ToggleButton.toolbar.selectedBackground")
+                        : defaultButtonBackground
+                );
+                scaleButton.repaint();
+            }
         }
     }
 }

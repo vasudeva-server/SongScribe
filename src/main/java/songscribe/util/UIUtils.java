@@ -73,7 +73,7 @@ public final class UIUtils {
         return result;
     }
 
-    public static void setToolTipText(JComponent component, UIAction action) {
+    public static void setToolTipText(JComponent component, Action action) {
         if (action == null) {
             component.setToolTipText(null);
             return;
@@ -82,9 +82,9 @@ public final class UIUtils {
         var tip = (String) action.getValue(Action.SHORT_DESCRIPTION);
 
         if ((tip != null) && !tip.isEmpty()) {
-            var name = action.getName();
+            var name = (String) action.getValue(Action.NAME);
             var html = "<html><strong>" + name + "</strong>";
-            var accelerator = action.getAccelerator();
+            var accelerator = (KeyStroke) action.getValue(Action.ACCELERATOR_KEY);
 
             if (accelerator != null) {
                 var keyStrokeString = Utils.getPlatformKeyStrokeString(accelerator);
@@ -95,6 +95,10 @@ public final class UIUtils {
         }
 
         component.setToolTipText(tip);
+    }
+
+    public static void setToolTipText(JComponent component, UIAction action) {
+        setToolTipText(component, (Action) action);
     }
 
     //
@@ -113,20 +117,16 @@ public final class UIUtils {
         setIcon(button, action);
         setToolTipText(button, action);
 
-        if (action != null) {
-            // If the action has a selected state, set the button's selected state accordingly
-            var selected = (Boolean) action.getValue(Action.SELECTED_KEY);
+        // If the action has a selected state, set the button's selected state accordingly
+        var selected = (Boolean) action.getValue(Action.SELECTED_KEY);
 
-            if (selected != null) {
-                button.setSelected(selected);
-            }
-
-            button.setEnabled(action.isEnabled());
-            button.setActionCommand(action.getActionCommand());
-            button.setName(action.getActionCommand());
-        } else {
-            button.setEnabled(true);
+        if (selected != null) {
+            button.setSelected(selected);
         }
+
+        button.setEnabled(action.isEnabled());
+        button.setActionCommand(action.getActionCommand());
+        button.setName(action.getActionCommand());
     }
 
     private static void setIcon(AbstractButton button, UIAction action) {

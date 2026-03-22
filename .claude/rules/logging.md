@@ -23,3 +23,13 @@ If `SongScribe` needs to log, use `System.out.println` for the few lines before 
 Logger log = LoggerFactory.getLogger(SongScribe.class);
 log.info("...");
 ```
+
+### Log File Location
+
+The active log file is `songscribe.log`. Rolled-over files are named `songscribe.1.log` through `songscribe.7.log`.
+
+| Platform | Path |
+|----------|------|
+| macOS | `~/Library/Logs/SongScribe/songscribe.log` |
+| Windows | `%APPDATA%\SongScribe\Logs\songscribe.log` |
+| Linux | `~/.songscribe/logs/songscribe.log` |

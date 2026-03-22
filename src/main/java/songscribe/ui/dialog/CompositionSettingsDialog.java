@@ -56,132 +56,22 @@ import songscribe.util.Utils;
 
 public class CompositionSettingsDialog extends StandardDialog {
 
-    // Title of song panel
-    private final NumericTextField numberField = new NumericTextField(3);
-    private final MyJTextArea titleField = new MyJTextArea(3, 47);
-    private final SpinnerModel takeFirstWordsSpinnerModel =
-        new SpinnerNumberModel(4, 1, 10, 1);
-
-    // Place and date panel
-    private final MyJTextField placeField = new MyJTextField(27);
-    private final JComboBox<String> monthCombo = new JComboBox<>(
-        new String[]{
-            "",
-            Strings.get(Strings.MONTH_JANUARY),
-            Strings.get(Strings.MONTH_FEBRUARY),
-            Strings.get(Strings.MONTH_MARCH),
-            Strings.get(Strings.MONTH_APRIL),
-            Strings.get(Strings.MONTH_MAY),
-            Strings.get(Strings.MONTH_JUNE),
-            Strings.get(Strings.MONTH_JULY),
-            Strings.get(Strings.MONTH_AUGUST),
-            Strings.get(Strings.MONTH_SEPTEMBER),
-            Strings.get(Strings.MONTH_OCTOBER),
-            Strings.get(Strings.MONTH_NOVEMBER),
-            Strings.get(Strings.MONTH_DECEMBER),
-        }
-    );
-    private JComboBox<String> dayCombo;
-    private final NumericTextField yearField = new NumericTextField(5);
-
-    // Attribution panel
-    public final MyJTextArea attributionArea = new MyJTextArea(4, 27);
-
-    // Tempo panel
-    public final JComboBox<Tempo.Type> tempoTypeCombo = new JComboBox<>(
-        // Only use non-IO values
-        Arrays.copyOfRange(
-            Tempo.Type.values(),
-            0,
-            Tempo.Type.QUAVER.ordinal() + 1
-        )
-    );
-
-    public final SpinnerModel tempoSpinnerModel = new SpinnerNumberModel(
-        120,
-        40,
-        220,
-        1
-    );
-
-    public final JComboBox<String> tempoDescriptionCombo = new JComboBox<>();
-    private final JCheckBox showOnlyDescriptionCheckBox = new JCheckBox(
-        Strings.get(Strings.DIALOG_COMPOSITION_SETTINGS_SHOW_ONLY_DESCRIPTION)
-    );
-
-    // Key signature panel
-    public final JComboBox<String> keyCombo = new JComboBox<>(
-        new String[]{
-            // MusescoreIcon font
-            "\uF377", // No flats or sharps
-            "\uF37F", // One flat
-            "\uF380", // Two flats
-            "\uF381", // Three flats
-            "\uF382", // Four flats
-            "\uF383", // Five flats
-            "\uF384", // Six flats
-            "\uF385", // Seven flats
-            "\uF378", // One sharp
-            "\uF379", // Two sharps
-            "\uF37A", // Three sharps
-            "\uF37B", // Four sharps
-            "\uF37C", // Five sharps
-            "\uF37D", // Six sharps
-            "\uF37E", // Seven sharps
-        }
-    );
-
-    // Fonts tab
-    private final JLabel titleFontLabel = new JLabel();
-    public final JComponent titleFontPreview = new JLabel(
-        "Āmār Prāner Bijoye Mā"
-    );
-
-    private final JLabel lyricsFontLabel = new JLabel();
-    public final JLabel lyricsFontPreview = new JLabel(
-        """
-            <html>I shall bind myself at Your Feet.<br>
-            With this hope I have come to You<br>
-            &nbsp;&nbsp;&nbsp;With tear-filled eyes.<br>
-            I shall worship You within the tumult<br>
-            &nbsp;&nbsp;&nbsp;Of this life.<br>
-            I shall satisfy You on the strength<br>
-            &nbsp;&nbsp;&nbsp;Of my surrender.</html>
-            """
-    );
-
-    private final JLabel attributionFontLabel = new JLabel();
-    public final JTextArea attributionFontPreview = new JTextArea(
-        """
-            Words and music
-            by Sri Chinmoy"""
-    );
-
-    private final JLabel annotationFontLabel = new JLabel();
-    public final JComponent annotationFontPreview = new JLabel(
-        "D.C. al fine (a tempo)"
-    );
-
-    // Music tab (line width section)
-    private final JTextField lineWidthField = new JTextField(6);
-    private final JLabel unitLabel = new JLabel();
-
-    @SuppressWarnings("NullAway.Init")
     public CompositionSettingsDialog() {
         super(Strings.get(Strings.DIALOG_COMPOSITION_SETTINGS_TITLE));
-        initFields();
 
         var tabbedPane = createTabbedPane();
-        tabbedPane.addTab(
+        addTab(
+            tabbedPane,
             Strings.get(Strings.DIALOG_COMPOSITION_SETTINGS_TAB_TEXT),
             new TextTab()
         );
-        tabbedPane.addTab(
+        addTab(
+            tabbedPane,
             Strings.get(Strings.DIALOG_COMPOSITION_SETTINGS_TAB_MUSIC),
             new MusicTab()
         );
-
-        tabbedPane.addTab(
+        addTab(
+            tabbedPane,
             Strings.get(Strings.DIALOG_COMPOSITION_SETTINGS_TAB_FONTS),
             new FontTab()
         );
@@ -190,72 +80,54 @@ public class CompositionSettingsDialog extends StandardDialog {
         contentPanel.add(BorderLayout.SOUTH, buttonPanel);
     }
 
-    private void initFields() {
-        InputUtils.addDecimalFilter(lineWidthField);
-        lineWidthField.addFocusListener(new FocusAdapter() {
-            @Override
-            public void focusLost(FocusEvent e) {
-                var isMetric = Prefs.getInstance().getBoolean(PrefsKey.METRIC);
-                var text = lineWidthField.getText();
-
-                double value;
-
-                try {
-                    value = Double.parseDouble(text);
-                } catch (NumberFormatException ex) {
-                    showLineWidthError(Strings.ERROR_LINE_WIDTH_INVALID, isMetric);
-                    revertLineWidthField();
-                    return;
-                }
-
-                var widthInches = isMetric ? value / GraphicUtils.CM_PER_INCH : value;
-
-                if (widthInches < PageModel.MIN_LINE_WIDTH_INCHES || widthInches > PageModel.MAX_LINE_WIDTH_INCHES) {
-                    showLineWidthError(Strings.ERROR_LINE_WIDTH_RANGE, isMetric);
-                    revertLineWidthField();
-                }
-            }
-        });
-
-        monthCombo.setEditable(false);
-
-        var days = new String[32];
-        days[0] = "";
-
-        for (var i = 1; i <= 31; i++) {
-            days[i] = Integer.toString(i);
-        }
-
-        dayCombo = new JComboBox<>(days);
-        dayCombo.setEditable(false);
-
-        tempoTypeCombo.setRenderer(new NoteCellRenderer());
-        tempoTypeCombo.setEditable(false);
-
-        // Default to a quarter note
-        tempoTypeCombo.setSelectedIndex(4);
-
-        // Default to 5 flats
-        keyCombo.setRenderer(new KeyCellRenderer());
-        keyCombo.setSelectedIndex(5);
-        keyCombo.setMaximumRowCount(7);
-
-        for (var preview : new JComponent[]{
-            titleFontPreview,
-            lyricsFontPreview,
-            attributionFontPreview,
-            annotationFontPreview,
-        }) {
-            preview.setBackground(UIManager.getColor("TextField.background"));
-            preview.setOpaque(true);
-
-            if (preview instanceof JTextArea text) {
-                text.setEditable(false);
-            }
-        }
-    }
-
     private final class TextTab extends StandardDialog.Tab {
+
+        // Title of song panel
+        private final NumericTextField numberField = new NumericTextField(3);
+        private final MyJTextArea titleField = new MyJTextArea(3, 47);
+        private final SpinnerModel takeFirstWordsSpinnerModel =
+            new SpinnerNumberModel(4, 1, 10, 1);
+
+        // Place and date panel
+        private final MyJTextField placeField = new MyJTextField(27);
+        private final JComboBox<String> monthCombo = new JComboBox<>(
+            new String[]{
+                "",
+                Strings.get(Strings.MONTH_JANUARY),
+                Strings.get(Strings.MONTH_FEBRUARY),
+                Strings.get(Strings.MONTH_MARCH),
+                Strings.get(Strings.MONTH_APRIL),
+                Strings.get(Strings.MONTH_MAY),
+                Strings.get(Strings.MONTH_JUNE),
+                Strings.get(Strings.MONTH_JULY),
+                Strings.get(Strings.MONTH_AUGUST),
+                Strings.get(Strings.MONTH_SEPTEMBER),
+                Strings.get(Strings.MONTH_OCTOBER),
+                Strings.get(Strings.MONTH_NOVEMBER),
+                Strings.get(Strings.MONTH_DECEMBER),
+            }
+        );
+        private final JComboBox<String> dayCombo;
+        private final NumericTextField yearField = new NumericTextField(5);
+
+        // Attribution panel
+        private final MyJTextArea attributionArea = new MyJTextArea(4, 27);
+
+        private TextTab() {
+            monthCombo.setEditable(false);
+
+            var days = new String[32];
+            days[0] = "";
+
+            for (var i = 1; i <= 31; i++) {
+                days[i] = Integer.toString(i);
+            }
+
+            dayCombo = new JComboBox<>(days);
+            dayCombo.setEditable(false);
+
+            build();
+        }
 
         @Override
         protected void initContents() {
@@ -431,9 +303,297 @@ public class CompositionSettingsDialog extends StandardDialog {
             UIUtils.setCanShrink(section, true, false);
             return section;
         }
+
+        @Override
+        protected boolean getData() {
+            var composition = getComposition();
+            numberField.setText(composition.getNumber());
+            titleField.setText(composition.getTitle());
+            placeField.setText(composition.getPlace());
+            monthCombo.setSelectedIndex(composition.getMonth());
+            dayCombo.setSelectedIndex(composition.getDay());
+            yearField.setText(composition.getYear());
+            attributionArea.setText(composition.getAttribution());
+            return true;
+        }
+
+        @Override
+        protected void setData() {
+            // Validate number field
+            String number = numberField.getText();
+
+            try {
+                if (!number.isEmpty()) {
+                    Integer.parseInt(number);
+                }
+            } catch (NumberFormatException e) {
+                Dialogs.showErrorMessage(
+                    contentPanel,
+                    Strings.get(Strings.DIALOG_TITLE_COMPOSITION_SETTINGS),
+                    Strings.get(Strings.ERROR_COMPOSITION_NUMBER)
+                );
+                number = null;
+            }
+
+            // Validate year field
+            String year = yearField.getText();
+
+            try {
+                if (!year.isEmpty()) {
+                    Integer.parseInt(year);
+                }
+            } catch (NumberFormatException e) {
+                Dialogs.showErrorMessage(
+                    contentPanel,
+                    Strings.get(Strings.DIALOG_TITLE_COMPOSITION_SETTINGS),
+                    Strings.get(Strings.ERROR_COMPOSITION_YEAR)
+                );
+                year = null;
+            }
+
+            MessageCenter.post(new MetadataDidChangeNotification(
+                titleField.getText(),
+                placeField.getText(),
+                year,
+                number,
+                attributionArea.getText(),
+                monthCombo.getSelectedIndex(),
+                dayCombo.getSelectedIndex(),
+                null
+            ));
+        }
+
+        private String getDateString() {
+            var year = yearField.getText();
+
+            // There at least has to be a year
+            if (year.isEmpty()) {
+                return "";
+            }
+
+            var sb = new StringBuilder(30);
+
+            if (monthCombo.getSelectedIndex() > 0) {
+                sb.append(monthCombo.getSelectedItem());
+
+                if (dayCombo.getSelectedIndex() > 0) {
+                    sb.append(' ');
+                    sb.append(dayCombo.getSelectedItem());
+                }
+
+                sb.append(", ");
+            }
+
+            // We know that the field will only contain numbers
+            sb.append(Integer.parseInt(yearField.getText()));
+            return sb.toString();
+        }
+
+        private final class TakeFirstLyricsWordAction extends UIAction {
+
+            private TakeFirstLyricsWordAction() {
+                super(
+                    Strings.get(Strings.DIALOG_COMPOSITION_SETTINGS_TAKE),
+                    "take-lyrics"
+                );
+            }
+
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                var lyrics = getComposition().getLyrics();
+                var words = new StringBuilder(50);
+                var wordCount = 0;
+                var firstLetter = false;
+                var lastHyphen = false;
+
+                goThruString:
+                for (var i = 0; i < lyrics.length(); i++) {
+                    switch (lyrics.charAt(i)) {
+                        case ' ', '\n' -> {
+                            wordCount++;
+
+                            if (
+                                wordCount >=
+                                    ((Number) takeFirstWordsSpinnerModel.getValue()).intValue()
+                            ) {
+                                break goThruString;
+                            }
+
+                            words.append(' ');
+                            firstLetter = true;
+                        }
+                        case '-' -> {
+                            if (lastHyphen) {
+                                words.append('-');
+                                wordCount++;
+                                firstLetter = true;
+                            }
+
+                            lastHyphen = !lastHyphen;
+                        }
+                        case '_' -> {
+                        }
+                        default -> {
+                            if (firstLetter) {
+                                words.append(
+                                    String.valueOf(lyrics.charAt(i)).toUpperCase()
+                                );
+                                firstLetter = false;
+                            } else {
+                                words.append(lyrics.charAt(i));
+                            }
+
+                            lastHyphen = false;
+                        }
+                    }
+                }
+
+                if (!Character.isLetter(words.charAt(words.length() - 1))) {
+                    words.deleteCharAt(words.length() - 1);
+                }
+
+                titleField.setText(words.toString());
+            }
+        }
+
+        private final class AddDateAndPlaceAction extends AbstractAction {
+
+            private final boolean includePlace;
+
+            private AddDateAndPlaceAction(boolean includePlace) {
+                this.includePlace = includePlace;
+            }
+
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                var attribution = attributionArea.getText();
+                var sb = new StringBuilder(100);
+
+                var date = getDateString();
+
+                if (!date.isEmpty()) {
+                    if (attribution.charAt(attribution.length() - 1) != '\n') {
+                        sb.append('\n');
+                    }
+
+                    sb.append(date);
+                } else {
+                    Dialogs.showErrorMessage(
+                        getMainFrame(),
+                        Strings.get(Strings.DIALOG_TITLE_COMPOSITION_SETTINGS),
+                        Strings.get(Strings.ERROR_COMPOSITION_YEAR_REQUIRED)
+                    );
+                    return;
+                }
+
+                if (includePlace) {
+                    if (!placeField.getText().isEmpty()) {
+                        if (attribution.charAt(attribution.length() - 1) != '\n') {
+                            sb.append('\n');
+                        }
+
+                        sb.append(placeField.getText());
+                    } else {
+                        Dialogs.showErrorMessage(
+                            getMainFrame(),
+                            Strings.get(Strings.DIALOG_TITLE_COMPOSITION_SETTINGS),
+                            Strings.get(Strings.ERROR_COMPOSITION_PLACE_REQUIRED)
+                        );
+                        return;
+                    }
+                }
+
+                attributionArea.append(sb.toString());
+            }
+        }
     }
 
     private final class MusicTab extends StandardDialog.Tab {
+
+        private final JComboBox<Tempo.Type> tempoTypeCombo = new JComboBox<>(
+            // Only use non-IO values
+            Arrays.copyOfRange(
+                Tempo.Type.values(),
+                0,
+                Tempo.Type.QUAVER.ordinal() + 1
+            )
+        );
+
+        private final SpinnerModel tempoSpinnerModel = new SpinnerNumberModel(
+            120,
+            40,
+            220,
+            1
+        );
+
+        private final JComboBox<String> tempoDescriptionCombo = new JComboBox<>();
+        private final JCheckBox showOnlyDescriptionCheckBox = new JCheckBox(
+            Strings.get(Strings.DIALOG_COMPOSITION_SETTINGS_SHOW_ONLY_DESCRIPTION)
+        );
+
+        private final JComboBox<String> keyCombo = new JComboBox<>(
+            new String[]{
+                // MusescoreIcon font
+                "\uF377", // No flats or sharps
+                "\uF37F", // One flat
+                "\uF380", // Two flats
+                "\uF381", // Three flats
+                "\uF382", // Four flats
+                "\uF383", // Five flats
+                "\uF384", // Six flats
+                "\uF385", // Seven flats
+                "\uF378", // One sharp
+                "\uF379", // Two sharps
+                "\uF37A", // Three sharps
+                "\uF37B", // Four sharps
+                "\uF37C", // Five sharps
+                "\uF37D", // Six sharps
+                "\uF37E", // Seven sharps
+            }
+        );
+
+        private final JTextField lineWidthField = new JTextField(6);
+        private final JLabel unitLabel = new JLabel();
+
+        private MusicTab() {
+            tempoTypeCombo.setRenderer(new NoteCellRenderer());
+            tempoTypeCombo.setEditable(false);
+
+            // Default to a quarter note
+            tempoTypeCombo.setSelectedIndex(4);
+
+            keyCombo.setRenderer(new KeyCellRenderer());
+            keyCombo.setSelectedIndex(5);
+            keyCombo.setMaximumRowCount(7);
+
+            InputUtils.addDecimalFilter(lineWidthField);
+            lineWidthField.addFocusListener(new FocusAdapter() {
+                @Override
+                public void focusLost(FocusEvent e) {
+                    var isMetric = Prefs.getInstance().getBoolean(PrefsKey.METRIC);
+                    var text = lineWidthField.getText();
+
+                    double value;
+
+                    try {
+                        value = Double.parseDouble(text);
+                    } catch (NumberFormatException ex) {
+                        showLineWidthError(Strings.ERROR_LINE_WIDTH_INVALID, isMetric);
+                        revertLineWidthField();
+                        return;
+                    }
+
+                    var widthInches = isMetric ? value / GraphicUtils.CM_PER_INCH : value;
+
+                    if (widthInches < PageModel.MIN_LINE_WIDTH_INCHES || widthInches > PageModel.MAX_LINE_WIDTH_INCHES) {
+                        showLineWidthError(Strings.ERROR_LINE_WIDTH_RANGE, isMetric);
+                        revertLineWidthField();
+                    }
+                }
+            });
+
+            build();
+        }
 
         @Override
         protected void initContents() {
@@ -530,6 +690,152 @@ public class CompositionSettingsDialog extends StandardDialog {
             UIUtils.setCanShrink(section, true, false);
             return section;
         }
+
+        @Override
+        protected boolean getData() {
+            var composition = getComposition();
+            tempoTypeCombo.setSelectedItem(composition.getTempo().getTempoType());
+            tempoSpinnerModel.setValue(composition.getTempo().getVisibleTempo());
+            tempoDescriptionCombo.setSelectedItem(
+                composition.getTempo().getTempoDescription()
+            );
+            showOnlyDescriptionCheckBox.setSelected(
+                !composition.getTempo().shouldShowTempo()
+            );
+            setKeyComboFromComposition(composition);
+            revertLineWidthField();
+            return true;
+        }
+
+        @Override
+        protected void setData() {
+            MessageCenter.post(new TempoDidChangeNotification(
+                (Tempo.Type) tempoTypeCombo.getSelectedItem(),
+                (Integer) tempoSpinnerModel.getValue(),
+                (String) tempoDescriptionCombo.getSelectedItem(),
+                !showOnlyDescriptionCheckBox.isSelected()
+            ));
+
+            var typeAndCount = getKeyTypeAndCountFromCombo();
+
+            MessageCenter.post(new KeySignatureDidChangeNotification(
+                null,
+                typeAndCount.getFirst(),
+                typeAndCount.getSecond()
+            ));
+
+            var widthInches = validateLineWidth();
+            var lineWidthPx = (int) Math.round(widthInches * GraphicUtils.getDpi());
+            var score = getScore();
+
+            if (score != null) {
+                score.updatePageLayout(lineWidthPx);
+            }
+        }
+
+        @Override
+        protected boolean isValidData() {
+            return validateLineWidth() >= 0;
+        }
+
+        private void setKeyComboFromComposition(Composition composition) {
+            var keyType = composition.getDefaultKeyType();
+            var accidentalCount = composition.getDefaultKeyAccidentalCount();
+
+            // If there are no flats or sharps, set the index to 0
+            if (accidentalCount == 0) {
+                keyCombo.setSelectedIndex(0);
+                return;
+            }
+
+            // If there are flats, set the index to the number of flats
+            if (keyType == KeyType.FLATS) {
+                keyCombo.setSelectedIndex(accidentalCount);
+                return;
+            }
+
+            // If there are sharps, set the index to the number of sharps + 7
+            keyCombo.setSelectedIndex(accidentalCount + 7);
+        }
+
+        // SongScribe stores a key signature as a KeyType + the number of flats or sharps
+        private Pair<KeyType, Integer> getKeyTypeAndCountFromCombo() {
+            var index = keyCombo.getSelectedIndex();
+
+            // Index 0 is no flats or sharps.
+            // Index 1-7 is 1-7 flats.
+            // Index 8-14 is 1-7 sharps.
+            // If index >= 1, we want to return a number from 1-7 for the accidental count.
+            if (index == 0) {
+                return new Pair<>(KeyType.FLATS, 0);
+            }
+
+            if (index < 8) {
+                return new Pair<>(KeyType.FLATS, index);
+            }
+
+            return new Pair<>(KeyType.SHARPS, index - 7);
+        }
+
+        private void revertLineWidthField() {
+            var isMetric = Prefs.getInstance().getBoolean(PrefsKey.METRIC);
+            var lineWidthInches = ScaleContext.getInstance().toPixels(
+                getComposition().getLineWidthSs()
+            ) / GraphicUtils.getDpi();
+            var displayValue = isMetric
+                ? lineWidthInches * GraphicUtils.CM_PER_INCH
+                : lineWidthInches;
+            lineWidthField.setText(
+                String.valueOf(Utils.roundToTwoDecimalPlaces(displayValue))
+            );
+            unitLabel.setText(
+                Strings.get(isMetric ? Strings.LABEL_UNIT_CM : Strings.LABEL_UNIT_INCHES)
+            );
+        }
+
+        /**
+         * Parses and validates the current line width field text.
+         *
+         * @return the width in inches if valid, or -1 if the text is empty,
+         *         unparseable, or out of range
+         */
+        private double validateLineWidth() {
+            var isMetric = Prefs.getInstance().getBoolean(PrefsKey.METRIC);
+
+            double value;
+
+            try {
+                value = Double.parseDouble(lineWidthField.getText());
+            } catch (NumberFormatException e) {
+                return -1;
+            }
+
+            var widthInches = isMetric ? value / GraphicUtils.CM_PER_INCH : value;
+
+            if (widthInches < PageModel.MIN_LINE_WIDTH_INCHES || widthInches > PageModel.MAX_LINE_WIDTH_INCHES) {
+                return -1;
+            }
+
+            return widthInches;
+        }
+
+        private void showLineWidthError(String key, boolean isMetric) {
+            var min = PageModel.MIN_LINE_WIDTH_INCHES;
+            var max = PageModel.MAX_LINE_WIDTH_INCHES;
+
+            if (isMetric) {
+                min *= GraphicUtils.CM_PER_INCH;
+                max *= GraphicUtils.CM_PER_INCH;
+            }
+
+            var unit = Strings.get(isMetric ? Strings.LABEL_UNIT_CM : Strings.LABEL_UNIT_INCHES);
+
+            Dialogs.showErrorMessage(
+                contentPanel,
+                Strings.get(Strings.DIALOG_TITLE_LINE_WIDTH_ERROR),
+                Strings.get(key, min, max, unit)
+            );
+        }
     }
 
     private final class FontTab extends StandardDialog.Tab {
@@ -539,8 +845,54 @@ public class CompositionSettingsDialog extends StandardDialog {
         private static final int SMALL_PREVIEW_PADDING_X = 13;
         private static final int SMALL_PREVIEW_PADDING_Y = 10;
 
+        private final JLabel titleFontLabel = new JLabel();
+        private final JComponent titleFontPreview = new JLabel(
+            "Āmār Prāner Bijoye Mā"
+        );
+
+        private final JLabel lyricsFontLabel = new JLabel();
+        private final JLabel lyricsFontPreview = new JLabel(
+            """
+                <html>I shall bind myself at Your Feet.<br>
+                With this hope I have come to You<br>
+                &nbsp;&nbsp;&nbsp;With tear-filled eyes.<br>
+                I shall worship You within the tumult<br>
+                &nbsp;&nbsp;&nbsp;Of this life.<br>
+                I shall satisfy You on the strength<br>
+                &nbsp;&nbsp;&nbsp;Of my surrender.</html>
+                """
+        );
+
+        private final JLabel attributionFontLabel = new JLabel();
+        private final JTextArea attributionFontPreview = new JTextArea(
+            """
+                Words and music
+                by Sri Chinmoy"""
+        );
+
+        private final JLabel annotationFontLabel = new JLabel();
+        private final JComponent annotationFontPreview = new JLabel(
+            "D.C. al fine (a tempo)"
+        );
+
         private FontTab() {
             super(13);
+
+            for (var preview : new JComponent[]{
+                titleFontPreview,
+                lyricsFontPreview,
+                attributionFontPreview,
+                annotationFontPreview,
+            }) {
+                preview.setBackground(UIManager.getColor("TextField.background"));
+                preview.setOpaque(true);
+
+                if (preview instanceof JTextArea text) {
+                    text.setEditable(false);
+                }
+            }
+
+            build();
         }
 
         @Override
@@ -773,266 +1125,39 @@ public class CompositionSettingsDialog extends StandardDialog {
                 preview.setFont(font);
             }
         }
-    }
 
-    @Override
-    protected boolean getData() {
-        var composition = getComposition();
+        @Override
+        protected boolean getData() {
+            var composition = getComposition();
 
-        numberField.setText(composition.getNumber());
-        titleField.setText(composition.getTitle());
-        placeField.setText(composition.getPlace());
-        monthCombo.setSelectedIndex(composition.getMonth());
-        dayCombo.setSelectedIndex(composition.getDay());
-        yearField.setText(composition.getYear());
-        attributionArea.setText(composition.getAttribution());
+            var font = composition.getTitleFont();
+            titleFontPreview.setFont(font);
+            titleFontLabel.setText(MyFontUtils.getFullFontDescription(font));
 
-        tempoTypeCombo.setSelectedItem(composition.getTempo().getTempoType());
-        tempoSpinnerModel.setValue(composition.getTempo().getVisibleTempo());
-        tempoDescriptionCombo.setSelectedItem(
-            composition.getTempo().getTempoDescription()
-        );
-        showOnlyDescriptionCheckBox.setSelected(
-            !composition.getTempo().shouldShowTempo()
-        );
-        setKeyComboFromComposition(composition);
+            font = composition.getLyricsFont();
+            lyricsFontPreview.setFont(font);
+            lyricsFontLabel.setText(MyFontUtils.getFullFontDescription(font));
 
-        var font = composition.getTitleFont();
-        titleFontPreview.setFont(font);
-        titleFontLabel.setText(MyFontUtils.getFullFontDescription(font));
+            font = composition.getAttributionFont();
+            attributionFontPreview.setFont(font);
+            attributionFontLabel.setText(MyFontUtils.getFullFontDescription(font));
 
-        font = composition.getLyricsFont();
-        lyricsFontPreview.setFont(font);
-        lyricsFontLabel.setText(MyFontUtils.getFullFontDescription(font));
+            font = composition.getAnnotationFont();
+            annotationFontPreview.setFont(font);
+            annotationFontLabel.setText(MyFontUtils.getFullFontDescription(font));
 
-        font = composition.getAttributionFont();
-        attributionFontPreview.setFont(font);
-        attributionFontLabel.setText(MyFontUtils.getFullFontDescription(font));
-
-        font = composition.getAnnotationFont();
-        annotationFontPreview.setFont(font);
-        annotationFontLabel.setText(MyFontUtils.getFullFontDescription(font));
-
-        revertLineWidthField();
-        return true;
-    }
-
-    private void revertLineWidthField() {
-        var isMetric = Prefs.getInstance().getBoolean(PrefsKey.METRIC);
-        var lineWidthInches = ScaleContext.getInstance().toPixels(
-            getComposition().getLineWidthSs()
-        ) / GraphicUtils.getDpi();
-        var displayValue = isMetric
-            ? lineWidthInches * GraphicUtils.CM_PER_INCH
-            : lineWidthInches;
-        lineWidthField.setText(
-            String.valueOf(Utils.roundToTwoDecimalPlaces(displayValue))
-        );
-        unitLabel.setText(
-            Strings.get(isMetric ? Strings.LABEL_UNIT_CM : Strings.LABEL_UNIT_INCHES)
-        );
-    }
-
-    /**
-     * Parses and validates the current line width field text.
-     *
-     * @return the width in inches if valid, or -1 if the text is empty,
-     *         unparseable, or out of range
-     */
-    private double validateLineWidth() {
-        var isMetric = Prefs.getInstance().getBoolean(PrefsKey.METRIC);
-
-        double value;
-
-        try {
-            value = Double.parseDouble(lineWidthField.getText());
-        } catch (NumberFormatException e) {
-            return -1;
+            return true;
         }
 
-        var widthInches = isMetric ? value / GraphicUtils.CM_PER_INCH : value;
-
-        if (widthInches < PageModel.MIN_LINE_WIDTH_INCHES || widthInches > PageModel.MAX_LINE_WIDTH_INCHES) {
-            return -1;
+        @Override
+        protected void setData() {
+            MessageCenter.post(new FontDidChangeNotification(
+                titleFontPreview.getFont(),
+                lyricsFontPreview.getFont(),
+                attributionFontPreview.getFont(),
+                annotationFontPreview.getFont()
+            ));
         }
-
-        return widthInches;
-    }
-
-    private void showLineWidthError(String key, boolean isMetric) {
-        var min = PageModel.MIN_LINE_WIDTH_INCHES;
-        var max = PageModel.MAX_LINE_WIDTH_INCHES;
-
-        if (isMetric) {
-            min *= GraphicUtils.CM_PER_INCH;
-            max *= GraphicUtils.CM_PER_INCH;
-        }
-
-        var unit = Strings.get(isMetric ? Strings.LABEL_UNIT_CM : Strings.LABEL_UNIT_INCHES);
-
-        Dialogs.showErrorMessage(
-            contentPanel,
-            Strings.get(Strings.DIALOG_TITLE_LINE_WIDTH_ERROR),
-            Strings.get(key, min, max, unit)
-        );
-    }
-
-    @Override
-    protected boolean isValidData() {
-        return validateLineWidth() >= 0;
-    }
-
-    public void setKeyComboFromComposition(Composition composition) {
-        var keyType = composition.getDefaultKeyType();
-        var accidentalCount = composition.getDefaultKeyAccidentalCount();
-
-        // If there are no flats or sharps, set the index to 0
-        if (accidentalCount == 0) {
-            keyCombo.setSelectedIndex(0);
-            return;
-        }
-
-        // If there are flats, set the index to the number of flats
-        if (keyType == KeyType.FLATS) {
-            keyCombo.setSelectedIndex(accidentalCount);
-            return;
-        }
-
-        // If there are sharps, set the index to the number of sharps + 7
-        keyCombo.setSelectedIndex(accidentalCount + 7);
-    }
-
-    @Override
-    protected void setData() {
-        // Validate number field
-        String number = numberField.getText();
-
-        try {
-            if (!number.isEmpty()) {
-                Integer.parseInt(number);
-            }
-        } catch (NumberFormatException e) {
-            Dialogs.showErrorMessage(
-                contentPanel,
-                Strings.get(Strings.DIALOG_TITLE_COMPOSITION_SETTINGS),
-                Strings.get(Strings.ERROR_COMPOSITION_NUMBER)
-            );
-            number = null;
-        }
-
-        // Validate year field
-        String year = yearField.getText();
-
-        try {
-            if (!year.isEmpty()) {
-                Integer.parseInt(year);
-            }
-        } catch (NumberFormatException e) {
-            Dialogs.showErrorMessage(
-                contentPanel,
-                Strings.get(Strings.DIALOG_TITLE_COMPOSITION_SETTINGS),
-                Strings.get(Strings.ERROR_COMPOSITION_YEAR)
-            );
-            year = null;
-        }
-
-        MessageCenter.post(new MetadataDidChangeNotification(
-            titleField.getText(),
-            placeField.getText(),
-            year,
-            number,
-            attributionArea.getText(),
-            monthCombo.getSelectedIndex(),
-            dayCombo.getSelectedIndex(),
-            null
-        ));
-
-        MessageCenter.post(new TempoDidChangeNotification(
-            (Tempo.Type) tempoTypeCombo.getSelectedItem(),
-            (Integer) tempoSpinnerModel.getValue(),
-            (String) tempoDescriptionCombo.getSelectedItem(),
-            !showOnlyDescriptionCheckBox.isSelected()
-        ));
-
-        var typeAndCount = getKeyTypeAndCountFromCombo();
-
-        MessageCenter.post(new KeySignatureDidChangeNotification(
-            null,
-            typeAndCount.getFirst(),
-            typeAndCount.getSecond()
-        ));
-
-        MessageCenter.post(new FontDidChangeNotification(
-            titleFontPreview.getFont(),
-            lyricsFontPreview.getFont(),
-            attributionFontPreview.getFont(),
-            annotationFontPreview.getFont()
-        ));
-
-        var widthInches = validateLineWidth();
-        var lineWidthPx = (int) Math.round(widthInches * GraphicUtils.getDpi());
-        var score = getScore();
-
-        if (score != null) {
-            score.updatePageLayout(lineWidthPx);
-        }
-    }
-
-    // SongScribe stores a key signature as a KeyType + the number of flats or sharps
-    public Pair<KeyType, Integer> getKeyTypeAndCountFromCombo() {
-        var index = keyCombo.getSelectedIndex();
-
-        // Index 0 is no flats or sharps.
-        // Index 1-7 is 1-7 flats.
-        // Index 8-14 is 1-7 sharps.
-        // If index >= 1, we want to return a number from 1-7 for the accidental count.
-        if (index == 0) {
-            return new Pair<>(KeyType.FLATS, 0);
-        }
-
-        if (index < 8) {
-            return new Pair<>(KeyType.FLATS, index);
-        }
-
-        return new Pair<>(KeyType.SHARPS, index - 7);
-    }
-
-    private static JPanel createTitleAndInputPanel(
-        String title,
-        JComponent input
-    ) {
-        var panel = new JPanel();
-        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
-        StandardDialog.addLabelToBox(panel, title, 5);
-        input.setAlignmentX(Component.LEFT_ALIGNMENT);
-        panel.add(input);
-        return panel;
-    }
-
-    private String getDateString() {
-        var year = yearField.getText();
-
-        // There at least has to be a year
-        if (year.isEmpty()) {
-            return "";
-        }
-
-        var sb = new StringBuilder(30);
-
-        if (monthCombo.getSelectedIndex() > 0) {
-            sb.append(monthCombo.getSelectedItem());
-
-            if (dayCombo.getSelectedIndex() > 0) {
-                sb.append(' ');
-                sb.append(dayCombo.getSelectedItem());
-            }
-
-            sb.append(", ");
-        }
-
-        // We know that the field will only contain numbers
-        sb.append(Integer.parseInt(yearField.getText()));
-        return sb.toString();
     }
 
     public static class BaseLabel extends JLabel {
@@ -1209,123 +1334,4 @@ public class CompositionSettingsDialog extends StandardDialog {
             }
         }
     }
-
-    private final class TakeFirstLyricsWordAction extends UIAction {
-
-        private TakeFirstLyricsWordAction() {
-            super(
-                Strings.get(Strings.DIALOG_COMPOSITION_SETTINGS_TAKE),
-                "take-lyrics"
-            );
-        }
-
-        @Override
-        public void actionPerformed(ActionEvent e) {
-            var lyrics = getComposition().getLyrics();
-            var words = new StringBuilder(50);
-            var wordCount = 0;
-            var firstLetter = false;
-            var lastHyphen = false;
-
-            goThruString:
-            for (var i = 0; i < lyrics.length(); i++) {
-                switch (lyrics.charAt(i)) {
-                    case ' ', '\n' -> {
-                        wordCount++;
-
-                        if (
-                            wordCount >=
-                                ((Number) takeFirstWordsSpinnerModel.getValue()).intValue()
-                        ) {
-                            break goThruString;
-                        }
-
-                        words.append(' ');
-                        firstLetter = true;
-                    }
-                    case '-' -> {
-                        if (lastHyphen) {
-                            words.append('-');
-                            wordCount++;
-                            firstLetter = true;
-                        }
-
-                        lastHyphen = !lastHyphen;
-                    }
-                    case '_' -> {
-                    }
-                    default -> {
-                        if (firstLetter) {
-                            words.append(
-                                String.valueOf(lyrics.charAt(i)).toUpperCase()
-                            );
-                            firstLetter = false;
-                        } else {
-                            words.append(lyrics.charAt(i));
-                        }
-
-                        lastHyphen = false;
-                    }
-                }
-            }
-
-            if (!Character.isLetter(words.charAt(words.length() - 1))) {
-                words.deleteCharAt(words.length() - 1);
-            }
-
-            titleField.setText(words.toString());
-        }
-    }
-
-    private final class AddDateAndPlaceAction extends AbstractAction {
-
-        private final boolean includePlace;
-
-        private AddDateAndPlaceAction(boolean includePlace) {
-            this.includePlace = includePlace;
-        }
-
-        @Override
-        public void actionPerformed(ActionEvent e) {
-            var attribution = attributionArea.getText();
-            var sb = new StringBuilder(100);
-
-            var date = getDateString();
-
-            if (!date.isEmpty()) {
-                if (attribution.charAt(attribution.length() - 1) != '\n') {
-                    sb.append('\n');
-                }
-
-                sb.append(date);
-            } else {
-                Dialogs.showErrorMessage(
-                    getMainFrame(),
-                    Strings.get(Strings.DIALOG_TITLE_COMPOSITION_SETTINGS),
-                    Strings.get(Strings.ERROR_COMPOSITION_YEAR_REQUIRED)
-                );
-                return;
-            }
-
-            if (includePlace) {
-                if (!placeField.getText().isEmpty()) {
-                    if (attribution.charAt(attribution.length() - 1) != '\n') {
-                        sb.append('\n');
-                    }
-
-                    sb.append(placeField.getText());
-                } else {
-                    Dialogs.showErrorMessage(
-                        getMainFrame(),
-                        Strings.get(Strings.DIALOG_TITLE_COMPOSITION_SETTINGS),
-                        Strings.get(Strings.ERROR_COMPOSITION_PLACE_REQUIRED)
-                    );
-                    return;
-                }
-            }
-
-            attributionArea.append(sb.toString());
-        }
-    }
-
 }

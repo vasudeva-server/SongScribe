@@ -21,7 +21,9 @@ package songscribe.ui.dialog;
 
 import module java.desktop;
 
+import java.util.ArrayList;
 import java.util.Dictionary;
+import java.util.List;
 import java.util.Objects;
 
 import org.jspecify.annotations.Nullable;
@@ -57,7 +59,14 @@ public abstract class BaseDialog {
     protected final String dialogTitle;
     protected final boolean isModal;
     protected final JPanel contentPanel = new JPanel(new BorderLayout());
+    private final List<Tab> tabs = new ArrayList<>();
+    private @Nullable JTabbedPane tabbedPane;
+
+    protected List<Tab> getTabs() {
+        return tabs;
+    }
     private @Nullable Point savedLocation = null;
+    private @Nullable Component savedFocusOwner = null;
     private JDialog dialog;
 
     protected BaseDialog(String title) {
@@ -72,11 +81,27 @@ public abstract class BaseDialog {
     }
 
     protected JTabbedPane createTabbedPane() {
-        var pane = new JTabbedPane();
+        tabbedPane = new JTabbedPane();
 
         // Add a little padding at the top, above the tabs
-        pane.setBorder(BorderFactory.createEmptyBorder(7, 0, 0, 0));
-        return pane;
+        tabbedPane.setBorder(BorderFactory.createEmptyBorder(7, 0, 0, 0));
+        return tabbedPane;
+    }
+
+    /**
+     * Registers a tab so the base class can call its lifecycle methods.
+     */
+    protected void registerTab(Tab tab) {
+        tabs.add(tab);
+    }
+
+    /**
+     * Convenience method that adds a tab to a {@link JTabbedPane} and
+     * registers it for lifecycle callbacks.
+     */
+    protected void addTab(JTabbedPane pane, String title, Tab tab) {
+        pane.addTab(title, tab);
+        registerTab(tab);
     }
 
     protected static void addLabeledField(
@@ -147,6 +172,22 @@ public abstract class BaseDialog {
                     }
                 }
             );
+            dialog.addWindowFocusListener(
+                new WindowAdapter() {
+                    @Override
+                    public void windowLostFocus(WindowEvent e) {
+                        savedFocusOwner = dialog.getFocusOwner();
+                    }
+
+                    @Override
+                    public void windowGainedFocus(WindowEvent e) {
+                        if (savedFocusOwner != null) {
+                            savedFocusOwner.requestFocusInWindow();
+                            savedFocusOwner = null;
+                        }
+                    }
+                }
+            );
 
             UIUtils.addStandardDialogKeyBindings(dialog);
 
@@ -161,6 +202,10 @@ public abstract class BaseDialog {
             if (!getData()) {
                 dialog.dispose();
                 return;
+            }
+
+            for (var tab : tabs) {
+                tab.tabWillShow();
             }
 
             dialog.pack();
@@ -178,6 +223,10 @@ public abstract class BaseDialog {
 
             dialog.setVisible(true);
         } else {
+            for (var tab : tabs) {
+                tab.tabWillHide();
+            }
+
             savedLocation = new Point(dialog.getLocation());
             dialog.dispose();
         }
@@ -220,12 +269,26 @@ public abstract class BaseDialog {
     }
 
     /**
-     * Called when the dialog is about to be shown. Subclasses should
-     * populate their controls from the current data/state.
+     * Called when the dialog is about to be shown. Populates controls
+     * by iterating registered tabs. Subclasses may override to add
+     * dialog-level population logic (call {@code super.getData()} to
+     * run tab iteration).
      *
      * @return true to proceed with showing the dialog, false to cancel
      */
-    protected abstract boolean getData();
+    protected boolean getData() {
+        if (tabbedPane != null) {
+            tabbedPane.setSelectedIndex(0);
+        }
+
+        for (var tab : tabs) {
+            if (!tab.getData()) {
+                return false;
+            }
+        }
+
+        return true;
+    }
 
     protected static class Tab extends JPanel {
 
@@ -256,6 +319,9 @@ public abstract class BaseDialog {
             constraints.weightx = 1.0;
             constraints.weighty = 0;
 
+        }
+
+        protected final void build() {
             initContents();
 
             // Add glue at the bottom that will force the contents to the top,
@@ -273,6 +339,42 @@ public abstract class BaseDialog {
          * This should be overridden by subclasses to add components to the tab.
          */
         protected void initContents() {}
+
+        /**
+         * Populate controls from the model. Called when the dialog is
+         * about to be shown.
+         *
+         * @return true to proceed, false to cancel showing the dialog
+         */
+        protected boolean getData() {
+            return true;
+        }
+
+        /**
+         * Write control values back to the model. Called when the user
+         * clicks OK or Apply.
+         */
+        protected void setData() {}
+
+        /**
+         * Returns true if the tab's current field values are valid.
+         * Called before {@link #setData()} to block commits on invalid input.
+         */
+        protected boolean isValidData() {
+            return true;
+        }
+
+        /**
+         * Called after {@link #getData()} but before the dialog becomes
+         * visible. Use for lazy loading, focus requests, etc.
+         */
+        protected void tabWillShow() {}
+
+        /**
+         * Called before the dialog is disposed. Use for cleanup
+         * (e.g., stopping playback).
+         */
+        protected void tabWillHide() {}
 
         @Override
         public Component add(Component comp) {
