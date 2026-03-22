@@ -52,9 +52,8 @@ public class PreferencesDialog extends BaseDialog {
     private static final int APPEARANCE_ITEM_GAP = 40;
     private static final int APPEARANCE_ICON_RADIO_GAP = 5;
 
-    private static final int VOLUME_MIN = 50;
-    private static final int VOLUME_MAX = 100;
-    private static final int VOLUME_MAJOR_TICK = 25;
+    private static final int[] VALID_VOLUME_STOPS = { 50, 63, 75, 88, 100 };
+    private static final int VOLUME_LABELED_STOP_INTERVAL = 2;
 
     private static final int TEMPO_MIN = 50;
     private static final int TEMPO_MAX = 150;
@@ -79,7 +78,7 @@ public class PreferencesDialog extends BaseDialog {
 
     // Play tab — Playback section
     private final JSlider durationSlider = new JSlider(32, 100);
-    private final JSlider volumeSlider = new JSlider(VOLUME_MIN, VOLUME_MAX);
+    private final JSlider volumeSlider = new JSlider(0, VALID_VOLUME_STOPS.length - 1);
     private final JSlider tempoSlider = new JSlider(TEMPO_MIN, TEMPO_MAX);
 
     // General tab — Page Size section
@@ -266,9 +265,10 @@ public class PreferencesDialog extends BaseDialog {
         });
 
         volumeSlider.addChangeListener(_ -> {
+            var volume = VALID_VOLUME_STOPS[volumeSlider.getValue()];
             var prefs = Prefs.getInstance();
-            prefs.putTransient(PrefsKey.PLAYBACK_VOLUME, volumeSlider.getValue());
-            MidiController.setPlaybackVolume(volumeSlider.getValue());
+            prefs.putTransient(PrefsKey.PLAYBACK_VOLUME, volume);
+            MidiController.setPlaybackVolume(volume);
 
             if (!volumeSlider.getValueIsAdjusting()) {
                 prefs.save();
@@ -383,7 +383,7 @@ public class PreferencesDialog extends BaseDialog {
 
         // Play — Playback
         durationSlider.setValue(snapToNearestDurationStop(prefs.getInt(PrefsKey.PLAYBACK_NOTE_DURATION)));
-        volumeSlider.setValue(prefs.getInt(PrefsKey.PLAYBACK_VOLUME));
+        volumeSlider.setValue(volumeToSliderIndex(prefs.getInt(PrefsKey.PLAYBACK_VOLUME)));
         tempoSlider.setValue(snapToNearestTempoStop(prefs.getInt(PrefsKey.TEMPO_CHANGE_PERCENT)));
 
         // Instruments
@@ -412,6 +412,22 @@ public class PreferencesDialog extends BaseDialog {
 
     private static int snapToNearestTempoStop(int value) {
         return snapToNearest(value, VALID_TEMPO_STOPS);
+    }
+
+    private static int volumeToSliderIndex(int volume) {
+        int closestIndex = 0;
+        int minDist = Math.abs(volume - VALID_VOLUME_STOPS[0]);
+
+        for (int i = 1; i < VALID_VOLUME_STOPS.length; i++) {
+            int dist = Math.abs(volume - VALID_VOLUME_STOPS[i]);
+
+            if (dist < minDist) {
+                minDist = dist;
+                closestIndex = i;
+            }
+        }
+
+        return closestIndex;
     }
 
     private static int snapToNearestDurationStop(int value) {
@@ -565,10 +581,10 @@ public class PreferencesDialog extends BaseDialog {
 
             //noinspection UseOfObsoleteCollectionType
             var volumeLabels = new Hashtable<Integer, JLabel>();
-            volumeLabels.put(50, new JLabel(Strings.get(Strings.LABEL_PREFS_SOFTER)));
-            volumeLabels.put(75, new JLabel(Strings.get(Strings.LABEL_PREFS_SOFT)));
-            volumeLabels.put(100, new JLabel(Strings.get(Strings.LABEL_PREFS_FULL)));
-            addSlider(section, Strings.get(Strings.LABEL_PREFS_PLAYBACK_VOLUME), volumeSlider, VOLUME_MAJOR_TICK, volumeLabels);
+            volumeLabels.put(0, new JLabel(Strings.get(Strings.LABEL_PREFS_SOFTER)));
+            volumeLabels.put(VOLUME_LABELED_STOP_INTERVAL, new JLabel(Strings.get(Strings.LABEL_PREFS_SOFT)));
+            volumeLabels.put(VOLUME_LABELED_STOP_INTERVAL * 2, new JLabel(Strings.get(Strings.LABEL_PREFS_FULL)));
+            addSlider(section, Strings.get(Strings.LABEL_PREFS_PLAYBACK_VOLUME), volumeSlider, 1, volumeLabels);
 
             section.add(Box.createVerticalStrut(SLIDER_SPACING));
             section.add(new JSeparator());
