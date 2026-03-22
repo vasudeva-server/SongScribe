@@ -46,9 +46,12 @@ public abstract class BaseDialog {
         TOP,
     }
 
-    // The standard horizontal and vertical padding used in the dialog
-    protected static final Dimension HORIZONTAL_SPACER = new Dimension(5, 5);
-    protected static final Dimension VERTICAL_SPACER = new Dimension(15, 5);
+    // The standard horizontal and vertical component spacing used in the dialog
+    protected static final int HORIZONTAL_MARGIN = 5;
+    protected static final int VERTICAL_MARGIN = 5;
+
+    // The standard margin around titled sections
+    protected static final int SECTION_MARGIN = 15;
 
     private final MainFrame mainFrame;
     protected final String dialogTitle;
@@ -84,7 +87,7 @@ public abstract class BaseDialog {
     ) {
         if (labelPosition == LabelPosition.LEFT) {
             var panel = new JPanel(
-                new FlowLayout(FlowLayout.LEFT, HORIZONTAL_SPACER.width, 0)
+                new FlowLayout(FlowLayout.LEFT, HORIZONTAL_MARGIN, 0)
             );
             panel.setBorder(BorderFactory.createEmptyBorder());
             panel.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -273,7 +276,7 @@ public abstract class BaseDialog {
         }
 
         public void addSeparator() {
-            add(Box.createVerticalStrut(VERTICAL_SPACER.height), constraints);
+            add(Box.createVerticalStrut(SECTION_MARGIN), constraints);
         }
     }
 
@@ -298,9 +301,9 @@ public abstract class BaseDialog {
             var layout = (BoxLayout) getLayout();
 
             if (layout.getAxis() == BoxLayout.Y_AXIS) {
-                add(Box.createVerticalStrut(VERTICAL_SPACER.height));
+                add(Box.createVerticalStrut(VERTICAL_MARGIN));
             } else {
-                add(Box.createHorizontalStrut(HORIZONTAL_SPACER.width));
+                add(Box.createHorizontalStrut(HORIZONTAL_MARGIN));
             }
         }
     }

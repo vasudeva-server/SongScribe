@@ -520,7 +520,7 @@ public class PreferencesDialog extends BaseDialog {
             instrumentList.setVisibleRowCount(10);
             instrumentList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
             panel.add(new JScrollPane(instrumentList));
-            panel.add(Box.createHorizontalStrut(HORIZONTAL_SPACER.width * 2));
+            panel.add(Box.createHorizontalStrut(HORIZONTAL_MARGIN * 4));
 
             scaleButton.setText("\uEF4E");
             scaleButton.setFont(MyFontUtils.getIconFont().deriveFont(24f));

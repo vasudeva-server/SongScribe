@@ -43,6 +43,9 @@ import org.slf4j.LoggerFactory;
 
 import org.jspecify.annotations.Nullable;
 
+import songscribe.message.MessageCenter;
+import songscribe.message.notification.PrefsDidChangeNotification;
+
 public final class Prefs {
 
     private static final Logger LOG = LoggerFactory.getLogger(Prefs.class);
@@ -137,22 +140,26 @@ public final class Prefs {
     public void put(PrefsKey key, String value) {
         store.put(key.key(), value);
         save();
+        MessageCenter.post(new PrefsDidChangeNotification(key));
     }
 
     public void put(PrefsKey key, int value) {
         // Store as Long for consistency with JSON round-tripping
         store.put(key.key(), (long) value);
         save();
+        MessageCenter.post(new PrefsDidChangeNotification(key));
     }
 
     public void put(PrefsKey key, long value) {
         store.put(key.key(), value);
         save();
+        MessageCenter.post(new PrefsDidChangeNotification(key));
     }
 
     public void put(PrefsKey key, boolean value) {
         store.put(key.key(), value);
         save();
+        MessageCenter.post(new PrefsDidChangeNotification(key));
     }
 
     /**

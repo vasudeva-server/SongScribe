@@ -61,6 +61,13 @@ public final class InputUtils {
         addInputFilter(component, allowDecimal ? "[\\d\\.]+" : "\\d+");
     }
 
+    private static final DecimalDocumentFilter DECIMAL_FILTER = new DecimalDocumentFilter();
+
+    public static void addDecimalFilter(JTextField field) {
+        var document = (AbstractDocument) field.getDocument();
+        document.setDocumentFilter(DECIMAL_FILTER);
+    }
+
     public static class RegexFormatter extends DefaultFormatter {
 
         private final Pattern pattern;
@@ -77,6 +84,55 @@ public final class InputUtils {
             }
 
             throw new ParseException("Input does not match the pattern", 0);
+        }
+    }
+
+    public static final class DecimalDocumentFilter extends DocumentFilter {
+
+        private static final Pattern DECIMAL_PATTERN = Pattern.compile("\\d*\\.?\\d*");
+
+        @Override
+        public void insertString(
+            FilterBypass fb,
+            int offset,
+            String string,
+            AttributeSet attr
+        ) throws BadLocationException {
+            if (string != null) {
+                if (isProspectiveTextValid(fb.getDocument(), offset, 0, string)) {
+                    super.insertString(fb, offset, string, attr);
+                } else {
+                    Toolkit.getDefaultToolkit().beep();
+                }
+            }
+        }
+
+        @Override
+        public void replace(
+            FilterBypass fb,
+            int offset,
+            int length,
+            String text,
+            AttributeSet attrs
+        ) throws BadLocationException {
+            if (text != null) {
+                if (isProspectiveTextValid(fb.getDocument(), offset, length, text)) {
+                    super.replace(fb, offset, length, text, attrs);
+                } else {
+                    Toolkit.getDefaultToolkit().beep();
+                }
+            }
+        }
+
+        private static boolean isProspectiveTextValid(
+            javax.swing.text.Document doc,
+            int offset,
+            int length,
+            String text
+        ) throws BadLocationException {
+            var current = doc.getText(0, doc.getLength());
+            var prospective = current.substring(0, offset) + text + current.substring(offset + length);
+            return DECIMAL_PATTERN.matcher(prospective).matches();
         }
     }
 

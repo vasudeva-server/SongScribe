@@ -47,6 +47,10 @@ public abstract class StandardDialog extends BaseDialog {
 
         okButton = new JButton(Strings.get(Strings.DIALOG_BUTTON_OK));
         okButton.addActionListener(_ -> {
+            if (!isValidData()) {
+                return;
+            }
+
             setData();
 
             if (score != null) {
@@ -58,6 +62,10 @@ public abstract class StandardDialog extends BaseDialog {
 
         applyButton = new JButton(Strings.get(Strings.DIALOG_BUTTON_APPLY));
         applyButton.addActionListener(_ -> {
+            if (!isValidData()) {
+                return;
+            }
+
             setData();
 
             if (score != null) {
@@ -77,6 +85,15 @@ public abstract class StandardDialog extends BaseDialog {
     @Override
     protected JButton getDefaultButton() {
         return okButton;
+    }
+
+    /**
+     * Returns true if the dialog's current field values are valid and
+     * may be committed. Subclasses override this to block OK/Apply when
+     * input is invalid. The default implementation always returns true.
+     */
+    protected boolean isValidData() {
+        return true;
     }
 
     /**

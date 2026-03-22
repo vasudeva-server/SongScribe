@@ -6,7 +6,7 @@ import net.engio.mbassy.bus.error.IPublicationErrorHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class MessageCenter {
+public final class MessageCenter {
 
     private static final Logger LOG = LoggerFactory.getLogger(MessageCenter.class);
 

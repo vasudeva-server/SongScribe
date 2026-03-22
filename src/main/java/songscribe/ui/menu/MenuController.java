@@ -62,7 +62,6 @@ import songscribe.ui.action.TipAction;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.Score;
 import songscribe.ui.dialog.KeyMapDialog;
-import songscribe.ui.dialog.LineWidthChangeDialog;
 import songscribe.ui.dialog.ReportBugDialog;
 import songscribe.ui.dialog.TutorialDialog;
 import songscribe.ui.dialog.WhatsNewDialog;
@@ -302,11 +301,6 @@ public class MenuController {
         var menu = new JMenu(Strings.get(Strings.MENU_COMPOSITION));
         menu.add(Actions.COMPOSITION_SETTINGS_ACTION);
         menu.add(Actions.LYRICS_DIALOG_ACTION);
-
-        menu.add(
-            new DialogOpenAction<>(Strings.get(Strings.ACTION_LINE_WIDTH), LineWidthChangeDialog.class)
-        );
-
         return menu;
     }
 

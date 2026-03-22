@@ -26,8 +26,6 @@ import java.util.EnumMap;
 
 import java.util.Objects;
 
-import org.jspecify.annotations.Nullable;
-
 import kotlin.Pair;
 
 import songscribe.Strings;
@@ -48,9 +46,13 @@ import songscribe.ui.component.MyJTextArea;
 import songscribe.ui.component.MyJTextField;
 import songscribe.ui.component.NumericTextField;
 import songscribe.ui.fontchooser.FontDialog;
+import songscribe.ui.layout.PageModel;
+import songscribe.ui.layout.ScaleContext;
 import songscribe.file.FileUtils;
+import songscribe.util.GraphicUtils;
 import songscribe.util.MyFontUtils;
 import songscribe.util.UIUtils;
+import songscribe.util.Utils;
 
 public class CompositionSettingsDialog extends StandardDialog {
 
@@ -160,6 +162,10 @@ public class CompositionSettingsDialog extends StandardDialog {
         "D.C. al fine (a tempo)"
     );
 
+    // Music tab (line width section)
+    private final JTextField lineWidthField = new JTextField(6);
+    private final JLabel unitLabel = new JLabel();
+
     @SuppressWarnings("NullAway.Init")
     public CompositionSettingsDialog() {
         super(Strings.get(Strings.DIALOG_COMPOSITION_SETTINGS_TITLE));
@@ -185,6 +191,32 @@ public class CompositionSettingsDialog extends StandardDialog {
     }
 
     private void initFields() {
+        InputUtils.addDecimalFilter(lineWidthField);
+        lineWidthField.addFocusListener(new FocusAdapter() {
+            @Override
+            public void focusLost(FocusEvent e) {
+                var isMetric = Prefs.getInstance().getBoolean(PrefsKey.METRIC);
+                var text = lineWidthField.getText();
+
+                double value;
+
+                try {
+                    value = Double.parseDouble(text);
+                } catch (NumberFormatException ex) {
+                    showLineWidthError(Strings.ERROR_LINE_WIDTH_INVALID, isMetric);
+                    revertLineWidthField();
+                    return;
+                }
+
+                var widthInches = isMetric ? value / GraphicUtils.CM_PER_INCH : value;
+
+                if (widthInches < PageModel.MIN_LINE_WIDTH_INCHES || widthInches > PageModel.MAX_LINE_WIDTH_INCHES) {
+                    showLineWidthError(Strings.ERROR_LINE_WIDTH_RANGE, isMetric);
+                    revertLineWidthField();
+                }
+            }
+        });
+
         monthCombo.setEditable(false);
 
         var days = new String[32];
@@ -408,6 +440,8 @@ public class CompositionSettingsDialog extends StandardDialog {
             add(createTempoSection(), constraints);
             addSeparator();
             add(createKeySignatureSection());
+            addSeparator();
+            add(createLineWidthSection());
         }
 
         private JPanel createTempoSection() {
@@ -467,6 +501,29 @@ public class CompositionSettingsDialog extends StandardDialog {
             keyCombo.setMaximumSize(keyCombo.getPreferredSize());
             keyCombo.setAlignmentX(Component.LEFT_ALIGNMENT);
             section.add(keyCombo);
+
+            // Don't let the section grow vertically
+            UIUtils.setCanGrow(section, true, false);
+            UIUtils.setCanShrink(section, true, false);
+            return section;
+        }
+
+        private JPanel createLineWidthSection() {
+            var section = new StandardDialog.TitledSection(
+                Strings.get(Strings.DIALOG_COMPOSITION_SETTINGS_SECTION_LINE_WIDTH)
+            );
+
+            var row = new JPanel(
+                new FlowLayout(FlowLayout.LEFT, HORIZONTAL_MARGIN, 0)
+            );
+            row.setBorder(BorderFactory.createEmptyBorder());
+            row.setAlignmentX(Component.LEFT_ALIGNMENT);
+            var label = new JLabel(Strings.get(Strings.LABEL_WIDTH));
+            label.setLabelFor(lineWidthField);
+            row.add(label);
+            row.add(lineWidthField);
+            row.add(unitLabel);
+            section.add(row);
 
             // Don't let the section grow vertically
             UIUtils.setCanGrow(section, true, false);
@@ -755,7 +812,74 @@ public class CompositionSettingsDialog extends StandardDialog {
         font = composition.getAnnotationFont();
         annotationFontPreview.setFont(font);
         annotationFontLabel.setText(MyFontUtils.getFullFontDescription(font));
+
+        revertLineWidthField();
         return true;
+    }
+
+    private void revertLineWidthField() {
+        var isMetric = Prefs.getInstance().getBoolean(PrefsKey.METRIC);
+        var lineWidthInches = ScaleContext.getInstance().toPixels(
+            getComposition().getLineWidthSs()
+        ) / GraphicUtils.getDpi();
+        var displayValue = isMetric
+            ? lineWidthInches * GraphicUtils.CM_PER_INCH
+            : lineWidthInches;
+        lineWidthField.setText(
+            String.valueOf(Utils.roundToTwoDecimalPlaces(displayValue))
+        );
+        unitLabel.setText(
+            Strings.get(isMetric ? Strings.LABEL_UNIT_CM : Strings.LABEL_UNIT_INCHES)
+        );
+    }
+
+    /**
+     * Parses and validates the current line width field text.
+     *
+     * @return the width in inches if valid, or -1 if the text is empty,
+     *         unparseable, or out of range
+     */
+    private double validateLineWidth() {
+        var isMetric = Prefs.getInstance().getBoolean(PrefsKey.METRIC);
+
+        double value;
+
+        try {
+            value = Double.parseDouble(lineWidthField.getText());
+        } catch (NumberFormatException e) {
+            return -1;
+        }
+
+        var widthInches = isMetric ? value / GraphicUtils.CM_PER_INCH : value;
+
+        if (widthInches < PageModel.MIN_LINE_WIDTH_INCHES || widthInches > PageModel.MAX_LINE_WIDTH_INCHES) {
+            return -1;
+        }
+
+        return widthInches;
+    }
+
+    private void showLineWidthError(String key, boolean isMetric) {
+        var min = PageModel.MIN_LINE_WIDTH_INCHES;
+        var max = PageModel.MAX_LINE_WIDTH_INCHES;
+
+        if (isMetric) {
+            min *= GraphicUtils.CM_PER_INCH;
+            max *= GraphicUtils.CM_PER_INCH;
+        }
+
+        var unit = Strings.get(isMetric ? Strings.LABEL_UNIT_CM : Strings.LABEL_UNIT_INCHES);
+
+        Dialogs.showErrorMessage(
+            contentPanel,
+            Strings.get(Strings.DIALOG_TITLE_LINE_WIDTH_ERROR),
+            Strings.get(key, min, max, unit)
+        );
+    }
+
+    @Override
+    protected boolean isValidData() {
+        return validateLineWidth() >= 0;
     }
 
     public void setKeyComboFromComposition(Composition composition) {
@@ -844,6 +968,14 @@ public class CompositionSettingsDialog extends StandardDialog {
             attributionFontPreview.getFont(),
             annotationFontPreview.getFont()
         ));
+
+        var widthInches = validateLineWidth();
+        var lineWidthPx = (int) Math.round(widthInches * GraphicUtils.getDpi());
+        var score = getScore();
+
+        if (score != null) {
+            score.updatePageLayout(lineWidthPx);
+        }
     }
 
     // SongScribe stores a key signature as a KeyType + the number of flats or sharps
