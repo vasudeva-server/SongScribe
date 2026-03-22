@@ -6,7 +6,7 @@ The remote is `vasudeva-server/SongScribe`. Always use this for `gh` commands (i
 
 ## Overview
 
-SongScribe is a Java/Kotlin-based music notation application. Code style should emphasize clarity, maintainability, and consistency with the existing codebase patterns.
+SongScribe is a Java/Kotlin-based music notation application.
 
 ## Quick Commands
 
@@ -27,16 +27,16 @@ Key packages under `src/main/java/songscribe/`:
 
 | Package | Purpose |
 |---------|---------|
-| `music/` | Data model — `Composition`, `Line`, notes, decorations |
-| `ui/` | Swing UI — `MainFrame`, renderers, actions, panels |
-| `smufl/` | SMuFL music font handling, glyph metadata |
-| `export/` | Export to PDF, SVG, PNG, ABC, MusicXML |
-| `midi/` | MIDI playback |
-| `file/` | File I/O, serialization |
 | `converter/` | Legacy format converters |
-| `prefs/` | User preferences |
-| `util/` | Shared utilities |
+| `export/` | Export to PDF, SVG, PNG, ABC, MusicXML |
+| `file/` | File I/O, serialization |
 | `message/` | MBassador event bus — `MessageCenter`, `Message`, commands, notifications |
+| `midi/` | MIDI playback |
+| `music/` | Data model — `Composition`, `Line`, notes, decorations |
+| `prefs/` | User preferences |
+| `smufl/` | SMuFL music font handling, glyph metadata |
+| `ui/` | Swing UI — `MainFrame`, renderers, actions, panels |
+| `util/` | Shared utilities |
 
 ### Key Entry Points
 
@@ -47,22 +47,25 @@ Key packages under `src/main/java/songscribe/`:
 ## Key Gotchas
 
 - `Strings.java` and `Version.java` are generated — never edit them directly
-- `StaffSpaces` utility is deprecated — use `ScaleContext` for new code (see [unit-conversion rules](./.claude/rules/unit-conversion.md))
-- Logger in `SongScribe.java` would initialize before config — see [logging rules](./.claude/rules/logging.md)
+- `StaffSpaces` utility is deprecated — use `ScaleContext` for new code
+- When creating plans, use `/plan-manager:examples:templates` as the format
 
 ## Tool Usage
 
 For semantic code exploration and refactoring, see [Serena Tool Usage](./.claude/rules/serena.md).
 
-For the MBassador message bus (posting, subscribing, `@Handler` methods), see [Message System](./.claude/rules/messages.md).
-
 When you need API documentation for Java, Kotlin, or any third-party library (FlatLaf, Jackson, etc.), use context7 MCP tools instead of web search. Example: `resolve-library-id` for "flatlaf", then `query-docs` with the resolved ID.
 
-## Phased Plans
+## References
 
-When creating phased plans, use the templates from the `/plan-manager:examples:templates` skill for formatting (status dashboard, phase sections, status icons, etc.).
+For pixel/staff-space conversion and the deprecated `StaffSpaces` class, see [Unit Conversion](./.claude/rules/unit-conversion.md).
 
-## SMuFL Reference
+For the bootstrap logging constraint in `SongScribe.java`, see [Logging](./.claude/rules/logging.md).
 
-To look up SMuFL glyph names, codepoints, or ranges, use:
-`https://w3c.github.io/smufl/latest/index.html?search=<search terms>`
+For the MBassador message bus (posting, subscribing, `@Handler` methods), see [Message System](./.claude/rules/messages.md).
+
+For `JOptionPane`-based alerts, confirms, and input prompts, see [OptionDialogs](./.claude/rules/option-dialogs.md).
+
+For complex dialogs (`BaseDialog`, `StandardDialog`, tabs, validation/commit lifecycle), see [Dialogs](./.claude/dialogs.md).
+
+To look up SMuFL glyph names, codepoints, or ranges: `https://w3c.github.io/smufl/latest/index.html?search=<search terms>`
