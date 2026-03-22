@@ -307,6 +307,9 @@ public abstract class BaseDialog {
 
     protected static class StandardTitledBorder extends TitledBorder {
 
+        // Matches the package-private TitledBorder.TEXT_INSET_H constant
+        private static final int TEXT_INSET_H = 5;
+
         private static final Insets DEFAULT_INSETS = new Insets(31, 16, 16, 16);
 
         private Insets insets = DEFAULT_INSETS;
@@ -317,6 +320,31 @@ public abstract class BaseDialog {
 
         public void setInsets(Insets insets) {
             this.insets = insets;
+        }
+
+        @Override
+        public void paintBorder(Component c, Graphics g, int x, int y, int width, int height) {
+            var textInset = UIManager.getInt("TitledBorder.textInset");
+
+            if (textInset <= 0) {
+                super.paintBorder(c, g, x, y, width, height);
+                return;
+            }
+
+            var originalBorder = getBorder();
+
+            // If the border came from UIManager (i.e. none was explicitly set), restore null
+            // so future calls to getBorder() continue to pick up the current UIManager value.
+            var uiManagerBorder = UIManager.getBorder("TitledBorder.border");
+            var restoreBorder = originalBorder == uiManagerBorder ? null : originalBorder;
+
+            setBorder(new LeftAdjustedBorder(originalBorder, textInset - TEXT_INSET_H));
+
+            try {
+                super.paintBorder(c, g, x, y, width, height);
+            } finally {
+                setBorder(restoreBorder);
+            }
         }
 
         @Override
@@ -331,6 +359,43 @@ public abstract class BaseDialog {
             insets.top = this.insets.top;
             insets.bottom = this.insets.bottom;
             return insets;
+        }
+
+        private static class LeftAdjustedBorder extends AbstractBorder {
+
+            @Nullable
+            private final Border delegate;
+            private final int adjustedLeft;
+
+            LeftAdjustedBorder(@Nullable Border delegate, int adjustedLeft) {
+                this.delegate = delegate;
+                this.adjustedLeft = adjustedLeft;
+            }
+
+            @Override
+            public void paintBorder(Component c, Graphics g, int x, int y, int width, int height) {
+                if (delegate != null) {
+                    delegate.paintBorder(c, g, x, y, width, height);
+                }
+            }
+
+            @Override
+            public Insets getBorderInsets(Component c) {
+                return getBorderInsets(c, new Insets(0, 0, 0, 0));
+            }
+
+            @Override
+            public Insets getBorderInsets(Component c, Insets insets) {
+                if (delegate != null) {
+                    var delegateInsets = delegate.getBorderInsets(c);
+                    insets.top = delegateInsets.top;
+                    insets.bottom = delegateInsets.bottom;
+                    insets.right = delegateInsets.right;
+                }
+
+                insets.left = adjustedLeft;
+                return insets;
+            }
         }
     }
 }

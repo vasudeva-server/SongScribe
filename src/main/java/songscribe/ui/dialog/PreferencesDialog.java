@@ -40,11 +40,17 @@ import songscribe.ui.layout.PageModel;
 import songscribe.ui.playback.MidiController;
 import songscribe.ui.playback.MidiMetaMessageTypes;
 import songscribe.ui.playback.PlaybackController;
+import com.formdev.flatlaf.extras.FlatSVGIcon;
+
+import songscribe.util.GraphicUtils;
 import songscribe.util.MyFontUtils;
 
 public class PreferencesDialog extends BaseDialog {
 
     private static final int EXTRA_WIDTH = 100;
+    private static final int APPEARANCE_ICON_SIZE = 100;
+    private static final int APPEARANCE_ITEM_GAP = 40;
+    private static final int APPEARANCE_ICON_RADIO_GAP = 5;
 
     private static final int VOLUME_MIN = 50;
     private static final int VOLUME_MAX = 100;
@@ -456,12 +462,34 @@ public class PreferencesDialog extends BaseDialog {
 
         private JPanel createAppearanceSection() {
             var section = new TitledSection(Strings.get(Strings.LABEL_PREFS_SECTION_APPEARANCE));
-            section.add(systemRadio);
-            section.addSeparator();
-            section.add(lightRadio);
-            section.addSeparator();
-            section.add(darkRadio);
+            var row = new JPanel(new FlowLayout(FlowLayout.CENTER, APPEARANCE_ITEM_GAP, 0));
+            row.setAlignmentX(Component.LEFT_ALIGNMENT);
+            row.add(createAppearanceItem(
+                GraphicUtils.getScaledSVGIcon(new FlatSVGIcon("icons/appearance-system.svg"), APPEARANCE_ICON_SIZE),
+                systemRadio
+            ));
+            row.add(createAppearanceItem(
+                GraphicUtils.getScaledSVGIcon(new FlatSVGIcon("icons/appearance-light.svg"), APPEARANCE_ICON_SIZE),
+                lightRadio
+            ));
+            row.add(createAppearanceItem(
+                GraphicUtils.getScaledSVGIcon(new FlatSVGIcon("icons/appearance-dark.svg"), APPEARANCE_ICON_SIZE),
+                darkRadio
+            ));
+            section.add(row);
             return section;
+        }
+
+        private JPanel createAppearanceItem(Icon icon, JRadioButton radio) {
+            var panel = new JPanel();
+            panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
+            var iconLabel = new JLabel(icon);
+            iconLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+            radio.setAlignmentX(Component.CENTER_ALIGNMENT);
+            panel.add(iconLabel);
+            panel.add(Box.createVerticalStrut(APPEARANCE_ICON_RADIO_GAP));
+            panel.add(radio);
+            return panel;
         }
     }
 
