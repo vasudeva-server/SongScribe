@@ -21,9 +21,17 @@
 package songscribe;
 
 import java.io.File;
+import java.io.PrintWriter;
+import java.io.StringReader;
+import java.io.StringWriter;
 import java.net.URISyntaxException;
 
+import javax.xml.parsers.SAXParserFactory;
+
+import org.xml.sax.InputSource;
+
 import songscribe.SongScribe;
+import songscribe.io.CompositionIO;
 import songscribe.io.CompositionLoader;
 import songscribe.music.Composition;
 import songscribe.ui.Dialogs;
@@ -60,5 +68,23 @@ public abstract class UnitTest {
         }
 
         return CompositionLoader.load(new File(url.toURI()));
+    }
+
+    /**
+     * Serializes a composition to XML and parses it back, verifying round-trip fidelity.
+     */
+    public static Composition roundTrip(Composition original) throws Exception {
+        var sw = new StringWriter();
+        var pw = new PrintWriter(sw);
+        CompositionIO.writeComposition(original, pw);
+        pw.flush();
+        var xml = sw.toString();
+
+        var factory = SAXParserFactory.newInstance();
+        var parser = factory.newSAXParser();
+        var reader = new CompositionIO.DocumentReader();
+        parser.parse(new InputSource(new StringReader(xml)), reader);
+
+        return reader.getComposition();
     }
 }

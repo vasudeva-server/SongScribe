@@ -33,8 +33,16 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.within;
-import static songscribe.midi.GlissandoMidiHelper.*;
+import static songscribe.midi.GlissandoMidiHelper.PITCH_BEND_CENTER;
+import static songscribe.midi.GlissandoMidiHelper.PITCH_BEND_MAX;
+import static songscribe.midi.GlissandoMidiHelper.calculateBendValue;
+import static songscribe.midi.GlissandoMidiHelper.calculateSensitivity;
+import static songscribe.midi.GlissandoMidiHelper.calculateSlideTicks;
+import static songscribe.midi.GlissandoMidiHelper.calculateSustainTicks;
+import static songscribe.midi.GlissandoMidiHelper.createPitchBendMessages;
+import static songscribe.midi.GlissandoMidiHelper.createPitchBendReset;
+import static songscribe.midi.GlissandoMidiHelper.createRpnMessages;
+import static songscribe.midi.GlissandoMidiHelper.resolveTargetPitch;
 
 class GlissandoMidiHelperTest extends UnitTest {
 
@@ -369,14 +377,14 @@ class GlissandoMidiHelperTest extends UnitTest {
 
     // -- Test helpers --
 
-    private static List<MidiEvent> getControlChangeEvents(Track track) {
+    private static List<MidiEvent> getEventsByCommand(Track track, int command) {
         var events = new ArrayList<MidiEvent>();
 
         for (var i = 0; i < track.size(); i++) {
             var event = track.get(i);
 
             if (event.getMessage() instanceof ShortMessage sm
-                    && sm.getCommand() == ShortMessage.CONTROL_CHANGE) {
+                    && sm.getCommand() == command) {
                 events.add(event);
             }
         }
@@ -384,19 +392,12 @@ class GlissandoMidiHelperTest extends UnitTest {
         return events;
     }
 
+    private static List<MidiEvent> getControlChangeEvents(Track track) {
+        return getEventsByCommand(track, ShortMessage.CONTROL_CHANGE);
+    }
+
     private static List<MidiEvent> getPitchBendEvents(Track track) {
-        var events = new ArrayList<MidiEvent>();
-
-        for (var i = 0; i < track.size(); i++) {
-            var event = track.get(i);
-
-            if (event.getMessage() instanceof ShortMessage sm
-                    && sm.getCommand() == ShortMessage.PITCH_BEND) {
-                events.add(event);
-            }
-        }
-
-        return events;
+        return getEventsByCommand(track, ShortMessage.PITCH_BEND);
     }
 
     private static int getBendValue(MidiEvent event) {

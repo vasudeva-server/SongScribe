@@ -104,7 +104,6 @@ class DialogsTest extends E2ETest {
         }
     }
 
-
     @Nested
     class InputDialog {
 
@@ -126,7 +125,6 @@ class DialogsTest extends E2ETest {
             assertThat(resultRef.get()).isEqualTo("hello");
         }
     }
-
 
     @Nested
     class OptionDialog {

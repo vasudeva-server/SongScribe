@@ -33,9 +33,7 @@ import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
 import songscribe.music.Line;
-import songscribe.ui.Mode;
 import songscribe.ui.component.MainFrame;
-import songscribe.ui.component.Score;
 import songscribe.ui.selection.ElementSelection;
 import songscribe.ui.selection.SelectionCoordinator;
 
@@ -64,12 +62,12 @@ class ApplyToSelectionInterceptTest extends UnitTest {
     void testReflectableWithNoSelectionReturnsFalse() {
         try (var mainFrameMock = mockStatic(MainFrame.class)) {
             var env = setupMockEnv(mainFrameMock);
-            when(env.coordinator.getSelection()).thenReturn(null);
+            when(env.coordinator().getSelection()).thenReturn(null);
 
             var action = FermataAction.createAction();
 
             assertThat(action.applyToSelectionIfActive()).isFalse();
-            verify(env.coordinator, never()).applyActionToSelection(
+            verify(env.coordinator(), never()).applyActionToSelection(
                 org.mockito.ArgumentMatchers.any(),
                 org.mockito.ArgumentMatchers.anyBoolean()
             );
@@ -83,13 +81,13 @@ class ApplyToSelectionInterceptTest extends UnitTest {
         try (var mainFrameMock = mockStatic(MainFrame.class)) {
             var env = setupMockEnv(mainFrameMock);
             var selection = new ElementSelection(mock(Line.class), 0, 2);
-            when(env.coordinator.getSelection()).thenReturn(selection);
+            when(env.coordinator().getSelection()).thenReturn(selection);
 
             var action = FermataAction.createAction();
             action.setSelected(false);
 
             assertThat(action.applyToSelectionIfActive()).isTrue();
-            verify(env.coordinator).applyActionToSelection(action, false);
+            verify(env.coordinator()).applyActionToSelection(action, false);
         }
     }
 
@@ -98,37 +96,21 @@ class ApplyToSelectionInterceptTest extends UnitTest {
         try (var mainFrameMock = mockStatic(MainFrame.class)) {
             var env = setupMockEnv(mainFrameMock);
             var selection = new ElementSelection(mock(Line.class), 0, 2);
-            when(env.coordinator.getSelection()).thenReturn(selection);
+            when(env.coordinator().getSelection()).thenReturn(selection);
 
             var action = FermataAction.createAction();
             action.setSelected(true);
 
             assertThat(action.applyToSelectionIfActive()).isTrue();
-            verify(env.coordinator).applyActionToSelection(action, true);
+            verify(env.coordinator()).applyActionToSelection(action, true);
         }
     }
 
     // -- helpers --
 
-    private record MockEnv(
-        MainFrame frame,
-        Score score,
-        SelectionCoordinator coordinator
-    ) {}
-
-    private MockEnv setupMockEnv(
+    private MockEnvHelper.MockEnv setupMockEnv(
         org.mockito.MockedStatic<MainFrame> mainFrameMock
     ) {
-        var mockFrame = mock(MainFrame.class);
-        var mockScore = mock(Score.class);
-        var mockCoordinator = mock(SelectionCoordinator.class);
-
-        mainFrameMock.when(MainFrame::getInstance).thenReturn(mockFrame);
-        when(mockFrame.getScore()).thenReturn(mockScore);
-        when(mockScore.getSelectionCoordinator()).thenReturn(mockCoordinator);
-        when(mockScore.getMode()).thenReturn(Mode.EDIT);
-        when(mockScore.getSelectionSize()).thenReturn(0);
-
-        return new MockEnv(mockFrame, mockScore, mockCoordinator);
+        return MockEnvHelper.setupMockEnv(mainFrameMock);
     }
 }

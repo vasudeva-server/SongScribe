@@ -171,7 +171,6 @@ class ElementTypeTest extends UnitTest {
         assertThat(ElementType.BREATH_MARK.toRest()).isEqualTo(ElementType.BREATH_MARK);
     }
 
-
     // --- Element bounds tests (Step 10) ---
 
     @Nested

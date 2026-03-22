@@ -266,6 +266,54 @@ class SelectionTest extends E2ETest {
         }
 
         @Test
+        void testActionStatesResetOnNewComposition() {
+            // Set non-default states via toolbar clicks
+            enterSelectMode();
+            selectDuration(Actions.HALF_NOTE_ACTION);
+            clickAction(Actions.SHARP_ACTION);
+            clickAction(Actions.DOT_ACTION);
+            clickAction(Actions.FERMATA_ACTION);
+            clickAction(Actions.ACCENT_ACTION);
+            enableRestMode();
+            clickAction(Actions.ACCIDENTAL_IN_PARENS_ACTION);
+            clickAction(Actions.STACCATO_ACTION);
+
+            // Loading a fixture triggers Score.setComposition() → resetToDefaults()
+            resetComposition();
+
+            assertAll(
+                () -> assertThat(GuiActionRunner.execute(() -> Actions.MODE_ACTION_GROUP.getSelected()))
+                    .as("mode reset to EDIT").isSameAs(Actions.EDIT_MODE_ACTION),
+                () -> assertThat(GuiActionRunner.execute(() -> Actions.DURATION_ACTION_GROUP.getSelected()))
+                    .as("duration reset to QUARTER_NOTE").isSameAs(Actions.QUARTER_NOTE_ACTION),
+                () -> assertThat(GuiActionRunner.execute(() -> Actions.ACCIDENTAL_ACTION_GROUP.getSelected()))
+                    .as("accidental group cleared").isNull(),
+                () -> assertThat(GuiActionRunner.execute(() -> Actions.ARTICULATION_ACTION_GROUP.getSelected()))
+                    .as("articulation group cleared").isNull(),
+                () -> assertThat(GuiActionRunner.execute(() -> Actions.DOT_ACTION_GROUP.getSelected()))
+                    .as("dot group cleared").isNull(),
+                () -> assertThat(GuiActionRunner.execute(() -> Actions.NON_DURATION_ACTION_GROUP.getSelected()))
+                    .as("non-duration group cleared").isNull(),
+                () -> assertThat(GuiActionRunner.execute(() -> Actions.ACCENT_ACTION.isSelected()))
+                    .as("accent off").isFalse(),
+                () -> assertThat(GuiActionRunner.execute(() -> Actions.REST_ACTION.isSelected()))
+                    .as("rest off").isFalse(),
+                () -> assertThat(GuiActionRunner.execute(() -> Actions.FERMATA_ACTION.isSelected()))
+                    .as("fermata off").isFalse(),
+                () -> assertThat(GuiActionRunner.execute(() -> Actions.ACCIDENTAL_IN_PARENS_ACTION.isSelected()))
+                    .as("accidental-in-parens off").isFalse()
+            );
+
+            // Reload fixture for subsequent tests in this class
+            resetComposition();
+            try {
+                loadFixture("selection2");
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        @Test
         void testBreathMarkDisablesDurationsAndBarlines() {
             enterSelectMode();
             // Breath marks are very small — use drag-select to reliably select
@@ -299,7 +347,7 @@ class SelectionTest extends E2ETest {
 
         @Test
         void testGlissandoSuppressedWhenTargetIsRest() {
-            clickToolbarButton(Actions.GLISSANDO_ACTION);
+            clickAction(Actions.GLISSANDO_ACTION);
             hoverBetween(0, Sel2.TIED_2.index, Sel2.SEMIBREVE_REST.index);
             assertThat(GuiActionRunner.execute(() -> InsertionElementManager.shouldShowGlissandoPreview()))
                 .as("target is rest").isFalse();
@@ -307,7 +355,7 @@ class SelectionTest extends E2ETest {
 
         @Test
         void testGlissandoSuppressedWhenSourceIsRest() {
-            clickToolbarButton(Actions.GLISSANDO_ACTION);
+            clickAction(Actions.GLISSANDO_ACTION);
             hoverBetween(0, Sel2.DEMI_SEMIQUAVER_REST.index, Sel2.NOTE.index);
             assertThat(GuiActionRunner.execute(() -> InsertionElementManager.shouldShowGlissandoPreview()))
                 .as("source is rest").isFalse();
@@ -315,7 +363,7 @@ class SelectionTest extends E2ETest {
 
         @Test
         void testGlissandoSuppressedWhenBothAreRests() {
-            clickToolbarButton(Actions.GLISSANDO_ACTION);
+            clickAction(Actions.GLISSANDO_ACTION);
             hoverBetween(0, Sel2.SEMIBREVE_REST.index, Sel2.MINIM_REST.index);
             assertThat(GuiActionRunner.execute(() -> InsertionElementManager.shouldShowGlissandoPreview()))
                 .as("both rests").isFalse();
@@ -323,7 +371,7 @@ class SelectionTest extends E2ETest {
 
         @Test
         void testSlideOutSuppressedWhenSourceIsRest() {
-            clickToolbarButton(Actions.SLIDE_OUT_ACTION);
+            clickAction(Actions.SLIDE_OUT_ACTION);
             hoverBetween(0, Sel2.DEMI_SEMIQUAVER_REST.index, Sel2.NOTE.index);
             assertThat(GuiActionRunner.execute(InsertionElementManager::shouldShowGlissandoPreview))
                 .as("source is rest").isFalse();

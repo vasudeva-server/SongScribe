@@ -36,6 +36,7 @@ import org.jspecify.annotations.Nullable;
 
 import org.assertj.swing.core.BasicRobot;
 import org.assertj.swing.core.GenericTypeMatcher;
+import org.assertj.swing.exception.ComponentLookupException;
 import org.assertj.swing.core.Robot;
 import org.assertj.swing.edt.FailOnThreadViolationRepaintManager;
 import org.assertj.swing.edt.GuiActionRunner;
@@ -198,6 +199,17 @@ public abstract class E2ETest {
         var button = findButtonByName(action.getActionCommand());
         robot.click(button);
         pause();
+    }
+
+    /**
+     * Clicks an action's UI control — tries the toolbar button first, falls back to the menu item.
+     */
+    protected void clickAction(UIAction action) {
+        try {
+            clickToolbarButton(action);
+        } catch (ComponentLookupException e) {
+            clickMenuItem(action);
+        }
     }
 
     /**
@@ -630,6 +642,18 @@ public abstract class E2ETest {
             var line = composition().getLine(lineIndex);
             return line.getTies().findInterval(noteIndex) != null;
         }));
+    }
+
+    // -- Coordinate helpers --
+
+    /**
+     * Returns the screen midpoint between two elements on a line,
+     * suitable for clicking on a glissando line or inserting between notes.
+     */
+    protected Point midpoint(int lineIndex, int index1, int index2) {
+        var p1 = noteScreenPosition(lineIndex, index1);
+        var p2 = noteScreenPosition(lineIndex, index2);
+        return new Point((p1.x + p2.x) / 2, (p1.y + p2.y) / 2);
     }
 
     // -- Fixture loading --

@@ -243,17 +243,4 @@ class NoteConnectionTest extends E2ETest {
         }
     }
 
-
-    // -- Coordinate helpers --
-
-    /**
-     * Returns the screen midpoint between two elements on a line,
-     * suitable for clicking on a glissando line or inserting a glissando.
-     */
-    private Point midpoint(int lineIndex, int index1, int index2) {
-        var p1 = noteScreenPosition(lineIndex, index1);
-        var p2 = noteScreenPosition(lineIndex, index2);
-        return new Point((p1.x + p2.x) / 2, (p1.y + p2.y) / 2);
-    }
-
 }

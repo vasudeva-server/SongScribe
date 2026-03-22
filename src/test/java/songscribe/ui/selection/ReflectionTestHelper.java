@@ -40,6 +40,18 @@ public final class ReflectionTestHelper {
     }
 
     /**
+     * Creates a SelectionCoordinator for an existing Line (e.g. from a fixture),
+     * registered and activated at line index 0, with no reflectable actions.
+     */
+    public static SelectionCoordinator createCoordinatorForLine(Line line) {
+        var coordinator = new SelectionCoordinator(() -> null);
+        var state = new LineSelectionState(line);
+        coordinator.registerLineState(0, state);
+        coordinator.activateLine(0);
+        return coordinator;
+    }
+
+    /**
      * Creates a SelectionCoordinator with a Line containing the given notes,
      * registered and activated at line index 0, with the given actions
      * injected as the reflectable actions list.

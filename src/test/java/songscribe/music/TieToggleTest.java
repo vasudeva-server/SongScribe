@@ -29,7 +29,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.ui.selection.LineSelectionState;
+import songscribe.ui.selection.ReflectionTestHelper;
 import songscribe.ui.selection.SelectionCoordinator;
 
 /**
@@ -53,7 +53,7 @@ class TieToggleTest extends UnitTest {
     static void loadFixtureData() throws Exception {
         composition = loadFixture("connections");
         line = composition.getLine(0);
-        coordinator = createCoordinatorForLine(line);
+        coordinator = ReflectionTestHelper.createCoordinatorForLine(line);
         operations = new MusicEditOperations(composition, coordinator);
     }
 
@@ -120,35 +120,7 @@ class TieToggleTest extends UnitTest {
         );
     }
 
-    private static SelectionCoordinator createCoordinatorForLine(Line line) {
-        var coordinator = new SelectionCoordinator(() -> null);
-        var state = new LineSelectionState(line);
-        coordinator.registerLineState(0, state);
-        coordinator.activateLine(0);
-        return coordinator;
-    }
-
     private static void selectRange(int from, int to) {
-        var state = Objects.requireNonNull(coordinator.getActiveSelection());
-        state.setSelectionFromClick(from);
-
-        if (to != from) {
-            state.extendSelectionTo(to);
-        }
-    }
-
-    private static Composition roundTrip(Composition original) throws Exception {
-        var sw = new java.io.StringWriter();
-        var pw = new java.io.PrintWriter(sw);
-        songscribe.io.CompositionIO.writeComposition(original, pw);
-        pw.flush();
-        var xml = sw.toString();
-
-        var factory = javax.xml.parsers.SAXParserFactory.newInstance();
-        var parser = factory.newSAXParser();
-        var reader = new songscribe.io.CompositionIO.DocumentReader();
-        parser.parse(new org.xml.sax.InputSource(new java.io.StringReader(xml)), reader);
-
-        return reader.getComposition();
+        ReflectionTestHelper.selectRange(coordinator, from, to);
     }
 }

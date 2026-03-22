@@ -65,18 +65,4 @@ class GlissandoPersistenceTest extends UnitTest {
         );
     }
 
-    private static Composition roundTrip(Composition original) throws Exception {
-        var sw = new java.io.StringWriter();
-        var pw = new java.io.PrintWriter(sw);
-        songscribe.io.CompositionIO.writeComposition(original, pw);
-        pw.flush();
-        var xml = sw.toString();
-
-        var factory = javax.xml.parsers.SAXParserFactory.newInstance();
-        var parser = factory.newSAXParser();
-        var reader = new songscribe.io.CompositionIO.DocumentReader();
-        parser.parse(new org.xml.sax.InputSource(new java.io.StringReader(xml)), reader);
-
-        return reader.getComposition();
-    }
 }

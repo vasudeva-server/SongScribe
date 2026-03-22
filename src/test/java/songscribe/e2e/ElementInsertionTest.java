@@ -604,7 +604,7 @@ class ElementInsertionTest extends E2ETest {
         void testSameTypeClickStripsDecorations() {
             enterSelectMode();
             clickAt(noteScreenPosition(0, baseIndex + 1));
-            clickMenuItem(Actions.STACCATO_ACTION);
+            clickAction(Actions.STACCATO_ACTION);
             performLayout(0);
 
             assertThat(GuiActionRunner.execute(
@@ -668,14 +668,6 @@ class ElementInsertionTest extends E2ETest {
     private boolean isActionSelected(UIAction action) {
         var selectable = (UIAction.Selectable) action;
         return Objects.requireNonNull(GuiActionRunner.execute(() -> selectable.isSelected()));
-    }
-
-    // -- Grace note coordinate helpers --
-
-    private Point midpoint(int lineIndex, int index1, int index2) {
-        var p1 = noteScreenPosition(lineIndex, index1);
-        var p2 = noteScreenPosition(lineIndex, index2);
-        return new Point((p1.x + p2.x) / 2, (p1.y + p2.y) / 2);
     }
 
     // -- Grace note MIDI helpers --

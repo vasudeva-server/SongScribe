@@ -37,7 +37,6 @@ import songscribe.music.StaffElement;
 import songscribe.music.Tempo;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertAll;
 
 /**
  * Integration tests for glissando MIDI generation using the {@code connections}
@@ -48,7 +47,6 @@ class GlissandoMidiIntegrationTest extends UnitTest {
 
     // Element indices in connections.mssw
     private static final int TEMPO_INDEX = 0;
-    private static final int PAIR_B_SRC = 7;
 
     private static final PlaybackSettings DEFAULT_SETTINGS = new PlaybackSettings(
         0, 100, 100, false, false

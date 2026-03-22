@@ -22,9 +22,7 @@ package songscribe.io;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.io.PrintWriter;
 import java.io.StringReader;
-import java.io.StringWriter;
 
 import javax.xml.parsers.SAXParserFactory;
 
@@ -157,21 +155,6 @@ class ViewIOTest extends UnitTest {
         note.setStaffPosition(0);
         line.addElement(note);
         composition.addLine(line);
-    }
-
-    private static Composition roundTrip(Composition original) throws Exception {
-        var sw = new StringWriter();
-        var pw = new PrintWriter(sw);
-        CompositionIO.writeComposition(original, pw);
-        pw.flush();
-        var xml = sw.toString();
-
-        var factory = SAXParserFactory.newInstance();
-        var parser = factory.newSAXParser();
-        var reader = new CompositionIO.DocumentReader();
-        parser.parse(new InputSource(new StringReader(xml)), reader);
-
-        return reader.getComposition();
     }
 
     private static String buildLegacyXml() {
