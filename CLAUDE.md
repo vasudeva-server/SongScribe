@@ -36,6 +36,7 @@ Key packages under `src/main/java/songscribe/`:
 | `converter/` | Legacy format converters |
 | `prefs/` | User preferences |
 | `util/` | Shared utilities |
+| `message/` | MBassador event bus — `MessageCenter`, `Message`, commands, notifications |
 
 ### Key Entry Points
 
@@ -52,6 +53,8 @@ Key packages under `src/main/java/songscribe/`:
 ## Tool Usage
 
 For semantic code exploration and refactoring, see [Serena Tool Usage](./.claude/rules/serena.md).
+
+For the MBassador message bus (posting, subscribing, `@Handler` methods), see [Message System](./.claude/rules/messages.md).
 
 When you need API documentation for Java, Kotlin, or any third-party library (FlatLaf, Jackson, etc.), use context7 MCP tools instead of web search. Example: `resolve-library-id` for "flatlaf", then `query-docs` with the resolved ID.
 
