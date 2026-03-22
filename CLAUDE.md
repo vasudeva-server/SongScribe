@@ -68,4 +68,6 @@ For `JOptionPane`-based alerts, confirms, and input prompts, see [OptionDialogs]
 
 For complex dialogs (`BaseDialog`, `StandardDialog`, tabs, validation/commit lifecycle), see [Dialogs](./.claude/dialogs.md).
 
+For the `Prefs` singleton, `PrefsKey` enum, `defaults.json`, and `PrefsDidChangeNotification`, see [Preferences](./.claude/prefs.md).
+
 To look up SMuFL glyph names, codepoints, or ranges: `https://w3c.github.io/smufl/latest/index.html?search=<search terms>`

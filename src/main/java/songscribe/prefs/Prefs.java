@@ -33,6 +33,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import com.formdev.flatlaf.util.SystemInfo;
+import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
@@ -49,6 +50,7 @@ import songscribe.message.notification.PrefsDidChangeNotification;
 public final class Prefs {
 
     private static final Logger LOG = LoggerFactory.getLogger(Prefs.class);
+    private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final String DEFAULTS_RESOURCE = "/conf/defaults.json";
     private static final File OLD_PROPS_FILE =
             new File(System.getProperty("user.home"), ".songscribe/props");
@@ -90,6 +92,13 @@ public final class Prefs {
 
     private Prefs() {
         prefsFile = resolvePrefsFile();
+
+        try {
+            Files.createDirectories(prefsFile.getParent());
+        } catch (IOException e) {
+            LOG.warn("Failed to create preferences directory: {}", prefsFile.getParent(), e);
+        }
+
         defaults = loadDefaults();
         store = loadStore();
         removeObsoleteKeys();
@@ -134,50 +143,39 @@ public final class Prefs {
 
     public void putStringList(PrefsKey key, List<String> value) {
         store.put(key.key(), new ArrayList<>(value));
-        save();
+        save(key);
     }
 
     public void put(PrefsKey key, String value) {
         store.put(key.key(), value);
-        save();
-        MessageCenter.post(new PrefsDidChangeNotification(key));
+        save(key);
     }
 
     public void put(PrefsKey key, int value) {
         // Store as Long for consistency with JSON round-tripping
         store.put(key.key(), (long) value);
-        save();
-        MessageCenter.post(new PrefsDidChangeNotification(key));
+        save(key);
     }
 
     public void put(PrefsKey key, long value) {
         store.put(key.key(), value);
-        save();
-        MessageCenter.post(new PrefsDidChangeNotification(key));
+        save(key);
     }
 
     public void put(PrefsKey key, boolean value) {
         store.put(key.key(), value);
-        save();
-        MessageCenter.post(new PrefsDidChangeNotification(key));
+        save(key);
     }
 
-    /**
-     * Updates the in-memory store without writing to disk.
-     * Call {@link #save()} explicitly when the batch is complete.
-     */
-    public void putTransient(PrefsKey key, int value) {
-        store.put(key.key(), (long) value);
-    }
 
     public void reset(PrefsKey key) {
         store.remove(key.key());
-        save();
+        save(key);
     }
 
     public void resetAll() {
         store.clear();
-        save();
+        save(PrefsKey.ALL);
     }
 
     private void removeObsoleteKeys() {
@@ -190,7 +188,7 @@ public final class Prefs {
         }
 
         if (removed) {
-            save();
+            saveQuietly();
         }
     }
 
@@ -287,9 +285,19 @@ public final class Prefs {
         return result;
     }
 
-    public void save() {
+    private void save(PrefsKey changedKey) {
+        writeToFile();
+        MessageCenter.post(new PrefsDidChangeNotification(changedKey));
+    }
+
+    // Writes without posting a notification — used during construction
+    // before any subscribers exist.
+    private void saveQuietly() {
+        writeToFile();
+    }
+
+    private void writeToFile() {
         try {
-            Files.createDirectories(prefsFile.getParent());
             var json = new JsonObject();
 
             // Merge defaults with store overrides so the file always contains all keys
@@ -313,8 +321,7 @@ public final class Prefs {
                 }
             }
 
-            var gson = new GsonBuilder().setPrettyPrinting().create();
-            Files.writeString(prefsFile, gson.toJson(json), StandardCharsets.UTF_8);
+            Files.writeString(prefsFile, GSON.toJson(json), StandardCharsets.UTF_8);
         } catch (IOException e) {
             LOG.warn("Failed to save preferences to {}", prefsFile, e);
         }
@@ -373,7 +380,7 @@ public final class Prefs {
             store.put(PrefsKey.LAST_SEEN_WHATS_NEW_VERSION.key(), lastSeenVersion);
         }
 
-        save();
+        saveQuietly();
 
         if (!OLD_PROPS_FILE.delete()) {
             LOG.warn("Failed to delete old props file: {}", OLD_PROPS_FILE);

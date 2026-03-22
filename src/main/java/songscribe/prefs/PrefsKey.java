@@ -19,8 +19,13 @@
 */
 package songscribe.prefs;
 
-/** Type-safe enumeration of all preference keys stored in {@code defaults.json}. */
+/**
+ * Type-safe enumeration of all preference keys stored in {@code defaults.json}.
+ * {@link #ALL} is a sentinel used in notifications to indicate that multiple keys changed;
+ * it does not correspond to a key in {@code defaults.json}.
+ */
 public enum PrefsKey {
+    ALL("all"),
     ANNOTATION_FONT("annotationFont"),
     ANNOTATION_FONT_SIZE("annotationFontSize"),
     APPEARANCE("appearance"),

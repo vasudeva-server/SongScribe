@@ -31,6 +31,7 @@ public class PrefsDidChangeNotification extends Message {
         this.key = key;
     }
 
+    /** Returns the key that changed, or {@link PrefsKey#ALL} if multiple keys changed at once. */
     public PrefsKey getKey() {
         return key;
     }

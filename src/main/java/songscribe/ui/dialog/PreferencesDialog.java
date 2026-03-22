@@ -22,8 +22,6 @@ package songscribe.ui.dialog;
 import module java.desktop;
 
 import java.util.ArrayList;
-import java.util.Dictionary;
-import java.util.Hashtable;
 import java.util.Map;
 
 import org.jspecify.annotations.Nullable;
@@ -33,6 +31,7 @@ import songscribe.message.MessageCenter;
 import songscribe.message.notification.PageSizeDidChangeNotification;
 import songscribe.prefs.Prefs;
 import songscribe.prefs.PrefsKey;
+import songscribe.ui.component.TickSlider;
 import songscribe.ui.Appearance;
 import songscribe.ui.AppearanceManager;
 import songscribe.ui.OptionDialogs;
@@ -324,16 +323,24 @@ public class PreferencesDialog extends BaseDialog {
         private static final int SLIDER_SPACING = 20;
 
         private static final int[] VALID_VOLUME_STOPS = { 50, 63, 75, 88, 100 };
-        private static final int VOLUME_LABELED_STOP_INTERVAL = 2;
+        private static final int VOLUME_STOP_COUNT = VALID_VOLUME_STOPS.length;
 
-        private static final int TEMPO_MIN = 50;
-        private static final int TEMPO_MAX = 150;
-        private static final int TEMPO_MAJOR_TICK = 25;
+        private static final int[] VALID_VOLUME_INDICES = { 0, 1, 2, 3, 4 };
+        private static final @Nullable String[] VOLUME_LABELS = {
+            Strings.get(Strings.LABEL_PREFS_SOFTER), null,
+            Strings.get(Strings.LABEL_PREFS_SOFT), null,
+            Strings.get(Strings.LABEL_PREFS_FULL),
+        };
 
         private static final int[] VALID_TEMPO_STOPS = { 50, 75, 100, 125, 150 };
+        private static final @Nullable String[] TEMPO_LABELS = { "50%", "75%", "100%", "125%", "150%" };
 
-        private static final int DURATION_STEP = 17;
         private static final int[] VALID_DURATION_STOPS = { 32, 49, 66, 83, 100 };
+        private static final @Nullable String[] DURATION_LABELS = {
+            Strings.get(Strings.LABEL_PREFS_STACCATO), null,
+            Strings.get(Strings.LABEL_PREFS_NORMAL), null,
+            Strings.get(Strings.LABEL_PREFS_LEGATO),
+        };
 
         private final JCheckBox playInsertingNoteCheck = new JCheckBox(
             Strings.get(Strings.LABEL_PREFS_PLAY_INSERTED_NOTE)
@@ -341,9 +348,34 @@ public class PreferencesDialog extends BaseDialog {
         private final JCheckBox playSelectedNoteCheck = new JCheckBox(
             Strings.get(Strings.LABEL_PREFS_PLAY_SELECTED_NOTE)
         );
-        private final JSlider durationSlider = new JSlider(32, 100);
-        private final JSlider volumeSlider = new JSlider(0, VALID_VOLUME_STOPS.length - 1);
-        private final JSlider tempoSlider = new JSlider(TEMPO_MIN, TEMPO_MAX);
+
+        private final TickSlider durationSlider =
+            new TickSlider(VALID_DURATION_STOPS, DURATION_LABELS) {
+                @Override
+                protected void tickDidChange(int tick) {
+                    Prefs.getInstance().put(PrefsKey.PLAYBACK_NOTE_DURATION, tick);
+                    syncPlaybackPrefs();
+                }
+            };
+
+        private final TickSlider volumeSlider =
+            new TickSlider(VALID_VOLUME_INDICES, VOLUME_LABELS) {
+                @Override
+                protected void tickDidChange(int tick) {
+                    var volume = VALID_VOLUME_STOPS[tick];
+                    Prefs.getInstance().put(PrefsKey.PLAYBACK_VOLUME, volume);
+                    MidiController.setPlaybackVolume(volume);
+                }
+            };
+
+        private final TickSlider tempoSlider =
+            new TickSlider(VALID_TEMPO_STOPS, TEMPO_LABELS) {
+                @Override
+                protected void tickDidChange(int tick) {
+                    Prefs.getInstance().put(PrefsKey.TEMPO_CHANGE_PERCENT, tick);
+                    syncPlaybackPrefs();
+                }
+            };
 
         PlayTab() {
             build();
@@ -364,9 +396,9 @@ public class PreferencesDialog extends BaseDialog {
             playInsertingNoteCheck.setSelected(prefs.getBoolean(PrefsKey.PLAY_INSERTED_NOTE));
             playSelectedNoteCheck.setSelected(prefs.getBoolean(PrefsKey.PLAY_SELECTED_NOTE));
 
-            durationSlider.setValue(snapToNearestDurationStop(prefs.getInt(PrefsKey.PLAYBACK_NOTE_DURATION)));
-            volumeSlider.setValue(volumeToSliderIndex(prefs.getInt(PrefsKey.PLAYBACK_VOLUME)));
-            tempoSlider.setValue(snapToNearestTempoStop(prefs.getInt(PrefsKey.TEMPO_CHANGE_PERCENT)));
+            durationSlider.setSnappedValue(prefs.getInt(PrefsKey.PLAYBACK_NOTE_DURATION));
+            volumeSlider.setSnappedValue(volumeToSliderIndex(prefs.getInt(PrefsKey.PLAYBACK_VOLUME)));
+            tempoSlider.setSnappedValue(prefs.getInt(PrefsKey.TEMPO_CHANGE_PERCENT));
 
             return true;
         }
@@ -383,41 +415,6 @@ public class PreferencesDialog extends BaseDialog {
                 Prefs.getInstance().put(
                     PrefsKey.PLAY_SELECTED_NOTE, playSelectedNoteCheck.isSelected()
                 );
-            });
-
-            // Use putTransient during drag to avoid disk writes per tick,
-            // then save once on release.
-            durationSlider.addChangeListener(_ -> {
-                var prefs = Prefs.getInstance();
-                prefs.putTransient(PrefsKey.PLAYBACK_NOTE_DURATION, durationSlider.getValue());
-
-                if (!durationSlider.getValueIsAdjusting()) {
-                    prefs.save();
-                }
-
-                syncPlaybackPrefs();
-            });
-
-            volumeSlider.addChangeListener(_ -> {
-                var volume = VALID_VOLUME_STOPS[volumeSlider.getValue()];
-                var prefs = Prefs.getInstance();
-                prefs.putTransient(PrefsKey.PLAYBACK_VOLUME, volume);
-                MidiController.setPlaybackVolume(volume);
-
-                if (!volumeSlider.getValueIsAdjusting()) {
-                    prefs.save();
-                }
-            });
-
-            tempoSlider.addChangeListener(_ -> {
-                var prefs = Prefs.getInstance();
-                prefs.putTransient(PrefsKey.TEMPO_CHANGE_PERCENT, tempoSlider.getValue());
-
-                if (!tempoSlider.getValueIsAdjusting()) {
-                    prefs.save();
-                }
-
-                syncPlaybackPrefs();
             });
         }
 
@@ -449,72 +446,28 @@ public class PreferencesDialog extends BaseDialog {
             var border = (StandardTitledBorder) section.getBorder();
             border.setInsets(new Insets(35, 20, 20, 20));
 
-            //noinspection UseOfObsoleteCollectionType
-            var durationLabels = new Hashtable<Integer, JLabel>();
-            durationLabels.put(32, new JLabel(Strings.get(Strings.LABEL_PREFS_STACCATO)));
-            durationLabels.put(66, new JLabel(Strings.get(Strings.LABEL_PREFS_NORMAL)));
-            durationLabels.put(100, new JLabel(Strings.get(Strings.LABEL_PREFS_LEGATO)));
-            addSlider(section, Strings.get(Strings.LABEL_PREFS_PLAYBACK_DURATION), durationSlider, DURATION_STEP, durationLabels);
+            addLabeledField(section, Strings.get(Strings.LABEL_PREFS_PLAYBACK_DURATION), durationSlider, LabelPosition.TOP);
 
             section.add(Box.createVerticalStrut(SLIDER_SPACING));
             section.add(new JSeparator());
             section.add(Box.createVerticalStrut(SLIDER_SPACING));
 
-            //noinspection UseOfObsoleteCollectionType
-            var volumeLabels = new Hashtable<Integer, JLabel>();
-            volumeLabels.put(0, new JLabel(Strings.get(Strings.LABEL_PREFS_SOFTER)));
-            volumeLabels.put(VOLUME_LABELED_STOP_INTERVAL, new JLabel(Strings.get(Strings.LABEL_PREFS_SOFT)));
-            volumeLabels.put(VOLUME_LABELED_STOP_INTERVAL * 2, new JLabel(Strings.get(Strings.LABEL_PREFS_FULL)));
-            addSlider(section, Strings.get(Strings.LABEL_PREFS_PLAYBACK_VOLUME), volumeSlider, 1, volumeLabels);
+            addLabeledField(section, Strings.get(Strings.LABEL_PREFS_PLAYBACK_VOLUME), volumeSlider, LabelPosition.TOP);
 
             section.add(Box.createVerticalStrut(SLIDER_SPACING));
             section.add(new JSeparator());
             section.add(Box.createVerticalStrut(SLIDER_SPACING));
 
-            addSlider(
-                section, Strings.get(Strings.LABEL_PREFS_PLAYBACK_TEMPO), tempoSlider,
-                TEMPO_MAJOR_TICK, createPercentLabels(TEMPO_MIN, TEMPO_MAX, TEMPO_MAJOR_TICK)
-            );
+            addLabeledField(section, Strings.get(Strings.LABEL_PREFS_PLAYBACK_TEMPO), tempoSlider, LabelPosition.TOP);
 
             return section;
-        }
-
-        private void addSlider(
-            JPanel section,
-            String labelText,
-            JSlider slider,
-            int tickSpacing,
-            Dictionary<Integer, JLabel> labels
-        ) {
-            addLabeledField(section, labelText, slider, LabelPosition.TOP);
-            configureSlider(slider, tickSpacing, labels);
-        }
-
-        private static int snapToNearest(int value, int[] stops) {
-            int closest = stops[0];
-            int minDist = Math.abs(value - closest);
-
-            for (int i = 1; i < stops.length; i++) {
-                int dist = Math.abs(value - stops[i]);
-
-                if (dist < minDist) {
-                    minDist = dist;
-                    closest = stops[i];
-                }
-            }
-
-            return closest;
-        }
-
-        private static int snapToNearestTempoStop(int value) {
-            return snapToNearest(value, VALID_TEMPO_STOPS);
         }
 
         private static int volumeToSliderIndex(int volume) {
             int closestIndex = 0;
             int minDist = Math.abs(volume - VALID_VOLUME_STOPS[0]);
 
-            for (int i = 1; i < VALID_VOLUME_STOPS.length; i++) {
+            for (int i = 1; i < VOLUME_STOP_COUNT; i++) {
                 int dist = Math.abs(volume - VALID_VOLUME_STOPS[i]);
 
                 if (dist < minDist) {
@@ -524,23 +477,6 @@ public class PreferencesDialog extends BaseDialog {
             }
 
             return closestIndex;
-        }
-
-        private static int snapToNearestDurationStop(int value) {
-            return snapToNearest(value, VALID_DURATION_STOPS);
-        }
-
-        private static Dictionary<Integer, JLabel> createPercentLabels(
-            int min, int max, int step
-        ) {
-            //noinspection UseOfObsoleteCollectionType
-            var labels = new Hashtable<Integer, JLabel>();
-
-            for (int value = min; value <= max; value += step) {
-                labels.put(value, new JLabel(value + "%"));
-            }
-
-            return labels;
         }
     }
 

@@ -22,7 +22,6 @@ package songscribe.ui.dialog;
 import module java.desktop;
 
 import java.util.ArrayList;
-import java.util.Dictionary;
 import java.util.List;
 import java.util.Objects;
 
@@ -147,19 +146,6 @@ public abstract class BaseDialog {
             box.add(Box.createVerticalStrut(gapHeight));
         }
     }
-
-    protected static void configureSlider(
-        JSlider slider,
-        int majorTickSpacing,
-        Dictionary<Integer, JLabel> labels
-    ) {
-        slider.setMajorTickSpacing(majorTickSpacing);
-        slider.setSnapToTicks(true);
-        slider.setPaintLabels(true);
-        slider.setPaintTicks(true);
-        slider.setLabelTable(labels);
-    }
-
 
     public void setVisible(boolean visible) {
         if (visible) {
