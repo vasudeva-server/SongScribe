@@ -43,7 +43,7 @@ class AccidentalActionTest extends UnitTest {
         var note = ElementType.CROTCHET.newInstance();
         note.setAccidental(StaffElement.Accidental.SHARP);
         action.applyToElement(note, false);
-        assertThat(note.getAccidental()).isEqualTo(StaffElement.Accidental.NONE);
+        assertThat(note.getAccidental()).isNull();
     }
 
     @Test

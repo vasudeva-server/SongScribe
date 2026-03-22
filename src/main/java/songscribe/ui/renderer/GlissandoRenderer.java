@@ -165,7 +165,7 @@ public class GlissandoRenderer {
      */
     private record AreaCacheKey(
         ElementType noteType, int ledgerLineCount, int staffPosition,
-        int dotCount, StaffElement.Accidental accidental, boolean upper, boolean beamed) {
+        int dotCount, StaffElement.@Nullable Accidental accidental, boolean upper, boolean beamed) {
 
         AreaCacheKey(StaffElement note, boolean beamed) {
             this(note.getType(),
@@ -806,7 +806,7 @@ public class GlissandoRenderer {
      * Mirrors the positioning logic in {@link NoteRenderer#renderAccidental}.
      */
     private void addAccidentalToArea(Area area, StaffElement note) {
-        if (note.getAccidental() == StaffElement.Accidental.NONE) {
+        if (note.getAccidental() == null) {
             return;
         }
 

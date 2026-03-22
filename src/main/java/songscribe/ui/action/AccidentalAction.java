@@ -121,6 +121,6 @@ public class AccidentalAction extends NoteOnlyAction {
 
     @Override
     public void applyToElement(StaffElement element, boolean selected) {
-        element.setAccidental(selected ? accidental : StaffElement.Accidental.NONE);
+        element.setAccidental(selected ? accidental : null);
     }
 }

@@ -86,7 +86,7 @@ class BatchMutationTest extends UnitTest {
 
         var line = getLine(coordinator);
         assertThat(line.getElement(0).getAccidental()).isEqualTo(StaffElement.Accidental.SHARP);
-        assertThat(line.getElement(1).getAccidental()).isEqualTo(StaffElement.Accidental.NONE);
+        assertThat(line.getElement(1).getAccidental()).isNull();
         assertThat(line.getElement(2).getAccidental()).isEqualTo(StaffElement.Accidental.SHARP);
     }
 

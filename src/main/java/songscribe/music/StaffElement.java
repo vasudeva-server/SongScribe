@@ -54,7 +54,6 @@ public class StaffElement extends LineElement implements Cloneable {
 
     // How much to adjust the MIDI pitch for each Accidental value
     private static final int[] MIDI_PITCH_ADJUSTMENT = new int[]{
-        0, // NONE
         0, // NATURAL
         -1, // FLAT
         1, // SHARP
@@ -105,7 +104,8 @@ public class StaffElement extends LineElement implements Cloneable {
 
     // How many dots the note has. Possible values are 0, 1, 2.
     protected int dotCount = 0;
-    protected Accidental accidental = Accidental.NONE;
+    @Nullable
+    protected Accidental accidental;
     protected boolean isAccidentalInParentheses = false;
     @Nullable
     protected Tempo tempoChange = null;
@@ -472,14 +472,14 @@ public class StaffElement extends LineElement implements Cloneable {
         this.dotCount = dotCount;
     }
 
-    public Accidental getAccidental() {
+    public @Nullable Accidental getAccidental() {
         return accidental;
     }
 
-    public void setAccidental(Accidental accidental) {
+    public void setAccidental(@Nullable Accidental accidental) {
         this.accidental = accidental;
         isAccidentalInParentheses = isAccidentalInParentheses &&
-            (getAccidental() != Accidental.NONE);
+            (getAccidental() != null);
     }
 
     public boolean isAccidentalInParentheses() {
@@ -487,7 +487,7 @@ public class StaffElement extends LineElement implements Cloneable {
     }
 
     public void setAccidentalInParentheses(boolean accidentalInParenthesis) {
-        isAccidentalInParentheses = (getAccidental() != Accidental.NONE) &&
+        isAccidentalInParentheses = (getAccidental() != null) &&
             accidentalInParenthesis;
     }
 
@@ -590,7 +590,7 @@ public class StaffElement extends LineElement implements Cloneable {
 
     public int getPitch() {
         return calculatePitch(
-            (accidental == Accidental.NONE) ? findLastAccidental() : accidental
+            (accidental == null) ? findLastAccidental() : accidental
         );
     }
 
@@ -598,30 +598,32 @@ public class StaffElement extends LineElement implements Cloneable {
         return calculatePitch(getInsertionElementAccidental(line));
     }
 
-    private int calculatePitch(Accidental accidental) {
+    private int calculatePitch(@Nullable Accidental accidental) {
+        int adjustment = (accidental != null) ? MIDI_PITCH_ADJUSTMENT[accidental.ordinal()] : 0;
+
         return (
             MIDI_PITCHES[getPitchIndex()] +
                 (12 * (((staffPosition <= 0) ? -staffPosition : (-staffPosition - 6)) / 7)) +
-                MIDI_PITCH_ADJUSTMENT[accidental.ordinal()]
+                adjustment
         );
     }
 
-    private Accidental getInsertionElementAccidental(Line line) {
-        if (accidental == Accidental.NONE) {
+    private @Nullable Accidental getInsertionElementAccidental(Line line) {
+        if (accidental == null) {
             return getAccidental(line);
         }
 
         return accidental;
     }
 
-    private Accidental getAccidental(Line line) {
+    private @Nullable Accidental getAccidental(Line line) {
         if (line.keyExists(getPitchIndex())) {
             return (line.getKeyType() == KeyType.FLATS)
                 ? Accidental.FLAT
                 : Accidental.SHARP;
         }
 
-        return Accidental.NONE;
+        return null;
     }
 
     /*
@@ -649,9 +651,9 @@ public class StaffElement extends LineElement implements Cloneable {
         this.line = line;
     }
 
-    public Accidental findLastAccidental() {
+    public @Nullable Accidental findLastAccidental() {
         if (line == null) {
-            return Accidental.NONE;
+            return null;
         }
 
         for (var i = line.getElementIndex(this) - 1; i >= 0; i--) {
@@ -659,7 +661,7 @@ public class StaffElement extends LineElement implements Cloneable {
 
             if (
                 (note.getStaffPosition() == staffPosition) &&
-                    (note.getAccidental() != Accidental.NONE)
+                    (note.getAccidental() != null)
             ) {
                 return line.getElement(i).getAccidental();
             }
@@ -669,7 +671,6 @@ public class StaffElement extends LineElement implements Cloneable {
     }
 
     public enum Accidental {
-        NONE(null, 0, -1, -1),
         NATURAL("Natural", 1, 0, -1),
         FLAT("Flat", 1, 1, -1),
         SHARP("Sharp", 1, 2, -1),

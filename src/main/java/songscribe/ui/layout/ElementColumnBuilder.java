@@ -165,7 +165,7 @@ public class ElementColumnBuilder {
         double extentSs = 0.0;
 
         // Add accidental width if present
-        if (element.getAccidental() != StaffElement.Accidental.NONE) {
+        if (element.getAccidental() != null) {
             double accidentalWidthSs = NoteRenderer.getAccidentalWidthSs(element);
             extentSs -= (accidentalWidthSs + LayoutConstants.ACCIDENTAL_GAP_SS);
         }

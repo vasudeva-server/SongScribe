@@ -30,7 +30,7 @@ public class AccidentalMenu extends JMenu {
     public AccidentalMenu() {
         super(Strings.get(Strings.MENU_NOTATION_ACCIDENTAL));
         for (var action : Actions.ACCIDENTAL_ACTION_GROUP.getActions()) {
-            if (action.getAccidental() == StaffElement.Accidental.NONE) {
+            if (action.getAccidental() == null) {
                 continue;
             }
 

@@ -265,7 +265,7 @@ public class HorizontalSpacingCalculator {
         double currXSs) {
 
         // Only check if current note has an accidental
-        if (currColumn.getElement().getAccidental() == StaffElement.Accidental.NONE) {
+        if (currColumn.getElement().getAccidental() == null) {
             return false;
         }
 

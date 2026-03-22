@@ -140,7 +140,7 @@ public final class StaffElementIO {
             );
         }
 
-        if (element.getAccidental() != StaffElement.Accidental.NONE) {
+        if (element.getAccidental() != null) {
             XML.writeValue(writer, XML_PREFIX, element.getAccidental().name());
         }
 

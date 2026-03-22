@@ -64,8 +64,8 @@ public class StructuralElement extends StaffElement {
     }
 
     @Override
-    public StaffElement.Accidental getAccidental() {
-        return StaffElement.Accidental.NONE;
+    public StaffElement.@Nullable Accidental getAccidental() {
+        return null;
     }
 
 }

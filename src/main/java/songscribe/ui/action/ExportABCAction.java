@@ -364,7 +364,11 @@ public class ExportABCAction extends UIAction {
             }
 
             sb.append(translateDecorations(note));
-            sb.append(translateAccidental(note.getAccidental()));
+            var accidental = note.getAccidental();
+
+            if (accidental != null) {
+                sb.append(translateAccidental(accidental));
+            }
             sb.append(translatePitch(note.getStaffPosition()));
             var duration =
                 switch (noteType) {

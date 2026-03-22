@@ -91,7 +91,6 @@ public class NoteRenderer extends BaseElementRenderer<StaffElement> {
 
     // Accidental glyph components indexed by Accidental.ordinal()
     private static final SMuFLGlyph[][] ACCIDENTAL_COMPONENTS = {
-        {},                                                              // NONE
         {SMuFLGlyph.ACCIDENTAL_NATURAL},                                // NATURAL
         {SMuFLGlyph.ACCIDENTAL_FLAT},                                   // FLAT
         {SMuFLGlyph.ACCIDENTAL_SHARP},                                  // SHARP
@@ -105,7 +104,6 @@ public class NoteRenderer extends BaseElementRenderer<StaffElement> {
     // Small accidental glyph components for grace notes (pre-sized, no scaling needed).
     // Uses small variants where available; falls back to regular glyphs for compound accidentals.
     private static final SMuFLGlyph[][] ACCIDENTAL_COMPONENTS_SMALL = {
-        {},                                                                        // NONE
         {SMuFLGlyph.ACCIDENTAL_NATURAL_SMALL},                                    // NATURAL
         {SMuFLGlyph.ACCIDENTAL_FLAT_SMALL},                                       // FLAT
         {SMuFLGlyph.ACCIDENTAL_SHARP_SMALL},                                      // SHARP
@@ -551,16 +549,16 @@ public class NoteRenderer extends BaseElementRenderer<StaffElement> {
         StaffElement note,
         ElementRenderContext ctx
     ) {
-        var accidental = note.getAccidental().ordinal();
+        var accidental = note.getAccidental();
 
-        if (accidental == 0) {
+        if (accidental == null) {
             return;
         }
 
         boolean isGrace = note.getType().isGraceNote();
         var components = isGrace
-            ? ACCIDENTAL_COMPONENTS_SMALL[accidental]
-            : ACCIDENTAL_COMPONENTS[accidental];
+            ? ACCIDENTAL_COMPONENTS_SMALL[accidental.ordinal()]
+            : ACCIDENTAL_COMPONENTS[accidental.ordinal()];
 
         try (var ignored = GraphicsState.save(g2, COLOR, FONT)) {
             g2.setFont(BRAVURA_FONT);
@@ -708,7 +706,13 @@ public class NoteRenderer extends BaseElementRenderer<StaffElement> {
      * Grace notes use pre-sized small accidental glyphs.
      */
     public static float getAccidentalWidthSs(StaffElement note) {
-        var ordinal = note.getAccidental().ordinal();
+        var accidental = note.getAccidental();
+
+        if (accidental == null) {
+            return 0;
+        }
+
+        var ordinal = accidental.ordinal();
 
         if (note.getType().isGraceNote()) {
             var widths = smallAccidentalWidthsSs;
@@ -745,7 +749,13 @@ public class NoteRenderer extends BaseElementRenderer<StaffElement> {
             throw new AssertionError("unreachable");
         }
 
-        return widths[note.getAccidental().getComponent(component) + 1];
+        var accidental = note.getAccidental();
+
+        if (accidental == null) {
+            return 0;
+        }
+
+        return widths[accidental.getComponent(component) + 1];
     }
 
     /**

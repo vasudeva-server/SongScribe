@@ -243,7 +243,7 @@ public final class EditModeManager {
         element.setAccidental(
             (accidentalAction != null)
                 ? accidentalAction.getAccidental()
-                : StaffElement.Accidental.NONE
+                : null
         );
 
         element.setAccidentalInParentheses(

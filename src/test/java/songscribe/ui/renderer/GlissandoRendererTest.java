@@ -27,6 +27,7 @@ import java.util.Objects;
 
 import module java.desktop;
 
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
@@ -459,7 +460,7 @@ class GlissandoRendererTest extends UnitTest {
     @Test
     void testHitTestGlissando_diagonalLine_returnsNoteIndex() {
         // 45° glissando from (0, 0), length 10; midpoint in world coords: (5·cos45°, 5·sin45°)
-        var line = makeTwoNoteLineWithGlissando(0, StaffElement.Accidental.NONE, -2, StaffElement.Accidental.NONE);
+        var line = makeTwoNoteLineWithGlissando(0, null, -2, null);
         setCachedGeometry(Objects.requireNonNull(line.getElement(0).getGlissando()), 0.0, 0.0, 45.0, 10.0);
 
         double mid = 5.0 * Math.cos(Math.toRadians(45.0));
@@ -469,14 +470,14 @@ class GlissandoRendererTest extends UnitTest {
     @Test
     void testHitTestGlissando_noCachedGeometry_skipped() {
         // Note has a Glissando object but hasCachedGeometry is false (default) — must be skipped
-        var line = makeTwoNoteLineWithGlissando(0, StaffElement.Accidental.NONE, -2, StaffElement.Accidental.NONE);
+        var line = makeTwoNoteLineWithGlissando(0, null, -2, null);
 
         assertThat(RENDERER.hitTestGlissando(10.0, 3.0, line)).isEqualTo(-1);
     }
 
     @Test
     void testHitTestGlissando_pointAfterEnd_returnsMinusOne() {
-        var line = makeTwoNoteLineWithGlissando(0, StaffElement.Accidental.NONE, -2, StaffElement.Accidental.NONE);
+        var line = makeTwoNoteLineWithGlissando(0, null, -2, null);
         setCachedGeometry(Objects.requireNonNull(line.getElement(0).getGlissando()), 5.0, 3.0, 0.0, 10.0);
 
         // localX = 15.1 - 5.0 = 10.1 > cachedLength (10.0)
@@ -485,7 +486,7 @@ class GlissandoRendererTest extends UnitTest {
 
     @Test
     void testHitTestGlissando_pointBeforeStart_returnsMinusOne() {
-        var line = makeTwoNoteLineWithGlissando(0, StaffElement.Accidental.NONE, -2, StaffElement.Accidental.NONE);
+        var line = makeTwoNoteLineWithGlissando(0, null, -2, null);
         setCachedGeometry(Objects.requireNonNull(line.getElement(0).getGlissando()), 5.0, 3.0, 0.0, 10.0);
 
         // localX = 4.9 - 5.0 = -0.1 < 0
@@ -495,7 +496,7 @@ class GlissandoRendererTest extends UnitTest {
     @Test
     void testHitTestGlissando_pointBesideLine_returnsMinusOne() {
         // Same glissando, but click is 1.0 ss above (> halfHitSs = 0.5)
-        var line = makeTwoNoteLineWithGlissando(0, StaffElement.Accidental.NONE, -2, StaffElement.Accidental.NONE);
+        var line = makeTwoNoteLineWithGlissando(0, null, -2, null);
         setCachedGeometry(Objects.requireNonNull(line.getElement(0).getGlissando()), 5.0, 3.0, 0.0, 10.0);
 
         assertThat(RENDERER.hitTestGlissando(10.0, 4.0, line)).isEqualTo(-1);
@@ -504,7 +505,7 @@ class GlissandoRendererTest extends UnitTest {
     @Test
     void testHitTestGlissando_pointOnLine_returnsNoteIndex() {
         // Horizontal glissando (angle=0) from (5.0, 3.0) with length 10.0
-        var line = makeTwoNoteLineWithGlissando(0, StaffElement.Accidental.NONE, -2, StaffElement.Accidental.NONE);
+        var line = makeTwoNoteLineWithGlissando(0, null, -2, null);
         setCachedGeometry(Objects.requireNonNull(line.getElement(0).getGlissando()), 5.0, 3.0, 0.0, 10.0);
 
         // Click at the midpoint: localX=5, localY=0 — well within hit bounds
@@ -543,8 +544,8 @@ class GlissandoRendererTest extends UnitTest {
      * Creates a line with two notes at the given staff positions and accidentals.
      */
     private static Line makeTwoNoteLineWithGlissando(
-        int staffPos1, StaffElement.Accidental acc1,
-        int staffPos2, StaffElement.Accidental acc2) {
+        int staffPos1, StaffElement.@Nullable Accidental acc1,
+        int staffPos2, StaffElement.@Nullable Accidental acc2) {
         var note1 = ElementType.CROTCHET.newInstance();
         note1.setUpper(true);
         note1.setStaffPosition(staffPos1);
@@ -566,7 +567,7 @@ class GlissandoRendererTest extends UnitTest {
     @Test
     void testNonUnisonConnectedGlissandoDifferentPosition() {
         // Two notes at different staff positions — different MIDI pitch
-        var line = makeTwoNoteLineWithGlissando(0, StaffElement.Accidental.NONE, -2, StaffElement.Accidental.NONE);
+        var line = makeTwoNoteLineWithGlissando(0, null, -2, null);
         var note1 = line.getElement(0);
         var note2 = line.getElement(1);
 
@@ -588,7 +589,7 @@ class GlissandoRendererTest extends UnitTest {
     @Test
     void testUnisonConnectedGlissandoSamePitch() {
         // Two notes at same staff position, no accidentals — same MIDI pitch
-        var line = makeTwoNoteLineWithGlissando(0, StaffElement.Accidental.NONE, 0, StaffElement.Accidental.NONE);
+        var line = makeTwoNoteLineWithGlissando(0, null, 0, null);
         var note1 = line.getElement(0);
         var note2 = line.getElement(1);
 

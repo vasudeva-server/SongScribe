@@ -91,7 +91,7 @@ class StaffElementCopyConstructorTest extends UnitTest {
         assertThat(copy.isForceSyllable()).isTrue();
 
         // Note-only attributes should be at defaults
-        assertThat(copy.getAccidental()).isEqualTo(StaffElement.Accidental.NONE);
+        assertThat(copy.getAccidental()).isNull();
         assertThat(copy.isAccidentalInParentheses()).isFalse();
         assertThat(copy.isTrill()).isFalse();
         assertThat(copy.isUpper()).isFalse();
@@ -117,7 +117,7 @@ class StaffElementCopyConstructorTest extends UnitTest {
         assertThat(copy.getSyllableMovement()).isEqualTo(3);
 
         // Note-only attributes copied from rest source (all at defaults)
-        assertThat(copy.getAccidental()).isEqualTo(StaffElement.Accidental.NONE);
+        assertThat(copy.getAccidental()).isNull();
         assertThat(copy.getStaffPosition()).isEqualTo(0);
     }
 
