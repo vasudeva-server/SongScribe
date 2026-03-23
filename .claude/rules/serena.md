@@ -39,8 +39,8 @@ jet_brains_find_symbol(name_path_pattern="UIAction/updateEnabledState", include_
 - Note: This is the exception - use Serena for renaming because it updates all references atomically
 
 **Editing whole methods/classes:**
-- ❌ DON'T: Use `replace_symbol_body`, `insert_after_symbol`, `insert_before_symbol`
-- ✅ DO: Use `Edit` tool for entire method bodies (so user can see the diff)
+- ❌ DON'T: Use `replace_symbol_body`, `insert_after_symbol`, or `insert_before_symbol` — these bypass the diff view, so the user cannot see what changed
+- ✅ DO: Use `Edit` tool for all code edits, including entire method bodies (produces a visible diff)
 
 **Finding code when you don't know exact names:**
 - ❌ DON'T: `Grep` for keywords as first step
