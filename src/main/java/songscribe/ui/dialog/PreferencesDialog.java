@@ -35,6 +35,7 @@ import songscribe.prefs.PrefsKey;
 import songscribe.ui.component.TickSlider;
 import songscribe.ui.Appearance;
 import songscribe.ui.AppearanceManager;
+import songscribe.midi.MidiSequenceBuilder;
 import songscribe.ui.OptionDialogs;
 import songscribe.ui.layout.PageModel;
 import songscribe.ui.playback.MidiController;
@@ -660,7 +661,7 @@ public class PreferencesDialog extends BaseDialog {
                 }
 
                 try {
-                    var sequence = new Sequence(Sequence.PPQ, PlaybackController.PPQ, 0);
+                    var sequence = new Sequence(Sequence.PPQ, MidiSequenceBuilder.PPQ, 0);
                     var track = sequence.createTrack();
                     var selectedIndex = instrumentList.getSelectedIndex();
                     var program = selectedIndex >= 0 ? instrumentPrograms[selectedIndex] : 0;
@@ -695,7 +696,7 @@ public class PreferencesDialog extends BaseDialog {
                         );
                         track.add(new MidiEvent(down, ticks));
 
-                        ticks += PlaybackController.PPQ / 2;
+                        ticks += MidiSequenceBuilder.PPQ / 2;
                         var up = new ShortMessage();
                         up.setMessage(
                             ShortMessage.NOTE_OFF,

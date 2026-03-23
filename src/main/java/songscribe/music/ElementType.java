@@ -20,7 +20,7 @@
 
 package songscribe.music;
 
-import static songscribe.ui.playback.PlaybackController.PPQ;
+import static songscribe.midi.MidiSequenceBuilder.PPQ;
 
 import module java.desktop;
 

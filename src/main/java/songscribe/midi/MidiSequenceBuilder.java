@@ -36,7 +36,9 @@ import songscribe.ui.playback.MidiMetaMessageTypes;
  */
 public class MidiSequenceBuilder {
 
-    private static final int PPQ = 96;
+    // The number of pulses per quarter note (ticks per beat), used to calculate the duration of notes
+    // when playing back the score or generating a MIDI file.
+    public static final int PPQ = 96;
 
     private final Composition composition;
     private final PlaybackSettings settings;
@@ -63,18 +65,17 @@ public class MidiSequenceBuilder {
     }
 
     /**
-     * Builds a MIDI sequence for a selection within a single line.
+     * Builds a MIDI sequence starting from a specific note and continuing to the end
+     * of the composition.
      *
-     * @param lineIndex The line containing the selection
-     * @param startNote The first note index in the selection
-     * @param endNote The last note index in the selection
-     * @return The MIDI sequence for the selection
+     * @param lineIndex The line containing the starting note
+     * @param startNote The index of the first note to include
+     * @return The MIDI sequence from startNote to the end of the composition
      * @throws InvalidMidiDataException if MIDI data is invalid
      */
-    public Sequence buildSelectionSequence(int lineIndex, int startNote, int endNote)
-        throws InvalidMidiDataException {
+    public Sequence buildFromNoteToEnd(int lineIndex, int startNote) throws InvalidMidiDataException {
         var startTempo = composition.getTempoAt(lineIndex, startNote);
-        return buildSequence(lineIndex, startNote, lineIndex, endNote, startTempo);
+        return buildSequence(lineIndex, startNote, -1, -1, startTempo);
     }
 
     /**
@@ -109,22 +110,24 @@ public class MidiSequenceBuilder {
         var currentTempo = initialTempo;
         var lines = composition.getLines();
 
-        // If repeats are disabled or this is a selection, use simple linear processing
-        if (!settings.playWithRepeats() || (startNote > 0 || endNote >= 0)) {
+        // If repeats are disabled or we have a hard end boundary, use simple linear processing
+        if (!settings.playWithRepeats() || endNote >= 0) {
             for (var i = startLine; i < lines.size(); i++) {
                 var line = lines.get(i);
 
-                // For single-line selections (endLine == startLine), use range-aware processing
-                if (i == startLine && i == endLine && (startNote > 0 || endNote >= 0)) {
-                    var result = line.addToTrack(track, i, ticks, currentTempo, settings, startNote, endNote);
-                    ticks = result.getFirst();
-                    currentTempo = result.getSecond();
+                var lineStart = (i == startLine && startNote > 0) ? startNote : 0;
+                var lineEnd = (i == endLine && endNote >= 0) ? endNote : line.elementCount() - 1;
+
+                kotlin.Pair<Integer, Tempo> result;
+
+                if (lineStart > 0 || lineEnd < line.elementCount() - 1) {
+                    result = line.addToTrack(track, i, ticks, currentTempo, settings, lineStart, lineEnd);
                 } else {
-                    // Full line: delegate to Line to add its notes
-                    var result = line.addToTrack(track, i, ticks, currentTempo, settings);
-                    ticks = result.getFirst();
-                    currentTempo = result.getSecond();
+                    result = line.addToTrack(track, i, ticks, currentTempo, settings);
                 }
+
+                ticks = result.getFirst();
+                currentTempo = result.getSecond();
 
                 if (i == endLine) {
                     break;
@@ -132,7 +135,7 @@ public class MidiSequenceBuilder {
             }
         } else {
             // Handle repeats
-            var result = buildSequenceWithRepeats(track, startLine, endLine, initialTempo);
+            var result = buildSequenceWithRepeats(track, startLine, startNote, endLine, initialTempo);
             ticks = result.getFirst();
             currentTempo = result.getSecond();
         }
@@ -152,6 +155,7 @@ public class MidiSequenceBuilder {
      *
      * @param track The MIDI track to add to
      * @param startLine The starting line index
+     * @param startNote The index of the first note to include on the start line
      * @param endLine The ending line index (-1 for all remaining lines)
      * @param initialTempo The tempo at the start of the sequence
      * @return Pair of (ending tick position, ending tempo)
@@ -160,6 +164,7 @@ public class MidiSequenceBuilder {
     private kotlin.Pair<Integer, Tempo> buildSequenceWithRepeats(
         Track track,
         int startLine,
+        int startNote,
         int endLine,
         Tempo initialTempo
     ) throws InvalidMidiDataException {
@@ -167,13 +172,14 @@ public class MidiSequenceBuilder {
         var currentTempo = initialTempo;
         var lines = composition.getLines();
         var repeating = false;
+        var glissandoHelper = new GlissandoMidiHelper();
 
         var lineIndex = startLine;
         while (lineIndex < lines.size()) {
             var line = lines.get(lineIndex);
             var noteCount = line.elementCount();
 
-            for (var noteIndex = 0; noteIndex < noteCount; noteIndex++) {
+            for (var noteIndex = (lineIndex == startLine ? startNote : 0); noteIndex < noteCount; noteIndex++) {
                 var note = line.getElement(noteIndex);
                 var noteType = note.getType();
 
@@ -209,7 +215,7 @@ public class MidiSequenceBuilder {
                             }
                         }
 
-                        // If we didn't find a repeat start, start from the beginning
+                        // If we didn't find a repeat start, begin from the start of the composition
                         if (searchLineIndex < 0) {
                             lineIndex = 0;
                             noteIndex = -1; // Will be incremented to 0
@@ -243,8 +249,12 @@ public class MidiSequenceBuilder {
                     continue;
                 }
 
-                // Add the note to the track (one note at a time)
-                var result = line.addToTrack(track, lineIndex, ticks, currentTempo, settings, noteIndex, noteIndex);
+                // Add the note to the track (one note at a time), sharing the
+                // glissando helper so grace note state survives across calls.
+                var result = line.addToTrack(
+                    track, lineIndex, ticks, currentTempo, settings,
+                    noteIndex, noteIndex, glissandoHelper
+                );
                 ticks = result.getFirst();
                 currentTempo = result.getSecond();
             }
@@ -255,6 +265,9 @@ public class MidiSequenceBuilder {
 
             lineIndex++;
         }
+
+        // Flush any pending pitch bend/expression resets at the end
+        glissandoHelper.createPendingResets(track, ticks, 0);
 
         return new kotlin.Pair<>(ticks, currentTempo);
     }

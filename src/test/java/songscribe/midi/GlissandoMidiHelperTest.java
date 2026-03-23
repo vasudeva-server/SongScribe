@@ -314,15 +314,15 @@ class GlissandoMidiHelperTest extends UnitTest {
     class CalculateSlideTicks {
 
         @Test
-        void testRoundsCorrectly() {
-            // 100 * 1/3 = 33.33 -> rounds to 33
-            assertThat(calculateSlideTicks(100)).isEqualTo(33);
+        void testEvenDuration() {
+            // 100 * 0.5 = 50
+            assertThat(calculateSlideTicks(100)).isEqualTo(50);
         }
 
         @Test
         void testStandardDuration() {
-            // 120 * 1/3 = 40
-            assertThat(calculateSlideTicks(120)).isEqualTo(40);
+            // 120 * 0.5 = 60
+            assertThat(calculateSlideTicks(120)).isEqualTo(60);
         }
 
         @Test
@@ -343,8 +343,8 @@ class GlissandoMidiHelperTest extends UnitTest {
 
         @Test
         void testStandardDuration() {
-            // 120 - 40 = 80
-            assertThat(calculateSustainTicks(120)).isEqualTo(80);
+            // 120 - 60 = 60
+            assertThat(calculateSustainTicks(120)).isEqualTo(60);
         }
 
         @Test

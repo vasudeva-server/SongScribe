@@ -19,7 +19,7 @@
  */
 package songscribe.music;
 
-import songscribe.ui.playback.PlaybackController;
+import songscribe.midi.MidiSequenceBuilder;
 
 public class Tempo {
 
@@ -69,7 +69,7 @@ public class Tempo {
     }
 
     public int getRealTempo() {
-        return ((visibleTempo * tempoType.getNote().getDuration()) / PlaybackController.PPQ);
+        return ((visibleTempo * tempoType.getNote().getDuration()) / MidiSequenceBuilder.PPQ);
     }
 
     public boolean shouldShowTempo() {

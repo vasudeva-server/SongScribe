@@ -41,6 +41,8 @@ import songscribe.ui.layout.ScaleContext;
 import songscribe.ui.playback.MidiMetaMessageTypes;
 import songscribe.ui.playback.PlaybackController;
 
+import static songscribe.midi.MidiSequenceBuilder.PPQ;
+
 public class Line {
 
     private static final int[][] FLAT_SHARP_ORDINAL = new int[][]{
@@ -48,8 +50,6 @@ public class Line {
         new int[]{4, 1, 5, 2, 6, 3, 0},
     };
 
-    // MIDI constants for playback
-    private static final int PPQ = 96;
 
     private static final double GRACE_GLISSANDO_VELOCITY_RATIO = 0.85;
     private final IntervalSet<BeamInterval> beamings = new IntervalSet<>();
@@ -686,9 +686,48 @@ public class Line {
         int startElement,
         int endElement
     ) throws InvalidMidiDataException {
+        var glissandoHelper = new GlissandoMidiHelper();
+        var result = addToTrack(
+            track, lineIndex, startTicks, initialTempo, settings,
+            startElement, endElement, glissandoHelper
+        );
+
+        // Flush pending pitch bend/expression resets so the state
+        // is clean when the sequence loops or the next line starts.
+        glissandoHelper.createPendingResets(track, result.getFirst(), 0);
+
+        return result;
+    }
+
+    /**
+     * Adds a range of this line's elements to a MIDI track using an externally
+     * managed {@link GlissandoMidiHelper}. This overload is used by the repeat
+     * path, which processes notes one at a time but needs glissando state
+     * (e.g. pending grace pitch) to survive across calls. The caller is
+     * responsible for flushing pending resets when done.
+     *
+     * @param track The MIDI track to add to
+     * @param lineIndex This line's index in the composition (for colorize messages)
+     * @param startTicks Starting tick position
+     * @param initialTempo Tempo at the start of this range
+     * @param settings Playback settings
+     * @param startElement Index of the first element to add
+     * @param endElement Index of the last element to add
+     * @param glissandoHelper Shared glissando state across calls
+     * @return Pair of (ending tick position, ending tempo)
+     */
+    public Pair<Integer, Tempo> addToTrack(
+        Track track,
+        int lineIndex,
+        int startTicks,
+        Tempo initialTempo,
+        PlaybackSettings settings,
+        int startElement,
+        int endElement,
+        GlissandoMidiHelper glissandoHelper
+    ) throws InvalidMidiDataException {
         var ticks = startTicks;
         var currentTempo = initialTempo;
-        var glissandoHelper = new GlissandoMidiHelper();
 
         var actualEnd = Math.min(endElement, elementCount() - 1);
 
@@ -707,10 +746,6 @@ public class Line {
             // Add note on/off messages and update ticks
             ticks = addNoteMessages(track, i, ticks, currentTempo, settings, glissandoHelper);
         }
-
-        // Flush any pending pitch bend/expression resets so the state
-        // is clean when the sequence loops or the next line starts.
-        glissandoHelper.createPendingResets(track, ticks, 0);
 
         return new Pair<>(ticks, currentTempo);
     }

@@ -20,6 +20,8 @@
 
 package songscribe.ui.playback;
 
+import java.util.Objects;
+
 import module java.desktop;
 
 import org.jspecify.annotations.Nullable;
@@ -46,10 +48,6 @@ public final class PlaybackController {
         PAUSED,
         STOPPED,
     }
-
-    // The number of pulses per quarter note (ticks per beat), used to calculate the duration of notes
-    // when playing back the score or generating a MIDI file.
-    public static final int PPQ = 96;
 
     // The MIDI velocity values for normal and accented notes
     public static final int NOTE_VELOCITY = 100;
@@ -158,13 +156,7 @@ public final class PlaybackController {
     }
 
     public static void playbackDidStop() {
-        state = PlaybackState.STOPPED;
-        activeSelection = null;
-        pausedTickPosition = 0;
-        stopSequencer();
-        clearPlayingHighlight();
-
-        MessageCenter.post(new PlaybackStateDidChangeNotification(state));
+        stop();
     }
 
     public static void rewindToBeginning() {
@@ -175,8 +167,7 @@ public final class PlaybackController {
                 MidiController.sequencer.setTickPosition(0);
             }
         } else if (state == PlaybackState.PAUSED) {
-            pausedTickPosition = 0;
-            updatePlayingNote(0, 0);
+            playbackDidStop();
         }
     }
 
@@ -226,21 +217,17 @@ public final class PlaybackController {
         return new MidiSequenceBuilder(composition, getPlaybackSettings()).buildFullSequence();
     }
 
-    public static javax.sound.midi.Sequence buildSelectionSequence(
-        Composition composition,
-        int lineIndex,
-        int startNote,
-        int endNote
-    ) throws InvalidMidiDataException {
-        return new MidiSequenceBuilder(composition, getPlaybackSettings())
-            .buildSelectionSequence(lineIndex, startNote, endNote);
-    }
-
     public static void togglePlayPause() {
         if (state == PlaybackState.PLAYING) {
             playbackDidPause();
         } else if (state == PlaybackState.PAUSED) {
-            resume();
+            var currentSelection = registeredScore != null ? registeredScore.getSelection() : null;
+
+            if (!Objects.equals(currentSelection, activeSelection)) {
+                play(currentSelection);
+            } else {
+                resume();
+            }
         } else {
             play(null);
         }
@@ -320,7 +307,13 @@ public final class PlaybackController {
     }
 
     public static void stop() {
-        REWIND_ACTION.perform(null);
+        state = PlaybackState.STOPPED;
+        activeSelection = null;
+        pausedTickPosition = 0;
+        stopSequencer();
+        clearPlayingHighlight();
+
+        MessageCenter.post(new PlaybackStateDidChangeNotification(state));
     }
 
     public static void applyVolumeFromPrefs() {
@@ -395,12 +388,10 @@ public final class PlaybackController {
             return buildSequence(composition);
         }
 
-        return buildSelectionSequence(
-            composition,
-            composition.getLines().indexOf(selection.line()),
-            selection.begin(),
-            selection.end()
-        );
+        var lineIndex = composition.getLines().indexOf(selection.line());
+
+        return new MidiSequenceBuilder(composition, getPlaybackSettings())
+            .buildFromNoteToEnd(lineIndex, selection.begin());
     }
 
     private static void setSequenceToPlayFromSelection(

@@ -57,7 +57,7 @@ public final class GlissandoMidiHelper {
     public static final double SLIDE_OUT_CURVE_EXPONENT = 2.0;
 
     /** Fixed slide duration for grace note glissandos (16th note at 96 PPQ). */
-    public static final int GRACE_SLIDE_TICKS = 12;
+    public static final int GRACE_SLIDE_TICKS = 16;
 
     /** Starting expression/velocity ratio for grace note slide-in glissandos. */
     public static final double GRACE_SLIDE_IN_START_RATIO = 0.25;
