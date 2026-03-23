@@ -21,6 +21,7 @@ package songscribe.ui.dialog;
 
 import module java.desktop;
 
+import java.awt.event.MouseEvent;
 import java.util.ArrayList;
 import java.util.Map;
 
@@ -315,6 +316,13 @@ public class PreferencesDialog extends BaseDialog {
             panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
             var iconLabel = new JLabel(icon);
             iconLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+            iconLabel.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+            iconLabel.addMouseListener(new MouseAdapter() {
+                @Override
+                public void mousePressed(MouseEvent e) {
+                    radio.doClick();
+                }
+            });
             radio.setAlignmentX(Component.CENTER_ALIGNMENT);
             panel.add(iconLabel);
             panel.add(Box.createVerticalStrut(APPEARANCE_ICON_RADIO_GAP));
