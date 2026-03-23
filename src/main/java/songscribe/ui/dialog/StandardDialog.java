@@ -43,8 +43,6 @@ public abstract class StandardDialog extends BaseDialog {
     protected StandardDialog(String title, boolean isModal) {
         super(title, isModal);
 
-        var score = getScore();
-
         okButton = new JButton(Strings.get(Strings.DIALOG_BUTTON_OK));
         okButton.addActionListener(_ -> {
             if (!isValidData()) {
@@ -52,11 +50,7 @@ public abstract class StandardDialog extends BaseDialog {
             }
 
             setData();
-
-            if (score != null) {
-                score.repaint();
-            }
-
+            repaintScore();
             setVisible(false);
         });
 
@@ -67,10 +61,7 @@ public abstract class StandardDialog extends BaseDialog {
             }
 
             setData();
-
-            if (score != null) {
-                score.repaint();
-            }
+            repaintScore();
         });
 
         cancelButton = new JButton(Strings.get(Strings.DIALOG_BUTTON_CANCEL));
@@ -85,6 +76,14 @@ public abstract class StandardDialog extends BaseDialog {
     @Override
     protected JButton getDefaultButton() {
         return okButton;
+    }
+
+    private void repaintScore() {
+        var score = getScore();
+
+        if (score != null) {
+            score.repaint();
+        }
     }
 
     /**

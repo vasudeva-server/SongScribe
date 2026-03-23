@@ -171,8 +171,7 @@ public class CompositionSettingsDialog extends StandardDialog {
             section.addSeparator();
 
             section.add(createTakePanel());
-            UIUtils.setCanGrow(section, true, false);
-            UIUtils.setCanShrink(section, true, false);
+            UIUtils.setFlexibleWidth(section);
             return section;
         }
 
@@ -245,8 +244,7 @@ public class CompositionSettingsDialog extends StandardDialog {
             );
 
             // Don't let the section grow vertically
-            UIUtils.setCanGrow(section, true, false);
-            UIUtils.setCanShrink(section, true, false);
+            UIUtils.setFlexibleWidth(section);
             return section;
         }
 
@@ -299,8 +297,7 @@ public class CompositionSettingsDialog extends StandardDialog {
             );
 
             // Don't let the section grow vertically
-            UIUtils.setCanGrow(section, true, false);
-            UIUtils.setCanShrink(section, true, false);
+            UIUtils.setFlexibleWidth(section);
             return section;
         }
 
@@ -649,8 +646,7 @@ public class CompositionSettingsDialog extends StandardDialog {
 
             // Don't let the section grow vertically
             section.add(contents);
-            UIUtils.setCanGrow(section, true, false);
-            UIUtils.setCanShrink(section, true, false);
+            UIUtils.setFlexibleWidth(section);
             return section;
         }
 
@@ -663,8 +659,7 @@ public class CompositionSettingsDialog extends StandardDialog {
             section.add(keyCombo);
 
             // Don't let the section grow vertically
-            UIUtils.setCanGrow(section, true, false);
-            UIUtils.setCanShrink(section, true, false);
+            UIUtils.setFlexibleWidth(section);
             return section;
         }
 
@@ -686,8 +681,7 @@ public class CompositionSettingsDialog extends StandardDialog {
             section.add(row);
 
             // Don't let the section grow vertically
-            UIUtils.setCanGrow(section, true, false);
-            UIUtils.setCanShrink(section, true, false);
+            UIUtils.setFlexibleWidth(section);
             return section;
         }
 
@@ -1028,8 +1022,7 @@ public class CompositionSettingsDialog extends StandardDialog {
             contents.add(Box.createGlue(), gbc);
 
             container.add(contents);
-            UIUtils.setCanGrow(container, true, false);
-            UIUtils.setCanShrink(container, true, false);
+            UIUtils.setFlexibleWidth(container);
             return container;
         }
 

@@ -73,7 +73,7 @@ public final class UIUtils {
         return result;
     }
 
-    public static void setToolTipText(JComponent component, Action action) {
+    public static void setToolTipText(JComponent component, @Nullable Action action) {
         if (action == null) {
             component.setToolTipText(null);
             return;
@@ -95,10 +95,6 @@ public final class UIUtils {
         }
 
         component.setToolTipText(tip);
-    }
-
-    public static void setToolTipText(JComponent component, UIAction action) {
-        setToolTipText(component, (Action) action);
     }
 
     //
@@ -129,7 +125,7 @@ public final class UIUtils {
         button.setName(action.getActionCommand());
     }
 
-    private static void setIcon(AbstractButton button, UIAction action) {
+    private static void setIcon(AbstractButton button, @Nullable UIAction action) {
         if (action == null) {
             button.setIcon(null);
             button.setText(null);
@@ -252,6 +248,16 @@ public final class UIUtils {
     }
 
     /**
+     * Convenience: allows the component to grow and shrink horizontally
+     * but locks its height to the preferred size. This should be called
+     * AFTER all components have been added.
+     */
+    public static void setFlexibleWidth(JComponent component) {
+        setCanGrow(component, true, false);
+        setCanShrink(component, true, false);
+    }
+
+    /**
      * This should be called AFTER all components have been added.
      */
     public static void setCanShrink(JComponent component, boolean horizontal, boolean vertical) {
@@ -355,7 +361,7 @@ public final class UIUtils {
 
         inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0), actionKey);
         inputMap.put(KeyStroke.getKeyStroke(
-            KeyEvent.VK_W, Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx()
+            KeyEvent.VK_W, MENU_SHORTCUT_MASK
         ), actionKey);
 
         dialog.getRootPane().getActionMap().put(actionKey, dispatchClosing);

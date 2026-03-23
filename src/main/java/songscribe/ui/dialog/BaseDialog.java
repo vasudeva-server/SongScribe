@@ -60,12 +60,8 @@ public abstract class BaseDialog {
     protected final JPanel contentPanel = new JPanel(new BorderLayout());
     private final List<Tab> tabs = new ArrayList<>();
     private @Nullable JTabbedPane tabbedPane;
-
-    protected List<Tab> getTabs() {
-        return tabs;
-    }
-    private @Nullable Point savedLocation = null;
-    private @Nullable Component savedFocusOwner = null;
+    private @Nullable Point savedLocation;
+    private @Nullable Component savedFocusOwner;
     private JDialog dialog;
 
     protected BaseDialog(String title) {
@@ -79,12 +75,30 @@ public abstract class BaseDialog {
         this.isModal = isModal;
     }
 
+    protected List<Tab> getTabs() {
+        return tabs;
+    }
+
     protected JTabbedPane createTabbedPane() {
         tabbedPane = new JTabbedPane();
+        var pane = tabbedPane;
 
         // Add a little padding at the top, above the tabs
-        tabbedPane.setBorder(BorderFactory.createEmptyBorder(7, 0, 0, 0));
-        return tabbedPane;
+        pane.setBorder(BorderFactory.createEmptyBorder(7, 0, 0, 0));
+
+        pane.addChangeListener(_ -> {
+            var selectedComponent = pane.getSelectedComponent();
+
+            for (var tab : tabs) {
+                if (tab == selectedComponent) {
+                    tab.tabWillShow();
+                } else {
+                    tab.tabWillHide();
+                }
+            }
+        });
+
+        return pane;
     }
 
     /**
@@ -190,8 +204,18 @@ public abstract class BaseDialog {
                 return;
             }
 
-            for (var tab : tabs) {
-                tab.tabWillShow();
+            if (tabbedPane != null) {
+                var selectedTab = tabbedPane.getSelectedComponent();
+
+                for (var tab : tabs) {
+                    if (tab == selectedTab) {
+                        tab.tabWillShow();
+                    }
+                }
+            } else {
+                for (var tab : tabs) {
+                    tab.tabWillShow();
+                }
             }
 
             dialog.pack();
@@ -213,7 +237,7 @@ public abstract class BaseDialog {
                 tab.tabWillHide();
             }
 
-            savedLocation = new Point(dialog.getLocation());
+            savedLocation = dialog.getLocation();
             dialog.dispose();
         }
     }
@@ -304,7 +328,6 @@ public abstract class BaseDialog {
             constraints.fill = GridBagConstraints.HORIZONTAL;
             constraints.weightx = 1.0;
             constraints.weighty = 0;
-
         }
 
         protected final void build() {

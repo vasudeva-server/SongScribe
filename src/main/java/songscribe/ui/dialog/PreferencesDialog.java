@@ -54,7 +54,6 @@ public class PreferencesDialog extends BaseDialog {
     public PreferencesDialog() {
         super(Strings.get(Strings.DIALOG_PREFERENCES_TITLE), false);
 
-        var instrumentsTabIndex = 2;
         var tabbedPane = createTabbedPane();
         addTab(
             tabbedPane,
@@ -66,10 +65,12 @@ public class PreferencesDialog extends BaseDialog {
             Strings.get(Strings.LABEL_PREFS_TAB_PLAY),
             new PlayTab()
         );
+
+        var instrumentsTab = new InstrumentsTab(tabbedPane);
         addTab(
             tabbedPane,
             Strings.get(Strings.LABEL_PREFS_TAB_INSTRUMENTS),
-            new InstrumentsTab(tabbedPane, instrumentsTabIndex)
+            instrumentsTab
         );
 
         contentPanel.add(BorderLayout.CENTER, tabbedPane);
@@ -131,6 +132,14 @@ public class PreferencesDialog extends BaseDialog {
     public static int[] getInstrumentPrograms() {
         ensureInstrumentsLoaded();
         return instrumentPrograms;
+    }
+
+    private void syncPlaybackPrefs() {
+        var score = getScore();
+
+        if (score != null) {
+            score.syncPlaybackPrefs();
+        }
     }
 
     // -----------------------------------------------------------------------
@@ -418,14 +427,6 @@ public class PreferencesDialog extends BaseDialog {
             });
         }
 
-        private void syncPlaybackPrefs() {
-            var score = getScore();
-
-            if (score != null) {
-                score.syncPlaybackPrefs();
-            }
-        }
-
         private JPanel createFeedbackSection() {
             var section = new TitledSection(
                 Strings.get(Strings.LABEL_PREFS_SECTION_FEEDBACK)
@@ -490,11 +491,11 @@ public class PreferencesDialog extends BaseDialog {
         private final ScaleAction scaleAction = new ScaleAction();
         private final JButton scaleButton = new JButton(scaleAction);
 
-        InstrumentsTab(JTabbedPane tabbedPane, int tabIndex) {
+        InstrumentsTab(JTabbedPane tabbedPane) {
             build();
 
             tabbedPane.addChangeListener(_ -> {
-                if (tabbedPane.getSelectedIndex() == tabIndex) {
+                if (tabbedPane.getSelectedComponent() == this) {
                     PlaybackController.stop();
                     instrumentList.requestFocusInWindow();
                 } else {
@@ -572,14 +573,6 @@ public class PreferencesDialog extends BaseDialog {
                     scaleAction.play();
                 }
             });
-        }
-
-        private void syncPlaybackPrefs() {
-            var score = getScore();
-
-            if (score != null) {
-                score.syncPlaybackPrefs();
-            }
         }
 
         private class ScaleAction extends AbstractAction {
