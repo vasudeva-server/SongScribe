@@ -24,19 +24,19 @@ import module java.desktop;
 import songscribe.Strings;
 import songscribe.util.UIUtils;
 
-public class StopAction extends SequencerAction {
+public class RewindAction extends SequencerAction {
 
-    public static StopAction createAction() {
-        return new StopAction();
+    public static RewindAction createAction() {
+        return new RewindAction();
     }
 
-    private StopAction() {
+    private RewindAction() {
         super(
-            Strings.get(Strings.ACTION_PLAY_STOP),
-            "@\uF447",
+            Strings.get(Strings.ACTION_PLAY_REWIND),
+            "@\uF448",
             20,
-            "stop",
-            Strings.get(Strings.ACTION_PLAY_STOP_TOOLTIP),
+            "rewind",
+            Strings.get(Strings.ACTION_PLAY_REWIND_TOOLTIP),
             KeyEvent.VK_PERIOD,
             UIUtils.MENU_SHORTCUT_MASK,
             Flag.DISABLE_WHEN_EDITING_TEXT,
@@ -47,6 +47,6 @@ public class StopAction extends SequencerAction {
 
     @Override
     public void actionPerformed(ActionEvent e) {
-        PlaybackController.playbackDidStop();
+        PlaybackController.rewindToBeginning();
     }
 }

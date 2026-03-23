@@ -27,7 +27,7 @@ import songscribe.ui.playback.PlaybackController;
 public class PlaybackToolbar extends Toolbar {
 
     public PlaybackToolbar() {
-        add(new ToolbarButton(PlaybackController.STOP_ACTION));
+        add(new ToolbarButton(PlaybackController.REWIND_ACTION));
         add(new ToolbarButton(PlaybackController.PLAY_PAUSE_ACTION));
         add(
             new ToolbarToggleButton(PlaybackController.PLAY_WITH_REPEATS_ACTION)

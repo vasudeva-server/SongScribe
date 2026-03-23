@@ -75,7 +75,7 @@ public final class PlaybackController {
     public static final PlayPauseAction PLAY_PAUSE_ACTION =
         PlayPauseAction.createAction();
 
-    public static final StopAction STOP_ACTION = StopAction.createAction();
+    public static final RewindAction REWIND_ACTION = RewindAction.createAction();
 
     public static final PlayWithRepeatsAction PLAY_WITH_REPEATS_ACTION =
         PlayWithRepeatsAction.createAction();
@@ -165,6 +165,19 @@ public final class PlaybackController {
         clearPlayingHighlight();
 
         MessageCenter.post(new PlaybackStateDidChangeNotification(state));
+    }
+
+    public static void rewindToBeginning() {
+        if (state == PlaybackState.PLAYING) {
+            clearPlayingHighlight();
+
+            if (MidiController.sequencer != null) {
+                MidiController.sequencer.setTickPosition(0);
+            }
+        } else if (state == PlaybackState.PAUSED) {
+            pausedTickPosition = 0;
+            updatePlayingNote(0, 0);
+        }
     }
 
     private static void clearPlayingHighlight() {
@@ -307,7 +320,7 @@ public final class PlaybackController {
     }
 
     public static void stop() {
-        STOP_ACTION.perform(null);
+        REWIND_ACTION.perform(null);
     }
 
     public static void applyVolumeFromPrefs() {
