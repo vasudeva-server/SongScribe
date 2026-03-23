@@ -38,7 +38,6 @@ public class ExportPDFDialog extends StandardDialog {
         paperSizePanel = new PaperSizeStep(paperSizePageLayoutDataPrivate);
         paperSizePanel.setMirroredCheckInvisible();
         contentPanel.add(BorderLayout.CENTER, paperSizePanel);
-        buttonPanel.remove(applyButton);
         contentPanel.add(BorderLayout.SOUTH, buttonPanel);
     }
 

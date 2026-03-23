@@ -59,7 +59,6 @@ public class HelpDialog
 
         contentPanel.add(splitPane);
 
-        buttonPanel.remove(applyButton);
         buttonPanel.remove(cancelButton);
         contentPanel.add(BorderLayout.SOUTH, buttonPanel);
     }

@@ -285,7 +285,6 @@ public class AnnotationDialog extends StandardDialog {
         });
 
         south.add(okButton);
-        south.add(applyButton);
         south.add(removeButton);
         south.add(cancelButton);
         contentPanel.add(BorderLayout.SOUTH, south);

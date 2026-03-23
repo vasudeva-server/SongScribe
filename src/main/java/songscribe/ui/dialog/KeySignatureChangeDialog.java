@@ -65,7 +65,6 @@ public class KeySignatureChangeDialog extends StandardDialog {
 
         var south = new JPanel(new FlowLayout(FlowLayout.RIGHT, 13, 0));
         south.add(okButton);
-        south.add(applyButton);
         south.add(cancelButton);
         contentPanel.add(BorderLayout.SOUTH, south);
     }

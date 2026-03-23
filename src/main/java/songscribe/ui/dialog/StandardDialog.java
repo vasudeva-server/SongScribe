@@ -24,8 +24,8 @@ import module java.desktop;
 import songscribe.Strings;
 
 /**
- * A dialog with OK, Apply, and Cancel buttons that commits changes
- * only when the user clicks OK or Apply.
+ * A dialog with OK and Cancel buttons that commits changes
+ * only when the user clicks OK.
  */
 public abstract class StandardDialog extends BaseDialog {
 
@@ -33,7 +33,6 @@ public abstract class StandardDialog extends BaseDialog {
         new FlowLayout(FlowLayout.RIGHT, 9, 0)
     );
     protected final JButton okButton;
-    protected final JButton applyButton;
     protected final JButton cancelButton;
 
     protected StandardDialog(String title) {
@@ -54,22 +53,11 @@ public abstract class StandardDialog extends BaseDialog {
             setVisible(false);
         });
 
-        applyButton = new JButton(Strings.get(Strings.DIALOG_BUTTON_APPLY));
-        applyButton.addActionListener(_ -> {
-            if (!isValidData()) {
-                return;
-            }
-
-            setData();
-            repaintScore();
-        });
-
         cancelButton = new JButton(Strings.get(Strings.DIALOG_BUTTON_CANCEL));
         cancelButton.addActionListener(_ -> setVisible(false));
 
         buttonPanel.setBorder(BorderFactory.createEmptyBorder(18, 0, 18, 6));
         buttonPanel.add(cancelButton);
-        buttonPanel.add(applyButton);
         buttonPanel.add(okButton);
     }
 

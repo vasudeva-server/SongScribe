@@ -98,7 +98,6 @@ public class TempoChangeDialog extends StandardDialog {
             score.getComposition().setModified(true);
         });
         south.add(okButton);
-        south.add(applyButton);
         south.add(removeButton);
         south.add(cancelButton);
         contentPanel.add(BorderLayout.SOUTH, south);
@@ -148,10 +147,8 @@ public class TempoChangeDialog extends StandardDialog {
 
         if (addingTempoChange) {
             okButton.setText(Strings.get(Strings.LABEL_BUTTON_ADD));
-            applyButton.setText(Strings.get(Strings.LABEL_BUTTON_APPLY_ADDITION));
         } else {
             okButton.setText(Strings.get(Strings.LABEL_BUTTON_MODIFY));
-            applyButton.setText(Strings.get(Strings.LABEL_BUTTON_APPLY_MODIFICATION));
         }
 
         return true;

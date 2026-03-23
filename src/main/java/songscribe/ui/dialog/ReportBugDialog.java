@@ -40,7 +40,6 @@ public class ReportBugDialog extends StandardDialog {
         var logFile = new File(MainFrame.SONGSCRIBE_DIR, "log");
         var area = getjEditorPane(logFile);
         contentPanel.add(area);
-        buttonPanel.remove(applyButton);
         buttonPanel.remove(cancelButton);
 
         if (DesktopUtils.isDesktopSupported()) {
