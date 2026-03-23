@@ -37,7 +37,6 @@ import songscribe.ui.layout.LayoutConstants;
 import songscribe.error.RuntimeError;
 import songscribe.util.UIUtils;
 
-@SuppressWarnings("ALL")
 public enum ElementType {
     // Notes
     SEMIBREVE("Whole note", KeyEvent.VK_6, 0, PPQ * 4, 0),
