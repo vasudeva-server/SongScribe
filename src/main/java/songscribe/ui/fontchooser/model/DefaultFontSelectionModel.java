@@ -103,7 +103,7 @@ public class DefaultFontSelectionModel implements FontSelectionModel {
      */
     @Override
     public void setSelectedFont(Font font) {
-        if ((font != null) && !selectedFont.equals(font)) {
+        if (!selectedFont.equals(font)) {
             selectedFont = font;
             fireStateChanged();
         }

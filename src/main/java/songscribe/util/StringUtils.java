@@ -68,7 +68,7 @@ public final class StringUtils {
     private StringUtils() {}
 
     public static String capitalizeSentence(String input) {
-        if ((input == null) || input.isEmpty()) {
+        if (input.isEmpty()) {
             return input;
         }
 
@@ -79,7 +79,7 @@ public final class StringUtils {
     }
 
     public static String toKebabCase(String input) {
-        if ((input == null) || input.isEmpty()) {
+        if (input.isEmpty()) {
             return input;
         }
 

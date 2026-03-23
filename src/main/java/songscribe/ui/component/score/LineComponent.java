@@ -558,7 +558,7 @@ public class LineComponent extends ScoreComponent
      */
     private boolean hasTempo() {
         // Check for initial tempo on first line (even if empty)
-        if (lineIndex == 0 && getComposition().getTempo() != null) {
+        if (lineIndex == 0) {
             return true;
         }
 
