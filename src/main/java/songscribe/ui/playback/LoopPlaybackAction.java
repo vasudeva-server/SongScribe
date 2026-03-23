@@ -24,6 +24,7 @@ import module java.desktop;
 import songscribe.Strings;
 import songscribe.message.MessageCenter;
 import songscribe.message.command.ToggleLoopPlaybackCommand;
+import songscribe.prefs.PrefsKey;
 import songscribe.ui.action.SelectableUIAction;
 
 public class LoopPlaybackAction extends SelectableUIAction {
@@ -39,6 +40,7 @@ public class LoopPlaybackAction extends SelectableUIAction {
             20,
             "loop-playback",
             Strings.get(Strings.ACTION_PLAY_LOOP_TOOLTIP),
+            PrefsKey.LOOP_PLAYBACK,
             Flag.DISABLE_WHEN_PLAYING,
             Flag.DISABLE_WHEN_EDITING_TEXT,
             Flag.DISABLE_IN_ADJUSTMENT_MODE,

@@ -62,6 +62,7 @@ public final class PlaybackController {
 
     private static PlaybackState state = PlaybackState.STOPPED;
     private static int previousPlayingLine = -1;
+    private static long pausedTickPosition = 0;
 
     private static int instrument = 0;
     private static int tempoChangePercent = 100;
@@ -151,6 +152,7 @@ public final class PlaybackController {
 
     public static void playbackDidPause() {
         state = PlaybackState.PAUSED;
+        pausedTickPosition = MidiController.sequencer != null ? MidiController.sequencer.getTickPosition() : 0;
         stopSequencer();
         MessageCenter.post(new PlaybackStateDidChangeNotification(state));
     }
@@ -158,6 +160,7 @@ public final class PlaybackController {
     public static void playbackDidStop() {
         state = PlaybackState.STOPPED;
         activeSelection = null;
+        pausedTickPosition = 0;
         stopSequencer();
         clearPlayingHighlight();
 
@@ -233,14 +236,35 @@ public final class PlaybackController {
     private static void resume() {
         var sequencer = MidiController.sequencer;
 
-        if (sequencer == null) {
+        if (sequencer == null || registeredScore == null) {
             return;
         }
 
-        MidiController.reinitChannels();
-        applyVolumeFromPrefs();
-        playbackDidStart();
-        sequencer.start();
+        try {
+            var sequence = buildSequenceForSelection(
+                registeredScore.getComposition(), activeSelection);
+            sequencer.setSequence(sequence);
+
+            if (pausedTickPosition >= sequencer.getTickLength()) {
+                pausedTickPosition = 0;
+                OptionDialogs.showWarningMessage(
+                    null,
+                    Strings.get(Strings.DIALOG_TITLE_RESUME_ERROR),
+                    Strings.get(Strings.ERROR_PLAYBACK_RESUME_PAST_END)
+                );
+                return;
+            }
+
+            sequencer.setTickPosition(pausedTickPosition);
+            MidiController.reinitChannels();
+            MidiController.setPlaybackInstrument(instrument);
+            applyVolumeFromPrefs();
+            playbackDidStart();
+            sequencer.start();
+        } catch (InvalidMidiDataException e) {
+            LOG.error("Failed to rebuild sequence on resume", e);
+            playbackDidStop();
+        }
     }
 
     public static void play(@Nullable ElementSelection selection) {

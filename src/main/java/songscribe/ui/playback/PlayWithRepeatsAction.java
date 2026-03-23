@@ -24,6 +24,7 @@ import module java.desktop;
 import songscribe.Strings;
 import songscribe.message.MessageCenter;
 import songscribe.message.command.TogglePlayWithRepeatsCommand;
+import songscribe.prefs.PrefsKey;
 import songscribe.ui.action.SelectableUIAction;
 
 public class PlayWithRepeatsAction extends SelectableUIAction {
@@ -39,6 +40,7 @@ public class PlayWithRepeatsAction extends SelectableUIAction {
             20,
             "play-with-repeats",
             Strings.get(Strings.ACTION_PLAY_REPEATS_TOOLTIP),
+            PrefsKey.PLAY_WITH_REPEATS,
             Flag.DISABLE_WHEN_PLAYING,
             Flag.DISABLE_WHEN_EDITING_TEXT,
             Flag.DISABLE_IN_ADJUSTMENT_MODE,

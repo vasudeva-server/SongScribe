@@ -22,6 +22,9 @@ package songscribe.ui.action;
 
 import org.jspecify.annotations.Nullable;
 
+import songscribe.prefs.Prefs;
+import songscribe.prefs.PrefsKey;
+
 /**
  * Base class for actions that have a toggle selected state
  * (e.g. accidentals, note durations, rest mode).
@@ -54,7 +57,23 @@ public abstract class SelectableUIAction extends UIAction
         String tooltip,
         Flag... flags
     ) {
+        this(name, icon, size, actionCommand, tooltip, null, flags);
+    }
+
+    protected SelectableUIAction(
+        @Nullable String name,
+        @Nullable String icon,
+        int size,
+        String actionCommand,
+        String tooltip,
+        @Nullable PrefsKey prefsKey,
+        Flag... flags
+    ) {
         super(name, icon, size, actionCommand, tooltip, flags);
+
+        if (prefsKey != null) {
+            setSelected(Prefs.getInstance().getBoolean(prefsKey));
+        }
     }
 
     protected SelectableUIAction(
