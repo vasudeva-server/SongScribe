@@ -50,7 +50,7 @@ public class Line {
 
     // MIDI constants for playback
     private static final int PPQ = 96;
-    private static final int GRACE_QUAVER_DURATION = PPQ / 8;
+
     private static final double GRACE_GLISSANDO_VELOCITY_RATIO = 0.85;
     private final IntervalSet<BeamInterval> beamings = new IntervalSet<>();
     private final IntervalSet<TieInterval> ties = new IntervalSet<>();
@@ -778,18 +778,9 @@ public class Line {
         var trackTicks = ticks;
 
         if (type.isGraceNote()) {
-            var glissando = element.getGlissando();
-
-            if (glissando != null
-                && glissando.type == StaffElement.Glissando.Type.CONNECTED) {
-                // Grace note with connected glissando: zero duration,
-                // just store the pitch for the next note's slide-in
-                glissandoHelper.setPendingGracePitch(element.getPitch());
-            } else {
-                addNoteOn(track, trackTicks, element);
-                trackTicks += GRACE_QUAVER_DURATION;
-                addNoteOff(track, trackTicks, element);
-            }
+            // Grace notes always have a connected glissando: zero duration,
+            // just store the pitch for the next note's slide-in
+            glissandoHelper.setPendingGracePitch(element.getPitch());
         } else if (type.isNote() || type.isRest()) {
             var duration = getElementDurationWithTuplet(elementIndex, currentTempo);
 
