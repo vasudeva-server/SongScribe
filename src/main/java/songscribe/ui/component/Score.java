@@ -118,6 +118,10 @@ public final class Score
     // Callers should not cache these values; read at render time.
     public static final String PLAYING_NOTE_COLOR_KEY = "SongScribe.score.playingNote.color";
 
+    public static Color getPlayingNoteColor() {
+        return UIManager.getColor(PLAYING_NOTE_COLOR_KEY);
+    }
+
     public static Color getInsertionElementColor() {
         return UIManager.getColor("SongScribe.score.insertionElement.color");
     }

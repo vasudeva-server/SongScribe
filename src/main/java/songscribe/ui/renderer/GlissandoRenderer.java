@@ -361,7 +361,7 @@ public class GlissandoRenderer {
 
         // Playback highlighting takes priority
         if (ctx.isElementPlaying(noteIndex)) {
-            return UIManager.getColor(Score.PLAYING_NOTE_COLOR_KEY);
+            return Score.getPlayingNoteColor();
         }
 
         var selectionProvider = ctx.getSelectionProvider();

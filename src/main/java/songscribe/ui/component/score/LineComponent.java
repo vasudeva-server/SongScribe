@@ -279,13 +279,15 @@ public class LineComponent extends ScoreComponent
     }
 
     /**
-     * Sets the index of the currently playing note.
+     * Sets both playing indices atomically, triggering a single repaint.
      *
-     * @param playingNoteIndex Note index, or -1 if not playing
+     * @param noteIndex Note index, or -1 if not playing
+     * @param graceNoteIndex Grace note index, or -1 if none
      */
-    public void setPlayingNoteIndex(int playingNoteIndex) {
-        if (this.playingNoteIndex != playingNoteIndex) {
-            this.playingNoteIndex = playingNoteIndex;
+    public void setPlayingIndices(int noteIndex, int graceNoteIndex) {
+        if (playingNoteIndex != noteIndex || playingGraceNoteIndex != graceNoteIndex) {
+            playingNoteIndex = noteIndex;
+            playingGraceNoteIndex = graceNoteIndex;
             repaint();
         }
     }
@@ -295,18 +297,6 @@ public class LineComponent extends ScoreComponent
      */
     public int getPlayingNoteIndex() {
         return playingNoteIndex;
-    }
-
-    /**
-     * Sets the index of the grace note paired with the currently playing note.
-     *
-     * @param index Grace note index, or -1 if none
-     */
-    public void setPlayingGraceNoteIndex(int index) {
-        if (playingGraceNoteIndex != index) {
-            playingGraceNoteIndex = index;
-            repaint();
-        }
     }
 
     /**

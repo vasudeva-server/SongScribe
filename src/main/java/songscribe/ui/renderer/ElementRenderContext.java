@@ -275,7 +275,8 @@ public class ElementRenderContext {
      * @return true if the element is currently playing
      */
     public boolean isElementPlaying(int elementIndex) {
-        return elementIndex == playingNoteIndex || elementIndex == playingGraceNoteIndex;
+        return elementIndex >= 0
+                && (elementIndex == playingNoteIndex || elementIndex == playingGraceNoteIndex);
     }
 
     /**

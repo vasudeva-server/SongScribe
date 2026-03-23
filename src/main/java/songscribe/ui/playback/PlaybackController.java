@@ -126,8 +126,7 @@ public final class PlaybackController {
         if (previousPlayingLine != -1 && previousPlayingLine != lineIndex) {
             var prevLineComponent = score.getLineComponent(previousPlayingLine);
             if (prevLineComponent != null) {
-                prevLineComponent.setPlayingNoteIndex(-1);
-                prevLineComponent.setPlayingGraceNoteIndex(-1);
+                prevLineComponent.setPlayingIndices(-1, -1);
             }
         }
 
@@ -135,8 +134,7 @@ public final class PlaybackController {
         var lineComponent = score.getLineComponent(lineIndex);
         if (lineComponent != null) {
             var line = score.getComposition().getLine(lineIndex);
-            lineComponent.setPlayingNoteIndex(noteIndex);
-            lineComponent.setPlayingGraceNoteIndex(line.precedingGraceNoteIndex(noteIndex));
+            lineComponent.setPlayingIndices(noteIndex, line.precedingGraceNoteIndex(noteIndex));
         }
 
         previousPlayingLine = lineIndex;
@@ -170,8 +168,7 @@ public final class PlaybackController {
         if (previousPlayingLine != -1) {
             var lineComponent = getLineComponent(previousPlayingLine);
             if (lineComponent != null) {
-                lineComponent.setPlayingNoteIndex(-1);
-                lineComponent.setPlayingGraceNoteIndex(-1);
+                lineComponent.setPlayingIndices(-1, -1);
             }
         }
         previousPlayingLine = -1;

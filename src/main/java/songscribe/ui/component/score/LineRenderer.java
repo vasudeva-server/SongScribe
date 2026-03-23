@@ -325,7 +325,7 @@ class LineRenderer {
 
         // Check if element is currently playing (primary note or grace note)
         if (ctx.isElementPlaying(elementIndex)) {
-            return UIManager.getColor(Score.PLAYING_NOTE_COLOR_KEY);
+            return Score.getPlayingNoteColor();
         }
 
         // Check if element is selected or highlighted by insertion element hover
