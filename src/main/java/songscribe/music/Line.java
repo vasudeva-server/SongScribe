@@ -881,7 +881,17 @@ public class Line {
             );
         }
 
+        // For CONNECTED glissandos, the note-off, pitch bend reset, and next
+        // note-on all land on the same tick. MIDI event ordering within a tick
+        // is indeterminate, so the reset can fire while this note is still
+        // audible, causing a snap back to the original pitch. Offset the
+        // note-off by 1 tick so this note is silenced before the reset.
         var noteOffTick = trackTicks + soundingDuration;
+
+        if (glissando.type == StaffElement.Glissando.Type.CONNECTED) {
+            noteOffTick--;
+        }
+
         addNoteOff(track, noteOffTick, element);
 
         // Don't reset pitch bend/expression at note-off — MIDI event ordering

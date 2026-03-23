@@ -33,10 +33,10 @@ import songscribe.music.StaffElement.Glissando;
 public final class GlissandoMidiHelper {
 
     /** Fraction of note duration spent sustaining at the original pitch. */
-    public static final double SUSTAIN_RATIO = 2.0 / 3.0;
+    public static final double SUSTAIN_RATIO = 0.5;
 
     /** Fraction of note duration spent sliding to the target pitch. */
-    public static final double SLIDE_RATIO = 1.0 / 3.0;
+    public static final double SLIDE_RATIO = 0.5;
 
     /** Tick interval between successive pitch bend messages during a slide. */
     public static final int BEND_STEP_TICKS = 2;
@@ -47,8 +47,14 @@ public final class GlissandoMidiHelper {
     /** MIDI pitch bend maximum value. */
     public static final int PITCH_BEND_MAX = 16383;
 
-    /** Exponent for the quadratic ease-in curve. */
-    public static final double CURVE_EXPONENT = 2.0;
+    /** Exponent for the grace note slide-in pitch bend curve (1.0 = linear). */
+    public static final double GRACE_NOTE_CURVE_EXPONENT = 1.0;
+
+    /** Exponent for the connected glissando pitch bend curve (1.0 = linear). */
+    public static final double CONNECTED_CURVE_EXPONENT = 1.0;
+
+    /** Exponent for the slide-out pitch bend curve (2.0 = quadratic ease-in). */
+    public static final double SLIDE_OUT_CURVE_EXPONENT = 2.0;
 
     /** Fixed slide duration for grace note glissandos (16th note at 96 PPQ). */
     public static final int GRACE_SLIDE_TICKS = 12;
@@ -119,7 +125,7 @@ public final class GlissandoMidiHelper {
      */
     public static int calculateBendValue(double t, int sourcePitch, int targetPitch, int sensitivity,
             boolean linear) {
-        var effectiveT = linear ? t : Math.pow(t, CURVE_EXPONENT);
+        var effectiveT = Math.pow(t, linear ? CONNECTED_CURVE_EXPONENT : SLIDE_OUT_CURVE_EXPONENT);
         var semitoneOffset = effectiveT * (targetPitch - sourcePitch);
         var bendFraction = semitoneOffset / sensitivity;
         var bendValue = (int) Math.round(PITCH_BEND_CENTER + bendFraction * PITCH_BEND_CENTER);
@@ -228,7 +234,7 @@ public final class GlissandoMidiHelper {
      * @return the MIDI pitch bend value (0-16383), clamped to valid range
      */
     public static int calculateSlideInBendValue(double t, int gracePitch, int notePitch, int sensitivity) {
-        var curvedT = Math.pow(t, CURVE_EXPONENT);
+        var curvedT = Math.pow(t, GRACE_NOTE_CURVE_EXPONENT);
         var semitoneOffset = (1.0 - curvedT) * (gracePitch - notePitch);
         var bendFraction = semitoneOffset / sensitivity;
         var bendValue = (int) Math.round(PITCH_BEND_CENTER + bendFraction * PITCH_BEND_CENTER);
@@ -362,7 +368,7 @@ public final class GlissandoMidiHelper {
 
         for (var elapsed = 0; elapsed <= slideDurationTicks; elapsed += BEND_STEP_TICKS) {
             var t = (double) elapsed / slideDurationTicks;
-            var curvedT = Math.pow(t, CURVE_EXPONENT);
+            var curvedT = Math.pow(t, GRACE_NOTE_CURVE_EXPONENT);
             var expression = (int) Math.round(startExpression + curvedT * expressionRange);
             addControlChange(track, slideStartTick + elapsed, channel, EXPRESSION_CC,
                     Math.clamp(expression, 0, EXPRESSION_MAX));
@@ -388,7 +394,7 @@ public final class GlissandoMidiHelper {
 
         for (var elapsed = 0; elapsed <= slideDurationTicks; elapsed += BEND_STEP_TICKS) {
             var t = (double) elapsed / slideDurationTicks;
-            var curvedT = Math.pow(t, CURVE_EXPONENT);
+            var curvedT = Math.pow(t, SLIDE_OUT_CURVE_EXPONENT);
             var expression = (int) Math.round((1.0 - curvedT) * EXPRESSION_MAX);
             addControlChange(track, slideStartTick + elapsed, channel, EXPRESSION_CC,
                     Math.clamp(expression, 0, EXPRESSION_MAX));
