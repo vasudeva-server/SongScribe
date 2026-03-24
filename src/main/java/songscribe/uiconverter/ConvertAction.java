@@ -33,7 +33,7 @@ import songscribe.export.ExportOptions;
 import songscribe.io.CompositionIO;
 import songscribe.ui.OptionDialogs;
 import songscribe.ui.component.MyBorder;
-import songscribe.ui.dialog.ProcessDialog;
+import songscribe.ui.dialog.ProgressBarDialog;
 import songscribe.ui.playback.PlaybackController;
 import songscribe.error.RuntimeError;
 import songscribe.file.FileUtils;
@@ -79,12 +79,10 @@ public class ConvertAction extends AbstractAction {
             return;
         }
 
-        var pd = new ProcessDialog(
-            uiConverter,
+        var pd = new ProgressBarDialog(
             Strings.get(Strings.DIALOG_CONVERTER_CONVERTING),
             songFiles.length * (3 + (IMAGE_WIDTH.length * 2))
         );
-        pd.packAndPos();
         new ConvertThread(songDirectoryFile, songFiles, pd).start();
         pd.setVisible(true);
     }
@@ -94,12 +92,12 @@ public class ConvertAction extends AbstractAction {
         private static final String IMAGETYPE = "PNG";
         private final File songDirectory;
         private final File[] songFiles;
-        private final ProcessDialog processDialog;
+        private final ProgressBarDialog processDialog;
 
         private ConvertThread(
             File songDirectory,
             File[] songFiles,
-            ProcessDialog processDialog
+            ProgressBarDialog processDialog
         ) {
             this.songDirectory = songDirectory;
             this.songFiles = songFiles;
@@ -212,7 +210,7 @@ public class ConvertAction extends AbstractAction {
                         } catch (Exception e) {
                             imageFile = null;
                             OptionDialogs.showErrorMessage(
-                                processDialog,
+                                processDialog.getWindow(),
                                 Strings.get(Strings.ALERT_TITLE_CONVERSION_ERROR),
                                 Strings.get(Strings.ERROR_CONVERTER_IMAGE, songFile.getName())
                             );
@@ -239,7 +237,7 @@ public class ConvertAction extends AbstractAction {
                     } catch (IOException | InvalidMidiDataException e) {
                         midiFile = null;
                         OptionDialogs.showErrorMessage(
-                            processDialog,
+                            processDialog.getWindow(),
                             Strings.get(Strings.ALERT_TITLE_CONVERSION_ERROR),
                             Strings.get(Strings.ERROR_CONVERTER_MIDI, songFile.getName())
                         );
@@ -255,7 +253,7 @@ public class ConvertAction extends AbstractAction {
                 }
 
                 OptionDialogs.showInfoMessage(
-                    processDialog,
+                    processDialog.getWindow(),
                     Strings.get(Strings.ALERT_TITLE_CONVERSION_COMPLETE),
                     Strings.get(Strings.ALERT_CONVERSION_COMPLETE)
                 );

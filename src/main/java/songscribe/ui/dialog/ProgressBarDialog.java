@@ -22,39 +22,33 @@ package songscribe.ui.dialog;
 import module java.desktop;
 
 import songscribe.Strings;
-import songscribe.ui.OptionDialogs;
 
-public class ProcessDialog extends JDialog {
+public class ProgressBarDialog extends BaseDialog {
 
-    protected final JProgressBar progressBar = new JProgressBar();
+    private static final int BORDER_PADDING = 10;
+    private static final int PROGRESS_BAR_WIDTH = 400;
+    private static final int PROGRESS_BAR_HEIGHT = 20;
 
-    public ProcessDialog(JDialog owner, String label, int maximum)
-        throws HeadlessException {
-        super(owner, Strings.get(Strings.DIALOG_PROGRESS_TITLE), true);
-        init(maximum, label);
-        setDefaultCloseOperation(DO_NOTHING_ON_CLOSE);
-    }
+    private final JProgressBar progressBar = new JProgressBar();
 
-    public ProcessDialog(JFrame owner, String label, int maximum)
-        throws HeadlessException {
-        super(owner, Strings.get(Strings.DIALOG_PROGRESS_TITLE), true);
-        init(maximum, label);
-        setDefaultCloseOperation(DO_NOTHING_ON_CLOSE);
-    }
+    public ProgressBarDialog(String label, int maximum) {
+        super(Strings.get(Strings.DIALOG_PROGRESS_TITLE), true, DialogCategory.INFORMATIONAL);
 
-    public void packAndPos() {
-        pack();
-        OptionDialogs.positionDialog(this, getOwner());
-    }
-
-    private void init(int maximum, String label) {
         progressBar.setMaximum(maximum);
+
         var pane = new JPanel(new BorderLayout());
-        pane.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+        pane.setBorder(BorderFactory.createEmptyBorder(
+            BORDER_PADDING, BORDER_PADDING, BORDER_PADDING, BORDER_PADDING
+        ));
         pane.add(BorderLayout.NORTH, new JLabel(label));
-        progressBar.setPreferredSize(new Dimension(400, 20));
+        progressBar.setPreferredSize(new Dimension(PROGRESS_BAR_WIDTH, PROGRESS_BAR_HEIGHT));
         pane.add(BorderLayout.CENTER, progressBar);
-        setContentPane(pane);
+        contentPanel.add(pane);
+    }
+
+    @Override
+    protected boolean isClosable() {
+        return false;
     }
 
     public void nextValue() {

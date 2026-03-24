@@ -206,7 +206,9 @@ public abstract class BaseDialog {
                 new WindowAdapter() {
                     @Override
                     public void windowClosing(WindowEvent e) {
-                        setVisible(false);
+                        if (isClosable()) {
+                            setVisible(false);
+                        }
                     }
                 }
             );
@@ -260,6 +262,7 @@ public abstract class BaseDialog {
 
             var minSize = dialog.getPreferredSize();
             minSize.width += getExtraWidth();
+            minSize.height += getExtraHeight();
             dialog.setSize(minSize);
             dialog.setMinimumSize(minSize);
 
@@ -326,6 +329,33 @@ public abstract class BaseDialog {
      */
     protected int getExtraWidth() {
         return 0;
+    }
+
+    /**
+     * Returns extra height to add to the dialog beyond its packed size.
+     * Subclasses can override this to make the dialog taller.
+     */
+    protected int getExtraHeight() {
+        return 0;
+    }
+
+    /**
+     * Returns whether the window-close action (title-bar X, Escape, Cmd+W)
+     * should be honored. Defaults to true. Subclasses can override to
+     * prevent the user from dismissing the dialog while an operation is in
+     * progress.
+     */
+    protected boolean isClosable() {
+        return true;
+    }
+
+    /**
+     * Returns the underlying {@link JDialog}, or null if the dialog is not
+     * currently visible. Useful when a caller needs a {@link java.awt.Component}
+     * parent for a nested dialog.
+     */
+    public @Nullable JDialog getWindow() {
+        return dialog;
     }
 
     protected void pack() {

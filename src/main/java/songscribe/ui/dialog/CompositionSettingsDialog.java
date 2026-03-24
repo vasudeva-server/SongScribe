@@ -46,7 +46,6 @@ import songscribe.ui.component.MyJTextArea;
 import songscribe.ui.component.MyJTextField;
 import songscribe.ui.component.NonEmptyGuard;
 import songscribe.ui.component.NumericTextField;
-import songscribe.ui.fontchooser.FontDialog;
 import songscribe.ui.layout.PageModel;
 import songscribe.ui.layout.ScaleContext;
 import songscribe.file.FileUtils;
@@ -1079,16 +1078,13 @@ public class CompositionSettingsDialog extends StandardDialog {
 
             @Override
             public void actionPerformed(ActionEvent e) {
-                var selectedFont = FontDialog.showDialog(preview, null);
-
-                if (selectedFont != null) {
-                    fontDescription.setText(
-                        MyFontUtils.getFullFontDescription(selectedFont)
-                    );
-                    preview.setFont(selectedFont);
-                    preview.revalidate();
-                    preview.repaint();
-                }
+                var selectedFont = FontDialog.showDialog(preview);
+                fontDescription.setText(
+                    MyFontUtils.getFullFontDescription(selectedFont)
+                );
+                preview.setFont(selectedFont);
+                preview.revalidate();
+                preview.repaint();
             }
         }
 

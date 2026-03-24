@@ -8,8 +8,10 @@ All application dialogs extend `BaseDialog` (package `songscribe.ui.dialog`). Di
 BaseDialog (abstract)
 ├── StandardDialog (abstract) — OK/Apply/Cancel commit lifecycle
 │   ├── CompositionSettingsDialog, LyricsDialog, ExportPDFDialog, ...
-│   └── AboutDialog (uses OK only, hides Apply/Cancel)
-└── PreferencesDialog — live-apply, no OK/Apply/Cancel
+│   ├── AboutDialog (uses OK only, hides Apply/Cancel)
+│   └── FontDialog — wraps FontChooser panel with OK/Cancel
+├── PreferencesDialog — live-apply, no OK/Apply/Cancel
+└── ProgressBarDialog — non-closable progress display (INFORMATIONAL)
 ```
 
 ### BaseDialog
@@ -72,7 +74,11 @@ When `setVisible(false)` is called:
 | Method | Default | Override when |
 |--------|---------|---------------|
 | `getDefaultButton()` | `null` | Dialog has a default action button |
+| `isResizable()` | `false` | Dialog should be resizable |
 | `getExtraWidth()` | `0` | Dialog needs extra width beyond its packed size |
+| `getExtraHeight()` | `0` | Dialog needs extra height beyond its packed size |
+| `isClosable()` | `true` | Window-close (title-bar X, Escape, Cmd+W) should be blocked (e.g. during a long operation) |
+| `getWindow()` | Current `JDialog` or `null` | Callers need a `Component` parent for nested dialogs (e.g. `OptionDialogs` from a background thread) |
 | `getData()` | Resets tab pane to index 0, calls `getData()` on all tabs | Adding dialog-level data population (call `super`) |
 
 ### Dialog Categories
@@ -83,7 +89,7 @@ Every `BaseDialog` has a `DialogCategory` passed to the constructor (default: `O
 - `EXCLUSIVE` — modifies global state, e.g. Preferences, CompositionSettings
 - `OPERATIONAL` — modifies scoped state or runs a task (default)
 
-Exclusive and operational dialogs are mutually exclusive — only one blocking dialog at a time. Informational dialogs are always allowed. `OptionDialogs` and `ProcessDialog` do not participate.
+Exclusive and operational dialogs are mutually exclusive — only one blocking dialog at a time. Informational dialogs are always allowed. `OptionDialogs` does not participate (it uses raw `JOptionPane`).
 
 Actions that open blocking dialogs must set `UIAction.Flag.OPENS_DIALOG`. `DialogOpenAction` does not auto-set this flag.
 
