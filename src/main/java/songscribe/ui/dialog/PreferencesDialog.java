@@ -28,8 +28,6 @@ import java.util.Map;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
-import songscribe.message.MessageCenter;
-import songscribe.message.notification.PageSizeDidChangeNotification;
 import songscribe.prefs.Prefs;
 import songscribe.prefs.PrefsKey;
 import songscribe.ui.component.TickSlider;
@@ -232,7 +230,6 @@ public class PreferencesDialog extends BaseDialog {
                     Prefs.getInstance().put(
                         PrefsKey.PAGE_SIZE, a4Radio.isSelected() ? "a4" : "letter"
                     );
-                    MessageCenter.post(new PageSizeDidChangeNotification());
                 }
             };
 

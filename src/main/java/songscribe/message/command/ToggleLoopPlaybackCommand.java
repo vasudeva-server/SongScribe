@@ -20,11 +20,10 @@
 
 package songscribe.message.command;
 
+import songscribe.message.Message;
 import songscribe.message.SelectableMessage;
-import songscribe.message.notification.PlaybackPrefsDidChangeNotification;
 
-public class ToggleLoopPlaybackCommand extends PlaybackPrefsDidChangeNotification
-    implements SelectableMessage {
+public class ToggleLoopPlaybackCommand extends Message implements SelectableMessage {
 
     private final boolean selected;
 

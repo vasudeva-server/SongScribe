@@ -45,8 +45,7 @@ import songscribe.music.MusicEditOperations;
 import songscribe.music.StaffElement;
 import songscribe.message.notification.CompositionDidChangeNotification;
 import songscribe.message.notification.MusicSelectionDidChangeNotification;
-import songscribe.message.notification.PageSizeDidChangeNotification;
-import songscribe.message.notification.PlaybackPrefsDidChangeNotification;
+import songscribe.message.notification.PrefsDidChangeNotification;
 import songscribe.prefs.Prefs;
 import songscribe.prefs.PrefsKey;
 import songscribe.ui.Constants;
@@ -562,8 +561,16 @@ public final class Score
     }
 
     @Handler
-    public void playbackPrefsDidChange(PlaybackPrefsDidChangeNotification message) {
-        syncPlaybackPrefs();
+    public void prefsDidChange(PrefsDidChangeNotification message) {
+        switch (message.getKey()) {
+            case LOOP_PLAYBACK, PLAY_WITH_REPEATS -> syncPlaybackPrefs();
+            case PAGE_SIZE -> {
+                if (composition != null) {
+                    updatePageLayout(ScaleContext.getInstance().toRoundedPixels(composition.getLineWidthSs()));
+                }
+            }
+            default -> { }
+        }
     }
 
     public void viewChanged() {
@@ -1011,13 +1018,6 @@ public final class Score
         }
 
         repaint();
-    }
-
-    @Handler
-    public void pageSizeDidChange(PageSizeDidChangeNotification message) {
-        if (composition != null) {
-            updatePageLayout(ScaleContext.getInstance().toRoundedPixels(composition.getLineWidthSs()));
-        }
     }
 
     @Override

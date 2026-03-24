@@ -55,7 +55,6 @@ import songscribe.message.command.ToggleLoopPlaybackCommand;
 import songscribe.message.command.TogglePlayWithRepeatsCommand;
 import songscribe.message.notification.CompositionDidChangeNotification;
 import songscribe.message.notification.DocumentWasSavedNotification;
-import songscribe.message.notification.PlaybackTempoDidChangeNotification;
 import songscribe.music.Composition;
 import songscribe.prefs.Prefs;
 import songscribe.prefs.PrefsKey;
@@ -744,10 +743,5 @@ public class MainFrame extends JFrame implements Printable {
     @Handler
     public void handleTogglePlayWithRepeats(TogglePlayWithRepeatsCommand message) {
         Prefs.getInstance().put(PrefsKey.PLAY_WITH_REPEATS, message.isSelected());
-    }
-
-    @Handler
-    public void playbackTempoDidChange(PlaybackTempoDidChangeNotification message) {
-        Prefs.getInstance().put(PrefsKey.TEMPO_CHANGE_PERCENT, message.getRatio());
     }
 }
