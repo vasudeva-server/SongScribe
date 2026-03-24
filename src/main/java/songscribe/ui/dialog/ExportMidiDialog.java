@@ -81,10 +81,7 @@ public class ExportMidiDialog extends StandardDialog {
                 MidiSystem.write(sequence, 1, saveFile);
                 FileUtils.openExportFile(saveFile);
             } finally {
-                // Restore previous playback settings
-                PlaybackController.setPlayWithRepeats(savedSettings.playWithRepeats());
-                PlaybackController.setInstrument(savedSettings.instrument());
-                PlaybackController.setTempoChangePercent(savedSettings.tempoChangePercent());
+                PlaybackController.applySettings(savedSettings);
             }
         } catch (IOException | InvalidMidiDataException e1) {
             OptionDialogs.showErrorMessage(

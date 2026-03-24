@@ -212,6 +212,13 @@ public final class PlaybackController {
         );
     }
 
+    public static void applySettings(PlaybackSettings settings) {
+        instrument = settings.instrument();
+        tempoChangePercent = settings.tempoChangePercent();
+        noteDurationPercent = settings.noteDurationPercent();
+        playWithRepeats = settings.playWithRepeats();
+    }
+
     public static javax.sound.midi.Sequence buildSequence(Composition composition)
         throws InvalidMidiDataException {
         return new MidiSequenceBuilder(composition, getPlaybackSettings()).buildFullSequence();
