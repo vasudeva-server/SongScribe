@@ -57,7 +57,6 @@ import songscribe.ui.action.LaunchAction;
 import songscribe.ui.action.NewAction;
 import songscribe.ui.action.OpenAction;
 import songscribe.ui.action.OpenRecentAction;
-import songscribe.ui.action.PDFTutorialOpenAction;
 import songscribe.ui.action.SaveAction;
 import songscribe.ui.action.SaveAsAction;
 import songscribe.ui.action.TipAction;
@@ -330,7 +329,6 @@ public class MenuController {
         menu.add(
             new DialogOpenAction<>(Strings.get(Strings.ACTION_HELP_TUTORIAL), TutorialDialog.class)
         );
-        menu.add(new PDFTutorialOpenAction(Strings.get(Strings.ACTION_HELP_EXTENDED_TUTORIAL), mainFrame));
         menu.add(new TipAction(mainFrame));
         menu.add(new DialogOpenAction<>(Strings.get(Strings.ACTION_HELP_KEYMAP), KeyMapDialog.class));
 
