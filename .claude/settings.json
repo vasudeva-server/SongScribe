@@ -14,6 +14,8 @@
       "Bash(done)",
       "Bash(file=$:*)",
       "Bash(find:*)",
+      "Bash(gh issue:*)",
+      "Bash(git fetch:*)",
       "Bash(git ls-tree:*)",
       "Bash(if echo:*)",
       "Bash(java:*)",
