@@ -45,6 +45,9 @@ public class ReportBugDialog extends StandardDialog {
         if (DesktopUtils.isDesktopSupported()) {
             var sendBug = new JButton(Strings.get(Strings.DIALOG_BUG_REPORT_SEND));
             sendBug.addActionListener(_ -> {
+                var bugReportIdx = 0;
+                var featureRequestIdx = 1;
+                var cancelIdx = 2;
                 var answer = OptionDialogs.showOptionDialog(
                     contentPanel,
                     Strings.get(Strings.DIALOG_BUG_REPORT_TITLE),
@@ -60,16 +63,16 @@ public class ReportBugDialog extends StandardDialog {
                     null
                 );
 
-                if ((answer == 2) || (answer == JOptionPane.CLOSED_OPTION)) {
+                if ((answer == cancelIdx) || (answer == JOptionPane.CLOSED_OPTION)) {
                     return;
                 }
 
                 var sb = new StringBuilder(270);
                 sb.append(BUG_EMAIL);
                 sb.append("?SUBJECT=SongScribe ");
-                sb.append((answer == 0) ? "bug" : "request");
+                sb.append((answer == bugReportIdx) ? "bug" : "request");
 
-                if (answer == 0) {
+                if (answer == bugReportIdx) {
                     sb.append("&ATTACHMENT=\"");
                     sb.append(logFile.getAbsolutePath());
                     sb.append('"');

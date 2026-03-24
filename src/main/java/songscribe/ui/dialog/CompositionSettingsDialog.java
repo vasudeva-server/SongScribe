@@ -44,6 +44,7 @@ import songscribe.ui.action.UIAction;
 import songscribe.ui.component.InputUtils;
 import songscribe.ui.component.MyJTextArea;
 import songscribe.ui.component.MyJTextField;
+import songscribe.ui.component.NonEmptyGuard;
 import songscribe.ui.component.NumericTextField;
 import songscribe.ui.fontchooser.FontDialog;
 import songscribe.ui.layout.PageModel;
@@ -113,6 +114,9 @@ public class CompositionSettingsDialog extends StandardDialog {
         // Attribution panel
         private final MyJTextArea attributionArea = new MyJTextArea(4, 27);
 
+        private final NonEmptyGuard titleGuard;
+        private final NonEmptyGuard attributionGuard;
+
         private TextTab() {
             monthCombo.setEditable(false);
 
@@ -125,6 +129,31 @@ public class CompositionSettingsDialog extends StandardDialog {
 
             dayCombo = new JComboBox<>(days);
             dayCombo.setEditable(false);
+
+            titleGuard = new NonEmptyGuard(
+                titleField,
+                contentPanel,
+                Strings.get(Strings.DIALOG_TITLE_COMPOSITION_SETTINGS),
+                Strings.get(Strings.CONFIRM_COMPOSITION_EMPTY_TITLE),
+                Strings.get(Strings.DOCUMENT_UNTITLED),
+                Strings.get(Strings.DIALOG_COMPOSITION_SETTINGS_USE_UNTITLED),
+                Strings.get(Strings.DIALOG_COMPOSITION_SETTINGS_CONTINUE_EDITING)
+            );
+
+            attributionGuard = new NonEmptyGuard(
+                attributionArea,
+                contentPanel,
+                Strings.get(Strings.DIALOG_TITLE_COMPOSITION_SETTINGS),
+                Strings.get(Strings.CONFIRM_COMPOSITION_EMPTY_ATTRIBUTION),
+                Strings.get(Strings.COMPOSITION_DEFAULT_ATTRIBUTION),
+                Strings.get(Strings.DIALOG_COMPOSITION_SETTINGS_USE_DEFAULT),
+                Strings.get(Strings.DIALOG_COMPOSITION_SETTINGS_CONTINUE_EDITING)
+            );
+
+            titleGuard.addExemptComponent(okButton);
+            titleGuard.addExemptComponent(cancelButton);
+            attributionGuard.addExemptComponent(okButton);
+            attributionGuard.addExemptComponent(cancelButton);
 
             build();
         }
@@ -312,6 +341,11 @@ public class CompositionSettingsDialog extends StandardDialog {
             yearField.setText(composition.getYear());
             attributionArea.setText(composition.getAttribution());
             return true;
+        }
+
+        @Override
+        protected boolean isValidData() {
+            return titleGuard.validate() && attributionGuard.validate();
         }
 
         @Override

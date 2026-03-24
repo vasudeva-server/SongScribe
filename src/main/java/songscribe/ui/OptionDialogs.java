@@ -172,7 +172,7 @@ public final class OptionDialogs {
         int optionType,
         int messageType,
         @Nullable Icon icon,
-        @Nullable Object[] options,
+        Object @Nullable [] options,
         @Nullable Object initialValue
     ) {
         LOG.trace("{}", message);
@@ -337,7 +337,7 @@ public final class OptionDialogs {
             .getBounds();
     }
 
-    private static int getOptionPaneResult(JOptionPane pane, @Nullable Object[] options) {
+    private static int getOptionPaneResult(JOptionPane pane, Object @Nullable [] options) {
         var value = pane.getValue();
 
         if (value == null) {

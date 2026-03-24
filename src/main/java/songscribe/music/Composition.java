@@ -73,10 +73,6 @@ public final class Composition {
     // Used to replace the characters "ă" and "Ă" with "a" and "A" respectively
     private static final Pattern SHORT_A_PATTERN = Pattern.compile("[ăĂ]");
 
-    // Canonical defaults shared between Composition constructor and CompositionIO.DocumentReader
-    public static final String DEFAULT_NUMBER = "1";
-    public static final String DEFAULT_TITLE = "Untitled";
-    public static final String DEFAULT_ATTRIBUTION = "Words and Music\nby Sri Chinmoy\n";
     public static final int DEFAULT_KEY_ACCIDENTAL_COUNT = 5;
     public static final KeyType DEFAULT_KEY_TYPE = KeyType.FLATS;
 
@@ -84,10 +80,10 @@ public final class Composition {
     private Tempo tempo;
 
     // The number of the song, can be empty
-    private String number = "1";
+    private String number = Strings.get(Strings.COMPOSITION_DEFAULT_NUMBER);
 
     // The title of the song
-    private String title = "Untitled";
+    private String title = Strings.get(Strings.DOCUMENT_UNTITLED);
 
     // Where the song was composed
     private String place = "";
@@ -194,7 +190,7 @@ public final class Composition {
 
 
     public Composition() {
-        attribution = DEFAULT_ATTRIBUTION;
+        attribution = Strings.get(Strings.COMPOSITION_DEFAULT_ATTRIBUTION);
         tempo = new Tempo();
         defaultKeyAccidentalCount = DEFAULT_KEY_ACCIDENTAL_COUNT;
         defaultKeyType = DEFAULT_KEY_TYPE;

@@ -30,6 +30,7 @@ import org.xml.sax.Attributes;
 import org.xml.sax.SAXException;
 import org.xml.sax.helpers.DefaultHandler;
 
+import songscribe.Strings;
 import songscribe.message.CompositionData;
 import songscribe.music.Composition;
 import songscribe.music.KeyType;
@@ -226,8 +227,8 @@ public final class CompositionIO {
 
         // Parsed composition data (replaces direct Composition mutation)
         private Tempo tempo = new Tempo();
-        private String number = Composition.DEFAULT_NUMBER;
-        private String title = Composition.DEFAULT_TITLE;
+        private String number = Strings.get(Strings.COMPOSITION_DEFAULT_NUMBER);
+        private String title = Strings.get(Strings.DOCUMENT_UNTITLED);
         private String place = "";
         private int month = 0;
         private int day = 0;
@@ -236,7 +237,7 @@ public final class CompositionIO {
         private String underLyrics = "";
         private String banglaLyrics = "";
         private String translatedLyrics = "";
-        private String attribution = Composition.DEFAULT_ATTRIBUTION;
+        private String attribution = Strings.get(Strings.COMPOSITION_DEFAULT_ATTRIBUTION);
         private String footnotes = "";
         private boolean unofficialTranslation = false;
         private int defaultKeyAccidentalCount = Composition.DEFAULT_KEY_ACCIDENTAL_COUNT;
