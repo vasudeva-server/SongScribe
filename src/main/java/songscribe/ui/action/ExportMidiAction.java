@@ -42,6 +42,7 @@ public class ExportMidiAction extends UIAction {
 
     private ExportMidiAction() {
         super(Strings.get(Strings.ACTION_EXPORT_MIDI), "export-midi");
+        setFlags(Flag.OPENS_DIALOG);
         fileDialog = new PlatformFileDialog(
             getMainFrame(),
             "Export MIDI",

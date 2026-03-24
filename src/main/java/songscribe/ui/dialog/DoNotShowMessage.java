@@ -35,7 +35,7 @@ public class DoNotShowMessage extends StandardDialog {
         String info,
         String propName
     ) {
-        super(title);
+        super(title, true, DialogCategory.INFORMATIONAL);
         this.propName = propName;
         contentPanel.setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5));
         contentPanel.add(BorderLayout.NORTH, new JLabel(info));

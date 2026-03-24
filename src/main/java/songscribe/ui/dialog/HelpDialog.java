@@ -42,7 +42,7 @@ public class HelpDialog
     }
 
     public HelpDialog(String title, boolean isModal) {
-        super(title, isModal);
+        super(title, isModal, DialogCategory.INFORMATIONAL);
         var leftList = new JList<>(defaultListModel);
         leftList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         leftList.setCellRenderer(this);

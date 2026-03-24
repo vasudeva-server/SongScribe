@@ -24,8 +24,9 @@ import module java.desktop;
 
 import net.engio.mbassy.listener.Handler;
 
-import songscribe.ui.dialog.TempoChangeDialog;
+import songscribe.Strings;
 import songscribe.message.notification.MusicSelectionDidChangeNotification;
+import songscribe.ui.dialog.TempoChangeDialog;
 
 public class TempoChangeAction extends UIAction {
 
@@ -35,17 +36,18 @@ public class TempoChangeAction extends UIAction {
 
     private TempoChangeAction() {
         super(
-            "Tempo Change...",
+            Strings.get(Strings.ACTION_TEMPO_CHANGE),
             null,
             0,
             "tempo-change",
-            "Insert tempo change",
+            Strings.get(Strings.ACTION_TEMPO_CHANGE_TOOLTIP),
             Flag.REQUIRES_SINGLE_SELECTION,
             Flag.DISABLE_WHEN_BAR_SELECTED,
             Flag.DISABLE_WHEN_PLAYING,
             Flag.DISABLE_WHEN_EDITING_TEXT,
             Flag.DISABLE_IN_ADJUSTMENT_MODE,
-            Flag.DISABLE_IN_GRACE_MODE
+            Flag.DISABLE_IN_GRACE_MODE,
+            Flag.OPENS_DIALOG
         );
     }
 

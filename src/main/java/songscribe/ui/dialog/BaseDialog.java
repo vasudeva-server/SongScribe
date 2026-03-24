@@ -29,6 +29,8 @@ import org.jspecify.annotations.Nullable;
 
 import org.intellij.lang.annotations.MagicConstant;
 
+import songscribe.message.MessageCenter;
+import songscribe.message.notification.DialogVisibilityDidChangeNotification;
 import songscribe.music.Composition;
 import songscribe.ui.OptionDialogs;
 import songscribe.ui.component.MainFrame;
@@ -54,9 +56,12 @@ public abstract class BaseDialog {
     // The standard margin around titled sections
     protected static final int SECTION_MARGIN = 15;
 
+    private static int visibleBlockingDialogCount = 0;
+
     private final MainFrame mainFrame;
     protected final String dialogTitle;
     protected final boolean isModal;
+    private final DialogCategory category;
     protected final JPanel contentPanel = new JPanel(new BorderLayout());
     private final List<Tab> tabs = new ArrayList<>();
     private @Nullable JTabbedPane tabbedPane;
@@ -68,11 +73,44 @@ public abstract class BaseDialog {
         this(title, true);
     }
 
-    @SuppressWarnings("NullAway.Init")
     protected BaseDialog(String title, boolean isModal) {
+        this(title, isModal, DialogCategory.OPERATIONAL);
+    }
+
+    @SuppressWarnings("NullAway.Init")
+    protected BaseDialog(String title, boolean isModal, DialogCategory category) {
         this.mainFrame = MainFrame.getInstance();
         dialogTitle = title;
         this.isModal = isModal;
+        this.category = category;
+    }
+
+    public DialogCategory getCategory() {
+        return category;
+    }
+
+    public static boolean isAnyBlockingDialogVisible() {
+        return visibleBlockingDialogCount > 0;
+    }
+
+    static void resetVisibleBlockingDialogCount() {
+        visibleBlockingDialogCount = 0;
+    }
+
+    private void incrementBlockingCount() {
+        visibleBlockingDialogCount++;
+
+        if (visibleBlockingDialogCount == 1) {
+            MessageCenter.post(new DialogVisibilityDidChangeNotification(true));
+        }
+    }
+
+    private void decrementBlockingCount() {
+        visibleBlockingDialogCount--;
+
+        if (visibleBlockingDialogCount == 0) {
+            MessageCenter.post(new DialogVisibilityDidChangeNotification(false));
+        }
     }
 
     protected List<Tab> getTabs() {
@@ -231,14 +269,38 @@ public abstract class BaseDialog {
                 dialog.setLocation(savedLocation);
             }
 
-            dialog.setVisible(true);
-        } else {
-            for (var tab : tabs) {
-                tab.tabWillHide();
+            if (category.isBlocking()) {
+                incrementBlockingCount();
             }
 
-            savedLocation = dialog.getLocation();
-            dialog.dispose();
+            try {
+                dialog.setVisible(true);
+            } catch (Exception e) {
+                if (category.isBlocking()) {
+                    decrementBlockingCount();
+                }
+
+                dialog.dispose();
+                throw e;
+            }
+        } else {
+            if (dialog == null) {
+                return;
+            }
+
+            try {
+                for (var tab : tabs) {
+                    tab.tabWillHide();
+                }
+
+                savedLocation = dialog.getLocation();
+            } finally {
+                if (category.isBlocking()) {
+                    decrementBlockingCount();
+                }
+
+                dialog.dispose();
+            }
         }
     }
 

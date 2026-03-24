@@ -97,6 +97,7 @@ public class ExportABCAction extends UIAction {
 
     private ExportABCAction() {
         super(Strings.get(Strings.ACTION_EXPORT_ABC), "export-abc");
+        setFlags(Flag.OPENS_DIALOG);
         fileDialog = new PlatformFileDialog(
             getMainFrame(),
             "Export ABC",

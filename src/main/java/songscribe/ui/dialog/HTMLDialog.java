@@ -32,7 +32,7 @@ public class HTMLDialog extends StandardDialog {
     private final JEditorPane editorPane;
 
     public HTMLDialog(String title) {
-        super(title, false);
+        super(title, false, DialogCategory.INFORMATIONAL);
         buttonPanel = new JPanel();
         buttonPanel.add(okButton);
         contentPanel.add(BorderLayout.SOUTH, buttonPanel);

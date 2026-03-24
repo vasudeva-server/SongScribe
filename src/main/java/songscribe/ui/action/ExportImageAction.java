@@ -54,6 +54,7 @@ public class ExportImageAction extends UIAction {
 
     private ExportImageAction() {
         super(Strings.get(Strings.ACTION_EXPORT_IMAGE), "export-image");
+        setFlags(Flag.OPENS_DIALOG);
         fileDialog = new PlatformFileDialog(
             getMainFrame(),
             NAME,

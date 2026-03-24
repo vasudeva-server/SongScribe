@@ -54,7 +54,7 @@ public class PreferencesDialog extends BaseDialog {
     private static boolean instrumentsLoaded = false;
 
     public PreferencesDialog() {
-        super(Strings.get(Strings.DIALOG_PREFERENCES_TITLE), false);
+        super(Strings.get(Strings.DIALOG_PREFERENCES_TITLE), false, DialogCategory.EXCLUSIVE);
 
         var tabbedPane = createTabbedPane();
         addTab(

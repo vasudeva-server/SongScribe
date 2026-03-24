@@ -39,7 +39,7 @@ public class AboutDialog extends StandardDialog {
     public static final String WEB = "http://www.songscribe.org";
 
     public AboutDialog() {
-        super(Strings.get(Strings.DIALOG_ABOUT_TITLE));
+        super(Strings.get(Strings.DIALOG_ABOUT_TITLE), true, DialogCategory.INFORMATIONAL);
         var tabPane = new JTabbedPane();
         tabPane.addTab(Strings.get(Strings.DIALOG_ABOUT_TAB_ABOUT), makeAboutPanel());
 

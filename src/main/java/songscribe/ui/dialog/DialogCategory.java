@@ -17,35 +17,25 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-package songscribe.ui.action;
+package songscribe.ui.dialog;
 
-import module java.desktop;
+/**
+ * Categorizes dialogs by how they interact with the blocking counter.
+ * Only blocking dialogs (EXCLUSIVE and OPERATIONAL) prevent other
+ * dialog-opening actions from firing while they are visible.
+ */
+public enum DialogCategory {
 
-import songscribe.Strings;
-import songscribe.message.MessageCenter;
-import songscribe.message.command.PrintCommand;
-import songscribe.util.UIUtils;
+    /** Read-only dialog that never blocks or is blocked. */
+    INFORMATIONAL,
 
-public class PrintAction extends UIAction {
+    /** Modifies global state; blocks and is blocked by other blocking dialogs. */
+    EXCLUSIVE,
 
-    public static PrintAction createAction() {
-        return new PrintAction();
-    }
+    /** Modifies scoped state or runs a task (default); blocks and is blocked. */
+    OPERATIONAL;
 
-    private PrintAction() {
-        super(
-            Strings.get(Strings.ACTION_FILE_PRINT),
-            "print-document",
-            KeyEvent.VK_P,
-            UIUtils.MENU_SHORTCUT_MASK,
-            Flag.DISABLE_WHEN_PLAYING,
-            Flag.DISABLE_IN_GRACE_MODE,
-            Flag.OPENS_DIALOG
-        );
-    }
-
-    @Override
-    public void actionPerformed(ActionEvent e) {
-        MessageCenter.post(new PrintCommand());
+    public boolean isBlocking() {
+        return this == EXCLUSIVE || this == OPERATIONAL;
     }
 }

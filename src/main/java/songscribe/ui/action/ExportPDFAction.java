@@ -45,6 +45,7 @@ public class ExportPDFAction extends UIAction {
 
     private ExportPDFAction() {
         super(Strings.get(Strings.ACTION_EXPORT_PDF), "export-pdf");
+        setFlags(Flag.OPENS_DIALOG);
         fileDialog = new PlatformFileDialog(
             getMainFrame(),
             "Export PDF",

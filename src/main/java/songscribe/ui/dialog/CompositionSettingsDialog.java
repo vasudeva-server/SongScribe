@@ -57,7 +57,7 @@ import songscribe.util.Utils;
 public class CompositionSettingsDialog extends StandardDialog {
 
     public CompositionSettingsDialog() {
-        super(Strings.get(Strings.DIALOG_COMPOSITION_SETTINGS_TITLE));
+        super(Strings.get(Strings.DIALOG_COMPOSITION_SETTINGS_TITLE), true, DialogCategory.EXCLUSIVE);
 
         var tabbedPane = createTabbedPane();
         addTab(

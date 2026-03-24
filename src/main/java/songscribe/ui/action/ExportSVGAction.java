@@ -38,6 +38,7 @@ public class ExportSVGAction extends UIAction {
 
     private ExportSVGAction() {
         super(Strings.get(Strings.ACTION_EXPORT_SVG), "export-svg");
+        setFlags(Flag.OPENS_DIALOG);
         fileDialog = new PlatformFileDialog(
             getMainFrame(),
             NAME,

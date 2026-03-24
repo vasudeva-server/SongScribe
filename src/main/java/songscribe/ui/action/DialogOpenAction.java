@@ -51,6 +51,7 @@ public class DialogOpenAction<T extends BaseDialog> extends UIAction {
     ) {
         super(name, toKebabCase(name), virtualKey, modifiers);
         this.dialogClass = dialogClass;
+        setFlags(Flag.OPENS_DIALOG);
     }
 
     @Override

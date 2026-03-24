@@ -35,7 +35,7 @@ public class WhatsNewDialog extends StandardDialog {
     private boolean noReleaseNotes = false;
 
     public WhatsNewDialog() {
-        super(Strings.get(Strings.DIALOG_WHATS_NEW_TITLE));
+        super(Strings.get(Strings.DIALOG_WHATS_NEW_TITLE), true, DialogCategory.INFORMATIONAL);
         try {
             contentPanel.add(
                 BorderLayout.CENTER,

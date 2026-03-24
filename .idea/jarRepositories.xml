@@ -2,6 +2,11 @@
 <project version="4">
   <component name="RemoteRepositoriesConfiguration">
     <remote-repository>
+      <option name="id" value="maven.cyberduck.io-release" />
+      <option name="name" value="maven.cyberduck.io-release" />
+      <option name="url" value="https://s3.eu-west-1.amazonaws.com/repo.maven.cyberduck.io/releases" />
+    </remote-repository>
+    <remote-repository>
       <option name="id" value="maven-central" />
       <option name="name" value="maven-central" />
       <option name="url" value="https://repo.maven.apache.org/maven2/" />

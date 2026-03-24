@@ -19,5 +19,6 @@ done
 
 java --enable-native-access=ALL-UNNAMED \
   -XX:+UseZGC \
+  -Djna.library.path=target/native \
   -cp "target/classes:$(mvn dependency:build-classpath -q -Dmdep.outputFile=/dev/stdout)" \
   songscribe.SongScribe "${java_args[@]}"

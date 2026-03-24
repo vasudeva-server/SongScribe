@@ -38,8 +38,9 @@ BaseDialog (abstract)
 **Constructors:**
 
 ```java
-protected BaseDialog(String title)              // modal by default
-protected BaseDialog(String title, boolean isModal)
+protected BaseDialog(String title)              // modal, OPERATIONAL (defaults)
+protected BaseDialog(String title, boolean isModal)  // OPERATIONAL (default)
+protected BaseDialog(String title, boolean isModal, DialogCategory category)
 ```
 
 **Layout helpers (all static):**
@@ -74,6 +75,18 @@ When `setVisible(false)` is called:
 | `getExtraWidth()` | `0` | Dialog needs extra width beyond its packed size |
 | `getData()` | Resets tab pane to index 0, calls `getData()` on all tabs | Adding dialog-level data population (call `super`) |
 
+### Dialog Categories
+
+Every `BaseDialog` has a `DialogCategory` passed to the constructor (default: `OPERATIONAL`):
+
+- `INFORMATIONAL` — read-only, never blocked (About, Help, WhatsNew)
+- `EXCLUSIVE` — modifies global state, e.g. Preferences, CompositionSettings
+- `OPERATIONAL` — modifies scoped state or runs a task (default)
+
+Exclusive and operational dialogs are mutually exclusive — only one blocking dialog at a time. Informational dialogs are always allowed. `OptionDialogs` and `ProcessDialog` do not participate.
+
+Actions that open blocking dialogs must set `UIAction.Flag.OPENS_DIALOG`. `DialogOpenAction` does not auto-set this flag.
+
 ### StandardDialog
 
 Extends `BaseDialog` with OK/Apply/Cancel buttons and a validation-then-commit lifecycle.
@@ -92,8 +105,9 @@ Extends `BaseDialog` with OK/Apply/Cancel buttons and a validation-then-commit l
 **Constructors:**
 
 ```java
-protected StandardDialog(String title)              // modal by default
-protected StandardDialog(String title, boolean isModal)
+protected StandardDialog(String title)              // modal, OPERATIONAL (defaults)
+protected StandardDialog(String title, boolean isModal)  // OPERATIONAL (default)
+protected StandardDialog(String title, boolean isModal, DialogCategory category)
 ```
 
 **Lifecycle on OK/Apply click:**

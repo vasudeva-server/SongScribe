@@ -40,7 +40,11 @@ public abstract class StandardDialog extends BaseDialog {
     }
 
     protected StandardDialog(String title, boolean isModal) {
-        super(title, isModal);
+        this(title, isModal, DialogCategory.OPERATIONAL);
+    }
+
+    protected StandardDialog(String title, boolean isModal, DialogCategory category) {
+        super(title, isModal, category);
 
         okButton = new JButton(Strings.get(Strings.DIALOG_BUTTON_OK));
         okButton.addActionListener(_ -> {

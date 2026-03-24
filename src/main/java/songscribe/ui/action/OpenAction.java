@@ -38,7 +38,8 @@ public class OpenAction extends UIAction {
             "open-document",
             KeyEvent.VK_O,
             UIUtils.MENU_SHORTCUT_MASK,
-            Flag.DISABLE_WHEN_PLAYING
+            Flag.DISABLE_WHEN_PLAYING,
+            Flag.OPENS_DIALOG
         );
     }
 

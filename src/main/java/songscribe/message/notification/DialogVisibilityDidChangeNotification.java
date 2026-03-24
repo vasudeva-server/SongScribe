@@ -17,35 +17,20 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-package songscribe.ui.action;
 
-import module java.desktop;
+package songscribe.message.notification;
 
-import songscribe.Strings;
-import songscribe.message.MessageCenter;
-import songscribe.message.command.PrintCommand;
-import songscribe.util.UIUtils;
+import songscribe.message.Message;
 
-public class PrintAction extends UIAction {
+public class DialogVisibilityDidChangeNotification extends Message {
 
-    public static PrintAction createAction() {
-        return new PrintAction();
+    private final boolean isVisible;
+
+    public DialogVisibilityDidChangeNotification(boolean isVisible) {
+        this.isVisible = isVisible;
     }
 
-    private PrintAction() {
-        super(
-            Strings.get(Strings.ACTION_FILE_PRINT),
-            "print-document",
-            KeyEvent.VK_P,
-            UIUtils.MENU_SHORTCUT_MASK,
-            Flag.DISABLE_WHEN_PLAYING,
-            Flag.DISABLE_IN_GRACE_MODE,
-            Flag.OPENS_DIALOG
-        );
-    }
-
-    @Override
-    public void actionPerformed(ActionEvent e) {
-        MessageCenter.post(new PrintCommand());
+    public boolean isVisible() {
+        return isVisible;
     }
 }

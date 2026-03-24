@@ -62,6 +62,7 @@ import songscribe.ui.action.TipAction;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.Score;
 import songscribe.ui.dialog.KeyMapDialog;
+import songscribe.ui.platform.mac.MacNativeMenuController;
 import songscribe.ui.dialog.ReportBugDialog;
 import songscribe.ui.dialog.TutorialDialog;
 import songscribe.ui.dialog.WhatsNewDialog;
@@ -116,6 +117,10 @@ public class MenuController {
 
         // Set up the standard OS menu item handlers
         setupDesktopHandlers(mainFrame, true);
+
+        if (SystemInfo.isMacOS) {
+            new MacNativeMenuController();
+        }
     }
 
     private JMenu initFileMenu() {
@@ -343,4 +348,5 @@ public class MenuController {
         menu.add(new LaunchAction(LaunchAction.App.SONGSHOW));
         return menu;
     }
+
 }

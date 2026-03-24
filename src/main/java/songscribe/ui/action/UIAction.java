@@ -32,23 +32,25 @@ import net.engio.mbassy.listener.Handler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import songscribe.message.notification.CompositionDidChangeNotification;
 import songscribe.message.Message;
 import songscribe.message.MessageCenter;
-import songscribe.music.Composition;
-import songscribe.music.StaffElement;
-import songscribe.ui.component.MainFrame;
-import songscribe.ui.component.Score;
-import songscribe.ui.edit.GraceModeManager;
 import songscribe.message.notification.BarWasSelectedNotification;
+import songscribe.message.notification.CompositionDidChangeNotification;
+import songscribe.message.notification.DialogVisibilityDidChangeNotification;
 import songscribe.message.notification.DurationWasSelectedNotification;
 import songscribe.message.notification.GraceModeStateDidChangeNotification;
 import songscribe.message.notification.ModeDidChangeNotification;
 import songscribe.message.notification.MusicSelectionDidChangeNotification;
+import songscribe.message.notification.PlaybackStateDidChangeNotification;
 import songscribe.message.notification.RestModeDidChangeNotification;
 import songscribe.message.notification.TextEditingDidChangeNotification;
+import songscribe.music.Composition;
+import songscribe.music.StaffElement;
+import songscribe.ui.component.MainFrame;
+import songscribe.ui.component.Score;
+import songscribe.ui.dialog.BaseDialog;
+import songscribe.ui.edit.GraceModeManager;
 import songscribe.ui.playback.PlaybackController;
-import songscribe.message.notification.PlaybackStateDidChangeNotification;
 import songscribe.util.GraphicUtils;
 import songscribe.util.UIUtils;
 
@@ -70,7 +72,8 @@ public class UIAction extends AbstractAction {
         ENABLE_WHEN_DURATION_SELECTED(1 << 11),
         DISABLE_WHEN_COMPOSITION_EMPTY(1 << 12),
         DISABLE_IN_GRACE_MODE(1 << 13),
-        DISABLE_IN_SELECT_MODE(1 << 14);
+        DISABLE_IN_SELECT_MODE(1 << 14),
+        OPENS_DIALOG(1 << 15);
 
         private final int value;
 
@@ -350,6 +353,7 @@ public class UIAction extends AbstractAction {
                 enableInSelectMode(score) &&
                 enableFromTextEditingState() &&
                 enableFromPlaybackState() &&
+                enableFromDialogVisibility() &&
                 enableFromGraceModeState() &&
                 enableInRestMode() &&
                 enableFromSelectionSize(score) &&
@@ -441,6 +445,17 @@ public class UIAction extends AbstractAction {
                 (PlaybackController.getState() !=
                     PlaybackController.PlaybackState.PLAYING)
         );
+    }
+
+    @Handler(priority = Message.MEDIUM_PRIORITY)
+    public void dialogVisibilityDidChange(DialogVisibilityDidChangeNotification message) {
+        if (hasFlag(Flag.OPENS_DIALOG)) {
+            updateEnabledState();
+        }
+    }
+
+    private boolean enableFromDialogVisibility() {
+        return !hasFlag(Flag.OPENS_DIALOG) || !BaseDialog.isAnyBlockingDialogVisible();
     }
 
     @Handler(priority = Message.MEDIUM_PRIORITY)
