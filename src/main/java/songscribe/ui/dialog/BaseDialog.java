@@ -202,6 +202,7 @@ public abstract class BaseDialog {
     public void setVisible(boolean visible) {
         if (visible) {
             dialog = new JDialog(mainFrame, dialogTitle, isModal);
+            dialog.setResizable(isResizable());
             dialog.addWindowListener(
                 new WindowAdapter() {
                     @Override
@@ -310,6 +311,14 @@ public abstract class BaseDialog {
      */
     protected @Nullable JButton getDefaultButton() {
         return null;
+    }
+
+    /**
+     * Returns whether the dialog should be resizable. Defaults to false.
+     * Subclasses can override to allow resizing.
+     */
+    protected boolean isResizable() {
+        return false;
     }
 
     /**
