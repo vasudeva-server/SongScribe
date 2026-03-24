@@ -24,6 +24,8 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
+import javax.swing.SwingUtilities;
+
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,6 +33,7 @@ import org.slf4j.LoggerFactory;
 import com.formdev.flatlaf.util.SystemInfo;
 
 import songscribe.converter.AbcConverter;
+import songscribe.error.RuntimeError;
 import songscribe.converter.ImageConverter;
 import songscribe.converter.MidiConverter;
 import songscribe.converter.PDFConverter;
@@ -121,6 +124,18 @@ public final class SongScribe {
 
     public static void main(String[] args) {
         configureLogging();
+
+        Thread.setDefaultUncaughtExceptionHandler((thread, throwable) -> {
+            Runnable handler = () -> {
+                throw RuntimeError.exit("Uncaught exception in thread: " + thread.getName(), throwable);
+            };
+
+            if (SwingUtilities.isEventDispatchThread()) {
+                handler.run();
+            } else {
+                SwingUtilities.invokeLater(handler);
+            }
+        });
 
         // macOS system properties must be set on the main thread before
         // AWT/Swing is initialized — setting them later has no effect.
