@@ -501,11 +501,8 @@ public class InsertionElementManager {
                 sourceNote.setGlissando(zoneType);
 
                 var composition = line.getComposition();
-
-                if (composition != null) {
-                    composition.setModified(true);
-                    MessageCenter.post(new CompositionDidChangeNotification(CompositionDidChangeNotification.ChangeType.CONTENT, composition, line));
-                }
+                composition.setModified(true);
+                MessageCenter.post(new CompositionDidChangeNotification(CompositionDidChangeNotification.ChangeType.CONTENT, composition, line));
                 lc.repaint();
                 return;  // Stay in glissando mode
             }
@@ -680,7 +677,7 @@ public class InsertionElementManager {
         var insertion = InsertionSpacingCalculator.calculateInsertion(line, element, index);
         var composition = line.getComposition();
 
-        if (composition != null && !insertion.fitsWithinLine(composition.getLineWidthSs())) {
+        if (!insertion.fitsWithinLine(composition.getLineWidthSs())) {
             OptionDialogs.showErrorMessage(
                 null,
                 Strings.get(Strings.ALERT_TITLE_INSERT_ERROR),

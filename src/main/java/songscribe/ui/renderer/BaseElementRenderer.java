@@ -25,7 +25,6 @@ import static songscribe.ui.renderer.GraphicsState.Property.FONT;
 
 import module java.desktop;
 
-import java.util.Objects;
 import java.util.function.DoubleConsumer;
 
 
@@ -110,23 +109,14 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
 
     static {
         try {
-            var fughettaBase = Objects.requireNonNull(
-                MyFontUtils.getLocalFont("Fughetta.ttf"),
-                "Cannot load Fughetta.ttf font"
-            );
+            var fughettaBase = MyFontUtils.getLocalFont("Fughetta.ttf");
             MUSIC_FONT = fughettaBase.deriveFont(FONT_SIZE);
 
-            var bravuraBase = Objects.requireNonNull(
-                MyFontUtils.getLocalFont("Bravura.otf"),
-                "Cannot load Bravura.otf font"
-            );
+            var bravuraBase = MyFontUtils.getLocalFont("Bravura.otf");
             BRAVURA_FONT = bravuraBase.deriveFont(FONT_SIZE);
             BRAVURA_FONT_GRACE = bravuraBase.deriveFont(FONT_SIZE * LayoutConstants.GRACE_NOTE_SCALE);
 
-            var tupletBase = Objects.requireNonNull(
-                MyFontUtils.getLocalFont("TupletNumbers.ttf"),
-                "Cannot load TupletNumbers.ttf font"
-            );
+            var tupletBase = MyFontUtils.getLocalFont("TupletNumbers.ttf");
             TUPLET_FONT = tupletBase.deriveFont(1.625f);  // 13px / 8 px/ss
             ENDING_FONT = TUPLET_FONT;
         } catch (Exception e) {

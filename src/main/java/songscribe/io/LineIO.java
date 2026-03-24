@@ -20,7 +20,6 @@
 package songscribe.io;
 
 import java.io.PrintWriter;
-import java.util.Objects;
 
 import org.jspecify.annotations.Nullable;
 
@@ -63,7 +62,7 @@ public final class LineIO {
         pw.println("    <" + XML_LINE + '>');
         XML.setIndent(6);
 
-        var composition = Objects.requireNonNull(l.getComposition());
+        var composition = l.getComposition();
         var lineKeyType = l.getKeyType();
 
         if (

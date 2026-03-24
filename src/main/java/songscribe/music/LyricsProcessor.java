@@ -15,7 +15,6 @@
 
 package songscribe.music;
 
-import java.util.Objects;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -65,7 +64,7 @@ public class LyricsProcessor {
 
         // get the lyrics slice
         var beginIndex = 0;
-        var composition = Objects.requireNonNull(line.getComposition());
+        var composition = line.getComposition();
 
         for (var j = composition.indexOfLine(line); j > 0; j--) {
             beginIndex = composition.getLyrics().indexOf('\n', beginIndex) + 1;

@@ -110,8 +110,7 @@ public final class Composition {
     private String translatedLyrics = "";
 
     // The composer, date and place where the song was composed
-    @Nullable
-    private String attribution;
+    private String attribution = "";
 
     // Additional info about the song
     private String footnotes = "";
@@ -121,25 +120,20 @@ public final class Composition {
 
     // The number of accidentals in the key signature and the type of key (flats or sharps)
     private int defaultKeyAccidentalCount;
-    @Nullable
-    private KeyType defaultKeyType;
+    private KeyType defaultKeyType = DEFAULT_KEY_TYPE;
 
     // Fonts and their associated metrics used to display the song title, lyrics, info, etc.
     private Font titleFont;
     private FontMetrics titleFontMetrics;
     private Font lyricsFont;
     private FontMetrics lyricsFontMetrics;
-    @Nullable
     private Font banglaFont;
-    @Nullable
     private FontMetrics banglaFontMetrics;
     private Font attributionFont;
     private FontMetrics attributionFontMetrics;
     private Font annotationFont;
     private FontMetrics annotationFontMetrics;
-    @Nullable
     private Font footnoteFont;
-    @Nullable
     private FontMetrics footnoteFontMetrics;
 
     // When the title is set, it is wrapped into lines and stored here
@@ -434,7 +428,7 @@ public final class Composition {
         return unofficialTranslation;
     }
 
-    public @Nullable String getAttribution() {
+    public String getAttribution() {
         return attribution;
     }
 
@@ -446,7 +440,7 @@ public final class Composition {
         return defaultKeyAccidentalCount;
     }
 
-    public @Nullable KeyType getDefaultKeyType() {
+    public KeyType getDefaultKeyType() {
         return defaultKeyType;
     }
 
@@ -506,19 +500,19 @@ public final class Composition {
         return annotationFontMetrics;
     }
 
-    public @Nullable Font getBanglaFont() {
+    public Font getBanglaFont() {
         return banglaFont;
     }
 
-    public @Nullable FontMetrics getBanglaFontMetrics() {
+    public FontMetrics getBanglaFontMetrics() {
         return banglaFontMetrics;
     }
 
-    public @Nullable Font getFootnoteFont() {
+    public Font getFootnoteFont() {
         return footnoteFont;
     }
 
-    public @Nullable FontMetrics getFootnoteFontMetrics() {
+    public FontMetrics getFootnoteFontMetrics() {
         return footnoteFontMetrics;
     }
 

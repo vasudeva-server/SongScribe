@@ -144,12 +144,5 @@ class InsertionSpacingCalculatorTest extends UnitTest {
             setLineWidth(line, 500);
             assertThat(InsertionSpacingCalculator.hasRoomForGraceNotePair(line, 1)).isTrue();
         }
-
-        @Test
-        void testNullCompositionReturnsFalse() {
-            var line = lineWithCrotchets(0);
-            // No composition set
-            assertThat(InsertionSpacingCalculator.hasRoomForGraceNotePair(line, 0)).isFalse();
-        }
     }
 }

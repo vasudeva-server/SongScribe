@@ -259,7 +259,7 @@ public class VerticalAdjustment extends Adjustment {
 
             var attribution = c.getAttribution();
 
-            if (attribution != null && !attribution.isEmpty()) {
+            if (!attribution.isEmpty()) {
                 adjustRects.add(new AdjustRect(-1, AdjustType.ATTRIBUTION, -1));
             }
 

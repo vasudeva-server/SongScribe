@@ -255,11 +255,7 @@ public class InsertionSpacingCalculator {
      * @return {@code true} if both the grace note and host note fit on the line
      */
     public static boolean hasRoomForGraceNotePair(Line line, int atIndex) {
-        Composition composition = line.getComposition();
-
-        if (composition == null) {
-            return false;
-        }
+        var composition = line.getComposition();
 
         double staffRightMarginSs = composition.getLineWidthSs();
         int elementCount = line.elementCount();

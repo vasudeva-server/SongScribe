@@ -25,7 +25,6 @@ import static songscribe.midi.MidiSequenceBuilder.PPQ;
 import module java.desktop;
 
 import java.util.Map;
-import java.util.Objects;
 
 import org.jspecify.annotations.Nullable;
 
@@ -137,7 +136,7 @@ public enum ElementType {
             : 0;
     }
 
-    @Nullable
+    @SuppressWarnings("NullAway") // set by static initializer for every enum constant
     private StaffElement instance;
     @Nullable
     private final String name;
@@ -203,16 +202,16 @@ public enum ElementType {
         return new StaffElement(this);
     }
 
-    public @Nullable StaffElement getInstance() {
+    public StaffElement getInstance() {
         return instance;
     }
 
     public StaffElement newInstance() {
         if (this == GLISSANDO || this == PASTE) {
-            return Objects.requireNonNull(instance, this + ".instance not initialized");
+            return instance;
         }
 
-        return Objects.requireNonNull(instance, this + ".instance not initialized").clone();
+        return instance.clone();
     }
 
     public @Nullable String getName() {

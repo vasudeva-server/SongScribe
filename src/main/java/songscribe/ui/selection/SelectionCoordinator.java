@@ -25,7 +25,6 @@ import java.util.HashMap;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 
@@ -578,7 +577,7 @@ public final class SelectionCoordinator {
         contentCacheSelection = null;
         applicabilityCacheSelection = null;
         applicabilityCache.clear();
-        var composition = Objects.requireNonNull(line.getComposition());
+        var composition = line.getComposition();
         composition.setModified(true);
         MessageCenter.post(new CompositionDidChangeNotification(CompositionDidChangeNotification.ChangeType.CONTENT, composition, line));
     }

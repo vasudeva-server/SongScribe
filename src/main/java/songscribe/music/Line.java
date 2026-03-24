@@ -78,7 +78,7 @@ public class Line {
 
     // acceleration
     public StaffElement.SyllableRelation beginRelation = StaffElement.SyllableRelation.NO;
-    @Nullable
+    @SuppressWarnings("NullAway") // set by setComposition() before the Line is used
     private Composition composition = null;
     private int keys = 0;
     @Nullable
@@ -148,7 +148,7 @@ public class Line {
     /** Ratio multiplier for horizontal element spacing (default: 1.0, user-adjustable). */
     private float elementDistChangeRatio = 1f;
 
-    public @Nullable Composition getComposition() {
+    public Composition getComposition() {
         return composition;
     }
 

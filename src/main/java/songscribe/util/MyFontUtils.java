@@ -37,7 +37,8 @@ import org.slf4j.LoggerFactory;
 import com.formdev.flatlaf.util.FontUtils;
 import kotlin.Pair;
 
-@SuppressWarnings("SameReturnValue")
+import songscribe.error.RuntimeError;
+
 public final class MyFontUtils {
 
     private static final Logger LOG = LoggerFactory.getLogger(MyFontUtils.class);
@@ -158,10 +159,7 @@ public final class MyFontUtils {
 
     public static Font getNoteFont() {
         if (noteFont == null) {
-            noteFont = Objects.requireNonNull(
-                getLocalFont("Bravura.otf", 20),
-                "Could not load Bravura.otf"
-            );
+            noteFont = getLocalFont("Bravura.otf", 20);
         }
 
         return noteFont;
@@ -169,10 +167,7 @@ public final class MyFontUtils {
 
     public static Font getIconFont() {
         if (iconFont == null) {
-            iconFont = Objects.requireNonNull(
-                getLocalFont("MusescoreIcon.otf", 20),
-                "Could not load MusescoreIcon.otf"
-            );
+            iconFont = getLocalFont("MusescoreIcon.otf", 20);
         }
 
         return iconFont;
@@ -191,7 +186,6 @@ public final class MyFontUtils {
         return font.deriveFont(transform);
     }
 
-    @Nullable
     public static Font getLocalFont(String filename) {
         return getLocalFont(filename, 0);
     }
@@ -199,13 +193,15 @@ public final class MyFontUtils {
     /**
      * Loads but does not register a local font. If size == 0, the default 1pt size is returned.
      */
-    @Nullable
     public static Font getLocalFont(String filename, float size) {
         try (
             var stream =
                 MyFontUtils.class.getResourceAsStream("/fonts/" + filename)
         ) {
-            assert stream != null;
+            if (stream == null) {
+                RuntimeError.exit("Font resource not found: " + filename);
+                throw new AssertionError("unreachable");
+            }
 
             var font = deriveKernedFont(
                 Font.createFont(Font.TRUETYPE_FONT, stream)
@@ -217,10 +213,9 @@ public final class MyFontUtils {
 
             return font;
         } catch (Exception e) {
-            LOG.error("Could not get font", e);
+            RuntimeError.exit("Could not load font: " + filename);
+            throw new AssertionError("unreachable");
         }
-
-        return null;
     }
 
     public static void installLocalFont(String fontName) {
@@ -229,11 +224,6 @@ public final class MyFontUtils {
 
     public static void installLocalFont(String fontName, float size) {
         var font = getLocalFont(fontName, size);
-
-        if (font == null) {
-            return;
-        }
-
         var ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
         var psName = font.getPSName();
 

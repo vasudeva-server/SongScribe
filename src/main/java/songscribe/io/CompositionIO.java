@@ -160,7 +160,7 @@ public final class CompositionIO {
 
         var attribution = c.getAttribution();
 
-        if (attribution != null && !attribution.isEmpty()) {
+        if (!attribution.isEmpty()) {
             XML.writeValue(pw, XML_INFO, attribution);
         }
 

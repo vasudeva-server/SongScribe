@@ -454,11 +454,7 @@ public final class FormatMigrator {
         // are stored on the Note. We add them to the Line's rangeElements.
         if (note.isTrill()) {
             var trill = new Trill(note);
-            var line = note.getLine();
-
-            if (line != null) {
-                line.addRangeElement(trill);
-            }
+            note.getLine().addRangeElement(trill);
         }
 
         // Note: ForceArticulation and DurationArticulation are not migrated here

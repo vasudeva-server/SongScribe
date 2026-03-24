@@ -554,11 +554,7 @@ public final class GraceModeManager {
         }
 
         if (graceLine != null) {
-            var composition = graceLine.getComposition();
-
-            if (composition != null) {
-                post(new CompositionDidChangeNotification(CompositionDidChangeNotification.ChangeType.CONTENT, composition, graceLine));
-            }
+            post(new CompositionDidChangeNotification(CompositionDidChangeNotification.ChangeType.CONTENT, graceLine.getComposition(), graceLine));
         }
 
         // Restore only DISABLE_IN_GRACE_MODE actions to their pre-grace-mode state.

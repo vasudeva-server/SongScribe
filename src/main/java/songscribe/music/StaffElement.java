@@ -116,7 +116,7 @@ public class StaffElement extends LineElement implements Cloneable {
     private boolean stemDirectionAuto = true;
 
     // The line which owns this note
-    @Nullable
+    @SuppressWarnings("NullAway") // set by Line.addElement() before the element is used
     protected Line line = null;
 
     // ========================================================================
@@ -637,7 +637,7 @@ public class StaffElement extends LineElement implements Cloneable {
         return (int) (getDefaultDurationWithDots() * (fermata ? 1.5f : 1.0f));
     }
 
-    public @Nullable Line getLine() {
+    public Line getLine() {
         return line;
     }
 

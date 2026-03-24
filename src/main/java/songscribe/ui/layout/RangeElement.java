@@ -79,7 +79,7 @@ public abstract class RangeElement extends LineElement {
      * Returns -1 if the anchor note is not set or not in a line.
      */
     public int getAnchorElementIndex() {
-        if (anchorNote == null || anchorNote.getLine() == null) {
+        if (anchorNote == null) {
             return -1;
         }
 
@@ -93,7 +93,7 @@ public abstract class RangeElement extends LineElement {
     public int getEndElementIndex() {
         var endNote = getEndElement();
 
-        if (endNote == null || endNote.getLine() == null) {
+        if (endNote == null) {
             return -1;
         }
 
