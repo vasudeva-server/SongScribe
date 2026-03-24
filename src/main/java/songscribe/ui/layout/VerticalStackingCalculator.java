@@ -33,9 +33,6 @@ import songscribe.music.StaffElement;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
 import songscribe.smufl.StaffSpaces;
-import songscribe.ui.layout.Articulation;
-import songscribe.ui.layout.FermataAttachment;
-import songscribe.ui.layout.LineElement;
 import songscribe.ui.renderer.ArticulationRenderer;
 
 /**
@@ -191,7 +188,7 @@ public class VerticalStackingCalculator {
 
         var minYPx = accumulated.getBounds2D().getMinY();
         boolean isUpper = note.isUpper();
-        double halfContentHeightPx = articulations.getFirst().getContentHeight() / 2.0;
+        double halfContentHeightPx = articulations.getFirst().getContentHeightPx() / 2.0;
 
         // Identify articulation types
         Articulation staccatoArticulation = null;
@@ -526,14 +523,14 @@ public class VerticalStackingCalculator {
 
         // Start from top of accumulated bounding area
         var accBounds = accumulated.getBounds2D();
-        var candidateYPx = accBounds.getMinY() - marginPx - element.getContentHeight();
+        var candidateYPx = accBounds.getMinY() - marginPx - element.getContentHeightPx();
 
         // Create element bounds at candidate position
         var elementBounds = new Rectangle2D.Double(
-            x - element.getContentWidth() / 2,
+            x - element.getContentWidthPx() / 2,
             candidateYPx,
-            element.getContentWidth(),
-            element.getContentHeight()
+            element.getContentWidthPx(),
+            element.getContentHeightPx()
         );
 
         var elementArea = new Area(elementBounds);
@@ -547,10 +544,10 @@ public class VerticalStackingCalculator {
             candidateYPx -= 1.0;
 
             elementBounds.setRect(
-                x - element.getContentWidth() / 2,
+                x - element.getContentWidthPx() / 2,
                 candidateYPx,
-                element.getContentWidth(),
-                element.getContentHeight()
+                element.getContentWidthPx(),
+                element.getContentHeightPx()
             );
 
             elementArea = new Area(elementBounds);
@@ -595,10 +592,10 @@ public class VerticalStackingCalculator {
         Area accumulated) {
 
         var bounds = new Rectangle2D.Double(
-            x - element.getContentWidth() / 2,
+            x - element.getContentWidthPx() / 2,
             y,
-            element.getContentWidth(),
-            element.getContentHeight()
+            element.getContentWidthPx(),
+            element.getContentHeightPx()
         );
 
         accumulated.add(new Area(bounds));

@@ -20,8 +20,6 @@
 
 package songscribe.ui.layout;
 
-import songscribe.ui.layout.ScaleContext;
-
 /**
  * Represents the 5 horizontal staff lines within a Line.
  * <p>
@@ -34,45 +32,45 @@ import songscribe.ui.layout.ScaleContext;
 public class Staff extends LineElement {
 
     /** Width of the staff lines (typically the full line width minus margins). */
-    private double width;
+    private double widthPx;
 
     /**
      * Creates a staff with the specified width.
      *
      * @param width Width of the staff lines in pixels
      */
-    public Staff(double width) {
-        this.width = width;
+    public Staff(double widthPx) {
+        this.widthPx = widthPx;
     }
 
     /**
      * Returns the width of the staff.
      */
-    public double getWidth() {
-        return width;
+    public double getWidthPx() {
+        return widthPx;
     }
 
     /**
      * Sets the width of the staff.
      */
-    public void setWidth(double width) {
-        this.width = width;
+    public void setWidthPx(double widthPx) {
+        this.widthPx = widthPx;
     }
 
     @Override
-    public double getContentWidth() {
-        return width;
+    public double getContentWidthPx() {
+        return widthPx;
     }
 
     @Override
-    public double getContentHeight() {
+    public double getContentHeightPx() {
         return ScaleContext.getInstance().toPixels(LayoutStylesheet.STAFF_HEIGHT_SS);
     }
 
     /**
      * Returns the Y offset between staff lines.
      */
-    public int getLineSpacing() {
+    public int getLineSpacingPx() {
         return ScaleContext.getInstance().toRoundedPixels(1.0);
     }
 
@@ -86,21 +84,21 @@ public class Staff extends LineElement {
     /**
      * Returns the Y coordinate of the top staff line relative to staff position.
      */
-    public double getTopLineY() {
+    public double getTopLineYPx() {
         return 0;
     }
 
     /**
      * Returns the Y coordinate of the bottom staff line relative to staff position.
      */
-    public double getBottomLineY() {
+    public double getBottomLineYPx() {
         return ScaleContext.getInstance().toPixels((LayoutStylesheet.STAFF_LINE_COUNT - 1) * 1.0);
     }
 
     /**
      * Returns the Y coordinate of the middle staff line (B line) relative to staff position.
      */
-    public double getMiddleLineY() {
+    public double getMiddleLineYPx() {
         return ScaleContext.getInstance().toPixels(2.0);
     }
 
@@ -110,7 +108,7 @@ public class Staff extends LineElement {
      * @param lineIndex Staff line index (0-4)
      * @return Y coordinate relative to staff position
      */
-    public double getLineY(int lineIndex) {
+    public double getLineYPx(int lineIndex) {
         if (lineIndex < 0 || lineIndex >= LayoutStylesheet.STAFF_LINE_COUNT) {
             throw new IndexOutOfBoundsException("Staff line index must be 0-4, got: " + lineIndex);
         }

@@ -189,7 +189,7 @@ class ElementTypeTest extends UnitTest {
             var element = ElementType.CROTCHET.newInstance();
             var sc = ScaleContext.getInstance();
             double expectedPx = sc.toPixels(ElementType.CROTCHET.getElementHeightSs(element.isUpper()));
-            assertThat(element.getContentHeight()).isCloseTo(expectedPx, within(1e-9));
+            assertThat(element.getContentHeightPx()).isCloseTo(expectedPx, within(1e-9));
         }
 
         @Test
@@ -197,7 +197,7 @@ class ElementTypeTest extends UnitTest {
             var element = ElementType.CROTCHET.newInstance();
             var sc = ScaleContext.getInstance();
             double expectedPx = sc.toPixels(ElementType.CROTCHET.getElementWidthSs());
-            assertThat(element.getContentWidth()).isCloseTo(expectedPx, within(1e-9));
+            assertThat(element.getContentWidthPx()).isCloseTo(expectedPx, within(1e-9));
         }
     }
 

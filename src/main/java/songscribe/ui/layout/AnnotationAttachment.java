@@ -108,13 +108,13 @@ public class AnnotationAttachment extends Attachment {
     }
 
     @Override
-    public double getContentWidth() {
+    public double getContentWidthPx() {
         // In a real implementation, this would measure the text width
         return DEFAULT_WIDTH;
     }
 
     @Override
-    public double getContentHeight() {
+    public double getContentHeightPx() {
         return DEFAULT_HEIGHT;
     }
 }

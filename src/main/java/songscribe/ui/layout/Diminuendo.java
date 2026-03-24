@@ -128,18 +128,18 @@ public class Diminuendo extends RangeElement {
     }
 
     @Override
-    public double getContentWidth() {
+    public double getContentWidthPx() {
         var anchor = getAnchorElement();
 
         if (anchor == null || endNote == null) {
             return 0;
         }
 
-        return Math.abs(endNote.getXSs() - anchor.getXSs()) + endNote.getContentWidth() + x1Shift + x2Shift;
+        return Math.abs(endNote.getXSs() - anchor.getXSs()) + endNote.getContentWidthPx() + x1Shift + x2Shift;
     }
 
     @Override
-    public double getContentHeight() {
+    public double getContentHeightPx() {
         // Height of the hairpin opening
         return 8.0;
     }

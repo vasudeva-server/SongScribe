@@ -34,10 +34,10 @@ import songscribe.music.Tempo;
 public class TempoAttachment extends Attachment {
 
     /** Default width for tempo markings. */
-    private static final double DEFAULT_WIDTH = 60.0;
+    private static final double DEFAULT_WIDTH_PX = 60.0;
 
     /** Default height for tempo markings. */
-    private static final double DEFAULT_HEIGHT = 20.0;
+    private static final double DEFAULT_HEIGHT_PX = 20.0;
 
     /** The tempo data. */
     private Tempo tempo;
@@ -105,12 +105,12 @@ public class TempoAttachment extends Attachment {
     }
 
     @Override
-    public double getContentWidth() {
-        return DEFAULT_WIDTH;
+    public double getContentWidthPx() {
+        return DEFAULT_WIDTH_PX;
     }
 
     @Override
-    public double getContentHeight() {
-        return DEFAULT_HEIGHT;
+    public double getContentHeightPx() {
+        return DEFAULT_HEIGHT_PX;
     }
 }

@@ -84,7 +84,7 @@ public class Tie extends RangeElement {
     }
 
     @Override
-    public double getContentWidth() {
+    public double getContentWidthPx() {
         var anchor = getAnchorElement();
 
         if (anchor == null || endNote == null) {
@@ -92,11 +92,11 @@ public class Tie extends RangeElement {
         }
 
         // Width spans from anchor to end note
-        return Math.abs(endNote.getXSs() - anchor.getXSs()) + endNote.getContentWidth();
+        return Math.abs(endNote.getXSs() - anchor.getXSs()) + endNote.getContentWidthPx();
     }
 
     @Override
-    public double getContentHeight() {
+    public double getContentHeightPx() {
         // Tie curve height - approximate arc height
         return 8.0;
     }

@@ -33,10 +33,10 @@ import songscribe.music.StaffElement;
 public class DynamicAttachment extends Attachment {
 
     /** Default width for dynamic markings. */
-    private static final double DEFAULT_WIDTH = 20.0;
+    private static final double DEFAULT_WIDTH_PX = 20.0;
 
     /** Default height for dynamic markings. */
-    private static final double DEFAULT_HEIGHT = 14.0;
+    private static final double DEFAULT_HEIGHT_PX = 14.0;
 
     /**
      * Types of dynamic markings.
@@ -125,13 +125,13 @@ public class DynamicAttachment extends Attachment {
     }
 
     @Override
-    public double getContentWidth() {
+    public double getContentWidthPx() {
         // Width varies by dynamic type; this is an estimate
-        return DEFAULT_WIDTH;
+        return DEFAULT_WIDTH_PX;
     }
 
     @Override
-    public double getContentHeight() {
-        return DEFAULT_HEIGHT;
+    public double getContentHeightPx() {
+        return DEFAULT_HEIGHT_PX;
     }
 }

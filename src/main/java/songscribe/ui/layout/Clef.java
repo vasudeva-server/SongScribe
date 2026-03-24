@@ -20,8 +20,6 @@
 
 package songscribe.ui.layout;
 
-import songscribe.ui.layout.ScaleContext;
-
 /**
  * Represents the treble clef at the start of a staff line.
  * <p>
@@ -33,23 +31,23 @@ import songscribe.ui.layout.ScaleContext;
 public class Clef extends LineElement {
 
     /** Default width of the treble clef glyph in pixels. */
-    private static final double DEFAULT_WIDTH = 28.0;
+    private static final double DEFAULT_WIDTH_PX = 28.0;
 
     /** Default height of the treble clef glyph in pixels. */
-    private static final double DEFAULT_HEIGHT = 64.0;
+    private static final double DEFAULT_HEIGHT_PX = 64.0;
 
     /** Width of the clef glyph. */
-    private double width = DEFAULT_WIDTH;
+    private double widthPx = DEFAULT_WIDTH_PX;
 
     /** Height of the clef glyph. */
-    private double height = DEFAULT_HEIGHT;
+    private double heightPx = DEFAULT_HEIGHT_PX;
 
     /**
      * Creates a clef with default dimensions.
      */
     public Clef() {
         // Default margin from clef to key signature
-        setMarginRightSs(ScaleContext.getInstance().toRoundedPixels(0.5));
+        setMarginRightSs(0.5);
     }
 
     /**
@@ -58,20 +56,20 @@ public class Clef extends LineElement {
      * @param width  Width of the clef glyph in pixels
      * @param height Height of the clef glyph in pixels
      */
-    public Clef(double width, double height) {
+    public Clef(double widthPx, double heightPx) {
         this();
-        this.width = width;
-        this.height = height;
+        this.widthPx = widthPx;
+        this.heightPx = heightPx;
     }
 
     @Override
-    public double getContentWidth() {
-        return width;
+    public double getContentWidthPx() {
+        return widthPx;
     }
 
     @Override
-    public double getContentHeight() {
-        return height;
+    public double getContentHeightPx() {
+        return heightPx;
     }
 
     /**
@@ -80,8 +78,8 @@ public class Clef extends LineElement {
      * @param width  Width in pixels
      * @param height Height in pixels
      */
-    public void setDimensions(double width, double height) {
-        this.width = width;
-        this.height = height;
+    public void setDimensions(double widthPx, double heightPx) {
+        this.widthPx = widthPx;
+        this.heightPx = heightPx;
     }
 }

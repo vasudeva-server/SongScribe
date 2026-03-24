@@ -194,7 +194,7 @@ public class HorizontalAdjustment extends Adjustment {
             note.getType().snapToEnd() &&
                 ((composition.getLineWidthPx() - endPoint.x) < END_SNAP_LIMIT)
         ) {
-            endPoint.x = (int) (composition.getLineWidthPx() - note.getContentWidth());
+            endPoint.x = (int) (composition.getLineWidthPx() - note.getContentWidthPx());
         }
 
         var diffX = draggingRect.rect.x + (draggingRect.rect.width / 2);

@@ -66,7 +66,7 @@ public final class AttachmentLayout {
 
     private final Type type;
     private final int elementIndex;
-    private final Point position;
+    private final Point positionPx;
     private final ElementBounds bounds;
     private final @Nullable Object data;
 
@@ -82,13 +82,13 @@ public final class AttachmentLayout {
     public AttachmentLayout(
         Type type,
         int elementIndex,
-        Point position,
+        Point positionPx,
         ElementBounds bounds,
         @Nullable Object data
     ) {
         this.type = type;
         this.elementIndex = elementIndex;
-        this.position = position;
+        this.positionPx = positionPx;
         this.bounds = bounds;
         this.data = data;
     }
@@ -99,10 +99,10 @@ public final class AttachmentLayout {
     public AttachmentLayout(
         Type type,
         int elementIndex,
-        Point position,
+        Point positionPx,
         ElementBounds bounds
     ) {
-        this(type, elementIndex, position, bounds, null);
+        this(type, elementIndex, positionPx, bounds, null);
     }
 
     /**
@@ -122,22 +122,22 @@ public final class AttachmentLayout {
     /**
      * Returns the rendered position.
      */
-    public Point getPosition() {
-        return position;
+    public Point getPositionPx() {
+        return positionPx;
     }
 
     /**
      * Returns the X coordinate.
      */
-    public int getX() {
-        return position.x;
+    public int getXPx() {
+        return positionPx.x;
     }
 
     /**
      * Returns the Y coordinate.
      */
-    public int getY() {
-        return position.y;
+    public int getYPx() {
+        return positionPx.y;
     }
 
     /**
@@ -199,7 +199,7 @@ public final class AttachmentLayout {
         return "AttachmentLayout{" +
             "type=" + type +
             ", elementIndex=" + elementIndex +
-            ", pos=(" + position.x + "," + position.y + ")" +
+            ", pos=(" + positionPx.x + "," + positionPx.y + ")" +
             (data != null ? ", data=" + data : "") +
             "}";
     }

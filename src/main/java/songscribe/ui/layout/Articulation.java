@@ -38,7 +38,7 @@ import songscribe.music.StaffElement;
 public class Articulation extends LineElement {
 
     /** Default size for articulation symbols in pixels. */
-    private static final double DEFAULT_SIZE = 8.0;
+    private static final double DEFAULT_SIZE_PX = 8.0;
 
     /** The staff element this articulation belongs to. */
     private @Nullable StaffElement ownerElement;
@@ -114,12 +114,12 @@ public class Articulation extends LineElement {
     }
 
     @Override
-    public double getContentWidth() {
-        return DEFAULT_SIZE;
+    public double getContentWidthPx() {
+        return DEFAULT_SIZE_PX;
     }
 
     @Override
-    public double getContentHeight() {
-        return DEFAULT_SIZE;
+    public double getContentHeightPx() {
+        return DEFAULT_SIZE_PX;
     }
 }

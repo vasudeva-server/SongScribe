@@ -111,7 +111,7 @@ public class Trill extends RangeElement {
     }
 
     @Override
-    public double getContentWidth() {
+    public double getContentWidthPx() {
         var anchor = getAnchorElement();
 
         if (anchor == null || endNote == null) {
@@ -119,14 +119,14 @@ public class Trill extends RangeElement {
         }
 
         if (anchor == endNote) {
-            return anchor.getContentWidth();
+            return anchor.getContentWidthPx();
         }
 
-        return Math.abs(endNote.getXSs() - anchor.getXSs()) + endNote.getContentWidth();
+        return Math.abs(endNote.getXSs() - anchor.getXSs()) + endNote.getContentWidthPx();
     }
 
     @Override
-    public double getContentHeight() {
+    public double getContentHeightPx() {
         // Height of trill symbol ("tr" + wavy line)
         return 12.0;
     }

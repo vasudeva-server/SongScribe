@@ -52,7 +52,7 @@ public abstract class LineElement {
     private @Nullable LineElement parentElement;
 
     /** Position relative to parent line origin. */
-    private Point2D position = new Point2D.Double(0, 0);
+    private Point2D positionSs = new Point2D.Double(0, 0);
 
     /**
      * User's manual horizontal offset from the layout-calculated position.
@@ -89,13 +89,13 @@ public abstract class LineElement {
      * Returns the intrinsic width of this element's content.
      * Subclasses must implement based on their specific content.
      */
-    public abstract double getContentWidth();
+    public abstract double getContentWidthPx();
 
     /**
      * Returns the intrinsic height of this element's content.
      * Subclasses must implement based on their specific content.
      */
-    public abstract double getContentHeight();
+    public abstract double getContentHeightPx();
 
     // ========================================================================
     // Parent/Line Relationships
@@ -136,36 +136,36 @@ public abstract class LineElement {
     /**
      * Returns the position relative to the parent line origin.
      */
-    public Point2D getPosition() {
-        return position;
+    public Point2D getPositionSs() {
+        return positionSs;
     }
 
     /**
      * Returns the X position relative to the parent line origin.
      */
     public double getXSs() {
-        return position.getX();
+        return positionSs.getX();
     }
 
     /**
      * Returns the Y position relative to the parent line origin.
      */
     public double getYSs() {
-        return position.getY();
+        return positionSs.getY();
     }
 
     /**
      * Sets the position relative to the parent line origin.
      */
-    public void setPosition(Point2D position) {
-        this.position = position;
+    public void setPosition(Point2D positionSs) {
+        this.positionSs = positionSs;
     }
 
     /**
      * Sets the position relative to the parent line origin.
      */
-    public void setPosition(double x, double y) {
-        this.position = new Point2D.Double(x, y);
+    public void setPosition(double xSs, double ySs) {
+        this.positionSs = new Point2D.Double(xSs, ySs);
     }
 
     // ========================================================================
@@ -270,10 +270,10 @@ public abstract class LineElement {
      */
     public Rectangle2D getContentBounds() {
         return new Rectangle2D.Double(
-            position.getX(),
-            position.getY(),
-            getContentWidth(),
-            getContentHeight()
+            positionSs.getX(),
+            positionSs.getY(),
+            getContentWidthPx(),
+            getContentHeightPx()
         );
     }
 
@@ -282,10 +282,10 @@ public abstract class LineElement {
      */
     public Rectangle2D getMarginBounds() {
         return new Rectangle2D.Double(
-            position.getX() - marginLeftSs,
-            position.getY() - marginTopSs,
-            getContentWidth() + marginLeftSs + marginRightSs,
-            getContentHeight() + marginTopSs + marginBottomSs
+            positionSs.getX() - marginLeftSs,
+            positionSs.getY() - marginTopSs,
+            getContentWidthPx() + marginLeftSs + marginRightSs,
+            getContentHeightPx() + marginTopSs + marginBottomSs
         );
     }
 

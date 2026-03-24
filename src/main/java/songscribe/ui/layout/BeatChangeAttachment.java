@@ -92,12 +92,12 @@ public class BeatChangeAttachment extends Attachment {
     }
 
     @Override
-    public double getContentWidth() {
+    public double getContentWidthPx() {
         return DEFAULT_WIDTH;
     }
 
     @Override
-    public double getContentHeight() {
+    public double getContentHeightPx() {
         return DEFAULT_HEIGHT;
     }
 }

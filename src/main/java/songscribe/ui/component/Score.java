@@ -887,7 +887,7 @@ public final class Score
             float idealSpace;
 
             if (strict) {
-                idealSpace = (float) endNote.getContentWidth();
+                idealSpace = (float) endNote.getContentWidthPx();
             } else {
                 idealSpace = (float) ScaleContext.getInstance().toPixels(LayoutConstants.DEFAULT_COLUMN_GAP_SS) + 20;
             }

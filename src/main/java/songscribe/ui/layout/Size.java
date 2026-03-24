@@ -25,7 +25,7 @@ package songscribe.ui.layout;
  * <p>
  * Used during the measure pass to store calculated dimensions.
  */
-public record Size(double width, double height) {
+public record Size(double widthSs, double heightSs) {
 
     /** Zero size constant */
     public static final Size ZERO = new Size(0, 0);

@@ -129,18 +129,18 @@ public class Ending extends RangeElement {
     }
 
     @Override
-    public double getContentWidth() {
+    public double getContentWidthPx() {
         var anchor = getAnchorElement();
 
         if (anchor == null || endNote == null) {
             return 0;
         }
 
-        return Math.abs(endNote.getXSs() - anchor.getXSs()) + endNote.getContentWidth();
+        return Math.abs(endNote.getXSs() - anchor.getXSs()) + endNote.getContentWidthPx();
     }
 
     @Override
-    public double getContentHeight() {
+    public double getContentHeightPx() {
         // Height of ending bracket with label
         return 15.0;
     }

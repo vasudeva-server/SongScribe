@@ -235,7 +235,7 @@ public class StaffElement extends LineElement implements Cloneable {
     //  and the toPixels() conversion should move to the rendering boundary.
 
     @Override
-    public double getContentWidth() {
+    public double getContentWidthPx() {
         return ScaleContext.getInstance().toPixels(getType().getElementWidthSs());
     }
 
@@ -244,7 +244,7 @@ public class StaffElement extends LineElement implements Cloneable {
     }
 
     @Override
-    public double getContentHeight() {
+    public double getContentHeightPx() {
         return ScaleContext.getInstance().toPixels(getType().getElementHeightSs(upper));
     }
 

@@ -33,7 +33,7 @@ import songscribe.music.StaffElement;
 public class FermataAttachment extends Attachment {
 
     /** Default size for fermata symbol. */
-    private static final double DEFAULT_SIZE = 16.0;
+    private static final double DEFAULT_SIZE_PX = 16.0;
 
     /**
      * Creates a fermata attachment.
@@ -58,12 +58,12 @@ public class FermataAttachment extends Attachment {
     }
 
     @Override
-    public double getContentWidth() {
-        return DEFAULT_SIZE;
+    public double getContentWidthPx() {
+        return DEFAULT_SIZE_PX;
     }
 
     @Override
-    public double getContentHeight() {
-        return DEFAULT_SIZE;
+    public double getContentHeightPx() {
+        return DEFAULT_SIZE_PX;
     }
 }

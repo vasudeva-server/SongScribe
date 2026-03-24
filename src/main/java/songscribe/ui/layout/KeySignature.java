@@ -22,7 +22,6 @@ package songscribe.ui.layout;
 
 
 import songscribe.music.KeyType;
-import songscribe.ui.layout.ScaleContext;
 
 /**
  * Represents the key signature (sharps or flats) at the start of a staff line.
@@ -35,10 +34,10 @@ import songscribe.ui.layout.ScaleContext;
 public class KeySignature extends LineElement {
 
     /** Width per accidental glyph in pixels. */
-    private static final double ACCIDENTAL_WIDTH = 8.0;
+    private static final double ACCIDENTAL_WIDTH_PX = 8.0;
 
     /** Height of accidental glyphs (may extend above/below staff). */
-    private static final double ACCIDENTAL_HEIGHT = 24.0;
+    private static final double ACCIDENTAL_HEIGHT_PX = 24.0;
 
     /** The type of key signature (sharps or flats). */
     private KeyType keyType;
@@ -105,20 +104,20 @@ public class KeySignature extends LineElement {
     }
 
     @Override
-    public double getContentWidth() {
+    public double getContentWidthPx() {
         if (!hasAccidentals()) {
             return 0;
         }
 
-        return accidentalCount * ACCIDENTAL_WIDTH;
+        return accidentalCount * ACCIDENTAL_WIDTH_PX;
     }
 
     @Override
-    public double getContentHeight() {
+    public double getContentHeightPx() {
         if (!hasAccidentals()) {
             return 0;
         }
 
-        return ACCIDENTAL_HEIGHT;
+        return ACCIDENTAL_HEIGHT_PX;
     }
 }

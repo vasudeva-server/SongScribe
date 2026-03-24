@@ -29,7 +29,6 @@ import org.jspecify.annotations.Nullable;
 
 import songscribe.music.Line;
 import songscribe.music.StaffElement;
-import songscribe.ui.layout.Bounds;
 
 /**
  * Orchestrates the complete layout pipeline for a staff line.
@@ -213,8 +212,8 @@ public class LayoutEngine {
                 var contentBounds = new Rectangle2D.Double(
                     position.getX(),
                     position.getY(),
-                    element.getContentWidth(),
-                    element.getContentHeight()
+                    element.getContentWidthPx(),
+                    element.getContentHeightPx()
                 );
 
                 var bounds = element.getBounds();
@@ -225,8 +224,8 @@ public class LayoutEngine {
                     new Rectangle2D.Double(
                         position.getX() - element.getMarginLeftSs(),
                         position.getY() - element.getMarginTopSs(),
-                        element.getContentWidth() + element.getMarginLeftSs() + element.getMarginRightSs(),
-                        element.getContentHeight() + element.getMarginTopSs() + element.getMarginBottomSs()
+                        element.getContentWidthPx() + element.getMarginLeftSs() + element.getMarginRightSs(),
+                        element.getContentHeightPx() + element.getMarginTopSs() + element.getMarginBottomSs()
                     )
                 );
 

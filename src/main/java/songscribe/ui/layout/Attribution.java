@@ -21,8 +21,6 @@
 package songscribe.ui.layout;
 
 
-import songscribe.ui.layout.ScaleContext;
-
 /**
  * Represents attribution text (composer/arranger) displayed on the staff.
  * <p>
@@ -41,10 +39,10 @@ public class Attribution extends LineElement {
     private boolean isRightAligned = true;
 
     /** Approximate character width for stub calculations. */
-    private static final double CHAR_WIDTH = 8.0;
+    private static final double CHAR_WIDTH_PX = 8.0;
 
     /** Approximate text height for stub calculations. */
-    private static final double TEXT_HEIGHT = 16.0;
+    private static final double TEXT_HEIGHT_PX = 16.0;
 
     /**
      * Creates an attribution with the specified text.
@@ -100,8 +98,8 @@ public class Attribution extends LineElement {
      * Phase 6 rendering will use actual font metrics.
      */
     @Override
-    public double getContentWidth() {
-        return text.length() * CHAR_WIDTH;
+    public double getContentWidthPx() {
+        return text.length() * CHAR_WIDTH_PX;
     }
 
     /**
@@ -111,8 +109,8 @@ public class Attribution extends LineElement {
      * Phase 6 rendering will use actual font metrics.
      */
     @Override
-    public double getContentHeight() {
-        return TEXT_HEIGHT;
+    public double getContentHeightPx() {
+        return TEXT_HEIGHT_PX;
     }
 
     /**
@@ -123,6 +121,6 @@ public class Attribution extends LineElement {
      * @return The X position for the attribution
      */
     public double calculateRightAlignedX(double staffWidth, double rightMargin) {
-        return staffWidth - getContentWidth() - rightMargin;
+        return staffWidth - getContentWidthPx() - rightMargin;
     }
 }
