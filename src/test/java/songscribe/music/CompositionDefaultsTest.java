@@ -24,6 +24,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.jupiter.api.Test;
 
+import songscribe.Strings;
 import songscribe.UnitTest;
 import songscribe.prefs.Prefs;
 import songscribe.prefs.PrefsKey;
@@ -64,7 +65,8 @@ class CompositionDefaultsTest extends UnitTest {
     @Test
     void testDefaultAttribution() {
         var composition = new Composition();
-        assertThat(composition.getAttribution()).isEqualTo("Words and Music\nby Sri Chinmoy\n");
+        assertThat(composition.getAttribution())
+            .isEqualTo(Strings.get(Strings.COMPOSITION_DEFAULT_ATTRIBUTION));
     }
 
     @Test
