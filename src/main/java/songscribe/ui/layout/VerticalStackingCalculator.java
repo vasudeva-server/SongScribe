@@ -25,7 +25,6 @@ import module java.desktop;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 
 
 import songscribe.music.Line;
@@ -59,11 +58,11 @@ public class VerticalStackingCalculator {
     // Note head dimensions from SMuFL noteheadBlack bounding box
     private static final double NOTE_HEAD_WIDTH_PX =
         StaffSpaces.toPixels(
-            Objects.requireNonNull(SMuFLMetadata.getInstance().getBBox(SMuFLGlyph.NOTEHEAD_BLACK)).width());
+            SMuFLMetadata.getInstance().requireBBox(SMuFLGlyph.NOTEHEAD_BLACK).width());
 
     private static final double NOTE_HEAD_HEIGHT_PX =
         StaffSpaces.toPixels(
-            Objects.requireNonNull(SMuFLMetadata.getInstance().getBBox(SMuFLGlyph.NOTEHEAD_BLACK)).height());
+            SMuFLMetadata.getInstance().requireBBox(SMuFLGlyph.NOTEHEAD_BLACK).height());
 
     /**
      * Creates a new vertical stacking calculator.

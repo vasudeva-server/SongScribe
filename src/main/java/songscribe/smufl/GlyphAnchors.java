@@ -22,6 +22,8 @@ package songscribe.smufl;
 
 import org.jspecify.annotations.Nullable;
 
+import songscribe.error.RuntimeError;
+
 /**
  * Anchor points for a SMuFL glyph, in staff spaces with Y-down (screen) convention.
  * All anchor points are nullable because not every glyph defines every anchor.
@@ -37,6 +39,36 @@ public record GlyphAnchors(
         @Nullable Anchor cutOutNW,
         @Nullable Anchor cutOutSE
 ) {
+    /**
+     * Returns the stemUpSE anchor, exiting fatally if not present.
+     * Use for glyphs whose stem-up anchor is guaranteed by the font.
+     */
+    public Anchor requireStemUpSE() {
+        var result = stemUpSE;
+
+        if (result == null) {
+            throw RuntimeError.exit("missing stemUpSE anchor");
+
+        }
+
+        return result;
+    }
+
+    /**
+     * Returns the stemDownNW anchor, exiting fatally if not present.
+     * Use for glyphs whose stem-down anchor is guaranteed by the font.
+     */
+    public Anchor requireStemDownNW() {
+        var result = stemDownNW;
+
+        if (result == null) {
+            throw RuntimeError.exit("missing stemDownNW anchor");
+
+        }
+
+        return result;
+    }
+
     /**
      * A single anchor point in staff spaces, Y-down convention.
      */

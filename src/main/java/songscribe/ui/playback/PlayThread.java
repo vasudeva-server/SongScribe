@@ -67,8 +67,7 @@ public class PlayThread extends Thread {
         var receiver = MidiController.midiReceiver;
 
         if (receiver == null) {
-            RuntimeError.exit("setupInstrument() called with null midiReceiver");
-            throw new AssertionError("unreachable");
+            throw RuntimeError.exit("setupInstrument() called with null midiReceiver");
         }
 
         var bankMsb = new ShortMessage();

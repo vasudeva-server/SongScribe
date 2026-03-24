@@ -76,13 +76,17 @@ public final class RuntimeError {
 
     /**
      * Logs the message, shows an error dialog to the user, and exits.
+     * <p>
+     * Always call as {@code throw RuntimeError.exit("reason")} so the compiler
+     * and NullAway know the calling code is unreachable after this point.
      *
      * @param message Description of the violated invariant
+     * @return never returns; declared as RuntimeException for use in {@code throw} expressions
      */
-    public static void exit(String message) {
-        if (logNull(null, FATAL_ALERT_TITLE, "Fatal: " + message, FATAL_USER_MESSAGE)) {
-            System.exit(-1);
-        }
+    public static RuntimeException exit(String message) {
+        logNull(null, FATAL_ALERT_TITLE, "Fatal: " + message, FATAL_USER_MESSAGE);
+        System.exit(-1);
+        throw new AssertionError("unreachable");
     }
 
     private RuntimeError() {}

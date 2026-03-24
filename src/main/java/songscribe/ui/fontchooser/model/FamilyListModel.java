@@ -26,7 +26,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
-import java.util.Objects;
+import songscribe.error.RuntimeError;
 
 import org.jspecify.annotations.Nullable;
 
@@ -61,7 +61,11 @@ public class FamilyListModel extends AbstractListModel<String> {
 
     private List<String> getInitializedNames() {
         initialize();
-        return Objects.requireNonNull(fontFamilyNames, "fontFamilyNames not initialized");
+        if (fontFamilyNames == null) {
+            throw RuntimeError.exit("fontFamilyNames not initialized");
+        }
+
+        return fontFamilyNames;
     }
 
     private void initialize() {

@@ -556,8 +556,7 @@ public enum ElementType {
         var anchors = metadata.getAnchors(SMuFLGlyph.NOTEHEAD_BLACK);
 
         if (anchors == null || anchors.stemUpSE() == null) {
-            RuntimeError.exit("Missing stem anchors for NOTEHEAD_BLACK (needed for grace notes)");
-            throw new AssertionError("unreachable");
+            throw RuntimeError.exit("Missing stem anchors for NOTEHEAD_BLACK (needed for grace notes)");
         }
 
         double stemUpX = anchors.stemUpSE().x() * scale;
@@ -652,8 +651,7 @@ public enum ElementType {
         var bbox = (glyph != null) ? metadata.getBBox(glyph) : null;
 
         if (bbox == null) {
-            RuntimeError.exit("Missing SMuFL bounding box for " + glyph + " (needed by " + context + ")");
-            throw new AssertionError("unreachable");
+            throw RuntimeError.exit("Missing SMuFL bounding box for " + glyph + " (needed by " + context + ")");
         }
 
         return bbox;
@@ -666,7 +664,7 @@ public enum ElementType {
             }
 
             if (type.widthSs <= 0 || type.heightUpSs <= 0 || type.heightDownSs <= 0) {
-                RuntimeError.exit("Invalid element bounds for " + type +
+                throw RuntimeError.exit("Invalid element bounds for " + type +
                     ": widthSs=" + type.widthSs +
                     ", heightUpSs=" + type.heightUpSs +
                     ", heightDownSs=" + type.heightDownSs);

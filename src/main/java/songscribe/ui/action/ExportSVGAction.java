@@ -21,7 +21,6 @@ package songscribe.ui.action;
 
 import module java.desktop;
 
-import java.util.Objects;
 
 import songscribe.Strings;
 import songscribe.file.MyFileFilter;
@@ -49,7 +48,7 @@ public class ExportSVGAction extends UIAction {
 
     @Override
     public void actionPerformed(ActionEvent e) {
-        var score = Objects.requireNonNull(getScore());
+        var score = requireScore();
         var saveFile = FileUtils.showExportDialog(score, fileDialog, "svg");
 
         if (saveFile == null) {

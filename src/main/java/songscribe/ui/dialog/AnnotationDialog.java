@@ -22,7 +22,6 @@ package songscribe.ui.dialog;
 import module java.desktop;
 
 import java.util.Arrays;
-import java.util.Objects;
 
 import org.jspecify.annotations.Nullable;
 
@@ -277,8 +276,12 @@ public class AnnotationDialog extends StandardDialog {
         var south = new JPanel();
         removeButton = new JButton(Strings.get(Strings.LABEL_BUTTON_REMOVE));
         removeButton.addActionListener(_ -> {
-            var score = Objects.requireNonNull(getScore());
-            Objects.requireNonNull(selectedElement).setAnnotation(null);
+            var score = requireScore();
+            if (selectedElement == null) {
+                throw new IllegalStateException("no element selected");
+            }
+
+            selectedElement.setAnnotation(null);
             setVisible(false);
             score.getComposition().setModified(true);
             score.repaint();
@@ -292,7 +295,7 @@ public class AnnotationDialog extends StandardDialog {
 
     @Override
     protected boolean getData() {
-        var score = Objects.requireNonNull(getScore());
+        var score = requireScore();
         Annotation annotation = null;
         var hasExistingAnnotation = false;
         selectedElement = score.getSingleSelectedElement();
@@ -375,7 +378,11 @@ public class AnnotationDialog extends StandardDialog {
             annotation.setYPosPx(yPosPx);
         }
 
-        Objects.requireNonNull(selectedElement).setAnnotation(annotation);
+        if (selectedElement == null) {
+            throw new IllegalStateException("no element selected");
+        }
+
+        selectedElement.setAnnotation(annotation);
         getComposition().setModified(true);
     }
 

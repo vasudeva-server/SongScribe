@@ -22,7 +22,7 @@ package songscribe.ui.component.score;
 
 import module java.desktop;
 
-import java.util.Objects;
+import songscribe.error.RuntimeError;
 
 import org.jspecify.annotations.Nullable;
 
@@ -76,7 +76,11 @@ public abstract class ScoreComponent extends JComponent {
      * Returns the composition model.
      */
     public Composition getComposition() {
-        return Objects.requireNonNull(composition, "composition not initialized");
+        if (composition == null) {
+            throw RuntimeError.exit("composition not initialized");
+        }
+
+        return composition;
     }
 
     /**

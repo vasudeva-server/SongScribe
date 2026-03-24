@@ -20,7 +20,6 @@
 
 package songscribe.ui.layout;
 
-import java.util.Objects;
 
 
 import songscribe.music.ElementType;
@@ -337,13 +336,13 @@ public final class LayoutConstants {
         var metadata = SMuFLMetadata.getInstance();
         STEM_WIDTH_SS = metadata.getEngravingDefaults().stemThickness();
 
-        var blackAnchors = Objects.requireNonNull(metadata.getAnchors(SMuFLGlyph.NOTEHEAD_BLACK));
-        var halfAnchors = Objects.requireNonNull(metadata.getAnchors(SMuFLGlyph.NOTEHEAD_HALF));
+        var blackAnchors = metadata.requireAnchors(SMuFLGlyph.NOTEHEAD_BLACK);
+        var halfAnchors = metadata.requireAnchors(SMuFLGlyph.NOTEHEAD_HALF);
 
-        STEM_UP_SE_BLACK = Objects.requireNonNull(blackAnchors.stemUpSE());
-        STEM_DOWN_NW_BLACK = Objects.requireNonNull(blackAnchors.stemDownNW());
-        STEM_UP_SE_HALF = Objects.requireNonNull(halfAnchors.stemUpSE());
-        STEM_DOWN_NW_HALF = Objects.requireNonNull(halfAnchors.stemDownNW());
+        STEM_UP_SE_BLACK = blackAnchors.requireStemUpSE();
+        STEM_DOWN_NW_BLACK = blackAnchors.requireStemDownNW();
+        STEM_UP_SE_HALF = halfAnchors.requireStemUpSE();
+        STEM_DOWN_NW_HALF = halfAnchors.requireStemDownNW();
         STEM_UP_SE_BLACK_SMALL = new GlyphAnchors.Anchor(
             STEM_UP_SE_BLACK.x() * GRACE_NOTE_SCALE,
             STEM_UP_SE_BLACK.y() * GRACE_NOTE_SCALE

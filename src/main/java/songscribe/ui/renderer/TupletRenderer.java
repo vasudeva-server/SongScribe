@@ -26,7 +26,6 @@ import static songscribe.ui.renderer.GraphicsState.Property.STROKE;
 
 import module java.desktop;
 
-import java.util.Objects;
 
 
 import songscribe.music.Line;
@@ -90,7 +89,7 @@ public class TupletRenderer extends BaseElementRenderer<Tuplet> {
 
     static {
         double advancePx = StaffSpaces.toPixels(
-            Objects.requireNonNull(METADATA.getAdvanceWidth(SMuFLGlyph.TUPLET_3), "advance width must exist for TUPLET_3")
+            METADATA.requireAdvanceWidth(SMuFLGlyph.TUPLET_3)
         ) * TUPLET_NUMBER_SCALE;
         var bbox = METADATA.getBBox(SMuFLGlyph.TUPLET_3);
         double rightOverhang = bbox != null
@@ -109,7 +108,7 @@ public class TupletRenderer extends BaseElementRenderer<Tuplet> {
     private static final double DOWN_STEM_NOTEHEAD_SHIFT_SS = LayoutConstants.STEM_WIDTH_SS / 2.0;
 
     static {
-        var bbox = Objects.requireNonNull(METADATA.getBBox(SMuFLGlyph.NOTEHEAD_BLACK), "bounding box must exist for NOTEHEAD_BLACK");
+        var bbox = METADATA.requireBBox(SMuFLGlyph.NOTEHEAD_BLACK);
         NOTEHEAD_LEFT_PX = StaffSpaces.toPixels(bbox.left());
         NOTEHEAD_RIGHT_PX = StaffSpaces.toPixels(bbox.right());
     }

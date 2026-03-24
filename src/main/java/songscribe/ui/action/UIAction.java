@@ -24,7 +24,6 @@ import module java.desktop;
 
 import java.util.Arrays;
 import java.util.EnumSet;
-import java.util.Objects;
 
 import org.jspecify.annotations.Nullable;
 
@@ -233,8 +232,12 @@ public class UIAction extends AbstractAction {
         return mainFrame.getScore();
     }
 
+    protected Score requireScore() {
+        return mainFrame.requireScore();
+    }
+
     protected Composition getComposition() {
-        return Objects.requireNonNull(mainFrame.getScore()).getComposition();
+        return mainFrame.requireScore().getComposition();
     }
 
     public void setFlags(Flag... flags) {
@@ -431,7 +434,7 @@ public class UIAction extends AbstractAction {
             return true;
         }
 
-        return !Actions.REST_ACTION.isSelected() && !Objects.requireNonNull(getScore()).getSelectionCoordinator().selectionHasRests();
+        return !Actions.REST_ACTION.isSelected() && !requireScore().getSelectionCoordinator().selectionHasRests();
     }
 
     @Handler(priority = Message.MEDIUM_PRIORITY)
@@ -564,7 +567,7 @@ public class UIAction extends AbstractAction {
             return false;
         }
 
-        var score = Objects.requireNonNull(getScore());
+        var score = requireScore();
         var coordinator = score.getSelectionCoordinator();
         var selection = coordinator.getSelection();
 
@@ -577,7 +580,7 @@ public class UIAction extends AbstractAction {
     }
 
     private boolean hasActiveSelection() {
-        return Objects.requireNonNull(getScore())
+        return requireScore()
             .getSelectionCoordinator()
             .hasActiveSelection();
     }

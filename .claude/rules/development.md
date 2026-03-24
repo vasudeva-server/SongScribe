@@ -77,9 +77,13 @@ To determine the pass/fail status of tests, run `test.sh`. If there are failures
 ./scripts/test.sh -Dtest=*Test                       # Run with Maven pattern
 ```
 
+### Test Failure Investigation
+
 **IMPORTANT:** If tests fail:
 - NEVER assume the failures are pre-existing just because you didn't touch the failing code.
-- Always investigate test failures; if the bug is not immediately apparent, ask the user for permission to run the failing test with the `--debug` option.
+- Always investigate test failures:
+  - Always read the full stack trace, including the `Caused by:` section — the root cause is almost always there. If the output was truncated, ask the user to capture the full output rather than trying to deduce the cause through code analysis. 
+  - If the bug is not immediately apparent from the stack trace, ask the user for permission to run the failing test with the `--debug` option.
 - Fix tests failures before proceeding with new changes.
 
 ### Writing Tests

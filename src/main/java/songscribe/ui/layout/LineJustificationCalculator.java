@@ -21,7 +21,6 @@
 package songscribe.ui.layout;
 
 import java.util.List;
-import java.util.Objects;
 
 import org.jspecify.annotations.Nullable;
 
@@ -181,8 +180,13 @@ public class LineJustificationCalculator {
         var validation = validateCompression(columns, compressionRatio);
 
         if (!validation.isValid()) {
-            return JustificationResult.failure(
-                Objects.requireNonNull(validation.getErrorMessage()));
+            var errorMessage = validation.getErrorMessage();
+
+            if (errorMessage == null) {
+                throw new IllegalStateException("validation failed but errorMessage is null");
+            }
+
+            return JustificationResult.failure(errorMessage);
         }
 
         // Apply compression uniformly

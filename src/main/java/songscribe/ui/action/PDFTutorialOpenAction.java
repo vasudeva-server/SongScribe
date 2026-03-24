@@ -23,8 +23,6 @@ package songscribe.ui.action;
 import module java.desktop;
 
 import java.io.File;
-import java.util.Objects;
-
 import com.formdev.flatlaf.util.SystemInfo;
 
 import songscribe.Strings;
@@ -52,10 +50,10 @@ public class PDFTutorialOpenAction extends AbstractAction {
     @Override
     public void actionPerformed(ActionEvent e) {
         try {
-            if (DesktopUtils.isDesktopSupported()) {
-                Objects.requireNonNull(DesktopUtils.getDesktop()).open(
-                    TUTORIAL_FILE
-                );
+            var desktop = DesktopUtils.getDesktop();
+
+            if (DesktopUtils.isDesktopSupported() && desktop != null) {
+                desktop.open(TUTORIAL_FILE);
             } else {
                 throw new RuntimeException();
             }

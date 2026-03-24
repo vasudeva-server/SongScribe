@@ -26,8 +26,6 @@ import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.nio.charset.StandardCharsets;
-import java.util.Objects;
-
 import com.formdev.flatlaf.util.SystemFileChooser;
 import com.formdev.flatlaf.util.SystemInfo;
 import net.engio.mbassy.listener.Handler;
@@ -373,7 +371,7 @@ public class MainFrame extends JFrame implements Printable {
         }
 
 
-        Objects.requireNonNull(score).init();
+        requireScore().init();
 
         contentPane.add(createCenterContent(), BorderLayout.CENTER);
 
@@ -390,7 +388,7 @@ public class MainFrame extends JFrame implements Printable {
         pane.setResizeWeight(SystemInfo.isLinux ? 0.85 : 1.0);
         pane.setBorder(BorderFactory.createEmptyBorder());
         pane.setDividerSize(20);
-        pane.setTopComponent(Objects.requireNonNull(score).getScoreScrollPane());
+        pane.setTopComponent(requireScore().getScoreScrollPane());
         pane.setBottomComponent(lyricsPanel.getLyricsModePanel());
         return pane;
     }
@@ -490,6 +488,21 @@ public class MainFrame extends JFrame implements Printable {
         return score;
     }
 
+    /**
+     * Returns the score, exiting fatally if it is null.
+     * Use this in code that runs after initialization, where a null score
+     * indicates corrupted application state.
+     */
+    public Score requireScore() {
+        var result = score;
+
+        if (result == null) {
+            throw RuntimeError.exit("score not initialized");
+        }
+
+        return result;
+    }
+
     public void setScore(Score score) {
         this.score = score;
     }
@@ -533,8 +546,7 @@ public class MainFrame extends JFrame implements Printable {
         var dialog = Actions.PREFERENCES_ACTION.getDialog();
 
         if (dialog == null) {
-            RuntimeError.exit("Preferences dialog could not be created");
-            throw new AssertionError("unreachable");
+            throw RuntimeError.exit("Preferences dialog could not be created");
         }
 
         dialog.setVisible(true);
@@ -625,7 +637,11 @@ public class MainFrame extends JFrame implements Printable {
             return NO_SUCH_PAGE;
         }
 
-        var format = Objects.requireNonNull(printerJob).validatePage(pageFormat);
+        if (printerJob == null) {
+            throw RuntimeError.exit("printerJob not initialized");
+        }
+
+        var format = printerJob.validatePage(pageFormat);
         var paper = format.getPaper();
 
         // Add 1/4 inch margin to ensure it's within the printable area

@@ -22,7 +22,6 @@ package songscribe.ui.action;
 import module java.desktop;
 
 import java.io.IOException;
-import java.util.Objects;
 
 import org.jspecify.annotations.Nullable;
 
@@ -66,7 +65,7 @@ public class ExportImageAction extends UIAction {
 
     @Override
     public void actionPerformed(ActionEvent e) {
-        var score = Objects.requireNonNull(getScore());
+        var score = requireScore();
 
         fileDialog.setFile(FileUtils.getSongFileNameForFileChooser(score));
 

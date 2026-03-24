@@ -21,8 +21,6 @@ package songscribe.ui.dialog;
 
 import module java.desktop;
 
-import java.util.Objects;
-
 import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
@@ -90,8 +88,12 @@ public class TempoChangeDialog extends StandardDialog {
         var south = new JPanel(new FlowLayout(FlowLayout.RIGHT, 13, 0));
         removeButton = new JButton(Strings.get(Strings.LABEL_BUTTON_REMOVE));
         removeButton.addActionListener(_ -> {
-            var score = Objects.requireNonNull(getScore());
-            Objects.requireNonNull(selectedElement).setTempoChange(null);
+            var score = requireScore();
+            if (selectedElement == null) {
+                throw new IllegalStateException("no element selected");
+            }
+
+            selectedElement.setTempoChange(null);
             setVisible(false);
             score.repaint();
             score.getComposition().setModified(true);
@@ -104,7 +106,7 @@ public class TempoChangeDialog extends StandardDialog {
 
     @Override
     protected boolean getData() {
-        var score = Objects.requireNonNull(getScore());
+        var score = requireScore();
         var element = score.getSingleSelectedElement();
         selectedElement = element;
 
@@ -130,7 +132,11 @@ public class TempoChangeDialog extends StandardDialog {
             )
         );
 
-        var resolvedTempoChange = Objects.requireNonNull(tempoChange);
+        if (tempoChange == null) {
+            throw new IllegalStateException("no tempo change");
+        }
+
+        var resolvedTempoChange = tempoChange;
         tempoTypeCombo.setSelectedIndex(resolvedTempoChange.getTempoType().ordinal());
         tempoSpinner.setValue(resolvedTempoChange.getVisibleTempo());
         tempoDescriptionCombo.setSelectedItem(
@@ -150,7 +156,11 @@ public class TempoChangeDialog extends StandardDialog {
 
     @Override
     protected void setData() {
-        Objects.requireNonNull(selectedElement).setTempoChange(
+        if (selectedElement == null) {
+            throw new IllegalStateException("no element selected");
+        }
+
+        selectedElement.setTempoChange(
             new Tempo(
                 ((Integer) tempoSpinner.getValue()),
                 (Tempo.Type) tempoTypeCombo.getSelectedItem(),

@@ -25,7 +25,6 @@ import module java.desktop;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Objects;
 
 import org.jspecify.annotations.Nullable;
 
@@ -59,11 +58,11 @@ public class ElementColumnBuilder {
 
     // Note head width from SMuFL noteheadBlack bounding box (ss)
     public static final double NOTE_HEAD_WIDTH_SS =
-        Objects.requireNonNull(METADATA.getBBox(SMuFLGlyph.NOTEHEAD_BLACK)).width();
+        METADATA.requireBBox(SMuFLGlyph.NOTEHEAD_BLACK).width();
 
     // Small note head width from SMuFL noteheadBlackSmall bounding box (ss)
     public static final double NOTE_HEAD_SMALL_WIDTH_SS =
-        Objects.requireNonNull(METADATA.getBBox(SMuFLGlyph.NOTEHEAD_BLACK_SMALL)).width();
+        METADATA.requireBBox(SMuFLGlyph.NOTEHEAD_BLACK_SMALL).width();
 
     // Half note head width (for left/right extent calculation) (ss)
     static final double HALF_NOTE_HEAD_SS = NOTE_HEAD_WIDTH_SS / 2.0;

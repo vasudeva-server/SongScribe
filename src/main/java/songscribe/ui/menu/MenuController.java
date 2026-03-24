@@ -30,9 +30,11 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Objects;
 
 import org.jspecify.annotations.Nullable;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.formdev.flatlaf.util.SystemInfo;
 import net.engio.mbassy.listener.Handler;
@@ -68,6 +70,8 @@ import songscribe.ui.dialog.TutorialDialog;
 import songscribe.ui.dialog.WhatsNewDialog;
 public class MenuController {
 
+    private static final Logger LOG = LoggerFactory.getLogger(MenuController.class);
+
     // Actions
     public static final String ABOUT_ACTION_NAME = "About";
 
@@ -86,7 +90,7 @@ public class MenuController {
     @SuppressWarnings("NullAway.Init")
     public MenuController(MainFrame mainFrame) {
         this.mainFrame = mainFrame;
-        this.score = Objects.requireNonNull(mainFrame.getScore());
+        this.score = mainFrame.requireScore();
         initMenus();
         MessageCenter.subscribe(this);
     }
@@ -119,7 +123,12 @@ public class MenuController {
         setupDesktopHandlers(mainFrame, true);
 
         if (SystemInfo.isMacOS) {
-            new MacNativeMenuController();
+            try {
+                new MacNativeMenuController();
+            } catch (Throwable e) {
+                // Rococoa native library not available (e.g. in test environments)
+                LOG.warn("MacNativeMenuController not available: {}", e.getMessage());
+            }
         }
     }
 
@@ -226,7 +235,13 @@ public class MenuController {
             var allUnique = true;
 
             for (var idx : indices) {
-                var parent = Objects.requireNonNull(paths.get(idx).getParent());
+                // Paths from RecentDocumentsManager are always absolute, so parent is always non-null
+                var parent = paths.get(idx).getParent();
+
+                if (parent == null) {
+                    continue;
+                }
+
                 var nameCount = parent.getNameCount();
                 var start = Math.max(0, nameCount - depth);
                 var suffix = parent.subpath(start, nameCount).toString();

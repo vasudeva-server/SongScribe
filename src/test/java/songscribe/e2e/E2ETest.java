@@ -82,6 +82,7 @@ public abstract class E2ETest {
     /** Base delay in ms between UI actions (before slow mode is considered). */
     private static final int BASE_ACTION_DELAY_MS = DEBUG_MODE ? 250 : 10;
 
+    private static final Object INIT_LOCK = new Object();
     private static boolean frameInitialized = false;
     private static int passCount = 0;
     private static int failCount = 0;
@@ -93,24 +94,25 @@ public abstract class E2ETest {
 
     @BeforeAll
     protected void setUpOnce() {
-        OptionDialogs.setSuppressDialogs(false);
-        FailOnThreadViolationRepaintManager.install();
-        robot = BasicRobot.robotWithCurrentAwtHierarchy();
+        synchronized (INIT_LOCK) {
+            if (!frameInitialized) {
+                OptionDialogs.setSuppressDialogs(false);
+                FailOnThreadViolationRepaintManager.install();
+                SongScribe.logBanner("SongScribe (E2E Tests)");
 
-        if (!frameInitialized) {
-            SongScribe.logBanner("SongScribe (E2E Tests)");
+                GuiActionRunner.execute(() -> {
+                    UIUtils.initLaf();
 
-            GuiActionRunner.execute(() -> {
-                UIUtils.initLaf();
+                    var mainFrame = MainFrame.getInstance();
+                    mainFrame.initFrame();
+                    return mainFrame;
+                });
 
-                var mainFrame = MainFrame.getInstance();
-                mainFrame.initFrame();
-                return mainFrame;
-            });
-
-            frameInitialized = true;
+                frameInitialized = true;
+            }
         }
 
+        robot = BasicRobot.robotWithCurrentAwtHierarchy();
         window = new FrameFixture(robot, MainFrame.getInstance());
         window.show();
 
@@ -134,7 +136,10 @@ public abstract class E2ETest {
                 statusOverlay.dispose();
             }
         });
-        window.cleanUp();
+
+        if (window != null) {
+            window.cleanUp();
+        }
     }
 
     // -- Status overlay --

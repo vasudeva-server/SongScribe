@@ -361,13 +361,18 @@ public final class CompositionIO {
         }
 
         @Override
-        public void endElement(String uri, String localName, String qName) {
-            if ((majorVersion == 1) && (minorVersion == 0)) {
-                endElement10(qName);
-            } else if ((majorVersion == 1) && (minorVersion == 1)) {
-                endElement11(qName);
-            } else {
-                endElement12(qName);
+        public void endElement(String uri, String localName, String qName)
+                throws SAXException {
+            try {
+                if ((majorVersion == 1) && (minorVersion == 0)) {
+                    endElement10(qName);
+                } else if ((majorVersion == 1) && (minorVersion == 1)) {
+                    endElement11(qName);
+                } else {
+                    endElement12(qName);
+                }
+            } catch (RuntimeException e) {
+                throw new SAXException(e.getMessage(), e);
             }
         }
 

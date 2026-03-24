@@ -22,7 +22,7 @@ package songscribe.ui.component.score;
 
 import module java.desktop;
 
-import java.util.Objects;
+import songscribe.error.RuntimeError;
 
 import org.jspecify.annotations.Nullable;
 
@@ -95,7 +95,11 @@ public class TextPanel extends JPanel {
      * Returns the composition.
      */
     public Composition getComposition() {
-        return Objects.requireNonNull(composition, "composition not initialized");
+        if (composition == null) {
+            throw RuntimeError.exit("composition not initialized");
+        }
+
+        return composition;
     }
 
     /**

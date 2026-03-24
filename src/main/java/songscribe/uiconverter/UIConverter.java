@@ -25,7 +25,6 @@ import module java.desktop;
 
 import java.io.File;
 import java.util.Locale;
-import java.util.Objects;
 
 import com.intellij.uiDesigner.core.GridConstraints;
 import com.intellij.uiDesigner.core.GridLayoutManager;
@@ -689,12 +688,22 @@ public class UIConverter extends MainFrame {
         }
 
         private void handleDirectoryChange(File newDir) {
+            var files = newDir.listFiles();
+
+            if (files == null) {
+                OptionDialogs.showErrorMessage(
+                    UIConverter.this,
+                    Strings.get(Strings.ALERT_TITLE_CONVERSION_ERROR),
+                    Strings.get(Strings.ERROR_CONVERTER_FOLDER_NOT_READABLE));
+                return;
+            }
+
             currentDir = newDir;
             songsFolder.setText(newDir.getAbsolutePath());
             acceptedTableModel.setRowCount(0);
             rejectListModel.clear();
 
-            for (var file : Objects.requireNonNull(newDir.listFiles())) {
+            for (var file : files) {
                 var fileName = file.getName();
 
                 if (isLegalFileName(fileName)) {

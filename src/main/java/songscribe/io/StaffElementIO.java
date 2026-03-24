@@ -22,7 +22,6 @@ package songscribe.io;
 import java.io.PrintWriter;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Objects;
 
 import org.jspecify.annotations.Nullable;
 
@@ -370,9 +369,14 @@ public final class StaffElementIO {
                     } else if (lastTag.equals(XML_DOTTED)) {
                         element.setDotCount(Integer.parseInt(str));
                     } else if (lastTag.equals(XML_PREFIX)) {
-                        element.setAccidental(
-                            Objects.requireNonNull(ACCIDENTAL_MAP.get(str),
-                                "Unknown accidental: " + str));
+                        var accidental = ACCIDENTAL_MAP.get(str);
+
+                        if (accidental == null) {
+                            throw new IllegalArgumentException(
+                                "Unknown accidental: " + str);
+                        }
+
+                        element.setAccidental(accidental);
                     } else if (lastTag.equals(XML_PREFIX_IN_PARENTHESIS)) {
                         element.setAccidentalInParentheses(true);
                     } else if (
@@ -401,9 +405,17 @@ public final class StaffElementIO {
 
                         element.setGlissando(type);
                     } else if (lastTag.equals(XML_GLISSANDO_X1_TRANSLATE)) {
-                        Objects.requireNonNull(element.getGlissando()).x1Translate = Double.parseDouble(str);
+                        var glissando = element.getGlissando();
+
+                        if (glissando != null) {
+                            glissando.x1Translate = Double.parseDouble(str);
+                        }
                     } else if (lastTag.equals(XML_GLISSANDO_X2_TRANSLATE)) {
-                        Objects.requireNonNull(element.getGlissando()).x2Translate = Double.parseDouble(str);
+                        var glissando = element.getGlissando();
+
+                        if (glissando != null) {
+                            glissando.x2Translate = Double.parseDouble(str);
+                        }
                     } else if (lastTag.equals(XML_UPPER)) {
                         element.setUpper(true);
                     } else if (lastTag.equals(XML_SYLLABLE_MOVEMENT)) {
@@ -423,9 +435,14 @@ public final class StaffElementIO {
                     ) {
                         // Silently ignored — partial beam stub direction is now automatic.
                     } else if (lastTag.equals(XML_BEAT_CHANGE)) {
-                        element.setBeatChange(
-                            Objects.requireNonNull(BEAT_CHANGE_MAP.get(str),
-                                "Unknown beat change: " + str));
+                        var beatChange = BEAT_CHANGE_MAP.get(str);
+
+                        if (beatChange == null) {
+                            throw new IllegalArgumentException(
+                                "Unknown beat change: " + str);
+                        }
+
+                        element.setBeatChange(beatChange);
                     }
                 }
             }

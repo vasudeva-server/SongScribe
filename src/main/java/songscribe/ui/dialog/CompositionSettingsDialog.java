@@ -24,11 +24,11 @@ import module java.desktop;
 import java.util.Arrays;
 import java.util.EnumMap;
 
-import java.util.Objects;
 
 import kotlin.Pair;
 
 import songscribe.Strings;
+import songscribe.error.RuntimeError;
 import songscribe.message.notification.FontDidChangeNotification;
 import songscribe.message.notification.KeySignatureDidChangeNotification;
 import songscribe.message.MessageCenter;
@@ -1246,6 +1246,19 @@ public class CompositionSettingsDialog extends StandardDialog {
             tempoMap.put(Tempo.Type.MINIM, "\uE1D3");
             tempoMap.put(Tempo.Type.MINIM_DOTTED, "\uE1D3");
             tempoMap.put(Tempo.Type.SEMI_BREVE, "\uE1D2");
+
+            // IO aliases — map to the same glyph as their canonical forms
+            tempoMap.put(Tempo.Type.SEMIBREVE, "\uE1D2");
+            tempoMap.put(Tempo.Type.MINIMDOTTED, "\uE1D3");
+            tempoMap.put(Tempo.Type.CROTCHETDOTTED, "\uE1D5");
+            tempoMap.put(Tempo.Type.QUAVERDOTTED, "\uE1D7");
+
+            for (var type : Tempo.Type.values()) {
+                if (!tempoMap.containsKey(type)) {
+                    throw RuntimeError.exit(
+                        "tempoMap missing entry for Tempo.Type." + type.name());
+                }
+            }
         }
 
         NoteCellRenderer() {
@@ -1280,7 +1293,8 @@ public class CompositionSettingsDialog extends StandardDialog {
                 int index,
                 boolean isSelected
             ) {
-                super(Objects.requireNonNull(tempoMap.get(tempo)), list, index, isSelected);
+                // Static initializer validates all keys, so get() is always non-null
+                super(tempoMap.getOrDefault(tempo, ""), list, index, isSelected);
                 this.tempo = tempo;
                 setPreferredSize(CELL_SIZE);
                 setMinimumSize(CELL_SIZE);

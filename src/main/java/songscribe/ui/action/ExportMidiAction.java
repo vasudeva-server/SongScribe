@@ -21,7 +21,6 @@ package songscribe.ui.action;
 
 import module java.desktop;
 
-import java.util.Objects;
 
 import org.jspecify.annotations.Nullable;
 
@@ -53,7 +52,7 @@ public class ExportMidiAction extends UIAction {
 
     @Override
     public void actionPerformed(ActionEvent e) {
-        var saveFile = FileUtils.showExportDialog(Objects.requireNonNull(getScore()), fileDialog, "mid");
+        var saveFile = FileUtils.showExportDialog(requireScore(), fileDialog, "mid");
 
         if (saveFile == null) {
             return;

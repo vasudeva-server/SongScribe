@@ -22,7 +22,6 @@ package songscribe.ui.renderer;
 
 import module java.desktop;
 
-import java.util.Objects;
 
 
 import songscribe.music.ArticulationType;
@@ -60,11 +59,11 @@ public class ArticulationRenderer extends BaseElementRenderer<StaffElement> {
     static {
         var metadata = SMuFLMetadata.getInstance();
 
-        var accentBBox = Objects.requireNonNull(metadata.getBBox(SMuFLGlyph.ARTIC_ACCENT_ABOVE));
+        var accentBBox = metadata.requireBBox(SMuFLGlyph.ARTIC_ACCENT_ABOVE);
         ACCENT_HALF_HEIGHT_PX = (int) Math.round(StaffSpaces.toPixels(accentBBox.height()) / 2.0);
         ACCENT_WIDTH_PX = StaffSpaces.toPixels(accentBBox.width());
 
-        var staccatoBBox = Objects.requireNonNull(metadata.getBBox(SMuFLGlyph.ARTIC_STACCATO_ABOVE));
+        var staccatoBBox = metadata.requireBBox(SMuFLGlyph.ARTIC_STACCATO_ABOVE);
         STACCATO_HALF_HEIGHT_PX = (int) Math.round(StaffSpaces.toPixels(staccatoBBox.height()) / 2.0);
         STACCATO_WIDTH_PX = StaffSpaces.toPixels(staccatoBBox.width());
     }
@@ -151,7 +150,7 @@ public class ArticulationRenderer extends BaseElementRenderer<StaffElement> {
 
         // SMuFL "above" glyph origin is at the bottom; offset by glyph height
         double y = contentTopY + StaffSpaces.toPixels(
-            Objects.requireNonNull(SMuFLMetadata.getInstance().getBBox(SMuFLGlyph.ARTIC_STACCATO_ABOVE)).height()
+            SMuFLMetadata.getInstance().requireBBox(SMuFLGlyph.ARTIC_STACCATO_ABOVE).height()
         );
 
         drawBravuraGlyph(g2, SMuFLGlyph.ARTIC_STACCATO_ABOVE, x, y);

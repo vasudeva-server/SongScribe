@@ -23,8 +23,6 @@ package songscribe.ui.component.score;
 import module java.desktop;
 // Disambiguates from org.w3c.dom.events.MouseEvent (java.xml module)
 import java.awt.event.MouseEvent;
-import java.util.Objects;
-
 
 import songscribe.Strings;
 import songscribe.music.StaffElement;
@@ -309,7 +307,12 @@ class SelectionHandler {
      */
     void selectElementAtIndex(int elementIndex) {
         prepareSelection();
-        var selState = Objects.requireNonNull(lc.getLineSelectionState());
+        var selState = lc.getLineSelectionState();
+
+        if (selState == null) {
+            return;
+        }
+
         selState.setSelectionFromClick(elementIndex);
         lc.getScore().selectionChanged();
     }
@@ -358,7 +361,12 @@ class SelectionHandler {
     }
 
     private int hitTestGlissandoAtPoint(double clickXSs, double clickYSs) {
-        var selState = Objects.requireNonNull(lc.getLineSelectionState());
+        var selState = lc.getLineSelectionState();
+
+        if (selState == null) {
+            return -1;
+        }
+
         return GlissandoRenderer.getInstance().hitTestGlissando(
             clickXSs, clickYSs, selState.getLine()
         );

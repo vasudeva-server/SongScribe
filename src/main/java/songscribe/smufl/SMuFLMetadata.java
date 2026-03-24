@@ -33,6 +33,8 @@ import com.google.gson.JsonParser;
 
 import org.jspecify.annotations.Nullable;
 
+import songscribe.error.RuntimeError;
+
 /**
  * Lazy singleton that parses bravura_metadata.json and provides typed access
  * to glyph bounding boxes, anchor points, advance widths, and engraving defaults.
@@ -85,6 +87,51 @@ public final class SMuFLMetadata {
     @Nullable
     public Double getAdvanceWidth(SMuFLGlyph glyph) {
         return advanceWidths.get(glyph);
+    }
+
+    /**
+     * Returns the bounding box for a glyph, exiting fatally if not present.
+     * Use for well-known glyphs whose metadata is guaranteed by the font.
+     */
+    public BBox requireBBox(SMuFLGlyph glyph) {
+        var result = bboxes.get(glyph);
+
+        if (result == null) {
+            throw RuntimeError.exit("missing bounding box for glyph: " + glyph);
+
+        }
+
+        return result;
+    }
+
+    /**
+     * Returns the anchor points for a glyph, exiting fatally if not present.
+     * Use for well-known glyphs whose metadata is guaranteed by the font.
+     */
+    public GlyphAnchors requireAnchors(SMuFLGlyph glyph) {
+        var result = anchors.get(glyph);
+
+        if (result == null) {
+            throw RuntimeError.exit("missing anchors for glyph: " + glyph);
+
+        }
+
+        return result;
+    }
+
+    /**
+     * Returns the advance width for a glyph, exiting fatally if not present.
+     * Use for well-known glyphs whose metadata is guaranteed by the font.
+     */
+    public double requireAdvanceWidth(SMuFLGlyph glyph) {
+        var result = advanceWidths.get(glyph);
+
+        if (result == null) {
+            throw RuntimeError.exit("missing advance width for glyph: " + glyph);
+
+        }
+
+        return result;
     }
 
 

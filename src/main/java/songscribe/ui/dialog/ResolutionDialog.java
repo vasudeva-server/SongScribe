@@ -25,7 +25,6 @@ import com.intellij.uiDesigner.core.GridConstraints;
 import com.intellij.uiDesigner.core.GridLayoutManager;
 import com.intellij.uiDesigner.core.Spacer;
 
-import java.util.Objects;
 
 import org.jspecify.annotations.Nullable;
 
@@ -73,7 +72,7 @@ public class ResolutionDialog extends StandardDialog implements ChangeListener {
     protected boolean getData() {
         approved = false;
         resolutionSpinner.setValue(Prefs.getInstance().getInt(PrefsKey.EXPORT_DPI));
-        var score = Objects.requireNonNull(getScore());
+        var score = requireScore();
         var composition = score.getComposition();
         sheetWidth = score.getSheetWidthPx();
         sheetHeight = score.getSheetHeightPx();

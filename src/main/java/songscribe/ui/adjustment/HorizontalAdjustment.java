@@ -22,7 +22,6 @@ package songscribe.ui.adjustment;
 import module java.desktop;
 
 import java.util.ArrayList;
-import java.util.Objects;
 
 import org.jspecify.annotations.Nullable;
 
@@ -250,12 +249,20 @@ public class HorizontalAdjustment extends Adjustment {
             draggingRect.horizontalAdjustmentType ==
                 HorizontalAdjustmentType.GLISSANDO_START
         ) {
-            Objects.requireNonNull(note.getGlissando()).x1Translate += endPoint.x - diffX;
+            var glissando = note.getGlissando();
+
+            if (glissando != null) {
+                glissando.x1Translate += endPoint.x - diffX;
+            }
         } else if (
             draggingRect.horizontalAdjustmentType ==
                 HorizontalAdjustmentType.GLISSANDO_END
         ) {
-            Objects.requireNonNull(note.getGlissando()).x2Translate += endPoint.x - diffX;
+            var glissando = note.getGlissando();
+
+            if (glissando != null) {
+                glissando.x2Translate += endPoint.x - diffX;
+            }
         } else if (
             (draggingRect.horizontalAdjustmentType ==
                 HorizontalAdjustmentType.CRESCENDO_START) ||
@@ -459,12 +466,14 @@ public class HorizontalAdjustment extends Adjustment {
 
         switch (rect.horizontalAdjustmentType) {
             case GLISSANDO_START -> {
-                if (layoutResult != null) {
+                var glissando = note.getGlissando();
+
+                if (layoutResult != null && glissando != null) {
                     rect.rect.x = (int) Math.round(
                         ScaleContext.getInstance().toPixels(
                             GlissandoRenderer.getGlissandoX1Ss(
                                 rect.xIndex,
-                                Objects.requireNonNull(note.getGlissando()),
+                                glissando,
                                 rect.line,
                                 score.getComposition(),
                                 layoutResult,
@@ -475,12 +484,14 @@ public class HorizontalAdjustment extends Adjustment {
                 }
             }
             case GLISSANDO_END -> {
-                if (layoutResult != null) {
+                var glissando = note.getGlissando();
+
+                if (layoutResult != null && glissando != null) {
                     rect.rect.x = (int) Math.round(
                         ScaleContext.getInstance().toPixels(
                             GlissandoRenderer.getGlissandoX2Ss(
                                 rect.xIndex,
-                                Objects.requireNonNull(note.getGlissando()),
+                                glissando,
                                 rect.line,
                                 score.getComposition(),
                                 layoutResult,

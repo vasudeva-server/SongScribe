@@ -27,7 +27,6 @@ import module java.desktop;
 
 import java.util.EnumMap;
 import java.util.Map;
-import java.util.Objects;
 import java.util.WeakHashMap;
 
 import org.jspecify.annotations.Nullable;
@@ -578,9 +577,12 @@ public class GlissandoRenderer {
             dy = Math.sin(Math.toRadians(SLIDE_OUT_ANGLE_DEG));
         } else {
             // tgt is non-null when isSlideOut is false (isSlideOut = (tgt == null))
-            var tgtNonNull = Objects.requireNonNull(tgt, "tgt must be non-null when not a slide-out");
-            dx = tgtNonNull.cx - src.cx;
-            dy = tgtNonNull.cy - src.cy;
+            if (tgt == null) {
+                throw new IllegalStateException("tgt must be non-null when not a slide-out");
+            }
+
+            dx = tgt.cx - src.cx;
+            dy = tgt.cy - src.cy;
         }
 
         double len = Math.sqrt(dx * dx + dy * dy);
@@ -617,12 +619,15 @@ public class GlissandoRenderer {
         } else {
             // Target: find entry point on offset area in local space (reverse direction)
             // tgt is non-null when isSlideOut is false (isSlideOut = (tgt == null))
-            var tgtNonNull = Objects.requireNonNull(tgt, "tgt must be non-null when not a slide-out");
-            double localCx2 = NoteRenderer.getNoteheadRightEdgeSs(tgtNonNull.note) / 2.0;
-            double offset2X = tgtNonNull.cx - localCx2;
-            double offset2Y = tgtNonNull.cy;
+            if (tgt == null) {
+                throw new IllegalStateException("tgt must be non-null when not a slide-out");
+            }
 
-            var entry2 = findNoteAreaEntryPoint(tgtNonNull.offsetArea, tgtNonNull.offsetBounds, localCx2, 0, -nx, -ny, stepSs);
+            double localCx2 = NoteRenderer.getNoteheadRightEdgeSs(tgt.note) / 2.0;
+            double offset2X = tgt.cx - localCx2;
+            double offset2Y = tgt.cy;
+
+            var entry2 = findNoteAreaEntryPoint(tgt.offsetArea, tgt.offsetBounds, localCx2, 0, -nx, -ny, stepSs);
 
             double effectiveX2Translate = Math.max(x2Translate, -MIN_GAP_SS);
             endX = entry2.x + offset2X - nx * effectiveX2Translate;

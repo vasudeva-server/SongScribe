@@ -24,7 +24,7 @@ import module java.desktop;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
+import songscribe.error.RuntimeError;
 
 import org.jspecify.annotations.Nullable;
 
@@ -77,7 +77,11 @@ public class StaffPanel extends JPanel {
      * Returns the composition.
      */
     public Composition getComposition() {
-        return Objects.requireNonNull(composition, "composition not initialized");
+        if (composition == null) {
+            throw RuntimeError.exit("composition not initialized");
+        }
+
+        return composition;
     }
 
     /**

@@ -24,7 +24,7 @@ import module java.desktop;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Objects;
+import songscribe.error.RuntimeError;
 import java.util.function.Consumer;
 
 import org.jspecify.annotations.Nullable;
@@ -482,7 +482,11 @@ public final class Score
 
         try {
             var reader = new CompositionIO.DocumentReader();
-            Objects.requireNonNull(saxParser).parse(file, reader);
+            if (saxParser == null) {
+                throw RuntimeError.exit("saxParser not initialized");
+            }
+
+            saxParser.parse(file, reader);
             var newComposition = reader.getComposition();
             var lineWidthInches =
                 ScaleContext.getInstance().toPixels(newComposition.getLineWidthSs()) /
@@ -732,7 +736,11 @@ public final class Score
     }
 
     private MusicEditOperations requireOperations() {
-        return Objects.requireNonNull(operations, "operations not initialized");
+        if (operations == null) {
+            throw RuntimeError.exit("operations not initialized");
+        }
+
+        return operations;
     }
 
     public boolean canToggleBeaming() {
@@ -777,7 +785,11 @@ public final class Score
 
     @Override
     public Composition getComposition() {
-        return Objects.requireNonNull(composition, "composition not initialized");
+        if (composition == null) {
+            throw RuntimeError.exit("composition not initialized");
+        }
+
+        return composition;
     }
 
     public void setComposition(Composition composition) {
@@ -822,7 +834,11 @@ public final class Score
         PlaybackController.stop();
         selectionCoordinator.clearSelection();
 
-        Objects.requireNonNull(mainPanel).setComposition(getComposition());
+        if (mainPanel == null) {
+            throw RuntimeError.exit("mainPanel not initialized");
+        }
+
+        mainPanel.setComposition(getComposition());
         setupLineComponentState();
 
         syncPlaybackPrefs();

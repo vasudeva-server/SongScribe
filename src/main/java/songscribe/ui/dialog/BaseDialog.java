@@ -23,7 +23,6 @@ import module java.desktop;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 
 import org.jspecify.annotations.Nullable;
 
@@ -341,8 +340,12 @@ public abstract class BaseDialog {
         return mainFrame.getScore();
     }
 
+    protected Score requireScore() {
+        return mainFrame.requireScore();
+    }
+
     protected Composition getComposition() {
-        return Objects.requireNonNull(mainFrame.getScore()).getComposition();
+        return mainFrame.requireScore().getComposition();
     }
 
     public static Insets getStandardStackedLabelInsets() {

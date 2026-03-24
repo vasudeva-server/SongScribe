@@ -22,7 +22,6 @@ package songscribe.ui.renderer;
 
 import module java.desktop;
 
-import java.util.Objects;
 
 
 import songscribe.music.StaffElement;
@@ -51,7 +50,7 @@ public class FermataRenderer extends BaseElementRenderer<StaffElement> {
     private static final double FERMATA_HEIGHT_PX;
 
     static {
-        var bbox = Objects.requireNonNull(SMuFLMetadata.getInstance().getBBox(SMuFLGlyph.FERMATA_ABOVE));
+        var bbox = SMuFLMetadata.getInstance().requireBBox(SMuFLGlyph.FERMATA_ABOVE);
         FERMATA_WIDTH_PX = StaffSpaces.toPixels(bbox.width());
         FERMATA_HEIGHT_PX = StaffSpaces.toPixels(bbox.height());
     }

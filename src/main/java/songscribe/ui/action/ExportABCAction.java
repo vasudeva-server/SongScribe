@@ -29,7 +29,6 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import java.util.Objects;
 
 import org.jspecify.annotations.Nullable;
 
@@ -108,7 +107,7 @@ public class ExportABCAction extends UIAction {
 
     @Override
     public void actionPerformed(ActionEvent e) {
-        var saveFile = FileUtils.showExportDialog(Objects.requireNonNull(getScore()), fileDialog, "abc");
+        var saveFile = FileUtils.showExportDialog(requireScore(), fileDialog, "abc");
 
         if (saveFile == null) {
             return;

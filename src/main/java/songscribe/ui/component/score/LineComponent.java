@@ -714,8 +714,7 @@ public class LineComponent extends ScoreComponent
      */
     Score getScore() {
         if (score == null) {
-            RuntimeError.exit("Score reference not set on LineComponent");
-            throw new AssertionError("unreachable");
+            throw RuntimeError.exit("Score reference not set on LineComponent");
         }
 
         return score;
@@ -725,8 +724,7 @@ public class LineComponent extends ScoreComponent
         var emm = EditModeManager.getInstance();
 
         if (emm == null) {
-            RuntimeError.exit("EditModeManager not initialized");
-            throw new AssertionError("unreachable");
+            throw RuntimeError.exit("EditModeManager not initialized");
         }
 
         return emm.getGraceModeManager();

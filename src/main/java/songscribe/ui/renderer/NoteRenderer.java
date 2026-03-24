@@ -718,8 +718,7 @@ public class NoteRenderer extends BaseElementRenderer<StaffElement> {
             var widths = smallAccidentalWidthsSs;
 
             if (widths == null) {
-                RuntimeError.exit("getAccidentalWidthSs() called before initializeAccidentalWidths()");
-                throw new AssertionError("unreachable");
+                throw RuntimeError.exit("getAccidentalWidthSs() called before initializeAccidentalWidths()");
             }
 
             return widths[ordinal];
@@ -729,8 +728,7 @@ public class NoteRenderer extends BaseElementRenderer<StaffElement> {
         var parenWidths = baseAccidentalParenthesisWidthsSs;
 
         if (baseWidths == null || parenWidths == null) {
-            RuntimeError.exit("getAccidentalWidthSs() called before initializeAccidentalWidths()");
-            throw new AssertionError("unreachable");
+            throw RuntimeError.exit("getAccidentalWidthSs() called before initializeAccidentalWidths()");
         }
 
         return note.isAccidentalInParentheses()
@@ -745,8 +743,7 @@ public class NoteRenderer extends BaseElementRenderer<StaffElement> {
         var widths = baseAccidentalWidthsSs;
 
         if (widths == null) {
-            RuntimeError.exit("getAccidentalComponentWidthSs() called before initializeAccidentalWidths()");
-            throw new AssertionError("unreachable");
+            throw RuntimeError.exit("getAccidentalComponentWidthSs() called before initializeAccidentalWidths()");
         }
 
         var accidental = note.getAccidental();

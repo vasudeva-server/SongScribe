@@ -5,15 +5,17 @@
   "permissions": {
     "allow": [
       "Bash(./gradlew compileJava:*)",
-      "Bash(./scripts/compile.sh:*)",
       "Bash(./scripts/check-style.sh:*)",
-      "Bash(if echo:*)",
-      "Bash(file=$:*)",
+      "Bash(./scripts/compile.sh:*)",
       "Bash(./scripts/run.sh:*)",
+      "Bash(./scripts/test.sh unit)",
       "Bash(bash:*)",
       "Bash(cat:*)",
       "Bash(done)",
+      "Bash(file=$:*)",
       "Bash(find:*)",
+      "Bash(git ls-tree:*)",
+      "Bash(if echo:*)",
       "Bash(java:*)",
       "Bash(javac:*)",
       "Bash(javap:*)",
@@ -21,10 +23,7 @@
       "Bash(pkill -f*)",
       "Bash(wc:*)",
       "Bash(xargs:*)",
-      "Skill(commit-changes)",
-      "Skill(commit-commands:commit)",
-      "WebFetch",
-      "WebSearch",
+      "mcp__plugin_compound-engineering_context7__resolve-library-id",
       "mcp__plugin_serena_serena__activate_project",
       "mcp__plugin_serena_serena__check_onboarding_performed",
       "mcp__plugin_serena_serena__list_dir",
@@ -45,7 +44,10 @@
       "mcp__serena__rename_symbol",
       "mcp__serena__search_for_pattern",
       "mcp__serena__write_memory",
-      "Bash(./scripts/test.sh unit)"
+      "Skill(commit-changes)",
+      "Skill(commit-commands:commit)",
+      "WebFetch",
+      "WebSearch"
     ]
   },
   "hooks": {

@@ -20,7 +20,7 @@
 package songscribe.ui.component;
 
 import java.util.HashSet;
-import java.util.Objects;
+import songscribe.error.RuntimeError;
 import java.util.Set;
 
 import module java.desktop;
@@ -156,9 +156,13 @@ public class NonEmptyGuard {
     }
 
     private boolean showDefaultValueDialog() {
-        var useDefault = Objects.requireNonNull(useDefaultLabel);
-        var continueEditing = Objects.requireNonNull(continueEditingLabel);
-        var defaultVal = Objects.requireNonNull(defaultValue);
+        if (useDefaultLabel == null || continueEditingLabel == null || defaultValue == null) {
+            throw RuntimeError.exit("default value labels not initialized");
+        }
+
+        var useDefault = useDefaultLabel;
+        var continueEditing = continueEditingLabel;
+        var defaultVal = defaultValue;
         var useDefaultIndex = 1;
 
         var result = OptionDialogs.showOptionDialog(

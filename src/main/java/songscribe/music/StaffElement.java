@@ -25,7 +25,7 @@ import module java.desktop;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Objects;
+import songscribe.error.RuntimeError;
 
 import org.jspecify.annotations.Nullable;
 
@@ -210,7 +210,11 @@ public class StaffElement extends LineElement implements Cloneable {
     }
 
     public ElementType getType() {
-        return Objects.requireNonNull(type, "type not initialized");
+        if (type == null) {
+            throw RuntimeError.exit("type not initialized");
+        }
+
+        return type;
     }
 
     void initType(ElementType noteType) {

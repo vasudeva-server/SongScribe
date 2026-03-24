@@ -21,12 +21,12 @@ package songscribe.util;
 
 import module java.desktop;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.regex.Pattern;
 
@@ -69,7 +69,7 @@ public final class MyFontUtils {
 
     private static final Set<String> familyNames = new HashSet<>();
     private static final Map<String, Font> psFonts = new HashMap<>();
-    private static Font @Nullable [] allFonts;
+    private static List<Font> allFonts = List.of();
 
     @Nullable
     private static Font noteFont = null;
@@ -79,29 +79,31 @@ public final class MyFontUtils {
 
     private MyFontUtils() {}
 
-    public static Font[] getAllFonts() {
-        if (allFonts == null) {
-            var fonts = Objects.requireNonNull(
-                FontUtils.getAllFonts(),
-                "FontUtils.getAllFonts() returned null"
-            );
+    public static List<Font> getAllFonts() {
+        if (allFonts.isEmpty()) {
+            var fonts = FontUtils.getAllFonts();
+
+            if (fonts == null || fonts.length == 0) {
+                throw RuntimeError.exit("Could not load system fonts");
+            }
+
             Map<TextAttribute, Object> attributes = new HashMap<>();
             attributes.put(TextAttribute.KERNING, TextAttribute.KERNING_ON);
+            var kernedFonts = new ArrayList<Font>(fonts.length);
 
-            for (var i = 0; i < fonts.length; i++) {
-                var font = Objects.requireNonNull(fonts[i], "Font at index " + i + " is null");
+            for (var font : fonts) {
                 familyNames.add(font.getFamily());
 
                 // We want kerning to be on for all fonts!
                 var kernedFont = font.deriveFont(attributes);
-                fonts[i] = kernedFont;
+                kernedFonts.add(kernedFont);
                 psFonts.put(font.getPSName(), kernedFont);
             }
 
-            allFonts = fonts;
+            allFonts = List.copyOf(kernedFonts);
         }
 
-        return Objects.requireNonNull(allFonts);
+        return allFonts;
     }
 
     private static Set<String> getFamilyNames() {
@@ -135,10 +137,8 @@ public final class MyFontUtils {
         // Is it a known PostScript name?
         var font = getPSFonts().get(psName);
 
-        return Objects.requireNonNullElseGet(
-            font,
-            () -> getUIFont(fallbackKey)
-        ).deriveFont((float) size);
+        return (font != null ? font : getUIFont(fallbackKey))
+            .deriveFont((float) size);
     }
 
     public static Font deriveKernedFont(Font font) {
@@ -199,8 +199,7 @@ public final class MyFontUtils {
                 MyFontUtils.class.getResourceAsStream("/fonts/" + filename)
         ) {
             if (stream == null) {
-                RuntimeError.exit("Font resource not found: " + filename);
-                throw new AssertionError("unreachable");
+                throw RuntimeError.exit("Font resource not found: " + filename);
             }
 
             var font = deriveKernedFont(
@@ -213,8 +212,7 @@ public final class MyFontUtils {
 
             return font;
         } catch (Exception e) {
-            RuntimeError.exit("Could not load font: " + filename);
-            throw new AssertionError("unreachable");
+            throw RuntimeError.exit("Could not load font: " + filename);
         }
     }
 

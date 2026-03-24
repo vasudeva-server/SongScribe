@@ -24,7 +24,6 @@ import module java.desktop;
 import java.io.File;
 import java.io.IOException;
 
-import java.util.Objects;
 
 import org.jspecify.annotations.Nullable;
 
@@ -73,7 +72,7 @@ public class ExportMidiDialog extends StandardDialog {
     @Override
     protected void setData() {
         try {
-            var score = Objects.requireNonNull(getScore());
+            var score = requireScore();
             var savedSettings = PlaybackController.getPlaybackSettings();
 
             // Apply export-specific overrides
@@ -84,7 +83,12 @@ public class ExportMidiDialog extends StandardDialog {
 
             try {
                 var sequence = PlaybackController.buildSequence(score.getComposition());
-                var file = Objects.requireNonNull(saveFile, "saveFile must be set before export");
+                if (saveFile == null) {
+                    throw new IllegalStateException(
+                        "saveFile must be set before export");
+                }
+
+                var file = saveFile;
                 MidiSystem.write(sequence, 1, file);
                 FileUtils.openExportFile(file);
             } finally {

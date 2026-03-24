@@ -144,8 +144,7 @@ public class ConvertAction extends AbstractAction {
                     var score = uiConverter.getScore();
 
                     if (score == null) {
-                        RuntimeError.exit("score is null in ConvertAction");
-                        throw new AssertionError("unreachable");
+                        throw RuntimeError.exit("score is null in ConvertAction");
                     }
 
                     score.openFile(songFile, false);
