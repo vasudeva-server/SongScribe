@@ -27,6 +27,7 @@ import module java.desktop;
 
 
 import songscribe.music.Interval;
+import songscribe.ui.component.Score;
 import songscribe.ui.layout.LayoutResult;
 
 /**
@@ -112,6 +113,10 @@ public class TieRenderer {
     }
 
     private Color determineTieColor(Interval interval, ElementRenderContext ctx) {
+        if (ctx.isPlayingNoteInInterval(interval)) {
+            return Score.getPlayingNoteColor();
+        }
+
         var sp = ctx.getSelectionProvider();
 
         if (sp != null) {

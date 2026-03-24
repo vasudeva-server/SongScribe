@@ -328,6 +328,11 @@ class LineRenderer {
             return Score.getPlayingNoteColor();
         }
 
+        // Check if element is part of a tie that contains the playing note
+        if (ctx.isElementInPlayingTie(elementIndex)) {
+            return Score.getPlayingNoteColor();
+        }
+
         // Check if element is selected or highlighted by insertion element hover
         var selectionProvider = lc.getSelectionProvider();
         var isSelected = selectionProvider != null
