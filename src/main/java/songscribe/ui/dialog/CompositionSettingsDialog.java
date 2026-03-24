@@ -1081,12 +1081,11 @@ public class CompositionSettingsDialog extends StandardDialog {
             public void actionPerformed(ActionEvent e) {
                 var selectedFont = FontDialog.showDialog(preview, null);
 
-                if (selectedFont.isPresent()) {
-                    var font = selectedFont.get();
+                if (selectedFont != null) {
                     fontDescription.setText(
-                        MyFontUtils.getFullFontDescription(font)
+                        MyFontUtils.getFullFontDescription(selectedFont)
                     );
-                    preview.setFont(font);
+                    preview.setFont(selectedFont);
                     preview.revalidate();
                     preview.repaint();
                 }

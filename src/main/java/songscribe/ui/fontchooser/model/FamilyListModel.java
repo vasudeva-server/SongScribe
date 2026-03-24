@@ -27,7 +27,6 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
-import java.util.Optional;
 
 import org.jspecify.annotations.Nullable;
 
@@ -49,14 +48,15 @@ public class FamilyListModel extends AbstractListModel<String> {
         return getInitializedNames().get(index);
     }
 
-    public Optional<String> findFirst(CharSequence searchString) {
+    @Nullable
+    public String findFirst(CharSequence searchString) {
         for (var family : getInitializedNames()) {
             if (family.toLowerCase(Locale.ENGLISH).contains(searchString)) {
-                return Optional.of(family);
+                return family;
             }
         }
 
-        return Optional.empty();
+        return null;
     }
 
     private List<String> getInitializedNames() {

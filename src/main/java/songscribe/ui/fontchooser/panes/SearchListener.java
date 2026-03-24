@@ -44,8 +44,10 @@ public class SearchListener extends KeyAdapter {
     public void keyTyped(KeyEvent e) {
         var searchField = (JTextField) e.getSource();
         var searchString = searchField.getText().toLowerCase(Locale.ENGLISH);
-        familyListModel
-            .findFirst(searchString)
-            .ifPresent(familyPane::setSelectedFamily);
+        var family = familyListModel.findFirst(searchString);
+
+        if (family != null) {
+            familyPane.setSelectedFamily(family);
+        }
     }
 }

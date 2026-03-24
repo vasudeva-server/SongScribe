@@ -21,7 +21,8 @@
 package songscribe.ui.layout;
 
 import java.util.List;
-import java.util.Optional;
+
+import org.jspecify.annotations.Nullable;
 
 
 /**
@@ -99,23 +100,26 @@ public final class LyricsLayout {
     }
 
     /**
-     * Returns the syllable at the given index, or empty if out of bounds.
+     * Returns the syllable at the given index, or null if out of bounds.
      */
-    public Optional<SyllableLayout> getSyllable(int index) {
+    @Nullable
+    public SyllableLayout getSyllable(int index) {
         if (index >= 0 && index < syllables.size()) {
-            return Optional.of(syllables.get(index));
+            return syllables.get(index);
         }
 
-        return Optional.empty();
+        return null;
     }
 
     /**
-     * Returns the syllable for the given element index, or empty if none.
+     * Returns the syllable for the given element index, or null if none.
      */
-    public Optional<SyllableLayout> getSyllableForElement(int elementIndex) {
+    @Nullable
+    public SyllableLayout getSyllableForElement(int elementIndex) {
         return syllables.stream()
             .filter(s -> s.getElementIndex() == elementIndex)
-            .findFirst();
+            .findFirst()
+            .orElse(null);
     }
 
     /**

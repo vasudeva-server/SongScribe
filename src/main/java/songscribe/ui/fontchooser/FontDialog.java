@@ -21,8 +21,6 @@ package songscribe.ui.fontchooser;
 
 import module java.desktop;
 
-import java.util.Optional;
-
 import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
@@ -37,7 +35,8 @@ import songscribe.util.UIUtils;
  */
 public class FontDialog extends JDialog {
 
-    public static Optional<Font> showDialog(
+    @Nullable
+    public static Font showDialog(
         Component component,
         @Nullable Point location
     ) {
@@ -58,11 +57,7 @@ public class FontDialog extends JDialog {
 
         dialog.setVisible(true);
 
-        if (!dialog.wasCancelled()) {
-            return Optional.of(dialog.getSelectedFont());
-        }
-
-        return Optional.empty();
+        return dialog.wasCancelled() ? null : dialog.getSelectedFont();
     }
 
     private final FontChooser chooser = new FontChooser();

@@ -25,7 +25,6 @@ import module java.desktop;
 import java.io.File;
 import java.io.IOException;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.function.Consumer;
 
 import org.jspecify.annotations.Nullable;
@@ -211,14 +210,14 @@ public final class Score
     // Preferred size of the score panel
     private final Dimension preferredSizePx = new Dimension();
 
-    // Manages focus behavior to keep the score in focus (empty in headless mode)
-    private final Optional<ScoreFocusController> focusController;
+    // Manages focus behavior to keep the score in focus (null in headless mode)
+    private final @Nullable ScoreFocusController focusController;
 
-    // Navigates the component hierarchy (empty in headless mode)
-    private final Optional<ComponentHierarchyNavigator> hierarchyNavigator;
+    // Navigates the component hierarchy (null in headless mode)
+    private final @Nullable ComponentHierarchyNavigator hierarchyNavigator;
 
-    // Handles mouse and keyboard input (empty in headless mode)
-    private final Optional<ScoreInputHandler> inputHandler;
+    // Handles mouse and keyboard input (null in headless mode)
+    private final @Nullable ScoreInputHandler inputHandler;
 
     // True after init() has been called (interactive mode only)
     private boolean initialized = false;
@@ -262,14 +261,14 @@ public final class Score
         }
 
         if (headless) {
-            focusController = Optional.empty();
-            hierarchyNavigator = Optional.empty();
-            inputHandler = Optional.empty();
+            focusController = null;
+            hierarchyNavigator = null;
+            inputHandler = null;
         } else {
-            focusController = Optional.of(new ScoreFocusController(this));
-            hierarchyNavigator = Optional.of(new ComponentHierarchyNavigator(this));
+            focusController = new ScoreFocusController(this);
+            hierarchyNavigator = new ComponentHierarchyNavigator(this);
             var handler = new ScoreInputHandler(this, editModeManager);
-            inputHandler = Optional.of(handler);
+            inputHandler = handler;
             setLayout(new BorderLayout());
             setFocusable(true);
             addKeyListener(handler);
@@ -298,11 +297,14 @@ public final class Score
         initMainPanel();
 
         updatePageLayout(ScaleContext.getInstance().toRoundedPixels(composition.getLineWidthSs()));
-        inputHandler.ifPresent(h -> {
-            addMouseMotionListener(h);
-            addMouseListener(h);
-        });
-        focusController.ifPresent(this::addFocusListener);
+        if (inputHandler != null) {
+            addMouseMotionListener(inputHandler);
+            addMouseListener(inputHandler);
+        }
+
+        if (focusController != null) {
+            addFocusListener(focusController);
+        }
 
         initEditPopup();
         selectionChanged();
@@ -411,7 +413,9 @@ public final class Score
      * note coloring in the component-based rendering.
      */
     void setupLineComponentState() {
-        hierarchyNavigator.ifPresent(nav -> nav.setupLineComponentState(this, this));
+        if (hierarchyNavigator != null) {
+            hierarchyNavigator.setupLineComponentState(this, this);
+        }
     }
 
     /**
@@ -439,14 +443,6 @@ public final class Score
         this.popup = popup;
     }
 
-    ScoreFocusController getFocusController() {
-        return focusController.orElseThrow();
-    }
-
-    ScoreInputHandler getInputHandler() {
-        return inputHandler.orElseThrow();
-    }
-
     EditModeManager getEditModeManager() {
         return editModeManager;
     }
@@ -465,9 +461,7 @@ public final class Score
      */
     @Nullable
     public LineComponent getLineComponent(int lineIndex) {
-        return hierarchyNavigator
-            .map(nav -> nav.getLineComponent(lineIndex))
-            .orElse(null);
+        return hierarchyNavigator != null ? hierarchyNavigator.getLineComponent(lineIndex) : null;
     }
 
     void initAdjustments() {
@@ -597,12 +591,12 @@ public final class Score
      * rather than a separate layout manager.
      */
     private void updateLayoutFromComponents() {
-        hierarchyNavigator.ifPresent(nav ->
-            nav.updateLayoutFromComponents(layout -> {
+        if (hierarchyNavigator != null) {
+            hierarchyNavigator.updateLayoutFromComponents(layout -> {
                 middleLineYPx = layout[0];
                 rowHeightPx = layout[1];
-            })
-        );
+            });
+        }
     }
 
     public @Nullable JScrollPane getScoreScrollPane() {
@@ -1049,7 +1043,9 @@ public final class Score
     }
 
     public void allowFocusInComponent(Component component) {
-        focusController.ifPresent(fc -> fc.allowFocusInComponent(component));
+        if (focusController != null) {
+            focusController.allowFocusInComponent(component);
+        }
     }
 
     public BufferedImage createImageForExport(

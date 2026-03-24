@@ -78,13 +78,11 @@ public class TieRenderer {
             return;
         }
 
-        var layoutOpt = layoutResult.getTieLayout(interval);
+        var layout = layoutResult.getTieLayout(interval);
 
-        if (layoutOpt.isEmpty()) {
+        if (layout == null) {
             return;
         }
-
-        var layout = layoutOpt.get();
 
         try (var ignored = GraphicsState.save(g2, TRANSFORM, COLOR)) {
             g2.translate(0, ctx.getMiddleLineYSs());

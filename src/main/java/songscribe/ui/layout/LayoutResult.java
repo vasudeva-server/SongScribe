@@ -24,7 +24,6 @@ import module java.desktop;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Optional;
 
 import org.jspecify.annotations.Nullable;
 
@@ -188,15 +187,16 @@ public final class LayoutResult {
     /**
      * Returns the tie geometry for a tie interval, if it was computed during layout.
      * <p>
-     * Returns an empty Optional when the interval was not laid out (e.g., degenerate
+     * Returns null when the interval was not laid out (e.g., degenerate
      * tie spanning notes that could not be positioned). Callers should skip rendering
-     * if the result is empty.
+     * if the result is null.
      *
      * @param interval The tie interval to look up
-     * @return An Optional containing the tie layout, or empty if not computed
+     * @return the tie layout, or null if not computed
      */
-    public Optional<TieLayout> getTieLayout(Interval interval) {
-        return Optional.ofNullable(tieLayouts.get(interval));
+    @Nullable
+    public TieLayout getTieLayout(Interval interval) {
+        return tieLayouts.get(interval);
     }
 
     // ==========================================================================
