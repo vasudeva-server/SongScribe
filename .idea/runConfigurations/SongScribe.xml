@@ -3,7 +3,7 @@
     <option name="ALTERNATIVE_JRE_PATH" value="/opt/homebrew/Cellar/openjdk/21.0.1/libexec/openjdk.jdk/Contents/Home" />
     <option name="MAIN_CLASS_NAME" value="songscribe.SongScribe" />
     <module name="SongScribe" />
-    <option name="VM_PARAMETERS" value="--enable-native-access=ALL-UNNAMED" />
+    <option name="VM_PARAMETERS" value="--enable-native-access=ALL-UNNAMED -Djna.library.path=target/native" />
     <extension name="de.eudaemon.ideaswag.SwingspectorExtension">
       <Swingspector>
         <keystroke code="59" modifiers="130" />
@@ -13,6 +13,8 @@
     </extension>
     <method v="2">
       <option name="Make" enabled="true" />
+      <option name="Maven.BeforeRunTask" enabled="true" file="$PROJECT_DIR$/pom.xml" goal="generate-sources" />
+      <option name="Maven.BeforeRunTask" enabled="true" file="$PROJECT_DIR$/pom.xml" goal="dependency:copy@copy-native-libs" />
     </method>
   </configuration>
 </component>
