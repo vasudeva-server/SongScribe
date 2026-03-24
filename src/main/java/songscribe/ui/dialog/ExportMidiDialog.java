@@ -25,8 +25,6 @@ import java.io.File;
 import java.io.IOException;
 
 
-import org.jspecify.annotations.Nullable;
-
 import songscribe.prefs.Prefs;
 import songscribe.prefs.PrefsKey;
 import songscribe.Strings;
@@ -38,10 +36,11 @@ public class ExportMidiDialog extends StandardDialog {
 
     private final JComboBox<String> instrumentCombo;
     private final JCheckBox withRepeatCheck;
-    private @Nullable File saveFile = null;
+    private final File saveFile;
 
-    public ExportMidiDialog() {
+    public ExportMidiDialog(File saveFile) {
         super(Strings.get(Strings.DIALOG_EXPORT_MIDI_TITLE));
+        this.saveFile = saveFile;
         var center = new JPanel();
         center.setLayout(new BoxLayout(center, BoxLayout.Y_AXIS));
         center.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
@@ -55,10 +54,6 @@ public class ExportMidiDialog extends StandardDialog {
         center.add(withRepeatCheck);
         contentPanel.add(BorderLayout.CENTER, center);
         contentPanel.add(BorderLayout.SOUTH, buttonPanel);
-    }
-
-    public void setSaveFile(File saveFile) {
-        this.saveFile = saveFile;
     }
 
     @Override
@@ -83,14 +78,8 @@ public class ExportMidiDialog extends StandardDialog {
 
             try {
                 var sequence = PlaybackController.buildSequence(score.getComposition());
-                if (saveFile == null) {
-                    throw new IllegalStateException(
-                        "saveFile must be set before export");
-                }
-
-                var file = saveFile;
-                MidiSystem.write(sequence, 1, file);
-                FileUtils.openExportFile(file);
+                MidiSystem.write(sequence, 1, saveFile);
+                FileUtils.openExportFile(saveFile);
             } finally {
                 // Restore previous playback settings
                 PlaybackController.setPlayWithRepeats(savedSettings.playWithRepeats());

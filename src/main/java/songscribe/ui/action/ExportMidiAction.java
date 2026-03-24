@@ -22,8 +22,6 @@ package songscribe.ui.action;
 import module java.desktop;
 
 
-import org.jspecify.annotations.Nullable;
-
 import songscribe.Strings;
 import songscribe.file.MyFileFilter;
 import songscribe.ui.dialog.ExportMidiDialog;
@@ -33,7 +31,6 @@ import songscribe.file.FileUtils;
 public class ExportMidiAction extends UIAction {
 
     private final PlatformFileDialog fileDialog;
-    private @Nullable ExportMidiDialog exportMidiDialog = null;
 
     public static ExportMidiAction createAction() {
         return new ExportMidiAction();
@@ -58,11 +55,6 @@ public class ExportMidiAction extends UIAction {
             return;
         }
 
-        if (exportMidiDialog == null) {
-            exportMidiDialog = new ExportMidiDialog();
-        }
-
-        exportMidiDialog.setSaveFile(saveFile);
-        exportMidiDialog.setVisible(true);
+        new ExportMidiDialog(saveFile).setVisible(true);
     }
 }
