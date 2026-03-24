@@ -6,6 +6,20 @@ Feature branches are based on `develop`, not `main`. Before any operation that r
 
 ## Mandatory Rules
 
+### Null Handling
+
+**NEVER use `Objects.requireNonNull` or `Objects.requireNonNullElse`.** These throw generic `NullPointerException` with no context and bypass graceful recovery. Use context-appropriate null handling instead:
+
+| Situation | Pattern |
+|-----------|---------|
+| Fatal invariant violation (corrupt state, impossible condition) | `throw RuntimeError.exit("reason")` |
+| Programming error (bad argument) | `throw new IllegalArgumentException("reason")` |
+| Programming error (bad state) | `throw new IllegalStateException("reason")` |
+| Optional value with graceful fallback | Null guard + early return / default value |
+| Null-coalescing (`requireNonNullElse`) | Plain `x != null ? x : fallback` or `Optional.ofNullable(x).orElse(fallback)` |
+
+For domain objects that are always required (e.g. a `Score`'s bounding box), add a dedicated `requireXxx()` helper that throws `RuntimeError.exit` with a descriptive message rather than inlining the check.
+
 ### Use the Provided Scripts
 
 NEVER invoke `mvn compile`, `mvn test`, `javac`, `kotlinc`, `java -cp`, `mvn exec:java`, or any other raw build/run/test commands. ALWAYS use the provided shell scripts described below.
