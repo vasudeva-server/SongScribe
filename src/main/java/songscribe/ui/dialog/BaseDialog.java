@@ -22,7 +22,9 @@ package songscribe.ui.dialog;
 import module java.desktop;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.jspecify.annotations.Nullable;
 
@@ -34,6 +36,7 @@ import songscribe.music.Composition;
 import songscribe.ui.OptionDialogs;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.Score;
+import songscribe.util.GraphicUtils;
 import songscribe.util.UIUtils;
 
 /**
@@ -56,6 +59,7 @@ public abstract class BaseDialog {
     protected static final int SECTION_MARGIN = 15;
 
     private static int visibleBlockingDialogCount = 0;
+    private static final Map<Class<?>, Point> SAVED_LOCATIONS = new HashMap<>();
 
     private final MainFrame mainFrame;
     protected final String dialogTitle;
@@ -64,7 +68,6 @@ public abstract class BaseDialog {
     protected final JPanel contentPanel = new JPanel(new BorderLayout());
     private final List<Tab> tabs = new ArrayList<>();
     private @Nullable JTabbedPane tabbedPane;
-    private @Nullable Point savedLocation;
     private @Nullable Component savedFocusOwner;
     private JDialog dialog;
 
@@ -94,6 +97,10 @@ public abstract class BaseDialog {
 
     static void resetVisibleBlockingDialogCount() {
         visibleBlockingDialogCount = 0;
+    }
+
+    static void resetSavedLocations() {
+        SAVED_LOCATIONS.clear();
     }
 
     private void incrementBlockingCount() {
@@ -266,10 +273,12 @@ public abstract class BaseDialog {
             dialog.setSize(minSize);
             dialog.setMinimumSize(minSize);
 
-            if (savedLocation == null) {
+            var restoredLocation = SAVED_LOCATIONS.get(getClass());
+
+            if (restoredLocation == null) {
                 OptionDialogs.positionDialog(dialog, mainFrame);
             } else {
-                dialog.setLocation(savedLocation);
+                dialog.setLocation(GraphicUtils.clampToScreen(restoredLocation, dialog.getSize()));
             }
 
             if (category.isBlocking()) {
@@ -296,7 +305,7 @@ public abstract class BaseDialog {
                     tab.tabWillHide();
                 }
 
-                savedLocation = dialog.getLocation();
+                SAVED_LOCATIONS.put(getClass(), dialog.getLocation());
             } finally {
                 if (category.isBlocking()) {
                     decrementBlockingCount();

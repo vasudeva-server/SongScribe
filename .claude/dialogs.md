@@ -61,12 +61,12 @@ When `setVisible(true)` is called:
 2. Sets the default button (from `getDefaultButton()`)
 3. Calls `getData()` — if it returns `false`, the dialog is disposed without showing
 4. Calls `tabWillShow()` on each registered tab
-5. Packs, applies `getExtraWidth()`, sets minimum size, positions relative to `MainFrame`
+5. Packs, applies `getExtraWidth()`, sets minimum size, restores saved position if available or positions relative to `MainFrame`
 6. Shows the dialog (blocks if modal)
 
 When `setVisible(false)` is called:
 1. Calls `tabWillHide()` on each registered tab
-2. Saves the dialog location for next open
+2. Saves the dialog location to a static map keyed by the dialog's class — position persists even for dialogs created fresh on each invocation
 3. Disposes the `JDialog`
 
 **Overridable hooks:**

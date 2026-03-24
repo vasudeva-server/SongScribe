@@ -415,6 +415,30 @@ public final class GraphicUtils {
     }
 
     /**
+     * Clamps {@code location} so that a window of {@code windowSize} fits entirely
+     * within the screen that contains the point. If no screen contains the point,
+     * the default screen is used.
+     */
+    public static Point clampToScreen(Point location, Dimension windowSize) {
+        var env = GraphicsEnvironment.getLocalGraphicsEnvironment();
+        var screen = env.getDefaultScreenDevice().getDefaultConfiguration().getBounds();
+
+        for (var device : env.getScreenDevices()) {
+            var bounds = device.getDefaultConfiguration().getBounds();
+
+            if (bounds.contains(location)) {
+                screen = bounds;
+                break;
+            }
+        }
+
+        var x = Math.max(screen.x, Math.min(location.x, screen.x + screen.width - windowSize.width));
+        var y = Math.max(screen.y, Math.min(location.y, screen.y + screen.height - windowSize.height));
+
+        return new Point(x, y);
+    }
+
+    /**
      * Given a text block with one or more lines, calculates the width.
      */
     public static double getTextBlockWidth(
