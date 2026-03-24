@@ -20,6 +20,10 @@
 - Use `@Nested` inner classes to group related tests — but only when there are multiple related tests to group. Do not wrap a single test method in a `@Nested` class.
 - Alphabetize top-level test methods and `@Nested` class declarations within a test class. Alphabetize test methods within each `@Nested` class as well.
 
+## Testability Over Encapsulation
+
+When a private method is a self-contained unit worth testing directly, widen its visibility to package-private rather than trying to test it indirectly through public methods that require complex setup. Reconstructing application state through mocks, reflection, or elaborate wiring just to reach a private method makes tests fragile and hard to understand. A simple visibility change is always preferable.
+
 ## Assertions
 
 ```java
