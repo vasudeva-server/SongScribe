@@ -284,12 +284,7 @@ public class ElementTypeAction extends StickyUIAction implements UIAction.Elemen
     }
 
     @Override
-    @Nullable
     public StaffElement createReplacement(StaffElement element, boolean selected) {
-        if (!selected) {
-            return null;
-        }
-
         var targetType = element.getType().isRest() ? type.toRest() : type.toNote();
         return new StaffElement(targetType, element);
     }

@@ -43,7 +43,6 @@ import songscribe.message.notification.CompositionDidChangeNotification;
 import songscribe.message.notification.MusicSelectionDidChangeNotification;
 import songscribe.ui.action.Actions;
 import songscribe.ui.action.UIAction;
-import songscribe.error.RuntimeError;
 
 /**
  * Lightweight score-level coordinator that tracks which line (if any) has
@@ -548,21 +547,11 @@ public final class SelectionCoordinator {
             if (!action.appliesTo(element)) continue;
 
             if (action instanceof UIAction.ElementReplaceable replaceable) {
-                var replacement = replaceable.createReplacement(element, selected);
-
-                if (replacement == null) {
-                    if (selected) {
-                        RuntimeError.logNull(
-                            null,
-                            "Selection Error",
-                            "createReplacement returned null for element " + i + " in selection",
-                            "Could not change the duration of a selected element."
-                        );
-                    }
-
+                if (!selected) {
                     continue;
                 }
 
+                var replacement = replaceable.createReplacement(element, selected);
                 line.replaceElementQuietly(i, replacement);
                 needsIntervalCleanup = true;
             } else if (action instanceof UIAction.ElementModifiable modifiable) {

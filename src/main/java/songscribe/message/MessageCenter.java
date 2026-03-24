@@ -2,24 +2,32 @@ package songscribe.message;
 
 import net.engio.mbassy.bus.MBassador;
 import net.engio.mbassy.bus.error.IPublicationErrorHandler;
+import net.engio.mbassy.bus.error.PublicationError;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import songscribe.error.RuntimeError;
 
 public final class MessageCenter {
 
-    private static final Logger LOG = LoggerFactory.getLogger(MessageCenter.class);
+    private static final MBassador<Message> eventBus =
+        new MBassador<>((IPublicationErrorHandler) MessageCenter::handlePublicationError);
 
-    private static final MBassador<Message> eventBus = new MBassador<>((IPublicationErrorHandler) error -> {
-        var cause = error.getCause();
-        var message = error.getMessage() != null ? error.getMessage() : "Message publication error";
+    private static void handlePublicationError(PublicationError error) {
+        var listener = error.getListener();
+        var handler  = error.getHandler();
+        var message  = error.getPublishedMessage();
+        var cause    = error.getCause();
+
+        var detail = "Unhandled exception in @Handler\n" +
+            "  listener: " + (listener != null ? listener.getClass().getSimpleName() : "<null>") + "\n" +
+            "  handler:  " + (handler  != null ? handler.getName()                   : "<null>") + "\n" +
+            "  message:  " + (message  != null ? message.getClass().getSimpleName()  : "<null>");
 
         if (cause != null) {
-            LOG.error(message, cause);
+            throw RuntimeError.exit(detail, cause);
         } else {
-            LOG.error(message);
+            throw RuntimeError.exit(error.getMessage() != null ? error.getMessage() : detail);
         }
-    });
+    }
 
     private MessageCenter() {}
 

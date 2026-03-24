@@ -22,7 +22,6 @@ package songscribe.error;
 
 import module java.desktop;
 
-import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,41 +39,6 @@ public final class RuntimeError {
         "Sorry, but a fatal error has occurred and the application must quit.";
 
     /**
-     * If the object is null, logs the message, shows an error alert, and returns true.
-     *
-     * @param object      the object to check
-     * @param alertTitle  the title for the error dialog
-     * @param logMessage  message written to the log
-     * @param userMessage message shown to the user in the dialog
-     * @return true if the object was null (error was reported), false otherwise
-     */
-    public static boolean logNull(
-        @Nullable Object object,
-        String alertTitle,
-        String logMessage,
-        String userMessage
-    ) {
-        if (object != null) {
-            return false;
-        }
-
-        LOG.error(logMessage);
-
-        OptionDialogs.showOptionDialog(
-            null,
-            alertTitle,
-            userMessage,
-            JOptionPane.DEFAULT_OPTION,
-            JOptionPane.ERROR_MESSAGE,
-            null,
-            new String[]{"OK"},
-            "OK"
-        );
-
-        return true;
-    }
-
-    /**
      * Logs the message, shows an error dialog to the user, and exits.
      * <p>
      * Always call as {@code throw RuntimeError.exit("reason")} so the compiler
@@ -84,7 +48,37 @@ public final class RuntimeError {
      * @return never returns; declared as RuntimeException for use in {@code throw} expressions
      */
     public static RuntimeException exit(String message) {
-        logNull(null, FATAL_ALERT_TITLE, "Fatal: " + message, FATAL_USER_MESSAGE);
+        LOG.error("Fatal: " + message);
+        throw showDialogAndExit();
+    }
+
+    /**
+     * Logs the message and cause, shows an error dialog to the user, and exits.
+     * <p>
+     * Always call as {@code throw RuntimeError.exit("reason", cause)} so the compiler
+     * and NullAway know the calling code is unreachable after this point.
+     *
+     * @param message Description of the violated invariant
+     * @param cause   the exception that triggered the fatal error
+     * @return never returns; declared as RuntimeException for use in {@code throw} expressions
+     */
+    public static RuntimeException exit(String message, Throwable cause) {
+        LOG.error(message, cause);
+        throw showDialogAndExit();
+    }
+
+    private static RuntimeException showDialogAndExit() {
+        OptionDialogs.showOptionDialog(
+            null,
+            FATAL_ALERT_TITLE,
+            FATAL_USER_MESSAGE,
+            JOptionPane.DEFAULT_OPTION,
+            JOptionPane.ERROR_MESSAGE,
+            null,
+            new String[]{"OK"},
+            "OK"
+        );
+
         System.exit(-1);
         throw new AssertionError("unreachable");
     }

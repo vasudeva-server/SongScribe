@@ -150,9 +150,9 @@ public class UIAction extends AbstractAction {
          * Create a replacement element with this action's attribute applied.
          * @param element  the source element to base the replacement on
          * @param selected true to apply the attribute, false to skip
-         * @return the replacement element, or null if no replacement is needed
+         * @return the replacement element
          */
-        @Nullable StaffElement createReplacement(StaffElement element, boolean selected);
+        StaffElement createReplacement(StaffElement element, boolean selected);
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(UIAction.class);

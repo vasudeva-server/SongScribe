@@ -53,13 +53,6 @@ class ElementTypeActionTest extends UnitTest {
         assertThat(replacement.getType()).isEqualTo(ElementType.CROTCHET_REST);
     }
 
-    // CR1: createReplacement returns null when selected == false
-    @Test
-    void testCreateReplacementReturnsNullWhenNotSelected() {
-        var element = ElementType.CROTCHET.newInstance();
-        assertThat(durationAction.createReplacement(element, false)).isNull();
-    }
-
     // CR4: createReplacement with grace note (toNote/toRest returns this)
     @Test
     void testCreateReplacementWithGraceNote() {
