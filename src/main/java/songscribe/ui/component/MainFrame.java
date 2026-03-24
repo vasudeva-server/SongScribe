@@ -88,7 +88,7 @@ public class MainFrame extends JFrame implements Printable {
         if (!SONGSCRIBE_DIR.exists() && !SONGSCRIBE_DIR.mkdir()) {
             OptionDialogs.showErrorMessage(
                 null,
-                Strings.get(Strings.DIALOG_TITLE_INITIALIZATION_ERROR),
+                Strings.get(Strings.ALERT_TITLE_INITIALIZATION_ERROR),
                 Strings.get(Strings.ERROR_DIRECTORY_CREATE)
             );
         }
@@ -428,7 +428,7 @@ public class MainFrame extends JFrame implements Printable {
         };
         var answer = OptionDialogs.showOptionDialog(
             this,
-            Strings.get(Strings.DIALOG_TITLE_SAVE_CHANGES),
+            Strings.get(Strings.CONFIRM_TITLE_SAVE_CHANGES),
             Strings.get(Strings.CONFIRM_SAVE_MODIFIED, docName),
             JOptionPane.YES_NO_CANCEL_OPTION,
             JOptionPane.QUESTION_MESSAGE,
@@ -613,7 +613,7 @@ public class MainFrame extends JFrame implements Printable {
             } catch (PrinterException e1) {
                 OptionDialogs.showErrorMessage(
                     this,
-                    Strings.get(Strings.DIALOG_TITLE_PRINT_ERROR),
+                    Strings.get(Strings.ALERT_TITLE_PRINT_ERROR),
                     Strings.get(Strings.ERROR_PRINT)
                 );
             }
@@ -695,7 +695,7 @@ public class MainFrame extends JFrame implements Printable {
         } catch (IOException e1) {
             OptionDialogs.showErrorMessage(
                 this,
-                Strings.get(Strings.DIALOG_TITLE_FILE_ERROR),
+                Strings.get(Strings.ALERT_TITLE_FILE_ERROR),
                 Strings.get(Strings.ERROR_FILE_SAVE)
             );
         }

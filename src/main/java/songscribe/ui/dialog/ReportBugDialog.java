@@ -93,7 +93,7 @@ public class ReportBugDialog extends StandardDialog {
                 } catch (Exception e1) {
                     OptionDialogs.showErrorMessage(
                         getMainFrame(),
-                        Strings.get(Strings.DIALOG_TITLE_EMAIL_ERROR),
+                        Strings.get(Strings.ALERT_TITLE_EMAIL_ERROR),
                         Strings.get(Strings.ERROR_EMAIL_OPEN_REPORT)
                     );
                 }

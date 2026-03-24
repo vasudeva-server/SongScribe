@@ -318,7 +318,7 @@ public final class EditModeManager {
             if ((iv != null) && ((elementIndex - 1) < iv.getEnd())) {
                 OptionDialogs.showErrorMessage(
                     null,
-                    Strings.get(Strings.DIALOG_TITLE_EDIT_ERROR),
+                    Strings.get(Strings.ALERT_TITLE_EDIT_ERROR),
                     Strings.get(Strings.ERROR_TRIPLET_INSERT)
                 );
                 return true;

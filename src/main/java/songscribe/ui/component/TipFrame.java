@@ -98,7 +98,7 @@ public class TipFrame extends JFrame {
             } catch (IOException e1) {
                 OptionDialogs.showErrorMessage(
                     this,
-                    Strings.get(Strings.DIALOG_TITLE_TIP_ERROR),
+                    Strings.get(Strings.ALERT_TITLE_TIP_ERROR),
                     Strings.get(Strings.ERROR_TIP_READ)
                 );
             }
@@ -114,7 +114,7 @@ public class TipFrame extends JFrame {
             } catch (IOException e1) {
                 OptionDialogs.showErrorMessage(
                     this,
-                    Strings.get(Strings.DIALOG_TITLE_TIP_ERROR),
+                    Strings.get(Strings.ALERT_TITLE_TIP_ERROR),
                     Strings.get(Strings.ERROR_TIP_READ)
                 );
             }

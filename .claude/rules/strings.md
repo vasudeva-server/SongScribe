@@ -17,7 +17,20 @@ action.key.signature.change = Key Signature Change...
 dialog.compositionsettings.resettodefaults = Reset to defaults
 action.keysignaturechange = Key Signature Change...
 ```
-- Strings are alphabetized within groups (by prefix: `action.*`, `confirm.*`, `dialog.*`, `error.*`, etc.)
+- Strings are alphabetized within groups (by prefix: `action.*`, `alert.*`, `confirm.*`, `dialog.*`, `error.*`, etc.)
+
+### Key taxonomy for user-facing dialogs
+
+Keys for `JOptionPane`-based dialogs (via `OptionDialogs`) are grouped by dialog type, not by the word "dialog":
+
+| Prefix | Used for |
+|--------|----------|
+| `alert.*` | Titles and messages for `showInfoMessage`, `showWarningMessage`, `showErrorMessage` |
+| `confirm.*` | Titles and messages for `showConfirmDialog`, `showOptionDialog` |
+| `input.*` | Titles and messages for `showInputDialog` |
+| `dialog.*` | Reserved for `BaseDialog`/`StandardDialog`-based windows only |
+
+Title keys follow the pattern `<type>.title.<topic>` (e.g. `alert.title.file.error`, `confirm.title.save.changes`, `input.title.number.songs`). Message body keys omit the `.title.` segment (e.g. `alert.conversion.complete`, `confirm.save.modified`).
 - Template strings use `java.text.MessageFormat` syntax:
   - Simple: `error.file.open=Error opening {0}`
   - Numeric: `error.line.width.range=Width must be between {0,number,0.00} and {1,number,0.00}` — use `{N,number,pattern}` to format numbers inline rather than pre-formatting in Java code
@@ -42,10 +55,10 @@ Strings.get(String key, Object... args)  // MessageFormat template with argument
 
 ```java
 // Plain string
-Dialogs.showErrorMessage(parent, Strings.get(Strings.DIALOG_TITLE_FILE_ERROR), Strings.get(Strings.ERROR_FILE_OPEN));
+OptionDialogs.showErrorMessage(parent, Strings.get(Strings.ALERT_TITLE_FILE_ERROR), Strings.get(Strings.ERROR_FILE_OPEN));
 
 // Template string with arguments
-Dialogs.showErrorMessage(parent, Strings.get(Strings.DIALOG_TITLE_LINE_WIDTH_ERROR),
+OptionDialogs.showErrorMessage(parent, Strings.get(Strings.ALERT_TITLE_LINE_WIDTH_ERROR),
     Strings.get(Strings.ERROR_LINE_WIDTH_RANGE, minWidth, maxWidth, unit));
 ```
 

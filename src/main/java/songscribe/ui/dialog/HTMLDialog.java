@@ -61,7 +61,7 @@ public class HTMLDialog extends StandardDialog {
         } catch (IOException e) {
             OptionDialogs.showErrorMessage(
                 getMainFrame(),
-                Strings.get(Strings.DIALOG_TITLE_HELP_ERROR),
+                Strings.get(Strings.ALERT_TITLE_HELP_ERROR),
                 Strings.get(Strings.ERROR_HELP_OPEN)
             );
         }

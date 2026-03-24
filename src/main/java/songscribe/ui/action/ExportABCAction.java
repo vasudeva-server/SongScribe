@@ -120,7 +120,7 @@ public class ExportABCAction extends UIAction {
         } catch (IOException e1) {
             OptionDialogs.showErrorMessage(
                 null,
-                Strings.get(Strings.DIALOG_TITLE_EXPORT_ERROR),
+                Strings.get(Strings.ALERT_TITLE_EXPORT_ERROR),
                 Strings.get(Strings.ERROR_FILE_SAVE)
             );
         }

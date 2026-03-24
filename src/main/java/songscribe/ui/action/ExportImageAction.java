@@ -125,7 +125,7 @@ public class ExportImageAction extends UIAction {
                 if (!successful) {
                     OptionDialogs.showErrorMessage(
                         null,
-                        Strings.get(Strings.DIALOG_TITLE_EXPORT_ERROR),
+                        Strings.get(Strings.ALERT_TITLE_EXPORT_ERROR),
                         Strings.get(Strings.ERROR_IMAGE_EXPORT)
                     );
                 } else {
@@ -134,13 +134,13 @@ public class ExportImageAction extends UIAction {
             } catch (IOException e1) {
                 OptionDialogs.showErrorMessage(
                     null,
-                    Strings.get(Strings.DIALOG_TITLE_EXPORT_ERROR),
+                    Strings.get(Strings.ALERT_TITLE_EXPORT_ERROR),
                     Strings.get(Strings.ERROR_FILE_SAVE)
                 );
             } catch (OutOfMemoryError e1) {
                 OptionDialogs.showErrorMessage(
                     null,
-                    Strings.get(Strings.DIALOG_TITLE_EXPORT_ERROR),
+                    Strings.get(Strings.ALERT_TITLE_EXPORT_ERROR),
                     Strings.get(Strings.ERROR_IMAGE_MEMORY)
                 );
             }

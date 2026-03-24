@@ -317,7 +317,7 @@ class NoteDragHandler {
                     // Grace note dragged to the same pitch as its following note — remove the grace note
                     OptionDialogs.showWarningMessage(
                             null,
-                            Strings.get(Strings.DIALOG_TITLE_GRACE_NOTE_WARNING),
+                            Strings.get(Strings.ALERT_TITLE_GRACE_NOTE_WARNING),
                             Strings.get(Strings.WARNING_GRACE_NOTE_SAME_PITCH)
                     );
                     dragLine.removeElement(idx);
@@ -329,7 +329,7 @@ class NoteDragHandler {
                             && dragLine.getElement(graceIdx).getPitch() == element.getPitch()) {
                         OptionDialogs.showWarningMessage(
                                 null,
-                                Strings.get(Strings.DIALOG_TITLE_GRACE_NOTE_WARNING),
+                                Strings.get(Strings.ALERT_TITLE_GRACE_NOTE_WARNING),
                                 Strings.get(Strings.WARNING_GRACE_NOTE_SAME_PITCH)
                         );
                         dragLine.removeElement(graceIdx);

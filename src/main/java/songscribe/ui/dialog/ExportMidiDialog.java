@@ -96,7 +96,7 @@ public class ExportMidiDialog extends StandardDialog {
         } catch (IOException | InvalidMidiDataException e1) {
             OptionDialogs.showErrorMessage(
                 getMainFrame(),
-                Strings.get(Strings.DIALOG_TITLE_EXPORT_ERROR),
+                Strings.get(Strings.ALERT_TITLE_EXPORT_ERROR),
                 Strings.get(Strings.ERROR_FILE_SAVE)
             );
         }

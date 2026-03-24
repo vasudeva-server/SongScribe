@@ -81,7 +81,7 @@ public final class Utils {
             } catch (Exception e) {
                 OptionDialogs.showErrorMessage(
                     null,
-                    Strings.get(Strings.DIALOG_TITLE_BROWSER_ERROR),
+                    Strings.get(Strings.ALERT_TITLE_BROWSER_ERROR),
                     Strings.get(Strings.ERROR_WEBPAGE_OPEN)
                 );
             }
@@ -101,7 +101,7 @@ public final class Utils {
             } catch (Exception e) {
                 OptionDialogs.showErrorMessage(
                     null,
-                    Strings.get(Strings.DIALOG_TITLE_EMAIL_ERROR),
+                    Strings.get(Strings.ALERT_TITLE_EMAIL_ERROR),
                     Strings.get(Strings.ERROR_EMAIL_OPEN)
                 );
             }

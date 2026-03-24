@@ -736,14 +736,14 @@ public class UIConverter extends MainFrame {
             var selectedSong = (String) rejectList.getSelectedValue();
 
             if (selectedSong == null) {
-                OptionDialogs.showErrorMessage(UIConverter.this, Strings.get(Strings.DIALOG_TITLE_CONVERSION_ERROR), Strings.get(Strings.ERROR_CONVERTER_NO_REJECTED_SONG));
+                OptionDialogs.showErrorMessage(UIConverter.this, Strings.get(Strings.ALERT_TITLE_CONVERSION_ERROR), Strings.get(Strings.ERROR_CONVERTER_NO_REJECTED_SONG));
                 return;
             }
 
             var numberStr = OptionDialogs.showInputDialog(
                 UIConverter.this,
-                Strings.get(Strings.DIALOG_TITLE_NUMBER_SONGS),
-                Strings.get(Strings.DIALOG_CONVERTER_ENTER_NUMBER)
+                Strings.get(Strings.INPUT_TITLE_NUMBER_SONGS),
+                Strings.get(Strings.INPUT_CONVERTER_ENTER_NUMBER)
             );
 
             if (numberStr == null) {
@@ -755,12 +755,12 @@ public class UIConverter extends MainFrame {
             try {
                 number = Integer.parseInt(numberStr);
             } catch (NumberFormatException nfe) {
-                OptionDialogs.showErrorMessage(UIConverter.this, Strings.get(Strings.DIALOG_TITLE_CONVERSION_ERROR), Strings.get(Strings.ERROR_CONVERTER_NUMBER_INVALID));
+                OptionDialogs.showErrorMessage(UIConverter.this, Strings.get(Strings.ALERT_TITLE_CONVERSION_ERROR), Strings.get(Strings.ERROR_CONVERTER_NUMBER_INVALID));
                 return;
             }
 
             if ((number < 1) || (number > 999)) {
-                OptionDialogs.showErrorMessage(UIConverter.this, Strings.get(Strings.DIALOG_TITLE_CONVERSION_ERROR), Strings.get(Strings.ERROR_CONVERTER_NUMBER_RANGE));
+                OptionDialogs.showErrorMessage(UIConverter.this, Strings.get(Strings.ALERT_TITLE_CONVERSION_ERROR), Strings.get(Strings.ERROR_CONVERTER_NUMBER_RANGE));
                 return;
             }
 
@@ -775,14 +775,14 @@ public class UIConverter extends MainFrame {
             );
 
             if (!isLegalFileName(renamedSongFile.getName())) {
-                OptionDialogs.showErrorMessage(UIConverter.this, Strings.get(Strings.DIALOG_TITLE_CONVERSION_ERROR), Strings.get(Strings.ERROR_CONVERTER_NUMBER_FAILED));
+                OptionDialogs.showErrorMessage(UIConverter.this, Strings.get(Strings.ALERT_TITLE_CONVERSION_ERROR), Strings.get(Strings.ERROR_CONVERTER_NUMBER_FAILED));
                 return;
             }
 
             var renameSuccessful = originalSongFile.renameTo(renamedSongFile);
 
             if (!renameSuccessful) {
-                OptionDialogs.showErrorMessage(UIConverter.this, Strings.get(Strings.DIALOG_TITLE_CONVERSION_ERROR), Strings.get(Strings.ERROR_CONVERTER_RENAME_FAILED));
+                OptionDialogs.showErrorMessage(UIConverter.this, Strings.get(Strings.ALERT_TITLE_CONVERSION_ERROR), Strings.get(Strings.ERROR_CONVERTER_RENAME_FAILED));
                 return;
             }
 

@@ -44,7 +44,7 @@ public class OpenRecentAction extends UIAction {
         if (!Files.exists(path)) {
             OptionDialogs.showErrorMessage(
                 getMainFrame(),
-                Strings.get(Strings.DIALOG_TITLE_FILE_ERROR),
+                Strings.get(Strings.ALERT_TITLE_FILE_ERROR),
                 "The file \u201c" + path.getFileName() + "\u201d could not be opened because it no longer exists."
             );
             RecentDocumentsManager.getInstance().remove(path);

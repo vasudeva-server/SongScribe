@@ -253,7 +253,7 @@ public final class Score
         } catch (Exception e) {
             OptionDialogs.showErrorMessage(
                 null,
-                Strings.get(Strings.DIALOG_TITLE_INITIALIZATION_ERROR),
+                Strings.get(Strings.ALERT_TITLE_INITIALIZATION_ERROR),
                 Constants.PACKAGE_NAME +
                     " cannot start because of an initialization error."
             );
@@ -492,7 +492,7 @@ public final class Score
             if (lineWidthInches > PageModel.MAX_LINE_WIDTH_INCHES) {
                 OptionDialogs.showErrorMessage(
                     null,
-                    Strings.get(Strings.DIALOG_TITLE_FILE_ERROR),
+                    Strings.get(Strings.ALERT_TITLE_FILE_ERROR),
                     Strings.get(Strings.ERROR_LINE_WIDTH_TOO_LARGE)
                 );
                 LOG.error(
@@ -524,7 +524,7 @@ public final class Score
                     "” because it is damaged.";
             OptionDialogs.showErrorMessage(
                 null,
-                Strings.get(Strings.DIALOG_TITLE_FILE_ERROR),
+                Strings.get(Strings.ALERT_TITLE_FILE_ERROR),
                 message
             );
             LOG.error(message, e);
@@ -536,7 +536,7 @@ public final class Score
             var message = "Could not open the file “" + file.getName() + '”';
             OptionDialogs.showErrorMessage(
                 null,
-                Strings.get(Strings.DIALOG_TITLE_FILE_ERROR),
+                Strings.get(Strings.ALERT_TITLE_FILE_ERROR),
                 message + ". Check if you have the permission to open it."
             );
             LOG.error(message, e);

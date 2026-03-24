@@ -133,7 +133,7 @@ public class CompositionSettingsDialog extends StandardDialog {
             titleGuard = new NonEmptyGuard(
                 titleField,
                 contentPanel,
-                Strings.get(Strings.DIALOG_TITLE_COMPOSITION_SETTINGS),
+                Strings.get(Strings.ALERT_TITLE_COMPOSITION_SETTINGS),
                 Strings.get(Strings.CONFIRM_COMPOSITION_EMPTY_TITLE),
                 Strings.get(Strings.DOCUMENT_UNTITLED),
                 Strings.get(Strings.DIALOG_COMPOSITION_SETTINGS_USE_UNTITLED),
@@ -143,7 +143,7 @@ public class CompositionSettingsDialog extends StandardDialog {
             attributionGuard = new NonEmptyGuard(
                 attributionArea,
                 contentPanel,
-                Strings.get(Strings.DIALOG_TITLE_COMPOSITION_SETTINGS),
+                Strings.get(Strings.ALERT_TITLE_COMPOSITION_SETTINGS),
                 Strings.get(Strings.CONFIRM_COMPOSITION_EMPTY_ATTRIBUTION),
                 Strings.get(Strings.COMPOSITION_DEFAULT_ATTRIBUTION),
                 Strings.get(Strings.DIALOG_COMPOSITION_SETTINGS_USE_DEFAULT),
@@ -360,7 +360,7 @@ public class CompositionSettingsDialog extends StandardDialog {
             } catch (NumberFormatException e) {
                 OptionDialogs.showErrorMessage(
                     contentPanel,
-                    Strings.get(Strings.DIALOG_TITLE_COMPOSITION_SETTINGS),
+                    Strings.get(Strings.ALERT_TITLE_COMPOSITION_SETTINGS),
                     Strings.get(Strings.ERROR_COMPOSITION_NUMBER)
                 );
                 number = null;
@@ -376,7 +376,7 @@ public class CompositionSettingsDialog extends StandardDialog {
             } catch (NumberFormatException e) {
                 OptionDialogs.showErrorMessage(
                     contentPanel,
-                    Strings.get(Strings.DIALOG_TITLE_COMPOSITION_SETTINGS),
+                    Strings.get(Strings.ALERT_TITLE_COMPOSITION_SETTINGS),
                     Strings.get(Strings.ERROR_COMPOSITION_YEAR)
                 );
                 year = null;
@@ -511,7 +511,7 @@ public class CompositionSettingsDialog extends StandardDialog {
                 } else {
                     OptionDialogs.showErrorMessage(
                         getMainFrame(),
-                        Strings.get(Strings.DIALOG_TITLE_COMPOSITION_SETTINGS),
+                        Strings.get(Strings.ALERT_TITLE_COMPOSITION_SETTINGS),
                         Strings.get(Strings.ERROR_COMPOSITION_YEAR_REQUIRED)
                     );
                     return;
@@ -527,7 +527,7 @@ public class CompositionSettingsDialog extends StandardDialog {
                     } else {
                         OptionDialogs.showErrorMessage(
                             getMainFrame(),
-                            Strings.get(Strings.DIALOG_TITLE_COMPOSITION_SETTINGS),
+                            Strings.get(Strings.ALERT_TITLE_COMPOSITION_SETTINGS),
                             Strings.get(Strings.ERROR_COMPOSITION_PLACE_REQUIRED)
                         );
                         return;
@@ -860,7 +860,7 @@ public class CompositionSettingsDialog extends StandardDialog {
 
             OptionDialogs.showErrorMessage(
                 contentPanel,
-                Strings.get(Strings.DIALOG_TITLE_LINE_WIDTH_ERROR),
+                Strings.get(Strings.ALERT_TITLE_LINE_WIDTH_ERROR),
                 Strings.get(key, min, max, unit)
             );
         }

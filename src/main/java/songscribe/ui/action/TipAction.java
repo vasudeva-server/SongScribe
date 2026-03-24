@@ -44,7 +44,7 @@ public class TipAction extends AbstractAction {
         } catch (IOException e1) {
             OptionDialogs.showErrorMessage(
                 mainFrame,
-                Strings.get(Strings.DIALOG_TITLE_TIP_ERROR),
+                Strings.get(Strings.ALERT_TITLE_TIP_ERROR),
                 Strings.get(Strings.ERROR_TIP_READ)
             );
         }

@@ -62,7 +62,7 @@ public class PDFTutorialOpenAction extends AbstractAction {
         } catch (Exception error) {
             OptionDialogs.showErrorMessage(
                 mainFrame,
-                Strings.get(Strings.DIALOG_TITLE_FILE_ERROR),
+                Strings.get(Strings.ALERT_TITLE_FILE_ERROR),
                 "Could not open the external PDF file.\n" +
                 "Please navigate to " +
                 TUTORIAL_FILE.getAbsolutePath() +
