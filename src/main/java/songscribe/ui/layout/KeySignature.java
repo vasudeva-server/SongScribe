@@ -63,7 +63,7 @@ public class KeySignature extends LineElement {
         this.accidentalCount = Math.max(0, Math.min(7, accidentalCount));
 
         // Default margin from key signature to first note
-        setMarginRightSs(ScaleContext.getInstance().toRoundedPixels(1.0));
+        setMarginRightSs(1.0);
     }
 
     /**

@@ -29,8 +29,10 @@ import songscribe.ui.Mode;
 import songscribe.ui.component.Score;
 import songscribe.ui.edit.EditModeManager;
 import songscribe.ui.edit.GraceModeManager;
-import songscribe.ui.layout.TempoAttachment;
+import songscribe.ui.layout.Clef;
+import songscribe.ui.layout.KeySignature;
 import songscribe.ui.layout.ScaleContext;
+import songscribe.ui.layout.TempoAttachment;
 import songscribe.ui.renderer.AnnotationRenderer;
 import songscribe.ui.renderer.ArticulationRenderer;
 import songscribe.ui.renderer.BeamGroupRenderer;
@@ -254,30 +256,23 @@ class LineRenderer {
      * @param ctx Render context
      */
     private void renderLineBeginning(Graphics2D g2, ElementRenderContext ctx) {
-        var line = lc.getLine();
+        var layoutResult = ctx.getLayoutResult();
 
-        if (line == null) {
+        if (layoutResult == null) {
             return;
         }
 
-        // Render treble clef
-        ClefRenderer.getInstance().renderClef(g2, ctx);
+        var clef = layoutResult.getClef();
 
-        // Render key signature
-        var keyType = line.getKeyType();
-
-        if (keyType == null) {
-            return;
+        if (clef != null) {
+            ClefRenderer.getInstance().render(clef, g2, ctx);
         }
 
-        KeySignatureRenderer.getInstance().renderKeySignature(
-            g2,
-            keyType,
-            line.getKeyAccidentalCount(),
-            ctx.getLeadingKeysPosSs(),
-            ctx.getMiddleLineYSs(),
-            ctx
-        );
+        var keySig = layoutResult.getKeySignature();
+
+        if (keySig != null) {
+            KeySignatureRenderer.getInstance().render(keySig, g2, ctx);
+        }
     }
 
     // ==========================================================================

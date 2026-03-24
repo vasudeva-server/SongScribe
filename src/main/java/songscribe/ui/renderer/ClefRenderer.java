@@ -34,9 +34,6 @@ import songscribe.ui.layout.Clef;
  */
 public class ClefRenderer extends BaseElementRenderer<Clef> {
 
-    /** Standard X position for clef at start of staff, in staff-space units. */
-    private static final double CLEF_X_POSITION_SS = 0.625; // 5px / 8 px/ss
-
     /** Singleton instance. */
     private static final ClefRenderer INSTANCE = new ClefRenderer();
 
@@ -69,19 +66,4 @@ public class ClefRenderer extends BaseElementRenderer<Clef> {
         drawBravuraGlyph(g2, SMuFLGlyph.G_CLEF, x, baseline);
     }
 
-    /**
-     * Renders a treble clef at the standard position.
-     * <p>
-     * Convenience method for score-level rendering when no Clef element exists.
-     *
-     * @param g2  Graphics context
-     * @param ctx Render context
-     */
-    public void renderClef(
-        Graphics2D g2,
-        ElementRenderContext ctx
-    ) {
-        double baseline = ctx.getMiddleLineYSs() + 1.0;
-        drawBravuraGlyph(g2, SMuFLGlyph.G_CLEF, CLEF_X_POSITION_SS, baseline);
-    }
 }

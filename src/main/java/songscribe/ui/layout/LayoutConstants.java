@@ -54,10 +54,13 @@ public final class LayoutConstants {
     // HORIZONTAL SPACING - Line Beginning
     // ==========================================================================
 
+    /** X position of the treble clef at the start of a staff line, in staff-space units. */
+    public static final double CLEF_X_POSITION_SS = 0.625;  // 5px
+
     /**
-     * Width of the treble clef symbol.
+     * Width of the treble clef symbol, derived from the SMuFL advance width.
      */
-    public static final double CLEF_WIDTH_SS = 3.5;  // 28px
+    public static final double CLEF_WIDTH_SS;
 
     /**
      * Width of each accidental in the key signature.
@@ -334,6 +337,7 @@ public final class LayoutConstants {
 
     static {
         var metadata = SMuFLMetadata.getInstance();
+        CLEF_WIDTH_SS = metadata.requireAdvanceWidth(SMuFLGlyph.G_CLEF);
         STEM_WIDTH_SS = metadata.getEngravingDefaults().stemThickness();
 
         var blackAnchors = metadata.requireAnchors(SMuFLGlyph.NOTEHEAD_BLACK);

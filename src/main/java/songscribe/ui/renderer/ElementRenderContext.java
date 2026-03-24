@@ -45,15 +45,11 @@ import songscribe.ui.menu.DebugState;
  */
 public class ElementRenderContext {
 
-    /** Default X position for key signature (after clef), in staff-space units. */
-    public static final double DEFAULT_LEADING_KEYS_POS_SS = 4.0;
-
     private final Composition composition;
     @Nullable
     private Line currentLine;
     private double middleLineYSs;
     private int lineIndex;
-    private double leadingKeysPosSs = DEFAULT_LEADING_KEYS_POS_SS;
     @Nullable
     private LayoutResult layoutResult;
     private LineComponent.@Nullable SelectionProvider selectionProvider;
@@ -135,23 +131,6 @@ public class ElementRenderContext {
      */
     public void setLineIndex(int lineIndex) {
         this.lineIndex = lineIndex;
-    }
-
-    /**
-     * Returns the X position where key signature accidentals begin,
-     * in staff-space units.
-     */
-    public double getLeadingKeysPosSs() {
-        return leadingKeysPosSs;
-    }
-
-    /**
-     * Sets the X position where key signature accidentals begin.
-     *
-     * @param leadingKeysPosSs X position in staff-space units
-     */
-    public void setLeadingKeysPosSs(double leadingKeysPosSs) {
-        this.leadingKeysPosSs = leadingKeysPosSs;
     }
 
     /**

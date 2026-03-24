@@ -20,6 +20,9 @@
 
 package songscribe.ui.layout;
 
+import songscribe.smufl.SMuFLGlyph;
+import songscribe.smufl.SMuFLMetadata;
+
 /**
  * Represents the treble clef at the start of a staff line.
  * <p>
@@ -30,56 +33,33 @@ package songscribe.ui.layout;
  */
 public class Clef extends LineElement {
 
-    /** Default width of the treble clef glyph in pixels. */
-    private static final double DEFAULT_WIDTH_PX = 28.0;
+    /** Content width of the treble clef glyph in staff spaces, from SMuFL metadata. */
+    private static final double CONTENT_WIDTH_SS;
 
-    /** Default height of the treble clef glyph in pixels. */
-    private static final double DEFAULT_HEIGHT_PX = 64.0;
+    /** Content height of the treble clef glyph in staff spaces, from SMuFL metadata. */
+    private static final double CONTENT_HEIGHT_SS;
 
-    /** Width of the clef glyph. */
-    private double widthPx = DEFAULT_WIDTH_PX;
-
-    /** Height of the clef glyph. */
-    private double heightPx = DEFAULT_HEIGHT_PX;
+    static {
+        var bbox = SMuFLMetadata.getInstance().requireBBox(SMuFLGlyph.G_CLEF);
+        CONTENT_WIDTH_SS = bbox.width();
+        CONTENT_HEIGHT_SS = bbox.height();
+    }
 
     /**
-     * Creates a clef with default dimensions.
+     * Creates a clef with dimensions derived from SMuFL metadata.
      */
     public Clef() {
         // Default margin from clef to key signature
         setMarginRightSs(0.5);
     }
 
-    /**
-     * Creates a clef with the specified dimensions.
-     *
-     * @param width  Width of the clef glyph in pixels
-     * @param height Height of the clef glyph in pixels
-     */
-    public Clef(double widthPx, double heightPx) {
-        this();
-        this.widthPx = widthPx;
-        this.heightPx = heightPx;
-    }
-
     @Override
     public double getContentWidthPx() {
-        return widthPx;
+        return ScaleContext.getInstance().toPixels(CONTENT_WIDTH_SS);
     }
 
     @Override
     public double getContentHeightPx() {
-        return heightPx;
-    }
-
-    /**
-     * Sets the dimensions of the clef glyph.
-     *
-     * @param width  Width in pixels
-     * @param height Height in pixels
-     */
-    public void setDimensions(double widthPx, double heightPx) {
-        this.widthPx = widthPx;
-        this.heightPx = heightPx;
+        return ScaleContext.getInstance().toPixels(CONTENT_HEIGHT_SS);
     }
 }

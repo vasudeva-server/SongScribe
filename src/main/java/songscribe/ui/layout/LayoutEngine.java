@@ -27,6 +27,7 @@ import java.util.List;
 
 import org.jspecify.annotations.Nullable;
 
+import songscribe.music.KeyType;
 import songscribe.music.Line;
 import songscribe.music.StaffElement;
 
@@ -133,12 +134,13 @@ public class LayoutEngine {
         List<ElementColumn> columns = columnBuilder.buildColumns(line);
 
         if (columns.isEmpty()) {
-            // Empty line - return empty result
-            return LayoutResult.builder()
+            // Empty line - return result with header elements only
+            var emptyBuilder = LayoutResult.builder()
                 .setLineHeightSs(STAFF_HEIGHT_SS)
                 .setStaffGeometrySs(0, STAFF_HEIGHT_SS)
-                .setLyricBaselineYSs(0)
-                .build();
+                .setLyricBaselineYSs(0);
+            createHeaderElements(line, emptyBuilder);
+            return emptyBuilder.build();
         }
 
         // Step 2: Calculate horizontal positions
@@ -158,7 +160,10 @@ public class LayoutEngine {
 
         var builder = LayoutResult.builder();
 
-        // Step 5: Calculate beam layouts for beamed note groups
+        // Step 5: Create header elements (clef and key signature)
+        createHeaderElements(line, builder);
+
+        // Step 6: Calculate beam layouts for beamed note groups
         calculateBeams(line, columns, builder);
 
         // Step 6: Calculate stem layouts for unbeamed notes
@@ -668,6 +673,27 @@ public class LayoutEngine {
                 cp2XSs, innerCpYSs
             ));
         }
+    }
+
+    /**
+     * Creates the clef and key signature header elements and stores them in the builder.
+     * <p>
+     * The clef is placed at {@link LayoutConstants#CLEF_X_POSITION_SS}. The key signature
+     * is placed immediately to the right of the clef, accounting for the clef's advance width
+     * and right margin.
+     */
+    private static void createHeaderElements(Line line, LayoutResult.Builder builder) {
+        var clef = new Clef();
+        clef.setPosition(LayoutConstants.CLEF_X_POSITION_SS, 0);
+        builder.setClef(clef);
+        var rawKeyType = line.getKeyType();
+        var keyType = rawKeyType != null ? rawKeyType : KeyType.NONE;
+        var keySig = new KeySignature(keyType, line.getKeyAccidentalCount());
+        double keySigXSs = LayoutConstants.CLEF_X_POSITION_SS
+            + LayoutConstants.CLEF_WIDTH_SS
+            + clef.getMarginRightSs();
+        keySig.setPosition(keySigXSs, 0);
+        builder.setKeySignature(keySig);
     }
 
     /**

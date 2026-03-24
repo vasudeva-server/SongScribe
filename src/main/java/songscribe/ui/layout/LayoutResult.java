@@ -60,6 +60,10 @@ public final class LayoutResult {
     private final Map<Interval, BeamLayout> beamLayouts;
     private final Map<StaffElement, StemLayout> stemLayouts;
     private final Map<Interval, TieLayout> tieLayouts;
+    @Nullable
+    private final Clef clef;
+    @Nullable
+    private final KeySignature keySignature;
     private final double lineHeightSs;
     private final double staffTopYSs;
     private final double staffBottomYSs;
@@ -86,6 +90,8 @@ public final class LayoutResult {
         Map<Interval, BeamLayout> beamLayouts,
         Map<StaffElement, StemLayout> stemLayouts,
         Map<Interval, TieLayout> tieLayouts,
+        @Nullable Clef clef,
+        @Nullable KeySignature keySignature,
         double lineHeightSs,
         double staffTopYSs,
         double staffBottomYSs,
@@ -95,6 +101,8 @@ public final class LayoutResult {
         this.beamLayouts = Map.copyOf(beamLayouts);
         this.stemLayouts = Map.copyOf(stemLayouts);
         this.tieLayouts = Map.copyOf(tieLayouts);
+        this.clef = clef;
+        this.keySignature = keySignature;
         this.lineHeightSs = lineHeightSs;
         this.staffTopYSs = staffTopYSs;
         this.staffBottomYSs = staffBottomYSs;
@@ -246,6 +254,28 @@ public final class LayoutResult {
      */
     public boolean hasElement(LineElement element) {
         return elementBounds.containsKey(element);
+    }
+
+    // ==========================================================================
+    // Header Element Access
+    // ==========================================================================
+
+    /**
+     * Returns the clef element for this line.
+     *
+     * @return The clef, or null if not yet created (empty line)
+     */
+    public @Nullable Clef getClef() {
+        return clef;
+    }
+
+    /**
+     * Returns the key signature element for this line.
+     *
+     * @return The key signature, or null if not yet created (empty line)
+     */
+    public @Nullable KeySignature getKeySignature() {
+        return keySignature;
     }
 
     // ==========================================================================
@@ -678,6 +708,10 @@ public final class LayoutResult {
         private final Map<Interval, BeamLayout> beamLayouts;
         private final Map<StaffElement, StemLayout> stemLayouts;
         private final Map<Interval, TieLayout> tieLayouts;
+        @Nullable
+        private Clef clef;
+        @Nullable
+        private KeySignature keySignature;
         private double lineHeightSs = 0;
         private double staffTopYSs = 0;
         private double staffBottomYSs = 0;
@@ -689,6 +723,28 @@ public final class LayoutResult {
             this.beamLayouts = new HashMap<>();
             this.stemLayouts = new HashMap<>();
             this.tieLayouts = new HashMap<>();
+        }
+
+        /**
+         * Sets the clef element for this line.
+         *
+         * @param clef The clef element
+         * @return This builder for chaining
+         */
+        public Builder setClef(Clef clef) {
+            this.clef = clef;
+            return this;
+        }
+
+        /**
+         * Sets the key signature element for this line.
+         *
+         * @param keySignature The key signature element
+         * @return This builder for chaining
+         */
+        public Builder setKeySignature(KeySignature keySignature) {
+            this.keySignature = keySignature;
+            return this;
         }
 
         /**
@@ -798,6 +854,8 @@ public final class LayoutResult {
                 beamLayouts,
                 stemLayouts,
                 tieLayouts,
+                clef,
+                keySignature,
                 lineHeightSs,
                 staffTopYSs,
                 staffBottomYSs,

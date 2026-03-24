@@ -142,58 +142,6 @@ public class KeySignatureRenderer extends BaseElementRenderer<KeySignature> {
         }
     }
 
-    /**
-     * Renders a key signature at the specified position.
-     * <p>
-     * Utility method for direct rendering without a KeySignature element.
-     *
-     * @param g2              Graphics context
-     * @param keyType         The key type (FLATS or SHARPS)
-     * @param accidentalCount Number of accidentals (1-7)
-     * @param xPosSs          Starting X position (ss)
-     * @param middleLineYSs   Y coordinate of the middle staff line in staff spaces
-     * @param ctx             Render context for font access
-     */
-    public void renderKeySignature(
-        Graphics2D g2,
-        KeyType keyType,
-        int accidentalCount,
-        double xPosSs,
-        double middleLineYSs,
-        ElementRenderContext ctx
-    ) {
-        if (keyType == KeyType.NONE || accidentalCount == 0) {
-            return;
-        }
-
-        try (var ignored = GraphicsState.save(g2, COLOR, FONT)) {
-            g2.setFont(BRAVURA_FONT);
-            g2.setColor(ELEMENT_COLOR);
-
-            SMuFLGlyph glyph;
-            int[] staffPositions;
-
-            if (keyType == KeyType.FLATS) {
-                glyph = FLAT_GLYPH;
-                staffPositions = FLAT_STAFF_POSITIONS;
-            } else {
-                glyph = SHARP_GLYPH;
-                staffPositions = SHARP_STAFF_POSITIONS;
-            }
-
-            var glyphStr = glyph.asString();
-            double currentX = xPosSs;
-
-            for (int i = 0; i < accidentalCount; i++) {
-                int staffPosition = staffPositions[i % 7];
-                double y = middleLineYSs + staffPosition * 0.5;
-
-                g2.drawString(glyphStr, (float) currentX, (float) y);
-                currentX += ACCIDENTAL_SPACING_SS;
-            }
-        }
-    }
-
     // ==========================================================================
     // Key Change Rendering (at end of line)
     // ==========================================================================
