@@ -40,8 +40,8 @@ public class FontDialog extends JDialog {
         Component component,
         @Nullable Point location
     ) {
-        @SuppressWarnings("NullAway") // JDialog accepts null Frame owner
-        var dialog = new FontDialog((Frame) null, Strings.get(Strings.DIALOG_FONT_CHOOSER_TITLE), true);
+        var owner = SwingUtilities.getWindowAncestor(component);
+        var dialog = new FontDialog(owner, Strings.get(Strings.DIALOG_FONT_CHOOSER_TITLE), Dialog.ModalityType.APPLICATION_MODAL);
 
         // Make the dialog a little taller than the default size
         var size = dialog.getPreferredSize();
