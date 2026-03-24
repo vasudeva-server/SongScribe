@@ -22,18 +22,14 @@ package songscribe.ui.edit;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.Strings;
 import songscribe.music.ArticulationType;
 import songscribe.music.ElementType;
 import songscribe.music.Line;
 import songscribe.music.LyricsProcessor;
 import songscribe.music.StaffElement;
-import songscribe.ui.Control;
-import songscribe.ui.OptionDialogs;
 import songscribe.ui.action.Actions;
 import songscribe.ui.clipboard.ClipboardManager;
 import songscribe.ui.layout.Articulation;
-import songscribe.ui.layout.InsertionSpacingCalculator;
 import songscribe.ui.playback.PlayThread;
 import songscribe.ui.selection.SelectionCoordinator;
 
@@ -75,10 +71,6 @@ public final class EditModeManager {
     // The current insertion element that will be inserted
     @Nullable
     private StaffElement insertionElement = null;
-
-    // Control state for paste operations
-    @Nullable
-    private Control prevPasteControl = null;
 
     // Whether to play a note sound when inserting elements
     private boolean playInsertedNote = true;
@@ -167,15 +159,6 @@ public final class EditModeManager {
      */
     public void setPlayInsertedNote(boolean playInsertedNote) {
         this.playInsertedNote = playInsertedNote;
-    }
-
-    /**
-     * Sets the control state to restore after paste operations.
-     *
-     * @param prevPasteControl The control state to restore
-     */
-    public void setPrevPasteControl(@Nullable Control prevPasteControl) {
-        this.prevPasteControl = prevPasteControl;
     }
 
     // -------------------------------------------------------------------------
@@ -308,76 +291,6 @@ public final class EditModeManager {
             var repeatLeftRight = ElementType.REPEAT_LEFT_RIGHT.newInstance();
             repeatLeftRight.setXPosSs(line.getElement(elementIndex).getXPosSs());
             line.setElement(elementIndex, repeatLeftRight);
-            return true;
-        }
-
-        if (insertionElement.getType() == ElementType.PASTE) {
-            // If the user tries to insert into triplet, they will get an error message.
-            var iv = line.getTuplets().findInterval(elementIndex - 1);
-
-            if ((iv != null) && ((elementIndex - 1) < iv.getEnd())) {
-                OptionDialogs.showErrorMessage(
-                    null,
-                    Strings.get(Strings.ALERT_TITLE_EDIT_ERROR),
-                    Strings.get(Strings.ERROR_TRIPLET_INSERT)
-                );
-                return true;
-            }
-
-            line.removeInterval(elementIndex - 1, elementIndex);
-            var diff =
-                ((elementIndex == line.elementCount())
-                    ? (int) Math.round(InsertionSpacingCalculator.calculateAppendPositionSs(
-                    line, clipboardManager.getFirstElement()))
-                    : line.getElement(elementIndex).getXPosSs()) -
-                    clipboardManager.getFirstElement().getXPosSs();
-            var copySize = clipboardManager.getSize();
-
-            for (var i = 0; i < copySize; i++) {
-                var element = clipboardManager.getElement(i);
-                element.setXPosSs(element.getXPosSs() + diff);
-                line.addElement(elementIndex + i, element.clone());
-            }
-
-            var intervalsCopy = clipboardManager.getIntervalsCopyBuffer();
-
-            if (intervalsCopy != null) {
-                line.pasteIntervals(intervalsCopy, elementIndex);
-            }
-
-            // Calculate shift for elements after the pasted block
-            var afterPasteIndex = elementIndex + copySize;
-            int shift = 0;
-
-            if (afterPasteIndex < line.elementCount()) {
-                var lastPastedElement = line.getElement(afterPasteIndex - 1);
-                var firstElementAfter = line.getElement(afterPasteIndex);
-                shift = (int) Math.round(
-                    InsertionSpacingCalculator.calculateNextElementXSs(
-                        lastPastedElement, firstElementAfter) -
-                        firstElementAfter.getXPosSs());
-                shift = Math.max(0, shift);
-            }
-
-            for (var i = afterPasteIndex; i < line.elementCount(); i++) {
-                line.getElement(i).setXPosSs(line.getElement(i).getXPosSs() + shift);
-            }
-
-            var control = scoreActions.getControl();
-
-            if (prevPasteControl != null) {
-                scoreActions.setControl(prevPasteControl);
-            }
-
-            for (var i = elementIndex; i < (elementIndex + copySize); i++) {
-                var interval = line.getBeamings().findInterval(i);
-
-                if (interval != null) {
-                    i = interval.getEnd();
-                }
-            }
-
-            selectionCoordinator.setInSelectMode(true);
             return true;
         }
 

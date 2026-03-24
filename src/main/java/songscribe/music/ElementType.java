@@ -65,7 +65,6 @@ public enum ElementType {
     SINGLE_BARLINE("Single barline", 0, 0),
     DOUBLE_BARLINE("Double barline", 0, 0),
     FINAL_DOUBLE_BARLINE("Final double barline", 0, 0),
-    PASTE(null, 0, 0),
     // IO aliases
     SEMIBREVEREST(ElementType.SEMIBREVE_REST),
     MINIMREST(ElementType.MINIM_REST),
@@ -83,11 +82,9 @@ public enum ElementType {
     FINALDOUBLEBARLINE(ElementType.FINAL_DOUBLE_BARLINE);
 
     static {
-        // Set up singleton markers
+        // Set up singleton marker
         StaffElement.GLISSANDO_PLACEHOLDER.initType(GLISSANDO);
-        StaffElement.PASTE_PLACEHOLDER.initType(PASTE);
         GLISSANDO.instance = StaffElement.GLISSANDO_PLACEHOLDER;
-        PASTE.instance = StaffElement.PASTE_PLACEHOLDER;
 
         // Create instances for canonical types
         for (var type : values()) {
@@ -207,7 +204,7 @@ public enum ElementType {
     }
 
     public StaffElement newInstance() {
-        if (this == GLISSANDO || this == PASTE) {
+        if (this == GLISSANDO) {
             return instance;
         }
 
@@ -231,7 +228,7 @@ public enum ElementType {
     }
 
     private void requireVisualBounds() {
-        if (this == GLISSANDO || this == PASTE) {
+        if (this == GLISSANDO) {
             throw new UnsupportedOperationException(name() + " has no visual bounds");
         }
     }
@@ -239,7 +236,7 @@ public enum ElementType {
     /**
      * Returns the element width in staff spaces. Includes flag extent for stemmed notes.
      *
-     * @throws UnsupportedOperationException for GLISSANDO and PASTE (no visual bounds)
+     * @throws UnsupportedOperationException for GLISSANDO (no visual bounds)
      */
     public double getElementWidthSs() {
         requireVisualBounds();
@@ -250,7 +247,7 @@ public enum ElementType {
      * Returns the element height in staff spaces for the given stem direction.
      *
      * @param upper {@code true} for stem-up; {@code false} for stem-down
-     * @throws UnsupportedOperationException for GLISSANDO and PASTE (no visual bounds)
+     * @throws UnsupportedOperationException for GLISSANDO (no visual bounds)
      */
     public double getElementHeightSs(boolean upper) {
         requireVisualBounds();
@@ -260,7 +257,7 @@ public enum ElementType {
     /**
      * Returns the horizontal center of the element in staff spaces.
      *
-     * @throws UnsupportedOperationException for GLISSANDO and PASTE (no visual bounds)
+     * @throws UnsupportedOperationException for GLISSANDO (no visual bounds)
      */
     public double getCenterXSs() {
         return getElementWidthSs() / 2;
@@ -270,7 +267,7 @@ public enum ElementType {
      * Returns the notehead width in staff spaces, excluding flag extent.
      * For non-note types (rests, barlines, etc.), returns the element width.
      *
-     * @throws UnsupportedOperationException for GLISSANDO and PASTE (no visual bounds)
+     * @throws UnsupportedOperationException for GLISSANDO (no visual bounds)
      */
     public double getNoteheadWidthSs() {
         requireVisualBounds();
@@ -281,7 +278,7 @@ public enum ElementType {
      * Returns the horizontal center of the notehead in staff spaces.
      * For non-note types, returns the element center.
      *
-     * @throws UnsupportedOperationException for GLISSANDO and PASTE (no visual bounds)
+     * @throws UnsupportedOperationException for GLISSANDO (no visual bounds)
      */
     public double getNoteheadCenterXSs() {
         return getNoteheadWidthSs() / 2;
@@ -291,7 +288,7 @@ public enum ElementType {
      * Returns the notehead height in staff spaces (excludes the stem).
      * For non-stemmed elements this equals the full element height.
      *
-     * @throws UnsupportedOperationException for GLISSANDO and PASTE (no visual bounds)
+     * @throws UnsupportedOperationException for GLISSANDO (no visual bounds)
      */
     public double getNoteheadHeightSs() {
         requireVisualBounds();
@@ -303,7 +300,7 @@ public enum ElementType {
      * The returned value is negative (the top is above the note center).
      * For non-stemmed elements this equals {@link #getTopYOffsetSs(boolean)}.
      *
-     * @throws UnsupportedOperationException for GLISSANDO and PASTE (no visual bounds)
+     * @throws UnsupportedOperationException for GLISSANDO (no visual bounds)
      */
     public double getNoteheadTopOffsetSs() {
         requireVisualBounds();
@@ -318,7 +315,7 @@ public enum ElementType {
      * non-stemmed elements the glyph bbox top or half of the staff height above center.
      *
      * @param upper {@code true} for stem-up; {@code false} for stem-down
-     * @throws UnsupportedOperationException for GLISSANDO and PASTE (no visual bounds)
+     * @throws UnsupportedOperationException for GLISSANDO (no visual bounds)
      */
     public double getTopYOffsetSs(boolean upper) {
         requireVisualBounds();
@@ -664,7 +661,7 @@ public enum ElementType {
 
     private static void validateElementBounds() {
         for (var type : values()) {
-            if (type == GLISSANDO || type == PASTE || type.aliasOf != null) {
+            if (type == GLISSANDO || type.aliasOf != null) {
                 continue;
             }
 

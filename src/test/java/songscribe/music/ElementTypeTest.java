@@ -38,7 +38,7 @@ class ElementTypeTest extends UnitTest {
     @Test
     void testAllVisualTypesHaveNonZeroBounds() {
         for (var type : ElementType.values()) {
-            if (type == ElementType.GLISSANDO || type == ElementType.PASTE) {
+            if (type == ElementType.GLISSANDO) {
                 continue;
             }
 
@@ -352,16 +352,5 @@ class ElementTypeTest extends UnitTest {
                 .isInstanceOf(UnsupportedOperationException.class);
         }
 
-        @Test
-        void testPasteThrowsOnHeight() {
-            assertThatThrownBy(() -> ElementType.PASTE.getElementHeightSs(false))
-                .isInstanceOf(UnsupportedOperationException.class);
-        }
-
-        @Test
-        void testPasteThrowsOnWidth() {
-            assertThatThrownBy(() -> ElementType.PASTE.getElementWidthSs())
-                .isInstanceOf(UnsupportedOperationException.class);
-        }
     }
 }

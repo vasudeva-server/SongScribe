@@ -51,8 +51,6 @@ import songscribe.message.notification.RestModeDidChangeNotification;
 import songscribe.music.Line;
 import songscribe.music.LyricsProcessor;
 import songscribe.music.MusicEditOperations;
-import songscribe.music.StaffElement;
-import songscribe.ui.Control;
 import songscribe.ui.OptionDialogs;
 import songscribe.ui.Mode;
 import songscribe.ui.action.Actions;
@@ -406,13 +404,7 @@ public final class ScoreMessageCoordinator {
     }
 
     private void handlePaste() {
-        if (!clipboardManager.isEmpty()) {
-            editModeManager.setPrevPasteControl(score.getControl());
-            score.setInsertionElement(StaffElement.PASTE_PLACEHOLDER);
-            score.setControl(Control.MOUSE);
-            selectionCoordinator.setInSelectMode(false);
-            score.repaint();
-        }
+        // TODO: Implement paste with proper insertion-point visual feedback
     }
 
     @Handler

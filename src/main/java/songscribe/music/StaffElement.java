@@ -38,7 +38,6 @@ import songscribe.ui.layout.ScaleContext;
 public class StaffElement extends LineElement implements Cloneable {
 
     public static final StaffElement GLISSANDO_PLACEHOLDER = new StructuralElement();
-    public static final StaffElement PASTE_PLACEHOLDER = new StructuralElement();
     protected @Nullable Glissando glissando;
 
     // MIDI pitches B4..A5, corresponding to the index returned by getPitchIndex()
