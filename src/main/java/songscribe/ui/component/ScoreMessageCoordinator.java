@@ -381,7 +381,11 @@ public final class ScoreMessageCoordinator {
             var line = state.getLine();
 
             for (var i = state.getSelectionEnd(); i >= state.getSelectionBegin(); i--) {
-                deleteNote(i, line);
+                var removedCount = deleteNote(i, line);
+
+                // When deleteNote also removes a preceding paired grace note,
+                // skip the extra index so we don't process an already-removed element.
+                i -= (removedCount - 1);
             }
 
             LyricsProcessor.spellLyrics(line);
@@ -430,7 +434,13 @@ public final class ScoreMessageCoordinator {
         }
     }
 
-    private static void deleteNote(int xIndex, Line line) {
+    /**
+     * Deletes the element at {@code xIndex} and, if the preceding element is a
+     * paired grace note, removes that as well.
+     *
+     * @return the number of elements removed (1 or 2)
+     */
+    static int deleteNote(int xIndex, Line line) {
         // If the preceding note is a paired grace note, it becomes orphaned when
         // this note is deleted and must be removed along with it.
         var hasPrecedingPairedGraceNote = xIndex > 0 && line.isPairedGraceNote(xIndex - 1);
@@ -466,6 +476,9 @@ public final class ScoreMessageCoordinator {
 
         if (hasPrecedingPairedGraceNote) {
             line.removeElement(xIndex - 1);
+            return 2;
         }
+
+        return 1;
     }
 }
