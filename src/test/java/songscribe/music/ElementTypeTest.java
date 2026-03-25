@@ -21,7 +21,6 @@
 package songscribe.music;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.within;
 
 import org.junit.jupiter.api.Nested;
@@ -38,10 +37,6 @@ class ElementTypeTest extends UnitTest {
     @Test
     void testAllVisualTypesHaveNonZeroBounds() {
         for (var type : ElementType.values()) {
-            if (type == ElementType.GLISSANDO) {
-                continue;
-            }
-
             // IO aliases have the same bounds as their canonical type
             assertThat(type.getElementWidthSs())
                 .as("widthSs of %s", type)
@@ -337,20 +332,4 @@ class ElementTypeTest extends UnitTest {
         }
     }
 
-    @Nested
-    class UnsupportedTypesTests {
-
-        @Test
-        void testGlissandoThrowsOnHeight() {
-            assertThatThrownBy(() -> ElementType.GLISSANDO.getElementHeightSs(true))
-                .isInstanceOf(UnsupportedOperationException.class);
-        }
-
-        @Test
-        void testGlissandoThrowsOnWidth() {
-            assertThatThrownBy(() -> ElementType.GLISSANDO.getElementWidthSs())
-                .isInstanceOf(UnsupportedOperationException.class);
-        }
-
-    }
 }

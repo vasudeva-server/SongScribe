@@ -274,6 +274,14 @@ public class InsertionElementManager {
     // ==========================================================================
 
     /**
+     * Returns whether the given element is a glissando placeholder (the insertion
+     * element created when a glissando tool is selected).
+     */
+    private static boolean isGlissandoPlaceholder(@Nullable StaffElement element) {
+        return element != null && element.getType() == ElementType.GLISSANDO;
+    }
+
+    /**
      * Returns the glissando type corresponding to the currently selected action,
      * or null if neither glissando action is selected.
      */
@@ -423,7 +431,7 @@ public class InsertionElementManager {
         // element head means there is no valid glissando target to the left.
         StaffElement.Glissando.Type newGlissandoZone = null;
 
-        if (insertionElement == StaffElement.GLISSANDO_PLACEHOLDER && elementAtX < 0) {
+        if (isGlissandoPlaceholder(insertionElement) && elementAtX < 0) {
             newGlissandoZone = computeGlissandoZone(line, xIndex);
         }
 
@@ -449,7 +457,7 @@ public class InsertionElementManager {
         currentGlissandoZone = newGlissandoZone;
 
         if (editModeManager != null) {
-            if (insertionElement == StaffElement.GLISSANDO_PLACEHOLDER) {
+            if (isGlissandoPlaceholder(insertionElement)) {
                 // No note-head preview for glissando tool — renderInsertionElement draws the preview line.
                 lc.repaint();
                 return;
@@ -490,7 +498,7 @@ public class InsertionElementManager {
         if (editModeManager != null) {
             var insertionElement = editModeManager.getInsertionElement();
 
-            if (insertionElement == StaffElement.GLISSANDO_PLACEHOLDER) {
+            if (isGlissandoPlaceholder(insertionElement)) {
                 var zoneType = currentGlissandoZone;
 
                 if (zoneType == null) {
@@ -529,7 +537,7 @@ public class InsertionElementManager {
         if (shouldHandleInsertionElement(lc) && editModeManager != null) {
             var insertionElement = editModeManager.getInsertionElement();
 
-            if (insertionElement != StaffElement.GLISSANDO_PLACEHOLDER) {
+            if (!isGlissandoPlaceholder(insertionElement)) {
                 editModeManager.setInsertionElementVisible(true);
             }
         }

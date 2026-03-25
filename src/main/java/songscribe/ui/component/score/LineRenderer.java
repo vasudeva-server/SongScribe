@@ -23,6 +23,7 @@ package songscribe.ui.component.score;
 import module java.desktop;
 
 
+import songscribe.music.ElementType;
 import songscribe.music.StaffElement;
 import songscribe.smufl.SMuFLMetadata;
 import songscribe.ui.Mode;
@@ -611,7 +612,7 @@ class LineRenderer {
 
         // Glissando preview bypasses insertion element visibility — it manages its own
         // display logic via shouldShowGlissandoPreview() and never uses the note-head preview.
-        if (insertionElement == StaffElement.GLISSANDO_PLACEHOLDER) {
+        if (insertionElement.getType() == ElementType.GLISSANDO) {
             if (!InsertionElementManager.shouldShowGlissandoPreview()) {
                 return;
             }

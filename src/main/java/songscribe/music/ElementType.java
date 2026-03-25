@@ -82,10 +82,6 @@ public enum ElementType {
     FINALDOUBLEBARLINE(ElementType.FINAL_DOUBLE_BARLINE);
 
     static {
-        // Set up singleton marker
-        StaffElement.GLISSANDO_PLACEHOLDER.initType(GLISSANDO);
-        GLISSANDO.instance = StaffElement.GLISSANDO_PLACEHOLDER;
-
         // Create instances for canonical types
         for (var type : values()) {
             if (type.instance == null && type.aliasOf == null) {
@@ -204,10 +200,6 @@ public enum ElementType {
     }
 
     public StaffElement newInstance() {
-        if (this == GLISSANDO) {
-            return instance;
-        }
-
         return instance.clone();
     }
 
@@ -227,19 +219,10 @@ public enum ElementType {
         return acceleratorKey;
     }
 
-    private void requireVisualBounds() {
-        if (this == GLISSANDO) {
-            throw new UnsupportedOperationException(name() + " has no visual bounds");
-        }
-    }
-
     /**
      * Returns the element width in staff spaces. Includes flag extent for stemmed notes.
-     *
-     * @throws UnsupportedOperationException for GLISSANDO (no visual bounds)
      */
     public double getElementWidthSs() {
-        requireVisualBounds();
         return widthSs;
     }
 
@@ -247,17 +230,13 @@ public enum ElementType {
      * Returns the element height in staff spaces for the given stem direction.
      *
      * @param upper {@code true} for stem-up; {@code false} for stem-down
-     * @throws UnsupportedOperationException for GLISSANDO (no visual bounds)
      */
     public double getElementHeightSs(boolean upper) {
-        requireVisualBounds();
         return upper ? heightUpSs : heightDownSs;
     }
 
     /**
      * Returns the horizontal center of the element in staff spaces.
-     *
-     * @throws UnsupportedOperationException for GLISSANDO (no visual bounds)
      */
     public double getCenterXSs() {
         return getElementWidthSs() / 2;
@@ -266,19 +245,14 @@ public enum ElementType {
     /**
      * Returns the notehead width in staff spaces, excluding flag extent.
      * For non-note types (rests, barlines, etc.), returns the element width.
-     *
-     * @throws UnsupportedOperationException for GLISSANDO (no visual bounds)
      */
     public double getNoteheadWidthSs() {
-        requireVisualBounds();
         return noteheadWidthSs;
     }
 
     /**
      * Returns the horizontal center of the notehead in staff spaces.
      * For non-note types, returns the element center.
-     *
-     * @throws UnsupportedOperationException for GLISSANDO (no visual bounds)
      */
     public double getNoteheadCenterXSs() {
         return getNoteheadWidthSs() / 2;
@@ -287,11 +261,8 @@ public enum ElementType {
     /**
      * Returns the notehead height in staff spaces (excludes the stem).
      * For non-stemmed elements this equals the full element height.
-     *
-     * @throws UnsupportedOperationException for GLISSANDO (no visual bounds)
      */
     public double getNoteheadHeightSs() {
-        requireVisualBounds();
         return noteheadHeightSs;
     }
 
@@ -299,11 +270,8 @@ public enum ElementType {
      * Returns the Y offset in staff spaces from the notehead center to the top of the notehead.
      * The returned value is negative (the top is above the note center).
      * For non-stemmed elements this equals {@link #getTopYOffsetSs(boolean)}.
-     *
-     * @throws UnsupportedOperationException for GLISSANDO (no visual bounds)
      */
     public double getNoteheadTopOffsetSs() {
-        requireVisualBounds();
         return noteheadTopOffsetSs;
     }
 
@@ -315,10 +283,8 @@ public enum ElementType {
      * non-stemmed elements the glyph bbox top or half of the staff height above center.
      *
      * @param upper {@code true} for stem-up; {@code false} for stem-down
-     * @throws UnsupportedOperationException for GLISSANDO (no visual bounds)
      */
     public double getTopYOffsetSs(boolean upper) {
-        requireVisualBounds();
         return upper ? topOffsetUpSs : topOffsetDownSs;
     }
 
@@ -480,6 +446,12 @@ public enum ElementType {
 
         computeBarlineBoundsSs(defaults);
         computeRepeatBoundsSs(metadata, defaults);
+
+        // Glissandos are rendered as lines between two notes — their actual visual
+        // extent is context-dependent. These nominal bounds satisfy the non-zero
+        // contract without affecting layout (glissandos are decorations on notes,
+        // not standalone positioned elements).
+        GLISSANDO.setSymmetricBounds(1, 1, -0.5);
 
         // Copy bounds to alias types
         for (var type : values()) {
@@ -659,7 +631,7 @@ public enum ElementType {
 
     private static void validateElementBounds() {
         for (var type : values()) {
-            if (type == GLISSANDO || type.aliasOf != null) {
+            if (type.aliasOf != null) {
                 continue;
             }
 
