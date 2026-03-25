@@ -7,7 +7,7 @@
     </envs>
     <option name="MAIN_CLASS_NAME" value="songscribe.SongScribe" />
     <module name="SongScribe" />
-    <option name="VM_PARAMETERS" value="--enable-native-access=ALL-UNNAMED -Djna.library.path=target/native" />
+    <option name="VM_PARAMETERS" value="--enable-native-access=ALL-UNNAMED -Djna.library.path=target/native -XX:+UseZGC" />
     <extension name="de.eudaemon.ideaswag.SwingspectorExtension">
       <Swingspector>
         <keystroke code="83" modifiers="585" />
