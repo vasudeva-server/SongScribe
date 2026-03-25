@@ -277,7 +277,7 @@ public class InsertionElementManager {
      * Returns whether the given element is a glissando placeholder (the insertion
      * element created when a glissando tool is selected).
      */
-    private static boolean isGlissandoPlaceholder(@Nullable StaffElement element) {
+    static boolean isGlissandoPlaceholder(@Nullable StaffElement element) {
         return element != null && element.getType() == ElementType.GLISSANDO;
     }
 

@@ -451,7 +451,7 @@ public enum ElementType {
         // extent is context-dependent. These nominal bounds satisfy the non-zero
         // contract without affecting layout (glissandos are decorations on notes,
         // not standalone positioned elements).
-        GLISSANDO.setSymmetricBounds(1, 1, -0.5);
+        GLISSANDO.setSymmetricBounds(1, 1, -0.5);  // widthSs=1, heightSs=1, topOffsetSs=-0.5
 
         // Copy bounds to alias types
         for (var type : values()) {
