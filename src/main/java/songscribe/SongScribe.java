@@ -126,8 +126,19 @@ public final class SongScribe {
         configureLogging();
 
         Thread.setDefaultUncaughtExceptionHandler((thread, throwable) -> {
+            // If the fatal-error alert is already showing, let the EDT continue
+            // processing so the dialog remains interactive.
+            if (throwable instanceof RuntimeError.ExitInProgressError) {
+                return;
+            }
+
             Runnable handler = () -> {
-                throw RuntimeError.exit("Uncaught exception in thread: " + thread.getName(), throwable);
+                try {
+                    throw RuntimeError.exit("Uncaught exception in thread: " + thread.getName(), throwable);
+                } catch (RuntimeError.ExitInProgressError ignored) {
+                    // Exit is already in progress; swallow so the error never escapes
+                    // into the AWT nested event loop and kills the in-progress dialog.
+                }
             };
 
             if (SwingUtilities.isEventDispatchThread()) {

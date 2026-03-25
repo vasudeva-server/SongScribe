@@ -20,7 +20,7 @@
 
 package songscribe.error;
 
-import module java.desktop;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,6 +37,9 @@ public final class RuntimeError {
     private static final String FATAL_ALERT_TITLE = "Fatal Error";
     private static final String FATAL_USER_MESSAGE =
         "Sorry, but a fatal error has occurred and the application must quit.";
+
+    // Guards against showing the alert more than once if exit() is called re-entrantly.
+    private static final AtomicBoolean alertShown = new AtomicBoolean(false);
 
     /**
      * Logs the message, shows an error dialog to the user, and exits.
@@ -67,17 +70,22 @@ public final class RuntimeError {
         throw showDialogAndExit();
     }
 
+    /**
+     * Thrown by subsequent calls to {@link #exit} while the fatal-error alert is already showing.
+     * The uncaught-exception handler ignores this so the EDT remains free to process the dialog.
+     */
+    public static final class ExitInProgressError extends Error {
+        private ExitInProgressError() {
+            super("exit already in progress", null, true, false);
+        }
+    }
+
     private static RuntimeException showDialogAndExit() {
-        OptionDialogs.showOptionDialog(
-            null,
-            FATAL_ALERT_TITLE,
-            FATAL_USER_MESSAGE,
-            JOptionPane.DEFAULT_OPTION,
-            JOptionPane.ERROR_MESSAGE,
-            null,
-            new String[]{"OK"},
-            "OK"
-        );
+        if (!alertShown.compareAndSet(false, true)) {
+            throw new ExitInProgressError();
+        }
+
+        OptionDialogs.showErrorMessage(null, FATAL_ALERT_TITLE, FATAL_USER_MESSAGE);
 
         System.exit(-1);
         throw new AssertionError("unreachable");
