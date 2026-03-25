@@ -78,6 +78,10 @@ public class MenuController {
     @SuppressWarnings({"FieldCanBeLocal", "unused"})
     private static @Nullable MenuController instance = null;
 
+    /** Strong reference prevents GC — MBassador uses weak subscriber references. */
+    @SuppressWarnings({"FieldCanBeLocal", "unused"})
+    private static @Nullable MacNativeMenuController nativeMenuController = null;
+
     private final MainFrame mainFrame;
     private final Score score;
     private JMenu openRecentMenu;
@@ -123,7 +127,7 @@ public class MenuController {
 
         if (SystemInfo.isMacOS) {
             try {
-                new MacNativeMenuController();
+                nativeMenuController = new MacNativeMenuController();
             } catch (Throwable e) {
                 // Rococoa native library not available (e.g. in test environments)
                 LOG.warn("MacNativeMenuController not available: {}", e.getMessage());

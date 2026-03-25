@@ -13,6 +13,8 @@ MessageCenter.unsubscribe(listener) // Deregister a subscriber (short-lived obje
 Subscribe in the constructor. Long-lived singletons (components, coordinators) subscribe once
 and never unsubscribe. Short-lived objects (dialogs) must unsubscribe when they close.
 
+**CRITICAL — MBassador holds weak references to subscribers.** If no strong reference to a subscriber exists outside the bus, GC will silently collect it and handlers will stop firing. Every subscriber MUST be reachable via a strong reference for its entire intended lifetime — a static field, an instance field on a long-lived object, etc. A bare `new Foo()` that only passes `this` to `MessageCenter.subscribe` is a bug; the object can be collected immediately.
+
 ### Message Types
 
 All messages extend `songscribe.message.Message`, which provides priority constants:
