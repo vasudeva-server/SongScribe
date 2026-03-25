@@ -274,13 +274,8 @@ public class UIAction extends AbstractAction {
           - An SVG icon filename
          */
         if (icon.endsWith(".svg")) {
-            var svgIcon = GraphicUtils.getScaledSVGIcon(icon, size);
-
-            if (svgIcon != null) {
-                putValue(LARGE_ICON_KEY, svgIcon);
-            } else {
-                LOG.warn("Icon not found: {}", icon);
-            }
+            var svgIcon = GraphicUtils.getScaledSVGIcon(icon, size, true);
+            putValue(LARGE_ICON_KEY, svgIcon);
         } else {
             // Should be a tagged Unicode icon
             var info = UIUtils.getTaggedString(icon);

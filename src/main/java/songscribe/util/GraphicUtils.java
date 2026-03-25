@@ -313,8 +313,16 @@ public final class GraphicUtils {
     }
 
     public static FlatSVGIcon getScaledSVGIcon(String filename, int size) {
+        return getScaledSVGIcon(filename, size, false);
+    }
+
+    public static FlatSVGIcon getScaledSVGIcon(String filename, int size, boolean isThemed) {
         var icon = new FlatSVGIcon("icons/" + filename);
-        icon.setColorFilter(THEME_AWARE_SVG_ICON_FILTER);
+
+        if (isThemed) {
+            icon.setColorFilter(THEME_AWARE_SVG_ICON_FILTER);
+        }
+
         return getScaledSVGIcon(icon, size);
     }
 

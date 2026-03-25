@@ -44,7 +44,7 @@ public class InsertPopupButton extends PopupButton {
 
     public InsertPopupButton() {
         super(ACTIONS, null);
-        setIcon(GraphicUtils.getScaledSVGIcon("plus.svg", 20));
+        setIcon(GraphicUtils.getScaledSVGIcon("plus.svg", 20, true));
         setToolTipText(
             "<html><strong>Insert</strong><br>Insert other elements</html>"
         );
