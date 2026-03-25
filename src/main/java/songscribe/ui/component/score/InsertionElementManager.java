@@ -130,7 +130,7 @@ public class InsertionElementManager {
 
     @Handler
     public void playbackStateDidChange(PlaybackStateDidChangeNotification message) {
-        if (message.getState() == PlaybackController.PlaybackState.PLAYING) {
+        if (PlaybackController.isPlaying()) {
             clearInsertionElement();
         } else {
             restoreInsertionElement(currentMouseLine);
@@ -580,7 +580,7 @@ public class InsertionElementManager {
 
         return score.getControl() == Control.MOUSE
             && score.getMode() == Mode.EDIT
-            && PlaybackController.getState() != PlaybackController.PlaybackState.PLAYING;
+            && !PlaybackController.isPlaying();
     }
 
     /**

@@ -92,6 +92,10 @@ public final class PlaybackController {
         return state;
     }
 
+    public static boolean isPlaying() {
+        return state == PlaybackState.PLAYING;
+    }
+
     public static void playbackDidStart() {
         state = PlaybackState.PLAYING;
         registerMetaListener();

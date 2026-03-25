@@ -445,8 +445,7 @@ public class UIAction extends AbstractAction {
     protected boolean enableFromPlaybackState() {
         return (
             !hasFlag(Flag.DISABLE_WHEN_PLAYING) ||
-                (PlaybackController.getState() !=
-                    PlaybackController.PlaybackState.PLAYING)
+                !PlaybackController.isPlaying()
         );
     }
 

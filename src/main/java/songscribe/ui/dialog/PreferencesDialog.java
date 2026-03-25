@@ -653,7 +653,7 @@ public class PreferencesDialog extends BaseDialog {
                 PlaybackController.applyVolumeFromPrefs();
 
                 // Stop score playback if it's running
-                if (PlaybackController.getState() == PlaybackController.PlaybackState.PLAYING) {
+                if (PlaybackController.isPlaying()) {
                     PlaybackController.stop();
                 }
 

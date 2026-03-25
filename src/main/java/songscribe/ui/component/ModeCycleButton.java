@@ -68,7 +68,7 @@ public class ModeCycleButton extends ToolbarToggleButton {
     @Handler
     public void playbackStateDidChange(PlaybackStateDidChangeNotification message) {
         setEnabled(
-            message.getState() != PlaybackController.PlaybackState.PLAYING
+            !PlaybackController.isPlaying()
         );
     }
 
