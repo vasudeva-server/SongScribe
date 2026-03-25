@@ -32,7 +32,7 @@ public class DeleteAction extends PasteboardAction {
     }
 
     private DeleteAction() {
-        super(Operation.DELETE, Strings.get(Strings.ACTION_EDIT_DELETE), "edit-delete", 0, 0);
+        super(Operation.DELETE, Strings.get(Strings.ACTION_EDIT_DELETE), "edit-delete", 0, 0, Flag.DISABLE_WHEN_PLAYING);
         var keystrokes = new KeyStroke[] {
             KeyStroke.getKeyStroke(KeyEvent.VK_DELETE, 0),
             KeyStroke.getKeyStroke(KeyEvent.VK_BACK_SPACE, 0),

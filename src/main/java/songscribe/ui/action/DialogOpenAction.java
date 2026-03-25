@@ -39,17 +39,18 @@ public class DialogOpenAction<T extends BaseDialog> extends UIAction {
     private @Nullable T dialog = null;
     private final Class<? extends T> dialogClass;
 
-    public DialogOpenAction(String name, Class<? extends T> dialogClass) {
-        this(name, 0, 0, dialogClass);
+    public DialogOpenAction(String name, Class<? extends T> dialogClass, Flag... flags) {
+        this(name, 0, 0, dialogClass, flags);
     }
 
     public DialogOpenAction(
         String name,
         int virtualKey,
         int modifiers,
-        Class<? extends T> dialogClass
+        Class<? extends T> dialogClass,
+        Flag... flags
     ) {
-        super(name, toKebabCase(name), virtualKey, modifiers);
+        super(name, toKebabCase(name), virtualKey, modifiers, flags);
         this.dialogClass = dialogClass;
         setFlags(Flag.OPENS_DIALOG);
     }

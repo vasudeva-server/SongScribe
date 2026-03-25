@@ -37,7 +37,8 @@ public class CutAction extends PasteboardAction {
             Strings.get(Strings.ACTION_EDIT_CUT),
             "edit-cut",
             KeyEvent.VK_X,
-            UIUtils.MENU_SHORTCUT_MASK
+            UIUtils.MENU_SHORTCUT_MASK,
+            Flag.DISABLE_WHEN_PLAYING
         );
     }
 }

@@ -37,7 +37,8 @@ public class CopyAction extends PasteboardAction {
             Strings.get(Strings.ACTION_EDIT_COPY),
             "edit-copy",
             KeyEvent.VK_C,
-            UIUtils.MENU_SHORTCUT_MASK
+            UIUtils.MENU_SHORTCUT_MASK,
+            Flag.DISABLE_WHEN_PLAYING
         );
     }
 }

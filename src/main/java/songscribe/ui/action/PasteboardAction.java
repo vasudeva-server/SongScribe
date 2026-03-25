@@ -45,9 +45,10 @@ public class PasteboardAction extends UIAction {
         String name,
         String actionCommand,
         int virtualKey,
-        int modifiers
+        int modifiers,
+        Flag... flags
     ) {
-        super(name, actionCommand, virtualKey, modifiers);
+        super(name, actionCommand, virtualKey, modifiers, flags);
         this.op = op;
     }
 

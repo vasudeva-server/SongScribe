@@ -47,6 +47,8 @@ import songscribe.ui.layout.InsertionSpacingCalculator;
 import songscribe.ui.layout.LayoutResult;
 import songscribe.ui.layout.ScaleContext;
 import songscribe.message.notification.ModeDidChangeNotification;
+import songscribe.message.notification.PlaybackStateDidChangeNotification;
+import songscribe.ui.playback.PlaybackController;
 
 /**
  * Manages the insertion element subsystem for {@link LineComponent}.
@@ -111,26 +113,28 @@ public class InsertionElementManager {
     /** The glissando zone type determined by mouse position (null if no valid zone). */
     private static StaffElement.Glissando.@Nullable Type currentGlissandoZone = null;
 
-    /** Strong reference to prevent garbage collection by the weak-reference message bus. */
-    private static final ModeChangeListener MODE_CHANGE_LISTENER = new ModeChangeListener();
+    /** Strong reference to prevent GC by the weak-reference message bus; used for subscriptions. */
+    private static final InsertionElementManager INSTANCE = new InsertionElementManager();
 
-    // Subscribe the static listener for mode change messages
     static {
-        MessageCenter.subscribe(MODE_CHANGE_LISTENER);
+        MessageCenter.subscribe(INSTANCE);
     }
 
-    /**
-     * Static listener that receives mode change messages and updates cursor state.
-     */
-    private static class ModeChangeListener {
-        @Handler
-        public void modeDidChange(ModeDidChangeNotification message) {
-            onModeChanged();
-        }
-    }
-
-    // Prevent instantiation
     private InsertionElementManager() {
+    }
+
+    @Handler
+    public void modeDidChange(ModeDidChangeNotification message) {
+        restoreInsertionElement(currentMouseLine);
+    }
+
+    @Handler
+    public void playbackStateDidChange(PlaybackStateDidChangeNotification message) {
+        if (message.getState() == PlaybackController.PlaybackState.PLAYING) {
+            clearInsertionElement();
+        } else {
+            restoreInsertionElement(currentMouseLine);
+        }
     }
 
     // ==========================================================================
@@ -182,17 +186,7 @@ public class InsertionElementManager {
         altPressed = pressed;
 
         // When Alt is released, re-trigger insertion element from current mouse position
-        if (!pressed && currentMouseLine != null) {
-            restoreInsertionElement(currentMouseLine);
-        }
-    }
-
-    /**
-     * Called when the score mode changes. Restores insertion element if switching
-     * back to NOTE_EDIT mode.
-     */
-    static void onModeChanged() {
-        if (currentMouseLine != null) {
+        if (!pressed) {
             restoreInsertionElement(currentMouseLine);
         }
     }
@@ -584,16 +578,17 @@ public class InsertionElementManager {
             return false;
         }
 
-        return score.getControl() == Control.MOUSE && score.getMode() == Mode.EDIT;
+        return score.getControl() == Control.MOUSE
+            && score.getMode() == Mode.EDIT
+            && PlaybackController.getState() != PlaybackController.PlaybackState.PLAYING;
     }
 
     /**
-     * Restores the insertion element from the current mouse position.
-     * Called when Alt is released to immediately show the insertion element
-     * without requiring mouse movement.
+     * Restores the insertion element from the current mouse position on the given line.
+     * Called when state changes (mode, playback, Alt key) may affect insertion element visibility.
      */
-    public static void restoreInsertionElement(LineComponent lc) {
-        if (!shouldHandleInsertionElement(lc)) {
+    public static void restoreInsertionElement(@Nullable LineComponent lc) {
+        if (lc == null || !shouldHandleInsertionElement(lc)) {
             return;
         }
 

@@ -21,6 +21,7 @@
 package songscribe.ui.action;
 
 import static songscribe.util.UIUtils.MENU_SHORTCUT_MASK;
+import static songscribe.ui.action.UIAction.Flag;
 
 import module java.desktop;
 
@@ -259,7 +260,8 @@ public final class Actions {
         Strings.get(Strings.ACTION_COMPOSITION_SETTINGS),
         KeyEvent.VK_G,
         MENU_SHORTCUT_MASK,
-        CompositionSettingsDialog.class
+        CompositionSettingsDialog.class,
+        Flag.DISABLE_WHEN_PLAYING
     );
 
     public static final DialogOpenAction<LyricsDialog> LYRICS_DIALOG_ACTION =
@@ -267,7 +269,8 @@ public final class Actions {
             Strings.get(Strings.ACTION_LYRICS),
             KeyEvent.VK_L,
             MENU_SHORTCUT_MASK,
-            LyricsDialog.class
+            LyricsDialog.class,
+            Flag.DISABLE_WHEN_PLAYING
         );
 
     public static final DialogOpenAction<AboutDialog> ABOUT_ACTION =
