@@ -49,7 +49,8 @@
       "Skill(commit-changes)",
       "Skill(commit-commands:commit)",
       "WebFetch",
-      "WebSearch"
+      "WebSearch",
+      "Read(~/Library/Logs/SongScribe/songscribe.log)"
     ]
   },
   "hooks": {
