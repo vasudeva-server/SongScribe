@@ -40,8 +40,6 @@ public final class OptionDialogs {
 
     private static final Logger LOG = LoggerFactory.getLogger(OptionDialogs.class);
 
-    private static final int SCREEN_MARGIN_PX = 20;
-
     private static boolean suppressDialogs = false;
 
     private OptionDialogs() {}
@@ -226,7 +224,7 @@ public final class OptionDialogs {
     }
 
     private static void showOptionPane(JOptionPane pane, @Nullable Component parent, String title) {
-        var window = getParentWindow(parent);
+        var window = UIUtils.getParentWindow(parent);
         JDialog dialog;
 
         if (window instanceof Frame f) {
@@ -250,7 +248,7 @@ public final class OptionDialogs {
         }
 
         dialog.pack();
-        positionDialog(dialog, parent);
+        UIUtils.positionDialog(dialog, parent);
         UIUtils.addStandardDialogKeyBindings(dialog);
 
         // Close dialog when user selects a value
@@ -302,39 +300,6 @@ public final class OptionDialogs {
 
         dialog.setVisible(true);
         dialog.dispose();
-    }
-
-    // Position the dialog at 3/8 of the way down the parent window (or screen if no
-    // parent), centered horizontally, clamped to the screen bounds with a 20px margin.
-    public static void positionDialog(JDialog dialog, @Nullable Component parent) {
-        var window = getParentWindow(parent);
-        var screen = getScreenBounds(window);
-        var bounds = window != null ? window.getBounds() : screen;
-        var size = dialog.getSize();
-
-        var x = bounds.x + (bounds.width - size.width) / 2;
-        var y = bounds.y + bounds.height * 3 / 8 - size.height / 2;
-
-        x = Math.clamp(x, screen.x + SCREEN_MARGIN_PX, screen.x + screen.width - size.width - SCREEN_MARGIN_PX);
-        y = Math.clamp(y, screen.y + SCREEN_MARGIN_PX, screen.y + screen.height - size.height - SCREEN_MARGIN_PX);
-
-        dialog.setLocation(x, y);
-    }
-
-    private static @Nullable Window getParentWindow(@Nullable Component parent) {
-        if (parent instanceof Window w) return w;
-        return parent != null ? SwingUtilities.getWindowAncestor(parent) : null;
-    }
-
-    private static Rectangle getScreenBounds(@Nullable Window window) {
-        if (window != null) {
-            return window.getGraphicsConfiguration().getBounds();
-        }
-
-        return GraphicsEnvironment.getLocalGraphicsEnvironment()
-            .getDefaultScreenDevice()
-            .getDefaultConfiguration()
-            .getBounds();
     }
 
     private static int getOptionPaneResult(JOptionPane pane, Object @Nullable [] options) {

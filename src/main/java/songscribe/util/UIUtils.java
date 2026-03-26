@@ -51,6 +51,8 @@ public final class UIUtils {
 
     private static final Dimension LABEL_SPACER = new Dimension(5, 5);
 
+    private static final int SCREEN_MARGIN_PX = 20;
+
     private UIUtils() {
     }
 
@@ -353,6 +355,39 @@ public final class UIUtils {
         }
 
         return getParentFrame(focusOwner);
+    }
+
+    // Position the dialog at 3/8 of the way down the parent window (or screen if no
+    // parent), centered horizontally, clamped to the screen bounds with a 20px margin.
+    public static void positionDialog(JDialog dialog, @Nullable Component parent) {
+        var window = getParentWindow(parent);
+        var screen = getScreenBounds(window);
+        var bounds = window != null ? window.getBounds() : screen;
+        var size = dialog.getSize();
+
+        var x = bounds.x + (bounds.width - size.width) / 2;
+        var y = bounds.y + bounds.height * 3 / 8 - size.height / 2;
+
+        x = Math.clamp(x, screen.x + SCREEN_MARGIN_PX, screen.x + screen.width - size.width - SCREEN_MARGIN_PX);
+        y = Math.clamp(y, screen.y + SCREEN_MARGIN_PX, screen.y + screen.height - size.height - SCREEN_MARGIN_PX);
+
+        dialog.setLocation(x, y);
+    }
+
+    public static @Nullable Window getParentWindow(@Nullable Component parent) {
+        if (parent instanceof Window w) return w;
+        return parent != null ? SwingUtilities.getWindowAncestor(parent) : null;
+    }
+
+    private static Rectangle getScreenBounds(@Nullable Window window) {
+        if (window != null) {
+            return window.getGraphicsConfiguration().getBounds();
+        }
+
+        return GraphicsEnvironment.getLocalGraphicsEnvironment()
+            .getDefaultScreenDevice()
+            .getDefaultConfiguration()
+            .getBounds();
     }
 
     public static void addStandardDialogKeyBindings(JDialog dialog) {

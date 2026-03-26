@@ -30,8 +30,8 @@ import org.mockito.MockedConstruction;
 import org.mockito.MockedStatic;
 
 import songscribe.UnitTest;
-import songscribe.ui.OptionDialogs;
 import songscribe.ui.component.MainFrame;
+import songscribe.util.UIUtils;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -49,12 +49,12 @@ class BaseDialogPositionTest extends UnitTest {
     private static final Point DIALOG2_POSITION = new Point(400, 500);
 
     private MockedStatic<MainFrame> mainFrameMock;
-    private MockedStatic<OptionDialogs> optionDialogsMock;
+    private MockedStatic<UIUtils> uiUtilsMock;
 
     @BeforeEach
     void setUp() {
         mainFrameMock = mockStatic(MainFrame.class);
-        optionDialogsMock = mockStatic(OptionDialogs.class);
+        uiUtilsMock = mockStatic(UIUtils.class);
 
         var mockFrame = mock(MainFrame.class);
         mainFrameMock.when(MainFrame::getInstance).thenReturn(mockFrame);
@@ -72,7 +72,7 @@ class BaseDialogPositionTest extends UnitTest {
     void tearDown() {
         BaseDialog.resetVisibleBlockingDialogCount();
         BaseDialog.resetSavedLocations();
-        optionDialogsMock.close();
+        uiUtilsMock.close();
         mainFrameMock.close();
     }
 
@@ -81,7 +81,7 @@ class BaseDialogPositionTest extends UnitTest {
         try (var ignored = mockConstruction(JDialog.class, (d, ctx) -> configureMockDialog(d, DIALOG_POSITION))) {
             new TestDialog().setVisible(true);
 
-            optionDialogsMock.verify(() -> OptionDialogs.positionDialog(any(), any()));
+            uiUtilsMock.verify(() -> UIUtils.positionDialog(any(), any()));
         }
     }
 
@@ -95,7 +95,7 @@ class BaseDialogPositionTest extends UnitTest {
             new TestDialog().setVisible(true);
 
             // positionDialog must only have been called for the first open
-            optionDialogsMock.verify(() -> OptionDialogs.positionDialog(any(), any()));
+            uiUtilsMock.verify(() -> UIUtils.positionDialog(any(), any()));
 
             // The second JDialog instance must have its location set to the saved point
             var secondDialog = construction.constructed().get(1);
@@ -112,7 +112,7 @@ class BaseDialogPositionTest extends UnitTest {
             // Open a second instance; no saved position exists, so default positioning applies
             new TestDialog().setVisible(true);
 
-            optionDialogsMock.verify(() -> OptionDialogs.positionDialog(any(), any()), org.mockito.Mockito.times(2));
+            uiUtilsMock.verify(() -> UIUtils.positionDialog(any(), any()), org.mockito.Mockito.times(2));
         }
     }
 
@@ -139,8 +139,8 @@ class BaseDialogPositionTest extends UnitTest {
             new TestDialog2().setVisible(true);
 
             // positionDialog called only for the two first opens
-            optionDialogsMock.verify(
-                () -> OptionDialogs.positionDialog(any(), any()),
+            uiUtilsMock.verify(
+                () -> UIUtils.positionDialog(any(), any()),
                 org.mockito.Mockito.times(2)
             );
 

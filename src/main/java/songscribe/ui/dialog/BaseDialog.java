@@ -35,7 +35,6 @@ import songscribe.message.notification.DialogVisibilityDidChangeNotification;
 import songscribe.music.Composition;
 import songscribe.ui.FlatLafKeys;
 import songscribe.ui.FlatLafProps;
-import songscribe.ui.OptionDialogs;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.Score;
 import songscribe.util.GraphicUtils;
@@ -273,7 +272,7 @@ public abstract class BaseDialog {
             var restoredLocation = SAVED_LOCATIONS.get(getClass());
 
             if (restoredLocation == null) {
-                OptionDialogs.positionDialog(dialog, mainFrame);
+                UIUtils.positionDialog(dialog, mainFrame);
             } else {
                 dialog.setLocation(GraphicUtils.clampToScreen(restoredLocation, dialog.getSize()));
             }
