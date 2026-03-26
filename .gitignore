@@ -16,4 +16,4 @@ images/CleanShot*.png
 .DS_Store
 
 # IntelliJ IDEA
-compiler.xml
+.idea/compiler.xml
