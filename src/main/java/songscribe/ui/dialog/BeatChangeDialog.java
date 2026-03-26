@@ -139,8 +139,8 @@ public class BeatChangeDialog extends StandardDialog {
         if (bg.getSelection() == null) {
             OptionDialogs.showErrorMessage(
                 getMainFrame(),
-                Strings.get(Strings.ALERT_TITLE_BEAT_CHANGE_ERROR),
-                Strings.get(Strings.ERROR_BEAT_CHANGE_NO_SELECTION)
+                Strings.ALERT_TITLE_BEAT_CHANGE_ERROR,
+                Strings.ERROR_BEAT_CHANGE_NO_SELECTION
             );
             return;
         }

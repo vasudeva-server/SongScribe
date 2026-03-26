@@ -260,8 +260,8 @@ public final class PlaybackController {
                 pausedTickPosition = 0;
                 OptionDialogs.showWarningMessage(
                     null,
-                    Strings.get(Strings.ALERT_TITLE_RESUME_ERROR),
-                    Strings.get(Strings.ERROR_PLAYBACK_RESUME_PAST_END)
+                    Strings.ALERT_TITLE_RESUME_ERROR,
+                    Strings.ERROR_PLAYBACK_RESUME_PAST_END
                 );
                 return;
             }
@@ -311,8 +311,8 @@ public final class PlaybackController {
         } catch (InvalidMidiDataException e1) {
             OptionDialogs.showErrorMessage(
                 null,
-                Strings.get(Strings.ALERT_TITLE_PLAYBACK_ERROR),
-                Strings.get(Strings.ERROR_PLAYBACK_UNEXPECTED)
+                Strings.ALERT_TITLE_PLAYBACK_ERROR,
+                Strings.ERROR_PLAYBACK_UNEXPECTED
             );
         }
     }

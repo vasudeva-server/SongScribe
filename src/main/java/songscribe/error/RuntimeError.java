@@ -85,7 +85,7 @@ public final class RuntimeError {
             throw new ExitInProgressError();
         }
 
-        OptionDialogs.showErrorMessage(null, FATAL_ALERT_TITLE, FATAL_USER_MESSAGE);
+        OptionDialogs.showErrorMessageWithString(null, FATAL_ALERT_TITLE, FATAL_USER_MESSAGE);
 
         System.exit(-1);
         throw new AssertionError("unreachable");

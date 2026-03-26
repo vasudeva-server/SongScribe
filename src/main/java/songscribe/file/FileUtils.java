@@ -181,8 +181,8 @@ public final class FileUtils {
         } catch (IOException e) {
             OptionDialogs.showErrorMessage(
                 null,
-                Strings.get(Strings.ALERT_TITLE_FILE_ERROR),
-                Strings.get(Strings.ERROR_FILE_REINSTALL)
+                Strings.ALERT_TITLE_FILE_ERROR,
+                Strings.ERROR_FILE_REINSTALL
             );
         }
     }
@@ -214,8 +214,8 @@ public final class FileUtils {
 
             var answer = OptionDialogs.showConfirmDialog(
                 null,
-                Strings.get(Strings.ALERT_TITLE_FILE_ERROR),
-                Strings.get(Strings.CONFIRM_FILE_OPEN),
+                Strings.ALERT_TITLE_FILE_ERROR,
+                Strings.CONFIRM_FILE_OPEN,
                 JOptionPane.YES_NO_OPTION,
                 JOptionPane.QUESTION_MESSAGE
             );
@@ -226,8 +226,8 @@ public final class FileUtils {
                 } catch (Exception e) {
                     OptionDialogs.showErrorMessage(
                         null,
-                        Strings.get(Strings.ALERT_TITLE_FILE_ERROR),
-                        Strings.get(Strings.ERROR_FILE_OPEN)
+                        Strings.ALERT_TITLE_FILE_ERROR,
+                        Strings.ERROR_FILE_OPEN
                     );
                 }
             }

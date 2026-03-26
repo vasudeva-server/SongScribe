@@ -35,6 +35,7 @@ import org.assertj.swing.finder.JOptionPaneFinder;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
+import songscribe.Strings;
 import songscribe.ui.OptionDialogs;
 import songscribe.ui.component.MainFrame;
 
@@ -53,7 +54,7 @@ class DialogsTest extends E2ETest {
 
             SwingUtilities.invokeLater(() -> {
                 result.set(OptionDialogs.showConfirmDialog(
-                    MainFrame.getInstance(), "Test", "Choose",
+                    MainFrame.getInstance(), Strings.CONFIRM_TITLE_SAVE_CHANGES, Strings.CONFIRM_SAVE_MODIFIED,
                     JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE
                 ));
                 latch.countDown();
@@ -72,7 +73,7 @@ class DialogsTest extends E2ETest {
 
             SwingUtilities.invokeLater(() -> {
                 result.set(OptionDialogs.showConfirmDialog(
-                    MainFrame.getInstance(), "Test", "Choose",
+                    MainFrame.getInstance(), Strings.CONFIRM_TITLE_SAVE_CHANGES, Strings.CONFIRM_SAVE_MODIFIED,
                     JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE
                 ));
                 latch.countDown();
@@ -91,7 +92,7 @@ class DialogsTest extends E2ETest {
 
             SwingUtilities.invokeLater(() -> {
                 result.set(OptionDialogs.showConfirmDialog(
-                    MainFrame.getInstance(), "Test", "Choose",
+                    MainFrame.getInstance(), Strings.CONFIRM_TITLE_SAVE_CHANGES, Strings.CONFIRM_SAVE_MODIFIED,
                     JOptionPane.YES_NO_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE
                 ));
                 latch.countDown();
@@ -113,7 +114,7 @@ class DialogsTest extends E2ETest {
             var latch = new CountDownLatch(1);
 
             SwingUtilities.invokeLater(() -> {
-                resultRef.set(OptionDialogs.showInputDialog(MainFrame.getInstance(), "Test", "Enter text:"));
+                resultRef.set(OptionDialogs.showInputDialog(MainFrame.getInstance(), Strings.INPUT_TITLE_NUMBER_SONGS, Strings.INPUT_CONVERTER_ENTER_NUMBER));
                 latch.countDown();
             });
 

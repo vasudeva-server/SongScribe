@@ -165,8 +165,8 @@ class SelectionHandler {
             case HitResult.GraceGlissando() -> {
                 OptionDialogs.showWarningMessage(
                     null,
-                    Strings.get(Strings.ALERT_TITLE_GRACE_NOTE_WARNING),
-                    Strings.get(Strings.WARNING_GRACE_GLISSANDO_NOT_SELECTABLE)
+                    Strings.ALERT_TITLE_GRACE_NOTE_WARNING,
+                    Strings.WARNING_GRACE_GLISSANDO_NOT_SELECTABLE
                 );
                 pressHandled = true;
             }

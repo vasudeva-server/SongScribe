@@ -84,8 +84,8 @@ public class PDFExporter {
         // PDF export not yet implemented with component-based rendering
         OptionDialogs.showErrorMessage(
             null,
-            Strings.get(Strings.ALERT_TITLE_EXPORT_ERROR),
-            Strings.get(Strings.ERROR_EXPORT_NOT_IMPLEMENTED, "PDF")
+            Strings.ALERT_TITLE_EXPORT_ERROR,
+            Strings.ERROR_EXPORT_NOT_IMPLEMENTED, "PDF"
         );
     }
 }

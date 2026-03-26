@@ -50,8 +50,8 @@ public class ReportBugDialog extends StandardDialog {
                 var cancelIdx = 2;
                 var answer = OptionDialogs.showOptionDialog(
                     contentPanel,
-                    Strings.get(Strings.DIALOG_BUG_REPORT_TITLE),
-                    Strings.get(Strings.DIALOG_BUG_REPORT_WHAT_TO_SEND),
+                    Strings.DIALOG_BUG_REPORT_TITLE,
+                    Strings.DIALOG_BUG_REPORT_WHAT_TO_SEND,
                     JOptionPane.YES_NO_OPTION,
                     JOptionPane.QUESTION_MESSAGE,
                     null,
@@ -93,8 +93,8 @@ public class ReportBugDialog extends StandardDialog {
                 } catch (Exception e1) {
                     OptionDialogs.showErrorMessage(
                         getMainFrame(),
-                        Strings.get(Strings.ALERT_TITLE_EMAIL_ERROR),
-                        Strings.get(Strings.ERROR_EMAIL_OPEN_REPORT)
+                        Strings.ALERT_TITLE_EMAIL_ERROR,
+                        Strings.ERROR_EMAIL_OPEN_REPORT
                     );
                 }
             });

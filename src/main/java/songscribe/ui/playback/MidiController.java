@@ -70,8 +70,8 @@ public final class MidiController {
             LOG.warn("MIDI initialization failed", e);
             OptionDialogs.showWarningMessage(
                 null,
-                Strings.get(Strings.ALERT_TITLE_PLAYBACK_ERROR),
-                Strings.get(Strings.ERROR_MIDI_INIT, Constants.PACKAGE_NAME)
+                Strings.ALERT_TITLE_PLAYBACK_ERROR,
+                Strings.ERROR_MIDI_INIT, Constants.PACKAGE_NAME
             );
         }
     }

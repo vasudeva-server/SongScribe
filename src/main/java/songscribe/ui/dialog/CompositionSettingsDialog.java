@@ -134,21 +134,21 @@ public class CompositionSettingsDialog extends StandardDialog {
             titleGuard = new NonEmptyGuard(
                 titleField,
                 contentPanel,
-                Strings.get(Strings.ALERT_TITLE_COMPOSITION_SETTINGS),
-                Strings.get(Strings.CONFIRM_COMPOSITION_EMPTY_TITLE),
-                Strings.get(Strings.DOCUMENT_UNTITLED),
-                Strings.get(Strings.DIALOG_COMPOSITION_SETTINGS_USE_UNTITLED),
-                Strings.get(Strings.DIALOG_COMPOSITION_SETTINGS_CONTINUE_EDITING)
+                Strings.ALERT_TITLE_COMPOSITION_SETTINGS,
+                Strings.CONFIRM_COMPOSITION_EMPTY_TITLE,
+                Strings.DOCUMENT_UNTITLED,
+                Strings.DIALOG_COMPOSITION_SETTINGS_USE_UNTITLED,
+                Strings.DIALOG_COMPOSITION_SETTINGS_CONTINUE_EDITING
             );
 
             attributionGuard = new NonEmptyGuard(
                 attributionArea,
                 contentPanel,
-                Strings.get(Strings.ALERT_TITLE_COMPOSITION_SETTINGS),
-                Strings.get(Strings.CONFIRM_COMPOSITION_EMPTY_ATTRIBUTION),
-                Strings.get(Strings.COMPOSITION_DEFAULT_ATTRIBUTION),
-                Strings.get(Strings.DIALOG_COMPOSITION_SETTINGS_USE_DEFAULT),
-                Strings.get(Strings.DIALOG_COMPOSITION_SETTINGS_CONTINUE_EDITING)
+                Strings.ALERT_TITLE_COMPOSITION_SETTINGS,
+                Strings.CONFIRM_COMPOSITION_EMPTY_ATTRIBUTION,
+                Strings.COMPOSITION_DEFAULT_ATTRIBUTION,
+                Strings.DIALOG_COMPOSITION_SETTINGS_USE_DEFAULT,
+                Strings.DIALOG_COMPOSITION_SETTINGS_CONTINUE_EDITING
             );
 
             titleGuard.addExemptComponent(okButton);
@@ -361,8 +361,8 @@ public class CompositionSettingsDialog extends StandardDialog {
             } catch (NumberFormatException e) {
                 OptionDialogs.showErrorMessage(
                     contentPanel,
-                    Strings.get(Strings.ALERT_TITLE_COMPOSITION_SETTINGS),
-                    Strings.get(Strings.ERROR_COMPOSITION_NUMBER)
+                    Strings.ALERT_TITLE_COMPOSITION_SETTINGS,
+                    Strings.ERROR_COMPOSITION_NUMBER
                 );
                 number = null;
             }
@@ -377,8 +377,8 @@ public class CompositionSettingsDialog extends StandardDialog {
             } catch (NumberFormatException e) {
                 OptionDialogs.showErrorMessage(
                     contentPanel,
-                    Strings.get(Strings.ALERT_TITLE_COMPOSITION_SETTINGS),
-                    Strings.get(Strings.ERROR_COMPOSITION_YEAR)
+                    Strings.ALERT_TITLE_COMPOSITION_SETTINGS,
+                    Strings.ERROR_COMPOSITION_YEAR
                 );
                 year = null;
             }
@@ -512,8 +512,8 @@ public class CompositionSettingsDialog extends StandardDialog {
                 } else {
                     OptionDialogs.showErrorMessage(
                         getMainFrame(),
-                        Strings.get(Strings.ALERT_TITLE_COMPOSITION_SETTINGS),
-                        Strings.get(Strings.ERROR_COMPOSITION_YEAR_REQUIRED)
+                        Strings.ALERT_TITLE_COMPOSITION_SETTINGS,
+                        Strings.ERROR_COMPOSITION_YEAR_REQUIRED
                     );
                     return;
                 }
@@ -528,8 +528,8 @@ public class CompositionSettingsDialog extends StandardDialog {
                     } else {
                         OptionDialogs.showErrorMessage(
                             getMainFrame(),
-                            Strings.get(Strings.ALERT_TITLE_COMPOSITION_SETTINGS),
-                            Strings.get(Strings.ERROR_COMPOSITION_PLACE_REQUIRED)
+                            Strings.ALERT_TITLE_COMPOSITION_SETTINGS,
+                            Strings.ERROR_COMPOSITION_PLACE_REQUIRED
                         );
                         return;
                     }
@@ -860,8 +860,8 @@ public class CompositionSettingsDialog extends StandardDialog {
 
             OptionDialogs.showErrorMessage(
                 contentPanel,
-                Strings.get(Strings.ALERT_TITLE_LINE_WIDTH_ERROR),
-                Strings.get(key, min, max, unit)
+                Strings.ALERT_TITLE_LINE_WIDTH_ERROR,
+                key, min, max, unit
             );
         }
     }

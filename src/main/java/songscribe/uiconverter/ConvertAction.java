@@ -59,14 +59,14 @@ public class ConvertAction extends AbstractAction {
     @Override
     public void actionPerformed(ActionEvent e) {
         if (songsDirectory.getText().isEmpty()) {
-            OptionDialogs.showErrorMessage(uiConverter, Strings.get(Strings.ALERT_TITLE_CONVERSION_ERROR), Strings.get(Strings.ERROR_CONVERTER_NO_FOLDER));
+            OptionDialogs.showErrorMessage(uiConverter, Strings.ALERT_TITLE_CONVERSION_ERROR, Strings.ERROR_CONVERTER_NO_FOLDER);
             return;
         }
 
         var songDirectoryFile = new File(songsDirectory.getText());
 
         if (!songDirectoryFile.exists()) {
-            OptionDialogs.showErrorMessage(uiConverter, Strings.get(Strings.ALERT_TITLE_CONVERSION_ERROR), Strings.get(Strings.ERROR_CONVERTER_FOLDER_NOT_EXIST));
+            OptionDialogs.showErrorMessage(uiConverter, Strings.ALERT_TITLE_CONVERSION_ERROR, Strings.ERROR_CONVERTER_FOLDER_NOT_EXIST);
             return;
         }
 
@@ -75,7 +75,7 @@ public class ConvertAction extends AbstractAction {
         );
 
         if ((songFiles == null) || (songFiles.length == 0)) {
-            OptionDialogs.showErrorMessage(uiConverter, Strings.get(Strings.ALERT_TITLE_CONVERSION_ERROR), Strings.get(Strings.ERROR_CONVERTER_NO_FILES));
+            OptionDialogs.showErrorMessage(uiConverter, Strings.ALERT_TITLE_CONVERSION_ERROR, Strings.ERROR_CONVERTER_NO_FILES);
             return;
         }
 
@@ -211,8 +211,8 @@ public class ConvertAction extends AbstractAction {
                             imageFile = null;
                             OptionDialogs.showErrorMessage(
                                 processDialog.getWindow(),
-                                Strings.get(Strings.ALERT_TITLE_CONVERSION_ERROR),
-                                Strings.get(Strings.ERROR_CONVERTER_IMAGE, songFile.getName())
+                                Strings.ALERT_TITLE_CONVERSION_ERROR,
+                                Strings.ERROR_CONVERTER_IMAGE, songFile.getName()
                             );
                         } finally {
                             processDialog.nextValue();
@@ -238,8 +238,8 @@ public class ConvertAction extends AbstractAction {
                         midiFile = null;
                         OptionDialogs.showErrorMessage(
                             processDialog.getWindow(),
-                            Strings.get(Strings.ALERT_TITLE_CONVERSION_ERROR),
-                            Strings.get(Strings.ERROR_CONVERTER_MIDI, songFile.getName())
+                            Strings.ALERT_TITLE_CONVERSION_ERROR,
+                            Strings.ERROR_CONVERTER_MIDI, songFile.getName()
                         );
                     } finally {
                         processDialog.nextValue();
@@ -254,14 +254,14 @@ public class ConvertAction extends AbstractAction {
 
                 OptionDialogs.showInfoMessage(
                     processDialog.getWindow(),
-                    Strings.get(Strings.ALERT_TITLE_CONVERSION_COMPLETE),
-                    Strings.get(Strings.ALERT_CONVERSION_COMPLETE)
+                    Strings.ALERT_TITLE_CONVERSION_COMPLETE,
+                    Strings.ALERT_CONVERSION_COMPLETE
                 );
                 //Utilities.openWebPage(uiConverter, uiConverter.getProperties().getProperty
                 // (Constants
                 // .BOOK_UPLOAD_URL));
             } catch (IOException e) {
-                OptionDialogs.showErrorMessage(null, Strings.get(Strings.ALERT_TITLE_CONVERSION_ERROR), Strings.get(Strings.ERROR_CONVERTER_ZIP));
+                OptionDialogs.showErrorMessage(null, Strings.ALERT_TITLE_CONVERSION_ERROR, Strings.ERROR_CONVERTER_ZIP);
             } finally {
                 processDialog.setVisible(false);
             }

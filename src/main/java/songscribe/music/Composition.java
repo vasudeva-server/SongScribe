@@ -1059,8 +1059,8 @@ public final class Composition {
                 shortANotified = true;
                 OptionDialogs.showInfoMessage(
                     null,
-                    Strings.get(Strings.ALERT_TITLE_INFORMATION),
-                    Strings.get(Strings.INFO_CHARACTER_REPLACEMENT)
+                    Strings.ALERT_TITLE_INFORMATION,
+                    Strings.INFO_CHARACTER_REPLACEMENT
                 );
             }
 

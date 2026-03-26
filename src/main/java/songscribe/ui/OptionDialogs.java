@@ -29,6 +29,7 @@ import org.slf4j.LoggerFactory;
 
 import org.jspecify.annotations.Nullable;
 
+import songscribe.Strings;
 import songscribe.util.UIUtils;
 
 /**
@@ -58,10 +59,14 @@ public final class OptionDialogs {
 
     public static void showInfoMessage(
         @Nullable Component parent,
-        String title,
-        String message
+        String titleKey,
+        String messageKey,
+        Object... messageArgs
     ) {
-        showMessageDialog(parent, title, message, JOptionPane.INFORMATION_MESSAGE, LOG::trace, false);
+        showMessageDialog(
+            parent, Strings.get(titleKey), resolveMessage(messageKey, messageArgs),
+            JOptionPane.INFORMATION_MESSAGE, LOG::trace, false
+        );
     }
 
     /**
@@ -69,6 +74,15 @@ public final class OptionDialogs {
      * (unless suppressed).
      */
     public static void showErrorMessage(
+        @Nullable Component parent,
+        String titleKey,
+        String messageKey,
+        Object... messageArgs
+    ) {
+        showErrorMessageWithString(parent, Strings.get(titleKey), resolveMessage(messageKey, messageArgs));
+    }
+
+    public static void showErrorMessageWithString(
         @Nullable Component parent,
         String title,
         String message
@@ -78,30 +92,36 @@ public final class OptionDialogs {
 
     public static void showWarningMessage(
         @Nullable Component parent,
-        String title,
-        String message
+        String titleKey,
+        String messageKey,
+        Object... messageArgs
     ) {
-        showMessageDialog(parent, title, message, JOptionPane.WARNING_MESSAGE, LOG::warn, false);
+        showMessageDialog(
+            parent, Strings.get(titleKey), resolveMessage(messageKey, messageArgs),
+            JOptionPane.WARNING_MESSAGE, LOG::warn, false
+        );
     }
 
     public static int showConfirmDialog(
         @Nullable Component parent,
-        String title,
-        String message,
+        String titleKey,
+        String messageKey,
         int optionType,
         int messageType
     ) {
-        return showConfirmDialog(parent, title, message, optionType, messageType, JOptionPane.NO_OPTION);
+        return showConfirmDialog(parent, titleKey, messageKey, optionType, messageType, JOptionPane.NO_OPTION);
     }
 
     public static int showConfirmDialog(
         @Nullable Component parent,
-        String title,
-        String message,
+        String titleKey,
+        String messageKey,
         int optionType,
         int messageType,
         int suppressedDefault
     ) {
+        var title = Strings.get(titleKey);
+        var message = Strings.get(messageKey);
         LOG.trace(message);
 
         if (isSuppressed()) {
@@ -130,18 +150,20 @@ public final class OptionDialogs {
 
     public static @Nullable String showInputDialog(
         @Nullable Component parent,
-        String title,
-        String message
+        String titleKey,
+        String messageKey
     ) {
-        return showInputDialog(parent, title, message, null);
+        return showInputDialog(parent, titleKey, messageKey, null);
     }
 
     public static @Nullable String showInputDialog(
         @Nullable Component parent,
-        String title,
-        String message,
+        String titleKey,
+        String messageKey,
         @Nullable String suppressedDefault
     ) {
+        var title = Strings.get(titleKey);
+        var message = Strings.get(messageKey);
         LOG.trace(message);
 
         if (isSuppressed()) {
@@ -320,6 +342,10 @@ public final class OptionDialogs {
         }
 
         return JOptionPane.CLOSED_OPTION;
+    }
+
+    private static String resolveMessage(String key, Object[] args) {
+        return args.length == 0 ? Strings.get(key) : Strings.get(key, args);
     }
 
     private static boolean isSuppressed() {

@@ -154,8 +154,8 @@ public final class ScoreMessageCoordinator {
         } else {
             OptionDialogs.showErrorMessage(
                 null,
-                Strings.get(Strings.ALERT_TITLE_LINE_ERROR),
-                Strings.get(Strings.ERROR_LINE_NO_SELECTION)
+                Strings.ALERT_TITLE_LINE_ERROR,
+                Strings.ERROR_LINE_NO_SELECTION
             );
         }
     }

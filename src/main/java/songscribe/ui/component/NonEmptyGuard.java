@@ -27,6 +27,7 @@ import module java.desktop;
 
 import org.jspecify.annotations.Nullable;
 
+import songscribe.Strings;
 import songscribe.ui.OptionDialogs;
 
 /**
@@ -45,41 +46,41 @@ public class NonEmptyGuard {
 
     private final JTextComponent field;
     private final Component parent;
-    private final String dialogTitle;
-    private final String message;
-    private final @Nullable String defaultValue;
-    private final @Nullable String useDefaultLabel;
-    private final @Nullable String continueEditingLabel;
+    private final String dialogTitleKey;
+    private final String messageKey;
+    private final @Nullable String defaultValueKey;
+    private final @Nullable String useDefaultLabelKey;
+    private final @Nullable String continueEditingLabelKey;
     private final Set<Component> exemptComponents = new HashSet<>();
 
     /**
      * Creates a guard that offers the user a default value when the
      * field is left blank.
      *
-     * @param field               the text component to guard
-     * @param parent              parent component for dialog positioning
-     * @param dialogTitle         title for the option dialog
-     * @param message             message body for the option dialog
-     * @param defaultValue        value to apply when the user accepts the default
-     * @param useDefaultLabel     label for the "use default" button
-     * @param continueEditingLabel label for the "continue editing" button
+     * @param field                the text component to guard
+     * @param parent               parent component for dialog positioning
+     * @param dialogTitleKey       strings key for the option dialog title
+     * @param messageKey           strings key for the option dialog message body
+     * @param defaultValueKey      strings key for the value to apply when the user accepts the default
+     * @param useDefaultLabelKey   strings key for the "use default" button label
+     * @param continueEditingLabelKey strings key for the "continue editing" button label
      */
     public NonEmptyGuard(
         JTextComponent field,
         Component parent,
-        String dialogTitle,
-        String message,
-        String defaultValue,
-        String useDefaultLabel,
-        String continueEditingLabel
+        String dialogTitleKey,
+        String messageKey,
+        String defaultValueKey,
+        String useDefaultLabelKey,
+        String continueEditingLabelKey
     ) {
         this.field = field;
         this.parent = parent;
-        this.dialogTitle = dialogTitle;
-        this.message = message;
-        this.defaultValue = defaultValue;
-        this.useDefaultLabel = useDefaultLabel;
-        this.continueEditingLabel = continueEditingLabel;
+        this.dialogTitleKey = dialogTitleKey;
+        this.messageKey = messageKey;
+        this.defaultValueKey = defaultValueKey;
+        this.useDefaultLabelKey = useDefaultLabelKey;
+        this.continueEditingLabelKey = continueEditingLabelKey;
         install();
     }
 
@@ -87,24 +88,24 @@ public class NonEmptyGuard {
      * Creates a guard that warns the user and returns focus when the
      * field is left blank. No default value is offered.
      *
-     * @param field       the text component to guard
-     * @param parent      parent component for dialog positioning
-     * @param dialogTitle title for the warning dialog
-     * @param message     message body for the warning dialog
+     * @param field          the text component to guard
+     * @param parent         parent component for dialog positioning
+     * @param dialogTitleKey strings key for the warning dialog title
+     * @param messageKey     strings key for the warning dialog message body
      */
     public NonEmptyGuard(
         JTextComponent field,
         Component parent,
-        String dialogTitle,
-        String message
+        String dialogTitleKey,
+        String messageKey
     ) {
         this.field = field;
         this.parent = parent;
-        this.dialogTitle = dialogTitle;
-        this.message = message;
-        this.defaultValue = null;
-        this.useDefaultLabel = null;
-        this.continueEditingLabel = null;
+        this.dialogTitleKey = dialogTitleKey;
+        this.messageKey = messageKey;
+        this.defaultValueKey = null;
+        this.useDefaultLabelKey = null;
+        this.continueEditingLabelKey = null;
         install();
     }
 
@@ -143,7 +144,7 @@ public class NonEmptyGuard {
             return true;
         }
 
-        if (defaultValue != null) {
+        if (defaultValueKey != null) {
             return showDefaultValueDialog();
         } else {
             showWarningAndRefocus();
@@ -156,19 +157,19 @@ public class NonEmptyGuard {
     }
 
     private boolean showDefaultValueDialog() {
-        if (useDefaultLabel == null || continueEditingLabel == null || defaultValue == null) {
+        if (useDefaultLabelKey == null || continueEditingLabelKey == null || defaultValueKey == null) {
             throw RuntimeError.exit("default value labels not initialized");
         }
 
-        var useDefault = useDefaultLabel;
-        var continueEditing = continueEditingLabel;
-        var defaultVal = defaultValue;
+        var useDefault = Strings.get(useDefaultLabelKey);
+        var continueEditing = Strings.get(continueEditingLabelKey);
+        var defaultVal = Strings.get(defaultValueKey);
         var useDefaultIndex = 1;
 
         var result = OptionDialogs.showOptionDialog(
             parent,
-            dialogTitle,
-            message,
+            Strings.get(dialogTitleKey),
+            Strings.get(messageKey),
             JOptionPane.YES_NO_OPTION,
             JOptionPane.WARNING_MESSAGE,
             null,
@@ -187,7 +188,7 @@ public class NonEmptyGuard {
     }
 
     private void showWarningAndRefocus() {
-        OptionDialogs.showWarningMessage(parent, dialogTitle, message);
+        OptionDialogs.showWarningMessage(parent, dialogTitleKey, messageKey);
         SwingUtilities.invokeLater(field::requestFocusInWindow);
     }
 }

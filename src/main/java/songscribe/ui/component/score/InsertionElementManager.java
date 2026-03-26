@@ -683,8 +683,8 @@ public class InsertionElementManager {
         if (!insertion.fitsWithinLine(composition.getLineWidthSs())) {
             OptionDialogs.showErrorMessage(
                 null,
-                Strings.get(Strings.ALERT_TITLE_INSERT_ERROR),
-                Strings.get(Strings.ERROR_LINE_FULL)
+                Strings.ALERT_TITLE_INSERT_ERROR,
+                Strings.ERROR_LINE_FULL
             );
             return null;
         }
@@ -767,8 +767,8 @@ public class InsertionElementManager {
         if ((iv != null) && ((xIndex - 1) < iv.getEnd())) {
             OptionDialogs.showErrorMessage(
                 null,
-                Strings.get(Strings.ALERT_TITLE_INSERT_ERROR),
-                Strings.get(Strings.ERROR_TRIPLET_INSERT)
+                Strings.ALERT_TITLE_INSERT_ERROR,
+                Strings.ERROR_TRIPLET_INSERT
             );
             return;
         }

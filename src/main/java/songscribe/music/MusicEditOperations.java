@@ -248,8 +248,8 @@ public final class MusicEditOperations {
         if (!repeatExists) {
             var answer = OptionDialogs.showConfirmDialog(
                 null,
-                Strings.get(Strings.CONFIRM_TITLE_FIRST_SECOND_ENDING),
-                Strings.get(Strings.CONFIRM_ENDING_NO_REPEAT),
+                Strings.CONFIRM_TITLE_FIRST_SECOND_ENDING,
+                Strings.CONFIRM_ENDING_NO_REPEAT,
                 JOptionPane.YES_NO_OPTION,
                 JOptionPane.WARNING_MESSAGE
             );
@@ -336,8 +336,8 @@ public final class MusicEditOperations {
         if (state == null) {
             OptionDialogs.showInfoMessage(
                 null,
-                Strings.get(Strings.ALERT_TITLE_STEM_DIRECTION),
-                Strings.get(Strings.ERROR_STEM_NO_SELECTION)
+                Strings.ALERT_TITLE_STEM_DIRECTION,
+                Strings.ERROR_STEM_NO_SELECTION
             );
             return;
         }

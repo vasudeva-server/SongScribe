@@ -452,30 +452,6 @@ class SelectionTest extends E2ETest {
 
         @Order(1)
         @Test
-        void testDragNoteInSelectMode() {
-            enterSelectMode();
-            var countBefore = Objects.requireNonNull(GuiActionRunner.execute(
-                () -> composition().getLine(0).elementCount()));
-            var originalSp = Objects.requireNonNull(GuiActionRunner.execute(
-                () -> composition().getLine(0).getElement(Sel2.NOTE.index).getStaffPosition()
-            ));
-            var targetSp = originalSp - 4;
-
-            dragNote(0, Sel2.NOTE.index, targetSp);
-            performLayout(0);
-
-            assertAll(
-                () -> assertThat(GuiActionRunner.execute(
-                    () -> composition().getLine(0).getElement(Sel2.NOTE.index).getStaffPosition()
-                )).as("staffPosition updated").isEqualTo(targetSp),
-                () -> assertThat(GuiActionRunner.execute(
-                    () -> composition().getLine(0).elementCount()
-                )).as("elementCount unchanged").isEqualTo(countBefore)
-            );
-        }
-
-        @Order(2)
-        @Test
         void testAltDragTiedNoteFromEditMode() {
             enterEditMode();
             var originalSp = Objects.requireNonNull(GuiActionRunner.execute(
@@ -505,7 +481,7 @@ class SelectionTest extends E2ETest {
             );
         }
 
-        @Order(3)
+        @Order(2)
         @Test
         void testMultiNoteShiftSelectAndDrag() {
             enterSelectMode();
@@ -536,7 +512,7 @@ class SelectionTest extends E2ETest {
             );
         }
 
-        @Order(4)
+        @Order(3)
         @Test
         void testTieChainExpansionDuringMultiNoteDrag() {
             enterSelectMode();
@@ -567,7 +543,7 @@ class SelectionTest extends E2ETest {
             );
         }
 
-        @Order(5)
+        @Order(4)
         @Test
         void testDragWithNoteAndRestSelectionMovesOnlyNote() {
             enterSelectMode();

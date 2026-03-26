@@ -347,8 +347,8 @@ public class AnnotationDialog extends StandardDialog {
                 var message = Strings.get(Strings.ERROR_PROGRAMMER_NO_HORIZONTAL_ANNOTATION);
                 OptionDialogs.showErrorMessage(
                     getMainFrame(),
-                    Strings.get(Strings.ALERT_TITLE_ANNOTATION_ERROR),
-                    message
+                    Strings.ALERT_TITLE_ANNOTATION_ERROR,
+                    Strings.ERROR_PROGRAMMER_NO_HORIZONTAL_ANNOTATION
                 );
                 throw new RuntimeException(message);
             }
@@ -369,8 +369,8 @@ public class AnnotationDialog extends StandardDialog {
                 var message = Strings.get(Strings.ERROR_PROGRAMMER_NO_VERTICAL_ANNOTATION);
                 OptionDialogs.showErrorMessage(
                     getMainFrame(),
-                    Strings.get(Strings.ALERT_TITLE_ANNOTATION_ERROR),
-                    message
+                    Strings.ALERT_TITLE_ANNOTATION_ERROR,
+                    Strings.ERROR_PROGRAMMER_NO_VERTICAL_ANNOTATION
                 );
                 throw new RuntimeException(message);
             }

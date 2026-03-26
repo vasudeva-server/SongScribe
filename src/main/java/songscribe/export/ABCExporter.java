@@ -45,8 +45,8 @@ public class ABCExporter {
         // ABC export is not supported
         OptionDialogs.showErrorMessage(
             null,
-            Strings.get(Strings.ALERT_TITLE_EXPORT_ERROR),
-            Strings.get(Strings.ERROR_ABC_NOT_SUPPORTED)
+            Strings.ALERT_TITLE_EXPORT_ERROR,
+            Strings.ERROR_ABC_NOT_SUPPORTED
         );
     }
 }

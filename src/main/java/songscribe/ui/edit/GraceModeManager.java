@@ -255,8 +255,8 @@ public final class GraceModeManager {
         if (!InsertionSpacingCalculator.hasRoomForGraceNotePair(line, xIndex)) {
             OptionDialogs.showErrorMessage(
                 SwingUtilities.getWindowAncestor(lineComponent),
-                Strings.get(Strings.ALERT_TITLE_GRACE_NOTE_ERROR),
-                Strings.get(Strings.ERROR_GRACE_NOTE_NO_ROOM)
+                Strings.ALERT_TITLE_GRACE_NOTE_ERROR,
+                Strings.ERROR_GRACE_NOTE_NO_ROOM
             );
             return true;
         }
@@ -526,8 +526,8 @@ public final class GraceModeManager {
 
             OptionDialogs.showErrorMessage(
                 SwingUtilities.getWindowAncestor(graceLineComponent),
-                Strings.get(Strings.ALERT_TITLE_GRACE_NOTE_ERROR),
-                Strings.get(Strings.ERROR_GRACE_NOTE_SAME_PITCH)
+                Strings.ALERT_TITLE_GRACE_NOTE_ERROR,
+                Strings.ERROR_GRACE_NOTE_SAME_PITCH
             );
 
             finish(true);

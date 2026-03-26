@@ -725,8 +725,8 @@ public class PreferencesDialog extends BaseDialog {
                 } catch (InvalidMidiDataException ex) {
                     OptionDialogs.showErrorMessage(
                         getMainFrame(),
-                        Strings.get(Strings.ALERT_TITLE_PLAYBACK_ERROR),
-                        Strings.get(Strings.ERROR_SCALE_PLAY)
+                        Strings.ALERT_TITLE_PLAYBACK_ERROR,
+                        Strings.ERROR_SCALE_PLAY
                     );
                 }
             }

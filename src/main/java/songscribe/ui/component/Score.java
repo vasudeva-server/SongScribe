@@ -252,9 +252,9 @@ public final class Score
         } catch (Exception e) {
             OptionDialogs.showErrorMessage(
                 null,
-                Strings.get(Strings.ALERT_TITLE_INITIALIZATION_ERROR),
-                Constants.PACKAGE_NAME +
-                    " cannot start because of an initialization error."
+                Strings.ALERT_TITLE_INITIALIZATION_ERROR,
+                Strings.ERROR_INITIALIZATION,
+                Constants.PACKAGE_NAME
             );
             System.exit(0);
         }
@@ -521,28 +521,15 @@ public final class Score
             LOG.info("Composition loaded: {}", file.getName());
             return true;
         } catch (SAXException e) {
-            var message =
-                "Could not open the file “" +
-                    file.getName() +
-                    "” because it is damaged.";
-            OptionDialogs.showErrorMessage(
-                null,
-                Strings.get(Strings.ALERT_TITLE_FILE_ERROR),
-                message
-            );
-            LOG.error(message, e);
+            OptionDialogs.showErrorMessage(null, Strings.ALERT_TITLE_FILE_ERROR, Strings.ERROR_FILE_OPEN_DAMAGED, file.getName());
+            LOG.error("Could not open damaged file '{}'", file.getName(), e);
             if (composition != null) {
                 composition.setModified(previousModified);
             }
             return false;
         } catch (IOException e) {
-            var message = "Could not open the file “" + file.getName() + '”';
-            OptionDialogs.showErrorMessage(
-                null,
-                Strings.get(Strings.ALERT_TITLE_FILE_ERROR),
-                message + ". Check if you have the permission to open it."
-            );
-            LOG.error(message, e);
+            OptionDialogs.showErrorMessage(null, Strings.ALERT_TITLE_FILE_ERROR, Strings.ERROR_FILE_OPEN_NO_PERMISSION, file.getName());
+            LOG.error("Could not open file '{}': permission error", file.getName(), e);
             if (composition != null) {
                 composition.setModified(previousModified);
             }
