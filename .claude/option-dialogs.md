@@ -1,4 +1,4 @@
-## Alerts, Confirms, and All User-Facing JOptionPane-based Dialogs
+## OptionDialogs Reference
 
 All user-facing JOptionPane-based dialogs must go through `songscribe.ui.OptionDialogs`, never directly through `JOptionPane`. This class:
 

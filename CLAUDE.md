@@ -64,7 +64,7 @@ For the bootstrap logging constraint in `SongScribe.java`, see [Logging](./.clau
 
 For the MBassador message bus (posting, subscribing, `@Handler` methods), see [Message System](./.claude/rules/messages.md).
 
-For `JOptionPane`-based alerts, confirms, and input prompts, see [OptionDialogs](./.claude/rules/option-dialogs.md).
+For `JOptionPane`-based alerts, confirms, and input prompts, see [OptionDialogs](./.claude/option-dialogs.md).
 
 For complex dialogs (`BaseDialog`, `StandardDialog`, tabs, validation/commit lifecycle), see [Dialogs](./.claude/dialogs.md).
 
