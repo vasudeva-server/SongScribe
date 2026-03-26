@@ -118,24 +118,30 @@ public abstract class BaseDialog {
     }
 
     protected JTabbedPane createTabbedPane() {
-        tabbedPane = new JTabbedPane();
-        var pane = tabbedPane;
+        var pane = new JTabbedPane();
 
         // Add a little padding at the top, above the tabs
         int tabsMarginTop = FlatLafProps.get(FlatLafKeys.DIALOG_TABS_MARGIN_TOP);
         pane.setBorder(BorderFactory.createEmptyBorder(tabsMarginTop, 0, 0, 0));
 
-        pane.addChangeListener(_ -> {
-            var selectedComponent = pane.getSelectedComponent();
+        // Only the first call registers this as the dialog's top-level tabbed pane.
+        // Subsequent calls (e.g. from inner tabs creating nested sub-panes) must not
+        // overwrite it or attach the tab lifecycle listener.
+        if (tabbedPane == null) {
+            tabbedPane = pane;
 
-            for (var tab : tabs) {
-                if (tab == selectedComponent) {
-                    tab.tabWillShow();
-                } else {
-                    tab.tabWillHide();
+            pane.addChangeListener(_ -> {
+                var selectedComponent = pane.getSelectedComponent();
+
+                for (var tab : tabs) {
+                    if (tab == selectedComponent) {
+                        tab.tabWillShow();
+                    } else {
+                        tab.tabWillHide();
+                    }
                 }
-            }
-        });
+            });
+        }
 
         return pane;
     }
