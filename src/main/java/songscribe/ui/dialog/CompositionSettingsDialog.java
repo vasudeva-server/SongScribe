@@ -23,6 +23,7 @@ import module java.desktop;
 
 import java.util.Arrays;
 import java.util.EnumMap;
+import java.util.Objects;
 
 
 import kotlin.Pair;
@@ -383,6 +384,18 @@ public class CompositionSettingsDialog extends StandardDialog {
                 year = null;
             }
 
+            var composition = getComposition();
+
+            if (titleField.getText().equals(composition.getTitle())
+                    && placeField.getText().equals(composition.getPlace())
+                    && Objects.equals(year, composition.getYear())
+                    && Objects.equals(number, composition.getNumber())
+                    && attributionArea.getText().equals(composition.getAttribution())
+                    && monthCombo.getSelectedIndex() == composition.getMonth()
+                    && dayCombo.getSelectedIndex() == composition.getDay()) {
+                return;
+            }
+
             MessageCenter.post(new MetadataDidChangeNotification(
                 titleField.getText(),
                 placeField.getText(),
@@ -737,20 +750,35 @@ public class CompositionSettingsDialog extends StandardDialog {
 
         @Override
         protected void setData() {
-            MessageCenter.post(new TempoDidChangeNotification(
-                (Tempo.Type) tempoTypeCombo.getSelectedItem(),
-                (Integer) tempoSpinnerModel.getValue(),
-                (String) tempoDescriptionCombo.getSelectedItem(),
-                !showOnlyDescriptionCheckBox.isSelected()
-            ));
+            var composition = getComposition();
+            var tempo = composition.getTempo();
+            var tempoType = (Tempo.Type) tempoTypeCombo.getSelectedItem();
+            var visibleTempo = (Integer) tempoSpinnerModel.getValue();
+            var tempoDescription = (String) tempoDescriptionCombo.getSelectedItem();
+            var showTempo = !showOnlyDescriptionCheckBox.isSelected();
+
+            if (tempoType != tempo.getTempoType()
+                    || !visibleTempo.equals(tempo.getVisibleTempo())
+                    || !Objects.equals(tempoDescription, tempo.getTempoDescription())
+                    || showTempo != tempo.shouldShowTempo()) {
+                MessageCenter.post(new TempoDidChangeNotification(
+                    tempoType,
+                    visibleTempo,
+                    tempoDescription,
+                    showTempo
+                ));
+            }
 
             var typeAndCount = getKeyTypeAndCountFromCombo();
 
-            MessageCenter.post(new KeySignatureDidChangeNotification(
-                null,
-                typeAndCount.getFirst(),
-                typeAndCount.getSecond()
-            ));
+            if (typeAndCount.getFirst() != composition.getDefaultKeyType()
+                    || !typeAndCount.getSecond().equals(composition.getDefaultKeyAccidentalCount())) {
+                MessageCenter.post(new KeySignatureDidChangeNotification(
+                    null,
+                    typeAndCount.getFirst(),
+                    typeAndCount.getSecond()
+                ));
+            }
 
             var widthInches = validateLineWidth();
             var lineWidthPx = (int) Math.round(widthInches * GraphicUtils.getDpi());
@@ -1173,6 +1201,15 @@ public class CompositionSettingsDialog extends StandardDialog {
 
         @Override
         protected void setData() {
+            var composition = getComposition();
+
+            if (titleFontPreview.getFont().equals(composition.getTitleFont())
+                    && lyricsFontPreview.getFont().equals(composition.getLyricsFont())
+                    && attributionFontPreview.getFont().equals(composition.getAttributionFont())
+                    && annotationFontPreview.getFont().equals(composition.getAnnotationFont())) {
+                return;
+            }
+
             MessageCenter.post(new FontDidChangeNotification(
                 titleFontPreview.getFont(),
                 lyricsFontPreview.getFont(),
