@@ -32,6 +32,8 @@ import songscribe.prefs.Prefs;
 import songscribe.prefs.PrefsKey;
 import songscribe.ui.component.TickSlider;
 import songscribe.ui.Appearance;
+import songscribe.ui.FlatLafKeys;
+import songscribe.ui.FlatLafProps;
 import songscribe.ui.AppearanceManager;
 import songscribe.midi.MidiSequenceBuilder;
 import songscribe.ui.OptionDialogs;
@@ -74,6 +76,11 @@ public class PreferencesDialog extends BaseDialog {
         );
 
         contentPanel.add(BorderLayout.CENTER, tabbedPane);
+    }
+
+    @Override
+    protected int getExtraWidth() {
+        return FlatLafProps.get(FlatLafKeys.DIALOG_PREFERENCES_EXTRA_WIDTH);
     }
 
     public static void ensureInstrumentsLoaded() {
@@ -148,11 +155,6 @@ public class PreferencesDialog extends BaseDialog {
 
     private final class GeneralTab extends Tab {
 
-        private static final int APPEARANCE_ICON_SIZE = 100;
-        private static final int APPEARANCE_ITEM_GAP = 40;
-        private static final int APPEARANCE_ICON_RADIO_GAP = 5;
-        private static final int APPEARANCE_VERTICAL_PADDING_TOP = 7;
-        private static final int APPEARANCE_VERTICAL_PADDING_BOTTOM = 5;
 
         private final JRadioButton letterRadio = new JRadioButton(
             Strings.get(Strings.LABEL_PREFS_PAGE_SIZE_LETTER)
@@ -290,19 +292,19 @@ public class PreferencesDialog extends BaseDialog {
 
         private JPanel createAppearanceSection() {
             var section = new TitledSection(Strings.get(Strings.LABEL_PREFS_SECTION_APPEARANCE));
-            var row = new JPanel(new FlowLayout(FlowLayout.CENTER, APPEARANCE_ITEM_GAP, 0));
-            row.setBorder(BorderFactory.createEmptyBorder(APPEARANCE_VERTICAL_PADDING_TOP, 0, APPEARANCE_VERTICAL_PADDING_BOTTOM, 0));
+            var row = new JPanel(new FlowLayout(FlowLayout.CENTER, FlatLafProps.<Integer>get(FlatLafKeys.DIALOG_PREFERENCES_GENERAL_APPEARANCE_ITEM_GAP), 0));
+            row.setBorder(UIUtils.spacingBorder(FlatLafKeys.DIALOG_PREFERENCES_GENERAL_APPEARANCE_PADDING));
             row.setAlignmentX(Component.LEFT_ALIGNMENT);
             row.add(createAppearanceItem(
-                GraphicUtils.getScaledSVGIcon(new FlatSVGIcon("icons/appearance-system.svg"), APPEARANCE_ICON_SIZE),
+                GraphicUtils.getScaledSVGIcon(new FlatSVGIcon("icons/appearance-system.svg"), FlatLafProps.<Integer>get(FlatLafKeys.DIALOG_PREFERENCES_GENERAL_APPEARANCE_ICON_SIZE)),
                 systemRadio
             ));
             row.add(createAppearanceItem(
-                GraphicUtils.getScaledSVGIcon(new FlatSVGIcon("icons/appearance-light.svg"), APPEARANCE_ICON_SIZE),
+                GraphicUtils.getScaledSVGIcon(new FlatSVGIcon("icons/appearance-light.svg"), FlatLafProps.<Integer>get(FlatLafKeys.DIALOG_PREFERENCES_GENERAL_APPEARANCE_ICON_SIZE)),
                 lightRadio
             ));
             row.add(createAppearanceItem(
-                GraphicUtils.getScaledSVGIcon(new FlatSVGIcon("icons/appearance-dark.svg"), APPEARANCE_ICON_SIZE),
+                GraphicUtils.getScaledSVGIcon(new FlatSVGIcon("icons/appearance-dark.svg"), FlatLafProps.<Integer>get(FlatLafKeys.DIALOG_PREFERENCES_GENERAL_APPEARANCE_ICON_SIZE)),
                 darkRadio
             ));
             section.add(row);
@@ -323,7 +325,7 @@ public class PreferencesDialog extends BaseDialog {
             });
             radio.setAlignmentX(Component.CENTER_ALIGNMENT);
             panel.add(iconLabel);
-            panel.add(Box.createVerticalStrut(APPEARANCE_ICON_RADIO_GAP));
+            panel.add(Box.createVerticalStrut(FlatLafProps.<Integer>get(FlatLafKeys.DIALOG_COMPONENT_VERTICAL_GAP)));
             panel.add(radio);
             return panel;
         }
@@ -334,8 +336,6 @@ public class PreferencesDialog extends BaseDialog {
     // -----------------------------------------------------------------------
 
     private final class PlayTab extends Tab {
-
-        private static final int SLIDER_SPACING = 20;
 
         private static final int[] VALID_VOLUME_STOPS = { 50, 63, 75, 88, 100 };
         private static final int VOLUME_STOP_COUNT = VALID_VOLUME_STOPS.length;
@@ -451,23 +451,25 @@ public class PreferencesDialog extends BaseDialog {
             );
 
             var border = (StandardTitledBorder) section.getBorder();
-            border.setInsets(new Insets(35, 20, 20, 20));
+            border.setInsets(FlatLafProps.get(FlatLafKeys.DIALOG_PREFERENCES_PLAY_PLAYBACK_PADDING));
 
-            addLabeledField(section, Strings.get(Strings.LABEL_PREFS_PLAYBACK_DURATION), durationSlider, LabelPosition.TOP);
-
-            section.add(Box.createVerticalStrut(SLIDER_SPACING));
-            section.add(new JSeparator());
-            section.add(Box.createVerticalStrut(SLIDER_SPACING));
-
-            addLabeledField(section, Strings.get(Strings.LABEL_PREFS_PLAYBACK_VOLUME), volumeSlider, LabelPosition.TOP);
-
-            section.add(Box.createVerticalStrut(SLIDER_SPACING));
-            section.add(new JSeparator());
-            section.add(Box.createVerticalStrut(SLIDER_SPACING));
-
-            addLabeledField(section, Strings.get(Strings.LABEL_PREFS_PLAYBACK_TEMPO), tempoSlider, LabelPosition.TOP);
+            addSliderRow(section, Strings.LABEL_PREFS_PLAYBACK_DURATION, durationSlider);
+            addSliderRow(section, Strings.LABEL_PREFS_PLAYBACK_VOLUME, volumeSlider);
+            addSliderRow(section, Strings.LABEL_PREFS_PLAYBACK_TEMPO, tempoSlider);
 
             return section;
+        }
+
+        private void addSliderRow(TitledSection section, String labelKey, TickSlider slider) {
+            int gap = FlatLafProps.get(FlatLafKeys.DIALOG_PREFERENCES_PLAY_SLIDER_GAP);
+
+            if (section.getComponentCount() > 0) {
+                section.add(Box.createVerticalStrut(gap));
+                section.add(new JSeparator());
+                section.add(Box.createVerticalStrut(gap));
+            }
+
+            addLabeledField(section, Strings.get(labelKey), slider, LabelPosition.TOP);
         }
 
         private static int volumeToSliderIndex(int volume) {
@@ -527,8 +529,8 @@ public class PreferencesDialog extends BaseDialog {
             panel.add(new JScrollPane(instrumentList), gc);
 
             scaleButton.setText("\uEF4E");
-            scaleButton.setFont(MyFontUtils.getIconFont().deriveFont(24f));
-            scaleButton.setMargin(new Insets(8, 8, 8, 8));
+            scaleButton.setFont(MyFontUtils.getIconFont().deriveFont(FlatLafProps.<Float>get(FlatLafKeys.DIALOG_PREFERENCES_INSTRUMENTS_PLAY_BUTTON_SIZE)));
+            scaleButton.setMargin(FlatLafProps.get(FlatLafKeys.DIALOG_PREFERENCES_INSTRUMENTS_PLAY_BUTTON_PADDING));
             UIUtils.setToolTipText(scaleButton, scaleAction);
 
             var spaceKey = (KeyStroke) scaleAction.getValue(Action.ACCELERATOR_KEY);
@@ -538,7 +540,8 @@ public class PreferencesDialog extends BaseDialog {
             gc.weightx = 0.5;
             gc.fill = GridBagConstraints.NONE;
             gc.anchor = GridBagConstraints.WEST;
-            gc.insets = new Insets(0, 20, 0, 0);
+            int buttonGap = FlatLafProps.get(FlatLafKeys.DIALOG_PREFERENCES_INSTRUMENTS_BUTTON_GAP);
+            gc.insets = new Insets(0, buttonGap, 0, 0);
             panel.add(scaleButton, gc);
 
             addExpanding(panel, GridBagConstraints.BOTH);

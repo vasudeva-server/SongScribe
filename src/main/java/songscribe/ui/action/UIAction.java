@@ -438,10 +438,7 @@ public class UIAction extends AbstractAction {
     }
 
     protected boolean enableFromPlaybackState() {
-        return (
-            !hasFlag(Flag.DISABLE_WHEN_PLAYING) ||
-                !PlaybackController.isPlaying()
-        );
+        return !hasFlag(Flag.DISABLE_WHEN_PLAYING) || !PlaybackController.isPlaying();
     }
 
     @Handler(priority = Message.MEDIUM_PRIORITY)

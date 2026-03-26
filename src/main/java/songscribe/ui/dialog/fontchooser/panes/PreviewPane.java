@@ -18,7 +18,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package songscribe.ui.fontchooser.panes;
+package songscribe.ui.dialog.fontchooser.panes;
 
 import module java.desktop;
 

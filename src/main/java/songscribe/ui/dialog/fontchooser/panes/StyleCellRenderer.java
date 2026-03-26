@@ -18,25 +18,32 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package songscribe.ui.fontchooser;
+package songscribe.ui.dialog.fontchooser.panes;
 
 import module java.desktop;
 
-import songscribe.ui.fontchooser.panes.StyleEntry;
+public class StyleCellRenderer extends DefaultListCellRenderer {
 
-/**
- * Created by dheid on 4/1/17.
- */
-public interface FontContainer {
-    StyleEntry getSelectedStyle();
+    @Override
+    public Component getListCellRendererComponent(
+        JList<?> list,
+        Object value,
+        int index,
+        boolean isSelected,
+        boolean cellHasFocus
+    ) {
+        String style = null;
 
-    float getSelectedSize();
+        if (value instanceof StyleEntry entry) {
+            style = entry.getName();
+        }
 
-    String getSelectedFamily();
-
-    Font getSelectedFont();
-
-    void setSelectedFont(Font font);
-
-    void setPreviewFont(Font font);
+        return super.getListCellRendererComponent(
+            list,
+            style,
+            index,
+            isSelected,
+            cellHasFocus
+        );
+    }
 }

@@ -22,7 +22,9 @@ package songscribe.ui.dialog;
 import module java.desktop;
 
 import songscribe.Strings;
-import songscribe.ui.fontchooser.FontChooser;
+import songscribe.ui.FlatLafKeys;
+import songscribe.ui.FlatLafProps;
+import songscribe.ui.dialog.fontchooser.FontChooser;
 
 public class FontDialog extends StandardDialog {
 
@@ -54,6 +56,11 @@ public class FontDialog extends StandardDialog {
     @Override
     protected boolean isResizable() {
         return true;
+    }
+
+    @Override
+    protected int getExtraWidth() {
+        return FlatLafProps.get(FlatLafKeys.DIALOG_FONT_EXTRA_WIDTH);
     }
 
     @Override

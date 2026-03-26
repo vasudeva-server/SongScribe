@@ -33,6 +33,8 @@ import org.intellij.lang.annotations.MagicConstant;
 import songscribe.message.MessageCenter;
 import songscribe.message.notification.DialogVisibilityDidChangeNotification;
 import songscribe.music.Composition;
+import songscribe.ui.FlatLafKeys;
+import songscribe.ui.FlatLafProps;
 import songscribe.ui.OptionDialogs;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.Score;
@@ -46,17 +48,10 @@ import songscribe.util.UIUtils;
 public abstract class BaseDialog {
 
     // Used by addLabeledField to determine where to place the label
-    protected enum LabelPosition {
+    public enum LabelPosition {
         LEFT,
         TOP,
     }
-
-    // The standard horizontal and vertical component spacing used in the dialog
-    protected static final int HORIZONTAL_MARGIN = 5;
-    protected static final int VERTICAL_MARGIN = 5;
-
-    // The standard margin around titled sections
-    protected static final int SECTION_MARGIN = 15;
 
     private static int visibleBlockingDialogCount = 0;
     private static final Map<Class<?>, Point> SAVED_LOCATIONS = new HashMap<>();
@@ -128,7 +123,8 @@ public abstract class BaseDialog {
         var pane = tabbedPane;
 
         // Add a little padding at the top, above the tabs
-        pane.setBorder(BorderFactory.createEmptyBorder(7, 0, 0, 0));
+        int tabsMarginTop = FlatLafProps.get(FlatLafKeys.DIALOG_TABS_MARGIN_TOP);
+        pane.setBorder(BorderFactory.createEmptyBorder(tabsMarginTop, 0, 0, 0));
 
         pane.addChangeListener(_ -> {
             var selectedComponent = pane.getSelectedComponent();
@@ -161,7 +157,7 @@ public abstract class BaseDialog {
         registerTab(tab);
     }
 
-    protected static void addLabeledField(
+    public static void addLabeledField(
         JComponent container,
         String labelText,
         JComponent field,
@@ -169,7 +165,7 @@ public abstract class BaseDialog {
     ) {
         if (labelPosition == LabelPosition.LEFT) {
             var panel = new JPanel(
-                new FlowLayout(FlowLayout.LEFT, HORIZONTAL_MARGIN, 0)
+                new FlowLayout(FlowLayout.LEFT, FlatLafProps.<Integer>get(FlatLafKeys.DIALOG_COMPONENT_HORIZONTAL_GAP), 0)
             );
             panel.setBorder(BorderFactory.createEmptyBorder());
             panel.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -184,7 +180,8 @@ public abstract class BaseDialog {
             label.setAlignmentX(Component.LEFT_ALIGNMENT);
 
             // Indent the title a bit to line up with the input field
-            label.setBorder(BorderFactory.createEmptyBorder(0, 5, 0, 0));
+            int indent = FlatLafProps.get(FlatLafKeys.DIALOG_LABEL_INDENT);
+            label.setBorder(BorderFactory.createEmptyBorder(0, indent, 0, 0));
             container.add(label);
             field.setAlignmentX(Component.LEFT_ALIGNMENT);
             container.add(field);
@@ -358,6 +355,10 @@ public abstract class BaseDialog {
         return true;
     }
 
+    protected boolean hasButtons() {
+        return false;
+    }
+
     /**
      * Returns the underlying {@link JDialog}, or null if the dialog is not
      * currently visible. Useful when a caller needs a {@link java.awt.Component}
@@ -387,10 +388,6 @@ public abstract class BaseDialog {
         return mainFrame.requireScore().getComposition();
     }
 
-    public static Insets getStandardStackedLabelInsets() {
-        return new Insets(0, 4, 2, 0);
-    }
-
     /**
      * Called when the dialog is about to be shown. Populates controls
      * by iterating registered tabs. Subclasses may override to add
@@ -413,9 +410,7 @@ public abstract class BaseDialog {
         return true;
     }
 
-    protected static class Tab extends JPanel {
-
-        private static final int PADDING = 20;
+    protected class Tab extends JPanel {
 
         protected final GridBagConstraints constraints =
             new GridBagConstraints();
@@ -423,16 +418,14 @@ public abstract class BaseDialog {
         private boolean hasFillItem = false;
 
         protected Tab() {
-            this(PADDING);
+            this(hasButtons() ? FlatLafKeys.DIALOG_TAB_BUTTONS_PADDING : FlatLafKeys.DIALOG_TAB_PADDING);
         }
 
-        protected Tab(int topPadding) {
+        protected Tab(String paddingKey) {
             setLayout(new GridBagLayout());
 
             // Add inner padding to the panel
-            setBorder(
-                BorderFactory.createEmptyBorder(topPadding, PADDING, PADDING, PADDING)
-            );
+            setBorder(UIUtils.spacingBorder(paddingKey));
 
             // Items in the tab should be top/left-aligned, grow horizontally, and not vertically
             constraints.gridx = 0;
@@ -505,7 +498,7 @@ public abstract class BaseDialog {
         }
 
         public void addSeparator() {
-            add(Box.createVerticalStrut(SECTION_MARGIN), constraints);
+            add(Box.createVerticalStrut(FlatLafProps.<Integer>get(FlatLafKeys.DIALOG_SECTION_GAP)), constraints);
         }
 
         /**
@@ -554,28 +547,24 @@ public abstract class BaseDialog {
             var layout = (BoxLayout) getLayout();
 
             if (layout.getAxis() == BoxLayout.Y_AXIS) {
-                add(Box.createVerticalStrut(VERTICAL_MARGIN));
+                add(Box.createVerticalStrut(FlatLafProps.<Integer>get(FlatLafKeys.DIALOG_COMPONENT_VERTICAL_GAP)));
             } else {
-                add(Box.createHorizontalStrut(HORIZONTAL_MARGIN));
+                add(Box.createHorizontalStrut(FlatLafProps.<Integer>get(FlatLafKeys.DIALOG_COMPONENT_HORIZONTAL_GAP)));
             }
         }
     }
 
     protected static class StandardTitledBorder extends TitledBorder {
 
-        // Matches the package-private TitledBorder.TEXT_INSET_H constant
-        private static final int TEXT_INSET_H = 5;
-
-        private static final Insets DEFAULT_INSETS = new Insets(31, 16, 16, 16);
-
-        private Insets insets = DEFAULT_INSETS;
+        private Insets insets = FlatLafProps.get(FlatLafKeys.DIALOG_TITLED_BORDER_PADDING);
+        private final int labelIndent = FlatLafProps.get(FlatLafKeys.DIALOG_LABEL_INDENT);
 
         public StandardTitledBorder(String title) {
             super(title);
         }
 
         public void setInsets(Insets insets) {
-            this.insets = insets;
+            this.insets = new Insets(insets.top, insets.left, insets.bottom, insets.right);
         }
 
         @Override
@@ -594,7 +583,7 @@ public abstract class BaseDialog {
             var uiManagerBorder = UIManager.getBorder("TitledBorder.border");
             var restoreBorder = originalBorder == uiManagerBorder ? null : originalBorder;
 
-            setBorder(new LeftAdjustedBorder(originalBorder, textInset - TEXT_INSET_H));
+            setBorder(new LeftAdjustedBorder(originalBorder, textInset - labelIndent));
 
             try {
                 super.paintBorder(c, g, x, y, width, height);

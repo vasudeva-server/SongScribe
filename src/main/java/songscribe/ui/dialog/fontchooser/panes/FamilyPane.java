@@ -18,7 +18,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package songscribe.ui.fontchooser.panes;
+package songscribe.ui.dialog.fontchooser.panes;
 
 import module java.desktop;
 
@@ -26,7 +26,7 @@ import com.formdev.flatlaf.FlatClientProperties;
 import com.formdev.flatlaf.icons.FlatSearchIcon;
 
 import songscribe.ui.component.MyJTextField;
-import songscribe.ui.fontchooser.model.FamilyListModel;
+import songscribe.ui.dialog.fontchooser.model.FamilyListModel;
 
 public class FamilyPane extends JPanel {
 
@@ -85,7 +85,14 @@ public class FamilyPane extends JPanel {
     }
 
     public void setSelectedFamily(String family) {
-        familyList.setSelectedValue(family, true);
+        familyList.setSelectedValue(family, false);
+        SwingUtilities.invokeLater(() -> {
+            int index = familyList.getSelectedIndex();
+
+            if (index >= 0) {
+                familyList.ensureIndexIsVisible(index);
+            }
+        });
     }
 
     public void addListSelectionListener(ListSelectionListener listener) {

@@ -18,7 +18,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package songscribe.ui.fontchooser.panes;
+package songscribe.ui.dialog.fontchooser.panes;
 
 import module java.desktop;
 
@@ -44,8 +44,8 @@ public class SizePane extends JPanel {
 
     private void addSizeScrollPane() {
         var sizeScrollPane = new JScrollPane();
-        sizeScrollPane.setMinimumSize(new Dimension(50, 100));
-        sizeScrollPane.setPreferredSize(new Dimension(60, 100));
+        sizeScrollPane.setMinimumSize(new Dimension(70, 100));
+        sizeScrollPane.setPreferredSize(new Dimension(80, 100));
         sizeScrollPane.setViewportView(sizeList);
         var gridBagConstraints = new GridBagConstraints();
         gridBagConstraints.gridy = 1;
@@ -66,7 +66,7 @@ public class SizePane extends JPanel {
 
     private void initSizeSpinner() {
         var spinnerHeight = (int) sizeSpinner.getPreferredSize().getHeight();
-        sizeSpinner.setPreferredSize(new Dimension(60, spinnerHeight));
+        sizeSpinner.setPreferredSize(new Dimension(80, spinnerHeight));
         sizeSpinner.setModel(new SpinnerNumberModel(12, 6, 128, 1));
         setupSpinnerEditor(sizeSpinner);
         sizeSpinner.addChangeListener(event -> {

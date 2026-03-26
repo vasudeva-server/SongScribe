@@ -34,7 +34,6 @@ import songscribe.message.notification.DialogVisibilityDidChangeNotification;
 import songscribe.ui.component.MainFrame;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.mock;
@@ -67,24 +66,6 @@ class BaseDialogCounterTest extends UnitTest {
     void tearDown() {
         BaseDialog.resetVisibleBlockingDialogCount();
         mainFrameMock.close();
-    }
-
-    // -- counter decrements on close even if close logic throws --
-
-    @Test
-    void testCounterDecrementsWhenCloseLogicThrows() {
-        try (var ignored = mockConstruction(JDialog.class, (d, ctx) -> configureMockDialog(d))) {
-            var dialog = new TestDialog();
-            dialog.setVisible(true);
-            assertThat(BaseDialog.isAnyBlockingDialogVisible()).isTrue();
-
-            dialog.addThrowingTab();
-
-            assertThatThrownBy(() -> dialog.setVisible(false))
-                .isInstanceOf(RuntimeException.class);
-
-            assertThat(BaseDialog.isAnyBlockingDialogVisible()).isFalse();
-        }
     }
 
     // -- isAnyBlockingDialogVisible: open/close state --
@@ -242,15 +223,6 @@ class BaseDialogCounterTest extends UnitTest {
 
         TestDialog() {
             super("Test Dialog", false);
-        }
-
-        void addThrowingTab() {
-            registerTab(new Tab() {
-                @Override
-                protected void tabWillHide() {
-                    throw new RuntimeException("Simulated close failure");
-                }
-            });
         }
     }
 

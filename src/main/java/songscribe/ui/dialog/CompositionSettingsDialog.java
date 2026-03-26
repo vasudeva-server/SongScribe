@@ -39,6 +39,8 @@ import songscribe.music.KeyType;
 import songscribe.music.Tempo;
 import songscribe.prefs.Prefs;
 import songscribe.prefs.PrefsKey;
+import songscribe.ui.FlatLafKeys;
+import songscribe.ui.FlatLafProps;
 import songscribe.ui.OptionDialogs;
 import songscribe.ui.action.UIAction;
 import songscribe.ui.component.InputUtils;
@@ -80,7 +82,7 @@ public class CompositionSettingsDialog extends StandardDialog {
         contentPanel.add(BorderLayout.SOUTH, buttonPanel);
     }
 
-    private final class TextTab extends StandardDialog.Tab {
+    private final class TextTab extends BaseDialog.Tab {
 
         // Title of song panel
         private final NumericTextField numberField = new NumericTextField(3);
@@ -167,14 +169,14 @@ public class CompositionSettingsDialog extends StandardDialog {
         }
 
         private JPanel createTitleSection() {
-            var section = new StandardDialog.TitledSection(
+            var section = new BaseDialog.TitledSection(
                 Strings.get(Strings.DIALOG_COMPOSITION_SETTINGS_SECTION_TITLE_OF_SONG)
             );
             addLabeledField(
                 section,
                 Strings.get(Strings.DIALOG_COMPOSITION_SETTINGS_NUMBER),
                 numberField,
-                StandardDialog.LabelPosition.LEFT
+                BaseDialog.LabelPosition.LEFT
             );
 
             section.addSeparator();
@@ -193,7 +195,7 @@ public class CompositionSettingsDialog extends StandardDialog {
                 section,
                 Strings.get(Strings.DIALOG_COMPOSITION_SETTINGS_SONG_TITLE),
                 scrollPane,
-                StandardDialog.LabelPosition.TOP
+                BaseDialog.LabelPosition.TOP
             );
 
             section.addSeparator();
@@ -204,7 +206,7 @@ public class CompositionSettingsDialog extends StandardDialog {
         }
 
         private JPanel createTakePanel() {
-            var panel = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 0));
+            var panel = new JPanel(new FlowLayout(FlowLayout.LEFT, FlatLafProps.<Integer>get(FlatLafKeys.DIALOG_COMPONENT_HORIZONTAL_GAP), 0));
             panel.setAlignmentX(Component.LEFT_ALIGNMENT);
 
             var action = new TakeFirstLyricsWordAction();
@@ -241,7 +243,7 @@ public class CompositionSettingsDialog extends StandardDialog {
                 section,
                 Strings.get(Strings.DIALOG_COMPOSITION_SETTINGS_PLACE),
                 placeField,
-                StandardDialog.LabelPosition.LEFT
+                BaseDialog.LabelPosition.LEFT
             );
 
             section.addSeparator();
@@ -254,21 +256,21 @@ public class CompositionSettingsDialog extends StandardDialog {
                 datePanel,
                 Strings.get(Strings.DIALOG_COMPOSITION_SETTINGS_MONTH),
                 monthCombo,
-                StandardDialog.LabelPosition.LEFT
+                BaseDialog.LabelPosition.LEFT
             );
 
             addLabeledField(
                 datePanel,
                 Strings.get(Strings.DIALOG_COMPOSITION_SETTINGS_DAY),
                 dayCombo,
-                StandardDialog.LabelPosition.LEFT
+                BaseDialog.LabelPosition.LEFT
             );
 
             addLabeledField(
                 datePanel,
                 Strings.get(Strings.DIALOG_COMPOSITION_SETTINGS_YEAR),
                 yearField,
-                StandardDialog.LabelPosition.LEFT
+                BaseDialog.LabelPosition.LEFT
             );
 
             // Don't let the section grow vertically
@@ -293,7 +295,7 @@ public class CompositionSettingsDialog extends StandardDialog {
             scrollPane.setMaximumSize(scrollPane.getPreferredSize());
             section.add(scrollPane);
 
-            section.add(Box.createHorizontalStrut(13));
+            section.add(Box.createHorizontalStrut(FlatLafProps.<Integer>get(FlatLafKeys.DIALOG_COMPONENT_HORIZONTAL_EXTRA_GAP)));
 
             var appendButtonPanel = new JPanel();
             appendButtonPanel.setLayout(
@@ -310,7 +312,7 @@ public class CompositionSettingsDialog extends StandardDialog {
             button.addActionListener(new AddDateAndPlaceAction(false));
             appendButtonPanel.add(button);
 
-            appendButtonPanel.add(Box.createVerticalStrut(7));
+            appendButtonPanel.add(Box.createVerticalStrut(FlatLafProps.<Integer>get(FlatLafKeys.DIALOG_COMPOSITION_SETTINGS_LYRICS_BUTTON_GAP)));
 
             button = new JButton(
                 Strings.get(Strings.DIALOG_COMPOSITION_SETTINGS_ADD_DATE_PLACE)
@@ -538,7 +540,7 @@ public class CompositionSettingsDialog extends StandardDialog {
         }
     }
 
-    private final class MusicTab extends StandardDialog.Tab {
+    private final class MusicTab extends BaseDialog.Tab {
 
         private final JComboBox<Tempo.Type> tempoTypeCombo = new JComboBox<>(
             // Only use non-IO values
@@ -635,7 +637,7 @@ public class CompositionSettingsDialog extends StandardDialog {
         }
 
         private JPanel createTempoSection() {
-            var section = new StandardDialog.TitledSection(
+            var section = new BaseDialog.TitledSection(
                 Strings.get(Strings.DIALOG_COMPOSITION_SETTINGS_SECTION_TEMPO)
             );
 
@@ -646,7 +648,7 @@ public class CompositionSettingsDialog extends StandardDialog {
             var gbc = new GridBagConstraints();
             gbc.gridx = 0;
             gbc.gridy = 0;
-            gbc.insets = new Insets(0, 0, 0, 7);
+            gbc.insets = new Insets(0, 0, 0, FlatLafProps.<Integer>get(FlatLafKeys.DIALOG_COMPONENT_HORIZONTAL_GAP));
             gbc.anchor = GridBagConstraints.WEST;
             contents.add(tempoTypeCombo, gbc);
 
@@ -663,7 +665,6 @@ public class CompositionSettingsDialog extends StandardDialog {
             gbc.gridx += 1;
 
             // Give a little more space to the left of the combo box
-            gbc.insets = new Insets(0, 13, 0, 0);
             contents.add(tempoDescriptionCombo, gbc);
 
             gbc.gridx = 0;
@@ -671,7 +672,7 @@ public class CompositionSettingsDialog extends StandardDialog {
             gbc.gridwidth = 4;
 
             // Separate from the row above
-            gbc.insets = new Insets(13, 0, 0, 0);
+            gbc.insets = new Insets(FlatLafProps.<Integer>get(FlatLafKeys.DIALOG_COMPONENT_VERTICAL_EXTRA_GAP), 0, 0, 0);
             contents.add(showOnlyDescriptionCheckBox, gbc);
 
             // Don't let the contents grow horizontally
@@ -684,7 +685,7 @@ public class CompositionSettingsDialog extends StandardDialog {
         }
 
         private JPanel createKeySignatureSection() {
-            var section = new StandardDialog.TitledSection(
+            var section = new BaseDialog.TitledSection(
                 Strings.get(Strings.DIALOG_COMPOSITION_SETTINGS_SECTION_KEY_SIGNATURE)
             );
             keyCombo.setMaximumSize(keyCombo.getPreferredSize());
@@ -697,12 +698,12 @@ public class CompositionSettingsDialog extends StandardDialog {
         }
 
         private JPanel createLineWidthSection() {
-            var section = new StandardDialog.TitledSection(
+            var section = new BaseDialog.TitledSection(
                 Strings.get(Strings.DIALOG_COMPOSITION_SETTINGS_SECTION_LINE_WIDTH)
             );
 
             var row = new JPanel(
-                new FlowLayout(FlowLayout.LEFT, HORIZONTAL_MARGIN, 0)
+                new FlowLayout(FlowLayout.LEFT, FlatLafProps.<Integer>get(FlatLafKeys.DIALOG_COMPONENT_HORIZONTAL_GAP), 0)
             );
             row.setBorder(BorderFactory.createEmptyBorder());
             row.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -867,11 +868,6 @@ public class CompositionSettingsDialog extends StandardDialog {
 
     private final class FontTab extends StandardDialog.Tab {
 
-        private static final int LARGE_PREVIEW_PADDING_X = 10;
-        private static final int LARGE_PREVIEW_PADDING_Y = 8;
-        private static final int SMALL_PREVIEW_PADDING_X = 13;
-        private static final int SMALL_PREVIEW_PADDING_Y = 10;
-
         private final JLabel titleFontLabel = new JLabel();
         private final JComponent titleFontPreview = new JLabel(
             "Āmār Prāner Bijoye Mā"
@@ -903,7 +899,7 @@ public class CompositionSettingsDialog extends StandardDialog {
         );
 
         private FontTab() {
-            super(13);
+            super(FlatLafKeys.DIALOG_COMPOSITION_SETTINGS_FONT_PADDING);
 
             for (var preview : new JComponent[]{
                 titleFontPreview,
@@ -985,7 +981,7 @@ public class CompositionSettingsDialog extends StandardDialog {
                 1,
                 UIManager.getColor("Component.borderColor")
             );
-            var innerBorder = BorderFactory.createEmptyBorder(10, 20, 20, 20);
+            var innerBorder = UIUtils.spacingBorder(FlatLafKeys.DIALOG_COMPOSITION_SETTINGS_FONT_CONTAINER_PADDING);
             container.setBorder(
                 BorderFactory.createCompoundBorder(outerBorder, innerBorder)
             );
@@ -993,7 +989,8 @@ public class CompositionSettingsDialog extends StandardDialog {
             var contents = new JPanel(new GridBagLayout());
             contents.setAlignmentX(Component.LEFT_ALIGNMENT);
             contents.setAlignmentY(Component.TOP_ALIGNMENT);
-            contents.setBorder(BorderFactory.createEmptyBorder(7, 0, 0, 0));
+            int tabsMarginTop = FlatLafProps.get(FlatLafKeys.DIALOG_TABS_MARGIN_TOP);
+            contents.setBorder(BorderFactory.createEmptyBorder(tabsMarginTop, 0, 0, 0));
 
             // Font name label
             var gbc = new GridBagConstraints();
@@ -1008,7 +1005,7 @@ public class CompositionSettingsDialog extends StandardDialog {
             var labelOuterBorder = BorderFactory.createLineBorder(
                 UIManager.getColor("Component.borderColor")
             );
-            var labelInnerBorder = BorderFactory.createEmptyBorder(2, 4, 2, 4);
+            var labelInnerBorder = UIUtils.spacingBorder(FlatLafKeys.DIALOG_COMPOSITION_SETTINGS_FONT_LABEL_PADDING);
             fontLabel.setBorder(
                 BorderFactory.createCompoundBorder(
                     labelOuterBorder,
@@ -1020,15 +1017,18 @@ public class CompositionSettingsDialog extends StandardDialog {
 
             // Preview
             gbc.gridwidth = 2;
-            gbc.insets = new Insets(13, 0, 0, 0);
+            gbc.insets = new Insets(FlatLafProps.<Integer>get(FlatLafKeys.DIALOG_COMPONENT_VERTICAL_EXTRA_GAP), 0, 0, 0);
 
             // Create padding around the preview by giving it a border and wrapping
             // it in a panel
             contents.add(
                 UIUtils.padComponent(
                     preview,
-                    isLarge ? LARGE_PREVIEW_PADDING_X : SMALL_PREVIEW_PADDING_X,
-                    isLarge ? LARGE_PREVIEW_PADDING_Y : SMALL_PREVIEW_PADDING_Y
+                    FlatLafProps.get(
+                        isLarge
+                            ? FlatLafKeys.DIALOG_COMPOSITION_SETTINGS_FONT_PREVIEW_LARGE_PADDING
+                            : FlatLafKeys.DIALOG_COMPOSITION_SETTINGS_FONT_PREVIEW_SMALL_PADDING
+                    )
                 ),
                 gbc
             );
@@ -1039,7 +1039,7 @@ public class CompositionSettingsDialog extends StandardDialog {
             gbc.anchor = GridBagConstraints.EAST;
             gbc.fill = GridBagConstraints.NONE;
             gbc.weightx = 0.0;
-            gbc.insets = new Insets(0, 13, 0, 0);
+            gbc.insets = new Insets(0, FlatLafProps.<Integer>get(FlatLafKeys.DIALOG_COMPONENT_HORIZONTAL_EXTRA_GAP), 0, 0);
             contents.add(
                 new JButton(new ChooseFontAction(fontLabel, preview)),
                 gbc

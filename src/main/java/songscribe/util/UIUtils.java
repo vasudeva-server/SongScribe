@@ -33,6 +33,7 @@ import com.formdev.flatlaf.extras.FlatInspector;
 import com.formdev.flatlaf.extras.FlatUIDefaultsInspector;
 
 import songscribe.ui.AppearanceManager;
+import songscribe.ui.FlatLafProps;
 
 import songscribe.font.SourceSans3Font;
 import songscribe.ui.action.Actions;
@@ -221,6 +222,15 @@ public final class UIUtils {
         return padComponent(component, paddingY, paddingX, paddingY, paddingX);
     }
 
+    public static JPanel padComponent(JComponent component, Insets insets) {
+        return padComponent(component, insets.top, insets.left, insets.bottom, insets.right);
+    }
+
+    public static Border spacingBorder(String flatLafKey) {
+        Insets insets = FlatLafProps.get(flatLafKey);
+        return BorderFactory.createEmptyBorder(insets.top, insets.left, insets.bottom, insets.right);
+    }
+
     public static JPanel padComponent(
         JComponent component,
         int top,
@@ -399,10 +409,6 @@ public final class UIUtils {
         } catch (Exception e) {
             LOG.error("Error initializing laf", e);
         }
-    }
-
-    public enum LabelOrientation {
-        LEFT, TOP
     }
 
     //

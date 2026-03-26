@@ -1,4 +1,4 @@
 @NullMarked
-package songscribe.ui.fontchooser.panes;
+package songscribe.ui.dialog.fontchooser.panes;
 
 import org.jspecify.annotations.NullMarked;

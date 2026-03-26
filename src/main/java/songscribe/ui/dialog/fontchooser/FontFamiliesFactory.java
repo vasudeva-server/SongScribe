@@ -18,7 +18,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package songscribe.ui.fontchooser;
+package songscribe.ui.dialog.fontchooser;
 
 import songscribe.util.MyFontUtils;
 

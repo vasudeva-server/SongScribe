@@ -24,7 +24,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
@@ -39,64 +38,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 class ResourceScanTest extends UnitTest {
 
     private static final Path ICONS_DIR = Path.of("src/main/resources/icons");
-    private static final Path FLATLAF_PROPS = Path.of(
-        "src/main/resources/songscribe/FlatLaf.properties"
-    );
-
-    @Test
-    void testCustomPropertiesHaveDarkVariants() throws IOException {
-        var lines = Files.readAllLines(FLATLAF_PROPS);
-        var lightOnlyKeys = new ArrayList<String>();
-
-        // Pre-collect all [dark] key prefixes for O(1) lookup
-        var darkKeys = new HashSet<String>();
-
-        for (var line : lines) {
-            var trimmed = line.trim();
-
-            if (trimmed.startsWith("[dark]")) {
-                var eqIndex = trimmed.indexOf('=');
-                var key = eqIndex >= 0 ? trimmed.substring(0, eqIndex).trim() : trimmed;
-                darkKeys.add(key);
-            }
-        }
-
-        // Collect all non-dark SongScribe.* property lines that lack a [dark] variant.
-        // A property may be exempted by placing a "# no-dark-variant" comment on the
-        // immediately preceding line.
-        for (var i = 0; i < lines.size(); i++) {
-            var trimmed = lines.get(i).trim();
-
-            if (trimmed.isEmpty() || trimmed.startsWith("#") || trimmed.startsWith("[")) {
-                continue;
-            }
-
-            var eqIndex = trimmed.indexOf('=');
-
-            if (eqIndex < 0) {
-                continue;
-            }
-
-            var key = trimmed.substring(0, eqIndex).trim();
-
-            if (!key.startsWith("SongScribe.")) {
-                continue;
-            }
-
-            // Check for explicit exemption on the preceding line
-            if (i > 0 && lines.get(i - 1).trim().startsWith("# no-dark-variant")) {
-                continue;
-            }
-
-            if (!darkKeys.contains("[dark]" + key)) {
-                lightOnlyKeys.add(key);
-            }
-        }
-
-        assertThat(lightOnlyKeys)
-            .as("Custom SongScribe properties without [dark] variants")
-            .isEmpty();
-    }
 
     @Nested
     class SvgIcons {

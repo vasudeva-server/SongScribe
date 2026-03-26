@@ -22,6 +22,9 @@ package songscribe.ui.dialog;
 import module java.desktop;
 
 import songscribe.Strings;
+import songscribe.ui.FlatLafKeys;
+import songscribe.ui.FlatLafProps;
+import songscribe.util.UIUtils;
 
 /**
  * A dialog with OK and Cancel buttons that commits changes
@@ -30,7 +33,7 @@ import songscribe.Strings;
 public abstract class StandardDialog extends BaseDialog {
 
     protected JPanel buttonPanel = new JPanel(
-        new FlowLayout(FlowLayout.RIGHT, 9, 0)
+        new FlowLayout(FlowLayout.RIGHT, FlatLafProps.<Integer>get(FlatLafKeys.DIALOG_BUTTON_HORIZONTAL_GAP), 0)
     );
     protected final JButton okButton;
     protected final JButton cancelButton;
@@ -60,7 +63,7 @@ public abstract class StandardDialog extends BaseDialog {
         cancelButton = new JButton(Strings.get(Strings.DIALOG_BUTTON_CANCEL));
         cancelButton.addActionListener(_ -> setVisible(false));
 
-        buttonPanel.setBorder(BorderFactory.createEmptyBorder(18, 0, 18, 6));
+        buttonPanel.setBorder(UIUtils.spacingBorder(FlatLafKeys.DIALOG_BUTTON_PANEL_PADDING));
         buttonPanel.add(cancelButton);
         buttonPanel.add(okButton);
     }
@@ -68,6 +71,11 @@ public abstract class StandardDialog extends BaseDialog {
     @Override
     protected JButton getDefaultButton() {
         return okButton;
+    }
+
+    @Override
+    protected boolean hasButtons() {
+        return true;
     }
 
     private void repaintScore() {

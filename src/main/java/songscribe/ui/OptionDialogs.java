@@ -315,8 +315,8 @@ public final class OptionDialogs {
         var x = bounds.x + (bounds.width - size.width) / 2;
         var y = bounds.y + bounds.height * 3 / 8 - size.height / 2;
 
-        x = Math.max(screen.x + SCREEN_MARGIN_PX, Math.min(x, screen.x + screen.width - size.width - SCREEN_MARGIN_PX));
-        y = Math.max(screen.y + SCREEN_MARGIN_PX, Math.min(y, screen.y + screen.height - size.height - SCREEN_MARGIN_PX));
+        x = Math.clamp(x, screen.x + SCREEN_MARGIN_PX, screen.x + screen.width - size.width - SCREEN_MARGIN_PX);
+        y = Math.clamp(y, screen.y + SCREEN_MARGIN_PX, screen.y + screen.height - size.height - SCREEN_MARGIN_PX);
 
         dialog.setLocation(x, y);
     }

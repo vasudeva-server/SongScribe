@@ -18,32 +18,34 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package songscribe.ui.fontchooser.panes;
+package songscribe.ui.dialog.fontchooser.listeners;
 
 import module java.desktop;
 
-public class StyleCellRenderer extends DefaultListCellRenderer {
+
+import songscribe.ui.dialog.fontchooser.FontContainer;
+
+/**
+ * Created by dheid on 4/1/17.
+ * Modified by Aparajita Fishman
+ */
+public class StyleListSelectionListener implements ListSelectionListener {
+
+    private final FontContainer fontContainer;
+
+    public StyleListSelectionListener(FontContainer fontContainer) {
+        this.fontContainer = fontContainer;
+    }
 
     @Override
-    public Component getListCellRendererComponent(
-        JList<?> list,
-        Object value,
-        int index,
-        boolean isSelected,
-        boolean cellHasFocus
-    ) {
-        String style = null;
-
-        if (value instanceof StyleEntry entry) {
-            style = entry.getName();
+    public void valueChanged(ListSelectionEvent e) {
+        if (!e.getValueIsAdjusting()) {
+            var selectedStyle = fontContainer.getSelectedStyle();
+            var newFont = selectedStyle
+                .getFont()
+                .deriveFont(fontContainer.getSelectedSize());
+            fontContainer.setSelectedFont(newFont);
+            fontContainer.setPreviewFont(newFont);
         }
-
-        return super.getListCellRendererComponent(
-            list,
-            style,
-            index,
-            isSelected,
-            cellHasFocus
-        );
     }
 }

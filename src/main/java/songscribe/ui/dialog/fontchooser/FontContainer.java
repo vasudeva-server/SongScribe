@@ -18,32 +18,25 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package songscribe.ui.fontchooser.listeners;
+package songscribe.ui.dialog.fontchooser;
 
 import module java.desktop;
 
-
-import songscribe.ui.fontchooser.FontContainer;
+import songscribe.ui.dialog.fontchooser.panes.StyleEntry;
 
 /**
  * Created by dheid on 4/1/17.
- * Modified by Aparajita Fishman
  */
-public class SizeListSelectionListener implements ListSelectionListener {
+public interface FontContainer {
+    StyleEntry getSelectedStyle();
 
-    private final FontContainer fontContainer;
+    float getSelectedSize();
 
-    public SizeListSelectionListener(FontContainer fontContainer) {
-        this.fontContainer = fontContainer;
-    }
+    String getSelectedFamily();
 
-    @Override
-    public void valueChanged(ListSelectionEvent e) {
-        if (!e.getValueIsAdjusting()) {
-            var newSize = fontContainer.getSelectedSize();
-            var newFont = fontContainer.getSelectedFont().deriveFont(newSize);
-            fontContainer.setSelectedFont(newFont);
-            fontContainer.setPreviewFont(fontContainer.getSelectedFont());
-        }
-    }
+    Font getSelectedFont();
+
+    void setSelectedFont(Font font);
+
+    void setPreviewFont(Font font);
 }

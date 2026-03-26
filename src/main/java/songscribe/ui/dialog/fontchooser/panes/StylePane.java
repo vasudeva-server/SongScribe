@@ -18,7 +18,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package songscribe.ui.fontchooser.panes;
+package songscribe.ui.dialog.fontchooser.panes;
 
 import module java.desktop;
 
@@ -26,8 +26,8 @@ import java.util.Objects;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.ui.fontchooser.FontFamilies;
-import songscribe.ui.fontchooser.model.FontSelectionModel;
+import songscribe.ui.dialog.fontchooser.FontFamilies;
+import songscribe.ui.dialog.fontchooser.model.FontSelectionModel;
 
 public class StylePane extends JScrollPane implements ChangeListener {
 

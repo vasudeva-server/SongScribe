@@ -18,18 +18,36 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package songscribe.ui.fontchooser;
+package songscribe.ui.dialog.fontchooser.panes;
 
 import module java.desktop;
 
-import java.io.Serializable;
-import java.util.Comparator;
+import java.util.Locale;
 
+import songscribe.ui.dialog.fontchooser.model.FamilyListModel;
 
-public class FontNameComparator implements Comparator<Font>, Serializable {
+public class SearchListener extends KeyAdapter {
+
+    private final FamilyListModel familyListModel;
+
+    private final FamilyPane familyPane;
+
+    public SearchListener(
+        FamilyListModel familyListModel,
+        FamilyPane familyPane
+    ) {
+        this.familyListModel = familyListModel;
+        this.familyPane = familyPane;
+    }
 
     @Override
-    public int compare(Font font1, Font font2) {
-        return font1.getName().compareTo(font2.getName());
+    public void keyTyped(KeyEvent e) {
+        var searchField = (JTextField) e.getSource();
+        var searchString = searchField.getText().toLowerCase(Locale.ENGLISH);
+        var family = familyListModel.findFirst(searchString);
+
+        if (family != null) {
+            familyPane.setSelectedFamily(family);
+        }
     }
 }

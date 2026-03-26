@@ -18,7 +18,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package songscribe.ui.fontchooser.model;
+package songscribe.ui.dialog.fontchooser.model;
 
 import module java.desktop;
 
@@ -30,7 +30,7 @@ import songscribe.error.RuntimeError;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.ui.fontchooser.FontFamilies;
+import songscribe.ui.dialog.fontchooser.FontFamilies;
 
 public class FamilyListModel extends AbstractListModel<String> {
 
