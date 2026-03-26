@@ -248,6 +248,7 @@ public abstract class BaseDialog {
             }
 
             if (tabbedPane != null) {
+                tabbedPane.setSelectedIndex(0);
                 var selectedTab = tabbedPane.getSelectedComponent();
 
                 for (var tab : tabs) {
@@ -396,10 +397,6 @@ public abstract class BaseDialog {
      * @return true to proceed with showing the dialog, false to cancel
      */
     protected boolean getData() {
-        if (tabbedPane != null) {
-            tabbedPane.setSelectedIndex(0);
-        }
-
         for (var tab : tabs) {
             if (!tab.getData()) {
                 return false;
