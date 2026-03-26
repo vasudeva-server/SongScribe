@@ -26,13 +26,18 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.jspecify.annotations.Nullable;
+import net.engio.mbassy.listener.Handler;
 
 import org.intellij.lang.annotations.MagicConstant;
 
+import org.jspecify.annotations.Nullable;
+
 import songscribe.message.MessageCenter;
 import songscribe.message.notification.DialogVisibilityDidChangeNotification;
+import songscribe.message.notification.PrefsDidChangeNotification;
 import songscribe.music.Composition;
+import songscribe.prefs.Prefs;
+import songscribe.prefs.PrefsKey;
 import songscribe.ui.FlatLafKeys;
 import songscribe.ui.FlatLafProps;
 import songscribe.ui.component.MainFrame;
@@ -52,8 +57,18 @@ public abstract class BaseDialog {
         TOP,
     }
 
+    private static final String KEY_X = "x";
+    private static final String KEY_Y = "y";
+    private static final String KEY_WIDTH = "width";
+    private static final String KEY_HEIGHT = "height";
+
     private static int visibleBlockingDialogCount = 0;
-    private static final Map<Class<?>, Point> SAVED_LOCATIONS = new HashMap<>();
+    private static final Map<Class<?>, DialogGeometry> SAVED_GEOMETRY = new HashMap<>();
+    private static final GeometryResetSubscriber GEOMETRY_RESET_SUBSCRIBER = new GeometryResetSubscriber();
+
+    static {
+        MessageCenter.subscribe(GEOMETRY_RESET_SUBSCRIBER);
+    }
 
     private final MainFrame mainFrame;
     protected final String dialogTitle;
@@ -93,8 +108,8 @@ public abstract class BaseDialog {
         visibleBlockingDialogCount = 0;
     }
 
-    static void resetSavedLocations() {
-        SAVED_LOCATIONS.clear();
+    static void resetSavedGeometry() {
+        SAVED_GEOMETRY.clear();
     }
 
     private void incrementBlockingCount() {
@@ -276,12 +291,16 @@ public abstract class BaseDialog {
             dialog.setSize(minSize);
             dialog.setMinimumSize(minSize);
 
-            var restoredLocation = SAVED_LOCATIONS.get(getClass());
+            var geometry = SAVED_GEOMETRY.get(getClass());
 
-            if (restoredLocation == null) {
-                UIUtils.positionDialog(dialog, mainFrame);
+            if (geometry == null) {
+                geometry = loadGeometryFromPrefs();
+            }
+
+            if (geometry != null) {
+                applyGeometry(geometry);
             } else {
-                dialog.setLocation(GraphicUtils.clampToScreen(restoredLocation, dialog.getSize()));
+                UIUtils.positionDialog(dialog, mainFrame);
             }
 
             if (category.isBlocking()) {
@@ -308,7 +327,22 @@ public abstract class BaseDialog {
                     tab.tabWillHide();
                 }
 
-                SAVED_LOCATIONS.put(getClass(), dialog.getLocation());
+                var location = dialog.getLocation();
+                var size = isResizable() ? dialog.getSize() : null;
+                var closingGeometry = new DialogGeometry(location, size);
+                SAVED_GEOMETRY.put(getClass(), closingGeometry);
+
+                var valueMap = new HashMap<String, Object>();
+                valueMap.put(KEY_X, location.x);
+                valueMap.put(KEY_Y, location.y);
+
+                if (size != null) {
+                    valueMap.put(KEY_WIDTH, size.width);
+                    valueMap.put(KEY_HEIGHT, size.height);
+                }
+
+                var simpleClassName = getClass().getSimpleName();
+                Prefs.getInstance().putMap(PrefsKey.DIALOG_GEOMETRY, Map.of(simpleClassName, valueMap));
             } finally {
                 if (category.isBlocking()) {
                     decrementBlockingCount();
@@ -316,6 +350,52 @@ public abstract class BaseDialog {
 
                 dialog.dispose();
             }
+        }
+    }
+
+    private @Nullable DialogGeometry loadGeometryFromPrefs() {
+        var simpleClassName = getClass().getSimpleName();
+        var allGeometry = Prefs.getInstance().getMap(PrefsKey.DIALOG_GEOMETRY);
+        var entry = allGeometry.get(simpleClassName);
+
+        if (!(entry instanceof Map<?, ?> map)) {
+            return null;
+        }
+
+        var rawX = map.get(KEY_X);
+        var rawY = map.get(KEY_Y);
+
+        if (!(rawX instanceof Number) || !(rawY instanceof Number)) {
+            return null;
+        }
+
+        var location = new Point(((Number) rawX).intValue(), ((Number) rawY).intValue());
+        Dimension size = null;
+
+        var rawWidth = map.get(KEY_WIDTH);
+        var rawHeight = map.get(KEY_HEIGHT);
+
+        if (rawWidth instanceof Number && rawHeight instanceof Number) {
+            size = new Dimension(((Number) rawWidth).intValue(), ((Number) rawHeight).intValue());
+        }
+
+        var geometry = new DialogGeometry(location, size);
+        SAVED_GEOMETRY.put(getClass(), geometry);
+        return geometry;
+    }
+
+    private void applyGeometry(DialogGeometry geometry) {
+        if (isResizable() && geometry.size() != null) {
+            // Floor semantics: max of packed size and restored size per dimension
+            var packedSize = dialog.getSize();
+            var restoredSize = geometry.size();
+            var width = Math.max(packedSize.width, restoredSize.width);
+            var height = Math.max(packedSize.height, restoredSize.height);
+            var bounds = new Rectangle(geometry.location(), new Dimension(width, height));
+            var clamped = GraphicUtils.clampToScreen(bounds);
+            dialog.setBounds(clamped);
+        } else {
+            dialog.setLocation(GraphicUtils.clampToScreen(geometry.location(), dialog.getSize()));
         }
     }
 
@@ -642,6 +722,16 @@ public abstract class BaseDialog {
 
                 insets.left = adjustedLeft;
                 return insets;
+            }
+        }
+    }
+
+    private static class GeometryResetSubscriber {
+
+        @Handler
+        public void prefsDidChange(PrefsDidChangeNotification notification) {
+            if (notification.getKey() == PrefsKey.ALL || notification.getKey() == PrefsKey.DIALOG_GEOMETRY) {
+                SAVED_GEOMETRY.clear();
             }
         }
     }

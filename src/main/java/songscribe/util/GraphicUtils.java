@@ -428,22 +428,35 @@ public final class GraphicUtils {
      * the default screen is used.
      */
     public static Point clampToScreen(Point location, Dimension windowSize) {
+        var clamped = clampToScreen(new Rectangle(location, windowSize));
+        return clamped.getLocation();
+    }
+
+    /**
+     * Clamps the given rectangle to fit within the screen that contains its
+     * top-left corner. Both size and position are adjusted: size is capped to
+     * screen dimensions, then position is shifted so the rectangle is fully
+     * on-screen.
+     */
+    public static Rectangle clampToScreen(Rectangle bounds) {
         var env = GraphicsEnvironment.getLocalGraphicsEnvironment();
         var screen = env.getDefaultScreenDevice().getDefaultConfiguration().getBounds();
 
         for (var device : env.getScreenDevices()) {
-            var bounds = device.getDefaultConfiguration().getBounds();
+            var deviceBounds = device.getDefaultConfiguration().getBounds();
 
-            if (bounds.contains(location)) {
-                screen = bounds;
+            if (deviceBounds.contains(bounds.getLocation())) {
+                screen = deviceBounds;
                 break;
             }
         }
 
-        var x = Math.max(screen.x, Math.min(location.x, screen.x + screen.width - windowSize.width));
-        var y = Math.max(screen.y, Math.min(location.y, screen.y + screen.height - windowSize.height));
+        var width = Math.min(bounds.width, screen.width);
+        var height = Math.min(bounds.height, screen.height);
+        var x = Math.max(screen.x, Math.min(bounds.x, screen.x + screen.width - width));
+        var y = Math.max(screen.y, Math.min(bounds.y, screen.y + screen.height - height));
 
-        return new Point(x, y);
+        return new Rectangle(x, y, width, height);
     }
 
     /**

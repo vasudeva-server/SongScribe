@@ -34,7 +34,6 @@ import songscribe.message.notification.DialogVisibilityDidChangeNotification;
 import songscribe.ui.component.MainFrame;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockConstruction;
@@ -54,10 +53,7 @@ class BaseDialogCounterTest extends UnitTest {
         mockFrame = mock(MainFrame.class);
         mainFrameMock.when(MainFrame::getInstance).thenReturn(mockFrame);
 
-        var mockGc = mock(GraphicsConfiguration.class);
-        when(mockFrame.getGraphicsConfiguration()).thenReturn(mockGc);
-        when(mockGc.getBounds()).thenReturn(new Rectangle(0, 0, 1920, 1080));
-        when(mockFrame.getBounds()).thenReturn(new Rectangle(0, 0, 1920, 1080));
+        BaseDialogTestHelper.configureMockFrame(mockFrame);
 
         BaseDialog.resetVisibleBlockingDialogCount();
     }
@@ -209,14 +205,10 @@ class BaseDialogCounterTest extends UnitTest {
 
     // -- helpers --
 
+    private static final Point DEFAULT_LOCATION = new Point(100, 100);
+
     private void configureMockDialog(JDialog dialog) {
-        var mockRootPane = mock(JRootPane.class);
-        when(dialog.getRootPane()).thenReturn(mockRootPane);
-        when(mockRootPane.getInputMap(anyInt())).thenReturn(mock(InputMap.class));
-        when(mockRootPane.getActionMap()).thenReturn(mock(ActionMap.class));
-        when(dialog.getPreferredSize()).thenReturn(new Dimension(300, 200));
-        when(dialog.getSize()).thenReturn(new Dimension(300, 200));
-        when(dialog.getLocation()).thenReturn(new Point(100, 100));
+        BaseDialogTestHelper.configureMockDialog(dialog, DEFAULT_LOCATION);
     }
 
     private static class TestDialog extends BaseDialog {

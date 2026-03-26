@@ -21,20 +21,26 @@ package songscribe.ui.dialog;
 
 import module java.desktop;
 
+import java.util.Collections;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.MockedConstruction;
 import org.mockito.MockedStatic;
 
 import songscribe.UnitTest;
+import songscribe.prefs.Prefs;
+import songscribe.prefs.PrefsKey;
 import songscribe.ui.component.MainFrame;
 import songscribe.util.UIUtils;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockConstruction;
@@ -50,28 +56,33 @@ class BaseDialogPositionTest extends UnitTest {
 
     private MockedStatic<MainFrame> mainFrameMock;
     private MockedStatic<UIUtils> uiUtilsMock;
+    private MockedStatic<Prefs> prefsMock;
+    private Prefs mockPrefs;
 
     @BeforeEach
     void setUp() {
         mainFrameMock = mockStatic(MainFrame.class);
         uiUtilsMock = mockStatic(UIUtils.class);
+        prefsMock = mockStatic(Prefs.class);
 
         var mockFrame = mock(MainFrame.class);
         mainFrameMock.when(MainFrame::getInstance).thenReturn(mockFrame);
 
-        var mockGc = mock(GraphicsConfiguration.class);
-        when(mockFrame.getGraphicsConfiguration()).thenReturn(mockGc);
-        when(mockGc.getBounds()).thenReturn(new Rectangle(0, 0, 1920, 1080));
-        when(mockFrame.getBounds()).thenReturn(new Rectangle(0, 0, 1920, 1080));
+        mockPrefs = mock(Prefs.class);
+        prefsMock.when(Prefs::getInstance).thenReturn(mockPrefs);
+        when(mockPrefs.getMap(any())).thenReturn(Collections.emptyMap());
+
+        BaseDialogTestHelper.configureMockFrame(mockFrame);
 
         BaseDialog.resetVisibleBlockingDialogCount();
-        BaseDialog.resetSavedLocations();
+        BaseDialog.resetSavedGeometry();
     }
 
     @AfterEach
     void tearDown() {
         BaseDialog.resetVisibleBlockingDialogCount();
-        BaseDialog.resetSavedLocations();
+        BaseDialog.resetSavedGeometry();
+        prefsMock.close();
         uiUtilsMock.close();
         mainFrameMock.close();
     }
@@ -156,13 +167,7 @@ class BaseDialogPositionTest extends UnitTest {
     // -- helpers --
 
     private static void configureMockDialog(JDialog dialog, Point location) {
-        var mockRootPane = mock(JRootPane.class);
-        when(dialog.getRootPane()).thenReturn(mockRootPane);
-        when(mockRootPane.getInputMap(anyInt())).thenReturn(mock(InputMap.class));
-        when(mockRootPane.getActionMap()).thenReturn(mock(ActionMap.class));
-        when(dialog.getPreferredSize()).thenReturn(new Dimension(300, 200));
-        when(dialog.getSize()).thenReturn(new Dimension(300, 200));
-        when(dialog.getLocation()).thenReturn(location);
+        BaseDialogTestHelper.configureMockDialog(dialog, location);
     }
 
     private static class TestDialog extends BaseDialog {
@@ -176,6 +181,83 @@ class BaseDialogPositionTest extends UnitTest {
 
         TestDialog2() {
             super("Test Dialog 2", false);
+        }
+    }
+
+    private static class TestResizableDialog extends BaseDialog {
+
+        TestResizableDialog() {
+            super("Test Resizable Dialog", false);
+        }
+
+        @Override
+        protected boolean isResizable() {
+            return true;
+        }
+    }
+
+
+    @Nested
+    class GeometryPersistence {
+
+        @SuppressWarnings("unchecked")
+        @Test
+        void testPersistOnCloseNonResizable() {
+            try (var ignored = mockConstruction(JDialog.class, (d, ctx) -> configureMockDialog(d, DIALOG_POSITION))) {
+                var dialog = new TestDialog();
+                dialog.setVisible(true);
+                dialog.setVisible(false);
+
+                var captor = ArgumentCaptor.forClass(Map.class);
+                verify(mockPrefs).putMap(eq(PrefsKey.DIALOG_GEOMETRY), captor.capture());
+                var saved = (Map<String, Object>) captor.getValue().get("TestDialog");
+                assertThat(saved).containsKeys("x", "y");
+                assertThat(saved).doesNotContainKeys("width", "height");
+            }
+        }
+
+        @SuppressWarnings("unchecked")
+        @Test
+        void testPersistOnCloseResizable() {
+            try (var ignored = mockConstruction(JDialog.class, (d, ctx) -> configureMockDialog(d, DIALOG_POSITION))) {
+                var dialog = new TestResizableDialog();
+                dialog.setVisible(true);
+                dialog.setVisible(false);
+
+                var captor = ArgumentCaptor.forClass(Map.class);
+                verify(mockPrefs).putMap(eq(PrefsKey.DIALOG_GEOMETRY), captor.capture());
+                var saved = (Map<String, Object>) captor.getValue().get("TestResizableDialog");
+                assertThat(saved).containsKeys("x", "y", "width", "height");
+            }
+        }
+
+        @Test
+        void testRestoreFromPrefs() {
+            when(mockPrefs.getMap(PrefsKey.DIALOG_GEOMETRY)).thenReturn(
+                Map.of("TestDialog", Map.of("x", 200.0, "y", 300.0))
+            );
+
+            try (var construction = mockConstruction(JDialog.class, (d, ctx) -> configureMockDialog(d, DIALOG_POSITION))) {
+                new TestDialog().setVisible(true);
+
+                // Should not call positionDialog since prefs had geometry
+                uiUtilsMock.verify(() -> UIUtils.positionDialog(any(), any()), never());
+
+                // Should set the location from prefs
+                var dialog = construction.constructed().getFirst();
+                verify(dialog).setLocation(new Point(200, 300));
+            }
+        }
+
+        @Test
+        void testMissingKeyFallsBackToDefaultPosition() {
+            when(mockPrefs.getMap(PrefsKey.DIALOG_GEOMETRY)).thenReturn(Collections.emptyMap());
+
+            try (var ignored = mockConstruction(JDialog.class, (d, ctx) -> configureMockDialog(d, DIALOG_POSITION))) {
+                new TestDialog().setVisible(true);
+
+                uiUtilsMock.verify(() -> UIUtils.positionDialog(any(), any()));
+            }
         }
     }
 }

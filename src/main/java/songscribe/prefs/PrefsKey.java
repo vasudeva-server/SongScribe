@@ -33,6 +33,7 @@ public enum PrefsKey {
     ATTRIBUTION_FONT_SIZE("attributionFontSize"),
     AUTO_SAVE_AFTER_STRIP_SHORT_A("autoSaveAfterStripShortA"),
     CONTROL("control"),
+    DIALOG_GEOMETRY("dialogGeometry"),
     EXPORT_DPI("exportDpi"),
     FIRST_RUN("firstRun"),
     IMAGE_EXPORT_FILTER("imageExportFilter"),

@@ -35,8 +35,7 @@ import java.util.Properties;
 import com.formdev.flatlaf.util.SystemInfo;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonObject;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;
 
 import org.slf4j.Logger;
@@ -145,6 +144,37 @@ public final class Prefs {
         save(key);
     }
 
+    /**
+     * Returns the map stored at the given key, or an empty map if absent.
+     * <p>
+     * <b>Note:</b> Gson deserializes JSON numbers in nested objects as {@code Double},
+     * so callers must cast numeric values through {@link Number} (e.g.,
+     * {@code ((Number) value).intValue()}) rather than assuming {@code Integer} or {@code Long}.
+     */
+    @SuppressWarnings("unchecked")
+    public Map<String, Object> getMap(PrefsKey key) {
+        var value = store.get(key.key());
+
+        if (value instanceof Map<?, ?> map) {
+            return (Map<String, Object>) map;
+        }
+
+        var defaultValue = defaults.get(key.key());
+
+        if (defaultValue instanceof Map<?, ?> map) {
+            return (Map<String, Object>) map;
+        }
+
+        return Collections.emptyMap();
+    }
+
+    public void putMap(PrefsKey key, Map<String, ?> entries) {
+        var current = new HashMap<>(getMap(key));
+        current.putAll(entries);
+        store.put(key.key(), current);
+        save(key);
+    }
+
     public void put(PrefsKey key, String value) {
         store.put(key.key(), value);
         save(key);
@@ -218,19 +248,10 @@ public final class Prefs {
             var json = JsonParser.parseReader(reader).getAsJsonObject();
 
             for (var entry : json.entrySet()) {
-                var element = entry.getValue();
+                var value = parseJsonValue(entry.getValue());
 
-                if (element.isJsonPrimitive()) {
-                    var primitive = element.getAsJsonPrimitive();
-
-                    if (primitive.isBoolean()) {
-                        result.put(entry.getKey(), primitive.getAsBoolean());
-                    } else if (primitive.isNumber()) {
-                        // Store all integers as Long so both getInt and getLong work
-                        result.put(entry.getKey(), primitive.getAsLong());
-                    } else {
-                        result.put(entry.getKey(), primitive.getAsString());
-                    }
+                if (value != null) {
+                    result.put(entry.getKey(), value);
                 }
             }
 
@@ -254,17 +275,10 @@ public final class Prefs {
 
             for (var entry : json.entrySet()) {
                 var element = entry.getValue();
+                var value = parseJsonValue(element);
 
-                if (element.isJsonPrimitive()) {
-                    var primitive = element.getAsJsonPrimitive();
-
-                    if (primitive.isBoolean()) {
-                        result.put(entry.getKey(), primitive.getAsBoolean());
-                    } else if (primitive.isNumber()) {
-                        result.put(entry.getKey(), primitive.getAsLong());
-                    } else {
-                        result.put(entry.getKey(), primitive.getAsString());
-                    }
+                if (value != null) {
+                    result.put(entry.getKey(), value);
                 } else if (element.isJsonArray()) {
                     var list = new ArrayList<String>();
 
@@ -297,33 +311,33 @@ public final class Prefs {
 
     private void writeToFile() {
         try {
-            var json = new JsonObject();
-
-            // Merge defaults with store overrides so the file always contains all keys
             var merged = new HashMap<>(defaults);
             merged.putAll(store);
-
-            for (var entry : merged.entrySet()) {
-                var key = entry.getKey();
-                var value = entry.getValue();
-
-                if (value instanceof Boolean b) {
-                    json.addProperty(key, b);
-                } else if (value instanceof Long l) {
-                    json.addProperty(key, l);
-                } else if (value instanceof List<?> list) {
-                    var array = new JsonArray();
-                    list.forEach(item -> array.add(item.toString()));
-                    json.add(key, array);
-                } else {
-                    json.addProperty(key, value.toString());
-                }
-            }
-
+            var json = GSON.toJsonTree(merged);
             Files.writeString(prefsFile, GSON.toJson(json), StandardCharsets.UTF_8);
         } catch (IOException e) {
             LOG.warn("Failed to save preferences to {}", prefsFile, e);
         }
+    }
+
+    @SuppressWarnings("unchecked")
+    private static @Nullable Object parseJsonValue(JsonElement element) {
+        if (element.isJsonPrimitive()) {
+            var primitive = element.getAsJsonPrimitive();
+
+            if (primitive.isBoolean()) {
+                return primitive.getAsBoolean();
+            } else if (primitive.isNumber()) {
+                // Store all integers as Long so both getInt and getLong work
+                return primitive.getAsLong();
+            } else {
+                return primitive.getAsString();
+            }
+        } else if (element.isJsonObject()) {
+            return GSON.fromJson(element, Map.class);
+        }
+
+        return null;
     }
 
     private Object getDefault(PrefsKey key) {
