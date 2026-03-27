@@ -288,6 +288,7 @@ public abstract class BaseDialog {
             var minSize = dialog.getPreferredSize();
             minSize.width += getExtraWidth();
             minSize.height += getExtraHeight();
+            dialog.setPreferredSize(minSize);
             dialog.setSize(minSize);
             dialog.setMinimumSize(minSize);
 
@@ -302,6 +303,9 @@ public abstract class BaseDialog {
             } else {
                 UIUtils.positionDialog(dialog, mainFrame);
             }
+
+            // Force layout commitment before showing to prevent flash on first display
+            dialog.validate();
 
             if (category.isBlocking()) {
                 incrementBlockingCount();

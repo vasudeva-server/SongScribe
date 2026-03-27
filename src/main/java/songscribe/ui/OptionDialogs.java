@@ -320,6 +320,9 @@ public final class OptionDialogs {
             }
         });
 
+        // Force layout commitment before showing to prevent flash on first display
+        dialog.validate();
+
         dialog.setVisible(true);
         dialog.dispose();
     }
