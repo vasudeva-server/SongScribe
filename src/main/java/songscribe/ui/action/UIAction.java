@@ -130,6 +130,23 @@ public class UIAction extends AbstractAction {
     }
 
     /**
+     * Marks an action whose corresponding native macOS application menu item
+     * should be managed by {@code MacNativeMenuController}. The controller
+     * discovers all {@code AppMenuAction} instances via
+     * {@link Actions#getAppMenuActions()} and matches them against native
+     * {@code NSMenuItem} titles using the prefix returned by
+     * {@link #getNativeMenuTitle()}.
+     */
+    public interface AppMenuAction {
+        /**
+         * Returns a title prefix used to locate this action's corresponding
+         * native NSMenuItem via {@code startsWith} matching. For example,
+         * "About" matches the native "About SongScribe" item.
+         */
+        String getNativeMenuTitle();
+    }
+
+    /**
      * A reflectable action that modifies an element's attributes in place.
      */
     public interface ElementModifiable extends Reflectable {

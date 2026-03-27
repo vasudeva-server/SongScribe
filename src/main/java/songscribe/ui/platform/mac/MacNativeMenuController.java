@@ -20,92 +20,96 @@
 
 package songscribe.ui.platform.mac;
 
-import songscribe.message.Message;
-import songscribe.message.MessageCenter;
-import songscribe.message.notification.DialogVisibilityDidChangeNotification;
+import java.util.ArrayList;
+import java.util.List;
 
 import net.engio.mbassy.listener.Handler;
 import org.rococoa.cocoa.foundation.NSInteger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.jspecify.annotations.Nullable;
+import songscribe.message.Message;
+import songscribe.message.MessageCenter;
+import songscribe.message.notification.DialogVisibilityDidChangeNotification;
+import songscribe.ui.action.Actions;
+import songscribe.ui.action.UIAction.AppMenuAction;
 
 /**
- * Disables the native "About SongScribe" and "Settings..." items in the macOS
- * application menu while a blocking dialog is visible.
+ * Disables native macOS application menu items while a blocking dialog is
+ * visible.
  * <p>
  * {@code Desktop.setAboutHandler} / {@code Desktop.setPreferencesHandler} bypass
  * the Swing action system, so disabling the corresponding {@code UIAction} has no
  * effect on the native menu. This controller uses Rococoa to reach into the
  * native NSMenu and toggle the items directly.
+ * <p>
+ * Actions that implement {@link AppMenuAction} are discovered automatically
+ * via {@link Actions#getAppMenuActions()}. Adding a new app menu action requires
+ * no changes to this class.
  */
 public class MacNativeMenuController {
 
     private static final Logger LOG = LoggerFactory.getLogger(MacNativeMenuController.class);
 
-    private final @Nullable NSMenuItem aboutItem;
-    private final @Nullable NSMenuItem settingsItem;
+    private final List<NSMenuItem> managedItems;
 
     public MacNativeMenuController() {
-        aboutItem = findAppMenuItem("About");
-        settingsItem = findAppMenuItem("Settings");
-
-        if (aboutItem == null && settingsItem == null) {
-            LOG.warn("Could not locate any native app menu items — "
-                    + "MacNativeMenuController will have no effect");
-        }
-
+        managedItems = discoverNativeItems();
         MessageCenter.subscribe(this);
     }
 
     @Handler(priority = Message.LOW_PRIORITY)
     public void dialogVisibilityDidChange(DialogVisibilityDidChangeNotification notification) {
         var enabled = !notification.isVisible();
-        setNativeItemsEnabled(enabled);
-    }
 
-    private void setNativeItemsEnabled(boolean enabled) {
-        if (aboutItem != null) {
-            aboutItem.setEnabled(enabled);
-        }
-
-        if (settingsItem != null) {
-            settingsItem.setEnabled(enabled);
+        for (var item : managedItems) {
+            item.setEnabled(enabled);
         }
     }
 
-    /**
-     * Finds a menu item in the macOS application menu whose title starts with
-     * the given prefix. The app menu is the first submenu of the main menu bar.
-     */
-    private static @Nullable NSMenuItem findAppMenuItem(String titlePrefix) {
+    private static List<NSMenuItem> discoverNativeItems() {
+        var appMenuActions = Actions.getAppMenuActions();
+        var items = new ArrayList<NSMenuItem>();
+
         try {
             var app = NSApplication.sharedApplication();
             var mainMenu = app.mainMenu();
             var appMenuItem = mainMenu.itemAtIndex(new NSInteger(0));
 
             if (!appMenuItem.hasSubmenu()) {
-                return null;
+                LOG.warn("macOS app menu has no submenu — no native items will be managed");
+                return items;
             }
 
             var appMenu = appMenuItem.submenu();
             appMenu.setAutoenablesItems(false);
             var itemCount = appMenu.numberOfItems().intValue();
 
-            for (var i = 0; i < itemCount; i++) {
-                var item = appMenu.itemAtIndex(new NSInteger(i));
-                var title = item.title();
+            for (var action : appMenuActions) {
+                var matched = false;
 
-                if (title != null && title.startsWith(titlePrefix)) {
-                    return item;
+                for (var i = 0; i < itemCount; i++) {
+                    var item = appMenu.itemAtIndex(new NSInteger(i));
+                    var title = item.title();
+
+                    if (title != null && title.startsWith(action.getNativeMenuTitle())) {
+                        items.add(item);
+                        matched = true;
+                        break;
+                    }
+                }
+
+                if (!matched) {
+                    LOG.warn(
+                        "No native menu item matched prefix '{}' — it will not be managed",
+                        action.getNativeMenuTitle()
+                    );
                 }
             }
-        }
-        catch (Exception e) {
-            LOG.warn("Failed to locate native '{}' menu item", titlePrefix, e);
+        } catch (Exception e) {
+            LOG.warn("Failed to discover native app menu items", e);
         }
 
-        return null;
+        return items;
     }
 }

@@ -25,24 +25,32 @@ import static songscribe.ui.action.UIAction.Flag;
 
 import module java.desktop;
 
+import java.lang.reflect.Modifier;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
+import org.jspecify.annotations.Nullable;
+
 import net.engio.mbassy.listener.Handler;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import songscribe.Strings;
 import songscribe.message.Message;
 import songscribe.message.MessageCenter;
 import songscribe.message.notification.CompositionDidChangeNotification;
-import songscribe.ui.dialog.AboutDialog;
+import songscribe.ui.action.UIAction.AppMenuAction;
 import songscribe.ui.dialog.CompositionSettingsDialog;
 import songscribe.ui.dialog.LyricsDialog;
-import songscribe.ui.dialog.PreferencesDialog;
 
 /**
  * This class serves as a repository for global action-related constants and action groups.
  * Playback actions are in the playback package.
  */
 public final class Actions {
+
+    private static final Logger LOG = LoggerFactory.getLogger(Actions.class);
 
     //
     // Control actions
@@ -251,8 +259,7 @@ public final class Actions {
     public static final FermataAction FERMATA_ACTION =
         FermataAction.createAction();
 
-    public static final DialogOpenAction<PreferencesDialog> PREFERENCES_ACTION =
-        new DialogOpenAction<>(Strings.get(Strings.ACTION_SETTINGS), PreferencesDialog.class);
+    public static final PreferencesOpenAction PREFERENCES_ACTION = new PreferencesOpenAction();
 
     public static final DialogOpenAction<
         CompositionSettingsDialog
@@ -273,8 +280,7 @@ public final class Actions {
             Flag.DISABLE_WHEN_PLAYING
         );
 
-    public static final DialogOpenAction<AboutDialog> ABOUT_ACTION =
-        new DialogOpenAction<>(Strings.get(Strings.ACTION_ABOUT), AboutDialog.class);
+    public static final AboutOpenAction ABOUT_ACTION = new AboutOpenAction();
 
     public static final PrintAction PRINT_ACTION = PrintAction.createAction();
     public static final QuitAction QUIT_ACTION = QuitAction.createAction();
@@ -312,6 +318,39 @@ public final class Actions {
         REST_ACTION.reset();
         FERMATA_ACTION.reset();
         ACCIDENTAL_IN_PARENS_ACTION.reset();
+    }
+
+    private static @Nullable List<AppMenuAction> appMenuActions;
+
+    /**
+     * Returns all actions that implement {@link AppMenuAction}, discovered
+     * via reflection over the {@code public static final} fields of this class.
+     * The result is cached after the first call.
+     */
+    public static List<AppMenuAction> getAppMenuActions() {
+        if (appMenuActions != null) {
+            return appMenuActions;
+        }
+
+        var result = new ArrayList<AppMenuAction>();
+        var requiredModifiers = Modifier.PUBLIC | Modifier.STATIC | Modifier.FINAL;
+
+        for (var field : Actions.class.getDeclaredFields()) {
+            if ((field.getModifiers() & requiredModifiers) != requiredModifiers) {
+                continue;
+            }
+
+            try {
+                if (field.get(null) instanceof AppMenuAction action) {
+                    result.add(action);
+                }
+            } catch (IllegalAccessException e) {
+                LOG.warn("Cannot access field '{}'", field.getName(), e);
+            }
+        }
+
+        appMenuActions = Collections.unmodifiableList(result);
+        return appMenuActions;
     }
 
     private Actions() {

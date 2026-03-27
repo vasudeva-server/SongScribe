@@ -71,9 +71,6 @@ public class MenuController {
 
     private static final Logger LOG = LoggerFactory.getLogger(MenuController.class);
 
-    // Actions
-    public static final String ABOUT_ACTION_NAME = "About";
-
     // We need to keep a reference to the instance to prevent it from being garbage collected
     @SuppressWarnings({"FieldCanBeLocal", "unused"})
     private static @Nullable MenuController instance = null;
