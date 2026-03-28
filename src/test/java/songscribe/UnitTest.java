@@ -26,8 +26,11 @@ import java.io.StringReader;
 import java.io.StringWriter;
 import java.net.URISyntaxException;
 
+import javax.swing.UIManager;
 import javax.xml.parsers.SAXParserFactory;
 
+import com.formdev.flatlaf.FlatLaf;
+import com.formdev.flatlaf.FlatLightLaf;
 import org.xml.sax.InputSource;
 
 import songscribe.io.CompositionIO;
@@ -44,6 +47,7 @@ import org.junit.jupiter.api.BeforeAll;
 public abstract class UnitTest {
 
     private static volatile boolean bannerShown = false;
+    private static volatile boolean flatLafInstalled = false;
 
     @BeforeAll
     static void suppressDialogs() {
@@ -53,6 +57,25 @@ public abstract class UnitTest {
             bannerShown = true;
             SongScribe.logBanner("SongScribe (Unit Tests)");
         }
+    }
+
+    /**
+     * Installs a FlatLaf theme and registers the production FlatLaf.properties,
+     * making all {@code SongScribe.*} properties available via {@code UIManager}
+     * (and therefore via {@link songscribe.ui.FlatLafProps#get}).
+     *
+     * <p>Call from a {@code @BeforeAll} method in test classes that need
+     * FlatLaf properties. Safe to call multiple times; only the first
+     * invocation performs the actual setup.
+     */
+    protected static void installFlatLafDefaults() throws Exception {
+        if (flatLafInstalled) {
+            return;
+        }
+
+        FlatLaf.registerCustomDefaultsSource("songscribe");
+        UIManager.setLookAndFeel(new FlatLightLaf());
+        flatLafInstalled = true;
     }
 
     /**

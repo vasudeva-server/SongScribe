@@ -148,6 +148,25 @@ private static final ElementTypeAction QUARTER_ACTION = new ElementTypeAction(
 );
 ```
 
+## FlatLaf Properties Access
+
+Tests that call `FlatLafProps.get()` need FlatLaf installed with the production properties loaded. Call `installFlatLafDefaults()` (from `UnitTest`) in a `@BeforeAll` method:
+
+```java
+@BeforeAll
+static void setUp() throws Exception {
+    installFlatLafDefaults();
+}
+
+@Test
+void testSomethingUsingFlatLafProps() {
+    int gap = FlatLafProps.get(FlatLafKeys.DIALOG_COMPONENT_VERTICAL_GAP);
+    assertThat(gap).isEqualTo(5);
+}
+```
+
+The helper is idempotent — safe to call from multiple test classes in the same JVM run.
+
 ## Mock Helpers for Complex Setup
 
 Extract repeated mock wiring into private helper methods:
