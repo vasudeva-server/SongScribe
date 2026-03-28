@@ -63,9 +63,6 @@ public class VerticalStackingCalculator {
     private static final double STAFF_TOP_Y_SS =
         TOP_STAFF_LINE_POSITION * LayoutStylesheet.STAFF_POSITION_OFFSET_SS;
 
-    // Hairpin opening height in staff-space units (matching Crescendo/Diminuendo constants)
-    private static final double HAIRPIN_OPENING_HEIGHT_SS = 1.0;  // 8px
-
     // Minimum number of Bezier samples when seeding tie bounds into extents.
     // Ensures adequate curve resolution even for short ties.
     private static final int TIE_BOUND_MIN_SAMPLES = 8;
@@ -755,13 +752,13 @@ public class VerticalStackingCalculator {
             double noteHeadYSs = staffPosition * LayoutStylesheet.STAFF_POSITION_OFFSET_SS;
             double widthSs = endXSs - anchorXSs + NOTE_HEAD_WIDTH_SS;
             double ySs = stackAbove(structuralExtents, bridged, anchorXSs, widthSs,
-                HAIRPIN_OPENING_HEIGHT_SS, LayoutStylesheet.HAIRPIN_MARGIN_SS,
+                LayoutStylesheet.HAIRPIN_OPENING_HEIGHT_SS, LayoutStylesheet.HAIRPIN_MARGIN_SS,
                 staffPosition, noteHeadYSs, builder);
 
             // Write SpanLayout keyed by the legacy interval for renderer access
             builder.putSpanLayout(interval,
                 new LayoutResult.SpanLayout(anchorXSs, endXSs,
-                    ySs, HAIRPIN_OPENING_HEIGHT_SS));
+                    ySs, LayoutStylesheet.HAIRPIN_OPENING_HEIGHT_SS));
         }
     }
 

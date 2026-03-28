@@ -31,6 +31,7 @@ import songscribe.message.MessageCenter;
 import songscribe.ui.Control;
 import songscribe.ui.Mode;
 import songscribe.ui.component.score.LineComponent;
+import songscribe.ui.layout.LayoutStylesheet;
 import songscribe.ui.debug.DebugInspector;
 import songscribe.ui.edit.EditModeManager;
 import songscribe.ui.menu.DebugState;
@@ -257,12 +258,12 @@ public final class ScoreInputHandler
 
             if (insertionNote != null) {
                 if (code == KeyEvent.VK_UP) {
-                    if (insertionNote.getStaffPosition() >= (-(Score.STAFF_LINES_ABOVE + 2) * 2)) {
+                    if (insertionNote.getStaffPosition() >= (-(LayoutStylesheet.STAFF_LINES_ABOVE + 2) * 2)) {
                         insertionNote.setStaffPosition(insertionNote.getStaffPosition() - 1);
                         callback.repaint();
                     }
                 } else if (code == KeyEvent.VK_DOWN) {
-                    if (insertionNote.getStaffPosition() <= ((Score.STAFF_LINES_BELOW + 2) * 2)) {
+                    if (insertionNote.getStaffPosition() <= ((LayoutStylesheet.STAFF_LINES_BELOW + 2) * 2)) {
                         insertionNote.setStaffPosition(insertionNote.getStaffPosition() + 1);
                         callback.repaint();
                     }

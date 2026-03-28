@@ -244,6 +244,11 @@ public final class LayoutStylesheet {
      */
     public static final double CRESC_DIM_MARGIN_SS = 0.5;  // 4px
 
+    /**
+     * Height of the hairpin opening
+     */
+    public static final double HAIRPIN_OPENING_HEIGHT_SS = 1.0;  // 8px
+
     // --- Lyrics Row (under staff) ---
     /**
      * Padding around lyrics row
@@ -370,6 +375,11 @@ public final class LayoutStylesheet {
      * Margin between beam levels (8th -> 16th)
      */
     public static final double BEAM_INTER_MARGIN_SS = 0.75;  // 6px
+
+    /**
+     * Length of a partial beam stub
+     */
+    public static final double BEAM_STUB_SS = 1.0;  // 8px
 
     // ==========================================================================
     // HORIZONTAL SPACING

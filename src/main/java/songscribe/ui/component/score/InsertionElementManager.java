@@ -63,17 +63,11 @@ public class InsertionElementManager {
     // Constants
     // ==========================================================================
 
-    /** Number of ledger lines above the staff. */
-    private static final int STAFF_LINES_ABOVE = 3;
-
-    /** Number of ledger lines below the staff. */
-    private static final int STAFF_LINES_BELOW = 4;
-
     /** Minimum (highest-pitched) valid staff position. */
-    static final int MIN_STAFF_POSITION_SP = -(STAFF_LINES_ABOVE + 2) * 2;
+    static final int MIN_STAFF_POSITION_SP = -(LayoutStylesheet.STAFF_LINES_ABOVE + 2) * 2;
 
     /** Maximum (lowest-pitched) valid staff position. */
-    static final int MAX_STAFF_POSITION_SP = (STAFF_LINES_BELOW + 2) * 2;
+    static final int MAX_STAFF_POSITION_SP = (LayoutStylesheet.STAFF_LINES_BELOW + 2) * 2;
 
     /** Default cursor. */
     private static final Cursor DEFAULT_CURSOR = Cursor.getDefaultCursor();

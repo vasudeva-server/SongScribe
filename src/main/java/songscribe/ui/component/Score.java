@@ -104,14 +104,8 @@ public final class Score
 
     private static final Logger LOG = LoggerFactory.getLogger(Score.class);
 
-    // The number of lines in a staff
-    public static final int STAFF_LINE_COUNT = 5;
-
     // The vertical distance between whole tones on the staff (e.g. A to B)
     public static final float STAFF_POSITION_OFFSET_PX = (float) ScaleContext.getInstance().toPixels(LayoutStylesheet.STAFF_POSITION_OFFSET_SS);
-
-    // Delay in milliseconds for debouncing repaint when layout changes occur
-    private static final int REPAINT_DEBOUNCE_DELAY_MS = 300;
 
     // Colors used to draw the music score in various states — read from UIManager for theming.
     // Callers should not cache these values; read at render time.
@@ -126,11 +120,6 @@ public final class Score
     public static Color getSelectionStrokeColor() {
         return FlatLafProps.get(FlatLafKeys.SCORE_SELECTION_RECT_BORDER);
     }
-
-    // The maximum number of staff lines under a note that can be displayed above and below the staff.
-    // The range of notes supported is C3 (3 lines below) to F6 (4 lines above).
-    public static final int STAFF_LINES_ABOVE = 3;
-    public static final int STAFF_LINES_BELOW = 4;
 
     // Edit popup
     @Nullable

@@ -56,7 +56,6 @@ public class BeamGroupRenderer extends BaseElementRenderer<LineElement> {
     private static final SMuFLMetadata METADATA = SMuFLMetadata.getInstance();
     private static final double BEAM_DEPTH_SS = METADATA.getEngravingDefaults().beamThickness();
     private static final double BEAM_GAP_SS = METADATA.getEngravingDefaults().beamSpacing();
-    private static final double BEAM_STUB_SS = 1.0;    // partial beam stub length
     private static final double CLIP_SLOP_SS = 0.25;   // extra clipping margin (~2 px)
 
     // Note types for beam levels (32nd, 16th, 8th)
@@ -378,11 +377,11 @@ public class BeamGroupRenderer extends BaseElementRenderer<LineElement> {
             var clip = beam.getBounds2D();
             double x1 = (type == BeamType.ATTACH_LEFT)
                 ? firstX - CLIP_SLOP_SS
-                : lastX - BEAM_STUB_SS;
+                : lastX - LayoutStylesheet.BEAM_STUB_SS;
             clip.setRect(
                 x1,
                 clip.getMinY() - CLIP_SLOP_SS,
-                BEAM_STUB_SS + CLIP_SLOP_SS,
+                LayoutStylesheet.BEAM_STUB_SS + CLIP_SLOP_SS,
                 clip.getHeight() + CLIP_SLOP_SS * 2);
             oldClip = g2.getClip();
             g2.setClip(clip);

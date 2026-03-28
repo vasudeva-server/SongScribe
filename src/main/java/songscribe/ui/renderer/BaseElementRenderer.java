@@ -138,7 +138,7 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
     // Colors
     // ==========================================================================
 
-    protected static final Color STAFF_LINE_COLOR = Color.BLACK;
+    public static final Color STAFF_LINE_COLOR = Color.BLACK;
     protected static final Color ELEMENT_COLOR = Color.BLACK;
     protected static final Color DEBUG_CONTENT_COLOR = new Color(0, 0, 255, 64);
     protected static final Color DEBUG_CONTENT_BORDER = new Color(0, 0, 255, 128);

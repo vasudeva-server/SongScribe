@@ -148,9 +148,6 @@ public class LineComponent extends ScoreComponent
     // Constants
     // ==========================================================================
 
-    /** Number of lines in a staff. */
-    private static final int STAFF_LINE_COUNT = 5;
-
     /**
      * Creates a new LineComponent.
      */
@@ -426,7 +423,7 @@ public class LineComponent extends ScoreComponent
      */
     private double calculateMiddleLineYSs() {
         // In staff-space: spacing between adjacent staff lines is 1.0 ss
-        double defaultSpaceAbove = Score.STAFF_LINES_ABOVE;  // 3.0 ss
+        double defaultSpaceAbove = LayoutStylesheet.STAFF_LINES_ABOVE;  // 3.0 ss
         double spaceAbove = MIN_SPACE_ABOVE_SS;
 
         // Get extent of notes and attachments (only if line has content)
@@ -503,8 +500,8 @@ public class LineComponent extends ScoreComponent
      */
     private double calculateLineHeightSs() {
         // All values in staff-space units
-        double defaultSpaceAbove = Score.STAFF_LINES_ABOVE;  // 3.0 ss
-        double defaultSpaceBelow = Score.STAFF_LINES_BELOW;  // 4.0 ss
+        double defaultSpaceAbove = LayoutStylesheet.STAFF_LINES_ABOVE;  // 3.0 ss
+        double defaultSpaceBelow = LayoutStylesheet.STAFF_LINES_BELOW;  // 4.0 ss
         double staffHeight = LayoutStylesheet.STAFF_HEIGHT_SS;   // 4.0 ss
 
         double spaceAbove = MIN_SPACE_ABOVE_SS;

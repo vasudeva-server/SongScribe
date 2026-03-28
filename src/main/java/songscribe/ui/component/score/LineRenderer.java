@@ -38,6 +38,7 @@ import songscribe.ui.layout.ScaleContext;
 import songscribe.ui.layout.TempoAttachment;
 import songscribe.ui.renderer.AnnotationRenderer;
 import songscribe.ui.renderer.ArticulationRenderer;
+import songscribe.ui.renderer.BaseElementRenderer;
 import songscribe.ui.renderer.BeamGroupRenderer;
 import songscribe.ui.renderer.BeatChangeRenderer;
 import songscribe.ui.renderer.ClefRenderer;
@@ -68,9 +69,6 @@ class LineRenderer {
     // ==========================================================================
     // Constants
     // ==========================================================================
-
-    /** Color for staff lines. */
-    private static final Color STAFF_LINE_COLOR = Color.BLACK;
 
     /** Staff line thickness in staff-space units (from SMuFL engraving defaults). */
     private static final double STAFF_LINE_THICKNESS =
@@ -235,7 +233,7 @@ class LineRenderer {
             && selectionProvider != null
             && selectionProvider.isLineSelected(lineIndex);
 
-        g2.setColor(staffSelected ? Score.getSelectionStrokeColor() : STAFF_LINE_COLOR);
+        g2.setColor(staffSelected ? Score.getSelectionStrokeColor() : BaseElementRenderer.STAFF_LINE_COLOR);
 
         var lineWidth = lc.getComposition().getLineWidthSs();
         var middleLineYSs = lc.getMiddleLineYSs();

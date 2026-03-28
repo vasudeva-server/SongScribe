@@ -35,9 +35,6 @@ import songscribe.smufl.SMuFLMetadata;
  */
 public class Diminuendo extends RangeElement {
 
-    /** Height of the hairpin opening in staff-space units. */
-    private static final double HAIRPIN_OPENING_HEIGHT_SS = 1.0;  // 8px
-
     /** Notehead width for span width calculation. */
     private static final double NOTE_HEAD_WIDTH_SS =
         SMuFLMetadata.getInstance().requireBBox(SMuFLGlyph.NOTEHEAD_BLACK).width();
@@ -141,7 +138,7 @@ public class Diminuendo extends RangeElement {
      */
     @Override
     public double getContentHeightSs() {
-        return HAIRPIN_OPENING_HEIGHT_SS;
+        return LayoutStylesheet.HAIRPIN_OPENING_HEIGHT_SS;
     }
 
     /**
