@@ -50,7 +50,6 @@ If you **do** need to run the application:
 | `./scripts/run.sh`     | Run the application (MUST compile first) |
 | `./scripts/crun.sh`    | Compile and run in one step              |
 | `./scripts/test.sh`    | Run tests (see examples below)           |
-| `./scripts/check-style.sh <file>` | Check a single file for style violations |
 
 `run.sh` and `crun.sh` accept these options:
 

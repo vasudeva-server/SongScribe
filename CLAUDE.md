@@ -15,7 +15,6 @@ SongScribe is a Java/Kotlin-based music notation application.
 ./scripts/crun.sh                 # Compile + run
 ./scripts/run.sh                  # Run (after compile)
 ./scripts/test.sh unit            # Run unit tests
-./scripts/check-style.sh <file>   # Check a file for style violations
 source ./scripts/set-java-home.sh # Set JAVA_HOME (requires Java 25+)
 ```
 
