@@ -69,4 +69,6 @@ For complex dialogs (`BaseDialog`, `StandardDialog`, tabs, validation/commit lif
 
 For the `Prefs` singleton, `PrefsKey` enum, `defaults.json`, and `PrefsDidChangeNotification`, see [Preferences](./.claude/prefs.md).
 
+For custom UI constants (`FlatLafProps`, `FlatLafKeys`, `FlatLaf.properties`), see [FlatLaf Properties](./.claude/flatlaf-props.md).
+
 To look up SMuFL glyph names, codepoints, or ranges: `https://w3c.github.io/smufl/latest/index.html?search=<search terms>`
