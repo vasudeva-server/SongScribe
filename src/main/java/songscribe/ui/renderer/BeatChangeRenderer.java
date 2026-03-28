@@ -187,7 +187,7 @@ public class BeatChangeRenderer extends BaseElementRenderer<StaffElement> {
         int y
     ) {
         try (var ignored = GraphicsState.save(g2, FONT, TRANSFORM)) {
-            g2.setFont(BRAVURA_FONT);
+            g2.setFont(MUSIC_FONT);
 
             g2.translate(x, y - ((NOTE_FONT_SIZE * TEMPO_CHANGE_ZOOM_Y) / 8.0));
             g2.scale(TEMPO_CHANGE_ZOOM_X, TEMPO_CHANGE_ZOOM_Y);

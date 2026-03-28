@@ -66,8 +66,8 @@ public class TupletRenderer extends BaseElementRenderer<Tuplet> {
     private static final float TUPLET_NUMBER_SCALE = 0.9f;
 
     // Bravura font scaled down for tuplet numbers
-    private static final Font TUPLET_FONT = BRAVURA_FONT.deriveFont(
-        BRAVURA_FONT.getSize2D() * TUPLET_NUMBER_SCALE);
+    private static final Font TUPLET_FONT = MUSIC_FONT.deriveFont(
+        MUSIC_FONT.getSize2D() * TUPLET_NUMBER_SCALE);
 
     // Tuplet digit glyphs indexed by value (0–9)
     private static final SMuFLGlyph[] TUPLET_GLYPHS = {

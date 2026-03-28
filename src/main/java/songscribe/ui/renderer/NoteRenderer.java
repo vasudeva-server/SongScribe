@@ -306,7 +306,7 @@ public class NoteRenderer extends BaseElementRenderer<StaffElement> {
         float noteHeadXPosSs = getNoteheadXOffsetSs(noteType, upper);
 
         try (var ignored = GraphicsState.save(g2, FONT)) {
-            g2.setFont(noteType.isGraceNote() ? BRAVURA_FONT_GRACE : BRAVURA_FONT);
+            g2.setFont(noteType.isGraceNote() ? BRAVURA_FONT_GRACE : MUSIC_FONT);
             g2.drawString(glyph.asString(), noteHeadXPosSs, 0f);
         }
 
@@ -453,7 +453,7 @@ public class NoteRenderer extends BaseElementRenderer<StaffElement> {
             // Shift right to visually center the flag on the actual stem.
             flagX += (float) (LayoutStylesheet.STEM_WIDTH_SS * (1 - LayoutStylesheet.GRACE_NOTE_SCALE) / 2);
         } else {
-            flagFont = BRAVURA_FONT;
+            flagFont = MUSIC_FONT;
         }
 
         try (var ignored = GraphicsState.save(g2, FONT)) {
@@ -477,7 +477,7 @@ public class NoteRenderer extends BaseElementRenderer<StaffElement> {
         }
 
         try (var ignored = GraphicsState.save(g2, FONT)) {
-            g2.setFont(BRAVURA_FONT);
+            g2.setFont(MUSIC_FONT);
             var dotStr = SMuFLGlyph.AUGMENTATION_DOT.asString();
             forEachDotPosition(note, beamed, upper, (dotX, yOffset) ->
                 g2.drawString(dotStr, dotX.floatValue(), yOffset.floatValue()));
@@ -561,7 +561,7 @@ public class NoteRenderer extends BaseElementRenderer<StaffElement> {
             : ACCIDENTAL_COMPONENTS[accidental.ordinal()];
 
         try (var ignored = GraphicsState.save(g2, COLOR, FONT)) {
-            g2.setFont(BRAVURA_FONT);
+            g2.setFont(MUSIC_FONT);
 
             float accidentalWidth = getAccidentalWidthSs(note);
             float x = -ACCIDENTAL_PADDING_SS - accidentalWidth;

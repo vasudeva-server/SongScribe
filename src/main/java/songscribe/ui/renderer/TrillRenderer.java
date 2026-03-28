@@ -26,9 +26,6 @@ import static songscribe.ui.renderer.GraphicsState.Property.TRANSFORM;
 
 import module java.desktop;
 
-import org.jspecify.annotations.Nullable;
-
-import songscribe.music.StaffElement;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
 import songscribe.ui.layout.Trill;
@@ -214,7 +211,7 @@ public class TrillRenderer extends BaseElementRenderer<Trill> {
         int segments = Math.max(1, (int) Math.round(length / WIGGLE_SEGMENT_WIDTH_SS));
 
         try (var ignored = GraphicsState.save(g2, TRANSFORM, FONT, COLOR)) {
-            g2.setFont(BRAVURA_FONT);
+            g2.setFont(MUSIC_FONT);
             g2.setColor(ELEMENT_COLOR);
             g2.translate(x1, y);
 

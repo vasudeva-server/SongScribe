@@ -157,7 +157,7 @@ public class RestRenderer extends BaseElementRenderer<StaffElement> {
 
         try (var ignored = GraphicsState.save(g2, TRANSFORM, FONT)) {
             g2.translate(noteX, noteY);
-            g2.setFont(BRAVURA_FONT);
+            g2.setFont(MUSIC_FONT);
             // Note: Don't set color here - respect the color set by the caller
             // (e.g., blue for insertion notes, black for composition notes)
 
@@ -211,7 +211,7 @@ public class RestRenderer extends BaseElementRenderer<StaffElement> {
 
         // Draw augmentation dots using SMuFL glyph
         try (var ignored = GraphicsState.save(g2, FONT)) {
-            g2.setFont(BRAVURA_FONT);
+            g2.setFont(MUSIC_FONT);
             var dotX = firstDotX;
 
             for (int i = 0; i < note.getDotCount(); i++) {

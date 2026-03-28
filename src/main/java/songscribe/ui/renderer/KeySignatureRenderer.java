@@ -109,7 +109,7 @@ public class KeySignatureRenderer extends BaseElementRenderer<KeySignature> {
         }
 
         try (var ignored = GraphicsState.save(g2, FONT, COLOR)) {
-            g2.setFont(BRAVURA_FONT);
+            g2.setFont(MUSIC_FONT);
             g2.setColor(ELEMENT_COLOR);
 
             // Get the starting X position from the element
@@ -226,7 +226,7 @@ public class KeySignatureRenderer extends BaseElementRenderer<KeySignature> {
         ElementRenderContext ctx
     ) {
         try (var ignored = GraphicsState.save(g2, COLOR, FONT)) {
-            g2.setFont(BRAVURA_FONT);
+            g2.setFont(MUSIC_FONT);
             g2.setColor(ELEMENT_COLOR);
 
             var middleLineYSs = ctx.getMiddleLineYSs();

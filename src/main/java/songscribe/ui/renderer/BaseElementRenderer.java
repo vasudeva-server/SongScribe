@@ -84,14 +84,9 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
     public static final double TEMPO_CHANGE_ZOOM_Y = 0.6;
 
     /**
-     * The music notation font at standard note size.
-     */
-    public static final Font MUSIC_FONT;
-
-    /**
      * The Bravura (SMuFL) music notation font at standard note size.
      */
-    public static final Font BRAVURA_FONT;
+    public static final Font MUSIC_FONT;
 
     /**
      * The Bravura font scaled for grace note rendering ({@link LayoutStylesheet#GRACE_NOTE_SCALE}).
@@ -110,11 +105,8 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
 
     static {
         try {
-            var fughettaBase = MyFontUtils.getLocalFont("Fughetta.ttf");
-            MUSIC_FONT = fughettaBase.deriveFont(FONT_SIZE);
-
             var bravuraBase = MyFontUtils.getLocalFont("Bravura.otf");
-            BRAVURA_FONT = bravuraBase.deriveFont(FONT_SIZE);
+            MUSIC_FONT = bravuraBase.deriveFont(FONT_SIZE);
             BRAVURA_FONT_GRACE = bravuraBase.deriveFont(FONT_SIZE * LayoutStylesheet.GRACE_NOTE_SCALE);
 
             var tupletBase = MyFontUtils.getLocalFont("TupletNumbers.ttf");
@@ -400,7 +392,7 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
         boolean preserveColor
     ) {
         try (var ignored = GraphicsState.save(g2, COLOR, FONT)) {
-            g2.setFont(BRAVURA_FONT);
+            g2.setFont(MUSIC_FONT);
             if (!preserveColor) {
                 g2.setColor(ELEMENT_COLOR);
             }

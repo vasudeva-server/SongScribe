@@ -74,7 +74,7 @@ public class TempoRenderer extends BaseElementRenderer<StaffElement> {
         METRONOME_GLYPHS.put(ElementType.SEMIQUAVER, SMuFLGlyph.MET_NOTE_16TH_UP);
         METRONOME_GLYPHS.put(ElementType.DEMI_SEMIQUAVER, SMuFLGlyph.MET_NOTE_32ND_UP);
 
-        TEMPO_NOTE_FONT = BRAVURA_FONT.deriveFont(FONT_SIZE * TempoAttachment.NOTE_SCALE);
+        TEMPO_NOTE_FONT = MUSIC_FONT.deriveFont(FONT_SIZE * TempoAttachment.NOTE_SCALE);
         GLYPH_TEXT_GAP_SS = FlatLafProps.get(FlatLafKeys.SCORE_TEMPO_GLYPH_TEXT_GAP);
     }
 
@@ -121,13 +121,13 @@ public class TempoRenderer extends BaseElementRenderer<StaffElement> {
         }
 
         // The metronome glyph includes head + stem + flag as a single codepoint
-        var gv = BRAVURA_FONT.createGlyphVector(frc, metGlyph.asString());
+        var gv = MUSIC_FONT.createGlyphVector(frc, metGlyph.asString());
         var bounds = new Rectangle2D.Double();
         bounds.setRect(gv.getVisualBounds());
 
         // Add dot bounds if note has dots
         if (note.getDotCount() > 0) {
-            var dotGv = BRAVURA_FONT.createGlyphVector(frc, SMuFLGlyph.MET_AUGMENTATION_DOT.asString());
+            var dotGv = MUSIC_FONT.createGlyphVector(frc, SMuFLGlyph.MET_AUGMENTATION_DOT.asString());
             var dotBounds = dotGv.getVisualBounds();
             var dotX = bounds.getMaxX() + 2;
             bounds.add(new Rectangle2D.Double(

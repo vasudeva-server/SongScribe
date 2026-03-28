@@ -102,7 +102,7 @@ public class BarRenderer extends BaseElementRenderer<StaffElement> {
         }
 
         try (var ignored = GraphicsState.save(g2, FONT)) {
-            g2.setFont(BRAVURA_FONT);
+            g2.setFont(MUSIC_FONT);
             g2.drawString(glyph.asString(), 0f, (float) BOTTOM_STAFF_LINE_Y_SS);
         }
     }
