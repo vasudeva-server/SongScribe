@@ -115,7 +115,7 @@ public class GlissandoRenderer {
     static {
         var frc = new FontRenderContext(null, true, true);
         var font = BaseElementRenderer.MUSIC_FONT;
-        var graceFont = BaseElementRenderer.BRAVURA_FONT_GRACE;
+        var graceFont = BaseElementRenderer.GRACE_NOTE_FONT;
 
         NOTEHEAD_BLACK_SHAPE = glyphOutline(font, frc, SMuFLGlyph.NOTEHEAD_BLACK);
         NOTEHEAD_WHOLE_SHAPE = glyphOutline(font, frc, SMuFLGlyph.NOTEHEAD_WHOLE);

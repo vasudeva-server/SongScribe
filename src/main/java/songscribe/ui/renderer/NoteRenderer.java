@@ -306,7 +306,7 @@ public class NoteRenderer extends BaseElementRenderer<StaffElement> {
         float noteHeadXPosSs = getNoteheadXOffsetSs(noteType, upper);
 
         try (var ignored = GraphicsState.save(g2, FONT)) {
-            g2.setFont(noteType.isGraceNote() ? BRAVURA_FONT_GRACE : MUSIC_FONT);
+            g2.setFont(noteType.isGraceNote() ? GRACE_NOTE_FONT : MUSIC_FONT);
             g2.drawString(glyph.asString(), noteHeadXPosSs, 0f);
         }
 
@@ -448,7 +448,7 @@ public class NoteRenderer extends BaseElementRenderer<StaffElement> {
         Font flagFont;
 
         if (noteType.isGraceNote()) {
-            flagFont = BRAVURA_FONT_GRACE;
+            flagFont = GRACE_NOTE_FONT;
             // The scaled flag glyph's internal stem connection is 65% of the full stem width.
             // Shift right to visually center the flag on the actual stem.
             flagX += (float) (LayoutStylesheet.STEM_WIDTH_SS * (1 - LayoutStylesheet.GRACE_NOTE_SCALE) / 2);

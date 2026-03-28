@@ -37,6 +37,7 @@ import songscribe.ui.FlatLafProps;
 
 import songscribe.font.SourceSans3Font;
 import songscribe.ui.action.Actions;
+import songscribe.ui.renderer.BaseElementRenderer;
 import songscribe.ui.action.UIAction;
 import songscribe.ui.component.MainFrame;
 
@@ -475,7 +476,7 @@ public final class UIUtils {
         if (text.startsWith("@")) {
             font = MyFontUtils.getIconFont();
         } else if (text.startsWith("#")) {
-            font = MyFontUtils.getNoteFont();
+            font = BaseElementRenderer.getMusicFont();
         }
 
         if (font != null) {

@@ -35,6 +35,8 @@ import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
 import songscribe.ui.layout.LineElement;
 import songscribe.ui.layout.LayoutStylesheet;
+import org.jspecify.annotations.Nullable;
+
 import songscribe.util.GraphicUtils;
 import songscribe.util.MyFontUtils;
 
@@ -89,9 +91,9 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
     public static final Font MUSIC_FONT;
 
     /**
-     * The Bravura font scaled for grace note rendering ({@link LayoutStylesheet#GRACE_NOTE_SCALE}).
+     * The music font scaled for grace note rendering ({@link LayoutStylesheet#GRACE_NOTE_SCALE}).
      */
-    public static final Font BRAVURA_FONT_GRACE;
+    public static final Font GRACE_NOTE_FONT;
 
     /**
      * Font for tuplet numbers (e.g., "3" for triplets).
@@ -103,11 +105,26 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
      */
     public static final Font ENDING_FONT;
 
+    /** Cached Bravura music font at {@link #FONT_SIZE}. */
+    @Nullable
+    private static Font noteFont;
+
+    /**
+     * Returns the Bravura (SMuFL) music font at standard note size ({@link #FONT_SIZE}).
+     * Callers needing a different size should call {@code deriveFont()}.
+     */
+    public static Font getMusicFont() {
+        if (noteFont == null) {
+            noteFont = MyFontUtils.getLocalFont("Bravura.otf", FONT_SIZE);
+        }
+
+        return noteFont;
+    }
+
     static {
         try {
-            var bravuraBase = MyFontUtils.getLocalFont("Bravura.otf");
-            MUSIC_FONT = bravuraBase.deriveFont(FONT_SIZE);
-            BRAVURA_FONT_GRACE = bravuraBase.deriveFont(FONT_SIZE * LayoutStylesheet.GRACE_NOTE_SCALE);
+            MUSIC_FONT = getMusicFont();
+            GRACE_NOTE_FONT = getMusicFont().deriveFont(FONT_SIZE * LayoutStylesheet.GRACE_NOTE_SCALE);
 
             var tupletBase = MyFontUtils.getLocalFont("TupletNumbers.ttf");
             TUPLET_FONT = tupletBase.deriveFont(1.625f);  // 13px / 8 px/ss

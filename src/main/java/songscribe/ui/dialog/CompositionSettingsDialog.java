@@ -51,6 +51,7 @@ import songscribe.ui.component.NonEmptyGuard;
 import songscribe.ui.component.NumericTextField;
 import songscribe.ui.layout.PageModel;
 import songscribe.ui.layout.ScaleContext;
+import songscribe.ui.renderer.BaseElementRenderer;
 import songscribe.file.FileUtils;
 import songscribe.util.GraphicUtils;
 import songscribe.util.MyFontUtils;
@@ -1265,7 +1266,7 @@ public class CompositionSettingsDialog extends StandardDialog {
     public static class NoteCellRenderer implements ListCellRenderer<Object> {
 
         private static final Dimension CELL_SIZE = new Dimension(14, 36);
-        private static final Font FONT = MyFontUtils.getNoteFont()
+        private static final Font FONT = BaseElementRenderer.getMusicFont()
             .deriveFont(24f);
 
         private static final EnumMap<Tempo.Type, String> tempoMap =

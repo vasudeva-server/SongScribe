@@ -71,8 +71,6 @@ public final class MyFontUtils {
     private static final Map<String, Font> psFonts = new HashMap<>();
     private static List<Font> allFonts = List.of();
 
-    @Nullable
-    private static Font noteFont = null;
 
     @Nullable
     private static Font iconFont = null;
@@ -157,13 +155,6 @@ public final class MyFontUtils {
         return font;
     }
 
-    public static Font getNoteFont() {
-        if (noteFont == null) {
-            noteFont = getLocalFont("Bravura.otf", 20);
-        }
-
-        return noteFont;
-    }
 
     public static Font getIconFont() {
         if (iconFont == null) {
