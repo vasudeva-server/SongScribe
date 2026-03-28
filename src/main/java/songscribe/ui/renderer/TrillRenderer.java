@@ -28,11 +28,9 @@ import module java.desktop;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.music.Line;
 import songscribe.music.StaffElement;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
-import songscribe.smufl.StaffSpaces;
 import songscribe.ui.layout.Trill;
 import songscribe.util.GraphicUtils;
 
@@ -45,14 +43,17 @@ public class TrillRenderer extends BaseElementRenderer<Trill> {
     // Constants
     // ==========================================================================
 
-    // Trill glyph advance width in pixels, used to position the wavy line start
-    private static final double TRILL_ADVANCE_WIDTH_PX;
+    // Trill glyph advance width in staff-space units, used to position the wavy line start
+    private static final double TRILL_ADVANCE_WIDTH_SS;
 
     // Wavy line segment width from SMuFL repeatOffset (0.948 ss)
-    private static final double WIGGLE_SEGMENT_WIDTH_PX = StaffSpaces.toPixels(0.948);
+    private static final double WIGGLE_SEGMENT_WIDTH_SS = 0.948;
 
-    // Crotchet width
-    private static final double CROTCHET_WIDTH_PX = BaseElementRenderer.FONT_SIZE / 3.6056337d;
+    // Default fallback advance width in staff-space units (~2.125 ss)
+    private static final double DEFAULT_TRILL_ADVANCE_WIDTH_SS = 2.125;
+
+    // Notehead center X for horizontal alignment
+    private static final double NOTE_HEAD_WIDTH_SS;
 
     // Singleton instance
     private static final TrillRenderer INSTANCE = new TrillRenderer();
@@ -60,7 +61,8 @@ public class TrillRenderer extends BaseElementRenderer<Trill> {
     static {
         var metadata = SMuFLMetadata.getInstance();
         var advanceWidth = metadata.getAdvanceWidth(SMuFLGlyph.ORNAMENT_TRILL);
-        TRILL_ADVANCE_WIDTH_PX = (advanceWidth != null) ? StaffSpaces.toPixels(advanceWidth) : 17.0;
+        TRILL_ADVANCE_WIDTH_SS = (advanceWidth != null) ? advanceWidth : DEFAULT_TRILL_ADVANCE_WIDTH_SS;
+        NOTE_HEAD_WIDTH_SS = metadata.requireBBox(SMuFLGlyph.NOTEHEAD_BLACK).width();
     }
 
     /**
@@ -92,106 +94,115 @@ public class TrillRenderer extends BaseElementRenderer<Trill> {
             return;
         }
 
-        var endNote = element.getEndElement();
-        int trillYPosSs = getEffectiveTrillYPosSs(element, ctx);
+        var layoutResult = ctx.getLayoutResult();
 
-        renderTrill(g2, ctx, anchorNote, endNote, trillYPosSs);
+        if (layoutResult == null) {
+            return;
+        }
+
+        var decorationLayout = layoutResult.getDecorationLayout(element);
+
+        if (decorationLayout == null) {
+            return;
+        }
+
+        double trillTopYSs = layoutYToComponentYSs(decorationLayout.ySs(), ctx);
+        double layoutXSs = decorationLayout.xSs();
+
+        var endNote = element.getEndElement();
+
+        if (endNote != null && endNote != anchorNote) {
+            double trillXSs = GraphicUtils.snapXToDevicePixel(g2, layoutXSs);
+            double endXSs = layoutResult.getElementXSs(endNote) + NOTE_HEAD_WIDTH_SS;
+            renderTrill(g2, trillXSs, endXSs, trillTopYSs);
+        } else {
+            double trillXSs = centeredGlyphX(g2, layoutXSs,
+                anchorNote, TRILL_ADVANCE_WIDTH_SS);
+            renderTrill(g2, trillXSs, Double.NaN, trillTopYSs);
+        }
     }
 
     /**
-     * Gets the Y position for a trill from layout result.
+     * Renders a trill glyph plus optional wavy line extension.
+     * All coordinates in staff-space units (Graphics2D has scale transform applied).
+     *
+     * @param g2          Graphics context with scale transform
+     * @param xSs         X position of the trill glyph in staff-space units
+     * @param endXSs      Right edge of the wavy line extension, or {@code NaN} for single-note trills
+     * @param trillTopYSs Y position of the trill top edge in component staff-space coordinates
      */
-    private int getEffectiveTrillYPosSs(
-        Trill element,
+    private void renderTrill(
+        Graphics2D g2,
+        double xSs,
+        double endXSs,
+        double trillTopYSs
+    ) {
+        // SMuFL ornamentTrill glyph origin is at the baseline (bottom of glyph).
+        // trillTopYSs is the top, so offset down by the glyph height.
+        var bbox = SMuFLMetadata.getInstance().requireBBox(SMuFLGlyph.ORNAMENT_TRILL);
+        double y = trillTopYSs + bbox.height();
+
+        drawBravuraGlyph(g2, SMuFLGlyph.ORNAMENT_TRILL, xSs, y, true);
+
+        // Draw wavy line extension for multi-note trills
+        if (!Double.isNaN(endXSs)) {
+            double wavyStartX = GraphicUtils.snapXToDevicePixel(
+                g2, xSs + TRILL_ADVANCE_WIDTH_SS
+            );
+            double wavyEndX = GraphicUtils.snapXToDevicePixel(g2, endXSs);
+            drawWavyLine(g2, wavyStartX, y, wavyEndX);
+        }
+    }
+
+    /**
+     * Renders all trills for a line using layout results.
+     * <p>
+     * Iterates all {@link Trill} entries in the layout (both new range elements
+     * and those bridged from legacy {@code isTrill()} flags during layout).
+     */
+    public void renderTrillsFromLine(
+        Graphics2D g2,
         ElementRenderContext ctx
     ) {
         var layoutResult = ctx.getLayoutResult();
 
         if (layoutResult == null) {
-            throw new IllegalStateException("Layout result must be available for rendering");
+            return;
         }
 
-        var bounds = layoutResult.getBounds(element);
+        for (var entry : layoutResult.getDecorationLayoutsByType(Trill.class)) {
+            var trill = entry.getKey();
+            var layout = entry.getValue();
+            var anchor = trill.getAnchorElement();
 
-        if (bounds == null) {
-            throw new IllegalStateException("No bounds found for Trill element");
-        }
-
-        return (int) (bounds.getTop() - ctx.getMiddleLineYSs());
-    }
-
-    /**
-     * Renders a trill at a note.
-     */
-    public void renderTrill(
-        Graphics2D g2,
-        ElementRenderContext ctx,
-        StaffElement startNote,
-        @Nullable StaffElement endNote,
-        int trillYPosSs
-    ) {
-        double middleLineYSs = ctx.getMiddleLineYSs();
-
-        double x = GraphicUtils.snapXToDevicePixel(g2, startNote.getXPosSs());
-        int y = (int) (middleLineYSs + trillYPosSs);
-
-        drawBravuraGlyph(g2, SMuFLGlyph.ORNAMENT_TRILL, x, y);
-
-        // Draw wavy line extension if there's an end note
-        if (endNote != null && endNote != startNote) {
-            double wavyStartX = GraphicUtils.snapXToDevicePixel(
-                g2, x + TRILL_ADVANCE_WIDTH_PX
-            );
-            double endX = GraphicUtils.snapXToDevicePixel(
-                g2, endNote.getXPosSs() + CROTCHET_WIDTH_PX
-            );
-            drawWavyLine(g2, wavyStartX, y, endX);
-        }
-    }
-
-    /**
-     * Renders trills from a Line, checking for consecutive trill notes.
-     */
-    public void renderTrillsFromLine(
-        Graphics2D g2,
-        Line line,
-        ElementRenderContext ctx
-    ) {
-        int trillYPosPx = line.getTrillYPosPx();
-
-        for (int elementIndex = 0; elementIndex < line.elementCount(); elementIndex++) {
-            var element = line.getElement(elementIndex);
-
-            if (!element.isTrill()) {
+            if (anchor == null) {
                 continue;
             }
 
-            // Only render if this is the start of a trill sequence
-            if (elementIndex > 0 && line.getElement(elementIndex - 1).isTrill()) {
-                continue;
+            double layoutXSs = layout.xSs();
+            double trillTopYSs = layoutYToComponentYSs(layout.ySs(), ctx);
+            var endNote = trill.getEndElement();
+
+            if (endNote != null && endNote != anchor) {
+                double trillXSs = GraphicUtils.snapXToDevicePixel(g2, layoutXSs);
+                double endXSs = layoutResult.getElementXSs(endNote) + NOTE_HEAD_WIDTH_SS;
+                renderTrill(g2, trillXSs, endXSs, trillTopYSs);
+            } else {
+                double trillXSs = centeredGlyphX(g2, layoutXSs,
+                    anchor, TRILL_ADVANCE_WIDTH_SS);
+                renderTrill(g2, trillXSs, Double.NaN, trillTopYSs);
             }
-
-            // Find the end of the trill sequence
-            int trillEnd = elementIndex + 1;
-
-            while (trillEnd < line.elementCount() && line.getElement(trillEnd).isTrill()) {
-                trillEnd++;
-            }
-
-            trillEnd--;
-
-            StaffElement endElement = (trillEnd > elementIndex) ? line.getElement(trillEnd) : null;
-            renderTrill(g2, ctx, element, endElement, trillYPosPx);
         }
     }
 
     /**
      * Draws a wavy trill extension line using tiled WIGGLE_TRILL glyphs.
+     * All coordinates in staff-space units.
      */
     private void drawWavyLine(
         Graphics2D g2,
         double x1,
-        int y,
+        double y,
         double x2
     ) {
         double length = x2 - x1;
@@ -200,20 +211,20 @@ public class TrillRenderer extends BaseElementRenderer<Trill> {
             return;
         }
 
-        int segments = Math.max(1, (int) Math.round(length / WIGGLE_SEGMENT_WIDTH_PX));
+        int segments = Math.max(1, (int) Math.round(length / WIGGLE_SEGMENT_WIDTH_SS));
 
         try (var ignored = GraphicsState.save(g2, TRANSFORM, FONT, COLOR)) {
             g2.setFont(BRAVURA_FONT);
             g2.setColor(ELEMENT_COLOR);
             g2.translate(x1, y);
 
-            double scale = length / WIGGLE_SEGMENT_WIDTH_PX / segments;
+            double scale = length / WIGGLE_SEGMENT_WIDTH_SS / segments;
             g2.scale(scale, 1d);
 
             for (int i = 0; i < segments; i++) {
                 g2.drawString(
                     SMuFLGlyph.WIGGLE_TRILL.asString(),
-                    (float) (i * WIGGLE_SEGMENT_WIDTH_PX),
+                    (float) (i * WIGGLE_SEGMENT_WIDTH_SS),
                     0f
                 );
             }

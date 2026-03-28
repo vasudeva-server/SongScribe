@@ -22,15 +22,12 @@ package songscribe.ui.renderer;
 
 import module java.desktop;
 
-
-
 import songscribe.music.StaffElement;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
-import songscribe.smufl.StaffSpaces;
 import songscribe.ui.layout.FermataAttachment;
-import songscribe.ui.layout.LayoutStylesheet;
-import songscribe.ui.layout.ScaleContext;
+import songscribe.ui.layout.LayoutResult;
+import songscribe.ui.layout.VerticalStackingCalculator;
 import songscribe.util.GraphicUtils;
 
 /**
@@ -45,15 +42,9 @@ public class FermataRenderer extends BaseElementRenderer<StaffElement> {
     // Constants
     // ==========================================================================
 
-    // SMuFL bbox-derived fermata dimensions (in pixels) for positioning.
-    private static final double FERMATA_WIDTH_PX;
-    private static final double FERMATA_HEIGHT_PX;
-
-    static {
-        var bbox = SMuFLMetadata.getInstance().requireBBox(SMuFLGlyph.FERMATA_ABOVE);
-        FERMATA_WIDTH_PX = StaffSpaces.toPixels(bbox.width());
-        FERMATA_HEIGHT_PX = StaffSpaces.toPixels(bbox.height());
-    }
+    // SMuFL bbox-derived fermata width in staff-space units
+    private static final double FERMATA_WIDTH_SS =
+        SMuFLMetadata.getInstance().requireBBox(SMuFLGlyph.FERMATA_ABOVE).width();
 
     // Singleton instance
     private static final FermataRenderer INSTANCE = new FermataRenderer();
@@ -85,44 +76,31 @@ public class FermataRenderer extends BaseElementRenderer<StaffElement> {
             return;
         }
 
-        int noteX = element.getXPosSs();
-        int fermataY = getEffectiveFermataYPosPx(element, ctx);
-
-        // Center horizontally over the notehead
-        double noteHeadHalfWidth = BaseElementRenderer.FONT_SIZE / 3.6056337d / 2.0;
-        double x = GraphicUtils.snapXToDevicePixel(
-            g2, noteX + noteHeadHalfWidth - FERMATA_WIDTH_PX / 2.0
-        );
-
-        // SMuFL fermata glyph origin is at the baseline (bottom of glyph).
-        // fermataY is the top of the fermata, so offset down by the full height.
-        double y = fermataY + FERMATA_HEIGHT_PX;
-
-        drawBravuraGlyph(g2, SMuFLGlyph.FERMATA_ABOVE, x, y);
-    }
-
-    /**
-     * Gets the Y position for a fermata from layout result,
-     * falling back to a computed position when no layout is available
-     * (e.g. for the insertion note preview).
-     */
-    private int getEffectiveFermataYPosPx(
-        StaffElement note,
-        ElementRenderContext ctx
-    ) {
         var layoutResult = ctx.getLayoutResult();
 
-        if (layoutResult != null) {
-            var bounds = layoutResult.findAttachmentBounds(note, FermataAttachment.class);
-
-            if (bounds != null) {
-                return (int) bounds.getTop();
-            }
+        if (layoutResult == null) {
+            // Insertion note preview: compute layouts using the same stacking logic.
+            // Use the override X for precise positioning, falling back to xPosSs.
+            double xSs = ctx.hasOverrideElementX()
+                ? ctx.getOverrideElementXSs() : element.getXPosSs();
+            layoutResult = VerticalStackingCalculator.computePreviewDecorationLayouts(
+                element, xSs);
         }
 
-        // Fallback: compute position directly from note position
-        int fermataStaffPosition = getFermataStaffPosition(note);
-        return (int) (ctx.getMiddleLineYSs() + ScaleContext.getInstance().toRoundedPixels(fermataStaffPosition * LayoutStylesheet.STAFF_POSITION_OFFSET_SS));
+        var decorationLayout = layoutResult.findAttachmentDecorationLayout(
+            element, FermataAttachment.class);
+
+        if (decorationLayout == null) {
+            return;
+        }
+
+        double fermataTopYSs = layoutYToComponentYSs(decorationLayout.ySs(), ctx);
+
+        double x = centeredGlyphX(g2, decorationLayout.xSs(), element, FERMATA_WIDTH_SS);
+
+        double y = glyphOriginYFromLayoutTop(fermataTopYSs, SMuFLGlyph.FERMATA_ABOVE);
+
+        drawBravuraGlyph(g2, SMuFLGlyph.FERMATA_ABOVE, x, y, true);
     }
 
     /**
@@ -138,21 +116,5 @@ public class FermataRenderer extends BaseElementRenderer<StaffElement> {
         ElementRenderContext ctx
     ) {
         render(note, g2, ctx);
-    }
-
-    /**
-     * Calculates the Y position for the fermata based on note position.
-     * Fermata is placed above the note, further up for higher notes.
-     */
-    private int getFermataStaffPosition(StaffElement note) {
-        int staffPosition = note.getStaffPosition();
-
-        // For notes above the staff, place fermata higher
-        if (staffPosition < -4) {
-            return staffPosition - 3;
-        }
-
-        // Default position above the staff
-        return -7;
     }
 }

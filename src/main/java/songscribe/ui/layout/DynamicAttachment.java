@@ -32,11 +32,11 @@ import songscribe.music.StaffElement;
  */
 public class DynamicAttachment extends Attachment {
 
-    /** Default width for dynamic markings. */
-    private static final double DEFAULT_WIDTH_PX = 20.0;
+    /** Default width for dynamic markings in staff-space units. */
+    private static final double DEFAULT_WIDTH_SS = 2.5;  // 20px
 
-    /** Default height for dynamic markings. */
-    private static final double DEFAULT_HEIGHT_PX = 14.0;
+    /** Default height for dynamic markings in staff-space units. */
+    private static final double DEFAULT_HEIGHT_SS = 1.75;  // 14px
 
     /**
      * Types of dynamic markings.
@@ -124,14 +124,27 @@ public class DynamicAttachment extends Attachment {
         return type.getSymbol();
     }
 
+    /**
+     * Returns the content width in staff-space units.
+     */
+    public double getContentWidthSs() {
+        return DEFAULT_WIDTH_SS;
+    }
+
+    /**
+     * Returns the content height in staff-space units.
+     */
+    public double getContentHeightSs() {
+        return DEFAULT_HEIGHT_SS;
+    }
+
     @Override
     public double getContentWidthPx() {
-        // Width varies by dynamic type; this is an estimate
-        return DEFAULT_WIDTH_PX;
+        return ScaleContext.getInstance().toPixels(getContentWidthSs());
     }
 
     @Override
     public double getContentHeightPx() {
-        return DEFAULT_HEIGHT_PX;
+        return ScaleContext.getInstance().toPixels(getContentHeightSs());
     }
 }

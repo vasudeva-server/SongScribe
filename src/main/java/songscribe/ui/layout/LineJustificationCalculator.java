@@ -236,8 +236,8 @@ public class LineJustificationCalculator {
         List<ElementColumn> columns,
         double compressionRatio) {
 
-        double minColumnGapSs = LayoutConstants.COMPRESSED_MIN_COLUMN_GAP_SS;
-        double minSyllableGapSs = LayoutConstants.COMPRESSED_MIN_SYLLABLE_GAP_SS;
+        double minColumnGapSs = LayoutStylesheet.COMPRESSED_MIN_COLUMN_GAP_SS;
+        double minSyllableGapSs = LayoutStylesheet.COMPRESSED_MIN_SYLLABLE_GAP_SS;
 
         var firstColumn = columns.get(0);
         double anchorXSs = firstColumn.getXSs();

@@ -53,7 +53,7 @@ class HorizontalSpacingCalculatorTest extends UnitTest {
 
         calculator.calculatePositions(columns, line);
 
-        double expectedXSs = LayoutConstants.calculateFirstElementXSs(line.getKeyAccidentalCount());
+        double expectedXSs = LayoutStylesheet.calculateFirstElementXSs(line.getKeyAccidentalCount());
         assertThat(column.getXSs()).isCloseTo(expectedXSs, within(TOLERANCE));
     }
 }

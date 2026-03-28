@@ -39,7 +39,7 @@ import songscribe.smufl.EngravingDefaults;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
 import songscribe.ui.component.Score;
-import songscribe.ui.layout.LayoutConstants;
+import songscribe.ui.layout.LayoutStylesheet;
 import songscribe.ui.layout.LayoutResult;
 import songscribe.ui.layout.ScaleContext;
 
@@ -856,10 +856,10 @@ public class GlissandoRenderer {
 
     /**
      * Returns the ledger line overhang for a note, or 0 if the note has no ledger lines.
-     * Delegates to {@link LayoutConstants#getLedgerLineOverhangSs(StaffElement)}.
+     * Delegates to {@link LayoutStylesheet#getLedgerLineOverhangSs(StaffElement)}.
      */
     public static double getLedgerLineOverhangSs(StaffElement note) {
-        return LayoutConstants.getLedgerLineOverhangSs(note);
+        return LayoutStylesheet.getLedgerLineOverhangSs(note);
     }
 
     /**
@@ -890,7 +890,7 @@ public class GlissandoRenderer {
 
     /**
      * Adds a stem rectangle to the area and returns the stem tip point.
-     * Uses {@link LayoutConstants#computeBaseStemGeometry} for shared anchor/positioning logic.
+     * Uses {@link LayoutStylesheet#computeBaseStemGeometry} for shared anchor/positioning logic.
      *
      * @return The stem tip point (x = stem left edge, y = stem tip)
      */
@@ -899,15 +899,15 @@ public class GlissandoRenderer {
         ElementType noteType,
         boolean upper
     ) {
-        var geom = LayoutConstants.computeBaseStemGeometry(noteType, upper);
+        var geom = LayoutStylesheet.computeBaseStemGeometry(noteType, upper);
         double stemTipY = geom.stemTipYSs(upper);
 
         if (upper) {
             area.add(new Area(new Rectangle2D.Double(
-                geom.stemLeftXSs(), stemTipY, LayoutConstants.STEM_WIDTH_SS, geom.lengthSs())));
+                geom.stemLeftXSs(), stemTipY, LayoutStylesheet.STEM_WIDTH_SS, geom.lengthSs())));
         } else {
             area.add(new Area(new Rectangle2D.Double(
-                geom.stemLeftXSs(), geom.anchorYSs(), LayoutConstants.STEM_WIDTH_SS, geom.lengthSs())));
+                geom.stemLeftXSs(), geom.anchorYSs(), LayoutStylesheet.STEM_WIDTH_SS, geom.lengthSs())));
         }
 
         return new Point2D.Double(geom.stemLeftXSs(), stemTipY);

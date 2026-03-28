@@ -23,6 +23,8 @@ package songscribe.ui.layout;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.music.StaffElement;
+import songscribe.smufl.SMuFLGlyph;
+import songscribe.smufl.SMuFLMetadata;
 
 /**
  * Represents a trill marking that can span one or more notes.
@@ -31,6 +33,16 @@ import songscribe.music.StaffElement;
  * are represented as RangeElements where the anchor and end note are the same.
  */
 public class Trill extends RangeElement {
+
+    // SMuFL bbox-derived dimensions in staff-space units for the "tr" glyph
+    private static final double TRILL_GLYPH_WIDTH_SS;
+    private static final double TRILL_GLYPH_HEIGHT_SS;
+
+    static {
+        var bbox = SMuFLMetadata.getInstance().requireBBox(SMuFLGlyph.ORNAMENT_TRILL);
+        TRILL_GLYPH_WIDTH_SS = bbox.width();
+        TRILL_GLYPH_HEIGHT_SS = bbox.height();
+    }
 
     private @Nullable StaffElement endNote;
     private int yPositionSs = 0;
@@ -110,24 +122,42 @@ public class Trill extends RangeElement {
         this.yPositionSs = yPositionSs;
     }
 
+    /**
+     * Returns the width of the trill "tr" glyph in staff-space units.
+     * <p>
+     * For vertical stacking, only the glyph width matters since the wavy
+     * extension is drawn at the same Y level.
+     */
+    public double getContentWidthSs() {
+        return TRILL_GLYPH_WIDTH_SS;
+    }
+
+    /**
+     * Returns the height of the trill "tr" glyph in staff-space units.
+     */
+    @Override
+    public double getContentHeightSs() {
+        return TRILL_GLYPH_HEIGHT_SS;
+    }
+
+    /**
+     * Returns the full horizontal span of the trill in staff-space units,
+     * from the anchor note X to the end note right edge.
+     * <p>
+     * Used for reserving horizontal space in {@link StaffExtents}.
+     */
+    @Override
+    public double getSpanWidthSs(double anchorXSs, double endXSs) {
+        return Math.max(getContentWidthSs(), endXSs - anchorXSs + getContentWidthSs());
+    }
+
     @Override
     public double getContentWidthPx() {
-        var anchor = getAnchorElement();
-
-        if (anchor == null || endNote == null) {
-            return 0;
-        }
-
-        if (anchor == endNote) {
-            return anchor.getContentWidthPx();
-        }
-
-        return Math.abs(endNote.getXSs() - anchor.getXSs()) + endNote.getContentWidthPx();
+        return ScaleContext.getInstance().toPixels(getContentWidthSs());
     }
 
     @Override
     public double getContentHeightPx() {
-        // Height of trill symbol ("tr" + wavy line)
-        return 12.0;
+        return ScaleContext.getInstance().toPixels(getContentHeightSs());
     }
 }

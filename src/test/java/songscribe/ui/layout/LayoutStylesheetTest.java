@@ -28,12 +28,12 @@ import songscribe.UnitTest;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
 
-class LayoutConstantsTest extends UnitTest {
+class LayoutStylesheetTest extends UnitTest {
 
     // T6: CLEF_WIDTH_SS is derived from the SMuFL advance width, not hardcoded
     @Test
     void testClefWidthSsMatchesSmuflAdvanceWidth() {
         double expected = SMuFLMetadata.getInstance().requireAdvanceWidth(SMuFLGlyph.G_CLEF);
-        assertThat(LayoutConstants.CLEF_WIDTH_SS).isEqualTo(expected);
+        assertThat(LayoutStylesheet.CLEF_WIDTH_SS).isEqualTo(expected);
     }
 }

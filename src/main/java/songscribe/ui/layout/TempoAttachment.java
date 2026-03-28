@@ -24,6 +24,13 @@ import org.jspecify.annotations.Nullable;
 
 import songscribe.music.StaffElement;
 import songscribe.music.Tempo;
+import java.awt.FontMetrics;
+
+import songscribe.smufl.BBox;
+import songscribe.smufl.SMuFLGlyph;
+import songscribe.smufl.SMuFLMetadata;
+import songscribe.ui.FlatLafKeys;
+import songscribe.ui.FlatLafProps;
 
 /**
  * Represents a tempo marking attachment on a note.
@@ -33,11 +40,20 @@ import songscribe.music.Tempo;
  */
 public class TempoAttachment extends Attachment {
 
-    /** Default width for tempo markings. */
-    private static final double DEFAULT_WIDTH_PX = 60.0;
+    /** Scale factor for tempo note glyphs relative to regular notes. */
+    public static final float NOTE_SCALE =
+        FlatLafProps.get(FlatLafKeys.SCORE_TEMPO_NOTE_SCALE);
 
-    /** Default height for tempo markings. */
-    private static final double DEFAULT_HEIGHT_PX = 20.0;
+    /** Bounding box of the quarter note metronome glyph (the tallest common tempo note). */
+    public static final BBox QUARTER_NOTE_BBOX =
+        SMuFLMetadata.getInstance().requireBBox(SMuFLGlyph.MET_NOTE_QUARTER_UP);
+
+    /** Gap between tempo note glyph and text, in staff-space units. */
+    private static final float GLYPH_TEXT_GAP_SS =
+        FlatLafProps.get(FlatLafKeys.SCORE_TEMPO_GLYPH_TEXT_GAP);
+
+    /** Content height from the quarter note glyph bbox, scaled to tempo note size. */
+    private static final double DEFAULT_HEIGHT_SS = QUARTER_NOTE_BBOX.height() * NOTE_SCALE;
 
     /** The tempo data. */
     private Tempo tempo;
@@ -104,13 +120,94 @@ public class TempoAttachment extends Attachment {
         return tempo.shouldShowTempo();
     }
 
+    /**
+     * Computes the content width from the actual tempo text and glyph metrics.
+     *
+     * @param attrFontMetrics font metrics for the attribution font (used for "= NNN" text)
+     * @return width in staff-space units
+     */
+    public double computeContentWidthSs(FontMetrics attrFontMetrics) {
+        double widthSs = 0;
+        var metadata = SMuFLMetadata.getInstance();
+        var scale = ScaleContext.getInstance();
+
+        if (tempo.shouldShowTempo()) {
+            double tempoNoteWidthSs = noteWidthSs(tempo.getTempoType().getNote(), metadata);
+
+            if (tempoNoteWidthSs > 0) {
+                widthSs += tempoNoteWidthSs;
+                widthSs += GLYPH_TEXT_GAP_SS;
+            }
+        }
+
+        // Build the same text string the renderer draws
+        var text = new StringBuilder(25);
+
+        if (tempo.shouldShowTempo()) {
+            text.append("= ");
+            text.append(tempo.getVisibleTempo());
+            text.append(' ');
+        }
+
+        text.append(tempo.getTempoDescription());
+
+        if (!text.isEmpty()) {
+            widthSs += scale.fromPixels(attrFontMetrics.stringWidth(text.toString()));
+        }
+
+        return widthSs;
+    }
+
+    /**
+     * Returns the SMuFL metronome glyph for the given note's type, or null if unmapped.
+     */
+    static @Nullable SMuFLGlyph metronomeGlyphFor(StaffElement note) {
+        return switch (note.getType()) {
+            case SEMIBREVE -> SMuFLGlyph.MET_NOTE_WHOLE;
+            case MINIM -> SMuFLGlyph.MET_NOTE_HALF_UP;
+            case CROTCHET -> SMuFLGlyph.MET_NOTE_QUARTER_UP;
+            case QUAVER -> SMuFLGlyph.MET_NOTE_8TH_UP;
+            case SEMIQUAVER -> SMuFLGlyph.MET_NOTE_16TH_UP;
+            case DEMI_SEMIQUAVER -> SMuFLGlyph.MET_NOTE_32ND_UP;
+            default -> null;
+        };
+    }
+
+    /**
+     * Returns the advance width in staff spaces for the given note glyph plus any augmentation dot.
+     * Returns 0 if the note type has no metronome glyph.
+     */
+    static double noteWidthSs(StaffElement note, SMuFLMetadata metadata) {
+        var glyph = metronomeGlyphFor(note);
+
+        if (glyph == null) {
+            return 0;
+        }
+
+        double widthSs = metadata.requireAdvanceWidth(glyph) * NOTE_SCALE;
+
+        if (note.getDotCount() > 0) {
+            widthSs += metadata.requireAdvanceWidth(SMuFLGlyph.MET_AUGMENTATION_DOT) * NOTE_SCALE;
+        }
+
+        return widthSs;
+    }
+
+    /**
+     * Returns the content height in staff-space units.
+     */
+    public double getContentHeightSs() {
+        return DEFAULT_HEIGHT_SS;
+    }
+
     @Override
     public double getContentWidthPx() {
-        return DEFAULT_WIDTH_PX;
+        // Legacy pixel API — not used for layout (computeContentWidthSs is used instead)
+        return 0;
     }
 
     @Override
     public double getContentHeightPx() {
-        return DEFAULT_HEIGHT_PX;
+        return ScaleContext.getInstance().toPixels(getContentHeightSs());
     }
 }

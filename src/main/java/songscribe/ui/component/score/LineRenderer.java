@@ -29,7 +29,10 @@ import songscribe.ui.Mode;
 import songscribe.ui.component.Score;
 import songscribe.ui.edit.EditModeManager;
 import songscribe.ui.edit.GraceModeManager;
+import songscribe.ui.layout.AnnotationAttachment;
+import songscribe.ui.layout.BeatChangeAttachment;
 import songscribe.ui.layout.Clef;
+import songscribe.ui.layout.FermataAttachment;
 import songscribe.ui.layout.KeySignature;
 import songscribe.ui.layout.ScaleContext;
 import songscribe.ui.layout.TempoAttachment;
@@ -487,9 +490,7 @@ class LineRenderer {
             return;
         }
 
-        var dynamicsRenderer = DynamicsRenderer.getInstance();
-        dynamicsRenderer.renderCrescendosFromLine(g2, line, ctx);
-        dynamicsRenderer.renderDiminuendosFromLine(g2, line, ctx);
+        DynamicsRenderer.getInstance().renderHairpinsFromLine(g2, ctx);
     }
 
     /**
@@ -515,18 +516,21 @@ class LineRenderer {
     // ==========================================================================
 
     /**
-     * Renders note attachments: tempo, beat change, fermata, annotations,
-     * articulations, and trills.
+     * Renders note attachments using pre-computed positions from {@link songscribe.ui.layout.LayoutResult}.
+     * <p>
+     * Dispatch is driven by {@link songscribe.ui.layout.LayoutResult.DecorationLayout} presence
+     * rather than legacy model flags. Rendering order follows the stacking tier order
+     * (near-note first, system-level last).
      *
      * @param g2  Graphics context
      * @param ctx Render context
      */
     private void renderAttachments(Graphics2D g2, ElementRenderContext ctx) {
+        var articulationRenderer = ArticulationRenderer.getInstance();
+        var fermataRenderer = FermataRenderer.getInstance();
         var tempoRenderer = TempoRenderer.getInstance();
         var beatChangeRenderer = BeatChangeRenderer.getInstance();
-        var fermataRenderer = FermataRenderer.getInstance();
         var annotationRenderer = AnnotationRenderer.getInstance();
-        var articulationRenderer = ArticulationRenderer.getInstance();
         var line = lc.getLine();
         var layoutResult = lc.getLayoutResult();
 
@@ -539,39 +543,42 @@ class LineRenderer {
         for (var i = 0; i < line.elementCount(); i++) {
             var element = line.getElement(i);
 
-            // Tempo marking (including initial tempo on first element of first line)
-            // Check layout result for TempoAttachment - layout creates one for initial tempo too
-            var tempoBounds = layoutResult != null
-                ? layoutResult.findAttachmentBounds(element, TempoAttachment.class)
-                : null;
-
-            if (tempoBounds != null) {
-                tempoRenderer.render(element, g2, ctx);
-            }
-
-            // Beat change
-            if (element.getBeatChange() != null) {
-                beatChangeRenderer.render(element, g2, ctx);
-            }
-
-            // Fermata
-            if (element.isFermata()) {
-                fermataRenderer.render(element, g2, ctx);
-            }
-
-            // Annotation
-            if (element.getAnnotation() != null) {
-                annotationRenderer.render(element, g2, ctx);
-            }
-
-            // Articulations
+            // Tier 1: Articulations (near-note)
             if (!element.getArticulations().isEmpty()) {
                 articulationRenderer.render(element, g2, ctx);
             }
+
+            // Tier 2: Fermata (note decoration)
+            if (layoutResult != null
+                && layoutResult.findAttachmentDecorationLayout(
+                    element, FermataAttachment.class) != null) {
+                fermataRenderer.render(element, g2, ctx);
+            }
+
+            // Tier 4: Tempo (system)
+            if (layoutResult != null
+                && layoutResult.findAttachmentDecorationLayout(
+                    element, TempoAttachment.class) != null) {
+                tempoRenderer.render(element, g2, ctx);
+            }
+
+            // Tier 4: Beat change (system)
+            if (layoutResult != null
+                && layoutResult.findAttachmentDecorationLayout(
+                    element, BeatChangeAttachment.class) != null) {
+                beatChangeRenderer.render(element, g2, ctx);
+            }
+
+            // Tier 4: Annotation (system)
+            if (layoutResult != null
+                && layoutResult.findAttachmentDecorationLayout(
+                    element, AnnotationAttachment.class) != null) {
+                annotationRenderer.render(element, g2, ctx);
+            }
         }
 
-        // Trills (rendered separately as they may span multiple notes)
-        TrillRenderer.getInstance().renderTrillsFromLine(g2, line, ctx);
+        // Tier 2: Trills (rendered separately as they may span multiple notes)
+        TrillRenderer.getInstance().renderTrillsFromLine(g2, ctx);
     }
 
     // ==========================================================================
@@ -682,23 +689,19 @@ class LineRenderer {
         insertionElement.setUpper(Score.defaultUpperNote(insertionElement));
 
         // Render the insertion element with the insertion element color.
-        // Pass x as an override so NoteRenderer applies device-pixel snapping
-        // to the raw double directly, exactly as it does for composition elements
-        // via layoutResult.getElementXSs(). Temporarily clear layoutResult to prevent
-        // sub-renderers from looking up the insertion element (which is not in the layout).
+        // Pass x as an override so NoteRenderer and decoration renderers apply
+        // device-pixel snapping to the raw double directly, exactly as they do for
+        // composition elements via layoutResult.getElementXSs(). Temporarily clear
+        // layoutResult to prevent sub-renderers from looking up the insertion element
+        // (which is not in the layout).
         var savedLayout = ctx.getLayoutResult();
         ctx.setOverrideElementXSs(x);
         ctx.setLayoutResult(null);
         g2.setColor(Score.getInsertionElementColor());
         NoteRenderer.getInstance().render(g2, insertionElement, ctx);
-        ctx.clearOverrideElementX();
 
-        // Set xPosSs for articulation/fermata renderers, which read it directly.
-        // Simple rounding is fine since those renderers apply their own device-pixel
-        // snapping internally.
-        insertionElement.setXPosSs((int) Math.round(x));
-
-        // Render articulations and fermata on the insertion element preview
+        // Render articulations and fermata on the insertion element preview.
+        // The override X remains set so decoration renderers use the precise position.
         if (!insertionElement.getArticulations().isEmpty()) {
             ArticulationRenderer.getInstance().render(insertionElement, g2, ctx);
         }
@@ -707,6 +710,7 @@ class LineRenderer {
             FermataRenderer.getInstance().render(insertionElement, g2, ctx);
         }
 
+        ctx.clearOverrideElementX();
         ctx.setLayoutResult(savedLayout);
     }
 

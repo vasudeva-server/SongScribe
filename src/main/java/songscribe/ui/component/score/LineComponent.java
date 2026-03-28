@@ -487,7 +487,7 @@ public class LineComponent extends ScoreComponent
      * This prevents the line from jumping in height when the first note is added.
      * Value: 5.0 ss (5 staff-space gaps above the top staff line).
      */
-    private static final double MIN_SPACE_ABOVE_SS = 5.0;
+    private static final double MIN_SPACE_ABOVE_SS = 10.0;
 
     /**
      * Calculates the height needed for this line.

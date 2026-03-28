@@ -123,6 +123,10 @@ public class BeatChangeRenderer extends BaseElementRenderer<StaffElement> {
 
     /**
      * Gets the Y position for beat change from layout result.
+     * <p>
+     * Reads the {@link songscribe.ui.layout.LayoutResult.DecorationLayout} written
+     * by the vertical stacking calculator. Converts from layout coordinates
+     * (relative to middleLineY=0) to component coordinates.
      */
     private int getEffectiveBeatChangeYPosPx(
         StaffElement note,
@@ -134,13 +138,14 @@ public class BeatChangeRenderer extends BaseElementRenderer<StaffElement> {
             throw new IllegalStateException("Layout result must be available for rendering");
         }
 
-        var bounds = layoutResult.findAttachmentBounds(note, BeatChangeAttachment.class);
+        var decorationLayout = layoutResult.findAttachmentDecorationLayout(
+            note, BeatChangeAttachment.class);
 
-        if (bounds == null) {
-            throw new IllegalStateException("No bounds found for BeatChangeAttachment on note");
+        if (decorationLayout == null) {
+            throw new IllegalStateException("No DecorationLayout found for BeatChangeAttachment on note");
         }
 
-        return (int) bounds.getTop();
+        return (int) layoutYToComponentYSs(decorationLayout.ySs(), ctx);
     }
 
     /**

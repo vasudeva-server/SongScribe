@@ -128,7 +128,7 @@ public class HorizontalSpacingCalculator {
      * @return X position in ss
      */
     private double calculateFirstNoteXSs(Line line) {
-        return LayoutConstants.calculateFirstElementXSs(line.getKeyAccidentalCount());
+        return LayoutStylesheet.calculateFirstElementXSs(line.getKeyAccidentalCount());
     }
 
     // ==========================================================================
@@ -152,7 +152,7 @@ public class HorizontalSpacingCalculator {
         // Grace note → host note: use tight grace note spacing
         if (prevColumn.getElement().getType().isGraceNote()) {
             double spacingSs = prevColumn.getRightExtentSs()
-                + LayoutConstants.GRACE_NOTE_GAP_SS
+                + LayoutStylesheet.GRACE_NOTE_GAP_SS
                 + Math.abs(currColumn.getLeftExtentSs());
             return prevColumn.getXSs() + spacingSs;
         }
@@ -178,7 +178,7 @@ public class HorizontalSpacingCalculator {
 
         // Check accidental clearance and push right if needed
         if (needsAccidentalPush(prevColumn, currColumn, nextXSs)) {
-            double accidentalClearanceSs = LayoutConstants.ACCIDENTAL_CLEARANCE_SS;
+            double accidentalClearanceSs = LayoutStylesheet.ACCIDENTAL_CLEARANCE_SS;
             double prevRightEdgeSs = prevColumn.getRightEdgeXSs();
             double currAccidentalLeftSs = nextXSs + currColumn.getLeftExtentSs();
             double neededPushSs = prevRightEdgeSs + accidentalClearanceSs - currAccidentalLeftSs;
@@ -209,7 +209,7 @@ public class HorizontalSpacingCalculator {
 
         // Distance from previous column's center to current column's center
         // = previous column's right extent + MIN_COLUMN_GAP + abs(current column's left extent)
-        return prevColumn.getRightExtentSs() + LayoutConstants.MIN_COLUMN_GAP_SS + Math.abs(currColumn.getLeftExtentSs());
+        return prevColumn.getRightExtentSs() + LayoutStylesheet.MIN_COLUMN_GAP_SS + Math.abs(currColumn.getLeftExtentSs());
     }
 
     /**
@@ -232,7 +232,7 @@ public class HorizontalSpacingCalculator {
         double prevHalfWidthSs = prevColumn.hasSyllable() ? prevColumn.getSyllableWidthSs() / 2.0 : 0;
         double currHalfWidthSs = currColumn.hasSyllable() ? currColumn.getSyllableWidthSs() / 2.0 : 0;
 
-        return prevHalfWidthSs + LayoutConstants.MIN_SYLLABLE_GAP_SS + currHalfWidthSs;
+        return prevHalfWidthSs + LayoutStylesheet.MIN_SYLLABLE_GAP_SS + currHalfWidthSs;
     }
 
     /**
@@ -248,7 +248,7 @@ public class HorizontalSpacingCalculator {
         ElementColumn prevColumn,
         ElementColumn currColumn) {
 
-        return prevColumn.getRightExtentSs() + LayoutConstants.DEFAULT_COLUMN_GAP_SS + Math.abs(currColumn.getLeftExtentSs());
+        return prevColumn.getRightExtentSs() + LayoutStylesheet.DEFAULT_COLUMN_GAP_SS + Math.abs(currColumn.getLeftExtentSs());
     }
 
     /**
@@ -439,7 +439,7 @@ public class HorizontalSpacingCalculator {
         }
 
         // Step 1: Calculate tight internal spacing
-        double tightGapSs = LayoutConstants.BEAM_GROUP_MIN_INTERNAL_GAP_SS;
+        double tightGapSs = LayoutStylesheet.BEAM_GROUP_MIN_INTERNAL_GAP_SS;
         var tightPositions = new ArrayList<Double>();
         double currentXSs = startXSs;
 

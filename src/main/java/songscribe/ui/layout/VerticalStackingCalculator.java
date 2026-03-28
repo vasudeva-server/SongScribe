@@ -20,49 +20,65 @@
 
 package songscribe.ui.layout;
 
-import module java.desktop;
-
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-
+import java.util.Set;
 
 import songscribe.music.Line;
 import songscribe.music.StaffElement;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
-import songscribe.smufl.StaffSpaces;
-import songscribe.ui.renderer.ArticulationRenderer;
 
 /**
  * Calculates vertical positions for all elements above and below the staff.
  * <p>
- * Implements layer-by-layer stacking with proper collision detection using bounding areas.
- * The stacking order (bottom to top, above staff) is:
+ * Uses a three-layer {@link StaffExtents} model for collision detection:
  * <ol>
- *   <li>Note (head, stem, flag, ledger lines)</li>
- *   <li>Articulations (staccato, accent)</li>
- *   <li>Trill</li>
- *   <li>Fermata</li>
- *   <li>Dynamics (point only)</li>
- *   <li>Tempo/beat change</li>
- *   <li>Text annotations</li>
+ *   <li><b>Note-attached layer</b> ({@code noteAttachedExtents}): articulations, fermata, trill</li>
+ *   <li><b>Structural layer</b> ({@code structuralExtents}): dynamics hairpins, text dynamics, volta</li>
+ *   <li><b>System layer</b> ({@code systemExtents}): tempo, beat changes, annotations</li>
  * </ol>
  * <p>
- * Each layer is positioned with a specific margin from the layer below.
- * Elements cannot collide - if an element would intersect the accumulated bounding area,
- * it is moved upward until clear.
+ * Each layer starts by importing the previous layer's top extents, ensuring higher
+ * layers clear all lower-layer elements. All calculations are in staff-space units.
+ * Results are written directly to the {@link LayoutResult.Builder}.
  */
 public class VerticalStackingCalculator {
 
-    // Note head dimensions from SMuFL noteheadBlack bounding box
-    private static final double NOTE_HEAD_WIDTH_PX =
-        StaffSpaces.toPixels(
-            SMuFLMetadata.getInstance().requireBBox(SMuFLGlyph.NOTEHEAD_BLACK).width());
+    // Note head dimensions from SMuFL noteheadBlack bounding box (staff-space units)
+    private static final double NOTE_HEAD_WIDTH_SS =
+        SMuFLMetadata.getInstance().requireBBox(SMuFLGlyph.NOTEHEAD_BLACK).width();
 
-    private static final double NOTE_HEAD_HEIGHT_PX =
-        StaffSpaces.toPixels(
-            SMuFLMetadata.getInstance().requireBBox(SMuFLGlyph.NOTEHEAD_BLACK).height());
+    private static final double NOTE_HEAD_HEIGHT_SS =
+        SMuFLMetadata.getInstance().requireBBox(SMuFLGlyph.NOTEHEAD_BLACK).height();
+
+    private static final double NOTE_HEAD_RADIUS_SS = NOTE_HEAD_HEIGHT_SS / 2.0;
+
+    // Staff position of the top staff line (F5); positions <= this are at or above the staff
+    private static final int TOP_STAFF_LINE_POSITION = -4;
+
+    // Y coordinate of the top staff line in the middleLineY=0 coordinate system
+    private static final double STAFF_TOP_Y_SS =
+        TOP_STAFF_LINE_POSITION * LayoutStylesheet.STAFF_POSITION_OFFSET_SS;
+
+    // Hairpin opening height in staff-space units (matching Crescendo/Diminuendo constants)
+    private static final double HAIRPIN_OPENING_HEIGHT_SS = 1.0;  // 8px
+
+    // Minimum number of Bezier samples when seeding tie bounds into extents.
+    // Ensures adequate curve resolution even for short ties.
+    private static final int TIE_BOUND_MIN_SAMPLES = 8;
+
+    // Lyrics constants (to be measured from actual font in later phases)
+    private static final double LYRICS_HEIGHT_SS = 2.5;       // ~20px
+    private static final double INTER_LINE_MARGIN_SS = 1.25;  // ~10px
+
+    /**
+     * Notes that are part of an upward-arcing tie (stem down).
+     * Populated by {@link #seedTieBounds} and read by stacking methods to adjust margins.
+     */
+    private Set<StaffElement> notesWithUpwardTie = Set.of();
 
     /**
      * Creates a new vertical stacking calculator.
@@ -71,123 +87,296 @@ public class VerticalStackingCalculator {
     }
 
     /**
-     * Calculates vertical positions for all elements in the given note columns.
+     * Calculates vertical positions for all elements in the given columns.
      * <p>
-     * This is the main entry point for vertical layout. It processes each column
-     * in order, stacking elements layer by layer above the staff.
+     * This is the main entry point for vertical layout. It creates the three-layer
+     * StaffExtents model, seeds note bounding areas, then processes each decoration
+     * tier in order. Results are written directly to the builder.
      *
-     * @param columns List of note columns with X positions already set
-     * @param line    The line being laid out
-     * @param g2      Graphics context for text measurement (may be null if no text elements)
-     * @return VerticalStackingResult containing all calculated positions
+     * @param columns     List of element columns with X positions already set
+     * @param line        The line being laid out
+     * @param builder     The LayoutResult builder to write decoration positions into
+     * @param lineWidthSs Total width of the staff line in staff-space units
      */
-    public VerticalStackingResult calculateVerticalPositions(
+    public void calculate(
         List<ElementColumn> columns,
         Line line,
-        Graphics2D g2) {
+        LayoutResult.Builder builder,
+        double lineWidthSs) {
 
-        var elementPositions = new HashMap<StaffElement, Map<LineElement, Point2D>>();
-        var maxHeightAboveStaffPx = 0.0;
+        // Create three-layer StaffExtents model
+        var noteAttachedExtents = new StaffExtents(lineWidthSs);
+        var structuralExtents = new StaffExtents(lineWidthSs);
+        var systemExtents = new StaffExtents(lineWidthSs);
 
-        // Process each column
+        // Build element-to-column map for range element lookups
+        var columnsByElement = buildColumnMap(columns);
+
+        // Seed note bounding areas into noteAttachedExtents
+        seedNoteBounds(columns, builder, noteAttachedExtents);
+
+        // Seed upward-arcing tie bounds so decorations stack above ties
+        seedTieBounds(line, columnsByElement, builder, noteAttachedExtents);
+
+        // Tier 1: Near-note decorations (articulations)
         for (var column : columns) {
-            var note = column.getElement();
-            var noteElementPositions = new HashMap<LineElement, Point2D>();
-            elementPositions.put(note, noteElementPositions);
-
-            // Start with note bounds as the initial bounding area
-            var accumulated = getNoteBoundingArea(column);
-
-            // Track the highest point reached for this column
-            var columnMaxYPx = accumulated.getBounds2D().getMinY();
-
-            // Process each layer in order (bottom to top)
-            var articulationsMaxYPx = stackArticulations(column, accumulated, noteElementPositions);
-            if (articulationsMaxYPx < columnMaxYPx) {
-                columnMaxYPx = articulationsMaxYPx;
-            }
-
-            var trillMaxYPx = stackTrill(column, accumulated, noteElementPositions);
-            if (trillMaxYPx < columnMaxYPx) {
-                columnMaxYPx = trillMaxYPx;
-            }
-
-            var fermataMaxYPx = stackFermata(column, accumulated, noteElementPositions);
-            if (fermataMaxYPx < columnMaxYPx) {
-                columnMaxYPx = fermataMaxYPx;
-            }
-
-            var dynamicsMaxYPx = stackDynamics(column, accumulated, noteElementPositions);
-            if (dynamicsMaxYPx < columnMaxYPx) {
-                columnMaxYPx = dynamicsMaxYPx;
-            }
-
-            var tempoMaxYPx = stackTempo(column, accumulated, noteElementPositions);
-            if (tempoMaxYPx < columnMaxYPx) {
-                columnMaxYPx = tempoMaxYPx;
-            }
-
-            var annotationsMaxYPx = stackAnnotations(column, accumulated, noteElementPositions);
-            if (annotationsMaxYPx < columnMaxYPx) {
-                columnMaxYPx = annotationsMaxYPx;
-            }
-
-            // Update global maximum height
-            if (columnMaxYPx < maxHeightAboveStaffPx) {
-                maxHeightAboveStaffPx = columnMaxYPx;
-            }
+            stackArticulations(column, noteAttachedExtents, builder);
         }
 
-        // Calculate lyrics baseline
-        var lowestNoteYPx = findLowestNoteBoundingYPx(columns);
-        var lyricsBaselineYPx = lowestNoteYPx + ScaleContext.getInstance().toPixels(LayoutConstants.LYRICS_BASELINE_OFFSET_SS);
+        // Tier 2: Note decorations (fermata, trill)
+        for (var column : columns) {
+            stackFermata(column, noteAttachedExtents, builder);
+        }
 
-        // Calculate line height
-        var hasLyrics = columns.stream().anyMatch(ElementColumn::hasSyllable);
-        var lyricsHeightPx = hasLyrics ? 20.0 : 0.0; // TODO: Measure actual lyric height
-        var interLineMarginPx = 10.0; // TODO: Get from LayoutConstants
+        stackTrills(line, columnsByElement, noteAttachedExtents, builder);
 
-        var lineHeightPx = ScaleContext.getInstance().toPixels(LayoutConstants.STAFF_HEIGHT_SS) +
-            Math.abs(maxHeightAboveStaffPx) +
-            lyricsHeightPx +
-            interLineMarginPx;
+        // Initialize structural layer from note-attached layer
+        structuralExtents.copyTopFrom(noteAttachedExtents);
 
-        return new VerticalStackingResult(
-            elementPositions,
-            maxHeightAboveStaffPx,
-            lyricsBaselineYPx,
-            lineHeightPx
-        );
+        // Tier 3a: Hairpins (crescendo/diminuendo)
+        stackHairpins(line, columnsByElement, structuralExtents, builder);
+
+        // Tier 3b: Text dynamics (DynamicAttachment on notes)
+        for (var column : columns) {
+            stackTextDynamics(column, structuralExtents, builder);
+        }
+
+        // Tier 3c: Volta brackets (endings)
+        stackEndings(line, columnsByElement, structuralExtents, builder);
+
+        // Tier 4: System-level stacking (tempo, beat changes, annotations)
+        // Initialize system layer from structural layer
+        systemExtents.copyTopFrom(structuralExtents);
+
+        for (var column : columns) {
+            stackTempo(column, line, systemExtents, builder);
+            stackBeatChange(column, line, systemExtents, builder);
+            stackAnnotations(column, line, systemExtents, builder);
+        }
+
+        // Apply manual offsets post-layout (no collision re-run)
+        applyManualOffsets(builder);
+
+        // Calculate lyrics baseline and line height
+        double lowestNoteBotSs = findLowestNoteBoundingSs(columns);
+        double lyricsBaselineYSs = lowestNoteBotSs + LayoutStylesheet.LYRICS_BASELINE_OFFSET_SS;
+        boolean hasLyrics = columns.stream().anyMatch(ElementColumn::hasSyllable);
+        double lyricsHeightSs = hasLyrics ? LYRICS_HEIGHT_SS : 0.0;
+
+        // Find the highest point reached across all layers (most negative Y)
+        double maxAboveStaffSs = findMaxAboveStaffSs(systemExtents, lineWidthSs);
+
+        double lineHeightSs = LayoutStylesheet.STAFF_HEIGHT_SS
+            + Math.abs(maxAboveStaffSs)
+            + lyricsHeightSs
+            + INTER_LINE_MARGIN_SS;
+
+        builder.setLineHeightSs(lineHeightSs);
+        builder.setLyricBaselineYSs(hasLyrics ? lyricsBaselineYSs : 0);
     }
 
     /**
-     * Stacks articulations for the given column.
+     * Seeds note bounding areas into the note-attached StaffExtents layer.
      * <p>
-     * Unlike other elements, articulations have privileged positioning: they anchor
-     * to the staff edge or note head at a fixed distance, on the opposite side from
-     * the stem. They are the only note elements that may go below the staff.
-     * All other elements stack above articulations.
-     *
-     * @param column              The note column
-     * @param accumulated         Accumulated bounding area
-     * @param noteElementPositions Map to store element positions
-     * @return Minimum Y position reached (most negative)
+     * For each column, uses the StemLayout from the builder (computed during beam/stem pass)
+     * to get accurate stem top/bottom positions, and uses the notehead width from SMuFL metadata.
      */
-    private double stackArticulations(
+    private void seedNoteBounds(
+        List<ElementColumn> columns,
+        LayoutResult.Builder builder,
+        StaffExtents noteAttachedExtents) {
+
+        for (var column : columns) {
+            var element = column.getElement();
+            var stemLayout = builder.getStemLayout(element);
+
+            double xSs = column.getXSs();
+
+            double centerYSs = element.getStaffPosition()
+                * LayoutStylesheet.STAFF_POSITION_OFFSET_SS;
+            var type = element.getType();
+            boolean upper = element.isUpper();
+
+            double topSs;
+            double botSs;
+
+            double noteheadTopSs = centerYSs + type.getNoteheadTopOffsetSs();
+            double noteheadBotSs = noteheadTopSs + type.getNoteheadHeightSs();
+
+            if (stemLayout != null) {
+                topSs = Math.min(stemLayout.topYSs(), noteheadTopSs);
+                botSs = Math.max(stemLayout.bottomYSs(), noteheadBotSs);
+            } else {
+                topSs = Math.min(centerYSs + type.getTopYOffsetSs(upper), noteheadTopSs);
+                botSs = Math.max(topSs + type.getElementHeightSs(upper), noteheadBotSs);
+            }
+
+            noteAttachedExtents.ySet(true, xSs, NOTE_HEAD_WIDTH_SS, topSs);
+            noteAttachedExtents.ySet(false, xSs, NOTE_HEAD_WIDTH_SS, botSs);
+        }
+    }
+
+    /**
+     * Seeds upward-arcing tie bounds into the note-attached StaffExtents layer.
+     * <p>
+     * For each tie where the stem points down ({@code !isUpper()}), the tie arcs upward
+     * and may interfere with above-staff decorations. This method samples the outer Bezier
+     * curve of each such tie and reserves the curve's vertical extent in the extents layer,
+     * ensuring decorations stack above the tie arc.
+     * <p>
+     * Also populates {@link #notesWithUpwardTie} so stacking methods can use a reduced
+     * margin ({@link LayoutStylesheet#TIE_DECORATION_MARGIN_SS}) for single-note decorations.
+     * A note is only added to the set when the tie endpoint at that note's position is above
+     * (more negative Y than) the anchored ceiling, meaning the tie is the actual constraint
+     * that pushes decorations higher. When the tie stays within the staff, the normal margin
+     * applies.
+     */
+    private void seedTieBounds(
+        Line line,
+        Map<StaffElement, ElementColumn> columnsByElement,
+        LayoutResult.Builder builder,
+        StaffExtents noteAttachedExtents) {
+
+        var ties = line.getTies();
+
+        if (ties.isEmpty()) {
+            return;
+        }
+
+        var upwardTieNotes = new HashSet<StaffElement>();
+
+        for (var it = ties.listIterator(); it.hasNext(); ) {
+            var interval = it.next();
+            var startElement = line.getElement(interval.getStart());
+
+            // Only seed upward-arcing ties (stem down → !isUpper())
+            if (startElement.isUpper()) {
+                continue;
+            }
+
+            var tieLayout = builder.getTieLayout(interval);
+
+            if (tieLayout == null) {
+                continue;
+            }
+
+            var endElement = line.getElement(interval.getEnd());
+
+            // Sample the outer Bezier curve to reserve tie vertical extent
+            double sx = tieLayout.startXSs();
+            double ex = tieLayout.endXSs();
+            double spanWidthSs = ex - sx;
+
+            if (spanWidthSs <= 0) {
+                continue;
+            }
+
+            // Seed tie bounds at the start and end noteheads using the Bezier Y at the
+            // far edge of each notehead (where the tie has curved upward), not at the
+            // attachment point (where the tie just touches the notehead).
+            var startColumn = columnsByElement.get(startElement);
+            var endColumn = columnsByElement.get(endElement);
+
+            double startEdgeT = Math.min(NOTE_HEAD_WIDTH_SS / spanWidthSs, 0.5);
+            double endEdgeT = Math.max(1.0 - NOTE_HEAD_WIDTH_SS / spanWidthSs, 0.5);
+            double startEdgeYSs = evaluateBezierYSs(startEdgeT, tieLayout);
+            double endEdgeYSs = evaluateBezierYSs(endEdgeT, tieLayout);
+
+            // Only use reduced margin for notes where the tie protrudes above the anchor ceiling.
+            // Use the notehead-edge Y (not the raw endpoint) since that reflects the visible arc.
+            if (startEdgeYSs < anchorCeilingSs(startElement)) {
+                upwardTieNotes.add(startElement);
+            }
+
+            if (endEdgeYSs < anchorCeilingSs(endElement)) {
+                upwardTieNotes.add(endElement);
+            }
+
+            if (startColumn != null) {
+                noteAttachedExtents.ySet(true, startColumn.getXSs(),
+                    NOTE_HEAD_WIDTH_SS, startEdgeYSs);
+            }
+
+            if (endColumn != null) {
+                noteAttachedExtents.ySet(true, endColumn.getXSs(),
+                    NOTE_HEAD_WIDTH_SS, endEdgeYSs);
+            }
+
+            int sampleCount = Math.max(TIE_BOUND_MIN_SAMPLES, (int) Math.ceil(spanWidthSs));
+            double segmentWidthSs = spanWidthSs / sampleCount;
+
+            for (int i = 0; i < sampleCount; i++) {
+                double tMid = (i + 0.5) / sampleCount;
+                double ySs = evaluateBezierYSs(tMid, tieLayout);
+                double segmentXSs = sx + i * segmentWidthSs;
+                noteAttachedExtents.ySet(true, segmentXSs, segmentWidthSs, ySs);
+            }
+        }
+
+        notesWithUpwardTie = upwardTieNotes.isEmpty() ? Set.of() : upwardTieNotes;
+    }
+
+    /**
+     * Returns the anchor ceiling Y for a note, without consulting extents.
+     * <p>
+     * Notes within or below the staff anchor at the top staff line.
+     * Notes at or above the top staff line anchor above the notehead.
+     */
+    private static double anchorCeilingSs(StaffElement note) {
+        double noteHeadYSs = note.getStaffPosition()
+            * LayoutStylesheet.STAFF_POSITION_OFFSET_SS;
+        return anchorCeilingSs(note.getStaffPosition(), noteHeadYSs);
+    }
+
+    /**
+     * Returns the anchor ceiling Y for the given staff position and notehead Y.
+     */
+    private static double anchorCeilingSs(int staffPosition, double noteHeadYSs) {
+        if (staffPosition > TOP_STAFF_LINE_POSITION) {
+            return STAFF_TOP_Y_SS;
+        }
+
+        return noteHeadYSs - NOTE_HEAD_RADIUS_SS;
+    }
+
+    /**
+     * Evaluates the outer cubic Bezier curve Y at parameter {@code t}.
+     *
+     * @param t         Bezier parameter in [0, 1]
+     * @param tieLayout the tie layout providing control point coordinates
+     * @return the Y coordinate of the outer curve at {@code t}
+     */
+    private static double evaluateBezierYSs(double t, LayoutResult.TieLayout tieLayout) {
+        double mt = 1.0 - t;
+        return mt * mt * mt * tieLayout.startYSs()
+            + 3 * mt * mt * t * tieLayout.cp1YSs()
+            + 3 * mt * t * t * tieLayout.cp2YSs()
+            + t * t * t * tieLayout.endYSs();
+    }
+
+    /**
+     * Stacks articulations for the given column using StaffExtents collision detection.
+     * <p>
+     * Articulations are always placed above the staff (vocal music context).
+     * Notes within or below the staff anchor above the top staff line;
+     * notes at or above the top staff line anchor above the notehead.
+     * Staccato is placed closest to the notehead; accent stacks beyond staccato.
+     */
+    private void stackArticulations(
         ElementColumn column,
-        Area accumulated,
-        Map<LineElement, Point2D> noteElementPositions) {
+        StaffExtents noteAttachedExtents,
+        LayoutResult.Builder builder) {
 
         var note = column.getElement();
         var articulations = note.getArticulations();
 
         if (articulations.isEmpty()) {
-            return accumulated.getBounds2D().getMinY();
+            return;
         }
 
-        var minYPx = accumulated.getBounds2D().getMinY();
-        boolean isUpper = note.isUpper();
-        double halfContentHeightPx = articulations.getFirst().getContentHeightPx() / 2.0;
+        double xSs = column.getXSs();
+        int staffPosition = note.getStaffPosition();
+        double noteHeadYSs = staffPosition * LayoutStylesheet.STAFF_POSITION_OFFSET_SS;
 
         // Identify articulation types
         Articulation staccatoArticulation = null;
@@ -201,423 +390,800 @@ public class VerticalStackingCalculator {
             }
         }
 
-        // Compute center Y positions in layout space (middleLineY=0)
-        // using the same logic as the renderer's fallback path.
-        boolean hasStaccato = staccatoArticulation != null;
-        int staccatoCenterY = hasStaccato
-            ? ArticulationRenderer.calculateStaccatoYPx(note, 0)
-            : 0;
+        // Use reduced margin for notes with upward ties
+        double marginSs = notesWithUpwardTie.contains(note)
+            ? LayoutStylesheet.TIE_DECORATION_MARGIN_SS
+            : LayoutStylesheet.NOTE_DECORATION_MARGIN_SS;
 
-        // Position staccato
+        // Position staccato first (closest to notehead), then accent beyond
         if (staccatoArticulation != null) {
-            double topYPx = staccatoCenterY - halfContentHeightPx;
-            positionElement(staccatoArticulation, column.getXSs(), topYPx, noteElementPositions);
-
-            // Only add to accumulated area if above the note (stem down),
-            // so that elements stacking above will clear it.
-            if (!isUpper) {
-                addToAccumulated(staccatoArticulation, column.getXSs(), topYPx, accumulated);
-
-                if (topYPx < minYPx) {
-                    minYPx = topYPx;
-                }
-            }
+            stackSingleArticulation(staccatoArticulation, noteAttachedExtents,
+                xSs, marginSs, staffPosition, noteHeadYSs, builder);
         }
 
-        // Position accent
         if (accentArticulation != null) {
-            int accentCenterY = ArticulationRenderer.calculateAccentYPx(
-                note, 0, staccatoCenterY, hasStaccato);
-            double topYPx = accentCenterY - halfContentHeightPx;
-            positionElement(accentArticulation, column.getXSs(), topYPx, noteElementPositions);
+            stackSingleArticulation(accentArticulation, noteAttachedExtents,
+                xSs, marginSs, staffPosition, noteHeadYSs, builder);
+        }
+    }
 
-            if (!isUpper) {
-                addToAccumulated(accentArticulation, column.getXSs(), topYPx, accumulated);
+    /**
+     * Stacks a single articulation above the staff with anchored ceiling collision detection.
+     */
+    private static void stackSingleArticulation(
+        Articulation articulation,
+        StaffExtents extents,
+        double xSs, double marginSs, int staffPosition, double noteHeadYSs,
+        LayoutResult.Builder builder) {
 
-                if (topYPx < minYPx) {
-                    minYPx = topYPx;
-                }
+        stackAbove(extents, articulation, xSs,
+            articulation.getContentWidthSs(), articulation.getContentHeightSs(),
+            marginSs, staffPosition, noteHeadYSs, builder);
+    }
+
+    /**
+     * Computes the effective ceiling Y for placing a decoration above a note.
+     * <p>
+     * Notes within or below the staff anchor above the top staff line.
+     * Notes at or above the top staff line anchor above the notehead.
+     * The result also respects existing reservations in the extents for collision avoidance.
+     *
+     * @return the highest (most negative) Y that the decoration's bottom edge should not exceed
+     */
+    private static double anchoredCeilingSs(
+        StaffExtents extents,
+        double xSs, double widthSs,
+        int staffPosition, double noteHeadYSs) {
+
+        double currentTopSs = extents.yGet(true, xSs, widthSs);
+        double anchorSs = anchorCeilingSs(staffPosition, noteHeadYSs);
+
+        return Math.min(currentTopSs, anchorSs);
+    }
+
+    /**
+     * Computes note-attached decoration layouts for a single note without a full layout pipeline.
+     * <p>
+     * Used by the insertion note preview, where no {@link LayoutResult} is available.
+     * Creates a minimal {@link StaffExtents}, seeds note bounds, and runs the same
+     * stacking logic as the full pipeline (articulations, then fermata).
+     *
+     * @param note the note to compute layouts for
+     * @param xSs  X position in staff-space units
+     * @return a built {@link LayoutResult} containing {@link LayoutResult.DecorationLayout}s
+     */
+    public static LayoutResult computePreviewDecorationLayouts(StaffElement note, double xSs) {
+        // Create minimal extents just wide enough to contain the note
+        double lineWidthSs = xSs + NOTE_HEAD_WIDTH_SS + 1.0;
+        var extents = new StaffExtents(lineWidthSs);
+
+        // Seed note bounds — same logic as seedNoteBounds for the non-beamed path
+        double centerYSs = note.getStaffPosition() * LayoutStylesheet.STAFF_POSITION_OFFSET_SS;
+        var type = note.getType();
+        boolean upper = note.isUpper();
+        double noteheadTopSs = centerYSs + type.getNoteheadTopOffsetSs();
+        double noteheadBotSs = noteheadTopSs + type.getNoteheadHeightSs();
+        double topSs = Math.min(centerYSs + type.getTopYOffsetSs(upper), noteheadTopSs);
+        double botSs = Math.max(topSs + type.getElementHeightSs(upper), noteheadBotSs);
+        extents.ySet(true, xSs, NOTE_HEAD_WIDTH_SS, topSs);
+        extents.ySet(false, xSs, NOTE_HEAD_WIDTH_SS, botSs);
+
+        var builder = new LayoutResult.Builder();
+        int staffPosition = note.getStaffPosition();
+
+        // Tier 1: Articulations
+        Articulation staccatoArticulation = null;
+        Articulation accentArticulation = null;
+
+        for (var a : note.getArticulations()) {
+            if (a.isStaccato()) {
+                staccatoArticulation = a;
+            } else if (a.isAccent()) {
+                accentArticulation = a;
             }
         }
 
-        return minYPx;
-    }
-
-    /**
-     * Stacks trill for the given column (legacy flag support).
-     *
-     * @param column               The note column
-     * @param accumulated          Accumulated bounding area
-     * @param noteElementPositions Map to store element positions
-     * @return Minimum Y position reached (most negative)
-     */
-    private double stackTrill(
-        ElementColumn column,
-        Area accumulated,
-        Map<LineElement, Point2D> noteElementPositions) {
-
-        var note = column.getElement();
-
-        // TODO: In future phases, check for TrillAttachment in new hierarchy
-        if (!note.isTrill()) {
-            return accumulated.getBounds2D().getMinY();
+        if (staccatoArticulation != null) {
+            stackSingleArticulation(staccatoArticulation, extents,
+                xSs, LayoutStylesheet.NOTE_DECORATION_MARGIN_SS,
+                staffPosition, centerYSs, builder);
         }
 
-        // For now, just reserve space for legacy trill
-        // Actual positioning will be done in rendering phase
-        var trillHeightPx = 12.0;
-        var trillWidthPx = 20.0;
+        if (accentArticulation != null) {
+            stackSingleArticulation(accentArticulation, extents,
+                xSs, LayoutStylesheet.NOTE_DECORATION_MARGIN_SS,
+                staffPosition, centerYSs, builder);
+        }
 
-        var yPx = accumulated.getBounds2D().getMinY() -
-            ScaleContext.getInstance().toPixels(LayoutConstants.TRILL_MARGIN_SS) -
-            trillHeightPx;
+        // Tier 2: Fermata
+        if (note.isFermata()) {
+            var fermata = new FermataAttachment(note);
+            stackAbove(extents, fermata, xSs,
+                fermata.getContentWidthSs(), fermata.getContentHeightSs(),
+                LayoutStylesheet.NOTE_DECORATION_MARGIN_SS, staffPosition, centerYSs, builder);
+        }
 
-        var trillBounds = new Rectangle2D.Double(
-            column.getXSs() - trillWidthPx / 2,
-            yPx,
-            trillWidthPx,
-            trillHeightPx
-        );
-
-        accumulated.add(new Area(trillBounds));
-
-        return yPx;
+        return builder.build();
     }
 
     /**
-     * Stacks fermata for the given column (legacy flag + new attachments).
-     *
-     * @param column               The note column
-     * @param accumulated          Accumulated bounding area
-     * @param noteElementPositions Map to store element positions
-     * @return Minimum Y position reached (most negative)
+     * Stacks all trills for the line.
+     * <p>
+     * Processes {@link Trill} objects from {@code line.findRangeElements(Trill.class)},
+     * then bridges any legacy {@code note.isTrill()} flags not already covered.
+     * Multi-note trills reserve the full horizontal span so subsequent layers clear them.
      */
-    private double stackFermata(
+    private void stackTrills(
+        Line line,
+        Map<StaffElement, ElementColumn> columnsByElement,
+        StaffExtents noteAttachedExtents,
+        LayoutResult.Builder builder) {
+
+        // Process new Trill range elements
+        var trills = line.findRangeElements(Trill.class);
+
+        for (var trill : trills) {
+            stackSingleTrill(trill, columnsByElement, noteAttachedExtents, builder);
+        }
+
+        // Bridge legacy isTrill() flags not covered by Trill range elements
+        bridgeLegacyTrillFlags(line, columnsByElement, trills, noteAttachedExtents, builder);
+    }
+
+    /**
+     * Stacks a single trill range element.
+     * <p>
+     * Unlike hairpins and endings, trills allow a missing or same-as-anchor end note
+     * (single-note trill), defaulting endX to the anchor X.
+     */
+    private void stackSingleTrill(
+        Trill trill,
+        Map<StaffElement, ElementColumn> columnsByElement,
+        StaffExtents noteAttachedExtents,
+        LayoutResult.Builder builder) {
+
+        var anchor = trill.getAnchorElement();
+
+        if (anchor == null) {
+            return;
+        }
+
+        var anchorColumn = columnsByElement.get(anchor);
+
+        if (anchorColumn == null) {
+            return;
+        }
+
+        double anchorXSs = anchorColumn.getXSs();
+        double endXSs = anchorXSs;
+
+        var endNote = trill.getEndElement();
+
+        if (endNote != null && endNote != anchor) {
+            var endColumn = columnsByElement.get(endNote);
+
+            if (endColumn != null) {
+                endXSs = endColumn.getXSs();
+            }
+        }
+
+        int staffPosition = anchor.getStaffPosition();
+        double noteHeadYSs = staffPosition * LayoutStylesheet.STAFF_POSITION_OFFSET_SS;
+        double widthSs = trill.getSpanWidthSs(anchorXSs, endXSs);
+        stackAbove(noteAttachedExtents, trill, anchorXSs, widthSs,
+            trill.getContentHeightSs(), LayoutStylesheet.NOTE_DECORATION_MARGIN_SS,
+            staffPosition, noteHeadYSs, builder);
+    }
+
+    /**
+     * Bridges legacy {@code isTrill()} flags to temporary {@link Trill} objects.
+     * <p>
+     * Finds consecutive trill-flagged notes that aren't already covered by a
+     * {@link Trill} range element, creates temporary Trill objects, and stacks them.
+     */
+    private void bridgeLegacyTrillFlags(
+        Line line,
+        Map<StaffElement, ElementColumn> columnsByElement,
+        List<Trill> existingTrills,
+        StaffExtents noteAttachedExtents,
+        LayoutResult.Builder builder) {
+
+        for (int i = 0; i < line.elementCount(); i++) {
+            var element = line.getElement(i);
+
+            if (!element.isTrill()) {
+                continue;
+            }
+
+            // Skip if this is not the start of a trill sequence
+            if (i > 0 && line.getElement(i - 1).isTrill()) {
+                continue;
+            }
+
+            // Find the end of the consecutive trill sequence
+            int trillEnd = i;
+
+            while (trillEnd + 1 < line.elementCount()
+                    && line.getElement(trillEnd + 1).isTrill()) {
+                trillEnd++;
+            }
+
+            var endElement = line.getElement(trillEnd);
+
+            // Check if already covered by an existing Trill range element
+            if (isRangeCovered(element, endElement, existingTrills)) {
+                continue;
+            }
+
+            // Bridge: create temporary Trill and stack it
+            var trill = new Trill(element, endElement);
+            stackSingleTrill(trill, columnsByElement, noteAttachedExtents, builder);
+        }
+    }
+
+    /**
+     * Checks whether a range interval is already covered by an existing range element.
+     */
+    private static boolean isRangeCovered(
+        StaffElement startNote,
+        StaffElement endNote,
+        List<? extends RangeElement> existingElements) {
+
+        for (var element : existingElements) {
+            if (element.getAnchorElement() == startNote && element.getEndElement() == endNote) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Stacks fermata for the given column.
+     * <p>
+     * Checks the new attachment hierarchy first; falls back to the legacy
+     * {@code note.isFermata()} flag and bridges it to a temporary {@link FermataAttachment}
+     * so both paths write a {@link LayoutResult.DecorationLayout}.
+     */
+    private void stackFermata(
         ElementColumn column,
-        Area accumulated,
-        Map<LineElement, Point2D> noteElementPositions) {
+        StaffExtents noteAttachedExtents,
+        LayoutResult.Builder builder) {
 
         var note = column.getElement();
-        var minYPx = accumulated.getBounds2D().getMinY();
 
         // Check new attachment hierarchy first
         var fermata = note.findAttachment(FermataAttachment.class);
 
-        if (fermata != null) {
-            var yPx = findClearYPositionPx(
-                fermata,
-                column.getXSs(),
-                accumulated,
-                ScaleContext.getInstance().toPixels(LayoutConstants.FERMATA_MARGIN_SS)
-            );
-
-            positionElement(fermata, column.getXSs(), yPx, noteElementPositions);
-            addToAccumulated(fermata, column.getXSs(), yPx, accumulated);
-
-            if (yPx < minYPx) {
-                minYPx = yPx;
-            }
-
-            return minYPx;
+        // Bridge legacy flag to a temporary FermataAttachment
+        if (fermata == null && note.isFermata()) {
+            fermata = new FermataAttachment(note);
         }
 
-        // Fall back to legacy flag
-        if (note.isFermata()) {
-            var fermataHeightPx = 16.0;
-            var fermataWidthPx = 16.0;
-
-            var yPx = accumulated.getBounds2D().getMinY() -
-                ScaleContext.getInstance().toPixels(LayoutConstants.FERMATA_MARGIN_SS) -
-                fermataHeightPx;
-
-            var fermataBounds = new Rectangle2D.Double(
-                column.getXSs() - fermataWidthPx / 2,
-                yPx,
-                fermataWidthPx,
-                fermataHeightPx
-            );
-
-            accumulated.add(new Area(fermataBounds));
-
-            if (yPx < minYPx) {
-                minYPx = yPx;
-            }
+        if (fermata == null) {
+            return;
         }
 
-        return minYPx;
+        double xSs = column.getXSs();
+        int staffPosition = note.getStaffPosition();
+        double noteHeadYSs = staffPosition * LayoutStylesheet.STAFF_POSITION_OFFSET_SS;
+
+        stackAbove(noteAttachedExtents, fermata, xSs,
+            fermata.getContentWidthSs(), fermata.getContentHeightSs(),
+            LayoutStylesheet.NOTE_DECORATION_MARGIN_SS, staffPosition, noteHeadYSs, builder);
     }
 
     /**
-     * Stacks dynamics for the given column (point dynamics only).
-     *
-     * @param column               The note column
-     * @param accumulated          Accumulated bounding area
-     * @param noteElementPositions Map to store element positions
-     * @return Minimum Y position reached (most negative)
-     */
-    private double stackDynamics(
-        ElementColumn column,
-        Area accumulated,
-        Map<LineElement, Point2D> noteElementPositions) {
-
-        // TODO: Implement when DynamicAttachment is ready
-        // For now, dynamics are deferred
-        return accumulated.getBounds2D().getMinY();
-    }
-
-    /**
-     * Stacks tempo/beat change for the given column (legacy properties + new attachments).
-     *
-     * @param column               The note column
-     * @param accumulated          Accumulated bounding area
-     * @param noteElementPositions Map to store element positions
-     * @return Minimum Y position reached (most negative)
-     */
-    private double stackTempo(
-        ElementColumn column,
-        Area accumulated,
-        Map<LineElement, Point2D> noteElementPositions) {
-
-        var note = column.getElement();
-        var minYPx = accumulated.getBounds2D().getMinY();
-
-        // Check for tempo change (legacy property)
-        if (note.getTempoChange() != null) {
-            var tempoHeightPx = 20.0;
-            var tempoWidthPx = 60.0;
-
-            var yPx = accumulated.getBounds2D().getMinY() -
-                ScaleContext.getInstance().toPixels(LayoutConstants.TEMPO_MARGIN_SS) -
-                tempoHeightPx;
-
-            var tempoBounds = new Rectangle2D.Double(
-                column.getXSs() - tempoWidthPx / 2,
-                yPx,
-                tempoWidthPx,
-                tempoHeightPx
-            );
-
-            accumulated.add(new Area(tempoBounds));
-
-            if (yPx < minYPx) {
-                minYPx = yPx;
-            }
-        }
-
-        // Check for beat change (legacy property)
-        if (note.getBeatChange() != null) {
-            var beatChangeHeightPx = 20.0;
-            var beatChangeWidthPx = 40.0;
-
-            var yPx = accumulated.getBounds2D().getMinY() -
-                ScaleContext.getInstance().toPixels(LayoutConstants.TEMPO_MARGIN_SS) -
-                beatChangeHeightPx;
-
-            var beatChangeBounds = new Rectangle2D.Double(
-                column.getXSs() - beatChangeWidthPx / 2,
-                yPx,
-                beatChangeWidthPx,
-                beatChangeHeightPx
-            );
-
-            accumulated.add(new Area(beatChangeBounds));
-
-            if (yPx < minYPx) {
-                minYPx = yPx;
-            }
-        }
-
-        // TODO: Also check new TempoAttachment and BeatChangeAttachment hierarchy
-
-        return minYPx;
-    }
-
-    /**
-     * Stacks annotations for the given column (legacy property + new attachments).
-     *
-     * @param column               The note column
-     * @param accumulated          Accumulated bounding area
-     * @param noteElementPositions Map to store element positions
-     * @return Minimum Y position reached (most negative)
-     */
-    private double stackAnnotations(
-        ElementColumn column,
-        Area accumulated,
-        Map<LineElement, Point2D> noteElementPositions) {
-
-        var note = column.getElement();
-        var minYPx = accumulated.getBounds2D().getMinY();
-
-        // Check for annotation (legacy property)
-        if (note.getAnnotation() != null) {
-            var annotationHeightPx = 14.0;
-            var annotationWidthPx = 40.0; // TODO: Measure actual text width
-
-            var yPx = accumulated.getBounds2D().getMinY() -
-                ScaleContext.getInstance().toPixels(LayoutConstants.ANNOTATION_MARGIN_SS) -
-                annotationHeightPx;
-
-            var annotationBounds = new Rectangle2D.Double(
-                column.getXSs() - annotationWidthPx / 2,
-                yPx,
-                annotationWidthPx,
-                annotationHeightPx
-            );
-
-            accumulated.add(new Area(annotationBounds));
-
-            if (yPx < minYPx) {
-                minYPx = yPx;
-            }
-        }
-
-        // TODO: Also check new AnnotationAttachment hierarchy
-
-        return minYPx;
-    }
-
-    /**
-     * Returns the bounding area for the note in this column.
-     * This includes the note head, stem, flag, and ledger lines.
-     *
-     * @param column The note column
-     * @return Bounding area for the note
-     */
-    private Area getNoteBoundingArea(ElementColumn column) {
-        var note = column.getElement();
-
-        // Get stem bounds
-        var stemTopPx = column.getStemTopSs();
-        var stemBottomPx = column.getStemBottomSs();
-
-        // Create bounding area from stem top to stem bottom
-        var bounds = new Rectangle2D.Double(
-            column.getXSs() - NOTE_HEAD_WIDTH_PX / 2,
-            stemTopPx,
-            NOTE_HEAD_WIDTH_PX,
-            stemBottomPx - stemTopPx
-        );
-
-        return new Area(bounds);
-    }
-
-    /**
-     * Finds a Y position for the element that clears the accumulated bounding area.
+     * Stacks all hairpins (crescendo/diminuendo) for the line.
      * <p>
-     * The element is positioned above the accumulated area with the specified margin.
-     * If the initial position would cause intersection, the element is moved upward
-     * until clear.
-     *
-     * @param element     The element to position
-     * @param x           X position of the element
-     * @param accumulated Accumulated bounding area
-     * @param marginPx    Margin from accumulated area in pixels
-     * @return Y position for the element (top-left corner) in pixels
+     * Processes {@link Crescendo} and {@link Diminuendo} range elements first,
+     * then bridges legacy {@link songscribe.music.DynamicsInterval} data not
+     * already covered by range elements.
      */
-    private double findClearYPositionPx(
-        LineElement element,
-        double x,
-        Area accumulated,
-        double marginPx) {
+    private void stackHairpins(
+        Line line,
+        Map<StaffElement, ElementColumn> columnsByElement,
+        StaffExtents structuralExtents,
+        LayoutResult.Builder builder) {
 
-        // Start from top of accumulated bounding area
-        var accBounds = accumulated.getBounds2D();
-        var candidateYPx = accBounds.getMinY() - marginPx - element.getContentHeightPx();
-
-        // Create element bounds at candidate position
-        var elementBounds = new Rectangle2D.Double(
-            x - element.getContentWidthPx() / 2,
-            candidateYPx,
-            element.getContentWidthPx(),
-            element.getContentHeightPx()
-        );
-
-        var elementArea = new Area(elementBounds);
-
-        // Check for intersection
-        var testArea = new Area(accumulated);
-        testArea.intersect(elementArea);
-
-        // If intersects, move up until clear
-        while (!testArea.isEmpty()) {
-            candidateYPx -= 1.0;
-
-            elementBounds.setRect(
-                x - element.getContentWidthPx() / 2,
-                candidateYPx,
-                element.getContentWidthPx(),
-                element.getContentHeightPx()
-            );
-
-            elementArea = new Area(elementBounds);
-            testArea = new Area(accumulated);
-            testArea.intersect(elementArea);
+        // Process new Crescendo range elements
+        for (var crescendo : line.findRangeElements(Crescendo.class)) {
+            stackSpanElement(crescendo, LayoutStylesheet.HAIRPIN_MARGIN_SS,
+                columnsByElement, structuralExtents, builder);
         }
 
-        return candidateYPx;
+        // Process new Diminuendo range elements
+        for (var diminuendo : line.findRangeElements(Diminuendo.class)) {
+            stackSpanElement(diminuendo, LayoutStylesheet.HAIRPIN_MARGIN_SS,
+                columnsByElement, structuralExtents, builder);
+        }
+
+        // Bridge legacy crescendo intervals
+        bridgeLegacyHairpinIntervals(line, line.getCrescendos(), true,
+            columnsByElement, structuralExtents, builder);
+
+        // Bridge legacy diminuendo intervals
+        bridgeLegacyHairpinIntervals(line, line.getDiminuendos(), false,
+            columnsByElement, structuralExtents, builder);
     }
 
     /**
-     * Positions an element at the given X, Y coordinates.
-     *
-     * @param element              The element to position
-     * @param x                    X position
-     * @param y                    Y position
-     * @param noteElementPositions Map to store the position
+     * Bridges legacy {@link songscribe.music.DynamicsInterval} data to temporary
+     * hairpin range elements and stacks them.
      */
-    private void positionElement(
+    private void bridgeLegacyHairpinIntervals(
+        Line line,
+        songscribe.music.IntervalSet<songscribe.music.DynamicsInterval> intervals,
+        boolean isCrescendo,
+        Map<StaffElement, ElementColumn> columnsByElement,
+        StaffExtents structuralExtents,
+        LayoutResult.Builder builder) {
+
+        Class<? extends RangeElement> rangeClass =
+            isCrescendo ? Crescendo.class : Diminuendo.class;
+
+        for (var iter = intervals.listIterator(); iter.hasNext(); ) {
+            var interval = iter.next();
+            var startNote = line.getElement(interval.getStart());
+            var endNote = line.getElement(interval.getEnd());
+
+            // Check if already covered by a range element
+            if (isRangeCovered(startNote, endNote, line.findRangeElements(rangeClass))) {
+                continue;
+            }
+
+            var startColumn = columnsByElement.get(startNote);
+            var endColumn = columnsByElement.get(endNote);
+
+            if (startColumn == null || endColumn == null) {
+                continue;
+            }
+
+            // Bridge to temporary range element for dimension calculations
+            double anchorXSs = startColumn.getXSs();
+            double endXSs = endColumn.getXSs();
+
+            RangeElement bridged;
+
+            if (isCrescendo) {
+                bridged = new Crescendo(startNote, endNote);
+            } else {
+                bridged = new Diminuendo(startNote, endNote);
+            }
+
+            int staffPosition = startNote.getStaffPosition();
+            double noteHeadYSs = staffPosition * LayoutStylesheet.STAFF_POSITION_OFFSET_SS;
+            double widthSs = endXSs - anchorXSs + NOTE_HEAD_WIDTH_SS;
+            double ySs = stackAbove(structuralExtents, bridged, anchorXSs, widthSs,
+                HAIRPIN_OPENING_HEIGHT_SS, LayoutStylesheet.HAIRPIN_MARGIN_SS,
+                staffPosition, noteHeadYSs, builder);
+
+            // Write SpanLayout keyed by the legacy interval for renderer access
+            builder.putSpanLayout(interval,
+                new LayoutResult.SpanLayout(anchorXSs, endXSs,
+                    ySs, HAIRPIN_OPENING_HEIGHT_SS));
+        }
+    }
+
+    /**
+     * Stacks text dynamics (DynamicAttachment) for the given column.
+     * <p>
+     * Positions text dynamics (pp, p, mp, mf, f, ff, sfz, fp) in the structural tier
+     * using collision detection against previously placed elements.
+     */
+    private void stackTextDynamics(
+        ElementColumn column,
+        StaffExtents structuralExtents,
+        LayoutResult.Builder builder) {
+
+        var note = column.getElement();
+        var dynamic = note.findAttachment(DynamicAttachment.class);
+
+        if (dynamic == null) {
+            return;
+        }
+
+        double xSs = column.getXSs();
+        int staffPosition = note.getStaffPosition();
+        double noteHeadYSs = staffPosition * LayoutStylesheet.STAFF_POSITION_OFFSET_SS;
+        stackAbove(structuralExtents, dynamic, xSs,
+            dynamic.getContentWidthSs(), dynamic.getContentHeightSs(),
+            LayoutStylesheet.NOTE_DECORATION_MARGIN_SS, staffPosition, noteHeadYSs, builder);
+    }
+
+    /**
+     * Stacks all endings (volta brackets) for the line.
+     * <p>
+     * Processes {@link Ending} range elements first, then bridges legacy
+     * {@link songscribe.music.EndingInterval} data not already covered.
+     * Volta brackets maintain consistent height per Gould; note-attached
+     * elements are allowed to intrude into volta space.
+     */
+    private void stackEndings(
+        Line line,
+        Map<StaffElement, ElementColumn> columnsByElement,
+        StaffExtents structuralExtents,
+        LayoutResult.Builder builder) {
+
+        // Process new Ending range elements
+        for (var ending : line.findRangeElements(Ending.class)) {
+            stackSpanElement(ending, LayoutStylesheet.ENDING_MARGIN_SS,
+                columnsByElement, structuralExtents, builder);
+        }
+
+        // Bridge legacy ending intervals
+        bridgeLegacyEndingIntervals(line, columnsByElement, structuralExtents, builder);
+    }
+
+    /**
+     * Bridges legacy {@link songscribe.music.EndingInterval} data to temporary
+     * {@link Ending} range elements and stacks them.
+     */
+    private void bridgeLegacyEndingIntervals(
+        Line line,
+        Map<StaffElement, ElementColumn> columnsByElement,
+        StaffExtents structuralExtents,
+        LayoutResult.Builder builder) {
+
+        var existingEndings = line.findRangeElements(Ending.class);
+
+        for (var iter = line.getFirstSecondEndings().listIterator(); iter.hasNext(); ) {
+            var interval = iter.next();
+            var startNote = line.getElement(interval.getStart());
+            var endNote = line.getElement(interval.getEnd());
+
+            // Check if already covered by an Ending range element
+            if (isRangeCovered(startNote, endNote, existingEndings)) {
+                continue;
+            }
+
+            var startColumn = columnsByElement.get(startNote);
+            var endColumn = columnsByElement.get(endNote);
+
+            if (startColumn == null || endColumn == null) {
+                continue;
+            }
+
+            double anchorXSs = startColumn.getXSs();
+            double endXSs = endColumn.getXSs();
+
+            // Bridge to temporary Ending for dimension calculations
+            var endingType = interval.getEndingNumber() == 1 ? Ending.Type.FIRST : Ending.Type.SECOND;
+            var ending = new Ending(startNote, endNote, endingType);
+
+            int staffPosition = startNote.getStaffPosition();
+            double noteHeadYSs = staffPosition * LayoutStylesheet.STAFF_POSITION_OFFSET_SS;
+            double widthSs = ending.getSpanWidthSs(anchorXSs, endXSs);
+            double heightSs = ending.getContentHeightSs();
+            double ySs = stackAbove(structuralExtents, ending, anchorXSs, widthSs,
+                heightSs, LayoutStylesheet.ENDING_MARGIN_SS,
+                staffPosition, noteHeadYSs, builder);
+
+            // Write SpanLayout keyed by the legacy interval for renderer access
+            builder.putSpanLayout(interval,
+                new LayoutResult.SpanLayout(anchorXSs, endXSs, ySs, heightSs));
+        }
+    }
+
+    /**
+     * Stacks tempo marking for the given column.
+     * <p>
+     * Checks the new attachment hierarchy first; falls back to the legacy
+     * {@code note.getTempoChange()} property and bridges it to a temporary
+     * {@link TempoAttachment} so both paths write a {@link LayoutResult.DecorationLayout}.
+     */
+    private void stackTempo(
+        ElementColumn column,
+        Line line,
+        StaffExtents systemExtents,
+        LayoutResult.Builder builder) {
+
+        var note = column.getElement();
+
+        // Check new attachment hierarchy first
+        var tempo = note.findAttachment(TempoAttachment.class);
+
+        // Bridge legacy flag to a temporary TempoAttachment
+        if (tempo == null && note.getTempoChange() != null) {
+            tempo = new TempoAttachment(note, note.getTempoChange());
+        }
+
+        if (tempo == null) {
+            return;
+        }
+
+        double xSs = column.getXSs();
+        int staffPosition = note.getStaffPosition();
+        double noteHeadYSs = staffPosition * LayoutStylesheet.STAFF_POSITION_OFFSET_SS;
+        double widthSs = tempo.computeContentWidthSs(
+            line.getComposition().getAttributionFontMetrics());
+        stackAbove(systemExtents, tempo, xSs,
+            widthSs, tempo.getContentHeightSs(),
+            LayoutStylesheet.TEMPO_MARGIN_SS, staffPosition, noteHeadYSs, builder);
+    }
+
+    /**
+     * Stacks beat change for the given column.
+     * <p>
+     * Checks the new attachment hierarchy first; falls back to the legacy
+     * {@code note.getBeatChange()} property and bridges it to a temporary
+     * {@link BeatChangeAttachment} so both paths write a {@link LayoutResult.DecorationLayout}.
+     */
+    private void stackBeatChange(
+        ElementColumn column,
+        Line line,
+        StaffExtents systemExtents,
+        LayoutResult.Builder builder) {
+
+        var note = column.getElement();
+
+        // Check new attachment hierarchy first
+        var beatChange = note.findAttachment(BeatChangeAttachment.class);
+
+        // Bridge legacy flag to a temporary BeatChangeAttachment
+        if (beatChange == null && note.getBeatChange() != null) {
+            beatChange = new BeatChangeAttachment(note, note.getBeatChange());
+        }
+
+        if (beatChange == null) {
+            return;
+        }
+
+        double xSs = column.getXSs();
+        int staffPosition = note.getStaffPosition();
+        double noteHeadYSs = staffPosition * LayoutStylesheet.STAFF_POSITION_OFFSET_SS;
+        double widthSs = beatChange.computeContentWidthSs(
+            line.getComposition().getAttributionFontMetrics());
+        stackAbove(systemExtents, beatChange, xSs,
+            widthSs, beatChange.getContentHeightSs(),
+            LayoutStylesheet.TEMPO_MARGIN_SS, staffPosition, noteHeadYSs, builder);
+    }
+
+    /**
+     * Stacks annotation for the given column.
+     * <p>
+     * Checks the new attachment hierarchy first; falls back to the legacy
+     * {@code note.getAnnotation()} property and bridges it to a temporary
+     * {@link AnnotationAttachment} so both paths write a {@link LayoutResult.DecorationLayout}.
+     */
+    private void stackAnnotations(
+        ElementColumn column,
+        Line line,
+        StaffExtents systemExtents,
+        LayoutResult.Builder builder) {
+
+        var note = column.getElement();
+
+        // Check new attachment hierarchy first
+        var annotation = note.findAttachment(AnnotationAttachment.class);
+
+        // Bridge legacy flag to a temporary AnnotationAttachment
+        if (annotation == null && note.getAnnotation() != null) {
+            annotation = new AnnotationAttachment(note, note.getAnnotation());
+        }
+
+        if (annotation == null) {
+            return;
+        }
+
+        double xSs = column.getXSs();
+        int staffPosition = note.getStaffPosition();
+        double noteHeadYSs = staffPosition * LayoutStylesheet.STAFF_POSITION_OFFSET_SS;
+        double widthSs = annotation.computeContentWidthSs(
+            line.getComposition().getAnnotationFontMetrics());
+        stackAbove(systemExtents, annotation, xSs,
+            widthSs, annotation.getContentHeightSs(),
+            LayoutStylesheet.ANNOTATION_ABOVE_MARGIN_SS, staffPosition, noteHeadYSs, builder);
+    }
+
+
+    // ---- Shared stacking helpers ----
+
+    /**
+     * Places an element above the staff using anchored ceiling collision detection.
+     * <p>
+     * Uses the anchored ceiling (top staff line or notehead) as the reference point,
+     * combined with existing extents reservations, to determine the highest clear Y.
+     * Updates the extents and writes a {@link LayoutResult.DecorationLayout}.
+     *
+     * @return the computed top Y in staff-space units
+     */
+    private static double stackAbove(
+        StaffExtents extents,
         LineElement element,
-        double x,
-        double y,
-        Map<LineElement, Point2D> noteElementPositions) {
+        double xSs, double widthSs, double heightSs, double marginSs,
+        int staffPosition, double noteHeadYSs,
+        LayoutResult.Builder builder) {
 
-        var position = new Point2D.Double(x, y);
-        element.setPosition(position);
-        noteElementPositions.put(element, position);
+        double ceilingSs = anchoredCeilingSs(extents, xSs, widthSs, staffPosition, noteHeadYSs);
+        double ySs = ceilingSs - marginSs - heightSs;
+        extents.ySet(true, xSs, widthSs, ySs);
+
+        builder.putDecorationLayout(element,
+            new LayoutResult.DecorationLayout(xSs, ySs, widthSs, heightSs));
+
+        return ySs;
     }
 
     /**
-     * Adds an element's bounds to the accumulated bounding area.
-     *
-     * @param element     The element
-     * @param x           X position
-     * @param y           Y position
-     * @param accumulated Accumulated bounding area to update
+     * Stacks a span element (hairpin, ending) that requires both anchor and end notes.
+     * <p>
+     * Resolves anchor/end columns, computes span width via the range element,
+     * and delegates to {@link #stackAbove}.
      */
-    private void addToAccumulated(
-        LineElement element,
-        double x,
-        double y,
-        Area accumulated) {
+    private void stackSpanElement(
+        RangeElement element,
+        double marginSs,
+        Map<StaffElement, ElementColumn> columnsByElement,
+        StaffExtents extents,
+        LayoutResult.Builder builder) {
 
-        var bounds = new Rectangle2D.Double(
-            x - element.getContentWidthPx() / 2,
-            y,
-            element.getContentWidthPx(),
-            element.getContentHeightPx()
-        );
+        var anchor = element.getAnchorElement();
+        var endNote = element.getEndElement();
 
-        accumulated.add(new Area(bounds));
+        if (anchor == null || endNote == null) {
+            return;
+        }
+
+        var anchorColumn = columnsByElement.get(anchor);
+        var endColumn = columnsByElement.get(endNote);
+
+        if (anchorColumn == null || endColumn == null) {
+            return;
+        }
+
+        int staffPosition = anchor.getStaffPosition();
+        double noteHeadYSs = staffPosition * LayoutStylesheet.STAFF_POSITION_OFFSET_SS;
+        double anchorXSs = anchorColumn.getXSs();
+        double endXSs = endColumn.getXSs();
+        double widthSs = element.getSpanWidthSs(anchorXSs, endXSs);
+
+        stackAbove(extents, element, anchorXSs, widthSs,
+            element.getContentHeightSs(), marginSs,
+            staffPosition, noteHeadYSs, builder);
+    }
+
+
+    // ---- Manual offset application ----
+
+    /**
+     * Applies manual user offsets to all decoration and span layouts post-layout.
+     * <p>
+     * Per spec, offsets are applied after all collision detection is complete.
+     * The user takes responsibility for any resulting overlaps — no collision
+     * re-run occurs.
+     * <p>
+     * Offset sources:
+     * <ul>
+     *   <li>{@link LineElement#getUserXOffsetSs()} / {@link LineElement#getUserYOffsetSs()}:
+     *       base offsets for all decoration elements</li>
+     *   <li>{@link Trill#getYPositionSs()}: additional Y offset for trills</li>
+     *   <li>{@link Ending#getYPositionSs()}: additional Y offset for endings</li>
+     *   <li>{@link Crescendo#getYShift()} etc.: pixel-based hairpin shifts (converted to ss)</li>
+     *   <li>{@link songscribe.music.Annotation#getUserYOffsetSs()}: legacy annotation Y offset</li>
+     *   <li>{@link songscribe.music.DynamicsInterval}: legacy hairpin shifts (already in ss)</li>
+     * </ul>
+     */
+    private void applyManualOffsets(LayoutResult.Builder builder) {
+        applyDecorationOffsets(builder);
+        applySpanOffsets(builder);
     }
 
     /**
-     * Finds the lowest Y position of any note bounding area across all columns.
-     * This is used to calculate the lyrics baseline position.
-     *
-     * @param columns List of note columns
-     * @return Lowest Y position (maximum Y value)
+     * Applies manual offsets to all {@link LayoutResult.DecorationLayout} entries.
      */
-    private double findLowestNoteBoundingYPx(List<ElementColumn> columns) {
-        var lowestYPx = 0.0;
+    private void applyDecorationOffsets(LayoutResult.Builder builder) {
+        // Collect entries to avoid ConcurrentModificationException during iteration
+        var entries = List.copyOf(builder.getDecorationLayoutEntries());
+
+        for (var entry : entries) {
+            var element = entry.getKey();
+            var layout = entry.getValue();
+
+            double xOffsetSs = element.getUserXOffsetSs();
+            double yOffsetSs = element.getUserYOffsetSs();
+            double widthAdjustSs = 0;
+
+            // Element-specific additional offsets
+            if (element instanceof Trill trill) {
+                yOffsetSs += trill.getYPositionSs();
+            } else if (element instanceof Ending ending) {
+                yOffsetSs += ending.getYPositionSs();
+            } else if (element instanceof Crescendo cresc) {
+                double x1ShiftSs = ScaleContext.getInstance().fromPixels(cresc.getX1Shift());
+                double x2ShiftSs = ScaleContext.getInstance().fromPixels(cresc.getX2Shift());
+                xOffsetSs += x1ShiftSs;
+                widthAdjustSs = x2ShiftSs - x1ShiftSs;
+                yOffsetSs += ScaleContext.getInstance().fromPixels(cresc.getYShift());
+            } else if (element instanceof Diminuendo dim) {
+                double x1ShiftSs = ScaleContext.getInstance().fromPixels(dim.getX1Shift());
+                double x2ShiftSs = ScaleContext.getInstance().fromPixels(dim.getX2Shift());
+                xOffsetSs += x1ShiftSs;
+                widthAdjustSs = x2ShiftSs - x1ShiftSs;
+                yOffsetSs += ScaleContext.getInstance().fromPixels(dim.getYShift());
+            } else if (element instanceof AnnotationAttachment annAttach) {
+                yOffsetSs += annAttach.getAnnotation().getUserYOffsetSs();
+            }
+
+            if (xOffsetSs != 0 || yOffsetSs != 0 || widthAdjustSs != 0) {
+                builder.putDecorationLayout(element, new LayoutResult.DecorationLayout(
+                    layout.xSs() + xOffsetSs,
+                    layout.ySs() + yOffsetSs,
+                    layout.widthSs() + widthAdjustSs,
+                    layout.heightSs()));
+            }
+        }
+    }
+
+    /**
+     * Applies manual offsets to all {@link LayoutResult.SpanLayout} entries.
+     * <p>
+     * Currently handles {@link songscribe.music.DynamicsInterval} shifts (already in ss).
+     */
+    private void applySpanOffsets(LayoutResult.Builder builder) {
+        var entries = List.copyOf(builder.getSpanLayoutEntries());
+
+        for (var entry : entries) {
+            var interval = entry.getKey();
+            var layout = entry.getValue();
+
+            if (interval instanceof songscribe.music.DynamicsInterval dynInterval) {
+                double x1ShiftSs = dynInterval.getX1ShiftSs();
+                double x2ShiftSs = dynInterval.getX2ShiftSs();
+                double yShiftSs = dynInterval.getYShiftSs();
+
+                if (x1ShiftSs != 0 || x2ShiftSs != 0 || yShiftSs != 0) {
+                    builder.putSpanLayout(interval, new LayoutResult.SpanLayout(
+                        layout.startXSs() + x1ShiftSs,
+                        layout.endXSs() + x2ShiftSs,
+                        layout.ySs() + yShiftSs,
+                        layout.heightSs()));
+                }
+            }
+        }
+    }
+
+
+    // ---- Utility methods ----
+
+    /**
+     * Builds a map from StaffElement to its ElementColumn for range element lookups.
+     */
+    private Map<StaffElement, ElementColumn> buildColumnMap(List<ElementColumn> columns) {
+        var map = new HashMap<StaffElement, ElementColumn>(columns.size());
 
         for (var column : columns) {
-            var stemBottomPx = column.getStemBottomSs();
+            map.put(column.getElement(), column);
+        }
 
-            if (stemBottomPx > lowestYPx) {
-                lowestYPx = stemBottomPx;
+        return map;
+    }
+
+    /**
+     * Finds the lowest Y position of any note bounding area across all columns (ss).
+     * Used to calculate the lyrics baseline position.
+     */
+    private double findLowestNoteBoundingSs(List<ElementColumn> columns) {
+        double lowestSs = LayoutStylesheet.STAFF_HEIGHT_SS;
+
+        for (var column : columns) {
+            double elementYSs = column.getElement().getStaffPosition() * 0.5;
+            double botSs = elementYSs + NOTE_HEAD_HEIGHT_SS / 2.0;
+
+            if (botSs > lowestSs) {
+                lowestSs = botSs;
             }
         }
 
-        return lowestYPx;
+        return lowestSs;
+    }
+
+    /**
+     * Finds the maximum above-staff extent from the system layer (most negative Y).
+     * Returns 0.0 if nothing extends above the staff top.
+     */
+    private double findMaxAboveStaffSs(StaffExtents systemExtents, double lineWidthSs) {
+        // Query the entire line width for the highest point
+        return systemExtents.yGet(true, 0, lineWidthSs);
     }
 }

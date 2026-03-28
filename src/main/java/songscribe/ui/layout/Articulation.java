@@ -24,6 +24,8 @@ import org.jspecify.annotations.Nullable;
 
 import songscribe.music.ArticulationType;
 import songscribe.music.StaffElement;
+import songscribe.smufl.SMuFLGlyph;
+import songscribe.smufl.SMuFLMetadata;
 
 /**
  * Represents an articulation marking on a staff element.
@@ -37,8 +39,23 @@ import songscribe.music.StaffElement;
  */
 public class Articulation extends LineElement {
 
-    /** Default size for articulation symbols in pixels. */
-    private static final double DEFAULT_SIZE_PX = 8.0;
+    // SMuFL bbox-derived dimensions in staff-space units
+    private static final double STACCATO_WIDTH_SS;
+    private static final double STACCATO_HEIGHT_SS;
+    private static final double ACCENT_WIDTH_SS;
+    private static final double ACCENT_HEIGHT_SS;
+
+    static {
+        var metadata = SMuFLMetadata.getInstance();
+
+        var staccatoBBox = metadata.requireBBox(SMuFLGlyph.ARTIC_STACCATO_ABOVE);
+        STACCATO_WIDTH_SS = staccatoBBox.width();
+        STACCATO_HEIGHT_SS = staccatoBBox.height();
+
+        var accentBBox = metadata.requireBBox(SMuFLGlyph.ARTIC_ACCENT_ABOVE);
+        ACCENT_WIDTH_SS = accentBBox.width();
+        ACCENT_HEIGHT_SS = accentBBox.height();
+    }
 
     /** The staff element this articulation belongs to. */
     private @Nullable StaffElement ownerElement;
@@ -113,13 +130,27 @@ public class Articulation extends LineElement {
         return type == ArticulationType.ACCENT;
     }
 
+    /**
+     * Returns the content width in staff-space units, derived from SMuFL bounding box data.
+     */
+    public double getContentWidthSs() {
+        return isStaccato() ? STACCATO_WIDTH_SS : ACCENT_WIDTH_SS;
+    }
+
+    /**
+     * Returns the content height in staff-space units, derived from SMuFL bounding box data.
+     */
+    public double getContentHeightSs() {
+        return isStaccato() ? STACCATO_HEIGHT_SS : ACCENT_HEIGHT_SS;
+    }
+
     @Override
     public double getContentWidthPx() {
-        return DEFAULT_SIZE_PX;
+        return ScaleContext.getInstance().toPixels(getContentWidthSs());
     }
 
     @Override
     public double getContentHeightPx() {
-        return DEFAULT_SIZE_PX;
+        return ScaleContext.getInstance().toPixels(getContentHeightSs());
     }
 }

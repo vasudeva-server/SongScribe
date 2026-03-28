@@ -65,7 +65,7 @@ public class InsertionSpacingCalculator {
          * @return {@code true} if the projected line width does not exceed the margin
          */
         public boolean fitsWithinLine(double staffRightMarginSs) {
-            return newLineWidthSs + LayoutConstants.DEFAULT_COLUMN_GAP_SS <= staffRightMarginSs;
+            return newLineWidthSs + LayoutStylesheet.DEFAULT_COLUMN_GAP_SS <= staffRightMarginSs;
         }
     }
 
@@ -98,7 +98,7 @@ public class InsertionSpacingCalculator {
 
         if (elementCount == 0) {
             // First element on the line - use standard first element positioning
-            return LayoutConstants.calculateFirstElementXSs(line.getKeyAccidentalCount());
+            return LayoutStylesheet.calculateFirstElementXSs(line.getKeyAccidentalCount());
         }
 
         // Get the last element and create a column for it
@@ -173,7 +173,7 @@ public class InsertionSpacingCalculator {
 
         if (insertIndex == 0) {
             // Inserting at beginning - calculate space from line start
-            insertedElementXSs = LayoutConstants.calculateFirstElementXSs(line.getKeyAccidentalCount());
+            insertedElementXSs = LayoutStylesheet.calculateFirstElementXSs(line.getKeyAccidentalCount());
             var nextElement = line.getElement(0);
             var nextColumn = createLightweightColumn(nextElement);
 
@@ -280,7 +280,7 @@ public class InsertionSpacingCalculator {
         // Grace-to-host spacing: grace right extent + gap + host left extent
         double hostXSs = graceColumn.getXSs()
             + graceColumn.getRightExtentSs()
-            + LayoutConstants.GRACE_NOTE_GAP_SS
+            + LayoutStylesheet.GRACE_NOTE_GAP_SS
             + Math.abs(hostColumn.getLeftExtentSs());
 
         hostColumn.setXSs(hostXSs);
@@ -312,7 +312,7 @@ public class InsertionSpacingCalculator {
             newLineWidthSs = Math.max(hostColumn.getRightEdgeXSs(), lastColumn.getRightEdgeXSs());
         }
 
-        return newLineWidthSs + LayoutConstants.DEFAULT_COLUMN_GAP_SS <= staffRightMarginSs;
+        return newLineWidthSs + LayoutStylesheet.DEFAULT_COLUMN_GAP_SS <= staffRightMarginSs;
     }
 
     /**

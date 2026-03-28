@@ -132,6 +132,10 @@ public class AnnotationRenderer extends BaseElementRenderer<StaffElement> {
 
     /**
      * Gets the Y position for an annotation from layout result.
+     * <p>
+     * Reads the {@link songscribe.ui.layout.LayoutResult.DecorationLayout} written
+     * by the vertical stacking calculator. Converts from layout coordinates
+     * (relative to middleLineY=0) to component coordinates.
      */
     private float getAnnotationYPosPx(
         StaffElement note,
@@ -143,12 +147,13 @@ public class AnnotationRenderer extends BaseElementRenderer<StaffElement> {
             throw new IllegalStateException("Layout result must be available for rendering");
         }
 
-        var bounds = layoutResult.findAttachmentBounds(note, AnnotationAttachment.class);
+        var decorationLayout = layoutResult.findAttachmentDecorationLayout(
+            note, AnnotationAttachment.class);
 
-        if (bounds == null) {
-            throw new IllegalStateException("No bounds found for AnnotationAttachment on note");
+        if (decorationLayout == null) {
+            throw new IllegalStateException("No DecorationLayout found for AnnotationAttachment on note");
         }
 
-        return (float) bounds.getTop();
+        return (float) layoutYToComponentYSs(decorationLayout.ySs(), ctx);
     }
 }

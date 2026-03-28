@@ -23,6 +23,8 @@ package songscribe.ui.layout;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.music.StaffElement;
+import songscribe.smufl.SMuFLGlyph;
+import songscribe.smufl.SMuFLMetadata;
 
 /**
  * Represents a first or second ending bracket above a repeated section.
@@ -31,6 +33,10 @@ import songscribe.music.StaffElement;
  * which measures to play on each repetition. They can span multiple measures.
  */
 public class Ending extends RangeElement {
+
+    /** Notehead width for span width calculation. */
+    private static final double NOTE_HEAD_WIDTH_SS =
+        SMuFLMetadata.getInstance().requireBBox(SMuFLGlyph.NOTEHEAD_BLACK).width();
 
     /**
      * The type of ending (first or second).
@@ -128,6 +134,26 @@ public class Ending extends RangeElement {
         return type == Type.FIRST ? "1." : "2.";
     }
 
+    /**
+     * Returns the height of the volta bracket in staff-space units.
+     */
+    @Override
+    public double getContentHeightSs() {
+        return LayoutStylesheet.VOLTA_TICK_HEIGHT_SS;
+    }
+
+    /**
+     * Returns the horizontal span width for collision detection.
+     *
+     * @param anchorXSs X position of the anchor note in staff-space units
+     * @param endXSs    X position of the end note in staff-space units
+     * @return span width in staff-space units
+     */
+    @Override
+    public double getSpanWidthSs(double anchorXSs, double endXSs) {
+        return Math.max(NOTE_HEAD_WIDTH_SS, endXSs - anchorXSs + NOTE_HEAD_WIDTH_SS);
+    }
+
     @Override
     public double getContentWidthPx() {
         var anchor = getAnchorElement();
@@ -141,7 +167,6 @@ public class Ending extends RangeElement {
 
     @Override
     public double getContentHeightPx() {
-        // Height of ending bracket with label
-        return 15.0;
+        return ScaleContext.getInstance().toPixels(getContentHeightSs());
     }
 }

@@ -23,6 +23,8 @@ package songscribe.ui.layout;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.music.StaffElement;
+import songscribe.smufl.SMuFLGlyph;
+import songscribe.smufl.SMuFLMetadata;
 
 /**
  * Represents a crescendo (gradually getting louder) hairpin marking.
@@ -32,6 +34,13 @@ import songscribe.music.StaffElement;
  * and vertical position.
  */
 public class Crescendo extends RangeElement {
+
+    /** Height of the hairpin opening in staff-space units. */
+    private static final double HAIRPIN_OPENING_HEIGHT_SS = 1.0;  // 8px
+
+    /** Notehead width for span width calculation. */
+    private static final double NOTE_HEAD_WIDTH_SS =
+        SMuFLMetadata.getInstance().requireBBox(SMuFLGlyph.NOTEHEAD_BLACK).width();
 
     private @Nullable StaffElement endNote;
     private int x1Shift = 0;
@@ -127,6 +136,26 @@ public class Crescendo extends RangeElement {
         this.yShift = yShift;
     }
 
+    /**
+     * Returns the height of the hairpin opening in staff-space units.
+     */
+    @Override
+    public double getContentHeightSs() {
+        return HAIRPIN_OPENING_HEIGHT_SS;
+    }
+
+    /**
+     * Returns the horizontal span width for collision detection.
+     *
+     * @param anchorXSs X position of the anchor note in staff-space units
+     * @param endXSs    X position of the end note in staff-space units
+     * @return span width in staff-space units
+     */
+    @Override
+    public double getSpanWidthSs(double anchorXSs, double endXSs) {
+        return Math.max(getContentHeightSs(), endXSs - anchorXSs + NOTE_HEAD_WIDTH_SS);
+    }
+
     @Override
     public double getContentWidthPx() {
         var anchor = getAnchorElement();
@@ -140,7 +169,6 @@ public class Crescendo extends RangeElement {
 
     @Override
     public double getContentHeightPx() {
-        // Height of the hairpin opening
-        return 8.0;
+        return ScaleContext.getInstance().toPixels(getContentHeightSs());
     }
 }

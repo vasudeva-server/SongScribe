@@ -7,9 +7,10 @@
 | 1 | [Coordinate System + Staff + Notes](#-phase-1-coordinate-system--staff--notes) | ✅ Done | [milestone-1-coordinate-system.md](milestone-1-coordinate-system.md) |
 | 2 | [Beams + Stems](#-phase-2-beams--stems) | ✅ Done | [milestone-2-beams-stems.md](milestone-2-beams-stems.md) |
 | 3 | [Ties + Glissandos](#-phase-3-ties--glissandos) | ✅ Done | [milestone-3-ties-glissandos.md](milestone-3-ties-glissandos.md) |
-| 4 | [Vertical Stacking + All Decorations](#-phase-4-vertical-stacking--all-decorations) | ⏳ Pending | — |
+| 4 | [Vertical Stacking + All Decorations](#-phase-4-vertical-stacking--all-decorations) | 📋 Sub-plan | [milestone-4-vertical-stacking.md](milestone-4-vertical-stacking.md) |
 | 5 | [Lyrics + Line Height + Tuplets](#-phase-5-lyrics--line-height--tuplets) | ⏳ Pending | — |
-| 6 | [Cleanup + Polish](#-phase-6-cleanup--polish) | ⏳ Pending | — |
+| 6 | [Legacy Decoration Flag Migration](#-phase-6-legacy-decoration-flag-migration) | ⏳ Pending | — |
+| 7 | [Cleanup + Polish](#-phase-7-cleanup--polish) | ⏳ Pending | — |
 
 ## Context
 
@@ -63,7 +64,7 @@ See [milestone-3-ties-glissandos.md](milestone-3-ties-glissandos.md) for detaile
 
 ---
 
-## ⏳ Phase 4: Vertical Stacking + All Decorations
+## 📋 Phase 4: Vertical Stacking + All Decorations
 
 Y-extent array collision detection (YSTEP=128). Three-layer model. Tier 1: articulations. Tier 2: fermata, trill. Tier 3: dynamics hairpins, text dynamics (new), volta brackets. Tier 4: tempo, beat changes, annotations. Self-rendering note-attached elements. All manual offset adjustments working post-layout.
 
@@ -79,9 +80,39 @@ Lyric collision avoidance via syllable width overflow walk (ported from abc2svg 
 
 ---
 
-## ⏳ Phase 6: Cleanup + Polish
+## ⏳ Phase 6: Legacy Decoration Flag Migration
+
+Migrate all decoration data from legacy boolean/object flags on `StaffElement` to the new `Attachment`/`RangeElement` types. Currently both systems coexist: user actions, file I/O, export, and copy/paste use the legacy flags, while layout/rendering uses the new types with bridging code. This phase eliminates the dual representation so the new types become the single source of truth.
+
+**Flags to migrate:**
+
+| Legacy flag | New type | Key callers |
+|-------------|----------|-------------|
+| `isFermata()` / `setFermata()` | `FermataAttachment` | FermataAction, EditModeManager, FermataMenuItem, StaffElementIO, ExportABCAction |
+| `isTrill()` / `setTrill()` | `Trill` (RangeElement) | MusicEditOperations, StaffElementIO, ExportABCAction, Line utilities |
+| `getTempoChange()` / `setTempoChange()` | `TempoAttachment` | TempoChangeDialog, StaffElementIO, Composition, ExportABCAction, MIDI |
+| `getBeatChange()` / `setBeatChange()` | `BeatChangeAttachment` | BeatChangeDialog, StaffElementIO, ExportABCAction |
+| `getAnnotation()` / `setAnnotation()` | `AnnotationAttachment` | AnnotationDialog, StaffElementIO, AnnotationIO, ExportABCAction |
+
+**Per-flag migration pattern:**
+1. User actions: toggle/create/remove the new type instead of setting the flag
+2. File I/O: serialize/deserialize the new type (StaffElementIO, LineIO)
+3. Copy constructor: copy attachments/range elements instead of boolean fields
+4. Export: read from new types (ExportABCAction, MIDI)
+5. UI: dialogs and menus operate on new types
+6. Remove the legacy field, getter, and setter from `StaffElement`
+7. Remove bridging code from `VerticalStackingCalculator` and renderers
+8. Update tests
+
+**Verification:** All user actions, file I/O, export, and copy/paste work through the new types. No legacy decoration flags remain on `StaffElement`. Bridging code in layout/rendering removed.
+
+---
+
+## ⏳ Phase 7: Cleanup + Polish
 
 Remove RendererRegistry and BaseElementRenderer hierarchy. Remove Note.Properties mutable state. Remove all pixel-based constants from layout code. Verify all manual adjustment fields work in staff-space units. Performance profiling. Full regression testing.
+
+- Consolidate `LayoutConstants` into `LayoutStylesheet` — both are final-constant bags in the same package serving the same purpose, with overlapping and conflicting values (e.g. `FERMATA_MARGIN_SS` 0.25 vs 0.5, `STAFF_HEIGHT_SS` in both). Merge into a single source of truth and update all importers.
 
 **Deferred from Milestone 1:** Opening v2.0 format files causes a freeze on load. Investigate and fix the FormatMigrator v2.0 → v2.1 conversion path.
 

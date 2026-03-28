@@ -76,6 +76,16 @@ public class Tie extends RangeElement {
     }
 
     @Override
+    public double getContentHeightSs() {
+        return 1.0;  // 8px
+    }
+
+    @Override
+    public double getSpanWidthSs(double anchorXSs, double endXSs) {
+        return Math.max(1.0, endXSs - anchorXSs);
+    }
+
+    @Override
     public boolean isAbove() {
         // Ties go above if stem points down (upper=true), below if stem points up
         var anchor = getAnchorElement();

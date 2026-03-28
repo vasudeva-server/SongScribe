@@ -29,11 +29,12 @@ import java.util.function.DoubleConsumer;
 
 
 import songscribe.music.ElementType;
+import songscribe.music.StaffElement;
 import songscribe.smufl.EngravingDefaults;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
 import songscribe.ui.layout.LineElement;
-import songscribe.ui.layout.LayoutConstants;
+import songscribe.ui.layout.LayoutStylesheet;
 import songscribe.util.GraphicUtils;
 import songscribe.util.MyFontUtils;
 
@@ -93,7 +94,7 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
     public static final Font BRAVURA_FONT;
 
     /**
-     * The Bravura font scaled for grace note rendering ({@link LayoutConstants#GRACE_NOTE_SCALE}).
+     * The Bravura font scaled for grace note rendering ({@link LayoutStylesheet#GRACE_NOTE_SCALE}).
      */
     public static final Font BRAVURA_FONT_GRACE;
 
@@ -114,7 +115,7 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
 
             var bravuraBase = MyFontUtils.getLocalFont("Bravura.otf");
             BRAVURA_FONT = bravuraBase.deriveFont(FONT_SIZE);
-            BRAVURA_FONT_GRACE = bravuraBase.deriveFont(FONT_SIZE * LayoutConstants.GRACE_NOTE_SCALE);
+            BRAVURA_FONT_GRACE = bravuraBase.deriveFont(FONT_SIZE * LayoutStylesheet.GRACE_NOTE_SCALE);
 
             var tupletBase = MyFontUtils.getLocalFont("TupletNumbers.ttf");
             TUPLET_FONT = tupletBase.deriveFont(1.625f);  // 13px / 8 px/ss
@@ -206,6 +207,20 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
         ElementRenderContext ctx
     ) {
         return ctx.getMiddleLineYSs() + bounds.getTop();
+    }
+
+    /**
+     * Converts a layout Y coordinate to component space.
+     * <p>
+     * Layout Y coordinates are relative to middleLineY=0.
+     * Component Y coordinates are relative to the component's top edge.
+     *
+     * @param layoutYSs the Y coordinate in layout space (from a DecorationLayout or SpanLayout)
+     * @param ctx       the rendering context containing middleLineY
+     * @return the Y coordinate in component space
+     */
+    protected static double layoutYToComponentYSs(double layoutYSs, ElementRenderContext ctx) {
+        return ctx.getMiddleLineYSs() + layoutYSs;
     }
 
     /**
@@ -394,6 +409,41 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
     }
 
     /**
+     * Returns the X position that centers a glyph of the given width over the notehead
+     * of the specified element, snapped to device pixels.
+     *
+     * @param g2        Graphics context (for device-pixel snapping)
+     * @param layoutXSs the layout X position (left edge of the note column)
+     * @param note      the note whose notehead center is used
+     * @param glyphWidthSs the width of the glyph to center
+     * @return the snapped X coordinate for drawing
+     */
+    protected static double centeredGlyphX(
+        Graphics2D g2, double layoutXSs, StaffElement note, double glyphWidthSs) {
+
+        double noteCenterXSs = note.getType().getCenterXSs();
+        return GraphicUtils.snapXToDevicePixel(
+            g2, layoutXSs + noteCenterXSs - glyphWidthSs / 2.0);
+    }
+
+    /**
+     * Converts a layout top Y position to the glyph origin Y for drawing.
+     * <p>
+     * Layout positions represent the top edge of the bounding box, but SMuFL glyphs
+     * are drawn from their origin (y=0 in glyph coordinates). If the glyph extends
+     * below its origin (bbox.bottom > 0), using {@code topY + height} places the glyph
+     * too low. This method correctly computes the origin Y using the bbox top offset.
+     *
+     * @param layoutTopYSs the top edge of the element's bounding box in staff spaces
+     * @param glyph        the SMuFL glyph to draw
+     * @return the Y coordinate to pass to {@link #drawBravuraGlyph}
+     */
+    protected static double glyphOriginYFromLayoutTop(double layoutTopYSs, SMuFLGlyph glyph) {
+        var bbox = SMuFLMetadata.getInstance().requireBBox(glyph);
+        return layoutTopYSs - bbox.top();
+    }
+
+    /**
      * Converts a staff line index to Y coordinate in staff-space units.
      * <p>
      * Staff lines are indexed 0-4 where:
@@ -464,11 +514,11 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
     protected static double stemCenterXOffsetSs(ElementType noteType, boolean upper) {
         boolean isMinim = noteType == ElementType.MINIM;
         double anchorX = upper
-            ? (isMinim ? LayoutConstants.STEM_UP_SE_HALF.x() : LayoutConstants.STEM_UP_SE_BLACK.x())
-            : (isMinim ? LayoutConstants.STEM_DOWN_NW_HALF.x() : LayoutConstants.STEM_DOWN_NW_BLACK.x());
+            ? (isMinim ? LayoutStylesheet.STEM_UP_SE_HALF.x() : LayoutStylesheet.STEM_UP_SE_BLACK.x())
+            : (isMinim ? LayoutStylesheet.STEM_DOWN_NW_HALF.x() : LayoutStylesheet.STEM_DOWN_NW_BLACK.x());
 
         // upper: SE anchor is the stem's right edge; center = anchorX - half stem width
         // lower: NW anchor is the stem's left edge (after notehead shift); center = anchorX
-        return upper ? anchorX - LayoutConstants.STEM_WIDTH_SS / 2.0 : anchorX;
+        return upper ? anchorX - LayoutStylesheet.STEM_WIDTH_SS / 2.0 : anchorX;
     }
 }

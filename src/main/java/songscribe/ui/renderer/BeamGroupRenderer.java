@@ -36,7 +36,7 @@ import songscribe.smufl.SMuFLMetadata;
 import songscribe.ui.component.Score;
 import songscribe.ui.component.score.InsertionElementManager;
 import songscribe.ui.layout.LineElement;
-import songscribe.ui.layout.LayoutConstants;
+import songscribe.ui.layout.LayoutStylesheet;
 import songscribe.ui.layout.LayoutResult;
 import songscribe.util.GraphicUtils;
 
@@ -332,7 +332,7 @@ public class BeamGroupRenderer extends BaseElementRenderer<LineElement> {
         var endNote = line.getElement(endIndex);
         var layoutResult = ctx.getLayoutResult();
         double middleLineYSs = ctx.getMiddleLineYSs();
-        double halfStemWidthSs = LayoutConstants.STEM_WIDTH_SS / 2.0;
+        double halfStemWidthSs = LayoutStylesheet.STEM_WIDTH_SS / 2.0;
 
         // --- Thickening (from BeamLayout, zero if unavailable) ---
         double thickeningSs = (beamLayout != null) ? beamLayout.thickeningSs() : 0.0;
@@ -420,8 +420,8 @@ public class BeamGroupRenderer extends BaseElementRenderer<LineElement> {
         // Fallback: approximate from staff position + standard stem length
         double elementYSs = element.getStaffPosition() * 0.5;
         return isUpper
-            ? elementYSs - LayoutConstants.STEM_LENGTH_SS
-            : elementYSs + LayoutConstants.STEM_LENGTH_SS;
+            ? elementYSs - LayoutStylesheet.STEM_LENGTH_SS
+            : elementYSs + LayoutStylesheet.STEM_LENGTH_SS;
     }
 
     /**

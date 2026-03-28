@@ -24,6 +24,7 @@ import module java.desktop;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 
 import org.jspecify.annotations.Nullable;
 
@@ -60,6 +61,8 @@ public final class LayoutResult {
     private final Map<Interval, BeamLayout> beamLayouts;
     private final Map<StaffElement, StemLayout> stemLayouts;
     private final Map<Interval, TieLayout> tieLayouts;
+    private final Map<LineElement, DecorationLayout> decorationLayouts;
+    private final Map<Interval, SpanLayout> spanLayouts;
     @Nullable
     private final Clef clef;
     @Nullable
@@ -90,6 +93,8 @@ public final class LayoutResult {
         Map<Interval, BeamLayout> beamLayouts,
         Map<StaffElement, StemLayout> stemLayouts,
         Map<Interval, TieLayout> tieLayouts,
+        Map<LineElement, DecorationLayout> decorationLayouts,
+        Map<Interval, SpanLayout> spanLayouts,
         @Nullable Clef clef,
         @Nullable KeySignature keySignature,
         double lineHeightSs,
@@ -101,6 +106,8 @@ public final class LayoutResult {
         this.beamLayouts = Map.copyOf(beamLayouts);
         this.stemLayouts = Map.copyOf(stemLayouts);
         this.tieLayouts = Map.copyOf(tieLayouts);
+        this.decorationLayouts = Map.copyOf(decorationLayouts);
+        this.spanLayouts = Map.copyOf(spanLayouts);
         this.clef = clef;
         this.keySignature = keySignature;
         this.lineHeightSs = lineHeightSs;
@@ -205,6 +212,130 @@ public final class LayoutResult {
     @Nullable
     public TieLayout getTieLayout(Interval interval) {
         return tieLayouts.get(interval);
+    }
+
+    // ==========================================================================
+    // Decoration + Span Layout Access
+    // ==========================================================================
+
+    /**
+     * Returns the decoration layout for an above-staff decoration element.
+     *
+     * @param element The decoration element to look up
+     * @return The decoration layout, or null if not computed
+     */
+    public @Nullable DecorationLayout getDecorationLayout(LineElement element) {
+        return decorationLayouts.get(element);
+    }
+
+    /**
+     * Returns an unmodifiable view of all decoration layouts.
+     *
+     * @return Map of decoration elements to their layouts
+     */
+    public Map<LineElement, DecorationLayout> getDecorationLayouts() {
+        return decorationLayouts;
+    }
+
+    /**
+     * Returns all decoration layout entries whose key is an instance of the given type.
+     * <p>
+     * Used by renderers to iterate all elements of a specific type (e.g., all Trills,
+     * all Crescendos) in a single pass, regardless of whether they originated from
+     * new range elements or were bridged from legacy flags during layout.
+     *
+     * @param type The element type to filter by
+     * @return List of matching entries (element + layout)
+     */
+    public <T extends LineElement> java.util.List<Map.Entry<T, DecorationLayout>> getDecorationLayoutsByType(
+        Class<T> type) {
+
+        var result = new java.util.ArrayList<Map.Entry<T, DecorationLayout>>();
+
+        for (var entry : decorationLayouts.entrySet()) {
+            if (type.isInstance(entry.getKey())) {
+                result.add(Map.entry(type.cast(entry.getKey()), entry.getValue()));
+            }
+        }
+
+        return result;
+    }
+
+    /**
+     * Finds the decoration layout for an attachment with the given owner element and type.
+     * <p>
+     * Used by renderers that need to look up layout results for attachments
+     * but don't have direct access to the attachment object created during layout.
+     *
+     * @param ownerElement   The element the attachment is attached to
+     * @param attachmentType The type of attachment to find
+     * @return The decoration layout if found, null otherwise
+     */
+    public @Nullable DecorationLayout findAttachmentDecorationLayout(
+        StaffElement ownerElement,
+        Class<? extends Attachment> attachmentType) {
+
+        for (var entry : decorationLayouts.entrySet()) {
+            var element = entry.getKey();
+
+            if (attachmentType.isInstance(element)) {
+                var attachment = (Attachment) element;
+
+                if (attachment.getOwnerElement() == ownerElement) {
+                    return entry.getValue();
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Finds the decoration layout for a range element with the given anchor element and type.
+     * <p>
+     * Used by renderers that need to look up layout results for range elements
+     * but don't have direct access to the range element object created during layout.
+     *
+     * @param anchorElement    The anchor (start) element of the range
+     * @param rangeElementType The type of range element to find
+     * @return The decoration layout if found, null otherwise
+     */
+    public @Nullable DecorationLayout findRangeElementDecorationLayout(
+        StaffElement anchorElement,
+        Class<? extends RangeElement> rangeElementType) {
+
+        for (var entry : decorationLayouts.entrySet()) {
+            var element = entry.getKey();
+
+            if (rangeElementType.isInstance(element)) {
+                var rangeElement = (RangeElement) element;
+
+                if (rangeElement.getAnchorElement() == anchorElement) {
+                    return entry.getValue();
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Returns the span layout for a span element (hairpin, ending, tuplet).
+     *
+     * @param interval The interval to look up
+     * @return The span layout, or null if not computed
+     */
+    public @Nullable SpanLayout getSpanLayout(Interval interval) {
+        return spanLayouts.get(interval);
+    }
+
+    /**
+     * Returns an unmodifiable view of all span layouts.
+     *
+     * @return Map of intervals to their span layouts
+     */
+    public Map<Interval, SpanLayout> getSpanLayouts() {
+        return spanLayouts;
     }
 
     // ==========================================================================
@@ -602,7 +733,7 @@ public final class LayoutResult {
 
         // Empty line - use first element position (clef + key signature + offset)
         if (elementCount == 0) {
-            return LayoutConstants.calculateFirstElementXSs(line.getKeyAccidentalCount());
+            return LayoutStylesheet.calculateFirstElementXSs(line.getKeyAccidentalCount());
         }
 
         // Check if mouse is over any element head - if so, snap to that element's position
@@ -630,7 +761,7 @@ public final class LayoutResult {
             var firstColumn = elementColumns.get(firstElement);
 
             if (firstColumn == null) {
-                return LayoutConstants.FIRST_NOTE_OFFSET_SS;
+                return LayoutStylesheet.FIRST_NOTE_OFFSET_SS;
             }
 
             return firstColumn.getXSs() - INSERTION_BEFORE_FIRST_OFFSET_SS;
@@ -642,7 +773,7 @@ public final class LayoutResult {
             var lastColumn = elementColumns.get(lastElement);
 
             if (lastColumn == null) {
-                return LayoutConstants.FIRST_NOTE_OFFSET_SS;
+                return LayoutStylesheet.FIRST_NOTE_OFFSET_SS;
             }
 
             // Build a temporary column for the insertion element to calculate proper spacing
@@ -670,7 +801,7 @@ public final class LayoutResult {
         var currColumn = elementColumns.get(currElement);
 
         if (prevColumn == null || currColumn == null) {
-            return LayoutConstants.FIRST_NOTE_OFFSET_SS;
+            return LayoutStylesheet.FIRST_NOTE_OFFSET_SS;
         }
 
         return (prevColumn.getXSs() + currColumn.getXSs()) / 2.0;
@@ -708,6 +839,8 @@ public final class LayoutResult {
         private final Map<Interval, BeamLayout> beamLayouts;
         private final Map<StaffElement, StemLayout> stemLayouts;
         private final Map<Interval, TieLayout> tieLayouts;
+        private final Map<LineElement, DecorationLayout> decorationLayouts;
+        private final Map<Interval, SpanLayout> spanLayouts;
         @Nullable
         private Clef clef;
         @Nullable
@@ -723,6 +856,8 @@ public final class LayoutResult {
             this.beamLayouts = new HashMap<>();
             this.stemLayouts = new HashMap<>();
             this.tieLayouts = new HashMap<>();
+            this.decorationLayouts = new HashMap<>();
+            this.spanLayouts = new HashMap<>();
         }
 
         /**
@@ -843,6 +978,87 @@ public final class LayoutResult {
         }
 
         /**
+         * Adds computed decoration layout for an above-staff decoration element.
+         *
+         * @param element          The decoration element
+         * @param decorationLayout The computed decoration geometry
+         * @return This builder for chaining
+         */
+        public Builder putDecorationLayout(LineElement element, DecorationLayout decorationLayout) {
+            decorationLayouts.put(element, decorationLayout);
+            return this;
+        }
+
+        /**
+         * Adds computed span layout for a span element (hairpin, ending, tuplet).
+         *
+         * @param interval   The span interval
+         * @param spanLayout The computed span geometry
+         * @return This builder for chaining
+         */
+        public Builder putSpanLayout(Interval interval, SpanLayout spanLayout) {
+            spanLayouts.put(interval, spanLayout);
+            return this;
+        }
+
+        /**
+         * Returns the decoration layout entries for iteration.
+         * <p>
+         * Used by the post-layout offset application pass to read and update
+         * decoration positions with manual user offsets.
+         *
+         * @return The decoration layout entry set (mutable — callers may update via
+         *         {@link #putDecorationLayout})
+         */
+        public Set<Map.Entry<LineElement, DecorationLayout>> getDecorationLayoutEntries() {
+            return decorationLayouts.entrySet();
+        }
+
+        /**
+         * Returns the span layout entries for iteration.
+         * <p>
+         * Used by the post-layout offset application pass to read and update
+         * span positions with manual user offsets.
+         *
+         * @return The span layout entry set (mutable — callers may update via
+         *         {@link #putSpanLayout})
+         */
+        public Set<Map.Entry<Interval, SpanLayout>> getSpanLayoutEntries() {
+            return spanLayouts.entrySet();
+        }
+
+        /**
+         * Returns the tie layout for a tie interval from the builder's accumulated data.
+         *
+         * @param interval The tie interval to look up
+         * @return The tie layout, or null if not yet computed
+         */
+        public @Nullable TieLayout getTieLayout(Interval interval) {
+            return tieLayouts.get(interval);
+        }
+
+        /**
+         * Returns the stem layout for an element from the builder's accumulated data.
+         * <p>
+         * Checks beamed stem layouts first, then standalone stem layouts.
+         * Used by the vertical stacking calculator to seed note bounding areas.
+         *
+         * @param element The element to look up
+         * @return The stem layout, or null if not yet computed
+         */
+        public @Nullable StemLayout getStemLayout(StaffElement element) {
+            for (var beamLayout : beamLayouts.values()) {
+                var stemLayout = beamLayout.stems().get(element);
+
+                if (stemLayout != null) {
+                    return stemLayout;
+                }
+            }
+
+            return stemLayouts.get(element);
+        }
+
+        /**
          * Builds the immutable result.
          *
          * @return The layout result
@@ -854,6 +1070,8 @@ public final class LayoutResult {
                 beamLayouts,
                 stemLayouts,
                 tieLayouts,
+                decorationLayouts,
+                spanLayouts,
                 clef,
                 keySignature,
                 lineHeightSs,
@@ -876,9 +1094,11 @@ public final class LayoutResult {
     @Override
     public String toString() {
         return String.format(
-            "LayoutResult{columns=%d, elements=%d, height=%.1f, staff=[%.1f, %.1f], lyrics=%.1f}",
+            "LayoutResult{columns=%d, elements=%d, decorations=%d, spans=%d, height=%.1f, staff=[%.1f, %.1f], lyrics=%.1f}",
             elementColumns.size(),
             elementBounds.size(),
+            decorationLayouts.size(),
+            spanLayouts.size(),
             lineHeightSs,
             staffTopYSs,
             staffBottomYSs,
@@ -954,4 +1174,36 @@ public final class LayoutResult {
         double cp2XSs, double cp2YSs,
         double innerCp1XSs, double innerCp1YSs,
         double innerCp2XSs, double innerCp2YSs) {}
+
+    /**
+     * Immutable positioned bounds of a single above-staff decoration, computed during layout.
+     * <p>
+     * All values are in staff-space units.
+     *
+     * @param xSs      X position (left edge) of the decoration
+     * @param ySs      Y position (top edge) of the decoration
+     * @param widthSs  Width of the decoration
+     * @param heightSs Height of the decoration
+     */
+    public record DecorationLayout(
+        double xSs,
+        double ySs,
+        double widthSs,
+        double heightSs) {}
+
+    /**
+     * Immutable positioned bounds of a span element (hairpin, ending, tuplet), computed during layout.
+     * <p>
+     * All values are in staff-space units.
+     *
+     * @param startXSs X position of the span start
+     * @param endXSs   X position of the span end
+     * @param ySs      Y position (top edge) of the span
+     * @param heightSs Height of the span
+     */
+    public record SpanLayout(
+        double startXSs,
+        double endXSs,
+        double ySs,
+        double heightSs) {}
 }

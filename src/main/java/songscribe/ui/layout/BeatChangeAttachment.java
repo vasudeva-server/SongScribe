@@ -20,10 +20,16 @@
 
 package songscribe.ui.layout;
 
+import java.awt.FontMetrics;
+
 import org.jspecify.annotations.Nullable;
 
 import songscribe.music.BeatChange;
 import songscribe.music.StaffElement;
+import songscribe.smufl.SMuFLGlyph;
+import songscribe.smufl.SMuFLMetadata;
+import songscribe.ui.FlatLafKeys;
+import songscribe.ui.FlatLafProps;
 
 /**
  * Represents a beat change (metric modulation) attachment on a note.
@@ -34,11 +40,17 @@ import songscribe.music.StaffElement;
  */
 public class BeatChangeAttachment extends Attachment {
 
-    /** Default width for beat change markings. */
-    private static final double DEFAULT_WIDTH = 50.0;
+    /** Scale factor for beat change note glyphs, matching the renderer's zoom factor. */
+    private static final float NOTE_SCALE = FlatLafProps.get(FlatLafKeys.SCORE_TEMPO_NOTE_SCALE);
 
-    /** Default height for beat change markings. */
-    private static final double DEFAULT_HEIGHT = 20.0;
+    /** Gap between note glyphs and the "=" sign, in staff-space units. */
+    private static final float GLYPH_TEXT_GAP_SS =
+        FlatLafProps.get(FlatLafKeys.SCORE_TEMPO_GLYPH_TEXT_GAP);
+
+    /** Content height from the quarter note glyph bbox, scaled to beat change note size. */
+    private static final double HEIGHT_SS =
+        SMuFLMetadata.getInstance().requireBBox(SMuFLGlyph.MET_NOTE_QUARTER_UP).height()
+            * NOTE_SCALE;
 
     /** The beat change data. */
     private BeatChange beatChange;
@@ -91,13 +103,40 @@ public class BeatChangeAttachment extends Attachment {
         return beatChange.getTempoChange();
     }
 
+    /**
+     * Computes the content width from the actual beat change glyphs and "=" sign.
+     *
+     * @param attrFontMetrics font metrics for the attribution font (used for the "=" sign)
+     * @return width in staff-space units
+     */
+    public double computeContentWidthSs(FontMetrics attrFontMetrics) {
+        var metadata = SMuFLMetadata.getInstance();
+        var scale = ScaleContext.getInstance();
+
+        double widthSs = TempoAttachment.noteWidthSs(beatChange.getFirstElement(), metadata);
+        widthSs += GLYPH_TEXT_GAP_SS;
+        widthSs += scale.fromPixels(attrFontMetrics.stringWidth("="));
+        widthSs += GLYPH_TEXT_GAP_SS;
+        widthSs += TempoAttachment.noteWidthSs(beatChange.getSecondElement(), metadata);
+
+        return widthSs;
+    }
+
+    /**
+     * Returns the content height in staff-space units.
+     */
+    public double getContentHeightSs() {
+        return HEIGHT_SS;
+    }
+
     @Override
     public double getContentWidthPx() {
-        return DEFAULT_WIDTH;
+        // Legacy pixel API — not used for layout (computeContentWidthSs is used instead)
+        return 0;
     }
 
     @Override
     public double getContentHeightPx() {
-        return DEFAULT_HEIGHT;
+        return ScaleContext.getInstance().toPixels(getContentHeightSs());
     }
 }

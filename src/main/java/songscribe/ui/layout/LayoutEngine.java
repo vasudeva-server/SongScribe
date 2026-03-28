@@ -59,15 +59,15 @@ import songscribe.music.StaffElement;
  */
 public class LayoutEngine {
 
-    // Staff height in staff-space units (from LayoutConstants)
-    private static final double STAFF_HEIGHT_SS = LayoutConstants.STAFF_HEIGHT_SS;
+    // Staff height in staff-space units (from LayoutStylesheet)
+    private static final double STAFF_HEIGHT_SS = LayoutStylesheet.STAFF_HEIGHT_SS;
 
     // Beam geometry constants (staff-space units unless noted)
     private static final double BEAM_DEPTH_SS = 0.4;        // beam thickness
     private static final double BEAM_SHIFT_SS = 0.625;      // gap between stacked beam levels
     private static final double BEAM_STUB_SS = 1.0;         // partial beam stub length
     private static final double BEAM_SLOPE_MAX = 0.4;    // hyperbolic saturation limit (dimensionless)
-    private static final double MIN_STEM_SS = LayoutConstants.STEM_LENGTH_SS;
+    private static final double MIN_STEM_SS = LayoutStylesheet.STEM_LENGTH_SS;
 
     // Tie geometry constants (MuseScore port, staff-space units unless noted)
     private static final double TIE_SHOULDER_W = 0.6;                // shoulder width fraction of tie span
@@ -155,25 +155,26 @@ public class LayoutEngine {
             return null;
         }
 
-        // Step 4: Calculate vertical positions
-        var verticalResult = verticalCalculator.calculateVerticalPositions(columns, line, g2);
-
         var builder = LayoutResult.builder();
 
-        // Step 5: Create header elements (clef and key signature)
+        // Step 4: Create header elements (clef and key signature)
         createHeaderElements(line, builder);
 
-        // Step 6: Calculate beam layouts for beamed note groups
+        // Step 5: Calculate beam layouts for beamed note groups
         calculateBeams(line, columns, builder);
 
-        // Step 6: Calculate stem layouts for unbeamed notes
+        // Step 5b: Calculate stem layouts for unbeamed notes
         calculateUnbeamedStems(line, columns, builder);
 
-        // Step 7: Calculate tie geometry for all tie intervals
+        // Step 6: Calculate tie geometry for all tie intervals
         calculateTies(line, columns, builder);
 
+        // Step 7: Calculate vertical positions (requires stem layouts from steps 5/5b)
+        double lineWidthSs = columns.getLast().getRightEdgeXSs();
+        verticalCalculator.calculate(columns, line, builder, lineWidthSs);
+
         // Step 8: Build final LayoutResult
-        return buildLayoutResult(columns, verticalResult, line, builder);
+        return buildLayoutResult(columns, line, builder);
     }
 
     /**
@@ -187,12 +188,14 @@ public class LayoutEngine {
 
     /**
      * Builds the final LayoutResult from calculated positions.
-     * Populates the given builder with note columns, element bounds, and staff geometry,
-     * then returns the built result.
+     * <p>
+     * Populates the given builder with element columns and staff geometry,
+     * then returns the built result. Vertical stacking results (decoration layouts,
+     * line height, lyrics baseline) are already in the builder from the
+     * {@link VerticalStackingCalculator#calculate} call.
      */
     private LayoutResult buildLayoutResult(
         List<ElementColumn> columns,
-        VerticalStackingResult verticalResult,
         Line line,
         LayoutResult.Builder builder) {
 
@@ -201,53 +204,8 @@ public class LayoutEngine {
             builder.putElementColumn(column.getElement(), column);
         }
 
-        // Add element bounds from vertical stacking result
-        var elementPositions = verticalResult.getElementPositions();
-
-        for (var staffElementEntry : elementPositions.entrySet()) {
-            var staffElement = staffElementEntry.getKey();
-            var elementMap = staffElementEntry.getValue();
-
-            for (var elementEntry : elementMap.entrySet()) {
-                var element = elementEntry.getKey();
-                var position = elementEntry.getValue();
-
-                // Create bounds for this element
-                // For now, use simple rectangular bounds based on element content size
-                var contentBounds = new Rectangle2D.Double(
-                    position.getX(),
-                    position.getY(),
-                    element.getContentWidthPx(),
-                    element.getContentHeightPx()
-                );
-
-                var bounds = element.getBounds();
-
-                // Update bounds position to match calculated position
-                bounds = new Bounds(
-                    contentBounds,
-                    new Rectangle2D.Double(
-                        position.getX() - element.getMarginLeftSs(),
-                        position.getY() - element.getMarginTopSs(),
-                        element.getContentWidthPx() + element.getMarginLeftSs() + element.getMarginRightSs(),
-                        element.getContentHeightPx() + element.getMarginTopSs() + element.getMarginBottomSs()
-                    )
-                );
-
-                builder.putElementBounds(element, bounds);
-            }
-        }
-
         // Set staff geometry
-        double staffTopYSs = 0;
-        double staffBottomYSs = STAFF_HEIGHT_SS;
-
-        builder.setStaffGeometrySs(staffTopYSs, staffBottomYSs);
-
-        // Set line height and lyrics baseline from vertical result (convert px → ss)
-        var scale = ScaleContext.getInstance();
-        builder.setLineHeightSs(scale.fromPixels(verticalResult.getLineHeightPx()));
-        builder.setLyricBaselineYSs(scale.fromPixels(verticalResult.getLyricsBaselineYPx()));
+        builder.setStaffGeometrySs(0, STAFF_HEIGHT_SS);
 
         return builder.build();
     }
@@ -678,19 +636,19 @@ public class LayoutEngine {
     /**
      * Creates the clef and key signature header elements and stores them in the builder.
      * <p>
-     * The clef is placed at {@link LayoutConstants#CLEF_X_POSITION_SS}. The key signature
+     * The clef is placed at {@link LayoutStylesheet#CLEF_X_POSITION_SS}. The key signature
      * is placed immediately to the right of the clef, accounting for the clef's advance width
      * and right margin.
      */
     private static void createHeaderElements(Line line, LayoutResult.Builder builder) {
         var clef = new Clef();
-        clef.setPosition(LayoutConstants.CLEF_X_POSITION_SS, 0);
+        clef.setPosition(LayoutStylesheet.CLEF_X_POSITION_SS, 0);
         builder.setClef(clef);
         var rawKeyType = line.getKeyType();
         var keyType = rawKeyType != null ? rawKeyType : KeyType.NONE;
         var keySig = new KeySignature(keyType, line.getKeyAccidentalCount());
-        double keySigXSs = LayoutConstants.CLEF_X_POSITION_SS
-            + LayoutConstants.CLEF_WIDTH_SS
+        double keySigXSs = LayoutStylesheet.CLEF_X_POSITION_SS
+            + LayoutStylesheet.CLEF_WIDTH_SS
             + clef.getMarginRightSs();
         keySig.setPosition(keySigXSs, 0);
         builder.setKeySignature(keySig);

@@ -72,6 +72,16 @@ public class Tuplet extends RangeElement {
     }
 
     @Override
+    public double getContentHeightSs() {
+        return 1.5;  // 12px
+    }
+
+    @Override
+    public double getSpanWidthSs(double anchorXSs, double endXSs) {
+        return Math.max(1.0, endXSs - anchorXSs);
+    }
+
+    @Override
     public boolean isAbove() {
         // Tuplet bracket goes above if stems point down, below if stems point up
         // Check the anchor note's stem direction

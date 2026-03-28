@@ -32,7 +32,7 @@ import songscribe.smufl.BBox;
 import songscribe.smufl.EngravingDefaults;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
-import songscribe.ui.layout.LayoutConstants;
+import songscribe.ui.layout.LayoutStylesheet;
 import songscribe.error.RuntimeError;
 import songscribe.util.UIUtils;
 
@@ -239,7 +239,7 @@ public enum ElementType {
      * Returns the horizontal center of the element in staff spaces.
      */
     public double getCenterXSs() {
-        return getElementWidthSs() / 2;
+        return widthSs / 2;
     }
 
     /**
@@ -255,7 +255,7 @@ public enum ElementType {
      * For non-note types, returns the element center.
      */
     public double getNoteheadCenterXSs() {
-        return getNoteheadWidthSs() / 2;
+        return noteheadWidthSs / 2;
     }
 
     /**
@@ -496,12 +496,12 @@ public enum ElementType {
                 type.noteheadTopOffsetSs = headTop;
 
                 // Height up: from top of stem to bottom of notehead
-                double upTop = stemUpY - LayoutConstants.STEM_LENGTH_SS;
+                double upTop = stemUpY - LayoutStylesheet.STEM_LENGTH_SS;
                 type.heightUpSs = headBottom - upTop;
                 type.topOffsetUpSs = upTop;    // stem tip above center (negative)
 
                 // Height down: from top of notehead to bottom of stem
-                double downBottom = stemDownY + LayoutConstants.STEM_LENGTH_SS;
+                double downBottom = stemDownY + LayoutStylesheet.STEM_LENGTH_SS;
                 type.heightDownSs = downBottom - headTop;
                 type.topOffsetDownSs = headTop; // notehead top above center (negative)
             } else {
@@ -520,7 +520,7 @@ public enum ElementType {
 
     private static void computeGraceNoteBoundsSs(SMuFLMetadata metadata, ElementType type) {
         var headBBox = requireBBox(metadata, SMuFLGlyph.NOTEHEAD_BLACK, type);
-        double scale = LayoutConstants.GRACE_NOTE_SCALE;
+        double scale = LayoutStylesheet.GRACE_NOTE_SCALE;
 
         double headBottom = headBBox.bottom() * scale;
         double headRight = headBBox.right() * scale;
@@ -534,7 +534,7 @@ public enum ElementType {
         double stemUpX = anchors.stemUpSE().x() * scale;
         double stemUpY = anchors.stemUpSE().y() * scale;
 
-        double upTop = stemUpY - LayoutConstants.GRACE_NOTE_STEM_LENGTH_SS;
+        double upTop = stemUpY - LayoutStylesheet.GRACE_NOTE_STEM_LENGTH_SS;
         double width = headRight;
 
         var flagBBox = metadata.getBBox(SMuFLGlyph.FLAG_8TH_UP);
@@ -592,7 +592,7 @@ public enum ElementType {
         double thin = defaults.thinBarlineThickness();
         double thick = defaults.thickBarlineThickness();
         double sep = defaults.barlineSeparation();
-        double staffHeight = LayoutConstants.STAFF_HEIGHT_SS;
+        double staffHeight = LayoutStylesheet.STAFF_HEIGHT_SS;
         double topOffset = -staffHeight / 2;
 
         SINGLE_BARLINE.setSymmetricBounds(thin, staffHeight, topOffset);
@@ -609,7 +609,7 @@ public enum ElementType {
         double dotSep = defaults.repeatBarlineDotSeparation();
         var dotBBox = requireBBox(metadata, SMuFLGlyph.REPEAT_DOT, REPEAT_LEFT);
         double dotWidth = dotBBox.width();
-        double staffHeight = LayoutConstants.STAFF_HEIGHT_SS;
+        double staffHeight = LayoutStylesheet.STAFF_HEIGHT_SS;
         double topOffset = -staffHeight / 2;
 
         double singleRepeatWidth = thin + thick + sep + dotSep + dotWidth;

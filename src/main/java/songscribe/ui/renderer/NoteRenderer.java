@@ -35,7 +35,7 @@ import songscribe.music.ElementType;
 import songscribe.music.StaffElement;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
-import songscribe.ui.layout.LayoutConstants;
+import songscribe.ui.layout.LayoutStylesheet;
 import songscribe.error.RuntimeError;
 import songscribe.util.GraphicUtils;
 
@@ -341,7 +341,7 @@ public class NoteRenderer extends BaseElementRenderer<StaffElement> {
             return null;
         }
 
-        var geom = LayoutConstants.computeBaseStemGeometry(noteType, upper);
+        var geom = LayoutStylesheet.computeBaseStemGeometry(noteType, upper);
 
         // Snap stem left edge to device pixel boundary for crisp rendering.
         // We must work in absolute (device) coordinates because the graphics context
@@ -353,8 +353,8 @@ public class NoteRenderer extends BaseElementRenderer<StaffElement> {
         double stemLeftX;
 
         if (upper) {
-            double stemRightX = GraphicUtils.snapXToDevicePixel(g2, geom.stemLeftXSs() + LayoutConstants.STEM_WIDTH_SS);
-            stemLeftX = stemRightX - LayoutConstants.STEM_WIDTH_SS;
+            double stemRightX = GraphicUtils.snapXToDevicePixel(g2, geom.stemLeftXSs() + LayoutStylesheet.STEM_WIDTH_SS);
+            stemLeftX = stemRightX - LayoutStylesheet.STEM_WIDTH_SS;
         } else {
             stemLeftX = GraphicUtils.snapXToDevicePixel(g2, geom.stemLeftXSs());
         }
@@ -402,7 +402,7 @@ public class NoteRenderer extends BaseElementRenderer<StaffElement> {
             var drawBottom = GraphicUtils.snapYToDevicePixel(g2, anchorY);
 
             g2.fill(new Rectangle2D.Double(
-                stemLeftX, drawTop, LayoutConstants.STEM_WIDTH_SS, drawBottom - drawTop));
+                stemLeftX, drawTop, LayoutStylesheet.STEM_WIDTH_SS, drawBottom - drawTop));
 
             return new Point2D.Double(stemLeftX, stemTipY);
         } else {
@@ -413,7 +413,7 @@ public class NoteRenderer extends BaseElementRenderer<StaffElement> {
             var drawBottom = GraphicUtils.snapYToDevicePixel(g2, stemLength - beamInsetSs);
 
             g2.fill(new Rectangle2D.Double(
-                stemLeftX, drawTop, LayoutConstants.STEM_WIDTH_SS, drawBottom - drawTop));
+                stemLeftX, drawTop, LayoutStylesheet.STEM_WIDTH_SS, drawBottom - drawTop));
 
             return new Point2D.Double(stemLeftX, stemTipY);
         }
@@ -451,7 +451,7 @@ public class NoteRenderer extends BaseElementRenderer<StaffElement> {
             flagFont = BRAVURA_FONT_GRACE;
             // The scaled flag glyph's internal stem connection is 65% of the full stem width.
             // Shift right to visually center the flag on the actual stem.
-            flagX += (float) (LayoutConstants.STEM_WIDTH_SS * (1 - LayoutConstants.GRACE_NOTE_SCALE) / 2);
+            flagX += (float) (LayoutStylesheet.STEM_WIDTH_SS * (1 - LayoutStylesheet.GRACE_NOTE_SCALE) / 2);
         } else {
             flagFont = BRAVURA_FONT;
         }
@@ -526,7 +526,7 @@ public class NoteRenderer extends BaseElementRenderer<StaffElement> {
     // ==========================================================================
 
     private void renderLedgerLines(Graphics2D g2, StaffElement note) {
-        double extensionSs = LayoutConstants.getLedgerLineOverhangSs(note);
+        double extensionSs = LayoutStylesheet.getLedgerLineOverhangSs(note);
 
         if (extensionSs == 0.0) {
             return;
@@ -768,7 +768,7 @@ public class NoteRenderer extends BaseElementRenderer<StaffElement> {
      */
     public static float getNoteheadXOffsetSs(ElementType noteType, boolean upper) {
         if (noteType.isNoteWithStem() && !upper) {
-            return (float) -(LayoutConstants.STEM_WIDTH_SS / 2);
+            return (float) -(LayoutStylesheet.STEM_WIDTH_SS / 2);
         }
 
         return 0f;

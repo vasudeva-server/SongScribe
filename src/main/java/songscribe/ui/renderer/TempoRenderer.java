@@ -34,6 +34,11 @@ import songscribe.music.ElementType;
 import songscribe.music.StaffElement;
 import songscribe.music.Tempo;
 import songscribe.smufl.SMuFLGlyph;
+import songscribe.smufl.SMuFLMetadata;
+import songscribe.ui.FlatLafKeys;
+import songscribe.ui.FlatLafProps;
+import songscribe.ui.layout.LayoutResult;
+import songscribe.ui.layout.ScaleContext;
 import songscribe.ui.layout.TempoAttachment;
 
 /**
@@ -48,14 +53,17 @@ public class TempoRenderer extends BaseElementRenderer<StaffElement> {
     // Constants
     // ==========================================================================
 
-    private static final double TEMPO_CHANGE_ZOOM_X = BaseElementRenderer.TEMPO_CHANGE_ZOOM_X;
-    private static final double TEMPO_CHANGE_ZOOM_Y = BaseElementRenderer.TEMPO_CHANGE_ZOOM_Y;
-
     /**
      * Maps note types to their SMuFL metronome glyph (stem-up, since tempo notes
      * always display stem-up).
      */
     private static final Map<ElementType, SMuFLGlyph> METRONOME_GLYPHS;
+
+    /** Bravura font scaled for tempo note display. */
+    private static final Font TEMPO_NOTE_FONT;
+
+    /** Gap between tempo note glyph and "= NNN" text, in staff-space units. */
+    private static final float GLYPH_TEXT_GAP_SS;
 
     static {
         METRONOME_GLYPHS = new EnumMap<>(ElementType.class);
@@ -65,6 +73,9 @@ public class TempoRenderer extends BaseElementRenderer<StaffElement> {
         METRONOME_GLYPHS.put(ElementType.QUAVER, SMuFLGlyph.MET_NOTE_8TH_UP);
         METRONOME_GLYPHS.put(ElementType.SEMIQUAVER, SMuFLGlyph.MET_NOTE_16TH_UP);
         METRONOME_GLYPHS.put(ElementType.DEMI_SEMIQUAVER, SMuFLGlyph.MET_NOTE_32ND_UP);
+
+        TEMPO_NOTE_FONT = BRAVURA_FONT.deriveFont(FONT_SIZE * TempoAttachment.NOTE_SCALE);
+        GLYPH_TEXT_GAP_SS = FlatLafProps.get(FlatLafKeys.SCORE_TEMPO_GLYPH_TEXT_GAP);
     }
 
     // Singleton instance
@@ -195,25 +206,27 @@ public class TempoRenderer extends BaseElementRenderer<StaffElement> {
     ) {
         var composition = ctx.getComposition();
         var line = ctx.getCurrentLine();
-        int lineIndex = ctx.getLineIndex();
 
         if (line == null) {
             return;
         }
 
-        double middleLineYSs = ctx.getMiddleLineYSs();
-
-        // Calculate Y position (above the staff)
-        int yPosSs = getEffectiveTempoChangeYPosSs(note, ctx);
+        // Get position from DecorationLayout (in staff-space units)
+        var decorationLayout = getTempoDecorationLayout(note, ctx);
+        double ySs = layoutYToComponentYSs(decorationLayout.ySs(), ctx);
+        double xSs = decorationLayout.xSs();
 
         // Build tempo text
         var tempoBuilder = new StringBuilder(25);
         var tempoTypeNote = tempo.getTempoType().getNote();
 
-        double xPosSs = note.getXPosSs();
+        // Compute the text baseline Y: aligned with the bottom of the tempo note glyph
+        var metadata = SMuFLMetadata.getInstance();
+        double textBaselineYSs = ySs
+            + TempoAttachment.QUARTER_NOTE_BBOX.height() * TempoAttachment.NOTE_SCALE;
 
         if (tempo.shouldShowTempo()) {
-            drawTempoChangeNote(g2, tempoTypeNote, (int) xPosSs, yPosSs);
+            drawTempoChangeNote(g2, tempoTypeNote, xSs, ySs);
             tempoBuilder.append("= ");
             tempoBuilder.append(tempo.getVisibleTempo());
             tempoBuilder.append(' ');
@@ -221,81 +234,80 @@ public class TempoRenderer extends BaseElementRenderer<StaffElement> {
 
         tempoBuilder.append(tempo.getTempoDescription());
 
-        g2.setFont(composition.getAttributionFont());
+        // Scale the attribution font to staff-space units
+        var attrFont = composition.getAttributionFont();
+        var scale = ScaleContext.getInstance();
+        g2.setFont(attrFont.deriveFont((float) scale.fromPixels(attrFont.getSize())));
         g2.setColor(ELEMENT_COLOR);
 
         if (tempo.shouldShowTempo()) {
-            // Compute the scaled width of the metronome glyph to position the text after it
+            // Advance past the metronome glyph using SMuFL advance widths (scaled)
             var metGlyph = METRONOME_GLYPHS.get(tempoTypeNote.getType());
 
             if (metGlyph != null) {
-                var frc = g2.getFontRenderContext();
-                var gv = BRAVURA_FONT.createGlyphVector(frc, metGlyph.asString());
-                double glyphWidth = gv.getVisualBounds().getWidth() * TEMPO_CHANGE_ZOOM_X;
-                xPosSs += glyphWidth + 3;
+                xSs += metadata.requireAdvanceWidth(metGlyph) * TempoAttachment.NOTE_SCALE;
 
                 if (tempoTypeNote.getDotCount() > 0) {
-                    xPosSs += 4;
+                    xSs += metadata.requireAdvanceWidth(SMuFLGlyph.MET_AUGMENTATION_DOT)
+                        * TempoAttachment.NOTE_SCALE;
                 }
+
+                xSs += GLYPH_TEXT_GAP_SS;
             }
         }
 
         var tempoText = tempoBuilder.toString();
-        g2.drawString(tempoText, (float) xPosSs, (float) yPosSs);
+        g2.drawString(tempoText, (float) xSs, (float) textBaselineYSs);
     }
 
     /**
-     * Draws a tempo note (scaled smaller than regular notes).
+     * Draws a tempo note at the layout position.
+     * {@code ySs} is the top of the decoration area; the glyph origin is offset
+     * so the visual top aligns with that position.
      */
     private void drawTempoChangeNote(
         Graphics2D g2,
         StaffElement tempoNote,
-        int x,
-        int y
+        double xSs,
+        double ySs
     ) {
-        var transform = g2.getTransform();
+        var metGlyph = METRONOME_GLYPHS.get(tempoNote.getType());
 
-        g2.translate(x, y - ((FONT_SIZE * TEMPO_CHANGE_ZOOM_Y) / 8.0));
-        g2.scale(TEMPO_CHANGE_ZOOM_X, TEMPO_CHANGE_ZOOM_Y);
+        if (metGlyph == null) {
+            return;
+        }
 
-        paintSimpleTempoNote(g2, tempoNote);
+        // Convert layout top Y to glyph origin Y (baseline), accounting for font scale
+        var bbox = SMuFLMetadata.getInstance().requireBBox(metGlyph);
+        double originYSs = ySs - bbox.top() * TempoAttachment.NOTE_SCALE;
 
-        g2.setTransform(transform);
+        try (var ignored = GraphicsState.save(g2, COLOR, FONT)) {
+            g2.setColor(ELEMENT_COLOR);
+            g2.setFont(TEMPO_NOTE_FONT);
+            g2.drawString(metGlyph.asString(), (float) xSs, (float) originYSs);
+
+            if (tempoNote.getDotCount() > 0) {
+                double dotX = xSs + SMuFLMetadata.getInstance()
+                    .requireAdvanceWidth(metGlyph) * TempoAttachment.NOTE_SCALE;
+                g2.drawString(SMuFLGlyph.MET_AUGMENTATION_DOT.asString(),
+                    (float) dotX, (float) originYSs);
+            }
+        }
     }
 
     /**
      * Paints a simple note for tempo display using a pre-composed SMuFL
      * metronome glyph (notehead + stem + flag in a single codepoint).
      */
-    private void paintSimpleTempoNote(Graphics2D g2, StaffElement note) {
-        var metGlyph = METRONOME_GLYPHS.get(note.getType());
-
-        if (metGlyph == null) {
-            return;
-        }
-
-        try (var ignored = GraphicsState.save(g2, COLOR, FONT)) {
-            g2.setColor(ELEMENT_COLOR);
-            g2.setFont(BRAVURA_FONT);
-            g2.drawString(metGlyph.asString(), 0f, 0f);
-
-            // Draw augmentation dot using the SMuFL metronome dot glyph
-            if (note.getDotCount() > 0) {
-                var frc = g2.getFontRenderContext();
-                var noteGv = BRAVURA_FONT.createGlyphVector(frc, metGlyph.asString());
-                float dotX = (float) noteGv.getVisualBounds().getMaxX() + 2f;
-                g2.drawString(SMuFLGlyph.MET_AUGMENTATION_DOT.asString(), dotX, 0f);
-            }
-        }
-    }
 
     /**
      * Gets the Y position for tempo change from layout result.
      * <p>
-     * Converts from layout coordinates (relative to middleLineY=0) to
-     * component coordinates (relative to component top).
+     * Reads the {@link songscribe.ui.layout.LayoutResult.DecorationLayout} written
+     * by the vertical stacking calculator. Converts from layout coordinates
+     * (relative to middleLineY=0) to component coordinates.
      */
-    private int getEffectiveTempoChangeYPosSs(
+    private LayoutResult.DecorationLayout getTempoDecorationLayout(
         StaffElement note,
         ElementRenderContext ctx
     ) {
@@ -305,15 +317,13 @@ public class TempoRenderer extends BaseElementRenderer<StaffElement> {
             throw new IllegalStateException("Layout result must be available for rendering");
         }
 
-        var bounds = layoutResult.findAttachmentBounds(note, TempoAttachment.class);
+        var decorationLayout = layoutResult.findAttachmentDecorationLayout(
+            note, TempoAttachment.class);
 
-        if (bounds == null) {
-            throw new IllegalStateException("No bounds found for TempoAttachment on note");
+        if (decorationLayout == null) {
+            throw new IllegalStateException("No DecorationLayout found for TempoAttachment on note");
         }
 
-        // Convert from layout coordinates to component coordinates
-        int componentY = (int) layoutYToComponentYSs(bounds, ctx);
-
-        return componentY;
+        return decorationLayout;
     }
 }

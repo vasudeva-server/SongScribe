@@ -23,6 +23,8 @@ package songscribe.ui.layout;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.music.StaffElement;
+import songscribe.smufl.SMuFLGlyph;
+import songscribe.smufl.SMuFLMetadata;
 
 /**
  * Represents a fermata (pause/hold) attachment on a note.
@@ -32,8 +34,15 @@ import songscribe.music.StaffElement;
  */
 public class FermataAttachment extends Attachment {
 
-    /** Default size for fermata symbol. */
-    private static final double DEFAULT_SIZE_PX = 16.0;
+    // SMuFL bbox-derived dimensions in staff-space units
+    private static final double FERMATA_WIDTH_SS;
+    private static final double FERMATA_HEIGHT_SS;
+
+    static {
+        var bbox = SMuFLMetadata.getInstance().requireBBox(SMuFLGlyph.FERMATA_ABOVE);
+        FERMATA_WIDTH_SS = bbox.width();
+        FERMATA_HEIGHT_SS = bbox.height();
+    }
 
     /**
      * Creates a fermata attachment.
@@ -57,13 +66,27 @@ public class FermataAttachment extends Attachment {
         }
     }
 
+    /**
+     * Returns the content width in staff-space units, derived from SMuFL bounding box data.
+     */
+    public double getContentWidthSs() {
+        return FERMATA_WIDTH_SS;
+    }
+
+    /**
+     * Returns the content height in staff-space units, derived from SMuFL bounding box data.
+     */
+    public double getContentHeightSs() {
+        return FERMATA_HEIGHT_SS;
+    }
+
     @Override
     public double getContentWidthPx() {
-        return DEFAULT_SIZE_PX;
+        return ScaleContext.getInstance().toPixels(getContentWidthSs());
     }
 
     @Override
     public double getContentHeightPx() {
-        return DEFAULT_SIZE_PX;
+        return ScaleContext.getInstance().toPixels(getContentHeightSs());
     }
 }

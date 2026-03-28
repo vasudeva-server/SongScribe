@@ -166,7 +166,7 @@ public class ElementColumnBuilder {
         // Add accidental width if present
         if (element.getAccidental() != null) {
             double accidentalWidthSs = NoteRenderer.getAccidentalWidthSs(element);
-            extentSs -= (accidentalWidthSs + LayoutConstants.ACCIDENTAL_GAP_SS);
+            extentSs -= (accidentalWidthSs + LayoutStylesheet.ACCIDENTAL_GAP_SS);
         }
 
         return extentSs;
@@ -193,11 +193,11 @@ public class ElementColumnBuilder {
 
         if (dotCount > 0) {
             // First dot: gap + dot
-            noteheadRightExtent += LayoutConstants.DOT_GAP_SS + LayoutConstants.DOT_WIDTH_SS;
+            noteheadRightExtent += LayoutStylesheet.DOT_GAP_SS + LayoutStylesheet.DOT_WIDTH_SS;
 
             // Additional dots: gap + dot each
             for (var i = 1; i < dotCount; i++) {
-                noteheadRightExtent += LayoutConstants.DOT_GAP_SS + LayoutConstants.DOT_WIDTH_SS;
+                noteheadRightExtent += LayoutStylesheet.DOT_GAP_SS + LayoutStylesheet.DOT_WIDTH_SS;
             }
         }
 
@@ -210,8 +210,8 @@ public class ElementColumnBuilder {
 
             // Grace notes always stem up, use the small notehead anchor
             double stemAnchorX = element.getType().isGraceNote()
-                ? LayoutConstants.STEM_UP_SE_BLACK_SMALL.x()
-                : (upper ? LayoutConstants.STEM_UP_SE_BLACK.x() : LayoutConstants.STEM_DOWN_NW_BLACK.x());
+                ? LayoutStylesheet.STEM_UP_SE_BLACK_SMALL.x()
+                : (upper ? LayoutStylesheet.STEM_UP_SE_BLACK.x() : LayoutStylesheet.STEM_DOWN_NW_BLACK.x());
 
             flagRightExtent = stemAnchorX + flagAdvanceWidthSs;
         }
@@ -246,7 +246,7 @@ public class ElementColumnBuilder {
 
         // Stem up: stem extends upward
         if (!element.isUpper()) {
-            return -LayoutConstants.STEM_LENGTH_SS;
+            return -LayoutStylesheet.STEM_LENGTH_SS;
         }
 
         // Stem down: top is just above element head
@@ -271,7 +271,7 @@ public class ElementColumnBuilder {
 
         // Stem down: stem extends downward
         if (element.isUpper()) {
-            return LayoutConstants.STEM_LENGTH_SS;
+            return LayoutStylesheet.STEM_LENGTH_SS;
         }
 
         // Stem up: bottom is just below element head

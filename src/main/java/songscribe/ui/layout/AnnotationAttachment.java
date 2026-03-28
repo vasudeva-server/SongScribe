@@ -20,6 +20,8 @@
 
 package songscribe.ui.layout;
 
+import java.awt.FontMetrics;
+
 import org.jspecify.annotations.Nullable;
 
 import songscribe.music.Annotation;
@@ -33,11 +35,8 @@ import songscribe.music.StaffElement;
  */
 public class AnnotationAttachment extends Attachment {
 
-    /** Default width estimate for annotations. */
-    private static final double DEFAULT_WIDTH = 40.0;
-
-    /** Default height for annotations. */
-    private static final double DEFAULT_HEIGHT = 14.0;
+    /** Default height for annotations in staff-space units. */
+    private static final double DEFAULT_HEIGHT_SS = 1.75;  // 14px
 
     /** The annotation data. */
     private Annotation annotation;
@@ -107,14 +106,32 @@ public class AnnotationAttachment extends Attachment {
         annotation.setAnnotation(text);
     }
 
+    /**
+     * Computes the content width from the actual annotation text.
+     *
+     * @param fontMetrics font metrics for the annotation font
+     * @return width in staff-space units
+     */
+    public double computeContentWidthSs(FontMetrics fontMetrics) {
+        return ScaleContext.getInstance().fromPixels(
+            fontMetrics.stringWidth(annotation.getAnnotation()));
+    }
+
+    /**
+     * Returns the content height in staff-space units.
+     */
+    public double getContentHeightSs() {
+        return DEFAULT_HEIGHT_SS;
+    }
+
     @Override
     public double getContentWidthPx() {
-        // In a real implementation, this would measure the text width
-        return DEFAULT_WIDTH;
+        // Legacy pixel API — not used for layout (computeContentWidthSs is used instead)
+        return 0;
     }
 
     @Override
     public double getContentHeightPx() {
-        return DEFAULT_HEIGHT;
+        return ScaleContext.getInstance().toPixels(getContentHeightSs());
     }
 }

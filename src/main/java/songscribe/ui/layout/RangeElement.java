@@ -75,6 +75,20 @@ public abstract class RangeElement extends LineElement {
     public abstract boolean isAbove();
 
     /**
+     * Returns the content height of this range element in staff-space units.
+     */
+    public abstract double getContentHeightSs();
+
+    /**
+     * Returns the horizontal span width for collision detection in staff-space units.
+     *
+     * @param anchorXSs X position of the anchor note in staff-space units
+     * @param endXSs    X position of the end note in staff-space units
+     * @return span width in staff-space units
+     */
+    public abstract double getSpanWidthSs(double anchorXSs, double endXSs);
+
+    /**
      * Returns the index of the anchor note within its line.
      * Returns -1 if the anchor note is not set or not in a line.
      */

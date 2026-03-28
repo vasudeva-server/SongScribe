@@ -30,13 +30,14 @@ import java.util.stream.IntStream;
 
 
 import songscribe.music.ElementType;
+import songscribe.music.EndingInterval;
 import songscribe.music.Line;
 import songscribe.music.StaffElement;
 import songscribe.smufl.EngravingDefaults;
 import songscribe.smufl.SMuFLMetadata;
-import songscribe.smufl.StaffSpaces;
 import songscribe.ui.layout.Ending;
 import songscribe.ui.layout.LineElement;
+import songscribe.ui.layout.ScaleContext;
 
 /**
  * Renders first and second ending brackets.
@@ -55,7 +56,7 @@ public class EndingRenderer extends BaseElementRenderer<LineElement> {
         SMuFLMetadata.getInstance().getEngravingDefaults();
 
     private static final BasicStroke STEM_STROKE = new BasicStroke(
-        (float) StaffSpaces.toPixels(ENGRAVING_DEFAULTS.repeatEndingLineThickness()),
+        (float) ScaleContext.getInstance().toPixels(ENGRAVING_DEFAULTS.repeatEndingLineThickness()),
         BasicStroke.CAP_BUTT,
         BasicStroke.JOIN_MITER
     );
@@ -165,7 +166,7 @@ public class EndingRenderer extends BaseElementRenderer<LineElement> {
                     x1 -= (x1 - previousX) / 2d;
                 }
 
-                drawEnding(g2, line, lineIndex, ctx, x1, x2, 1, startNote, endNote);
+                drawEnding(g2, line, lineIndex, ctx, interval, x1, x2, 1, startNote, endNote);
             }
 
             // Render second ending (after repeat)
@@ -209,7 +210,7 @@ public class EndingRenderer extends BaseElementRenderer<LineElement> {
                 }
 
                 var repeatNote = line.getElement(repeatRightPos);
-                drawEnding(g2, line, lineIndex, ctx, repeatX + REPEAT_THICK_THIN_DIFF_PX, x2, 2, repeatNote, endNote);
+                drawEnding(g2, line, lineIndex, ctx, interval, repeatX + REPEAT_THICK_THIN_DIFF_PX, x2, 2, repeatNote, endNote);
             }
         }
     }
@@ -232,13 +233,14 @@ public class EndingRenderer extends BaseElementRenderer<LineElement> {
         Line line,
         int lineIndex,
         ElementRenderContext ctx,
+        EndingInterval interval,
         double x1,
         double x2,
         int number,
         StaffElement startNote,
         StaffElement endNote
     ) {
-        int y = getEffectiveEndingYPosPx(ctx, startNote, endNote);
+        int y = getEffectiveEndingYPosPx(ctx, interval, startNote);
         int fontHeight = BaseElementRenderer.ENDING_FONT.getSize() + 2;
 
         // Build bracket path
@@ -265,11 +267,14 @@ public class EndingRenderer extends BaseElementRenderer<LineElement> {
 
     /**
      * Gets the Y position for an ending bracket from layout result.
+     * <p>
+     * Tries SpanLayout (keyed by EndingInterval) first, then falls back to
+     * DecorationLayout (for Ending range elements), then to legacy bounds.
      */
     private int getEffectiveEndingYPosPx(
         ElementRenderContext ctx,
-        StaffElement startNote,
-        StaffElement endNote
+        EndingInterval interval,
+        StaffElement startNote
     ) {
         var layoutResult = ctx.getLayoutResult();
 
@@ -277,12 +282,21 @@ public class EndingRenderer extends BaseElementRenderer<LineElement> {
             throw new IllegalStateException("Layout result must be available for rendering");
         }
 
-        var bounds = layoutResult.findRangeElementBounds(startNote, endNote, Ending.class);
+        // Try SpanLayout keyed by the legacy interval
+        var spanLayout = layoutResult.getSpanLayout(interval);
 
-        if (bounds == null) {
-            throw new IllegalStateException("No bounds found for Ending element");
+        if (spanLayout != null) {
+            return (int) layoutYToComponentYSs(spanLayout.ySs(), ctx);
         }
 
-        return (int) bounds.getTop();
+        // Try DecorationLayout for Ending range elements
+        var decorationLayout = layoutResult.findRangeElementDecorationLayout(
+            startNote, Ending.class);
+
+        if (decorationLayout != null) {
+            return (int) layoutYToComponentYSs(decorationLayout.ySs(), ctx);
+        }
+
+        throw new IllegalStateException("No layout found for Ending element");
     }
 }

@@ -26,18 +26,11 @@ import static songscribe.ui.renderer.GraphicsState.Property.STROKE;
 import module java.desktop;
 
 
-import songscribe.music.DynamicsInterval;
-import songscribe.music.IntervalSet;
-import songscribe.music.Line;
-import songscribe.music.StaffElement;
 import songscribe.smufl.EngravingDefaults;
 import songscribe.smufl.SMuFLMetadata;
-import songscribe.smufl.StaffSpaces;
 import songscribe.ui.layout.Crescendo;
 import songscribe.ui.layout.Diminuendo;
-import songscribe.ui.layout.LayoutStylesheet;
 import songscribe.ui.layout.LineElement;
-import songscribe.ui.layout.ScaleContext;
 
 /**
  * Renders crescendo and diminuendo hairpins.
@@ -55,13 +48,10 @@ public class DynamicsRenderer extends BaseElementRenderer<LineElement> {
         SMuFLMetadata.getInstance().getEngravingDefaults();
 
     private static final BasicStroke LINE_STROKE = new BasicStroke(
-        (float) StaffSpaces.toPixels(ENGRAVING_DEFAULTS.hairpinThickness()),
+        (float) ENGRAVING_DEFAULTS.hairpinThickness(),
         BasicStroke.CAP_BUTT,
         BasicStroke.JOIN_MITER
     );
-
-    // Crotchet width (from FughettaRenderer)
-    private static final double CROTCHET_WIDTH_PX = BaseElementRenderer.FONT_SIZE / 3.6056337d;
 
     // Singleton instance
     private static final DynamicsRenderer INSTANCE = new DynamicsRenderer();
@@ -89,155 +79,77 @@ public class DynamicsRenderer extends BaseElementRenderer<LineElement> {
         Graphics2D g2,
         ElementRenderContext ctx
     ) {
-        if (element instanceof Crescendo crescendo) {
-            renderCrescendo(crescendo, g2, ctx);
-        } else if (element instanceof Diminuendo diminuendo) {
-            renderDiminuendo(diminuendo, g2, ctx);
-        }
-    }
-
-    private void renderCrescendo(
-        Crescendo element,
-        Graphics2D g2,
-        ElementRenderContext ctx
-    ) {
-        var anchorNote = element.getAnchorElement();
-        var endNote = element.getEndElement();
-
-        if (anchorNote == null || endNote == null) {
-            return;
-        }
-
-        int yShift = getEffectiveDynamicsYShiftPx(element, ctx);
-        renderHairpin(g2, ctx, anchorNote, endNote, true, 0, 0, yShift);
-    }
-
-    private void renderDiminuendo(
-        Diminuendo element,
-        Graphics2D g2,
-        ElementRenderContext ctx
-    ) {
-        var anchorNote = element.getAnchorElement();
-        var endNote = element.getEndElement();
-
-        if (anchorNote == null || endNote == null) {
-            return;
-        }
-
-        int yShift = getEffectiveDynamicsYShiftPx(element, ctx);
-        renderHairpin(g2, ctx, anchorNote, endNote, false, 0, 0, yShift);
-    }
-
-    /**
-     * Gets the Y shift for a dynamics element from layout result.
-     */
-    private int getEffectiveDynamicsYShiftPx(
-        LineElement element,
-        ElementRenderContext ctx
-    ) {
         var layoutResult = ctx.getLayoutResult();
 
         if (layoutResult == null) {
-            throw new IllegalStateException("Layout result must be available for rendering");
+            return;
         }
 
-        var bounds = layoutResult.getBounds(element);
+        var layout = layoutResult.getDecorationLayout(element);
 
-        if (bounds == null) {
-            throw new IllegalStateException("No bounds found for dynamics element");
+        if (layout == null) {
+            return;
         }
 
-        // Calculate shift from default position
-        double middleLineYSs = ctx.getMiddleLineYSs();
-        double defaultY = middleLineYSs - ScaleContext.getInstance().toRoundedPixels(6 * LayoutStylesheet.STAFF_POSITION_OFFSET_SS);
-        return (int) (bounds.getTop() - defaultY);
+        renderSingleHairpin(layout, element instanceof Crescendo, g2, ctx);
     }
 
     /**
-     * Renders a hairpin (crescendo or diminuendo).
+     * Renders a single hairpin from its decoration layout.
      *
-     * @param g2           Graphics context
-     * @param ctx          Render context
-     * @param startNote    The starting note
-     * @param endNote      The ending note
-     * @param isCrescendo  True for crescendo, false for diminuendo
-     * @param x1Shift      Horizontal shift for start
-     * @param x2Shift      Horizontal shift for end
-     * @param yShift       Vertical shift
+     * @param layout      The pre-computed layout (with offsets already applied)
+     * @param isCrescendo True for crescendo, false for diminuendo
+     * @param g2          Graphics context with scale transform
+     * @param ctx         Render context
      */
-    public void renderHairpin(
-        Graphics2D g2,
-        ElementRenderContext ctx,
-        StaffElement startNote,
-        StaffElement endNote,
+    private void renderSingleHairpin(
+        songscribe.ui.layout.LayoutResult.DecorationLayout layout,
         boolean isCrescendo,
-        double x1Shift,
-        double x2Shift,
-        double yShift
+        Graphics2D g2,
+        ElementRenderContext ctx
     ) {
-        double middleLineYSs = ctx.getMiddleLineYSs();
-
-        int x1 = (int) (startNote.getXPosSs() + x1Shift);
-        int x2 = (int) (endNote.getXPosSs() + CROTCHET_WIDTH_PX + x2Shift);
-
-        // Y positions above the staff: center 1 staff space above top staff line
-        // (top staff line = middleLineYSs - 4*NOTE_Y_OFFSET; 1 space = 2*NOTE_Y_OFFSET)
-        int yTop = (int) (middleLineYSs - ScaleContext.getInstance().toPixels(7 * LayoutStylesheet.STAFF_POSITION_OFFSET_SS) + yShift);
-        int yBottom = (int) (middleLineYSs - ScaleContext.getInstance().toPixels(5 * LayoutStylesheet.STAFF_POSITION_OFFSET_SS) + yShift);
-        int yMiddle = (int) (middleLineYSs - ScaleContext.getInstance().toPixels(6 * LayoutStylesheet.STAFF_POSITION_OFFSET_SS) + yShift);
+        double x1 = layout.xSs();
+        double x2 = x1 + layout.widthSs();
+        double topYSs = layoutYToComponentYSs(layout.ySs(), ctx);
+        double bottomYSs = topYSs + layout.heightSs();
+        double middleYSs = topYSs + layout.heightSs() / 2.0;
 
         try (var ignored = GraphicsState.save(g2, COLOR, STROKE)) {
             g2.setColor(ELEMENT_COLOR);
             g2.setStroke(LINE_STROKE);
 
             if (isCrescendo) {
-                // Crescendo: point on left, open on right
-                g2.drawLine(x1, yMiddle, x2, yTop);
-                g2.drawLine(x1, yMiddle, x2, yBottom);
+                g2.draw(new java.awt.geom.Line2D.Double(x1, middleYSs, x2, topYSs));
+                g2.draw(new java.awt.geom.Line2D.Double(x1, middleYSs, x2, bottomYSs));
             } else {
-                // Diminuendo: open on left, point on right
-                g2.drawLine(x1, yTop, x2, yMiddle);
-                g2.drawLine(x1, yBottom, x2, yMiddle);
+                g2.draw(new java.awt.geom.Line2D.Double(x1, topYSs, x2, middleYSs));
+                g2.draw(new java.awt.geom.Line2D.Double(x1, bottomYSs, x2, middleYSs));
             }
         }
     }
 
     /**
-     * Renders crescendos from Line's interval data.
+     * Renders all hairpins (crescendo and diminuendo) for a line using layout results.
+     * <p>
+     * Iterates all {@link Crescendo} and {@link Diminuendo} entries in the layout
+     * (both new range elements and those bridged from legacy intervals during layout).
      */
-    public void renderCrescendosFromLine(
+    public void renderHairpinsFromLine(
         Graphics2D g2,
-        Line line,
         ElementRenderContext ctx
     ) {
-        renderDynamicsFromInterval(g2, line, ctx, line.getCrescendos(), true);
-    }
+        var layoutResult = ctx.getLayoutResult();
 
-    /**
-     * Renders diminuendos from Line's interval data.
-     */
-    public void renderDiminuendosFromLine(
-        Graphics2D g2,
-        Line line,
-        ElementRenderContext ctx
-    ) {
-        renderDynamicsFromInterval(g2, line, ctx, line.getDiminuendos(), false);
-    }
+        if (layoutResult == null) {
+            return;
+        }
 
-    private void renderDynamicsFromInterval(
-        Graphics2D g2,
-        Line line,
-        ElementRenderContext ctx,
-        IntervalSet<DynamicsInterval> dynamics,
-        boolean isCrescendo
-    ) {
-        for (var iter = dynamics.listIterator(); iter.hasNext(); ) {
-            var interval = iter.next();
-            var startNote = line.getElement(interval.getStart());
-            var endNote = line.getElement(interval.getEnd());
+        for (var entry : layoutResult.getDecorationLayoutsByType(Crescendo.class)) {
+            renderSingleHairpin(entry.getValue(), true, g2, ctx);
+        }
 
-            renderHairpin(g2, ctx, startNote, endNote, isCrescendo,
-                interval.getX1ShiftSs(), interval.getX2ShiftSs(), interval.getYShiftSs());
+        for (var entry : layoutResult.getDecorationLayoutsByType(Diminuendo.class)) {
+            renderSingleHairpin(entry.getValue(), false, g2, ctx);
         }
     }
 }

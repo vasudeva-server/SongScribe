@@ -39,7 +39,7 @@ import songscribe.ui.component.score.InsertionElementManager;
 import songscribe.ui.component.score.LineComponent;
 import songscribe.ui.layout.ElementColumnBuilder;
 import songscribe.ui.layout.InsertionSpacingCalculator;
-import songscribe.ui.layout.LayoutConstants;
+import songscribe.ui.layout.LayoutStylesheet;
 import songscribe.ui.layout.ScaleContext;
 import songscribe.message.notification.GraceModeStateDidChangeNotification;
 import songscribe.ui.selection.SelectionCoordinator;
@@ -213,7 +213,7 @@ public final class GraceModeManager {
 
         return graceColumn.getXSs()
             + graceColumn.getRightExtentSs()
-            + LayoutConstants.GRACE_NOTE_GAP_SS
+            + LayoutStylesheet.GRACE_NOTE_GAP_SS
             + Math.abs(hostLeftExtentSs);
     }
 

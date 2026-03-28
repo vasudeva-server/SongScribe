@@ -30,7 +30,7 @@ import songscribe.prefs.Prefs;
 import songscribe.prefs.PrefsKey;
 import songscribe.ui.OptionDialogs;
 import songscribe.ui.Mode;
-import songscribe.ui.layout.LayoutConstants;
+import songscribe.ui.layout.LayoutStylesheet;
 import songscribe.ui.layout.ScaleContext;
 import songscribe.ui.playback.MidiController;
 import songscribe.ui.playback.PlayThread;
@@ -357,7 +357,7 @@ class SelectionHandler {
     private double headerRightEdgeSs() {
         var line = lc.getLine();
         var keyAccidentalCount = line != null ? line.getKeyAccidentalCount() : 0;
-        return LayoutConstants.calculateHeaderRightEdgeSs(keyAccidentalCount);
+        return LayoutStylesheet.calculateHeaderRightEdgeSs(keyAccidentalCount);
     }
 
     private int hitTestGlissandoAtPoint(double clickXSs, double clickYSs) {

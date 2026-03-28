@@ -62,7 +62,6 @@ import songscribe.ui.component.score.MainPanel;
 import songscribe.ui.component.score.ScorePanel;
 import songscribe.ui.edit.EditModeManager;
 import songscribe.ui.layout.LayoutStylesheet;
-import songscribe.ui.layout.LayoutConstants;
 import songscribe.ui.layout.PageModel;
 import songscribe.ui.layout.ScaleContext;
 import songscribe.util.GraphicUtils;
@@ -892,7 +891,7 @@ public final class Score
             if (strict) {
                 idealSpace = (float) endNote.getContentWidthPx();
             } else {
-                idealSpace = (float) ScaleContext.getInstance().toPixels(LayoutConstants.DEFAULT_COLUMN_GAP_SS) + 20;
+                idealSpace = (float) ScaleContext.getInstance().toPixels(LayoutStylesheet.DEFAULT_COLUMN_GAP_SS) + 20;
             }
 
             // Note: getXPosSs() is a legacy misnomer — it stores pixels.
