@@ -819,11 +819,88 @@ render for the first time.
 - Lyric collision avoidance (syllable widths influence spacing)
 - Lyric rendering below staff (syllables, hyphens, extenders)
 - Total line height calculation including all layers
-- Tuplet bracket rendering
+- Tuplet bracket rendering (straight brackets + Bravura SMuFL digit glyphs)
 - Line justification (compress/stretch)
+- Remove `TupletNumbers.ttf` and clean up `BaseElementRenderer` font fields
+
+#### Tuplet Number Rendering
+
+Tuplet numbers are rendered using `getMusicFont()` (Bravura), scaled to
+`FONT_SIZE * TUPLET_NUMBER_SCALE` (0.9× standard size), via the
+`TUPLET_GLYPHS[]` array in `TupletRenderer`. No custom font is used.
+
+**Glyph mapping (SMuFL 1.4, Bravura):**
+
+| Digit | SMuFL name | Codepoint |
+|-------|------------|-----------|
+| 0     | tuplet0    | U+E880    |
+| 1     | tuplet1    | U+E881    |
+| 2     | tuplet2    | U+E882    |
+| 3     | tuplet3    | U+E883    |
+| 4     | tuplet4    | U+E884    |
+| 5     | tuplet5    | U+E885    |
+| 6     | tuplet6    | U+E886    |
+| 7     | tuplet7    | U+E887    |
+| 8     | tuplet8    | U+E888    |
+| 9     | tuplet9    | U+E889    |
+
+For grades 10 and above, two glyphs are drawn side-by-side (tens digit then
+units digit), with total width derived from the sum of the two advance widths
+from `SMuFLMetadata`. No colon or fraction-bar glyph is needed — SongScribe
+displays only the integer grade value, never a ratio such as "3:2".
+
+`TupletRenderer` already implements this correctly. No changes needed there.
+
+#### Removal of `TupletNumbers.ttf`
+
+`BaseElementRenderer` currently declares `public static final Font TUPLET_FONT`
+and `public static final Font ENDING_FONT`, both loaded from `TupletNumbers.ttf`
+at 1.625 ss (13px). This must be cleaned up:
+
+1. **`BaseElementRenderer.TUPLET_FONT`** — remove the public field entirely.
+   `TupletRenderer` already uses its own private `TUPLET_FONT` derived from
+   `getMusicFont()`; the public field is unused for tuplet rendering.
+
+2. **`BaseElementRenderer.ENDING_FONT`** — re-source from `getMusicFont()`
+   (Bravura). `EndingRenderer` renders first/second ending numbers using
+   Bravura's PUA styled digits:
+
+   | Digit | Codepoint |
+   |-------|-----------|
+   | 0     | U+F45D    |
+   | 1     | U+F45E    |
+   | 2     | U+F45F    |
+   | 3     | U+F460    |
+   | 4     | U+F461    |
+   | 5     | U+F462    |
+   | 6     | U+F463    |
+   | 7     | U+F464    |
+   | 8     | U+F465    |
+   | 9     | U+F466    |
+
+   `ENDING_FONT` is derived from `getMusicFont()` at an appropriate size
+   (e.g., the same 1.625 ss as before). `EndingRenderer` maps each digit
+   character to its corresponding codepoint in this range when drawing.
+
+3. **`TupletNumbers.ttf`** — delete from `src/main/resources/fonts/` once
+   `ENDING_FONT` no longer references it.
+
+4. Remove the `TupletNumbers.ttf` load from `BaseElementRenderer`'s static
+   initializer block.
+
+**Files to change:**
+- `src/main/java/songscribe/ui/renderer/BaseElementRenderer.java` — remove
+  `TUPLET_FONT` field, re-derive `ENDING_FONT` from `getMusicFont()`, remove
+  `TupletNumbers.ttf` load from static initializer
+- `src/main/java/songscribe/ui/renderer/EndingRenderer.java` — map digit
+  characters to Bravura PUA codepoints U+F45D–U+F466 when drawing
+- `src/main/resources/fonts/TupletNumbers.ttf` — delete
 
 **Verification:** Full compositions should render completely. Compare overall
-layout quality against abc2svg output. Lyrics should not overlap.
+layout quality against abc2svg output. Lyrics should not overlap. Tuplet
+numbers render using Bravura SMuFL glyphs at 0.9× standard music font size.
+First/second ending numbers render using Bravura PUA digit glyphs without
+visual regression.
 
 ### Milestone 6: Cleanup + Polish
 
