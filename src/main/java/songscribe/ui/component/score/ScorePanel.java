@@ -41,7 +41,7 @@ public class ScorePanel extends JPanel implements Scrollable {
         // setUI() (called by super) triggers updateUI() before our fields are initialized
         super.updateUI();
 
-        setBackground(FlatLafProps.get(FlatLafKeys.SCOREPANEL_BACKGROUND));
+        setBackground(FlatLafProps.get(FlatLafKeys.SCORE_PANEL_BACKGROUND));
     }
 
     @Override

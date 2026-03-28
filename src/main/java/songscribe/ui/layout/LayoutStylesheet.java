@@ -59,7 +59,7 @@ public final class LayoutStylesheet {
      * Read from UIManager to support theming; callers should not cache this value.
      */
     public static Color getScreenBackground() {
-        return FlatLafProps.get(FlatLafKeys.SCOREPAGE_SCREEN_BACKGROUND);
+        return FlatLafProps.get(FlatLafKeys.SCORE_PAGE_SCREEN_BACKGROUND);
     }
 
     /**
@@ -67,7 +67,7 @@ public final class LayoutStylesheet {
      * Read from UIManager to support theming; callers should not cache this value.
      */
     public static Color getPrintBackground() {
-        return FlatLafProps.get(FlatLafKeys.SCOREPAGE_PRINT_BACKGROUND);
+        return FlatLafProps.get(FlatLafKeys.SCORE_PAGE_PRINT_BACKGROUND);
     }
 
     // ==========================================================================

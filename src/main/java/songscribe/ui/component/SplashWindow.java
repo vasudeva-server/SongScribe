@@ -41,7 +41,7 @@ public class SplashWindow extends JWindow {
     private void init() {
         var content = getContentPane();
         content.setLayout(new BorderLayout());
-        content.setBackground(FlatLafProps.get(FlatLafKeys.SPLASHWINDOW_BACKGROUND));
+        content.setBackground(FlatLafProps.get(FlatLafKeys.SPLASH_WINDOW_BACKGROUND));
 
         // Get the main splash image
         var image = GraphicUtils.readImageResource("/images/splash.jpg");
@@ -55,7 +55,7 @@ public class SplashWindow extends JWindow {
 
         // Add a panel for the version number and copyright
         var infoPanel = new JPanel(new BorderLayout());
-        infoPanel.setBackground(FlatLafProps.get(FlatLafKeys.SPLASHWINDOW_BACKGROUND));
+        infoPanel.setBackground(FlatLafProps.get(FlatLafKeys.SPLASH_WINDOW_BACKGROUND));
 
         // Give the panel a little padding
         infoPanel.setBorder(BorderFactory.createEmptyBorder(13, 13, 13, 13));
@@ -85,7 +85,7 @@ public class SplashWindow extends JWindow {
 
     private static JLabel createLabel(String text) {
         var label = new JLabel(text);
-        label.setForeground(FlatLafProps.get(FlatLafKeys.SPLASHWINDOW_FOREGROUND));
+        label.setForeground(FlatLafProps.get(FlatLafKeys.SPLASH_WINDOW_FOREGROUND));
         return label;
     }
 }

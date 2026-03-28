@@ -116,11 +116,11 @@ public final class Score
     // Colors used to draw the music score in various states — read from UIManager for theming.
     // Callers should not cache these values; read at render time.
     public static Color getPlayingNoteColor() {
-        return FlatLafProps.get(FlatLafKeys.SCORE_PLAYINGNOTE_COLOR);
+        return FlatLafProps.get(FlatLafKeys.SCORE_PLAYING_NOTE_COLOR);
     }
 
     public static Color getInsertionElementColor() {
-        return FlatLafProps.get(FlatLafKeys.SCORE_INSERTIONELEMENT_COLOR);
+        return FlatLafProps.get(FlatLafKeys.SCORE_INSERTION_ELEMENT_COLOR);
     }
 
     public static Color getSelectionStrokeColor() {
@@ -382,7 +382,7 @@ public final class Score
             return;
         }
 
-        var color = FlatLafProps.<Color>get(FlatLafKeys.SCOREPANEL_BACKGROUND);
+        var color = FlatLafProps.<Color>get(FlatLafKeys.SCORE_PANEL_BACKGROUND);
         scrollPane.setBackground(color);
         scrollPane.getViewport().setBackground(color);
     }
