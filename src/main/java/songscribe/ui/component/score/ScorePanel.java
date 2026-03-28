@@ -22,10 +22,10 @@ package songscribe.ui.component.score;
 
 import module java.desktop;
 
+import songscribe.ui.FlatLafKeys;
+import songscribe.ui.FlatLafProps;
 
 public class ScorePanel extends JPanel implements Scrollable {
-
-    public static final String BACKGROUND_KEY = "SongScribe.scorePanel.background";
 
     private final Component content;
 
@@ -41,8 +41,7 @@ public class ScorePanel extends JPanel implements Scrollable {
         // setUI() (called by super) triggers updateUI() before our fields are initialized
         super.updateUI();
 
-        var color = UIManager.getColor(BACKGROUND_KEY);
-        setBackground(color != null ? color : Color.LIGHT_GRAY);
+        setBackground(FlatLafProps.get(FlatLafKeys.SCOREPANEL_BACKGROUND));
     }
 
     @Override

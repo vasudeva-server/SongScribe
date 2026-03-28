@@ -52,6 +52,8 @@ import songscribe.ui.renderer.TempoRenderer;
 import songscribe.ui.renderer.TieRenderer;
 import songscribe.ui.renderer.TrillRenderer;
 import songscribe.ui.renderer.TupletRenderer;
+import songscribe.ui.FlatLafKeys;
+import songscribe.ui.FlatLafProps;
 import songscribe.util.GraphicUtils;
 
 /**
@@ -730,7 +732,7 @@ class LineRenderer {
             return;
         }
 
-        g2.setColor(UIManager.getColor("SongScribe.score.selection.rect.fill"));
+        g2.setColor(FlatLafProps.get(FlatLafKeys.SCORE_SELECTION_RECT_FILL));
         g2.fill(dragRectangle);
 
         var originalStroke = g2.getStroke();

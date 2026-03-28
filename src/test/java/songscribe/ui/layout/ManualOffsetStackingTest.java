@@ -26,11 +26,13 @@ import static org.assertj.core.api.Assertions.within;
 import java.util.List;
 
 import org.jspecify.annotations.Nullable;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
 import songscribe.music.Annotation;
+import songscribe.music.Composition;
 import songscribe.music.DynamicsInterval;
 import songscribe.music.ElementType;
 import songscribe.music.Line;
@@ -42,6 +44,14 @@ import songscribe.music.Tempo;
  * without re-running collision detection.
  */
 class ManualOffsetStackingTest extends UnitTest {
+
+    private static Composition composition;
+
+    @BeforeAll
+    static void setUpFlatLaf() throws Exception {
+        installFlatLafDefaults();
+        composition = new Composition();
+    }
 
     private static final double LINE_WIDTH_SS = 64.0;
     private static final double TOLERANCE = 0.001;
@@ -80,8 +90,14 @@ class ManualOffsetStackingTest extends UnitTest {
         return builder.build();
     }
 
+    private static Line newLine() {
+        var line = new Line();
+        line.setComposition(composition);
+        return line;
+    }
+
     private static LayoutResult stackColumns(List<ElementColumn> columns) {
-        return stackColumns(columns, new Line());
+        return stackColumns(columns, newLine());
     }
 
     @Nested
@@ -95,7 +111,7 @@ class ManualOffsetStackingTest extends UnitTest {
             attachment.setUserYOffsetSs(yOffsetSs);
             note.addAttachment(attachment);
 
-            var line = new Line();
+            var line = newLine();
             line.addElement(note);
 
             var resultWithOffset = stackColumns(List.of(columnFor(note)), line);
@@ -108,7 +124,7 @@ class ManualOffsetStackingTest extends UnitTest {
             var attachment2 = new AnnotationAttachment("test");
             note2.addAttachment(attachment2);
 
-            var line2 = new Line();
+            var line2 = newLine();
             line2.addElement(note2);
 
             var resultBaseline = stackColumns(List.of(columnFor(note2)), line2);
@@ -128,7 +144,7 @@ class ManualOffsetStackingTest extends UnitTest {
             attachment.setUserXOffsetSs(xOffsetSs);
             note.addAttachment(attachment);
 
-            var line = new Line();
+            var line = newLine();
             line.addElement(note);
 
             var resultWithOffset = stackColumns(List.of(columnFor(note)), line);
@@ -148,7 +164,7 @@ class ManualOffsetStackingTest extends UnitTest {
             annotation.setUserYOffsetSs(yOffsetSs);
             note.setAnnotation(annotation);
 
-            var line = new Line();
+            var line = newLine();
             line.addElement(note);
 
             var resultWithOffset = stackColumns(List.of(columnFor(note)), line);
@@ -160,7 +176,7 @@ class ManualOffsetStackingTest extends UnitTest {
             var note2 = createNote(0, false);
             note2.setAnnotation(new Annotation("test"));
 
-            var line2 = new Line();
+            var line2 = newLine();
             line2.addElement(note2);
 
             var resultBaseline = stackColumns(List.of(columnFor(note2)), line2);
@@ -184,7 +200,7 @@ class ManualOffsetStackingTest extends UnitTest {
             fermata.setUserYOffsetSs(yOffsetSs);
             note.addAttachment(fermata);
 
-            var line = new Line();
+            var line = newLine();
             line.addElement(note);
 
             var resultWithOffset = stackColumns(List.of(columnFor(note)), line);
@@ -196,7 +212,7 @@ class ManualOffsetStackingTest extends UnitTest {
             var note2 = createNote(0, false);
             note2.addAttachment(new FermataAttachment(note2));
 
-            var line2 = new Line();
+            var line2 = newLine();
             line2.addElement(note2);
 
             var resultBaseline = stackColumns(List.of(columnFor(note2)), line2);
@@ -216,7 +232,7 @@ class ManualOffsetStackingTest extends UnitTest {
         void testLegacyDynamicsIntervalYShiftApplied() {
             var note1 = createNote(0, false);
             var note2 = createNote(0, false);
-            var line = new Line();
+            var line = newLine();
             line.addElement(note1);
             line.addElement(note2);
 
@@ -236,7 +252,7 @@ class ManualOffsetStackingTest extends UnitTest {
             // Create baseline without shift
             var note3 = createNote(0, false);
             var note4 = createNote(0, false);
-            var line2 = new Line();
+            var line2 = newLine();
             line2.addElement(note3);
             line2.addElement(note4);
 
@@ -259,7 +275,7 @@ class ManualOffsetStackingTest extends UnitTest {
         void testLegacyDynamicsIntervalXShiftsApplied() {
             var note1 = createNote(0, false);
             var note2 = createNote(0, false);
-            var line = new Line();
+            var line = newLine();
             line.addElement(note1);
             line.addElement(note2);
 
@@ -281,7 +297,7 @@ class ManualOffsetStackingTest extends UnitTest {
             // Create baseline without shift
             var note3 = createNote(0, false);
             var note4 = createNote(0, false);
-            var line2 = new Line();
+            var line2 = newLine();
             line2.addElement(note3);
             line2.addElement(note4);
 
@@ -320,7 +336,7 @@ class ManualOffsetStackingTest extends UnitTest {
             var annAttach = new AnnotationAttachment("test");
             note.addAttachment(annAttach);
 
-            var line = new Line();
+            var line = newLine();
             line.addElement(note);
 
             var resultWithOffset = stackColumns(List.of(columnFor(note)), line);
@@ -338,7 +354,7 @@ class ManualOffsetStackingTest extends UnitTest {
             var annAttach2 = new AnnotationAttachment("test");
             note2.addAttachment(annAttach2);
 
-            var line2 = new Line();
+            var line2 = newLine();
             line2.addElement(note2);
 
             var baselineResult = stackColumns(List.of(columnFor(note2)), line2);
@@ -364,7 +380,7 @@ class ManualOffsetStackingTest extends UnitTest {
             tempo.setUserYOffsetSs(yOffsetSs);
             note.addAttachment(tempo);
 
-            var line = new Line();
+            var line = newLine();
             line.addElement(note);
 
             var resultWithOffset = stackColumns(List.of(columnFor(note)), line);
@@ -376,7 +392,7 @@ class ManualOffsetStackingTest extends UnitTest {
             var note2 = createNote(0, false);
             note2.addAttachment(new TempoAttachment(note2, new Tempo()));
 
-            var line2 = new Line();
+            var line2 = newLine();
             line2.addElement(note2);
 
             var resultBaseline = stackColumns(List.of(columnFor(note2)), line2);
@@ -396,7 +412,7 @@ class ManualOffsetStackingTest extends UnitTest {
             tempo.setUserXOffsetSs(xOffsetSs);
             note.addAttachment(tempo);
 
-            var line = new Line();
+            var line = newLine();
             line.addElement(note);
 
             var result = stackColumns(List.of(columnFor(note)), line);
@@ -415,7 +431,7 @@ class ManualOffsetStackingTest extends UnitTest {
         @Test
         void testTrillYPositionApplied() {
             var note = createNote(0, false);
-            var line = new Line();
+            var line = newLine();
             line.addElement(note);
 
             int yPositionSs = -3;
@@ -430,7 +446,7 @@ class ManualOffsetStackingTest extends UnitTest {
 
             // Create baseline without yPosition
             var note2 = createNote(0, false);
-            var line2 = new Line();
+            var line2 = newLine();
             line2.addElement(note2);
 
             var trill2 = new Trill(note2, note2);
@@ -453,7 +469,7 @@ class ManualOffsetStackingTest extends UnitTest {
         void testEndingYPositionApplied() {
             var note1 = createNote(0, false);
             var note2 = createNote(0, false);
-            var line = new Line();
+            var line = newLine();
             line.addElement(note1);
             line.addElement(note2);
 
@@ -472,7 +488,7 @@ class ManualOffsetStackingTest extends UnitTest {
             // Create baseline
             var note3 = createNote(0, false);
             var note4 = createNote(0, false);
-            var line2 = new Line();
+            var line2 = newLine();
             line2.addElement(note3);
             line2.addElement(note4);
 

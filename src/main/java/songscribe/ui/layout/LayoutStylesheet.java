@@ -27,6 +27,8 @@ import songscribe.music.StaffElement;
 import songscribe.smufl.GlyphAnchors;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
+import songscribe.ui.FlatLafKeys;
+import songscribe.ui.FlatLafProps;
 
 /**
  * Centralized layout constants (CSS-like stylesheet).
@@ -57,7 +59,7 @@ public final class LayoutStylesheet {
      * Read from UIManager to support theming; callers should not cache this value.
      */
     public static Color getScreenBackground() {
-        return UIManager.getColor("SongScribe.scorePage.screen.background");
+        return FlatLafProps.get(FlatLafKeys.SCOREPAGE_SCREEN_BACKGROUND);
     }
 
     /**
@@ -65,7 +67,7 @@ public final class LayoutStylesheet {
      * Read from UIManager to support theming; callers should not cache this value.
      */
     public static Color getPrintBackground() {
-        return UIManager.getColor("SongScribe.scorePage.print.background");
+        return FlatLafProps.get(FlatLafKeys.SCOREPAGE_PRINT_BACKGROUND);
     }
 
     // ==========================================================================

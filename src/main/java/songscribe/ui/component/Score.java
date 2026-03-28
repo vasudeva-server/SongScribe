@@ -50,6 +50,8 @@ import songscribe.prefs.Prefs;
 import songscribe.prefs.PrefsKey;
 import songscribe.ui.Constants;
 import songscribe.ui.Control;
+import songscribe.ui.FlatLafKeys;
+import songscribe.ui.FlatLafProps;
 import songscribe.ui.OptionDialogs;
 import songscribe.ui.Mode;
 import songscribe.ui.action.Actions;
@@ -113,18 +115,16 @@ public final class Score
 
     // Colors used to draw the music score in various states — read from UIManager for theming.
     // Callers should not cache these values; read at render time.
-    public static final String PLAYING_NOTE_COLOR_KEY = "SongScribe.score.playingNote.color";
-
     public static Color getPlayingNoteColor() {
-        return UIManager.getColor(PLAYING_NOTE_COLOR_KEY);
+        return FlatLafProps.get(FlatLafKeys.SCORE_PLAYINGNOTE_COLOR);
     }
 
     public static Color getInsertionElementColor() {
-        return UIManager.getColor("SongScribe.score.insertionElement.color");
+        return FlatLafProps.get(FlatLafKeys.SCORE_INSERTIONELEMENT_COLOR);
     }
 
     public static Color getSelectionStrokeColor() {
-        return UIManager.getColor("SongScribe.score.selection.rect.border");
+        return FlatLafProps.get(FlatLafKeys.SCORE_SELECTION_RECT_BORDER);
     }
 
     // The maximum number of staff lines under a note that can be displayed above and below the staff.
@@ -382,12 +382,7 @@ public final class Score
             return;
         }
 
-        var color = UIManager.getColor(ScorePanel.BACKGROUND_KEY);
-
-        if (color == null) {
-            color = Color.LIGHT_GRAY;
-        }
-
+        var color = FlatLafProps.<Color>get(FlatLafKeys.SCOREPANEL_BACKGROUND);
         scrollPane.setBackground(color);
         scrollPane.getViewport().setBackground(color);
     }
