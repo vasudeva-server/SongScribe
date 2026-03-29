@@ -205,7 +205,7 @@ The project uses [NullAway](https://github.com/uber/NullAway) for compile-time n
 - Every package has a `package-info.java` with `@NullMarked`, so **all types are non-null by default**.
 - There is no `@NotNull` annotation — non-null is the default; do not annotate it.
 - Use `@Nullable` from `org.jspecify.annotations` when null is a valid value for a parameter, return type, or field.
-- Use `@SuppressWarnings("NullAway")` sparingly, with an explanation when necessary.
+- Use `@SuppressWarnings("NullAway")` only as an absolute last resort with an explanation when NO OTHER technique will work.
 
 ```java
 // Non-null by default — no annotation needed
