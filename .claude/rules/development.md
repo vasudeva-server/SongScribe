@@ -32,6 +32,8 @@ After making code changes, if there is no need to run the application for verifi
 ./scripts/compile.sh    # Compile and verify
 ```
 
+`compile.sh` will output "SUCCESS" or "FAILURE" to indicate whether compilation succeeded. If compilation fails, fix the errors before proceeding.
+
 If you **do** need to run the application:
 
 ```bash
@@ -67,8 +69,6 @@ DEBUG=1 ./scripts/run.sh
 ### Running Tests
 
 ALWAYS use `./scripts/test.sh` to run tests. NEVER invoke `mvn test` directly.
-
-**IMPORTANT:** Never run e2e tests concurrently in separate Bash invocations. E2E tests launch a shared GUI and will interfere with each other. Run them sequentially in a single `./scripts/test.sh` call.
 
 **IMPORTANT:** Never run e2e tests without waiting for the user's approval; they will take control of the user's mouse and keyboard, and may cause unintended consequences if run without the user's knowledge.
 

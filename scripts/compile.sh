@@ -5,4 +5,8 @@ source "$(dirname "$0")/set-java-home.sh"
 goals="generate-sources dependency:copy@copy-native-libs resources:resources kotlin:compile compiler:compile"
 [[ "$1" == "--test" ]] && goals+=" test-compile"
 
-mvn $goals -q
+if mvn $goals -q; then
+  echo "SUCCESS"
+else
+  echo "FAILURE"
+fi
