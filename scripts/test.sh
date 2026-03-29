@@ -26,15 +26,16 @@ PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 source "$SCRIPT_DIR/set-java-home.sh"
 
 JVM_ARGS=()
-DETAILS="summary"
+DETAILS="none"
 KEEP_GOING=false
+SUPPRESS_LAUNCHER_OUTPUT=true
 
 while [[ "$1" == --* ]]; do
   case "$1" in
     --debug)   JVM_ARGS+=("-De2e.debug=true") ;;
     --slow)    JVM_ARGS+=("-De2e.slow=true") ;;
     --keep-going) KEEP_GOING=true ;;
-    --verbose)   DETAILS="tree" ;;
+    --verbose)   DETAILS="tree"; SUPPRESS_LAUNCHER_OUTPUT=false ;;
     *)       break ;;
   esac
   shift
@@ -88,8 +89,14 @@ BASE_LAUNCHER_ARGS=(
 
 run_tests() {
   local launcher_args=("$SUBCOMMAND" "${BASE_LAUNCHER_ARGS[@]}" "$@")
+  local stdout_target="/dev/stdout"
+
+  if [[ "$SUPPRESS_LAUNCHER_OUTPUT" == true ]]; then
+    stdout_target="/dev/null"
+  fi
+
   java "${JVM_ARGS[@]}" -cp "$CLASSPATH" \
-    org.junit.platform.console.ConsoleLauncher "${launcher_args[@]}"
+    org.junit.platform.console.ConsoleLauncher "${launcher_args[@]}" >"$stdout_target"
 }
 
 # Resolves a simple class name to its FQCN from compiled test classes
@@ -111,6 +118,7 @@ resolve_fqcn() {
 if [[ "${1:-}" == "list" ]]; then
   SUBCOMMAND="discover"
   BASE_LAUNCHER_ARGS=("--disable-banner" "--details=tree" "--details-theme=unicode")
+  SUPPRESS_LAUNCHER_OUTPUT=false
   shift
 fi
 
