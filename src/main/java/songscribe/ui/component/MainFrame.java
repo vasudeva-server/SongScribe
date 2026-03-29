@@ -387,9 +387,11 @@ public class MainFrame extends JFrame implements Printable {
         // There is an unknown rendering problem in Linux
         pane.setResizeWeight(SystemInfo.isLinux ? 0.85 : 1.0);
         pane.setBorder(BorderFactory.createEmptyBorder());
-        pane.setDividerSize(20);
+        pane.setDividerSize(0);
         pane.setTopComponent(requireScore().getScoreScrollPane());
-        pane.setBottomComponent(lyricsPanel.getLyricsModePanel());
+
+        // Lyrics entry is being redesigned; hide the panel for now
+        // pane.setBottomComponent(lyricsPanel.getLyricsModePanel());
         return pane;
     }
 
