@@ -171,7 +171,7 @@ public final class LayoutStylesheet {
     /**
      * Margin from reference point to tempo marking
      */
-    public static final double TEMPO_MARGIN_SS = 1.0;  // 8px
+    public static final double TEMPO_MARGIN_SS = 2.0;  // 16px
 
     // --- Beat Change ---
     /**
