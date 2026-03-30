@@ -68,6 +68,7 @@ import songscribe.ui.dialog.WhatsNewDialog;
 import songscribe.ui.menu.MenuController;
 import songscribe.ui.playback.MidiController;
 import songscribe.ui.playback.PlaybackController;
+import songscribe.util.UIUtils;
 
 public class MainFrame extends JFrame implements Printable {
 
@@ -287,6 +288,7 @@ public class MainFrame extends JFrame implements Printable {
 
         setFrameSize();
         setVisible(true);
+        UIUtils.preWarmDialogPeer(this);
         ActivationGate.install(this);
         LOG.info("Application UI ready");
 

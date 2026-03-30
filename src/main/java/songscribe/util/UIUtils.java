@@ -413,6 +413,30 @@ public final class UIUtils {
         dialog.getRootPane().getActionMap().put(actionKey, dispatchClosing);
     }
 
+    /**
+     * Pre-warms the AWT native window peer and FlatLaf rendering pipeline.
+     * Call once after the main JFrame is visible.
+     */
+    public static void preWarmDialogPeer(Component parent) {
+        SwingUtilities.invokeLater(() -> {
+            try {
+                var dummy = new JDialog(
+                    (Frame) SwingUtilities.getWindowAncestor(parent), "Pre-warm", false);
+
+                dummy.setResizable(false);
+                dummy.setSize(200, 100);
+
+                // Off-screen so any micro-flash is invisible
+                dummy.setLocation(-10000, -10000);
+
+                dummy.setVisible(true);
+                dummy.dispose();
+            } catch (Exception ignored) {
+                // Pre-warming must never affect app startup
+            }
+        });
+    }
+
     public static void initLaf() {
         try {
             // Enable anti-aliasing and sub-pixel rendering for fonts
