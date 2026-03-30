@@ -69,6 +69,7 @@ import songscribe.ui.menu.MenuController;
 import songscribe.ui.playback.MidiController;
 import songscribe.ui.playback.PlaybackController;
 import songscribe.util.UIUtils;
+import songscribe.util.Utils;
 
 public class MainFrame extends JFrame implements Printable {
 
@@ -193,10 +194,8 @@ public class MainFrame extends JFrame implements Printable {
                 }
             }
         } catch (Exception e) {
-            LOG.error("Application startup failed", e);
+            throw RuntimeError.exit("Application startup failed", e);
         }
-
-        hideSplash();
     }
 
     private static final class InstanceHolder {
@@ -288,6 +287,8 @@ public class MainFrame extends JFrame implements Printable {
         }
 
         setFrameSize();
+        hideSplash();
+        Utils.sleep(100);
         setVisible(true);
         UIUtils.preWarmDialogPeer(this);
         ActivationGate.install(this);

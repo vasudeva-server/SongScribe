@@ -22,9 +22,12 @@ package songscribe.ui.component;
 
 import module java.desktop;
 
+import java.lang.reflect.InvocationTargetException;
 import java.nio.Buffer;
 
 import org.jspecify.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import songscribe.Version;
 import songscribe.error.RuntimeError;
@@ -36,6 +39,7 @@ import songscribe.util.Utils;
 
 public class SplashWindow extends JWindow {
 
+    private static final Logger LOG = LoggerFactory.getLogger(SplashWindow.class);
     private static @Nullable BufferedImage splashImage = null;
     private static final Color bg = FlatLafProps.get(FlatLafKeys.SPLASH_WINDOW_BACKGROUND);
 
@@ -122,8 +126,22 @@ public class SplashWindow extends JWindow {
     }
 
     public void closeSplash() {
-        setVisible(false);
-        dispose();
+        Runnable close = () -> {
+            setVisible(false);
+            dispose();
+        };
+
+        if (SwingUtilities.isEventDispatchThread()) {
+            close.run();
+        } else {
+            try {
+                SwingUtilities.invokeAndWait(close);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            } catch (InvocationTargetException e) {
+                LOG.error("Failed to close splash window", e);
+            }
+        }
     }
 
     private void init() {
