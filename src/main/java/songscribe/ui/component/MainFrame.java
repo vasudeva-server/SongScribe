@@ -101,7 +101,7 @@ public class MainFrame extends JFrame implements Printable {
 
     // Splash screen
     @Nullable
-    private static JWindow splashWindow = null;
+    private static SplashWindow splashWindow = null;
 
     // This class is shared by several applications. This is the name of the application.
     public String appName;
@@ -211,6 +211,7 @@ public class MainFrame extends JFrame implements Printable {
 
     protected static void showSplash() {
         splashWindow = new SplashWindow();
+        splashWindow.showSplash();
     }
 
     public static void hideSplash() {
@@ -218,8 +219,8 @@ public class MainFrame extends JFrame implements Printable {
             return;
         }
 
-        splashWindow.setVisible(false);
-        splashWindow.dispose();
+        splashWindow.closeSplash();
+        splashWindow = null;
     }
 
     // Reserve for future use, such as showing a welcome message

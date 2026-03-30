@@ -22,65 +22,115 @@ package songscribe.ui.component;
 
 import module java.desktop;
 
+import java.nio.Buffer;
+
+import org.jspecify.annotations.Nullable;
+
 import songscribe.Version;
+import songscribe.error.RuntimeError;
 import songscribe.ui.FlatLafKeys;
 import songscribe.ui.FlatLafProps;
 import songscribe.util.GraphicUtils;
+import songscribe.util.UIUtils;
 import songscribe.util.Utils;
 
 public class SplashWindow extends JWindow {
 
-    // Save the time when the window was created
-    public final long startTime = System.currentTimeMillis();
+    private static @Nullable BufferedImage splashImage = null;
+    private static final Color bg = FlatLafProps.get(FlatLafKeys.SPLASH_WINDOW_BACKGROUND);
 
     public SplashWindow() {
         super((Frame) null);
         init();
     }
 
-    private void init() {
-        var content = getContentPane();
-        content.setLayout(new BorderLayout());
-        content.setBackground(FlatLafProps.get(FlatLafKeys.SPLASH_WINDOW_BACKGROUND));
-
-        // Get the main splash image
+    public static void loadSplashImage() {
         var image = GraphicUtils.readImageResource("/images/splash.jpg");
 
-        if (image == null) {
-            return;
+        if (image != null) {
+            splashImage = image;
+        } else {
+            throw RuntimeError.exit("Failed to load splash image");
         }
+    }
 
-        var splashLabel = new JLabel(new ImageIcon(image));
-        content.add(splashLabel, BorderLayout.CENTER);
+    public static JPanel createContentPanel() {
+        return createContentPanel(null);
+    }
+
+    public static JPanel createContentPanel(@Nullable JComponent extraContent) {
+        loadSplashImage();
+        var content = new JPanel(new BorderLayout()) {
+            @Override
+            protected void paintComponent(Graphics g) {
+                super.paintComponent(g);   // paints the background color first
+
+                if (splashImage != null) {
+                    // Center the image
+                    var x = (getWidth() - splashImage.getWidth()) / 2;
+                    var y = (getHeight() - splashImage.getHeight()) / 2;
+                    g.drawImage(splashImage, x, y, this);
+                }
+            }
+
+            // Give the panel a proper preferred size based on the image
+            @Override
+            public Dimension getPreferredSize() {
+                if (splashImage != null) {
+                    return new Dimension(
+                        splashImage.getWidth(null),
+                        splashImage.getHeight(null)
+                    );
+                }
+
+                return new Dimension(0, 0); // fallback size
+            }
+        };
+
+        content.setBackground(bg);
+        content.setOpaque(true);
 
         // Add a panel for the version number and copyright
-        var infoPanel = new JPanel(new BorderLayout());
-        infoPanel.setBackground(FlatLafProps.get(FlatLafKeys.SPLASH_WINDOW_BACKGROUND));
-
-        // Give the panel a little padding
-        infoPanel.setBorder(BorderFactory.createEmptyBorder(13, 13, 13, 13));
+        var infoPanel = new JPanel();
+        infoPanel.setLayout(new BoxLayout(infoPanel, BoxLayout.Y_AXIS));
+        infoPanel.setBackground(bg);
+        infoPanel.setBorder(UIUtils.spacingBorder(FlatLafKeys.SPLASH_WINDOW_PADDING));
         content.add(infoPanel, BorderLayout.SOUTH);
 
-        // Add a label with the version number
-        infoPanel.add(
+        var versionRow = new JPanel(new BorderLayout());
+        versionRow.setOpaque(false);
+        versionRow.setAlignmentX(Component.LEFT_ALIGNMENT);
+        versionRow.add(
             createLabel("SongScribe Writer " + Version.PUBLIC_VERSION),
             BorderLayout.WEST
         );
-
-        // Add a label with the copyright
-        infoPanel.add(
-            createLabel(
-                "©" +
-                Utils.getCurrentYear() +
-                " Sri Chinmoy Centres International"
-            ),
+        versionRow.add(
+            createLabel("©" + Utils.getCurrentYear() + " Sri Chinmoy Centres International"),
             BorderLayout.EAST
         );
+        infoPanel.add(versionRow);
 
+        if (extraContent != null) {
+            infoPanel.add(extraContent);
+        }
+
+        return content;
+    }
+
+    public void showSplash() {
+        setVisible(true);
+    }
+
+    public void closeSplash() {
+        setVisible(false);
+        dispose();
+    }
+
+    private void init() {
+        setContentPane(createContentPanel());
+        setBackground(bg);
         pack();
         setLocationRelativeTo(null);
-        setVisible(true);
-        Utils.sleep(10);
     }
 
     private static JLabel createLabel(String text) {

@@ -23,388 +23,74 @@ import module java.desktop;
 // Disambiguates from org.w3c.dom.events.MouseEvent (java.xml module)
 import java.awt.event.MouseEvent;
 
-import java.io.IOException;
-import java.util.Calendar;
-
-import org.jdesktop.layout.GroupLayout;
-import org.jdesktop.layout.LayoutStyle;
-
 import songscribe.Strings;
-import songscribe.Version;
+import songscribe.ui.FlatLafKeys;
+import songscribe.ui.FlatLafProps;
+import songscribe.ui.component.SplashWindow;
 import songscribe.util.DesktopUtils;
 import songscribe.util.Utils;
 
-public class AboutDialog extends StandardDialog {
+public class AboutDialog extends BaseDialog {
 
     public static final String WEB = "http://www.songscribe.org";
+    private static final String ACKNOWLEDGEMENTS_URL =
+        "https://github.com/vasudeva-server/SongScribe/blob/main/THIRD_PARTY_LICENSES.txt";
 
     public AboutDialog() {
         super(Strings.get(Strings.DIALOG_ABOUT_TITLE), true, DialogCategory.INFORMATIONAL);
-        var tabPane = new JTabbedPane();
-        tabPane.addTab(Strings.get(Strings.DIALOG_ABOUT_TAB_ABOUT), makeAboutPanel());
 
-        try {
-            tabPane.add(
-                Strings.get(Strings.DIALOG_ABOUT_TAB_README),
-                createTextPane(
-                    "file:" + Utils.getResourcePath("help/About.html")
-                )
-            );
-        } catch (IOException e) {
-            // Ignore
-        }
+        var gap = (int) FlatLafProps.<Integer>get(FlatLafKeys.DIALOG_COMPONENT_VERTICAL_EXTRA_GAP);
 
-        try {
-            tabPane.add(
-                Strings.get(Strings.DIALOG_ABOUT_TAB_LICENSE_AGREEMENT),
-                createTextPane("file:license.txt")
-            );
-        } catch (IOException e) {
-            //    // Ignore
-        }
+        var divider = new JPanel();
+        divider.setBackground(Color.LIGHT_GRAY);
+        divider.setPreferredSize(new Dimension(0, 1));
+        divider.setMaximumSize(new Dimension(Integer.MAX_VALUE, 1));
+        divider.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        try {
-            tabPane.add(
-                Strings.get(Strings.DIALOG_ABOUT_TAB_ACKNOWLEDGEMENTS),
-                createTextPane(
-                    "file:" +
-                        Utils.getResourcePath("help/Acknowledgements.html")
-                )
-            );
-        } catch (IOException e) {
-            //    // Ignore
-        }
-
-        var southPanel = new JPanel(new BorderLayout());
-        southPanel.add(okButton, BorderLayout.SOUTH);
-        contentPanel.add(BorderLayout.CENTER, tabPane);
-        contentPanel.add(BorderLayout.SOUTH, southPanel);
-    }
-
-    private static Component createTextPane(String url) throws IOException {
-        var textPane = new JTextPane();
-        textPane.setPage(url);
-        textPane.setEditable(false);
-        var textScroll = new JScrollPane(textPane);
-        textScroll.setPreferredSize(new Dimension(400, 200));
-        return textScroll;
-    }
-
-    private JPanel makeAboutPanel() {
-        var iconLabel = new JLabel();
-        var progNameLabel = new JLabel();
-        var versionLabel = new JLabel();
-        var version = new JLabel();
-        var copyrightLabel = new JLabel();
-        var copyRight1 = new JLabel();
-        var copyRight2 = new JLabel();
-        var licenseLabel = new JLabel();
-        var license = new JLabel();
-        var webLabel = new JLabel();
-        var web = new JLabel();
-        var emailLabel = new JLabel();
-        var email = new JLabel();
-
-        iconLabel.setIcon(new ImageIcon(getMainFrame().getIconImage()));
-
-        progNameLabel.putClientProperty("FlatLaf.styleClass", "h1");
-        progNameLabel.setHorizontalAlignment(SwingConstants.CENTER);
-        progNameLabel.setText(getMainFrame().appName);
-
-        versionLabel.putClientProperty("FlatLaf.styleClass", "semibold");
-        versionLabel.setHorizontalAlignment(SwingConstants.TRAILING);
-        versionLabel.setText(Strings.get(Strings.LABEL_VERSION));
-
-        version.setText(Version.PUBLIC_VERSION);
-
-        copyrightLabel.putClientProperty("FlatLaf.styleClass", "semibold");
-        copyrightLabel.setHorizontalAlignment(SwingConstants.TRAILING);
-        copyrightLabel.setText(Strings.get(Strings.LABEL_COPYRIGHT));
-
-        copyRight1.setText(
-            "© " +
-                Calendar.getInstance().get(Calendar.YEAR) +
-                " Sri Chinmoy Centres International"
+        var linksRow = new JPanel(new BorderLayout());
+        linksRow.setOpaque(false);
+        linksRow.setAlignmentX(Component.LEFT_ALIGNMENT);
+        linksRow.add(createLink(WEB, WEB), BorderLayout.WEST);
+        linksRow.add(
+            createLink(Strings.get(Strings.DIALOG_ABOUT_ACKNOWLEDGEMENTS), ACKNOWLEDGEMENTS_URL),
+            BorderLayout.EAST
         );
 
-        copyRight2.setText(Strings.get(Strings.LABEL_ALL_RIGHTS_RESERVED));
+        var extras = new JPanel();
+        extras.setLayout(new BoxLayout(extras, BoxLayout.Y_AXIS));
+        extras.setOpaque(false);
+        extras.setAlignmentX(Component.LEFT_ALIGNMENT);
+        extras.add(Box.createVerticalStrut(gap));
+        extras.add(divider);
+        extras.add(Box.createVerticalStrut(gap));
+        extras.add(linksRow);
 
-        licenseLabel.putClientProperty("FlatLaf.styleClass", "semibold");
-        licenseLabel.setHorizontalAlignment(SwingConstants.TRAILING);
-        licenseLabel.setText(Strings.get(Strings.LABEL_LICENSE));
+        contentPanel.add(BorderLayout.CENTER, SplashWindow.createContentPanel(extras));
+    }
 
-        license.setText(Strings.get(Strings.LABEL_GPL));
-
-        webLabel.putClientProperty("FlatLaf.styleClass", "semibold");
-        webLabel.setHorizontalAlignment(SwingConstants.TRAILING);
-        webLabel.setText(Strings.get(Strings.LABEL_WEB));
-
-        web.setText(WEB);
+    private JLabel createLink(String text, String url) {
+        var label = new JLabel(text);
 
         if (DesktopUtils.isDesktopSupported()) {
-            web.setForeground(UIManager.getColor("Component.linkColor"));
-            web.addMouseListener(
-                new MouseAdapter() {
-                    @Override
-                    public void mouseClicked(MouseEvent e) {
-                        webMouseClicked();
-                    }
-
-                    @Override
-                    public void mouseEntered(MouseEvent e) {
-                        webMouseEntered();
-                    }
-
-                    @Override
-                    public void mouseExited(MouseEvent e) {
-                        webMouseExited();
-                    }
+            label.setForeground(UIManager.getColor("Component.linkColor"));
+            label.addMouseListener(new MouseAdapter() {
+                @Override
+                public void mouseClicked(MouseEvent e) {
+                    Utils.openWebPage(getMainFrame(), url);
                 }
-            );
+
+                @Override
+                public void mouseEntered(MouseEvent e) {
+                    contentPanel.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+                }
+
+                @Override
+                public void mouseExited(MouseEvent e) {
+                    contentPanel.setCursor(Cursor.getDefaultCursor());
+                }
+            });
         }
 
-        emailLabel.putClientProperty("FlatLaf.styleClass", "semibold");
-        emailLabel.setHorizontalAlignment(SwingConstants.TRAILING);
-        emailLabel.setText(Strings.get(Strings.LABEL_EMAIL));
-
-        email.putClientProperty("FlatLaf.styleClass", "small");
-        email.setText(ReportBugDialog.BUG_EMAIL);
-
-        if (DesktopUtils.isDesktopSupported()) {
-            email.setForeground(UIManager.getColor("Component.linkColor"));
-            email.addMouseListener(
-                new MouseAdapter() {
-                    @Override
-                    public void mouseClicked(MouseEvent e) {
-                        emailMouseClicked();
-                    }
-
-                    @Override
-                    public void mouseEntered(MouseEvent e) {
-                        webMouseEntered();
-                    }
-
-                    @Override
-                    public void mouseExited(MouseEvent e) {
-                        webMouseExited();
-                    }
-                }
-            );
-        }
-
-        var aboutPanel = new JPanel();
-        var layout = new GroupLayout(aboutPanel);
-        aboutPanel.setLayout(layout);
-        layout.setHorizontalGroup(
-            layout
-                .createParallelGroup(GroupLayout.LEADING)
-                .add(
-                    layout
-                        .createSequentialGroup()
-                        .addContainerGap()
-                        .add(iconLabel)
-                        .addPreferredGap(LayoutStyle.RELATED)
-                        .add(
-                            layout
-                                .createParallelGroup(GroupLayout.TRAILING)
-                                .add(
-                                    GroupLayout.LEADING,
-                                    layout
-                                        .createSequentialGroup()
-                                        .add(6, 6, 6)
-                                        .add(
-                                            layout
-                                                .createParallelGroup(
-                                                    GroupLayout.LEADING
-                                                )
-                                                .add(
-                                                    versionLabel,
-                                                    GroupLayout.DEFAULT_SIZE,
-                                                    GroupLayout.DEFAULT_SIZE,
-                                                    Short.MAX_VALUE
-                                                )
-                                                .add(
-                                                    copyrightLabel,
-                                                    GroupLayout.DEFAULT_SIZE,
-                                                    82,
-                                                    Short.MAX_VALUE
-                                                )
-                                                .add(
-                                                    licenseLabel,
-                                                    GroupLayout.PREFERRED_SIZE,
-                                                    82,
-                                                    GroupLayout.PREFERRED_SIZE
-                                                )
-                                                .add(
-                                                    webLabel,
-                                                    GroupLayout.PREFERRED_SIZE,
-                                                    82,
-                                                    GroupLayout.PREFERRED_SIZE
-                                                )
-                                                .add(
-                                                    emailLabel,
-                                                    GroupLayout.PREFERRED_SIZE,
-                                                    82,
-                                                    GroupLayout.PREFERRED_SIZE
-                                                )
-                                        )
-                                        .addPreferredGap(LayoutStyle.RELATED)
-                                        .add(
-                                            layout
-                                                .createParallelGroup(
-                                                    GroupLayout.TRAILING
-                                                )
-                                                .add(
-                                                    version,
-                                                    GroupLayout.DEFAULT_SIZE,
-                                                    197,
-                                                    Short.MAX_VALUE
-                                                )
-                                                .add(
-                                                    copyRight1,
-                                                    GroupLayout.DEFAULT_SIZE,
-                                                    197,
-                                                    Short.MAX_VALUE
-                                                )
-                                                .add(
-                                                    license,
-                                                    GroupLayout.DEFAULT_SIZE,
-                                                    197,
-                                                    Short.MAX_VALUE
-                                                )
-                                                .add(
-                                                    copyRight2,
-                                                    GroupLayout.DEFAULT_SIZE,
-                                                    197,
-                                                    Short.MAX_VALUE
-                                                )
-                                                .add(
-                                                    web,
-                                                    GroupLayout.DEFAULT_SIZE,
-                                                    197,
-                                                    Short.MAX_VALUE
-                                                )
-                                                .add(
-                                                    email,
-                                                    GroupLayout.DEFAULT_SIZE,
-                                                    197,
-                                                    Short.MAX_VALUE
-                                                )
-                                        )
-                                )
-                                .add(
-                                    progNameLabel,
-                                    GroupLayout.DEFAULT_SIZE,
-                                    291,
-                                    Short.MAX_VALUE
-                                )
-                        )
-                        .addContainerGap()
-                )
-        );
-        layout.setVerticalGroup(
-            layout
-                .createParallelGroup(GroupLayout.LEADING)
-                .add(
-                    layout
-                        .createSequentialGroup()
-                        .addContainerGap()
-                        .add(
-                            layout
-                                .createParallelGroup(GroupLayout.LEADING)
-                                .add(
-                                    iconLabel,
-                                    GroupLayout.DEFAULT_SIZE,
-                                    190,
-                                    Short.MAX_VALUE
-                                )
-                                .add(
-                                    layout
-                                        .createSequentialGroup()
-                                        .add(
-                                            progNameLabel,
-                                            GroupLayout.PREFERRED_SIZE,
-                                            43,
-                                            GroupLayout.PREFERRED_SIZE
-                                        )
-                                        .addPreferredGap(LayoutStyle.RELATED)
-                                        .add(
-                                            layout
-                                                .createParallelGroup(
-                                                    GroupLayout.BASELINE
-                                                )
-                                                .add(versionLabel)
-                                                .add(version)
-                                        )
-                                        .addPreferredGap(LayoutStyle.RELATED)
-                                        .add(
-                                            layout
-                                                .createParallelGroup(
-                                                    GroupLayout.BASELINE
-                                                )
-                                                .add(copyrightLabel)
-                                                .add(copyRight1)
-                                        )
-                                        .addPreferredGap(LayoutStyle.RELATED)
-                                        .add(copyRight2)
-                                        .addPreferredGap(LayoutStyle.RELATED)
-                                        .add(
-                                            layout
-                                                .createParallelGroup(
-                                                    GroupLayout.BASELINE
-                                                )
-                                                .add(licenseLabel)
-                                                .add(license)
-                                        )
-                                        .addPreferredGap(LayoutStyle.RELATED)
-                                        .add(
-                                            layout
-                                                .createParallelGroup(
-                                                    GroupLayout.BASELINE
-                                                )
-                                                .add(webLabel)
-                                                .add(web)
-                                        )
-                                        .addPreferredGap(LayoutStyle.RELATED)
-                                        .add(
-                                            layout
-                                                .createParallelGroup(
-                                                    GroupLayout.BASELINE
-                                                )
-                                                .add(emailLabel)
-                                                .add(email)
-                                        )
-                                )
-                        )
-                        .addContainerGap()
-                )
-        );
-        return aboutPanel;
-    }
-
-    private void webMouseExited() {
-        contentPanel.setCursor(Cursor.getDefaultCursor());
-    }
-
-    private void webMouseEntered() {
-        contentPanel.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-    }
-
-    private void webMouseClicked() {
-        Utils.openWebPage(getMainFrame(), WEB);
-    }
-
-    private void emailMouseClicked() {
-        Utils.openEmail(
-            getMainFrame(),
-            ReportBugDialog.BUG_EMAIL + "?SUBJECT=SongScribe comment"
-        );
-    }
-
-    @Override
-    protected boolean getData() { return true; }
-
-    @Override
-    protected void setData() {
+        return label;
     }
 }
