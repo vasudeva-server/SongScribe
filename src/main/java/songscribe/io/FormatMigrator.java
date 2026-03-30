@@ -25,11 +25,14 @@ import songscribe.music.EndingInterval;
 import songscribe.music.Interval;
 import songscribe.music.IntervalSet;
 import songscribe.music.TupletInterval;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import songscribe.music.Line;
 import songscribe.music.StaffElement;
 import songscribe.ui.layout.AnnotationAttachment;
+import songscribe.ui.layout.DynamicAttachment;
 import songscribe.ui.layout.BeatChangeAttachment;
 import songscribe.ui.layout.Crescendo;
 import songscribe.ui.layout.Diminuendo;
@@ -71,6 +74,10 @@ import songscribe.ui.layout.ScaleContext;
  *       defaults to {@code true}, so absence of the {@code <stemDirectionAuto/>} tag in
  *       existing v2.1 files is handled correctly by that default. Re-saving a v2.1 file
  *       stamps it as v2.2.</li>
+ *   <li><b>v2.2 → v2.3</b>: {@link #migrateAnnotationDynamics} — text annotations
+ *       whose text exactly matches a point dynamic symbol ({@code pp}, {@code p},
+ *       {@code mp}, {@code mf}, {@code f}, {@code ff}) are converted to
+ *       {@code DynamicAttachment} objects.</li>
  * </ul>
  */
 public final class FormatMigrator {
@@ -460,5 +467,79 @@ public final class FormatMigrator {
         // Note: ForceArticulation and DurationArticulation are not migrated here
         // as they are handled by the Articulation class system, not Attachments.
         // Dynamic attachments are not present in the legacy Note class.
+    }
+
+    /**
+     * Converts text annotations that exactly match a point dynamic symbol into
+     * {@link DynamicAttachment} objects.
+     * <p>
+     * Called when loading files saved before v2.3 introduced native dynamic
+     * serialization. Annotations whose text is one of {@code pp}, {@code p},
+     * {@code mp}, {@code mf}, {@code f}, or {@code ff} (case-sensitive) are
+     * replaced with the corresponding {@code DynamicAttachment}. If the note
+     * already has a {@code DynamicAttachment}, the annotation is removed but
+     * no duplicate is added.
+     *
+     * @param lines The lines to migrate
+     */
+    public static void migrateAnnotationDynamics(List<Line> lines) {
+        var symbolMap = buildDynamicSymbolMap();
+
+        for (var line : lines) {
+            for (var i = 0; i < line.elementCount(); i++) {
+                migrateAnnotationDynamic(line.getElement(i), symbolMap);
+            }
+        }
+    }
+
+    /**
+     * Builds a map from dynamic symbol string to {@link DynamicAttachment.DynamicType}
+     * for the 6 UI types (those with a glyph).
+     */
+    private static Map<String, DynamicAttachment.DynamicType> buildDynamicSymbolMap() {
+        var map = new HashMap<String, DynamicAttachment.DynamicType>();
+
+        for (var type : DynamicAttachment.DynamicType.values()) {
+            if (type.getGlyph() != null) {
+                map.put(type.getSymbol(), type);
+            }
+        }
+
+        return map;
+    }
+
+    /**
+     * Migrates a single note's annotation to a {@link DynamicAttachment} if the
+     * annotation text matches a dynamic symbol.
+     */
+    private static void migrateAnnotationDynamic(
+        StaffElement note,
+        Map<String, DynamicAttachment.DynamicType> symbolMap
+    ) {
+        var annotation = note.getAnnotation();
+
+        if (annotation == null) {
+            return;
+        }
+
+        var dynamicType = symbolMap.get(annotation.getAnnotation());
+
+        if (dynamicType == null) {
+            return;
+        }
+
+        // Remove the annotation (legacy field and any AnnotationAttachment created
+        // by v1→v2 migration for the same annotation object).
+        note.setAnnotation(null);
+        var annotationAttachment = note.findAttachment(AnnotationAttachment.class);
+
+        if (annotationAttachment != null) {
+            note.removeAttachment(annotationAttachment);
+        }
+
+        // Only add a DynamicAttachment if one does not already exist.
+        if (note.findAttachment(DynamicAttachment.class) == null) {
+            note.addAttachment(new DynamicAttachment(note, dynamicType));
+        }
     }
 }

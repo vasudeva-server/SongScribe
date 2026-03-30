@@ -21,6 +21,7 @@ package songscribe.ui.menu;
 
 import static songscribe.ui.action.Actions.ADD_CRESCENDO_ACTION;
 import static songscribe.ui.action.Actions.ADD_DIMINUENDO_ACTION;
+import static songscribe.ui.action.Actions.DYNAMIC_MARKING_ACTION_GROUP;
 import static songscribe.ui.action.Actions.FLIP_STEM_DIRECTION_ACTION;
 import static songscribe.ui.action.Actions.REMOVE_DYNAMICS_ACTION;
 import static songscribe.ui.action.Actions.REMOVE_TUPLET_ACTION;
@@ -78,6 +79,13 @@ public class NotationMenu extends JMenu {
         menu.add(new JMenuItem(ADD_CRESCENDO_ACTION));
         menu.add(new JMenuItem(ADD_DIMINUENDO_ACTION));
         menu.add(new JMenuItem(REMOVE_DYNAMICS_ACTION));
+
+        menu.addSeparator();
+
+        for (var action : DYNAMIC_MARKING_ACTION_GROUP.getActions()) {
+            menu.add(new JRadioButtonMenuItem(action));
+        }
+
         return menu;
     }
 }

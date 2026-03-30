@@ -25,6 +25,8 @@ import java.util.Map;
 
 import org.jspecify.annotations.Nullable;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.xml.sax.Attributes;
 
 import songscribe.music.ArticulationType;
@@ -32,8 +34,11 @@ import songscribe.music.BeatChange;
 import songscribe.music.ElementType;
 import songscribe.music.StaffElement;
 import songscribe.ui.layout.Articulation;
+import songscribe.ui.layout.DynamicAttachment;
 
 public final class StaffElementIO {
+
+    private static final Logger LOG = LoggerFactory.getLogger(StaffElementIO.class);
 
     // version 1.0
     private static final String XML_NOTE = "note";
@@ -67,6 +72,10 @@ public final class StaffElementIO {
     private static final String XML_STEM_DIRECTION_AUTO = "stemDirectionAuto";
     private static final String XML_INVERT_FRACTION_BEAM_ORIENTATION =
         "invertfractionbeamorientation";
+
+    // version 2.3
+    private static final String XML_DYNAMIC = "dynamic";
+
     private static final Map<String, StaffElement.Accidental> ACCIDENTAL_MAP =
         new HashMap<>();
     private static final Map<String, BeatChange> BEAT_CHANGE_MAP =
@@ -226,6 +235,15 @@ public final class StaffElementIO {
             XML.writeEmptyTag(writer, XML_FERMATA);
         }
 
+        var dynamic = element.findAttachment(DynamicAttachment.class);
+
+        if (dynamic != null) {
+            writer.println(
+                "            <" + XML_DYNAMIC + ' ' + XML_TYPE + "=\"" +
+                    dynamic.getType().name() + "\" />"
+            );
+        }
+
         if (element.isForceSyllable()) {
             XML.writeEmptyTag(writer, XML_FORCE_SYLLABLE);
         }
@@ -322,7 +340,22 @@ public final class StaffElementIO {
                 annotationReader = new AnnotationIO.AnnotationReader();
                 annotationReader.startElement11(qName);
             } else if (where == Where.ELEMENT) {
-                lastTag = qName;
+                if (qName.equals(XML_DYNAMIC)) {
+                    if (element != null) {
+                        var typeStr = attributes.getValue(XML_TYPE);
+
+                        if (typeStr != null) {
+                            try {
+                                var dynamicType = DynamicAttachment.DynamicType.valueOf(typeStr);
+                                element.addAttachment(new DynamicAttachment(element, dynamicType));
+                            } catch (IllegalArgumentException e) {
+                                LOG.warn("Unknown dynamic type: {}, skipping", typeStr);
+                            }
+                        }
+                    }
+                } else {
+                    lastTag = qName;
+                }
             }
 
             value.delete(0, value.length());

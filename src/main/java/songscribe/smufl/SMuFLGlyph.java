@@ -101,6 +101,14 @@ public enum SMuFLGlyph {
     REST_16TH("rest16th", '\uE4E7'),
     REST_32ND("rest32nd", '\uE4E8'),
 
+    // Dynamics (U+E520-U+E52F)
+    DYNAMIC_PIANO("dynamicPiano", '\uE520'),
+    DYNAMIC_FORTE("dynamicForte", '\uE522'),
+    DYNAMIC_PP("dynamicPP", '\uE52B'),
+    DYNAMIC_MP("dynamicMP", '\uE52C'),
+    DYNAMIC_MF("dynamicMF", '\uE52D'),
+    DYNAMIC_FF("dynamicFF", '\uE52F'),
+
     // Common ornaments (U+E560-U+E56F)
     GRACE_NOTE_ACCIACCATURA_STEM_UP("graceNoteAcciaccaturaStemUp", '\uE560'),
     GRACE_NOTE_ACCIACCATURA_STEM_DOWN("graceNoteAcciaccaturaStemDown", '\uE561'),

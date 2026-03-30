@@ -35,6 +35,7 @@ import songscribe.message.notification.CompositionDidChangeNotification;
 import songscribe.message.MessageCenter;
 import songscribe.midi.GlissandoMidiHelper;
 import songscribe.midi.PlaybackSettings;
+import songscribe.midi.VelocityMap;
 import songscribe.ui.layout.LayoutStylesheet;
 import songscribe.ui.layout.RangeElement;
 import songscribe.ui.layout.ScaleContext;
@@ -439,6 +440,14 @@ public class Line {
         return diminuendo;
     }
 
+    /**
+     * Returns true if the given note index falls within any hairpin (crescendo or diminuendo) range.
+     */
+    public boolean isInHairpinRange(int noteIndex) {
+        return crescendo.isInsideAnyInterval(noteIndex) ||
+            diminuendo.isInsideAnyInterval(noteIndex);
+    }
+
     public void removeInterval(int a, int b) {
         for (var is : intervalSets) {
             is.removeInterval(a, b);
@@ -662,7 +671,24 @@ public class Line {
         Tempo initialTempo,
         PlaybackSettings settings
     ) throws InvalidMidiDataException {
-        return addToTrack(track, lineIndex, startTicks, initialTempo, settings, 0, elementCount() - 1);
+        return addToTrack(track, lineIndex, startTicks, initialTempo, settings,
+            0, elementCount() - 1, (VelocityMap) null);
+    }
+
+    /**
+     * Adds all of this line's elements to a MIDI track, using a velocity map
+     * for dynamic-aware note velocities.
+     */
+    public Pair<Integer, Tempo> addToTrack(
+        Track track,
+        int lineIndex,
+        int startTicks,
+        Tempo initialTempo,
+        PlaybackSettings settings,
+        @Nullable VelocityMap velocityMap
+    ) throws InvalidMidiDataException {
+        return addToTrack(track, lineIndex, startTicks, initialTempo, settings,
+            0, elementCount() - 1, velocityMap);
     }
 
     /**
@@ -686,10 +712,28 @@ public class Line {
         int startElement,
         int endElement
     ) throws InvalidMidiDataException {
+        return addToTrack(track, lineIndex, startTicks, initialTempo, settings,
+            startElement, endElement, (VelocityMap) null);
+    }
+
+    /**
+     * Adds a range of this line's elements to a MIDI track, using a velocity map
+     * for dynamic-aware note velocities.
+     */
+    public Pair<Integer, Tempo> addToTrack(
+        Track track,
+        int lineIndex,
+        int startTicks,
+        Tempo initialTempo,
+        PlaybackSettings settings,
+        int startElement,
+        int endElement,
+        @Nullable VelocityMap velocityMap
+    ) throws InvalidMidiDataException {
         var glissandoHelper = new GlissandoMidiHelper();
         var result = addToTrack(
             track, lineIndex, startTicks, initialTempo, settings,
-            startElement, endElement, glissandoHelper
+            startElement, endElement, glissandoHelper, velocityMap
         );
 
         // Flush pending pitch bend/expression resets so the state
@@ -726,6 +770,29 @@ public class Line {
         int endElement,
         GlissandoMidiHelper glissandoHelper
     ) throws InvalidMidiDataException {
+        return addToTrack(track, lineIndex, startTicks, initialTempo, settings,
+            startElement, endElement, glissandoHelper, null);
+    }
+
+    /**
+     * Adds a range of this line's elements to a MIDI track using an externally
+     * managed {@link GlissandoMidiHelper} and an optional {@link VelocityMap}
+     * for dynamic-aware note velocities. This overload is used by the repeat
+     * path, which processes notes one at a time but needs glissando state
+     * (e.g. pending grace pitch) to survive across calls. The caller is
+     * responsible for flushing pending resets when done.
+     */
+    public Pair<Integer, Tempo> addToTrack(
+        Track track,
+        int lineIndex,
+        int startTicks,
+        Tempo initialTempo,
+        PlaybackSettings settings,
+        int startElement,
+        int endElement,
+        GlissandoMidiHelper glissandoHelper,
+        @Nullable VelocityMap velocityMap
+    ) throws InvalidMidiDataException {
         var ticks = startTicks;
         var currentTempo = initialTempo;
 
@@ -744,7 +811,8 @@ public class Line {
             addColorizeMetaMessage(track, lineIndex, i, ticks);
 
             // Add note on/off messages and update ticks
-            ticks = addNoteMessages(track, i, ticks, currentTempo, settings, glissandoHelper);
+            ticks = addNoteMessages(track, lineIndex, i, ticks, currentTempo, settings,
+                glissandoHelper, velocityMap);
         }
 
         return new Pair<>(ticks, currentTempo);
@@ -802,11 +870,13 @@ public class Line {
      */
     private int addNoteMessages(
         Track track,
+        int lineIndex,
         int elementIndex,
         int ticks,
         Tempo currentTempo,
         PlaybackSettings settings,
-        GlissandoMidiHelper glissandoHelper
+        GlissandoMidiHelper glissandoHelper,
+        @Nullable VelocityMap velocityMap
     ) throws InvalidMidiDataException {
         var element = getElement(elementIndex);
         var type = element.getType();
@@ -821,16 +891,17 @@ public class Line {
 
             if (type.isNote()) {
                 var interval = ties.findInterval(elementIndex);
+                var velocity = noteVelocity(element, velocityMap, lineIndex, elementIndex);
 
                 if ((interval == null) || (interval.getStart() == elementIndex)) {
                     glissandoHelper.createPendingResets(track, trackTicks, 0);
 
                     if (glissandoHelper.hasPendingGracePitch()) {
                         addGraceGlissandoSlideIn(
-                            track, trackTicks, duration, element, glissandoHelper
+                            track, trackTicks, duration, element, velocity, glissandoHelper
                         );
                     } else {
-                        addNoteOn(track, trackTicks, element);
+                        addNoteOn(track, trackTicks, element, velocity);
                     }
                 }
 
@@ -949,6 +1020,7 @@ public class Line {
         int trackTicks,
         int duration,
         StaffElement element,
+        int velocity,
         GlissandoMidiHelper glissandoHelper
     ) throws InvalidMidiDataException {
         var gracePitch = glissandoHelper.consumePendingGracePitch();
@@ -968,7 +1040,7 @@ public class Line {
         );
 
         // NOTE_ON at reduced velocity for a soft attack
-        addNoteOn(track, trackTicks, element, (int) (noteVelocity(element) * GRACE_GLISSANDO_VELOCITY_RATIO));
+        addNoteOn(track, trackTicks, element, (int) (velocity * GRACE_GLISSANDO_VELOCITY_RATIO));
 
         // Reset pitch bend and expression at end of slide
         GlissandoMidiHelper.createPitchBendReset(track, trackTicks + slideTicks, 0);
@@ -1013,22 +1085,23 @@ public class Line {
     }
 
     /**
-     * Returns the MIDI velocity for a note, based on whether it is accented.
+     * Returns the MIDI velocity for a note. When a {@link VelocityMap} is available
+     * (during normal playback), the pre-computed dynamic-aware velocity is used.
+     * Otherwise falls back to the legacy binary logic (accented or not).
      */
-    private static int noteVelocity(StaffElement note) {
+    private static int noteVelocity(
+        StaffElement note,
+        @Nullable VelocityMap velocityMap,
+        int lineIndex,
+        int noteIndex
+    ) {
+        if (velocityMap != null) {
+            return velocityMap.getVelocity(lineIndex, noteIndex);
+        }
+
         return note.hasArticulation(ArticulationType.ACCENT)
             ? PlaybackController.ACCENTED_NOTE_VELOCITY
             : PlaybackController.NOTE_VELOCITY;
-    }
-
-    /**
-     * Adds a note-on MIDI message to the track using the standard velocity rules.
-     */
-    private void addNoteOn(Track track, int ticks, StaffElement note) throws InvalidMidiDataException {
-        addNoteOn(
-            track, ticks, note,
-            noteVelocity(note)
-        );
     }
 
     /**

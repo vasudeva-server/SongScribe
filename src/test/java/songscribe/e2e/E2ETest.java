@@ -318,8 +318,7 @@ public abstract class E2ETest {
      */
     protected void clickMenuItem(UIAction action) {
         GuiActionRunner.execute(() -> {
-            var menuBar = MainFrame.getInstance().getJMenuBar();
-            var item = findMenuItemForAction(menuBar, action);
+            var item = findMenuItemForAction(null, action);
 
             if (item == null) {
                 throw new IllegalArgumentException("No JMenuItem found for action: " + action.getName());
@@ -331,7 +330,11 @@ public abstract class E2ETest {
     }
 
     @Nullable
-    private JMenuItem findMenuItemForAction(MenuElement parent, UIAction action) {
+    protected JMenuItem findMenuItemForAction(@Nullable MenuElement parent, UIAction action) {
+        if (parent == null) {
+            parent = MainFrame.getInstance().getJMenuBar();
+        }
+
         for (var element : parent.getSubElements()) {
             if (element instanceof JMenuItem item && item.getAction() == action) {
                 return item;
@@ -345,6 +348,21 @@ public abstract class E2ETest {
         }
 
         return null;
+    }
+
+    /**
+     * Returns the innermost {@link JMenu} that directly contains a {@link JMenuItem}
+     * bound to {@code action}, or {@code null} if no such menu exists.
+     */
+    @Nullable
+    protected JMenu findMenuContaining(UIAction action) {
+        var item = findMenuItemForAction(null, action);
+
+        if (item == null) {
+            return null;
+        }
+
+        return (JMenu) ((JPopupMenu) item.getParent()).getInvoker();
     }
 
     // -- Coordinate helpers --

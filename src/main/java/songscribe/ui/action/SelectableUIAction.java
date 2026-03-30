@@ -54,7 +54,7 @@ public abstract class SelectableUIAction extends UIAction
         @Nullable String icon,
         int size,
         String actionCommand,
-        String tooltip,
+        @Nullable String tooltip,
         Flag... flags
     ) {
         this(name, icon, size, actionCommand, tooltip, null, flags);
@@ -65,7 +65,7 @@ public abstract class SelectableUIAction extends UIAction
         @Nullable String icon,
         int size,
         String actionCommand,
-        String tooltip,
+        @Nullable String tooltip,
         @Nullable PrefsKey prefsKey,
         Flag... flags
     ) {
@@ -81,7 +81,7 @@ public abstract class SelectableUIAction extends UIAction
         @Nullable String icon,
         int size,
         String actionCommand,
-        String tooltip,
+        @Nullable String tooltip,
         int virtualKey,
         int modifiers,
         Flag... flags

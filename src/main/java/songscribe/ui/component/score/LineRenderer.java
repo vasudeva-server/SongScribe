@@ -31,6 +31,7 @@ import songscribe.ui.edit.EditModeManager;
 import songscribe.ui.edit.GraceModeManager;
 import songscribe.ui.layout.AnnotationAttachment;
 import songscribe.ui.layout.BeatChangeAttachment;
+import songscribe.ui.layout.DynamicAttachment;
 import songscribe.ui.layout.Clef;
 import songscribe.ui.layout.FermataAttachment;
 import songscribe.ui.layout.KeySignature;
@@ -42,6 +43,7 @@ import songscribe.ui.renderer.BaseElementRenderer;
 import songscribe.ui.renderer.BeamGroupRenderer;
 import songscribe.ui.renderer.BeatChangeRenderer;
 import songscribe.ui.renderer.ClefRenderer;
+import songscribe.ui.renderer.DynamicMarkingRenderer;
 import songscribe.ui.renderer.DynamicsRenderer;
 import songscribe.ui.renderer.ElementRenderContext;
 import songscribe.ui.renderer.EndingRenderer;
@@ -528,6 +530,7 @@ class LineRenderer {
     private void renderAttachments(Graphics2D g2, ElementRenderContext ctx) {
         var articulationRenderer = ArticulationRenderer.getInstance();
         var fermataRenderer = FermataRenderer.getInstance();
+        var dynamicMarkingRenderer = DynamicMarkingRenderer.getInstance();
         var tempoRenderer = TempoRenderer.getInstance();
         var beatChangeRenderer = BeatChangeRenderer.getInstance();
         var annotationRenderer = AnnotationRenderer.getInstance();
@@ -553,6 +556,13 @@ class LineRenderer {
                 && layoutResult.findAttachmentDecorationLayout(
                     element, FermataAttachment.class) != null) {
                 fermataRenderer.render(element, g2, ctx);
+            }
+
+            // Tier 3: Dynamic markings (below staff)
+            if (layoutResult != null
+                && layoutResult.findAttachmentDecorationLayout(
+                    element, DynamicAttachment.class) != null) {
+                dynamicMarkingRenderer.render(element, g2, ctx);
             }
 
             // Tier 4: Tempo (system)

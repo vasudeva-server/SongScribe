@@ -44,7 +44,7 @@ public abstract class NoteOnlyAction extends InsertionElementAction
         @Nullable String icon,
         int size,
         String actionCommand,
-        String tooltip,
+        @Nullable String tooltip,
         Flag... flags
     ) {
         super(name, icon, size, actionCommand, tooltip, flags);
@@ -55,7 +55,7 @@ public abstract class NoteOnlyAction extends InsertionElementAction
         @Nullable String icon,
         int size,
         String actionCommand,
-        String tooltip,
+        @Nullable String tooltip,
         int virtualKey,
         int modifiers,
         Flag... flags

@@ -106,6 +106,9 @@ public class MidiSequenceBuilder {
         // Add initial tempo
         addTempoChange(track, 0, initialTempo);
 
+        // Pre-compute dynamic-aware velocities for all notes
+        var velocityMap = VelocityMap.build(composition, VelocityMap.MAX_VELOCITY);
+
         var ticks = 0;
         var currentTempo = initialTempo;
         var lines = composition.getLines();
@@ -121,9 +124,11 @@ public class MidiSequenceBuilder {
                 kotlin.Pair<Integer, Tempo> result;
 
                 if (lineStart > 0 || lineEnd < line.elementCount() - 1) {
-                    result = line.addToTrack(track, i, ticks, currentTempo, settings, lineStart, lineEnd);
+                    result = line.addToTrack(track, i, ticks, currentTempo, settings,
+                        lineStart, lineEnd, velocityMap);
                 } else {
-                    result = line.addToTrack(track, i, ticks, currentTempo, settings);
+                    result = line.addToTrack(track, i, ticks, currentTempo, settings,
+                        velocityMap);
                 }
 
                 ticks = result.getFirst();
@@ -135,7 +140,8 @@ public class MidiSequenceBuilder {
             }
         } else {
             // Handle repeats
-            var result = buildSequenceWithRepeats(track, startLine, startNote, endLine, initialTempo);
+            var result = buildSequenceWithRepeats(
+                track, startLine, startNote, endLine, initialTempo, velocityMap);
             ticks = result.getFirst();
             currentTempo = result.getSecond();
         }
@@ -166,7 +172,8 @@ public class MidiSequenceBuilder {
         int startLine,
         int startNote,
         int endLine,
-        Tempo initialTempo
+        Tempo initialTempo,
+        VelocityMap velocityMap
     ) throws InvalidMidiDataException {
         var ticks = 0;
         var currentTempo = initialTempo;
@@ -253,7 +260,7 @@ public class MidiSequenceBuilder {
                 // glissando helper so grace note state survives across calls.
                 var result = line.addToTrack(
                     track, lineIndex, ticks, currentTempo, settings,
-                    noteIndex, noteIndex, glissandoHelper
+                    noteIndex, noteIndex, glissandoHelper, velocityMap
                 );
                 ticks = result.getFirst();
                 currentTempo = result.getSecond();

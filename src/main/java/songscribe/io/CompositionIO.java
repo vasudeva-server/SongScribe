@@ -45,7 +45,7 @@ import songscribe.util.Utils;
 public final class CompositionIO {
 
     public static final int IO_MAJOR_VERSION = 2;
-    public static final int IO_MINOR_VERSION = 2;
+    public static final int IO_MINOR_VERSION = 3;
 
     // version 1.0
     private static final String XML_COMPOSITION = "composition";
@@ -274,7 +274,7 @@ public final class CompositionIO {
                             tempoReader = new TempoIO.TempoReader();
                         } else if (
                             (majorVersion == 1 && minorVersion >= 1) ||
-                            (majorVersion == 2 && minorVersion <= 2)
+                            (majorVersion == 2 && minorVersion <= 3)
                         ) {
                             lineReader = new LineIO.LineReader();
                             viewReader = new ViewIO.ViewReader();
@@ -564,6 +564,12 @@ public final class CompositionIO {
 
             // After migration, format version is always 2
             formatVersion = 2;
+
+            // Migrate pre-2.3 annotation-based dynamics to DynamicAttachment.
+            // Runs for all files saved before v2.3 introduced native serialization.
+            if (majorVersion < 2 || (majorVersion == 2 && minorVersion < 3)) {
+                FormatMigrator.migrateAnnotationDynamics(parsedLines);
+            }
 
             // For pre-v2.1 files, convert pixel-based positions to staff-space units.
             // v2.1+ files already store values in staff-space units.

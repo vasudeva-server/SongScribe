@@ -244,6 +244,34 @@ public final class Actions {
     public static final RemoveDynamicsAction REMOVE_DYNAMICS_ACTION =
         RemoveDynamicsAction.createAction();
 
+    public static final DynamicMarkingAction DYNAMIC_PP_ACTION =
+        DynamicMarkingAction.createPianissimoAction();
+
+    public static final DynamicMarkingAction DYNAMIC_P_ACTION =
+        DynamicMarkingAction.createPianoAction();
+
+    public static final DynamicMarkingAction DYNAMIC_MP_ACTION =
+        DynamicMarkingAction.createMezzoPianoAction();
+
+    public static final DynamicMarkingAction DYNAMIC_MF_ACTION =
+        DynamicMarkingAction.createMezzoForteAction();
+
+    public static final DynamicMarkingAction DYNAMIC_F_ACTION =
+        DynamicMarkingAction.createForteAction();
+
+    public static final DynamicMarkingAction DYNAMIC_FF_ACTION =
+        DynamicMarkingAction.createFortissimoAction();
+
+    public static final ActionGroup<DynamicMarkingAction> DYNAMIC_MARKING_ACTION_GROUP =
+        new ActionGroup<>(
+            DYNAMIC_PP_ACTION,
+            DYNAMIC_P_ACTION,
+            DYNAMIC_MP_ACTION,
+            DYNAMIC_MF_ACTION,
+            DYNAMIC_F_ACTION,
+            DYNAMIC_FF_ACTION
+        );
+
     public static final TempoChangeAction TEMPO_CHANGE_ACTION =
         TempoChangeAction.createAction();
 
@@ -311,6 +339,7 @@ public final class Actions {
         ACCIDENTAL_ACTION_GROUP.reset();
         ARTICULATION_ACTION_GROUP.reset();
         DOT_ACTION_GROUP.reset();
+        DYNAMIC_MARKING_ACTION_GROUP.reset();
         NON_DURATION_ACTION_GROUP.reset();
 
         // Standalone toggles

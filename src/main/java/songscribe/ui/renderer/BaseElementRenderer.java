@@ -420,19 +420,24 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
     /**
      * Returns the X position that centers a glyph of the given width over the notehead
      * of the specified element, snapped to device pixels.
+     * <p>
+     * The glyph's visual left edge is at {@code origin + bboxLeft}, so centering
+     * the visual content requires offsetting by {@code bboxLeft}.
      *
-     * @param g2        Graphics context (for device-pixel snapping)
-     * @param layoutXSs the layout X position (left edge of the note column)
-     * @param note      the note whose notehead center is used
-     * @param glyphWidthSs the width of the glyph to center
+     * @param g2           Graphics context (for device-pixel snapping)
+     * @param layoutXSs    the layout X position (left edge of the note column)
+     * @param note         the note whose notehead center is used
+     * @param glyphBBoxLeft the glyph's bounding box left edge (x offset from origin)
+     * @param glyphWidthSs the width of the glyph to center (bBox right - left)
      * @return the snapped X coordinate for drawing
      */
     protected static double centeredGlyphX(
-        Graphics2D g2, double layoutXSs, StaffElement note, double glyphWidthSs) {
+        Graphics2D g2, double layoutXSs, StaffElement note,
+        double glyphBBoxLeft, double glyphWidthSs) {
 
         double noteCenterXSs = note.getType().getCenterXSs();
         return GraphicUtils.snapXToDevicePixel(
-            g2, layoutXSs + noteCenterXSs - glyphWidthSs / 2.0);
+            g2, layoutXSs + noteCenterXSs - glyphBBoxLeft - glyphWidthSs / 2.0);
     }
 
     /**

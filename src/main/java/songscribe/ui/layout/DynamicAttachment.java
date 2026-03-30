@@ -23,6 +23,8 @@ package songscribe.ui.layout;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.music.StaffElement;
+import songscribe.smufl.SMuFLGlyph;
+import songscribe.smufl.SMuFLMetadata;
 
 /**
  * Represents a dynamic marking attachment on a note.
@@ -43,26 +45,30 @@ public class DynamicAttachment extends Attachment {
      */
     public enum DynamicType {
         /** Pianissimo - very soft (pp) */
-        PIANISSIMO("pp"),
+        PIANISSIMO("pp", SMuFLGlyph.DYNAMIC_PP, 0.25),
         /** Piano - soft (p) */
-        PIANO("p"),
+        PIANO("p", SMuFLGlyph.DYNAMIC_PIANO, 0.40),
         /** Mezzo-piano - moderately soft (mp) */
-        MEZZO_PIANO("mp"),
+        MEZZO_PIANO("mp", SMuFLGlyph.DYNAMIC_MP, 0.53),
         /** Mezzo-forte - moderately loud (mf) */
-        MEZZO_FORTE("mf"),
+        MEZZO_FORTE("mf", SMuFLGlyph.DYNAMIC_MF, 0.63),
         /** Forte - loud (f) */
-        FORTE("f"),
+        FORTE("f", SMuFLGlyph.DYNAMIC_FORTE, 0.78),
         /** Fortissimo - very loud (ff) */
-        FORTISSIMO("ff"),
+        FORTISSIMO("ff", SMuFLGlyph.DYNAMIC_FF, 1.00),
         /** Sforzando - sudden accent (sfz) */
-        SFORZANDO("sfz"),
+        SFORZANDO("sfz", null, 0.90),
         /** Fortepiano - loud then soft (fp) */
-        FORTEPIANO("fp");
+        FORTEPIANO("fp", null, 0.78);
 
         private final String symbol;
+        private final @Nullable SMuFLGlyph glyph;
+        private final double velocityFraction;
 
-        DynamicType(String symbol) {
+        DynamicType(String symbol, @Nullable SMuFLGlyph glyph, double velocityFraction) {
             this.symbol = symbol;
+            this.glyph = glyph;
+            this.velocityFraction = velocityFraction;
         }
 
         /**
@@ -70,6 +76,20 @@ public class DynamicAttachment extends Attachment {
          */
         public String getSymbol() {
             return symbol;
+        }
+
+        /**
+         * Returns the SMuFL glyph for rendering, or null for types without a UI glyph.
+         */
+        public @Nullable SMuFLGlyph getGlyph() {
+            return glyph;
+        }
+
+        /**
+         * Returns the velocity fraction (0.0–1.0) for MIDI playback.
+         */
+        public double getVelocityFraction() {
+            return velocityFraction;
         }
     }
 
@@ -94,7 +114,6 @@ public class DynamicAttachment extends Attachment {
      */
     public DynamicAttachment(@Nullable StaffElement parent, DynamicType type) {
         this.type = type;
-        setOwnerElement(parent);
         setAlignment(Alignment.CENTER);
 
         if (parent != null) {
@@ -128,14 +147,26 @@ public class DynamicAttachment extends Attachment {
      * Returns the content width in staff-space units.
      */
     public double getContentWidthSs() {
-        return DEFAULT_WIDTH_SS;
+        var glyph = type.getGlyph();
+
+        if (glyph == null) {
+            return DEFAULT_WIDTH_SS;
+        }
+
+        return SMuFLMetadata.getInstance().requireBBox(glyph).width();
     }
 
     /**
      * Returns the content height in staff-space units.
      */
     public double getContentHeightSs() {
-        return DEFAULT_HEIGHT_SS;
+        var glyph = type.getGlyph();
+
+        if (glyph == null) {
+            return DEFAULT_HEIGHT_SS;
+        }
+
+        return SMuFLMetadata.getInstance().requireBBox(glyph).height();
     }
 
     @Override
