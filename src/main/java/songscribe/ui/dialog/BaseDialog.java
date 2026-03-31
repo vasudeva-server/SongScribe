@@ -90,7 +90,7 @@ public abstract class BaseDialog {
 
     @SuppressWarnings("NullAway.Init")
     protected BaseDialog(String title, boolean isModal, DialogCategory category) {
-        this.mainFrame = MainFrame.getInstance();
+        mainFrame = MainFrame.getInstance();
         dialogTitle = title;
         this.isModal = isModal;
         this.category = category;
@@ -112,7 +112,7 @@ public abstract class BaseDialog {
         SAVED_GEOMETRY.clear();
     }
 
-    private void incrementBlockingCount() {
+    private static void incrementBlockingCount() {
         visibleBlockingDialogCount++;
 
         if (visibleBlockingDialogCount == 1) {
@@ -120,7 +120,7 @@ public abstract class BaseDialog {
         }
     }
 
-    private void decrementBlockingCount() {
+    private static void decrementBlockingCount() {
         visibleBlockingDialogCount--;
 
         if (visibleBlockingDialogCount == 0) {
