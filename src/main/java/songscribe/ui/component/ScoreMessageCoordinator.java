@@ -46,6 +46,7 @@ import songscribe.message.notification.CompositionDidChangeNotification;
 import songscribe.message.notification.ControlDidChangeNotification;
 import songscribe.message.notification.ElementTypeWasSelectedNotification;
 import songscribe.message.notification.ModeDidChangeNotification;
+import songscribe.message.notification.MusicSelectionDidChangeNotification;
 import songscribe.message.notification.PlaybackStateDidChangeNotification;
 import songscribe.message.notification.RestModeDidChangeNotification;
 import songscribe.music.Line;
@@ -319,6 +320,11 @@ public final class ScoreMessageCoordinator {
             la.setEnabled(mode == Mode.LYRICS_ADJUSTMENT);
         }
         score.repaint();
+    }
+
+    @Handler
+    public void musicSelectionDidChange(MusicSelectionDidChangeNotification message) {
+        PlaybackController.selectionDidChange(score.getSelection());
     }
 
     @Handler

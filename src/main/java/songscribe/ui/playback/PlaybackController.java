@@ -56,10 +56,10 @@ public final class PlaybackController {
     private static final Logger LOG = LoggerFactory.getLogger(PlaybackController.class);
 
     @Nullable
-    private static Score registeredScore;
+    static Score registeredScore;
 
-    private static PlaybackState state = PlaybackState.STOPPED;
-    private static int previousPlayingLine = -1;
+    static PlaybackState state = PlaybackState.STOPPED;
+    static int previousPlayingLine = -1;
     private static long pausedTickPosition = 0;
 
     private static int instrument = 0;
@@ -68,7 +68,7 @@ public final class PlaybackController {
     private static boolean playWithRepeats = false;
 
     @Nullable
-    private static ElementSelection activeSelection;
+    static ElementSelection activeSelection;
 
     public static final PlayPauseAction PLAY_PAUSE_ACTION =
         PlayPauseAction.createAction();
@@ -172,6 +172,26 @@ public final class PlaybackController {
             }
         } else if (state == PlaybackState.PAUSED) {
             playbackDidStop();
+        }
+    }
+
+    /**
+     * Reacts to a selection change while playback is paused.
+     * If a new selection is made, clears the playing highlight and updates
+     * the active selection so that resuming starts from the new position.
+     * If the selection is cleared (null), stops playback entirely (rewind).
+     * Does nothing if playback is not paused.
+     */
+    public static void selectionDidChange(@Nullable ElementSelection selection) {
+        if (state != PlaybackState.PAUSED) {
+            return;
+        }
+
+        if (selection == null) {
+            stop();
+        } else {
+            clearPlayingHighlight();
+            activeSelection = selection;
         }
     }
 
