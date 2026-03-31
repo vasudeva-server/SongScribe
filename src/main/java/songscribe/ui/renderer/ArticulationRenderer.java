@@ -45,8 +45,14 @@ public class ArticulationRenderer extends BaseElementRenderer<StaffElement> {
     // ==========================================================================
 
     // SMuFL bbox-derived widths in staff-space units
+    private static final double ACCENT_BBOX_LEFT_SS =
+        SMuFLMetadata.getInstance().requireBBox(SMuFLGlyph.ARTIC_ACCENT_ABOVE).left();
+
     private static final double ACCENT_WIDTH_SS =
         SMuFLMetadata.getInstance().requireBBox(SMuFLGlyph.ARTIC_ACCENT_ABOVE).width();
+
+    private static final double STACCATO_BBOX_LEFT_SS =
+        SMuFLMetadata.getInstance().requireBBox(SMuFLGlyph.ARTIC_STACCATO_ABOVE).left();
 
     private static final double STACCATO_WIDTH_SS =
         SMuFLMetadata.getInstance().requireBBox(SMuFLGlyph.ARTIC_STACCATO_ABOVE).width();
@@ -102,14 +108,15 @@ public class ArticulationRenderer extends BaseElementRenderer<StaffElement> {
             double componentTopYSs = layoutYToComponentYSs(layout.ySs(), ctx);
 
             if (articulation.isStaccato()) {
-                double x = centeredGlyphX(g2, layout.xSs(), element, STACCATO_WIDTH_SS);
+                double x = centeredGlyphX(g2, layout.xSs(), element,
+                    STACCATO_BBOX_LEFT_SS, STACCATO_WIDTH_SS);
                 double y = glyphOriginYFromLayoutTop(componentTopYSs, SMuFLGlyph.ARTIC_STACCATO_ABOVE);
                 drawBravuraGlyph(g2, SMuFLGlyph.ARTIC_STACCATO_ABOVE, x, y, true);
             } else if (articulation.isAccent()) {
-                double x = centeredGlyphX(g2, layout.xSs(), element, ACCENT_WIDTH_SS);
+                double x = centeredGlyphX(g2, layout.xSs(), element,
+                    ACCENT_BBOX_LEFT_SS, ACCENT_WIDTH_SS);
                 double y = glyphOriginYFromLayoutTop(componentTopYSs, SMuFLGlyph.ARTIC_ACCENT_ABOVE);
                 drawBravuraGlyph(g2, SMuFLGlyph.ARTIC_ACCENT_ABOVE, x, y, true);
-            }
-        }
+            }        }
     }
 }

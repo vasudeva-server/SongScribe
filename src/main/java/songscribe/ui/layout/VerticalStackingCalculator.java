@@ -67,6 +67,9 @@ public class VerticalStackingCalculator {
     // Ensures adequate curve resolution even for short ties.
     private static final int TIE_BOUND_MIN_SAMPLES = 8;
 
+    // Horizontal collision margin for structural/system elements (collapses between adjacent elements)
+    private static final double STRUCTURAL_HORIZONTAL_MARGIN_SS = 1.0; // ~8px
+
     // Lyrics constants (to be measured from actual font in later phases)
     private static final double LYRICS_HEIGHT_SS = 2.5;       // ~20px
     private static final double INTER_LINE_MARGIN_SS = 1.25;  // ~10px
@@ -415,7 +418,7 @@ public class VerticalStackingCalculator {
 
         stackAbove(extents, articulation, xSs,
             articulation.getContentWidthSs(), articulation.getContentHeightSs(),
-            marginSs, staffPosition, noteHeadYSs, builder);
+            marginSs, 0.0, staffPosition, noteHeadYSs, builder);
     }
 
     /**
@@ -497,7 +500,7 @@ public class VerticalStackingCalculator {
             var fermata = new FermataAttachment(note);
             stackAbove(extents, fermata, xSs,
                 fermata.getContentWidthSs(), fermata.getContentHeightSs(),
-                LayoutStylesheet.NOTE_DECORATION_MARGIN_SS, staffPosition, centerYSs, builder);
+                LayoutStylesheet.NOTE_DECORATION_MARGIN_SS, 0.0, staffPosition, centerYSs, builder);
         }
 
         return builder.build();
@@ -569,7 +572,7 @@ public class VerticalStackingCalculator {
         double widthSs = trill.getSpanWidthSs(anchorXSs, endXSs);
         stackAbove(noteAttachedExtents, trill, anchorXSs, widthSs,
             trill.getContentHeightSs(), LayoutStylesheet.NOTE_DECORATION_MARGIN_SS,
-            staffPosition, noteHeadYSs, builder);
+            0.0, staffPosition, noteHeadYSs, builder);
     }
 
     /**
@@ -667,7 +670,7 @@ public class VerticalStackingCalculator {
 
         stackAbove(noteAttachedExtents, fermata, xSs,
             fermata.getContentWidthSs(), fermata.getContentHeightSs(),
-            LayoutStylesheet.NOTE_DECORATION_MARGIN_SS, staffPosition, noteHeadYSs, builder);
+            LayoutStylesheet.NOTE_DECORATION_MARGIN_SS, 0.0, staffPosition, noteHeadYSs, builder);
     }
 
     /**
@@ -753,7 +756,7 @@ public class VerticalStackingCalculator {
             double widthSs = endXSs - anchorXSs + NOTE_HEAD_WIDTH_SS;
             double ySs = stackAbove(structuralExtents, bridged, anchorXSs, widthSs,
                 LayoutStylesheet.HAIRPIN_OPENING_HEIGHT_SS, LayoutStylesheet.HAIRPIN_MARGIN_SS,
-                staffPosition, noteHeadYSs, builder);
+                STRUCTURAL_HORIZONTAL_MARGIN_SS, staffPosition, noteHeadYSs, builder);
 
             // Write SpanLayout keyed by the legacy interval for renderer access
             builder.putSpanLayout(interval,
@@ -780,12 +783,15 @@ public class VerticalStackingCalculator {
             return;
         }
 
-        double xSs = column.getXSs();
+        double columnXSs = column.getXSs();
+        double contentWidthSs = dynamic.getContentWidthSs();
+        double centeredXSs = columnXSs + note.getType().getCenterXSs() - contentWidthSs / 2.0;
         int staffPosition = note.getStaffPosition();
         double noteHeadYSs = staffPosition * LayoutStylesheet.STAFF_POSITION_OFFSET_SS;
-        stackAbove(structuralExtents, dynamic, xSs,
-            dynamic.getContentWidthSs(), dynamic.getContentHeightSs(),
-            LayoutStylesheet.NOTE_DECORATION_MARGIN_SS, staffPosition, noteHeadYSs, builder);
+        stackAbove(structuralExtents, dynamic, centeredXSs,
+            contentWidthSs, dynamic.getContentHeightSs(),
+            LayoutStylesheet.NOTE_DECORATION_MARGIN_SS, STRUCTURAL_HORIZONTAL_MARGIN_SS,
+            staffPosition, noteHeadYSs, builder);
     }
 
     /**
@@ -854,7 +860,7 @@ public class VerticalStackingCalculator {
             double heightSs = ending.getContentHeightSs();
             double ySs = stackAbove(structuralExtents, ending, anchorXSs, widthSs,
                 heightSs, LayoutStylesheet.ENDING_MARGIN_SS,
-                staffPosition, noteHeadYSs, builder);
+                STRUCTURAL_HORIZONTAL_MARGIN_SS, staffPosition, noteHeadYSs, builder);
 
             // Write SpanLayout keyed by the legacy interval for renderer access
             builder.putSpanLayout(interval,
@@ -896,7 +902,8 @@ public class VerticalStackingCalculator {
             line.getComposition().getAttributionFontMetrics());
         stackAbove(systemExtents, tempo, xSs,
             widthSs, tempo.getContentHeightSs(),
-            LayoutStylesheet.TEMPO_MARGIN_SS, staffPosition, noteHeadYSs, builder);
+            LayoutStylesheet.TEMPO_MARGIN_SS, STRUCTURAL_HORIZONTAL_MARGIN_SS,
+            staffPosition, noteHeadYSs, builder);
     }
 
     /**
@@ -933,7 +940,8 @@ public class VerticalStackingCalculator {
             line.getComposition().getAttributionFontMetrics());
         stackAbove(systemExtents, beatChange, xSs,
             widthSs, beatChange.getContentHeightSs(),
-            LayoutStylesheet.TEMPO_MARGIN_SS, staffPosition, noteHeadYSs, builder);
+            LayoutStylesheet.TEMPO_MARGIN_SS, STRUCTURAL_HORIZONTAL_MARGIN_SS,
+            staffPosition, noteHeadYSs, builder);
     }
 
     /**
@@ -970,7 +978,8 @@ public class VerticalStackingCalculator {
             line.getComposition().getAnnotationFontMetrics());
         stackAbove(systemExtents, annotation, xSs,
             widthSs, annotation.getContentHeightSs(),
-            LayoutStylesheet.ANNOTATION_ABOVE_MARGIN_SS, staffPosition, noteHeadYSs, builder);
+            LayoutStylesheet.ANNOTATION_ABOVE_MARGIN_SS, STRUCTURAL_HORIZONTAL_MARGIN_SS,
+            staffPosition, noteHeadYSs, builder);
     }
 
 
@@ -989,11 +998,19 @@ public class VerticalStackingCalculator {
         StaffExtents extents,
         LineElement element,
         double xSs, double widthSs, double heightSs, double marginSs,
+        double horizontalMarginSs,
         int staffPosition, double noteHeadYSs,
         LayoutResult.Builder builder) {
 
-        double ceilingSs = anchoredCeilingSs(extents, xSs, widthSs, staffPosition, noteHeadYSs);
-        double ySs = ceilingSs - marginSs - heightSs;
+        // Expand the query range so nearby elements/notes within horizontalMarginSs force this
+        // element up. Only the query is expanded (not the reservation), so margins collapse
+        // between adjacent elements rather than stacking additively.
+        var queryXSs = xSs - horizontalMarginSs;
+        var queryWidthSs = widthSs + 2 * horizontalMarginSs;
+        var currentTopSs = extents.yGet(true, queryXSs, queryWidthSs);
+        var anchorSs = anchorCeilingSs(staffPosition, noteHeadYSs);
+        var ceilingSs = Math.min(currentTopSs, anchorSs);
+        var ySs = ceilingSs - marginSs - heightSs;
         extents.ySet(true, xSs, widthSs, ySs);
 
         builder.putDecorationLayout(element,
@@ -1037,7 +1054,7 @@ public class VerticalStackingCalculator {
 
         stackAbove(extents, element, anchorXSs, widthSs,
             element.getContentHeightSs(), marginSs,
-            staffPosition, noteHeadYSs, builder);
+            STRUCTURAL_HORIZONTAL_MARGIN_SS, staffPosition, noteHeadYSs, builder);
     }
 
 

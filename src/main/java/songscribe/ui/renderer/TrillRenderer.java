@@ -114,7 +114,7 @@ public class TrillRenderer extends BaseElementRenderer<Trill> {
             renderTrill(g2, trillXSs, endXSs, trillTopYSs);
         } else {
             double trillXSs = centeredGlyphX(g2, layoutXSs,
-                anchorNote, TRILL_ADVANCE_WIDTH_SS);
+                anchorNote, 0, TRILL_ADVANCE_WIDTH_SS);
             renderTrill(g2, trillXSs, Double.NaN, trillTopYSs);
         }
     }
@@ -186,7 +186,7 @@ public class TrillRenderer extends BaseElementRenderer<Trill> {
                 renderTrill(g2, trillXSs, endXSs, trillTopYSs);
             } else {
                 double trillXSs = centeredGlyphX(g2, layoutXSs,
-                    anchor, TRILL_ADVANCE_WIDTH_SS);
+                    anchor, 0, TRILL_ADVANCE_WIDTH_SS);
                 renderTrill(g2, trillXSs, Double.NaN, trillTopYSs);
             }
         }
