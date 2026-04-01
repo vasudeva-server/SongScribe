@@ -124,6 +124,7 @@ public class MainFrame extends JFrame implements Printable {
     private static final int MAC_TITLE_BAR_HEIGHT = 28;
     private static final int MAC_TITLE_FONT_SIZE = 13;
     private static final double PRINT_EXTRA_MARGIN = 0.25 * 72;
+
     @Nullable
     private PrinterJob printerJob = null;
 
@@ -766,4 +767,5 @@ public class MainFrame extends JFrame implements Printable {
     public void handleTogglePlayWithRepeats(TogglePlayWithRepeatsCommand message) {
         Prefs.getInstance().put(PrefsKey.PLAY_WITH_REPEATS, message.isSelected());
     }
+
 }

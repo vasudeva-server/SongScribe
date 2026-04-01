@@ -632,7 +632,7 @@ public class LineComponent extends ScoreComponent
             return;
         }
 
-        if (selectionHandler.isSelectionActive(e)) {
+        if (selectionHandler.isDragging() || selectionHandler.isSelectionActive(e)) {
             selectionHandler.handleDrag(e);
         }
     }
@@ -737,8 +737,16 @@ public class LineComponent extends ScoreComponent
     /**
      * Returns whether a selection drag is in progress.
      */
-    boolean isDraggingSelection() {
+    public boolean isDraggingSelection() {
         return selectionHandler.isDragging();
+    }
+
+    /**
+     * Clears any active rubber-band drag rectangle on this line.
+     * Called from Score when a window-level mouseReleased catches an orphaned drag.
+     */
+    public void clearDragRectangle() {
+        selectionHandler.handleRelease();
     }
 
     /**

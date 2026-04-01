@@ -28,6 +28,8 @@ import songscribe.Strings;
 import songscribe.music.StaffElement;
 import songscribe.prefs.Prefs;
 import songscribe.prefs.PrefsKey;
+import songscribe.message.MessageCenter;
+import songscribe.message.notification.SelectionDragDidStartNotification;
 import songscribe.ui.OptionDialogs;
 import songscribe.ui.Mode;
 import songscribe.ui.layout.LayoutStylesheet;
@@ -191,6 +193,10 @@ class SelectionHandler {
     void handleDrag(MouseEvent e) {
         if (pressHandled) {
             return;
+        }
+
+        if (!dragging) {
+            MessageCenter.post(new SelectionDragDidStartNotification(lc));
         }
 
         dragging = true;

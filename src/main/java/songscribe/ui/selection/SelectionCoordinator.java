@@ -20,6 +20,10 @@
 
 package songscribe.ui.selection;
 
+import java.awt.AWTEvent;
+import java.awt.Toolkit;
+import java.awt.event.AWTEventListener;
+import java.awt.event.MouseEvent;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.IdentityHashMap;
@@ -41,6 +45,8 @@ import songscribe.music.Line;
 import songscribe.music.StaffElement;
 import songscribe.message.notification.CompositionDidChangeNotification;
 import songscribe.message.notification.MusicSelectionDidChangeNotification;
+import songscribe.message.notification.SelectionDragDidStartNotification;
+import songscribe.ui.component.score.LineComponent;
 import songscribe.ui.action.Actions;
 import songscribe.ui.action.UIAction;
 
@@ -59,6 +65,14 @@ public final class SelectionCoordinator {
 
     /** Which line currently has the active selection, or -1 if none. */
     private int activeLineIndex = -1;
+
+    /**
+     * The LineComponent that currently has an active rubber-band drag, or null.
+     * Tracked so the global AWTEventListener can clean up if Swing fails to
+     * deliver mouseReleased to the originating LineComponent.
+     */
+    @Nullable
+    private LineComponent draggingLine = null;
 
     /** Whether the user is in select mode (shift held down or select mode active). */
     private boolean inSelectMode = false;
@@ -92,9 +106,26 @@ public final class SelectionCoordinator {
 
     record ActionState(boolean selected, boolean enabled) {}
 
+    /**
+     * Global AWT listener that catches mouseReleased events which Swing sometimes
+     * fails to deliver to a LineComponent during fast rubber-band drags.
+     */
+    private final AWTEventListener globalMouseReleasedListener = event -> {
+        if (event instanceof MouseEvent me && me.getID() == MouseEvent.MOUSE_RELEASED) {
+            if (draggingLine != null && draggingLine.isDraggingSelection()) {
+                draggingLine.clearDragRectangle();
+            }
+
+            draggingLine = null;
+        }
+    };
+
     public SelectionCoordinator(Supplier<Composition> compositionSupplier) {
         this.compositionSupplier = compositionSupplier;
         MessageCenter.subscribe(this);
+        Toolkit.getDefaultToolkit().addAWTEventListener(
+            globalMouseReleasedListener, AWTEvent.MOUSE_EVENT_MASK
+        );
     }
 
     // -------------------------------------------------------------------------
@@ -737,6 +768,11 @@ public final class SelectionCoordinator {
      * run at MEDIUM_PRIORITY. This ensures save captures the true pre-selection
      * state and restore puts it back before updateEnabledState recomputes.
      */
+    @Handler
+    public void selectionDragDidStart(SelectionDragDidStartNotification notification) {
+        draggingLine = notification.getLineComponent();
+    }
+
     @Handler(priority = Message.HIGH_PRIORITY)
     public void musicSelectionDidChangeSaveRestoreActionStates(MusicSelectionDidChangeNotification message) {
         var selection = getSelection();
