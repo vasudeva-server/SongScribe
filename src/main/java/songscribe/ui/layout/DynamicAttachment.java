@@ -94,7 +94,7 @@ public class DynamicAttachment extends Attachment {
     }
 
     /** The dynamic type. */
-    private DynamicType type;
+    private final DynamicType type;
 
     /**
      * Creates a dynamic attachment with the specified type.
@@ -127,13 +127,6 @@ public class DynamicAttachment extends Attachment {
      */
     public DynamicType getType() {
         return type;
-    }
-
-    /**
-     * Sets the dynamic type.
-     */
-    public void setType(DynamicType type) {
-        this.type = type;
     }
 
     /**
