@@ -136,7 +136,7 @@ public class LineComponent extends ScoreComponent
     private boolean layoutDirty = true;
 
     /** Handles selection, hit-testing, and drag logic. */
-    private final SelectionHandler selectionHandler = new SelectionHandler(this);
+    private final LineSelectionHandler selectionHandler = new LineSelectionHandler(this);
 
     /** Handles press/drag/release for pitch-dragging a note in NOTE_EDIT mode. */
     private final NoteDragHandler noteDragHandler = new NoteDragHandler(this);
@@ -759,7 +759,7 @@ public class LineComponent extends ScoreComponent
     /**
      * Returns the selection handler for this line.
      */
-    SelectionHandler getSelectionHandler() {
+    LineSelectionHandler getSelectionHandler() {
         return selectionHandler;
     }
 

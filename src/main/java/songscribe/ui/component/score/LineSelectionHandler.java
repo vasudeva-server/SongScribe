@@ -28,8 +28,6 @@ import songscribe.Strings;
 import songscribe.music.StaffElement;
 import songscribe.prefs.Prefs;
 import songscribe.prefs.PrefsKey;
-import songscribe.message.MessageCenter;
-import songscribe.message.notification.SelectionDragDidStartNotification;
 import songscribe.ui.OptionDialogs;
 import songscribe.ui.Mode;
 import songscribe.ui.layout.LayoutStylesheet;
@@ -44,7 +42,7 @@ import songscribe.ui.renderer.GlissandoRenderer;
  * Each {@code LineComponent} owns one instance. Drag state (rectangle, start point)
  * lives here; mouse event handlers in {@code LineComponent} delegate to this class.
  */
-class SelectionHandler {
+class LineSelectionHandler {
 
     /** Half-height of the staff hit zone for line selection, in staff spaces. */
     private static final double STAFF_HIT_RADIUS_SS = 2.0;
@@ -56,7 +54,7 @@ class SelectionHandler {
     private final Point dragStart = new Point();
     private final Rectangle dragRectangle = new Rectangle();
 
-    SelectionHandler(LineComponent lc) {
+    LineSelectionHandler(LineComponent lc) {
         this.lc = lc;
     }
 
@@ -196,7 +194,8 @@ class SelectionHandler {
         }
 
         if (!dragging) {
-            MessageCenter.post(new SelectionDragDidStartNotification(lc));
+            var coordinator = lc.getScore().getSelectionCoordinator();
+            coordinator.dragDidStart(lc);
         }
 
         dragging = true;

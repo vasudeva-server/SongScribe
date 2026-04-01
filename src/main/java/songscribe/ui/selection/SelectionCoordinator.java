@@ -45,7 +45,6 @@ import songscribe.music.Line;
 import songscribe.music.StaffElement;
 import songscribe.message.notification.CompositionDidChangeNotification;
 import songscribe.message.notification.MusicSelectionDidChangeNotification;
-import songscribe.message.notification.SelectionDragDidStartNotification;
 import songscribe.ui.component.score.LineComponent;
 import songscribe.ui.action.Actions;
 import songscribe.ui.action.UIAction;
@@ -109,23 +108,25 @@ public final class SelectionCoordinator {
     /**
      * Global AWT listener that catches mouseReleased events which Swing sometimes
      * fails to deliver to a LineComponent during fast rubber-band drags.
+     * Registered only while a drag is active and removed once the release is caught.
      */
     private final AWTEventListener globalMouseReleasedListener = event -> {
         if (event instanceof MouseEvent me && me.getID() == MouseEvent.MOUSE_RELEASED) {
-            if (draggingLine != null && draggingLine.isDraggingSelection()) {
-                draggingLine.clearDragRectangle();
+            if (draggingLine != null) {
+                if (draggingLine.isDraggingSelection()) {
+                    draggingLine.clearDragRectangle();
+                }
+
+                draggingLine = null;
             }
 
-            draggingLine = null;
+            Toolkit.getDefaultToolkit().removeAWTEventListener(this.globalMouseReleasedListener);
         }
     };
 
     public SelectionCoordinator(Supplier<Composition> compositionSupplier) {
         this.compositionSupplier = compositionSupplier;
         MessageCenter.subscribe(this);
-        Toolkit.getDefaultToolkit().addAWTEventListener(
-            globalMouseReleasedListener, AWTEvent.MOUSE_EVENT_MASK
-        );
     }
 
     // -------------------------------------------------------------------------
@@ -764,13 +765,14 @@ public final class SelectionCoordinator {
     // -------------------------------------------------------------------------
 
     /**
-     * Saves or restores action states at HIGH_PRIORITY, before UIAction handlers
-     * run at MEDIUM_PRIORITY. This ensures save captures the true pre-selection
-     * state and restore puts it back before updateEnabledState recomputes.
+     * Called by {@link LineComponent} when a rubber-band drag begins,
+     * so the coordinator can install the safety-net AWTEventListener.
      */
-    @Handler
-    public void selectionDragDidStart(SelectionDragDidStartNotification notification) {
-        draggingLine = notification.getLineComponent();
+    public void dragDidStart(LineComponent lineComponent) {
+        draggingLine = lineComponent;
+        Toolkit.getDefaultToolkit().addAWTEventListener(
+            globalMouseReleasedListener, AWTEvent.MOUSE_EVENT_MASK
+        );
     }
 
     @Handler(priority = Message.HIGH_PRIORITY)

@@ -29,7 +29,7 @@ import songscribe.ui.layout.ScaleContext;
 /**
  * Static hit-testing utilities for note heads in a {@link LineComponent}.
  * <p>
- * Extracted from {@link SelectionHandler} so that {@link NoteDragHandler} can
+ * Extracted from {@link LineSelectionHandler} so that {@link NoteDragHandler} can
  * share the same logic without duplicating it.
  */
 public class ElementHitTest {
