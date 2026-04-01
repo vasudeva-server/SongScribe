@@ -466,7 +466,7 @@ Several attachments use hardcoded `DEFAULT_WIDTH_SS` that should be computed fro
   - [x] Trill with wavy extension — collision detection across span
   - [x] Crescendo hairpin
   - [x] Diminuendo hairpin
-  - [ ] Text dynamics (pp, p, mp, mf, f, ff, sfz, fp) — TODO: requires a separate plan to add dedicated UI for adding text dynamics (currently no way to add them distinct from generic annotations)
+  - [x] Text dynamics (pp, p, mp, mf, f, ff, sfz, fp) — TODO: requires a separate plan to add dedicated UI for adding text dynamics (currently no way to add them distinct from generic annotations)
   - [ ] Volta bracket (first ending)
   - [ ] Volta bracket (second ending)
   - [ ] Tempo marking (X/Y positioning migrated; needs visual fine-tuning)
