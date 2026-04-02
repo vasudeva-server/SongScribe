@@ -21,7 +21,6 @@ package songscribe.io;
 
 
 import songscribe.music.DynamicsInterval;
-import songscribe.music.EndingInterval;
 import songscribe.music.Interval;
 import songscribe.music.IntervalSet;
 import songscribe.music.TupletInterval;
@@ -337,15 +336,6 @@ public final class FormatMigrator {
             return new Tuplet(startElement, endElement, grade);
         });
 
-        // Convert first/second endings
-        migrateIntervalSet(line, line.getFirstSecondEndings(), (l, interval) -> {
-            var startElement = l.getElement(interval.getStart());
-            var endElement = l.getElement(interval.getEnd());
-            var endingType = extractEndingType((EndingInterval) interval);
-
-            return new Ending(startElement, endElement, endingType);
-        });
-
         // Convert crescendos
         migrateIntervalSet(line, line.getCrescendos(), (l, interval) -> {
             var startElement = l.getElement(interval.getStart());
@@ -411,19 +401,6 @@ public final class FormatMigrator {
      */
     private static int extractTupletGrade(TupletInterval interval) {
         return interval.getGrade();
-    }
-
-    /**
-     * Extracts ending type from interval data.
-     * <p>
-     * Interval data format: "1" for first ending, "2" for second ending.
-     * Defaults to FIRST if data is null or invalid.
-     *
-     * @param interval The interval containing ending data
-     * @return The ending type
-     */
-    private static Ending.Type extractEndingType(EndingInterval interval) {
-        return interval.getEndingNumber() == 2 ? Ending.Type.SECOND : Ending.Type.FIRST;
     }
 
     /**

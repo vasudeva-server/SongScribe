@@ -101,7 +101,7 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
     public static final Font TUPLET_FONT;
 
     /**
-     * Font for first/second ending numbers.
+     * Font for first/second ending labels (Bravura glyphs).
      */
     public static final Font ENDING_FONT;
 
@@ -128,7 +128,7 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
 
             var tupletBase = MyFontUtils.getLocalFont("TupletNumbers.ttf");
             TUPLET_FONT = tupletBase.deriveFont(1.625f);  // 13px / 8 px/ss
-            ENDING_FONT = TUPLET_FONT;
+            ENDING_FONT = getMusicFont().deriveFont(FONT_SIZE * 0.6f);
         } catch (Exception e) {
             throw new RuntimeException("Cannot load required fonts for rendering.", e);
         }

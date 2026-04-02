@@ -797,8 +797,6 @@ public class VerticalStackingCalculator {
     /**
      * Stacks all endings (volta brackets) for the line.
      * <p>
-     * Processes {@link Ending} range elements first, then bridges legacy
-     * {@link songscribe.music.EndingInterval} data not already covered.
      * Volta brackets maintain consistent height per Gould; note-attached
      * elements are allowed to intrude into volta space.
      */
@@ -808,63 +806,9 @@ public class VerticalStackingCalculator {
         StaffExtents structuralExtents,
         LayoutResult.Builder builder) {
 
-        // Process new Ending range elements
         for (var ending : line.findRangeElements(Ending.class)) {
             stackSpanElement(ending, LayoutStylesheet.ENDING_MARGIN_SS,
                 columnsByElement, structuralExtents, builder);
-        }
-
-        // Bridge legacy ending intervals
-        bridgeLegacyEndingIntervals(line, columnsByElement, structuralExtents, builder);
-    }
-
-    /**
-     * Bridges legacy {@link songscribe.music.EndingInterval} data to temporary
-     * {@link Ending} range elements and stacks them.
-     */
-    private void bridgeLegacyEndingIntervals(
-        Line line,
-        Map<StaffElement, ElementColumn> columnsByElement,
-        StaffExtents structuralExtents,
-        LayoutResult.Builder builder) {
-
-        var existingEndings = line.findRangeElements(Ending.class);
-
-        for (var iter = line.getFirstSecondEndings().listIterator(); iter.hasNext(); ) {
-            var interval = iter.next();
-            var startNote = line.getElement(interval.getStart());
-            var endNote = line.getElement(interval.getEnd());
-
-            // Check if already covered by an Ending range element
-            if (isRangeCovered(startNote, endNote, existingEndings)) {
-                continue;
-            }
-
-            var startColumn = columnsByElement.get(startNote);
-            var endColumn = columnsByElement.get(endNote);
-
-            if (startColumn == null || endColumn == null) {
-                continue;
-            }
-
-            double anchorXSs = startColumn.getXSs();
-            double endXSs = endColumn.getXSs();
-
-            // Bridge to temporary Ending for dimension calculations
-            var endingType = interval.getEndingNumber() == 1 ? Ending.Type.FIRST : Ending.Type.SECOND;
-            var ending = new Ending(startNote, endNote, endingType);
-
-            int staffPosition = startNote.getStaffPosition();
-            double noteHeadYSs = staffPosition * LayoutStylesheet.STAFF_POSITION_OFFSET_SS;
-            double widthSs = ending.getSpanWidthSs(anchorXSs, endXSs);
-            double heightSs = ending.getContentHeightSs();
-            double ySs = stackAbove(structuralExtents, ending, anchorXSs, widthSs,
-                heightSs, LayoutStylesheet.ENDING_MARGIN_SS,
-                STRUCTURAL_HORIZONTAL_MARGIN_SS, staffPosition, noteHeadYSs, builder);
-
-            // Write SpanLayout keyed by the legacy interval for renderer access
-            builder.putSpanLayout(interval,
-                new LayoutResult.SpanLayout(anchorXSs, endXSs, ySs, heightSs));
         }
     }
 

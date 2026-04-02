@@ -411,7 +411,7 @@ public class ExportABCAction extends UIAction {
                 sb.append(' ');
             }
 
-            if (line.getFirstSecondEndings().isStartOfAnyInterval(i)) {
+            if (line.isStartOfAnyEnding(i)) {
                 sb.append("[1 ");
             }
 
@@ -437,7 +437,7 @@ public class ExportABCAction extends UIAction {
 
             if (
                 (line.getElement(i).getType() == ElementType.REPEAT_RIGHT) &&
-                    line.getFirstSecondEndings().isInsideAnyInterval(i)
+                    line.isInsideAnyEnding(i)
             ) {
                 sb.append("[2 ");
             }
@@ -446,7 +446,7 @@ public class ExportABCAction extends UIAction {
                 sb.append(' ');
             }
 
-            if (line.getFirstSecondEndings().isEndOfAnyInterval(i)) {
+            if (line.isEndOfAnyEnding(i)) {
                 sb.append("|] ");
             }
 

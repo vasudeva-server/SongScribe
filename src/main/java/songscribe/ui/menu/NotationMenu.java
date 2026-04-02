@@ -32,10 +32,11 @@ import static songscribe.ui.action.Actions.TOGGLE_TUPLET_ACTIONS;
 import module java.desktop;
 
 import songscribe.Strings;
+import songscribe.message.MessageCenter;
 import songscribe.ui.action.FirstSecondEndingAction;
 import songscribe.ui.action.ToggleLyricsUnderRestsAction;
 import songscribe.ui.action.ToggleTrillAction;
-import songscribe.message.MessageCenter;
+import songscribe.ui.component.MainFrame;
 
 public class NotationMenu extends JMenu {
 
@@ -51,13 +52,33 @@ public class NotationMenu extends JMenu {
         addSeparator();
 
         add(createDynamicsMenu());
-        add(FirstSecondEndingAction.createMakeEndingAction());
-        add(FirstSecondEndingAction.createRemoveEndingAction());
+        add(new JMenuItem(FirstSecondEndingAction.MAKE_ENDING_ACTION));
 
         addSeparator();
 
         add(new JMenuItem(FLIP_STEM_DIRECTION_ACTION));
         add(ToggleLyricsUnderRestsAction.createAction());
+
+        addMenuListener(new MenuListener() {
+            @Override
+            public void menuSelected(MenuEvent e) {
+                var score = MainFrame.getInstance().getScore();
+
+                if (score != null) {
+                    FirstSecondEndingAction.MAKE_ENDING_ACTION.validate(score);
+                } else {
+                    FirstSecondEndingAction.MAKE_ENDING_ACTION.setEnabled(false);
+                }
+            }
+
+            @Override
+            public void menuDeselected(MenuEvent e) {
+            }
+
+            @Override
+            public void menuCanceled(MenuEvent e) {
+            }
+        });
 
         MessageCenter.subscribe(this);
     }

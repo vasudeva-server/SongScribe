@@ -361,6 +361,30 @@ public enum ElementType {
     }
 
     /**
+     * A content element is a note, rest, or breath mark — elements that carry
+     * musical content. Grace notes and glissandos are transparent (not content).
+     */
+    public boolean isContentElement() {
+        return isPitchedNote() || isRest() || this == BREATH_MARK;
+    }
+
+    /**
+     * Transparent elements are skipped during first-second ending validation
+     * but are allowed to be present in the selection.
+     */
+    public boolean isTransparent() {
+        return isGraceNote() || this == GLISSANDO;
+    }
+
+    /**
+     * A terminal element can end a first-second ending selection:
+     * single barline, double barline, final double barline, or left repeat.
+     */
+    public boolean isTerminal() {
+        return isBarLine() || this == REPEAT_LEFT;
+    }
+
+    /**
      * Returns the rest equivalent of this type, or {@code this} if no rest counterpart exists.
      */
     public ElementType toRest() {

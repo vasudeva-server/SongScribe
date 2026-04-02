@@ -22,38 +22,41 @@ package songscribe.ui.action;
 
 import module java.desktop;
 
+import org.jspecify.annotations.Nullable;
+
 import songscribe.Strings;
 import songscribe.message.MessageCenter;
 import songscribe.message.command.FirstSecondEndingCommand;
+import songscribe.music.EndingValidationResult;
+import songscribe.ui.component.Score;
 
-public class FirstSecondEndingAction extends UIAction {
+public final class FirstSecondEndingAction extends UIAction {
 
-    private final boolean makeEnding;
+    public static final FirstSecondEndingAction MAKE_ENDING_ACTION = new FirstSecondEndingAction();
 
-    public static FirstSecondEndingAction createMakeEndingAction() {
-        return new FirstSecondEndingAction(true);
-    }
+    private @Nullable EndingValidationResult cachedResult;
 
-    public static FirstSecondEndingAction createRemoveEndingAction() {
-        return new FirstSecondEndingAction(false);
-    }
-
-    private FirstSecondEndingAction(boolean makeEnding) {
+    private FirstSecondEndingAction() {
         super(
-            Strings.get(makeEnding ? Strings.ACTION_ENDING_MAKE : Strings.ACTION_ENDING_REMOVE),
+            Strings.get(Strings.ACTION_ENDING_MAKE),
             "first-second-ending",
-            Flag.REQUIRES_MULTIPLE_SELECTION,
-            Flag.DISABLE_IN_REST_MODE,
             Flag.DISABLE_WHEN_PLAYING,
             Flag.DISABLE_WHEN_EDITING_TEXT,
             Flag.DISABLE_IN_GRACE_MODE
         );
-        this.makeEnding = makeEnding;
-        // TODO: Determine if make action should be enabled/disabled based on selection
+    }
+
+    public void validate(Score score) {
+        cachedResult = score.canMakeFirstSecondEnding();
+        setEnabled(cachedResult.isValid());
+    }
+
+    public @Nullable EndingValidationResult getCachedResult() {
+        return cachedResult;
     }
 
     @Override
     public void actionPerformed(ActionEvent e) {
-        MessageCenter.post(new FirstSecondEndingCommand(makeEnding));
+        MessageCenter.post(new FirstSecondEndingCommand());
     }
 }

@@ -233,12 +233,12 @@ public class MidiSequenceBuilder {
                 }
 
                 // Handle first-second endings
-                var firstSecondInterval = line.getFirstSecondEndings().findInterval(noteIndex);
+                var ending = line.findEndingAt(noteIndex);
 
-                if (repeating && firstSecondInterval != null) {
+                if (repeating && ending != null) {
                     // During repeat: skip first ending, play only on second pass
                     var foundRepeatRight = false;
-                    for (var i = noteIndex; i <= firstSecondInterval.getEnd() && i < noteCount; i++) {
+                    for (var i = noteIndex; i <= ending.getEndElementIndex() && i < noteCount; i++) {
                         if (line.getElement(i).getType() == ElementType.REPEAT_RIGHT) {
                             foundRepeatRight = true;
                             noteIndex = i - 1; // Will be incremented in the loop
@@ -250,9 +250,9 @@ public class MidiSequenceBuilder {
                     }
                 }
 
-                if (!repeating && firstSecondInterval != null && noteType == ElementType.REPEAT_RIGHT) {
+                if (!repeating && ending != null && noteType == ElementType.REPEAT_RIGHT) {
                     // Not repeating and at end of first-second ending: skip to end
-                    noteIndex = firstSecondInterval.getEnd();
+                    noteIndex = ending.getEndElementIndex();
                     continue;
                 }
 

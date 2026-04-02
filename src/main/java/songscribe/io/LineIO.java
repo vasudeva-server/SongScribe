@@ -20,6 +20,8 @@
 package songscribe.io;
 
 import java.io.PrintWriter;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.jspecify.annotations.Nullable;
 
@@ -27,13 +29,13 @@ import org.xml.sax.Attributes;
 
 import songscribe.music.BeamInterval;
 import songscribe.music.DynamicsInterval;
-import songscribe.music.EndingInterval;
 import songscribe.music.Interval;
 import songscribe.music.IntervalSet;
 import songscribe.music.TieInterval;
 import songscribe.music.TupletInterval;
 import songscribe.music.KeyType;
 import songscribe.music.Line;
+import songscribe.ui.layout.Ending;
 
 public final class LineIO {
 
@@ -112,11 +114,13 @@ public final class LineIO {
             XML.writeValue(pw, XML_TUPLETS, tupletIntervalToString(l.getTuplets()));
         }
 
-        if (!l.getFirstSecondEndings().isEmpty()) {
+        var endings = l.findEndings();
+
+        if (!endings.isEmpty()) {
             XML.writeValue(
                 pw,
                 XML_FSENDINGS,
-                intervalToString(l.getFirstSecondEndings())
+                endingsToString(endings)
             );
         }
 
@@ -144,6 +148,19 @@ public final class LineIO {
 
         pw.println("      </" + XML_NOTES + '>');
         pw.println("    </" + XML_LINE + '>');
+    }
+
+    private static String endingsToString(List<Ending> endings) {
+        var sb = new StringBuilder(27);
+
+        for (var ending : endings) {
+            sb.append(ending.getAnchorElementIndex());
+            sb.append(',');
+            sb.append(ending.getEndElementIndex());
+            sb.append(';');
+        }
+
+        return sb.toString();
     }
 
     private static String intervalToString(IntervalSet<? extends Interval> is) {
@@ -226,6 +243,9 @@ public final class LineIO {
 
         @Nullable
         private Where where = null;
+
+        /** Temporarily holds parsed fsendings index pairs (start, end) until elements are loaded. */
+        private final List<int[]> pendingEndingPairs = new ArrayList<>();
 
         private static void stringToBeamingIntervalSet(IntervalSet<Interval> is, String str) {
             var begin = 0;
@@ -378,7 +398,8 @@ public final class LineIO {
             }
         }
 
-        private static void stringToEndingIntervalSet(IntervalSet<EndingInterval> is, String str) {
+        private void parseEndingPairs(String str) {
+            pendingEndingPairs.clear();
             var begin = 0;
             var end = str.indexOf(';', begin);
 
@@ -397,7 +418,7 @@ public final class LineIO {
                         (secondComma == -1) ? end : secondComma
                     )
                 );
-                is.addInterval(new EndingInterval(a, b, 1));
+                pendingEndingPairs.add(new int[]{a, b});
                 begin = str.indexOf(';', begin) + 1;
                 end = str.indexOf(';', begin);
             }
@@ -441,6 +462,7 @@ public final class LineIO {
             } else if (where == Where.LINE) {
                 if (qName.equals(XML_LINE)) {
                     where = null;
+                    createEndingsFromPendingPairs(line);
                     return line;
                 }
                 if (lastTag != null && qName.equals(lastTag)) {
@@ -494,10 +516,7 @@ public final class LineIO {
                             line.getTuplets(),
                             str
                         );
-                        case XML_FSENDINGS -> stringToEndingIntervalSet(
-                            line.getFirstSecondEndings(),
-                            str
-                        );
+                        case XML_FSENDINGS -> parseEndingPairs(str);
                     }
                 }
             }
@@ -513,6 +532,21 @@ public final class LineIO {
             } else if (lastTag != null) {
                 value.append(ch, start, lenght);
             }
+        }
+
+        /**
+         * Creates Ending range elements from the parsed fsendings index pairs.
+         * Called at end-of-line after all elements have been loaded.
+         */
+        private void createEndingsFromPendingPairs(Line line) {
+            for (var pair : pendingEndingPairs) {
+                var startElement = line.getElement(pair[0]);
+                var endElement = line.getElement(pair[1]);
+                var ending = new Ending(startElement, endElement, Ending.Type.FIRST);
+                line.addRangeElement(ending);
+            }
+
+            pendingEndingPairs.clear();
         }
 
         private enum Where {

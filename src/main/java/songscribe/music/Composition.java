@@ -22,6 +22,7 @@ package songscribe.music;
 import module java.desktop;
 
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.regex.Pattern;
 
 import org.jspecify.annotations.Nullable;
@@ -178,6 +179,17 @@ public final class Composition {
     private int formatVersion = 1;
 
     private boolean modified;
+
+    // Modification bracket depth counter. When > 0, setModified(true) and
+    // postChanged() are deferred; on endModification() they are flushed once.
+    private int modificationDepth;
+
+    @Nullable
+    private EnumSet<ChangeType> accumulatedChangeTypes;
+
+    // Non-null only when all deferred changes are on the same line; null means multi-line.
+    @Nullable
+    private Line accumulatedLine;
 
     /** Whether the user has already been notified about short-ă replacement in this session. */
     private boolean shortANotified;
@@ -743,9 +755,43 @@ public final class Composition {
         postChanged(ChangeType.STRUCTURE);
     }
 
+    /**
+     * Opens a modification bracket. While the bracket is open, calls to
+     * {@link #setModified(boolean) setModified(true)} and {@link #postChanged}
+     * are deferred. Brackets may be nested.
+     */
+    public void beginModification() {
+        // TODO: snapshot composition state here for undo grouping
+        modificationDepth++;
+    }
+
+    /**
+     * Closes a modification bracket. When the outermost bracket closes and at
+     * least one change was accumulated, marks the composition modified and posts
+     * a single {@link CompositionDidChangeNotification} with the union of all
+     * accumulated change types.
+     */
+    public void endModification() {
+        modificationDepth--;
+
+        if (modificationDepth == 0 && accumulatedChangeTypes != null) {
+            this.modified = true;
+            var types = accumulatedChangeTypes;
+            var line = accumulatedLine;
+            accumulatedChangeTypes = null;
+            accumulatedLine = null;
+            MessageCenter.post(new CompositionDidChangeNotification(types, this, line));
+        }
+    }
+
     // -- IO/internal setters (remain public, no message posting) --
 
     public void setModified(boolean modified) {
+        // Defer dirty-marking until the bracket closes; clearing (on save/load) always applies.
+        if (modified && modificationDepth > 0) {
+            return;
+        }
+
         if (modified == this.modified) {
             return;
         }
@@ -1087,6 +1133,30 @@ public final class Composition {
     }
 
     private void postChanged(ChangeType changeType) {
-        MessageCenter.post(new CompositionDidChangeNotification(changeType, this));
+        postChanged(changeType, null);
+    }
+
+    /**
+     * Posts a change notification, or accumulates it if inside a modification bracket.
+     * Package-private so {@link Line} can route through the bracket.
+     */
+    void postChanged(ChangeType changeType, @Nullable Line line) {
+        if (modificationDepth > 0) {
+            if (accumulatedChangeTypes == null) {
+                accumulatedChangeTypes = EnumSet.of(changeType);
+                accumulatedLine = line;
+            } else {
+                accumulatedChangeTypes.add(changeType);
+
+                // If changes span multiple lines, clear the target line
+                if (accumulatedLine != line) {
+                    accumulatedLine = null;
+                }
+            }
+
+            return;
+        }
+
+        MessageCenter.post(new CompositionDidChangeNotification(changeType, this, line));
     }
 }

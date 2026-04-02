@@ -39,6 +39,7 @@ import songscribe.export.ExportOptions;
 import songscribe.io.CompositionIO;
 import songscribe.message.MessageCenter;
 import songscribe.music.Composition;
+import songscribe.music.EndingValidationResult;
 import songscribe.music.Line;
 import songscribe.music.LyricsProcessor;
 import songscribe.music.MusicEditOperations;
@@ -729,7 +730,7 @@ public final class Score
         return requireOperations().canRemoveDynamicsFromSelection();
     }
 
-    public boolean canMakeFirstSecondEnding() {
+    public EndingValidationResult canMakeFirstSecondEnding() {
         return requireOperations().canMakeFirstSecondEnding();
     }
 

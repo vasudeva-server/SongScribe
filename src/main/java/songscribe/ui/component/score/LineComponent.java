@@ -34,9 +34,8 @@ import songscribe.ui.edit.EditModeManager;
 import songscribe.ui.edit.GraceModeManager;
 import songscribe.ui.component.Score;
 import songscribe.ui.layout.CollisionDetector;
-import songscribe.ui.layout.LayoutStylesheet;
-import songscribe.ui.layout.TempoAttachment;
 import songscribe.ui.layout.LayoutEngine;
+import songscribe.ui.layout.LayoutStylesheet;
 import songscribe.ui.layout.LayoutResult;
 import songscribe.ui.layout.ScaleContext;
 import songscribe.ui.selection.LineSelectionState;
@@ -435,21 +434,15 @@ public class LineComponent extends ScoreComponent
             spaceAbove = Math.max(MIN_SPACE_ABOVE_SS, scale.fromPixels(Math.abs(extent.getMinY())));
         }
 
-        // Use layout result to determine space needed above staff
-        // Layout result positions are in ss relative to middleLineY=0
+        // Use layout result to determine space needed above staff.
+        // Check all decoration layouts (tempo, endings, trills, hairpins, etc.)
+        // because any of them may extend above the staff.
         if (layoutResult != null) {
-            if (line != null && line.elementCount() > 0) {
-                var firstNote = line.getElement(0);
-                var tempoBounds = layoutResult.findAttachmentBounds(firstNote, TempoAttachment.class);
+            for (var decorationLayout : layoutResult.getDecorationLayouts().values()) {
+                double top = decorationLayout.ySs();
 
-                if (tempoBounds != null) {
-                    double tempoTop = tempoBounds.getTop();
-
-                    if (tempoTop < 0) {
-                        // Element extends above middleLineY, need extra space
-                        double tempoSpaceNeeded = Math.abs(tempoTop);
-                        spaceAbove = Math.max(spaceAbove, tempoSpaceNeeded);
-                    }
+                if (top < 0) {
+                    spaceAbove = Math.max(spaceAbove, Math.abs(top));
                 }
             }
         }

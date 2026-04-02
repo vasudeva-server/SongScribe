@@ -32,10 +32,10 @@ import org.jspecify.annotations.Nullable;
 import kotlin.Pair;
 
 import songscribe.message.notification.CompositionDidChangeNotification;
-import songscribe.message.MessageCenter;
 import songscribe.midi.GlissandoMidiHelper;
 import songscribe.midi.PlaybackSettings;
 import songscribe.midi.VelocityMap;
+import songscribe.ui.layout.Ending;
 import songscribe.ui.layout.LayoutStylesheet;
 import songscribe.ui.layout.RangeElement;
 import songscribe.ui.layout.ScaleContext;
@@ -56,7 +56,6 @@ public class Line {
     private final IntervalSet<BeamInterval> beamings = new IntervalSet<>();
     private final IntervalSet<TieInterval> ties = new IntervalSet<>();
     private final IntervalSet<TupletInterval> tuplets = new IntervalSet<>();
-    private final IntervalSet<EndingInterval> firstSecondEndings = new IntervalSet<>();
     private final IntervalSet<DynamicsInterval> crescendo = new IntervalSet<>();
     private final IntervalSet<DynamicsInterval> diminuendo = new IntervalSet<>();
     @SuppressWarnings("rawtypes")
@@ -64,7 +63,6 @@ public class Line {
         beamings,
         ties,
         tuplets,
-        firstSecondEndings,
         crescendo,
         diminuendo,
     };
@@ -251,9 +249,9 @@ public class Line {
     private void compositionWasModified() {
         if (composition != null) {
             composition.setModified(true);
-            MessageCenter.post(new CompositionDidChangeNotification(
-                CompositionDidChangeNotification.ChangeType.CONTENT, composition, this
-            ));
+            composition.postChanged(
+                CompositionDidChangeNotification.ChangeType.CONTENT, this
+            );
         }
     }
 
@@ -428,10 +426,6 @@ public class Line {
         return tuplets;
     }
 
-    public IntervalSet<EndingInterval> getFirstSecondEndings() {
-        return firstSecondEndings;
-    }
-
     public IntervalSet<DynamicsInterval> getCrescendos() {
         return crescendo;
     }
@@ -593,6 +587,65 @@ public class Line {
         }
 
         return result;
+    }
+
+    /**
+     * Returns all Ending range elements on this line.
+     */
+    public List<Ending> findEndings() {
+        return findRangeElements(Ending.class);
+    }
+
+    /**
+     * Returns the Ending that contains the given element index, or null if none.
+     *
+     * @param elementIndex The element index to search for
+     * @return The containing Ending, or null
+     */
+    public @Nullable Ending findEndingAt(int elementIndex) {
+        for (var ending : findEndings()) {
+            int start = ending.getAnchorElementIndex();
+            int end = ending.getEndElementIndex();
+
+            if (elementIndex >= start && elementIndex <= end) {
+                return ending;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Returns whether the given element index is inside any ending.
+     */
+    public boolean isInsideAnyEnding(int elementIndex) {
+        return findEndingAt(elementIndex) != null;
+    }
+
+    /**
+     * Returns whether the given element index is the start of any ending.
+     */
+    public boolean isStartOfAnyEnding(int elementIndex) {
+        for (var ending : findEndings()) {
+            if (ending.getAnchorElementIndex() == elementIndex) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Returns whether the given element index is the end of any ending.
+     */
+    public boolean isEndOfAnyEnding(int elementIndex) {
+        for (var ending : findEndings()) {
+            if (ending.getEndElementIndex() == elementIndex) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     // =========================================================================

@@ -32,7 +32,6 @@ import org.junit.jupiter.api.Test;
 import songscribe.UnitTest;
 import songscribe.music.DynamicsInterval;
 import songscribe.music.ElementType;
-import songscribe.music.EndingInterval;
 import songscribe.music.Line;
 import songscribe.music.StaffElement;
 
@@ -405,25 +404,25 @@ class StructuralTierStackingTest extends UnitTest {
         }
 
         @Test
-        void testLegacyEndingIntervalProducesSpanLayout() {
+        void testEndingRangeElementProducesDecorationLayout() {
             var note1 = createNote(0, false);
             var note2 = createNote(0, false);
             var line = new Line();
             line.addElement(note1);
             line.addElement(note2);
 
-            var interval = new EndingInterval(0, 1, 1);
-            line.getFirstSecondEndings().addInterval(interval);
+            var ending = new Ending(note1, note2, Ending.Type.FIRST);
+            line.addRangeElement(ending);
 
             var result = stackColumns(
                 List.of(columnFor(note1, NOTE1_X_SS), columnFor(note2, NOTE2_X_SS)),
                 line);
 
-            var spanLayout = require(
-                result.getSpanLayout(interval),
-                "legacy ending SpanLayout");
+            var decorationLayout = require(
+                result.getDecorationLayout(ending),
+                "ending DecorationLayout");
 
-            assertThat(spanLayout.ySs()).isLessThan(0.0);
+            assertThat(decorationLayout.ySs()).isLessThan(0.0);
         }
     }
 

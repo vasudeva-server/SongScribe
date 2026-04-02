@@ -294,16 +294,14 @@ public class VerticalAdjustment extends Adjustment {
                     }
                 }
 
-                if (!line.getFirstSecondEndings().isEmpty()) {
+                var endings = line.findEndings();
+
+                if (!endings.isEmpty()) {
                     adjustRects.add(
                         new AdjustRect(
                             l,
                             AdjustType.FIRST_SECOND_ENDING,
-                            line
-                                .getFirstSecondEndings()
-                                .listIterator()
-                                .next()
-                                .getStart()
+                            endings.getFirst().getAnchorElementIndex()
                         )
                     );
                 }
@@ -402,14 +400,19 @@ public class VerticalAdjustment extends Adjustment {
                 adjustRect.rect.y = (int) bounds.getTop() - 8;
             }
             case FIRST_SECOND_ENDING -> {
-                var interval = line.getFirstSecondEndings().findInterval(adjustRect.xIndex);
+                var ending = line.findEndingAt(adjustRect.xIndex);
 
-                if (interval == null) {
+                if (ending == null) {
                     return;
                 }
 
-                var startNote = line.getElement(interval.getStart());
-                var endNote = line.getElement(interval.getEnd());
+                var startNote = ending.getAnchorElement();
+                var endNote = ending.getEndElement();
+
+                if (startNote == null || endNote == null) {
+                    return;
+                }
+
                 var layoutResult = getLayoutResultForLine(adjustRect.line);
                 var bounds = layoutResult.findRangeElementBounds(startNote, endNote, Ending.class);
 

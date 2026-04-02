@@ -169,8 +169,9 @@ public class LayoutEngine {
         calculateTies(line, columns, builder);
 
         // Step 7: Calculate vertical positions (requires stem layouts from steps 5/5b)
-        double lineWidthSs = columns.getLast().getRightEdgeXSs();
-        verticalCalculator.calculate(columns, line, builder, lineWidthSs);
+        // Use the composition's staff width for consistent StaffExtents discretization,
+        // not the content width which varies with column count.
+        verticalCalculator.calculate(columns, line, builder, staffRightMarginSs);
 
         // Step 8: Build final LayoutResult
         return buildLayoutResult(columns, line, builder);

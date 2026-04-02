@@ -67,9 +67,17 @@ public class CompositionDidChangeNotification extends Message {
         EnumSet<ChangeType> changeTypes,
         Composition composition
     ) {
+        this(changeTypes, composition, null);
+    }
+
+    public CompositionDidChangeNotification(
+        EnumSet<ChangeType> changeTypes,
+        Composition composition,
+        @Nullable Line line
+    ) {
         this.changeTypes = changeTypes;
         this.composition = composition;
-        this.line = null;
+        this.line = line;
     }
 
     public EnumSet<ChangeType> getChangeTypes() {

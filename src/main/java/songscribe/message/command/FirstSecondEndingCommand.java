@@ -23,14 +23,4 @@ package songscribe.message.command;
 import songscribe.message.Message;
 
 public class FirstSecondEndingCommand extends Message {
-
-    private final boolean makeEnding;
-
-    public FirstSecondEndingCommand(boolean makeEnding) {
-        this.makeEnding = makeEnding;
-    }
-
-    public boolean isMakeEnding() {
-        return makeEnding;
-    }
 }

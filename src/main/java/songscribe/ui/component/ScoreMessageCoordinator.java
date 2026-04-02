@@ -25,6 +25,9 @@ import module java.desktop;
 import net.engio.mbassy.listener.Handler;
 import org.jspecify.annotations.Nullable;
 
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+
 import songscribe.Strings;
 import songscribe.message.Message;
 import songscribe.message.MessageCenter;
@@ -43,6 +46,7 @@ import songscribe.message.command.ToggleTrillCommand;
 import songscribe.message.command.ToggleTupletCommand;
 import songscribe.message.command.UpdateInsertionElementCommand;
 import songscribe.message.notification.CompositionDidChangeNotification;
+import songscribe.message.notification.CompositionDidChangeNotification.ChangeType;
 import songscribe.message.notification.ControlDidChangeNotification;
 import songscribe.message.notification.ElementTypeWasSelectedNotification;
 import songscribe.message.notification.ModeDidChangeNotification;
@@ -52,9 +56,11 @@ import songscribe.message.notification.RestModeDidChangeNotification;
 import songscribe.music.Line;
 import songscribe.music.LyricsProcessor;
 import songscribe.music.MusicEditOperations;
+import songscribe.ui.layout.Ending;
 import songscribe.ui.OptionDialogs;
 import songscribe.ui.Mode;
 import songscribe.ui.action.Actions;
+import songscribe.ui.action.FirstSecondEndingAction;
 import songscribe.ui.action.InsertLineAction;
 import songscribe.ui.clipboard.ClipboardManager;
 import songscribe.ui.edit.EditModeManager;
@@ -169,7 +175,7 @@ public final class ScoreMessageCoordinator {
         var selection = selectionCoordinator.getActiveSelection();
         var line = (selection != null) ? selection.getLine() : null;
         operations.toggleBeaming();
-        MessageCenter.post(new CompositionDidChangeNotification(CompositionDidChangeNotification.ChangeType.CONTENT, score.getComposition(), line));
+        MessageCenter.post(new CompositionDidChangeNotification(ChangeType.CONTENT, score.getComposition(), line));
     }
 
     @Handler
@@ -199,13 +205,12 @@ public final class ScoreMessageCoordinator {
 
     @Handler
     public void handleFirstSecondEnding(FirstSecondEndingCommand message) {
-        if (message.isMakeEnding()) {
-            operations.makeFirstSecondEnding();
-        } else {
-            operations.removeFirstSecondEnding();
-        }
+        var result = FirstSecondEndingAction.MAKE_ENDING_ACTION.getCachedResult();
 
-        postSelectionContentChanged();
+        if (result != null && result.isValid()) {
+            operations.makeFirstSecondEnding(result);
+            postSelectionContentChanged();
+        }
     }
 
     @Handler
@@ -219,7 +224,7 @@ public final class ScoreMessageCoordinator {
         ToggleLyricsUnderRestsCommand message
     ) {
         operations.toggleLyricsUnderRests();
-        MessageCenter.post(new CompositionDidChangeNotification(CompositionDidChangeNotification.ChangeType.CONTENT, score.getComposition()));
+        MessageCenter.post(new CompositionDidChangeNotification(ChangeType.CONTENT, score.getComposition()));
     }
 
     @Handler
@@ -231,10 +236,66 @@ public final class ScoreMessageCoordinator {
     private void postSelectionContentChanged() {
         var state = selectionCoordinator.getActiveSelection();
         MessageCenter.post(new CompositionDidChangeNotification(
-            CompositionDidChangeNotification.ChangeType.CONTENT,
+            ChangeType.CONTENT,
             score.getComposition(),
             state != null ? state.getLine() : null
         ));
+    }
+
+    /**
+     * Checks affected lines for first-second endings that are no longer structurally
+     * valid and removes them. Shows a single alert if any endings are removed.
+     */
+    private void autoRemoveInvalidEndings(CompositionDidChangeNotification message) {
+        var composition = score.getComposition();
+        var targetLine = message.getLine();
+
+        // Collect invalid endings across affected lines
+        var invalidByLine = new LinkedHashMap<Line, ArrayList<Ending>>();
+
+        if (targetLine != null) {
+            collectInvalidEndings(targetLine, invalidByLine);
+        } else {
+            for (var line : composition.getLines()) {
+                collectInvalidEndings(line, invalidByLine);
+            }
+        }
+
+        if (invalidByLine.isEmpty()) {
+            return;
+        }
+
+        // Show alert once before cleanup begins
+        OptionDialogs.showWarningMessage(
+            null,
+            Strings.ALERT_TITLE_ENDING_WARNING,
+            Strings.ALERT_ENDING_AUTO_REMOVED
+        );
+
+        // Wrap all cleanup in a modification bracket so intermediate notifications
+        // are suppressed and a single coalesced notification is posted at the end
+        composition.beginModification();
+
+        try {
+            for (var entry : invalidByLine.entrySet()) {
+                for (var ending : entry.getValue()) {
+                    operations.removeInvalidEnding(entry.getKey(), ending);
+                }
+            }
+        } finally {
+            composition.endModification();
+        }
+    }
+
+    private void collectInvalidEndings(
+        Line line,
+        LinkedHashMap<Line, ArrayList<Ending>> target
+    ) {
+        var invalid = operations.findInvalidEndings(line);
+
+        if (!invalid.isEmpty()) {
+            target.put(line, invalid);
+        }
     }
 
     @Handler
@@ -245,10 +306,18 @@ public final class ScoreMessageCoordinator {
             return;
         }
 
+        // Auto-remove first-second endings invalidated by content or structure changes.
+        // Not triggered on FULL (file load) — stale endings from old files are cleaned
+        // up when the user first edits the affected line.
+        if (message.hasChangeType(ChangeType.CONTENT)
+            || message.hasChangeType(ChangeType.STRUCTURE)) {
+            autoRemoveInvalidEndings(message);
+        }
+
         // Invalidate layout for affected lines on content or structure changes
-        if (message.hasChangeType(CompositionDidChangeNotification.ChangeType.CONTENT)
-            || message.hasChangeType(CompositionDidChangeNotification.ChangeType.STRUCTURE)
-            || message.hasChangeType(CompositionDidChangeNotification.ChangeType.FULL)) {
+        if (message.hasChangeType(ChangeType.CONTENT)
+            || message.hasChangeType(ChangeType.STRUCTURE)
+            || message.hasChangeType(ChangeType.FULL)) {
             var staffPanel = mainPanel.getStaffPanel();
 
             if (staffPanel != null) {
@@ -267,9 +336,9 @@ public final class ScoreMessageCoordinator {
         }
 
         // Font, metadata, and layout changes require a full relayout
-        if (message.hasChangeType(CompositionDidChangeNotification.ChangeType.FONT)
-            || message.hasChangeType(CompositionDidChangeNotification.ChangeType.METADATA)
-            || message.hasChangeType(CompositionDidChangeNotification.ChangeType.LAYOUT)) {
+        if (message.hasChangeType(ChangeType.FONT)
+            || message.hasChangeType(ChangeType.METADATA)
+            || message.hasChangeType(ChangeType.LAYOUT)) {
             score.viewChanged();
         }
 
