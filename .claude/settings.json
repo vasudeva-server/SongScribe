@@ -54,21 +54,7 @@
     ]
   },
   "hooks": {
-    "PostToolUse": [
-      {
-        "matcher": "Edit|Write",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "if echo \"$CLAUDE_TOOL_INPUT\" | grep -qE '\"file_path\"[[:space:]]*:[[:space:]]*\"[^\"]*\\.(java|kt)\"'; then /Users/aparajita/Developer/projects/SongScribe/scripts/compile.sh 2>&1 | tail -20; fi"
-          },
-          {
-            "type": "command",
-            "command": "file=$(echo \"$CLAUDE_TOOL_INPUT\" | sed -n 's/.*\"file_path\"[[:space:]]*:[[:space:]]*\"\\([^\"]*\\)\".*/\\1/p'); if [[ \"$file\" == *.java || \"$file\" == *.kt ]]; then /Users/aparajita/Developer/projects/SongScribe/scripts/check-style.sh \"$file\"; fi"
-          }
-        ]
-      }
-    ]
+    "PostToolUse": []
   },
   "plansDirectory": "plans"
 }
