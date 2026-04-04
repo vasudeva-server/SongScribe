@@ -107,7 +107,7 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
 
     /** Cached Bravura music font at {@link #FONT_SIZE}. */
     @Nullable
-    private static Font noteFont;
+    private static Font noteFont = null;
 
     /**
      * Returns the Bravura (SMuFL) music font at standard note size ({@link #FONT_SIZE}).
