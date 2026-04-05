@@ -21,15 +21,12 @@ package songscribe.ui.dialog;
 
 import module java.desktop;
 
-import java.util.Arrays;
-import java.util.EnumMap;
 import java.util.Objects;
 
 
 import kotlin.Pair;
 
 import songscribe.Strings;
-import songscribe.error.RuntimeError;
 import songscribe.message.notification.FontDidChangeNotification;
 import songscribe.message.notification.KeySignatureDidChangeNotification;
 import songscribe.message.MessageCenter;
@@ -51,8 +48,6 @@ import songscribe.ui.component.NonEmptyGuard;
 import songscribe.ui.component.NumericTextField;
 import songscribe.ui.layout.PageModel;
 import songscribe.ui.layout.ScaleContext;
-import songscribe.ui.renderer.BaseElementRenderer;
-import songscribe.file.FileUtils;
 import songscribe.util.GraphicUtils;
 import songscribe.util.MyFontUtils;
 import songscribe.util.UIUtils;
@@ -556,25 +551,10 @@ public class CompositionSettingsDialog extends StandardDialog {
 
     private final class MusicTab extends BaseDialog.Tab {
 
-        private final JComboBox<Tempo.Type> tempoTypeCombo = new JComboBox<>(
-            // Only use non-IO values
-            Arrays.copyOfRange(
-                Tempo.Type.values(),
-                0,
-                Tempo.Type.QUAVER.ordinal() + 1
-            )
-        );
-
-        private final SpinnerModel tempoSpinnerModel = new SpinnerNumberModel(
-            120,
-            40,
-            220,
-            1
-        );
-
-        private final JComboBox<String> tempoDescriptionCombo = new JComboBox<>();
-        private final JCheckBox showOnlyDescriptionCheckBox = new JCheckBox(
-            Strings.get(Strings.DIALOG_COMPOSITION_SETTINGS_SHOW_ONLY_DESCRIPTION)
+        private final TempoSection tempoSection = new TempoSection(
+            Tempo.Type.displayValues(),
+            Strings.get(Strings.DIALOG_COMPOSITION_SETTINGS_SHOW_ONLY_DESCRIPTION),
+            "tempos"
         );
 
         private final JComboBox<String> keyCombo = new JComboBox<>(
@@ -602,12 +582,6 @@ public class CompositionSettingsDialog extends StandardDialog {
         private final JLabel unitLabel = new JLabel();
 
         private MusicTab() {
-            tempoTypeCombo.setRenderer(new NoteCellRenderer());
-            tempoTypeCombo.setEditable(false);
-
-            // Default to a quarter note
-            tempoTypeCombo.setSelectedIndex(4);
-
             keyCombo.setRenderer(new KeyCellRenderer());
             keyCombo.setSelectedIndex(5);
             keyCombo.setMaximumRowCount(7);
@@ -655,45 +629,8 @@ public class CompositionSettingsDialog extends StandardDialog {
                 Strings.get(Strings.DIALOG_COMPOSITION_SETTINGS_SECTION_TEMPO)
             );
 
-            var contents = new JPanel(new GridBagLayout());
-            contents.setAlignmentX(Component.LEFT_ALIGNMENT);
-
-            // 7px gap between components
-            var gbc = new GridBagConstraints();
-            gbc.gridx = 0;
-            gbc.gridy = 0;
-            gbc.insets = new Insets(0, 0, 0, FlatLafProps.<Integer>get(FlatLafKeys.DIALOG_COMPONENT_HORIZONTAL_GAP));
-            gbc.anchor = GridBagConstraints.WEST;
-            contents.add(tempoTypeCombo, gbc);
-
-            gbc.gridx += 1;
-            contents.add(new JLabel("="), gbc);
-
-            var spinner = new JSpinner(tempoSpinnerModel);
-            InputUtils.addNumericFilter(spinner);
-            gbc.gridx += 1;
-            contents.add(spinner, gbc);
-
-            tempoDescriptionCombo.setEditable(true);
-            FileUtils.readComboValuesFromFile(tempoDescriptionCombo, "tempos");
-            gbc.gridx += 1;
-
-            // Give a little more space to the left of the combo box
-            contents.add(tempoDescriptionCombo, gbc);
-
-            gbc.gridx = 0;
-            gbc.gridy = 1;
-            gbc.gridwidth = 4;
-
-            // Separate from the row above
-            gbc.insets = new Insets(FlatLafProps.<Integer>get(FlatLafKeys.DIALOG_COMPONENT_VERTICAL_EXTRA_GAP), 0, 0, 0);
-            contents.add(showOnlyDescriptionCheckBox, gbc);
-
-            // Don't let the contents grow horizontally
-            contents.setMaximumSize(contents.getPreferredSize());
-
             // Don't let the section grow vertically
-            section.add(contents);
+            section.add(tempoSection);
             UIUtils.setFlexibleWidth(section);
             return section;
         }
@@ -736,14 +673,7 @@ public class CompositionSettingsDialog extends StandardDialog {
         @Override
         protected boolean getData() {
             var composition = getComposition();
-            tempoTypeCombo.setSelectedItem(composition.getTempo().getTempoType());
-            tempoSpinnerModel.setValue(composition.getTempo().getVisibleTempo());
-            tempoDescriptionCombo.setSelectedItem(
-                composition.getTempo().getTempoDescription()
-            );
-            showOnlyDescriptionCheckBox.setSelected(
-                !composition.getTempo().shouldShowTempo()
-            );
+            tempoSection.setTempo(composition.getTempo());
             setKeyComboFromComposition(composition);
             revertLineWidthField();
             return true;
@@ -753,13 +683,13 @@ public class CompositionSettingsDialog extends StandardDialog {
         protected void setData() {
             var composition = getComposition();
             var tempo = composition.getTempo();
-            var tempoType = (Tempo.Type) tempoTypeCombo.getSelectedItem();
-            var visibleTempo = (Integer) tempoSpinnerModel.getValue();
-            var tempoDescription = (String) tempoDescriptionCombo.getSelectedItem();
-            var showTempo = !showOnlyDescriptionCheckBox.isSelected();
+            var tempoType = tempoSection.getTempoType();
+            var visibleTempo = tempoSection.getVisibleTempo();
+            var tempoDescription = tempoSection.getTempoDescription();
+            var showTempo = !tempoSection.isShowOnlyDescription();
 
             if (tempoType != tempo.getTempoType()
-                    || !visibleTempo.equals(tempo.getVisibleTempo())
+                    || visibleTempo != tempo.getVisibleTempo()
                     || !Objects.equals(tempoDescription, tempo.getTempoDescription())
                     || showTempo != tempo.shouldShowTempo()) {
                 MessageCenter.post(new TempoDidChangeNotification(
@@ -1217,153 +1147,6 @@ public class CompositionSettingsDialog extends StandardDialog {
                 attributionFontPreview.getFont(),
                 annotationFontPreview.getFont()
             ));
-        }
-    }
-
-    public static class BaseLabel extends JLabel {
-
-        private final JList<?> list;
-        private final int index;
-        private final boolean isSelected;
-
-        private BaseLabel(
-            String text,
-            JList<?> list,
-            int index,
-            boolean isSelected
-        ) {
-            super(text);
-            this.list = list;
-            this.index = index;
-            this.isSelected = isSelected;
-            setOpaque(true);
-        }
-
-        @Override
-        public void paintComponent(Graphics g) {
-            super.paintComponent(g);
-            Color color;
-
-            // If index == -1, it's drawing the combo box, otherwise the popup
-            if (index == -1) {
-                color = list.getBackground();
-            } else {
-                color = isSelected
-                    ? list.getSelectionBackground()
-                    : list.getBackground();
-            }
-
-            g.setColor(color);
-            g.fillRect(0, 0, getWidth(), getHeight());
-            g.setColor(
-                isSelected
-                    ? list.getSelectionForeground()
-                    : list.getForeground()
-            );
-        }
-    }
-
-    public static class NoteCellRenderer implements ListCellRenderer<Object> {
-
-        private static final Dimension CELL_SIZE = new Dimension(14, 36);
-        private static final Font FONT = BaseElementRenderer.getMusicFont()
-            .deriveFont(24f);
-
-        private static final EnumMap<Tempo.Type, String> tempoMap =
-            new EnumMap<>(Tempo.Type.class);
-
-        static {
-            tempoMap.put(Tempo.Type.QUAVER, "\uE1D7");
-            tempoMap.put(Tempo.Type.QUAVER_DOTTED, "\uE1D7");
-            tempoMap.put(Tempo.Type.CROTCHET, "\uE1D5");
-            tempoMap.put(Tempo.Type.CROTCHET_DOTTED, "\uE1D5");
-            tempoMap.put(Tempo.Type.MINIM, "\uE1D3");
-            tempoMap.put(Tempo.Type.MINIM_DOTTED, "\uE1D3");
-            tempoMap.put(Tempo.Type.SEMI_BREVE, "\uE1D2");
-
-            // IO aliases — map to the same glyph as their canonical forms
-            tempoMap.put(Tempo.Type.SEMIBREVE, "\uE1D2");
-            tempoMap.put(Tempo.Type.MINIMDOTTED, "\uE1D3");
-            tempoMap.put(Tempo.Type.CROTCHETDOTTED, "\uE1D5");
-            tempoMap.put(Tempo.Type.QUAVERDOTTED, "\uE1D7");
-
-            for (var type : Tempo.Type.values()) {
-                if (!tempoMap.containsKey(type)) {
-                    throw RuntimeError.exit(
-                        "tempoMap missing entry for Tempo.Type." + type.name());
-                }
-            }
-        }
-
-        NoteCellRenderer() {
-        }
-
-        @Override
-        public Component getListCellRendererComponent(
-            JList list,
-            Object value,
-            int index,
-            boolean isSelected,
-            boolean cellHasFocus
-        ) {
-            // FlatLaf has trouble drawing Bravura with the default renderer,
-            // so we have to draw it ourselves.
-            return new NoteLabel((Tempo.Type) value, list, index, isSelected);
-        }
-
-        private static final class NoteLabel extends BaseLabel {
-
-            private static final String WHOLE_NOTE = "\uE1D2";
-            private static final String EIGHTH_NOTE = "\uE1D7";
-            private static final String DOT = "\uE1E7";
-            private static final int DOT_OFFSET = 3;
-            private static final int EIGHTH_DOT_OFFSET = 1;
-
-            private final Tempo.Type tempo;
-
-            private NoteLabel(
-                Tempo.Type tempo,
-                JList<?> list,
-                int index,
-                boolean isSelected
-            ) {
-                // Static initializer validates all keys, so get() is always non-null
-                super(tempoMap.getOrDefault(tempo, ""), list, index, isSelected);
-                this.tempo = tempo;
-                setPreferredSize(CELL_SIZE);
-                setMinimumSize(CELL_SIZE);
-            }
-
-            @Override
-            public void paintComponent(Graphics g) {
-                super.paintComponent(g);
-                g.setFont(FONT);
-
-                // Adjust the positioning of the text based on which note it is.
-                // We want a whole note to be centered vertically in the cell.
-                var offset = getText().equals(WHOLE_NOTE)
-                    ? (getHeight() / 2)
-                    : 8;
-
-                // Draw the note first. If there is a dot, draw that separately.
-                var text = getText();
-                var x = getWidth() / 2;
-                var y = getHeight() - offset;
-
-                g.drawString(text, x, y);
-
-                if (tempo.getNote().getDotCount() > 0) {
-                    var metrics = g.getFontMetrics();
-                    var width = metrics.stringWidth(text);
-
-                    // Notes with flags tuck the dot in closer
-                    var dotOffset = text.equals(EIGHTH_NOTE)
-                        ? EIGHTH_DOT_OFFSET
-                        : DOT_OFFSET;
-
-                    g.drawString(DOT, x + width + dotOffset, y);
-                }
-            }
         }
     }
 

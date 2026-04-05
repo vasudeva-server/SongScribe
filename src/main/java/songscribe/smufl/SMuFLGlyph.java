@@ -140,15 +140,10 @@ public enum SMuFLGlyph {
     // Metronome marks (U+ECA0-U+ECBF)
     MET_NOTE_WHOLE("metNoteWhole", '\uECA2'),
     MET_NOTE_HALF_UP("metNoteHalfUp", '\uECA3'),
-    MET_NOTE_HALF_DOWN("metNoteHalfDown", '\uECA4'),
     MET_NOTE_QUARTER_UP("metNoteQuarterUp", '\uECA5'),
-    MET_NOTE_QUARTER_DOWN("metNoteQuarterDown", '\uECA6'),
     MET_NOTE_8TH_UP("metNote8thUp", '\uECA7'),
-    MET_NOTE_8TH_DOWN("metNote8thDown", '\uECA8'),
     MET_NOTE_16TH_UP("metNote16thUp", '\uECA9'),
-    MET_NOTE_16TH_DOWN("metNote16thDown", '\uECAA'),
     MET_NOTE_32ND_UP("metNote32ndUp", '\uECAB'),
-    MET_NOTE_32ND_DOWN("metNote32ndDown", '\uECAC'),
     MET_AUGMENTATION_DOT("metAugmentationDot", '\uECB7');
 
     private final String smuflName;

@@ -25,11 +25,7 @@ import static songscribe.ui.renderer.GraphicsState.Property.FONT;
 
 import module java.desktop;
 
-import java.util.EnumMap;
-import java.util.Map;
-
-import org.jspecify.annotations.Nullable;
-
+import songscribe.error.RuntimeError;
 import songscribe.music.ElementType;
 import songscribe.music.StaffElement;
 import songscribe.music.Tempo;
@@ -53,30 +49,13 @@ public class TempoRenderer extends BaseElementRenderer<StaffElement> {
     // Constants
     // ==========================================================================
 
-    /**
-     * Maps note types to their SMuFL metronome glyph (stem-up, since tempo notes
-     * always display stem-up).
-     */
-    private static final Map<ElementType, SMuFLGlyph> METRONOME_GLYPHS;
-
     /** Bravura font scaled for tempo note display. */
-    private static final Font TEMPO_NOTE_FONT;
+    private static final Font TEMPO_NOTE_FONT =
+        MUSIC_FONT.deriveFont(FONT_SIZE * TempoAttachment.NOTE_SCALE);
 
     /** Gap between tempo note glyph and "= NNN" text, in staff-space units. */
-    private static final float GLYPH_TEXT_GAP_SS;
-
-    static {
-        METRONOME_GLYPHS = new EnumMap<>(ElementType.class);
-        METRONOME_GLYPHS.put(ElementType.SEMIBREVE, SMuFLGlyph.MET_NOTE_WHOLE);
-        METRONOME_GLYPHS.put(ElementType.MINIM, SMuFLGlyph.MET_NOTE_HALF_UP);
-        METRONOME_GLYPHS.put(ElementType.CROTCHET, SMuFLGlyph.MET_NOTE_QUARTER_UP);
-        METRONOME_GLYPHS.put(ElementType.QUAVER, SMuFLGlyph.MET_NOTE_8TH_UP);
-        METRONOME_GLYPHS.put(ElementType.SEMIQUAVER, SMuFLGlyph.MET_NOTE_16TH_UP);
-        METRONOME_GLYPHS.put(ElementType.DEMI_SEMIQUAVER, SMuFLGlyph.MET_NOTE_32ND_UP);
-
-        TEMPO_NOTE_FONT = MUSIC_FONT.deriveFont(FONT_SIZE * TempoAttachment.NOTE_SCALE);
-        GLYPH_TEXT_GAP_SS = FlatLafProps.get(FlatLafKeys.SCORE_TEMPO_GLYPH_TEXT_GAP);
-    }
+    private static final float GLYPH_TEXT_GAP_SS =
+        FlatLafProps.get(FlatLafKeys.SCORE_TEMPO_GLYPH_TEXT_GAP);
 
     // Singleton instance
     private static final TempoRenderer INSTANCE = new TempoRenderer();
@@ -94,51 +73,54 @@ public class TempoRenderer extends BaseElementRenderer<StaffElement> {
         return INSTANCE;
     }
 
+    /**
+     * Returns the SMuFL metronome glyph for the given element type,
+     * or exits if no mapping exists.
+     */
+    private static SMuFLGlyph requireMetronomeGlyph(ElementType type) {
+        var glyph = TempoAttachment.metronomeGlyphFor(type);
+
+        if (glyph == null) {
+            throw RuntimeError.exit("No metronome glyph for element type: " + type);
+        }
+
+        return glyph;
+    }
+
     // ==========================================================================
-    // Tempo Note Bounds Calculation
+    // Tempo Note Painting
     // ==========================================================================
 
     /**
-     * Calculate the bounding box for a tempo note in the local coordinate
-     * system (before scaling and translation). Uses the pre-composed SMuFL
-     * metronome glyph which includes notehead, stem, and flag in one codepoint.
+     * Paints a tempo note glyph (metronome mark) at the given baseline position.
+     * <p>
+     * The caller must set the desired Bravura-derived font on {@code g2} before
+     * calling. This method draws the metronome glyph and augmentation dot (if
+     * the tempo type is dotted), using the font size to scale SMuFL advance
+     * widths for dot placement.
      *
-     * @param frc  the font render context
-     * @param font the Bravura font (unused, kept for API compatibility)
-     * @param note the tempo note
-     * @return the bounding rectangle, or null if the note type has no glyph
+     * @param g2        graphics context with a Bravura-derived font already set
+     * @param tempoType the tempo type whose note glyph to draw
+     * @param x         x coordinate of the glyph origin
+     * @param y         y coordinate of the glyph baseline
      */
-    @Nullable
-    public static Rectangle2D getTempoNoteBounds(
-        FontRenderContext frc,
-        Font font,
-        StaffElement note
+    public static void paintTempoNote(
+        Graphics2D g2,
+        Tempo.Type tempoType,
+        float x,
+        float y
     ) {
-        var metGlyph = METRONOME_GLYPHS.get(note.getType());
+        var note = tempoType.getNote();
+        var metGlyph = requireMetronomeGlyph(note.getType());
 
-        if (metGlyph == null) {
-            return null;
-        }
+        g2.drawString(metGlyph.asString(), x, y);
 
-        // The metronome glyph includes head + stem + flag as a single codepoint
-        var gv = MUSIC_FONT.createGlyphVector(frc, metGlyph.asString());
-        var bounds = new Rectangle2D.Double();
-        bounds.setRect(gv.getVisualBounds());
-
-        // Add dot bounds if note has dots
         if (note.getDotCount() > 0) {
-            var dotGv = MUSIC_FONT.createGlyphVector(frc, SMuFLGlyph.MET_AUGMENTATION_DOT.asString());
-            var dotBounds = dotGv.getVisualBounds();
-            var dotX = bounds.getMaxX() + 2;
-            bounds.add(new Rectangle2D.Double(
-                dotX,
-                dotBounds.getY(),
-                dotBounds.getWidth() * note.getDotCount(),
-                dotBounds.getHeight()
-            ));
+            float fontScale = g2.getFont().getSize2D() / FONT_SIZE;
+            float dotX = x
+                + (float) (SMuFLMetadata.getInstance().requireAdvanceWidth(metGlyph) * fontScale);
+            g2.drawString(SMuFLGlyph.MET_AUGMENTATION_DOT.asString(), dotX, y);
         }
-
-        return bounds;
     }
 
     // ==========================================================================
@@ -218,7 +200,8 @@ public class TempoRenderer extends BaseElementRenderer<StaffElement> {
 
         // Build tempo text
         var tempoBuilder = new StringBuilder(25);
-        var tempoTypeNote = tempo.getTempoType().getNote();
+        var tempoType = tempo.getTempoType();
+        var tempoTypeNote = tempoType.getNote();
 
         // Compute the text baseline Y: aligned with the bottom of the tempo note glyph
         var metadata = SMuFLMetadata.getInstance();
@@ -226,7 +209,7 @@ public class TempoRenderer extends BaseElementRenderer<StaffElement> {
             + TempoAttachment.QUARTER_NOTE_BBOX.height() * TempoAttachment.NOTE_SCALE;
 
         if (tempo.shouldShowTempo()) {
-            drawTempoChangeNote(g2, tempoTypeNote, xSs, ySs);
+            drawTempoChangeNote(g2, tempoType, xSs, ySs);
             tempoBuilder.append("= ");
             tempoBuilder.append(tempo.getVisibleTempo());
             tempoBuilder.append(' ');
@@ -242,18 +225,15 @@ public class TempoRenderer extends BaseElementRenderer<StaffElement> {
 
         if (tempo.shouldShowTempo()) {
             // Advance past the metronome glyph using SMuFL advance widths (scaled)
-            var metGlyph = METRONOME_GLYPHS.get(tempoTypeNote.getType());
+            var metGlyph = requireMetronomeGlyph(tempoTypeNote.getType());
+            xSs += metadata.requireAdvanceWidth(metGlyph) * TempoAttachment.NOTE_SCALE;
 
-            if (metGlyph != null) {
-                xSs += metadata.requireAdvanceWidth(metGlyph) * TempoAttachment.NOTE_SCALE;
-
-                if (tempoTypeNote.getDotCount() > 0) {
-                    xSs += metadata.requireAdvanceWidth(SMuFLGlyph.MET_AUGMENTATION_DOT)
-                        * TempoAttachment.NOTE_SCALE;
-                }
-
-                xSs += GLYPH_TEXT_GAP_SS;
+            if (tempoTypeNote.getDotCount() > 0) {
+                xSs += metadata.requireAdvanceWidth(SMuFLGlyph.MET_AUGMENTATION_DOT)
+                    * TempoAttachment.NOTE_SCALE;
             }
+
+            xSs += GLYPH_TEXT_GAP_SS;
         }
 
         var tempoText = tempoBuilder.toString();
@@ -267,15 +247,11 @@ public class TempoRenderer extends BaseElementRenderer<StaffElement> {
      */
     private void drawTempoChangeNote(
         Graphics2D g2,
-        StaffElement tempoNote,
+        Tempo.Type tempoType,
         double xSs,
         double ySs
     ) {
-        var metGlyph = METRONOME_GLYPHS.get(tempoNote.getType());
-
-        if (metGlyph == null) {
-            return;
-        }
+        var metGlyph = requireMetronomeGlyph(tempoType.getNote().getType());
 
         // Convert layout top Y to glyph origin Y (baseline), accounting for font scale
         var bbox = SMuFLMetadata.getInstance().requireBBox(metGlyph);
@@ -284,21 +260,9 @@ public class TempoRenderer extends BaseElementRenderer<StaffElement> {
         try (var ignored = GraphicsState.save(g2, COLOR, FONT)) {
             g2.setColor(ELEMENT_COLOR);
             g2.setFont(TEMPO_NOTE_FONT);
-            g2.drawString(metGlyph.asString(), (float) xSs, (float) originYSs);
-
-            if (tempoNote.getDotCount() > 0) {
-                double dotX = xSs + SMuFLMetadata.getInstance()
-                    .requireAdvanceWidth(metGlyph) * TempoAttachment.NOTE_SCALE;
-                g2.drawString(SMuFLGlyph.MET_AUGMENTATION_DOT.asString(),
-                    (float) dotX, (float) originYSs);
-            }
+            paintTempoNote(g2, tempoType, (float) xSs, (float) originYSs);
         }
     }
-
-    /**
-     * Paints a simple note for tempo display using a pre-composed SMuFL
-     * metronome glyph (notehead + stem + flag in a single codepoint).
-     */
 
     /**
      * Gets the Y position for tempo change from layout result.

@@ -22,6 +22,7 @@ package songscribe.ui.layout;
 
 import org.jspecify.annotations.Nullable;
 
+import songscribe.music.ElementType;
 import songscribe.music.StaffElement;
 import songscribe.music.Tempo;
 import java.awt.FontMetrics;
@@ -159,10 +160,10 @@ public class TempoAttachment extends Attachment {
     }
 
     /**
-     * Returns the SMuFL metronome glyph for the given note's type, or null if unmapped.
+     * Returns the SMuFL metronome glyph for the given element type, or null if unmapped.
      */
-    static @Nullable SMuFLGlyph metronomeGlyphFor(StaffElement note) {
-        return switch (note.getType()) {
+    public static @Nullable SMuFLGlyph metronomeGlyphFor(ElementType type) {
+        return switch (type) {
             case SEMIBREVE -> SMuFLGlyph.MET_NOTE_WHOLE;
             case MINIM -> SMuFLGlyph.MET_NOTE_HALF_UP;
             case CROTCHET -> SMuFLGlyph.MET_NOTE_QUARTER_UP;
@@ -178,7 +179,7 @@ public class TempoAttachment extends Attachment {
      * Returns 0 if the note type has no metronome glyph.
      */
     static double noteWidthSs(StaffElement note, SMuFLMetadata metadata) {
-        var glyph = metronomeGlyphFor(note);
+        var glyph = metronomeGlyphFor(note.getType());
 
         if (glyph == null) {
             return 0;

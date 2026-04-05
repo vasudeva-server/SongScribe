@@ -19,6 +19,8 @@
  */
 package songscribe.music;
 
+import java.util.Arrays;
+
 import songscribe.midi.MidiSequenceBuilder;
 
 public class Tempo {
@@ -112,6 +114,11 @@ public class Tempo {
 
         Type(Tempo.Type type) {
             note = type.note;
+        }
+
+        /** Returns the non-IO display values (SEMI_BREVE through QUAVER). */
+        public static Type[] displayValues() {
+            return Arrays.copyOfRange(values(), 0, QUAVER.ordinal() + 1);
         }
 
         public StaffElement getNote() {
