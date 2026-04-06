@@ -21,21 +21,24 @@ package songscribe.ui.menu;
 
 import static songscribe.ui.action.Actions.ADD_CRESCENDO_ACTION;
 import static songscribe.ui.action.Actions.ADD_DIMINUENDO_ACTION;
+import static songscribe.ui.action.Actions.BREATH_MARK_ACTION;
 import static songscribe.ui.action.Actions.DYNAMIC_MARKING_ACTION_GROUP;
+import static songscribe.ui.action.Actions.FERMATA_ACTION;
 import static songscribe.ui.action.Actions.FLIP_STEM_DIRECTION_ACTION;
 import static songscribe.ui.action.Actions.REMOVE_DYNAMICS_ACTION;
 import static songscribe.ui.action.Actions.REMOVE_TUPLET_ACTION;
+import static songscribe.ui.action.Actions.REST_ACTION;
+import static songscribe.ui.action.Actions.STAFF_ANNOTATION_ACTIONS;
 import static songscribe.ui.action.Actions.TOGGLE_BEAM_ACTION;
 import static songscribe.ui.action.Actions.TOGGLE_TIE_ACTION;
+import static songscribe.ui.action.Actions.TOGGLE_LYRICS_UNDER_RESTS_ACTION;
+import static songscribe.ui.action.Actions.TOGGLE_TRILL_ACTION;
 import static songscribe.ui.action.Actions.TOGGLE_TUPLET_ACTIONS;
 
 import module java.desktop;
 
 import songscribe.Strings;
-import songscribe.message.MessageCenter;
 import songscribe.ui.action.FirstSecondEndingAction;
-import songscribe.ui.action.ToggleLyricsUnderRestsAction;
-import songscribe.ui.action.ToggleTrillAction;
 import songscribe.ui.component.MainFrame;
 
 public class NotationMenu extends JMenu {
@@ -44,20 +47,49 @@ public class NotationMenu extends JMenu {
 
     public NotationMenu() {
         super(NAME);
+
+        // Group 1: Pitch & Rhythm
+        add(new DurationMenu());
+        add(new JCheckBoxMenuItem(REST_ACTION));
+        add(new DotMenu());
+        add(new AccidentalMenu());
+
+        addSeparator();
+
+        // Group 2: Spans & Barlines
+        add(new GlissandoMenu());
+        add(new RepeatsMenu());
+        add(new BarlineMenu());
+
+        addSeparator();
+
+        // Group 3: Articulation & Expression
+        add(new ArticulationMenu());
+        add(createTupletMenu());
+        add(createDynamicsMenu());
+        add(new JCheckBoxMenuItem(TOGGLE_TRILL_ACTION));
+        add(new JCheckBoxMenuItem(FERMATA_ACTION));
+        add(new JCheckBoxMenuItem(BREATH_MARK_ACTION));
+
+        addSeparator();
+
+        // Group 4: Display
         add(new JMenuItem(TOGGLE_BEAM_ACTION));
         add(new JMenuItem(TOGGLE_TIE_ACTION));
-        add(createTupletMenu());
-        add(new JMenuItem(ToggleTrillAction.createAction()));
-
-        addSeparator();
-
-        add(createDynamicsMenu());
-        add(new JMenuItem(FirstSecondEndingAction.MAKE_ENDING_ACTION));
-
-        addSeparator();
-
         add(new JMenuItem(FLIP_STEM_DIRECTION_ACTION));
-        add(ToggleLyricsUnderRestsAction.createAction());
+
+        addSeparator();
+
+        // Group 5: Staff Annotations
+        for (var action : STAFF_ANNOTATION_ACTIONS) {
+            add(action);
+        }
+
+        addSeparator();
+
+        // Group 6: Passage
+        add(new JMenuItem(FirstSecondEndingAction.MAKE_ENDING_ACTION));
+        add(new JCheckBoxMenuItem(TOGGLE_LYRICS_UNDER_RESTS_ACTION));
 
         addMenuListener(new MenuListener() {
             @Override
@@ -79,8 +111,6 @@ public class NotationMenu extends JMenu {
             public void menuCanceled(MenuEvent e) {
             }
         });
-
-        MessageCenter.subscribe(this);
     }
 
     private static JMenu createTupletMenu() {

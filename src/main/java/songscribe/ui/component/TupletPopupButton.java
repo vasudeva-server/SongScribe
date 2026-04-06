@@ -24,6 +24,7 @@ import module java.desktop;
 
 import net.engio.mbassy.listener.Handler;
 
+import songscribe.Strings;
 import songscribe.message.MessageCenter;
 import songscribe.ui.action.Actions;
 import songscribe.ui.action.UIAction;
@@ -46,9 +47,7 @@ public class TupletPopupButton extends PopupButton {
         super.configureButtonFromAction(action);
 
         // Used a fixed tooltip for the button
-        setToolTipText(
-            "<html><strong>Tuplet</strong><br>Create or remove tuplet from the selection</html>"
-        );
+        setToolTipText(Strings.get(Strings.TOOLTIP_TUPLET));
     }
 
     @Handler

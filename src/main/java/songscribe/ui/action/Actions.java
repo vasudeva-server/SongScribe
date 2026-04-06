@@ -124,6 +124,16 @@ public final class Actions {
     public static final ElementTypeAction SLIDE_OUT_ACTION =
         ElementTypeAction.createSlideOutAction();
 
+    public static final List<ElementTypeAction> NOTE_DURATION_ACTIONS = List.of(
+        GRACE_EIGHTH_NOTE_ACTION,
+        THIRTY_SECOND_NOTE_ACTION,
+        SIXTEENTH_NOTE_ACTION,
+        EIGHTH_NOTE_ACTION,
+        QUARTER_NOTE_ACTION,
+        HALF_NOTE_ACTION,
+        WHOLE_NOTE_ACTION
+    );
+
     public static final DurationActionGroup DURATION_ACTION_GROUP =
         new DurationActionGroup(
             GRACE_EIGHTH_NOTE_ACTION,
@@ -235,6 +245,11 @@ public final class Actions {
     public static final FlipStemDirectionAction FLIP_STEM_DIRECTION_ACTION =
         FlipStemDirectionAction.createAction();
 
+    public static final ToggleTrillAction TOGGLE_TRILL_ACTION = ToggleTrillAction.createAction();
+
+    public static final ToggleLyricsUnderRestsAction TOGGLE_LYRICS_UNDER_RESTS_ACTION =
+        ToggleLyricsUnderRestsAction.createAction();
+
     public static final AddDynamicsAction ADD_CRESCENDO_ACTION =
         AddDynamicsAction.createCrescendoAction();
 
@@ -283,6 +298,13 @@ public final class Actions {
 
     public static final KeySignatureChangeAction KEY_SIGNATURE_CHANGE_ACTION =
         KeySignatureChangeAction.createAction();
+
+    public static final List<UIAction> STAFF_ANNOTATION_ACTIONS = List.of(
+        TEMPO_CHANGE_ACTION,
+        BEAT_CHANGE_ACTION,
+        ANNOTATION_ACTION,
+        KEY_SIGNATURE_CHANGE_ACTION
+    );
 
     public static final FermataAction FERMATA_ACTION =
         FermataAction.createAction();

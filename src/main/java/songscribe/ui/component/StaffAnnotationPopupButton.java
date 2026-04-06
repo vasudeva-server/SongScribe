@@ -22,38 +22,26 @@ package songscribe.ui.component;
 
 import module java.desktop;
 
-import java.util.Arrays;
-import java.util.List;
-
 import net.engio.mbassy.listener.Handler;
 
+import songscribe.Strings;
 import songscribe.message.MessageCenter;
 import songscribe.ui.action.Actions;
-import songscribe.ui.action.UIAction;
 import songscribe.message.notification.MusicSelectionDidChangeNotification;
 import songscribe.util.GraphicUtils;
 
-public class InsertPopupButton extends PopupButton {
+public class StaffAnnotationPopupButton extends PopupButton {
 
-    private static final List<UIAction> ACTIONS = Arrays.asList(
-        Actions.ANNOTATION_ACTION,
-        Actions.TEMPO_CHANGE_ACTION,
-        Actions.BEAT_CHANGE_ACTION,
-        Actions.KEY_SIGNATURE_CHANGE_ACTION
-    );
-
-    public InsertPopupButton() {
-        super(ACTIONS, null);
+    public StaffAnnotationPopupButton() {
+        super(Actions.STAFF_ANNOTATION_ACTIONS, null);
         setIcon(GraphicUtils.getScaledSVGIcon("plus.svg", 20, true));
-        setToolTipText(
-            "<html><strong>Insert</strong><br>Insert other elements</html>"
-        );
+        setToolTipText(Strings.get(Strings.TOOLTIP_STAFF_ANNOTATIONS));
         MessageCenter.subscribe(this);
     }
 
     @Handler
     public void musicSelectionDidChange(MusicSelectionDidChangeNotification message) {
         // Enable only if one of the actions is enabled
-        setEnabled(ACTIONS.stream().anyMatch(AbstractAction::isEnabled));
+        setEnabled(Actions.STAFF_ANNOTATION_ACTIONS.stream().anyMatch(AbstractAction::isEnabled));
     }
 }

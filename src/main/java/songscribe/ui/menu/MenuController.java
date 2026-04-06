@@ -53,6 +53,7 @@ import songscribe.ui.action.ExportImageAction;
 import songscribe.ui.action.ExportMidiAction;
 import songscribe.ui.action.ExportPDFAction;
 import songscribe.ui.action.ExportSVGAction;
+import songscribe.ui.action.InsertLineAction;
 import songscribe.ui.action.LaunchAction;
 import songscribe.ui.action.NewAction;
 import songscribe.ui.action.OpenAction;
@@ -100,7 +101,6 @@ public class MenuController {
 
         menuBar.add(initFileMenu());
         menuBar.add(initEditMenu());
-        menuBar.add(InsertMenu.getInstance());
         menuBar.add(new NotationMenu());
         menuBar.add(initModeMenu());
         menuBar.add(initCompositionMenu());
@@ -319,6 +319,14 @@ public class MenuController {
 
     private static JMenu initCompositionMenu() {
         var menu = new JMenu(Strings.get(Strings.MENU_COMPOSITION));
+
+        var lineMenu = new JMenu(Strings.get(Strings.MENU_COMPOSITION_LINE));
+        lineMenu.add(InsertLineAction.createAddLineAction());
+        lineMenu.add(InsertLineAction.createInsertLineBeforeAction());
+        lineMenu.add(InsertLineAction.createInsertLineAfterAction());
+        menu.add(lineMenu);
+        menu.addSeparator();
+
         menu.add(Actions.COMPOSITION_SETTINGS_ACTION);
         menu.add(Actions.LYRICS_DIALOG_ACTION);
         return menu;

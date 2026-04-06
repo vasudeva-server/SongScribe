@@ -22,7 +22,7 @@ package songscribe.ui.component.toolbar;
 
 import module java.desktop;
 
-import songscribe.ui.component.InsertPopupButton;
+import songscribe.ui.component.StaffAnnotationPopupButton;
 import songscribe.ui.component.ModeCycleButton;
 import songscribe.ui.component.ThemeAwareMatteBorder;
 
@@ -53,7 +53,7 @@ public final class MainToolbarPanel extends JPanel {
         toolsPanel.add(createArticulationToolbarPanel());
         toolsPanel.add(createConnectionToolbarPanel());
         toolsPanel.add(createBarToolbarPanel());
-        toolsPanel.add(createInsertToolbarPanel());
+        toolsPanel.add(createStaffAnnotationToolbarPanel());
         add(toolsPanel, BorderLayout.WEST);
 
         // Add a minimum margin between the main tools and the playback controls
@@ -136,10 +136,10 @@ public final class MainToolbarPanel extends JPanel {
         return panel;
     }
 
-    private static JPanel createInsertToolbarPanel() {
+    private static JPanel createStaffAnnotationToolbarPanel() {
         var panel = createToolbarPanel(NO_BORDER);
         var toolbar = new Toolbar();
-        toolbar.add(new InsertPopupButton());
+        toolbar.add(new StaffAnnotationPopupButton());
         panel.add(toolbar);
         return panel;
     }
