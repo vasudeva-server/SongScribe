@@ -110,8 +110,8 @@ On each `MusicSelectionDidChangeNotification`, the controller evaluates:
 
 **Step 1 -- Basic eligibility:**
 - Selection must have >= 2 elements
-- First and last elements of the selection must be notes or grace notes (rests
-  may appear in between, but a hairpin cannot begin or end in silence)
+- First and last elements of the selection must be notes or grace notes, but grace notes do NOT contribute to the element count. Rests
+  may appear in between, but a hairpin cannot begin or end in silence.
 - Selection must not cross a non-single barline or repeat (via
   `Line.rangeCanSpanSelection(begin, end)`)
 - If any check fails: both items show "Add [type]", both disabled
