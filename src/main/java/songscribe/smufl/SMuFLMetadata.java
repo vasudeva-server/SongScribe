@@ -61,6 +61,16 @@ public final class SMuFLMetadata {
         return Holder.INSTANCE;
     }
 
+    /** Width of the standard notehead (noteheadBlack) in staff spaces. */
+    public double noteHeadWidthSs() {
+        return requireBBox(SMuFLGlyph.NOTEHEAD_BLACK).width();
+    }
+
+    /** Height of the standard notehead (noteheadBlack) in staff spaces. */
+    public double noteHeadHeightSs() {
+        return requireBBox(SMuFLGlyph.NOTEHEAD_BLACK).height();
+    }
+
     public EngravingDefaults getEngravingDefaults() {
         return engravingDefaults;
     }

@@ -23,7 +23,6 @@ package songscribe.ui.layout;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.music.StaffElement;
-import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
 
 /**
@@ -35,9 +34,7 @@ import songscribe.smufl.SMuFLMetadata;
  */
 public class Diminuendo extends RangeElement {
 
-    /** Notehead width for span width calculation. */
-    private static final double NOTE_HEAD_WIDTH_SS =
-        SMuFLMetadata.getInstance().requireBBox(SMuFLGlyph.NOTEHEAD_BLACK).width();
+    private static final double NOTE_HEAD_WIDTH_SS = SMuFLMetadata.getInstance().noteHeadWidthSs();
 
     private @Nullable StaffElement endNote;
     private int x1Shift = 0;

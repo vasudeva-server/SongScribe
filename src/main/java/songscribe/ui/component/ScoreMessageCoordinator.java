@@ -25,9 +25,6 @@ import module java.desktop;
 import net.engio.mbassy.listener.Handler;
 import org.jspecify.annotations.Nullable;
 
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-
 import songscribe.Strings;
 import songscribe.message.Message;
 import songscribe.message.MessageCenter;
@@ -210,6 +207,7 @@ public final class ScoreMessageCoordinator {
         if (result != null && result.isValid()) {
             operations.makeFirstSecondEnding(result);
             postSelectionContentChanged();
+            MessageCenter.post(new DeselectCommand());
         }
     }
 
@@ -242,76 +240,12 @@ public final class ScoreMessageCoordinator {
         ));
     }
 
-    /**
-     * Checks affected lines for first-second endings that are no longer structurally
-     * valid and removes them. Shows a single alert if any endings are removed.
-     */
-    private void autoRemoveInvalidEndings(CompositionDidChangeNotification message) {
-        var composition = score.getComposition();
-        var targetLine = message.getLine();
-
-        // Collect invalid endings across affected lines
-        var invalidByLine = new LinkedHashMap<Line, ArrayList<Ending>>();
-
-        if (targetLine != null) {
-            collectInvalidEndings(targetLine, invalidByLine);
-        } else {
-            for (var line : composition.getLines()) {
-                collectInvalidEndings(line, invalidByLine);
-            }
-        }
-
-        if (invalidByLine.isEmpty()) {
-            return;
-        }
-
-        // Show alert once before cleanup begins
-        OptionDialogs.showWarningMessage(
-            null,
-            Strings.ALERT_TITLE_ENDING_WARNING,
-            Strings.ALERT_ENDING_AUTO_REMOVED
-        );
-
-        // Wrap all cleanup in a modification bracket so intermediate notifications
-        // are suppressed and a single coalesced notification is posted at the end
-        composition.beginModification();
-
-        try {
-            for (var entry : invalidByLine.entrySet()) {
-                for (var ending : entry.getValue()) {
-                    operations.removeInvalidEnding(entry.getKey(), ending);
-                }
-            }
-        } finally {
-            composition.endModification();
-        }
-    }
-
-    private void collectInvalidEndings(
-        Line line,
-        LinkedHashMap<Line, ArrayList<Ending>> target
-    ) {
-        var invalid = operations.findInvalidEndings(line);
-
-        if (!invalid.isEmpty()) {
-            target.put(line, invalid);
-        }
-    }
-
     @Handler
     public void compositionDidChange(CompositionDidChangeNotification message) {
         var mainPanel = score.getMainPanel();
 
         if (mainPanel == null) {
             return;
-        }
-
-        // Auto-remove first-second endings invalidated by content or structure changes.
-        // Not triggered on FULL (file load) — stale endings from old files are cleaned
-        // up when the user first edits the affected line.
-        if (message.hasChangeType(ChangeType.CONTENT)
-            || message.hasChangeType(ChangeType.STRUCTURE)) {
-            autoRemoveInvalidEndings(message);
         }
 
         // Invalidate layout for affected lines on content or structure changes

@@ -43,6 +43,13 @@ public final class GraphicUtils {
 
     private static final Logger LOG = LoggerFactory.getLogger(GraphicUtils.class);
 
+    /**
+     * A {@link FontRenderContext} for layout-time glyph measurement without a live
+     * {@link Graphics2D}. Uses antialiasing and fractional metrics enabled.
+     */
+    public static final FontRenderContext LAYOUT_FRC =
+        new FontRenderContext(null, true, true);
+
     private static final FlatSVGIcon.ColorFilter THEME_AWARE_SVG_ICON_FILTER =
         new FlatSVGIcon.ColorFilter(
             (component, color) -> {
@@ -154,17 +161,6 @@ public final class GraphicUtils {
 
     public static int getDpi() {
         return dpi;
-    }
-
-    /**
-     * Computes a DPI-aware stroke width.
-     * Returns an integral width to avoid anti-aliasing artifacts on standard DPI displays.
-     *
-     * @param desiredWidth The desired stroke width in physical pixels
-     * @return Stroke width scaled for current display, rounded to nearest integer
-     */
-    public static float getDpiAwareStrokeWidth(float desiredWidth) {
-        return Math.round(desiredWidth * screenScaleFactor);
     }
 
     public static String getScaledImagePath(String path) {
@@ -345,53 +341,41 @@ public final class GraphicUtils {
     }
 
     /**
-     * Snaps a local X coordinate to the nearest device pixel boundary.
-     * Transforms to absolute device space, rounds, and inverse-transforms back to
-     * local coordinates. This ensures crisp rendering of vertical elements (stems,
-     * barlines) regardless of the current graphics translation or Retina scaling.
+     * Draws a horizontal line with round end caps.
+     * All coordinates are in the current (local) coordinate system of {@code g2}.
      *
-     * @param g2     the graphics context with the current transform
-     * @param localX the X coordinate in local (user) space
-     * @return the adjusted X coordinate in local space, snapped to a device pixel
+     * @param g2          graphics context
+     * @param x1          left X (center of left end cap)
+     * @param x2          right X (center of right end cap)
+     * @param centerY     vertical center of the line
+     * @param thicknessSs line thickness in staff spaces
      */
-    public static double snapXToDevicePixel(Graphics2D g2, double localX) {
-        var transform = g2.getTransform();
-        var devicePt = new Point2D.Double();
-        transform.transform(new Point2D.Double(localX, 0), devicePt);
-        devicePt.x = Math.round(devicePt.x);
-
-        try {
-            transform.inverseTransform(devicePt, devicePt);
-        } catch (java.awt.geom.NoninvertibleTransformException e) {
-            return localX;
-        }
-
-        return devicePt.x;
+    public static void fillHorizontalLine(
+        Graphics2D g2, double x1, double x2, double centerY, double thicknessSs
+    ) {
+        var oldStroke = g2.getStroke();
+        g2.setStroke(new BasicStroke((float) thicknessSs, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+        g2.draw(new Line2D.Double(x1, centerY, x2, centerY));
+        g2.setStroke(oldStroke);
     }
 
     /**
-     * Snaps a local Y coordinate to the nearest device pixel boundary.
-     * Transforms to absolute device space, rounds, and inverse-transforms back to
-     * local coordinates. This ensures crisp rendering of horizontal elements
-     * regardless of the current graphics translation or Retina scaling.
+     * Draws a vertical line with round end caps.
+     * All coordinates are in the current (local) coordinate system of {@code g2}.
      *
-     * @param g2     the graphics context with the current transform
-     * @param localY the Y coordinate in local (user) space
-     * @return the adjusted Y coordinate in local space, snapped to a device pixel
+     * @param g2          graphics context
+     * @param centerX     horizontal center of the line
+     * @param y1          top Y (center of top end cap)
+     * @param y2          bottom Y (center of bottom end cap)
+     * @param thicknessSs line thickness in staff spaces
      */
-    public static double snapYToDevicePixel(Graphics2D g2, double localY) {
-        var transform = g2.getTransform();
-        var devicePt = new Point2D.Double();
-        transform.transform(new Point2D.Double(0, localY), devicePt);
-        devicePt.y = Math.round(devicePt.y);
-
-        try {
-            transform.inverseTransform(devicePt, devicePt);
-        } catch (java.awt.geom.NoninvertibleTransformException e) {
-            return localY;
-        }
-
-        return devicePt.y;
+    public static void fillVerticalLine(
+        Graphics2D g2, double centerX, double y1, double y2, double thicknessSs
+    ) {
+        var oldStroke = g2.getStroke();
+        g2.setStroke(new BasicStroke((float) thicknessSs, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+        g2.draw(new Line2D.Double(centerX, y1, centerX, y2));
+        g2.setStroke(oldStroke);
     }
 
     /**

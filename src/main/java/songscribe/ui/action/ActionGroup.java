@@ -92,7 +92,6 @@ public class ActionGroup<T extends UIAction> implements PropertyChangeListener {
 
     public void setSelected(T action, boolean value) {
         if (!actions.contains(action)) {
-            System.out.println("Action is not part of this group");
             return;
         }
 

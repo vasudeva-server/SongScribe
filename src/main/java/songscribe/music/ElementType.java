@@ -33,6 +33,7 @@ import songscribe.smufl.EngravingDefaults;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
 import songscribe.ui.layout.LayoutStylesheet;
+import songscribe.ui.renderer.LineThickness;
 import songscribe.error.RuntimeError;
 import songscribe.util.UIUtils;
 
@@ -456,7 +457,6 @@ public enum ElementType {
 
     private static void computeElementBoundsSs() {
         var metadata = SMuFLMetadata.getInstance();
-        var defaults = metadata.getEngravingDefaults();
 
         computeNoteBoundsSs(metadata,
             SEMIBREVE, MINIM, CROTCHET, QUAVER, SEMIQUAVER, DEMI_SEMIQUAVER);
@@ -468,8 +468,8 @@ public enum ElementType {
             QUAVER_REST, SEMIQUAVER_REST, DEMI_SEMIQUAVER_REST,
             BREATH_MARK);
 
-        computeBarlineBoundsSs(defaults);
-        computeRepeatBoundsSs(metadata, defaults);
+        computeBarlineBoundsSs();
+        computeRepeatBoundsSs(metadata);
 
         // Glissandos are rendered as lines between two notes — their actual visual
         // extent is context-dependent. These nominal bounds satisfy the non-zero
@@ -612,10 +612,11 @@ public enum ElementType {
         }
     }
 
-    private static void computeBarlineBoundsSs(EngravingDefaults defaults) {
-        double thin = defaults.thinBarlineThickness();
-        double thick = defaults.thickBarlineThickness();
-        double sep = defaults.barlineSeparation();
+    private static void computeBarlineBoundsSs() {
+        var lt = LineThickness.getInstance();
+        double thin = lt.thinBarlineSs();
+        double thick = lt.thickBarlineSs();
+        double sep = lt.barlineSeparationSs();
         double staffHeight = LayoutStylesheet.STAFF_HEIGHT_SS;
         double topOffset = -staffHeight / 2;
 
@@ -624,13 +625,12 @@ public enum ElementType {
         FINAL_DOUBLE_BARLINE.setSymmetricBounds(thin + thick + sep, staffHeight, topOffset);
     }
 
-    private static void computeRepeatBoundsSs(
-        SMuFLMetadata metadata, EngravingDefaults defaults
-    ) {
-        double thin = defaults.thinBarlineThickness();
-        double thick = defaults.thickBarlineThickness();
-        double sep = defaults.barlineSeparation();
-        double dotSep = defaults.repeatBarlineDotSeparation();
+    private static void computeRepeatBoundsSs(SMuFLMetadata metadata) {
+        var lt = LineThickness.getInstance();
+        double thin = lt.thinBarlineSs();
+        double thick = lt.thickBarlineSs();
+        double sep = lt.barlineSeparationSs();
+        double dotSep = metadata.getEngravingDefaults().repeatBarlineDotSeparation();
         var dotBBox = requireBBox(metadata, SMuFLGlyph.REPEAT_DOT, REPEAT_LEFT);
         double dotWidth = dotBBox.width();
         double staffHeight = LayoutStylesheet.STAFF_HEIGHT_SS;

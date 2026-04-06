@@ -26,8 +26,6 @@ import static songscribe.ui.renderer.GraphicsState.Property.STROKE;
 import module java.desktop;
 
 
-import songscribe.smufl.EngravingDefaults;
-import songscribe.smufl.SMuFLMetadata;
 import songscribe.ui.layout.Crescendo;
 import songscribe.ui.layout.Diminuendo;
 import songscribe.ui.layout.LineElement;
@@ -43,15 +41,6 @@ public class DynamicsRenderer extends BaseElementRenderer<LineElement> {
     // ==========================================================================
     // Constants
     // ==========================================================================
-
-    private static final EngravingDefaults ENGRAVING_DEFAULTS =
-        SMuFLMetadata.getInstance().getEngravingDefaults();
-
-    private static final BasicStroke LINE_STROKE = new BasicStroke(
-        (float) ENGRAVING_DEFAULTS.hairpinThickness(),
-        BasicStroke.CAP_BUTT,
-        BasicStroke.JOIN_MITER
-    );
 
     // Singleton instance
     private static final DynamicsRenderer INSTANCE = new DynamicsRenderer();
@@ -116,7 +105,11 @@ public class DynamicsRenderer extends BaseElementRenderer<LineElement> {
 
         try (var ignored = GraphicsState.save(g2, COLOR, STROKE)) {
             g2.setColor(ELEMENT_COLOR);
-            g2.setStroke(LINE_STROKE);
+            g2.setStroke(new BasicStroke(
+                (float) ctx.getLineThickness().hairpinSs(),
+                BasicStroke.CAP_ROUND,
+                BasicStroke.JOIN_ROUND
+            ));
 
             if (isCrescendo) {
                 g2.draw(new java.awt.geom.Line2D.Double(x1, middleYSs, x2, topYSs));

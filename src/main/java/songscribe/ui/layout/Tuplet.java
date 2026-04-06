@@ -73,7 +73,7 @@ public class Tuplet extends RangeElement {
 
     @Override
     public double getContentHeightSs() {
-        return 1.5;  // 12px
+        return 0.7;  // LilyPond vertical arm height
     }
 
     @Override

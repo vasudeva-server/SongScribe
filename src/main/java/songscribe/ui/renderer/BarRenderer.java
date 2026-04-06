@@ -25,21 +25,24 @@ import static songscribe.ui.renderer.GraphicsState.Property.TRANSFORM;
 
 import module java.desktop;
 
-import org.jspecify.annotations.Nullable;
-
 import songscribe.music.ElementType;
 import songscribe.music.StaffElement;
 import songscribe.smufl.SMuFLGlyph;
+import songscribe.smufl.SMuFLMetadata;
 import songscribe.util.GraphicUtils;
 
 /**
- * Renders bar lines and repeat signs using SMuFL/Bravura glyphs.
+ * Renders bar lines and repeat signs using drawn primitives.
+ * <p>
+ * Per the SMuFL spec, scoring programs should draw barlines using primitives
+ * rather than using the barline glyphs. Repeat dots still use the Bravura
+ * {@link SMuFLGlyph#REPEAT_DOTS} glyph.
  * <p>
  * Handles:
  * <ul>
  *   <li>Single bar lines</li>
  *   <li>Double bar lines</li>
- *   <li>Final double bar lines (with thick line)</li>
+ *   <li>Final double bar lines (thin + thick)</li>
  *   <li>Left repeat</li>
  *   <li>Right repeat</li>
  *   <li>Left-right repeat</li>
@@ -47,8 +50,23 @@ import songscribe.util.GraphicUtils;
  */
 public class BarRenderer extends BaseElementRenderer<StaffElement> {
 
-    // SMuFL barline glyphs extend upward from their origin at the bottom staff line.
-    // From the middle line, the bottom staff line is 2 staff spaces below.
+    // ==========================================================================
+    // Constants
+    // ==========================================================================
+
+    /** Half the staff height: distance from middle line to top/bottom staff line. */
+    private static final double STAFF_HALF_HEIGHT_SS = 2.0;
+
+    private static final SMuFLMetadata METADATA = SMuFLMetadata.getInstance();
+
+    /** Advance width of the repeat dots glyph in staff spaces. */
+    private static final double REPEAT_DOTS_ADVANCE_SS =
+        METADATA.requireAdvanceWidth(SMuFLGlyph.REPEAT_DOTS);
+
+    /**
+     * Y coordinate of the bottom staff line relative to the middle line.
+     * Used as the origin for the repeat dots glyph (SMuFL barline glyph convention).
+     */
     private static final double BOTTOM_STAFF_LINE_Y_SS = 2.0;
 
     // Singleton instance
@@ -87,28 +105,125 @@ public class BarRenderer extends BaseElementRenderer<StaffElement> {
 
         try (var ignored = GraphicsState.save(g2, TRANSFORM)) {
             g2.translate(noteX, ctx.getMiddleLineYSs());
-            renderBarLineOrRepeat(g2, noteType);
+            renderBarLineOrRepeat(g2, noteType, ctx);
         }
     }
 
     /**
-     * Renders a bar line or repeat sign (static helper for delegation).
+     * Renders a bar line or repeat sign using drawn primitives.
      */
-    public static void renderBarLineOrRepeat(Graphics2D g2, ElementType noteType) {
-        var glyph = glyphForNoteType(noteType);
+    private void renderBarLineOrRepeat(
+        Graphics2D g2,
+        ElementType noteType,
+        ElementRenderContext ctx
+    ) {
+        var lt = ctx.getLineThickness();
+        double thin = lt.thinBarlineSs();
+        double thick = lt.thickBarlineSs();
+        double sep = lt.barlineSeparationSs();
 
-        if (glyph == null) {
-            return;
-        }
+        var topY = -STAFF_HALF_HEIGHT_SS;
+        var bottomY = STAFF_HALF_HEIGHT_SS;
 
-        try (var ignored = GraphicsState.save(g2, FONT)) {
-            g2.setFont(MUSIC_FONT);
-            g2.drawString(glyph.asString(), 0f, (float) BOTTOM_STAFF_LINE_Y_SS);
+        switch (noteType) {
+            case SINGLE_BARLINE -> {
+                drawBar(g2, 0, thin, topY, bottomY);
+            }
+
+            case DOUBLE_BARLINE -> {
+                drawBar(g2, 0, thin, topY, bottomY);
+                drawBar(g2, thin + sep, thin, topY, bottomY);
+            }
+
+            case FINAL_DOUBLE_BARLINE -> {
+                drawBar(g2, 0, thin, topY, bottomY);
+                drawBar(g2, thin + sep, thick, topY, bottomY);
+            }
+
+            case REPEAT_LEFT -> {
+                // thick | sep | thin | sep | dots
+                double x = 0;
+                drawBar(g2, x, thick, topY, bottomY);
+                x += thick + sep;
+                drawBar(g2, x, thin, topY, bottomY);
+                x += thin + sep;
+                drawRepeatDots(g2, x);
+            }
+
+            case REPEAT_RIGHT -> {
+                // dots | sep | thin | sep | thick
+                double x = 0;
+                drawRepeatDots(g2, x);
+                x += REPEAT_DOTS_ADVANCE_SS + sep;
+                drawBar(g2, x, thin, topY, bottomY);
+                x += thin + sep;
+                drawBar(g2, x, thick, topY, bottomY);
+            }
+
+            case REPEAT_LEFT_RIGHT -> {
+                // dots | sep | thin | sep | thick | sep | thin | sep | dots
+                double x = 0;
+                drawRepeatDots(g2, x);
+                x += REPEAT_DOTS_ADVANCE_SS + sep;
+                drawBar(g2, x, thin, topY, bottomY);
+                x += thin + sep;
+                drawBar(g2, x, thick, topY, bottomY);
+                x += thick + sep;
+                drawBar(g2, x, thin, topY, bottomY);
+                x += thin + sep;
+                drawRepeatDots(g2, x);
+            }
+
+            default -> {
+                // Not a barline or repeat type
+            }
         }
     }
 
     // ==========================================================================
-    // Helpers
+    // Drawing Helpers
+    // ==========================================================================
+
+    /**
+     * Draws a single barline as a filled rectangle.
+     *
+     * @param g2      Graphics context (translated to middle line)
+     * @param leftX   Left edge X coordinate
+     * @param width   Barline width in staff spaces
+     * @param topY    Top Y coordinate
+     * @param bottomY Bottom Y coordinate
+     */
+    private static void drawBar(
+        Graphics2D g2,
+        double leftX,
+        double width,
+        double topY,
+        double bottomY
+    ) {
+        g2.fill(new Rectangle2D.Double(leftX, topY, width, bottomY - topY));
+    }
+
+    /**
+     * Draws repeat dots using the Bravura {@link SMuFLGlyph#REPEAT_DOTS} glyph.
+     * <p>
+     * The glyph origin is at the bottom staff line (SMuFL barline convention),
+     * producing two dots in the inner staff spaces.
+     *
+     * @param g2 Graphics context (translated to middle line)
+     * @param x  Left edge X coordinate for the dots
+     */
+    private static void drawRepeatDots(Graphics2D g2, double x) {
+        try (var ignored = GraphicsState.save(g2, FONT)) {
+            g2.setFont(MUSIC_FONT);
+            g2.drawString(
+                SMuFLGlyph.REPEAT_DOTS.asString(),
+                (float) x,
+                (float) BOTTOM_STAFF_LINE_Y_SS);
+        }
+    }
+
+    // ==========================================================================
+    // Coordinate Helpers
     // ==========================================================================
 
     /**
@@ -129,23 +244,6 @@ public class BarRenderer extends BaseElementRenderer<StaffElement> {
             noteX = (layoutResult != null) ? layoutResult.getElementXSs(note) : note.getXPosSs();
         }
 
-        return GraphicUtils.snapXToDevicePixel(g2, noteX);
+        return noteX;
     }
-
-    /**
-     * Maps a note type to its corresponding SMuFL barline/repeat glyph.
-     */
-    @Nullable
-    private static SMuFLGlyph glyphForNoteType(ElementType noteType) {
-        return switch (noteType) {
-            case SINGLE_BARLINE -> SMuFLGlyph.BARLINE_SINGLE;
-            case DOUBLE_BARLINE -> SMuFLGlyph.BARLINE_DOUBLE;
-            case FINAL_DOUBLE_BARLINE -> SMuFLGlyph.BARLINE_FINAL;
-            case REPEAT_LEFT -> SMuFLGlyph.REPEAT_LEFT;
-            case REPEAT_RIGHT -> SMuFLGlyph.REPEAT_RIGHT;
-            case REPEAT_LEFT_RIGHT -> SMuFLGlyph.REPEAT_RIGHT_LEFT;
-            default -> null;
-        };
-    }
-
 }

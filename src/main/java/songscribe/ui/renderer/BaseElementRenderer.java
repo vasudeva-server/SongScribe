@@ -30,7 +30,6 @@ import java.util.function.DoubleConsumer;
 
 import songscribe.music.ElementType;
 import songscribe.music.StaffElement;
-import songscribe.smufl.EngravingDefaults;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
 import songscribe.ui.layout.LineElement;
@@ -95,16 +94,6 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
      */
     public static final Font GRACE_NOTE_FONT;
 
-    /**
-     * Font for tuplet numbers (e.g., "3" for triplets).
-     */
-    public static final Font TUPLET_FONT;
-
-    /**
-     * Font for first/second ending labels (Bravura glyphs).
-     */
-    public static final Font ENDING_FONT;
-
     /** Cached Bravura music font at {@link #FONT_SIZE}. */
     @Nullable
     private static Font noteFont = null;
@@ -125,10 +114,6 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
         try {
             MUSIC_FONT = getMusicFont();
             GRACE_NOTE_FONT = getMusicFont().deriveFont(FONT_SIZE * LayoutStylesheet.GRACE_NOTE_SCALE);
-
-            var tupletBase = MyFontUtils.getLocalFont("TupletNumbers.ttf");
-            TUPLET_FONT = tupletBase.deriveFont(1.625f);  // 13px / 8 px/ss
-            ENDING_FONT = getMusicFont().deriveFont(FONT_SIZE * 0.6f);
         } catch (Exception e) {
             throw new RuntimeException("Cannot load required fonts for rendering.", e);
         }
@@ -140,24 +125,6 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
 
     public static final Color STAFF_LINE_COLOR = Color.BLACK;
     protected static final Color ELEMENT_COLOR = Color.BLACK;
-    protected static final Color DEBUG_CONTENT_COLOR = new Color(0, 0, 255, 64);
-    protected static final Color DEBUG_CONTENT_BORDER = new Color(0, 0, 255, 128);
-    protected static final Color DEBUG_MARGIN_COLOR = new Color(255, 0, 0, 64);
-    protected static final Color DEBUG_MARGIN_BORDER = new Color(255, 0, 0, 128);
-    protected static final Color DEBUG_LABEL_COLOR = new Color(0, 0, 0, 192);
-    protected static final Color DEBUG_LABEL_BACKGROUND = new Color(255, 255, 255, 200);
-
-    // ==========================================================================
-    // Strokes
-    // ==========================================================================
-
-    private static final EngravingDefaults ENGRAVING_DEFAULTS =
-        SMuFLMetadata.getInstance().getEngravingDefaults();
-
-    protected static final Stroke STAFF_LINE_STROKE = new BasicStroke(
-        (float) ENGRAVING_DEFAULTS.staffLineThickness());
-    protected static final Stroke STEM_STROKE = new BasicStroke(
-        (float) ENGRAVING_DEFAULTS.stemThickness());
 
     // ==========================================================================
     // Rendering Template Method
@@ -176,9 +143,6 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
         ElementRenderContext ctx
     ) {
         renderElement(element, g2, ctx);
-        // Note: Debug/inspector visualization is handled separately by DebugRenderer,
-        // which only draws for the hovered element. We don't call renderDebug() here
-        // to avoid drawing debug rectangles for all elements.
     }
 
     /**
@@ -246,89 +210,6 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
     }
 
     /**
-     * Renders debug visualization (content bounds, margin bounds, element type label).
-     * <p>
-     * Default implementation draws:
-     * <ul>
-     *   <li>Content bounds filled in semi-transparent blue</li>
-     *   <li>Margin bounds filled in semi-transparent red</li>
-     *   <li>Element type label at top-left of content bounds</li>
-     * </ul>
-     * Subclasses can override to add element-specific debug info.
-     *
-     * @param element The element being debugged
-     * @param g2      The graphics context
-     * @param ctx     Rendering context
-     */
-    protected void renderDebug(
-        T element,
-        Graphics2D g2,
-        ElementRenderContext ctx
-    ) {
-        var contentBounds = element.getContentBounds();
-        var marginBounds = element.getMarginBounds();
-
-        // Draw margin bounds first (behind content bounds)
-        if (ctx.isShowMargins() || ctx.isDebugEnabled()) {
-            try (var ignored = GraphicsState.save(g2, COLOR)) {
-                g2.setColor(DEBUG_MARGIN_COLOR);
-                g2.fill(marginBounds);
-                g2.setColor(DEBUG_MARGIN_BORDER);
-                g2.draw(marginBounds);
-            }
-        }
-
-        // Draw content bounds on top
-        if (ctx.isShowBoundingBoxes() || ctx.isDebugEnabled()) {
-            try (var ignored = GraphicsState.save(g2, COLOR)) {
-                g2.setColor(DEBUG_CONTENT_COLOR);
-                g2.fill(contentBounds);
-                g2.setColor(DEBUG_CONTENT_BORDER);
-                g2.draw(contentBounds);
-            }
-        }
-
-        // Draw element type label
-        if (ctx.isDebugEnabled()) {
-            drawElementLabel(element, g2, contentBounds);
-        }
-    }
-
-    /**
-     * Draws a label showing the element type at the top-left of its content bounds.
-     *
-     * @param element       The element being labeled
-     * @param g2            The graphics context
-     * @param contentBounds The element's content bounds
-     */
-    private void drawElementLabel(
-        T element,
-        Graphics2D g2,
-        Rectangle2D contentBounds
-    ) {
-        String typeName = element.getClass().getSimpleName();
-        Font labelFont = new Font(Font.SANS_SERIF, Font.PLAIN, 9);
-        FontMetrics fm = g2.getFontMetrics(labelFont);
-
-        int labelX = (int) contentBounds.getX();
-        int labelY = (int) contentBounds.getY() - 2;
-
-        int textWidth = fm.stringWidth(typeName);
-        int textHeight = fm.getHeight();
-
-        try (var ignored = GraphicsState.save(g2, COLOR, FONT)) {
-            // Draw background for label
-            g2.setColor(DEBUG_LABEL_BACKGROUND);
-            g2.fillRect(labelX - 1, labelY - textHeight + fm.getDescent(), textWidth + 2, textHeight);
-
-            // Draw label text
-            g2.setColor(DEBUG_LABEL_COLOR);
-            g2.setFont(labelFont);
-            g2.drawString(typeName, labelX, labelY);
-        }
-    }
-
-    /**
      * Default getBounds implementation returns element's content bounds.
      * <p>
      * Subclasses can override if rendered bounds differ from logical bounds.
@@ -358,21 +239,12 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
      * @param y     Y position of the ledger line
      * @param width Width of the ledger line
      */
-    protected void drawLedgerLine(Graphics2D g2, double x, double y, double width) {
+    protected void drawLedgerLine(Graphics2D g2, double x, double y, double width, ElementRenderContext ctx) {
         // Color is intentionally not set — inherited from caller so insertion notes
         // draw ledger lines in their own color.
-        var thicknessSs = ENGRAVING_DEFAULTS.legerLineThickness();
-        var halfThickness = thicknessSs / 2.0;
-        var snappedTop = GraphicUtils.snapYToDevicePixel(g2, y - halfThickness);
-        var snappedBottom = GraphicUtils.snapYToDevicePixel(g2, y + halfThickness);
-        var snappedThickness = snappedBottom - snappedTop;
+        var thicknessSs = ctx.getLineThickness().ledgerLineSs();
         var halfWidth = width / 2.0;
-
-        g2.fill(new RoundRectangle2D.Double(
-            x - halfWidth, snappedTop,
-            width, snappedThickness,
-            0, snappedThickness
-        ));
+        GraphicUtils.fillHorizontalLine(g2, x - halfWidth, x + halfWidth, y, thicknessSs);
     }
 
     /**
@@ -432,12 +304,11 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
      * @return the snapped X coordinate for drawing
      */
     protected static double centeredGlyphX(
-        Graphics2D g2, double layoutXSs, StaffElement note,
+        double layoutXSs, StaffElement note,
         double glyphBBoxLeft, double glyphWidthSs) {
 
         double noteCenterXSs = note.getType().getCenterXSs();
-        return GraphicUtils.snapXToDevicePixel(
-            g2, layoutXSs + noteCenterXSs - glyphBBoxLeft - glyphWidthSs / 2.0);
+        return layoutXSs + noteCenterXSs - glyphBBoxLeft - glyphWidthSs / 2.0;
     }
 
     /**

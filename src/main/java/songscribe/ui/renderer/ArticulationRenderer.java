@@ -108,12 +108,12 @@ public class ArticulationRenderer extends BaseElementRenderer<StaffElement> {
             double componentTopYSs = layoutYToComponentYSs(layout.ySs(), ctx);
 
             if (articulation.isStaccato()) {
-                double x = centeredGlyphX(g2, layout.xSs(), element,
+                double x = centeredGlyphX(layout.xSs(), element,
                     STACCATO_BBOX_LEFT_SS, STACCATO_WIDTH_SS);
                 double y = glyphOriginYFromLayoutTop(componentTopYSs, SMuFLGlyph.ARTIC_STACCATO_ABOVE);
                 drawBravuraGlyph(g2, SMuFLGlyph.ARTIC_STACCATO_ABOVE, x, y, true);
             } else if (articulation.isAccent()) {
-                double x = centeredGlyphX(g2, layout.xSs(), element,
+                double x = centeredGlyphX(layout.xSs(), element,
                     ACCENT_BBOX_LEFT_SS, ACCENT_WIDTH_SS);
                 double y = glyphOriginYFromLayoutTop(componentTopYSs, SMuFLGlyph.ARTIC_ACCENT_ABOVE);
                 drawBravuraGlyph(g2, SMuFLGlyph.ARTIC_ACCENT_ABOVE, x, y, true);

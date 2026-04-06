@@ -28,6 +28,7 @@ import java.util.List;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.music.KeyType;
+import songscribe.smufl.SMuFLMetadata;
 import songscribe.music.Line;
 import songscribe.music.StaffElement;
 
@@ -73,7 +74,8 @@ public class LayoutEngine {
     private static final double TIE_MIN_SHOULDER_HEIGHT_SS = 0.3;   // minimum arc height
     private static final double TIE_MAX_SHOULDER_HEIGHT_SS = 2.0;   // maximum arc height
     private static final double TIE_SHOULDER_HEIGHT_SCALE = 0.3;    // sqrt scaling factor for arc height
-    private static final double TIE_MID_THICKNESS_SS = 0.16;        // midpoint half-thickness (midWidth - endWidth)
+    private static final double TIE_MID_THICKNESS_SS =               // midpoint half-thickness (midWidth - endWidth)
+        SMuFLMetadata.getInstance().getEngravingDefaults().tieMidpointThickness();
     private static final double TIE_COLLISION_FACTOR = 0.65;        // interior deflection scaling
     private static final double TIE_COLLISION_PUSH = 0.45;          // midpoint push-up ratio on collision
     private static final double TIE_NOTEHEAD_HALF_WIDTH_SS = 0.6;   // visual half-width of notehead

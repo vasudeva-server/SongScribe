@@ -57,6 +57,7 @@ public class BeamGroupRenderer extends BaseElementRenderer<LineElement> {
     private static final double BEAM_DEPTH_SS = METADATA.getEngravingDefaults().beamThickness();
     private static final double BEAM_GAP_SS = METADATA.getEngravingDefaults().beamSpacing();
     private static final double CLIP_SLOP_SS = 0.25;   // extra clipping margin (~2 px)
+    private static final double BEAM_STUB_SS = 1.0;  // 8px
 
     // Note types for beam levels (32nd, 16th, 8th)
     private static final ElementType[] BEAM_LEVELS = new ElementType[]{
@@ -345,11 +346,10 @@ public class BeamGroupRenderer extends BaseElementRenderer<LineElement> {
             ? layoutResult.getElementXSs(beginNote) : beginNote.getXPosSs();
         double firstStemCenterXSs = firstNoteXSs
             + stemCenterXOffsetSs(beginNote.getType(), isUpper);
-        double firstX = GraphicUtils.snapXToDevicePixel(g2, firstStemCenterXSs - halfStemWidthSs);
+        double firstX = firstStemCenterXSs - halfStemWidthSs;
         double firstTipYSs = stemTipYSsOffset(firstStemLayout, isUpper, beginNote);
-        double firstOuterY = GraphicUtils.snapYToDevicePixel(
-            g2, middleLineYSs + firstTipYSs + innerBeamOffsetSs);
-        double firstInnerY = GraphicUtils.snapYToDevicePixel(g2, firstOuterY + beamDepthSs);
+        double firstOuterY = middleLineYSs + firstTipYSs + innerBeamOffsetSs;
+        double firstInnerY = firstOuterY + beamDepthSs;
 
         // --- Last note stem geometry ---
         var lastStemLayout = (layoutResult != null) ? layoutResult.getStemLayout(endNote) : null;
@@ -357,11 +357,10 @@ public class BeamGroupRenderer extends BaseElementRenderer<LineElement> {
             ? layoutResult.getElementXSs(endNote) : endNote.getXPosSs();
         double lastStemCenterXSs = lastNoteXSs
             + stemCenterXOffsetSs(endNote.getType(), isUpper);
-        double lastX = GraphicUtils.snapXToDevicePixel(g2, lastStemCenterXSs + halfStemWidthSs);
+        double lastX = lastStemCenterXSs + halfStemWidthSs;
         double lastTipYSs = stemTipYSsOffset(lastStemLayout, isUpper, endNote);
-        double lastOuterY = GraphicUtils.snapYToDevicePixel(
-            g2, middleLineYSs + lastTipYSs + innerBeamOffsetSs);
-        double lastInnerY = GraphicUtils.snapYToDevicePixel(g2, lastOuterY + beamDepthSs);
+        double lastOuterY = middleLineYSs + lastTipYSs + innerBeamOffsetSs;
+        double lastInnerY = lastOuterY + beamDepthSs;
 
         // --- Build and draw parallelogram ---
         var beam = new Path2D.Double(Path2D.WIND_NON_ZERO, 4);
@@ -377,11 +376,11 @@ public class BeamGroupRenderer extends BaseElementRenderer<LineElement> {
             var clip = beam.getBounds2D();
             double x1 = (type == BeamType.ATTACH_LEFT)
                 ? firstX - CLIP_SLOP_SS
-                : lastX - LayoutStylesheet.BEAM_STUB_SS;
+                : lastX - BEAM_STUB_SS;
             clip.setRect(
                 x1,
                 clip.getMinY() - CLIP_SLOP_SS,
-                LayoutStylesheet.BEAM_STUB_SS + CLIP_SLOP_SS,
+                BEAM_STUB_SS + CLIP_SLOP_SS,
                 clip.getHeight() + CLIP_SLOP_SS * 2);
             oldClip = g2.getClip();
             g2.setClip(clip);

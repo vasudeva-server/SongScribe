@@ -27,7 +27,6 @@ import songscribe.error.RuntimeError;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.music.Composition;
-import songscribe.ui.menu.DebugState;
 
 /**
  * Abstract base class for score rendering components.
@@ -156,10 +155,6 @@ public abstract class ScoreComponent extends JComponent {
 
         var g2 = initGraphics(g);
         render(g2);
-
-        if (DebugState.isDebugEnabled()) {
-            renderDebug(g2);
-        }
     }
 
     /**
@@ -214,26 +209,4 @@ public abstract class ScoreComponent extends JComponent {
         return getPreferredSize();
     }
 
-    /**
-     * Renders debug visualizations.
-     * <p>
-     * Called when debug mode is enabled. Default implementation draws
-     * component bounds. Subclasses can override to add additional debug info.
-     *
-     * @param g2 The Graphics2D context
-     */
-    protected void renderDebug(Graphics2D g2) {
-        // Draw component bounds
-        g2.setColor(new Color(255, 0, 0, 64));
-        g2.drawRect(0, 0, getWidth() - 1, getHeight() - 1);
-
-        // Draw margin bounds
-        g2.setColor(new Color(0, 255, 0, 64));
-        g2.drawRect(
-            marginLeft,
-            marginTop,
-            getWidth() - marginLeft - marginRight - 1,
-            getHeight() - marginTop - marginBottom - 1
-        );
-    }
 }

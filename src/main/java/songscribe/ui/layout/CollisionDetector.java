@@ -32,6 +32,12 @@ import songscribe.music.Line;
  */
 public final class CollisionDetector {
 
+    /**
+     * Padding applied to all collision regions (both sub-regions and full bounds)
+     * during query and set phases, expanding each region on all sides.
+     */
+    public static final double COLLISION_PADDING_SS = 0.25;  // 2px
+
     private CollisionDetector() {
         // Prevent instantiation
     }

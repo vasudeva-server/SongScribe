@@ -42,6 +42,7 @@ import songscribe.ui.component.Score;
 import songscribe.ui.layout.LayoutStylesheet;
 import songscribe.ui.layout.LayoutResult;
 import songscribe.ui.layout.ScaleContext;
+import songscribe.util.GraphicUtils;
 
 /**
  * Renders glissando lines connecting notes as filled rectangles.
@@ -113,7 +114,7 @@ public class GlissandoRenderer {
     private static final Shape FLAG_8TH_UP_GRACE_SHAPE;
 
     static {
-        var frc = new FontRenderContext(null, true, true);
+        var frc = GraphicUtils.LAYOUT_FRC;
         var font = BaseElementRenderer.MUSIC_FONT;
         var graceFont = BaseElementRenderer.GRACE_NOTE_FONT;
 

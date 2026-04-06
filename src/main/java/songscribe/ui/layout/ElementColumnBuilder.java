@@ -57,8 +57,7 @@ public class ElementColumnBuilder {
     private static final SMuFLMetadata METADATA = SMuFLMetadata.getInstance();
 
     // Note head width from SMuFL noteheadBlack bounding box (ss)
-    public static final double NOTE_HEAD_WIDTH_SS =
-        METADATA.requireBBox(SMuFLGlyph.NOTEHEAD_BLACK).width();
+    public static final double NOTE_HEAD_WIDTH_SS = METADATA.noteHeadWidthSs();
 
     // Small note head width from SMuFL noteheadBlackSmall bounding box (ss)
     public static final double NOTE_HEAD_SMALL_WIDTH_SS =

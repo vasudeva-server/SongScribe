@@ -20,12 +20,15 @@
 
 package songscribe.ui.layout;
 
+import java.awt.FontMetrics;
+import java.util.ArrayList;
+import java.util.List;
+
 import org.jspecify.annotations.Nullable;
 
 import songscribe.music.ElementType;
 import songscribe.music.StaffElement;
 import songscribe.music.Tempo;
-import java.awt.FontMetrics;
 
 import songscribe.smufl.BBox;
 import songscribe.smufl.SMuFLGlyph;
@@ -81,7 +84,6 @@ public class TempoAttachment extends Attachment {
         setAlignment(Alignment.LEFT);
 
         if (parent != null) {
-            setOwnerElement(parent);
             setParentLine(parent.getParentLine());
         }
     }
@@ -122,26 +124,63 @@ public class TempoAttachment extends Attachment {
     }
 
     /**
-     * Computes the content width from the actual tempo text and glyph metrics.
-     *
-     * @param attrFontMetrics font metrics for the attribution font (used for "= NNN" text)
-     * @return width in staff-space units
+     * Content width and collision sub-regions computed together to avoid
+     * redundant {@link #tempoText()} calls.
      */
-    public double computeContentWidthSs(FontMetrics attrFontMetrics) {
-        double widthSs = 0;
-        var metadata = SMuFLMetadata.getInstance();
-        var scale = ScaleContext.getInstance();
+    public record ContentMetrics(double widthSs, List<CollisionRegion> regions) {}
 
-        if (tempo.shouldShowTempo()) {
-            double tempoNoteWidthSs = noteWidthSs(tempo.getTempoType().getNote(), metadata);
+    /**
+     * Computes the content width and collision sub-regions for this tempo marking.
+     * <p>
+     * Combines width and region computation into a single pass so that the
+     * tempo text string is only built once.
+     *
+     * @param attrFontMetrics font metrics for the attribution font
+     * @return content metrics (width and collision regions)
+     */
+    public ContentMetrics computeContentMetrics(FontMetrics attrFontMetrics) {
+        var regions = new ArrayList<CollisionRegion>(2);
+        double glyphWidth = glyphWidthSs();
 
-            if (tempoNoteWidthSs > 0) {
-                widthSs += tempoNoteWidthSs;
-                widthSs += GLYPH_TEXT_GAP_SS;
-            }
+        if (glyphWidth > 0) {
+            regions.add(new CollisionRegion(0, 0, glyphWidth, DEFAULT_HEIGHT_SS));
         }
 
-        // Build the same text string the renderer draws
+        double textWidth = textWidthSs(tempoText(), attrFontMetrics);
+
+        if (textWidth > 0) {
+            double textXOffsetSs = glyphWidth > 0 ? glyphWidth + GLYPH_TEXT_GAP_SS : 0;
+            var scale = ScaleContext.getInstance();
+            double textAscentSs = scale.fromPixels(attrFontMetrics.getAscent());
+            double textDescentSs = scale.fromPixels(attrFontMetrics.getDescent());
+            double textYOffsetSs = DEFAULT_HEIGHT_SS - textAscentSs;
+            double textHeightSs = textAscentSs + textDescentSs;
+            regions.add(new CollisionRegion(
+                textXOffsetSs, textYOffsetSs, textWidth, textHeightSs));
+        }
+
+        double gap = glyphWidth > 0 ? GLYPH_TEXT_GAP_SS : 0;
+        double widthSs = glyphWidth + gap + textWidth;
+
+        return new ContentMetrics(widthSs, regions);
+    }
+
+    /**
+     * Returns the width of the metronome note glyph in staff-space units,
+     * or 0 if the tempo has no visible note.
+     */
+    private double glyphWidthSs() {
+        if (!tempo.shouldShowTempo()) {
+            return 0;
+        }
+
+        return noteWidthSs(tempo.getTempoType().getNote(), SMuFLMetadata.getInstance());
+    }
+
+    /**
+     * Builds the tempo text string as drawn by the renderer (e.g. "= 120 Allegro").
+     */
+    private String tempoText() {
         var text = new StringBuilder(25);
 
         if (tempo.shouldShowTempo()) {
@@ -151,12 +190,20 @@ public class TempoAttachment extends Attachment {
         }
 
         text.append(tempo.getTempoDescription());
+        return text.toString();
+    }
 
-        if (!text.isEmpty()) {
-            widthSs += scale.fromPixels(attrFontMetrics.stringWidth(text.toString()));
+    /**
+     * Returns the width of the tempo text portion in staff-space units,
+     * or 0 if there is no text.
+     */
+    private double textWidthSs(String text, FontMetrics attrFontMetrics) {
+        if (text.isEmpty()) {
+            return 0;
         }
 
-        return widthSs;
+        return ScaleContext.getInstance().fromPixels(
+            attrFontMetrics.stringWidth(text));
     }
 
     /**
@@ -203,7 +250,7 @@ public class TempoAttachment extends Attachment {
 
     @Override
     public double getContentWidthPx() {
-        // Legacy pixel API — not used for layout (computeContentWidthSs is used instead)
+        // Legacy pixel API — not used for layout (computeContentMetrics is used instead)
         return 0;
     }
 

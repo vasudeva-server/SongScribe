@@ -79,6 +79,9 @@ public class NoteRenderer extends BaseElementRenderer<StaffElement> {
     private static final double HALF_BEAM_THICKNESS_SS =
         METADATA.getEngravingDefaults().beamThickness() / 2.0;
 
+    // Stem end-cap arc diameter as a fraction of stem width (from LilyPond print analysis)
+    private static final double STEM_ARC_RATIO = 0.57;
+
     // Dot positioning (using SMuFL augmentation dot glyph), in staff-space units
     static final float FIRST_DOT_X_SS = 1.6375f; // 13.1px / 8 px/ss
     static final float DOT_SPACING_SS;
@@ -202,7 +205,7 @@ public class NoteRenderer extends BaseElementRenderer<StaffElement> {
             noteX = (layoutResult != null) ? layoutResult.getElementXSs(note) : note.getXPosSs();
         }
 
-        return GraphicUtils.snapXToDevicePixel(g2, noteX);
+        return noteX;
     }
 
     @Override
@@ -241,7 +244,7 @@ public class NoteRenderer extends BaseElementRenderer<StaffElement> {
 
             var isBeamed = isNoteBeamed(element, ctx);
             renderNoteHead(g2, element, isBeamed, ctx);
-            renderLedgerLines(g2, element);
+            renderLedgerLines(g2, element, ctx);
             renderAccidental(g2, element, ctx);
         }
     }
@@ -342,22 +345,14 @@ public class NoteRenderer extends BaseElementRenderer<StaffElement> {
         }
 
         var geom = LayoutStylesheet.computeBaseStemGeometry(noteType, upper);
+        var stemWidthSs = ctx.getLineThickness().stemSs();
 
         // Snap stem left edge to device pixel boundary for crisp rendering.
         // We must work in absolute (device) coordinates because the graphics context
         // has been translated to the note's position — rounding in local coordinates
         // won't align to actual screen pixels.
         //
-        // For up-stems, snap the RIGHT edge so the stem never protrudes past
-        // the notehead. For down-stems, snap the LEFT edge directly.
-        double stemLeftX;
-
-        if (upper) {
-            double stemRightX = GraphicUtils.snapXToDevicePixel(g2, geom.stemLeftXSs() + LayoutStylesheet.STEM_WIDTH_SS);
-            stemLeftX = stemRightX - LayoutStylesheet.STEM_WIDTH_SS;
-        } else {
-            stemLeftX = GraphicUtils.snapXToDevicePixel(g2, geom.stemLeftXSs());
-        }
+        double stemLeftX = geom.stemLeftXSs();
 
         var layoutResult = ctx.getLayoutResult();
         var stemLayout = (layoutResult != null) ? layoutResult.getStemLayout(note) : null;
@@ -397,23 +392,25 @@ public class NoteRenderer extends BaseElementRenderer<StaffElement> {
         if (upper) {
             var stemTipY = -stemLength;
 
-            // Snap drawn edges to device pixels for crisp rendering
-            var drawTop = GraphicUtils.snapYToDevicePixel(g2, -(stemLength - beamInsetSs));
-            var drawBottom = GraphicUtils.snapYToDevicePixel(g2, anchorY);
+            var drawTop = -(stemLength - beamInsetSs);
+            var drawBottom = anchorY;
 
-            g2.fill(new Rectangle2D.Double(
-                stemLeftX, drawTop, LayoutStylesheet.STEM_WIDTH_SS, drawBottom - drawTop));
+            var arcDiameter = stemWidthSs * STEM_ARC_RATIO;
+            g2.fill(new RoundRectangle2D.Double(
+                stemLeftX, drawTop, stemWidthSs, drawBottom - drawTop,
+                arcDiameter, arcDiameter));
 
             return new Point2D.Double(stemLeftX, stemTipY);
         } else {
             var stemTipY = stemLength;
 
-            // Snap drawn edges to device pixels for crisp rendering
-            var drawTop = GraphicUtils.snapYToDevicePixel(g2, anchorY);
-            var drawBottom = GraphicUtils.snapYToDevicePixel(g2, stemLength - beamInsetSs);
+            var drawTop = anchorY;
+            var drawBottom = stemLength - beamInsetSs;
 
-            g2.fill(new Rectangle2D.Double(
-                stemLeftX, drawTop, LayoutStylesheet.STEM_WIDTH_SS, drawBottom - drawTop));
+            var arcDiameter = stemWidthSs * STEM_ARC_RATIO;
+            g2.fill(new RoundRectangle2D.Double(
+                stemLeftX, drawTop, stemWidthSs, drawBottom - drawTop,
+                arcDiameter, arcDiameter));
 
             return new Point2D.Double(stemLeftX, stemTipY);
         }
@@ -525,7 +522,7 @@ public class NoteRenderer extends BaseElementRenderer<StaffElement> {
     // Ledger Line Rendering
     // ==========================================================================
 
-    private void renderLedgerLines(Graphics2D g2, StaffElement note) {
+    private void renderLedgerLines(Graphics2D g2, StaffElement note, ElementRenderContext ctx) {
         double extensionSs = LayoutStylesheet.getLedgerLineOverhangSs(note);
 
         if (extensionSs == 0.0) {
@@ -537,7 +534,7 @@ public class NoteRenderer extends BaseElementRenderer<StaffElement> {
         double centerXSs = noteheadWidthSs / 2.0;
 
         forEachLedgerLineYSs(note.getStaffPosition(),
-            y -> drawLedgerLine(g2, centerXSs, y, ledgerWidthSs));
+            y -> drawLedgerLine(g2, centerXSs, y, ledgerWidthSs, ctx));
     }
 
     // ==========================================================================

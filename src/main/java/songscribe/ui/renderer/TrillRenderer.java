@@ -49,17 +49,14 @@ public class TrillRenderer extends BaseElementRenderer<Trill> {
     // Default fallback advance width in staff-space units (~2.125 ss)
     private static final double DEFAULT_TRILL_ADVANCE_WIDTH_SS = 2.125;
 
-    // Notehead center X for horizontal alignment
-    private static final double NOTE_HEAD_WIDTH_SS;
+    private static final double NOTE_HEAD_WIDTH_SS = SMuFLMetadata.getInstance().noteHeadWidthSs();
 
     // Singleton instance
     private static final TrillRenderer INSTANCE = new TrillRenderer();
 
     static {
-        var metadata = SMuFLMetadata.getInstance();
-        var advanceWidth = metadata.getAdvanceWidth(SMuFLGlyph.ORNAMENT_TRILL);
+        var advanceWidth = SMuFLMetadata.getInstance().getAdvanceWidth(SMuFLGlyph.ORNAMENT_TRILL);
         TRILL_ADVANCE_WIDTH_SS = (advanceWidth != null) ? advanceWidth : DEFAULT_TRILL_ADVANCE_WIDTH_SS;
-        NOTE_HEAD_WIDTH_SS = metadata.requireBBox(SMuFLGlyph.NOTEHEAD_BLACK).width();
     }
 
     /**
@@ -109,11 +106,11 @@ public class TrillRenderer extends BaseElementRenderer<Trill> {
         var endNote = element.getEndElement();
 
         if (endNote != null && endNote != anchorNote) {
-            double trillXSs = GraphicUtils.snapXToDevicePixel(g2, layoutXSs);
+            double trillXSs = layoutXSs;
             double endXSs = layoutResult.getElementXSs(endNote) + NOTE_HEAD_WIDTH_SS;
             renderTrill(g2, trillXSs, endXSs, trillTopYSs);
         } else {
-            double trillXSs = centeredGlyphX(g2, layoutXSs,
+            double trillXSs = centeredGlyphX(layoutXSs,
                 anchorNote, 0, TRILL_ADVANCE_WIDTH_SS);
             renderTrill(g2, trillXSs, Double.NaN, trillTopYSs);
         }
@@ -143,10 +140,8 @@ public class TrillRenderer extends BaseElementRenderer<Trill> {
 
         // Draw wavy line extension for multi-note trills
         if (!Double.isNaN(endXSs)) {
-            double wavyStartX = GraphicUtils.snapXToDevicePixel(
-                g2, xSs + TRILL_ADVANCE_WIDTH_SS
-            );
-            double wavyEndX = GraphicUtils.snapXToDevicePixel(g2, endXSs);
+            double wavyStartX = xSs + TRILL_ADVANCE_WIDTH_SS;
+            double wavyEndX = endXSs;
             drawWavyLine(g2, wavyStartX, y, wavyEndX);
         }
     }
@@ -181,11 +176,11 @@ public class TrillRenderer extends BaseElementRenderer<Trill> {
             var endNote = trill.getEndElement();
 
             if (endNote != null && endNote != anchor) {
-                double trillXSs = GraphicUtils.snapXToDevicePixel(g2, layoutXSs);
+                double trillXSs = layoutXSs;
                 double endXSs = layoutResult.getElementXSs(endNote) + NOTE_HEAD_WIDTH_SS;
                 renderTrill(g2, trillXSs, endXSs, trillTopYSs);
             } else {
-                double trillXSs = centeredGlyphX(g2, layoutXSs,
+                double trillXSs = centeredGlyphX(layoutXSs,
                     anchor, 0, TRILL_ADVANCE_WIDTH_SS);
                 renderTrill(g2, trillXSs, Double.NaN, trillTopYSs);
             }

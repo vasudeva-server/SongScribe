@@ -28,6 +28,7 @@ import songscribe.smufl.GlyphAnchors;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
 import songscribe.ui.FlatLafKeys;
+import songscribe.ui.renderer.LineThickness;
 import songscribe.ui.FlatLafProps;
 
 /**
@@ -76,21 +77,11 @@ public final class LayoutStylesheet {
 
     // --- Title ---
     /**
-     * Padding inside title bounds (for hit testing)
-     */
-    public static final double TITLE_PADDING_SS = 0;
-
-    /**
      * Margin from title bottom to next section
      */
     public static final double TITLE_MARGIN_BOTTOM_SS = 2.0;  // 16px
 
     // --- Attribution ---
-    /**
-     * Padding inside attribution bounds
-     */
-    public static final double ATTRIBUTION_PADDING_SS = 0;
-
     /**
      * Margin from attribution bottom to score
      */
@@ -107,22 +98,6 @@ public final class LayoutStylesheet {
      * Margin between staff lines
      */
     public static final double LINE_MARGIN_BOTTOM_SS = 2.0;  // 16px
-
-    // --- Lyrics Block (below score) ---
-    /**
-     * Margin from score bottom to lyrics block
-     */
-    public static final double LYRICS_BLOCK_MARGIN_TOP_SS = 5.0;  // 40px
-
-    /**
-     * Margin from primary lyrics to Bangla lyrics
-     */
-    public static final double BANGLA_MARGIN_TOP_SS = 2.0;  // 16px
-
-    /**
-     * Margin from Bangla lyrics to translation
-     */
-    public static final double TRANSLATION_MARGIN_TOP_SS = 2.0;  // 16px
 
     // --- Footnotes ---
     /**
@@ -156,29 +131,13 @@ public final class LayoutStylesheet {
     // ABOVE-STAFF ELEMENTS (reference-based positioning)
     // ==========================================================================
 
-    // --- Annotation Region ---
-    /**
-     * Reserved vertical space for above-staff elements
-     */
-    public static final double ANNOTATION_REGION_MARGIN_SS = 3.0;  // 24px
-
     // --- Tempo ---
-    /**
-     * Padding around tempo marking (for hit testing)
-     */
-    public static final double TEMPO_PADDING_SS = 0.25;  // 2px
-
     /**
      * Margin from reference point to tempo marking
      */
-    public static final double TEMPO_MARGIN_SS = 2.0;  // 16px
+    public static final double TEMPO_MARGIN_SS = 1.0;  // 4px
 
     // --- Beat Change ---
-    /**
-     * Padding around beat/time signature change
-     */
-    public static final double BEAT_CHANGE_PADDING_SS = 0.25;  // 2px
-
     /**
      * Margin from reference point to beat change
      */
@@ -186,33 +145,11 @@ public final class LayoutStylesheet {
 
     // --- First/Second Endings (Volta brackets) ---
     /**
-     * Padding around ending bracket
-     */
-    public static final double ENDING_PADDING_SS = 0.25;  // 2px
-
-    /**
      * Margin from reference point to ending bracket
      */
     public static final double ENDING_MARGIN_SS = 0.75;  // 6px
 
-    // --- Trill ---
-    /**
-     * Padding around trill marking
-     */
-    public static final double TRILL_PADDING_SS = 0.25;  // 2px
-
-    // --- Fermata ---
-    /**
-     * Padding around fermata marking
-     */
-    public static final double FERMATA_PADDING_SS = 0.25;  // 2px
-
     // --- Annotations (text above staff) ---
-    /**
-     * Padding around text annotation
-     */
-    public static final double ANNOTATION_ABOVE_PADDING_SS = 0.25;  // 2px
-
     /**
      * Margin from reference point to annotation
      */
@@ -222,237 +159,27 @@ public final class LayoutStylesheet {
     // BELOW-STAFF ELEMENTS
     // ==========================================================================
 
-    // --- Dynamics (p, f, ff, etc.) ---
-    /**
-     * Padding around dynamic marking
-     */
-    public static final double DYNAMICS_PADDING_SS = 0.25;  // 2px
-
-    /**
-     * Margin from staff bottom to dynamics
-     */
-    public static final double DYNAMICS_MARGIN_SS = 1.0;  // 8px
-
     // --- Crescendo/Diminuendo hairpins ---
-    /**
-     * Padding around hairpin
-     */
-    public static final double CRESC_DIM_PADDING_SS = 0.125;  // 1px
-
-    /**
-     * Margin from reference point to hairpin
-     */
-    public static final double CRESC_DIM_MARGIN_SS = 0.5;  // 4px
-
     /**
      * Height of the hairpin opening
      */
-    public static final double HAIRPIN_OPENING_HEIGHT_SS = 1.0;  // 8px
+    public static final double HAIRPIN_OPENING_HEIGHT_SS = 1.25;  // 10px
 
     // --- Lyrics Row (under staff) ---
-    /**
-     * Padding around lyrics row
-     */
-    public static final double LYRICS_ROW_PADDING_SS = 0;
-
     /**
      * Margin from staff bottom to lyrics
      */
     public static final double LYRICS_ROW_MARGIN_SS = 1.0;  // 8px
 
-    /**
-     * Margin from lowest note bounds to lyrics baseline (ascent).
-     * Per Phase 8 spec: ascent below lowest note bounding box.
-     */
-    public static final double LYRICS_BASELINE_MARGIN_SS = 1.25;  // 10px
-
     // ==========================================================================
     // NOTE ELEMENTS
     // ==========================================================================
 
-    // --- Note (hit testing) ---
-    /**
-     * Padding around element for hit testing
-     */
-    public static final double ELEMENT_PADDING_SS = 0.5;  // 4px
-
-    // --- Articulations ---
-    /**
-     * Padding around articulation marking
-     */
-    public static final double ARTICULATION_PADDING_SS = 0.25;  // 2px
-
-    /**
-     * Margin between stacked articulations (staccato -> accent)
-     */
-    public static final double ARTICULATION_INTER_MARGIN_SS = 0.375;  // 3px
-
-    // --- Ties ---
-    /**
-     * Padding around tie curve
-     */
-    public static final double TIE_PADDING_SS = 0.25;  // 2px
-
-    /**
-     * Margin from articulations to tie
-     */
-    public static final double TIE_MARGIN_SS = 0.75;  // 6px
-
-    /**
-     * Distance from note head to tie arc endpoint
-     */
-    public static final double TIE_NOTE_HEAD_OFFSET_SS = 0.125;  // 1px
-
-    /**
-     * Minimum arc height for ties
-     */
-    public static final double TIE_MIN_ARC_HEIGHT_SS = 0.75;  // 6px
-
-    /**
-     * Reference horizontal distance for arc height scaling
-     */
-    public static final double TIE_REFERENCE_DISTANCE_SS = 6.25;  // 50px
-
-    /**
-     * Arc height scaling factor for ties.
-     * Arc height = minHeight + sqrt(distance / reference) * heightScale
-     */
-    public static final double TIE_HEIGHT_SCALE_SS = 0.5;  // 4px additional per sqrt unit
-
-    /**
-     * Margin from tie to articulations (area-based collision)
-     */
-    public static final double TIE_ARTICULATION_MARGIN_SS = 0.25;  // 2px
-
     // --- Tuplets ---
-    /**
-     * Padding around tuplet bracket
-     */
-    public static final double TUPLET_PADDING_SS = 0.25;  // 2px
-
     /**
      * Margin from reference point to tuplet bracket
      */
     public static final double TUPLET_MARGIN_SS = 0.625;  // 5px
-
-    /**
-     * Margin from beam to tuplet number (measured perpendicular to beam)
-     */
-    public static final double TUPLET_BEAM_MARGIN_SS = 0.25;  // 2px
-
-    /**
-     * Margin from highest note/articulation bounds to tuplet bracket
-     */
-    public static final double TUPLET_BRACKET_MARGIN_SS = 0.25;  // 2px
-
-    /**
-     * Minimum margin from staff top to tuplet bracket
-     */
-    public static final double TUPLET_MIN_STAFF_MARGIN_SS = 0.5;  // 4px
-
-    /**
-     * Gap on each side of tuplet number in bracket
-     */
-    public static final double TUPLET_NUMBER_GAP_SS = 0.125;  // 1px
-
-    /**
-     * Overhang of bracket beyond first and last note heads
-     */
-    public static final double TUPLET_BRACKET_OVERHANG_SS = 0.125;  // 1px
-
-    /**
-     * Scale factor for tuplet number in non-beamed (bracket) tuplets
-     */
-    public static final double TUPLET_BRACKET_NUMBER_SCALE = 0.9;  // 90% font size
-
-    // --- Beams ---
-    /**
-     * Padding around beam
-     */
-    public static final double BEAM_PADDING_SS = 0;
-
-    /**
-     * Margin between beam levels (8th -> 16th)
-     */
-    public static final double BEAM_INTER_MARGIN_SS = 0.75;  // 6px
-
-    /**
-     * Length of a partial beam stub
-     */
-    public static final double BEAM_STUB_SS = 1.0;  // 8px
-
-    // ==========================================================================
-    // HORIZONTAL SPACING
-    // ==========================================================================
-
-    // --- Accidentals ---
-    /**
-     * Padding around accidental glyph
-     */
-    public static final double ACCIDENTAL_PADDING_SS = 0.375;  // 3px
-
-    /**
-     * Margin between accidental and note head
-     */
-    public static final double ACCIDENTAL_INTER_MARGIN_SS = 0.125;  // 1px
-
-    // --- Note Type Spacing (right margin after note) ---
-    /**
-     * Right margin after semibreve (whole note)
-     */
-    public static final double SEMIBREVE_MARGIN_RIGHT_SS = 8.75;  // 70px
-
-    /**
-     * Right margin after minim (half note)
-     */
-    public static final double MINIM_MARGIN_RIGHT_SS = 6.25;  // 50px
-
-    /**
-     * Right margin after crotchet (quarter note)
-     */
-    public static final double CROTCHET_MARGIN_RIGHT_SS = 4.375;  // 35px
-
-    /**
-     * Right margin after quaver (eighth note)
-     */
-    public static final double QUAVER_MARGIN_RIGHT_SS = 3.125;  // 25px
-
-    /**
-     * Right margin after semiquaver (sixteenth note)
-     */
-    public static final double SEMIQUAVER_MARGIN_RIGHT_SS = 3.125;  // 25px
-
-    /**
-     * Right margin after barline
-     */
-    public static final double BARLINE_MARGIN_RIGHT_SS = 7.5;  // 60px
-
-    /**
-     * Right margin after breath mark
-     */
-    public static final double BREATH_MARK_MARGIN_RIGHT_SS = 1.875;  // 15px
-
-    // --- Syllables ---
-    /**
-     * Horizontal padding around syllable text
-     */
-    public static final double SYLLABLE_PADDING_H_SS = 0.25;  // 2px
-
-    /**
-     * Left margin before syllable
-     */
-    public static final double SYLLABLE_MARGIN_LEFT_SS = 0.25;  // 2px
-
-    /**
-     * Right margin after syllable
-     */
-    public static final double SYLLABLE_MARGIN_RIGHT_SS = 0.25;  // 2px
-
-    // --- First Note ---
-    /**
-     * X position of first note from left edge
-     */
-    public static final double FIRST_NOTE_X_SS = 12.5;  // 100px
 
     // ==========================================================================
     // STAFF DIMENSIONS
@@ -601,13 +328,6 @@ public final class LayoutStylesheet {
     // ==========================================================================
 
     /**
-     * Grace notes borrow space from the main note's left side.
-     * They must not push earlier notes leftward.
-     * If insufficient space, grace notes compress (they are subordinate).
-     */
-    public static final double GRACE_NOTE_MIN_WIDTH_SS = 1.0;  // 8px per grace note
-
-    /**
      * Gap between a grace note and its host note.
      */
     public static final double GRACE_NOTE_GAP_SS = 2.0;  // 16px
@@ -621,35 +341,6 @@ public final class LayoutStylesheet {
      * Beam groups may widen if lyrics under them require it.
      */
     public static final double BEAM_GROUP_MIN_INTERNAL_GAP_SS = 1.5;  // 12px
-
-    /**
-     * Minimum gap between adjacent beam groups or between a beam group and a rest.
-     */
-    public static final double BEAM_GROUP_EXTERNAL_GAP_SS = 0.5;  // 4px
-
-    // ==========================================================================
-    // HORIZONTAL SPACING - Barlines
-    // ==========================================================================
-
-    /**
-     * Space before a barline.
-     */
-    public static final double BARLINE_GAP_BEFORE_SS = 1.0;  // 8px
-
-    /**
-     * Space after a barline.
-     */
-    public static final double BARLINE_GAP_AFTER_SS = 1.5;  // 12px
-
-    // ==========================================================================
-    // HORIZONTAL SPACING - Breath Marks
-    // ==========================================================================
-
-    /**
-     * Slight space after a note with a breath mark.
-     * Breath marks participate lightly in spacing.
-     */
-    public static final double BREATH_MARK_GAP_SS = 0.25;  // 2px
 
     // ==========================================================================
     // VERTICAL STACKING - Collision Detection
@@ -667,15 +358,8 @@ public final class LayoutStylesheet {
 
     /**
      * Height of volta bracket tick marks in staff-space units.
-     * From abc2svg: {@code 20 / 8}.
      */
-    public static final double VOLTA_TICK_HEIGHT_SS = 2.5;  // 20px
-
-    /**
-     * Initial Y margin above staff top for volta bracket positioning.
-     * From abc2svg: {@code 5 / 8}.
-     */
-    public static final double VOLTA_MARGIN_SS = 0.625;  // 5px
+    public static final double VOLTA_TICK_HEIGHT_SS = 2.0;
 
     // ==========================================================================
     // VERTICAL STACKING - Lyrics
@@ -690,12 +374,6 @@ public final class LayoutStylesheet {
     // ==========================================================================
     // LINE JUSTIFICATION
     // ==========================================================================
-
-    /**
-     * When compressing to fit margin, gaps cannot go below this ratio of their
-     * calculated values. Below this, the note is rejected.
-     */
-    public static final double MIN_COMPRESSION_RATIO = 0.5;
 
     /**
      * Absolute minimum column gap during compression.
@@ -744,7 +422,7 @@ public final class LayoutStylesheet {
     public static final double ACCIDENTAL_GAP_SS = 0.25;
 
     /**
-     * Stem width in staff-space units (from Bravura engraving defaults).
+     * Stem width in staff-space units (LilyPond multiplier-derived).
      */
     public static final double STEM_WIDTH_SS;
 
@@ -777,7 +455,7 @@ public final class LayoutStylesheet {
     static {
         var metadata = SMuFLMetadata.getInstance();
         CLEF_WIDTH_SS = metadata.requireAdvanceWidth(SMuFLGlyph.G_CLEF);
-        STEM_WIDTH_SS = metadata.getEngravingDefaults().stemThickness();
+        STEM_WIDTH_SS = LineThickness.getInstance().stemSs();
 
         var blackAnchors = metadata.requireAnchors(SMuFLGlyph.NOTEHEAD_BLACK);
         var halfAnchors = metadata.requireAnchors(SMuFLGlyph.NOTEHEAD_HALF);

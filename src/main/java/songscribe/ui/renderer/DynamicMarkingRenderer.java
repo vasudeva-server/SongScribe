@@ -98,8 +98,7 @@ public class DynamicMarkingRenderer extends BaseElementRenderer<StaffElement> {
         double dynamicTopYSs = layoutYToComponentYSs(decorationLayout.ySs(), ctx);
         var dynamicBBox = SMuFLMetadata.getInstance().requireBBox(glyph);
         // Layout xSs is already centered over the notehead by the stacking calculator
-        double x = GraphicUtils.snapXToDevicePixel(g2,
-            decorationLayout.xSs() - dynamicBBox.left());
+        double x = decorationLayout.xSs() - dynamicBBox.left();
         double y = glyphOriginYFromLayoutTop(dynamicTopYSs, glyph);
 
         drawBravuraGlyph(g2, glyph, x, y, true);

@@ -23,6 +23,7 @@ package songscribe.ui.layout;
 import module java.desktop;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -1184,12 +1185,27 @@ public final class LayoutResult {
      * @param ySs      Y position (top edge) of the decoration
      * @param widthSs  Width of the decoration
      * @param heightSs Height of the decoration
+     * @param marginSs Bottom margin (space between element bottom and the tier below)
+     * @param regions  Collision sub-regions for composite elements, empty for simple elements
      */
     public record DecorationLayout(
         double xSs,
         double ySs,
         double widthSs,
-        double heightSs) {}
+        double heightSs,
+        double marginSs,
+        List<CollisionRegion> regions) {
+
+        /**
+         * Creates a DecorationLayout without collision sub-regions (simple elements).
+         */
+        public DecorationLayout(
+            double xSs, double ySs, double widthSs,
+            double heightSs, double marginSs
+        ) {
+            this(xSs, ySs, widthSs, heightSs, marginSs, List.of());
+        }
+    }
 
     /**
      * Immutable positioned bounds of a span element (hairpin, ending, tuplet), computed during layout.

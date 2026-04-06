@@ -19,20 +19,12 @@
  */
 package songscribe.converter;
 
-import module java.desktop;
-
 import java.io.File;
-import java.io.IOException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import songscribe.SongScribe;
-import songscribe.export.ExportOptions;
-import songscribe.ui.component.MyBorder;
-import songscribe.ui.component.Score;
-import songscribe.file.FileUtils;
-import songscribe.util.GraphicUtils;
 
 @SuppressWarnings("FieldMayBeStatic")
 public class ImageConverter {
@@ -99,35 +91,7 @@ public class ImageConverter {
 
     @SuppressWarnings("ConstantValue")
     private void convert() {
-        var score = new Score(null);
-        var myBorder = MyBorder.withOverrides(
-            margin, topmargin, leftmargin, bottommargin, rightmargin
-        );
-        var exportOptions = new ExportOptions(
-            !withoutLyrics, !withoutSongTitle, !withoutCopyright
-        );
-
-        for (var file : files) {
-            Converter.loadComposition(file, score);
-
-            var image = score.createImageForExport(
-                Color.WHITE,
-                (double) resolution / GraphicUtils.getDpi(),
-                myBorder,
-                exportOptions
-            );
-
-            try {
-                var path = FileUtils.getPathWithoutExtension(file) + suffix;
-                ImageIO.write(
-                    image,
-                    type.toUpperCase(),
-                    new File(path + '.' + type.toLowerCase())
-                );
-                LOG.info("Converted {} to {} image", file.getName(), type.toUpperCase());
-            } catch (IOException e) {
-                LOG.error("Could not convert {}", file.getName(), e);
-            }
-        }
+        // Image export not yet implemented with component-based rendering
+        LOG.warn("Image conversion is not yet implemented");
     }
 }

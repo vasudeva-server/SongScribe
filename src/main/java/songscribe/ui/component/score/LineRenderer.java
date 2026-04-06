@@ -23,8 +23,6 @@ package songscribe.ui.component.score;
 import module java.desktop;
 
 
-import songscribe.music.StaffElement;
-import songscribe.smufl.SMuFLMetadata;
 import songscribe.ui.Mode;
 import songscribe.ui.component.Score;
 import songscribe.ui.edit.EditModeManager;
@@ -32,9 +30,7 @@ import songscribe.ui.edit.GraceModeManager;
 import songscribe.ui.layout.AnnotationAttachment;
 import songscribe.ui.layout.BeatChangeAttachment;
 import songscribe.ui.layout.DynamicAttachment;
-import songscribe.ui.layout.Clef;
 import songscribe.ui.layout.FermataAttachment;
-import songscribe.ui.layout.KeySignature;
 import songscribe.ui.layout.ScaleContext;
 import songscribe.ui.layout.TempoAttachment;
 import songscribe.ui.renderer.AnnotationRenderer;
@@ -51,6 +47,7 @@ import songscribe.ui.renderer.FermataRenderer;
 import songscribe.ui.renderer.GlissandoRenderer;
 import songscribe.ui.renderer.KeySignatureRenderer;
 import songscribe.ui.renderer.NoteRenderer;
+import songscribe.ui.renderer.RenderTarget;
 import songscribe.ui.renderer.TempoRenderer;
 import songscribe.ui.renderer.TieRenderer;
 import songscribe.ui.renderer.TrillRenderer;
@@ -71,10 +68,6 @@ class LineRenderer {
     // ==========================================================================
     // Constants
     // ==========================================================================
-
-    /** Staff line thickness in staff-space units (from SMuFL engraving defaults). */
-    private static final double STAFF_LINE_THICKNESS =
-        SMuFLMetadata.getInstance().getEngravingDefaults().staffLineThickness();
 
     /** The stroke used to draw the selection rectangle border. */
     private static final BasicStroke SELECTION_RECT_STROKE = new BasicStroke(2.0f);
@@ -118,6 +111,7 @@ class LineRenderer {
 
         // Create render context for this rendering pass
         var ctx = new ElementRenderContext(composition);
+        ctx.setRenderTarget(RenderTarget.SCREEN);
         ctx.setCurrentLine(line);
         ctx.setLineIndex(lineIndex);
         ctx.setMiddleLineYSs(lc.getMiddleLineYSs());
@@ -131,7 +125,7 @@ class LineRenderer {
         NoteRenderer.initializeAccidentalWidths(g2);
 
         // Render in proper order (back to front)
-        drawStaffLines(g2);
+        drawStaffLines(g2, ctx);
         renderLineBeginning(g2, ctx);
         renderElements(g2, ctx);
         renderGlissandos(g2, ctx);
@@ -145,90 +139,14 @@ class LineRenderer {
         renderInsertionElement(g2, ctx);
     }
 
-    /**
-     * Renders debug visualizations for the staff line.
-     * <p>
-     * Called from {@link LineComponent#renderDebug(Graphics2D)} after
-     * the base class debug rendering.
-     *
-     * @param g2 Graphics context
-     */
-    void renderDebug(Graphics2D g2) {
-        var middleLineYPx = lc.getMiddleLineYPx();
-        var line = lc.getLine();
-        var layoutResult = lc.getLayoutResult();
-
-        // Draw middle line indicator
-        g2.setColor(new Color(0, 0, 255, 128));
-        g2.drawLine(0, middleLineYPx, 20, middleLineYPx);
-
-        // Draw note positions
-        if (line != null) {
-            g2.setColor(new Color(255, 0, 255, 128));
-
-            for (var i = 0; i < line.elementCount(); i++) {
-                var element = line.getElement(i);
-                var x = element.getXPosSs();
-                var y = lc.staffPositionToYPx(element.getStaffPosition());
-                g2.fillOval(x - 2, y - 2, 4, 4);
-            }
-        }
-
-        // Draw note columns and stacking areas when DEBUG environment variable is set
-        if (layoutResult != null) {
-            // Save original stroke
-            var originalStroke = g2.getStroke();
-            // Use a thin stroke that doesn't expand bounds
-            g2.setStroke(new BasicStroke(1.0f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER));
-
-            // Draw note column rectangles
-            g2.setColor(new Color(0, 255, 0, 80));  // Green with transparency
-            var staffTopYSs = layoutResult.getStaffTopYSs();
-            var staffBottomYSs = layoutResult.getStaffBottomYSs();
-
-            for (var column : layoutResult.getElementColumns().values()) {
-                var leftX = column.getLeftEdgeXSs();
-                var rightX = column.getRightEdgeXSs();
-                var width = rightX - leftX;
-                var height = staffBottomYSs - staffTopYSs;
-
-                // Draw column rectangle (X is absolute, Y centered on middleLineYPx)
-                var rect = new Rectangle2D.Double(
-                    leftX,
-                    middleLineYPx - height / 2,
-                    width,
-                    height
-                );
-                g2.draw(rect);
-            }
-
-            // Draw element bounds (stacking areas)
-            g2.setColor(new Color(255, 165, 0, 80));  // Orange with transparency
-
-            for (var bounds : layoutResult.getElementBounds().values()) {
-                // X is absolute, Y is relative to middleLineYPx
-                var rect = new Rectangle2D.Double(
-                    bounds.getLeft(),
-                    middleLineYPx + bounds.getTop(),
-                    bounds.getWidth(),
-                    bounds.getHeight()
-                );
-                g2.draw(rect);
-            }
-
-            // Restore original stroke
-            g2.setStroke(originalStroke);
-        }
-    }
-
     // ==========================================================================
     // Staff and Line Beginning
     // ==========================================================================
 
     /**
-     * Draws the 5 staff lines as filled rectangles snapped to device pixels.
+     * Draws the 5 staff lines as filled rounded rectangles snapped to device pixels.
      */
-    private void drawStaffLines(Graphics2D g2) {
+    private void drawStaffLines(Graphics2D g2, ElementRenderContext ctx) {
         var selectionProvider = lc.getSelectionProvider();
         var lineIndex = lc.getLineIndex();
         var staffSelected = lc.isEditMode()
@@ -239,18 +157,14 @@ class LineRenderer {
 
         var lineWidth = lc.getComposition().getLineWidthSs();
         var middleLineYSs = lc.getMiddleLineYSs();
+        var staffLineThicknessSs = ctx.getLineThickness().staffLineSs();
 
         // Staff has 5 lines, middle line (B) is at index 2.
         // Lines are at: middleLineYSs - 2, middleLineYSs - 1, middleLineYSs,
         //               middleLineYSs + 1, middleLineYSs + 2
-        // Each line is drawn as a filled rectangle snapped to device pixels
-        // to avoid anti-aliasing artifacts from stroking.
         for (var i = -2; i <= 2; i++) {
             var centerY = middleLineYSs + i;
-            var snappedTop = GraphicUtils.snapYToDevicePixel(g2, centerY - STAFF_LINE_THICKNESS / 2);
-            var snappedBottom = GraphicUtils.snapYToDevicePixel(g2, centerY + STAFF_LINE_THICKNESS / 2);
-
-            g2.fill(new Rectangle2D.Double(0, snappedTop, lineWidth, snappedBottom - snappedTop));
+            GraphicUtils.fillHorizontalLine(g2, 0, lineWidth, centerY, staffLineThicknessSs);
         }
     }
 

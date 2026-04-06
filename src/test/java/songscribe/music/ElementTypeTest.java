@@ -28,9 +28,10 @@ import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
 import songscribe.smufl.SMuFLGlyph;
-import songscribe.smufl.SMuFLMetadata;
+
 import songscribe.ui.layout.LayoutStylesheet;
 import songscribe.ui.layout.ScaleContext;
+import songscribe.ui.renderer.LineThickness;
 
 class ElementTypeTest extends UnitTest {
 
@@ -250,17 +251,17 @@ class ElementTypeTest extends UnitTest {
 
         @Test
         void testDoubleBarlineWidth() {
-            var defaults = SMuFLMetadata.getInstance().getEngravingDefaults();
-            double expected = 2 * defaults.thinBarlineThickness() + defaults.barlineSeparation();
+            var lt = LineThickness.getInstance();
+            double expected = 2 * lt.thinBarlineSs() + lt.barlineSeparationSs();
             assertThat(ElementType.DOUBLE_BARLINE.getElementWidthSs())
                 .isCloseTo(expected, within(1e-9));
         }
 
         @Test
         void testFinalDoubleBarlineWidth() {
-            var defaults = SMuFLMetadata.getInstance().getEngravingDefaults();
-            double expected = defaults.thinBarlineThickness() + defaults.thickBarlineThickness()
-                + defaults.barlineSeparation();
+            var lt = LineThickness.getInstance();
+            double expected = lt.thinBarlineSs() + lt.thickBarlineSs()
+                + lt.barlineSeparationSs();
             assertThat(ElementType.FINAL_DOUBLE_BARLINE.getElementWidthSs())
                 .isCloseTo(expected, within(1e-9));
         }
@@ -306,9 +307,8 @@ class ElementTypeTest extends UnitTest {
 
         @Test
         void testSingleBarlineWidth() {
-            var defaults = SMuFLMetadata.getInstance().getEngravingDefaults();
             assertThat(ElementType.SINGLE_BARLINE.getElementWidthSs())
-                .isCloseTo(defaults.thinBarlineThickness(), within(1e-9));
+                .isCloseTo(LineThickness.getInstance().thinBarlineSs(), within(1e-9));
         }
 
         @Test

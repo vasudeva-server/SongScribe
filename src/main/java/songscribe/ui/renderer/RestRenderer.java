@@ -136,7 +136,7 @@ public class RestRenderer extends BaseElementRenderer<StaffElement> {
             noteX = (layoutResult != null) ? layoutResult.getElementXSs(note) : note.getXPosSs();
         }
 
-        return GraphicUtils.snapXToDevicePixel(g2, noteX);
+        return noteX;
     }
 
     @Override

@@ -554,12 +554,6 @@ public class LineComponent extends ScoreComponent
         return false;
     }
 
-    @Override
-    protected void renderDebug(Graphics2D g2) {
-        super.renderDebug(g2);
-        lineRenderer.renderDebug(g2);
-    }
-
     // ==========================================================================
     // Insertion Note Delegation
     // ==========================================================================

@@ -20,6 +20,7 @@
 
 package songscribe.ui.layout;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -28,8 +29,8 @@ import java.util.Set;
 
 import songscribe.music.Line;
 import songscribe.music.StaffElement;
-import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
+import songscribe.ui.renderer.LineThickness;
 
 /**
  * Calculates vertical positions for all elements above and below the staff.
@@ -37,7 +38,7 @@ import songscribe.smufl.SMuFLMetadata;
  * Uses a three-layer {@link StaffExtents} model for collision detection:
  * <ol>
  *   <li><b>Note-attached layer</b> ({@code noteAttachedExtents}): articulations, fermata, trill</li>
- *   <li><b>Structural layer</b> ({@code structuralExtents}): dynamics hairpins, text dynamics, volta</li>
+ *   <li><b>Structural layer</b> ({@code structuralExtents}): dynamics hairpins, text dynamics, volta, tuplets</li>
  *   <li><b>System layer</b> ({@code systemExtents}): tempo, beat changes, annotations</li>
  * </ol>
  * <p>
@@ -48,11 +49,8 @@ import songscribe.smufl.SMuFLMetadata;
 public class VerticalStackingCalculator {
 
     // Note head dimensions from SMuFL noteheadBlack bounding box (staff-space units)
-    private static final double NOTE_HEAD_WIDTH_SS =
-        SMuFLMetadata.getInstance().requireBBox(SMuFLGlyph.NOTEHEAD_BLACK).width();
-
-    private static final double NOTE_HEAD_HEIGHT_SS =
-        SMuFLMetadata.getInstance().requireBBox(SMuFLGlyph.NOTEHEAD_BLACK).height();
+    private static final double NOTE_HEAD_WIDTH_SS = SMuFLMetadata.getInstance().noteHeadWidthSs();
+    private static final double NOTE_HEAD_HEIGHT_SS = SMuFLMetadata.getInstance().noteHeadHeightSs();
 
     private static final double NOTE_HEAD_RADIUS_SS = NOTE_HEAD_HEIGHT_SS / 2.0;
 
@@ -68,7 +66,7 @@ public class VerticalStackingCalculator {
     private static final int TIE_BOUND_MIN_SAMPLES = 8;
 
     // Horizontal collision margin for structural/system elements (collapses between adjacent elements)
-    private static final double STRUCTURAL_HORIZONTAL_MARGIN_SS = 1.0; // ~8px
+    private static final double STRUCTURAL_HORIZONTAL_MARGIN_SS = 0.75; // 6px
 
     // Lyrics constants (to be measured from actual font in later phases)
     private static final double LYRICS_HEIGHT_SS = 2.5;       // ~20px
@@ -133,15 +131,18 @@ public class VerticalStackingCalculator {
         // Initialize structural layer from note-attached layer
         structuralExtents.copyTopFrom(noteAttachedExtents);
 
-        // Tier 3a: Hairpins (crescendo/diminuendo)
+        // Tier 3a: Tuplet brackets
+        stackTuplets(line, columnsByElement, structuralExtents, builder);
+
+        // Tier 3b: Hairpins (crescendo/diminuendo)
         stackHairpins(line, columnsByElement, structuralExtents, builder);
 
-        // Tier 3b: Text dynamics (DynamicAttachment on notes)
+        // Tier 3c: Text dynamics (DynamicAttachment on notes)
         for (var column : columns) {
             stackTextDynamics(column, structuralExtents, builder);
         }
 
-        // Tier 3c: Volta brackets (endings)
+        // Tier 3d: Volta brackets (endings)
         stackEndings(line, columnsByElement, structuralExtents, builder);
 
         // Tier 4: System-level stacking (tempo, beat changes, annotations)
@@ -323,19 +324,18 @@ public class VerticalStackingCalculator {
      * Notes at or above the top staff line anchor above the notehead.
      */
     private static double anchorCeilingSs(StaffElement note) {
-        double noteHeadYSs = note.getStaffPosition()
-            * LayoutStylesheet.STAFF_POSITION_OFFSET_SS;
-        return anchorCeilingSs(note.getStaffPosition(), noteHeadYSs);
+        return anchorCeilingSs(note.getStaffPosition());
     }
 
     /**
-     * Returns the anchor ceiling Y for the given staff position and notehead Y.
+     * Returns the anchor ceiling Y for the given staff position.
      */
-    private static double anchorCeilingSs(int staffPosition, double noteHeadYSs) {
+    private static double anchorCeilingSs(int staffPosition) {
         if (staffPosition > TOP_STAFF_LINE_POSITION) {
             return STAFF_TOP_Y_SS;
         }
 
+        double noteHeadYSs = staffPosition * LayoutStylesheet.STAFF_POSITION_OFFSET_SS;
         return noteHeadYSs - NOTE_HEAD_RADIUS_SS;
     }
 
@@ -376,7 +376,6 @@ public class VerticalStackingCalculator {
 
         double xSs = column.getXSs();
         int staffPosition = note.getStaffPosition();
-        double noteHeadYSs = staffPosition * LayoutStylesheet.STAFF_POSITION_OFFSET_SS;
 
         // Identify articulation types
         Articulation staccatoArticulation = null;
@@ -398,12 +397,12 @@ public class VerticalStackingCalculator {
         // Position staccato first (closest to notehead), then accent beyond
         if (staccatoArticulation != null) {
             stackSingleArticulation(staccatoArticulation, noteAttachedExtents,
-                xSs, marginSs, staffPosition, noteHeadYSs, builder);
+                xSs, marginSs, staffPosition, builder);
         }
 
         if (accentArticulation != null) {
             stackSingleArticulation(accentArticulation, noteAttachedExtents,
-                xSs, marginSs, staffPosition, noteHeadYSs, builder);
+                xSs, marginSs, staffPosition, builder);
         }
     }
 
@@ -413,32 +412,12 @@ public class VerticalStackingCalculator {
     private static void stackSingleArticulation(
         Articulation articulation,
         StaffExtents extents,
-        double xSs, double marginSs, int staffPosition, double noteHeadYSs,
+        double xSs, double marginSs, int staffPosition,
         LayoutResult.Builder builder) {
 
         stackAbove(extents, articulation, xSs,
             articulation.getContentWidthSs(), articulation.getContentHeightSs(),
-            marginSs, 0.0, staffPosition, noteHeadYSs, builder);
-    }
-
-    /**
-     * Computes the effective ceiling Y for placing a decoration above a note.
-     * <p>
-     * Notes within or below the staff anchor above the top staff line.
-     * Notes at or above the top staff line anchor above the notehead.
-     * The result also respects existing reservations in the extents for collision avoidance.
-     *
-     * @return the highest (most negative) Y that the decoration's bottom edge should not exceed
-     */
-    private static double anchoredCeilingSs(
-        StaffExtents extents,
-        double xSs, double widthSs,
-        int staffPosition, double noteHeadYSs) {
-
-        double currentTopSs = extents.yGet(true, xSs, widthSs);
-        double anchorSs = anchorCeilingSs(staffPosition, noteHeadYSs);
-
-        return Math.min(currentTopSs, anchorSs);
+            marginSs, staffPosition, builder);
     }
 
     /**
@@ -486,13 +465,13 @@ public class VerticalStackingCalculator {
         if (staccatoArticulation != null) {
             stackSingleArticulation(staccatoArticulation, extents,
                 xSs, LayoutStylesheet.NOTE_DECORATION_MARGIN_SS,
-                staffPosition, centerYSs, builder);
+                staffPosition, builder);
         }
 
         if (accentArticulation != null) {
             stackSingleArticulation(accentArticulation, extents,
                 xSs, LayoutStylesheet.NOTE_DECORATION_MARGIN_SS,
-                staffPosition, centerYSs, builder);
+                staffPosition, builder);
         }
 
         // Tier 2: Fermata
@@ -500,7 +479,7 @@ public class VerticalStackingCalculator {
             var fermata = new FermataAttachment(note);
             stackAbove(extents, fermata, xSs,
                 fermata.getContentWidthSs(), fermata.getContentHeightSs(),
-                LayoutStylesheet.NOTE_DECORATION_MARGIN_SS, 0.0, staffPosition, centerYSs, builder);
+                LayoutStylesheet.NOTE_DECORATION_MARGIN_SS, staffPosition, builder);
         }
 
         return builder.build();
@@ -568,11 +547,10 @@ public class VerticalStackingCalculator {
         }
 
         int staffPosition = anchor.getStaffPosition();
-        double noteHeadYSs = staffPosition * LayoutStylesheet.STAFF_POSITION_OFFSET_SS;
         double widthSs = trill.getSpanWidthSs(anchorXSs, endXSs);
         stackAbove(noteAttachedExtents, trill, anchorXSs, widthSs,
             trill.getContentHeightSs(), LayoutStylesheet.NOTE_DECORATION_MARGIN_SS,
-            0.0, staffPosition, noteHeadYSs, builder);
+            staffPosition, builder);
     }
 
     /**
@@ -666,11 +644,10 @@ public class VerticalStackingCalculator {
 
         double xSs = column.getXSs();
         int staffPosition = note.getStaffPosition();
-        double noteHeadYSs = staffPosition * LayoutStylesheet.STAFF_POSITION_OFFSET_SS;
 
         stackAbove(noteAttachedExtents, fermata, xSs,
             fermata.getContentWidthSs(), fermata.getContentHeightSs(),
-            LayoutStylesheet.NOTE_DECORATION_MARGIN_SS, 0.0, staffPosition, noteHeadYSs, builder);
+            LayoutStylesheet.NOTE_DECORATION_MARGIN_SS, staffPosition, builder);
     }
 
     /**
@@ -721,6 +698,7 @@ public class VerticalStackingCalculator {
 
         Class<? extends RangeElement> rangeClass =
             isCrescendo ? Crescendo.class : Diminuendo.class;
+        var existingRangeElements = line.findRangeElements(rangeClass);
 
         for (var iter = intervals.listIterator(); iter.hasNext(); ) {
             var interval = iter.next();
@@ -728,7 +706,7 @@ public class VerticalStackingCalculator {
             var endNote = line.getElement(interval.getEnd());
 
             // Check if already covered by a range element
-            if (isRangeCovered(startNote, endNote, line.findRangeElements(rangeClass))) {
+            if (isRangeCovered(startNote, endNote, existingRangeElements)) {
                 continue;
             }
 
@@ -752,11 +730,10 @@ public class VerticalStackingCalculator {
             }
 
             int staffPosition = startNote.getStaffPosition();
-            double noteHeadYSs = staffPosition * LayoutStylesheet.STAFF_POSITION_OFFSET_SS;
             double widthSs = endXSs - anchorXSs + NOTE_HEAD_WIDTH_SS;
             double ySs = stackAbove(structuralExtents, bridged, anchorXSs, widthSs,
                 LayoutStylesheet.HAIRPIN_OPENING_HEIGHT_SS, LayoutStylesheet.HAIRPIN_MARGIN_SS,
-                STRUCTURAL_HORIZONTAL_MARGIN_SS, staffPosition, noteHeadYSs, builder);
+                staffPosition, builder);
 
             // Write SpanLayout keyed by the legacy interval for renderer access
             builder.putSpanLayout(interval,
@@ -787,18 +764,18 @@ public class VerticalStackingCalculator {
         double contentWidthSs = dynamic.getContentWidthSs();
         double centeredXSs = columnXSs + note.getType().getCenterXSs() - contentWidthSs / 2.0;
         int staffPosition = note.getStaffPosition();
-        double noteHeadYSs = staffPosition * LayoutStylesheet.STAFF_POSITION_OFFSET_SS;
         stackAbove(structuralExtents, dynamic, centeredXSs,
             contentWidthSs, dynamic.getContentHeightSs(),
-            LayoutStylesheet.NOTE_DECORATION_MARGIN_SS, STRUCTURAL_HORIZONTAL_MARGIN_SS,
-            staffPosition, noteHeadYSs, builder);
+            LayoutStylesheet.NOTE_DECORATION_MARGIN_SS,
+            staffPosition, builder);
     }
 
     /**
      * Stacks all endings (volta brackets) for the line.
      * <p>
-     * Volta brackets maintain consistent height per Gould; note-attached
-     * elements are allowed to intrude into volta space.
+     * Each ending computes its bracket ranges (first and second brackets split
+     * at the REPEAT_RIGHT barline), then collision regions are created for each
+     * bracket and stacked together as one element.
      */
     private void stackEndings(
         Line line,
@@ -806,9 +783,126 @@ public class VerticalStackingCalculator {
         StaffExtents structuralExtents,
         LayoutResult.Builder builder) {
 
+        var lt = LineThickness.getInstance();
+
         for (var ending : line.findRangeElements(Ending.class)) {
-            stackSpanElement(ending, LayoutStylesheet.ENDING_MARGIN_SS,
+            var anchor = ending.getAnchorElement();
+
+            if (anchor == null || ending.getEndElement() == null) {
+                continue;
+            }
+
+            // Compute bracket ranges (stored on the Ending for renderer use)
+            var brackets = ending.computeBracketRanges(
+                line,
+                e -> {
+                    var col = columnsByElement.get(e);
+
+                    if (col == null) {
+                        throw new IllegalStateException(
+                            "No column for element");
+                    }
+
+                    return col.getXSs();
+                },
+                lt);
+
+            if (brackets.isEmpty()) {
+                continue;
+            }
+
+            // Element anchor X = first bracket's left edge
+            double anchorXSs = brackets.getFirst().x1Ss();
+
+            // Combine collision regions from all brackets
+            var allRegions = new ArrayList<CollisionRegion>();
+
+            for (var bracket : brackets) {
+                double xBaseSs = bracket.x1Ss() - anchorXSs;
+                allRegions.addAll(
+                    ending.computeCollisionRegions(bracket, xBaseSs));
+            }
+
+            // Overall width = from first bracket start to last bracket end
+            double widthSs = brackets.getLast().x2Ss() - anchorXSs;
+
+            int staffPosition = anchor.getStaffPosition();
+
+            stackAboveWithRegions(structuralExtents, ending, allRegions,
+                anchorXSs, widthSs,
+                LayoutStylesheet.ENDING_MARGIN_SS,
+                staffPosition, builder);
+        }
+    }
+
+    /**
+     * Stacks all tuplet brackets for the line.
+     * <p>
+     * Processes {@link Tuplet} range elements first, then bridges legacy
+     * {@link songscribe.music.TupletInterval} data not already covered
+     * by range elements.
+     */
+    private void stackTuplets(
+        Line line,
+        Map<StaffElement, ElementColumn> columnsByElement,
+        StaffExtents structuralExtents,
+        LayoutResult.Builder builder) {
+
+        // Process new Tuplet range elements
+        for (var tuplet : line.findRangeElements(Tuplet.class)) {
+            stackSpanElement(tuplet, LayoutStylesheet.TUPLET_MARGIN_SS,
                 columnsByElement, structuralExtents, builder);
+        }
+
+        // Bridge legacy tuplet intervals
+        bridgeLegacyTupletIntervals(line, columnsByElement, structuralExtents, builder);
+    }
+
+    /**
+     * Bridges legacy {@link songscribe.music.TupletInterval} data to temporary
+     * {@link Tuplet} range elements and stacks them.
+     */
+    private void bridgeLegacyTupletIntervals(
+        Line line,
+        Map<StaffElement, ElementColumn> columnsByElement,
+        StaffExtents structuralExtents,
+        LayoutResult.Builder builder) {
+
+        var existingTuplets = line.findRangeElements(Tuplet.class);
+
+        for (var iter = line.getTuplets().listIterator(); iter.hasNext(); ) {
+            var interval = iter.next();
+            var startNote = line.getElement(interval.getStart());
+            var endNote = line.getElement(interval.getEnd());
+
+            // Check if already covered by a range element
+            if (isRangeCovered(startNote, endNote, existingTuplets)) {
+                continue;
+            }
+
+            var startColumn = columnsByElement.get(startNote);
+            var endColumn = columnsByElement.get(endNote);
+
+            if (startColumn == null || endColumn == null) {
+                continue;
+            }
+
+            // Anchor at the right edge of each notehead
+            double anchorXSs = startColumn.getXSs() + NOTE_HEAD_WIDTH_SS;
+            double endXSs = endColumn.getXSs() + NOTE_HEAD_WIDTH_SS;
+            var bridged = new Tuplet(startNote, endNote, interval.getGrade());
+
+            int staffPosition = startNote.getStaffPosition();
+            double widthSs = bridged.getSpanWidthSs(anchorXSs, endXSs);
+            double contentHeightSs = bridged.getContentHeightSs();
+
+            double ySs = stackAbove(structuralExtents, bridged, anchorXSs, widthSs,
+                contentHeightSs, LayoutStylesheet.TUPLET_MARGIN_SS,
+                staffPosition, builder);
+
+            // Write SpanLayout keyed by the legacy interval for renderer access
+            builder.putSpanLayout(interval,
+                new LayoutResult.SpanLayout(anchorXSs, endXSs, ySs, contentHeightSs));
         }
     }
 
@@ -841,13 +935,12 @@ public class VerticalStackingCalculator {
 
         double xSs = column.getXSs();
         int staffPosition = note.getStaffPosition();
-        double noteHeadYSs = staffPosition * LayoutStylesheet.STAFF_POSITION_OFFSET_SS;
-        double widthSs = tempo.computeContentWidthSs(
-            line.getComposition().getAttributionFontMetrics());
-        stackAbove(systemExtents, tempo, xSs,
-            widthSs, tempo.getContentHeightSs(),
-            LayoutStylesheet.TEMPO_MARGIN_SS, STRUCTURAL_HORIZONTAL_MARGIN_SS,
-            staffPosition, noteHeadYSs, builder);
+        var attrFontMetrics = line.getComposition().getAttributionFontMetrics();
+        var metrics = tempo.computeContentMetrics(attrFontMetrics);
+
+        stackAboveWithRegions(systemExtents, tempo, metrics.regions(), xSs,
+            metrics.widthSs(), LayoutStylesheet.TEMPO_MARGIN_SS,
+            staffPosition, builder);
     }
 
     /**
@@ -879,13 +972,12 @@ public class VerticalStackingCalculator {
 
         double xSs = column.getXSs();
         int staffPosition = note.getStaffPosition();
-        double noteHeadYSs = staffPosition * LayoutStylesheet.STAFF_POSITION_OFFSET_SS;
         double widthSs = beatChange.computeContentWidthSs(
             line.getComposition().getAttributionFontMetrics());
         stackAbove(systemExtents, beatChange, xSs,
             widthSs, beatChange.getContentHeightSs(),
-            LayoutStylesheet.TEMPO_MARGIN_SS, STRUCTURAL_HORIZONTAL_MARGIN_SS,
-            staffPosition, noteHeadYSs, builder);
+            LayoutStylesheet.TEMPO_MARGIN_SS,
+            staffPosition, builder);
     }
 
     /**
@@ -917,13 +1009,12 @@ public class VerticalStackingCalculator {
 
         double xSs = column.getXSs();
         int staffPosition = note.getStaffPosition();
-        double noteHeadYSs = staffPosition * LayoutStylesheet.STAFF_POSITION_OFFSET_SS;
         double widthSs = annotation.computeContentWidthSs(
             line.getComposition().getAnnotationFontMetrics());
         stackAbove(systemExtents, annotation, xSs,
             widthSs, annotation.getContentHeightSs(),
-            LayoutStylesheet.ANNOTATION_ABOVE_MARGIN_SS, STRUCTURAL_HORIZONTAL_MARGIN_SS,
-            staffPosition, noteHeadYSs, builder);
+            LayoutStylesheet.ANNOTATION_ABOVE_MARGIN_SS,
+            staffPosition, builder);
     }
 
 
@@ -942,29 +1033,96 @@ public class VerticalStackingCalculator {
         StaffExtents extents,
         LineElement element,
         double xSs, double widthSs, double heightSs, double marginSs,
-        double horizontalMarginSs,
-        int staffPosition, double noteHeadYSs,
+        int staffPosition,
         LayoutResult.Builder builder) {
 
-        // Expand the query range so nearby elements/notes within horizontalMarginSs force this
-        // element up. Only the query is expanded (not the reservation), so margins collapse
-        // between adjacent elements rather than stacking additively.
-        var queryXSs = xSs - horizontalMarginSs;
-        var queryWidthSs = widthSs + 2 * horizontalMarginSs;
+        // Query: expand by horizontal margin (collapses between adjacent elements)
+        var queryXSs = xSs - STRUCTURAL_HORIZONTAL_MARGIN_SS;
+        var queryWidthSs = widthSs + 2 * STRUCTURAL_HORIZONTAL_MARGIN_SS;
         var currentTopSs = extents.yGet(true, queryXSs, queryWidthSs);
-        var anchorSs = anchorCeilingSs(staffPosition, noteHeadYSs);
+        var anchorSs = anchorCeilingSs(staffPosition);
         var ceilingSs = Math.min(currentTopSs, anchorSs);
-        var ySs = ceilingSs - marginSs - heightSs;
-        extents.ySet(true, xSs, widthSs, ySs);
+
+        // Position: bottom margin between this element's bottom and the ceiling
+        var elementYSs = ceilingSs - marginSs - heightSs;
+
+        // Reserve at element top. Upper tiers apply their own bottom margin
+        // when they query, so each tier-to-tier gap = the upper element's margin.
+        extents.ySet(true, xSs, widthSs, elementYSs);
 
         builder.putDecorationLayout(element,
-            new LayoutResult.DecorationLayout(xSs, ySs, widthSs, heightSs));
+            new LayoutResult.DecorationLayout(xSs, elementYSs, widthSs, heightSs, marginSs));
 
-        return ySs;
+        return elementYSs;
     }
 
     /**
-     * Stacks a span element (hairpin, ending) that requires both anchor and end notes.
+     * Places a composite element above the staff using sub-region collision detection.
+     * <p>
+     * Each sub-region independently queries the existing extents at its horizontal
+     * range to find its own ceiling. The element is placed at the highest (furthest
+     * from staff) position needed across all sub-regions. Each sub-region is then
+     * reserved at its own visual bottom, allowing later elements to nestle into
+     * the gaps between shorter and taller sub-regions.
+     *
+     * @return the computed top Y in staff-space units
+     */
+    private static double stackAboveWithRegions(
+        StaffExtents extents,
+        LineElement element,
+        List<CollisionRegion> regions,
+        double xSs, double widthSs, double marginSs,
+        int staffPosition,
+        LayoutResult.Builder builder
+    ) {
+        var anchorSs = anchorCeilingSs(staffPosition);
+        double elementYSs = Double.MAX_VALUE;
+
+        // Query phase: each sub-region finds its own ceiling independently.
+        // The element Y is the min (highest on page) across all sub-regions,
+        // so the element clears all content beneath every sub-region.
+        for (int i = 0; i < regions.size(); i++) {
+            var region = regions.get(i);
+            double regionXSs = xSs + region.xOffsetSs();
+            double queryXSs = regionXSs - STRUCTURAL_HORIZONTAL_MARGIN_SS;
+            double queryWidthSs = region.widthSs() + 2 * STRUCTURAL_HORIZONTAL_MARGIN_SS;
+
+            double regionTopSs = extents.yGet(true, queryXSs, queryWidthSs);
+            double regionCeilingSs = Math.min(regionTopSs, anchorSs);
+
+            // Constraint: elementY + yOffset + height <= ceiling - margin
+            double regionYSs = regionCeilingSs - marginSs
+                - region.yOffsetSs() - region.heightSs();
+
+            elementYSs = Math.min(elementYSs, regionYSs);
+        }
+
+        // Set phase: reserve each sub-region at its visual top.
+        // Shorter sub-regions (e.g. text) have a higher yOffset → shallower reservation,
+        // enabling later elements to nestle closer where only the short sub-region exists.
+        for (var region : regions) {
+            double regionXSs = xSs + region.xOffsetSs();
+            double regionTopSs = elementYSs + region.yOffsetSs();
+            extents.ySet(true, regionXSs, region.widthSs(), regionTopSs);
+        }
+
+        // Overall height is the max extent across all sub-regions
+        double overallHeightSs = 0;
+
+        for (var region : regions) {
+            overallHeightSs = Math.max(
+                overallHeightSs, region.yOffsetSs() + region.heightSs());
+        }
+
+        builder.putDecorationLayout(element,
+            new LayoutResult.DecorationLayout(
+                xSs, elementYSs, widthSs, overallHeightSs, marginSs, regions));
+
+        return elementYSs;
+    }
+
+    /**
+     * Stacks a span element (hairpin, tuplet) that requires both anchor and end notes.
      * <p>
      * Resolves anchor/end columns, computes span width via the range element,
      * and delegates to {@link #stackAbove}.
@@ -991,14 +1149,13 @@ public class VerticalStackingCalculator {
         }
 
         int staffPosition = anchor.getStaffPosition();
-        double noteHeadYSs = staffPosition * LayoutStylesheet.STAFF_POSITION_OFFSET_SS;
         double anchorXSs = anchorColumn.getXSs();
         double endXSs = endColumn.getXSs();
         double widthSs = element.getSpanWidthSs(anchorXSs, endXSs);
 
         stackAbove(extents, element, anchorXSs, widthSs,
             element.getContentHeightSs(), marginSs,
-            STRUCTURAL_HORIZONTAL_MARGIN_SS, staffPosition, noteHeadYSs, builder);
+            staffPosition, builder);
     }
 
 
@@ -1068,7 +1225,9 @@ public class VerticalStackingCalculator {
                     layout.xSs() + xOffsetSs,
                     layout.ySs() + yOffsetSs,
                     layout.widthSs() + widthAdjustSs,
-                    layout.heightSs()));
+                    layout.heightSs(),
+                    layout.marginSs(),
+                    layout.regions()));
             }
         }
     }
@@ -1076,7 +1235,8 @@ public class VerticalStackingCalculator {
     /**
      * Applies manual offsets to all {@link LayoutResult.SpanLayout} entries.
      * <p>
-     * Currently handles {@link songscribe.music.DynamicsInterval} shifts (already in ss).
+     * Handles {@link songscribe.music.DynamicsInterval} shifts and
+     * {@link songscribe.music.TupletInterval} vertical position adjustments.
      */
     private void applySpanOffsets(LayoutResult.Builder builder) {
         var entries = List.copyOf(builder.getSpanLayoutEntries());
@@ -1094,6 +1254,16 @@ public class VerticalStackingCalculator {
                     builder.putSpanLayout(interval, new LayoutResult.SpanLayout(
                         layout.startXSs() + x1ShiftSs,
                         layout.endXSs() + x2ShiftSs,
+                        layout.ySs() + yShiftSs,
+                        layout.heightSs()));
+                }
+            } else if (interval instanceof songscribe.music.TupletInterval tupletInterval) {
+                double yShiftSs = tupletInterval.getVerticalPositionSs();
+
+                if (yShiftSs != 0) {
+                    builder.putSpanLayout(interval, new LayoutResult.SpanLayout(
+                        layout.startXSs(),
+                        layout.endXSs(),
                         layout.ySs() + yShiftSs,
                         layout.heightSs()));
                 }

@@ -467,9 +467,9 @@ Several attachments use hardcoded `DEFAULT_WIDTH_SS` that should be computed fro
   - [x] Crescendo hairpin
   - [x] Diminuendo hairpin
   - [x] Text dynamics (pp, p, mp, mf, f, ff, sfz, fp) — TODO: requires a separate plan to add dedicated UI for adding text dynamics (currently no way to add them distinct from generic annotations)
-  - [ ] Volta bracket (first ending)
-  - [ ] Volta bracket (second ending)
-  - [ ] Tempo marking (X/Y positioning migrated; needs visual fine-tuning)
+  - [x] Volta bracket (first ending)
+  - [x] Volta bracket (second ending)
+  - [x] Tempo marking (X/Y positioning migrated; needs visual fine-tuning)
   - [ ] Beat change (renderer not yet migrated to ss coordinates)
   - [ ] Annotation
 
@@ -485,7 +485,7 @@ Several attachments use hardcoded `DEFAULT_WIDTH_SS` that should be computed fro
   - [x] Accent + fermata (fermata above accent)
   - [x] Staccato + accent + fermata (all three stacked)
   - [x] Articulation + trill (trill above articulation)
-  - [ ] Fermata + tempo (tempo above fermata)
+  - [x] Fermata + tempo (tempo above fermata)
 
   Cross-element stacking:
   - [ ] Hairpin under fermata on same note
