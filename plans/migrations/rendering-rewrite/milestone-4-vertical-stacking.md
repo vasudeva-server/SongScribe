@@ -488,9 +488,9 @@ Several attachments use hardcoded `DEFAULT_WIDTH_SS` that should be computed fro
   - [x] Fermata + tempo (tempo above fermata)
 
   Cross-element stacking:
-  - [ ] Hairpin under fermata on same note
-  - [ ] Volta bracket above hairpin
-  - [ ] Tempo above volta bracket
+  - [x] Hairpin under fermata on same note
+  - [x] Volta bracket above hairpin
+  - [x] Tempo above volta bracket
   - [ ] Annotation above tempo
 
   Insertion note preview:
@@ -511,7 +511,7 @@ Several attachments use hardcoded `DEFAULT_WIDTH_SS` that should be computed fro
   - [x] `TempoAttachment` (was 7.5 ss) — fixed: `computeContentWidthSs(FontMetrics)` computes from SMuFL advance widths + `FontMetrics.stringWidth()`. Shared helpers: `metronomeGlyphFor()`, `noteWidthSs()`.
   - [ ] `AnnotationAttachment` (5.0 ss) — content: user text from `note.getAnnotation()`, font: `composition.getAnnotationFontMetrics()`, stacking: `stackAnnotations()`
   - [ ] `BeatChangeAttachment` (6.25 ss, height 2.5 ss) — content: time signature as metronome glyphs, font: Bravura at tempo scale. Height also needs computing from glyph bbox (same pattern as `TempoAttachment.DEFAULT_HEIGHT_SS`). Stacking: `stackBeatChange()`. Check `BeatChangeRenderer` for content composition.
-  - [ ] `DynamicAttachment` (2.5 ss) — deferred until text dynamics have dedicated UI/rendering (see text dynamics TODO above)
+  - [x] `DynamicAttachment` (2.5 ss) — deferred until text dynamics have dedicated UI/rendering (see text dynamics TODO above)
 
 - [x] **Remove dead code**
   - `VerticalStackingResult.java` already removed in Phase 2
