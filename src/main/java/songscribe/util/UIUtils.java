@@ -420,19 +420,29 @@ public final class UIUtils {
     public static void preWarmDialogPeer(Component parent) {
         SwingUtilities.invokeLater(() -> {
             try {
-                var dummy = new JDialog(
-                    (Frame) SwingUtilities.getWindowAncestor(parent), "Pre-warm", false);
+                var ancestor = SwingUtilities.getWindowAncestor(parent);
 
+                if (!(ancestor instanceof Frame)) {
+                    return; // fallback if no suitable parent
+                }
+
+                var dummy = new JDialog((Frame) ancestor, "Pre-warm", false);
                 dummy.setResizable(false);
                 dummy.setSize(200, 100);
 
-                // Off-screen so any micro-flash is invisible
+                // Critical order: set location *and* make sure it's offscreen before any realization
                 dummy.setLocation(-10000, -10000);
 
+                // Optional but helps on some platforms: pack first (forces some peer init without showing)
+                dummy.pack();
+
+                // Make it visible very briefly on the EDT, then immediately hide/dispose
                 dummy.setVisible(true);
-                dummy.dispose();
+
+                // Give the native window a tiny moment to settle (usually not needed, but safe)
+                SwingUtilities.invokeLater(dummy::dispose);
             } catch (Exception ignored) {
-                // Pre-warming must never affect app startup
+                // Never let pre-warming break startup
             }
         });
     }
