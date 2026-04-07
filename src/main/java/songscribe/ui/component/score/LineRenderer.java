@@ -225,33 +225,20 @@ class LineRenderer {
     }
 
     /**
-     * Determines the color for rendering an element based on selection and playback state.
+     * Determines the color for rendering an element.
+     * <p>
+     * Delegates edit mode, playback, and selection logic to {@link ElementRenderContext#getElementColor}.
+     * Adds note-specific hover and grace-cancel coloring on top.
      *
      * @param elementIndex The index of the element within this line
+     * @param ctx          The render context
      * @return The color to use for rendering
      */
     private Color getElementColor(int elementIndex, ElementRenderContext ctx) {
-        if (!lc.isEditMode()) {
-            return Color.BLACK;
-        }
+        var color = ctx.getElementColor(elementIndex);
 
-        // Check if element is currently playing (primary note or grace note)
-        if (ctx.isElementPlaying(elementIndex)) {
-            return Score.getPlayingNoteColor();
-        }
-
-        // Check if element is part of a tie that contains the playing note
-        if (ctx.isElementInPlayingTie(elementIndex)) {
-            return Score.getPlayingNoteColor();
-        }
-
-        // Check if element is selected or highlighted by insertion element hover
-        var selectionProvider = lc.getSelectionProvider();
-        var isSelected = selectionProvider != null
-            && selectionProvider.isElementSelected(elementIndex, lc.getLineIndex());
-
-        if (isSelected) {
-            return ctx.getSelectionColor();
+        if (color != Color.BLACK) {
+            return color;
         }
 
         var isHovered = InsertionElementManager.getHoveredElementLineIndex() == lc.getLineIndex()
@@ -261,7 +248,6 @@ class LineRenderer {
             return Score.getInsertionElementColor();
         }
 
-        // Grace note pending cancellation (drag-left past slop)
         var line = lc.getLine();
 
         if (line != null) {
@@ -456,6 +442,7 @@ class LineRenderer {
         g2.setColor(Color.BLACK);
 
         for (var i = 0; i < line.elementCount(); i++) {
+            ctx.setCurrentElementIndex(i);
             var element = line.getElement(i);
 
             // Tier 1: Articulations (near-note)
@@ -498,6 +485,8 @@ class LineRenderer {
                 annotationRenderer.render(element, g2, ctx);
             }
         }
+
+        ctx.setCurrentElementIndex(-1);
 
         // Tier 2: Trills (rendered separately as they may span multiple notes)
         TrillRenderer.getInstance().renderTrillsFromLine(g2, ctx);

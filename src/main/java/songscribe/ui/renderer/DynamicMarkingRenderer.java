@@ -101,6 +101,7 @@ public class DynamicMarkingRenderer extends BaseElementRenderer<StaffElement> {
         double x = decorationLayout.xSs() - dynamicBBox.left();
         double y = glyphOriginYFromLayoutTop(dynamicTopYSs, glyph);
 
+        applyDecorationColor(g2, element, ctx);
         drawBravuraGlyph(g2, glyph, x, y, true);
     }
 

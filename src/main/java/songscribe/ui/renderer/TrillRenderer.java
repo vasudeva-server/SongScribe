@@ -26,8 +26,12 @@ import static songscribe.ui.renderer.GraphicsState.Property.TRANSFORM;
 
 import module java.desktop;
 
+import org.jspecify.annotations.Nullable;
+
+import songscribe.music.StaffElement;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
+import songscribe.ui.layout.LayoutResult;
 import songscribe.ui.layout.Trill;
 import songscribe.util.GraphicUtils;
 
@@ -88,6 +92,7 @@ public class TrillRenderer extends BaseElementRenderer<Trill> {
             return;
         }
 
+        var color = getDecorationColor(anchorNote, ctx);
         var layoutResult = ctx.getLayoutResult();
 
         if (layoutResult == null) {
@@ -103,16 +108,31 @@ public class TrillRenderer extends BaseElementRenderer<Trill> {
         double trillTopYSs = layoutYToComponentYSs(decorationLayout.ySs(), ctx);
         double layoutXSs = decorationLayout.xSs();
 
-        var endNote = element.getEndElement();
+        renderTrillAtPosition(
+            g2, anchorNote, element.getEndElement(),
+            layoutXSs, trillTopYSs, color, layoutResult);
+    }
 
-        if (endNote != null && endNote != anchorNote) {
-            double trillXSs = layoutXSs;
+    /**
+     * Resolves the trill X position and end X position, then delegates to
+     * {@link #renderTrill(Graphics2D, double, double, double, Color)}.
+     */
+    private void renderTrillAtPosition(
+        Graphics2D g2,
+        StaffElement anchor,
+        @Nullable StaffElement endNote,
+        double layoutXSs,
+        double trillTopYSs,
+        Color color,
+        LayoutResult layoutResult
+    ) {
+        if (endNote != null && endNote != anchor) {
             double endXSs = layoutResult.getElementXSs(endNote) + NOTE_HEAD_WIDTH_SS;
-            renderTrill(g2, trillXSs, endXSs, trillTopYSs);
+            renderTrill(g2, layoutXSs, endXSs, trillTopYSs, color);
         } else {
             double trillXSs = centeredGlyphX(layoutXSs,
-                anchorNote, 0, TRILL_ADVANCE_WIDTH_SS);
-            renderTrill(g2, trillXSs, Double.NaN, trillTopYSs);
+                anchor, 0, TRILL_ADVANCE_WIDTH_SS);
+            renderTrill(g2, trillXSs, Double.NaN, trillTopYSs, color);
         }
     }
 
@@ -124,25 +144,28 @@ public class TrillRenderer extends BaseElementRenderer<Trill> {
      * @param xSs         X position of the trill glyph in staff-space units
      * @param endXSs      Right edge of the wavy line extension, or {@code NaN} for single-note trills
      * @param trillTopYSs Y position of the trill top edge in component staff-space coordinates
+     * @param color       Color to use for the trill glyph and wavy line
      */
     private void renderTrill(
         Graphics2D g2,
         double xSs,
         double endXSs,
-        double trillTopYSs
+        double trillTopYSs,
+        Color color
     ) {
         // SMuFL ornamentTrill glyph origin is at the baseline (bottom of glyph).
         // trillTopYSs is the top, so offset down by the glyph height.
         var bbox = SMuFLMetadata.getInstance().requireBBox(SMuFLGlyph.ORNAMENT_TRILL);
         double y = trillTopYSs + bbox.height();
 
+        g2.setColor(color);
         drawBravuraGlyph(g2, SMuFLGlyph.ORNAMENT_TRILL, xSs, y, true);
 
         // Draw wavy line extension for multi-note trills
         if (!Double.isNaN(endXSs)) {
             double wavyStartX = xSs + TRILL_ADVANCE_WIDTH_SS;
             double wavyEndX = endXSs;
-            drawWavyLine(g2, wavyStartX, y, wavyEndX);
+            drawWavyLine(g2, wavyStartX, y, wavyEndX, color);
         }
     }
 
@@ -171,19 +194,13 @@ public class TrillRenderer extends BaseElementRenderer<Trill> {
                 continue;
             }
 
+            var color = getDecorationColor(anchor, ctx);
             double layoutXSs = layout.xSs();
             double trillTopYSs = layoutYToComponentYSs(layout.ySs(), ctx);
-            var endNote = trill.getEndElement();
 
-            if (endNote != null && endNote != anchor) {
-                double trillXSs = layoutXSs;
-                double endXSs = layoutResult.getElementXSs(endNote) + NOTE_HEAD_WIDTH_SS;
-                renderTrill(g2, trillXSs, endXSs, trillTopYSs);
-            } else {
-                double trillXSs = centeredGlyphX(layoutXSs,
-                    anchor, 0, TRILL_ADVANCE_WIDTH_SS);
-                renderTrill(g2, trillXSs, Double.NaN, trillTopYSs);
-            }
+            renderTrillAtPosition(
+                g2, anchor, trill.getEndElement(),
+                layoutXSs, trillTopYSs, color, layoutResult);
         }
     }
 
@@ -195,7 +212,8 @@ public class TrillRenderer extends BaseElementRenderer<Trill> {
         Graphics2D g2,
         double x1,
         double y,
-        double x2
+        double x2,
+        Color color
     ) {
         double length = x2 - x1;
 
@@ -207,7 +225,7 @@ public class TrillRenderer extends BaseElementRenderer<Trill> {
 
         try (var ignored = GraphicsState.save(g2, TRANSFORM, FONT, COLOR)) {
             g2.setFont(MUSIC_FONT);
-            g2.setColor(ELEMENT_COLOR);
+            g2.setColor(color);
             g2.translate(x1, y);
 
             double scale = length / WIGGLE_SEGMENT_WIDTH_SS / segments;

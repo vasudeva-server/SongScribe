@@ -115,10 +115,11 @@ public class BeatChangeRenderer extends BaseElementRenderer<StaffElement> {
             return;
         }
 
+        var color = getDecorationColor(note, ctx);
         int xPosSs = note.getXPosSs();
         int yPosPx = getEffectiveBeatChangeYPosPx(note, ctx);
 
-        drawBeatChange(g2, beatChange, xPosSs, yPosPx, composition);
+        drawBeatChange(g2, beatChange, xPosSs, yPosPx, composition, color);
     }
 
     /**
@@ -151,6 +152,10 @@ public class BeatChangeRenderer extends BaseElementRenderer<StaffElement> {
     /**
      * Draws a beat change at a specific position.
      *
+     * Uses {@link #ELEMENT_COLOR} (black) because this entry point is used by
+     * export renderers and other non-interactive contexts where selection
+     * coloring does not apply.
+     *
      * @param g2         Graphics context
      * @param beatChange The beat change data
      * @param xPosSs      X position (staff spaces)
@@ -164,17 +169,23 @@ public class BeatChangeRenderer extends BaseElementRenderer<StaffElement> {
         int yPosPx,
         songscribe.music.Composition composition
     ) {
-        // Draw first note
-        drawTempoChangeNote(g2, beatChange.getFirstElement(), xPosSs, yPosPx);
+        drawBeatChange(g2, beatChange, xPosSs, yPosPx, composition, ELEMENT_COLOR);
+    }
 
-        // Draw equals sign
+    private void drawBeatChange(
+        Graphics2D g2,
+        BeatChange beatChange,
+        int xPosSs,
+        int yPosPx,
+        songscribe.music.Composition composition,
+        Color color
+    ) {
+        drawTempoChangeNote(g2, beatChange.getFirstElement(), xPosSs, yPosPx, color);
         g2.setFont(composition.getAttributionFont());
-        g2.setColor(ELEMENT_COLOR);
+        g2.setColor(color);
         int eqXPosSs = xPosSs + (int) CROTCHET_WIDTH_PX + 7;
         g2.drawString("=", (float) eqXPosSs, yPosPx);
-
-        // Draw second note
-        drawTempoChangeNote(g2, beatChange.getSecondElement(), (int) Math.round(eqXPosSs + 12), yPosPx);
+        drawTempoChangeNote(g2, beatChange.getSecondElement(), (int) Math.round(eqXPosSs + 12), yPosPx, color);
     }
 
     /**
@@ -184,7 +195,8 @@ public class BeatChangeRenderer extends BaseElementRenderer<StaffElement> {
         Graphics2D g2,
         StaffElement tempoNote,
         int x,
-        int y
+        int y,
+        Color color
     ) {
         try (var ignored = GraphicsState.save(g2, FONT, TRANSFORM)) {
             g2.setFont(MUSIC_FONT);
@@ -193,14 +205,14 @@ public class BeatChangeRenderer extends BaseElementRenderer<StaffElement> {
             g2.scale(TEMPO_CHANGE_ZOOM_X, TEMPO_CHANGE_ZOOM_Y);
 
             // Draw note using simple rendering
-            paintSimpleTempoNote(g2, tempoNote);
+            paintSimpleTempoNote(g2, tempoNote, color);
         }
     }
 
     /**
      * Paints a simple note for tempo display (no accidentals, ledger lines, etc.).
      */
-    private void paintSimpleTempoNote(Graphics2D g2, StaffElement note) {
+    private void paintSimpleTempoNote(Graphics2D g2, StaffElement note, Color color) {
         var noteType = note.getType();
         String headChar = NoteRenderer.getNoteHeadChar(noteType);
 
@@ -209,7 +221,7 @@ public class BeatChangeRenderer extends BaseElementRenderer<StaffElement> {
         }
 
         try (var ignored = GraphicsState.save(g2, COLOR)) {
-            g2.setColor(ELEMENT_COLOR);
+            g2.setColor(color);
             g2.drawString(headChar, 0f, 0f);
 
             // Draw stem if needed (tempo notes have stems up)

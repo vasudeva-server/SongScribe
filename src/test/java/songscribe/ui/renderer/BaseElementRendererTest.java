@@ -1,0 +1,87 @@
+/*
+    SongScribe song notation program
+    Copyright (C) Sri Chinmoy Centres International
+
+    This file is part of SongScribe.
+
+    SongScribe is free software; you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; either version 3 of the License, or
+    (at your option) any later version.
+
+    SongScribe is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
+package songscribe.ui.renderer;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
+
+import songscribe.UnitTest;
+import songscribe.music.Composition;
+import songscribe.music.ElementType;
+import songscribe.music.Line;
+import songscribe.music.StaffElement;
+import songscribe.ui.component.Score;
+
+class BaseElementRendererTest extends UnitTest {
+
+    @BeforeAll
+    static void installFlatLaf() throws Exception {
+        installFlatLafDefaults();
+    }
+
+    // T1: line == null → ELEMENT_COLOR
+    @Test
+    void testGetDecorationColorNullLineReturnsElementColor() {
+        var element = new StaffElement(ElementType.CROTCHET);
+        var ctx = new ElementRenderContext(new Composition());
+        // currentLine is null by default
+
+        var color = BaseElementRenderer.getDecorationColor(element, ctx);
+
+        assertThat(color).isEqualTo(BaseElementRenderer.ELEMENT_COLOR);
+    }
+
+    // T2: element not in line (index < 0) → ELEMENT_COLOR
+    @Test
+    void testGetDecorationColorElementNotInLineReturnsElementColor() {
+        var element = new StaffElement(ElementType.CROTCHET);
+        var line = mock(Line.class);
+        when(line.getElementIndex(element)).thenReturn(-1);
+
+        var ctx = new ElementRenderContext(new Composition());
+        ctx.setCurrentLine(line);
+
+        var color = BaseElementRenderer.getDecorationColor(element, ctx);
+
+        assertThat(color).isEqualTo(BaseElementRenderer.ELEMENT_COLOR);
+    }
+
+    // T3: element in line (index >= 0) → ctx.getElementColor(index) result
+    @Test
+    void testGetDecorationColorElementInLineReturnsCtxColor() {
+        var element = new StaffElement(ElementType.CROTCHET);
+        var line = mock(Line.class);
+        when(line.getElementIndex(element)).thenReturn(0);
+
+        var ctx = new ElementRenderContext(new Composition());
+        ctx.setEditMode(true);
+        ctx.setCurrentLine(line);
+        ctx.setPlayingNoteIndex(0);  // element at index 0 is playing
+
+        var color = BaseElementRenderer.getDecorationColor(element, ctx);
+
+        assertThat(color).isEqualTo(Score.getPlayingNoteColor());
+    }
+}

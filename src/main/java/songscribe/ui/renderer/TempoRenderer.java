@@ -193,6 +193,8 @@ public class TempoRenderer extends BaseElementRenderer<StaffElement> {
             return;
         }
 
+        var color = getDecorationColor(note, ctx);
+
         // Get position from DecorationLayout (in staff-space units)
         var decorationLayout = getTempoDecorationLayout(note, ctx);
         double ySs = layoutYToComponentYSs(decorationLayout.ySs(), ctx);
@@ -209,7 +211,7 @@ public class TempoRenderer extends BaseElementRenderer<StaffElement> {
             + TempoAttachment.QUARTER_NOTE_BBOX.height() * TempoAttachment.NOTE_SCALE;
 
         if (tempo.shouldShowTempo()) {
-            drawTempoChangeNote(g2, tempoType, xSs, ySs);
+            drawTempoChangeNote(g2, tempoType, xSs, ySs, color);
             tempoBuilder.append("= ");
             tempoBuilder.append(tempo.getVisibleTempo());
             tempoBuilder.append(' ');
@@ -221,7 +223,7 @@ public class TempoRenderer extends BaseElementRenderer<StaffElement> {
         var attrFont = composition.getAttributionFont();
         var scale = ScaleContext.getInstance();
         g2.setFont(attrFont.deriveFont((float) scale.fromPixels(attrFont.getSize())));
-        g2.setColor(ELEMENT_COLOR);
+        g2.setColor(color);
 
         if (tempo.shouldShowTempo()) {
             // Advance past the metronome glyph using SMuFL advance widths (scaled)
@@ -249,7 +251,8 @@ public class TempoRenderer extends BaseElementRenderer<StaffElement> {
         Graphics2D g2,
         Tempo.Type tempoType,
         double xSs,
-        double ySs
+        double ySs,
+        Color color
     ) {
         var metGlyph = requireMetronomeGlyph(tempoType.getNote().getType());
 
@@ -258,7 +261,7 @@ public class TempoRenderer extends BaseElementRenderer<StaffElement> {
         double originYSs = ySs - bbox.top() * TempoAttachment.NOTE_SCALE;
 
         try (var ignored = GraphicsState.save(g2, COLOR, FONT)) {
-            g2.setColor(ELEMENT_COLOR);
+            g2.setColor(color);
             g2.setFont(TEMPO_NOTE_FONT);
             paintTempoNote(g2, tempoType, (float) xSs, (float) originYSs);
         }

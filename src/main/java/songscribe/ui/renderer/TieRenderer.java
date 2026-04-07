@@ -27,7 +27,6 @@ import module java.desktop;
 
 
 import songscribe.music.Interval;
-import songscribe.ui.component.Score;
 import songscribe.ui.layout.LayoutResult;
 
 /**
@@ -112,20 +111,22 @@ public class TieRenderer {
         }
     }
 
+    /**
+     * Determines the tie color by checking both endpoints.
+     * <p>
+     * A tie is colored if either its start or end note is playing or selected.
+     */
     private Color determineTieColor(Interval interval, ElementRenderContext ctx) {
-        if (ctx.isPlayingNoteInInterval(interval)) {
-            return Score.getPlayingNoteColor();
+        var startColor = ctx.getElementColor(interval.getStart());
+
+        if (startColor != Color.BLACK) {
+            return startColor;
         }
 
-        var sp = ctx.getSelectionProvider();
+        var endColor = ctx.getElementColor(interval.getEnd());
 
-        if (sp != null) {
-            var li = ctx.getLineIndex();
-
-            if (sp.isElementSelected(interval.getStart(), li)
-                || sp.isElementSelected(interval.getEnd(), li)) {
-                return ctx.getSelectionColor();
-            }
+        if (endColor != Color.BLACK) {
+            return endColor;
         }
 
         return BaseElementRenderer.ELEMENT_COLOR;

@@ -86,7 +86,7 @@ public class AnnotationRenderer extends BaseElementRenderer<StaffElement> {
         try (var ignored = GraphicsState.save(g2, FONT, COLOR)) {
             // Set font
             g2.setFont(composition.getAnnotationFont());
-            g2.setColor(ELEMENT_COLOR);
+            applyDecorationColor(g2, element, ctx);
 
             // Calculate position
             float x = (float) getAnnotationXPosPx(g2, element);

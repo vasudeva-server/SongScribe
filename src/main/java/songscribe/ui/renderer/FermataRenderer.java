@@ -104,6 +104,7 @@ public class FermataRenderer extends BaseElementRenderer<StaffElement> {
 
         double y = glyphOriginYFromLayoutTop(fermataTopYSs, SMuFLGlyph.FERMATA_ABOVE);
 
+        applyDecorationColor(g2, element, ctx);
         drawBravuraGlyph(g2, SMuFLGlyph.FERMATA_ABOVE, x, y, true);
     }
 

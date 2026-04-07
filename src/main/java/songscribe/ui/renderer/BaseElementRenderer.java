@@ -126,6 +126,53 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
     public static final Color STAFF_LINE_COLOR = Color.BLACK;
     protected static final Color ELEMENT_COLOR = Color.BLACK;
 
+    /**
+     * Returns the rendering color for a decoration attached to {@code element}.
+     * <p>
+     * Uses {@link ElementRenderContext#getCurrentElementIndex()} when set (avoids
+     * a linear scan), otherwise falls back to {@code line.getElementIndex(element)}.
+     * <p>
+     * Returns {@link #ELEMENT_COLOR} when the element is not found in the current
+     * line (index &lt; 0), which is correct for insertion preview elements that are
+     * not yet part of the line.
+     */
+    protected static Color getDecorationColor(
+        StaffElement element,
+        ElementRenderContext ctx
+    ) {
+        var index = ctx.getCurrentElementIndex();
+
+        if (index >= 0) {
+            return ctx.getElementColor(index);
+        }
+
+        var line = ctx.getCurrentLine();
+
+        if (line == null) {
+            return ELEMENT_COLOR;
+        }
+
+        index = line.getElementIndex(element);
+
+        if (index < 0) {
+            return ELEMENT_COLOR;
+        }
+
+        return ctx.getElementColor(index);
+    }
+
+    /**
+     * Sets the graphics color for a decoration attached to {@code element}.
+     * Delegates to {@link #getDecorationColor(StaffElement, ElementRenderContext)}.
+     */
+    protected static void applyDecorationColor(
+        Graphics2D g2,
+        StaffElement element,
+        ElementRenderContext ctx
+    ) {
+        g2.setColor(getDecorationColor(element, ctx));
+    }
+
     // ==========================================================================
     // Rendering Template Method
     // ==========================================================================

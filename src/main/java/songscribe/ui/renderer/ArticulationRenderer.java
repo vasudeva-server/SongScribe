@@ -104,6 +104,8 @@ public class ArticulationRenderer extends BaseElementRenderer<StaffElement> {
                 element, xSs);
         }
 
+        applyDecorationColor(g2, element, ctx);
+
         boolean hasStaccato = false;
         boolean hasAccent = false;
 

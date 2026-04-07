@@ -57,6 +57,7 @@ public class ElementRenderContext {
     private Color selectionColor = Score.getSelectionStrokeColor();
     private int playingNoteIndex = -1;
     private int playingGraceNoteIndex = -1;
+    private int currentElementIndex = -1;
     private double overrideElementXSs = Double.NaN;
 
     /**
@@ -131,6 +132,24 @@ public class ElementRenderContext {
      */
     public void setLineIndex(int lineIndex) {
         this.lineIndex = lineIndex;
+    }
+
+    /**
+     * Returns the index of the element currently being rendered within the line,
+     * or -1 if no element index is set (e.g. during line-level rendering passes).
+     */
+    public int getCurrentElementIndex() {
+        return currentElementIndex;
+    }
+
+    /**
+     * Sets the index of the element currently being rendered.
+     * Set to -1 to clear.
+     *
+     * @param currentElementIndex element index (0-based), or -1 to clear
+     */
+    public void setCurrentElementIndex(int currentElementIndex) {
+        this.currentElementIndex = currentElementIndex;
     }
 
     /**
@@ -213,6 +232,29 @@ public class ElementRenderContext {
      */
     public void setSelectionColor(Color selectionColor) {
         this.selectionColor = selectionColor;
+    }
+
+    /**
+     * Returns the rendering color for the element at the given index.
+     * <p>
+     * Covers edit mode, playback highlighting, and selection. Does not include
+     * note-specific hover or grace-cancel coloring (handled in LineRenderer).
+     */
+    public Color getElementColor(int elementIndex) {
+        if (!editMode) {
+            return Color.BLACK;
+        }
+
+        if (isElementPlaying(elementIndex) || isElementInPlayingTie(elementIndex)) {
+            return Score.getPlayingNoteColor();
+        }
+
+        if (selectionProvider != null
+                && selectionProvider.isElementSelected(elementIndex, lineIndex)) {
+            return selectionColor;
+        }
+
+        return Color.BLACK;
     }
 
     /**
