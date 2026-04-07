@@ -223,11 +223,11 @@ public final class Actions {
         STACCATO_ACTION
     );
 
-    public static final ToggleBeamAction TOGGLE_BEAM_ACTION =
-        ToggleBeamAction.createAction();
+    public static final ToggleNotationAction TOGGLE_BEAM_ACTION =
+        ToggleNotationAction.createBeamAction();
 
-    public static final ToggleTieAction TOGGLE_TIE_ACTION =
-        ToggleTieAction.createAction();
+    public static final ToggleNotationAction TOGGLE_TIE_ACTION =
+        ToggleNotationAction.createTieAction();
 
     public static final List<TupletAction> TOGGLE_TUPLET_ACTIONS =
         List.of(

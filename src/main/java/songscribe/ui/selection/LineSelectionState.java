@@ -289,9 +289,12 @@ public final class LineSelectionState {
             return false;
         }
 
-        return IntStream.rangeClosed(selectionBegin, selectionEnd).allMatch(
-            i -> line.getElement(i).getType().isBeamable()
-        );
+        if (!IntStream.rangeClosed(selectionBegin, selectionEnd).allMatch(
+                i -> line.getElement(i).getType().isBeamable())) {
+            return false;
+        }
+
+        return !selectionWouldConflict(line.getBeamings(), line.getTies());
     }
 
     /**
@@ -332,6 +335,11 @@ public final class LineSelectionState {
                     return false;
                 }
             }
+        }
+
+        if (selectionWouldConflict(ties, line.getBeamings())) {
+            canTie = false;
+            return false;
         }
 
         canTie = true;
@@ -404,6 +412,16 @@ public final class LineSelectionState {
             .getElements(selectionBegin, selectionEnd)
             .stream()
             .anyMatch(element -> !element.getType().isRest());
+    }
+
+    /**
+     * Returns whether adding {@code target} to the selection would conflict with an existing
+     * interval of the opposing type ({@code conflicting}). A conflict exists when the selection
+     * endpoints would be newly connected by {@code target} but are already connected by
+     * {@code conflicting}.
+     */
+    private boolean selectionWouldConflict(IntervalSet target, IntervalSet conflicting) {
+        return shouldConnectSelection(target) && !shouldConnectSelection(conflicting);
     }
 
     /**
