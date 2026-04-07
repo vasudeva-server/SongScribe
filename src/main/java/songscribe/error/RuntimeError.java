@@ -51,8 +51,7 @@ public final class RuntimeError {
      * @return never returns; declared as RuntimeException for use in {@code throw} expressions
      */
     public static RuntimeException exit(String message) {
-        LOG.error("Fatal: " + message);
-        throw showDialogAndExit();
+        return exit(message, new RuntimeException((String) null));
     }
 
     /**
