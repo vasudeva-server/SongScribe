@@ -34,6 +34,8 @@ import songscribe.music.ArticulationType;
 import songscribe.music.ElementType;
 import songscribe.music.Line;
 import songscribe.music.StaffElement;
+import songscribe.smufl.SMuFLGlyph;
+import songscribe.smufl.SMuFLMetadata;
 
 class ArticulationStackingTest extends UnitTest {
 
@@ -92,6 +94,31 @@ class ArticulationStackingTest extends UnitTest {
         return stackColumns(List.of(columnFor(note)));
     }
 
+    /**
+     * Asserts that a combo accent+staccato note uses the precomposed glyph layout:
+     * staccato holds the precomposed dimensions, accent has no separate layout entry.
+     */
+    private static void assertComboLayout(StaffElement note, LayoutResult result) {
+        var staccatoArticulation = note.getArticulations().get(0);
+        var accentArticulation = note.getArticulations().get(1);
+
+        var staccatoLayout = require(
+            result.getDecorationLayout(staccatoArticulation),
+            "staccato DecorationLayout");
+        assertThat(result.getDecorationLayout(accentArticulation))
+            .describedAs("accent DecorationLayout should be null in combo mode")
+            .isNull();
+
+        var precomposedBBox = SMuFLMetadata.getInstance()
+            .requireBBox(SMuFLGlyph.ARTIC_ACCENT_STACCATO_ABOVE);
+
+        assertThat(staccatoLayout.widthSs())
+            .isCloseTo(precomposedBBox.width(), within(TOLERANCE));
+        assertThat(staccatoLayout.heightSs())
+            .isCloseTo(precomposedBBox.height(), within(TOLERANCE));
+        assertThat(staccatoLayout.ySs()).isLessThan(0.0);
+    }
+
     @Nested
     class StemDownArticulationsAbove {
 
@@ -125,16 +152,7 @@ class ArticulationStackingTest extends UnitTest {
         void testAccentStacksAboveStaccatoWhenBothPresent() {
             var note = createNote(-2, false, ArticulationType.STACCATO, ArticulationType.ACCENT);
             var result = stackSingleColumn(note);
-
-            var staccatoLayout = require(
-                result.getDecorationLayout(note.getArticulations().get(0)),
-                "staccato DecorationLayout");
-            var accentLayout = require(
-                result.getDecorationLayout(note.getArticulations().get(1)),
-                "accent DecorationLayout");
-
-            // Accent top Y should be above (more negative than) staccato top Y
-            assertThat(accentLayout.ySs()).isLessThan(staccatoLayout.ySs());
+            assertComboLayout(note, result);
         }
     }
 
@@ -158,16 +176,7 @@ class ArticulationStackingTest extends UnitTest {
         void testAccentStacksAboveStaccatoWhenBothPresent() {
             var note = createNote(2, true, ArticulationType.STACCATO, ArticulationType.ACCENT);
             var result = stackSingleColumn(note);
-
-            var staccatoLayout = require(
-                result.getDecorationLayout(note.getArticulations().get(0)),
-                "staccato DecorationLayout");
-            var accentLayout = require(
-                result.getDecorationLayout(note.getArticulations().get(1)),
-                "accent DecorationLayout");
-
-            // Accent top Y should be above (more negative than) staccato top Y
-            assertThat(accentLayout.ySs()).isLessThan(staccatoLayout.ySs());
+            assertComboLayout(note, result);
         }
     }
 
@@ -221,6 +230,44 @@ class ArticulationStackingTest extends UnitTest {
             // Second staccato should be above the first (higher layers stack)
             // because the first staccato reserves space via ySet
             assertThat(layout2.ySs()).isLessThan(layout1.ySs());
+        }
+    }
+
+    @Nested
+    class PrecomposedGlyph {
+
+        @Test
+        void testSingleStaccatoStillUsesIndividualGlyph() {
+            var note = createNote(-2, false, ArticulationType.STACCATO);
+            var result = stackSingleColumn(note);
+            var staccatoLayout = require(
+                result.getDecorationLayout(note.getArticulations().getFirst()),
+                "staccato DecorationLayout");
+
+            var individualBBox = SMuFLMetadata.getInstance()
+                .requireBBox(SMuFLGlyph.ARTIC_STACCATO_ABOVE);
+
+            assertThat(staccatoLayout.widthSs())
+                .isCloseTo(individualBBox.width(), within(TOLERANCE));
+            assertThat(staccatoLayout.heightSs())
+                .isCloseTo(individualBBox.height(), within(TOLERANCE));
+        }
+
+        @Test
+        void testSingleAccentStillUsesIndividualGlyph() {
+            var note = createNote(-2, false, ArticulationType.ACCENT);
+            var result = stackSingleColumn(note);
+            var accentLayout = require(
+                result.getDecorationLayout(note.getArticulations().getFirst()),
+                "accent DecorationLayout");
+
+            var individualBBox = SMuFLMetadata.getInstance()
+                .requireBBox(SMuFLGlyph.ARTIC_ACCENT_ABOVE);
+
+            assertThat(accentLayout.widthSs())
+                .isCloseTo(individualBBox.width(), within(TOLERANCE));
+            assertThat(accentLayout.heightSs())
+                .isCloseTo(individualBBox.height(), within(TOLERANCE));
         }
     }
 

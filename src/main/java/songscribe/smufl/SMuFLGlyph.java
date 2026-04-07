@@ -88,6 +88,9 @@ public enum SMuFLGlyph {
     ARTIC_STACCATO_ABOVE("articStaccatoAbove", '\uE4A2'),
     ARTIC_STACCATO_BELOW("articStaccatoBelow", '\uE4A3'),
 
+    // Precomposed articulations
+    ARTIC_ACCENT_STACCATO_ABOVE("articAccentStaccatoAbove", '\uE4B0'),
+
     // Holds and pauses (U+E4C0-U+E4CF)
     FERMATA_ABOVE("fermataAbove", '\uE4C0'),
     FERMATA_BELOW("fermataBelow", '\uE4C1'),

@@ -29,8 +29,11 @@ import java.util.Set;
 
 import songscribe.music.Line;
 import songscribe.music.StaffElement;
+import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
 import songscribe.ui.renderer.LineThickness;
+
+import org.jspecify.annotations.Nullable;
 
 /**
  * Calculates vertical positions for all elements above and below the staff.
@@ -53,6 +56,13 @@ public class VerticalStackingCalculator {
     private static final double NOTE_HEAD_HEIGHT_SS = SMuFLMetadata.getInstance().noteHeadHeightSs();
 
     private static final double NOTE_HEAD_RADIUS_SS = NOTE_HEAD_HEIGHT_SS / 2.0;
+
+    // Precomposed accent+staccato glyph dimensions (staff-space units)
+    private static final double ACCENT_STACCATO_WIDTH_SS =
+        SMuFLMetadata.getInstance().requireBBox(SMuFLGlyph.ARTIC_ACCENT_STACCATO_ABOVE).width();
+
+    private static final double ACCENT_STACCATO_HEIGHT_SS =
+        SMuFLMetadata.getInstance().requireBBox(SMuFLGlyph.ARTIC_ACCENT_STACCATO_ABOVE).height();
 
     // Staff position of the top staff line (F5); positions <= this are at or above the staff
     private static final int TOP_STAFF_LINE_POSITION = -4;
@@ -394,15 +404,36 @@ public class VerticalStackingCalculator {
             ? LayoutStylesheet.TIE_DECORATION_MARGIN_SS
             : LayoutStylesheet.NOTE_DECORATION_MARGIN_SS;
 
-        // Position staccato first (closest to notehead), then accent beyond
-        if (staccatoArticulation != null) {
-            stackSingleArticulation(staccatoArticulation, noteAttachedExtents,
-                xSs, marginSs, staffPosition, builder);
-        }
+        dispatchArticulationStacking(staccatoArticulation, accentArticulation,
+            noteAttachedExtents, xSs, marginSs, staffPosition, builder);
+    }
 
-        if (accentArticulation != null) {
-            stackSingleArticulation(accentArticulation, noteAttachedExtents,
-                xSs, marginSs, staffPosition, builder);
+    /**
+     * Dispatches articulation stacking based on whether both accent and staccato are present.
+     * When both are present, uses the precomposed accent+staccato glyph keyed on the staccato
+     * articulation; otherwise stacks each articulation individually.
+     */
+    private static void dispatchArticulationStacking(
+        @Nullable Articulation staccatoArticulation,
+        @Nullable Articulation accentArticulation,
+        StaffExtents extents,
+        double xSs, double marginSs, int staffPosition,
+        LayoutResult.Builder builder) {
+
+        if (staccatoArticulation != null && accentArticulation != null) {
+            stackAbove(extents, staccatoArticulation, xSs,
+                ACCENT_STACCATO_WIDTH_SS, ACCENT_STACCATO_HEIGHT_SS,
+                marginSs, staffPosition, builder);
+        } else {
+            if (staccatoArticulation != null) {
+                stackSingleArticulation(staccatoArticulation, extents,
+                    xSs, marginSs, staffPosition, builder);
+            }
+
+            if (accentArticulation != null) {
+                stackSingleArticulation(accentArticulation, extents,
+                    xSs, marginSs, staffPosition, builder);
+            }
         }
     }
 
@@ -462,17 +493,9 @@ public class VerticalStackingCalculator {
             }
         }
 
-        if (staccatoArticulation != null) {
-            stackSingleArticulation(staccatoArticulation, extents,
-                xSs, LayoutStylesheet.NOTE_DECORATION_MARGIN_SS,
-                staffPosition, builder);
-        }
-
-        if (accentArticulation != null) {
-            stackSingleArticulation(accentArticulation, extents,
-                xSs, LayoutStylesheet.NOTE_DECORATION_MARGIN_SS,
-                staffPosition, builder);
-        }
+        dispatchArticulationStacking(staccatoArticulation, accentArticulation,
+            extents, xSs, LayoutStylesheet.NOTE_DECORATION_MARGIN_SS,
+            staffPosition, builder);
 
         // Tier 2: Fermata
         if (note.isFermata()) {
