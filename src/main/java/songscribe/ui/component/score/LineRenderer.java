@@ -47,7 +47,6 @@ import songscribe.ui.renderer.FermataRenderer;
 import songscribe.ui.renderer.GlissandoRenderer;
 import songscribe.ui.renderer.KeySignatureRenderer;
 import songscribe.ui.renderer.NoteRenderer;
-import songscribe.ui.renderer.RenderTarget;
 import songscribe.ui.renderer.TempoRenderer;
 import songscribe.ui.renderer.TieRenderer;
 import songscribe.ui.renderer.TrillRenderer;
@@ -111,7 +110,6 @@ class LineRenderer {
 
         // Create render context for this rendering pass
         var ctx = new ElementRenderContext(composition);
-        ctx.setRenderTarget(RenderTarget.SCREEN);
         ctx.setCurrentLine(line);
         ctx.setLineIndex(lineIndex);
         ctx.setMiddleLineYSs(lc.getMiddleLineYSs());

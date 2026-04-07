@@ -58,7 +58,6 @@ public class ElementRenderContext {
     private int playingNoteIndex = -1;
     private int playingGraceNoteIndex = -1;
     private double overrideElementXSs = Double.NaN;
-    private RenderTarget renderTarget = RenderTarget.SCREEN;
 
     /**
      * Creates a render context for the given composition.
@@ -324,23 +323,6 @@ public class ElementRenderContext {
      */
     public void clearOverrideElementX() {
         overrideElementXSs = Double.NaN;
-    }
-
-    /**
-     * Returns the render target (screen or export).
-     */
-    public RenderTarget getRenderTarget() {
-        return renderTarget;
-    }
-
-    /**
-     * Sets the render target. Controls whether device-pixel snapping is applied;
-     * element thicknesses are the same for all targets.
-     *
-     * @param renderTarget the target rendering environment
-     */
-    public void setRenderTarget(RenderTarget renderTarget) {
-        this.renderTarget = renderTarget;
     }
 
     /**
