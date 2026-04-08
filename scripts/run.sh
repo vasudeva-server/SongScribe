@@ -7,6 +7,7 @@
 # Any other arguments are passed through to the application.
 # To enable UI debug features (FlatLaf inspector, debug drawing): DEBUG=1 ./scripts/run.sh
 
+source "$(dirname "$0")/set-java-home.sh"
 java_args=()
 
 for arg in "$@"; do
