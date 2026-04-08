@@ -59,7 +59,9 @@
       "WebFetch",
       "WebSearch",
       "Read(~/Library/Logs/SongScribe/songscribe.log)",
-      "Bash(rtk git:*)"
+      "Bash(rtk git:*)",
+      "Bash(rtk read:*)",
+      "Bash(rtk write:*)"
     ]
   },
   "hooks": {
