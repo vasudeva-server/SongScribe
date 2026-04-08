@@ -51,6 +51,7 @@ public enum PrefsKey {
     PLAYBACK_VOLUME("playbackVolume"),
     RECENT_FILES("recentFiles"),
     SHOW_TIPS("showTips"),
+    STARTUP_ACTION("startupAction"),
     STRIP_SHORT_A("stripShortA"),
     TEMPO_CHANGE_PERCENT("tempoChangePercent"),
     TIP_INDEX("tipIndex"),

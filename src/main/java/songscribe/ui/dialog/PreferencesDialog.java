@@ -30,6 +30,7 @@ import org.jspecify.annotations.Nullable;
 import songscribe.Strings;
 import songscribe.prefs.Prefs;
 import songscribe.prefs.PrefsKey;
+import songscribe.prefs.StartupAction;
 import songscribe.ui.component.TickSlider;
 import songscribe.ui.Appearance;
 import songscribe.ui.FlatLafKeys;
@@ -177,6 +178,15 @@ public class PreferencesDialog extends BaseDialog {
         private final JRadioButton darkRadio = new JRadioButton(
             Strings.get(Strings.LABEL_PREFS_APPEARANCE_DARK)
         );
+        private final JRadioButton doNothingRadio = new JRadioButton(
+            Strings.get(Strings.LABEL_PREFS_STARTUP_ACTION_DO_NOTHING)
+        );
+        private final JRadioButton showFileChooserRadio = new JRadioButton(
+            Strings.get(Strings.LABEL_PREFS_STARTUP_ACTION_SHOW_FILE_CHOOSER)
+        );
+        private final JRadioButton openMostRecentRadio = new JRadioButton(
+            Strings.get(Strings.LABEL_PREFS_STARTUP_ACTION_OPEN_MOST_RECENT)
+        );
 
         GeneralTab() {
             build();
@@ -197,11 +207,16 @@ public class PreferencesDialog extends BaseDialog {
             appearanceGroup.add(lightRadio);
             appearanceGroup.add(darkRadio);
 
-            add(createPageSizeSection());
-            addSeparator();
-            add(createMeasurementUnitsSection());
+            var startupActionGroup = new ButtonGroup();
+            startupActionGroup.add(doNothingRadio);
+            startupActionGroup.add(showFileChooserRadio);
+            startupActionGroup.add(openMostRecentRadio);
+
+            add(createPageSizeAndUnitsRow());
             addSeparator();
             add(createAppearanceSection());
+            addSeparator();
+            add(createStartupActionSection());
 
             addChangeListeners();
         }
@@ -220,6 +235,18 @@ public class PreferencesDialog extends BaseDialog {
                 case LIGHT -> lightRadio;
                 case DARK -> darkRadio;
                 case SYSTEM -> systemRadio;
+            }).setSelected(true);
+
+            var startupAction = StartupAction.DO_NOTHING;
+
+            try {
+                startupAction = StartupAction.valueOf(prefs.getString(PrefsKey.STARTUP_ACTION));
+            } catch (IllegalArgumentException ignored) {}
+
+            (switch (startupAction) {
+                case SHOW_FILE_CHOOSER -> showFileChooserRadio;
+                case OPEN_MOST_RECENT -> openMostRecentRadio;
+                case DO_NOTHING -> doNothingRadio;
             }).setSelected(true);
 
             return true;
@@ -270,6 +297,37 @@ public class PreferencesDialog extends BaseDialog {
             systemRadio.addActionListener(appearanceListener);
             lightRadio.addActionListener(appearanceListener);
             darkRadio.addActionListener(appearanceListener);
+
+            var startupActionListener = new ActionListener() {
+                @Override
+                public void actionPerformed(ActionEvent e) {
+                    StartupAction action;
+
+                    if (showFileChooserRadio.isSelected()) {
+                        action = StartupAction.SHOW_FILE_CHOOSER;
+                    } else if (openMostRecentRadio.isSelected()) {
+                        action = StartupAction.OPEN_MOST_RECENT;
+                    } else {
+                        action = StartupAction.DO_NOTHING;
+                    }
+
+                    Prefs.getInstance().put(PrefsKey.STARTUP_ACTION, action.name());
+                }
+            };
+
+            doNothingRadio.addActionListener(startupActionListener);
+            showFileChooserRadio.addActionListener(startupActionListener);
+            openMostRecentRadio.addActionListener(startupActionListener);
+        }
+
+        private JPanel createPageSizeAndUnitsRow() {
+            var panel = new JPanel(new GridLayout(
+                1, 2, FlatLafProps.<Integer>get(FlatLafKeys.DIALOG_COMPONENT_HORIZONTAL_EXTRA_GAP), 0
+            ));
+            panel.setAlignmentX(Component.LEFT_ALIGNMENT);
+            panel.add(createPageSizeSection());
+            panel.add(createMeasurementUnitsSection());
+            return panel;
         }
 
         private JPanel createPageSizeSection() {
@@ -308,6 +366,18 @@ public class PreferencesDialog extends BaseDialog {
                 darkRadio
             ));
             section.add(row);
+            return section;
+        }
+
+        private JPanel createStartupActionSection() {
+            var section = new TitledSection(Strings.get(Strings.LABEL_PREFS_SECTION_STARTUP_ACTION));
+            section.add(new JLabel(Strings.get(Strings.LABEL_PREFS_STARTUP_ACTION_PROMPT)));
+            section.addSeparator();
+            section.add(doNothingRadio);
+            section.addSeparator();
+            section.add(showFileChooserRadio);
+            section.addSeparator();
+            section.add(openMostRecentRadio);
             return section;
         }
 

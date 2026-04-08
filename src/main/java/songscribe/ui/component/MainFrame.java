@@ -26,6 +26,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
 import com.formdev.flatlaf.util.SystemFileChooser;
 import com.formdev.flatlaf.util.SystemInfo;
 import net.engio.mbassy.listener.Handler;
@@ -57,6 +58,7 @@ import songscribe.music.Composition;
 import songscribe.prefs.Prefs;
 import songscribe.prefs.PrefsKey;
 import songscribe.prefs.RecentDocumentsManager;
+import songscribe.prefs.StartupAction;
 import songscribe.ui.OptionDialogs;
 import songscribe.ui.action.Actions;
 import songscribe.ui.action.SaveAction;
@@ -172,6 +174,8 @@ public class MainFrame extends JFrame implements Printable {
             MessageLogger.init();
             MidiController.openMidi();
             var instance = getInstance();
+            var rawRecents = Prefs.getInstance().getStringList(PrefsKey.RECENT_FILES);
+            Path mostRecentPath = rawRecents.isEmpty() ? null : Path.of(rawRecents.get(0));
             instance.initFrame();
 
             if (
@@ -187,7 +191,9 @@ public class MainFrame extends JFrame implements Printable {
                 new WhatsNewDialog().setVisible(true);
             }
 
-            if (args.length > 0) {
+            if (args.length == 0) {
+                SwingUtilities.invokeLater(() -> performStartupAction(mostRecentPath));
+            } else {
                 var fileToOpen = new File(args[0]);
 
                 if (fileToOpen.exists()) {
@@ -196,6 +202,37 @@ public class MainFrame extends JFrame implements Printable {
             }
         } catch (Exception e) {
             throw RuntimeError.exit("Application startup failed", e);
+        }
+    }
+
+    private static void performStartupAction(@Nullable Path mostRecentPath) {
+        var startupAction = StartupAction.DO_NOTHING;
+
+        try {
+            startupAction = StartupAction.valueOf(
+                Prefs.getInstance().getString(PrefsKey.STARTUP_ACTION)
+            );
+        } catch (IllegalArgumentException ignored) {}
+
+        switch (startupAction) {
+            case DO_NOTHING -> {}
+            case SHOW_FILE_CHOOSER -> MessageCenter.post(new ShowOpenDialogCommand());
+            case OPEN_MOST_RECENT -> {
+                if (mostRecentPath == null) {
+                    return;
+                }
+
+                if (mostRecentPath.toFile().exists()) {
+                    MessageCenter.post(new OpenFileCommand(mostRecentPath.toFile()));
+                } else {
+                    OptionDialogs.showErrorMessage(
+                        getInstance(),
+                        Strings.ALERT_TITLE_OPEN_RECENT_DOCUMENT,
+                        Strings.ERROR_RECENT_DOCUMENT_NOT_FOUND,
+                        mostRecentPath.getFileName()
+                    );
+                }
+            }
         }
     }
 

@@ -23,6 +23,7 @@
   "playbackNoteDuration": 83,
   "playbackVolume": 100,
   "showTips": true,
+  "startupAction": "DO_NOTHING",
   "stripShortA": true,
   "tempoChangePercent": 100,
   "tipIndex": 0,
