@@ -58,7 +58,8 @@
       "Skill(commit-commands:commit)",
       "WebFetch",
       "WebSearch",
-      "Read(~/Library/Logs/SongScribe/songscribe.log)"
+      "Read(~/Library/Logs/SongScribe/songscribe.log)",
+      "Bash(rtk git:*)"
     ]
   },
   "hooks": {
