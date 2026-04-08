@@ -134,7 +134,7 @@ class LineRenderer {
         renderDynamics(g2, ctx);
         renderEndings(g2, ctx);
         renderAttachments(g2, ctx);
-        renderInsertionElement(g2, ctx);
+        renderPreviewElement(g2, ctx);
     }
 
     // ==========================================================================
@@ -241,11 +241,11 @@ class LineRenderer {
             return color;
         }
 
-        var isHovered = InsertionElementManager.getHoveredElementLineIndex() == lc.getLineIndex()
-            && InsertionElementManager.getHoveredElementIndex() == elementIndex;
+        var isHovered = PreviewElementManager.getHoveredElementLineIndex() == lc.getLineIndex()
+            && PreviewElementManager.getHoveredElementIndex() == elementIndex;
 
         if (isHovered) {
-            return Score.getInsertionElementColor();
+            return Score.getPreviewElementColor();
         }
 
         var line = lc.getLine();
@@ -497,18 +497,18 @@ class LineRenderer {
     // ==========================================================================
 
     /**
-     * Renders the insertion element if this line is the current insertion line.
+     * Renders the preview element if this line is the current preview line.
      *
      * @param g2  Graphics context
      * @param ctx Render context
      */
-    private void renderInsertionElement(Graphics2D g2, ElementRenderContext ctx) {
+    private void renderPreviewElement(Graphics2D g2, ElementRenderContext ctx) {
         // Only render if this line is the current insertion line
-        if (!InsertionElementManager.hasInsertionElement(lc)) {
+        if (!PreviewElementManager.hasPreviewElement(lc)) {
             return;
         }
 
-        // Don't render insertion element when in select mode
+        // Don't render preview element when in select mode
         var score = lc.getScore();
 
         if (score != null && score.getMode() == Mode.SELECT) {
@@ -521,20 +521,20 @@ class LineRenderer {
             return;
         }
 
-        var insertionElement = editModeManager.getInsertionElement();
+        var previewElement = editModeManager.getPreviewElement();
 
-        if (insertionElement == null) {
+        if (previewElement == null) {
             return;
         }
 
-        // Glissando preview bypasses insertion element visibility — it manages its own
+        // Glissando preview bypasses preview element visibility — it manages its own
         // display logic via shouldShowGlissandoPreview() and never uses the note-head preview.
-        if (InsertionElementManager.isGlissandoPlaceholder(insertionElement)) {
-            if (!InsertionElementManager.shouldShowGlissandoPreview()) {
+        if (PreviewElementManager.isGlissandoPlaceholder(previewElement)) {
+            if (!PreviewElementManager.shouldShowGlissandoPreview()) {
                 return;
             }
 
-            var type = InsertionElementManager.getGlissandoZone();
+            var type = PreviewElementManager.getGlissandoZone();
 
             if (type == null) {
                 return;  // Defensive: shouldShowGlissandoPreview() guards this
@@ -546,7 +546,7 @@ class LineRenderer {
                 return;
             }
 
-            var sourceIndex = InsertionElementManager.getCurrentXIndex() - 1;
+            var sourceIndex = PreviewElementManager.getCurrentXIndex() - 1;
             var sourceNote = line.getElement(sourceIndex);
 
             if (sourceNote.getGlissando() != null
@@ -554,22 +554,22 @@ class LineRenderer {
                 return;  // Already has this glissando type — no preview needed
             }
 
-            g2.setColor(Score.getInsertionElementColor());
+            g2.setColor(Score.getPreviewElementColor());
             GlissandoRenderer.getInstance().renderPreviewGlissando(
                 g2, sourceIndex, type, line, ctx
             );
             return;
         }
 
-        // Skip if insertion element is not visible (e.g., in keyboard mode, or hovering over a note head)
-        if (!editModeManager.isInsertionElementVisible()) {
+        // Skip if preview element is not visible (e.g., in keyboard mode, or hovering over a note head)
+        if (!editModeManager.isPreviewElementVisible()) {
             return;
         }
 
         // Calculate X position from insertion index
         double x = 0;
-        var currentXIndex = InsertionElementManager.getCurrentXIndex();
-        var currentStaffPosition = InsertionElementManager.getCurrentStaffPosition();
+        var currentXIndex = PreviewElementManager.getCurrentXIndex();
+        var currentStaffPosition = PreviewElementManager.getCurrentStaffPosition();
 
         // In grace mode, use the locked x position directly — it already accounts
         // for grace note spacing. The standard calculateInsertionXSs would apply
@@ -591,34 +591,34 @@ class LineRenderer {
             var line = lc.getLine();
 
             if (layoutResult != null && line != null) {
-                x = layoutResult.calculateInsertionXSs(currentXIndex, mouseX, insertionElement, line);
+                x = layoutResult.calculateInsertionXSs(currentXIndex, mouseX, previewElement, line);
             }
         }
 
-        // Set the insertion element position
-        insertionElement.setStaffPosition(currentStaffPosition);
-        insertionElement.setUpper(Score.defaultUpperNote(insertionElement));
+        // Set the preview element position
+        previewElement.setStaffPosition(currentStaffPosition);
+        previewElement.setUpper(Score.defaultUpperNote(previewElement));
 
-        // Render the insertion element with the insertion element color.
+        // Render the preview element with the preview element color.
         // Pass x as an override so NoteRenderer and decoration renderers apply
         // device-pixel snapping to the raw double directly, exactly as they do for
         // composition elements via layoutResult.getElementXSs(). Temporarily clear
-        // layoutResult to prevent sub-renderers from looking up the insertion element
+        // layoutResult to prevent sub-renderers from looking up the preview element
         // (which is not in the layout).
         var savedLayout = ctx.getLayoutResult();
         ctx.setOverrideElementXSs(x);
         ctx.setLayoutResult(null);
-        g2.setColor(Score.getInsertionElementColor());
-        NoteRenderer.getInstance().render(g2, insertionElement, ctx);
+        g2.setColor(Score.getPreviewElementColor());
+        NoteRenderer.getInstance().render(g2, previewElement, ctx);
 
-        // Render articulations and fermata on the insertion element preview.
+        // Render articulations and fermata on the preview element.
         // The override X remains set so decoration renderers use the precise position.
-        if (!insertionElement.getArticulations().isEmpty()) {
-            ArticulationRenderer.getInstance().render(insertionElement, g2, ctx);
+        if (!previewElement.getArticulations().isEmpty()) {
+            ArticulationRenderer.getInstance().render(previewElement, g2, ctx);
         }
 
-        if (insertionElement.isFermata()) {
-            FermataRenderer.getInstance().render(insertionElement, g2, ctx);
+        if (previewElement.isFermata()) {
+            FermataRenderer.getInstance().render(previewElement, g2, ctx);
         }
 
         ctx.clearOverrideElementX();

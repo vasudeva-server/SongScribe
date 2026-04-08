@@ -62,7 +62,7 @@ import songscribe.prefs.StartupAction;
 import songscribe.ui.OptionDialogs;
 import songscribe.ui.action.Actions;
 import songscribe.ui.action.SaveAction;
-import songscribe.ui.component.score.InsertionElementManager;
+import songscribe.ui.component.score.PreviewElementManager;
 import songscribe.ui.component.toolbar.MainToolbarPanel;
 import songscribe.ui.dialog.PlatformFileDialog;
 import songscribe.ui.dialog.PropertiesStateStore;
@@ -301,7 +301,7 @@ public class MainFrame extends JFrame implements Printable {
 
                     @Override
                     public void appMovedToBackground(AppForegroundEvent e) {
-                        hideInsertionNote();
+                        hidePreviewNote();
                         ActivationGate.activate();
                     }
                 });
@@ -318,7 +318,7 @@ public class MainFrame extends JFrame implements Printable {
 
                 @Override
                 public void windowDeactivated(WindowEvent e) {
-                    hideInsertionNote();
+                    hidePreviewNote();
                     ActivationGate.activate();
                 }
             });
@@ -335,8 +335,8 @@ public class MainFrame extends JFrame implements Printable {
         score.requestFocusInWindow();
     }
 
-    private void hideInsertionNote() {
-        InsertionElementManager.hideInsertionElement(true);
+    private void hidePreviewNote() {
+        PreviewElementManager.hidePreviewElement(true);
     }
 
     private void setAppIcon() {

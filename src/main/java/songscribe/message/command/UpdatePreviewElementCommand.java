@@ -27,4 +27,4 @@ import songscribe.message.Message;
  * the music sheet's active note. This allows the Score class
  * to listen for these messages and update the active note accordingly.
  */
-public class UpdateInsertionElementCommand extends Message {}
+public class UpdatePreviewElementCommand extends Message {}

@@ -335,7 +335,7 @@ public class ElementRenderContext {
 
     /**
      * Sets a precise X coordinate for the next element render, bypassing layout lookup and
-     * {@code element.getXPos()}. Used by the insertion element preview so that {@link NoteRenderer}
+     * {@code element.getXPos()}. Used by the preview element so that {@link NoteRenderer}
      * applies device-pixel snapping to the raw computed double directly, matching the
      * path used for laid-out composition elements. Call {@link #clearOverrideElementX()} after
      * rendering to reset.

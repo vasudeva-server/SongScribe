@@ -133,11 +133,11 @@ public final class ScoreInputHandler
         }
 
         if (
-            !editModeManager.isInsertionElementVisible() &&
+            !editModeManager.isPreviewElementVisible() &&
                 (callback.getControl() == Control.MOUSE) &&
                 (callback.getMode() == Mode.EDIT)
         ) {
-            editModeManager.setInsertionElementVisible(true);
+            editModeManager.setPreviewElementVisible(true);
         }
     }
 
@@ -150,11 +150,11 @@ public final class ScoreInputHandler
         }
 
         if (
-            editModeManager.isInsertionElementVisible() &&
+            editModeManager.isPreviewElementVisible() &&
                 (callback.getControl() == Control.MOUSE) &&
                 (callback.getMode() == Mode.EDIT)
         ) {
-            editModeManager.setInsertionElementVisible(false);
+            editModeManager.setPreviewElementVisible(false);
             callback.repaint();
         }
     }
@@ -192,7 +192,7 @@ public final class ScoreInputHandler
     @Override
     public void keyPressed(KeyEvent e) {
         if (e.getKeyCode() == KeyEvent.VK_ALT) {
-            LineComponent.clearInsertionElement();
+            LineComponent.clearPreviewElement();
             LineComponent.setAltPressed(true);
             callback.repaint();
         } else if (e.getKeyCode() == KeyEvent.VK_ESCAPE) {
@@ -254,7 +254,7 @@ public final class ScoreInputHandler
             // LineComponent's insertion tracking or a separate keyboard-specific system.
 
             // For now, keyboard mode is disabled. Only UP/DOWN for pitch adjustment remain functional.
-            var insertionNote = editModeManager.getInsertionElement();
+            var insertionNote = editModeManager.getPreviewElement();
 
             if (insertionNote != null) {
                 if (code == KeyEvent.VK_UP) {

@@ -27,7 +27,7 @@ import org.jspecify.annotations.Nullable;
 
 import songscribe.music.StaffElement;
 
-public class DotAction extends InsertionElementAction implements UIAction.ElementModifiable {
+public class DotAction extends PreviewElementAction implements UIAction.ElementModifiable {
 
     private final DotLevel dotLevel;
 

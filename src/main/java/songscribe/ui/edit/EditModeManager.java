@@ -36,7 +36,7 @@ import songscribe.ui.selection.SelectionCoordinator;
 /**
  * Manages edit mode state for the Score.
  * <p>
- * EditModeManager holds the state related to the insertion element (the element that will be inserted),
+ * EditModeManager holds the state related to the preview element (the element that will be inserted),
  * including its type, duration, and accidentals. Also handles element creation, decoration,
  * and modification logic. Extracted from Score.java as part of Phase 6 of the Score Cleanup refactoring.
  */
@@ -65,12 +65,12 @@ public final class EditModeManager {
     private final ScoreActions scoreActions;
     private final GraceModeManager graceModeManager;
 
-    // Whether the insertion element is visible (based on mouse position in mouse mode)
-    private boolean insertionElementIsVisible = false;
+    // Whether the preview element is visible (based on mouse position in mouse mode)
+    private boolean previewElementIsVisible = false;
 
-    // The current insertion element that will be inserted
+    // The current preview element that will be inserted
     @Nullable
-    private StaffElement insertionElement = null;
+    private StaffElement previewElement = null;
 
     // Whether to play a note sound when inserting elements
     private boolean playInsertedNote = true;
@@ -102,47 +102,47 @@ public final class EditModeManager {
     }
 
     // -------------------------------------------------------------------------
-    // Insertion element accessors
+    // Preview element accessors
     // -------------------------------------------------------------------------
 
     /**
-     * Returns whether the insertion element is currently visible.
+     * Returns whether the preview element is currently visible.
      */
-    public boolean isInsertionElementVisible() {
-        return insertionElementIsVisible;
+    public boolean isPreviewElementVisible() {
+        return previewElementIsVisible;
     }
 
     /**
-     * Sets whether the insertion element is visible.
+     * Sets whether the preview element is visible.
      *
-     * @param visible true to show the insertion element, false to hide it
+     * @param visible true to show the preview element, false to hide it
      */
-    public void setInsertionElementVisible(boolean visible) {
-        this.insertionElementIsVisible = visible;
+    public void setPreviewElementVisible(boolean visible) {
+        this.previewElementIsVisible = visible;
     }
 
     /**
-     * Returns the current insertion element, or null if no insertion element is set.
+     * Returns the current preview element, or null if no preview element is set.
      */
     @Nullable
-    public StaffElement getInsertionElement() {
-        return insertionElement;
+    public StaffElement getPreviewElement() {
+        return previewElement;
     }
 
     /**
-     * Sets the current insertion element.
+     * Sets the current preview element.
      *
-     * @param insertionElement The element to set as the insertion element, or null to clear it
+     * @param previewElement The element to set as the preview element, or null to clear it
      */
-    public void setInsertionElement(@Nullable StaffElement insertionElement) {
-        this.insertionElement = insertionElement;
+    public void setPreviewElement(@Nullable StaffElement previewElement) {
+        this.previewElement = previewElement;
     }
 
     /**
-     * Returns whether an insertion element is currently set.
+     * Returns whether a preview element is currently set.
      */
-    public boolean hasInsertionElement() {
-        return insertionElement != null;
+    public boolean hasPreviewElement() {
+        return previewElement != null;
     }
 
     /**
@@ -162,15 +162,15 @@ public final class EditModeManager {
     }
 
     // -------------------------------------------------------------------------
-    // Insertion element creation and decoration
+    // Preview element creation and decoration
     // -------------------------------------------------------------------------
 
     /**
-     * Creates a new insertion element based on the currently selected element type.
+     * Creates a new preview element based on the currently selected element type.
      *
-     * @return The newly created insertion element
+     * @return The newly created preview element
      */
-    public StaffElement makeInsertionElement() {
+    public StaffElement makePreviewElement() {
         var elementType = ElementType.CROTCHET;
         var durationAction = Actions.DURATION_ACTION_GROUP.getSelected();
 
@@ -184,16 +184,16 @@ public final class EditModeManager {
             }
         }
 
-        return makeInsertionElement(elementType);
+        return makePreviewElement(elementType);
     }
 
     /**
-     * Creates a new insertion element of the given type.
+     * Creates a new preview element of the given type.
      *
      * @param elementType The type of element to create
-     * @return The newly created insertion element
+     * @return The newly created preview element
      */
-    public StaffElement makeInsertionElement(ElementType elementType) {
+    public StaffElement makePreviewElement(ElementType elementType) {
         // Make a new element or rest of the given type
         var type = elementType;
 
@@ -266,14 +266,14 @@ public final class EditModeManager {
      * @return true if the element was modified, false if normal insertion should proceed
      */
     public boolean elementWasModified(Line line, int elementIndex) {
-        if (insertionElement == null) {
+        if (previewElement == null) {
             return false;
         }
 
         scoreActions.clearSelection();
 
         if (
-            (insertionElement.getType() == ElementType.REPEAT_LEFT) &&
+            (previewElement.getType() == ElementType.REPEAT_LEFT) &&
                 ((elementIndex - 1) >= 0) &&
                 (line.getElement(elementIndex - 1).getType() == ElementType.REPEAT_RIGHT)
         ) {
@@ -284,7 +284,7 @@ public final class EditModeManager {
         }
 
         if (
-            (insertionElement.getType() == ElementType.REPEAT_RIGHT) &&
+            (previewElement.getType() == ElementType.REPEAT_RIGHT) &&
                 (elementIndex < line.elementCount()) &&
                 (line.getElement(elementIndex).getType() == ElementType.REPEAT_LEFT)
         ) {
@@ -297,16 +297,16 @@ public final class EditModeManager {
         return false;
     }
 
-    public void insertionElementDidChange(Line line, int elementIndex) {
-        if (insertionElement == null) {
+    public void previewElementDidChange(Line line, int elementIndex) {
+        if (previewElement == null) {
             return;
         }
 
-        // Capture the inserted element before insertionElement is updated for the next insertion.
+        // Capture the inserted element before previewElement is updated for the next insertion.
         var insertedElement = line.getElement(elementIndex);
         var shouldPlayNote = playInsertedNote && insertedElement.getType().isNote();
 
-        var nextElement = insertionElement.getType().newInstance();
+        var nextElement = previewElement.getType().newInstance();
 
         // After inserting an element, turn off fermata and accidental parentheses
         Actions.FERMATA_ACTION.setSelected(false);
@@ -314,7 +314,7 @@ public final class EditModeManager {
 
         // Add any other element decorations
         decorateElement(nextElement);
-        scoreActions.setInsertionElement(nextElement);
+        scoreActions.setPreviewElement(nextElement);
         LyricsProcessor.spellLyrics(line);
         scoreActions.drawWidthIfWiderLine(line, false);
         scoreActions.repaint();

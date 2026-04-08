@@ -43,6 +43,7 @@
       "mcp__serena__check_onboarding_performed",
       "mcp__serena__find_file",
       "mcp__serena__initial_instructions",
+      "mcp__serena__jet_brains_find_declaration",
       "mcp__serena__jet_brains_find_referencing_symbols",
       "mcp__serena__jet_brains_find_symbol",
       "mcp__serena__jet_brains_get_symbols_overview",

@@ -43,7 +43,7 @@ import org.junit.jupiter.api.TestMethodOrder;
 import songscribe.ui.Mode;
 import songscribe.ui.action.Actions;
 import songscribe.ui.action.UIAction;
-import songscribe.ui.component.score.InsertionElementManager;
+import songscribe.ui.component.score.PreviewElementManager;
 import songscribe.smufl.Engraving;
 import songscribe.ui.layout.ScaleContext;
 
@@ -349,7 +349,7 @@ class SelectionTest extends E2ETest {
         void testGlissandoSuppressedWhenTargetIsRest() {
             clickAction(Actions.GLISSANDO_ACTION);
             hoverBetween(0, Sel2.TIED_2.index, Sel2.SEMIBREVE_REST.index);
-            assertThat(GuiActionRunner.execute(() -> InsertionElementManager.shouldShowGlissandoPreview()))
+            assertThat(GuiActionRunner.execute(() -> PreviewElementManager.shouldShowGlissandoPreview()))
                 .as("target is rest").isFalse();
         }
 
@@ -357,7 +357,7 @@ class SelectionTest extends E2ETest {
         void testGlissandoSuppressedWhenSourceIsRest() {
             clickAction(Actions.GLISSANDO_ACTION);
             hoverBetween(0, Sel2.DEMI_SEMIQUAVER_REST.index, Sel2.NOTE.index);
-            assertThat(GuiActionRunner.execute(() -> InsertionElementManager.shouldShowGlissandoPreview()))
+            assertThat(GuiActionRunner.execute(() -> PreviewElementManager.shouldShowGlissandoPreview()))
                 .as("source is rest").isFalse();
         }
 
@@ -365,7 +365,7 @@ class SelectionTest extends E2ETest {
         void testGlissandoSuppressedWhenBothAreRests() {
             clickAction(Actions.GLISSANDO_ACTION);
             hoverBetween(0, Sel2.SEMIBREVE_REST.index, Sel2.MINIM_REST.index);
-            assertThat(GuiActionRunner.execute(() -> InsertionElementManager.shouldShowGlissandoPreview()))
+            assertThat(GuiActionRunner.execute(() -> PreviewElementManager.shouldShowGlissandoPreview()))
                 .as("both rests").isFalse();
         }
 
@@ -373,7 +373,7 @@ class SelectionTest extends E2ETest {
         void testSlideOutSuppressedWhenSourceIsRest() {
             clickAction(Actions.SLIDE_OUT_ACTION);
             hoverBetween(0, Sel2.DEMI_SEMIQUAVER_REST.index, Sel2.NOTE.index);
-            assertThat(GuiActionRunner.execute(InsertionElementManager::shouldShowGlissandoPreview))
+            assertThat(GuiActionRunner.execute(PreviewElementManager::shouldShowGlissandoPreview))
                 .as("source is rest").isFalse();
         }
     }

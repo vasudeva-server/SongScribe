@@ -28,7 +28,7 @@ import songscribe.music.StaffElement;
  * Abstract base for actions whose attributes apply only to notes
  * (not rests or barlines). Provides a shared {@link #appliesTo} implementation.
  */
-public abstract class NoteOnlyAction extends InsertionElementAction
+public abstract class NoteOnlyAction extends PreviewElementAction
     implements UIAction.ElementModifiable {
 
     public static final Flag[] FLAGS = new Flag[]{

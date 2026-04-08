@@ -352,8 +352,8 @@ public final class Actions {
 
     private static void resetToDefaults() {
         // Non-silent resets — these need perform() to update downstream state
-        // (Score.mode via ModeDidChangeNotification, insertion element via
-        // UpdateInsertionElementCommand)
+        // (Score.mode via ModeDidChangeNotification, preview element via
+        // UpdatePreviewElementCommand)
         MODE_ACTION_GROUP.select(EDIT_MODE_ACTION, EDIT_MODE_ACTION);
         DURATION_ACTION_GROUP.select(QUARTER_NOTE_ACTION, QUARTER_NOTE_ACTION);
 

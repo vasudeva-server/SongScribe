@@ -35,7 +35,7 @@ import songscribe.music.StaffElement;
 import songscribe.ui.OptionDialogs;
 import songscribe.ui.action.Actions;
 import songscribe.ui.action.UIAction;
-import songscribe.ui.component.score.InsertionElementManager;
+import songscribe.ui.component.score.PreviewElementManager;
 import songscribe.ui.component.score.LineComponent;
 import songscribe.ui.layout.ElementColumnBuilder;
 import songscribe.ui.layout.InsertionSpacingCalculator;
@@ -206,9 +206,9 @@ public final class GraceModeManager {
             return 0;
         }
 
-        var insertionElement = editModeManager.getInsertionElement();
-        double hostLeftExtentSs = insertionElement != null
-            ? ElementColumnBuilder.calculateLeftExtentSs(insertionElement)
+        var previewElement = editModeManager.getPreviewElement();
+        double hostLeftExtentSs = previewElement != null
+            ? ElementColumnBuilder.calculateLeftExtentSs(previewElement)
             : 0;
 
         return graceColumn.getXSs()
@@ -234,9 +234,9 @@ public final class GraceModeManager {
             return false;
         }
 
-        var insertionElement = editModeManager.getInsertionElement();
+        var previewElement = editModeManager.getPreviewElement();
 
-        if (insertionElement == null || insertionElement.getType() != ElementType.GRACE_QUAVER) {
+        if (previewElement == null || previewElement.getType() != ElementType.GRACE_QUAVER) {
             return false;
         }
 
@@ -246,7 +246,7 @@ public final class GraceModeManager {
             return false;
         }
 
-        var xIndex = InsertionElementManager.getCurrentXIndex();
+        var xIndex = PreviewElementManager.getCurrentXIndex();
 
         if (line.isInsideGraceHostPair(xIndex)) {
             return true;
@@ -312,7 +312,7 @@ public final class GraceModeManager {
             return false;
         }
 
-        hideInsertionAndSetDefaultCursor(lineComponent);
+        hidePreviewAndSetDefaultCursor(lineComponent);
         return true;
     }
 
@@ -325,7 +325,7 @@ public final class GraceModeManager {
             return false;
         }
 
-        hideInsertionAndSetDefaultCursor(lineComponent);
+        hidePreviewAndSetDefaultCursor(lineComponent);
 
         boolean wasPendingCancel = pendingCancel;
         boolean isDrag = System.currentTimeMillis() - mouseDownTime >= MIN_DRAG_MILLIS;
@@ -384,7 +384,7 @@ public final class GraceModeManager {
         }
 
         // Insert the host note at the locked x position
-        InsertionElementManager.handleClick(lineComponent);
+        PreviewElementManager.handleClick(lineComponent);
 
         // Connect grace note to host note with a CONNECTED glissando
         if (graceNote != null) {
@@ -422,7 +422,7 @@ public final class GraceModeManager {
         selectionCoordinator.setInSelectMode(false);
 
         // Insert the grace note via the existing insertion code path
-        InsertionElementManager.handleClick(lineComponent);
+        PreviewElementManager.handleClick(lineComponent);
 
         // Record state
         var line = lineComponent.getLine();
@@ -436,7 +436,7 @@ public final class GraceModeManager {
         graceLine = line;
 
         // The grace note is the most recently inserted element at the current x index
-        int insertedIndex = InsertionElementManager.getCurrentXIndex();
+        int insertedIndex = PreviewElementManager.getCurrentXIndex();
 
         if (insertedIndex < 0 || insertedIndex >= line.elementCount()) {
             // Insertion failed (e.g. triplet boundary)
@@ -469,10 +469,10 @@ public final class GraceModeManager {
         // Post message to disable flagged actions
         post(new GraceModeStateDidChangeNotification(true));
 
-        // Hide the insertion element that was shown by the DurationSelectedMessage
+        // Hide the preview element that was shown by the DurationSelectedMessage
         // handler triggered by perform() above. It will be re-shown at the correct
         // locked x-position when entering GRACE_NOTE_INSERT.
-        InsertionElementManager.hideInsertionElement(false);
+        PreviewElementManager.hidePreviewElement(false);
 
         // Record mouse down point and time for drag detection (screen coords for slop)
         mouseDownPoint = new Point(e.getXOnScreen(), e.getYOnScreen());
@@ -498,7 +498,7 @@ public final class GraceModeManager {
             throw new AssertionError("graceLineComponent must be non-null here");
         }
 
-        InsertionElementManager.restoreInsertionElement(graceLineComponent);
+        PreviewElementManager.restorePreviewElement(graceLineComponent);
     }
 
     private void enterGraceNotePaired(boolean connectNext) {
@@ -657,8 +657,8 @@ public final class GraceModeManager {
             && graceLine.getElement(nextIndex).getType().isPitchedNote();
     }
 
-    private void hideInsertionAndSetDefaultCursor(LineComponent lineComponent) {
-        InsertionElementManager.hideInsertionElement(false);
+    private void hidePreviewAndSetDefaultCursor(LineComponent lineComponent) {
+        PreviewElementManager.hidePreviewElement(false);
         lineComponent.setCursor(Cursor.getDefaultCursor());
     }
 }

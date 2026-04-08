@@ -31,8 +31,6 @@ import org.jspecify.annotations.Nullable;
 
 import songscribe.music.Interval;
 import songscribe.music.StaffElement;
-import songscribe.ui.layout.Bounds;
-import songscribe.ui.layout.LineElement;
 
 /**
  * Immutable result of the layout engine containing all positioned elements for rendering.
@@ -53,9 +51,9 @@ import songscribe.ui.layout.LineElement;
 public final class LayoutResult {
 
     /**
-     * Offset for positioning an insertion element before the first element in the line (ss).
+     * Offset for positioning a preview element before the first element in the line (ss).
      */
-    private static final double INSERTION_BEFORE_FIRST_OFFSET_SS = 1.875;  // 15px
+    private static final double PREVIEW_BEFORE_FIRST_OFFSET_SS = 1.875;  // 15px
 
     private final Map<StaffElement, ElementColumn> elementColumns;
     private final Map<LineElement, Bounds> elementBounds;
@@ -599,7 +597,7 @@ public final class LayoutResult {
     }
 
     // ==========================================================================
-    // Insertion Element Positioning (Edit Mode)
+    // Preview Element Positioning (Edit Mode)
     // ==========================================================================
 
     /**
@@ -713,21 +711,21 @@ public final class LayoutResult {
     }
 
     /**
-     * Calculates the X position for rendering an insertion element at a given index.
+     * Calculates the X position for rendering a preview element at a given index.
      * <p>
      * If the mouse is within the horizontal bounds of an element head, snaps to that element's position.
      * Otherwise, positions between elements or after the last element as appropriate.
      *
      * @param insertionIndex   The insertion index (0 to elementCount inclusive)
      * @param mouseXSs         Mouse X coordinate in staff-space units (used to detect if over an element head)
-     * @param insertionElement The element to be inserted (used to calculate extents for after-last positioning)
+     * @param previewElement The element to be inserted (used to calculate extents for after-last positioning)
      * @param line             The line containing the elements
-     * @return X position in staff-space units for rendering the insertion element
+     * @return X position in staff-space units for rendering the preview element
      */
     public double calculateInsertionXSs(
         int insertionIndex,
         double mouseXSs,
-        StaffElement insertionElement,
+        StaffElement previewElement,
         songscribe.music.Line line) {
 
         int elementCount = line.elementCount();
@@ -765,7 +763,7 @@ public final class LayoutResult {
                 return LayoutStylesheet.FIRST_NOTE_OFFSET_SS;
             }
 
-            return firstColumn.getXSs() - INSERTION_BEFORE_FIRST_OFFSET_SS;
+            return firstColumn.getXSs() - PREVIEW_BEFORE_FIRST_OFFSET_SS;
         }
 
         // After last element - use same spacing logic as layout engine
@@ -777,12 +775,12 @@ public final class LayoutResult {
                 return LayoutStylesheet.FIRST_NOTE_OFFSET_SS;
             }
 
-            // Build a temporary column for the insertion element to calculate proper spacing
+            // Build a temporary column for the preview element to calculate proper spacing
             var insertionColumn = new ElementColumn(
-                insertionElement,
+                previewElement,
                 java.util.Collections.emptyList(),
-                ElementColumnBuilder.calculateLeftExtentSs(insertionElement),
-                ElementColumnBuilder.calculateRightExtentSs(insertionElement, false, true),
+                ElementColumnBuilder.calculateLeftExtentSs(previewElement),
+                ElementColumnBuilder.calculateRightExtentSs(previewElement, false, true),
                 0,
                 0,
                 null,

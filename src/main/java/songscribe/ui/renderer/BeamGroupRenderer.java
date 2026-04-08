@@ -34,11 +34,10 @@ import songscribe.music.Line;
 import songscribe.music.StaffElement;
 import songscribe.smufl.Engraving;
 import songscribe.ui.component.Score;
-import songscribe.ui.component.score.InsertionElementManager;
+import songscribe.ui.component.score.PreviewElementManager;
 import songscribe.ui.layout.LineElement;
 import songscribe.ui.layout.LayoutStylesheet;
 import songscribe.ui.layout.LayoutResult;
-import songscribe.util.GraphicUtils;
 
 /**
  * Renders beam bars connecting beamed notes.
@@ -134,8 +133,8 @@ public class BeamGroupRenderer extends BaseElementRenderer<LineElement> {
         }
 
         var lineIndex = ctx.getLineIndex();
-        var hoveredLineIndex = InsertionElementManager.getHoveredElementLineIndex();
-        var hoveredNoteIndex = InsertionElementManager.getHoveredElementIndex();
+        var hoveredLineIndex = PreviewElementManager.getHoveredElementLineIndex();
+        var hoveredNoteIndex = PreviewElementManager.getHoveredElementIndex();
         var anySelected = false;
         var anyHovered = false;
         var remainingBeamableNotes = 0;
@@ -163,7 +162,7 @@ public class BeamGroupRenderer extends BaseElementRenderer<LineElement> {
         }
 
         if (anyHovered) {
-            return Score.getInsertionElementColor();
+            return Score.getPreviewElementColor();
         }
 
         return null;

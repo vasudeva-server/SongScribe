@@ -37,7 +37,7 @@ public class FermataMenuItem
 
     @Override
     public void actionPerformed(ActionEvent e) {
-        var insertionNote = score.getInsertionElement();
+        var insertionNote = score.getPreviewElement();
 
         if (insertionNote != null) {
             insertionNote.setFermata(isSelected());

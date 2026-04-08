@@ -114,8 +114,8 @@ public final class Score
         return FlatLafProps.get(FlatLafKeys.SCORE_PLAYING_NOTE_COLOR);
     }
 
-    public static Color getInsertionElementColor() {
-        return FlatLafProps.get(FlatLafKeys.SCORE_INSERTION_ELEMENT_COLOR);
+    public static Color getPreviewElementColor() {
+        return FlatLafProps.get(FlatLafKeys.SCORE_PREVIEW_ELEMENT_COLOR);
     }
 
     public static Color getSelectionStrokeColor() {
@@ -299,7 +299,7 @@ public final class Score
         initKeys();
 
         // Initialize insertion note with default type
-        setInsertionElement(editModeManager.makeInsertionElement());
+        setPreviewElement(editModeManager.makePreviewElement());
 
         MessageCenter.subscribe(this);
         syncPlaybackPrefs();
@@ -656,25 +656,25 @@ public final class Score
     }
 
     @Nullable
-    public StaffElement getInsertionElement() {
-        return editModeManager.getInsertionElement();
+    public StaffElement getPreviewElement() {
+        return editModeManager.getPreviewElement();
     }
 
-    public void setInsertionElement(@Nullable StaffElement insertionElement) {
-        if (insertionElement != null) {
-            var currentInsertionElement = editModeManager.getInsertionElement();
+    public void setPreviewElement(@Nullable StaffElement previewElement) {
+        if (previewElement != null) {
+            var currentPreviewElement = editModeManager.getPreviewElement();
 
-            if (currentInsertionElement != null) {
-                insertionElement.setStaffPosition(currentInsertionElement.getStaffPosition());
-                insertionElement.setXPosSs(currentInsertionElement.getXPosSs());
+            if (currentPreviewElement != null) {
+                previewElement.setStaffPosition(currentPreviewElement.getStaffPosition());
+                previewElement.setXPosSs(currentPreviewElement.getXPosSs());
             } else {
-                editModeManager.setInsertionElement(insertionElement);
+                editModeManager.setPreviewElement(previewElement);
             }
 
-            insertionElement.setUpper(defaultUpperNote(insertionElement));
+            previewElement.setUpper(defaultUpperNote(previewElement));
         }
 
-        editModeManager.setInsertionElement(insertionElement);
+        editModeManager.setPreviewElement(previewElement);
         repaint();
     }
 

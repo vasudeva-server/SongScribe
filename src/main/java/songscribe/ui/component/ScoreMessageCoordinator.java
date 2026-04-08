@@ -41,7 +41,7 @@ import songscribe.message.command.ToggleLyricsUnderRestsCommand;
 import songscribe.message.command.ToggleTieCommand;
 import songscribe.message.command.ToggleTrillCommand;
 import songscribe.message.command.ToggleTupletCommand;
-import songscribe.message.command.UpdateInsertionElementCommand;
+import songscribe.message.command.UpdatePreviewElementCommand;
 import songscribe.message.notification.CompositionDidChangeNotification;
 import songscribe.message.notification.CompositionDidChangeNotification.ChangeType;
 import songscribe.message.notification.ControlDidChangeNotification;
@@ -53,7 +53,6 @@ import songscribe.message.notification.RestModeDidChangeNotification;
 import songscribe.music.Line;
 import songscribe.music.LyricsProcessor;
 import songscribe.music.MusicEditOperations;
-import songscribe.ui.layout.Ending;
 import songscribe.ui.OptionDialogs;
 import songscribe.ui.Mode;
 import songscribe.ui.action.Actions;
@@ -111,35 +110,35 @@ public final class ScoreMessageCoordinator {
 
     @Handler
     public void elementTypeWasSelected(ElementTypeWasSelectedNotification message) {
-        score.setInsertionElement(editModeManager.makeInsertionElement(message.getNoteType()));
+        score.setPreviewElement(editModeManager.makePreviewElement(message.getNoteType()));
     }
 
     @Handler
     public void restModeDidChange(RestModeDidChangeNotification message) {
-        score.setInsertionElement(editModeManager.makeInsertionElement());
+        score.setPreviewElement(editModeManager.makePreviewElement());
     }
 
     @Handler
-    public void handleUpdateInsertionElement(UpdateInsertionElementCommand message) {
-        updateInsertionElement();
+    public void handleUpdatePreviewElement(UpdatePreviewElementCommand message) {
+        updatePreviewElement();
     }
 
-    private void syncInsertionElementWithSelectedDuration() {
+    private void syncPreviewElementWithSelectedDuration() {
         var selected = Actions.DURATION_ACTION_GROUP.getSelected();
 
         if (selected != null) {
-            score.setInsertionElement(editModeManager.makeInsertionElement(selected.getType()));
+            score.setPreviewElement(editModeManager.makePreviewElement(selected.getType()));
         }
     }
 
-    private void updateInsertionElement() {
-        var insertionElement = editModeManager.getInsertionElement();
+    private void updatePreviewElement() {
+        var previewElement = editModeManager.getPreviewElement();
 
-        if (insertionElement != null) {
-            editModeManager.decorateElement(insertionElement);
+        if (previewElement != null) {
+            editModeManager.decorateElement(previewElement);
             score.repaint();
         } else {
-            score.setInsertionElement(editModeManager.makeInsertionElement());
+            score.setPreviewElement(editModeManager.makePreviewElement());
         }
     }
 
@@ -300,11 +299,11 @@ public final class ScoreMessageCoordinator {
             score.clearSelection();
         }
 
-        // When entering edit mode, sync the insertion element with the currently
+        // When entering edit mode, sync the preview element with the currently
         // selected duration button. Reflection may have changed the selected button
         // while in select mode without posting a DurationSelectedMessage.
         if (mode == Mode.EDIT) {
-            syncInsertionElementWithSelectedDuration();
+            syncPreviewElementWithSelectedDuration();
         }
 
         var ha = score.getHorizontalAdjustment();

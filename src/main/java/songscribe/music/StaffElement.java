@@ -589,8 +589,8 @@ public class StaffElement extends LineElement implements Cloneable {
         );
     }
 
-    public int getInsertionElementPitch(Line line) {
-        return calculatePitch(getInsertionElementAccidental(line));
+    public int getPreviewElementPitch(Line line) {
+        return calculatePitch(getPreviewElementAccidental(line));
     }
 
     private int calculatePitch(@Nullable Accidental accidental) {
@@ -603,7 +603,7 @@ public class StaffElement extends LineElement implements Cloneable {
         );
     }
 
-    private @Nullable Accidental getInsertionElementAccidental(Line line) {
+    private @Nullable Accidental getPreviewElementAccidental(Line line) {
         if (accidental == null) {
             return getAccidental(line);
         }

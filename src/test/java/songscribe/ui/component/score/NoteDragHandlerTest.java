@@ -59,7 +59,7 @@ class NoteDragHandlerTest extends UnitTest {
     // Static mocks
     private MockedStatic<EditModeManager> editModeMgrMock;
     private MockedStatic<ElementHitTest> hitTestMock;
-    private MockedStatic<InsertionElementManager> insertionMgrMock;
+    private MockedStatic<PreviewElementManager> previewMgrMock;
     private MockedStatic<MessageCenter> messageCenterMock;
     private MockedStatic<MidiController> midiControllerMock;
     private MockedStatic<PlayThread> playThreadStaticMock;
@@ -79,7 +79,7 @@ class NoteDragHandlerTest extends UnitTest {
     void setUp() {
         editModeMgrMock = mockStatic(EditModeManager.class);
         hitTestMock = mockStatic(ElementHitTest.class);
-        insertionMgrMock = mockStatic(InsertionElementManager.class);
+        previewMgrMock = mockStatic(PreviewElementManager.class);
         messageCenterMock = mockStatic(MessageCenter.class);
         midiControllerMock = mockStatic(MidiController.class);
         playThreadStaticMock = mockStatic(PlayThread.class);
@@ -113,7 +113,7 @@ class NoteDragHandlerTest extends UnitTest {
         playThreadStaticMock.close();
         midiControllerMock.close();
         messageCenterMock.close();
-        insertionMgrMock.close();
+        previewMgrMock.close();
         hitTestMock.close();
         editModeMgrMock.close();
     }
@@ -360,8 +360,8 @@ class NoteDragHandlerTest extends UnitTest {
      */
     private void dragToPosition(int targetPositionSp) {
         when(mockScaleContext.fromPixels(anyDouble())).thenReturn(5.0);
-        insertionMgrMock.when(
-            () -> InsertionElementManager.calculateStaffPositionFromMouse(anyDouble(), anyDouble())
+        previewMgrMock.when(
+            () -> PreviewElementManager.calculateStaffPositionFromMouse(anyDouble(), anyDouble())
         ).thenReturn(targetPositionSp);
 
         var event = mouseEvent(lc, MouseEvent.MOUSE_DRAGGED, 100, 50, MouseEvent.BUTTON1);

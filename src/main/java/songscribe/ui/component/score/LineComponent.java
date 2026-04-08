@@ -560,39 +560,39 @@ public class LineComponent extends ScoreComponent
 
     /**
      * Clears the insertion note from all lines.
-     * Delegates to {@link InsertionElementManager}.
+     * Delegates to {@link PreviewElementManager}.
      */
-    public static void clearInsertionElement() {
-        InsertionElementManager.clearInsertionElement();
+    public static void clearPreviewElement() {
+        PreviewElementManager.clearPreviewElement();
     }
 
     /**
      * Sets whether the Alt key is currently pressed and updates the cursor.
-     * Delegates to {@link InsertionElementManager}.
+     * Delegates to {@link PreviewElementManager}.
      */
     public static void setAltPressed(boolean pressed) {
-        InsertionElementManager.setAltPressed(pressed);
+        PreviewElementManager.setAltPressed(pressed);
     }
 
     /**
      * Returns whether this line currently has the insertion note.
      */
-    public boolean hasInsertionElement() {
-        return InsertionElementManager.hasInsertionElement(this);
+    public boolean hasPreviewElement() {
+        return PreviewElementManager.hasPreviewElement(this);
     }
 
     /**
      * Returns the current insertion X index.
      */
     public static int getCurrentXIndex() {
-        return InsertionElementManager.getCurrentXIndex();
+        return PreviewElementManager.getCurrentXIndex();
     }
 
     /**
      * Returns the current insertion Y position.
      */
     public static int getCurrentStaffPosition() {
-        return InsertionElementManager.getCurrentStaffPosition();
+        return PreviewElementManager.getCurrentStaffPosition();
     }
 
     // ==========================================================================
@@ -605,7 +605,7 @@ public class LineComponent extends ScoreComponent
             return;
         }
 
-        InsertionElementManager.trackMouse(this, e);
+        PreviewElementManager.trackMouse(this, e);
     }
 
     @Override
@@ -636,7 +636,7 @@ public class LineComponent extends ScoreComponent
         }
 
         if (!selectionHandler.handleClick(e)) {
-            InsertionElementManager.handleClick(this);
+            PreviewElementManager.handleClick(this);
         }
     }
 
@@ -681,12 +681,12 @@ public class LineComponent extends ScoreComponent
 
     @Override
     public void mouseEntered(MouseEvent e) {
-        InsertionElementManager.mouseEnteredLine(this);
+        PreviewElementManager.mouseEnteredLine(this);
     }
 
     @Override
     public void mouseExited(MouseEvent e) {
-        InsertionElementManager.mouseExitedLine(this);
+        PreviewElementManager.mouseExitedLine(this);
     }
 
     // ==========================================================================

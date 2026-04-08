@@ -51,13 +51,13 @@ import songscribe.message.notification.PlaybackStateDidChangeNotification;
 import songscribe.ui.playback.PlaybackController;
 
 /**
- * Manages the insertion element subsystem for {@link LineComponent}.
+ * Manages the preview element subsystem for {@link LineComponent}.
  * <p>
- * This class owns all static cross-instance state for insertion element tracking,
- * cursor management, and element mutation logic. Only one insertion element can be
+ * This class owns all static cross-instance state for preview element tracking,
+ * cursor management, and element mutation logic. Only one preview element can be
  * active across all LineComponents at a time.
  */
-public class InsertionElementManager {
+public class PreviewElementManager {
 
     // ==========================================================================
     // Constants
@@ -77,13 +77,13 @@ public class InsertionElementManager {
     // ==========================================================================
 
     /**
-     * The LineComponent that currently has the insertion element.
+     * The LineComponent that currently has the preview element.
      * <p>
-     * Only one line can show the insertion element at a time. When the mouse moves
-     * to a different line, the old line is repainted to clear the insertion element.
+     * Only one line can show the preview element at a time. When the mouse moves
+     * to a different line, the old line is repainted to clear the preview element.
      */
     @Nullable
-    private static LineComponent currentInsertionLine = null;
+    private static LineComponent currentPreviewLine = null;
 
     /** Current insertion index (0 to elementCount inclusive). */
     private static int currentXIndex = -1;
@@ -108,26 +108,26 @@ public class InsertionElementManager {
     private static StaffElement.Glissando.@Nullable Type currentGlissandoZone = null;
 
     /** Strong reference to prevent GC by the weak-reference message bus; used for subscriptions. */
-    private static final InsertionElementManager INSTANCE = new InsertionElementManager();
+    private static final PreviewElementManager INSTANCE = new PreviewElementManager();
 
     static {
         MessageCenter.subscribe(INSTANCE);
     }
 
-    private InsertionElementManager() {
+    private PreviewElementManager() {
     }
 
     @Handler
     public void modeDidChange(ModeDidChangeNotification message) {
-        restoreInsertionElement(currentMouseLine);
+        restorePreviewElement(currentMouseLine);
     }
 
     @Handler
     public void playbackStateDidChange(PlaybackStateDidChangeNotification message) {
         if (PlaybackController.isPlaying()) {
-            clearInsertionElement();
+            clearPreviewElement();
         } else {
-            restoreInsertionElement(currentMouseLine);
+            restorePreviewElement(currentMouseLine);
         }
     }
 
@@ -136,32 +136,32 @@ public class InsertionElementManager {
     // ==========================================================================
 
     /**
-     * Hides the insertion element preview and optionally clears position tracking state.
+     * Hides the preview element and optionally clears position tracking state.
      *
      * @param clear true to also clear position state (e.g., window deactivated);
      *              false to only hide the visual (e.g., hovering over an existing element head)
      */
-    public static void hideInsertionElement(boolean clear) {
+    public static void hidePreviewElement(boolean clear) {
         if (clear) {
-            clearInsertionElement();
+            clearPreviewElement();
         }
 
         var editModeManager = EditModeManager.getInstance();
 
         if (editModeManager != null) {
-            editModeManager.setInsertionElementVisible(false);
+            editModeManager.setPreviewElementVisible(false);
         }
     }
 
     /**
-     * Clears the insertion element from all lines.
+     * Clears the preview element from all lines.
      * <p>
      * Call this when exiting edit mode or when the mouse leaves the score area.
      */
-    static void clearInsertionElement() {
-        if (currentInsertionLine != null) {
-            var oldLine = currentInsertionLine;
-            currentInsertionLine = null;
+    static void clearPreviewElement() {
+        if (currentPreviewLine != null) {
+            var oldLine = currentPreviewLine;
+            currentPreviewLine = null;
             currentXIndex = -1;
             currentStaffPosition = 0;
             xPosSsMatchesElement = false;
@@ -179,18 +179,18 @@ public class InsertionElementManager {
     static void setAltPressed(boolean pressed) {
         altPressed = pressed;
 
-        // When Alt is released, re-trigger insertion element from current mouse position
+        // When Alt is released, re-trigger preview element from current mouse position
         if (!pressed) {
-            restoreInsertionElement(currentMouseLine);
+            restorePreviewElement(currentMouseLine);
         }
     }
 
     /**
-     * Returns the current insertion line, or null if no insertion element is active.
+     * Returns the current preview line, or null if no preview element is active.
      */
     @Nullable
     static LineComponent getCurrentInsertionLine() {
-        return currentInsertionLine;
+        return currentPreviewLine;
     }
 
     /**
@@ -208,28 +208,28 @@ public class InsertionElementManager {
     }
 
     /**
-     * Returns the line index of the element currently highlighted by insertion element hover,
-     * or -1 if the insertion element is not hovering over an existing element head.
+     * Returns the line index of the element currently highlighted by preview element hover,
+     * or -1 if the preview element is not hovering over an existing element head.
      */
     public static int getHoveredElementLineIndex() {
-        return (xPosSsMatchesElement && yPosSpMatchesElement && currentInsertionLine != null)
-            ? currentInsertionLine.getLineIndex()
+        return (xPosSsMatchesElement && yPosSpMatchesElement && currentPreviewLine != null)
+            ? currentPreviewLine.getLineIndex()
             : -1;
     }
 
     /**
-     * Returns the element index of the element currently highlighted by insertion element hover,
-     * or -1 if the insertion element is not hovering over an existing element head.
+     * Returns the element index of the element currently highlighted by preview element hover,
+     * or -1 if the preview element is not hovering over an existing element head.
      */
     public static int getHoveredElementIndex() {
         return (xPosSsMatchesElement && yPosSpMatchesElement) ? currentXIndex : -1;
     }
 
     /**
-     * Returns whether the given line currently has the insertion element.
+     * Returns whether the given line currently has the preview element.
      */
-    static boolean hasInsertionElement(LineComponent lc) {
-        return currentInsertionLine == lc;
+    static boolean hasPreviewElement(LineComponent lc) {
+        return currentPreviewLine == lc;
     }
 
     /**
@@ -339,16 +339,16 @@ public class InsertionElementManager {
     // ==========================================================================
 
     /**
-     * Handles mouse movement over a line, updating insertion element position.
-     * Replaces the insertion element logic formerly inline in {@code LineComponent.mouseMoved()}.
+     * Handles mouse movement over a line, updating preview element position.
+     * Replaces the preview element logic formerly inline in {@code LineComponent.mouseMoved()}.
      */
     static void trackMouse(LineComponent lc, MouseEvent e) {
         if (e.isAltDown()) {
-            clearInsertionElement();
+            clearPreviewElement();
             return;
         }
 
-        if (!shouldHandleInsertionElement(lc)) {
+        if (!shouldHandlePreviewElement(lc)) {
             return;
         }
 
@@ -371,8 +371,8 @@ public class InsertionElementManager {
 
         if (!isValidStaffPosition(staffPosition)) {
             // Mouse is outside valid range, clear insertion note if on this line
-            if (currentInsertionLine == lc) {
-                clearInsertionElement();
+            if (currentPreviewLine == lc) {
+                clearPreviewElement();
             }
 
             return;
@@ -393,15 +393,15 @@ public class InsertionElementManager {
         int xIndex = layoutResult.findInsertionIndex(mouseXss, line);
         int elementAtX = layoutResult.findElementAtXSs(mouseXss, line);
 
-        var insertionElement = editModeManager != null ? editModeManager.getInsertionElement() : null;
+        var previewElement = editModeManager != null ? editModeManager.getPreviewElement() : null;
 
-        // Hide the insertion element when a grace note is selected and the mouse
+        // Hide the preview element when a grace note is selected and the mouse
         // is between an existing grace/host pair — insertion there is not allowed.
-        if (insertionElement != null
-            && insertionElement.getType().isGraceNote()
+        if (previewElement != null
+            && previewElement.getType().isGraceNote()
             && line.isInsideGraceHostPair(xIndex)) {
-            if (currentInsertionLine == lc) {
-                clearInsertionElement();
+            if (currentPreviewLine == lc) {
+                clearPreviewElement();
             }
 
             return;
@@ -419,12 +419,12 @@ public class InsertionElementManager {
         // element head means there is no valid glissando target to the left.
         StaffElement.Glissando.Type newGlissandoZone = null;
 
-        if (isGlissandoPlaceholder(insertionElement) && elementAtX < 0) {
+        if (isGlissandoPlaceholder(previewElement) && elementAtX < 0) {
             newGlissandoZone = computeGlissandoZone(line, xIndex);
         }
 
         // Check if position actually changed
-        if (lc == currentInsertionLine && xIndex == currentXIndex
+        if (lc == currentPreviewLine && xIndex == currentXIndex
             && staffPosition == currentStaffPosition
             && newXMatch == xPosSsMatchesElement && newYMatch == yPosSpMatchesElement
             && newGlissandoZone == currentGlissandoZone) {
@@ -432,12 +432,12 @@ public class InsertionElementManager {
         }
 
         // Repaint old line if different
-        if (currentInsertionLine != null && currentInsertionLine != lc) {
-            currentInsertionLine.repaint();
+        if (currentPreviewLine != null && currentPreviewLine != lc) {
+            currentPreviewLine.repaint();
         }
 
         // Update static state
-        currentInsertionLine = lc;
+        currentPreviewLine = lc;
         currentXIndex = xIndex;
         currentStaffPosition = staffPosition;
         xPosSsMatchesElement = newXMatch;
@@ -445,19 +445,19 @@ public class InsertionElementManager {
         currentGlissandoZone = newGlissandoZone;
 
         if (editModeManager != null) {
-            if (isGlissandoPlaceholder(insertionElement)) {
-                // No note-head preview for glissando tool — renderInsertionElement draws the preview line.
+            if (isGlissandoPlaceholder(previewElement)) {
+                // No note-head preview for glissando tool — renderPreviewElement draws the preview line.
                 lc.repaint();
                 return;
             }
 
             // Always show the ghost preview — even when hovering over an existing element head.
             // The preview shows the user what pitch/type will replace the existing element.
-            editModeManager.setInsertionElementVisible(true);
+            editModeManager.setPreviewElementVisible(true);
 
             // Rests snap to their default staff position; pitched notes follow the mouse Y
-            if (insertionElement != null) {
-                applyStaffPosition(insertionElement, staffPosition);
+            if (previewElement != null) {
+                applyStaffPosition(previewElement, staffPosition);
             }
         }
 
@@ -466,27 +466,27 @@ public class InsertionElementManager {
     }
 
     /**
-     * Handles a click on the insertion element, performing the appropriate action
+     * Handles a click on the preview element, performing the appropriate action
      * (append, insert, or modify). Called from {@code LineComponent.mouseClicked()}.
      */
     public static void handleClick(LineComponent lc) {
-        if (!shouldHandleInsertionElement(lc)) {
+        if (!shouldHandlePreviewElement(lc)) {
             return;
         }
 
-        // Only handle if this line has the insertion element
+        // Only handle if this line has the preview element
         var line = lc.getLine();
 
-        if (currentInsertionLine != lc || line == null) {
+        if (currentPreviewLine != lc || line == null) {
             return;
         }
 
         var editModeManager = EditModeManager.getInstance();
 
         if (editModeManager != null) {
-            var insertionElement = editModeManager.getInsertionElement();
+            var previewElement = editModeManager.getPreviewElement();
 
-            if (isGlissandoPlaceholder(insertionElement)) {
+            if (isGlissandoPlaceholder(previewElement)) {
                 var zoneType = currentGlissandoZone;
 
                 if (zoneType == null) {
@@ -506,7 +506,7 @@ public class InsertionElementManager {
 
         // Determine action based on position
         if (currentXIndex == line.elementCount()) {
-            addInsertionElement(lc, line);
+            addPreviewElement(lc, line);
         } else if (xPosSsMatchesElement) {
             modifyExistingElement(lc, currentXIndex, line);
         } else {
@@ -515,38 +515,38 @@ public class InsertionElementManager {
     }
 
     /**
-     * Handles mouse entering a line. Sets up cursor and insertion element visibility.
+     * Handles mouse entering a line. Sets up cursor and preview element visibility.
      */
     static void mouseEnteredLine(LineComponent lc) {
         currentMouseLine = lc;
 
         var editModeManager = EditModeManager.getInstance();
 
-        if (shouldHandleInsertionElement(lc) && editModeManager != null) {
-            var insertionElement = editModeManager.getInsertionElement();
+        if (shouldHandlePreviewElement(lc) && editModeManager != null) {
+            var previewElement = editModeManager.getPreviewElement();
 
-            if (!isGlissandoPlaceholder(insertionElement)) {
-                editModeManager.setInsertionElementVisible(true);
+            if (!isGlissandoPlaceholder(previewElement)) {
+                editModeManager.setPreviewElementVisible(true);
             }
         }
     }
 
     /**
-     * Handles mouse exiting a line. Clears cursor and insertion element.
+     * Handles mouse exiting a line. Clears cursor and preview element.
      */
     static void mouseExitedLine(LineComponent lc) {
         currentMouseLine = null;
         lc.setCursor(DEFAULT_CURSOR);
 
-        // Clear insertion element when mouse leaves this line
-        if (currentInsertionLine == lc) {
-            clearInsertionElement();
+        // Clear preview element when mouse leaves this line
+        if (currentPreviewLine == lc) {
+            clearPreviewElement();
         }
 
         var editModeManager = EditModeManager.getInstance();
 
         if (editModeManager != null) {
-            editModeManager.setInsertionElementVisible(false);
+            editModeManager.setPreviewElementVisible(false);
         }
     }
 
@@ -555,14 +555,14 @@ public class InsertionElementManager {
     // ==========================================================================
 
     /**
-     * Returns whether insertion element handling should be active for the given line.
+     * Returns whether preview element handling should be active for the given line.
      * <p>
-     * Requires: edit mode enabled, MOUSE control, NOTE_EDIT mode, and an insertion element set.
+     * Requires: edit mode enabled, MOUSE control, NOTE_EDIT mode, and a preview element set.
      */
-    private static boolean shouldHandleInsertionElement(LineComponent lc) {
+    private static boolean shouldHandlePreviewElement(LineComponent lc) {
         var editModeManager = EditModeManager.getInstance();
 
-        if (!lc.isEditMode() || editModeManager == null || !editModeManager.hasInsertionElement()) {
+        if (!lc.isEditMode() || editModeManager == null || !editModeManager.hasPreviewElement()) {
             return false;
         }
 
@@ -578,11 +578,11 @@ public class InsertionElementManager {
     }
 
     /**
-     * Restores the insertion element from the current mouse position on the given line.
-     * Called when state changes (mode, playback, Alt key) may affect insertion element visibility.
+     * Restores the preview element from the current mouse position on the given line.
+     * Called when state changes (mode, playback, Alt key) may affect preview element visibility.
      */
-    public static void restoreInsertionElement(@Nullable LineComponent lc) {
-        if (lc == null || !shouldHandleInsertionElement(lc)) {
+    public static void restorePreviewElement(@Nullable LineComponent lc) {
+        if (lc == null || !shouldHandlePreviewElement(lc)) {
             return;
         }
 
@@ -644,18 +644,18 @@ public class InsertionElementManager {
     // ==========================================================================
 
     /**
-     * Returns the active insertion element from {@link EditModeManager},
+     * Returns the active preview element from {@link EditModeManager},
      * or null if the manager or element is unavailable.
      */
     @Nullable
-    private static StaffElement getActiveInsertionElement() {
+    private static StaffElement getActivePreviewElement() {
         var editModeManager = EditModeManager.getInstance();
 
         if (editModeManager == null) {
             return null;
         }
 
-        return editModeManager.getInsertionElement();
+        return editModeManager.getPreviewElement();
     }
 
     /**
@@ -687,49 +687,49 @@ public class InsertionElementManager {
     }
 
     /**
-     * Adds an insertion element to the end of the line.
+     * Adds a preview element to the end of the line.
      *
      * @param lc   The LineComponent
      * @param line The line to add the element to
      */
-    private static void addInsertionElement(LineComponent lc, Line line) {
+    private static void addPreviewElement(LineComponent lc, Line line) {
         var score = lc.getScore();
 
         if (score == null) {
             return;
         }
 
-        var insertionElement = getActiveInsertionElement();
+        var previewElement = getActivePreviewElement();
 
-        if (insertionElement == null) {
+        if (previewElement == null) {
             return;
         }
 
         var editModeManager = EditModeManager.getInstance();
 
         if (editModeManager != null && editModeManager.elementWasModified(line, line.elementCount())) {
-            editModeManager.insertionElementDidChange(line, line.elementCount() - 1);
+            editModeManager.previewElementDidChange(line, line.elementCount() - 1);
             return;
         }
 
-        var insertion = calculateInsertionOrShowError(line, insertionElement, line.elementCount());
+        var insertion = calculateInsertionOrShowError(line, previewElement, line.elementCount());
 
         if (insertion == null) {
             return;
         }
 
-        insertionElement.setXPosSs(ScaleContext.getInstance().toRoundedPixels(insertion.insertedElementXSs()));
-        line.addElement(insertionElement);
+        previewElement.setXPosSs(ScaleContext.getInstance().toRoundedPixels(insertion.insertedElementXSs()));
+        line.addElement(previewElement);
 
         applyAutomaticBeaming(line, line.elementCount() - 1);
 
         if (editModeManager != null) {
-            editModeManager.insertionElementDidChange(line, line.elementCount() - 1);
+            editModeManager.previewElementDidChange(line, line.elementCount() - 1);
         }
     }
 
     /**
-     * Inserts an insertion element at the specified index in the line.
+     * Inserts a preview element at the specified index in the line.
      *
      * @param lc     The LineComponent
      * @param xIndex The index to insert at
@@ -742,16 +742,16 @@ public class InsertionElementManager {
             return;
         }
 
-        var insertionElement = getActiveInsertionElement();
+        var previewElement = getActivePreviewElement();
 
-        if (insertionElement == null) {
+        if (previewElement == null) {
             return;
         }
 
         var editModeManager = EditModeManager.getInstance();
 
         if (editModeManager != null && editModeManager.elementWasModified(line, xIndex)) {
-            editModeManager.insertionElementDidChange(line, xIndex);
+            editModeManager.previewElementDidChange(line, xIndex);
             return;
         }
 
@@ -768,14 +768,14 @@ public class InsertionElementManager {
         }
 
         line.removeInterval(xIndex - 1, xIndex);
-        var insertion = calculateInsertionOrShowError(line, insertionElement, xIndex);
+        var insertion = calculateInsertionOrShowError(line, previewElement, xIndex);
 
         if (insertion == null) {
             return;
         }
 
-        insertionElement.setXPosSs(ScaleContext.getInstance().toRoundedPixels(insertion.insertedElementXSs()));
-        line.addElement(xIndex, insertionElement);
+        previewElement.setXPosSs(ScaleContext.getInstance().toRoundedPixels(insertion.insertedElementXSs()));
+        line.addElement(xIndex, previewElement);
         var shift = ScaleContext.getInstance().toRoundedPixels(insertion.shiftForSubsequentElementsSs());
 
         for (var i = xIndex + 1; i < line.elementCount(); i++) {
@@ -785,7 +785,7 @@ public class InsertionElementManager {
         applyAutomaticBeaming(line, xIndex);
 
         if (editModeManager != null) {
-            editModeManager.insertionElementDidChange(line, xIndex);
+            editModeManager.previewElementDidChange(line, xIndex);
         }
     }
 
@@ -846,10 +846,10 @@ public class InsertionElementManager {
     }
 
     /**
-     * Replaces an existing element entirely with the current insertion element.
+     * Replaces an existing element entirely with the current preview element.
      * Only the x position is preserved from the existing element; all other attributes
-     * (type, duration, dots, beaming, ties) come from the insertion element.
-     * Called when the user clicks on an existing element head with the insertion element active.
+     * (type, duration, dots, beaming, ties) come from the preview element.
+     * Called when the user clicks on an existing element head with the preview element active.
      *
      * @param lc           The LineComponent
      * @param elementIndex The index of the element to replace
@@ -862,27 +862,27 @@ public class InsertionElementManager {
             return;
         }
 
-        var insertionElement = getActiveInsertionElement();
+        var previewElement = getActivePreviewElement();
 
-        if (insertionElement == null) {
+        if (previewElement == null) {
             return;
         }
 
         var editModeManager = EditModeManager.getInstance();
 
         if (editModeManager != null && editModeManager.elementWasModified(line, elementIndex)) {
-            editModeManager.insertionElementDidChange(line, elementIndex);
+            editModeManager.previewElementDidChange(line, elementIndex);
             return;
         }
 
         // Preserve the existing element's x position
-        insertionElement.setXPosSs(line.getElement(elementIndex).getXPosSs());
+        previewElement.setXPosSs(line.getElement(elementIndex).getXPosSs());
 
         // Rests snap to their default staff position; pitched notes use the mouse Y position
-        applyStaffPosition(insertionElement, currentStaffPosition);
+        applyStaffPosition(previewElement, currentStaffPosition);
 
-        if (insertionElement.isStemDirectionAuto()) {
-            insertionElement.setUpper(Score.defaultUpperNote(insertionElement));
+        if (previewElement.isStemDirectionAuto()) {
+            previewElement.setUpper(Score.defaultUpperNote(previewElement));
         }
 
         // Remove all beam intervals touching this element — the new element type may differ
@@ -902,7 +902,7 @@ public class InsertionElementManager {
         }
 
         // Replace the element entirely (line.setElement marks the composition modified)
-        line.setElement(elementIndex, insertionElement);
+        line.setElement(elementIndex, previewElement);
 
         applyAutomaticBeaming(line, elementIndex);
 
@@ -918,13 +918,13 @@ public class InsertionElementManager {
         // setElement preserves the element index.
         if (elementIndex > 0
                 && line.isPairedGraceNote(elementIndex - 1)
-                && !insertionElement.getType().isPitchedNote()) {
+                && !previewElement.getType().isPitchedNote()) {
             line.removeElement(elementIndex - 1);
             elementIndex--;
         }
 
         if (editModeManager != null) {
-            editModeManager.insertionElementDidChange(line, elementIndex);
+            editModeManager.previewElementDidChange(line, elementIndex);
         }
     }
 }

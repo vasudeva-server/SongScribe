@@ -201,12 +201,12 @@ class NoteDragHandler {
         lastPlayedStaffPositionSp = originalDragStaffPositionSp;
         dragLine = line;
 
-        InsertionElementManager.clearInsertionElement();
+        PreviewElementManager.clearPreviewElement();
 
         var editModeManager = EditModeManager.getInstance();
 
         if (editModeManager != null) {
-            editModeManager.setInsertionElementVisible(false);
+            editModeManager.setPreviewElementVisible(false);
         }
 
         pressHandled = true;
@@ -220,7 +220,7 @@ class NoteDragHandler {
      */
     void handleDrag(MouseEvent e) {
         var mouseYss = ScaleContext.getInstance().fromPixels(e.getY());
-        var newPositionSp = InsertionElementManager.calculateStaffPositionFromMouse(mouseYss, lc.getMiddleLineYSs());
+        var newPositionSp = PreviewElementManager.calculateStaffPositionFromMouse(mouseYss, lc.getMiddleLineYSs());
 
         if (newPositionSp == lastPlayedStaffPositionSp) {
             return;
@@ -238,8 +238,8 @@ class NoteDragHandler {
         var maxDelta = Integer.MAX_VALUE;
 
         for (var entry : dragGroup) {
-            minDelta = Math.max(minDelta, InsertionElementManager.MIN_STAFF_POSITION_SP - entry.originalStaffPositionSp());
-            maxDelta = Math.min(maxDelta, InsertionElementManager.MAX_STAFF_POSITION_SP - entry.originalStaffPositionSp());
+            minDelta = Math.max(minDelta, PreviewElementManager.MIN_STAFF_POSITION_SP - entry.originalStaffPositionSp());
+            maxDelta = Math.min(maxDelta, PreviewElementManager.MAX_STAFF_POSITION_SP - entry.originalStaffPositionSp());
         }
 
         deltaSp = Math.clamp(deltaSp, minDelta, maxDelta);
@@ -349,7 +349,7 @@ class NoteDragHandler {
         dragLine = null;
         dragGroup.clear();
 
-        InsertionElementManager.restoreInsertionElement(lc);
+        PreviewElementManager.restorePreviewElement(lc);
     }
 
     /**

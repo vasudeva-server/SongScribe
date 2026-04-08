@@ -25,18 +25,18 @@ import module java.desktop;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.message.MessageCenter;
-import songscribe.message.command.UpdateInsertionElementCommand;
+import songscribe.message.command.UpdatePreviewElementCommand;
 
 /**
- * This class is the superclass for all actions that change the insertion element.
+ * This class is the superclass for all actions that change the preview element.
  */
-public class InsertionElementAction extends SelectableUIAction {
+public class PreviewElementAction extends SelectableUIAction {
 
-    public InsertionElementAction(String name, String actionCommand, Flag... flags) {
+    public PreviewElementAction(String name, String actionCommand, Flag... flags) {
         super(name, actionCommand, flags);
     }
 
-    public InsertionElementAction(
+    public PreviewElementAction(
         String name,
         String actionCommand,
         int virtualKey,
@@ -46,7 +46,7 @@ public class InsertionElementAction extends SelectableUIAction {
         super(name, actionCommand, virtualKey, modifiers, flags);
     }
 
-    public InsertionElementAction(
+    public PreviewElementAction(
         @Nullable String name,
         @Nullable String icon,
         int size,
@@ -57,7 +57,7 @@ public class InsertionElementAction extends SelectableUIAction {
         super(name, icon, size, actionCommand, tooltip, flags);
     }
 
-    public InsertionElementAction(
+    public PreviewElementAction(
         @Nullable String name,
         @Nullable String icon,
         int size,
@@ -87,6 +87,6 @@ public class InsertionElementAction extends SelectableUIAction {
             return;
         }
 
-        MessageCenter.post(new UpdateInsertionElementCommand());
+        MessageCenter.post(new UpdatePreviewElementCommand());
     }
 }
