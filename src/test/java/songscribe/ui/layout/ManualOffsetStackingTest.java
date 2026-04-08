@@ -38,6 +38,7 @@ import songscribe.music.ElementType;
 import songscribe.music.Line;
 import songscribe.music.StaffElement;
 import songscribe.music.Tempo;
+import songscribe.ui.layout.stacking.VerticalStackingCalculator;
 
 /**
  * Tests that manual user offsets are applied correctly post-layout,

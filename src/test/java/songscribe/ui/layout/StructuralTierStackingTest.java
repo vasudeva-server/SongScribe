@@ -34,6 +34,8 @@ import songscribe.music.DynamicsInterval;
 import songscribe.music.ElementType;
 import songscribe.music.Line;
 import songscribe.music.StaffElement;
+import songscribe.music.TupletInterval;
+import songscribe.ui.layout.stacking.VerticalStackingCalculator;
 
 class StructuralTierStackingTest extends UnitTest {
 
@@ -246,6 +248,104 @@ class StructuralTierStackingTest extends UnitTest {
             var spanLayout = require(
                 result.getSpanLayout(interval),
                 "legacy diminuendo SpanLayout");
+
+            assertThat(spanLayout.ySs()).isLessThan(0.0);
+        }
+    }
+
+    @Nested
+    class TupletStacking {
+
+        @Test
+        void testTupletRangeElementPositionedAboveStaff() {
+            var note1 = createNote(0, false);
+            var note2 = createNote(0, false);
+            var line = new Line();
+            line.addElement(note1);
+            line.addElement(note2);
+
+            var tuplet = new Tuplet(note1, note2, 3);
+            line.addRangeElement(tuplet);
+
+            var result = stackColumns(
+                List.of(columnFor(note1, NOTE1_X_SS), columnFor(note2, NOTE2_X_SS)),
+                line);
+
+            var layout = require(
+                result.getDecorationLayout(tuplet),
+                "tuplet DecorationLayout");
+
+            assertThat(layout.ySs()).isLessThan(0.0);
+        }
+
+        @Test
+        void testTupletHasPositiveDimensions() {
+            var note1 = createNote(0, false);
+            var note2 = createNote(0, false);
+            var line = new Line();
+            line.addElement(note1);
+            line.addElement(note2);
+
+            var tuplet = new Tuplet(note1, note2, 3);
+            line.addRangeElement(tuplet);
+
+            var result = stackColumns(
+                List.of(columnFor(note1, NOTE1_X_SS), columnFor(note2, NOTE2_X_SS)),
+                line);
+
+            var layout = require(
+                result.getDecorationLayout(tuplet),
+                "tuplet DecorationLayout");
+
+            assertThat(layout.widthSs()).isGreaterThan(0.0);
+            assertThat(layout.heightSs()).isGreaterThan(0.0);
+        }
+
+        @Test
+        void testTupletPositionedAboveNoteDecorationsWhenPresent() {
+            var note1 = createNote(-2, false);
+            note1.setFermata(true);
+            var note2 = createNote(0, false);
+            var line = new Line();
+            line.addElement(note1);
+            line.addElement(note2);
+
+            var tuplet = new Tuplet(note1, note2, 3);
+            line.addRangeElement(tuplet);
+
+            var result = stackColumns(
+                List.of(columnFor(note1, NOTE1_X_SS), columnFor(note2, NOTE2_X_SS)),
+                line);
+
+            var fermataLayout = require(
+                result.findAttachmentDecorationLayout(note1, FermataAttachment.class),
+                "fermata DecorationLayout");
+            var tupletLayout = require(
+                result.getDecorationLayout(tuplet),
+                "tuplet DecorationLayout");
+
+            // Tuplet should be above fermata (more negative Y)
+            assertThat(tupletLayout.ySs()).isLessThan(fermataLayout.ySs());
+        }
+
+        @Test
+        void testLegacyTupletIntervalProducesSpanLayout() {
+            var note1 = createNote(0, false);
+            var note2 = createNote(0, false);
+            var line = new Line();
+            line.addElement(note1);
+            line.addElement(note2);
+
+            var interval = new TupletInterval(0, 1, 3);
+            line.getTuplets().addInterval(interval);
+
+            var result = stackColumns(
+                List.of(columnFor(note1, NOTE1_X_SS), columnFor(note2, NOTE2_X_SS)),
+                line);
+
+            var spanLayout = require(
+                result.getSpanLayout(interval),
+                "legacy tuplet SpanLayout");
 
             assertThat(spanLayout.ySs()).isLessThan(0.0);
         }

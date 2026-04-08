@@ -23,7 +23,6 @@ package songscribe.ui.layout;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.music.StaffElement;
-import songscribe.smufl.SMuFLMetadata;
 
 /**
  * Represents a crescendo (gradually getting louder) hairpin marking.
@@ -33,8 +32,6 @@ import songscribe.smufl.SMuFLMetadata;
  * and vertical position.
  */
 public class Crescendo extends RangeElement {
-
-    private static final double NOTE_HEAD_WIDTH_SS = SMuFLMetadata.getInstance().noteHeadWidthSs();
 
     private @Nullable StaffElement endNote;
     private int x1Shift = 0;
@@ -147,7 +144,7 @@ public class Crescendo extends RangeElement {
      */
     @Override
     public double getSpanWidthSs(double anchorXSs, double endXSs) {
-        return Math.max(getContentHeightSs(), endXSs - anchorXSs + NOTE_HEAD_WIDTH_SS);
+        return Math.max(getContentHeightSs(), endXSs - anchorXSs + LayoutStylesheet.NOTE_HEAD_WIDTH_SS);
     }
 
     @Override

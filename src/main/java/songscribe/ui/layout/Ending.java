@@ -33,7 +33,6 @@ import org.jspecify.annotations.Nullable;
 import songscribe.music.ElementType;
 import songscribe.music.Line;
 import songscribe.music.StaffElement;
-import songscribe.smufl.SMuFLMetadata;
 import songscribe.ui.renderer.BaseElementRenderer;
 import songscribe.ui.renderer.LineThickness;
 import songscribe.util.GraphicUtils;
@@ -46,8 +45,6 @@ import songscribe.util.MyFontUtils;
  * which measures to play on each repetition. They can span multiple measures.
  */
 public class Ending extends RangeElement {
-
-    private static final double NOTE_HEAD_WIDTH_SS = SMuFLMetadata.getInstance().noteHeadWidthSs();
 
     /** Scale of volta label font relative to standard music font size. */
     private static final float LABEL_FONT_SCALE = 0.6f;
@@ -265,7 +262,7 @@ public class Ending extends RangeElement {
             else if (start > 0) {
                 var prevElement = line.getElement(start - 1);
                 double prevX = elementXSs.applyAsDouble(prevElement)
-                    + NOTE_HEAD_WIDTH_SS;
+                    + LayoutStylesheet.NOTE_HEAD_WIDTH_SS;
                 x1 -= (x1 - prevX) / 2.0;
             }
 
@@ -289,7 +286,7 @@ public class Ending extends RangeElement {
                     x2 += (nextX - x2) / 2.0;
                 }
                 else {
-                    x2 += NOTE_HEAD_WIDTH_SS;
+                    x2 += LayoutStylesheet.NOTE_HEAD_WIDTH_SS;
                 }
             }
 
@@ -337,7 +334,7 @@ public class Ending extends RangeElement {
                         x2 += (elementXSs.applyAsDouble(nextElement) - x2) / 2.0;
                     }
                     else {
-                        x2 += NOTE_HEAD_WIDTH_SS;
+                        x2 += LayoutStylesheet.NOTE_HEAD_WIDTH_SS;
                     }
 
                     hasClosingStroke = false;
@@ -368,7 +365,7 @@ public class Ending extends RangeElement {
      */
     @Override
     public double getSpanWidthSs(double anchorXSs, double endXSs) {
-        return Math.max(NOTE_HEAD_WIDTH_SS, endXSs - anchorXSs + NOTE_HEAD_WIDTH_SS);
+        return Math.max(LayoutStylesheet.NOTE_HEAD_WIDTH_SS, endXSs - anchorXSs + LayoutStylesheet.NOTE_HEAD_WIDTH_SS);
     }
 
     /**

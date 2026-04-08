@@ -32,6 +32,7 @@ import songscribe.music.StaffElement;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
 import songscribe.ui.layout.LayoutResult;
+import songscribe.ui.layout.LayoutStylesheet;
 import songscribe.ui.layout.Trill;
 import songscribe.util.GraphicUtils;
 
@@ -52,8 +53,6 @@ public class TrillRenderer extends BaseElementRenderer<Trill> {
 
     // Default fallback advance width in staff-space units (~2.125 ss)
     private static final double DEFAULT_TRILL_ADVANCE_WIDTH_SS = 2.125;
-
-    private static final double NOTE_HEAD_WIDTH_SS = SMuFLMetadata.getInstance().noteHeadWidthSs();
 
     // Singleton instance
     private static final TrillRenderer INSTANCE = new TrillRenderer();
@@ -127,7 +126,7 @@ public class TrillRenderer extends BaseElementRenderer<Trill> {
         LayoutResult layoutResult
     ) {
         if (endNote != null && endNote != anchor) {
-            double endXSs = layoutResult.getElementXSs(endNote) + NOTE_HEAD_WIDTH_SS;
+            double endXSs = layoutResult.getElementXSs(endNote) + LayoutStylesheet.NOTE_HEAD_WIDTH_SS;
             renderTrill(g2, layoutXSs, endXSs, trillTopYSs, color);
         } else {
             double trillXSs = centeredGlyphX(layoutXSs,

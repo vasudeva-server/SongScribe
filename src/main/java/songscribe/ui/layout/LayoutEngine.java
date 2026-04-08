@@ -31,6 +31,7 @@ import songscribe.music.KeyType;
 import songscribe.smufl.SMuFLMetadata;
 import songscribe.music.Line;
 import songscribe.music.StaffElement;
+import songscribe.ui.layout.stacking.VerticalStackingCalculator;
 
 /**
  * Orchestrates the complete layout pipeline for a staff line.

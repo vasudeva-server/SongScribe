@@ -371,6 +371,16 @@ public final class LayoutStylesheet {
      */
     public static final double LYRICS_BASELINE_OFFSET_SS = 1.25;  // 10px
 
+    /**
+     * Approximate height of a single lyrics row (to be measured from actual font in later phases).
+     */
+    public static final double LYRICS_HEIGHT_SS = 2.5;  // ~20px
+
+    /**
+     * Vertical margin between the bottom of one staff line and the top of the next.
+     */
+    public static final double INTER_LINE_MARGIN_SS = 1.25;  // 10px
+
     // ==========================================================================
     // LINE JUSTIFICATION
     // ==========================================================================
@@ -417,6 +427,11 @@ public final class LayoutStylesheet {
     public static final double DOT_GAP_SS = 0.25;
 
     /**
+     * Width of a notehead in staff-space units, derived from SMuFL metadata.
+     */
+    public static final double NOTE_HEAD_WIDTH_SS;
+
+    /**
      * Gap between an accidental and the notehead, in staff-space units.
      */
     public static final double ACCIDENTAL_GAP_SS = 0.25;
@@ -454,6 +469,7 @@ public final class LayoutStylesheet {
 
     static {
         var metadata = SMuFLMetadata.getInstance();
+        NOTE_HEAD_WIDTH_SS = metadata.noteHeadWidthSs();
         CLEF_WIDTH_SS = metadata.requireAdvanceWidth(SMuFLGlyph.G_CLEF);
         STEM_WIDTH_SS = LineThickness.getInstance().stemSs();
 

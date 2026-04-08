@@ -36,6 +36,7 @@ import songscribe.music.Line;
 import songscribe.music.StaffElement;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
+import songscribe.ui.layout.stacking.VerticalStackingCalculator;
 
 class ArticulationStackingTest extends UnitTest {
 

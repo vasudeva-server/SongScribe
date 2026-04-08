@@ -46,7 +46,7 @@ class HorizontalSpacingCalculatorTest extends UnitTest {
             element,
             Collections.emptyList(),
             0.0,
-            ElementColumnBuilder.NOTE_HEAD_WIDTH_SS,
+            LayoutStylesheet.NOTE_HEAD_WIDTH_SS,
             0.0, 0.0, null, 0.0, false
         );
         var columns = List.of(column);

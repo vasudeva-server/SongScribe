@@ -34,6 +34,7 @@ import songscribe.music.ArticulationType;
 import songscribe.music.ElementType;
 import songscribe.music.Line;
 import songscribe.music.StaffElement;
+import songscribe.ui.layout.stacking.VerticalStackingCalculator;
 
 class FermataTrillStackingTest extends UnitTest {
 

@@ -27,7 +27,7 @@ import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
 import songscribe.ui.layout.FermataAttachment;
 import songscribe.ui.layout.LayoutResult;
-import songscribe.ui.layout.VerticalStackingCalculator;
+import songscribe.ui.layout.stacking.NoteAttachedStacker;
 import songscribe.util.GraphicUtils;
 
 /**
@@ -86,7 +86,7 @@ public class FermataRenderer extends BaseElementRenderer<StaffElement> {
             // Use the override X for precise positioning, falling back to xPosSs.
             double xSs = ctx.hasOverrideElementX()
                 ? ctx.getOverrideElementXSs() : element.getXPosSs();
-            layoutResult = VerticalStackingCalculator.computePreviewDecorationLayouts(
+            layoutResult = NoteAttachedStacker.computePreviewDecorationLayouts(
                 element, xSs);
         }
 
