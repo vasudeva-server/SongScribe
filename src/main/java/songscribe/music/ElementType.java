@@ -29,7 +29,7 @@ import java.util.Map;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.smufl.BBox;
-import songscribe.smufl.EngravingDefaults;
+import songscribe.smufl.Engraving;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
 import songscribe.ui.layout.LayoutStylesheet;
@@ -630,7 +630,7 @@ public enum ElementType {
         double thin = lt.thinBarlineSs();
         double thick = lt.thickBarlineSs();
         double sep = lt.barlineSeparationSs();
-        double dotSep = metadata.getEngravingDefaults().repeatBarlineDotSeparation();
+        double dotSep = Engraving.REPEAT_BARLINE_DOT_SEPARATION_SS;
         var dotBBox = requireBBox(metadata, SMuFLGlyph.REPEAT_DOT, REPEAT_LEFT);
         double dotWidth = dotBBox.width();
         double staffHeight = LayoutStylesheet.STAFF_HEIGHT_SS;

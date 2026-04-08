@@ -27,6 +27,7 @@ import org.junit.jupiter.api.Test;
 import songscribe.UnitTest;
 import songscribe.music.ElementType;
 import songscribe.music.StaffElement;
+import songscribe.smufl.Engraving;
 
 class ElementColumnBuilderTest extends UnitTest {
 
@@ -38,7 +39,7 @@ class ElementColumnBuilderTest extends UnitTest {
     @Test
     void testBeamedQuaverExtentEqualsNoteheadOnly() {
         var quaver = element(ElementType.QUAVER);
-        double noteheadOnly = LayoutStylesheet.NOTE_HEAD_WIDTH_SS;
+        double noteheadOnly = Engraving.NOTE_HEAD_WIDTH_SS;
         double extent = ElementColumnBuilder.calculateRightExtentSs(quaver, true, true);
 
         assertThat(extent).isEqualTo(noteheadOnly);
@@ -50,7 +51,7 @@ class ElementColumnBuilderTest extends UnitTest {
         var dottedQuaver = element(ElementType.QUAVER);
         dottedQuaver.setDotCount(1);
 
-        double dotsOnlyExtent = LayoutStylesheet.NOTE_HEAD_WIDTH_SS + 0.25 + 0.5; // DOT_GAP + DOT_WIDTH
+        double dotsOnlyExtent = Engraving.NOTE_HEAD_WIDTH_SS + 0.25 + 0.5; // DOT_GAP + DOT_WIDTH
 
         var undottedQuaver = element(ElementType.QUAVER);
         double flagOnlyExtent = ElementColumnBuilder.calculateRightExtentSs(undottedQuaver, false, true);
@@ -79,7 +80,7 @@ class ElementColumnBuilderTest extends UnitTest {
     void testNonFlaggedTypesUnchanged() {
         for (var type : new ElementType[]{ElementType.CROTCHET, ElementType.MINIM, ElementType.SEMIBREVE}) {
             var n = element(type);
-            double noteheadOnly = LayoutStylesheet.NOTE_HEAD_WIDTH_SS;
+            double noteheadOnly = Engraving.NOTE_HEAD_WIDTH_SS;
             double extentUnbeamed = ElementColumnBuilder.calculateRightExtentSs(n, false, true);
             double extentBeamed = ElementColumnBuilder.calculateRightExtentSs(n, true, true);
 
@@ -106,7 +107,7 @@ class ElementColumnBuilderTest extends UnitTest {
     @Test
     void testUnbeamedQuaverExtentExceedsNoteheadOnly() {
         var quaver = element(ElementType.QUAVER);
-        double noteheadOnly = LayoutStylesheet.NOTE_HEAD_WIDTH_SS;
+        double noteheadOnly = Engraving.NOTE_HEAD_WIDTH_SS;
         double extent = ElementColumnBuilder.calculateRightExtentSs(quaver, false, true);
 
         assertThat(extent).isGreaterThan(noteheadOnly);

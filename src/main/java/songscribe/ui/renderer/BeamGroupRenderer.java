@@ -32,7 +32,7 @@ import org.jspecify.annotations.Nullable;
 import songscribe.music.ElementType;
 import songscribe.music.Line;
 import songscribe.music.StaffElement;
-import songscribe.smufl.SMuFLMetadata;
+import songscribe.smufl.Engraving;
 import songscribe.ui.component.Score;
 import songscribe.ui.component.score.InsertionElementManager;
 import songscribe.ui.layout.LineElement;
@@ -52,10 +52,6 @@ public class BeamGroupRenderer extends BaseElementRenderer<LineElement> {
     // Constants from Renderer
     // ==========================================================================
 
-    // Beam geometry constants (staff-space units; scale transform handles pixel conversion)
-    private static final SMuFLMetadata METADATA = SMuFLMetadata.getInstance();
-    private static final double BEAM_DEPTH_SS = METADATA.getEngravingDefaults().beamThickness();
-    private static final double BEAM_GAP_SS = METADATA.getEngravingDefaults().beamSpacing();
     private static final double CLIP_SLOP_SS = 0.25;   // extra clipping margin (~2 px)
     private static final double BEAM_STUB_SS = 1.0;  // 8px
 
@@ -336,9 +332,9 @@ public class BeamGroupRenderer extends BaseElementRenderer<LineElement> {
 
         // --- Thickening (from BeamLayout, zero if unavailable) ---
         double thickeningSs = (beamLayout != null) ? beamLayout.thickeningSs() : 0.0;
-        double effectiveBeamDepthSs = BEAM_DEPTH_SS + thickeningSs;
+        double effectiveBeamDepthSs = Engraving.BEAM_THICKNESS_SS + thickeningSs;
         double beamDepthSs = isUpper ? effectiveBeamDepthSs : -effectiveBeamDepthSs;
-        double innerBeamOffsetSs = (effectiveBeamDepthSs + BEAM_GAP_SS) * recursionLevel * (isUpper ? 1 : -1);
+        double innerBeamOffsetSs = (effectiveBeamDepthSs + Engraving.BEAM_SPACING_SS) * recursionLevel * (isUpper ? 1 : -1);
 
         // --- First note stem geometry ---
         var firstStemLayout = (layoutResult != null) ? layoutResult.getStemLayout(beginNote) : null;

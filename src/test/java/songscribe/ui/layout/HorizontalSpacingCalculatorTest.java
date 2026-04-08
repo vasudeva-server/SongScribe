@@ -31,6 +31,7 @@ import org.junit.jupiter.api.Test;
 import songscribe.UnitTest;
 import songscribe.music.ElementType;
 import songscribe.music.Line;
+import songscribe.smufl.Engraving;
 
 class HorizontalSpacingCalculatorTest extends UnitTest {
 
@@ -46,7 +47,7 @@ class HorizontalSpacingCalculatorTest extends UnitTest {
             element,
             Collections.emptyList(),
             0.0,
-            LayoutStylesheet.NOTE_HEAD_WIDTH_SS,
+            Engraving.NOTE_HEAD_WIDTH_SS,
             0.0, 0.0, null, 0.0, false
         );
         var columns = List.of(column);

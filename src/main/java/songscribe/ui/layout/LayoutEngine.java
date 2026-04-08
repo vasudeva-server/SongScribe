@@ -28,7 +28,7 @@ import java.util.List;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.music.KeyType;
-import songscribe.smufl.SMuFLMetadata;
+import songscribe.smufl.Engraving;
 import songscribe.music.Line;
 import songscribe.music.StaffElement;
 import songscribe.ui.layout.stacking.VerticalStackingCalculator;
@@ -75,8 +75,7 @@ public class LayoutEngine {
     private static final double TIE_MIN_SHOULDER_HEIGHT_SS = 0.3;   // minimum arc height
     private static final double TIE_MAX_SHOULDER_HEIGHT_SS = 2.0;   // maximum arc height
     private static final double TIE_SHOULDER_HEIGHT_SCALE = 0.3;    // sqrt scaling factor for arc height
-    private static final double TIE_MID_THICKNESS_SS =               // midpoint half-thickness (midWidth - endWidth)
-        SMuFLMetadata.getInstance().getEngravingDefaults().tieMidpointThickness();
+    private static final double TIE_MID_THICKNESS_SS = Engraving.TIE_MIDPOINT_THICKNESS_SS; // midpoint half-thickness (midWidth - endWidth)
     private static final double TIE_COLLISION_FACTOR = 0.65;        // interior deflection scaling
     private static final double TIE_COLLISION_PUSH = 0.45;          // midpoint push-up ratio on collision
     private static final double TIE_NOTEHEAD_HALF_WIDTH_SS = 0.6;   // visual half-width of notehead
@@ -651,7 +650,7 @@ public class LayoutEngine {
         var keyType = rawKeyType != null ? rawKeyType : KeyType.NONE;
         var keySig = new KeySignature(keyType, line.getKeyAccidentalCount());
         double keySigXSs = LayoutStylesheet.CLEF_X_POSITION_SS
-            + LayoutStylesheet.CLEF_WIDTH_SS
+            + Engraving.G_CLEF_WIDTH_SS
             + clef.getMarginRightSs();
         keySig.setPosition(keySigXSs, 0);
         builder.setKeySignature(keySig);

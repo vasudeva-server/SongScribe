@@ -23,6 +23,7 @@ package songscribe.ui.layout;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.music.StaffElement;
+import songscribe.smufl.Engraving;
 
 /**
  * Represents a diminuendo (gradually getting softer) hairpin marking.
@@ -144,7 +145,7 @@ public class Diminuendo extends RangeElement {
      */
     @Override
     public double getSpanWidthSs(double anchorXSs, double endXSs) {
-        return Math.max(getContentHeightSs(), endXSs - anchorXSs + LayoutStylesheet.NOTE_HEAD_WIDTH_SS);
+        return Math.max(getContentHeightSs(), endXSs - anchorXSs + Engraving.NOTE_HEAD_WIDTH_SS);
     }
 
     @Override

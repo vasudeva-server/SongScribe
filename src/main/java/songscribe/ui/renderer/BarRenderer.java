@@ -27,8 +27,8 @@ import module java.desktop;
 
 import songscribe.music.ElementType;
 import songscribe.music.StaffElement;
+import songscribe.smufl.Engraving;
 import songscribe.smufl.SMuFLGlyph;
-import songscribe.smufl.SMuFLMetadata;
 import songscribe.util.GraphicUtils;
 
 /**
@@ -56,12 +56,6 @@ public class BarRenderer extends BaseElementRenderer<StaffElement> {
 
     /** Half the staff height: distance from middle line to top/bottom staff line. */
     private static final double STAFF_HALF_HEIGHT_SS = 2.0;
-
-    private static final SMuFLMetadata METADATA = SMuFLMetadata.getInstance();
-
-    /** Advance width of the repeat dots glyph in staff spaces. */
-    private static final double REPEAT_DOTS_ADVANCE_SS =
-        METADATA.requireAdvanceWidth(SMuFLGlyph.REPEAT_DOTS);
 
     /**
      * Y coordinate of the bottom staff line relative to the middle line.
@@ -154,7 +148,7 @@ public class BarRenderer extends BaseElementRenderer<StaffElement> {
                 // dots | sep | thin | sep | thick
                 double x = 0;
                 drawRepeatDots(g2, x);
-                x += REPEAT_DOTS_ADVANCE_SS + sep;
+                x += Engraving.REPEAT_DOTS_ADVANCE_WIDTH_SS + sep;
                 drawBar(g2, x, thin, topY, bottomY);
                 x += thin + sep;
                 drawBar(g2, x, thick, topY, bottomY);
@@ -164,7 +158,7 @@ public class BarRenderer extends BaseElementRenderer<StaffElement> {
                 // dots | sep | thin | sep | thick | sep | thin | sep | dots
                 double x = 0;
                 drawRepeatDots(g2, x);
-                x += REPEAT_DOTS_ADVANCE_SS + sep;
+                x += Engraving.REPEAT_DOTS_ADVANCE_WIDTH_SS + sep;
                 drawBar(g2, x, thin, topY, bottomY);
                 x += thin + sep;
                 drawBar(g2, x, thick, topY, bottomY);

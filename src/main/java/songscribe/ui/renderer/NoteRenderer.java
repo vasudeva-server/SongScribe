@@ -34,6 +34,7 @@ import org.jspecify.annotations.Nullable;
 import songscribe.music.ElementType;
 import songscribe.music.StaffElement;
 import songscribe.smufl.SMuFLGlyph;
+import songscribe.smufl.Engraving;
 import songscribe.smufl.SMuFLMetadata;
 import songscribe.ui.layout.LayoutStylesheet;
 import songscribe.error.RuntimeError;
@@ -76,8 +77,7 @@ public class NoteRenderer extends BaseElementRenderer<StaffElement> {
 
     // Half the beam thickness in ss, used to tuck beamed stems inside the beam
     // so they don't peek past the outer edge when the beam is angled.
-    private static final double HALF_BEAM_THICKNESS_SS =
-        METADATA.getEngravingDefaults().beamThickness() / 2.0;
+    private static final double HALF_BEAM_THICKNESS_SS = Engraving.BEAM_THICKNESS_SS / 2.0;
 
     // Stem end-cap arc diameter as a fraction of stem width (from LilyPond print analysis)
     private static final double STEM_ARC_RATIO = 0.57;
@@ -87,8 +87,7 @@ public class NoteRenderer extends BaseElementRenderer<StaffElement> {
     static final float DOT_SPACING_SS;
 
     static {
-        var metadata = SMuFLMetadata.getInstance();
-        var advanceWidth = metadata.getAdvanceWidth(SMuFLGlyph.AUGMENTATION_DOT);
+        var advanceWidth = METADATA.getAdvanceWidth(SMuFLGlyph.AUGMENTATION_DOT);
         DOT_SPACING_SS = (advanceWidth != null) ? advanceWidth.floatValue() + 0.35f : 0.825f;
     }
 
@@ -603,7 +602,7 @@ public class NoteRenderer extends BaseElementRenderer<StaffElement> {
      */
     private float drawGlyph(Graphics2D g2, SMuFLGlyph glyph, float x) {
         g2.drawString(glyph.asString(), x, 0f);
-        var advanceWidth = SMuFLMetadata.getInstance().getAdvanceWidth(glyph);
+        var advanceWidth = METADATA.getAdvanceWidth(glyph);
         return x + (advanceWidth != null ? advanceWidth.floatValue() : 0f);
     }
 
@@ -652,13 +651,12 @@ public class NoteRenderer extends BaseElementRenderer<StaffElement> {
             return;
         }
 
-        var metadata = SMuFLMetadata.getInstance();
-        baseAccidentalWidthsSs = computeComponentWidths(metadata, ACCIDENTAL_COMPONENTS);
-        smallAccidentalWidthsSs = computeComponentWidths(metadata, ACCIDENTAL_COMPONENTS_SMALL);
+        baseAccidentalWidthsSs = computeComponentWidths(METADATA, ACCIDENTAL_COMPONENTS);
+        smallAccidentalWidthsSs = computeComponentWidths(METADATA, ACCIDENTAL_COMPONENTS_SMALL);
 
         // Calculate parenthesis widths (advance widths are already in ss)
-        var parensLeftWidth = metadata.getAdvanceWidth(SMuFLGlyph.ACCIDENTAL_PARENS_LEFT);
-        var parensRightWidth = metadata.getAdvanceWidth(SMuFLGlyph.ACCIDENTAL_PARENS_RIGHT);
+        var parensLeftWidth = METADATA.getAdvanceWidth(SMuFLGlyph.ACCIDENTAL_PARENS_LEFT);
+        var parensRightWidth = METADATA.getAdvanceWidth(SMuFLGlyph.ACCIDENTAL_PARENS_RIGHT);
         beginParenthesisWidthSs = (parensLeftWidth != null) ? parensLeftWidth.floatValue() : 0f;
         endParenthesisWidthSs = (parensRightWidth != null) ? parensRightWidth.floatValue() : 0f;
 

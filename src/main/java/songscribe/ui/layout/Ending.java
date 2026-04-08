@@ -33,6 +33,7 @@ import org.jspecify.annotations.Nullable;
 import songscribe.music.ElementType;
 import songscribe.music.Line;
 import songscribe.music.StaffElement;
+import songscribe.smufl.Engraving;
 import songscribe.ui.renderer.BaseElementRenderer;
 import songscribe.ui.renderer.LineThickness;
 import songscribe.util.GraphicUtils;
@@ -262,7 +263,7 @@ public class Ending extends RangeElement {
             else if (start > 0) {
                 var prevElement = line.getElement(start - 1);
                 double prevX = elementXSs.applyAsDouble(prevElement)
-                    + LayoutStylesheet.NOTE_HEAD_WIDTH_SS;
+                    + Engraving.NOTE_HEAD_WIDTH_SS;
                 x1 -= (x1 - prevX) / 2.0;
             }
 
@@ -286,7 +287,7 @@ public class Ending extends RangeElement {
                     x2 += (nextX - x2) / 2.0;
                 }
                 else {
-                    x2 += LayoutStylesheet.NOTE_HEAD_WIDTH_SS;
+                    x2 += Engraving.NOTE_HEAD_WIDTH_SS;
                 }
             }
 
@@ -334,7 +335,7 @@ public class Ending extends RangeElement {
                         x2 += (elementXSs.applyAsDouble(nextElement) - x2) / 2.0;
                     }
                     else {
-                        x2 += LayoutStylesheet.NOTE_HEAD_WIDTH_SS;
+                        x2 += Engraving.NOTE_HEAD_WIDTH_SS;
                     }
 
                     hasClosingStroke = false;
@@ -365,7 +366,7 @@ public class Ending extends RangeElement {
      */
     @Override
     public double getSpanWidthSs(double anchorXSs, double endXSs) {
-        return Math.max(LayoutStylesheet.NOTE_HEAD_WIDTH_SS, endXSs - anchorXSs + LayoutStylesheet.NOTE_HEAD_WIDTH_SS);
+        return Math.max(Engraving.NOTE_HEAD_WIDTH_SS, endXSs - anchorXSs + Engraving.NOTE_HEAD_WIDTH_SS);
     }
 
     /**

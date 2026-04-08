@@ -18,22 +18,16 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package songscribe.ui.layout;
+package songscribe.smufl;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
-import org.junit.jupiter.api.Test;
-
-import songscribe.UnitTest;
-import songscribe.smufl.SMuFLGlyph;
-import songscribe.smufl.SMuFLMetadata;
-
-class LayoutStylesheetTest extends UnitTest {
-
-    // T6: CLEF_WIDTH_SS is derived from the SMuFL advance width, not hardcoded
-    @Test
-    void testClefWidthSsMatchesSmuflAdvanceWidth() {
-        double expected = SMuFLMetadata.getInstance().requireAdvanceWidth(SMuFLGlyph.G_CLEF);
-        assertThat(LayoutStylesheet.CLEF_WIDTH_SS).isEqualTo(expected);
-    }
-}
+/**
+ * Engraving defaults from SMuFL metadata, all values in staff spaces.
+ */
+record SMuFLData(
+    double beamThickness,
+    double beamSpacing,
+    double repeatBarlineDotSeparation,
+    double legerLineThickness,
+    double legerLineExtension,
+    double tieMidpointThickness
+) {}

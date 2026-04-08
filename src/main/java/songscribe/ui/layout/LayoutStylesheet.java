@@ -24,9 +24,8 @@ import module java.desktop;
 
 import songscribe.music.ElementType;
 import songscribe.music.StaffElement;
+import songscribe.smufl.Engraving;
 import songscribe.smufl.GlyphAnchors;
-import songscribe.smufl.SMuFLGlyph;
-import songscribe.smufl.SMuFLMetadata;
 import songscribe.ui.FlatLafKeys;
 import songscribe.ui.renderer.LineThickness;
 import songscribe.ui.FlatLafProps;
@@ -256,11 +255,6 @@ public final class LayoutStylesheet {
     public static final double CLEF_X_POSITION_SS = 0.625;  // 5px
 
     /**
-     * Width of the treble clef symbol, derived from the SMuFL advance width.
-     */
-    public static final double CLEF_WIDTH_SS;
-
-    /**
      * Width of each accidental in the key signature.
      */
     public static final double KEY_ACCIDENTAL_WIDTH_SS = 1.0;  // 8px
@@ -291,7 +285,7 @@ public final class LayoutStylesheet {
      * @return X position in staff-space units of the header's right edge
      */
     public static double calculateHeaderRightEdgeSs(int keyAccidentalCount) {
-        return CLEF_WIDTH_SS + keyAccidentalCount * KEY_ACCIDENTAL_WIDTH_SS;
+        return Engraving.G_CLEF_WIDTH_SS + keyAccidentalCount * KEY_ACCIDENTAL_WIDTH_SS;
     }
 
     // ==========================================================================
@@ -427,11 +421,6 @@ public final class LayoutStylesheet {
     public static final double DOT_GAP_SS = 0.25;
 
     /**
-     * Width of a notehead in staff-space units, derived from SMuFL metadata.
-     */
-    public static final double NOTE_HEAD_WIDTH_SS;
-
-    /**
      * Gap between an accidental and the notehead, in staff-space units.
      */
     public static final double ACCIDENTAL_GAP_SS = 0.25;
@@ -442,60 +431,22 @@ public final class LayoutStylesheet {
     public static final double STEM_WIDTH_SS;
 
     /**
-     * Stem anchor point for black noteheads (stem-up, south-east corner).
-     */
-    public static final GlyphAnchors.Anchor STEM_UP_SE_BLACK;
-
-    /**
-     * Stem anchor point for black noteheads (stem-down, north-west corner).
-     */
-    public static final GlyphAnchors.Anchor STEM_DOWN_NW_BLACK;
-
-    /**
-     * Stem anchor point for half noteheads (stem-up, south-east corner).
-     */
-    public static final GlyphAnchors.Anchor STEM_UP_SE_HALF;
-
-    /**
-     * Stem anchor point for half noteheads (stem-down, north-west corner).
-     */
-    public static final GlyphAnchors.Anchor STEM_DOWN_NW_HALF;
-
-    /**
      * Stem anchor point for small black noteheads (stem-up, south-east corner).
      * Used for grace notes which use pre-sized small glyphs.
      */
     public static final GlyphAnchors.Anchor STEM_UP_SE_BLACK_SMALL;
 
     static {
-        var metadata = SMuFLMetadata.getInstance();
-        NOTE_HEAD_WIDTH_SS = metadata.noteHeadWidthSs();
-        CLEF_WIDTH_SS = metadata.requireAdvanceWidth(SMuFLGlyph.G_CLEF);
         STEM_WIDTH_SS = LineThickness.getInstance().stemSs();
-
-        var blackAnchors = metadata.requireAnchors(SMuFLGlyph.NOTEHEAD_BLACK);
-        var halfAnchors = metadata.requireAnchors(SMuFLGlyph.NOTEHEAD_HALF);
-
-        STEM_UP_SE_BLACK = blackAnchors.requireStemUpSE();
-        STEM_DOWN_NW_BLACK = blackAnchors.requireStemDownNW();
-        STEM_UP_SE_HALF = halfAnchors.requireStemUpSE();
-        STEM_DOWN_NW_HALF = halfAnchors.requireStemDownNW();
         STEM_UP_SE_BLACK_SMALL = new GlyphAnchors.Anchor(
-            STEM_UP_SE_BLACK.x() * GRACE_NOTE_SCALE,
-            STEM_UP_SE_BLACK.y() * GRACE_NOTE_SCALE
+            Engraving.NOTEHEAD_BLACK_STEM_UP_SE.x() * GRACE_NOTE_SCALE,
+            Engraving.NOTEHEAD_BLACK_STEM_UP_SE.y() * GRACE_NOTE_SCALE
         );
-
-        LEDGER_LINE_EXTENSION_SS = metadata.getEngravingDefaults().legerLineExtension();
     }
 
     // ==========================================================================
     // LEDGER LINES
     // ==========================================================================
-
-    /**
-     * How far ledger lines extend beyond the notehead on each side, in staff-space units.
-     */
-    public static final double LEDGER_LINE_EXTENSION_SS;
 
     /**
      * Returns the ledger line overhang for a note, or 0 if the note has no ledger lines.
@@ -509,7 +460,7 @@ public final class LayoutStylesheet {
             return 0.0;
         }
 
-        return LEDGER_LINE_EXTENSION_SS;
+        return Engraving.LEDGER_LINE_EXTENSION_SS;
     }
 
     // ==========================================================================
@@ -555,9 +506,9 @@ public final class LayoutStylesheet {
         if (isGrace) {
             anchor = STEM_UP_SE_BLACK_SMALL;
         } else if (upper) {
-            anchor = isMinim ? STEM_UP_SE_HALF : STEM_UP_SE_BLACK;
+            anchor = isMinim ? Engraving.NOTEHEAD_HALF_STEM_UP_SE : Engraving.NOTEHEAD_BLACK_STEM_UP_SE;
         } else {
-            anchor = isMinim ? STEM_DOWN_NW_HALF : STEM_DOWN_NW_BLACK;
+            anchor = isMinim ? Engraving.NOTEHEAD_HALF_STEM_DOWN_NW : Engraving.NOTEHEAD_BLACK_STEM_DOWN_NW;
         }
 
         double anchorX = anchor.x();

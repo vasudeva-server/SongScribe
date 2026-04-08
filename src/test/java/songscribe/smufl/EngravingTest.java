@@ -20,26 +20,18 @@
 
 package songscribe.smufl;
 
-/**
- * Engraving defaults from SMuFL metadata, all values in staff spaces.
- * These replace hardcoded stroke/thickness constants throughout the renderers.
- */
-public record EngravingDefaults(
-        double staffLineThickness,
-        double stemThickness,
-        double beamThickness,
-        double beamSpacing,
-        double barlineSeparation,
-        double thinBarlineThickness,
-        double thickBarlineThickness,
-        double repeatBarlineDotSeparation,
-        double repeatEndingLineThickness,
-        double legerLineThickness,
-        double legerLineExtension,
-        double slurEndpointThickness,
-        double slurMidpointThickness,
-        double tieEndpointThickness,
-        double tieMidpointThickness,
-        double hairpinThickness,
-        double tupletBracketThickness
-) {}
+import static org.assertj.core.api.Assertions.assertThat;
+
+import org.junit.jupiter.api.Test;
+
+import songscribe.UnitTest;
+
+class EngravingTest extends UnitTest {
+
+    // T6: G_CLEF_WIDTH_SS is derived from the SMuFL advance width, not hardcoded
+    @Test
+    void testGClefWidthMatchesSmuflAdvanceWidth() {
+        double expected = SMuFLMetadata.getInstance().requireAdvanceWidth(SMuFLGlyph.G_CLEF);
+        assertThat(Engraving.G_CLEF_WIDTH_SS).isEqualTo(expected);
+    }
+}

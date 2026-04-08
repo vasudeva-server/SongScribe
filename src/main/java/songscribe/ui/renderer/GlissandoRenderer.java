@@ -35,7 +35,7 @@ import songscribe.music.Composition;
 import songscribe.music.ElementType;
 import songscribe.music.Line;
 import songscribe.music.StaffElement;
-import songscribe.smufl.EngravingDefaults;
+import songscribe.smufl.Engraving;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
 import songscribe.ui.layout.LayoutStylesheet;
@@ -63,7 +63,6 @@ public class GlissandoRenderer {
     // ==========================================================================
 
     private static final SMuFLMetadata METADATA = SMuFLMetadata.getInstance();
-    private static final EngravingDefaults ENGRAVING = METADATA.getEngravingDefaults();
 
     /**
      * Minimum gap between the note area exit point and the glissando endpoint, in staff spaces.
@@ -870,7 +869,7 @@ public class GlissandoRenderer {
         double noteheadWidthSs = NoteRenderer.getNoteheadRightEdgeSs(note);
         double ledgerWidthSs = noteheadWidthSs + 2 * extensionSs;
         double centerXSs = noteheadWidthSs / 2.0;
-        double thicknessSs = ENGRAVING.legerLineThickness();
+        double thicknessSs = Engraving.LEDGER_LINE_THICKNESS_SS;
         double halfThickness = thicknessSs / 2.0;
 
         BaseElementRenderer.forEachLedgerLineYSs(note.getStaffPosition(), y ->

@@ -31,6 +31,7 @@ import org.junit.jupiter.api.Test;
 import songscribe.UnitTest;
 import songscribe.music.KeyType;
 import songscribe.music.Line;
+import songscribe.smufl.Engraving;
 
 class LayoutEngineTest extends UnitTest {
 
@@ -69,7 +70,7 @@ class LayoutEngineTest extends UnitTest {
         var keySig = require(result.getKeySignature(), "KeySignature");
 
         double expectedXSs = LayoutStylesheet.CLEF_X_POSITION_SS
-            + LayoutStylesheet.CLEF_WIDTH_SS
+            + Engraving.G_CLEF_WIDTH_SS
             + new Clef().getMarginRightSs();
 
         assertThat(keySig.getXSs()).isCloseTo(expectedXSs, within(TOLERANCE));

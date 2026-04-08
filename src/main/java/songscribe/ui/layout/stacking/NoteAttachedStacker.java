@@ -33,6 +33,7 @@ import songscribe.ui.layout.Articulation;
 import songscribe.ui.layout.ElementColumn;
 import songscribe.ui.layout.FermataAttachment;
 import songscribe.ui.layout.LayoutResult;
+import songscribe.smufl.Engraving;
 import songscribe.ui.layout.LayoutStylesheet;
 import songscribe.ui.layout.StaffExtents;
 import songscribe.ui.layout.Trill;
@@ -114,13 +115,13 @@ public class NoteAttachedStacker {
      */
     public static LayoutResult computePreviewDecorationLayouts(StaffElement note, double xSs) {
         // Create minimal extents just wide enough to contain the note
-        double lineWidthSs = xSs + LayoutStylesheet.NOTE_HEAD_WIDTH_SS + 1.0;
+        double lineWidthSs = xSs + Engraving.NOTE_HEAD_WIDTH_SS + 1.0;
         var extents = new StaffExtents(lineWidthSs);
 
         // Seed note bounds using the non-beamed path
         var bounds = computeNoteBounds(note);
-        extents.ySet(true, xSs, LayoutStylesheet.NOTE_HEAD_WIDTH_SS, bounds.topSs());
-        extents.ySet(false, xSs, LayoutStylesheet.NOTE_HEAD_WIDTH_SS, bounds.botSs());
+        extents.ySet(true, xSs, Engraving.NOTE_HEAD_WIDTH_SS, bounds.topSs());
+        extents.ySet(false, xSs, Engraving.NOTE_HEAD_WIDTH_SS, bounds.botSs());
 
         var builder = new LayoutResult.Builder();
         int staffPosition = note.getStaffPosition();
@@ -210,8 +211,8 @@ public class NoteAttachedStacker {
                 botSs = bounds.botSs();
             }
 
-            noteAttachedExtents.ySet(true, xSs, LayoutStylesheet.NOTE_HEAD_WIDTH_SS, topSs);
-            noteAttachedExtents.ySet(false, xSs, LayoutStylesheet.NOTE_HEAD_WIDTH_SS, botSs);
+            noteAttachedExtents.ySet(true, xSs, Engraving.NOTE_HEAD_WIDTH_SS, topSs);
+            noteAttachedExtents.ySet(false, xSs, Engraving.NOTE_HEAD_WIDTH_SS, botSs);
 
             // Track lowest notehead bottom for lyrics baseline calculation
             double noteheadCenterYSs = element.getStaffPosition()
@@ -282,8 +283,8 @@ public class NoteAttachedStacker {
             var startColumn = columnsByElement.get(startElement);
             var endColumn = columnsByElement.get(endElement);
 
-            double startEdgeT = Math.min(LayoutStylesheet.NOTE_HEAD_WIDTH_SS / spanWidthSs, 0.5);
-            double endEdgeT = Math.max(1.0 - LayoutStylesheet.NOTE_HEAD_WIDTH_SS / spanWidthSs, 0.5);
+            double startEdgeT = Math.min(Engraving.NOTE_HEAD_WIDTH_SS / spanWidthSs, 0.5);
+            double endEdgeT = Math.max(1.0 - Engraving.NOTE_HEAD_WIDTH_SS / spanWidthSs, 0.5);
             double startEdgeYSs = evaluateBezierYSs(startEdgeT, tieLayout);
             double endEdgeYSs = evaluateBezierYSs(endEdgeT, tieLayout);
 
@@ -299,12 +300,12 @@ public class NoteAttachedStacker {
 
             if (startColumn != null) {
                 noteAttachedExtents.ySet(true, startColumn.getXSs(),
-                    LayoutStylesheet.NOTE_HEAD_WIDTH_SS, startEdgeYSs);
+                    Engraving.NOTE_HEAD_WIDTH_SS, startEdgeYSs);
             }
 
             if (endColumn != null) {
                 noteAttachedExtents.ySet(true, endColumn.getXSs(),
-                    LayoutStylesheet.NOTE_HEAD_WIDTH_SS, endEdgeYSs);
+                    Engraving.NOTE_HEAD_WIDTH_SS, endEdgeYSs);
             }
 
             int sampleCount = Math.max(TIE_BOUND_MIN_SAMPLES, (int) Math.ceil(spanWidthSs));

@@ -30,6 +30,7 @@ import java.util.function.DoubleConsumer;
 
 import songscribe.music.ElementType;
 import songscribe.music.StaffElement;
+import songscribe.smufl.Engraving;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
 import songscribe.ui.layout.LineElement;
@@ -446,8 +447,8 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
     protected static double stemCenterXOffsetSs(ElementType noteType, boolean upper) {
         boolean isMinim = noteType == ElementType.MINIM;
         double anchorX = upper
-            ? (isMinim ? LayoutStylesheet.STEM_UP_SE_HALF.x() : LayoutStylesheet.STEM_UP_SE_BLACK.x())
-            : (isMinim ? LayoutStylesheet.STEM_DOWN_NW_HALF.x() : LayoutStylesheet.STEM_DOWN_NW_BLACK.x());
+            ? (isMinim ? Engraving.NOTEHEAD_HALF_STEM_UP_SE.x() : Engraving.NOTEHEAD_BLACK_STEM_UP_SE.x())
+            : (isMinim ? Engraving.NOTEHEAD_HALF_STEM_DOWN_NW.x() : Engraving.NOTEHEAD_BLACK_STEM_DOWN_NW.x());
 
         // upper: SE anchor is the stem's right edge; center = anchorX - half stem width
         // lower: NW anchor is the stem's left edge (after notehead shift); center = anchorX

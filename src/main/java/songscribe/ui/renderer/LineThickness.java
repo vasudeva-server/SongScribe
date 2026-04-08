@@ -1,7 +1,6 @@
 package songscribe.ui.renderer;
 
-import songscribe.smufl.SMuFLGlyph;
-import songscribe.smufl.SMuFLMetadata;
+import songscribe.smufl.Engraving;
 
 /**
  * Resolved element thicknesses using LilyPond-informed multiplier ratios,
@@ -59,10 +58,6 @@ public record LineThickness(
         );
     }
 
-    /** Advance width of the repeat dots glyph in staff spaces. */
-    private static final double REPEAT_DOTS_ADVANCE_SS =
-        SMuFLMetadata.getInstance().requireAdvanceWidth(SMuFLGlyph.REPEAT_DOTS);
-
     /**
      * Returns the barline separation (gap between adjacent barlines) in staff spaces.
      */
@@ -75,7 +70,7 @@ public record LineThickness(
      * relative to the element's layout X position.
      */
     public double repeatRightThinBarlineCenterXSs() {
-        return REPEAT_DOTS_ADVANCE_SS + barlineSeparationSs() + thinBarlineSs / 2;
+        return Engraving.REPEAT_DOTS_ADVANCE_WIDTH_SS + barlineSeparationSs() + thinBarlineSs / 2;
     }
 
     /**
@@ -84,7 +79,7 @@ public record LineThickness(
      */
     public double repeatRightAfterThickXSs() {
         double sep = barlineSeparationSs();
-        return REPEAT_DOTS_ADVANCE_SS + sep + thinBarlineSs + sep + thickBarlineSs;
+        return Engraving.REPEAT_DOTS_ADVANCE_WIDTH_SS + sep + thinBarlineSs + sep + thickBarlineSs;
     }
 
     /**

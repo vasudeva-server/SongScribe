@@ -30,6 +30,7 @@ import org.jspecify.annotations.Nullable;
 
 import songscribe.music.Line;
 import songscribe.music.StaffElement;
+import songscribe.smufl.Engraving;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
 import songscribe.ui.renderer.NoteRenderer;
@@ -61,7 +62,7 @@ public class ElementColumnBuilder {
         METADATA.requireBBox(SMuFLGlyph.NOTEHEAD_BLACK_SMALL).width();
 
     // Half note head width (for left/right extent calculation) (ss)
-    static final double HALF_NOTE_HEAD_SS = LayoutStylesheet.NOTE_HEAD_WIDTH_SS / 2.0;
+    static final double HALF_NOTE_HEAD_SS = Engraving.NOTE_HEAD_WIDTH_SS / 2.0;
 
     private final Graphics2D g2;
     private final Font lyricsFont;
@@ -182,7 +183,7 @@ public class ElementColumnBuilder {
         // Element head right edge: use small notehead width for grace notes
         double noteheadRightExtent = element.getType().isGraceNote()
             ? NOTE_HEAD_SMALL_WIDTH_SS
-            : LayoutStylesheet.NOTE_HEAD_WIDTH_SS;
+            : Engraving.NOTE_HEAD_WIDTH_SS;
 
         // Add dot widths if present
         int dotCount = element.getDotCount();
@@ -207,7 +208,7 @@ public class ElementColumnBuilder {
             // Grace notes always stem up, use the small notehead anchor
             double stemAnchorX = element.getType().isGraceNote()
                 ? LayoutStylesheet.STEM_UP_SE_BLACK_SMALL.x()
-                : (upper ? LayoutStylesheet.STEM_UP_SE_BLACK.x() : LayoutStylesheet.STEM_DOWN_NW_BLACK.x());
+                : (upper ? Engraving.NOTEHEAD_BLACK_STEM_UP_SE.x() : Engraving.NOTEHEAD_BLACK_STEM_DOWN_NW.x());
 
             flagRightExtent = stemAnchorX + flagAdvanceWidthSs;
         }

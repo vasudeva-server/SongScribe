@@ -29,7 +29,7 @@ import module java.desktop;
 
 import songscribe.music.Line;
 import songscribe.ui.layout.LayoutResult;
-import songscribe.ui.layout.LayoutStylesheet;
+import songscribe.smufl.Engraving;
 import songscribe.ui.layout.Tuplet;
 import songscribe.util.GraphicUtils;
 import songscribe.util.MyFontUtils;
@@ -154,7 +154,7 @@ public final class TupletRenderer extends BaseElementRenderer<Tuplet> {
         var stemSs = ctx.getLineThickness().stemSs();
         var leftXSs = isUpper
             ? spanLayout.startXSs() - stemSs - TUPLET_ARM_EXTENSION_SS
-            : spanLayout.startXSs() - LayoutStylesheet.NOTE_HEAD_WIDTH_SS - TUPLET_ARM_EXTENSION_SS;
+            : spanLayout.startXSs() - Engraving.NOTE_HEAD_WIDTH_SS - TUPLET_ARM_EXTENSION_SS;
         var rightXSs = spanLayout.endXSs() + TUPLET_ARM_EXTENSION_SS;
         var centerXSs = (spanLayout.startXSs() + spanLayout.endXSs()) / 2.0;
 

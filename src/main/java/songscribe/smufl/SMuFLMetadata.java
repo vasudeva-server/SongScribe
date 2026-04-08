@@ -44,7 +44,7 @@ public final class SMuFLMetadata {
 
     private static final String METADATA_RESOURCE = "/fonts/bravura_metadata.json";
 
-    private final EngravingDefaults engravingDefaults;
+    private final SMuFLData engravingDefaults;
     private final Map<SMuFLGlyph, BBox> bboxes;
     private final Map<SMuFLGlyph, GlyphAnchors> anchors;
     private final Map<SMuFLGlyph, Double> advanceWidths;
@@ -71,7 +71,7 @@ public final class SMuFLMetadata {
         return requireBBox(SMuFLGlyph.NOTEHEAD_BLACK).height();
     }
 
-    public EngravingDefaults getEngravingDefaults() {
+    SMuFLData getEngravingDefaults() {
         return engravingDefaults;
     }
 
@@ -147,25 +147,14 @@ public final class SMuFLMetadata {
 
     // --- Parsing ---
 
-    private static EngravingDefaults parseEngravingDefaults(JsonObject obj) {
-        return new EngravingDefaults(
-                obj.get("staffLineThickness").getAsDouble(),
-                obj.get("stemThickness").getAsDouble(),
+    private static SMuFLData parseEngravingDefaults(JsonObject obj) {
+        return new SMuFLData(
                 obj.get("beamThickness").getAsDouble(),
                 obj.get("beamSpacing").getAsDouble(),
-                obj.get("barlineSeparation").getAsDouble(),
-                obj.get("thinBarlineThickness").getAsDouble(),
-                obj.get("thickBarlineThickness").getAsDouble(),
                 obj.get("repeatBarlineDotSeparation").getAsDouble(),
-                obj.get("repeatEndingLineThickness").getAsDouble(),
                 obj.get("legerLineThickness").getAsDouble(),
                 obj.get("legerLineExtension").getAsDouble(),
-                obj.get("slurEndpointThickness").getAsDouble(),
-                obj.get("slurMidpointThickness").getAsDouble(),
-                obj.get("tieEndpointThickness").getAsDouble(),
-                obj.get("tieMidpointThickness").getAsDouble(),
-                obj.get("hairpinThickness").getAsDouble(),
-                obj.get("tupletBracketThickness").getAsDouble()
+                obj.get("tieMidpointThickness").getAsDouble()
         );
     }
 

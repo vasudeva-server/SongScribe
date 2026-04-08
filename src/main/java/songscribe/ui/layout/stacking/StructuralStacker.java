@@ -34,6 +34,7 @@ import songscribe.ui.layout.DynamicAttachment;
 import songscribe.ui.layout.ElementColumn;
 import songscribe.ui.layout.Ending;
 import songscribe.ui.layout.LayoutResult;
+import songscribe.smufl.Engraving;
 import songscribe.ui.layout.LayoutStylesheet;
 import songscribe.ui.layout.RangeElement;
 import songscribe.ui.layout.StaffExtents;
@@ -137,8 +138,8 @@ public class StructuralStacker {
             }
 
             // Anchor at the right edge of each notehead
-            double anchorXSs = startColumn.getXSs() + LayoutStylesheet.NOTE_HEAD_WIDTH_SS;
-            double endXSs = endColumn.getXSs() + LayoutStylesheet.NOTE_HEAD_WIDTH_SS;
+            double anchorXSs = startColumn.getXSs() + Engraving.NOTE_HEAD_WIDTH_SS;
+            double endXSs = endColumn.getXSs() + Engraving.NOTE_HEAD_WIDTH_SS;
             var bridged = new Tuplet(startNote, endNote, interval.getGrade());
 
             int staffPosition = startNote.getStaffPosition();
@@ -227,7 +228,7 @@ public class StructuralStacker {
             var bridged = factory.apply(startNote, endNote);
 
             int staffPosition = startNote.getStaffPosition();
-            double widthSs = endXSs - anchorXSs + LayoutStylesheet.NOTE_HEAD_WIDTH_SS;
+            double widthSs = endXSs - anchorXSs + Engraving.NOTE_HEAD_WIDTH_SS;
             double ySs = stackAbove(structuralExtents, bridged, anchorXSs, widthSs,
                 LayoutStylesheet.HAIRPIN_OPENING_HEIGHT_SS, LayoutStylesheet.HAIRPIN_MARGIN_SS,
                 staffPosition, builder);

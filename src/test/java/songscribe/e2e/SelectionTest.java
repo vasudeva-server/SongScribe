@@ -44,7 +44,7 @@ import songscribe.ui.Mode;
 import songscribe.ui.action.Actions;
 import songscribe.ui.action.UIAction;
 import songscribe.ui.component.score.InsertionElementManager;
-import songscribe.ui.layout.LayoutStylesheet;
+import songscribe.smufl.Engraving;
 import songscribe.ui.layout.ScaleContext;
 
 /**
@@ -221,7 +221,7 @@ class SelectionTest extends E2ETest {
                 var loc = lc.getLocationOnScreen();
                 // Click at the midpoint of the clef — squarely inside the header region
                 int clefMidXPx = (int) Math.round(
-                    ScaleContext.getInstance().toPixels(LayoutStylesheet.CLEF_WIDTH_SS / 2.0));
+                    ScaleContext.getInstance().toPixels(Engraving.G_CLEF_WIDTH_SS / 2.0));
                 var yPx = lc.staffPositionToYPx(0);
                 return new Point(loc.x + clefMidXPx, loc.y + yPx);
             }));
