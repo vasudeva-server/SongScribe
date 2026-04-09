@@ -156,7 +156,7 @@ public final class TupletRenderer extends BaseElementRenderer<Tuplet> {
             ? spanLayout.startXSs() - stemSs - TUPLET_ARM_EXTENSION_SS
             : spanLayout.startXSs() - Engraving.NOTE_HEAD_WIDTH_SS - TUPLET_ARM_EXTENSION_SS;
         var rightXSs = spanLayout.endXSs() + TUPLET_ARM_EXTENSION_SS;
-        var centerXSs = (spanLayout.startXSs() + spanLayout.endXSs()) / 2.0;
+        var centerXSs = (leftXSs + rightXSs) / 2.0;
 
         // Measure number width for gap calculation
         var numberAdvanceSs = measureNumberAdvanceSs(g2, grade);
