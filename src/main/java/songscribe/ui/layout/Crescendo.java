@@ -20,8 +20,6 @@
 
 package songscribe.ui.layout;
 
-import org.jspecify.annotations.Nullable;
-
 import songscribe.music.StaffElement;
 import songscribe.smufl.Engraving;
 
@@ -34,56 +32,18 @@ import songscribe.smufl.Engraving;
  */
 public class Crescendo extends RangeElement {
 
-    private @Nullable StaffElement endNote;
     private int x1Shift = 0;
     private int x2Shift = 0;
     private int yShift = 0;
 
     /**
-     * Creates a crescendo spanning from anchor to end note.
+     * Creates a crescendo spanning from anchor to end element.
      *
-     * @param anchorNote The starting note of the crescendo
-     * @param endNote    The ending note of the crescendo
+     * @param anchorElement The starting element of the crescendo
+     * @param endElement    The ending element of the crescendo
      */
-    public Crescendo(StaffElement anchorNote, StaffElement endNote) {
-        setAnchorElement(anchorNote);
-        this.endNote = endNote;
-    }
-
-    @Override
-    public @Nullable StaffElement getEndElement() {
-        return endNote;
-    }
-
-    /**
-     * Sets the end note of this crescendo.
-     */
-    public void setEndNote(@Nullable StaffElement endNote) {
-        this.endNote = endNote;
-    }
-
-    @Override
-    public int getNoteCount() {
-        var anchor = getAnchorElement();
-
-        if (anchor == null || endNote == null) {
-            return 0;
-        }
-
-        int startIndex = getAnchorElementIndex();
-        int endIndex = getEndElementIndex();
-
-        if (startIndex < 0 || endIndex < 0) {
-            return 0;
-        }
-
-        return endIndex - startIndex + 1;
-    }
-
-    @Override
-    public boolean isAbove() {
-        // Dynamics are above the staff per Gould-Ross engraving rules
-        return true;
+    public Crescendo(StaffElement anchorElement, StaffElement endElement) {
+        super(anchorElement, endElement);
     }
 
     /**
@@ -139,8 +99,8 @@ public class Crescendo extends RangeElement {
     /**
      * Returns the horizontal span width for collision detection.
      *
-     * @param anchorXSs X position of the anchor note in staff-space units
-     * @param endXSs    X position of the end note in staff-space units
+     * @param anchorXSs X position of the anchor element in staff-space units
+     * @param endXSs    X position of the end element in staff-space units
      * @return span width in staff-space units
      */
     @Override
@@ -151,12 +111,13 @@ public class Crescendo extends RangeElement {
     @Override
     public double getContentWidthPx() {
         var anchor = getAnchorElement();
+        var endElement = getEndElement();
 
-        if (anchor == null || endNote == null) {
+        if (anchor == null || endElement == null) {
             return 0;
         }
 
-        return Math.abs(endNote.getXSs() - anchor.getXSs()) + endNote.getContentWidthPx() + x1Shift + x2Shift;
+        return Math.abs(endElement.getXSs() - anchor.getXSs()) + endElement.getContentWidthPx() + x1Shift + x2Shift;
     }
 
     @Override

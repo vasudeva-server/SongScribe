@@ -20,8 +20,6 @@
 
 package songscribe.ui.layout;
 
-import org.jspecify.annotations.Nullable;
-
 import songscribe.music.StaffElement;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
@@ -44,68 +42,25 @@ public class Trill extends RangeElement {
         TRILL_GLYPH_HEIGHT_SS = bbox.height();
     }
 
-    private @Nullable StaffElement endNote;
     private int yPositionSs = 0;
 
     /**
-     * Creates a trill spanning multiple notes.
+     * Creates a trill spanning multiple elements.
      *
-     * @param anchorNote The first note of the trill
-     * @param endNote    The last note of the trill
+     * @param anchorElement The first element of the trill
+     * @param endElement    The last element of the trill
      */
-    public Trill(StaffElement anchorNote, StaffElement endNote) {
-        setAnchorElement(anchorNote);
-        this.endNote = endNote;
+    public Trill(StaffElement anchorElement, StaffElement endElement) {
+        super(anchorElement, endElement);
     }
 
     /**
      * Creates a single-note trill.
      *
-     * @param note The note with the trill
+     * @param anchorElement The note with the trill
      */
-    public Trill(StaffElement note) {
-        this(note, note);
-    }
-
-    @Override
-    public @Nullable StaffElement getEndElement() {
-        return endNote;
-    }
-
-    /**
-     * Sets the end note of this trill.
-     */
-    public void setEndNote(@Nullable StaffElement endNote) {
-        this.endNote = endNote;
-    }
-
-    @Override
-    public int getNoteCount() {
-        var anchor = getAnchorElement();
-
-        if (anchor == null || endNote == null) {
-            return 0;
-        }
-
-        // Single-note trill
-        if (anchor == endNote) {
-            return 1;
-        }
-
-        int startIndex = getAnchorElementIndex();
-        int endIndex = getEndElementIndex();
-
-        if (startIndex < 0 || endIndex < 0) {
-            return 0;
-        }
-
-        return endIndex - startIndex + 1;
-    }
-
-    @Override
-    public boolean isAbove() {
-        // Trills are always above the staff
-        return true;
+    public Trill(StaffElement anchorElement) {
+        this(anchorElement, anchorElement);
     }
 
     /**
@@ -148,16 +103,16 @@ public class Trill extends RangeElement {
      */
     @Override
     public double getSpanWidthSs(double anchorXSs, double endXSs) {
-        return Math.max(getContentWidthSs(), endXSs - anchorXSs + getContentWidthSs());
+        return Math.max(TRILL_GLYPH_WIDTH_SS, endXSs - anchorXSs + TRILL_GLYPH_WIDTH_SS);
     }
 
     @Override
     public double getContentWidthPx() {
-        return ScaleContext.getInstance().toPixels(getContentWidthSs());
+        return ScaleContext.getInstance().toPixels(TRILL_GLYPH_WIDTH_SS);
     }
 
     @Override
     public double getContentHeightPx() {
-        return ScaleContext.getInstance().toPixels(getContentHeightSs());
+        return ScaleContext.getInstance().toPixels(TRILL_GLYPH_HEIGHT_SS);
     }
 }

@@ -25,14 +25,14 @@ import org.jspecify.annotations.Nullable;
 import songscribe.music.StaffElement;
 
 /**
- * Abstract base class for elements that span multiple notes.
+ * Abstract base class for elements that span multiple elements.
  * <p>
  * Range elements include ties, trills, crescendo/diminuendo hairpins,
  * tuplet brackets, and first/second endings.
  * <p>
  * Each range element has:
  * <ul>
- *   <li>An anchor note (first note in the range)</li>
+ *   <li>An anchor element (first element in the range)</li>
  *   <li>Methods to determine the range extent</li>
  * </ul>
  * <p>
@@ -40,39 +40,77 @@ import songscribe.music.StaffElement;
  */
 public abstract class RangeElement extends LineElement {
 
-    /** The first note in this range. */
-    private @Nullable StaffElement anchorNote;
+    /**
+     * Creates a range element spanning from anchor to end element.
+     *
+     * @param anchorElement The first element in the range
+     * @param endElement    The last element in the range
+     */
+    protected RangeElement(StaffElement anchorElement, StaffElement endElement) {
+        this.anchorElement = anchorElement;
+        this.endElement = endElement;
+    }
+
+    /** The first element in this range. */
+    private @Nullable StaffElement anchorElement;
+
+    /** The last element in this range. */
+    private @Nullable StaffElement endElement;
 
     /**
-     * Returns the first note in this range.
+     * Returns the first element in this range.
      */
     public @Nullable StaffElement getAnchorElement() {
-        return anchorNote;
+        return anchorElement;
     }
 
     /**
-     * Sets the first note in this range.
+     * Sets the first element in this range.
      */
-    public void setAnchorElement(@Nullable StaffElement anchorNote) {
-        this.anchorNote = anchorNote;
+    public void setAnchorElement(@Nullable StaffElement anchorElement) {
+        this.anchorElement = anchorElement;
     }
 
     /**
-     * Returns the last note in this range.
-     * Subclasses must implement based on their specific range definition.
+     * Returns the last element in this range.
      */
-    public abstract @Nullable StaffElement getEndElement();
+    public @Nullable StaffElement getEndElement() {
+        return endElement;
+    }
 
     /**
-     * Returns the number of notes in this range.
+     * Sets the last element in this range.
+     */
+    public void setEndElement(@Nullable StaffElement endElement) {
+        this.endElement = endElement;
+    }
+
+    /**
+     * Returns the number of elements in this range.
      * Returns 0 if the range is not properly defined.
      */
-    public abstract int getNoteCount();
+    public int getElementCount() {
+        if (anchorElement == null || endElement == null) {
+            return 0;
+        }
+
+        var startIndex = getAnchorElementIndex();
+        var endIndex = getEndElementIndex();
+
+        if (startIndex < 0 || endIndex < 0) {
+            return 0;
+        }
+
+        return endIndex - startIndex + 1;
+    }
 
     /**
      * Returns whether this range element is above the staff.
      */
-    public abstract boolean isAbove();
+    public boolean isAbove() {
+        // By default, range elements are above the staff. Subclasses can override this if needed.
+        return true;
+    }
 
     /**
      * Returns the content height of this range element in staff-space units.
@@ -82,35 +120,33 @@ public abstract class RangeElement extends LineElement {
     /**
      * Returns the horizontal span width for collision detection in staff-space units.
      *
-     * @param anchorXSs X position of the anchor note in staff-space units
-     * @param endXSs    X position of the end note in staff-space units
+     * @param anchorXSs X position of the anchor element in staff-space units
+     * @param endXSs    X position of the end element in staff-space units
      * @return span width in staff-space units
      */
     public abstract double getSpanWidthSs(double anchorXSs, double endXSs);
 
     /**
-     * Returns the index of the anchor note within its line.
-     * Returns -1 if the anchor note is not set or not in a line.
+     * Returns the index of the anchor element within its line.
+     * Returns -1 if the anchor element is not set or not in a line.
      */
     public int getAnchorElementIndex() {
-        if (anchorNote == null) {
+        if (anchorElement == null) {
             return -1;
         }
 
-        return anchorNote.getLine().getElementIndex(anchorNote);
+        return anchorElement.getLine().getElementIndex(anchorElement);
     }
 
     /**
-     * Returns the index of the end note within its line.
-     * Returns -1 if the end note is not set or not in a line.
+     * Returns the index of the end element within its line.
+     * Returns -1 if the end element is not set or not in a line.
      */
     public int getEndElementIndex() {
-        var endNote = getEndElement();
-
-        if (endNote == null) {
+        if (endElement == null) {
             return -1;
         }
 
-        return endNote.getLine().getElementIndex(endNote);
+        return endElement.getLine().getElementIndex(endElement);
     }
 }

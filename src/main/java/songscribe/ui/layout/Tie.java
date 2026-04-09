@@ -20,59 +20,24 @@
 
 package songscribe.ui.layout;
 
-import org.jspecify.annotations.Nullable;
-
 import songscribe.music.StaffElement;
 
 /**
- * Represents a tie connecting two notes of the same pitch.
+ * Represents a tie connecting two elements of the same pitch.
  * <p>
- * Ties connect exactly two notes and are rendered as a curved arc.
- * The placement (above or below) depends on the stem direction of the notes.
+ * Ties connect exactly two elements and are rendered as a curved arc.
+ * The placement (above or below) depends on the stem direction of the elements.
  */
 public class Tie extends RangeElement {
 
-    private @Nullable StaffElement endNote;
-
     /**
-     * Creates a new tie between two notes.
+     * Creates a new tie between two elements.
      *
-     * @param anchorNote The first (starting) note of the tie
-     * @param endNote    The second (ending) note of the tie
+     * @param anchorElement The first (starting) element of the tie
+     * @param endElement    The second (ending) element of the tie
      */
-    public Tie(StaffElement anchorNote, StaffElement endNote) {
-        setAnchorElement(anchorNote);
-        this.endNote = endNote;
-    }
-
-    @Override
-    public @Nullable StaffElement getEndElement() {
-        return endNote;
-    }
-
-    /**
-     * Sets the end note of this tie.
-     */
-    public void setEndNote(@Nullable StaffElement endNote) {
-        this.endNote = endNote;
-    }
-
-    @Override
-    public int getNoteCount() {
-        var anchor = getAnchorElement();
-
-        if (anchor == null || endNote == null) {
-            return 0;
-        }
-
-        int startIndex = getAnchorElementIndex();
-        int endIndex = getEndElementIndex();
-
-        if (startIndex < 0 || endIndex < 0) {
-            return 0;
-        }
-
-        return endIndex - startIndex + 1;
+    public Tie(StaffElement anchorElement, StaffElement endElement) {
+        super(anchorElement, endElement);
     }
 
     @Override
@@ -96,13 +61,14 @@ public class Tie extends RangeElement {
     @Override
     public double getContentWidthPx() {
         var anchor = getAnchorElement();
+        var endElement = getEndElement();
 
-        if (anchor == null || endNote == null) {
+        if (anchor == null || endElement == null) {
             return 0;
         }
 
-        // Width spans from anchor to end note
-        return Math.abs(endNote.getXSs() - anchor.getXSs()) + endNote.getContentWidthPx();
+        // Width spans from anchor to end element
+        return Math.abs(endElement.getXSs() - anchor.getXSs()) + endElement.getContentWidthPx();
     }
 
     @Override

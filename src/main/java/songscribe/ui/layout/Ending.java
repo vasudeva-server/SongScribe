@@ -24,11 +24,8 @@ import module java.desktop;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.function.ToDoubleFunction;
 import java.util.stream.IntStream;
-
-import org.jspecify.annotations.Nullable;
 
 import songscribe.music.ElementType;
 import songscribe.music.Line;
@@ -98,7 +95,6 @@ public class Ending extends RangeElement {
         }
     }
 
-    private @Nullable StaffElement endNote;
     private Type type = Type.FIRST;
     private int yPositionSs = 0;
     private int repeatSplitIndex = -1;
@@ -107,50 +103,13 @@ public class Ending extends RangeElement {
     /**
      * Creates an ending bracket.
      *
-     * @param anchorNote The first note of the ending
-     * @param endNote    The last note of the ending
+     * @param anchorElement The first element of the ending
+     * @param endElement    The last element of the ending
      * @param type       Whether this is a first or second ending
      */
-    public Ending(StaffElement anchorNote, StaffElement endNote, Type type) {
-        setAnchorElement(anchorNote);
-        this.endNote = endNote;
+    public Ending(StaffElement anchorElement, StaffElement endElement, Type type) {
+        super(anchorElement, endElement);
         this.type = type;
-    }
-
-    @Override
-    public @Nullable StaffElement getEndElement() {
-        return endNote;
-    }
-
-    /**
-     * Sets the end note of this ending.
-     */
-    public void setEndNote(@Nullable StaffElement endNote) {
-        this.endNote = endNote;
-    }
-
-    @Override
-    public int getNoteCount() {
-        var anchor = getAnchorElement();
-
-        if (anchor == null || endNote == null) {
-            return 0;
-        }
-
-        int startIndex = getAnchorElementIndex();
-        int endIndex = getEndElementIndex();
-
-        if (startIndex < 0 || endIndex < 0) {
-            return 0;
-        }
-
-        return endIndex - startIndex + 1;
-    }
-
-    @Override
-    public boolean isAbove() {
-        // Endings are always above the staff
-        return true;
     }
 
     /**
@@ -218,11 +177,11 @@ public class Ending extends RangeElement {
      */
     public List<BracketRange> computeBracketRanges(
         Line line,
-        ToDoubleFunction<StaffElement> elementXSs,
+        ToDoubleFunction<? super StaffElement> elementXSs,
         LineThickness lt
     ) {
-        int start = getAnchorElementIndex();
-        int end = getEndElementIndex();
+        var start = getAnchorElementIndex();
+        var end = getEndElementIndex();
 
         if (start < 0 || end < 0 || start >= line.elementCount()
             || end >= line.elementCount()) {
@@ -236,7 +195,7 @@ public class Ending extends RangeElement {
             .findFirst()
             .orElse(-1);
 
-        var startNote = line.getElement(start);
+        var startElement = line.getElement(start);
 
         // Adjust start leftward if previous element is a barline
         if (start > 0) {
@@ -244,20 +203,20 @@ public class Ending extends RangeElement {
 
             if (previousElement.getType() == ElementType.SINGLE_BARLINE) {
                 --start;
-                startNote = previousElement;
+                startElement = previousElement;
             }
         }
 
-        var endNote = line.getElement(end);
+        var endElement = line.getElement(end);
         var ranges = new ArrayList<BracketRange>(2);
         double repeatX = 0;
 
         // First bracket (before repeat, or entire span if no repeat)
         if (start < repeatSplitIndex || repeatSplitIndex == -1) {
-            double x1 = elementXSs.applyAsDouble(startNote);
+            double x1 = elementXSs.applyAsDouble(startElement);
 
-            // Align with barline center, or go halfway to previous note
-            if (startNote.getType() == ElementType.SINGLE_BARLINE) {
+            // Align with barline center, or go halfway to previous element
+            if (startElement.getType() == ElementType.SINGLE_BARLINE) {
                 x1 += lt.thinBarlineSs() / 2;
             }
             else if (start > 0) {
@@ -279,7 +238,7 @@ public class Ending extends RangeElement {
                     - lt.voltaBracketSs() / 2;
             }
             else {
-                x2 = elementXSs.applyAsDouble(endNote);
+                x2 = elementXSs.applyAsDouble(endElement);
 
                 if (end + 1 < line.elementCount()) {
                     double nextX = elementXSs.applyAsDouble(
@@ -296,8 +255,8 @@ public class Ending extends RangeElement {
 
         // Second bracket (after repeat)
         if (repeatSplitIndex != -1 && end > repeatSplitIndex) {
-            double x2 = elementXSs.applyAsDouble(endNote);
-            var endType = endNote.getType();
+            double x2 = elementXSs.applyAsDouble(endElement);
+            var endType = endElement.getType();
 
             // Extend to the next barline/repeat if end element is not one
             if (!endType.isBarLine() && !endType.isRepeat()
@@ -360,8 +319,8 @@ public class Ending extends RangeElement {
     /**
      * Returns the horizontal span width for collision detection.
      *
-     * @param anchorXSs X position of the anchor note in staff-space units
-     * @param endXSs    X position of the end note in staff-space units
+     * @param anchorXSs X position of the anchor element in staff-space units
+     * @param endXSs    X position of the end element in staff-space units
      * @return span width in staff-space units
      */
     @Override
@@ -429,12 +388,13 @@ public class Ending extends RangeElement {
     @Override
     public double getContentWidthPx() {
         var anchor = getAnchorElement();
+        var endElement = getEndElement();
 
-        if (anchor == null || endNote == null) {
+        if (anchor == null || endElement == null) {
             return 0;
         }
 
-        return Math.abs(endNote.getXSs() - anchor.getXSs()) + endNote.getContentWidthPx();
+        return Math.abs(endElement.getXSs() - anchor.getXSs()) + endElement.getContentWidthPx();
     }
 
     @Override

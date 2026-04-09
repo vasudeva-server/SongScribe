@@ -20,8 +20,6 @@
 
 package songscribe.ui.layout;
 
-import org.jspecify.annotations.Nullable;
-
 import songscribe.music.StaffElement;
 
 /**
@@ -36,7 +34,6 @@ import songscribe.music.StaffElement;
  */
 public class Tuplet extends RangeElement {
 
-    private @Nullable StaffElement endNote;
     private int grade = 3;
     private int verticalPositionSs = 0;
 
@@ -48,25 +45,12 @@ public class Tuplet extends RangeElement {
      * @param grade      The tuplet number (3 for triplet, 5 for quintuplet, etc.)
      */
     public Tuplet(StaffElement anchorNote, StaffElement endNote, int grade) {
-        setAnchorElement(anchorNote);
-        this.endNote = endNote;
+        super(anchorNote, endNote);
         this.grade = grade;
     }
 
     @Override
-    public @Nullable StaffElement getEndElement() {
-        return endNote;
-    }
-
-    /**
-     * Sets the end note of this tuplet.
-     */
-    public void setEndNote(@Nullable StaffElement endNote) {
-        this.endNote = endNote;
-    }
-
-    @Override
-    public int getNoteCount() {
+    public int getElementCount() {
         // For tuplets, the note count is the grade (e.g., 3 for triplet)
         return grade;
     }
@@ -79,15 +63,6 @@ public class Tuplet extends RangeElement {
     @Override
     public double getSpanWidthSs(double anchorXSs, double endXSs) {
         return Math.max(1.0, endXSs - anchorXSs);
-    }
-
-    @Override
-    public boolean isAbove() {
-        // Tuplet bracket goes above if stems point down, below if stems point up
-        // Check the anchor note's stem direction
-        var anchor = getAnchorElement();
-
-        return anchor != null && anchor.isUpper();
     }
 
     /**
@@ -121,12 +96,13 @@ public class Tuplet extends RangeElement {
     @Override
     public double getContentWidthPx() {
         var anchor = getAnchorElement();
+        var endElement = getEndElement();
 
-        if (anchor == null || endNote == null) {
+        if (anchor == null || endElement == null) {
             return 0;
         }
 
-        return Math.abs(endNote.getXSs() - anchor.getXSs()) + endNote.getContentWidthPx();
+        return Math.abs(endElement.getXSs() - anchor.getXSs()) + endElement.getContentWidthPx();
     }
 
     @Override
