@@ -237,11 +237,11 @@ public class StaffElement extends LineElement implements Cloneable {
 
     @Override
     public double getContentWidthPx() {
-        return ScaleContext.getInstance().toPixels(getType().getElementWidthSs());
+        return ScaleContext.getInstance().toPixels(getType().getFullElementWidthSs());
     }
 
     public double getContentCenterX() {
-        return ScaleContext.getInstance().toPixels(getType().getCenterXSs());
+        return ScaleContext.getInstance().toPixels(getType().getFullElementCenterXSs());
     }
 
     @Override

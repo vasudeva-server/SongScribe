@@ -140,9 +140,9 @@ public enum ElementType {
     private final int defaultStaffPosition;
     @Nullable
     private final ElementType aliasOf;
-    private double widthSs;
-    private double noteheadWidthSs;
-    private double noteheadHeightSs;
+    private double fullWidthSs;
+    private double baseWidthSs;
+    private double fullElementHeightSs;
     private double noteheadTopOffsetSs;
     private double heightUpSs;
     private double heightDownSs;
@@ -223,8 +223,8 @@ public enum ElementType {
     /**
      * Returns the element width in staff spaces. Includes flag extent for stemmed notes.
      */
-    public double getElementWidthSs() {
-        return widthSs;
+    public double getFullElementWidthSs() {
+        return fullWidthSs;
     }
 
     /**
@@ -238,33 +238,32 @@ public enum ElementType {
 
     /**
      * Returns the horizontal center of the element in staff spaces.
+     * For note types, includes the flag.
      */
-    public double getCenterXSs() {
-        return widthSs / 2;
+    public double getFullElementCenterXSs() {
+        return fullWidthSs / 2;
     }
 
     /**
-     * Returns the notehead width in staff spaces, excluding flag extent.
-     * For non-note types (rests, barlines, etc.), returns the element width.
+     * Returns the element width in staff spaces, excluding flag extent for note types.
      */
-    public double getNoteheadWidthSs() {
-        return noteheadWidthSs;
+    public double getElementWidthSs() {
+        return baseWidthSs;
     }
 
     /**
-     * Returns the horizontal center of the notehead in staff spaces.
-     * For non-note types, returns the element center.
+     * Returns the horizontal center of the element in staff spaces.
+     * For note types, excludes the flag.
      */
-    public double getNoteheadCenterXSs() {
-        return noteheadWidthSs / 2;
+    public double getElementCenterXSs() {
+        return baseWidthSs / 2;
     }
 
     /**
-     * Returns the notehead height in staff spaces (excludes the stem).
-     * For non-stemmed elements this equals the full element height.
+     * Returns the element height in staff spaces, excluding the stem for note types.
      */
-    public double getNoteheadHeightSs() {
-        return noteheadHeightSs;
+    public double getFullElementHeightSs() {
+        return fullElementHeightSs;
     }
 
     /**
@@ -495,15 +494,15 @@ public enum ElementType {
 
             if (anchors != null && anchors.stemUpSE() != null && anchors.stemDownNW() != null) {
                 // Stemmed note
-                double headTop = bbox.top();
-                double headBottom = bbox.bottom();
-                double headRight = bbox.right();
-                double stemUpX = anchors.stemUpSE().x();
-                double stemUpY = anchors.stemUpSE().y();
-                double stemDownY = anchors.stemDownNW().y();
+                var headTop = bbox.top();
+                var headBottom = bbox.bottom();
+                var headRight = bbox.right();
+                var stemUpX = anchors.stemUpSE().x();
+                var stemUpY = anchors.stemUpSE().y();
+                var stemDownY = anchors.stemDownNW().y();
 
                 // Width: max of notehead and stem-up flag extent
-                double width = headRight;
+                var width = headRight;
                 var flagGlyph = getStemUpFlagGlyph(type);
 
                 if (flagGlyph != null) {
@@ -514,9 +513,9 @@ public enum ElementType {
                     }
                 }
 
-                type.widthSs = width;
-                type.noteheadWidthSs = headRight;
-                type.noteheadHeightSs = headBottom - headTop;
+                type.fullWidthSs = width;
+                type.baseWidthSs = headRight;
+                type.fullElementHeightSs = headBottom - headTop;
                 type.noteheadTopOffsetSs = headTop;
 
                 // Height up: from top of stem to bottom of notehead
@@ -530,9 +529,9 @@ public enum ElementType {
                 type.topOffsetDownSs = headTop; // notehead top above center (negative)
             } else {
                 // No stem (semibreve)
-                type.widthSs = bbox.right();
-                type.noteheadWidthSs = bbox.right();
-                type.noteheadHeightSs = bbox.height();
+                type.fullWidthSs = bbox.right();
+                type.baseWidthSs = bbox.right();
+                type.fullElementHeightSs = bbox.height();
                 type.noteheadTopOffsetSs = bbox.top();
                 type.heightUpSs = bbox.height();
                 type.heightDownSs = bbox.height();
@@ -571,8 +570,8 @@ public enum ElementType {
         double height = headBottom - upTop;
 
         type.setSymmetricBounds(width, height, upTop);
-        type.noteheadWidthSs = headRight;
-        type.noteheadHeightSs = headBottom - headTop;
+        type.baseWidthSs = headRight;
+        type.fullElementHeightSs = headBottom - headTop;
         type.noteheadTopOffsetSs = headTop;
     }
 
@@ -583,9 +582,9 @@ public enum ElementType {
     private void setSymmetricBounds(
         double width, double height, double topOffset
     ) {
-        this.widthSs = width;
-        this.noteheadWidthSs = width;
-        this.noteheadHeightSs = height;
+        this.fullWidthSs = width;
+        this.baseWidthSs = width;
+        this.fullElementHeightSs = height;
         this.noteheadTopOffsetSs = topOffset;
         this.heightUpSs = height;
         this.heightDownSs = height;
@@ -594,9 +593,9 @@ public enum ElementType {
     }
 
     private void copyBoundsFrom(ElementType source) {
-        this.widthSs = source.widthSs;
-        this.noteheadWidthSs = source.noteheadWidthSs;
-        this.noteheadHeightSs = source.noteheadHeightSs;
+        this.fullWidthSs = source.fullWidthSs;
+        this.baseWidthSs = source.baseWidthSs;
+        this.fullElementHeightSs = source.fullElementHeightSs;
         this.noteheadTopOffsetSs = source.noteheadTopOffsetSs;
         this.heightUpSs = source.heightUpSs;
         this.heightDownSs = source.heightDownSs;
@@ -659,9 +658,9 @@ public enum ElementType {
                 continue;
             }
 
-            if (type.widthSs <= 0 || type.heightUpSs <= 0 || type.heightDownSs <= 0) {
+            if (type.fullWidthSs <= 0 || type.heightUpSs <= 0 || type.heightDownSs <= 0) {
                 throw RuntimeError.exit("Invalid element bounds for " + type +
-                    ": widthSs=" + type.widthSs +
+                    ": widthSs=" + type.fullWidthSs +
                     ", heightUpSs=" + type.heightUpSs +
                     ", heightDownSs=" + type.heightDownSs);
             }

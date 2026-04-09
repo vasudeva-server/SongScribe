@@ -32,7 +32,9 @@ import songscribe.ui.layout.ScaleContext;
  * Extracted from {@link LineSelectionHandler} so that {@link NoteDragHandler} can
  * share the same logic without duplicating it.
  */
-public class ElementHitTest {
+public final class ElementHitTest {
+
+    private static final int MIN_HIT_SIZE_PX = 8;
 
     private ElementHitTest() {
     }
@@ -73,9 +75,11 @@ public class ElementHitTest {
         var elementType = element.getType();
         var sc = ScaleContext.getInstance();
 
-        // Use notehead bounds (excludes stem and flag); apply 4px minimum for narrow elements (AD-10)
-        var widthPx = Math.max((int) Math.round(sc.toPixels(elementType.getNoteheadWidthSs())), 4);
-        var heightPx = Math.max((int) Math.round(sc.toPixels(elementType.getNoteheadHeightSs())), 4);
+        // Use notehead bounds (excludes stem and flag); apply minimum size for narrow elements (AD-10)
+        var naturalWidthPx = (int) Math.round(sc.toPixels(elementType.getElementWidthSs()));
+        var naturalHeightPx = (int) Math.round(sc.toPixels(elementType.getFullElementHeightSs()));
+        var widthPx = Math.max(naturalWidthPx, MIN_HIT_SIZE_PX);
+        var heightPx = Math.max(naturalHeightPx, MIN_HIT_SIZE_PX);
 
         // Get element X from LayoutResult (staff-space) and convert to pixels, so the
         // hit rect is in pixel coordinates consistent with the mouse-event point.
@@ -84,6 +88,10 @@ public class ElementHitTest {
         var elementXPx = (int) Math.round(sc.toPixels(elementXSs));
         var elementY = lc.staffPositionToYPx(element.getStaffPosition());
         var topOffsetPx = (int) Math.round(sc.toPixels(elementType.getNoteheadTopOffsetSs()));
-        out.setBounds(elementXPx, elementY + topOffsetPx, widthPx, heightPx);
+
+        // Center the hit rect on the element when expanded to the minimum size
+        var xPx = elementXPx - (widthPx - naturalWidthPx) / 2;
+        var yPx = elementY + topOffsetPx - (heightPx - naturalHeightPx) / 2;
+        out.setBounds(xPx, yPx, widthPx, heightPx);
     }
 }

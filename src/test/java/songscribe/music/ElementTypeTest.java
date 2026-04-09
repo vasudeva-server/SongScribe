@@ -39,7 +39,7 @@ class ElementTypeTest extends UnitTest {
     void testAllVisualTypesHaveNonZeroBounds() {
         for (var type : ElementType.values()) {
             // IO aliases have the same bounds as their canonical type
-            assertThat(type.getElementWidthSs())
+            assertThat(type.getFullElementWidthSs())
                 .as("widthSs of %s", type)
                 .isGreaterThan(0);
             assertThat(type.getElementHeightSs(true))
@@ -57,9 +57,9 @@ class ElementTypeTest extends UnitTest {
             ElementType.CROTCHET, ElementType.SEMIBREVE, ElementType.QUAVER_REST,
             ElementType.SINGLE_BARLINE, ElementType.REPEAT_LEFT, ElementType.BREATH_MARK
         }) {
-            assertThat(type.getCenterXSs())
+            assertThat(type.getFullElementCenterXSs())
                 .as("CenterX of %s", type)
-                .isCloseTo(type.getElementWidthSs() / 2, within(1e-9));
+                .isCloseTo(type.getFullElementWidthSs() / 2, within(1e-9));
         }
     }
 
@@ -176,7 +176,7 @@ class ElementTypeTest extends UnitTest {
         void testElementGetContentCenterXReturnsPx() {
             var element = ElementType.QUAVER.newInstance();
             var sc = ScaleContext.getInstance();
-            double expectedPx = sc.toPixels(ElementType.QUAVER.getCenterXSs());
+            double expectedPx = sc.toPixels(ElementType.QUAVER.getFullElementCenterXSs());
             assertThat(element.getContentCenterX()).isCloseTo(expectedPx, within(1e-9));
         }
 
@@ -192,7 +192,7 @@ class ElementTypeTest extends UnitTest {
         void testElementGetContentWidthReturnsPx() {
             var element = ElementType.CROTCHET.newInstance();
             var sc = ScaleContext.getInstance();
-            double expectedPx = sc.toPixels(ElementType.CROTCHET.getElementWidthSs());
+            double expectedPx = sc.toPixels(ElementType.CROTCHET.getFullElementWidthSs());
             assertThat(element.getContentWidthPx()).isCloseTo(expectedPx, within(1e-9));
         }
     }
@@ -246,14 +246,14 @@ class ElementTypeTest extends UnitTest {
 
         @Test
         void testBreathMarkWidth() {
-            assertThat(ElementType.BREATH_MARK.getElementWidthSs()).isGreaterThan(0);
+            assertThat(ElementType.BREATH_MARK.getFullElementWidthSs()).isGreaterThan(0);
         }
 
         @Test
         void testDoubleBarlineWidth() {
             var lt = LineThickness.getInstance();
             double expected = 2 * lt.thinBarlineSs() + lt.barlineSeparationSs();
-            assertThat(ElementType.DOUBLE_BARLINE.getElementWidthSs())
+            assertThat(ElementType.DOUBLE_BARLINE.getFullElementWidthSs())
                 .isCloseTo(expected, within(1e-9));
         }
 
@@ -262,26 +262,26 @@ class ElementTypeTest extends UnitTest {
             var lt = LineThickness.getInstance();
             double expected = lt.thinBarlineSs() + lt.thickBarlineSs()
                 + lt.barlineSeparationSs();
-            assertThat(ElementType.FINAL_DOUBLE_BARLINE.getElementWidthSs())
+            assertThat(ElementType.FINAL_DOUBLE_BARLINE.getFullElementWidthSs())
                 .isCloseTo(expected, within(1e-9));
         }
 
         @Test
         void testGraceNoteWidthIsScaled() {
             // Grace note width should be smaller than the equivalent regular note
-            assertThat(ElementType.GRACE_QUAVER.getElementWidthSs())
-                .isLessThan(ElementType.QUAVER.getElementWidthSs());
+            assertThat(ElementType.GRACE_QUAVER.getFullElementWidthSs())
+                .isLessThan(ElementType.QUAVER.getFullElementWidthSs());
         }
 
         @Test
         void testRepeatLeftRightWidth() {
             // Repeat left and right have the same width
-            assertThat(ElementType.REPEAT_LEFT.getElementWidthSs())
-                .isEqualTo(ElementType.REPEAT_RIGHT.getElementWidthSs());
+            assertThat(ElementType.REPEAT_LEFT.getFullElementWidthSs())
+                .isEqualTo(ElementType.REPEAT_RIGHT.getFullElementWidthSs());
 
             // Repeat left/right is double the single repeat width
-            assertThat(ElementType.REPEAT_LEFT_RIGHT.getElementWidthSs())
-                .isCloseTo(2 * ElementType.REPEAT_LEFT.getElementWidthSs(), within(1e-9));
+            assertThat(ElementType.REPEAT_LEFT_RIGHT.getFullElementWidthSs())
+                .isCloseTo(2 * ElementType.REPEAT_LEFT.getFullElementWidthSs(), within(1e-9));
         }
 
         @Test
@@ -290,7 +290,7 @@ class ElementTypeTest extends UnitTest {
                 ElementType.SEMIBREVE_REST, ElementType.MINIM_REST, ElementType.CROTCHET_REST,
                 ElementType.QUAVER_REST, ElementType.SEMIQUAVER_REST, ElementType.DEMI_SEMIQUAVER_REST
             }) {
-                assertThat(type.getElementWidthSs())
+                assertThat(type.getFullElementWidthSs())
                     .as("Width of %s", type)
                     .isGreaterThan(0);
             }
@@ -299,36 +299,36 @@ class ElementTypeTest extends UnitTest {
         @Test
         void testSemibreveWidthFromBBox() {
             // Semibreve has no stem or flag — width comes from bbox
-            assertThat(ElementType.SEMIBREVE.getElementWidthSs()).isGreaterThan(0);
+            assertThat(ElementType.SEMIBREVE.getFullElementWidthSs()).isGreaterThan(0);
             // Semibreve notehead width equals element width (no flag)
-            assertThat(ElementType.SEMIBREVE.getNoteheadWidthSs())
-                .isEqualTo(ElementType.SEMIBREVE.getElementWidthSs());
+            assertThat(ElementType.SEMIBREVE.getElementWidthSs())
+                .isEqualTo(ElementType.SEMIBREVE.getFullElementWidthSs());
         }
 
         @Test
         void testSingleBarlineWidth() {
-            assertThat(ElementType.SINGLE_BARLINE.getElementWidthSs())
+            assertThat(ElementType.SINGLE_BARLINE.getFullElementWidthSs())
                 .isCloseTo(LineThickness.getInstance().thinBarlineSs(), within(1e-9));
         }
 
         @Test
         void testStemmedNoteNoteheadWidthExcludesFlag() {
             // Notehead width should be the same for all stemmed notes (same notehead glyph)
-            assertThat(ElementType.QUAVER.getNoteheadWidthSs())
-                .isEqualTo(ElementType.CROTCHET.getNoteheadWidthSs());
-            assertThat(ElementType.SEMIQUAVER.getNoteheadWidthSs())
-                .isEqualTo(ElementType.CROTCHET.getNoteheadWidthSs());
+            assertThat(ElementType.QUAVER.getElementWidthSs())
+                .isEqualTo(ElementType.CROTCHET.getElementWidthSs());
+            assertThat(ElementType.SEMIQUAVER.getElementWidthSs())
+                .isEqualTo(ElementType.CROTCHET.getElementWidthSs());
         }
 
         @Test
         void testStemmedNoteWidthIncludesFlagExtent() {
             // Flagged notes should be wider than unflagged due to flag extent
-            assertThat(ElementType.QUAVER.getElementWidthSs())
-                .isGreaterThan(ElementType.CROTCHET.getElementWidthSs());
+            assertThat(ElementType.QUAVER.getFullElementWidthSs())
+                .isGreaterThan(ElementType.CROTCHET.getFullElementWidthSs());
 
             // 16th flag extends further than 8th
-            assertThat(ElementType.SEMIQUAVER.getElementWidthSs())
-                .isGreaterThanOrEqualTo(ElementType.QUAVER.getElementWidthSs());
+            assertThat(ElementType.SEMIQUAVER.getFullElementWidthSs())
+                .isGreaterThanOrEqualTo(ElementType.QUAVER.getFullElementWidthSs());
         }
     }
 

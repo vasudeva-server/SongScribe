@@ -180,8 +180,16 @@ public class ElementColumnBuilder {
      * @return Right extent in ss relative to element head left edge (glyph origin)
      */
     public static double calculateRightExtentSs(StaffElement element, boolean beamed, boolean upper) {
+        var type = element.getType();
+
+        // Non-note elements (rests, barlines, breath marks, repeats) use their
+        // actual visual width — they have no dots or flags.
+        if (!type.isNote()) {
+            return type.getElementWidthSs();
+        }
+
         // Element head right edge: use small notehead width for grace notes
-        double noteheadRightExtent = element.getType().isGraceNote()
+        double noteheadRightExtent = type.isGraceNote()
             ? NOTE_HEAD_SMALL_WIDTH_SS
             : Engraving.NOTE_HEAD_WIDTH_SS;
 
@@ -199,14 +207,14 @@ public class ElementColumnBuilder {
         }
 
         // Flag extent: only for unbeamed elements that have a flag
-        var flagGlyph = element.getType().getFlagGlyph(upper);
+        var flagGlyph = type.getFlagGlyph(upper);
         double flagRightExtent = 0.0;
 
         if (!beamed && flagGlyph != null) {
             double flagAdvanceWidthSs = advanceWidthSs(flagGlyph);
 
             // Grace notes always stem up, use the small notehead anchor
-            double stemAnchorX = element.getType().isGraceNote()
+            double stemAnchorX = type.isGraceNote()
                 ? LayoutStylesheet.STEM_UP_SE_BLACK_SMALL.x()
                 : (upper ? Engraving.NOTEHEAD_BLACK_STEM_UP_SE.x() : Engraving.NOTEHEAD_BLACK_STEM_DOWN_NW.x());
 

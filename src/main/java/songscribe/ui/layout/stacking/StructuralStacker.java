@@ -259,7 +259,7 @@ public class StructuralStacker {
 
         double columnXSs = column.getXSs();
         double contentWidthSs = dynamic.getContentWidthSs();
-        double centeredXSs = columnXSs + note.getType().getCenterXSs() - contentWidthSs / 2.0;
+        double centeredXSs = columnXSs + note.getType().getFullElementCenterXSs() - contentWidthSs / 2.0;
         int staffPosition = note.getStaffPosition();
         stackAbove(structuralExtents, dynamic, centeredXSs,
             contentWidthSs, dynamic.getContentHeightSs(),

@@ -355,7 +355,7 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
         double layoutXSs, StaffElement note,
         double glyphBBoxLeft, double glyphWidthSs) {
 
-        double noteCenterXSs = note.getType().getCenterXSs();
+        double noteCenterXSs = note.getType().getFullElementCenterXSs();
         return layoutXSs + noteCenterXSs - glyphBBoxLeft - glyphWidthSs / 2.0;
     }
 

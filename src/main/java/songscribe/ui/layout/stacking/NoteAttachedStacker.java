@@ -170,7 +170,7 @@ public class NoteAttachedStacker {
         var type = element.getType();
         boolean upper = element.isUpper();
         double noteheadTopSs = centerYSs + type.getNoteheadTopOffsetSs();
-        double noteheadBotSs = noteheadTopSs + type.getNoteheadHeightSs();
+        double noteheadBotSs = noteheadTopSs + type.getFullElementHeightSs();
         double topSs = Math.min(centerYSs + type.getTopYOffsetSs(upper), noteheadTopSs);
         double botSs = Math.max(topSs + type.getElementHeightSs(upper), noteheadBotSs);
         return new NoteBounds(topSs, botSs);
@@ -202,7 +202,7 @@ public class NoteAttachedStacker {
                     * LayoutStylesheet.STAFF_POSITION_OFFSET_SS;
                 var type = element.getType();
                 double noteheadTopSs = centerYSs + type.getNoteheadTopOffsetSs();
-                double noteheadBotSs = noteheadTopSs + type.getNoteheadHeightSs();
+                double noteheadBotSs = noteheadTopSs + type.getFullElementHeightSs();
                 topSs = Math.min(stemLayout.topYSs(), noteheadTopSs);
                 botSs = Math.max(stemLayout.bottomYSs(), noteheadBotSs);
             } else {
