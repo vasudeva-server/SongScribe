@@ -102,8 +102,8 @@ public class MenuController {
         menuBar.add(initFileMenu());
         menuBar.add(initEditMenu());
         menuBar.add(new NotationMenu());
-        menuBar.add(initModeMenu());
         menuBar.add(initCompositionMenu());
+        menuBar.add(initModeMenu());
         //        menuBar.add(launchMenu);
         //        menuBar.add(initHelpMenu());
         //        var launchMenu = initLaunchMenu();
