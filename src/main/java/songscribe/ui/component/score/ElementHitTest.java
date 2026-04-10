@@ -24,6 +24,7 @@ import module java.desktop;
 
 
 import songscribe.music.StaffElement;
+import songscribe.ui.layout.LayoutStylesheet;
 import songscribe.ui.layout.ScaleContext;
 
 /**
@@ -50,13 +51,16 @@ public final class ElementHitTest {
             return -1;
         }
 
-        var helper = new Rectangle();
+        var sc = ScaleContext.getInstance();
+        var pointXSs = sc.fromPixels(point.x);
+        var pointYSs = sc.fromPixels(point.y);
+        var helper = new Rectangle2D.Double();
 
         for (var elementIndex = 0; elementIndex < line.elementCount(); elementIndex++) {
             var element = line.getElement(elementIndex);
             buildElementHitRect(lc, element, helper);
 
-            if (helper.contains(point)) {
+            if (helper.contains(pointXSs, pointYSs)) {
                 return elementIndex;
             }
         }
@@ -65,33 +69,55 @@ public final class ElementHitTest {
     }
 
     /**
-     * Builds the pixel-coordinate hit rectangle for the given element into {@code out}.
+     * Builds the staff-space-coordinate hit rectangle for the given element into {@code out},
+     * expanding narrow/short elements to a minimum clickable size.
      */
     public static void buildElementHitRect(
         LineComponent lc,
         StaffElement element,
-        Rectangle out
+        Rectangle2D.Double out
+    ) {
+        buildElementHitRect(lc, element, out, true);
+    }
+
+    /**
+     * Builds the staff-space-coordinate hit rectangle for the given element into {@code out}.
+     *
+     * @param expandToMinimum if true, expands narrow/short elements symmetrically
+     *                        to {@link #MIN_HIT_SIZE_PX}. Use true for click hit testing,
+     *                        false for drag-selection intersection.
+     */
+    public static void buildElementHitRect(
+        LineComponent lc,
+        StaffElement element,
+        Rectangle2D.Double out,
+        boolean expandToMinimum
     ) {
         var elementType = element.getType();
-        var sc = ScaleContext.getInstance();
+        var naturalWidthSs = elementType.getElementWidthSs();
+        var naturalHeightSs = elementType.getFullElementHeightSs();
 
-        // Use notehead bounds (excludes stem and flag); apply minimum size for narrow elements (AD-10)
-        var naturalWidthPx = (int) Math.round(sc.toPixels(elementType.getElementWidthSs()));
-        var naturalHeightPx = (int) Math.round(sc.toPixels(elementType.getFullElementHeightSs()));
-        var widthPx = Math.max(naturalWidthPx, MIN_HIT_SIZE_PX);
-        var heightPx = Math.max(naturalHeightPx, MIN_HIT_SIZE_PX);
-
-        // Get element X from LayoutResult (staff-space) and convert to pixels, so the
-        // hit rect is in pixel coordinates consistent with the mouse-event point.
+        // Get element position in staff spaces
         var layoutResult = lc.getLayoutResult();
         var elementXSs = layoutResult != null ? layoutResult.getElementXSs(element) : 0.0;
-        var elementXPx = (int) Math.round(sc.toPixels(elementXSs));
-        var elementY = lc.staffPositionToYPx(element.getStaffPosition());
-        var topOffsetPx = (int) Math.round(sc.toPixels(elementType.getNoteheadTopOffsetSs()));
+        var elementYSs = lc.getMiddleLineYSs()
+            + element.getStaffPosition() * LayoutStylesheet.STAFF_POSITION_OFFSET_SS;
+        var topOffsetSs = elementType.getNoteheadTopOffsetSs();
 
-        // Center the hit rect on the element when expanded to the minimum size
-        var xPx = elementXPx - (widthPx - naturalWidthPx) / 2;
-        var yPx = elementY + topOffsetPx - (heightPx - naturalHeightPx) / 2;
-        out.setBounds(xPx, yPx, widthPx, heightPx);
+        if (expandToMinimum) {
+            var minHitSizeSs = ScaleContext.getInstance().fromPixels(MIN_HIT_SIZE_PX);
+
+            // Expand symmetrically: distribute extra width/height evenly on both sides
+            var xExpansionSs = Math.max(0, (minHitSizeSs - naturalWidthSs) / 2);
+            var yExpansionSs = Math.max(0, (minHitSizeSs - naturalHeightSs) / 2);
+            out.setRect(
+                elementXSs - xExpansionSs,
+                elementYSs + topOffsetSs - yExpansionSs,
+                naturalWidthSs + 2 * xExpansionSs,
+                naturalHeightSs + 2 * yExpansionSs
+            );
+        } else {
+            out.setRect(elementXSs, elementYSs + topOffsetSs, naturalWidthSs, naturalHeightSs);
+        }
     }
 }

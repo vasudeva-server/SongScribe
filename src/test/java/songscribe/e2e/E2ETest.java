@@ -377,13 +377,14 @@ public abstract class E2ETest {
             var line = Objects.requireNonNull(lc.getLine());
             var note = line.getElement(noteIndex);
 
-            var hitRect = new Rectangle();
+            var hitRect = new Rectangle2D.Double();
             ElementHitTest.buildElementHitRect(lc, note, hitRect);
 
+            var sc = ScaleContext.getInstance();
             var locationOnScreen = lc.getLocationOnScreen();
             return new Point(
-                locationOnScreen.x + hitRect.x + hitRect.width / 2,
-                locationOnScreen.y + hitRect.y + hitRect.height / 2
+                locationOnScreen.x + sc.toRoundedPixels(hitRect.x + hitRect.width / 2),
+                locationOnScreen.y + sc.toRoundedPixels(hitRect.y + hitRect.height / 2)
             );
         }));
     }

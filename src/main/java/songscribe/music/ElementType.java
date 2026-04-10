@@ -629,17 +629,19 @@ public enum ElementType {
         double thin = lt.thinBarlineSs();
         double thick = lt.thickBarlineSs();
         double sep = lt.barlineSeparationSs();
-        double dotSep = Engraving.REPEAT_BARLINE_DOT_SEPARATION_SS;
-        var dotBBox = requireBBox(metadata, SMuFLGlyph.REPEAT_DOT, REPEAT_LEFT);
-        double dotWidth = dotBBox.width();
+        double dotsAdvance = Engraving.REPEAT_DOTS_ADVANCE_WIDTH_SS;
         double staffHeight = LayoutStylesheet.STAFF_HEIGHT_SS;
         double topOffset = -staffHeight / 2;
 
-        double singleRepeatWidth = thin + thick + sep + dotSep + dotWidth;
+        // Match the renderer's actual layout: dots | sep | thin | sep | thick
+        double singleRepeatWidth = dotsAdvance + sep + thin + sep + thick;
 
         REPEAT_LEFT.setSymmetricBounds(singleRepeatWidth, staffHeight, topOffset);
         REPEAT_RIGHT.setSymmetricBounds(singleRepeatWidth, staffHeight, topOffset);
-        REPEAT_LEFT_RIGHT.setSymmetricBounds(2 * singleRepeatWidth, staffHeight, topOffset);
+
+        // REPEAT_LEFT_RIGHT shares the thick bar: dots | sep | thin | sep | thick | sep | thin | sep | dots
+        double leftRightWidth = 2 * dotsAdvance + 4 * sep + 2 * thin + thick;
+        REPEAT_LEFT_RIGHT.setSymmetricBounds(leftRightWidth, staffHeight, topOffset);
     }
 
     private static BBox requireBBox(SMuFLMetadata metadata, @Nullable SMuFLGlyph glyph, ElementType context) {

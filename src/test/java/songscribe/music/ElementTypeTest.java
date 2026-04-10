@@ -279,9 +279,11 @@ class ElementTypeTest extends UnitTest {
             assertThat(ElementType.REPEAT_LEFT.getFullElementWidthSs())
                 .isEqualTo(ElementType.REPEAT_RIGHT.getFullElementWidthSs());
 
-            // Repeat left/right is double the single repeat width
+            // Repeat left/right shares the thick bar, so it equals 2 * single - thick
+            var lt = LineThickness.getInstance();
+            var expected = 2 * ElementType.REPEAT_LEFT.getFullElementWidthSs() - lt.thickBarlineSs();
             assertThat(ElementType.REPEAT_LEFT_RIGHT.getFullElementWidthSs())
-                .isCloseTo(2 * ElementType.REPEAT_LEFT.getFullElementWidthSs(), within(1e-9));
+                .isCloseTo(expected, within(1e-9));
         }
 
         @Test

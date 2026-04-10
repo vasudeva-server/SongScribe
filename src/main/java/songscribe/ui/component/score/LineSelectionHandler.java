@@ -377,8 +377,8 @@ class LineSelectionHandler {
         );
     }
 
-    private void buildElementHitRect(StaffElement element, Rectangle out) {
-        ElementHitTest.buildElementHitRect(lc, element, out);
+    private void buildElementHitRect(StaffElement element, Rectangle2D.Double out) {
+        ElementHitTest.buildElementHitRect(lc, element, out, false);
     }
 
     private void calculateLineSelectionFromDrag(Rectangle dragRect) {
@@ -399,13 +399,21 @@ class LineSelectionHandler {
         coordinator.activateLine(lc.getLineIndex());
         lineSelectionState.clearSelection();
 
-        var helper = new Rectangle();
+        // Convert pixel drag rect to staff spaces for intersection with hit rects
+        var sc = ScaleContext.getInstance();
+        var dragRectSs = new Rectangle2D.Double(
+            sc.fromPixels(dragRect.x),
+            sc.fromPixels(dragRect.y),
+            sc.fromPixels(dragRect.width),
+            sc.fromPixels(dragRect.height)
+        );
+        var helper = new Rectangle2D.Double();
 
         for (var elementIndex = 0; elementIndex < line.elementCount(); elementIndex++) {
             var element = line.getElement(elementIndex);
             buildElementHitRect(element, helper);
 
-            if (dragRect.intersects(helper)) {
+            if (dragRectSs.intersects(helper)) {
                 lineSelectionState.extendSelection(elementIndex);
             }
         }
