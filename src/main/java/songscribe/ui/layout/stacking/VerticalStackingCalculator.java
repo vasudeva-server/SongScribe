@@ -25,9 +25,8 @@ import java.util.List;
 import songscribe.music.Line;
 
 import songscribe.ui.layout.AnnotationAttachment;
-import songscribe.ui.layout.Crescendo;
-import songscribe.ui.layout.Diminuendo;
 import songscribe.ui.layout.ElementColumn;
+import songscribe.ui.layout.Hairpin;
 import songscribe.ui.layout.Ending;
 import songscribe.ui.layout.LayoutResult;
 import songscribe.ui.layout.LayoutStylesheet;
@@ -168,15 +167,9 @@ public class VerticalStackingCalculator {
                 yOffsetSs += trill.getYPositionSs();
             } else if (element instanceof Ending ending) {
                 yOffsetSs += ending.getYPositionSs();
-            } else if (element instanceof Crescendo cresc) {
+            } else if (element instanceof Hairpin hairpin) {
                 var shifts = convertHairpinShifts(
-                    cresc.getX1Shift(), cresc.getX2Shift(), cresc.getYShift());
-                xOffsetSs += shifts.x1Ss();
-                widthAdjustSs = shifts.widthAdjustSs();
-                yOffsetSs += shifts.ySs();
-            } else if (element instanceof Diminuendo dim) {
-                var shifts = convertHairpinShifts(
-                    dim.getX1Shift(), dim.getX2Shift(), dim.getYShift());
+                    hairpin.getX1Shift(), hairpin.getX2Shift(), hairpin.getYShift());
                 xOffsetSs += shifts.x1Ss();
                 widthAdjustSs = shifts.widthAdjustSs();
                 yOffsetSs += shifts.ySs();

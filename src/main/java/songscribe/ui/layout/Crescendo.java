@@ -21,107 +21,14 @@
 package songscribe.ui.layout;
 
 import songscribe.music.StaffElement;
-import songscribe.smufl.Engraving;
 
 /**
- * Represents a crescendo (gradually getting louder) hairpin marking.
- * <p>
- * Crescendo hairpins open to the right (< shape) and are typically
- * placed above the staff. The user can adjust the horizontal endpoints
- * and vertical position.
+ * A crescendo (gradually getting louder) hairpin marking.
+ * Opens to the right ({@literal <} shape).
  */
-public class Crescendo extends RangeElement {
+public final class Crescendo extends Hairpin {
 
-    private int x1Shift = 0;
-    private int x2Shift = 0;
-    private int yShift = 0;
-
-    /**
-     * Creates a crescendo spanning from anchor to end element.
-     *
-     * @param anchorElement The starting element of the crescendo
-     * @param endElement    The ending element of the crescendo
-     */
     public Crescendo(StaffElement anchorElement, StaffElement endElement) {
         super(anchorElement, endElement);
-    }
-
-    /**
-     * Returns the horizontal adjustment for the start point.
-     */
-    public int getX1Shift() {
-        return x1Shift;
-    }
-
-    /**
-     * Sets the horizontal adjustment for the start point.
-     */
-    public void setX1Shift(int x1Shift) {
-        this.x1Shift = x1Shift;
-    }
-
-    /**
-     * Returns the horizontal adjustment for the end point.
-     */
-    public int getX2Shift() {
-        return x2Shift;
-    }
-
-    /**
-     * Sets the horizontal adjustment for the end point.
-     */
-    public void setX2Shift(int x2Shift) {
-        this.x2Shift = x2Shift;
-    }
-
-    /**
-     * Returns the vertical adjustment.
-     */
-    public int getYShift() {
-        return yShift;
-    }
-
-    /**
-     * Sets the vertical adjustment.
-     */
-    public void setYShift(int yShift) {
-        this.yShift = yShift;
-    }
-
-    /**
-     * Returns the height of the hairpin opening in staff-space units.
-     */
-    @Override
-    public double getContentHeightSs() {
-        return LayoutStylesheet.HAIRPIN_OPENING_HEIGHT_SS;
-    }
-
-    /**
-     * Returns the horizontal span width for collision detection.
-     *
-     * @param anchorXSs X position of the anchor element in staff-space units
-     * @param endXSs    X position of the end element in staff-space units
-     * @return span width in staff-space units
-     */
-    @Override
-    public double getSpanWidthSs(double anchorXSs, double endXSs) {
-        return Math.max(getContentHeightSs(), endXSs - anchorXSs + Engraving.NOTE_HEAD_WIDTH_SS);
-    }
-
-    @Override
-    public double getContentWidthPx() {
-        var anchor = getAnchorElement();
-        var endElement = getEndElement();
-
-        if (anchor == null || endElement == null) {
-            return 0;
-        }
-
-        return Math.abs(endElement.getXSs() - anchor.getXSs()) + endElement.getContentWidthPx() + x1Shift + x2Shift;
-    }
-
-    @Override
-    public double getContentHeightPx() {
-        return ScaleContext.getInstance().toPixels(getContentHeightSs());
     }
 }
