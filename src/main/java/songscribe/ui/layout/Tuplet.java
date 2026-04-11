@@ -34,6 +34,9 @@ import songscribe.music.StaffElement;
  */
 public class Tuplet extends RangeElement {
 
+    /** Inward shortening at each bracket endpoint (LilyPond: -0.2ss). */
+    public static final double ARM_EXTENSION_SS = 0.2;  // 1.6px
+
     private int grade = 3;
     private int verticalPositionSs = 0;
 

@@ -25,11 +25,8 @@ import static songscribe.ui.renderer.GraphicsState.Property.FONT;
 
 import module java.desktop;
 
-
-
 import songscribe.music.Line;
 import songscribe.ui.layout.LayoutResult;
-import songscribe.smufl.Engraving;
 import songscribe.ui.layout.Tuplet;
 import songscribe.util.GraphicUtils;
 import songscribe.util.MyFontUtils;
@@ -55,9 +52,6 @@ public final class TupletRenderer extends BaseElementRenderer<Tuplet> {
 
     /** Vertical arm height of bracket endpoints (LilyPond: 0.7ss) */
     private static final double TUPLET_BRACKET_OVERHANG_SS = 0.7;  // 5.6px
-
-    /** Inward shortening at each bracket endpoint (LilyPond: -0.2ss) */
-    private static final double TUPLET_ARM_EXTENSION_SS = 0.2;  // 1.6px
 
     /** Rightward italic correction for tuplet number gap (LilyPond: +0.1ss) */
     private static final double TUPLET_GAP_ITALIC_CORRECTION_SS = 0.1;  // 0.8px
@@ -123,7 +117,7 @@ public final class TupletRenderer extends BaseElementRenderer<Tuplet> {
                 && line.getBeamings().findInterval(interval.getEnd()) != null;
             var numberOnly = allBeamed && isUpper;
 
-            renderTuplet(g2, ctx, spanLayout, interval.getGrade(), isUpper, numberOnly);
+            renderTuplet(g2, ctx, spanLayout, interval.getGrade(), numberOnly);
         }
     }
 
@@ -143,19 +137,14 @@ public final class TupletRenderer extends BaseElementRenderer<Tuplet> {
         ElementRenderContext ctx,
         LayoutResult.SpanLayout spanLayout,
         int grade,
-        boolean isUpper,
         boolean numberOnly
     ) {
         // Convert layout Y to component Y
         var bracketYSs = layoutYToComponentYSs(spanLayout.ySs(), ctx);
 
-        // spanLayout stores right edges of the first and last noteheads.
-        // Opening stroke X depends on stem direction; closing is always right edge + extension.
-        var stemSs = ctx.getLineThickness().stemSs();
-        var leftXSs = isUpper
-            ? spanLayout.startXSs() - stemSs - TUPLET_ARM_EXTENSION_SS
-            : spanLayout.startXSs() - Engraving.NOTE_HEAD_WIDTH_SS - TUPLET_ARM_EXTENSION_SS;
-        var rightXSs = spanLayout.endXSs() + TUPLET_ARM_EXTENSION_SS;
+        // spanLayout stores the actual visual bracket bounds
+        var leftXSs = spanLayout.startXSs();
+        var rightXSs = spanLayout.endXSs();
         var centerXSs = (leftXSs + rightXSs) / 2.0;
 
         // Measure number width for gap calculation
@@ -196,6 +185,10 @@ public final class TupletRenderer extends BaseElementRenderer<Tuplet> {
             drawTupletNumber(g2, grade, gapCenterXSs, bracketYSs);
         }
     }
+
+    // ==========================================================================
+    // Number drawing
+    // ==========================================================================
 
     /**
      * Draws the tuplet number centered horizontally at {@code centerXSs} and vertically

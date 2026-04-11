@@ -145,6 +145,10 @@ public final class EndingRenderer extends BaseElementRenderer<LineElement> {
     }
 
 
+    // ==========================================================================
+    // Layout access
+    // ==========================================================================
+
     /**
      * Returns the top Y coordinate for an ending bracket in component staff-space units.
      */

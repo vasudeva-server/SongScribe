@@ -137,22 +137,29 @@ public class StructuralStacker {
                 continue;
             }
 
-            // Anchor at the right edge of each notehead
-            double anchorXSs = startColumn.getXSs() + Engraving.NOTE_HEAD_WIDTH_SS;
-            double endXSs = endColumn.getXSs() + Engraving.NOTE_HEAD_WIDTH_SS;
             var bridged = new Tuplet(startNote, endNote, interval.getGrade());
 
+            // Compute actual visual bracket bounds
+            double noteheadRightXSs = startColumn.getXSs() + Engraving.NOTE_HEAD_WIDTH_SS;
+            double endNoteheadRightXSs = endColumn.getXSs() + Engraving.NOTE_HEAD_WIDTH_SS;
+            boolean isUpper = startNote.isUpper();
+            double stemSs = LineThickness.getInstance().stemSs();
+            double leftXSs = isUpper
+                ? noteheadRightXSs - stemSs - Tuplet.ARM_EXTENSION_SS
+                : noteheadRightXSs - Engraving.NOTE_HEAD_WIDTH_SS - Tuplet.ARM_EXTENSION_SS;
+            double rightXSs = endNoteheadRightXSs + Tuplet.ARM_EXTENSION_SS;
+
             int staffPosition = startNote.getStaffPosition();
-            double widthSs = bridged.getSpanWidthSs(anchorXSs, endXSs);
+            double widthSs = rightXSs - leftXSs;
             double contentHeightSs = bridged.getContentHeightSs();
 
-            double ySs = stackAbove(structuralExtents, bridged, anchorXSs, widthSs,
+            double ySs = stackAbove(structuralExtents, bridged, leftXSs, widthSs,
                 contentHeightSs, LayoutStylesheet.TUPLET_MARGIN_SS,
                 staffPosition, builder);
 
-            // Write SpanLayout keyed by the legacy interval for renderer access
+            // Write SpanLayout with actual bracket bounds for renderer access
             builder.putSpanLayout(interval,
-                new LayoutResult.SpanLayout(anchorXSs, endXSs, ySs, contentHeightSs));
+                new LayoutResult.SpanLayout(leftXSs, rightXSs, ySs, contentHeightSs));
         }
     }
 
