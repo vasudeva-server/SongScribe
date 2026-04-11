@@ -146,7 +146,7 @@ public final class LayoutStylesheet {
     /**
      * Margin from reference point to ending bracket
      */
-    public static final double ENDING_MARGIN_SS = 0.75;  // 6px
+    public static final double ENDING_MARGIN_SS = 1.0;  // 8px
 
     // --- Annotations (text above staff) ---
     /**
