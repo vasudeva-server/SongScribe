@@ -28,7 +28,6 @@ import com.intellij.uiDesigner.core.Spacer;
 
 import songscribe.Strings;
 import songscribe.message.notification.LyricsDidChangeNotification;
-import songscribe.message.MessageCenter;
 import songscribe.ui.Constants;
 import songscribe.ui.component.MyJTextArea;
 import songscribe.util.StringUtils;
@@ -173,7 +172,7 @@ public class LyricsDialog extends StandardDialog {
 
     @Override
     protected void setData() {
-        MessageCenter.post(new LyricsDidChangeNotification(
+        getComposition().postWithModification(new LyricsDidChangeNotification(
             lyricsArea.getText(),
             underSongArea.getText(),
             translatedArea.getText(),

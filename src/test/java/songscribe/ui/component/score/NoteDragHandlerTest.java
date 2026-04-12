@@ -23,6 +23,7 @@ package songscribe.ui.component.score;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyDouble;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockConstruction;
 import static org.mockito.Mockito.mockStatic;
@@ -36,16 +37,21 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.MockedConstruction;
 import org.mockito.MockedStatic;
 
 import songscribe.UnitTest;
+import songscribe.message.Message;
+import songscribe.message.MessageCenter;
+import songscribe.message.mutation.ElementField;
+import songscribe.message.mutation.ElementModification;
+import songscribe.message.notification.CompositionDidChangeNotification;
 import songscribe.music.Composition;
 import songscribe.music.ElementType;
 import songscribe.music.Line;
 import songscribe.music.StaffElement;
 import songscribe.music.TieInterval;
-import songscribe.message.MessageCenter;
 import songscribe.ui.Mode;
 import songscribe.ui.component.Score;
 import songscribe.ui.edit.EditModeManager;
@@ -332,6 +338,70 @@ class NoteDragHandlerTest extends UnitTest {
 
             assertThat(line.elementCount()).isEqualTo(1);
             assertThat(line.getElement(0).getType()).isEqualTo(ElementType.CROTCHET);
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Mutation emission
+    // -------------------------------------------------------------------------
+
+    @Nested
+    class MutationEmission {
+
+        private static final int ORIGINAL_POSITION_SP = 4;
+        private static final int DRAGGED_POSITION_SP = 6;
+
+        private Line realLine;
+
+        @BeforeEach
+        void setUpWithRealComposition() {
+            // Create a real Composition so line.withModification() in handleRelease
+            // delegates to composition.withModification(), which posts a
+            // CompositionDidChangeNotification via the static MessageCenter mock.
+            var realComposition = new Composition();
+            realLine = realComposition.getLine(0);
+
+            var note = ElementType.CROTCHET.newInstance();
+            note.setStaffPosition(ORIGINAL_POSITION_SP);
+            realComposition.withoutMutationTracking(() -> realLine.addElement(note));
+
+            when(lc.getLine()).thenReturn(realLine);
+        }
+
+        @Test
+        void testBeforeCloneHasOriginalPitchAfterRelease() {
+            // Press on the note, drag it to a new position, release.
+            // handleRelease coalesces the mutations into one CompositionDidChangeNotification
+            // carrying an ElementModification whose beforeElement reflects the pre-drag pitch.
+            setupSingleSelection(0);
+            pressOnNote(0);
+            dragToPosition(DRAGGED_POSITION_SP);
+            handler.handleRelease();
+
+            // Capture all MessageCenter.post calls (includes the composition-constructor
+            // notification and the handleRelease notification).
+            var captor = ArgumentCaptor.forClass(Message.class);
+            messageCenterMock.verify(
+                () -> MessageCenter.post(captor.capture()),
+                atLeastOnce()
+            );
+
+            // Find the ElementModification inside whichever notification carries it.
+            var modification = captor.getAllValues().stream()
+                .filter(m -> m instanceof CompositionDidChangeNotification)
+                .map(m -> (CompositionDidChangeNotification) m)
+                .flatMap(n -> n.getMutations().stream())
+                .filter(m -> m instanceof ElementModification)
+                .map(m -> (ElementModification) m)
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("No ElementModification in captured notifications"));
+
+            // beforeElement is the clone captured at press time — original pitch.
+            assertThat(modification.beforeElement().getStaffPosition()).isEqualTo(ORIGINAL_POSITION_SP);
+            assertThat(modification.fields()).containsExactly(ElementField.PITCH);
+
+            // The live element now has the dragged pitch.
+            assertThat(realLine.getElement(0).getStaffPosition()).isEqualTo(DRAGGED_POSITION_SP);
         }
     }
 

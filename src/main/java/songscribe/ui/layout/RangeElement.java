@@ -20,6 +20,8 @@
 
 package songscribe.ui.layout;
 
+import java.util.List;
+
 import org.jspecify.annotations.Nullable;
 
 import songscribe.music.StaffElement;
@@ -102,6 +104,20 @@ public abstract class RangeElement extends LineElement {
         }
 
         return endIndex - startIndex + 1;
+    }
+
+    /**
+     * Returns whether this range element is invalidated by the given deletion.
+     * <p>
+     * A range element is invalidated when its anchor or end element is among the deleted elements,
+     * because the range can no longer be rendered without both endpoints. Subclasses may override
+     * this method if their invalidation condition is more nuanced.
+     *
+     * @param deletedElements the elements that were removed from the line
+     * @return {@code true} if this range element should be removed as a result of the deletion
+     */
+    public boolean isInvalidatedBy(List<StaffElement> deletedElements) {
+        return deletedElements.contains(anchorElement) || deletedElements.contains(endElement);
     }
 
     /**

@@ -29,9 +29,9 @@ import org.jspecify.annotations.Nullable;
 import net.engio.mbassy.listener.Handler;
 
 import songscribe.Strings;
-import songscribe.music.BeamInterval;
-import songscribe.message.notification.CompositionDidChangeNotification;
 import songscribe.message.MessageCenter;
+import songscribe.message.mutation.ElementField;
+import songscribe.music.BeamInterval;
 import songscribe.music.ElementType;
 import songscribe.music.Line;
 import songscribe.music.StaffElement;
@@ -493,25 +493,32 @@ public class PreviewElementManager {
                     return;  // No valid zone = click is a no-op
                 }
 
-                var sourceNote = line.getElement(currentXIndex - 1);
-                sourceNote.setGlissando(zoneType);
+                var noteIndex = currentXIndex - 1;
+                var sourceNote = line.getElement(noteIndex);
 
-                var composition = line.getComposition();
-                composition.setModified(true);
-                MessageCenter.post(new CompositionDidChangeNotification(CompositionDidChangeNotification.ChangeType.CONTENT, composition, line));
+                line.withModification(() -> line.modifyElement(
+                    noteIndex,
+                    ElementField.GLISSANDO,
+                    () -> sourceNote.setGlissando(zoneType)
+                ));
                 lc.repaint();
                 return;  // Stay in glissando mode
             }
         }
 
-        // Determine action based on position
-        if (currentXIndex == line.elementCount()) {
-            addPreviewElement(lc, line);
-        } else if (xPosSsMatchesElement) {
-            modifyExistingElement(lc, currentXIndex, line);
-        } else {
-            insertElement(lc, currentXIndex, line);
-        }
+        // Determine action based on position. Wrap in a modification bracket so the
+        // line.add/setElement calls inside actually accumulate mutations and fire a
+        // CompositionDidChangeNotification, which the ScoreMessageCoordinator uses to
+        // invalidate the line's cached layout.
+        line.withModification(() -> {
+            if (currentXIndex == line.elementCount()) {
+                addPreviewElement(lc, line);
+            } else if (xPosSsMatchesElement) {
+                modifyExistingElement(lc, currentXIndex, line);
+            } else {
+                insertElement(lc, currentXIndex, line);
+            }
+        });
     }
 
     /**

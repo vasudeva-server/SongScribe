@@ -44,7 +44,7 @@ import songscribe.music.Line;
 import songscribe.music.LyricsProcessor;
 import songscribe.music.MusicEditOperations;
 import songscribe.music.StaffElement;
-import songscribe.message.notification.CompositionDidChangeNotification;
+import songscribe.message.notification.DocumentDidLoadNotification;
 import songscribe.message.notification.MusicSelectionDidChangeNotification;
 import songscribe.message.notification.PrefsDidChangeNotification;
 import songscribe.prefs.Prefs;
@@ -818,9 +818,7 @@ public final class Score
         // Notify all subscribers (LyricsPanel, ScoreMessageCoordinator, UIActions, etc.)
         // that the composition has been fully replaced. This must happen after all
         // Score state is consistent.
-        MessageCenter.post(new CompositionDidChangeNotification(
-            CompositionDidChangeNotification.ChangeType.FULL, composition
-        ));
+        MessageCenter.post(new DocumentDidLoadNotification(composition));
 
         // Reset scroll position to top-left for the new/opened composition
         if (scrollPane != null) {

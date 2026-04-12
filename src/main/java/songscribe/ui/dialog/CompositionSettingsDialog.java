@@ -392,7 +392,7 @@ public class CompositionSettingsDialog extends StandardDialog {
                 return;
             }
 
-            MessageCenter.post(new MetadataDidChangeNotification(
+            composition.postWithModification(new MetadataDidChangeNotification(
                 titleField.getText(),
                 placeField.getText(),
                 year,
@@ -687,28 +687,37 @@ public class CompositionSettingsDialog extends StandardDialog {
             var visibleTempo = tempoSection.getVisibleTempo();
             var tempoDescription = tempoSection.getTempoDescription();
             var showTempo = !tempoSection.isShowOnlyDescription();
-
-            if (tempoType != tempo.getTempoType()
-                    || visibleTempo != tempo.getVisibleTempo()
-                    || !Objects.equals(tempoDescription, tempo.getTempoDescription())
-                    || showTempo != tempo.shouldShowTempo()) {
-                MessageCenter.post(new TempoDidChangeNotification(
-                    tempoType,
-                    visibleTempo,
-                    tempoDescription,
-                    showTempo
-                ));
-            }
-
             var typeAndCount = getKeyTypeAndCountFromCombo();
 
-            if (typeAndCount.getFirst() != composition.getDefaultKeyType()
-                    || !typeAndCount.getSecond().equals(composition.getDefaultKeyAccidentalCount())) {
-                MessageCenter.post(new KeySignatureDidChangeNotification(
-                    null,
-                    typeAndCount.getFirst(),
-                    typeAndCount.getSecond()
-                ));
+            var tempoChanged = tempoType != tempo.getTempoType()
+                || visibleTempo != tempo.getVisibleTempo()
+                || !Objects.equals(tempoDescription, tempo.getTempoDescription())
+                || showTempo != tempo.shouldShowTempo();
+
+            var keyChanged = typeAndCount.getFirst() != composition.getDefaultKeyType()
+                || !typeAndCount.getSecond().equals(composition.getDefaultKeyAccidentalCount());
+
+            // Wrap both notifications in one bracket so tempo and key changes coalesce
+            // into a single CompositionDidChangeNotification when both are modified.
+            if (tempoChanged || keyChanged) {
+                composition.withModification(() -> {
+                    if (tempoChanged) {
+                        MessageCenter.post(new TempoDidChangeNotification(
+                            tempoType,
+                            visibleTempo,
+                            tempoDescription,
+                            showTempo
+                        ));
+                    }
+
+                    if (keyChanged) {
+                        MessageCenter.post(new KeySignatureDidChangeNotification(
+                            null,
+                            typeAndCount.getFirst(),
+                            typeAndCount.getSecond()
+                        ));
+                    }
+                });
             }
 
             var widthInches = validateLineWidth();
@@ -1141,7 +1150,7 @@ public class CompositionSettingsDialog extends StandardDialog {
                 return;
             }
 
-            MessageCenter.post(new FontDidChangeNotification(
+            composition.postWithModification(new FontDidChangeNotification(
                 titleFontPreview.getFont(),
                 lyricsFontPreview.getFont(),
                 attributionFontPreview.getFont(),

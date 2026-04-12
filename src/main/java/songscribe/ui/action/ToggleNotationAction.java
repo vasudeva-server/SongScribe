@@ -33,6 +33,7 @@ import songscribe.message.MessageCenter;
 import songscribe.message.command.ToggleBeamCommand;
 import songscribe.message.command.ToggleTieCommand;
 import songscribe.message.notification.CompositionDidChangeNotification;
+import songscribe.message.notification.DocumentDidLoadNotification;
 import songscribe.message.notification.MusicSelectionDidChangeNotification;
 import songscribe.ui.component.Score;
 
@@ -105,6 +106,12 @@ public final class ToggleNotationAction extends UIAction {
     @Override
     @Handler
     public void compositionDidChange(CompositionDidChangeNotification message) {
+        handleChange();
+    }
+
+    @Override
+    @Handler
+    public void documentDidLoad(DocumentDidLoadNotification message) {
         handleChange();
     }
 

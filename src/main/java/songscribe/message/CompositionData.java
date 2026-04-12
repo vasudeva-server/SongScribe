@@ -28,15 +28,15 @@ import org.jspecify.annotations.Nullable;
 import songscribe.music.KeyType;
 import songscribe.music.Line;
 import songscribe.music.Tempo;
-import songscribe.message.notification.CompositionDidChangeNotification;
 
 /**
  * Immutable snapshot of all composition-level fields, built by
  * {@link songscribe.io.CompositionIO.DocumentReader} during file parsing.
  * <p>
  * Passed to {@link songscribe.music.Composition#loadFrom(CompositionData)} so that
- * Composition can apply all fields atomically and post a single
- * {@link CompositionDidChangeNotification} with {@code ChangeType.FULL}.
+ * Composition can apply all fields atomically. After installation,
+ * {@link songscribe.ui.component.Score#setComposition(songscribe.music.Composition)} posts
+ * a {@link songscribe.message.notification.DocumentDidLoadNotification}.
  * <p>
  * Font fields are {@code @Nullable} because v1.0 files have no View section;
  * when null, the Composition retains its default (preferences-based) fonts.

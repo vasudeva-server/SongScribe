@@ -78,6 +78,23 @@ class SystemTierStackingTest extends UnitTest {
         return line;
     }
 
+    /**
+     * Adds elements to {@code line} without mutation tracking. Layout tests do not
+     * care about the mutation system and would otherwise have to wrap every
+     * {@code addElement} call in a modification bracket.
+     */
+    private static void setup(Runnable body) {
+        composition.withoutMutationTracking(body);
+    }
+
+    private static void populate(Line target, StaffElement... elements) {
+        setup(() -> {
+            for (var element : elements) {
+                target.addElement(element);
+            }
+        });
+    }
+
     private static LayoutResult stackColumns(List<ElementColumn> columns, Line line) {
         var builder = new LayoutResult.Builder();
         var calculator = new VerticalStackingCalculator();
@@ -95,7 +112,7 @@ class SystemTierStackingTest extends UnitTest {
             note.addAttachment(tempo);
 
             var line = newLine();
-            line.addElement(note);
+            populate(line,note);
 
             var result = stackColumns(List.of(columnFor(note, NOTE1_X_SS)), line);
 
@@ -114,7 +131,7 @@ class SystemTierStackingTest extends UnitTest {
             note.addAttachment(tempo);
 
             var line = newLine();
-            line.addElement(note);
+            populate(line,note);
 
             var result = stackColumns(List.of(columnFor(note, NOTE1_X_SS)), line);
 
@@ -135,12 +152,12 @@ class SystemTierStackingTest extends UnitTest {
             note1.addAttachment(tempo);
 
             var line = newLine();
-            line.addElement(note1);
-            line.addElement(note2);
+            populate(line,note1);
+            populate(line,note2);
 
             // Add a hairpin in the structural layer
             var crescendo = new Crescendo(note1, note2);
-            line.addRangeElement(crescendo);
+            setup(() -> line.addRangeElement(crescendo));
 
             var result = stackColumns(
                 List.of(columnFor(note1, NOTE1_X_SS), columnFor(note2, NOTE2_X_SS)),
@@ -165,7 +182,7 @@ class SystemTierStackingTest extends UnitTest {
             note.setTempoChange(new Tempo(140, Tempo.Type.CROTCHET, "Allegro", true));
 
             var line = newLine();
-            line.addElement(note);
+            populate(line,note);
 
             var result = stackColumns(List.of(columnFor(note, NOTE1_X_SS)), line);
 

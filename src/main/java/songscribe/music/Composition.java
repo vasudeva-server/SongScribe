@@ -22,7 +22,8 @@ package songscribe.music;
 import module java.desktop;
 
 import java.util.ArrayList;
-import java.util.EnumSet;
+import java.util.Collections;
+import java.util.Objects;
 import java.util.regex.Pattern;
 
 import org.jspecify.annotations.Nullable;
@@ -31,9 +32,20 @@ import net.engio.mbassy.listener.Handler;
 
 import songscribe.Strings;
 import songscribe.message.CompositionData;
+import songscribe.message.Message;
 import songscribe.message.MessageCenter;
+import songscribe.message.mutation.FontChange;
+import songscribe.message.mutation.FontField;
+import songscribe.message.mutation.LayoutChange;
+import songscribe.message.mutation.LayoutField;
+import songscribe.message.mutation.LineDeletion;
+import songscribe.message.mutation.LineInsertion;
+import songscribe.message.mutation.LyricsChange;
+import songscribe.message.mutation.LyricsField;
+import songscribe.message.mutation.MetadataChange;
+import songscribe.message.mutation.MetadataField;
+import songscribe.message.mutation.Mutation;
 import songscribe.message.notification.CompositionDidChangeNotification;
-import songscribe.message.notification.CompositionDidChangeNotification.ChangeType;
 import songscribe.message.notification.DocumentWasSavedNotification;
 import songscribe.message.notification.FontDidChangeNotification;
 import songscribe.message.notification.KeySignatureDidChangeNotification;
@@ -180,16 +192,17 @@ public final class Composition {
 
     private boolean modified;
 
-    // Modification bracket depth counter. When > 0, setModified(true) and
-    // postChanged() are deferred; on endModification() they are flushed once.
+    // Modification bracket depth counter. Mutations are accumulated while > 0 and
+    // flushed as a single CompositionDidChangeNotification when depth returns to 0.
     private int modificationDepth;
 
-    @Nullable
-    private EnumSet<ChangeType> accumulatedChangeTypes;
+    // Suspension depth counter. While > 0, Line.applyChange bypasses the strict
+    // bracket check and runs the mutator directly. Used by test setup that
+    // populates lines without emitting notifications or recording undo history.
+    private int suspensionDepth;
 
-    // Non-null only when all deferred changes are on the same line; null means multi-line.
     @Nullable
-    private Line accumulatedLine;
+    private ArrayList<Mutation> accumulatedMutations;
 
     /** Whether the user has already been notified about short-ă replacement in this session. */
     private boolean shortANotified;
@@ -206,16 +219,19 @@ public final class Composition {
         // attributionStartY is calculated from title, will be recalculated on layout
         attributionStartYSs = calculateAttributionStartY();
 
-        // Add initial line directly (not via addLine) to avoid posting
-        // a spurious STRUCTURE message before the composition is installed.
+        // Configure the initial line BEFORE attaching it to the composition so that
+        // Line.applyChange sees a null composition and bypasses mutation tracking.
+        // This avoids posting a spurious CompositionDidChangeNotification to global
+        // subscribers (MainFrame, LyricsPanel, ScoreMessageCoordinator) carrying a
+        // Composition that is not yet installed in any Score.
         var initialLine = new Line();
-        lines.add(initialLine);
-        initialLine.setComposition(this);
         initialLine.setKeyAccidentalCount(defaultKeyAccidentalCount);
         initialLine.setKeyType(defaultKeyType);
         initialLine.setTempoChangeYPosPx(
             ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.TEMPO_DEFAULT_Y_FIRST_LINE_SS)
         );
+        lines.add(initialLine);
+        initialLine.setComposition(this);
 
         MessageCenter.subscribe(this);
     }
@@ -317,28 +333,31 @@ public final class Composition {
         applyRowHeightAdjustmentSs(data.rowHeightAdjustmentSs());
         applyLineWidthSs(data.lineWidthSs());
 
-        // Replace lines
+        // Replace lines. Configure each line's bootstrap state BEFORE attaching it to
+        // the composition so that Line.applyChange sees a null composition and bypasses
+        // mutation tracking — load is not a user mutation.
         lines.clear();
 
-        for (var line : data.lines()) {
-            lines.add(line);
-            line.setComposition(this);
+        var loadedLines = data.lines();
 
-            if (
-                (line.getKeyAccidentalCount() == 0) && (line.getKeyType() == null)
-            ) {
+        for (var lineIndex = 0; lineIndex < loadedLines.size(); lineIndex++) {
+            var line = loadedLines.get(lineIndex);
+
+            if ((line.getKeyAccidentalCount() == 0) && (line.getKeyType() == null)) {
                 line.setKeyAccidentalCount(defaultKeyAccidentalCount);
                 line.setKeyType(defaultKeyType);
             }
 
             if (line.getTempoChangeYPosPx() == 0) {
-                var lineIndex = lines.indexOf(line);
                 line.setTempoChangeYPosPx(
                     (lineIndex == 0)
                         ? ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.TEMPO_DEFAULT_Y_FIRST_LINE_SS)
                         : ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.TEMPO_DEFAULT_Y_OTHER_LINES_SS)
                 );
             }
+
+            lines.add(line);
+            line.setComposition(this);
         }
 
         this.hasBeenDynamicallyLaidOut = data.hasBeenDynamicallyLaidOut();
@@ -563,141 +582,141 @@ public final class Composition {
     // ========== Setters (mutate + setModified + post) ==========
 
     public void setTempo(Tempo tempo) {
-        mutateAndPost(ChangeType.CONTENT, () -> {this.tempo = tempo;});
+        mutateMetadata(MetadataField.TEMPO, this.tempo, tempo, () -> this.tempo = tempo);
     }
 
     public void setTitle(String text) {
-        if (title.equals(text)) {
-            return;
-        }
-
-        mutateAndPost(ChangeType.METADATA, () -> applyTitle(text));
+        var newTitle = normalizeTitle(text);
+        mutateMetadata(MetadataField.TITLE, title, newTitle, () -> title = newTitle);
     }
 
-    public void setPlace(String place) {
-        mutateAndPost(ChangeType.METADATA, () -> applyPlace(place));
+    public void setPlace(String text) {
+        var newPlace = text.trim();
+        mutateMetadata(MetadataField.PLACE, place, newPlace, () -> place = newPlace);
     }
 
-    public void setYear(String year) {
-        mutateAndPost(ChangeType.METADATA, () -> applyYear(year));
+    public void setYear(String text) {
+        var newYear = text.trim();
+        mutateMetadata(MetadataField.YEAR, year, newYear, () -> year = newYear);
     }
 
     public void setMonth(int month) {
-        mutateAndPost(ChangeType.METADATA, () -> applyMonth(month));
+        mutateMetadata(MetadataField.MONTH, this.month, month, () -> this.month = month);
     }
 
     public void setDay(int day) {
-        mutateAndPost(ChangeType.METADATA, () -> applyDay(day));
+        mutateMetadata(MetadataField.DAY, this.day, day, () -> this.day = day);
     }
 
     public void setLyrics(String text) {
-        mutateAndPost(ChangeType.LYRICS, () -> applyLyrics(text));
+        var newLyrics = processText(text);
+        mutateLyrics(LyricsField.MAIN, lyrics, newLyrics, () -> lyrics = newLyrics);
     }
 
     public void setUnderLyrics(String text) {
         var newLyrics = processText(text);
-
-        if (underLyrics.equals(newLyrics)) {
-            return;
-        }
-
-        mutateAndPost(ChangeType.LYRICS, () -> applyUnderLyrics(text));
+        mutateLyrics(LyricsField.UNDER, underLyrics, newLyrics, () -> underLyrics = newLyrics);
     }
 
     public void setBanglaLyrics(String text) {
         var newLyrics = text.trim();
-
-        if (banglaLyrics.equals(newLyrics)) {
-            return;
-        }
-
-        mutateAndPost(ChangeType.LYRICS, () -> applyBanglaLyrics(text));
+        mutateLyrics(LyricsField.BANGLA, banglaLyrics, newLyrics, () -> banglaLyrics = newLyrics);
     }
 
     public void setTranslatedLyrics(String text) {
         var newLyrics = text.trim();
-
-        if (translatedLyrics.equals(newLyrics)) {
-            return;
-        }
-
-        mutateAndPost(ChangeType.LYRICS, () -> applyTranslatedLyrics(text));
+        mutateLyrics(LyricsField.TRANSLATED, translatedLyrics, newLyrics, () -> translatedLyrics = newLyrics);
     }
 
     public void setFootnotes(String text) {
         var newFootnotes = text.trim();
-
-        if (footnotes.equals(newFootnotes)) {
-            return;
-        }
-
-        mutateAndPost(ChangeType.METADATA, () -> applyFootnotes(text));
+        mutateMetadata(MetadataField.FOOTNOTES, footnotes, newFootnotes, () -> footnotes = newFootnotes);
     }
 
     public void setUnofficialTranslation(boolean unofficial) {
-        mutateAndPost(ChangeType.METADATA, () -> applyUnofficialTranslation(unofficial));
+        mutateMetadata(
+            MetadataField.UNOFFICIAL_TRANSLATION, unofficialTranslation, unofficial,
+            () -> unofficialTranslation = unofficial
+        );
     }
 
     public void setAttribution(String text) {
         var newAttribution = text.trim();
-
-        if (newAttribution.equals(attribution)) {
-            return;
-        }
-
-        mutateAndPost(ChangeType.METADATA, () -> applyAttribution(text));
+        mutateMetadata(MetadataField.ATTRIBUTION, attribution, newAttribution, () -> attribution = newAttribution);
     }
 
     public void setNumber(String text) {
-        mutateAndPost(ChangeType.METADATA, () -> applyNumber(text));
+        var newNumber = text.trim();
+        mutateMetadata(MetadataField.NUMBER, number, newNumber, () -> number = newNumber);
     }
 
     public void setDefaultKeyAccidentalCount(int defaultKeyAccidentalCount) {
-        mutateAndPost(ChangeType.CONTENT, () -> applyDefaultKeyAccidentalCount(defaultKeyAccidentalCount));
+        mutateMetadata(
+            MetadataField.DEFAULT_KEY_ACCIDENTAL_COUNT, this.defaultKeyAccidentalCount, defaultKeyAccidentalCount,
+            () -> this.defaultKeyAccidentalCount = defaultKeyAccidentalCount
+        );
     }
 
     public void setDefaultKeyType(KeyType defaultKeyType) {
-        mutateAndPost(ChangeType.CONTENT, () -> applyDefaultKeyType(defaultKeyType));
+        mutateMetadata(
+            MetadataField.DEFAULT_KEY_TYPE, this.defaultKeyType, defaultKeyType,
+            () -> this.defaultKeyType = defaultKeyType
+        );
     }
 
     // -- Font setters --
 
     public void setTitleFont(Font font) {
-        mutateAndPost(ChangeType.FONT, () -> applyTitleFont(font));
+        mutateFont(FontField.TITLE, titleFont, font, () -> applyTitleFont(font));
     }
 
     public void setLyricsFont(Font font) {
-        mutateAndPost(ChangeType.FONT, () -> applyLyricsFont(font));
+        mutateFont(FontField.LYRICS, lyricsFont, font, () -> applyLyricsFont(font));
     }
 
     public void setAttributionFont(Font font) {
-        mutateAndPost(ChangeType.FONT, () -> applyAttributionFont(font));
+        mutateFont(FontField.ATTRIBUTION, attributionFont, font, () -> applyAttributionFont(font));
     }
 
     public void setAnnotationFont(Font font) {
-        mutateAndPost(ChangeType.FONT, () -> applyAnnotationFont(font));
+        mutateFont(FontField.ANNOTATION, annotationFont, font, () -> applyAnnotationFont(font));
     }
 
     public void setBanglaFont(Font font) {
-        mutateAndPost(ChangeType.FONT, () -> applyBanglaFont(font));
+        mutateFont(FontField.BANGLA, banglaFont, font, () -> applyBanglaFont(font));
     }
 
     public void setFootnoteFont(Font font) {
-        mutateAndPost(ChangeType.FONT, () -> applyFootnoteFont(font));
+        mutateFont(FontField.FOOTNOTE, footnoteFont, font, () -> applyFootnoteFont(font));
     }
 
     // -- Layout setters --
 
+    /**
+     * Unlike the other layout setters, this always runs the apply block because
+     * {@code setByUser} flows into the sticky {@code userSetTopPadding} flag —
+     * a unchanged-padding update from user still needs to set that flag.
+     */
     public void setTopPaddingSs(double padding, boolean setByUser) {
-        mutateAndPost(ChangeType.LAYOUT, () -> applyTopPaddingSs(padding, setByUser));
+        var old = topPaddingSs;
+        withModification(() -> applyChange(
+            new LayoutChange(LayoutField.TOP_PADDING_SS, old, padding),
+            () -> applyTopPaddingSs(padding, setByUser)
+        ));
     }
 
     public void setAttributionStartYSs(double attributionStartY) {
-        mutateAndPost(ChangeType.LAYOUT, () -> applyAttributionStartYSs(attributionStartY));
+        mutateLayout(
+            LayoutField.ATTRIBUTION_START_Y_SS, attributionStartYSs, attributionStartY,
+            () -> attributionStartYSs = attributionStartY
+        );
     }
 
     public void setRowHeightAdjustmentSs(double rowHeightAdjustment) {
-        mutateAndPost(ChangeType.LAYOUT, () -> applyRowHeightAdjustmentSs(rowHeightAdjustment));
+        mutateLayout(
+            LayoutField.ROW_HEIGHT_ADJUSTMENT_SS, rowHeightAdjustmentSs, rowHeightAdjustment,
+            () -> rowHeightAdjustmentSs = rowHeightAdjustment
+        );
     }
 
     /**
@@ -705,11 +724,48 @@ public final class Composition {
      * Instead, use score.setLineWidth.
      */
     public void setLineWidthSs(double lineWidth) {
-        if (this.lineWidthSs == lineWidth) {
+        mutateLayout(LayoutField.LINE_WIDTH_SS, lineWidthSs, lineWidth, () -> lineWidthSs = lineWidth);
+    }
+
+    // -- Setter helpers --
+
+    /**
+     * Early-returns if {@code current} and {@code newValue} are equal; otherwise
+     * opens a bracket and emits a {@link MetadataChange} recording the change.
+     * Autoboxing applies for primitive callers.
+     */
+    private void mutateMetadata(
+        MetadataField field, @Nullable Object current, @Nullable Object newValue, Runnable apply
+    ) {
+        if (Objects.equals(current, newValue)) {
             return;
         }
 
-        mutateAndPost(ChangeType.LAYOUT, () -> applyLineWidthSs(lineWidth));
+        withModification(() -> applyChange(new MetadataChange(field, current, newValue), apply));
+    }
+
+    private void mutateFont(FontField field, Font current, Font newFont, Runnable apply) {
+        if (Objects.equals(current, newFont)) {
+            return;
+        }
+
+        withModification(() -> applyChange(new FontChange(field, current, newFont), apply));
+    }
+
+    private void mutateLayout(LayoutField field, double current, double newValue, Runnable apply) {
+        if (current == newValue) {
+            return;
+        }
+
+        withModification(() -> applyChange(new LayoutChange(field, current, newValue), apply));
+    }
+
+    private void mutateLyrics(LyricsField field, String current, String newValue, Runnable apply) {
+        if (current.equals(newValue)) {
+            return;
+        }
+
+        withModification(() -> applyChange(new LyricsChange(field, current, newValue), apply));
     }
 
     // -- Structure setters --
@@ -719,83 +775,168 @@ public final class Composition {
     }
 
     public void addLine(int index, Line line) {
-        var lineIndex = index;
+        var lineIndex = (index == InsertLineAction.ADD) ? lines.size() : index;
 
-        if (lineIndex == InsertLineAction.ADD) {
-            lineIndex = lines.size();
-        }
+        withModification(() -> applyChange(new LineInsertion(lineIndex, line), () -> {
+            lines.add(lineIndex, line);
+            line.setComposition(this);
 
-        lines.add(lineIndex, line);
-        line.setComposition(this);
+            if ((line.getKeyAccidentalCount() == 0) && (line.getKeyType() == null)) {
+                line.setKeyAccidentalCount(defaultKeyAccidentalCount);
+                line.setKeyType(defaultKeyType);
+            }
 
-        if (
-            (line.getKeyAccidentalCount() == 0) && (line.getKeyType() == null)
-        ) {
-            line.setKeyAccidentalCount(defaultKeyAccidentalCount);
-            line.setKeyType(defaultKeyType);
-        }
-
-        if (line.getTempoChangeYPosPx() == 0) {
-            line.setTempoChangeYPosPx(
-                (lineIndex == 0)
-                    ? ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.TEMPO_DEFAULT_Y_FIRST_LINE_SS)
-                    : ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.TEMPO_DEFAULT_Y_OTHER_LINES_SS)
-            );
-        }
-
-        setModified(true);
-
-        postChanged(ChangeType.STRUCTURE);
+            if (line.getTempoChangeYPosPx() == 0) {
+                line.setTempoChangeYPosPx(
+                    (lineIndex == 0)
+                        ? ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.TEMPO_DEFAULT_Y_FIRST_LINE_SS)
+                        : ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.TEMPO_DEFAULT_Y_OTHER_LINES_SS)
+                );
+            }
+        }));
     }
 
     public void removeLine(int index) {
-        lines.remove(index);
-        setModified(true);
-
-        postChanged(ChangeType.STRUCTURE);
+        var deletedLine = lines.get(index);
+        withModification(() -> applyChange(
+            new LineDeletion(index, deletedLine),
+            () -> lines.remove(index)
+        ));
     }
 
     /**
-     * Opens a modification bracket. While the bracket is open, calls to
-     * {@link #setModified(boolean) setModified(true)} and {@link #postChanged}
-     * are deferred. Brackets may be nested.
+     * Returns {@code true} while a modification bracket is open.
+     * Package-private so {@link Line#applyChange} can check without exposing the depth counter.
+     */
+    boolean isModifying() {
+        return modificationDepth > 0;
+    }
+
+    /**
+     * Returns {@code true} while mutation tracking is suspended.
+     * Package-private so {@link Line#applyChange} can check without exposing the depth counter.
+     */
+    boolean isMutationTrackingSuspended() {
+        return suspensionDepth > 0;
+    }
+
+    /**
+     * Runs {@code body} with mutation tracking suspended. Line-level mutations
+     * invoked during {@code body} run silently: no notification is posted, no
+     * undo entry is recorded, and the composition's {@code modified} flag is
+     * not set.
+     * <p>
+     * Intended for test setup that populates lines outside a user-driven
+     * modification bracket. Production code should use
+     * {@link #withModification(Runnable)} instead.
+     */
+    public void withoutMutationTracking(Runnable body) {
+        suspensionDepth++;
+
+        try {
+            body.run();
+        } finally {
+            suspensionDepth--;
+        }
+    }
+
+    /**
+     * Opens a modification bracket. Mutations accumulate while the bracket is open.
+     * Brackets may be nested; the notification fires only when the outermost bracket closes.
      */
     public void beginModification() {
-        // TODO: snapshot composition state here for undo grouping
+        // TODO: snapshot composition state here for undo grouping (#14)
         modificationDepth++;
     }
 
     /**
-     * Closes a modification bracket. When the outermost bracket closes and at
-     * least one change was accumulated, marks the composition modified and posts
-     * a single {@link CompositionDidChangeNotification} with the union of all
-     * accumulated change types.
+     * Closes a modification bracket. When the outermost bracket closes and at least one
+     * mutation was accumulated, marks the composition modified and posts a single
+     * {@link CompositionDidChangeNotification} carrying all accumulated mutations.
      */
     public void endModification() {
         modificationDepth--;
 
-        if (modificationDepth == 0 && accumulatedChangeTypes != null) {
+        if (modificationDepth == 0 && accumulatedMutations != null) {
             this.modified = true;
-            var types = accumulatedChangeTypes;
-            var line = accumulatedLine;
-            accumulatedChangeTypes = null;
-            accumulatedLine = null;
-            MessageCenter.post(new CompositionDidChangeNotification(types, this, line));
+            // Wrap-and-transfer ownership: the notification constructor stores the
+            // list directly, so we wrap once here instead of letting it defensively
+            // copy a list whose only reference is about to be dropped.
+            var mutations = Collections.unmodifiableList(accumulatedMutations);
+            accumulatedMutations = null;
+            MessageCenter.post(new CompositionDidChangeNotification(mutations, this));
         }
+    }
+
+    /**
+     * Executes {@code body} inside a modification bracket, then posts a single
+     * {@link CompositionDidChangeNotification} with all accumulated mutations.
+     * Prefer this over {@link #beginModification()} / {@link #endModification()} to ensure
+     * the depth counter is always balanced even if {@code body} throws.
+     */
+    public void withModification(Runnable body) {
+        beginModification();
+
+        try {
+            body.run();
+        } finally {
+            endModification();
+        }
+    }
+
+    /**
+     * Posts {@code message} to the message bus inside a modification bracket so
+     * that the resulting mutations (from subscribers like {@code Composition}'s
+     * own {@code @Handler} methods) coalesce into a single
+     * {@link CompositionDidChangeNotification}. Equivalent to
+     * {@code withModification(() -> MessageCenter.post(message))} but cleaner
+     * at the call site.
+     */
+    public void postWithModification(Message message) {
+        withModification(() -> MessageCenter.post(message));
+    }
+
+    /**
+     * Applies a single mutation within an open modification bracket.
+     * <p>
+     * Runs {@code mutator}, then records {@code mutation} in the accumulated list.
+     * <p>
+     * <pre>
+     * withModification(() -&gt; {                              ┐
+     *   │                                                    │
+     *   ├─ applyChange(mutation₁, mutator₁)                 │ caller's
+     *   │     ├─ throws if depth == 0                       │ bracket
+     *   │     ├─ mutator₁.run()                             │
+     *   │     └─ accumulatedMutations.add(mutation₁)        │
+     *   │                                                    │
+     *   ├─ applyChange(mutation₂, mutator₂)                 │
+     *   │     └─ ...                                         │
+     *   │                                                    │
+     * })  // bracket closes                                  │
+     *   ├─ depth → 0                                         │
+     *   ├─ push undo entry (future, #14)                     │
+     *   └─ post CompositionDidChangeNotification(accumulated)┘
+     * </pre>
+     *
+     * @throws IllegalStateException if called outside a modification bracket
+     */
+    public void applyChange(Mutation mutation, Runnable mutator) {
+        if (modificationDepth == 0) {
+            throw new IllegalStateException("applyChange called outside a modification bracket");
+        }
+
+        mutator.run();
+
+        if (accumulatedMutations == null) {
+            accumulatedMutations = new ArrayList<>();
+        }
+
+        accumulatedMutations.add(mutation);
     }
 
     // -- IO/internal setters (remain public, no message posting) --
 
     public void setModified(boolean modified) {
-        // Defer dirty-marking until the bracket closes; clearing (on save/load) always applies.
-        if (modified && modificationDepth > 0) {
-            return;
-        }
-
-        if (modified == this.modified) {
-            return;
-        }
-
         this.modified = modified;
     }
 
@@ -825,21 +966,21 @@ public final class Composition {
 
     @Handler
     public void lyricsDidChange(LyricsDidChangeNotification update) {
-        mutateAndPost(ChangeType.LYRICS, () -> {
+        withModification(() -> {
             if (update.getLyrics() != null) {
-                applyLyrics(update.getLyrics());
+                setLyrics(update.getLyrics());
             }
 
             if (update.getUnderLyrics() != null) {
-                applyUnderLyrics(update.getUnderLyrics());
+                setUnderLyrics(update.getUnderLyrics());
             }
 
             if (update.getTranslatedLyrics() != null) {
-                applyTranslatedLyrics(update.getTranslatedLyrics());
+                setTranslatedLyrics(update.getTranslatedLyrics());
             }
 
             if (update.getBanglaLyrics() != null) {
-                applyBanglaLyrics(update.getBanglaLyrics());
+                setBanglaLyrics(update.getBanglaLyrics());
             }
         });
 
@@ -848,106 +989,124 @@ public final class Composition {
 
     @Handler
     public void metadataDidChange(MetadataDidChangeNotification update) {
-        mutateAndPost(ChangeType.METADATA, () -> {
+        withModification(() -> {
             if (update.getTitle() != null) {
-                applyTitle(update.getTitle());
+                setTitle(update.getTitle());
             }
 
             if (update.getPlace() != null) {
-                applyPlace(update.getPlace());
+                setPlace(update.getPlace());
             }
 
             if (update.getYear() != null) {
-                applyYear(update.getYear());
+                setYear(update.getYear());
             }
 
             if (update.getNumber() != null) {
-                applyNumber(update.getNumber());
+                setNumber(update.getNumber());
             }
 
             if (update.getAttribution() != null) {
-                applyAttribution(update.getAttribution());
+                setAttribution(update.getAttribution());
             }
 
             if (update.getMonth() != null) {
-                applyMonth(update.getMonth());
+                setMonth(update.getMonth());
             }
 
             if (update.getDay() != null) {
-                applyDay(update.getDay());
+                setDay(update.getDay());
             }
 
             if (update.getUnofficialTranslation() != null) {
-                applyUnofficialTranslation(update.getUnofficialTranslation());
+                setUnofficialTranslation(update.getUnofficialTranslation());
             }
         });
     }
 
     @Handler
     public void fontDidChange(FontDidChangeNotification update) {
-        mutateAndPost(ChangeType.FONT, () -> {
+        withModification(() -> {
             if (update.getTitleFont() != null) {
-                applyTitleFont(update.getTitleFont());
+                setTitleFont(update.getTitleFont());
             }
 
             if (update.getLyricsFont() != null) {
-                applyLyricsFont(update.getLyricsFont());
+                setLyricsFont(update.getLyricsFont());
             }
 
             if (update.getAttributionFont() != null) {
-                applyAttributionFont(update.getAttributionFont());
+                setAttributionFont(update.getAttributionFont());
             }
 
             if (update.getAnnotationFont() != null) {
-                applyAnnotationFont(update.getAnnotationFont());
+                setAnnotationFont(update.getAnnotationFont());
             }
         });
     }
 
     @Handler
     public void tempoDidChange(TempoDidChangeNotification update) {
-        mutateAndPost(ChangeType.CONTENT, () -> {
-            if (update.getTempoType() != null) {
-                tempo.setTempoType(update.getTempoType());
-            }
+        // Skip the clone+mutation when the update record carries no actual fields.
+        if (update.getTempoType() == null
+            && update.getVisibleTempo() == null
+            && update.getTempoDescription() == null
+            && update.getShowTempo() == null) {
+            return;
+        }
 
-            if (update.getVisibleTempo() != null) {
-                tempo.setVisibleTempo(update.getVisibleTempo());
-            }
+        // Clone the old tempo before mutating it in place so the mutation record
+        // carries a stable before-state (option (a) from the Phase 3a audit).
+        var oldTempo = new Tempo(
+            tempo.getVisibleTempo(),
+            tempo.getTempoType(),
+            tempo.getTempoDescription(),
+            tempo.shouldShowTempo()
+        );
+        withModification(() -> applyChange(
+            new MetadataChange(MetadataField.TEMPO, oldTempo, tempo),
+            () -> {
+                if (update.getTempoType() != null) {
+                    tempo.setTempoType(update.getTempoType());
+                }
 
-            if (update.getTempoDescription() != null) {
-                tempo.setTempoDescription(update.getTempoDescription());
-            }
+                if (update.getVisibleTempo() != null) {
+                    tempo.setVisibleTempo(update.getVisibleTempo());
+                }
 
-            if (update.getShowTempo() != null) {
-                tempo.setShowTempo(update.getShowTempo());
+                if (update.getTempoDescription() != null) {
+                    tempo.setTempoDescription(update.getTempoDescription());
+                }
+
+                if (update.getShowTempo() != null) {
+                    tempo.setShowTempo(update.getShowTempo());
+                }
             }
-        });
+        ));
     }
 
     @Handler
     public void keySignatureDidChange(KeySignatureDidChangeNotification update) {
-        mutateAndPost(ChangeType.CONTENT, () -> {
+        withModification(() -> {
             if (update.getLineIndex() == null) {
-                // Composition-level default with propagation to matching lines
+                // Composition-level default with propagation to matching lines.
                 var oldKeyType = defaultKeyType;
                 var oldAccidentalCount = defaultKeyAccidentalCount;
-                applyDefaultKeyType(update.getKeyType());
-                applyDefaultKeyAccidentalCount(update.getAccidentalCount());
+
+                setDefaultKeyType(update.getKeyType());
+                setDefaultKeyAccidentalCount(update.getAccidentalCount());
 
                 for (var i = 0; i < lineCount(); i++) {
                     var line = getLine(i);
 
-                    if (
-                        line.getKeyAccidentalCount() == oldAccidentalCount
-                            && line.getKeyType() == oldKeyType
-                    ) {
+                    if (line.getKeyAccidentalCount() == oldAccidentalCount
+                        && line.getKeyType() == oldKeyType) {
                         line.setKeyAccidentalCount(defaultKeyAccidentalCount);
                         line.setKeyType(defaultKeyType);
                     }
                 }
             } else {
-                // Per-line update
+                // Per-line update.
                 var line = getLine(update.getLineIndex());
                 line.setKeyType(update.getKeyType());
                 line.setKeyAccidentalCount(update.getAccidentalCount());
@@ -957,41 +1116,37 @@ public final class Composition {
 
     @Handler
     public void layoutDidChange(LayoutDidChangeNotification update) {
-        mutateAndPost(ChangeType.LAYOUT, () -> {
+        withModification(() -> {
             if (update.getTopPaddingSs() != null) {
-                applyTopPaddingSs(
-                    update.getTopPaddingSs(),
-                    update.getTopPaddingSetByUser() != null && update.getTopPaddingSetByUser()
-                );
+                var setByUser = update.getTopPaddingSetByUser() != null && update.getTopPaddingSetByUser();
+                setTopPaddingSs(update.getTopPaddingSs(), setByUser);
             }
 
             if (update.getRowHeightAdjustmentSs() != null) {
-                applyRowHeightAdjustmentSs(update.getRowHeightAdjustmentSs());
+                setRowHeightAdjustmentSs(update.getRowHeightAdjustmentSs());
             }
 
             if (update.getLineWidthSs() != null) {
-                applyLineWidthSs(update.getLineWidthSs());
+                setLineWidthSs(update.getLineWidthSs());
             }
 
             if (update.getAttributionStartYSs() != null) {
-                applyAttributionStartYSs(update.getAttributionStartYSs());
+                setAttributionStartYSs(update.getAttributionStartYSs());
             }
         });
     }
 
     // ========== Private helpers ==========
 
-    private void mutateAndPost(ChangeType changeType, Runnable mutation) {
-        mutation.run();
-        setModified(true);
-        postChanged(changeType);
-    }
-
     // -- Apply methods (field mutation only, no side effects) --
 
     private void applyTitle(String text) {
-        title = processText(StringUtils.collapseMultipleSpaces(
-            StringUtils.stripLinefeeds(text)));
+        title = normalizeTitle(text);
+    }
+
+    /** Normalizes a title: strips linefeeds, collapses spaces, applies short-ă replacement. */
+    private String normalizeTitle(String text) {
+        return processText(StringUtils.collapseMultipleSpaces(StringUtils.stripLinefeeds(text)));
     }
 
     private void applyPlace(String place) {
@@ -1110,7 +1265,6 @@ public final class Composition {
                 );
             }
 
-            setModified(true);
             return text.replace("ă", "a").replace("Ă", "A");
         }
 
@@ -1132,31 +1286,4 @@ public final class Composition {
         return (lineHeight * lineCount) + (lineHeight / 2);
     }
 
-    private void postChanged(ChangeType changeType) {
-        postChanged(changeType, null);
-    }
-
-    /**
-     * Posts a change notification, or accumulates it if inside a modification bracket.
-     * Package-private so {@link Line} can route through the bracket.
-     */
-    void postChanged(ChangeType changeType, @Nullable Line line) {
-        if (modificationDepth > 0) {
-            if (accumulatedChangeTypes == null) {
-                accumulatedChangeTypes = EnumSet.of(changeType);
-                accumulatedLine = line;
-            } else {
-                accumulatedChangeTypes.add(changeType);
-
-                // If changes span multiple lines, clear the target line
-                if (accumulatedLine != line) {
-                    accumulatedLine = null;
-                }
-            }
-
-            return;
-        }
-
-        MessageCenter.post(new CompositionDidChangeNotification(changeType, this, line));
-    }
 }

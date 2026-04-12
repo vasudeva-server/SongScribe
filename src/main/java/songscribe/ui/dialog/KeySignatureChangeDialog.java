@@ -24,7 +24,6 @@ import module java.desktop;
 
 import songscribe.Strings;
 import songscribe.message.notification.KeySignatureDidChangeNotification;
-import songscribe.message.MessageCenter;
 import songscribe.music.KeyType;
 
 public class KeySignatureChangeDialog extends StandardDialog {
@@ -82,7 +81,7 @@ public class KeySignatureChangeDialog extends StandardDialog {
 
     @Override
     protected void setData() {
-        MessageCenter.post(new KeySignatureDidChangeNotification(
+        requireScore().getComposition().postWithModification(new KeySignatureDidChangeNotification(
             requireScore().getSelectedLine(),
             (KeyType) keysCombo.getSelectedItem(),
             (Integer) keysSpinner.getValue()

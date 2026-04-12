@@ -23,7 +23,6 @@ package songscribe.ui.action;
 import module java.desktop;
 
 import java.util.Arrays;
-import java.util.EnumSet;
 
 import org.jspecify.annotations.Nullable;
 
@@ -35,6 +34,7 @@ import songscribe.message.Message;
 import songscribe.message.MessageCenter;
 import songscribe.message.notification.BarWasSelectedNotification;
 import songscribe.message.notification.CompositionDidChangeNotification;
+import songscribe.message.notification.DocumentDidLoadNotification;
 import songscribe.message.notification.DialogVisibilityDidChangeNotification;
 import songscribe.message.notification.DurationWasSelectedNotification;
 import songscribe.message.notification.GraceModeStateDidChangeNotification;
@@ -548,21 +548,12 @@ public class UIAction extends AbstractAction {
 
     @Handler(priority = Message.MEDIUM_PRIORITY)
     public void compositionDidChange(CompositionDidChangeNotification message) {
-        if (message.getChangeTypes().stream().anyMatch(getRelevantChangeTypes()::contains)) {
-            updateEnabledState();
-        }
+        updateEnabledState();
     }
 
-    /**
-     * Returns the set of CompositionChangedMessage.ChangeType values that are relevant
-     * to this action. Subclasses can override to narrow the filter.
-     */
-    protected EnumSet<CompositionDidChangeNotification.ChangeType> getRelevantChangeTypes() {
-        return EnumSet.of(
-            CompositionDidChangeNotification.ChangeType.CONTENT,
-            CompositionDidChangeNotification.ChangeType.STRUCTURE,
-            CompositionDidChangeNotification.ChangeType.FULL
-        );
+    @Handler(priority = Message.MEDIUM_PRIORITY)
+    public void documentDidLoad(DocumentDidLoadNotification message) {
+        updateEnabledState();
     }
 
     /**

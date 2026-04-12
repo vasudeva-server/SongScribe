@@ -28,7 +28,7 @@ import java.awt.event.MouseEvent;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
-import songscribe.message.notification.CompositionDidChangeNotification;
+import songscribe.message.mutation.ElementField;
 import songscribe.music.ElementType;
 import songscribe.music.Line;
 import songscribe.music.StaffElement;
@@ -383,15 +383,32 @@ public final class GraceModeManager {
             return true;
         }
 
-        // Insert the host note at the locked x position
-        PreviewElementManager.handleClick(lineComponent);
+        // Coalesce the host-note insertion, the grace-note glissando connection,
+        // and the subsequent enterGraceNotePaired/finish work into a single
+        // CompositionDidChangeNotification.
+        var line = graceLine;
 
-        // Connect grace note to host note with a CONNECTED glissando
-        if (graceNote != null) {
-            graceNote.setGlissando(StaffElement.Glissando.Type.CONNECTED);
+        if (line == null) {
+            return true;
         }
 
-        enterGraceNotePaired(false);
+        line.withModification(() -> {
+            // Insert the host note at the locked x position
+            PreviewElementManager.handleClick(lineComponent);
+
+            // Connect grace note to host note with a CONNECTED glissando
+            var note = graceNote;
+
+            if (note != null) {
+                line.modifyElement(
+                    graceNoteIndex,
+                    ElementField.GLISSANDO,
+                    () -> note.setGlissando(StaffElement.Glissando.Type.CONNECTED)
+                );
+            }
+
+            enterGraceNotePaired(false);
+        });
         return true;
     }
 
@@ -502,59 +519,67 @@ public final class GraceModeManager {
     }
 
     private void enterGraceNotePaired(boolean connectNext) {
-        if (graceNote == null || graceLine == null) {
+        var note = graceNote;
+        var line = graceLine;
+
+        if (note == null || line == null) {
             finish(true);
             return;
         }
 
         int hostNoteIndex = graceNoteIndex + 1;
 
-        if (hostNoteIndex >= graceLine.elementCount()) {
+        if (hostNoteIndex >= line.elementCount()) {
             finish(true);
             return;
         }
 
-        var hostNote = graceLine.getElement(hostNoteIndex);
+        var hostNote = line.getElement(hostNoteIndex);
 
-        // Grace note and host note must have different pitches
-        if (graceNote.getStaffPosition() == hostNote.getStaffPosition()) {
-            // If the host note was just inserted (not connecting to existing),
-            // remove it before cancelling.
-            if (!connectNext) {
-                graceLine.removeElement(hostNoteIndex);
+        line.withModification(() -> {
+            // Grace note and host note must have different pitches
+            if (note.getStaffPosition() == hostNote.getStaffPosition()) {
+                // If the host note was just inserted (not connecting to existing),
+                // remove it before cancelling.
+                if (!connectNext) {
+                    line.removeElement(hostNoteIndex);
+                }
+
+                OptionDialogs.showErrorMessage(
+                    SwingUtilities.getWindowAncestor(graceLineComponent),
+                    Strings.ALERT_TITLE_GRACE_NOTE_ERROR,
+                    Strings.ERROR_GRACE_NOTE_SAME_PITCH
+                );
+
+                finish(true);
+                return;
             }
 
-            OptionDialogs.showErrorMessage(
-                SwingUtilities.getWindowAncestor(graceLineComponent),
-                Strings.ALERT_TITLE_GRACE_NOTE_ERROR,
-                Strings.ERROR_GRACE_NOTE_SAME_PITCH
-            );
+            if (connectNext) {
+                // Coming from GRACE_NOTE (drag-right): connect to the existing next pitched note.
+                // When coming from GRACE_NOTE_INSERT, the glissando was already added in mouseClicked.
+                line.modifyElement(
+                    graceNoteIndex,
+                    ElementField.GLISSANDO,
+                    () -> note.setGlissando(StaffElement.Glissando.Type.CONNECTED)
+                );
+            }
 
-            finish(true);
-            return;
-        }
+            // Mirror the host note's attributes onto the toolbar
+            selectionCoordinator.reflectElement(hostNote);
 
-        if (connectNext) {
-            // Coming from GRACE_NOTE (drag-right): connect to the existing next pitched note.
-            // When coming from GRACE_NOTE_INSERT, the glissando was already added in mouseClicked.
-            graceNote.setGlissando(StaffElement.Glissando.Type.CONNECTED);
-        }
-
-        // Mirror the host note's attributes onto the toolbar
-        selectionCoordinator.reflectElement(hostNote);
-
-        finish(false);
+            finish(false);
+        });
     }
 
     private void finish(boolean cancel) {
-        if (cancel && graceNote != null && graceLine != null) {
-            if (graceNoteIndex != -1) {
-                graceLine.removeElement(graceNoteIndex);
-            }
-        }
-
-        if (graceLine != null) {
-            post(new CompositionDidChangeNotification(CompositionDidChangeNotification.ChangeType.CONTENT, graceLine.getComposition(), graceLine));
+        if (cancel && graceNote != null && graceLine != null && graceNoteIndex != -1) {
+            // Wrap in withModification so the deletion is recorded even when finish()
+            // runs outside an outer bracket (e.g. via Esc / drag-left cancel paths).
+            // Brackets nest, so this is a no-op if a caller already opened one.
+            var line = graceLine;
+            int idx = graceNoteIndex;
+            line.withModification(() -> line.removeElement(idx));
         }
 
         // Restore only DISABLE_IN_GRACE_MODE actions to their pre-grace-mode state.

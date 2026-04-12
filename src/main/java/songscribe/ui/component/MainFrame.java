@@ -53,6 +53,7 @@ import songscribe.message.command.ShowOpenDialogCommand;
 import songscribe.message.command.ToggleLoopPlaybackCommand;
 import songscribe.message.command.TogglePlayWithRepeatsCommand;
 import songscribe.message.notification.CompositionDidChangeNotification;
+import songscribe.message.notification.DocumentDidLoadNotification;
 import songscribe.message.notification.DocumentWasSavedNotification;
 import songscribe.music.Composition;
 import songscribe.prefs.Prefs;
@@ -519,6 +520,11 @@ public class MainFrame extends JFrame implements Printable {
 
     @Handler
     public void compositionDidChange(CompositionDidChangeNotification message) {
+        updateTitle();
+    }
+
+    @Handler
+    public void documentDidLoad(DocumentDidLoadNotification message) {
         updateTitle();
     }
 

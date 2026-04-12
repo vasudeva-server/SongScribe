@@ -27,8 +27,11 @@ import com.intellij.uiDesigner.core.GridLayoutManager;
 import net.engio.mbassy.listener.Handler;
 
 import songscribe.message.MessageCenter;
+import songscribe.message.mutation.LyricsChange;
 import songscribe.message.notification.CompositionDidChangeNotification;
+import songscribe.message.notification.DocumentDidLoadNotification;
 import songscribe.message.notification.LyricsDidChangeNotification;
+import songscribe.music.Composition;
 import songscribe.ui.dialog.LyricsDialog;
 
 @SuppressWarnings("NonStaticInitializer")
@@ -148,15 +151,22 @@ public class LyricsPanel extends LyricsDialog {
 
     @Handler
     public void compositionDidChange(CompositionDidChangeNotification message) {
-        if (!message.hasChangeType(CompositionDidChangeNotification.ChangeType.LYRICS)
-            && !message.hasChangeType(CompositionDidChangeNotification.ChangeType.FULL)) {
+        if (!message.hasMutationOf(LyricsChange.class)) {
             return;
         }
 
+        refreshLyricsFromComposition(message.getComposition());
+    }
+
+    @Handler
+    public void documentDidLoad(DocumentDidLoadNotification message) {
+        refreshLyricsFromComposition(message.getComposition());
+    }
+
+    private void refreshLyricsFromComposition(Composition composition) {
         updatingFromMessage = true;
 
         try {
-            var composition = message.getComposition();
             lyricsArea.setText(composition.getLyrics());
             underSongArea.setText(composition.getUnderLyrics());
             translatedArea.setText(composition.getTranslatedLyrics());

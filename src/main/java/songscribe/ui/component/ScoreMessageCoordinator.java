@@ -42,6 +42,14 @@ import songscribe.message.command.ToggleTieCommand;
 import songscribe.message.command.ToggleTrillCommand;
 import songscribe.message.command.ToggleTupletCommand;
 import songscribe.message.command.UpdatePreviewElementCommand;
+import songscribe.message.mutation.FontChange;
+import songscribe.message.mutation.LayoutChange;
+import songscribe.message.mutation.LineDeletion;
+import songscribe.message.mutation.LineInsertion;
+import songscribe.message.mutation.LineScopedMutation;
+import songscribe.message.mutation.LyricsChange;
+import songscribe.message.mutation.MetadataChange;
+import songscribe.message.mutation.Mutation;
 import songscribe.message.notification.CompositionDidChangeNotification;
 import songscribe.message.notification.CompositionDidChangeNotification.ChangeType;
 import songscribe.message.notification.ControlDidChangeNotification;
@@ -247,10 +255,11 @@ public final class ScoreMessageCoordinator {
             return;
         }
 
-        // Invalidate layout for affected lines on content or structure changes
+        // Invalidate layout for affected lines on content or structural changes.
+        // The CONTENT legacy check covers interval and element-field operations (beam, tie,
+        // tuplet, flip stem, etc.) not yet migrated to the Mutation system.
         if (message.hasChangeType(ChangeType.CONTENT)
-            || message.hasChangeType(ChangeType.STRUCTURE)
-            || message.hasChangeType(ChangeType.FULL)) {
+            || hasLineLayoutMutation(message)) {
             var staffPanel = mainPanel.getStaffPanel();
 
             if (staffPanel != null) {
@@ -268,10 +277,8 @@ public final class ScoreMessageCoordinator {
             }
         }
 
-        // Font, metadata, and layout changes require a full relayout
-        if (message.hasChangeType(ChangeType.FONT)
-            || message.hasChangeType(ChangeType.METADATA)
-            || message.hasChangeType(ChangeType.LAYOUT)) {
+        // Font, metadata, and layout changes require a full relayout.
+        if (hasFullRelayoutMutation(message)) {
             score.viewChanged();
         }
 
@@ -282,6 +289,39 @@ public final class ScoreMessageCoordinator {
         }
 
         repaintDebounceTimer.restart();
+    }
+
+    /**
+     * Returns whether the notification carries any mutation that requires line layout
+     * invalidation: line-scoped element changes, line insert/delete, or lyrics changes.
+     */
+    private static boolean hasLineLayoutMutation(CompositionDidChangeNotification message) {
+        for (Mutation mutation : message.getMutations()) {
+            if (mutation instanceof LineScopedMutation
+                || mutation instanceof LineInsertion
+                || mutation instanceof LineDeletion
+                || mutation instanceof LyricsChange) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Returns whether the notification carries any mutation that requires a full
+     * composition relayout (font / metadata / layout property changes).
+     */
+    private static boolean hasFullRelayoutMutation(CompositionDidChangeNotification message) {
+        for (Mutation mutation : message.getMutations()) {
+            if (mutation instanceof FontChange
+                || mutation instanceof MetadataChange
+                || mutation instanceof LayoutChange) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     @Handler
@@ -358,7 +398,7 @@ public final class ScoreMessageCoordinator {
 
     private void handleCut() {
         handleCopy();
-        handleDelete();
+        score.getComposition().withModification(this::handleDelete);
     }
 
     private void handleCopy() {
@@ -385,13 +425,35 @@ public final class ScoreMessageCoordinator {
 
         if (state != null && state.hasElementSelection()) {
             var line = state.getLine();
+            var begin = state.getSelectionBegin();
+            var end = state.getSelectionEnd();
 
-            for (var i = state.getSelectionEnd(); i >= state.getSelectionBegin(); i--) {
-                var removedCount = deleteNote(i, line);
+            // When the element immediately before the selection is a paired grace note,
+            // deleteNote must remove it along with the first selected note — a non-contiguous
+            // operation that cannot be expressed as a single range. Fall back to the per-element loop.
+            if (begin > 0 && line.isPairedGraceNote(begin - 1)) {
+                composition.withModification(() -> deleteSelection(begin, end, line));
+            } else {
+                // Contiguous range: clean up the element before the range, then batch-remove.
+                if (begin > 0) {
+                    var prevElement = line.getElement(begin - 1);
 
-                // When deleteNote also removes a preceding paired grace note,
-                // skip the extra index so we don't process an already-removed element.
-                i -= (removedCount - 1);
+                    if (prevElement.getGlissando() != null) {
+                        prevElement.removeGlissando();
+                    }
+                }
+
+                // Shift elements after the selection to fill the gap, mirroring the
+                // per-element xPos adjustment that deleteNote performs.
+                if (end < line.elementCount() - 1) {
+                    var shift = line.getElement(begin).getXPosSs() - line.getElement(end + 1).getXPosSs();
+
+                    for (var i = end + 1; i < line.elementCount(); i++) {
+                        line.getElement(i).setXPosSs(line.getElement(i).getXPosSs() + shift);
+                    }
+                }
+
+                composition.withModification(() -> line.removeRange(begin, end));
             }
 
             LyricsProcessor.spellLyrics(line);
@@ -409,6 +471,21 @@ public final class ScoreMessageCoordinator {
         selectionCoordinator.clearSavedActionStates();
         score.clearSelection();
         score.repaint();
+    }
+
+    /**
+     * Deletes elements {@code begin} through {@code end} one at a time using
+     * {@link #deleteNote}, which handles the paired-grace-note case. Must be
+     * called inside a modification bracket.
+     */
+    private void deleteSelection(int begin, int end, Line line) {
+        for (var i = end; i >= begin; i--) {
+            var removedCount = deleteNote(i, line);
+
+            // When deleteNote also removes a preceding paired grace note,
+            // skip the extra index so we don't process an already-removed element.
+            i -= (removedCount - 1);
+        }
     }
 
     private void handlePaste() {

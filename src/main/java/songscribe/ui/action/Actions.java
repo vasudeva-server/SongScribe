@@ -39,7 +39,7 @@ import org.slf4j.LoggerFactory;
 import songscribe.Strings;
 import songscribe.message.Message;
 import songscribe.message.MessageCenter;
-import songscribe.message.notification.CompositionDidChangeNotification;
+import songscribe.message.notification.DocumentDidLoadNotification;
 import songscribe.ui.action.UIAction.AppMenuAction;
 import songscribe.ui.dialog.CompositionSettingsDialog;
 import songscribe.ui.dialog.LyricsDialog;
@@ -409,10 +409,8 @@ public final class Actions {
 
     private static class ResetHandler {
         @Handler(priority = Message.HIGH_PRIORITY)
-        public void compositionDidChange(CompositionDidChangeNotification message) {
-            if (message.hasChangeType(CompositionDidChangeNotification.ChangeType.FULL)) {
-                resetToDefaults();
-            }
+        public void documentDidLoad(DocumentDidLoadNotification message) {
+            resetToDefaults();
         }
     }
 }

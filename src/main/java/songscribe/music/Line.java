@@ -24,6 +24,7 @@ import module java.desktop;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.stream.IntStream;
 
@@ -31,7 +32,19 @@ import org.jspecify.annotations.Nullable;
 
 import kotlin.Pair;
 
-import songscribe.message.notification.CompositionDidChangeNotification;
+import songscribe.message.mutation.ElementDeletion;
+import songscribe.message.mutation.ElementField;
+import songscribe.message.mutation.ElementInsertion;
+import songscribe.message.mutation.ElementModification;
+import songscribe.message.mutation.ElementRangeDeletion;
+import songscribe.message.mutation.ElementReplacement;
+import songscribe.message.mutation.KeyField;
+import songscribe.message.mutation.LineKeyChange;
+import songscribe.message.mutation.LineLayoutChange;
+import songscribe.message.mutation.LineLayoutField;
+import songscribe.message.mutation.Mutation;
+import songscribe.message.mutation.RangeElementAddition;
+import songscribe.message.mutation.RangeElementRemoval;
 import songscribe.midi.GlissandoMidiHelper;
 import songscribe.midi.PlaybackSettings;
 import songscribe.midi.VelocityMap;
@@ -159,9 +172,56 @@ public class Line {
         return keys;
     }
 
+    /**
+     * Applies a single mutation, delegating to the parent composition's bracket.
+     *
+     * <p>When the line is attached to a composition, a modification bracket must be
+     * open — the mutation is recorded and the mutator runs inside it. If the line is
+     * not yet attached (e.g. during file-load bootstrap before {@code setComposition}),
+     * or the composition has suspended tracking via
+     * {@link Composition#withoutMutationTracking(Runnable)}, the mutator runs directly
+     * without tracking.
+     *
+     * @throws IllegalStateException if the line is attached to a composition that has
+     *     neither an open modification bracket nor suspended tracking
+     */
+    public void applyChange(Mutation mutation, Runnable mutator) {
+        if (composition == null || composition.isMutationTrackingSuspended()) {
+            mutator.run();
+            return;
+        }
+
+        if (!composition.isModifying()) {
+            throw new IllegalStateException(
+                "Line.applyChange called outside a modification bracket for " + mutation
+            );
+        }
+
+        composition.applyChange(mutation, mutator);
+    }
+
+    /**
+     * Executes {@code body} inside a modification bracket on the parent composition.
+     * If the composition is not yet set, {@code body} runs directly.
+     */
+    public void withModification(Runnable body) {
+        if (composition != null) {
+            composition.withModification(body);
+        } else {
+            body.run();
+        }
+    }
+
     public void setKeyAccidentalCount(int keys) {
-        compositionWasModified();
-        this.keys = keys;
+        if (this.keys == keys) {
+            return;
+        }
+
+        var old = this.keys;
+        applyChange(
+            new LineKeyChange(this, KeyField.ACCIDENTAL_COUNT, old, keys),
+            () -> this.keys = keys
+        );
     }
 
     public @Nullable KeyType getKeyType() {
@@ -169,30 +229,67 @@ public class Line {
     }
 
     public void setKeyType(@Nullable KeyType keyType) {
-        compositionWasModified();
-        this.keyType = keyType;
+        if (this.keyType == keyType) {
+            return;
+        }
+
+        var old = this.keyType;
+        applyChange(
+            new LineKeyChange(this, KeyField.KEY_TYPE, old, keyType),
+            () -> this.keyType = keyType
+        );
     }
 
     public void addElement(StaffElement element) {
         element.setLine(this);
-        elements.add(element);
-        attachInitialTempoIfNeeded(element);
-        compositionWasModified();
+        var index = elements.size();
+        applyChange(
+            new ElementInsertion(this, index, element),
+            () -> {
+                elements.add(element);
+                attachInitialTempoIfNeeded(element);
+            }
+        );
     }
 
     public void addElement(int index, StaffElement element) {
         element.setLine(this);
-        elements.add(index, element);
-        shiftIntervals(intervalSets, index, 1);
-        attachInitialTempoIfNeeded(element);
-        compositionWasModified();
+        applyChange(
+            new ElementInsertion(this, index, element),
+            () -> {
+                elements.add(index, element);
+                shiftIntervals(intervalSets, index, 1);
+                attachInitialTempoIfNeeded(element);
+            }
+        );
     }
 
     public void setElement(int index, StaffElement element) {
-        compositionWasModified();
-        element.setLine(this);
-        elements.set(index, element);
-        attachInitialTempoIfNeeded(element);
+        var oldElement = elements.get(index);
+        applyChange(
+            new ElementReplacement(this, index, oldElement, element),
+            () -> {
+                element.setLine(this);
+                elements.set(index, element);
+                attachInitialTempoIfNeeded(element);
+            }
+        );
+    }
+
+    /**
+     * Applies a field change to the element at {@code index}. Clones the element
+     * before running {@code mutator} so the resulting {@link ElementModification}
+     * carries a stable pre-mutation snapshot for undo — centralizing the
+     * clone-before-mutate contract that would otherwise have to be repeated at
+     * every emission site.
+     */
+    public void modifyElement(int index, ElementField field, Runnable mutator) {
+        modifyElement(index, EnumSet.of(field), mutator);
+    }
+
+    public void modifyElement(int index, EnumSet<ElementField> fields, Runnable mutator) {
+        var beforeClone = elements.get(index).clone();
+        applyChange(new ElementModification(this, index, fields, beforeClone), mutator);
     }
 
     /**
@@ -241,18 +338,44 @@ public class Line {
     }
 
     public void removeElement(int index) {
-        compositionWasModified();
-        elements.remove(index);
-        shiftIntervals(intervalSets, index, -1);
+        var deleted = elements.get(index);
+        applyChange(
+            new ElementDeletion(this, index, deleted),
+            () -> {
+                elements.remove(index);
+                shiftIntervals(intervalSets, index, -1);
+                rangeElements.removeIf(r -> r.isInvalidatedBy(List.of(deleted)));
+            }
+        );
     }
 
-    private void compositionWasModified() {
-        if (composition != null) {
-            composition.setModified(true);
-            composition.postChanged(
-                CompositionDidChangeNotification.ChangeType.CONTENT, this
-            );
-        }
+    /**
+     * Removes all elements in the contiguous range {@code [from, to]} (inclusive)
+     * and posts a single {@link ElementRangeDeletion} mutation.
+     *
+     * <pre>
+     *  removeRange(from, to)
+     *    └─ composition.applyChange(ElementRangeDeletion, () -> {
+     *         ├─ var deletedElements = List.copyOf(elements.subList(from, to+1));
+     *         ├─ elements.subList(from, to+1).clear();
+     *         ├─ shiftIntervals(from, -(to-from+1));
+     *         └─ rangeElements.removeIf(r -> r.isInvalidatedBy(deletedElements));
+     *       });
+     * </pre>
+     *
+     * @param from the index of the first element to remove
+     * @param to   the index of the last element to remove (inclusive)
+     */
+    public void removeRange(int from, int to) {
+        var deletedElements = List.copyOf(elements.subList(from, to + 1));
+        applyChange(
+            new ElementRangeDeletion(this, from, to, deletedElements),
+            () -> {
+                elements.subList(from, to + 1).clear();
+                shiftIntervals(intervalSets, from, -(to - from + 1));
+                rangeElements.removeIf(r -> r.isInvalidatedBy(deletedElements));
+            }
+        );
     }
 
     public int elementCount() {
@@ -341,8 +464,11 @@ public class Line {
      */
     @Deprecated
     public void setTempoChangeYPosPx(int tempoChangeYPosPx) {
-        this.tempoChangeYPosPx = tempoChangeYPosPx;
-        compositionWasModified();
+        var old = this.tempoChangeYPosPx;
+        applyChange(
+            new LineLayoutChange(this, LineLayoutField.TEMPO_CHANGE_Y_POS_PX, old, tempoChangeYPosPx),
+            () -> this.tempoChangeYPosPx = tempoChangeYPosPx
+        );
     }
 
     /**
@@ -358,8 +484,11 @@ public class Line {
      */
     @Deprecated
     public void setBeatChangeYPosPx(int beatChangeYPosPx) {
-        this.beatChangeYPosPx = beatChangeYPosPx;
-        compositionWasModified();
+        var old = this.beatChangeYPosPx;
+        applyChange(
+            new LineLayoutChange(this, LineLayoutField.BEAT_CHANGE_Y_POS_PX, old, beatChangeYPosPx),
+            () -> this.beatChangeYPosPx = beatChangeYPosPx
+        );
     }
 
     public double getLyricsYPosSs() {
@@ -367,8 +496,11 @@ public class Line {
     }
 
     public void setLyricsYPosSs(double lyricsYPosSs) {
-        this.lyricsYPosSs = lyricsYPosSs;
-        compositionWasModified();
+        var old = this.lyricsYPosSs;
+        applyChange(
+            new LineLayoutChange(this, LineLayoutField.LYRICS_Y_POS_SS, old, lyricsYPosSs),
+            () -> this.lyricsYPosSs = lyricsYPosSs
+        );
     }
 
     /**
@@ -384,8 +516,11 @@ public class Line {
      */
     @Deprecated
     public void setFirstSecondEndingYPosPx(int fsEndingYPosPx) {
-        firstSecondEndingYPosPx = fsEndingYPosPx;
-        compositionWasModified();
+        var old = firstSecondEndingYPosPx;
+        applyChange(
+            new LineLayoutChange(this, LineLayoutField.FIRST_SECOND_ENDING_Y_POS_PX, old, fsEndingYPosPx),
+            () -> firstSecondEndingYPosPx = fsEndingYPosPx
+        );
     }
 
     /**
@@ -401,13 +536,20 @@ public class Line {
      */
     @Deprecated
     public void setTrillYPosPx(int trillYPosPx) {
-        this.trillYPosPx = trillYPosPx;
-        compositionWasModified();
+        var old = this.trillYPosPx;
+        applyChange(
+            new LineLayoutChange(this, LineLayoutField.TRILL_Y_POS_PX, old, trillYPosPx),
+            () -> this.trillYPosPx = trillYPosPx
+        );
     }
 
     public void mulElementDistChange(float ratio) {
-        elementDistChangeRatio *= ratio;
-        compositionWasModified();
+        var old = elementDistChangeRatio;
+        var newRatio = old * ratio;
+        applyChange(
+            new LineLayoutChange(this, LineLayoutField.ELEMENT_DIST_CHANGE_RATIO, old, newRatio),
+            () -> elementDistChangeRatio = newRatio
+        );
     }
 
     public float getElementDistChangeRatio() {
@@ -521,8 +663,10 @@ public class Line {
      */
     public void addRangeElement(RangeElement element) {
         element.setParentLine(this);
-        rangeElements.add(element);
-        compositionWasModified();
+        applyChange(
+            new RangeElementAddition(this, element),
+            () -> rangeElements.add(element)
+        );
     }
 
     /**
@@ -532,14 +676,21 @@ public class Line {
      * @return true if the element was removed
      */
     public boolean removeRangeElement(RangeElement element) {
-        if (rangeElements.remove(element)) {
-            element.setParentLine(null);
-            compositionWasModified();
+        var index = rangeElements.indexOf(element);
 
-            return true;
+        if (index < 0) {
+            return false;
         }
 
-        return false;
+        applyChange(
+            new RangeElementRemoval(this, element),
+            () -> {
+                rangeElements.remove(index);
+                element.setParentLine(null);
+            }
+        );
+
+        return true;
     }
 
     /**
