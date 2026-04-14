@@ -137,6 +137,7 @@ public class UIAction extends AbstractAction {
      * {@code NSMenuItem} titles using the prefix returned by
      * {@link #getNativeMenuTitle()}.
      */
+    @FunctionalInterface
     public interface AppMenuAction {
         /**
          * Returns a title prefix used to locate this action's corresponding
