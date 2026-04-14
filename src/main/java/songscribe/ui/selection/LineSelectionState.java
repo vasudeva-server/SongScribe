@@ -24,8 +24,6 @@ import java.util.stream.IntStream;
 
 import org.jspecify.annotations.Nullable;
 
-import kotlin.Pair;
-
 import songscribe.music.Interval;
 import songscribe.music.IntervalSet;
 import songscribe.music.TupletInterval;
@@ -348,14 +346,14 @@ public final class LineSelectionState {
     }
 
     /**
-     * Returns a Pair where:
-     *   - The first Boolean indicates whether the selection can be tupleted/untupleted.
-     *   - The second Boolean indicates whether the selection is currently tupleted.
+     * Returns a {@link TupletToggleInfo} describing whether the selection can be
+     * tupleted/untupleted, which tuplet currently covers the selection start, and
+     * whether the selection spans that tuplet's full interval.
      */
     @SuppressWarnings("ObjectEquality")
-    public Pair<Boolean, Boolean> canToggleTuplet() {
+    public TupletToggleInfo canToggleTuplet() {
         if (getSelectionSize() < 2) {
-            return new Pair<>(false, false);
+            return new TupletToggleInfo(false, null, false);
         }
 
         var tuplets = line.getTuplets();
@@ -363,7 +361,7 @@ public final class LineSelectionState {
 
         for (var i = selectionBegin; i <= selectionEnd; i++) {
             if (!line.getElement(i).getType().isPitchedNote()) {
-                return new Pair<>(false, false);
+                return new TupletToggleInfo(false, null, false);
             }
 
             var currentInterval = tuplets.findInterval(i);
@@ -371,11 +369,15 @@ public final class LineSelectionState {
             if (i == selectionBegin) {
                 firstInterval = currentInterval;
             } else if (currentInterval != firstInterval) {
-                return new Pair<>(false, false);
+                return new TupletToggleInfo(false, null, false);
             }
         }
 
-        return new Pair<>(true, firstInterval != null);
+        var coversExisting = (firstInterval != null)
+            && (selectionBegin == firstInterval.start)
+            && (selectionEnd == firstInterval.end);
+
+        return new TupletToggleInfo(true, firstInterval, coversExisting);
     }
 
     /**

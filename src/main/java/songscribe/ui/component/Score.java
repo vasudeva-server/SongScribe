@@ -29,7 +29,6 @@ import java.util.function.Consumer;
 
 import org.jspecify.annotations.Nullable;
 
-import kotlin.Pair;
 import net.engio.mbassy.listener.Handler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,13 +36,15 @@ import org.slf4j.LoggerFactory;
 import songscribe.Strings;
 import songscribe.export.ExportOptions;
 import songscribe.io.CompositionIO;
+import songscribe.message.Message;
 import songscribe.message.MessageCenter;
 import songscribe.music.Composition;
 import songscribe.music.EndingValidationResult;
 import songscribe.music.Line;
 import songscribe.music.LyricsProcessor;
-import songscribe.music.MusicEditOperations;
 import songscribe.music.StaffElement;
+import songscribe.ui.MusicEditOperations;
+import songscribe.message.notification.CompositionDidChangeNotification;
 import songscribe.message.notification.DocumentDidLoadNotification;
 import songscribe.message.notification.MusicSelectionDidChangeNotification;
 import songscribe.message.notification.PrefsDidChangeNotification;
@@ -73,6 +74,7 @@ import songscribe.ui.playback.PlaybackController;
 import songscribe.ui.renderer.RenderContext;
 import songscribe.ui.selection.ElementSelection;
 import songscribe.ui.selection.SelectionCoordinator;
+import songscribe.ui.selection.TupletToggleInfo;
 
 /**
  * This class is responsible for managing and drawing the music score
@@ -108,6 +110,10 @@ public final class Score
     // The vertical distance between whole tones on the staff (e.g. A to B)
     public static final float STAFF_POSITION_OFFSET_PX = (float) ScaleContext.getInstance().toPixels(LayoutStylesheet.STAFF_POSITION_OFFSET_SS);
 
+    // Runs before all HIGH_PRIORITY subscribers so the tuplet info cache is warm
+    // by the time TupletAction handlers (HIGH_PRIORITY) read it.
+    private static final int TUPLET_INFO_CACHE_PRIORITY = Message.HIGH_PRIORITY + 100;
+
     // Colors used to draw the music score in various states — read from UIManager for theming.
     // Callers should not cache these values; read at render time.
     public static Color getPlayingNoteColor() {
@@ -121,6 +127,11 @@ public final class Score
     public static Color getSelectionStrokeColor() {
         return FlatLafProps.get(FlatLafKeys.SCORE_SELECTION_RECT_BORDER);
     }
+
+    // Cached per-notification-dispatch result of canToggleTuplet(), populated by
+    // a TUPLET_INFO_CACHE_PRIORITY handler before any TupletAction handler reads it.
+    @Nullable
+    private TupletToggleInfo cachedTupletToggleInfo = null;
 
     // Edit popup
     @Nullable
@@ -535,6 +546,21 @@ public final class Score
         PlaybackController.applyPrefsDuringPlayback();
     }
 
+    @Handler(priority = TUPLET_INFO_CACHE_PRIORITY)
+    public void musicSelectionDidChangeCacheTupletInfo(MusicSelectionDidChangeNotification message) {
+        cachedTupletToggleInfo = operations != null ? operations.canToggleTuplet() : null;
+    }
+
+    @Handler(priority = TUPLET_INFO_CACHE_PRIORITY)
+    public void compositionDidChangeCacheTupletInfo(CompositionDidChangeNotification message) {
+        cachedTupletToggleInfo = operations != null ? operations.canToggleTuplet() : null;
+    }
+
+    @Handler(priority = TUPLET_INFO_CACHE_PRIORITY)
+    public void documentDidLoadCacheTupletInfo(DocumentDidLoadNotification message) {
+        cachedTupletToggleInfo = operations != null ? operations.canToggleTuplet() : null;
+    }
+
     @Handler
     public void prefsDidChange(PrefsDidChangeNotification message) {
         switch (message.getKey()) {
@@ -722,7 +748,11 @@ public final class Score
         return requireOperations().canToggleTie();
     }
 
-    public Pair<Boolean, Boolean> canToggleTuplet() {
+    public TupletToggleInfo canToggleTuplet() {
+        if (cachedTupletToggleInfo != null) {
+            return cachedTupletToggleInfo;
+        }
+
         return requireOperations().canToggleTuplet();
     }
 

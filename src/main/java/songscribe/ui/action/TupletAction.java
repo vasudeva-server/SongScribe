@@ -27,8 +27,11 @@ import net.engio.mbassy.listener.Handler;
 
 import songscribe.message.Message;
 import songscribe.message.MessageCenter;
-import songscribe.message.notification.MusicSelectionDidChangeNotification;
 import songscribe.message.command.ToggleTupletCommand;
+import songscribe.message.notification.CompositionDidChangeNotification;
+import songscribe.message.notification.DocumentDidLoadNotification;
+import songscribe.message.notification.MusicSelectionDidChangeNotification;
+import songscribe.ui.component.Score;
 import songscribe.util.StringUtils;
 
 public class TupletAction extends UIAction {
@@ -119,13 +122,57 @@ public class TupletAction extends UIAction {
     public void musicSelectionDidChange(
         MusicSelectionDidChangeNotification message
     ) {
-        if (updateEnabledState()) {
-            var toggleInfo = message.getScore().canToggleTuplet();
-            var canToggle = toggleInfo.getFirst();
-            var isTupleted = toggleInfo.getSecond();
+        handleChange(message.getScore());
+    }
 
-            // If the selection is already tupleted, enable the "Remove" action
-            setEnabled(canToggle && ((tuplet != Tuplet.REMOVE) || isTupleted));
+    @Override
+    @Handler
+    public void compositionDidChange(CompositionDidChangeNotification message) {
+        var score = getScore();
+
+        if (score != null) {
+            handleChange(score);
+        }
+    }
+
+    @Override
+    @Handler
+    public void documentDidLoad(DocumentDidLoadNotification message) {
+        var score = getScore();
+
+        if (score != null) {
+            handleChange(score);
+        }
+    }
+
+    private void handleChange(Score score) {
+        if (!updateEnabledState()) {
+            return;
+        }
+
+        var info = score.canToggleTuplet();
+
+        if (!info.canToggle()) {
+            setEnabled(false);
+            return;
+        }
+
+        var existing = info.existing();
+
+        if (tuplet == Tuplet.REMOVE) {
+            setEnabled(existing != null);
+        } else if (existing == null) {
+            setEnabled(true);
+        } else if (!info.coversExisting()) {
+            // Strict sub-range of an existing tuplet: creating or changing
+            // grade would silently destroy the existing tuplet and replace
+            // it with a sub-range tuplet, so only REMOVE is meaningful.
+            setEnabled(false);
+        } else {
+            // Full coverage: disable the action matching the existing grade
+            // (clicking it would be a no-op); other add-actions perform a
+            // grade change via remove + add.
+            setEnabled(existing.getGrade() != tuplet.getSize());
         }
     }
 

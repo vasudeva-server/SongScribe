@@ -35,8 +35,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.formdev.flatlaf.util.FontUtils;
-import kotlin.Pair;
-
 import songscribe.error.RuntimeError;
 
 public final class MyFontUtils {
@@ -56,15 +54,17 @@ public final class MyFontUtils {
         "(\\p{Ll})(\\p{Lu})"
     );
 
-    private static final List<Pair<Pattern, String>> ABBREVIATIONS =
+    private record Abbreviation(Pattern pattern, String expansion) {}
+
+    private static final List<Abbreviation> ABBREVIATIONS =
         Arrays.asList(
-            new Pair<>(Pattern.compile("\\bIta?\\b"), "Italic"),
-            new Pair<>(Pattern.compile("\\bSC\\b"), "Small Caps"),
-            new Pair<>(Pattern.compile("\\b(?:Cn|Cond)\\b"), "Condensed"),
-            new Pair<>(Pattern.compile("\\bExt\\b"), "Extended"),
-            new Pair<>(Pattern.compile("\\bExp\\b"), "Expanded"),
-            new Pair<>(Pattern.compile("\\bDB\\b"), "Demi Bold"),
-            new Pair<>(Pattern.compile("\\bSupp\\b"), "Supplemental")
+            new Abbreviation(Pattern.compile("\\bIta?\\b"), "Italic"),
+            new Abbreviation(Pattern.compile("\\bSC\\b"), "Small Caps"),
+            new Abbreviation(Pattern.compile("\\b(?:Cn|Cond)\\b"), "Condensed"),
+            new Abbreviation(Pattern.compile("\\bExt\\b"), "Extended"),
+            new Abbreviation(Pattern.compile("\\bExp\\b"), "Expanded"),
+            new Abbreviation(Pattern.compile("\\bDB\\b"), "Demi Bold"),
+            new Abbreviation(Pattern.compile("\\bSupp\\b"), "Supplemental")
         );
 
     private static final Set<String> familyNames = new HashSet<>();
@@ -74,6 +74,8 @@ public final class MyFontUtils {
 
     @Nullable
     private static Font iconFont = null;
+
+    private record ParsedFontName(String family, String style) {}
 
     private MyFontUtils() {}
 
@@ -231,7 +233,7 @@ public final class MyFontUtils {
     // will return a pair of strings, the first being the family name and the second being
     // the style name. If the style name contains hyphens, they will be removed.
     // If no style name is found, the second string will be empty.
-    public static Pair<String, String> parsePSName(String psName) {
+    public static ParsedFontName parsePSName(String psName) {
         // First split on "_". Everthing before the first "_" is the family name,
         // and everything after is the style name.
         var parts = Arrays.asList(psName.split("_"));
@@ -239,7 +241,7 @@ public final class MyFontUtils {
         if (parts.size() > 1) {
             // If there are hyphens in the style name, we need to remove them
             parts.set(1, parts.get(1).replace("-", ""));
-            return new Pair<>(parts.getFirst(), parts.get(1));
+            return new ParsedFontName(parts.getFirst(), parts.get(1));
         }
 
         // Split on hyphen. The last part is the style name.
@@ -257,11 +259,11 @@ public final class MyFontUtils {
             Damascus (DamascusSemiBold)
         */
         if (parts.size() == 1) {
-            return new Pair<>(parts.getFirst(), "");
+            return new ParsedFontName(parts.getFirst(), "");
         }
 
         // There may actually be a hyphen in the family name, only the last part is the styles
-        return new Pair<>(
+        return new ParsedFontName(
             String.join("-", parts.subList(0, parts.size() - 1)),
             parts.getLast()
         );
@@ -275,8 +277,8 @@ public final class MyFontUtils {
 
     public static String getStyleDescription(Font font) {
         var parsed = parsePSName(font.getPSName());
-        var psFamily = parsed.getFirst();
-        var psStyle = parsed.getSecond();
+        var psFamily = parsed.family();
+        var psStyle = parsed.style();
 
         /*
             If there is no style, usually the family is the family name alone,
@@ -357,11 +359,8 @@ public final class MyFontUtils {
         result = CAMEL_CASE_PATTERN.matcher(result).replaceAll("$1 $2");
 
         // Convert abbreviations to full words
-        for (var pair : ABBREVIATIONS) {
-            result = pair
-                .getFirst()
-                .matcher(result)
-                .replaceAll(pair.getSecond());
+        for (var abbr : ABBREVIATIONS) {
+            result = abbr.pattern().matcher(result).replaceAll(abbr.expansion());
         }
 
         return result;

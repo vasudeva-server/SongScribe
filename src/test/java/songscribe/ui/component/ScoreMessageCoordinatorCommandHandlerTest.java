@@ -65,7 +65,7 @@ import songscribe.music.DynamicsInterval;
 import songscribe.music.ElementType;
 import songscribe.music.EndingValidationResult;
 import songscribe.music.Line;
-import songscribe.music.MusicEditOperations;
+import songscribe.ui.MusicEditOperations;
 import songscribe.music.StaffElement;
 import songscribe.music.TupletInterval;
 import songscribe.ui.action.FirstSecondEndingAction;
@@ -85,8 +85,6 @@ import songscribe.ui.selection.SelectionCoordinator;
  * on the wiring between the coordinator and the operations layer.
  */
 class ScoreMessageCoordinatorCommandHandlerTest extends UnitTest {
-
-    private static final int TRIPLET = 3;
 
     private Composition composition;
     @Nullable private MockedStatic<MessageCenter> messageCenterMock;
@@ -227,22 +225,26 @@ class ScoreMessageCoordinatorCommandHandlerTest extends UnitTest {
         var notification = captureSingleDidChange();
         assertThat(notification.getMutations()).hasSize(1);
         var addition = (TupletAddition) notification.getMutations().get(0);
-        assertThat(addition.interval().getGrade()).isEqualTo(TRIPLET);
+        assertThat(addition.interval().getGrade()).isEqualTo(TupletAction.Tuplet.TRIPLET.getSize());
     }
 
     @Test
-    void testHandleToggleTupletEmitsTupletRemovalForExistingDifferentGrade() {
-        // Existing triplet over [0..2], handler invoked with quintuplet — the in-place
-        // grade change is gone, so this must produce a TupletRemoval (not a grade swap).
+    void testHandleToggleTupletEmitsRemovalAndAdditionForGradeChange() {
+        // Existing triplet over [0..2] with the full interval selected, handler invoked with
+        // quintuplet — emits [TupletRemoval, TupletAddition] inside one modification bracket
+        // so the grade change replays atomically under undo.
         var env = setup(crotchet(), crotchet(), crotchet());
-        env.line().getTuplets().addInterval(new TupletInterval(0, 2, TRIPLET));
+        env.line().getTuplets().addInterval(new TupletInterval(0, 2, TupletAction.Tuplet.TRIPLET.getSize()));
         ReflectionTestHelper.selectRange(env.coordinator(), 0, 2);
 
         env.scoreMessageCoordinator().handleToggleTuplet(tupletCommand(TupletAction.Tuplet.QUINTUPLET));
 
         var notification = captureSingleDidChange();
-        assertThat(notification.getMutations()).hasSize(1);
-        assertThat(notification.getMutations().get(0)).isInstanceOf(TupletRemoval.class);
+        var mutations = notification.getMutations();
+        assertThat(mutations).hasSize(2);
+        assertThat(mutations.get(0)).isInstanceOf(TupletRemoval.class);
+        assertThat(mutations.get(1)).isInstanceOf(TupletAddition.class);
+        assertThat(((TupletAddition) mutations.get(1)).interval().getGrade()).isEqualTo(TupletAction.Tuplet.QUINTUPLET.getSize());
     }
 
     /**

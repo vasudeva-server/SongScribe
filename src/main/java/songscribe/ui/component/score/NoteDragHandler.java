@@ -172,7 +172,7 @@ class NoteDragHandler {
         for (var i = dragBegin; i <= dragEnd; i++) {
             var element = line.getElement(i);
 
-            if (!element.getType().isNote()) {
+            if (!element.getType().isPitchedNote()) {
                 continue;
             }
 

@@ -59,9 +59,9 @@ import songscribe.message.notification.PlaybackStateDidChangeNotification;
 import songscribe.message.notification.RestModeDidChangeNotification;
 import songscribe.music.Line;
 import songscribe.music.LyricsProcessor;
-import songscribe.music.MusicEditOperations;
-import songscribe.ui.OptionDialogs;
 import songscribe.ui.Mode;
+import songscribe.ui.MusicEditOperations;
+import songscribe.ui.OptionDialogs;
 import songscribe.ui.action.Actions;
 import songscribe.ui.action.FirstSecondEndingAction;
 import songscribe.ui.action.InsertLineAction;
@@ -183,7 +183,7 @@ public final class ScoreMessageCoordinator {
 
     @Handler
     public void handleToggleTuplet(ToggleTupletCommand message) {
-        operations.toggleTuplet(message.getTupletSize());
+        operations.toggleTuplet(message.getTupletSize(), operations.canToggleTuplet());
         score.selectionChanged();
     }
 

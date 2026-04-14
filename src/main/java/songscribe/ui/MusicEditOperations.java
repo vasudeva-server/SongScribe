@@ -18,23 +18,33 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package songscribe.music;
+package songscribe.ui;
 
 import module java.desktop;
 
 import java.util.ArrayList;
 import java.util.EnumSet;
+import java.util.List;
 import java.util.HashSet;
 import java.util.TreeSet;
 
-import kotlin.Pair;
 
 import songscribe.Strings;
 import songscribe.message.mutation.ElementField;
+import songscribe.music.BeamInterval;
+import songscribe.music.Composition;
+import songscribe.music.DynamicsInterval;
+import songscribe.music.ElementType;
+import songscribe.music.EndingValidationResult;
+import songscribe.music.Interval;
+import songscribe.music.Line;
+import songscribe.music.LyricsProcessor;
+import songscribe.music.TieInterval;
+import songscribe.music.TupletInterval;
 import songscribe.ui.layout.Ending;
-import songscribe.ui.OptionDialogs;
 import songscribe.ui.selection.LineSelectionState;
 import songscribe.ui.selection.SelectionCoordinator;
+import songscribe.ui.selection.TupletToggleInfo;
 
 /**
  * Handles music editing operations for a composition.
@@ -122,27 +132,65 @@ public final class MusicEditOperations {
 
     // ========== Tuplet Operations ==========
 
-    public Pair<Boolean, Boolean> canToggleTuplet() {
+    public TupletToggleInfo canToggleTuplet() {
         var state = coordinator.getActiveSelection();
-        return (state != null) ? state.canToggleTuplet() : new Pair<>(false, false);
+        return (state != null) ? state.canToggleTuplet() : new TupletToggleInfo(false, null, false);
     }
 
-    public void toggleTuplet(int tupletSize) {
+    /**
+     * Handles five cases: (1) tupletSize == 0 with existing tuplet → remove; (2) no existing
+     * tuplet and tupletSize > 0 → add; (3) existing tuplet, selection spans its full interval,
+     * requested grade matches → remove (toggle-off semantics); (4) existing tuplet, full
+     * coverage, different grade → remove then add in one bracket (emits TupletRemoval +
+     * TupletAddition); (5) existing tuplet, selection is a strict sub-range → rejected with
+     * {@link IllegalStateException} so a programmatic caller cannot silently replace a tuplet
+     * with a sub-range tuplet.
+     *
+     * <p>Callers must pass the {@link TupletToggleInfo} obtained from {@link #canToggleTuplet()}
+     * so there is a single source of truth for the decision. Any branch that would have been a
+     * silent no-op in the old API now throws {@link IllegalStateException} — the UI gates these
+     * via action enable state, so reaching them indicates a caller bug.
+     */
+    public void toggleTuplet(int tupletSize, TupletToggleInfo info) {
         var state = coordinator.getActiveSelection();
 
         if (state == null) {
             return;
         }
 
+        if (!info.canToggle()) {
+            throw new IllegalStateException(
+                "toggleTuplet called with info.canToggle() == false; caller must check canToggleTuplet() first");
+        }
+
         var line = state.getLine();
-        var tuplets = line.getTuplets();
+        var existing = info.existing();
+
+        if (tupletSize == 0) {
+            if (existing == null) {
+                throw new IllegalStateException(
+                    "toggleTuplet(0) requires an existing tuplet at the selection");
+            }
+
+            line.withModification(() -> line.removeTuplet(existing));
+            return;
+        }
+
+        if (existing == null) {
+            line.withModification(() -> line.addTuplet(new TupletInterval(
+                state.getSelectionBegin(), state.getSelectionEnd(), tupletSize)));
+            return;
+        }
+
+        if (!info.coversExisting()) {
+            throw new IllegalStateException(
+                "toggleTuplet with a strict sub-range of an existing tuplet is not allowed");
+        }
 
         line.withModification(() -> {
-            var existing = tuplets.findInterval(state.getSelectionBegin());
+            line.removeTuplet(existing);
 
-            if (existing != null) {
-                line.removeTuplet(existing);
-            } else if (tupletSize > 0) {
+            if (existing.getGrade() != tupletSize) {
                 line.addTuplet(new TupletInterval(
                     state.getSelectionBegin(), state.getSelectionEnd(), tupletSize));
             }
@@ -180,9 +228,7 @@ public final class MusicEditOperations {
 
         var intervals = getDynamicsIntervalsFromSelection(state);
 
-        return (
-            !intervals.getFirst().isEmpty() || !intervals.getSecond().isEmpty()
-        );
+        return !intervals.crescendos().isEmpty() || !intervals.diminuendos().isEmpty();
     }
 
     public void removeDynamicsFromSelection() {
@@ -196,20 +242,22 @@ public final class MusicEditOperations {
         var intervals = getDynamicsIntervalsFromSelection(state);
 
         line.withModification(() -> {
-            for (var interval : intervals.getFirst()) {
+            for (var interval : intervals.crescendos()) {
                 line.removeCrescendo(interval);
             }
 
-            for (var interval : intervals.getSecond()) {
+            for (var interval : intervals.diminuendos()) {
                 line.removeDiminuendo(interval);
             }
         });
     }
 
-    private Pair<
-        ArrayList<DynamicsInterval>,
-        ArrayList<DynamicsInterval>
-        > getDynamicsIntervalsFromSelection(LineSelectionState state) {
+    private record DynamicsIntervals(
+        List<DynamicsInterval> crescendos,
+        List<DynamicsInterval> diminuendos
+    ) {}
+
+    private DynamicsIntervals getDynamicsIntervalsFromSelection(LineSelectionState state) {
         var line = state.getLine();
         var crescendos = line.getCrescendos();
         var diminuendos = line.getDiminuendos();
@@ -238,7 +286,7 @@ public final class MusicEditOperations {
             i++;
         }
 
-        return new Pair<>(crescendoIntervals, diminuendoIntervals);
+        return new DynamicsIntervals(crescendoIntervals, diminuendoIntervals);
     }
 
     // ========== First-Second Ending Operations ==========

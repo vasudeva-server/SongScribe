@@ -20,6 +20,7 @@
 package songscribe.music;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mockStatic;
 
 import org.junit.jupiter.api.AfterEach;
@@ -49,14 +50,13 @@ import songscribe.message.mutation.TieRemoval;
 import songscribe.message.mutation.TupletAddition;
 import songscribe.message.mutation.TupletRemoval;
 import songscribe.message.notification.CompositionDidChangeNotification;
+import songscribe.ui.MusicEditOperations;
+import songscribe.ui.action.TupletAction;
 import songscribe.ui.layout.Ending;
 import songscribe.ui.selection.ReflectionTestHelper;
 import songscribe.ui.selection.SelectionCoordinator;
 
 class MusicEditOperationsMutationTest extends UnitTest {
-
-    private static final int TRIPLET = 3;
-    private static final int QUINTUPLET = 5;
 
     private Composition composition;
     @Nullable private MockedStatic<MessageCenter> messageCenterMock;
@@ -206,7 +206,7 @@ class MusicEditOperationsMutationTest extends UnitTest {
     void testToggleTupletAddEmitsTupletAddition() {
         var env = setup(crotchet(), crotchet(), crotchet());
         ReflectionTestHelper.selectRange(env.coordinator(), 0, 2);
-        env.operations().toggleTuplet(TRIPLET);
+        env.operations().toggleTuplet(TupletAction.Tuplet.TRIPLET.getSize(), env.operations().canToggleTuplet());
 
         var notification = captureSingleDidChange();
         var mutations = notification.getMutations();
@@ -215,16 +215,16 @@ class MusicEditOperationsMutationTest extends UnitTest {
         var addition = (TupletAddition) mutations.get(0);
         assertThat(addition.interval().start).isEqualTo(0);
         assertThat(addition.interval().end).isEqualTo(2);
-        assertThat(addition.interval().getGrade()).isEqualTo(TRIPLET);
+        assertThat(addition.interval().getGrade()).isEqualTo(TupletAction.Tuplet.TRIPLET.getSize());
         assertThat(addition.line()).isSameAs(env.line());
     }
 
     @Test
     void testToggleTupletRemoveEmitsTupletRemoval() {
         var env = setup(crotchet(), crotchet(), crotchet());
-        env.line().getTuplets().addInterval(new TupletInterval(0, 2, TRIPLET));
+        env.line().getTuplets().addInterval(new TupletInterval(0, 2, TupletAction.Tuplet.TRIPLET.getSize()));
         ReflectionTestHelper.selectRange(env.coordinator(), 0, 2);
-        env.operations().toggleTuplet(TRIPLET);
+        env.operations().toggleTuplet(TupletAction.Tuplet.TRIPLET.getSize(), env.operations().canToggleTuplet());
 
         var notification = captureSingleDidChange();
         var mutations = notification.getMutations();
@@ -234,18 +234,62 @@ class MusicEditOperationsMutationTest extends UnitTest {
     }
 
     @Test
-    void testToggleTupletDoesNotPerformInPlaceGradeChange() {
-        // Calling toggleTuplet with a different grade on an existing tuplet must
-        // remove the existing interval, not emit a grade-change mutation.
+    void testToggleTupletGradeChangeEmitsRemovalThenAddition() {
+        // With the full tuplet interval selected, calling toggleTuplet with a
+        // different grade must remove the existing interval and add the new one
+        // inside a single bracket — one notification, two mutations, undo replays
+        // both atomically.
         var env = setup(crotchet(), crotchet(), crotchet());
-        env.line().getTuplets().addInterval(new TupletInterval(0, 2, TRIPLET));
+        env.line().getTuplets().addInterval(new TupletInterval(0, 2, TupletAction.Tuplet.TRIPLET.getSize()));
         ReflectionTestHelper.selectRange(env.coordinator(), 0, 2);
-        env.operations().toggleTuplet(QUINTUPLET);
+        env.operations().toggleTuplet(TupletAction.Tuplet.QUINTUPLET.getSize(), env.operations().canToggleTuplet());
+
+        var notification = captureSingleDidChange();
+        var mutations = notification.getMutations();
+        assertThat(mutations).hasSize(2);
+        assertThat(mutations.get(0)).isInstanceOf(TupletRemoval.class);
+        var removal = (TupletRemoval) mutations.get(0);
+        assertThat(removal.interval().getGrade()).isEqualTo(TupletAction.Tuplet.TRIPLET.getSize());
+        assertThat(removal.line()).isSameAs(env.line());
+        assertThat(mutations.get(1)).isInstanceOf(TupletAddition.class);
+        var addition = (TupletAddition) mutations.get(1);
+        assertThat(addition.interval().start).isEqualTo(0);
+        assertThat(addition.interval().end).isEqualTo(2);
+        assertThat(addition.interval().getGrade()).isEqualTo(TupletAction.Tuplet.QUINTUPLET.getSize());
+        assertThat(addition.line()).isSameAs(env.line());
+    }
+
+    @Test
+    void testToggleTupletMatchingGradeRemovesOnly() {
+        // Clicking the same grade over an existing tuplet removes it (no add).
+        var env = setup(crotchet(), crotchet(), crotchet());
+        env.line().getTuplets().addInterval(new TupletInterval(0, 2, TupletAction.Tuplet.TRIPLET.getSize()));
+        ReflectionTestHelper.selectRange(env.coordinator(), 0, 2);
+        env.operations().toggleTuplet(TupletAction.Tuplet.TRIPLET.getSize(), env.operations().canToggleTuplet());
 
         var notification = captureSingleDidChange();
         var mutations = notification.getMutations();
         assertThat(mutations).hasSize(1);
         assertThat(mutations.get(0)).isInstanceOf(TupletRemoval.class);
+    }
+
+    @Test
+    void testToggleTupletPartialCoverageInExistingTupletThrows() {
+        // Partial-coverage selection inside an existing tuplet is a caller bug:
+        // the UI disables this path, and toggleTuplet now throws IllegalStateException
+        // rather than silently replacing the tuplet with a sub-range one.
+        var env = setup(crotchet(), crotchet(), crotchet());
+        var originalTuplet = new TupletInterval(0, 2, TupletAction.Tuplet.TRIPLET.getSize());
+        env.line().getTuplets().addInterval(originalTuplet);
+        ReflectionTestHelper.selectRange(env.coordinator(), 0, 1);
+        var info = env.operations().canToggleTuplet();
+
+        assertThatThrownBy(() -> env.operations().toggleTuplet(TupletAction.Tuplet.QUINTUPLET.getSize(), info))
+            .isInstanceOf(IllegalStateException.class)
+            .hasMessageContaining("sub-range");
+
+        // The original interval object is still in place — the operation was a pure no-op.
+        assertThat(env.line().getTuplets().findInterval(0)).isSameAs(originalTuplet);
     }
 
     // -----------------------------------------------------------------------

@@ -30,8 +30,6 @@ import java.util.stream.IntStream;
 
 import org.jspecify.annotations.Nullable;
 
-import kotlin.Pair;
-
 import songscribe.message.mutation.BeamingAddition;
 import songscribe.message.mutation.BeamingRemoval;
 import songscribe.message.mutation.CrescendoAddition;
@@ -57,6 +55,7 @@ import songscribe.message.mutation.TupletAddition;
 import songscribe.message.mutation.TupletRemoval;
 import songscribe.midi.GlissandoMidiHelper;
 import songscribe.midi.PlaybackSettings;
+import songscribe.midi.TrackPosition;
 import songscribe.midi.VelocityMap;
 import songscribe.ui.layout.Ending;
 import songscribe.ui.layout.LayoutStylesheet;
@@ -909,7 +908,7 @@ public class Line {
      * @param settings Playback settings
      * @return Pair of (ending tick position, ending tempo)
      */
-    public Pair<Integer, Tempo> addToTrack(
+    public TrackPosition addToTrack(
         Track track,
         int lineIndex,
         int startTicks,
@@ -924,7 +923,7 @@ public class Line {
      * Adds all of this line's elements to a MIDI track, using a velocity map
      * for dynamic-aware note velocities.
      */
-    public Pair<Integer, Tempo> addToTrack(
+    public TrackPosition addToTrack(
         Track track,
         int lineIndex,
         int startTicks,
@@ -948,7 +947,7 @@ public class Line {
      * @param endElement Index of the last element to add
      * @return Pair of (ending tick position, ending tempo)
      */
-    public Pair<Integer, Tempo> addToTrack(
+    public TrackPosition addToTrack(
         Track track,
         int lineIndex,
         int startTicks,
@@ -965,7 +964,7 @@ public class Line {
      * Adds a range of this line's elements to a MIDI track, using a velocity map
      * for dynamic-aware note velocities.
      */
-    public Pair<Integer, Tempo> addToTrack(
+    public TrackPosition addToTrack(
         Track track,
         int lineIndex,
         int startTicks,
@@ -983,7 +982,7 @@ public class Line {
 
         // Flush pending pitch bend/expression resets so the state
         // is clean when the sequence loops or the next line starts.
-        glissandoHelper.createPendingResets(track, result.getFirst(), 0);
+        glissandoHelper.createPendingResets(track, result.ticks(), 0);
 
         return result;
     }
@@ -1005,7 +1004,7 @@ public class Line {
      * @param glissandoHelper Shared glissando state across calls
      * @return Pair of (ending tick position, ending tempo)
      */
-    public Pair<Integer, Tempo> addToTrack(
+    public TrackPosition addToTrack(
         Track track,
         int lineIndex,
         int startTicks,
@@ -1027,7 +1026,7 @@ public class Line {
      * (e.g. pending grace pitch) to survive across calls. The caller is
      * responsible for flushing pending resets when done.
      */
-    public Pair<Integer, Tempo> addToTrack(
+    public TrackPosition addToTrack(
         Track track,
         int lineIndex,
         int startTicks,
@@ -1060,7 +1059,7 @@ public class Line {
                 glissandoHelper, velocityMap);
         }
 
-        return new Pair<>(ticks, currentTempo);
+        return new TrackPosition(ticks, currentTempo);
     }
 
     /**
@@ -1199,7 +1198,7 @@ public class Line {
 
             var nextElement = getElement(elementIndex + 1);
 
-            if (!nextElement.getType().isNote()) {
+            if (!nextElement.getType().isPitchedNote()) {
                 addNormalNoteOff(track, trackTicks, duration, element, settings);
                 return;
             }

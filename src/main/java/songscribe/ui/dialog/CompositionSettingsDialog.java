@@ -24,8 +24,6 @@ import module java.desktop;
 import java.util.Objects;
 
 
-import kotlin.Pair;
-
 import songscribe.Strings;
 import songscribe.message.notification.FontDidChangeNotification;
 import songscribe.message.notification.KeySignatureDidChangeNotification;
@@ -551,6 +549,8 @@ public class CompositionSettingsDialog extends StandardDialog {
 
     private final class MusicTab extends BaseDialog.Tab {
 
+        private record KeySelection(KeyType keyType, int count) {}
+
         private final TempoSection tempoSection = new TempoSection(
             Tempo.Type.displayValues(),
             Strings.get(Strings.DIALOG_COMPOSITION_SETTINGS_SHOW_ONLY_DESCRIPTION),
@@ -694,8 +694,8 @@ public class CompositionSettingsDialog extends StandardDialog {
                 || !Objects.equals(tempoDescription, tempo.getTempoDescription())
                 || showTempo != tempo.shouldShowTempo();
 
-            var keyChanged = typeAndCount.getFirst() != composition.getDefaultKeyType()
-                || !typeAndCount.getSecond().equals(composition.getDefaultKeyAccidentalCount());
+            var keyChanged = typeAndCount.keyType() != composition.getDefaultKeyType()
+                || typeAndCount.count() != composition.getDefaultKeyAccidentalCount();
 
             // Wrap both notifications in one bracket so tempo and key changes coalesce
             // into a single CompositionDidChangeNotification when both are modified.
@@ -713,8 +713,8 @@ public class CompositionSettingsDialog extends StandardDialog {
                     if (keyChanged) {
                         MessageCenter.post(new KeySignatureDidChangeNotification(
                             null,
-                            typeAndCount.getFirst(),
-                            typeAndCount.getSecond()
+                            typeAndCount.keyType(),
+                            typeAndCount.count()
                         ));
                     }
                 });
@@ -755,7 +755,7 @@ public class CompositionSettingsDialog extends StandardDialog {
         }
 
         // SongScribe stores a key signature as a KeyType + the number of flats or sharps
-        private Pair<KeyType, Integer> getKeyTypeAndCountFromCombo() {
+        private KeySelection getKeyTypeAndCountFromCombo() {
             var index = keyCombo.getSelectedIndex();
 
             // Index 0 is no flats or sharps.
@@ -763,14 +763,14 @@ public class CompositionSettingsDialog extends StandardDialog {
             // Index 8-14 is 1-7 sharps.
             // If index >= 1, we want to return a number from 1-7 for the accidental count.
             if (index == 0) {
-                return new Pair<>(KeyType.FLATS, 0);
+                return new KeySelection(KeyType.FLATS, 0);
             }
 
             if (index < 8) {
-                return new Pair<>(KeyType.FLATS, index);
+                return new KeySelection(KeyType.FLATS, index);
             }
 
-            return new Pair<>(KeyType.SHARPS, index - 7);
+            return new KeySelection(KeyType.SHARPS, index - 7);
         }
 
         private void revertLineWidthField() {

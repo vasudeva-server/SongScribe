@@ -121,7 +121,7 @@ public class MidiSequenceBuilder {
                 var lineStart = (i == startLine && startNote > 0) ? startNote : 0;
                 var lineEnd = (i == endLine && endNote >= 0) ? endNote : line.elementCount() - 1;
 
-                kotlin.Pair<Integer, Tempo> result;
+                TrackPosition result;
 
                 if (lineStart > 0 || lineEnd < line.elementCount() - 1) {
                     result = line.addToTrack(track, i, ticks, currentTempo, settings,
@@ -131,8 +131,8 @@ public class MidiSequenceBuilder {
                         velocityMap);
                 }
 
-                ticks = result.getFirst();
-                currentTempo = result.getSecond();
+                ticks = result.ticks();
+                currentTempo = result.tempo();
 
                 if (i == endLine) {
                     break;
@@ -142,8 +142,8 @@ public class MidiSequenceBuilder {
             // Handle repeats
             var result = buildSequenceWithRepeats(
                 track, startLine, startNote, endLine, initialTempo, velocityMap);
-            ticks = result.getFirst();
-            currentTempo = result.getSecond();
+            ticks = result.ticks();
+            currentTempo = result.tempo();
         }
 
         // Place END_OF_TRACK at the end of the last note's full written duration.
@@ -167,7 +167,7 @@ public class MidiSequenceBuilder {
      * @return Pair of (ending tick position, ending tempo)
      * @throws InvalidMidiDataException if MIDI data is invalid
      */
-    private kotlin.Pair<Integer, Tempo> buildSequenceWithRepeats(
+    private TrackPosition buildSequenceWithRepeats(
         Track track,
         int startLine,
         int startNote,
@@ -262,8 +262,8 @@ public class MidiSequenceBuilder {
                     track, lineIndex, ticks, currentTempo, settings,
                     noteIndex, noteIndex, glissandoHelper, velocityMap
                 );
-                ticks = result.getFirst();
-                currentTempo = result.getSecond();
+                ticks = result.ticks();
+                currentTempo = result.tempo();
             }
 
             if (lineIndex == endLine) {
@@ -276,7 +276,7 @@ public class MidiSequenceBuilder {
         // Flush any pending pitch bend/expression resets at the end
         glissandoHelper.createPendingResets(track, ticks, 0);
 
-        return new kotlin.Pair<>(ticks, currentTempo);
+        return new TrackPosition(ticks, currentTempo);
     }
 
     /**
