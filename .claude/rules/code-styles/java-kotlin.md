@@ -303,7 +303,7 @@ if(condition) doSomething(); // No braces!
 - Use `/* */` for block comments and file headers
 - Use `/** */` for JavaDoc (public APIs only)
 - TODO comments: `// TODO: Description of work needed`
-- Explain *why*, not *what* (code shows what it does)
+- Default to explaining *why*, not *what* — well-named identifiers already show what the code does. Document *what* only when the algorithm or logic is non-obvious (a multi-step transform, a subtle invariant, a branching rule that isn't apparent from the structure).
 
 ### Special Cases
 
