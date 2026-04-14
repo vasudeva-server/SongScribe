@@ -27,7 +27,7 @@ import songscribe.message.MessageCenter;
 import songscribe.ui.Mode;
 import songscribe.message.notification.ModeDidChangeNotification;
 
-public class ModeAction extends SelectableUIAction {
+public final class ModeAction extends SelectableUIAction {
 
     private final Mode mode;
 

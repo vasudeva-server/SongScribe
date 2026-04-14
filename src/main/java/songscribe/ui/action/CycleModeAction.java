@@ -32,7 +32,7 @@ import songscribe.message.notification.ModeDidChangeNotification;
  * Owns the 'E' accelerator key, so pressing 'E' is equivalent to clicking
  * the mode cycle button in the toolbar.
  */
-public class CycleModeAction extends UIAction {
+public final class CycleModeAction extends UIAction {
 
     static final ModeAction[] MODES = {
         Actions.EDIT_MODE_ACTION,
@@ -46,7 +46,7 @@ public class CycleModeAction extends UIAction {
     }
 
     private CycleModeAction() {
-        super(null, "cycle-mode", KeyEvent.VK_E, 0, Flag.DISABLE_WHEN_EDITING_TEXT, Flag.DISABLE_IN_GRACE_MODE);
+        super(null, "cycle-mode", KeyEvent.VK_M, 0, Flag.DISABLE_WHEN_EDITING_TEXT, Flag.DISABLE_IN_GRACE_MODE);
         currentIndex = 0;
     }
 
