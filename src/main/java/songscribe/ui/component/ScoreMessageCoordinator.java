@@ -51,7 +51,6 @@ import songscribe.message.mutation.LyricsChange;
 import songscribe.message.mutation.MetadataChange;
 import songscribe.message.mutation.Mutation;
 import songscribe.message.notification.CompositionDidChangeNotification;
-import songscribe.message.notification.CompositionDidChangeNotification.ChangeType;
 import songscribe.message.notification.ControlDidChangeNotification;
 import songscribe.message.notification.ElementTypeWasSelectedNotification;
 import songscribe.message.notification.ModeDidChangeNotification;
@@ -104,14 +103,9 @@ public final class ScoreMessageCoordinator {
         this.selectionCoordinator = selectionCoordinator;
         this.clipboardManager = clipboardManager;
 
-        // CRITICAL: Subscribe to message center
         MessageCenter.subscribe(this);
     }
 
-    /**
-     * Updates the operations reference when a new composition is set.
-     * This is necessary because operations is recreated for each composition.
-     */
     public void setOperations(MusicEditOperations operations) {
         this.operations = operations;
     }
@@ -173,38 +167,34 @@ public final class ScoreMessageCoordinator {
 
     @Handler
     public void handleToggleBeam(ToggleBeamCommand message) {
-        // Capture line before the operation in case selection changes.
-        // Invalidate layout so LayoutEngine recomputes BeamLayout for the new/removed interval.
-        // Without this, BeamGroupRenderer draws beams with null BeamLayout (no thickening or slope).
         var selection = selectionCoordinator.getActiveSelection();
-        var line = (selection != null) ? selection.getLine() : null;
+
+        if (selection == null) {
+            return;
+        }
+
         operations.toggleBeaming();
-        MessageCenter.post(new CompositionDidChangeNotification(ChangeType.CONTENT, score.getComposition(), line));
     }
 
     @Handler
     public void handleToggleTie(ToggleTieCommand message) {
         operations.toggleTie();
-        postSelectionContentChanged();
     }
 
     @Handler
     public void handleToggleTuplet(ToggleTupletCommand message) {
         operations.toggleTuplet(message.getTupletSize());
         score.selectionChanged();
-        postSelectionContentChanged();
     }
 
     @Handler
     public void handleAddDynamics(AddDynamicsCommand message) {
         operations.addDynamicsToSelection(message.isCrescendo());
-        postSelectionContentChanged();
     }
 
     @Handler
     public void handleRemoveDynamics(RemoveDynamicsCommand message) {
         operations.removeDynamicsFromSelection();
-        postSelectionContentChanged();
     }
 
     @Handler
@@ -213,7 +203,6 @@ public final class ScoreMessageCoordinator {
 
         if (result != null && result.isValid()) {
             operations.makeFirstSecondEnding(result);
-            postSelectionContentChanged();
             MessageCenter.post(new DeselectCommand());
         }
     }
@@ -221,7 +210,6 @@ public final class ScoreMessageCoordinator {
     @Handler
     public void handleToggleTrill(ToggleTrillCommand message) {
         operations.toggleTrill();
-        postSelectionContentChanged();
     }
 
     @Handler
@@ -229,22 +217,11 @@ public final class ScoreMessageCoordinator {
         ToggleLyricsUnderRestsCommand message
     ) {
         operations.toggleLyricsUnderRests();
-        MessageCenter.post(new CompositionDidChangeNotification(ChangeType.CONTENT, score.getComposition()));
     }
 
     @Handler
     public void handleFlipStemDirection(FlipStemDirectionCommand message) {
         operations.flipStemDirection();
-        postSelectionContentChanged();
-    }
-
-    private void postSelectionContentChanged() {
-        var state = selectionCoordinator.getActiveSelection();
-        MessageCenter.post(new CompositionDidChangeNotification(
-            ChangeType.CONTENT,
-            score.getComposition(),
-            state != null ? state.getLine() : null
-        ));
     }
 
     @Handler
@@ -255,11 +232,7 @@ public final class ScoreMessageCoordinator {
             return;
         }
 
-        // Invalidate layout for affected lines on content or structural changes.
-        // The CONTENT legacy check covers interval and element-field operations (beam, tie,
-        // tuplet, flip stem, etc.) not yet migrated to the Mutation system.
-        if (message.hasChangeType(ChangeType.CONTENT)
-            || hasLineLayoutMutation(message)) {
+        if (hasLineLayoutMutation(message)) {
             var staffPanel = mainPanel.getStaffPanel();
 
             if (staffPanel != null) {

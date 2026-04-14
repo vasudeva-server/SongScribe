@@ -63,6 +63,8 @@ For the bootstrap logging constraint in `SongScribe.java`, see [Logging](./.clau
 
 For the MBassador message bus (posting, subscribing, `@Handler` methods), see [Message System](./.claude/rules/messages.md).
 
+For the typed `Mutation` records, modification brackets, and `CompositionDidChangeNotification` filtering, see [Mutation System](./.claude/rules/mutations.md).
+
 For `JOptionPane`-based alerts, confirms, and input prompts, see [OptionDialogs](./.claude/option-dialogs.md).
 
 For complex dialogs (`BaseDialog`, `StandardDialog`, tabs, validation/commit lifecycle), see [Dialogs](./.claude/dialogs.md).

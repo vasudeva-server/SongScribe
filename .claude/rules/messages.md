@@ -107,8 +107,10 @@ MessageCenter.unsubscribe(this);
 ### Posting a message
 
 ```java
-MessageCenter.post(new CompositionDidChangeNotification(ChangeType.LAYOUT, composition));
 MessageCenter.post(new PrefsDidChangeNotification(key));
 ```
+
+`CompositionDidChangeNotification` is posted automatically by `composition.withModification()` /
+`composition.applyChange()` — never construct it directly.
 
 Posting is synchronous — all handlers run before `post()` returns.

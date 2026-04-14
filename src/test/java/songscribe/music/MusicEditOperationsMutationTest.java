@@ -1,0 +1,405 @@
+/*
+    SongScribe song notation program
+    Copyright (C) Sri Chinmoy Centres International
+
+    This file is part of SongScribe.
+
+    SongScribe is free software; you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; either version 3 of the License, or
+    (at your option) any later version.
+
+    SongScribe is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+package songscribe.music;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mockStatic;
+
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.jspecify.annotations.Nullable;
+import org.mockito.ArgumentCaptor;
+import org.mockito.MockedStatic;
+
+import songscribe.UnitTest;
+import songscribe.message.Message;
+import songscribe.message.MessageCenter;
+import songscribe.message.mutation.BeamingAddition;
+import songscribe.message.mutation.BeamingRemoval;
+import songscribe.message.mutation.CrescendoAddition;
+import songscribe.message.mutation.CrescendoRemoval;
+import songscribe.message.mutation.DiminuendoAddition;
+import songscribe.message.mutation.DiminuendoRemoval;
+import songscribe.message.mutation.ElementField;
+import songscribe.message.mutation.ElementInsertion;
+import songscribe.message.mutation.ElementModification;
+import songscribe.message.mutation.RangeElementAddition;
+import songscribe.message.mutation.TieAddition;
+import songscribe.message.mutation.TieRemoval;
+import songscribe.message.mutation.TupletAddition;
+import songscribe.message.mutation.TupletRemoval;
+import songscribe.message.notification.CompositionDidChangeNotification;
+import songscribe.ui.layout.Ending;
+import songscribe.ui.selection.ReflectionTestHelper;
+import songscribe.ui.selection.SelectionCoordinator;
+
+class MusicEditOperationsMutationTest extends UnitTest {
+
+    private static final int TRIPLET = 3;
+    private static final int QUINTUPLET = 5;
+
+    private Composition composition;
+    @Nullable private MockedStatic<MessageCenter> messageCenterMock;
+
+    @BeforeEach
+    void setUp() {
+        // Construct before mocking so constructor-internal bus interactions
+        // go to the real (unobserved) bus, not the mock.
+        composition = new Composition();
+    }
+
+    @AfterEach
+    void tearDown() {
+        if (messageCenterMock != null) {
+            messageCenterMock.close();
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Setup helper
+    // -----------------------------------------------------------------------
+
+    private record Env(SelectionCoordinator coordinator, MusicEditOperations operations, Line line) {}
+
+    /**
+     * Builds a Line with the given elements, attaches it to the composition (which fires a
+     * real LineInsertion notification on the unobserved bus), creates a coordinator and
+     * operations wrapper, then starts mocking MessageCenter.
+     *
+     * <p>Interval state (beams, ties, etc.) may be added to {@code env.line()} directly after
+     * this call — {@link songscribe.music.IntervalSet#addInterval} bypasses {@code applyChange}
+     * and does not require an open modification bracket.
+     */
+    private Env setup(StaffElement... elements) {
+        var line = new Line();
+
+        for (var element : elements) {
+            line.addElement(element);
+        }
+
+        // addLine fires a real LineInsertion notification on the pre-mock bus.
+        composition.addLine(line);
+        var coordinator = ReflectionTestHelper.createCoordinatorForLine(line);
+        var ops = new MusicEditOperations(composition, coordinator);
+        messageCenterMock = mockStatic(MessageCenter.class);
+        return new Env(coordinator, ops, line);
+    }
+
+    // -----------------------------------------------------------------------
+    // Notification capture helper
+    // -----------------------------------------------------------------------
+
+    private CompositionDidChangeNotification captureSingleDidChange() {
+        var mock = messageCenterMock;
+
+        if (mock == null) {
+            throw new IllegalStateException("messageCenterMock not set — call setup() first");
+        }
+
+        var captor = ArgumentCaptor.forClass(Message.class);
+        mock.verify(() -> MessageCenter.post(captor.capture()));
+        var didChanges = captor.getAllValues().stream()
+            .filter(m -> m instanceof CompositionDidChangeNotification)
+            .map(m -> (CompositionDidChangeNotification) m)
+            .toList();
+
+        assertThat(didChanges)
+            .as("expected exactly one CompositionDidChangeNotification, got: %s", didChanges)
+            .hasSize(1);
+
+        return didChanges.get(0);
+    }
+
+    // -----------------------------------------------------------------------
+    // Beaming
+    // -----------------------------------------------------------------------
+
+    @Test
+    void testToggleBeamingAddEmitsBeamingAddition() {
+        var env = setup(quaver(), quaver(), quaver());
+        ReflectionTestHelper.selectRange(env.coordinator(), 0, 2);
+        env.operations().toggleBeaming();
+
+        var notification = captureSingleDidChange();
+        var mutations = notification.getMutations();
+        assertThat(mutations).hasSize(1);
+        assertThat(mutations.get(0)).isInstanceOf(BeamingAddition.class);
+        var addition = (BeamingAddition) mutations.get(0);
+        assertThat(addition.interval().start).isEqualTo(0);
+        assertThat(addition.interval().end).isEqualTo(2);
+        assertThat(addition.line()).isSameAs(env.line());
+    }
+
+    @Test
+    void testToggleBeamingRemoveEmitsBeamingRemoval() {
+        var env = setup(quaver(), quaver(), quaver());
+        env.line().getBeamings().addInterval(new BeamInterval(0, 2));
+        ReflectionTestHelper.selectRange(env.coordinator(), 0, 2);
+        env.operations().toggleBeaming();
+
+        var notification = captureSingleDidChange();
+        var mutations = notification.getMutations();
+        assertThat(mutations).hasSize(1);
+        assertThat(mutations.get(0)).isInstanceOf(BeamingRemoval.class);
+        assertThat(((BeamingRemoval) mutations.get(0)).line()).isSameAs(env.line());
+    }
+
+    // -----------------------------------------------------------------------
+    // Tie
+    // -----------------------------------------------------------------------
+
+    @Test
+    void testToggleTieAddEmitsTieAddition() {
+        var env = setup(crotchet(), crotchet());
+        ReflectionTestHelper.selectRange(env.coordinator(), 0, 1);
+        env.operations().toggleTie();
+
+        var notification = captureSingleDidChange();
+        var mutations = notification.getMutations();
+        assertThat(mutations).hasSize(1);
+        assertThat(mutations.get(0)).isInstanceOf(TieAddition.class);
+        var addition = (TieAddition) mutations.get(0);
+        assertThat(addition.interval().start).isEqualTo(0);
+        assertThat(addition.interval().end).isEqualTo(1);
+        assertThat(addition.line()).isSameAs(env.line());
+    }
+
+    @Test
+    void testToggleTieRemoveEmitsTieRemoval() {
+        var env = setup(crotchet(), crotchet());
+        env.line().getTies().addInterval(new TieInterval(0, 1));
+        ReflectionTestHelper.selectRange(env.coordinator(), 0, 1);
+        env.operations().toggleTie();
+
+        var notification = captureSingleDidChange();
+        var mutations = notification.getMutations();
+        assertThat(mutations).hasSize(1);
+        assertThat(mutations.get(0)).isInstanceOf(TieRemoval.class);
+        assertThat(((TieRemoval) mutations.get(0)).line()).isSameAs(env.line());
+    }
+
+    // -----------------------------------------------------------------------
+    // Tuplet
+    // -----------------------------------------------------------------------
+
+    @Test
+    void testToggleTupletAddEmitsTupletAddition() {
+        var env = setup(crotchet(), crotchet(), crotchet());
+        ReflectionTestHelper.selectRange(env.coordinator(), 0, 2);
+        env.operations().toggleTuplet(TRIPLET);
+
+        var notification = captureSingleDidChange();
+        var mutations = notification.getMutations();
+        assertThat(mutations).hasSize(1);
+        assertThat(mutations.get(0)).isInstanceOf(TupletAddition.class);
+        var addition = (TupletAddition) mutations.get(0);
+        assertThat(addition.interval().start).isEqualTo(0);
+        assertThat(addition.interval().end).isEqualTo(2);
+        assertThat(addition.interval().getGrade()).isEqualTo(TRIPLET);
+        assertThat(addition.line()).isSameAs(env.line());
+    }
+
+    @Test
+    void testToggleTupletRemoveEmitsTupletRemoval() {
+        var env = setup(crotchet(), crotchet(), crotchet());
+        env.line().getTuplets().addInterval(new TupletInterval(0, 2, TRIPLET));
+        ReflectionTestHelper.selectRange(env.coordinator(), 0, 2);
+        env.operations().toggleTuplet(TRIPLET);
+
+        var notification = captureSingleDidChange();
+        var mutations = notification.getMutations();
+        assertThat(mutations).hasSize(1);
+        assertThat(mutations.get(0)).isInstanceOf(TupletRemoval.class);
+        assertThat(((TupletRemoval) mutations.get(0)).line()).isSameAs(env.line());
+    }
+
+    @Test
+    void testToggleTupletDoesNotPerformInPlaceGradeChange() {
+        // Calling toggleTuplet with a different grade on an existing tuplet must
+        // remove the existing interval, not emit a grade-change mutation.
+        var env = setup(crotchet(), crotchet(), crotchet());
+        env.line().getTuplets().addInterval(new TupletInterval(0, 2, TRIPLET));
+        ReflectionTestHelper.selectRange(env.coordinator(), 0, 2);
+        env.operations().toggleTuplet(QUINTUPLET);
+
+        var notification = captureSingleDidChange();
+        var mutations = notification.getMutations();
+        assertThat(mutations).hasSize(1);
+        assertThat(mutations.get(0)).isInstanceOf(TupletRemoval.class);
+    }
+
+    // -----------------------------------------------------------------------
+    // Dynamics
+    // -----------------------------------------------------------------------
+
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void testAddDynamicsEmitsOneAddition(boolean crescendo) {
+        var env = setup(crotchet(), crotchet());
+        ReflectionTestHelper.selectRange(env.coordinator(), 0, 1);
+        env.operations().addDynamicsToSelection(crescendo);
+
+        var notification = captureSingleDidChange();
+        var mutations = notification.getMutations();
+        assertThat(mutations).hasSize(1);
+
+        if (crescendo) {
+            assertThat(mutations.get(0)).isInstanceOf(CrescendoAddition.class);
+        } else {
+            assertThat(mutations.get(0)).isInstanceOf(DiminuendoAddition.class);
+        }
+    }
+
+    @Test
+    void testRemoveDynamicsEmitsRemovalPerInterval() {
+        // One crescendo at [0..1] and one diminuendo at [2..3], selection covers all four notes.
+        // getDynamicsIntervalsFromSelection iterates per index, so each interval appears once per
+        // covered index within the selection — the exact count depends on interval span.
+        var env = setup(crotchet(), crotchet(), crotchet(), crotchet());
+        env.line().getCrescendos().addInterval(new DynamicsInterval(0, 1));
+        env.line().getDiminuendos().addInterval(new DynamicsInterval(2, 3));
+        ReflectionTestHelper.selectRange(env.coordinator(), 0, 3);
+        env.operations().removeDynamicsFromSelection();
+
+        var notification = captureSingleDidChange();
+        var mutations = notification.getMutations();
+        var crescendoRemovals = mutations.stream()
+            .filter(m -> m instanceof CrescendoRemoval)
+            .toList();
+        var diminuendoRemovals = mutations.stream()
+            .filter(m -> m instanceof DiminuendoRemoval)
+            .toList();
+
+        assertThat(crescendoRemovals).as("crescendo removals emitted").isNotEmpty();
+        assertThat(diminuendoRemovals).as("diminuendo removals emitted").isNotEmpty();
+        assertThat(mutations).hasSize(crescendoRemovals.size() + diminuendoRemovals.size());
+    }
+
+    // -----------------------------------------------------------------------
+    // Trill
+    // -----------------------------------------------------------------------
+
+    @Test
+    void testToggleTrillEmitsOneElementModificationPerNote() {
+        var env = setup(crotchet(), crotchet(), crotchet());
+        ReflectionTestHelper.selectRange(env.coordinator(), 0, 2);
+        env.operations().toggleTrill();
+
+        var notification = captureSingleDidChange();
+        var mutations = notification.getMutations();
+        assertThat(mutations).hasSize(3);
+
+        for (var mutation : mutations) {
+            assertThat(mutation).isInstanceOf(ElementModification.class);
+            var mod = (ElementModification) mutation;
+            assertThat(mod.fields()).contains(ElementField.TRILL);
+            assertThat(mod.line()).isSameAs(env.line());
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Lyrics under rests
+    // -----------------------------------------------------------------------
+
+    @Test
+    void testToggleLyricsUnderRestsEmitsOneElementModification() {
+        var env = setup(crotchetRest());
+        ReflectionTestHelper.selectNote(env.coordinator(), 0);
+        env.operations().toggleLyricsUnderRests();
+
+        var notification = captureSingleDidChange();
+        var mutations = notification.getMutations();
+        assertThat(mutations).hasSize(1);
+        assertThat(mutations.get(0)).isInstanceOf(ElementModification.class);
+        var mod = (ElementModification) mutations.get(0);
+        assertThat(mod.fields()).contains(ElementField.FORCE_SYLLABLE);
+        assertThat(mod.line()).isSameAs(env.line());
+    }
+
+    // -----------------------------------------------------------------------
+    // Stem direction
+    // -----------------------------------------------------------------------
+
+    @Test
+    void testFlipStemDirectionEmitsElementModificationPerAffectedIndex() {
+        var env = setup(crotchet(), crotchet(), crotchet());
+        ReflectionTestHelper.selectRange(env.coordinator(), 0, 2);
+        env.operations().flipStemDirection();
+
+        var notification = captureSingleDidChange();
+        var mutations = notification.getMutations();
+        assertThat(mutations).hasSize(3);
+
+        for (var mutation : mutations) {
+            assertThat(mutation).isInstanceOf(ElementModification.class);
+            var mod = (ElementModification) mutation;
+            assertThat(mod.fields()).contains(ElementField.UPPER);
+            assertThat(mod.fields()).contains(ElementField.STEM_DIRECTION_AUTO);
+            assertThat(mod.line()).isSameAs(env.line());
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // First-second ending
+    // -----------------------------------------------------------------------
+
+    @Test
+    void testMakeFirstSecondEndingEmitsElementInsertionAndRangeElementAddition() {
+        // Four notes [n0..n3]. Result: INSERT_BARLINE at index 0, ending over [0..3].
+        // makeFirstSecondEnding inserts the barline at start=0 (shifting indices to
+        // start=1 and end=4), then adds an Ending spanning the adjusted bounds.
+        var env = setup(crotchet(), crotchet(), crotchet(), crotchet());
+        ReflectionTestHelper.selectNote(env.coordinator(), 0);
+        var result = EndingValidationResult.valid(
+            EndingValidationResult.PrecedingAction.INSERT_BARLINE, 0, 3);
+        env.operations().makeFirstSecondEnding(result);
+
+        var notification = captureSingleDidChange();
+        var mutations = notification.getMutations();
+        assertThat(mutations).hasSize(2);
+        assertThat(mutations.get(0)).isInstanceOf(ElementInsertion.class);
+        assertThat(mutations.get(1)).isInstanceOf(RangeElementAddition.class);
+
+        var insertion = (ElementInsertion) mutations.get(0);
+        assertThat(insertion.element().getType()).isEqualTo(ElementType.SINGLE_BARLINE);
+
+        var rangeAddition = (RangeElementAddition) mutations.get(1);
+        assertThat(rangeAddition.element()).isInstanceOf(Ending.class);
+    }
+
+    // -----------------------------------------------------------------------
+    // Element factory methods
+    // -----------------------------------------------------------------------
+
+    private static StaffElement crotchet() {
+        return ElementType.CROTCHET.newInstance();
+    }
+
+    private static StaffElement quaver() {
+        return ElementType.QUAVER.newInstance();
+    }
+
+    private static StaffElement crotchetRest() {
+        return ElementType.CROTCHET_REST.newInstance();
+    }
+}

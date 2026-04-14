@@ -22,12 +22,17 @@ package songscribe.ui.action;
 
 import module java.desktop;
 
+import java.util.EnumSet;
+
 import songscribe.Strings;
 import org.jspecify.annotations.Nullable;
 
+import songscribe.message.mutation.ElementField;
 import songscribe.music.StaffElement;
 
 public class DotAction extends PreviewElementAction implements UIAction.ElementModifiable {
+
+    private static final EnumSet<ElementField> MODIFIED_FIELDS = EnumSet.of(ElementField.DOT_COUNT);
 
     private final DotLevel dotLevel;
 
@@ -96,6 +101,11 @@ public class DotAction extends PreviewElementAction implements UIAction.ElementM
     @Override
     public void applyToElement(StaffElement element, boolean selected) {
         element.setDotCount(selected ? dotLevel.ordinal() + 1 : 0);
+    }
+
+    @Override
+    public EnumSet<ElementField> modifiedFields() {
+        return MODIFIED_FIELDS;
     }
 
     public enum DotLevel {

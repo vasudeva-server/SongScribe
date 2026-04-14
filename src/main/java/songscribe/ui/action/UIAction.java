@@ -23,6 +23,7 @@ package songscribe.ui.action;
 import module java.desktop;
 
 import java.util.Arrays;
+import java.util.EnumSet;
 
 import org.jspecify.annotations.Nullable;
 
@@ -43,6 +44,7 @@ import songscribe.message.notification.MusicSelectionDidChangeNotification;
 import songscribe.message.notification.PlaybackStateDidChangeNotification;
 import songscribe.message.notification.RestModeDidChangeNotification;
 import songscribe.message.notification.TextEditingDidChangeNotification;
+import songscribe.message.mutation.ElementField;
 import songscribe.music.Composition;
 import songscribe.music.StaffElement;
 import songscribe.ui.component.MainFrame;
@@ -157,6 +159,14 @@ public class UIAction extends AbstractAction {
          * @param selected true to apply the attribute, false to remove it
          */
         void applyToElement(StaffElement element, boolean selected);
+
+        /**
+         * The set of {@link ElementField} tags identifying which element fields
+         * this action mutates. Used to populate the {@code fields} set of the
+         * emitted {@code ElementModification} mutation so subscribers can filter
+         * to specific field changes without inspecting the before/after element.
+         */
+        EnumSet<ElementField> modifiedFields();
     }
 
     /**

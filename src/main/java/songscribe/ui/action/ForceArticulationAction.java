@@ -20,12 +20,17 @@
 
 package songscribe.ui.action;
 
+import java.util.EnumSet;
+
 import songscribe.Strings;
+import songscribe.message.mutation.ElementField;
 import songscribe.music.ArticulationType;
 import songscribe.music.StaffElement;
 import songscribe.ui.layout.Articulation;
 
 public class ForceArticulationAction extends NoteOnlyAction {
+
+    private static final EnumSet<ElementField> MODIFIED_FIELDS = EnumSet.of(ElementField.ARTICULATION);
 
     private final ArticulationType articulationType;
 
@@ -66,5 +71,10 @@ public class ForceArticulationAction extends NoteOnlyAction {
         if (selected) {
             element.addArticulation(new Articulation(element, articulationType));
         }
+    }
+
+    @Override
+    public EnumSet<ElementField> modifiedFields() {
+        return MODIFIED_FIELDS;
     }
 }

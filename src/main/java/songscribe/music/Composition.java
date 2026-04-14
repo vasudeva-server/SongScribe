@@ -281,9 +281,10 @@ public final class Composition {
     }
 
     /**
-     * Applies all fields from a {@link CompositionData} snapshot atomically,
-     * then posts a single {@link CompositionDidChangeNotification} with
-     * {@code ChangeType.FULL}.
+     * Applies all fields from a {@link CompositionData} snapshot atomically.
+     * Does not post any notification — the caller ({@code Score.setComposition})
+     * posts a {@link songscribe.message.notification.DocumentDidLoadNotification}
+     * after the composition is fully installed.
      * <p>
      * Called by {@link songscribe.io.CompositionIO.DocumentReader#getComposition()}
      * after parsing a file. This is a direct method call rather than a message
@@ -808,7 +809,7 @@ public final class Composition {
      * Returns {@code true} while a modification bracket is open.
      * Package-private so {@link Line#applyChange} can check without exposing the depth counter.
      */
-    boolean isModifying() {
+    public boolean isModifying() {
         return modificationDepth > 0;
     }
 

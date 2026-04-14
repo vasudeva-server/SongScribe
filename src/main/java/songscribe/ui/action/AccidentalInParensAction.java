@@ -20,9 +20,15 @@
 
 package songscribe.ui.action;
 
+import java.util.EnumSet;
+
+import songscribe.message.mutation.ElementField;
 import songscribe.music.StaffElement;
 
 public class AccidentalInParensAction extends NoteOnlyAction {
+
+    private static final EnumSet<ElementField> MODIFIED_FIELDS =
+        EnumSet.of(ElementField.ACCIDENTAL_IN_PARENS);
 
     public static AccidentalInParensAction createAction() {
         return new AccidentalInParensAction();
@@ -47,5 +53,10 @@ public class AccidentalInParensAction extends NoteOnlyAction {
     @Override
     public void applyToElement(StaffElement element, boolean selected) {
         element.setAccidentalInParentheses(selected);
+    }
+
+    @Override
+    public EnumSet<ElementField> modifiedFields() {
+        return MODIFIED_FIELDS;
     }
 }

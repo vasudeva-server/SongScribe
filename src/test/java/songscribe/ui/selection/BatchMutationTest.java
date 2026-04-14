@@ -21,8 +21,11 @@
 package songscribe.ui.selection;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import java.util.List;
 import java.util.Objects;
@@ -53,8 +56,10 @@ class BatchMutationTest extends UnitTest {
         ElementTypeAction.createQuarterNoteAction();
 
     /**
-     * Creates a coordinator with a composition mock on the line,
-     * so applyActionToSelection can call line.getComposition().setModified().
+     * Creates a coordinator with a composition mock on the line. The mock is
+     * stubbed so {@code withModification} runs its runnable and {@code applyChange}
+     * runs its mutator; {@code isModifying} returns true so {@code Line.applyChange}
+     * accepts mutations as if a real bracket were open.
      */
     private SelectionCoordinator createCoordinator(
         List<StaffElement> notes,
@@ -62,8 +67,24 @@ class BatchMutationTest extends UnitTest {
     ) {
         var coordinator = ReflectionTestHelper.createCoordinator(notes, actions);
         var line = Objects.requireNonNull(coordinator.getActiveSelection()).getLine();
-        line.setComposition(mock(Composition.class));
+        line.setComposition(createCompositionMock());
         return coordinator;
+    }
+
+    private static Composition createCompositionMock() {
+        var compositionMock = mock(Composition.class);
+        when(compositionMock.isModifying()).thenReturn(true);
+        doAnswer(inv -> {
+            Runnable runnable = inv.getArgument(0);
+            runnable.run();
+            return null;
+        }).when(compositionMock).withModification(any());
+        doAnswer(inv -> {
+            Runnable mutator = inv.getArgument(1);
+            mutator.run();
+            return null;
+        }).when(compositionMock).applyChange(any(), any());
+        return compositionMock;
     }
 
     private Line getLine(SelectionCoordinator coordinator) {
@@ -192,7 +213,7 @@ class BatchMutationTest extends UnitTest {
     }
 
     @Test
-    void testBeamSplitAroundNonBeamable() {
+    void testBeamKilledWhenInteriorElementBecomesNonBeamable() {
         var notes = List.of(
             ElementType.QUAVER.newInstance(),
             ElementType.QUAVER.newInstance(),
@@ -208,22 +229,13 @@ class BatchMutationTest extends UnitTest {
         coordinator.applyActionToSelection(QUARTER_ACTION, true);
 
         assertThat(line.getElement(2).getType()).isEqualTo(ElementType.CROTCHET);
-
-        var beam0 = Objects.requireNonNull(line.getBeamings().findInterval(0));
-        assertThat(beam0.start).isEqualTo(0);
-        assertThat(beam0.end).isEqualTo(1);
-
-        var beam3 = Objects.requireNonNull(line.getBeamings().findInterval(3));
-        assertThat(beam3.start).isEqualTo(3);
-        assertThat(beam3.end).isEqualTo(4);
-
-        assertThat(line.getBeamings().findInterval(2)).isNull();
+        assertThat(line.getBeamings().isEmpty()).isTrue();
     }
 
-    // -- Composition is marked modified --
+    // -- Composition mutation bracket is opened --
 
     @Test
-    void testCompositionMarkedModified() {
+    void testCompositionBracketOpened() {
         var notes = List.of(ElementType.CROTCHET.newInstance());
         var coordinator = createCoordinator(notes, List.of(FERMATA_ACTION));
         ReflectionTestHelper.selectNote(coordinator, 0);
@@ -231,7 +243,7 @@ class BatchMutationTest extends UnitTest {
         coordinator.applyActionToSelection(FERMATA_ACTION, true);
 
         var composition = getLine(coordinator).getComposition();
-        verify(composition).setModified(true);
+        verify(composition).withModification(any());
     }
 
     // -- Duration change replaces notes --
@@ -383,51 +395,38 @@ class BatchMutationTest extends UnitTest {
     }
 
     // -- Tie interval validation --
+    //
+    // Tie repair was deleted: under the invariants enforced by
+    // applyActionToSelection (pitch and rest-ness preserved, grace notes
+    // disabled in select mode, type-preserving modifiable actions), no
+    // reachable replacement can invalidate an existing tie. Tests assert
+    // that ties are left untouched even when their range overlaps a
+    // duration-change selection.
 
     @Test
-    void testTieDissolvedWhenContainsRest() {
+    void testTieUntouchedByDurationChange() {
         var notes = List.of(
-            ElementType.QUAVER.newInstance(),
-            ElementType.QUAVER_REST.newInstance()
-        );
-        var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
-        var line = getLine(coordinator);
-        line.getTies().addInterval(new TieInterval(0, 1));
-
-        ReflectionTestHelper.selectRange(coordinator, 0, 1);
-        coordinator.applyActionToSelection(QUARTER_ACTION, true);
-
-        assertThat(line.getTies().isEmpty()).isTrue();
-    }
-
-    @Test
-    void testTieSplitAroundRest() {
-        var notes = List.of(
-            ElementType.QUAVER.newInstance(),
-            ElementType.QUAVER.newInstance(),
-            ElementType.QUAVER_REST.newInstance(),
             ElementType.QUAVER.newInstance(),
             ElementType.QUAVER.newInstance()
         );
         var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
         var line = getLine(coordinator);
-        line.getTies().addInterval(new TieInterval(0, 4));
+        var tie = new TieInterval(0, 1);
+        line.getTies().addInterval(tie);
 
-        ReflectionTestHelper.selectRange(coordinator, 0, 4);
+        ReflectionTestHelper.selectRange(coordinator, 0, 1);
         coordinator.applyActionToSelection(QUARTER_ACTION, true);
 
-        var tie0 = Objects.requireNonNull(line.getTies().findInterval(0));
-        assertThat(tie0.start).isEqualTo(0);
-        assertThat(tie0.end).isEqualTo(1);
-
-        var tie3 = Objects.requireNonNull(line.getTies().findInterval(3));
-        assertThat(tie3.start).isEqualTo(3);
-        assertThat(tie3.end).isEqualTo(4);
-
-        assertThat(line.getTies().findInterval(2)).isNull();
+        var preserved = Objects.requireNonNull(line.getTies().findInterval(0));
+        assertThat(preserved.start).isEqualTo(0);
+        assertThat(preserved.end).isEqualTo(1);
     }
 
     // -- Tuplet interval validation --
+    //
+    // Tuplets are flat-removed on overlap under the immutability policy:
+    // any change other than pitch invalidates a tuplet. There is no
+    // repair-by-splitting.
 
     @Test
     void testTupletDissolvedWhenContainsNonDuration() {
@@ -447,11 +446,11 @@ class BatchMutationTest extends UnitTest {
     }
 
     @Test
-    void testTupletSplitAroundNonDuration() {
+    void testOverlappingTupletFlatRemovedNoSubIntervals() {
         var notes = List.of(
             ElementType.QUAVER.newInstance(),
             ElementType.QUAVER.newInstance(),
-            ElementType.SINGLE_BARLINE.newInstance(),
+            ElementType.QUAVER.newInstance(),
             ElementType.QUAVER.newInstance(),
             ElementType.QUAVER.newInstance()
         );
@@ -459,17 +458,30 @@ class BatchMutationTest extends UnitTest {
         var line = getLine(coordinator);
         line.getTuplets().addInterval(new TupletInterval(0, 4, 3));
 
-        ReflectionTestHelper.selectRange(coordinator, 0, 4);
+        ReflectionTestHelper.selectNote(coordinator, 2);
         coordinator.applyActionToSelection(QUARTER_ACTION, true);
 
-        var tuplet0 = Objects.requireNonNull(line.getTuplets().findInterval(0));
-        assertThat(tuplet0.start).isEqualTo(0);
-        assertThat(tuplet0.end).isEqualTo(1);
+        assertThat(line.getTuplets().isEmpty()).isTrue();
+    }
 
-        var tuplet3 = Objects.requireNonNull(line.getTuplets().findInterval(3));
-        assertThat(tuplet3.start).isEqualTo(3);
-        assertThat(tuplet3.end).isEqualTo(4);
+    @Test
+    void testNonOverlappingTupletPreserved() {
+        var notes = List.of(
+            ElementType.QUAVER.newInstance(),
+            ElementType.QUAVER.newInstance(),
+            ElementType.QUAVER.newInstance(),
+            ElementType.QUAVER.newInstance(),
+            ElementType.QUAVER.newInstance()
+        );
+        var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
+        var line = getLine(coordinator);
+        line.getTuplets().addInterval(new TupletInterval(0, 1, 3));
 
-        assertThat(line.getTuplets().findInterval(2)).isNull();
+        ReflectionTestHelper.selectRange(coordinator, 3, 4);
+        coordinator.applyActionToSelection(QUARTER_ACTION, true);
+
+        var preserved = Objects.requireNonNull(line.getTuplets().findInterval(0));
+        assertThat(preserved.start).isEqualTo(0);
+        assertThat(preserved.end).isEqualTo(1);
     }
 }

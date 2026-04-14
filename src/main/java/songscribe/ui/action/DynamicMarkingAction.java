@@ -20,12 +20,18 @@
 
 package songscribe.ui.action;
 
+import java.util.EnumSet;
+
 import songscribe.Strings;
+import songscribe.message.mutation.ElementField;
 import songscribe.music.StaffElement;
 import songscribe.ui.layout.DynamicAttachment;
 import songscribe.ui.layout.DynamicAttachment.DynamicType;
 
 public class DynamicMarkingAction extends NoteOnlyAction {
+
+    private static final EnumSet<ElementField> MODIFIED_FIELDS =
+        EnumSet.of(ElementField.DYNAMIC_ATTACHMENT);
 
     private final DynamicType dynamicType;
 
@@ -97,6 +103,11 @@ public class DynamicMarkingAction extends NoteOnlyAction {
         if (selected) {
             element.addAttachment(new DynamicAttachment(element, dynamicType));
         }
+    }
+
+    @Override
+    public EnumSet<ElementField> modifiedFields() {
+        return MODIFIED_FIELDS;
     }
 
     @Override

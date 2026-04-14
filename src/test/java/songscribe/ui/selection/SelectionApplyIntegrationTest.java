@@ -22,7 +22,10 @@ package songscribe.ui.selection;
 
 import module java.desktop;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -84,7 +87,7 @@ class SelectionApplyIntegrationTest extends UnitTest {
     ) {
         var coordinator = ReflectionTestHelper.createCoordinator(notes, actions);
         var line = Objects.requireNonNull(coordinator.getActiveSelection()).getLine();
-        line.setComposition(mock(Composition.class));
+        line.setComposition(createCompositionMock());
         return coordinator;
     }
 
@@ -95,8 +98,24 @@ class SelectionApplyIntegrationTest extends UnitTest {
     ) {
         var coordinator = ReflectionTestHelper.createCoordinator(notes, actions, managedActions);
         var line = Objects.requireNonNull(coordinator.getActiveSelection()).getLine();
-        line.setComposition(mock(Composition.class));
+        line.setComposition(createCompositionMock());
         return coordinator;
+    }
+
+    private static Composition createCompositionMock() {
+        var compositionMock = mock(Composition.class);
+        when(compositionMock.isModifying()).thenReturn(true);
+        doAnswer(inv -> {
+            Runnable runnable = inv.getArgument(0);
+            runnable.run();
+            return null;
+        }).when(compositionMock).withModification(any());
+        doAnswer(inv -> {
+            Runnable mutator = inv.getArgument(1);
+            mutator.run();
+            return null;
+        }).when(compositionMock).applyChange(any(), any());
+        return compositionMock;
     }
 
     // ---- Edge Cases ----

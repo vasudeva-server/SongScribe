@@ -23,12 +23,14 @@ package songscribe.music;
 import module java.desktop;
 
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.TreeSet;
 
 import kotlin.Pair;
 
 import songscribe.Strings;
+import songscribe.message.mutation.ElementField;
 import songscribe.ui.layout.Ending;
 import songscribe.ui.OptionDialogs;
 import songscribe.ui.selection.LineSelectionState;
@@ -39,6 +41,8 @@ import songscribe.ui.selection.SelectionCoordinator;
  * Extracted from Score.java as part of Phase 5 of the Score Cleanup refactoring.
  */
 public final class MusicEditOperations {
+
+    private static final int MIN_CONTENT_ELEMENTS = 4;
 
     private final Composition composition;
     private final SelectionCoordinator coordinator;
@@ -68,13 +72,22 @@ public final class MusicEditOperations {
         var line = state.getLine();
         var beamings = line.getBeamings();
 
-        if (state.shouldConnectSelection(beamings)) {
-            beamings.addInterval(new BeamInterval(state.getSelectionBegin(), state.getSelectionEnd()));
-        } else {
-            beamings.removeInterval(state.getSelectionBegin(), state.getSelectionEnd());
-        }
+        line.withModification(() -> {
+            if (state.shouldConnectSelection(beamings)) {
+                line.addBeaming(new BeamInterval(state.getSelectionBegin(), state.getSelectionEnd()));
+            } else {
+                var existing = beamings.findInterval(state.getSelectionBegin());
 
-        composition.setModified(true);
+                if (existing == null) {
+                    throw new IllegalStateException(
+                        "toggleBeaming remove branch entered with no beam interval at "
+                            + state.getSelectionBegin()
+                    );
+                }
+
+                line.removeBeaming(existing);
+            }
+        });
     }
 
     // ========== Tie Operations ==========
@@ -91,22 +104,20 @@ public final class MusicEditOperations {
             return;
         }
 
-        // Evaluate if not yet checked
-        if (state.getCanTie() == null) {
-            state.canToggleTie();
-        }
-
         var line = state.getLine();
-        var intervals = state.getTieInterval();
+        var ties = line.getTies();
 
-        if (intervals != null) {
-            intervals.removeInterval(state.getSelectionBegin(), state.getSelectionEnd());
-        } else {
-            line.getTies().addInterval(new TieInterval(state.getSelectionBegin(), state.getSelectionEnd()));
-        }
+        line.withModification(() -> {
+            var existing = ties.findInterval(state.getSelectionBegin());
+
+            if (existing != null) {
+                line.removeTie(existing);
+            } else {
+                line.addTie(new TieInterval(state.getSelectionBegin(), state.getSelectionEnd()));
+            }
+        });
 
         state.resetTieState();
-        composition.setModified(true);
     }
 
     // ========== Tuplet Operations ==========
@@ -125,20 +136,17 @@ public final class MusicEditOperations {
 
         var line = state.getLine();
         var tuplets = line.getTuplets();
-        var interval = tuplets.findInterval(state.getSelectionBegin());
 
-        if ((interval == null) || (tupletSize > 0)) {
-            if (interval == null) {
-                interval = tuplets.addInterval(new TupletInterval(
+        line.withModification(() -> {
+            var existing = tuplets.findInterval(state.getSelectionBegin());
+
+            if (existing != null) {
+                line.removeTuplet(existing);
+            } else if (tupletSize > 0) {
+                line.addTuplet(new TupletInterval(
                     state.getSelectionBegin(), state.getSelectionEnd(), tupletSize));
-            } else {
-                interval.setGrade(tupletSize);
             }
-        } else {
-            tuplets.removeInterval(state.getSelectionBegin(), state.getSelectionEnd());
-        }
-
-        composition.setModified(true);
+        });
     }
 
     // ========== Dynamics Operations ==========
@@ -151,11 +159,16 @@ public final class MusicEditOperations {
         }
 
         var line = state.getLine();
-        var intervalSet = crescendo
-            ? line.getCrescendos()
-            : line.getDiminuendos();
-        intervalSet.addInterval(new DynamicsInterval(state.getSelectionBegin(), state.getSelectionEnd()));
-        composition.setModified(true);
+
+        line.withModification(() -> {
+            var interval = new DynamicsInterval(state.getSelectionBegin(), state.getSelectionEnd());
+
+            if (crescendo) {
+                line.addCrescendo(interval);
+            } else {
+                line.addDiminuendo(interval);
+            }
+        });
     }
 
     public boolean canRemoveDynamicsFromSelection() {
@@ -180,22 +193,17 @@ public final class MusicEditOperations {
         }
 
         var line = state.getLine();
-        var crescendos = line.getCrescendos();
         var intervals = getDynamicsIntervalsFromSelection(state);
-        var crescendoIntervals = intervals.getFirst();
 
-        for (var interval : crescendoIntervals) {
-            crescendos.removeInterval(interval);
-        }
+        line.withModification(() -> {
+            for (var interval : intervals.getFirst()) {
+                line.removeCrescendo(interval);
+            }
 
-        var diminuendos = line.getDiminuendos();
-        var diminuendoIntervals = intervals.getSecond();
-
-        for (var interval : diminuendoIntervals) {
-            diminuendos.removeInterval(interval);
-        }
-
-        composition.setModified(true);
+            for (var interval : intervals.getSecond()) {
+                line.removeDiminuendo(interval);
+            }
+        });
     }
 
     private Pair<
@@ -207,19 +215,27 @@ public final class MusicEditOperations {
         var diminuendos = line.getDiminuendos();
         var crescendoIntervals = new ArrayList<DynamicsInterval>();
         var diminuendoIntervals = new ArrayList<DynamicsInterval>();
+        var end = state.getSelectionEnd();
+        var i = state.getSelectionBegin();
 
-        for (var i = state.getSelectionBegin(); i <= state.getSelectionEnd(); i++) {
-            var interval = crescendos.findInterval(i);
+        while (i <= end) {
+            var cres = crescendos.findInterval(i);
 
-            if (interval != null) {
-                crescendoIntervals.add(interval);
+            if (cres != null) {
+                crescendoIntervals.add(cres);
+                i = cres.end + 1;
+                continue;
             }
 
-            interval = diminuendos.findInterval(i);
+            var dim = diminuendos.findInterval(i);
 
-            if (interval != null) {
-                diminuendoIntervals.add(interval);
+            if (dim != null) {
+                diminuendoIntervals.add(dim);
+                i = dim.end + 1;
+                continue;
             }
+
+            i++;
         }
 
         return new Pair<>(crescendoIntervals, diminuendoIntervals);
@@ -239,7 +255,7 @@ public final class MusicEditOperations {
         var end = state.getSelectionEnd();
 
         // Stage 1: Structural validation
-        var rightRepeatIndex = validateStructure(line, begin, end);
+        var rightRepeatIndex = validateEndingStructure(line, begin, end);
 
         if (rightRepeatIndex < 0) {
             return EndingValidationResult.invalid();
@@ -261,38 +277,30 @@ public final class MusicEditOperations {
         return checkPrecedingElement(lineIndex, begin, end);
     }
 
-    /**
-     * Validates the structural requirements for a first-second ending selection.
-     *
-     * @return the index of the right repeat within the selection, or -1 if invalid
-     */
-    private int validateStructure(Line line, int begin, int end) {
-        // Count non-transparent elements and locate the right repeat
-        var nonTransparentCount = 0;
+    // Returns the index of the right repeat within the selection, or -1 if invalid.
+    private int validateEndingStructure(Line line, int begin, int end) {
+        var contentCount = 0;
         var rightRepeatIndex = -1;
 
         for (var i = begin; i <= end; i++) {
             var type = line.getElement(i).getType();
 
-            if (type.isTransparent()) {
+            if (type.isNonContentElement()) {
                 continue;
             }
 
-            nonTransparentCount++;
+            contentCount++;
 
             if (type == ElementType.REPEAT_RIGHT) {
                 if (rightRepeatIndex >= 0) {
-                    return -1; // More than one right repeat
+                    return -1;
                 }
 
                 rightRepeatIndex = i;
             }
         }
 
-        // At least 4 non-transparent elements, exactly one right repeat
-        int MIN_NON_TRANSPARENT_ELEMENTS = 4;
-
-        if (nonTransparentCount < MIN_NON_TRANSPARENT_ELEMENTS || rightRepeatIndex < 0) {
+        if (contentCount < MIN_CONTENT_ELEMENTS || rightRepeatIndex < 0) {
             return -1;
         }
 
@@ -310,30 +318,28 @@ public final class MusicEditOperations {
             firstEndingStart = begin + 1;
         }
 
-        if (!validateRegionContent(line, firstEndingStart, rightRepeatIndex - 1)) {
+        if (!validateEndingRegionContent(line, firstEndingStart, rightRepeatIndex - 1)) {
             return -1;
         }
 
         // Validate second ending region (between right repeat and terminal):
         // one or more content elements, no barlines or repeats
-        if (!validateRegionContent(line, rightRepeatIndex + 1, end - 1)) {
+        if (!validateEndingRegionContent(line, rightRepeatIndex + 1, end - 1)) {
             return -1;
         }
 
         return rightRepeatIndex;
     }
 
-    /**
-     * Checks that a region contains one or more content elements and
-     * no barlines or repeats (transparent elements are allowed).
-     */
-    private boolean validateRegionContent(Line line, int from, int to) {
+    // Checks that a region contains one or more content elements and
+    // no barlines or repeats (non-content elements are allowed).
+    private boolean validateEndingRegionContent(Line line, int from, int to) {
         var hasContent = false;
 
         for (var i = from; i <= to; i++) {
             var type = line.getElement(i).getType();
 
-            if (type.isTransparent()) {
+            if (type.isNonContentElement()) {
                 continue;
             }
 
@@ -349,9 +355,7 @@ public final class MusicEditOperations {
         return hasContent;
     }
 
-    /**
-     * Returns true if any element in the selection range overlaps an existing ending interval.
-     */
+    // Returns true if any element in the selection range overlaps an existing ending interval.
     private boolean hasOverlap(Line line, int begin, int end) {
         for (var i = begin; i <= end; i++) {
             if (line.isInsideAnyEnding(i)) {
@@ -362,10 +366,8 @@ public final class MusicEditOperations {
         return false;
     }
 
-    /**
-     * Walks backward from just before the selection start, across lines if needed,
-     * looking for an enclosing repeated section.
-     */
+    // Walks backward from just before the selection start, across lines if needed,
+    // looking for an enclosing repeated section.
     private boolean hasEnclosingRepeat(int lineIndex, int selectionBegin) {
         // Special case: selection starts at beginning of composition
         if (lineIndex == 0 && selectionBegin == 0) {
@@ -416,10 +418,8 @@ public final class MusicEditOperations {
         return true;
     }
 
-    /**
-     * Examines the element immediately before the selection start and determines
-     * what action is needed (barline insertion, interval extension, or invalid).
-     */
+    // Examines the element immediately before the selection start and determines
+    // what action is needed (barline insertion, interval extension, or invalid).
     private EndingValidationResult checkPrecedingElement(
         int lineIndex, int selectionBegin, int selectionEnd
     ) {
@@ -471,33 +471,34 @@ public final class MusicEditOperations {
         }
 
         var line = state.getLine();
-        var start = result.getIntervalStart();
-        var end = result.getIntervalEnd();
 
-        switch (result.getPrecedingAction()) {
-            case INSERT_BARLINE -> {
-                var barline = ElementType.SINGLEBARLINE.newInstance();
-                line.addElement(start, barline);
-                // addElement shifts all existing intervals; adjust our bounds
-                // to account for the inserted element
-                start++;
-                end++;
+        line.withModification(() -> {
+            var start = result.getIntervalStart();
+            var end = result.getIntervalEnd();
+
+            switch (result.getPrecedingAction()) {
+                case INSERT_BARLINE -> {
+                    var barline = ElementType.SINGLEBARLINE.newInstance();
+                    line.addElement(start, barline);
+                    // addElement shifts all existing intervals; adjust our bounds
+                    // to account for the inserted element
+                    start++;
+                    end++;
+                }
+
+                case EXTEND_INTERVAL -> {
+                    // Start already includes the preceding barline/repeat
+                }
+
+                case NONE -> {
+                    // No adjustment needed
+                }
             }
 
-            case EXTEND_INTERVAL -> {
-                // Start already includes the preceding barline/repeat
-            }
-
-            case NONE -> {
-                // No adjustment needed
-            }
-        }
-
-        var startElement = line.getElement(start);
-        var endElement = line.getElement(end);
-        line.addRangeElement(new Ending(startElement, endElement, Ending.Type.FIRST));
-
-        composition.setModified(true);
+            var startElement = line.getElement(start);
+            var endElement = line.getElement(end);
+            line.addRangeElement(new Ending(startElement, endElement, Ending.Type.FIRST));
+        });
     }
 
     // ========== Trill Operations ==========
@@ -516,11 +517,19 @@ public final class MusicEditOperations {
 
         var line = state.getLine();
 
-        for (var note : line.getElements(state.getSelectionBegin(), state.getSelectionEnd())) {
-            note.setTrill(!note.isTrill());
-        }
-
-        composition.setModified(true);
+        line.withModification(() -> {
+            for (var i = state.getSelectionBegin(); i <= state.getSelectionEnd(); i++) {
+                var index = i;
+                line.modifyElement(
+                    index,
+                    ElementField.TRILL,
+                    () -> {
+                        var note = line.getElement(index);
+                        note.setTrill(!note.isTrill());
+                    }
+                );
+            }
+        });
     }
 
     // ========== Lyrics Under Rests Operations ==========
@@ -538,15 +547,21 @@ public final class MusicEditOperations {
         }
 
         var line = state.getLine();
-        var note = line.getElement(state.getSelectionBegin());
-        note.setForceSyllable(!note.isForceSyllable());
+        var index = state.getSelectionBegin();
+
+        line.withModification(() -> line.modifyElement(
+            index,
+            ElementField.FORCE_SYLLABLE,
+            () -> {
+                var note = line.getElement(index);
+                note.setForceSyllable(!note.isForceSyllable());
+            }
+        ));
+
         LyricsProcessor.spellLyrics(line);
-        composition.setModified(true);
     }
 
-    // ========== Partial Beam Operations ==========
-
-// ========== Stem Direction Operations ==========
+    // ========== Stem Direction Operations ==========
 
     public boolean canFlipStemDirection() {
         var state = coordinator.getActiveSelection();
@@ -566,63 +581,76 @@ public final class MusicEditOperations {
         }
 
         var line = state.getLine();
+        var stemFields = EnumSet.of(ElementField.UPPER, ElementField.STEM_DIRECTION_AUTO);
 
-        // Track which beam groups have already been processed to avoid double-flipping.
-        var processedBeamIntervals = new HashSet<Interval>();
+        line.withModification(() -> {
+            // Track which beam groups have already been processed to avoid double-flipping.
+            var processedBeamIntervals = new HashSet<Interval>();
 
-        for (var i = state.getSelectionBegin(); i <= state.getSelectionEnd(); i++) {
-            var note = line.getElement(i);
+            for (var i = state.getSelectionBegin(); i <= state.getSelectionEnd(); i++) {
+                var note = line.getElement(i);
 
-            if (note.getType().isRest()) {
-                continue;
+                if (note.getType().isRest()) {
+                    continue;
+                }
+
+                var beamInterval = line.getBeamings().findInterval(i);
+
+                if (beamInterval != null) {
+                    // Flip the whole beam group together, once per group.
+                    if (processedBeamIntervals.add(beamInterval)) {
+                        var firstElement = line.getElement(beamInterval.getStart());
+                        boolean newUpper = !firstElement.isUpper();
+
+                        for (var j = beamInterval.getStart(); j <= beamInterval.getEnd(); j++) {
+                            var beamIndex = j;
+                            line.modifyElement(beamIndex, stemFields, () -> {
+                                var beamElement = line.getElement(beamIndex);
+                                beamElement.setStemDirectionAuto(false);
+                                beamElement.setUpper(newUpper);
+                            });
+                        }
+                    }
+                } else {
+                    var noteIndex = i;
+                    boolean newUpper = !note.isUpper();
+                    line.modifyElement(noteIndex, stemFields, () -> {
+                        var target = line.getElement(noteIndex);
+                        target.setStemDirectionAuto(false);
+                        target.setUpper(newUpper);
+                    });
+                }
             }
 
-            var beamInterval = line.getBeamings().findInterval(i);
+            // Flip tie partners that fall outside the selection. IntervalSet merges
+            // adjacent ties, so the interval may span more than two notes; all notes
+            // in the interval that weren't already covered by the selection must flip.
+            var tiePartnersToFlip = new TreeSet<Integer>();
 
-            if (beamInterval != null) {
-                // Flip the whole beam group together, once per group.
-                if (processedBeamIntervals.add(beamInterval)) {
-                    var firstElement = line.getElement(beamInterval.getStart());
-                    boolean newUpper = !firstElement.isUpper();
+            for (var i = state.getSelectionBegin(); i <= state.getSelectionEnd(); i++) {
+                var tieInterval = line.getTies().findInterval(i);
 
-                    for (var j = beamInterval.getStart(); j <= beamInterval.getEnd(); j++) {
-                        var beamElement = line.getElement(j);
-                        beamElement.setStemDirectionAuto(false);
-                        beamElement.setUpper(newUpper);
+                if (tieInterval == null) {
+                    continue;
+                }
+
+                for (var j = tieInterval.start; j <= tieInterval.end; j++) {
+                    if ((j < state.getSelectionBegin()) || (j > state.getSelectionEnd())) {
+                        tiePartnersToFlip.add(j);
                     }
                 }
-            } else {
-                note.setStemDirectionAuto(false);
-                note.setUpper(!note.isUpper());
-            }
-        }
-
-        // Flip tie partners that fall outside the selection. IntervalSet merges
-        // adjacent ties, so the interval may span more than two notes; all notes
-        // in the interval that weren't already covered by the selection must flip.
-        var tiePartnersToFlip = new TreeSet<Integer>();
-
-        for (var i = state.getSelectionBegin(); i <= state.getSelectionEnd(); i++) {
-            var tieInterval = line.getTies().findInterval(i);
-
-            if (tieInterval == null) {
-                continue;
             }
 
-            for (var j = tieInterval.start; j <= tieInterval.end; j++) {
-                if ((j < state.getSelectionBegin()) || (j > state.getSelectionEnd())) {
-                    tiePartnersToFlip.add(j);
-                }
+            for (var i : tiePartnersToFlip) {
+                var partnerIndex = i;
+                boolean newUpper = !line.getElement(partnerIndex).isUpper();
+                line.modifyElement(partnerIndex, stemFields, () -> {
+                    var note = line.getElement(partnerIndex);
+                    note.setStemDirectionAuto(false);
+                    note.setUpper(newUpper);
+                });
             }
-        }
-
-        for (var i : tiePartnersToFlip) {
-            var note = line.getElement(i);
-            note.setStemDirectionAuto(false);
-            note.setUpper(!note.isUpper());
-        }
-
-        composition.setModified(true);
+        });
     }
 
     // ========== Tempo Operations ==========

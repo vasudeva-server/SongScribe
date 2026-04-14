@@ -50,13 +50,13 @@ records for the nine remaining operations, migrating each emitter to use
 
 | Phase | Description | Model | Status |
 |-------|-------------|-------|--------|
-| 1 | [Mutation records for interval operations](#-phase-1-mutation-records-for-interval-operations) | Sonnet | ⏳ Pending |
-| 2 | [Mutation records for element-field operations](#-phase-2-mutation-records-for-element-field-operations) | Sonnet | ⏳ Pending |
-| 3 | [Migrate `MusicEditOperations` emitters](#-phase-3-migrate-musiceditoperations-emitters) | Opus | ⏳ Pending |
-| 4 | [Migrate `SelectionCoordinator.applyActionToSelection`](#-phase-4-migrate-selectioncoordinatorapplyactiontoselection) | Sonnet | ⏳ Pending |
-| 5 | [Migrate `ScoreMessageCoordinator` command handlers](#-phase-5-migrate-scoremessagecoordinator-command-handlers) | Sonnet | ⏳ Pending |
-| 6 | [Delete `ChangeType` API](#-phase-6-delete-changetype-api) | Sonnet | ⏳ Pending |
-| 7 | [Tests](#-phase-7-tests) | Sonnet | ⏳ Pending |
+| 1 | [Mutation records for interval operations](#-phase-1-mutation-records-for-interval-operations) | Sonnet | ✅ Done |
+| 2 | [Mutation records for element-field operations](#-phase-2-mutation-records-for-element-field-operations) | Sonnet | ✅ Done |
+| 3 | [Migrate `MusicEditOperations` emitters](#-phase-3-migrate-musiceditoperations-emitters) | Opus | ✅ Done |
+| 4 | [Migrate `SelectionCoordinator.applyActionToSelection`](#-phase-4-migrate-selectioncoordinatorapplyactiontoselection) | Sonnet | ✅ Done |
+| 5 | [Migrate `ScoreMessageCoordinator` command handlers](#-phase-5-migrate-scoremessagecoordinator-command-handlers) | Sonnet | ✅ Done |
+| 6 | [Delete `ChangeType` API](#-phase-6-delete-changetype-api) | Sonnet | ✅ Done |
+| 7 | [Tests](#-phase-7-tests) | Sonnet | ✅ Done |
 
 ---
 
@@ -244,10 +244,10 @@ notification of its own — it just adjusts the in-memory lyrics state.
 
 ---
 
-## ⏳ Phase 1: Mutation records for interval operations
+## ✅ Phase 1: Mutation records for interval operations
 
 **Model:** Sonnet  <br>
-**Status:** Pending  <br>
+**Status:** Done  <br>
 **BlockedBy:** --
 
 ### Purpose
@@ -288,10 +288,10 @@ Add the ten sealed-hierarchy entries for interval-set operations: one
 
 ---
 
-## ⏳ Phase 2: Mutation records for element-field operations
+## ✅ Phase 2: Mutation records for element-field operations
 
 **Model:** Sonnet  <br>
-**Status:** Pending  <br>
+**Status:** Done  <br>
 **BlockedBy:** --
 
 ### Purpose
@@ -321,10 +321,10 @@ use rather than up-front.
 
 ---
 
-## ⏳ Phase 3: Migrate `MusicEditOperations` emitters
+## ✅ Phase 3: Migrate `MusicEditOperations` emitters
 
 **Model:** Opus  <br>
-**Status:** Pending  <br>
+**Status:** Done  <br>
 **BlockedBy:** Phases 1, 2
 
 ### Purpose
@@ -406,10 +406,10 @@ this phase, no `MusicEditOperations` method calls
 
 ---
 
-## ⏳ Phase 4: Migrate `SelectionCoordinator.applyActionToSelection`
+## ✅ Phase 4: Migrate `SelectionCoordinator.applyActionToSelection`
 
 **Model:** Sonnet  <br>
-**Status:** Pending  <br>
+**Status:** Done  <br>
 **BlockedBy:** Phases 1, 2
 
 ### Purpose
@@ -538,10 +538,10 @@ intentional semantic shift and needs:
 
 ---
 
-## ⏳ Phase 5: Clean up `ScoreMessageCoordinator` command handlers
+## ✅ Phase 5: Clean up `ScoreMessageCoordinator` command handlers
 
 **Model:** Sonnet  <br>
-**Status:** Pending  <br>
+**Status:** Done  <br>
 **BlockedBy:** Phases 3, 4
 
 ### Purpose
@@ -597,10 +597,10 @@ its own bracket (Phase 3), so handlers shrink to a direct call.
 
 ---
 
-## ⏳ Phase 6: Delete `ChangeType` API
+## ✅ Phase 6: Delete `ChangeType` API
 
 **Model:** Sonnet  <br>
-**Status:** Pending  <br>
+**Status:** Done  <br>
 **BlockedBy:** Phases 3, 4, 5
 
 ### Purpose
@@ -650,10 +650,10 @@ After this phase, `grep -r ChangeType src/main` returns no matches.
 
 ---
 
-## ⏳ Phase 7: Tests
+## ✅ Phase 7: Tests
 
 **Model:** Sonnet  <br>
-**Status:** Pending  <br>
+**Status:** Done  <br>
 **BlockedBy:** Phases 1–6
 
 ### Purpose

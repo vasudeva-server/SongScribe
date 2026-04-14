@@ -362,17 +362,17 @@ public enum ElementType {
 
     /**
      * A content element is a note, rest, or breath mark — elements that carry
-     * musical content. Grace notes and glissandos are transparent (not content).
+     * musical content. Grace notes and glissandos are non-content.
      */
     public boolean isContentElement() {
         return isPitchedNote() || isRest() || this == BREATH_MARK;
     }
 
     /**
-     * Transparent elements are skipped during first-second ending validation
+     * Non-content elements are skipped during first-second ending validation
      * but are allowed to be present in the selection.
      */
-    public boolean isTransparent() {
+    public boolean isNonContentElement() {
         return isGraceNote() || this == GLISSANDO;
     }
 

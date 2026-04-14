@@ -21,14 +21,41 @@
 package songscribe.ui.component;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
+import java.util.List;
+
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
+import songscribe.message.mutation.BeamingAddition;
+import songscribe.message.mutation.BeamingRemoval;
+import songscribe.message.mutation.Mutation;
+import songscribe.message.mutation.TieAddition;
+import songscribe.message.mutation.TieRemoval;
+import songscribe.message.mutation.TupletAddition;
+import songscribe.message.mutation.TupletRemoval;
+import songscribe.message.notification.CompositionDidChangeNotification;
+import songscribe.music.BeamInterval;
+import songscribe.music.Composition;
 import songscribe.music.ElementType;
 import songscribe.music.Line;
+import songscribe.music.MusicEditOperations;
 import songscribe.music.StaffElement;
+import songscribe.music.TieInterval;
+import songscribe.music.TupletInterval;
+import songscribe.ui.clipboard.ClipboardManager;
+import songscribe.ui.component.Score;
+import songscribe.ui.component.score.LineComponent;
+import songscribe.ui.component.score.LinePanel;
+import songscribe.ui.component.score.MainPanel;
+import songscribe.ui.component.score.StaffPanel;
+import songscribe.ui.edit.EditModeManager;
+import songscribe.ui.selection.SelectionCoordinator;
 
 class ScoreMessageCoordinatorTest extends UnitTest {
 
@@ -170,6 +197,90 @@ class ScoreMessageCoordinatorTest extends UnitTest {
             }
 
             return line;
+        }
+    }
+
+    /**
+     * Regression: each interval mutation type introduced by the ChangeType
+     * migration must route through {@code hasLineLayoutMutation} and reach
+     * {@code LineComponent.invalidateLayout()}. A mutation that does not
+     * implement {@code LineScopedMutation} silently skips layout invalidation,
+     * which is the main user-visible correctness risk of the migration.
+     */
+    @Nested
+    class LayoutInvalidation {
+
+        private Line line;
+        private LineComponent lineComponentMock;
+        private ScoreMessageCoordinator coordinator;
+
+        @BeforeEach
+        void setUp() {
+            line = new Line();
+            lineComponentMock = mock(LineComponent.class);
+
+            var linePanelMock = mock(LinePanel.class);
+            when(linePanelMock.getLine()).thenReturn(line);
+            when(linePanelMock.getLineComponent()).thenReturn(lineComponentMock);
+
+            var staffPanelMock = mock(StaffPanel.class);
+            when(staffPanelMock.getLinePanels()).thenReturn(List.of(linePanelMock));
+
+            var mainPanelMock = mock(MainPanel.class);
+            when(mainPanelMock.getStaffPanel()).thenReturn(staffPanelMock);
+
+            var scoreMock = mock(Score.class);
+            when(scoreMock.getMainPanel()).thenReturn(mainPanelMock);
+
+            coordinator = new ScoreMessageCoordinator(
+                scoreMock,
+                mock(MusicEditOperations.class),
+                mock(EditModeManager.class),
+                mock(SelectionCoordinator.class),
+                mock(ClipboardManager.class)
+            );
+        }
+
+        private void fireNotification(Mutation mutation) {
+            coordinator.compositionDidChange(
+                new CompositionDidChangeNotification(List.of(mutation), new Composition())
+            );
+        }
+
+        @Test
+        void testBeamingAdditionInvalidatesLayout() {
+            fireNotification(new BeamingAddition(line, new BeamInterval(0, 2)));
+            verify(lineComponentMock).invalidateLayout();
+        }
+
+        @Test
+        void testBeamingRemovalInvalidatesLayout() {
+            fireNotification(new BeamingRemoval(line, new BeamInterval(0, 2)));
+            verify(lineComponentMock).invalidateLayout();
+        }
+
+        @Test
+        void testTieAdditionInvalidatesLayout() {
+            fireNotification(new TieAddition(line, new TieInterval(0, 1)));
+            verify(lineComponentMock).invalidateLayout();
+        }
+
+        @Test
+        void testTieRemovalInvalidatesLayout() {
+            fireNotification(new TieRemoval(line, new TieInterval(0, 1)));
+            verify(lineComponentMock).invalidateLayout();
+        }
+
+        @Test
+        void testTupletAdditionInvalidatesLayout() {
+            fireNotification(new TupletAddition(line, new TupletInterval(0, 2, 3)));
+            verify(lineComponentMock).invalidateLayout();
+        }
+
+        @Test
+        void testTupletRemovalInvalidatesLayout() {
+            fireNotification(new TupletRemoval(line, new TupletInterval(0, 2, 3)));
+            verify(lineComponentMock).invalidateLayout();
         }
     }
 }

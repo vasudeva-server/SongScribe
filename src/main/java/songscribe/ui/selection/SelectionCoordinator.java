@@ -29,22 +29,20 @@ import java.util.HashMap;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 import org.jspecify.annotations.Nullable;
 
 import net.engio.mbassy.listener.Handler;
 
-import songscribe.music.Interval;
-import songscribe.music.IntervalSet;
 import songscribe.message.Message;
 import songscribe.message.MessageCenter;
+import songscribe.message.notification.MusicSelectionDidChangeNotification;
+import songscribe.music.BeamInterval;
 import songscribe.music.Composition;
 import songscribe.music.Line;
 import songscribe.music.StaffElement;
-import songscribe.message.notification.CompositionDidChangeNotification;
-import songscribe.message.notification.MusicSelectionDidChangeNotification;
+import songscribe.music.TupletInterval;
 import songscribe.ui.component.score.LineComponent;
 import songscribe.ui.action.Actions;
 import songscribe.ui.action.UIAction;
@@ -563,6 +561,8 @@ public final class SelectionCoordinator {
 
     /**
      * Applies the given action to all applicable elements in the selection.
+     * Wraps the entire pass in a single modification bracket so all emitted
+     * mutations coalesce into one {@code CompositionDidChangeNotification}.
      * @param action   the reflectable action to apply
      * @param selected true to apply the attribute, false to remove it
      */
@@ -571,110 +571,156 @@ public final class SelectionCoordinator {
         if (selection == null) return;
 
         var line = selection.line();
-        var needsIntervalCleanup = false;
-
-        for (int i = selection.begin(); i <= selection.end(); i++) {
-            var element = line.getElement(i);
-
-            if (!action.appliesTo(element)) continue;
-
-            if (action instanceof UIAction.ElementReplaceable replaceable) {
-                if (!selected) {
-                    continue;
-                }
-
-                var replacement = replaceable.createReplacement(element, selected);
-                line.replaceElementQuietly(i, replacement);
-                needsIntervalCleanup = true;
-            } else if (action instanceof UIAction.ElementModifiable modifiable) {
-                modifiable.applyToElement(element, selected);
-            }
-        }
-
-        if (needsIntervalCleanup) {
-            validateIntervals(line, selection.begin(), selection.end());
-        }
-
-        contentCacheSelection = null;
-        applicabilityCacheSelection = null;
-        applicabilityCache.clear();
         var composition = line.getComposition();
-        composition.setModified(true);
-        MessageCenter.post(new CompositionDidChangeNotification(CompositionDidChangeNotification.ChangeType.CONTENT, composition, line));
+
+        composition.withModification(() -> {
+            var needsIntervalCleanup = false;
+
+            for (int i = selection.begin(); i <= selection.end(); i++) {
+                var element = line.getElement(i);
+
+                if (!action.appliesTo(element)) continue;
+
+                if (action instanceof UIAction.ElementReplaceable replaceable) {
+                    if (!selected) {
+                        continue;
+                    }
+
+                    var replacement = replaceable.createReplacement(element, selected);
+                    line.setElement(i, replacement);
+                    needsIntervalCleanup = true;
+                } else if (action instanceof UIAction.ElementModifiable modifiable) {
+                    var index = i;
+                    line.modifyElement(
+                        index,
+                        modifiable.modifiedFields(),
+                        () -> modifiable.applyToElement(line.getElement(index), selected)
+                    );
+                }
+            }
+
+            if (needsIntervalCleanup) {
+                validateIntervals(line, selection.begin(), selection.end());
+            }
+
+            contentCacheSelection = null;
+            applicabilityCacheSelection = null;
+            applicabilityCache.clear();
+        });
     }
 
-    /**
-     * Validates beam, tie, and tuplet intervals after batch element replacement.
-     * Elements that changed type may invalidate intervals they belong to.
-     */
+    // Validates beam and tuplet intervals after batch element replacement.
+    //
+    // Tie repair is omitted: under the invariants enforced by the call site,
+    // no reachable replacement can invalidate an existing tie. The replacement
+    // preserves pitch and rest-ness; grace notes are disabled in select mode
+    // via Flag.DISABLE_IN_SELECT_MODE; and ElementModifiable actions do not
+    // touch element type.
     private void validateIntervals(Line line, int begin, int end) {
-        repairIntervalSet(line.getBeamings(), line, begin, end,
-            element -> element.getType().isBeamable());
-        repairIntervalSet(line.getTies(), line, begin, end,
-            element -> element.getType().isNote());
-        repairIntervalSet(line.getTuplets(), line, begin, end,
-            element -> element.getType().isDuration());
+        repairBeamings(line, begin, end);
+        invalidateOverlappingTuplets(line, begin, end);
     }
 
-    /**
-     * Generic interval repair: finds intervals overlapping [begin, end] that contain
-     * elements failing the validity predicate, removes them, and re-creates sub-intervals
-     * for contiguous runs of valid elements (minimum 2 elements per sub-interval).
-     */
-    private <T extends Interval> void repairIntervalSet(
-        IntervalSet<T> intervalSet, Line line, int begin, int end,
-        Predicate<StaffElement> isValid) {
+    // Removes every tuplet that overlaps [begin, end] in line.
+    //
+    // Under the tuplet immutability policy, any change other than pitch
+    // invalidates a tuplet, so repair-by-splitting is semantically wrong.
+    // Each removal is emitted as its own TupletRemoval mutation inside the
+    // open modification bracket.
+    private void invalidateOverlappingTuplets(Line line, int begin, int end) {
+        var tuplets = line.getTuplets();
+        var overlapping = new ArrayList<TupletInterval>();
 
-        var toProcess = new ArrayList<T>();
+        for (var iter = tuplets.listIterator(); iter.hasNext(); ) {
+            var tuplet = iter.next();
 
-        for (var iter = intervalSet.listIterator(); iter.hasNext(); ) {
-            var interval = iter.next();
-
-            if (interval.start <= end && interval.end >= begin) {
-                toProcess.add(interval);
+            if (tuplet.start <= end && tuplet.end >= begin) {
+                overlapping.add(tuplet);
             }
         }
 
-        for (var interval : toProcess) {
-            boolean allValid = true;
+        for (var tuplet : overlapping) {
+            line.removeTuplet(tuplet);
+        }
+    }
 
-            for (int i = interval.start; i <= interval.end; i++) {
-                if (!isValid.test(line.getElement(i))) {
-                    allValid = false;
+    // Trim-and-kill repair for beams that overlap [begin, end] after a batch
+    // element replacement. For each overlapping beam:
+    //   1. Trim non-beamable elements from the left and right ends.
+    //   2. If the trimmed span still contains a non-beamable element in the
+    //      interior, kill the beam entirely (no replacement).
+    //   3. If the trimmed span is identical to the original, no-op.
+    //   4. If the trimmed span has fewer than two elements, kill without re-add.
+    //   5. Otherwise, remove the original beam and add a new one for the
+    //      trimmed sub-range.
+    //
+    // The bidirectional trim handles configurations where both ends become
+    // non-beamable but the interior is still valid, leaving the logic resilient
+    // to a future disjoint-selection capability.
+    //
+    // Behavior change vs. legacy repairIntervalSet: a beam with a non-beamable
+    // element in the middle is now killed entirely instead of being split into
+    // sub-beams.
+    private void repairBeamings(Line line, int begin, int end) {
+        var beamings = line.getBeamings();
+        var overlapping = new ArrayList<BeamInterval>();
+
+        for (var iter = beamings.listIterator(); iter.hasNext(); ) {
+            var beam = iter.next();
+
+            if (beam.start <= end && beam.end >= begin) {
+                overlapping.add(beam);
+            }
+        }
+
+        for (var beam : overlapping) {
+            int newStart = beam.start;
+
+            while (newStart <= beam.end && !line.getElement(newStart).getType().isBeamable()) {
+                newStart++;
+            }
+
+            int newEnd = beam.end;
+
+            while (newEnd >= newStart && !line.getElement(newEnd).getType().isBeamable()) {
+                newEnd--;
+            }
+
+            // No valid elements remain in the trimmed span — kill outright.
+            if (newStart > newEnd) {
+                line.removeBeaming(beam);
+                continue;
+            }
+
+            // Check for any non-beamable element in the interior of the trimmed span.
+            var hasInteriorInvalid = false;
+
+            for (int i = newStart; i <= newEnd; i++) {
+                if (!line.getElement(i).getType().isBeamable()) {
+                    hasInteriorInvalid = true;
                     break;
                 }
             }
 
-            if (allValid) {
+            if (hasInteriorInvalid) {
+                line.removeBeaming(beam);
                 continue;
             }
 
-            intervalSet.removeInterval(interval);
-
-            // Find runs of valid elements and create sub-intervals
-            int runStart = -1;
-
-            for (int i = interval.start; i <= interval.end; i++) {
-                if (isValid.test(line.getElement(i))) {
-                    if (runStart == -1) {
-                        runStart = i;
-                    }
-                } else {
-                    if (runStart != -1 && (i - runStart) >= 2) {
-                        @SuppressWarnings("unchecked")
-                        var sub = (T) interval.copyRange(runStart, i - 1);
-                        intervalSet.addInterval(sub);
-                    }
-
-                    runStart = -1;
-                }
+            // Trimmed span is identical to the original — no-op.
+            if (newStart == beam.start && newEnd == beam.end) {
+                continue;
             }
 
-            if (runStart != -1 && (interval.end - runStart) >= 1) {
-                @SuppressWarnings("unchecked")
-                var sub = (T) interval.copyRange(runStart, interval.end);
-                intervalSet.addInterval(sub);
+            // Fewer than two elements — kill without re-add.
+            if (newEnd - newStart < 1) {
+                line.removeBeaming(beam);
+                continue;
             }
+
+            // Trimmed span shrank but is all valid — replace with the truncated beam.
+            line.removeBeaming(beam);
+            line.addBeaming(beam.copyRange(newStart, newEnd));
         }
     }
 

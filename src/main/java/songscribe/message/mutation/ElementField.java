@@ -33,4 +33,34 @@ public enum ElementField {
      * Emitted by {@code NoteDragHandler} when a note is pitch-dragged.
      */
     PITCH,
+
+    /** The element's trill flag was toggled. Emitted by {@code toggleTrill}. */
+    TRILL,
+
+    /** The element's force-syllable flag was toggled. Emitted by {@code toggleLyricsUnderRests}. */
+    FORCE_SYLLABLE,
+
+    /** The element's stem direction (upper/lower) was changed. Emitted by {@code flipStemDirection}. */
+    UPPER,
+
+    /** The element's stem-direction-auto flag was changed. Emitted by {@code flipStemDirection}. */
+    STEM_DIRECTION_AUTO,
+
+    /** The element's fermata flag was toggled. Emitted by {@code FermataAction}. */
+    FERMATA,
+
+    /** The element's accidental was changed. Emitted by {@code AccidentalAction}. */
+    ACCIDENTAL,
+
+    /** The element's accidental-in-parentheses flag was toggled. Emitted by {@code AccidentalInParensAction}. */
+    ACCIDENTAL_IN_PARENS,
+
+    /** The element's dot count was changed. Emitted by {@code DotAction}. */
+    DOT_COUNT,
+
+    /** The element's articulation list was changed. Emitted by articulation actions. */
+    ARTICULATION,
+
+    /** The element's dynamic attachment was changed. Emitted by {@code DynamicMarkingAction}. */
+    DYNAMIC_ATTACHMENT,
 }

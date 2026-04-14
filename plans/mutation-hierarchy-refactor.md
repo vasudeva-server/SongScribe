@@ -896,7 +896,7 @@ because they exercise real subscribers / handlers.
 ## Deferred Work (out of scope; revisit when needed)
 
 1. **`CompositionWillChangeNotification`** — defer to undo (#14). When undo is implemented, decide whether to add WillChange or extend mutations to carry full before-state.
-2. **Range mutation types** — `{Tie,Beam,Tuplet,Crescendo,Diminuendo}{Addition,Removal,Modification}`. Add when a subscriber needs them (likely undo, or a future range-element-driven validator).
+2. ✅ **Range mutation types** — `{Tie,Beam,Tuplet,Crescendo,Diminuendo}{Addition,Removal}` added in `changetype-elimination.md` Phases 1–3.
 3. **`addRange` / `ElementRangeInsertion`** — add when `handlePaste` is implemented (`PreviewElementManager.java` TODO).
 4. **`BaseDialog.getMutations()` abstract method** — not needed because Composition's existing notification handlers already route through `applyChange()`. Revisit only if dialog-level mutation tracking becomes useful (e.g., per-dialog undo).
 5. **`ElementField` enum population beyond drag's needs** — Phase 4b populates the values that `NoteDragHandler` actually changes. Add more values when other emitters or subscribers need them.

@@ -22,10 +22,15 @@ package songscribe.ui.action;
 
 import module java.desktop;
 
+import java.util.EnumSet;
+
 import songscribe.Strings;
+import songscribe.message.mutation.ElementField;
 import songscribe.music.StaffElement;
 
 public class AccidentalAction extends NoteOnlyAction {
+
+    private static final EnumSet<ElementField> MODIFIED_FIELDS = EnumSet.of(ElementField.ACCIDENTAL);
 
     private final StaffElement.Accidental accidental;
 
@@ -122,5 +127,10 @@ public class AccidentalAction extends NoteOnlyAction {
     @Override
     public void applyToElement(StaffElement element, boolean selected) {
         element.setAccidental(selected ? accidental : null);
+    }
+
+    @Override
+    public EnumSet<ElementField> modifiedFields() {
+        return MODIFIED_FIELDS;
     }
 }

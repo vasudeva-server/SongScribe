@@ -18,25 +18,19 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package songscribe.message.notification;
+package songscribe.message.mutation;
 
-import songscribe.message.Message;
-import songscribe.music.Composition;
+import songscribe.music.DynamicsInterval;
+import songscribe.music.Line;
 
 /**
- * Posted when a document is loaded (File &gt; Open, File &gt; New).
- * Subscribers that need to perform a full reset in response to a new document
- * should handle this notification via a dedicated {@code @Handler} method.
+ * Mutation recording the removal of a diminuendo interval from a line.
  */
-public class DocumentDidLoadNotification extends Message {
+public record DiminuendoRemoval(Line line, DynamicsInterval interval)
+    implements Mutation, LineScopedMutation {
 
-    private final Composition composition;
-
-    public DocumentDidLoadNotification(Composition composition) {
-        this.composition = composition;
-    }
-
-    public Composition getComposition() {
-        return composition;
+    @Override
+    public Line getLine() {
+        return line;
     }
 }

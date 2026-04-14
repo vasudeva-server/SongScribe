@@ -32,6 +32,12 @@ import org.jspecify.annotations.Nullable;
 
 import kotlin.Pair;
 
+import songscribe.message.mutation.BeamingAddition;
+import songscribe.message.mutation.BeamingRemoval;
+import songscribe.message.mutation.CrescendoAddition;
+import songscribe.message.mutation.CrescendoRemoval;
+import songscribe.message.mutation.DiminuendoAddition;
+import songscribe.message.mutation.DiminuendoRemoval;
 import songscribe.message.mutation.ElementDeletion;
 import songscribe.message.mutation.ElementField;
 import songscribe.message.mutation.ElementInsertion;
@@ -45,6 +51,10 @@ import songscribe.message.mutation.LineLayoutField;
 import songscribe.message.mutation.Mutation;
 import songscribe.message.mutation.RangeElementAddition;
 import songscribe.message.mutation.RangeElementRemoval;
+import songscribe.message.mutation.TieAddition;
+import songscribe.message.mutation.TieRemoval;
+import songscribe.message.mutation.TupletAddition;
+import songscribe.message.mutation.TupletRemoval;
 import songscribe.midi.GlissandoMidiHelper;
 import songscribe.midi.PlaybackSettings;
 import songscribe.midi.VelocityMap;
@@ -290,15 +300,6 @@ public class Line {
     public void modifyElement(int index, EnumSet<ElementField> fields, Runnable mutator) {
         var beforeClone = elements.get(index).clone();
         applyChange(new ElementModification(this, index, fields, beforeClone), mutator);
-    }
-
-    /**
-     * Replaces the element at the given index without posting CompositionChangedMessage.
-     * The caller is responsible for posting a single CompositionChangedMessage after batch operations.
-     */
-    public void replaceElementQuietly(int index, StaffElement element) {
-        element.setLine(this);
-        elements.set(index, element);
     }
 
     /**
@@ -574,6 +575,46 @@ public class Line {
 
     public IntervalSet<DynamicsInterval> getDiminuendos() {
         return diminuendo;
+    }
+
+    public void addBeaming(BeamInterval interval) {
+        applyChange(new BeamingAddition(this, interval), () -> beamings.addInterval(interval));
+    }
+
+    public void removeBeaming(BeamInterval interval) {
+        applyChange(new BeamingRemoval(this, interval), () -> beamings.removeInterval(interval));
+    }
+
+    public void addTie(TieInterval interval) {
+        applyChange(new TieAddition(this, interval), () -> ties.addInterval(interval));
+    }
+
+    public void removeTie(TieInterval interval) {
+        applyChange(new TieRemoval(this, interval), () -> ties.removeInterval(interval));
+    }
+
+    public void addTuplet(TupletInterval interval) {
+        applyChange(new TupletAddition(this, interval), () -> tuplets.addInterval(interval));
+    }
+
+    public void removeTuplet(TupletInterval interval) {
+        applyChange(new TupletRemoval(this, interval), () -> tuplets.removeInterval(interval));
+    }
+
+    public void addCrescendo(DynamicsInterval interval) {
+        applyChange(new CrescendoAddition(this, interval), () -> crescendo.addInterval(interval));
+    }
+
+    public void removeCrescendo(DynamicsInterval interval) {
+        applyChange(new CrescendoRemoval(this, interval), () -> crescendo.removeInterval(interval));
+    }
+
+    public void addDiminuendo(DynamicsInterval interval) {
+        applyChange(new DiminuendoAddition(this, interval), () -> diminuendo.addInterval(interval));
+    }
+
+    public void removeDiminuendo(DynamicsInterval interval) {
+        applyChange(new DiminuendoRemoval(this, interval), () -> diminuendo.removeInterval(interval));
     }
 
     /**

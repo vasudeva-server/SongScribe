@@ -20,10 +20,15 @@
 
 package songscribe.ui.action;
 
+import java.util.EnumSet;
+
 import songscribe.Strings;
+import songscribe.message.mutation.ElementField;
 import songscribe.music.StaffElement;
 
 public class FermataAction extends NoteOnlyAction {
+
+    private static final EnumSet<ElementField> MODIFIED_FIELDS = EnumSet.of(ElementField.FERMATA);
 
     public static FermataAction createAction() {
         return new FermataAction();
@@ -48,5 +53,10 @@ public class FermataAction extends NoteOnlyAction {
     @Override
     public void applyToElement(StaffElement element, boolean selected) {
         element.setFermata(selected);
+    }
+
+    @Override
+    public EnumSet<ElementField> modifiedFields() {
+        return MODIFIED_FIELDS;
     }
 }
