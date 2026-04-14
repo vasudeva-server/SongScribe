@@ -490,6 +490,18 @@ public final class MusicEditOperations {
         var precedingType = precedingLine.getElement(precedingElementIndex).getType();
 
         if (precedingType.isContentElement()) {
+            var selectionLine = composition.getLine(lineIndex);
+            var selectionBeginType = selectionLine.getElement(selectionBegin).getType();
+
+            if (selectionBeginType == ElementType.SINGLE_BARLINE) {
+                // Selection already starts with a barline — no insertion needed
+                return EndingValidationResult.valid(
+                    EndingValidationResult.PrecedingAction.NONE,
+                    selectionBegin,
+                    selectionEnd
+                );
+            }
+
             // Auto-insert barline; span starts at selectionBegin (barline goes there)
             return EndingValidationResult.valid(
                 EndingValidationResult.PrecedingAction.INSERT_BARLINE,

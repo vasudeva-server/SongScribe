@@ -431,6 +431,25 @@ class MusicEditOperationsMutationTest extends UnitTest {
         assertThat(rangeAddition.element()).isInstanceOf(Ending.class);
     }
 
+    @Test
+    void testMakeFirstSecondEndingWithExistingLeadingBarlineEmitsOnlyRangeElementAddition() {
+        // Selection already starts with a single barline [barline, n1, n2, n3].
+        // Result: NONE action at index 0, ending over [0..3].
+        // No barline should be inserted — only the Ending range element is added.
+        var env = setup(ElementType.SINGLE_BARLINE.newInstance(), crotchet(), crotchet(), crotchet());
+        ReflectionTestHelper.selectNote(env.coordinator(), 0);
+        var result = EndingValidationResult.valid(EndingValidationResult.PrecedingAction.NONE, 0, 3);
+        env.operations().makeFirstSecondEnding(result);
+
+        var notification = captureSingleDidChange();
+        var mutations = notification.getMutations();
+        assertThat(mutations).hasSize(1);
+        assertThat(mutations.get(0)).isInstanceOf(RangeElementAddition.class);
+
+        var rangeAddition = (RangeElementAddition) mutations.get(0);
+        assertThat(rangeAddition.element()).isInstanceOf(Ending.class);
+    }
+
     // -----------------------------------------------------------------------
     // Element factory methods
     // -----------------------------------------------------------------------
