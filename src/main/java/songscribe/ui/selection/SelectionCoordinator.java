@@ -38,7 +38,6 @@ import net.engio.mbassy.listener.Handler;
 import songscribe.message.Message;
 import songscribe.message.MessageCenter;
 import songscribe.message.notification.MusicSelectionDidChangeNotification;
-import songscribe.music.BeamSpan;
 import songscribe.music.Composition;
 import songscribe.music.Line;
 import songscribe.music.StaffElement;
@@ -639,15 +638,7 @@ public final class SelectionCoordinator {
     // sub-beams.
     private void repairBeamings(Line line, int begin, int end) {
         var beamings = line.getBeamings();
-        var overlapping = new ArrayList<BeamSpan>();
-
-        for (var iter = beamings.listIterator(); iter.hasNext(); ) {
-            var beam = iter.next();
-
-            if (beam.start <= end && beam.end >= begin) {
-                overlapping.add(beam);
-            }
-        }
+        var overlapping = beamings.findOverlapping(begin, end);
 
         for (var beam : overlapping) {
             int newStart = beam.start;

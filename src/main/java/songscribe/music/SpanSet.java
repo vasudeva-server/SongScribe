@@ -19,7 +19,9 @@
  */
 package songscribe.music;
 
+import java.util.ArrayList;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.ListIterator;
 
 import org.jspecify.annotations.Nullable;
@@ -128,6 +130,24 @@ public class SpanSet<T extends Span> {
             )
             .findFirst()
             .orElse(null);
+    }
+
+    /**
+     * Returns all spans that overlap [begin, end] inclusive. The returned list is a
+     * snapshot — safe to iterate while removing spans from this set.
+     */
+    public List<T> findOverlapping(int begin, int end) {
+        var result = new ArrayList<T>();
+
+        for (var iter = spans.listIterator(); iter.hasNext(); ) {
+            var span = iter.next();
+
+            if (span.start <= end && span.end >= begin) {
+                result.add(span);
+            }
+        }
+
+        return result;
     }
 
     public boolean isStartOfAnySpan(int index) {

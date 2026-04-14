@@ -301,10 +301,7 @@ public class Line {
     }
 
     public void modifyElement(int index, EnumSet<ElementField> fields, Runnable mutator) {
-        // DOT_COUNT changes a note's duration, which invalidates any containing
-        // tuplet. See ElementField.DOT_COUNT — if a new duration-affecting field
-        // is added, it must be added to this guard.
-        if (fields.contains(ElementField.DOT_COUNT)) {
+        if (!Collections.disjoint(fields, ElementField.DURATION_AFFECTING)) {
             removeOverlappingTuplets(index, index);
         }
 
@@ -666,21 +663,17 @@ public class Line {
         shiftSpans(copySpanSets, 0, -xIndex);
     }
 
-    // Removes every tuplet whose span overlaps [begin, end] inclusive.
-    // Must be called inside an open modification bracket — each removal emits
-    // its own TupletRemoval mutation via removeTuplet.
+    /**
+     * Removes every tuplet whose span overlaps [begin, end] inclusive, emitting a
+     * {@code TupletRemoval} mutation for each. Must be called inside an open
+     * modification bracket.
+     * <p>
+     * Public for use by UI-layer coordinators ({@code SelectionCoordinator},
+     * {@code PreviewElementManager}) that perform bulk or replace operations not
+     * routed through {@code modifyElement}.
+     */
     public void removeOverlappingTuplets(int begin, int end) {
-        var overlapping = new ArrayList<TupletSpan>();
-
-        for (var iter = tuplets.listIterator(); iter.hasNext(); ) {
-            var tuplet = iter.next();
-
-            if (tuplet.start <= end && tuplet.end >= begin) {
-                overlapping.add(tuplet);
-            }
-        }
-
-        for (var tuplet : overlapping) {
+        for (var tuplet : tuplets.findOverlapping(begin, end)) {
             removeTuplet(tuplet);
         }
     }

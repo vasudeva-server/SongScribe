@@ -20,6 +20,8 @@
 
 package songscribe.message.mutation;
 
+import java.util.EnumSet;
+
 /**
  * Identifies which fields changed on an element in an {@link ElementModification} mutation.
  * Populated incrementally as {@link ElementModification} emitters are added.
@@ -57,10 +59,7 @@ public enum ElementField {
 
     /**
      * The element's dot count was changed. Emitted by {@code DotAction}.
-     * <p>
-     * Duration-affecting: {@code Line.modifyElement} removes any containing
-     * tuplet when this field is present. New duration-affecting fields must
-     * update that guard.
+     * Duration-affecting: see {@link #DURATION_AFFECTING}.
      */
     DOT_COUNT,
 
@@ -68,5 +67,12 @@ public enum ElementField {
     ARTICULATION,
 
     /** The element's dynamic attachment was changed. Emitted by {@code DynamicMarkingAction}. */
-    DYNAMIC_ATTACHMENT,
+    DYNAMIC_ATTACHMENT;
+
+    /**
+     * Fields that change an element's effective duration. {@code Line.modifyElement} removes any
+     * containing tuplet when the modified field set intersects this set. Add new
+     * duration-affecting fields here to extend the tuplet-immutability policy.
+     */
+    public static final EnumSet<ElementField> DURATION_AFFECTING = EnumSet.of(DOT_COUNT);
 }
