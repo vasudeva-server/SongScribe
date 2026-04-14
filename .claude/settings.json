@@ -3,12 +3,15 @@
     "CLAUDE_CODE_TASK_LIST_ID": "SongScribe"
   },
   "permissions": {
+    "ask": [
+      "Bash(./scripts/test.sh e2e)"
+    ],
     "allow": [
       "Bash(./gradlew compileJava:*)",
       "Bash(./scripts/check-style.sh:*)",
       "Bash(./scripts/compile.sh:*)",
       "Bash(./scripts/run.sh:*)",
-      "Bash(./scripts/test.sh unit)",
+      "Bash(./scripts/test.sh:*)",
       "Bash(bash:*)",
       "Bash(cat:*)",
       "Bash(done)",
