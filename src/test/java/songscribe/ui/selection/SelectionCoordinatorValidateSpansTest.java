@@ -292,10 +292,11 @@ class SelectionCoordinatorValidateSpansTest extends UnitTest {
     }
 
     @Test
-    void testElementModifiableLeavesTupletsAlone() {
-        // Three eighths with a tuplet spanning [0..2]. Applying an
-        // ElementModifiable action (dot) to the middle element does not
-        // trigger validateSpans, so no TupletRemoval is emitted.
+    void testDotCountChangeRemovesTuplet() {
+        // Three eighths with a tuplet spanning [0..2]. Applying a dot to the
+        // middle element changes its duration, which invalidates the tuplet.
+        // Line.modifyElement detects DOT_COUNT in the modified fields and emits
+        // a TupletRemoval directly — independent of validateSpans.
         var dotAction = DotAction.createDotAction();
         var notes = List.<StaffElement>of(
             ElementType.QUAVER.newInstance(),
@@ -304,11 +305,14 @@ class SelectionCoordinatorValidateSpansTest extends UnitTest {
         );
         var coordinator = createCoordinator(notes, List.of(dotAction));
         var line = Objects.requireNonNull(coordinator.getActiveSelection()).getLine();
-        line.getTuplets().addSpan(new TupletSpan(0, 2, 3));
+        var tuplet = new TupletSpan(0, 2, 3);
+        line.getTuplets().addSpan(tuplet);
 
         ReflectionTestHelper.selectNote(coordinator, 1);
         coordinator.applyActionToSelection(dotAction, true);
 
-        assertThat(mutationsOfType(TupletRemoval.class)).isEmpty();
+        var removals = mutationsOfType(TupletRemoval.class);
+        assertThat(removals).hasSize(1);
+        assertThat(removals.get(0).span()).isSameAs(tuplet);
     }
 }

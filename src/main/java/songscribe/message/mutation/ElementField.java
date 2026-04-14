@@ -55,7 +55,13 @@ public enum ElementField {
     /** The element's accidental-in-parentheses flag was toggled. Emitted by {@code AccidentalInParensAction}. */
     ACCIDENTAL_IN_PARENS,
 
-    /** The element's dot count was changed. Emitted by {@code DotAction}. */
+    /**
+     * The element's dot count was changed. Emitted by {@code DotAction}.
+     * <p>
+     * Duration-affecting: {@code Line.modifyElement} removes any containing
+     * tuplet when this field is present. New duration-affecting fields must
+     * update that guard.
+     */
     DOT_COUNT,
 
     /** The element's articulation list was changed. Emitted by articulation actions. */

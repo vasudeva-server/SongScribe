@@ -42,7 +42,6 @@ import songscribe.music.BeamSpan;
 import songscribe.music.Composition;
 import songscribe.music.Line;
 import songscribe.music.StaffElement;
-import songscribe.music.TupletSpan;
 import songscribe.ui.component.score.LineComponent;
 import songscribe.ui.action.Actions;
 import songscribe.ui.action.UIAction;
@@ -618,30 +617,7 @@ public final class SelectionCoordinator {
     // touch element type.
     private void validateSpans(Line line, int begin, int end) {
         repairBeamings(line, begin, end);
-        invalidateOverlappingTuplets(line, begin, end);
-    }
-
-    // Removes every tuplet that overlaps [begin, end] in line.
-    //
-    // Under the tuplet immutability policy, any change other than pitch
-    // invalidates a tuplet, so repair-by-splitting is semantically wrong.
-    // Each removal is emitted as its own TupletRemoval mutation inside the
-    // open modification bracket.
-    private void invalidateOverlappingTuplets(Line line, int begin, int end) {
-        var tuplets = line.getTuplets();
-        var overlapping = new ArrayList<TupletSpan>();
-
-        for (var iter = tuplets.listIterator(); iter.hasNext(); ) {
-            var tuplet = iter.next();
-
-            if (tuplet.start <= end && tuplet.end >= begin) {
-                overlapping.add(tuplet);
-            }
-        }
-
-        for (var tuplet : overlapping) {
-            line.removeTuplet(tuplet);
-        }
+        line.removeOverlappingTuplets(begin, end);
     }
 
     // Trim-and-kill repair for beams that overlap [begin, end] after a batch

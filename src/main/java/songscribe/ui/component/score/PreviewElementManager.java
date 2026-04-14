@@ -762,16 +762,12 @@ public class PreviewElementManager {
             return;
         }
 
-        // If the user tries to insert into triplet, they will get an error message
-        var iv = line.getTuplets().findSpan(xIndex - 1);
+        // If inserting into a tuplet, remove it — the new element changes the rhythmic grouping.
+        // The subsequent removeSpan call handles the remaining span sets (beamings, ties, etc.).
+        var tuplet = line.getTuplets().findSpan(xIndex - 1);
 
-        if ((iv != null) && ((xIndex - 1) < iv.getEnd())) {
-            OptionDialogs.showErrorMessage(
-                null,
-                Strings.ALERT_TITLE_INSERT_ERROR,
-                Strings.ERROR_TRIPLET_INSERT
-            );
-            return;
+        if ((tuplet != null) && ((xIndex - 1) < tuplet.getEnd())) {
+            line.removeTuplet(tuplet);
         }
 
         line.removeSpan(xIndex - 1, xIndex);
@@ -883,7 +879,8 @@ public class PreviewElementManager {
         }
 
         // Preserve the existing element's x position
-        previewElement.setXPosSs(line.getElement(elementIndex).getXPosSs());
+        var existing = line.getElement(elementIndex);
+        previewElement.setXPosSs(existing.getXPosSs());
 
         // Rests snap to their default staff position; pitched notes use the mouse Y position
         applyStaffPosition(previewElement, currentStaffPosition);
@@ -906,6 +903,13 @@ public class PreviewElementManager {
         while (tie != null) {
             line.getTies().removeSpan(tie);
             tie = line.getTies().findSpan(elementIndex);
+        }
+
+        // Remove any containing tuplet if the duration type or dot count changes —
+        // the replacement would make the tuplet rhythmically invalid.
+        if (existing.getType() != previewElement.getType()
+                || existing.getDotCount() != previewElement.getDotCount()) {
+            line.removeOverlappingTuplets(elementIndex, elementIndex);
         }
 
         // Replace the element entirely (line.setElement marks the composition modified)

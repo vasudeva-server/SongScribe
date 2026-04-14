@@ -261,6 +261,12 @@ public class Line {
 
     public void addElement(int index, StaffElement element) {
         element.setLine(this);
+        var tuplet = tuplets.findSpan(index);
+
+        if (tuplet != null && index > tuplet.start) {
+            removeTuplet(tuplet);
+        }
+
         applyChange(
             new ElementInsertion(this, index, element),
             () -> {
@@ -295,6 +301,13 @@ public class Line {
     }
 
     public void modifyElement(int index, EnumSet<ElementField> fields, Runnable mutator) {
+        // DOT_COUNT changes a note's duration, which invalidates any containing
+        // tuplet. See ElementField.DOT_COUNT — if a new duration-affecting field
+        // is added, it must be added to this guard.
+        if (fields.contains(ElementField.DOT_COUNT)) {
+            removeOverlappingTuplets(index, index);
+        }
+
         var beforeClone = elements.get(index).clone();
         applyChange(new ElementModification(this, index, fields, beforeClone), mutator);
     }
@@ -336,6 +349,7 @@ public class Line {
     }
 
     public void removeElement(int index) {
+        removeOverlappingTuplets(index, index);
         var deleted = elements.get(index);
         applyChange(
             new ElementDeletion(this, index, deleted),
@@ -365,6 +379,7 @@ public class Line {
      * @param to   the index of the last element to remove (inclusive)
      */
     public void removeRange(int from, int to) {
+        removeOverlappingTuplets(from, to);
         var deletedElements = List.copyOf(elements.subList(from, to + 1));
         applyChange(
             new ElementRangeDeletion(this, from, to, deletedElements),
@@ -649,6 +664,25 @@ public class Line {
         }
 
         shiftSpans(copySpanSets, 0, -xIndex);
+    }
+
+    // Removes every tuplet whose span overlaps [begin, end] inclusive.
+    // Must be called inside an open modification bracket — each removal emits
+    // its own TupletRemoval mutation via removeTuplet.
+    public void removeOverlappingTuplets(int begin, int end) {
+        var overlapping = new ArrayList<TupletSpan>();
+
+        for (var iter = tuplets.listIterator(); iter.hasNext(); ) {
+            var tuplet = iter.next();
+
+            if (tuplet.start <= end && tuplet.end >= begin) {
+                overlapping.add(tuplet);
+            }
+        }
+
+        for (var tuplet : overlapping) {
+            removeTuplet(tuplet);
+        }
     }
 
     private void shiftSpans(SpanSet<?>[] spanSetArray, int from, int shift) {
