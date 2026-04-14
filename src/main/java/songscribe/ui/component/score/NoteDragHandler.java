@@ -143,26 +143,22 @@ class NoteDragHandler {
 
         var selectionState = lc.getLineSelectionState();
 
-        // Capture the selection range BEFORE any selection change so the drag group
-        // can span all originally-selected notes even after collapsing to a single note.
         int dragBegin;
         int dragEnd;
 
-        if (selectionState != null && selectionState.hasElementSelection()) {
-            dragBegin = selectionState.getSelectionBegin();
-            dragEnd = selectionState.getSelectionEnd();
-        } else {
-            dragBegin = hitIndex;
-            dragEnd = hitIndex;
-        }
-
         if (selectionState != null && selectionState.isElementSelected(hitIndex)) {
             // Note is already part of the selection — preserve it for a potential drag.
-            // Collapse happens on release in handleRelease if no drag occurred.
+            // Capture the existing selection range so the drag group spans all
+            // originally-selected notes even after a collapse on release.
+            dragBegin = selectionState.getSelectionBegin();
+            dragEnd = selectionState.getSelectionEnd();
             lc.getSelectionHandler().playNoteIfPitched(hitIndex);
             pressPreservedMultiSelection = true;
         } else {
-            // Note is not selected — select and play
+            // Note is not in the current selection — replace selection with just this note.
+            // Drag group is only the clicked note.
+            dragBegin = hitIndex;
+            dragEnd = hitIndex;
             lc.getSelectionHandler().selectAndPlayElement(hitIndex);
             pressPreservedMultiSelection = false;
         }
