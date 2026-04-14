@@ -80,36 +80,36 @@ class TieToggleTest extends UnitTest {
     void testTieCreationAndRemoval() {
         selectRange(EIGHTH_1, EIGHTH_2);
 
-        assertThat(line.getTies().findInterval(EIGHTH_1))
+        assertThat(line.getTies().findSpan(EIGHTH_1))
             .as("no tie before toggle").isNull();
 
         operations.toggleTie();
 
         assertAll(
-            () -> assertThat(line.getTies().findInterval(EIGHTH_1))
+            () -> assertThat(line.getTies().findSpan(EIGHTH_1))
                 .as("note 1 tied").isNotNull(),
-            () -> assertThat(line.getTies().findInterval(EIGHTH_2))
+            () -> assertThat(line.getTies().findSpan(EIGHTH_2))
                 .as("note 2 tied").isNotNull()
         );
 
         operations.toggleTie();
 
         assertAll(
-            () -> assertThat(line.getTies().findInterval(EIGHTH_1))
+            () -> assertThat(line.getTies().findSpan(EIGHTH_1))
                 .as("note 1 untied").isNull(),
-            () -> assertThat(line.getTies().findInterval(EIGHTH_2))
+            () -> assertThat(line.getTies().findSpan(EIGHTH_2))
                 .as("note 2 untied").isNull()
         );
     }
 
     @Test
     void testTiePersistsThroughSaveLoad() throws Exception {
-        var tie = line.getTies().findInterval(TIED_1);
+        var tie = line.getTies().findSpan(TIED_1);
         assertThat(tie).as("pre-tied pair exists").isNotNull();
 
         var reloaded = roundTrip(composition);
         var reloadedLine = reloaded.getLine(0);
-        var reloadedTie = reloadedLine.getTies().findInterval(TIED_1);
+        var reloadedTie = reloadedLine.getTies().findSpan(TIED_1);
 
         assertAll(
             () -> assertThat(reloadedTie)

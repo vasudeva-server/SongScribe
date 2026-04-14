@@ -38,24 +38,23 @@ import songscribe.message.mutation.BeamingRemoval;
 import songscribe.message.mutation.Mutation;
 import songscribe.message.mutation.TupletAddition;
 import songscribe.message.mutation.TupletRemoval;
-import songscribe.music.BeamInterval;
+import songscribe.music.BeamSpan;
 import songscribe.music.Composition;
 import songscribe.music.ElementType;
-import songscribe.music.Line;
 import songscribe.music.StaffElement;
-import songscribe.music.TupletInterval;
+import songscribe.music.TupletSpan;
 import songscribe.ui.action.DotAction;
 import songscribe.ui.action.ElementTypeAction;
 import songscribe.ui.action.UIAction;
 
 /**
  * Coverage for the beam-repair and tuplet-invalidation behavior of
- * {@link SelectionCoordinator#applyActionToSelection}'s interval validation
+ * {@link SelectionCoordinator#applyActionToSelection}'s span validation
  * step. Each test exercises a single beam or tuplet scenario through a real
  * {@code ElementReplaceable} action and asserts on the exact mutation records
  * emitted into the open modification bracket.
  */
-class SelectionCoordinatorValidateIntervalsTest extends UnitTest {
+class SelectionCoordinatorValidateSpansTest extends UnitTest {
 
     private static final ElementTypeAction QUARTER_ACTION =
         ElementTypeAction.createQuarterNoteAction();
@@ -119,7 +118,7 @@ class SelectionCoordinatorValidateIntervalsTest extends UnitTest {
         );
         var coordinator = createCoordinator(notes, List.of(SIXTEENTH_ACTION));
         var line = Objects.requireNonNull(coordinator.getActiveSelection()).getLine();
-        line.getBeamings().addInterval(new BeamInterval(0, 2));
+        line.getBeamings().addSpan(new BeamSpan(0, 2));
 
         ReflectionTestHelper.selectNote(coordinator, 1);
         coordinator.applyActionToSelection(SIXTEENTH_ACTION, true);
@@ -140,20 +139,20 @@ class SelectionCoordinatorValidateIntervalsTest extends UnitTest {
         );
         var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
         var line = Objects.requireNonNull(coordinator.getActiveSelection()).getLine();
-        var originalBeam = new BeamInterval(0, 2);
-        line.getBeamings().addInterval(originalBeam);
+        var originalBeam = new BeamSpan(0, 2);
+        line.getBeamings().addSpan(originalBeam);
 
         ReflectionTestHelper.selectNote(coordinator, 0);
         coordinator.applyActionToSelection(QUARTER_ACTION, true);
 
         var removals = mutationsOfType(BeamingRemoval.class);
         assertThat(removals).hasSize(1);
-        assertThat(removals.get(0).interval()).isSameAs(originalBeam);
+        assertThat(removals.get(0).span()).isSameAs(originalBeam);
 
         var additions = mutationsOfType(BeamingAddition.class);
         assertThat(additions).hasSize(1);
-        assertThat(additions.get(0).interval().start).isEqualTo(1);
-        assertThat(additions.get(0).interval().end).isEqualTo(2);
+        assertThat(additions.get(0).span().start).isEqualTo(1);
+        assertThat(additions.get(0).span().end).isEqualTo(2);
     }
 
     @Test
@@ -168,20 +167,20 @@ class SelectionCoordinatorValidateIntervalsTest extends UnitTest {
         );
         var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
         var line = Objects.requireNonNull(coordinator.getActiveSelection()).getLine();
-        var originalBeam = new BeamInterval(0, 2);
-        line.getBeamings().addInterval(originalBeam);
+        var originalBeam = new BeamSpan(0, 2);
+        line.getBeamings().addSpan(originalBeam);
 
         ReflectionTestHelper.selectNote(coordinator, 2);
         coordinator.applyActionToSelection(QUARTER_ACTION, true);
 
         var removals = mutationsOfType(BeamingRemoval.class);
         assertThat(removals).hasSize(1);
-        assertThat(removals.get(0).interval()).isSameAs(originalBeam);
+        assertThat(removals.get(0).span()).isSameAs(originalBeam);
 
         var additions = mutationsOfType(BeamingAddition.class);
         assertThat(additions).hasSize(1);
-        assertThat(additions.get(0).interval().start).isEqualTo(0);
-        assertThat(additions.get(0).interval().end).isEqualTo(1);
+        assertThat(additions.get(0).span().start).isEqualTo(0);
+        assertThat(additions.get(0).span().end).isEqualTo(1);
     }
 
     @Test
@@ -198,15 +197,15 @@ class SelectionCoordinatorValidateIntervalsTest extends UnitTest {
         );
         var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
         var line = Objects.requireNonNull(coordinator.getActiveSelection()).getLine();
-        var originalBeam = new BeamInterval(0, 4);
-        line.getBeamings().addInterval(originalBeam);
+        var originalBeam = new BeamSpan(0, 4);
+        line.getBeamings().addSpan(originalBeam);
 
         ReflectionTestHelper.selectNote(coordinator, 2);
         coordinator.applyActionToSelection(QUARTER_ACTION, true);
 
         var removals = mutationsOfType(BeamingRemoval.class);
         assertThat(removals).hasSize(1);
-        assertThat(removals.get(0).interval()).isSameAs(originalBeam);
+        assertThat(removals.get(0).span()).isSameAs(originalBeam);
 
         assertThat(mutationsOfType(BeamingAddition.class))
             .as("interior puncture kills the beam without a replacement")
@@ -224,15 +223,15 @@ class SelectionCoordinatorValidateIntervalsTest extends UnitTest {
         );
         var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
         var line = Objects.requireNonNull(coordinator.getActiveSelection()).getLine();
-        var originalBeam = new BeamInterval(0, 1);
-        line.getBeamings().addInterval(originalBeam);
+        var originalBeam = new BeamSpan(0, 1);
+        line.getBeamings().addSpan(originalBeam);
 
         ReflectionTestHelper.selectNote(coordinator, 0);
         coordinator.applyActionToSelection(QUARTER_ACTION, true);
 
         var removals = mutationsOfType(BeamingRemoval.class);
         assertThat(removals).hasSize(1);
-        assertThat(removals.get(0).interval()).isSameAs(originalBeam);
+        assertThat(removals.get(0).span()).isSameAs(originalBeam);
 
         assertThat(mutationsOfType(BeamingAddition.class))
             .as("single remaining beamable element cannot form a beam")
@@ -257,18 +256,18 @@ class SelectionCoordinatorValidateIntervalsTest extends UnitTest {
         );
         var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
         var line = Objects.requireNonNull(coordinator.getActiveSelection()).getLine();
-        var firstTuplet = new TupletInterval(0, 1, 3);
-        var secondTuplet = new TupletInterval(3, 4, 3);
-        line.getTuplets().addInterval(firstTuplet);
-        line.getTuplets().addInterval(secondTuplet);
+        var firstTuplet = new TupletSpan(0, 1, 3);
+        var secondTuplet = new TupletSpan(3, 4, 3);
+        line.getTuplets().addSpan(firstTuplet);
+        line.getTuplets().addSpan(secondTuplet);
 
         ReflectionTestHelper.selectRange(coordinator, 0, 4);
         coordinator.applyActionToSelection(QUARTER_ACTION, true);
 
         var removals = mutationsOfType(TupletRemoval.class);
         assertThat(removals).hasSize(2);
-        var removedIntervals = removals.stream().map(TupletRemoval::interval).toList();
-        assertThat(removedIntervals).containsExactlyInAnyOrder(firstTuplet, secondTuplet);
+        var removedSpans = removals.stream().map(TupletRemoval::span).toList();
+        assertThat(removedSpans).containsExactlyInAnyOrder(firstTuplet, secondTuplet);
     }
 
     @Test
@@ -284,7 +283,7 @@ class SelectionCoordinatorValidateIntervalsTest extends UnitTest {
         );
         var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
         var line = Objects.requireNonNull(coordinator.getActiveSelection()).getLine();
-        line.getTuplets().addInterval(new TupletInterval(3, 4, 3));
+        line.getTuplets().addSpan(new TupletSpan(3, 4, 3));
 
         ReflectionTestHelper.selectNote(coordinator, 0);
         coordinator.applyActionToSelection(QUARTER_ACTION, true);
@@ -296,7 +295,7 @@ class SelectionCoordinatorValidateIntervalsTest extends UnitTest {
     void testElementModifiableLeavesTupletsAlone() {
         // Three eighths with a tuplet spanning [0..2]. Applying an
         // ElementModifiable action (dot) to the middle element does not
-        // trigger validateIntervals, so no TupletRemoval is emitted.
+        // trigger validateSpans, so no TupletRemoval is emitted.
         var dotAction = DotAction.createDotAction();
         var notes = List.<StaffElement>of(
             ElementType.QUAVER.newInstance(),
@@ -305,7 +304,7 @@ class SelectionCoordinatorValidateIntervalsTest extends UnitTest {
         );
         var coordinator = createCoordinator(notes, List.of(dotAction));
         var line = Objects.requireNonNull(coordinator.getActiveSelection()).getLine();
-        line.getTuplets().addInterval(new TupletInterval(0, 2, 3));
+        line.getTuplets().addSpan(new TupletSpan(0, 2, 3));
 
         ReflectionTestHelper.selectNote(coordinator, 1);
         coordinator.applyActionToSelection(dotAction, true);

@@ -20,10 +20,10 @@
 package songscribe.io;
 
 
-import songscribe.music.DynamicsInterval;
-import songscribe.music.Interval;
-import songscribe.music.IntervalSet;
-import songscribe.music.TupletInterval;
+import songscribe.music.DynamicsSpan;
+import songscribe.music.Span;
+import songscribe.music.SpanSet;
+import songscribe.music.TupletSpan;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -65,7 +65,7 @@ import songscribe.ui.layout.ScaleContext;
  *
  * <h2>Migration history</h2>
  * <ul>
- *   <li><b>v1 → v2</b>: {@link #migrate} — IntervalSets converted to RangeElements;
+ *   <li><b>v1 → v2</b>: {@link #migrate} — SpanSets converted to RangeElements;
  *       inline Note properties converted to Attachment objects.</li>
  *   <li><b>v2.0 → v2.1</b>: {@link #migratePixelsToStaffSpace} — pixel-based position
  *       fields converted to staff-space units.</li>
@@ -123,7 +123,7 @@ public final class FormatMigrator {
             // Line-level fields
             line.setLyricsYPosSs(line.getLyricsYPosSs() / pps);
 
-            // TupletInterval.verticalPosition
+            // TupletSpan.verticalPosition
             for (var iter = line.getTuplets().listIterator(); iter.hasNext(); ) {
                 var tuplet = iter.next();
 
@@ -132,9 +132,9 @@ public final class FormatMigrator {
                 }
             }
 
-            // DynamicsInterval shifts (crescendo + diminuendo)
-            migrateDynamicsIntervals(line.getCrescendos(), pps);
-            migrateDynamicsIntervals(line.getDiminuendos(), pps);
+            // DynamicsSpan shifts (crescendo + diminuendo)
+            migrateDynamicsSpans(line.getCrescendos(), pps);
+            migrateDynamicsSpans(line.getDiminuendos(), pps);
 
             // Glissando translates and per-instance attachment offsets
             for (var i = 0; i < line.elementCount(); i++) {
@@ -167,17 +167,17 @@ public final class FormatMigrator {
         }
     }
 
-    private static void migrateDynamicsIntervals(
-        IntervalSet<DynamicsInterval> intervals,
+    private static void migrateDynamicsSpans(
+        SpanSet<DynamicsSpan> spanSet,
         double pps
     ) {
-        for (var iter = intervals.listIterator(); iter.hasNext(); ) {
-            var interval = iter.next();
+        for (var iter = spanSet.listIterator(); iter.hasNext(); ) {
+            var span = iter.next();
 
-            if (interval.getX1ShiftSs() != 0 || interval.getX2ShiftSs() != 0 || interval.getYShiftSs() != 0) {
-                interval.setX1ShiftSs(interval.getX1ShiftSs() / pps);
-                interval.setX2ShiftSs(interval.getX2ShiftSs() / pps);
-                interval.setYShiftSs(interval.getYShiftSs() / pps);
+            if (span.getX1ShiftSs() != 0 || span.getX2ShiftSs() != 0 || span.getYShiftSs() != 0) {
+                span.setX1ShiftSs(span.getX1ShiftSs() / pps);
+                span.setX2ShiftSs(span.getX2ShiftSs() / pps);
+                span.setYShiftSs(span.getYShiftSs() / pps);
             }
         }
     }
@@ -188,7 +188,7 @@ public final class FormatMigrator {
      * @param line The line to migrate
      */
     private static void migrateLine(Line line) {
-        // Migrate IntervalSets to RangeElements
+        // Migrate SpanSets to RangeElements
         migrateRangeElements(line);
 
         // Migrate Note attachments
@@ -314,93 +314,93 @@ public final class FormatMigrator {
     }
 
     /**
-     * Converts IntervalSet-based ranges to RangeElement objects.
+     * Converts SpanSet-based ranges to RangeElement objects.
      *
-     * @param line The line containing the IntervalSets
+     * @param line The line containing the SpanSets
      */
     private static void migrateRangeElements(Line line) {
         // Convert ties
-        migrateIntervalSet(line, line.getTies(), (l, interval) -> {
-            var startElement = l.getElement(interval.getStart());
-            var endElement = l.getElement(interval.getEnd());
+        migrateSpanSet(line, line.getTies(), (l, span) -> {
+            var startElement = l.getElement(span.getStart());
+            var endElement = l.getElement(span.getEnd());
 
             return new Tie(startElement, endElement);
         });
 
-        // Convert tuplets (with grade from interval data)
-        migrateIntervalSet(line, line.getTuplets(), (l, interval) -> {
-            var startElement = l.getElement(interval.getStart());
-            var endElement = l.getElement(interval.getEnd());
-            int grade = extractTupletGrade((TupletInterval) interval);
+        // Convert tuplets (with grade from span data)
+        migrateSpanSet(line, line.getTuplets(), (l, span) -> {
+            var startElement = l.getElement(span.getStart());
+            var endElement = l.getElement(span.getEnd());
+            int grade = extractTupletGrade((TupletSpan) span);
 
             return new Tuplet(startElement, endElement, grade);
         });
 
         // Convert crescendos
-        migrateIntervalSet(line, line.getCrescendos(), (l, interval) -> {
-            var startElement = l.getElement(interval.getStart());
-            var endElement = l.getElement(interval.getEnd());
+        migrateSpanSet(line, line.getCrescendos(), (l, span) -> {
+            var startElement = l.getElement(span.getStart());
+            var endElement = l.getElement(span.getEnd());
 
             return new Crescendo(startElement, endElement);
         });
 
         // Convert diminuendos
-        migrateIntervalSet(line, line.getDiminuendos(), (l, interval) -> {
-            var startElement = l.getElement(interval.getStart());
-            var endElement = l.getElement(interval.getEnd());
+        migrateSpanSet(line, line.getDiminuendos(), (l, span) -> {
+            var startElement = l.getElement(span.getStart());
+            var endElement = l.getElement(span.getEnd());
 
             return new Diminuendo(startElement, endElement);
         });
 
         // Note: slurs are intentionally NOT migrated (being removed)
-        // Note: beamings stay as IntervalSet (used for beaming calculations)
+        // Note: beamings stay as SpanSet (used for beaming calculations)
     }
 
     /**
-     * Functional interface for creating RangeElements from intervals.
+     * Functional interface for creating RangeElements from spans.
      */
     @FunctionalInterface
     private interface RangeElementFactory {
-        RangeElement create(Line line, Interval interval);
+        RangeElement create(Line line, Span span);
     }
 
     /**
-     * Helper method to migrate an IntervalSet to RangeElements.
+     * Helper method to migrate a SpanSet to RangeElements.
      */
     @SuppressWarnings("rawtypes")
-    private static void migrateIntervalSet(
+    private static void migrateSpanSet(
         Line line,
-        IntervalSet intervalSet,
+        SpanSet spanSet,
         RangeElementFactory factory
     ) {
-        for (var iter = intervalSet.listIterator(); iter.hasNext(); ) {
-            var interval = (Interval) iter.next();
+        for (var iter = spanSet.listIterator(); iter.hasNext(); ) {
+            var span = (Span) iter.next();
 
-            // Validate interval bounds
-            if (interval.getStart() < 0 || interval.getEnd() >= line.elementCount()) {
+            // Validate span bounds
+            if (span.getStart() < 0 || span.getEnd() >= line.elementCount()) {
                 continue;
             }
 
-            if (interval.getStart() > interval.getEnd()) {
+            if (span.getStart() > span.getEnd()) {
                 continue;
             }
 
-            var element = factory.create(line, interval);
+            var element = factory.create(line, span);
             line.addRangeElement(element);
         }
     }
 
     /**
-     * Extracts tuplet grade from interval data.
+     * Extracts tuplet grade from span data.
      * <p>
-     * Interval data format: "3" for triplet, "5" for quintuplet, etc.
+     * Span data format: "3" for triplet, "5" for quintuplet, etc.
      * Defaults to 3 (triplet) if data is null or invalid.
      *
-     * @param interval The interval containing tuplet data
+     * @param span The span containing tuplet data
      * @return The tuplet grade (3, 5, 6, 7, etc.)
      */
-    private static int extractTupletGrade(TupletInterval interval) {
-        return interval.getGrade();
+    private static int extractTupletGrade(TupletSpan span) {
+        return span.getGrade();
     }
 
     /**

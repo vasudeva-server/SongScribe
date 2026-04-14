@@ -26,6 +26,7 @@ import static songscribe.ui.renderer.GraphicsState.Property.FONT;
 import module java.desktop;
 
 import songscribe.music.Line;
+import songscribe.music.TupletSpan;
 import songscribe.ui.layout.LayoutResult;
 import songscribe.ui.layout.Tuplet;
 import songscribe.util.GraphicUtils;
@@ -87,7 +88,7 @@ public final class TupletRenderer extends BaseElementRenderer<Tuplet> {
     }
 
     /**
-     * Renders all tuplets for a line by iterating legacy {@link songscribe.music.TupletInterval}
+     * Renders all tuplets for a line by iterating legacy {@link TupletSpan}
      * data and reading pre-computed positions from {@link LayoutResult.SpanLayout}.
      */
     public void renderTupletsFromLine(
@@ -102,22 +103,22 @@ public final class TupletRenderer extends BaseElementRenderer<Tuplet> {
         }
 
         for (var iter = line.getTuplets().listIterator(); iter.hasNext(); ) {
-            var interval = iter.next();
-            var spanLayout = layoutResult.getSpanLayout(interval);
+            var span = iter.next();
+            var spanLayout = layoutResult.getSpanLayout(span);
 
             if (spanLayout == null) {
                 continue;
             }
 
-            var startNote = line.getElement(interval.getStart());
+            var startNote = line.getElement(span.getStart());
             var isUpper = startNote.isUpper();
 
             // Beamed + stems up: number only (beam already provides visual grouping)
-            var allBeamed = line.getBeamings().findInterval(interval.getStart()) != null
-                && line.getBeamings().findInterval(interval.getEnd()) != null;
+            var allBeamed = line.getBeamings().findSpan(span.getStart()) != null
+                && line.getBeamings().findSpan(span.getEnd()) != null;
             var numberOnly = allBeamed && isUpper;
 
-            renderTuplet(g2, ctx, spanLayout, interval.getGrade(), numberOnly);
+            renderTuplet(g2, ctx, spanLayout, span.getGrade(), numberOnly);
         }
     }
 

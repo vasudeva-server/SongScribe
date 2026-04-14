@@ -176,7 +176,7 @@ class NoteDragHandler {
                 continue;
             }
 
-            var tie = line.getTies().findInterval(i);
+            var tie = line.getTies().findSpan(i);
 
             if (tie != null) {
                 for (var j = tie.getStart(); j <= tie.getEnd(); j++) {

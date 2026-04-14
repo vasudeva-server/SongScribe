@@ -31,36 +31,36 @@ class LineIsInHairpinRangeTest extends UnitTest {
     @Test
     void testIndexInsideCrescendoRangeReturnsTrue() {
         var line = new Line();
-        line.getCrescendos().addInterval(new DynamicsInterval(2, 5));
+        line.getCrescendos().addSpan(new DynamicsSpan(2, 5));
         assertThat(line.isInHairpinRange(3)).isTrue();
     }
 
     @Test
     void testIndexInsideDiminuendoRangeReturnsTrue() {
         var line = new Line();
-        line.getDiminuendos().addInterval(new DynamicsInterval(2, 5));
+        line.getDiminuendos().addSpan(new DynamicsSpan(2, 5));
         assertThat(line.isInHairpinRange(3)).isTrue();
     }
 
     @Test
     void testIndexAtRangeBoundaryStartReturnsTrue() {
         var line = new Line();
-        line.getCrescendos().addInterval(new DynamicsInterval(2, 5));
+        line.getCrescendos().addSpan(new DynamicsSpan(2, 5));
         assertThat(line.isInHairpinRange(2)).isTrue();
     }
 
     @Test
     void testIndexAtRangeBoundaryEndReturnsTrue() {
         var line = new Line();
-        line.getCrescendos().addInterval(new DynamicsInterval(2, 5));
+        line.getCrescendos().addSpan(new DynamicsSpan(2, 5));
         assertThat(line.isInHairpinRange(5)).isTrue();
     }
 
     @Test
     void testIndexOutsideAnyRangeReturnsFalse() {
         var line = new Line();
-        line.getCrescendos().addInterval(new DynamicsInterval(2, 5));
-        line.getDiminuendos().addInterval(new DynamicsInterval(8, 10));
+        line.getCrescendos().addSpan(new DynamicsSpan(2, 5));
+        line.getDiminuendos().addSpan(new DynamicsSpan(8, 10));
         assertThat(line.isInHairpinRange(6)).isFalse();
     }
 

@@ -30,11 +30,11 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.music.DynamicsInterval;
+import songscribe.music.DynamicsSpan;
 import songscribe.music.ElementType;
 import songscribe.music.Line;
 import songscribe.music.StaffElement;
-import songscribe.music.TupletInterval;
+import songscribe.music.TupletSpan;
 import songscribe.ui.layout.stacking.VerticalStackingCalculator;
 
 class StructuralTierStackingTest extends UnitTest {
@@ -209,44 +209,44 @@ class StructuralTierStackingTest extends UnitTest {
         }
 
         @Test
-        void testLegacyCrescendoIntervalProducesSpanLayout() {
+        void testLegacyCrescendoSpanProducesSpanLayout() {
             var note1 = createNote(0, false);
             var note2 = createNote(0, false);
             var line = new Line();
             line.addElement(note1);
             line.addElement(note2);
 
-            var interval = new DynamicsInterval(0, 1);
-            line.getCrescendos().addInterval(interval);
+            var span = new DynamicsSpan(0, 1);
+            line.getCrescendos().addSpan(span);
 
             var result = stackColumns(
                 List.of(columnFor(note1, NOTE1_X_SS), columnFor(note2, NOTE2_X_SS)),
                 line);
 
             var spanLayout = require(
-                result.getSpanLayout(interval),
+                result.getSpanLayout(span),
                 "legacy crescendo SpanLayout");
 
             assertThat(spanLayout.ySs()).isLessThan(0.0);
         }
 
         @Test
-        void testLegacyDiminuendoIntervalProducesSpanLayout() {
+        void testLegacyDiminuendoSpanProducesSpanLayout() {
             var note1 = createNote(0, false);
             var note2 = createNote(0, false);
             var line = new Line();
             line.addElement(note1);
             line.addElement(note2);
 
-            var interval = new DynamicsInterval(0, 1);
-            line.getDiminuendos().addInterval(interval);
+            var span = new DynamicsSpan(0, 1);
+            line.getDiminuendos().addSpan(span);
 
             var result = stackColumns(
                 List.of(columnFor(note1, NOTE1_X_SS), columnFor(note2, NOTE2_X_SS)),
                 line);
 
             var spanLayout = require(
-                result.getSpanLayout(interval),
+                result.getSpanLayout(span),
                 "legacy diminuendo SpanLayout");
 
             assertThat(spanLayout.ySs()).isLessThan(0.0);
@@ -329,22 +329,22 @@ class StructuralTierStackingTest extends UnitTest {
         }
 
         @Test
-        void testLegacyTupletIntervalProducesSpanLayout() {
+        void testLegacyTupletSpanProducesSpanLayout() {
             var note1 = createNote(0, false);
             var note2 = createNote(0, false);
             var line = new Line();
             line.addElement(note1);
             line.addElement(note2);
 
-            var interval = new TupletInterval(0, 1, 3);
-            line.getTuplets().addInterval(interval);
+            var span = new TupletSpan(0, 1, 3);
+            line.getTuplets().addSpan(span);
 
             var result = stackColumns(
                 List.of(columnFor(note1, NOTE1_X_SS), columnFor(note2, NOTE2_X_SS)),
                 line);
 
             var spanLayout = require(
-                result.getSpanLayout(interval),
+                result.getSpanLayout(span),
                 "legacy tuplet SpanLayout");
 
             assertThat(spanLayout.ySs()).isLessThan(0.0);

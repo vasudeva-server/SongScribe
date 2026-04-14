@@ -26,10 +26,10 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.music.BeamInterval;
+import songscribe.music.BeamSpan;
 import songscribe.music.ElementType;
 import songscribe.music.Line;
-import songscribe.music.TieInterval;
+import songscribe.music.TieSpan;
 
 /**
  * Tests the interplay between beaming and tie toggle availability.
@@ -122,24 +122,24 @@ class ToggleConflictTest extends UnitTest {
         var beamings = line.getBeamings();
 
         if (state.shouldConnectSelection(beamings)) {
-            beamings.addInterval(
-                new BeamInterval(state.getSelectionBegin(), state.getSelectionEnd()));
+            beamings.addSpan(
+                new BeamSpan(state.getSelectionBegin(), state.getSelectionEnd()));
         } else {
-            beamings.removeInterval(state.getSelectionBegin(), state.getSelectionEnd());
+            beamings.removeSpan(state.getSelectionBegin(), state.getSelectionEnd());
         }
     }
 
     private void toggleTie() {
-        // Ensure canToggleTie was evaluated so tieInterval is set
+        // Ensure canToggleTie was evaluated so tieSpanSet is set
         state.canToggleTie();
 
-        var intervals = state.getTieInterval();
+        var spanSet = state.getTieSpanSet();
 
-        if (intervals != null) {
-            intervals.removeInterval(state.getSelectionBegin(), state.getSelectionEnd());
+        if (spanSet != null) {
+            spanSet.removeSpan(state.getSelectionBegin(), state.getSelectionEnd());
         } else {
-            line.getTies().addInterval(
-                new TieInterval(state.getSelectionBegin(), state.getSelectionEnd()));
+            line.getTies().addSpan(
+                new TieSpan(state.getSelectionBegin(), state.getSelectionEnd()));
         }
 
         state.resetTieState();

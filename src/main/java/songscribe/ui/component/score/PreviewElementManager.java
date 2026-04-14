@@ -31,7 +31,7 @@ import net.engio.mbassy.listener.Handler;
 import songscribe.Strings;
 import songscribe.message.MessageCenter;
 import songscribe.message.mutation.ElementField;
-import songscribe.music.BeamInterval;
+import songscribe.music.BeamSpan;
 import songscribe.music.ElementType;
 import songscribe.music.Line;
 import songscribe.music.StaffElement;
@@ -763,7 +763,7 @@ public class PreviewElementManager {
         }
 
         // If the user tries to insert into triplet, they will get an error message
-        var iv = line.getTuplets().findInterval(xIndex - 1);
+        var iv = line.getTuplets().findSpan(xIndex - 1);
 
         if ((iv != null) && ((xIndex - 1) < iv.getEnd())) {
             OptionDialogs.showErrorMessage(
@@ -774,7 +774,7 @@ public class PreviewElementManager {
             return;
         }
 
-        line.removeInterval(xIndex - 1, xIndex);
+        line.removeSpan(xIndex - 1, xIndex);
         var insertion = calculateInsertionOrShowError(line, previewElement, xIndex);
 
         if (insertion == null) {
@@ -799,7 +799,7 @@ public class PreviewElementManager {
     /**
      * Applies automatic beaming for the element at the given index.
      * Scans backward from the element to find beamable neighbors and creates
-     * a beam interval if the rhythmic grouping conditions are met.
+     * a beam span if the rhythmic grouping conditions are met.
      *
      * @param line         The line containing the element
      * @param elementIndex The index of the just-inserted element
@@ -810,7 +810,7 @@ public class PreviewElementManager {
         if (
             !element.getType().isBeamable() ||
                 (elementIndex < 1) ||
-                (line.getTuplets().findInterval(elementIndex - 1) != null)
+                (line.getTuplets().findSpan(elementIndex - 1) != null)
         ) {
             return;
         }
@@ -829,9 +829,9 @@ public class PreviewElementManager {
                 break;
             }
 
-            var interval = line.getBeamings().findInterval(i);
+            var span = line.getBeamings().findSpan(i);
 
-            if ((interval != null) && (interval.getStart() == i)) {
+            if ((span != null) && (span.getStart() == i)) {
                 break;
             }
         }
@@ -848,7 +848,7 @@ public class PreviewElementManager {
         ) {
             line
                 .getBeamings()
-                .addInterval(new BeamInterval(elementIndex - 1, elementIndex));
+                .addSpan(new BeamSpan(elementIndex - 1, elementIndex));
         }
     }
 
@@ -892,20 +892,20 @@ public class PreviewElementManager {
             previewElement.setUpper(Score.defaultUpperNote(previewElement));
         }
 
-        // Remove all beam intervals touching this element — the new element type may differ
-        var beam = line.getBeamings().findInterval(elementIndex);
+        // Remove all beam spans touching this element — the new element type may differ
+        var beam = line.getBeamings().findSpan(elementIndex);
 
         while (beam != null) {
-            line.getBeamings().removeInterval(beam);
-            beam = line.getBeamings().findInterval(elementIndex);
+            line.getBeamings().removeSpan(beam);
+            beam = line.getBeamings().findSpan(elementIndex);
         }
 
-        // Remove all tie intervals touching this element
-        var tie = line.getTies().findInterval(elementIndex);
+        // Remove all tie spans touching this element
+        var tie = line.getTies().findSpan(elementIndex);
 
         while (tie != null) {
-            line.getTies().removeInterval(tie);
-            tie = line.getTies().findInterval(elementIndex);
+            line.getTies().removeSpan(tie);
+            tie = line.getTies().findSpan(elementIndex);
         }
 
         // Replace the element entirely (line.setElement marks the composition modified)

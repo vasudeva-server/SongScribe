@@ -92,9 +92,9 @@ public class BeamGroupRenderer extends BaseElementRenderer<LineElement> {
     }
 
     /**
-     * Renders beams for notes in a beaming interval.
+     * Renders beams for notes in a beaming span.
      * <p>
-     * Entry point for rendering beams directly from a Line's beaming intervals.
+     * Entry point for rendering beams directly from a Line's beaming spans.
      */
     public void renderBeams(
         Graphics2D g2,
@@ -201,9 +201,9 @@ public class BeamGroupRenderer extends BaseElementRenderer<LineElement> {
     ) {
         var outerNotes = new Point(beginIndex, endIndex);
         var layoutResult = ctx.getLayoutResult();
-        var interval = (layoutResult != null) ? line.getBeamings().findInterval(beginIndex) : null;
-        var beamLayout = (layoutResult != null && interval != null)
-            ? layoutResult.getBeamLayout(interval) : null;
+        var beamSpan = (layoutResult != null) ? line.getBeamings().findSpan(beginIndex) : null;
+        var beamLayout = (layoutResult != null && beamSpan != null)
+            ? layoutResult.getBeamLayout(beamSpan) : null;
         doDrawBeams(g2, level, line, ctx, outerNotes,
             beginIndex, endIndex, beginIndex, endIndex, false, 0, selected, beamLayout, selectionColor);
     }

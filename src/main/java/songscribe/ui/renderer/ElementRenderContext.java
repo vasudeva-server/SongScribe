@@ -25,7 +25,7 @@ import module java.desktop;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.music.Composition;
-import songscribe.music.Interval;
+import songscribe.music.Span;
 import songscribe.music.Line;
 import songscribe.ui.component.Score;
 import songscribe.ui.component.score.LineComponent;
@@ -302,7 +302,7 @@ public class ElementRenderContext {
     }
 
     /**
-     * Returns whether the given element index is part of the same tie interval
+     * Returns whether the given element index is part of the same tie span
      * as the currently playing note, making it co-highlighted during playback.
      *
      * @param elementIndex the element index to check
@@ -313,24 +313,24 @@ public class ElementRenderContext {
             return false;
         }
 
-        var interval = currentLine.getTies().findInterval(playingNoteIndex);
-        return interval != null
-                && interval.getStart() <= elementIndex
-                && elementIndex <= interval.getEnd();
+        var tieSpan = currentLine.getTies().findSpan(playingNoteIndex);
+        return tieSpan != null
+                && tieSpan.getStart() <= elementIndex
+                && elementIndex <= tieSpan.getEnd();
     }
 
     /**
-     * Returns whether the playing note falls within the given interval.
+     * Returns whether the playing note falls within the given span.
      * Used by tie rendering to determine whether a specific tie arc should
      * be highlighted during playback.
      *
-     * @param interval the interval to test
-     * @return true if the playing note index is within [interval.start, interval.end]
+     * @param span the span to test
+     * @return true if the playing note index is within [span.start, span.end]
      */
-    public boolean isPlayingNoteInInterval(Interval interval) {
+    public boolean isPlayingNoteInSpan(Span span) {
         return playingNoteIndex >= 0
-                && playingNoteIndex >= interval.getStart()
-                && playingNoteIndex <= interval.getEnd();
+                && playingNoteIndex >= span.getStart()
+                && playingNoteIndex <= span.getEnd();
     }
 
     /**

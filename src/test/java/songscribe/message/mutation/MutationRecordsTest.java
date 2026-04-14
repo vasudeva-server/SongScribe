@@ -34,15 +34,15 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import songscribe.UnitTest;
-import songscribe.music.BeamInterval;
-import songscribe.music.DynamicsInterval;
+import songscribe.music.BeamSpan;
+import songscribe.music.DynamicsSpan;
 import songscribe.music.ElementType;
 import songscribe.music.KeyType;
 import songscribe.music.Line;
 import songscribe.music.StaffElement;
 import songscribe.music.Tempo;
-import songscribe.music.TieInterval;
-import songscribe.music.TupletInterval;
+import songscribe.music.TieSpan;
+import songscribe.music.TupletSpan;
 import songscribe.ui.layout.Ending;
 import songscribe.ui.layout.RangeElement;
 
@@ -106,27 +106,27 @@ class MutationRecordsTest extends UnitTest {
     }
 
     @Nested
-    class IntervalMutations {
+    class SpanMutations {
 
-        static Stream<Arguments> intervalMutations() {
+        static Stream<Arguments> spanMutations() {
             var line = new Line();
             return Stream.of(
-                Arguments.of("BeamingAddition",    new BeamingAddition(line, new BeamInterval(1, 3)), line),
-                Arguments.of("BeamingRemoval",     new BeamingRemoval(line, new BeamInterval(2, 4)), line),
-                Arguments.of("TieAddition",        new TieAddition(line, new TieInterval(0, 1)), line),
-                Arguments.of("TieRemoval",         new TieRemoval(line, new TieInterval(3, 4)), line),
-                Arguments.of("TupletAddition",     new TupletAddition(line, new TupletInterval(0, 2, 3)), line),
-                Arguments.of("TupletRemoval",      new TupletRemoval(line, new TupletInterval(1, 3, 5)), line),
-                Arguments.of("CrescendoAddition",  new CrescendoAddition(line, new DynamicsInterval(0, 2)), line),
-                Arguments.of("CrescendoRemoval",   new CrescendoRemoval(line, new DynamicsInterval(1, 3)), line),
-                Arguments.of("DiminuendoAddition", new DiminuendoAddition(line, new DynamicsInterval(2, 4)), line),
-                Arguments.of("DiminuendoRemoval",  new DiminuendoRemoval(line, new DynamicsInterval(3, 5)), line)
+                Arguments.of("BeamingAddition",    new BeamingAddition(line, new BeamSpan(1, 3)), line),
+                Arguments.of("BeamingRemoval",     new BeamingRemoval(line, new BeamSpan(2, 4)), line),
+                Arguments.of("TieAddition",        new TieAddition(line, new TieSpan(0, 1)), line),
+                Arguments.of("TieRemoval",         new TieRemoval(line, new TieSpan(3, 4)), line),
+                Arguments.of("TupletAddition",     new TupletAddition(line, new TupletSpan(0, 2, 3)), line),
+                Arguments.of("TupletRemoval",      new TupletRemoval(line, new TupletSpan(1, 3, 5)), line),
+                Arguments.of("CrescendoAddition",  new CrescendoAddition(line, new DynamicsSpan(0, 2)), line),
+                Arguments.of("CrescendoRemoval",   new CrescendoRemoval(line, new DynamicsSpan(1, 3)), line),
+                Arguments.of("DiminuendoAddition", new DiminuendoAddition(line, new DynamicsSpan(2, 4)), line),
+                Arguments.of("DiminuendoRemoval",  new DiminuendoRemoval(line, new DynamicsSpan(3, 5)), line)
             );
         }
 
         @ParameterizedTest(name = "{0} is line-scoped and exposes line")
-        @MethodSource("intervalMutations")
-        void testIntervalMutationIsLineScoped(String name, Mutation mutation, Line line) {
+        @MethodSource("spanMutations")
+        void testSpanMutationIsLineScoped(String name, Mutation mutation, Line line) {
             assertThat(mutation).isInstanceOf(LineScopedMutation.class);
             assertThat(((LineScopedMutation) mutation).getLine()).isSameAs(line);
         }

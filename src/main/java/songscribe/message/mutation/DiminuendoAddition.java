@@ -20,13 +20,13 @@
 
 package songscribe.message.mutation;
 
-import songscribe.music.DynamicsInterval;
+import songscribe.music.DynamicsSpan;
 import songscribe.music.Line;
 
 /**
- * Mutation recording the addition of a diminuendo interval to a line.
+ * Mutation recording the addition of a diminuendo span to a line.
  */
-public record DiminuendoAddition(Line line, DynamicsInterval interval)
+public record DiminuendoAddition(Line line, DynamicsSpan span)
     implements Mutation, LineScopedMutation {
 
     @Override

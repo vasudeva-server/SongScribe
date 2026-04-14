@@ -517,7 +517,7 @@ public class GlissandoRenderer {
         StaffElement note, int noteIndex, Line line,
         LayoutResult layoutResult, double middleLineYSs
     ) {
-        boolean beamed = line.getBeamings().findInterval(noteIndex) != null;
+        boolean beamed = line.getBeamings().findSpan(noteIndex) != null;
         var cx = noteheadCenterXSs(note, layoutResult);
         var cy = BaseElementRenderer.noteStaffPositionToCoordinateSs(note.getStaffPosition(), middleLineYSs);
         var entry = getOrBuildArea(note, beamed);

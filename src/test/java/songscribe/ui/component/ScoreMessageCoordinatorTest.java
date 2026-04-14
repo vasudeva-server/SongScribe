@@ -40,16 +40,15 @@ import songscribe.message.mutation.TieRemoval;
 import songscribe.message.mutation.TupletAddition;
 import songscribe.message.mutation.TupletRemoval;
 import songscribe.message.notification.CompositionDidChangeNotification;
-import songscribe.music.BeamInterval;
+import songscribe.music.BeamSpan;
 import songscribe.music.Composition;
 import songscribe.music.ElementType;
 import songscribe.music.Line;
 import songscribe.music.StaffElement;
-import songscribe.music.TieInterval;
-import songscribe.music.TupletInterval;
+import songscribe.music.TieSpan;
+import songscribe.music.TupletSpan;
 import songscribe.ui.MusicEditOperations;
 import songscribe.ui.clipboard.ClipboardManager;
-import songscribe.ui.component.Score;
 import songscribe.ui.component.score.LineComponent;
 import songscribe.ui.component.score.LinePanel;
 import songscribe.ui.component.score.MainPanel;
@@ -201,7 +200,7 @@ class ScoreMessageCoordinatorTest extends UnitTest {
     }
 
     /**
-     * Regression: each interval mutation type introduced by the ChangeType
+     * Regression: each span mutation type introduced by the ChangeType
      * migration must route through {@code hasLineLayoutMutation} and reach
      * {@code LineComponent.invalidateLayout()}. A mutation that does not
      * implement {@code LineScopedMutation} silently skips layout invalidation,
@@ -249,37 +248,37 @@ class ScoreMessageCoordinatorTest extends UnitTest {
 
         @Test
         void testBeamingAdditionInvalidatesLayout() {
-            fireNotification(new BeamingAddition(line, new BeamInterval(0, 2)));
+            fireNotification(new BeamingAddition(line, new BeamSpan(0, 2)));
             verify(lineComponentMock).invalidateLayout();
         }
 
         @Test
         void testBeamingRemovalInvalidatesLayout() {
-            fireNotification(new BeamingRemoval(line, new BeamInterval(0, 2)));
+            fireNotification(new BeamingRemoval(line, new BeamSpan(0, 2)));
             verify(lineComponentMock).invalidateLayout();
         }
 
         @Test
         void testTieAdditionInvalidatesLayout() {
-            fireNotification(new TieAddition(line, new TieInterval(0, 1)));
+            fireNotification(new TieAddition(line, new TieSpan(0, 1)));
             verify(lineComponentMock).invalidateLayout();
         }
 
         @Test
         void testTieRemovalInvalidatesLayout() {
-            fireNotification(new TieRemoval(line, new TieInterval(0, 1)));
+            fireNotification(new TieRemoval(line, new TieSpan(0, 1)));
             verify(lineComponentMock).invalidateLayout();
         }
 
         @Test
         void testTupletAdditionInvalidatesLayout() {
-            fireNotification(new TupletAddition(line, new TupletInterval(0, 2, 3)));
+            fireNotification(new TupletAddition(line, new TupletSpan(0, 2, 3)));
             verify(lineComponentMock).invalidateLayout();
         }
 
         @Test
         void testTupletRemovalInvalidatesLayout() {
-            fireNotification(new TupletRemoval(line, new TupletInterval(0, 2, 3)));
+            fireNotification(new TupletRemoval(line, new TupletSpan(0, 2, 3)));
             verify(lineComponentMock).invalidateLayout();
         }
     }

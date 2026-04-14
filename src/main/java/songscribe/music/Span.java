@@ -21,13 +21,13 @@ package songscribe.music;
 
 import org.jspecify.annotations.Nullable;
 
-public class Interval {
+public class Span {
 
     public int start, end;
     @Nullable
     public String data;
 
-    public Interval(int start, int end, @Nullable String data) {
+    public Span(int start, int end, @Nullable String data) {
         this.start = start;
         this.end = end;
         this.data = data;
@@ -50,7 +50,7 @@ public class Interval {
         this.data = data;
     }
 
-    public Interval copyRange(int newStart, int newEnd) {
-        return new Interval(newStart, newEnd, data);
+    public Span copyRange(int newStart, int newEnd) {
+        return new Span(newStart, newEnd, data);
     }
 }

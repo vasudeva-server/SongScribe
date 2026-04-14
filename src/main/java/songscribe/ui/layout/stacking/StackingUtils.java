@@ -181,7 +181,7 @@ public final class StackingUtils {
     }
 
     /**
-     * Checks whether a range interval is already covered by an existing range element.
+     * Checks whether a range span is already covered by an existing range element.
      */
     public static boolean isRangeCovered(
         StaffElement startNote,

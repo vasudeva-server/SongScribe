@@ -32,7 +32,7 @@ import org.junit.jupiter.api.Test;
 import songscribe.UnitTest;
 import songscribe.music.Composition;
 import songscribe.music.Line;
-import songscribe.music.TieInterval;
+import songscribe.music.TieSpan;
 import songscribe.ui.component.Score;
 import songscribe.ui.component.score.LineComponent;
 
@@ -66,7 +66,7 @@ class ElementRenderContextTest extends UnitTest {
     @Test
     void testElementInPlayingTieReturnsPlayingColor() {
         var line = new Line();
-        line.getTies().addInterval(new TieInterval(0, 2));
+        line.getTies().addSpan(new TieSpan(0, 2));
 
         var ctx = new ElementRenderContext(new Composition());
         ctx.setEditMode(true);

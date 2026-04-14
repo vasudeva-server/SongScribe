@@ -51,7 +51,7 @@ import songscribe.music.Composition;
 import songscribe.music.ElementType;
 import songscribe.music.Line;
 import songscribe.music.StaffElement;
-import songscribe.music.TieInterval;
+import songscribe.music.TieSpan;
 import songscribe.ui.Mode;
 import songscribe.ui.component.Score;
 import songscribe.ui.edit.EditModeManager;
@@ -151,7 +151,7 @@ class NoteDragHandlerTest extends UnitTest {
             // Select indices 1-2, drag on index 1
             // Tie chain expands: index 0 is tied to index 1, so index 0 joins the group
             var line = createLine(0, 2, 4);
-            line.getTies().addInterval(new TieInterval(0, 1));
+            line.getTies().addSpan(new TieSpan(0, 1));
             when(lc.getLine()).thenReturn(line);
 
             setupMultiSelection(1, 2, 1);
@@ -182,7 +182,7 @@ class NoteDragHandlerTest extends UnitTest {
             // [crotchet@0, crotchet@0, crotchet@4] with tie 0→1
             // Select only index 0 — tie should expand to include index 1
             var line = createLine(0, 0, 4);
-            line.getTies().addInterval(new TieInterval(0, 1));
+            line.getTies().addSpan(new TieSpan(0, 1));
             when(lc.getLine()).thenReturn(line);
 
             setupSingleSelection(0);

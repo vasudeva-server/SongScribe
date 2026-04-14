@@ -20,13 +20,13 @@
 
 package songscribe.message.mutation;
 
-import songscribe.music.DynamicsInterval;
+import songscribe.music.DynamicsSpan;
 import songscribe.music.Line;
 
 /**
- * Mutation recording the addition of a crescendo interval to a line.
+ * Mutation recording the addition of a crescendo span to a line.
  */
-public record CrescendoAddition(Line line, DynamicsInterval interval)
+public record CrescendoAddition(Line line, DynamicsSpan span)
     implements Mutation, LineScopedMutation {
 
     @Override

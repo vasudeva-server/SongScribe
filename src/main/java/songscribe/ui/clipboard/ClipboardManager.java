@@ -24,13 +24,13 @@ import java.util.ArrayList;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.music.IntervalSet;
+import songscribe.music.SpanSet;
 import songscribe.music.StaffElement;
 
 /**
  * Manages clipboard state for copy/paste operations.
  * <p>
- * ClipboardManager stores copied elements and their associated interval sets
+ * ClipboardManager stores copied elements and their associated span sets
  * (ties, beaming) for paste operations.
  */
 public final class ClipboardManager {
@@ -38,8 +38,8 @@ public final class ClipboardManager {
     // Copied elements waiting to be pasted
     private final ArrayList<StaffElement> pasteboard = new ArrayList<>();
 
-    // Associated interval sets (ties, etc.) for the copied elements
-    private IntervalSet @Nullable [] intervalSetsCopyBuffer = null;
+    // Associated span sets (ties, etc.) for the copied elements
+    private SpanSet @Nullable [] spanSetsCopyBuffer = null;
 
     // -------------------------------------------------------------------------
     // Pasteboard accessors
@@ -88,16 +88,16 @@ public final class ClipboardManager {
     }
 
     // -------------------------------------------------------------------------
-    // Interval buffer accessors
+    // Span buffer accessors
     // -------------------------------------------------------------------------
 
     /**
-     * Returns the interval sets copy buffer.
+     * Returns the span sets copy buffer.
      *
-     * @return The interval sets array, or null if none
+     * @return The span sets array, or null if none
      */
-    public IntervalSet @Nullable [] getIntervalsCopyBuffer() {
-        return intervalSetsCopyBuffer;
+    public SpanSet @Nullable [] getSpanSetsCopyBuffer() {
+        return spanSetsCopyBuffer;
     }
 
     // -------------------------------------------------------------------------
@@ -109,7 +109,7 @@ public final class ClipboardManager {
      */
     public void clear() {
         pasteboard.clear();
-        intervalSetsCopyBuffer = null;
+        spanSetsCopyBuffer = null;
     }
 
     /**
@@ -122,11 +122,11 @@ public final class ClipboardManager {
     }
 
     /**
-     * Sets the interval sets copy buffer.
+     * Sets the span sets copy buffer.
      *
-     * @param intervals The interval sets array
+     * @param spanSets The span sets array
      */
-    public void setIntervalsCopyBuffer(IntervalSet[] intervals) {
-        this.intervalSetsCopyBuffer = intervals;
+    public void setSpanSetsCopyBuffer(SpanSet[] spanSets) {
+        this.spanSetsCopyBuffer = spanSets;
     }
 }

@@ -33,9 +33,9 @@ import java.util.Objects;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.music.BeamInterval;
-import songscribe.music.TieInterval;
-import songscribe.music.TupletInterval;
+import songscribe.music.BeamSpan;
+import songscribe.music.TieSpan;
+import songscribe.music.TupletSpan;
 import songscribe.music.Composition;
 import songscribe.music.ElementType;
 import songscribe.music.Line;
@@ -134,7 +134,7 @@ class BatchMutationTest extends UnitTest {
         }
     }
 
-    // -- Beam interval validation --
+    // -- Beam span validation --
 
     @Test
     void testBeamDissolvedWhenAllNonBeamable() {
@@ -145,7 +145,7 @@ class BatchMutationTest extends UnitTest {
         );
         var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
         var line = getLine(coordinator);
-        line.getBeamings().addInterval(new BeamInterval(0, 2));
+        line.getBeamings().addSpan(new BeamSpan(0, 2));
 
         ReflectionTestHelper.selectRange(coordinator, 0, 2);
         coordinator.applyActionToSelection(QUARTER_ACTION, true);
@@ -161,13 +161,13 @@ class BatchMutationTest extends UnitTest {
         );
         var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
         var line = getLine(coordinator);
-        line.getBeamings().addInterval(new BeamInterval(0, 1));
+        line.getBeamings().addSpan(new BeamSpan(0, 1));
 
         ReflectionTestHelper.selectNote(coordinator, 0);
         coordinator.applyActionToSelection(QUARTER_ACTION, true);
 
-        assertThat(line.getBeamings().findInterval(0)).isNull();
-        assertThat(line.getBeamings().findInterval(1)).isNull();
+        assertThat(line.getBeamings().findSpan(0)).isNull();
+        assertThat(line.getBeamings().findSpan(1)).isNull();
     }
 
     @Test
@@ -180,15 +180,15 @@ class BatchMutationTest extends UnitTest {
         );
         var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
         var line = getLine(coordinator);
-        line.getBeamings().addInterval(new BeamInterval(0, 3));
+        line.getBeamings().addSpan(new BeamSpan(0, 3));
 
         ReflectionTestHelper.selectNote(coordinator, 3);
         coordinator.applyActionToSelection(QUARTER_ACTION, true);
 
-        var beam = Objects.requireNonNull(line.getBeamings().findInterval(0));
+        var beam = Objects.requireNonNull(line.getBeamings().findSpan(0));
         assertThat(beam.start).isEqualTo(0);
         assertThat(beam.end).isEqualTo(2);
-        assertThat(line.getBeamings().findInterval(3)).isNull();
+        assertThat(line.getBeamings().findSpan(3)).isNull();
     }
 
     @Test
@@ -201,15 +201,15 @@ class BatchMutationTest extends UnitTest {
         );
         var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
         var line = getLine(coordinator);
-        line.getBeamings().addInterval(new BeamInterval(0, 3));
+        line.getBeamings().addSpan(new BeamSpan(0, 3));
 
         ReflectionTestHelper.selectNote(coordinator, 0);
         coordinator.applyActionToSelection(QUARTER_ACTION, true);
 
-        var beam = Objects.requireNonNull(line.getBeamings().findInterval(1));
+        var beam = Objects.requireNonNull(line.getBeamings().findSpan(1));
         assertThat(beam.start).isEqualTo(1);
         assertThat(beam.end).isEqualTo(3);
-        assertThat(line.getBeamings().findInterval(0)).isNull();
+        assertThat(line.getBeamings().findSpan(0)).isNull();
     }
 
     @Test
@@ -223,7 +223,7 @@ class BatchMutationTest extends UnitTest {
         );
         var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
         var line = getLine(coordinator);
-        line.getBeamings().addInterval(new BeamInterval(0, 4));
+        line.getBeamings().addSpan(new BeamSpan(0, 4));
 
         ReflectionTestHelper.selectNote(coordinator, 2);
         coordinator.applyActionToSelection(QUARTER_ACTION, true);
@@ -394,7 +394,7 @@ class BatchMutationTest extends UnitTest {
         assertThat(selection.end()).isEqualTo(1);
     }
 
-    // -- Tie interval validation --
+    // -- Tie span validation --
     //
     // Tie repair was deleted: under the invariants enforced by
     // applyActionToSelection (pitch and rest-ness preserved, grace notes
@@ -411,18 +411,18 @@ class BatchMutationTest extends UnitTest {
         );
         var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
         var line = getLine(coordinator);
-        var tie = new TieInterval(0, 1);
-        line.getTies().addInterval(tie);
+        var tie = new TieSpan(0, 1);
+        line.getTies().addSpan(tie);
 
         ReflectionTestHelper.selectRange(coordinator, 0, 1);
         coordinator.applyActionToSelection(QUARTER_ACTION, true);
 
-        var preserved = Objects.requireNonNull(line.getTies().findInterval(0));
+        var preserved = Objects.requireNonNull(line.getTies().findSpan(0));
         assertThat(preserved.start).isEqualTo(0);
         assertThat(preserved.end).isEqualTo(1);
     }
 
-    // -- Tuplet interval validation --
+    // -- Tuplet span validation --
     //
     // Tuplets are flat-removed on overlap under the immutability policy:
     // any change other than pitch invalidates a tuplet. There is no
@@ -437,7 +437,7 @@ class BatchMutationTest extends UnitTest {
         );
         var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
         var line = getLine(coordinator);
-        line.getTuplets().addInterval(new TupletInterval(0, 2, 3));
+        line.getTuplets().addSpan(new TupletSpan(0, 2, 3));
 
         ReflectionTestHelper.selectRange(coordinator, 0, 2);
         coordinator.applyActionToSelection(QUARTER_ACTION, true);
@@ -446,7 +446,7 @@ class BatchMutationTest extends UnitTest {
     }
 
     @Test
-    void testOverlappingTupletFlatRemovedNoSubIntervals() {
+    void testOverlappingTupletFlatRemovedNoSubSpans() {
         var notes = List.of(
             ElementType.QUAVER.newInstance(),
             ElementType.QUAVER.newInstance(),
@@ -456,7 +456,7 @@ class BatchMutationTest extends UnitTest {
         );
         var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
         var line = getLine(coordinator);
-        line.getTuplets().addInterval(new TupletInterval(0, 4, 3));
+        line.getTuplets().addSpan(new TupletSpan(0, 4, 3));
 
         ReflectionTestHelper.selectNote(coordinator, 2);
         coordinator.applyActionToSelection(QUARTER_ACTION, true);
@@ -475,12 +475,12 @@ class BatchMutationTest extends UnitTest {
         );
         var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
         var line = getLine(coordinator);
-        line.getTuplets().addInterval(new TupletInterval(0, 1, 3));
+        line.getTuplets().addSpan(new TupletSpan(0, 1, 3));
 
         ReflectionTestHelper.selectRange(coordinator, 3, 4);
         coordinator.applyActionToSelection(QUARTER_ACTION, true);
 
-        var preserved = Objects.requireNonNull(line.getTuplets().findInterval(0));
+        var preserved = Objects.requireNonNull(line.getTuplets().findSpan(0));
         assertThat(preserved.start).isEqualTo(0);
         assertThat(preserved.end).isEqualTo(1);
     }

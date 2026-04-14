@@ -385,7 +385,7 @@ public final class ScoreMessageCoordinator {
                 clipboardManager.addElement(line.getElement(i).clone());
             }
 
-            clipboardManager.setIntervalsCopyBuffer(line.copyIntervals(
+            clipboardManager.setSpanSetsCopyBuffer(line.copySpans(
                 state.getSelectionBegin(),
                 state.getSelectionEnd()
             ));

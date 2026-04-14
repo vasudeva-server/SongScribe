@@ -86,8 +86,8 @@ class MusicEditOperationsMutationTest extends UnitTest {
      * real LineInsertion notification on the unobserved bus), creates a coordinator and
      * operations wrapper, then starts mocking MessageCenter.
      *
-     * <p>Interval state (beams, ties, etc.) may be added to {@code env.line()} directly after
-     * this call — {@link songscribe.music.IntervalSet#addInterval} bypasses {@code applyChange}
+     * <p>Span state (beams, ties, etc.) may be added to {@code env.line()} directly after
+     * this call — {@link SpanSet#addSpan} bypasses {@code applyChange}
      * and does not require an open modification bracket.
      */
     private Env setup(StaffElement... elements) {
@@ -145,15 +145,15 @@ class MusicEditOperationsMutationTest extends UnitTest {
         assertThat(mutations).hasSize(1);
         assertThat(mutations.get(0)).isInstanceOf(BeamingAddition.class);
         var addition = (BeamingAddition) mutations.get(0);
-        assertThat(addition.interval().start).isEqualTo(0);
-        assertThat(addition.interval().end).isEqualTo(2);
+        assertThat(addition.span().start).isEqualTo(0);
+        assertThat(addition.span().end).isEqualTo(2);
         assertThat(addition.line()).isSameAs(env.line());
     }
 
     @Test
     void testToggleBeamingRemoveEmitsBeamingRemoval() {
         var env = setup(quaver(), quaver(), quaver());
-        env.line().getBeamings().addInterval(new BeamInterval(0, 2));
+        env.line().getBeamings().addSpan(new BeamSpan(0, 2));
         ReflectionTestHelper.selectRange(env.coordinator(), 0, 2);
         env.operations().toggleBeaming();
 
@@ -179,15 +179,15 @@ class MusicEditOperationsMutationTest extends UnitTest {
         assertThat(mutations).hasSize(1);
         assertThat(mutations.get(0)).isInstanceOf(TieAddition.class);
         var addition = (TieAddition) mutations.get(0);
-        assertThat(addition.interval().start).isEqualTo(0);
-        assertThat(addition.interval().end).isEqualTo(1);
+        assertThat(addition.span().start).isEqualTo(0);
+        assertThat(addition.span().end).isEqualTo(1);
         assertThat(addition.line()).isSameAs(env.line());
     }
 
     @Test
     void testToggleTieRemoveEmitsTieRemoval() {
         var env = setup(crotchet(), crotchet());
-        env.line().getTies().addInterval(new TieInterval(0, 1));
+        env.line().getTies().addSpan(new TieSpan(0, 1));
         ReflectionTestHelper.selectRange(env.coordinator(), 0, 1);
         env.operations().toggleTie();
 
@@ -213,16 +213,16 @@ class MusicEditOperationsMutationTest extends UnitTest {
         assertThat(mutations).hasSize(1);
         assertThat(mutations.get(0)).isInstanceOf(TupletAddition.class);
         var addition = (TupletAddition) mutations.get(0);
-        assertThat(addition.interval().start).isEqualTo(0);
-        assertThat(addition.interval().end).isEqualTo(2);
-        assertThat(addition.interval().getGrade()).isEqualTo(TupletAction.Tuplet.TRIPLET.getSize());
+        assertThat(addition.span().start).isEqualTo(0);
+        assertThat(addition.span().end).isEqualTo(2);
+        assertThat(addition.span().getGrade()).isEqualTo(TupletAction.Tuplet.TRIPLET.getSize());
         assertThat(addition.line()).isSameAs(env.line());
     }
 
     @Test
     void testToggleTupletRemoveEmitsTupletRemoval() {
         var env = setup(crotchet(), crotchet(), crotchet());
-        env.line().getTuplets().addInterval(new TupletInterval(0, 2, TupletAction.Tuplet.TRIPLET.getSize()));
+        env.line().getTuplets().addSpan(new TupletSpan(0, 2, TupletAction.Tuplet.TRIPLET.getSize()));
         ReflectionTestHelper.selectRange(env.coordinator(), 0, 2);
         env.operations().toggleTuplet(TupletAction.Tuplet.TRIPLET.getSize(), env.operations().canToggleTuplet());
 
@@ -235,12 +235,12 @@ class MusicEditOperationsMutationTest extends UnitTest {
 
     @Test
     void testToggleTupletGradeChangeEmitsRemovalThenAddition() {
-        // With the full tuplet interval selected, calling toggleTuplet with a
-        // different grade must remove the existing interval and add the new one
+        // With the full tuplet span selected, calling toggleTuplet with a
+        // different grade must remove the existing span and add the new one
         // inside a single bracket — one notification, two mutations, undo replays
         // both atomically.
         var env = setup(crotchet(), crotchet(), crotchet());
-        env.line().getTuplets().addInterval(new TupletInterval(0, 2, TupletAction.Tuplet.TRIPLET.getSize()));
+        env.line().getTuplets().addSpan(new TupletSpan(0, 2, TupletAction.Tuplet.TRIPLET.getSize()));
         ReflectionTestHelper.selectRange(env.coordinator(), 0, 2);
         env.operations().toggleTuplet(TupletAction.Tuplet.QUINTUPLET.getSize(), env.operations().canToggleTuplet());
 
@@ -249,13 +249,13 @@ class MusicEditOperationsMutationTest extends UnitTest {
         assertThat(mutations).hasSize(2);
         assertThat(mutations.get(0)).isInstanceOf(TupletRemoval.class);
         var removal = (TupletRemoval) mutations.get(0);
-        assertThat(removal.interval().getGrade()).isEqualTo(TupletAction.Tuplet.TRIPLET.getSize());
+        assertThat(removal.span().getGrade()).isEqualTo(TupletAction.Tuplet.TRIPLET.getSize());
         assertThat(removal.line()).isSameAs(env.line());
         assertThat(mutations.get(1)).isInstanceOf(TupletAddition.class);
         var addition = (TupletAddition) mutations.get(1);
-        assertThat(addition.interval().start).isEqualTo(0);
-        assertThat(addition.interval().end).isEqualTo(2);
-        assertThat(addition.interval().getGrade()).isEqualTo(TupletAction.Tuplet.QUINTUPLET.getSize());
+        assertThat(addition.span().start).isEqualTo(0);
+        assertThat(addition.span().end).isEqualTo(2);
+        assertThat(addition.span().getGrade()).isEqualTo(TupletAction.Tuplet.QUINTUPLET.getSize());
         assertThat(addition.line()).isSameAs(env.line());
     }
 
@@ -263,7 +263,7 @@ class MusicEditOperationsMutationTest extends UnitTest {
     void testToggleTupletMatchingGradeRemovesOnly() {
         // Clicking the same grade over an existing tuplet removes it (no add).
         var env = setup(crotchet(), crotchet(), crotchet());
-        env.line().getTuplets().addInterval(new TupletInterval(0, 2, TupletAction.Tuplet.TRIPLET.getSize()));
+        env.line().getTuplets().addSpan(new TupletSpan(0, 2, TupletAction.Tuplet.TRIPLET.getSize()));
         ReflectionTestHelper.selectRange(env.coordinator(), 0, 2);
         env.operations().toggleTuplet(TupletAction.Tuplet.TRIPLET.getSize(), env.operations().canToggleTuplet());
 
@@ -279,8 +279,8 @@ class MusicEditOperationsMutationTest extends UnitTest {
         // the UI disables this path, and toggleTuplet now throws IllegalStateException
         // rather than silently replacing the tuplet with a sub-range one.
         var env = setup(crotchet(), crotchet(), crotchet());
-        var originalTuplet = new TupletInterval(0, 2, TupletAction.Tuplet.TRIPLET.getSize());
-        env.line().getTuplets().addInterval(originalTuplet);
+        var originalTuplet = new TupletSpan(0, 2, TupletAction.Tuplet.TRIPLET.getSize());
+        env.line().getTuplets().addSpan(originalTuplet);
         ReflectionTestHelper.selectRange(env.coordinator(), 0, 1);
         var info = env.operations().canToggleTuplet();
 
@@ -288,8 +288,8 @@ class MusicEditOperationsMutationTest extends UnitTest {
             .isInstanceOf(IllegalStateException.class)
             .hasMessageContaining("sub-range");
 
-        // The original interval object is still in place — the operation was a pure no-op.
-        assertThat(env.line().getTuplets().findInterval(0)).isSameAs(originalTuplet);
+        // The original span object is still in place — the operation was a pure no-op.
+        assertThat(env.line().getTuplets().findSpan(0)).isSameAs(originalTuplet);
     }
 
     // -----------------------------------------------------------------------
@@ -315,13 +315,13 @@ class MusicEditOperationsMutationTest extends UnitTest {
     }
 
     @Test
-    void testRemoveDynamicsEmitsRemovalPerInterval() {
+    void testRemoveDynamicsEmitsRemovalPerSpan() {
         // One crescendo at [0..1] and one diminuendo at [2..3], selection covers all four notes.
-        // getDynamicsIntervalsFromSelection iterates per index, so each interval appears once per
-        // covered index within the selection — the exact count depends on interval span.
+        // getDynamicsSpansFromSelection iterates per index, so each span appears once per
+        // covered index within the selection — the exact count depends on span range.
         var env = setup(crotchet(), crotchet(), crotchet(), crotchet());
-        env.line().getCrescendos().addInterval(new DynamicsInterval(0, 1));
-        env.line().getDiminuendos().addInterval(new DynamicsInterval(2, 3));
+        env.line().getCrescendos().addSpan(new DynamicsSpan(0, 1));
+        env.line().getDiminuendos().addSpan(new DynamicsSpan(2, 3));
         ReflectionTestHelper.selectRange(env.coordinator(), 0, 3);
         env.operations().removeDynamicsFromSelection();
 

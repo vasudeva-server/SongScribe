@@ -25,8 +25,8 @@ import java.util.ArrayList;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.music.DynamicsInterval;
-import songscribe.music.IntervalSet;
+import songscribe.music.DynamicsSpan;
+import songscribe.music.SpanSet;
 import songscribe.message.notification.LayoutDidChangeNotification;
 import songscribe.message.MessageCenter;
 import songscribe.music.Line;
@@ -209,12 +209,12 @@ public class VerticalAdjustment extends Adjustment {
             return;
         }
 
-        var interval = getCresDecrIntervalSet(line, dragRect.type).findInterval(
+        var span = getCresDecrSpanSet(line, dragRect.type).findSpan(
             dragRect.xIndex
         );
 
-        if (interval != null) {
-            interval.setYShiftSs(interval.getYShiftSs() + diffY);
+        if (span != null) {
+            span.setYShiftSs(span.getYShiftSs() + diffY);
         }
     }
 
@@ -223,10 +223,10 @@ public class VerticalAdjustment extends Adjustment {
             return;
         }
 
-        var interval = line.getTuplets().findInterval(dragRect.xIndex);
+        var span = line.getTuplets().findSpan(dragRect.xIndex);
 
-        if (interval != null) {
-            interval.setVerticalPositionSs(interval.getVerticalPositionSs() + diffY);
+        if (span != null) {
+            span.setVerticalPositionSs(span.getVerticalPositionSs() + diffY);
         }
     }
 
@@ -330,12 +330,12 @@ public class VerticalAdjustment extends Adjustment {
                     var li = line.getCrescendos().listIterator();
                     li.hasNext();
                 ) {
-                    var interval = li.next();
+                    var span = li.next();
                     adjustRects.add(
                         new AdjustRect(
                             l,
                             AdjustType.CRESCENDO_Y,
-                            interval.getStart()
+                            span.getStart()
                         )
                     );
                 }
@@ -344,23 +344,23 @@ public class VerticalAdjustment extends Adjustment {
                     var li = line.getDiminuendos().listIterator();
                     li.hasNext();
                 ) {
-                    var interval = li.next();
+                    var span = li.next();
                     adjustRects.add(
                         new AdjustRect(
                             l,
                             AdjustType.DIMINUENDO_Y,
-                            interval.getStart()
+                            span.getStart()
                         )
                     );
                 }
 
                 for (var li = line.getTuplets().listIterator(); li.hasNext(); ) {
-                    var interval = li.next();
+                    var span = li.next();
                     adjustRects.add(
                         new AdjustRect(
                             l,
                             AdjustType.TUPLET,
-                            interval.getStart()
+                            span.getStart()
                         )
                     );
                 }
@@ -471,15 +471,15 @@ public class VerticalAdjustment extends Adjustment {
                 adjustRect.rect.y = (int) bounds.getTop() - 8;
             }
             case CRESCENDO_Y, DIMINUENDO_Y -> {
-                var interval = getCresDecrIntervalSet(line, adjustRect.type)
-                    .findInterval(adjustRect.xIndex);
+                var span = getCresDecrSpanSet(line, adjustRect.type)
+                    .findSpan(adjustRect.xIndex);
 
-                if (interval == null) {
+                if (span == null) {
                     return;
                 }
 
-                var startNote = line.getElement(interval.getStart());
-                var endNote = line.getElement(interval.getEnd());
+                var startNote = line.getElement(span.getStart());
+                var endNote = line.getElement(span.getEnd());
                 var layoutResult = getLayoutResultForLine(adjustRect.line);
                 var rangeClass = adjustRect.type == AdjustType.CRESCENDO_Y
                     ? Crescendo.class
@@ -497,14 +497,14 @@ public class VerticalAdjustment extends Adjustment {
                 adjustRect.rect.y = (int) bounds.getTop();
             }
             case TUPLET -> {
-                var interval = line.getTuplets().findInterval(adjustRect.xIndex);
+                var span = line.getTuplets().findSpan(adjustRect.xIndex);
 
-                if (interval == null) {
+                if (span == null) {
                     return;
                 }
 
-                var startNote = line.getElement(interval.getStart());
-                var endNote = line.getElement(interval.getEnd());
+                var startNote = line.getElement(span.getStart());
+                var endNote = line.getElement(span.getEnd());
                 var layoutResult = getLayoutResultForLine(adjustRect.line);
                 var bounds = layoutResult.findRangeElementBounds(startNote, endNote, Tuplet.class);
 
@@ -573,7 +573,7 @@ public class VerticalAdjustment extends Adjustment {
         return layoutResult;
     }
 
-    private static IntervalSet<DynamicsInterval> getCresDecrIntervalSet(
+    private static SpanSet<DynamicsSpan> getCresDecrSpanSet(
         Line line,
         AdjustType adjustType
     ) {

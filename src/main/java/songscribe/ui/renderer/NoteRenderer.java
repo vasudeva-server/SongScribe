@@ -38,7 +38,6 @@ import songscribe.smufl.Engraving;
 import songscribe.smufl.SMuFLMetadata;
 import songscribe.ui.layout.LayoutStylesheet;
 import songscribe.error.RuntimeError;
-import songscribe.util.GraphicUtils;
 
 /**
  * Renders notes (head, stem, flags, dots, accidentals, ledger lines).
@@ -363,10 +362,10 @@ public class NoteRenderer extends BaseElementRenderer<StaffElement> {
             var line = ctx.getCurrentLine();
 
             if (line != null) {
-                var interval = line.getBeamings().findInterval(line.getElementIndex(note));
+                var span = line.getBeamings().findSpan(line.getElementIndex(note));
 
-                if (interval != null) {
-                    var beamLayout = layoutResult.getBeamLayout(interval);
+                if (span != null) {
+                    var beamLayout = layoutResult.getBeamLayout(span);
 
                     if (beamLayout != null) {
                         beamThickeningSs = beamLayout.thickeningSs();
@@ -634,7 +633,7 @@ public class NoteRenderer extends BaseElementRenderer<StaffElement> {
         }
 
         int noteIndex = line.getElementIndex(note);
-        return line.getBeamings().findInterval(noteIndex) != null &&
+        return line.getBeamings().findSpan(noteIndex) != null &&
             note.getType() != ElementType.GRACE_QUAVER;
     }
 

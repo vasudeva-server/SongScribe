@@ -27,12 +27,12 @@ import org.jspecify.annotations.Nullable;
 
 import org.xml.sax.Attributes;
 
-import songscribe.music.BeamInterval;
-import songscribe.music.DynamicsInterval;
-import songscribe.music.Interval;
-import songscribe.music.IntervalSet;
-import songscribe.music.TieInterval;
-import songscribe.music.TupletInterval;
+import songscribe.music.BeamSpan;
+import songscribe.music.DynamicsSpan;
+import songscribe.music.Span;
+import songscribe.music.SpanSet;
+import songscribe.music.TieSpan;
+import songscribe.music.TupletSpan;
 import songscribe.music.KeyType;
 import songscribe.music.Line;
 import songscribe.ui.layout.Ending;
@@ -103,15 +103,15 @@ public final class LineIO {
         );
 
         if (!l.getBeamings().isEmpty()) {
-            XML.writeValue(pw, XML_BEAMINGS, intervalToString(l.getBeamings()));
+            XML.writeValue(pw, XML_BEAMINGS, spanSetToString(l.getBeamings()));
         }
 
         if (!l.getTies().isEmpty()) {
-            XML.writeValue(pw, XML_TIES, intervalToString(l.getTies()));
+            XML.writeValue(pw, XML_TIES, spanSetToString(l.getTies()));
         }
 
         if (!l.getTuplets().isEmpty()) {
-            XML.writeValue(pw, XML_TUPLETS, tupletIntervalToString(l.getTuplets()));
+            XML.writeValue(pw, XML_TUPLETS, tupletSpanSetToString(l.getTuplets()));
         }
 
         var endings = l.findEndings();
@@ -128,7 +128,7 @@ public final class LineIO {
             XML.writeValue(
                 pw,
                 XML_CRESCENDO,
-                dynamicsIntervalToString(l.getCrescendos())
+                dynamicsSpanSetToString(l.getCrescendos())
             );
         }
 
@@ -136,7 +136,7 @@ public final class LineIO {
             XML.writeValue(
                 pw,
                 XML_DIMINUENDO,
-                dynamicsIntervalToString(l.getDiminuendos())
+                dynamicsSpanSetToString(l.getDiminuendos())
             );
         }
 
@@ -163,7 +163,7 @@ public final class LineIO {
         return sb.toString();
     }
 
-    private static String intervalToString(IntervalSet<? extends Interval> is) {
+    private static String spanSetToString(SpanSet<? extends Span> is) {
         var sb = new StringBuilder(27);
 
         for (var li = is.listIterator(); li.hasNext(); ) {
@@ -183,7 +183,7 @@ public final class LineIO {
         return sb.toString();
     }
 
-    private static String tupletIntervalToString(IntervalSet<TupletInterval> is) {
+    private static String tupletSpanSetToString(SpanSet<TupletSpan> is) {
         var sb = new StringBuilder(27);
 
         for (var li = is.listIterator(); li.hasNext(); ) {
@@ -205,7 +205,7 @@ public final class LineIO {
         return sb.toString();
     }
 
-    private static String dynamicsIntervalToString(IntervalSet<DynamicsInterval> is) {
+    private static String dynamicsSpanSetToString(SpanSet<DynamicsSpan> is) {
         var sb = new StringBuilder(27);
 
         for (var li = is.listIterator(); li.hasNext(); ) {
@@ -247,7 +247,7 @@ public final class LineIO {
         /** Temporarily holds parsed fsendings index pairs (start, end) until elements are loaded. */
         private final List<int[]> pendingEndingPairs = new ArrayList<>();
 
-        private static void stringToBeamingIntervalSet(IntervalSet<Interval> is, String str) {
+        private static void stringToBeamingSpanSet(SpanSet<Span> is, String str) {
             var begin = 0;
             var end = str.indexOf(';', begin);
 
@@ -269,13 +269,13 @@ public final class LineIO {
                 var data = (secondComma == -1)
                     ? null
                     : str.substring(secondComma + 1, end);
-                is.addInterval(a, b, data);
+                is.addSpan(a, b, data);
                 begin = str.indexOf(';', begin) + 1;
                 end = str.indexOf(';', begin);
             }
         }
 
-        private static void stringToBeamIntervalSet(IntervalSet<BeamInterval> is, String str) {
+        private static void stringToBeamSpanSet(SpanSet<BeamSpan> is, String str) {
             var begin = 0;
             var end = str.indexOf(';', begin);
 
@@ -283,13 +283,13 @@ public final class LineIO {
                 var firstComma = str.indexOf(',', begin);
                 var a = Integer.parseInt(str.substring(begin, firstComma));
                 var b = Integer.parseInt(str.substring(firstComma + 1, end));
-                is.addInterval(new BeamInterval(a, b));
+                is.addSpan(new BeamSpan(a, b));
                 begin = str.indexOf(';', begin) + 1;
                 end = str.indexOf(';', begin);
             }
         }
 
-        private static void stringToTieIntervalSet(IntervalSet<TieInterval> is, String str) {
+        private static void stringToTieSpanSet(SpanSet<TieSpan> is, String str) {
             var begin = 0;
             var end = str.indexOf(';', begin);
 
@@ -297,13 +297,13 @@ public final class LineIO {
                 var firstComma = str.indexOf(',', begin);
                 var a = Integer.parseInt(str.substring(begin, firstComma));
                 var b = Integer.parseInt(str.substring(firstComma + 1, end));
-                is.addInterval(new TieInterval(a, b));
+                is.addSpan(new TieSpan(a, b));
                 begin = str.indexOf(';', begin) + 1;
                 end = str.indexOf(';', begin);
             }
         }
 
-        private static void stringToTupletIntervalSet(IntervalSet<TupletInterval> is, String str) {
+        private static void stringToTupletSpanSet(SpanSet<TupletSpan> is, String str) {
             var begin = 0;
             var end = str.indexOf(';', begin);
 
@@ -346,15 +346,15 @@ public final class LineIO {
                     }
                 }
 
-                var tuplet = new TupletInterval(a, b, grade);
+                var tuplet = new TupletSpan(a, b, grade);
                 tuplet.setVerticalPositionSs(vertPos);
-                is.addInterval(tuplet);
+                is.addSpan(tuplet);
                 begin = str.indexOf(';', begin) + 1;
                 end = str.indexOf(';', begin);
             }
         }
 
-        private static void stringToDynamicsIntervalSet(IntervalSet<DynamicsInterval> is, String str) {
+        private static void stringToDynamicsSpanSet(SpanSet<DynamicsSpan> is, String str) {
             var begin = 0;
             var end = str.indexOf(';', begin);
 
@@ -374,7 +374,7 @@ public final class LineIO {
                     )
                 );
 
-                var dynamics = new DynamicsInterval(a, b);
+                var dynamics = new DynamicsSpan(a, b);
 
                 if (secondComma != -1) {
                     // Has data portion: x1,x2,y
@@ -392,7 +392,7 @@ public final class LineIO {
                     }
                 }
 
-                is.addInterval(dynamics);
+                is.addSpan(dynamics);
                 begin = str.indexOf(';', begin) + 1;
                 end = str.indexOf(';', begin);
             }
@@ -493,26 +493,26 @@ public final class LineIO {
                         case XML_TRILL_YPOS -> line.setTrillYPosPx(
                             Integer.parseInt(str)
                         );
-                        case XML_BEAMINGS -> stringToBeamIntervalSet(
+                        case XML_BEAMINGS -> stringToBeamSpanSet(
                             line.getBeamings(),
                             str
                         );
-                        case XML_TIES -> stringToTieIntervalSet(
+                        case XML_TIES -> stringToTieSpanSet(
                             line.getTies(),
                             str
                         );
                         // Slurs no longer supported - ignore for backwards compatibility
                         case "slurs" -> {
                         }
-                        case XML_CRESCENDO -> stringToDynamicsIntervalSet(
+                        case XML_CRESCENDO -> stringToDynamicsSpanSet(
                             line.getCrescendos(),
                             str
                         );
-                        case XML_DIMINUENDO -> stringToDynamicsIntervalSet(
+                        case XML_DIMINUENDO -> stringToDynamicsSpanSet(
                             line.getDiminuendos(),
                             str
                         );
-                        case XML_TUPLETS, XML_TRIPLETS -> stringToTupletIntervalSet(
+                        case XML_TUPLETS, XML_TRIPLETS -> stringToTupletSpanSet(
                             line.getTuplets(),
                             str
                         );

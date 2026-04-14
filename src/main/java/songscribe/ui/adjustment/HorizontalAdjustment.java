@@ -25,8 +25,8 @@ import java.util.ArrayList;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.music.DynamicsInterval;
-import songscribe.music.IntervalSet;
+import songscribe.music.DynamicsSpan;
+import songscribe.music.SpanSet;
 import songscribe.music.Line;
 import songscribe.music.StaffElement;
 import songscribe.ui.component.Score;
@@ -269,13 +269,13 @@ public class HorizontalAdjustment extends Adjustment {
                 (draggingRect.horizontalAdjustmentType ==
                     HorizontalAdjustmentType.DIMINUENDO_START)
         ) {
-            var interval = getDynamicIntervalSet(
+            var span = getDynamicSpanSet(
                 line,
                 draggingRect.horizontalAdjustmentType
-            ).findInterval(draggingRect.xIndex);
+            ).findSpan(draggingRect.xIndex);
 
-            if (interval != null) {
-                interval.setX1ShiftSs((interval.getX1ShiftSs() + endPoint.x) - diffX);
+            if (span != null) {
+                span.setX1ShiftSs((span.getX1ShiftSs() + endPoint.x) - diffX);
             }
         } else if (
             (draggingRect.horizontalAdjustmentType ==
@@ -283,13 +283,13 @@ public class HorizontalAdjustment extends Adjustment {
                 (draggingRect.horizontalAdjustmentType ==
                     HorizontalAdjustmentType.DIMINUENDO_END)
         ) {
-            var interval = getDynamicIntervalSet(
+            var span = getDynamicSpanSet(
                 line,
                 draggingRect.horizontalAdjustmentType
-            ).findInterval(draggingRect.xIndex);
+            ).findSpan(draggingRect.xIndex);
 
-            if (interval != null) {
-                interval.setX2ShiftSs((interval.getX2ShiftSs() + endPoint.x) - diffX);
+            if (span != null) {
+                span.setX2ShiftSs((span.getX2ShiftSs() + endPoint.x) - diffX);
             }
         }
 
@@ -396,18 +396,18 @@ public class HorizontalAdjustment extends Adjustment {
                     var iter = line.getCrescendos().listIterator();
                     iter.hasNext();
                 ) {
-                    var interval = iter.next();
+                    var span = iter.next();
                     adjustRects.add(
                         new AdjustRect(
                             lineIndex,
-                            interval.getStart(),
+                            span.getStart(),
                             HorizontalAdjustmentType.CRESCENDO_START
                         )
                     );
                     adjustRects.add(
                         new AdjustRect(
                             lineIndex,
-                            interval.getEnd(),
+                            span.getEnd(),
                             HorizontalAdjustmentType.CRESCENDO_END
                         )
                     );
@@ -418,18 +418,18 @@ public class HorizontalAdjustment extends Adjustment {
                     var iter = line.getDiminuendos().listIterator();
                     iter.hasNext();
                 ) {
-                    var interval = iter.next();
+                    var span = iter.next();
                     adjustRects.add(
                         new AdjustRect(
                             lineIndex,
-                            interval.getStart(),
+                            span.getStart(),
                             HorizontalAdjustmentType.DIMINUENDO_START
                         )
                     );
                     adjustRects.add(
                         new AdjustRect(
                             lineIndex,
-                            interval.getEnd(),
+                            span.getEnd(),
                             HorizontalAdjustmentType.DIMINUENDO_END
                         )
                     );
@@ -502,30 +502,30 @@ public class HorizontalAdjustment extends Adjustment {
                 }
             }
             case CRESCENDO_START, DIMINUENDO_START -> {
-                var x1Interval = getDynamicIntervalSet(
+                var x1Span = getDynamicSpanSet(
                     line,
                     rect.horizontalAdjustmentType
-                ).findInterval(rect.xIndex);
+                ).findSpan(rect.xIndex);
 
-                if (x1Interval != null) {
+                if (x1Span != null) {
                     rect.rect.x = (int) ((line.getElement(rect.xIndex).getXPosSs() - 12) +
-                        x1Interval.getX1ShiftSs());
+                        x1Span.getX1ShiftSs());
                     rect.rect.y = (int) ((score.getNoteYPosPx(6, rect.line) - 4) +
-                        x1Interval.getYShiftSs());
+                        x1Span.getYShiftSs());
                 }
             }
             case CRESCENDO_END, DIMINUENDO_END -> {
-                var x2Interval = getDynamicIntervalSet(
+                var x2Span = getDynamicSpanSet(
                     line,
                     rect.horizontalAdjustmentType
-                ).findInterval(rect.xIndex);
+                ).findSpan(rect.xIndex);
 
-                if (x2Interval != null) {
+                if (x2Span != null) {
                     rect.rect.x = (int) (line.getElement(rect.xIndex).getXPosSs() +
                         16 +
-                        x2Interval.getX2ShiftSs());
+                        x2Span.getX2ShiftSs());
                     rect.rect.y = (int) ((score.getNoteYPosPx(6, rect.line) - 4) +
-                        x2Interval.getYShiftSs());
+                        x2Span.getYShiftSs());
                 }
             }
             default -> rect.rect.x = note.getXPosSs() + 1;
@@ -541,7 +541,7 @@ public class HorizontalAdjustment extends Adjustment {
         }
     }
 
-    private static IntervalSet<DynamicsInterval> getDynamicIntervalSet(
+    private static SpanSet<DynamicsSpan> getDynamicSpanSet(
         Line line,
         HorizontalAdjustmentType horizontalAdjustmentType
     ) {

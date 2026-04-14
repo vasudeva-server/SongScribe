@@ -22,7 +22,7 @@ package songscribe.ui.selection;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.music.TupletInterval;
+import songscribe.music.TupletSpan;
 
 /**
  * Result of {@link LineSelectionState#canToggleTuplet()}.
@@ -35,7 +35,7 @@ import songscribe.music.TupletInterval;
  */
 public record TupletToggleInfo(
     boolean canToggle,
-    @Nullable TupletInterval existing,
+    @Nullable TupletSpan existing,
     boolean coversExisting
 ) {
     public TupletToggleInfo {

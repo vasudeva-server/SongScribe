@@ -114,7 +114,7 @@ public class ElementColumnBuilder {
     public ElementColumn buildColumn(StaffElement element, Line line) {
         // Determine beam membership first — needed for right extent calculation
         int elementIndex = line.getElementIndex(element);
-        boolean beamed = line.getBeamings().findInterval(elementIndex) != null;
+        boolean beamed = line.getBeamings().findSpan(elementIndex) != null;
 
         // Calculate horizontal extents
         double leftExtentSs = calculateLeftExtentSs(element);

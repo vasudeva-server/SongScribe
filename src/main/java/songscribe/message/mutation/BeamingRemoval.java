@@ -20,13 +20,13 @@
 
 package songscribe.message.mutation;
 
-import songscribe.music.BeamInterval;
+import songscribe.music.BeamSpan;
 import songscribe.music.Line;
 
 /**
- * Mutation recording the removal of a beam interval from a line.
+ * Mutation recording the removal of a beam span from a line.
  */
-public record BeamingRemoval(Line line, BeamInterval interval)
+public record BeamingRemoval(Line line, BeamSpan span)
     implements Mutation, LineScopedMutation {
 
     @Override

@@ -26,7 +26,7 @@ import static songscribe.ui.renderer.GraphicsState.Property.TRANSFORM;
 import module java.desktop;
 
 
-import songscribe.music.Interval;
+import songscribe.music.Span;
 import songscribe.ui.layout.LayoutResult;
 
 /**
@@ -58,18 +58,18 @@ public class TieRenderer {
     // ==========================================================================
 
     /**
-     * Renders a tie for the given interval.
+     * Renders a tie for the given span.
      * <p>
      * Reads pre-computed geometry from {@link LayoutResult.TieLayout}. If no
-     * layout was computed for this interval, the method returns without rendering.
+     * layout was computed for this span, the method returns without rendering.
      *
-     * @param g2       Graphics context (staff-space coordinate system)
-     * @param interval The tie interval
-     * @param ctx      Render context
+     * @param g2   Graphics context (staff-space coordinate system)
+     * @param span The tie span
+     * @param ctx  Render context
      */
     public void renderTie(
         Graphics2D g2,
-        Interval interval,
+        Span span,
         ElementRenderContext ctx
     ) {
         var layoutResult = ctx.getLayoutResult();
@@ -78,7 +78,7 @@ public class TieRenderer {
             return;
         }
 
-        var layout = layoutResult.getTieLayout(interval);
+        var layout = layoutResult.getTieLayout(span);
 
         if (layout == null) {
             return;
@@ -86,7 +86,7 @@ public class TieRenderer {
 
         try (var ignored = GraphicsState.save(g2, TRANSFORM, COLOR)) {
             g2.translate(0, ctx.getMiddleLineYSs());
-            g2.setColor(determineTieColor(interval, ctx));
+            g2.setColor(determineTieColor(span, ctx));
 
             var tie = new GeneralPath(Path2D.WIND_NON_ZERO, 4);
 
@@ -116,14 +116,14 @@ public class TieRenderer {
      * <p>
      * A tie is colored if either its start or end note is playing or selected.
      */
-    private Color determineTieColor(Interval interval, ElementRenderContext ctx) {
-        var startColor = ctx.getElementColor(interval.getStart());
+    private Color determineTieColor(Span span, ElementRenderContext ctx) {
+        var startColor = ctx.getElementColor(span.getStart());
 
         if (startColor != Color.BLACK) {
             return startColor;
         }
 
-        var endColor = ctx.getElementColor(interval.getEnd());
+        var endColor = ctx.getElementColor(span.getEnd());
 
         if (endColor != Color.BLACK) {
             return endColor;

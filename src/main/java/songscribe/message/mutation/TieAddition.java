@@ -21,12 +21,12 @@
 package songscribe.message.mutation;
 
 import songscribe.music.Line;
-import songscribe.music.TieInterval;
+import songscribe.music.TieSpan;
 
 /**
- * Mutation recording the addition of a tie interval to a line.
+ * Mutation recording the addition of a tie span to a line.
  */
-public record TieAddition(Line line, TieInterval interval)
+public record TieAddition(Line line, TieSpan span)
     implements Mutation, LineScopedMutation {
 
     @Override

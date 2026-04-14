@@ -17,20 +17,23 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
-
-package songscribe.message.mutation;
-
-import songscribe.music.Line;
-import songscribe.music.TieSpan;
+package songscribe.music;
 
 /**
- * Mutation recording the removal of a tie span from a line.
+ * A typed span representing a beam group.
+ * <p>
+ * All computed beam geometry lives in {@code LayoutResult.BeamLayout}; this class
+ * carries no additional fields beyond the start/end note indices inherited from
+ * {@link Span}.
  */
-public record TieRemoval(Line line, TieSpan span)
-    implements Mutation, LineScopedMutation {
+public class BeamSpan extends Span {
+
+    public BeamSpan(int start, int end) {
+        super(start, end, null);
+    }
 
     @Override
-    public Line getLine() {
-        return line;
+    public BeamSpan copyRange(int newStart, int newEnd) {
+        return new BeamSpan(newStart, newEnd);
     }
 }

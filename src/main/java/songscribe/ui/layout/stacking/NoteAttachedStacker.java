@@ -252,21 +252,21 @@ public class NoteAttachedStacker {
         var upwardTieNotes = new HashSet<StaffElement>();
 
         for (var it = ties.listIterator(); it.hasNext(); ) {
-            var interval = it.next();
-            var startElement = line.getElement(interval.getStart());
+            var span = it.next();
+            var startElement = line.getElement(span.getStart());
 
             // Only seed upward-arcing ties (stem down -> !isUpper())
             if (startElement.isUpper()) {
                 continue;
             }
 
-            var tieLayout = builder.getTieLayout(interval);
+            var tieLayout = builder.getTieLayout(span);
 
             if (tieLayout == null) {
                 continue;
             }
 
-            var endElement = line.getElement(interval.getEnd());
+            var endElement = line.getElement(span.getEnd());
 
             // Sample the outer Bezier curve to reserve tie vertical extent
             double sx = tieLayout.startXSs();

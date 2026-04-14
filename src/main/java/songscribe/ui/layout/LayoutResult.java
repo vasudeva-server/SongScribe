@@ -29,7 +29,7 @@ import java.util.Set;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.music.Interval;
+import songscribe.music.Span;
 import songscribe.music.StaffElement;
 
 /**
@@ -57,11 +57,11 @@ public final class LayoutResult {
 
     private final Map<StaffElement, ElementColumn> elementColumns;
     private final Map<LineElement, Bounds> elementBounds;
-    private final Map<Interval, BeamLayout> beamLayouts;
+    private final Map<Span, BeamLayout> beamLayouts;
     private final Map<StaffElement, StemLayout> stemLayouts;
-    private final Map<Interval, TieLayout> tieLayouts;
+    private final Map<Span, TieLayout> tieLayouts;
     private final Map<LineElement, DecorationLayout> decorationLayouts;
-    private final Map<Interval, SpanLayout> spanLayouts;
+    private final Map<Span, SpanLayout> spanLayouts;
     @Nullable
     private final Clef clef;
     @Nullable
@@ -78,9 +78,9 @@ public final class LayoutResult {
      *
      * @param elementColumns   Map of elements to their columns with positions
      * @param elementBounds    Map of line elements to their bounds
-     * @param beamLayouts      Map of beam intervals to their computed beam geometry
+     * @param beamLayouts      Map of beam spans to their computed beam geometry
      * @param stemLayouts      Map of unbeamed notes to their computed stem geometry
-     * @param tieLayouts       Map of tie intervals to their computed tie geometry
+     * @param tieLayouts       Map of tie spans to their computed tie geometry
      * @param lineHeightSs       Total height of the line in staff spaces (including staff, elements, and lyrics)
      * @param staffTopYSs        Y position of the top staff line in staff spaces
      * @param staffBottomYSs     Y position of the bottom staff line in staff spaces
@@ -89,11 +89,11 @@ public final class LayoutResult {
     private LayoutResult(
         Map<StaffElement, ElementColumn> elementColumns,
         Map<LineElement, Bounds> elementBounds,
-        Map<Interval, BeamLayout> beamLayouts,
+        Map<Span, BeamLayout> beamLayouts,
         Map<StaffElement, StemLayout> stemLayouts,
-        Map<Interval, TieLayout> tieLayouts,
+        Map<Span, TieLayout> tieLayouts,
         Map<LineElement, DecorationLayout> decorationLayouts,
-        Map<Interval, SpanLayout> spanLayouts,
+        Map<Span, SpanLayout> spanLayouts,
         @Nullable Clef clef,
         @Nullable KeySignature keySignature,
         double lineHeightSs,
@@ -164,13 +164,13 @@ public final class LayoutResult {
     // ==========================================================================
 
     /**
-     * Returns the beam geometry for a beam interval.
+     * Returns the beam geometry for a beam span.
      *
-     * @param interval The beam interval to look up
+     * @param span The beam span to look up
      * @return The beam layout, or null if not computed
      */
-    public @Nullable BeamLayout getBeamLayout(Interval interval) {
-        return beamLayouts.get(interval);
+    public @Nullable BeamLayout getBeamLayout(Span span) {
+        return beamLayouts.get(span);
     }
 
     /**
@@ -199,18 +199,18 @@ public final class LayoutResult {
     // ==========================================================================
 
     /**
-     * Returns the tie geometry for a tie interval, if it was computed during layout.
+     * Returns the tie geometry for a tie span, if it was computed during layout.
      * <p>
-     * Returns null when the interval was not laid out (e.g., degenerate
+     * Returns null when the span was not laid out (e.g., degenerate
      * tie spanning notes that could not be positioned). Callers should skip rendering
      * if the result is null.
      *
-     * @param interval The tie interval to look up
+     * @param span The tie span to look up
      * @return the tie layout, or null if not computed
      */
     @Nullable
-    public TieLayout getTieLayout(Interval interval) {
-        return tieLayouts.get(interval);
+    public TieLayout getTieLayout(Span span) {
+        return tieLayouts.get(span);
     }
 
     // ==========================================================================
@@ -321,19 +321,19 @@ public final class LayoutResult {
     /**
      * Returns the span layout for a span element (hairpin, ending, tuplet).
      *
-     * @param interval The interval to look up
+     * @param span The span to look up
      * @return The span layout, or null if not computed
      */
-    public @Nullable SpanLayout getSpanLayout(Interval interval) {
-        return spanLayouts.get(interval);
+    public @Nullable SpanLayout getSpanLayout(Span span) {
+        return spanLayouts.get(span);
     }
 
     /**
      * Returns an unmodifiable view of all span layouts.
      *
-     * @return Map of intervals to their span layouts
+     * @return Map of spans to their span layouts
      */
-    public Map<Interval, SpanLayout> getSpanLayouts() {
+    public Map<Span, SpanLayout> getSpanLayouts() {
         return spanLayouts;
     }
 
@@ -835,11 +835,11 @@ public final class LayoutResult {
 
         private final Map<StaffElement, ElementColumn> elementColumns;
         private final Map<LineElement, Bounds> elementBounds;
-        private final Map<Interval, BeamLayout> beamLayouts;
+        private final Map<Span, BeamLayout> beamLayouts;
         private final Map<StaffElement, StemLayout> stemLayouts;
-        private final Map<Interval, TieLayout> tieLayouts;
+        private final Map<Span, TieLayout> tieLayouts;
         private final Map<LineElement, DecorationLayout> decorationLayouts;
-        private final Map<Interval, SpanLayout> spanLayouts;
+        private final Map<Span, SpanLayout> spanLayouts;
         @Nullable
         private Clef clef;
         @Nullable
@@ -941,14 +941,14 @@ public final class LayoutResult {
         }
 
         /**
-         * Adds computed beam geometry for a beam interval.
+         * Adds computed beam geometry for a beam span.
          *
-         * @param interval   The beam interval
+         * @param span       The beam span
          * @param beamLayout The computed beam geometry
          * @return This builder for chaining
          */
-        public Builder putBeamLayout(Interval interval, BeamLayout beamLayout) {
-            beamLayouts.put(interval, beamLayout);
+        public Builder putBeamLayout(Span span, BeamLayout beamLayout) {
+            beamLayouts.put(span, beamLayout);
             return this;
         }
 
@@ -965,14 +965,14 @@ public final class LayoutResult {
         }
 
         /**
-         * Adds computed tie geometry for a tie interval.
+         * Adds computed tie geometry for a tie span.
          *
-         * @param interval  The tie interval
+         * @param span      The tie span
          * @param tieLayout The computed tie geometry
          * @return This builder for chaining
          */
-        public Builder putTieLayout(Interval interval, TieLayout tieLayout) {
-            tieLayouts.put(interval, tieLayout);
+        public Builder putTieLayout(Span span, TieLayout tieLayout) {
+            tieLayouts.put(span, tieLayout);
             return this;
         }
 
@@ -991,12 +991,12 @@ public final class LayoutResult {
         /**
          * Adds computed span layout for a span element (hairpin, ending, tuplet).
          *
-         * @param interval   The span interval
+         * @param span       The span
          * @param spanLayout The computed span geometry
          * @return This builder for chaining
          */
-        public Builder putSpanLayout(Interval interval, SpanLayout spanLayout) {
-            spanLayouts.put(interval, spanLayout);
+        public Builder putSpanLayout(Span span, SpanLayout spanLayout) {
+            spanLayouts.put(span, spanLayout);
             return this;
         }
 
@@ -1022,18 +1022,18 @@ public final class LayoutResult {
          * @return The span layout entry set (mutable — callers may update via
          *         {@link #putSpanLayout})
          */
-        public Set<Map.Entry<Interval, SpanLayout>> getSpanLayoutEntries() {
+        public Set<Map.Entry<Span, SpanLayout>> getSpanLayoutEntries() {
             return spanLayouts.entrySet();
         }
 
         /**
-         * Returns the tie layout for a tie interval from the builder's accumulated data.
+         * Returns the tie layout for a tie span from the builder's accumulated data.
          *
-         * @param interval The tie interval to look up
+         * @param span The tie span to look up
          * @return The tie layout, or null if not yet computed
          */
-        public @Nullable TieLayout getTieLayout(Interval interval) {
-            return tieLayouts.get(interval);
+        public @Nullable TieLayout getTieLayout(Span span) {
+            return tieLayouts.get(span);
         }
 
         /**

@@ -34,7 +34,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 
 import songscribe.UnitTest;
-import songscribe.music.DynamicsInterval;
+import songscribe.music.DynamicsSpan;
 import songscribe.music.ElementType;
 import songscribe.music.Line;
 import songscribe.ui.component.MainFrame;
@@ -178,7 +178,7 @@ class DynamicMarkingActionTest extends UnitTest {
             try (var mainFrameMock = mockStatic(MainFrame.class)) {
                 var env = setupFullMockEnv(mainFrameMock);
                 var line = new Line();
-                line.getCrescendos().addInterval(new DynamicsInterval(0, 3));
+                line.getCrescendos().addSpan(new DynamicsSpan(0, 3));
                 var selection = new ElementSelection(line, 1, 1);
 
                 when(env.score().getSelectionSize()).thenReturn(1);
@@ -197,7 +197,7 @@ class DynamicMarkingActionTest extends UnitTest {
             try (var mainFrameMock = mockStatic(MainFrame.class)) {
                 var env = setupFullMockEnv(mainFrameMock);
                 var line = new Line();
-                line.getDiminuendos().addInterval(new DynamicsInterval(0, 3));
+                line.getDiminuendos().addSpan(new DynamicsSpan(0, 3));
                 var selection = new ElementSelection(line, 1, 1);
 
                 when(env.score().getSelectionSize()).thenReturn(1);

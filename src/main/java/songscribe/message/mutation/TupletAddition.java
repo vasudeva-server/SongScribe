@@ -21,12 +21,12 @@
 package songscribe.message.mutation;
 
 import songscribe.music.Line;
-import songscribe.music.TupletInterval;
+import songscribe.music.TupletSpan;
 
 /**
- * Mutation recording the addition of a tuplet interval to a line.
+ * Mutation recording the addition of a tuplet span to a line.
  */
-public record TupletAddition(Line line, TupletInterval interval)
+public record TupletAddition(Line line, TupletSpan span)
     implements Mutation, LineScopedMutation {
 
     @Override

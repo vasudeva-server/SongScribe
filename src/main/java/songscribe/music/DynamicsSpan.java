@@ -19,41 +19,49 @@
 */
 package songscribe.music;
 
-public class TupletInterval extends Interval {
+public class DynamicsSpan extends Span {
 
-    private int grade;
-    private double verticalPositionSs;
+    private double x1ShiftSs;
+    private double x2ShiftSs;
+    private double yShiftSs;
 
-    public TupletInterval(int start, int end, int grade) {
+    public DynamicsSpan(int start, int end) {
         super(start, end, null);
-        this.grade = grade;
-        this.verticalPositionSs = 0;
+        this.x1ShiftSs = 0;
+        this.x2ShiftSs = 0;
+        this.yShiftSs = 0;
     }
 
-    public int getGrade() {
-        return grade;
+    public double getX1ShiftSs() {
+        return x1ShiftSs;
     }
 
-    public void setGrade(int grade) {
-        this.grade = grade;
+    public void setX1ShiftSs(double x1Shift) {
+        this.x1ShiftSs = x1Shift;
     }
 
-    public double getVerticalPositionSs() {
-        return verticalPositionSs;
+    public double getX2ShiftSs() {
+        return x2ShiftSs;
     }
 
-    public void setVerticalPositionSs(double verticalPosition) {
-        this.verticalPositionSs = verticalPosition;
+    public void setX2ShiftSs(double x2Shift) {
+        this.x2ShiftSs = x2Shift;
     }
 
-    public boolean isVerticallyAdjusted() {
-        return verticalPositionSs != 0;
+    public double getYShiftSs() {
+        return yShiftSs;
+    }
+
+    public void setYShiftSs(double yShift) {
+        this.yShiftSs = yShift;
     }
 
     @Override
-    public TupletInterval copyRange(int newStart, int newEnd) {
-        var copy = new TupletInterval(newStart, newEnd, grade);
-        copy.setVerticalPositionSs(verticalPositionSs);
+    public DynamicsSpan copyRange(int newStart, int newEnd) {
+        var copy = new DynamicsSpan(newStart, newEnd);
+        copy.setX1ShiftSs(x1ShiftSs);
+        copy.setX2ShiftSs(x2ShiftSs);
+        copy.setYShiftSs(yShiftSs);
         return copy;
     }
 }

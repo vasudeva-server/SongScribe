@@ -33,7 +33,7 @@ import org.junit.jupiter.api.Test;
 import songscribe.UnitTest;
 import songscribe.music.Annotation;
 import songscribe.music.Composition;
-import songscribe.music.DynamicsInterval;
+import songscribe.music.DynamicsSpan;
 import songscribe.music.ElementType;
 import songscribe.music.Line;
 import songscribe.music.StaffElement;
@@ -247,7 +247,7 @@ class ManualOffsetStackingTest extends UnitTest {
     class HairpinOffsets {
 
         @Test
-        void testLegacyDynamicsIntervalYShiftApplied() {
+        void testLegacyDynamicsSpanYShiftApplied() {
             var note1 = createNote(0, false);
             var note2 = createNote(0, false);
             var line = newLine();
@@ -255,16 +255,16 @@ class ManualOffsetStackingTest extends UnitTest {
             populate(line,note2);
 
             double yShiftSs = -1.5;
-            var interval = new DynamicsInterval(0, 1);
-            interval.setYShiftSs(yShiftSs);
-            line.getCrescendos().addInterval(interval);
+            var span = new DynamicsSpan(0, 1);
+            span.setYShiftSs(yShiftSs);
+            line.getCrescendos().addSpan(span);
 
             var result = stackColumns(
                 List.of(columnFor(note1, NOTE1_X_SS), columnFor(note2, NOTE2_X_SS)),
                 line);
 
             var spanLayout = require(
-                result.getSpanLayout(interval),
+                result.getSpanLayout(span),
                 "crescendo SpanLayout with y shift");
 
             // Create baseline without shift
@@ -274,23 +274,23 @@ class ManualOffsetStackingTest extends UnitTest {
             populate(line2,note3);
             populate(line2,note4);
 
-            var baselineInterval = new DynamicsInterval(0, 1);
-            line2.getCrescendos().addInterval(baselineInterval);
+            var baselineSpan = new DynamicsSpan(0, 1);
+            line2.getCrescendos().addSpan(baselineSpan);
 
             var baselineResult = stackColumns(
                 List.of(columnFor(note3, NOTE1_X_SS), columnFor(note4, NOTE2_X_SS)),
                 line2);
 
-            var baselineSpan = require(
-                baselineResult.getSpanLayout(baselineInterval),
+            var baselineSpanLayout = require(
+                baselineResult.getSpanLayout(baselineSpan),
                 "crescendo SpanLayout baseline");
 
             assertThat(spanLayout.ySs())
-                .isCloseTo(baselineSpan.ySs() + yShiftSs, within(TOLERANCE));
+                .isCloseTo(baselineSpanLayout.ySs() + yShiftSs, within(TOLERANCE));
         }
 
         @Test
-        void testLegacyDynamicsIntervalXShiftsApplied() {
+        void testLegacyDynamicsSpanXShiftsApplied() {
             var note1 = createNote(0, false);
             var note2 = createNote(0, false);
             var line = newLine();
@@ -299,17 +299,17 @@ class ManualOffsetStackingTest extends UnitTest {
 
             double x1ShiftSs = 0.5;
             double x2ShiftSs = -0.5;
-            var interval = new DynamicsInterval(0, 1);
-            interval.setX1ShiftSs(x1ShiftSs);
-            interval.setX2ShiftSs(x2ShiftSs);
-            line.getCrescendos().addInterval(interval);
+            var span = new DynamicsSpan(0, 1);
+            span.setX1ShiftSs(x1ShiftSs);
+            span.setX2ShiftSs(x2ShiftSs);
+            line.getCrescendos().addSpan(span);
 
             var result = stackColumns(
                 List.of(columnFor(note1, NOTE1_X_SS), columnFor(note2, NOTE2_X_SS)),
                 line);
 
             var spanLayout = require(
-                result.getSpanLayout(interval),
+                result.getSpanLayout(span),
                 "crescendo SpanLayout with x shifts");
 
             // Create baseline without shift
@@ -319,21 +319,21 @@ class ManualOffsetStackingTest extends UnitTest {
             populate(line2,note3);
             populate(line2,note4);
 
-            var baselineInterval = new DynamicsInterval(0, 1);
-            line2.getCrescendos().addInterval(baselineInterval);
+            var baselineSpan = new DynamicsSpan(0, 1);
+            line2.getCrescendos().addSpan(baselineSpan);
 
             var baselineResult = stackColumns(
                 List.of(columnFor(note3, NOTE1_X_SS), columnFor(note4, NOTE2_X_SS)),
                 line2);
 
-            var baselineSpan = require(
-                baselineResult.getSpanLayout(baselineInterval),
+            var baselineSpanLayout = require(
+                baselineResult.getSpanLayout(baselineSpan),
                 "crescendo SpanLayout baseline");
 
             assertThat(spanLayout.startXSs())
-                .isCloseTo(baselineSpan.startXSs() + x1ShiftSs, within(TOLERANCE));
+                .isCloseTo(baselineSpanLayout.startXSs() + x1ShiftSs, within(TOLERANCE));
             assertThat(spanLayout.endXSs())
-                .isCloseTo(baselineSpan.endXSs() + x2ShiftSs, within(TOLERANCE));
+                .isCloseTo(baselineSpanLayout.endXSs() + x2ShiftSs, within(TOLERANCE));
         }
     }
 

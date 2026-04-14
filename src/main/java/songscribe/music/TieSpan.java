@@ -20,20 +20,20 @@
 package songscribe.music;
 
 /**
- * A typed interval representing a tie between two notes.
+ * A typed span representing a tie between two notes.
  * <p>
  * All computed tie geometry lives in {@code LayoutResult.TieLayout}; this class
  * carries no additional fields beyond the start/end note indices inherited from
- * {@link Interval}.
+ * {@link Span}.
  */
-public class TieInterval extends Interval {
+public class TieSpan extends Span {
 
-    public TieInterval(int start, int end) {
+    public TieSpan(int start, int end) {
         super(start, end, null);
     }
 
     @Override
-    public TieInterval copyRange(int newStart, int newEnd) {
-        return new TieInterval(newStart, newEnd);
+    public TieSpan copyRange(int newStart, int newEnd) {
+        return new TieSpan(newStart, newEnd);
     }
 }

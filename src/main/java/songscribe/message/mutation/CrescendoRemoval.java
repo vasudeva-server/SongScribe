@@ -20,13 +20,13 @@
 
 package songscribe.message.mutation;
 
-import songscribe.music.DynamicsInterval;
+import songscribe.music.DynamicsSpan;
 import songscribe.music.Line;
 
 /**
- * Mutation recording the removal of a crescendo interval from a line.
+ * Mutation recording the removal of a crescendo span from a line.
  */
-public record CrescendoRemoval(Line line, DynamicsInterval interval)
+public record CrescendoRemoval(Line line, DynamicsSpan span)
     implements Mutation, LineScopedMutation {
 
     @Override

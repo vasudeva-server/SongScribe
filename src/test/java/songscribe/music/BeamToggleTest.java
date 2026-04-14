@@ -139,18 +139,18 @@ class BeamToggleTest extends UnitTest {
             operations.toggleBeaming();
 
             assertAll(
-                () -> assertThat(line.getBeamings().findInterval(EIGHTH_1))
+                () -> assertThat(line.getBeamings().findSpan(EIGHTH_1))
                     .as("note 1 beamed").isNotNull(),
-                () -> assertThat(line.getBeamings().findInterval(EIGHTH_2))
+                () -> assertThat(line.getBeamings().findSpan(EIGHTH_2))
                     .as("note 2 beamed").isNotNull()
             );
 
             operations.toggleBeaming();
 
             assertAll(
-                () -> assertThat(line.getBeamings().findInterval(EIGHTH_1))
+                () -> assertThat(line.getBeamings().findSpan(EIGHTH_1))
                     .as("note 1 unbeamed").isNull(),
-                () -> assertThat(line.getBeamings().findInterval(EIGHTH_2))
+                () -> assertThat(line.getBeamings().findSpan(EIGHTH_2))
                     .as("note 2 unbeamed").isNull()
             );
         }
@@ -161,9 +161,9 @@ class BeamToggleTest extends UnitTest {
             operations.toggleBeaming();
 
             assertAll(
-                () -> assertThat(line.getBeamings().findInterval(EIGHTH_1))
+                () -> assertThat(line.getBeamings().findSpan(EIGHTH_1))
                     .as("note 1 beamed").isNotNull(),
-                () -> assertThat(line.getBeamings().findInterval(EIGHTH_2))
+                () -> assertThat(line.getBeamings().findSpan(EIGHTH_2))
                     .as("note 2 beamed").isNotNull()
             );
 

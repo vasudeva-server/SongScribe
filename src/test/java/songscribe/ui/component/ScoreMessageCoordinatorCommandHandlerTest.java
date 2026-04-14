@@ -61,13 +61,13 @@ import songscribe.message.mutation.TupletAddition;
 import songscribe.message.mutation.TupletRemoval;
 import songscribe.message.notification.CompositionDidChangeNotification;
 import songscribe.music.Composition;
-import songscribe.music.DynamicsInterval;
+import songscribe.music.DynamicsSpan;
 import songscribe.music.ElementType;
 import songscribe.music.EndingValidationResult;
 import songscribe.music.Line;
 import songscribe.ui.MusicEditOperations;
 import songscribe.music.StaffElement;
-import songscribe.music.TupletInterval;
+import songscribe.music.TupletSpan;
 import songscribe.ui.action.FirstSecondEndingAction;
 import songscribe.ui.action.TupletAction;
 import songscribe.ui.clipboard.ClipboardManager;
@@ -225,16 +225,16 @@ class ScoreMessageCoordinatorCommandHandlerTest extends UnitTest {
         var notification = captureSingleDidChange();
         assertThat(notification.getMutations()).hasSize(1);
         var addition = (TupletAddition) notification.getMutations().get(0);
-        assertThat(addition.interval().getGrade()).isEqualTo(TupletAction.Tuplet.TRIPLET.getSize());
+        assertThat(addition.span().getGrade()).isEqualTo(TupletAction.Tuplet.TRIPLET.getSize());
     }
 
     @Test
     void testHandleToggleTupletEmitsRemovalAndAdditionForGradeChange() {
-        // Existing triplet over [0..2] with the full interval selected, handler invoked with
+        // Existing triplet over [0..2] with the full span selected, handler invoked with
         // quintuplet — emits [TupletRemoval, TupletAddition] inside one modification bracket
         // so the grade change replays atomically under undo.
         var env = setup(crotchet(), crotchet(), crotchet());
-        env.line().getTuplets().addInterval(new TupletInterval(0, 2, TupletAction.Tuplet.TRIPLET.getSize()));
+        env.line().getTuplets().addSpan(new TupletSpan(0, 2, TupletAction.Tuplet.TRIPLET.getSize()));
         ReflectionTestHelper.selectRange(env.coordinator(), 0, 2);
 
         env.scoreMessageCoordinator().handleToggleTuplet(tupletCommand(TupletAction.Tuplet.QUINTUPLET));
@@ -244,7 +244,7 @@ class ScoreMessageCoordinatorCommandHandlerTest extends UnitTest {
         assertThat(mutations).hasSize(2);
         assertThat(mutations.get(0)).isInstanceOf(TupletRemoval.class);
         assertThat(mutations.get(1)).isInstanceOf(TupletAddition.class);
-        assertThat(((TupletAddition) mutations.get(1)).interval().getGrade()).isEqualTo(TupletAction.Tuplet.QUINTUPLET.getSize());
+        assertThat(((TupletAddition) mutations.get(1)).span().getGrade()).isEqualTo(TupletAction.Tuplet.QUINTUPLET.getSize());
     }
 
     /**
@@ -285,8 +285,8 @@ class ScoreMessageCoordinatorCommandHandlerTest extends UnitTest {
         // One crescendo, one diminuendo — the handler must coalesce both removals
         // into a single notification.
         var env = setup(crotchet(), crotchet(), crotchet(), crotchet());
-        env.line().getCrescendos().addInterval(new DynamicsInterval(0, 1));
-        env.line().getDiminuendos().addInterval(new DynamicsInterval(2, 3));
+        env.line().getCrescendos().addSpan(new DynamicsSpan(0, 1));
+        env.line().getDiminuendos().addSpan(new DynamicsSpan(2, 3));
         ReflectionTestHelper.selectRange(env.coordinator(), 0, 3);
 
         env.scoreMessageCoordinator().handleRemoveDynamics(new RemoveDynamicsCommand());

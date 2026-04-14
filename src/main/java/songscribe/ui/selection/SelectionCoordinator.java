@@ -38,11 +38,11 @@ import net.engio.mbassy.listener.Handler;
 import songscribe.message.Message;
 import songscribe.message.MessageCenter;
 import songscribe.message.notification.MusicSelectionDidChangeNotification;
-import songscribe.music.BeamInterval;
+import songscribe.music.BeamSpan;
 import songscribe.music.Composition;
 import songscribe.music.Line;
 import songscribe.music.StaffElement;
-import songscribe.music.TupletInterval;
+import songscribe.music.TupletSpan;
 import songscribe.ui.component.score.LineComponent;
 import songscribe.ui.action.Actions;
 import songscribe.ui.action.UIAction;
@@ -574,7 +574,7 @@ public final class SelectionCoordinator {
         var composition = line.getComposition();
 
         composition.withModification(() -> {
-            var needsIntervalCleanup = false;
+            var needsSpanCleanup = false;
 
             for (int i = selection.begin(); i <= selection.end(); i++) {
                 var element = line.getElement(i);
@@ -588,7 +588,7 @@ public final class SelectionCoordinator {
 
                     var replacement = replaceable.createReplacement(element, selected);
                     line.setElement(i, replacement);
-                    needsIntervalCleanup = true;
+                    needsSpanCleanup = true;
                 } else if (action instanceof UIAction.ElementModifiable modifiable) {
                     var index = i;
                     line.modifyElement(
@@ -599,8 +599,8 @@ public final class SelectionCoordinator {
                 }
             }
 
-            if (needsIntervalCleanup) {
-                validateIntervals(line, selection.begin(), selection.end());
+            if (needsSpanCleanup) {
+                validateSpans(line, selection.begin(), selection.end());
             }
 
             contentCacheSelection = null;
@@ -609,14 +609,14 @@ public final class SelectionCoordinator {
         });
     }
 
-    // Validates beam and tuplet intervals after batch element replacement.
+    // Validates beam and tuplet spans after batch element replacement.
     //
     // Tie repair is omitted: under the invariants enforced by the call site,
     // no reachable replacement can invalidate an existing tie. The replacement
     // preserves pitch and rest-ness; grace notes are disabled in select mode
     // via Flag.DISABLE_IN_SELECT_MODE; and ElementModifiable actions do not
     // touch element type.
-    private void validateIntervals(Line line, int begin, int end) {
+    private void validateSpans(Line line, int begin, int end) {
         repairBeamings(line, begin, end);
         invalidateOverlappingTuplets(line, begin, end);
     }
@@ -629,7 +629,7 @@ public final class SelectionCoordinator {
     // open modification bracket.
     private void invalidateOverlappingTuplets(Line line, int begin, int end) {
         var tuplets = line.getTuplets();
-        var overlapping = new ArrayList<TupletInterval>();
+        var overlapping = new ArrayList<TupletSpan>();
 
         for (var iter = tuplets.listIterator(); iter.hasNext(); ) {
             var tuplet = iter.next();
@@ -658,12 +658,12 @@ public final class SelectionCoordinator {
     // non-beamable but the interior is still valid, leaving the logic resilient
     // to a future disjoint-selection capability.
     //
-    // Behavior change vs. legacy repairIntervalSet: a beam with a non-beamable
+    // Behavior change vs. legacy repairSpanSet: a beam with a non-beamable
     // element in the middle is now killed entirely instead of being split into
     // sub-beams.
     private void repairBeamings(Line line, int begin, int end) {
         var beamings = line.getBeamings();
-        var overlapping = new ArrayList<BeamInterval>();
+        var overlapping = new ArrayList<BeamSpan>();
 
         for (var iter = beamings.listIterator(); iter.hasNext(); ) {
             var beam = iter.next();

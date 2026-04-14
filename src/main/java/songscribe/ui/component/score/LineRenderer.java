@@ -298,8 +298,8 @@ class LineRenderer {
         var beamings = line.getBeamings();
 
         for (var iter = beamings.listIterator(); iter.hasNext(); ) {
-            var interval = iter.next();
-            beamRenderer.renderBeams(g2, line, ctx, interval.getStart(), interval.getEnd());
+            var span = iter.next();
+            beamRenderer.renderBeams(g2, line, ctx, span.getStart(), span.getEnd());
         }
     }
 
@@ -320,8 +320,8 @@ class LineRenderer {
         var ties = line.getTies();
 
         for (var iter = ties.listIterator(); iter.hasNext(); ) {
-            var interval = iter.next();
-            tieRenderer.renderTie(g2, interval, ctx);
+            var span = iter.next();
+            tieRenderer.renderTie(g2, span, ctx);
         }
     }
 

@@ -22,17 +22,17 @@ package songscribe.music;
 /**
  * Result of validating a first-second ending selection. Encodes whether
  * validation passed, what action is needed for the preceding element,
- * and the final interval bounds.
+ * and the final span bounds.
  */
 public class EndingValidationResult {
 
     public enum PrecedingAction {
         /** No adjustment needed (preceding element is already suitable). */
         NONE,
-        /** A single barline must be inserted at the interval start. */
+        /** A single barline must be inserted at the span start. */
         INSERT_BARLINE,
-        /** The interval start must be extended backward to include the preceding element. */
-        EXTEND_INTERVAL
+        /** The span start must be extended backward to include the preceding element. */
+        EXTEND_SPAN
     }
 
     private static final EndingValidationResult INVALID = new EndingValidationResult(
@@ -41,19 +41,19 @@ public class EndingValidationResult {
 
     private final boolean valid;
     private final PrecedingAction precedingAction;
-    private final int intervalStart;
-    private final int intervalEnd;
+    private final int spanStart;
+    private final int spanEnd;
 
     private EndingValidationResult(
         boolean valid,
         PrecedingAction precedingAction,
-        int intervalStart,
-        int intervalEnd
+        int spanStart,
+        int spanEnd
     ) {
         this.valid = valid;
         this.precedingAction = precedingAction;
-        this.intervalStart = intervalStart;
-        this.intervalEnd = intervalEnd;
+        this.spanStart = spanStart;
+        this.spanEnd = spanEnd;
     }
 
     public static EndingValidationResult invalid() {
@@ -62,10 +62,10 @@ public class EndingValidationResult {
 
     public static EndingValidationResult valid(
         PrecedingAction precedingAction,
-        int intervalStart,
-        int intervalEnd
+        int spanStart,
+        int spanEnd
     ) {
-        return new EndingValidationResult(true, precedingAction, intervalStart, intervalEnd);
+        return new EndingValidationResult(true, precedingAction, spanStart, spanEnd);
     }
 
     public boolean isValid() {
@@ -76,11 +76,11 @@ public class EndingValidationResult {
         return precedingAction;
     }
 
-    public int getIntervalStart() {
-        return intervalStart;
+    public int getSpanStart() {
+        return spanStart;
     }
 
-    public int getIntervalEnd() {
-        return intervalEnd;
+    public int getSpanEnd() {
+        return spanEnd;
     }
 }

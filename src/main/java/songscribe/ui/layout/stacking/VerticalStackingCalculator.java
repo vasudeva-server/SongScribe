@@ -22,8 +22,10 @@ package songscribe.ui.layout.stacking;
 
 import java.util.List;
 
+import songscribe.music.DynamicsSpan;
 import songscribe.music.Line;
 
+import songscribe.music.TupletSpan;
 import songscribe.ui.layout.AnnotationAttachment;
 import songscribe.ui.layout.ElementColumn;
 import songscribe.ui.layout.Hairpin;
@@ -139,7 +141,7 @@ public class VerticalStackingCalculator {
      *   <li>{@link Crescendo#getYShift()} etc.: pixel-based hairpin shifts (converted to ss)</li>
      *   <li>{@link AnnotationAttachment} / {@link songscribe.music.Annotation#getUserYOffsetSs()}:
      *       legacy annotation Y offset</li>
-     *   <li>{@link songscribe.music.DynamicsInterval}: legacy hairpin shifts (already in ss)</li>
+     *   <li>{@link DynamicsSpan}: legacy hairpin shifts (already in ss)</li>
      * </ul>
      */
     private void applyManualOffsets(LayoutResult.Builder builder) {
@@ -205,33 +207,33 @@ public class VerticalStackingCalculator {
     /**
      * Applies manual offsets to all {@link LayoutResult.SpanLayout} entries.
      * <p>
-     * Handles {@link songscribe.music.DynamicsInterval} shifts and
-     * {@link songscribe.music.TupletInterval} vertical position adjustments.
+     * Handles {@link DynamicsSpan} shifts and
+     * {@link TupletSpan} vertical position adjustments.
      */
     private void applySpanOffsets(LayoutResult.Builder builder) {
         var entries = List.copyOf(builder.getSpanLayoutEntries());
 
         for (var entry : entries) {
-            var interval = entry.getKey();
+            var span = entry.getKey();
             var layout = entry.getValue();
 
-            if (interval instanceof songscribe.music.DynamicsInterval dynInterval) {
-                double x1ShiftSs = dynInterval.getX1ShiftSs();
-                double x2ShiftSs = dynInterval.getX2ShiftSs();
-                double yShiftSs = dynInterval.getYShiftSs();
+            if (span instanceof DynamicsSpan dynSpan) {
+                double x1ShiftSs = dynSpan.getX1ShiftSs();
+                double x2ShiftSs = dynSpan.getX2ShiftSs();
+                double yShiftSs = dynSpan.getYShiftSs();
 
                 if (x1ShiftSs != 0 || x2ShiftSs != 0 || yShiftSs != 0) {
-                    builder.putSpanLayout(interval, new LayoutResult.SpanLayout(
+                    builder.putSpanLayout(span, new LayoutResult.SpanLayout(
                         layout.startXSs() + x1ShiftSs,
                         layout.endXSs() + x2ShiftSs,
                         layout.ySs() + yShiftSs,
                         layout.heightSs()));
                 }
-            } else if (interval instanceof songscribe.music.TupletInterval tupletInterval) {
-                double yShiftSs = tupletInterval.getVerticalPositionSs();
+            } else if (span instanceof TupletSpan tupletSpan) {
+                double yShiftSs = tupletSpan.getVerticalPositionSs();
 
                 if (yShiftSs != 0) {
-                    builder.putSpanLayout(interval, new LayoutResult.SpanLayout(
+                    builder.putSpanLayout(span, new LayoutResult.SpanLayout(
                         layout.startXSs(),
                         layout.endXSs(),
                         layout.ySs() + yShiftSs,

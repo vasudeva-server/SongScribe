@@ -31,16 +31,16 @@ import java.util.TreeSet;
 
 import songscribe.Strings;
 import songscribe.message.mutation.ElementField;
-import songscribe.music.BeamInterval;
+import songscribe.music.BeamSpan;
 import songscribe.music.Composition;
-import songscribe.music.DynamicsInterval;
+import songscribe.music.DynamicsSpan;
 import songscribe.music.ElementType;
 import songscribe.music.EndingValidationResult;
-import songscribe.music.Interval;
+import songscribe.music.Span;
 import songscribe.music.Line;
 import songscribe.music.LyricsProcessor;
-import songscribe.music.TieInterval;
-import songscribe.music.TupletInterval;
+import songscribe.music.TieSpan;
+import songscribe.music.TupletSpan;
 import songscribe.ui.layout.Ending;
 import songscribe.ui.selection.LineSelectionState;
 import songscribe.ui.selection.SelectionCoordinator;
@@ -84,13 +84,13 @@ public final class MusicEditOperations {
 
         line.withModification(() -> {
             if (state.shouldConnectSelection(beamings)) {
-                line.addBeaming(new BeamInterval(state.getSelectionBegin(), state.getSelectionEnd()));
+                line.addBeaming(new BeamSpan(state.getSelectionBegin(), state.getSelectionEnd()));
             } else {
-                var existing = beamings.findInterval(state.getSelectionBegin());
+                var existing = beamings.findSpan(state.getSelectionBegin());
 
                 if (existing == null) {
                     throw new IllegalStateException(
-                        "toggleBeaming remove branch entered with no beam interval at "
+                        "toggleBeaming remove branch entered with no beam span at "
                             + state.getSelectionBegin()
                     );
                 }
@@ -118,12 +118,12 @@ public final class MusicEditOperations {
         var ties = line.getTies();
 
         line.withModification(() -> {
-            var existing = ties.findInterval(state.getSelectionBegin());
+            var existing = ties.findSpan(state.getSelectionBegin());
 
             if (existing != null) {
                 line.removeTie(existing);
             } else {
-                line.addTie(new TieInterval(state.getSelectionBegin(), state.getSelectionEnd()));
+                line.addTie(new TieSpan(state.getSelectionBegin(), state.getSelectionEnd()));
             }
         });
 
@@ -139,7 +139,7 @@ public final class MusicEditOperations {
 
     /**
      * Handles five cases: (1) tupletSize == 0 with existing tuplet → remove; (2) no existing
-     * tuplet and tupletSize > 0 → add; (3) existing tuplet, selection spans its full interval,
+     * tuplet and tupletSize > 0 → add; (3) existing tuplet, selection spans its full span,
      * requested grade matches → remove (toggle-off semantics); (4) existing tuplet, full
      * coverage, different grade → remove then add in one bracket (emits TupletRemoval +
      * TupletAddition); (5) existing tuplet, selection is a strict sub-range → rejected with
@@ -177,7 +177,7 @@ public final class MusicEditOperations {
         }
 
         if (existing == null) {
-            line.withModification(() -> line.addTuplet(new TupletInterval(
+            line.withModification(() -> line.addTuplet(new TupletSpan(
                 state.getSelectionBegin(), state.getSelectionEnd(), tupletSize)));
             return;
         }
@@ -191,7 +191,7 @@ public final class MusicEditOperations {
             line.removeTuplet(existing);
 
             if (existing.getGrade() != tupletSize) {
-                line.addTuplet(new TupletInterval(
+                line.addTuplet(new TupletSpan(
                     state.getSelectionBegin(), state.getSelectionEnd(), tupletSize));
             }
         });
@@ -209,12 +209,12 @@ public final class MusicEditOperations {
         var line = state.getLine();
 
         line.withModification(() -> {
-            var interval = new DynamicsInterval(state.getSelectionBegin(), state.getSelectionEnd());
+            var span = new DynamicsSpan(state.getSelectionBegin(), state.getSelectionEnd());
 
             if (crescendo) {
-                line.addCrescendo(interval);
+                line.addCrescendo(span);
             } else {
-                line.addDiminuendo(interval);
+                line.addDiminuendo(span);
             }
         });
     }
@@ -226,9 +226,9 @@ public final class MusicEditOperations {
             return false;
         }
 
-        var intervals = getDynamicsIntervalsFromSelection(state);
+        var dynamicsSpans = getDynamicsSpansFromSelection(state);
 
-        return !intervals.crescendos().isEmpty() || !intervals.diminuendos().isEmpty();
+        return !dynamicsSpans.crescendos().isEmpty() || !dynamicsSpans.diminuendos().isEmpty();
     }
 
     public void removeDynamicsFromSelection() {
@@ -239,46 +239,46 @@ public final class MusicEditOperations {
         }
 
         var line = state.getLine();
-        var intervals = getDynamicsIntervalsFromSelection(state);
+        var dynamicsSpans = getDynamicsSpansFromSelection(state);
 
         line.withModification(() -> {
-            for (var interval : intervals.crescendos()) {
-                line.removeCrescendo(interval);
+            for (var span : dynamicsSpans.crescendos()) {
+                line.removeCrescendo(span);
             }
 
-            for (var interval : intervals.diminuendos()) {
-                line.removeDiminuendo(interval);
+            for (var span : dynamicsSpans.diminuendos()) {
+                line.removeDiminuendo(span);
             }
         });
     }
 
-    private record DynamicsIntervals(
-        List<DynamicsInterval> crescendos,
-        List<DynamicsInterval> diminuendos
+    private record DynamicsSpans(
+        List<DynamicsSpan> crescendos,
+        List<DynamicsSpan> diminuendos
     ) {}
 
-    private DynamicsIntervals getDynamicsIntervalsFromSelection(LineSelectionState state) {
+    private DynamicsSpans getDynamicsSpansFromSelection(LineSelectionState state) {
         var line = state.getLine();
         var crescendos = line.getCrescendos();
         var diminuendos = line.getDiminuendos();
-        var crescendoIntervals = new ArrayList<DynamicsInterval>();
-        var diminuendoIntervals = new ArrayList<DynamicsInterval>();
+        var crescendoSpans = new ArrayList<DynamicsSpan>();
+        var diminuendoSpans = new ArrayList<DynamicsSpan>();
         var end = state.getSelectionEnd();
         var i = state.getSelectionBegin();
 
         while (i <= end) {
-            var cres = crescendos.findInterval(i);
+            var cres = crescendos.findSpan(i);
 
             if (cres != null) {
-                crescendoIntervals.add(cres);
+                crescendoSpans.add(cres);
                 i = cres.end + 1;
                 continue;
             }
 
-            var dim = diminuendos.findInterval(i);
+            var dim = diminuendos.findSpan(i);
 
             if (dim != null) {
-                diminuendoIntervals.add(dim);
+                diminuendoSpans.add(dim);
                 i = dim.end + 1;
                 continue;
             }
@@ -286,7 +286,7 @@ public final class MusicEditOperations {
             i++;
         }
 
-        return new DynamicsIntervals(crescendoIntervals, diminuendoIntervals);
+        return new DynamicsSpans(crescendoSpans, diminuendoSpans);
     }
 
     // ========== First-Second Ending Operations ==========
@@ -403,7 +403,7 @@ public final class MusicEditOperations {
         return hasContent;
     }
 
-    // Returns true if any element in the selection range overlaps an existing ending interval.
+    // Returns true if any element in the selection range overlaps an existing ending span.
     private boolean hasOverlap(Line line, int begin, int end) {
         for (var i = begin; i <= end; i++) {
             if (line.isInsideAnyEnding(i)) {
@@ -467,7 +467,7 @@ public final class MusicEditOperations {
     }
 
     // Examines the element immediately before the selection start and determines
-    // what action is needed (barline insertion, interval extension, or invalid).
+    // what action is needed (barline insertion, span extension, or invalid).
     private EndingValidationResult checkPrecedingElement(
         int lineIndex, int selectionBegin, int selectionEnd
     ) {
@@ -490,7 +490,7 @@ public final class MusicEditOperations {
         var precedingType = precedingLine.getElement(precedingElementIndex).getType();
 
         if (precedingType.isContentElement()) {
-            // Auto-insert barline; interval starts at selectionBegin (barline goes there)
+            // Auto-insert barline; span starts at selectionBegin (barline goes there)
             return EndingValidationResult.valid(
                 EndingValidationResult.PrecedingAction.INSERT_BARLINE,
                 selectionBegin,
@@ -499,9 +499,9 @@ public final class MusicEditOperations {
         }
 
         if (precedingType == ElementType.SINGLE_BARLINE || precedingType == ElementType.REPEAT_LEFT) {
-            // Extend interval start backward to include the preceding element
+            // Extend span start backward to include the preceding element
             return EndingValidationResult.valid(
-                EndingValidationResult.PrecedingAction.EXTEND_INTERVAL,
+                EndingValidationResult.PrecedingAction.EXTEND_SPAN,
                 precedingElementIndex,
                 selectionEnd
             );
@@ -521,20 +521,20 @@ public final class MusicEditOperations {
         var line = state.getLine();
 
         line.withModification(() -> {
-            var start = result.getIntervalStart();
-            var end = result.getIntervalEnd();
+            var start = result.getSpanStart();
+            var end = result.getSpanEnd();
 
             switch (result.getPrecedingAction()) {
                 case INSERT_BARLINE -> {
                     var barline = ElementType.SINGLEBARLINE.newInstance();
                     line.addElement(start, barline);
-                    // addElement shifts all existing intervals; adjust our bounds
+                    // addElement shifts all existing spans; adjust our bounds
                     // to account for the inserted element
                     start++;
                     end++;
                 }
 
-                case EXTEND_INTERVAL -> {
+                case EXTEND_SPAN -> {
                     // Start already includes the preceding barline/repeat
                 }
 
@@ -633,7 +633,7 @@ public final class MusicEditOperations {
 
         line.withModification(() -> {
             // Track which beam groups have already been processed to avoid double-flipping.
-            var processedBeamIntervals = new HashSet<Interval>();
+            var processedBeamSpans = new HashSet<Span>();
 
             for (var i = state.getSelectionBegin(); i <= state.getSelectionEnd(); i++) {
                 var note = line.getElement(i);
@@ -642,15 +642,15 @@ public final class MusicEditOperations {
                     continue;
                 }
 
-                var beamInterval = line.getBeamings().findInterval(i);
+                var beamSpan = line.getBeamings().findSpan(i);
 
-                if (beamInterval != null) {
+                if (beamSpan != null) {
                     // Flip the whole beam group together, once per group.
-                    if (processedBeamIntervals.add(beamInterval)) {
-                        var firstElement = line.getElement(beamInterval.getStart());
+                    if (processedBeamSpans.add(beamSpan)) {
+                        var firstElement = line.getElement(beamSpan.getStart());
                         boolean newUpper = !firstElement.isUpper();
 
-                        for (var j = beamInterval.getStart(); j <= beamInterval.getEnd(); j++) {
+                        for (var j = beamSpan.getStart(); j <= beamSpan.getEnd(); j++) {
                             var beamIndex = j;
                             line.modifyElement(beamIndex, stemFields, () -> {
                                 var beamElement = line.getElement(beamIndex);
@@ -670,19 +670,19 @@ public final class MusicEditOperations {
                 }
             }
 
-            // Flip tie partners that fall outside the selection. IntervalSet merges
-            // adjacent ties, so the interval may span more than two notes; all notes
-            // in the interval that weren't already covered by the selection must flip.
+            // Flip tie partners that fall outside the selection. SpanSet merges
+            // adjacent ties, so the span may cover more than two notes; all notes
+            // in the span that weren't already covered by the selection must flip.
             var tiePartnersToFlip = new TreeSet<Integer>();
 
             for (var i = state.getSelectionBegin(); i <= state.getSelectionEnd(); i++) {
-                var tieInterval = line.getTies().findInterval(i);
+                var tieSpan = line.getTies().findSpan(i);
 
-                if (tieInterval == null) {
+                if (tieSpan == null) {
                     continue;
                 }
 
-                for (var j = tieInterval.start; j <= tieInterval.end; j++) {
+                for (var j = tieSpan.start; j <= tieSpan.end; j++) {
                     if ((j < state.getSelectionBegin()) || (j > state.getSelectionEnd())) {
                         tiePartnersToFlip.add(j);
                     }

@@ -294,7 +294,7 @@ class DynamicsMarkingTest extends E2ETest {
             // Verify crescendo was added (confirm precondition)
             assertThat(GuiActionRunner.execute(() ->
                 composition().getLine(0).getCrescendos()
-                    .findInterval(Note.HAIRPIN_START.index) != null
+                    .findSpan(Note.HAIRPIN_START.index) != null
             )).as("crescendo exists on line").isTrue();
 
             // Select the start note, which is inside the crescendo range
@@ -370,8 +370,8 @@ class DynamicsMarkingTest extends E2ETest {
 
             assertThat(GuiActionRunner.execute(() ->
                 composition().getLine(0).getCrescendos()
-                    .findInterval(Note.CRESCENDO_START.index) != null
-            )).as("crescendo interval added").isTrue();
+                    .findSpan(Note.CRESCENDO_START.index) != null
+            )).as("crescendo span added").isTrue();
         }
 
         @Test
@@ -386,8 +386,8 @@ class DynamicsMarkingTest extends E2ETest {
 
             assertThat(GuiActionRunner.execute(() ->
                 composition().getLine(0).getDiminuendos()
-                    .findInterval(Note.DIMINUENDO_START.index) != null
-            )).as("diminuendo interval added").isTrue();
+                    .findSpan(Note.DIMINUENDO_START.index) != null
+            )).as("diminuendo span added").isTrue();
         }
 
         @Test

@@ -494,13 +494,13 @@ class ElementInsertionTest extends E2ETest {
             var elem4 = line.getElement(baseIndex + 4);
             var note2Beamed = isBeamed(0, baseIndex + 2);
             var note3Beamed = isBeamed(0, baseIndex + 3);
-            var beamIntervalStart = GuiActionRunner.execute(() -> {
-                var interval = composition().getLine(0).getBeamings().findInterval(baseIndex + 2);
-                return interval != null ? interval.getStart() : -1;
+            var beamSpanStart = GuiActionRunner.execute(() -> {
+                var span = composition().getLine(0).getBeamings().findSpan(baseIndex + 2);
+                return span != null ? span.getStart() : -1;
             });
-            var beamIntervalEnd = GuiActionRunner.execute(() -> {
-                var interval = composition().getLine(0).getBeamings().findInterval(baseIndex + 2);
-                return interval != null ? interval.getEnd() : -1;
+            var beamSpanEnd = GuiActionRunner.execute(() -> {
+                var span = composition().getLine(0).getBeamings().findSpan(baseIndex + 2);
+                return span != null ? span.getEnd() : -1;
             });
 
             assertAll(
@@ -515,8 +515,8 @@ class ElementInsertionTest extends E2ETest {
                 () -> assertThat(note2Beamed).as("auto-beam: note 2 beamed").isTrue(),
                 () -> assertThat(note3Beamed).as("auto-beam: note 3 beamed").isTrue(),
                 () -> {
-                    assertThat(beamIntervalStart).as("auto-beam: interval start").isEqualTo(baseIndex + 2);
-                    assertThat(beamIntervalEnd).as("auto-beam: interval end").isEqualTo(baseIndex + 3);
+                    assertThat(beamSpanStart).as("auto-beam: span start").isEqualTo(baseIndex + 2);
+                    assertThat(beamSpanEnd).as("auto-beam: span end").isEqualTo(baseIndex + 3);
                 },
                 () -> assertThat(elem4.getType().isRest()).as("rest type").isTrue(),
                 () -> assertThat(insertedCount).as("inserted element count").isEqualTo(5)

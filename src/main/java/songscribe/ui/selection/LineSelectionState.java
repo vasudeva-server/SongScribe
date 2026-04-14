@@ -24,9 +24,9 @@ import java.util.stream.IntStream;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.music.Interval;
-import songscribe.music.IntervalSet;
-import songscribe.music.TupletInterval;
+import songscribe.music.Span;
+import songscribe.music.SpanSet;
+import songscribe.music.TupletSpan;
 import songscribe.music.Line;
 import songscribe.music.StaffElement;
 
@@ -50,7 +50,7 @@ public final class LineSelectionState {
     private Boolean canTie = null;
 
     @Nullable
-    private IntervalSet tieInterval = null;
+    private SpanSet tieSpanSet = null;
 
     public LineSelectionState(Line line) {
         this.line = line;
@@ -119,13 +119,13 @@ public final class LineSelectionState {
     }
 
     @Nullable
-    public IntervalSet getTieInterval() {
-        return tieInterval;
+    public SpanSet getTieSpanSet() {
+        return tieSpanSet;
     }
 
     public void resetTieState() {
         canTie = null;
-        tieInterval = null;
+        tieSpanSet = null;
     }
 
     public Line getLine() {
@@ -297,7 +297,7 @@ public final class LineSelectionState {
 
     /**
      * Returns whether the current selection can toggle a tie.
-     * Also sets the canTie and tieInterval fields.
+     * Also sets the canTie and tieSpanSet fields.
      */
     public boolean canToggleTie() {
         if (getSelectionSize() != 2) {
@@ -306,7 +306,7 @@ public final class LineSelectionState {
         }
 
         var ties = line.getTies();
-        Interval firstTieInterval = null;
+        Span firstTieSpan = null;
         Integer firstPitch = null;
 
         for (var i = selectionBegin; i <= selectionEnd; i++) {
@@ -325,10 +325,10 @@ public final class LineSelectionState {
             }
 
             if (i == selectionBegin) {
-                firstTieInterval = ties.findInterval(i);
+                firstTieSpan = ties.findSpan(i);
             } else {
                 //noinspection ObjectEquality
-                if (ties.findInterval(i) != firstTieInterval) {
+                if (ties.findSpan(i) != firstTieSpan) {
                     canTie = false;
                     return false;
                 }
@@ -341,14 +341,14 @@ public final class LineSelectionState {
         }
 
         canTie = true;
-        tieInterval = firstTieInterval != null ? ties : null;
+        tieSpanSet = firstTieSpan != null ? ties : null;
         return true;
     }
 
     /**
      * Returns a {@link TupletToggleInfo} describing whether the selection can be
      * tupleted/untupleted, which tuplet currently covers the selection start, and
-     * whether the selection spans that tuplet's full interval.
+     * whether the selection covers that tuplet's full span.
      */
     @SuppressWarnings("ObjectEquality")
     public TupletToggleInfo canToggleTuplet() {
@@ -357,27 +357,27 @@ public final class LineSelectionState {
         }
 
         var tuplets = line.getTuplets();
-        TupletInterval firstInterval = null;
+        TupletSpan firstSpan = null;
 
         for (var i = selectionBegin; i <= selectionEnd; i++) {
             if (!line.getElement(i).getType().isPitchedNote()) {
                 return new TupletToggleInfo(false, null, false);
             }
 
-            var currentInterval = tuplets.findInterval(i);
+            var currentSpan = tuplets.findSpan(i);
 
             if (i == selectionBegin) {
-                firstInterval = currentInterval;
-            } else if (currentInterval != firstInterval) {
+                firstSpan = currentSpan;
+            } else if (currentSpan != firstSpan) {
                 return new TupletToggleInfo(false, null, false);
             }
         }
 
-        var coversExisting = (firstInterval != null)
-            && (selectionBegin == firstInterval.start)
-            && (selectionEnd == firstInterval.end);
+        var coversExisting = (firstSpan != null)
+            && (selectionBegin == firstSpan.start)
+            && (selectionEnd == firstSpan.end);
 
-        return new TupletToggleInfo(true, firstInterval, coversExisting);
+        return new TupletToggleInfo(true, firstSpan, coversExisting);
     }
 
     /**
@@ -418,22 +418,22 @@ public final class LineSelectionState {
 
     /**
      * Returns whether adding {@code target} to the selection would conflict with an existing
-     * interval of the opposing type ({@code conflicting}). A conflict exists when the selection
+     * span of the opposing type ({@code conflicting}). A conflict exists when the selection
      * endpoints would be newly connected by {@code target} but are already connected by
      * {@code conflicting}.
      */
-    private boolean selectionWouldConflict(IntervalSet target, IntervalSet conflicting) {
+    private boolean selectionWouldConflict(SpanSet target, SpanSet conflicting) {
         return shouldConnectSelection(target) && !shouldConnectSelection(conflicting);
     }
 
     /**
-     * Returns whether the selection should connect (add) or disconnect (remove) an interval.
+     * Returns whether the selection should connect (add) or disconnect (remove) a span.
      */
-    public boolean shouldConnectSelection(IntervalSet intervals) {
-        var beginInterval = intervals.findInterval(selectionBegin);
-        var endInterval = intervals.findInterval(selectionEnd);
+    public boolean shouldConnectSelection(SpanSet spanSet) {
+        var beginSpan = spanSet.findSpan(selectionBegin);
+        var endSpan = spanSet.findSpan(selectionEnd);
 
         //noinspection ObjectEquality
-        return (beginInterval == null) || (beginInterval != endInterval);
+        return (beginSpan == null) || (beginSpan != endSpan);
     }
 }

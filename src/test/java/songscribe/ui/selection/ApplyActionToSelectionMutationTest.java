@@ -43,13 +43,13 @@ import songscribe.message.mutation.TieAddition;
 import songscribe.message.mutation.TieRemoval;
 import songscribe.message.mutation.TupletAddition;
 import songscribe.message.mutation.TupletRemoval;
-import songscribe.music.BeamInterval;
+import songscribe.music.BeamSpan;
 import songscribe.music.Composition;
 import songscribe.music.ElementType;
 import songscribe.music.Line;
 import songscribe.music.StaffElement;
-import songscribe.music.TieInterval;
-import songscribe.music.TupletInterval;
+import songscribe.music.TieSpan;
+import songscribe.music.TupletSpan;
 import songscribe.ui.action.AccidentalAction;
 import songscribe.ui.action.DotAction;
 import songscribe.ui.action.ElementTypeAction;
@@ -60,7 +60,7 @@ import songscribe.ui.action.UIAction;
  * Mutation-emission tests for {@link SelectionCoordinator#applyActionToSelection}.
  * Verifies that the method emits the correct mutation records for both
  * {@link UIAction.ElementReplaceable} and {@link UIAction.ElementModifiable}
- * action paths, including downstream interval-validation mutations (beam repair
+ * action paths, including downstream span-validation mutations (beam repair
  * and tuplet invalidation) and the absence of any tie mutations.
  */
 class ApplyActionToSelectionMutationTest extends UnitTest {
@@ -130,7 +130,7 @@ class ApplyActionToSelectionMutationTest extends UnitTest {
             .isEmpty();
     }
 
-    private void assertNoIntervalMutations() {
+    private void assertNoSpanMutations() {
         assertThat(mutationsOfType(BeamingAddition.class))
             .as("no BeamingAddition mutations should be emitted")
             .isEmpty();
@@ -173,7 +173,7 @@ class ApplyActionToSelectionMutationTest extends UnitTest {
             assertThat(replacement.newElement().getType()).isEqualTo(ElementType.CROTCHET);
         }
 
-        assertNoIntervalMutations();
+        assertNoSpanMutations();
     }
 
     @Test
@@ -193,7 +193,7 @@ class ApplyActionToSelectionMutationTest extends UnitTest {
         assertThat(replacements.get(0).index()).isEqualTo(0);
         assertThat(replacements.get(1).index()).isEqualTo(2);
 
-        assertNoIntervalMutations();
+        assertNoSpanMutations();
     }
 
     @Test
@@ -209,8 +209,8 @@ class ApplyActionToSelectionMutationTest extends UnitTest {
         );
         var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
         var line = getLine(coordinator);
-        var originalBeam = new BeamInterval(0, 3);
-        line.getBeamings().addInterval(originalBeam);
+        var originalBeam = new BeamSpan(0, 3);
+        line.getBeamings().addSpan(originalBeam);
 
         ReflectionTestHelper.selectNote(coordinator, 3);
         coordinator.applyActionToSelection(QUARTER_ACTION, true);
@@ -221,12 +221,12 @@ class ApplyActionToSelectionMutationTest extends UnitTest {
 
         var beamRemovals = mutationsOfType(BeamingRemoval.class);
         assertThat(beamRemovals).hasSize(1);
-        assertThat(beamRemovals.get(0).interval()).isSameAs(originalBeam);
+        assertThat(beamRemovals.get(0).span()).isSameAs(originalBeam);
 
         var beamAdditions = mutationsOfType(BeamingAddition.class);
         assertThat(beamAdditions).hasSize(1);
-        assertThat(beamAdditions.get(0).interval().start).isEqualTo(0);
-        assertThat(beamAdditions.get(0).interval().end).isEqualTo(2);
+        assertThat(beamAdditions.get(0).span().start).isEqualTo(0);
+        assertThat(beamAdditions.get(0).span().end).isEqualTo(2);
 
         assertNoTieMutations();
     }
@@ -244,8 +244,8 @@ class ApplyActionToSelectionMutationTest extends UnitTest {
         );
         var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
         var line = getLine(coordinator);
-        var tuplet = new TupletInterval(0, 4, 3);
-        line.getTuplets().addInterval(tuplet);
+        var tuplet = new TupletSpan(0, 4, 3);
+        line.getTuplets().addSpan(tuplet);
 
         ReflectionTestHelper.selectNote(coordinator, 2);
         coordinator.applyActionToSelection(QUARTER_ACTION, true);
@@ -256,7 +256,7 @@ class ApplyActionToSelectionMutationTest extends UnitTest {
 
         var tupletRemovals = mutationsOfType(TupletRemoval.class);
         assertThat(tupletRemovals).hasSize(1);
-        assertThat(tupletRemovals.get(0).interval()).isSameAs(tuplet);
+        assertThat(tupletRemovals.get(0).span()).isSameAs(tuplet);
 
         assertThat(mutationsOfType(TupletAddition.class))
             .as("tuplet invalidation never re-adds a split tuplet")
@@ -274,7 +274,7 @@ class ApplyActionToSelectionMutationTest extends UnitTest {
         );
         var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
         var line = getLine(coordinator);
-        line.getTies().addInterval(new TieInterval(0, 1));
+        line.getTies().addSpan(new TieSpan(0, 1));
 
         ReflectionTestHelper.selectRange(coordinator, 0, 1);
         coordinator.applyActionToSelection(QUARTER_ACTION, true);
@@ -310,7 +310,7 @@ class ApplyActionToSelectionMutationTest extends UnitTest {
             assertThat(modification.beforeElement().getAccidental()).isNull();
         }
 
-        assertNoIntervalMutations();
+        assertNoSpanMutations();
     }
 
     @Test
@@ -332,7 +332,7 @@ class ApplyActionToSelectionMutationTest extends UnitTest {
         assertThat(modifications.get(0).index()).isEqualTo(0);
         assertThat(modifications.get(1).index()).isEqualTo(3);
 
-        assertNoIntervalMutations();
+        assertNoSpanMutations();
     }
 
     @Test
@@ -353,7 +353,7 @@ class ApplyActionToSelectionMutationTest extends UnitTest {
             assertThat(modification.fields()).containsExactly(ElementField.FERMATA);
         }
 
-        assertNoIntervalMutations();
+        assertNoSpanMutations();
     }
 
     @Test
@@ -374,11 +374,11 @@ class ApplyActionToSelectionMutationTest extends UnitTest {
             assertThat(modification.fields()).containsExactly(ElementField.DOT_COUNT);
         }
 
-        assertNoIntervalMutations();
+        assertNoSpanMutations();
     }
 
     @Test
-    void testElementModifiableBypassesIntervalValidation() {
+    void testElementModifiableBypassesSpanValidation() {
         // Even with a beam and tuplet spanning the selection, an
         // ElementModifiable action never triggers beam repair or tuplet
         // invalidation — it doesn't touch element type.
@@ -389,14 +389,14 @@ class ApplyActionToSelectionMutationTest extends UnitTest {
         );
         var coordinator = createCoordinator(notes, List.of(SHARP_ACTION));
         var line = getLine(coordinator);
-        line.getBeamings().addInterval(new BeamInterval(0, 2));
-        line.getTuplets().addInterval(new TupletInterval(0, 2, 3));
-        line.getTies().addInterval(new TieInterval(0, 1));
+        line.getBeamings().addSpan(new BeamSpan(0, 2));
+        line.getTuplets().addSpan(new TupletSpan(0, 2, 3));
+        line.getTies().addSpan(new TieSpan(0, 1));
 
         ReflectionTestHelper.selectRange(coordinator, 0, 2);
         coordinator.applyActionToSelection(SHARP_ACTION, true);
 
         assertThat(mutationsOfType(ElementModification.class)).hasSize(3);
-        assertNoIntervalMutations();
+        assertNoSpanMutations();
     }
 }

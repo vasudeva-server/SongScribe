@@ -19,21 +19,41 @@
 */
 package songscribe.music;
 
-/**
- * A typed interval representing a beam group.
- * <p>
- * All computed beam geometry lives in {@code LayoutResult.BeamLayout}; this class
- * carries no additional fields beyond the start/end note indices inherited from
- * {@link Interval}.
- */
-public class BeamInterval extends Interval {
+public class TupletSpan extends Span {
 
-    public BeamInterval(int start, int end) {
+    private int grade;
+    private double verticalPositionSs;
+
+    public TupletSpan(int start, int end, int grade) {
         super(start, end, null);
+        this.grade = grade;
+        this.verticalPositionSs = 0;
+    }
+
+    public int getGrade() {
+        return grade;
+    }
+
+    public void setGrade(int grade) {
+        this.grade = grade;
+    }
+
+    public double getVerticalPositionSs() {
+        return verticalPositionSs;
+    }
+
+    public void setVerticalPositionSs(double verticalPosition) {
+        this.verticalPositionSs = verticalPosition;
+    }
+
+    public boolean isVerticallyAdjusted() {
+        return verticalPositionSs != 0;
     }
 
     @Override
-    public BeamInterval copyRange(int newStart, int newEnd) {
-        return new BeamInterval(newStart, newEnd);
+    public TupletSpan copyRange(int newStart, int newEnd) {
+        var copy = new TupletSpan(newStart, newEnd, grade);
+        copy.setVerticalPositionSs(verticalPositionSs);
+        return copy;
     }
 }

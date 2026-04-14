@@ -407,7 +407,7 @@ public class ExportABCAction extends UIAction {
         var sb = new StringBuilder(27);
 
         for (var i = 0; i < line.elementCount(); i++) {
-            if (line.getBeamings().isStartOfAnyInterval(i)) {
+            if (line.getBeamings().isStartOfAnySpan(i)) {
                 sb.append(' ');
             }
 
@@ -415,15 +415,15 @@ public class ExportABCAction extends UIAction {
                 sb.append("[1 ");
             }
 
-            if (line.getTuplets().isStartOfAnyInterval(i)) {
-                var interval = line.getTuplets().findInterval(i);
+            if (line.getTuplets().isStartOfAnySpan(i)) {
+                var span = line.getTuplets().findSpan(i);
 
-                if (interval != null) {
+                if (span != null) {
                     var numberOfNotes =
-                        (interval.getEnd() - interval.getStart()) + 1;
+                        (span.getEnd() - span.getStart()) + 1;
                     sb
                         .append('(')
-                        .append(interval.getGrade())
+                        .append(span.getGrade())
                         .append("::")
                         .append(numberOfNotes);
                 }
@@ -442,7 +442,7 @@ public class ExportABCAction extends UIAction {
                 sb.append("[2 ");
             }
 
-            if (line.getBeamings().isEndOfAnyInterval(i)) {
+            if (line.getBeamings().isEndOfAnySpan(i)) {
                 sb.append(' ');
             }
 
@@ -450,9 +450,9 @@ public class ExportABCAction extends UIAction {
                 sb.append("|] ");
             }
 
-            var tieInterval = line.getTies().findInterval(i);
+            var tieSpan = line.getTies().findSpan(i);
 
-            if ((tieInterval != null) && (i < tieInterval.getEnd())) {
+            if ((tieSpan != null) && (i < tieSpan.getEnd())) {
                 sb.append('-');
             }
 

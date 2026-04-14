@@ -178,7 +178,7 @@ public final class Composition {
      * Data format version for the composition's internal representation.
      * <p>
      * <ul>
-     *   <li>Version 1: Legacy format (IntervalSet ranges, inline Note attachments)</li>
+     *   <li>Version 1: Legacy format (SpanSet ranges, inline Note attachments)</li>
      *   <li>Version 2: LineElement format (RangeElement objects, Attachment objects)</li>
      * </ul>
      * <p>

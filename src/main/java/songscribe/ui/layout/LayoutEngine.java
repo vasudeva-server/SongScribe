@@ -167,7 +167,7 @@ public class LayoutEngine {
         // Step 5b: Calculate stem layouts for unbeamed notes
         calculateUnbeamedStems(line, columns, builder);
 
-        // Step 6: Calculate tie geometry for all tie intervals
+        // Step 6: Calculate tie geometry for all tie spans
         calculateTies(line, columns, builder);
 
         // Step 7: Calculate vertical positions (requires stem layouts from steps 5/5b)
@@ -214,7 +214,7 @@ public class LayoutEngine {
 
     /**
      * Calculates beam geometry for all beamed note groups in the line.
-     * Populates {@code builder} with a {@link LayoutResult.BeamLayout} for each beam interval.
+     * Populates {@code builder} with a {@link LayoutResult.BeamLayout} for each beam span.
      */
     private void calculateBeams(
         Line line,
@@ -232,7 +232,7 @@ public class LayoutEngine {
         var it = beamings.listIterator();
 
         while (it.hasNext()) {
-            var interval = it.next();
+            var span = it.next();
 
             // Determine stem direction from the pitch contour of the group.
             // Staff position 0 = middle line; positive = below midpoint (Y-down) → stems up.
@@ -240,7 +240,7 @@ public class LayoutEngine {
             int minStaffPos = Integer.MAX_VALUE;
             int maxStaffPos = Integer.MIN_VALUE;
 
-            for (int i = interval.getStart(); i <= interval.getEnd(); i++) {
+            for (int i = span.getStart(); i <= span.getEnd(); i++) {
                 int pos = line.getElement(i).getStaffPosition();
 
                 if (pos < minStaffPos) {
@@ -255,7 +255,7 @@ public class LayoutEngine {
             // Scan for any manual override in the group; first one wins.
             Boolean manualDirection = null;
 
-            for (int i = interval.getStart(); i <= interval.getEnd(); i++) {
+            for (int i = span.getStart(); i <= span.getEnd(); i++) {
                 var n = line.getElement(i);
 
                 if (!n.isStemDirectionAuto()) {
@@ -270,7 +270,7 @@ public class LayoutEngine {
 
             // Normalize auto-direction notes to the group stem direction.
             // Manual overrides are left untouched.
-            for (int i = interval.getStart(); i <= interval.getEnd(); i++) {
+            for (int i = span.getStart(); i <= span.getEnd(); i++) {
                 var n = line.getElement(i);
 
                 if (n.isStemDirectionAuto()) {
@@ -280,8 +280,8 @@ public class LayoutEngine {
 
             // Compute beam slope (abc2svg algorithm with hyperbolic dampening).
             // Staff positions are in half-staff-spaces; ×0.5 converts to staff-space units.
-            var firstElement = line.getElement(interval.getStart());
-            var lastElement = line.getElement(interval.getEnd());
+            var firstElement = line.getElement(span.getStart());
+            var lastElement = line.getElement(span.getEnd());
             var firstColumn = elementToColumn.get(firstElement);
             var lastColumn = elementToColumn.get(lastElement);
 
@@ -309,10 +309,10 @@ public class LayoutEngine {
             if (firstColumn != null) {
                 double firstXSs = firstColumn.getXSs();
 
-                int anchorIdx = interval.getStart();
+                int anchorIdx = span.getStart();
                 int anchorStaffPos = firstElement.getStaffPosition();
 
-                for (int i = interval.getStart() + 1; i <= interval.getEnd(); i++) {
+                for (int i = span.getStart() + 1; i <= span.getEnd(); i++) {
                     int pos = line.getElement(i).getStaffPosition();
 
                     if (stemsUp ? pos < anchorStaffPos : pos > anchorStaffPos) {
@@ -339,7 +339,7 @@ public class LayoutEngine {
                 for (int iter = 0; iter < 20; iter++) {
                     boolean allOk = true;
 
-                    for (int i = interval.getStart(); i <= interval.getEnd(); i++) {
+                    for (int i = span.getStart(); i <= span.getEnd(); i++) {
                         var element = line.getElement(i);
                         var col = elementToColumn.get(element);
 
@@ -372,7 +372,7 @@ public class LayoutEngine {
                 // After slope reduction, shift beam vertically to cover any remaining deficit.
                 double maxDeficitSs = 0.0;
 
-                for (int i = interval.getStart(); i <= interval.getEnd(); i++) {
+                for (int i = span.getStart(); i <= span.getEnd(); i++) {
                     var element = line.getElement(i);
                     var col = elementToColumn.get(element);
 
@@ -420,7 +420,7 @@ public class LayoutEngine {
             if (firstColumn != null) {
                 double firstXSs = firstColumn.getXSs();
 
-                for (int i = interval.getStart(); i <= interval.getEnd(); i++) {
+                for (int i = span.getStart(); i <= span.getEnd(); i++) {
                     var element = line.getElement(i);
                     var col = elementToColumn.get(element);
 
@@ -439,8 +439,8 @@ public class LayoutEngine {
                     // Determine stub direction for partial-beam elements.
                     // A stub is needed at beam level L when neither neighbour shares level L.
                     int myBeams = beamCount(element);
-                    int leftBeams = i > interval.getStart() ? beamCount(line.getElement(i - 1)) : 0;
-                    int rightBeams = i < interval.getEnd() ? beamCount(line.getElement(i + 1)) : 0;
+                    int leftBeams = i > span.getStart() ? beamCount(line.getElement(i - 1)) : 0;
+                    int rightBeams = i < span.getEnd() ? beamCount(line.getElement(i + 1)) : 0;
 
                     boolean hasStub = false;
 
@@ -454,9 +454,9 @@ public class LayoutEngine {
                     boolean stubRight = false;
 
                     if (hasStub) {
-                        if (i == interval.getStart()) {
+                        if (i == span.getStart()) {
                             stubRight = true;                   // first element → stub right
-                        } else if (i == interval.getEnd()) {
+                        } else if (i == span.getEnd()) {
                             stubRight = false;                  // last element → stub left
                         } else if (rightBeams < myBeams) {
                             stubRight = false;                  // element before a beam break → left
@@ -472,7 +472,7 @@ public class LayoutEngine {
             }
 
             var beamLayout = new LayoutResult.BeamLayout(slope, startYSs, stemsUp, thickeningSs, stemLayouts);
-            builder.putBeamLayout(interval, beamLayout);
+            builder.putBeamLayout(span, beamLayout);
         }
     }
 
@@ -510,12 +510,12 @@ public class LayoutEngine {
     }
 
     /**
-     * Calculates tie geometry for all tie intervals in the line.
+     * Calculates tie geometry for all tie spans in the line.
      * <p>
      * Ports MuseScore's tie layout algorithm to SongScribe's staff-space coordinate system.
      * Each tie produces a filled lens shape defined by an outer and an inner cubic Bezier curve
      * that share start/end points, creating natural tapering at the endpoints.
-     * Populates {@code builder} with a {@link LayoutResult.TieLayout} for each tie interval.
+     * Populates {@code builder} with a {@link LayoutResult.TieLayout} for each tie span.
      */
     private void calculateTies(
         Line line,
@@ -538,10 +538,10 @@ public class LayoutEngine {
         var it = ties.listIterator();
 
         while (it.hasNext()) {
-            var interval = it.next();
+            var span = it.next();
 
-            var startElement = line.getElement(interval.getStart());
-            var endElement = line.getElement(interval.getEnd());
+            var startElement = line.getElement(span.getStart());
+            var endElement = line.getElement(span.getEnd());
             var startColumn = elementToColumn.get(startElement);
             var endColumn = elementToColumn.get(endElement);
 
@@ -583,10 +583,10 @@ public class LayoutEngine {
             double innerCpYSs = shoulderYSs - direction * TIE_MID_THICKNESS_SS;
 
             // Interior note collision avoidance: only for ties spanning 3+ notes.
-            if (interval.getEnd() - interval.getStart() >= 2) {
+            if (span.getEnd() - span.getStart() >= 2) {
                 double maxDeflection = 0.0;
 
-                for (int i = interval.getStart() + 1; i < interval.getEnd(); i++) {
+                for (int i = span.getStart() + 1; i < span.getEnd(); i++) {
                     var interiorElement = line.getElement(i);
                     var interiorColumn = elementToColumn.get(interiorElement);
 
@@ -624,7 +624,7 @@ public class LayoutEngine {
                 }
             }
 
-            builder.putTieLayout(interval, new LayoutResult.TieLayout(
+            builder.putTieLayout(span, new LayoutResult.TieLayout(
                 startXSs, startYSs,
                 endXSs, endYSs,
                 cp1XSs, outerCpYSs,

@@ -25,8 +25,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.BiFunction;
 
+import songscribe.music.DynamicsSpan;
 import songscribe.music.Line;
+import songscribe.music.SpanSet;
 import songscribe.music.StaffElement;
+import songscribe.music.TupletSpan;
 import songscribe.ui.layout.CollisionRegion;
 import songscribe.ui.layout.Crescendo;
 import songscribe.ui.layout.Diminuendo;
@@ -90,7 +93,7 @@ public class StructuralStacker {
      * Stacks all tuplet brackets for the line.
      * <p>
      * Processes {@link Tuplet} range elements first, then bridges legacy
-     * {@link songscribe.music.TupletInterval} data not already covered
+     * {@link TupletSpan} data not already covered
      * by range elements.
      */
     private void stackTuplets(
@@ -106,24 +109,24 @@ public class StructuralStacker {
                 columnsByElement, builder);
         }
 
-        // Bridge legacy tuplet intervals
-        bridgeLegacyTupletIntervals(line, existingTuplets, columnsByElement, builder);
+        // Bridge legacy tuplet spans
+        bridgeLegacyTupletSpans(line, existingTuplets, columnsByElement, builder);
     }
 
     /**
-     * Bridges legacy {@link songscribe.music.TupletInterval} data to temporary
+     * Bridges legacy {@link TupletSpan} data to temporary
      * {@link Tuplet} range elements and stacks them.
      */
-    private void bridgeLegacyTupletIntervals(
+    private void bridgeLegacyTupletSpans(
         Line line,
         List<Tuplet> existingTuplets,
         Map<StaffElement, ElementColumn> columnsByElement,
         LayoutResult.Builder builder) {
 
         for (var iter = line.getTuplets().listIterator(); iter.hasNext(); ) {
-            var interval = iter.next();
-            var startNote = line.getElement(interval.getStart());
-            var endNote = line.getElement(interval.getEnd());
+            var span = iter.next();
+            var startNote = line.getElement(span.getStart());
+            var endNote = line.getElement(span.getEnd());
 
             // Check if already covered by a range element
             if (StackingUtils.isRangeCovered(startNote, endNote, existingTuplets)) {
@@ -137,7 +140,7 @@ public class StructuralStacker {
                 continue;
             }
 
-            var bridged = new Tuplet(startNote, endNote, interval.getGrade());
+            var bridged = new Tuplet(startNote, endNote, span.getGrade());
 
             // Compute actual visual bracket bounds
             double noteheadRightXSs = startColumn.getXSs() + Engraving.NOTE_HEAD_WIDTH_SS;
@@ -158,7 +161,7 @@ public class StructuralStacker {
                 staffPosition, builder);
 
             // Write SpanLayout with actual bracket bounds for renderer access
-            builder.putSpanLayout(interval,
+            builder.putSpanLayout(span,
                 new LayoutResult.SpanLayout(leftXSs, rightXSs, ySs, contentHeightSs));
         }
     }
@@ -167,7 +170,7 @@ public class StructuralStacker {
      * Stacks all hairpins (crescendo/diminuendo) for the line.
      * <p>
      * Processes {@link Crescendo} and {@link Diminuendo} range elements first,
-     * then bridges legacy {@link songscribe.music.DynamicsInterval} data not
+     * then bridges legacy {@link DynamicsSpan} data not
      * already covered by range elements.
      */
     private void stackHairpins(
@@ -191,31 +194,31 @@ public class StructuralStacker {
                 columnsByElement, builder);
         }
 
-        // Bridge legacy crescendo intervals
-        bridgeLegacyHairpinIntervals(line, line.getCrescendos(),
+        // Bridge legacy crescendo spans
+        bridgeLegacyHairpinSpans(line, line.getCrescendos(),
             existingCrescendos, Crescendo::new, columnsByElement, builder);
 
-        // Bridge legacy diminuendo intervals
-        bridgeLegacyHairpinIntervals(line, line.getDiminuendos(),
+        // Bridge legacy diminuendo spans
+        bridgeLegacyHairpinSpans(line, line.getDiminuendos(),
             existingDiminuendos, Diminuendo::new, columnsByElement, builder);
     }
 
     /**
-     * Bridges legacy {@link songscribe.music.DynamicsInterval} data to temporary
+     * Bridges legacy {@link DynamicsSpan} data to temporary
      * hairpin range elements and stacks them.
      */
-    private void bridgeLegacyHairpinIntervals(
+    private void bridgeLegacyHairpinSpans(
         Line line,
-        songscribe.music.IntervalSet<songscribe.music.DynamicsInterval> intervals,
+        SpanSet<DynamicsSpan> spanSet,
         List<? extends RangeElement> existingRangeElements,
         BiFunction<StaffElement, StaffElement, RangeElement> factory,
         Map<StaffElement, ElementColumn> columnsByElement,
         LayoutResult.Builder builder) {
 
-        for (var iter = intervals.listIterator(); iter.hasNext(); ) {
-            var interval = iter.next();
-            var startNote = line.getElement(interval.getStart());
-            var endNote = line.getElement(interval.getEnd());
+        for (var iter = spanSet.listIterator(); iter.hasNext(); ) {
+            var span = iter.next();
+            var startNote = line.getElement(span.getStart());
+            var endNote = line.getElement(span.getEnd());
 
             // Check if already covered by a range element
             if (StackingUtils.isRangeCovered(startNote, endNote, existingRangeElements)) {
@@ -240,8 +243,8 @@ public class StructuralStacker {
                 LayoutStylesheet.HAIRPIN_OPENING_HEIGHT_SS, LayoutStylesheet.HAIRPIN_MARGIN_SS,
                 staffPosition, builder);
 
-            // Write SpanLayout keyed by the legacy interval for renderer access
-            builder.putSpanLayout(interval,
+            // Write SpanLayout keyed by the legacy span for renderer access
+            builder.putSpanLayout(span,
                 new LayoutResult.SpanLayout(anchorXSs, endXSs,
                     ySs, LayoutStylesheet.HAIRPIN_OPENING_HEIGHT_SS));
         }

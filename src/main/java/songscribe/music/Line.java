@@ -64,8 +64,6 @@ import songscribe.ui.layout.ScaleContext;
 import songscribe.ui.playback.MidiMetaMessageTypes;
 import songscribe.ui.playback.PlaybackController;
 
-import static songscribe.midi.MidiSequenceBuilder.PPQ;
-
 public class Line {
 
     private static final int[][] FLAT_SHARP_ORDINAL = new int[][]{
@@ -75,13 +73,13 @@ public class Line {
 
 
     private static final double GRACE_GLISSANDO_VELOCITY_RATIO = 0.85;
-    private final IntervalSet<BeamInterval> beamings = new IntervalSet<>();
-    private final IntervalSet<TieInterval> ties = new IntervalSet<>();
-    private final IntervalSet<TupletInterval> tuplets = new IntervalSet<>();
-    private final IntervalSet<DynamicsInterval> crescendo = new IntervalSet<>();
-    private final IntervalSet<DynamicsInterval> diminuendo = new IntervalSet<>();
+    private final SpanSet<BeamSpan> beamings = new SpanSet<>();
+    private final SpanSet<TieSpan> ties = new SpanSet<>();
+    private final SpanSet<TupletSpan> tuplets = new SpanSet<>();
+    private final SpanSet<DynamicsSpan> crescendo = new SpanSet<>();
+    private final SpanSet<DynamicsSpan> diminuendo = new SpanSet<>();
     @SuppressWarnings("rawtypes")
-    private final IntervalSet[] intervalSets = new IntervalSet[]{
+    private final SpanSet[] spanSets = new SpanSet[]{
         beamings,
         ties,
         tuplets,
@@ -91,7 +89,7 @@ public class Line {
 
     // =========================================================================
     // New storage for Phase 4+ layout redesign
-    // These will replace IntervalSets after Phase 7 (IO) migration
+    // These will replace SpanSets after Phase 7 (IO) migration
     // =========================================================================
 
     /** Range elements (ties, trills, crescendo, diminuendo, tuplets, endings). */
@@ -267,7 +265,7 @@ public class Line {
             new ElementInsertion(this, index, element),
             () -> {
                 elements.add(index, element);
-                shiftIntervals(intervalSets, index, 1);
+                shiftSpans(spanSets, index, 1);
                 attachInitialTempoIfNeeded(element);
             }
         );
@@ -343,7 +341,7 @@ public class Line {
             new ElementDeletion(this, index, deleted),
             () -> {
                 elements.remove(index);
-                shiftIntervals(intervalSets, index, -1);
+                shiftSpans(spanSets, index, -1);
                 rangeElements.removeIf(r -> r.isInvalidatedBy(List.of(deleted)));
             }
         );
@@ -358,7 +356,7 @@ public class Line {
      *    └─ composition.applyChange(ElementRangeDeletion, () -> {
      *         ├─ var deletedElements = List.copyOf(elements.subList(from, to+1));
      *         ├─ elements.subList(from, to+1).clear();
-     *         ├─ shiftIntervals(from, -(to-from+1));
+     *         ├─ shiftSpans(from, -(to-from+1));
      *         └─ rangeElements.removeIf(r -> r.isInvalidatedBy(deletedElements));
      *       });
      * </pre>
@@ -372,7 +370,7 @@ public class Line {
             new ElementRangeDeletion(this, from, to, deletedElements),
             () -> {
                 elements.subList(from, to + 1).clear();
-                shiftIntervals(intervalSets, from, -(to - from + 1));
+                shiftSpans(spanSets, from, -(to - from + 1));
                 rangeElements.removeIf(r -> r.isInvalidatedBy(deletedElements));
             }
         );
@@ -556,108 +554,108 @@ public class Line {
         return elementDistChangeRatio;
     }
 
-    public IntervalSet<BeamInterval> getBeamings() {
+    public SpanSet<BeamSpan> getBeamings() {
         return beamings;
     }
 
-    public IntervalSet<TieInterval> getTies() {
+    public SpanSet<TieSpan> getTies() {
         return ties;
     }
 
-    public IntervalSet<TupletInterval> getTuplets() {
+    public SpanSet<TupletSpan> getTuplets() {
         return tuplets;
     }
 
-    public IntervalSet<DynamicsInterval> getCrescendos() {
+    public SpanSet<DynamicsSpan> getCrescendos() {
         return crescendo;
     }
 
-    public IntervalSet<DynamicsInterval> getDiminuendos() {
+    public SpanSet<DynamicsSpan> getDiminuendos() {
         return diminuendo;
     }
 
-    public void addBeaming(BeamInterval interval) {
-        applyChange(new BeamingAddition(this, interval), () -> beamings.addInterval(interval));
+    public void addBeaming(BeamSpan span) {
+        applyChange(new BeamingAddition(this, span), () -> beamings.addSpan(span));
     }
 
-    public void removeBeaming(BeamInterval interval) {
-        applyChange(new BeamingRemoval(this, interval), () -> beamings.removeInterval(interval));
+    public void removeBeaming(BeamSpan span) {
+        applyChange(new BeamingRemoval(this, span), () -> beamings.removeSpan(span));
     }
 
-    public void addTie(TieInterval interval) {
-        applyChange(new TieAddition(this, interval), () -> ties.addInterval(interval));
+    public void addTie(TieSpan span) {
+        applyChange(new TieAddition(this, span), () -> ties.addSpan(span));
     }
 
-    public void removeTie(TieInterval interval) {
-        applyChange(new TieRemoval(this, interval), () -> ties.removeInterval(interval));
+    public void removeTie(TieSpan span) {
+        applyChange(new TieRemoval(this, span), () -> ties.removeSpan(span));
     }
 
-    public void addTuplet(TupletInterval interval) {
-        applyChange(new TupletAddition(this, interval), () -> tuplets.addInterval(interval));
+    public void addTuplet(TupletSpan span) {
+        applyChange(new TupletAddition(this, span), () -> tuplets.addSpan(span));
     }
 
-    public void removeTuplet(TupletInterval interval) {
-        applyChange(new TupletRemoval(this, interval), () -> tuplets.removeInterval(interval));
+    public void removeTuplet(TupletSpan span) {
+        applyChange(new TupletRemoval(this, span), () -> tuplets.removeSpan(span));
     }
 
-    public void addCrescendo(DynamicsInterval interval) {
-        applyChange(new CrescendoAddition(this, interval), () -> crescendo.addInterval(interval));
+    public void addCrescendo(DynamicsSpan span) {
+        applyChange(new CrescendoAddition(this, span), () -> crescendo.addSpan(span));
     }
 
-    public void removeCrescendo(DynamicsInterval interval) {
-        applyChange(new CrescendoRemoval(this, interval), () -> crescendo.removeInterval(interval));
+    public void removeCrescendo(DynamicsSpan span) {
+        applyChange(new CrescendoRemoval(this, span), () -> crescendo.removeSpan(span));
     }
 
-    public void addDiminuendo(DynamicsInterval interval) {
-        applyChange(new DiminuendoAddition(this, interval), () -> diminuendo.addInterval(interval));
+    public void addDiminuendo(DynamicsSpan span) {
+        applyChange(new DiminuendoAddition(this, span), () -> diminuendo.addSpan(span));
     }
 
-    public void removeDiminuendo(DynamicsInterval interval) {
-        applyChange(new DiminuendoRemoval(this, interval), () -> diminuendo.removeInterval(interval));
+    public void removeDiminuendo(DynamicsSpan span) {
+        applyChange(new DiminuendoRemoval(this, span), () -> diminuendo.removeSpan(span));
     }
 
     /**
      * Returns true if the given note index falls within any hairpin (crescendo or diminuendo) range.
      */
     public boolean isInHairpinRange(int noteIndex) {
-        return crescendo.isInsideAnyInterval(noteIndex) ||
-            diminuendo.isInsideAnyInterval(noteIndex);
+        return crescendo.isInsideAnySpan(noteIndex) ||
+            diminuendo.isInsideAnySpan(noteIndex);
     }
 
-    public void removeInterval(int a, int b) {
-        for (var is : intervalSets) {
-            is.removeInterval(a, b);
+    public void removeSpan(int a, int b) {
+        for (var is : spanSets) {
+            is.removeSpan(a, b);
         }
     }
 
-    public IntervalSet<?>[] copyIntervals(int a, int b) {
-        var retIs = Arrays.stream(intervalSets)
-            .map(intervalSet -> intervalSet.copyInterval(a, b))
-            .toArray(IntervalSet[]::new); //noinspection unchecked
+    public SpanSet<?>[] copySpans(int a, int b) {
+        var retSpanSets = Arrays.stream(spanSets)
+            .map(spanSet -> spanSet.copySpan(a, b))
+            .toArray(SpanSet[]::new); //noinspection unchecked
 
-        shiftIntervals(retIs, 0, -a);
-        return retIs;
+        shiftSpans(retSpanSets, 0, -a);
+        return retSpanSets;
     }
 
-    public void pasteIntervals(IntervalSet<?>[] copyIntervalSets, int xIndex) {
-        shiftIntervals(copyIntervalSets, 0, xIndex);
+    public void pasteSpans(SpanSet<?>[] copySpanSets, int xIndex) {
+        shiftSpans(copySpanSets, 0, xIndex);
 
-        for (var i = 0; i < intervalSets.length; i++) {
-            for (var li = copyIntervalSets[i].listIterator(); li.hasNext(); ) {
-                var iv = li.next();
+        for (var i = 0; i < spanSets.length; i++) {
+            for (var li = copySpanSets[i].listIterator(); li.hasNext(); ) {
+                var span = li.next();
                 //noinspection unchecked,rawtypes
-                ((IntervalSet) intervalSets[i]).addInterval(iv);
+                ((SpanSet) spanSets[i]).addSpan(span);
             }
         }
 
-        shiftIntervals(copyIntervalSets, 0, -xIndex);
+        shiftSpans(copySpanSets, 0, -xIndex);
     }
 
-    private void shiftIntervals(IntervalSet<?>[] iss, int from, int shift) {
-        for (var is : iss) {
-            is.shiftValues(from, shift);
-            is.removeInterval(Integer.MIN_VALUE, 0);
-            is.removeInterval(elements.size() - 1, Integer.MAX_VALUE);
+    private void shiftSpans(SpanSet<?>[] spanSetArray, int from, int shift) {
+        for (var spanSet : spanSetArray) {
+            spanSet.shiftValues(from, shift);
+            spanSet.removeSpan(Integer.MIN_VALUE, 0);
+            spanSet.removeSpan(elements.size() - 1, Integer.MAX_VALUE);
         }
     }
 
@@ -866,7 +864,7 @@ public class Line {
      * @return Scaling factor (1.0 if not in a tuplet)
      */
     private float getTupletFactor(int elementIndex, Tempo referenceTempo) {
-        var tupletInt = tuplets.findInterval(elementIndex);
+        var tupletInt = tuplets.findSpan(elementIndex);
 
         if (tupletInt == null) {
             return 1;
@@ -1134,10 +1132,10 @@ public class Line {
             var duration = getElementDurationWithTuplet(elementIndex, currentTempo);
 
             if (type.isNote()) {
-                var interval = ties.findInterval(elementIndex);
+                var tieSpan = ties.findSpan(elementIndex);
                 var velocity = noteVelocity(element, velocityMap, lineIndex, elementIndex);
 
-                if ((interval == null) || (interval.getStart() == elementIndex)) {
+                if ((tieSpan == null) || (tieSpan.getStart() == elementIndex)) {
                     glissandoHelper.createPendingResets(track, trackTicks, 0);
 
                     if (glissandoHelper.hasPendingGracePitch()) {
@@ -1149,7 +1147,7 @@ public class Line {
                     }
                 }
 
-                if ((interval == null) || (interval.getEnd() == elementIndex)) {
+                if ((tieSpan == null) || (tieSpan.getEnd() == elementIndex)) {
                     var glissando = element.getGlissando();
 
                     if (glissando != null) {

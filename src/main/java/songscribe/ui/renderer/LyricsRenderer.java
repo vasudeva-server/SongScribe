@@ -30,8 +30,8 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 
-import songscribe.music.Interval;
-import songscribe.music.IntervalSet;
+import songscribe.music.Span;
+import songscribe.music.SpanSet;
 import songscribe.music.Line;
 import songscribe.music.StaffElement;
 import songscribe.ui.Constants;
@@ -556,25 +556,25 @@ public class LyricsRenderer {
             return;
         }
 
-        // Create intervals excluding empty syllables
-        var intervalSet = new IntervalSet<Interval>();
-        intervalSet.addInterval(startIndex, end);
+        // Create spans excluding empty syllables
+        var spanSet = new SpanSet<Span>();
+        spanSet.addSpan(startIndex, end);
 
         for (var i : emptySyllables) {
-            intervalSet.removeInterval(i, i + 1);
+            spanSet.removeSpan(i, i + 1);
         }
 
-        // Draw line segments for each interval
-        for (var iter = intervalSet.listIterator(); iter.hasNext(); ) {
-            var interval = iter.next();
+        // Draw line segments for each span
+        for (var iter = spanSet.listIterator(); iter.hasNext(); ) {
+            var span = iter.next();
 
-            var drawX1 = (interval.getStart() == startIndex)
+            var drawX1 = (span.getStart() == startIndex)
                 ? x1
-                : line.getElement(interval.getStart()).getXPosSs();
+                : line.getElement(span.getStart()).getXPosSs();
 
-            var drawX2 = (interval.getEnd() == end)
+            var drawX2 = (span.getEnd() == end)
                 ? x2
-                : line.getElement(interval.getEnd() - 1).getXPosSs() + 12;
+                : line.getElement(span.getEnd() - 1).getXPosSs() + 12;
 
             g2.drawLine(drawX1, y1, drawX2, y2);
         }
