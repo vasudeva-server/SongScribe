@@ -62,16 +62,16 @@ records for the nine remaining operations, migrating each emitter to use
 
 ## Design Decisions
 
-### Granularity: per-kind, not per-interval-type
+### Granularity: Addition/Removal pairs for interval sets
 
 The nine unmigrated operations fall into two groups:
 
 **Interval-set operations** (add or remove an entry in a `Line.getXxx()` interval set):
-- `toggleBeaming` — `BeamInterval` add/remove in `line.getBeamings()`
-- `toggleTie` — `TieInterval` add/remove in `line.getTies()`
-- `toggleTuplet` — `TupletInterval` add/remove/grade-change in `line.getTuplets()`
-- `addDynamicsToSelection` — `DynamicsInterval` add in `line.getCrescendos()` or `line.getDiminuendos()`
-- `removeDynamicsFromSelection` — `DynamicsInterval` remove(s) in the same two sets
+- `toggleBeaming` — `BeamInterval` add or remove in `line.getBeamings()`
+- `toggleTie` — `TieInterval` add or remove in `line.getTies()`
+- `toggleTuplet` — `TupletInterval` add or remove in `line.getTuplets()` (no in-place grade change; see Phase 3)
+- `addDynamicsToSelection` — single `DynamicsInterval` add in `line.getCrescendos()` xor `line.getDiminuendos()`
+- `removeDynamicsFromSelection` — one or more `DynamicsInterval` removes across either or both sets
 
 **Element-field operations** (mutate one or more existing elements in place):
 - `toggleTrill` — flips `element.isTrill()` for every note in the selection
@@ -82,34 +82,43 @@ The nine unmigrated operations fall into two groups:
 **Element-replace operation**:
 - `SelectionCoordinator.applyActionToSelection` — calls `Line.replaceElementQuietly(i, replacement)` in a loop (ElementReplaceable actions like half-note → quarter-note) plus mutates element fields in place (ElementModifiable actions)
 
-The granularity decision: **one record per operation**, not one record per
-interval-set or per element-field. Rationale:
+Every interval-set operation follows the same shape: **single add xor
+one-or-more removes, never mixed**. Given that, the granularity decision
+for interval sets is **one `Addition` record and one `Removal` record per
+interval type**, each carrying a single interval instance. Rationale:
 
-- **Subscribers today only care "line X's layout is dirty."** No current
-  subscriber needs to distinguish "a beam was added" from "a tuplet grade
-  changed." Fine-grained types would add noise without a reader.
-- **Undo (#14) will need to know what changed**, but not at the type level —
-  it needs the *before* state (interval set snapshot, element field snapshot)
-  so it can re-apply. Records carry that snapshot; undo reads it generically.
-- **Per-operation types mirror existing `ElementInsertion` / `LineInsertion`
-  granularity** — one sealed-hierarchy entry per user-level action. This is
-  the pattern the existing refactor established.
+- **Each mutation is a discrete, self-describing fact.** An `Addition` holds
+  the added interval; a `Removal` holds the removed interval. No before/after
+  set snapshots are required.
+- **Undo (#14) is a trivial inverse per record.** `Addition` undo = remove
+  that interval; `Removal` undo = re-add that interval. No snapshot machinery
+  needs to be replayed.
+- **Multi-remove operations emit N `Removal` records in a single bracket**,
+  which is exactly what brackets are for.
+- **Mirrors the existing `ElementInsertion` / `ElementDeletion` shape** — one
+  sealed-hierarchy entry per discrete fact.
+
+Element-field operations continue to route through the existing
+`ElementModification` record (see the "Element-field mutations reuse
+`ElementModification`" subsection below).
 
 ### `Line` interval-set accessors remain mutable
 
 `Line.getBeamings() / getTies() / getTuplets() / getCrescendos() /
 getDiminuendos()` return live `IntervalSet` references. Callers add/remove
 intervals directly. The migration wraps each mutation site in
-`line.withModification(() -> line.applyChange(new XxxChange(...), () -> { ... }))`
-rather than introducing `Line.addBeaming(interval)` accessors that internally
-route through `applyChange`. Rationale:
+`line.applyChange(new XxxAddition(line, interval), () -> intervalSet.addInterval(interval))`
+(or the `Removal` counterpart) rather than introducing `Line.addBeaming(interval)`
+accessors that internally route through `applyChange`. Rationale:
 
-- The interval sets have rich operations (add, remove, findInterval, grade
-  change) and multiple call sites already use them directly. Wrapping every
-  interval-set access with a mutation-emitting method would force a large
-  API surface just to preserve the existing call shape.
+- The interval sets have rich operations (add, remove, findInterval) and
+  multiple call sites already use them directly. Wrapping every interval-set
+  access with a mutation-emitting method would force a large API surface
+  just to preserve the existing call shape.
 - The `applyChange` + lambda pattern the setters use already embeds the
-  "capture before-state, run mutator, record mutation" contract cleanly.
+  "record mutation, run mutator" contract cleanly. Because the mutation
+  records carry only the interval being added or removed (not before/after
+  set snapshots), the emission site is a single line per mutation.
 
 ### `makeFirstSecondEnding` decomposes into multiple mutations
 
@@ -121,27 +130,11 @@ route through `applyChange`. Rationale:
 
 Steps 1 and 2 **already emit mutations** (`ElementInsertion` and
 `RangeElementAddition` respectively) because `Line.addElement` and
-`Line.addRangeElement` route through `applyChange`. The caller just needs to
-wrap the whole operation in a single `line.withModification(...)` bracket so
-both mutations coalesce into one `CompositionDidChangeNotification`. No new
-mutation record is required — this operation is already internally consistent
-once the outer bracket is opened.
-
-### Interval-set mutations carry a `before` snapshot
-
-Each interval-set mutation record carries an immutable snapshot of the
-affected set *before* the mutation ran. Undo (#14) replays by restoring the
-snapshot; subscribers that want "what changed" can diff old and new.
-
-```java
-public record BeamingChange(
-    Line line,
-    IntervalSet<BeamInterval> oldBeamings,
-    IntervalSet<BeamInterval> newBeamings
-) implements Mutation, LineScopedMutation { ... }
-```
-
-`IntervalSet` does not currently implement `deepCopy()`. Phase 1 adds it.
+`Line.addRangeElement` route through `applyChange`. `makeFirstSecondEnding`
+wraps its whole body in `line.withModification(...)` so both mutations
+coalesce into one `CompositionDidChangeNotification`. No new mutation record
+is required — this operation is already internally consistent once the
+bracket is opened.
 
 ### Element-field mutations reuse `ElementModification`
 
@@ -174,11 +167,34 @@ This method handles two action kinds:
   `ACCIDENTAL`, `ARTICULATION`, `FERMATA`). Phase 2 enumerates the exact set
   by cross-referencing `UIAction.ElementModifiable` implementations.
 
+### Each `MusicEditOperations` method opens its own bracket
+
+Every migrated `MusicEditOperations` method wraps its whole body in
+`line.withModification(() -> { ... })`. The command handler in
+`ScoreMessageCoordinator` just calls the method directly — no bracket glue
+at the coordinator layer.
+
+This relies on `Composition.withModification` already being reentrant via
+`modificationDepth` (`Composition.java:197`): `beginModification` increments
+the counter, `endModification` decrements it, and mutations flush / the
+notification fires only at depth 0. Nested `withModification` calls collapse
+into the outermost one, so a hypothetical future caller that wraps multiple
+operations in its own outer bracket still produces exactly one notification.
+
+The method owning its own bracket keeps `MusicEditOperations` self-contained:
+- Call sites (command handlers, tests, future programmatic drivers) don't
+  need to know about the `Line.applyChange` "must be inside a bracket"
+  contract.
+- The `Line.applyChange` contract is still satisfied — just at the method
+  boundary instead of the call site.
+- Removes nine copies of the `line.withModification(() -> operations.xxx())`
+  boilerplate from `ScoreMessageCoordinator` command handlers.
+
 ### `setModified(true)` in `MusicEditOperations` disappears
 
 Every `MusicEditOperations` method currently ends with
-`composition.setModified(true)`. After migration, each method runs inside a
-`line.withModification(...)` bracket and the outermost `endModification`
+`composition.setModified(true)`. After migration, each method runs inside its
+own `line.withModification(...)` bracket and the outermost `endModification`
 sets `modified = true` automatically. Remove the explicit calls.
 
 ### `ScoreMessageCoordinator.postSelectionContentChanged` disappears
@@ -228,7 +244,7 @@ notification of its own — it just adjusts the in-memory lyrics state.
 
 ---
 
-## ✅ Phase 1: Mutation records for interval operations
+## ⏳ Phase 1: Mutation records for interval operations
 
 **Model:** Sonnet  <br>
 **Status:** Pending  <br>
@@ -236,50 +252,43 @@ notification of its own — it just adjusts the in-memory lyrics state.
 
 ### Purpose
 
-Add the five sealed-hierarchy entries for interval-set operations and the
-`IntervalSet.deepCopy()` method they rely on.
+Add the ten sealed-hierarchy entries for interval-set operations: one
+`Addition` and one `Removal` record per interval type.
 
 ### Tasks
 
-1. Add `deepCopy()` to `IntervalSet<T>` that returns a new `IntervalSet`
-   containing copies of every interval. Each interval subclass
-   (`BeamInterval`, `TieInterval`, `TupletInterval`, `DynamicsInterval`,
-   `Interval`) gets its own `copy()` method returning a new instance with
-   the same fields. Interval records can use their record copy constructor.
-2. Create mutation records in `songscribe.message.mutation`:
-   - `BeamingChange(Line line, IntervalSet<BeamInterval> oldBeamings, IntervalSet<BeamInterval> newBeamings)`
-   - `TieChange(Line line, IntervalSet<TieInterval> oldTies, IntervalSet<TieInterval> newTies)`
-   - `TupletChange(Line line, IntervalSet<TupletInterval> oldTuplets, IntervalSet<TupletInterval> newTuplets)`
-   - `CrescendoChange(Line line, IntervalSet<DynamicsInterval> oldCrescendos, IntervalSet<DynamicsInterval> newCrescendos)`
-   - `DiminuendoChange(Line line, IntervalSet<DynamicsInterval> oldDiminuendos, IntervalSet<DynamicsInterval> newDiminuendos)`
-3. Each record implements `Mutation` and `LineScopedMutation`. `getLine()`
+1. Create mutation records in `songscribe.message.mutation`:
+   - `BeamingAddition(Line line, BeamInterval interval)`
+   - `BeamingRemoval(Line line, BeamInterval interval)`
+   - `TieAddition(Line line, TieInterval interval)`
+   - `TieRemoval(Line line, TieInterval interval)`
+   - `TupletAddition(Line line, TupletInterval interval)`
+   - `TupletRemoval(Line line, TupletInterval interval)`
+   - `CrescendoAddition(Line line, DynamicsInterval interval)`
+   - `CrescendoRemoval(Line line, DynamicsInterval interval)`
+   - `DiminuendoAddition(Line line, DynamicsInterval interval)`
+   - `DiminuendoRemoval(Line line, DynamicsInterval interval)`
+2. Each record implements `Mutation` and `LineScopedMutation`. `getLine()`
    returns the stored `line` field.
-4. Add all five to the `Mutation.permits` clause.
+3. Add all ten to the `Mutation.permits` clause.
 
 ### Key files
 
-- `src/main/java/songscribe/music/IntervalSet.java` (add `deepCopy`)
-- `src/main/java/songscribe/music/BeamInterval.java`, `TieInterval.java`,
-  `TupletInterval.java`, `DynamicsInterval.java`, `Interval.java`
-  (add `copy()`)
-- `src/main/java/songscribe/message/mutation/BeamingChange.java` (new)
-- `src/main/java/songscribe/message/mutation/TieChange.java` (new)
-- `src/main/java/songscribe/message/mutation/TupletChange.java` (new)
-- `src/main/java/songscribe/message/mutation/CrescendoChange.java` (new)
-- `src/main/java/songscribe/message/mutation/DiminuendoChange.java` (new)
+- `src/main/java/songscribe/message/mutation/BeamingAddition.java` (new)
+- `src/main/java/songscribe/message/mutation/BeamingRemoval.java` (new)
+- `src/main/java/songscribe/message/mutation/TieAddition.java` (new)
+- `src/main/java/songscribe/message/mutation/TieRemoval.java` (new)
+- `src/main/java/songscribe/message/mutation/TupletAddition.java` (new)
+- `src/main/java/songscribe/message/mutation/TupletRemoval.java` (new)
+- `src/main/java/songscribe/message/mutation/CrescendoAddition.java` (new)
+- `src/main/java/songscribe/message/mutation/CrescendoRemoval.java` (new)
+- `src/main/java/songscribe/message/mutation/DiminuendoAddition.java` (new)
+- `src/main/java/songscribe/message/mutation/DiminuendoRemoval.java` (new)
 - `src/main/java/songscribe/message/mutation/Mutation.java` (extend `permits`)
-
-### Open questions
-
-- `Crescendo` and `Diminuendo` are currently listed in the `mutation-hierarchy-refactor`
-  deferred work as `CrescendoAddition/Removal` / `DiminuendoAddition/Removal`
-  pairs. This plan collapses each pair into a single `CrescendoChange` /
-  `DiminuendoChange` that carries old+new snapshots. Confirm the collapse is
-  preferred over add/remove pairs.
 
 ---
 
-## ✅ Phase 2: Mutation records for element-field operations
+## ⏳ Phase 2: Mutation records for element-field operations
 
 **Model:** Sonnet  <br>
 **Status:** Pending  <br>
@@ -287,46 +296,32 @@ Add the five sealed-hierarchy entries for interval-set operations and the
 
 ### Purpose
 
-Extend `ElementField` with the enum values the remaining element-field
+Extend `ElementField` with the enum values the Phase 3 element-field
 operations need. No new mutation records are required — all uses go through
 the existing `ElementModification` record and `Line.modifyElement` helper.
 
+`ElementField` is a filter tag, not undo storage: `ElementModification`
+already holds a full `beforeElement` clone as the undo source of truth,
+so tag values exist purely to let subscribers skip handlers they don't
+care about. Values are therefore added only as emitters need them —
+Phase 4 and any future migration will extend the enum at the point of
+use rather than up-front.
+
 ### Tasks
 
-1. Extend `ElementField` enum with these values (add to the existing enum;
-   alphabetize if the existing file is sorted):
+1. Extend `ElementField` enum with the values needed by Phase 3:
    - `TRILL` — for `toggleTrill`
    - `FORCE_SYLLABLE` — for `toggleLyricsUnderRests`
-   - `UPPER` — for `flipStemDirection`'s stem direction (and grace-note drag)
+   - `UPPER` — for `flipStemDirection`'s stem direction
    - `STEM_DIRECTION_AUTO` — paired with `UPPER` in `flipStemDirection`
-2. Cross-reference every `UIAction.ElementModifiable` implementation and
-   every `UIAction.ElementReplaceable` implementation to enumerate the fields
-   each one touches. Add any missing `ElementField` values. Candidates to
-   verify during the audit:
-   - `DURATION` (quarter/eighth/etc.) — replaceable; a replacement produces
-     `ElementReplacement`, no `ElementField` needed
-   - `DOT` — modifiable, likely needs `DOT`
-   - `ACCIDENTAL` — modifiable, likely needs `ACCIDENTAL`
-   - `ARTICULATION` — modifiable, likely needs `ARTICULATION`
-   - `FERMATA` — modifiable, likely needs `FERMATA`
-3. Add unit tests for each new `ElementField` constant — just verify the
-   constant exists and is in `values()`.
 
 ### Key files
 
 - `src/main/java/songscribe/message/mutation/ElementField.java` (extend)
-- `src/main/java/songscribe/ui/action/` (audit ElementModifiable /
-  ElementReplaceable implementations)
-
-### Deliverable
-
-The extended `ElementField` enum plus a short sub-section appended to this
-plan listing which `UIAction` each new value corresponds to, so Phase 4
-(applyActionToSelection migration) can reference it.
 
 ---
 
-## ✅ Phase 3: Migrate `MusicEditOperations` emitters
+## ⏳ Phase 3: Migrate `MusicEditOperations` emitters
 
 **Model:** Opus  <br>
 **Status:** Pending  <br>
@@ -334,43 +329,50 @@ plan listing which `UIAction` each new value corresponds to, so Phase 4
 
 ### Purpose
 
-Rewrite each `MusicEditOperations` method to emit a mutation via
-`applyChange` inside a `withModification` bracket. After this phase, no
-`MusicEditOperations` method calls `composition.setModified(true)` directly.
+Rewrite each `MusicEditOperations` method to wrap its body in
+`line.withModification(() -> { ... })` and emit one or more mutations via
+`applyChange` inside that bracket. Each method owns its own bracket; the
+command handler in `ScoreMessageCoordinator` just calls the method. After
+this phase, no `MusicEditOperations` method calls
+`composition.setModified(true)` directly.
 
 ### Tasks
 
 1. **`toggleBeaming`** (`MusicEditOperations.java:61`):
-   - Capture `var old = line.getBeamings().deepCopy()` before the mutation.
-   - Wrap the `if shouldConnect ... addInterval else removeInterval` block
-     in `line.applyChange(new BeamingChange(line, old, line.getBeamings()), () -> { ... })`.
-   - `newBeamings` in the record is the **post-mutation** live set. Since
-     the mutation records are immutable, capture `line.getBeamings().deepCopy()`
-     *after* the mutator runs if the record should hold a frozen snapshot.
-     *Alternative:* the record can hold the live reference if we accept that
-     the "new" state is mutable; this is fine for layout-invalidation readers
-     but not for undo. **Decision:** hold a frozen snapshot post-mutation,
-     to match the "beforeElement is a clone" pattern from `ElementModification`.
+   - Wrap the whole body in `line.withModification(() -> { ... })`.
+   - In the `shouldConnect` branch, emit a `BeamingAddition(line, interval)`:
+     `line.applyChange(new BeamingAddition(line, interval), () -> line.getBeamings().addInterval(interval));`
+   - In the remove branch, emit a `BeamingRemoval(line, interval)` identically.
    - Remove `composition.setModified(true)` from the method body.
-   - Caller (`ScoreMessageCoordinator.handleToggleBeam`) must open the
-     bracket, because `MusicEditOperations` methods no longer open their own.
-     See Phase 5.
-2. **`toggleTie`** (`MusicEditOperations.java:87`): same pattern with `TieChange`.
-3. **`toggleTuplet`** (`MusicEditOperations.java:119`): same pattern with `TupletChange`.
-4. **`addDynamicsToSelection`** (`MusicEditOperations.java:146`): same
-   pattern with `CrescendoChange` or `DiminuendoChange` depending on the
-   `crescendo` parameter.
-5. **`removeDynamicsFromSelection`** (`MusicEditOperations.java:175`):
-   emits *both* `CrescendoChange` and `DiminuendoChange` inside a single
-   bracket, since the method removes intervals from both sets. Skip the
-   emission for a set whose interval list is empty.
-6. **`toggleTrill`** (`MusicEditOperations.java:510`): iterate the selection
-   and call `line.modifyElement(i, ElementField.TRILL, () -> note.setTrill(!note.isTrill()))`.
+2. **`toggleTie`** (`MusicEditOperations.java:87`): same pattern (wrap body
+   in `line.withModification(...)`) with `TieAddition` / `TieRemoval`.
+3. **`toggleTuplet`** (`MusicEditOperations.java:119`): same pattern with
+   `TupletAddition` / `TupletRemoval`. **Behavioral change:** if the current
+   implementation has an in-place grade-change branch (changing an existing
+   tuplet's grade without replacing it), remove that branch. The method now
+   only adds or removes a tuplet. If a grade-change capability is preserved
+   at the UI level in a future plan, it must be rewritten as remove-then-add,
+   emitted as one `TupletRemoval` followed by one `TupletAddition` in the
+   same bracket. This plan does **not** update `TupletAction` enable/disable
+   logic; that work is deferred to a separate plan (see Deferred Work).
+4. **`addDynamicsToSelection`** (`MusicEditOperations.java:146`): wrap body
+   in `line.withModification(...)`. Emits exactly one `CrescendoAddition`
+   xor one `DiminuendoAddition` depending on the `crescendo` parameter.
+5. **`removeDynamicsFromSelection`** (`MusicEditOperations.java:175`): wrap
+   body in `line.withModification(...)`. Emits one `CrescendoRemoval` per
+   removed crescendo interval and one `DiminuendoRemoval` per removed
+   diminuendo interval, all within the method's single bracket. Zero records
+   are emitted for a set whose interval list contains no matches — the
+   bracket still closes with mutations from the other set.
+6. **`toggleTrill`** (`MusicEditOperations.java:510`): wrap body in
+   `line.withModification(...)`, then iterate the selection and call
+   `line.modifyElement(i, ElementField.TRILL, () -> note.setTrill(!note.isTrill()))`.
    No new mutation record.
-7. **`toggleLyricsUnderRests`** (`MusicEditOperations.java:533`): single
+7. **`toggleLyricsUnderRests`** (`MusicEditOperations.java:533`): wrap in
+   `line.withModification(...)` around a single
    `line.modifyElement(selectionBegin, ElementField.FORCE_SYLLABLE, ...)` call.
    Keep `LyricsProcessor.spellLyrics(line)` *after* the bracket closes
-   (outside `modifyElement`'s mutator).
+   (outside the `withModification` body).
 8. **`flipStemDirection`** (`MusicEditOperations.java:556`): most complex
    site. Wrap the whole thing in `line.withModification(() -> { ... })`
    and replace each direct `note.setUpper(...)` / `note.setStemDirectionAuto(...)`
@@ -404,17 +406,17 @@ Rewrite each `MusicEditOperations` method to emit a mutation via
 
 ---
 
-## ✅ Phase 4: Migrate `SelectionCoordinator.applyActionToSelection`
+## ⏳ Phase 4: Migrate `SelectionCoordinator.applyActionToSelection`
 
 **Model:** Sonnet  <br>
 **Status:** Pending  <br>
-**BlockedBy:** Phase 2
+**BlockedBy:** Phases 1, 2
 
 ### Purpose
 
-Route `applyActionToSelection` through `applyChange`. This is the last
-caller of `Line.replaceElementQuietly`; remove that method after the
-migration.
+Route `applyActionToSelection` through `applyChange`, migrate
+`validateIntervals` to emit proper interval mutations (not defer it),
+and remove the last caller of `Line.replaceElementQuietly`.
 
 ### Tasks
 
@@ -426,34 +428,117 @@ migration.
      `line.setElement(i, replacement)`. This emits `ElementReplacement`
      inside the open bracket.
    - For the `ElementModifiable` branch: wrap in
-     `line.modifyElement(i, fieldsFor(action), () -> modifiable.applyToElement(element, selected))`.
-     `fieldsFor(action)` is a new helper on `UIAction` or a switch on action
-     type that returns the appropriate `EnumSet<ElementField>`.
-     See Phase 2 for the field enumeration.
+     `line.modifyElement(i, modifiable.modifiedFields(), () -> modifiable.applyToElement(element, selected))`.
+     Add a `modifiedFields()` method to the `ElementModifiable` interface
+     returning `EnumSet<ElementField>` — each implementation declares the
+     tag set corresponding to the fields it mutates. This keeps the field
+     declaration orthogonal to action flags and colocated with the action
+     that owns the mutation. Extend `ElementField` with whichever tag
+     values the migrated actions actually need at the point of use — do
+     not pre-enumerate.
 2. Delete the trailing
    `composition.setModified(true); MessageCenter.post(new CompositionDidChangeNotification(CONTENT, ...))`
    lines. `withModification` handles both.
-3. Delete `Line.replaceElementQuietly` (`Line.java:~280`). Confirm no other
-   callers via `search_for_pattern` / `jet_brains_find_referencing_symbols`.
-4. `validateIntervals` still runs inside the bracket — it mutates interval
-   sets (tie/beam repair) via direct access. This is a second-order
-   mutation that should ideally emit its own interval-change records. For
-   **this phase only**, leave `validateIntervals` as a raw mutation inside
-   the bracket and rely on one or more of the Phase 3 interval-change
-   mutations being emitted by whatever operations run after. **Follow-up:**
-   track `validateIntervals` as deferred work until a Phase 8 migrates it
-   properly.
+3. **Migrate `validateIntervals`.** The method is restructured entirely,
+   not just routed through `applyChange`. Under the invariants that hold
+   at this call site, the three branches have very different shapes:
+   - **Tie branch — delete.** No reachable replacement via
+     `applyActionToSelection` can invalidate a tie: pitch is preserved
+     by `createReplacement`, rest-ness is preserved, grace notes are
+     disabled in select mode (`Flag.DISABLE_IN_SELECT_MODE` on
+     `createGraceEighthNoteAction`), and glissando between same-pitch
+     notes is forbidden by the musical invariant that makes the tie
+     legal in the first place. `ElementModifiable` actions don't touch
+     element type. The entire `repairIntervalSet(line.getTies(), ...)`
+     call is dead code and is removed along with the `isNote()`
+     predicate it passed.
+   - **Tuplet branch — flat remove.** Under the tuplet immutability
+     policy ("any change other than pitch invalidates a tuplet"), any
+     replacement in the modified range invalidates every overlapping
+     tuplet; repair-by-splitting is semantically wrong. Rewrite as an
+     `invalidateOverlappingTuplets(Line, int, int)` method that iterates
+     `line.getTuplets()`, collects overlaps, and for each emits
+     `line.applyChange(new TupletRemoval(line, t), () -> line.getTuplets().removeInterval(t))`.
+     No sub-interval creation.
+   - **Beam branch — trim-and-kill.** Replace
+     `repairIntervalSet(line.getBeamings(), ...)` with a concrete
+     `repairBeamings(Line, int, int)` method implementing the repair rule:
+     1. Trim invalid (non-beamable) elements from the left end.
+     2. Trim invalid elements from the right end.
+     3. If the trimmed span still contains any invalid element (i.e. an
+        invalid element in the interior), kill the beam entirely — one
+        `BeamingRemoval`, no replacement.
+     4. If the trimmed span is identical to the original, no-op.
+     5. If the trimmed span shrank but is all valid, emit one
+        `BeamingRemoval` for the original interval followed by one
+        `BeamingAddition` for `beam.copyRange(newStart, newEnd)`.
+     6. If trimming leaves fewer than 2 elements, degenerate to removal
+        without re-add.
+
+   The bidirectional trim handles configurations unreachable under
+   contiguous-selection rules (e.g. `[q e e e q]` where both outer
+   elements are invalid but the interior is valid) at zero extra cost,
+   leaving the logic resilient to a future disjoint-selection capability.
+4. Delete `Line.replaceElementQuietly` (`Line.java:~280`). Confirm no
+   other callers via `search_for_pattern` /
+   `jet_brains_find_referencing_symbols`.
+5. Delete the generic `repairIntervalSet<T>` helper. Beams were its
+   sole remaining user and now have their own concrete method.
+
+### Design rationale for the `validateIntervals` restructure
+
+Earlier drafts of this plan deferred `validateIntervals` as a "raw
+mutation inside the bracket" because its three branches shared a
+generic repair-and-split helper and migrating them together looked
+scope-heavy. Working through the invariants that actually hold at each
+call site shrinks the problem substantially:
+
+1. **Ties are unreachable.** See the tie-branch bullet above.
+2. **Tuplets flatten by policy.** Repair-and-split is wrong for
+   tuplets under the new immutability policy; the correct behavior is
+   a single-pass removal loop.
+3. **Beams are the only genuine repair case.** Only beams need to
+   handle end invalidation separately from interior invalidation. The
+   trim-and-kill rule is simpler than the current repair-and-split: it
+   handles end invalidation by shrinking the interval and interior
+   invalidation by destroying it, without attempting to synthesize
+   multiple sub-intervals. A beam with a non-beamable note in the
+   middle isn't a salvageable musical structure — splitting it into
+   sub-beams reads as an implementation artifact, not a user intent.
+
+Since beams are the sole user of the repair pass, the generic
+`repairIntervalSet<T>` helper with its type-erasure / predicate-parameter
+shape disappears in favor of a concrete `repairBeamings` method. No
+factory parameters, no type gymnastics.
+
+### Behavior change note
+
+The current `repairIntervalSet` creates sub-intervals wherever
+contiguous runs of valid elements exist (≥ 2 elements for beams). The
+new beam rule kills a beam entirely if any interior element becomes
+non-beamable. Worked example: a five-note beam `[e e q e e]` (after
+changing the middle eighth to a quarter) currently splits into two
+two-note beams; under the new rule it becomes no beams. This is an
+intentional semantic shift and needs:
+
+- A targeted unit test (see Phase 7) asserting the
+  kill-on-interior-invalid behavior for beams.
+- Commit-message language calling out the change so it's visible in
+  history.
 
 ### Key files
 
 - `src/main/java/songscribe/ui/selection/SelectionCoordinator.java`
+  (rewrite `validateIntervals`, add `repairBeamings` and
+  `invalidateOverlappingTuplets`, delete `repairIntervalSet`)
 - `src/main/java/songscribe/music/Line.java` (delete `replaceElementQuietly`)
-- `src/main/java/songscribe/ui/action/UIAction.java` (optional: add
-  `fieldsFor` helper or similar field-discovery mechanism)
+- `src/main/java/songscribe/ui/action/UIAction.java` (add
+  `modifiedFields()` to the `ElementModifiable` interface; implement it
+  on every `ElementModifiable` action touched by the migration)
 
 ---
 
-## ✅ Phase 5: Migrate `ScoreMessageCoordinator` command handlers
+## ⏳ Phase 5: Clean up `ScoreMessageCoordinator` command handlers
 
 **Model:** Sonnet  <br>
 **Status:** Pending  <br>
@@ -461,9 +546,10 @@ migration.
 
 ### Purpose
 
-Open the modification bracket at the command-handler level (where each
-user action is a single command) rather than inside `MusicEditOperations`.
-Delete the manual `CompositionDidChangeNotification(CONTENT, ...)` posts.
+Delete the manual `CompositionDidChangeNotification(CONTENT, ...)` posts and
+`setModified(true)` calls from every migrated command handler. No bracket
+glue is added at this layer — each `MusicEditOperations` method now opens
+its own bracket (Phase 3), so handlers shrink to a direct call.
 
 ### Tasks
 
@@ -473,20 +559,20 @@ Delete the manual `CompositionDidChangeNotification(CONTENT, ...)` posts.
    public void handleToggleBeam(ToggleBeamCommand message) {
        var selection = selectionCoordinator.getActiveSelection();
        if (selection == null) return;
-       selection.getLine().withModification(() -> operations.toggleBeaming());
+       operations.toggleBeaming();
    }
    ```
    Remove the `MessageCenter.post(new CompositionDidChangeNotification(...))`
    line.
-2. **`handleToggleTie`** (line 186): wrap `operations.toggleTie()` in the
-   active selection's `line.withModification(...)`. Remove `postSelectionContentChanged()`.
+2. **`handleToggleTie`** (line 186): call `operations.toggleTie()` directly.
+   Remove `postSelectionContentChanged()`.
 3. **`handleToggleTuplet`** (line 191): same. Keep `score.selectionChanged()`
    call; it's not a mutation.
 4. **`handleAddDynamics`** (line 198): same pattern with
    `operations.addDynamicsToSelection(message.isCrescendo())`.
 5. **`handleRemoveDynamics`** (line 204): same.
 6. **`handleFirstSecondEnding`** (line 210): same; the `MessageCenter.post(new DeselectCommand())`
-   call stays outside the bracket.
+   call stays in the handler (outside the operation).
 7. **`handleToggleTrill`** (line 221): same.
 8. **`handleToggleLyricsUnderRests`** (line 228): same. Remove the
    `MessageCenter.post(new CompositionDidChangeNotification(CONTENT, ...))`
@@ -497,16 +583,13 @@ Delete the manual `CompositionDidChangeNotification(CONTENT, ...)` posts.
 
 ### Notes
 
-- Every command handler now opens its own bracket. Nested brackets (e.g.
-  `operations.toggleBeaming` internally calls `line.withModification` — NO,
-  after Phase 3 it does NOT; it just calls `line.applyChange` inside the
-  caller's already-open bracket) handle depth correctly.
-
-  **Clarification:** Phase 3 migrates each `MusicEditOperations` method to
-  call `line.applyChange(...)` directly without opening its own bracket.
-  The coordinator's bracket is the outermost. This is deliberate: the
-  coordinator knows the scope of the user action, `MusicEditOperations`
-  knows only what to mutate.
+- Each `MusicEditOperations` method opens its own `line.withModification(...)`
+  bracket (Phase 3), so handlers do not need any bracket glue.
+- `Composition.withModification` is reentrant via `modificationDepth`
+  (`Composition.java:197`): if any future caller wraps multiple operations
+  in an outer bracket, the inner per-operation brackets collapse into it and
+  exactly one `CompositionDidChangeNotification` fires. No double-notification
+  hazard.
 
 ### Key files
 
@@ -514,7 +597,7 @@ Delete the manual `CompositionDidChangeNotification(CONTENT, ...)` posts.
 
 ---
 
-## ✅ Phase 6: Delete `ChangeType` API
+## ⏳ Phase 6: Delete `ChangeType` API
 
 **Model:** Sonnet  <br>
 **Status:** Pending  <br>
@@ -567,7 +650,7 @@ After this phase, `grep -r ChangeType src/main` returns no matches.
 
 ---
 
-## ✅ Phase 7: Tests
+## ⏳ Phase 7: Tests
 
 **Model:** Sonnet  <br>
 **Status:** Pending  <br>
@@ -581,43 +664,80 @@ that asserts on `ChangeType`-based APIs.
 ### Tasks
 
 1. **Mutation record tests** in `src/test/java/songscribe/message/mutation/`:
-   - `BeamingChangeTest` — construct a record, verify `getLine()`, verify
-     the oldBeamings / newBeamings snapshots are distinct instances.
-   - Same for `TieChange`, `TupletChange`, `CrescendoChange`,
-     `DiminuendoChange`.
-   - `IntervalSetDeepCopyTest` — verify `deepCopy()` produces an independent
-     instance whose contents are equal but whose reference is different.
-     Verify that mutating the copy does not affect the original.
+   - `IntervalMutationTest` (or per-type files) — construct each `Addition`
+     and `Removal` record, verify `getLine()` and that the stored interval
+     is the same instance that was passed in. Verify the record implements
+     `LineScopedMutation`.
 2. **Operation emission tests** in a new `MusicEditOperationsMutationTest`:
-   - `testToggleBeamingEmitsBeamingChange` — create a composition with a
-     line, select a few notes, call `operations.toggleBeaming()` inside a
-     real (not mocked) message-center capture, assert one notification with
-     one `BeamingChange` whose old set is empty and new set contains the
-     beam.
-   - `testToggleTieEmitsTieChange`
-   - `testToggleTupletEmitsTupletChange`
-   - `testAddDynamicsEmitsCrescendoChangeOrDiminuendoChange` (parameterized)
-   - `testRemoveDynamicsEmitsBothCrescendoAndDiminuendoChange`
+   - `testToggleBeamingAddEmitsBeamingAddition` — create a composition with
+     a line, select a few notes, call `operations.toggleBeaming()` inside a
+     real (not mocked) message-center capture, assert one notification
+     containing exactly one `BeamingAddition` whose interval matches the
+     new beam. No bracket glue in the test — the method opens its own.
+   - `testToggleBeamingRemoveEmitsBeamingRemoval`
+   - `testToggleTieAddEmitsTieAddition` / `testToggleTieRemoveEmitsTieRemoval`
+   - `testToggleTupletAddEmitsTupletAddition` / `testToggleTupletRemoveEmitsTupletRemoval`
+   - `testToggleTupletDoesNotPerformInPlaceGradeChange` — assert that
+     calling `toggleTuplet` on a selection that matches an existing tuplet
+     of a different grade results in a `TupletRemoval` (not a grade-change
+     mutation).
+   - `testAddDynamicsEmitsOneAddition` (parameterized on crescendo/diminuendo)
+   - `testRemoveDynamicsEmitsRemovalPerInterval` — select a range covering
+     multiple crescendos and diminuendos, assert N+M removal records.
    - `testToggleTrillEmitsOneElementModificationPerNote`
    - `testToggleLyricsUnderRestsEmitsOneElementModification`
    - `testFlipStemDirectionEmitsElementModificationPerAffectedIndex`
    - `testMakeFirstSecondEndingEmitsElementInsertionAndRangeElementAddition`
 3. **Coordinator integration test** in
    `ScoreMessageCoordinatorTest` (or new file):
-   - Verify that each command handler opens exactly one bracket and the
-     resulting notification has the expected mutations.
-4. **`applyActionToSelection` test**:
+   - Verify that each command handler produces exactly one
+     `CompositionDidChangeNotification` with the expected mutations
+     (the single notification comes from the `MusicEditOperations`
+     method's own bracket).
+4. **`applyActionToSelection` tests**:
    - For an `ElementReplaceable` action (e.g. duration change), verify
-     one `ElementReplacement` per selected element plus at most one
-     interval-cleanup mutation.
+     one `ElementReplacement` per selected element, plus zero-or-more
+     `BeamingRemoval` / `BeamingAddition` records from the beam repair,
+     plus zero-or-more `TupletRemoval` records from the tuplet
+     invalidation. Assert that **no** `TieRemoval` / `TieAddition`
+     records are ever emitted (guard against accidental revival of the
+     dead tie branch).
    - For an `ElementModifiable` action (e.g. accidental), verify one
      `ElementModification` per affected element with the correct
-     `ElementField` set.
-5. **Update existing tests** in
+     `ElementField` set, and **no** interval mutations at all (the
+     modify path bypasses `validateIntervals` entirely).
+5. **`validateIntervals` beam repair tests** (new, in
+   `SelectionCoordinatorValidateIntervalsTest` or similar):
+   - `testBeamUnchangedWhenAllElementsRemainBeamable` — duration
+     change within the beam's range that keeps every element beamable
+     (e.g. eighth → sixteenth) emits no beam mutations.
+   - `testBeamTrimmedWhenStartElementBecomesNonBeamable` — a
+     three-eighth beam with the first element replaced by a quarter
+     emits one `BeamingRemoval` + one `BeamingAddition` for the
+     truncated two-note beam.
+   - `testBeamTrimmedWhenEndElementBecomesNonBeamable` — mirror of the
+     above for the last element.
+   - `testBeamKilledWhenInteriorElementBecomesNonBeamable` — a
+     five-eighth beam with the middle element replaced by a quarter
+     emits one `BeamingRemoval` and **no** `BeamingAddition`. This is
+     the behavior change described in Phase 4.
+   - `testBeamKilledWhenTrimLeavesFewerThanTwoElements` — a two-eighth
+     beam with one element replaced by a quarter emits one
+     `BeamingRemoval` and no addition.
+6. **`validateIntervals` tuplet invalidation tests**:
+   - `testOverlappingTupletsRemovedOnReplacement` — any
+     `ElementReplaceable` replacement that overlaps a tuplet's range
+     emits one `TupletRemoval` per overlapping tuplet.
+   - `testNonOverlappingTupletsUntouched` — a tuplet wholly outside
+     the modified range emits no mutations.
+   - `testElementModifiableLeavesTupletsAlone` — an `ElementModifiable`
+     action (accidental, fermata, etc.) on a selection that overlaps
+     tuplets emits no `TupletRemoval` records.
+7. **Update existing tests** in
    `CompositionDidChangeNotificationTest` that construct notifications via
    the deprecated constructors. All legacy-constructor calls should be
    replaced with the new `(List<Mutation>, Composition)` form.
-6. **Regression: verify layout invalidation fires** — add an integration
+8. **Regression: verify layout invalidation fires** — add an integration
    test that installs a spy `LinePanel` (or similar) and confirms that
    beam/tie/tuplet operations still trigger `invalidateLayout()` after the
    migration. This is the main user-visible correctness concern of the
@@ -627,6 +747,7 @@ that asserts on `ChangeType`-based APIs.
 
 - `src/test/java/songscribe/message/mutation/` (new record tests)
 - `src/test/java/songscribe/music/MusicEditOperationsMutationTest.java` (new)
+- `src/test/java/songscribe/ui/selection/SelectionCoordinatorValidateIntervalsTest.java` (new — beam repair + tuplet invalidation coverage)
 - `src/test/java/songscribe/ui/component/ScoreMessageCoordinatorTest.java` (extend)
 - `src/test/java/songscribe/message/notification/CompositionDidChangeNotificationTest.java` (update)
 
@@ -634,29 +755,28 @@ that asserts on `ChangeType`-based APIs.
 
 ## Deferred Work (out of scope; revisit when needed)
 
-1. **`validateIntervals` in `SelectionCoordinator`** — currently mutates
-   tie/beam/tuplet interval sets directly inside `applyActionToSelection`.
-   Phase 4 leaves it as a raw mutation; a follow-up should emit proper
-   `BeamingChange` / `TieChange` / `TupletChange` mutations so undo can
-   restore the pre-repair state.
-2. **Interval set snapshot cost** — `deepCopy()` copies every interval on
-   every interval-set mutation. For a selection spanning hundreds of notes
-   this is O(n). If profiling shows it matters, consider persistent
-   (copy-on-write) interval sets. Not needed today.
-3. **`ElementField` enum completeness** — Phase 2 adds the fields actually
-   used by current operations. New fields get added as new emitters arrive.
-4. **`applyActionToSelection` two-pass structure** — the method first
-   mutates every element then calls `validateIntervals`. A more faithful
-   mutation decomposition would emit per-element mutations followed by
-   interval-change mutations in the same bracket. The structure is already
-   correct; the deferred work is making `validateIntervals` explicit (item 1).
+1. **`TupletAction` enable/disable logic.** This plan removes the in-place
+   grade-change branch from `toggleTuplet` (see Phase 3). The corresponding
+   UI-level enable/disable rules for tuplet actions — and any related
+   adjustments to how grade changes are surfaced to users — are deferred
+   to a separate plan and are out of scope here.
+2. **Tie-validity predicate audit outside `validateIntervals`.** The
+   `validateIntervals` tie branch passed `isNote()` as its validity
+   predicate, which technically permits grace notes inside a tie — a state
+   that violates the "ties connect pitched notes only" invariant. This
+   plan deletes the predicate along with the dead tie branch, but the
+   same loose predicate may exist at other tie call sites (creation,
+   rendering, playback). A follow-up audit should grep for `isNote()` in
+   tie-handling code and tighten it to `isPitchedNote()` where
+   appropriate.
 
 ---
 
 ## Risk assessment
 
-**Scope estimate:** ~600 lines of production code across 6 files, ~300 lines
-of test code across 5–6 files, 5 new mutation record files.
+**Scope estimate:** ~550 lines of production code across 6 files, ~400 lines
+of test code across 6–7 files, 10 new mutation record files (each trivial:
+a line reference and an interval).
 
 **Risk areas:**
 
@@ -669,35 +789,22 @@ of test code across 5–6 files, 5 new mutation record files.
    writing `newUpper`) needs careful ordering to avoid capturing a
    half-mutated clone. Read-then-emit-then-write ordering is the safe
    pattern: compute `newUpper` first, then issue the `modifyElement` call.
-2. **Interval set snapshot ordering** — `BeamingChange`'s `newBeamings`
-   should be captured *after* the mutator runs. If captured inside the
-   mutator lambda it's pre-mutation. Use a local variable captured after
-   `applyChange` returns and re-wrap in a second `applyChange`... or, more
-   simply, capture the new snapshot via a post-mutator hook. The cleanest
-   implementation is to construct the record with a deferred-capture
-   pattern, e.g.:
-   ```java
-   var oldBeamings = line.getBeamings().deepCopy();
-   line.withModification(() -> {
-       // mutate the live set
-       beamings.addInterval(...);
-       var newBeamings = line.getBeamings().deepCopy();
-       line.applyChange(new BeamingChange(line, oldBeamings, newBeamings), () -> {});
-   });
-   ```
-   The empty-mutator `applyChange` is the same pattern `NoteDragHandler`
-   already uses for the pitch-drag record: "the mutation already happened;
-   emit a record for it." This is acceptable but slightly ugly. An
-   alternative is to make the mutation record carry only the *before*
-   snapshot and have subscribers derive *after* from the current live set
-   state, but that breaks encapsulation for undo.
-3. **`makeFirstSecondEnding` and `toggleTuplet` interaction with existing
-   mutations** — these methods call `line.addElement` / `line.addRangeElement`
-   which already emit mutations. Wrapping in a bracket produces *multiple*
-   mutations in one notification. Verify that
-   `ScoreMessageCoordinator.hasLineLayoutMutation` still fires for the
-   compound case (it should, because each component mutation implements
-   `LineScopedMutation`).
+2. **`makeFirstSecondEnding` compound mutations** — the method calls
+   `line.addElement` / `line.addRangeElement` which already emit their own
+   mutations. Wrapping in a bracket produces *multiple* mutations in one
+   notification. Verify that `ScoreMessageCoordinator.hasLineLayoutMutation`
+   still fires for the compound case (it should, because each component
+   mutation implements `LineScopedMutation`).
+3. **Beam repair semantic change** — the Phase 4 trim-and-kill rule
+   produces a different result than the current repair-and-split logic
+   when an interior element becomes non-beamable (see Phase 4 "Behavior
+   change note"). This is an intentional shift aligned with the musical
+   argument that a beam punctured in the middle isn't salvageable, but
+   existing scores may render differently after a targeted selection
+   edit. Surface the change in the commit message, add the Phase 7
+   `testBeamKilledWhenInteriorElementBecomesNonBeamable` test, and scan
+   the e2e suite for any snapshot test that depends on the old
+   split-into-sub-beams behavior.
 4. **E2E test coverage** — the interval-set operations are exercised by
    existing e2e tests. Run the full e2e suite after Phases 3–5 to catch
    any user-visible regressions.
@@ -717,3 +824,5 @@ of test code across 5–6 files, 5 new mutation record files.
    `composition.setModified(true)`.
 6. `ScoreMessageCoordinator.postSelectionContentChanged` is deleted.
 7. `Line.replaceElementQuietly` is deleted.
+8. `toggleTuplet` emits only `TupletAddition` or `TupletRemoval` mutations.
+   No in-place grade-change code path exists in `MusicEditOperations`.
