@@ -63,7 +63,8 @@
       "Read(~/Library/Logs/SongScribe/songscribe.log)",
       "Bash(rtk git:*)",
       "Bash(rtk read:*)",
-      "Bash(rtk write:*)"
+      "Bash(rtk write:*)",
+      "Bash(rtk grep:*)"
     ]
   },
   "hooks": {
