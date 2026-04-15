@@ -686,9 +686,10 @@ public class GlissandoRenderer {
             g2.translate(endpoints.startX(), endpoints.startY());
             g2.rotate(endpoints.angle());
             double thicknessSs = ScaleContext.getInstance().fromPixels(RECT_THICKNESS_PX);
-            g2.fill(new Rectangle2D.Double(
+            g2.fill(new RoundRectangle2D.Double(
                 0, -thicknessSs / 2.0,
-                length, thicknessSs
+                length, thicknessSs,
+                thicknessSs, thicknessSs
             ));
         }
     }
