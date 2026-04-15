@@ -71,6 +71,9 @@ class LineRenderer {
     /** The stroke used to draw the selection rectangle border. */
     private static final BasicStroke SELECTION_RECT_STROKE = new BasicStroke(2.0f);
 
+    /** Corner arc diameter for the rubber-band selection rectangle, in pixels. */
+    private static final int SELECTION_RECT_ARC_PX = 2;
+
     // ==========================================================================
     // Instance Fields
     // ==========================================================================
@@ -641,13 +644,14 @@ class LineRenderer {
             return;
         }
 
-        g2.setColor(FlatLafProps.get(FlatLafKeys.SCORE_SELECTION_RECT_FILL));
-        g2.fill(dragRectangle);
-
+        var roundRect = new RoundRectangle2D.Double(
+                dragRectangle.x, dragRectangle.y,
+                dragRectangle.width, dragRectangle.height,
+                SELECTION_RECT_ARC_PX, SELECTION_RECT_ARC_PX);
         var originalStroke = g2.getStroke();
         g2.setStroke(SELECTION_RECT_STROKE);
         g2.setColor(Score.getSelectionStrokeColor());
-        g2.draw(dragRectangle);
+        g2.draw(roundRect);
         g2.setStroke(originalStroke);
     }
 }
