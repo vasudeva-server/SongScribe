@@ -494,16 +494,19 @@ public class LayoutEngine {
             // Set auto stem direction: elements below the middle line (staffPosition > 0) get stems up.
             // This matches Score.defaultUpperNote: upper=true means stem up.
             if (element.isStemDirectionAuto()) {
-                element.setUpper(element.getStaffPosition() > 0);
+                element.setUpper(element.getType().isGraceNote() || element.getStaffPosition() > 0);
             }
 
             // isUpper() → stem up (upper=true means stem goes up)
             boolean stemsUp = element.isUpper();
             double elementYSs = element.getStaffPosition() * 0.5;
+            double stemLenSs = element.getType().isGraceNote()
+                ? LayoutStylesheet.GRACE_NOTE_STEM_LENGTH_SS
+                : MIN_STEM_SS;
 
             // Y increases downward: stem-up tip has smaller Y; stem-down tip has larger Y.
-            double topYSs = stemsUp ? elementYSs - MIN_STEM_SS : elementYSs;
-            double bottomYSs = stemsUp ? elementYSs : elementYSs + MIN_STEM_SS;
+            double topYSs = stemsUp ? elementYSs - stemLenSs : elementYSs;
+            double bottomYSs = stemsUp ? elementYSs : elementYSs + stemLenSs;
 
             builder.putStemLayout(element, new LayoutResult.StemLayout(topYSs, bottomYSs, 0.0, false));
         }
