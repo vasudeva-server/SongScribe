@@ -41,7 +41,6 @@ import songscribe.ui.Mode;
 import songscribe.ui.OptionDialogs;
 import songscribe.ui.action.Actions;
 import songscribe.ui.action.ElementTypeAction;
-import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.Score;
 import songscribe.ui.edit.EditModeManager;
 import songscribe.ui.layout.Ending;
@@ -214,7 +213,7 @@ public class PreviewElementManager {
      * Returns the line index of the element currently highlighted by preview element hover,
      * or -1 if the preview element's x-position does not match an existing element.
      */
-    public static int getHoveredElementLineIndex() {
+    public static int getXMatchedElementLineIndex() {
         return (xPosSsMatchesElement && currentPreviewLine != null)
             ? currentPreviewLine.getLineIndex()
             : -1;
@@ -224,7 +223,7 @@ public class PreviewElementManager {
      * Returns the element index of the element currently highlighted by preview element hover,
      * or -1 if the preview element's x-position does not match an existing element.
      */
-    public static int getHoveredElementIndex() {
+    public static int getXMatchedElementIndex() {
         return xPosSsMatchesElement ? currentXIndex : -1;
     }
 

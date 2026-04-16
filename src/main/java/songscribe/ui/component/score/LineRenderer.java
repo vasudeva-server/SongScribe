@@ -51,8 +51,6 @@ import songscribe.ui.renderer.TempoRenderer;
 import songscribe.ui.renderer.TieRenderer;
 import songscribe.ui.renderer.TrillRenderer;
 import songscribe.ui.renderer.TupletRenderer;
-import songscribe.ui.FlatLafKeys;
-import songscribe.ui.FlatLafProps;
 import songscribe.util.GraphicUtils;
 
 /**
@@ -74,8 +72,11 @@ class LineRenderer {
     /** Corner arc diameter for the rubber-band selection rectangle, in pixels. */
     private static final int SELECTION_RECT_ARC_PX = 2;
 
+    /** Alpha for the replaced-element highlight (semi-transparent red). */
+    private static final int REPLACED_ELEMENT_ALPHA = 70;
+
     /** Color for an existing element that will be replaced by the current preview element. */
-    private static final Color REPLACED_ELEMENT_COLOR = new Color(255, 0, 0, 70);
+    private static final Color REPLACED_ELEMENT_COLOR = new Color(255, 0, 0, REPLACED_ELEMENT_ALPHA);
 
     // ==========================================================================
     // Instance Fields
@@ -247,8 +248,8 @@ class LineRenderer {
             return color;
         }
 
-        var isHovered = PreviewElementManager.getHoveredElementLineIndex() == lc.getLineIndex()
-            && PreviewElementManager.getHoveredElementIndex() == elementIndex;
+        var isHovered = PreviewElementManager.getXMatchedElementLineIndex() == lc.getLineIndex()
+            && PreviewElementManager.getXMatchedElementIndex() == elementIndex;
 
         if (isHovered) {
             return REPLACED_ELEMENT_COLOR;

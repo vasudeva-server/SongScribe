@@ -133,8 +133,8 @@ public class BeamGroupRenderer extends BaseElementRenderer<LineElement> {
         }
 
         var lineIndex = ctx.getLineIndex();
-        var hoveredLineIndex = PreviewElementManager.getHoveredElementLineIndex();
-        var hoveredNoteIndex = PreviewElementManager.getHoveredElementIndex();
+        var hoveredLineIndex = PreviewElementManager.getXMatchedElementLineIndex();
+        var hoveredNoteIndex = PreviewElementManager.getXMatchedElementIndex();
         var anySelected = false;
         var anyHovered = false;
         var remainingBeamableNotes = 0;
