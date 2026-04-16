@@ -74,6 +74,9 @@ class LineRenderer {
     /** Corner arc diameter for the rubber-band selection rectangle, in pixels. */
     private static final int SELECTION_RECT_ARC_PX = 2;
 
+    /** Color for an existing element that will be replaced by the current preview element. */
+    private static final Color REPLACED_ELEMENT_COLOR = new Color(255, 0, 0, 70);
+
     // ==========================================================================
     // Instance Fields
     // ==========================================================================
@@ -248,7 +251,7 @@ class LineRenderer {
             && PreviewElementManager.getHoveredElementIndex() == elementIndex;
 
         if (isHovered) {
-            return Score.getPreviewElementColor();
+            return REPLACED_ELEMENT_COLOR;
         }
 
         var line = lc.getLine();

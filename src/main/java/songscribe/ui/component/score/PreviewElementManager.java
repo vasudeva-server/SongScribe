@@ -209,20 +209,20 @@ public class PreviewElementManager {
 
     /**
      * Returns the line index of the element currently highlighted by preview element hover,
-     * or -1 if the preview element is not hovering over an existing element head.
+     * or -1 if the preview element's x-position does not match an existing element.
      */
     public static int getHoveredElementLineIndex() {
-        return (xPosSsMatchesElement && yPosSpMatchesElement && currentPreviewLine != null)
+        return (xPosSsMatchesElement && currentPreviewLine != null)
             ? currentPreviewLine.getLineIndex()
             : -1;
     }
 
     /**
      * Returns the element index of the element currently highlighted by preview element hover,
-     * or -1 if the preview element is not hovering over an existing element head.
+     * or -1 if the preview element's x-position does not match an existing element.
      */
     public static int getHoveredElementIndex() {
-        return (xPosSsMatchesElement && yPosSpMatchesElement) ? currentXIndex : -1;
+        return xPosSsMatchesElement ? currentXIndex : -1;
     }
 
     /**
