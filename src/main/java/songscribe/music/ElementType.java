@@ -260,6 +260,25 @@ public enum ElementType {
     }
 
     /**
+     * Returns the X offset from this element's layout X to the ending bracket anchor point
+     * (the left vertical stroke of a volta bracket). For barlines and repeats, the anchor
+     * aligns with the center of the governing thin barline; for all other types, returns 0.
+     */
+    public double endingAnchorXOffsetSs(LineThickness lt) {
+        if (this == REPEAT_LEFT) {
+            // Layout: thick | sep | thin | sep | dots — anchor on the thin barline center
+            return lt.thickBarlineSs() + lt.barlineSeparationSs() + lt.thinBarlineSs() / 2;
+        }
+
+        if (isBarLine() || isRepeat()) {
+            // Generic: center on the rightmost thin barline
+            return fullWidthSs - lt.thinBarlineSs() / 2;
+        }
+
+        return 0;
+    }
+
+    /**
      * Returns the element height in staff spaces, excluding the stem for note types.
      */
     public double getFullElementHeightSs() {

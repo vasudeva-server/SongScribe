@@ -339,7 +339,7 @@ public final class MusicEditOperations {
 
             contentCount++;
 
-            if (type == ElementType.REPEAT_RIGHT) {
+            if (i < end && (type == ElementType.REPEAT_RIGHT || type == ElementType.REPEAT_LEFT_RIGHT)) {
                 if (rightRepeatIndex >= 0) {
                     return -1;
                 }
@@ -352,8 +352,17 @@ public final class MusicEditOperations {
             return -1;
         }
 
-        // Selection must end with a terminal element
-        if (!line.getElement(end).getType().isTerminal()) {
+        // Selection must end with an appropriate terminal element.
+        // A REPEAT_LEFT_RIGHT split requires the second ending to end with a right repeat.
+        var endType = line.getElement(end).getType();
+        var splitType = line.getElement(rightRepeatIndex).getType();
+
+        if (splitType == ElementType.REPEAT_LEFT_RIGHT) {
+            if (endType != ElementType.REPEAT_RIGHT && endType != ElementType.REPEAT_LEFT_RIGHT) {
+                return -1;
+            }
+        }
+        else if (!endType.isTerminal()) {
             return -1;
         }
 
@@ -417,11 +426,6 @@ public final class MusicEditOperations {
     // Walks backward from just before the selection start, across lines if needed,
     // looking for an enclosing repeated section.
     private boolean hasEnclosingRepeat(int lineIndex, int selectionBegin) {
-        // Special case: selection starts at beginning of composition
-        if (lineIndex == 0 && selectionBegin == 0) {
-            return false;
-        }
-
         // Determine starting point for backward search
         var searchLineIndex = lineIndex;
         var searchElementIndex = selectionBegin - 1;
@@ -430,7 +434,7 @@ public final class MusicEditOperations {
             searchLineIndex--;
 
             if (searchLineIndex < 0) {
-                return false;
+                return lineIndex == 0;
             }
 
             searchElementIndex = composition.getLine(searchLineIndex).elementCount() - 1;
@@ -447,7 +451,9 @@ public final class MusicEditOperations {
                     return true;
                 }
 
-                if (type == ElementType.REPEAT_RIGHT) {
+                if (type == ElementType.REPEAT_RIGHT
+                        || type == ElementType.DOUBLE_BARLINE
+                        || type == ElementType.FINAL_DOUBLE_BARLINE) {
                     return false;
                 }
 
@@ -462,8 +468,8 @@ public final class MusicEditOperations {
             }
         }
 
-        // Reached beginning of composition — eligible
-        return true;
+        // Reached beginning of composition — valid only on the first line
+        return lineIndex == 0;
     }
 
     // Examines the element immediately before the selection start and determines
@@ -493,8 +499,9 @@ public final class MusicEditOperations {
             var selectionLine = composition.getLine(lineIndex);
             var selectionBeginType = selectionLine.getElement(selectionBegin).getType();
 
-            if (selectionBeginType == ElementType.SINGLE_BARLINE) {
-                // Selection already starts with a barline — no insertion needed
+            if (selectionBeginType == ElementType.SINGLE_BARLINE
+                    || selectionBeginType == ElementType.REPEAT_LEFT) {
+                // Selection already starts with a barline or left repeat — no insertion needed
                 return EndingValidationResult.valid(
                     EndingValidationResult.PrecedingAction.NONE,
                     selectionBegin,

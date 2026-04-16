@@ -300,6 +300,208 @@ class LineMutationTest extends UnitTest {
     }
 
     // -----------------------------------------------------------------------
+    // Ending invalidation wiring
+    // -----------------------------------------------------------------------
+
+    /**
+     * Integration tests verifying that the {@link Line} mutation methods
+     * ({@code setElement}, {@code addElement(int,…)}, {@code removeElement},
+     * {@code removeRange}) remove an {@link Ending} from
+     * {@link Line#getRangeElements()} whenever the corresponding invalidation
+     * predicate returns {@code true}.
+     *
+     * <p>Canonical line layout (same as {@code EndingInvalidationTest}):
+     * <pre>
+     *  idx:  0             1        2        3             4        5        6
+     *        SINGLE_BAR    CROTCHET CROTCHET REPEAT_RIGHT  CROTCHET CROTCHET SINGLE_BAR
+     *        (anchor)                        (split)                          (end)
+     * </pre>
+     */
+    @Nested
+    class EndingInvalidationConditions {
+
+        private StaffElement anchor;
+        private StaffElement note1;
+        private StaffElement note2;
+        private StaffElement split;
+        private StaffElement note4;
+        private StaffElement note5;
+        private StaffElement end;
+        private Ending ending;
+
+        @BeforeEach
+        void setUpEnding() {
+            anchor = new StaffElement(ElementType.SINGLE_BARLINE);
+            note1  = new StaffElement(ElementType.CROTCHET);
+            note2  = new StaffElement(ElementType.CROTCHET);
+            split  = new StaffElement(ElementType.REPEAT_RIGHT);
+            note4  = new StaffElement(ElementType.CROTCHET);
+            note5  = new StaffElement(ElementType.CROTCHET);
+            end    = new StaffElement(ElementType.SINGLE_BARLINE);
+
+            composition.withoutMutationTracking(() -> {
+                line.addElement(anchor);
+                line.addElement(note1);
+                line.addElement(note2);
+                line.addElement(split);
+                line.addElement(note4);
+                line.addElement(note5);
+                line.addElement(end);
+            });
+
+            ending = new Ending(anchor, end, Ending.Type.FIRST);
+            composition.withoutMutationTracking(() -> line.addRangeElement(ending));
+        }
+
+        // -------------------------------------------------------------------
+        // setElement wiring (conditions 1, 2, 3)
+        // -------------------------------------------------------------------
+
+        @Test
+        void testSetElementAnchorWithDoubleBarlineRemovesEnding() {
+            // Condition 1: DOUBLE_BARLINE is not an allowed anchor type
+            composition.withModification(() ->
+                line.setElement(0, new StaffElement(ElementType.DOUBLE_BARLINE)));
+
+            assertThat(line.getRangeElements()).doesNotContain(ending);
+        }
+
+        @Test
+        void testSetElementAnchorWithRepeatLeftRetainsEnding() {
+            // Condition 1: REPEAT_LEFT is an allowed anchor type
+            composition.withModification(() ->
+                line.setElement(0, new StaffElement(ElementType.REPEAT_LEFT)));
+
+            assertThat(line.getRangeElements()).contains(ending);
+        }
+
+        @Test
+        void testSetElementSplitWithSingleBarlineRemovesEnding() {
+            // Condition 2: SINGLE_BARLINE is not an allowed split type
+            composition.withModification(() ->
+                line.setElement(3, new StaffElement(ElementType.SINGLE_BARLINE)));
+
+            assertThat(line.getRangeElements()).doesNotContain(ending);
+        }
+
+        @Test
+        void testSetElementSplitWithRepeatLeftRightEndNotRightRepeatRetainsEnding() {
+            // Condition 2: replacing split REPEAT_RIGHT → REPEAT_LEFT_RIGHT now returns
+            // CompensateEnd, not Invalidate, so isInvalidatedByReplacement returns false and
+            // the ending is retained. The UI layer handles the confirm and compensating change.
+            composition.withModification(() ->
+                line.setElement(3, new StaffElement(ElementType.REPEAT_LEFT_RIGHT)));
+
+            assertThat(line.getRangeElements()).contains(ending);
+        }
+
+        @Test
+        void testSetElementSplitWithRepeatLeftRightEndIsRightRepeatRetainsEnding() {
+            // Condition 2: REPEAT_LEFT_RIGHT is valid as split when end is a right repeat
+            var comp2 = new Composition();
+            var line2 = comp2.getLine(0);
+            var anchor2 = new StaffElement(ElementType.SINGLE_BARLINE);
+            var split2  = new StaffElement(ElementType.REPEAT_RIGHT);
+            var end2    = new StaffElement(ElementType.REPEAT_RIGHT);
+            comp2.withoutMutationTracking(() -> {
+                line2.addElement(anchor2);
+                line2.addElement(new StaffElement(ElementType.CROTCHET));
+                line2.addElement(new StaffElement(ElementType.CROTCHET));
+                line2.addElement(split2);
+                line2.addElement(new StaffElement(ElementType.CROTCHET));
+                line2.addElement(new StaffElement(ElementType.CROTCHET));
+                line2.addElement(end2);
+            });
+            var ending2 = new Ending(anchor2, end2, Ending.Type.FIRST);
+            comp2.withoutMutationTracking(() -> line2.addRangeElement(ending2));
+
+            comp2.withModification(() ->
+                line2.setElement(3, new StaffElement(ElementType.REPEAT_LEFT_RIGHT)));
+
+            assertThat(line2.getRangeElements()).contains(ending2);
+        }
+
+        @Test
+        void testSetElementEndWithNoteRemovesEnding() {
+            // Condition 3: a content element is not an allowed end type
+            composition.withModification(() ->
+                line.setElement(6, new StaffElement(ElementType.CROTCHET)));
+
+            assertThat(line.getRangeElements()).doesNotContain(ending);
+        }
+
+        @Test
+        void testSetElementEndWithFinalDoubleBarlineRetainsEnding() {
+            // Condition 3: FINAL_DOUBLE_BARLINE is a barline — allowed as end
+            composition.withModification(() ->
+                line.setElement(6, new StaffElement(ElementType.FINAL_DOUBLE_BARLINE)));
+
+            assertThat(line.getRangeElements()).contains(ending);
+        }
+
+        // -------------------------------------------------------------------
+        // addElement(int, StaffElement) wiring (condition 5)
+        // -------------------------------------------------------------------
+
+        @Test
+        void testInsertBarlineInFirstSpanInteriorRemovesEnding() {
+            // Condition 5: barline inserted at interior of first sub-span (index 2)
+            composition.withModification(() ->
+                line.addElement(2, new StaffElement(ElementType.SINGLE_BARLINE)));
+
+            assertThat(line.getRangeElements()).doesNotContain(ending);
+        }
+
+        @Test
+        void testInsertNoteInFirstSpanInteriorRetainsEnding() {
+            // Non-barline/non-repeat insertions never invalidate the ending
+            composition.withModification(() ->
+                line.addElement(2, new StaffElement(ElementType.CROTCHET)));
+
+            assertThat(line.getRangeElements()).contains(ending);
+        }
+
+        // -------------------------------------------------------------------
+        // removeElement wiring — sequential deletion (condition 4)
+        // -------------------------------------------------------------------
+
+        @Test
+        void testSequentialDeleteFirstSpanContentRemovesEndingOnLastNote() {
+            // After removing note1 the ending is still present (note2 remains in span).
+            composition.withModification(() -> line.removeElement(1));
+            assertThat(line.getRangeElements()).contains(ending);
+
+            // note2 has shifted to index 1; removing it empties the first span → ending gone.
+            composition.withModification(() -> line.removeElement(1));
+            assertThat(line.getRangeElements()).doesNotContain(ending);
+        }
+
+        // -------------------------------------------------------------------
+        // removeRange wiring (condition 4)
+        // -------------------------------------------------------------------
+
+        @Test
+        void testRemoveRangeAllFirstSpanContentRemovesEnding() {
+            // Deleting both first-span notes (indices 1–2) at once empties the sub-span
+            composition.withModification(() -> line.removeRange(1, 2));
+
+            assertThat(line.getRangeElements()).doesNotContain(ending);
+        }
+
+        // -------------------------------------------------------------------
+        // removeElement wiring — split deletion (condition 2)
+        // -------------------------------------------------------------------
+
+        @Test
+        void testRemoveSplitElementRemovesEnding() {
+            // Condition 2: deleting the REPEAT_RIGHT that separates first/second sub-spans
+            composition.withModification(() -> line.removeElement(3));
+
+            assertThat(line.getRangeElements()).doesNotContain(ending);
+        }
+    }
+
+    // -----------------------------------------------------------------------
     // Helpers
     // -----------------------------------------------------------------------
 

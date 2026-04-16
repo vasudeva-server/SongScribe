@@ -27,6 +27,8 @@ import java.util.List;
 import java.util.function.ToDoubleFunction;
 import java.util.stream.IntStream;
 
+import org.jspecify.annotations.Nullable;
+
 import songscribe.music.ElementType;
 import songscribe.music.Line;
 import songscribe.music.StaffElement;
@@ -93,6 +95,34 @@ public class Ending extends RangeElement {
         public String label() {
             return number + ".";
         }
+    }
+
+    /**
+     * Describes the effect of replacing one element with another on this ending.
+     * Used by the UI layer to decide whether to abort, confirm-and-invalidate,
+     * or confirm-and-compensate before calling {@link Line#setElement}.
+     */
+    public sealed interface EndingEffect
+        permits EndingEffect.None, EndingEffect.Invalidate,
+                EndingEffect.CompensateEnd, EndingEffect.CompensateSplit {
+
+        /** No ending is affected. */
+        record None() implements EndingEffect {}
+
+        /** The ending would be invalidated and removed. UI shows Confirm-I. */
+        record Invalidate(Ending ending) implements EndingEffect {}
+
+        /**
+         * The split is being changed in a way that requires the end element to also change.
+         * UI shows Confirm-R and, on Yes, applies primary split change + compensating end change.
+         */
+        record CompensateEnd(Ending ending, ElementType newEndType) implements EndingEffect {}
+
+        /**
+         * The end is being changed in a way that requires the split element to also change.
+         * UI shows Confirm-R and, on Yes, applies primary end change + compensating split change.
+         */
+        record CompensateSplit(Ending ending, ElementType newSplitType) implements EndingEffect {}
     }
 
     private Type type = Type.FIRST;
@@ -197,11 +227,12 @@ public class Ending extends RangeElement {
 
         var startElement = line.getElement(start);
 
-        // Adjust start leftward if previous element is a barline
+        // Adjust start leftward if previous element is a barline or repeat
         if (start > 0) {
             var previousElement = line.getElement(start - 1);
+            var prevType = previousElement.getType();
 
-            if (previousElement.getType() == ElementType.SINGLE_BARLINE) {
+            if (prevType.isBarLine() || prevType.isRepeat()) {
                 --start;
                 startElement = previousElement;
             }
@@ -214,10 +245,12 @@ public class Ending extends RangeElement {
         // First bracket (before repeat, or entire span if no repeat)
         if (start < repeatSplitIndex || repeatSplitIndex == -1) {
             double x1 = elementXSs.applyAsDouble(startElement);
+            var startType = startElement.getType();
 
-            // Align with barline center, or go halfway to previous element
-            if (startElement.getType() == ElementType.SINGLE_BARLINE) {
-                x1 += lt.thinBarlineSs() / 2;
+            // For barlines and repeats, align to the governing thin barline center.
+            // For notes/rests, go halfway to the previous element's right edge.
+            if (startType.isBarLine() || startType.isRepeat()) {
+                x1 += startType.endingAnchorXOffsetSs(lt);
             }
             else if (start > 0) {
                 var prevElement = line.getElement(start - 1);
@@ -383,6 +416,207 @@ public class Ending extends RangeElement {
             labelWidthSs, LABEL_Y_OFFSET_SS + labelHeightSs));
 
         return regions;
+    }
+
+    /**
+     * Returns true if deleting the given elements invalidates this ending beyond what
+     * {@link RangeElement#isInvalidatedBy} already detects.
+     * <p>
+     * Must be called on the <em>pre-deletion</em> line state so indices are stable.
+     * Checks:
+     * <ul>
+     *   <li>Condition 2: the REPEAT_RIGHT that splits first/second sub-spans is deleted.</li>
+     *   <li>Condition 4: all content elements in either sub-span are deleted.</li>
+     * </ul>
+     *
+     * @param deletedElements elements about to be deleted
+     * @param line            the owning line (pre-deletion state)
+     */
+    public boolean isInvalidatedByDeletion(List<StaffElement> deletedElements, Line line) {
+        // Condition 2: REPEAT_RIGHT split element is deleted
+        var splitElement = findRepeatSplitElement(line);
+
+        if (splitElement != null && deletedElements.contains(splitElement)) {
+            return true;
+        }
+
+        // Condition 4: all content elements in either sub-span are deleted
+        var anchorIndex = getAnchorElementIndex();
+        var endIndex = getEndElementIndex();
+
+        if (anchorIndex < 0 || endIndex < 0) {
+            return false;
+        }
+
+        if (splitElement != null) {
+            var splitIndex = line.getElementIndex(splitElement);
+            var firstContent = IntStream.range(anchorIndex + 1, splitIndex)
+                .mapToObj(line::getElement)
+                .filter(el -> el.getType().isContentElement())
+                .toList();
+            var secondContent = IntStream.range(splitIndex + 1, endIndex)
+                .mapToObj(line::getElement)
+                .filter(el -> el.getType().isContentElement())
+                .toList();
+
+            return (!firstContent.isEmpty() && deletedElements.containsAll(firstContent))
+                || (!secondContent.isEmpty() && deletedElements.containsAll(secondContent));
+        }
+        else {
+            var singleContent = IntStream.range(anchorIndex + 1, endIndex)
+                .mapToObj(line::getElement)
+                .filter(el -> el.getType().isContentElement())
+                .toList();
+
+            return !singleContent.isEmpty() && deletedElements.containsAll(singleContent);
+        }
+    }
+
+    /**
+     * Returns the effect of replacing {@code oldElement} with {@code newElement} on this ending.
+     *
+     * @param oldElement the element being replaced (still in the line at call time)
+     * @param newElement the replacement element
+     * @param line       the owning line (pre-replacement state)
+     */
+    public EndingEffect checkReplacement(
+        StaffElement oldElement, StaffElement newElement, Line line
+    ) {
+        var newType = newElement.getType();
+
+        // Condition 1 — anchor replaced
+        if (oldElement == getAnchorElement()) {
+            return (newType == ElementType.SINGLE_BARLINE || newType == ElementType.REPEAT_LEFT)
+                ? new EndingEffect.None()
+                : new EndingEffect.Invalidate(this);
+        }
+
+        var splitEl = findRepeatSplitElement(line);
+
+        // Condition 2 — split element replaced
+        if (splitEl != null && oldElement == splitEl) {
+            if (newType == ElementType.REPEAT_RIGHT) {
+                // REPEAT_RIGHT → REPEAT_RIGHT: no change needed
+                if (splitEl.getType() == ElementType.REPEAT_RIGHT) {
+                    return new EndingEffect.None();
+                }
+                // REPEAT_LEFT_RIGHT → REPEAT_RIGHT: end must become SINGLE_BARLINE
+                return new EndingEffect.CompensateEnd(this, ElementType.SINGLE_BARLINE);
+            }
+
+            if (newType == ElementType.REPEAT_LEFT_RIGHT) {
+                // REPEAT_LEFT_RIGHT → REPEAT_LEFT_RIGHT: no change needed
+                if (splitEl.getType() == ElementType.REPEAT_LEFT_RIGHT) {
+                    return new EndingEffect.None();
+                }
+                // REPEAT_RIGHT → REPEAT_LEFT_RIGHT: end must become REPEAT_RIGHT
+                return new EndingEffect.CompensateEnd(this, ElementType.REPEAT_RIGHT);
+            }
+
+            // Any other type: invalidate
+            return new EndingEffect.Invalidate(this);
+        }
+
+        // Condition 3 — end element replaced
+        if (oldElement == getEndElement()) {
+            if (!newType.isBarLine() && !newType.isRepeat()) {
+                return new EndingEffect.Invalidate(this);
+            }
+
+            if (splitEl != null && splitEl.getType() == ElementType.REPEAT_LEFT_RIGHT) {
+                // Split is REPEAT_LEFT_RIGHT: end must remain REPEAT_RIGHT or REPEAT_LEFT_RIGHT
+                return (newType == ElementType.REPEAT_RIGHT || newType == ElementType.REPEAT_LEFT_RIGHT)
+                    ? new EndingEffect.None()
+                    : new EndingEffect.CompensateSplit(this, ElementType.REPEAT_RIGHT);
+            }
+
+            // Split is REPEAT_RIGHT: end must be isTerminal()
+            return newType.isTerminal()
+                ? new EndingEffect.None()
+                : new EndingEffect.CompensateSplit(this, ElementType.REPEAT_LEFT_RIGHT);
+        }
+
+        return new EndingEffect.None();
+    }
+
+    /**
+     * Returns true if replacing {@code oldElement} with {@code newElement} invalidates
+     * this ending. Covers conditions 1, 2, and 3 from issue #261.
+     *
+     * @param oldElement the element being replaced (still in the line at call time)
+     * @param newElement the element that will replace it
+     * @param line       the owning line
+     */
+    public boolean isInvalidatedByReplacement(
+        StaffElement oldElement, StaffElement newElement, Line line
+    ) {
+        return checkReplacement(oldElement, newElement, line) instanceof EndingEffect.Invalidate;
+    }
+
+    /**
+     * Returns true if inserting an element of {@code insertedType} at {@code insertedIndex}
+     * invalidates this ending (condition 5 from issue #261).
+     * <p>
+     * Must be called on the <em>pre-insertion</em> line state.
+     *
+     * @param insertedIndex the index at which the element will be inserted (pre-insertion)
+     * @param insertedType  the type of the element being inserted
+     * @param line          the owning line (pre-insertion state)
+     */
+    public boolean isInvalidatedByInsertion(
+        int insertedIndex, ElementType insertedType, Line line
+    ) {
+        if (!insertedType.isBarLine() && !insertedType.isRepeat()) {
+            return false;
+        }
+
+        var anchorIndex = getAnchorElementIndex();
+        var endIndex = getEndElementIndex();
+
+        if (anchorIndex < 0 || endIndex < 0) {
+            return false;
+        }
+
+        if (insertedIndex <= anchorIndex || insertedIndex >= endIndex) {
+            return false;
+        }
+
+        var splitEl = findRepeatSplitElement(line);
+
+        if (splitEl != null) {
+            var splitIndex = line.getElementIndex(splitEl);
+            // Inserting at the split boundary is allowed; anywhere else interior is not
+            return insertedIndex != splitIndex;
+        }
+        else {
+            // No split: any interior barline/repeat invalidates the ending
+            return true;
+        }
+    }
+
+    /**
+     * Finds the REPEAT_RIGHT element that splits the first and second sub-spans,
+     * scanning live indices between anchor and end.
+     * <p>
+     * Returns {@code null} if no such element exists or the anchor/end indices are invalid.
+     * Shared by {@link #isInvalidatedByDeletion} and the replacement/insertion checks.
+     */
+    public @Nullable StaffElement findRepeatSplitElement(Line line) {
+        var anchorIndex = getAnchorElementIndex();
+        var endIndex = getEndElementIndex();
+
+        if (anchorIndex < 0 || endIndex < 0) {
+            return null;
+        }
+
+        return IntStream.range(anchorIndex + 1, endIndex)
+            .mapToObj(line::getElement)
+            .filter(el -> {
+                var type = el.getType();
+                return type == ElementType.REPEAT_RIGHT || type == ElementType.REPEAT_LEFT_RIGHT;
+            })
+            .findFirst()
+            .orElse(null);
     }
 
     @Override

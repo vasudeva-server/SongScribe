@@ -36,15 +36,18 @@ import songscribe.music.ElementType;
 import songscribe.music.Line;
 import songscribe.music.StaffElement;
 import songscribe.ui.Control;
-import songscribe.ui.OptionDialogs;
+import songscribe.ui.EndingConfirms;
 import songscribe.ui.Mode;
+import songscribe.ui.OptionDialogs;
 import songscribe.ui.action.Actions;
 import songscribe.ui.action.ElementTypeAction;
+import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.Score;
 import songscribe.ui.edit.EditModeManager;
-import songscribe.ui.layout.LayoutStylesheet;
+import songscribe.ui.layout.Ending;
 import songscribe.ui.layout.InsertionSpacingCalculator;
 import songscribe.ui.layout.LayoutResult;
+import songscribe.ui.layout.LayoutStylesheet;
 import songscribe.ui.layout.ScaleContext;
 import songscribe.message.notification.ModeDidChangeNotification;
 import songscribe.message.notification.PlaybackStateDidChangeNotification;
@@ -778,6 +781,13 @@ public class PreviewElementManager {
         }
 
         previewElement.setXPosSs(ScaleContext.getInstance().toRoundedPixels(insertion.insertedElementXSs()));
+
+        if (line.hasEndingInvalidatedByInsertion(xIndex, previewElement.getType())) {
+            if (!EndingConfirms.confirmInvalidation()) {
+                return;
+            }
+        }
+
         line.addElement(xIndex, previewElement);
         var shift = ScaleContext.getInstance().toRoundedPixels(insertion.shiftForSubsequentElementsSs());
 
@@ -910,6 +920,27 @@ public class PreviewElementManager {
         if (existing.getType() != previewElement.getType()
                 || existing.getDotCount() != previewElement.getDotCount()) {
             line.removeOverlappingTuplets(elementIndex, elementIndex);
+        }
+
+        // Check whether replacing this element would affect a first-second ending,
+        // and show the appropriate confirmation dialog if so.
+        var endingEffect = line.findEndingReplacementEffect(elementIndex, previewElement);
+
+        if (endingEffect instanceof Ending.EndingEffect.Invalidate) {
+            if (!EndingConfirms.confirmInvalidation()) {
+                return;
+            }
+            // proceed: line.setElement will remove the ending via isInvalidatedByReplacement
+        } else if (endingEffect instanceof Ending.EndingEffect.CompensateEnd ce) {
+            if (!EndingConfirms.confirmCompensateEnd(ce)) {
+                return;
+            }
+            EndingConfirms.applyCompensatingEndChange(line, ce);
+        } else if (endingEffect instanceof Ending.EndingEffect.CompensateSplit cs) {
+            if (!EndingConfirms.confirmCompensateSplit(cs, previewElement.getType())) {
+                return;
+            }
+            EndingConfirms.applyCompensatingSplitChange(line, cs);
         }
 
         // Replace the element entirely (line.setElement marks the composition modified)

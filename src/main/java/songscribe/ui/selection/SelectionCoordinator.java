@@ -41,9 +41,12 @@ import songscribe.message.notification.MusicSelectionDidChangeNotification;
 import songscribe.music.Composition;
 import songscribe.music.Line;
 import songscribe.music.StaffElement;
-import songscribe.ui.component.score.LineComponent;
+import songscribe.ui.EndingConfirms;
 import songscribe.ui.action.Actions;
 import songscribe.ui.action.UIAction;
+import songscribe.ui.component.MainFrame;
+import songscribe.ui.component.score.LineComponent;
+import songscribe.ui.layout.Ending;
 
 /**
  * Lightweight score-level coordinator that tracks which line (if any) has
@@ -585,6 +588,25 @@ public final class SelectionCoordinator {
                     }
 
                     var replacement = replaceable.createReplacement(element, selected);
+                    var effect = line.findEndingReplacementEffect(i, replacement);
+
+                    if (effect instanceof Ending.EndingEffect.Invalidate) {
+                        if (!EndingConfirms.confirmInvalidation()) {
+                            continue;
+                        }
+                        // proceed: line.setElement will remove the ending via isInvalidatedByReplacement
+                    } else if (effect instanceof Ending.EndingEffect.CompensateEnd ce) {
+                        if (!EndingConfirms.confirmCompensateEnd(ce)) {
+                            continue;
+                        }
+                        EndingConfirms.applyCompensatingEndChange(line, ce);
+                    } else if (effect instanceof Ending.EndingEffect.CompensateSplit cs) {
+                        if (!EndingConfirms.confirmCompensateSplit(cs, replacement.getType())) {
+                            continue;
+                        }
+                        EndingConfirms.applyCompensatingSplitChange(line, cs);
+                    }
+
                     line.setElement(i, replacement);
                     needsSpanCleanup = true;
                 } else if (action instanceof UIAction.ElementModifiable modifiable) {

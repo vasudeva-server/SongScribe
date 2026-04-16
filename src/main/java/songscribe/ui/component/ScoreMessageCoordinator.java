@@ -59,6 +59,7 @@ import songscribe.message.notification.PlaybackStateDidChangeNotification;
 import songscribe.message.notification.RestModeDidChangeNotification;
 import songscribe.music.Line;
 import songscribe.music.LyricsProcessor;
+import songscribe.ui.EndingConfirms;
 import songscribe.ui.Mode;
 import songscribe.ui.MusicEditOperations;
 import songscribe.ui.OptionDialogs;
@@ -400,6 +401,12 @@ public final class ScoreMessageCoordinator {
             var line = state.getLine();
             var begin = state.getSelectionBegin();
             var end = state.getSelectionEnd();
+
+            if (line.hasEndingInvalidatedByDeletion(line.getElements(begin, end))) {
+                if (!EndingConfirms.confirmInvalidation()) {
+                    return;
+                }
+            }
 
             // When the element immediately before the selection is a paired grace note,
             // deleteNote must remove it along with the first selected note — a non-contiguous

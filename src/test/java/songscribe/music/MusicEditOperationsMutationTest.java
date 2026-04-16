@@ -25,6 +25,7 @@ import static org.mockito.Mockito.mockStatic;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -451,6 +452,171 @@ class MusicEditOperationsMutationTest extends UnitTest {
     }
 
     // -----------------------------------------------------------------------
+    // canMakeFirstSecondEnding — REPEAT_LEFT_RIGHT split validation
+    // -----------------------------------------------------------------------
+
+    /**
+     * Verifies that {@code canMakeFirstSecondEnding} applies the correct terminal constraint
+     * when the split is a {@code REPEAT_LEFT_RIGHT}: the second ending must end with
+     * {@code REPEAT_RIGHT} or {@code REPEAT_LEFT_RIGHT}.
+     *
+     * <p>Canonical line layout for all tests in this class:
+     * <pre>
+     *  idx:  0            1        2        3                  4        5        6
+     *        REPEAT_LEFT  CROTCHET CROTCHET REPEAT_LEFT_RIGHT  CROTCHET CROTCHET [terminal]
+     * </pre>
+     * Selection covers indices 1–6. The REPEAT_LEFT at index 0 satisfies the preceding-element
+     * and enclosing-repeat requirements.
+     */
+    @Nested
+    class CanMakeFirstSecondEndingWithRepeatLeftRightSplit {
+
+        private Env buildEnv(StaffElement terminal) {
+            return setup(
+                repeatLeft(), crotchet(), crotchet(), repeatLeftRight(), crotchet(), crotchet(), terminal
+            );
+        }
+
+        @Test
+        void testRepeatRightTerminalIsValid() {
+            // REPEAT_RIGHT closes the second ending's repeat section — valid
+            var env = buildEnv(repeatRight());
+            ReflectionTestHelper.selectRange(env.coordinator(), 1, 6);
+            assertThat(env.operations().canMakeFirstSecondEnding().isValid()).isTrue();
+        }
+
+        @Test
+        void testRepeatLeftRightTerminalIsValid() {
+            // REPEAT_LEFT_RIGHT closes the second ending and opens a new repeat — valid
+            var env = buildEnv(repeatLeftRight());
+            ReflectionTestHelper.selectRange(env.coordinator(), 1, 6);
+            assertThat(env.operations().canMakeFirstSecondEnding().isValid()).isTrue();
+        }
+
+        @Test
+        void testSingleBarlineTerminalIsInvalid() {
+            // SINGLE_BARLINE does not close the second ending's repeat — invalid
+            var env = buildEnv(singleBarline());
+            ReflectionTestHelper.selectRange(env.coordinator(), 1, 6);
+            assertThat(env.operations().canMakeFirstSecondEnding().isValid()).isFalse();
+        }
+
+        @Test
+        void testRepeatLeftTerminalIsInvalid() {
+            // REPEAT_LEFT does not close any repeat — invalid
+            var env = buildEnv(repeatLeft());
+            ReflectionTestHelper.selectRange(env.coordinator(), 1, 6);
+            assertThat(env.operations().canMakeFirstSecondEnding().isValid()).isFalse();
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // hasEnclosingRepeat — backward-scan delimiter rules
+    // -----------------------------------------------------------------------
+
+    /**
+     * Verifies the updated backward-scan rules in {@code hasEnclosingRepeat}:
+     * double barlines act as section delimiters, reaching the beginning of a
+     * non-first line is invalid, and reaching the beginning of the first line
+     * is valid.
+     */
+    @Nested
+    class HasEnclosingRepeatRules {
+
+        // DOUBLE_BARLINE between REPEAT_LEFT and selection stops the scan
+        @Test
+        void testDoubleBarlineBlocksScan() {
+            // idx: 0            1        2        3              4        5        6             7        8        9
+            //      REPEAT_LEFT  CROTCHET CROTCHET DOUBLE_BARLINE CROTCHET CROTCHET REPEAT_RIGHT  CROTCHET CROTCHET SINGLE_BARLINE
+            // Selection 4–9 hits DOUBLE_BARLINE before reaching REPEAT_LEFT → invalid
+            var env = setup(
+                repeatLeft(), crotchet(), crotchet(), doubleBarline(),
+                crotchet(), crotchet(), repeatRight(), crotchet(), crotchet(), singleBarline()
+            );
+            ReflectionTestHelper.selectRange(env.coordinator(), 4, 9);
+            assertThat(env.operations().canMakeFirstSecondEnding().isValid()).isFalse();
+        }
+
+        // FINAL_DOUBLE_BARLINE between REPEAT_LEFT and selection stops the scan
+        @Test
+        void testFinalDoubleBarlineBlocksScan() {
+            // Same layout, FINAL_DOUBLE_BARLINE at idx 3 instead of DOUBLE_BARLINE
+            var env = setup(
+                repeatLeft(), crotchet(), crotchet(), finalDoubleBarline(),
+                crotchet(), crotchet(), repeatRight(), crotchet(), crotchet(), singleBarline()
+            );
+            ReflectionTestHelper.selectRange(env.coordinator(), 4, 9);
+            assertThat(env.operations().canMakeFirstSecondEnding().isValid()).isFalse();
+        }
+
+        // First line: reaching beginning of composition without a left repeat is valid
+        @Test
+        void testFirstLineNoRepeatIsValid() {
+            // The Composition always starts with an initial line at index 0. Populate it
+            // directly so the test line is at lineIndex 0, exercising the first-line exception.
+            //
+            // idx: 0        1        2             3        4        5
+            //      CROTCHET CROTCHET REPEAT_RIGHT  CROTCHET CROTCHET SINGLE_BARLINE
+            // Selection 1–5. Scan finds CROTCHET at idx 0 then reaches beginning; lineIndex==0 → valid
+            var line = composition.getLine(0);
+            composition.withoutMutationTracking(() -> {
+                line.addElement(crotchet());
+                line.addElement(crotchet());
+                line.addElement(repeatRight());
+                line.addElement(crotchet());
+                line.addElement(crotchet());
+                line.addElement(singleBarline());
+            });
+            var coordinator = ReflectionTestHelper.createCoordinatorForLine(line);
+            var ops = new MusicEditOperations(composition, coordinator);
+            messageCenterMock = mockStatic(MessageCenter.class);
+
+            ReflectionTestHelper.selectRange(coordinator, 1, 5);
+            assertThat(ops.canMakeFirstSecondEnding().isValid()).isTrue();
+        }
+
+        // Non-first line: reaching beginning of composition without a left repeat is invalid
+        @Test
+        void testNonFirstLineNoRepeatIsInvalid() {
+            // Line 0: CROTCHET CROTCHET CROTCHET
+            // Line 1: CROTCHET CROTCHET REPEAT_RIGHT  CROTCHET CROTCHET SINGLE_BARLINE
+            //         idx: 0        1        2             3        4        5
+            // Selection 0–5 on line 1. No repeat found; lineIndex==1 → invalid
+            var line0 = new Line();
+            line0.addElement(crotchet());
+            line0.addElement(crotchet());
+            line0.addElement(crotchet());
+            composition.addLine(line0);
+
+            var env = setup(
+                crotchet(), crotchet(), repeatRight(), crotchet(), crotchet(), singleBarline()
+            );
+            ReflectionTestHelper.selectRange(env.coordinator(), 0, 5);
+            assertThat(env.operations().canMakeFirstSecondEnding().isValid()).isFalse();
+        }
+
+        // Non-first line: REPEAT_LEFT on previous line crosses the line boundary → valid
+        @Test
+        void testRepeatLeftOnPreviousLineIsValid() {
+            // Line 0: REPEAT_LEFT  CROTCHET  CROTCHET
+            // Line 1: CROTCHET CROTCHET REPEAT_RIGHT  CROTCHET CROTCHET SINGLE_BARLINE
+            //         idx: 0        1        2             3        4        5
+            // Selection 0–5 on line 1. Scan crosses to line 0, finds REPEAT_LEFT → valid
+            var line0 = new Line();
+            line0.addElement(repeatLeft());
+            line0.addElement(crotchet());
+            line0.addElement(crotchet());
+            composition.addLine(line0);
+
+            var env = setup(
+                crotchet(), crotchet(), repeatRight(), crotchet(), crotchet(), singleBarline()
+            );
+            ReflectionTestHelper.selectRange(env.coordinator(), 0, 5);
+            assertThat(env.operations().canMakeFirstSecondEnding().isValid()).isTrue();
+        }
+    }
+
+    // -----------------------------------------------------------------------
     // Element factory methods
     // -----------------------------------------------------------------------
 
@@ -464,5 +630,29 @@ class MusicEditOperationsMutationTest extends UnitTest {
 
     private static StaffElement crotchetRest() {
         return ElementType.CROTCHET_REST.newInstance();
+    }
+
+    private static StaffElement repeatLeft() {
+        return ElementType.REPEAT_LEFT.newInstance();
+    }
+
+    private static StaffElement repeatRight() {
+        return ElementType.REPEAT_RIGHT.newInstance();
+    }
+
+    private static StaffElement repeatLeftRight() {
+        return ElementType.REPEAT_LEFT_RIGHT.newInstance();
+    }
+
+    private static StaffElement singleBarline() {
+        return ElementType.SINGLE_BARLINE.newInstance();
+    }
+
+    private static StaffElement doubleBarline() {
+        return ElementType.DOUBLE_BARLINE.newInstance();
+    }
+
+    private static StaffElement finalDoubleBarline() {
+        return ElementType.FINAL_DOUBLE_BARLINE.newInstance();
     }
 }

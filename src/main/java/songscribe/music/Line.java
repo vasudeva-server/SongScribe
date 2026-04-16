@@ -267,24 +267,51 @@ public class Line {
             removeTuplet(tuplet);
         }
 
+        var insertedType = element.getType();
+        var endingsToRemove = rangeElements.stream()
+            .filter(r -> r instanceof Ending e && e.isInvalidatedByInsertion(index, insertedType, this))
+            .toList();
+
         applyChange(
             new ElementInsertion(this, index, element),
             () -> {
                 elements.add(index, element);
                 shiftSpans(spanSets, index, 1);
                 attachInitialTempoIfNeeded(element);
+                rangeElements.removeIf(endingsToRemove::contains);
             }
         );
     }
 
     public void setElement(int index, StaffElement element) {
         var oldElement = elements.get(index);
+        // Pre-compute before the mutator so findRepeatSplitElement sees the pre-replacement line.
+        var endingsToRemove = rangeElements.stream()
+            .filter(r -> r instanceof Ending ending &&
+                         ending.isInvalidatedByReplacement(oldElement, element, this))
+            .toList();
+
         applyChange(
             new ElementReplacement(this, index, oldElement, element),
             () -> {
                 element.setLine(this);
                 elements.set(index, element);
                 attachInitialTempoIfNeeded(element);
+                rangeElements.removeIf(endingsToRemove::contains);
+
+                // Update stale anchor/end references in surviving endings so that
+                // getAnchorElementIndex()/getEndElementIndex() remain valid after the swap.
+                for (var r : rangeElements) {
+                    if (r instanceof Ending ending) {
+                        if (ending.getAnchorElement() == oldElement) {
+                            ending.setAnchorElement(element);
+                        }
+
+                        if (ending.getEndElement() == oldElement) {
+                            ending.setEndElement(element);
+                        }
+                    }
+                }
             }
         );
     }
@@ -348,12 +375,18 @@ public class Line {
     public void removeElement(int index) {
         removeOverlappingTuplets(index, index);
         var deleted = elements.get(index);
+        var deletedList = List.of(deleted);
+        var endingsToRemove = rangeElements.stream()
+            .filter(r -> r instanceof Ending e && e.isInvalidatedByDeletion(deletedList, this))
+            .toList();
+
         applyChange(
             new ElementDeletion(this, index, deleted),
             () -> {
                 elements.remove(index);
                 shiftSpans(spanSets, index, -1);
-                rangeElements.removeIf(r -> r.isInvalidatedBy(List.of(deleted)));
+                rangeElements.removeIf(r ->
+                    r.isInvalidatedBy(deletedList) || endingsToRemove.contains(r));
             }
         );
     }
@@ -362,28 +395,23 @@ public class Line {
      * Removes all elements in the contiguous range {@code [from, to]} (inclusive)
      * and posts a single {@link ElementRangeDeletion} mutation.
      *
-     * <pre>
-     *  removeRange(from, to)
-     *    └─ composition.applyChange(ElementRangeDeletion, () -> {
-     *         ├─ var deletedElements = List.copyOf(elements.subList(from, to+1));
-     *         ├─ elements.subList(from, to+1).clear();
-     *         ├─ shiftSpans(from, -(to-from+1));
-     *         └─ rangeElements.removeIf(r -> r.isInvalidatedBy(deletedElements));
-     *       });
-     * </pre>
-     *
      * @param from the index of the first element to remove
      * @param to   the index of the last element to remove (inclusive)
      */
     public void removeRange(int from, int to) {
         removeOverlappingTuplets(from, to);
         var deletedElements = List.copyOf(elements.subList(from, to + 1));
+        var endingsToRemove = rangeElements.stream()
+            .filter(r -> r instanceof Ending e && e.isInvalidatedByDeletion(deletedElements, this))
+            .toList();
+
         applyChange(
             new ElementRangeDeletion(this, from, to, deletedElements),
             () -> {
                 elements.subList(from, to + 1).clear();
                 shiftSpans(spanSets, from, -(to - from + 1));
-                rangeElements.removeIf(r -> r.isInvalidatedBy(deletedElements));
+                rangeElements.removeIf(r ->
+                    r.isInvalidatedBy(deletedElements) || endingsToRemove.contains(r));
             }
         );
     }
@@ -862,6 +890,50 @@ public class Line {
         }
 
         return false;
+    }
+
+    /**
+     * Returns the effect of replacing the element at {@code index} with {@code newElement}
+     * on any Ending in this line. Returns {@link Ending.EndingEffect.None} if no ending
+     * is affected.
+     * <p>
+     * Call before {@link #setElement} to determine whether a confirmation dialog is needed.
+     */
+    public Ending.EndingEffect findEndingReplacementEffect(int index, StaffElement newElement) {
+        var oldElement = elements.get(index);
+
+        return rangeElements.stream()
+            .filter(r -> r instanceof Ending)
+            .map(r -> ((Ending) r).checkReplacement(oldElement, newElement, this))
+            .filter(e -> !(e instanceof Ending.EndingEffect.None))
+            .findFirst()
+            .orElse(new Ending.EndingEffect.None());
+    }
+
+    /**
+     * Returns true if deleting {@code deletedElements} would remove any Ending in this line.
+     * Checks both {@link RangeElement#isInvalidatedBy} (anchor/end deleted) and
+     * {@link Ending#isInvalidatedByDeletion} (split deleted, sub-span emptied).
+     * <p>
+     * {@code deletedElements} must reflect the pre-deletion line state.
+     */
+    public boolean hasEndingInvalidatedByDeletion(List<StaffElement> deletedElements) {
+        return rangeElements.stream()
+            .anyMatch(r -> r instanceof Ending e &&
+                           (e.isInvalidatedBy(deletedElements) ||
+                            e.isInvalidatedByDeletion(deletedElements, this)));
+    }
+
+    /**
+     * Returns true if inserting an element of {@code insertedType} at {@code insertedIndex}
+     * would remove any Ending in this line.
+     * <p>
+     * Call before {@link #addElement(int, StaffElement)}.
+     */
+    public boolean hasEndingInvalidatedByInsertion(int insertedIndex, ElementType insertedType) {
+        return rangeElements.stream()
+            .anyMatch(r -> r instanceof Ending e &&
+                           e.isInvalidatedByInsertion(insertedIndex, insertedType, this));
     }
 
     // =========================================================================
