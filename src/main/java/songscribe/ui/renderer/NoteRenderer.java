@@ -527,9 +527,8 @@ public class NoteRenderer extends BaseElementRenderer<StaffElement> {
             return;
         }
 
-        double noteheadWidthSs = getNoteheadRightEdgeSs(note);
-        double ledgerWidthSs = noteheadWidthSs + 2 * extensionSs;
-        double centerXSs = noteheadWidthSs / 2.0;
+        double ledgerWidthSs = getLedgerLineWidthSs(note, extensionSs);
+        double centerXSs = getLedgerLineCenterXSs(note);
 
         forEachLedgerLineYSs(note.getStaffPosition(),
             y -> drawLedgerLine(g2, centerXSs, y, ledgerWidthSs, ctx));
@@ -790,6 +789,14 @@ public class NoteRenderer extends BaseElementRenderer<StaffElement> {
 
         // Fallback: use a safe default (noteheadBlack right edge)
         return 1.18;
+    }
+
+    static double getLedgerLineCenterXSs(StaffElement note) {
+        return getNoteheadRightEdgeSs(note) / 2.0;
+    }
+
+    static double getLedgerLineWidthSs(StaffElement note, double extensionSs) {
+        return getNoteheadRightEdgeSs(note) + 2 * extensionSs;
     }
 
 }

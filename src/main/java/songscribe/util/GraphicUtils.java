@@ -36,6 +36,7 @@ import com.formdev.flatlaf.extras.FlatSVGIcon;
 import oshi.SystemInfo;
 import oshi.util.EdidUtil;
 
+import songscribe.smufl.SMuFLGlyph;
 import songscribe.ui.graphics.HiDPIScaledImage;
 import songscribe.ui.graphics.RetinaImage;
 
@@ -467,5 +468,13 @@ public final class GraphicUtils {
         }
 
         return maxWidth;
+    }
+
+    /**
+     * Returns the glyph outline for the given SMuFL glyph rendered with {@code font},
+     * suitable for use as an {@link java.awt.geom.Area} component.
+     */
+    public static Shape glyphOutline(Font font, FontRenderContext frc, SMuFLGlyph glyph) {
+        return font.createGlyphVector(frc, glyph.asString()).getOutline();
     }
 }

@@ -302,7 +302,7 @@ public class HorizontalSpacingCalculator {
         if (!prev.hasGlissando()) return spacingSs;
 
         // Compute ledger-line-inclusive extents on-the-fly
-        double prevOverhang = GlissandoRenderer.getLedgerLineOverhangSs(prev.getElement());
+        double prevOverhang = LayoutStylesheet.getLedgerLineOverhangSs(prev.getElement());
         double prevGlissRight = prev.getRightExtentSs();
 
         if (prevOverhang > 0) {
@@ -310,7 +310,7 @@ public class HorizontalSpacingCalculator {
             prevGlissRight = Math.max(prevGlissRight, noteheadWidthSs + prevOverhang);
         }
 
-        double currOverhang = GlissandoRenderer.getLedgerLineOverhangSs(curr.getElement());
+        double currOverhang = LayoutStylesheet.getLedgerLineOverhangSs(curr.getElement());
         double currGlissLeft = curr.getLeftExtentSs();
 
         if (currOverhang > 0) {
