@@ -22,6 +22,7 @@ package songscribe.music;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mockStatic;
+import static songscribe.music.StaffElementFactory.*;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -616,43 +617,4 @@ class MusicEditOperationsMutationTest extends UnitTest {
         }
     }
 
-    // -----------------------------------------------------------------------
-    // Element factory methods
-    // -----------------------------------------------------------------------
-
-    private static StaffElement crotchet() {
-        return ElementType.CROTCHET.newInstance();
-    }
-
-    private static StaffElement quaver() {
-        return ElementType.QUAVER.newInstance();
-    }
-
-    private static StaffElement crotchetRest() {
-        return ElementType.CROTCHET_REST.newInstance();
-    }
-
-    private static StaffElement repeatLeft() {
-        return ElementType.REPEAT_LEFT.newInstance();
-    }
-
-    private static StaffElement repeatRight() {
-        return ElementType.REPEAT_RIGHT.newInstance();
-    }
-
-    private static StaffElement repeatLeftRight() {
-        return ElementType.REPEAT_LEFT_RIGHT.newInstance();
-    }
-
-    private static StaffElement singleBarline() {
-        return ElementType.SINGLE_BARLINE.newInstance();
-    }
-
-    private static StaffElement doubleBarline() {
-        return ElementType.DOUBLE_BARLINE.newInstance();
-    }
-
-    private static StaffElement finalDoubleBarline() {
-        return ElementType.FINAL_DOUBLE_BARLINE.newInstance();
-    }
 }

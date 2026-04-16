@@ -22,6 +22,7 @@ package songscribe.ui.layout;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
+import static songscribe.music.StaffElementFactory.createNote;
 
 import java.util.List;
 
@@ -31,7 +32,7 @@ import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
 import songscribe.music.DynamicsSpan;
-import songscribe.music.ElementType;
+
 import songscribe.music.Line;
 import songscribe.music.StaffElement;
 import songscribe.music.TupletSpan;
@@ -49,13 +50,6 @@ class StructuralTierStackingTest extends UnitTest {
     private static <T> T require(@Nullable T value, String description) {
         assertThat(value).describedAs(description).isNotNull();
         return value;
-    }
-
-    private static StaffElement createNote(int staffPosition, boolean upper) {
-        var note = ElementType.CROTCHET.newInstance();
-        note.setStaffPosition(staffPosition);
-        note.setUpper(upper);
-        return note;
     }
 
     private static ElementColumn columnFor(StaffElement note, double xSs) {

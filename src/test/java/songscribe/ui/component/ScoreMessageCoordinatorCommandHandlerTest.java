@@ -25,6 +25,7 @@ import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
+import static songscribe.music.StaffElementFactory.*;
 
 import java.lang.reflect.Field;
 
@@ -62,7 +63,7 @@ import songscribe.message.mutation.TupletRemoval;
 import songscribe.message.notification.CompositionDidChangeNotification;
 import songscribe.music.Composition;
 import songscribe.music.DynamicsSpan;
-import songscribe.music.ElementType;
+
 import songscribe.music.EndingValidationResult;
 import songscribe.music.Line;
 import songscribe.ui.MusicEditOperations;
@@ -395,19 +396,4 @@ class ScoreMessageCoordinatorCommandHandlerTest extends UnitTest {
         return previous;
     }
 
-    // -----------------------------------------------------------------------
-    // Element factory methods
-    // -----------------------------------------------------------------------
-
-    private static StaffElement crotchet() {
-        return ElementType.CROTCHET.newInstance();
-    }
-
-    private static StaffElement quaver() {
-        return ElementType.QUAVER.newInstance();
-    }
-
-    private static StaffElement crotchetRest() {
-        return ElementType.CROTCHET_REST.newInstance();
-    }
 }

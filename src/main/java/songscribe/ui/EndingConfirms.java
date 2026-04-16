@@ -22,9 +22,12 @@ package songscribe.ui;
 
 import module java.desktop;
 
+import org.jspecify.annotations.Nullable;
+
 import songscribe.Strings;
 import songscribe.music.ElementType;
 import songscribe.music.Line;
+import songscribe.music.StaffElement;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.layout.Ending;
 
@@ -63,16 +66,7 @@ public final class EndingConfirms {
     public static void applyCompensatingEndChange(
         Line line, Ending.EndingEffect.CompensateEnd ce
     ) {
-        var endEl = ce.ending().getEndElement();
-
-        if (endEl == null) {
-            return;
-        }
-
-        var endIndex = line.getElementIndex(endEl);
-        var newEl = ce.newEndType().newInstance();
-        newEl.setXPosSs(endEl.getXPosSs());
-        line.setElement(endIndex, newEl);
+        applyCompensatingChange(line, ce.ending().getEndElement(), ce.newEndType());
     }
 
     /**
@@ -82,16 +76,20 @@ public final class EndingConfirms {
     public static void applyCompensatingSplitChange(
         Line line, Ending.EndingEffect.CompensateSplit cs
     ) {
-        var splitEl = cs.ending().findRepeatSplitElement(line);
+        applyCompensatingChange(line, cs.ending().findRepeatSplitElement(line), cs.newSplitType());
+    }
 
-        if (splitEl == null) {
+    private static void applyCompensatingChange(
+        Line line, @Nullable StaffElement targetEl, ElementType newType
+    ) {
+        if (targetEl == null) {
             return;
         }
 
-        var splitIndex = line.getElementIndex(splitEl);
-        var newEl = cs.newSplitType().newInstance();
-        newEl.setXPosSs(splitEl.getXPosSs());
-        line.setElement(splitIndex, newEl);
+        var index = line.getElementIndex(targetEl);
+        var newEl = newType.newInstance();
+        newEl.setXPosSs(targetEl.getXPosSs());
+        line.setElement(index, newEl);
     }
 
     private static boolean showEndingConfirm(String messageKey, Object... args) {
@@ -109,15 +107,11 @@ public final class EndingConfirms {
     }
 
     private static String typeNameFor(ElementType type) {
-        if (type == ElementType.REPEAT_RIGHT) {
-            return Strings.get(Strings.ELEMENT_TYPE_NAME_RIGHT_REPEAT);
-        }
-        if (type == ElementType.REPEAT_LEFT_RIGHT) {
-            return Strings.get(Strings.ELEMENT_TYPE_NAME_LEFT_RIGHT_REPEAT);
-        }
-        if (type == ElementType.REPEAT_LEFT) {
-            return Strings.get(Strings.ELEMENT_TYPE_NAME_LEFT_REPEAT);
-        }
-        return Strings.get(Strings.ELEMENT_TYPE_NAME_BARLINE);
+        return switch (type) {
+            case REPEAT_RIGHT -> Strings.get(Strings.ELEMENT_TYPE_NAME_RIGHT_REPEAT);
+            case REPEAT_LEFT_RIGHT -> Strings.get(Strings.ELEMENT_TYPE_NAME_LEFT_RIGHT_REPEAT);
+            case REPEAT_LEFT -> Strings.get(Strings.ELEMENT_TYPE_NAME_LEFT_REPEAT);
+            default -> Strings.get(Strings.ELEMENT_TYPE_NAME_BARLINE);
+        };
     }
 }

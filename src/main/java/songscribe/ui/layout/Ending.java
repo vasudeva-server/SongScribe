@@ -219,9 +219,12 @@ public class Ending extends RangeElement {
             return bracketRanges;
         }
 
-        // Find the REPEAT_RIGHT that separates first and second endings
+        // Find the repeat element (REPEAT_RIGHT or REPEAT_LEFT_RIGHT) that separates first and second endings
         repeatSplitIndex = IntStream.rangeClosed(start, end)
-            .filter(i -> line.getElement(i).getType() == ElementType.REPEAT_RIGHT)
+            .filter(i -> {
+                var t = line.getElement(i).getType();
+                return t == ElementType.REPEAT_RIGHT || t == ElementType.REPEAT_LEFT_RIGHT;
+            })
             .findFirst()
             .orElse(-1);
 
@@ -595,8 +598,8 @@ public class Ending extends RangeElement {
     }
 
     /**
-     * Finds the REPEAT_RIGHT element that splits the first and second sub-spans,
-     * scanning live indices between anchor and end.
+     * Finds the repeat element (REPEAT_RIGHT or REPEAT_LEFT_RIGHT) that splits the first
+     * and second sub-spans, scanning live indices between anchor and end.
      * <p>
      * Returns {@code null} if no such element exists or the anchor/end indices are invalid.
      * Shared by {@link #isInvalidatedByDeletion} and the replacement/insertion checks.

@@ -34,6 +34,7 @@ import songscribe.ui.layout.DynamicAttachment;
 import songscribe.ui.layout.DynamicAttachment.DynamicType;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static songscribe.music.StaffElementFactory.crotchet;
 
 class VelocityMapTest extends UnitTest {
 
@@ -112,7 +113,7 @@ class VelocityMapTest extends UnitTest {
         @Test
         void testNoteWithNoDynamicUsesDefaultMfVelocity() {
             // T36
-            var composition = compositionWith(lineWith(plainNote()));
+            var composition = compositionWith(lineWith(crotchet()));
             var map = VelocityMap.build(composition, VelocityMap.MAX_VELOCITY);
 
             var expected = (int) Math.round(
@@ -129,7 +130,7 @@ class VelocityMapTest extends UnitTest {
             // T38: last dynamic on line N carries to line N+1
             var composition = compositionWith(
                 lineWith(noteWithDynamic(DynamicType.PIANO)),
-                lineWith(plainNote())
+                lineWith(crotchet())
             );
             var map = VelocityMap.build(composition, VelocityMap.MAX_VELOCITY);
 
@@ -142,7 +143,7 @@ class VelocityMapTest extends UnitTest {
         void testForwardPropagationWithinLine() {
             // T37: note after PIANO inherits PIANO velocity
             var composition = compositionWith(
-                lineWith(noteWithDynamic(DynamicType.PIANO), plainNote())
+                lineWith(noteWithDynamic(DynamicType.PIANO), crotchet())
             );
             var map = VelocityMap.build(composition, VelocityMap.MAX_VELOCITY);
 
@@ -194,7 +195,4 @@ class VelocityMapTest extends UnitTest {
         return note;
     }
 
-    private static StaffElement plainNote() {
-        return ElementType.CROTCHET.newInstance();
-    }
 }

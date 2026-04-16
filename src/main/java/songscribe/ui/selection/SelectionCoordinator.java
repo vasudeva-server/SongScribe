@@ -590,21 +590,26 @@ public final class SelectionCoordinator {
                     var replacement = replaceable.createReplacement(element, selected);
                     var effect = line.findEndingReplacementEffect(i, replacement);
 
-                    if (effect instanceof Ending.EndingEffect.Invalidate) {
-                        if (!EndingConfirms.confirmInvalidation()) {
-                            continue;
+                    switch (effect) {
+                        case Ending.EndingEffect.Invalidate _ -> {
+                            if (!EndingConfirms.confirmInvalidation()) {
+                                continue;
+                            }
+                            // proceed: line.setElement will remove the ending via isInvalidatedByReplacement
                         }
-                        // proceed: line.setElement will remove the ending via isInvalidatedByReplacement
-                    } else if (effect instanceof Ending.EndingEffect.CompensateEnd ce) {
-                        if (!EndingConfirms.confirmCompensateEnd(ce)) {
-                            continue;
+                        case Ending.EndingEffect.CompensateEnd ce -> {
+                            if (!EndingConfirms.confirmCompensateEnd(ce)) {
+                                continue;
+                            }
+                            EndingConfirms.applyCompensatingEndChange(line, ce);
                         }
-                        EndingConfirms.applyCompensatingEndChange(line, ce);
-                    } else if (effect instanceof Ending.EndingEffect.CompensateSplit cs) {
-                        if (!EndingConfirms.confirmCompensateSplit(cs, replacement.getType())) {
-                            continue;
+                        case Ending.EndingEffect.CompensateSplit cs -> {
+                            if (!EndingConfirms.confirmCompensateSplit(cs, replacement.getType())) {
+                                continue;
+                            }
+                            EndingConfirms.applyCompensatingSplitChange(line, cs);
                         }
-                        EndingConfirms.applyCompensatingSplitChange(line, cs);
+                        case Ending.EndingEffect.None _ -> {}
                     }
 
                     line.setElement(i, replacement);

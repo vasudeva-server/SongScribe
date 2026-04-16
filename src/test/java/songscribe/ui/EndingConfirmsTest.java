@@ -41,8 +41,8 @@ import songscribe.message.command.PasteboardOpCommand;
 import songscribe.music.Composition;
 import songscribe.music.ElementType;
 import songscribe.music.Line;
-import songscribe.music.StaffElement;
 import songscribe.ui.MusicEditOperations;
+import songscribe.ui.layout.EndingLineFixture;
 import songscribe.ui.action.ElementTypeAction;
 import songscribe.ui.action.PasteboardAction;
 import songscribe.ui.action.UIAction;
@@ -108,72 +108,22 @@ class EndingConfirmsTest extends UnitTest {
     // Canonical line setup
     // -----------------------------------------------------------------------
 
-    private record PrimaryEnv(
-        Composition composition,
-        Line line,
-        SelectionCoordinator coordinator,
-        Ending ending
-    ) {}
-
-    /**
-     * Builds the primary canonical line with a {@code REPEAT_RIGHT} split.
-     * The ending is registered in the line's range elements.
-     */
-    private PrimaryEnv setupPrimaryLine() {
-        var composition = new Composition();
-        var line = composition.getLine(0);
-
-        var anchor = new StaffElement(ElementType.SINGLE_BARLINE);
-        var split = new StaffElement(ElementType.REPEAT_RIGHT);
-        var end = new StaffElement(ElementType.SINGLE_BARLINE);
-        var ending = new Ending(anchor, end, Ending.Type.FIRST);
-
-        composition.withoutMutationTracking(() -> {
-            line.addElement(anchor);
-            line.addElement(new StaffElement(ElementType.CROTCHET));
-            line.addElement(new StaffElement(ElementType.CROTCHET));
-            line.addElement(split);
-            line.addElement(new StaffElement(ElementType.CROTCHET));
-            line.addElement(new StaffElement(ElementType.CROTCHET));
-            line.addElement(end);
-            line.addRangeElement(ending);
-        });
-
-        return new PrimaryEnv(composition, line, coordinatorForLine(line), ending);
+    private record LineEnv(EndingLineFixture fixture, SelectionCoordinator coordinator) {
+        Composition composition() { return fixture.composition(); }
+        Line line() { return fixture.line(); }
+        Ending ending() { return fixture.ending(); }
     }
 
-    private record SecondaryEnv(
-        Composition composition,
-        Line line,
-        SelectionCoordinator coordinator,
-        Ending ending
-    ) {}
+    /** Builds the primary canonical line (split = {@code REPEAT_RIGHT}). */
+    private LineEnv setupPrimaryLine() {
+        var fixture = EndingLineFixture.primary();
+        return new LineEnv(fixture, coordinatorForLine(fixture.line()));
+    }
 
-    /**
-     * Builds the secondary canonical line with a {@code REPEAT_LEFT_RIGHT} split
-     * and {@code REPEAT_RIGHT} end.
-     */
-    private SecondaryEnv setupSecondaryLine() {
-        var composition = new Composition();
-        var line = composition.getLine(0);
-
-        var anchor = new StaffElement(ElementType.REPEAT_LEFT);
-        var split = new StaffElement(ElementType.REPEAT_LEFT_RIGHT);
-        var end = new StaffElement(ElementType.REPEAT_RIGHT);
-        var ending = new Ending(anchor, end, Ending.Type.FIRST);
-
-        composition.withoutMutationTracking(() -> {
-            line.addElement(anchor);
-            line.addElement(new StaffElement(ElementType.CROTCHET));
-            line.addElement(new StaffElement(ElementType.CROTCHET));
-            line.addElement(split);
-            line.addElement(new StaffElement(ElementType.CROTCHET));
-            line.addElement(new StaffElement(ElementType.CROTCHET));
-            line.addElement(end);
-            line.addRangeElement(ending);
-        });
-
-        return new SecondaryEnv(composition, line, coordinatorForLine(line), ending);
+    /** Builds the secondary canonical line (split = {@code REPEAT_LEFT_RIGHT}). */
+    private LineEnv setupSecondaryLine() {
+        var fixture = EndingLineFixture.secondary();
+        return new LineEnv(fixture, coordinatorForLine(fixture.line()));
     }
 
     /**

@@ -69,28 +69,17 @@ class EndingInvalidationTest extends UnitTest {
 
     @BeforeEach
     void setUp() {
-        composition = new Composition();
-        line = composition.getLine(0);
-
-        anchor = new StaffElement(ElementType.SINGLE_BARLINE);
-        note1  = new StaffElement(ElementType.CROTCHET);
-        note2  = new StaffElement(ElementType.CROTCHET);
-        split  = new StaffElement(ElementType.REPEAT_RIGHT);
-        note4  = new StaffElement(ElementType.CROTCHET);
-        note5  = new StaffElement(ElementType.CROTCHET);
-        end    = new StaffElement(ElementType.SINGLE_BARLINE);
-
-        composition.withoutMutationTracking(() -> {
-            line.addElement(anchor);
-            line.addElement(note1);
-            line.addElement(note2);
-            line.addElement(split);
-            line.addElement(note4);
-            line.addElement(note5);
-            line.addElement(end);
-        });
-
-        ending = new Ending(anchor, end, Ending.Type.FIRST);
+        var fixture = EndingLineFixture.primary();
+        composition = fixture.composition();
+        line        = fixture.line();
+        anchor      = fixture.anchor();
+        note1       = fixture.note1();
+        note2       = fixture.note2();
+        split       = fixture.split();
+        note4       = fixture.note4();
+        note5       = fixture.note5();
+        end         = fixture.end();
+        ending      = fixture.ending();
     }
 
     // -----------------------------------------------------------------------
@@ -465,21 +454,13 @@ class EndingInvalidationTest extends UnitTest {
 
             @BeforeEach
             void setUp() {
-                comp2 = new Composition();
-                line2 = comp2.getLine(0);
-                anchor2 = new StaffElement(ElementType.REPEAT_LEFT);
-                lrSplit = new StaffElement(ElementType.REPEAT_LEFT_RIGHT);
-                end2 = new StaffElement(ElementType.REPEAT_RIGHT);
-                comp2.withoutMutationTracking(() -> {
-                    line2.addElement(anchor2);
-                    line2.addElement(new StaffElement(ElementType.CROTCHET));
-                    line2.addElement(new StaffElement(ElementType.CROTCHET));
-                    line2.addElement(lrSplit);
-                    line2.addElement(new StaffElement(ElementType.CROTCHET));
-                    line2.addElement(new StaffElement(ElementType.CROTCHET));
-                    line2.addElement(end2);
-                });
-                ending2 = new Ending(anchor2, end2, Ending.Type.FIRST);
+                var fixture = EndingLineFixture.secondary();
+                comp2   = fixture.composition();
+                line2   = fixture.line();
+                anchor2 = fixture.anchor();
+                lrSplit = fixture.split();
+                end2    = fixture.end();
+                ending2 = fixture.ending();
             }
 
             // --- Invalidate ---

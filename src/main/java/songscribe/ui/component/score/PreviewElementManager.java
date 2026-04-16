@@ -925,21 +925,26 @@ public class PreviewElementManager {
         // and show the appropriate confirmation dialog if so.
         var endingEffect = line.findEndingReplacementEffect(elementIndex, previewElement);
 
-        if (endingEffect instanceof Ending.EndingEffect.Invalidate) {
-            if (!EndingConfirms.confirmInvalidation()) {
-                return;
+        switch (endingEffect) {
+            case Ending.EndingEffect.Invalidate _ -> {
+                if (!EndingConfirms.confirmInvalidation()) {
+                    return;
+                }
+                // proceed: line.setElement will remove the ending via isInvalidatedByReplacement
             }
-            // proceed: line.setElement will remove the ending via isInvalidatedByReplacement
-        } else if (endingEffect instanceof Ending.EndingEffect.CompensateEnd ce) {
-            if (!EndingConfirms.confirmCompensateEnd(ce)) {
-                return;
+            case Ending.EndingEffect.CompensateEnd ce -> {
+                if (!EndingConfirms.confirmCompensateEnd(ce)) {
+                    return;
+                }
+                EndingConfirms.applyCompensatingEndChange(line, ce);
             }
-            EndingConfirms.applyCompensatingEndChange(line, ce);
-        } else if (endingEffect instanceof Ending.EndingEffect.CompensateSplit cs) {
-            if (!EndingConfirms.confirmCompensateSplit(cs, previewElement.getType())) {
-                return;
+            case Ending.EndingEffect.CompensateSplit cs -> {
+                if (!EndingConfirms.confirmCompensateSplit(cs, previewElement.getType())) {
+                    return;
+                }
+                EndingConfirms.applyCompensatingSplitChange(line, cs);
             }
-            EndingConfirms.applyCompensatingSplitChange(line, cs);
+            case Ending.EndingEffect.None _ -> {}
         }
 
         // Replace the element entirely (line.setElement marks the composition modified)

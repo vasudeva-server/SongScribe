@@ -23,6 +23,7 @@ package songscribe.ui.layout;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static songscribe.music.StaffElementFactory.crotchet;
 
 import java.util.Collections;
 
@@ -31,15 +32,9 @@ import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
 import songscribe.music.Composition;
-import songscribe.music.ElementType;
 import songscribe.music.Line;
-import songscribe.music.StaffElement;
 
 class InsertionSpacingCalculatorTest extends UnitTest {
-
-    private static StaffElement crotchet() {
-        return ElementType.CROTCHET.newInstance();
-    }
 
     /**
      * Creates a mock composition with the given line width (in staff spaces) and attaches it to the line.

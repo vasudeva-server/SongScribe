@@ -44,6 +44,7 @@ import songscribe.message.mutation.LineInsertion;
 import songscribe.message.mutation.Mutation;
 import songscribe.message.notification.CompositionDidChangeNotification;
 import songscribe.ui.layout.Ending;
+import songscribe.ui.layout.EndingLineFixture;
 import songscribe.ui.layout.Tie;
 
 class LineMutationTest extends UnitTest {
@@ -331,26 +332,15 @@ class LineMutationTest extends UnitTest {
 
         @BeforeEach
         void setUpEnding() {
-            anchor = new StaffElement(ElementType.SINGLE_BARLINE);
-            note1  = new StaffElement(ElementType.CROTCHET);
-            note2  = new StaffElement(ElementType.CROTCHET);
-            split  = new StaffElement(ElementType.REPEAT_RIGHT);
-            note4  = new StaffElement(ElementType.CROTCHET);
-            note5  = new StaffElement(ElementType.CROTCHET);
-            end    = new StaffElement(ElementType.SINGLE_BARLINE);
-
-            composition.withoutMutationTracking(() -> {
-                line.addElement(anchor);
-                line.addElement(note1);
-                line.addElement(note2);
-                line.addElement(split);
-                line.addElement(note4);
-                line.addElement(note5);
-                line.addElement(end);
-            });
-
-            ending = new Ending(anchor, end, Ending.Type.FIRST);
-            composition.withoutMutationTracking(() -> line.addRangeElement(ending));
+            var fixture = EndingLineFixture.primary(composition);
+            anchor = fixture.anchor();
+            note1  = fixture.note1();
+            note2  = fixture.note2();
+            split  = fixture.split();
+            note4  = fixture.note4();
+            note5  = fixture.note5();
+            end    = fixture.end();
+            ending = fixture.ending();
         }
 
         // -------------------------------------------------------------------
