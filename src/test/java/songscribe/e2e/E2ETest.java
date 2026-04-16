@@ -82,6 +82,15 @@ public abstract class E2ETest {
     /** Base delay in ms between UI actions (before slow mode is considered). */
     private static final int BASE_ACTION_DELAY_MS = DEBUG_MODE ? 250 : 10;
 
+    /** Corner arc radius for the status overlay background. */
+    private static final int OVERLAY_ARC_PX = 4;
+
+    /** Margin between overlay bottom and score bottom when score fits on screen. */
+    private static final int OVERLAY_SCORE_MARGIN_PX = 8;
+
+    /** Margin between overlay bottom and screen bottom when score extends below the screen. */
+    private static final int OVERLAY_SCREEN_MARGIN_PX = 13;
+
     private static final Object INIT_LOCK = new Object();
     private static boolean frameInitialized = false;
     private static int passCount = 0;
@@ -146,13 +155,24 @@ public abstract class E2ETest {
 
     private void createStatusOverlay() {
         statusOverlay = new JWindow(MainFrame.getInstance());
+        statusOverlay.setBackground(new Color(0, 0, 0, 0));
         statusLabel = new JLabel("", SwingConstants.CENTER);
         statusLabel.setFont(new Font("Source Sans 3", Font.BOLD, 16));
         statusLabel.setForeground(Color.WHITE);
         statusLabel.setBorder(BorderFactory.createEmptyBorder(6, 12, 6, 12));
 
-        var panel = new JPanel(new BorderLayout());
-        panel.setBackground(new Color(0, 0, 0, 180));
+        var overlayColor = new Color(0, 0, 0, 180);
+        var panel = new JPanel(new BorderLayout()) {
+            @Override
+            protected void paintComponent(Graphics g) {
+                var g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(overlayColor);
+                g2.fillRoundRect(0, 0, getWidth(), getHeight(), OVERLAY_ARC_PX * 2, OVERLAY_ARC_PX * 2);
+                g2.dispose();
+            }
+        };
+        panel.setOpaque(false);
         panel.add(statusLabel);
         statusOverlay.setContentPane(panel);
         statusOverlay.setAlwaysOnTop(true);
@@ -165,9 +185,19 @@ public abstract class E2ETest {
         var scoreLoc = score.getLocationOnScreen();
         var scoreSize = score.getSize();
         var overlaySize = overlay.getPreferredSize();
+        var screenBounds = overlay.getGraphicsConfiguration().getBounds();
+
+        int overlayY;
+
+        if (screenBounds.height < scoreSize.height) {
+            overlayY = screenBounds.y + screenBounds.height - overlaySize.height - OVERLAY_SCREEN_MARGIN_PX;
+        } else {
+            overlayY = scoreLoc.y + scoreSize.height - overlaySize.height - OVERLAY_SCORE_MARGIN_PX;
+        }
+
         overlay.setLocation(
             scoreLoc.x + (scoreSize.width - overlaySize.width) / 2,
-            scoreLoc.y + scoreSize.height - overlaySize.height - 8
+            overlayY
         );
         overlay.setSize(overlaySize);
     }
