@@ -147,7 +147,7 @@ public final class MyFontUtils {
         return font.deriveFont(attributes);
     }
 
-    private static Font getUIFont(String key) {
+    public static Font getUIFont(String key) {
         var font = UIManager.getFont(key);
 
         if (font == null) {

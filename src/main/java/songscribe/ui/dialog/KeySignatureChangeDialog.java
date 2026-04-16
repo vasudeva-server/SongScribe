@@ -51,7 +51,6 @@ public class KeySignatureChangeDialog extends StandardDialog {
         keysCombo = new JComboBox<>(
             new KeyType[]{KeyType.FLATS, KeyType.SHARPS}
         );
-        keysCombo.setRenderer(new CompositionSettingsDialog.KeyCellRenderer());
         keysPanel.add(keysCombo);
 
         var spinner = new JSpinner(keysSpinner);

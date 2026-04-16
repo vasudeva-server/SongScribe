@@ -21,10 +21,17 @@ package songscribe.ui.dialog;
 
 import module java.desktop;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 
+import com.formdev.flatlaf.FlatClientProperties;
+
 import songscribe.Strings;
+import songscribe.error.RuntimeError;
 import songscribe.message.notification.FontDidChangeNotification;
 import songscribe.message.notification.KeySignatureDidChangeNotification;
 import songscribe.message.MessageCenter;
@@ -37,6 +44,7 @@ import songscribe.prefs.Prefs;
 import songscribe.prefs.PrefsKey;
 import songscribe.ui.FlatLafKeys;
 import songscribe.ui.FlatLafProps;
+import songscribe.ui.KeySignatureDisplay;
 import songscribe.ui.OptionDialogs;
 import songscribe.ui.action.UIAction;
 import songscribe.ui.component.InputUtils;
@@ -52,6 +60,14 @@ import songscribe.util.UIUtils;
 import songscribe.util.Utils;
 
 public class CompositionSettingsDialog extends StandardDialog {
+
+    /**
+     * A single entry in the key-signature combo: a {@link KeyType} paired with
+     * an accidental count. {@code (FLATS, 0)} is the canonical no-accidentals
+     * value; {@code SHARPS, 0} is never produced.
+     */
+    public record KeySelection(KeyType keyType, int count) {}
+
 
     public CompositionSettingsDialog() {
         super(Strings.get(Strings.DIALOG_COMPOSITION_SETTINGS_TITLE), true, DialogCategory.EXCLUSIVE);
@@ -549,33 +565,14 @@ public class CompositionSettingsDialog extends StandardDialog {
 
     private final class MusicTab extends BaseDialog.Tab {
 
-        private record KeySelection(KeyType keyType, int count) {}
-
         private final TempoSection tempoSection = new TempoSection(
             Tempo.Type.displayValues(),
             Strings.get(Strings.DIALOG_COMPOSITION_SETTINGS_SHOW_ONLY_DESCRIPTION),
             "tempos"
         );
 
-        private final JComboBox<String> keyCombo = new JComboBox<>(
-            new String[]{
-                // MusescoreIcon font
-                "\uF377", // No flats or sharps
-                "\uF37F", // One flat
-                "\uF380", // Two flats
-                "\uF381", // Three flats
-                "\uF382", // Four flats
-                "\uF383", // Five flats
-                "\uF384", // Six flats
-                "\uF385", // Seven flats
-                "\uF378", // One sharp
-                "\uF379", // Two sharps
-                "\uF37A", // Three sharps
-                "\uF37B", // Four sharps
-                "\uF37C", // Five sharps
-                "\uF37D", // Six sharps
-                "\uF37E", // Seven sharps
-            }
+        private final JComboBox<KeySelection> keyCombo = new JComboBox<>(
+            KeyCellRenderer.SELECTIONS.toArray(new KeySelection[0])
         );
 
         private final JTextField lineWidthField = new JTextField(6);
@@ -583,8 +580,17 @@ public class CompositionSettingsDialog extends StandardDialog {
 
         private MusicTab() {
             keyCombo.setRenderer(new KeyCellRenderer());
-            keyCombo.setSelectedIndex(5);
             keyCombo.setMaximumRowCount(7);
+
+            // Key signature is always drawn in a light mode to match the score
+            keyCombo.setOpaque(true);
+            keyCombo.putClientProperty(
+                FlatClientProperties.STYLE,
+                "popupBackground: #FFFFFF; " +
+                    "foreground: #000000; " +
+                    "background: #FFFFFF; " +
+                    "editableBackground: #FFFFFF"
+            );
 
             InputUtils.addDecimalFilter(lineWidthField);
             lineWidthField.addFocusListener(new FocusAdapter() {
@@ -735,42 +741,16 @@ public class CompositionSettingsDialog extends StandardDialog {
         }
 
         private void setKeyComboFromComposition(Composition composition) {
-            var keyType = composition.getDefaultKeyType();
             var accidentalCount = composition.getDefaultKeyAccidentalCount();
-
-            // If there are no flats or sharps, set the index to 0
-            if (accidentalCount == 0) {
-                keyCombo.setSelectedIndex(0);
-                return;
-            }
-
-            // If there are flats, set the index to the number of flats
-            if (keyType == KeyType.FLATS) {
-                keyCombo.setSelectedIndex(accidentalCount);
-                return;
-            }
-
-            // If there are sharps, set the index to the number of sharps + 7
-            keyCombo.setSelectedIndex(accidentalCount + 7);
+            // (FLATS, 0) is the canonical no-accidentals entry.
+            var keyType = accidentalCount == 0
+                ? KeyType.FLATS
+                : composition.getDefaultKeyType();
+            keyCombo.setSelectedItem(new KeySelection(keyType, accidentalCount));
         }
 
-        // SongScribe stores a key signature as a KeyType + the number of flats or sharps
         private KeySelection getKeyTypeAndCountFromCombo() {
-            var index = keyCombo.getSelectedIndex();
-
-            // Index 0 is no flats or sharps.
-            // Index 1-7 is 1-7 flats.
-            // Index 8-14 is 1-7 sharps.
-            // If index >= 1, we want to return a number from 1-7 for the accidental count.
-            if (index == 0) {
-                return new KeySelection(KeyType.FLATS, 0);
-            }
-
-            if (index < 8) {
-                return new KeySelection(KeyType.FLATS, index);
-            }
-
-            return new KeySelection(KeyType.SHARPS, index - 7);
+            return (KeySelection) keyCombo.getSelectedItem();
         }
 
         private void revertLineWidthField() {
@@ -834,7 +814,7 @@ public class CompositionSettingsDialog extends StandardDialog {
         }
     }
 
-    private final class FontTab extends StandardDialog.Tab {
+    private final class FontTab extends BaseDialog.Tab {
 
         private final JLabel titleFontLabel = new JLabel();
         private final JComponent titleFontPreview = new JLabel(
@@ -1159,44 +1139,184 @@ public class CompositionSettingsDialog extends StandardDialog {
         }
     }
 
-    public static class KeyCellRenderer implements ListCellRenderer<Object> {
+    public static class KeyCellRenderer implements ListCellRenderer<KeySelection> {
+
+        private static final float FONT_SIZE_PT = 120f;
+        private static final int MAX_ACCIDENTAL_COUNT = 7;
 
         private static final Font FONT = MyFontUtils.getIconFont()
-            .deriveFont(80f);
+            .deriveFont(FONT_SIZE_PT);
+
+        /**
+         * All key-signature selections in display order:
+         * no accidentals, then 1-7 flats, then 1-7 sharps.
+         */
+        public static final List<KeySelection> SELECTIONS;
+
+        // MusescoreIcon font glyph per selection.
+        private static final Map<KeySelection, String> GLYPHS;
+
+        static {
+            var selections = new ArrayList<KeySelection>(1 + 2 * MAX_ACCIDENTAL_COUNT);
+            var glyphs = new HashMap<KeySelection, String>();
+
+            var noAccidentals = new KeySelection(KeyType.FLATS, 0);
+            selections.add(noAccidentals);
+            glyphs.put(noAccidentals, "\uF377");
+
+            String[] flatGlyphs = {
+                "\uF37F", "\uF380", "\uF381", "\uF382", "\uF383", "\uF384", "\uF385"
+            };
+            for (var i = 0; i < MAX_ACCIDENTAL_COUNT; i++) {
+                var sel = new KeySelection(KeyType.FLATS, i + 1);
+                selections.add(sel);
+                glyphs.put(sel, flatGlyphs[i]);
+            }
+
+            String[] sharpGlyphs = {
+                "\uF378", "\uF379", "\uF37A", "\uF37B", "\uF37C", "\uF37D", "\uF37E"
+            };
+            for (var i = 0; i < MAX_ACCIDENTAL_COUNT; i++) {
+                var sel = new KeySelection(KeyType.SHARPS, i + 1);
+                selections.add(sel);
+                glyphs.put(sel, sharpGlyphs[i]);
+            }
+
+            SELECTIONS = List.copyOf(selections);
+            GLYPHS = Map.copyOf(glyphs);
+        }
 
         @Override
         public Component getListCellRendererComponent(
-            JList list,
-            Object value,
+            JList<? extends KeySelection> list,
+            KeySelection value,
             int index,
             boolean isSelected,
             boolean cellHasFocus
         ) {
-            return new KeyLabel((String) value, list, index, isSelected);
+            return new KeyLabel(value, list, index, isSelected);
         }
 
         private static final class KeyLabel extends BaseLabel {
 
-            private static final Dimension CELL_SIZE = new Dimension(80, 80);
+            private static final int CELL_PADDING_Y_PX = 10;
+            private static final int GLYPH_BOX_WIDTH_PX;
+            private static final int GLYPH_BOX_HEIGHT_PX;
+            private static final int LABEL_GAP_PX;
+            private static final int LABEL_WIDTH_PX;
+            private static final Dimension CELL_SIZE;
+
+            // GlyphVector and TextLayout are immutable once constructed for a fixed
+            // FRC, so precompute one per selection and reuse across renders. Without
+            // this cache, every getListCellRendererComponent call would allocate a
+            // GlyphVector and a TextLayout.
+            private record CellCache(
+                GlyphVector glyphVector,
+                Rectangle2D glyphBounds,
+                TextLayout labelLayout
+            ) {}
+
+            private static final Map<KeySelection, CellCache> CELL_CACHE;
+
+            static {
+                var cache = new HashMap<KeySelection, CellCache>();
+
+                var maxGlyphWidth = 0.0;
+                var maxGlyphHeight = 0.0;
+                var maxLabelWidth = 0;
+
+                for (var selection : SELECTIONS) {
+                    var glyph = GLYPHS.get(selection);
+
+                    if (glyph == null) {
+                        throw RuntimeError.exit(
+                            "Missing glyph for key selection: " + selection
+                        );
+                    }
+
+                    var glyphVector = FONT.createGlyphVector(GraphicUtils.LAYOUT_FRC, glyph);
+                    var visualBounds = glyphVector.getVisualBounds();
+                    maxGlyphWidth = Math.max(maxGlyphWidth, visualBounds.getWidth());
+                    maxGlyphHeight = Math.max(maxGlyphHeight, visualBounds.getHeight());
+
+                    var attributed = KeySignatureDisplay.getDisplayName(
+                        selection.keyType(),
+                        selection.count()
+                    );
+                    var textLayout = new TextLayout(
+                        attributed.getIterator(),
+                        GraphicUtils.LAYOUT_FRC
+                    );
+                    maxLabelWidth = Math.max(
+                        maxLabelWidth,
+                        (int) Math.ceil(textLayout.getAdvance())
+                    );
+
+                    cache.put(selection, new CellCache(glyphVector, visualBounds, textLayout));
+                }
+
+                CELL_CACHE = Map.copyOf(cache);
+
+                // Font metrics for icon fonts include large built-in whitespace that
+                // doesn't reflect the actual ink bounds. Use visual bounds so the cell
+                // tightly wraps the rendered image.
+                GLYPH_BOX_WIDTH_PX = (int) Math.ceil(maxGlyphWidth);
+                GLYPH_BOX_HEIGHT_PX = (int) Math.ceil(maxGlyphHeight);
+                LABEL_GAP_PX = FlatLafProps.get(
+                    FlatLafKeys.DIALOG_COMPONENT_HORIZONTAL_EXTRA_GAP
+                );
+                LABEL_WIDTH_PX = maxLabelWidth;
+
+                var w = GLYPH_BOX_WIDTH_PX + LABEL_GAP_PX + LABEL_WIDTH_PX;
+                var h = GLYPH_BOX_HEIGHT_PX + 2 * CELL_PADDING_Y_PX;
+                CELL_SIZE = new Dimension(w, h);
+            }
+
+            private final GlyphVector glyphVector;
+            private final Rectangle2D glyphBounds;
+            private final TextLayout labelLayout;
 
             private KeyLabel(
-                String text,
+                KeySelection selection,
                 JList<?> list,
                 int index,
                 boolean isSelected
             ) {
-                super(text, list, index, isSelected);
+                super("", list, index, isSelected);
                 setPreferredSize(CELL_SIZE);
+                setBackground(isSelected ? list.getSelectionBackground() : Color.WHITE);
+                setForeground(isSelected ? list.getSelectionForeground() : Color.BLACK);
+
+                var cache = CELL_CACHE.get(selection);
+
+                if (cache == null) {
+                    throw RuntimeError.exit(
+                        "No render cache for key selection: " + selection
+                    );
+                }
+
+                glyphVector = cache.glyphVector();
+                glyphBounds = cache.glyphBounds();
+                labelLayout = cache.labelLayout();
             }
 
             @Override
             public void paintComponent(Graphics g) {
                 super.paintComponent(g);
-                g.setFont(FONT);
-                var metrics = g.getFontMetrics();
-                var width = metrics.stringWidth(getText());
-                var inset = (getWidth() - width) / 2;
-                g.drawString(getText(), inset, getHeight());
+                var g2d = (Graphics2D) g;
+                // Use the glyph's visual bounds (not advance width) for centering, since
+                // the MusescoreIcon font has a large advance width unrelated to ink size.
+                var contentXOffset = Math.max(0, (getWidth() - CELL_SIZE.width) / 2);
+                var glyphX = (float) (contentXOffset
+                    + (GLYPH_BOX_WIDTH_PX - glyphBounds.getWidth()) / 2
+                    - glyphBounds.getX());
+                var glyphY = (float) (CELL_PADDING_Y_PX - glyphBounds.getY());
+                g2d.drawGlyphVector(glyphVector, glyphX, glyphY);
+
+                var labelX = (float) (contentXOffset + GLYPH_BOX_WIDTH_PX + LABEL_GAP_PX);
+                var labelY = (getHeight() + labelLayout.getAscent()
+                    - labelLayout.getDescent()) / 2f;
+                labelLayout.draw(g2d, labelX, labelY);
             }
         }
     }

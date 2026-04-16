@@ -28,38 +28,24 @@ import module java.desktop;
  */
 class BaseLabel extends JLabel {
 
-    private final JList<?> list;
-    private final int index;
-    private final boolean isSelected;
-
     BaseLabel(String text, JList<?> list, int index, boolean isSelected) {
         super(text);
-        this.list = list;
-        this.index = index;
-        this.isSelected = isSelected;
         setOpaque(true);
+
+        if (index == -1) {
+            setBackground(list.getBackground());
+        } else {
+            setBackground(isSelected ? list.getSelectionBackground() : list.getBackground());
+        }
+
+        setForeground(isSelected ? list.getSelectionForeground() : list.getForeground());
     }
 
     @Override
     public void paintComponent(Graphics g) {
         super.paintComponent(g);
-        Color color;
-
-        // If index == -1, it's drawing the combo box, otherwise the popup
-        if (index == -1) {
-            color = list.getBackground();
-        } else {
-            color = isSelected
-                ? list.getSelectionBackground()
-                : list.getBackground();
-        }
-
-        g.setColor(color);
+        g.setColor(getBackground());
         g.fillRect(0, 0, getWidth(), getHeight());
-        g.setColor(
-            isSelected
-                ? list.getSelectionForeground()
-                : list.getForeground()
-        );
+        g.setColor(getForeground());
     }
 }

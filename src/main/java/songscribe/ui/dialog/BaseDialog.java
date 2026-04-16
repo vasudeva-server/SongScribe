@@ -496,7 +496,7 @@ public abstract class BaseDialog {
         return true;
     }
 
-    protected class Tab extends JPanel {
+    protected abstract class Tab extends JPanel {
 
         protected final GridBagConstraints constraints =
             new GridBagConstraints();
@@ -522,7 +522,7 @@ public abstract class BaseDialog {
             constraints.weighty = 0;
         }
 
-        protected final void build() {
+        protected void build() {
             initContents();
 
             // Add glue at the bottom that will force the contents to the top,
@@ -537,9 +537,9 @@ public abstract class BaseDialog {
         }
 
         /**
-         * This should be overridden by subclasses to add components to the tab.
+         * Subclasses add components to the tab here.
          */
-        protected void initContents() {}
+        protected abstract void initContents();
 
         /**
          * Populate controls from the model. Called when the dialog is

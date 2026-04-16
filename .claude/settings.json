@@ -65,6 +65,7 @@
       "WebSearch",
       "Read(~/Library/Logs/SongScribe/songscribe.log)",
       "Bash(rtk git:*)",
+      "Bash(rtk ls *)",
       "Bash(rtk read:*)",
       "Bash(rtk write:*)",
       "Bash(rtk grep:*)"

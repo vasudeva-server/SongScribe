@@ -82,6 +82,10 @@ public enum SMuFLGlyph {
     ACCIDENTAL_NATURAL_SMALL("accidentalNaturalSmall", '\uF428'),
     ACCIDENTAL_SHARP_SMALL("accidentalSharpSmall", '\uF429'),
 
+    // Chord-symbol accidentals (U+ED60-U+ED7F)
+    CSYM_ACCIDENTAL_FLAT("csymAccidentalFlat", '\uED60'),
+    CSYM_ACCIDENTAL_SHARP("csymAccidentalSharp", '\uED62'),
+
     // Articulations (U+E4A0-U+E4AF)
     ARTIC_ACCENT_ABOVE("articAccentAbove", '\uE4A0'),
     ARTIC_ACCENT_BELOW("articAccentBelow", '\uE4A1'),
