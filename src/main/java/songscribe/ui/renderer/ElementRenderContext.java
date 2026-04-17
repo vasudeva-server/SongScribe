@@ -273,7 +273,7 @@ public class ElementRenderContext {
             return selectionColor;
         }
 
-        var matched = PreviewElementManager.getXMatchedElement();
+        var matched = PreviewElementManager.getHoveredElementLocation();
 
         if (matched != null && matched.matches(lineIndex, elementIndex)) {
             return REPLACED_ELEMENT_COLOR;

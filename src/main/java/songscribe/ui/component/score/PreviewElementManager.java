@@ -215,7 +215,7 @@ public class PreviewElementManager {
      * or null if the preview element's x-position does not match an existing element.
      */
     @Nullable
-    public static ElementLocation getXMatchedElement() {
+    public static ElementLocation getHoveredElementLocation() {
         return (xPosSsMatchesElement && currentPreviewLine != null)
             ? new ElementLocation(currentPreviewLine.getLineIndex(), currentXIndex)
             : null;
