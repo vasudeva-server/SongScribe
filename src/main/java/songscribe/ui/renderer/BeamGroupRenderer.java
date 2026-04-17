@@ -34,6 +34,7 @@ import songscribe.music.Line;
 import songscribe.music.StaffElement;
 import songscribe.smufl.Engraving;
 import songscribe.ui.component.Score;
+import songscribe.ui.component.score.PreviewElementManager;
 import songscribe.ui.layout.LineElement;
 import songscribe.ui.layout.LayoutStylesheet;
 import songscribe.ui.layout.LayoutResult;
@@ -132,6 +133,7 @@ public class BeamGroupRenderer extends BaseElementRenderer<LineElement> {
         }
 
         var lineIndex = ctx.getLineIndex();
+        var matched = PreviewElementManager.getXMatchedElement();
         var anySelected = false;
         var anyHovered = false;
         var remainingBeamableNotes = 0;
@@ -141,7 +143,7 @@ public class BeamGroupRenderer extends BaseElementRenderer<LineElement> {
 
             if (isSelected) {
                 anySelected = true;
-            } else if (ctx.isReplacedElement(i)) {
+            } else if (matched != null && matched.matches(lineIndex, i)) {
                 anyHovered = true;
             } else if (line.getElement(i).getType().isBeamable()) {
                 remainingBeamableNotes++;

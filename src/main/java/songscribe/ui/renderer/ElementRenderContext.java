@@ -168,19 +168,6 @@ public class ElementRenderContext {
     }
 
     /**
-     * Returns whether the element at {@code elementIndex} on the current line is the one that
-     * would be replaced by the active preview element (i.e., the preview is hovering over it).
-     * Reads current state from {@link PreviewElementManager} — callers do not need to plumb
-     * hover state through the context.
-     *
-     * @param elementIndex element index within the current line
-     */
-    public boolean isReplacedElement(int elementIndex) {
-        return PreviewElementManager.getXMatchedElementLineIndex() == lineIndex
-            && PreviewElementManager.getXMatchedElementIndex() == elementIndex;
-    }
-
-    /**
      * Returns the pixels-per-staff-space scale factor.
      * Convenience accessor for renderers that need pixel conversion.
      */
@@ -286,7 +273,9 @@ public class ElementRenderContext {
             return selectionColor;
         }
 
-        if (isReplacedElement(elementIndex)) {
+        var matched = PreviewElementManager.getXMatchedElement();
+
+        if (matched != null && matched.matches(lineIndex, elementIndex)) {
             return REPLACED_ELEMENT_COLOR;
         }
 

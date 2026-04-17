@@ -32,6 +32,7 @@ import songscribe.Strings;
 import songscribe.message.MessageCenter;
 import songscribe.message.mutation.ElementField;
 import songscribe.music.BeamSpan;
+import songscribe.music.ElementLocation;
 import songscribe.music.ElementType;
 import songscribe.music.Line;
 import songscribe.music.StaffElement;
@@ -210,21 +211,14 @@ public class PreviewElementManager {
     }
 
     /**
-     * Returns the line index of the element currently highlighted by preview element hover,
-     * or -1 if the preview element's x-position does not match an existing element.
+     * Returns the location of the element currently highlighted by preview element hover,
+     * or null if the preview element's x-position does not match an existing element.
      */
-    public static int getXMatchedElementLineIndex() {
+    @Nullable
+    public static ElementLocation getXMatchedElement() {
         return (xPosSsMatchesElement && currentPreviewLine != null)
-            ? currentPreviewLine.getLineIndex()
-            : -1;
-    }
-
-    /**
-     * Returns the element index of the element currently highlighted by preview element hover,
-     * or -1 if the preview element's x-position does not match an existing element.
-     */
-    public static int getXMatchedElementIndex() {
-        return xPosSsMatchesElement ? currentXIndex : -1;
+            ? new ElementLocation(currentPreviewLine.getLineIndex(), currentXIndex)
+            : null;
     }
 
     /**
