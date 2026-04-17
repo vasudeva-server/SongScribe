@@ -28,6 +28,7 @@ import songscribe.music.ElementType;
 import songscribe.music.Tempo;
 import songscribe.ui.playback.MidiMetaMessageTypes;
 
+
 /**
  * Coordinates MIDI sequence building for a composition.
  * Delegates note-level MIDI generation to Line objects.
@@ -39,6 +40,12 @@ public class MidiSequenceBuilder {
     // The number of pulses per quarter note (ticks per beat), used to calculate the duration of notes
     // when playing back the score or generating a MIDI file.
     public static final int PPQ = 96;
+
+    /** MIDI CC number for Bank Select MSB. */
+    private static final int BANK_SELECT_MSB_CC = 0;
+
+    /** MIDI CC number for Bank Select LSB. */
+    private static final int BANK_SELECT_LSB_CC = 32;
 
     private final Composition composition;
     private final PlaybackSettings settings;
@@ -104,7 +111,7 @@ public class MidiSequenceBuilder {
         addProgramChange(track, settings.instrument());
 
         // Add initial tempo
-        addTempoChange(track, 0, initialTempo);
+        MidiEventFactory.addTempoEvent(track, 0, initialTempo, settings.tempoChangePercent());
 
         // Pre-compute dynamic-aware velocities for all notes
         var velocityMap = VelocityMap.build(composition, VelocityMap.MAX_VELOCITY);
@@ -186,6 +193,7 @@ public class MidiSequenceBuilder {
         while (lineIndex < lines.size()) {
             var line = lines.get(lineIndex);
             var noteCount = line.elementCount();
+            var builder = new LineTrackBuilder(line);
 
             for (var noteIndex = (lineIndex == startLine ? startNote : 0); noteIndex < noteCount; noteIndex++) {
                 var note = line.getElement(noteIndex);
@@ -259,7 +267,7 @@ public class MidiSequenceBuilder {
 
                 // Add the note to the track (one note at a time), sharing the
                 // glissando helper so grace note state survives across calls.
-                var result = new LineTrackBuilder(line).addToTrack(
+                var result = builder.addToTrack(
                     track, lineIndex, ticks, currentTempo, settings,
                     noteIndex, noteIndex, glissandoHelper, velocityMap
                 );
@@ -296,36 +304,12 @@ public class MidiSequenceBuilder {
     private void addBankSelect(Track track, int channel, int msb, int lsb)
         throws InvalidMidiDataException {
         var bankMsb = new ShortMessage();
-        bankMsb.setMessage(ShortMessage.CONTROL_CHANGE, channel, 0, msb);
+        bankMsb.setMessage(ShortMessage.CONTROL_CHANGE, channel, BANK_SELECT_MSB_CC, msb);
         track.add(new MidiEvent(bankMsb, 0));
 
         var bankLsb = new ShortMessage();
-        bankLsb.setMessage(ShortMessage.CONTROL_CHANGE, channel, 32, lsb);
+        bankLsb.setMessage(ShortMessage.CONTROL_CHANGE, channel, BANK_SELECT_LSB_CC, lsb);
         track.add(new MidiEvent(bankLsb, 0));
     }
 
-    /**
-     * Adds a tempo change meta message to the track.
-     *
-     * @param track The MIDI track
-     * @param ticks The tick position for the tempo change
-     * @param tempo The tempo to set
-     * @throws InvalidMidiDataException If MIDI data creation fails
-     */
-    private void addTempoChange(Track track, int ticks, Tempo tempo)
-        throws InvalidMidiDataException {
-        var realTempo = tempo.getRealTempo();
-        var midiTempo = 60000000 / ((realTempo * settings.tempoChangePercent()) / 100);
-        var tempoMessage = new MetaMessage();
-        tempoMessage.setMessage(
-            MidiMetaMessageTypes.SET_TEMPO,
-            new byte[]{
-                (byte) (midiTempo >> 16),
-                (byte) (midiTempo >> 8),
-                (byte) midiTempo,
-            },
-            3
-        );
-        track.add(new MidiEvent(tempoMessage, ticks));
-    }
 }

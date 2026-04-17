@@ -36,6 +36,7 @@ import songscribe.ui.Appearance;
 import songscribe.ui.FlatLafKeys;
 import songscribe.ui.FlatLafProps;
 import songscribe.ui.AppearanceManager;
+import songscribe.midi.MidiEventFactory;
 import songscribe.midi.MidiSequenceBuilder;
 import songscribe.ui.OptionDialogs;
 import songscribe.ui.layout.PageModel;
@@ -659,6 +660,7 @@ public class PreferencesDialog extends BaseDialog {
             private @Nullable MetaEventListener endListener = null;
 
             private static final int SCALE_VELOCITY = 70;
+            private static final int SCALE_TEMPO_BPM = 120;
 
             // Db major scale: Db4, Eb4, F4, Gb4, Ab4, Bb4, C5, Db5
             private static final int[] SCALE = new int[] {
@@ -742,18 +744,7 @@ public class PreferencesDialog extends BaseDialog {
                         0
                     );
                     track.add(new MidiEvent(programChange, 0));
-                    var tempoMessage = new MetaMessage();
-                    var midiTempo = 60000000 / 120;
-                    tempoMessage.setMessage(
-                        MidiMetaMessageTypes.SET_TEMPO,
-                        new byte[] {
-                            (byte) (midiTempo >> 16),
-                            (byte) (midiTempo >> 8),
-                            (byte) (midiTempo),
-                        },
-                        3
-                    );
-                    track.add(new MidiEvent(tempoMessage, 0));
+                    MidiEventFactory.addTempoEvent(track, 0, SCALE_TEMPO_BPM);
 
                     var ticks = 0;
 

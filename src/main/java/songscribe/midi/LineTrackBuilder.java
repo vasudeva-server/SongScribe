@@ -33,6 +33,7 @@ import songscribe.ui.playback.PlaybackController;
 public class LineTrackBuilder {
 
     private static final double GRACE_GLISSANDO_VELOCITY_RATIO = 0.85;
+    private static final int PERCENT = 100;
 
     private final Line line;
 
@@ -241,7 +242,7 @@ public class LineTrackBuilder {
             // Add tempo change if present
             if (element.getTempoChange() != null) {
                 currentTempo = element.getTempoChange();
-                addTempoMetaMessage(track, ticks, currentTempo, settings.tempoChangePercent());
+                MidiEventFactory.addTempoEvent(track, ticks, currentTempo, settings.tempoChangePercent());
             }
 
             // Always emit a colorize meta message for playback highlighting
@@ -253,30 +254,6 @@ public class LineTrackBuilder {
         }
 
         return new TrackPosition(ticks, currentTempo);
-    }
-
-    /**
-     * Adds a tempo meta message to the track.
-     */
-    private void addTempoMetaMessage(
-        Track track,
-        int ticks,
-        Tempo tempo,
-        int tempoChangePercent
-    ) throws InvalidMidiDataException {
-        var realTempo = tempo.getRealTempo();
-        var midiTempo = 60000000 / ((realTempo * tempoChangePercent) / 100);
-        var tempoMessage = new MetaMessage();
-        tempoMessage.setMessage(
-            MidiMetaMessageTypes.SET_TEMPO,
-            new byte[]{
-                (byte) (midiTempo >> 16),
-                (byte) (midiTempo >> 8),
-                (byte) midiTempo,
-            },
-            3
-        );
-        track.add(new MidiEvent(tempoMessage, ticks));
     }
 
     /**
@@ -494,11 +471,7 @@ public class LineTrackBuilder {
         StaffElement element,
         PlaybackSettings settings
     ) throws InvalidMidiDataException {
-        addNoteOff(
-            track,
-            (int) (trackTicks + ((duration * (long) calculateSoundingPercent(element, settings)) / 100f)),
-            element
-        );
+        addNoteOff(track, trackTicks + calculateSoundingDuration(duration, element, settings), element);
     }
 
     /**
@@ -509,7 +482,7 @@ public class LineTrackBuilder {
         StaffElement element,
         PlaybackSettings settings
     ) {
-        return (int) ((duration * (long) calculateSoundingPercent(element, settings)) / 100f);
+        return (int) ((duration * (long) calculateSoundingPercent(element, settings)) / PERCENT);
     }
 
     /**
