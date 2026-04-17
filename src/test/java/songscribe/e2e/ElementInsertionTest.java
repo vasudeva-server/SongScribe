@@ -43,6 +43,7 @@ import org.junit.jupiter.api.TestClassOrder;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.TestMethodOrder;
 
+import songscribe.midi.LineTrackBuilder;
 import songscribe.midi.PlaybackSettings;
 import songscribe.music.ArticulationType;
 import songscribe.music.ElementType;
@@ -681,7 +682,7 @@ class ElementInsertionTest extends E2ETest {
         var tempo = Objects.requireNonNull(line.getElement(0).getTempoChange());
         var sequence = new Sequence(Sequence.PPQ, 96);
         var track = sequence.createTrack();
-        line.addToTrack(track, 0, 0, tempo, DEFAULT_SETTINGS);
+        new LineTrackBuilder(line).addToTrack(track, 0, 0, tempo, DEFAULT_SETTINGS);
         return track;
     }
 

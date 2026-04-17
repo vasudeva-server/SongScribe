@@ -121,13 +121,14 @@ public class MidiSequenceBuilder {
                 var lineStart = (i == startLine && startNote > 0) ? startNote : 0;
                 var lineEnd = (i == endLine && endNote >= 0) ? endNote : line.elementCount() - 1;
 
+                var builder = new LineTrackBuilder(line);
                 TrackPosition result;
 
                 if (lineStart > 0 || lineEnd < line.elementCount() - 1) {
-                    result = line.addToTrack(track, i, ticks, currentTempo, settings,
+                    result = builder.addToTrack(track, i, ticks, currentTempo, settings,
                         lineStart, lineEnd, velocityMap);
                 } else {
-                    result = line.addToTrack(track, i, ticks, currentTempo, settings,
+                    result = builder.addToTrack(track, i, ticks, currentTempo, settings,
                         velocityMap);
                 }
 
@@ -258,7 +259,7 @@ public class MidiSequenceBuilder {
 
                 // Add the note to the track (one note at a time), sharing the
                 // glissando helper so grace note state survives across calls.
-                var result = line.addToTrack(
+                var result = new LineTrackBuilder(line).addToTrack(
                     track, lineIndex, ticks, currentTempo, settings,
                     noteIndex, noteIndex, glissandoHelper, velocityMap
                 );

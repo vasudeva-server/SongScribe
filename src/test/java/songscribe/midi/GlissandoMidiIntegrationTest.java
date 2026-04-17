@@ -126,7 +126,7 @@ class GlissandoMidiIntegrationTest extends UnitTest {
     private Track buildMidiTrack() throws Exception {
         var sequence = new Sequence(Sequence.PPQ, 96);
         var track = sequence.createTrack();
-        line.addToTrack(track, 0, 0, tempo, DEFAULT_SETTINGS);
+        new LineTrackBuilder(line).addToTrack(track, 0, 0, tempo, DEFAULT_SETTINGS);
         return track;
     }
 
