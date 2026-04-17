@@ -72,12 +72,6 @@ class LineRenderer {
     /** Corner arc diameter for the rubber-band selection rectangle, in pixels. */
     private static final int SELECTION_RECT_ARC_PX = 2;
 
-    /** Alpha for the replaced-element highlight (semi-transparent red). */
-    private static final int REPLACED_ELEMENT_ALPHA = 70;
-
-    /** Color for an existing element that will be replaced by the current preview element. */
-    private static final Color REPLACED_ELEMENT_COLOR = new Color(255, 0, 0, REPLACED_ELEMENT_ALPHA);
-
     // ==========================================================================
     // Instance Fields
     // ==========================================================================
@@ -125,7 +119,6 @@ class LineRenderer {
         ctx.setEditMode(lc.isEditMode());
         ctx.setPlayingNoteIndex(lc.getPlayingNoteIndex());
         ctx.setPlayingGraceNoteIndex(lc.getPlayingGraceNoteIndex());
-
         // Ensure NoteRenderer metrics are initialized
         NoteRenderer.initializeAccidentalWidths(g2);
 
@@ -234,8 +227,8 @@ class LineRenderer {
     /**
      * Determines the color for rendering an element.
      * <p>
-     * Delegates edit mode, playback, and selection logic to {@link ElementRenderContext#getElementColor}.
-     * Adds note-specific hover and grace-cancel coloring on top.
+     * Delegates edit mode, playback, selection, and hover logic to
+     * {@link ElementRenderContext#getElementColor}. Adds grace-cancel coloring on top.
      *
      * @param elementIndex The index of the element within this line
      * @param ctx          The render context
@@ -248,21 +241,10 @@ class LineRenderer {
             return color;
         }
 
-        var isHovered = PreviewElementManager.getXMatchedElementLineIndex() == lc.getLineIndex()
-            && PreviewElementManager.getXMatchedElementIndex() == elementIndex;
-
-        if (isHovered) {
-            return REPLACED_ELEMENT_COLOR;
-        }
-
         var line = lc.getLine();
 
-        if (line != null) {
-            var element = line.getElement(elementIndex);
-
-            if (GraceModeManager.isPendingCancel(element)) {
-                return Color.RED;
-            }
+        if (line != null && GraceModeManager.isPendingCancel(line.getElement(elementIndex))) {
+            return Color.RED;
         }
 
         return Color.BLACK;

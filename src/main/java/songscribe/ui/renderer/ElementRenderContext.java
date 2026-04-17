@@ -29,6 +29,7 @@ import songscribe.music.Span;
 import songscribe.music.Line;
 import songscribe.ui.component.Score;
 import songscribe.ui.component.score.LineComponent;
+import songscribe.ui.component.score.PreviewElementManager;
 import songscribe.ui.layout.LayoutResult;
 import songscribe.ui.layout.ScaleContext;
 import songscribe.ui.menu.DebugState;
@@ -44,6 +45,20 @@ import songscribe.ui.menu.DebugState;
  * RenderContext interface used by the legacy renderer.
  */
 public class ElementRenderContext {
+
+    // ==========================================================================
+    // Constants
+    // ==========================================================================
+
+    /** Alpha for the replaced-element highlight (semi-transparent red). */
+    private static final int REPLACED_ELEMENT_ALPHA = 90;
+
+    /** Color for an existing element that will be replaced by the current preview element. */
+    private static final Color REPLACED_ELEMENT_COLOR = new Color(255, 0, 0, REPLACED_ELEMENT_ALPHA);
+
+    // ==========================================================================
+    // Instance Fields
+    // ==========================================================================
 
     private final Composition composition;
     @Nullable
@@ -153,6 +168,19 @@ public class ElementRenderContext {
     }
 
     /**
+     * Returns whether the element at {@code elementIndex} on the current line is the one that
+     * would be replaced by the active preview element (i.e., the preview is hovering over it).
+     * Reads current state from {@link PreviewElementManager} — callers do not need to plumb
+     * hover state through the context.
+     *
+     * @param elementIndex element index within the current line
+     */
+    public boolean isReplacedElement(int elementIndex) {
+        return PreviewElementManager.getXMatchedElementLineIndex() == lineIndex
+            && PreviewElementManager.getXMatchedElementIndex() == elementIndex;
+    }
+
+    /**
      * Returns the pixels-per-staff-space scale factor.
      * Convenience accessor for renderers that need pixel conversion.
      */
@@ -237,8 +265,12 @@ public class ElementRenderContext {
     /**
      * Returns the rendering color for the element at the given index.
      * <p>
-     * Covers edit mode, playback highlighting, and selection. Does not include
-     * note-specific hover or grace-cancel coloring (handled in LineRenderer).
+     * Covers playback highlighting, selection, and hover (replaced-element) highlighting.
+     * Does not include grace-cancel coloring (handled in LineRenderer).
+     * <p>
+     * Outside edit mode this always returns {@link Color#BLACK}: selection/hover/preview
+     * highlights are edit-mode concepts, and playback rendering runs only while the score
+     * is in edit mode.
      */
     public Color getElementColor(int elementIndex) {
         if (!editMode) {
@@ -252,6 +284,10 @@ public class ElementRenderContext {
         if (selectionProvider != null
                 && selectionProvider.isElementSelected(elementIndex, lineIndex)) {
             return selectionColor;
+        }
+
+        if (isReplacedElement(elementIndex)) {
+            return REPLACED_ELEMENT_COLOR;
         }
 
         return Color.BLACK;
