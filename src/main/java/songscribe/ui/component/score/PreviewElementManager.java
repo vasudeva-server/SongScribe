@@ -122,7 +122,11 @@ public class PreviewElementManager {
 
     @Handler
     public void modeDidChange(ModeDidChangeNotification message) {
-        restorePreviewElement(currentMouseLine);
+        if (message.getMode() != Mode.EDIT) {
+            clearPreviewElement();
+        } else {
+            restorePreviewElement(currentMouseLine);
+        }
     }
 
     @Handler
