@@ -112,7 +112,7 @@ public class LineLyricsComponent extends ScoreComponent {
             return;
         }
 
-        if (line.elementCount() == 0) {
+        if (line.effectiveElementCount() == 0) {
             return;
         }
 
@@ -153,7 +153,7 @@ public class LineLyricsComponent extends ScoreComponent {
             return false;
         }
 
-        for (var i = 0; i < line.elementCount(); i++) {
+        for (var i = 0; i < line.effectiveElementCount(); i++) {
             var syllable = line.getElement(i).properties.syllable;
 
             if (syllable != null && !syllable.isEmpty() && !syllable.equals("_")) {

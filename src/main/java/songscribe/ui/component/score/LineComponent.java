@@ -27,6 +27,7 @@ import java.awt.event.MouseEvent;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.music.Line;
+import songscribe.music.StaffElement;
 import songscribe.ui.Mode;
 import songscribe.ui.action.Actions;
 import songscribe.ui.component.ComponentNames;
@@ -38,6 +39,7 @@ import songscribe.ui.layout.LayoutEngine;
 import songscribe.ui.layout.LayoutStylesheet;
 import songscribe.ui.layout.LayoutResult;
 import songscribe.ui.layout.ScaleContext;
+import songscribe.ui.renderer.ElementRenderContext;
 import songscribe.ui.selection.LineSelectionState;
 import songscribe.error.RuntimeError;
 
@@ -713,6 +715,62 @@ public class LineComponent extends ScoreComponent
         }
 
         return emm.getGraceModeManager();
+    }
+
+    /** Returns the preview element from edit mode, or null if unavailable. */
+    @Nullable StaffElement getPreviewElement() {
+        var emm = EditModeManager.getInstance();
+        return emm != null ? emm.getPreviewElement() : null;
+    }
+
+    /** Returns whether the preview element should be rendered as visible. */
+    boolean isPreviewElementVisible() {
+        var emm = EditModeManager.getInstance();
+        return emm != null && emm.isPreviewElementVisible();
+    }
+
+    /** Returns whether grace note insert mode is currently in progress. */
+    boolean isGraceModeInProgress() {
+        var emm = EditModeManager.getInstance();
+        return emm != null && emm.getGraceModeManager().isInProgress();
+    }
+
+    /**
+     * Returns the locked insertion X for grace mode, in staff spaces.
+     * Only valid when {@link #isGraceModeInProgress()} is true.
+     */
+    double getGraceModeLockedXSs() {
+        return getGraceModeManager().getLockedInsertionXSs();
+    }
+
+    /** Returns whether the given element is pending grace-note cancellation. */
+    boolean isPendingCancelElement(StaffElement element) {
+        return GraceModeManager.isPendingCancel(element);
+    }
+
+    /**
+     * Applies the grace-mode host-insertion preview shift to the context,
+     * if this line is the active grace line.
+     */
+    void applyGracePreviewShift(ElementRenderContext ctx) {
+        var emm = EditModeManager.getInstance();
+
+        if (emm == null) {
+            return;
+        }
+
+        var graceModeManager = emm.getGraceModeManager();
+
+        if (graceModeManager.getGraceLineComponent() == this) {
+            var preview = graceModeManager.getHostInsertionPreview();
+
+            if (preview != null) {
+                ctx.setPreviewShift(
+                    graceModeManager.getHostInsertionIndex(),
+                    preview.shiftForSubsequentElementsSs()
+                );
+            }
+        }
     }
 
     /**

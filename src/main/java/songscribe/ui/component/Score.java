@@ -897,8 +897,13 @@ public final class Score
     }
 
     public void drawWidthIfWiderLine(Line line, boolean strict) {
-        if (line.elementCount() > 1) {
-            var endNote = line.getElement(line.elementCount() - 1);
+        // Exclude the auto-maintained FINAL_DOUBLE_BARLINE from stretch calculations:
+        // its position is fixed at the line's right edge and must not be treated as
+        // the end note when computing the ratio.
+        var effectiveCount = line.effectiveElementCount();
+
+        if (effectiveCount > 1) {
+            var endNote = line.getElement(effectiveCount - 1);
             float idealSpace;
 
             if (strict) {
@@ -907,20 +912,15 @@ public final class Score
                 idealSpace = (float) ScaleContext.getInstance().toPixels(LayoutStylesheet.DEFAULT_COLUMN_GAP_SS) + 20;
             }
 
-            // Note: getXPosSs() is a legacy misnomer — it stores pixels.
-            // Use getLineWidthPx() to compare in the same unit.
             var lineWidthPx = getComposition().getLineWidthPx();
 
-            if (
-                line.getElement(line.elementCount() - 1).getXOffsetPx() >
-                    (lineWidthPx - idealSpace)
-            ) {
+            if (endNote.getXOffsetPx() > (lineWidthPx - idealSpace)) {
                 var firstX = line.getElement(0).getXOffsetPx();
                 var ratio =
                     (lineWidthPx - idealSpace - firstX) /
                         (endNote.getXOffsetPx() - firstX);
 
-                for (var i = 1; i < line.elementCount(); i++) {
+                for (var i = 1; i < effectiveCount; i++) {
                     var note = line.getElement(i);
                     note.setXOffsetPx(
                         (int) (firstX + Math.round((note.getXOffsetPx() - firstX) * ratio))

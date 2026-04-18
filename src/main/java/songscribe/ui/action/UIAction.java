@@ -486,7 +486,8 @@ public class UIAction extends AbstractAction {
     }
 
     protected boolean enableFromGraceModeState() {
-        return !hasFlag(Flag.DISABLE_IN_GRACE_MODE) || !GraceModeManager.isActive();
+        boolean result = !hasFlag(Flag.DISABLE_IN_GRACE_MODE) || !GraceModeManager.isActive();
+        return result;
     }
 
     @Handler(priority = Message.MEDIUM_PRIORITY)

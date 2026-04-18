@@ -26,8 +26,6 @@ import module java.desktop;
 import songscribe.music.ElementType;
 import songscribe.ui.Mode;
 import songscribe.ui.component.Score;
-import songscribe.ui.edit.EditModeManager;
-import songscribe.ui.edit.GraceModeManager;
 import songscribe.ui.layout.AnnotationAttachment;
 import songscribe.ui.layout.BeatChangeAttachment;
 import songscribe.ui.layout.DynamicAttachment;
@@ -126,22 +124,7 @@ class LineRenderer {
 
         // When in grace-note insert mode for this line, shift subsequent elements
         // rightward to show where the host note will land before the user clicks.
-        var editModeManager = EditModeManager.getInstance();
-
-        if (editModeManager != null) {
-            var graceModeManager = editModeManager.getGraceModeManager();
-
-            if (graceModeManager.getGraceLineComponent() == lc) {
-                var preview = graceModeManager.getHostInsertionPreview();
-
-                if (preview != null) {
-                    ctx.setPreviewShift(
-                        graceModeManager.getHostInsertionIndex(),
-                        preview.shiftForSubsequentElementsSs()
-                    );
-                }
-            }
-        }
+        lc.applyGracePreviewShift(ctx);
 
         // Render in proper order (back to front)
         drawStaffLines(g2, ctx);
@@ -278,7 +261,7 @@ class LineRenderer {
 
         var line = lc.getLine();
 
-        if (line != null && GraceModeManager.isPendingCancel(line.getElement(elementIndex))) {
+        if (line != null && lc.isPendingCancelElement(line.getElement(elementIndex))) {
             return Color.RED;
         }
 
@@ -323,15 +306,8 @@ class LineRenderer {
 
         for (var iter = beamings.listIterator(); iter.hasNext(); ) {
             var span = iter.next();
-
-            if (ctx.hasPreviewShift() && span.getStart() >= ctx.getPreviewShiftFromIndex()) {
-                try (var ignored = GraphicsState.save(g2, GraphicsState.Property.TRANSFORM)) {
-                    g2.translate(ctx.getPreviewShiftSs(), 0);
-                    beamRenderer.renderBeams(g2, line, ctx, span.getStart(), span.getEnd());
-                }
-            } else {
-                beamRenderer.renderBeams(g2, line, ctx, span.getStart(), span.getEnd());
-            }
+            renderWithPreviewShiftIfNeeded(g2, ctx, span.getStart(),
+                () -> beamRenderer.renderBeams(g2, line, ctx, span.getStart(), span.getEnd()));
         }
     }
 
@@ -353,15 +329,29 @@ class LineRenderer {
 
         for (var iter = ties.listIterator(); iter.hasNext(); ) {
             var span = iter.next();
+            renderWithPreviewShiftIfNeeded(g2, ctx, span.getStart(),
+                () -> tieRenderer.renderTie(g2, span, ctx));
+        }
+    }
 
-            if (ctx.hasPreviewShift() && span.getStart() >= ctx.getPreviewShiftFromIndex()) {
-                try (var ignored = GraphicsState.save(g2, GraphicsState.Property.TRANSFORM)) {
-                    g2.translate(ctx.getPreviewShiftSs(), 0);
-                    tieRenderer.renderTie(g2, span, ctx);
-                }
-            } else {
-                tieRenderer.renderTie(g2, span, ctx);
+    /**
+     * Runs {@code render} with the context's preview shift translated into {@code g2} when
+     * {@code spanStart} falls at or after the shift boundary. The transform is restored
+     * on exit (including on exception).
+     */
+    private static void renderWithPreviewShiftIfNeeded(
+        Graphics2D g2,
+        ElementRenderContext ctx,
+        int spanStart,
+        Runnable render
+    ) {
+        if (ctx.hasPreviewShift() && spanStart >= ctx.getPreviewShiftFromIndex()) {
+            try (var ignored = GraphicsState.save(g2, GraphicsState.Property.TRANSFORM)) {
+                g2.translate(ctx.getPreviewShiftSs(), 0);
+                render.run();
             }
+        } else {
+            render.run();
         }
     }
 
@@ -481,61 +471,58 @@ class LineRenderer {
 
         g2.setColor(Color.BLACK);
 
-        var preShiftTransform = g2.getTransform();
-        boolean attachmentShiftActive = false;
+        try (var ignored = GraphicsState.save(g2, GraphicsState.Property.TRANSFORM)) {
+            boolean attachmentShiftActive = false;
 
-        for (var i = 0; i < line.elementCount(); i++) {
-            if (!attachmentShiftActive && ctx.hasPreviewShift() && i >= ctx.getPreviewShiftFromIndex()) {
-                g2.translate(ctx.getPreviewShiftSs(), 0);
-                attachmentShiftActive = true;
+            for (var i = 0; i < line.elementCount(); i++) {
+                if (!attachmentShiftActive && ctx.hasPreviewShift() && i >= ctx.getPreviewShiftFromIndex()) {
+                    g2.translate(ctx.getPreviewShiftSs(), 0);
+                    attachmentShiftActive = true;
+                }
+
+                ctx.setCurrentElementIndex(i);
+                var element = line.getElement(i);
+
+                // Tier 1: Articulations (near-note)
+                if (!element.getArticulations().isEmpty()) {
+                    articulationRenderer.render(element, g2, ctx);
+                }
+
+                // Tier 2: Fermata (note decoration)
+                if (layoutResult != null
+                    && layoutResult.findAttachmentDecorationLayout(
+                        element, FermataAttachment.class) != null) {
+                    fermataRenderer.render(element, g2, ctx);
+                }
+
+                // Tier 3: Dynamic markings (below staff)
+                if (layoutResult != null
+                    && layoutResult.findAttachmentDecorationLayout(
+                        element, DynamicAttachment.class) != null) {
+                    dynamicMarkingRenderer.render(element, g2, ctx);
+                }
+
+                // Tier 4: Tempo (system)
+                if (layoutResult != null
+                    && layoutResult.findAttachmentDecorationLayout(
+                        element, TempoAttachment.class) != null) {
+                    tempoRenderer.render(element, g2, ctx);
+                }
+
+                // Tier 4: Beat change (system)
+                if (layoutResult != null
+                    && layoutResult.findAttachmentDecorationLayout(
+                        element, BeatChangeAttachment.class) != null) {
+                    beatChangeRenderer.render(element, g2, ctx);
+                }
+
+                // Tier 4: Annotation (system)
+                if (layoutResult != null
+                    && layoutResult.findAttachmentDecorationLayout(
+                        element, AnnotationAttachment.class) != null) {
+                    annotationRenderer.render(element, g2, ctx);
+                }
             }
-
-            ctx.setCurrentElementIndex(i);
-            var element = line.getElement(i);
-
-            // Tier 1: Articulations (near-note)
-            if (!element.getArticulations().isEmpty()) {
-                articulationRenderer.render(element, g2, ctx);
-            }
-
-            // Tier 2: Fermata (note decoration)
-            if (layoutResult != null
-                && layoutResult.findAttachmentDecorationLayout(
-                    element, FermataAttachment.class) != null) {
-                fermataRenderer.render(element, g2, ctx);
-            }
-
-            // Tier 3: Dynamic markings (below staff)
-            if (layoutResult != null
-                && layoutResult.findAttachmentDecorationLayout(
-                    element, DynamicAttachment.class) != null) {
-                dynamicMarkingRenderer.render(element, g2, ctx);
-            }
-
-            // Tier 4: Tempo (system)
-            if (layoutResult != null
-                && layoutResult.findAttachmentDecorationLayout(
-                    element, TempoAttachment.class) != null) {
-                tempoRenderer.render(element, g2, ctx);
-            }
-
-            // Tier 4: Beat change (system)
-            if (layoutResult != null
-                && layoutResult.findAttachmentDecorationLayout(
-                    element, BeatChangeAttachment.class) != null) {
-                beatChangeRenderer.render(element, g2, ctx);
-            }
-
-            // Tier 4: Annotation (system)
-            if (layoutResult != null
-                && layoutResult.findAttachmentDecorationLayout(
-                    element, AnnotationAttachment.class) != null) {
-                annotationRenderer.render(element, g2, ctx);
-            }
-        }
-
-        if (attachmentShiftActive) {
-            g2.setTransform(preShiftTransform);
         }
 
         ctx.setCurrentElementIndex(-1);
@@ -567,13 +554,7 @@ class LineRenderer {
             return;
         }
 
-        var editModeManager = EditModeManager.getInstance();
-
-        if (editModeManager == null) {
-            return;
-        }
-
-        var previewElement = editModeManager.getPreviewElement();
+        var previewElement = lc.getPreviewElement();
 
         if (previewElement == null) {
             return;
@@ -614,7 +595,7 @@ class LineRenderer {
         }
 
         // Skip if preview element is not visible (e.g., in keyboard mode, or hovering over a note head)
-        if (!editModeManager.isPreviewElementVisible()) {
+        if (!lc.isPreviewElementVisible()) {
             return;
         }
 
@@ -626,10 +607,8 @@ class LineRenderer {
         // In grace mode, use the locked x position directly — it already accounts
         // for grace note spacing. The standard calculateInsertionXSs would apply
         // normal inter-element spacing instead.
-        var graceModeManager = editModeManager.getGraceModeManager();
-
-        if (graceModeManager.isInProgress()) {
-            x = graceModeManager.getLockedInsertionXSs();
+        if (lc.isGraceModeInProgress()) {
+            x = lc.getGraceModeLockedXSs();
         } else {
             // Pass mouse X so it can snap to note heads when mouse is over them
             double mouseX = 0;

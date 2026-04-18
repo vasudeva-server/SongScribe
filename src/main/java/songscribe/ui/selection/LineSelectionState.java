@@ -205,7 +205,11 @@ public final class LineSelectionState {
     @Nullable
     public ElementSelection getSelection() {
         if (lineSelected) {
-            return new ElementSelection(line, 0, line.elementCount() - 1);
+            if (line.effectiveElementCount() == 0) {
+                return null;
+            }
+
+            return new ElementSelection(line, 0, line.effectiveElementCount() - 1);
         }
 
         if (selectionBegin != -1) {

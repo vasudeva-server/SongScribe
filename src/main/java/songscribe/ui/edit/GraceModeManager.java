@@ -120,6 +120,11 @@ public final class GraceModeManager {
     @Nullable
     private LineComponent graceLineComponent;
 
+    // Cached host-note insertion preview. Computed once on entry to GRACE_NOTE_INSERT
+    // (the locked x, grace index, preview element and layout are all fixed until the
+    // user clicks or cancels, so recomputing per paint frame would be wasted work).
+    private InsertionSpacingCalculator.@Nullable InsertionResult cachedHostInsertion;
+
     @Nullable
     private Point mouseDownPoint;
 
@@ -233,14 +238,21 @@ public final class GraceModeManager {
     }
 
     /**
-     * Computes the insertion spacing preview for the host note when in
-     * {@link State#GRACE_NOTE_INSERT} state.
-     * <p>
-     * Returns null if not in that state, if the preview element is unavailable,
-     * or if the host note would not fit on the line.
+     * Returns the host-note insertion preview cached on entry to {@link State#GRACE_NOTE_INSERT}.
+     * Null if not in that state or the host note would not fit on the line (in which case
+     * {@link #enterGraceNoteInsert} would have aborted and reset the state).
      */
     public InsertionSpacingCalculator.@Nullable InsertionResult getHostInsertionPreview() {
-        if (state != State.GRACE_NOTE_INSERT || graceLine == null || graceLineComponent == null) {
+        return cachedHostInsertion;
+    }
+
+    /**
+     * Computes the host-note insertion preview using the current locked state.
+     * Returns null if state is incomplete (preview/line/component missing) or the
+     * host note would not fit on the line.
+     */
+    private InsertionSpacingCalculator.@Nullable InsertionResult computeHostInsertion() {
+        if (graceLine == null || graceLineComponent == null) {
             return null;
         }
 
@@ -440,16 +452,6 @@ public final class GraceModeManager {
             return true;
         }
 
-        if (!InsertionSpacingCalculator.hasRoomForHostNoteAfterGrace(line, graceNoteIndex)) {
-            OptionDialogs.showErrorMessage(
-                SwingUtilities.getWindowAncestor(graceLineComponent),
-                Strings.ALERT_TITLE_GRACE_NOTE_ERROR,
-                Strings.ERROR_GRACE_NOTE_HOST_NO_ROOM
-            );
-            finish(true);
-            return true;
-        }
-
         line.withModification(() -> {
             // Insert the host note at the locked x position
             PreviewElementManager.handleClick(lineComponent, true);
@@ -570,37 +572,24 @@ public final class GraceModeManager {
         // graceLineComponent is guaranteed non-null here: getLockedInsertionXSs()
         // returns 0 when it is null, so reaching this point means it is non-null.
         if (graceLineComponent == null) {
-            throw new AssertionError("graceLineComponent must be non-null here");
+            throw new IllegalStateException("graceLineComponent must be non-null here");
         }
 
-        // Check now whether there is room for the host note. If not, undo the
-        // grace note insertion and alert the user rather than waiting until they
-        // click to insert the host note.
-        var previewElement = editModeManager.getPreviewElement();
+        // Check whether the host note will fit before locking into insert mode, and
+        // cache the result so per-frame preview rendering does not repeat the math.
+        var hostInsertion = computeHostInsertion();
 
-        if (previewElement == null) {
+        if (hostInsertion == null) {
             finish(true);
+            OptionDialogs.showErrorMessage(
+                SwingUtilities.getWindowAncestor(graceLineComponent),
+                Strings.ALERT_TITLE_INSERT_ERROR,
+                Strings.ERROR_GRACE_NOTE_HOST_NO_ROOM
+            );
             return;
         }
 
-        // graceLine is non-null here: getLockedInsertionXSs() returns 0 when null.
-        var line = graceLine;
-
-        if (line == null) {
-            throw new AssertionError("graceLine must be non-null here");
-        }
-
-        var hostCheck = InsertionSpacingCalculator.calculateInsertion(
-            line, previewElement, graceNoteIndex + 1, graceLineComponent.getLayoutResult()
-        );
-        var composition = line.getComposition();
-
-        if (composition != null && !hostCheck.fitsWithinLine(composition.getLineWidthSs())) {
-            finish(true);
-            OptionDialogs.showErrorMessage(null, Strings.ALERT_TITLE_INSERT_ERROR, Strings.ERROR_GRACE_NOTE_HOST_NO_ROOM);
-            return;
-        }
-
+        cachedHostInsertion = hostInsertion;
         PreviewElementManager.restorePreviewElement(graceLineComponent);
     }
 
@@ -688,6 +677,7 @@ public final class GraceModeManager {
         graceNoteIndex = -1;
         graceLine = null;
         graceLineComponent = null;
+        cachedHostInsertion = null;
         mouseDownPoint = null;
         mouseDownTime = 0;
         justEnteredInsert = false;

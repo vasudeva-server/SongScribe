@@ -363,7 +363,7 @@ class ElementInsertionTest extends E2ETest {
         @Order(1)
         @Test
         void testClickClickInsertion() {
-            var countBefore = composition().getLine(0).elementCount();
+            var countBefore = composition().getLine(0).effectiveElementCount();
 
             selectDuration(Actions.GRACE_EIGHTH_NOTE_ACTION);
             clickAt(insertionPoint(0, 0));
@@ -377,7 +377,7 @@ class ElementInsertionTest extends E2ETest {
             var hostIdx = countBefore + 1;
 
             assertAll(
-                () -> assertThat(line.elementCount())
+                () -> assertThat(line.effectiveElementCount())
                     .as("element count").isEqualTo(countBefore + 2),
                 () -> assertThat(line.getElement(graceIdx).getType())
                     .as("grace type").isEqualTo(ElementType.GRACE_QUAVER),
@@ -424,7 +424,7 @@ class ElementInsertionTest extends E2ETest {
         @Order(3)
         @Test
         void testDurationChangeDuringFlow() {
-            var countBefore = composition().getLine(0).elementCount();
+            var countBefore = composition().getLine(0).effectiveElementCount();
 
             selectDuration(Actions.GRACE_EIGHTH_NOTE_ACTION);
             clickAt(insertionPoint(0, 0));
@@ -467,7 +467,7 @@ class ElementInsertionTest extends E2ETest {
 
         @BeforeAll
         void setUp() {
-            baseIndex = composition().getLine(0).elementCount();
+            baseIndex = composition().getLine(0).effectiveElementCount();
         }
 
         @Order(1)
@@ -487,7 +487,7 @@ class ElementInsertionTest extends E2ETest {
         @Test
         void testVerifyElementTypesAndAutoBeam() {
             var line = composition().getLine(0);
-            var insertedCount = line.elementCount() - baseIndex;
+            var insertedCount = line.effectiveElementCount() - baseIndex;
             var elem0 = line.getElement(baseIndex);
             var elem1 = line.getElement(baseIndex + 1);
             var elem2 = line.getElement(baseIndex + 2);
@@ -533,7 +533,7 @@ class ElementInsertionTest extends E2ETest {
             performLayout(0);
 
             var line = composition().getLine(0);
-            var insertedCount = line.elementCount() - baseIndex;
+            var insertedCount = line.effectiveElementCount() - baseIndex;
             var newElem = line.getElement(baseIndex + 1);
             var shiftedElem = line.getElement(baseIndex + 2);
 

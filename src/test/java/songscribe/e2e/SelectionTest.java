@@ -328,7 +328,7 @@ class SelectionTest extends E2ETest {
             pause();
             assertAll(
                 () -> verifyDurationsDisabled("breath mark"),
-                () -> assertActionEnabled(Actions.BARLINE_ACTIONS[2], false, "barline disabled"),
+                () -> assertActionEnabled(Actions.BARLINE_ACTIONS[0], false, "barline disabled"),
                 () -> assertActionEnabled(Actions.BREATH_MARK_ACTION, true, "breath mark enabled")
             );
         }

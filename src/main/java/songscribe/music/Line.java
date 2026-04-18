@@ -467,7 +467,7 @@ public class Line {
      * (insertion spacing, preview positioning, etc.).
      */
     public int effectiveElementCount() {
-        int count = elements.size();
+        var count = elements.size();
 
         if (count > 0 && elements.get(count - 1).getType() == ElementType.FINAL_DOUBLE_BARLINE) {
             return count - 1;

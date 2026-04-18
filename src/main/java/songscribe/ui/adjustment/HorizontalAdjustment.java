@@ -111,12 +111,12 @@ public class HorizontalAdjustment extends Adjustment {
 
             if (
                 (stretchHelper == null) ||
-                    (stretchHelper.length < line.elementCount())
+                    (stretchHelper.length < line.effectiveElementCount())
             ) {
-                stretchHelper = new float[line.elementCount()];
+                stretchHelper = new float[line.effectiveElementCount()];
             }
 
-            for (var i = 0; i < line.elementCount(); i++) {
+            for (var i = 0; i < line.effectiveElementCount(); i++) {
                 stretchHelper[i] = line.getElement(i).getXOffsetPx();
             }
         } else if (
@@ -209,7 +209,7 @@ public class HorizontalAdjustment extends Adjustment {
             var firstX = line.getElement(0).getXOffsetPx();
 
             if (stretchHelper != null) {
-                for (var i = 0; i < line.elementCount(); i++) {
+                for (var i = 0; i < line.effectiveElementCount(); i++) {
                     stretchHelper[i] = firstX +
                         ((stretchHelper[i] - firstX) * ratio);
                     line.getElement(i).setXOffsetPx(Math.round(stretchHelper[i]));
@@ -221,7 +221,7 @@ public class HorizontalAdjustment extends Adjustment {
             draggingRect.horizontalAdjustmentType ==
                 HorizontalAdjustmentType.TO_END_OF_LINE
         ) {
-            for (var i = draggingRect.xIndex; i < line.elementCount(); i++) {
+            for (var i = draggingRect.xIndex; i < line.effectiveElementCount(); i++) {
                 line
                     .getElement(i)
                     .setXOffsetPx((line.getElement(i).getXOffsetPx() + endPoint.x) - diffX);
@@ -236,11 +236,11 @@ public class HorizontalAdjustment extends Adjustment {
                 HorizontalAdjustmentType.START_OF_LINE
         ) {
             for (var currentLine : composition.getLines()) {
-                if (currentLine.elementCount() > 0) {
+                if (currentLine.effectiveElementCount() > 0) {
                     var diff = endPoint.x - currentLine.getElement(0).getXOffsetPx();
                     currentLine.getElement(0).setXOffsetPx(endPoint.x);
 
-                    for (var j = 1; j < currentLine.elementCount(); j++) {
+                    for (var j = 1; j < currentLine.effectiveElementCount(); j++) {
                         currentLine
                             .getElement(j)
                             .setXOffsetPx(currentLine.getElement(j).getXOffsetPx() + diff);
@@ -335,7 +335,7 @@ public class HorizontalAdjustment extends Adjustment {
                 var line = composition.getLine(lineIndex);
 
                 // Add ONE_NOTE
-                for (var i = 0; i < line.elementCount(); i++) {
+                for (var i = 0; i < line.effectiveElementCount(); i++) {
                     adjustRects.add(
                         new AdjustRect(
                             lineIndex,
@@ -383,11 +383,11 @@ public class HorizontalAdjustment extends Adjustment {
                 }
 
                 // Add STRETCH
-                if (line.elementCount() > 0) {
+                if (line.effectiveElementCount() > 0) {
                     adjustRects.add(
                         new AdjustRect(
                             lineIndex,
-                            line.elementCount() - 1,
+                            line.effectiveElementCount() - 1,
                             HorizontalAdjustmentType.STRETCH_NOTE_SPACING
                         )
                     );
@@ -439,7 +439,7 @@ public class HorizontalAdjustment extends Adjustment {
             }
 
             // Add FIRST_NOTE
-            if (composition.getLine(0).elementCount() > 0) {
+            if (composition.getLine(0).effectiveElementCount() > 0) {
                 adjustRects.add(
                     new AdjustRect(0, 0, HorizontalAdjustmentType.START_OF_LINE)
                 );

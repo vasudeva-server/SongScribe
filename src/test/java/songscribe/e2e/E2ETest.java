@@ -432,11 +432,11 @@ public abstract class E2ETest {
 
             int xPx;
 
-            if (line.elementCount() == 0) {
+            if (line.effectiveElementCount() == 0) {
                 // Fixed offset from left edge for empty lines
                 xPx = 80;
             } else {
-                var lastNote = line.getElement(line.elementCount() - 1);
+                var lastNote = line.getElement(line.effectiveElementCount() - 1);
                 var layoutResult = lc.getLayoutResult();
                 var lastXSs = layoutResult != null ? layoutResult.getElementXSs(lastNote) : 0.0;
                 var sc = ScaleContext.getInstance();
