@@ -120,14 +120,14 @@ public class AnnotationRenderer extends BaseElementRenderer<StaffElement> {
         var annotation = note.getAnnotation();
 
         if (annotation == null) {
-            return note.getXPosSs();
+            return note.getXOffsetPx();
         }
 
         var text = annotation.getAnnotation();
         var textWidth = g2.getFontMetrics().stringWidth(text);
 
         // Center annotation over note
-        return note.getXPosSs() + (CROTCHET_WIDTH_PX / 2) - (textWidth / 2.0);
+        return note.getXOffsetPx() + (CROTCHET_WIDTH_PX / 2) - (textWidth / 2.0);
     }
 
     /**

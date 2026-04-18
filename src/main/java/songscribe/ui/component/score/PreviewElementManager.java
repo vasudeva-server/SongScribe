@@ -125,6 +125,11 @@ public class PreviewElementManager {
     public void modeDidChange(ModeDidChangeNotification message) {
         if (message.getMode() != Mode.EDIT) {
             clearPreviewElement();
+            var editModeManager = EditModeManager.getInstance();
+
+            if (editModeManager != null) {
+                editModeManager.setPreviewElement(null);
+            }
         } else {
             restorePreviewElement(currentMouseLine);
         }
@@ -392,7 +397,13 @@ public class PreviewElementManager {
         }
 
         int xIndex = layoutResult.findInsertionIndex(mouseXss, line);
-        int elementAtX = layoutResult.findElementAtXSs(mouseXss, line);
+
+        // In grace mode the locked x coincides with an existing note that will be
+        // shifted (not replaced), so suppress the element-at-x match to avoid
+        // painting it red as if it were the replacement target.
+        boolean inGraceMode = editModeManager != null
+            && editModeManager.getGraceModeManager().isInProgress();
+        int elementAtX = inGraceMode ? -1 : layoutResult.findElementAtXSs(mouseXss, line);
 
         // Suppress preview over the composition's auto-maintained final barline.
         var composition = line.getComposition();
@@ -480,6 +491,16 @@ public class PreviewElementManager {
      * (append, insert, or modify). Called from {@code LineComponent.mouseClicked()}.
      */
     public static void handleClick(LineComponent lc) {
+        handleClick(lc, false);
+    }
+
+    /**
+     * Like {@link #handleClick(LineComponent)}, but when {@code forceInsert} is {@code true}
+     * always inserts rather than modifying an existing element at the same x position.
+     * Used by grace mode, which must insert a new host note even when an existing note
+     * occupies the locked insertion slot.
+     */
+    public static void handleClick(LineComponent lc, boolean forceInsert) {
         if (!shouldHandlePreviewElement(lc)) {
             return;
         }
@@ -533,7 +554,7 @@ public class PreviewElementManager {
         line.withModification(() -> {
             if (currentXIndex == line.elementCount()) {
                 addPreviewElement(lc, line);
-            } else if (xPosSsMatchesElement) {
+            } else if (!forceInsert && xPosSsMatchesElement) {
                 modifyExistingElement(lc, currentXIndex, line);
             } else {
                 insertElement(lc, currentXIndex, line);
@@ -713,12 +734,13 @@ public class PreviewElementManager {
      * @param line    The line to insert into
      * @param element The element to insert
      * @param index   The insertion index
+     * @param layout  Layout result for position lookup; null falls back to {@code xOffset}
      * @return The insertion result, or null if the line is full
      */
     private static InsertionSpacingCalculator.@Nullable InsertionResult calculateInsertionOrShowError(
-        Line line, StaffElement element, int index
+        Line line, StaffElement element, int index, @Nullable LayoutResult layout
     ) {
-        var insertion = InsertionSpacingCalculator.calculateInsertion(line, element, index);
+        var insertion = InsertionSpacingCalculator.calculateInsertion(line, element, index, layout);
         var composition = line.getComposition();
 
         if (!insertion.fitsWithinLine(composition.getLineWidthSs())) {
@@ -759,13 +781,13 @@ public class PreviewElementManager {
             return;
         }
 
-        var insertion = calculateInsertionOrShowError(line, previewElement, line.elementCount());
+        var insertion = calculateInsertionOrShowError(line, previewElement, line.elementCount(), lc.getLayoutResult());
 
         if (insertion == null) {
             return;
         }
 
-        previewElement.setXPosSs(ScaleContext.getInstance().toRoundedPixels(insertion.insertedElementXSs()));
+        previewElement.setXOffsetPx(ScaleContext.getInstance().toRoundedPixels(insertion.insertedElementXSs()));
         line.addElement(previewElement);
 
         applyAutomaticBeaming(line, line.elementCount() - 1);
@@ -811,13 +833,13 @@ public class PreviewElementManager {
         }
 
         line.removeSpan(xIndex - 1, xIndex);
-        var insertion = calculateInsertionOrShowError(line, previewElement, xIndex);
+        var insertion = calculateInsertionOrShowError(line, previewElement, xIndex, lc.getLayoutResult());
 
         if (insertion == null) {
             return;
         }
 
-        previewElement.setXPosSs(ScaleContext.getInstance().toRoundedPixels(insertion.insertedElementXSs()));
+        previewElement.setXOffsetPx(ScaleContext.getInstance().toRoundedPixels(insertion.insertedElementXSs()));
 
         if (line.hasEndingInvalidatedByInsertion(xIndex, previewElement.getType())) {
             if (!EndingConfirms.confirmInvalidation()) {
@@ -828,8 +850,8 @@ public class PreviewElementManager {
         line.addElement(xIndex, previewElement);
         var shift = ScaleContext.getInstance().toRoundedPixels(insertion.shiftForSubsequentElementsSs());
 
-        for (var i = xIndex + 1; i < line.elementCount(); i++) {
-            line.getElement(i).setXPosSs(line.getElement(i).getXPosSs() + shift);
+        for (var i = xIndex + 1; i < line.effectiveElementCount(); i++) {
+            line.getElement(i).setXOffsetPx(line.getElement(i).getXOffsetPx() + shift);
         }
 
         applyAutomaticBeaming(line, xIndex);
@@ -927,7 +949,7 @@ public class PreviewElementManager {
 
         // Preserve the existing element's x position
         var existing = line.getElement(elementIndex);
-        previewElement.setXPosSs(existing.getXPosSs());
+        previewElement.setXOffsetPx(existing.getXOffsetPx());
 
         // Rests snap to their default staff position; pitched notes use the mouse Y position
         applyStaffPosition(previewElement, currentStaffPosition);

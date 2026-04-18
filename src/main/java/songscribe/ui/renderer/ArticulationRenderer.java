@@ -25,9 +25,7 @@ import module java.desktop;
 import songscribe.music.StaffElement;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
-import songscribe.ui.layout.LayoutResult;
 import songscribe.ui.layout.stacking.NoteAttachedStacker;
-import songscribe.util.GraphicUtils;
 
 /**
  * Renders articulation markings on notes (staccato, accent).
@@ -99,7 +97,7 @@ public class ArticulationRenderer extends BaseElementRenderer<StaffElement> {
             // Insertion note preview: compute layouts using the same stacking logic.
             // Use the override X for precise positioning, falling back to xPosSs.
             double xSs = ctx.hasOverrideElementX()
-                ? ctx.getOverrideElementXSs() : element.getXPosSs();
+                ? ctx.getOverrideElementXSs() : element.getXOffsetPx();
             layoutResult = NoteAttachedStacker.computePreviewDecorationLayouts(
                 element, xSs);
         }

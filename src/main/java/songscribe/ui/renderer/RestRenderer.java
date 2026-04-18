@@ -34,7 +34,6 @@ import songscribe.music.StaffElement;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
 import songscribe.ui.layout.LayoutStylesheet;
-import songscribe.util.GraphicUtils;
 
 /**
  * Renders rest glyphs (whole, half, quarter, eighth, sixteenth, thirty-second rests).
@@ -133,7 +132,7 @@ public class RestRenderer extends BaseElementRenderer<StaffElement> {
             noteX = ctx.getOverrideElementXSs();
         } else {
             var layoutResult = ctx.getLayoutResult();
-            noteX = (layoutResult != null) ? layoutResult.getElementXSs(note) : note.getXPosSs();
+            noteX = (layoutResult != null) ? layoutResult.getElementXSs(note) : note.getXOffsetPx();
         }
 
         return noteX;

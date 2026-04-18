@@ -104,20 +104,20 @@ class ScoreMessageCoordinatorTest extends UnitTest {
             // [A, G(paired), B, C] — deleting B also removes G.
             // C should shift left to close the gap from G's position.
             var noteA = crotchet();
-            noteA.setXPosSs(0);
+            noteA.setXOffsetPx(0);
             var grace = pairedGraceNote();
-            grace.setXPosSs(8);
+            grace.setXOffsetPx(8);
             var noteB = crotchet();
-            noteB.setXPosSs(10);
+            noteB.setXOffsetPx(10);
             var noteC = crotchet();
-            noteC.setXPosSs(20);
+            noteC.setXOffsetPx(20);
             var line = lineWith(noteA, grace, noteB, noteC);
 
             ScoreMessageCoordinator.deleteNote(2, line);
 
             // firstDeletedIndex is 1 (grace), so shift = grace.x - noteC.x = 8 - 20 = -12
             // noteC.x + (-12) = 20 - 12 = 8
-            assertThat(noteC.getXPosSs()).isEqualTo(8);
+            assertThat(noteC.getXOffsetPx()).isEqualTo(8);
         }
 
         @Test

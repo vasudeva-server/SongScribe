@@ -56,14 +56,14 @@ public class LyricsAdjustment extends Adjustment {
             if (draggingRect.adjustType == AdjustType.SYLLABLE_MOVEMENT) {
                 topLeftDragBounds.setLocation(
                     ((draggingRect.xIndex > 0)
-                        ? line.getElement(draggingRect.xIndex - 1).getXPosSs()
+                        ? line.getElement(draggingRect.xIndex - 1).getXOffsetPx()
                         : 0) +
                         draggingRect.rectangle.width,
                     draggingRect.rectangle.y
                 );
                 bottomRightDragBounds.setLocation(
                     (draggingRect.xIndex < (line.elementCount() - 1))
-                        ? line.getElement(draggingRect.xIndex + 1).getXPosSs()
+                        ? line.getElement(draggingRect.xIndex + 1).getXOffsetPx()
                         : score.getComposition().getLineWidthSs(),
                     draggingRect.rectangle.y
                 );
@@ -71,7 +71,7 @@ public class LyricsAdjustment extends Adjustment {
                 draggingRect.adjustType == AdjustType.SYLLABLE_RELATION_MOVEMENT
             ) {
                 topLeftDragBounds.setLocation(
-                    line.getElement(draggingRect.xIndex).getXPosSs(),
+                    line.getElement(draggingRect.xIndex).getXOffsetPx(),
                     draggingRect.rectangle.y
                 );
                 bottomRightDragBounds.setLocation(
@@ -104,7 +104,7 @@ public class LyricsAdjustment extends Adjustment {
                 .getComposition()
                 .getLine(draggingRect.line)
                 .getElement(draggingRect.xIndex);
-            note.setSyllableMovement(endPoint.x - note.getXPosSs());
+            note.setSyllableMovement(endPoint.x - note.getXOffsetPx());
         } else if (
             draggingRect.adjustType == AdjustType.SYLLABLE_RELATION_MOVEMENT
         ) {
@@ -114,7 +114,7 @@ public class LyricsAdjustment extends Adjustment {
                 .getComposition()
                 .getLine(draggingRect.line)
                 .getElement(draggingRect.xIndex);
-            note.setSyllableRelationMovement(endPoint.x - note.getXPosSs());
+            note.setSyllableRelationMovement(endPoint.x - note.getXOffsetPx());
         } else if (draggingRect.adjustType == AdjustType.LYRICS_YPOS) {
             var diffY =
                 draggingRect.rectangle.y + (draggingRect.rectangle.height / 2);
@@ -209,19 +209,19 @@ public class LyricsAdjustment extends Adjustment {
         var note = line.getElement(rect.xIndex);
 
         if (rect.adjustType == AdjustType.LYRICS_YPOS) {
-            rect.rectangle.x = note.getXPosSs() - 20;
+            rect.rectangle.x = note.getXOffsetPx() - 20;
             rect.rectangle.y = (int) ((score.getNoteYPosPx(0, rect.line) +
                 line.getLyricsYPosSs()) -
                 8);
         } else if (rect.adjustType == AdjustType.SYLLABLE_MOVEMENT) {
-            rect.rectangle.x = note.getXPosSs() + note.getSyllableMovement();
+            rect.rectangle.x = note.getXOffsetPx() + note.getSyllableMovement();
             rect.rectangle.y = (int) (score.getNoteYPosPx(0, rect.line) +
                 line.getLyricsYPosSs() +
                 5);
         } else if (rect.adjustType == AdjustType.SYLLABLE_RELATION_MOVEMENT) {
             rect.rectangle.x = ((note.getSyllableRelationMovement() == 0)
                 ? (int) note.properties.longDashPosition
-                : (note.getXPosSs() + note.getSyllableRelationMovement())) -
+                : (note.getXOffsetPx() + note.getSyllableRelationMovement())) -
                 4;
             rect.rectangle.y = (int) (score.getNoteYPosPx(0, rect.line) +
                 line.getLyricsYPosSs() +

@@ -88,7 +88,7 @@ public final class EndingConfirms {
 
         var index = line.getElementIndex(targetEl);
         var newEl = newType.newInstance();
-        newEl.setXPosSs(targetEl.getXPosSs());
+        newEl.setXOffsetPx(targetEl.getXOffsetPx());
         line.setElement(index, newEl);
     }
 

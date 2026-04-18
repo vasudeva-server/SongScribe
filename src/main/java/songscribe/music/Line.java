@@ -460,6 +460,22 @@ public class Line {
         return elements.size();
     }
 
+    /**
+     * Returns the element count excluding a trailing auto-maintained
+     * {@link ElementType#FINAL_DOUBLE_BARLINE}. Use this wherever a computation
+     * should treat the composition-owned final barline as if it were not there
+     * (insertion spacing, preview positioning, etc.).
+     */
+    public int effectiveElementCount() {
+        int count = elements.size();
+
+        if (count > 0 && elements.get(count - 1).getType() == ElementType.FINAL_DOUBLE_BARLINE) {
+            return count - 1;
+        }
+
+        return count;
+    }
+
     public boolean isEmpty() {
         return elements.isEmpty();
     }

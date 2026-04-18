@@ -692,7 +692,7 @@ public final class Score
 
             if (currentPreviewElement != null) {
                 previewElement.setStaffPosition(currentPreviewElement.getStaffPosition());
-                previewElement.setXPosSs(currentPreviewElement.getXPosSs());
+                previewElement.setXOffsetPx(currentPreviewElement.getXOffsetPx());
             } else {
                 editModeManager.setPreviewElement(previewElement);
             }
@@ -912,18 +912,18 @@ public final class Score
             var lineWidthPx = getComposition().getLineWidthPx();
 
             if (
-                line.getElement(line.elementCount() - 1).getXPosSs() >
+                line.getElement(line.elementCount() - 1).getXOffsetPx() >
                     (lineWidthPx - idealSpace)
             ) {
-                var firstX = line.getElement(0).getXPosSs();
+                var firstX = line.getElement(0).getXOffsetPx();
                 var ratio =
                     (lineWidthPx - idealSpace - firstX) /
-                        (endNote.getXPosSs() - firstX);
+                        (endNote.getXOffsetPx() - firstX);
 
                 for (var i = 1; i < line.elementCount(); i++) {
                     var note = line.getElement(i);
-                    note.setXPosSs(
-                        (int) (firstX + Math.round((note.getXPosSs() - firstX) * ratio))
+                    note.setXOffsetPx(
+                        (int) (firstX + Math.round((note.getXOffsetPx() - firstX) * ratio))
                     );
                 }
 

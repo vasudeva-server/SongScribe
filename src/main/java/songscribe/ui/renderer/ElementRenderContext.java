@@ -74,6 +74,8 @@ public class ElementRenderContext {
     private int playingGraceNoteIndex = -1;
     private int currentElementIndex = -1;
     private double overrideElementXSs = Double.NaN;
+    private int previewShiftFromIndex = -1;
+    private double previewShiftSs;
 
     /**
      * Creates a render context for the given composition.
@@ -390,6 +392,40 @@ public class ElementRenderContext {
      */
     public void clearOverrideElementX() {
         overrideElementXSs = Double.NaN;
+    }
+
+    /**
+     * Sets a preview shift to apply to all elements at {@code fromIndex} and beyond.
+     * Used during grace note insert mode to visually displace subsequent elements
+     * rightward to show where the host note will be inserted.
+     *
+     * @param fromIndex first element index to shift (inclusive)
+     * @param shiftSs   shift amount in staff spaces (must be &gt;= 0)
+     */
+    public void setPreviewShift(int fromIndex, double shiftSs) {
+        this.previewShiftFromIndex = fromIndex;
+        this.previewShiftSs = shiftSs;
+    }
+
+    /** Returns whether a preview shift is currently active. */
+    public boolean hasPreviewShift() {
+        return previewShiftFromIndex >= 0;
+    }
+
+    /** Returns the first element index to shift. Only valid when {@link #hasPreviewShift()} is true. */
+    public int getPreviewShiftFromIndex() {
+        return previewShiftFromIndex;
+    }
+
+    /** Returns the shift amount in staff spaces. Only valid when {@link #hasPreviewShift()} is true. */
+    public double getPreviewShiftSs() {
+        return previewShiftSs;
+    }
+
+    /** Clears the preview shift set by {@link #setPreviewShift(int, double)}. */
+    public void clearPreviewShift() {
+        previewShiftFromIndex = -1;
+        previewShiftSs = 0;
     }
 
     /**

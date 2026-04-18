@@ -55,6 +55,12 @@ For semantic code exploration and refactoring, see [Serena Tool Usage](./.claude
 
 When you need API documentation for Java, Kotlin, or any third-party library (FlatLaf, Jackson, etc.), use context7 MCP tools instead of web search. Example: `resolve-library-id` for "flatlaf", then `query-docs` with the resolved ID.
 
+### Spawning Explore Agents
+
+When spawning an `Explore` subagent for Java/Kotlin code, always include this instruction in the prompt:
+
+> **Use Serena semantic tools first for all Java/Kotlin code exploration** (`jet_brains_get_symbols_overview`, `jet_brains_find_symbol`, `jet_brains_find_referencing_symbols`). Fall back to Grep/Glob/Read only for non-code files or when Serena returns no results.
+
 ## References
 
 For pixel/staff-space conversion and the deprecated `StaffSpaces` class, see [Unit Conversion](./.claude/rules/unit-conversion.md).

@@ -116,7 +116,7 @@ public class BeatChangeRenderer extends BaseElementRenderer<StaffElement> {
         }
 
         var color = getDecorationColor(note, ctx);
-        int xPosSs = note.getXPosSs();
+        int xPosSs = note.getXOffsetPx();
         int yPosPx = getEffectiveBeatChangeYPosPx(note, ctx);
 
         drawBeatChange(g2, beatChange, xPosSs, yPosPx, composition, color);

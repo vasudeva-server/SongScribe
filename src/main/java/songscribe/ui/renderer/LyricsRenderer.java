@@ -244,7 +244,7 @@ public class LyricsRenderer {
         if (syllable != null && !syllable.equals(Constants.UNDERSCORE)) {
             syllableWidth = metrics.stringWidth(syllable);
             var layoutResult = ctx.getLayoutResult();
-            var noteX = (layoutResult != null) ? layoutResult.getElementXSs(note) : note.getXPosSs();
+            var noteX = (layoutResult != null) ? layoutResult.getElementXSs(note) : note.getXOffsetPx();
             var lyricsX = (int) ((noteX + note.getContentCenterX()) -
                 (syllableWidth / 2) +
                 note.getSyllableMovement());
@@ -384,11 +384,11 @@ public class LyricsRenderer {
     ) {
         // Begin-of-line extender starts before the note
         if (noteIndex == 0 && line.beginRelation == StaffElement.SyllableRelation.EXTENDER) {
-            return note.getXPosSs() - 10;
+            return note.getXOffsetPx() - 10;
         }
 
         // Normal case: start after the syllable
-        return (int) (note.getXPosSs() +
+        return (int) (note.getXOffsetPx() +
             note.getContentCenterX() +
             (syllableWidth / 2) +
             note.getSyllableMovement() +
@@ -417,7 +417,7 @@ public class LyricsRenderer {
         var endNote = line.getElement(endIndex);
 
         if (relation == StaffElement.SyllableRelation.EXTENDER) {
-            return endNote.getXPosSs() + 12;
+            return endNote.getXOffsetPx() + 12;
         }
 
         var endNoteSyllable = endNote.properties.syllable;
@@ -431,7 +431,7 @@ public class LyricsRenderer {
         var nextSyllable = endNote.properties.syllable;
         var nextSyllableWidth = g2.getFontMetrics().stringWidth(nextSyllable);
 
-        return (int) ((endNote.getXPosSs() + endNote.getContentCenterX()) -
+        return (int) ((endNote.getXOffsetPx() + endNote.getContentCenterX()) -
             (nextSyllableWidth / 2) +
             endNote.getSyllableMovement() -
             2);
@@ -514,7 +514,7 @@ public class LyricsRenderer {
             // Use adjusted position if set, otherwise use calculated center
             var centerX = (note.getSyllableRelationMovement() == 0)
                 ? note.properties.longDashPosition
-                : note.getXPosSs() + note.getSyllableRelationMovement();
+                : note.getXOffsetPx() + note.getSyllableRelationMovement();
 
             g2.draw(new Line2D.Float(
                 centerX - (HYPHEN_WIDTH_PX / 2f),
@@ -570,11 +570,11 @@ public class LyricsRenderer {
 
             var drawX1 = (span.getStart() == startIndex)
                 ? x1
-                : line.getElement(span.getStart()).getXPosSs();
+                : line.getElement(span.getStart()).getXOffsetPx();
 
             var drawX2 = (span.getEnd() == end)
                 ? x2
-                : line.getElement(span.getEnd() - 1).getXPosSs() + 12;
+                : line.getElement(span.getEnd() - 1).getXOffsetPx() + 12;
 
             g2.drawLine(drawX1, y1, drawX2, y2);
         }

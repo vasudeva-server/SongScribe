@@ -217,6 +217,50 @@ public final class GraceModeManager {
             + Math.abs(hostLeftExtentSs);
     }
 
+    /**
+     * Returns the {@link LineComponent} that contains the grace note, or null if not in progress.
+     */
+    public @Nullable LineComponent getGraceLineComponent() {
+        return graceLineComponent;
+    }
+
+    /**
+     * Returns the index at which the host note will be inserted (= graceNoteIndex + 1).
+     * Only meaningful when in {@link State#GRACE_NOTE_INSERT} state.
+     */
+    public int getHostInsertionIndex() {
+        return graceNoteIndex + 1;
+    }
+
+    /**
+     * Computes the insertion spacing preview for the host note when in
+     * {@link State#GRACE_NOTE_INSERT} state.
+     * <p>
+     * Returns null if not in that state, if the preview element is unavailable,
+     * or if the host note would not fit on the line.
+     */
+    public InsertionSpacingCalculator.@Nullable InsertionResult getHostInsertionPreview() {
+        if (state != State.GRACE_NOTE_INSERT || graceLine == null || graceLineComponent == null) {
+            return null;
+        }
+
+        var previewElement = editModeManager.getPreviewElement();
+
+        if (previewElement == null) {
+            return null;
+        }
+
+        var result = InsertionSpacingCalculator.calculateInsertion(
+            graceLine, previewElement, graceNoteIndex + 1, graceLineComponent.getLayoutResult()
+        );
+
+        if (!result.fitsWithinLine(graceLine.getComposition().getLineWidthSs())) {
+            return null;
+        }
+
+        return result;
+    }
+
     // -------------------------------------------------------------------------
     // Public event methods
     // -------------------------------------------------------------------------
@@ -252,7 +296,11 @@ public final class GraceModeManager {
             return true;
         }
 
-        if (!InsertionSpacingCalculator.hasRoomForGraceNotePair(line, xIndex)) {
+        if (xIndex < 0) {
+            return false;
+        }
+
+        if (!InsertionSpacingCalculator.hasRoomForGraceNote(line, xIndex, lineComponent.getLayoutResult())) {
             OptionDialogs.showErrorMessage(
                 SwingUtilities.getWindowAncestor(lineComponent),
                 Strings.ALERT_TITLE_GRACE_NOTE_ERROR,
@@ -392,9 +440,19 @@ public final class GraceModeManager {
             return true;
         }
 
+        if (!InsertionSpacingCalculator.hasRoomForHostNoteAfterGrace(line, graceNoteIndex)) {
+            OptionDialogs.showErrorMessage(
+                SwingUtilities.getWindowAncestor(graceLineComponent),
+                Strings.ALERT_TITLE_GRACE_NOTE_ERROR,
+                Strings.ERROR_GRACE_NOTE_HOST_NO_ROOM
+            );
+            finish(true);
+            return true;
+        }
+
         line.withModification(() -> {
             // Insert the host note at the locked x position
-            PreviewElementManager.handleClick(lineComponent);
+            PreviewElementManager.handleClick(lineComponent, true);
 
             // Connect grace note to host note with a CONNECTED glissando
             var note = graceNote;
@@ -513,6 +571,34 @@ public final class GraceModeManager {
         // returns 0 when it is null, so reaching this point means it is non-null.
         if (graceLineComponent == null) {
             throw new AssertionError("graceLineComponent must be non-null here");
+        }
+
+        // Check now whether there is room for the host note. If not, undo the
+        // grace note insertion and alert the user rather than waiting until they
+        // click to insert the host note.
+        var previewElement = editModeManager.getPreviewElement();
+
+        if (previewElement == null) {
+            finish(true);
+            return;
+        }
+
+        // graceLine is non-null here: getLockedInsertionXSs() returns 0 when null.
+        var line = graceLine;
+
+        if (line == null) {
+            throw new AssertionError("graceLine must be non-null here");
+        }
+
+        var hostCheck = InsertionSpacingCalculator.calculateInsertion(
+            line, previewElement, graceNoteIndex + 1, graceLineComponent.getLayoutResult()
+        );
+        var composition = line.getComposition();
+
+        if (composition != null && !hostCheck.fitsWithinLine(composition.getLineWidthSs())) {
+            finish(true);
+            OptionDialogs.showErrorMessage(null, Strings.ALERT_TITLE_INSERT_ERROR, Strings.ERROR_GRACE_NOTE_HOST_NO_ROOM);
+            return;
         }
 
         PreviewElementManager.restorePreviewElement(graceLineComponent);

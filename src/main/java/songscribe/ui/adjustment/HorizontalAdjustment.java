@@ -70,14 +70,14 @@ public class HorizontalAdjustment extends Adjustment {
         ) {
             topLeftDragBounds.setLocation(
                 ((draggingRect.xIndex > 0)
-                    ? line.getElement(draggingRect.xIndex - 1).getXPosSs()
+                    ? line.getElement(draggingRect.xIndex - 1).getXOffsetPx()
                     : 20) +
                     draggingRect.rect.width,
                 draggingRect.rect.y
             );
             bottomRightDragBounds.setLocation(
                 (draggingRect.xIndex < (line.elementCount() - 1))
-                    ? (line.getElement(draggingRect.xIndex + 1).getXPosSs() -
+                    ? (line.getElement(draggingRect.xIndex + 1).getXOffsetPx() -
                     draggingRect.rect.width)
                     : lineWidth,
                 draggingRect.rect.y
@@ -87,13 +87,13 @@ public class HorizontalAdjustment extends Adjustment {
                 HorizontalAdjustmentType.TO_END_OF_LINE
         ) {
             topLeftDragBounds.setLocation(
-                line.getElement(draggingRect.xIndex - 1).getXPosSs() +
+                line.getElement(draggingRect.xIndex - 1).getXOffsetPx() +
                     draggingRect.rect.width,
                 draggingRect.rect.y
             );
             bottomRightDragBounds.setLocation(
                 ((draggingRect.rect.x - draggingRect.rect.width) + lineWidth) -
-                    line.getElement(line.elementCount() - 1).getXPosSs(),
+                    line.getElement(line.elementCount() - 1).getXOffsetPx(),
                 draggingRect.rect.y
             );
         } else if (
@@ -101,7 +101,7 @@ public class HorizontalAdjustment extends Adjustment {
                 HorizontalAdjustmentType.STRETCH_NOTE_SPACING
         ) {
             topLeftDragBounds.setLocation(
-                line.getElement(0).getXPosSs(),
+                line.getElement(0).getXOffsetPx(),
                 draggingRect.rect.y
             );
             bottomRightDragBounds.setLocation(
@@ -117,7 +117,7 @@ public class HorizontalAdjustment extends Adjustment {
             }
 
             for (var i = 0; i < line.elementCount(); i++) {
-                stretchHelper[i] = line.getElement(i).getXPosSs();
+                stretchHelper[i] = line.getElement(i).getXOffsetPx();
             }
         } else if (
             draggingRect.horizontalAdjustmentType ==
@@ -129,7 +129,7 @@ public class HorizontalAdjustment extends Adjustment {
             );
             bottomRightDragBounds.setLocation(
                 ((draggingRect.rect.x - draggingRect.rect.width) + lineWidth) -
-                    line.getElement(line.elementCount() - 1).getXPosSs(),
+                    line.getElement(line.elementCount() - 1).getXOffsetPx(),
                 draggingRect.rect.y
             );
         } else if (
@@ -137,7 +137,7 @@ public class HorizontalAdjustment extends Adjustment {
                 HorizontalAdjustmentType.GLISSANDO_START
         ) {
             topLeftDragBounds.setLocation(
-                line.getElement(draggingRect.xIndex).getXPosSs(),
+                line.getElement(draggingRect.xIndex).getXOffsetPx(),
                 draggingRect.rect.y
             );
             bottomRightDragBounds.setLocation(
@@ -167,13 +167,13 @@ public class HorizontalAdjustment extends Adjustment {
             topLeftDragBounds.setLocation(
                 (draggingRect.xIndex == 0)
                     ? 0
-                    : line.getElement(draggingRect.xIndex - 1).getXPosSs(),
+                    : line.getElement(draggingRect.xIndex - 1).getXOffsetPx(),
                 draggingRect.rect.y
             );
             bottomRightDragBounds.setLocation(
                 (draggingRect.xIndex == (line.elementCount() - 1))
                     ? lineWidth
-                    : line.getElement(draggingRect.xIndex + 1).getXPosSs(),
+                    : line.getElement(draggingRect.xIndex + 1).getXOffsetPx(),
                 draggingRect.rect.y
             );
         }
@@ -205,14 +205,14 @@ public class HorizontalAdjustment extends Adjustment {
             draggingRect.horizontalAdjustmentType ==
                 HorizontalAdjustmentType.STRETCH_NOTE_SPACING
         ) {
-            var ratio = (float) endPoint.x / note.getXPosSs();
-            var firstX = line.getElement(0).getXPosSs();
+            var ratio = (float) endPoint.x / note.getXOffsetPx();
+            var firstX = line.getElement(0).getXOffsetPx();
 
             if (stretchHelper != null) {
                 for (var i = 0; i < line.elementCount(); i++) {
                     stretchHelper[i] = firstX +
                         ((stretchHelper[i] - firstX) * ratio);
-                    line.getElement(i).setXPosSs(Math.round(stretchHelper[i]));
+                    line.getElement(i).setXOffsetPx(Math.round(stretchHelper[i]));
                 }
             }
 
@@ -224,26 +224,26 @@ public class HorizontalAdjustment extends Adjustment {
             for (var i = draggingRect.xIndex; i < line.elementCount(); i++) {
                 line
                     .getElement(i)
-                    .setXPosSs((line.getElement(i).getXPosSs() + endPoint.x) - diffX);
+                    .setXOffsetPx((line.getElement(i).getXOffsetPx() + endPoint.x) - diffX);
             }
         } else if (
             draggingRect.horizontalAdjustmentType ==
                 HorizontalAdjustmentType.SINGLE_NOTE
         ) {
-            note.setXPosSs(endPoint.x);
+            note.setXOffsetPx(endPoint.x);
         } else if (
             draggingRect.horizontalAdjustmentType ==
                 HorizontalAdjustmentType.START_OF_LINE
         ) {
             for (var currentLine : composition.getLines()) {
                 if (currentLine.elementCount() > 0) {
-                    var diff = endPoint.x - currentLine.getElement(0).getXPosSs();
-                    currentLine.getElement(0).setXPosSs(endPoint.x);
+                    var diff = endPoint.x - currentLine.getElement(0).getXOffsetPx();
+                    currentLine.getElement(0).setXOffsetPx(endPoint.x);
 
                     for (var j = 1; j < currentLine.elementCount(); j++) {
                         currentLine
                             .getElement(j)
-                            .setXPosSs(currentLine.getElement(j).getXPosSs() + diff);
+                            .setXOffsetPx(currentLine.getElement(j).getXOffsetPx() + diff);
                     }
                 }
             }
@@ -510,7 +510,7 @@ public class HorizontalAdjustment extends Adjustment {
                 ).findSpan(rect.xIndex);
 
                 if (x1Span != null) {
-                    rect.rect.x = (int) ((line.getElement(rect.xIndex).getXPosSs() - 12) +
+                    rect.rect.x = (int) ((line.getElement(rect.xIndex).getXOffsetPx() - 12) +
                         x1Span.getX1ShiftSs());
                     rect.rect.y = (int) ((score.getNoteYPosPx(6, rect.line) - 4) +
                         x1Span.getYShiftSs());
@@ -523,14 +523,14 @@ public class HorizontalAdjustment extends Adjustment {
                 ).findSpan(rect.xIndex);
 
                 if (x2Span != null) {
-                    rect.rect.x = (int) (line.getElement(rect.xIndex).getXPosSs() +
+                    rect.rect.x = (int) (line.getElement(rect.xIndex).getXOffsetPx() +
                         16 +
                         x2Span.getX2ShiftSs());
                     rect.rect.y = (int) ((score.getNoteYPosPx(6, rect.line) - 4) +
                         x2Span.getYShiftSs());
                 }
             }
-            default -> rect.rect.x = note.getXPosSs() + 1;
+            default -> rect.rect.x = note.getXOffsetPx() + 1;
         }
 
         rect.rect.width = 8;

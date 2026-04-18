@@ -385,7 +385,7 @@ public class VerticalAdjustment extends Adjustment {
                     throw new IllegalStateException("No bounds found for TempoAttachment");
                 }
 
-                adjustRect.rect.x = note.getXPosSs() - 8;
+                adjustRect.rect.x = note.getXOffsetPx() - 8;
                 adjustRect.rect.y = (int) bounds.getTop() - 8;
             }
             case BEAT_CHANGE -> {
@@ -396,7 +396,7 @@ public class VerticalAdjustment extends Adjustment {
                     throw new IllegalStateException("No bounds found for BeatChangeAttachment");
                 }
 
-                adjustRect.rect.x = note.getXPosSs() - 8;
+                adjustRect.rect.x = note.getXOffsetPx() - 8;
                 adjustRect.rect.y = (int) bounds.getTop() - 8;
             }
             case FIRST_SECOND_ENDING -> {
@@ -420,7 +420,7 @@ public class VerticalAdjustment extends Adjustment {
                     throw new IllegalStateException("No bounds found for Ending");
                 }
 
-                adjustRect.rect.x = startNote.getXPosSs() - 8;
+                adjustRect.rect.x = startNote.getXOffsetPx() - 8;
                 adjustRect.rect.y = (int) bounds.getTop() - 8;
             }
             case ANNOTATION -> {
@@ -467,7 +467,7 @@ public class VerticalAdjustment extends Adjustment {
                     throw new IllegalStateException("No bounds found for Trill");
                 }
 
-                adjustRect.rect.x = startNote.getXPosSs() - 12;
+                adjustRect.rect.x = startNote.getXOffsetPx() - 12;
                 adjustRect.rect.y = (int) bounds.getTop() - 8;
             }
             case CRESCENDO_Y, DIMINUENDO_Y -> {
@@ -491,8 +491,8 @@ public class VerticalAdjustment extends Adjustment {
                 }
 
                 // Position handle at center of dynamics hairpin
-                var startX = startNote.getXPosSs();
-                var endX = endNote.getXPosSs();
+                var startX = startNote.getXOffsetPx();
+                var endX = endNote.getXOffsetPx();
                 adjustRect.rect.x = (startX + endX + 12) / 2;
                 adjustRect.rect.y = (int) bounds.getTop();
             }
@@ -512,7 +512,7 @@ public class VerticalAdjustment extends Adjustment {
                     throw new IllegalStateException("No bounds found for Tuplet");
                 }
 
-                adjustRect.rect.x = startNote.getXPosSs() + (startNote.isUpper() ? 0 : -10);
+                adjustRect.rect.x = startNote.getXOffsetPx() + (startNote.isUpper() ? 0 : -10);
                 adjustRect.rect.y = (int) bounds.getTop();
             }
         }

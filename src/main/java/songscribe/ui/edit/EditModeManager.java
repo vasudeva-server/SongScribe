@@ -278,7 +278,7 @@ public final class EditModeManager {
                 (line.getElement(elementIndex - 1).getType() == ElementType.REPEAT_RIGHT)
         ) {
             var repeatLeftRight = ElementType.REPEAT_LEFT_RIGHT.newInstance();
-            repeatLeftRight.setXPosSs(line.getElement(elementIndex - 1).getXPosSs());
+            repeatLeftRight.setXOffsetPx(line.getElement(elementIndex - 1).getXOffsetPx());
             line.setElement(elementIndex - 1, repeatLeftRight);
             return true;
         }
@@ -289,7 +289,7 @@ public final class EditModeManager {
                 (line.getElement(elementIndex).getType() == ElementType.REPEAT_LEFT)
         ) {
             var repeatLeftRight = ElementType.REPEAT_LEFT_RIGHT.newInstance();
-            repeatLeftRight.setXPosSs(line.getElement(elementIndex).getXPosSs());
+            repeatLeftRight.setXOffsetPx(line.getElement(elementIndex).getXOffsetPx());
             line.setElement(elementIndex, repeatLeftRight);
             return true;
         }

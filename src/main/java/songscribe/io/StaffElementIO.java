@@ -395,7 +395,7 @@ public final class StaffElementIO {
                     var str = value.toString();
 
                     if (lastTag.equals(XML_XPOS)) {
-                        element.setXPosSs(Integer.parseInt(str));
+                        element.setXOffsetPx(Integer.parseInt(str));
                     } else if (lastTag.equals(XML_STAFF_POSITION) ||
                         lastTag.equals(XML_YPOS)) {
                         element.setStaffPosition(Integer.parseInt(str));

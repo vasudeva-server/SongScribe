@@ -336,7 +336,7 @@ public class BeamGroupRenderer extends BaseElementRenderer<LineElement> {
         // --- First note stem geometry ---
         var firstStemLayout = (layoutResult != null) ? layoutResult.getStemLayout(beginNote) : null;
         double firstNoteXSs = (layoutResult != null)
-            ? layoutResult.getElementXSs(beginNote) : beginNote.getXPosSs();
+            ? layoutResult.getElementXSs(beginNote) : beginNote.getXOffsetPx();
         double firstStemCenterXSs = firstNoteXSs
             + stemCenterXOffsetSs(beginNote.getType(), isUpper);
         double firstX = firstStemCenterXSs - halfStemWidthSs;
@@ -347,7 +347,7 @@ public class BeamGroupRenderer extends BaseElementRenderer<LineElement> {
         // --- Last note stem geometry ---
         var lastStemLayout = (layoutResult != null) ? layoutResult.getStemLayout(endNote) : null;
         double lastNoteXSs = (layoutResult != null)
-            ? layoutResult.getElementXSs(endNote) : endNote.getXPosSs();
+            ? layoutResult.getElementXSs(endNote) : endNote.getXOffsetPx();
         double lastStemCenterXSs = lastNoteXSs
             + stemCenterXOffsetSs(endNote.getType(), isUpper);
         double lastX = lastStemCenterXSs + halfStemWidthSs;

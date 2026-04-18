@@ -393,7 +393,7 @@ public class StaffElement extends LineElement implements Cloneable {
      *
      * @return The X offset value
      */
-    public int getXPosSs() {
+    public int getXOffsetPx() {
         return xOffset;
     }
 
@@ -404,7 +404,7 @@ public class StaffElement extends LineElement implements Cloneable {
      *
      * @param xPosSs The X offset value in staff spaces
      */
-    public void setXPosSs(int xPosSs) {
+    public void setXOffsetPx(int xPosSs) {
         this.xOffset = xPosSs;
     }
 

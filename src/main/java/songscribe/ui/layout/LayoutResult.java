@@ -646,7 +646,10 @@ public final class LayoutResult {
      * @return Insertion index (0 to elementCount inclusive)
      */
     public int findInsertionIndex(double mouseXSs, songscribe.music.Line line) {
-        int elementCount = line.elementCount();
+        // Exclude the auto-maintained final barline: insertions always occur before it,
+        // and the gap between the last real element and the barline should behave as
+        // "after the last element" rather than a between-elements midpoint.
+        int elementCount = line.effectiveElementCount();
 
         if (elementCount == 0) {
             return 0;
@@ -655,7 +658,7 @@ public final class LayoutResult {
         // Check each element to see if mouse is within its head bounds
         int elementAtX = findElementAtXSs(mouseXSs, line);
 
-        if (elementAtX >= 0) {
+        if (elementAtX >= 0 && elementAtX < elementCount) {
             return elementAtX;
         }
 
@@ -728,7 +731,10 @@ public final class LayoutResult {
         StaffElement previewElement,
         songscribe.music.Line line) {
 
-        int elementCount = line.elementCount();
+        // Exclude the auto-maintained final barline from positioning decisions —
+        // it sits at the line's right edge and must not be treated as a real
+        // neighbour for spacing the preview.
+        int elementCount = line.effectiveElementCount();
 
         // Empty line - use first element position (clef + key signature + offset)
         if (elementCount == 0) {

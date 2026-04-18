@@ -436,8 +436,8 @@ class LineSelectionHandler {
                 var end = lineSelectionState.getSelectionEnd();
                 var beginElement = line.getElement(begin);
                 var endElement = line.getElement(end);
-                var distToBegin = Math.abs(dragStart.x - beginElement.getXPosSs());
-                var distToEnd = Math.abs(dragStart.x - endElement.getXPosSs());
+                var distToBegin = Math.abs(dragStart.x - beginElement.getXOffsetPx());
+                var distToEnd = Math.abs(dragStart.x - endElement.getXOffsetPx());
                 lineSelectionState.setSelectionAnchor(distToBegin <= distToEnd ? begin : end);
             }
         }

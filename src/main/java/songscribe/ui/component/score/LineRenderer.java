@@ -23,6 +23,7 @@ package songscribe.ui.component.score;
 import module java.desktop;
 
 
+import songscribe.music.ElementType;
 import songscribe.ui.Mode;
 import songscribe.ui.component.Score;
 import songscribe.ui.edit.EditModeManager;
@@ -45,6 +46,7 @@ import songscribe.ui.renderer.ElementRenderContext;
 import songscribe.ui.renderer.EndingRenderer;
 import songscribe.ui.renderer.FermataRenderer;
 import songscribe.ui.renderer.GlissandoRenderer;
+import songscribe.ui.renderer.GraphicsState;
 import songscribe.ui.renderer.KeySignatureRenderer;
 import songscribe.ui.renderer.NoteRenderer;
 import songscribe.ui.renderer.TempoRenderer;
@@ -121,6 +123,25 @@ class LineRenderer {
         ctx.setPlayingGraceNoteIndex(lc.getPlayingGraceNoteIndex());
         // Ensure NoteRenderer metrics are initialized
         NoteRenderer.initializeAccidentalWidths(g2);
+
+        // When in grace-note insert mode for this line, shift subsequent elements
+        // rightward to show where the host note will land before the user clicks.
+        var editModeManager = EditModeManager.getInstance();
+
+        if (editModeManager != null) {
+            var graceModeManager = editModeManager.getGraceModeManager();
+
+            if (graceModeManager.getGraceLineComponent() == lc) {
+                var preview = graceModeManager.getHostInsertionPreview();
+
+                if (preview != null) {
+                    ctx.setPreviewShift(
+                        graceModeManager.getHostInsertionIndex(),
+                        preview.shiftForSubsequentElementsSs()
+                    );
+                }
+            }
+        }
 
         // Render in proper order (back to front)
         drawStaffLines(g2, ctx);
@@ -210,6 +231,11 @@ class LineRenderer {
             return;
         }
 
+        var hasShift = ctx.hasPreviewShift();
+        var shiftFromIndex = hasShift ? ctx.getPreviewShiftFromIndex() : Integer.MAX_VALUE;
+        var shiftSs = hasShift ? ctx.getPreviewShiftSs() : 0.0;
+        var layoutResult = ctx.getLayoutResult();
+
         for (var i = 0; i < line.elementCount(); i++) {
             var element = line.getElement(i);
 
@@ -217,7 +243,16 @@ class LineRenderer {
             var color = getElementColor(i, ctx);
             g2.setColor(color);
 
-            noteRenderer.render(g2, element, ctx);
+            if (hasShift && i >= shiftFromIndex && element.getType() != ElementType.FINAL_DOUBLE_BARLINE) {
+                var baseXSs = layoutResult != null
+                    ? layoutResult.getElementXSs(element)
+                    : ScaleContext.getInstance().fromPixels(element.getXOffsetPx());
+                ctx.setOverrideElementXSs(baseXSs + shiftSs);
+                noteRenderer.render(g2, element, ctx);
+                ctx.clearOverrideElementX();
+            } else {
+                noteRenderer.render(g2, element, ctx);
+            }
         }
 
         // Restore default color
@@ -288,7 +323,15 @@ class LineRenderer {
 
         for (var iter = beamings.listIterator(); iter.hasNext(); ) {
             var span = iter.next();
-            beamRenderer.renderBeams(g2, line, ctx, span.getStart(), span.getEnd());
+
+            if (ctx.hasPreviewShift() && span.getStart() >= ctx.getPreviewShiftFromIndex()) {
+                try (var ignored = GraphicsState.save(g2, GraphicsState.Property.TRANSFORM)) {
+                    g2.translate(ctx.getPreviewShiftSs(), 0);
+                    beamRenderer.renderBeams(g2, line, ctx, span.getStart(), span.getEnd());
+                }
+            } else {
+                beamRenderer.renderBeams(g2, line, ctx, span.getStart(), span.getEnd());
+            }
         }
     }
 
@@ -310,7 +353,15 @@ class LineRenderer {
 
         for (var iter = ties.listIterator(); iter.hasNext(); ) {
             var span = iter.next();
-            tieRenderer.renderTie(g2, span, ctx);
+
+            if (ctx.hasPreviewShift() && span.getStart() >= ctx.getPreviewShiftFromIndex()) {
+                try (var ignored = GraphicsState.save(g2, GraphicsState.Property.TRANSFORM)) {
+                    g2.translate(ctx.getPreviewShiftSs(), 0);
+                    tieRenderer.renderTie(g2, span, ctx);
+                }
+            } else {
+                tieRenderer.renderTie(g2, span, ctx);
+            }
         }
     }
 
@@ -430,7 +481,15 @@ class LineRenderer {
 
         g2.setColor(Color.BLACK);
 
+        var preShiftTransform = g2.getTransform();
+        boolean attachmentShiftActive = false;
+
         for (var i = 0; i < line.elementCount(); i++) {
+            if (!attachmentShiftActive && ctx.hasPreviewShift() && i >= ctx.getPreviewShiftFromIndex()) {
+                g2.translate(ctx.getPreviewShiftSs(), 0);
+                attachmentShiftActive = true;
+            }
+
             ctx.setCurrentElementIndex(i);
             var element = line.getElement(i);
 
@@ -473,6 +532,10 @@ class LineRenderer {
                     element, AnnotationAttachment.class) != null) {
                 annotationRenderer.render(element, g2, ctx);
             }
+        }
+
+        if (attachmentShiftActive) {
+            g2.setTransform(preShiftTransform);
         }
 
         ctx.setCurrentElementIndex(-1);

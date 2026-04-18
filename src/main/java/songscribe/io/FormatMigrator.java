@@ -158,7 +158,7 @@ public final class FormatMigrator {
                 }
 
                 // Reset stale layout pixel xPos — layout now writes to LayoutResult, not Note
-                note.setXPosSs(0);
+                note.setXOffsetPx(0);
             }
 
             // Convert per-instance RangeElement offsets (Ending, Trill)

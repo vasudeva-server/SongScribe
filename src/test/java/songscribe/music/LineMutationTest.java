@@ -244,14 +244,14 @@ class LineMutationTest extends UnitTest {
             // the pre-bracket xpos adjustment in handleDelete's contiguous path.
             var e0 = new StaffElement(ElementType.QUAVER);
             var e1 = new StaffElement(ElementType.QUAVER);
-            e0.setXPosSs(0);
-            e1.setXPosSs(10);
+            e0.setXOffsetPx(0);
+            e1.setXOffsetPx(10);
             composition.withoutMutationTracking(() -> {
                 line.addElement(e0);
                 line.addElement(e1);
             });
 
-            e1.setXPosSs(e1.getXPosSs() + 5);
+            e1.setXOffsetPx(e1.getXOffsetPx() + 5);
 
             messageCenterMock.verify(() -> MessageCenter.post(any()), times(0));
         }
@@ -267,10 +267,10 @@ class LineMutationTest extends UnitTest {
             var e1 = new StaffElement(ElementType.QUAVER);
             var e2 = new StaffElement(ElementType.QUAVER);
             var e3 = new StaffElement(ElementType.QUAVER);
-            e0.setXPosSs(0);
-            e1.setXPosSs(10);
-            e2.setXPosSs(20);
-            e3.setXPosSs(30);
+            e0.setXOffsetPx(0);
+            e1.setXOffsetPx(10);
+            e2.setXOffsetPx(20);
+            e3.setXOffsetPx(30);
             composition.withoutMutationTracking(() -> {
                 line.addElement(e0);
                 line.addElement(e1);
@@ -282,10 +282,10 @@ class LineMutationTest extends UnitTest {
             var end = 2;
 
             // Step 1: shift trailing elements (handleDelete's pre-bracket adjustment)
-            var shift = line.getElement(begin).getXPosSs() - line.getElement(end + 1).getXPosSs();
+            var shift = line.getElement(begin).getXOffsetPx() - line.getElement(end + 1).getXOffsetPx();
 
             for (var i = end + 1; i < line.elementCount(); i++) {
-                line.getElement(i).setXPosSs(line.getElement(i).getXPosSs() + shift);
+                line.getElement(i).setXOffsetPx(line.getElement(i).getXOffsetPx() + shift);
             }
 
             // Step 2: bracket-wrapped range removal

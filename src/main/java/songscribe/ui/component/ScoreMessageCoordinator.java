@@ -426,10 +426,10 @@ public final class ScoreMessageCoordinator {
                 // Shift elements after the selection to fill the gap, mirroring the
                 // per-element xPos adjustment that deleteNote performs.
                 if (end < line.elementCount() - 1) {
-                    var shift = line.getElement(begin).getXPosSs() - line.getElement(end + 1).getXPosSs();
+                    var shift = line.getElement(begin).getXOffsetPx() - line.getElement(end + 1).getXOffsetPx();
 
                     for (var i = end + 1; i < line.elementCount(); i++) {
-                        line.getElement(i).setXPosSs(line.getElement(i).getXPosSs() + shift);
+                        line.getElement(i).setXOffsetPx(line.getElement(i).getXOffsetPx() + shift);
                     }
                 }
 
@@ -508,11 +508,11 @@ public final class ScoreMessageCoordinator {
 
         if (xIndex < (line.elementCount() - 1)) {
             var shift =
-                line.getElement(firstDeletedIndex).getXPosSs() -
-                    line.getElement(xIndex + 1).getXPosSs();
+                line.getElement(firstDeletedIndex).getXOffsetPx() -
+                    line.getElement(xIndex + 1).getXOffsetPx();
 
             for (var i = xIndex + 1; i < line.elementCount(); i++) {
-                line.getElement(i).setXPosSs(line.getElement(i).getXPosSs() + shift);
+                line.getElement(i).setXOffsetPx(line.getElement(i).getXOffsetPx() + shift);
             }
         }
 

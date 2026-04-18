@@ -392,8 +392,8 @@ public final class CompositionIO {
                     }
 
                     var line = parsedLines.get(parsedLines.size() - 1);
-                    note.setXPosSs(ScaleContext.getInstance().toRoundedPixels(
-                        InsertionSpacingCalculator.calculateAppendPositionSs(line, note)));
+                    note.setXOffsetPx(ScaleContext.getInstance().toRoundedPixels(
+                        InsertionSpacingCalculator.calculateAppendPositionSs(line, note, null)));
                     note.setUpper(Score.defaultUpperNote(note));
                     line.addElement(note);
                 }

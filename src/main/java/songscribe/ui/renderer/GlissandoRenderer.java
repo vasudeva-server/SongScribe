@@ -229,6 +229,20 @@ public class GlissandoRenderer {
         var src = resolveNoteContext(note, noteIndex, line, layoutResult, middleLineYSs);
         var tgt = resolveTargetContext(glissando.type, noteIndex, line, layoutResult, middleLineYSs);
 
+        // Apply preview shift so glissandos track their notes during grace-note insert preview
+        if (ctx.hasPreviewShift()) {
+            var shiftFromIndex = ctx.getPreviewShiftFromIndex();
+            var shiftSs = ctx.getPreviewShiftSs();
+
+            if (noteIndex >= shiftFromIndex) {
+                src = new NoteContext(src.note(), src.cx() + shiftSs, src.cy(), src.offsetArea(), src.offsetBounds());
+            }
+
+            if (tgt != null && noteIndex + 1 >= shiftFromIndex) {
+                tgt = new NoteContext(tgt.note(), tgt.cx() + shiftSs, tgt.cy(), tgt.offsetArea(), tgt.offsetBounds());
+            }
+        }
+
         // A connected glissando between notes at the same pitch is musically meaningless — hide it
         if (tgt != null && src.note().getPitch() == tgt.note().getPitch()) {
             return;

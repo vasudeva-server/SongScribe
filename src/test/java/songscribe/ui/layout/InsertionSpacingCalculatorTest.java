@@ -32,6 +32,7 @@ import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
 import songscribe.music.Composition;
+import songscribe.music.ElementType;
 import songscribe.music.Line;
 
 class InsertionSpacingCalculatorTest extends UnitTest {
@@ -54,11 +55,24 @@ class InsertionSpacingCalculatorTest extends UnitTest {
 
         for (var i = 0; i < count; i++) {
             var element = crotchet();
-            double xSs = InsertionSpacingCalculator.calculateAppendPositionSs(line, element);
-            element.setXPosSs(ScaleContext.getInstance().toRoundedPixels(xSs));
+            double xSs = InsertionSpacingCalculator.calculateAppendPositionSs(line, element, null);
+            element.setXOffsetPx(ScaleContext.getInstance().toRoundedPixels(xSs));
             line.addElement(element);
         }
 
+        return line;
+    }
+
+    /**
+     * Creates a line with the given number of crotchets followed by one grace note,
+     * all positioned using the standard spacing algorithm.
+     */
+    private static Line lineWithGraceAtIndex(int numCrotchetsBefore) {
+        var line = lineWithCrotchets(numCrotchetsBefore);
+        var grace = ElementType.GRACE_QUAVER.newInstance();
+        double xSs = InsertionSpacingCalculator.calculateAppendPositionSs(line, grace, null);
+        grace.setXOffsetPx(ScaleContext.getInstance().toRoundedPixels(xSs));
+        line.addElement(grace);
         return line;
     }
 
@@ -72,7 +86,7 @@ class InsertionSpacingCalculatorTest extends UnitTest {
         var column = new ElementColumn(
             last, Collections.emptyList(), leftExtentSs, rightExtentSs, 0, 0, null, 0, false
         );
-        column.setXSs(ScaleContext.getInstance().fromPixels(last.getXPosSs()));
+        column.setXSs(ScaleContext.getInstance().fromPixels(last.getXOffsetPx()));
         return column.getRightEdgeXSs();
     }
 
@@ -82,33 +96,33 @@ class InsertionSpacingCalculatorTest extends UnitTest {
         @Test
         void testAppendToEmptyLine() {
             var line = lineWithCrotchets(0);
-            var result = InsertionSpacingCalculator.calculateInsertion(line, crotchet(), 0);
+            var result = InsertionSpacingCalculator.calculateInsertion(line, crotchet(), 0, null);
             assertThat(result.fitsWithinLine(500)).isTrue();
         }
 
         @Test
         void testInsertIntoNearlyFullLine() {
             var line = lineWithCrotchets(2);
-            var result = InsertionSpacingCalculator.calculateInsertion(line, crotchet(), 1);
+            var result = InsertionSpacingCalculator.calculateInsertion(line, crotchet(), 1, null);
             assertThat(result.fitsWithinLine(result.newLineWidthSs() - 1)).isFalse();
         }
 
         @Test
         void testInsertWithPlentyOfRoom() {
             var line = lineWithCrotchets(2);
-            var result = InsertionSpacingCalculator.calculateInsertion(line, crotchet(), 1);
+            var result = InsertionSpacingCalculator.calculateInsertion(line, crotchet(), 1, null);
             assertThat(result.fitsWithinLine(500)).isTrue();
         }
     }
 
     @Nested
-    class HasRoomForGraceNotePair {
+    class HasRoomForGraceNote {
 
         @Test
         void testEmptyLine() {
             var line = lineWithCrotchets(0);
             setLineWidth(line, 500);
-            assertThat(InsertionSpacingCalculator.hasRoomForGraceNotePair(line, 0)).isTrue();
+            assertThat(InsertionSpacingCalculator.hasRoomForGraceNote(line, 0, null)).isTrue();
         }
 
         @Test
@@ -117,27 +131,38 @@ class InsertionSpacingCalculatorTest extends UnitTest {
             double currentWidthSs = lastElementRightEdgeSs(line);
             setLineWidth(line, currentWidthSs);
 
-            assertThat(InsertionSpacingCalculator.hasRoomForGraceNotePair(
-                line, line.elementCount())).isFalse();
-        }
-
-        @Test
-        void testLineNearlyFull() {
-            var line = lineWithCrotchets(3);
-            double currentWidthSs = lastElementRightEdgeSs(line);
-
-            // Allow room for just a small amount beyond current content — not enough for a pair
-            setLineWidth(line, currentWidthSs + 3);
-
-            assertThat(InsertionSpacingCalculator.hasRoomForGraceNotePair(
-                line, line.elementCount())).isFalse();
+            assertThat(InsertionSpacingCalculator.hasRoomForGraceNote(
+                line, line.elementCount(), null)).isFalse();
         }
 
         @Test
         void testLineWithPlentyOfRoom() {
             var line = lineWithCrotchets(2);
             setLineWidth(line, 500);
-            assertThat(InsertionSpacingCalculator.hasRoomForGraceNotePair(line, 1)).isTrue();
+            assertThat(InsertionSpacingCalculator.hasRoomForGraceNote(line, 1, null)).isTrue();
+        }
+    }
+
+    @Nested
+    class HasRoomForHostNoteAfterGrace {
+
+        @Test
+        void testPlentyOfRoom() {
+            var line = lineWithGraceAtIndex(0);
+            setLineWidth(line, 500);
+            assertThat(InsertionSpacingCalculator.hasRoomForHostNoteAfterGrace(line, 0)).isTrue();
+        }
+
+        @Test
+        void testNoRoomForHost() {
+            var line = lineWithGraceAtIndex(2);
+            int graceIndex = line.elementCount() - 1;
+            double currentWidthSs = lastElementRightEdgeSs(line);
+
+            // Width exactly at grace note's right edge — no room for a host note
+            setLineWidth(line, currentWidthSs);
+
+            assertThat(InsertionSpacingCalculator.hasRoomForHostNoteAfterGrace(line, graceIndex)).isFalse();
         }
     }
 }

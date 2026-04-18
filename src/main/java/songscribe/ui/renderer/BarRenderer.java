@@ -29,7 +29,6 @@ import songscribe.music.ElementType;
 import songscribe.music.StaffElement;
 import songscribe.smufl.Engraving;
 import songscribe.smufl.SMuFLGlyph;
-import songscribe.util.GraphicUtils;
 
 /**
  * Renders bar lines and repeat signs using drawn primitives.
@@ -235,7 +234,7 @@ public class BarRenderer extends BaseElementRenderer<StaffElement> {
             noteX = ctx.getOverrideElementXSs();
         } else {
             var layoutResult = ctx.getLayoutResult();
-            noteX = (layoutResult != null) ? layoutResult.getElementXSs(note) : note.getXPosSs();
+            noteX = (layoutResult != null) ? layoutResult.getElementXSs(note) : note.getXOffsetPx();
         }
 
         return noteX;
