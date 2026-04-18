@@ -201,6 +201,11 @@ public final class Composition {
     // populates lines without emitting notifications or recording undo history.
     private int suspensionDepth;
 
+    // While true, Line mutation guards are bypassed so Composition can auto-maintain
+    // the final-barline invariant without triggering the guards that protect against
+    // user-driven invariant violations.
+    private boolean autoMaintenance;
+
     @Nullable
     private ArrayList<Mutation> accumulatedMutations;
 
@@ -230,6 +235,7 @@ public final class Composition {
         initialLine.setTempoChangeYPosPx(
             ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.TEMPO_DEFAULT_Y_FIRST_LINE_SS)
         );
+        initialLine.addElement(createFinalBarlineElement());
         lines.add(initialLine);
         initialLine.setComposition(this);
 
@@ -775,34 +781,154 @@ public final class Composition {
         addLine(InsertLineAction.ADD, line);
     }
 
+    /**
+     * Inserts {@code line} at {@code index} and, when the insertion makes {@code line}
+     * the new last line, transfers the final-barline invariant so the last element of
+     * the last line is always {@code FINAL_DOUBLE_BARLINE}. All resulting mutations
+     * coalesce into a single {@link CompositionDidChangeNotification}.
+     *
+     * <p>The invariant transfer is skipped when mutation tracking is suspended
+     * (see {@link #withoutMutationTracking}) — test setup can install lines with
+     * arbitrary terminal elements.
+     *
+     * <pre>
+     *  withModification {
+     *    incrementAutoMaintenance {
+     *      applyChange(LineInsertion(index, line), …)
+     *
+     *      if (line became the new last line) {
+     *        if (prevLast.lastElement == FINAL_DOUBLE_BARLINE)
+     *          applyChange(ElementDeletion on prevLast, …)
+     *
+     *        switch (line.lastElement) {
+     *          FINAL   → no-op
+     *          barline → applyChange(ElementReplacement …)
+     *          non-bar → applyChange(ElementInsertion …)
+     *          empty   → applyChange(ElementInsertion …)
+     *        }
+     *      }
+     *    }
+     *  }
+     * </pre>
+     */
     public void addLine(int index, Line line) {
         var lineIndex = (index == InsertLineAction.ADD) ? lines.size() : index;
+        var willBecomeNewLast = lineIndex == lines.size();
+        var previousLastLine = lines.isEmpty() ? null : lines.get(lines.size() - 1);
 
-        withModification(() -> applyChange(new LineInsertion(lineIndex, line), () -> {
-            lines.add(lineIndex, line);
-            line.setComposition(this);
+        withModification(() -> incrementAutoMaintenance(() -> {
+            applyChange(new LineInsertion(lineIndex, line), () -> {
+                lines.add(lineIndex, line);
+                line.setComposition(this);
 
-            if ((line.getKeyAccidentalCount() == 0) && (line.getKeyType() == null)) {
-                line.setKeyAccidentalCount(defaultKeyAccidentalCount);
-                line.setKeyType(defaultKeyType);
-            }
+                if ((line.getKeyAccidentalCount() == 0) && (line.getKeyType() == null)) {
+                    line.setKeyAccidentalCount(defaultKeyAccidentalCount);
+                    line.setKeyType(defaultKeyType);
+                }
 
-            if (line.getTempoChangeYPosPx() == 0) {
-                line.setTempoChangeYPosPx(
-                    (lineIndex == 0)
-                        ? ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.TEMPO_DEFAULT_Y_FIRST_LINE_SS)
-                        : ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.TEMPO_DEFAULT_Y_OTHER_LINES_SS)
-                );
+                if (line.getTempoChangeYPosPx() == 0) {
+                    line.setTempoChangeYPosPx(
+                        (lineIndex == 0)
+                            ? ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.TEMPO_DEFAULT_Y_FIRST_LINE_SS)
+                            : ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.TEMPO_DEFAULT_Y_OTHER_LINES_SS)
+                    );
+                }
+            });
+
+            if (willBecomeNewLast && !isMutationTrackingSuspended()) {
+                maintainFinalBarlineOnLastLineChange(previousLastLine, line);
             }
         }));
     }
 
+    /**
+     * Removes the line at {@code index} and, when the removed line was the last line,
+     * installs the final barline on the new last line so the invariant holds. All
+     * resulting mutations coalesce into a single {@link CompositionDidChangeNotification}.
+     *
+     * <p>The invariant transfer is skipped when mutation tracking is suspended
+     * (see {@link #withoutMutationTracking}).
+     *
+     * <pre>
+     *  withModification {
+     *    incrementAutoMaintenance {
+     *      applyChange(LineDeletion(index, removed), …)
+     *
+     *      if (removed line was the last line) {
+     *        let penult = lines.last
+     *        switch (penult.lastElement) {
+     *          FINAL   → no-op
+     *          barline → applyChange(ElementReplacement …)
+     *          non-bar → applyChange(ElementInsertion …)
+     *          empty   → applyChange(ElementInsertion …)
+     *        }
+     *      }
+     *    }
+     *  }
+     * </pre>
+     */
     public void removeLine(int index) {
         var deletedLine = lines.get(index);
-        withModification(() -> applyChange(
-            new LineDeletion(index, deletedLine),
-            () -> lines.remove(index)
-        ));
+        var wasLast = index == lines.size() - 1;
+
+        withModification(() -> incrementAutoMaintenance(() -> {
+            applyChange(
+                new LineDeletion(index, deletedLine),
+                () -> lines.remove(index)
+            );
+
+            if (wasLast && !lines.isEmpty() && !isMutationTrackingSuspended()) {
+                maintainFinalBarlineOnLastLineChange(null, lines.get(lines.size() - 1));
+            }
+        }));
+    }
+
+    /**
+     * Maintains the final-barline invariant after the last line of the composition
+     * has changed. Must be called inside an open modification bracket with
+     * {@link #incrementAutoMaintenance} raised so the {@link Line} guards do not
+     * reject the internally-driven mutations.
+     *
+     * <p>Strips any {@code FINAL_DOUBLE_BARLINE} at the end of {@code previousLastLine}
+     * (when supplied), then installs a {@code FINAL_DOUBLE_BARLINE} on
+     * {@code newLastLine}: no-op when it already ends with one, replacement when it
+     * ends with another barline or right-repeat, append otherwise (including the
+     * empty-line case).
+     */
+    private void maintainFinalBarlineOnLastLineChange(
+        @Nullable Line previousLastLine, Line newLastLine
+    ) {
+        if (previousLastLine != null && previousLastLine != newLastLine) {
+            var prevLastIdx = previousLastLine.elementCount() - 1;
+
+            if (prevLastIdx >= 0
+                && previousLastLine.getElement(prevLastIdx).getType() == ElementType.FINAL_DOUBLE_BARLINE) {
+                previousLastLine.removeElement(prevLastIdx);
+            }
+        }
+
+        var lastIdx = newLastLine.elementCount() - 1;
+
+        if (lastIdx < 0) {
+            newLastLine.addElement(createFinalBarlineElement());
+            return;
+        }
+
+        var lastType = newLastLine.getElement(lastIdx).getType();
+
+        if (lastType == ElementType.FINAL_DOUBLE_BARLINE) {
+            return;
+        }
+
+        if (isReplaceableEndingBarline(lastType)) {
+            newLastLine.setElement(lastIdx, createFinalBarlineElement());
+        } else {
+            newLastLine.addElement(createFinalBarlineElement());
+        }
+    }
+
+    private static boolean isReplaceableEndingBarline(ElementType type) {
+        return type.isReplaceableByFinalBarline();
     }
 
     /**
@@ -819,6 +945,58 @@ public final class Composition {
      */
     boolean isMutationTrackingSuspended() {
         return suspensionDepth > 0;
+    }
+
+    boolean isInAutoMaintenance() {
+        return autoMaintenance;
+    }
+
+    /**
+     * Runs {@code body} with the auto-maintenance flag raised so that the final-barline
+     * guards in {@link Line} are bypassed for the duration. Used by {@link #addLine} and
+     * {@link #removeLine} to transfer the final barline without triggering the guard.
+     */
+    private void incrementAutoMaintenance(Runnable body) {
+        autoMaintenance = true;
+
+        try {
+            body.run();
+        } finally {
+            autoMaintenance = false;
+        }
+    }
+
+    /**
+     * Returns a fresh {@link ElementType#FINAL_DOUBLE_BARLINE} element. The single
+     * canonical factory for the auto-maintained final barline — used by new-composition
+     * setup, load-time migration, and auto-maintenance in {@code addLine}/{@code removeLine}.
+     */
+    static StaffElement createFinalBarlineElement() {
+        return ElementType.FINAL_DOUBLE_BARLINE.newInstance();
+    }
+
+    /**
+     * Returns {@code true} when {@code element} is the composition's auto-maintained
+     * final barline: its type is {@link ElementType#FINAL_DOUBLE_BARLINE} and
+     * {@code line} is the last line of this composition.
+     *
+     * <p>A {@code FINAL_DOUBLE_BARLINE} that sits on any line other than the last is
+     * treated as an ordinary (interactable) element — it is a data anomaly that the
+     * load-time migration (Phase 3) cleans up, but the model does not block access to it.
+     */
+    boolean isAutoMaintainedFinalBarline(StaffElement element, Line line) {
+        return element.getType() == ElementType.FINAL_DOUBLE_BARLINE
+            && lines.getLast() == line;
+    }
+
+    /**
+     * Returns {@code true} when the user may interact with {@code element} on {@code line}
+     * (select, click, drag, delete, etc.). Returns {@code false} only for the
+     * composition's auto-maintained final barline — i.e., a
+     * {@link ElementType#FINAL_DOUBLE_BARLINE} that is the last element of the last line.
+     */
+    public boolean isInteractable(StaffElement element, Line line) {
+        return !isAutoMaintainedFinalBarline(element, line);
     }
 
     /**

@@ -148,15 +148,28 @@ public final class LineSelectionState {
     }
 
     /**
-     * Selects all elements on this line.
+     * Selects all elements on this line, excluding the composition's
+     * auto-maintained final barline via the shared predicate.
      */
     public void selectAll() {
         if (line.elementCount() == 0) {
             return;
         }
 
+        var end = line.elementCount() - 1;
+        var composition = line.getComposition();
+
+        if (composition != null
+                && !composition.isInteractable(line.getElement(end), line)) {
+            end--;
+        }
+
+        if (end < 0) {
+            return;
+        }
+
         selectionBegin = 0;
-        selectionEnd = line.elementCount() - 1;
+        selectionEnd = end;
         selectionAnchor = 0;
         selectedGlissandoElementIndex = -1;
     }

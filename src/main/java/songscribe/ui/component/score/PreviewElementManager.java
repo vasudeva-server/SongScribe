@@ -32,6 +32,7 @@ import songscribe.Strings;
 import songscribe.message.MessageCenter;
 import songscribe.message.mutation.ElementField;
 import songscribe.music.BeamSpan;
+import songscribe.music.Composition;
 import songscribe.music.ElementLocation;
 import songscribe.music.ElementType;
 import songscribe.music.Line;
@@ -393,6 +394,15 @@ public class PreviewElementManager {
         int xIndex = layoutResult.findInsertionIndex(mouseXss, line);
         int elementAtX = layoutResult.findElementAtXSs(mouseXss, line);
 
+        // Suppress preview over the composition's auto-maintained final barline.
+        var composition = line.getComposition();
+
+        if (composition != null
+                && isPositionBlockedByFinalBarline(composition, line, xIndex, elementAtX >= 0)) {
+            clearPreviewElement();
+            return;
+        }
+
         var previewElement = editModeManager != null ? editModeManager.getPreviewElement() : null;
 
         // Hide the preview element when a grace note is selected and the mouse
@@ -506,6 +516,16 @@ public class PreviewElementManager {
             }
         }
 
+        // Belt-and-braces: block clicks that would try to insert past the auto-maintained
+        // final barline. trackMouse already clears the preview at these positions.
+        var composition = line.getComposition();
+
+        if (composition != null
+                && isPositionBlockedByFinalBarline(
+                    composition, line, currentXIndex, xPosSsMatchesElement)) {
+            return;
+        }
+
         // Determine action based on position. Wrap in a modification bracket so the
         // line.add/setElement calls inside actually accumulate mutations and fire a
         // CompositionDidChangeNotification, which the ScoreMessageCoordinator uses to
@@ -560,6 +580,26 @@ public class PreviewElementManager {
     // ==========================================================================
     // Internal Helpers
     // ==========================================================================
+
+    /**
+     * Returns {@code true} when the given mouse position should be blocked because
+     * it coincides with the composition's auto-maintained final barline.
+     * Checks both "mouse is on the final barline element" and "mouse is at the
+     * append position immediately after the final barline".
+     */
+    private static boolean isPositionBlockedByFinalBarline(
+            Composition composition, Line line, int xIndex, boolean xMatchesElement) {
+        if (line.elementCount() == 0) {
+            return false;
+        }
+
+        if (xMatchesElement && !composition.isInteractable(line.getElement(xIndex), line)) {
+            return true;
+        }
+
+        return xIndex == line.elementCount()
+            && !composition.isInteractable(line.getElement(line.elementCount() - 1), line);
+    }
 
     /**
      * Returns whether preview element handling should be active for the given line.

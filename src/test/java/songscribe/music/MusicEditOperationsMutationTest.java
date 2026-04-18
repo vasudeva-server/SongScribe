@@ -100,7 +100,9 @@ class MusicEditOperationsMutationTest extends UnitTest {
         }
 
         // addLine fires a real LineInsertion notification on the pre-mock bus.
-        composition.addLine(line);
+        // Use withoutMutationTracking so the final-barline invariant is not enforced
+        // during setup — tests need to build lines with arbitrary terminal elements.
+        composition.withoutMutationTracking(() -> composition.addLine(line));
         var coordinator = ReflectionTestHelper.createCoordinatorForLine(line);
         var ops = new MusicEditOperations(composition, coordinator);
         messageCenterMock = mockStatic(MessageCenter.class);
@@ -587,7 +589,7 @@ class MusicEditOperationsMutationTest extends UnitTest {
             line0.addElement(crotchet());
             line0.addElement(crotchet());
             line0.addElement(crotchet());
-            composition.addLine(line0);
+            composition.withoutMutationTracking(() -> composition.addLine(line0));
 
             var env = setup(
                 crotchet(), crotchet(), repeatRight(), crotchet(), crotchet(), singleBarline()
@@ -607,7 +609,7 @@ class MusicEditOperationsMutationTest extends UnitTest {
             line0.addElement(repeatLeft());
             line0.addElement(crotchet());
             line0.addElement(crotchet());
-            composition.addLine(line0);
+            composition.withoutMutationTracking(() -> composition.addLine(line0));
 
             var env = setup(
                 crotchet(), crotchet(), repeatRight(), crotchet(), crotchet(), singleBarline()

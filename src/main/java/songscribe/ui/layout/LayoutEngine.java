@@ -27,6 +27,7 @@ import java.util.List;
 
 import org.jspecify.annotations.Nullable;
 
+import songscribe.music.ElementType;
 import songscribe.music.KeyType;
 import songscribe.smufl.Engraving;
 import songscribe.music.Line;
@@ -121,14 +122,28 @@ public class LayoutEngine {
 
     /**
      * Executes the complete layout pipeline for a line.
-     * <p>
-     * This is the main entry point for layout. It orchestrates all calculators
-     * and produces a final LayoutResult ready for rendering.
+     * Equivalent to {@code layout(line, false)}.
      *
      * @param line The line to lay out
      * @return LayoutResult with all positioned elements, or null if layout fails
      */
     public @Nullable LayoutResult layout(Line line) {
+        return layout(line, false);
+    }
+
+    /**
+     * Executes the complete layout pipeline for a line.
+     * <p>
+     * This is the main entry point for layout. It orchestrates all calculators
+     * and produces a final LayoutResult ready for rendering.
+     *
+     * @param line       The line to lay out
+     * @param isLastLine Whether this line is the last line of the composition.
+     *                   When true, the final double barline (if present) is
+     *                   pinned flush with the right edge of the line.
+     * @return LayoutResult with all positioned elements, or null if layout fails
+     */
+    public @Nullable LayoutResult layout(Line line, boolean isLastLine) {
         lastError = null;
 
         // Step 1: Build note columns
@@ -156,6 +171,12 @@ public class LayoutEngine {
             return null;
         }
 
+        // Step 3b: Pin the final barline flush-right on the last line.
+        // Layout is the sole writer of the final barline's x position.
+        if (isLastLine) {
+            positionFinalBarlineFlushRight(columns);
+        }
+
         var builder = LayoutResult.builder();
 
         // Step 4: Create header elements (clef and key signature)
@@ -177,6 +198,15 @@ public class LayoutEngine {
 
         // Step 8: Build final LayoutResult
         return buildLayoutResult(columns, line, builder);
+    }
+
+    private void positionFinalBarlineFlushRight(List<ElementColumn> columns) {
+        for (var column : columns) {
+            if (column.getElement().getType() == ElementType.FINAL_DOUBLE_BARLINE) {
+                column.setXSs(ElementType.finalBarlineFlushRightXSs(staffRightMarginSs));
+                return;
+            }
+        }
     }
 
     /**

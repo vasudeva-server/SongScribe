@@ -193,7 +193,7 @@ class EndingConfirmsTest extends UnitTest {
                 scoreCoord.handlePasteboardOp(new PasteboardOpCommand(PasteboardAction.Operation.DELETE));
             }
 
-            assertThat(env.line().elementCount()).isEqualTo(7);
+            assertThat(env.line().elementCount()).isEqualTo(8);
             assertThat(env.line().getRangeElements()).contains(env.ending());
         }
 
@@ -227,7 +227,7 @@ class EndingConfirmsTest extends UnitTest {
                 scoreCoord.handlePasteboardOp(new PasteboardOpCommand(PasteboardAction.Operation.DELETE));
             }
 
-            assertThat(env.line().elementCount()).isEqualTo(6);
+            assertThat(env.line().elementCount()).isEqualTo(7);
             assertThat(env.line().getRangeElements()).doesNotContain(env.ending());
         }
 

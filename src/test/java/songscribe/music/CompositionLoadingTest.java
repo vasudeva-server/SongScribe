@@ -35,7 +35,6 @@ class CompositionLoadingTest extends UnitTest {
     @BeforeEach
     void setUp() {
         composition = new Composition();
-        // Reset modified flag from constructor's addLine() call
         composition.setModified(false);
     }
 
@@ -65,5 +64,13 @@ class CompositionLoadingTest extends UnitTest {
         var font = MyFontUtils.createFont("LatoPlus-Bold", 20);
         composition.setTitleFont(font);
         assertThat(composition.isModified()).isTrue();
+    }
+
+    // T63: Loading a pre-2.4 file runs migrateFinalBarline inside withoutMutationTracking,
+    //      so the document is clean even though migration mutated elements.
+    @Test
+    void testLoadingLegacyCompositionDoesNotDirtyDocument() throws Exception {
+        var loaded = loadFixture("full-line");
+        assertThat(loaded.isModified()).isFalse();
     }
 }

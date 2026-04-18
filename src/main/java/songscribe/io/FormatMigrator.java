@@ -21,6 +21,7 @@ package songscribe.io;
 
 
 import songscribe.music.DynamicsSpan;
+import songscribe.music.ElementType;
 import songscribe.music.Span;
 import songscribe.music.SpanSet;
 import songscribe.music.TupletSpan;
@@ -77,6 +78,10 @@ import songscribe.ui.layout.ScaleContext;
  *       whose text exactly matches a point dynamic symbol ({@code pp}, {@code p},
  *       {@code mp}, {@code mf}, {@code f}, {@code ff}) are converted to
  *       {@code DynamicAttachment} objects.</li>
+ *   <li><b>v2.3 → v2.4</b>: {@link #migrateFinalBarline} — enforces the final-barline
+ *       invariant: the last line ends in {@code FINAL_DOUBLE_BARLINE}; all misplaced
+ *       {@code FINAL_DOUBLE_BARLINE} elements on non-last lines or in non-terminal
+ *       positions are removed.</li>
  * </ul>
  */
 public final class FormatMigrator {
@@ -517,6 +522,73 @@ public final class FormatMigrator {
         // Only add a DynamicAttachment if one does not already exist.
         if (note.findAttachment(DynamicAttachment.class) == null) {
             note.addAttachment(new DynamicAttachment(note, dynamicType));
+        }
+    }
+
+    /**
+     * Enforces the final-barline invariant on every line in the composition.
+     * <p>
+     * Called when loading any file saved before v2.4. The decision tree for the last line:
+     * <ul>
+     *   <li>{@code FINAL_DOUBLE_BARLINE} last element — no-op.</li>
+     *   <li>Other replaceable ending barline ({@code SINGLE_BARLINE}, {@code DOUBLE_BARLINE},
+     *       {@code REPEAT_RIGHT}, {@code REPEAT_LEFT_RIGHT}) — replaced with
+     *       {@code FINAL_DOUBLE_BARLINE}.</li>
+     *   <li>Any other element, or empty line — {@code FINAL_DOUBLE_BARLINE} appended.</li>
+     * </ul>
+     * All {@code FINAL_DOUBLE_BARLINE} elements on non-last lines, and any
+     * {@code FINAL_DOUBLE_BARLINE} not in the terminal position of the last line, are
+     * removed before applying the decision tree.
+     *
+     * @param lines the lines to migrate (not yet attached to a {@code Composition})
+     */
+    public static void migrateFinalBarline(List<Line> lines) {
+        if (lines.isEmpty()) {
+            return;
+        }
+
+        for (var i = 0; i < lines.size() - 1; i++) {
+            stripFinalBarlines(lines.get(i));
+        }
+
+        var lastLine = lines.get(lines.size() - 1);
+        stripNonTerminalFinalBarlines(lastLine);
+
+        var lastIdx = lastLine.elementCount() - 1;
+
+        if (lastIdx < 0) {
+            lastLine.addElement(ElementType.FINAL_DOUBLE_BARLINE.newInstance());
+            return;
+        }
+
+        var lastType = lastLine.getElement(lastIdx).getType();
+
+        if (lastType == ElementType.FINAL_DOUBLE_BARLINE) {
+            return;
+        }
+
+        if (lastType.isReplaceableByFinalBarline()) {
+            lastLine.setElement(lastIdx, ElementType.FINAL_DOUBLE_BARLINE.newInstance());
+        } else {
+            lastLine.addElement(ElementType.FINAL_DOUBLE_BARLINE.newInstance());
+        }
+    }
+
+    /** Removes all {@code FINAL_DOUBLE_BARLINE} elements from {@code line} in reverse order. */
+    private static void stripFinalBarlines(Line line) {
+        for (var i = line.elementCount() - 1; i >= 0; i--) {
+            if (line.getElement(i).getType() == ElementType.FINAL_DOUBLE_BARLINE) {
+                line.removeElement(i);
+            }
+        }
+    }
+
+    /** Removes {@code FINAL_DOUBLE_BARLINE} elements that are not the last element of {@code line}. */
+    private static void stripNonTerminalFinalBarlines(Line line) {
+        for (var i = line.elementCount() - 2; i >= 0; i--) {
+            if (line.getElement(i).getType() == ElementType.FINAL_DOUBLE_BARLINE) {
+                line.removeElement(i);
+            }
         }
     }
 }

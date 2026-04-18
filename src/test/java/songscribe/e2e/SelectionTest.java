@@ -107,11 +107,11 @@ class SelectionTest extends E2ETest {
         NOTE(11),
         SINGLE_BARLINE(12),
         DOUBLE_BARLINE(13),
-        FINAL_DOUBLE_BARLINE(14),
-        REPEAT_LEFT(15),
-        REPEAT_RIGHT(16),
-        REPEAT_LEFT_RIGHT(17),
-        BREATH_MARK(18),
+        REPEAT_LEFT(14),
+        REPEAT_RIGHT(15),
+        REPEAT_LEFT_RIGHT(16),
+        BREATH_MARK(17),
+        FINAL_DOUBLE_BARLINE(18),
         ;
 
         final int index;

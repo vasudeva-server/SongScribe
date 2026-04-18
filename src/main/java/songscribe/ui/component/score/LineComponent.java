@@ -347,8 +347,9 @@ public class LineComponent extends ScoreComponent
 
         var lyricsFont = composition.getLyricsFont();
         var staffRightMarginSs = composition.getLineWidthSs();
+        var isLastLine = lineIndex == composition.lineCount() - 1;
         layoutEngine = new LayoutEngine(g2, lyricsFont, staffRightMarginSs);
-        layoutResult = layoutEngine.layout(line);
+        layoutResult = layoutEngine.layout(line, isLastLine);
 
         if (layoutResult == null) {
             var error = layoutEngine.getLastError();

@@ -131,7 +131,143 @@ class FormatMigratorTest extends UnitTest {
         }
     }
 
+    @Nested
+    class MigrateFinalBarline {
+
+        // T52: FINAL_DOUBLE_BARLINE on a non-last line → stripped; last line's own final preserved.
+        @Test
+        void testFinalBarlineOnNonLastLineIsRemoved() {
+            var nonLast = lineWith(ElementType.CROTCHET, ElementType.FINAL_DOUBLE_BARLINE);
+            var last = lineWith(ElementType.CROTCHET, ElementType.FINAL_DOUBLE_BARLINE);
+            FormatMigrator.migrateFinalBarline(List.of(nonLast, last));
+
+            assertThat(nonLast.elementCount()).isEqualTo(1);
+            assertThat(nonLast.getElement(0).getType()).isEqualTo(ElementType.CROTCHET);
+            assertThat(last.elementCount()).isEqualTo(2);
+            assertThat(last.getElement(1).getType()).isEqualTo(ElementType.FINAL_DOUBLE_BARLINE);
+        }
+
+        // T53: Multiple FINAL_DOUBLE_BARLINE elements on a non-last line → all removed.
+        @Test
+        void testMultipleFinalBarlinesOnNonLastLineAllRemoved() {
+            var nonLast = lineWith(
+                ElementType.FINAL_DOUBLE_BARLINE,
+                ElementType.CROTCHET,
+                ElementType.FINAL_DOUBLE_BARLINE
+            );
+            var last = lineWith(ElementType.FINAL_DOUBLE_BARLINE);
+            FormatMigrator.migrateFinalBarline(List.of(nonLast, last));
+
+            assertThat(nonLast.elementCount()).isEqualTo(1);
+            assertThat(nonLast.getElement(0).getType()).isEqualTo(ElementType.CROTCHET);
+        }
+
+        // T54: Last line ends in SINGLE_BARLINE → replaced with FINAL_DOUBLE_BARLINE.
+        @Test
+        void testSingleBarlineAtEndIsReplaced() {
+            var last = lineWith(ElementType.CROTCHET, ElementType.SINGLE_BARLINE);
+            FormatMigrator.migrateFinalBarline(List.of(last));
+
+            assertThat(last.elementCount()).isEqualTo(2);
+            assertThat(last.getElement(1).getType()).isEqualTo(ElementType.FINAL_DOUBLE_BARLINE);
+        }
+
+        // T55: Last line ends in DOUBLE_BARLINE → replaced.
+        @Test
+        void testDoubleBarlineAtEndIsReplaced() {
+            var last = lineWith(ElementType.CROTCHET, ElementType.DOUBLE_BARLINE);
+            FormatMigrator.migrateFinalBarline(List.of(last));
+
+            assertThat(last.getElement(last.elementCount() - 1).getType())
+                .isEqualTo(ElementType.FINAL_DOUBLE_BARLINE);
+        }
+
+        // T56: Last line ends in REPEAT_RIGHT → replaced.
+        @Test
+        void testRepeatRightAtEndIsReplaced() {
+            var last = lineWith(ElementType.CROTCHET, ElementType.REPEAT_RIGHT);
+            FormatMigrator.migrateFinalBarline(List.of(last));
+
+            assertThat(last.getElement(last.elementCount() - 1).getType())
+                .isEqualTo(ElementType.FINAL_DOUBLE_BARLINE);
+        }
+
+        // T57: Last line ends in REPEAT_LEFT_RIGHT → replaced.
+        @Test
+        void testRepeatLeftRightAtEndIsReplaced() {
+            var last = lineWith(ElementType.CROTCHET, ElementType.REPEAT_LEFT_RIGHT);
+            FormatMigrator.migrateFinalBarline(List.of(last));
+
+            assertThat(last.getElement(last.elementCount() - 1).getType())
+                .isEqualTo(ElementType.FINAL_DOUBLE_BARLINE);
+        }
+
+        // T58: Last line ends in REPEAT_LEFT (non-replaceable) → FINAL_DOUBLE_BARLINE appended.
+        @Test
+        void testRepeatLeftAtEndGetsBarlineAppended() {
+            var last = lineWith(ElementType.CROTCHET, ElementType.REPEAT_LEFT);
+            FormatMigrator.migrateFinalBarline(List.of(last));
+
+            assertThat(last.elementCount()).isEqualTo(3);
+            assertThat(last.getElement(2).getType()).isEqualTo(ElementType.FINAL_DOUBLE_BARLINE);
+        }
+
+        // T59: Last line ends in a note → FINAL_DOUBLE_BARLINE appended.
+        @Test
+        void testNoteAtEndGetsFinalBarlineAppended() {
+            var last = lineWith(ElementType.CROTCHET);
+            FormatMigrator.migrateFinalBarline(List.of(last));
+
+            assertThat(last.elementCount()).isEqualTo(2);
+            assertThat(last.getElement(1).getType()).isEqualTo(ElementType.FINAL_DOUBLE_BARLINE);
+        }
+
+        // T60: Last line already ends in FINAL_DOUBLE_BARLINE → no-op.
+        @Test
+        void testAlreadyEndsInFinalBarlineIsNoOp() {
+            var last = lineWith(ElementType.CROTCHET, ElementType.FINAL_DOUBLE_BARLINE);
+            var originalFinal = last.getElement(1);
+            FormatMigrator.migrateFinalBarline(List.of(last));
+
+            assertThat(last.elementCount()).isEqualTo(2);
+            assertThat(last.getElement(1)).isSameAs(originalFinal);
+        }
+
+        // T61: Last line is empty → FINAL_DOUBLE_BARLINE appended.
+        @Test
+        void testEmptyLastLineGetsFinalBarlineAppended() {
+            var last = new Line();
+            FormatMigrator.migrateFinalBarline(List.of(last));
+
+            assertThat(last.elementCount()).isEqualTo(1);
+            assertThat(last.getElement(0).getType()).isEqualTo(ElementType.FINAL_DOUBLE_BARLINE);
+        }
+
+        // T62: Misplaced FINAL_DOUBLE_BARLINE (not last element) on last line → removed before install.
+        @Test
+        void testMisplacedFinalBarlineOnLastLineIsStrippedBeforeInstall() {
+            // FINAL in middle of last line — should be stripped, then note ends it → appended.
+            var last = lineWith(ElementType.FINAL_DOUBLE_BARLINE, ElementType.CROTCHET);
+            FormatMigrator.migrateFinalBarline(List.of(last));
+
+            assertThat(last.elementCount()).isEqualTo(2);
+            assertThat(last.getElement(0).getType()).isEqualTo(ElementType.CROTCHET);
+            assertThat(last.getElement(1).getType()).isEqualTo(ElementType.FINAL_DOUBLE_BARLINE);
+        }
+    }
+
     // -- Helpers --
+
+    /** Creates a line containing elements of the given types (in order), unattached to a composition. */
+    private static Line lineWith(ElementType... types) {
+        var line = new Line();
+
+        for (var type : types) {
+            line.addElement(type.newInstance());
+        }
+
+        return line;
+    }
 
     /** Creates a line containing a single crotchet with the given annotation text. */
     private static Line lineWithAnnotation(String text) {

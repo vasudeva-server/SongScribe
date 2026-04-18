@@ -55,9 +55,16 @@ public final class ElementHitTest {
         var pointXSs = sc.fromPixels(point.x);
         var pointYSs = sc.fromPixels(point.y);
         var helper = new Rectangle2D.Double();
+        var composition = line.getComposition();
 
         for (var elementIndex = 0; elementIndex < line.elementCount(); elementIndex++) {
             var element = line.getElement(elementIndex);
+
+            // Skip the composition's auto-maintained final barline (shared predicate).
+            if (composition != null && !composition.isInteractable(element, line)) {
+                continue;
+            }
+
             buildElementHitRect(lc, element, helper);
 
             if (helper.contains(pointXSs, pointYSs)) {

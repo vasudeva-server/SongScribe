@@ -24,6 +24,7 @@ import java.util.ArrayList;
 
 import org.jspecify.annotations.Nullable;
 
+import songscribe.music.ElementType;
 import songscribe.music.SpanSet;
 import songscribe.music.StaffElement;
 
@@ -113,11 +114,17 @@ public final class ClipboardManager {
     }
 
     /**
-     * Adds an element to the pasteboard.
+     * Adds an element to the pasteboard. Any {@code FINAL_DOUBLE_BARLINE} is
+     * normalized to {@code DOUBLE_BARLINE} so pasting clipboard content can
+     * never violate the composition-owned invariant.
      *
      * @param element The element to add
      */
     public void addElement(StaffElement element) {
+        if (element.getType() == ElementType.FINAL_DOUBLE_BARLINE) {
+            element = ElementType.DOUBLE_BARLINE.newInstance();
+        }
+
         pasteboard.add(element);
     }
 

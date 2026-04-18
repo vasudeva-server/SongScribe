@@ -106,6 +106,22 @@ class CompositionDefaultsTest extends UnitTest {
         assertThat(composition.lineCount()).isEqualTo(1);
     }
 
+    // T50: New composition — initial line has exactly one element: FINAL_DOUBLE_BARLINE.
+    @Test
+    void testNewCompositionInitialLineHasFinalBarline() {
+        var composition = new Composition();
+        var line = composition.getLine(0);
+        assertThat(line.elementCount()).isEqualTo(1);
+        assertThat(line.getElement(0).getType()).isEqualTo(ElementType.FINAL_DOUBLE_BARLINE);
+    }
+
+    // T51: New composition — not marked modified after construction.
+    @Test
+    void testNewCompositionIsNotModified() {
+        var composition = new Composition();
+        assertThat(composition.isModified()).isFalse();
+    }
+
     @Test
     void testTitleFontMatchesPrefs() {
         var prefs = Prefs.getInstance();

@@ -239,17 +239,46 @@ public class Line {
 
     public void addElement(StaffElement element) {
         element.setLine(this);
-        var index = elements.size();
+        // When the line ends with the auto-maintained final barline, insert the new
+        // element before it so the final barline remains the last element.
+        var lastIdx = elements.size() - 1;
+        var insertBeforeFinal = lastIdx >= 0
+            && composition != null
+            && composition.isAutoMaintainedFinalBarline(elements.get(lastIdx), this);
+        var index = insertBeforeFinal ? lastIdx : elements.size();
+
         applyChange(
             new ElementInsertion(this, index, element),
             () -> {
-                elements.add(element);
+                elements.add(index, element);
+                if (insertBeforeFinal) {
+                    shiftSpans(spanSets, index, 1);
+                }
                 attachInitialTempoIfNeeded(element);
             }
         );
     }
 
+    /**
+     * Returns {@code true} when the final-barline mutation guards in this class should
+     * be bypassed: the line has no parent composition yet, mutation tracking is suspended
+     * (test setup), or the composition is currently auto-maintaining the invariant.
+     */
+    private boolean isFinalBarlineGuardBypassed() {
+        return composition == null
+            || composition.isMutationTrackingSuspended()
+            || composition.isInAutoMaintenance();
+    }
+
     public void addElement(int index, StaffElement element) {
+        if (!isFinalBarlineGuardBypassed()
+                && element.getType() == ElementType.FINAL_DOUBLE_BARLINE
+                && (composition.indexOfLine(this) != composition.lineCount() - 1
+                    || index != elementCount())) {
+            throw new IllegalStateException(
+                "FINAL_DOUBLE_BARLINE may only be appended to the last line");
+        }
+
         element.setLine(this);
         var tuplet = tuplets.findSpan(index);
 
@@ -274,6 +303,14 @@ public class Line {
     }
 
     public void setElement(int index, StaffElement element) {
+        if (!isFinalBarlineGuardBypassed()
+                && element.getType() == ElementType.FINAL_DOUBLE_BARLINE
+                && (composition.indexOfLine(this) != composition.lineCount() - 1
+                    || index != elementCount() - 1)) {
+            throw new IllegalStateException(
+                "FINAL_DOUBLE_BARLINE may only replace the last element on the last line");
+        }
+
         var oldElement = elements.get(index);
         // Pre-compute before the mutator so findRepeatSplitElement sees the pre-replacement line.
         var endingsToRemove = rangeElements.stream()
@@ -363,6 +400,12 @@ public class Line {
     }
 
     public void removeElement(int index) {
+        if (!isFinalBarlineGuardBypassed()
+                && composition.isAutoMaintainedFinalBarline(elements.get(index), this)) {
+            throw new IllegalStateException(
+                "The auto-maintained final barline may not be removed");
+        }
+
         removeOverlappingTuplets(index, index);
         var deleted = elements.get(index);
         var deletedList = List.of(deleted);
@@ -389,6 +432,13 @@ public class Line {
      * @param to   the index of the last element to remove (inclusive)
      */
     public void removeRange(int from, int to) {
+        if (!isFinalBarlineGuardBypassed()
+                && elements.subList(from, to + 1).stream()
+                       .anyMatch(e -> composition.isAutoMaintainedFinalBarline(e, this))) {
+            throw new IllegalStateException(
+                "The auto-maintained final barline may not be removed");
+        }
+
         removeOverlappingTuplets(from, to);
         var deletedElements = List.copyOf(elements.subList(from, to + 1));
         var endingsToRemove = rangeElements.stream()

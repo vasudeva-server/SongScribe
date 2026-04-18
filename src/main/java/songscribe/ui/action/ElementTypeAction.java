@@ -173,16 +173,6 @@ public class ElementTypeAction extends StickyUIAction implements UIAction.Elemen
         );
     }
 
-    public static ElementTypeAction createFinalDoubleBarlineAction() {
-        return new ElementTypeAction(
-            Kind.NON_DURATION, ElementType.FINAL_DOUBLE_BARLINE,
-            Strings.get(Strings.ACTION_BARLINE_FINAL_DOUBLE), "@\uF34A", 24,
-            "final-double-barline", Strings.get(Strings.ACTION_BARLINE_FINAL_DOUBLE_TOOLTIP),
-            KeyEvent.VK_F, InputEvent.SHIFT_DOWN_MASK,
-            NON_DURATION_FLAGS
-        );
-    }
-
     public static ElementTypeAction createDoubleBarlineAction() {
         return new ElementTypeAction(
             Kind.NON_DURATION, ElementType.DOUBLE_BARLINE,

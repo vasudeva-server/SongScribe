@@ -20,6 +20,8 @@
 package songscribe.music;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
+import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.times;
@@ -201,8 +203,8 @@ class LineMutationTest extends UnitTest {
         void testElementListShrunkenByRangeWidth() {
             composition.withModification(() -> line.removeRange(2, 5));
 
-            // 10 elements − 4 removed (indices 2, 3, 4, 5) = 6 remain.
-            assertThat(line.elementCount()).isEqualTo(6);
+            // 10 elements + 1 auto-maintained final barline − 4 removed (indices 2, 3, 4, 5) = 7 remain.
+            assertThat(line.elementCount()).isEqualTo(7);
         }
 
         @Test
@@ -421,10 +423,10 @@ class LineMutationTest extends UnitTest {
         }
 
         @Test
-        void testSetElementEndWithFinalDoubleBarlineRetainsEnding() {
-            // Condition 3: FINAL_DOUBLE_BARLINE is a barline — allowed as end
+        void testSetElementEndWithDoubleBarlineRetainsEnding() {
+            // Condition 3: any barline type is allowed as end
             composition.withModification(() ->
-                line.setElement(6, new StaffElement(ElementType.FINAL_DOUBLE_BARLINE)));
+                line.setElement(6, new StaffElement(ElementType.DOUBLE_BARLINE)));
 
             assertThat(line.getRangeElements()).contains(ending);
         }
@@ -488,6 +490,166 @@ class LineMutationTest extends UnitTest {
             composition.withModification(() -> line.removeElement(3));
 
             assertThat(line.getRangeElements()).doesNotContain(ending);
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Final-barline mutation guards
+    // -----------------------------------------------------------------------
+
+    @Nested
+    class FinalBarlineGuards {
+
+        // --- addElement guards ---
+
+        @Test
+        void testAddFinalBarlineOnNonLastLineThrows() {
+            var secondLine = new Line();
+            composition.addLine(1, secondLine);
+            // line is now index 0, no longer the last line
+            assertThatIllegalStateException().isThrownBy(() ->
+                composition.withModification(() ->
+                    line.addElement(0, Composition.createFinalBarlineElement())));
+        }
+
+        @Test
+        void testAddFinalBarlineAtNonEndOfLastLineThrows() {
+            // Pre-load an element so that index 0 != elementCount() (2)
+            composition.withoutMutationTracking(() ->
+                line.addElement(new StaffElement(ElementType.QUAVER)));
+            assertThatIllegalStateException().isThrownBy(() ->
+                composition.withModification(() ->
+                    line.addElement(0, Composition.createFinalBarlineElement())));
+        }
+
+        @Test
+        void testAddFinalBarlineAtEndOfLastLineSucceeds() {
+            assertThatNoException().isThrownBy(() ->
+                composition.withModification(() ->
+                    line.addElement(line.elementCount(),
+                        Composition.createFinalBarlineElement())));
+        }
+
+        // --- setElement guards ---
+
+        @Test
+        void testSetFinalBarlineOnNonLastLineThrows() {
+            var secondLine = new Line();
+            composition.addLine(1, secondLine);
+            composition.withoutMutationTracking(() ->
+                line.addElement(new StaffElement(ElementType.QUAVER)));
+            // line is index 0, not the last line
+            assertThatIllegalStateException().isThrownBy(() ->
+                composition.withModification(() ->
+                    line.setElement(0, Composition.createFinalBarlineElement())));
+        }
+
+        @Test
+        void testSetFinalBarlineAtNonLastPositionOfLastLineThrows() {
+            composition.withoutMutationTracking(() -> {
+                line.addElement(new StaffElement(ElementType.QUAVER));
+                line.addElement(new StaffElement(ElementType.QUAVER));
+            });
+            // index 0 != elementCount()-1 (2)
+            assertThatIllegalStateException().isThrownBy(() ->
+                composition.withModification(() ->
+                    line.setElement(0, Composition.createFinalBarlineElement())));
+        }
+
+        @Test
+        void testSetFinalBarlineAtLastPositionOfLastLineSucceeds() {
+            composition.withoutMutationTracking(() ->
+                line.addElement(new StaffElement(ElementType.QUAVER)));
+            // index 1 == elementCount()-1 (1), and this is the last line
+            assertThatNoException().isThrownBy(() ->
+                composition.withModification(() ->
+                    line.setElement(line.elementCount() - 1,
+                        Composition.createFinalBarlineElement())));
+        }
+
+        // --- removeElement guards ---
+
+        @Test
+        void testRemoveFinalBarlineOnLastLineThrows() {
+            composition.withoutMutationTracking(() ->
+                line.addElement(Composition.createFinalBarlineElement()));
+            assertThatIllegalStateException().isThrownBy(() ->
+                composition.withModification(() ->
+                    line.removeElement(line.elementCount() - 1)));
+        }
+
+        @Test
+        void testRemoveNonFinalElementOnLastLineSucceeds() {
+            composition.withoutMutationTracking(() ->
+                line.addElement(new StaffElement(ElementType.QUAVER)));
+            assertThatNoException().isThrownBy(() ->
+                composition.withModification(() -> line.removeElement(0)));
+        }
+
+        // --- removeRange guards ---
+
+        @Test
+        void testRemoveRangeIncludingFinalBarlineOnLastLineThrows() {
+            composition.withoutMutationTracking(() -> {
+                line.addElement(new StaffElement(ElementType.QUAVER));
+                line.addElement(Composition.createFinalBarlineElement());
+            });
+            assertThatIllegalStateException().isThrownBy(() ->
+                composition.withModification(() ->
+                    line.removeRange(0, line.elementCount() - 1)));
+        }
+
+        @Test
+        void testRemoveRangeExcludingFinalBarlineOnLastLineSucceeds() {
+            composition.withoutMutationTracking(() -> {
+                line.addElement(new StaffElement(ElementType.QUAVER));
+                line.addElement(new StaffElement(ElementType.QUAVER));
+            });
+            assertThatNoException().isThrownBy(() ->
+                composition.withModification(() -> line.removeRange(0, 0)));
+        }
+
+        // --- guard bypass ---
+
+        @Test
+        void testGuardsAreBypasedWhenMutationTrackingSuspended() {
+            assertThatNoException().isThrownBy(() ->
+                composition.withoutMutationTracking(() ->
+                    line.addElement(0, Composition.createFinalBarlineElement())));
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Selectability predicate
+    // -----------------------------------------------------------------------
+
+    @Nested
+    class SelectabilityPredicate {
+
+        @Test
+        void testFinalBarlineOnLastLineIsNotInteractable() {
+            assertThat(composition.isInteractable(
+                Composition.createFinalBarlineElement(), line)).isFalse();
+        }
+
+        @Test
+        void testDoubleBarlineOnLastLineIsInteractable() {
+            assertThat(composition.isInteractable(
+                new StaffElement(ElementType.DOUBLE_BARLINE), line)).isTrue();
+        }
+
+        @Test
+        void testFinalBarlineOnNonLastLineIsInteractable() {
+            composition.addLine(1, new Line());
+            // line is now index 0, not the last line
+            assertThat(composition.isInteractable(
+                Composition.createFinalBarlineElement(), line)).isTrue();
+        }
+
+        @Test
+        void testNoteOnLastLineIsInteractable() {
+            assertThat(composition.isInteractable(
+                new StaffElement(ElementType.QUAVER), line)).isTrue();
         }
     }
 

@@ -260,6 +260,16 @@ public enum ElementType {
     }
 
     /**
+     * Returns the X position at which the final double barline should be placed
+     * so its right edge aligns flush with the right edge of the line.
+     *
+     * @param lineWidthSs the line width in staff spaces
+     */
+    public static double finalBarlineFlushRightXSs(double lineWidthSs) {
+        return lineWidthSs - FINAL_DOUBLE_BARLINE.getElementWidthSs();
+    }
+
+    /**
      * Returns the X offset from this element's layout X to the ending bracket anchor point
      * (the left vertical stroke of a volta bracket). For barlines and repeats, the anchor
      * aligns with the center of the governing thin barline; for all other types, returns 0.
@@ -444,6 +454,20 @@ public enum ElementType {
                 this == DOUBLE_BARLINE ||
                 this == FINAL_DOUBLE_BARLINE
         );
+    }
+
+    /**
+     * Returns {@code true} for barline types that, when present as the last element of
+     * the last line, are replaced by the final barline rather than having one appended
+     * after them: {@code SINGLE_BARLINE}, {@code DOUBLE_BARLINE}, {@code REPEAT_RIGHT},
+     * {@code REPEAT_LEFT_RIGHT}. {@code REPEAT_LEFT} is intentionally excluded — a
+     * left-facing repeat does not terminate the line, so the final barline is appended.
+     */
+    public boolean isReplaceableByFinalBarline() {
+        return this == SINGLE_BARLINE
+            || this == DOUBLE_BARLINE
+            || this == REPEAT_RIGHT
+            || this == REPEAT_LEFT_RIGHT;
     }
 
     /**

@@ -25,6 +25,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
+import songscribe.music.Composition;
 import songscribe.music.ElementType;
 import songscribe.music.Line;
 import songscribe.music.TupletSpan;
@@ -124,6 +125,63 @@ class LineSelectionStateTest extends UnitTest {
         assertThat(info.canToggle()).isFalse();
         assertThat(info.existing()).isNull();
         assertThat(info.coversExisting()).isFalse();
+    }
+
+    // -- selectAll excludes the auto-maintained final barline --
+
+    @Test
+    void testSelectAllExcludesAutoMaintainedFinalBarlineOnLastLine() {
+        var composition = new Composition();
+        var line = composition.getLine(0);
+
+        composition.withoutMutationTracking(() -> {
+            line.addElement(0, ElementType.CROTCHET.newInstance());
+            line.addElement(1, ElementType.CROTCHET.newInstance());
+        });
+
+        // Line now holds: [quarter, quarter, FINAL_DOUBLE_BARLINE]
+        assertThat(line.elementCount()).isEqualTo(3);
+        assertThat(line.getElement(2).getType()).isEqualTo(ElementType.FINAL_DOUBLE_BARLINE);
+
+        var state = new LineSelectionState(line);
+        state.selectAll();
+
+        assertThat(state.getSelectionBegin()).isEqualTo(0);
+        assertThat(state.getSelectionEnd()).isEqualTo(1);
+    }
+
+    @Test
+    void testSelectAllOnLineWithOnlyFinalBarlineSelectsNothing() {
+        var composition = new Composition();
+        var line = composition.getLine(0);
+
+        // Default composition seeds the first (and only) line with just the final barline.
+        assertThat(line.elementCount()).isEqualTo(1);
+        assertThat(line.getElement(0).getType()).isEqualTo(ElementType.FINAL_DOUBLE_BARLINE);
+
+        var state = new LineSelectionState(line);
+        state.selectAll();
+
+        assertThat(state.hasElementSelection()).isFalse();
+    }
+
+    @Test
+    void testSelectAllOnNonLastLineIncludesAllElements() {
+        var composition = new Composition();
+        var firstLine = composition.getLine(0);
+        composition.addLine(1, new Line());
+
+        // firstLine is no longer the last line — its final barline has been transferred away.
+        composition.withoutMutationTracking(() -> {
+            firstLine.addElement(0, ElementType.CROTCHET.newInstance());
+            firstLine.addElement(1, ElementType.CROTCHET.newInstance());
+        });
+
+        var state = new LineSelectionState(firstLine);
+        state.selectAll();
+
+        assertThat(state.getSelectionBegin()).isEqualTo(0);
+        assertThat(state.getSelectionEnd()).isEqualTo(firstLine.elementCount() - 1);
     }
 
     @Test

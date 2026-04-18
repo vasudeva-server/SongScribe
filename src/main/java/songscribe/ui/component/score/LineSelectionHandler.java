@@ -408,9 +408,16 @@ class LineSelectionHandler {
             sc.fromPixels(dragRect.height)
         );
         var helper = new Rectangle2D.Double();
+        var composition = line.getComposition();
 
         for (var elementIndex = 0; elementIndex < line.elementCount(); elementIndex++) {
             var element = line.getElement(elementIndex);
+
+            // Skip the composition's auto-maintained final barline (shared predicate).
+            if (composition != null && !composition.isInteractable(element, line)) {
+                continue;
+            }
+
             buildElementHitRect(element, helper);
 
             if (dragRectSs.intersects(helper)) {

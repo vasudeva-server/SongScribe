@@ -200,7 +200,6 @@ public final class Actions {
     };
 
     public static final ElementTypeAction[] BARLINE_ACTIONS = new ElementTypeAction[]{
-        ElementTypeAction.createFinalDoubleBarlineAction(),
         ElementTypeAction.createDoubleBarlineAction(),
         ElementTypeAction.createSingleBarlineAction(),
     };

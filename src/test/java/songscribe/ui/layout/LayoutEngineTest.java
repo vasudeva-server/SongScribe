@@ -29,6 +29,8 @@ import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
+import songscribe.music.Composition;
+import songscribe.music.ElementType;
 import songscribe.music.KeyType;
 import songscribe.music.Line;
 import songscribe.smufl.Engraving;
@@ -76,5 +78,31 @@ class LayoutEngineTest extends UnitTest {
         assertThat(keySig.getXSs()).isCloseTo(expectedXSs, within(TOLERANCE));
         assertThat(keySig.getKeyType()).isEqualTo(KeyType.SHARPS);
         assertThat(keySig.getAccidentalCount()).isEqualTo(3);
+    }
+
+    // T3: On the last line, the final barline is positioned flush-right
+    @Test
+    void testFinalBarlineFlushRightOnLastLine() {
+        var composition = new Composition();
+        var line = composition.getLine(0);
+        var finalBarline = line.getElement(line.elementCount() - 1);
+
+        var result = require(engine().layout(line, true), "LayoutResult");
+        double expectedXSs = ElementType.finalBarlineFlushRightXSs(STAFF_RIGHT_MARGIN_SS);
+
+        assertThat(result.getElementXSs(finalBarline)).isCloseTo(expectedXSs, within(TOLERANCE));
+    }
+
+    // T4: On a non-last line, the final barline is not flush-right
+    @Test
+    void testFinalBarlineNotFlushRightOnNonLastLine() {
+        var composition = new Composition();
+        var line = composition.getLine(0);
+        var finalBarline = line.getElement(line.elementCount() - 1);
+
+        var result = require(engine().layout(line, false), "LayoutResult");
+        double flushRightXSs = ElementType.finalBarlineFlushRightXSs(STAFF_RIGHT_MARGIN_SS);
+
+        assertThat(result.getElementXSs(finalBarline)).isNotCloseTo(flushRightXSs, within(TOLERANCE));
     }
 }
