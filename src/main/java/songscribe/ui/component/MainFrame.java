@@ -71,6 +71,7 @@ import songscribe.ui.dialog.WhatsNewDialog;
 import songscribe.ui.menu.MenuController;
 import songscribe.ui.playback.MidiController;
 import songscribe.ui.playback.PlaybackController;
+import songscribe.util.ModifierState;
 import songscribe.util.UIUtils;
 import songscribe.util.Utils;
 
@@ -118,9 +119,6 @@ public class MainFrame extends JFrame implements Printable {
     @Nullable
     protected File currentFile = null;
 
-    // UI components
-    @Nullable
-    private LyricsPanel lyricsPanel = null;
     @Nullable
     private JLabel titleBarLabel = null;
 
@@ -176,7 +174,7 @@ public class MainFrame extends JFrame implements Printable {
             MidiController.openMidi();
             var instance = getInstance();
             var rawRecents = Prefs.getInstance().getStringList(PrefsKey.RECENT_FILES);
-            Path mostRecentPath = rawRecents.isEmpty() ? null : Path.of(rawRecents.get(0));
+            var mostRecentPath = rawRecents.isEmpty() ? null : Path.of(rawRecents.getFirst());
             instance.initFrame();
 
             if (
@@ -214,6 +212,10 @@ public class MainFrame extends JFrame implements Printable {
                 Prefs.getInstance().getString(PrefsKey.STARTUP_ACTION)
             );
         } catch (IllegalArgumentException ignored) {}
+
+        if (ModifierState.isAltPressed()) {
+            startupAction = StartupAction.DO_NOTHING;
+        }
 
         switch (startupAction) {
             case DO_NOTHING -> {}
@@ -288,7 +290,7 @@ public class MainFrame extends JFrame implements Printable {
         // When the application goes to the background, hide the insertion note
         // and activate the glass pane so the reactivation click is consumed.
         // Use the Desktop API on macOS, fall back to WindowListener elsewhere.
-        boolean usingDesktopApi = false;
+        var usingDesktopApi = false;
 
         if (Desktop.isDesktopSupported()) {
             var desktop = Desktop.getDesktop();
@@ -384,13 +386,7 @@ public class MainFrame extends JFrame implements Printable {
         // title bar area and place it above the toolbar.
         if (SystemInfo.isMacOS && SystemInfo.isMacFullWindowContentSupported) {
 
-            var titleBar = new JPanel(new BorderLayout()) {
-                @Override
-                public void updateUI() {
-                    super.updateUI();
-                    setBackground(UIManager.getColor("ToolBar.background"));
-                }
-            };
+            var titleBar = new TitlePanel();
             titleBar.setPreferredSize(new Dimension(0, MAC_TITLE_BAR_HEIGHT));
 
             titleBarLabel = new JLabel("", SwingConstants.CENTER) {
@@ -421,7 +417,8 @@ public class MainFrame extends JFrame implements Printable {
     }
 
     private JSplitPane createCenterContent() {
-        lyricsPanel = new LyricsPanel();
+        // UI components
+        var lyricsPanel = new LyricsPanel();
         var pane = new JSplitPane(JSplitPane.VERTICAL_SPLIT);
 
         // Since it's a split pane, we want to resize it continuously as the pane is resized
@@ -444,9 +441,9 @@ public class MainFrame extends JFrame implements Printable {
         var maxBounds = GraphicsEnvironment.getLocalGraphicsEnvironment()
             .getMaximumWindowBounds();
 
-        int width = Math.min(size.width + scrollBarWidth, maxBounds.width);
-        int height = maxBounds.height;
-        int x = maxBounds.x + (maxBounds.width - width) / 2;
+        var width = Math.min(size.width + scrollBarWidth, maxBounds.width);
+        var height = maxBounds.height;
+        var x = maxBounds.x + (maxBounds.width - width) / 2;
 
         setBounds(x, maxBounds.y, width, height);
 
@@ -652,10 +649,14 @@ public class MainFrame extends JFrame implements Printable {
             return;
         }
 
+        var recents = RecentDocumentsManager.getInstance();
+        var path = file.toPath().toAbsolutePath();
         var opened = score.openFile(file, true);
 
         if (opened) {
-            RecentDocumentsManager.getInstance().add(file.toPath().toAbsolutePath());
+            recents.add(path);
+        } else {
+            recents.remove(path);
         }
     }
 
@@ -811,4 +812,15 @@ public class MainFrame extends JFrame implements Printable {
         Prefs.getInstance().put(PrefsKey.PLAY_WITH_REPEATS, message.isSelected());
     }
 
+    private static final class TitlePanel extends JPanel {
+        private TitlePanel() {
+            super(new BorderLayout());
+        }
+
+        @Override
+        public void updateUI() {
+            super.updateUI();
+            setBackground(UIManager.getColor("ToolBar.background"));
+        }
+    }
 }
