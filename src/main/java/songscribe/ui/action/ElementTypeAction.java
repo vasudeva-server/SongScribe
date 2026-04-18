@@ -58,7 +58,7 @@ public class ElementTypeAction extends StickyUIAction implements UIAction.Elemen
             Kind.DURATION, ElementType.GRACE_QUAVER,
             Strings.get(Strings.ACTION_DURATION_GRACE), "grace.svg", 26,
             "duration-grace-eighth", Strings.get(Strings.ACTION_DURATION_GRACE_TOOLTIP),
-            KeyEvent.VK_G, InputEvent.SHIFT_DOWN_MASK,
+            KeyEvent.VK_G, 0,
             withFlags(DURATION_FLAGS, Flag.DISABLE_IN_REST_MODE, Flag.DISABLE_IN_SELECT_MODE, Flag.DISABLE_IN_GRACE_MODE)
         );
     }
@@ -128,7 +128,7 @@ public class ElementTypeAction extends StickyUIAction implements UIAction.Elemen
             Kind.DURATION, ElementType.GLISSANDO, StaffElement.Glissando.Type.CONNECTED,
             Strings.get(Strings.ACTION_DURATION_GLISSANDO), "connecting-glissando.svg", 26,
             "glissando", Strings.get(Strings.ACTION_DURATION_GLISSANDO_TOOLTIP),
-            KeyEvent.VK_G, 0,
+            KeyEvent.VK_G, InputEvent.SHIFT_DOWN_MASK,
             NON_DURATION_FLAGS // Glissandos do not have a duration
         );
     }
