@@ -24,11 +24,11 @@ import songscribe.message.Message;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.music.Tempo;
+import songscribe.music.Duration;
 
 public class TempoDidChangeNotification extends Message {
 
-    private final Tempo.@Nullable Type tempoType;
+    private final @Nullable Duration tempoType;
     @Nullable
     private final Integer visibleTempo;
     @Nullable
@@ -37,7 +37,7 @@ public class TempoDidChangeNotification extends Message {
     private final Boolean showTempo;
 
     public TempoDidChangeNotification(
-        Tempo.@Nullable Type tempoType,
+        @Nullable Duration tempoType,
         @Nullable Integer visibleTempo,
         @Nullable String tempoDescription,
         @Nullable Boolean showTempo
@@ -48,7 +48,7 @@ public class TempoDidChangeNotification extends Message {
         this.showTempo = showTempo;
     }
 
-    public Tempo.@Nullable Type getTempoType() {
+    public @Nullable Duration getTempoType() {
         return tempoType;
     }
 

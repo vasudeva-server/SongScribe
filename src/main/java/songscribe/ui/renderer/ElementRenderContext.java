@@ -65,8 +65,8 @@ public class ElementRenderContext {
     private Line currentLine;
     private double middleLineYSs;
     private int lineIndex;
-    @Nullable
-    private LayoutResult layoutResult;
+    @SuppressWarnings("NullAway") // set by setLayoutResult() before first access
+    private LayoutResult layoutResult = null;
     private LineComponent.@Nullable SelectionProvider selectionProvider;
     private boolean editMode;
     private Color selectionColor = Score.getSelectionStrokeColor();
@@ -181,12 +181,10 @@ public class ElementRenderContext {
      * Returns the layout result for the current line.
      * <p>
      * The layout result contains calculated bounds for all elements on the line.
-     * Renderers can use this to get pre-calculated positions instead of
+     * Renderers use this to get pre-calculated positions instead of
      * computing them during rendering.
-     *
-     * @return The layout result, or null if not available
      */
-    public @Nullable LayoutResult getLayoutResult() {
+    public LayoutResult getLayoutResult() {
         return layoutResult;
     }
 
@@ -195,7 +193,7 @@ public class ElementRenderContext {
      *
      * @param layoutResult The layout result from LayoutEngine
      */
-    public void setLayoutResult(@Nullable LayoutResult layoutResult) {
+    public void setLayoutResult(LayoutResult layoutResult) {
         this.layoutResult = layoutResult;
     }
 

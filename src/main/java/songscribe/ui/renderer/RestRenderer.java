@@ -131,8 +131,7 @@ public class RestRenderer extends BaseElementRenderer<StaffElement> {
         if (ctx.hasOverrideElementX()) {
             noteX = ctx.getOverrideElementXSs();
         } else {
-            var layoutResult = ctx.getLayoutResult();
-            noteX = (layoutResult != null) ? layoutResult.getElementXSs(note) : note.getXOffsetPx();
+            noteX = ctx.getLayoutResult().getElementXSs(note);
         }
 
         return noteX;

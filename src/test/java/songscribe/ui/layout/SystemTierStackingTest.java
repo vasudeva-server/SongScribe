@@ -33,6 +33,7 @@ import org.junit.jupiter.api.Test;
 import songscribe.UnitTest;
 import songscribe.music.Composition;
 
+import songscribe.music.Duration;
 import songscribe.music.Line;
 import songscribe.music.StaffElement;
 import songscribe.music.Tempo;
@@ -47,8 +48,7 @@ class SystemTierStackingTest extends UnitTest {
     private static Composition composition;
 
     @BeforeAll
-    static void setUpFlatLaf() throws Exception {
-        installFlatLafDefaults();
+    static void setUp() {
         composition = new Composition();
     }
 
@@ -174,7 +174,7 @@ class SystemTierStackingTest extends UnitTest {
         @Test
         void testLegacyTempoChangeProducesLayout() {
             var note = createNote(0, false);
-            note.setTempoChange(new Tempo(140, Tempo.Type.CROTCHET, "Allegro", true));
+            note.setTempoChange(new Tempo(140, Duration.CROTCHET, "Allegro", true));
 
             var line = newLine();
             populate(line,note);

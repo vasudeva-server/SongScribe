@@ -23,6 +23,7 @@ package songscribe.ui.component.score;
 import module java.desktop;
 
 
+import songscribe.error.RuntimeError;
 import songscribe.music.ElementType;
 import songscribe.ui.Mode;
 import songscribe.ui.component.Score;
@@ -109,12 +110,18 @@ class LineRenderer {
         var line = lc.getLine();
         var lineIndex = lc.getLineIndex();
 
+        var layoutResult = lc.getLayoutResult();
+
+        if (layoutResult == null) {
+            throw RuntimeError.exit("LineRenderer.render called before layout was performed");
+        }
+
         // Create render context for this rendering pass
         var ctx = new ElementRenderContext(composition);
         ctx.setCurrentLine(line);
         ctx.setLineIndex(lineIndex);
         ctx.setMiddleLineYSs(lc.getMiddleLineYSs());
-        ctx.setLayoutResult(lc.getLayoutResult());
+        ctx.setLayoutResult(layoutResult);
         ctx.setSelectionProvider(lc.getSelectionProvider());
         ctx.setEditMode(lc.isEditMode());
         ctx.setPlayingNoteIndex(lc.getPlayingNoteIndex());
@@ -178,11 +185,6 @@ class LineRenderer {
      */
     private void renderLineBeginning(Graphics2D g2, ElementRenderContext ctx) {
         var layoutResult = ctx.getLayoutResult();
-
-        if (layoutResult == null) {
-            return;
-        }
-
         var clef = layoutResult.getClef();
 
         if (clef != null) {
@@ -227,10 +229,7 @@ class LineRenderer {
             g2.setColor(color);
 
             if (hasShift && i >= shiftFromIndex && element.getType() != ElementType.FINAL_DOUBLE_BARLINE) {
-                var baseXSs = layoutResult != null
-                    ? layoutResult.getElementXSs(element)
-                    : ScaleContext.getInstance().fromPixels(element.getXOffsetPx());
-                ctx.setOverrideElementXSs(baseXSs + shiftSs);
+                ctx.setOverrideElementXSs(layoutResult.getElementXSs(element) + shiftSs);
                 noteRenderer.render(g2, element, ctx);
                 ctx.clearOverrideElementX();
             } else {
@@ -463,11 +462,12 @@ class LineRenderer {
         var beatChangeRenderer = BeatChangeRenderer.getInstance();
         var annotationRenderer = AnnotationRenderer.getInstance();
         var line = lc.getLine();
-        var layoutResult = lc.getLayoutResult();
 
         if (line == null) {
             return;
         }
+
+        var layoutResult = ctx.getLayoutResult();
 
         g2.setColor(Color.BLACK);
 
@@ -489,36 +489,31 @@ class LineRenderer {
                 }
 
                 // Tier 2: Fermata (note decoration)
-                if (layoutResult != null
-                    && layoutResult.findAttachmentDecorationLayout(
+                if (layoutResult.findAttachmentDecorationLayout(
                         element, FermataAttachment.class) != null) {
                     fermataRenderer.render(element, g2, ctx);
                 }
 
                 // Tier 3: Dynamic markings (below staff)
-                if (layoutResult != null
-                    && layoutResult.findAttachmentDecorationLayout(
+                if (layoutResult.findAttachmentDecorationLayout(
                         element, DynamicAttachment.class) != null) {
                     dynamicMarkingRenderer.render(element, g2, ctx);
                 }
 
                 // Tier 4: Tempo (system)
-                if (layoutResult != null
-                    && layoutResult.findAttachmentDecorationLayout(
+                if (layoutResult.findAttachmentDecorationLayout(
                         element, TempoAttachment.class) != null) {
                     tempoRenderer.render(element, g2, ctx);
                 }
 
                 // Tier 4: Beat change (system)
-                if (layoutResult != null
-                    && layoutResult.findAttachmentDecorationLayout(
+                if (layoutResult.findAttachmentDecorationLayout(
                         element, BeatChangeAttachment.class) != null) {
                     beatChangeRenderer.render(element, g2, ctx);
                 }
 
                 // Tier 4: Annotation (system)
-                if (layoutResult != null
-                    && layoutResult.findAttachmentDecorationLayout(
+                if (layoutResult.findAttachmentDecorationLayout(
                         element, AnnotationAttachment.class) != null) {
                     annotationRenderer.render(element, g2, ctx);
                 }
@@ -618,11 +613,10 @@ class LineRenderer {
                 mouseX = ScaleContext.getInstance().fromPixels(mousePos.getX());
             }
 
-            var layoutResult = lc.getLayoutResult();
             var line = lc.getLine();
 
-            if (layoutResult != null && line != null) {
-                x = layoutResult.calculateInsertionXSs(currentXIndex, mouseX, previewElement, line);
+            if (line != null) {
+                x = ctx.getLayoutResult().calculateInsertionXSs(currentXIndex, mouseX, previewElement, line);
             }
         }
 
@@ -632,13 +626,10 @@ class LineRenderer {
 
         // Render the preview element with the preview element color.
         // Pass x as an override so NoteRenderer and decoration renderers apply
-        // device-pixel snapping to the raw double directly, exactly as they do for
-        // composition elements via layoutResult.getElementXSs(). Temporarily clear
-        // layoutResult to prevent sub-renderers from looking up the preview element
-        // (which is not in the layout).
-        var savedLayout = ctx.getLayoutResult();
+        // device-pixel snapping to the raw double directly. Sub-renderers detect
+        // preview rendering via hasOverrideElementX() and avoid looking up the
+        // preview element in the layout (it isn't there).
         ctx.setOverrideElementXSs(x);
-        ctx.setLayoutResult(null);
         g2.setColor(Score.getPreviewElementColor());
         NoteRenderer.getInstance().render(g2, previewElement, ctx);
 
@@ -653,7 +644,6 @@ class LineRenderer {
         }
 
         ctx.clearOverrideElementX();
-        ctx.setLayoutResult(savedLayout);
     }
 
     /**

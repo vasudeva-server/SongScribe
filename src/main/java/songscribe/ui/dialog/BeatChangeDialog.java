@@ -20,164 +20,135 @@
 package songscribe.ui.dialog;
 
 import module java.desktop;
-// Disambiguates from org.w3c.dom.events.MouseEvent (java.xml module)
-import java.awt.event.MouseEvent;
 
 import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
+import songscribe.message.mutation.ElementField;
 import songscribe.music.BeatChange;
-import songscribe.ui.OptionDialogs;
+import songscribe.music.Duration;
+import songscribe.music.Line;
 import songscribe.music.StaffElement;
-import songscribe.ui.renderer.BeatChangeRenderer;
+import songscribe.ui.FlatLafKeys;
+import songscribe.ui.FlatLafProps;
+import songscribe.ui.component.DurationListCellRenderer;
 
 public class BeatChangeDialog extends StandardDialog {
 
     private @Nullable StaffElement selectedElement = null;
+    private @Nullable Line selectedLine = null;
     private final JButton removeButton;
-    private final ButtonGroup bg;
 
     public BeatChangeDialog() {
         super(Strings.get(Strings.DIALOG_BEAT_CHANGE_TITLE));
-        var center = new JPanel();
-        center.setLayout(new BoxLayout(center, BoxLayout.Y_AXIS));
-        center.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
-        bg = new ButtonGroup();
 
-        for (var bc : BeatChange.values()) {
-            var rb = new JRadioButton();
-            rb.setActionCommand(bc.name());
-            bg.add(rb);
-            var panel = new JPanel();
-            panel.add(rb);
-            var component = getBeatChangeComponent(bc);
-            component.addMouseListener(
-                new MouseListener() {
-                    @Override
-                    public void mouseClicked(MouseEvent e) {
-                        bg.setSelected(rb.getModel(), true);
-                    }
-
-                    @Override
-                    public void mousePressed(MouseEvent e) {
-                    }
-
-                    @Override
-                    public void mouseReleased(MouseEvent e) {
-                    }
-
-                    @Override
-                    public void mouseEntered(MouseEvent e) {
-                    }
-
-                    @Override
-                    public void mouseExited(MouseEvent e) {
-                    }
-                }
-            );
-            panel.add(component);
-            center.add(panel);
-        }
-
-        contentPanel.add(center);
-
-        //----------------------south------------------------
-        var south = new JPanel();
         removeButton = new JButton(Strings.get(Strings.LABEL_BUTTON_REMOVE));
         removeButton.addActionListener(_ -> {
-            var score = requireScore();
-            if (selectedElement == null) {
+            var element = selectedElement;
+            var line = selectedLine;
+
+            if (element == null || line == null) {
                 throw new IllegalStateException("no element selected");
             }
 
-            selectedElement.setBeatChange(null);
+            var elementIndex = line.getElementIndex(element);
+            line.withModification(() -> line.modifyElement(
+                elementIndex, ElementField.BEAT_CHANGE, () -> element.setBeatChange(null)
+            ));
             setVisible(false);
-            score.repaint();
-            score.getComposition().setModified(true);
         });
-        south.add(okButton);
-        south.add(removeButton);
-        south.add(cancelButton);
-        contentPanel.add(BorderLayout.SOUTH, south);
+
+        buttonPanel.add(removeButton, 0);
+        removeButton.setVisible(false);
+
+        var tab = new BeatChangeTab();
+        registerTab(tab);
+        contentPanel.add(BorderLayout.CENTER, tab);
+        contentPanel.add(BorderLayout.SOUTH, buttonPanel);
     }
 
     @Override
     protected boolean getData() {
         var score = requireScore();
         selectedElement = score.getSingleSelectedElement();
-        BeatChange beatChange = null;
+        selectedLine = score.getComposition().getLine(score.getSelectionCoordinator().getActiveLineIndex());
 
-        if (selectedElement != null) {
-            beatChange = selectedElement.getBeatChange();
-        }
+        var beatChange = selectedElement != null ? selectedElement.getBeatChange() : null;
+        var addingBeatChange = beatChange == null;
 
-        var bcnull = beatChange == null;
-
-        if (beatChange != null) {
-            for (var elements = bg.getElements(); elements.hasMoreElements(); ) {
-                var element = elements.nextElement();
-
-                if (element.getActionCommand().equals(beatChange.name())) {
-                    bg.setSelected(element.getModel(), true);
-                }
-            }
-        }
-
-        removeButton.setEnabled(!bcnull);
-
-        if (bcnull) {
-            okButton.setText(Strings.get(Strings.LABEL_BUTTON_ADD));
-        } else {
-            okButton.setText(Strings.get(Strings.LABEL_BUTTON_MODIFY));
-        }
-
-        return true;
-    }
-
-    @Override
-    protected void setData() {
-        if (bg.getSelection() == null) {
-            OptionDialogs.showErrorMessage(
-                getMainFrame(),
-                Strings.ALERT_TITLE_BEAT_CHANGE_ERROR,
-                Strings.ERROR_BEAT_CHANGE_NO_SELECTION
-            );
-            return;
-        }
-
-        if (selectedElement == null) {
-            throw new IllegalStateException("no element selected");
-        }
-
-        selectedElement.setBeatChange(
-            BeatChange.valueOf(bg.getSelection().getActionCommand())
+        removeButton.setVisible(!addingBeatChange);
+        okButton.setText(
+            Strings.get(addingBeatChange ? Strings.LABEL_BUTTON_ADD : Strings.LABEL_BUTTON_MODIFY)
         );
+
+        return super.getData();
     }
 
-    private JComponent getBeatChangeComponent(BeatChange beatChange) {
-        return new JComponent() {
-            private final Dimension size = new Dimension(50, 30);
+    private final class BeatChangeTab extends Tab {
 
-            @Override
-            public Dimension getPreferredSize() {
-                return size;
+        private final JComboBox<Duration> durationCombo =
+            DurationListCellRenderer.createCombo(Duration.values());
+        private final JComboBox<Duration> beatCombo =
+            DurationListCellRenderer.createCombo(Duration.values());
+
+        private BeatChangeTab() {
+            build();
+        }
+
+        @Override
+        protected void initContents() {
+            var row = new JPanel();
+            row.setLayout(new BoxLayout(row, BoxLayout.X_AXIS));
+            var extraGap = FlatLafProps.<Integer>get(FlatLafKeys.DIALOG_COMPONENT_HORIZONTAL_EXTRA_GAP);
+            row.add(durationCombo);
+            row.add(Box.createHorizontalStrut(extraGap));
+            row.add(new JLabel("="));
+            row.add(Box.createHorizontalStrut(extraGap));
+            row.add(beatCombo);
+            add(row);
+        }
+
+        @Override
+        protected boolean getData() {
+            var element = selectedElement;
+
+            if (element == null) {
+                return true;
             }
 
-            @Override
-            public Dimension getSize() {
-                return size;
+            var beatChange = element.getBeatChange();
+
+            if (beatChange != null) {
+                durationCombo.setSelectedItem(beatChange.duration());
+                beatCombo.setSelectedItem(beatChange.beat());
+            } else {
+                durationCombo.setSelectedItem(Duration.CROTCHET_DOTTED);
+                beatCombo.setSelectedItem(Duration.CROTCHET);
             }
 
-            @Override
-            protected void paintComponent(Graphics g) {
-                var g2 = (Graphics2D) g;
-                // g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints
-                // .VALUE_ANTIALIAS_ON);
-                // g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints
-                // .VALUE_TEXT_ANTIALIAS_ON);
-                var composition = getComposition();
-                BeatChangeRenderer.getInstance().drawBeatChange(g2, beatChange, 2, 27, composition);
+            return true;
+        }
+
+        @Override
+        protected void setData() {
+            var element = selectedElement;
+            var line = selectedLine;
+
+            if (element == null || line == null) {
+                throw new IllegalStateException("no element selected");
             }
-        };
+
+            var elementIndex = line.getElementIndex(element);
+            line.withModification(() -> line.modifyElement(
+                elementIndex,
+                ElementField.BEAT_CHANGE,
+                () -> element.setBeatChange(
+                    new BeatChange(
+                        (Duration) durationCombo.getSelectedItem(),
+                        (Duration) beatCombo.getSelectedItem()
+                    )
+                )
+            ));
+        }
     }
 }

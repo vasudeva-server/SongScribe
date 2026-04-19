@@ -291,11 +291,26 @@ public class Line {
             .filter(r -> r instanceof Ending e && e.isInvalidatedByInsertion(index, insertedType, this))
             .toList();
 
+        // When prepending to a non-empty first line, the previous first element
+        // carried the initial tempo. Clear it so only the new first element —
+        // which attachInitialTempoIfNeeded will populate — carries it.
+        var displacedFirstElement = (index == 0
+            && !elements.isEmpty()
+            && composition != null
+            && composition.indexOfLine(this) == 0)
+            ? elements.get(0)
+            : null;
+
         applyChange(
             new ElementInsertion(this, index, element),
             () -> {
                 elements.add(index, element);
                 shiftSpans(spanSets, index, 1);
+
+                if (displacedFirstElement != null) {
+                    displacedFirstElement.setTempoChange(null);
+                }
+
                 attachInitialTempoIfNeeded(element);
                 rangeElements.removeIf(endingsToRemove::contains);
             }
@@ -363,6 +378,13 @@ public class Line {
         applyChange(new ElementModification(this, index, fields, beforeClone), mutator);
     }
 
+    /** Attaches the initial tempo to the first element of this line if it's the first line. */
+    void attachInitialTempoIfNeeded() {
+        if (!elements.isEmpty()) {
+            attachInitialTempoIfNeeded(elements.get(0));
+        }
+    }
+
     /**
      * Attaches the composition's initial tempo to the first element of the first line
      * if it doesn't already have a tempo change.
@@ -374,7 +396,7 @@ public class Line {
 
         // Check if this is the first element of the first line
         boolean isFirstLine = composition.indexOfLine(this) == 0;
-        boolean isFirstElement = elements.size() == 1 && elements.get(0) == element;
+        boolean isFirstElement = !elements.isEmpty() && elements.get(0) == element;
 
         if (isFirstLine && isFirstElement && element.getTempoChange() == null) {
             var initialTempo = composition.getTempo();

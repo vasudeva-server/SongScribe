@@ -81,7 +81,7 @@ class CompositionDefaultsTest extends UnitTest {
         var composition = new Composition();
         var tempo = composition.getTempo();
         assertThat(tempo.getVisibleTempo()).isEqualTo(120);
-        assertThat(tempo.getTempoType()).isEqualTo(Tempo.Type.CROTCHET);
+        assertThat(tempo.getTempoType()).isEqualTo(Duration.CROTCHET);
         assertThat(tempo.getTempoDescription()).isEqualTo("Moderate");
     }
 

@@ -141,13 +141,7 @@ public class AnnotationRenderer extends BaseElementRenderer<StaffElement> {
         StaffElement note,
         ElementRenderContext ctx
     ) {
-        var layoutResult = ctx.getLayoutResult();
-
-        if (layoutResult == null) {
-            throw new IllegalStateException("Layout result must be available for rendering");
-        }
-
-        var decorationLayout = layoutResult.findAttachmentDecorationLayout(
+        var decorationLayout = ctx.getLayoutResult().findAttachmentDecorationLayout(
             note, AnnotationAttachment.class);
 
         if (decorationLayout == null) {

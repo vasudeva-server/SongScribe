@@ -26,7 +26,6 @@ import static org.mockito.Mockito.when;
 
 import module java.desktop;
 
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
@@ -37,11 +36,6 @@ import songscribe.ui.component.Score;
 import songscribe.ui.component.score.LineComponent;
 
 class ElementRenderContextTest extends UnitTest {
-
-    @BeforeAll
-    static void installFlatLaf() throws Exception {
-        installFlatLafDefaults();
-    }
 
     // T1: not in edit mode → Color.BLACK regardless of playing/selection state
     @Test

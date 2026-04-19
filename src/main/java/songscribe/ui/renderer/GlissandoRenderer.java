@@ -220,11 +220,6 @@ public class GlissandoRenderer {
         }
 
         var layoutResult = ctx.getLayoutResult();
-
-        if (layoutResult == null) {
-            return;
-        }
-
         var middleLineYSs = ctx.getMiddleLineYSs();
         var src = resolveNoteContext(note, noteIndex, line, layoutResult, middleLineYSs);
         var tgt = resolveTargetContext(glissando.type, noteIndex, line, layoutResult, middleLineYSs);
@@ -319,11 +314,6 @@ public class GlissandoRenderer {
 
         var note = line.getElement(sourceIndex);
         var layoutResult = ctx.getLayoutResult();
-
-        if (layoutResult == null) {
-            return;
-        }
-
         var middleLineYSs = ctx.getMiddleLineYSs();
         var src = resolveNoteContext(note, sourceIndex, line, layoutResult, middleLineYSs);
         var tgt = resolveTargetContext(type, sourceIndex, line, layoutResult, middleLineYSs);

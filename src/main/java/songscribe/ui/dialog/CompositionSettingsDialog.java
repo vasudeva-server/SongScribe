@@ -38,8 +38,8 @@ import songscribe.message.MessageCenter;
 import songscribe.message.notification.MetadataDidChangeNotification;
 import songscribe.message.notification.TempoDidChangeNotification;
 import songscribe.music.Composition;
+import songscribe.music.Duration;
 import songscribe.music.KeyType;
-import songscribe.music.Tempo;
 import songscribe.prefs.Prefs;
 import songscribe.prefs.PrefsKey;
 import songscribe.ui.FlatLafKeys;
@@ -47,6 +47,7 @@ import songscribe.ui.FlatLafProps;
 import songscribe.ui.KeySignatureDisplay;
 import songscribe.ui.OptionDialogs;
 import songscribe.ui.action.UIAction;
+import songscribe.ui.component.BaseLabel;
 import songscribe.ui.component.InputUtils;
 import songscribe.ui.component.MyJTextArea;
 import songscribe.ui.component.MyJTextField;
@@ -566,7 +567,7 @@ public class CompositionSettingsDialog extends StandardDialog {
     private final class MusicTab extends BaseDialog.Tab {
 
         private final TempoSection tempoSection = new TempoSection(
-            Tempo.Type.displayValues(),
+            Duration.values(),
             Strings.get(Strings.DIALOG_COMPOSITION_SETTINGS_SHOW_ONLY_DESCRIPTION),
             "tempos"
         );

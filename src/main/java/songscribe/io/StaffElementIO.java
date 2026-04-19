@@ -31,6 +31,7 @@ import org.xml.sax.Attributes;
 
 import songscribe.music.ArticulationType;
 import songscribe.music.BeatChange;
+import songscribe.music.Duration;
 import songscribe.music.ElementType;
 import songscribe.music.StaffElement;
 import songscribe.ui.layout.Articulation;
@@ -65,6 +66,8 @@ public final class StaffElementIO {
     private static final String XML_FERMATA = "fermata";
     private static final String XML_FORCE_SYLLABLE = "forcesyllable";
     private static final String XML_BEAT_CHANGE = "beatchange";
+    private static final String XML_BEAT_CHANGE_DURATION = "duration";
+    private static final String XML_BEAT_CHANGE_BEAT = "beat";
     private static final String XML_GLISSANDO_X1_TRANSLATE =
         "glissandox1translate";
     private static final String XML_GLISSANDO_X2_TRANSLATE =
@@ -77,8 +80,6 @@ public final class StaffElementIO {
     private static final String XML_DYNAMIC = "dynamic";
 
     private static final Map<String, StaffElement.Accidental> ACCIDENTAL_MAP =
-        new HashMap<>();
-    private static final Map<String, BeatChange> BEAT_CHANGE_MAP =
         new HashMap<>();
 
     static {
@@ -93,30 +94,6 @@ public final class StaffElementIO {
                 );
             }
         }
-        for (var beatChange : BeatChange.values()) {
-            BEAT_CHANGE_MAP.put(beatChange.name(), beatChange);
-        }
-        // OLD NAMES
-        BEAT_CHANGE_MAP.put(
-            "QUAVEREQUALSQUAVER",
-            BeatChange.QUAVER_EQUALS_QUAVER
-        );
-        BEAT_CHANGE_MAP.put(
-            "DOTTEDCROCHETEQUALSMINIM",
-            BeatChange.DOTTED_CROCHET_EQUALS_MINIM
-        );
-        BEAT_CHANGE_MAP.put(
-            "MINIMEQUALSDOTTEDCROCHET",
-            BeatChange.MINIM_EQUALS_DOTTED_CROCHET
-        );
-        BEAT_CHANGE_MAP.put(
-            "CROTCHETQUALSDOTTEDCROCHET",
-            BeatChange.CROTCHET_EQUALS_DOTTED_CROCHET
-        );
-        BEAT_CHANGE_MAP.put(
-            "DOTTEDCROCHETQUALSCROCHET",
-            BeatChange.DOTTED_CROCHET_EQUALS_CROCHET
-        );
     }
 
     private StaffElementIO() {
@@ -134,8 +111,8 @@ public final class StaffElementIO {
         );
         XML.setIndent(12);
 
-        if (element.getXOffset() != 0) {
-            XML.writeValue(writer, XML_XPOS, Integer.toString(element.getXOffset()));
+        if (element.getXOffsetPx() != 0) {
+            XML.writeValue(writer, XML_XPOS, Integer.toString(element.getXOffsetPx()));
         }
 
         XML.writeValue(writer, XML_STAFF_POSITION, Integer.toString(element.getStaffPosition()));
@@ -248,11 +225,14 @@ public final class StaffElementIO {
             XML.writeEmptyTag(writer, XML_FORCE_SYLLABLE);
         }
 
-        if (element.getBeatChange() != null) {
-            XML.writeValue(
+        var beatChange = element.getBeatChange();
+
+        if (beatChange != null) {
+            XML.writeEmptyTag(
                 writer,
-                XML_BEAT_CHANGE,
-                element.getBeatChange().name()
+                XML_BEAT_CHANGE + " " + XML_BEAT_CHANGE_DURATION + "=\"" +
+                    beatChange.duration().name() + "\" " +
+                    XML_BEAT_CHANGE_BEAT + "=\"" + beatChange.beat().name() + "\""
             );
         }
 
@@ -352,6 +332,19 @@ public final class StaffElementIO {
                                 LOG.warn("Unknown dynamic type: {}, skipping", typeStr);
                             }
                         }
+                    }
+                } else if (qName.equals(XML_BEAT_CHANGE)) {
+                    var duration = attributes.getValue(XML_BEAT_CHANGE_DURATION);
+                    var beat = attributes.getValue(XML_BEAT_CHANGE_BEAT);
+
+                    if (duration != null && beat != null && element != null) {
+                        // New two-attribute format (v2.5+)
+                        element.setBeatChange(
+                            new BeatChange(Duration.valueOf(duration), Duration.valueOf(beat))
+                        );
+                    } else {
+                        // Legacy text-content format — defer to endElement11
+                        lastTag = qName;
                     }
                 } else {
                     lastTag = qName;
@@ -468,14 +461,7 @@ public final class StaffElementIO {
                     ) {
                         // Silently ignored — partial beam stub direction is now automatic.
                     } else if (lastTag.equals(XML_BEAT_CHANGE)) {
-                        var beatChange = BEAT_CHANGE_MAP.get(str);
-
-                        if (beatChange == null) {
-                            throw new IllegalArgumentException(
-                                "Unknown beat change: " + str);
-                        }
-
-                        element.setBeatChange(beatChange);
+                        element.setBeatChange(BeatChange.fromLegacyName(str));
                     }
                 }
             }

@@ -24,12 +24,16 @@ import module java.desktop;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
+import songscribe.message.mutation.ElementField;
+import songscribe.music.Duration;
+import songscribe.music.Line;
 import songscribe.music.StaffElement;
 import songscribe.music.Tempo;
 
 public class TempoChangeDialog extends StandardDialog {
 
     private @Nullable StaffElement selectedElement = null;
+    private @Nullable Line selectedLine = null;
     private final JButton removeButton;
 
     public TempoChangeDialog() {
@@ -37,16 +41,18 @@ public class TempoChangeDialog extends StandardDialog {
 
         removeButton = new JButton(Strings.get(Strings.LABEL_BUTTON_REMOVE));
         removeButton.addActionListener(_ -> {
-            var score = requireScore();
+            var element = selectedElement;
+            var line = selectedLine;
 
-            if (selectedElement == null) {
+            if (element == null || line == null) {
                 throw new IllegalStateException("no element selected");
             }
 
-            selectedElement.setTempoChange(null);
+            var elementIndex = line.getElementIndex(element);
+            line.withModification(() -> line.modifyElement(
+                elementIndex, ElementField.TEMPO_CHANGE, () -> element.setTempoChange(null)
+            ));
             setVisible(false);
-            score.repaint();
-            score.getComposition().setModified(true);
         });
 
         // Insert Remove before the standard Cancel and OK buttons
@@ -63,6 +69,7 @@ public class TempoChangeDialog extends StandardDialog {
     protected boolean getData() {
         var score = requireScore();
         selectedElement = score.getSingleSelectedElement();
+        selectedLine = score.getComposition().getLine(score.getSelectionCoordinator().getActiveLineIndex());
 
         var tempoChange = selectedElement != null ? selectedElement.getTempoChange() : null;
         var addingTempoChange = tempoChange == null;
@@ -78,7 +85,7 @@ public class TempoChangeDialog extends StandardDialog {
     private final class TempoTab extends Tab {
 
         private final TempoSection tempoSection = new TempoSection(
-            Tempo.Type.displayValues(),
+            Duration.values(),
             Strings.get(Strings.DIALOG_TEMPO_CHANGE_SHOW_ONLY_DESCRIPTION),
             "tempochanges", "tempos"
         );
@@ -104,7 +111,7 @@ public class TempoChangeDialog extends StandardDialog {
             tempoSection.setTempo(
                 tempoChange != null
                     ? tempoChange
-                    : new Tempo(144, Tempo.Type.CROTCHET, "Slower", true)
+                    : new Tempo(144, Duration.CROTCHET, "Slower", true)
             );
 
             return true;
@@ -112,19 +119,26 @@ public class TempoChangeDialog extends StandardDialog {
 
         @Override
         protected void setData() {
-            if (selectedElement == null) {
+            var element = selectedElement;
+            var line = selectedLine;
+
+            if (element == null || line == null) {
                 throw new IllegalStateException("no element selected");
             }
 
-            selectedElement.setTempoChange(
-                new Tempo(
-                    tempoSection.getVisibleTempo(),
-                    tempoSection.getTempoType(),
-                    tempoSection.getTempoDescription(),
-                    !tempoSection.isShowOnlyDescription()
+            var elementIndex = line.getElementIndex(element);
+            line.withModification(() -> line.modifyElement(
+                elementIndex,
+                ElementField.TEMPO_CHANGE,
+                () -> element.setTempoChange(
+                    new Tempo(
+                        tempoSection.getVisibleTempo(),
+                        tempoSection.getTempoType(),
+                        tempoSection.getTempoDescription(),
+                        !tempoSection.isShowOnlyDescription()
+                    )
                 )
-            );
-            getComposition().setModified(true);
+            ));
         }
     }
 }

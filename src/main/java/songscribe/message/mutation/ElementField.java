@@ -67,7 +67,13 @@ public enum ElementField {
     ARTICULATION,
 
     /** The element's dynamic attachment was changed. Emitted by {@code DynamicMarkingAction}. */
-    DYNAMIC_ATTACHMENT;
+    DYNAMIC_ATTACHMENT,
+
+    /** The element's tempo change was set or cleared. Emitted by {@code TempoChangeDialog}. */
+    TEMPO_CHANGE,
+
+    /** The element's beat change was set or cleared. Emitted by {@code BeatChangeDialog}. */
+    BEAT_CHANGE;
 
     /**
      * Fields that change an element's effective duration. {@code Line.modifyElement} removes any

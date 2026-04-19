@@ -389,9 +389,9 @@ public class StaffElement extends LineElement implements Cloneable {
     /**
      * Returns the horizontal offset from the layout-calculated position.
      * <p>
-     * Deprecated: Use {@link #getXOffset()} for clarity.
+     * Final X position = layout.calculateBaseX(note) + xOffset
      *
-     * @return The X offset value
+     * @return The X offset value in pixels (0 = no user adjustment)
      */
     public int getXOffsetPx() {
         return xOffset;
@@ -400,34 +400,12 @@ public class StaffElement extends LineElement implements Cloneable {
     /**
      * Sets the horizontal offset from the layout-calculated position.
      * <p>
-     * Deprecated: Use {@link #setXOffset(int)} for clarity.
-     *
-     * @param xPosSs The X offset value in staff spaces
-     */
-    public void setXOffsetPx(int xPosSs) {
-        this.xOffset = xPosSs;
-    }
-
-    /**
-     * Returns the horizontal offset from the layout-calculated position.
-     * <p>
-     * Final X position = layout.calculateBaseX(note) + xOffset
-     *
-     * @return The X offset (0 = no user adjustment)
-     */
-    public int getXOffset() {
-        return xOffset;
-    }
-
-    /**
-     * Sets the horizontal offset from the layout-calculated position.
-     * <p>
      * Positive values move right, negative values move left.
      *
-     * @param xOffset The X offset (0 = no user adjustment)
+     * @param xPosPx The X offset value in pixels (0 = no user adjustment)
      */
-    public void setXOffset(int xOffset) {
-        this.xOffset = xOffset;
+    public void setXOffsetPx(int xPosPx) {
+        this.xOffset = xPosPx;
     }
 
     public int getStaffPosition() {

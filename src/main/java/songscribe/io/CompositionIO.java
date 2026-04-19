@@ -45,7 +45,7 @@ import songscribe.util.Utils;
 public final class CompositionIO {
 
     public static final int IO_MAJOR_VERSION = 2;
-    public static final int IO_MINOR_VERSION = 4;
+    public static final int IO_MINOR_VERSION = 5;
 
     // version 1.0
     private static final String XML_COMPOSITION = "composition";
@@ -274,7 +274,8 @@ public final class CompositionIO {
                             tempoReader = new TempoIO.TempoReader();
                         } else if (
                             (majorVersion == 1 && minorVersion >= 1) ||
-                            (majorVersion == 2 && minorVersion <= 4)
+                            // Hard-coded max so future IO_MINOR_VERSION bumps fail loudly here until the reader is updated.
+                            (majorVersion == 2 && minorVersion <= 5)
                         ) {
                             lineReader = new LineIO.LineReader();
                             viewReader = new ViewIO.ViewReader();

@@ -92,13 +92,7 @@ public class TrillRenderer extends BaseElementRenderer<Trill> {
         }
 
         var color = getDecorationColor(anchorNote, ctx);
-        var layoutResult = ctx.getLayoutResult();
-
-        if (layoutResult == null) {
-            return;
-        }
-
-        var decorationLayout = layoutResult.getDecorationLayout(element);
+        var decorationLayout = ctx.getLayoutResult().getDecorationLayout(element);
 
         if (decorationLayout == null) {
             return;
@@ -109,7 +103,7 @@ public class TrillRenderer extends BaseElementRenderer<Trill> {
 
         renderTrillAtPosition(
             g2, anchorNote, element.getEndElement(),
-            layoutXSs, trillTopYSs, color, layoutResult);
+            layoutXSs, trillTopYSs, color, ctx.getLayoutResult());
     }
 
     /**
@@ -179,10 +173,6 @@ public class TrillRenderer extends BaseElementRenderer<Trill> {
         ElementRenderContext ctx
     ) {
         var layoutResult = ctx.getLayoutResult();
-
-        if (layoutResult == null) {
-            return;
-        }
 
         for (var entry : layoutResult.getDecorationLayoutsByType(Trill.class)) {
             var trill = entry.getKey();

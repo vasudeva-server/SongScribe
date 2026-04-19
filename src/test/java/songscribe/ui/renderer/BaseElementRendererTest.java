@@ -24,7 +24,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
@@ -35,11 +34,6 @@ import songscribe.music.StaffElement;
 import songscribe.ui.component.Score;
 
 class BaseElementRendererTest extends UnitTest {
-
-    @BeforeAll
-    static void installFlatLaf() throws Exception {
-        installFlatLafDefaults();
-    }
 
     // T1: line == null → ELEMENT_COLOR
     @Test

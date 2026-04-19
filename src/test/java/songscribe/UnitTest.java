@@ -50,8 +50,9 @@ public abstract class UnitTest {
     private static volatile boolean flatLafInstalled = false;
 
     @BeforeAll
-    static void suppressDialogs() {
+    static void suppressDialogs() throws Exception {
         OptionDialogs.setSuppressDialogs(true);
+        installFlatLafDefaults();
 
         if (!bannerShown) {
             bannerShown = true;

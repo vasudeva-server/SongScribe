@@ -176,13 +176,7 @@ public class LyricsRenderer {
         Line line,
         ElementRenderContext ctx
     ) {
-        var layoutResult = ctx.getLayoutResult();
-
-        if (layoutResult == null) {
-            throw new IllegalStateException("Layout result must be available for rendering");
-        }
-
-        var bounds = layoutResult.getBounds(line);
+        var bounds = ctx.getLayoutResult().getBounds(line);
 
         if (bounds == null) {
             throw new IllegalStateException("No bounds found for Line (lyrics)");
@@ -243,8 +237,7 @@ public class LyricsRenderer {
         // Draw syllable text (if not underscore placeholder)
         if (syllable != null && !syllable.equals(Constants.UNDERSCORE)) {
             syllableWidth = metrics.stringWidth(syllable);
-            var layoutResult = ctx.getLayoutResult();
-            var noteX = (layoutResult != null) ? layoutResult.getElementXSs(note) : note.getXOffsetPx();
+            var noteX = ctx.getLayoutResult().getElementXSs(note);
             var lyricsX = (int) ((noteX + note.getContentCenterX()) -
                 (syllableWidth / 2) +
                 note.getSyllableMovement());

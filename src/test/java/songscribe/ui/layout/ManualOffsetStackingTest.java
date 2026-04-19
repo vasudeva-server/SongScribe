@@ -50,8 +50,7 @@ class ManualOffsetStackingTest extends UnitTest {
     private static Composition composition;
 
     @BeforeAll
-    static void setUpFlatLaf() throws Exception {
-        installFlatLafDefaults();
+    static void setUp() {
         composition = new Composition();
     }
 

@@ -19,24 +19,22 @@
  */
 package songscribe.music;
 
-import java.util.Arrays;
-
 import songscribe.midi.MidiSequenceBuilder;
 
 public class Tempo {
 
     private int visibleTempo;
-    private Type tempoType;
+    private Duration tempoType;
     private String tempoDescription;
     private boolean showTempo;
 
     public Tempo() {
-        this(120, Type.CROTCHET, "Moderate", true);
+        this(120, Duration.CROTCHET, "Moderate", true);
     }
 
     public Tempo(
         int tempo,
-        Type tempoType,
+        Duration tempoType,
         String tempoDescription,
         boolean showTempo
     ) {
@@ -54,11 +52,11 @@ public class Tempo {
         this.visibleTempo = visibleTempo;
     }
 
-    public Type getTempoType() {
+    public Duration getTempoType() {
         return tempoType;
     }
 
-    public void setTempoType(Type tempoType) {
+    public void setTempoType(Duration tempoType) {
         this.tempoType = tempoType;
     }
 
@@ -82,47 +80,4 @@ public class Tempo {
         this.showTempo = showTempo;
     }
 
-    public enum Type {
-        SEMI_BREVE(ElementType.SEMIBREVE.newInstance()), // Whole note
-        MINIM_DOTTED(ElementType.MINIM.newInstance()), // Dotted half note
-        MINIM(ElementType.MINIM.newInstance()), // Half note
-        CROTCHET_DOTTED(ElementType.CROTCHET.newInstance()), // Dotted quarter note
-        CROTCHET(ElementType.CROTCHET.newInstance()), // Quarter note
-        QUAVER_DOTTED(ElementType.QUAVER.newInstance()), // Dotted eighth note
-        QUAVER(ElementType.QUAVER.newInstance()), // Eighth note
-
-        // IO values
-        SEMIBREVE(Type.SEMI_BREVE),
-        MINIMDOTTED(Type.MINIM_DOTTED),
-        CROTCHETDOTTED(Type.CROTCHET_DOTTED),
-        QUAVERDOTTED(Type.QUAVER_DOTTED);
-
-        private final StaffElement note;
-
-        static {
-            MINIM_DOTTED.note.setDotCount(1);
-            MINIM_DOTTED.note.setStaffPosition(1);
-            CROTCHET_DOTTED.note.setDotCount(1);
-            CROTCHET_DOTTED.note.setStaffPosition(1);
-            QUAVER_DOTTED.note.setDotCount(1);
-            QUAVER_DOTTED.note.setStaffPosition(1);
-        }
-
-        Type(StaffElement note) {
-            this.note = note;
-        }
-
-        Type(Tempo.Type type) {
-            note = type.note;
-        }
-
-        /** Returns the non-IO display values (SEMI_BREVE through QUAVER). */
-        public static Type[] displayValues() {
-            return Arrays.copyOfRange(values(), 0, QUAVER.ordinal() + 1);
-        }
-
-        public StaffElement getNote() {
-            return note;
-        }
-    }
 }

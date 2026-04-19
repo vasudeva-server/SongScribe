@@ -367,6 +367,11 @@ public final class Composition {
             line.setComposition(this);
         }
 
+        // Loading bypasses the addElement path that normally handles this.
+        if (!lines.isEmpty()) {
+            lines.get(0).attachInitialTempoIfNeeded();
+        }
+
         this.hasBeenDynamicallyLaidOut = data.hasBeenDynamicallyLaidOut();
         this.formatVersion = data.formatVersion();
 

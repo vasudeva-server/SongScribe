@@ -17,7 +17,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-package songscribe.ui.dialog;
+package songscribe.ui.component;
 
 import module java.desktop;
 
@@ -26,9 +26,9 @@ import module java.desktop;
  * selection background painting that FlatLaf cannot apply when a
  * non-standard font is used for the cell content.
  */
-class BaseLabel extends JLabel {
+public class BaseLabel extends JLabel {
 
-    BaseLabel(String text, JList<?> list, int index, boolean isSelected) {
+    public BaseLabel(String text, JList<?> list, int index, boolean isSelected) {
         super(text);
         setOpaque(true);
 

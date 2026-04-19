@@ -199,8 +199,7 @@ public class NoteRenderer extends BaseElementRenderer<StaffElement> {
         if (ctx.hasOverrideElementX()) {
             noteX = ctx.getOverrideElementXSs();
         } else {
-            var layoutResult = ctx.getLayoutResult();
-            noteX = (layoutResult != null) ? layoutResult.getElementXSs(note) : note.getXOffsetPx();
+            noteX = ctx.getLayoutResult().getElementXSs(note);
         }
 
         return noteX;
@@ -353,12 +352,12 @@ public class NoteRenderer extends BaseElementRenderer<StaffElement> {
         double stemLeftX = geom.stemLeftXSs();
 
         var layoutResult = ctx.getLayoutResult();
-        var stemLayout = (layoutResult != null) ? layoutResult.getStemLayout(note) : null;
+        var stemLayout = layoutResult.getStemLayout(note);
         double lengtheningSs = (stemLayout != null) ? stemLayout.lengtheningSs() : 0.0;
 
         double beamThickeningSs = 0.0;
 
-        if (beamed && layoutResult != null) {
+        if (beamed) {
             var line = ctx.getCurrentLine();
 
             if (line != null) {

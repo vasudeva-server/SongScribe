@@ -153,13 +153,7 @@ public final class EndingRenderer extends BaseElementRenderer<LineElement> {
      * Returns the top Y coordinate for an ending bracket in component staff-space units.
      */
     private double getEffectiveEndingYSs(ElementRenderContext ctx, Ending ending) {
-        var layoutResult = ctx.getLayoutResult();
-
-        if (layoutResult == null) {
-            throw new IllegalStateException("Layout result must be available for rendering");
-        }
-
-        var decorationLayout = layoutResult.getDecorationLayout(ending);
+        var decorationLayout = ctx.getLayoutResult().getDecorationLayout(ending);
 
         if (decorationLayout != null) {
             return layoutYToComponentYSs(decorationLayout.ySs(), ctx);

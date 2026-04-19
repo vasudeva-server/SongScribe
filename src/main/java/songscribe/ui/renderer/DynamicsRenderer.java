@@ -68,13 +68,7 @@ public class DynamicsRenderer extends BaseElementRenderer<LineElement> {
         Graphics2D g2,
         ElementRenderContext ctx
     ) {
-        var layoutResult = ctx.getLayoutResult();
-
-        if (layoutResult == null) {
-            return;
-        }
-
-        var layout = layoutResult.getDecorationLayout(element);
+        var layout = ctx.getLayoutResult().getDecorationLayout(element);
 
         if (layout == null) {
             return;
@@ -132,10 +126,6 @@ public class DynamicsRenderer extends BaseElementRenderer<LineElement> {
         ElementRenderContext ctx
     ) {
         var layoutResult = ctx.getLayoutResult();
-
-        if (layoutResult == null) {
-            return;
-        }
 
         for (var entry : layoutResult.getDecorationLayoutsByType(Crescendo.class)) {
             renderSingleHairpin(entry.getValue(), true, g2, ctx);

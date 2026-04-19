@@ -98,10 +98,6 @@ public final class TupletRenderer extends BaseElementRenderer<Tuplet> {
     ) {
         var layoutResult = ctx.getLayoutResult();
 
-        if (layoutResult == null) {
-            return;
-        }
-
         for (var iter = line.getTuplets().listIterator(); iter.hasNext(); ) {
             var span = iter.next();
             var spanLayout = layoutResult.getSpanLayout(span);

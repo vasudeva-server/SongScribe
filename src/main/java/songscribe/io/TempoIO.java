@@ -20,9 +20,11 @@
 package songscribe.io;
 
 import java.io.PrintWriter;
+import java.util.Map;
 
 import org.jspecify.annotations.Nullable;
 
+import songscribe.music.Duration;
 import songscribe.music.Tempo;
 
 public final class TempoIO {
@@ -36,6 +38,14 @@ public final class TempoIO {
     private static final String XML_TEMPO_TYPE = "tempotype";
     private static final String XML_TEMPO_DESCRIPTION = "tempodescription";
     private static final String XML_DONT_SHOW_TEMPO = "dontshowtempo";
+
+    // Maps v1.0 XML names (no underscores) to the canonical Duration constants.
+    private static final Map<String, Duration> LEGACY_TEMPO_DURATION_NAMES = Map.of(
+        "SEMIBREVE", Duration.SEMI_BREVE,
+        "MINIMDOTTED", Duration.MINIM_DOTTED,
+        "CROTCHETDOTTED", Duration.CROTCHET_DOTTED,
+        "QUAVERDOTTED", Duration.QUAVER_DOTTED
+    );
 
     private TempoIO() {}
 
@@ -115,15 +125,14 @@ public final class TempoIO {
                         Integer.parseInt(str)
                     );
                     case XML_TEMPO_TYPE -> {
-                        Tempo.Type type;
+                        var upper = str.toUpperCase();
+                        var duration = LEGACY_TEMPO_DURATION_NAMES.get(upper);
 
-                        try {
-                            type = Tempo.Type.valueOf(str.toUpperCase());
-                        } catch (IllegalArgumentException e) {
-                            type = Tempo.Type.CROTCHET_DOTTED;
+                        if (duration == null) {
+                            duration = Duration.valueOf(upper);
                         }
 
-                        tempo.setTempoType(type);
+                        tempo.setTempoType(duration);
                     }
                     case XML_TEMPO_DESCRIPTION -> tempo.setTempoDescription(
                         str
@@ -153,7 +162,7 @@ public final class TempoIO {
                         Integer.parseInt(str)
                     );
                     case XML_TEMPO_TYPE -> tempo.setTempoType(
-                        Tempo.Type.valueOf(str)
+                        Duration.valueOf(str)
                     );
                     case XML_TEMPO_DESCRIPTION -> tempo.setTempoDescription(
                         str

@@ -72,13 +72,7 @@ public class TieRenderer {
         Span span,
         ElementRenderContext ctx
     ) {
-        var layoutResult = ctx.getLayoutResult();
-
-        if (layoutResult == null) {
-            return;
-        }
-
-        var layout = layoutResult.getTieLayout(span);
+        var layout = ctx.getLayoutResult().getTieLayout(span);
 
         if (layout == null) {
             return;

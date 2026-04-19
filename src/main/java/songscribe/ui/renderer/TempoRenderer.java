@@ -20,21 +20,11 @@
 
 package songscribe.ui.renderer;
 
-import static songscribe.ui.renderer.GraphicsState.Property.COLOR;
-import static songscribe.ui.renderer.GraphicsState.Property.FONT;
-
 import module java.desktop;
 
-import songscribe.error.RuntimeError;
-import songscribe.music.ElementType;
 import songscribe.music.StaffElement;
 import songscribe.music.Tempo;
-import songscribe.smufl.SMuFLGlyph;
-import songscribe.smufl.SMuFLMetadata;
-import songscribe.ui.FlatLafKeys;
-import songscribe.ui.FlatLafProps;
-import songscribe.ui.layout.LayoutResult;
-import songscribe.ui.layout.ScaleContext;
+import songscribe.ui.layout.MetronomeAttachment;
 import songscribe.ui.layout.TempoAttachment;
 
 /**
@@ -43,19 +33,7 @@ import songscribe.ui.layout.TempoAttachment;
  * Tempo markings show the beat note and tempo in BPM, e.g., "♩ = 120".
  * They appear above the staff at the specified note position.
  */
-public class TempoRenderer extends BaseElementRenderer<StaffElement> {
-
-    // ==========================================================================
-    // Constants
-    // ==========================================================================
-
-    /** Bravura font scaled for tempo note display. */
-    private static final Font TEMPO_NOTE_FONT =
-        MUSIC_FONT.deriveFont(FONT_SIZE * TempoAttachment.NOTE_SCALE);
-
-    /** Gap between tempo note glyph and "= NNN" text, in staff-space units. */
-    private static final float GLYPH_TEXT_GAP_SS =
-        FlatLafProps.get(FlatLafKeys.SCORE_TEMPO_GLYPH_TEXT_GAP);
+public class TempoRenderer extends MetronomeRenderer {
 
     // Singleton instance
     private static final TempoRenderer INSTANCE = new TempoRenderer();
@@ -71,56 +49,6 @@ public class TempoRenderer extends BaseElementRenderer<StaffElement> {
      */
     public static TempoRenderer getInstance() {
         return INSTANCE;
-    }
-
-    /**
-     * Returns the SMuFL metronome glyph for the given element type,
-     * or exits if no mapping exists.
-     */
-    private static SMuFLGlyph requireMetronomeGlyph(ElementType type) {
-        var glyph = TempoAttachment.metronomeGlyphFor(type);
-
-        if (glyph == null) {
-            throw RuntimeError.exit("No metronome glyph for element type: " + type);
-        }
-
-        return glyph;
-    }
-
-    // ==========================================================================
-    // Tempo Note Painting
-    // ==========================================================================
-
-    /**
-     * Paints a tempo note glyph (metronome mark) at the given baseline position.
-     * <p>
-     * The caller must set the desired Bravura-derived font on {@code g2} before
-     * calling. This method draws the metronome glyph and augmentation dot (if
-     * the tempo type is dotted), using the font size to scale SMuFL advance
-     * widths for dot placement.
-     *
-     * @param g2        graphics context with a Bravura-derived font already set
-     * @param tempoType the tempo type whose note glyph to draw
-     * @param x         x coordinate of the glyph origin
-     * @param y         y coordinate of the glyph baseline
-     */
-    public static void paintTempoNote(
-        Graphics2D g2,
-        Tempo.Type tempoType,
-        float x,
-        float y
-    ) {
-        var note = tempoType.getNote();
-        var metGlyph = requireMetronomeGlyph(note.getType());
-
-        g2.drawString(metGlyph.asString(), x, y);
-
-        if (note.getDotCount() > 0) {
-            float fontScale = g2.getFont().getSize2D() / FONT_SIZE;
-            float dotX = x
-                + (float) (SMuFLMetadata.getInstance().requireAdvanceWidth(metGlyph) * fontScale);
-            g2.drawString(SMuFLGlyph.MET_AUGMENTATION_DOT.asString(), dotX, y);
-        }
     }
 
     // ==========================================================================
@@ -186,111 +114,26 @@ public class TempoRenderer extends BaseElementRenderer<StaffElement> {
         StaffElement note,
         ElementRenderContext ctx
     ) {
-        var composition = ctx.getComposition();
-        var line = ctx.getCurrentLine();
-
-        if (line == null) {
-            return;
-        }
-
-        var color = getDecorationColor(note, ctx);
-
-        // Get position from DecorationLayout (in staff-space units)
-        var decorationLayout = getTempoDecorationLayout(note, ctx);
-        double ySs = layoutYToComponentYSs(decorationLayout.ySs(), ctx);
-        double xSs = decorationLayout.xSs();
-
-        // Build tempo text
+        var setup = buildRenderSetup(note, TempoAttachment.class, ctx);
+        double xSs = setup.decorationLayout().xSs();
+        double textBaselineYSs = setup.ySs() + MetronomeAttachment.QUARTER_NOTE_HEIGHT_SS;
         var tempoBuilder = new StringBuilder(25);
         var tempoType = tempo.getTempoType();
-        var tempoTypeNote = tempoType.getNote();
-
-        // Compute the text baseline Y: aligned with the bottom of the tempo note glyph
-        var metadata = SMuFLMetadata.getInstance();
-        double textBaselineYSs = ySs
-            + TempoAttachment.QUARTER_NOTE_BBOX.height() * TempoAttachment.NOTE_SCALE;
 
         if (tempo.shouldShowTempo()) {
-            drawTempoChangeNote(g2, tempoType, xSs, ySs, color);
-            tempoBuilder.append("= ");
             tempoBuilder.append(tempo.getVisibleTempo());
             tempoBuilder.append(' ');
         }
 
         tempoBuilder.append(tempo.getTempoDescription());
 
-        // Scale the attribution font to staff-space units
-        var attrFont = composition.getAttributionFont();
-        var scale = ScaleContext.getInstance();
-        g2.setFont(attrFont.deriveFont((float) scale.fromPixels(attrFont.getSize())));
-        g2.setColor(color);
-
         if (tempo.shouldShowTempo()) {
-            // Advance past the metronome glyph using SMuFL advance widths (scaled)
-            var metGlyph = requireMetronomeGlyph(tempoTypeNote.getType());
-            xSs += metadata.requireAdvanceWidth(metGlyph) * TempoAttachment.NOTE_SCALE;
-
-            if (tempoTypeNote.getDotCount() > 0) {
-                xSs += metadata.requireAdvanceWidth(SMuFLGlyph.MET_AUGMENTATION_DOT)
-                    * TempoAttachment.NOTE_SCALE;
-            }
-
-            xSs += GLYPH_TEXT_GAP_SS;
+            xSs = drawDurationEquals(g2, tempoType, xSs, setup.ySs(), setup.attrFont(), setup.color());
         }
 
-        var tempoText = tempoBuilder.toString();
-        g2.drawString(tempoText, (float) xSs, (float) textBaselineYSs);
+        g2.setFont(scaleAttrFont(setup.attrFont()));
+        g2.setColor(setup.color());
+        g2.drawString(tempoBuilder.toString(), (float) xSs, (float) textBaselineYSs);
     }
 
-    /**
-     * Draws a tempo note at the layout position.
-     * {@code ySs} is the top of the decoration area; the glyph origin is offset
-     * so the visual top aligns with that position.
-     */
-    private void drawTempoChangeNote(
-        Graphics2D g2,
-        Tempo.Type tempoType,
-        double xSs,
-        double ySs,
-        Color color
-    ) {
-        var metGlyph = requireMetronomeGlyph(tempoType.getNote().getType());
-
-        // Convert layout top Y to glyph origin Y (baseline), accounting for font scale
-        var bbox = SMuFLMetadata.getInstance().requireBBox(metGlyph);
-        double originYSs = ySs - bbox.top() * TempoAttachment.NOTE_SCALE;
-
-        try (var ignored = GraphicsState.save(g2, COLOR, FONT)) {
-            g2.setColor(color);
-            g2.setFont(TEMPO_NOTE_FONT);
-            paintTempoNote(g2, tempoType, (float) xSs, (float) originYSs);
-        }
-    }
-
-    /**
-     * Gets the Y position for tempo change from layout result.
-     * <p>
-     * Reads the {@link songscribe.ui.layout.LayoutResult.DecorationLayout} written
-     * by the vertical stacking calculator. Converts from layout coordinates
-     * (relative to middleLineY=0) to component coordinates.
-     */
-    private LayoutResult.DecorationLayout getTempoDecorationLayout(
-        StaffElement note,
-        ElementRenderContext ctx
-    ) {
-        var layoutResult = ctx.getLayoutResult();
-
-        if (layoutResult == null) {
-            throw new IllegalStateException("Layout result must be available for rendering");
-        }
-
-        var decorationLayout = layoutResult.findAttachmentDecorationLayout(
-            note, TempoAttachment.class);
-
-        if (decorationLayout == null) {
-            throw new IllegalStateException("No DecorationLayout found for TempoAttachment on note");
-        }
-
-        return decorationLayout;
-    }
 }

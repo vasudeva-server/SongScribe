@@ -55,6 +55,10 @@ public enum SMuFLGlyph {
     NOTEHEAD_BLACK_SMALL("noteheadBlackSmall", '\uF46A'),
 
     // Individual notes / augmentation (U+E1D0-U+E1EF)
+    NOTE_WHOLE("noteWhole", '\uE1D2'),
+    NOTE_HALF_UP("noteHalfUp", '\uE1D3'),
+    NOTE_QUARTER_UP("noteQuarterUp", '\uE1D5'),
+    NOTE_8TH_UP("note8thUp", '\uE1D7'),
     AUGMENTATION_DOT("augmentationDot", '\uE1E7'),
 
     // Flags (U+E240-U+E24F)

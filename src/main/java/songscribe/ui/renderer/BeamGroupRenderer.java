@@ -198,10 +198,9 @@ public class BeamGroupRenderer extends BaseElementRenderer<LineElement> {
         Color selectionColor
     ) {
         var outerNotes = new Point(beginIndex, endIndex);
-        var layoutResult = ctx.getLayoutResult();
-        var beamSpan = (layoutResult != null) ? line.getBeamings().findSpan(beginIndex) : null;
-        var beamLayout = (layoutResult != null && beamSpan != null)
-            ? layoutResult.getBeamLayout(beamSpan) : null;
+        var beamSpan = line.getBeamings().findSpan(beginIndex);
+        var beamLayout = (beamSpan != null)
+            ? ctx.getLayoutResult().getBeamLayout(beamSpan) : null;
         doDrawBeams(g2, level, line, ctx, outerNotes,
             beginIndex, endIndex, beginIndex, endIndex, false, 0, selected, beamLayout, selectionColor);
     }
@@ -236,8 +235,7 @@ public class BeamGroupRenderer extends BaseElementRenderer<LineElement> {
                 return;
             }
 
-            var layoutResult = ctx.getLayoutResult();
-            var stubStemLayout = (layoutResult != null) ? layoutResult.getStemLayout(beginNote) : null;
+            var stubStemLayout = ctx.getLayoutResult().getStemLayout(beginNote);
             leftOriented = (stubStemLayout != null)
                 ? !stubStemLayout.stubRight()
                 : (prevBeginIndex == prevEndIndex) ? isPrevLeftOriented : (beginIndex != prevBeginIndex);
@@ -334,9 +332,8 @@ public class BeamGroupRenderer extends BaseElementRenderer<LineElement> {
         double innerBeamOffsetSs = (effectiveBeamDepthSs + Engraving.BEAM_SPACING_SS) * recursionLevel * (isUpper ? 1 : -1);
 
         // --- First note stem geometry ---
-        var firstStemLayout = (layoutResult != null) ? layoutResult.getStemLayout(beginNote) : null;
-        double firstNoteXSs = (layoutResult != null)
-            ? layoutResult.getElementXSs(beginNote) : beginNote.getXOffsetPx();
+        var firstStemLayout = layoutResult.getStemLayout(beginNote);
+        double firstNoteXSs = layoutResult.getElementXSs(beginNote);
         double firstStemCenterXSs = firstNoteXSs
             + stemCenterXOffsetSs(beginNote.getType(), isUpper);
         double firstX = firstStemCenterXSs - halfStemWidthSs;
@@ -345,9 +342,8 @@ public class BeamGroupRenderer extends BaseElementRenderer<LineElement> {
         double firstInnerY = firstOuterY + beamDepthSs;
 
         // --- Last note stem geometry ---
-        var lastStemLayout = (layoutResult != null) ? layoutResult.getStemLayout(endNote) : null;
-        double lastNoteXSs = (layoutResult != null)
-            ? layoutResult.getElementXSs(endNote) : endNote.getXOffsetPx();
+        var lastStemLayout = layoutResult.getStemLayout(endNote);
+        double lastNoteXSs = layoutResult.getElementXSs(endNote);
         double lastStemCenterXSs = lastNoteXSs
             + stemCenterXOffsetSs(endNote.getType(), isUpper);
         double lastX = lastStemCenterXSs + halfStemWidthSs;

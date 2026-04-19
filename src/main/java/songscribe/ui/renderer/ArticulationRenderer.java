@@ -25,6 +25,7 @@ import module java.desktop;
 import songscribe.music.StaffElement;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
+import songscribe.ui.layout.LayoutResult;
 import songscribe.ui.layout.stacking.NoteAttachedStacker;
 
 /**
@@ -91,15 +92,14 @@ public class ArticulationRenderer extends BaseElementRenderer<StaffElement> {
             return;
         }
 
-        var layoutResult = ctx.getLayoutResult();
+        LayoutResult layoutResult;
 
-        if (layoutResult == null) {
+        if (ctx.hasOverrideElementX()) {
             // Insertion note preview: compute layouts using the same stacking logic.
-            // Use the override X for precise positioning, falling back to xPosSs.
-            double xSs = ctx.hasOverrideElementX()
-                ? ctx.getOverrideElementXSs() : element.getXOffsetPx();
             layoutResult = NoteAttachedStacker.computePreviewDecorationLayouts(
-                element, xSs);
+                element, ctx.getOverrideElementXSs());
+        } else {
+            layoutResult = ctx.getLayoutResult();
         }
 
         applyDecorationColor(g2, element, ctx);

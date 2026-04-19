@@ -67,7 +67,7 @@ class StaffElementIOTest extends UnitTest {
 
             assertThatThrownBy(() -> parseXml(xml))
                 .isInstanceOf(SAXException.class)
-                .hasMessageContaining("Unknown beat change: BOGUS_BEAT_CHANGE")
+                .hasMessageContaining("unknown legacy beat change: BOGUS_BEAT_CHANGE")
                 .cause()
                 .isInstanceOf(IllegalArgumentException.class);
         }

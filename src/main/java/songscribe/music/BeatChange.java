@@ -19,58 +19,25 @@
  */
 package songscribe.music;
 
-public enum BeatChange {
-    QUAVER_EQUALS_QUAVER(
-        ElementType.QUAVER.newInstance(),
-        ElementType.QUAVER.newInstance(),
-        1f
-    ),
-    DOTTED_CROCHET_EQUALS_MINIM(
-        createDottedVersion(ElementType.CROTCHET.newInstance()),
-        ElementType.MINIM.newInstance(),
-        3f / 4f
-    ),
-    MINIM_EQUALS_DOTTED_CROCHET(
-        ElementType.MINIM.newInstance(),
-        createDottedVersion(ElementType.CROTCHET.newInstance()),
-        4f / 3f
-    ),
-    CROTCHET_EQUALS_DOTTED_CROCHET(
-        ElementType.CROTCHET.newInstance(),
-        createDottedVersion(ElementType.CROTCHET.newInstance()),
-        2f / 3f
-    ),
-    DOTTED_CROCHET_EQUALS_CROCHET(
-        createDottedVersion(ElementType.CROTCHET.newInstance()),
-        ElementType.CROTCHET.newInstance(),
-        3f / 2f
-    );
+public record BeatChange(Duration duration, Duration beat) {
 
-    private final StaffElement firstElement;
-    private final StaffElement secondElement;
-    private final float tempoChange;
-
-    BeatChange(StaffElement firstElement, StaffElement secondElement, float tempoChange) {
-        this.firstElement = firstElement;
-        this.secondElement = secondElement;
-        this.tempoChange = tempoChange;
-    }
-
-    private static StaffElement createDottedVersion(StaffElement element) {
-        element.setDotCount(1);
-        element.setStaffPosition(1);
-        return element;
-    }
-
-    public StaffElement getFirstElement() {
-        return firstElement;
-    }
-
-    public StaffElement getSecondElement() {
-        return secondElement;
-    }
-
-    public float getTempoChange() {
-        return tempoChange;
+    /**
+     * Translates a legacy beat-change enum name (canonical, underscore-less, or typo variant)
+     * into the new record form. Called from the IO layer when reading v2.4-or-earlier files.
+     */
+    public static BeatChange fromLegacyName(String legacyName) {
+        return switch (legacyName) {
+            case "QUAVER_EQUALS_QUAVER", "QUAVEREQUALSQUAVER" ->
+                new BeatChange(Duration.QUAVER, Duration.QUAVER);
+            case "DOTTED_CROCHET_EQUALS_MINIM", "DOTTEDCROCHETEQUALSMINIM" ->
+                new BeatChange(Duration.CROTCHET_DOTTED, Duration.MINIM);
+            case "MINIM_EQUALS_DOTTED_CROCHET", "MINIMEQUALSDOTTEDCROCHET" ->
+                new BeatChange(Duration.MINIM, Duration.CROTCHET_DOTTED);
+            case "CROTCHET_EQUALS_DOTTED_CROCHET", "CROTCHETQUALSDOTTEDCROCHET" ->
+                new BeatChange(Duration.CROTCHET, Duration.CROTCHET_DOTTED);
+            case "DOTTED_CROCHET_EQUALS_CROCHET", "DOTTEDCROCHETQUALSCROCHET" ->
+                new BeatChange(Duration.CROTCHET_DOTTED, Duration.CROTCHET);
+            default -> throw new IllegalArgumentException("unknown legacy beat change: " + legacyName);
+        };
     }
 }
