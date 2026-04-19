@@ -65,11 +65,20 @@ public class TempoChangeDialog extends StandardDialog {
         contentPanel.add(BorderLayout.SOUTH, buttonPanel);
     }
 
+    public static void showForElement(StaffElement element, Line line) {
+        var dialog = new TempoChangeDialog();
+        dialog.selectedElement = element;
+        dialog.selectedLine = line;
+        dialog.setVisible(true);
+    }
+
     @Override
     protected boolean getData() {
-        var score = requireScore();
-        selectedElement = score.getSingleSelectedElement();
-        selectedLine = score.getComposition().getLine(score.getSelectionCoordinator().getActiveLineIndex());
+        if (selectedElement == null) {
+            var score = requireScore();
+            selectedElement = score.getSingleSelectedElement();
+            selectedLine = score.getComposition().getLine(score.getSelectionCoordinator().getActiveLineIndex());
+        }
 
         var tempoChange = selectedElement != null ? selectedElement.getTempoChange() : null;
         var addingTempoChange = tempoChange == null;

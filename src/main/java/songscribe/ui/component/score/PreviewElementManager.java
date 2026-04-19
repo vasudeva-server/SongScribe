@@ -39,6 +39,7 @@ import songscribe.music.Line;
 import songscribe.music.StaffElement;
 import songscribe.ui.Control;
 import songscribe.ui.EndingConfirms;
+import songscribe.ui.dialog.TempoChangeDialog;
 import songscribe.ui.Mode;
 import songscribe.ui.OptionDialogs;
 import songscribe.ui.action.Actions;
@@ -547,6 +548,10 @@ public class PreviewElementManager {
             return;
         }
 
+        var wasFirstLineEmpty = composition != null
+            && composition.indexOfLine(line) == 0
+            && line.effectiveElementCount() == 0;
+
         // Determine action based on position. Wrap in a modification bracket so the
         // line.add/setElement calls inside actually accumulate mutations and fire a
         // CompositionDidChangeNotification, which the ScoreMessageCoordinator uses to
@@ -560,6 +565,10 @@ public class PreviewElementManager {
                 insertElement(lc, currentXIndex, line);
             }
         });
+
+        if (wasFirstLineEmpty && line.effectiveElementCount() == 1) {
+            TempoChangeDialog.showForElement(line.getElement(0), line);
+        }
     }
 
     /**
