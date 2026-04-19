@@ -19,7 +19,7 @@ int method1() {
 }
 
 int method2() {
-    int foo = 7;
+    var foo = 7;
     return foo + getRectHeight() + SOME_CONSTANT * ANOTHER_CONSTANT / 2;
 }
 
@@ -189,6 +189,14 @@ public static final int NORMAL_IMAGE_WIDTH = 18;
 - Example:
 
 ```
+// Bad — explicit types
+int x = scaleContext.toPixels(noteXSs);
+double foo = someMethodCall();
+ArrayList<Note> noteList = new ArrayList<>();
+
+// Good — var for local variables
+var x = scaleContext.toPixels(noteXSs);
+var foo = someMethodCall();
 var noteList = new ArrayList<Note>();
 
 for (var i = 0; i < 10; i++) {
