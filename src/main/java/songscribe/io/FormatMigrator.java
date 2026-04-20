@@ -40,7 +40,7 @@ import songscribe.ui.layout.Ending;
 import songscribe.ui.layout.FermataAttachment;
 import songscribe.ui.layout.LayoutStylesheet;
 import songscribe.ui.layout.RangeElement;
-import songscribe.ui.layout.TempoAttachment;
+import songscribe.ui.layout.TempoChangeAttachment;
 import songscribe.ui.layout.Tie;
 import songscribe.ui.layout.Trill;
 import songscribe.ui.layout.Tuplet;
@@ -226,9 +226,9 @@ public final class FormatMigrator {
                 var note = line.getElement(i);
 
                 if (note.getTempoChange() != null) {
-                    // Find the TempoAttachment and add the line-level offset to its userYOffset
+                    // Find the TempoChangeAttachment and add the line-level offset to its userYOffset
                     for (var attachment : note.getAttachments()) {
-                        if (attachment instanceof TempoAttachment) {
+                        if (attachment instanceof TempoChangeAttachment) {
                             attachment.setUserYOffsetSs(attachment.getUserYOffsetSs() + tempoOffset);
                         }
                     }
@@ -416,7 +416,7 @@ public final class FormatMigrator {
     private static void migrateElementAttachments(StaffElement note) {
         // Tempo change attachment
         if (note.getTempoChange() != null) {
-            var attachment = new TempoAttachment(note, note.getTempoChange());
+            var attachment = new TempoChangeAttachment(note, note.getTempoChange());
             note.addAttachment(attachment);
         }
 

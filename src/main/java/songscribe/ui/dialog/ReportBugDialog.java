@@ -26,6 +26,7 @@ import java.io.File;
 
 import songscribe.Strings;
 import songscribe.Version;
+import songscribe.ui.FlatLafKeys;
 import songscribe.ui.OptionDialogs;
 import songscribe.util.DesktopUtils;
 import songscribe.ui.component.MainFrame;
@@ -120,6 +121,11 @@ public class ReportBugDialog extends StandardDialog {
         area.setBackground(contentPanel.getBackground());
         area.setPreferredSize(new Dimension(400, 450));
         return area;
+    }
+
+    @Override
+    protected String getContentPaddingKey() {
+        return FlatLafKeys.DIALOG_NO_PADDING;
     }
 
     @Override

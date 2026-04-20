@@ -43,7 +43,6 @@ public class ExportMidiDialog extends StandardDialog {
         this.saveFile = saveFile;
         var center = new JPanel();
         center.setLayout(new BoxLayout(center, BoxLayout.Y_AXIS));
-        center.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
         StandardDialog.addLabelToBox(center, Strings.get(Strings.LABEL_INSTRUMENT), 5);
         instrumentCombo = new JComboBox<>(PreferencesDialog.getInstrumentStrings());
         instrumentCombo.setAlignmentX(Component.LEFT_ALIGNMENT);

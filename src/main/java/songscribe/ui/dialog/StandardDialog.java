@@ -90,6 +90,7 @@ public abstract class StandardDialog extends BaseDialog {
      * Returns true if all registered tabs report valid data.
      * Subclasses may override to add dialog-level validation
      * (call {@code super.isValidData()} to run tab iteration).
+     * Subclasses with no registered tabs may override without calling {@code super}.
      */
     protected boolean isValidData() {
         for (var tab : getTabs()) {
@@ -105,6 +106,7 @@ public abstract class StandardDialog extends BaseDialog {
      * Writes control values back to the model by iterating registered
      * tabs. Subclasses may override to add dialog-level commit logic
      * (call {@code super.setData()} to run tab iteration).
+     * Subclasses with no registered tabs may override without calling {@code super}.
      */
     protected void setData() {
         for (var tab : getTabs()) {

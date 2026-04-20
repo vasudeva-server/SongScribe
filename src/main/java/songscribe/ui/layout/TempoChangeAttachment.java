@@ -37,82 +37,31 @@ import songscribe.smufl.SMuFLMetadata;
  * Tempo attachments display tempo changes (e.g., "♩ = 120" or "Allegro").
  * They are typically placed above the staff.
  */
-public class TempoAttachment extends MetronomeAttachment {
+public class TempoChangeAttachment extends MetronomeAttachment {
 
-    /** The tempo data. */
     private Tempo tempo;
 
-    /**
-     * Creates a tempo attachment with the specified tempo.
-     *
-     * @param tempo The tempo data
-     */
-    public TempoAttachment(Tempo tempo) {
+    public TempoChangeAttachment(Tempo tempo) {
         super(Alignment.LEFT);
         this.tempo = tempo;
     }
 
-    /**
-     * Creates a tempo attachment attached to a note.
-     *
-     * @param parent The parent note
-     * @param tempo  The tempo data
-     */
-    public TempoAttachment(@Nullable StaffElement parent, Tempo tempo) {
+    public TempoChangeAttachment(@Nullable StaffElement parent, Tempo tempo) {
         super(parent, Alignment.LEFT);
         this.tempo = tempo;
     }
 
-    /**
-     * Returns the tempo data.
-     */
     public Tempo getTempo() {
         return tempo;
     }
 
-    /**
-     * Sets the tempo data.
-     */
     public void setTempo(Tempo tempo) {
         this.tempo = tempo;
     }
 
-    /**
-     * Returns the visible tempo value (BPM).
-     */
-    public int getVisibleTempo() {
-        return tempo.getVisibleTempo();
-    }
-
-    /**
-     * Returns the tempo description text.
-     */
-    public @Nullable String getTempoDescription() {
-        return tempo.getTempoDescription();
-    }
-
-    /**
-     * Returns whether the tempo should be shown.
-     */
-    public boolean shouldShowTempo() {
-        return tempo.shouldShowTempo();
-    }
-
-    /**
-     * Content width and collision sub-regions computed together to avoid
-     * redundant {@link #tempoText()} calls.
-     */
+    /** Width and collision sub-regions computed together to avoid redundant tempoText() calls. */
     public record ContentMetrics(double widthSs, List<CollisionRegion> regions) {}
 
-    /**
-     * Computes the content width and collision sub-regions for this tempo marking.
-     * <p>
-     * Combines width and region computation into a single pass so that the
-     * tempo text string is only built once.
-     *
-     * @param attrFontMetrics font metrics for the attribution font
-     * @return content metrics (width and collision regions)
-     */
     public ContentMetrics computeContentMetrics(FontMetrics attrFontMetrics) {
         var regions = new ArrayList<CollisionRegion>(2);
         double glyphWidth = glyphWidthSs();
@@ -140,10 +89,6 @@ public class TempoAttachment extends MetronomeAttachment {
         return new ContentMetrics(widthSs, regions);
     }
 
-    /**
-     * Returns the width of the metronome note glyph in staff-space units,
-     * or 0 if the tempo has no visible note.
-     */
     private double glyphWidthSs() {
         if (!tempo.shouldShowTempo()) {
             return 0;
@@ -152,9 +97,6 @@ public class TempoAttachment extends MetronomeAttachment {
         return noteWidthSs(tempo.getTempoType().getNote(), SMuFLMetadata.getInstance());
     }
 
-    /**
-     * Builds the tempo text string as drawn by the renderer (e.g. "= 120 Allegro").
-     */
     private String tempoText() {
         var text = new StringBuilder(25);
 
@@ -168,10 +110,6 @@ public class TempoAttachment extends MetronomeAttachment {
         return text.toString();
     }
 
-    /**
-     * Returns the width of the tempo text portion in staff-space units,
-     * or 0 if there is no text.
-     */
     private double textWidthSs(String text, FontMetrics attrFontMetrics) {
         if (text.isEmpty()) {
             return 0;

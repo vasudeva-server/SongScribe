@@ -339,7 +339,7 @@ class ManualOffsetStackingTest extends UnitTest {
             // The annotation should NOT move to accommodate the offset tempo — collision
             // detection is not re-run after offsets are applied.
             var note = createNote(0, false);
-            var tempo = new TempoAttachment(note, new Tempo());
+            var tempo = new TempoChangeAttachment(note, new Tempo());
             double largeDownwardOffsetSs = 5.0;
             tempo.setUserYOffsetSs(largeDownwardOffsetSs);
             note.addAttachment(tempo);
@@ -359,7 +359,7 @@ class ManualOffsetStackingTest extends UnitTest {
 
             // Now create a baseline where tempo has no offset
             var note2 = createNote(0, false);
-            var tempo2 = new TempoAttachment(note2, new Tempo());
+            var tempo2 = new TempoChangeAttachment(note2, new Tempo());
             note2.addAttachment(tempo2);
 
             var annAttach2 = new AnnotationAttachment("test");
@@ -386,7 +386,7 @@ class ManualOffsetStackingTest extends UnitTest {
         @Test
         void testTempoUserYOffsetApplied() {
             var note = createNote(0, false);
-            var tempo = new TempoAttachment(note, new Tempo());
+            var tempo = new TempoChangeAttachment(note, new Tempo());
             double yOffsetSs = -2.0;
             tempo.setUserYOffsetSs(yOffsetSs);
             note.addAttachment(tempo);
@@ -396,19 +396,19 @@ class ManualOffsetStackingTest extends UnitTest {
 
             var resultWithOffset = stackColumns(List.of(columnFor(note)), line);
             var layoutWithOffset = require(
-                resultWithOffset.findAttachmentDecorationLayout(note, TempoAttachment.class),
+                resultWithOffset.findAttachmentDecorationLayout(note, TempoChangeAttachment.class),
                 "tempo DecorationLayout with offset");
 
             // Create baseline
             var note2 = createNote(0, false);
-            note2.addAttachment(new TempoAttachment(note2, new Tempo()));
+            note2.addAttachment(new TempoChangeAttachment(note2, new Tempo()));
 
             var line2 = newLine();
             populate(line2,note2);
 
             var resultBaseline = stackColumns(List.of(columnFor(note2)), line2);
             var layoutBaseline = require(
-                resultBaseline.findAttachmentDecorationLayout(note2, TempoAttachment.class),
+                resultBaseline.findAttachmentDecorationLayout(note2, TempoChangeAttachment.class),
                 "tempo DecorationLayout baseline");
 
             assertThat(layoutWithOffset.ySs())
@@ -418,7 +418,7 @@ class ManualOffsetStackingTest extends UnitTest {
         @Test
         void testTempoUserXOffsetApplied() {
             var note = createNote(0, false);
-            var tempo = new TempoAttachment(note, new Tempo());
+            var tempo = new TempoChangeAttachment(note, new Tempo());
             double xOffsetSs = 3.0;
             tempo.setUserXOffsetSs(xOffsetSs);
             note.addAttachment(tempo);
@@ -428,7 +428,7 @@ class ManualOffsetStackingTest extends UnitTest {
 
             var result = stackColumns(List.of(columnFor(note)), line);
             var layout = require(
-                result.findAttachmentDecorationLayout(note, TempoAttachment.class),
+                result.findAttachmentDecorationLayout(note, TempoChangeAttachment.class),
                 "tempo DecorationLayout with x offset");
 
             assertThat(layout.xSs())

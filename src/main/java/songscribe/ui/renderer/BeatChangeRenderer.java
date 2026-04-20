@@ -35,25 +35,14 @@ import songscribe.ui.layout.BeatChangeAttachment;
  */
 public final class BeatChangeRenderer extends MetronomeRenderer {
 
-    // Singleton instance
     private static final BeatChangeRenderer INSTANCE = new BeatChangeRenderer();
 
-    /**
-     * Private constructor - use {@link #getInstance()}.
-     */
     private BeatChangeRenderer() {
     }
 
-    /**
-     * Returns the singleton instance.
-     */
     public static BeatChangeRenderer getInstance() {
         return INSTANCE;
     }
-
-    // ==========================================================================
-    // Rendering
-    // ==========================================================================
 
     @Override
     protected void renderElement(

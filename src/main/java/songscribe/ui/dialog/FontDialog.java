@@ -28,7 +28,6 @@ import songscribe.ui.dialog.fontchooser.FontChooser;
 
 public class FontDialog extends StandardDialog {
 
-    private static final int CHOOSER_PADDING = 13;
     private static final int EXTRA_PREVIEW_HEIGHT = 200;
 
     private final FontChooser chooser = new FontChooser();
@@ -38,12 +37,7 @@ public class FontDialog extends StandardDialog {
         super(Strings.get(Strings.DIALOG_FONT_CHOOSER_TITLE));
         selectedFont = initialFont;
 
-        var chooserPanel = new JPanel(new BorderLayout());
-        chooserPanel.setBorder(BorderFactory.createEmptyBorder(
-            CHOOSER_PADDING, CHOOSER_PADDING, 0, CHOOSER_PADDING
-        ));
-        chooserPanel.add(chooser);
-        contentPanel.add(chooserPanel, BorderLayout.CENTER);
+        contentPanel.add(chooser, BorderLayout.CENTER);
         contentPanel.add(buttonPanel, BorderLayout.PAGE_END);
     }
 

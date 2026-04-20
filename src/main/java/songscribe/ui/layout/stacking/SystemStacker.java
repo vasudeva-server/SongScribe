@@ -27,7 +27,7 @@ import songscribe.ui.layout.ElementColumn;
 import songscribe.ui.layout.LayoutResult;
 import songscribe.ui.layout.LayoutStylesheet;
 import songscribe.ui.layout.StaffExtents;
-import songscribe.ui.layout.TempoAttachment;
+import songscribe.ui.layout.TempoChangeAttachment;
 
 import static songscribe.ui.layout.stacking.StackingUtils.stackAbove;
 import static songscribe.ui.layout.stacking.StackingUtils.stackAboveWithRegions;
@@ -70,7 +70,7 @@ public class SystemStacker {
      * <p>
      * Checks the new attachment hierarchy first; falls back to the legacy
      * {@code note.getTempoChange()} property and bridges it to a temporary
-     * {@link TempoAttachment} so both paths write a {@link LayoutResult.DecorationLayout}.
+     * {@link TempoChangeAttachment} so both paths write a {@link LayoutResult.DecorationLayout}.
      */
     private void stackTempo(
         ElementColumn column,
@@ -80,11 +80,11 @@ public class SystemStacker {
         var note = column.getElement();
 
         // Check new attachment hierarchy first
-        var tempo = note.findAttachment(TempoAttachment.class);
+        var tempo = note.findAttachment(TempoChangeAttachment.class);
 
-        // Bridge legacy flag to a temporary TempoAttachment
+        // Bridge legacy flag to a temporary TempoChangeAttachment
         if (tempo == null && note.getTempoChange() != null) {
-            tempo = new TempoAttachment(note, note.getTempoChange());
+            tempo = new TempoChangeAttachment(note, note.getTempoChange());
         }
 
         if (tempo == null) {

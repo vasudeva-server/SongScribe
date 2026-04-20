@@ -32,7 +32,7 @@ import songscribe.ui.layout.BeatChangeAttachment;
 import songscribe.ui.layout.DynamicAttachment;
 import songscribe.ui.layout.FermataAttachment;
 import songscribe.ui.layout.ScaleContext;
-import songscribe.ui.layout.TempoAttachment;
+import songscribe.ui.layout.TempoChangeAttachment;
 import songscribe.ui.renderer.AnnotationRenderer;
 import songscribe.ui.renderer.ArticulationRenderer;
 import songscribe.ui.renderer.BaseElementRenderer;
@@ -48,7 +48,7 @@ import songscribe.ui.renderer.GlissandoRenderer;
 import songscribe.ui.renderer.GraphicsState;
 import songscribe.ui.renderer.KeySignatureRenderer;
 import songscribe.ui.renderer.NoteRenderer;
-import songscribe.ui.renderer.TempoRenderer;
+import songscribe.ui.renderer.TempoChangeRenderer;
 import songscribe.ui.renderer.TieRenderer;
 import songscribe.ui.renderer.TrillRenderer;
 import songscribe.ui.renderer.TupletRenderer;
@@ -458,7 +458,7 @@ class LineRenderer {
         var articulationRenderer = ArticulationRenderer.getInstance();
         var fermataRenderer = FermataRenderer.getInstance();
         var dynamicMarkingRenderer = DynamicMarkingRenderer.getInstance();
-        var tempoRenderer = TempoRenderer.getInstance();
+        var tempoRenderer = TempoChangeRenderer.getInstance();
         var beatChangeRenderer = BeatChangeRenderer.getInstance();
         var annotationRenderer = AnnotationRenderer.getInstance();
         var line = lc.getLine();
@@ -502,7 +502,7 @@ class LineRenderer {
 
                 // Tier 4: Tempo (system)
                 if (layoutResult.findAttachmentDecorationLayout(
-                        element, TempoAttachment.class) != null) {
+                        element, TempoChangeAttachment.class) != null) {
                     tempoRenderer.render(element, g2, ctx);
                 }
 

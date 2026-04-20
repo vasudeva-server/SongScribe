@@ -25,6 +25,7 @@ import java.io.IOException;
 
 import songscribe.Strings;
 import songscribe.Version;
+import songscribe.ui.FlatLafKeys;
 import songscribe.util.Utils;
 
 public class WhatsNewDialog extends StandardDialog {
@@ -57,6 +58,11 @@ public class WhatsNewDialog extends StandardDialog {
         var textScroll = new JScrollPane(textPane);
         textScroll.setPreferredSize(new Dimension(500, 300));
         return textScroll;
+    }
+
+    @Override
+    protected String getContentPaddingKey() {
+        return FlatLafKeys.DIALOG_NO_PADDING;
     }
 
     @Override

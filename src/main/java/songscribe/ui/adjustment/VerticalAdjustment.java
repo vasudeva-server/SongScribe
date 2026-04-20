@@ -36,7 +36,7 @@ import songscribe.ui.layout.BeatChangeAttachment;
 import songscribe.ui.layout.Crescendo;
 import songscribe.ui.layout.Diminuendo;
 import songscribe.ui.layout.Ending;
-import songscribe.ui.layout.TempoAttachment;
+import songscribe.ui.layout.TempoChangeAttachment;
 import songscribe.ui.layout.Trill;
 import songscribe.ui.layout.Tuplet;
 import songscribe.ui.layout.LayoutResult;
@@ -148,7 +148,7 @@ public class VerticalAdjustment extends Adjustment {
 
             if (note.getTempoChange() != null) {
                 for (var attachment : note.getAttachments()) {
-                    if (attachment instanceof songscribe.ui.layout.TempoAttachment) {
+                    if (attachment instanceof TempoChangeAttachment) {
                         attachment.setUserYOffsetSs(attachment.getUserYOffsetSs() + diffY);
                     }
                 }
@@ -379,10 +379,10 @@ public class VerticalAdjustment extends Adjustment {
             case TOP_SPACE, ROW_HEIGHT -> getHeightAdjustRect(adjustRect);
             case TEMPO_CHANGE -> {
                 var layoutResult = getLayoutResultForLine(adjustRect.line);
-                var bounds = layoutResult.findAttachmentBounds(note, TempoAttachment.class);
+                var bounds = layoutResult.findAttachmentBounds(note, TempoChangeAttachment.class);
 
                 if (bounds == null) {
-                    throw new IllegalStateException("No bounds found for TempoAttachment");
+                    throw new IllegalStateException("No bounds found for TempoChangeAttachment");
                 }
 
                 adjustRect.rect.x = note.getXOffsetPx() - 8;

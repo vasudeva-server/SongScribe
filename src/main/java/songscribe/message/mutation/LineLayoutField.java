@@ -29,7 +29,7 @@ public enum LineLayoutField {
     /**
      * Y-position of tempo markings (pixels).
      *
-     * @deprecated Use per-instance userYOffset on TempoAttachment instead.
+     * @deprecated Use per-instance userYOffset on TempoChangeAttachment instead.
      */
     @Deprecated
     TEMPO_CHANGE_Y_POS_PX(Integer.class),

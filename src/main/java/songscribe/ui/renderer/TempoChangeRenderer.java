@@ -25,35 +25,19 @@ import module java.desktop;
 import songscribe.music.StaffElement;
 import songscribe.music.Tempo;
 import songscribe.ui.layout.MetronomeAttachment;
-import songscribe.ui.layout.TempoAttachment;
+import songscribe.ui.layout.TempoChangeAttachment;
 
-/**
- * Renders tempo change indicators (note = number format).
- * <p>
- * Tempo markings show the beat note and tempo in BPM, e.g., "♩ = 120".
- * They appear above the staff at the specified note position.
- */
-public class TempoRenderer extends MetronomeRenderer {
+/** Renders tempo change indicators (note = number format, e.g. "♩ = 120"). */
+public final class TempoChangeRenderer extends MetronomeRenderer {
 
-    // Singleton instance
-    private static final TempoRenderer INSTANCE = new TempoRenderer();
+    private static final TempoChangeRenderer INSTANCE = new TempoChangeRenderer();
 
-    /**
-     * Private constructor - use {@link #getInstance()}.
-     */
-    private TempoRenderer() {
+    private TempoChangeRenderer() {
     }
 
-    /**
-     * Returns the singleton instance.
-     */
-    public static TempoRenderer getInstance() {
+    public static TempoChangeRenderer getInstance() {
         return INSTANCE;
     }
-
-    // ==========================================================================
-    // Rendering
-    // ==========================================================================
 
     @Override
     protected void renderElement(
@@ -70,32 +54,7 @@ public class TempoRenderer extends MetronomeRenderer {
         renderTempoChange(g2, tempo, element, ctx);
     }
 
-    /**
-     * Renders a tempo change for a note if it has one.
-     *
-     * @param g2   Graphics context
-     * @param note The note
-     * @param ctx  Render context
-     */
-    public void renderTempo(
-        Graphics2D g2,
-        StaffElement note,
-        ElementRenderContext ctx
-    ) {
-        render(note, g2, ctx);
-    }
-
-    /**
-     * Renders the initial tempo marking (used for first note of first line).
-     * <p>
-     * This method is for rendering the composition's default tempo, which is
-     * stored separately from note tempo changes.
-     *
-     * @param g2    Graphics context
-     * @param note  The note at which to position the tempo
-     * @param tempo The tempo to render
-     * @param ctx   Render context
-     */
+    /** Renders the composition's initial tempo, stored separately from per-note tempo changes. */
     public void renderInitialTempo(
         Graphics2D g2,
         StaffElement note,
@@ -105,30 +64,27 @@ public class TempoRenderer extends MetronomeRenderer {
         renderTempoChange(g2, tempo, note, ctx);
     }
 
-    /**
-     * Renders the tempo change indicator.
-     */
     private void renderTempoChange(
         Graphics2D g2,
         Tempo tempo,
         StaffElement note,
         ElementRenderContext ctx
     ) {
-        var setup = buildRenderSetup(note, TempoAttachment.class, ctx);
+        var setup = buildRenderSetup(note, TempoChangeAttachment.class, ctx);
         double xSs = setup.decorationLayout().xSs();
         double textBaselineYSs = setup.ySs() + MetronomeAttachment.QUARTER_NOTE_HEIGHT_SS;
         var tempoBuilder = new StringBuilder(25);
-        var tempoType = tempo.getTempoType();
+        var showTempo = tempo.shouldShowTempo();
 
-        if (tempo.shouldShowTempo()) {
+        if (showTempo) {
             tempoBuilder.append(tempo.getVisibleTempo());
             tempoBuilder.append(' ');
         }
 
         tempoBuilder.append(tempo.getTempoDescription());
 
-        if (tempo.shouldShowTempo()) {
-            xSs = drawDurationEquals(g2, tempoType, xSs, setup.ySs(), setup.attrFont(), setup.color());
+        if (showTempo) {
+            xSs = drawDurationEquals(g2, tempo.getTempoType(), xSs, setup.ySs(), setup.attrFont(), setup.color());
         }
 
         g2.setFont(scaleAttrFont(setup.attrFont()));

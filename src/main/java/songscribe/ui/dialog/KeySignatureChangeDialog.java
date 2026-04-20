@@ -36,7 +36,6 @@ public class KeySignatureChangeDialog extends StandardDialog {
         super(Strings.get(Strings.DIALOG_KEY_SIGNATURE_CHANGE_TITLE));
         var center = new JPanel();
         center.setLayout(new BoxLayout(center, BoxLayout.Y_AXIS));
-        center.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
 
         var large = new Dimension(0, 15);
 

@@ -34,7 +34,7 @@ import songscribe.ui.FlatLafProps;
  * Abstract base class for metronome-style markings (tempo and beat change).
  * <p>
  * Provides SMuFL metronome glyph constants, the note-width calculation, and
- * the standard content-size implementation shared by {@link TempoAttachment}
+ * the standard content-size implementation shared by {@link TempoChangeAttachment}
  * and {@link BeatChangeAttachment}.
  */
 public abstract class MetronomeAttachment extends Attachment {

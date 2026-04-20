@@ -68,6 +68,11 @@ public class AboutDialog extends BaseDialog {
         contentPanel.add(BorderLayout.CENTER, SplashWindow.createContentPanel(extras));
     }
 
+    @Override
+    protected String getContentPaddingKey() {
+        return FlatLafKeys.DIALOG_NO_PADDING;
+    }
+
     private JLabel createLink(String text, String url) {
         var label = new JLabel(text);
 

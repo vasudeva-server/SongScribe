@@ -26,6 +26,7 @@ import java.io.IOException;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
+import songscribe.ui.FlatLafKeys;
 import songscribe.ui.OptionDialogs;
 import songscribe.util.Utils;
 
@@ -66,6 +67,11 @@ public class HelpDialog
     public void addToList(String name, String html) {
         var listObject = new ListObject(name, html);
         defaultListModel.addElement(listObject);
+    }
+
+    @Override
+    protected String getContentPaddingKey() {
+        return FlatLafKeys.DIALOG_NO_PADDING;
     }
 
     @Override

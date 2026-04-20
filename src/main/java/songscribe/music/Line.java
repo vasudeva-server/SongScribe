@@ -113,7 +113,7 @@ public class Line {
     /**
      * Y offset for tempo change display. Line 0 default: -40, others: -24.
      *
-     * @deprecated Use per-instance userYOffset on TempoAttachment instead.
+     * @deprecated Use per-instance userYOffset on TempoChangeAttachment instead.
      *             Retained for backward compatibility with legacy documents.
      */
     @Deprecated
@@ -554,7 +554,7 @@ public class Line {
     }
 
     /**
-     * @deprecated Use per-instance userYOffset on TempoAttachment instead.
+     * @deprecated Use per-instance userYOffset on TempoChangeAttachment instead.
      */
     @Deprecated
     public int getTempoChangeYPosPx() {
@@ -562,7 +562,7 @@ public class Line {
     }
 
     /**
-     * @deprecated Use per-instance userYOffset on TempoAttachment instead.
+     * @deprecated Use per-instance userYOffset on TempoChangeAttachment instead.
      */
     @Deprecated
     public void setTempoChangeYPosPx(int tempoChangeYPosPx) {

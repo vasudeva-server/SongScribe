@@ -39,7 +39,7 @@ import songscribe.ui.layout.ScaleContext;
  * Abstract base renderer for metronome-style markings (tempo and beat change).
  * <p>
  * Provides the shared font constant, glyph drawing primitives, and decoration
- * layout lookup used by {@link TempoRenderer} and {@link BeatChangeRenderer}.
+ * layout lookup used by {@link TempoChangeRenderer} and {@link BeatChangeRenderer}.
  */
 public abstract class MetronomeRenderer extends BaseElementRenderer<StaffElement> {
 

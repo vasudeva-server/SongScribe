@@ -103,7 +103,7 @@ class SystemTierStackingTest extends UnitTest {
         @Test
         void testTempoAttachmentPositionedAboveStaff() {
             var note = createNote(0, false);
-            var tempo = new TempoAttachment(note, new Tempo());
+            var tempo = new TempoChangeAttachment(note, new Tempo());
             note.addAttachment(tempo);
 
             var line = newLine();
@@ -122,7 +122,7 @@ class SystemTierStackingTest extends UnitTest {
         @Test
         void testTempoAttachmentHasPositiveDimensions() {
             var note = createNote(0, false);
-            var tempo = new TempoAttachment(note, new Tempo());
+            var tempo = new TempoChangeAttachment(note, new Tempo());
             note.addAttachment(tempo);
 
             var line = newLine();
@@ -143,7 +143,7 @@ class SystemTierStackingTest extends UnitTest {
             var note1 = createNote(0, false);
             var note2 = createNote(0, false);
 
-            var tempo = new TempoAttachment(note1, new Tempo());
+            var tempo = new TempoChangeAttachment(note1, new Tempo());
             note1.addAttachment(tempo);
 
             var line = newLine();
@@ -181,9 +181,9 @@ class SystemTierStackingTest extends UnitTest {
 
             var result = stackColumns(List.of(columnFor(note, NOTE1_X_SS)), line);
 
-            // The legacy bridge should produce a DecorationLayout for a TempoAttachment
+            // The legacy bridge should produce a DecorationLayout for a TempoChangeAttachment
             var layout = result.findAttachmentDecorationLayout(
-                note, TempoAttachment.class);
+                note, TempoChangeAttachment.class);
 
             assertThat(layout)
                 .describedAs("legacy tempo change should produce DecorationLayout")

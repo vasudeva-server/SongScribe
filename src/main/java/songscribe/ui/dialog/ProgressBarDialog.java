@@ -25,7 +25,6 @@ import songscribe.Strings;
 
 public class ProgressBarDialog extends BaseDialog {
 
-    private static final int BORDER_PADDING = 10;
     private static final int PROGRESS_BAR_WIDTH = 400;
     private static final int PROGRESS_BAR_HEIGHT = 20;
 
@@ -36,14 +35,9 @@ public class ProgressBarDialog extends BaseDialog {
 
         progressBar.setMaximum(maximum);
 
-        var pane = new JPanel(new BorderLayout());
-        pane.setBorder(BorderFactory.createEmptyBorder(
-            BORDER_PADDING, BORDER_PADDING, BORDER_PADDING, BORDER_PADDING
-        ));
-        pane.add(BorderLayout.NORTH, new JLabel(label));
+        contentPanel.add(BorderLayout.NORTH, new JLabel(label));
         progressBar.setPreferredSize(new Dimension(PROGRESS_BAR_WIDTH, PROGRESS_BAR_HEIGHT));
-        pane.add(BorderLayout.CENTER, progressBar);
-        contentPanel.add(pane);
+        contentPanel.add(BorderLayout.CENTER, progressBar);
     }
 
     @Override

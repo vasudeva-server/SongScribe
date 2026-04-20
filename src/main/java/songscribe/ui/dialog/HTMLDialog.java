@@ -24,6 +24,7 @@ import module java.desktop;
 import java.io.IOException;
 
 import songscribe.Strings;
+import songscribe.ui.FlatLafKeys;
 import songscribe.ui.OptionDialogs;
 import songscribe.util.Utils;
 
@@ -65,6 +66,11 @@ public class HTMLDialog extends StandardDialog {
                 Strings.ERROR_HELP_OPEN
             );
         }
+    }
+
+    @Override
+    protected String getContentPaddingKey() {
+        return FlatLafKeys.DIALOG_NO_PADDING;
     }
 
     @Override

@@ -283,6 +283,14 @@ public abstract class BaseDialog {
                 }
             }
 
+            if (tabbedPane == null) {
+                var paddingKey = getContentPaddingKey();
+
+                if (paddingKey != null) {
+                    contentPanel.setBorder(UIUtils.spacingBorder(paddingKey));
+                }
+            }
+
             dialog.pack();
 
             var minSize = dialog.getPreferredSize();
@@ -445,6 +453,10 @@ public abstract class BaseDialog {
         return true;
     }
 
+    protected @Nullable String getContentPaddingKey() {
+        return hasButtons() ? FlatLafKeys.DIALOG_STD_BUTTONS_PADDING : FlatLafKeys.DIALOG_STD_PADDING;
+    }
+
     protected boolean hasButtons() {
         return false;
     }
@@ -482,7 +494,8 @@ public abstract class BaseDialog {
      * Called when the dialog is about to be shown. Populates controls
      * by iterating registered tabs. Subclasses may override to add
      * dialog-level population logic (call {@code super.getData()} to
-     * run tab iteration).
+     * run tab iteration). Subclasses with no registered tabs may override
+     * without calling {@code super}.
      *
      * @return true to proceed with showing the dialog, false to cancel
      */
@@ -504,7 +517,7 @@ public abstract class BaseDialog {
         private boolean hasFillItem = false;
 
         protected Tab() {
-            this(hasButtons() ? FlatLafKeys.DIALOG_TAB_BUTTONS_PADDING : FlatLafKeys.DIALOG_TAB_PADDING);
+            this(hasButtons() ? FlatLafKeys.DIALOG_STD_BUTTONS_PADDING : FlatLafKeys.DIALOG_STD_PADDING);
         }
 
         protected Tab(String paddingKey) {
