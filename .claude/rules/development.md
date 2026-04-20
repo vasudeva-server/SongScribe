@@ -51,7 +51,7 @@ If you **do** need to run the application:
 | `./scripts/compile.sh` | Compile Java/Kotlin sources              |
 | `./scripts/run.sh`     | Run the application (MUST compile first) |
 | `./scripts/crun.sh`    | Compile and run in one step              |
-| `./scripts/test.sh`    | Run tests (see examples below)           |
+| `./scripts/test.sh`    | Run tests (MUST compile first; see examples below) |
 
 `run.sh` and `crun.sh` accept these options:
 

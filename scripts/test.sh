@@ -63,9 +63,9 @@ JVM_ARGS+=(
   "--add-opens" "java.base/java.util=ALL-UNNAMED"
 )
 
-echo "Compiling..."
+echo "Compiling tests..."
 
-if ! mvn -q test-compile -f "$PROJECT_DIR/pom.xml"; then
+if ! mvn -q resources:testResources compiler:testCompile -f "$PROJECT_DIR/pom.xml"; then
   echo "Compilation failed."
   exit 1
 fi
