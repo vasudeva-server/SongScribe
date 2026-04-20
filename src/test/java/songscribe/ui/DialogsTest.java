@@ -32,7 +32,9 @@ import songscribe.Strings;
 import songscribe.UnitTest;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockConstruction;
 import static org.mockito.Mockito.mockStatic;
@@ -70,24 +72,26 @@ class DialogsTest extends UnitTest {
             geMock.when(GraphicsEnvironment::isHeadless).thenReturn(false);
         }
 
-        private void configureMockDialog(JDialog mockDialog) {
+        private JDialog createMockDialog() {
+            var mockDialog = mock(JDialog.class);
             var mockRootPane = mock(JRootPane.class);
             when(mockDialog.getSize()).thenReturn(new Dimension(200, 100));
             when(mockDialog.getRootPane()).thenReturn(mockRootPane);
-            when(mockDialog.getContentPane()).thenReturn(mock(Container.class));
             when(mockRootPane.getInputMap(anyInt())).thenReturn(mock(InputMap.class));
             when(mockRootPane.getActionMap()).thenReturn(mock(ActionMap.class));
+            return mockDialog;
         }
 
         @Test
         void testShowErrorMessageDelegatesToJOptionPane() {
             var toolkit = mock(Toolkit.class);
+            var mockDialog = createMockDialog();
 
             try (
                 var tkMock = mockStatic(Toolkit.class);
                 var geMock = mockStatic(GraphicsEnvironment.class);
-                var paneConstruction = mockConstruction(JOptionPane.class);
-                var dialogConstruction = mockConstruction(JDialog.class, (dialog, ctx) -> configureMockDialog(dialog))
+                var paneConstruction = mockConstruction(JOptionPane.class, (pane, ctx) ->
+                    when(pane.createDialog(any(), anyString())).thenReturn(mockDialog))
             ) {
                 tkMock.when(Toolkit::getDefaultToolkit).thenReturn(toolkit);
                 stubScreenBounds(geMock);
@@ -96,33 +100,38 @@ class DialogsTest extends UnitTest {
 
                 verify(toolkit).beep();
                 assertThat(paneConstruction.constructed()).hasSize(1);
-                verify(dialogConstruction.constructed().get(0)).setVisible(true);
+                verify(mockDialog).setVisible(true);
             }
         }
 
         @Test
         void testShowInfoMessageDelegatesToJOptionPane() {
+            var mockDialog = createMockDialog();
+
             try (
                 var geMock = mockStatic(GraphicsEnvironment.class);
-                var paneConstruction = mockConstruction(JOptionPane.class);
-                var dialogConstruction = mockConstruction(JDialog.class, (dialog, ctx) -> configureMockDialog(dialog))
+                var paneConstruction = mockConstruction(JOptionPane.class, (pane, ctx) ->
+                    when(pane.createDialog(any(), anyString())).thenReturn(mockDialog))
             ) {
                 stubScreenBounds(geMock);
 
                 OptionDialogs.showInfoMessage(null, Strings.ALERT_TITLE_INFORMATION, Strings.ALERT_CONVERSION_COMPLETE);
 
                 assertThat(paneConstruction.constructed()).hasSize(1);
-                verify(dialogConstruction.constructed().get(0)).setVisible(true);
+                verify(mockDialog).setVisible(true);
             }
         }
 
         @Test
         void testShowInputDialogReturnsUserInput() {
+            var mockDialog = createMockDialog();
+
             try (
                 var geMock = mockStatic(GraphicsEnvironment.class);
-                var ignored = mockConstruction(JOptionPane.class, (pane, ctx) ->
-                    when(pane.getInputValue()).thenReturn("user input"));
-                var dialogConstruction = mockConstruction(JDialog.class, (dialog, ctx) -> configureMockDialog(dialog))
+                var ignored = mockConstruction(JOptionPane.class, (pane, ctx) -> {
+                    when(pane.createDialog(any(), anyString())).thenReturn(mockDialog);
+                    when(pane.getInputValue()).thenReturn("user input");
+                })
             ) {
                 stubScreenBounds(geMock);
 
@@ -134,11 +143,14 @@ class DialogsTest extends UnitTest {
 
         @Test
         void testShowInputDialogReturnsCancelAsNull() {
+            var mockDialog = createMockDialog();
+
             try (
                 var geMock = mockStatic(GraphicsEnvironment.class);
-                var ignored = mockConstruction(JOptionPane.class, (pane, ctx) ->
-                    when(pane.getInputValue()).thenReturn(JOptionPane.UNINITIALIZED_VALUE));
-                var dialogConstruction = mockConstruction(JDialog.class, (dialog, ctx) -> configureMockDialog(dialog))
+                var ignored = mockConstruction(JOptionPane.class, (pane, ctx) -> {
+                    when(pane.createDialog(any(), anyString())).thenReturn(mockDialog);
+                    when(pane.getInputValue()).thenReturn(JOptionPane.UNINITIALIZED_VALUE);
+                })
             ) {
                 stubScreenBounds(geMock);
 
@@ -150,10 +162,12 @@ class DialogsTest extends UnitTest {
 
         @Test
         void testShowConfirmDialogTranslatesClosedOptionToCancelForYesNoCancelOption() {
+            var mockDialog = createMockDialog();
+
             try (
                 var geMock = mockStatic(GraphicsEnvironment.class);
-                var ignored = mockConstruction(JOptionPane.class);
-                var dialogConstruction = mockConstruction(JDialog.class, (dialog, ctx) -> configureMockDialog(dialog))
+                var ignored = mockConstruction(JOptionPane.class, (pane, ctx) ->
+                    when(pane.createDialog(any(), anyString())).thenReturn(mockDialog))
             ) {
                 stubScreenBounds(geMock);
 
@@ -168,10 +182,12 @@ class DialogsTest extends UnitTest {
 
         @Test
         void testShowConfirmDialogTranslatesClosedOptionToNoForYesNoOption() {
+            var mockDialog = createMockDialog();
+
             try (
                 var geMock = mockStatic(GraphicsEnvironment.class);
-                var ignored = mockConstruction(JOptionPane.class);
-                var dialogConstruction = mockConstruction(JDialog.class, (dialog, ctx) -> configureMockDialog(dialog))
+                var ignored = mockConstruction(JOptionPane.class, (pane, ctx) ->
+                    when(pane.createDialog(any(), anyString())).thenReturn(mockDialog))
             ) {
                 stubScreenBounds(geMock);
 

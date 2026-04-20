@@ -246,83 +246,10 @@ public final class OptionDialogs {
     }
 
     private static void showOptionPane(JOptionPane pane, @Nullable Component parent, String title) {
-        var window = UIUtils.getParentWindow(parent);
-        JDialog dialog;
-
-        if (window instanceof Frame f) {
-            dialog = new JDialog(f, title, true);
-        } else if (window instanceof Dialog d) {
-            dialog = new JDialog(d, title, true);
-        } else {
-            dialog = new JDialog((Frame) null, title, true);
-        }
-
-        dialog.setComponentOrientation(pane.getComponentOrientation());
-        var contentPane = dialog.getContentPane();
-        contentPane.setLayout(new BorderLayout());
-        contentPane.add(pane, BorderLayout.CENTER);
-        dialog.setResizable(false);
-
-        // Replicate initDialog's L&F decoration check for FlatLaf compatibility
-        if (JDialog.isDefaultLookAndFeelDecorated() && UIManager.getLookAndFeel().getSupportsWindowDecorations()) {
-            dialog.setUndecorated(true);
-            pane.getRootPane().setWindowDecorationStyle(JRootPane.PLAIN_DIALOG);
-        }
-
-        dialog.pack();
-        UIUtils.positionDialog(dialog, parent);
+        var dialog = pane.createDialog(parent, title);
         UIUtils.addStandardDialogKeyBindings(dialog);
-
-        // Close dialog when user selects a value
-        PropertyChangeListener closeListener = e -> {
-            if (dialog.isVisible()
-                    && e.getSource() == pane
-                    && JOptionPane.VALUE_PROPERTY.equals(e.getPropertyName())
-                    && e.getNewValue() != null
-                    && e.getNewValue() != JOptionPane.UNINITIALIZED_VALUE) {
-                dialog.setVisible(false);
-            }
-        };
-
-        pane.addPropertyChangeListener(closeListener);
-
-        var windowListener = new WindowAdapter() {
-            private boolean gotFocus = false;
-
-            @Override
-            public void windowClosing(WindowEvent e) {
-                pane.setValue(null);
-            }
-
-            @Override
-            public void windowClosed(WindowEvent e) {
-                pane.removePropertyChangeListener(closeListener);
-                dialog.getContentPane().removeAll();
-            }
-
-            @Override
-            public void windowGainedFocus(WindowEvent e) {
-                if (!gotFocus) {
-                    gotFocus = true;
-                    pane.selectInitialValue();
-                }
-            }
-        };
-
-        dialog.addWindowListener(windowListener);
-        dialog.addWindowFocusListener(windowListener);
-
-        // Reset value on each showing to prevent stale value from a previous show
-        dialog.addComponentListener(new ComponentAdapter() {
-            @Override
-            public void componentShown(ComponentEvent e) {
-                pane.setValue(JOptionPane.UNINITIALIZED_VALUE);
-            }
-        });
-
-        // Force layout commitment before showing to prevent flash on first display
+        UIUtils.positionDialog(dialog, parent);
         dialog.validate();
-
         dialog.setVisible(true);
         dialog.dispose();
     }
