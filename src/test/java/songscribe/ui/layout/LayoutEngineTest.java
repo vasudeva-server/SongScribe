@@ -88,9 +88,25 @@ class LayoutEngineTest extends UnitTest {
         var finalBarline = line.getElement(line.elementCount() - 1);
 
         var result = require(engine().layout(line, true), "LayoutResult");
-        double expectedXSs = ElementType.finalBarlineFlushRightXSs(STAFF_RIGHT_MARGIN_SS);
+        double expectedXSs = ElementType.terminalFlushRightXSs(STAFF_RIGHT_MARGIN_SS, ElementType.FINAL_DOUBLE_BARLINE);
 
         assertThat(result.getElementXSs(finalBarline)).isCloseTo(expectedXSs, within(TOLERANCE));
+    }
+
+    // T3b: On the last line with a REPEAT_RIGHT terminal, the terminal is flush-right
+    @Test
+    void testRightRepeatTerminalFlushRightOnLastLine() {
+        var composition = new Composition();
+        composition.replaceTerminal(ElementType.REPEAT_RIGHT);
+        var line = composition.getLine(0);
+        var terminal = line.getElement(line.elementCount() - 1);
+
+        assertThat(terminal.getType()).isEqualTo(ElementType.REPEAT_RIGHT);
+
+        var result = require(engine().layout(line, true), "LayoutResult");
+        double expectedXSs = ElementType.terminalFlushRightXSs(STAFF_RIGHT_MARGIN_SS, ElementType.REPEAT_RIGHT);
+
+        assertThat(result.getElementXSs(terminal)).isCloseTo(expectedXSs, within(TOLERANCE));
     }
 
     // T4: On a non-last line, the final barline is not flush-right
@@ -101,7 +117,7 @@ class LayoutEngineTest extends UnitTest {
         var finalBarline = line.getElement(line.elementCount() - 1);
 
         var result = require(engine().layout(line, false), "LayoutResult");
-        double flushRightXSs = ElementType.finalBarlineFlushRightXSs(STAFF_RIGHT_MARGIN_SS);
+        double flushRightXSs = ElementType.terminalFlushRightXSs(STAFF_RIGHT_MARGIN_SS, ElementType.FINAL_DOUBLE_BARLINE);
 
         assertThat(result.getElementXSs(finalBarline)).isNotCloseTo(flushRightXSs, within(TOLERANCE));
     }

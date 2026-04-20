@@ -253,7 +253,7 @@ public final class ScoreInputHandler
             // Keyboard mode will need a new implementation that works with
             // LineComponent's insertion tracking or a separate keyboard-specific system.
             // When wiring caret navigation, consult Composition.isInteractable(element, line)
-            // so the caret skips the auto-maintained final barline on the last line.
+            // so the caret skips the auto-maintained terminal on the last line.
 
             // For now, keyboard mode is disabled. Only UP/DOWN for pitch adjustment remain functional.
             var insertionNote = editModeManager.getPreviewElement();

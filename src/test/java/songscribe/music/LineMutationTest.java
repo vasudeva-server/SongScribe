@@ -498,7 +498,7 @@ class LineMutationTest extends UnitTest {
     // -----------------------------------------------------------------------
 
     @Nested
-    class FinalBarlineGuards {
+    class TerminalGuards {
 
         // --- addElement guards ---
 
@@ -509,7 +509,7 @@ class LineMutationTest extends UnitTest {
             // line is now index 0, no longer the last line
             assertThatIllegalStateException().isThrownBy(() ->
                 composition.withModification(() ->
-                    line.addElement(0, Composition.createFinalBarlineElement())));
+                    line.addElement(0, Composition.newTerminalElement(ElementType.FINAL_DOUBLE_BARLINE))));
         }
 
         @Test
@@ -519,7 +519,7 @@ class LineMutationTest extends UnitTest {
                 line.addElement(new StaffElement(ElementType.QUAVER)));
             assertThatIllegalStateException().isThrownBy(() ->
                 composition.withModification(() ->
-                    line.addElement(0, Composition.createFinalBarlineElement())));
+                    line.addElement(0, Composition.newTerminalElement(ElementType.FINAL_DOUBLE_BARLINE))));
         }
 
         @Test
@@ -527,7 +527,7 @@ class LineMutationTest extends UnitTest {
             assertThatNoException().isThrownBy(() ->
                 composition.withModification(() ->
                     line.addElement(line.elementCount(),
-                        Composition.createFinalBarlineElement())));
+                        Composition.newTerminalElement(ElementType.FINAL_DOUBLE_BARLINE))));
         }
 
         // --- setElement guards ---
@@ -541,7 +541,7 @@ class LineMutationTest extends UnitTest {
             // line is index 0, not the last line
             assertThatIllegalStateException().isThrownBy(() ->
                 composition.withModification(() ->
-                    line.setElement(0, Composition.createFinalBarlineElement())));
+                    line.setElement(0, Composition.newTerminalElement(ElementType.FINAL_DOUBLE_BARLINE))));
         }
 
         @Test
@@ -553,7 +553,7 @@ class LineMutationTest extends UnitTest {
             // index 0 != elementCount()-1 (2)
             assertThatIllegalStateException().isThrownBy(() ->
                 composition.withModification(() ->
-                    line.setElement(0, Composition.createFinalBarlineElement())));
+                    line.setElement(0, Composition.newTerminalElement(ElementType.FINAL_DOUBLE_BARLINE))));
         }
 
         @Test
@@ -564,7 +564,7 @@ class LineMutationTest extends UnitTest {
             assertThatNoException().isThrownBy(() ->
                 composition.withModification(() ->
                     line.setElement(line.elementCount() - 1,
-                        Composition.createFinalBarlineElement())));
+                        Composition.newTerminalElement(ElementType.FINAL_DOUBLE_BARLINE))));
         }
 
         // --- removeElement guards ---
@@ -572,7 +572,7 @@ class LineMutationTest extends UnitTest {
         @Test
         void testRemoveFinalBarlineOnLastLineThrows() {
             composition.withoutMutationTracking(() ->
-                line.addElement(Composition.createFinalBarlineElement()));
+                line.addElement(Composition.newTerminalElement(ElementType.FINAL_DOUBLE_BARLINE)));
             assertThatIllegalStateException().isThrownBy(() ->
                 composition.withModification(() ->
                     line.removeElement(line.elementCount() - 1)));
@@ -592,7 +592,7 @@ class LineMutationTest extends UnitTest {
         void testRemoveRangeIncludingFinalBarlineOnLastLineThrows() {
             composition.withoutMutationTracking(() -> {
                 line.addElement(new StaffElement(ElementType.QUAVER));
-                line.addElement(Composition.createFinalBarlineElement());
+                line.addElement(Composition.newTerminalElement(ElementType.FINAL_DOUBLE_BARLINE));
             });
             assertThatIllegalStateException().isThrownBy(() ->
                 composition.withModification(() ->
@@ -615,7 +615,7 @@ class LineMutationTest extends UnitTest {
         void testGuardsAreBypasedWhenMutationTrackingSuspended() {
             assertThatNoException().isThrownBy(() ->
                 composition.withoutMutationTracking(() ->
-                    line.addElement(0, Composition.createFinalBarlineElement())));
+                    line.addElement(0, Composition.newTerminalElement(ElementType.FINAL_DOUBLE_BARLINE))));
         }
     }
 
@@ -628,8 +628,8 @@ class LineMutationTest extends UnitTest {
 
         @Test
         void testFinalBarlineOnLastLineIsNotInteractable() {
-            assertThat(composition.isInteractable(
-                Composition.createFinalBarlineElement(), line)).isFalse();
+            var terminal = line.getElement(line.elementCount() - 1);
+            assertThat(composition.isInteractable(terminal, line)).isFalse();
         }
 
         @Test
@@ -643,7 +643,7 @@ class LineMutationTest extends UnitTest {
             composition.addLine(1, new Line());
             // line is now index 0, not the last line
             assertThat(composition.isInteractable(
-                Composition.createFinalBarlineElement(), line)).isTrue();
+                Composition.newTerminalElement(ElementType.FINAL_DOUBLE_BARLINE), line)).isTrue();
         }
 
         @Test

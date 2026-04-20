@@ -60,7 +60,7 @@ public final class ElementHitTest {
         for (var elementIndex = 0; elementIndex < line.elementCount(); elementIndex++) {
             var element = line.getElement(elementIndex);
 
-            // Skip the composition's auto-maintained final barline (shared predicate).
+            // Skip the composition's auto-maintained terminal (shared predicate).
             if (composition != null && !composition.isInteractable(element, line)) {
                 continue;
             }

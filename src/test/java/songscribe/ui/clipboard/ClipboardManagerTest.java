@@ -79,4 +79,22 @@ class ClipboardManagerTest extends UnitTest {
         assertThat(lastLine.getElement(lastIdx).getType())
             .isEqualTo(ElementType.FINAL_DOUBLE_BARLINE);
     }
+
+    // Parallels testCompositionFinalBarlineUntouched for a REPEAT_RIGHT terminal.
+    // REPEAT_RIGHT is structurally valid as an interior element, so it passes through
+    // the clipboard unchanged; the composition's terminal remains in place.
+    @Test
+    void testCompositionRightRepeatTerminalUntouched() {
+        var composition = new Composition();
+        composition.replaceTerminal(ElementType.REPEAT_RIGHT);
+        var lastLine = composition.getLine(composition.lineCount() - 1);
+        var lastIdx = lastLine.elementCount() - 1;
+
+        clipboardManager.addElement(lastLine.getElement(lastIdx).clone());
+
+        assertThat(clipboardManager.getElement(0).getType())
+            .isEqualTo(ElementType.REPEAT_RIGHT);
+        assertThat(lastLine.getElement(lastIdx).getType())
+            .isEqualTo(ElementType.REPEAT_RIGHT);
+    }
 }

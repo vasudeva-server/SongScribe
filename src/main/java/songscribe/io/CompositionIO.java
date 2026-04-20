@@ -577,9 +577,9 @@ public final class CompositionIO {
                 FormatMigrator.migrateAnnotationDynamics(parsedLines);
             }
 
-            // Enforce the final-barline invariant for all pre-v2.4 files.
+            // Enforce the terminal invariant for all pre-v2.4 files.
             if (majorVersion < 2 || (majorVersion == 2 && minorVersion < 4)) {
-                FormatMigrator.migrateFinalBarline(parsedLines);
+                FormatMigrator.migrateFinalTerminal(parsedLines);
             }
 
             // For pre-v2.1 files, convert pixel-based positions to staff-space units.

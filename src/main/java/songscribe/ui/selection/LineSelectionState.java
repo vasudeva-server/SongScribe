@@ -149,7 +149,7 @@ public final class LineSelectionState {
 
     /**
      * Selects all elements on this line, excluding the composition's
-     * auto-maintained final barline via the shared predicate.
+     * auto-maintained terminal via the shared predicate.
      */
     public void selectAll() {
         if (line.elementCount() == 0) {

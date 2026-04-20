@@ -88,13 +88,13 @@ public class PreviewElementManager {
      * to a different line, the old line is repainted to clear the preview element.
      */
     @Nullable
-    private static LineComponent currentPreviewLine = null;
+    static LineComponent currentPreviewLine = null;
 
     /** Current insertion index (0 to elementCount inclusive). */
-    private static int currentXIndex = -1;
+    static int currentXIndex = -1;
 
     /** Current Y position on the staff (in staff position units, not pixels). */
-    private static int currentStaffPosition = 0;
+    static int currentStaffPosition = 0;
 
     /** Whether the Alt key is currently held down. */
     private static boolean altPressed = false;
@@ -104,13 +104,16 @@ public class PreviewElementManager {
     private static LineComponent currentMouseLine = null;
 
     /** Whether the mouse X (in staff spaces) is within the horizontal bounds of a note head. */
-    private static boolean xPosSsMatchesElement = false;
+    static boolean xPosSsMatchesElement = false;
 
     /** Whether the mouse Y (staff position) is within the vertical bounds of that note head. */
     private static boolean yPosSpMatchesElement = false;
 
     /** The glissando zone type determined by mouse position (null if no valid zone). */
     private static StaffElement.Glissando.@Nullable Type currentGlissandoZone = null;
+
+    /** Last tracked mouse X in staff-space units; used by LineRenderer to avoid Swing getMousePosition() returning null. */
+    private static double currentMouseXSs = 0.0;
 
     /** Strong reference to prevent GC by the weak-reference message bus; used for subscriptions. */
     private static final PreviewElementManager INSTANCE = new PreviewElementManager();
@@ -212,6 +215,13 @@ public class PreviewElementManager {
      */
     public static int getCurrentXIndex() {
         return currentXIndex;
+    }
+
+    /**
+     * Returns the last tracked mouse X in staff-space units.
+     */
+    public static double getCurrentMouseXSs() {
+        return currentMouseXSs;
     }
 
     /**
@@ -373,6 +383,8 @@ public class PreviewElementManager {
             mouseXss = scale.fromPixels(e.getX());
         }
 
+        currentMouseXSs = mouseXss;
+
         // Calculate Y position from mouse (in staff-space coordinates)
         int staffPosition = calculateStaffPositionFromMouse(mouseYss, lc.getMiddleLineYSs());
 
@@ -406,11 +418,12 @@ public class PreviewElementManager {
             && editModeManager.getGraceModeManager().isInProgress();
         int elementAtX = inGraceMode ? -1 : layoutResult.findElementAtXSs(mouseXss, line);
 
-        // Suppress preview over the composition's auto-maintained final barline.
+        // Suppress preview over the composition's auto-maintained terminal (unless the
+        // active preview element can legally replace it — exemption in isPositionBlockedByTerminal).
         var composition = line.getComposition();
 
         if (composition != null
-                && isPositionBlockedByFinalBarline(composition, line, xIndex, elementAtX >= 0)) {
+                && isPositionBlockedByTerminal(composition, line, xIndex, elementAtX >= 0)) {
             clearPreviewElement();
             return;
         }
@@ -539,13 +552,26 @@ public class PreviewElementManager {
         }
 
         // Belt-and-braces: block clicks that would try to insert past the auto-maintained
-        // final barline. trackMouse already clears the preview at these positions.
+        // terminal. trackMouse already clears the preview at these positions.
         var composition = line.getComposition();
 
         if (composition != null
-                && isPositionBlockedByFinalBarline(
+                && isPositionBlockedByTerminal(
                     composition, line, currentXIndex, xPosSsMatchesElement)) {
             return;
+        }
+
+        // Route a direct click on the terminal to replaceTerminal when the active preview
+        // element can legally replace it. This bypasses the normal insertion path entirely.
+        if (composition != null && xPosSsMatchesElement && editModeManager != null) {
+            var previewElement = editModeManager.getPreviewElement();
+
+            if (previewElement != null
+                    && isDirectClickOnTerminal(composition, line, currentXIndex)
+                    && composition.canReplaceTerminal(previewElement.getType())) {
+                composition.replaceTerminal(previewElement.getType());
+                return;
+            }
         }
 
         var wasFirstLineEmpty = composition != null
@@ -612,23 +638,46 @@ public class PreviewElementManager {
     // ==========================================================================
 
     /**
-     * Returns {@code true} when the given mouse position should be blocked because
-     * it coincides with the composition's auto-maintained final barline.
-     * Checks both "mouse is on the final barline element" and "mouse is at the
-     * append position immediately after the final barline".
+     * Returns {@code true} when {@code xIndex} points to the auto-maintained terminal
+     * element on {@code line}.
      */
-    private static boolean isPositionBlockedByFinalBarline(
+    private static boolean isDirectClickOnTerminal(Composition composition, Line line, int xIndex) {
+        return xIndex < line.elementCount()
+            && composition.isAutoMaintainedTerminal(line.getElement(xIndex), line);
+    }
+
+    /**
+     * Returns {@code true} when the given mouse position should be blocked because
+     * it coincides with the composition's auto-maintained terminal element.
+     * Checks both "mouse is on the terminal element" and "mouse is at the
+     * append position immediately after the terminal".
+     * <p>
+     * When the mouse is directly on the terminal and the active preview element can
+     * legally replace it, the block is lifted so the user can see the ghost preview.
+     */
+    private static boolean isPositionBlockedByTerminal(
             Composition composition, Line line, int xIndex, boolean xMatchesElement) {
         if (line.elementCount() == 0) {
             return false;
         }
 
-        if (xMatchesElement && !composition.isInteractable(line.getElement(xIndex), line)) {
-            return true;
+        var lastIdx = line.elementCount() - 1;
+        var terminalElement = line.getElement(lastIdx);
+
+        if (!composition.isAutoMaintainedTerminal(terminalElement, line)) {
+            return false;
         }
 
-        return xIndex == line.elementCount()
-            && !composition.isInteractable(line.getElement(line.elementCount() - 1), line);
+        if (xMatchesElement && xIndex == lastIdx) {
+            // Mouse is directly on the terminal. Lift the block when the active preview
+            // element can legally replace it; otherwise keep it blocked.
+            var previewElement = getActivePreviewElement();
+            return previewElement == null
+                || !composition.canReplaceTerminal(previewElement.getType());
+        }
+
+        // Mouse is at the append slot immediately after the terminal — always blocked.
+        return xIndex == line.elementCount();
     }
 
     /**

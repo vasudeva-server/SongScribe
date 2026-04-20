@@ -34,7 +34,7 @@ import songscribe.ui.selection.SelectionCoordinator;
  * Shared test helper for setting up a mock MainFrame environment
  * used by action-level unit tests.
  */
-final class MockEnvHelper {
+public final class MockEnvHelper {
 
     private MockEnvHelper() {
     }
@@ -45,7 +45,7 @@ final class MockEnvHelper {
         SelectionCoordinator coordinator
     ) {}
 
-    static MockEnv setupMockEnv(MockedStatic<MainFrame> mainFrameMock) {
+    public static MockEnv setupMockEnv(MockedStatic<MainFrame> mainFrameMock) {
         var mockFrame = mock(MainFrame.class);
         var mockScore = mock(Score.class);
         var mockCoordinator = mock(SelectionCoordinator.class);

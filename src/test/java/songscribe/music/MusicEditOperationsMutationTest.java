@@ -100,7 +100,7 @@ class MusicEditOperationsMutationTest extends UnitTest {
         }
 
         // addLine fires a real LineInsertion notification on the pre-mock bus.
-        // Use withoutMutationTracking so the final-barline invariant is not enforced
+        // Use withoutMutationTracking so the terminal invariant is not enforced
         // during setup — tests need to build lines with arbitrary terminal elements.
         composition.withoutMutationTracking(() -> composition.addLine(line));
         var coordinator = ReflectionTestHelper.createCoordinatorForLine(line);

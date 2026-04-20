@@ -605,14 +605,10 @@ class LineRenderer {
         if (lc.isGraceModeInProgress()) {
             x = lc.getGraceModeLockedXSs();
         } else {
-            // Pass mouse X so it can snap to note heads when mouse is over them
-            double mouseX = 0;
-            var mousePos = lc.getMousePosition();
-
-            if (mousePos != null) {
-                mouseX = ScaleContext.getInstance().fromPixels(mousePos.getX());
-            }
-
+            // Use the last tracked mouse X from PreviewElementManager — Swing's
+            // getMousePosition() can return null during repaints even when the mouse
+            // is over the component, which would break snap-to-terminal logic.
+            var mouseX = PreviewElementManager.getCurrentMouseXSs();
             var line = lc.getLine();
 
             if (line != null) {

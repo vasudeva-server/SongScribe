@@ -78,10 +78,10 @@ import songscribe.ui.layout.ScaleContext;
  *       whose text exactly matches a point dynamic symbol ({@code pp}, {@code p},
  *       {@code mp}, {@code mf}, {@code f}, {@code ff}) are converted to
  *       {@code DynamicAttachment} objects.</li>
- *   <li><b>v2.3 → v2.4</b>: {@link #migrateFinalBarline} — enforces the final-barline
- *       invariant: the last line ends in {@code FINAL_DOUBLE_BARLINE}; all misplaced
- *       {@code FINAL_DOUBLE_BARLINE} elements on non-last lines or in non-terminal
- *       positions are removed.</li>
+ *   <li><b>v2.3 → v2.4</b>: {@link #migrateFinalTerminal} — enforces the terminal
+ *       invariant: the last line ends in a valid terminal ({@code FINAL_DOUBLE_BARLINE} or
+ *       {@code REPEAT_RIGHT}); all misplaced {@code FINAL_DOUBLE_BARLINE} elements on
+ *       non-last lines or in non-terminal positions are removed.</li>
  * </ul>
  */
 public final class FormatMigrator {
@@ -526,23 +526,24 @@ public final class FormatMigrator {
     }
 
     /**
-     * Enforces the final-barline invariant on every line in the composition.
+     * Enforces the terminal invariant on every line in the composition.
      * <p>
      * Called when loading any file saved before v2.4. The decision tree for the last line:
      * <ul>
-     *   <li>{@code FINAL_DOUBLE_BARLINE} last element — no-op.</li>
-     *   <li>Other replaceable ending barline ({@code SINGLE_BARLINE}, {@code DOUBLE_BARLINE},
-     *       {@code REPEAT_RIGHT}, {@code REPEAT_LEFT_RIGHT}) — replaced with
-     *       {@code FINAL_DOUBLE_BARLINE}.</li>
+     *   <li>Valid terminal last element ({@code FINAL_DOUBLE_BARLINE} or
+     *       {@code REPEAT_RIGHT}) — no-op (both are conformant terminals).</li>
+     *   <li>Replaceable ending barline ({@code SINGLE_BARLINE}, {@code DOUBLE_BARLINE},
+     *       {@code REPEAT_LEFT_RIGHT}) — replaced with {@code FINAL_DOUBLE_BARLINE}.</li>
      *   <li>Any other element, or empty line — {@code FINAL_DOUBLE_BARLINE} appended.</li>
      * </ul>
      * All {@code FINAL_DOUBLE_BARLINE} elements on non-last lines, and any
      * {@code FINAL_DOUBLE_BARLINE} not in the terminal position of the last line, are
-     * removed before applying the decision tree.
+     * removed before applying the decision tree. Interior {@code REPEAT_RIGHT} elements
+     * on non-last lines are left untouched.
      *
      * @param lines the lines to migrate (not yet attached to a {@code Composition})
      */
-    public static void migrateFinalBarline(List<Line> lines) {
+    public static void migrateFinalTerminal(List<Line> lines) {
         if (lines.isEmpty()) {
             return;
         }
@@ -563,11 +564,11 @@ public final class FormatMigrator {
 
         var lastType = lastLine.getElement(lastIdx).getType();
 
-        if (lastType == ElementType.FINAL_DOUBLE_BARLINE) {
+        if (lastType.isValidTerminal()) {
             return;
         }
 
-        if (lastType.isReplaceableByFinalBarline()) {
+        if (lastType.isReplaceableByTerminal()) {
             lastLine.setElement(lastIdx, ElementType.FINAL_DOUBLE_BARLINE.newInstance());
         } else {
             lastLine.addElement(ElementType.FINAL_DOUBLE_BARLINE.newInstance());

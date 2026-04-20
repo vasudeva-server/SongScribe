@@ -66,7 +66,7 @@ class CompositionLoadingTest extends UnitTest {
         assertThat(composition.isModified()).isTrue();
     }
 
-    // T63: Loading a pre-2.4 file runs migrateFinalBarline inside withoutMutationTracking,
+    // T63: Loading a pre-2.4 file runs migrateFinalTerminal inside withoutMutationTracking,
     //      so the document is clean even though migration mutated elements.
     @Test
     void testLoadingLegacyCompositionDoesNotDirtyDocument() throws Exception {

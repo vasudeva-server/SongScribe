@@ -239,12 +239,12 @@ public class Line {
 
     public void addElement(StaffElement element) {
         element.setLine(this);
-        // When the line ends with the auto-maintained final barline, insert the new
-        // element before it so the final barline remains the last element.
+        // When the line ends with the auto-maintained terminal, insert the new
+        // element before it so the terminal remains the last element.
         var lastIdx = elements.size() - 1;
         var insertBeforeFinal = lastIdx >= 0
             && composition != null
-            && composition.isAutoMaintainedFinalBarline(elements.get(lastIdx), this);
+            && composition.isAutoMaintainedTerminal(elements.get(lastIdx), this);
         var index = insertBeforeFinal ? lastIdx : elements.size();
 
         applyChange(
@@ -259,18 +259,18 @@ public class Line {
     }
 
     /**
-     * Returns {@code true} when the final-barline mutation guards in this class should
+     * Returns {@code true} when the terminal mutation guards in this class should
      * be bypassed: the line has no parent composition yet, mutation tracking is suspended
      * (test setup), or the composition is currently auto-maintaining the invariant.
      */
-    private boolean isFinalBarlineGuardBypassed() {
+    private boolean isTerminalGuardBypassed() {
         return composition == null
             || composition.isMutationTrackingSuspended()
             || composition.isInAutoMaintenance();
     }
 
     public void addElement(int index, StaffElement element) {
-        if (!isFinalBarlineGuardBypassed()
+        if (!isTerminalGuardBypassed()
                 && element.getType() == ElementType.FINAL_DOUBLE_BARLINE
                 && (composition.indexOfLine(this) != composition.lineCount() - 1
                     || index != elementCount())) {
@@ -317,7 +317,7 @@ public class Line {
     }
 
     public void setElement(int index, StaffElement element) {
-        if (!isFinalBarlineGuardBypassed()
+        if (!isTerminalGuardBypassed()
                 && element.getType() == ElementType.FINAL_DOUBLE_BARLINE
                 && (composition.indexOfLine(this) != composition.lineCount() - 1
                     || index != elementCount() - 1)) {
@@ -408,10 +408,10 @@ public class Line {
     }
 
     public void removeElement(int index) {
-        if (!isFinalBarlineGuardBypassed()
-                && composition.isAutoMaintainedFinalBarline(elements.get(index), this)) {
+        if (!isTerminalGuardBypassed()
+                && composition.isAutoMaintainedTerminal(elements.get(index), this)) {
             throw new IllegalStateException(
-                "The auto-maintained final barline may not be removed");
+                "The auto-maintained terminal may not be removed");
         }
 
         removeOverlappingTuplets(index, index);
@@ -440,11 +440,11 @@ public class Line {
      * @param to   the index of the last element to remove (inclusive)
      */
     public void removeRange(int from, int to) {
-        if (!isFinalBarlineGuardBypassed()
+        if (!isTerminalGuardBypassed()
                 && elements.subList(from, to + 1).stream()
-                       .anyMatch(e -> composition.isAutoMaintainedFinalBarline(e, this))) {
+                       .anyMatch(e -> composition.isAutoMaintainedTerminal(e, this))) {
             throw new IllegalStateException(
-                "The auto-maintained final barline may not be removed");
+                "The auto-maintained terminal may not be removed");
         }
 
         removeOverlappingTuplets(from, to);
@@ -469,15 +469,16 @@ public class Line {
     }
 
     /**
-     * Returns the element count excluding a trailing auto-maintained
-     * {@link ElementType#FINAL_DOUBLE_BARLINE}. Use this wherever a computation
-     * should treat the composition-owned final barline as if it were not there
+     * Returns the element count excluding a trailing auto-maintained terminal
+     * ({@code FINAL_DOUBLE_BARLINE} or {@code REPEAT_RIGHT}). Use this wherever a
+     * computation should treat the composition-owned terminal as if it were not there
      * (insertion spacing, preview positioning, etc.).
      */
     public int effectiveElementCount() {
         var count = elements.size();
 
-        if (count > 0 && elements.get(count - 1).getType() == ElementType.FINAL_DOUBLE_BARLINE) {
+        if (count > 0 && composition != null
+                && composition.isAutoMaintainedTerminal(elements.get(count - 1), this)) {
             return count - 1;
         }
 

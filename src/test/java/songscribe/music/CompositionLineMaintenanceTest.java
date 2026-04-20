@@ -43,8 +43,9 @@ import songscribe.message.notification.CompositionDidChangeNotification;
 
 /**
  * Verifies that {@link Composition#addLine} and {@link Composition#removeLine} auto-maintain
- * the final-barline invariant: whenever the last line of the composition changes, the new last
- * line ends in {@code FINAL_DOUBLE_BARLINE} and no other line does. All maintenance mutations
+ * the terminal invariant: whenever the last line of the composition changes, the new last
+ * line ends in a valid terminal ({@code FINAL_DOUBLE_BARLINE} or {@code REPEAT_RIGHT}) and
+ * no other line does. All maintenance mutations
  * coalesce with the triggering {@link LineInsertion} / {@link LineDeletion} into a single
  * {@link CompositionDidChangeNotification}.
  */
@@ -157,7 +158,7 @@ class CompositionLineMaintenanceTest extends UnitTest {
         void testAppendLineAlreadyEndingInFinalTransfersWithoutDuplication() {
             var newLast = new Line();
             composition.withoutMutationTracking(
-                () -> newLast.addElement(Composition.createFinalBarlineElement())
+                () -> newLast.addElement(Composition.newTerminalElement(ElementType.FINAL_DOUBLE_BARLINE))
             );
 
             composition.addLine(1, newLast);
@@ -234,7 +235,7 @@ class CompositionLineMaintenanceTest extends UnitTest {
             composition.withoutMutationTracking(() -> {
                 initialLine.removeElement(initialLine.elementCount() - 1);
                 initialLine.addElement(new StaffElement(ElementType.CROTCHET));
-                newLast.addElement(Composition.createFinalBarlineElement());
+                newLast.addElement(Composition.newTerminalElement(ElementType.FINAL_DOUBLE_BARLINE));
             });
             composition.addLine(1, newLast);
             // Drain the addLine notification so the removeLine assertion below sees
@@ -266,7 +267,7 @@ class CompositionLineMaintenanceTest extends UnitTest {
                 initialLine.removeElement(initialLine.elementCount() - 1);
                 initialLine.addElement(new StaffElement(ElementType.CROTCHET));
                 initialLine.addElement(new StaffElement(ElementType.DOUBLE_BARLINE));
-                newLast.addElement(Composition.createFinalBarlineElement());
+                newLast.addElement(Composition.newTerminalElement(ElementType.FINAL_DOUBLE_BARLINE));
             });
             composition.addLine(1, newLast);
             messageCenterMock.reset();
@@ -291,11 +292,11 @@ class CompositionLineMaintenanceTest extends UnitTest {
             // withoutMutationTracking so the post-addLine state has FINAL on both lines.
             var newLast = new Line();
             composition.withoutMutationTracking(
-                () -> newLast.addElement(Composition.createFinalBarlineElement())
+                () -> newLast.addElement(Composition.newTerminalElement(ElementType.FINAL_DOUBLE_BARLINE))
             );
             composition.addLine(1, newLast);
             composition.withoutMutationTracking(
-                () -> initialLine.addElement(Composition.createFinalBarlineElement())
+                () -> initialLine.addElement(Composition.newTerminalElement(ElementType.FINAL_DOUBLE_BARLINE))
             );
             messageCenterMock.reset();
 
@@ -322,7 +323,7 @@ class CompositionLineMaintenanceTest extends UnitTest {
         void testRemovingNonLastLineRunsNoMaintenance() {
             var newLast = new Line();
             composition.withoutMutationTracking(
-                () -> newLast.addElement(Composition.createFinalBarlineElement())
+                () -> newLast.addElement(Composition.newTerminalElement(ElementType.FINAL_DOUBLE_BARLINE))
             );
             composition.addLine(1, newLast);
             messageCenterMock.reset();

@@ -31,6 +31,7 @@ import org.jspecify.annotations.Nullable;
 import net.engio.mbassy.listener.Handler;
 
 import songscribe.Strings;
+import songscribe.error.RuntimeError;
 import songscribe.message.CompositionData;
 import songscribe.message.Message;
 import songscribe.message.MessageCenter;
@@ -202,7 +203,7 @@ public final class Composition {
     private int suspensionDepth;
 
     // While true, Line mutation guards are bypassed so Composition can auto-maintain
-    // the final-barline invariant without triggering the guards that protect against
+    // the terminal invariant without triggering the guards that protect against
     // user-driven invariant violations.
     private boolean autoMaintenance;
 
@@ -235,7 +236,7 @@ public final class Composition {
         initialLine.setTempoChangeYPosPx(
             ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.TEMPO_DEFAULT_Y_FIRST_LINE_SS)
         );
-        initialLine.addElement(createFinalBarlineElement());
+        initialLine.addElement(newTerminalElement(ElementType.FINAL_DOUBLE_BARLINE));
         lines.add(initialLine);
         initialLine.setComposition(this);
 
@@ -788,8 +789,9 @@ public final class Composition {
 
     /**
      * Inserts {@code line} at {@code index} and, when the insertion makes {@code line}
-     * the new last line, transfers the final-barline invariant so the last element of
-     * the last line is always {@code FINAL_DOUBLE_BARLINE}. All resulting mutations
+     * the new last line, transfers the terminal invariant so the last element of
+     * the last line is always a valid terminal ({@code FINAL_DOUBLE_BARLINE} or
+     * {@code REPEAT_RIGHT}). All resulting mutations
      * coalesce into a single {@link CompositionDidChangeNotification}.
      *
      * <p>The invariant transfer is skipped when mutation tracking is suspended
@@ -841,14 +843,14 @@ public final class Composition {
             });
 
             if (willBecomeNewLast && !isMutationTrackingSuspended()) {
-                maintainFinalBarlineOnLastLineChange(previousLastLine, line);
+                maintainTerminalOnLastLineChange(previousLastLine, line);
             }
         }));
     }
 
     /**
      * Removes the line at {@code index} and, when the removed line was the last line,
-     * installs the final barline on the new last line so the invariant holds. All
+     * installs the terminal on the new last line so the invariant holds. All
      * resulting mutations coalesce into a single {@link CompositionDidChangeNotification}.
      *
      * <p>The invariant transfer is skipped when mutation tracking is suspended
@@ -883,57 +885,112 @@ public final class Composition {
             );
 
             if (wasLast && !lines.isEmpty() && !isMutationTrackingSuspended()) {
-                maintainFinalBarlineOnLastLineChange(null, lines.get(lines.size() - 1));
+                maintainTerminalOnLastLineChange(null, lines.get(lines.size() - 1));
             }
         }));
     }
 
     /**
-     * Maintains the final-barline invariant after the last line of the composition
-     * has changed. Must be called inside an open modification bracket with
-     * {@link #incrementAutoMaintenance} raised so the {@link Line} guards do not
-     * reject the internally-driven mutations.
+     * Maintains the terminal invariant after the last line of the composition has
+     * changed: the last element of the last line must be a valid terminal
+     * ({@code FINAL_DOUBLE_BARLINE} or {@code REPEAT_RIGHT}). Must be called inside
+     * an open modification bracket with {@link #incrementAutoMaintenance} raised so
+     * the {@link Line} guards do not reject the internally-driven mutations.
      *
-     * <p>Strips any {@code FINAL_DOUBLE_BARLINE} at the end of {@code previousLastLine}
-     * (when supplied), then installs a {@code FINAL_DOUBLE_BARLINE} on
-     * {@code newLastLine}: no-op when it already ends with one, replacement when it
-     * ends with another barline or right-repeat, append otherwise (including the
+     * <p>Determines the terminal type to install via {@link #terminalTypeToInstall}
+     * (carry over the outgoing terminal; else promote an existing {@code REPEAT_RIGHT}
+     * on the new last line; else default to {@code FINAL_DOUBLE_BARLINE}). Strips the
+     * terminal element — either type — off {@code previousLastLine}, then installs
+     * the chosen type on {@code newLastLine}: no-op when {@code FINAL_DOUBLE_BARLINE}
+     * is already in place, replacement when the existing last element is bar-like or
+     * a {@code REPEAT_RIGHT} being promoted in place, append otherwise (including the
      * empty-line case).
      */
-    private void maintainFinalBarlineOnLastLineChange(
+    private void maintainTerminalOnLastLineChange(
         @Nullable Line previousLastLine, Line newLastLine
     ) {
-        if (previousLastLine != null && previousLastLine != newLastLine) {
-            var prevLastIdx = previousLastLine.elementCount() - 1;
+        var outgoingTerminalType = outgoingTerminalType(previousLastLine, newLastLine);
+        var typeToInstall = terminalTypeToInstall(outgoingTerminalType, newLastLine);
 
-            if (prevLastIdx >= 0
-                && previousLastLine.getElement(prevLastIdx).getType() == ElementType.FINAL_DOUBLE_BARLINE) {
-                previousLastLine.removeElement(prevLastIdx);
-            }
+        if (outgoingTerminalType != null && previousLastLine != null) {
+            previousLastLine.removeElement(previousLastLine.elementCount() - 1);
         }
 
         var lastIdx = newLastLine.elementCount() - 1;
 
         if (lastIdx < 0) {
-            newLastLine.addElement(createFinalBarlineElement());
+            newLastLine.addElement(newTerminalElement(typeToInstall));
             return;
         }
 
         var lastType = newLastLine.getElement(lastIdx).getType();
 
-        if (lastType == ElementType.FINAL_DOUBLE_BARLINE) {
+        // FINAL_DOUBLE_BARLINE is guard-locked to end-of-last-line, so when it is
+        // already in place and is the type we want to install, no semantic change is
+        // required. A REPEAT_RIGHT already sitting here, by contrast, is an interior
+        // right-repeat being promoted to the terminal — fall through so the
+        // replacement below emits an ElementReplacement for undo.
+        if (lastType == ElementType.FINAL_DOUBLE_BARLINE
+            && typeToInstall == ElementType.FINAL_DOUBLE_BARLINE) {
             return;
         }
 
-        if (isReplaceableEndingBarline(lastType)) {
-            newLastLine.setElement(lastIdx, createFinalBarlineElement());
+        if (lastType.isReplaceableByTerminal()) {
+            newLastLine.setElement(lastIdx, newTerminalElement(typeToInstall));
         } else {
-            newLastLine.addElement(createFinalBarlineElement());
+            newLastLine.addElement(newTerminalElement(typeToInstall));
         }
     }
 
-    private static boolean isReplaceableEndingBarline(ElementType type) {
-        return type.isReplaceableByFinalBarline();
+    /**
+     * Returns the terminal type at the end of {@code previousLastLine} if it is the
+     * outgoing terminal (non-null, distinct from {@code newLastLine}, and ends in a
+     * valid terminal). Returns {@code null} otherwise.
+     */
+    @Nullable
+    private static ElementType outgoingTerminalType(
+        @Nullable Line previousLastLine, Line newLastLine
+    ) {
+        if (previousLastLine == null || previousLastLine == newLastLine) {
+            return null;
+        }
+
+        var prevLastIdx = previousLastLine.elementCount() - 1;
+
+        if (prevLastIdx < 0) {
+            return null;
+        }
+
+        var type = previousLastLine.getElement(prevLastIdx).getType();
+        return type.isValidTerminal() ? type : null;
+    }
+
+    /**
+     * Determines which terminal type {@link #maintainTerminalOnLastLineChange} should
+     * install on the new last line. Decision tree:
+     * <ol>
+     *   <li>If {@code outgoingTerminalType} is non-null, carry it over — preserves
+     *       user intent across {@code addLine} / {@code removeLine}.
+     *   <li>Otherwise, if the new last line already ends in a {@code REPEAT_RIGHT}
+     *       (user-placed interior right-repeat), promote it in place.
+     *   <li>Otherwise, default to {@code FINAL_DOUBLE_BARLINE}.
+     * </ol>
+     */
+    private static ElementType terminalTypeToInstall(
+        @Nullable ElementType outgoingTerminalType, Line newLastLine
+    ) {
+        if (outgoingTerminalType != null) {
+            return outgoingTerminalType;
+        }
+
+        var lastIdx = newLastLine.elementCount() - 1;
+
+        if (lastIdx >= 0
+            && newLastLine.getElement(lastIdx).getType() == ElementType.REPEAT_RIGHT) {
+            return ElementType.REPEAT_RIGHT;
+        }
+
+        return ElementType.FINAL_DOUBLE_BARLINE;
     }
 
     /**
@@ -957,9 +1014,9 @@ public final class Composition {
     }
 
     /**
-     * Runs {@code body} with the auto-maintenance flag raised so that the final-barline
+     * Runs {@code body} with the auto-maintenance flag raised so that the terminal
      * guards in {@link Line} are bypassed for the duration. Used by {@link #addLine} and
-     * {@link #removeLine} to transfer the final barline without triggering the guard.
+     * {@link #removeLine} to transfer the terminal without triggering the guard.
      */
     private void incrementAutoMaintenance(Runnable body) {
         autoMaintenance = true;
@@ -972,36 +1029,84 @@ public final class Composition {
     }
 
     /**
-     * Returns a fresh {@link ElementType#FINAL_DOUBLE_BARLINE} element. The single
-     * canonical factory for the auto-maintained final barline — used by new-composition
-     * setup, load-time migration, and auto-maintenance in {@code addLine}/{@code removeLine}.
+     * Returns a fresh element of the given terminal type. Throws
+     * {@link IllegalArgumentException} if {@code type} is not a valid terminal
+     * (i.e. {@link ElementType#isValidTerminal()} returns {@code false}).
      */
-    static StaffElement createFinalBarlineElement() {
-        return ElementType.FINAL_DOUBLE_BARLINE.newInstance();
+    static StaffElement newTerminalElement(ElementType type) {
+        if (!type.isValidTerminal()) {
+            throw new IllegalArgumentException("Not a valid terminal type: " + type);
+        }
+
+        return type.newInstance();
     }
 
     /**
      * Returns {@code true} when {@code element} is the composition's auto-maintained
-     * final barline: its type is {@link ElementType#FINAL_DOUBLE_BARLINE} and
-     * {@code line} is the last line of this composition.
+     * terminal: it occupies the last position of the last line, and its type satisfies
+     * {@link ElementType#isValidTerminal()}.
      *
-     * <p>A {@code FINAL_DOUBLE_BARLINE} that sits on any line other than the last is
-     * treated as an ordinary (interactable) element — it is a data anomaly that the
-     * load-time migration (Phase 3) cleans up, but the model does not block access to it.
+     * <p>A valid terminal type that sits on any line other than the last, or at any
+     * position other than the last, is treated as an ordinary (interactable) element.
      */
-    boolean isAutoMaintainedFinalBarline(StaffElement element, Line line) {
-        return element.getType() == ElementType.FINAL_DOUBLE_BARLINE
-            && lines.getLast() == line;
+    public boolean isAutoMaintainedTerminal(StaffElement element, Line line) {
+        var lastIdx = line.elementCount() - 1;
+        return lastIdx >= 0
+            && element.getType().isValidTerminal()
+            && lines.getLast() == line
+            && line.getElement(lastIdx) == element;
     }
 
     /**
      * Returns {@code true} when the user may interact with {@code element} on {@code line}
      * (select, click, drag, delete, etc.). Returns {@code false} only for the
-     * composition's auto-maintained final barline — i.e., a
-     * {@link ElementType#FINAL_DOUBLE_BARLINE} that is the last element of the last line.
+     * composition's auto-maintained terminal — i.e., a {@link ElementType#isValidTerminal()
+     * valid terminal} element that is the last element of the last line.
      */
     public boolean isInteractable(StaffElement element, Line line) {
-        return !isAutoMaintainedFinalBarline(element, line);
+        return !isAutoMaintainedTerminal(element, line);
+    }
+
+    /** Returns the type of the current auto-maintained terminal element. */
+    public ElementType currentTerminalType() {
+        var lastLine = lines.getLast();
+        var lastIdx = lastLine.elementCount() - 1;
+
+        if (lastIdx < 0) {
+            throw RuntimeError.exit("Terminal invariant violated: last line is empty");
+        }
+
+        return lastLine.getElement(lastIdx).getType();
+    }
+
+    /**
+     * Returns {@code true} when the terminal may be replaced with an element of the given
+     * type: {@code incomingType} must be a valid terminal and must differ from the type
+     * currently occupying the terminal slot.
+     */
+    public boolean canReplaceTerminal(ElementType incomingType) {
+        return incomingType.isValidTerminal() && incomingType != currentTerminalType();
+    }
+
+    /**
+     * Replaces the terminal element with a fresh element of {@code incomingType}.
+     * This is a user-driven mutation — no auto-maintenance increment. No-op when
+     * {@code incomingType} already matches the current terminal type. Throws
+     * {@link IllegalArgumentException} if {@code incomingType} is not a valid terminal.
+     */
+    public void replaceTerminal(ElementType incomingType) {
+        if (!incomingType.isValidTerminal()) {
+            throw new IllegalArgumentException("Not a valid terminal type: " + incomingType);
+        }
+
+        if (incomingType == currentTerminalType()) {
+            return;
+        }
+
+        var lastLine = lines.getLast();
+        var lastIdx = lastLine.elementCount() - 1;
+
+        withModification(() -> lastLine.setElement(lastIdx, newTerminalElement(incomingType)));
     }
 
     /**

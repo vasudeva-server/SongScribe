@@ -646,7 +646,7 @@ public final class LayoutResult {
      * @return Insertion index (0 to elementCount inclusive)
      */
     public int findInsertionIndex(double mouseXSs, songscribe.music.Line line) {
-        // Exclude the auto-maintained final barline: insertions always occur before it,
+        // Exclude the auto-maintained terminal: insertions always occur before it,
         // and the gap between the last real element and the barline should behave as
         // "after the last element" rather than a between-elements midpoint.
         int elementCount = line.effectiveElementCount();
@@ -731,7 +731,7 @@ public final class LayoutResult {
         StaffElement previewElement,
         songscribe.music.Line line) {
 
-        // Exclude the auto-maintained final barline from positioning decisions —
+        // Exclude the auto-maintained terminal from positioning decisions —
         // it sits at the line's right edge and must not be treated as a real
         // neighbour for spacing the preview.
         int elementCount = line.effectiveElementCount();
@@ -741,8 +741,9 @@ public final class LayoutResult {
             return LayoutStylesheet.calculateFirstElementXSs(line.getKeyAccidentalCount());
         }
 
-        // Check if mouse is over any element head - if so, snap to that element's position
-        for (var i = 0; i < elementCount; i++) {
+        // Check if mouse is over any element head - if so, snap to that element's position.
+        // Include the terminal so hovering over it snaps the preview to its position.
+        for (var i = 0; i < line.elementCount(); i++) {
             var element = line.getElement(i);
             var column = elementColumns.get(element);
 
@@ -753,7 +754,18 @@ public final class LayoutResult {
             var elementX = column.getXSs();
 
             if (mouseXSs >= elementX && mouseXSs <= elementX + column.getRightExtentSs()) {
-                // Mouse is over this element head - snap to its position
+                // Mouse is over this element head - snap to its position.
+                // For the terminal, right-align the preview to the terminal's right edge
+                // so a wider replacement (e.g. REPEAT_RIGHT replacing FINAL_DOUBLE_BARLINE)
+                // doesn't overflow the staff boundary.
+                var composition = line.getComposition();
+
+                if (composition != null && composition.isAutoMaintainedTerminal(element, line)) {
+                    var previewRightExtentSs = ElementColumnBuilder.calculateRightExtentSs(
+                            previewElement, false, true);
+                    return elementX + column.getRightExtentSs() - previewRightExtentSs;
+                }
+
                 return elementX;
             }
         }

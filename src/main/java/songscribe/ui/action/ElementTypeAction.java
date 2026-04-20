@@ -41,7 +41,7 @@ public class ElementTypeAction extends StickyUIAction implements UIAction.Elemen
         Flag.DISABLE_WHEN_EDITING_TEXT,
     };
 
-    private static final Flag[] NON_DURATION_FLAGS = new Flag[]{
+    static final Flag[] NON_DURATION_FLAGS = new Flag[]{
         Flag.DISABLE_IN_REST_MODE,
         Flag.DISABLE_WHEN_PLAYING,
         Flag.DISABLE_IN_ADJUSTMENT_MODE,
@@ -218,7 +218,7 @@ public class ElementTypeAction extends StickyUIAction implements UIAction.Elemen
         this(kind, type, null, name, icon, size, actionCommand, tooltip, virtualKey, modifiers, flags);
     }
 
-    private ElementTypeAction(
+    protected ElementTypeAction(
         Kind kind,
         ElementType type,
         StaffElement.Glissando.@Nullable Type glissandoType,

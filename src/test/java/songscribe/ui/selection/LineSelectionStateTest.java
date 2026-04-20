@@ -151,6 +151,27 @@ class LineSelectionStateTest extends UnitTest {
     }
 
     @Test
+    void testSelectAllExcludesAutoMaintainedRightRepeatTerminalOnLastLine() {
+        var composition = new Composition();
+        var line = composition.getLine(0);
+        composition.replaceTerminal(ElementType.REPEAT_RIGHT);
+
+        composition.withoutMutationTracking(() -> {
+            line.addElement(0, ElementType.CROTCHET.newInstance());
+            line.addElement(1, ElementType.CROTCHET.newInstance());
+        });
+
+        assertThat(line.elementCount()).isEqualTo(3);
+        assertThat(line.getElement(2).getType()).isEqualTo(ElementType.REPEAT_RIGHT);
+
+        var state = new LineSelectionState(line);
+        state.selectAll();
+
+        assertThat(state.getSelectionBegin()).isEqualTo(0);
+        assertThat(state.getSelectionEnd()).isEqualTo(1);
+    }
+
+    @Test
     void testSelectAllOnLineWithOnlyFinalBarlineSelectsNothing() {
         var composition = new Composition();
         var line = composition.getLine(0);

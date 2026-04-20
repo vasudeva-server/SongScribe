@@ -24,6 +24,7 @@ import static songscribe.ui.action.Actions.BARLINE_ACTIONS;
 import module java.desktop;
 
 import songscribe.Strings;
+import songscribe.ui.action.FinalTerminalAction;
 
 public class BarlineMenu extends JMenu {
 
@@ -33,5 +34,17 @@ public class BarlineMenu extends JMenu {
         for (var action : BARLINE_ACTIONS) {
             add(new JRadioButtonMenuItem(action));
         }
+
+        addSeparator();
+
+        var finalBarlineRadio = new JRadioButtonMenuItem(FinalTerminalAction.createFinalDoubleBarline());
+        var finalRightRepeatRadio = new JRadioButtonMenuItem(FinalTerminalAction.createFinalRightRepeat());
+
+        var terminalGroup = new ButtonGroup();
+        terminalGroup.add(finalBarlineRadio);
+        terminalGroup.add(finalRightRepeatRadio);
+
+        add(finalBarlineRadio);
+        add(finalRightRepeatRadio);
     }
 }

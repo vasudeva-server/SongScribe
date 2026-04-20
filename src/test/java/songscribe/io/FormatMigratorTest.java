@@ -132,14 +132,14 @@ class FormatMigratorTest extends UnitTest {
     }
 
     @Nested
-    class MigrateFinalBarline {
+    class MigrateFinalTerminal {
 
         // T52: FINAL_DOUBLE_BARLINE on a non-last line → stripped; last line's own final preserved.
         @Test
         void testFinalBarlineOnNonLastLineIsRemoved() {
             var nonLast = lineWith(ElementType.CROTCHET, ElementType.FINAL_DOUBLE_BARLINE);
             var last = lineWith(ElementType.CROTCHET, ElementType.FINAL_DOUBLE_BARLINE);
-            FormatMigrator.migrateFinalBarline(List.of(nonLast, last));
+            FormatMigrator.migrateFinalTerminal(List.of(nonLast, last));
 
             assertThat(nonLast.elementCount()).isEqualTo(1);
             assertThat(nonLast.getElement(0).getType()).isEqualTo(ElementType.CROTCHET);
@@ -156,17 +156,28 @@ class FormatMigratorTest extends UnitTest {
                 ElementType.FINAL_DOUBLE_BARLINE
             );
             var last = lineWith(ElementType.FINAL_DOUBLE_BARLINE);
-            FormatMigrator.migrateFinalBarline(List.of(nonLast, last));
+            FormatMigrator.migrateFinalTerminal(List.of(nonLast, last));
 
             assertThat(nonLast.elementCount()).isEqualTo(1);
             assertThat(nonLast.getElement(0).getType()).isEqualTo(ElementType.CROTCHET);
+        }
+
+        // Interior REPEAT_RIGHT on a non-last line is not stripped.
+        @Test
+        void testRepeatRightOnNonLastLineIsPreserved() {
+            var nonLast = lineWith(ElementType.CROTCHET, ElementType.REPEAT_RIGHT);
+            var last = lineWith(ElementType.CROTCHET, ElementType.FINAL_DOUBLE_BARLINE);
+            FormatMigrator.migrateFinalTerminal(List.of(nonLast, last));
+
+            assertThat(nonLast.elementCount()).isEqualTo(2);
+            assertThat(nonLast.getElement(1).getType()).isEqualTo(ElementType.REPEAT_RIGHT);
         }
 
         // T54: Last line ends in SINGLE_BARLINE → replaced with FINAL_DOUBLE_BARLINE.
         @Test
         void testSingleBarlineAtEndIsReplaced() {
             var last = lineWith(ElementType.CROTCHET, ElementType.SINGLE_BARLINE);
-            FormatMigrator.migrateFinalBarline(List.of(last));
+            FormatMigrator.migrateFinalTerminal(List.of(last));
 
             assertThat(last.elementCount()).isEqualTo(2);
             assertThat(last.getElement(1).getType()).isEqualTo(ElementType.FINAL_DOUBLE_BARLINE);
@@ -176,27 +187,42 @@ class FormatMigratorTest extends UnitTest {
         @Test
         void testDoubleBarlineAtEndIsReplaced() {
             var last = lineWith(ElementType.CROTCHET, ElementType.DOUBLE_BARLINE);
-            FormatMigrator.migrateFinalBarline(List.of(last));
+            FormatMigrator.migrateFinalTerminal(List.of(last));
 
             assertThat(last.getElement(last.elementCount() - 1).getType())
                 .isEqualTo(ElementType.FINAL_DOUBLE_BARLINE);
         }
 
-        // T56: Last line ends in REPEAT_RIGHT → replaced.
+        // T56: Last line ends in REPEAT_RIGHT → preserved as valid terminal (no-op).
         @Test
-        void testRepeatRightAtEndIsReplaced() {
+        void testRepeatRightAtEndIsPreservedAsTerminal() {
             var last = lineWith(ElementType.CROTCHET, ElementType.REPEAT_RIGHT);
-            FormatMigrator.migrateFinalBarline(List.of(last));
+            var originalRepeat = last.getElement(1);
+            FormatMigrator.migrateFinalTerminal(List.of(last));
 
-            assertThat(last.getElement(last.elementCount() - 1).getType())
-                .isEqualTo(ElementType.FINAL_DOUBLE_BARLINE);
+            assertThat(last.elementCount()).isEqualTo(2);
+            assertThat(last.getElement(1)).isSameAs(originalRepeat);
+        }
+
+        // Misplaced FINAL_DOUBLE_BARLINE before a REPEAT_RIGHT: the barline is stripped,
+        // leaving REPEAT_RIGHT as the terminal, which is a valid terminal (no-op).
+        @Test
+        void testMisplacedFinalBarlineBeforeRepeatRightLeavesRepeatAsTerminal() {
+            var last = lineWith(
+                ElementType.CROTCHET, ElementType.FINAL_DOUBLE_BARLINE, ElementType.REPEAT_RIGHT);
+            var originalRepeat = last.getElement(2);
+            FormatMigrator.migrateFinalTerminal(List.of(last));
+
+            assertThat(last.elementCount()).isEqualTo(2);
+            assertThat(last.getElement(0).getType()).isEqualTo(ElementType.CROTCHET);
+            assertThat(last.getElement(1)).isSameAs(originalRepeat);
         }
 
         // T57: Last line ends in REPEAT_LEFT_RIGHT → replaced.
         @Test
         void testRepeatLeftRightAtEndIsReplaced() {
             var last = lineWith(ElementType.CROTCHET, ElementType.REPEAT_LEFT_RIGHT);
-            FormatMigrator.migrateFinalBarline(List.of(last));
+            FormatMigrator.migrateFinalTerminal(List.of(last));
 
             assertThat(last.getElement(last.elementCount() - 1).getType())
                 .isEqualTo(ElementType.FINAL_DOUBLE_BARLINE);
@@ -206,7 +232,7 @@ class FormatMigratorTest extends UnitTest {
         @Test
         void testRepeatLeftAtEndGetsBarlineAppended() {
             var last = lineWith(ElementType.CROTCHET, ElementType.REPEAT_LEFT);
-            FormatMigrator.migrateFinalBarline(List.of(last));
+            FormatMigrator.migrateFinalTerminal(List.of(last));
 
             assertThat(last.elementCount()).isEqualTo(3);
             assertThat(last.getElement(2).getType()).isEqualTo(ElementType.FINAL_DOUBLE_BARLINE);
@@ -216,7 +242,7 @@ class FormatMigratorTest extends UnitTest {
         @Test
         void testNoteAtEndGetsFinalBarlineAppended() {
             var last = lineWith(ElementType.CROTCHET);
-            FormatMigrator.migrateFinalBarline(List.of(last));
+            FormatMigrator.migrateFinalTerminal(List.of(last));
 
             assertThat(last.elementCount()).isEqualTo(2);
             assertThat(last.getElement(1).getType()).isEqualTo(ElementType.FINAL_DOUBLE_BARLINE);
@@ -227,7 +253,7 @@ class FormatMigratorTest extends UnitTest {
         void testAlreadyEndsInFinalBarlineIsNoOp() {
             var last = lineWith(ElementType.CROTCHET, ElementType.FINAL_DOUBLE_BARLINE);
             var originalFinal = last.getElement(1);
-            FormatMigrator.migrateFinalBarline(List.of(last));
+            FormatMigrator.migrateFinalTerminal(List.of(last));
 
             assertThat(last.elementCount()).isEqualTo(2);
             assertThat(last.getElement(1)).isSameAs(originalFinal);
@@ -237,7 +263,7 @@ class FormatMigratorTest extends UnitTest {
         @Test
         void testEmptyLastLineGetsFinalBarlineAppended() {
             var last = new Line();
-            FormatMigrator.migrateFinalBarline(List.of(last));
+            FormatMigrator.migrateFinalTerminal(List.of(last));
 
             assertThat(last.elementCount()).isEqualTo(1);
             assertThat(last.getElement(0).getType()).isEqualTo(ElementType.FINAL_DOUBLE_BARLINE);
@@ -248,7 +274,7 @@ class FormatMigratorTest extends UnitTest {
         void testMisplacedFinalBarlineOnLastLineIsStrippedBeforeInstall() {
             // FINAL in middle of last line — should be stripped, then note ends it → appended.
             var last = lineWith(ElementType.FINAL_DOUBLE_BARLINE, ElementType.CROTCHET);
-            FormatMigrator.migrateFinalBarline(List.of(last));
+            FormatMigrator.migrateFinalTerminal(List.of(last));
 
             assertThat(last.elementCount()).isEqualTo(2);
             assertThat(last.getElement(0).getType()).isEqualTo(ElementType.CROTCHET);

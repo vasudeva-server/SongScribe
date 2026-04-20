@@ -189,7 +189,7 @@ public class HorizontalAdjustment extends Adjustment {
         var line = composition.getLine(draggingRect.line);
         var note = line.getElement(draggingRect.xIndex);
 
-        // The final barline's position is owned by layout; skip snap-to-end for it.
+        // The terminal's position is owned by layout; skip snap-to-end for it.
         if (
             composition.isInteractable(note, line) &&
                 note.getType().snapToEnd() &&

@@ -260,13 +260,14 @@ public enum ElementType {
     }
 
     /**
-     * Returns the X position at which the final double barline should be placed
+     * Returns the X position at which the given terminal type should be placed
      * so its right edge aligns flush with the right edge of the line.
      *
-     * @param lineWidthSs the line width in staff spaces
+     * @param lineWidthSs  the line width in staff spaces
+     * @param terminalType the terminal element type ({@link #isValidTerminal()} must be true)
      */
-    public static double finalBarlineFlushRightXSs(double lineWidthSs) {
-        return lineWidthSs - FINAL_DOUBLE_BARLINE.getElementWidthSs();
+    public static double terminalFlushRightXSs(double lineWidthSs, ElementType terminalType) {
+        return lineWidthSs - terminalType.getElementWidthSs();
     }
 
     /**
@@ -458,16 +459,26 @@ public enum ElementType {
 
     /**
      * Returns {@code true} for barline types that, when present as the last element of
-     * the last line, are replaced by the final barline rather than having one appended
-     * after them: {@code SINGLE_BARLINE}, {@code DOUBLE_BARLINE}, {@code REPEAT_RIGHT},
-     * {@code REPEAT_LEFT_RIGHT}. {@code REPEAT_LEFT} is intentionally excluded — a
-     * left-facing repeat does not terminate the line, so the final barline is appended.
+     * the last line, are replaced by the auto-maintained terminal rather than having
+     * one appended after them: {@code SINGLE_BARLINE}, {@code DOUBLE_BARLINE},
+     * {@code REPEAT_RIGHT}, {@code REPEAT_LEFT_RIGHT}. {@code REPEAT_LEFT} is
+     * intentionally excluded — a left-facing repeat does not terminate the line, so
+     * the terminal is appended.
      */
-    public boolean isReplaceableByFinalBarline() {
+    public boolean isReplaceableByTerminal() {
         return this == SINGLE_BARLINE
             || this == DOUBLE_BARLINE
             || this == REPEAT_RIGHT
             || this == REPEAT_LEFT_RIGHT;
+    }
+
+    /**
+     * Returns {@code true} for element types that may occupy the auto-maintained terminal
+     * slot (last position of the last line): {@code FINAL_DOUBLE_BARLINE} or
+     * {@code REPEAT_RIGHT}.
+     */
+    public boolean isValidTerminal() {
+        return this == FINAL_DOUBLE_BARLINE || this == REPEAT_RIGHT;
     }
 
     /**

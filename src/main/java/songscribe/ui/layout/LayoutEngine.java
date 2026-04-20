@@ -171,10 +171,10 @@ public class LayoutEngine {
             return null;
         }
 
-        // Step 3b: Pin the final barline flush-right on the last line.
-        // Layout is the sole writer of the final barline's x position.
+        // Step 3b: Pin the terminal flush-right on the last line.
+        // Layout is the sole writer of the terminal's x position.
         if (isLastLine) {
-            positionFinalBarlineFlushRight(columns);
+            positionTerminalFlushRight(columns);
         }
 
         var builder = LayoutResult.builder();
@@ -200,12 +200,18 @@ public class LayoutEngine {
         return buildLayoutResult(columns, line, builder);
     }
 
-    private void positionFinalBarlineFlushRight(List<ElementColumn> columns) {
-        for (var column : columns) {
-            if (column.getElement().getType() == ElementType.FINAL_DOUBLE_BARLINE) {
-                column.setXSs(ElementType.finalBarlineFlushRightXSs(staffRightMarginSs));
-                return;
-            }
+    private void positionTerminalFlushRight(List<ElementColumn> columns) {
+        if (columns.isEmpty()) {
+            return;
+        }
+
+        // On the last line, the terminal is always the last element. Only the last
+        // column is snapped flush-right — interior REPEAT_RIGHTs are left in place.
+        var lastColumn = columns.getLast();
+        var lastType = lastColumn.getElement().getType();
+
+        if (lastType.isValidTerminal()) {
+            lastColumn.setXSs(ElementType.terminalFlushRightXSs(staffRightMarginSs, lastType));
         }
     }
 
