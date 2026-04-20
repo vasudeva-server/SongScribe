@@ -236,7 +236,7 @@ class SelectionTest extends E2ETest {
                 var lc = Objects.requireNonNull(score().getLineComponent(0));
                 var line = Objects.requireNonNull(lc.getLine());
                 var layoutResult = lc.getLayoutResult();
-                var lastElement = line.getElement(line.elementCount() - 1);
+                var lastElement = line.getElement(line.effectiveElementCount() - 1);
                 var lastXSs = layoutResult != null ? layoutResult.getElementXSs(lastElement) : 0.0;
                 int pastLastXPx = (int) Math.round(ScaleContext.getInstance().toPixels(lastXSs)) + 40;
                 var loc = lc.getLocationOnScreen();

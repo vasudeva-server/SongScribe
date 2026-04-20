@@ -62,7 +62,7 @@ public class LyricsAdjustment extends Adjustment {
                     draggingRect.rectangle.y
                 );
                 bottomRightDragBounds.setLocation(
-                    (draggingRect.xIndex < (line.elementCount() - 1))
+                    (draggingRect.xIndex < (line.effectiveElementCount() - 1))
                         ? line.getElement(draggingRect.xIndex + 1).getXOffsetPx()
                         : score.getComposition().getLineWidthSs(),
                     draggingRect.rectangle.y
@@ -160,7 +160,7 @@ public class LyricsAdjustment extends Adjustment {
                 var line = c.getLine(l);
                 var foundLyrics = -1;
 
-                for (var n = 0; n < line.elementCount(); n++) {
+                for (var n = 0; n < line.effectiveElementCount(); n++) {
                     var syllable = line.getElement(n).properties.syllable;
 
                     if (syllable != null && !syllable.isEmpty()) {

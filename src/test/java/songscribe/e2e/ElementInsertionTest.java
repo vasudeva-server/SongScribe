@@ -401,7 +401,7 @@ class ElementInsertionTest extends E2ETest {
             // Count non-grace pitched notes — only these should produce NOTE_ONs
             var pitchedNonGraceCount = 0;
 
-            for (var i = 0; i < line.elementCount(); i++) {
+            for (var i = 0; i < line.effectiveElementCount(); i++) {
                 var type = line.getElement(i).getType();
 
                 if (type.isPitchedNote() && !type.isGraceNote()) {

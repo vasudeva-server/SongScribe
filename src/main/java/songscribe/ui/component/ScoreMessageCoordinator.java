@@ -425,10 +425,10 @@ public final class ScoreMessageCoordinator {
 
                 // Shift elements after the selection to fill the gap, mirroring the
                 // per-element xPos adjustment that deleteNote performs.
-                if (end < line.elementCount() - 1) {
+                if (end < line.effectiveElementCount() - 1) {
                     var shift = line.getElement(begin).getXOffsetPx() - line.getElement(end + 1).getXOffsetPx();
 
-                    for (var i = end + 1; i < line.elementCount(); i++) {
+                    for (var i = end + 1; i < line.effectiveElementCount(); i++) {
                         line.getElement(i).setXOffsetPx(line.getElement(i).getXOffsetPx() + shift);
                     }
                 }
@@ -506,12 +506,12 @@ public final class ScoreMessageCoordinator {
         // the deleted note, it is also being removed, so the gap starts there.
         var firstDeletedIndex = hasPrecedingPairedGraceNote ? xIndex - 1 : xIndex;
 
-        if (xIndex < (line.elementCount() - 1)) {
+        if (xIndex < (line.effectiveElementCount() - 1)) {
             var shift =
                 line.getElement(firstDeletedIndex).getXOffsetPx() -
                     line.getElement(xIndex + 1).getXOffsetPx();
 
-            for (var i = xIndex + 1; i < line.elementCount(); i++) {
+            for (var i = xIndex + 1; i < line.effectiveElementCount(); i++) {
                 line.getElement(i).setXOffsetPx(line.getElement(i).getXOffsetPx() + shift);
             }
         }

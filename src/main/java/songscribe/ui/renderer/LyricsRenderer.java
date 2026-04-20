@@ -156,7 +156,7 @@ public class LyricsRenderer {
             // Track which syllables have been drawn (for relation handling)
             var drawnIndex = 0;
 
-            for (var noteIndex = 0; noteIndex < line.elementCount(); noteIndex++) {
+            for (var noteIndex = 0; noteIndex < line.effectiveElementCount(); noteIndex++) {
                 var note = line.getElement(noteIndex);
                 drawnIndex = renderNoteLyrics(
                     g2, line, ctx, isLastLine, noteIndex, note, drawnIndex
@@ -331,7 +331,7 @@ public class LyricsRenderer {
             // Find next note with actual syllable (not underscore or empty)
             endIndex = noteIndex + 1;
 
-            while (endIndex < line.elementCount()) {
+            while (endIndex < line.effectiveElementCount()) {
                 var nextSyllable = line.getElement(endIndex).properties.syllable;
 
                 if (nextSyllable == null) {
@@ -349,7 +349,7 @@ public class LyricsRenderer {
             // For extender, continue while same relation or empty syllable
             endIndex = noteIndex;
 
-            while (endIndex < line.elementCount()) {
+            while (endIndex < line.effectiveElementCount()) {
                 var nextElement = line.getElement(endIndex);
 
                 var nextSyllable = nextElement.properties.syllable;
@@ -401,7 +401,7 @@ public class LyricsRenderer {
         int startX
     ) {
         // At end of line
-        if (endIndex == line.elementCount()) {
+        if (endIndex == line.effectiveElementCount()) {
             return (relation == StaffElement.SyllableRelation.ONE_DASH)
                 ? startX + (int) (HYPHEN_WIDTH_PX * 2f)
                 : composition.getLineWidthPx();
@@ -533,7 +533,7 @@ public class LyricsRenderer {
         int startIndex,
         int endIndex
     ) {
-        var end = Math.min(line.elementCount(), endIndex);
+        var end = Math.min(line.effectiveElementCount(), endIndex);
 
         // Find notes with empty syllables
         var emptySyllables = IntStream.range(startIndex, end)

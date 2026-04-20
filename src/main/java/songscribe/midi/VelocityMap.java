@@ -65,7 +65,7 @@ public final class VelocityMap {
 
         for (var lineIndex = 0; lineIndex < lines.size(); lineIndex++) {
             var line = lines.get(lineIndex);
-            var noteCount = line.elementCount();
+            var noteCount = line.effectiveElementCount();
             velocities[lineIndex] = new int[noteCount];
 
             for (var noteIndex = 0; noteIndex < noteCount; noteIndex++) {

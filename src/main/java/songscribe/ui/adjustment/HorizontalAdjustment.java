@@ -76,7 +76,7 @@ public class HorizontalAdjustment extends Adjustment {
                 draggingRect.rect.y
             );
             bottomRightDragBounds.setLocation(
-                (draggingRect.xIndex < (line.elementCount() - 1))
+                (draggingRect.xIndex < (line.effectiveElementCount() - 1))
                     ? (line.getElement(draggingRect.xIndex + 1).getXOffsetPx() -
                     draggingRect.rect.width)
                     : lineWidth,
@@ -171,7 +171,7 @@ public class HorizontalAdjustment extends Adjustment {
                 draggingRect.rect.y
             );
             bottomRightDragBounds.setLocation(
-                (draggingRect.xIndex == (line.elementCount() - 1))
+                (draggingRect.xIndex == (line.effectiveElementCount() - 1))
                     ? lineWidth
                     : line.getElement(draggingRect.xIndex + 1).getXOffsetPx(),
                 draggingRect.rect.y
@@ -346,7 +346,7 @@ public class HorizontalAdjustment extends Adjustment {
                 }
 
                 // Add WHOLE_NOTE
-                for (var i = 1; i < (line.elementCount() - 1); i++) {
+                for (var i = 1; i < (line.effectiveElementCount() - 1); i++) {
                     adjustRects.add(
                         new AdjustRect(
                             lineIndex,
@@ -357,7 +357,7 @@ public class HorizontalAdjustment extends Adjustment {
                 }
 
                 // Add special adjustment rects for glissandos
-                for (var i = 0; i < line.elementCount(); i++) {
+                for (var i = 0; i < line.effectiveElementCount(); i++) {
                     var note = line.getElement(i);
 
                     if (note.getGlissando() != null) {

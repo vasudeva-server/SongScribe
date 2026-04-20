@@ -149,20 +149,10 @@ public final class LineSelectionState {
 
     /**
      * Selects all elements on this line, excluding the composition's
-     * auto-maintained terminal via the shared predicate.
+     * auto-maintained terminal.
      */
     public void selectAll() {
-        if (line.elementCount() == 0) {
-            return;
-        }
-
-        var end = line.elementCount() - 1;
-        var composition = line.getComposition();
-
-        if (composition != null
-                && !composition.isInteractable(line.getElement(end), line)) {
-            end--;
-        }
+        var end = line.effectiveElementCount() - 1;
 
         if (end < 0) {
             return;

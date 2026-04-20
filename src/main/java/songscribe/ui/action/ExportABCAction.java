@@ -155,7 +155,7 @@ public class ExportABCAction extends UIAction {
         ) {
             var line = composition.getLine(lineIndex);
 
-            for (var noteIndex = 0; noteIndex < line.elementCount(); noteIndex++) {
+            for (var noteIndex = 0; noteIndex < line.effectiveElementCount(); noteIndex++) {
                 var note = line.getElement(noteIndex);
 
                 if (note.getType().isPitchedNote()) {
@@ -406,7 +406,7 @@ public class ExportABCAction extends UIAction {
     static String translateLine(Line line, int compositionUnitLength) {
         var sb = new StringBuilder(27);
 
-        for (var i = 0; i < line.elementCount(); i++) {
+        for (var i = 0; i < line.effectiveElementCount(); i++) {
             if (line.getBeamings().isStartOfAnySpan(i)) {
                 sb.append(' ');
             }
@@ -476,7 +476,7 @@ public class ExportABCAction extends UIAction {
     static String translateLyrics(Line line) {
         var sb = new StringBuilder(270);
 
-        for (var n = 0; n < line.elementCount(); n++) {
+        for (var n = 0; n < line.effectiveElementCount(); n++) {
             var note = line.getElement(n);
             // TODO: syllable forcing under rests is not supported in abc
 

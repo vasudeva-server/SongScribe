@@ -539,7 +539,7 @@ public class NoteAttachedStacker {
         List<Trill> existingTrills,
         LayoutResult.Builder builder) {
 
-        for (int i = 0; i < line.elementCount(); i++) {
+        for (int i = 0; i < line.effectiveElementCount(); i++) {
             var element = line.getElement(i);
 
             if (!element.isTrill()) {
@@ -554,7 +554,7 @@ public class NoteAttachedStacker {
             // Find the end of the consecutive trill sequence
             int trillEnd = i;
 
-            while (trillEnd + 1 < line.elementCount()
+            while (trillEnd + 1 < line.effectiveElementCount()
                     && line.getElement(trillEnd + 1).isTrill()) {
                 trillEnd++;
             }

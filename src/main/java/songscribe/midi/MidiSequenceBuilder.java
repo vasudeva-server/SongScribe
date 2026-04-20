@@ -126,12 +126,12 @@ public class MidiSequenceBuilder {
                 var line = lines.get(i);
 
                 var lineStart = (i == startLine && startNote > 0) ? startNote : 0;
-                var lineEnd = (i == endLine && endNote >= 0) ? endNote : line.elementCount() - 1;
+                var lineEnd = (i == endLine && endNote >= 0) ? endNote : line.effectiveElementCount() - 1;
 
                 var builder = new LineTrackBuilder(line);
                 TrackPosition result;
 
-                if (lineStart > 0 || lineEnd < line.elementCount() - 1) {
+                if (lineStart > 0 || lineEnd < line.effectiveElementCount() - 1) {
                     result = builder.addToTrack(track, i, ticks, currentTempo, settings,
                         lineStart, lineEnd, velocityMap);
                 } else {

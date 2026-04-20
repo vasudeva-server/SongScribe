@@ -188,7 +188,7 @@ public class GlissandoRenderer {
         Line line,
         ElementRenderContext ctx
     ) {
-        for (var i = 0; i < line.elementCount(); i++) {
+        for (var i = 0; i < line.effectiveElementCount(); i++) {
             var note = line.getElement(i);
 
             if (note.getGlissando() != null) {
@@ -333,7 +333,7 @@ public class GlissandoRenderer {
     public int hitTestGlissando(double clickXSs, double clickYSs, Line line) {
         var halfHitSs = ScaleContext.getInstance().fromPixels(HIT_THICKNESS_PX) / 2.0;
 
-        for (var i = 0; i < line.elementCount(); i++) {
+        for (var i = 0; i < line.effectiveElementCount(); i++) {
             var glissando = line.getElement(i).getGlissando();
 
             if (glissando == null || !glissando.hasCachedGeometry) {

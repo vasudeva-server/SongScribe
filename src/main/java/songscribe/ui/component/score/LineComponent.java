@@ -547,7 +547,7 @@ public class LineComponent extends ScoreComponent
 
         // Check for tempo change on any note in this line
         if (line != null) {
-            for (var i = 0; i < line.elementCount(); i++) {
+            for (var i = 0; i < line.effectiveElementCount(); i++) {
                 if (line.getElement(i).getTempoChange() != null) {
                     return true;
                 }

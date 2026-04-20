@@ -113,7 +113,7 @@ class ToggleConflictTest extends UnitTest {
     // -------------------------------------------------------------------------
 
     private void changeDuration(ElementType type) {
-        for (var i = 0; i < line.elementCount(); i++) {
+        for (var i = 0; i < line.effectiveElementCount(); i++) {
             line.setElement(i, type.newInstance());
         }
     }

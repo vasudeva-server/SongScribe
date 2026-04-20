@@ -110,7 +110,7 @@ public class LineTrackBuilder {
         PlaybackSettings settings
     ) throws InvalidMidiDataException {
         return addToTrack(track, lineIndex, startTicks, initialTempo, settings,
-            0, line.elementCount() - 1, (VelocityMap) null);
+            0, line.effectiveElementCount() - 1, (VelocityMap) null);
     }
 
     /**
@@ -126,7 +126,7 @@ public class LineTrackBuilder {
         @Nullable VelocityMap velocityMap
     ) throws InvalidMidiDataException {
         return addToTrack(track, lineIndex, startTicks, initialTempo, settings,
-            0, line.elementCount() - 1, velocityMap);
+            0, line.effectiveElementCount() - 1, velocityMap);
     }
 
     /**

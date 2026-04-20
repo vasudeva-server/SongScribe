@@ -143,7 +143,7 @@ public class VerticalAdjustment extends Adjustment {
 
     private void adjustTempoChange(Line line, int diffY) {
         // Update per-instance offset on all tempo attachments in this line
-        for (var i = 0; i < line.elementCount(); i++) {
+        for (var i = 0; i < line.effectiveElementCount(); i++) {
             var note = line.getElement(i);
 
             if (note.getTempoChange() != null) {
@@ -158,7 +158,7 @@ public class VerticalAdjustment extends Adjustment {
 
     private void adjustBeatChange(Line line, int diffY) {
         // Update per-instance offset on all beat change attachments in this line
-        for (var i = 0; i < line.elementCount(); i++) {
+        for (var i = 0; i < line.effectiveElementCount(); i++) {
             var note = line.getElement(i);
 
             if (note.getBeatChange() != null) {
@@ -286,7 +286,7 @@ public class VerticalAdjustment extends Adjustment {
                     );
                 }
 
-                for (var n = 0; n < line.elementCount(); n++) {
+                for (var n = 0; n < line.effectiveElementCount(); n++) {
                     if (line.getElement(n).getAnnotation() != null) {
                         adjustRects.add(
                             new AdjustRect(l, AdjustType.ANNOTATION, n)

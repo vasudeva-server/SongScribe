@@ -56,7 +56,7 @@ public class LyricsProcessor {
         // delete the current values
         line.beginRelation = StaffElement.SyllableRelation.NO;
 
-        for (var n = 0; n < line.elementCount(); n++) {
+        for (var n = 0; n < line.effectiveElementCount(); n++) {
             var note = line.getElement(n);
             note.properties.syllable = "";
             note.properties.syllableRelation = StaffElement.SyllableRelation.NO;
@@ -161,7 +161,7 @@ public class LyricsProcessor {
                     }
                 }
 
-                if (noteIndex >= line.elementCount()) {
+                if (noteIndex >= line.effectiveElementCount()) {
                     break;
                 }
 
@@ -180,14 +180,14 @@ public class LyricsProcessor {
         var index = noteIndex;
 
         while (
-            (index < line.elementCount()) &&
+            (index < line.effectiveElementCount()) &&
                 !line.getElement(index).getType().isNote() &&
                 !line.getElement(index).isForceSyllable()
         ) {
             index++;
         }
 
-        if (index < line.elementCount()) {
+        if (index < line.effectiveElementCount()) {
             line.getElement(index).properties.syllable = syllable;
             line.getElement(index).properties.syllableRelation =
                 syllableRelation;
