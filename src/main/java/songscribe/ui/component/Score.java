@@ -515,6 +515,14 @@ public final class Score
 
             LOG.info("Composition loaded: {}", file.getName());
             return true;
+        } catch (CompositionIO.NewerVersionException e) {
+            OptionDialogs.showErrorMessage(null, Strings.ALERT_TITLE_FILE_ERROR, Strings.ERROR_FILE_OPEN_NEWER_VERSION);
+            LOG.error("Could not open '{}': document version is newer than the application supports", file.getName(), e);
+
+            if (composition != null) {
+                composition.setModified(previousModified);
+            }
+            return false;
         } catch (SAXException e) {
             OptionDialogs.showErrorMessage(null, Strings.ALERT_TITLE_FILE_ERROR, Strings.ERROR_FILE_OPEN_DAMAGED, file.getName());
             LOG.error("Could not open damaged file '{}'", file.getName(), e);

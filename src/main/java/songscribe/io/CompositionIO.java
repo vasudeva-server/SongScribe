@@ -209,6 +209,13 @@ public final class CompositionIO {
         pw.println("</" + XML_COMPOSITION + '>');
     }
 
+    public static class NewerVersionException extends SAXException {
+
+        public NewerVersionException() {
+            super("File version is newer than the application supports.");
+        }
+    }
+
     public static class DocumentReader extends DefaultHandler {
 
         @Nullable
@@ -280,9 +287,7 @@ public final class CompositionIO {
                             lineReader = new LineIO.LineReader();
                             viewReader = new ViewIO.ViewReader();
                         } else {
-                            throw new SAXException(
-                                "Unsupported version number."
-                            );
+                            throw new NewerVersionException();
                         }
                     } catch (NumberFormatException e) {
                         throw new SAXException(
