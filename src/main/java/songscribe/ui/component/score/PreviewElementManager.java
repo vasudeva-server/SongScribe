@@ -301,26 +301,26 @@ public class PreviewElementManager {
     }
 
     /**
-     * Computes the glissando zone type based on the selected tool.
+     * Computes the glissando zone type for the given intended type.
      * <p>
-     * Returns null if the mouse is to the left of the first note (no source note).
-     * Otherwise validates whether the selected glissando type can be inserted at
-     * the given index: CONNECTED requires a pitched note to the right with a different pitch,
-     * SLIDE_OUT only requires a pitched source note to the left.
+     * Returns null if the mouse is to the left of the first note (no source note),
+     * or if {@code intendedType} is null. Otherwise validates whether the given type
+     * can be inserted at the given index: CONNECTED requires a pitched note to the
+     * right with a different pitch, SLIDE_OUT only requires a pitched source note.
      *
-     * @param line   The line containing the notes
-     * @param xIndex Insertion index from {@link LayoutResult#findInsertionIndex}
+     * @param line         The line containing the notes
+     * @param xIndex       Insertion index from {@link LayoutResult#findInsertionIndex}
+     * @param intendedType The glissando type to validate, or null
      * @return The zone type, or null if no valid zone
      */
-    private static StaffElement.Glissando.@Nullable Type computeGlissandoZone(
+    static StaffElement.Glissando.@Nullable Type computeGlissandoZone(
         Line line,
-        int xIndex) {
+        int xIndex,
+        StaffElement.Glissando.@Nullable Type intendedType) {
         // xIndex=0 means to the left of the first note — no source note to draw from
         if (xIndex <= 0 || line.elementCount() == 0) {
             return null;
         }
-
-        var intendedType = getSelectedGlissandoType();
 
         if (intendedType == null) {
             return null;
@@ -455,7 +455,11 @@ public class PreviewElementManager {
         StaffElement.Glissando.Type newGlissandoZone = null;
 
         if (isGlissandoPlaceholder(previewElement) && elementAtX < 0) {
-            newGlissandoZone = computeGlissandoZone(line, xIndex);
+            var intendedType = getSelectedGlissandoType();
+
+            if (intendedType != null) {
+                newGlissandoZone = computeGlissandoZone(line, xIndex, intendedType);
+            }
         }
 
         // Check if position actually changed

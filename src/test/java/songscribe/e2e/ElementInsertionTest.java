@@ -26,8 +26,6 @@ import static org.junit.jupiter.api.Assertions.assertAll;
 
 import module java.desktop;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Objects;
 
 import org.assertj.swing.edt.GuiActionRunner;
@@ -43,8 +41,6 @@ import org.junit.jupiter.api.TestClassOrder;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.TestMethodOrder;
 
-import songscribe.midi.LineTrackBuilder;
-import songscribe.midi.PlaybackSettings;
 import songscribe.music.ArticulationType;
 import songscribe.music.ElementType;
 import songscribe.music.StaffElement;
@@ -393,34 +389,6 @@ class ElementInsertionTest extends E2ETest {
             );
         }
 
-        @Order(2)
-        @Test
-        void testClickClickMidi() throws Exception {
-            var line = composition().getLine(0);
-
-            // Count non-grace pitched notes — only these should produce NOTE_ONs
-            var pitchedNonGraceCount = 0;
-
-            for (var i = 0; i < line.effectiveElementCount(); i++) {
-                var type = line.getElement(i).getType();
-
-                if (type.isPitchedNote() && !type.isGraceNote()) {
-                    pitchedNonGraceCount++;
-                }
-            }
-
-            var track = buildMidiTrack();
-            var noteOnEvents = getEventsByCommand(track, ShortMessage.NOTE_ON);
-            var bendEvents = getEventsByCommand(track, ShortMessage.PITCH_BEND);
-
-            var expectedNoteOns = pitchedNonGraceCount;
-            assertAll(
-                () -> assertThat(noteOnEvents)
-                    .as("only host NOTE_ON").hasSize(expectedNoteOns),
-                () -> assertThat(bendEvents).as("slide-in pitch bend").isNotEmpty()
-            );
-        }
-
         @Order(3)
         @Test
         void testDurationChangeDuringFlow() {
@@ -671,32 +639,4 @@ class ElementInsertionTest extends E2ETest {
         return Objects.requireNonNull(GuiActionRunner.execute(() -> selectable.isSelected()));
     }
 
-    // -- Grace note MIDI helpers --
-
-    private static final PlaybackSettings DEFAULT_SETTINGS = new PlaybackSettings(
-        0, 100, 100, false
-    );
-
-    private Track buildMidiTrack() throws Exception {
-        var line = composition().getLine(0);
-        var tempo = Objects.requireNonNull(line.getElement(0).getTempoChange());
-        var sequence = new Sequence(Sequence.PPQ, 96);
-        var track = sequence.createTrack();
-        new LineTrackBuilder(line).addToTrack(track, 0, 0, tempo, DEFAULT_SETTINGS);
-        return track;
-    }
-
-    private static List<MidiEvent> getEventsByCommand(Track track, int command) {
-        var events = new ArrayList<MidiEvent>();
-
-        for (var i = 0; i < track.size(); i++) {
-            var event = track.get(i);
-
-            if (event.getMessage() instanceof ShortMessage sm && sm.getCommand() == command) {
-                events.add(event);
-            }
-        }
-
-        return events;
-    }
 }

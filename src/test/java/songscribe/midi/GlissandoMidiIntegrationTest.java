@@ -31,7 +31,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.music.Composition;
+import songscribe.music.ElementType;
 import songscribe.music.Line;
 import songscribe.music.StaffElement;
 import songscribe.music.Tempo;
@@ -67,7 +67,7 @@ class GlissandoMidiIntegrationTest extends UnitTest {
 
         @Test
         void testCcEventsContainRpnSequence() throws Exception {
-            var track = buildMidiTrack();
+            var track = buildMidiTrack(line, tempo);
             var ccEvents = getEventsByCommand(track, ShortMessage.CONTROL_CHANGE);
 
             assertThat(ccEvents).as("CC events present").hasSizeGreaterThanOrEqualTo(4);
@@ -83,7 +83,7 @@ class GlissandoMidiIntegrationTest extends UnitTest {
 
         @Test
         void testPitchBendEventsPresent() throws Exception {
-            var track = buildMidiTrack();
+            var track = buildMidiTrack(line, tempo);
             var bendEvents = getEventsByCommand(track, ShortMessage.PITCH_BEND);
 
             assertThat(bendEvents).as("pitch bend present").isNotEmpty();
@@ -95,7 +95,7 @@ class GlissandoMidiIntegrationTest extends UnitTest {
 
         @Test
         void testPitchBendEventsPresent() throws Exception {
-            var track = buildMidiTrack();
+            var track = buildMidiTrack(line, tempo);
             var bendEvents = getEventsByCommand(track, ShortMessage.PITCH_BEND);
 
             assertThat(bendEvents).as("slide-out pitch bend present").isNotEmpty();
@@ -103,7 +103,7 @@ class GlissandoMidiIntegrationTest extends UnitTest {
 
         @Test
         void testRpnSensitivityIncludesSlideOutSemitones() throws Exception {
-            var track = buildMidiTrack();
+            var track = buildMidiTrack(line, tempo);
             var ccEvents = getEventsByCommand(track, ShortMessage.CONTROL_CHANGE);
 
             var hasSlideOutSensitivity = ccEvents.stream()
@@ -123,7 +123,45 @@ class GlissandoMidiIntegrationTest extends UnitTest {
         assertThat(note.getGlissando()).as("pair A source has no glissando").isNull();
     }
 
-    private Track buildMidiTrack() throws Exception {
+    @Nested
+    class GraceHostPair {
+
+        @Test
+        void testNoteOnCountMatchesNonGracePitchedNotes() throws Exception {
+            var grace = ElementType.GRACE_QUAVER.newInstance();
+            grace.setGlissando(StaffElement.Glissando.Type.CONNECTED);
+            var host = ElementType.CROTCHET.newInstance();
+            host.setStaffPosition(-2);
+            var graceHostLine = new Line();
+            graceHostLine.addElement(grace);
+            graceHostLine.addElement(host);
+
+            var track = buildMidiTrack(graceHostLine, new Tempo());
+            var noteOnEvents = getEventsByCommand(track, ShortMessage.NOTE_ON);
+            var bendEvents = getEventsByCommand(track, ShortMessage.PITCH_BEND);
+
+            var expectedNoteOns = countNonGracePitchedNotes(graceHostLine);
+
+            assertThat(noteOnEvents).as("only host NOTE_ON").hasSize(expectedNoteOns);
+            assertThat(bendEvents).as("slide-in pitch bend present").isNotEmpty();
+        }
+
+        private int countNonGracePitchedNotes(Line line) {
+            var count = 0;
+
+            for (var i = 0; i < line.effectiveElementCount(); i++) {
+                var type = line.getElement(i).getType();
+
+                if (type.isPitchedNote() && !type.isGraceNote()) {
+                    count++;
+                }
+            }
+
+            return count;
+        }
+    }
+
+    private static Track buildMidiTrack(Line line, Tempo tempo) throws Exception {
         var sequence = new Sequence(Sequence.PPQ, 96);
         var track = sequence.createTrack();
         new LineTrackBuilder(line).addToTrack(track, 0, 0, tempo, DEFAULT_SETTINGS);

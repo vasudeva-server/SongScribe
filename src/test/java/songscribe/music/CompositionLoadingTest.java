@@ -73,4 +73,15 @@ class CompositionLoadingTest extends UnitTest {
         var loaded = loadFixture("full-line");
         assertThat(loaded.isModified()).isFalse();
     }
+
+    // selection2.mssw has no dynamics — regression guard for older files without them.
+    private static final int SELECTION2_ELEMENT_COUNT = 19;
+
+    @Test
+    void testFixtureWithoutDynamicsLoadsWithoutError() throws Exception {
+        var loaded = loadFixture("selection2");
+        assertThat(loaded.getLine(0).elementCount())
+            .as("selection2 fixture element count")
+            .isEqualTo(SELECTION2_ELEMENT_COUNT);
+    }
 }

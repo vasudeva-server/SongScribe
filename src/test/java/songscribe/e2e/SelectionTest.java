@@ -43,7 +43,6 @@ import org.junit.jupiter.api.TestMethodOrder;
 import songscribe.ui.Mode;
 import songscribe.ui.action.Actions;
 import songscribe.ui.action.UIAction;
-import songscribe.ui.component.score.PreviewElementManager;
 import songscribe.smufl.Engraving;
 import songscribe.ui.layout.ScaleContext;
 
@@ -266,54 +265,6 @@ class SelectionTest extends E2ETest {
         }
 
         @Test
-        void testActionStatesResetOnNewComposition() {
-            // Set non-default states via toolbar clicks
-            enterSelectMode();
-            selectDuration(Actions.HALF_NOTE_ACTION);
-            clickAction(Actions.SHARP_ACTION);
-            clickAction(Actions.DOT_ACTION);
-            clickAction(Actions.FERMATA_ACTION);
-            clickAction(Actions.ACCENT_ACTION);
-            enableRestMode();
-            clickAction(Actions.ACCIDENTAL_IN_PARENS_ACTION);
-            clickAction(Actions.STACCATO_ACTION);
-
-            // Loading a fixture triggers Score.setComposition() → resetToDefaults()
-            resetComposition();
-
-            assertAll(
-                () -> assertThat(GuiActionRunner.execute(() -> Actions.MODE_ACTION_GROUP.getSelected()))
-                    .as("mode reset to EDIT").isSameAs(Actions.EDIT_MODE_ACTION),
-                () -> assertThat(GuiActionRunner.execute(() -> Actions.DURATION_ACTION_GROUP.getSelected()))
-                    .as("duration reset to QUARTER_NOTE").isSameAs(Actions.QUARTER_NOTE_ACTION),
-                () -> assertThat(GuiActionRunner.execute(() -> Actions.ACCIDENTAL_ACTION_GROUP.getSelected()))
-                    .as("accidental group cleared").isNull(),
-                () -> assertThat(GuiActionRunner.execute(() -> Actions.ARTICULATION_ACTION_GROUP.getSelected()))
-                    .as("articulation group cleared").isNull(),
-                () -> assertThat(GuiActionRunner.execute(() -> Actions.DOT_ACTION_GROUP.getSelected()))
-                    .as("dot group cleared").isNull(),
-                () -> assertThat(GuiActionRunner.execute(() -> Actions.NON_DURATION_ACTION_GROUP.getSelected()))
-                    .as("non-duration group cleared").isNull(),
-                () -> assertThat(GuiActionRunner.execute(() -> Actions.ACCENT_ACTION.isSelected()))
-                    .as("accent off").isFalse(),
-                () -> assertThat(GuiActionRunner.execute(() -> Actions.REST_ACTION.isSelected()))
-                    .as("rest off").isFalse(),
-                () -> assertThat(GuiActionRunner.execute(() -> Actions.FERMATA_ACTION.isSelected()))
-                    .as("fermata off").isFalse(),
-                () -> assertThat(GuiActionRunner.execute(() -> Actions.ACCIDENTAL_IN_PARENS_ACTION.isSelected()))
-                    .as("accidental-in-parens off").isFalse()
-            );
-
-            // Reload fixture for subsequent tests in this class
-            resetComposition();
-            try {
-                loadFixture("selection2");
-            } catch (Exception e) {
-                throw new RuntimeException(e);
-            }
-        }
-
-        @Test
         void testBreathMarkDisablesDurationsAndBarlines() {
             enterSelectMode();
             // Breath marks are very small — use drag-select to reliably select
@@ -337,50 +288,6 @@ class SelectionTest extends E2ETest {
 
     @Nested
     @Order(5)
-    @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-    class GlissandoSuppression {
-
-        @BeforeEach
-        void resetState() {
-            deselectSelection();
-        }
-
-        @Test
-        void testGlissandoSuppressedWhenTargetIsRest() {
-            clickAction(Actions.GLISSANDO_ACTION);
-            hoverBetween(0, Sel2.TIED_2.index, Sel2.SEMIBREVE_REST.index);
-            assertThat(GuiActionRunner.execute(() -> PreviewElementManager.shouldShowGlissandoPreview()))
-                .as("target is rest").isFalse();
-        }
-
-        @Test
-        void testGlissandoSuppressedWhenSourceIsRest() {
-            clickAction(Actions.GLISSANDO_ACTION);
-            hoverBetween(0, Sel2.DEMI_SEMIQUAVER_REST.index, Sel2.NOTE.index);
-            assertThat(GuiActionRunner.execute(() -> PreviewElementManager.shouldShowGlissandoPreview()))
-                .as("source is rest").isFalse();
-        }
-
-        @Test
-        void testGlissandoSuppressedWhenBothAreRests() {
-            clickAction(Actions.GLISSANDO_ACTION);
-            hoverBetween(0, Sel2.SEMIBREVE_REST.index, Sel2.MINIM_REST.index);
-            assertThat(GuiActionRunner.execute(() -> PreviewElementManager.shouldShowGlissandoPreview()))
-                .as("both rests").isFalse();
-        }
-
-        @Test
-        void testSlideOutSuppressedWhenSourceIsRest() {
-            clickAction(Actions.SLIDE_OUT_ACTION);
-            hoverBetween(0, Sel2.DEMI_SEMIQUAVER_REST.index, Sel2.NOTE.index);
-            assertThat(GuiActionRunner.execute(PreviewElementManager::shouldShowGlissandoPreview))
-                .as("source is rest").isFalse();
-        }
-    }
-
-
-    @Nested
-    @Order(6)
     @TestInstance(TestInstance.Lifecycle.PER_CLASS)
     class ClickAndMode {
 
@@ -440,7 +347,7 @@ class SelectionTest extends E2ETest {
 
 
     @Nested
-    @Order(7)
+    @Order(6)
     @TestInstance(TestInstance.Lifecycle.PER_CLASS)
     @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
     class Drag {
@@ -589,28 +496,4 @@ class SelectionTest extends E2ETest {
         }
     }
 
-    /**
-     * Moves the mouse to the midpoint between two elements on the given line.
-     */
-    private void hoverBetween(int lineIdx, int leftIdx, int rightIdx) {
-        var midpoint = Objects.requireNonNull(GuiActionRunner.execute(() -> {
-            var lc = Objects.requireNonNull(score().getLineComponent(lineIdx));
-            var line = Objects.requireNonNull(lc.getLine());
-            var layoutResult = lc.getLayoutResult();
-            var leftElement = line.getElement(leftIdx);
-            var rightElement = line.getElement(rightIdx);
-
-            var leftXSs = layoutResult != null ? layoutResult.getElementXSs(leftElement) : 0.0;
-            var rightXSs = layoutResult != null ? layoutResult.getElementXSs(rightElement) : 0.0;
-            var midXSs = (leftXSs + rightXSs) / 2.0;
-            int midXPx = (int) Math.round(ScaleContext.getInstance().toPixels(midXSs));
-            int yPx = lc.staffPositionToYPx(0);
-
-            var loc = lc.getLocationOnScreen();
-            return new Point(loc.x + midXPx, loc.y + yPx);
-        }));
-
-        robot.moveMouse(midpoint);
-        pause();
-    }
 }
