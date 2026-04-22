@@ -82,7 +82,6 @@ public class LayoutEngine {
     private static final double TIE_NOTEHEAD_HALF_WIDTH_SS = 0.6;   // visual half-width of notehead
     private static final double TIE_ENDPOINT_Y_OFFSET_SS = 0.7;    // y offset from note center (noteHeight/2 + 0.2)
 
-    private final Graphics2D g2;
     private final Font lyricsFont;
     private final double staffRightMarginSs;
 
@@ -99,20 +98,15 @@ public class LayoutEngine {
     /**
      * Creates a new LayoutEngine.
      *
-     * @param g2               Graphics context for text measurement
-     * @param lyricsFont       Font to use for lyrics (for measuring syllable widths)
+     * @param lyricsFont         Font to use for lyrics (for measuring syllable widths)
      * @param staffRightMarginSs Right margin of the staff in staff-space units
      */
-    public LayoutEngine(
-        Graphics2D g2,
-        Font lyricsFont,
-        double staffRightMarginSs) {
-        this.g2 = g2;
+    public LayoutEngine(Font lyricsFont, double staffRightMarginSs) {
         this.lyricsFont = lyricsFont;
         this.staffRightMarginSs = staffRightMarginSs;
 
         // Initialize calculators
-        this.columnBuilder = new ElementColumnBuilder(g2, lyricsFont);
+        this.columnBuilder = new ElementColumnBuilder(lyricsFont);
         this.horizontalCalculator = new HorizontalSpacingCalculator();
         this.verticalCalculator = new VerticalStackingCalculator();
         this.justificationCalculator = new LineJustificationCalculator();
@@ -705,13 +699,6 @@ public class LayoutEngine {
             case DEMI_SEMIQUAVER -> 3;
             default -> 1;
         };
-    }
-
-    /**
-     * Returns the graphics context used by this engine.
-     */
-    public Graphics2D getGraphics() {
-        return g2;
     }
 
     /**

@@ -20,6 +20,8 @@
 
 package songscribe.ui.layout.stacking;
 
+import java.awt.Font;
+
 import songscribe.music.Line;
 import songscribe.ui.layout.AnnotationAttachment;
 import songscribe.ui.layout.BeatChangeAttachment;
@@ -95,8 +97,8 @@ public class SystemStacker {
 
         double xSs = column.getXSs();
         int staffPosition = note.getStaffPosition();
-        var attrFontMetrics = line.getComposition().getAttributionFontMetrics();
-        var metrics = tempo.computeContentMetrics(attrFontMetrics);
+        var attrFont = line.getComposition().getAttributionFont();
+        var metrics = tempo.computeContentMetrics(attrFont);
 
         stackAboveWithRegions(systemExtents, tempo, metrics.regions(), xSs,
             metrics.widthSs(), LayoutStylesheet.TEMPO_MARGIN_SS,
@@ -131,8 +133,8 @@ public class SystemStacker {
 
         double xSs = column.getXSs();
         int staffPosition = note.getStaffPosition();
-        var attrFontMetrics = line.getComposition().getAttributionFontMetrics();
-        var metrics = beatChange.computeContentMetrics(attrFontMetrics);
+        var attrFont = line.getComposition().getAttributionFont();
+        var metrics = beatChange.computeContentMetrics(attrFont);
 
         stackAboveWithRegions(systemExtents, beatChange, metrics.regions(), xSs,
             metrics.widthSs(), LayoutStylesheet.BEAT_CHANGE_MARGIN_SS,
@@ -167,9 +169,9 @@ public class SystemStacker {
 
         double columnXSs = column.getXSs();
         int staffPosition = note.getStaffPosition();
-        var fontMetrics = line.getComposition().getAnnotationFontMetrics();
-        double widthSs = annotation.computeContentWidthSs(fontMetrics);
-        double heightSs = ScaleContext.getInstance().textHeightSs(fontMetrics);
+        var annotationFont = line.getComposition().getAnnotationFont();
+        double widthSs = annotation.computeContentWidthSs(annotationFont);
+        double heightSs = ScaleContext.getInstance().textHeightSs(annotationFont);
 
         // xAlignment is 0.0 (left), 0.5 (center), or 1.0 (right). The text is
         // anchored to the matching point on the notehead: left edge → left,

@@ -22,6 +22,8 @@ package songscribe.ui.layout;
 
 import module java.desktop;
 
+import songscribe.util.GraphicUtils;
+
 /**
  * Central scale context that defines the mapping between staff-space units
  * and pixel units.
@@ -77,14 +79,15 @@ public final class ScaleContext {
         return px / pixelsPerStaffSpace;
     }
 
-    /** Returns the width of {@code text} in staff-space units for the given font metrics. */
-    public double textWidthSs(FontMetrics fontMetrics, String text) {
-        return fromPixels(fontMetrics.stringWidth(text));
+    /** Returns the width of {@code text} in staff-space units for the given font. */
+    public double textWidthSs(Font font, String text) {
+        return fromPixels(new TextLayout(text, font, GraphicUtils.LAYOUT_FRC).getAdvance());
     }
 
-    /** Returns the text height (ascent + descent) in staff-space units for the given font metrics. */
-    public double textHeightSs(FontMetrics fontMetrics) {
-        return fromPixels(fontMetrics.getAscent() + fontMetrics.getDescent());
+    /** Returns the text height (ascent + descent) in staff-space units for the given font. */
+    public double textHeightSs(Font font) {
+        var lm = font.getLineMetrics("", GraphicUtils.LAYOUT_FRC);
+        return fromPixels(lm.getAscent() + lm.getDescent());
     }
 
     /**

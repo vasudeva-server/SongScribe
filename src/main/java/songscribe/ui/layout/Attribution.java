@@ -20,7 +20,7 @@
 
 package songscribe.ui.layout;
 
-import java.awt.FontMetrics;
+import java.awt.Font;
 
 import songscribe.error.RuntimeError;
 
@@ -86,28 +86,28 @@ public class Attribution extends LineElement {
     /**
      * Computes the content width from the actual attribution text.
      *
-     * @param fontMetrics font metrics for the attribution font
+     * @param font the attribution font
      * @return width in staff-space units
      */
-    public double computeContentWidthSs(FontMetrics fontMetrics) {
-        return ScaleContext.getInstance().textWidthSs(fontMetrics, text);
+    public double computeContentWidthSs(Font font) {
+        return ScaleContext.getInstance().textWidthSs(font, text);
     }
 
     @Override
     public double getContentWidthSs() {
-        return computeContentWidthSs(requireAttributionFontMetrics());
+        return computeContentWidthSs(requireAttributionFont());
     }
 
     /**
      * Returns the content height in staff-space units, derived from the composition's
-     * attribution font metrics via {@code parentLine}.
+     * attribution font via {@code parentLine}.
      * <p>
-     * {@code parentLine} must be non-null. Use {@link ScaleContext#textHeightSs(FontMetrics)}
-     * directly when the font metrics are already in hand.
+     * {@code parentLine} must be non-null. Use {@link ScaleContext#textHeightSs(Font)}
+     * directly when the font is already in hand.
      */
     @Override
     public double getContentHeightSs() {
-        return ScaleContext.getInstance().textHeightSs(requireAttributionFontMetrics());
+        return ScaleContext.getInstance().textHeightSs(requireAttributionFont());
     }
 
     @Override
@@ -120,7 +120,7 @@ public class Attribution extends LineElement {
         return ScaleContext.getInstance().toPixels(getContentHeightSs());
     }
 
-    private FontMetrics requireAttributionFontMetrics() {
+    private Font requireAttributionFont() {
         var parentLine = getParentLine();
 
         if (parentLine == null) {
@@ -128,6 +128,6 @@ public class Attribution extends LineElement {
                 "Attribution content dimensions requested with null parentLine");
         }
 
-        return parentLine.getComposition().getAttributionFontMetrics();
+        return parentLine.getComposition().getAttributionFont();
     }
 }

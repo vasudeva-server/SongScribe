@@ -41,8 +41,7 @@ class LayoutEngineTest extends UnitTest {
     private static final double TOLERANCE = 0.001;
 
     private static LayoutEngine engine() {
-        var g2 = new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB).createGraphics();
-        return new LayoutEngine(g2, new Font("Dialog", Font.PLAIN, 12), STAFF_RIGHT_MARGIN_SS);
+        return new LayoutEngine(new Font("Dialog", Font.PLAIN, 12), STAFF_RIGHT_MARGIN_SS);
     }
 
     /** Asserts value is not null and returns it non-null for NullAway. */

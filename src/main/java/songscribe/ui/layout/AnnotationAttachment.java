@@ -20,7 +20,7 @@
 
 package songscribe.ui.layout;
 
-import java.awt.FontMetrics;
+import java.awt.Font;
 
 import org.jspecify.annotations.Nullable;
 
@@ -106,20 +106,20 @@ public class AnnotationAttachment extends Attachment {
     /**
      * Computes the content width from the actual annotation text.
      *
-     * @param fontMetrics font metrics for the annotation font
+     * @param font the annotation font
      * @return width in staff-space units
      */
-    public double computeContentWidthSs(FontMetrics fontMetrics) {
-        return ScaleContext.getInstance().textWidthSs(fontMetrics, annotation.getAnnotation());
+    public double computeContentWidthSs(Font font) {
+        return ScaleContext.getInstance().textWidthSs(font, annotation.getAnnotation());
     }
 
     /**
      * Returns the content height in staff-space units, derived from the composition's
-     * annotation font metrics via {@code parentLine}.
+     * annotation font via {@code parentLine}.
      * <p>
      * {@code parentLine} must be non-null; callers downstream of {@link songscribe.music.Line#addElement}
-     * can rely on this. Use {@link ScaleContext#textHeightSs(FontMetrics)} directly when
-     * the font metrics are already in hand.
+     * can rely on this. Use {@link ScaleContext#textHeightSs(Font)} directly when
+     * the font is already in hand.
      */
     @Override
     public double getContentHeightSs() {
@@ -131,7 +131,7 @@ public class AnnotationAttachment extends Attachment {
         }
 
         return ScaleContext.getInstance().textHeightSs(
-            parentLine.getComposition().getAnnotationFontMetrics());
+            parentLine.getComposition().getAnnotationFont());
     }
 
     @Override

@@ -49,7 +49,7 @@ import songscribe.ui.renderer.NoteRenderer;
  * <p>
  * Usage:
  * <pre>{@code
- * var builder = new ElementColumnBuilder(g2, lyricsFont);
+ * var builder = new ElementColumnBuilder(lyricsFont);
  * List<ElementColumn> columns = builder.buildColumns(line);
  * }</pre>
  */
@@ -64,20 +64,15 @@ public class ElementColumnBuilder {
     // Half note head width (for left/right extent calculation) (ss)
     static final double HALF_NOTE_HEAD_SS = Engraving.NOTE_HEAD_WIDTH_SS / 2.0;
 
-    private final Graphics2D g2;
     private final Font lyricsFont;
-    private final FontMetrics lyricsFontMetrics;
 
     /**
      * Creates a new ElementColumnBuilder.
      *
-     * @param g2         Graphics context for measuring text
      * @param lyricsFont Font used for lyrics (for measuring syllable widths)
      */
-    public ElementColumnBuilder(Graphics2D g2, Font lyricsFont) {
-        this.g2 = g2;
+    public ElementColumnBuilder(Font lyricsFont) {
         this.lyricsFont = lyricsFont;
-        this.lyricsFontMetrics = g2.getFontMetrics(lyricsFont);
     }
 
     /**
@@ -297,20 +292,12 @@ public class ElementColumnBuilder {
         return element.properties.syllable;
     }
 
-    /**
-     * Measures the width of a syllable in staff-space units.
-     * Text is measured in pixels via FontMetrics, then converted to ss.
-     *
-     * @param syllable The syllable text
-     * @return Width in ss, or 0 if null/empty
-     */
     private double measureSyllableWidthSs(@Nullable String syllable) {
         if (syllable == null || syllable.isEmpty()) {
             return 0;
         }
 
-        double widthPx = lyricsFontMetrics.stringWidth(syllable);
-        return ScaleContext.getInstance().fromPixels(widthPx);
+        return ScaleContext.getInstance().textWidthSs(lyricsFont, syllable);
     }
 
     // ==========================================================================

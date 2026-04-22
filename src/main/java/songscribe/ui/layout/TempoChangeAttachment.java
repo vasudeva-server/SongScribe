@@ -20,15 +20,15 @@
 
 package songscribe.ui.layout;
 
-import java.awt.FontMetrics;
+import java.awt.Font;
 import java.util.ArrayList;
 
 import org.jspecify.annotations.Nullable;
 
 import songscribe.music.StaffElement;
 import songscribe.music.Tempo;
-
 import songscribe.smufl.SMuFLMetadata;
+import songscribe.util.GraphicUtils;
 
 /**
  * Represents a tempo marking attachment on a note.
@@ -58,7 +58,7 @@ public class TempoChangeAttachment extends MetronomeAttachment {
         this.tempo = tempo;
     }
 
-    public ContentMetrics computeContentMetrics(FontMetrics attrFontMetrics) {
+    public ContentMetrics computeContentMetrics(Font attrFont) {
         var regions = new ArrayList<CollisionRegion>(2);
         double glyphWidth = glyphWidthSs();
 
@@ -66,13 +66,14 @@ public class TempoChangeAttachment extends MetronomeAttachment {
             regions.add(new CollisionRegion(0, 0, glyphWidth, QUARTER_NOTE_HEIGHT_SS));
         }
 
-        double textWidth = textWidthSs(tempoText(), attrFontMetrics);
+        double textWidth = textWidthSs(tempoText(), attrFont);
 
         if (textWidth > 0) {
             double textXOffsetSs = glyphWidth > 0 ? glyphWidth + EQUALS_GAP_SS : 0;
             var scale = ScaleContext.getInstance();
-            double textAscentSs = scale.fromPixels(attrFontMetrics.getAscent());
-            double textDescentSs = scale.fromPixels(attrFontMetrics.getDescent());
+            var textLm = attrFont.getLineMetrics("", GraphicUtils.LAYOUT_FRC);
+            double textAscentSs = scale.fromPixels(textLm.getAscent());
+            double textDescentSs = scale.fromPixels(textLm.getDescent());
             double textYOffsetSs = QUARTER_NOTE_HEIGHT_SS - textAscentSs;
             double textHeightSs = textAscentSs + textDescentSs;
             regions.add(new CollisionRegion(
@@ -106,13 +107,12 @@ public class TempoChangeAttachment extends MetronomeAttachment {
         return text.toString();
     }
 
-    private double textWidthSs(String text, FontMetrics attrFontMetrics) {
+    private double textWidthSs(String text, Font attrFont) {
         if (text.isEmpty()) {
             return 0;
         }
 
-        return ScaleContext.getInstance().fromPixels(
-            attrFontMetrics.stringWidth(text));
+        return ScaleContext.getInstance().textWidthSs(attrFont, text);
     }
 
 }

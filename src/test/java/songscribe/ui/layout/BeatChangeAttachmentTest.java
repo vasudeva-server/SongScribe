@@ -31,6 +31,7 @@ import songscribe.UnitTest;
 import songscribe.music.BeatChange;
 import songscribe.music.Composition;
 import songscribe.music.Duration;
+import songscribe.util.GraphicUtils;
 
 class BeatChangeAttachmentTest extends UnitTest {
 
@@ -55,16 +56,16 @@ class BeatChangeAttachmentTest extends UnitTest {
 
         @Test
         void testProducesThreeRegions() {
-            var fm = composition.getAttributionFontMetrics();
-            var metrics = crotchetToCrotchet().computeContentMetrics(fm);
+            var font = composition.getAttributionFont();
+            var metrics = crotchetToCrotchet().computeContentMetrics(font);
 
             assertThat(metrics.regions()).hasSize(3);
         }
 
         @Test
         void testLeftNoteRegionStartsAtOrigin() {
-            var fm = composition.getAttributionFontMetrics();
-            var metrics = crotchetToCrotchet().computeContentMetrics(fm);
+            var font = composition.getAttributionFont();
+            var metrics = crotchetToCrotchet().computeContentMetrics(font);
             var leftNote = metrics.regions().get(0);
 
             assertThat(leftNote.xOffsetSs()).isEqualTo(0.0);
@@ -75,8 +76,8 @@ class BeatChangeAttachmentTest extends UnitTest {
 
         @Test
         void testEqualsRegionFollowsLeftNoteWithGap() {
-            var fm = composition.getAttributionFontMetrics();
-            var metrics = crotchetToCrotchet().computeContentMetrics(fm);
+            var font = composition.getAttributionFont();
+            var metrics = crotchetToCrotchet().computeContentMetrics(font);
             var leftNote = metrics.regions().get(0);
             var equals = metrics.regions().get(1);
 
@@ -87,8 +88,8 @@ class BeatChangeAttachmentTest extends UnitTest {
 
         @Test
         void testRightNoteRegionFollowsEqualsWithGap() {
-            var fm = composition.getAttributionFontMetrics();
-            var metrics = crotchetToCrotchet().computeContentMetrics(fm);
+            var font = composition.getAttributionFont();
+            var metrics = crotchetToCrotchet().computeContentMetrics(font);
             var equals = metrics.regions().get(1);
             var rightNote = metrics.regions().get(2);
 
@@ -101,8 +102,8 @@ class BeatChangeAttachmentTest extends UnitTest {
 
         @Test
         void testTotalWidthIsSumOfRegionsAndGaps() {
-            var fm = composition.getAttributionFontMetrics();
-            var metrics = crotchetToCrotchet().computeContentMetrics(fm);
+            var font = composition.getAttributionFont();
+            var metrics = crotchetToCrotchet().computeContentMetrics(font);
             var regions = metrics.regions();
 
             double expectedWidth = regions.get(0).widthSs()
@@ -120,11 +121,12 @@ class BeatChangeAttachmentTest extends UnitTest {
 
         @Test
         void testEqualsSignDescentExtendsBelow_QUARTER_NOTE_HEIGHT_SS() {
-            var fm = composition.getAttributionFontMetrics();
-            var metrics = crotchetToCrotchet().computeContentMetrics(fm);
+            var font = composition.getAttributionFont();
+            var metrics = crotchetToCrotchet().computeContentMetrics(font);
             var equals = metrics.regions().get(1);
 
-            double equalsDescentSs = ScaleContext.getInstance().fromPixels(fm.getDescent());
+            double equalsDescentSs = ScaleContext.getInstance().fromPixels(
+                font.getLineMetrics("=", GraphicUtils.LAYOUT_FRC).getDescent());
             double equalsBottom = equals.yOffsetSs() + equals.heightSs();
 
             assertThat(equalsBottom).isCloseTo(
@@ -134,8 +136,8 @@ class BeatChangeAttachmentTest extends UnitTest {
 
         @Test
         void testEqualsDescentIsPositive() {
-            var fm = composition.getAttributionFontMetrics();
-            var metrics = crotchetToCrotchet().computeContentMetrics(fm);
+            var font = composition.getAttributionFont();
+            var metrics = crotchetToCrotchet().computeContentMetrics(font);
             var equals = metrics.regions().get(1);
 
             double equalsBottom = equals.yOffsetSs() + equals.heightSs();

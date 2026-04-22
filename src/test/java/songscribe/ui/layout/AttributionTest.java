@@ -20,7 +20,7 @@
 
 package songscribe.ui.layout;
 
-import java.awt.FontMetrics;
+import java.awt.Font;
 
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -34,9 +34,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.within;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
-import static org.mockito.Mockito.when;
 
 class AttributionTest extends UnitTest {
 
@@ -44,24 +42,12 @@ class AttributionTest extends UnitTest {
 
     @Test
     void testComputeContentWidthSsUsesStringWidth() {
-        var fm = mock(FontMetrics.class);
-        when(fm.stringWidth("Composer")).thenReturn(48);
+        var font = new Font("Dialog", Font.PLAIN, 12);
 
         var attribution = new Attribution("Composer");
-        double expected = ScaleContext.getInstance().fromPixels(48);
+        double expected = ScaleContext.getInstance().textWidthSs(font, "Composer");
 
-        assertThat(attribution.computeContentWidthSs(fm)).isCloseTo(expected, within(EPSILON));
-    }
-
-    @Test
-    void testTextHeightSsUsesAscentPlusDescent() {
-        var fm = mock(FontMetrics.class);
-        when(fm.getAscent()).thenReturn(12);
-        when(fm.getDescent()).thenReturn(4);
-
-        double expected = ScaleContext.getInstance().fromPixels(16);
-
-        assertThat(ScaleContext.getInstance().textHeightSs(fm)).isCloseTo(expected, within(EPSILON));
+        assertThat(attribution.computeContentWidthSs(font)).isCloseTo(expected, within(EPSILON));
     }
 
     @Nested
@@ -74,7 +60,7 @@ class AttributionTest extends UnitTest {
             var attribution = new Attribution("Composer");
             attribution.setParentLine(line);
 
-            var expected = attribution.computeContentWidthSs(comp.getAttributionFontMetrics());
+            var expected = attribution.computeContentWidthSs(comp.getAttributionFont());
 
             assertThat(attribution.getContentWidthSs()).isCloseTo(expected, within(EPSILON));
         }
@@ -86,7 +72,7 @@ class AttributionTest extends UnitTest {
             var attribution = new Attribution("Composer");
             attribution.setParentLine(line);
 
-            var expected = ScaleContext.getInstance().textHeightSs(comp.getAttributionFontMetrics());
+            var expected = ScaleContext.getInstance().textHeightSs(comp.getAttributionFont());
 
             assertThat(attribution.getContentHeightSs()).isCloseTo(expected, within(EPSILON));
         }

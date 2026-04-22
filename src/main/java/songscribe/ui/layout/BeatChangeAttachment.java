@@ -20,7 +20,7 @@
 
 package songscribe.ui.layout;
 
-import java.awt.FontMetrics;
+import java.awt.Font;
 import java.util.ArrayList;
 
 import org.jspecify.annotations.Nullable;
@@ -28,6 +28,7 @@ import org.jspecify.annotations.Nullable;
 import songscribe.music.BeatChange;
 import songscribe.music.StaffElement;
 import songscribe.smufl.SMuFLMetadata;
+import songscribe.util.GraphicUtils;
 
 /**
  * Represents a beat change (metric modulation) attachment on a note.
@@ -84,22 +85,23 @@ public class BeatChangeAttachment extends MetronomeAttachment {
      * so its descender extends below {@code QUARTER_NOTE_HEIGHT_SS} and must be accounted
      * for separately to prevent collisions with elements below.
      *
-     * @param attrFontMetrics font metrics for the attribution font (used for the "=" sign)
+     * @param attrFont the attribution font (used for the "=" sign)
      * @return width and collision sub-regions in staff-space units
      */
-    public ContentMetrics computeContentMetrics(FontMetrics attrFontMetrics) {
+    public ContentMetrics computeContentMetrics(Font attrFont) {
         var metadata = SMuFLMetadata.getInstance();
         var scale = ScaleContext.getInstance();
         var regions = new ArrayList<CollisionRegion>(3);
 
         double leftNoteWidthSs = noteWidthSs(beatChange.duration().getNote(), metadata);
-        double equalsWidthSs = scale.fromPixels(attrFontMetrics.stringWidth("="));
+        double equalsWidthSs = scale.textWidthSs(attrFont, "=");
         double rightNoteWidthSs = noteWidthSs(beatChange.beat().getNote(), metadata);
 
         regions.add(new CollisionRegion(0, 0, leftNoteWidthSs, QUARTER_NOTE_HEIGHT_SS));
 
-        double equalsAscentSs = scale.fromPixels(attrFontMetrics.getAscent());
-        double equalsDescentSs = scale.fromPixels(attrFontMetrics.getDescent());
+        var equalsLm = attrFont.getLineMetrics("=", GraphicUtils.LAYOUT_FRC);
+        double equalsAscentSs = scale.fromPixels(equalsLm.getAscent());
+        double equalsDescentSs = scale.fromPixels(equalsLm.getDescent());
         double equalsXOffsetSs = leftNoteWidthSs + EQUALS_GAP_SS;
         double equalsYOffsetSs = QUARTER_NOTE_HEIGHT_SS - equalsAscentSs;
         regions.add(new CollisionRegion(

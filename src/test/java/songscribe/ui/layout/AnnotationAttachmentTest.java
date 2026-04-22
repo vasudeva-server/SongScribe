@@ -20,8 +20,6 @@
 
 package songscribe.ui.layout;
 
-import java.awt.FontMetrics;
-
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
@@ -35,9 +33,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.within;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
-import static org.mockito.Mockito.when;
 
 class AnnotationAttachmentTest extends UnitTest {
 
@@ -55,7 +51,7 @@ class AnnotationAttachmentTest extends UnitTest {
             note.addAttachment(attachment);
             comp.withoutMutationTracking(() -> line.addElement(note));
 
-            var expected = ScaleContext.getInstance().textHeightSs(comp.getAnnotationFontMetrics());
+            var expected = ScaleContext.getInstance().textHeightSs(comp.getAnnotationFont());
 
             assertThat(attachment.getContentHeightSs()).isCloseTo(expected, within(EPSILON));
         }
@@ -77,14 +73,4 @@ class AnnotationAttachmentTest extends UnitTest {
         }
     }
 
-    @Test
-    void testTextHeightSsUsesAscentPlusDescent() {
-        var fm = mock(FontMetrics.class);
-        when(fm.getAscent()).thenReturn(10);
-        when(fm.getDescent()).thenReturn(4);
-
-        double expected = ScaleContext.getInstance().fromPixels(14);
-
-        assertThat(ScaleContext.getInstance().textHeightSs(fm)).isCloseTo(expected, within(EPSILON));
-    }
 }

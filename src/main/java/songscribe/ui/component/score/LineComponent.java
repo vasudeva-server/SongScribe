@@ -339,10 +339,8 @@ public class LineComponent extends ScoreComponent
      * This method uses the {@link LayoutEngine} to calculate bounds for all
      * elements on the line. The result is cached and can be retrieved via
      * {@link #getLayoutResult()}.
-     *
-     * @param g2 Graphics context for font metrics
      */
-    private void performLayout(Graphics2D g2) {
+    private void performLayout() {
         if (composition == null || line == null) {
             return;
         }
@@ -350,7 +348,7 @@ public class LineComponent extends ScoreComponent
         var lyricsFont = composition.getLyricsFont();
         var staffRightMarginSs = composition.getLineWidthSs();
         var isLastLine = lineIndex == composition.lineCount() - 1;
-        layoutEngine = new LayoutEngine(g2, lyricsFont, staffRightMarginSs);
+        layoutEngine = new LayoutEngine(lyricsFont, staffRightMarginSs);
         layoutResult = layoutEngine.layout(line, isLastLine);
 
         if (layoutResult == null) {
@@ -369,7 +367,7 @@ public class LineComponent extends ScoreComponent
 
         // Perform layout if dirty
         if (layoutDirty || layoutResult == null) {
-            performLayout(g2);
+            performLayout();
         }
 
         // Update middleLineY from layout result (render owns this field)
