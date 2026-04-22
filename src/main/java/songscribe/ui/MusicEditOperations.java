@@ -302,6 +302,18 @@ public final class MusicEditOperations {
         var begin = state.getSelectionBegin();
         var end = state.getSelectionEnd();
 
+        // The auto-maintained terminal is never selectable, so if the selection ends
+        // just before it, extend end to include it so an ending at the composition's
+        // end passes structural validation. Only extend if the current end is not
+        // already a terminal — if it is, the selection is already properly closed.
+        var extendedEnd = end + 1;
+
+        if (!line.getElement(end).getType().isTerminal()
+                && extendedEnd < line.elementCount()
+                && composition.isAutoMaintainedTerminal(line.getElement(extendedEnd), line)) {
+            end = extendedEnd;
+        }
+
         // Stage 1: Structural validation
         var rightRepeatIndex = validateEndingStructure(line, begin, end);
 
@@ -310,14 +322,17 @@ public final class MusicEditOperations {
         }
 
         // Stage 2: Overlap check
-        if (hasOverlap(line, begin, end)) {
+        var hasOverlap = hasOverlap(line, begin, end);
+
+        if (hasOverlap) {
             return EndingValidationResult.invalid();
         }
 
         // Stage 3: Backward search for enclosing repeated section
         var lineIndex = composition.indexOfLine(line);
+        var hasEnclosing = hasEnclosingRepeat(lineIndex, begin);
 
-        if (!hasEnclosingRepeat(lineIndex, begin)) {
+        if (!hasEnclosing) {
             return EndingValidationResult.invalid();
         }
 
@@ -485,8 +500,12 @@ public final class MusicEditOperations {
             precedingLineIndex--;
 
             if (precedingLineIndex < 0) {
-                // Beginning of composition — invalid
-                return EndingValidationResult.invalid();
+                // Beginning of composition — valid; the composition start acts as an implicit left repeat
+                return EndingValidationResult.valid(
+                    EndingValidationResult.PrecedingAction.NONE,
+                    selectionBegin,
+                    selectionEnd
+                );
             }
 
             precedingElementIndex = composition.getLine(precedingLineIndex).elementCount() - 1;

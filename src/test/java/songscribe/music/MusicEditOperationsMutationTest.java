@@ -514,6 +514,38 @@ class MusicEditOperationsMutationTest extends UnitTest {
     }
 
     // -----------------------------------------------------------------------
+    // canMakeFirstSecondEnding — auto-maintained terminal extension
+    // -----------------------------------------------------------------------
+
+    /**
+     * Verifies that {@code canMakeFirstSecondEnding} is enabled when the selection ends
+     * just before the composition's auto-maintained terminal, which is not selectable
+     * by the user.
+     *
+     * <p>Canonical line layout:
+     * <pre>
+     *  idx:  0            1        2        3             4        5        6
+     *        REPEAT_LEFT  CROTCHET CROTCHET REPEAT_RIGHT  CROTCHET CROTCHET FINAL_DOUBLE_BARLINE
+     * </pre>
+     * Index 6 is the auto-maintained terminal — not interactable. The user selects 1–5.
+     */
+    @Nested
+    class CanMakeFirstSecondEndingAtCompositionEnd {
+
+        @Test
+        void testSelectionEndingBeforeAutoMaintainedTerminalIsValid() {
+            var env = setup(
+                repeatLeft(), crotchet(), crotchet(), repeatRight(), crotchet(), crotchet(),
+                finalDoubleBarline()
+            );
+            // Index 6 (FINAL_DOUBLE_BARLINE) is the auto-maintained terminal and is not
+            // selectable; the user's selection covers only indices 1–5.
+            ReflectionTestHelper.selectRange(env.coordinator(), 1, 5);
+            assertThat(env.operations().canMakeFirstSecondEnding().isValid()).isTrue();
+        }
+    }
+
+    // -----------------------------------------------------------------------
     // hasEnclosingRepeat — backward-scan delimiter rules
     // -----------------------------------------------------------------------
 
