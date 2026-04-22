@@ -166,7 +166,7 @@ public class NoteAttachedStacker {
      * Computes note vertical bounds from element type geometry alone (no stem layout).
      */
     private static NoteBounds computeNoteBounds(StaffElement element) {
-        double centerYSs = element.getStaffPosition() * LayoutStylesheet.STAFF_POSITION_OFFSET_SS;
+        double centerYSs = LayoutStylesheet.spToSs(element.getStaffPosition());
         var type = element.getType();
         boolean upper = element.isUpper();
         double noteheadTopSs = centerYSs + type.getNoteheadTopOffsetSs();

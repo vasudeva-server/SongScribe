@@ -67,8 +67,7 @@ public final class LayoutResult {
     @Nullable
     private final KeySignature keySignature;
     private final double lineHeightSs;
-    private final double staffTopYSs;
-    private final double staffBottomYSs;
+    private final double aboveStaffSs;
     private final double lyricBaselineYSs;
 
     /**
@@ -82,8 +81,8 @@ public final class LayoutResult {
      * @param stemLayouts      Map of unbeamed notes to their computed stem geometry
      * @param tieLayouts       Map of tie spans to their computed tie geometry
      * @param lineHeightSs       Total height of the line in staff spaces (including staff, elements, and lyrics)
-     * @param staffTopYSs        Y position of the top staff line in staff spaces
-     * @param staffBottomYSs     Y position of the bottom staff line in staff spaces
+     * @param aboveStaffSs       Staff-space amount reserved above the staff top, i.e. the staff top's
+     *                           Y position within the line's local coordinate frame
      * @param lyricBaselineYSs   Y position of the lyric baseline in staff spaces (0 if no lyrics)
      */
     private LayoutResult(
@@ -97,8 +96,7 @@ public final class LayoutResult {
         @Nullable Clef clef,
         @Nullable KeySignature keySignature,
         double lineHeightSs,
-        double staffTopYSs,
-        double staffBottomYSs,
+        double aboveStaffSs,
         double lyricBaselineYSs) {
         this.elementColumns = Map.copyOf(elementColumns);
         this.elementBounds = Map.copyOf(elementBounds);
@@ -110,8 +108,7 @@ public final class LayoutResult {
         this.clef = clef;
         this.keySignature = keySignature;
         this.lineHeightSs = lineHeightSs;
-        this.staffTopYSs = staffTopYSs;
-        this.staffBottomYSs = staffBottomYSs;
+        this.aboveStaffSs = aboveStaffSs;
         this.lyricBaselineYSs = lyricBaselineYSs;
     }
 
@@ -546,17 +543,14 @@ public final class LayoutResult {
     }
 
     /**
-     * Returns the Y position of the top staff line, in staff spaces.
+     * Returns the staff-space amount reserved above the staff top.
+     * <p>
+     * This is also the Y position of the staff top within the line's local coordinate
+     * frame (component top = y=0). Used by consumers to place the staff vertically
+     * within the allocated line height.
      */
-    public double getStaffTopYSs() {
-        return staffTopYSs;
-    }
-
-    /**
-     * Returns the Y position of the bottom staff line, in staff spaces.
-     */
-    public double getStaffBottomYSs() {
-        return staffBottomYSs;
+    public double getAboveStaffSs() {
+        return aboveStaffSs;
     }
 
     /**
@@ -863,8 +857,7 @@ public final class LayoutResult {
         @Nullable
         private KeySignature keySignature;
         private double lineHeightSs = 0;
-        private double staffTopYSs = 0;
-        private double staffBottomYSs = 0;
+        private double aboveStaffSs = 0;
         private double lyricBaselineYSs = 0;
 
         public Builder() {
@@ -935,15 +928,14 @@ public final class LayoutResult {
         }
 
         /**
-         * Sets the staff geometry.
+         * Sets the staff-space amount reserved above the staff top.
          *
-         * @param staffTopYSs    Y position of top staff line in staff spaces
-         * @param staffBottomYSs Y position of bottom staff line in staff spaces
+         * @param aboveStaffSs Staff-space amount above the staff top (i.e. the staff top's
+         *                     Y position within the line's local coordinate frame)
          * @return This builder for chaining
          */
-        public Builder setStaffGeometrySs(double staffTopYSs, double staffBottomYSs) {
-            this.staffTopYSs = staffTopYSs;
-            this.staffBottomYSs = staffBottomYSs;
+        public Builder setAboveStaffSs(double aboveStaffSs) {
+            this.aboveStaffSs = aboveStaffSs;
             return this;
         }
 
@@ -1092,8 +1084,7 @@ public final class LayoutResult {
                 clef,
                 keySignature,
                 lineHeightSs,
-                staffTopYSs,
-                staffBottomYSs,
+                aboveStaffSs,
                 lyricBaselineYSs
             );
         }
@@ -1111,14 +1102,13 @@ public final class LayoutResult {
     @Override
     public String toString() {
         return String.format(
-            "LayoutResult{columns=%d, elements=%d, decorations=%d, spans=%d, height=%.1f, staff=[%.1f, %.1f], lyrics=%.1f}",
+            "LayoutResult{columns=%d, elements=%d, decorations=%d, spans=%d, height=%.1f, aboveStaff=%.1f, lyrics=%.1f}",
             elementColumns.size(),
             elementBounds.size(),
             decorationLayouts.size(),
             spanLayouts.size(),
             lineHeightSs,
-            staffTopYSs,
-            staffBottomYSs,
+            aboveStaffSs,
             lyricBaselineYSs
         );
     }

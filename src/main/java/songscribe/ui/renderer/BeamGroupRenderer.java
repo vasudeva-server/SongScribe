@@ -405,7 +405,7 @@ public class BeamGroupRenderer extends BaseElementRenderer<LineElement> {
         }
 
         // Fallback: approximate from staff position + standard stem length
-        double elementYSs = element.getStaffPosition() * 0.5;
+        double elementYSs = LayoutStylesheet.spToSs(element.getStaffPosition());
         return isUpper
             ? elementYSs - LayoutStylesheet.STEM_LENGTH_SS
             : elementYSs + LayoutStylesheet.STEM_LENGTH_SS;

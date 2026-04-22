@@ -108,7 +108,7 @@ public final class ElementHitTest {
         var layoutResult = lc.getLayoutResult();
         var elementXSs = layoutResult != null ? layoutResult.getElementXSs(element) : 0.0;
         var elementYSs = lc.getMiddleLineYSs()
-            + element.getStaffPosition() * LayoutStylesheet.STAFF_POSITION_OFFSET_SS;
+            + LayoutStylesheet.spToSs(element.getStaffPosition());
         var topOffsetSs = elementType.getNoteheadTopOffsetSs();
 
         if (expandToMinimum) {

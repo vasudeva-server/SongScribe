@@ -408,7 +408,7 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
      * @return Y coordinate for the note in staff spaces
      */
     public static double noteStaffPositionToCoordinateSs(int staffPosition, double middleLineYSs) {
-        return middleLineYSs + staffPosition * 0.5;
+        return middleLineYSs + LayoutStylesheet.spToSs(staffPosition);
     }
 
     /**
@@ -436,7 +436,7 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
         int step = (staffPosition > 0) ? -2 : 2;
 
         while (Math.abs(i) > 5) {
-            consumer.accept((i - staffPosition) * 0.5);
+            consumer.accept(LayoutStylesheet.spToSs(i - staffPosition));
             i += step;
         }
     }

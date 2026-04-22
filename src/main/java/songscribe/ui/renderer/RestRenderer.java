@@ -181,16 +181,16 @@ public class RestRenderer extends BaseElementRenderer<StaffElement> {
 
         if (noteType == ElementType.SEMIBREVE_REST) {
             // Whole rest hangs below the 4th line (second from top)
-            return middleLineYSs + SEMIBREVE_REST_Y_OFFSET * LayoutStylesheet.STAFF_POSITION_OFFSET_SS;
+            return middleLineYSs + LayoutStylesheet.spToSs(SEMIBREVE_REST_Y_OFFSET);
         }
 
         if (noteType == ElementType.MINIM_REST) {
             // Half rest sits on the middle line
-            return middleLineYSs + MINIM_REST_Y_OFFSET * LayoutStylesheet.STAFF_POSITION_OFFSET_SS;
+            return middleLineYSs + LayoutStylesheet.spToSs(MINIM_REST_Y_OFFSET);
         }
 
         // Other rests use standard note Y positioning
-        return middleLineYSs + note.getStaffPosition() * LayoutStylesheet.STAFF_POSITION_OFFSET_SS;
+        return middleLineYSs + LayoutStylesheet.spToSs(note.getStaffPosition());
     }
 
     /**

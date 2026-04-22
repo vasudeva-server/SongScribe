@@ -94,7 +94,8 @@ public class VerticalStackingCalculator {
         // Apply manual offsets post-layout (no collision re-run)
         applyManualOffsets(builder);
 
-        // Calculate lyrics baseline and line height
+        // Calculate lyrics baseline. Per #313, lyrics do not contribute to line height
+        // in this iteration — only the baseline position is reported.
         double lowestNoteBotSs = context.getLowestNoteBotSs();
         double lyricsBaselineYSs = lowestNoteBotSs + LayoutStylesheet.LYRICS_BASELINE_OFFSET_SS;
         boolean hasLyrics = false;
@@ -105,17 +106,36 @@ public class VerticalStackingCalculator {
                 break;
             }
         }
-        double lyricsHeightSs = hasLyrics ? LayoutStylesheet.LYRICS_HEIGHT_SS : 0.0;
 
-        // Find the highest point reached across all layers (most negative Y)
-        double maxAboveStaffSs = systemExtents.yGet(true, 0, lineWidthSs);
+        // Stacking coordinates put the middle staff line at y=0, so the staff
+        // top is at y=-staffHalf. Only extents beyond the staff top count as
+        // above-staff space. StaffExtents' `bot` arrays default to
+        // STAFF_HEIGHT_SS, which bakes in a 2-ss buffer below the staff
+        // bottom — the below term subtracts that baseline so a clean line
+        // contributes the minimum derived from the valid staff-position range.
+        double topExtentSs = systemExtents.yGet(true, 0, lineWidthSs);
+        double aboveStaffSs = Math.max(
+            LayoutStylesheet.MIN_ABOVE_STAFF_SS,
+            -topExtentSs - LayoutStylesheet.STAFF_HALF_SS);
+
+        double botExtentSs = Math.max(
+            Math.max(
+                noteAttachedExtents.yGet(false, 0, lineWidthSs),
+                structuralExtents.yGet(false, 0, lineWidthSs)),
+            Math.max(
+                systemExtents.yGet(false, 0, lineWidthSs),
+                lowestNoteBotSs));
+        double belowStaffSs = Math.max(
+            LayoutStylesheet.MIN_BELOW_STAFF_SS,
+            botExtentSs - LayoutStylesheet.STAFF_HEIGHT_SS);
 
         double lineHeightSs = LayoutStylesheet.STAFF_HEIGHT_SS
-            + Math.abs(maxAboveStaffSs)
-            + lyricsHeightSs
+            + aboveStaffSs
+            + belowStaffSs
             + LayoutStylesheet.INTER_LINE_MARGIN_SS;
 
         builder.setLineHeightSs(lineHeightSs);
+        builder.setAboveStaffSs(aboveStaffSs);
         builder.setLyricBaselineYSs(hasLyrics ? lyricsBaselineYSs : 0);
     }
 

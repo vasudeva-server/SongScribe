@@ -55,6 +55,7 @@ import songscribe.music.TieSpan;
 import songscribe.ui.Mode;
 import songscribe.ui.component.Score;
 import songscribe.ui.edit.EditModeManager;
+import songscribe.ui.layout.LayoutStylesheet;
 import songscribe.ui.layout.ScaleContext;
 import songscribe.ui.playback.MidiController;
 import songscribe.ui.playback.PlayThread;
@@ -80,6 +81,15 @@ class NoteDragHandlerTest extends UnitTest {
 
     // Subject under test
     private NoteDragHandler handler;
+
+    // Staff position of the pressed note at press time — used by dragToPosition to compute
+    // the screen-Y delta that yields a specific target position.
+    private int pressOriginalSp;
+
+    // Screen-Y in pixels used by the press MouseEvent; dragToPosition uses a different value
+    // so the handler sees a non-zero delta.
+    private static final int PRESS_SCREEN_Y = 100;
+    private static final int DRAG_SCREEN_Y = 50;
 
     @BeforeEach
     void setUp() {
@@ -204,7 +214,7 @@ class NoteDragHandlerTest extends UnitTest {
 
         @Test
         void testClampingAtLowerBoundary() {
-            // MAX_STAFF_POSITION_SP = 12
+            // LayoutStylesheet.MAX_STAFF_POSITION_SP = 12
             // Notes at 8 and 10, drag down by +5 → clamped to +2 (10+2=12)
             var line = createLine(8, 10);
             when(lc.getLine()).thenReturn(line);
@@ -219,7 +229,7 @@ class NoteDragHandlerTest extends UnitTest {
 
         @Test
         void testClampingAtUpperBoundary() {
-            // MIN_STAFF_POSITION_SP = -10
+            // LayoutStylesheet.MIN_STAFF_POSITION_SP = -10
             // Notes at -6 and -8, drag up by -5 → clamped to -2 (-8-2=-10)
             var line = createLine(-6, -8);
             when(lc.getLine()).thenReturn(line);
@@ -425,16 +435,17 @@ class NoteDragHandlerTest extends UnitTest {
     }
 
     /**
-     * Simulates a drag to the given staff position by mocking the coordinate
-     * conversion chain and calling handleDrag.
+     * Simulates a drag to the given staff position. The handler computes the new position
+     * from the screen-Y delta between press and drag; this helper mocks
+     * {@code ScaleContext.fromPixels} to return the staff-space delta that maps to the
+     * requested target position.
      */
     private void dragToPosition(int targetPositionSp) {
-        when(mockScaleContext.fromPixels(anyDouble())).thenReturn(5.0);
-        previewMgrMock.when(
-            () -> PreviewElementManager.calculateStaffPositionFromMouse(anyDouble(), anyDouble())
-        ).thenReturn(targetPositionSp);
+        var deltaSp = targetPositionSp - pressOriginalSp;
+        var deltaYSs = deltaSp * LayoutStylesheet.STAFF_POSITION_OFFSET_SS;
+        when(mockScaleContext.fromPixels(anyDouble())).thenReturn(deltaYSs);
 
-        var event = mouseEvent(lc, MouseEvent.MOUSE_DRAGGED, 100, 50, MouseEvent.BUTTON1);
+        var event = mouseEvent(lc, MouseEvent.MOUSE_DRAGGED, 100, DRAG_SCREEN_Y, MouseEvent.BUTTON1);
         handler.handleDrag(event);
     }
 
@@ -443,11 +454,19 @@ class NoteDragHandlerTest extends UnitTest {
     }
 
     /**
-     * Mocks the hit test to return the given index and calls handlePress.
+     * Mocks the hit test to return the given index and calls handlePress. Also records the
+     * pressed note's staff position so {@link #dragToPosition} can compute the right delta.
      */
     private void pressOnNote(int hitIndex) {
         hitTestMock.when(() -> ElementHitTest.hitTestElement(any(), any())).thenReturn(hitIndex);
-        var event = mouseEvent(lc, MouseEvent.MOUSE_PRESSED, 100, 100, MouseEvent.BUTTON1);
+
+        var line = lc.getLine();
+
+        if (line != null) {
+            pressOriginalSp = line.getElement(hitIndex).getStaffPosition();
+        }
+
+        var event = mouseEvent(lc, MouseEvent.MOUSE_PRESSED, 100, PRESS_SCREEN_Y, MouseEvent.BUTTON1);
         handler.handlePress(event);
     }
 

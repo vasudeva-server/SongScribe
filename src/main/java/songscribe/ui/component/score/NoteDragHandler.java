@@ -41,6 +41,7 @@ import songscribe.ui.OptionDialogs;
 import songscribe.ui.Mode;
 import songscribe.ui.component.Score;
 import songscribe.ui.edit.EditModeManager;
+import songscribe.ui.layout.LayoutStylesheet;
 import songscribe.ui.layout.ScaleContext;
 import songscribe.ui.playback.MidiController;
 import songscribe.ui.playback.PlayThread;
@@ -71,6 +72,14 @@ class NoteDragHandler {
 
     /** Original staff position of the directly dragged note — used to compute deltaSp. */
     private int originalDragStaffPositionSp;
+
+    /**
+     * Screen-absolute mouse Y (pixels) at drag start. The drag tracks mouse movement as a
+     * delta from this anchor in screen coordinates, so an in-drag layout reflow — which can
+     * shift both the staff within the line component and the line component within its
+     * parent — cannot perturb the mouse→staff-position mapping.
+     */
+    private int dragPressScreenYPx;
 
     private int lastPlayedStaffPositionSp;
     @Nullable
@@ -202,6 +211,7 @@ class NoteDragHandler {
         originalDragStaffPositionSp = note.getStaffPosition();
         lastPlayedStaffPositionSp = originalDragStaffPositionSp;
         dragLine = line;
+        dragPressScreenYPx = e.getYOnScreen();
 
         PreviewElementManager.clearPreviewElement();
 
@@ -221,8 +231,14 @@ class NoteDragHandler {
      * Handles mouse drag while a pitch-drag is active.
      */
     void handleDrag(MouseEvent e) {
-        var mouseYss = ScaleContext.getInstance().fromPixels(e.getY());
-        var newPositionSp = PreviewElementManager.calculateStaffPositionFromMouse(mouseYss, lc.getMiddleLineYSs());
+        // Track mouse movement in screen-absolute pixels. Using a screen-Y delta instead of
+        // a component-local coordinate decouples the drag from any layout reflow — neither
+        // a change to aboveStaffSs (which shifts the staff within the line component) nor
+        // a reposition of the line component within its parent can perturb the mapping.
+        var deltaYPx = e.getYOnScreen() - dragPressScreenYPx;
+        var deltaYSs = ScaleContext.getInstance().fromPixels(deltaYPx);
+        var deltaSp = LayoutStylesheet.ssToSp(deltaYSs);
+        var newPositionSp = originalDragStaffPositionSp + deltaSp;
 
         if (newPositionSp == lastPlayedStaffPositionSp) {
             return;
@@ -232,16 +248,13 @@ class NoteDragHandler {
             return;
         }
 
-        // Compute raw delta from the dragged note's original position
-        var deltaSp = newPositionSp - originalDragStaffPositionSp;
-
         // Clamp delta so no note in the group exits the valid staff range
         var minDelta = Integer.MIN_VALUE;
         var maxDelta = Integer.MAX_VALUE;
 
         for (var entry : dragGroup) {
-            minDelta = Math.max(minDelta, PreviewElementManager.MIN_STAFF_POSITION_SP - entry.originalStaffPositionSp());
-            maxDelta = Math.min(maxDelta, PreviewElementManager.MAX_STAFF_POSITION_SP - entry.originalStaffPositionSp());
+            minDelta = Math.max(minDelta, LayoutStylesheet.MIN_STAFF_POSITION_SP - entry.originalStaffPositionSp());
+            maxDelta = Math.min(maxDelta, LayoutStylesheet.MAX_STAFF_POSITION_SP - entry.originalStaffPositionSp());
         }
 
         deltaSp = Math.clamp(deltaSp, minDelta, maxDelta);
@@ -276,7 +289,6 @@ class NoteDragHandler {
         lastPlayedStaffPositionSp = originalDragStaffPositionSp + deltaSp;
 
         lc.invalidateLayout();
-        lc.repaint();
         dragMoved = true;
     }
 

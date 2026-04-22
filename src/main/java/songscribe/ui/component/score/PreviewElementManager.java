@@ -62,17 +62,7 @@ import songscribe.ui.playback.PlaybackController;
  * cursor management, and element mutation logic. Only one preview element can be
  * active across all LineComponents at a time.
  */
-public class PreviewElementManager {
-
-    // ==========================================================================
-    // Constants
-    // ==========================================================================
-
-    /** Minimum (highest-pitched) valid staff position. */
-    static final int MIN_STAFF_POSITION_SP = -(LayoutStylesheet.STAFF_LINES_ABOVE + 2) * 2;
-
-    /** Maximum (lowest-pitched) valid staff position. */
-    static final int MAX_STAFF_POSITION_SP = (LayoutStylesheet.STAFF_LINES_BELOW + 2) * 2;
+public final class PreviewElementManager {
 
     // ==========================================================================
     // Static State
@@ -741,7 +731,7 @@ public class PreviewElementManager {
      * @return Staff position
      */
     static int calculateStaffPositionFromMouse(double mouseYss, double middleLineYSs) {
-        return (int) Math.round((mouseYss - middleLineYSs) / LayoutStylesheet.STAFF_POSITION_OFFSET_SS);
+        return LayoutStylesheet.ssToSp(mouseYss - middleLineYSs);
     }
 
     /**
@@ -763,7 +753,8 @@ public class PreviewElementManager {
      * @return true if the position is valid
      */
     static boolean isValidStaffPosition(int staffPosition) {
-        return staffPosition >= MIN_STAFF_POSITION_SP && staffPosition <= MAX_STAFF_POSITION_SP;
+        return staffPosition >= LayoutStylesheet.MIN_STAFF_POSITION_SP
+            && staffPosition <= LayoutStylesheet.MAX_STAFF_POSITION_SP;
     }
 
     // ==========================================================================

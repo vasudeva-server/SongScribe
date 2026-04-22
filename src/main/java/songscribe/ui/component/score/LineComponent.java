@@ -34,7 +34,6 @@ import songscribe.ui.component.ComponentNames;
 import songscribe.ui.edit.EditModeManager;
 import songscribe.ui.edit.GraceModeManager;
 import songscribe.ui.component.Score;
-import songscribe.ui.layout.CollisionDetector;
 import songscribe.ui.layout.LayoutEngine;
 import songscribe.ui.layout.LayoutStylesheet;
 import songscribe.ui.layout.LayoutResult;
@@ -124,10 +123,6 @@ public class LineComponent extends ScoreComponent
 
     /** Index of the grace note paired with the currently playing note (-1 if none). */
     private int playingGraceNoteIndex = -1;
-
-    /** The layout engine for calculating element positions. */
-    @Nullable
-    private LayoutEngine layoutEngine;
 
     /** Cached layout result from the last layout pass. */
     @Nullable
@@ -318,6 +313,8 @@ public class LineComponent extends ScoreComponent
     public void invalidateLayout() {
         this.layoutDirty = true;
         this.layoutResult = null;
+        revalidate();
+        repaint();
     }
 
     /**
@@ -333,13 +330,6 @@ public class LineComponent extends ScoreComponent
         return layoutResult;
     }
 
-    /**
-     * Performs layout calculation for this line.
-     * <p>
-     * This method uses the {@link LayoutEngine} to calculate bounds for all
-     * elements on the line. The result is cached and can be retrieved via
-     * {@link #getLayoutResult()}.
-     */
     private void performLayout() {
         if (composition == null || line == null) {
             return;
@@ -348,12 +338,13 @@ public class LineComponent extends ScoreComponent
         var lyricsFont = composition.getLyricsFont();
         var staffRightMarginSs = composition.getLineWidthSs();
         var isLastLine = lineIndex == composition.lineCount() - 1;
-        layoutEngine = new LayoutEngine(lyricsFont, staffRightMarginSs);
+        var layoutEngine = new LayoutEngine(lyricsFont, staffRightMarginSs);
         layoutResult = layoutEngine.layout(line, isLastLine);
 
         if (layoutResult == null) {
-            var error = layoutEngine.getLastError();
-            System.err.println("Layout failed for line " + lineIndex + ": " + error);
+            throw RuntimeError.exit(
+                "layout failed for line " + lineIndex + ": "
+                + layoutEngine.getLastError());
         }
 
         layoutDirty = false;
@@ -370,7 +361,6 @@ public class LineComponent extends ScoreComponent
             performLayout();
         }
 
-        // Update middleLineY from layout result (render owns this field)
         middleLineYSs = calculateMiddleLineYSs();
 
         // Apply staff-space to pixel scale transform at the render boundary.
@@ -392,163 +382,39 @@ public class LineComponent extends ScoreComponent
 
     @Override
     public Dimension getPreferredSize() {
-        if (composition == null) {
+        if (composition == null || line == null) {
             return new Dimension(0, 0);
         }
 
-        // Calculate width and height in staff-space units
-        double widthSs = calculateLineWidthSs();
-        double heightSs = calculateLineHeightSs();
+        if (layoutResult == null || layoutDirty) {
+            performLayout();
+        }
 
-        // Convert to pixels at the Swing boundary
+        var result = layoutResult;
+
+        if (result == null) {
+            throw RuntimeError.exit("layout result is null after layout for line " + lineIndex);
+        }
+
         var scale = ScaleContext.getInstance();
 
-        var dim = new Dimension(
-            (int) Math.ceil(scale.toPixels(widthSs)),
-            (int) Math.ceil(scale.toPixels(heightSs))
-        );
-        return dim;
+        return new Dimension(
+            (int) Math.ceil(scale.toPixels(result.getLineWidthSs())),
+            (int) Math.ceil(scale.toPixels(result.getLineHeightSs())));
     }
 
-    /**
-     * Calculates the Y position of the middle staff line in staff-space units.
-     * <p>
-     * This accounts for extra space needed above the staff for tempo markings
-     * and other elements that extend above the default staff area.
-     * <p>
-     * Even for empty lines, uses minimum spacing to accommodate typical notes,
-     * preventing position jumps when the first note is inserted.
-     *
-     * @return Y position of middle staff line in staff-space units
-     */
     private double calculateMiddleLineYSs() {
-        // In staff-space: spacing between adjacent staff lines is 1.0 ss
-        double defaultSpaceAbove = LayoutStylesheet.STAFF_LINES_ABOVE;  // 3.0 ss
-        double spaceAbove = MIN_SPACE_ABOVE_SS;
-
-        // Get extent of notes and attachments (only if line has content)
-        if (line != null && !line.isEmpty()) {
-            double tempMiddleLineYSs = defaultSpaceAbove + 2.0;
-            var extent = CollisionDetector.calculateNoteExtent(line, tempMiddleLineYSs);
-            spaceAbove = Math.max(MIN_SPACE_ABOVE_SS, Math.abs(extent.getMinY()));
+        if (layoutResult == null || layoutDirty) {
+            performLayout();
         }
 
-        // Use layout result to determine space needed above staff.
-        // Check all decoration layouts (tempo, endings, trills, hairpins, etc.)
-        // because any of them may extend above the staff.
-        if (layoutResult != null) {
-            for (var decorationLayout : layoutResult.getDecorationLayouts().values()) {
-                double top = decorationLayout.ySs();
+        var result = layoutResult;
 
-                if (top < 0) {
-                    spaceAbove = Math.max(spaceAbove, Math.abs(top));
-                }
-            }
+        if (result == null) {
+            throw RuntimeError.exit("layout result is null after layout for line " + lineIndex);
         }
 
-        // Middle line is 2 staff-space offsets below the top staff line
-        return spaceAbove + 2.0;
-    }
-
-    /**
-     * Calculates the width needed for this line in staff-space units.
-     * <p>
-     * Uses the composition's line width, or calculates from note positions
-     * if the line has notes.
-     *
-     * @return Width in staff-space units
-     */
-    private double calculateLineWidthSs() {
-        var comp = getComposition();
-
-        if (line == null || line.isEmpty() || layoutResult == null) {
-            return comp.getLineWidthSs();
-        }
-
-        // Use the greater of composition width or calculated width from layout
-        double calculatedWidth = layoutResult.getLineWidthSs();
-
-        return Math.max(comp.getLineWidthSs(), calculatedWidth);
-    }
-
-    /**
-     * Minimum space above staff to accommodate a typical note (quarter note with stem).
-     * This prevents the line from jumping in height when the first note is added.
-     * Value: 5.0 ss (5 staff-space gaps above the top staff line).
-     */
-    private static final double MIN_SPACE_ABOVE_SS = 10.0;
-
-    /**
-     * Calculates the height needed for this line.
-     * <p>
-     * Uses CollisionDetector to measure the extent of notes and attachments
-     * above and below the staff. Also accounts for tempo markings on the
-     * first line.
-     * <p>
-     * Even for empty lines, uses minimum spacing to accommodate typical notes,
-     * preventing height jumps when the first note is inserted.
-     *
-     * @return Height in staff-space units
-     */
-    private double calculateLineHeightSs() {
-        // All values in staff-space units
-        double defaultSpaceAbove = LayoutStylesheet.STAFF_LINES_ABOVE;  // 3.0 ss
-        double defaultSpaceBelow = LayoutStylesheet.STAFF_LINES_BELOW;  // 4.0 ss
-        double staffHeight = LayoutStylesheet.STAFF_HEIGHT_SS;   // 4.0 ss
-
-        double spaceAbove = MIN_SPACE_ABOVE_SS;
-        double spaceBelow = defaultSpaceBelow;
-
-        // Get extent of notes and attachments (only if line has content)
-        if (line != null && !line.isEmpty()) {
-            double tempMiddleLineYSs = defaultSpaceAbove + 2.0;
-            var extent = CollisionDetector.calculateNoteExtent(line, tempMiddleLineYSs);
-            spaceAbove = Math.max(MIN_SPACE_ABOVE_SS, Math.abs(extent.getMinY()));
-            spaceBelow = Math.max(
-                defaultSpaceBelow,
-                extent.getMaxY() - (staffHeight / 2.0)
-            );
-        }
-
-        // Account for tempo marking on first line (even if line is empty)
-        if (lineIndex == 0 && hasTempo()) {
-            // tempoChangeYPosPx is a legacy pixel offset (deprecated, typically 0)
-            var tempoChangeYPosSs = ScaleContext.getInstance().fromPixels(
-                (line != null) ? line.getTempoChangeYPosPx() : 0
-            );
-            var tempoYOffset = -7.0 * LayoutStylesheet.STAFF_POSITION_OFFSET_SS + tempoChangeYPosSs;
-            // Approximate tempo content height (note symbol + text ascent): ~3.125 ss
-            var tempoContentHeight = 3.125;
-            var tempoSpaceAbove = Math.abs(tempoYOffset) + tempoContentHeight - 2.0;
-            spaceAbove = Math.max(spaceAbove, tempoSpaceAbove);
-        }
-
-        return spaceAbove + staffHeight + spaceBelow;
-    }
-
-    /**
-     * Returns whether this line has a tempo marking to display.
-     * <p>
-     * For line 0, returns true if the composition has an initial tempo,
-     * even if the line is empty. This ensures proper space allocation
-     * before notes are added.
-     */
-    private boolean hasTempo() {
-        // Check for initial tempo on first line (even if empty)
-        if (lineIndex == 0) {
-            return true;
-        }
-
-        // Check for tempo change on any note in this line
-        if (line != null) {
-            for (var i = 0; i < line.effectiveElementCount(); i++) {
-                if (line.getElement(i).getTempoChange() != null) {
-                    return true;
-                }
-            }
-        }
-
-        return false;
+        return result.getAboveStaffSs() + LayoutStylesheet.STAFF_HALF_SS;
     }
 
     // ==========================================================================

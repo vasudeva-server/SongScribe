@@ -211,16 +211,32 @@ public final class LayoutStylesheet {
      */
     public static final int STAFF_LINES_BELOW = 4;
 
+    /** Minimum (highest-pitched) valid staff position, in half staff-space units. */
+    public static final int MIN_STAFF_POSITION_SP = -(STAFF_LINES_ABOVE + 2) * 2;
+
+    /** Maximum (lowest-pitched) valid staff position, in half staff-space units. */
+    public static final int MAX_STAFF_POSITION_SP = (STAFF_LINES_BELOW + 2) * 2;
+
     /**
      * Height of 5-line staff (4 gaps of 1 ss each)
      */
     public static final double STAFF_HEIGHT_SS = 4.0;  // 32px
+
+    public static final double STAFF_HALF_SS = STAFF_HEIGHT_SS / 2.0;
 
     /**
      * Staff position offset: half of one staff space.
      * Used to convert between staff positions and Y coordinates.
      */
     public static final double STAFF_POSITION_OFFSET_SS = 0.5;  // 4px
+
+    /** Minimum staff-space amount reserved above the staff top, derived from MIN_STAFF_POSITION_SP. */
+    public static final double MIN_ABOVE_STAFF_SS =
+        Math.abs(MIN_STAFF_POSITION_SP) * STAFF_POSITION_OFFSET_SS - STAFF_HALF_SS;
+
+    /** Minimum staff-space amount reserved below the staff bottom, derived from MAX_STAFF_POSITION_SP. */
+    public static final double MIN_BELOW_STAFF_SS =
+        MAX_STAFF_POSITION_SP * STAFF_POSITION_OFFSET_SS - STAFF_HALF_SS;
 
     // ==========================================================================
     // LINE ELEMENT DEFAULT Y POSITIONS (relative to middleLineY, in ss)
@@ -276,6 +292,16 @@ public final class LayoutStylesheet {
      * Per Gould/Ross: provides visual separation between staff beginning and music.
      */
     public static final double FIRST_NOTE_OFFSET_SS = 3.5;  // 28px
+
+    /** Converts a staff position (half staff-space units) to staff spaces. */
+    public static double spToSs(int staffPositionSp) {
+        return staffPositionSp * STAFF_POSITION_OFFSET_SS;
+    }
+
+    /** Converts staff spaces to a staff position (half staff-space units). */
+    public static int ssToSp(double ss) {
+        return (int) Math.round(ss / STAFF_POSITION_OFFSET_SS);
+    }
 
     /**
      * Calculates the X position of the first note in a line, in staff-space units.
@@ -386,6 +412,8 @@ public final class LayoutStylesheet {
      * Vertical margin between the bottom of one staff line and the top of the next.
      */
     public static final double INTER_LINE_MARGIN_SS = 1.25;  // 10px
+
+    public static final double MIN_LINE_HEIGHT_SS = STAFF_HEIGHT_SS + MIN_ABOVE_STAFF_SS + MIN_BELOW_STAFF_SS + INTER_LINE_MARGIN_SS;
 
     // ==========================================================================
     // LINE JUSTIFICATION

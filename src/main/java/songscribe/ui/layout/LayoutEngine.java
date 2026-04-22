@@ -144,10 +144,13 @@ public class LayoutEngine {
         List<ElementColumn> columns = columnBuilder.buildColumns(line);
 
         if (columns.isEmpty()) {
-            // Empty line - return result with header elements only
+            // Empty line — mirror the minimum content-fitted height from
+            // VerticalStackingCalculator so header elements (clef, key signature)
+            // have MIN_ABOVE_STAFF_SS room above the staff.
+            double emptyLineHeightSs = LayoutStylesheet.MIN_LINE_HEIGHT_SS;
             var emptyBuilder = LayoutResult.builder()
-                .setLineHeightSs(STAFF_HEIGHT_SS)
-                .setStaffGeometrySs(0, STAFF_HEIGHT_SS)
+                .setLineHeightSs(emptyLineHeightSs)
+                .setAboveStaffSs(LayoutStylesheet.MIN_ABOVE_STAFF_SS)
                 .setLyricBaselineYSs(0);
             createHeaderElements(line, emptyBuilder);
             return emptyBuilder.build();
@@ -236,9 +239,6 @@ public class LayoutEngine {
             builder.putElementColumn(column.getElement(), column);
         }
 
-        // Set staff geometry
-        builder.setStaffGeometrySs(0, STAFF_HEIGHT_SS);
-
         return builder.build();
     }
 
@@ -322,7 +322,7 @@ public class LayoutEngine {
 
                 if (dxSs != 0.0) {
                     double rawSlope =
-                        (lastElement.getStaffPosition() - firstElement.getStaffPosition()) * 0.5 / dxSs;
+                        LayoutStylesheet.spToSs(lastElement.getStaffPosition() - firstElement.getStaffPosition()) / dxSs;
 
                     // Hyperbolic dampening saturates extreme slopes without hard clamping.
                     slope = BEAM_SLOPE_MAX * rawSlope / (BEAM_SLOPE_MAX + Math.abs(rawSlope));
@@ -354,7 +354,7 @@ public class LayoutEngine {
                 var anchorElement = line.getElement(anchorIdx);
                 var anchorColumn = elementToColumn.get(anchorElement);
                 double anchorXSs = (anchorColumn != null) ? anchorColumn.getXSs() : firstXSs;
-                double anchorElementYSs = anchorElement.getStaffPosition() * 0.5;
+                double anchorElementYSs = LayoutStylesheet.spToSs(anchorElement.getStaffPosition());
 
                 // Place beam exactly MIN_STEM_SS from the anchor notehead.
                 // Y-down: beam above notehead = smaller Y (subtract); beam below = larger Y (add).
@@ -377,7 +377,7 @@ public class LayoutEngine {
                             continue;
                         }
 
-                        double elementYSs = element.getStaffPosition() * 0.5;
+                        double elementYSs = LayoutStylesheet.spToSs(element.getStaffPosition());
                         double beamYSs = slope * (col.getXSs() - firstXSs) + startYSs;
                         double stemLenSs = stemsUp ? (elementYSs - beamYSs) : (beamYSs - elementYSs);
 
@@ -410,7 +410,7 @@ public class LayoutEngine {
                         continue;
                     }
 
-                    double elementYSs = element.getStaffPosition() * 0.5;
+                    double elementYSs = LayoutStylesheet.spToSs(element.getStaffPosition());
                     double beamYSs = slope * (col.getXSs() - firstXSs) + startYSs;
                     double stemLenSs = stemsUp ? (elementYSs - beamYSs) : (beamYSs - elementYSs);
                     double deficitSs = MIN_STEM_SS - stemLenSs;
@@ -458,7 +458,7 @@ public class LayoutEngine {
                         continue;
                     }
 
-                    double elementYSs = element.getStaffPosition() * 0.5;
+                    double elementYSs = LayoutStylesheet.spToSs(element.getStaffPosition());
                     double beamYSs = slope * (col.getXSs() - firstXSs) + startYSs;
                     double stemLenSs = stemsUp ? (elementYSs - beamYSs) : (beamYSs - elementYSs);
                     double lengtheningSs = stemLenSs - MIN_STEM_SS;
@@ -529,7 +529,7 @@ public class LayoutEngine {
 
             // isUpper() → stem up (upper=true means stem goes up)
             boolean stemsUp = element.isUpper();
-            double elementYSs = element.getStaffPosition() * 0.5;
+            double elementYSs = LayoutStylesheet.spToSs(element.getStaffPosition());
             double stemLenSs = element.getType().isGraceNote()
                 ? LayoutStylesheet.GRACE_NOTE_STEM_LENGTH_SS
                 : MIN_STEM_SS;
@@ -589,8 +589,8 @@ public class LayoutEngine {
             // Tie attachment points: centered on notehead horizontally.
             double startXSs = startColumn.getXSs() + TIE_NOTEHEAD_HALF_WIDTH_SS;
             double endXSs = endColumn.getXSs() + TIE_NOTEHEAD_HALF_WIDTH_SS;
-            double startYSs = startElement.getStaffPosition() * 0.5 + direction * TIE_ENDPOINT_Y_OFFSET_SS;
-            double endYSs = endElement.getStaffPosition() * 0.5 + direction * TIE_ENDPOINT_Y_OFFSET_SS;
+            double startYSs = LayoutStylesheet.spToSs(startElement.getStaffPosition()) + direction * TIE_ENDPOINT_Y_OFFSET_SS;
+            double endYSs = LayoutStylesheet.spToSs(endElement.getStaffPosition()) + direction * TIE_ENDPOINT_Y_OFFSET_SS;
 
             double tieWidthSs = endXSs - startXSs;
 
@@ -628,7 +628,7 @@ public class LayoutEngine {
                     }
 
                     double elementXSs = interiorColumn.getXSs();
-                    double elementYSs = interiorElement.getStaffPosition() * 0.5;
+                    double elementYSs = LayoutStylesheet.spToSs(interiorElement.getStaffPosition());
 
                     // Evaluate outer cubic Bezier at approximate t (linear X interpolation).
                     double t = tieWidthSs > 0
