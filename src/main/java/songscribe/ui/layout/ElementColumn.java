@@ -263,10 +263,10 @@ public final class ElementColumn {
      * Sets the X position of this column's element head left edge (glyph origin).
      * Called by the HorizontalSpacingCalculator during layout.
      *
-     * @param x X position in staff spaces
+     * @param xSs X position in staff spaces
      */
-    void setXSs(double x) {
-        this.xSs = x;
+    void setXSs(double xSs) {
+        this.xSs = xSs;
     }
 
     // ==========================================================================

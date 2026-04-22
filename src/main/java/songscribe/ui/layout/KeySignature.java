@@ -22,6 +22,8 @@ package songscribe.ui.layout;
 
 
 import songscribe.music.KeyType;
+import songscribe.smufl.SMuFLGlyph;
+import songscribe.smufl.SMuFLMetadata;
 
 /**
  * Represents the key signature (sharps or flats) at the start of a staff line.
@@ -32,12 +34,6 @@ import songscribe.music.KeyType;
  * The width depends on the number of accidentals (0-7 sharps or flats).
  */
 public class KeySignature extends LineElement {
-
-    /** Width per accidental glyph in pixels. */
-    private static final double ACCIDENTAL_WIDTH_PX = 8.0;
-
-    /** Height of accidental glyphs (may extend above/below staff). */
-    private static final double ACCIDENTAL_HEIGHT_PX = 24.0;
 
     /** The type of key signature (sharps or flats). */
     private KeyType keyType;
@@ -104,20 +100,37 @@ public class KeySignature extends LineElement {
     }
 
     @Override
-    public double getContentWidthPx() {
+    public double getContentWidthSs() {
         if (!hasAccidentals()) {
             return 0;
         }
 
-        return accidentalCount * ACCIDENTAL_WIDTH_PX;
+        return accidentalCount * SMuFLMetadata.getInstance().requireBBox(accidentalGlyph()).width();
+    }
+
+    @Override
+    public double getContentWidthPx() {
+        return ScaleContext.getInstance().toPixels(getContentWidthSs());
+    }
+
+    /**
+     * Returns the content height in staff-space units — the bbox height of the active
+     * accidental glyph. Kerning and inter-glyph vertical variation are out of scope.
+     */
+    public double getContentHeightSs() {
+        if (!hasAccidentals()) {
+            return 0;
+        }
+
+        return SMuFLMetadata.getInstance().requireBBox(accidentalGlyph()).height();
     }
 
     @Override
     public double getContentHeightPx() {
-        if (!hasAccidentals()) {
-            return 0;
-        }
+        return ScaleContext.getInstance().toPixels(getContentHeightSs());
+    }
 
-        return ACCIDENTAL_HEIGHT_PX;
+    private SMuFLGlyph accidentalGlyph() {
+        return keyType == KeyType.FLATS ? SMuFLGlyph.ACCIDENTAL_FLAT : SMuFLGlyph.ACCIDENTAL_SHARP;
     }
 }

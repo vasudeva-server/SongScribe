@@ -202,15 +202,15 @@ public class BarRenderer extends BaseElementRenderer<StaffElement> {
      * The glyph origin is at the bottom staff line (SMuFL barline convention),
      * producing two dots in the inner staff spaces.
      *
-     * @param g2 Graphics context (translated to middle line)
-     * @param x  Left edge X coordinate for the dots
+     * @param g2  Graphics context (translated to middle line)
+     * @param xSs Left edge X coordinate for the dots in staff spaces
      */
-    private static void drawRepeatDots(Graphics2D g2, double x) {
+    private static void drawRepeatDots(Graphics2D g2, double xSs) {
         try (var ignored = GraphicsState.save(g2, FONT)) {
             g2.setFont(MUSIC_FONT);
             g2.drawString(
                 SMuFLGlyph.REPEAT_DOTS.asString(),
-                (float) x,
+                (float) xSs,
                 (float) BOTTOM_STAFF_LINE_Y_SS);
         }
     }

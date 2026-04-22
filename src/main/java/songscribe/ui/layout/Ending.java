@@ -621,21 +621,4 @@ public class Ending extends RangeElement {
             .findFirst()
             .orElse(null);
     }
-
-    @Override
-    public double getContentWidthPx() {
-        var anchor = getAnchorElement();
-        var endElement = getEndElement();
-
-        if (anchor == null || endElement == null) {
-            return 0;
-        }
-
-        return Math.abs(endElement.getXSs() - anchor.getXSs()) + endElement.getContentWidthPx();
-    }
-
-    @Override
-    public double getContentHeightPx() {
-        return ScaleContext.getInstance().toPixels(getContentHeightSs());
-    }
 }

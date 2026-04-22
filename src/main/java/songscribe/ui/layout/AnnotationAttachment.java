@@ -24,6 +24,7 @@ import java.awt.FontMetrics;
 
 import org.jspecify.annotations.Nullable;
 
+import songscribe.error.RuntimeError;
 import songscribe.music.Annotation;
 import songscribe.music.StaffElement;
 
@@ -34,9 +35,6 @@ import songscribe.music.StaffElement;
  * They can be aligned left, center, or right relative to the note.
  */
 public class AnnotationAttachment extends Attachment {
-
-    /** Default height for annotations in staff-space units. */
-    private static final double DEFAULT_HEIGHT_SS = 1.75;  // 14px
 
     /** The annotation data. */
     private Annotation annotation;
@@ -73,7 +71,6 @@ public class AnnotationAttachment extends Attachment {
         setAlignment(Alignment.LEFT);
 
         if (parent != null) {
-            setOwnerElement(parent);
             setParentLine(parent.getParentLine());
         }
     }
@@ -113,15 +110,28 @@ public class AnnotationAttachment extends Attachment {
      * @return width in staff-space units
      */
     public double computeContentWidthSs(FontMetrics fontMetrics) {
-        return ScaleContext.getInstance().fromPixels(
-            fontMetrics.stringWidth(annotation.getAnnotation()));
+        return ScaleContext.getInstance().textWidthSs(fontMetrics, annotation.getAnnotation());
     }
 
     /**
-     * Returns the content height in staff-space units.
+     * Returns the content height in staff-space units, derived from the composition's
+     * annotation font metrics via {@code parentLine}.
+     * <p>
+     * {@code parentLine} must be non-null; callers downstream of {@link songscribe.music.Line#addElement}
+     * can rely on this. Use {@link ScaleContext#textHeightSs(FontMetrics)} directly when
+     * the font metrics are already in hand.
      */
+    @Override
     public double getContentHeightSs() {
-        return DEFAULT_HEIGHT_SS;
+        var parentLine = getParentLine();
+
+        if (parentLine == null) {
+            throw RuntimeError.exit(
+                "AnnotationAttachment.getContentHeightSs called with null parentLine");
+        }
+
+        return ScaleContext.getInstance().textHeightSs(
+            parentLine.getComposition().getAnnotationFontMetrics());
     }
 
     @Override

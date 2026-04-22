@@ -73,7 +73,10 @@ public enum ElementField {
     TEMPO_CHANGE,
 
     /** The element's beat change was set or cleared. Emitted by {@code BeatChangeDialog}. */
-    BEAT_CHANGE;
+    BEAT_CHANGE,
+
+    /** The element's annotation was set or cleared. Emitted by {@code AnnotationDialog}. */
+    ANNOTATION;
 
     /**
      * Fields that change an element's effective duration. {@code Line.modifyElement} removes any

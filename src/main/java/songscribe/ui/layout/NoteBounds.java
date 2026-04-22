@@ -207,19 +207,19 @@ public final class NoteBounds {
     /**
      * Returns a new NoteBounds translated by the given offset.
      */
-    public NoteBounds translate(double dx, double dy) {
+    public NoteBounds translate(double dxSs, double dySs) {
         return new NoteBounds(
-            translateRect(noteHeadBounds, dx, dy),
-            translateRect(noteWithStemBounds, dx, dy),
-            translateRect(noteWithArticulationsBounds, dx, dy),
+            translateRect(noteHeadBounds, dxSs, dySs),
+            translateRect(noteWithStemBounds, dxSs, dySs),
+            translateRect(noteWithArticulationsBounds, dxSs, dySs),
             stemUp
         );
     }
 
-    private static Rectangle2D translateRect(Rectangle2D rect, double dx, double dy) {
+    private static Rectangle2D translateRect(Rectangle2D rect, double dxSs, double dySs) {
         return new Rectangle2D.Double(
-            rect.getX() + dx,
-            rect.getY() + dy,
+            rect.getX() + dxSs,
+            rect.getY() + dySs,
             rect.getWidth(),
             rect.getHeight()
         );

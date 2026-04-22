@@ -28,6 +28,7 @@ import module java.desktop;
 
 import songscribe.music.StaffElement;
 import songscribe.ui.layout.AnnotationAttachment;
+import songscribe.ui.layout.ScaleContext;
 
 /**
  * Renders text annotations attached to notes.
@@ -37,32 +38,14 @@ import songscribe.ui.layout.AnnotationAttachment;
  */
 public class AnnotationRenderer extends BaseElementRenderer<StaffElement> {
 
-    // ==========================================================================
-    // Constants
-    // ==========================================================================
-
-    // Crotchet width for positioning
-    private static final double CROTCHET_WIDTH_PX = BaseElementRenderer.FONT_SIZE / 3.6056337d;
-
-    // Singleton instance
     private static final AnnotationRenderer INSTANCE = new AnnotationRenderer();
 
-    /**
-     * Private constructor - use {@link #getInstance()}.
-     */
     private AnnotationRenderer() {
     }
 
-    /**
-     * Returns the singleton instance.
-     */
     public static AnnotationRenderer getInstance() {
         return INSTANCE;
     }
-
-    // ==========================================================================
-    // Rendering
-    // ==========================================================================
 
     @Override
     protected void renderElement(
@@ -76,78 +59,24 @@ public class AnnotationRenderer extends BaseElementRenderer<StaffElement> {
             return;
         }
 
-        var composition = ctx.getComposition();
-        var line = ctx.getCurrentLine();
+        var decorationLayout = ctx.getLayoutResult().findAttachmentDecorationLayout(
+            element, AnnotationAttachment.class);
 
-        if (line == null) {
-            return;
+        if (decorationLayout == null) {
+            throw new IllegalStateException(
+                "No DecorationLayout found for AnnotationAttachment on note");
         }
 
         try (var ignored = GraphicsState.save(g2, FONT, COLOR)) {
-            // Set font
-            g2.setFont(composition.getAnnotationFont());
+            g2.setFont(scaleFont(ctx.getComposition().getAnnotationFont()));
             applyDecorationColor(g2, element, ctx);
 
-            // Calculate position
-            float x = (float) getAnnotationXPosPx(g2, element);
-            float y = getAnnotationYPosPx(element, ctx);
+            var metrics = ctx.getComposition().getAnnotationFontMetrics();
+            double ascentSs = ScaleContext.getInstance().fromPixels(metrics.getAscent());
+            double xSs = decorationLayout.xSs();
+            double baselineYSs = layoutYToComponentYSs(decorationLayout.ySs(), ctx) + ascentSs;
 
-            // Draw the annotation text
-            var text = annotation.getAnnotation();
-            g2.drawString(text, x, y);
+            g2.drawString(annotation.getAnnotation(), (float) xSs, (float) baselineYSs);
         }
-    }
-
-    /**
-     * Renders an annotation for a note if it has one.
-     *
-     * @param g2   Graphics context
-     * @param note The note to check
-     * @param ctx  Render context
-     */
-    public void renderAnnotation(
-        Graphics2D g2,
-        StaffElement note,
-        ElementRenderContext ctx
-    ) {
-        render(note, g2, ctx);
-    }
-
-    /**
-     * Calculates the X position for an annotation, centering it over the note.
-     */
-    private double getAnnotationXPosPx(Graphics2D g2, StaffElement note) {
-        var annotation = note.getAnnotation();
-
-        if (annotation == null) {
-            return note.getXOffsetPx();
-        }
-
-        var text = annotation.getAnnotation();
-        var textWidth = g2.getFontMetrics().stringWidth(text);
-
-        // Center annotation over note
-        return note.getXOffsetPx() + (CROTCHET_WIDTH_PX / 2) - (textWidth / 2.0);
-    }
-
-    /**
-     * Gets the Y position for an annotation from layout result.
-     * <p>
-     * Reads the {@link songscribe.ui.layout.LayoutResult.DecorationLayout} written
-     * by the vertical stacking calculator. Converts from layout coordinates
-     * (relative to middleLineY=0) to component coordinates.
-     */
-    private float getAnnotationYPosPx(
-        StaffElement note,
-        ElementRenderContext ctx
-    ) {
-        var decorationLayout = ctx.getLayoutResult().findAttachmentDecorationLayout(
-            note, AnnotationAttachment.class);
-
-        if (decorationLayout == null) {
-            throw new IllegalStateException("No DecorationLayout found for AnnotationAttachment on note");
-        }
-
-        return (float) layoutYToComponentYSs(decorationLayout.ySs(), ctx);
     }
 }

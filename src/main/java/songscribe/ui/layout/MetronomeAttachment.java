@@ -20,6 +20,8 @@
 
 package songscribe.ui.layout;
 
+import java.util.List;
+
 import org.jspecify.annotations.Nullable;
 
 import songscribe.music.ElementType;
@@ -52,6 +54,9 @@ public abstract class MetronomeAttachment extends Attachment {
 
     /** Content height derived from the quarter note glyph, scaled to metronome note size. */
     public static final double QUARTER_NOTE_HEIGHT_SS = QUARTER_NOTE_BBOX.height() * NOTE_SCALE;
+
+    /** Width and collision sub-regions computed together to avoid redundant computation. */
+    public record ContentMetrics(double widthSs, List<CollisionRegion> regions) {}
 
     protected MetronomeAttachment(Alignment alignment) {
         setAlignment(alignment);

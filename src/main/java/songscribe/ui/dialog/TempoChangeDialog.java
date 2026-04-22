@@ -30,7 +30,7 @@ import songscribe.music.Line;
 import songscribe.music.StaffElement;
 import songscribe.music.Tempo;
 
-public class TempoChangeDialog extends MetronomeChangeDialog<Tempo> {
+public class TempoChangeDialog extends AttachmentDialog<Tempo> {
 
     private final TempoSection tempoSection = new TempoSection(
         Duration.values(),

@@ -24,9 +24,9 @@ package songscribe.ui.layout;
  * Represents margins for layout elements.
  * <p>
  * Uses left/bottom/right margins only (no top margin, no margin collapsing).
- * All values are in music units (MU).
+ * All values are in staff spaces.
  */
-public record Margin(double left, double bottom, double right) {
+public record Margin(double leftSs, double bottomSs, double rightSs) {
 
     /** Zero margin constant */
     public static final Margin NONE = new Margin(0, 0, 0);
@@ -34,7 +34,7 @@ public record Margin(double left, double bottom, double right) {
     /**
      * Creates a uniform margin with the same value on all sides.
      *
-     * @param m The margin value in music units
+     * @param m The margin value in staff spaces
      * @return A new Margin with uniform values
      */
     public static Margin uniform(double m) {

@@ -43,7 +43,7 @@ public class TranslationComponent extends ScoreComponent {
     private static final String TRANSLATION_HEADER_UNOFFICIAL = "Unofficial translation:";
 
     /** X position for content (used for union width centering). */
-    private float contentX = -1;
+    private float contentXPx = -1;
 
     /**
      * Creates a new TranslationComponent.
@@ -62,14 +62,14 @@ public class TranslationComponent extends ScoreComponent {
      * @param contentX X position, or -1 to center based on own width
      */
     public void setContentX(float contentX) {
-        this.contentX = contentX;
+        this.contentXPx = contentX;
     }
 
     /**
      * Returns the X position for content rendering.
      */
     public float getContentX() {
-        return contentX;
+        return contentXPx;
     }
 
     /**
@@ -146,8 +146,8 @@ public class TranslationComponent extends ScoreComponent {
             // Use contentX if set (for union width centering), otherwise center based on own width
             float x;
 
-            if (contentX >= 0) {
-                x = contentX;
+            if (contentXPx >= 0) {
+                x = contentXPx;
             } else {
                 var headerWidth = GraphicUtils.getTextBlockWidth(headerText, g2);
                 x = (float) ((composition.getLineWidthPx() - headerWidth) / 2);

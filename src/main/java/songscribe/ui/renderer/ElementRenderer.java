@@ -44,15 +44,5 @@ public interface ElementRenderer<T extends LineElement> {
      */
     void render(T element, Graphics2D g2, ElementRenderContext ctx);
 
-    /**
-     * Calculates the bounds of the rendered element.
-     * <p>
-     * May differ from element.getContentBounds() if rendering includes
-     * visual effects, anti-aliasing overflow, etc.
-     *
-     * @param element The element to measure
-     * @param ctx     Rendering context
-     * @return The visual bounds
-     */
-    Rectangle2D getBounds(T element, ElementRenderContext ctx);
+
 }

@@ -21,6 +21,7 @@
 package songscribe.ui.layout;
 
 import java.awt.FontMetrics;
+import java.util.ArrayList;
 
 import org.jspecify.annotations.Nullable;
 
@@ -76,22 +77,40 @@ public class BeatChangeAttachment extends MetronomeAttachment {
     }
 
     /**
-     * Computes the content width from the actual beat change glyphs and "=" sign.
+     * Computes the width and per-sub-region collision geometry for the beat change.
+     * <p>
+     * The three sub-regions are the left note glyph (duration), the "=" sign, and the
+     * right note glyph (beat). The "=" sign is vertically aligned to the note cap-height,
+     * so its descender extends below {@code QUARTER_NOTE_HEIGHT_SS} and must be accounted
+     * for separately to prevent collisions with elements below.
      *
      * @param attrFontMetrics font metrics for the attribution font (used for the "=" sign)
-     * @return width in staff-space units
+     * @return width and collision sub-regions in staff-space units
      */
-    public double computeContentWidthSs(FontMetrics attrFontMetrics) {
+    public ContentMetrics computeContentMetrics(FontMetrics attrFontMetrics) {
         var metadata = SMuFLMetadata.getInstance();
         var scale = ScaleContext.getInstance();
+        var regions = new ArrayList<CollisionRegion>(3);
 
-        double widthSs = noteWidthSs(beatChange.duration().getNote(), metadata);
-        widthSs += EQUALS_GAP_SS;
-        widthSs += scale.fromPixels(attrFontMetrics.stringWidth("="));
-        widthSs += EQUALS_GAP_SS;
-        widthSs += noteWidthSs(beatChange.beat().getNote(), metadata);
+        double leftNoteWidthSs = noteWidthSs(beatChange.duration().getNote(), metadata);
+        double equalsWidthSs = scale.fromPixels(attrFontMetrics.stringWidth("="));
+        double rightNoteWidthSs = noteWidthSs(beatChange.beat().getNote(), metadata);
 
-        return widthSs;
+        regions.add(new CollisionRegion(0, 0, leftNoteWidthSs, QUARTER_NOTE_HEIGHT_SS));
+
+        double equalsAscentSs = scale.fromPixels(attrFontMetrics.getAscent());
+        double equalsDescentSs = scale.fromPixels(attrFontMetrics.getDescent());
+        double equalsXOffsetSs = leftNoteWidthSs + EQUALS_GAP_SS;
+        double equalsYOffsetSs = QUARTER_NOTE_HEIGHT_SS - equalsAscentSs;
+        regions.add(new CollisionRegion(
+            equalsXOffsetSs, equalsYOffsetSs, equalsWidthSs, equalsAscentSs + equalsDescentSs));
+
+        double rightNoteXOffsetSs = equalsXOffsetSs + equalsWidthSs + EQUALS_GAP_SS;
+        regions.add(new CollisionRegion(rightNoteXOffsetSs, 0, rightNoteWidthSs, QUARTER_NOTE_HEIGHT_SS));
+
+        double totalWidthSs =
+            leftNoteWidthSs + EQUALS_GAP_SS + equalsWidthSs + EQUALS_GAP_SS + rightNoteWidthSs;
+
+        return new ContentMetrics(totalWidthSs, regions);
     }
-
 }

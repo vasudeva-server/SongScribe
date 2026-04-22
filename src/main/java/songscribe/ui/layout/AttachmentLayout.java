@@ -29,6 +29,10 @@ import org.jspecify.annotations.Nullable;
  * <p>
  * Attachments are elements that attach to a specific note and position themselves
  * relative to it using a {@link MarginReference}.
+ * <p>
+ * Mixed-unit design: {@code positionPx} is the draw-time coordinate (pixels, passed
+ * directly to {@code Graphics2D}); {@code bounds} is the hit-test region in staff spaces.
+ * Callers must construct {@code ElementBoundsSs} in staff spaces consistently.
  */
 public final class AttachmentLayout {
 
@@ -67,7 +71,7 @@ public final class AttachmentLayout {
     private final Type type;
     private final int elementIndex;
     private final Point positionPx;
-    private final ElementBounds bounds;
+    private final ElementBoundsSs bounds;
     private final @Nullable Object data;
 
     /**
@@ -83,7 +87,7 @@ public final class AttachmentLayout {
         Type type,
         int elementIndex,
         Point positionPx,
-        ElementBounds bounds,
+        ElementBoundsSs bounds,
         @Nullable Object data
     ) {
         this.type = type;
@@ -100,7 +104,7 @@ public final class AttachmentLayout {
         Type type,
         int elementIndex,
         Point positionPx,
-        ElementBounds bounds
+        ElementBoundsSs bounds
     ) {
         this(type, elementIndex, positionPx, bounds, null);
     }
@@ -143,7 +147,7 @@ public final class AttachmentLayout {
     /**
      * Returns the element bounds for hit testing.
      */
-    public ElementBounds getBounds() {
+    public ElementBoundsSs getBounds() {
         return bounds;
     }
 
@@ -190,8 +194,8 @@ public final class AttachmentLayout {
     /**
      * Returns whether the given point is within hit testing bounds.
      */
-    public boolean containsPoint(double x, double y) {
-        return bounds.containsForHitTest(x, y);
+    public boolean containsPoint(double xSs, double ySs) {
+        return bounds.containsForHitTest(xSs, ySs);
     }
 
     @Override

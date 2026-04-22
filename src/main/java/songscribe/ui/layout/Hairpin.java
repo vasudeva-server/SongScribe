@@ -33,10 +33,6 @@ import songscribe.smufl.Engraving;
 public sealed abstract class Hairpin extends RangeElement
         permits Crescendo, Diminuendo {
 
-    private int x1Shift = 0;
-    private int x2Shift = 0;
-    private int yShift = 0;
-
     /**
      * Creates a hairpin spanning from anchor to end element.
      *
@@ -45,48 +41,6 @@ public sealed abstract class Hairpin extends RangeElement
      */
     protected Hairpin(StaffElement anchorElement, StaffElement endElement) {
         super(anchorElement, endElement);
-    }
-
-    /**
-     * Returns the horizontal adjustment for the start point.
-     */
-    public int getX1Shift() {
-        return x1Shift;
-    }
-
-    /**
-     * Sets the horizontal adjustment for the start point.
-     */
-    public void setX1Shift(int x1Shift) {
-        this.x1Shift = x1Shift;
-    }
-
-    /**
-     * Returns the horizontal adjustment for the end point.
-     */
-    public int getX2Shift() {
-        return x2Shift;
-    }
-
-    /**
-     * Sets the horizontal adjustment for the end point.
-     */
-    public void setX2Shift(int x2Shift) {
-        this.x2Shift = x2Shift;
-    }
-
-    /**
-     * Returns the vertical adjustment.
-     */
-    public int getYShift() {
-        return yShift;
-    }
-
-    /**
-     * Sets the vertical adjustment.
-     */
-    public void setYShift(int yShift) {
-        this.yShift = yShift;
     }
 
     /**
@@ -107,22 +61,5 @@ public sealed abstract class Hairpin extends RangeElement
     @Override
     public double getSpanWidthSs(double anchorXSs, double endXSs) {
         return Math.max(getContentHeightSs(), endXSs - anchorXSs + Engraving.NOTE_HEAD_WIDTH_SS);
-    }
-
-    @Override
-    public double getContentWidthPx() {
-        var anchor = getAnchorElement();
-        var endElement = getEndElement();
-
-        if (anchor == null || endElement == null) {
-            return 0;
-        }
-
-        return Math.abs(endElement.getXSs() - anchor.getXSs()) + endElement.getContentWidthPx() + x1Shift + x2Shift;
-    }
-
-    @Override
-    public double getContentHeightPx() {
-        return ScaleContext.getInstance().toPixels(getContentHeightSs());
     }
 }

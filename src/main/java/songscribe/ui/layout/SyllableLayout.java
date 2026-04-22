@@ -32,7 +32,7 @@ public final class SyllableLayout {
     private final int elementIndex;
     private final int x;
     private final String text;
-    private final ElementBounds bounds;
+    private final ElementBoundsSs bounds;
     private final boolean hasMelisma;
 
     /**
@@ -48,7 +48,7 @@ public final class SyllableLayout {
         int elementIndex,
         int x,
         String text,
-        ElementBounds bounds,
+        ElementBoundsSs bounds,
         boolean hasMelisma
     ) {
         this.elementIndex = elementIndex;
@@ -65,7 +65,7 @@ public final class SyllableLayout {
         int elementIndex,
         int x,
         String text,
-        ElementBounds bounds
+        ElementBoundsSs bounds
     ) {
         this(elementIndex, x, text, bounds, false);
     }
@@ -94,7 +94,7 @@ public final class SyllableLayout {
     /**
      * Returns the element bounds.
      */
-    public ElementBounds getBounds() {
+    public ElementBoundsSs getBounds() {
         return bounds;
     }
 
@@ -108,8 +108,8 @@ public final class SyllableLayout {
     /**
      * Returns whether the given point is within hit testing bounds.
      */
-    public boolean containsPoint(double x, double y) {
-        return bounds.containsForHitTest(x, y);
+    public boolean containsPoint(double xSs, double ySs) {
+        return bounds.containsForHitTest(xSs, ySs);
     }
 
     @Override

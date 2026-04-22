@@ -60,7 +60,7 @@ public final class RangeLayout {
     private final int startElementIndex;
     private final int endElementIndex;
     private final boolean above;
-    private final ElementBounds bounds;
+    private final ElementBoundsSs bounds;
     private final @Nullable Path2D path;
     private final @Nullable Object data;
 
@@ -80,7 +80,7 @@ public final class RangeLayout {
         int startElementIndex,
         int endElementIndex,
         boolean above,
-        ElementBounds bounds,
+        ElementBoundsSs bounds,
         @Nullable Path2D path,
         @Nullable Object data
     ) {
@@ -101,7 +101,7 @@ public final class RangeLayout {
         int startElementIndex,
         int endElementIndex,
         boolean above,
-        ElementBounds bounds
+        ElementBoundsSs bounds
     ) {
         this(type, startElementIndex, endElementIndex, above, bounds, null, null);
     }
@@ -137,7 +137,7 @@ public final class RangeLayout {
     /**
      * Returns the element bounds.
      */
-    public ElementBounds getBounds() {
+    public ElementBoundsSs getBounds() {
         return bounds;
     }
 
@@ -198,8 +198,8 @@ public final class RangeLayout {
     /**
      * Returns whether the given point is within hit testing bounds.
      */
-    public boolean containsPoint(double x, double y) {
-        return bounds.containsForHitTest(x, y);
+    public boolean containsPoint(double xSs, double ySs) {
+        return bounds.containsForHitTest(xSs, ySs);
     }
 
     @Override

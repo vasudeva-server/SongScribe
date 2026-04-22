@@ -32,7 +32,7 @@ import songscribe.ui.FlatLafKeys;
 import songscribe.ui.FlatLafProps;
 import songscribe.ui.component.DurationListCellRenderer;
 
-public class BeatChangeDialog extends MetronomeChangeDialog<BeatChange> {
+public class BeatChangeDialog extends AttachmentDialog<BeatChange> {
 
     private final JComboBox<Duration> durationCombo =
         DurationListCellRenderer.createCombo(Duration.values());

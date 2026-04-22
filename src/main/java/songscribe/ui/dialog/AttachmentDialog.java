@@ -29,16 +29,16 @@ import songscribe.music.Line;
 import songscribe.music.StaffElement;
 
 /**
- * Base dialog for adding, editing, or removing a metronome-style change
- * (tempo or beat change) attached to a note.
+ * Base dialog for adding, editing, or removing an attachment on a staff element
+ * (tempo change, beat change, annotation, etc.).
  */
-public abstract class MetronomeChangeDialog<T> extends StandardDialog {
+public abstract class AttachmentDialog<T> extends StandardDialog {
 
     protected @Nullable StaffElement selectedElement = null;
     protected @Nullable Line selectedLine = null;
     protected final JButton removeButton;
 
-    protected MetronomeChangeDialog(String title) {
+    protected AttachmentDialog(String title) {
         super(title);
         removeButton = new JButton(Strings.get(Strings.LABEL_BUTTON_REMOVE));
         removeButton.addActionListener(_ -> {

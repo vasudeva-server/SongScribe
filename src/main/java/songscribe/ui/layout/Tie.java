@@ -42,7 +42,7 @@ public class Tie extends RangeElement {
 
     @Override
     public double getContentHeightSs() {
-        return 1.0;  // 8px
+        return LayoutStylesheet.TIE_ARC_HEIGHT_SS;
     }
 
     @Override
@@ -56,24 +56,5 @@ public class Tie extends RangeElement {
         var anchor = getAnchorElement();
 
         return anchor != null && anchor.isUpper();
-    }
-
-    @Override
-    public double getContentWidthPx() {
-        var anchor = getAnchorElement();
-        var endElement = getEndElement();
-
-        if (anchor == null || endElement == null) {
-            return 0;
-        }
-
-        // Width spans from anchor to end element
-        return Math.abs(endElement.getXSs() - anchor.getXSs()) + endElement.getContentWidthPx();
-    }
-
-    @Override
-    public double getContentHeightPx() {
-        // Tie curve height - approximate arc height
-        return 8.0;
     }
 }

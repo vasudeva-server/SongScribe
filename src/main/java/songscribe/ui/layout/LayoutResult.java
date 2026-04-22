@@ -56,7 +56,7 @@ public final class LayoutResult {
     private static final double PREVIEW_BEFORE_FIRST_OFFSET_SS = 1.875;  // 15px
 
     private final Map<StaffElement, ElementColumn> elementColumns;
-    private final Map<LineElement, Bounds> elementBounds;
+    private final Map<LineElement, ElementBoundsSs> elementBounds;
     private final Map<Span, BeamLayout> beamLayouts;
     private final Map<StaffElement, StemLayout> stemLayouts;
     private final Map<Span, TieLayout> tieLayouts;
@@ -88,7 +88,7 @@ public final class LayoutResult {
      */
     private LayoutResult(
         Map<StaffElement, ElementColumn> elementColumns,
-        Map<LineElement, Bounds> elementBounds,
+        Map<LineElement, ElementBoundsSs> elementBounds,
         Map<Span, BeamLayout> beamLayouts,
         Map<StaffElement, StemLayout> stemLayouts,
         Map<Span, TieLayout> tieLayouts,
@@ -347,7 +347,7 @@ public final class LayoutResult {
      * @param element The element to look up
      * @return The bounds, or null if the element was not laid out
      */
-    public @Nullable Bounds getElementBounds(LineElement element) {
+    public @Nullable ElementBoundsSs getElementBounds(LineElement element) {
         return elementBounds.get(element);
     }
 
@@ -364,7 +364,7 @@ public final class LayoutResult {
             return null;
         }
 
-        return new Point2D.Double(bounds.getLeft(), bounds.getTop());
+        return new Point2D.Double(bounds.getLeftSs(), bounds.getTopSs());
     }
 
     /**
@@ -372,7 +372,7 @@ public final class LayoutResult {
      *
      * @return Map of line elements to their bounds
      */
-    public Map<LineElement, Bounds> getElementBounds() {
+    public Map<LineElement, ElementBoundsSs> getElementBounds() {
         return elementBounds;
     }
 
@@ -421,7 +421,7 @@ public final class LayoutResult {
      * @param element The element to look up
      * @return The bounds, or null if the element was not laid out
      */
-    public @Nullable Bounds getBounds(Object element) {
+    public @Nullable ElementBoundsSs getBounds(Object element) {
         if (element instanceof LineElement) {
             return elementBounds.get((LineElement) element);
         }
@@ -439,7 +439,7 @@ public final class LayoutResult {
      * @param attachmentType The type of attachment to find
      * @return The bounds if found, null otherwise
      */
-    public @Nullable Bounds findAttachmentBounds(
+    public @Nullable ElementBoundsSs findAttachmentBounds(
         StaffElement parentElement,
         Class<? extends songscribe.ui.layout.Attachment> attachmentType) {
 
@@ -497,7 +497,7 @@ public final class LayoutResult {
      * @param rangeElementType The type of range element to find
      * @return The bounds if found, null otherwise
      */
-    public @Nullable Bounds findRangeElementBounds(
+    public @Nullable ElementBoundsSs findRangeElementBounds(
         StaffElement anchorElement,
         StaffElement endElement,
         Class<? extends songscribe.ui.layout.RangeElement> rangeElementType) {
@@ -852,7 +852,7 @@ public final class LayoutResult {
     public static class Builder {
 
         private final Map<StaffElement, ElementColumn> elementColumns;
-        private final Map<LineElement, Bounds> elementBounds;
+        private final Map<LineElement, ElementBoundsSs> elementBounds;
         private final Map<Span, BeamLayout> beamLayouts;
         private final Map<StaffElement, StemLayout> stemLayouts;
         private final Map<Span, TieLayout> tieLayouts;
@@ -918,7 +918,7 @@ public final class LayoutResult {
          * @param bounds  The element's bounds
          * @return This builder for chaining
          */
-        public Builder putElementBounds(LineElement element, Bounds bounds) {
+        public Builder putElementBounds(LineElement element, ElementBoundsSs bounds) {
             elementBounds.put(element, bounds);
             return this;
         }

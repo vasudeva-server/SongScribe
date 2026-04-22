@@ -26,8 +26,10 @@ import songscribe.ui.layout.BeatChangeAttachment;
 import songscribe.ui.layout.ElementColumn;
 import songscribe.ui.layout.LayoutResult;
 import songscribe.ui.layout.LayoutStylesheet;
+import songscribe.ui.layout.ScaleContext;
 import songscribe.ui.layout.StaffExtents;
 import songscribe.ui.layout.TempoChangeAttachment;
+import songscribe.ui.renderer.NoteRenderer;
 
 import static songscribe.ui.layout.stacking.StackingUtils.stackAbove;
 import static songscribe.ui.layout.stacking.StackingUtils.stackAboveWithRegions;
@@ -129,11 +131,11 @@ public class SystemStacker {
 
         double xSs = column.getXSs();
         int staffPosition = note.getStaffPosition();
-        double widthSs = beatChange.computeContentWidthSs(
-            line.getComposition().getAttributionFontMetrics());
-        stackAbove(systemExtents, beatChange, xSs,
-            widthSs, beatChange.getContentHeightSs(),
-            LayoutStylesheet.TEMPO_MARGIN_SS,
+        var attrFontMetrics = line.getComposition().getAttributionFontMetrics();
+        var metrics = beatChange.computeContentMetrics(attrFontMetrics);
+
+        stackAboveWithRegions(systemExtents, beatChange, metrics.regions(), xSs,
+            metrics.widthSs(), LayoutStylesheet.BEAT_CHANGE_MARGIN_SS,
             staffPosition, builder);
     }
 
@@ -163,13 +165,22 @@ public class SystemStacker {
             return;
         }
 
-        double xSs = column.getXSs();
+        double columnXSs = column.getXSs();
         int staffPosition = note.getStaffPosition();
-        double widthSs = annotation.computeContentWidthSs(
-            line.getComposition().getAnnotationFontMetrics());
+        var fontMetrics = line.getComposition().getAnnotationFontMetrics();
+        double widthSs = annotation.computeContentWidthSs(fontMetrics);
+        double heightSs = ScaleContext.getInstance().textHeightSs(fontMetrics);
+
+        // xAlignment is 0.0 (left), 0.5 (center), or 1.0 (right). The text is
+        // anchored to the matching point on the notehead: left edge → left,
+        // center → center, right edge → right.
+        double xAlignment = annotation.getAnnotation().getXAlignment();
+        double noteheadWidthSs = NoteRenderer.getNoteheadRightEdgeSs(note);
+        double xSs = columnXSs + xAlignment * (noteheadWidthSs - widthSs);
+
         stackAbove(systemExtents, annotation, xSs,
-            widthSs, annotation.getContentHeightSs(),
-            LayoutStylesheet.ANNOTATION_ABOVE_MARGIN_SS,
+            widthSs, heightSs,
+            LayoutStylesheet.ANNOTATION_MARGIN_SS,
             staffPosition, builder);
     }
 }

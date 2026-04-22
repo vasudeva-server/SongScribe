@@ -124,7 +124,7 @@ public class GlissandoRenderer {
             xIndex, glissando, lineIndex, composition, layoutResult, middleLineYSs);
 
         if (endpoints != null) {
-            return endpoints.startX;
+            return endpoints.startXSs;
         }
 
         // Fallback to notehead center if glissando cannot render
@@ -159,7 +159,7 @@ public class GlissandoRenderer {
             xIndex, glissando, lineIndex, composition, layoutResult, middleLineYSs);
 
         if (endpoints != null) {
-            return endpoints.endX;
+            return endpoints.endXSs;
         }
 
         // Fallback to notehead center if glissando cannot render
@@ -230,11 +230,11 @@ public class GlissandoRenderer {
             var shiftSs = ctx.getPreviewShiftSs();
 
             if (noteIndex >= shiftFromIndex) {
-                src = new NoteContext(src.note(), src.cx() + shiftSs, src.cy(), src.offsetArea(), src.offsetBounds());
+                src = new NoteContext(src.note(), src.cxSs() + shiftSs, src.cySs(), src.offsetArea(), src.offsetBounds());
             }
 
             if (tgt != null && noteIndex + 1 >= shiftFromIndex) {
-                tgt = new NoteContext(tgt.note(), tgt.cx() + shiftSs, tgt.cy(), tgt.offsetArea(), tgt.offsetBounds());
+                tgt = new NoteContext(tgt.note(), tgt.cxSs() + shiftSs, tgt.cySs(), tgt.offsetArea(), tgt.offsetBounds());
             }
         }
 
@@ -400,7 +400,7 @@ public class GlissandoRenderer {
      */
     record NoteContext(
         StaffElement note,
-        double cx, double cy,
+        double cxSs, double cySs,
         Area offsetArea,
         Rectangle2D offsetBounds
     ) {}
@@ -408,7 +408,7 @@ public class GlissandoRenderer {
     /**
      * Immutable record holding the computed glissando endpoint positions in layout space.
      */
-    record Endpoints(double startX, double startY, double endX, double endY, double angle) {}
+    record Endpoints(double startXSs, double startYSs, double endXSs, double endYSs, double angle) {}
 
     /**
      * Resolves the geometry context for a note at the given index: notehead center
@@ -475,8 +475,8 @@ public class GlissandoRenderer {
                 throw new IllegalStateException("tgt must be non-null when not a slide-out");
             }
 
-            dx = tgt.cx - src.cx;
-            dy = tgt.cy - src.cy;
+            dx = tgt.cxSs - src.cxSs;
+            dy = tgt.cySs - src.cySs;
         }
 
         double len = Math.sqrt(dx * dx + dy * dy);
@@ -495,8 +495,8 @@ public class GlissandoRenderer {
 
         // Source: find entry point on offset area in local space
         double localCx1 = NoteRenderer.getNoteheadRightEdgeSs(src.note) / 2.0;
-        double offset1X = src.cx - localCx1;
-        double offset1Y = src.cy;
+        double offset1X = src.cxSs - localCx1;
+        double offset1Y = src.cySs;
 
         double stepSs = ScaleContext.getInstance().fromPixels(1.0);
         var entry1 = findNoteAreaEntryPoint(src.offsetArea, src.offsetBounds, localCx1, 0, nx, ny, stepSs);
@@ -518,8 +518,8 @@ public class GlissandoRenderer {
             }
 
             double localCx2 = NoteRenderer.getNoteheadRightEdgeSs(tgt.note) / 2.0;
-            double offset2X = tgt.cx - localCx2;
-            double offset2Y = tgt.cy;
+            double offset2X = tgt.cxSs - localCx2;
+            double offset2Y = tgt.cySs;
 
             var entry2 = findNoteAreaEntryPoint(tgt.offsetArea, tgt.offsetBounds, localCx2, 0, -nx, -ny, stepSs);
 
@@ -568,13 +568,13 @@ public class GlissandoRenderer {
             return;
         }
 
-        double dx = endpoints.endX() - endpoints.startX();
-        double dy = endpoints.endY() - endpoints.startY();
+        double dx = endpoints.endXSs() - endpoints.startXSs();
+        double dy = endpoints.endYSs() - endpoints.startYSs();
         double length = Math.sqrt(dx * dx + dy * dy);
 
         if (glissando != null) {
-            glissando.cachedStartX = endpoints.startX();
-            glissando.cachedStartY = endpoints.startY();
+            glissando.cachedStartX = endpoints.startXSs();
+            glissando.cachedStartY = endpoints.startYSs();
             glissando.cachedAngle = endpoints.angle();
             glissando.cachedCos = Math.cos(endpoints.angle());
             glissando.cachedSin = Math.sin(endpoints.angle());
@@ -584,7 +584,7 @@ public class GlissandoRenderer {
 
         try (var ignored = GraphicsState.save(g2, TRANSFORM, COLOR)) {
             g2.setColor(color);
-            g2.translate(endpoints.startX(), endpoints.startY());
+            g2.translate(endpoints.startXSs(), endpoints.startYSs());
             g2.rotate(endpoints.angle());
             double thicknessSs = ScaleContext.getInstance().fromPixels(RECT_THICKNESS_PX);
             g2.fill(new RoundRectangle2D.Double(

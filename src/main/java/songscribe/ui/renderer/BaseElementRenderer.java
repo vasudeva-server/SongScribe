@@ -33,8 +33,10 @@ import songscribe.music.StaffElement;
 import songscribe.smufl.Engraving;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
-import songscribe.ui.layout.LineElement;
+import songscribe.ui.layout.ElementBoundsSs;
 import songscribe.ui.layout.LayoutStylesheet;
+import songscribe.ui.layout.LineElement;
+import songscribe.ui.layout.ScaleContext;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.util.GraphicUtils;
@@ -224,10 +226,10 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
      * @return The Y coordinate in component space
      */
     protected static double layoutYToComponentYSs(
-        songscribe.ui.layout.Bounds bounds,
+        ElementBoundsSs bounds,
         ElementRenderContext ctx
     ) {
-        return ctx.getMiddleLineYSs() + bounds.getTop();
+        return ctx.getMiddleLineYSs() + bounds.getTopSs();
     }
 
     /**
@@ -253,22 +255,11 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
      * @param bounds The layout bounds
      * @return The X coordinate in component space
      */
-    protected static double layoutXToComponentXSs(songscribe.ui.layout.Bounds bounds) {
-        return bounds.getLeft();
+    protected static double layoutXToComponentXSs(ElementBoundsSs bounds) {
+        return bounds.getLeftSs();
     }
 
-    /**
-     * Default getBounds implementation returns element's content bounds.
-     * <p>
-     * Subclasses can override if rendered bounds differ from logical bounds.
-     */
-    @Override
-    public Rectangle2D getBounds(
-        T element,
-        ElementRenderContext ctx
-    ) {
-        return element.getContentBounds();
-    }
+
 
     // ==========================================================================
     // Shared Drawing Utilities
@@ -282,17 +273,17 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
      * antialiasing fuzz. The semicircular ends come from setting the arc
      * height equal to the snapped thickness.
      *
-     * @param g2    Graphics context
-     * @param x     Center X position of the note
-     * @param y     Y position of the ledger line
-     * @param width Width of the ledger line
+     * @param g2       Graphics context
+     * @param xSs      Center X position of the note in staff spaces
+     * @param ySs      Y position of the ledger line in staff spaces
+     * @param widthSs  Width of the ledger line in staff spaces
      */
-    protected void drawLedgerLine(Graphics2D g2, double x, double y, double width, ElementRenderContext ctx) {
+    protected void drawLedgerLine(Graphics2D g2, double xSs, double ySs, double widthSs, ElementRenderContext ctx) {
         // Color is intentionally not set — inherited from caller so insertion notes
         // draw ledger lines in their own color.
         var thicknessSs = ctx.getLineThickness().ledgerLineSs();
-        var halfWidth = width / 2.0;
-        GraphicUtils.fillHorizontalLine(g2, x - halfWidth, x + halfWidth, y, thicknessSs);
+        var halfWidth = widthSs / 2.0;
+        GraphicUtils.fillHorizontalLine(g2, xSs - halfWidth, xSs + halfWidth, ySs, thicknessSs);
     }
 
     /**
@@ -300,16 +291,16 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
      *
      * @param g2    Graphics context
      * @param glyph The SMuFL glyph to draw
-     * @param x     X position
-     * @param y     Y position
+     * @param xSs   X position in staff spaces
+     * @param ySs   Y position in staff spaces
      */
     protected void drawBravuraGlyph(
         Graphics2D g2,
         SMuFLGlyph glyph,
-        double x,
-        double y
+        double xSs,
+        double ySs
     ) {
-        drawBravuraGlyph(g2, glyph, x, y, false);
+        drawBravuraGlyph(g2, glyph, xSs, ySs, false);
     }
 
     /**
@@ -317,15 +308,15 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
      *
      * @param g2            Graphics context
      * @param glyph         The SMuFL glyph to draw
-     * @param x             X position
-     * @param y             Y position
+     * @param xSs           X position in staff spaces
+     * @param ySs           Y position in staff spaces
      * @param preserveColor If true, preserves the current graphics color instead of setting ELEMENT_COLOR
      */
     protected void drawBravuraGlyph(
         Graphics2D g2,
         SMuFLGlyph glyph,
-        double x,
-        double y,
+        double xSs,
+        double ySs,
         boolean preserveColor
     ) {
         try (var ignored = GraphicsState.save(g2, COLOR, FONT)) {
@@ -333,7 +324,7 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
             if (!preserveColor) {
                 g2.setColor(ELEMENT_COLOR);
             }
-            g2.drawString(glyph.asString(), (float) x, (float) y);
+            g2.drawString(glyph.asString(), (float) xSs, (float) ySs);
         }
     }
 
@@ -374,6 +365,12 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
     protected static double glyphOriginYFromLayoutTop(double layoutTopYSs, SMuFLGlyph glyph) {
         var bbox = SMuFLMetadata.getInstance().requireBBox(glyph);
         return layoutTopYSs - bbox.top();
+    }
+
+    /** Returns {@code font} scaled from pixel units to staff-space units. */
+    protected static Font scaleFont(Font font) {
+        return font.deriveFont(
+            (float) ScaleContext.getInstance().fromPixels(font.getSize()));
     }
 
     /**

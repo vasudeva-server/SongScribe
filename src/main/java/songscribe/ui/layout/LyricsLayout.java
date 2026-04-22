@@ -35,7 +35,7 @@ public final class LyricsLayout {
 
     private final int baselineY;
     private final List<SyllableLayout> syllables;
-    private final ElementBounds bounds;
+    private final ElementBoundsSs bounds;
 
     /**
      * Creates lyrics layout with syllables.
@@ -47,7 +47,7 @@ public final class LyricsLayout {
     public LyricsLayout(
         int baselineY,
         List<SyllableLayout> syllables,
-        ElementBounds bounds
+        ElementBoundsSs bounds
     ) {
         this.baselineY = baselineY;
         this.syllables = List.copyOf(syllables);
@@ -58,7 +58,7 @@ public final class LyricsLayout {
      * Creates empty lyrics layout.
      */
     public static LyricsLayout empty() {
-        var emptyBounds = ElementBounds.contentOnly(
+        var emptyBounds = ElementBoundsSs.contentOnly(
             new java.awt.geom.Rectangle2D.Double(0, 0, 0, 0)
         );
         return new LyricsLayout(0, List.of(), emptyBounds);
@@ -81,7 +81,7 @@ public final class LyricsLayout {
     /**
      * Returns the combined bounds of all syllables.
      */
-    public ElementBounds getBounds() {
+    public ElementBoundsSs getBounds() {
         return bounds;
     }
 
@@ -125,8 +125,8 @@ public final class LyricsLayout {
     /**
      * Returns whether the given point is within any syllable's hit testing bounds.
      */
-    public boolean containsPoint(double x, double y) {
-        return syllables.stream().anyMatch(s -> s.containsPoint(x, y));
+    public boolean containsPoint(double xSs, double ySs) {
+        return syllables.stream().anyMatch(s -> s.containsPoint(xSs, ySs));
     }
 
     @Override

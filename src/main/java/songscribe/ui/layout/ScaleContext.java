@@ -77,6 +77,16 @@ public final class ScaleContext {
         return px / pixelsPerStaffSpace;
     }
 
+    /** Returns the width of {@code text} in staff-space units for the given font metrics. */
+    public double textWidthSs(FontMetrics fontMetrics, String text) {
+        return fromPixels(fontMetrics.stringWidth(text));
+    }
+
+    /** Returns the text height (ascent + descent) in staff-space units for the given font metrics. */
+    public double textHeightSs(FontMetrics fontMetrics) {
+        return fromPixels(fontMetrics.getAscent() + fontMetrics.getDescent());
+    }
+
     /**
      * Returns an {@link AffineTransform} that scales from staff-space
      * coordinates to pixel coordinates. Apply this to a {@code Graphics2D}

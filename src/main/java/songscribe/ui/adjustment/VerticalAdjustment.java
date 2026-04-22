@@ -43,6 +43,18 @@ import songscribe.ui.layout.LayoutResult;
 
 public class VerticalAdjustment extends Adjustment {
 
+    /** Width and height of a drag handle, in device pixels. */
+    private static final int HANDLE_SIZE_PX = 8;
+
+    /** X offset from the anchor element's left edge for a trill drag handle. */
+    private static final int TRILL_HANDLE_X_OFFSET_PX = 12;
+
+    /** X offset applied when a tuplet bracket sits below (non-upper stems). */
+    private static final int TUPLET_LOWER_HANDLE_X_OFFSET_PX = -10;
+
+    /** Horizontal bias added to the midpoint when centering a dynamics handle. */
+    private static final int DYNAMICS_HANDLE_CENTER_BIAS_PX = 12;
+
     // TODO: Hoist to superclass
     @Nullable
     private AdjustRect dragRect;
@@ -385,8 +397,8 @@ public class VerticalAdjustment extends Adjustment {
                     throw new IllegalStateException("No bounds found for TempoChangeAttachment");
                 }
 
-                adjustRect.rect.x = note.getXOffsetPx() - 8;
-                adjustRect.rect.y = (int) bounds.getTop() - 8;
+                adjustRect.rect.x = note.getXOffsetPx() - HANDLE_SIZE_PX;
+                adjustRect.rect.y = (int) bounds.getTopSs() - HANDLE_SIZE_PX;
             }
             case BEAT_CHANGE -> {
                 var layoutResult = getLayoutResultForLine(adjustRect.line);
@@ -396,8 +408,8 @@ public class VerticalAdjustment extends Adjustment {
                     throw new IllegalStateException("No bounds found for BeatChangeAttachment");
                 }
 
-                adjustRect.rect.x = note.getXOffsetPx() - 8;
-                adjustRect.rect.y = (int) bounds.getTop() - 8;
+                adjustRect.rect.x = note.getXOffsetPx() - HANDLE_SIZE_PX;
+                adjustRect.rect.y = (int) bounds.getTopSs() - HANDLE_SIZE_PX;
             }
             case FIRST_SECOND_ENDING -> {
                 var ending = line.findEndingAt(adjustRect.xIndex);
@@ -420,8 +432,8 @@ public class VerticalAdjustment extends Adjustment {
                     throw new IllegalStateException("No bounds found for Ending");
                 }
 
-                adjustRect.rect.x = startNote.getXOffsetPx() - 8;
-                adjustRect.rect.y = (int) bounds.getTop() - 8;
+                adjustRect.rect.x = startNote.getXOffsetPx() - HANDLE_SIZE_PX;
+                adjustRect.rect.y = (int) bounds.getTopSs() - HANDLE_SIZE_PX;
             }
             case ANNOTATION -> {
                 var layoutResult = getLayoutResultForLine(adjustRect.line);
@@ -431,8 +443,8 @@ public class VerticalAdjustment extends Adjustment {
                     throw new IllegalStateException("No bounds found for AnnotationAttachment");
                 }
 
-                adjustRect.rect.x = (int) bounds.getLeft() - 8;
-                adjustRect.rect.y = (int) bounds.getTop() - 8;
+                adjustRect.rect.x = (int) bounds.getLeftSs() - HANDLE_SIZE_PX;
+                adjustRect.rect.y = (int) bounds.getTopSs() - HANDLE_SIZE_PX;
             }
             case TRILL -> {
                 // Find the Trill range element containing this note
@@ -467,8 +479,8 @@ public class VerticalAdjustment extends Adjustment {
                     throw new IllegalStateException("No bounds found for Trill");
                 }
 
-                adjustRect.rect.x = startNote.getXOffsetPx() - 12;
-                adjustRect.rect.y = (int) bounds.getTop() - 8;
+                adjustRect.rect.x = startNote.getXOffsetPx() - TRILL_HANDLE_X_OFFSET_PX;
+                adjustRect.rect.y = (int) bounds.getTopSs() - HANDLE_SIZE_PX;
             }
             case CRESCENDO_Y, DIMINUENDO_Y -> {
                 var span = getCresDecrSpanSet(line, adjustRect.type)
@@ -493,8 +505,8 @@ public class VerticalAdjustment extends Adjustment {
                 // Position handle at center of dynamics hairpin
                 var startX = startNote.getXOffsetPx();
                 var endX = endNote.getXOffsetPx();
-                adjustRect.rect.x = (startX + endX + 12) / 2;
-                adjustRect.rect.y = (int) bounds.getTop();
+                adjustRect.rect.x = (startX + endX + DYNAMICS_HANDLE_CENTER_BIAS_PX) / 2;
+                adjustRect.rect.y = (int) bounds.getTopSs();
             }
             case TUPLET -> {
                 var span = line.getTuplets().findSpan(adjustRect.xIndex);
@@ -512,23 +524,24 @@ public class VerticalAdjustment extends Adjustment {
                     throw new IllegalStateException("No bounds found for Tuplet");
                 }
 
-                adjustRect.rect.x = startNote.getXOffsetPx() + (startNote.isUpper() ? 0 : -10);
-                adjustRect.rect.y = (int) bounds.getTop();
+                adjustRect.rect.x = startNote.getXOffsetPx()
+                    + (startNote.isUpper() ? 0 : TUPLET_LOWER_HANDLE_X_OFFSET_PX);
+                adjustRect.rect.y = (int) bounds.getTopSs();
             }
         }
 
-        adjustRect.rect.width = 8;
-        adjustRect.rect.height = 8;
+        adjustRect.rect.width = HANDLE_SIZE_PX;
+        adjustRect.rect.height = HANDLE_SIZE_PX;
     }
 
     private void getAttributionAdjustRect(AdjustRect adjustRect) {
-        adjustRect.rect.x = score.getSheetWidthPx() - 8;
+        adjustRect.rect.x = score.getSheetWidthPx() - HANDLE_SIZE_PX;
         adjustRect.rect.y = (int) score.getComposition().getAttributionStartYSs();
     }
 
     private void getHeightAdjustRect(AdjustRect adjustRect) {
         adjustRect.rect.x = 0;
-        adjustRect.rect.y = score.getNoteYPosPx(0, adjustRect.line) - 4;
+        adjustRect.rect.y = score.getNoteYPosPx(0, adjustRect.line) - HANDLE_SIZE_PX / 2;
     }
 
     private void revalidateRects() {

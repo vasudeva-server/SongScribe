@@ -60,7 +60,7 @@ public class Tuplet extends RangeElement {
 
     @Override
     public double getContentHeightSs() {
-        return 0.7;  // LilyPond vertical arm height
+        return LayoutStylesheet.TUPLET_BRACKET_HEIGHT_SS;
     }
 
     @Override
@@ -94,23 +94,5 @@ public class Tuplet extends RangeElement {
      */
     public void setVerticalPositionSs(int verticalPosition) {
         this.verticalPositionSs = verticalPosition;
-    }
-
-    @Override
-    public double getContentWidthPx() {
-        var anchor = getAnchorElement();
-        var endElement = getEndElement();
-
-        if (anchor == null || endElement == null) {
-            return 0;
-        }
-
-        return Math.abs(endElement.getXSs() - anchor.getXSs()) + endElement.getContentWidthPx();
-    }
-
-    @Override
-    public double getContentHeightPx() {
-        // Height of tuplet bracket with number
-        return 12.0;
     }
 }

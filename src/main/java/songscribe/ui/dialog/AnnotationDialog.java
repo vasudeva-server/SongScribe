@@ -21,382 +21,151 @@ package songscribe.ui.dialog;
 
 import module java.desktop;
 
-import java.util.Arrays;
-
 import org.jspecify.annotations.Nullable;
 
-import org.jdesktop.layout.GroupLayout;
-import org.jdesktop.layout.LayoutStyle;
-
 import songscribe.Strings;
-import songscribe.music.Annotation;
-import songscribe.ui.OptionDialogs;
-import songscribe.music.StaffElement;
 import songscribe.file.FileUtils;
+import songscribe.message.mutation.ElementField;
+import songscribe.music.Annotation;
+import songscribe.music.StaffElement;
+import songscribe.ui.FlatLafKeys;
+import songscribe.ui.FlatLafProps;
 
-/**
- * A dialog for adding or modifying an annotation on an element.
- */
-public class AnnotationDialog extends StandardDialog {
+public class AnnotationDialog extends AttachmentDialog<Annotation> {
 
-    private @Nullable StaffElement selectedElement = null;
-    private final JComboBox<String> annotationCombo;
-    private final JButton removeButton;
-    private final JRadioButton aboveButton;
-    private final JRadioButton belowButton;
+    private static final String DEFAULT_ANNOTATION = "fine";
+
+    private final JComboBox<String> annotationCombo = new JComboBox<>();
+    private final JRadioButton leftRadio =
+        new JRadioButton(Strings.get(Strings.LABEL_ALIGN_LEFT));
+    private final JRadioButton centerRadio =
+        new JRadioButton(Strings.get(Strings.LABEL_ALIGN_CENTER));
+    private final JRadioButton rightRadio =
+        new JRadioButton(Strings.get(Strings.LABEL_ALIGN_RIGHT));
+    private final JRadioButton aboveRadio =
+        new JRadioButton(Strings.get(Strings.DIALOG_ANNOTATION_ABOVE_STAFF));
+    private final JRadioButton belowRadio =
+        new JRadioButton(Strings.get(Strings.DIALOG_ANNOTATION_BELOW_STAFF));
 
     public AnnotationDialog() {
         super(Strings.get(Strings.DIALOG_ANNOTATION_TITLE));
-        //----------------------centerPanel------------------------
-        var centerPanel = new JPanel();
-        centerPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
 
-        var annotationLabel = new JLabel(Strings.get(Strings.LABEL_ANNOTATION));
-        annotationCombo = new JComboBox<>();
         annotationCombo.setEditable(true);
-
         FileUtils.readComboValuesFromFile(annotationCombo, "annotations");
-        var xPanel = new JPanel();
-
-        xPanel.setBorder(
-            BorderFactory.createTitledBorder(
-                BorderFactory.createEtchedBorder(),
-                Strings.get(Strings.DIALOG_ANNOTATION_ALIGNMENT)
-            )
-        );
-
-        var verticalPanel = new JPanel();
-        aboveButton = new JRadioButton();
-        belowButton = new JRadioButton();
-
-        Alignment.left.button.setText(Strings.get(Strings.LABEL_ALIGN_LEFT));
-        Alignment.left.button.setBorder(BorderFactory.createEmptyBorder());
-        Alignment.left.button.setMargin(new Insets(0, 0, 0, 0));
-
-        Alignment.center.button.setText(Strings.get(Strings.LABEL_ALIGN_CENTER));
-        Alignment.center.button.setBorder(BorderFactory.createEmptyBorder());
-        Alignment.center.button.setMargin(new Insets(0, 0, 0, 0));
-
-        Alignment.right.button.setText(Strings.get(Strings.LABEL_ALIGN_RIGHT));
-        Alignment.right.button.setBorder(BorderFactory.createEmptyBorder());
-        Alignment.right.button.setMargin(new Insets(0, 0, 0, 0));
 
         var alignmentGroup = new ButtonGroup();
-        alignmentGroup.add(Alignment.left.button);
-        alignmentGroup.add(Alignment.center.button);
-        alignmentGroup.add(Alignment.right.button);
-
-        var xPanelLayout = new GroupLayout(xPanel);
-        xPanel.setLayout(xPanelLayout);
-        xPanelLayout.setHorizontalGroup(
-            xPanelLayout
-                .createParallelGroup(GroupLayout.LEADING)
-                .add(
-                    xPanelLayout
-                        .createSequentialGroup()
-                        .addContainerGap()
-                        .add(
-                            xPanelLayout
-                                .createParallelGroup(GroupLayout.LEADING)
-                                .add(Alignment.left.button)
-                                .add(Alignment.center.button)
-                                .add(Alignment.right.button)
-                        )
-                        .addContainerGap(39, Short.MAX_VALUE)
-                )
-        );
-
-        xPanelLayout.setVerticalGroup(
-            xPanelLayout
-                .createParallelGroup(GroupLayout.LEADING)
-                .add(
-                    xPanelLayout
-                        .createSequentialGroup()
-                        .add(Alignment.left.button)
-                        .addPreferredGap(LayoutStyle.RELATED)
-                        .add(Alignment.center.button)
-                        .addPreferredGap(LayoutStyle.RELATED)
-                        .add(Alignment.right.button)
-                )
-        );
-
-        verticalPanel.setBorder(
-            BorderFactory.createTitledBorder(
-                BorderFactory.createEtchedBorder(),
-                Strings.get(Strings.DIALOG_ANNOTATION_VERTICAL)
-            )
-        );
-
-        aboveButton.setText(Strings.get(Strings.DIALOG_ANNOTATION_ABOVE_STAFF));
-        aboveButton.setBorder(BorderFactory.createEmptyBorder());
-        aboveButton.setMargin(new Insets(0, 0, 0, 0));
-
-        belowButton.setText(Strings.get(Strings.DIALOG_ANNOTATION_BELOW_STAFF));
-        belowButton.setBorder(BorderFactory.createEmptyBorder());
-        belowButton.setMargin(new Insets(0, 0, 0, 0));
+        alignmentGroup.add(leftRadio);
+        alignmentGroup.add(centerRadio);
+        alignmentGroup.add(rightRadio);
 
         var verticalGroup = new ButtonGroup();
-        verticalGroup.add(aboveButton);
-        verticalGroup.add(belowButton);
+        verticalGroup.add(aboveRadio);
+        verticalGroup.add(belowRadio);
 
-        var verticalPanelLayout = new GroupLayout(verticalPanel);
-        verticalPanel.setLayout(verticalPanelLayout);
-        verticalPanelLayout.setHorizontalGroup(
-            verticalPanelLayout
-                .createParallelGroup(GroupLayout.LEADING)
-                .add(
-                    verticalPanelLayout
-                        .createSequentialGroup()
-                        .addContainerGap()
-                        .add(
-                            verticalPanelLayout
-                                .createParallelGroup(GroupLayout.LEADING)
-                                .add(belowButton)
-                                .add(aboveButton)
-                        )
-                        .addContainerGap(
-                            GroupLayout.DEFAULT_SIZE,
-                            Short.MAX_VALUE
-                        )
-                )
-        );
+        var alignmentSection = new TitledSection(Strings.get(Strings.DIALOG_ANNOTATION_ALIGNMENT));
+        alignmentSection.add(leftRadio);
+        alignmentSection.addSeparator();
+        alignmentSection.add(centerRadio);
+        alignmentSection.addSeparator();
+        alignmentSection.add(rightRadio);
 
-        verticalPanelLayout.setVerticalGroup(
-            verticalPanelLayout
-                .createParallelGroup(GroupLayout.LEADING)
-                .add(
-                    GroupLayout.TRAILING,
-                    verticalPanelLayout
-                        .createSequentialGroup()
-                        .addContainerGap(
-                            GroupLayout.DEFAULT_SIZE,
-                            Short.MAX_VALUE
-                        )
-                        .add(aboveButton)
-                        .addPreferredGap(LayoutStyle.RELATED)
-                        .add(belowButton)
-                        .addContainerGap()
-                )
-        );
+        var verticalSection = new TitledSection(Strings.get(Strings.DIALOG_ANNOTATION_VERTICAL));
+        verticalSection.add(aboveRadio);
+        verticalSection.addSeparator();
+        verticalSection.add(belowRadio);
 
-        var layout = new GroupLayout(centerPanel);
-        centerPanel.setLayout(layout);
-        layout.setHorizontalGroup(
-            layout
-                .createParallelGroup(GroupLayout.LEADING)
-                .add(
-                    layout
-                        .createSequentialGroup()
-                        .addContainerGap()
-                        .add(
-                            layout
-                                .createParallelGroup(GroupLayout.LEADING)
-                                .add(
-                                    layout
-                                        .createSequentialGroup()
-                                        .add(
-                                            xPanel,
-                                            GroupLayout.PREFERRED_SIZE,
-                                            GroupLayout.DEFAULT_SIZE,
-                                            GroupLayout.PREFERRED_SIZE
-                                        )
-                                        .addPreferredGap(LayoutStyle.RELATED)
-                                        .add(
-                                            verticalPanel,
-                                            GroupLayout.DEFAULT_SIZE,
-                                            GroupLayout.DEFAULT_SIZE,
-                                            Short.MAX_VALUE
-                                        )
-                                )
-                                .add(
-                                    layout
-                                        .createSequentialGroup()
-                                        .add(annotationLabel)
-                                        .addPreferredGap(LayoutStyle.RELATED)
-                                        .add(
-                                            annotationCombo,
-                                            0,
-                                            190,
-                                            Short.MAX_VALUE
-                                        )
-                                )
-                        )
-                        .addContainerGap(
-                            GroupLayout.DEFAULT_SIZE,
-                            Short.MAX_VALUE
-                        )
-                )
-        );
+        alignmentSection.setAlignmentY(Component.TOP_ALIGNMENT);
+        verticalSection.setAlignmentY(Component.TOP_ALIGNMENT);
 
-        layout.setVerticalGroup(
-            layout
-                .createParallelGroup(GroupLayout.LEADING)
-                .add(
-                    layout
-                        .createSequentialGroup()
-                        .addContainerGap()
-                        .add(
-                            layout
-                                .createParallelGroup(GroupLayout.BASELINE)
-                                .add(annotationLabel)
-                                .add(
-                                    annotationCombo,
-                                    GroupLayout.PREFERRED_SIZE,
-                                    GroupLayout.DEFAULT_SIZE,
-                                    GroupLayout.PREFERRED_SIZE
-                                )
-                        )
-                        .addPreferredGap(LayoutStyle.RELATED)
-                        .add(
-                            layout
-                                .createParallelGroup(GroupLayout.LEADING, false)
-                                .add(
-                                    verticalPanel,
-                                    GroupLayout.DEFAULT_SIZE,
-                                    GroupLayout.DEFAULT_SIZE,
-                                    Short.MAX_VALUE
-                                )
-                                .add(
-                                    xPanel,
-                                    GroupLayout.PREFERRED_SIZE,
-                                    88,
-                                    Short.MAX_VALUE
-                                )
-                        )
-                        .addContainerGap(
-                            GroupLayout.DEFAULT_SIZE,
-                            Short.MAX_VALUE
-                        )
-                )
-        );
+        var sectionRow = new JPanel();
+        sectionRow.setLayout(new BoxLayout(sectionRow, BoxLayout.X_AXIS));
+        sectionRow.setAlignmentX(Component.LEFT_ALIGNMENT);
+        sectionRow.add(alignmentSection);
+        sectionRow.add(Box.createHorizontalStrut(
+            FlatLafProps.<Integer>get(FlatLafKeys.DIALOG_COMPONENT_HORIZONTAL_EXTRA_GAP)));
+        sectionRow.add(verticalSection);
 
-        contentPanel.add(centerPanel);
+        var annotationLabel = new JLabel(Strings.get(Strings.LABEL_ANNOTATION));
+        annotationLabel.setLabelFor(annotationCombo);
+        var annotationRow = new JPanel(new FlowLayout(
+            FlowLayout.LEFT,
+            FlatLafProps.<Integer>get(FlatLafKeys.DIALOG_COMPONENT_HORIZONTAL_GAP),
+            0
+        ));
+        annotationRow.setAlignmentX(Component.LEFT_ALIGNMENT);
+        annotationRow.add(annotationLabel);
+        annotationRow.add(annotationCombo);
 
-        // Buttons
-        var south = new JPanel();
-        removeButton = new JButton(Strings.get(Strings.LABEL_BUTTON_REMOVE));
-        removeButton.addActionListener(_ -> {
-            var score = requireScore();
-            if (selectedElement == null) {
-                throw new IllegalStateException("no element selected");
-            }
+        var content = new JPanel();
+        content.setLayout(new BoxLayout(content, BoxLayout.Y_AXIS));
+        content.add(annotationRow);
+        content.add(Box.createVerticalStrut(
+            FlatLafProps.<Integer>get(FlatLafKeys.DIALOG_COMPONENT_VERTICAL_EXTRA_GAP)));
+        content.add(sectionRow);
 
-            selectedElement.setAnnotation(null);
-            setVisible(false);
-            score.getComposition().setModified(true);
-            score.repaint();
-        });
-
-        south.add(okButton);
-        south.add(removeButton);
-        south.add(cancelButton);
-        contentPanel.add(BorderLayout.SOUTH, south);
+        contentPanel.add(BorderLayout.CENTER, content);
+        contentPanel.add(BorderLayout.SOUTH, buttonPanel);
     }
 
     @Override
-    protected boolean getData() {
-        var score = requireScore();
-        Annotation annotation = null;
-        var hasExistingAnnotation = false;
-        selectedElement = score.getSingleSelectedElement();
+    protected ElementField getElementField() {
+        return ElementField.ANNOTATION;
+    }
 
-        if (selectedElement != null) {
-            annotation = selectedElement.getAnnotation();
-        }
-        if (annotation == null) {
-            annotation = new Annotation("fine");
-        } else {
-            hasExistingAnnotation = true;
-        }
+    @Override
+    protected @Nullable Annotation getExistingChange(StaffElement element) {
+        return element.getAnnotation();
+    }
+
+    @Override
+    protected void populateControls(@Nullable Annotation change) {
+        var annotation = change != null ? change : new Annotation(DEFAULT_ANNOTATION);
 
         annotationCombo.setSelectedItem(annotation.getAnnotation());
 
-        for (var alignment : Alignment.values()) {
-            if (annotation.getXAlignment() == alignment.value) {
-                alignment.button.setSelected(true);
-            }
+        var alignment = annotation.getXAlignment();
+
+        if (alignment == Component.CENTER_ALIGNMENT) {
+            centerRadio.setSelected(true);
+        } else if (alignment == Component.RIGHT_ALIGNMENT) {
+            rightRadio.setSelected(true);
+        } else {
+            leftRadio.setSelected(true);
         }
 
-        var oldVerticalButton = (annotation.getYPosPx() < 0)
-            ? aboveButton
-            : belowButton;
-
-        oldVerticalButton.setSelected(true);
-        removeButton.setEnabled(hasExistingAnnotation);
-
-        okButton.setText(Strings.get(hasExistingAnnotation ? Strings.LABEL_BUTTON_MODIFY : Strings.LABEL_BUTTON_ADD));
-        return true;
+        if (annotation.getYPosPx() < 0) {
+            aboveRadio.setSelected(true);
+        } else {
+            belowRadio.setSelected(true);
+        }
     }
 
     @Override
-    protected void setData() {
-        @Nullable
-        Annotation annotation;
+    protected void applyChange(StaffElement element) {
         var annotationText = (String) annotationCombo.getSelectedItem();
 
-        if ((annotationText == null) || annotationText.isEmpty()) {
-            annotation = null;
+        if (annotationText == null || annotationText.isEmpty()) {
+            element.setAnnotation(null);
+            return;
+        }
+
+        float alignment;
+
+        if (centerRadio.isSelected()) {
+            alignment = Component.CENTER_ALIGNMENT;
+        } else if (rightRadio.isSelected()) {
+            alignment = Component.RIGHT_ALIGNMENT;
         } else {
-            // Horizontal alignment
-            var horizontalAlignment = Arrays.stream(Alignment.values())
-                .filter(alignment -> alignment.button.isSelected())
-                .findFirst()
-                .orElse(null);
-
-            if (horizontalAlignment == null) {
-                var message = Strings.get(Strings.ERROR_PROGRAMMER_NO_HORIZONTAL_ANNOTATION);
-                OptionDialogs.showErrorMessage(
-                    getMainFrame(),
-                    Strings.ALERT_TITLE_ANNOTATION_ERROR,
-                    Strings.ERROR_PROGRAMMER_NO_HORIZONTAL_ANNOTATION
-                );
-                throw new RuntimeException(message);
-            }
-
-            annotation = new Annotation(
-                annotationText,
-                horizontalAlignment.value
-            );
-
-            // Vertical alignment
-            int yPosPx;
-
-            if (aboveButton.isSelected()) {
-                yPosPx = Annotation.ABOVE;
-            } else if (belowButton.isSelected()) {
-                yPosPx = Annotation.BELOW;
-            } else {
-                var message = Strings.get(Strings.ERROR_PROGRAMMER_NO_VERTICAL_ANNOTATION);
-                OptionDialogs.showErrorMessage(
-                    getMainFrame(),
-                    Strings.ALERT_TITLE_ANNOTATION_ERROR,
-                    Strings.ERROR_PROGRAMMER_NO_VERTICAL_ANNOTATION
-                );
-                throw new RuntimeException(message);
-            }
-
-            annotation.setYPosPx(yPosPx);
+            alignment = Component.LEFT_ALIGNMENT;
         }
 
-        if (selectedElement == null) {
-            throw new IllegalStateException("no element selected");
-        }
-
-        selectedElement.setAnnotation(annotation);
-        getComposition().setModified(true);
+        var annotation = new Annotation(annotationText, alignment);
+        annotation.setYPosPx(aboveRadio.isSelected() ? Annotation.ABOVE : Annotation.BELOW);
+        element.setAnnotation(annotation);
     }
 
-    private enum Alignment {
-        left(Component.LEFT_ALIGNMENT),
-        center(Component.CENTER_ALIGNMENT),
-        right(Component.RIGHT_ALIGNMENT);
-
-        final JRadioButton button;
-        final float value;
-
-        Alignment(float value) {
-            button = new JRadioButton();
-            this.value = value;
-        }
+    @Override
+    protected void clearChange(StaffElement element) {
+        element.setAnnotation(null);
     }
 }

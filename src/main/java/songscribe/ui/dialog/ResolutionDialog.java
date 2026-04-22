@@ -47,10 +47,10 @@ public class ResolutionDialog extends StandardDialog implements ChangeListener {
     private JSpinner resolutionSpinner;
     private BorderPanel borderPanel;
     private JCheckBox exportWithoutTitleCheckBox;
-    private int sheetWidth = 0;
-    private int sheetHeight = 0;
-    private int sheetHeightWithoutLyrics = 0;
-    private int sheetHeightWithoutTitle = 0;
+    private int sheetWidthPx = 0;
+    private int sheetHeightPx = 0;
+    private int sheetHeightWithoutLyricsPx = 0;
+    private int sheetHeightWithoutTitlePx = 0;
 
     @SuppressWarnings("NullAway.Init")
     public ResolutionDialog() {
@@ -74,14 +74,14 @@ public class ResolutionDialog extends StandardDialog implements ChangeListener {
         resolutionSpinner.setValue(Prefs.getInstance().getInt(PrefsKey.EXPORT_DPI));
         var score = requireScore();
         var composition = score.getComposition();
-        sheetWidth = score.getSheetWidthPx();
-        sheetHeight = score.getSheetHeightPx();
+        sheetWidthPx = score.getSheetWidthPx();
+        sheetHeightPx = score.getSheetHeightPx();
 
         var noLyricsOptions = new ExportOptions(false, true, true);
-        sheetHeightWithoutLyrics = sheetHeight - score.getSheetHeightPx(noLyricsOptions);
+        sheetHeightWithoutLyricsPx = sheetHeightPx - score.getSheetHeightPx(noLyricsOptions);
 
         var noTitleOptions = new ExportOptions(true, false, true);
-        sheetHeightWithoutTitle = sheetHeight - score.getSheetHeightPx(noTitleOptions);
+        sheetHeightWithoutTitlePx = sheetHeightPx - score.getSheetHeightPx(noTitleOptions);
 
         var underLyrics = composition.getUnderLyrics();
         var translatedLyrics = composition.getTranslatedLyrics();
@@ -141,17 +141,17 @@ public class ResolutionDialog extends StandardDialog implements ChangeListener {
         var myBorder = borderPanel.getMyBorder();
         widthField.setText(
             Integer.toString(
-                Math.round(scale * sheetWidth) + myBorder.getWidth()
+                Math.round(scale * sheetWidthPx) + myBorder.getWidth()
             )
         );
-        var height = sheetHeight;
+        var height = sheetHeightPx;
 
         if (withoutLyricsCheck.isSelected()) {
-            height -= sheetHeightWithoutLyrics;
+            height -= sheetHeightWithoutLyricsPx;
         }
 
         if (exportWithoutTitleCheckBox.isSelected()) {
-            height -= sheetHeightWithoutTitle;
+            height -= sheetHeightWithoutTitlePx;
         }
 
         heightField.setText(

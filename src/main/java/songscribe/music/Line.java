@@ -239,6 +239,7 @@ public class Line {
 
     public void addElement(StaffElement element) {
         element.setLine(this);
+        element.setParentLine(this);
         // When the line ends with the auto-maintained terminal, insert the new
         // element before it so the terminal remains the last element.
         var lastIdx = elements.size() - 1;
@@ -279,6 +280,7 @@ public class Line {
         }
 
         element.setLine(this);
+        element.setParentLine(this);
         var tuplet = tuplets.findSpan(index);
 
         if (tuplet != null && index > tuplet.start) {
@@ -336,6 +338,7 @@ public class Line {
             new ElementReplacement(this, index, oldElement, element),
             () -> {
                 element.setLine(this);
+                element.setParentLine(this);
                 elements.set(index, element);
                 rangeElements.removeIf(endingsToRemove::contains);
 

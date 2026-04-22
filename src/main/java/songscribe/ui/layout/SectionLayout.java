@@ -34,7 +34,7 @@ import org.jspecify.annotations.Nullable;
  */
 public final class SectionLayout {
 
-    private final ElementBounds bounds;
+    private final ElementBoundsSs bounds;
     private final List<String> lines;
     private final @Nullable Font font;
     private final int baselineY;
@@ -48,7 +48,7 @@ public final class SectionLayout {
      * @param baselineY Y coordinate of first text baseline
      */
     public SectionLayout(
-        ElementBounds bounds,
+        ElementBoundsSs bounds,
         List<String> lines,
         @Nullable Font font,
         int baselineY
@@ -63,7 +63,7 @@ public final class SectionLayout {
      * Creates section layout for single-line text.
      */
     public SectionLayout(
-        ElementBounds bounds,
+        ElementBoundsSs bounds,
         String text,
         @Nullable Font font,
         int baselineY
@@ -75,7 +75,7 @@ public final class SectionLayout {
      * Creates an empty section layout (zero bounds, no content).
      */
     public static SectionLayout empty() {
-        var emptyBounds = ElementBounds.contentOnly(
+        var emptyBounds = ElementBoundsSs.contentOnly(
             new java.awt.geom.Rectangle2D.Double(0, 0, 0, 0)
         );
         return new SectionLayout(emptyBounds, List.of(), null, 0);
@@ -84,7 +84,7 @@ public final class SectionLayout {
     /**
      * Returns the element bounds.
      */
-    public ElementBounds getBounds() {
+    public ElementBoundsSs getBounds() {
         return bounds;
     }
 

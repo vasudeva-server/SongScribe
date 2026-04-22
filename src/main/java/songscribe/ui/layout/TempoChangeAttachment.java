@@ -22,7 +22,6 @@ package songscribe.ui.layout;
 
 import java.awt.FontMetrics;
 import java.util.ArrayList;
-import java.util.List;
 
 import org.jspecify.annotations.Nullable;
 
@@ -58,9 +57,6 @@ public class TempoChangeAttachment extends MetronomeAttachment {
     public void setTempo(Tempo tempo) {
         this.tempo = tempo;
     }
-
-    /** Width and collision sub-regions computed together to avoid redundant tempoText() calls. */
-    public record ContentMetrics(double widthSs, List<CollisionRegion> regions) {}
 
     public ContentMetrics computeContentMetrics(FontMetrics attrFontMetrics) {
         var regions = new ArrayList<CollisionRegion>(2);

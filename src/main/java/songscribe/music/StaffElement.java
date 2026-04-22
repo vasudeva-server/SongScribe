@@ -340,7 +340,6 @@ public class StaffElement extends LineElement implements Cloneable {
      */
     public void addAttachment(Attachment attachment) {
         attachment.setOwnerElement(this);
-        attachment.setOwnerElement(this);
         attachment.setParentLine(getParentLine());
         attachments.add(attachment);
         addChild(attachment);
@@ -622,6 +621,14 @@ public class StaffElement extends LineElement implements Cloneable {
 
     public void setLine(Line line) {
         this.line = line;
+
+        for (var attachment : attachments) {
+            attachment.setParentLine(line);
+        }
+
+        for (var articulation : articulations) {
+            articulation.setParentLine(line);
+        }
     }
 
     public @Nullable Accidental findLastAccidental() {

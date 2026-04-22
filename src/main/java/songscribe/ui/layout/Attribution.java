@@ -20,6 +20,9 @@
 
 package songscribe.ui.layout;
 
+import java.awt.FontMetrics;
+
+import songscribe.error.RuntimeError;
 
 /**
  * Represents attribution text (composer/arranger) displayed on the staff.
@@ -38,12 +41,6 @@ public class Attribution extends LineElement {
     /** Whether the text is right-aligned (default: true). */
     private boolean isRightAligned = true;
 
-    /** Approximate character width for stub calculations. */
-    private static final double CHAR_WIDTH_PX = 8.0;
-
-    /** Approximate text height for stub calculations. */
-    private static final double TEXT_HEIGHT_PX = 16.0;
-
     /**
      * Creates an attribution with the specified text.
      *
@@ -51,7 +48,7 @@ public class Attribution extends LineElement {
      */
     public Attribution(String text) {
         this.text = text;
-        setMarginSs(0, 0, ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.ATTRIBUTION_MARGIN_BOTTOM_SS), 0);
+        setMarginSs(0, 0, LayoutStylesheet.ATTRIBUTION_MARGIN_BOTTOM_SS, 0);
     }
 
     /**
@@ -87,35 +84,50 @@ public class Attribution extends LineElement {
     }
 
     /**
-     * Returns the content width based on text length.
-     * <p>
-     * Stub implementation: approximates width based on character count.
-     * Phase 6 rendering will use actual font metrics.
+     * Computes the content width from the actual attribution text.
+     *
+     * @param fontMetrics font metrics for the attribution font
+     * @return width in staff-space units
      */
+    public double computeContentWidthSs(FontMetrics fontMetrics) {
+        return ScaleContext.getInstance().textWidthSs(fontMetrics, text);
+    }
+
+    @Override
+    public double getContentWidthSs() {
+        return computeContentWidthSs(requireAttributionFontMetrics());
+    }
+
+    /**
+     * Returns the content height in staff-space units, derived from the composition's
+     * attribution font metrics via {@code parentLine}.
+     * <p>
+     * {@code parentLine} must be non-null. Use {@link ScaleContext#textHeightSs(FontMetrics)}
+     * directly when the font metrics are already in hand.
+     */
+    @Override
+    public double getContentHeightSs() {
+        return ScaleContext.getInstance().textHeightSs(requireAttributionFontMetrics());
+    }
+
     @Override
     public double getContentWidthPx() {
-        return text.length() * CHAR_WIDTH_PX;
+        return ScaleContext.getInstance().toPixels(getContentWidthSs());
     }
 
-    /**
-     * Returns the content height.
-     * <p>
-     * Stub implementation: returns typical text height.
-     * Phase 6 rendering will use actual font metrics.
-     */
     @Override
     public double getContentHeightPx() {
-        return TEXT_HEIGHT_PX;
+        return ScaleContext.getInstance().toPixels(getContentHeightSs());
     }
 
-    /**
-     * Calculates the X position for right-aligned rendering.
-     *
-     * @param staffWidth The width of the staff
-     * @param rightMargin The right margin from the staff edge
-     * @return The X position for the attribution
-     */
-    public double calculateRightAlignedX(double staffWidth, double rightMargin) {
-        return staffWidth - getContentWidthPx() - rightMargin;
+    private FontMetrics requireAttributionFontMetrics() {
+        var parentLine = getParentLine();
+
+        if (parentLine == null) {
+            throw RuntimeError.exit(
+                "Attribution content dimensions requested with null parentLine");
+        }
+
+        return parentLine.getComposition().getAttributionFontMetrics();
     }
 }

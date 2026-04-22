@@ -43,18 +43,18 @@ public final class CollisionDetector {
     }
 
     /**
-     * Calculates the maximum extent of notes above and below the staff.
+     * Calculates the maximum extent of notes above and below the staff, in staff-space.
      * <p>
      * This includes notes, their attachments, and range elements. The result
      * helps determine the LineComponent's preferred height.
      *
-     * @param line         The line containing notes
-     * @param staffMiddleY Y position of the staff middle line
-     * @return Rectangle with: y=minY above staff, height=total extent
+     * @param line           The line containing notes
+     * @param staffMiddleYSs Y position of the staff middle line, in staff-space
+     * @return Rectangle with: y=minY above staff, height=total extent (all in staff-space)
      */
     public static Rectangle2D calculateNoteExtent(
         Line line,
-        double staffMiddleY
+        double staffMiddleYSs
     ) {
         double minY = 0;  // Above staff (negative from middle)
         double maxY = 0;  // Below staff (positive from middle)
@@ -62,8 +62,8 @@ public final class CollisionDetector {
         // Check all notes
         for (var note : line.getElements()) {
             var noteBounds = note.getMarginBounds();
-            double noteTop = noteBounds.getMinY() - staffMiddleY;
-            double noteBottom = noteBounds.getMaxY() - staffMiddleY;
+            double noteTop = noteBounds.getMinY() - staffMiddleYSs;
+            double noteBottom = noteBounds.getMaxY() - staffMiddleYSs;
 
             minY = Math.min(minY, noteTop);
             maxY = Math.max(maxY, noteBottom);
@@ -71,8 +71,8 @@ public final class CollisionDetector {
             // Include attachments
             for (var attachment : note.getAttachments()) {
                 var attBounds = attachment.getMarginBounds();
-                double attTop = attBounds.getMinY() - staffMiddleY;
-                double attBottom = attBounds.getMaxY() - staffMiddleY;
+                double attTop = attBounds.getMinY() - staffMiddleYSs;
+                double attBottom = attBounds.getMaxY() - staffMiddleYSs;
 
                 minY = Math.min(minY, attTop);
                 maxY = Math.max(maxY, attBottom);
@@ -81,8 +81,8 @@ public final class CollisionDetector {
             // Include articulations
             for (var articulation : note.getArticulations()) {
                 var artBounds = articulation.getMarginBounds();
-                double artTop = artBounds.getMinY() - staffMiddleY;
-                double artBottom = artBounds.getMaxY() - staffMiddleY;
+                double artTop = artBounds.getMinY() - staffMiddleYSs;
+                double artBottom = artBounds.getMaxY() - staffMiddleYSs;
 
                 minY = Math.min(minY, artTop);
                 maxY = Math.max(maxY, artBottom);
@@ -92,8 +92,8 @@ public final class CollisionDetector {
         // Include range elements
         for (var range : line.getRangeElements()) {
             var rangeBounds = range.getMarginBounds();
-            double rangeTop = rangeBounds.getMinY() - staffMiddleY;
-            double rangeBottom = rangeBounds.getMaxY() - staffMiddleY;
+            double rangeTop = rangeBounds.getMinY() - staffMiddleYSs;
+            double rangeBottom = rangeBounds.getMaxY() - staffMiddleYSs;
 
             minY = Math.min(minY, rangeTop);
             maxY = Math.max(maxY, rangeBottom);

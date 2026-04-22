@@ -430,11 +430,9 @@ public class LineComponent extends ScoreComponent
 
         // Get extent of notes and attachments (only if line has content)
         if (line != null && !line.isEmpty()) {
-            // CollisionDetector still uses pixel-space margin bounds (renderers not yet converted)
-            var scale = ScaleContext.getInstance();
-            double tempMiddleLineYPx = scale.toPixels(defaultSpaceAbove + 2.0);
-            var extent = CollisionDetector.calculateNoteExtent(line, tempMiddleLineYPx);
-            spaceAbove = Math.max(MIN_SPACE_ABOVE_SS, scale.fromPixels(Math.abs(extent.getMinY())));
+            double tempMiddleLineYSs = defaultSpaceAbove + 2.0;
+            var extent = CollisionDetector.calculateNoteExtent(line, tempMiddleLineYSs);
+            spaceAbove = Math.max(MIN_SPACE_ABOVE_SS, Math.abs(extent.getMinY()));
         }
 
         // Use layout result to determine space needed above staff.
@@ -505,14 +503,12 @@ public class LineComponent extends ScoreComponent
 
         // Get extent of notes and attachments (only if line has content)
         if (line != null && !line.isEmpty()) {
-            // CollisionDetector still uses pixel-space margin bounds (renderers not yet converted)
-            var scale = ScaleContext.getInstance();
-            double tempMiddleLineYPx = scale.toPixels(defaultSpaceAbove + 2.0);
-            var extent = CollisionDetector.calculateNoteExtent(line, tempMiddleLineYPx);
-            spaceAbove = Math.max(MIN_SPACE_ABOVE_SS, scale.fromPixels(Math.abs(extent.getMinY())));
+            double tempMiddleLineYSs = defaultSpaceAbove + 2.0;
+            var extent = CollisionDetector.calculateNoteExtent(line, tempMiddleLineYSs);
+            spaceAbove = Math.max(MIN_SPACE_ABOVE_SS, Math.abs(extent.getMinY()));
             spaceBelow = Math.max(
                 defaultSpaceBelow,
-                scale.fromPixels(extent.getMaxY()) - (staffHeight / 2.0)
+                extent.getMaxY() - (staffHeight / 2.0)
             );
         }
 

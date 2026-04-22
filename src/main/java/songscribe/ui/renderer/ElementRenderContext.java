@@ -365,10 +365,10 @@ public class ElementRenderContext {
      * path used for laid-out composition elements. Call {@link #clearOverrideElementX()} after
      * rendering to reset.
      *
-     * @param x the exact X coordinate in local (component) space
+     * @param xSs the exact X coordinate in staff spaces
      */
-    public void setOverrideElementXSs(double x) {
-        this.overrideElementXSs = x;
+    public void setOverrideElementXSs(double xSs) {
+        this.overrideElementXSs = xSs;
     }
 
     /**

@@ -182,7 +182,7 @@ public class LyricsRenderer {
             throw new IllegalStateException("No bounds found for Line (lyrics)");
         }
 
-        return (int) bounds.getTop();
+        return (int) bounds.getTopSs();
     }
 
     /**

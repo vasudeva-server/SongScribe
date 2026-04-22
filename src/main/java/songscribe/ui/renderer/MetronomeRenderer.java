@@ -120,11 +120,6 @@ public abstract class MetronomeRenderer extends BaseElementRenderer<StaffElement
         return decorationLayout;
     }
 
-    /** Returns {@code attrFont} scaled from pixel units to staff-space units. */
-    protected Font scaleAttrFont(Font attrFont) {
-        return attrFont.deriveFont((float) ScaleContext.getInstance().fromPixels(attrFont.getSize()));
-    }
-
     /**
      * Draws a duration glyph followed by "=" using SMuFL metronome glyphs and the
      * supplied attribution font. Returns the x position (staff spaces) after the
@@ -172,7 +167,7 @@ public abstract class MetronomeRenderer extends BaseElementRenderer<StaffElement
             xSs += MetronomeAttachment.EQUALS_GAP_SS;
 
             var scale = ScaleContext.getInstance();
-            g2.setFont(scaleAttrFont(attrFont));
+            g2.setFont(scaleFont(attrFont));
             g2.drawString("=", (float) xSs, (float) textBaselineYSs);
 
             double equalsWidthSs = scale.fromPixels(

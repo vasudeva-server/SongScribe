@@ -129,9 +129,37 @@ public abstract class RangeElement extends LineElement {
     }
 
     /**
+     * Returns the width of this range element in staff-space units.
+     * <p>
+     * Computed as the distance from the anchor element's X position to the
+     * right edge of the end element, all in staff spaces.
+     */
+    @Override
+    public double getContentWidthSs() {
+        var anchor = getAnchorElement();
+        var endElement = getEndElement();
+
+        if (anchor == null || endElement == null) {
+            return 0;
+        }
+
+        return Math.abs(endElement.getXSs() - anchor.getXSs()) + endElement.getContentWidthSs();
+    }
+
+    @Override
+    public double getContentWidthPx() {
+        return ScaleContext.getInstance().toPixels(getContentWidthSs());
+    }
+
+    /**
      * Returns the content height of this range element in staff-space units.
      */
     public abstract double getContentHeightSs();
+
+    @Override
+    public double getContentHeightPx() {
+        return ScaleContext.getInstance().toPixels(getContentHeightSs());
+    }
 
     /**
      * Returns the horizontal span width for collision detection in staff-space units.

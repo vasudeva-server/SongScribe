@@ -45,7 +45,11 @@ import songscribe.music.Line;
  */
 public abstract class LineElement {
 
-    /** Reference to the Line that contains this element. */
+    /**
+     * Reference to the Line that contains this element. Null only during the construction
+     * window before the element is added to a line via {@code Line.addElement}. Code paths
+     * downstream of {@code Line.addElement} may treat this as non-null.
+     */
     private @Nullable Line parentLine;
 
     /** Parent element (null for direct children of Line). */
@@ -84,6 +88,26 @@ public abstract class LineElement {
     // ========================================================================
     // Abstract Methods
     // ========================================================================
+
+    /**
+     * Returns the intrinsic width of this element's content in staff-space units.
+     * <p>
+     * Default implementation converts {@link #getContentWidthPx()} via {@link ScaleContext}.
+     * Subclasses computing in staff-space natively should override this.
+     */
+    public double getContentWidthSs() {
+        return ScaleContext.getInstance().fromPixels(getContentWidthPx());
+    }
+
+    /**
+     * Returns the intrinsic height of this element's content in staff-space units.
+     * <p>
+     * Default implementation converts {@link #getContentHeightPx()} via {@link ScaleContext}.
+     * Subclasses computing in staff-space natively should override this.
+     */
+    public double getContentHeightSs() {
+        return ScaleContext.getInstance().fromPixels(getContentHeightPx());
+    }
 
     /**
      * Returns the intrinsic width of this element's content.
@@ -266,65 +290,28 @@ public abstract class LineElement {
     // ========================================================================
 
     /**
-     * Returns the content bounds (actual drawn content) in line-relative coordinates.
-     */
-    public Rectangle2D getContentBounds() {
-        return new Rectangle2D.Double(
-            positionSs.getX(),
-            positionSs.getY(),
-            getContentWidthPx(),
-            getContentHeightPx()
-        );
-    }
-
-    /**
-     * Returns the margin bounds (content + margin) in line-relative coordinates.
+     * Returns the margin bounds (content + margin) in line-relative staff-space coordinates.
      */
     public Rectangle2D getMarginBounds() {
+        double contentWidthSs = getContentWidthSs();
+        double contentHeightSs = getContentHeightSs();
         return new Rectangle2D.Double(
             positionSs.getX() - marginLeftSs,
             positionSs.getY() - marginTopSs,
-            getContentWidthPx() + marginLeftSs + marginRightSs,
-            getContentHeightPx() + marginTopSs + marginBottomSs
+            contentWidthSs + marginLeftSs + marginRightSs,
+            contentHeightSs + marginTopSs + marginBottomSs
         );
     }
 
-    /**
-     * Returns the complete Bounds object for this element.
-     */
-    public Bounds getBounds() {
-        return new Bounds(getContentBounds(), getMarginBounds());
-    }
+
 
     // ========================================================================
     // Hit Testing
     // ========================================================================
 
-    /**
-     * Returns whether the given point is within this element's hit test area.
-     * Uses default expansion from {@link Bounds#DEFAULT_HIT_EXPANSION}.
-     *
-     * @param x X coordinate in line-relative coordinates
-     * @param y Y coordinate in line-relative coordinates
-     */
-    public boolean containsPoint(double x, double y) {
-        return containsPoint(x, y, Bounds.DEFAULT_HIT_EXPANSION);
-    }
 
-    /**
-     * Returns whether the given point is within this element's hit test area.
-     *
-     * @param x         X coordinate in line-relative coordinates
-     * @param y         Y coordinate in line-relative coordinates
-     * @param expansion Pixels to expand content bounds for hit testing
-     */
-    public boolean containsPoint(double x, double y, double expansion) {
-        var bounds = getContentBounds();
-        return x >= bounds.getX() - expansion &&
-               x <= bounds.getX() + bounds.getWidth() + expansion &&
-               y >= bounds.getY() - expansion &&
-               y <= bounds.getY() + bounds.getHeight() + expansion;
-    }
+
+
 
     // ========================================================================
     // Margin Collapsing

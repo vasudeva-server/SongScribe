@@ -28,11 +28,9 @@ import songscribe.music.Line;
 import songscribe.music.TupletSpan;
 import songscribe.ui.layout.AnnotationAttachment;
 import songscribe.ui.layout.ElementColumn;
-import songscribe.ui.layout.Hairpin;
 import songscribe.ui.layout.Ending;
 import songscribe.ui.layout.LayoutResult;
 import songscribe.ui.layout.LayoutStylesheet;
-import songscribe.ui.layout.ScaleContext;
 import songscribe.ui.layout.StaffExtents;
 import songscribe.ui.layout.Trill;
 
@@ -138,10 +136,9 @@ public class VerticalStackingCalculator {
      *       base offsets for all decoration elements</li>
      *   <li>{@link Trill#getYPositionSs()}: additional Y offset for trills</li>
      *   <li>{@link Ending#getYPositionSs()}: additional Y offset for endings</li>
-     *   <li>{@link Crescendo#getYShift()} etc.: pixel-based hairpin shifts (converted to ss)</li>
      *   <li>{@link AnnotationAttachment} / {@link songscribe.music.Annotation#getUserYOffsetSs()}:
      *       legacy annotation Y offset</li>
-     *   <li>{@link DynamicsSpan}: legacy hairpin shifts (already in ss)</li>
+     *   <li>{@link DynamicsSpan}: hairpin shifts in staff-space units</li>
      * </ul>
      */
     private void applyManualOffsets(LayoutResult.Builder builder) {
@@ -162,46 +159,26 @@ public class VerticalStackingCalculator {
 
             double xOffsetSs = element.getUserXOffsetSs();
             double yOffsetSs = element.getUserYOffsetSs();
-            double widthAdjustSs = 0;
 
             // Element-specific additional offsets
             if (element instanceof Trill trill) {
                 yOffsetSs += trill.getYPositionSs();
             } else if (element instanceof Ending ending) {
                 yOffsetSs += ending.getYPositionSs();
-            } else if (element instanceof Hairpin hairpin) {
-                var shifts = convertHairpinShifts(
-                    hairpin.getX1Shift(), hairpin.getX2Shift(), hairpin.getYShift());
-                xOffsetSs += shifts.x1Ss();
-                widthAdjustSs = shifts.widthAdjustSs();
-                yOffsetSs += shifts.ySs();
             } else if (element instanceof AnnotationAttachment annAttach) {
                 yOffsetSs += annAttach.getAnnotation().getUserYOffsetSs();
             }
 
-            if (xOffsetSs != 0 || yOffsetSs != 0 || widthAdjustSs != 0) {
+            if (xOffsetSs != 0 || yOffsetSs != 0) {
                 builder.putDecorationLayout(element, new LayoutResult.DecorationLayout(
                     layout.xSs() + xOffsetSs,
                     layout.ySs() + yOffsetSs,
-                    layout.widthSs() + widthAdjustSs,
+                    layout.widthSs(),
                     layout.heightSs(),
                     layout.marginSs(),
                     layout.regions()));
             }
         }
-    }
-
-    /**
-     * Converts pixel-based hairpin shifts (x1, x2, y) to staff-space offsets.
-     */
-    private record HairpinShifts(double x1Ss, double widthAdjustSs, double ySs) {
-    }
-
-    private static HairpinShifts convertHairpinShifts(int x1Px, int x2Px, int yPx) {
-        var sc = ScaleContext.getInstance();
-        double x1Ss = sc.fromPixels(x1Px);
-        double x2Ss = sc.fromPixels(x2Px);
-        return new HairpinShifts(x1Ss, x2Ss - x1Ss, sc.fromPixels(yPx));
     }
 
     /**

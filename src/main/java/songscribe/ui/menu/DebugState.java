@@ -26,7 +26,7 @@ import java.util.Objects;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.ui.layout.ElementBounds;
+import songscribe.ui.layout.ElementBoundsSs;
 
 /**
  * Manages debug visualization state.
@@ -100,17 +100,17 @@ public class DebugState {
 
     public static final class HoveredElement {
 
-        private final ElementBounds bounds;
+        private final ElementBoundsSs bounds;
         private final String label;
         private final DebugElementType type;
 
-        public HoveredElement(ElementBounds bounds, String label, DebugElementType type) {
+        public HoveredElement(ElementBoundsSs bounds, String label, DebugElementType type) {
             this.bounds = bounds;
             this.label = label;
             this.type = type;
         }
 
-        public ElementBounds getBounds() {
+        public ElementBoundsSs getBounds() {
             return bounds;
         }
 
@@ -148,7 +148,7 @@ public class DebugState {
             );
         }
 
-        private boolean boundsEqual(ElementBounds b1, ElementBounds b2) {
+        private boolean boundsEqual(ElementBoundsSs b1, ElementBoundsSs b2) {
             var m1 = b1.getMarginBounds();
             var m2 = b2.getMarginBounds();
             return m1.getX() == m2.getX() &&

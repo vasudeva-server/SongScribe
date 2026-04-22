@@ -152,7 +152,7 @@ public final class LayoutStylesheet {
     /**
      * Margin from reference point to annotation
      */
-    public static final double ANNOTATION_ABOVE_MARGIN_SS = 0.5;  // 4px
+    public static final double ANNOTATION_MARGIN_SS = 1.0;  // 8px
 
     // ==========================================================================
     // BELOW-STAFF ELEMENTS
@@ -179,6 +179,18 @@ public final class LayoutStylesheet {
      * Margin from reference point to tuplet bracket
      */
     public static final double TUPLET_MARGIN_SS = 0.625;  // 5px
+
+    /**
+     * Total vertical extent of a tuplet bracket (arms + number label).
+     * Engraving convention, not measured — in the same category as {@link #STAFF_HEIGHT_SS}.
+     */
+    public static final double TUPLET_BRACKET_HEIGHT_SS = 1.5;  // 12px
+
+    // --- Ties ---
+    /**
+     * Arc height of a tie curve.
+     */
+    public static final double TIE_ARC_HEIGHT_SS = 1.0;  // 8px
 
     // ==========================================================================
     // STAFF DIMENSIONS
