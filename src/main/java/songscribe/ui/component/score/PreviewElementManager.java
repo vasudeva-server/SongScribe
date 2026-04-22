@@ -74,9 +74,6 @@ public class PreviewElementManager {
     /** Maximum (lowest-pitched) valid staff position. */
     static final int MAX_STAFF_POSITION_SP = (LayoutStylesheet.STAFF_LINES_BELOW + 2) * 2;
 
-    /** Default cursor. */
-    private static final Cursor DEFAULT_CURSOR = Cursor.getDefaultCursor();
-
     // ==========================================================================
     // Static State
     // ==========================================================================
@@ -623,7 +620,7 @@ public class PreviewElementManager {
      */
     static void mouseExitedLine(LineComponent lc) {
         currentMouseLine = null;
-        lc.setCursor(DEFAULT_CURSOR);
+        lc.setCursor(Cursor.getDefaultCursor());
 
         // Clear preview element when mouse leaves this line
         if (currentPreviewLine == lc) {
