@@ -7,7 +7,7 @@
 | 1 | [Coordinate System + Staff + Notes](#-phase-1-coordinate-system--staff--notes) | ✅ Done | [milestone-1-coordinate-system.md](milestone-1-coordinate-system.md) |
 | 2 | [Beams + Stems](#-phase-2-beams--stems) | ✅ Done | [milestone-2-beams-stems.md](milestone-2-beams-stems.md) |
 | 3 | [Ties + Glissandos](#-phase-3-ties--glissandos) | ✅ Done | [milestone-3-ties-glissandos.md](milestone-3-ties-glissandos.md) |
-| 4 | [Vertical Stacking + All Decorations](#-phase-4-vertical-stacking--all-decorations) | 📋 Sub-plan | [milestone-4-vertical-stacking.md](milestone-4-vertical-stacking.md) |
+| 4 | [Vertical Stacking + All Decorations](#-phase-4-vertical-stacking--all-decorations) | ✅ Done | [milestone-4-vertical-stacking.md](milestone-4-vertical-stacking.md) |
 | 5 | [Lyrics + Line Height + Tuplets](#-phase-5-lyrics--line-height--tuplets) | ⏳ Pending | — |
 | 6 | [Legacy Decoration Flag Migration](#-phase-6-legacy-decoration-flag-migration) | ⏳ Pending | — |
 | 7 | [Cleanup + Polish](#-phase-7-cleanup--polish) | ⏳ Pending | — |
@@ -64,7 +64,7 @@ See [milestone-3-ties-glissandos.md](milestone-3-ties-glissandos.md) for detaile
 
 ---
 
-## 📋 Phase 4: Vertical Stacking + All Decorations
+## ✅ Phase 4: Vertical Stacking + All Decorations
 
 Y-extent array collision detection (YSTEP=128). Three-layer model. Tier 1: articulations. Tier 2: fermata, trill. Tier 3: dynamics hairpins, text dynamics (new), volta brackets. Tier 4: tempo, beat changes, annotations. Self-rendering note-attached elements. All manual offset adjustments working post-layout.
 

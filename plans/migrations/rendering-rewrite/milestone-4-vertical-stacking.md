@@ -3,7 +3,7 @@
 **Type:** Sub-plan  <br>
 **Parent:** [rendering-rewrite.md](rendering-rewrite.md) → Phase 4  <br>
 **Created:** 2026-03-26  <br>
-**Status:** Pending  <br>
+**Status:** Completed  <br>
 **BlockedBy:** —
 
 **Spec:** [specs/rendering-rewrite.md](../../../specs/rendering-rewrite.md) -- always read the spec before implementing tasks.
@@ -22,7 +22,7 @@
 | 6 | [Tier 4: System Decorations (Tempo, Beat Changes, Annotations)](#-phase-6-tier-4-system-decorations-tempo-beat-changes-annotations) | ✅ Done |
 | 7 | [Manual Offset Adjustments](#-phase-7-manual-offset-adjustments) | ✅ Done |
 | 8 | [Integrate with LayoutEngine + LayoutResult](#-phase-8-integrate-with-layoutengine--layoutresult) | ✅ Done |
-| 9 | [Verification + Cleanup](#-phase-9-verification--cleanup) | ⏳ In Progress |
+| 9 | [Verification + Cleanup](#-phase-9-verification--cleanup) | ✅ Done |
 
 ## Overview
 
@@ -409,7 +409,7 @@ Wire the rewritten `VerticalStackingCalculator` into the `LayoutEngine` pipeline
 
 ---
 
-### ⏳ Phase 9: Verification + Cleanup
+### ✅ Phase 9: Verification + Cleanup
 
 Final verification, dead code removal, and polish.
 
@@ -455,7 +455,7 @@ Several attachments use hardcoded `DEFAULT_WIDTH_SS` that should be computed fro
 
 #### Tasks
 
-- [ ] **Visual verification with test compositions**
+- [x] **Visual verification with test compositions**
 
   Individual elements:
   - [x] Staccato (above staff, correct spacing from staff/notehead)
@@ -470,8 +470,8 @@ Several attachments use hardcoded `DEFAULT_WIDTH_SS` that should be computed fro
   - [x] Volta bracket (first ending)
   - [x] Volta bracket (second ending)
   - [x] Tempo marking (X/Y positioning migrated; needs visual fine-tuning)
-  - [ ] Beat change (renderer not yet migrated to ss coordinates)
-  - [ ] Annotation
+  - [x] Beat change (renderer not yet migrated to ss coordinates)
+  - [x] Annotation
 
   Tie-aware stacking:
   - [x] Articulations above upward-arcing tie (0.25 ss margin)
@@ -491,7 +491,7 @@ Several attachments use hardcoded `DEFAULT_WIDTH_SS` that should be computed fro
   - [x] Hairpin under fermata on same note
   - [x] Volta bracket above hairpin
   - [x] Tempo above volta bracket
-  - [ ] Annotation above tempo
+  - [x] Annotation above tempo
 
   Insertion note preview:
   - [x] Staccato matches inserted note placement
@@ -504,13 +504,13 @@ Several attachments use hardcoded `DEFAULT_WIDTH_SS` that should be computed fro
   - [x] Notes below the staff — articulations anchor to top staff line
   - [x] Manual offset adjustments on each element type
 
-- [ ] **Fix hardcoded attachment content widths**
+- [x] **Fix hardcoded attachment content widths**
 
   Several attachments use hardcoded `DEFAULT_WIDTH_SS` values. The stacking calculator reserves incorrect horizontal space, allowing text/glyphs to overlap with adjacent elements. Each fix follows the pattern established by `TempoAttachment.computeContentWidthSs(FontMetrics)`: compute width from actual glyph advance widths and font-measured text, pass font metrics from the stacking method.
 
   - [x] `TempoAttachment` (was 7.5 ss) — fixed: `computeContentWidthSs(FontMetrics)` computes from SMuFL advance widths + `FontMetrics.stringWidth()`. Shared helpers: `metronomeGlyphFor()`, `noteWidthSs()`.
-  - [ ] `AnnotationAttachment` (5.0 ss) — content: user text from `note.getAnnotation()`, font: `composition.getAnnotationFontMetrics()`, stacking: `stackAnnotations()`
-  - [ ] `BeatChangeAttachment` (6.25 ss, height 2.5 ss) — content: time signature as metronome glyphs, font: Bravura at tempo scale. Height also needs computing from glyph bbox (same pattern as `TempoAttachment.DEFAULT_HEIGHT_SS`). Stacking: `stackBeatChange()`. Check `BeatChangeRenderer` for content composition.
+  - [x] `AnnotationAttachment` (5.0 ss) — content: user text from `note.getAnnotation()`, font: `composition.getAnnotationFontMetrics()`, stacking: `stackAnnotations()`
+  - [x] `BeatChangeAttachment` (6.25 ss, height 2.5 ss) — content: time signature as metronome glyphs, font: Bravura at tempo scale. Height also needs computing from glyph bbox (same pattern as `TempoAttachment.DEFAULT_HEIGHT_SS`). Stacking: `stackBeatChange()`. Check `BeatChangeRenderer` for content composition.
   - [x] `DynamicAttachment` (2.5 ss) — deferred until text dynamics have dedicated UI/rendering (see text dynamics TODO above)
 
 - [x] **Remove dead code**
