@@ -31,12 +31,14 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
+import songscribe.music.Annotation;
+import songscribe.music.BeatChange;
 import songscribe.music.Composition;
-
 import songscribe.music.Duration;
 import songscribe.music.Line;
 import songscribe.music.StaffElement;
 import songscribe.music.Tempo;
+import songscribe.ui.layout.BeatChangeAttachment;
 import songscribe.ui.layout.stacking.VerticalStackingCalculator;
 
 class SystemTierStackingTest extends UnitTest {
@@ -187,6 +189,190 @@ class SystemTierStackingTest extends UnitTest {
 
             assertThat(layout)
                 .describedAs("legacy tempo change should produce DecorationLayout")
+                .isNotNull();
+        }
+    }
+
+    @Nested
+    class BeatChangeStacking {
+
+        @Test
+        void testBeatChangeAttachmentPositionedAboveStaff() {
+            var note = createNote(0, false);
+            var beatChange = new BeatChangeAttachment(note, new BeatChange(Duration.CROTCHET, Duration.CROTCHET));
+            note.addAttachment(beatChange);
+
+            var line = newLine();
+            populate(line, note);
+
+            var result = stackColumns(List.of(columnFor(note, NOTE1_X_SS)), line);
+
+            var layout = require(
+                result.getDecorationLayout(beatChange),
+                "beat change DecorationLayout");
+
+            // Beat change should be above the staff (negative Y = higher)
+            assertThat(layout.ySs()).isLessThan(0.0);
+        }
+
+        @Test
+        void testBeatChangeAttachmentHasPositiveDimensions() {
+            var note = createNote(0, false);
+            var beatChange = new BeatChangeAttachment(note, new BeatChange(Duration.CROTCHET, Duration.CROTCHET));
+            note.addAttachment(beatChange);
+
+            var line = newLine();
+            populate(line, note);
+
+            var result = stackColumns(List.of(columnFor(note, NOTE1_X_SS)), line);
+
+            var layout = require(
+                result.getDecorationLayout(beatChange),
+                "beat change DecorationLayout");
+
+            assertThat(layout.widthSs()).isGreaterThan(0.0);
+            assertThat(layout.heightSs()).isGreaterThan(0.0);
+        }
+
+        @Test
+        void testBeatChangePositionedAboveStructuralLayer() {
+            var note1 = createNote(0, false);
+            var note2 = createNote(0, false);
+
+            var beatChange = new BeatChangeAttachment(note1, new BeatChange(Duration.CROTCHET, Duration.CROTCHET));
+            note1.addAttachment(beatChange);
+
+            var line = newLine();
+            populate(line, note1);
+            populate(line, note2);
+
+            var crescendo = new Crescendo(note1, note2);
+            setup(() -> line.addRangeElement(crescendo));
+
+            var result = stackColumns(
+                List.of(columnFor(note1, NOTE1_X_SS), columnFor(note2, NOTE2_X_SS)),
+                line);
+
+            var beatChangeLayout = require(
+                result.getDecorationLayout(beatChange),
+                "beat change DecorationLayout");
+            var hairpinLayout = require(
+                result.getDecorationLayout(crescendo),
+                "crescendo DecorationLayout");
+
+            // Beat change (system tier) should be above hairpin (structural tier)
+            assertThat(beatChangeLayout.ySs())
+                .describedAs("beat change should stack above hairpin")
+                .isLessThan(hairpinLayout.ySs());
+        }
+
+        @Test
+        void testLegacyBeatChangeProducesLayout() {
+            var note = createNote(0, false);
+            note.setBeatChange(new BeatChange(Duration.CROTCHET, Duration.CROTCHET));
+
+            var line = newLine();
+            populate(line, note);
+
+            var result = stackColumns(List.of(columnFor(note, NOTE1_X_SS)), line);
+
+            // The legacy bridge should produce a DecorationLayout for a BeatChangeAttachment
+            var layout = result.findAttachmentDecorationLayout(note, BeatChangeAttachment.class);
+
+            assertThat(layout)
+                .describedAs("legacy beat change should produce DecorationLayout")
+                .isNotNull();
+        }
+    }
+
+    @Nested
+    class AnnotationStacking {
+
+        @Test
+        void testAnnotationPositionedAboveStaff() {
+            var note = createNote(0, false);
+            var annotation = new AnnotationAttachment(note, new Annotation("Andante"));
+            note.addAttachment(annotation);
+
+            var line = newLine();
+            populate(line, note);
+
+            var result = stackColumns(List.of(columnFor(note, NOTE1_X_SS)), line);
+
+            var layout = require(
+                result.getDecorationLayout(annotation),
+                "annotation DecorationLayout");
+
+            // Annotation should be above the staff (negative Y = higher)
+            assertThat(layout.ySs()).isLessThan(0.0);
+        }
+
+        @Test
+        void testAnnotationHasPositiveDimensions() {
+            var note = createNote(0, false);
+            var annotation = new AnnotationAttachment(note, new Annotation("Andante"));
+            note.addAttachment(annotation);
+
+            var line = newLine();
+            populate(line, note);
+
+            var result = stackColumns(List.of(columnFor(note, NOTE1_X_SS)), line);
+
+            var layout = require(
+                result.getDecorationLayout(annotation),
+                "annotation DecorationLayout");
+
+            assertThat(layout.widthSs()).isGreaterThan(0.0);
+            assertThat(layout.heightSs()).isGreaterThan(0.0);
+        }
+
+        @Test
+        void testAnnotationPositionedAboveStructuralLayer() {
+            var note1 = createNote(0, false);
+            var note2 = createNote(0, false);
+
+            var annotation = new AnnotationAttachment(note1, new Annotation("Andante"));
+            note1.addAttachment(annotation);
+
+            var line = newLine();
+            populate(line, note1);
+            populate(line, note2);
+
+            var crescendo = new Crescendo(note1, note2);
+            setup(() -> line.addRangeElement(crescendo));
+
+            var result = stackColumns(
+                List.of(columnFor(note1, NOTE1_X_SS), columnFor(note2, NOTE2_X_SS)),
+                line);
+
+            var annotationLayout = require(
+                result.getDecorationLayout(annotation),
+                "annotation DecorationLayout");
+            var hairpinLayout = require(
+                result.getDecorationLayout(crescendo),
+                "crescendo DecorationLayout");
+
+            // Annotation (system tier) should be above hairpin (structural tier)
+            assertThat(annotationLayout.ySs())
+                .describedAs("annotation should stack above hairpin")
+                .isLessThan(hairpinLayout.ySs());
+        }
+
+        @Test
+        void testLegacyAnnotationProducesLayout() {
+            var note = createNote(0, false);
+            note.setAnnotation(new Annotation("Andante"));
+
+            var line = newLine();
+            populate(line, note);
+
+            var result = stackColumns(List.of(columnFor(note, NOTE1_X_SS)), line);
+
+            // The legacy bridge should produce a DecorationLayout for an AnnotationAttachment
+            var layout = result.findAttachmentDecorationLayout(note, AnnotationAttachment.class);
+
+            assertThat(layout)
+                .describedAs("legacy annotation should produce DecorationLayout")
                 .isNotNull();
         }
     }
