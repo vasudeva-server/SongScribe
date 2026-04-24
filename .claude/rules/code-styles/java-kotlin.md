@@ -183,21 +183,27 @@ public static final int NORMAL_IMAGE_WIDTH = 18;
 
 **Variables**
 
-- Do **NOT** use explicit local variable types when type is obvious from context, use `var`
-- Use descriptive names, avoid single-letter names except in loops
-- Avoid abbreviations unless widely understood
+- **ALWAYS** use `var` for local variable declarations — no exceptions for primitives
+- **ALWAYS** use full, descriptive names — never abbreviate, truncate, or use type initials
+  - Single letters are only acceptable for loop counters (`i`, `j`, `k`) and lambda parameters when the type is obvious
+  - Type-initial abbreviations are **never** acceptable: `lc` → `lineComponent`, `comp` → `composition`, `sc` → `scaleContext`, `n` → `note`
+  - Truncations are **never** acceptable: `len` → `length`, `idx` → `index`, `val` → `value`
+  - Recognized domain acronyms and accepted short forms are fine as-is: `midi`, `abc`, `pdf`, `svg`, `dpi`, `pos`, `el`
+  - When the role of the variable equals its type, use the type name in camelCase: `var lineComponent = panel.getLineComponent();`
 - Example:
 
-```
-// Bad — explicit types
+```java
+// Bad — explicit types, single-letter names, abbreviations
 int x = scaleContext.toPixels(noteXSs);
-double foo = someMethodCall();
-ArrayList<Note> noteList = new ArrayList<>();
+var lc = getLineComponent();
+var comp = getComposition();
+var n = line.getElement(index);
 
-// Good — var for local variables
-var x = scaleContext.toPixels(noteXSs);
-var foo = someMethodCall();
-var noteList = new ArrayList<Note>();
+// Good — var + full descriptive names
+var xPx = scaleContext.toPixels(noteXSs);
+var lineComponent = getLineComponent();
+var composition = getComposition();
+var el = line.getElement(index);
 
 for (var i = 0; i < 10; i++) {
     // ...
@@ -255,6 +261,44 @@ if (a) {
     result = z;
 }
 ```
+
+### No Repeated Accessor Chains
+
+When the same accessor chain of length ≥ 2 appears more than once within a scope,
+extract the common prefix to a local `var`. Do not re-traverse the chain for each
+field you need from the same object.
+
+This applies within a method body, a loop body, or any other bounded scope. A single
+use of a chain stays inline — this rule triggers only on the second reference to the
+same prefix.
+
+```java
+// Bad — same prefix traversed twice
+var foo = lc.getBar().getBaz().getFoo();
+var boo = lc.getBar().getBaz().getBoo();
+
+// Good — prefix extracted to a local, then fields read from it
+var baz = lc.getBar().getBaz();
+var foo = baz.getFoo();
+var boo = baz.getBoo();
+```
+
+The rule applies even when only the final accessor differs:
+
+```java
+// Bad
+ctx.setCompositionLayoutMetrics(lc.getScore().getCompositionLayoutMetrics());
+ctx.setLyricRenderMetrics(lc.getScore().getLyricRenderMetrics());
+
+// Good
+var score = lc.getScore();
+ctx.setCompositionLayoutMetrics(score.getCompositionLayoutMetrics());
+ctx.setLyricRenderMetrics(score.getLyricRenderMetrics());
+```
+
+Name the local after the extracted object's type or role, not the chain that produced
+it (`score`, not `lcScore`). If the common prefix is only one call deep (e.g. `x.y()`
+repeated), inlining is fine — the rule targets chains of length ≥ 2.
 
 ### Formatting
 
