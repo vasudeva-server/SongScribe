@@ -37,8 +37,6 @@ import oshi.SystemInfo;
 import oshi.util.EdidUtil;
 
 import songscribe.smufl.SMuFLGlyph;
-import songscribe.ui.graphics.HiDPIScaledImage;
-import songscribe.ui.graphics.RetinaImage;
 
 public final class GraphicUtils {
 
@@ -106,9 +104,6 @@ public final class GraphicUtils {
 
     public static final double CM_PER_INCH = 2.54;
 
-    // This will be > 1 on Retina/HiDPI displays
-    private static final int screenScaleFactor;
-
     // Since querying for Retina displays happens a lot, cache the result
     private static final boolean isRetina;
 
@@ -120,8 +115,7 @@ public final class GraphicUtils {
         var ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
         var gd = ge.getDefaultScreenDevice();
         var config = gd.getDefaultConfiguration();
-        screenScaleFactor = (int) config.getDefaultTransform().getScaleX();
-        isRetina = screenScaleFactor > 1;
+        isRetina = config.getDefaultTransform().getScaleX() > 1;
         dpi = computePhysicalDpi(gd);
     }
 
@@ -152,21 +146,12 @@ public final class GraphicUtils {
 
     private GraphicUtils() {}
 
-    public static int getScreenScaleFactor() {
-        return screenScaleFactor;
-    }
-
-    public static boolean isRetina() {
-        return isRetina;
-    }
-
     public static int getDpi() {
         return dpi;
     }
 
-    public static String getScaledImagePath(String path) {
-        // Add @<scaleFactor>x to the path.
-        return path.replace(".png", "@" + screenScaleFactor + "x.png");
+    private static String getScaledImagePath(String path) {
+        return path.replace(".png", "@2x.png");
     }
 
     @Nullable
@@ -243,37 +228,6 @@ public final class GraphicUtils {
         }
     }
 
-    // Draws an image at the specified location. If the image is a HiDPIScaledImage,
-    // it will be drawn at half size since it's scaled to 2x.
-    public static void drawImage(
-        Graphics g,
-        Image image,
-        int x,
-        int y,
-        ImageObserver observer
-    ) {
-        if (image instanceof HiDPIScaledImage) {
-            var g2 = (Graphics2D) g.create(
-                x,
-                y,
-                image.getWidth(observer),
-                image.getHeight(observer)
-            );
-            g2.scale(0.5, 0.5);
-            var img = ((HiDPIScaledImage) image).getDelegate();
-
-            if (img == null) {
-                img = image;
-            }
-
-            g2.drawImage(img, 0, 0, observer);
-            g2.scale(1, 1);
-            g2.dispose();
-        } else {
-            g.drawImage(image, x, y, observer);
-        }
-    }
-
     @Nullable
     public static Image getImage(File file) {
         return getImage(file.getAbsolutePath());
@@ -281,25 +235,17 @@ public final class GraphicUtils {
 
     @Nullable
     public static Image getImage(String fileName) {
-        Image img = null;
+        var lowRes = readImage(fileName);
 
-        // If we are on a retina screen, use a scaled (@2x) image.
-        // Otherwise, use the original image.
-        if (isRetina) {
-            img = readImage(getScaledImagePath(fileName));
-
-            if (img != null) {
-                img = RetinaImage.createFrom(img);
-            }
+        if (lowRes == null) {
+            return null;
         }
 
-        if (img == null) {
-            img = readImage(fileName);
+        var hiRes = readImage(getScaledImagePath(fileName));
 
-            if (img == null) {
-                return null;
-            }
-        }
+        var img = hiRes != null
+            ? new BaseMultiResolutionImage(lowRes, hiRes)
+            : (Image) lowRes;
 
         try {
             mediaTracker.addImage(img, 0);
