@@ -31,7 +31,6 @@ import static songscribe.ui.action.Actions.REST_ACTION;
 import static songscribe.ui.action.Actions.STAFF_ANNOTATION_ACTIONS;
 import static songscribe.ui.action.Actions.TOGGLE_BEAM_ACTION;
 import static songscribe.ui.action.Actions.TOGGLE_TIE_ACTION;
-import static songscribe.ui.action.Actions.TOGGLE_LYRICS_UNDER_RESTS_ACTION;
 import static songscribe.ui.action.Actions.TOGGLE_TRILL_ACTION;
 import static songscribe.ui.action.Actions.TOGGLE_TUPLET_ACTIONS;
 
@@ -89,7 +88,6 @@ public class NotationMenu extends JMenu {
 
         // Group 6: Passage
         add(new JMenuItem(FirstSecondEndingAction.MAKE_ENDING_ACTION));
-        add(new JCheckBoxMenuItem(TOGGLE_LYRICS_UNDER_RESTS_ACTION));
 
         addMenuListener(new MenuListener() {
             @Override

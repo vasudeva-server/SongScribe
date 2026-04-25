@@ -37,7 +37,6 @@ import songscribe.message.command.PasteboardOpCommand;
 import songscribe.message.command.RemoveDynamicsCommand;
 import songscribe.message.command.SelectLineCommand;
 import songscribe.message.command.ToggleBeamCommand;
-import songscribe.message.command.ToggleLyricsUnderRestsCommand;
 import songscribe.message.command.ToggleTieCommand;
 import songscribe.message.command.ToggleTrillCommand;
 import songscribe.message.command.ToggleTupletCommand;
@@ -47,7 +46,6 @@ import songscribe.message.mutation.LayoutChange;
 import songscribe.message.mutation.LineDeletion;
 import songscribe.message.mutation.LineInsertion;
 import songscribe.message.mutation.LineScopedMutation;
-import songscribe.message.mutation.LyricsChange;
 import songscribe.message.mutation.MetadataChange;
 import songscribe.message.mutation.Mutation;
 import songscribe.message.notification.CompositionDidChangeNotification;
@@ -58,7 +56,6 @@ import songscribe.message.notification.MusicSelectionDidChangeNotification;
 import songscribe.message.notification.PlaybackStateDidChangeNotification;
 import songscribe.message.notification.RestModeDidChangeNotification;
 import songscribe.music.Line;
-import songscribe.music.LyricsProcessor;
 import songscribe.ui.EndingConfirms;
 import songscribe.ui.Mode;
 import songscribe.ui.MusicEditOperations;
@@ -88,8 +85,7 @@ public final class ScoreMessageCoordinator {
     private final ClipboardManager clipboardManager;
 
     // Timer for debouncing repaints when layout changes occur
-    @Nullable
-    private Timer repaintDebounceTimer = null;
+    private final Timer repaintDebounceTimer;
 
     public ScoreMessageCoordinator(
         Score score,
@@ -103,6 +99,9 @@ public final class ScoreMessageCoordinator {
         this.editModeManager = editModeManager;
         this.selectionCoordinator = selectionCoordinator;
         this.clipboardManager = clipboardManager;
+
+        repaintDebounceTimer = new Timer(REPAINT_DEBOUNCE_DELAY_MS, e -> score.repaint());
+        repaintDebounceTimer.setRepeats(false);
 
         MessageCenter.subscribe(this);
     }
@@ -214,13 +213,6 @@ public final class ScoreMessageCoordinator {
     }
 
     @Handler
-    public void handleToggleLyricsUnderRests(
-        ToggleLyricsUnderRestsCommand message
-    ) {
-        operations.toggleLyricsUnderRests();
-    }
-
-    @Handler
     public void handleFlipStemDirection(FlipStemDirectionCommand message) {
         operations.flipStemDirection();
     }
@@ -257,24 +249,21 @@ public final class ScoreMessageCoordinator {
         }
 
         // Debounce repaints to batch multiple rapid changes
-        if (repaintDebounceTimer == null) {
-            repaintDebounceTimer = new Timer(REPAINT_DEBOUNCE_DELAY_MS, e -> score.repaint());
-            repaintDebounceTimer.setRepeats(false);
-        }
-
         repaintDebounceTimer.restart();
     }
 
     /**
      * Returns whether the notification carries any mutation that requires line layout
-     * invalidation: line-scoped element changes, line insert/delete, or lyrics changes.
+     * invalidation: line-scoped element changes (including per-note lyric edits, which
+     * arrive as {@code ElementModification} with {@code ElementField.LYRIC}), or line
+     * insert/delete. Composition-wide {@code LyricsChange} mutations target legacy text
+     * fields and do not affect rendered layout.
      */
     private static boolean hasLineLayoutMutation(CompositionDidChangeNotification message) {
         for (Mutation mutation : message.getMutations()) {
             if (mutation instanceof LineScopedMutation
                 || mutation instanceof LineInsertion
-                || mutation instanceof LineDeletion
-                || mutation instanceof LyricsChange) {
+                || mutation instanceof LineDeletion) {
                 return true;
             }
         }
@@ -322,7 +311,6 @@ public final class ScoreMessageCoordinator {
 
         var ha = score.getHorizontalAdjustment();
         var va = score.getVerticalAdjustment();
-        var la = score.getLyricsAdjustment();
 
         if (ha != null) {
             ha.setEnabled(mode == Mode.ADJUSTMENT);
@@ -332,9 +320,6 @@ public final class ScoreMessageCoordinator {
             va.setEnabled(mode == Mode.VERTICAL_ADJUSTMENT);
         }
 
-        if (la != null) {
-            la.setEnabled(mode == Mode.LYRICS_ADJUSTMENT);
-        }
         score.repaint();
     }
 
@@ -433,16 +418,24 @@ public final class ScoreMessageCoordinator {
                     }
                 }
 
-                composition.withModification(() -> line.removeRange(begin, end));
-            }
+                composition.withModification(() -> {
+                    // Mirror deleteNote: adjust syllable relations and melisma extends
+                    // on neighbors before removing. Both helpers require the target
+                    // elements to still be present in the list.
+                    line.adjustSyllablesForNeighborChange(begin - 1, line.getElement(begin));
 
-            LyricsProcessor.spellLyrics(line);
+                    for (var i = begin; i <= end; i++) {
+                        line.adjustExtendsForDeletion(i);
+                    }
+
+                    line.removeRange(begin, end);
+                });
+            }
         } else if (state != null && state.hasGlissandoSelection()) {
             var line = state.getLine();
             line.getElement(state.getSelectedGlissandoElementIndex()).removeGlissando();
         } else if (score.canDeleteLine()) {
             composition.removeLine(selectionCoordinator.getSelectedLine());
-            LyricsProcessor.spellLyrics(composition);
         }
 
         // Discard saved action states — the composition has changed, so restoring
@@ -526,6 +519,11 @@ public final class ScoreMessageCoordinator {
                 prevElement.removeGlissando();
             }
         }
+
+        // Adjust syllable relations and melisma extends before removing —
+        // both methods require the element at xIndex to still be in the list.
+        line.adjustSyllablesForNeighborChange(firstDeletedIndex - 1, line.getElement(xIndex));
+        line.adjustExtendsForDeletion(xIndex);
 
         // Remove the host note first (higher index), then the orphaned grace note.
         // Removing the higher index first keeps xIndex - 1 valid.

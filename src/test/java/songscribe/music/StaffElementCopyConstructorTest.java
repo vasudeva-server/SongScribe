@@ -22,6 +22,8 @@ package songscribe.music;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.List;
+
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
@@ -39,11 +41,10 @@ class StaffElementCopyConstructorTest extends UnitTest {
         element.setUpper(true);
         element.setStemDirectionAuto(false);
         element.setStaffPosition(-3);
-        element.setSyllableMovement(2);
-        element.setSyllableRelationMovement(1);
-        element.setForceSyllable(true);
         element.addArticulation(new Articulation(element, ArticulationType.STACCATO));
         element.addArticulation(new Articulation(element, ArticulationType.ACCENT));
+        element.properties.lyrics.add(new Lyric(1, StaffElement.SyllableRelation.SYLLABLE, "heart", Lyric.Extend.START));
+        element.properties.lyrics.add(new Lyric(1, StaffElement.SyllableRelation.NONE, "ache", Lyric.Extend.NONE));
         return element;
     }
 
@@ -57,9 +58,6 @@ class StaffElementCopyConstructorTest extends UnitTest {
         // Always-copied attributes
         assertThat(copy.getDotCount()).isEqualTo(1);
         assertThat(copy.isFermata()).isTrue();
-        assertThat(copy.getSyllableMovement()).isEqualTo(2);
-        assertThat(copy.getSyllableRelationMovement()).isEqualTo(1);
-        assertThat(copy.isForceSyllable()).isTrue();
 
         // Note-only attributes (copied because target is a note)
         assertThat(copy.getAccidental()).isEqualTo(StaffElement.Accidental.SHARP);
@@ -86,9 +84,6 @@ class StaffElementCopyConstructorTest extends UnitTest {
         // Always-copied attributes
         assertThat(copy.getDotCount()).isEqualTo(1);
         assertThat(copy.isFermata()).isTrue();
-        assertThat(copy.getSyllableMovement()).isEqualTo(2);
-        assertThat(copy.getSyllableRelationMovement()).isEqualTo(1);
-        assertThat(copy.isForceSyllable()).isTrue();
 
         // Note-only attributes should be at defaults
         assertThat(copy.getAccidental()).isNull();
@@ -107,14 +102,12 @@ class StaffElementCopyConstructorTest extends UnitTest {
         var source = new StaffElement(ElementType.QUAVER_REST);
         source.setDotCount(2);
         source.setFermata(true);
-        source.setSyllableMovement(3);
 
         var copy = new StaffElement(ElementType.QUAVER, source);
 
         assertThat(copy.getType()).isEqualTo(ElementType.QUAVER);
         assertThat(copy.getDotCount()).isEqualTo(2);
         assertThat(copy.isFermata()).isTrue();
-        assertThat(copy.getSyllableMovement()).isEqualTo(3);
 
         // Note-only attributes copied from rest source (all at defaults)
         assertThat(copy.getAccidental()).isNull();
@@ -133,5 +126,49 @@ class StaffElementCopyConstructorTest extends UnitTest {
         assertThat(copy.getDotCount()).isEqualTo(1);
         assertThat(copy.isFermata()).isTrue();
         assertThat(copy.getStaffPosition()).isEqualTo(ElementType.SEMIBREVE_REST.getDefaultStaffPosition());
+    }
+
+    @Test
+    void testCloneCopyConstructorDeepCopiesLyrics() {
+        var source = new StaffElement(ElementType.CROTCHET);
+        source.properties.lyrics.add(new Lyric(1, StaffElement.SyllableRelation.SYLLABLE, "heart", Lyric.Extend.START));
+        source.properties.lyrics.add(new Lyric(1, StaffElement.SyllableRelation.NONE, "ache", Lyric.Extend.NONE));
+
+        var clone = source.clone();
+
+        // Content is equal
+        assertThat(clone.properties.lyrics).isEqualTo(source.properties.lyrics);
+
+        // Reference is distinct — mutating the clone does not affect the source
+        clone.properties.lyrics.clear();
+        assertThat(source.properties.lyrics).hasSize(2);
+    }
+
+    @Test
+    void testCrossTypeCopyConstructorDeepCopiesLyrics() {
+        var source = new StaffElement(ElementType.CROTCHET);
+        source.properties.lyrics.add(new Lyric(1, StaffElement.SyllableRelation.SYLLABLE, "do", Lyric.Extend.NONE));
+
+        var copy = new StaffElement(ElementType.QUAVER, source);
+
+        // Content is equal
+        assertThat(copy.properties.lyrics)
+            .isEqualTo(List.of(new Lyric(1, StaffElement.SyllableRelation.SYLLABLE, "do", Lyric.Extend.NONE)));
+
+        // Reference is distinct
+        copy.properties.lyrics.clear();
+        assertThat(source.properties.lyrics).hasSize(1);
+    }
+
+    @Test
+    void testGetMainLyricReturnsFirstLyric() {
+        var element = new StaffElement(ElementType.CROTCHET);
+
+        assertThat(element.getMainLyric()).isNull();
+
+        var lyric = new Lyric(1, StaffElement.SyllableRelation.NONE, "heart", Lyric.Extend.NONE);
+        element.properties.lyrics.add(lyric);
+
+        assertThat(element.getMainLyric()).isEqualTo(lyric);
     }
 }

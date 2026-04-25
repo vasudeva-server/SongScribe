@@ -38,7 +38,6 @@ import songscribe.music.ElementType;
 import songscribe.music.EndingValidationResult;
 import songscribe.music.Span;
 import songscribe.music.Line;
-import songscribe.music.LyricsProcessor;
 import songscribe.music.TieSpan;
 import songscribe.music.TupletSpan;
 import songscribe.ui.layout.Ending;
@@ -616,35 +615,6 @@ public final class MusicEditOperations {
                 );
             }
         });
-    }
-
-    // ========== Lyrics Under Rests Operations ==========
-
-    public boolean canToggleLyricsUnderRests() {
-        var state = coordinator.getActiveSelection();
-        return (state != null) && state.canToggleLyricsUnderRests();
-    }
-
-    public void toggleLyricsUnderRests() {
-        var state = coordinator.getActiveSelection();
-
-        if (state == null) {
-            return;
-        }
-
-        var line = state.getLine();
-        var index = state.getSelectionBegin();
-
-        line.withModification(() -> line.modifyElement(
-            index,
-            ElementField.FORCE_SYLLABLE,
-            () -> {
-                var note = line.getElement(index);
-                note.setForceSyllable(!note.isForceSyllable());
-            }
-        ));
-
-        LyricsProcessor.spellLyrics(line);
     }
 
     // ========== Stem Direction Operations ==========

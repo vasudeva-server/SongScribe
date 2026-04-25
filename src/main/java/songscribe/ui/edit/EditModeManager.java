@@ -25,7 +25,6 @@ import org.jspecify.annotations.Nullable;
 import songscribe.music.ArticulationType;
 import songscribe.music.ElementType;
 import songscribe.music.Line;
-import songscribe.music.LyricsProcessor;
 import songscribe.music.StaffElement;
 import songscribe.ui.action.Actions;
 import songscribe.ui.clipboard.ClipboardManager;
@@ -315,7 +314,6 @@ public final class EditModeManager {
         // Add any other element decorations
         decorateElement(nextElement);
         scoreActions.setPreviewElement(nextElement);
-        LyricsProcessor.spellLyrics(line);
         scoreActions.drawWidthIfWiderLine(line, false);
         scoreActions.repaint();
 

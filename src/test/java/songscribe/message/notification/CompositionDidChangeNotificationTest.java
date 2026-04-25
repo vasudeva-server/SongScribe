@@ -149,7 +149,7 @@ class CompositionDidChangeNotificationTest extends UnitTest {
         void testTrueForPresentSubclass() {
             var notification = makeNotification(
                 new MetadataChange(MetadataField.TITLE, "a", "b"),
-                new LyricsChange(LyricsField.MAIN, "x", "y")
+                new LyricsChange(LyricsField.UNDER, "x", "y")
             );
             assertThat(notification.hasMutationOf(MetadataChange.class)).isTrue();
             assertThat(notification.hasMutationOf(LyricsChange.class)).isTrue();

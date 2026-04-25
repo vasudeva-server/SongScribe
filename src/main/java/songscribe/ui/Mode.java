@@ -33,17 +33,10 @@ public enum Mode {
     // Adjusting the horizontal position of notes
     ADJUSTMENT,
 
-    // Adjusting the horizontal position of syllabified lyrics
-    LYRICS_ADJUSTMENT,
-
     // Adjusting the vertical position of score elements
     VERTICAL_ADJUSTMENT;
 
     public boolean isAdjustmentMode() {
-        return (
-            (this == ADJUSTMENT) ||
-                (this == VERTICAL_ADJUSTMENT) ||
-                (this == LYRICS_ADJUSTMENT)
-        );
+        return this == ADJUSTMENT || this == VERTICAL_ADJUSTMENT;
     }
 }

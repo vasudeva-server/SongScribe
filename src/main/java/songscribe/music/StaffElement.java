@@ -107,9 +107,6 @@ public class StaffElement extends LineElement implements Cloneable {
     protected boolean upper = false;
     protected boolean trill = false;
     protected boolean fermata = false;
-    protected int syllableMovement = 0;
-    protected int syllableRelationMovement = 0;
-    protected boolean forceSyllable = false;
     private boolean stemDirectionAuto = true;
 
     // The line which owns this note
@@ -151,10 +148,8 @@ public class StaffElement extends LineElement implements Cloneable {
         this.tempoChange = source.tempoChange;
         this.beatChange = source.beatChange;
         this.annotation = source.annotation;
-        this.syllableMovement = source.syllableMovement;
-        this.syllableRelationMovement = source.syllableRelationMovement;
-        this.forceSyllable = source.forceSyllable;
         this.line = source.line;
+        this.properties.lyrics.addAll(source.properties.lyrics);
 
         // Copy only if target is a note (not a rest)
         if (targetType.isNote()) {
@@ -193,9 +188,6 @@ public class StaffElement extends LineElement implements Cloneable {
         annotation = note.annotation;
         trill = note.trill;
         fermata = note.fermata;
-        syllableMovement = note.syllableMovement;
-        syllableRelationMovement = note.syllableRelationMovement;
-        forceSyllable = note.forceSyllable;
         stemDirectionAuto = note.stemDirectionAuto;
 
         // Copy LineElement hierarchy data
@@ -205,6 +197,9 @@ public class StaffElement extends LineElement implements Cloneable {
         for (var art : note.articulations) {
             addArticulation(new Articulation(this, art.getType()));
         }
+
+        // Deep-copy lyrics
+        properties.lyrics.addAll(note.properties.lyrics);
     }
 
     public ElementType getType() {
@@ -528,28 +523,25 @@ public class StaffElement extends LineElement implements Cloneable {
         this.fermata = fermata;
     }
 
-    public int getSyllableMovement() {
-        return syllableMovement;
+    /** Returns the verse-1 lyric for this element, or null if none is set. */
+    public @Nullable Lyric getMainLyric() {
+        return getLyricForVerse(1);
     }
 
-    public void setSyllableMovement(int syllableMovement) {
-        this.syllableMovement = syllableMovement;
+    /** Returns the lyric for the given verse number, or null if none is set. */
+    public @Nullable Lyric getLyricForVerse(int verse) {
+        for (var lyric : properties.lyrics) {
+            if (lyric.verse() == verse) {
+                return lyric;
+            }
+        }
+
+        return null;
     }
 
-    public int getSyllableRelationMovement() {
-        return syllableRelationMovement;
-    }
-
-    public void setSyllableRelationMovement(int syllableRelationMovement) {
-        this.syllableRelationMovement = syllableRelationMovement;
-    }
-
-    public boolean isForceSyllable() {
-        return forceSyllable;
-    }
-
-    public void setForceSyllable(boolean forceSyllable) {
-        this.forceSyllable = forceSyllable;
+    /** Returns an unmodifiable view of all lyrics attached to this element. */
+    public List<Lyric> getLyrics() {
+        return Collections.unmodifiableList(properties.lyrics);
     }
 
     public boolean isStemDirectionAuto() {
@@ -691,10 +683,9 @@ public class StaffElement extends LineElement implements Cloneable {
     }
 
     public enum SyllableRelation {
-        NO,
-        EXTENDER,
-        DASH,
-        ONE_DASH,
+        NONE,
+        COMPOUND_WORD,
+        SYLLABLE,
     }
 
     public static class Glissando {
@@ -722,12 +713,7 @@ public class StaffElement extends LineElement implements Cloneable {
 
     public static class Properties {
 
-        // Lyrics
-        @Nullable
-        public String syllable = null;
-        @Nullable
-        public SyllableRelation syllableRelation = null;
-        public float longDashPosition = 0.0F;
+        public final List<Lyric> lyrics = new ArrayList<>();
 
         public final Line2D.Double stem = new Line2D.Double();
     }

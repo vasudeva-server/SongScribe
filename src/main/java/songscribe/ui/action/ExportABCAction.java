@@ -42,6 +42,7 @@ import songscribe.music.Composition;
 import songscribe.music.ElementType;
 import songscribe.music.KeyType;
 import songscribe.music.Line;
+import songscribe.music.Lyric;
 import songscribe.music.StaffElement;
 import songscribe.music.Tempo;
 import songscribe.ui.Constants;
@@ -478,22 +479,36 @@ public class ExportABCAction extends UIAction {
 
         for (var n = 0; n < line.effectiveElementCount(); n++) {
             var note = line.getElement(n);
-            // TODO: syllable forcing under rests is not supported in abc
 
-            if (note.getType().isNote()) {
-                sb.append(translateSyllable(note.properties.syllable));
-                // TODO: syllables under gracenotes are not supported in abc therefore me must put
-                //  together with the next note
-                if (note.getType().isGraceNote()) {
-                    sb.append('\\');
-                }
+            if (!note.getType().isNote()) {
+                continue;
+            }
 
+            var lyric = note.getMainLyric();
+
+            if (lyric == null
+                || lyric.extend() == Lyric.Extend.STOP
+                || lyric.extend() == Lyric.Extend.CONTINUE) {
+                // Extender continuation under a note without its own syllable text.
+                sb.append('_');
+                continue;
+            }
+
+            sb.append(translateSyllable(lyric.text()));
+
+            // TODO: syllables under gracenotes are not supported in abc therefore me must put
+            //  together with the next note
+            if (note.getType().isGraceNote()) {
+                sb.append('\\');
+            }
+
+            if (lyric.extend() == Lyric.Extend.START) {
+                sb.append('_');
+            } else {
                 sb.append(
-                    switch (note.properties.syllableRelation) {
-                        case NO -> ' ';
-                        // TODO: long dash is not supported in abc
-                        case ONE_DASH, DASH -> '-';
-                        case EXTENDER -> '_';
+                    switch (lyric.relation()) {
+                        case NONE -> ' ';
+                        case SYLLABLE, COMPOUND_WORD -> '-';
                     }
                 );
             }

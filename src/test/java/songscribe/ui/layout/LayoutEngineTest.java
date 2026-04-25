@@ -41,7 +41,13 @@ class LayoutEngineTest extends UnitTest {
     private static final double TOLERANCE = 0.001;
 
     private static LayoutEngine engine() {
-        return new LayoutEngine(new Font("Dialog", Font.PLAIN, 12), STAFF_RIGHT_MARGIN_SS);
+        var lyricsFont = new Font("Dialog", Font.PLAIN, 12);
+        var scale = ScaleContext.getInstance();
+        var hyphenWidthSs = scale.textWidthSs(lyricsFont, "-");
+        var spaceWidthSs = scale.textWidthSs(lyricsFont, " ");
+        var metrics = new LyricRenderMetrics(
+            lyricsFont, scale.scaleFont(lyricsFont), hyphenWidthSs, spaceWidthSs);
+        return new LayoutEngine(metrics, STAFF_RIGHT_MARGIN_SS);
     }
 
     /** Asserts value is not null and returns it non-null for NullAway. */

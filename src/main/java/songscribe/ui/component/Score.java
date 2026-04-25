@@ -41,7 +41,6 @@ import songscribe.message.MessageCenter;
 import songscribe.music.Composition;
 import songscribe.music.EndingValidationResult;
 import songscribe.music.Line;
-import songscribe.music.LyricsProcessor;
 import songscribe.music.StaffElement;
 import songscribe.ui.MusicEditOperations;
 import songscribe.message.notification.CompositionDidChangeNotification;
@@ -58,14 +57,15 @@ import songscribe.ui.OptionDialogs;
 import songscribe.ui.Mode;
 import songscribe.ui.action.Actions;
 import songscribe.ui.adjustment.HorizontalAdjustment;
-import songscribe.ui.adjustment.LyricsAdjustment;
 import songscribe.ui.adjustment.VerticalAdjustment;
 import songscribe.ui.clipboard.ClipboardManager;
 import songscribe.ui.component.score.LineComponent;
 import songscribe.ui.component.score.MainPanel;
 import songscribe.ui.component.score.ScorePanel;
 import songscribe.ui.edit.EditModeManager;
+import songscribe.ui.layout.CompositionLayoutMetrics;
 import songscribe.ui.layout.LayoutStylesheet;
+import songscribe.ui.layout.LyricRenderMetrics;
 import songscribe.ui.layout.PageModel;
 import songscribe.ui.layout.ScaleContext;
 import songscribe.util.GraphicUtils;
@@ -145,8 +145,6 @@ public final class Score
     private HorizontalAdjustment horizontalAdjustment = null;
     @Nullable
     private VerticalAdjustment verticalAdjustment = null;
-    @Nullable
-    private LyricsAdjustment lyricsAdjustment = null;
 
     // Called when a file is successfully opened (e.g. to update the window title)
     @Nullable
@@ -223,6 +221,16 @@ public final class Score
 
     // If true, the score is played with repeats
     private boolean playWithRepeats = false;
+
+    // Composition-wide layout metrics shared across all line components.
+    // Set by StaffPanel.updateCompositionMetrics before any layout/paint runs.
+    @SuppressWarnings("NullAway")
+    private CompositionLayoutMetrics compositionLayoutMetrics = null;
+
+    // Composition-wide lyric render metrics shared across all line components.
+    // Set by StaffPanel.updateCompositionMetrics before any layout/paint runs.
+    @SuppressWarnings("NullAway")
+    private LyricRenderMetrics lyricRenderMetrics = null;
 
     /**
      * Creates a Score with core infrastructure (SAX parser, selection, clipboard,
@@ -461,7 +469,6 @@ public final class Score
     void initAdjustments() {
         horizontalAdjustment = new HorizontalAdjustment(this);
         verticalAdjustment = new VerticalAdjustment(this);
-        lyricsAdjustment = new LyricsAdjustment(this);
     }
 
     void initView() {
@@ -666,8 +673,6 @@ public final class Score
             horizontalAdjustment.repaint(g2);
         } else if (mode == Mode.VERTICAL_ADJUSTMENT && verticalAdjustment != null) {
             verticalAdjustment.repaint(g2);
-        } else if (mode == Mode.LYRICS_ADJUSTMENT && lyricsAdjustment != null) {
-            lyricsAdjustment.repaint(g2);
         }
     }
 
@@ -780,10 +785,6 @@ public final class Score
         return requireOperations().canToggleTrill();
     }
 
-    public boolean canToggleLyricsUnderRests() {
-        return requireOperations().canToggleLyricsUnderRests();
-    }
-
     public boolean canFlipStemDirection() {
         return requireOperations().canFlipStemDirection();
     }
@@ -817,7 +818,6 @@ public final class Score
             drawWidthIfWiderLine(composition.getLine(i), true);
         }
 
-        LyricsProcessor.spellLyrics(composition);
         composition.setModified(false);
 
         if (!initialized) {
@@ -972,10 +972,6 @@ public final class Score
         return verticalAdjustment;
     }
 
-    public @Nullable LyricsAdjustment getLyricsAdjustment() {
-        return lyricsAdjustment;
-    }
-
     @Override
     public int getLeadingKeysPosPx() {
         return leadingKeysPosPx;
@@ -1098,6 +1094,32 @@ public final class Score
 
     public boolean canDeleteLine() {
         return selectionCoordinator.canDeleteLine();
+    }
+
+    public CompositionLayoutMetrics getCompositionLayoutMetrics() {
+        if (compositionLayoutMetrics == null) {
+            throw RuntimeError.exit(
+                "CompositionLayoutMetrics accessed before StaffPanel populated it");
+        }
+
+        return compositionLayoutMetrics;
+    }
+
+    public void setCompositionLayoutMetrics(CompositionLayoutMetrics metrics) {
+        this.compositionLayoutMetrics = metrics;
+    }
+
+    public LyricRenderMetrics getLyricRenderMetrics() {
+        if (lyricRenderMetrics == null) {
+            throw RuntimeError.exit(
+                "LyricRenderMetrics accessed before StaffPanel populated it");
+        }
+
+        return lyricRenderMetrics;
+    }
+
+    public void setLyricRenderMetrics(LyricRenderMetrics metrics) {
+        this.lyricRenderMetrics = metrics;
     }
 
 }

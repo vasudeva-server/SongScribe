@@ -366,25 +366,6 @@ class MusicEditOperationsMutationTest extends UnitTest {
     }
 
     // -----------------------------------------------------------------------
-    // Lyrics under rests
-    // -----------------------------------------------------------------------
-
-    @Test
-    void testToggleLyricsUnderRestsEmitsOneElementModification() {
-        var env = setup(crotchetRest());
-        ReflectionTestHelper.selectNote(env.coordinator(), 0);
-        env.operations().toggleLyricsUnderRests();
-
-        var notification = captureSingleDidChange();
-        var mutations = notification.getMutations();
-        assertThat(mutations).hasSize(1);
-        assertThat(mutations.get(0)).isInstanceOf(ElementModification.class);
-        var mod = (ElementModification) mutations.get(0);
-        assertThat(mod.fields()).contains(ElementField.FORCE_SYLLABLE);
-        assertThat(mod.line()).isSameAs(env.line());
-    }
-
-    // -----------------------------------------------------------------------
     // Stem direction
     // -----------------------------------------------------------------------
 

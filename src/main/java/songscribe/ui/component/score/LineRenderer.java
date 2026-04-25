@@ -47,6 +47,8 @@ import songscribe.ui.renderer.FermataRenderer;
 import songscribe.ui.renderer.GlissandoRenderer;
 import songscribe.ui.renderer.GraphicsState;
 import songscribe.ui.renderer.KeySignatureRenderer;
+import songscribe.ui.renderer.LyricConnectorRenderer;
+import songscribe.ui.renderer.LyricTextRenderer;
 import songscribe.ui.renderer.NoteRenderer;
 import songscribe.ui.renderer.TempoChangeRenderer;
 import songscribe.ui.renderer.TieRenderer;
@@ -79,6 +81,13 @@ class LineRenderer {
 
     /** The owning LineComponent whose state we read for rendering. */
     private final LineComponent lc;
+
+    /**
+     * Render context reused across paint passes to avoid per-paint allocation.
+     * Only mutated within {@link #render} on the EDT.
+     */
+    @SuppressWarnings("NullAway") // populated by render() before any read
+    private ElementRenderContext ctx = null;
 
     // ==========================================================================
     // Constructor
@@ -116,18 +125,25 @@ class LineRenderer {
             throw RuntimeError.exit("LineRenderer.render called before layout was performed");
         }
 
-        // Create render context for this rendering pass
-        var ctx = new ElementRenderContext(composition);
+        // Reuse the cached render context to avoid per-paint allocation. Recreate it
+        // only when the composition changes (the field is final on the context).
+        if (ctx == null || ctx.getComposition() != composition) {
+            ctx = new ElementRenderContext(composition);
+        }
+
         ctx.setCurrentLine(line);
         ctx.setLineIndex(lineIndex);
         ctx.setMiddleLineYSs(lc.getMiddleLineYSs());
         ctx.setLayoutResult(layoutResult);
+        var score = lc.getScore();
+        ctx.setCompositionLayoutMetrics(score.getCompositionLayoutMetrics());
+        ctx.setLyricRenderMetrics(score.getLyricRenderMetrics());
         ctx.setSelectionProvider(lc.getSelectionProvider());
         ctx.setEditMode(lc.isEditMode());
         ctx.setPlayingNoteIndex(lc.getPlayingNoteIndex());
         ctx.setPlayingGraceNoteIndex(lc.getPlayingGraceNoteIndex());
         // Ensure NoteRenderer metrics are initialized
-        NoteRenderer.initializeAccidentalWidths(g2);
+        NoteRenderer.initializeAccidentalWidths();
 
         // When in grace-note insert mode for this line, shift subsequent elements
         // rightward to show where the host note will land before the user clicks.
@@ -461,6 +477,7 @@ class LineRenderer {
         var tempoRenderer = TempoChangeRenderer.getInstance();
         var beatChangeRenderer = BeatChangeRenderer.getInstance();
         var annotationRenderer = AnnotationRenderer.getInstance();
+        var lyricTextRenderer = LyricTextRenderer.getInstance();
         var line = lc.getLine();
 
         if (line == null) {
@@ -517,6 +534,11 @@ class LineRenderer {
                         element, AnnotationAttachment.class) != null) {
                     annotationRenderer.render(element, g2, ctx);
                 }
+
+                // Tier 5: Lyric syllable text (below staff)
+                if (!layoutResult.getLyricBoxes(element).isEmpty()) {
+                    lyricTextRenderer.render(element, g2, ctx);
+                }
             }
         }
 
@@ -524,6 +546,9 @@ class LineRenderer {
 
         // Tier 2: Trills (rendered separately as they may span multiple notes)
         TrillRenderer.getInstance().renderTrillsFromLine(g2, ctx);
+
+        // Tier 5: Lyric span connectors (hyphens, extenders) — line-level
+        LyricConnectorRenderer.getInstance().render(g2, ctx);
     }
 
     // ==========================================================================

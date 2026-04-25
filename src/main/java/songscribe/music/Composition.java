@@ -51,7 +51,6 @@ import songscribe.message.notification.DocumentWasSavedNotification;
 import songscribe.message.notification.FontDidChangeNotification;
 import songscribe.message.notification.KeySignatureDidChangeNotification;
 import songscribe.message.notification.LayoutDidChangeNotification;
-import songscribe.message.notification.LyricsDidChangeNotification;
 import songscribe.message.notification.MetadataDidChangeNotification;
 import songscribe.message.notification.TempoDidChangeNotification;
 import songscribe.prefs.Prefs;
@@ -110,9 +109,6 @@ public final class Composition {
 
     // The language of the song
     private LANGUAGE language = LANGUAGE.NONE;
-
-    // The syllabified lyrics of the song displayed under the notes
-    private String lyrics = "";
 
     // The full native lyrics of the song, displayed under the music
     private String underLyrics = "";
@@ -308,7 +304,6 @@ public final class Composition {
         applyMonth(data.month());
         applyDay(data.day());
         applyYear(data.year());
-        applyLyrics(data.lyrics());
         applyUnderLyrics(data.underLyrics());
         applyBanglaLyrics(data.banglaLyrics());
         applyTranslatedLyrics(data.translatedLyrics());
@@ -448,8 +443,43 @@ public final class Composition {
         return language;
     }
 
-    public String getLyrics() {
-        return lyrics;
+    /**
+     * Returns a syllabified-style text assembled from all per-note {@link Lyric} records.
+     * Returns an empty string when no per-note lyrics are set (always the case during
+     * phases 2–4 of the per-note lyrics migration — populated starting Phase 5).
+     */
+    public String getLyricsText() {
+        var sb = new StringBuilder();
+
+        for (var i = 0; i < lines.size(); i++) {
+            var line = lines.get(i);
+
+            for (var j = 0; j < line.effectiveElementCount(); j++) {
+                var lyric = line.getElement(j).getMainLyric();
+
+                if (lyric == null) {
+                    continue;
+                }
+
+                sb.append(lyric.text());
+
+                if (lyric.extend() != Lyric.Extend.NONE) {
+                    sb.append('_');
+                } else {
+                    switch (lyric.relation()) {
+                        case NONE -> sb.append(' ');
+                        case SYLLABLE -> sb.append('-');
+                        case COMPOUND_WORD -> sb.append("--");
+                    }
+                }
+            }
+
+            if (i < lines.size() - 1 && !sb.isEmpty()) {
+                sb.append('\n');
+            }
+        }
+
+        return sb.toString();
     }
 
     public String getUnderLyrics() {
@@ -619,11 +649,6 @@ public final class Composition {
 
     public void setDay(int day) {
         mutateMetadata(MetadataField.DAY, this.day, day, () -> this.day = day);
-    }
-
-    public void setLyrics(String text) {
-        var newLyrics = processText(text);
-        mutateLyrics(LyricsField.MAIN, lyrics, newLyrics, () -> lyrics = newLyrics);
     }
 
     public void setUnderLyrics(String text) {
@@ -1254,29 +1279,6 @@ public final class Composition {
     // ========== Update record handlers ==========
 
     @Handler
-    public void lyricsDidChange(LyricsDidChangeNotification update) {
-        withModification(() -> {
-            if (update.getLyrics() != null) {
-                setLyrics(update.getLyrics());
-            }
-
-            if (update.getUnderLyrics() != null) {
-                setUnderLyrics(update.getUnderLyrics());
-            }
-
-            if (update.getTranslatedLyrics() != null) {
-                setTranslatedLyrics(update.getTranslatedLyrics());
-            }
-
-            if (update.getBanglaLyrics() != null) {
-                setBanglaLyrics(update.getBanglaLyrics());
-            }
-        });
-
-        LyricsProcessor.spellLyrics(this);
-    }
-
-    @Handler
     public void metadataDidChange(MetadataDidChangeNotification update) {
         withModification(() -> {
             if (update.getTitle() != null) {
@@ -1452,10 +1454,6 @@ public final class Composition {
 
     private void applyDay(int day) {
         this.day = day;
-    }
-
-    private void applyLyrics(String text) {
-        lyrics = processText(text);
     }
 
     private void applyUnderLyrics(String text) {

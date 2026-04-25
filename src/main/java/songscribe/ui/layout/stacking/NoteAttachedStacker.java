@@ -219,6 +219,9 @@ public class NoteAttachedStacker {
                 * LayoutStylesheet.STAFF_POSITION_OFFSET_SS;
             context.updateLowestNoteBotSs(
                 noteheadCenterYSs + StackingUtils.NOTE_HEAD_RADIUS_SS);
+
+            // Track full element bottom (notehead + stem) as below-staff content for lyric placement
+            context.updateBotContentExtentSs(botSs);
         }
     }
 
@@ -254,12 +257,6 @@ public class NoteAttachedStacker {
         for (var it = ties.listIterator(); it.hasNext(); ) {
             var span = it.next();
             var startElement = line.getElement(span.getStart());
-
-            // Only seed upward-arcing ties (stem down -> !isUpper())
-            if (startElement.isUpper()) {
-                continue;
-            }
-
             var tieLayout = builder.getTieLayout(span);
 
             if (tieLayout == null) {
@@ -278,8 +275,8 @@ public class NoteAttachedStacker {
             }
 
             // Seed tie bounds at the start and end noteheads using the Bezier Y at the
-            // far edge of each notehead (where the tie has curved upward), not at the
-            // attachment point (where the tie just touches the notehead).
+            // far edge of each notehead (where the tie has curved away from the notehead),
+            // not at the attachment point (where the tie just touches the notehead).
             var startColumn = columnsByElement.get(startElement);
             var endColumn = columnsByElement.get(endElement);
 
@@ -288,38 +285,76 @@ public class NoteAttachedStacker {
             double startEdgeYSs = evaluateBezierYSs(startEdgeT, tieLayout);
             double endEdgeYSs = evaluateBezierYSs(endEdgeT, tieLayout);
 
-            // Only use reduced margin for notes where the tie protrudes above the anchor ceiling.
-            // Use the notehead-edge Y (not the raw endpoint) since that reflects the visible arc.
-            if (startEdgeYSs < anchorCeilingSs(startElement)) {
-                upwardTieNotes.add(startElement);
+            // Upper notes (stem up) get downward-arcing ties; others get upward-arcing ties.
+            var arcsDown = startElement.isUpper();
+            var sampleCount = Math.max(TIE_BOUND_MIN_SAMPLES, (int) Math.ceil(spanWidthSs));
+
+            if (!arcsDown) {
+                // Only use reduced margin for notes where the tie protrudes above the anchor ceiling.
+                // Use the notehead-edge Y (not the raw endpoint) since that reflects the visible arc.
+                if (startEdgeYSs < anchorCeilingSs(startElement)) {
+                    upwardTieNotes.add(startElement);
+                }
+
+                if (endEdgeYSs < anchorCeilingSs(endElement)) {
+                    upwardTieNotes.add(endElement);
+                }
             }
 
-            if (endEdgeYSs < anchorCeilingSs(endElement)) {
-                upwardTieNotes.add(endElement);
-            }
-
-            if (startColumn != null) {
-                noteAttachedExtents.ySet(true, startColumn.getXSs(),
-                    Engraving.NOTE_HEAD_WIDTH_SS, startEdgeYSs);
-            }
-
-            if (endColumn != null) {
-                noteAttachedExtents.ySet(true, endColumn.getXSs(),
-                    Engraving.NOTE_HEAD_WIDTH_SS, endEdgeYSs);
-            }
-
-            int sampleCount = Math.max(TIE_BOUND_MIN_SAMPLES, (int) Math.ceil(spanWidthSs));
-            double segmentWidthSs = spanWidthSs / sampleCount;
-
-            for (int i = 0; i < sampleCount; i++) {
-                double tMid = (i + 0.5) / sampleCount;
-                double ySs = evaluateBezierYSs(tMid, tieLayout);
-                double segmentXSs = sx + i * segmentWidthSs;
-                noteAttachedExtents.ySet(true, segmentXSs, segmentWidthSs, ySs);
-            }
+            seedTieArcIntoExtents(tieLayout, startColumn, endColumn,
+                startEdgeYSs, endEdgeYSs, sx, spanWidthSs, sampleCount, !arcsDown);
         }
 
         return upwardTieNotes.isEmpty() ? Set.of() : upwardTieNotes;
+    }
+
+    /**
+     * Reserves the tie arc's vertical extent in the note-attached layer so line
+     * sizing accounts for the arc. For downward arcs (above=false) also feeds the
+     * notehead-edge Y values and sampled Y values into the context's below-staff
+     * content extent so lyric placement clears the arc.
+     */
+    private void seedTieArcIntoExtents(
+        LayoutResult.TieLayout tieLayout,
+        @Nullable ElementColumn startColumn,
+        @Nullable ElementColumn endColumn,
+        double startEdgeYSs,
+        double endEdgeYSs,
+        double sx,
+        double spanWidthSs,
+        int sampleCount,
+        boolean above) {
+
+        if (startColumn != null) {
+            noteAttachedExtents.ySet(above, startColumn.getXSs(),
+                Engraving.NOTE_HEAD_WIDTH_SS, startEdgeYSs);
+
+            if (!above) {
+                context.updateBotContentExtentSs(startEdgeYSs);
+            }
+        }
+
+        if (endColumn != null) {
+            noteAttachedExtents.ySet(above, endColumn.getXSs(),
+                Engraving.NOTE_HEAD_WIDTH_SS, endEdgeYSs);
+
+            if (!above) {
+                context.updateBotContentExtentSs(endEdgeYSs);
+            }
+        }
+
+        double segmentWidthSs = spanWidthSs / sampleCount;
+
+        for (int i = 0; i < sampleCount; i++) {
+            double tMid = (i + 0.5) / sampleCount;
+            double ySs = evaluateBezierYSs(tMid, tieLayout);
+            double segmentXSs = sx + i * segmentWidthSs;
+            noteAttachedExtents.ySet(above, segmentXSs, segmentWidthSs, ySs);
+
+            if (!above) {
+                context.updateBotContentExtentSs(ySs);
+            }
+        }
     }
 
     /**

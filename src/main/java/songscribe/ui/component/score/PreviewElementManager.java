@@ -897,6 +897,7 @@ public final class PreviewElementManager {
             }
         }
 
+        line.adjustSyllablesForNeighborChange(xIndex - 1, null);
         line.addElement(xIndex, previewElement);
         var shift = ScaleContext.getInstance().toRoundedPixels(insertion.shiftForSubsequentElementsSs());
 

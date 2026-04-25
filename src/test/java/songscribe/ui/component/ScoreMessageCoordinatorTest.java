@@ -44,6 +44,7 @@ import songscribe.music.BeamSpan;
 import songscribe.music.Composition;
 import songscribe.music.ElementType;
 import songscribe.music.Line;
+import songscribe.music.Lyric;
 import songscribe.music.StaffElement;
 import songscribe.music.TieSpan;
 import songscribe.music.TupletSpan;
@@ -176,6 +177,36 @@ class ScoreMessageCoordinatorTest extends UnitTest {
             }
 
             assertThat(line.elementCount()).isEqualTo(0);
+        }
+
+        @Test
+        void testDeleteNoteBreaksSyllableRelationWhenDeletedNoteIsTerminus() {
+            var predecessor = crotchet();
+            var terminus = crotchet();
+            predecessor.properties.lyrics.add(new Lyric(1, StaffElement.SyllableRelation.SYLLABLE, "do", Lyric.Extend.NONE));
+            terminus.properties.lyrics.add(new Lyric(1, StaffElement.SyllableRelation.NONE, "re", Lyric.Extend.NONE));
+            var line = lineWith(predecessor, terminus);
+
+            ScoreMessageCoordinator.deleteNote(1, line);
+
+            assertThat(predecessor.properties.lyrics.get(0).relation())
+                .isEqualTo(StaffElement.SyllableRelation.NONE);
+        }
+
+        @Test
+        void testDeleteNotePreservesSyllableRelationWhenDeletedNoteIsChainMember() {
+            var first = crotchet();
+            var middle = crotchet();
+            var last = crotchet();
+            first.properties.lyrics.add(new Lyric(1, StaffElement.SyllableRelation.SYLLABLE, "do", Lyric.Extend.NONE));
+            middle.properties.lyrics.add(new Lyric(1, StaffElement.SyllableRelation.SYLLABLE, "re", Lyric.Extend.NONE));
+            last.properties.lyrics.add(new Lyric(1, StaffElement.SyllableRelation.NONE, "mi", Lyric.Extend.NONE));
+            var line = lineWith(first, middle, last);
+
+            ScoreMessageCoordinator.deleteNote(1, line);
+
+            assertThat(first.properties.lyrics.get(0).relation())
+                .isEqualTo(StaffElement.SyllableRelation.SYLLABLE);
         }
 
         private StaffElement crotchet() {

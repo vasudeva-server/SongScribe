@@ -131,6 +131,9 @@ public class LineComponent extends ScoreComponent
     /** Whether layout needs to be recalculated. */
     private boolean layoutDirty = true;
 
+    /** True when the previous line's lyric extender continues into this line. */
+    private boolean hasLeadingLyricContinuation;
+
     /** Handles selection, hit-testing, and drag logic. */
     private final LineSelectionHandler selectionHandler = new LineSelectionHandler(this);
 
@@ -330,16 +333,44 @@ public class LineComponent extends ScoreComponent
         return layoutResult;
     }
 
+    /**
+     * Ensures the layout is up to date, computing it if dirty.
+     * <p>
+     * Called by {@link songscribe.ui.component.score.StaffPanel} before collecting
+     * all layout results to build {@link songscribe.ui.layout.CompositionLayoutMetrics}.
+     */
+    public void ensureLayout() {
+        if (composition != null && line != null && (layoutResult == null || layoutDirty)) {
+            performLayout();
+        }
+    }
+
+    /**
+     * Sets whether this line starts with a lyric extender continuation from the previous line.
+     * <p>
+     * The layout pass uses this flag to emit a leading-stub extender from x = 0 to the first
+     * lyric-bearing element (or to the first rest that breaks the continuation).
+     * <p>
+     * Marks the layout dirty if the value changes so the next {@code performLayout()} picks
+     * up the new state.
+     */
+    public void setHasLeadingLyricContinuation(boolean hasLeadingLyricContinuation) {
+        if (this.hasLeadingLyricContinuation != hasLeadingLyricContinuation) {
+            this.hasLeadingLyricContinuation = hasLeadingLyricContinuation;
+            this.layoutDirty = true;
+        }
+    }
+
     private void performLayout() {
         if (composition == null || line == null) {
             return;
         }
 
-        var lyricsFont = composition.getLyricsFont();
         var staffRightMarginSs = composition.getLineWidthSs();
         var isLastLine = lineIndex == composition.lineCount() - 1;
-        var layoutEngine = new LayoutEngine(lyricsFont, staffRightMarginSs);
-        layoutResult = layoutEngine.layout(line, isLastLine);
+        var lyricRenderMetrics = getScore().getLyricRenderMetrics();
+        var layoutEngine = new LayoutEngine(lyricRenderMetrics, staffRightMarginSs);
+        layoutResult = layoutEngine.layout(line, isLastLine, hasLeadingLyricContinuation);
 
         if (layoutResult == null) {
             throw RuntimeError.exit(
@@ -397,10 +428,11 @@ public class LineComponent extends ScoreComponent
         }
 
         var scale = ScaleContext.getInstance();
+        var metrics = getScore().getCompositionLayoutMetrics();
 
         return new Dimension(
             (int) Math.ceil(scale.toPixels(result.getLineWidthSs())),
-            (int) Math.ceil(scale.toPixels(result.getLineHeightSs())));
+            (int) Math.ceil(scale.toPixels(metrics.totalLineHeightSs())));
     }
 
     private double calculateMiddleLineYSs() {

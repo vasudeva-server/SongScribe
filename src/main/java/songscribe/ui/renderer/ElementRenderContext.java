@@ -30,7 +30,9 @@ import songscribe.music.Line;
 import songscribe.ui.component.Score;
 import songscribe.ui.component.score.LineComponent;
 import songscribe.ui.component.score.PreviewElementManager;
+import songscribe.ui.layout.CompositionLayoutMetrics;
 import songscribe.ui.layout.LayoutResult;
+import songscribe.ui.layout.LyricRenderMetrics;
 import songscribe.ui.layout.ScaleContext;
 import songscribe.ui.menu.DebugState;
 
@@ -67,6 +69,10 @@ public class ElementRenderContext {
     private int lineIndex;
     @SuppressWarnings("NullAway") // set by setLayoutResult() before first access
     private LayoutResult layoutResult = null;
+    @SuppressWarnings("NullAway") // set by setCompositionLayoutMetrics() before first access
+    private CompositionLayoutMetrics compositionLayoutMetrics = null;
+    @SuppressWarnings("NullAway") // set by setLyricRenderMetrics() before first access
+    private LyricRenderMetrics lyricRenderMetrics = null;
     private LineComponent.@Nullable SelectionProvider selectionProvider;
     private boolean editMode;
     private Color selectionColor = Score.getSelectionStrokeColor();
@@ -195,6 +201,32 @@ public class ElementRenderContext {
      */
     public void setLayoutResult(LayoutResult layoutResult) {
         this.layoutResult = layoutResult;
+    }
+
+    /**
+     * Returns the composition-wide layout metrics.
+     * <p>
+     * Used by lyric renderers to look up per-verse baseline Y positions that
+     * are uniform across every line in the composition. Must be set via
+     * {@link #setCompositionLayoutMetrics} before any rendering pass runs.
+     */
+    public CompositionLayoutMetrics getCompositionLayoutMetrics() {
+        return compositionLayoutMetrics;
+    }
+
+    /** Sets the composition-wide layout metrics. */
+    public void setCompositionLayoutMetrics(CompositionLayoutMetrics metrics) {
+        this.compositionLayoutMetrics = metrics;
+    }
+
+    /** Returns the composition-wide lyric render metrics. */
+    public LyricRenderMetrics getLyricRenderMetrics() {
+        return lyricRenderMetrics;
+    }
+
+    /** Sets the composition-wide lyric render metrics. */
+    public void setLyricRenderMetrics(LyricRenderMetrics metrics) {
+        this.lyricRenderMetrics = metrics;
     }
 
     /**

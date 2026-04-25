@@ -166,7 +166,7 @@ public final class LayoutStylesheet {
 
     // --- Lyrics Row (under staff) ---
     /**
-     * Margin from staff bottom to lyrics
+     * Margin from the bottom of below-staff content to the lyrics baseline
      */
     public static final double LYRICS_ROW_MARGIN_SS = 1.0;  // 8px
 
@@ -343,13 +343,6 @@ public final class LayoutStylesheet {
     public static final double DEFAULT_COLUMN_GAP_SS = 2.5;  // 20px
 
     /**
-     * Minimum horizontal gap between syllables.
-     * This ensures lyric text remains readable.
-     * Note: This value will be tuned empirically during implementation.
-     */
-    public static final double MIN_SYLLABLE_GAP_SS = 0.25;  // 2px (TBD)
-
-    /**
      * Minimum clearance for accidentals from previous column's right extent.
      * Accidentals only push spacing when this minimum would be violated.
      */
@@ -398,12 +391,6 @@ public final class LayoutStylesheet {
     // ==========================================================================
 
     /**
-     * Distance from lowest note bounding area to lyrics baseline (ascent).
-     * Per plan: lyrics are below the staff, below lowest note bounding area.
-     */
-    public static final double LYRICS_BASELINE_OFFSET_SS = 1.25;  // 10px
-
-    /**
      * Approximate height of a single lyrics row (to be measured from actual font in later phases).
      */
     public static final double LYRICS_HEIGHT_SS = 2.5;  // ~20px
@@ -424,11 +411,6 @@ public final class LayoutStylesheet {
      * Even under maximum compression, gaps cannot go below this.
      */
     public static final double COMPRESSED_MIN_COLUMN_GAP_SS = 0.125;  // 1px
-
-    /**
-     * Absolute minimum syllable gap during compression.
-     */
-    public static final double COMPRESSED_MIN_SYLLABLE_GAP_SS = 0.125;  // 1px
 
     // ==========================================================================
     // SMuFL STEM ANCHORS

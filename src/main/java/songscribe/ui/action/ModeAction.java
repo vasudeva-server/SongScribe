@@ -55,14 +55,6 @@ public final class ModeAction extends SelectableUIAction {
         );
     }
 
-    public static ModeAction createAdjustLyricsModeAction() {
-        return new ModeAction(
-            Mode.LYRICS_ADJUSTMENT,
-            Strings.get(Strings.ACTION_MODE_LYRICS_ADJUST), "mode-lyrics-adjustment.svg", 26,
-            "adjust-lyrics-mode", Strings.get(Strings.ACTION_MODE_LYRICS_ADJUST_TOOLTIP)
-        );
-    }
-
     public static ModeAction createAdjustVerticalModeAction() {
         return new ModeAction(
             Mode.VERTICAL_ADJUSTMENT,

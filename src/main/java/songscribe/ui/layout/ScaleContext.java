@@ -79,6 +79,11 @@ public final class ScaleContext {
         return px / pixelsPerStaffSpace;
     }
 
+    /** Returns {@code font} scaled from pixel units to staff-space units. */
+    public Font scaleFont(Font font) {
+        return font.deriveFont((float) fromPixels(font.getSize()));
+    }
+
     /** Returns the width of {@code text} in staff-space units for the given font. */
     public double textWidthSs(Font font, String text) {
         return fromPixels(new TextLayout(text, font, GraphicUtils.LAYOUT_FRC).getAdvance());

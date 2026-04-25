@@ -163,15 +163,11 @@ public class HorizontalSpacingCalculator {
         // Calculate lyric-driven spacing requirement
         double lyricSpacingSs = calculateLyricSpacingSs(prevColumn, currColumn);
 
-        // If no lyrics, use default spacing; otherwise use lyric spacing
-        double requiredSpacingSs;
-        if (lyricSpacingSs > 0) {
-            requiredSpacingSs = Math.max(minimumSpacingSs, lyricSpacingSs);
-        } else {
-            // No lyrics - use default comfortable spacing
-            double defaultSpacingSs = calculateDefaultColumnSpacingSs(prevColumn, currColumn);
-            requiredSpacingSs = Math.max(minimumSpacingSs, defaultSpacingSs);
-        }
+        // Use default comfortable spacing as a floor, then expand further if lyrics require it.
+        // This prevents the case where only one side has a lyric from producing
+        // tighter-than-default note-head-to-note-head spacing.
+        double defaultSpacingSs = calculateDefaultColumnSpacingSs(prevColumn, currColumn);
+        double requiredSpacingSs = Math.max(minimumSpacingSs, Math.max(defaultSpacingSs, lyricSpacingSs));
 
         // Calculate tentative X position
         double nextXSs = prevColumn.getXSs() + requiredSpacingSs;
@@ -231,8 +227,11 @@ public class HorizontalSpacingCalculator {
 
         double prevHalfWidthSs = prevColumn.hasSyllable() ? prevColumn.getSyllableWidthSs() / 2.0 : 0;
         double currHalfWidthSs = currColumn.hasSyllable() ? currColumn.getSyllableWidthSs() / 2.0 : 0;
+        double gapSs = prevColumn.hasSyllable()
+            ? prevColumn.getMinGapToNextSyllableSs()
+            : LyricRenderMetrics.MIN_SYLLABLE_GAP_SS;
 
-        return prevHalfWidthSs + LayoutStylesheet.MIN_SYLLABLE_GAP_SS + currHalfWidthSs;
+        return prevHalfWidthSs + gapSs + currHalfWidthSs;
     }
 
     /**

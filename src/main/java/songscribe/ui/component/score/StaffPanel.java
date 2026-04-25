@@ -29,6 +29,9 @@ import songscribe.error.RuntimeError;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.music.Composition;
+import songscribe.ui.layout.CompositionLayoutMetricsBuilder;
+import songscribe.ui.layout.LayoutResult;
+import songscribe.ui.layout.LyricRenderMetrics;
 import songscribe.ui.layout.LayoutStylesheet;
 import songscribe.ui.layout.ScaleContext;
 
@@ -51,6 +54,14 @@ public class StaffPanel extends JPanel {
 
     /** Spacing between lines. */
     private final int lineMargin;
+
+    /**
+     * Cached {@link LyricRenderMetrics} from the previous {@link #updateCompositionMetrics}
+     * call. Reused when the lyrics font has not changed to avoid re-measuring hyphen and
+     * space widths via a fresh {@link java.awt.font.TextLayout} on every paint pass.
+     */
+    @Nullable
+    private LyricRenderMetrics lyricRenderMetrics;
 
     /**
      * Creates a new StaffPanel.
@@ -165,6 +176,12 @@ public class StaffPanel extends JPanel {
             return new Dimension(0, 0);
         }
 
+        // Always recompute: live drag updates positions without firing a mutation, so we
+        // can't rely on a dirty-flag signal here. Each line's own ensureLayout is a no-op
+        // when its layout isn't dirty, so the cost of re-running this is bounded by the
+        // metrics aggregation.
+        updateCompositionMetrics();
+
         var width = 0;
         var height = 0;
 
@@ -180,6 +197,54 @@ public class StaffPanel extends JPanel {
         }
 
         return new Dimension(width, height);
+    }
+
+    /**
+     * Forces all line layouts, builds {@link songscribe.ui.layout.CompositionLayoutMetrics}
+     * from the results, and pushes the metrics onto the owning {@link songscribe.ui.component.Score}
+     * so that all lines report a uniform preferred height.
+     */
+    private void updateCompositionMetrics() {
+        // LyricRenderMetrics is derived from the lyrics font alone, so populate it on
+        // the Score before any line layouts run — layout reads hyphenWidthSs and
+        // spaceWidthSs (two spaces) from here to reserve column spacing for syllable gaps.
+        // Skip the (TextLayout-allocating) rebuild when the font has not changed.
+        var score = linePanels.get(0).getLineComponent().getScore();
+        var composition = score.getComposition();
+        var lyricsFont = composition.getLyricsFont();
+        var existingMetrics = lyricRenderMetrics;
+
+        if (existingMetrics == null || !existingMetrics.lyricsFont().equals(lyricsFont)) {
+            var scale = ScaleContext.getInstance();
+            var scaledFont = scale.scaleFont(lyricsFont);
+            var hyphenWidthSs = scale.textWidthSs(lyricsFont, "-");
+            var spaceWidthSs = scale.textWidthSs(lyricsFont, "  ");
+            lyricRenderMetrics = new LyricRenderMetrics(lyricsFont, scaledFont, hyphenWidthSs, spaceWidthSs);
+            score.setLyricRenderMetrics(lyricRenderMetrics);
+        }
+
+        // Lay out each line in order, threading lyric-extender continuation across line
+        // boundaries so that a melisma that runs off the end of one line reappears as a
+        // leading stub on the next.
+        var layouts = new ArrayList<LayoutResult>();
+        var hasLeadingLyricContinuation = false;
+
+        for (var linePanel : linePanels) {
+            var lineComponent = linePanel.getLineComponent();
+            lineComponent.setHasLeadingLyricContinuation(hasLeadingLyricContinuation);
+            lineComponent.ensureLayout();
+            var result = lineComponent.getLayoutResult();
+
+            if (result != null) {
+                layouts.add(result);
+                hasLeadingLyricContinuation = result.hasTrailingLyricContinuation();
+            } else {
+                hasLeadingLyricContinuation = false;
+            }
+        }
+
+        var metrics = CompositionLayoutMetricsBuilder.build(layouts);
+        score.setCompositionLayoutMetrics(metrics);
     }
 
     @Override

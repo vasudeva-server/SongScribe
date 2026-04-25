@@ -402,14 +402,6 @@ public final class LineSelectionState {
     }
 
     /**
-     * Returns whether the current selection can toggle lyrics under rests.
-     */
-    public boolean canToggleLyricsUnderRests() {
-        var element = getSingleSelectedElement();
-        return (element != null) && element.getType().isRest();
-    }
-
-    /**
      * Returns whether the stem direction can be flipped.
      */
     public boolean canFlipStemDirection() {

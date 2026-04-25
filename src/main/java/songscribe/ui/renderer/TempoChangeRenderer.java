@@ -25,6 +25,7 @@ import module java.desktop;
 import songscribe.music.StaffElement;
 import songscribe.music.Tempo;
 import songscribe.ui.layout.MetronomeAttachment;
+import songscribe.ui.layout.ScaleContext;
 import songscribe.ui.layout.TempoChangeAttachment;
 
 /** Renders tempo change indicators (note = number format, e.g. "♩ = 120"). */
@@ -87,7 +88,7 @@ public final class TempoChangeRenderer extends MetronomeRenderer {
             xSs = drawDurationEquals(g2, tempo.getTempoType(), xSs, setup.ySs(), setup.attrFont(), setup.color());
         }
 
-        g2.setFont(scaleFont(setup.attrFont()));
+        g2.setFont(ScaleContext.getInstance().scaleFont(setup.attrFont()));
         g2.setColor(setup.color());
         g2.drawString(tempoBuilder.toString(), (float) xSs, (float) textBaselineYSs);
     }

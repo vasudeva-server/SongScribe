@@ -654,6 +654,263 @@ class LineMutationTest extends UnitTest {
     }
 
     // -----------------------------------------------------------------------
+    // Syllable adjustment
+    // -----------------------------------------------------------------------
+
+    @Nested
+    class SyllableAdjustment {
+
+        private StaffElement predecessor;
+        private StaffElement neighbor;
+
+        @BeforeEach
+        void addElements() {
+            predecessor = new StaffElement(ElementType.QUAVER);
+            neighbor = new StaffElement(ElementType.QUAVER);
+            composition.withoutMutationTracking(() -> {
+                line.addElement(predecessor);
+                line.addElement(neighbor);
+            });
+        }
+
+        private void setLyric(StaffElement element, StaffElement.SyllableRelation relation) {
+            element.properties.lyrics.add(new Lyric(1, relation, "x", Lyric.Extend.NONE));
+        }
+
+        @Test
+        void testInsertionBreaksSyllableRelation() {
+            setLyric(predecessor, StaffElement.SyllableRelation.SYLLABLE);
+            composition.withModification(() -> line.adjustSyllablesForNeighborChange(0, null));
+            assertThat(predecessor.properties.lyrics.get(0).relation())
+                .isEqualTo(StaffElement.SyllableRelation.NONE);
+        }
+
+        @Test
+        void testInsertionBreaksCompoundWordRelation() {
+            setLyric(predecessor, StaffElement.SyllableRelation.COMPOUND_WORD);
+            composition.withModification(() -> line.adjustSyllablesForNeighborChange(0, null));
+            assertThat(predecessor.properties.lyrics.get(0).relation())
+                .isEqualTo(StaffElement.SyllableRelation.NONE);
+        }
+
+        @Test
+        void testInsertionLeavesNoneRelationUnchanged() {
+            setLyric(predecessor, StaffElement.SyllableRelation.NONE);
+            composition.withModification(() -> line.adjustSyllablesForNeighborChange(0, null));
+            assertThat(predecessor.properties.lyrics.get(0).relation())
+                .isEqualTo(StaffElement.SyllableRelation.NONE);
+        }
+
+        @Test
+        void testInsertionOnNegativeIndexIsNoOp() {
+            setLyric(predecessor, StaffElement.SyllableRelation.SYLLABLE);
+            assertThatNoException().isThrownBy(() ->
+                composition.withModification(() -> line.adjustSyllablesForNeighborChange(-1, null)));
+            assertThat(predecessor.properties.lyrics.get(0).relation())
+                .isEqualTo(StaffElement.SyllableRelation.SYLLABLE);
+        }
+
+        @Test
+        void testDeletionOfTerminusBreaksPredecessorRelation() {
+            setLyric(predecessor, StaffElement.SyllableRelation.SYLLABLE);
+            setLyric(neighbor, StaffElement.SyllableRelation.NONE);
+            composition.withModification(() -> line.adjustSyllablesForNeighborChange(0, neighbor));
+            assertThat(predecessor.properties.lyrics.get(0).relation())
+                .isEqualTo(StaffElement.SyllableRelation.NONE);
+        }
+
+        @Test
+        void testDeletionOfChainMemberPreservesPredecessorRelation() {
+            setLyric(predecessor, StaffElement.SyllableRelation.SYLLABLE);
+            setLyric(neighbor, StaffElement.SyllableRelation.SYLLABLE);
+            composition.withModification(() -> line.adjustSyllablesForNeighborChange(0, neighbor));
+            assertThat(predecessor.properties.lyrics.get(0).relation())
+                .isEqualTo(StaffElement.SyllableRelation.SYLLABLE);
+        }
+
+        @Test
+        void testDeletionOfElementWithNoLyricBreaksPredecessorRelation() {
+            setLyric(predecessor, StaffElement.SyllableRelation.SYLLABLE);
+            // neighbor has no lyric
+            composition.withModification(() -> line.adjustSyllablesForNeighborChange(0, neighbor));
+            assertThat(predecessor.properties.lyrics.get(0).relation())
+                .isEqualTo(StaffElement.SyllableRelation.NONE);
+        }
+
+        @Test
+        void testMultiVerseAdjustsPerVerse() {
+            predecessor.properties.lyrics.add(new Lyric(1, StaffElement.SyllableRelation.SYLLABLE, "do", Lyric.Extend.NONE));
+            predecessor.properties.lyrics.add(new Lyric(2, StaffElement.SyllableRelation.SYLLABLE, "un", Lyric.Extend.NONE));
+            neighbor.properties.lyrics.add(new Lyric(1, StaffElement.SyllableRelation.SYLLABLE, "re", Lyric.Extend.NONE));
+            // verse 2 has no lyric on neighbor — verse 2 predecessor should break, verse 1 should keep
+
+            composition.withModification(() -> line.adjustSyllablesForNeighborChange(0, neighbor));
+
+            assertThat(predecessor.properties.lyrics.get(0).relation())
+                .as("verse 1: chain continues via neighbor's SYLLABLE")
+                .isEqualTo(StaffElement.SyllableRelation.SYLLABLE);
+            assertThat(predecessor.properties.lyrics.get(1).relation())
+                .as("verse 2: neighbor has no lyric, chain broken")
+                .isEqualTo(StaffElement.SyllableRelation.NONE);
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Extend adjustment
+    // -----------------------------------------------------------------------
+
+    @Nested
+    class ExtendAdjustment {
+
+        private static final int VERSE = 1;
+
+        private StaffElement makeElement(Lyric.Extend extend) {
+            var element = new StaffElement(ElementType.QUAVER);
+            var text = extend == Lyric.Extend.START ? "x" : "";
+            element.properties.lyrics.add(new Lyric(VERSE, StaffElement.SyllableRelation.NONE, text, extend));
+            return element;
+        }
+
+        private Lyric.Extend extendOf(StaffElement element) {
+            return element.properties.lyrics.get(0).extend();
+        }
+
+        private void addChain(StaffElement... elements) {
+            composition.withoutMutationTracking(() -> {
+                for (var element : elements) {
+                    line.addElement(element);
+                }
+                line.addElement(Composition.newTerminalElement(ElementType.FINAL_DOUBLE_BARLINE));
+            });
+        }
+
+        private void deleteAt(int index) {
+            composition.withModification(() -> {
+                line.adjustExtendsForDeletion(index);
+                line.removeElement(index);
+            });
+        }
+
+        // ---- 2-element chain [1.START, 2.STOP] ----
+
+        @Test
+        void testDeleteFirstOfTwoElementChain() {
+            var start = makeElement(Lyric.Extend.START);
+            var stop = makeElement(Lyric.Extend.STOP);
+            addChain(start, stop);
+            deleteAt(0);
+            // Deleting START kills the chain: [2.NONE]
+            assertThat(extendOf(stop)).isEqualTo(Lyric.Extend.NONE);
+        }
+
+        @Test
+        void testDeleteLastOfTwoElementChain() {
+            var start = makeElement(Lyric.Extend.START);
+            var stop = makeElement(Lyric.Extend.STOP);
+            addChain(start, stop);
+            deleteAt(1);
+            // Deleting STOP from a 2-element chain collapses it: [1.NONE]
+            assertThat(extendOf(start)).isEqualTo(Lyric.Extend.NONE);
+        }
+
+        // ---- 3-element chain [1.START, 2.CONTINUE, 3.STOP] ----
+
+        @Test
+        void testDeleteFirstOfThreeElementChain() {
+            var start = makeElement(Lyric.Extend.START);
+            var continueElement = makeElement(Lyric.Extend.CONTINUE);
+            var stop = makeElement(Lyric.Extend.STOP);
+            addChain(start, continueElement, stop);
+            deleteAt(0);
+            // Deleting START kills the chain: [2.NONE, 3.NONE]
+            assertThat(extendOf(continueElement)).isEqualTo(Lyric.Extend.NONE);
+            assertThat(extendOf(stop)).isEqualTo(Lyric.Extend.NONE);
+        }
+
+        @Test
+        void testDeleteSecondOfThreeElementChain() {
+            var start = makeElement(Lyric.Extend.START);
+            var continueElement = makeElement(Lyric.Extend.CONTINUE);
+            var stop = makeElement(Lyric.Extend.STOP);
+            addChain(start, continueElement, stop);
+            deleteAt(1);
+            // Deleting CONTINUE heals the chain: [1.START, 3.STOP]
+            assertThat(extendOf(start)).isEqualTo(Lyric.Extend.START);
+            assertThat(extendOf(stop)).isEqualTo(Lyric.Extend.STOP);
+        }
+
+        @Test
+        void testDeleteLastOfThreeElementChain() {
+            var start = makeElement(Lyric.Extend.START);
+            var continueElement = makeElement(Lyric.Extend.CONTINUE);
+            var stop = makeElement(Lyric.Extend.STOP);
+            addChain(start, continueElement, stop);
+            deleteAt(2);
+            // Deleting STOP promotes the preceding CONTINUE: [1.START, 2.STOP]
+            assertThat(extendOf(continueElement)).isEqualTo(Lyric.Extend.STOP);
+            assertThat(extendOf(start)).isEqualTo(Lyric.Extend.START);
+        }
+
+        // ---- 4-element chain [1.START, 2.CONTINUE, 3.CONTINUE, 4.STOP] ----
+
+        @Test
+        void testDeleteFirstOfFourElementChain() {
+            var start = makeElement(Lyric.Extend.START);
+            var firstContinue = makeElement(Lyric.Extend.CONTINUE);
+            var secondContinue = makeElement(Lyric.Extend.CONTINUE);
+            var stop = makeElement(Lyric.Extend.STOP);
+            addChain(start, firstContinue, secondContinue, stop);
+            deleteAt(0);
+            // Deleting START kills the chain: [2.NONE, 3.NONE, 4.NONE]
+            assertThat(extendOf(firstContinue)).isEqualTo(Lyric.Extend.NONE);
+            assertThat(extendOf(secondContinue)).isEqualTo(Lyric.Extend.NONE);
+            assertThat(extendOf(stop)).isEqualTo(Lyric.Extend.NONE);
+        }
+
+        @Test
+        void testDeleteSecondOfFourElementChain() {
+            var start = makeElement(Lyric.Extend.START);
+            var firstContinue = makeElement(Lyric.Extend.CONTINUE);
+            var secondContinue = makeElement(Lyric.Extend.CONTINUE);
+            var stop = makeElement(Lyric.Extend.STOP);
+            addChain(start, firstContinue, secondContinue, stop);
+            deleteAt(1);
+            // Deleting CONTINUE heals the chain: [1.START, 3.CONTINUE, 4.STOP]
+            assertThat(extendOf(start)).isEqualTo(Lyric.Extend.START);
+            assertThat(extendOf(secondContinue)).isEqualTo(Lyric.Extend.CONTINUE);
+            assertThat(extendOf(stop)).isEqualTo(Lyric.Extend.STOP);
+        }
+
+        @Test
+        void testDeleteSecondAndThirdOfFourElementChain() {
+            var start = makeElement(Lyric.Extend.START);
+            var firstContinue = makeElement(Lyric.Extend.CONTINUE);
+            var secondContinue = makeElement(Lyric.Extend.CONTINUE);
+            var stop = makeElement(Lyric.Extend.STOP);
+            addChain(start, firstContinue, secondContinue, stop);
+            deleteAt(1);
+            deleteAt(1);
+            // Each CONTINUE deletion heals the chain; remaining: [1.START, 4.STOP]
+            assertThat(extendOf(start)).isEqualTo(Lyric.Extend.START);
+            assertThat(extendOf(stop)).isEqualTo(Lyric.Extend.STOP);
+        }
+
+        @Test
+        void testDeleteLastOfFourElementChain() {
+            var start = makeElement(Lyric.Extend.START);
+            var firstContinue = makeElement(Lyric.Extend.CONTINUE);
+            var secondContinue = makeElement(Lyric.Extend.CONTINUE);
+            var stop = makeElement(Lyric.Extend.STOP);
+            addChain(start, firstContinue, secondContinue, stop);
+            deleteAt(3);
+            // Deleting STOP promotes the preceding CONTINUE: [1.START, 2.CONTINUE, 3.STOP]
+            assertThat(extendOf(secondContinue)).isEqualTo(Lyric.Extend.STOP);
+            assertThat(extendOf(firstContinue)).isEqualTo(Lyric.Extend.CONTINUE);
+            assertThat(extendOf(start)).isEqualTo(Lyric.Extend.START);
+        }
+    }
+
+    // -----------------------------------------------------------------------
     // Helpers
     // -----------------------------------------------------------------------
 

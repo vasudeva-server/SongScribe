@@ -36,7 +36,7 @@ import songscribe.smufl.SMuFLMetadata;
 import songscribe.ui.layout.ElementBoundsSs;
 import songscribe.ui.layout.LayoutStylesheet;
 import songscribe.ui.layout.LineElement;
-import songscribe.ui.layout.ScaleContext;
+
 import org.jspecify.annotations.Nullable;
 
 import songscribe.util.GraphicUtils;
@@ -365,12 +365,6 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
     protected static double glyphOriginYFromLayoutTop(double layoutTopYSs, SMuFLGlyph glyph) {
         var bbox = SMuFLMetadata.getInstance().requireBBox(glyph);
         return layoutTopYSs - bbox.top();
-    }
-
-    /** Returns {@code font} scaled from pixel units to staff-space units. */
-    protected static Font scaleFont(Font font) {
-        return font.deriveFont(
-            (float) ScaleContext.getInstance().fromPixels(font.getSize()));
     }
 
     /**

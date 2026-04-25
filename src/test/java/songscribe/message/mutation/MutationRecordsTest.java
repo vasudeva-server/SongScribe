@@ -141,7 +141,7 @@ class MutationRecordsTest extends UnitTest {
                 .isNotInstanceOf(LineScopedMutation.class);
             assertThat(new LayoutChange(LayoutField.LINE_WIDTH_SS, 1.0, 2.0))
                 .isNotInstanceOf(LineScopedMutation.class);
-            assertThat(new LyricsChange(LyricsField.MAIN, "a", "b"))
+            assertThat(new LyricsChange(LyricsField.UNDER, "a", "b"))
                 .isNotInstanceOf(LineScopedMutation.class);
             assertThat(new LineInsertion(0, new Line()))
                 .isNotInstanceOf(LineScopedMutation.class);

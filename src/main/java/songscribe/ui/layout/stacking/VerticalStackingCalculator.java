@@ -94,25 +94,12 @@ public class VerticalStackingCalculator {
         // Apply manual offsets post-layout (no collision re-run)
         applyManualOffsets(builder);
 
-        // Calculate lyrics baseline. Per #313, lyrics do not contribute to line height
-        // in this iteration — only the baseline position is reported.
         double lowestNoteBotSs = context.getLowestNoteBotSs();
-        double lyricsBaselineYSs = lowestNoteBotSs + LayoutStylesheet.LYRICS_BASELINE_OFFSET_SS;
-        boolean hasLyrics = false;
 
-        for (var column : columns) {
-            if (column.hasSyllable()) {
-                hasLyrics = true;
-                break;
-            }
-        }
-
-        // Stacking coordinates put the middle staff line at y=0, so the staff
-        // top is at y=-staffHalf. Only extents beyond the staff top count as
-        // above-staff space. StaffExtents' `bot` arrays default to
-        // STAFF_HEIGHT_SS, which bakes in a 2-ss buffer below the staff
-        // bottom — the below term subtracts that baseline so a clean line
-        // contributes the minimum derived from the valid staff-position range.
+        // Stacking coordinates put the middle staff line at y=0: staff top at
+        // y=-STAFF_HALF_SS, staff bottom at y=+STAFF_HALF_SS. aboveStaffSs and
+        // belowStaffSs are distances beyond the staff top/bottom respectively;
+        // both subtract STAFF_HALF_SS from the signed extent.
         double topExtentSs = systemExtents.yGet(true, 0, lineWidthSs);
         double aboveStaffSs = Math.max(
             LayoutStylesheet.MIN_ABOVE_STAFF_SS,
@@ -127,7 +114,14 @@ public class VerticalStackingCalculator {
                 lowestNoteBotSs));
         double belowStaffSs = Math.max(
             LayoutStylesheet.MIN_BELOW_STAFF_SS,
-            botExtentSs - LayoutStylesheet.STAFF_HEIGHT_SS);
+            botExtentSs - LayoutStylesheet.STAFF_HALF_SS);
+
+        // True extent of staff-element content below the staff bottom — distinct from the
+        // sizing reservation above. Tracked in the context as elements seed their bounds
+        // (notes, downward ties), defaults to staff bottom for an empty line.
+        double belowContentSs = Math.max(
+            0.0,
+            context.getBotContentExtentSs() - LayoutStylesheet.STAFF_HALF_SS);
 
         double lineHeightSs = LayoutStylesheet.STAFF_HEIGHT_SS
             + aboveStaffSs
@@ -136,7 +130,7 @@ public class VerticalStackingCalculator {
 
         builder.setLineHeightSs(lineHeightSs);
         builder.setAboveStaffSs(aboveStaffSs);
-        builder.setLyricBaselineYSs(hasLyrics ? lyricsBaselineYSs : 0);
+        builder.setBelowContentSs(belowContentSs);
     }
 
 

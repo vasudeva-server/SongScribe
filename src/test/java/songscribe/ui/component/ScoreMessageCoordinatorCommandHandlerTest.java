@@ -46,7 +46,6 @@ import songscribe.message.command.FirstSecondEndingCommand;
 import songscribe.message.command.FlipStemDirectionCommand;
 import songscribe.message.command.RemoveDynamicsCommand;
 import songscribe.message.command.ToggleBeamCommand;
-import songscribe.message.command.ToggleLyricsUnderRestsCommand;
 import songscribe.message.command.ToggleTieCommand;
 import songscribe.message.command.ToggleTrillCommand;
 import songscribe.message.command.ToggleTupletCommand;
@@ -314,25 +313,6 @@ class ScoreMessageCoordinatorCommandHandlerTest extends UnitTest {
             assertThat(mutation).isInstanceOf(ElementModification.class);
             assertThat(((ElementModification) mutation).fields()).contains(ElementField.TRILL);
         }
-    }
-
-    // -----------------------------------------------------------------------
-    // Lyrics under rests
-    // -----------------------------------------------------------------------
-
-    @Test
-    void testHandleToggleLyricsUnderRestsEmitsOneElementModification() {
-        var env = setup(crotchetRest());
-        ReflectionTestHelper.selectNote(env.coordinator(), 0);
-
-        env.scoreMessageCoordinator().handleToggleLyricsUnderRests(
-            new ToggleLyricsUnderRestsCommand()
-        );
-
-        var notification = captureSingleDidChange();
-        assertThat(notification.getMutations()).hasSize(1);
-        var mod = (ElementModification) notification.getMutations().get(0);
-        assertThat(mod.fields()).contains(ElementField.FORCE_SYLLABLE);
     }
 
     // -----------------------------------------------------------------------

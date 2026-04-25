@@ -48,7 +48,7 @@ import songscribe.ui.layout.stacking.VerticalStackingCalculator;
  * <p>
  * Usage:
  * <pre>{@code
- * var engine = new LayoutEngine(g2, lyricsFont, staffRightMarginSs);
+ * var engine = new LayoutEngine(lyricRenderMetrics, staffRightMarginSs);
  * LayoutResult result = engine.layout(line);
  *
  * if (result == null) {
@@ -82,7 +82,7 @@ public class LayoutEngine {
     private static final double TIE_NOTEHEAD_HALF_WIDTH_SS = 0.6;   // visual half-width of notehead
     private static final double TIE_ENDPOINT_Y_OFFSET_SS = 0.7;    // y offset from note center (noteHeight/2 + 0.2)
 
-    private final Font lyricsFont;
+    private final LyricRenderMetrics lyricRenderMetrics;
     private final double staffRightMarginSs;
 
     // Calculators
@@ -98,15 +98,15 @@ public class LayoutEngine {
     /**
      * Creates a new LayoutEngine.
      *
-     * @param lyricsFont         Font to use for lyrics (for measuring syllable widths)
+     * @param lyricRenderMetrics Composition-wide lyric render metrics (font + glyph widths)
      * @param staffRightMarginSs Right margin of the staff in staff-space units
      */
-    public LayoutEngine(Font lyricsFont, double staffRightMarginSs) {
-        this.lyricsFont = lyricsFont;
+    public LayoutEngine(LyricRenderMetrics lyricRenderMetrics, double staffRightMarginSs) {
+        this.lyricRenderMetrics = lyricRenderMetrics;
         this.staffRightMarginSs = staffRightMarginSs;
 
         // Initialize calculators
-        this.columnBuilder = new ElementColumnBuilder(lyricsFont);
+        this.columnBuilder = new ElementColumnBuilder(lyricRenderMetrics);
         this.horizontalCalculator = new HorizontalSpacingCalculator();
         this.verticalCalculator = new VerticalStackingCalculator();
         this.justificationCalculator = new LineJustificationCalculator();
@@ -116,13 +116,25 @@ public class LayoutEngine {
 
     /**
      * Executes the complete layout pipeline for a line.
-     * Equivalent to {@code layout(line, false)}.
+     * Equivalent to {@code layout(line, false, false)}.
      *
      * @param line The line to lay out
      * @return LayoutResult with all positioned elements, or null if layout fails
      */
     public @Nullable LayoutResult layout(Line line) {
-        return layout(line, false);
+        return layout(line, false, false);
+    }
+
+    /**
+     * Executes the complete layout pipeline for a line.
+     * Equivalent to {@code layout(line, isLastLine, false)}.
+     *
+     * @param line       The line to lay out
+     * @param isLastLine Whether this line is the last line of the composition
+     * @return LayoutResult with all positioned elements, or null if layout fails
+     */
+    public @Nullable LayoutResult layout(Line line, boolean isLastLine) {
+        return layout(line, isLastLine, false);
     }
 
     /**
@@ -131,13 +143,17 @@ public class LayoutEngine {
      * This is the main entry point for layout. It orchestrates all calculators
      * and produces a final LayoutResult ready for rendering.
      *
-     * @param line       The line to lay out
-     * @param isLastLine Whether this line is the last line of the composition.
-     *                   When true, the final double barline (if present) is
-     *                   pinned flush with the right edge of the line.
+     * @param line                      The line to lay out
+     * @param isLastLine                Whether this line is the last line of the composition.
+     *                                  When true, the final double barline (if present) is
+     *                                  pinned flush with the right edge of the line.
+     * @param hasLeadingLyricContinuation True when the previous line ended with an active
+     *                                    melisma extender that should continue from x = 0
+     *                                    on this line until the first syllable or rest that
+     *                                    breaks it.
      * @return LayoutResult with all positioned elements, or null if layout fails
      */
-    public @Nullable LayoutResult layout(Line line, boolean isLastLine) {
+    public @Nullable LayoutResult layout(Line line, boolean isLastLine, boolean hasLeadingLyricContinuation) {
         lastError = null;
 
         // Step 1: Build note columns
@@ -150,8 +166,7 @@ public class LayoutEngine {
             double emptyLineHeightSs = LayoutStylesheet.MIN_LINE_HEIGHT_SS;
             var emptyBuilder = LayoutResult.builder()
                 .setLineHeightSs(emptyLineHeightSs)
-                .setAboveStaffSs(LayoutStylesheet.MIN_ABOVE_STAFF_SS)
-                .setLyricBaselineYSs(0);
+                .setAboveStaffSs(LayoutStylesheet.MIN_ABOVE_STAFF_SS);
             createHeaderElements(line, emptyBuilder);
             return emptyBuilder.build();
         }
@@ -193,8 +208,33 @@ public class LayoutEngine {
         // not the content width which varies with column count.
         verticalCalculator.calculate(columns, line, builder, staffRightMarginSs);
 
+        // Step 7b: Compute lyric box and connector geometry.
+        buildLyricLayout(columns, builder, hasLeadingLyricContinuation);
+
         // Step 8: Build final LayoutResult
         return buildLayoutResult(columns, line, builder);
+    }
+
+    private void buildLyricLayout(
+        List<ElementColumn> columns,
+        LayoutResult.Builder builder,
+        boolean hasLeadingLyricContinuation) {
+
+        var lyricResult = LyricLayoutBuilder.build(
+            columns, lyricRenderMetrics.lyricsFont(), hasLeadingLyricContinuation, staffRightMarginSs);
+
+        for (var entry : lyricResult.boxes().entrySet()) {
+            for (var box : entry.getValue()) {
+                builder.addLyricBox(entry.getKey(), box);
+            }
+        }
+
+        for (var connector : lyricResult.connectors()) {
+            builder.addLyricConnector(connector);
+        }
+
+        builder.setVerseCount(lyricResult.verseCount());
+        builder.setHasTrailingLyricContinuation(lyricResult.hasTrailingContinuation());
     }
 
     private void positionTerminalFlushRight(List<ElementColumn> columns) {
@@ -699,13 +739,6 @@ public class LayoutEngine {
             case DEMI_SEMIQUAVER -> 3;
             default -> 1;
         };
-    }
-
-    /**
-     * Returns the lyrics font used by this engine.
-     */
-    public Font getLyricsFont() {
-        return lyricsFont;
     }
 
     /**

@@ -85,8 +85,6 @@ public class Line {
     /** Range elements (ties, trills, crescendo, diminuendo, tuplets, endings). */
     private final List<RangeElement> rangeElements = new ArrayList<>();
 
-    // acceleration
-    public StaffElement.SyllableRelation beginRelation = StaffElement.SyllableRelation.NO;
     @SuppressWarnings("NullAway") // set by setComposition() before the Line is used
     private Composition composition = null;
     private int keys = 0;
@@ -377,6 +375,160 @@ public class Line {
 
         var beforeClone = elements.get(index).clone();
         applyChange(new ElementModification(this, index, fields, beforeClone), mutator);
+    }
+
+    /**
+     * Adjusts syllable relations on the element at {@code prevIndex} when the neighbor
+     * to its right is inserted (blank note) or deleted.
+     *
+     * <p>For insertion ({@code deletedElement} is null): always clears any non-{@code NONE}
+     * relation on the predecessor, since the new blank note breaks the syllable chain.
+     *
+     * <p>For deletion ({@code deletedElement} is the element being removed): clears the
+     * predecessor's relation only in verses where the deleted element does not continue
+     * the chain (i.e., it has {@code NONE} relation or no lyric for that verse).
+     *
+     * <p>Must be called inside a modification bracket.
+     */
+    public void adjustSyllablesForNeighborChange(int prevIndex, @Nullable StaffElement deletedElement) {
+        if (prevIndex < 0 || prevIndex >= elements.size()) {
+            return;
+        }
+
+        var prevElement = elements.get(prevIndex);
+        var lyrics = prevElement.properties.lyrics;
+        var indicesToClear = new ArrayList<Integer>();
+
+        for (var j = 0; j < lyrics.size(); j++) {
+            var lyric = lyrics.get(j);
+
+            if (lyric.relation() == StaffElement.SyllableRelation.NONE) {
+                continue;
+            }
+
+            if (deletedElement == null) {
+                indicesToClear.add(j);
+            } else {
+                var matchingDeletedLyric = deletedElement.properties.lyrics.stream()
+                    .filter(deletedLyric -> deletedLyric.verse() == lyric.verse())
+                    .findFirst()
+                    .orElse(null);
+
+                if (matchingDeletedLyric == null
+                        || matchingDeletedLyric.relation() == StaffElement.SyllableRelation.NONE) {
+                    indicesToClear.add(j);
+                }
+            }
+        }
+
+        if (indicesToClear.isEmpty()) {
+            return;
+        }
+
+        modifyElement(prevIndex, ElementField.LYRIC, () -> {
+            for (var lyricIndex : indicesToClear) {
+                var lyric = lyrics.get(lyricIndex);
+                lyrics.set(lyricIndex,
+                    new Lyric(lyric.verse(), StaffElement.SyllableRelation.NONE, lyric.text(), lyric.extend()));
+            }
+        });
+    }
+
+    /**
+     * Adjusts the melisma extends of neighboring elements when the element at
+     * {@code deletedIndex} is about to be deleted. Must be called inside a modification
+     * bracket while the element is still in the list.
+     *
+     * <ul>
+     *   <li>{@link Lyric.Extend#START} deleted: kills the chain — cascades {@code NONE} to
+     *       all following elements through the {@code STOP}.</li>
+     *   <li>{@link Lyric.Extend#CONTINUE} deleted: chain heals naturally, no adjustment needed.</li>
+     *   <li>{@link Lyric.Extend#STOP} deleted: the immediately preceding {@code CONTINUE} is
+     *       promoted to {@code STOP}; if the preceding element has {@code START} (2-element
+     *       chain), it is cleared to {@code NONE}.</li>
+     * </ul>
+     */
+    public void adjustExtendsForDeletion(int deletedIndex) {
+        if (deletedIndex < 0 || deletedIndex >= effectiveElementCount()) {
+            return;
+        }
+
+        var deletedElement = elements.get(deletedIndex);
+
+        for (var lyric : deletedElement.properties.lyrics) {
+            switch (lyric.extend()) {
+                case START -> cascadeClearExtend(deletedIndex + 1, lyric.verse());
+                case STOP -> adjustPrecedingForStopDeletion(deletedIndex - 1, lyric.verse());
+                default -> { }
+            }
+        }
+    }
+
+    private void cascadeClearExtend(int startIndex, int verse) {
+        for (var i = startIndex; i < effectiveElementCount(); i++) {
+            var element = elements.get(i);
+            var lyricIndex = findLyricIndexForVerse(element, verse);
+
+            if (lyricIndex < 0) {
+                break;
+            }
+
+            var lyric = element.properties.lyrics.get(lyricIndex);
+
+            if (lyric.extend() == Lyric.Extend.NONE) {
+                break;
+            }
+
+            var isStop = lyric.extend() == Lyric.Extend.STOP;
+
+            modifyElement(i, ElementField.LYRIC, () ->
+                element.properties.lyrics.set(lyricIndex,
+                    new Lyric(lyric.verse(), lyric.relation(), lyric.text(), Lyric.Extend.NONE)));
+
+            if (isStop) {
+                break;
+            }
+        }
+    }
+
+    private void adjustPrecedingForStopDeletion(int precedingIndex, int verse) {
+        if (precedingIndex < 0) {
+            return;
+        }
+
+        var precedingElement = elements.get(precedingIndex);
+        var lyricIndex = findLyricIndexForVerse(precedingElement, verse);
+
+        if (lyricIndex < 0) {
+            return;
+        }
+
+        var lyric = precedingElement.properties.lyrics.get(lyricIndex);
+        var existingExtend = lyric.extend();
+
+        if (existingExtend != Lyric.Extend.CONTINUE && existingExtend != Lyric.Extend.START) {
+            return;
+        }
+
+        // CONTINUE → STOP: preceding note becomes the new terminus
+        // START → NONE: 2-note chain collapses (a single note cannot carry a melisma)
+        var newExtend = existingExtend == Lyric.Extend.CONTINUE ? Lyric.Extend.STOP : Lyric.Extend.NONE;
+
+        modifyElement(precedingIndex, ElementField.LYRIC, () ->
+            precedingElement.properties.lyrics.set(lyricIndex,
+                new Lyric(lyric.verse(), lyric.relation(), lyric.text(), newExtend)));
+    }
+
+    private static int findLyricIndexForVerse(StaffElement element, int verse) {
+        var lyrics = element.properties.lyrics;
+
+        for (var i = 0; i < lyrics.size(); i++) {
+            if (lyrics.get(i).verse() == verse) {
+                return i;
+            }
+        }
+
+        return -1;
     }
 
     /** Attaches the composition's initial tempo to the first element of this line if not already set. */

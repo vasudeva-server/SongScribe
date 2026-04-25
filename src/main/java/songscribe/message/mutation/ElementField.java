@@ -39,9 +39,6 @@ public enum ElementField {
     /** The element's trill flag was toggled. Emitted by {@code toggleTrill}. */
     TRILL,
 
-    /** The element's force-syllable flag was toggled. Emitted by {@code toggleLyricsUnderRests}. */
-    FORCE_SYLLABLE,
-
     /** The element's stem direction (upper/lower) was changed. Emitted by {@code flipStemDirection}. */
     UPPER,
 
@@ -76,7 +73,10 @@ public enum ElementField {
     BEAT_CHANGE,
 
     /** The element's annotation was set or cleared. Emitted by {@code AnnotationDialog}. */
-    ANNOTATION;
+    ANNOTATION,
+
+    /** The syllable relation on one or more of the element's lyrics was changed. */
+    LYRIC;
 
     /**
      * Fields that change an element's effective duration. {@code Line.modifyElement} removes any

@@ -167,7 +167,7 @@ public abstract class MetronomeRenderer extends BaseElementRenderer<StaffElement
             xSs += MetronomeAttachment.EQUALS_GAP_SS;
 
             var scale = ScaleContext.getInstance();
-            g2.setFont(scaleFont(attrFont));
+            g2.setFont(scale.scaleFont(attrFont));
             g2.drawString("=", (float) xSs, (float) textBaselineYSs);
 
             double equalsWidthSs = scale.fromPixels(

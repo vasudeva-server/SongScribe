@@ -311,7 +311,6 @@ public class MenuController {
         var menu = new JMenu(Strings.get(Strings.MENU_ADJUSTMENT));
 
         menu.add(new JRadioButtonMenuItem(Actions.ADJUST_MUSIC_MODE_ACTION));
-        menu.add(new JRadioButtonMenuItem(Actions.ADJUST_LYRICS_MODE_ACTION));
         menu.add(new JRadioButtonMenuItem(Actions.ADJUST_VERTICAL_MODE_ACTION));
 
         return menu;
@@ -328,7 +327,6 @@ public class MenuController {
         menu.addSeparator();
 
         menu.add(Actions.COMPOSITION_SETTINGS_ACTION);
-        menu.add(Actions.LYRICS_DIALOG_ACTION);
         return menu;
     }
 

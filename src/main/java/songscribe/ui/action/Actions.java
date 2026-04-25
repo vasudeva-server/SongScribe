@@ -42,7 +42,6 @@ import songscribe.message.MessageCenter;
 import songscribe.message.notification.DocumentDidLoadNotification;
 import songscribe.ui.action.UIAction.AppMenuAction;
 import songscribe.ui.dialog.CompositionSettingsDialog;
-import songscribe.ui.dialog.LyricsDialog;
 
 /**
  * This class serves as a repository for global action-related constants and action groups.
@@ -79,9 +78,6 @@ public final class Actions {
     public static final ModeAction ADJUST_MUSIC_MODE_ACTION =
         ModeAction.createAdjustMusicModeAction();
 
-    public static final ModeAction ADJUST_LYRICS_MODE_ACTION =
-        ModeAction.createAdjustLyricsModeAction();
-
     public static final ModeAction ADJUST_VERTICAL_MODE_ACTION =
         ModeAction.createAdjustVerticalModeAction();
 
@@ -90,7 +86,6 @@ public final class Actions {
             SELECT_MODE_ACTION,
             EDIT_MODE_ACTION,
             ADJUST_MUSIC_MODE_ACTION,
-            ADJUST_LYRICS_MODE_ACTION,
             ADJUST_VERTICAL_MODE_ACTION
         );
 
@@ -246,9 +241,6 @@ public final class Actions {
 
     public static final ToggleTrillAction TOGGLE_TRILL_ACTION = ToggleTrillAction.createAction();
 
-    public static final ToggleLyricsUnderRestsAction TOGGLE_LYRICS_UNDER_RESTS_ACTION =
-        ToggleLyricsUnderRestsAction.createAction();
-
     public static final AddDynamicsAction ADD_CRESCENDO_ACTION =
         AddDynamicsAction.createCrescendoAction();
 
@@ -319,15 +311,6 @@ public final class Actions {
         CompositionSettingsDialog.class,
         Flag.DISABLE_WHEN_PLAYING
     );
-
-    public static final DialogOpenAction<LyricsDialog> LYRICS_DIALOG_ACTION =
-        new DialogOpenAction<>(
-            Strings.get(Strings.ACTION_LYRICS),
-            KeyEvent.VK_L,
-            MENU_SHORTCUT_MASK,
-            LyricsDialog.class,
-            Flag.DISABLE_WHEN_PLAYING
-        );
 
     public static final AboutOpenAction ABOUT_ACTION = new AboutOpenAction();
 

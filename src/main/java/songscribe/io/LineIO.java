@@ -35,6 +35,7 @@ import songscribe.music.TieSpan;
 import songscribe.music.TupletSpan;
 import songscribe.music.KeyType;
 import songscribe.music.Line;
+import songscribe.music.StaffElement;
 import songscribe.ui.layout.Ending;
 
 public final class LineIO {
@@ -142,8 +143,10 @@ public final class LineIO {
 
         pw.println("      <" + XML_NOTES + '>');
 
+        var prevRelation = StaffElement.SyllableRelation.NONE;
+
         for (var i = 0; i < l.elementCount(); i++) {
-            StaffElementIO.writeElement(l.getElement(i), pw);
+            prevRelation = StaffElementIO.writeElement(l.getElement(i), pw, prevRelation);
         }
 
         pw.println("      </" + XML_NOTES + '>');

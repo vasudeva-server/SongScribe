@@ -49,7 +49,6 @@ public record CompositionData(
     int month,
     int day,
     String year,
-    String lyrics,
     String underLyrics,
     String banglaLyrics,
     String translatedLyrics,

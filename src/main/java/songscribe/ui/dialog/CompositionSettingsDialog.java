@@ -224,7 +224,7 @@ public class CompositionSettingsDialog extends StandardDialog {
             var action = new TakeFirstLyricsWordAction();
             var takeButton = new JButton(action);
             action.setEnabled(
-                !getComposition().getLyrics().isEmpty()
+                !getComposition().getLyricsText().isEmpty()
             );
             panel.add(takeButton);
 
@@ -456,7 +456,7 @@ public class CompositionSettingsDialog extends StandardDialog {
 
             @Override
             public void actionPerformed(ActionEvent e) {
-                var lyrics = getComposition().getLyrics();
+                var lyrics = getComposition().getLyricsText();
                 var words = new StringBuilder(50);
                 var wordCount = 0;
                 var firstLetter = false;

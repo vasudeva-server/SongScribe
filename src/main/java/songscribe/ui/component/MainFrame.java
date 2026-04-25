@@ -417,8 +417,6 @@ public class MainFrame extends JFrame implements Printable {
     }
 
     private JSplitPane createCenterContent() {
-        // UI components
-        var lyricsPanel = new LyricsPanel();
         var pane = new JSplitPane(JSplitPane.VERTICAL_SPLIT);
 
         // Since it's a split pane, we want to resize it continuously as the pane is resized
@@ -430,8 +428,6 @@ public class MainFrame extends JFrame implements Printable {
         pane.setDividerSize(0);
         pane.setTopComponent(requireScore().getScoreScrollPane());
 
-        // Lyrics entry is being redesigned; hide the panel for now
-        // pane.setBottomComponent(lyricsPanel.getLyricsModePanel());
         return pane;
     }
 

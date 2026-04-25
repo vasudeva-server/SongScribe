@@ -33,6 +33,7 @@ import songscribe.music.ArticulationType;
 import songscribe.music.BeatChange;
 import songscribe.music.Duration;
 import songscribe.music.ElementType;
+import songscribe.music.Lyric;
 import songscribe.music.StaffElement;
 import songscribe.ui.layout.Articulation;
 import songscribe.ui.layout.DynamicAttachment;
@@ -79,6 +80,14 @@ public final class StaffElementIO {
     // version 2.3
     private static final String XML_DYNAMIC = "dynamic";
 
+    // version 2.6
+    private static final String XML_LYRIC = "lyric";
+    private static final String XML_LYRIC_NUMBER = "number";
+    private static final String XML_SYLLABIC = "syllabic";
+    private static final String XML_LYRIC_TEXT = "text";
+    private static final String XML_EXTEND_TAG = "extend";
+    private static final String XML_COMPOUND_ATTR_VALUE = "compound";
+
     private static final Map<String, StaffElement.Accidental> ACCIDENTAL_MAP =
         new HashMap<>();
 
@@ -99,7 +108,38 @@ public final class StaffElementIO {
     private StaffElementIO() {
     }
 
-    public static void writeElement(StaffElement element, PrintWriter writer) {
+    /**
+     * Parses a MusicXML-style {@code type} attribute on an {@code <extend>} element.
+     * A null or unrecognized value (including the legacy self-closed {@code <extend/>}
+     * written by pre-enum versions) defaults to {@link Lyric.Extend#START}.
+     */
+    private static Lyric.Extend parseExtendType(@Nullable String typeAttr) {
+        if (typeAttr == null) {
+            return Lyric.Extend.START;
+        }
+
+        return switch (typeAttr) {
+            case "stop" -> Lyric.Extend.STOP;
+            case "continue" -> Lyric.Extend.CONTINUE;
+            default -> Lyric.Extend.START;
+        };
+    }
+
+    /** Returns the MusicXML {@code type} attribute string for the given extend state. */
+    private static String extendTypeAttr(Lyric.Extend extend) {
+        return switch (extend) {
+            case START -> "start";
+            case STOP -> "stop";
+            case CONTINUE -> "continue";
+            case NONE -> throw new IllegalArgumentException("NONE has no type attribute");
+        };
+    }
+
+    public static StaffElement.SyllableRelation writeElement(
+        StaffElement element,
+        PrintWriter writer,
+        StaffElement.SyllableRelation prevRelation
+    ) {
         writer.println(
             "          <" +
                 XML_NOTE +
@@ -180,22 +220,6 @@ public final class StaffElementIO {
             XML.writeEmptyTag(writer, XML_UPPER);
         }
 
-        if (element.getSyllableMovement() != 0) {
-            XML.writeValue(
-                writer,
-                XML_SYLLABLE_MOVEMENT,
-                Integer.toString(element.getSyllableMovement())
-            );
-        }
-
-        if (element.getSyllableRelationMovement() != 0) {
-            XML.writeValue(
-                writer,
-                XML_SYLLABLE_RELATION_MOVEMENT,
-                Integer.toString(element.getSyllableRelationMovement())
-            );
-        }
-
         if (element.getTempoChange() != null) {
             TempoIO.writeTempo(element.getTempoChange(), writer, 12);
         }
@@ -221,10 +245,6 @@ public final class StaffElementIO {
             );
         }
 
-        if (element.isForceSyllable()) {
-            XML.writeEmptyTag(writer, XML_FORCE_SYLLABLE);
-        }
-
         var beatChange = element.getBeatChange();
 
         if (beatChange != null) {
@@ -237,7 +257,59 @@ public final class StaffElementIO {
         }
 
 
+        for (var lyric : element.properties.lyrics) {
+            writer.println("            <" + XML_LYRIC + " " + XML_LYRIC_NUMBER + "=\"" + lyric.verse() + "\">");
+
+            // STOP/CONTINUE carriers have no text and only emit the extender marker.
+            if (lyric.extend() == Lyric.Extend.STOP || lyric.extend() == Lyric.Extend.CONTINUE) {
+                writer.println(
+                    "              <" + XML_EXTEND_TAG + " " + XML_TYPE + "=\"" +
+                        extendTypeAttr(lyric.extend()) + "\"/>"
+                );
+                writer.println("            </" + XML_LYRIC + ">");
+                continue;
+            }
+
+            var hasPrev = prevRelation != StaffElement.SyllableRelation.NONE;
+            var hasNext = lyric.relation() != StaffElement.SyllableRelation.NONE;
+            String syllabicValue;
+
+            if (hasPrev && hasNext) {
+                syllabicValue = "middle";
+            } else if (hasPrev) {
+                syllabicValue = "end";
+            } else if (hasNext) {
+                syllabicValue = "begin";
+            } else {
+                syllabicValue = "single";
+            }
+
+            if (lyric.relation() == StaffElement.SyllableRelation.COMPOUND_WORD) {
+                writer.println(
+                    "              <" + XML_SYLLABIC + " " + XML_TYPE + "=\"" +
+                        XML_COMPOUND_ATTR_VALUE + "\">" + syllabicValue + "</" + XML_SYLLABIC + ">"
+                );
+            } else {
+                writer.println("              <" + XML_SYLLABIC + ">" + syllabicValue + "</" + XML_SYLLABIC + ">");
+            }
+
+            writer.println(
+                "              <" + XML_LYRIC_TEXT + ">" +
+                    XML.escapeXML(lyric.text()) + "</" + XML_LYRIC_TEXT + ">"
+            );
+
+            if (lyric.extend() == Lyric.Extend.START) {
+                writer.println(
+                    "              <" + XML_EXTEND_TAG + " " + XML_TYPE + "=\"start\"/>"
+                );
+            }
+
+            writer.println("            </" + XML_LYRIC + ">");
+            prevRelation = lyric.relation();
+        }
+
         writer.println("          </" + XML_NOTE + '>');
+        return prevRelation;
     }
 
     public static class StaffElementReader {
@@ -257,6 +329,13 @@ public final class StaffElementIO {
 
         @Nullable
         private Where where;
+
+        // State for the lyric currently being parsed (valid while where == LYRIC)
+        private int lyricNumber;
+        private String lyricSyllabic = "";
+        private boolean lyricCompound;
+        private String lyricText = "";
+        private Lyric.Extend lyricExtend = Lyric.Extend.NONE;
 
         public boolean startElement10(String qName, Attributes attributes) {
             if (qName.equals(XML_NOTE)) {
@@ -320,7 +399,16 @@ public final class StaffElementIO {
                 annotationReader = new AnnotationIO.AnnotationReader();
                 annotationReader.startElement11(qName);
             } else if (where == Where.ELEMENT) {
-                if (qName.equals(XML_DYNAMIC)) {
+                if (qName.equals(XML_LYRIC)) {
+                    where = Where.LYRIC;
+                    var numberStr = attributes.getValue(XML_LYRIC_NUMBER);
+                    lyricNumber = numberStr != null ? Integer.parseInt(numberStr) : 1;
+                    lyricSyllabic = "";
+                    lyricCompound = false;
+                    lyricText = "";
+                    lyricExtend = Lyric.Extend.NONE;
+                    lastTag = null;
+                } else if (qName.equals(XML_DYNAMIC)) {
                     if (element != null) {
                         var typeStr = attributes.getValue(XML_TYPE);
 
@@ -346,6 +434,15 @@ public final class StaffElementIO {
                         // Legacy text-content format — defer to endElement11
                         lastTag = qName;
                     }
+                } else {
+                    lastTag = qName;
+                }
+            } else if (where == Where.LYRIC) {
+                if (qName.equals(XML_SYLLABIC)) {
+                    lyricCompound = XML_COMPOUND_ATTR_VALUE.equals(attributes.getValue(XML_TYPE));
+                    lastTag = qName;
+                } else if (qName.equals(XML_EXTEND_TAG)) {
+                    lyricExtend = parseExtendType(attributes.getValue(XML_TYPE));
                 } else {
                     lastTag = qName;
                 }
@@ -378,6 +475,34 @@ public final class StaffElementIO {
                 if (a != null) {
                     element.setAnnotation(a);
                     where = Where.ELEMENT;
+                }
+            } else if (where == Where.LYRIC) {
+                if (element == null) return null;
+
+                if (qName.equals(XML_LYRIC)) {
+                    // STOP/CONTINUE carriers have no syllabic/text; force relation to NONE.
+                    var isCarrier = lyricExtend == Lyric.Extend.STOP
+                        || lyricExtend == Lyric.Extend.CONTINUE;
+                    var relation = isCarrier
+                        ? StaffElement.SyllableRelation.NONE
+                        : switch (lyricSyllabic) {
+                            case "single", "end" -> StaffElement.SyllableRelation.NONE;
+                            default -> lyricCompound
+                                ? StaffElement.SyllableRelation.COMPOUND_WORD
+                                : StaffElement.SyllableRelation.SYLLABLE;
+                        };
+                    element.properties.lyrics.add(
+                        new Lyric(lyricNumber, relation, lyricText, lyricExtend)
+                    );
+                    where = Where.ELEMENT;
+                } else if (lastTag != null && qName.equals(lastTag)) {
+                    var str = value.toString();
+
+                    if (lastTag.equals(XML_SYLLABIC)) {
+                        lyricSyllabic = str;
+                    } else if (lastTag.equals(XML_LYRIC_TEXT)) {
+                        lyricText = str;
+                    }
                 }
             } else if (where == Where.ELEMENT) {
                 if (element == null) return null;
@@ -444,16 +569,14 @@ public final class StaffElementIO {
                         }
                     } else if (lastTag.equals(XML_UPPER)) {
                         element.setUpper(true);
-                    } else if (lastTag.equals(XML_SYLLABLE_MOVEMENT)) {
-                        element.setSyllableMovement(Integer.parseInt(str));
-                    } else if (lastTag.equals(XML_SYLLABLE_RELATION_MOVEMENT)) {
-                        element.setSyllableRelationMovement(Integer.parseInt(str));
+                    } else if (lastTag.equals(XML_SYLLABLE_MOVEMENT)
+                        || lastTag.equals(XML_SYLLABLE_RELATION_MOVEMENT)
+                        || lastTag.equals(XML_FORCE_SYLLABLE)) {
+                        // Obsolete per-element nudge fields — silently discarded.
                     } else if (lastTag.equals(XML_TRILL)) {
                         element.setTrill(true);
                     } else if (lastTag.equals(XML_FERMATA)) {
                         element.setFermata(true);
-                    } else if (lastTag.equals(XML_FORCE_SYLLABLE)) {
-                        element.setForceSyllable(true);
                     } else if (lastTag.equals(XML_STEM_DIRECTION_AUTO)) {
                         element.setStemDirectionAuto(false);
                     } else if (
@@ -476,7 +599,8 @@ public final class StaffElementIO {
                 if (tempoReader != null) tempoReader.characters(ch, start, lenght);
             } else if (where == Where.ANNOTATION) {
                 if (annotationReader != null) annotationReader.characters(ch, start, lenght);
-            } else if ((where == Where.ELEMENT) && (lastTag != null)) {
+            } else if (lastTag != null &&
+                (where == Where.ELEMENT || where == Where.LYRIC)) {
                 value.append(ch, start, lenght);
             }
         }
@@ -485,6 +609,7 @@ public final class StaffElementIO {
             ELEMENT,
             TEMPO_CHANGE,
             ANNOTATION,
+            LYRIC,
         }
     }
 }

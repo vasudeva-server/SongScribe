@@ -141,7 +141,9 @@ class StaffElementIOTest extends UnitTest {
 
     private static String writeNote(songscribe.music.StaffElement note) {
         var sw = new StringWriter();
-        StaffElementIO.writeElement(note, new PrintWriter(sw));
+        StaffElementIO.writeElement(
+            note, new PrintWriter(sw), songscribe.music.StaffElement.SyllableRelation.NONE
+        );
         return sw.toString();
     }
 

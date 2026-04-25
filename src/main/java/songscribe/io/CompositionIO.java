@@ -45,7 +45,12 @@ import songscribe.util.Utils;
 public final class CompositionIO {
 
     public static final int IO_MAJOR_VERSION = 2;
-    public static final int IO_MINOR_VERSION = 5;
+    public static final int IO_MINOR_VERSION = 6;
+
+    // Minor version at which per-note <lyric> serialization was introduced.
+    // Files saved before this version carry a legacy <lyrics> blob that must
+    // be imported by LegacyLyricsImporter instead.
+    private static final int PER_NOTE_LYRIC_VERSION = 6;
 
     // version 1.0
     private static final String XML_COMPOSITION = "composition";
@@ -132,10 +137,6 @@ public final class CompositionIO {
 
         if (c.getDay() > 0) {
             XML.writeValue(pw, XML_DAY, Integer.toString(c.getDay()));
-        }
-
-        if (!c.getLyrics().isEmpty()) {
-            XML.writeValue(pw, XML_LYRICS, c.getLyrics());
         }
 
         if (!c.getUnderLyrics().isEmpty()) {
@@ -281,8 +282,8 @@ public final class CompositionIO {
                             tempoReader = new TempoIO.TempoReader();
                         } else if (
                             (majorVersion == 1 && minorVersion >= 1) ||
-                            // Hard-coded max so future IO_MINOR_VERSION bumps fail loudly here until the reader is updated.
-                            (majorVersion == 2 && minorVersion <= 5)
+                            // Hard-coded to IO_MINOR_VERSION; bump when the reader is updated.
+                            (majorVersion == 2 && minorVersion <= 6)
                         ) {
                             lineReader = new LineIO.LineReader();
                             viewReader = new ViewIO.ViewReader();
@@ -622,7 +623,6 @@ public final class CompositionIO {
                 month,
                 day,
                 year,
-                lyrics,
                 underLyrics,
                 banglaLyrics,
                 translatedLyrics,
@@ -646,7 +646,17 @@ public final class CompositionIO {
 
             // Use the loading constructor to avoid the wasted work of the
             // no-arg constructor (default line, attributionStartY calculation).
-            return new Composition(data);
+            var composition = new Composition(data);
+
+            // Populate per-note Lyric records from the captured legacy `<lyrics>` blob.
+            // Only fires for files saved before per-note <lyric> serialization was
+            // introduced; new-format files carry per-note data directly on each element.
+            if (!lyrics.isBlank() &&
+                (majorVersion < 2 || (majorVersion == 2 && minorVersion < PER_NOTE_LYRIC_VERSION))) {
+                LegacyLyricsImporter.importLegacyLyrics(composition.getLines(), lyrics);
+            }
+
+            return composition;
         }
 
         private static Font defaultFontFromPrefs(songscribe.prefs.PrefsKey nameKey, songscribe.prefs.PrefsKey sizeKey) {

@@ -293,23 +293,6 @@ class CompositionSetterMutationTest extends UnitTest {
     class LyricsSetters {
 
         @Test
-        void testSetLyricsPostsMutation() {
-            var oldLyrics = composition.getLyrics();
-            composition.setLyrics("la-la-la");
-
-            var mutation = captureSingleLyricsChange();
-            assertThat(mutation.field()).isEqualTo(LyricsField.MAIN);
-            assertThat(mutation.oldText()).isEqualTo(oldLyrics);
-            assertThat(mutation.newText()).isEqualTo("la-la-la");
-        }
-
-        @Test
-        void testSetLyricsSameValuePostsNothing() {
-            composition.setLyrics(composition.getLyrics());
-            verifyNoNotificationPosted();
-        }
-
-        @Test
         void testSetUnderLyricsPostsMutation() {
             var oldLyrics = composition.getUnderLyrics();
             composition.setUnderLyrics("under text");

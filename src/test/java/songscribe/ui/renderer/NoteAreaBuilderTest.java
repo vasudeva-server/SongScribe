@@ -42,9 +42,7 @@ class NoteAreaBuilderTest extends UnitTest {
     void testAreaCacheRebuildsWhenAccidentalChanges() {
         var note = ElementType.CROTCHET.newInstance();
         note.setUpper(true);
-        NoteRenderer.initializeAccidentalWidths(
-            new java.awt.image.BufferedImage(1, 1, java.awt.image.BufferedImage.TYPE_INT_ARGB)
-                .createGraphics());
+        NoteRenderer.initializeAccidentalWidths();
 
         var entry1 = BUILDER.getOrBuildArea(note, false);
         note.setAccidental(StaffElement.Accidental.SHARP);
@@ -177,9 +175,7 @@ class NoteAreaBuilderTest extends UnitTest {
         noteWithAcc.setUpper(true);
         noteWithAcc.setAccidental(StaffElement.Accidental.SHARP);
         // Accidental widths must be initialized before use
-        NoteRenderer.initializeAccidentalWidths(
-            new java.awt.image.BufferedImage(1, 1, java.awt.image.BufferedImage.TYPE_INT_ARGB)
-                .createGraphics());
+        NoteRenderer.initializeAccidentalWidths();
         var areaWithAcc = BUILDER.buildNoteArea(noteWithAcc, false);
 
         assertThat(areaWithAcc.getBounds2D().getMinX())

@@ -46,6 +46,10 @@ public class StackingContext {
     private final LayoutResult.Builder builder;
     private Set<StaffElement> notesWithUpwardTie = Set.of();
     private double lowestNoteBotSs = LayoutStylesheet.STAFF_HEIGHT_SS;
+    // True extent of staff-element content below the staff. Defaults to staff bottom
+    // (STAFF_HALF_SS in middle-relative coordinates) so an empty line contributes 0
+    // below-staff content. Used for lyric positioning.
+    private double botContentExtentSs = LayoutStylesheet.STAFF_HALF_SS;
 
     public StackingContext(
             List<ElementColumn> columns,
@@ -91,6 +95,20 @@ public class StackingContext {
     public void updateLowestNoteBotSs(double botSs) {
         if (botSs > lowestNoteBotSs) {
             lowestNoteBotSs = botSs;
+        }
+    }
+
+    public double getBotContentExtentSs() {
+        return botContentExtentSs;
+    }
+
+    /**
+     * Updates the below-staff content extent if the given value is further below the staff.
+     * Tracks the lowest visible Y across notes, stems, and downward-arcing ties.
+     */
+    public void updateBotContentExtentSs(double botSs) {
+        if (botSs > botContentExtentSs) {
+            botContentExtentSs = botSs;
         }
     }
 

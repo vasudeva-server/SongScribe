@@ -68,7 +68,7 @@ public class AnnotationRenderer extends BaseElementRenderer<StaffElement> {
         }
 
         try (var ignored = GraphicsState.save(g2, FONT, COLOR)) {
-            g2.setFont(scaleFont(ctx.getComposition().getAnnotationFont()));
+            g2.setFont(ScaleContext.getInstance().scaleFont(ctx.getComposition().getAnnotationFont()));
             applyDecorationColor(g2, element, ctx);
 
             var metrics = ctx.getComposition().getAnnotationFontMetrics();

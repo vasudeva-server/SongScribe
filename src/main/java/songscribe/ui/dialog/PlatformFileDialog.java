@@ -95,7 +95,7 @@ public class PlatformFileDialog {
         }
 
         chooser.setAcceptAllFileFilterUsed(false);
-        chooser.setFileFilter(convertedFilters[initialFilterIndex]);
+        chooser.setFileFilter(convertedFilters[Math.clamp(initialFilterIndex, 0, convertedFilters.length - 1)]);
     }
 
     private PlatformFileDialog(

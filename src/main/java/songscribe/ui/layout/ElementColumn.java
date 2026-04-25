@@ -52,6 +52,10 @@ public final class ElementColumn {
     private final @Nullable String syllable;
     private final double syllableWidthSs;
     private final boolean beamed;
+    // Minimum required gap between this column's syllable right edge and the next
+    // column's syllable left edge. Set by ElementColumnBuilder: two-space width for
+    // non-hyphenated syllables, hyphen width for hyphenated ones.
+    private double minGapToNextSyllableSs = LyricRenderMetrics.MIN_SYLLABLE_GAP_SS;
     // Computed X position of element head left edge (set by HorizontalSpacingCalculator)
     private double xSs = 0;
 
@@ -227,6 +231,19 @@ public final class ElementColumn {
      */
     public double getSyllableWidthSs() {
         return syllableWidthSs;
+    }
+
+    /**
+     * Returns the minimum required gap between this column's syllable right edge and
+     * the next column's syllable left edge. Equals two space-character widths for
+     * non-hyphenated syllables; equals the hyphen-glyph width for hyphenated ones.
+     */
+    public double getMinGapToNextSyllableSs() {
+        return minGapToNextSyllableSs;
+    }
+
+    void setMinGapToNextSyllableSs(double minGapToNextSyllableSs) {
+        this.minGapToNextSyllableSs = minGapToNextSyllableSs;
     }
 
     // ==========================================================================

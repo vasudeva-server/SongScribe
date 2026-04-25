@@ -22,6 +22,8 @@ package songscribe.ui.layout;
 
 import module java.desktop;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -68,7 +70,11 @@ public final class LayoutResult {
     private final KeySignature keySignature;
     private final double lineHeightSs;
     private final double aboveStaffSs;
-    private final double lyricBaselineYSs;
+    private final double belowContentSs;
+    private final Map<StaffElement, List<LyricBoxLayout>> lyricBoxes;
+    private final List<LyricConnectorLayout> lyricConnectors;
+    private final int verseCount;
+    private final boolean hasTrailingLyricContinuation;
 
     /**
      * Creates a layout result with the given data.
@@ -83,7 +89,8 @@ public final class LayoutResult {
      * @param lineHeightSs       Total height of the line in staff spaces (including staff, elements, and lyrics)
      * @param aboveStaffSs       Staff-space amount reserved above the staff top, i.e. the staff top's
      *                           Y position within the line's local coordinate frame
-     * @param lyricBaselineYSs   Y position of the lyric baseline in staff spaces (0 if no lyrics)
+     * @param belowContentSs     Actual extent of staff-element content below the staff bottom, in staff spaces;
+     *                           the anchor for placing lyrics, distinct from the layout reservation
      */
     private LayoutResult(
         Map<StaffElement, ElementColumn> elementColumns,
@@ -97,7 +104,11 @@ public final class LayoutResult {
         @Nullable KeySignature keySignature,
         double lineHeightSs,
         double aboveStaffSs,
-        double lyricBaselineYSs) {
+        double belowContentSs,
+        Map<StaffElement, List<LyricBoxLayout>> lyricBoxes,
+        List<LyricConnectorLayout> lyricConnectors,
+        int verseCount,
+        boolean hasTrailingLyricContinuation) {
         this.elementColumns = Map.copyOf(elementColumns);
         this.elementBounds = Map.copyOf(elementBounds);
         this.beamLayouts = Map.copyOf(beamLayouts);
@@ -109,7 +120,17 @@ public final class LayoutResult {
         this.keySignature = keySignature;
         this.lineHeightSs = lineHeightSs;
         this.aboveStaffSs = aboveStaffSs;
-        this.lyricBaselineYSs = lyricBaselineYSs;
+        this.belowContentSs = belowContentSs;
+        var copiedBoxes = new HashMap<StaffElement, List<LyricBoxLayout>>(lyricBoxes.size() * 2);
+
+        for (var entry : lyricBoxes.entrySet()) {
+            copiedBoxes.put(entry.getKey(), List.copyOf(entry.getValue()));
+        }
+
+        this.lyricBoxes = Collections.unmodifiableMap(copiedBoxes);
+        this.lyricConnectors = List.copyOf(lyricConnectors);
+        this.verseCount = verseCount;
+        this.hasTrailingLyricContinuation = hasTrailingLyricContinuation;
     }
 
     // ==========================================================================
@@ -554,19 +575,68 @@ public final class LayoutResult {
     }
 
     /**
-     * Returns the Y position of the lyric baseline, in staff spaces.
-     *
-     * @return Lyric baseline Y in staff spaces, or 0 if no lyrics on this line
+     * Returns the actual extent of staff-element content below the staff bottom, in staff spaces.
+     * <p>
+     * This is the lyric-positioning anchor: the maximum distance below the staff bottom that
+     * any staff element (notehead, stem, decoration) reaches on this line. Distinct from the
+     * layout reservation embedded in {@link #getLineHeightSs()}, which floors at
+     * {@link LayoutStylesheet#MIN_BELOW_STAFF_SS} for ledger-line capacity.
      */
-    public double getLyricBaselineYSs() {
-        return lyricBaselineYSs;
+    public double getBelowContentSs() {
+        return belowContentSs;
     }
 
     /**
-     * Returns whether this line has lyrics.
+     * Returns the below-staff reservation embedded in this line's height, in staff spaces.
+     * <p>
+     * Equals {@code lineHeightSs - aboveStaffSs - STAFF_HEIGHT_SS}: the part of the line that
+     * sits below the staff bottom including the {@link LayoutStylesheet#MIN_BELOW_STAFF_SS}
+     * floor and the inter-line margin. Use {@link #getBelowContentSs()} when you need the
+     * actual content extent without the floor or margin.
      */
-    public boolean hasLyrics() {
-        return lyricBaselineYSs > 0;
+    public double getBelowStaffReservationSs() {
+        return lineHeightSs - aboveStaffSs - LayoutStylesheet.STAFF_HEIGHT_SS;
+    }
+
+    // ==========================================================================
+    // Lyric Layout
+    // ==========================================================================
+
+    /**
+     * Returns the lyric boxes for an element, one per verse, in verse order.
+     *
+     * @param element the element to look up
+     * @return immutable list of lyric boxes; empty if the element has no lyrics
+     */
+    public List<LyricBoxLayout> getLyricBoxes(StaffElement element) {
+        var boxes = lyricBoxes.get(element);
+        return boxes != null ? boxes : List.of();
+    }
+
+    /**
+     * Returns all lyric connectors (hyphens, melisma extenders) on this line.
+     *
+     * @return immutable list of connectors in the order they were emitted
+     */
+    public List<LyricConnectorLayout> getLyricConnectors() {
+        return lyricConnectors;
+    }
+
+    /**
+     * Returns the highest verse index present on this line, or 0 if no lyrics.
+     */
+    public int verseCount() {
+        return verseCount;
+    }
+
+    /**
+     * Returns true when at least one melisma extender on this line spans past the last
+     * note and continues onto the following line. Layout passes that build the next line
+     * use this to know whether to emit a leading-stub extender from the line's left edge
+     * to its first lyric-bearing element.
+     */
+    public boolean hasTrailingLyricContinuation() {
+        return hasTrailingLyricContinuation;
     }
 
     /**
@@ -858,7 +928,11 @@ public final class LayoutResult {
         private KeySignature keySignature;
         private double lineHeightSs = 0;
         private double aboveStaffSs = 0;
-        private double lyricBaselineYSs = 0;
+        private double belowContentSs = 0;
+        private final Map<StaffElement, List<LyricBoxLayout>> lyricBoxes;
+        private final List<LyricConnectorLayout> lyricConnectors;
+        private int verseCount = 0;
+        private boolean hasTrailingLyricContinuation = false;
 
         public Builder() {
             this.elementColumns = new HashMap<>();
@@ -868,6 +942,8 @@ public final class LayoutResult {
             this.tieLayouts = new HashMap<>();
             this.decorationLayouts = new HashMap<>();
             this.spanLayouts = new HashMap<>();
+            this.lyricBoxes = new HashMap<>();
+            this.lyricConnectors = new ArrayList<>();
         }
 
         /**
@@ -940,13 +1016,60 @@ public final class LayoutResult {
         }
 
         /**
-         * Sets the lyric baseline Y position.
+         * Sets the actual extent of staff-element content below the staff bottom.
          *
-         * @param lyricBaselineYSs Y position in staff spaces (0 if no lyrics)
+         * @param belowContentSs Distance below the staff bottom in staff-space units
          * @return This builder for chaining
          */
-        public Builder setLyricBaselineYSs(double lyricBaselineYSs) {
-            this.lyricBaselineYSs = lyricBaselineYSs;
+        public Builder setBelowContentSs(double belowContentSs) {
+            this.belowContentSs = belowContentSs;
+            return this;
+        }
+
+        /**
+         * Adds a lyric box for an element. Multiple boxes per element are allowed (one per verse);
+         * insertion order is preserved.
+         *
+         * @param element the element the box is anchored to
+         * @param box     the lyric box layout
+         * @return this builder for chaining
+         */
+        public Builder addLyricBox(StaffElement element, LyricBoxLayout box) {
+            lyricBoxes.computeIfAbsent(element, e -> new ArrayList<>()).add(box);
+            return this;
+        }
+
+        /**
+         * Adds a lyric connector (hyphen or extender) to the line.
+         *
+         * @param connector the connector layout
+         * @return this builder for chaining
+         */
+        public Builder addLyricConnector(LyricConnectorLayout connector) {
+            lyricConnectors.add(connector);
+            return this;
+        }
+
+        /**
+         * Sets the highest verse index present on this line.
+         *
+         * @param verseCount the verse count (0 if no lyrics)
+         * @return this builder for chaining
+         */
+        public Builder setVerseCount(int verseCount) {
+            this.verseCount = verseCount;
+            return this;
+        }
+
+        /**
+         * Marks whether this line ends with an active melisma extender that continues onto
+         * the next line.
+         *
+         * @param hasTrailingLyricContinuation true if continuation continues past the last note
+         * @return this builder for chaining
+         */
+        public Builder setHasTrailingLyricContinuation(boolean hasTrailingLyricContinuation) {
+            this.hasTrailingLyricContinuation = hasTrailingLyricContinuation;
             return this;
         }
 
@@ -1085,7 +1208,11 @@ public final class LayoutResult {
                 keySignature,
                 lineHeightSs,
                 aboveStaffSs,
-                lyricBaselineYSs
+                belowContentSs,
+                lyricBoxes,
+                lyricConnectors,
+                verseCount,
+                hasTrailingLyricContinuation
             );
         }
     }
@@ -1102,14 +1229,13 @@ public final class LayoutResult {
     @Override
     public String toString() {
         return String.format(
-            "LayoutResult{columns=%d, elements=%d, decorations=%d, spans=%d, height=%.1f, aboveStaff=%.1f, lyrics=%.1f}",
+            "LayoutResult{columns=%d, elements=%d, decorations=%d, spans=%d, height=%.1f, aboveStaff=%.1f}",
             elementColumns.size(),
             elementBounds.size(),
             decorationLayouts.size(),
             spanLayouts.size(),
             lineHeightSs,
-            aboveStaffSs,
-            lyricBaselineYSs
+            aboveStaffSs
         );
     }
 

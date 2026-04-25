@@ -643,7 +643,7 @@ public class NoteRenderer extends BaseElementRenderer<StaffElement> {
      * Initializes the cached accidental widths from SMuFL metadata advance widths.
      * This must be called once before using getAccidentalWidthSs() or getAccidentalComponentWidthSs().
      */
-    public static void initializeAccidentalWidths(Graphics2D g2) {
+    public static void initializeAccidentalWidths() {
         if (baseAccidentalWidthsSs != null) {
             return;
         }

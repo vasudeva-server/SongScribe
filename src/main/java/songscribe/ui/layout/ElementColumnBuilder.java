@@ -49,7 +49,7 @@ import songscribe.ui.renderer.NoteRenderer;
  * <p>
  * Usage:
  * <pre>{@code
- * var builder = new ElementColumnBuilder(lyricsFont);
+ * var builder = new ElementColumnBuilder(lyricRenderMetrics);
  * List<ElementColumn> columns = builder.buildColumns(line);
  * }</pre>
  */
@@ -64,15 +64,15 @@ public class ElementColumnBuilder {
     // Half note head width (for left/right extent calculation) (ss)
     static final double HALF_NOTE_HEAD_SS = Engraving.NOTE_HEAD_WIDTH_SS / 2.0;
 
-    private final Font lyricsFont;
+    private final LyricRenderMetrics lyricRenderMetrics;
 
     /**
      * Creates a new ElementColumnBuilder.
      *
-     * @param lyricsFont Font used for lyrics (for measuring syllable widths)
+     * @param lyricRenderMetrics Composition-wide lyric render metrics (font + glyph widths)
      */
-    public ElementColumnBuilder(Font lyricsFont) {
-        this.lyricsFont = lyricsFont;
+    public ElementColumnBuilder(LyricRenderMetrics lyricRenderMetrics) {
+        this.lyricRenderMetrics = lyricRenderMetrics;
     }
 
     /**
@@ -126,7 +126,7 @@ public class ElementColumnBuilder {
         // Get grace notes (currently not implemented in data model)
         List<StaffElement> graceNotes = getGraceNotes(element);
 
-        return new ElementColumn(
+        var column = new ElementColumn(
             element,
             graceNotes,
             leftExtentSs,
@@ -137,6 +137,17 @@ public class ElementColumnBuilder {
             syllableWidthSs,
             beamed
         );
+
+        var mainLyric = element.getMainLyric();
+
+        if (mainLyric != null) {
+            var isHyphenated = mainLyric.relation() != StaffElement.SyllableRelation.NONE;
+            column.setMinGapToNextSyllableSs(isHyphenated
+                ? lyricRenderMetrics.preferredHyphenCellWidthSs()
+                : lyricRenderMetrics.spaceWidthSs());
+        }
+
+        return column;
     }
 
     // ==========================================================================
@@ -289,7 +300,8 @@ public class ElementColumnBuilder {
      * @return Syllable text, or null if none
      */
     private @Nullable String getSyllable(StaffElement element) {
-        return element.properties.syllable;
+        var lyric = element.getMainLyric();
+        return lyric != null ? lyric.text() : null;
     }
 
     private double measureSyllableWidthSs(@Nullable String syllable) {
@@ -297,7 +309,7 @@ public class ElementColumnBuilder {
             return 0;
         }
 
-        return ScaleContext.getInstance().textWidthSs(lyricsFont, syllable);
+        return ScaleContext.getInstance().textWidthSs(lyricRenderMetrics.lyricsFont(), syllable);
     }
 
     // ==========================================================================

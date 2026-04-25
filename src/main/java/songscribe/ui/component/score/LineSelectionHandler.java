@@ -286,8 +286,7 @@ class LineSelectionHandler {
 
         var mode = score.getMode();
 
-        if (mode == Mode.ADJUSTMENT || mode == Mode.VERTICAL_ADJUSTMENT
-            || mode == Mode.LYRICS_ADJUSTMENT) {
+        if (mode == Mode.ADJUSTMENT || mode == Mode.VERTICAL_ADJUSTMENT) {
             return false;
         }
 

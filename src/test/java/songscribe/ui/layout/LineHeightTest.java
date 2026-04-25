@@ -56,7 +56,13 @@ class LineHeightTest extends UnitTest {
         + LayoutStylesheet.INTER_LINE_MARGIN_SS;
 
     private static LayoutEngine engine() {
-        return new LayoutEngine(new Font("Dialog", Font.PLAIN, 12), STAFF_RIGHT_MARGIN_SS);
+        var lyricsFont = new Font("Dialog", Font.PLAIN, 12);
+        var scale = ScaleContext.getInstance();
+        var hyphenWidthSs = scale.textWidthSs(lyricsFont, "-");
+        var spaceWidthSs = scale.textWidthSs(lyricsFont, " ");
+        var metrics = new LyricRenderMetrics(
+            lyricsFont, scale.scaleFont(lyricsFont), hyphenWidthSs, spaceWidthSs);
+        return new LayoutEngine(metrics, STAFF_RIGHT_MARGIN_SS);
     }
 
     @SuppressWarnings("NullAway")
