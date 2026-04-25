@@ -34,15 +34,15 @@ public class InsertLineAction extends UIAction {
     private final int shift;
 
     public static InsertLineAction createAddLineAction() {
-        return new InsertLineAction(Strings.get(Strings.MENU_COMPOSITION_LINE_AT_END), ADD);
+        return new InsertLineAction(Strings.get(Strings.MENU_SONG_LINE_AT_END), ADD);
     }
 
     public static InsertLineAction createInsertLineBeforeAction() {
-        return new InsertLineAction(Strings.get(Strings.MENU_COMPOSITION_LINE_BEFORE), 0);
+        return new InsertLineAction(Strings.get(Strings.MENU_SONG_LINE_BEFORE), 0);
     }
 
     public static InsertLineAction createInsertLineAfterAction() {
-        return new InsertLineAction(Strings.get(Strings.MENU_COMPOSITION_LINE_AFTER), 1);
+        return new InsertLineAction(Strings.get(Strings.MENU_SONG_LINE_AFTER), 1);
     }
 
     private InsertLineAction(String name, int shift) {

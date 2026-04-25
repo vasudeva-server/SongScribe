@@ -39,7 +39,7 @@ import org.jspecify.annotations.Nullable;
 
 import songscribe.UnitTest;
 import songscribe.message.MessageCenter;
-import songscribe.music.Composition;
+import songscribe.music.Song;
 import songscribe.music.ElementType;
 import songscribe.music.Line;
 import songscribe.music.StaffElement;
@@ -77,15 +77,15 @@ class PreviewElementManagerTupletTest extends UnitTest {
     private EditModeManager editModeManager;
 
     // Real objects
-    private Composition composition;
+    private Song song;
     private Line line;
 
     @BeforeEach
     void setUp() throws Exception {
         // Construct before mocking MessageCenter so constructor subscriptions
         // reach the real bus.
-        composition = new Composition();
-        line = composition.getLine(0);
+        song = new Song();
+        line = song.getLine(0);
 
         messageCenterMock = mockStatic(MessageCenter.class);
         editModeMgrMock = mockStatic(EditModeManager.class);
@@ -139,7 +139,7 @@ class PreviewElementManagerTupletTest extends UnitTest {
     }
 
     private void addNotes(int count, ElementType type) {
-        composition.withoutMutationTracking(() -> {
+        song.withoutMutationTracking(() -> {
             for (int i = 0; i < count; i++) {
                 line.addElement(type.newInstance());
             }

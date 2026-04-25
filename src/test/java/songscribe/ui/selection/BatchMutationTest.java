@@ -36,7 +36,7 @@ import songscribe.UnitTest;
 import songscribe.music.BeamSpan;
 import songscribe.music.TieSpan;
 import songscribe.music.TupletSpan;
-import songscribe.music.Composition;
+import songscribe.music.Song;
 import songscribe.music.ElementType;
 import songscribe.music.Line;
 import songscribe.music.StaffElement;
@@ -56,7 +56,7 @@ class BatchMutationTest extends UnitTest {
         ElementTypeAction.createQuarterNoteAction();
 
     /**
-     * Creates a coordinator with a composition mock on the line. The mock is
+     * Creates a coordinator with a song mock on the line. The mock is
      * stubbed so {@code withModification} runs its runnable and {@code applyChange}
      * runs its mutator; {@code isModifying} returns true so {@code Line.applyChange}
      * accepts mutations as if a real bracket were open.
@@ -67,24 +67,24 @@ class BatchMutationTest extends UnitTest {
     ) {
         var coordinator = ReflectionTestHelper.createCoordinator(notes, actions);
         var line = Objects.requireNonNull(coordinator.getActiveSelection()).getLine();
-        line.setComposition(createCompositionMock());
+        line.setSong(createSongMock());
         return coordinator;
     }
 
-    private static Composition createCompositionMock() {
-        var compositionMock = mock(Composition.class);
-        when(compositionMock.isModifying()).thenReturn(true);
+    private static Song createSongMock() {
+        var songMock = mock(Song.class);
+        when(songMock.isModifying()).thenReturn(true);
         doAnswer(inv -> {
             Runnable runnable = inv.getArgument(0);
             runnable.run();
             return null;
-        }).when(compositionMock).withModification(any());
+        }).when(songMock).withModification(any());
         doAnswer(inv -> {
             Runnable mutator = inv.getArgument(1);
             mutator.run();
             return null;
-        }).when(compositionMock).applyChange(any(), any());
-        return compositionMock;
+        }).when(songMock).applyChange(any(), any());
+        return songMock;
     }
 
     private Line getLine(SelectionCoordinator coordinator) {
@@ -232,18 +232,18 @@ class BatchMutationTest extends UnitTest {
         assertThat(line.getBeamings().isEmpty()).isTrue();
     }
 
-    // -- Composition mutation bracket is opened --
+    // -- Song mutation bracket is opened --
 
     @Test
-    void testCompositionBracketOpened() {
+    void testSongBracketOpened() {
         var notes = List.of(ElementType.CROTCHET.newInstance());
         var coordinator = createCoordinator(notes, List.of(FERMATA_ACTION));
         ReflectionTestHelper.selectNote(coordinator, 0);
 
         coordinator.applyActionToSelection(FERMATA_ACTION, true);
 
-        var composition = getLine(coordinator).getComposition();
-        verify(composition).withModification(any());
+        var song = getLine(coordinator).getSong();
+        verify(song).withModification(any());
     }
 
     // -- Duration change replaces notes --

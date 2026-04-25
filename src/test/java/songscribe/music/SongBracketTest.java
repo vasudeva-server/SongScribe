@@ -25,8 +25,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.times;
 
-import java.util.List;
-
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -39,18 +37,18 @@ import songscribe.message.Message;
 import songscribe.message.MessageCenter;
 import songscribe.message.mutation.MetadataChange;
 import songscribe.message.mutation.MetadataField;
-import songscribe.message.notification.CompositionDidChangeNotification;
+import songscribe.message.notification.SongDidChangeNotification;
 
-class CompositionBracketTest extends UnitTest {
+class SongBracketTest extends UnitTest {
 
-    private Composition composition;
+    private Song song;
     private MockedStatic<MessageCenter> messageCenterMock;
 
     @BeforeEach
     void setUp() {
         // Construct before mocking so the constructor's bus interactions
         // go to the real (unobserved) bus, not the mock.
-        composition = new Composition();
+        song = new Song();
         messageCenterMock = mockStatic(MessageCenter.class);
     }
 
@@ -64,7 +62,7 @@ class CompositionBracketTest extends UnitTest {
         var mutation = new MetadataChange(MetadataField.TITLE, "old", "new");
         var ranInTryBlock = new boolean[]{false};
 
-        assertThatThrownBy(() -> composition.applyChange(mutation, () -> ranInTryBlock[0] = true))
+        assertThatThrownBy(() -> song.applyChange(mutation, () -> ranInTryBlock[0] = true))
             .isInstanceOf(IllegalStateException.class);
 
         assertThat(ranInTryBlock[0])
@@ -78,7 +76,7 @@ class CompositionBracketTest extends UnitTest {
         var mutation = new MetadataChange(MetadataField.TITLE, "old", "new");
         var mutatorRan = new boolean[]{false};
 
-        composition.withModification(() -> composition.applyChange(mutation, () -> mutatorRan[0] = true));
+        song.withModification(() -> song.applyChange(mutation, () -> mutatorRan[0] = true));
 
         assertThat(mutatorRan[0]).isTrue();
         var notification = captureSingleDidChange();
@@ -94,11 +92,11 @@ class CompositionBracketTest extends UnitTest {
             var inner1 = new MetadataChange(MetadataField.PLACE, "c", "d");
             var inner2 = new MetadataChange(MetadataField.YEAR, "e", "f");
 
-            composition.withModification(() -> {
-                composition.applyChange(outer, () -> {});
-                composition.withModification(() -> {
-                    composition.applyChange(inner1, () -> {});
-                    composition.applyChange(inner2, () -> {});
+            song.withModification(() -> {
+                song.applyChange(outer, () -> {});
+                song.withModification(() -> {
+                    song.applyChange(inner1, () -> {});
+                    song.applyChange(inner2, () -> {});
                 });
             });
 
@@ -111,12 +109,12 @@ class CompositionBracketTest extends UnitTest {
             var first = new MetadataChange(MetadataField.TITLE, "a", "b");
             var second = new MetadataChange(MetadataField.YEAR, "c", "d");
 
-            composition.beginModification();
-            composition.beginModification();
-            composition.applyChange(first, () -> {});
-            composition.endModification();
-            composition.applyChange(second, () -> {});
-            composition.endModification();
+            song.beginModification();
+            song.beginModification();
+            song.applyChange(first, () -> {});
+            song.endModification();
+            song.applyChange(second, () -> {});
+            song.endModification();
 
             var notification = captureSingleDidChange();
             assertThat(notification.getMutations()).containsExactly(first, second);
@@ -130,7 +128,7 @@ class CompositionBracketTest extends UnitTest {
         void testEndModificationRunsEvenWhenBodyThrows() {
             var thrown = new RuntimeException("body failure");
 
-            assertThatThrownBy(() -> composition.withModification(() -> {
+            assertThatThrownBy(() -> song.withModification(() -> {
                 throw thrown;
             }))
                 .isSameAs(thrown);
@@ -138,13 +136,13 @@ class CompositionBracketTest extends UnitTest {
             // Bracket must be closed: applyChange outside the bracket must throw IllegalStateException
             // (not silently accumulate into a stranded depth counter).
             var followUp = new MetadataChange(MetadataField.TITLE, "a", "b");
-            assertThatThrownBy(() -> composition.applyChange(followUp, () -> {}))
+            assertThatThrownBy(() -> song.applyChange(followUp, () -> {}))
                 .isInstanceOf(IllegalStateException.class);
         }
 
         @Test
         void testEmptyBodyDoesNotPostNotification() {
-            composition.withModification(() -> {});
+            song.withModification(() -> {});
 
             messageCenterMock.verify(() -> MessageCenter.post(any()), times(0));
         }
@@ -152,31 +150,31 @@ class CompositionBracketTest extends UnitTest {
         @Test
         void testRunsBodyOnce() {
             var runs = new int[]{0};
-            composition.withModification(() -> runs[0]++);
+            song.withModification(() -> runs[0]++);
             assertThat(runs[0]).isEqualTo(1);
         }
     }
 
     @Test
-    void testNotificationCarriesThisComposition() {
-        composition.withModification(() ->
-            composition.applyChange(new MetadataChange(MetadataField.TITLE, "a", "b"), () -> {})
+    void testNotificationCarriesThisSong() {
+        song.withModification(() ->
+            song.applyChange(new MetadataChange(MetadataField.TITLE, "a", "b"), () -> {})
         );
 
         var notification = captureSingleDidChange();
-        assertThat(notification.getComposition()).isSameAs(composition);
+        assertThat(notification.getSong()).isSameAs(song);
     }
 
-    private CompositionDidChangeNotification captureSingleDidChange() {
+    private SongDidChangeNotification captureSingleDidChange() {
         var captor = ArgumentCaptor.forClass(Message.class);
         messageCenterMock.verify(() -> MessageCenter.post(captor.capture()));
         var didChanges = captor.getAllValues().stream()
-            .filter(m -> m instanceof CompositionDidChangeNotification)
-            .map(m -> (CompositionDidChangeNotification) m)
+            .filter(m -> m instanceof SongDidChangeNotification)
+            .map(m -> (SongDidChangeNotification) m)
             .toList();
 
         assertThat(didChanges)
-            .as("expected exactly one CompositionDidChangeNotification, got: %s", didChanges)
+            .as("expected exactly one SongDidChangeNotification, got: %s", didChanges)
             .hasSize(1);
 
         return didChanges.get(0);

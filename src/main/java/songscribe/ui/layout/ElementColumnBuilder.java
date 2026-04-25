@@ -69,7 +69,7 @@ public class ElementColumnBuilder {
     /**
      * Creates a new ElementColumnBuilder.
      *
-     * @param lyricRenderMetrics Composition-wide lyric render metrics (font + glyph widths)
+     * @param lyricRenderMetrics Song-wide lyric render metrics (font + glyph widths)
      */
     public ElementColumnBuilder(LyricRenderMetrics lyricRenderMetrics) {
         this.lyricRenderMetrics = lyricRenderMetrics;

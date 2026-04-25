@@ -24,14 +24,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.music.Composition;
+import songscribe.music.Song;
 
 class DocumentDidLoadNotificationTest extends UnitTest {
 
     @Test
-    void testCarriesComposition() {
-        var composition = new Composition();
-        var notification = new DocumentDidLoadNotification(composition);
-        assertThat(notification.getComposition()).isSameAs(composition);
+    void testCarriesSong() {
+        var song = new Song();
+        var notification = new DocumentDidLoadNotification(song);
+        assertThat(notification.getSong()).isSameAs(song);
     }
 }

@@ -39,24 +39,24 @@ import songscribe.message.mutation.LyricsField;
 import songscribe.message.mutation.MetadataChange;
 import songscribe.message.mutation.MetadataField;
 import songscribe.message.mutation.Mutation;
-import songscribe.music.Composition;
+import songscribe.music.Song;
 import songscribe.music.ElementType;
 import songscribe.music.Line;
 
-class CompositionDidChangeNotificationTest extends UnitTest {
+class SongDidChangeNotificationTest extends UnitTest {
 
-    private Composition composition;
+    private Song song;
 
     @BeforeEach
     void setUp() {
-        composition = new Composition();
+        song = new Song();
     }
 
     @Nested
     class GetLine {
 
         @Test
-        void testAllCompositionScopedReturnsNull() {
+        void testAllSongScopedReturnsNull() {
             var notification = makeNotification(
                 new MetadataChange(MetadataField.TITLE, "a", "b"),
                 new LayoutChange(LayoutField.LINE_WIDTH_SS, 1.0, 2.0)
@@ -71,7 +71,7 @@ class CompositionDidChangeNotificationTest extends UnitTest {
         }
 
         @Test
-        void testLineScopedPlusCompositionScopedReturnsLine() {
+        void testLineScopedPlusSongScopedReturnsLine() {
             var line = new Line();
             var notification = makeNotification(
                 new ElementDeletion(line, 0, ElementType.CROTCHET.newInstance()),
@@ -162,14 +162,14 @@ class CompositionDidChangeNotificationTest extends UnitTest {
         // assumes callers pass an already-immutable one. getMutations() must
         // still reject direct modification attempts.
         var first = new MetadataChange(MetadataField.TITLE, "a", "b");
-        var notification = new CompositionDidChangeNotification(List.of(first), composition);
+        var notification = new SongDidChangeNotification(List.of(first), song);
 
         assertThat(notification.getMutations()).containsExactly(first);
         assertThatThrownBy(() -> notification.getMutations().add(first))
             .isInstanceOf(UnsupportedOperationException.class);
     }
 
-    private CompositionDidChangeNotification makeNotification(Mutation... mutations) {
-        return new CompositionDidChangeNotification(List.of(mutations), composition);
+    private SongDidChangeNotification makeNotification(Mutation... mutations) {
+        return new SongDidChangeNotification(List.of(mutations), song);
     }
 }

@@ -38,7 +38,7 @@ import songscribe.ui.OptionDialogs;
 import songscribe.file.MyFileFilter;
 import songscribe.music.Annotation;
 import songscribe.music.ArticulationType;
-import songscribe.music.Composition;
+import songscribe.music.Song;
 import songscribe.music.ElementType;
 import songscribe.music.KeyType;
 import songscribe.music.Line;
@@ -115,8 +115,8 @@ public class ExportABCAction extends UIAction {
         }
 
         try (var writer = new PrintWriter(saveFile)) {
-            var composition = getComposition();
-            writeABC(composition, writer);
+            var song = getSong();
+            writeABC(song, writer);
         } catch (IOException e1) {
             OptionDialogs.showErrorMessage(
                 null,
@@ -126,8 +126,8 @@ public class ExportABCAction extends UIAction {
         }
     }
 
-    static int determineCompositionUnitLength(Composition composition) {
-        var unitLengths = getUnitLengthMap(composition);
+    static int determineSongUnitLength(Song song) {
+        var unitLengths = getUnitLengthMap(song);
 
         Map.Entry<Integer, Integer> maxValueEntry =
             new AbstractMap.SimpleEntry<>(0, Integer.MIN_VALUE);
@@ -145,16 +145,16 @@ public class ExportABCAction extends UIAction {
     }
 
     private static Map<Integer, Integer> getUnitLengthMap(
-        Composition composition
+        Song song
     ) {
         Map<Integer, Integer> unitLengths = new HashMap<>();
 
         for (
             var lineIndex = 0;
-            lineIndex < composition.lineCount();
+            lineIndex < song.lineCount();
             lineIndex++
         ) {
-            var line = composition.getLine(lineIndex);
+            var line = song.getLine(lineIndex);
 
             for (var noteIndex = 0; noteIndex < line.effectiveElementCount(); noteIndex++) {
                 var note = line.getElement(noteIndex);
@@ -168,8 +168,8 @@ public class ExportABCAction extends UIAction {
         return unitLengths;
     }
 
-    public static void writeABC(Composition composition, PrintWriter writer) {
-        var compositionUnitLength = determineCompositionUnitLength(composition);
+    public static void writeABC(Song song, PrintWriter writer) {
+        var songUnitLength = determineSongUnitLength(song);
         writer.println("%abc-2.1");
         writer.println(
             "I:abc-creator " +
@@ -181,14 +181,14 @@ public class ExportABCAction extends UIAction {
 
         // Tune header
         writer.println("X:1");
-        writer.println("T:" + composition.getTitle().replace('\n', ' '));
-        writer.println("W:" + composition.getUnderLyrics().replace('\n', ' '));
-        writer.println("C:" + composition.getAttribution().replace('\n', ' '));
-        writer.println("Q:" + translateTempo(composition.getTempo()));
+        writer.println("T:" + song.getTitle().replace('\n', ' '));
+        writer.println("W:" + song.getUnderLyrics().replace('\n', ' '));
+        writer.println("C:" + song.getAttribution().replace('\n', ' '));
+        writer.println("Q:" + translateTempo(song.getTempo()));
         writer.println(
             "L:" +
                 translateUnitLength(
-                    compositionUnitLength,
+                    songUnitLength,
                     MidiSequenceBuilder.PPQ * 4
                 ).asAbcString()
         );
@@ -197,11 +197,11 @@ public class ExportABCAction extends UIAction {
         writer.println(
             "K:" +
                 translateKey(
-                    composition.getDefaultKeyType(),
-                    composition.getDefaultKeyAccidentalCount()
+                    song.getDefaultKeyType(),
+                    song.getDefaultKeyAccidentalCount()
                 )
         );
-        translateComposition(writer, composition, compositionUnitLength);
+        translateSong(writer, song, songUnitLength);
     }
 
     public static String translateKey(KeyType keyType, int number) {
@@ -276,9 +276,9 @@ public class ExportABCAction extends UIAction {
 
     public static String translateNoteLength(
         int duration,
-        int compositionUnitLength
+        int songUnitLength
     ) {
-        var fraction = translateUnitLength(duration, compositionUnitLength);
+        var fraction = translateUnitLength(duration, songUnitLength);
 
         if ((fraction.numerator() == 1) && (fraction.denominator() == 1)) {
             return "";
@@ -344,7 +344,7 @@ public class ExportABCAction extends UIAction {
         return "";
     }
 
-    static String translateNote(StaffElement note, int compositionUnitLength) {
+    static String translateNote(StaffElement note, int songUnitLength) {
         var sb = new StringBuilder(27);
 
         if (note.getTempoChange() != null) {
@@ -375,7 +375,7 @@ public class ExportABCAction extends UIAction {
                     default -> note.getDefaultDurationWithDots();
                 };
 
-            sb.append(translateNoteLength(duration, compositionUnitLength));
+            sb.append(translateNoteLength(duration, songUnitLength));
 
             if (noteType.isGraceNote()) {
                 sb.append('}');
@@ -388,7 +388,7 @@ public class ExportABCAction extends UIAction {
                 .append(
                     translateNoteLength(
                         note.getDefaultDurationWithDots(),
-                        compositionUnitLength
+                        songUnitLength
                     )
                 );
         }
@@ -404,7 +404,7 @@ public class ExportABCAction extends UIAction {
         return sb.toString();
     }
 
-    static String translateLine(Line line, int compositionUnitLength) {
+    static String translateLine(Line line, int songUnitLength) {
         var sb = new StringBuilder(27);
 
         for (var i = 0; i < line.effectiveElementCount(); i++) {
@@ -434,7 +434,7 @@ public class ExportABCAction extends UIAction {
                 sb.append('(');
             }
 
-            sb.append(translateNote(line.getElement(i), compositionUnitLength));
+            sb.append(translateNote(line.getElement(i), songUnitLength));
 
             if (
                 (line.getElement(i).getType() == ElementType.REPEAT_RIGHT) &&
@@ -532,17 +532,18 @@ public class ExportABCAction extends UIAction {
         return syllable.replace(Constants.NON_BREAKING_HYPHEN, "\\-");
     }
 
-    static void translateComposition(
+    static void translateSong(
         PrintWriter writer,
-        Composition composition,
-        int compositionUnitLength
+        Song song,
+        int songUnitLength
     ) {
-        for (var l = 0; l < composition.lineCount(); l++) {
-            var line = composition.getLine(l);
-            writer.println(translateLine(line, compositionUnitLength));
+        for (var l = 0; l < song.lineCount(); l++) {
+            var line = song.getLine(l);
+            writer.println(translateLine(line, songUnitLength));
             writer.println("w:" + translateLyrics(line));
         }
     }
+
 
     public record Fraction(int numerator, int denominator) {
         public String asAbcString() {

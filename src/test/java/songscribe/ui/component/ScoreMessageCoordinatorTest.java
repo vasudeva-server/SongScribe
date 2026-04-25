@@ -39,9 +39,9 @@ import songscribe.message.mutation.TieAddition;
 import songscribe.message.mutation.TieRemoval;
 import songscribe.message.mutation.TupletAddition;
 import songscribe.message.mutation.TupletRemoval;
-import songscribe.message.notification.CompositionDidChangeNotification;
+import songscribe.message.notification.SongDidChangeNotification;
 import songscribe.music.BeamSpan;
-import songscribe.music.Composition;
+import songscribe.music.Song;
 import songscribe.music.ElementType;
 import songscribe.music.Line;
 import songscribe.music.Lyric;
@@ -272,8 +272,8 @@ class ScoreMessageCoordinatorTest extends UnitTest {
         }
 
         private void fireNotification(Mutation mutation) {
-            coordinator.compositionDidChange(
-                new CompositionDidChangeNotification(List.of(mutation), new Composition())
+            coordinator.songDidChange(
+                new SongDidChangeNotification(List.of(mutation), new Song())
             );
         }
 

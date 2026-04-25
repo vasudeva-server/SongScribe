@@ -31,8 +31,8 @@ import org.xml.sax.SAXException;
 import org.xml.sax.helpers.DefaultHandler;
 
 import songscribe.Strings;
-import songscribe.message.CompositionData;
-import songscribe.music.Composition;
+import songscribe.message.SongData;
+import songscribe.music.Song;
 import songscribe.music.KeyType;
 import songscribe.music.Line;
 import songscribe.music.Tempo;
@@ -42,10 +42,10 @@ import songscribe.ui.layout.PageModel;
 import songscribe.ui.layout.ScaleContext;
 import songscribe.util.Utils;
 
-public final class CompositionIO {
+public final class SongIO {
 
     public static final int IO_MAJOR_VERSION = 2;
-    public static final int IO_MINOR_VERSION = 6;
+    public static final int IO_MINOR_VERSION = 7;
 
     // Minor version at which per-note <lyric> serialization was introduced.
     // Files saved before this version carry a legacy <lyrics> blob that must
@@ -53,7 +53,8 @@ public final class CompositionIO {
     private static final int PER_NOTE_LYRIC_VERSION = 6;
 
     // version 1.0
-    private static final String XML_COMPOSITION = "composition";
+    private static final String XML_SONG = "song";
+    private static final String XML_COMPOSITION_LEGACY = "composition";
     private static final String XML_VERSION = "version";
     private static final String XML_KEYS = "keys";
     private static final String XML_KEYTYPE = "keytype";
@@ -87,14 +88,14 @@ public final class CompositionIO {
     // version 1.4
     private static final String XML_DYNAMIC_LAYOUT = "dynamicLayout";
 
-    private CompositionIO() {
+    private SongIO() {
     }
 
-    public static void writeComposition(Composition c, PrintWriter pw) {
+    public static void writeSong(Song c, PrintWriter pw) {
         pw.println("<?xml version=\"1.0\" encoding=\"UTF-8\"?>");
         pw.println(
             '<' +
-                XML_COMPOSITION +
+                XML_SONG +
                 ' ' +
                 XML_VERSION +
                 "=\"" +
@@ -207,7 +208,7 @@ public final class CompositionIO {
         pw.println("  <" + XML_VIEW + '>');
         ViewIO.writeView(c, pw);
         pw.println("  </" + XML_VIEW + '>');
-        pw.println("</" + XML_COMPOSITION + '>');
+        pw.println("</" + XML_SONG + '>');
     }
 
     public static class NewerVersionException extends SAXException {
@@ -233,9 +234,9 @@ public final class CompositionIO {
         private ViewIO.@Nullable ViewReader viewReader = null;
         private int majorVersion = 0, minorVersion = 0;
 
-        // Parsed composition data (replaces direct Composition mutation)
+        // Parsed song data (replaces direct Song mutation)
         private Tempo tempo = new Tempo();
-        private String number = Strings.get(Strings.COMPOSITION_DEFAULT_NUMBER);
+        private String number = Strings.get(Strings.SONG_DEFAULT_NUMBER);
         private String title = Strings.get(Strings.DOCUMENT_UNTITLED);
         private String place = "";
         private int month = 0;
@@ -245,11 +246,11 @@ public final class CompositionIO {
         private String underLyrics = "";
         private String banglaLyrics = "";
         private String translatedLyrics = "";
-        private String attribution = Strings.get(Strings.COMPOSITION_DEFAULT_ATTRIBUTION);
+        private String attribution = Strings.get(Strings.SONG_DEFAULT_ATTRIBUTION);
         private String footnotes = "";
         private boolean unofficialTranslation = false;
-        private int defaultKeyAccidentalCount = Composition.DEFAULT_KEY_ACCIDENTAL_COUNT;
-        private KeyType defaultKeyType = Composition.DEFAULT_KEY_TYPE;
+        private int defaultKeyAccidentalCount = Song.DEFAULT_KEY_ACCIDENTAL_COUNT;
+        private KeyType defaultKeyType = Song.DEFAULT_KEY_TYPE;
         private double topPaddingSs = 0;
         private double attributionStartYSs = 0;
         private double rowHeightAdjustmentSs = 0;
@@ -265,7 +266,7 @@ public final class CompositionIO {
             Attributes attributes
         ) throws SAXException {
             if (where == null) {
-                if (qName.equals(XML_COMPOSITION)) {
+                if (qName.equals(XML_SONG) || qName.equals(XML_COMPOSITION_LEGACY)) {
                     try {
                         var version = attributes.getValue(XML_VERSION);
                         var dotIndex = version.indexOf('.');
@@ -275,7 +276,7 @@ public final class CompositionIO {
                         minorVersion = Integer.parseInt(
                             version.substring(dotIndex + 1)
                         );
-                        where = Where.COMPOSITION;
+                        where = Where.SONG;
 
                         if ((majorVersion == 1) && (minorVersion == 0)) {
                             noteReader = new StaffElementIO.StaffElementReader();
@@ -283,7 +284,7 @@ public final class CompositionIO {
                         } else if (
                             (majorVersion == 1 && minorVersion >= 1) ||
                             // Hard-coded to IO_MINOR_VERSION; bump when the reader is updated.
-                            (majorVersion == 2 && minorVersion <= 6)
+                            (majorVersion == 2 && minorVersion <= 7)
                         ) {
                             lineReader = new LineIO.LineReader();
                             viewReader = new ViewIO.ViewReader();
@@ -324,7 +325,7 @@ public final class CompositionIO {
                 if (tempoReader == null) return;
 
                 tempoReader.startElement10(qName);
-            } else if (where == Where.COMPOSITION) {
+            } else if (where == Where.SONG) {
                 if (qName.equals(XML_NOTES)) {
                     where = Where.NOTES;
                 } else if (qName.equals(XML_TEMPO_CHANGES)) {
@@ -353,7 +354,7 @@ public final class CompositionIO {
                 if (tempoReader == null) return;
 
                 tempoReader.startElement11(qName);
-            } else if (where == Where.COMPOSITION) {
+            } else if (where == Where.SONG) {
                 switch (qName) {
                     case XML_LINES -> where = Where.LINES;
                     case XML_VIEW -> where = Where.VIEW;
@@ -385,9 +386,9 @@ public final class CompositionIO {
 
         public void endElement10(String qName) {
             if (qName.equals(XML_NOTES)) {
-                where = Where.COMPOSITION;
+                where = Where.SONG;
             } else if (qName.equals(XML_TEMPO_CHANGES)) {
-                where = Where.COMPOSITION;
+                where = Where.SONG;
             } else if (where == Where.NOTES) {
                 if (noteReader == null) return;
 
@@ -434,7 +435,7 @@ public final class CompositionIO {
                         }
                     }
                 }
-            } else if (where == Where.COMPOSITION) {
+            } else if (where == Where.SONG) {
                 if (lastTag != null && qName.equals(lastTag)) {
                     var str = value.toString();
 
@@ -475,9 +476,9 @@ public final class CompositionIO {
 
         public void endElement12(String qName) {
             if (qName.equals(XML_LINES)) {
-                where = Where.COMPOSITION;
+                where = Where.SONG;
             } else if (qName.equals(XML_VIEW)) {
-                where = Where.COMPOSITION;
+                where = Where.SONG;
             } else if (where == Where.LINES) {
                 if (lineReader == null) return;
 
@@ -493,9 +494,9 @@ public final class CompositionIO {
 
                 if (t != null) {
                     tempo = t;
-                    where = Where.COMPOSITION;
+                    where = Where.SONG;
                 }
-            } else if (where == Where.COMPOSITION) {
+            } else if (where == Where.SONG) {
                 if (lastTag != null && qName.equals(lastTag)) {
                     var str = value.toString();
                     var useDouble = majorVersion >= 2 && minorVersion >= 1;
@@ -556,12 +557,12 @@ public final class CompositionIO {
                 if (tempoReader != null) tempoReader.characters(ch, start, length);
             } else if (where == Where.TEMPO) {
                 if (tempoReader != null) tempoReader.characters(ch, start, length);
-            } else if ((where == Where.COMPOSITION) && (lastTag != null)) {
+            } else if ((where == Where.SONG) && (lastTag != null)) {
                 value.append(ch, start, length);
             }
         }
 
-        public Composition getComposition() {
+        public Song getSong() {
             // Determine format version for migration
             int formatVersion = majorVersion >= 2 ? 2 : 1;
 
@@ -588,7 +589,7 @@ public final class CompositionIO {
             if (majorVersion < 2 || (majorVersion == 2 && minorVersion < 1)) {
                 var pps = ScaleContext.DEFAULT_PIXELS_PER_STAFF_SPACE;
 
-                // Composition-level pixel-to-ss conversion
+                // Song-level pixel-to-ss conversion
                 topPaddingSs /= pps;
                 lineWidthSs /= pps;
                 rowHeightAdjustmentSs /= pps;
@@ -615,7 +616,7 @@ public final class CompositionIO {
                     ScaleContext.getInstance().toRoundedPixels(2.0);
             }
 
-            var data = new CompositionData(
+            var data = new SongData(
                 tempo,
                 number,
                 title,
@@ -646,17 +647,17 @@ public final class CompositionIO {
 
             // Use the loading constructor to avoid the wasted work of the
             // no-arg constructor (default line, attributionStartY calculation).
-            var composition = new Composition(data);
+            var song = new Song(data);
 
             // Populate per-note Lyric records from the captured legacy `<lyrics>` blob.
             // Only fires for files saved before per-note <lyric> serialization was
             // introduced; new-format files carry per-note data directly on each element.
             if (!lyrics.isBlank() &&
                 (majorVersion < 2 || (majorVersion == 2 && minorVersion < PER_NOTE_LYRIC_VERSION))) {
-                LegacyLyricsImporter.importLegacyLyrics(composition.getLines(), lyrics);
+                LegacyLyricsImporter.importLegacyLyrics(song.getLines(), lyrics);
             }
 
-            return composition;
+            return song;
         }
 
         private static Font defaultFontFromPrefs(songscribe.prefs.PrefsKey nameKey, songscribe.prefs.PrefsKey sizeKey) {
@@ -666,7 +667,7 @@ public final class CompositionIO {
         }
 
         private enum Where {
-            COMPOSITION,
+            SONG,
             LINES,
             VIEW,
             NOTES,

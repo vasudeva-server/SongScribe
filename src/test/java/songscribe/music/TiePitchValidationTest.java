@@ -58,8 +58,8 @@ class TiePitchValidationTest extends UnitTest {
 
     @BeforeAll
     static void loadFixtureData() throws Exception {
-        var composition = loadFixture("tie-pitch-validation");
-        line = composition.getLine(0);
+        var song = loadFixture("tie-pitch-validation");
+        line = song.getLine(0);
     }
 
     @Test

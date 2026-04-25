@@ -99,7 +99,7 @@ public class Attribution extends LineElement {
     }
 
     /**
-     * Returns the content height in staff-space units, derived from the composition's
+     * Returns the content height in staff-space units, derived from the song's
      * attribution font via {@code parentLine}.
      * <p>
      * {@code parentLine} must be non-null. Use {@link ScaleContext#textHeightSs(Font)}
@@ -128,6 +128,6 @@ public class Attribution extends LineElement {
                 "Attribution content dimensions requested with null parentLine");
         }
 
-        return parentLine.getComposition().getAttributionFont();
+        return parentLine.getSong().getAttributionFont();
     }
 }

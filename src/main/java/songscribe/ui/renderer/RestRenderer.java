@@ -157,7 +157,7 @@ public class RestRenderer extends BaseElementRenderer<StaffElement> {
             g2.translate(noteX, noteY);
             g2.setFont(MUSIC_FONT);
             // Note: Don't set color here - respect the color set by the caller
-            // (e.g., blue for insertion notes, black for composition notes)
+            // (e.g., blue for insertion notes, black for song notes)
 
             // Draw rest glyph
             var glyph = REST_GLYPHS.get(noteType);

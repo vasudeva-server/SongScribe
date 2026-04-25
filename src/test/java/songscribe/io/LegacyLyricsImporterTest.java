@@ -28,20 +28,19 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.music.Composition;
+import songscribe.music.Song;
 import songscribe.music.ElementType;
 import songscribe.music.Line;
 import songscribe.music.Lyric;
-import songscribe.music.StaffElement;
 import songscribe.music.StaffElement.SyllableRelation;
 
 class LegacyLyricsImporterTest extends UnitTest {
 
-    private Composition composition;
+    private Song song;
 
     @BeforeEach
     void setUp() {
-        composition = new Composition();
+        song = new Song();
     }
 
     @Test
@@ -174,9 +173,9 @@ class LegacyLyricsImporterTest extends UnitTest {
 
     private Line lineWithNotes(int count) {
         var line = new Line();
-        line.setComposition(composition);
+        line.setSong(song);
 
-        composition.withoutMutationTracking(() -> {
+        song.withoutMutationTracking(() -> {
             for (var i = 0; i < count; i++) {
                 line.addElement(ElementType.CROTCHET.newInstance());
             }

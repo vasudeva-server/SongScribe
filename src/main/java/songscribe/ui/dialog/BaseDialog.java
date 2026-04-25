@@ -35,7 +35,7 @@ import org.jspecify.annotations.Nullable;
 import songscribe.message.MessageCenter;
 import songscribe.message.notification.DialogVisibilityDidChangeNotification;
 import songscribe.message.notification.PrefsDidChangeNotification;
-import songscribe.music.Composition;
+import songscribe.music.Song;
 import songscribe.prefs.Prefs;
 import songscribe.prefs.PrefsKey;
 import songscribe.ui.FlatLafKeys;
@@ -486,8 +486,8 @@ public abstract class BaseDialog {
         return mainFrame.requireScore();
     }
 
-    protected Composition getComposition() {
-        return mainFrame.requireScore().getComposition();
+    protected Song getSong() {
+        return mainFrame.requireScore().getSong();
     }
 
     /**

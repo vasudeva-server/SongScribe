@@ -59,8 +59,8 @@ import songscribe.message.mutation.RangeElementAddition;
 import songscribe.message.mutation.TieAddition;
 import songscribe.message.mutation.TupletAddition;
 import songscribe.message.mutation.TupletRemoval;
-import songscribe.message.notification.CompositionDidChangeNotification;
-import songscribe.music.Composition;
+import songscribe.message.notification.SongDidChangeNotification;
+import songscribe.music.Song;
 import songscribe.music.DynamicsSpan;
 
 import songscribe.music.EndingValidationResult;
@@ -79,19 +79,19 @@ import songscribe.ui.selection.SelectionCoordinator;
 /**
  * Verifies that each {@link ScoreMessageCoordinator} command handler delegates
  * to {@link MusicEditOperations} such that exactly one
- * {@link CompositionDidChangeNotification} is emitted, and that the notification
+ * {@link SongDidChangeNotification} is emitted, and that the notification
  * carries mutations of the expected type. Field-level mutation assertions are
  * already covered by {@code MusicEditOperationsMutationTest} — this suite focuses
  * on the wiring between the coordinator and the operations layer.
  */
 class ScoreMessageCoordinatorCommandHandlerTest extends UnitTest {
 
-    private Composition composition;
+    private Song song;
     @Nullable private MockedStatic<MessageCenter> messageCenterMock;
 
     @BeforeEach
     void setUp() {
-        composition = new Composition();
+        song = new Song();
     }
 
     @AfterEach
@@ -113,7 +113,7 @@ class ScoreMessageCoordinatorCommandHandlerTest extends UnitTest {
     ) {}
 
     /**
-     * Builds a Line with the given elements, attaches it to the composition (which fires a
+     * Builds a Line with the given elements, attaches it to the song (which fires a
      * real LineInsertion notification on the unobserved bus), wires up real
      * {@link SelectionCoordinator} and {@link MusicEditOperations} instances, then
      * constructs a real {@link ScoreMessageCoordinator} backed by mocked Score /
@@ -133,9 +133,9 @@ class ScoreMessageCoordinatorCommandHandlerTest extends UnitTest {
         }
 
         // addLine fires a real LineInsertion notification on the pre-mock bus.
-        composition.addLine(line);
+        song.addLine(line);
         var coordinator = ReflectionTestHelper.createCoordinatorForLine(line);
-        var operations = new MusicEditOperations(composition, coordinator);
+        var operations = new MusicEditOperations(song, coordinator);
 
         var score = mock(Score.class);
         var editModeManager = mock(EditModeManager.class);
@@ -158,7 +158,7 @@ class ScoreMessageCoordinatorCommandHandlerTest extends UnitTest {
     // Notification capture helper
     // -----------------------------------------------------------------------
 
-    private CompositionDidChangeNotification captureSingleDidChange() {
+    private SongDidChangeNotification captureSingleDidChange() {
         var mock = messageCenterMock;
 
         if (mock == null) {
@@ -168,12 +168,12 @@ class ScoreMessageCoordinatorCommandHandlerTest extends UnitTest {
         var captor = ArgumentCaptor.forClass(Message.class);
         mock.verify(() -> MessageCenter.post(captor.capture()), atLeastOnce());
         var didChanges = captor.getAllValues().stream()
-            .filter(m -> m instanceof CompositionDidChangeNotification)
-            .map(m -> (CompositionDidChangeNotification) m)
+            .filter(m -> m instanceof SongDidChangeNotification)
+            .map(m -> (SongDidChangeNotification) m)
             .toList();
 
         assertThat(didChanges)
-            .as("expected exactly one CompositionDidChangeNotification, got: %s", didChanges)
+            .as("expected exactly one SongDidChangeNotification, got: %s", didChanges)
             .hasSize(1);
 
         return didChanges.get(0);

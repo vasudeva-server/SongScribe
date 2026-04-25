@@ -822,9 +822,9 @@ public final class LayoutResult {
                 // For the terminal, right-align the preview to the terminal's right edge
                 // so a wider replacement (e.g. REPEAT_RIGHT replacing FINAL_DOUBLE_BARLINE)
                 // doesn't overflow the staff boundary.
-                var composition = line.getComposition();
+                var song = line.getSong();
 
-                if (composition != null && composition.isAutoMaintainedTerminal(element, line)) {
+                if (song != null && song.isAutoMaintainedTerminal(element, line)) {
                     var previewRightExtentSs = ElementColumnBuilder.calculateRightExtentSs(
                             previewElement, false, true);
                     return elementX + column.getRightExtentSs() - previewRightExtentSs;

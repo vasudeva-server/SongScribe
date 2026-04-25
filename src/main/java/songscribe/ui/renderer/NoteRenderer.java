@@ -185,7 +185,7 @@ public class NoteRenderer extends BaseElementRenderer<StaffElement> {
      * available source in priority order:
      * <ol>
      *   <li>Override X from context (insertion note preview)</li>
-     *   <li>Layout result position (laid-out composition notes)</li>
+     *   <li>Layout result position (laid-out song notes)</li>
      *   <li>Note's own {@code xPos} (fallback)</li>
      * </ol>
      */
@@ -231,7 +231,7 @@ public class NoteRenderer extends BaseElementRenderer<StaffElement> {
 
         // Standard note rendering (including grace notes)
         // Note: Don't set color here - respect the color set by the caller
-        // (e.g., blue for insertion notes, black for composition notes)
+        // (e.g., blue for insertion notes, black for song notes)
         try (var ignored = GraphicsState.save(g2, TRANSFORM, FONT)) {
             var noteX = resolveNoteXSs(g2, element, ctx);
             var noteY = noteStaffPositionToCoordinateSs(element.getStaffPosition(), ctx.getMiddleLineYSs());

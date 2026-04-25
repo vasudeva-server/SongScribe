@@ -26,7 +26,7 @@ import org.mockito.MockedStatic;
 
 import songscribe.UnitTest;
 import songscribe.error.RuntimeError;
-import songscribe.music.Composition;
+import songscribe.music.Song;
 import songscribe.music.ElementType;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -43,15 +43,15 @@ class AnnotationAttachmentTest extends UnitTest {
     class GetContentHeightSs {
 
         @Test
-        void testReadsCompositionFontMetrics() {
-            var comp = new Composition();
-            var line = comp.getLine(0);
+        void testReadsSongFontMetrics() {
+            var song = new Song();
+            var line = song.getLine(0);
             var note = ElementType.QUAVER.newInstance();
             var attachment = new AnnotationAttachment("test");
             note.addAttachment(attachment);
-            comp.withoutMutationTracking(() -> line.addElement(note));
+            song.withoutMutationTracking(() -> line.addElement(note));
 
-            var expected = ScaleContext.getInstance().textHeightSs(comp.getAnnotationFont());
+            var expected = ScaleContext.getInstance().textHeightSs(song.getAnnotationFont());
 
             assertThat(attachment.getContentHeightSs()).isCloseTo(expected, within(EPSILON));
         }

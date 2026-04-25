@@ -38,10 +38,9 @@ import org.mockito.MockedStatic;
 import songscribe.UnitTest;
 import songscribe.message.MessageCenter;
 import songscribe.message.command.PasteboardOpCommand;
-import songscribe.music.Composition;
+import songscribe.music.Song;
 import songscribe.music.ElementType;
 import songscribe.music.Line;
-import songscribe.ui.MusicEditOperations;
 import songscribe.ui.layout.EndingLineFixture;
 import songscribe.ui.action.ElementTypeAction;
 import songscribe.ui.action.PasteboardAction;
@@ -109,7 +108,7 @@ class EndingConfirmsTest extends UnitTest {
     // -----------------------------------------------------------------------
 
     private record LineEnv(EndingLineFixture fixture, SelectionCoordinator coordinator) {
-        Composition composition() { return fixture.composition(); }
+        Song song() { return fixture.song(); }
         Line line() { return fixture.line(); }
         Ending ending() { return fixture.ending(); }
     }
@@ -150,13 +149,13 @@ class EndingConfirmsTest extends UnitTest {
      * Must be called AFTER {@link MessageCenter} is mocked so the coordinator's
      * {@code subscribe} call goes to the mock bus.
      */
-    private ScoreMessageCoordinator scoreCoordinator(Composition composition, SelectionCoordinator coordinator) {
+    private ScoreMessageCoordinator scoreCoordinator(Song song, SelectionCoordinator coordinator) {
         var score = mock(Score.class);
-        when(score.getComposition()).thenReturn(composition);
+        when(score.getSong()).thenReturn(song);
         when(score.isFocusOwner()).thenReturn(true);
         return new ScoreMessageCoordinator(
             score,
-            new MusicEditOperations(composition, coordinator),
+            new MusicEditOperations(song, coordinator),
             mock(EditModeManager.class),
             coordinator,
             mock(ClipboardManager.class)
@@ -188,7 +187,7 @@ class EndingConfirmsTest extends UnitTest {
             var env = setupPrimaryLine();
 
             try (var mc = mockStatic(MessageCenter.class)) {
-                var scoreCoord = scoreCoordinator(env.composition(), env.coordinator());
+                var scoreCoord = scoreCoordinator(env.song(), env.coordinator());
                 ReflectionTestHelper.selectNote(env.coordinator(), ANCHOR_INDEX);
                 scoreCoord.handlePasteboardOp(new PasteboardOpCommand(PasteboardAction.Operation.DELETE));
             }
@@ -222,7 +221,7 @@ class EndingConfirmsTest extends UnitTest {
             try (var od = simulateYes();
                  var mc = mockStatic(MessageCenter.class)) {
 
-                var scoreCoord = scoreCoordinator(env.composition(), env.coordinator());
+                var scoreCoord = scoreCoordinator(env.song(), env.coordinator());
                 ReflectionTestHelper.selectNote(env.coordinator(), ANCHOR_INDEX);
                 scoreCoord.handlePasteboardOp(new PasteboardOpCommand(PasteboardAction.Operation.DELETE));
             }

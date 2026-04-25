@@ -37,7 +37,7 @@ import songscribe.message.notification.KeySignatureDidChangeNotification;
 import songscribe.message.MessageCenter;
 import songscribe.message.notification.MetadataDidChangeNotification;
 import songscribe.message.notification.TempoDidChangeNotification;
-import songscribe.music.Composition;
+import songscribe.music.Song;
 import songscribe.music.Duration;
 import songscribe.music.KeyType;
 import songscribe.prefs.Prefs;
@@ -60,7 +60,7 @@ import songscribe.util.MyFontUtils;
 import songscribe.util.UIUtils;
 import songscribe.util.Utils;
 
-public class CompositionSettingsDialog extends StandardDialog {
+public class SongSettingsDialog extends StandardDialog {
 
     /**
      * A single entry in the key-signature combo: a {@link KeyType} paired with
@@ -70,23 +70,23 @@ public class CompositionSettingsDialog extends StandardDialog {
     public record KeySelection(KeyType keyType, int count) {}
 
 
-    public CompositionSettingsDialog() {
-        super(Strings.get(Strings.DIALOG_COMPOSITION_SETTINGS_TITLE), true, DialogCategory.EXCLUSIVE);
+    public SongSettingsDialog() {
+        super(Strings.get(Strings.DIALOG_SONG_SETTINGS_TITLE), true, DialogCategory.EXCLUSIVE);
 
         var tabbedPane = createTabbedPane();
         addTab(
             tabbedPane,
-            Strings.get(Strings.DIALOG_COMPOSITION_SETTINGS_TAB_TEXT),
+            Strings.get(Strings.DIALOG_SONG_SETTINGS_TAB_TEXT),
             new TextTab()
         );
         addTab(
             tabbedPane,
-            Strings.get(Strings.DIALOG_COMPOSITION_SETTINGS_TAB_MUSIC),
+            Strings.get(Strings.DIALOG_SONG_SETTINGS_TAB_MUSIC),
             new MusicTab()
         );
         addTab(
             tabbedPane,
-            Strings.get(Strings.DIALOG_COMPOSITION_SETTINGS_TAB_FONTS),
+            Strings.get(Strings.DIALOG_SONG_SETTINGS_TAB_FONTS),
             new FontTab()
         );
 
@@ -146,21 +146,21 @@ public class CompositionSettingsDialog extends StandardDialog {
             titleGuard = new NonEmptyGuard(
                 titleField,
                 contentPanel,
-                Strings.ALERT_TITLE_COMPOSITION_SETTINGS,
-                Strings.CONFIRM_COMPOSITION_EMPTY_TITLE,
+                Strings.ALERT_TITLE_SONG_SETTINGS,
+                Strings.CONFIRM_SONG_EMPTY_TITLE,
                 Strings.DOCUMENT_UNTITLED,
-                Strings.DIALOG_COMPOSITION_SETTINGS_USE_UNTITLED,
-                Strings.DIALOG_COMPOSITION_SETTINGS_CONTINUE_EDITING
+                Strings.DIALOG_SONG_SETTINGS_USE_UNTITLED,
+                Strings.DIALOG_SONG_SETTINGS_CONTINUE_EDITING
             );
 
             attributionGuard = new NonEmptyGuard(
                 attributionArea,
                 contentPanel,
-                Strings.ALERT_TITLE_COMPOSITION_SETTINGS,
-                Strings.CONFIRM_COMPOSITION_EMPTY_ATTRIBUTION,
-                Strings.COMPOSITION_DEFAULT_ATTRIBUTION,
-                Strings.DIALOG_COMPOSITION_SETTINGS_USE_DEFAULT,
-                Strings.DIALOG_COMPOSITION_SETTINGS_CONTINUE_EDITING
+                Strings.ALERT_TITLE_SONG_SETTINGS,
+                Strings.CONFIRM_SONG_EMPTY_ATTRIBUTION,
+                Strings.SONG_DEFAULT_ATTRIBUTION,
+                Strings.DIALOG_SONG_SETTINGS_USE_DEFAULT,
+                Strings.DIALOG_SONG_SETTINGS_CONTINUE_EDITING
             );
 
             titleGuard.addExemptComponent(okButton);
@@ -182,11 +182,11 @@ public class CompositionSettingsDialog extends StandardDialog {
 
         private JPanel createTitleSection() {
             var section = new BaseDialog.TitledSection(
-                Strings.get(Strings.DIALOG_COMPOSITION_SETTINGS_SECTION_TITLE_OF_SONG)
+                Strings.get(Strings.DIALOG_SONG_SETTINGS_SECTION_TITLE_OF_SONG)
             );
             addLabeledField(
                 section,
-                Strings.get(Strings.DIALOG_COMPOSITION_SETTINGS_NUMBER),
+                Strings.get(Strings.DIALOG_SONG_SETTINGS_NUMBER),
                 numberField,
                 BaseDialog.LabelPosition.LEFT
             );
@@ -205,7 +205,7 @@ public class CompositionSettingsDialog extends StandardDialog {
 
             addLabeledField(
                 section,
-                Strings.get(Strings.DIALOG_COMPOSITION_SETTINGS_SONG_TITLE),
+                Strings.get(Strings.DIALOG_SONG_SETTINGS_SONG_TITLE),
                 scrollPane,
                 BaseDialog.LabelPosition.TOP
             );
@@ -224,12 +224,12 @@ public class CompositionSettingsDialog extends StandardDialog {
             var action = new TakeFirstLyricsWordAction();
             var takeButton = new JButton(action);
             action.setEnabled(
-                !getComposition().getLyricsText().isEmpty()
+                !getSong().getLyricsText().isEmpty()
             );
             panel.add(takeButton);
 
             panel.add(new JLabel(
-                Strings.get(Strings.DIALOG_COMPOSITION_SETTINGS_THE_FIRST)
+                Strings.get(Strings.DIALOG_SONG_SETTINGS_THE_FIRST)
             ));
 
             var spinner = new JSpinner(takeFirstWordsSpinnerModel);
@@ -240,7 +240,7 @@ public class CompositionSettingsDialog extends StandardDialog {
 
             panel.add(spinner);
             panel.add(new JLabel(
-                Strings.get(Strings.DIALOG_COMPOSITION_SETTINGS_WORDS_FROM_LYRICS)
+                Strings.get(Strings.DIALOG_SONG_SETTINGS_WORDS_FROM_LYRICS)
             ));
 
             return panel;
@@ -248,12 +248,12 @@ public class CompositionSettingsDialog extends StandardDialog {
 
         private JPanel createPlaceAndDateSection() {
             var section = new StandardDialog.TitledSection(
-                Strings.get(Strings.DIALOG_COMPOSITION_SETTINGS_SECTION_PLACE_AND_DATE)
+                Strings.get(Strings.DIALOG_SONG_SETTINGS_SECTION_PLACE_AND_DATE)
             );
 
             addLabeledField(
                 section,
-                Strings.get(Strings.DIALOG_COMPOSITION_SETTINGS_PLACE),
+                Strings.get(Strings.DIALOG_SONG_SETTINGS_PLACE),
                 placeField,
                 BaseDialog.LabelPosition.LEFT
             );
@@ -266,21 +266,21 @@ public class CompositionSettingsDialog extends StandardDialog {
 
             addLabeledField(
                 datePanel,
-                Strings.get(Strings.DIALOG_COMPOSITION_SETTINGS_MONTH),
+                Strings.get(Strings.DIALOG_SONG_SETTINGS_MONTH),
                 monthCombo,
                 BaseDialog.LabelPosition.LEFT
             );
 
             addLabeledField(
                 datePanel,
-                Strings.get(Strings.DIALOG_COMPOSITION_SETTINGS_DAY),
+                Strings.get(Strings.DIALOG_SONG_SETTINGS_DAY),
                 dayCombo,
                 BaseDialog.LabelPosition.LEFT
             );
 
             addLabeledField(
                 datePanel,
-                Strings.get(Strings.DIALOG_COMPOSITION_SETTINGS_YEAR),
+                Strings.get(Strings.DIALOG_SONG_SETTINGS_YEAR),
                 yearField,
                 BaseDialog.LabelPosition.LEFT
             );
@@ -292,7 +292,7 @@ public class CompositionSettingsDialog extends StandardDialog {
 
         private JPanel createInfoSection() {
             var section = new StandardDialog.TitledSection(
-                Strings.get(Strings.DIALOG_COMPOSITION_SETTINGS_SECTION_ATTRIBUTION),
+                Strings.get(Strings.DIALOG_SONG_SETTINGS_SECTION_ATTRIBUTION),
                 BoxLayout.X_AXIS
             );
 
@@ -318,16 +318,16 @@ public class CompositionSettingsDialog extends StandardDialog {
 
             var dateString = getDateString();
             var button = new JButton(
-                Strings.get(Strings.DIALOG_COMPOSITION_SETTINGS_ADD_DATE)
+                Strings.get(Strings.DIALOG_SONG_SETTINGS_ADD_DATE)
             );
             button.setAlignmentX(Component.LEFT_ALIGNMENT);
             button.addActionListener(new AddDateAndPlaceAction(false));
             appendButtonPanel.add(button);
 
-            appendButtonPanel.add(Box.createVerticalStrut(FlatLafProps.<Integer>get(FlatLafKeys.DIALOG_COMPOSITION_SETTINGS_LYRICS_BUTTON_GAP)));
+            appendButtonPanel.add(Box.createVerticalStrut(FlatLafProps.<Integer>get(FlatLafKeys.DIALOG_SONG_SETTINGS_LYRICS_BUTTON_GAP)));
 
             button = new JButton(
-                Strings.get(Strings.DIALOG_COMPOSITION_SETTINGS_ADD_DATE_PLACE)
+                Strings.get(Strings.DIALOG_SONG_SETTINGS_ADD_DATE_PLACE)
             );
             button.setAlignmentX(Component.LEFT_ALIGNMENT);
             button.addActionListener(new AddDateAndPlaceAction(true));
@@ -345,14 +345,14 @@ public class CompositionSettingsDialog extends StandardDialog {
 
         @Override
         protected boolean getData() {
-            var composition = getComposition();
-            numberField.setText(composition.getNumber());
-            titleField.setText(composition.getTitle());
-            placeField.setText(composition.getPlace());
-            monthCombo.setSelectedIndex(composition.getMonth());
-            dayCombo.setSelectedIndex(composition.getDay());
-            yearField.setText(composition.getYear());
-            attributionArea.setText(composition.getAttribution());
+            var song = getSong();
+            numberField.setText(song.getNumber());
+            titleField.setText(song.getTitle());
+            placeField.setText(song.getPlace());
+            monthCombo.setSelectedIndex(song.getMonth());
+            dayCombo.setSelectedIndex(song.getDay());
+            yearField.setText(song.getYear());
+            attributionArea.setText(song.getAttribution());
             return true;
         }
 
@@ -373,8 +373,8 @@ public class CompositionSettingsDialog extends StandardDialog {
             } catch (NumberFormatException e) {
                 OptionDialogs.showErrorMessage(
                     contentPanel,
-                    Strings.ALERT_TITLE_COMPOSITION_SETTINGS,
-                    Strings.ERROR_COMPOSITION_NUMBER
+                    Strings.ALERT_TITLE_SONG_SETTINGS,
+                    Strings.ERROR_SONG_NUMBER
                 );
                 number = null;
             }
@@ -389,25 +389,25 @@ public class CompositionSettingsDialog extends StandardDialog {
             } catch (NumberFormatException e) {
                 OptionDialogs.showErrorMessage(
                     contentPanel,
-                    Strings.ALERT_TITLE_COMPOSITION_SETTINGS,
-                    Strings.ERROR_COMPOSITION_YEAR
+                    Strings.ALERT_TITLE_SONG_SETTINGS,
+                    Strings.ERROR_SONG_YEAR
                 );
                 year = null;
             }
 
-            var composition = getComposition();
+            var song = getSong();
 
-            if (titleField.getText().equals(composition.getTitle())
-                    && placeField.getText().equals(composition.getPlace())
-                    && Objects.equals(year, composition.getYear())
-                    && Objects.equals(number, composition.getNumber())
-                    && attributionArea.getText().equals(composition.getAttribution())
-                    && monthCombo.getSelectedIndex() == composition.getMonth()
-                    && dayCombo.getSelectedIndex() == composition.getDay()) {
+            if (titleField.getText().equals(song.getTitle())
+                    && placeField.getText().equals(song.getPlace())
+                    && Objects.equals(year, song.getYear())
+                    && Objects.equals(number, song.getNumber())
+                    && attributionArea.getText().equals(song.getAttribution())
+                    && monthCombo.getSelectedIndex() == song.getMonth()
+                    && dayCombo.getSelectedIndex() == song.getDay()) {
                 return;
             }
 
-            composition.postWithModification(new MetadataDidChangeNotification(
+            song.postWithModification(new MetadataDidChangeNotification(
                 titleField.getText(),
                 placeField.getText(),
                 year,
@@ -449,14 +449,14 @@ public class CompositionSettingsDialog extends StandardDialog {
 
             private TakeFirstLyricsWordAction() {
                 super(
-                    Strings.get(Strings.DIALOG_COMPOSITION_SETTINGS_TAKE),
+                    Strings.get(Strings.DIALOG_SONG_SETTINGS_TAKE),
                     "take-lyrics"
                 );
             }
 
             @Override
             public void actionPerformed(ActionEvent e) {
-                var lyrics = getComposition().getLyricsText();
+                var lyrics = getSong().getLyricsText();
                 var words = new StringBuilder(50);
                 var wordCount = 0;
                 var firstLetter = false;
@@ -536,8 +536,8 @@ public class CompositionSettingsDialog extends StandardDialog {
                 } else {
                     OptionDialogs.showErrorMessage(
                         getMainFrame(),
-                        Strings.ALERT_TITLE_COMPOSITION_SETTINGS,
-                        Strings.ERROR_COMPOSITION_YEAR_REQUIRED
+                        Strings.ALERT_TITLE_SONG_SETTINGS,
+                        Strings.ERROR_SONG_YEAR_REQUIRED
                     );
                     return;
                 }
@@ -552,8 +552,8 @@ public class CompositionSettingsDialog extends StandardDialog {
                     } else {
                         OptionDialogs.showErrorMessage(
                             getMainFrame(),
-                            Strings.ALERT_TITLE_COMPOSITION_SETTINGS,
-                            Strings.ERROR_COMPOSITION_PLACE_REQUIRED
+                            Strings.ALERT_TITLE_SONG_SETTINGS,
+                            Strings.ERROR_SONG_PLACE_REQUIRED
                         );
                         return;
                     }
@@ -568,7 +568,7 @@ public class CompositionSettingsDialog extends StandardDialog {
 
         private final TempoSection tempoSection = new TempoSection(
             Duration.values(),
-            Strings.get(Strings.DIALOG_COMPOSITION_SETTINGS_SHOW_ONLY_DESCRIPTION),
+            Strings.get(Strings.DIALOG_SONG_SETTINGS_SHOW_ONLY_DESCRIPTION),
             "tempos"
         );
 
@@ -633,7 +633,7 @@ public class CompositionSettingsDialog extends StandardDialog {
 
         private JPanel createTempoSection() {
             var section = new BaseDialog.TitledSection(
-                Strings.get(Strings.DIALOG_COMPOSITION_SETTINGS_SECTION_TEMPO)
+                Strings.get(Strings.DIALOG_SONG_SETTINGS_SECTION_TEMPO)
             );
 
             // Don't let the section grow vertically
@@ -644,7 +644,7 @@ public class CompositionSettingsDialog extends StandardDialog {
 
         private JPanel createKeySignatureSection() {
             var section = new BaseDialog.TitledSection(
-                Strings.get(Strings.DIALOG_COMPOSITION_SETTINGS_SECTION_KEY_SIGNATURE)
+                Strings.get(Strings.DIALOG_SONG_SETTINGS_SECTION_KEY_SIGNATURE)
             );
             keyCombo.setMaximumSize(keyCombo.getPreferredSize());
             keyCombo.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -657,7 +657,7 @@ public class CompositionSettingsDialog extends StandardDialog {
 
         private JPanel createLineWidthSection() {
             var section = new BaseDialog.TitledSection(
-                Strings.get(Strings.DIALOG_COMPOSITION_SETTINGS_SECTION_LINE_WIDTH)
+                Strings.get(Strings.DIALOG_SONG_SETTINGS_SECTION_LINE_WIDTH)
             );
 
             var row = new JPanel(
@@ -679,17 +679,17 @@ public class CompositionSettingsDialog extends StandardDialog {
 
         @Override
         protected boolean getData() {
-            var composition = getComposition();
-            tempoSection.setTempo(composition.getTempo());
-            setKeyComboFromComposition(composition);
+            var song = getSong();
+            tempoSection.setTempo(song.getTempo());
+            setKeyComboFromSong(song);
             revertLineWidthField();
             return true;
         }
 
         @Override
         protected void setData() {
-            var composition = getComposition();
-            var tempo = composition.getTempo();
+            var song = getSong();
+            var tempo = song.getTempo();
             var tempoType = tempoSection.getTempoType();
             var visibleTempo = tempoSection.getVisibleTempo();
             var tempoDescription = tempoSection.getTempoDescription();
@@ -701,13 +701,13 @@ public class CompositionSettingsDialog extends StandardDialog {
                 || !Objects.equals(tempoDescription, tempo.getTempoDescription())
                 || showTempo != tempo.shouldShowTempo();
 
-            var keyChanged = typeAndCount.keyType() != composition.getDefaultKeyType()
-                || typeAndCount.count() != composition.getDefaultKeyAccidentalCount();
+            var keyChanged = typeAndCount.keyType() != song.getDefaultKeyType()
+                || typeAndCount.count() != song.getDefaultKeyAccidentalCount();
 
             // Wrap both notifications in one bracket so tempo and key changes coalesce
-            // into a single CompositionDidChangeNotification when both are modified.
+            // into a single SongDidChangeNotification when both are modified.
             if (tempoChanged || keyChanged) {
-                composition.withModification(() -> {
+                song.withModification(() -> {
                     if (tempoChanged) {
                         MessageCenter.post(new TempoDidChangeNotification(
                             tempoType,
@@ -741,12 +741,12 @@ public class CompositionSettingsDialog extends StandardDialog {
             return validateLineWidth() >= 0;
         }
 
-        private void setKeyComboFromComposition(Composition composition) {
-            var accidentalCount = composition.getDefaultKeyAccidentalCount();
+        private void setKeyComboFromSong(Song song) {
+            var accidentalCount = song.getDefaultKeyAccidentalCount();
             // (FLATS, 0) is the canonical no-accidentals entry.
             var keyType = accidentalCount == 0
                 ? KeyType.FLATS
-                : composition.getDefaultKeyType();
+                : song.getDefaultKeyType();
             keyCombo.setSelectedItem(new KeySelection(keyType, accidentalCount));
         }
 
@@ -757,7 +757,7 @@ public class CompositionSettingsDialog extends StandardDialog {
         private void revertLineWidthField() {
             var isMetric = Prefs.getInstance().getBoolean(PrefsKey.METRIC);
             var lineWidthInches = ScaleContext.getInstance().toPixels(
-                getComposition().getLineWidthSs()
+                getSong().getLineWidthSs()
             ) / GraphicUtils.getDpi();
             var displayValue = isMetric
                 ? lineWidthInches * GraphicUtils.CM_PER_INCH
@@ -848,7 +848,7 @@ public class CompositionSettingsDialog extends StandardDialog {
         );
 
         private FontTab() {
-            super(FlatLafKeys.DIALOG_COMPOSITION_SETTINGS_FONT_PADDING);
+            super(FlatLafKeys.DIALOG_SONG_SETTINGS_FONT_PADDING);
 
             for (var preview : new JComponent[]{
                 titleFontPreview,
@@ -873,7 +873,7 @@ public class CompositionSettingsDialog extends StandardDialog {
             tabbedPane.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 0));
 
             tabbedPane.addTab(
-                Strings.get(Strings.DIALOG_COMPOSITION_SETTINGS_FONT_TITLE),
+                Strings.get(Strings.DIALOG_SONG_SETTINGS_FONT_TITLE),
                 createFontSection(
                     "Title",
                     titleFontLabel,
@@ -882,7 +882,7 @@ public class CompositionSettingsDialog extends StandardDialog {
                 )
             );
             tabbedPane.addTab(
-                Strings.get(Strings.DIALOG_COMPOSITION_SETTINGS_FONT_LYRICS),
+                Strings.get(Strings.DIALOG_SONG_SETTINGS_FONT_LYRICS),
                 createFontSection(
                     "Lyrics",
                     lyricsFontLabel,
@@ -891,7 +891,7 @@ public class CompositionSettingsDialog extends StandardDialog {
                 )
             );
             tabbedPane.addTab(
-                Strings.get(Strings.DIALOG_COMPOSITION_SETTINGS_FONT_ATTRIBUTION),
+                Strings.get(Strings.DIALOG_SONG_SETTINGS_FONT_ATTRIBUTION),
                 createFontSection(
                     "Attribution (tempo, beat change, attribution)",
                     attributionFontLabel,
@@ -900,7 +900,7 @@ public class CompositionSettingsDialog extends StandardDialog {
                 )
             );
             tabbedPane.addTab(
-                Strings.get(Strings.DIALOG_COMPOSITION_SETTINGS_FONT_ANNOTATION),
+                Strings.get(Strings.DIALOG_SONG_SETTINGS_FONT_ANNOTATION),
                 createFontSection(
                     "Annotation",
                     annotationFontLabel,
@@ -930,7 +930,7 @@ public class CompositionSettingsDialog extends StandardDialog {
                 1,
                 UIManager.getColor("Component.borderColor")
             );
-            var innerBorder = UIUtils.spacingBorder(FlatLafKeys.DIALOG_COMPOSITION_SETTINGS_FONT_CONTAINER_PADDING);
+            var innerBorder = UIUtils.spacingBorder(FlatLafKeys.DIALOG_SONG_SETTINGS_FONT_CONTAINER_PADDING);
             container.setBorder(
                 BorderFactory.createCompoundBorder(outerBorder, innerBorder)
             );
@@ -954,7 +954,7 @@ public class CompositionSettingsDialog extends StandardDialog {
             var labelOuterBorder = BorderFactory.createLineBorder(
                 UIManager.getColor("Component.borderColor")
             );
-            var labelInnerBorder = UIUtils.spacingBorder(FlatLafKeys.DIALOG_COMPOSITION_SETTINGS_FONT_LABEL_PADDING);
+            var labelInnerBorder = UIUtils.spacingBorder(FlatLafKeys.DIALOG_SONG_SETTINGS_FONT_LABEL_PADDING);
             fontLabel.setBorder(
                 BorderFactory.createCompoundBorder(
                     labelOuterBorder,
@@ -975,8 +975,8 @@ public class CompositionSettingsDialog extends StandardDialog {
                     preview,
                     FlatLafProps.get(
                         isLarge
-                            ? FlatLafKeys.DIALOG_COMPOSITION_SETTINGS_FONT_PREVIEW_LARGE_PADDING
-                            : FlatLafKeys.DIALOG_COMPOSITION_SETTINGS_FONT_PREVIEW_SMALL_PADDING
+                            ? FlatLafKeys.DIALOG_SONG_SETTINGS_FONT_PREVIEW_LARGE_PADDING
+                            : FlatLafKeys.DIALOG_SONG_SETTINGS_FONT_PREVIEW_SMALL_PADDING
                     )
                 ),
                 gbc
@@ -1018,7 +1018,7 @@ public class CompositionSettingsDialog extends StandardDialog {
                 JComponent preview
             ) {
                 super(
-                    Strings.get(Strings.DIALOG_COMPOSITION_SETTINGS_CHOOSE),
+                    Strings.get(Strings.DIALOG_SONG_SETTINGS_CHOOSE),
                     "choose-font"
                 );
                 this.fontDescription = fontDescription;
@@ -1041,7 +1041,7 @@ public class CompositionSettingsDialog extends StandardDialog {
 
             private ResetFontsAction() {
                 super(
-                    Strings.get(Strings.DIALOG_COMPOSITION_SETTINGS_RESET_TO_DEFAULTS),
+                    Strings.get(Strings.DIALOG_SONG_SETTINGS_RESET_TO_DEFAULTS),
                     "reset-fonts"
                 );
             }
@@ -1099,21 +1099,21 @@ public class CompositionSettingsDialog extends StandardDialog {
 
         @Override
         protected boolean getData() {
-            var composition = getComposition();
+            var song = getSong();
 
-            var font = composition.getTitleFont();
+            var font = song.getTitleFont();
             titleFontPreview.setFont(font);
             titleFontLabel.setText(MyFontUtils.getFullFontDescription(font));
 
-            font = composition.getLyricsFont();
+            font = song.getLyricsFont();
             lyricsFontPreview.setFont(font);
             lyricsFontLabel.setText(MyFontUtils.getFullFontDescription(font));
 
-            font = composition.getAttributionFont();
+            font = song.getAttributionFont();
             attributionFontPreview.setFont(font);
             attributionFontLabel.setText(MyFontUtils.getFullFontDescription(font));
 
-            font = composition.getAnnotationFont();
+            font = song.getAnnotationFont();
             annotationFontPreview.setFont(font);
             annotationFontLabel.setText(MyFontUtils.getFullFontDescription(font));
 
@@ -1122,16 +1122,16 @@ public class CompositionSettingsDialog extends StandardDialog {
 
         @Override
         protected void setData() {
-            var composition = getComposition();
+            var song = getSong();
 
-            if (titleFontPreview.getFont().equals(composition.getTitleFont())
-                    && lyricsFontPreview.getFont().equals(composition.getLyricsFont())
-                    && attributionFontPreview.getFont().equals(composition.getAttributionFont())
-                    && annotationFontPreview.getFont().equals(composition.getAnnotationFont())) {
+            if (titleFontPreview.getFont().equals(song.getTitleFont())
+                    && lyricsFontPreview.getFont().equals(song.getLyricsFont())
+                    && attributionFontPreview.getFont().equals(song.getAttributionFont())
+                    && annotationFontPreview.getFont().equals(song.getAnnotationFont())) {
                 return;
             }
 
-            composition.postWithModification(new FontDidChangeNotification(
+            song.postWithModification(new FontDidChangeNotification(
                 titleFontPreview.getFont(),
                 lyricsFontPreview.getFont(),
                 attributionFontPreview.getFont(),

@@ -23,7 +23,7 @@ package songscribe.ui.component.score;
 import module java.desktop;
 
 
-import songscribe.music.Composition;
+import songscribe.music.Song;
 import songscribe.music.Line;
 
 /**
@@ -38,7 +38,7 @@ public class LinePanel extends JPanel {
     private int lineIndex;
 
     public LinePanel(
-        Composition composition,
+        Song song,
         Line line,
         int lineIndex
     ) {
@@ -50,7 +50,7 @@ public class LinePanel extends JPanel {
         this.lineIndex = lineIndex;
 
         lineComponent = new LineComponent();
-        lineComponent.setComposition(composition);
+        lineComponent.setSong(song);
         lineComponent.setLine(line, lineIndex);
         lineComponent.setAlignmentX(LEFT_ALIGNMENT);
 
@@ -69,8 +69,8 @@ public class LinePanel extends JPanel {
         return lineIndex;
     }
 
-    public void setComposition(Composition composition) {
-        lineComponent.setComposition(composition);
+    public void setSong(Song song) {
+        lineComponent.setSong(song);
     }
 
     public void setLine(Line line, int lineIndex) {

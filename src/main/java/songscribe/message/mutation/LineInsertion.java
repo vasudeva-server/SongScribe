@@ -23,8 +23,8 @@ package songscribe.message.mutation;
 import songscribe.music.Line;
 
 /**
- * Mutation recording a line insertion at a specific index in the composition.
- * The line reference is required because at construction time the line may not yet live in the composition.
+ * Mutation recording a line insertion at a specific index in the song.
+ * The line reference is required because at construction time the line may not yet live in the song.
  */
 public record LineInsertion(int lineIndex, Line line)
     implements Mutation {

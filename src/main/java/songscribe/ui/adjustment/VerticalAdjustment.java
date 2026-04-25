@@ -118,7 +118,7 @@ public class VerticalAdjustment extends Adjustment {
         var diffX = (endPoint.x - dragRect.rect.x) + midPoint.x;
         var diffY = (endPoint.y - dragRect.rect.y) + midPoint.y;
         dragRect.rect.y = endPoint.y - midPoint.y;
-        var line = score.getComposition().getLine(dragRect.line);
+        var line = score.getSong().getLine(dragRect.line);
 
         switch (dragRect.type) {
             case ATTRIBUTION -> adjustAttribution(diffY);
@@ -139,17 +139,17 @@ public class VerticalAdjustment extends Adjustment {
     }
 
     private void adjustAttribution(int diffY) {
-        var newY = score.getComposition().getAttributionStartYSs() + diffY;
+        var newY = score.getSong().getAttributionStartYSs() + diffY;
         MessageCenter.post(new LayoutDidChangeNotification(null, null, null, null, newY));
     }
 
     private void adjustTopSpace(int diffY) {
-        var newPadding = score.getComposition().getTopPaddingSs() + diffY;
+        var newPadding = score.getSong().getTopPaddingSs() + diffY;
         MessageCenter.post(new LayoutDidChangeNotification(newPadding, true, null, null, null));
     }
 
     private void adjustRowHeight(int diffY) {
-        var newAdjustment = score.getComposition().getRowHeightAdjustmentSs() + diffY;
+        var newAdjustment = score.getSong().getRowHeightAdjustmentSs() + diffY;
         MessageCenter.post(new LayoutDidChangeNotification(null, null, newAdjustment, null, null));
     }
 
@@ -267,7 +267,7 @@ public class VerticalAdjustment extends Adjustment {
         super.setEnabled(enabled);
 
         if (enabled) {
-            var c = score.getComposition();
+            var c = score.getSong();
 
             var attribution = c.getAttribution();
 
@@ -383,7 +383,7 @@ public class VerticalAdjustment extends Adjustment {
     }
 
     private void getAdjustRect(AdjustRect adjustRect) {
-        var line = score.getComposition().getLine(adjustRect.line);
+        var line = score.getSong().getLine(adjustRect.line);
         var note = line.getElement(adjustRect.xIndex);
 
         switch (adjustRect.type) {
@@ -536,7 +536,7 @@ public class VerticalAdjustment extends Adjustment {
 
     private void getAttributionAdjustRect(AdjustRect adjustRect) {
         adjustRect.rect.x = score.getSheetWidthPx() - HANDLE_SIZE_PX;
-        adjustRect.rect.y = (int) score.getComposition().getAttributionStartYSs();
+        adjustRect.rect.y = (int) score.getSong().getAttributionStartYSs();
     }
 
     private void getHeightAdjustRect(AdjustRect adjustRect) {

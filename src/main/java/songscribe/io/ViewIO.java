@@ -25,7 +25,7 @@ import java.io.PrintWriter;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.music.Composition;
+import songscribe.music.Song;
 import songscribe.prefs.Prefs;
 import songscribe.prefs.PrefsKey;
 import songscribe.util.MyFontUtils;
@@ -43,7 +43,7 @@ public final class ViewIO {
 
     private ViewIO() {}
 
-    public static void writeView(Composition c, PrintWriter pw) {
+    public static void writeView(Song c, PrintWriter pw) {
         XML.setIndent(4);
         XML.writeValue(pw, XML_TITLE_FONT, c.getTitleFont().getPSName());
         XML.writeValue(

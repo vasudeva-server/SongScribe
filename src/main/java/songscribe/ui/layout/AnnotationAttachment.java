@@ -114,7 +114,7 @@ public class AnnotationAttachment extends Attachment {
     }
 
     /**
-     * Returns the content height in staff-space units, derived from the composition's
+     * Returns the content height in staff-space units, derived from the song's
      * annotation font via {@code parentLine}.
      * <p>
      * {@code parentLine} must be non-null; callers downstream of {@link songscribe.music.Line#addElement}
@@ -131,7 +131,7 @@ public class AnnotationAttachment extends Attachment {
         }
 
         return ScaleContext.getInstance().textHeightSs(
-            parentLine.getComposition().getAnnotationFont());
+            parentLine.getSong().getAnnotationFont());
     }
 
     @Override

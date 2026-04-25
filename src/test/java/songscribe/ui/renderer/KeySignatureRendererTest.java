@@ -28,7 +28,7 @@ import module java.desktop;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.music.Composition;
+import songscribe.music.Song;
 import songscribe.music.KeyType;
 import songscribe.ui.layout.KeySignature;
 
@@ -38,7 +38,7 @@ class KeySignatureRendererTest extends UnitTest {
     @Test
     void testRenderIsNoOpForCMajor() {
         var g2 = mock(Graphics2D.class);
-        var ctx = new ElementRenderContext(new Composition());
+        var ctx = new ElementRenderContext(new Song());
         var keySig = new KeySignature(KeyType.NONE, 0);
 
         KeySignatureRenderer.getInstance().render(keySig, g2, ctx);

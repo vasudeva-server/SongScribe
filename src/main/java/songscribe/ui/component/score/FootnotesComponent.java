@@ -30,7 +30,7 @@ import songscribe.util.GraphicUtils;
  * Component that renders footnotes.
  * <p>
  * Displays footnote text centered horizontally at a maximum width of 2/3 the line width.
- * Uses the composition's footnote font with appropriate top margin.
+ * Uses the song's footnote font with appropriate top margin.
  */
 public class FootnotesComponent extends ScoreComponent {
 
@@ -47,11 +47,11 @@ public class FootnotesComponent extends ScoreComponent {
 
     @Override
     protected void render(Graphics2D g2) {
-        if (composition == null) {
+        if (song == null) {
             return;
         }
 
-        var footnotes = composition.getFootnotes();
+        var footnotes = song.getFootnotes();
 
         if (footnotes.isEmpty()) {
             return;
@@ -62,7 +62,7 @@ public class FootnotesComponent extends ScoreComponent {
             songscribe.ui.renderer.GraphicsState.Property.FONT,
             songscribe.ui.renderer.GraphicsState.Property.COLOR
         )) {
-            var font = composition.getFootnoteFont();
+            var font = song.getFootnoteFont();
             g2.setFont(font);
             g2.setColor(Color.BLACK);
 
@@ -71,11 +71,11 @@ public class FootnotesComponent extends ScoreComponent {
 
             // Calculate text width (capped at max width)
             var textWidth = GraphicUtils.getTextBlockWidth(footnotes, g2);
-            var maxWidth = composition.getLineWidthPx() * MAX_WIDTH_PERCENTAGE;
+            var maxWidth = song.getLineWidthPx() * MAX_WIDTH_PERCENTAGE;
             var actualWidth = Math.min(textWidth, maxWidth);
 
             // Center horizontally
-            var x = (float) ((composition.getLineWidthPx() - actualWidth) / 2);
+            var x = (float) ((song.getLineWidthPx() - actualWidth) / 2);
             var y = (float) (marginTop + metrics.getAscent());
 
             // Draw each line
@@ -90,23 +90,23 @@ public class FootnotesComponent extends ScoreComponent {
 
     @Override
     public Dimension getPreferredSize() {
-        if (composition == null) {
+        if (song == null) {
             return new Dimension(0, 0);
         }
 
-        var footnotes = composition.getFootnotes();
+        var footnotes = song.getFootnotes();
 
         if (footnotes.isEmpty()) {
             return new Dimension(0, 0);
         }
 
-        var font = composition.getFootnoteFont();
+        var font = song.getFootnoteFont();
         var metrics = getFontMetrics(font);
 
         var lines = footnotes.split("\n");
         var lineHeight = metrics.getHeight();
         var height = marginTop + (lineHeight * lines.length);
 
-        return new Dimension(composition.getLineWidthPx(), height);
+        return new Dimension(song.getLineWidthPx(), height);
     }
 }

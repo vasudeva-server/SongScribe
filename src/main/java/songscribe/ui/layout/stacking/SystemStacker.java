@@ -20,8 +20,6 @@
 
 package songscribe.ui.layout.stacking;
 
-import java.awt.Font;
-
 import songscribe.music.Line;
 import songscribe.ui.layout.AnnotationAttachment;
 import songscribe.ui.layout.BeatChangeAttachment;
@@ -97,7 +95,7 @@ public class SystemStacker {
 
         double xSs = column.getXSs();
         int staffPosition = note.getStaffPosition();
-        var attrFont = line.getComposition().getAttributionFont();
+        var attrFont = line.getSong().getAttributionFont();
         var metrics = tempo.computeContentMetrics(attrFont);
 
         stackAboveWithRegions(systemExtents, tempo, metrics.regions(), xSs,
@@ -133,7 +131,7 @@ public class SystemStacker {
 
         double xSs = column.getXSs();
         int staffPosition = note.getStaffPosition();
-        var attrFont = line.getComposition().getAttributionFont();
+        var attrFont = line.getSong().getAttributionFont();
         var metrics = beatChange.computeContentMetrics(attrFont);
 
         stackAboveWithRegions(systemExtents, beatChange, metrics.regions(), xSs,
@@ -169,7 +167,7 @@ public class SystemStacker {
 
         double columnXSs = column.getXSs();
         int staffPosition = note.getStaffPosition();
-        var annotationFont = line.getComposition().getAnnotationFont();
+        var annotationFont = line.getSong().getAnnotationFont();
         double widthSs = annotation.computeContentWidthSs(annotationFont);
         double heightSs = ScaleContext.getInstance().textHeightSs(annotationFont);
 

@@ -36,8 +36,8 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
 import songscribe.UnitTest;
-import songscribe.music.Composition;
-import songscribe.ui.layout.CompositionLayoutMetrics;
+import songscribe.music.Song;
+import songscribe.ui.layout.SongLayoutMetrics;
 import songscribe.ui.layout.LayoutResult;
 import songscribe.ui.layout.LyricConnectorLayout;
 import songscribe.ui.layout.LyricConnectorLayout.Kind;
@@ -51,8 +51,8 @@ class LyricConnectorRendererTest extends UnitTest {
     private static final LyricRenderMetrics TEST_LYRIC_RENDER_METRICS =
         new LyricRenderMetrics(LYRICS_FONT, LYRICS_FONT, HYPHEN_WIDTH_SS, 0.0);
 
-    private static CompositionLayoutMetrics metrics(double staffToLyricsGapSs, double lyricsLineHeightSs, int verseCount) {
-        return new CompositionLayoutMetrics(
+    private static SongLayoutMetrics metrics(double staffToLyricsGapSs, double lyricsLineHeightSs, int verseCount) {
+        return new SongLayoutMetrics(
             1.0,
             1.0,
             1.0,
@@ -66,7 +66,7 @@ class LyricConnectorRendererTest extends UnitTest {
 
     private static ElementRenderContext contextWith(
         List<LyricConnectorLayout> connectors,
-        CompositionLayoutMetrics metrics
+        SongLayoutMetrics metrics
     ) {
         var builder = LayoutResult.builder();
 
@@ -74,9 +74,9 @@ class LyricConnectorRendererTest extends UnitTest {
             builder.addLyricConnector(connector);
         }
 
-        var ctx = new ElementRenderContext(new Composition());
+        var ctx = new ElementRenderContext(new Song());
         ctx.setLayoutResult(builder.build());
-        ctx.setCompositionLayoutMetrics(metrics);
+        ctx.setSongLayoutMetrics(metrics);
         ctx.setLyricRenderMetrics(TEST_LYRIC_RENDER_METRICS);
         return ctx;
     }

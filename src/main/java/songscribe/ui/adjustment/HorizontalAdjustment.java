@@ -60,9 +60,9 @@ public class HorizontalAdjustment extends Adjustment {
             return;
         }
 
-        var composition = score.getComposition();
-        var line = composition.getLine(draggingRect.line);
-        var lineWidth = composition.getLineWidthPx();
+        var song = score.getSong();
+        var line = song.getLine(draggingRect.line);
+        var lineWidth = song.getLineWidthPx();
 
         if (
             draggingRect.horizontalAdjustmentType ==
@@ -185,17 +185,17 @@ public class HorizontalAdjustment extends Adjustment {
             return;
         }
 
-        var composition = score.getComposition();
-        var line = composition.getLine(draggingRect.line);
+        var song = score.getSong();
+        var line = song.getLine(draggingRect.line);
         var note = line.getElement(draggingRect.xIndex);
 
         // The terminal's position is owned by layout; skip snap-to-end for it.
         if (
-            composition.isInteractable(note, line) &&
+            song.isInteractable(note, line) &&
                 note.getType().snapToEnd() &&
-                ((composition.getLineWidthPx() - endPoint.x) < END_SNAP_LIMIT)
+                ((song.getLineWidthPx() - endPoint.x) < END_SNAP_LIMIT)
         ) {
-            endPoint.x = (int) (composition.getLineWidthPx() - note.getContentWidthPx());
+            endPoint.x = (int) (song.getLineWidthPx() - note.getContentWidthPx());
         }
 
         var diffX = draggingRect.rect.x + (draggingRect.rect.width / 2);
@@ -235,7 +235,7 @@ public class HorizontalAdjustment extends Adjustment {
             draggingRect.horizontalAdjustmentType ==
                 HorizontalAdjustmentType.START_OF_LINE
         ) {
-            for (var currentLine : composition.getLines()) {
+            for (var currentLine : song.getLines()) {
                 if (currentLine.effectiveElementCount() > 0) {
                     var diff = endPoint.x - currentLine.getElement(0).getXOffsetPx();
                     currentLine.getElement(0).setXOffsetPx(endPoint.x);
@@ -295,7 +295,7 @@ public class HorizontalAdjustment extends Adjustment {
             }
         }
 
-        composition.setModified(true);
+        song.setModified(true);
         revalidateRects();
         score.repaint();
     }
@@ -325,14 +325,14 @@ public class HorizontalAdjustment extends Adjustment {
         super.setEnabled(enabled);
 
         if (enabled) {
-            var composition = score.getComposition();
+            var song = score.getSong();
 
             for (
                 var lineIndex = 0;
-                lineIndex < composition.lineCount();
+                lineIndex < song.lineCount();
                 lineIndex++
             ) {
-                var line = composition.getLine(lineIndex);
+                var line = song.getLine(lineIndex);
 
                 // Add ONE_NOTE
                 for (var i = 0; i < line.effectiveElementCount(); i++) {
@@ -439,7 +439,7 @@ public class HorizontalAdjustment extends Adjustment {
             }
 
             // Add FIRST_NOTE
-            if (composition.getLine(0).effectiveElementCount() > 0) {
+            if (song.getLine(0).effectiveElementCount() > 0) {
                 adjustRects.add(
                     new AdjustRect(0, 0, HorizontalAdjustmentType.START_OF_LINE)
                 );
@@ -450,7 +450,7 @@ public class HorizontalAdjustment extends Adjustment {
     }
 
     private void getAdjustRect(AdjustRect rect) {
-        var line = score.getComposition().getLine(rect.line);
+        var line = score.getSong().getLine(rect.line);
         var note = line.getElement(rect.xIndex);
         var yPosPx = score.getNoteYPosPx(
             rect.horizontalAdjustmentType.getStaffPosition(),
@@ -477,7 +477,7 @@ public class HorizontalAdjustment extends Adjustment {
                                 rect.xIndex,
                                 glissando,
                                 rect.line,
-                                score.getComposition(),
+                                score.getSong(),
                                 layoutResult,
                                 lineComponent.getMiddleLineYSs()
                             )
@@ -495,7 +495,7 @@ public class HorizontalAdjustment extends Adjustment {
                                 rect.xIndex,
                                 glissando,
                                 rect.line,
-                                score.getComposition(),
+                                score.getSong(),
                                 layoutResult,
                                 lineComponent.getMiddleLineYSs()
                             )

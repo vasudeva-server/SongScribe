@@ -51,7 +51,7 @@ import songscribe.message.mutation.TieAddition;
 import songscribe.message.mutation.TieRemoval;
 import songscribe.message.mutation.TupletAddition;
 import songscribe.message.mutation.TupletRemoval;
-import songscribe.message.notification.CompositionDidChangeNotification;
+import songscribe.message.notification.SongDidChangeNotification;
 import songscribe.ui.MusicEditOperations;
 import songscribe.ui.action.TupletAction;
 import songscribe.ui.layout.Ending;
@@ -60,14 +60,14 @@ import songscribe.ui.selection.SelectionCoordinator;
 
 class MusicEditOperationsMutationTest extends UnitTest {
 
-    private Composition composition;
+    private Song song;
     @Nullable private MockedStatic<MessageCenter> messageCenterMock;
 
     @BeforeEach
     void setUp() {
         // Construct before mocking so constructor-internal bus interactions
         // go to the real (unobserved) bus, not the mock.
-        composition = new Composition();
+        song = new Song();
     }
 
     @AfterEach
@@ -84,7 +84,7 @@ class MusicEditOperationsMutationTest extends UnitTest {
     private record Env(SelectionCoordinator coordinator, MusicEditOperations operations, Line line) {}
 
     /**
-     * Builds a Line with the given elements, attaches it to the composition (which fires a
+     * Builds a Line with the given elements, attaches it to the song (which fires a
      * real LineInsertion notification on the unobserved bus), creates a coordinator and
      * operations wrapper, then starts mocking MessageCenter.
      *
@@ -102,9 +102,9 @@ class MusicEditOperationsMutationTest extends UnitTest {
         // addLine fires a real LineInsertion notification on the pre-mock bus.
         // Use withoutMutationTracking so the terminal invariant is not enforced
         // during setup — tests need to build lines with arbitrary terminal elements.
-        composition.withoutMutationTracking(() -> composition.addLine(line));
+        song.withoutMutationTracking(() -> song.addLine(line));
         var coordinator = ReflectionTestHelper.createCoordinatorForLine(line);
-        var ops = new MusicEditOperations(composition, coordinator);
+        var ops = new MusicEditOperations(song, coordinator);
         messageCenterMock = mockStatic(MessageCenter.class);
         return new Env(coordinator, ops, line);
     }
@@ -113,7 +113,7 @@ class MusicEditOperationsMutationTest extends UnitTest {
     // Notification capture helper
     // -----------------------------------------------------------------------
 
-    private CompositionDidChangeNotification captureSingleDidChange() {
+    private SongDidChangeNotification captureSingleDidChange() {
         var mock = messageCenterMock;
 
         if (mock == null) {
@@ -123,12 +123,12 @@ class MusicEditOperationsMutationTest extends UnitTest {
         var captor = ArgumentCaptor.forClass(Message.class);
         mock.verify(() -> MessageCenter.post(captor.capture()));
         var didChanges = captor.getAllValues().stream()
-            .filter(m -> m instanceof CompositionDidChangeNotification)
-            .map(m -> (CompositionDidChangeNotification) m)
+            .filter(m -> m instanceof SongDidChangeNotification)
+            .map(m -> (SongDidChangeNotification) m)
             .toList();
 
         assertThat(didChanges)
-            .as("expected exactly one CompositionDidChangeNotification, got: %s", didChanges)
+            .as("expected exactly one SongDidChangeNotification, got: %s", didChanges)
             .hasSize(1);
 
         return didChanges.get(0);
@@ -500,7 +500,7 @@ class MusicEditOperationsMutationTest extends UnitTest {
 
     /**
      * Verifies that {@code canMakeFirstSecondEnding} is enabled when the selection ends
-     * just before the composition's auto-maintained terminal, which is not selectable
+     * just before the song's auto-maintained terminal, which is not selectable
      * by the user.
      *
      * <p>Canonical line layout:
@@ -511,7 +511,7 @@ class MusicEditOperationsMutationTest extends UnitTest {
      * Index 6 is the auto-maintained terminal — not interactable. The user selects 1–5.
      */
     @Nested
-    class CanMakeFirstSecondEndingAtCompositionEnd {
+    class CanMakeFirstSecondEndingAtSongEnd {
 
         @Test
         void testSelectionEndingBeforeAutoMaintainedTerminalIsValid() {
@@ -565,17 +565,17 @@ class MusicEditOperationsMutationTest extends UnitTest {
             assertThat(env.operations().canMakeFirstSecondEnding().isValid()).isFalse();
         }
 
-        // First line: reaching beginning of composition without a left repeat is valid
+        // First line: reaching beginning of song without a left repeat is valid
         @Test
         void testFirstLineNoRepeatIsValid() {
-            // The Composition always starts with an initial line at index 0. Populate it
+            // The Song always starts with an initial line at index 0. Populate it
             // directly so the test line is at lineIndex 0, exercising the first-line exception.
             //
             // idx: 0        1        2             3        4        5
             //      CROTCHET CROTCHET REPEAT_RIGHT  CROTCHET CROTCHET SINGLE_BARLINE
             // Selection 1–5. Scan finds CROTCHET at idx 0 then reaches beginning; lineIndex==0 → valid
-            var line = composition.getLine(0);
-            composition.withoutMutationTracking(() -> {
+            var line = song.getLine(0);
+            song.withoutMutationTracking(() -> {
                 line.addElement(crotchet());
                 line.addElement(crotchet());
                 line.addElement(repeatRight());
@@ -584,14 +584,14 @@ class MusicEditOperationsMutationTest extends UnitTest {
                 line.addElement(singleBarline());
             });
             var coordinator = ReflectionTestHelper.createCoordinatorForLine(line);
-            var ops = new MusicEditOperations(composition, coordinator);
+            var ops = new MusicEditOperations(song, coordinator);
             messageCenterMock = mockStatic(MessageCenter.class);
 
             ReflectionTestHelper.selectRange(coordinator, 1, 5);
             assertThat(ops.canMakeFirstSecondEnding().isValid()).isTrue();
         }
 
-        // Non-first line: reaching beginning of composition without a left repeat is invalid
+        // Non-first line: reaching beginning of song without a left repeat is invalid
         @Test
         void testNonFirstLineNoRepeatIsInvalid() {
             // Line 0: CROTCHET CROTCHET CROTCHET
@@ -602,7 +602,7 @@ class MusicEditOperationsMutationTest extends UnitTest {
             line0.addElement(crotchet());
             line0.addElement(crotchet());
             line0.addElement(crotchet());
-            composition.withoutMutationTracking(() -> composition.addLine(line0));
+            song.withoutMutationTracking(() -> song.addLine(line0));
 
             var env = setup(
                 crotchet(), crotchet(), repeatRight(), crotchet(), crotchet(), singleBarline()
@@ -622,7 +622,7 @@ class MusicEditOperationsMutationTest extends UnitTest {
             line0.addElement(repeatLeft());
             line0.addElement(crotchet());
             line0.addElement(crotchet());
-            composition.withoutMutationTracking(() -> composition.addLine(line0));
+            song.withoutMutationTracking(() -> song.addLine(line0));
 
             var env = setup(
                 crotchet(), crotchet(), repeatRight(), crotchet(), crotchet(), singleBarline()

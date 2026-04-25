@@ -53,8 +53,8 @@ import org.xml.sax.InputSource;
 
 import songscribe.SongScribe;
 import songscribe.UnitTest;
-import songscribe.io.CompositionIO;
-import songscribe.music.Composition;
+import songscribe.io.SongIO;
+import songscribe.music.Song;
 import songscribe.ui.OptionDialogs;
 import songscribe.ui.action.Actions;
 import songscribe.ui.action.UIAction;
@@ -67,7 +67,7 @@ import songscribe.util.UIUtils;
 /**
  * Base class for E2E interaction tests using AssertJ Swing.
  * <p>
- * Boots the MainFrame singleton once per test class, resets composition
+ * Boots the MainFrame singleton once per test class, resets song
  * state before each test. Provides coordinate helpers for clicking on
  * notes and staff positions.
  */
@@ -128,13 +128,13 @@ public abstract class E2ETest {
         GuiActionRunner.execute(this::createStatusOverlay);
     }
 
-    protected void resetComposition() {
+    protected void resetSong() {
         enterEditMode();
         deselectRestMode();
 
         GuiActionRunner.execute(() -> {
-            var composition = new Composition();
-            score().setComposition(composition);
+            var song = new Song();
+            score().setSong(song);
         });
     }
 
@@ -208,8 +208,8 @@ public abstract class E2ETest {
         return Objects.requireNonNull(MainFrame.getInstance().getScore());
     }
 
-    protected Composition composition() {
-        return score().getComposition();
+    protected Song song() {
+        return score().getSong();
     }
 
     // -- Toolbar button helpers --
@@ -685,14 +685,14 @@ public abstract class E2ETest {
 
     protected boolean isBeamed(int lineIndex, int noteIndex) {
         return Boolean.TRUE.equals(GuiActionRunner.execute(() -> {
-            var line = composition().getLine(lineIndex);
+            var line = song().getLine(lineIndex);
             return line.getBeamings().findSpan(noteIndex) != null;
         }));
     }
 
     protected boolean isTied(int lineIndex, int noteIndex) {
         return Boolean.TRUE.equals(GuiActionRunner.execute(() -> {
-            var line = composition().getLine(lineIndex);
+            var line = song().getLine(lineIndex);
             return line.getTies().findSpan(noteIndex) != null;
         }));
     }
@@ -712,35 +712,35 @@ public abstract class E2ETest {
     // -- Fixture loading --
 
     /**
-     * Loads a fixture file and replaces the current composition.
+     * Loads a fixture file and replaces the current song.
      * The fixture is deserialized via the same path as File > Open, then set
      * on the score and laid out.
      */
-    protected Composition loadFixture(String fixtureName) throws Exception {
-        var composition = Objects.requireNonNull(GuiActionRunner.execute(() -> {
+    protected Song loadFixture(String fixtureName) throws Exception {
+        var song = Objects.requireNonNull(GuiActionRunner.execute(() -> {
             var loaded = UnitTest.loadFixture(fixtureName);
-            score().setComposition(loaded);
+            score().setSong(loaded);
             return loaded;
         }));
         performLayout(0);
-        return composition;
+        return song;
     }
 
     // -- Save/load round-trip --
 
-    protected Composition roundTrip(Composition original) throws Exception {
+    protected Song roundTrip(Song original) throws Exception {
         var sw = new StringWriter();
         var pw = new PrintWriter(sw);
-        CompositionIO.writeComposition(original, pw);
+        SongIO.writeSong(original, pw);
         pw.flush();
         var xml = sw.toString();
 
         var factory = SAXParserFactory.newInstance();
         var parser = factory.newSAXParser();
-        var reader = new CompositionIO.DocumentReader();
+        var reader = new SongIO.DocumentReader();
         parser.parse(new InputSource(new StringReader(xml)), reader);
 
-        return reader.getComposition();
+        return reader.getSong();
     }
 
     // -- Test result tracking --

@@ -33,12 +33,11 @@ import org.junit.jupiter.api.Test;
 import songscribe.UnitTest;
 import songscribe.music.Annotation;
 import songscribe.music.BeatChange;
-import songscribe.music.Composition;
+import songscribe.music.Song;
 import songscribe.music.Duration;
 import songscribe.music.Line;
 import songscribe.music.StaffElement;
 import songscribe.music.Tempo;
-import songscribe.ui.layout.BeatChangeAttachment;
 import songscribe.ui.layout.stacking.VerticalStackingCalculator;
 
 class SystemTierStackingTest extends UnitTest {
@@ -47,11 +46,11 @@ class SystemTierStackingTest extends UnitTest {
     private static final double NOTE1_X_SS = 10.0;
     private static final double NOTE2_X_SS = 30.0;
 
-    private static Composition composition;
+    private static Song song;
 
     @BeforeAll
     static void setUp() {
-        composition = new Composition();
+        song = new Song();
     }
 
     @SuppressWarnings("NullAway")
@@ -71,7 +70,7 @@ class SystemTierStackingTest extends UnitTest {
 
     private static Line newLine() {
         var line = new Line();
-        line.setComposition(composition);
+        line.setSong(song);
         return line;
     }
 
@@ -81,7 +80,7 @@ class SystemTierStackingTest extends UnitTest {
      * {@code addElement} call in a modification bracket.
      */
     private static void setup(Runnable body) {
-        composition.withoutMutationTracking(body);
+        song.withoutMutationTracking(body);
     }
 
     private static void populate(Line target, StaffElement... elements) {

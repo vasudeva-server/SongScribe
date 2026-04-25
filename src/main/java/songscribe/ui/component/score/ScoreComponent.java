@@ -26,7 +26,7 @@ import songscribe.error.RuntimeError;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.music.Composition;
+import songscribe.music.Song;
 
 /**
  * Abstract base class for score rendering components.
@@ -43,9 +43,9 @@ import songscribe.music.Composition;
  */
 public abstract class ScoreComponent extends JComponent {
 
-    /** Reference to the composition model. */
+    /** Reference to the song model. */
     @Nullable
-    protected Composition composition;
+    protected Song song;
 
     /** Margin values (top, right, bottom, left) in pixels. */
     protected int marginTop = 0;
@@ -61,25 +61,25 @@ public abstract class ScoreComponent extends JComponent {
     }
 
     /**
-     * Sets the composition model for this component.
+     * Sets the song model for this component.
      *
-     * @param composition The composition to render
+     * @param song The song to render
      */
-    public void setComposition(Composition composition) {
-        this.composition = composition;
+    public void setSong(Song song) {
+        this.song = song;
         revalidate();
         repaint();
     }
 
     /**
-     * Returns the composition model.
+     * Returns the song model.
      */
-    public Composition getComposition() {
-        if (composition == null) {
-            throw RuntimeError.exit("composition not initialized");
+    public Song getSong() {
+        if (song == null) {
+            throw RuntimeError.exit("song not initialized");
         }
 
-        return composition;
+        return song;
     }
 
     /**

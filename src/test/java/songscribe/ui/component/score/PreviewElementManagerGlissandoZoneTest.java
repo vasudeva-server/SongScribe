@@ -27,7 +27,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.music.Composition;
+import songscribe.music.Song;
 import songscribe.music.ElementType;
 import songscribe.music.Line;
 import songscribe.music.StaffElement;
@@ -47,13 +47,13 @@ class PreviewElementManagerGlissandoZoneTest extends UnitTest {
     private static final int DEFAULT_POSITION_SP = 0;
     private static final int ALT_POSITION_SP = 2;
 
-    private Composition composition;
+    private Song song;
     private Line line;
 
     @BeforeEach
     void setUp() {
-        composition = new Composition();
-        line = composition.getLine(0);
+        song = new Song();
+        line = song.getLine(0);
     }
 
     // -----------------------------------------------------------------------
@@ -75,7 +75,7 @@ class PreviewElementManagerGlissandoZoneTest extends UnitTest {
     }
 
     private void addElements(StaffElement... elements) {
-        composition.withoutMutationTracking(() -> {
+        song.withoutMutationTracking(() -> {
             for (var element : elements) {
                 line.addElement(element);
             }

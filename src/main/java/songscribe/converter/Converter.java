@@ -22,7 +22,7 @@ package songscribe.converter;
 
 import java.io.File;
 
-import songscribe.music.Composition;
+import songscribe.music.Song;
 import songscribe.ui.component.Score;
 
 public final class Converter {
@@ -30,34 +30,34 @@ public final class Converter {
     private Converter() {}
 
     /**
-     * Loads a composition from a file into the given score.
+     * Loads a song from a file into the given score.
      *
-     * @return the loaded composition
+     * @return the loaded song
      */
-    public static Composition loadComposition(File file, Score score) {
+    public static Song loadSong(File file, Score score) {
         score.openFile(file, false);
-        return score.getComposition();
+        return score.getSong();
     }
 
     /**
-     * Applies export exclusions by mutating the composition directly.
+     * Applies export exclusions by mutating the song directly.
      * <p>
      * TODO: Pass ExportOptions through the export pipeline instead of mutating
-     * Composition. This is a temporary measure until the rendering pipeline
+     * Song. This is a temporary measure until the rendering pipeline
      * supports ExportOptions natively (for PDF and SVG export).
      */
     public static void applyExportExclusions(
-        Composition composition,
+        Song song,
         boolean withoutLyrics,
         boolean withoutSongTitle
     ) {
         if (withoutLyrics) {
-            composition.setUnderLyrics("");
-            composition.setTranslatedLyrics("");
+            song.setUnderLyrics("");
+            song.setTranslatedLyrics("");
         }
 
         if (withoutSongTitle) {
-            composition.setTitle("");
+            song.setTitle("");
         }
     }
 }

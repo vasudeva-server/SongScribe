@@ -30,7 +30,7 @@ import songscribe.music.StaffElement;
  * Populates per-note {@code Properties.lyrics} records from a legacy
  * {@code <lyrics>} blob.
  *
- * <p>The blob is a composition-level, newline-delimited string where each line
+ * <p>The blob is a song-level, newline-delimited string where each line
  * corresponds to one {@link Line}. Within each line, whitespace- and delimiter-separated
  * tokens are assigned to successive elements:
  *

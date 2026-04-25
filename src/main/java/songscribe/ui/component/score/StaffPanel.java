@@ -28,15 +28,16 @@ import songscribe.error.RuntimeError;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.music.Composition;
-import songscribe.ui.layout.CompositionLayoutMetricsBuilder;
+import songscribe.music.Song;
+import songscribe.ui.layout.SongLayoutMetricsBuilder;
 import songscribe.ui.layout.LayoutResult;
 import songscribe.ui.layout.LyricRenderMetrics;
 import songscribe.ui.layout.LayoutStylesheet;
 import songscribe.ui.layout.ScaleContext;
+import songscribe.ui.layout.SongLayoutMetrics;
 
 /**
- * Panel containing all staff lines of a composition.
+ * Panel containing all staff lines of a song.
  * <p>
  * Uses BoxLayout.Y_AXIS to stack {@link LinePanel} components with
  * {@link LayoutStylesheet#LINE_MARGIN_BOTTOM_MU} spacing between them.
@@ -45,9 +46,9 @@ import songscribe.ui.layout.ScaleContext;
  */
 public class StaffPanel extends JPanel {
 
-    /** The composition model. */
+    /** The song model. */
     @Nullable
-    private Composition composition;
+    private Song song;
 
     /** List of line panels, one per staff line. */
     private final List<LinePanel> linePanels = new ArrayList<>();
@@ -56,7 +57,7 @@ public class StaffPanel extends JPanel {
     private final int lineMargin;
 
     /**
-     * Cached {@link LyricRenderMetrics} from the previous {@link #updateCompositionMetrics}
+     * Cached {@link LyricRenderMetrics} from the previous {@link #updateSongMetrics}
      * call. Reused when the lyrics font has not changed to avoid re-measuring hyphen and
      * space widths via a fresh {@link java.awt.font.TextLayout} on every paint pass.
      */
@@ -75,47 +76,47 @@ public class StaffPanel extends JPanel {
     }
 
     /**
-     * Sets the composition and rebuilds the layout.
+     * Sets the song and rebuilds the layout.
      *
-     * @param composition The composition
+     * @param song The song
      */
-    public void setComposition(Composition composition) {
-        this.composition = composition;
+    public void setSong(Song song) {
+        this.song = song;
         rebuildLayout();
     }
 
     /**
-     * Returns the composition.
+     * Returns the song.
      */
-    public Composition getComposition() {
-        if (composition == null) {
-            throw RuntimeError.exit("composition not initialized");
+    public Song getSong() {
+        if (song == null) {
+            throw RuntimeError.exit("song not initialized");
         }
 
-        return composition;
+        return song;
     }
 
     /**
-     * Rebuilds the panel layout based on the current composition.
+     * Rebuilds the panel layout based on the current song.
      * <p>
-     * Creates a new {@link LinePanel} for each line in the composition,
+     * Creates a new {@link LinePanel} for each line in the song,
      * with vertical spacing between them.
      */
     public void rebuildLayout() {
         removeAll();
         linePanels.clear();
 
-        if (composition == null) {
+        if (song == null) {
             revalidate();
             repaint();
             return;
         }
 
-        var lineCount = composition.lineCount();
+        var lineCount = song.lineCount();
 
         for (var i = 0; i < lineCount; i++) {
-            var line = composition.getLine(i);
-            var linePanel = new LinePanel(composition, line, i);
+            var line = song.getLine(i);
+            var linePanel = new LinePanel(song, line, i);
             linePanel.setAlignmentX(LEFT_ALIGNMENT);
             linePanels.add(linePanel);
 
@@ -172,7 +173,7 @@ public class StaffPanel extends JPanel {
 
     @Override
     public Dimension getPreferredSize() {
-        if (composition == null || linePanels.isEmpty()) {
+        if (song == null || linePanels.isEmpty()) {
             return new Dimension(0, 0);
         }
 
@@ -180,7 +181,7 @@ public class StaffPanel extends JPanel {
         // can't rely on a dirty-flag signal here. Each line's own ensureLayout is a no-op
         // when its layout isn't dirty, so the cost of re-running this is bounded by the
         // metrics aggregation.
-        updateCompositionMetrics();
+        updateSongMetrics();
 
         var width = 0;
         var height = 0;
@@ -200,18 +201,18 @@ public class StaffPanel extends JPanel {
     }
 
     /**
-     * Forces all line layouts, builds {@link songscribe.ui.layout.CompositionLayoutMetrics}
+     * Forces all line layouts, builds {@link SongLayoutMetrics}
      * from the results, and pushes the metrics onto the owning {@link songscribe.ui.component.Score}
      * so that all lines report a uniform preferred height.
      */
-    private void updateCompositionMetrics() {
+    private void updateSongMetrics() {
         // LyricRenderMetrics is derived from the lyrics font alone, so populate it on
         // the Score before any line layouts run — layout reads hyphenWidthSs and
         // spaceWidthSs (two spaces) from here to reserve column spacing for syllable gaps.
         // Skip the (TextLayout-allocating) rebuild when the font has not changed.
         var score = linePanels.get(0).getLineComponent().getScore();
-        var composition = score.getComposition();
-        var lyricsFont = composition.getLyricsFont();
+        var song = score.getSong();
+        var lyricsFont = song.getLyricsFont();
         var existingMetrics = lyricRenderMetrics;
 
         if (existingMetrics == null || !existingMetrics.lyricsFont().equals(lyricsFont)) {
@@ -243,8 +244,8 @@ public class StaffPanel extends JPanel {
             }
         }
 
-        var metrics = CompositionLayoutMetricsBuilder.build(layouts);
-        score.setCompositionLayoutMetrics(metrics);
+        var metrics = SongLayoutMetricsBuilder.build(layouts);
+        score.setSongLayoutMetrics(metrics);
     }
 
     @Override

@@ -73,7 +73,7 @@ public class ResolutionDialog extends StandardDialog implements ChangeListener {
         approved = false;
         resolutionSpinner.setValue(Prefs.getInstance().getInt(PrefsKey.EXPORT_DPI));
         var score = requireScore();
-        var composition = score.getComposition();
+        var song = score.getSong();
         sheetWidthPx = score.getSheetWidthPx();
         sheetHeightPx = score.getSheetHeightPx();
 
@@ -83,8 +83,8 @@ public class ResolutionDialog extends StandardDialog implements ChangeListener {
         var noTitleOptions = new ExportOptions(true, false, true);
         sheetHeightWithoutTitlePx = sheetHeightPx - score.getSheetHeightPx(noTitleOptions);
 
-        var underLyrics = composition.getUnderLyrics();
-        var translatedLyrics = composition.getTranslatedLyrics();
+        var underLyrics = song.getUnderLyrics();
+        var translatedLyrics = song.getTranslatedLyrics();
 
         if (underLyrics.isEmpty() && translatedLyrics.isEmpty()) {
             withoutLyricsCheck.setSelected(false);
@@ -93,7 +93,7 @@ public class ResolutionDialog extends StandardDialog implements ChangeListener {
             withoutLyricsCheck.setEnabled(true);
         }
 
-        if (composition.getTitle().isEmpty()) {
+        if (song.getTitle().isEmpty()) {
             exportWithoutTitleCheckBox.setSelected(false);
             exportWithoutTitleCheckBox.setEnabled(false);
         } else {

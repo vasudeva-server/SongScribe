@@ -26,7 +26,7 @@ package songscribe.ui.layout;
  * Coordinates are in staff spaces, relative to the line's left edge. Hyphens are drawn
  * centered within the span; extender lines run horizontally from {@code startXSs} to
  * {@code endXSs}. The renderer reads Y from
- * {@link CompositionLayoutMetrics#verseYSsInLine(int)}.
+ * {@link SongLayoutMetrics#verseYSsInLine(int)}.
  *
  * @param startXSs   left edge of the connector in staff spaces
  * @param endXSs     right edge of the connector in staff spaces

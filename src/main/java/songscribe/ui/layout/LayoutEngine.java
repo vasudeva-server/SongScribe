@@ -98,7 +98,7 @@ public class LayoutEngine {
     /**
      * Creates a new LayoutEngine.
      *
-     * @param lyricRenderMetrics Composition-wide lyric render metrics (font + glyph widths)
+     * @param lyricRenderMetrics Song-wide lyric render metrics (font + glyph widths)
      * @param staffRightMarginSs Right margin of the staff in staff-space units
      */
     public LayoutEngine(LyricRenderMetrics lyricRenderMetrics, double staffRightMarginSs) {
@@ -130,7 +130,7 @@ public class LayoutEngine {
      * Equivalent to {@code layout(line, isLastLine, false)}.
      *
      * @param line       The line to lay out
-     * @param isLastLine Whether this line is the last line of the composition
+     * @param isLastLine Whether this line is the last line of the song
      * @return LayoutResult with all positioned elements, or null if layout fails
      */
     public @Nullable LayoutResult layout(Line line, boolean isLastLine) {
@@ -144,7 +144,7 @@ public class LayoutEngine {
      * and produces a final LayoutResult ready for rendering.
      *
      * @param line                      The line to lay out
-     * @param isLastLine                Whether this line is the last line of the composition.
+     * @param isLastLine                Whether this line is the last line of the song.
      *                                  When true, the final double barline (if present) is
      *                                  pinned flush with the right edge of the line.
      * @param hasLeadingLyricContinuation True when the previous line ended with an active
@@ -204,7 +204,7 @@ public class LayoutEngine {
         calculateTies(line, columns, builder);
 
         // Step 7: Calculate vertical positions (requires stem layouts from steps 5/5b)
-        // Use the composition's staff width for consistent StaffExtents discretization,
+        // Use the song's staff width for consistent StaffExtents discretization,
         // not the content width which varies with column count.
         verticalCalculator.calculate(columns, line, builder, staffRightMarginSs);
 

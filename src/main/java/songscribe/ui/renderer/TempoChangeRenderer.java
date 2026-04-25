@@ -55,7 +55,7 @@ public final class TempoChangeRenderer extends MetronomeRenderer {
         renderTempoChange(g2, tempo, element, ctx);
     }
 
-    /** Renders the composition's initial tempo, stored separately from per-note tempo changes. */
+    /** Renders the song's initial tempo, stored separately from per-note tempo changes. */
     public void renderInitialTempo(
         Graphics2D g2,
         StaffElement note,

@@ -27,7 +27,7 @@ import static org.mockito.Mockito.when;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.music.Composition;
+import songscribe.music.Song;
 import songscribe.music.ElementType;
 import songscribe.music.Line;
 import songscribe.music.StaffElement;
@@ -39,7 +39,7 @@ class BaseElementRendererTest extends UnitTest {
     @Test
     void testGetDecorationColorNullLineReturnsElementColor() {
         var element = new StaffElement(ElementType.CROTCHET);
-        var ctx = new ElementRenderContext(new Composition());
+        var ctx = new ElementRenderContext(new Song());
         // currentLine is null by default
 
         var color = BaseElementRenderer.getDecorationColor(element, ctx);
@@ -54,7 +54,7 @@ class BaseElementRendererTest extends UnitTest {
         var line = mock(Line.class);
         when(line.getElementIndex(element)).thenReturn(-1);
 
-        var ctx = new ElementRenderContext(new Composition());
+        var ctx = new ElementRenderContext(new Song());
         ctx.setCurrentLine(line);
 
         var color = BaseElementRenderer.getDecorationColor(element, ctx);
@@ -69,7 +69,7 @@ class BaseElementRendererTest extends UnitTest {
         var line = mock(Line.class);
         when(line.getElementIndex(element)).thenReturn(0);
 
-        var ctx = new ElementRenderContext(new Composition());
+        var ctx = new ElementRenderContext(new Song());
         ctx.setEditMode(true);
         ctx.setCurrentLine(line);
         ctx.setPlayingNoteIndex(0);  // element at index 0 is playing

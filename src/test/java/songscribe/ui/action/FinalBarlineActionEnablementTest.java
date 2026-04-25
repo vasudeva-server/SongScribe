@@ -34,7 +34,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 
 import songscribe.UnitTest;
-import songscribe.music.Composition;
+import songscribe.music.Song;
 import songscribe.music.ElementType;
 import songscribe.ui.OptionDialogs;
 import songscribe.ui.component.MainFrame;
@@ -43,7 +43,7 @@ class FinalBarlineActionEnablementTest extends UnitTest {
 
     private MockedStatic<MainFrame> mainFrameMock;
     private MockEnvHelper.MockEnv env;
-    private Composition composition;
+    private Song song;
 
     @BeforeEach
     void setUp() {
@@ -57,9 +57,9 @@ class FinalBarlineActionEnablementTest extends UnitTest {
         when(mockRootPane.getActionMap()).thenReturn(new ActionMap());
         when(env.frame().getRootPane()).thenReturn(mockRootPane);
 
-        composition = new Composition();
+        song = new Song();
         when(env.score().isInitialized()).thenReturn(true);
-        when(env.score().getComposition()).thenReturn(composition);
+        when(env.score().getSong()).thenReturn(song);
     }
 
     @AfterEach
@@ -77,7 +77,7 @@ class FinalBarlineActionEnablementTest extends UnitTest {
 
     @Test
     void testActionNotSelectedWhenTerminalIsRightRepeat() {
-        composition.replaceTerminal(ElementType.REPEAT_RIGHT);
+        song.replaceTerminal(ElementType.REPEAT_RIGHT);
 
         var action = FinalTerminalAction.createFinalDoubleBarline();
         action.updateEnabledState();
@@ -87,8 +87,8 @@ class FinalBarlineActionEnablementTest extends UnitTest {
 
     @Test
     void testActionSelectedAgainAfterReplaceBackToFinalBarline() {
-        composition.replaceTerminal(ElementType.REPEAT_RIGHT);
-        composition.replaceTerminal(ElementType.FINAL_DOUBLE_BARLINE);
+        song.replaceTerminal(ElementType.REPEAT_RIGHT);
+        song.replaceTerminal(ElementType.FINAL_DOUBLE_BARLINE);
 
         var action = FinalTerminalAction.createFinalDoubleBarline();
         action.updateEnabledState();
@@ -98,7 +98,7 @@ class FinalBarlineActionEnablementTest extends UnitTest {
 
     @Test
     void testActionReplacesTerminalDirectlyWithoutConfirm() {
-        composition.replaceTerminal(ElementType.REPEAT_RIGHT);
+        song.replaceTerminal(ElementType.REPEAT_RIGHT);
 
         try (var optionDialogsMock = mockStatic(OptionDialogs.class)) {
             var action = FinalTerminalAction.createFinalDoubleBarline();
@@ -107,6 +107,6 @@ class FinalBarlineActionEnablementTest extends UnitTest {
             optionDialogsMock.verifyNoInteractions();
         }
 
-        assertThat(composition.currentTerminalType()).isEqualTo(ElementType.FINAL_DOUBLE_BARLINE);
+        assertThat(song.currentTerminalType()).isEqualTo(ElementType.FINAL_DOUBLE_BARLINE);
     }
 }

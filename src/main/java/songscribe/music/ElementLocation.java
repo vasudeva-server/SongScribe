@@ -1,7 +1,7 @@
 package songscribe.music;
 
 /**
- * Identifies a specific element by its line index within a composition
+ * Identifies a specific element by its line index within a song
  * and its element index within that line. Both indices are non-negative
  * when the location is valid; absence is expressed by a null reference
  * to an {@code ElementLocation}, never by a sentinel value here.

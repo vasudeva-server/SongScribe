@@ -33,7 +33,7 @@ import songscribe.message.MessageCenter;
 import songscribe.message.notification.PlaybackStateDidChangeNotification;
 import songscribe.midi.MidiSequenceBuilder;
 import songscribe.midi.PlaybackSettings;
-import songscribe.music.Composition;
+import songscribe.music.Song;
 import songscribe.prefs.Prefs;
 import songscribe.prefs.PrefsKey;
 import songscribe.ui.OptionDialogs;
@@ -136,7 +136,7 @@ public final class PlaybackController {
         // Set new playing note and its preceding grace note (if any)
         var lineComponent = score.getLineComponent(lineIndex);
         if (lineComponent != null) {
-            var line = score.getComposition().getLine(lineIndex);
+            var line = score.getSong().getLine(lineIndex);
             lineComponent.setPlayingIndices(noteIndex, line.precedingGraceNoteIndex(noteIndex));
         }
 
@@ -243,9 +243,9 @@ public final class PlaybackController {
         playWithRepeats = settings.playWithRepeats();
     }
 
-    public static javax.sound.midi.Sequence buildSequence(Composition composition)
+    public static javax.sound.midi.Sequence buildSequence(Song song)
         throws InvalidMidiDataException {
-        return new MidiSequenceBuilder(composition, getPlaybackSettings()).buildFullSequence();
+        return new MidiSequenceBuilder(song, getPlaybackSettings()).buildFullSequence();
     }
 
     public static void togglePlayPause() {
@@ -273,7 +273,7 @@ public final class PlaybackController {
 
         try {
             var sequence = buildSequenceForSelection(
-                registeredScore.getComposition(), activeSelection);
+                registeredScore.getSong(), activeSelection);
             sequencer.setSequence(sequence);
 
             if (pausedTickPosition >= sequencer.getTickLength()) {
@@ -380,8 +380,8 @@ public final class PlaybackController {
                 Thread.onSpinWait();
             }
 
-            var composition = registeredScore.getComposition();
-            var sequence = buildSequenceForSelection(composition, activeSelection);
+            var song = registeredScore.getSong();
+            var sequence = buildSequenceForSelection(song, activeSelection);
             sequencer.setSequence(sequence);
             sequencer.setTickPosition(Math.min(savedTick, sequencer.getTickLength()));
 
@@ -412,16 +412,16 @@ public final class PlaybackController {
     }
 
     private static Sequence buildSequenceForSelection(
-        Composition composition,
+        Song song,
         @Nullable ElementSelection selection
     ) throws InvalidMidiDataException {
         if (selection == null) {
-            return buildSequence(composition);
+            return buildSequence(song);
         }
 
-        var lineIndex = composition.getLines().indexOf(selection.line());
+        var lineIndex = song.getLines().indexOf(selection.line());
 
-        return new MidiSequenceBuilder(composition, getPlaybackSettings())
+        return new MidiSequenceBuilder(song, getPlaybackSettings())
             .buildFromNoteToEnd(lineIndex, selection.begin());
     }
 
@@ -431,7 +431,7 @@ public final class PlaybackController {
         Sequencer sequencer
     ) throws InvalidMidiDataException {
         var sequence = buildSequenceForSelection(
-            score.getComposition(), noteSelection
+            score.getSong(), noteSelection
         );
 
         //noinspection ObjectEquality

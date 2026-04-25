@@ -28,7 +28,7 @@ import org.mockito.MockedStatic;
 
 import songscribe.UnitTest;
 import songscribe.error.RuntimeError;
-import songscribe.music.Composition;
+import songscribe.music.Song;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -54,25 +54,25 @@ class AttributionTest extends UnitTest {
     class ParentLineResolution {
 
         @Test
-        void testGetContentWidthSsReadsCompositionFontMetrics() {
-            var comp = new Composition();
-            var line = comp.getLine(0);
+        void testGetContentWidthSsReadsSongFontMetrics() {
+            var song = new Song();
+            var line = song.getLine(0);
             var attribution = new Attribution("Composer");
             attribution.setParentLine(line);
 
-            var expected = attribution.computeContentWidthSs(comp.getAttributionFont());
+            var expected = attribution.computeContentWidthSs(song.getAttributionFont());
 
             assertThat(attribution.getContentWidthSs()).isCloseTo(expected, within(EPSILON));
         }
 
         @Test
-        void testGetContentHeightSsReadsCompositionFontMetrics() {
-            var comp = new Composition();
-            var line = comp.getLine(0);
+        void testGetContentHeightSsReadsSongFontMetrics() {
+            var song = new Song();
+            var line = song.getLine(0);
             var attribution = new Attribution("Composer");
             attribution.setParentLine(line);
 
-            var expected = ScaleContext.getInstance().textHeightSs(comp.getAttributionFont());
+            var expected = ScaleContext.getInstance().textHeightSs(song.getAttributionFont());
 
             assertThat(attribution.getContentHeightSs()).isCloseTo(expected, within(EPSILON));
         }

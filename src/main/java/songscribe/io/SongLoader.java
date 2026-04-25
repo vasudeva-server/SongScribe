@@ -28,35 +28,35 @@ import javax.xml.parsers.SAXParserFactory;
 
 import org.xml.sax.SAXException;
 
-import songscribe.music.Composition;
+import songscribe.music.Song;
 
 /**
- * Loads a {@link Composition} from a file without requiring a {@link songscribe.ui.component.Score}.
+ * Loads a {@link Song} from a file without requiring a {@link songscribe.ui.component.Score}.
  * <p>
  * Use this for headless operations (ABC export, MIDI export) that only need
- * the composition data. For operations that also need rendering (image, PDF,
+ * the song data. For operations that also need rendering (image, PDF,
  * SVG export), use {@link songscribe.ui.component.Score#openFile} instead.
  */
-public final class CompositionLoader {
+public final class SongLoader {
 
     private static final SAXParserFactory PARSER_FACTORY = SAXParserFactory.newInstance();
 
-    private CompositionLoader() {}
+    private SongLoader() {}
 
     /**
-     * Parses a SongScribe file and returns the loaded composition.
+     * Parses a SongScribe file and returns the loaded song.
      *
      * @param file the .mssw file to load
-     * @return the loaded composition
+     * @return the loaded song
      * @throws IOException if the file cannot be read
      * @throws SAXException if the file is malformed
      */
-    public static Composition load(File file) throws IOException, SAXException {
+    public static Song load(File file) throws IOException, SAXException {
         try {
             SAXParser parser = PARSER_FACTORY.newSAXParser();
-            var reader = new CompositionIO.DocumentReader();
+            var reader = new SongIO.DocumentReader();
             parser.parse(file, reader);
-            return reader.getComposition();
+            return reader.getSong();
         } catch (javax.xml.parsers.ParserConfigurationException e) {
             throw new SAXException("Failed to create SAX parser", e);
         }

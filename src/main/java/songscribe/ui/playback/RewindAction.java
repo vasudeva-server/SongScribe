@@ -41,7 +41,7 @@ public class RewindAction extends SequencerAction {
             UIUtils.MENU_SHORTCUT_MASK,
             Flag.DISABLE_WHEN_EDITING_TEXT,
             Flag.DISABLE_IN_ADJUSTMENT_MODE,
-            Flag.DISABLE_WHEN_COMPOSITION_EMPTY
+            Flag.DISABLE_WHEN_SONG_EMPTY
         );
     }
 

@@ -116,7 +116,7 @@ public final class ClipboardManager {
     /**
      * Adds an element to the pasteboard. Any {@code FINAL_DOUBLE_BARLINE} is
      * normalized to {@code DOUBLE_BARLINE} so pasting clipboard content can
-     * never violate the composition-owned invariant.
+     * never violate the song-owned invariant.
      *
      * @param element The element to add
      */

@@ -36,9 +36,9 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
 import songscribe.UnitTest;
-import songscribe.music.Composition;
+import songscribe.music.Song;
 import songscribe.music.ElementType;
-import songscribe.ui.layout.CompositionLayoutMetrics;
+import songscribe.ui.layout.SongLayoutMetrics;
 import songscribe.ui.layout.LayoutResult;
 import songscribe.ui.layout.LyricBoxLayout;
 import songscribe.ui.layout.LyricRenderMetrics;
@@ -48,9 +48,9 @@ class LyricTextRendererTest extends UnitTest {
     private static final double TOLERANCE = 0.0001;
     private static final Font LYRICS_FONT = new Font(Font.MONOSPACED, Font.PLAIN, 12);
 
-    private static CompositionLayoutMetrics metrics(double staffToLyricsGapSs, double lyricsLineHeightSs, int verseCount) {
+    private static SongLayoutMetrics metrics(double staffToLyricsGapSs, double lyricsLineHeightSs, int verseCount) {
         // staffTop=1, staffHeight=4 ⇒ staffBottom=5. verse 1 baseline = 5 + maxBelowContent + gap + 1*line
-        return new CompositionLayoutMetrics(
+        return new SongLayoutMetrics(
             1.0,
             1.0,
             1.0,
@@ -68,9 +68,9 @@ class LyricTextRendererTest extends UnitTest {
         var box = new LyricBoxLayout(3.25, 2.0, 1, "do");
         var layoutResult = LayoutResult.builder().addLyricBox(element, box).build();
 
-        var ctx = new ElementRenderContext(new Composition());
+        var ctx = new ElementRenderContext(new Song());
         ctx.setLayoutResult(layoutResult);
-        ctx.setCompositionLayoutMetrics(metrics(1.0, 2.5, 1));
+        ctx.setSongLayoutMetrics(metrics(1.0, 2.5, 1));
         ctx.setLyricRenderMetrics(new LyricRenderMetrics(LYRICS_FONT, LYRICS_FONT, 0.0, 0.0));
 
         var g2 = mock(Graphics2D.class);
@@ -99,9 +99,9 @@ class LyricTextRendererTest extends UnitTest {
             .addLyricBox(element, verse2)
             .build();
 
-        var ctx = new ElementRenderContext(new Composition());
+        var ctx = new ElementRenderContext(new Song());
         ctx.setLayoutResult(layoutResult);
-        ctx.setCompositionLayoutMetrics(metrics(1.0, 2.0, 2));
+        ctx.setSongLayoutMetrics(metrics(1.0, 2.0, 2));
         ctx.setLyricRenderMetrics(new LyricRenderMetrics(LYRICS_FONT, LYRICS_FONT, 0.0, 0.0));
 
         var g2 = mock(Graphics2D.class);
@@ -124,9 +124,9 @@ class LyricTextRendererTest extends UnitTest {
         var element = ElementType.CROTCHET.newInstance();
         var layoutResult = LayoutResult.builder().build();
 
-        var ctx = new ElementRenderContext(new Composition());
+        var ctx = new ElementRenderContext(new Song());
         ctx.setLayoutResult(layoutResult);
-        ctx.setCompositionLayoutMetrics(metrics(0, 0, 0));
+        ctx.setSongLayoutMetrics(metrics(0, 0, 0));
 
         var g2 = mock(Graphics2D.class);
 
@@ -142,9 +142,9 @@ class LyricTextRendererTest extends UnitTest {
         var box = new LyricBoxLayout(0.0, 1.0, 1, "re");
         var layoutResult = LayoutResult.builder().addLyricBox(element, box).build();
 
-        var ctx = new ElementRenderContext(new Composition());
+        var ctx = new ElementRenderContext(new Song());
         ctx.setLayoutResult(layoutResult);
-        ctx.setCompositionLayoutMetrics(metrics(0.5, 2.5, 1));
+        ctx.setSongLayoutMetrics(metrics(0.5, 2.5, 1));
         ctx.setLyricRenderMetrics(new LyricRenderMetrics(LYRICS_FONT, LYRICS_FONT, 0.0, 0.0));
 
         var g2 = mock(Graphics2D.class);

@@ -29,7 +29,7 @@ import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
 
-class CompositionLayoutMetricsTest extends UnitTest {
+class SongLayoutMetricsTest extends UnitTest {
 
     private static final double TOLERANCE = 0.0001;
 
@@ -65,7 +65,7 @@ class CompositionLayoutMetricsTest extends UnitTest {
 
     @Test
     void testEmptyListUsesMinimumDefaults() {
-        var metrics = CompositionLayoutMetricsBuilder.build(List.of());
+        var metrics = SongLayoutMetricsBuilder.build(List.of());
 
         assertThat(metrics.maxAboveStaffSs()).isEqualTo(LayoutStylesheet.MIN_ABOVE_STAFF_SS, within(TOLERANCE));
         assertThat(metrics.maxBelowStaffSs())
@@ -85,7 +85,7 @@ class CompositionLayoutMetricsTest extends UnitTest {
         var lineA = fakeLayout(3.0, 3.0 + LayoutStylesheet.STAFF_HEIGHT_SS + 2.0);
         var lineB = fakeLayout(5.0, 5.0 + LayoutStylesheet.STAFF_HEIGHT_SS + 2.0);
 
-        var metrics = CompositionLayoutMetricsBuilder.build(List.of(lineA, lineB));
+        var metrics = SongLayoutMetricsBuilder.build(List.of(lineA, lineB));
 
         assertThat(metrics.maxAboveStaffSs()).isEqualTo(5.0, within(TOLERANCE));
     }
@@ -100,7 +100,7 @@ class CompositionLayoutMetricsTest extends UnitTest {
         var lineA = fakeLayout(2.0, 2.0 + LayoutStylesheet.STAFF_HEIGHT_SS + belowA);
         var lineB = fakeLayout(2.0, 2.0 + LayoutStylesheet.STAFF_HEIGHT_SS + belowB);
 
-        var metrics = CompositionLayoutMetricsBuilder.build(List.of(lineA, lineB));
+        var metrics = SongLayoutMetricsBuilder.build(List.of(lineA, lineB));
 
         assertThat(metrics.maxBelowStaffSs()).isEqualTo(belowB, within(TOLERANCE));
     }
@@ -112,7 +112,7 @@ class CompositionLayoutMetricsTest extends UnitTest {
         var below = LayoutStylesheet.MIN_BELOW_STAFF_SS + LayoutStylesheet.INTER_LINE_MARGIN_SS + 2.0;
         var layout = fakeLayout(above, above + LayoutStylesheet.STAFF_HEIGHT_SS + below);
 
-        var metrics = CompositionLayoutMetricsBuilder.build(List.of(layout));
+        var metrics = SongLayoutMetricsBuilder.build(List.of(layout));
 
         assertThat(metrics.totalLineHeightSs())
             .isEqualTo(above + LayoutStylesheet.STAFF_HEIGHT_SS + below, within(TOLERANCE));
@@ -122,7 +122,7 @@ class CompositionLayoutMetricsTest extends UnitTest {
     void testVerseCountCollapsesWhenNoLyrics() {
         var layout = fakeLayout(2.0, 2.0 + LayoutStylesheet.STAFF_HEIGHT_SS + 2.0);
 
-        var metrics = CompositionLayoutMetricsBuilder.build(List.of(layout));
+        var metrics = SongLayoutMetricsBuilder.build(List.of(layout));
 
         assertThat(metrics.verseCount()).isZero();
         assertThat(metrics.staffToLyricsGapSs()).isZero();
@@ -139,7 +139,7 @@ class CompositionLayoutMetricsTest extends UnitTest {
         var layoutA = fakeLayoutWithVerses(above, lineHeight, 2);
         var layoutB = fakeLayoutWithVerses(above, lineHeight, 1);
 
-        var metrics = CompositionLayoutMetricsBuilder.build(List.of(layoutA, layoutB));
+        var metrics = SongLayoutMetricsBuilder.build(List.of(layoutA, layoutB));
 
         assertThat(metrics.verseCount()).isEqualTo(2);
         assertThat(metrics.staffToLyricsGapSs()).isEqualTo(LayoutStylesheet.LYRICS_ROW_MARGIN_SS, within(TOLERANCE));
@@ -161,7 +161,7 @@ class CompositionLayoutMetricsTest extends UnitTest {
         var above = 3.0;
         var belowContent = 2.5;
         var lineHeight = above + LayoutStylesheet.STAFF_HEIGHT_SS + 2.0;
-        var metrics = CompositionLayoutMetricsBuilder.build(
+        var metrics = SongLayoutMetricsBuilder.build(
             List.of(fakeLayoutWithVerses(above, lineHeight, belowContent, 2)));
 
         var expectedVerse1 = metrics.staffBottomYSsInLine()
@@ -182,7 +182,7 @@ class CompositionLayoutMetricsTest extends UnitTest {
         var lineA = fakeLayout(2.0, 2.0 + LayoutStylesheet.STAFF_HEIGHT_SS + 2.0, 1.5);
         var lineB = fakeLayout(2.0, 2.0 + LayoutStylesheet.STAFF_HEIGHT_SS + 2.0, 3.5);
 
-        var metrics = CompositionLayoutMetricsBuilder.build(List.of(lineA, lineB));
+        var metrics = SongLayoutMetricsBuilder.build(List.of(lineA, lineB));
 
         assertThat(metrics.maxBelowContentSs()).isEqualTo(3.5, within(TOLERANCE));
     }
@@ -193,7 +193,7 @@ class CompositionLayoutMetricsTest extends UnitTest {
         var below = 2.0;
         var layout = fakeLayout(above, above + LayoutStylesheet.STAFF_HEIGHT_SS + below);
 
-        var metrics = CompositionLayoutMetricsBuilder.build(List.of(layout));
+        var metrics = SongLayoutMetricsBuilder.build(List.of(layout));
 
         assertThat(metrics.staffTopYSsInLine()).isEqualTo(above, within(TOLERANCE));
         assertThat(metrics.staffBottomYSsInLine())

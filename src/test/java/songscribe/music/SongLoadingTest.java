@@ -28,48 +28,48 @@ import org.junit.jupiter.api.Test;
 import songscribe.UnitTest;
 import songscribe.util.MyFontUtils;
 
-class CompositionLoadingTest extends UnitTest {
+class SongLoadingTest extends UnitTest {
 
-    private Composition composition;
+    private Song song;
 
     @BeforeEach
     void setUp() {
-        composition = new Composition();
-        composition.setModified(false);
+        song = new Song();
+        song.setModified(false);
     }
 
     @Test
     void testSetAnnotationFontSetsModified() {
         var font = MyFontUtils.createFont("LatoPlus-Bold", 20);
-        composition.setAnnotationFont(font);
-        assertThat(composition.isModified()).isTrue();
+        song.setAnnotationFont(font);
+        assertThat(song.isModified()).isTrue();
     }
 
     @Test
     void testSetAttributionFontSetsModified() {
         var font = MyFontUtils.createFont("LatoPlus-Bold", 20);
-        composition.setAttributionFont(font);
-        assertThat(composition.isModified()).isTrue();
+        song.setAttributionFont(font);
+        assertThat(song.isModified()).isTrue();
     }
 
     @Test
     void testSetLyricsFontSetsModified() {
         var font = MyFontUtils.createFont("LatoPlus-Bold", 20);
-        composition.setLyricsFont(font);
-        assertThat(composition.isModified()).isTrue();
+        song.setLyricsFont(font);
+        assertThat(song.isModified()).isTrue();
     }
 
     @Test
     void testSetTitleFontSetsModified() {
         var font = MyFontUtils.createFont("LatoPlus-Bold", 20);
-        composition.setTitleFont(font);
-        assertThat(composition.isModified()).isTrue();
+        song.setTitleFont(font);
+        assertThat(song.isModified()).isTrue();
     }
 
     // T63: Loading a pre-2.4 file runs migrateFinalTerminal inside withoutMutationTracking,
     //      so the document is clean even though migration mutated elements.
     @Test
-    void testLoadingLegacyCompositionDoesNotDirtyDocument() throws Exception {
+    void testLoadingLegacySongDoesNotDirtyDocument() throws Exception {
         var loaded = loadFixture("full-line");
         assertThat(loaded.isModified()).isFalse();
     }

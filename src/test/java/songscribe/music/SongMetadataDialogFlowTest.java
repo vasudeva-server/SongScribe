@@ -34,28 +34,28 @@ import songscribe.message.Message;
 import songscribe.message.MessageCenter;
 import songscribe.message.mutation.MetadataChange;
 import songscribe.message.mutation.MetadataField;
-import songscribe.message.notification.CompositionDidChangeNotification;
+import songscribe.message.notification.SongDidChangeNotification;
 import songscribe.message.notification.MetadataDidChangeNotification;
 
 /**
- * Tests the bracketing contract of {@link Composition#metadataDidChange}, which is
+ * Tests the bracketing contract of {@link Song#metadataDidChange}, which is
  * the handler invoked (via MBassador) when {@code TextTab.setData} posts a
  * {@link MetadataDidChangeNotification} inside a {@code withModification} bracket.
  *
  * <p>The tests call {@code metadataDidChange} directly to avoid the real bus,
  * and verify that all field mutations are coalesced into a single
- * {@link CompositionDidChangeNotification}.
+ * {@link SongDidChangeNotification}.
  */
-class CompositionMetadataDialogFlowTest extends UnitTest {
+class SongMetadataDialogFlowTest extends UnitTest {
 
-    private Composition composition;
+    private Song song;
     private MockedStatic<MessageCenter> messageCenterMock;
 
     @BeforeEach
     void setUp() {
         // Construct before mocking so the constructor's bus interactions
         // go to the real (unobserved) bus, not the mock.
-        composition = new Composition();
+        song = new Song();
         messageCenterMock = mockStatic(MessageCenter.class);
     }
 
@@ -75,12 +75,12 @@ class CompositionMetadataDialogFlowTest extends UnitTest {
         @Test
         void testMultipleFieldsProduceSingleNotificationWithAllMutations() {
             // Calling metadataDidChange with N non-null fields must fire exactly one
-            // CompositionDidChangeNotification carrying N MetadataChange mutations.
-            var oldTitle = composition.getTitle();
-            var oldPlace = composition.getPlace();
-            var oldYear = composition.getYear();
-            var oldMonth = composition.getMonth();
-            var oldDay = composition.getDay();
+            // SongDidChangeNotification carrying N MetadataChange mutations.
+            var oldTitle = song.getTitle();
+            var oldPlace = song.getPlace();
+            var oldYear = song.getYear();
+            var oldMonth = song.getMonth();
+            var oldDay = song.getDay();
 
             var newTitle = "New Song Title";
             var newPlace = "Paris";
@@ -88,7 +88,7 @@ class CompositionMetadataDialogFlowTest extends UnitTest {
             var newMonth = 3;
             var newDay = 15;
 
-            composition.metadataDidChange(new MetadataDidChangeNotification(
+            song.metadataDidChange(new MetadataDidChangeNotification(
                 newTitle, newPlace, newYear, null, null, newMonth, newDay, null
             ));
 
@@ -119,7 +119,7 @@ class CompositionMetadataDialogFlowTest extends UnitTest {
         @Test
         void testNullFieldsAreNotRecorded() {
             // Fields passed as null in the notification must not produce mutations.
-            composition.metadataDidChange(new MetadataDidChangeNotification(
+            song.metadataDidChange(new MetadataDidChangeNotification(
                 "Only Title", null, null, null, null, null, null, null
             ));
 
@@ -141,7 +141,7 @@ class CompositionMetadataDialogFlowTest extends UnitTest {
         @Test
         void testOuterAndInnerBracketsCoalesceIntoSingleNotification() {
             // In production, TextTab.setData calls:
-            //   composition.withModification(() -> MessageCenter.post(notification))
+            //   song.withModification(() -> MessageCenter.post(notification))
             // MBassador then dispatches to metadataDidChange, which has its own
             // withModification. We simulate this by calling metadataDidChange directly
             // inside an outer withModification bracket and verify that the depth
@@ -149,8 +149,8 @@ class CompositionMetadataDialogFlowTest extends UnitTest {
             var newTitle = "Dialog Title";
             var newPlace = "London";
 
-            composition.withModification(() ->
-                composition.metadataDidChange(new MetadataDidChangeNotification(
+            song.withModification(() ->
+                song.metadataDidChange(new MetadataDidChangeNotification(
                     newTitle, newPlace, null, null, null, null, null, null
                 ))
             );
@@ -168,7 +168,7 @@ class CompositionMetadataDialogFlowTest extends UnitTest {
     // Helpers
     // -----------------------------------------------------------------------
 
-    private MetadataChange findMutation(CompositionDidChangeNotification notification, MetadataField field) {
+    private MetadataChange findMutation(SongDidChangeNotification notification, MetadataField field) {
         return notification.getMutations().stream()
             .filter(m -> m instanceof MetadataChange mc && mc.field() == field)
             .map(m -> (MetadataChange) m)
@@ -176,16 +176,16 @@ class CompositionMetadataDialogFlowTest extends UnitTest {
             .orElseThrow(() -> new AssertionError("No MetadataChange for field " + field));
     }
 
-    private CompositionDidChangeNotification captureSingleDidChange() {
+    private SongDidChangeNotification captureSingleDidChange() {
         var captor = ArgumentCaptor.forClass(Message.class);
         messageCenterMock.verify(() -> MessageCenter.post(captor.capture()));
         var didChanges = captor.getAllValues().stream()
-            .filter(m -> m instanceof CompositionDidChangeNotification)
-            .map(m -> (CompositionDidChangeNotification) m)
+            .filter(m -> m instanceof SongDidChangeNotification)
+            .map(m -> (SongDidChangeNotification) m)
             .toList();
 
         assertThat(didChanges)
-            .as("expected exactly one CompositionDidChangeNotification, got: %s", didChanges)
+            .as("expected exactly one SongDidChangeNotification, got: %s", didChanges)
             .hasSize(1);
 
         return didChanges.get(0);

@@ -65,7 +65,7 @@ class DynamicsMarkingTest extends E2ETest {
 
     @BeforeAll
     void loadSelection1Fixture() throws Exception {
-        resetComposition();
+        resetSong();
         loadFixture("selection1");
     }
 
@@ -92,7 +92,7 @@ class DynamicsMarkingTest extends E2ETest {
      */
     private DynamicAttachment requireAttachmentOnNote(int noteIndex) {
         var attachment = GuiActionRunner.execute(() ->
-            requireAttachment(composition().getLine(0).getElement(noteIndex))
+            requireAttachment(song().getLine(0).getElement(noteIndex))
         );
 
         if (attachment == null) {
@@ -122,7 +122,7 @@ class DynamicsMarkingTest extends E2ETest {
             performLayout(0);
 
             assertThat(GuiActionRunner.execute(() ->
-                composition().getLine(0).getCrescendos()
+                song().getLine(0).getCrescendos()
                     .findSpan(Note.CRESCENDO_START.index) != null
             )).as("crescendo span added").isTrue();
         }
@@ -138,7 +138,7 @@ class DynamicsMarkingTest extends E2ETest {
             performLayout(0);
 
             assertThat(GuiActionRunner.execute(() ->
-                composition().getLine(0).getDiminuendos()
+                song().getLine(0).getDiminuendos()
                     .findSpan(Note.DIMINUENDO_START.index) != null
             )).as("diminuendo span added").isTrue();
         }

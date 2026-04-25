@@ -29,7 +29,7 @@ import module java.desktop;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.music.Composition;
+import songscribe.music.Song;
 import songscribe.music.Line;
 import songscribe.music.TieSpan;
 import songscribe.ui.component.Score;
@@ -40,7 +40,7 @@ class ElementRenderContextTest extends UnitTest {
     // T1: not in edit mode → Color.BLACK regardless of playing/selection state
     @Test
     void testNotEditModeReturnsBlack() {
-        var ctx = new ElementRenderContext(new Composition());
+        var ctx = new ElementRenderContext(new Song());
         // editMode defaults to false
 
         assertThat(ctx.getElementColor(0)).isEqualTo(Color.BLACK);
@@ -49,7 +49,7 @@ class ElementRenderContextTest extends UnitTest {
     // T2: edit mode + element is playing → Score.getPlayingNoteColor()
     @Test
     void testPlayingElementReturnsPlayingColor() {
-        var ctx = new ElementRenderContext(new Composition());
+        var ctx = new ElementRenderContext(new Song());
         ctx.setEditMode(true);
         ctx.setPlayingNoteIndex(0);
 
@@ -62,7 +62,7 @@ class ElementRenderContextTest extends UnitTest {
         var line = new Line();
         line.getTies().addSpan(new TieSpan(0, 2));
 
-        var ctx = new ElementRenderContext(new Composition());
+        var ctx = new ElementRenderContext(new Song());
         ctx.setEditMode(true);
         ctx.setCurrentLine(line);
         ctx.setPlayingNoteIndex(0);
@@ -77,7 +77,7 @@ class ElementRenderContextTest extends UnitTest {
         var selectionProvider = mock(LineComponent.SelectionProvider.class);
         when(selectionProvider.isElementSelected(0, 0)).thenReturn(true);
 
-        var ctx = new ElementRenderContext(new Composition());
+        var ctx = new ElementRenderContext(new Song());
         ctx.setEditMode(true);
         ctx.setSelectionProvider(selectionProvider);
         ctx.setSelectionColor(Color.RED);
@@ -88,7 +88,7 @@ class ElementRenderContextTest extends UnitTest {
     // T5: edit mode, not playing, not selected → Color.BLACK
     @Test
     void testDefaultReturnsBlack() {
-        var ctx = new ElementRenderContext(new Composition());
+        var ctx = new ElementRenderContext(new Song());
         ctx.setEditMode(true);
 
         assertThat(ctx.getElementColor(0)).isEqualTo(Color.BLACK);

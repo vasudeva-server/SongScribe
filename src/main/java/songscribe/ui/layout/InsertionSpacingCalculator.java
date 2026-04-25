@@ -256,7 +256,7 @@ public class InsertionSpacingCalculator {
      * @return {@code true} if the grace note fits on the line
      */
     public static boolean hasRoomForGraceNote(Line line, int atIndex, @Nullable LayoutResult layout) {
-        double staffRightMarginSs = line.getComposition().getLineWidthSs();
+        double staffRightMarginSs = line.getSong().getLineWidthSs();
         // Shared singleton is safe: calculateInsertion only reads geometry from the element.
         var graceNote = ElementType.GRACE_QUAVER.getInstance();
         return calculateInsertion(line, graceNote, atIndex, layout).fitsWithinLine(staffRightMarginSs);
@@ -273,7 +273,7 @@ public class InsertionSpacingCalculator {
      * @return {@code true} if a host note fits after the grace note
      */
     public static boolean hasRoomForHostNoteAfterGrace(Line line, int graceNoteIndex) {
-        double staffRightMarginSs = line.getComposition().getLineWidthSs();
+        double staffRightMarginSs = line.getSong().getLineWidthSs();
         // Shared singleton is safe: calculateInsertion only reads geometry from the element.
         var hostNote = ElementType.CROTCHET.getInstance();
         return calculateInsertion(line, hostNote, graceNoteIndex + 1, null).fitsWithinLine(staffRightMarginSs);

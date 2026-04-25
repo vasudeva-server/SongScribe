@@ -29,18 +29,18 @@ import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
 import songscribe.music.BeatChange;
-import songscribe.music.Composition;
+import songscribe.music.Song;
 import songscribe.music.Duration;
 import songscribe.util.GraphicUtils;
 
 class BeatChangeAttachmentTest extends UnitTest {
 
     private static final double EPSILON = 1e-10;
-    private static Composition composition;
+    private static Song song;
 
     @BeforeAll
     static void setUp() {
-        composition = new Composition();
+        song = new Song();
     }
 
     /**
@@ -56,7 +56,7 @@ class BeatChangeAttachmentTest extends UnitTest {
 
         @Test
         void testProducesThreeRegions() {
-            var font = composition.getAttributionFont();
+            var font = song.getAttributionFont();
             var metrics = crotchetToCrotchet().computeContentMetrics(font);
 
             assertThat(metrics.regions()).hasSize(3);
@@ -64,7 +64,7 @@ class BeatChangeAttachmentTest extends UnitTest {
 
         @Test
         void testLeftNoteRegionStartsAtOrigin() {
-            var font = composition.getAttributionFont();
+            var font = song.getAttributionFont();
             var metrics = crotchetToCrotchet().computeContentMetrics(font);
             var leftNote = metrics.regions().get(0);
 
@@ -76,7 +76,7 @@ class BeatChangeAttachmentTest extends UnitTest {
 
         @Test
         void testEqualsRegionFollowsLeftNoteWithGap() {
-            var font = composition.getAttributionFont();
+            var font = song.getAttributionFont();
             var metrics = crotchetToCrotchet().computeContentMetrics(font);
             var leftNote = metrics.regions().get(0);
             var equals = metrics.regions().get(1);
@@ -88,7 +88,7 @@ class BeatChangeAttachmentTest extends UnitTest {
 
         @Test
         void testRightNoteRegionFollowsEqualsWithGap() {
-            var font = composition.getAttributionFont();
+            var font = song.getAttributionFont();
             var metrics = crotchetToCrotchet().computeContentMetrics(font);
             var equals = metrics.regions().get(1);
             var rightNote = metrics.regions().get(2);
@@ -102,7 +102,7 @@ class BeatChangeAttachmentTest extends UnitTest {
 
         @Test
         void testTotalWidthIsSumOfRegionsAndGaps() {
-            var font = composition.getAttributionFont();
+            var font = song.getAttributionFont();
             var metrics = crotchetToCrotchet().computeContentMetrics(font);
             var regions = metrics.regions();
 
@@ -121,7 +121,7 @@ class BeatChangeAttachmentTest extends UnitTest {
 
         @Test
         void testEqualsSignDescentExtendsBelow_QUARTER_NOTE_HEIGHT_SS() {
-            var font = composition.getAttributionFont();
+            var font = song.getAttributionFont();
             var metrics = crotchetToCrotchet().computeContentMetrics(font);
             var equals = metrics.regions().get(1);
 
@@ -136,7 +136,7 @@ class BeatChangeAttachmentTest extends UnitTest {
 
         @Test
         void testEqualsDescentIsPositive() {
-            var font = composition.getAttributionFont();
+            var font = song.getAttributionFont();
             var metrics = crotchetToCrotchet().computeContentMetrics(font);
             var equals = metrics.regions().get(1);
 

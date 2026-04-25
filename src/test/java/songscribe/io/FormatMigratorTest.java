@@ -284,7 +284,7 @@ class FormatMigratorTest extends UnitTest {
 
     // -- Helpers --
 
-    /** Creates a line containing elements of the given types (in order), unattached to a composition. */
+    /** Creates a line containing elements of the given types (in order), unattached to a song. */
     private static Line lineWith(ElementType... types) {
         var line = new Line();
 

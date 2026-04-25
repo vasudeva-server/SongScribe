@@ -31,7 +31,6 @@ import songscribe.ui.layout.AnnotationAttachment;
 import songscribe.ui.layout.BeatChangeAttachment;
 import songscribe.ui.layout.DynamicAttachment;
 import songscribe.ui.layout.FermataAttachment;
-import songscribe.ui.layout.ScaleContext;
 import songscribe.ui.layout.TempoChangeAttachment;
 import songscribe.ui.renderer.AnnotationRenderer;
 import songscribe.ui.renderer.ArticulationRenderer;
@@ -115,7 +114,7 @@ class LineRenderer {
      * @param g2 Graphics context with antialiasing enabled
      */
     void render(Graphics2D g2) {
-        var composition = lc.getComposition();
+        var song = lc.getSong();
         var line = lc.getLine();
         var lineIndex = lc.getLineIndex();
 
@@ -126,9 +125,9 @@ class LineRenderer {
         }
 
         // Reuse the cached render context to avoid per-paint allocation. Recreate it
-        // only when the composition changes (the field is final on the context).
-        if (ctx == null || ctx.getComposition() != composition) {
-            ctx = new ElementRenderContext(composition);
+        // only when the song changes (the field is final on the context).
+        if (ctx == null || ctx.getSong() != song) {
+            ctx = new ElementRenderContext(song);
         }
 
         ctx.setCurrentLine(line);
@@ -136,7 +135,7 @@ class LineRenderer {
         ctx.setMiddleLineYSs(lc.getMiddleLineYSs());
         ctx.setLayoutResult(layoutResult);
         var score = lc.getScore();
-        ctx.setCompositionLayoutMetrics(score.getCompositionLayoutMetrics());
+        ctx.setSongLayoutMetrics(score.getSongLayoutMetrics());
         ctx.setLyricRenderMetrics(score.getLyricRenderMetrics());
         ctx.setSelectionProvider(lc.getSelectionProvider());
         ctx.setEditMode(lc.isEditMode());
@@ -180,7 +179,7 @@ class LineRenderer {
 
         g2.setColor(staffSelected ? Score.getSelectionStrokeColor() : BaseElementRenderer.STAFF_LINE_COLOR);
 
-        var lineWidth = lc.getComposition().getLineWidthSs();
+        var lineWidth = lc.getSong().getLineWidthSs();
         var middleLineYSs = lc.getMiddleLineYSs();
         var staffLineThicknessSs = ctx.getLineThickness().staffLineSs();
 
@@ -397,12 +396,12 @@ class LineRenderer {
      * @param ctx Render context
      */
     private void renderKeyChanges(Graphics2D g2, ElementRenderContext ctx) {
-        var composition = lc.getComposition();
+        var song = lc.getSong();
         var lineIndex = lc.getLineIndex();
         var line = lc.getLine();
 
         // Only render if there's a next line
-        if (lineIndex + 1 >= composition.lineCount()) {
+        if (lineIndex + 1 >= song.lineCount()) {
             return;
         }
 
@@ -410,14 +409,14 @@ class LineRenderer {
             return;
         }
 
-        var nextLine = composition.getLine(lineIndex + 1);
+        var nextLine = song.getLine(lineIndex + 1);
 
         // Delegate to KeySignatureRenderer
         KeySignatureRenderer.getInstance().renderKeyChange(
             g2,
             line,
             nextLine,
-            composition.getLineWidthSs(),
+            song.getLineWidthSs(),
             ctx
         );
     }

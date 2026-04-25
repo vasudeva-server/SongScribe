@@ -30,7 +30,7 @@ import java.util.zip.ZipOutputStream;
 
 import songscribe.Strings;
 import songscribe.export.ExportOptions;
-import songscribe.io.CompositionIO;
+import songscribe.io.SongIO;
 import songscribe.ui.OptionDialogs;
 import songscribe.ui.component.MyBorder;
 import songscribe.ui.dialog.ProgressBarDialog;
@@ -146,7 +146,7 @@ public class ConvertAction extends AbstractAction {
                     }
 
                     score.openFile(songFile, false);
-                    var composition = score.getComposition();
+                    var song = score.getSong();
 
                     // ensure we have the latest format by writing the mssw file again
                     var tempMsswSong = File.createTempFile(
@@ -156,8 +156,8 @@ public class ConvertAction extends AbstractAction {
                     var tempMsswSongPrintWriter = new PrintWriter(
                         new FileWriter(tempMsswSong)
                     );
-                    CompositionIO.writeComposition(
-                        composition,
+                    SongIO.writeSong(
+                        song,
                         tempMsswSongPrintWriter
                     );
                     tempMsswSongPrintWriter.close();
@@ -232,7 +232,7 @@ public class ConvertAction extends AbstractAction {
                     );
 
                     try {
-                        var sequence = PlaybackController.buildSequence(score.getComposition());
+                        var sequence = PlaybackController.buildSequence(score.getSong());
                         MidiSystem.write(sequence, 1, midiFile);
                     } catch (IOException | InvalidMidiDataException e) {
                         midiFile = null;

@@ -25,7 +25,7 @@ import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
 import songscribe.music.ArticulationType;
-import songscribe.music.Composition;
+import songscribe.music.Song;
 import songscribe.music.ElementType;
 import songscribe.music.Line;
 import songscribe.music.StaffElement;
@@ -44,10 +44,10 @@ class VelocityMapTest extends UnitTest {
         @Test
         void testAccentWithDynamicAppliesBoostToDynamicVelocity() {
             // T40: Accent + dynamic
-            var composition = compositionWith(
+            var song = songWith(
                 lineWith(noteWithDynamicAndAccent(DynamicType.FORTE))
             );
-            var map = VelocityMap.build(composition, VelocityMap.MAX_VELOCITY);
+            var map = VelocityMap.build(song, VelocityMap.MAX_VELOCITY);
 
             var forteVelocity = (int) Math.round(
                 VelocityMap.MAX_VELOCITY * DynamicType.FORTE.getVelocityFraction());
@@ -59,8 +59,8 @@ class VelocityMapTest extends UnitTest {
         @Test
         void testAccentWithoutDynamicAppliesBoostToDefaultVelocity() {
             // T41: Accent without dynamic
-            var composition = compositionWith(lineWith(accentedNote()));
-            var map = VelocityMap.build(composition, VelocityMap.MAX_VELOCITY);
+            var song = songWith(lineWith(accentedNote()));
+            var map = VelocityMap.build(song, VelocityMap.MAX_VELOCITY);
 
             var mfVelocity = (int) Math.round(
                 VelocityMap.MAX_VELOCITY * VelocityMap.DEFAULT_VELOCITY_FRACTION);
@@ -76,20 +76,20 @@ class VelocityMapTest extends UnitTest {
         @Test
         void testMasterVelocityAtMaxWithFfProduces127() {
             // T42: Master volume at max + ff = 127
-            var composition = compositionWith(
+            var song = songWith(
                 lineWith(noteWithDynamic(DynamicType.FORTISSIMO))
             );
-            var map = VelocityMap.build(composition, VelocityMap.MAX_VELOCITY);
+            var map = VelocityMap.build(song, VelocityMap.MAX_VELOCITY);
             assertThat(map.getVelocity(0, 0)).isEqualTo(VelocityMap.MAX_VELOCITY);
         }
 
         @Test
         void testVelocityNeverExceeds127() {
             // T39: accented ff should still cap at 127
-            var composition = compositionWith(
+            var song = songWith(
                 lineWith(noteWithDynamicAndAccent(DynamicType.FORTISSIMO))
             );
-            var map = VelocityMap.build(composition, VelocityMap.MAX_VELOCITY);
+            var map = VelocityMap.build(song, VelocityMap.MAX_VELOCITY);
             assertThat(map.getVelocity(0, 0)).isEqualTo(VelocityMap.MAX_VELOCITY);
         }
     }
@@ -100,10 +100,10 @@ class VelocityMapTest extends UnitTest {
         @Test
         void testNoteWithForteUsesForteVelocity() {
             // T35
-            var composition = compositionWith(
+            var song = songWith(
                 lineWith(noteWithDynamic(DynamicType.FORTE))
             );
-            var map = VelocityMap.build(composition, VelocityMap.MAX_VELOCITY);
+            var map = VelocityMap.build(song, VelocityMap.MAX_VELOCITY);
 
             var expected = (int) Math.round(
                 VelocityMap.MAX_VELOCITY * DynamicType.FORTE.getVelocityFraction());
@@ -113,8 +113,8 @@ class VelocityMapTest extends UnitTest {
         @Test
         void testNoteWithNoDynamicUsesDefaultMfVelocity() {
             // T36
-            var composition = compositionWith(lineWith(crotchet()));
-            var map = VelocityMap.build(composition, VelocityMap.MAX_VELOCITY);
+            var song = songWith(lineWith(crotchet()));
+            var map = VelocityMap.build(song, VelocityMap.MAX_VELOCITY);
 
             var expected = (int) Math.round(
                 VelocityMap.MAX_VELOCITY * VelocityMap.DEFAULT_VELOCITY_FRACTION);
@@ -128,11 +128,11 @@ class VelocityMapTest extends UnitTest {
         @Test
         void testCrossLinePropagation() {
             // T38: last dynamic on line N carries to line N+1
-            var composition = compositionWith(
+            var song = songWith(
                 lineWith(noteWithDynamic(DynamicType.PIANO)),
                 lineWith(crotchet())
             );
-            var map = VelocityMap.build(composition, VelocityMap.MAX_VELOCITY);
+            var map = VelocityMap.build(song, VelocityMap.MAX_VELOCITY);
 
             var pianoVelocity = (int) Math.round(
                 VelocityMap.MAX_VELOCITY * DynamicType.PIANO.getVelocityFraction());
@@ -142,10 +142,10 @@ class VelocityMapTest extends UnitTest {
         @Test
         void testForwardPropagationWithinLine() {
             // T37: note after PIANO inherits PIANO velocity
-            var composition = compositionWith(
+            var song = songWith(
                 lineWith(noteWithDynamic(DynamicType.PIANO), crotchet())
             );
-            var map = VelocityMap.build(composition, VelocityMap.MAX_VELOCITY);
+            var map = VelocityMap.build(song, VelocityMap.MAX_VELOCITY);
 
             var pianoVelocity = (int) Math.round(
                 VelocityMap.MAX_VELOCITY * DynamicType.PIANO.getVelocityFraction());
@@ -162,15 +162,15 @@ class VelocityMapTest extends UnitTest {
         return note;
     }
 
-    private static Composition compositionWith(Line... lines) {
-        var composition = new Composition();
-        composition.getLines().clear();
+    private static Song songWith(Line... lines) {
+        var song = new Song();
+        song.getLines().clear();
 
         for (var line : lines) {
-            composition.getLines().add(line);
+            song.getLines().add(line);
         }
 
-        return composition;
+        return song;
     }
 
     private static Line lineWith(StaffElement... notes) {

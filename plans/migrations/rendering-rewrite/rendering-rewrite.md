@@ -36,7 +36,7 @@ SongScribe's rendering and layout pipeline uses a mix of legacy pixel-based code
 
 Establish the staff-space coordinate system and get all basic note rendering working. This is the foundation everything else builds on.
 
-**Verification:** Open an existing composition. Notes and staff should render correctly. Nothing above the staff renders yet. Lyrics don't render yet.
+**Verification:** Open an existing song. Notes and staff should render correctly. Nothing above the staff renders yet. Lyrics don't render yet.
 
 See [milestone-1-coordinate-system.md](milestone-1-coordinate-system.md) for detailed implementation plan.
 
@@ -76,7 +76,7 @@ Y-extent array collision detection (YSTEP=128). Three-layer model. Tier 1: artic
 
 Lyric collision avoidance via syllable width overflow walk (ported from abc2svg `ly_width()`). Lyric rendering below staff. Total line height calculation. Tuplet bracket rendering. Line justification (compress/stretch).
 
-**Verification:** Full compositions render completely. Lyrics don't overlap.
+**Verification:** Full songs render completely. Lyrics don't overlap.
 
 ---
 
@@ -90,7 +90,7 @@ Migrate all decoration data from legacy boolean/object flags on `StaffElement` t
 |-------------|----------|-------------|
 | `isFermata()` / `setFermata()` | `FermataAttachment` | FermataAction, EditModeManager, FermataMenuItem, StaffElementIO, ExportABCAction |
 | `isTrill()` / `setTrill()` | `Trill` (RangeElement) | MusicEditOperations, StaffElementIO, ExportABCAction, Line utilities |
-| `getTempoChange()` / `setTempoChange()` | `TempoAttachment` | TempoChangeDialog, StaffElementIO, Composition, ExportABCAction, MIDI |
+| `getTempoChange()` / `setTempoChange()` | `TempoAttachment` | TempoChangeDialog, StaffElementIO, Song, ExportABCAction, MIDI |
 | `getBeatChange()` / `setBeatChange()` | `BeatChangeAttachment` | BeatChangeDialog, StaffElementIO, ExportABCAction |
 | `getAnnotation()` / `setAnnotation()` | `AnnotationAttachment` | AnnotationDialog, StaffElementIO, AnnotationIO, ExportABCAction |
 

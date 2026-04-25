@@ -25,23 +25,25 @@ import java.util.List;
 
 import org.jspecify.annotations.Nullable;
 
+import songscribe.io.SongIO;
 import songscribe.music.KeyType;
 import songscribe.music.Line;
+import songscribe.music.Song;
 import songscribe.music.Tempo;
 
 /**
- * Immutable snapshot of all composition-level fields, built by
- * {@link songscribe.io.CompositionIO.DocumentReader} during file parsing.
+ * Immutable snapshot of all song-level fields, built by
+ * {@link SongIO.DocumentReader} during file parsing.
  * <p>
- * Passed to {@link songscribe.music.Composition#loadFrom(CompositionData)} so that
- * Composition can apply all fields atomically. After installation,
- * {@link songscribe.ui.component.Score#setComposition(songscribe.music.Composition)} posts
+ * Passed to {@link Song#loadFrom(SongData)} so that
+ * Song can apply all fields atomically. After installation,
+ * {@link songscribe.ui.component.Score#setSong(Song)} posts
  * a {@link songscribe.message.notification.DocumentDidLoadNotification}.
  * <p>
  * Font fields are {@code @Nullable} because v1.0 files have no View section;
- * when null, the Composition retains its default (preferences-based) fonts.
+ * when null, the Song retains its default (preferences-based) fonts.
  */
-public record CompositionData(
+public record SongData(
     Tempo tempo,
     String number,
     String title,

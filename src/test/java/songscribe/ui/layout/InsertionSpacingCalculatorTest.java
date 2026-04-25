@@ -31,19 +31,19 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.music.Composition;
+import songscribe.music.Song;
 import songscribe.music.ElementType;
 import songscribe.music.Line;
 
 class InsertionSpacingCalculatorTest extends UnitTest {
 
     /**
-     * Creates a mock composition with the given line width (in staff spaces) and attaches it to the line.
+     * Creates a mock song with the given line width (in staff spaces) and attaches it to the line.
      */
     private static void setLineWidth(Line line, double lineWidthSs) {
-        var composition = mock(Composition.class);
-        when(composition.getLineWidthSs()).thenReturn(lineWidthSs);
-        line.setComposition(composition);
+        var song = mock(Song.class);
+        when(song.getLineWidthSs()).thenReturn(lineWidthSs);
+        line.setSong(song);
     }
 
     /**

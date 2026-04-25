@@ -186,7 +186,7 @@ public static final int NORMAL_IMAGE_WIDTH = 18;
 - **ALWAYS** use `var` for local variable declarations — no exceptions for primitives
 - **ALWAYS** use full, descriptive names — never abbreviate, truncate, or use type initials
   - Single letters are only acceptable for loop counters (`i`, `j`, `k`) and lambda parameters when the type is obvious
-  - Type-initial abbreviations are **never** acceptable: `lc` → `lineComponent`, `comp` → `composition`, `sc` → `scaleContext`, `n` → `note`
+  - Type-initial abbreviations are **never** acceptable: `lc` → `lineComponent`, `sc` → `scaleContext`, `n` → `note`
   - Truncations are **never** acceptable: `len` → `length`, `idx` → `index`, `val` → `value`
   - Recognized domain acronyms and accepted short forms are fine as-is: `midi`, `abc`, `pdf`, `svg`, `dpi`, `pos`, `el`
   - When the role of the variable equals its type, use the type name in camelCase: `var lineComponent = panel.getLineComponent();`
@@ -196,13 +196,13 @@ public static final int NORMAL_IMAGE_WIDTH = 18;
 // Bad — explicit types, single-letter names, abbreviations
 int x = scaleContext.toPixels(noteXSs);
 var lc = getLineComponent();
-var comp = getComposition();
+var comp = getSong();
 var n = line.getElement(index);
 
 // Good — var + full descriptive names
 var xPx = scaleContext.toPixels(noteXSs);
 var lineComponent = getLineComponent();
-var composition = getComposition();
+var song = getSong();
 var el = line.getElement(index);
 
 for (var i = 0; i < 10; i++) {
@@ -287,12 +287,12 @@ The rule applies even when only the final accessor differs:
 
 ```java
 // Bad
-ctx.setCompositionLayoutMetrics(lc.getScore().getCompositionLayoutMetrics());
+ctx.setSongLayoutMetrics(lc.getScore().getSongLayoutMetrics());
 ctx.setLyricRenderMetrics(lc.getScore().getLyricRenderMetrics());
 
 // Good
 var score = lc.getScore();
-ctx.setCompositionLayoutMetrics(score.getCompositionLayoutMetrics());
+ctx.setSongLayoutMetrics(score.getSongLayoutMetrics());
 ctx.setLyricRenderMetrics(score.getLyricRenderMetrics());
 ```
 

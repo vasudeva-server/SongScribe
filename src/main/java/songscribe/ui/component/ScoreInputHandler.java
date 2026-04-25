@@ -252,7 +252,7 @@ public final class ScoreInputHandler
             // The old position tracking system (NotePosition) has been removed.
             // Keyboard mode will need a new implementation that works with
             // LineComponent's insertion tracking or a separate keyboard-specific system.
-            // When wiring caret navigation, consult Composition.isInteractable(element, line)
+            // When wiring caret navigation, consult Song.isInteractable(element, line)
             // so the caret skips the auto-maintained terminal on the last line.
 
             // For now, keyboard mode is disabled. Only UP/DOWN for pitch adjustment remain functional.

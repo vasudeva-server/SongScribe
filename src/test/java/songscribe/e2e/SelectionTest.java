@@ -58,7 +58,7 @@ class SelectionTest extends E2ETest {
 
     @BeforeAll
     void loadSelection1Fixture() throws Exception {
-        resetComposition();
+        resetSong();
         loadFixture("selection1");
     }
 
@@ -255,7 +255,7 @@ class SelectionTest extends E2ETest {
 
         @BeforeAll
         void loadSelection2Fixture() throws Exception {
-            resetComposition();
+            resetSong();
             loadFixture("selection2");
         }
 
@@ -318,7 +318,7 @@ class SelectionTest extends E2ETest {
             assertAll(
                 () -> assertThat(score().getSingleSelectedElement())
                     .as("note selected")
-                    .isEqualTo(composition().getLine(0).getElement(Sel2.NOTE.index)),
+                    .isEqualTo(song().getLine(0).getElement(Sel2.NOTE.index)),
                 () -> assertThat(score().getMode()).as("mode stays SELECT").isEqualTo(Mode.SELECT)
             );
         }
@@ -329,7 +329,7 @@ class SelectionTest extends E2ETest {
             altClickAt(noteScreenPosition(0, Sel2.STACCATO.index));
             assertThat(score().getSingleSelectedElement())
                 .as("note selected via alt+click")
-                .isEqualTo(composition().getLine(0).getElement(Sel2.STACCATO.index));
+                .isEqualTo(song().getLine(0).getElement(Sel2.STACCATO.index));
         }
 
         @Test
@@ -339,7 +339,7 @@ class SelectionTest extends E2ETest {
             assertAll(
                 () -> assertThat(score().getSingleSelectedElement())
                     .as("note stays selected")
-                    .isEqualTo(composition().getLine(0).getElement(Sel2.NOTE.index)),
+                    .isEqualTo(song().getLine(0).getElement(Sel2.NOTE.index)),
                 () -> assertThat(score().getMode()).as("mode stays SELECT").isEqualTo(Mode.SELECT)
             );
         }
@@ -362,7 +362,7 @@ class SelectionTest extends E2ETest {
         void testAltDragTiedNoteFromEditMode() {
             enterEditMode();
             var originalSp = Objects.requireNonNull(GuiActionRunner.execute(
-                () -> composition().getLine(0).getElement(Sel2.TIED_1.index).getStaffPosition()
+                () -> song().getLine(0).getElement(Sel2.TIED_1.index).getStaffPosition()
             ));
             var targetSp = originalSp - 4;
 
@@ -380,10 +380,10 @@ class SelectionTest extends E2ETest {
             assertAll(
                 () -> assertThat(score().getMode()).as("mode is SELECT").isEqualTo(Mode.SELECT),
                 () -> assertThat(GuiActionRunner.execute(
-                    () -> composition().getLine(0).getElement(Sel2.TIED_1.index).getStaffPosition()
+                    () -> song().getLine(0).getElement(Sel2.TIED_1.index).getStaffPosition()
                 )).as("tied note source moved").isEqualTo(targetSp),
                 () -> assertThat(GuiActionRunner.execute(
-                    () -> composition().getLine(0).getElement(Sel2.TIED_2.index).getStaffPosition()
+                    () -> song().getLine(0).getElement(Sel2.TIED_2.index).getStaffPosition()
                 )).as("tied note partner moved").isEqualTo(targetSp)
             );
         }
@@ -396,11 +396,11 @@ class SelectionTest extends E2ETest {
             shiftClickAt(noteScreenPosition(0, Sel2.FERMATA.index));
 
             var originalStaccatoSp = Objects.requireNonNull(GuiActionRunner.execute(
-                () -> composition().getLine(0).getElement(Sel2.STACCATO.index).getStaffPosition()));
+                () -> song().getLine(0).getElement(Sel2.STACCATO.index).getStaffPosition()));
             var originalAccentSp = Objects.requireNonNull(GuiActionRunner.execute(
-                () -> composition().getLine(0).getElement(Sel2.ACCENT.index).getStaffPosition()));
+                () -> song().getLine(0).getElement(Sel2.ACCENT.index).getStaffPosition()));
             var originalFermataSp = Objects.requireNonNull(GuiActionRunner.execute(
-                () -> composition().getLine(0).getElement(Sel2.FERMATA.index).getStaffPosition()));
+                () -> song().getLine(0).getElement(Sel2.FERMATA.index).getStaffPosition()));
 
             var targetSp = originalAccentSp - 2;
             dragNote(0, Sel2.ACCENT.index, targetSp);
@@ -408,13 +408,13 @@ class SelectionTest extends E2ETest {
 
             assertAll(
                 () -> assertThat(GuiActionRunner.execute(
-                    () -> composition().getLine(0).getElement(Sel2.STACCATO.index).getStaffPosition()
+                    () -> song().getLine(0).getElement(Sel2.STACCATO.index).getStaffPosition()
                 )).as("staccato moved by -2").isEqualTo(originalStaccatoSp - 2),
                 () -> assertThat(GuiActionRunner.execute(
-                    () -> composition().getLine(0).getElement(Sel2.ACCENT.index).getStaffPosition()
+                    () -> song().getLine(0).getElement(Sel2.ACCENT.index).getStaffPosition()
                 )).as("accent moved by -2").isEqualTo(originalAccentSp - 2),
                 () -> assertThat(GuiActionRunner.execute(
-                    () -> composition().getLine(0).getElement(Sel2.FERMATA.index).getStaffPosition()
+                    () -> song().getLine(0).getElement(Sel2.FERMATA.index).getStaffPosition()
                 )).as("fermata moved by -2").isEqualTo(originalFermataSp - 2)
             );
         }
@@ -427,11 +427,11 @@ class SelectionTest extends E2ETest {
             shiftClickAt(noteScreenPosition(0, Sel2.TIED_1.index));
 
             var currentFermataSp = Objects.requireNonNull(GuiActionRunner.execute(
-                () -> composition().getLine(0).getElement(Sel2.FERMATA.index).getStaffPosition()));
+                () -> song().getLine(0).getElement(Sel2.FERMATA.index).getStaffPosition()));
             var currentTied1Sp = Objects.requireNonNull(GuiActionRunner.execute(
-                () -> composition().getLine(0).getElement(Sel2.TIED_1.index).getStaffPosition()));
+                () -> song().getLine(0).getElement(Sel2.TIED_1.index).getStaffPosition()));
             var currentTied2Sp = Objects.requireNonNull(GuiActionRunner.execute(
-                () -> composition().getLine(0).getElement(Sel2.TIED_2.index).getStaffPosition()));
+                () -> song().getLine(0).getElement(Sel2.TIED_2.index).getStaffPosition()));
 
             var targetSp = currentTied1Sp + 2;
             dragNote(0, Sel2.TIED_1.index, targetSp);
@@ -439,13 +439,13 @@ class SelectionTest extends E2ETest {
 
             assertAll(
                 () -> assertThat(GuiActionRunner.execute(
-                    () -> composition().getLine(0).getElement(Sel2.FERMATA.index).getStaffPosition()
+                    () -> song().getLine(0).getElement(Sel2.FERMATA.index).getStaffPosition()
                 )).as("fermata moved by +2").isEqualTo(currentFermataSp + 2),
                 () -> assertThat(GuiActionRunner.execute(
-                    () -> composition().getLine(0).getElement(Sel2.TIED_1.index).getStaffPosition()
+                    () -> song().getLine(0).getElement(Sel2.TIED_1.index).getStaffPosition()
                 )).as("tied_1 moved by +2").isEqualTo(currentTied1Sp + 2),
                 () -> assertThat(GuiActionRunner.execute(
-                    () -> composition().getLine(0).getElement(Sel2.TIED_2.index).getStaffPosition()
+                    () -> song().getLine(0).getElement(Sel2.TIED_2.index).getStaffPosition()
                 )).as("tied_2 moved by +2 (tie expansion)").isEqualTo(currentTied2Sp + 2)
             );
         }
@@ -458,9 +458,9 @@ class SelectionTest extends E2ETest {
             shiftClickAt(noteScreenPosition(0, Sel2.NOTE.index));
 
             var currentRestSp = Objects.requireNonNull(GuiActionRunner.execute(
-                () -> composition().getLine(0).getElement(Sel2.DEMI_SEMIQUAVER_REST.index).getStaffPosition()));
+                () -> song().getLine(0).getElement(Sel2.DEMI_SEMIQUAVER_REST.index).getStaffPosition()));
             var currentNoteSp = Objects.requireNonNull(GuiActionRunner.execute(
-                () -> composition().getLine(0).getElement(Sel2.NOTE.index).getStaffPosition()));
+                () -> song().getLine(0).getElement(Sel2.NOTE.index).getStaffPosition()));
 
             var targetSp = currentNoteSp - 2;
             dragNote(0, Sel2.NOTE.index, targetSp);
@@ -468,10 +468,10 @@ class SelectionTest extends E2ETest {
 
             assertAll(
                 () -> assertThat(GuiActionRunner.execute(
-                    () -> composition().getLine(0).getElement(Sel2.NOTE.index).getStaffPosition()
+                    () -> song().getLine(0).getElement(Sel2.NOTE.index).getStaffPosition()
                 )).as("note moved by -2").isEqualTo(currentNoteSp - 2),
                 () -> assertThat(GuiActionRunner.execute(
-                    () -> composition().getLine(0).getElement(Sel2.DEMI_SEMIQUAVER_REST.index).getStaffPosition()
+                    () -> song().getLine(0).getElement(Sel2.DEMI_SEMIQUAVER_REST.index).getStaffPosition()
                 )).as("rest unchanged").isEqualTo(currentRestSp),
                 () -> assertThat(score().getSelectionSize())
                     .as("both remain selected").isEqualTo(2)

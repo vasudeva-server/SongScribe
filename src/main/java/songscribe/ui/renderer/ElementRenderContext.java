@@ -24,13 +24,13 @@ import module java.desktop;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.music.Composition;
+import songscribe.music.Song;
 import songscribe.music.Span;
 import songscribe.music.Line;
 import songscribe.ui.component.Score;
 import songscribe.ui.component.score.LineComponent;
 import songscribe.ui.component.score.PreviewElementManager;
-import songscribe.ui.layout.CompositionLayoutMetrics;
+import songscribe.ui.layout.SongLayoutMetrics;
 import songscribe.ui.layout.LayoutResult;
 import songscribe.ui.layout.LyricRenderMetrics;
 import songscribe.ui.layout.ScaleContext;
@@ -40,7 +40,7 @@ import songscribe.ui.menu.DebugState;
  * Context passed to element renderers containing shared rendering state.
  * <p>
  * Avoids passing many individual parameters to every render method.
- * Contains both immutable data (composition, fonts) and mutable state
+ * Contains both immutable data (song, fonts) and mutable state
  * (current line being rendered, middleLineY).
  * <p>
  * Note: Named ElementRenderContext to avoid conflict with the existing
@@ -62,15 +62,15 @@ public class ElementRenderContext {
     // Instance Fields
     // ==========================================================================
 
-    private final Composition composition;
+    private final Song song;
     @Nullable
     private Line currentLine;
     private double middleLineYSs;
     private int lineIndex;
     @SuppressWarnings("NullAway") // set by setLayoutResult() before first access
     private LayoutResult layoutResult = null;
-    @SuppressWarnings("NullAway") // set by setCompositionLayoutMetrics() before first access
-    private CompositionLayoutMetrics compositionLayoutMetrics = null;
+    @SuppressWarnings("NullAway") // set by setSongLayoutMetrics() before first access
+    private SongLayoutMetrics songLayoutMetrics = null;
     @SuppressWarnings("NullAway") // set by setLyricRenderMetrics() before first access
     private LyricRenderMetrics lyricRenderMetrics = null;
     private LineComponent.@Nullable SelectionProvider selectionProvider;
@@ -84,19 +84,19 @@ public class ElementRenderContext {
     private double previewShiftSs;
 
     /**
-     * Creates a render context for the given composition.
+     * Creates a render context for the given song.
      *
-     * @param composition The composition being rendered
+     * @param song The song being rendered
      */
-    public ElementRenderContext(Composition composition) {
-        this.composition = composition;
+    public ElementRenderContext(Song song) {
+        this.song = song;
     }
 
     /**
-     * Returns the composition being rendered.
+     * Returns the song being rendered.
      */
-    public Composition getComposition() {
-        return composition;
+    public Song getSong() {
+        return song;
     }
 
     /**
@@ -142,7 +142,7 @@ public class ElementRenderContext {
     }
 
     /**
-     * Returns the index of the current line within the composition.
+     * Returns the index of the current line within the song.
      */
     public int getLineIndex() {
         return lineIndex;
@@ -204,27 +204,27 @@ public class ElementRenderContext {
     }
 
     /**
-     * Returns the composition-wide layout metrics.
+     * Returns the song-wide layout metrics.
      * <p>
      * Used by lyric renderers to look up per-verse baseline Y positions that
-     * are uniform across every line in the composition. Must be set via
-     * {@link #setCompositionLayoutMetrics} before any rendering pass runs.
+     * are uniform across every line in the song. Must be set via
+     * {@link #setSongLayoutMetrics} before any rendering pass runs.
      */
-    public CompositionLayoutMetrics getCompositionLayoutMetrics() {
-        return compositionLayoutMetrics;
+    public SongLayoutMetrics getSongLayoutMetrics() {
+        return songLayoutMetrics;
     }
 
-    /** Sets the composition-wide layout metrics. */
-    public void setCompositionLayoutMetrics(CompositionLayoutMetrics metrics) {
-        this.compositionLayoutMetrics = metrics;
+    /** Sets the song-wide layout metrics. */
+    public void setSongLayoutMetrics(SongLayoutMetrics metrics) {
+        this.songLayoutMetrics = metrics;
     }
 
-    /** Returns the composition-wide lyric render metrics. */
+    /** Returns the song-wide lyric render metrics. */
     public LyricRenderMetrics getLyricRenderMetrics() {
         return lyricRenderMetrics;
     }
 
-    /** Sets the composition-wide lyric render metrics. */
+    /** Sets the song-wide lyric render metrics. */
     public void setLyricRenderMetrics(LyricRenderMetrics metrics) {
         this.lyricRenderMetrics = metrics;
     }
@@ -394,7 +394,7 @@ public class ElementRenderContext {
      * Sets a precise X coordinate for the next element render, bypassing layout lookup and
      * {@code element.getXPos()}. Used by the preview element so that {@link NoteRenderer}
      * applies device-pixel snapping to the raw computed double directly, matching the
-     * path used for laid-out composition elements. Call {@link #clearOverrideElementX()} after
+     * path used for laid-out song elements. Call {@link #clearOverrideElementX()} after
      * rendering to reset.
      *
      * @param xSs the exact X coordinate in staff spaces

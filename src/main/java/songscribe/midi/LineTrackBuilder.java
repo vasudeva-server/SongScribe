@@ -96,7 +96,7 @@ public class LineTrackBuilder {
      * Adds this line's elements to a MIDI track.
      *
      * @param track The MIDI track to add to
-     * @param lineIndex This line's index in the composition (for colorize messages)
+     * @param lineIndex This line's index in the song (for colorize messages)
      * @param startTicks Starting tick position
      * @param initialTempo Tempo at the start of this line
      * @param settings Playback settings
@@ -133,7 +133,7 @@ public class LineTrackBuilder {
      * Adds a range of this line's elements to a MIDI track.
      *
      * @param track The MIDI track to add to
-     * @param lineIndex This line's index in the composition (for colorize messages)
+     * @param lineIndex This line's index in the song (for colorize messages)
      * @param startTicks Starting tick position
      * @param initialTempo Tempo at the start of this range
      * @param settings Playback settings
@@ -189,7 +189,7 @@ public class LineTrackBuilder {
      * responsible for flushing pending resets when done.
      *
      * @param track The MIDI track to add to
-     * @param lineIndex This line's index in the composition (for colorize messages)
+     * @param lineIndex This line's index in the song (for colorize messages)
      * @param startTicks Starting tick position
      * @param initialTempo Tempo at the start of this range
      * @param settings Playback settings

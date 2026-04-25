@@ -33,30 +33,30 @@ import org.junit.jupiter.api.Test;
 import org.xml.sax.InputSource;
 
 import songscribe.UnitTest;
-import songscribe.music.Composition;
+import songscribe.music.Song;
 import songscribe.music.Lyric;
 import songscribe.music.StaffElement.SyllableRelation;
 
-class CompositionIOTest extends UnitTest {
+class SongIOTest extends UnitTest {
 
     private static final SAXParserFactory PARSER_FACTORY = SAXParserFactory.newInstance();
 
     @Test
     void testOpeningNewerVersionFileThrowsNewerVersionException() {
         assertThatThrownBy(() -> loadFixture("newer-version"))
-            .isInstanceOf(CompositionIO.NewerVersionException.class);
+            .isInstanceOf(SongIO.NewerVersionException.class);
     }
 
     @Nested
     class PerNoteLyricSerialization {
 
-        // T40: Round-trip — write a composition with per-note lyrics (COMPOUND_WORD,
+        // T40: Round-trip — write a song with per-note lyrics (COMPOUND_WORD,
         // extend=true); reload; assert Properties.lyrics matches.
         @Test
         void testRoundTripPerNoteLyrics() throws Exception {
-            // Load a bare 3-note composition as the base structure.
-            var composition = parseXml(threeNoteXml());
-            var line = composition.getLine(0);
+            // Load a bare 3-note song as the base structure.
+            var song = parseXml(threeNoteXml());
+            var line = song.getLine(0);
 
             line.getElement(0).properties.lyrics.add(
                 new Lyric(1, SyllableRelation.COMPOUND_WORD, "heart", Lyric.Extend.START)
@@ -66,7 +66,7 @@ class CompositionIOTest extends UnitTest {
                 new Lyric(1, SyllableRelation.NONE, "garden", Lyric.Extend.NONE)
             );
 
-            var reloaded = roundTrip(composition);
+            var reloaded = roundTrip(song);
             var reloadedLine = reloaded.getLine(0);
 
             assertThat(reloadedLine.getElement(0).properties.lyrics)
@@ -86,8 +86,8 @@ class CompositionIOTest extends UnitTest {
         // populates per-note Lyric records on load.
         @Test
         void testLegacyLyricsBlobPopulatesPerNoteRecords() throws Exception {
-            var composition = parseXml(legacyLyricsXml("heart--garden", "2.5"));
-            var line = composition.getLine(0);
+            var song = parseXml(legacyLyricsXml("heart--garden", "2.5"));
+            var line = song.getLine(0);
 
             assertThat(line.getElement(0).properties.lyrics)
                 .as("note 0: compound-word syllable")
@@ -103,8 +103,8 @@ class CompositionIOTest extends UnitTest {
         // data is used.
         @Test
         void testVersionGuardSkipsLegacyImportForNewFormat() throws Exception {
-            var composition = parseXml(newFormatWithSpuriousLegacyBlob());
-            var line = composition.getLine(0);
+            var song = parseXml(newFormatWithSpuriousLegacyBlob());
+            var line = song.getLine(0);
 
             // The per-note data says "hello"; the <lyrics> blob says "spurious".
             // If the guard works, we get exactly the per-note record.
@@ -124,8 +124,8 @@ class CompositionIOTest extends UnitTest {
 
         @Test
         void testObsoleteNudgeFieldsLeaveNoLyricRecords() throws Exception {
-            var composition = parseXml(legacyNudgeFieldsXml());
-            assertThat(composition.getLine(0).getElement(0).properties.lyrics)
+            var song = parseXml(legacyNudgeFieldsXml());
+            assertThat(song.getLine(0).getElement(0).properties.lyrics)
                 .as("nudge-field-only note has no per-note Lyric records")
                 .isEmpty();
         }
@@ -134,8 +134,8 @@ class CompositionIOTest extends UnitTest {
         // STOP on the terminal note with empty text — round-trips through XML.
         @Test
         void testRoundTripMelismaWithStopCarrier() throws Exception {
-            var composition = parseXml(threeNoteXml());
-            var line = composition.getLine(0);
+            var song = parseXml(threeNoteXml());
+            var line = song.getLine(0);
 
             line.getElement(0).properties.lyrics.add(
                 new Lyric(1, SyllableRelation.NONE, "ah", Lyric.Extend.START)
@@ -144,7 +144,7 @@ class CompositionIOTest extends UnitTest {
                 new Lyric(1, SyllableRelation.NONE, "", Lyric.Extend.STOP)
             );
 
-            var reloaded = roundTrip(composition);
+            var reloaded = roundTrip(song);
             var reloadedLine = reloaded.getLine(0);
 
             assertThat(reloadedLine.getElement(0).properties.lyrics)
@@ -157,8 +157,8 @@ class CompositionIOTest extends UnitTest {
         // preserving backward compatibility with files written before the MusicXML update.
         @Test
         void testLegacyExtendTagWithoutTypeLoadsAsStart() throws Exception {
-            var composition = parseXml(legacyExtendTagXml());
-            var reloadedLine = composition.getLine(0);
+            var song = parseXml(legacyExtendTagXml());
+            var reloadedLine = song.getLine(0);
 
             assertThat(reloadedLine.getElement(0).properties.lyrics)
                 .containsExactly(new Lyric(1, SyllableRelation.NONE, "ah", Lyric.Extend.START));
@@ -168,8 +168,8 @@ class CompositionIOTest extends UnitTest {
         // the stop marker (no syllabic, no text) loads cleanly.
         @Test
         void testMusicXmlStopExtendLoadsAsStopCarrier() throws Exception {
-            var composition = parseXml(musicXmlStyleStopXml());
-            var reloadedLine = composition.getLine(0);
+            var song = parseXml(musicXmlStyleStopXml());
+            var reloadedLine = song.getLine(0);
 
             assertThat(reloadedLine.getElement(0).properties.lyrics)
                 .containsExactly(new Lyric(1, SyllableRelation.NONE, "ah", Lyric.Extend.START));
@@ -180,9 +180,9 @@ class CompositionIOTest extends UnitTest {
         // T44: Legacy <lyrics> blob with -- maps to COMPOUND_WORD on first note.
         @Test
         void testLegacyDoubleHyphenPreservesCompoundWord() throws Exception {
-            var composition = parseXml(legacyLyricsXml("heart--garden", "2.5"));
+            var song = parseXml(legacyLyricsXml("heart--garden", "2.5"));
 
-            assertThat(composition.getLine(0).getElement(0).getMainLyric())
+            assertThat(song.getLine(0).getElement(0).getMainLyric())
                 .isNotNull()
                 .extracting(Lyric::relation)
                 .isEqualTo(SyllableRelation.COMPOUND_WORD);
@@ -191,11 +191,11 @@ class CompositionIOTest extends UnitTest {
 
     // -- XML Helpers --
 
-    private static Composition parseXml(String xml) throws Exception {
+    private static Song parseXml(String xml) throws Exception {
         var parser = PARSER_FACTORY.newSAXParser();
-        var reader = new CompositionIO.DocumentReader();
+        var reader = new SongIO.DocumentReader();
         parser.parse(new InputSource(new StringReader(xml)), reader);
-        return reader.getComposition();
+        return reader.getSong();
     }
 
     /** Minimal v2.6 composition XML with three crotchets and a terminal barline. */

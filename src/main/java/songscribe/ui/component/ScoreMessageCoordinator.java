@@ -23,7 +23,6 @@ package songscribe.ui.component;
 import module java.desktop;
 
 import net.engio.mbassy.listener.Handler;
-import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
 import songscribe.message.Message;
@@ -48,7 +47,7 @@ import songscribe.message.mutation.LineInsertion;
 import songscribe.message.mutation.LineScopedMutation;
 import songscribe.message.mutation.MetadataChange;
 import songscribe.message.mutation.Mutation;
-import songscribe.message.notification.CompositionDidChangeNotification;
+import songscribe.message.notification.SongDidChangeNotification;
 import songscribe.message.notification.ControlDidChangeNotification;
 import songscribe.message.notification.ElementTypeWasSelectedNotification;
 import songscribe.message.notification.ModeDidChangeNotification;
@@ -147,13 +146,13 @@ public final class ScoreMessageCoordinator {
     @Handler
     public void handleInsertLine(InsertLineCommand message) {
         var shift = message.getShift();
-        var composition = score.getComposition();
+        var song = score.getSong();
 
         if ((selectionCoordinator.getSelectedLine() != -1) || (shift == InsertLineAction.ADD)) {
             var index = (shift >= 0)
                 ? (selectionCoordinator.getSelectedLine() + shift)
                 : InsertLineAction.ADD;
-            composition.addLine(index, new Line());
+            song.addLine(index, new Line());
             score.clearSelection();
             score.repaint();
         } else {
@@ -218,7 +217,7 @@ public final class ScoreMessageCoordinator {
     }
 
     @Handler
-    public void compositionDidChange(CompositionDidChangeNotification message) {
+    public void songDidChange(SongDidChangeNotification message) {
         var mainPanel = score.getMainPanel();
 
         if (mainPanel == null) {
@@ -256,10 +255,10 @@ public final class ScoreMessageCoordinator {
      * Returns whether the notification carries any mutation that requires line layout
      * invalidation: line-scoped element changes (including per-note lyric edits, which
      * arrive as {@code ElementModification} with {@code ElementField.LYRIC}), or line
-     * insert/delete. Composition-wide {@code LyricsChange} mutations target legacy text
+     * insert/delete. Song-wide {@code LyricsChange} mutations target legacy text
      * fields and do not affect rendered layout.
      */
-    private static boolean hasLineLayoutMutation(CompositionDidChangeNotification message) {
+    private static boolean hasLineLayoutMutation(SongDidChangeNotification message) {
         for (Mutation mutation : message.getMutations()) {
             if (mutation instanceof LineScopedMutation
                 || mutation instanceof LineInsertion
@@ -273,9 +272,9 @@ public final class ScoreMessageCoordinator {
 
     /**
      * Returns whether the notification carries any mutation that requires a full
-     * composition relayout (font / metadata / layout property changes).
+     * song relayout (font / metadata / layout property changes).
      */
-    private static boolean hasFullRelayoutMutation(CompositionDidChangeNotification message) {
+    private static boolean hasFullRelayoutMutation(SongDidChangeNotification message) {
         for (Mutation mutation : message.getMutations()) {
             if (mutation instanceof FontChange
                 || mutation instanceof MetadataChange
@@ -357,7 +356,7 @@ public final class ScoreMessageCoordinator {
 
     private void handleCut() {
         handleCopy();
-        score.getComposition().withModification(this::handleDelete);
+        score.getSong().withModification(this::handleDelete);
     }
 
     private void handleCopy() {
@@ -379,7 +378,7 @@ public final class ScoreMessageCoordinator {
     }
 
     private void handleDelete() {
-        var composition = score.getComposition();
+        var song = score.getSong();
         var state = selectionCoordinator.getActiveSelection();
 
         if (state != null && state.hasElementSelection()) {
@@ -397,7 +396,7 @@ public final class ScoreMessageCoordinator {
             // deleteNote must remove it along with the first selected note — a non-contiguous
             // operation that cannot be expressed as a single range. Fall back to the per-element loop.
             if (begin > 0 && line.isPairedGraceNote(begin - 1)) {
-                composition.withModification(() -> deleteSelection(begin, end, line));
+                song.withModification(() -> deleteSelection(begin, end, line));
             } else {
                 // Contiguous range: clean up the element before the range, then batch-remove.
                 if (begin > 0) {
@@ -418,7 +417,7 @@ public final class ScoreMessageCoordinator {
                     }
                 }
 
-                composition.withModification(() -> {
+                song.withModification(() -> {
                     // Mirror deleteNote: adjust syllable relations and melisma extends
                     // on neighbors before removing. Both helpers require the target
                     // elements to still be present in the list.
@@ -435,10 +434,10 @@ public final class ScoreMessageCoordinator {
             var line = state.getLine();
             line.getElement(state.getSelectedGlissandoElementIndex()).removeGlissando();
         } else if (score.canDeleteLine()) {
-            composition.removeLine(selectionCoordinator.getSelectedLine());
+            song.removeLine(selectionCoordinator.getSelectedLine());
         }
 
-        // Discard saved action states — the composition has changed, so restoring
+        // Discard saved action states — the song has changed, so restoring
         // pre-selection states would be stale. Individual action handlers will
         // re-evaluate their enabled state from the current context.
         selectionCoordinator.clearSavedActionStates();

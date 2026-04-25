@@ -44,18 +44,18 @@ import songscribe.message.mutation.LyricsChange;
 import songscribe.message.mutation.LyricsField;
 import songscribe.message.mutation.MetadataChange;
 import songscribe.message.mutation.MetadataField;
-import songscribe.message.notification.CompositionDidChangeNotification;
+import songscribe.message.notification.SongDidChangeNotification;
 
-class CompositionSetterMutationTest extends UnitTest {
+class SongSetterMutationTest extends UnitTest {
 
-    private Composition composition;
+    private Song song;
     private MockedStatic<MessageCenter> messageCenterMock;
 
     @BeforeEach
     void setUp() {
         // Construct before mocking so the constructor's bus interactions
         // go to the real (unobserved) bus, not the mock.
-        composition = new Composition();
+        song = new Song();
         messageCenterMock = mockStatic(MessageCenter.class);
     }
 
@@ -73,8 +73,8 @@ class CompositionSetterMutationTest extends UnitTest {
 
         @Test
         void testSetTitlePostsMutation() {
-            var oldTitle = composition.getTitle();
-            composition.setTitle("New Title");
+            var oldTitle = song.getTitle();
+            song.setTitle("New Title");
 
             var mutation = captureSingleMetadataChange();
             assertThat(mutation.field()).isEqualTo(MetadataField.TITLE);
@@ -84,14 +84,14 @@ class CompositionSetterMutationTest extends UnitTest {
 
         @Test
         void testSetTitleSameValuePostsNothing() {
-            composition.setTitle(composition.getTitle());
+            song.setTitle(song.getTitle());
             verifyNoNotificationPosted();
         }
 
         @Test
         void testSetPlacePostsMutation() {
-            var oldPlace = composition.getPlace();
-            composition.setPlace("Paris");
+            var oldPlace = song.getPlace();
+            song.setPlace("Paris");
 
             var mutation = captureSingleMetadataChange();
             assertThat(mutation.field()).isEqualTo(MetadataField.PLACE);
@@ -101,14 +101,14 @@ class CompositionSetterMutationTest extends UnitTest {
 
         @Test
         void testSetPlaceSameValuePostsNothing() {
-            composition.setPlace(composition.getPlace());
+            song.setPlace(song.getPlace());
             verifyNoNotificationPosted();
         }
 
         @Test
         void testSetYearPostsMutation() {
-            var oldYear = composition.getYear();
-            composition.setYear("2024");
+            var oldYear = song.getYear();
+            song.setYear("2024");
 
             var mutation = captureSingleMetadataChange();
             assertThat(mutation.field()).isEqualTo(MetadataField.YEAR);
@@ -118,14 +118,14 @@ class CompositionSetterMutationTest extends UnitTest {
 
         @Test
         void testSetYearSameValuePostsNothing() {
-            composition.setYear(composition.getYear());
+            song.setYear(song.getYear());
             verifyNoNotificationPosted();
         }
 
         @Test
         void testSetAttributionPostsMutation() {
-            var oldAttribution = composition.getAttribution();
-            composition.setAttribution("Composed by Someone");
+            var oldAttribution = song.getAttribution();
+            song.setAttribution("Composed by Someone");
 
             var mutation = captureSingleMetadataChange();
             assertThat(mutation.field()).isEqualTo(MetadataField.ATTRIBUTION);
@@ -135,14 +135,14 @@ class CompositionSetterMutationTest extends UnitTest {
 
         @Test
         void testSetAttributionSameValuePostsNothing() {
-            composition.setAttribution(composition.getAttribution());
+            song.setAttribution(song.getAttribution());
             verifyNoNotificationPosted();
         }
 
         @Test
         void testSetNumberPostsMutation() {
-            var oldNumber = composition.getNumber();
-            composition.setNumber("42");
+            var oldNumber = song.getNumber();
+            song.setNumber("42");
 
             var mutation = captureSingleMetadataChange();
             assertThat(mutation.field()).isEqualTo(MetadataField.NUMBER);
@@ -152,14 +152,14 @@ class CompositionSetterMutationTest extends UnitTest {
 
         @Test
         void testSetNumberSameValuePostsNothing() {
-            composition.setNumber(composition.getNumber());
+            song.setNumber(song.getNumber());
             verifyNoNotificationPosted();
         }
 
         @Test
         void testSetFootnotesPostsMutation() {
-            var oldFootnotes = composition.getFootnotes();
-            composition.setFootnotes("See note 1");
+            var oldFootnotes = song.getFootnotes();
+            song.setFootnotes("See note 1");
 
             var mutation = captureSingleMetadataChange();
             assertThat(mutation.field()).isEqualTo(MetadataField.FOOTNOTES);
@@ -169,7 +169,7 @@ class CompositionSetterMutationTest extends UnitTest {
 
         @Test
         void testSetFootnotesSameValuePostsNothing() {
-            composition.setFootnotes(composition.getFootnotes());
+            song.setFootnotes(song.getFootnotes());
             verifyNoNotificationPosted();
         }
     }
@@ -179,8 +179,8 @@ class CompositionSetterMutationTest extends UnitTest {
 
         @Test
         void testSetMonthPostsMutation() {
-            var oldMonth = composition.getMonth();
-            composition.setMonth(oldMonth + 1);
+            var oldMonth = song.getMonth();
+            song.setMonth(oldMonth + 1);
 
             var mutation = captureSingleMetadataChange();
             assertThat(mutation.field()).isEqualTo(MetadataField.MONTH);
@@ -190,14 +190,14 @@ class CompositionSetterMutationTest extends UnitTest {
 
         @Test
         void testSetMonthSameValuePostsNothing() {
-            composition.setMonth(composition.getMonth());
+            song.setMonth(song.getMonth());
             verifyNoNotificationPosted();
         }
 
         @Test
         void testSetDayPostsMutation() {
-            var oldDay = composition.getDay();
-            composition.setDay(oldDay + 1);
+            var oldDay = song.getDay();
+            song.setDay(oldDay + 1);
 
             var mutation = captureSingleMetadataChange();
             assertThat(mutation.field()).isEqualTo(MetadataField.DAY);
@@ -207,17 +207,17 @@ class CompositionSetterMutationTest extends UnitTest {
 
         @Test
         void testSetDaySameValuePostsNothing() {
-            composition.setDay(composition.getDay());
+            song.setDay(song.getDay());
             verifyNoNotificationPosted();
         }
 
         @Test
         void testSetTempoPostsMutation() {
-            var oldTempo = composition.getTempo();
+            var oldTempo = song.getTempo();
             var newTempo = new Tempo();
             newTempo.setVisibleTempo(oldTempo.getVisibleTempo() + 10);
 
-            composition.setTempo(newTempo);
+            song.setTempo(newTempo);
 
             var mutation = captureSingleMetadataChange();
             assertThat(mutation.field()).isEqualTo(MetadataField.TEMPO);
@@ -227,14 +227,14 @@ class CompositionSetterMutationTest extends UnitTest {
 
         @Test
         void testSetTempoSameValuePostsNothing() {
-            composition.setTempo(composition.getTempo());
+            song.setTempo(song.getTempo());
             verifyNoNotificationPosted();
         }
 
         @Test
         void testSetDefaultKeyAccidentalCountPostsMutation() {
-            var oldCount = composition.getDefaultKeyAccidentalCount();
-            composition.setDefaultKeyAccidentalCount(oldCount - 1);
+            var oldCount = song.getDefaultKeyAccidentalCount();
+            song.setDefaultKeyAccidentalCount(oldCount - 1);
 
             var mutation = captureSingleMetadataChange();
             assertThat(mutation.field()).isEqualTo(MetadataField.DEFAULT_KEY_ACCIDENTAL_COUNT);
@@ -244,16 +244,16 @@ class CompositionSetterMutationTest extends UnitTest {
 
         @Test
         void testSetDefaultKeyAccidentalCountSameValuePostsNothing() {
-            composition.setDefaultKeyAccidentalCount(composition.getDefaultKeyAccidentalCount());
+            song.setDefaultKeyAccidentalCount(song.getDefaultKeyAccidentalCount());
             verifyNoNotificationPosted();
         }
 
         @Test
         void testSetDefaultKeyTypePostsMutation() {
-            var oldKeyType = composition.getDefaultKeyType();
+            var oldKeyType = song.getDefaultKeyType();
             var newKeyType = oldKeyType == KeyType.FLATS ? KeyType.SHARPS : KeyType.FLATS;
 
-            composition.setDefaultKeyType(newKeyType);
+            song.setDefaultKeyType(newKeyType);
 
             var mutation = captureSingleMetadataChange();
             assertThat(mutation.field()).isEqualTo(MetadataField.DEFAULT_KEY_TYPE);
@@ -263,14 +263,14 @@ class CompositionSetterMutationTest extends UnitTest {
 
         @Test
         void testSetDefaultKeyTypeSameValuePostsNothing() {
-            composition.setDefaultKeyType(composition.getDefaultKeyType());
+            song.setDefaultKeyType(song.getDefaultKeyType());
             verifyNoNotificationPosted();
         }
 
         @Test
         void testSetUnofficialTranslationPostsMutation() {
-            var oldValue = composition.isUnofficialTranslation();
-            composition.setUnofficialTranslation(!oldValue);
+            var oldValue = song.isUnofficialTranslation();
+            song.setUnofficialTranslation(!oldValue);
 
             var mutation = captureSingleMetadataChange();
             assertThat(mutation.field()).isEqualTo(MetadataField.UNOFFICIAL_TRANSLATION);
@@ -280,7 +280,7 @@ class CompositionSetterMutationTest extends UnitTest {
 
         @Test
         void testSetUnofficialTranslationSameValuePostsNothing() {
-            composition.setUnofficialTranslation(composition.isUnofficialTranslation());
+            song.setUnofficialTranslation(song.isUnofficialTranslation());
             verifyNoNotificationPosted();
         }
     }
@@ -294,8 +294,8 @@ class CompositionSetterMutationTest extends UnitTest {
 
         @Test
         void testSetUnderLyricsPostsMutation() {
-            var oldLyrics = composition.getUnderLyrics();
-            composition.setUnderLyrics("under text");
+            var oldLyrics = song.getUnderLyrics();
+            song.setUnderLyrics("under text");
 
             var mutation = captureSingleLyricsChange();
             assertThat(mutation.field()).isEqualTo(LyricsField.UNDER);
@@ -305,14 +305,14 @@ class CompositionSetterMutationTest extends UnitTest {
 
         @Test
         void testSetUnderLyricsSameValuePostsNothing() {
-            composition.setUnderLyrics(composition.getUnderLyrics());
+            song.setUnderLyrics(song.getUnderLyrics());
             verifyNoNotificationPosted();
         }
 
         @Test
         void testSetBanglaLyricsPostsMutation() {
-            var oldLyrics = composition.getBanglaLyrics();
-            composition.setBanglaLyrics("bangla text");
+            var oldLyrics = song.getBanglaLyrics();
+            song.setBanglaLyrics("bangla text");
 
             var mutation = captureSingleLyricsChange();
             assertThat(mutation.field()).isEqualTo(LyricsField.BANGLA);
@@ -322,14 +322,14 @@ class CompositionSetterMutationTest extends UnitTest {
 
         @Test
         void testSetBanglaLyricsSameValuePostsNothing() {
-            composition.setBanglaLyrics(composition.getBanglaLyrics());
+            song.setBanglaLyrics(song.getBanglaLyrics());
             verifyNoNotificationPosted();
         }
 
         @Test
         void testSetTranslatedLyricsPostsMutation() {
-            var oldLyrics = composition.getTranslatedLyrics();
-            composition.setTranslatedLyrics("translated text");
+            var oldLyrics = song.getTranslatedLyrics();
+            song.setTranslatedLyrics("translated text");
 
             var mutation = captureSingleLyricsChange();
             assertThat(mutation.field()).isEqualTo(LyricsField.TRANSLATED);
@@ -339,7 +339,7 @@ class CompositionSetterMutationTest extends UnitTest {
 
         @Test
         void testSetTranslatedLyricsSameValuePostsNothing() {
-            composition.setTranslatedLyrics(composition.getTranslatedLyrics());
+            song.setTranslatedLyrics(song.getTranslatedLyrics());
             verifyNoNotificationPosted();
         }
     }
@@ -355,8 +355,8 @@ class CompositionSetterMutationTest extends UnitTest {
 
         @Test
         void testSetTitleFontPostsMutation() {
-            var oldFont = composition.getTitleFont();
-            composition.setTitleFont(ALT_FONT);
+            var oldFont = song.getTitleFont();
+            song.setTitleFont(ALT_FONT);
 
             var mutation = captureSingleFontChange();
             assertThat(mutation.field()).isEqualTo(FontField.TITLE);
@@ -366,14 +366,14 @@ class CompositionSetterMutationTest extends UnitTest {
 
         @Test
         void testSetTitleFontSameValuePostsNothing() {
-            composition.setTitleFont(composition.getTitleFont());
+            song.setTitleFont(song.getTitleFont());
             verifyNoNotificationPosted();
         }
 
         @Test
         void testSetLyricsFontPostsMutation() {
-            var oldFont = composition.getLyricsFont();
-            composition.setLyricsFont(ALT_FONT);
+            var oldFont = song.getLyricsFont();
+            song.setLyricsFont(ALT_FONT);
 
             var mutation = captureSingleFontChange();
             assertThat(mutation.field()).isEqualTo(FontField.LYRICS);
@@ -383,14 +383,14 @@ class CompositionSetterMutationTest extends UnitTest {
 
         @Test
         void testSetLyricsFontSameValuePostsNothing() {
-            composition.setLyricsFont(composition.getLyricsFont());
+            song.setLyricsFont(song.getLyricsFont());
             verifyNoNotificationPosted();
         }
 
         @Test
         void testSetAttributionFontPostsMutation() {
-            var oldFont = composition.getAttributionFont();
-            composition.setAttributionFont(ALT_FONT);
+            var oldFont = song.getAttributionFont();
+            song.setAttributionFont(ALT_FONT);
 
             var mutation = captureSingleFontChange();
             assertThat(mutation.field()).isEqualTo(FontField.ATTRIBUTION);
@@ -400,14 +400,14 @@ class CompositionSetterMutationTest extends UnitTest {
 
         @Test
         void testSetAttributionFontSameValuePostsNothing() {
-            composition.setAttributionFont(composition.getAttributionFont());
+            song.setAttributionFont(song.getAttributionFont());
             verifyNoNotificationPosted();
         }
 
         @Test
         void testSetAnnotationFontPostsMutation() {
-            var oldFont = composition.getAnnotationFont();
-            composition.setAnnotationFont(ALT_FONT);
+            var oldFont = song.getAnnotationFont();
+            song.setAnnotationFont(ALT_FONT);
 
             var mutation = captureSingleFontChange();
             assertThat(mutation.field()).isEqualTo(FontField.ANNOTATION);
@@ -417,14 +417,14 @@ class CompositionSetterMutationTest extends UnitTest {
 
         @Test
         void testSetAnnotationFontSameValuePostsNothing() {
-            composition.setAnnotationFont(composition.getAnnotationFont());
+            song.setAnnotationFont(song.getAnnotationFont());
             verifyNoNotificationPosted();
         }
 
         @Test
         void testSetBanglaFontPostsMutation() {
-            var oldFont = composition.getBanglaFont();
-            composition.setBanglaFont(ALT_FONT);
+            var oldFont = song.getBanglaFont();
+            song.setBanglaFont(ALT_FONT);
 
             var mutation = captureSingleFontChange();
             assertThat(mutation.field()).isEqualTo(FontField.BANGLA);
@@ -434,14 +434,14 @@ class CompositionSetterMutationTest extends UnitTest {
 
         @Test
         void testSetBanglaFontSameValuePostsNothing() {
-            composition.setBanglaFont(composition.getBanglaFont());
+            song.setBanglaFont(song.getBanglaFont());
             verifyNoNotificationPosted();
         }
 
         @Test
         void testSetFootnoteFontPostsMutation() {
-            var oldFont = composition.getFootnoteFont();
-            composition.setFootnoteFont(ALT_FONT);
+            var oldFont = song.getFootnoteFont();
+            song.setFootnoteFont(ALT_FONT);
 
             var mutation = captureSingleFontChange();
             assertThat(mutation.field()).isEqualTo(FontField.FOOTNOTE);
@@ -451,7 +451,7 @@ class CompositionSetterMutationTest extends UnitTest {
 
         @Test
         void testSetFootnoteFontSameValuePostsNothing() {
-            composition.setFootnoteFont(composition.getFootnoteFont());
+            song.setFootnoteFont(song.getFootnoteFont());
             verifyNoNotificationPosted();
         }
     }
@@ -465,8 +465,8 @@ class CompositionSetterMutationTest extends UnitTest {
 
         @Test
         void testSetLineWidthSsPostsMutation() {
-            var oldWidth = composition.getLineWidthSs();
-            composition.setLineWidthSs(oldWidth + 1.0);
+            var oldWidth = song.getLineWidthSs();
+            song.setLineWidthSs(oldWidth + 1.0);
 
             var mutation = captureSingleLayoutChange();
             assertThat(mutation.field()).isEqualTo(LayoutField.LINE_WIDTH_SS);
@@ -476,14 +476,14 @@ class CompositionSetterMutationTest extends UnitTest {
 
         @Test
         void testSetLineWidthSsSameValuePostsNothing() {
-            composition.setLineWidthSs(composition.getLineWidthSs());
+            song.setLineWidthSs(song.getLineWidthSs());
             verifyNoNotificationPosted();
         }
 
         @Test
         void testSetTopPaddingSsPostsMutation() {
-            var oldPadding = composition.getTopPaddingSs();
-            composition.setTopPaddingSs(oldPadding + 2.0, false);
+            var oldPadding = song.getTopPaddingSs();
+            song.setTopPaddingSs(oldPadding + 2.0, false);
 
             var mutation = captureSingleLayoutChange();
             assertThat(mutation.field()).isEqualTo(LayoutField.TOP_PADDING_SS);
@@ -493,8 +493,8 @@ class CompositionSetterMutationTest extends UnitTest {
 
         @Test
         void testSetAttributionStartYSsPostsMutation() {
-            var oldY = composition.getAttributionStartYSs();
-            composition.setAttributionStartYSs(oldY + 3.0);
+            var oldY = song.getAttributionStartYSs();
+            song.setAttributionStartYSs(oldY + 3.0);
 
             var mutation = captureSingleLayoutChange();
             assertThat(mutation.field()).isEqualTo(LayoutField.ATTRIBUTION_START_Y_SS);
@@ -504,14 +504,14 @@ class CompositionSetterMutationTest extends UnitTest {
 
         @Test
         void testSetAttributionStartYSsSameValuePostsNothing() {
-            composition.setAttributionStartYSs(composition.getAttributionStartYSs());
+            song.setAttributionStartYSs(song.getAttributionStartYSs());
             verifyNoNotificationPosted();
         }
 
         @Test
         void testSetRowHeightAdjustmentSsPostsMutation() {
-            var oldAdjustment = composition.getRowHeightAdjustmentSs();
-            composition.setRowHeightAdjustmentSs(oldAdjustment + 1.5);
+            var oldAdjustment = song.getRowHeightAdjustmentSs();
+            song.setRowHeightAdjustmentSs(oldAdjustment + 1.5);
 
             var mutation = captureSingleLayoutChange();
             assertThat(mutation.field()).isEqualTo(LayoutField.ROW_HEIGHT_ADJUSTMENT_SS);
@@ -521,7 +521,7 @@ class CompositionSetterMutationTest extends UnitTest {
 
         @Test
         void testSetRowHeightAdjustmentSsSameValuePostsNothing() {
-            composition.setRowHeightAdjustmentSs(composition.getRowHeightAdjustmentSs());
+            song.setRowHeightAdjustmentSs(song.getRowHeightAdjustmentSs());
             verifyNoNotificationPosted();
         }
     }
@@ -530,16 +530,16 @@ class CompositionSetterMutationTest extends UnitTest {
     // Helpers
     // -----------------------------------------------------------------------
 
-    private CompositionDidChangeNotification captureSingleDidChange() {
+    private SongDidChangeNotification captureSingleDidChange() {
         var captor = ArgumentCaptor.forClass(Message.class);
         messageCenterMock.verify(() -> MessageCenter.post(captor.capture()));
         var didChanges = captor.getAllValues().stream()
-            .filter(m -> m instanceof CompositionDidChangeNotification)
-            .map(m -> (CompositionDidChangeNotification) m)
+            .filter(m -> m instanceof SongDidChangeNotification)
+            .map(m -> (SongDidChangeNotification) m)
             .toList();
 
         assertThat(didChanges)
-            .as("expected exactly one CompositionDidChangeNotification, got: %s", didChanges)
+            .as("expected exactly one SongDidChangeNotification, got: %s", didChanges)
             .hasSize(1);
 
         return didChanges.get(0);

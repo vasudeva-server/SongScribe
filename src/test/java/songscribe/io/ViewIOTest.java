@@ -31,7 +31,7 @@ import org.junit.jupiter.api.Test;
 import org.xml.sax.InputSource;
 
 import songscribe.UnitTest;
-import songscribe.music.Composition;
+import songscribe.music.Song;
 import songscribe.music.ElementType;
 import songscribe.music.Line;
 import songscribe.prefs.Prefs;
@@ -45,7 +45,7 @@ class ViewIOTest extends UnitTest {
 
         @Test
         void testAnnotationFontRoundTripsCorrectly() throws Exception {
-            var original = new Composition();
+            var original = new Song();
             var customFont = MyFontUtils.createFont("LatoPlus-Bold", 22);
             original.setAnnotationFont(customFont);
             addNote(original);
@@ -64,7 +64,7 @@ class ViewIOTest extends UnitTest {
 
         @Test
         void testDocumentWithFontXmlAppliesFonts() throws Exception {
-            var original = new Composition();
+            var original = new Song();
             var titleFont = MyFontUtils.createFont("LatoPlus-Bold", 24);
             var lyricsFont = MyFontUtils.createFont("LatoPlus-Regular", 14);
             var attributionFont = MyFontUtils.createFont("LatoPlus-Regular", 12);
@@ -102,24 +102,24 @@ class ViewIOTest extends UnitTest {
 
             var factory = SAXParserFactory.newInstance();
             var parser = factory.newSAXParser();
-            var reader = new CompositionIO.DocumentReader();
+            var reader = new SongIO.DocumentReader();
             parser.parse(new InputSource(new StringReader(xml)), reader);
-            var composition = reader.getComposition();
+            var song = reader.getSong();
 
             var prefs = Prefs.getInstance();
-            assertThat(composition.getTitleFont().getPSName())
+            assertThat(song.getTitleFont().getPSName())
                 .isEqualTo(MyFontUtils.createFont(
                     prefs.getString(PrefsKey.TITLE_FONT),
                     prefs.getInt(PrefsKey.TITLE_FONT_SIZE)
                 ).getPSName());
-            assertThat(composition.getTitleFont().getSize())
+            assertThat(song.getTitleFont().getSize())
                 .isEqualTo(prefs.getInt(PrefsKey.TITLE_FONT_SIZE));
-            assertThat(composition.getLyricsFont().getPSName())
+            assertThat(song.getLyricsFont().getPSName())
                 .isEqualTo(MyFontUtils.createFont(
                     prefs.getString(PrefsKey.LYRICS_FONT),
                     prefs.getInt(PrefsKey.LYRICS_FONT_SIZE)
                 ).getPSName());
-            assertThat(composition.getAnnotationFont().getPSName())
+            assertThat(song.getAnnotationFont().getPSName())
                 .isEqualTo(MyFontUtils.createFont(
                     prefs.getString(PrefsKey.ANNOTATION_FONT),
                     prefs.getInt(PrefsKey.ANNOTATION_FONT_SIZE)
@@ -137,24 +137,24 @@ class ViewIOTest extends UnitTest {
 
             var factory = SAXParserFactory.newInstance();
             var parser = factory.newSAXParser();
-            var reader = new CompositionIO.DocumentReader();
+            var reader = new SongIO.DocumentReader();
             parser.parse(new InputSource(new StringReader(xml)), reader);
-            var composition = reader.getComposition();
+            var song = reader.getSong();
 
             // Should load without error and have valid fonts
-            assertThat(composition.getTitleFont()).isNotNull();
-            assertThat(composition.getLyricsFont()).isNotNull();
+            assertThat(song.getTitleFont()).isNotNull();
+            assertThat(song.getLyricsFont()).isNotNull();
         }
     }
 
     // -- Helpers --
 
-    private static void addNote(Composition composition) {
+    private static void addNote(Song song) {
         var line = new Line();
         var note = ElementType.CROTCHET.newInstance();
         note.setStaffPosition(0);
         line.addElement(note);
-        composition.addLine(line);
+        song.addLine(line);
     }
 
     private static String buildLegacyXml() {

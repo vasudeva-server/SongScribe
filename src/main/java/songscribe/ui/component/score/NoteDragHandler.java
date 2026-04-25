@@ -315,7 +315,7 @@ class NoteDragHandler {
                 new PlayThread(dragLine.getElement(dragElementIndex).getPitch(), false).start();
             }
 
-            // Coalesce all finalize mutations into a single CompositionDidChangeNotification.
+            // Coalesce all finalize mutations into a single SongDidChangeNotification.
             // The pitch mutations were already applied during handleDrag, so each PITCH
             // ElementModification carries an empty mutator and the press-time beforeClone.
             // The follow-up cleanup steps (glissando removal, grace-note removal) emit
@@ -386,7 +386,7 @@ class NoteDragHandler {
      * the glissando TO the dragged note (from the previous note). Each
      * removal is emitted as a {@link ElementModification} carrying the
      * pre-removal clone of the affected element. Must be called inside an
-     * open modification bracket on {@code line.getComposition()}.
+     * open modification bracket on {@code line.getSong()}.
      */
     private static void removeUnisonConnectedGlissandos(Line line, int elementIndex) {
         var element = line.getElement(elementIndex);

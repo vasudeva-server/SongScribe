@@ -23,7 +23,7 @@ package songscribe.ui.layout;
 import module java.desktop;
 
 /**
- * Lyrics-font-derived values hoisted to composition scope so they are computed once
+ * Lyrics-font-derived values hoisted to song scope so they are computed once
  * per relayout rather than per element. Used by both the layout engine (for measuring
  * syllable widths and reserving inter-syllable gaps) and the renderers (for drawing).
  *

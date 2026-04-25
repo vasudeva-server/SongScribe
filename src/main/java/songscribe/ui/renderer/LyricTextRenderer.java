@@ -25,14 +25,15 @@ import static songscribe.ui.renderer.GraphicsState.Property.FONT;
 import module java.desktop;
 
 import songscribe.music.StaffElement;
+import songscribe.ui.layout.SongLayoutMetrics;
 
 /**
  * Renders per-element lyric syllable text beneath the staff.
  * <p>
  * Reads {@link songscribe.ui.layout.LyricBoxLayout} entries from the current
  * {@link songscribe.ui.layout.LayoutResult} and draws each syllable at the verse
- * baseline provided by the composition-wide
- * {@link songscribe.ui.layout.CompositionLayoutMetrics}. Stateless.
+ * baseline provided by the song-wide
+ * {@link SongLayoutMetrics}. Stateless.
  */
 public class LyricTextRenderer extends BaseElementRenderer<StaffElement> {
 
@@ -57,7 +58,7 @@ public class LyricTextRenderer extends BaseElementRenderer<StaffElement> {
             return;
         }
 
-        var metrics = ctx.getCompositionLayoutMetrics();
+        var metrics = ctx.getSongLayoutMetrics();
         var lyricRenderMetrics = ctx.getLyricRenderMetrics();
 
         try (var ignored = GraphicsState.save(g2, FONT)) {

@@ -21,7 +21,7 @@
 package songscribe.message.notification;
 
 import songscribe.message.Message;
-import songscribe.music.Composition;
+import songscribe.music.Song;
 
 /**
  * Posted when a document is loaded (File &gt; Open, File &gt; New).
@@ -30,13 +30,13 @@ import songscribe.music.Composition;
  */
 public class DocumentDidLoadNotification extends Message {
 
-    private final Composition composition;
+    private final Song song;
 
-    public DocumentDidLoadNotification(Composition composition) {
-        this.composition = composition;
+    public DocumentDidLoadNotification(Song song) {
+        this.song = song;
     }
 
-    public Composition getComposition() {
-        return composition;
+    public Song getSong() {
+        return song;
     }
 }

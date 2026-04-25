@@ -76,7 +76,7 @@ public class ExportMidiDialog extends StandardDialog {
             PlaybackController.setTempoChangePercent(100);
 
             try {
-                var sequence = PlaybackController.buildSequence(score.getComposition());
+                var sequence = PlaybackController.buildSequence(score.getSong());
                 MidiSystem.write(sequence, 1, saveFile);
                 FileUtils.openExportFile(saveFile);
             } finally {

@@ -89,9 +89,9 @@ public final class FileUtils {
     }
 
     public static String getSongFileNameForFileChooser(Score score) {
-        var composition = score.getComposition();
-        var title = composition.getTitle();
-        var numberStr = composition.getNumber();
+        var song = score.getSong();
+        var title = song.getTitle();
+        var numberStr = song.getNumber();
         var sb = new StringBuilder(title.length() + 10);
 
         try {

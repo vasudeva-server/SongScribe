@@ -136,7 +136,7 @@ class MutationRecordsTest extends UnitTest {
     class LineScopedInterfaceMembership {
 
         @Test
-        void testCompositionScopedMutationsAreNotLineScoped() {
+        void testSongScopedMutationsAreNotLineScoped() {
             assertThat(new MetadataChange(MetadataField.TITLE, "a", "b"))
                 .isNotInstanceOf(LineScopedMutation.class);
             assertThat(new LayoutChange(LayoutField.LINE_WIDTH_SS, 1.0, 2.0))

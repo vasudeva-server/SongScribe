@@ -28,7 +28,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.music.Composition;
+import songscribe.music.Song;
 import songscribe.music.ElementType;
 import songscribe.music.Line;
 import songscribe.music.StaffElement;
@@ -54,7 +54,7 @@ import songscribe.music.StaffElement;
  */
 class EndingInvalidationTest extends UnitTest {
 
-    private Composition composition;
+    private Song song;
     private Line line;
     private Ending ending;
 
@@ -70,7 +70,7 @@ class EndingInvalidationTest extends UnitTest {
     @BeforeEach
     void setUp() {
         var fixture = EndingLineFixture.primary();
-        composition = fixture.composition();
+        song = fixture.song();
         line        = fixture.line();
         anchor      = fixture.anchor();
         note1       = fixture.note1();
@@ -245,7 +245,7 @@ class EndingInvalidationTest extends UnitTest {
         @Test
         void testSplitReplacedWithRepeatLeftRightEndIsRightRepeatReturnsFalse() {
             // Condition 2: REPEAT_LEFT_RIGHT is valid as split when end is a right repeat
-            var comp2 = new Composition();
+            var comp2 = new Song();
             var line2 = comp2.getLine(0);
             var anchor2 = new StaffElement(ElementType.SINGLE_BARLINE);
             var split2 = new StaffElement(ElementType.REPEAT_RIGHT);
@@ -264,7 +264,7 @@ class EndingInvalidationTest extends UnitTest {
         @Nested
         class WhenSplitIsRepeatLeftRight {
 
-            private Composition comp2;
+            private Song comp2;
             private Line line2;
             private StaffElement anchor2;
             private StaffElement end2;
@@ -272,7 +272,7 @@ class EndingInvalidationTest extends UnitTest {
 
             @BeforeEach
             void setUp() {
-                comp2 = new Composition();
+                comp2 = new Song();
                 line2 = comp2.getLine(0);
                 anchor2 = new StaffElement(ElementType.SINGLE_BARLINE);
                 var lrSplit = new StaffElement(ElementType.REPEAT_LEFT_RIGHT);
@@ -445,7 +445,7 @@ class EndingInvalidationTest extends UnitTest {
         @Nested
         class WhenSplitIsRepeatLeftRight {
 
-            private Composition comp2;
+            private Song comp2;
             private Line line2;
             private StaffElement anchor2;
             private StaffElement lrSplit;
@@ -455,7 +455,7 @@ class EndingInvalidationTest extends UnitTest {
             @BeforeEach
             void setUp() {
                 var fixture = EndingLineFixture.secondary();
-                comp2   = fixture.composition();
+                comp2   = fixture.song();
                 line2   = fixture.line();
                 anchor2 = fixture.anchor();
                 lrSplit = fixture.split();

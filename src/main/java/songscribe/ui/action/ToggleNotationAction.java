@@ -32,15 +32,15 @@ import songscribe.message.Message;
 import songscribe.message.MessageCenter;
 import songscribe.message.command.ToggleBeamCommand;
 import songscribe.message.command.ToggleTieCommand;
-import songscribe.message.notification.CompositionDidChangeNotification;
+import songscribe.message.notification.SongDidChangeNotification;
 import songscribe.message.notification.DocumentDidLoadNotification;
 import songscribe.message.notification.MusicSelectionDidChangeNotification;
 import songscribe.ui.component.Score;
 
 public final class ToggleNotationAction extends UIAction {
 
-    private final Predicate<Score> canToggle;
-    private final Supplier<Message> commandFactory;
+    private final Predicate<? super Score> canToggle;
+    private final Supplier<? extends Message> commandFactory;
 
     public static ToggleNotationAction createBeamAction() {
         return new ToggleNotationAction(
@@ -74,9 +74,9 @@ public final class ToggleNotationAction extends UIAction {
         int size,
         String actionCommand,
         String tooltip,
-        int key,
-        Predicate<Score> canToggle,
-        Supplier<Message> commandFactory
+        int virtualKey,
+        Predicate<? super Score> canToggle,
+        Supplier<? extends Message> commandFactory
     ) {
         super(
             name,
@@ -84,7 +84,7 @@ public final class ToggleNotationAction extends UIAction {
             size,
             actionCommand,
             tooltip,
-            key,
+            virtualKey,
             0,
             Flag.REQUIRES_MULTIPLE_SELECTION,
             Flag.DISABLE_WHEN_BAR_SELECTED,
@@ -105,7 +105,7 @@ public final class ToggleNotationAction extends UIAction {
 
     @Override
     @Handler
-    public void compositionDidChange(CompositionDidChangeNotification message) {
+    public void songDidChange(SongDidChangeNotification message) {
         handleChange();
     }
 

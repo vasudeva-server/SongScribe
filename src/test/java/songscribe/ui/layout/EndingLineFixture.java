@@ -19,7 +19,7 @@
 */
 package songscribe.ui.layout;
 
-import songscribe.music.Composition;
+import songscribe.music.Song;
 import songscribe.music.ElementType;
 import songscribe.music.Line;
 import songscribe.music.StaffElement;
@@ -43,7 +43,7 @@ import songscribe.music.StaffElement;
  * </pre>
  */
 public record EndingLineFixture(
-    Composition composition,
+    Song song,
     Line line,
     StaffElement anchor,
     StaffElement note1,
@@ -55,17 +55,17 @@ public record EndingLineFixture(
     Ending ending
 ) {
 
-    /** Primary layout with a freshly created composition. */
+    /** Primary layout with a freshly created song. */
     public static EndingLineFixture primary() {
-        return primary(new Composition());
+        return primary(new Song());
     }
 
     /**
-     * Primary layout populated into the first line of the given composition.
-     * Use this overload when the composition must be created before a static mock is set up.
+     * Primary layout populated into the first line of the given song.
+     * Use this overload when the song must be created before a static mock is set up.
      */
-    public static EndingLineFixture primary(Composition composition) {
-        var line   = composition.getLine(0);
+    public static EndingLineFixture primary(Song song) {
+        var line   = song.getLine(0);
         var anchor = new StaffElement(ElementType.SINGLE_BARLINE);
         var note1  = new StaffElement(ElementType.CROTCHET);
         var note2  = new StaffElement(ElementType.CROTCHET);
@@ -75,7 +75,7 @@ public record EndingLineFixture(
         var end    = new StaffElement(ElementType.SINGLE_BARLINE);
         var ending = new Ending(anchor, end, Ending.Type.FIRST);
 
-        composition.withoutMutationTracking(() -> {
+        song.withoutMutationTracking(() -> {
             line.addElement(anchor);
             line.addElement(note1);
             line.addElement(note2);
@@ -86,20 +86,20 @@ public record EndingLineFixture(
             line.addRangeElement(ending);
         });
 
-        return new EndingLineFixture(composition, line, anchor, note1, note2, split, note4, note5, end, ending);
+        return new EndingLineFixture(song, line, anchor, note1, note2, split, note4, note5, end, ending);
     }
 
-    /** Secondary layout with a freshly created composition. */
+    /** Secondary layout with a freshly created song. */
     public static EndingLineFixture secondary() {
-        return secondary(new Composition());
+        return secondary(new Song());
     }
 
     /**
-     * Secondary layout populated into the first line of the given composition.
-     * Use this overload when the composition must be created before a static mock is set up.
+     * Secondary layout populated into the first line of the given song.
+     * Use this overload when the song must be created before a static mock is set up.
      */
-    public static EndingLineFixture secondary(Composition composition) {
-        var line   = composition.getLine(0);
+    public static EndingLineFixture secondary(Song song) {
+        var line   = song.getLine(0);
         var anchor = new StaffElement(ElementType.REPEAT_LEFT);
         var note1  = new StaffElement(ElementType.CROTCHET);
         var note2  = new StaffElement(ElementType.CROTCHET);
@@ -109,7 +109,7 @@ public record EndingLineFixture(
         var end    = new StaffElement(ElementType.REPEAT_RIGHT);
         var ending = new Ending(anchor, end, Ending.Type.FIRST);
 
-        composition.withoutMutationTracking(() -> {
+        song.withoutMutationTracking(() -> {
             line.addElement(anchor);
             line.addElement(note1);
             line.addElement(note2);
@@ -120,6 +120,6 @@ public record EndingLineFixture(
             line.addRangeElement(ending);
         });
 
-        return new EndingLineFixture(composition, line, anchor, note1, note2, split, note4, note5, end, ending);
+        return new EndingLineFixture(song, line, anchor, note1, note2, split, note4, note5, end, ending);
     }
 }

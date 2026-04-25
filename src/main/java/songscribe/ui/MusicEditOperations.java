@@ -32,7 +32,7 @@ import java.util.TreeSet;
 import songscribe.Strings;
 import songscribe.message.mutation.ElementField;
 import songscribe.music.BeamSpan;
-import songscribe.music.Composition;
+import songscribe.music.Song;
 import songscribe.music.DynamicsSpan;
 import songscribe.music.ElementType;
 import songscribe.music.EndingValidationResult;
@@ -46,21 +46,21 @@ import songscribe.ui.selection.SelectionCoordinator;
 import songscribe.ui.selection.TupletToggleInfo;
 
 /**
- * Handles music editing operations for a composition.
+ * Handles music editing operations for a song.
  * Extracted from Score.java as part of Phase 5 of the Score Cleanup refactoring.
  */
 public final class MusicEditOperations {
 
     private static final int MIN_CONTENT_ELEMENTS = 4;
 
-    private final Composition composition;
+    private final Song song;
     private final SelectionCoordinator coordinator;
 
     public MusicEditOperations(
-        Composition composition,
+        Song song,
         SelectionCoordinator coordinator
     ) {
-        this.composition = composition;
+        this.song = song;
         this.coordinator = coordinator;
     }
 
@@ -302,14 +302,14 @@ public final class MusicEditOperations {
         var end = state.getSelectionEnd();
 
         // The auto-maintained terminal is never selectable, so if the selection ends
-        // just before it, extend end to include it so an ending at the composition's
+        // just before it, extend end to include it so an ending at the song's
         // end passes structural validation. Only extend if the current end is not
         // already a terminal — if it is, the selection is already properly closed.
         var extendedEnd = end + 1;
 
         if (!line.getElement(end).getType().isTerminal()
                 && extendedEnd < line.elementCount()
-                && composition.isAutoMaintainedTerminal(line.getElement(extendedEnd), line)) {
+                && song.isAutoMaintainedTerminal(line.getElement(extendedEnd), line)) {
             end = extendedEnd;
         }
 
@@ -328,7 +328,7 @@ public final class MusicEditOperations {
         }
 
         // Stage 3: Backward search for enclosing repeated section
-        var lineIndex = composition.indexOfLine(line);
+        var lineIndex = song.indexOfLine(line);
         var hasEnclosing = hasEnclosingRepeat(lineIndex, begin);
 
         if (!hasEnclosing) {
@@ -451,12 +451,12 @@ public final class MusicEditOperations {
                 return lineIndex == 0;
             }
 
-            searchElementIndex = composition.getLine(searchLineIndex).elementCount() - 1;
+            searchElementIndex = song.getLine(searchLineIndex).elementCount() - 1;
         }
 
         // Walk backward
         while (searchLineIndex >= 0) {
-            var searchLine = composition.getLine(searchLineIndex);
+            var searchLine = song.getLine(searchLineIndex);
 
             while (searchElementIndex >= 0) {
                 var type = searchLine.getElement(searchElementIndex).getType();
@@ -478,11 +478,11 @@ public final class MusicEditOperations {
             searchLineIndex--;
 
             if (searchLineIndex >= 0) {
-                searchElementIndex = composition.getLine(searchLineIndex).elementCount() - 1;
+                searchElementIndex = song.getLine(searchLineIndex).elementCount() - 1;
             }
         }
 
-        // Reached beginning of composition — valid only on the first line
+        // Reached beginning of song — valid only on the first line
         return lineIndex == 0;
     }
 
@@ -499,7 +499,7 @@ public final class MusicEditOperations {
             precedingLineIndex--;
 
             if (precedingLineIndex < 0) {
-                // Beginning of composition — valid; the composition start acts as an implicit left repeat
+                // Beginning of song — valid; the song start acts as an implicit left repeat
                 return EndingValidationResult.valid(
                     EndingValidationResult.PrecedingAction.NONE,
                     selectionBegin,
@@ -507,14 +507,14 @@ public final class MusicEditOperations {
                 );
             }
 
-            precedingElementIndex = composition.getLine(precedingLineIndex).elementCount() - 1;
+            precedingElementIndex = song.getLine(precedingLineIndex).elementCount() - 1;
         }
 
-        var precedingLine = composition.getLine(precedingLineIndex);
+        var precedingLine = song.getLine(precedingLineIndex);
         var precedingType = precedingLine.getElement(precedingElementIndex).getType();
 
         if (precedingType.isContentElement()) {
-            var selectionLine = composition.getLine(lineIndex);
+            var selectionLine = song.getLine(lineIndex);
             var selectionBeginType = selectionLine.getElement(selectionBegin).getType();
 
             if (selectionBeginType == ElementType.SINGLE_BARLINE

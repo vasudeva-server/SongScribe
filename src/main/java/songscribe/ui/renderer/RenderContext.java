@@ -21,7 +21,7 @@
 package songscribe.ui.renderer;
 
 
-import songscribe.music.Composition;
+import songscribe.music.Song;
 
 /**
  * Interface providing render-time data for the Renderer.
@@ -42,9 +42,9 @@ public interface RenderContext {
     // -------------------------------------------------------------------------
 
     /**
-     * Returns the composition (music model) to render.
+     * Returns the song (music model) to render.
      */
-    Composition getComposition();
+    Song getSong();
 
     // -------------------------------------------------------------------------
     // Coordinate system

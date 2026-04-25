@@ -57,8 +57,8 @@ class GlissandoMidiIntegrationTest extends UnitTest {
 
     @BeforeAll
     static void loadFixtureData() throws Exception {
-        var composition = loadFixture("connections");
-        line = composition.getLine(0);
+        var song = loadFixture("connections");
+        line = song.getLine(0);
         tempo = Objects.requireNonNull(line.getElement(TEMPO_INDEX).getTempoChange());
     }
 

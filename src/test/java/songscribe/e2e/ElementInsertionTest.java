@@ -94,7 +94,7 @@ class ElementInsertionTest extends E2ETest {
 
     @BeforeAll
     void loadInsertionFixture() throws Exception {
-        resetComposition();
+        resetSong();
         loadFixture("insertion");
     }
 
@@ -111,7 +111,7 @@ class ElementInsertionTest extends E2ETest {
 
         @Test
         void testEscapeCancels() {
-            var countBefore = composition().getLine(0).elementCount();
+            var countBefore = song().getLine(0).elementCount();
 
             selectDuration(Actions.GRACE_EIGHTH_NOTE_ACTION);
             clickAt(insertionPoint(0, 0));
@@ -135,7 +135,7 @@ class ElementInsertionTest extends E2ETest {
             performLayout(0);
 
             assertAll(
-                () -> assertThat(composition().getLine(0).elementCount())
+                () -> assertThat(song().getLine(0).elementCount())
                     .as("escape cancels").isEqualTo(countBefore),
                 () -> assertThat(isGraceModeActive())
                     .as("escape: mode inactive").isFalse()
@@ -144,7 +144,7 @@ class ElementInsertionTest extends E2ETest {
 
         @Test
         void testDragLeftCancels() {
-            var countBefore = composition().getLine(0).elementCount();
+            var countBefore = song().getLine(0).elementCount();
 
             selectDuration(Actions.GRACE_EIGHTH_NOTE_ACTION);
             var insertPt = insertionPoint(0, 0);
@@ -162,7 +162,7 @@ class ElementInsertionTest extends E2ETest {
             performLayout(0);
 
             assertAll(
-                () -> assertThat(composition().getLine(0).elementCount())
+                () -> assertThat(song().getLine(0).elementCount())
                     .as("drag-left cancels").isEqualTo(countBefore),
                 () -> assertThat(isGraceModeActive())
                     .as("drag-left: mode inactive").isFalse()
@@ -171,7 +171,7 @@ class ElementInsertionTest extends E2ETest {
 
         @Test
         void testSamePitchError() {
-            var countBefore = composition().getLine(0).elementCount();
+            var countBefore = song().getLine(0).elementCount();
 
             selectDuration(Actions.GRACE_EIGHTH_NOTE_ACTION);
             clickAt(insertionPoint(0, 0));
@@ -186,7 +186,7 @@ class ElementInsertionTest extends E2ETest {
             performLayout(0);
 
             assertAll(
-                () -> assertThat(composition().getLine(0).elementCount())
+                () -> assertThat(song().getLine(0).elementCount())
                     .as("same pitch: error shown").isEqualTo(countBefore),
                 () -> assertThat(isGraceModeActive())
                     .as("same pitch: grace removed").isFalse()
@@ -202,7 +202,7 @@ class ElementInsertionTest extends E2ETest {
 
         @Test
         void testDragConnectToStandaloneNote() {
-            var countBefore = composition().getLine(0).elementCount();
+            var countBefore = song().getLine(0).elementCount();
 
             enterEditMode();
             selectDuration(Actions.GRACE_EIGHTH_NOTE_ACTION);
@@ -226,7 +226,7 @@ class ElementInsertionTest extends E2ETest {
             pause();
             performLayout(0);
 
-            var line = composition().getLine(0);
+            var line = song().getLine(0);
             // The grace note was inserted before standalone, shifting it right
             var graceIdx = GraceElement.PAIR_D_GRACE.index;
 
@@ -255,7 +255,7 @@ class ElementInsertionTest extends E2ETest {
         void testReplaceHostWithPitchedNotePreservesGlissando() {
             var pairAGraceIdx = GraceElement.PAIR_A_GRACE.index;
             var pairAHostIdx = GraceElement.PAIR_A_HOST.index;
-            var countBefore = composition().getLine(0).elementCount();
+            var countBefore = song().getLine(0).elementCount();
 
             enterEditMode();
             selectDuration(Actions.HALF_NOTE_ACTION);
@@ -271,7 +271,7 @@ class ElementInsertionTest extends E2ETest {
             clickAt(replacePoint);
             performLayout(0);
 
-            var line = composition().getLine(0);
+            var line = song().getLine(0);
             assertAll(
                 () -> assertThat(line.elementCount())
                     .as("element count unchanged").isEqualTo(countBefore),
@@ -285,7 +285,7 @@ class ElementInsertionTest extends E2ETest {
         @Order(2)
         @Test
         void testDeleteHostRemovesBoth() {
-            var countBefore = composition().getLine(0).elementCount();
+            var countBefore = song().getLine(0).elementCount();
 
             enterSelectMode();
             clickAt(noteScreenPosition(0, GraceElement.PAIR_B_HOST.index));
@@ -293,9 +293,9 @@ class ElementInsertionTest extends E2ETest {
             performLayout(0);
 
             assertAll(
-                () -> assertThat(composition().getLine(0).elementCount())
+                () -> assertThat(song().getLine(0).elementCount())
                     .as("delete host removes both").isEqualTo(countBefore - 2),
-                () -> assertThat(composition().getLine(0).elementCount())
+                () -> assertThat(song().getLine(0).elementCount())
                     .as("pair B removed from count").isEqualTo(countBefore - 2)
             );
         }
@@ -305,14 +305,14 @@ class ElementInsertionTest extends E2ETest {
         void testDeleteGraceNote() {
             // After pair B deletion, pair C indices shifted down
             var pairCGraceIdx = GraceElement.PAIR_C_GRACE.index - AFTER_PAIR_B_DELETED;
-            var countBefore = composition().getLine(0).elementCount();
+            var countBefore = song().getLine(0).elementCount();
 
             enterSelectMode();
             clickAt(noteScreenPosition(0, pairCGraceIdx));
             robot.pressAndReleaseKey(KeyEvent.VK_DELETE);
             performLayout(0);
 
-            var line = composition().getLine(0);
+            var line = song().getLine(0);
             // Grace note deleted, host preserved; host shifts to pairCGraceIdx
             assertAll(
                 () -> assertThat(line.elementCount())
@@ -327,7 +327,7 @@ class ElementInsertionTest extends E2ETest {
         void testReplaceHostWithRestRemovesGrace() {
             // After steps above: pair B deleted (-2), pair C grace deleted (-1) = -3 total shift
             var pairAHostIdx = GraceElement.PAIR_A_HOST.index;
-            var countBefore = composition().getLine(0).elementCount();
+            var countBefore = song().getLine(0).elementCount();
 
             enterEditMode();
             enableRestMode();
@@ -336,7 +336,7 @@ class ElementInsertionTest extends E2ETest {
             clickAt(noteScreenPosition(0, pairAHostIdx));
             performLayout(0);
 
-            var line = composition().getLine(0);
+            var line = song().getLine(0);
             // Grace note removed, rest now occupies the position where grace was
             assertAll(
                 () -> assertThat(line.elementCount())
@@ -359,7 +359,7 @@ class ElementInsertionTest extends E2ETest {
         @Order(1)
         @Test
         void testClickClickInsertion() {
-            var countBefore = composition().getLine(0).effectiveElementCount();
+            var countBefore = song().getLine(0).effectiveElementCount();
 
             selectDuration(Actions.GRACE_EIGHTH_NOTE_ACTION);
             clickAt(insertionPoint(0, 0));
@@ -368,7 +368,7 @@ class ElementInsertionTest extends E2ETest {
             clickAt(insertionPoint(0, -2));
             performLayout(0);
 
-            var line = composition().getLine(0);
+            var line = song().getLine(0);
             var graceIdx = countBefore;
             var hostIdx = countBefore + 1;
 
@@ -392,7 +392,7 @@ class ElementInsertionTest extends E2ETest {
         @Order(3)
         @Test
         void testDurationChangeDuringFlow() {
-            var countBefore = composition().getLine(0).effectiveElementCount();
+            var countBefore = song().getLine(0).effectiveElementCount();
 
             selectDuration(Actions.GRACE_EIGHTH_NOTE_ACTION);
             clickAt(insertionPoint(0, 0));
@@ -404,7 +404,7 @@ class ElementInsertionTest extends E2ETest {
             clickAt(insertionPoint(0, -2));
             performLayout(0);
 
-            var line = composition().getLine(0);
+            var line = song().getLine(0);
             var graceIdx = countBefore;
             var hostIdx = countBefore + 1;
 
@@ -435,12 +435,12 @@ class ElementInsertionTest extends E2ETest {
 
         @BeforeAll
         void setUp() {
-            baseIndex = composition().getLine(0).effectiveElementCount();
+            baseIndex = song().getLine(0).effectiveElementCount();
         }
 
         @Order(1)
         @Test
-        void testBuildComposition() {
+        void testBuildSong() {
             buildNotes(Actions.QUARTER_NOTE_ACTION, -4);
             buildNotes(Actions.HALF_NOTE_ACTION, 2);
             buildNotes(Actions.EIGHTH_NOTE_ACTION, -2, -6);
@@ -454,7 +454,7 @@ class ElementInsertionTest extends E2ETest {
         @Order(2)
         @Test
         void testVerifyElementTypesAndAutoBeam() {
-            var line = composition().getLine(0);
+            var line = song().getLine(0);
             var insertedCount = line.effectiveElementCount() - baseIndex;
             var elem0 = line.getElement(baseIndex);
             var elem1 = line.getElement(baseIndex + 1);
@@ -464,11 +464,11 @@ class ElementInsertionTest extends E2ETest {
             var note2Beamed = isBeamed(0, baseIndex + 2);
             var note3Beamed = isBeamed(0, baseIndex + 3);
             var beamSpanStart = GuiActionRunner.execute(() -> {
-                var span = composition().getLine(0).getBeamings().findSpan(baseIndex + 2);
+                var span = song().getLine(0).getBeamings().findSpan(baseIndex + 2);
                 return span != null ? span.getStart() : -1;
             });
             var beamSpanEnd = GuiActionRunner.execute(() -> {
-                var span = composition().getLine(0).getBeamings().findSpan(baseIndex + 2);
+                var span = song().getLine(0).getBeamings().findSpan(baseIndex + 2);
                 return span != null ? span.getEnd() : -1;
             });
 
@@ -500,7 +500,7 @@ class ElementInsertionTest extends E2ETest {
             clickAt(insertionPointBefore(0, baseIndex + 1, 4));
             performLayout(0);
 
-            var line = composition().getLine(0);
+            var line = song().getLine(0);
             var insertedCount = line.effectiveElementCount() - baseIndex;
             var newElem = line.getElement(baseIndex + 1);
             var shiftedElem = line.getElement(baseIndex + 2);
@@ -516,7 +516,7 @@ class ElementInsertionTest extends E2ETest {
         @Order(4)
         @Test
         void testClickOnNoteReplacesIt() {
-            var countBefore = composition().getLine(0).elementCount();
+            var countBefore = song().getLine(0).elementCount();
             var targetSp = -6;
 
             selectDuration(Actions.QUARTER_NOTE_ACTION);
@@ -531,7 +531,7 @@ class ElementInsertionTest extends E2ETest {
             clickAt(replacePoint);
             performLayout(0);
 
-            var line = composition().getLine(0);
+            var line = song().getLine(0);
             assertAll(
                 () -> assertThat(line.getElement(baseIndex + 2).getType())
                     .as("replaced with quarter").isEqualTo(ElementType.CROTCHET),
@@ -547,7 +547,7 @@ class ElementInsertionTest extends E2ETest {
         @Order(5)
         @Test
         void testClickWithRestSelectedReplacesWithRest() {
-            var countBefore = composition().getLine(0).elementCount();
+            var countBefore = song().getLine(0).elementCount();
 
             enableRestMode();
             selectDuration(Actions.QUARTER_NOTE_ACTION);
@@ -555,7 +555,7 @@ class ElementInsertionTest extends E2ETest {
             clickAt(noteScreenPosition(0, baseIndex));
             performLayout(0);
 
-            var line = composition().getLine(0);
+            var line = song().getLine(0);
             assertAll(
                 () -> assertThat(line.getElement(baseIndex).getType().isRest())
                     .as("replaced with rest").isTrue(),
@@ -577,7 +577,7 @@ class ElementInsertionTest extends E2ETest {
             performLayout(0);
 
             assertThat(GuiActionRunner.execute(
-                () -> composition().getLine(0).getElement(baseIndex + 1).hasArticulation(ArticulationType.STACCATO)
+                () -> song().getLine(0).getElement(baseIndex + 1).hasArticulation(ArticulationType.STACCATO)
             )).as("staccato applied").isTrue();
 
             enterEditMode();
@@ -587,7 +587,7 @@ class ElementInsertionTest extends E2ETest {
 
             assertAll(
                 () -> assertThat(GuiActionRunner.execute(
-                    () -> composition().getLine(0).getElement(baseIndex + 1).hasArticulation(ArticulationType.STACCATO)
+                    () -> song().getLine(0).getElement(baseIndex + 1).hasArticulation(ArticulationType.STACCATO)
                 )).as("staccato removed").isFalse(),
                 () -> assertThat(score().getMode())
                     .as("mode stays EDIT").isEqualTo(Mode.EDIT)
@@ -603,13 +603,13 @@ class ElementInsertionTest extends E2ETest {
 
         @BeforeAll
         void setUp() throws Exception {
-            resetComposition();
+            resetSong();
             loadFixture("full-line");
         }
 
         @Test
         void testInsertIntoFullLineShowsError() {
-            var line = composition().getLine(0);
+            var line = song().getLine(0);
             var originalCount = line.elementCount();
 
             selectDuration(Actions.QUARTER_NOTE_ACTION);

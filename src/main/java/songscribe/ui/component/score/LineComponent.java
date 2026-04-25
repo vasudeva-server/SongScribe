@@ -38,6 +38,7 @@ import songscribe.ui.layout.LayoutEngine;
 import songscribe.ui.layout.LayoutStylesheet;
 import songscribe.ui.layout.LayoutResult;
 import songscribe.ui.layout.ScaleContext;
+import songscribe.ui.layout.SongLayoutMetrics;
 import songscribe.ui.renderer.ElementRenderContext;
 import songscribe.ui.selection.LineSelectionState;
 import songscribe.error.RuntimeError;
@@ -100,7 +101,7 @@ public class LineComponent extends ScoreComponent
     @Nullable
     private Line line;
 
-    /** Index of this line within the composition. */
+    /** Index of this line within the song. */
     private int lineIndex;
 
     /** Per-line selection state. */
@@ -114,7 +115,7 @@ public class LineComponent extends ScoreComponent
     @Nullable
     private SelectionProvider selectionProvider;
 
-    /** Reference to the Score for accessing composition and services. */
+    /** Reference to the Score for accessing song and services. */
     @Nullable
     private Score score;
 
@@ -160,7 +161,7 @@ public class LineComponent extends ScoreComponent
      * Sets the line to render.
      *
      * @param line      The line model
-     * @param lineIndex Index of the line in the composition
+     * @param lineIndex Index of the line in the song
      */
     public void setLine(Line line, int lineIndex) {
         this.line = line;
@@ -220,7 +221,7 @@ public class LineComponent extends ScoreComponent
      * Lazily calculates the value if it hasn't been set yet.
      */
     public double getMiddleLineYSs() {
-        if (middleLineYSs == 0.0 && composition != null) {
+        if (middleLineYSs == 0.0 && song != null) {
             middleLineYSs = calculateMiddleLineYSs();
         }
 
@@ -257,7 +258,7 @@ public class LineComponent extends ScoreComponent
     }
 
     /**
-     * Sets the Score reference for accessing composition and services.
+     * Sets the Score reference for accessing song and services.
      *
      * @param score The Score component
      */
@@ -337,10 +338,10 @@ public class LineComponent extends ScoreComponent
      * Ensures the layout is up to date, computing it if dirty.
      * <p>
      * Called by {@link songscribe.ui.component.score.StaffPanel} before collecting
-     * all layout results to build {@link songscribe.ui.layout.CompositionLayoutMetrics}.
+     * all layout results to build {@link SongLayoutMetrics}.
      */
     public void ensureLayout() {
-        if (composition != null && line != null && (layoutResult == null || layoutDirty)) {
+        if (song != null && line != null && (layoutResult == null || layoutDirty)) {
             performLayout();
         }
     }
@@ -362,12 +363,12 @@ public class LineComponent extends ScoreComponent
     }
 
     private void performLayout() {
-        if (composition == null || line == null) {
+        if (song == null || line == null) {
             return;
         }
 
-        var staffRightMarginSs = composition.getLineWidthSs();
-        var isLastLine = lineIndex == composition.lineCount() - 1;
+        var staffRightMarginSs = song.getLineWidthSs();
+        var isLastLine = lineIndex == song.lineCount() - 1;
         var lyricRenderMetrics = getScore().getLyricRenderMetrics();
         var layoutEngine = new LayoutEngine(lyricRenderMetrics, staffRightMarginSs);
         layoutResult = layoutEngine.layout(line, isLastLine, hasLeadingLyricContinuation);
@@ -383,7 +384,7 @@ public class LineComponent extends ScoreComponent
 
     @Override
     protected void render(Graphics2D g2) {
-        if (composition == null || line == null) {
+        if (song == null || line == null) {
             return;
         }
 
@@ -413,7 +414,7 @@ public class LineComponent extends ScoreComponent
 
     @Override
     public Dimension getPreferredSize() {
-        if (composition == null || line == null) {
+        if (song == null || line == null) {
             return new Dimension(0, 0);
         }
 
@@ -428,7 +429,7 @@ public class LineComponent extends ScoreComponent
         }
 
         var scale = ScaleContext.getInstance();
-        var metrics = getScore().getCompositionLayoutMetrics();
+        var metrics = getScore().getSongLayoutMetrics();
 
         return new Dimension(
             (int) Math.ceil(scale.toPixels(result.getLineWidthSs())),

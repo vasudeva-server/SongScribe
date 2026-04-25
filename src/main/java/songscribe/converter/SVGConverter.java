@@ -60,8 +60,8 @@ public class SVGConverter {
         var score = new Score(null);
 
         for (var file : files) {
-            Converter.loadComposition(file, score);
-            Converter.applyExportExclusions(score.getComposition(), withoutLyrics, withoutSongTitle);
+            Converter.loadSong(file, score);
+            Converter.applyExportExclusions(score.getSong(), withoutLyrics, withoutSongTitle);
 
             try {
                 var path = FileUtils.getPathWithoutExtension(file) + ".svg";

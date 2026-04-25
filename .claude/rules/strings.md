@@ -10,11 +10,11 @@ All user-facing strings must be externalized — never use string literals direc
 
 ```properties
 # Good
-dialog.composition.settings.reset.to.defaults = Reset to defaults
+dialog.song.settings.reset.to.defaults = Reset to defaults
 action.key.signature.change = Key Signature Change...
 
 # Bad — words mashed into segments
-dialog.compositionsettings.resettodefaults = Reset to defaults
+dialog.songsettings.resettodefaults = Reset to defaults
 action.keysignaturechange = Key Signature Change...
 ```
 - Strings are alphabetized within groups (by prefix: `action.*`, `alert.*`, `confirm.*`, `dialog.*`, `error.*`, etc.)

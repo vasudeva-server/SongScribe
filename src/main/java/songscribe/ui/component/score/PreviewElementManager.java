@@ -32,7 +32,7 @@ import songscribe.Strings;
 import songscribe.message.MessageCenter;
 import songscribe.message.mutation.ElementField;
 import songscribe.music.BeamSpan;
-import songscribe.music.Composition;
+import songscribe.music.Song;
 import songscribe.music.ElementLocation;
 import songscribe.music.ElementType;
 import songscribe.music.Line;
@@ -405,12 +405,12 @@ public final class PreviewElementManager {
             && editModeManager.getGraceModeManager().isInProgress();
         int elementAtX = inGraceMode ? -1 : layoutResult.findElementAtXSs(mouseXss, line);
 
-        // Suppress preview over the composition's auto-maintained terminal (unless the
+        // Suppress preview over the song's auto-maintained terminal (unless the
         // active preview element can legally replace it — exemption in isPositionBlockedByTerminal).
-        var composition = line.getComposition();
+        var song = line.getSong();
 
-        if (composition != null
-                && isPositionBlockedByTerminal(composition, line, xIndex, elementAtX >= 0)) {
+        if (song != null
+                && isPositionBlockedByTerminal(song, line, xIndex, elementAtX >= 0)) {
             clearPreviewElement();
             return;
         }
@@ -544,34 +544,34 @@ public final class PreviewElementManager {
 
         // Belt-and-braces: block clicks that would try to insert past the auto-maintained
         // terminal. trackMouse already clears the preview at these positions.
-        var composition = line.getComposition();
+        var song = line.getSong();
 
-        if (composition != null
+        if (song != null
                 && isPositionBlockedByTerminal(
-                    composition, line, currentXIndex, xPosSsMatchesElement)) {
+                    song, line, currentXIndex, xPosSsMatchesElement)) {
             return;
         }
 
         // Route a direct click on the terminal to replaceTerminal when the active preview
         // element can legally replace it. This bypasses the normal insertion path entirely.
-        if (composition != null && xPosSsMatchesElement && editModeManager != null) {
+        if (song != null && xPosSsMatchesElement && editModeManager != null) {
             var previewElement = editModeManager.getPreviewElement();
 
             if (previewElement != null
-                    && isDirectClickOnTerminal(composition, line, currentXIndex)
-                    && composition.canReplaceTerminal(previewElement.getType())) {
-                composition.replaceTerminal(previewElement.getType());
+                    && isDirectClickOnTerminal(song, line, currentXIndex)
+                    && song.canReplaceTerminal(previewElement.getType())) {
+                song.replaceTerminal(previewElement.getType());
                 return;
             }
         }
 
-        var wasFirstLineEmpty = composition != null
-            && composition.indexOfLine(line) == 0
+        var wasFirstLineEmpty = song != null
+            && song.indexOfLine(line) == 0
             && line.effectiveElementCount() == 0;
 
         // Determine action based on position. Wrap in a modification bracket so the
         // line.add/setElement calls inside actually accumulate mutations and fire a
-        // CompositionDidChangeNotification, which the ScoreMessageCoordinator uses to
+        // SongDidChangeNotification, which the ScoreMessageCoordinator uses to
         // invalidate the line's cached layout.
         line.withModification(() -> {
             if (currentXIndex == line.elementCount()) {
@@ -632,14 +632,14 @@ public final class PreviewElementManager {
      * Returns {@code true} when {@code xIndex} points to the auto-maintained terminal
      * element on {@code line}.
      */
-    private static boolean isDirectClickOnTerminal(Composition composition, Line line, int xIndex) {
+    private static boolean isDirectClickOnTerminal(Song song, Line line, int xIndex) {
         return xIndex < line.elementCount()
-            && composition.isAutoMaintainedTerminal(line.getElement(xIndex), line);
+            && song.isAutoMaintainedTerminal(line.getElement(xIndex), line);
     }
 
     /**
      * Returns {@code true} when the given mouse position should be blocked because
-     * it coincides with the composition's auto-maintained terminal element.
+     * it coincides with the song's auto-maintained terminal element.
      * Checks both "mouse is on the terminal element" and "mouse is at the
      * append position immediately after the terminal".
      * <p>
@@ -647,7 +647,7 @@ public final class PreviewElementManager {
      * legally replace it, the block is lifted so the user can see the ghost preview.
      */
     private static boolean isPositionBlockedByTerminal(
-            Composition composition, Line line, int xIndex, boolean xMatchesElement) {
+        Song song, Line line, int xIndex, boolean xMatchesElement) {
         if (line.elementCount() == 0) {
             return false;
         }
@@ -655,7 +655,7 @@ public final class PreviewElementManager {
         var lastIdx = line.elementCount() - 1;
         var terminalElement = line.getElement(lastIdx);
 
-        if (!composition.isAutoMaintainedTerminal(terminalElement, line)) {
+        if (!song.isAutoMaintainedTerminal(terminalElement, line)) {
             return false;
         }
 
@@ -664,7 +664,7 @@ public final class PreviewElementManager {
             // element can legally replace it; otherwise keep it blocked.
             var previewElement = getActivePreviewElement();
             return previewElement == null
-                || !composition.canReplaceTerminal(previewElement.getType());
+                || !song.canReplaceTerminal(previewElement.getType());
         }
 
         // Mouse is at the append slot immediately after the terminal — always blocked.
@@ -791,9 +791,9 @@ public final class PreviewElementManager {
         Line line, StaffElement element, int index, @Nullable LayoutResult layout
     ) {
         var insertion = InsertionSpacingCalculator.calculateInsertion(line, element, index, layout);
-        var composition = line.getComposition();
+        var song = line.getSong();
 
-        if (!insertion.fitsWithinLine(composition.getLineWidthSs())) {
+        if (!insertion.fitsWithinLine(song.getLineWidthSs())) {
             OptionDialogs.showErrorMessage(
                 null,
                 Strings.ALERT_TITLE_INSERT_ERROR,
@@ -1058,7 +1058,7 @@ public final class PreviewElementManager {
             case Ending.EndingEffect.None _ -> {}
         }
 
-        // Replace the element entirely (line.setElement marks the composition modified)
+        // Replace the element entirely (line.setElement marks the song modified)
         line.setElement(elementIndex, previewElement);
 
         applyAutomaticBeaming(line, elementIndex);

@@ -33,7 +33,7 @@ import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
 import songscribe.music.Annotation;
-import songscribe.music.Composition;
+import songscribe.music.Song;
 import songscribe.music.DynamicsSpan;
 
 import songscribe.music.Line;
@@ -47,11 +47,11 @@ import songscribe.ui.layout.stacking.VerticalStackingCalculator;
  */
 class ManualOffsetStackingTest extends UnitTest {
 
-    private static Composition composition;
+    private static Song song;
 
     @BeforeAll
     static void setUp() {
-        composition = new Composition();
+        song = new Song();
     }
 
     private static final double LINE_WIDTH_SS = 64.0;
@@ -86,7 +86,7 @@ class ManualOffsetStackingTest extends UnitTest {
 
     private static Line newLine() {
         var line = new Line();
-        line.setComposition(composition);
+        line.setSong(song);
         return line;
     }
 
@@ -96,7 +96,7 @@ class ManualOffsetStackingTest extends UnitTest {
      * {@code addElement} / {@code addRangeElement} call in a modification bracket.
      */
     private static void setup(Runnable body) {
-        composition.withoutMutationTracking(body);
+        song.withoutMutationTracking(body);
     }
 
     private static void populate(Line target, StaffElement... elements) {

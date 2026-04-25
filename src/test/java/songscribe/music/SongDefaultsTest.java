@@ -30,7 +30,7 @@ import songscribe.prefs.Prefs;
 import songscribe.prefs.PrefsKey;
 import songscribe.util.MyFontUtils;
 
-class CompositionDefaultsTest extends UnitTest {
+class SongDefaultsTest extends UnitTest {
 
     @Test
     void testAnnotationFontMatchesPrefs() {
@@ -40,10 +40,10 @@ class CompositionDefaultsTest extends UnitTest {
             prefs.getInt(PrefsKey.ANNOTATION_FONT_SIZE)
         );
 
-        var composition = new Composition();
-        assertThat(composition.getAnnotationFont().getPSName())
+        var song = new Song();
+        assertThat(song.getAnnotationFont().getPSName())
             .isEqualTo(expectedFont.getPSName());
-        assertThat(composition.getAnnotationFont().getSize())
+        assertThat(song.getAnnotationFont().getSize())
             .isEqualTo(expectedFont.getSize());
     }
 
@@ -55,31 +55,31 @@ class CompositionDefaultsTest extends UnitTest {
             prefs.getInt(PrefsKey.ATTRIBUTION_FONT_SIZE)
         );
 
-        var composition = new Composition();
-        assertThat(composition.getAttributionFont().getPSName())
+        var song = new Song();
+        assertThat(song.getAttributionFont().getPSName())
             .isEqualTo(expectedFont.getPSName());
-        assertThat(composition.getAttributionFont().getSize())
+        assertThat(song.getAttributionFont().getSize())
             .isEqualTo(expectedFont.getSize());
     }
 
     @Test
     void testDefaultAttribution() {
-        var composition = new Composition();
-        assertThat(composition.getAttribution())
-            .isEqualTo(Strings.get(Strings.COMPOSITION_DEFAULT_ATTRIBUTION));
+        var song = new Song();
+        assertThat(song.getAttribution())
+            .isEqualTo(Strings.get(Strings.SONG_DEFAULT_ATTRIBUTION));
     }
 
     @Test
     void testDefaultKeySignature() {
-        var composition = new Composition();
-        assertThat(composition.getDefaultKeyAccidentalCount()).isEqualTo(5);
-        assertThat(composition.getDefaultKeyType()).isEqualTo(KeyType.FLATS);
+        var song = new Song();
+        assertThat(song.getDefaultKeyAccidentalCount()).isEqualTo(5);
+        assertThat(song.getDefaultKeyType()).isEqualTo(KeyType.FLATS);
     }
 
     @Test
     void testDefaultTempo() {
-        var composition = new Composition();
-        var tempo = composition.getTempo();
+        var song = new Song();
+        var tempo = song.getTempo();
         assertThat(tempo.getVisibleTempo()).isEqualTo(120);
         assertThat(tempo.getTempoType()).isEqualTo(Duration.CROTCHET);
         assertThat(tempo.getTempoDescription()).isEqualTo("Moderate");
@@ -93,33 +93,33 @@ class CompositionDefaultsTest extends UnitTest {
             prefs.getInt(PrefsKey.LYRICS_FONT_SIZE)
         );
 
-        var composition = new Composition();
-        assertThat(composition.getLyricsFont().getPSName())
+        var song = new Song();
+        assertThat(song.getLyricsFont().getPSName())
             .isEqualTo(expectedFont.getPSName());
-        assertThat(composition.getLyricsFont().getSize())
+        assertThat(song.getLyricsFont().getSize())
             .isEqualTo(expectedFont.getSize());
     }
 
     @Test
-    void testNewCompositionHasOneLine() {
-        var composition = new Composition();
-        assertThat(composition.lineCount()).isEqualTo(1);
+    void testNewSongHasOneLine() {
+        var song = new Song();
+        assertThat(song.lineCount()).isEqualTo(1);
     }
 
-    // T50: New composition — initial line has exactly one element: FINAL_DOUBLE_BARLINE.
+    // T50: New song — initial line has exactly one element: FINAL_DOUBLE_BARLINE.
     @Test
-    void testNewCompositionInitialLineHasFinalBarline() {
-        var composition = new Composition();
-        var line = composition.getLine(0);
+    void testNewSongInitialLineHasFinalBarline() {
+        var song = new Song();
+        var line = song.getLine(0);
         assertThat(line.elementCount()).isEqualTo(1);
         assertThat(line.getElement(0).getType()).isEqualTo(ElementType.FINAL_DOUBLE_BARLINE);
     }
 
-    // T51: New composition — not marked modified after construction.
+    // T51: New song — not marked modified after construction.
     @Test
-    void testNewCompositionIsNotModified() {
-        var composition = new Composition();
-        assertThat(composition.isModified()).isFalse();
+    void testNewSongIsNotModified() {
+        var song = new Song();
+        assertThat(song.isModified()).isFalse();
     }
 
     @Test
@@ -130,10 +130,10 @@ class CompositionDefaultsTest extends UnitTest {
             prefs.getInt(PrefsKey.TITLE_FONT_SIZE)
         );
 
-        var composition = new Composition();
-        assertThat(composition.getTitleFont().getPSName())
+        var song = new Song();
+        assertThat(song.getTitleFont().getPSName())
             .isEqualTo(expectedFont.getPSName());
-        assertThat(composition.getTitleFont().getSize())
+        assertThat(song.getTitleFont().getSize())
             .isEqualTo(expectedFont.getSize());
     }
 }

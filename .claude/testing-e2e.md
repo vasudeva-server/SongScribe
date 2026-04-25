@@ -21,12 +21,12 @@ class FooTest extends E2ETest {
         selectDuration(Actions.QUARTER_NOTE_ACTION);
         clickAt(insertionPoint(0, 0));
         performLayout(0);
-        assertThat(composition().getLine(0).elementCount()).isEqualTo(1);
+        assertThat(song().getLine(0).elementCount()).isEqualTo(1);
     }
 }
 ```
 
-The base class handles per-class MainFrame boot, per-test composition reset, edit mode entry, and rest mode deselection.
+The base class handles per-class MainFrame boot, per-test song reset, edit mode entry, and rest mode deselection.
 
 ## Toolbar and Menu Helpers
 
@@ -76,7 +76,7 @@ clickAt(insertionPoint(0, 0));
 
 performLayout(0);  // Required before querying model or coordinates
 
-assertThat(composition().
+assertThat(song().
 
 getLine(0).
 
@@ -90,7 +90,7 @@ isEqualTo(1);
 | Method                           | Purpose                                      |
 |----------------------------------|----------------------------------------------|
 | `score()`                        | Returns `MainFrame.getInstance().getScore()` |
-| `composition()`                  | Returns `score().getComposition()`           |
+| `song()`                  | Returns `score().getSong()`           |
 | `isBeamed(lineIndex, noteIndex)` | Check if a note is in a beam interval        |
 | `isTied(lineIndex, noteIndex)`   | Check if a note is in a tie interval         |
 
@@ -111,13 +111,13 @@ private void buildTwoQuarterNotes() {
 // Bad — skips UI updates, can cause false positives/negatives
 private void buildTwoQuarterNotes() {
     GuiActionRunner.execute(() -> {
-        var composition = new Composition(MainFrame.getInstance());
+        var song = new Song(MainFrame.getInstance());
         var line = new Line();
         var note = ElementType.CROTCHET.newInstance();
         note.setStaffPosition(0);
         line.addElement(note);
-        composition.addLine(0, line);
-        score().setComposition(composition);
+        song.addLine(0, line);
+        score().setSong(song);
     });
     performLayout(0);
 }
@@ -169,7 +169,7 @@ assertThat(isSelected).
 isEqualTo(expected);
 
 // Save/load round-trip
-var reloaded = roundTrip(composition());
+var reloaded = roundTrip(song());
 
 assertThat(reloaded.getLine(0).
 

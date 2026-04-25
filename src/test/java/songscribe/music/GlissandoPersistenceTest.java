@@ -39,21 +39,21 @@ class GlissandoPersistenceTest extends UnitTest {
     // PAIR_B_SRC (index 7) has a CONNECTED glissando in the fixture
     private static final int PAIR_B_SRC = 7;
 
-    private static Composition composition;
+    private static Song song;
 
     @BeforeAll
     static void loadFixtureData() throws Exception {
-        composition = loadFixture("connections");
+        song = loadFixture("connections");
     }
 
     @Test
     void testGlissandoPersistsThroughSaveLoad() throws Exception {
-        var originalNote = composition.getLine(0).getElement(PAIR_B_SRC);
+        var originalNote = song.getLine(0).getElement(PAIR_B_SRC);
         var originalGlissando = originalNote.getGlissando();
         assertThat(originalGlissando).as("fixture has glissando").isNotNull();
         var originalType = Objects.requireNonNull(originalGlissando).type;
 
-        var reloaded = roundTrip(composition);
+        var reloaded = roundTrip(song);
         var reloadedNote = reloaded.getLine(0).getElement(PAIR_B_SRC);
         var reloadedGlissando = reloadedNote.getGlissando();
 

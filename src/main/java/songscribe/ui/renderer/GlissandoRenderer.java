@@ -27,7 +27,7 @@ import module java.desktop;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.music.Composition;
+import songscribe.music.Song;
 import songscribe.music.Line;
 import songscribe.music.StaffElement;
 import songscribe.ui.layout.LayoutResult;
@@ -106,8 +106,8 @@ public class GlissandoRenderer {
      *
      * @param xIndex        Index of the source note in the line
      * @param glissando     The glissando data
-     * @param lineIndex     Index of the line in the composition
-     * @param composition   The composition containing the line
+     * @param lineIndex     Index of the line in the song
+     * @param song   The song containing the line
      * @param layoutResult  Layout result for resolving note positions
      * @param middleLineYSs Y position of the middle staff line in staff spaces
      * @return X coordinate for glissando start in staff spaces
@@ -116,19 +116,19 @@ public class GlissandoRenderer {
         int xIndex,
         StaffElement.Glissando glissando,
         int lineIndex,
-        Composition composition,
+        Song song,
         LayoutResult layoutResult,
         double middleLineYSs
     ) {
         var endpoints = INSTANCE.computeEndpointsForNote(
-            xIndex, glissando, lineIndex, composition, layoutResult, middleLineYSs);
+            xIndex, glissando, lineIndex, song, layoutResult, middleLineYSs);
 
         if (endpoints != null) {
             return endpoints.startXSs;
         }
 
         // Fallback to notehead center if glissando cannot render
-        var note = composition.getLine(lineIndex).getElement(xIndex);
+        var note = song.getLine(lineIndex).getElement(xIndex);
         return noteheadCenterXSs(note, layoutResult);
     }
 
@@ -141,8 +141,8 @@ public class GlissandoRenderer {
      *
      * @param xIndex        Index of the source note in the line
      * @param glissando     The glissando data
-     * @param lineIndex     Index of the line in the composition
-     * @param composition   The composition containing the line
+     * @param lineIndex     Index of the line in the song
+     * @param song   The song containing the line
      * @param layoutResult  Layout result for resolving note positions
      * @param middleLineYSs Y position of the middle staff line in staff spaces
      * @return X coordinate for glissando end in staff spaces
@@ -151,19 +151,19 @@ public class GlissandoRenderer {
         int xIndex,
         StaffElement.Glissando glissando,
         int lineIndex,
-        Composition composition,
+        Song song,
         LayoutResult layoutResult,
         double middleLineYSs
     ) {
         var endpoints = INSTANCE.computeEndpointsForNote(
-            xIndex, glissando, lineIndex, composition, layoutResult, middleLineYSs);
+            xIndex, glissando, lineIndex, song, layoutResult, middleLineYSs);
 
         if (endpoints != null) {
             return endpoints.endXSs;
         }
 
         // Fallback to notehead center if glissando cannot render
-        var line = composition.getLine(lineIndex);
+        var line = song.getLine(lineIndex);
 
         if (glissando.type == StaffElement.Glissando.Type.CONNECTED) {
             return noteheadCenterXSs(line.getElement(xIndex + 1), layoutResult);
@@ -378,11 +378,11 @@ public class GlissandoRenderer {
         int xIndex,
         StaffElement.Glissando glissando,
         int lineIndex,
-        Composition composition,
+        Song song,
         LayoutResult layoutResult,
         double middleLineYSs
     ) {
-        var line = composition.getLine(lineIndex);
+        var line = song.getLine(lineIndex);
         var note = line.getElement(xIndex);
         var src = resolveNoteContext(note, xIndex, line, layoutResult, middleLineYSs);
         var tgt = resolveTargetContext(glissando.type, xIndex, line, layoutResult, middleLineYSs);

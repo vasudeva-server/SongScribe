@@ -35,7 +35,7 @@ import org.mockito.MockedStatic;
 
 import songscribe.UnitTest;
 import songscribe.message.MessageCenter;
-import songscribe.music.Composition;
+import songscribe.music.Song;
 import songscribe.music.ElementType;
 import songscribe.music.Line;
 import songscribe.ui.Control;
@@ -46,7 +46,7 @@ import songscribe.ui.playback.PlaybackController;
 
 /**
  * Tests Phase-3 routing: direct clicks on the auto-maintained terminal are routed
- * through {@link Composition#replaceTerminal} instead of the normal insertion path,
+ * through {@link Song#replaceTerminal} instead of the normal insertion path,
  * and that {@code isPositionBlockedByTerminal} correctly lifts its block when the
  * active preview element can legally replace the terminal.
  */
@@ -60,15 +60,15 @@ class PreviewElementManagerTerminalRoutingTest extends UnitTest {
     private LineComponent lc;
     private EditModeManager editModeManager;
 
-    private Composition composition;
+    private Song song;
     private Line line;
 
     @BeforeEach
     void setUp() {
         // Build real model objects before mocking MessageCenter so their constructors
         // see the real bus.
-        composition = new Composition();
-        line = composition.getLine(0);
+        song = new Song();
+        line = song.getLine(0);
 
         messageCenterMock = mockStatic(MessageCenter.class);
         editModeMgrMock = mockStatic(EditModeManager.class);

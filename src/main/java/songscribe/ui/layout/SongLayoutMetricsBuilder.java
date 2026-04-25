@@ -24,22 +24,22 @@ import java.util.List;
 
 /**
  * Reduces a list of per-line {@link LayoutResult}s into a single
- * {@link CompositionLayoutMetrics} that applies uniformly across all lines.
+ * {@link SongLayoutMetrics} that applies uniformly across all lines.
  * <p>
  * When no line reports any verses, the lyrics band collapses: {@code staffToLyricsGapSs},
  * {@code lyricsLineHeightSs}, and {@code lyricsBandHeightSs} are all zero.
  */
-public final class CompositionLayoutMetricsBuilder {
+public final class SongLayoutMetricsBuilder {
 
-    private CompositionLayoutMetricsBuilder() {}
+    private SongLayoutMetricsBuilder() {}
 
     /**
-     * Builds composition-wide layout metrics from the per-line layout results.
+     * Builds song-wide layout metrics from the per-line layout results.
      *
      * @param layouts per-line layout results; may be empty
      * @return metrics object suitable for driving uniform line heights
      */
-    public static CompositionLayoutMetrics build(List<LayoutResult> layouts) {
+    public static SongLayoutMetrics build(List<LayoutResult> layouts) {
         var maxAboveStaffSs = LayoutStylesheet.MIN_ABOVE_STAFF_SS;
         var maxBelowStaffSs = LayoutStylesheet.MIN_BELOW_STAFF_SS + LayoutStylesheet.INTER_LINE_MARGIN_SS;
         var maxBelowContentSs = 0.0;
@@ -65,7 +65,7 @@ public final class CompositionLayoutMetricsBuilder {
             + staffToLyricsGapSs
             + lyricsBandHeightSs;
 
-        return new CompositionLayoutMetrics(
+        return new SongLayoutMetrics(
             maxAboveStaffSs,
             maxBelowStaffSs,
             maxBelowContentSs,

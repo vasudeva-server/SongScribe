@@ -35,7 +35,7 @@ import org.mockito.MockedStatic;
 
 import songscribe.Strings;
 import songscribe.UnitTest;
-import songscribe.music.Composition;
+import songscribe.music.Song;
 import songscribe.music.ElementType;
 import songscribe.ui.OptionDialogs;
 import songscribe.ui.action.MockEnvHelper;
@@ -45,7 +45,7 @@ import songscribe.ui.component.MainFrame;
 class BarlineMenuTest extends UnitTest {
 
     private MockedStatic<MainFrame> mainFrameMock;
-    private Composition composition;
+    private Song song;
 
     @BeforeEach
     void setUp() {
@@ -57,9 +57,9 @@ class BarlineMenuTest extends UnitTest {
         when(mockRootPane.getActionMap()).thenReturn(new ActionMap());
         when(env.frame().getRootPane()).thenReturn(mockRootPane);
 
-        composition = new Composition();
+        song = new Song();
         when(env.score().isInitialized()).thenReturn(true);
-        when(env.score().getComposition()).thenReturn(composition);
+        when(env.score().getSong()).thenReturn(song);
     }
 
     @AfterEach
@@ -70,7 +70,7 @@ class BarlineMenuTest extends UnitTest {
     @Test
     void testFinalDoubleBarlineItemReplacesTerminalWithoutConfirm() {
         var menu = new BarlineMenu();
-        composition.replaceTerminal(ElementType.REPEAT_RIGHT);
+        song.replaceTerminal(ElementType.REPEAT_RIGHT);
 
         var finalBarlineItem = findMenuItemByText(menu, Strings.get(Strings.ACTION_BARLINE_FINAL_DOUBLE));
 
@@ -82,7 +82,7 @@ class BarlineMenuTest extends UnitTest {
             optionDialogsMock.verifyNoInteractions();
         }
 
-        assertThat(composition.currentTerminalType()).isEqualTo(ElementType.FINAL_DOUBLE_BARLINE);
+        assertThat(song.currentTerminalType()).isEqualTo(ElementType.FINAL_DOUBLE_BARLINE);
     }
 
     @Test
@@ -98,7 +98,7 @@ class BarlineMenuTest extends UnitTest {
             optionDialogsMock.verifyNoInteractions();
         }
 
-        assertThat(composition.currentTerminalType()).isEqualTo(ElementType.REPEAT_RIGHT);
+        assertThat(song.currentTerminalType()).isEqualTo(ElementType.REPEAT_RIGHT);
     }
 
     @Test
@@ -120,7 +120,7 @@ class BarlineMenuTest extends UnitTest {
         var finalBarlineItem = findMenuItemByText(menu, Strings.get(Strings.ACTION_BARLINE_FINAL_DOUBLE));
         var rightRepeatItem = findMenuItemByText(menu, Strings.get(Strings.ACTION_BARLINE_FINAL_RIGHT_REPEAT));
 
-        composition.replaceTerminal(ElementType.REPEAT_RIGHT);
+        song.replaceTerminal(ElementType.REPEAT_RIGHT);
 
         assertThat(finalBarlineItem.isSelected()).isFalse();
         assertThat(rightRepeatItem.isSelected()).isTrue();

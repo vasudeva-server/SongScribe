@@ -23,7 +23,7 @@ package songscribe.message.mutation;
 import module java.desktop;
 
 /**
- * Mutation recording a change to one of the composition's fonts.
+ * Mutation recording a change to one of the song's fonts.
  */
 public record FontChange(FontField field, Font oldFont, Font newFont)
     implements Mutation {

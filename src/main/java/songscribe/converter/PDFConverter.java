@@ -150,8 +150,8 @@ public class PDFConverter {
         }
 
         for (var file : files) {
-            var composition = Converter.loadComposition(file, score);
-            Converter.applyExportExclusions(composition, withoutLyrics, withoutSongTitle);
+            var song = Converter.loadSong(file, score);
+            Converter.applyExportExclusions(song, withoutLyrics, withoutSongTitle);
 
             try {
                 var path = FileUtils.getPathWithoutExtension(file) + ".pdf";

@@ -22,7 +22,7 @@ package songscribe.export;
 
 /**
  * Controls what content is included in an export (image, PDF, etc.).
- * Replaces the pattern of temporarily mutating Composition to exclude
+ * Replaces the pattern of temporarily mutating Song to exclude
  * content during export.
  *
  * @param includeLyrics whether to include lyrics (underLyrics, translatedLyrics)

@@ -29,7 +29,7 @@ import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.music.Composition;
+import songscribe.music.Song;
 import songscribe.music.ElementType;
 import songscribe.music.Line;
 import songscribe.music.StaffElement;
@@ -77,16 +77,16 @@ class LineHeightTest extends UnitTest {
         return note;
     }
 
-    private static void addNote(Composition composition, Line line, StaffElement note) {
+    private static void addNote(Song song, Line line, StaffElement note) {
         // Insert before the terminal barline.
-        composition.withoutMutationTracking(
+        song.withoutMutationTracking(
             () -> line.addElement(line.elementCount() - 1, note));
     }
 
     @Test
     void testEmptyLineZeroReturnsMinimumHeight() {
-        var composition = new Composition();
-        var result = require(engine().layout(composition.getLine(0), true), "LayoutResult");
+        var song = new Song();
+        var result = require(engine().layout(song.getLine(0), true), "LayoutResult");
 
         assertThat(result.getLineHeightSs())
             .isCloseTo(MIN_LINE_HEIGHT_SS, within(TOLERANCE));
@@ -94,10 +94,10 @@ class LineHeightTest extends UnitTest {
 
     @Test
     void testEmptyNonLastLineReturnsMinimumHeight() {
-        var composition = new Composition();
-        composition.addLine(new Line());
+        var song = new Song();
+        song.addLine(new Line());
 
-        var result = require(engine().layout(composition.getLine(1), false), "LayoutResult");
+        var result = require(engine().layout(song.getLine(1), false), "LayoutResult");
 
         assertThat(result.getLineHeightSs())
             .isCloseTo(MIN_LINE_HEIGHT_SS, within(TOLERANCE));
@@ -105,10 +105,10 @@ class LineHeightTest extends UnitTest {
 
     @Test
     void testHighNoteAboveStaffIncreasesLineHeight() {
-        var composition = new Composition();
-        var line = composition.getLine(0);
+        var song = new Song();
+        var line = song.getLine(0);
 
-        addNote(composition, line, crotchet(LayoutStylesheet.MIN_STAFF_POSITION_SP));
+        addNote(song, line, crotchet(LayoutStylesheet.MIN_STAFF_POSITION_SP));
 
         var result = require(engine().layout(line, true), "LayoutResult");
 
@@ -119,11 +119,11 @@ class LineHeightTest extends UnitTest {
 
     @Test
     void testLowNoteBelowStaffIncreasesLineHeight() {
-        var composition = new Composition();
-        var line = composition.getLine(0);
+        var song = new Song();
+        var line = song.getLine(0);
 
         // Regression guard for the below-staff term added in step 2 of the plan.
-        addNote(composition, line, crotchet(LayoutStylesheet.MAX_STAFF_POSITION_SP));
+        addNote(song, line, crotchet(LayoutStylesheet.MAX_STAFF_POSITION_SP));
 
         var result = require(engine().layout(line, true), "LayoutResult");
 

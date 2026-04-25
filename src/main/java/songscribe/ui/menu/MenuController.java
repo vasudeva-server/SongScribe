@@ -102,7 +102,7 @@ public class MenuController {
         menuBar.add(initFileMenu());
         menuBar.add(initEditMenu());
         menuBar.add(new NotationMenu());
-        menuBar.add(initCompositionMenu());
+        menuBar.add(initSongMenu());
         menuBar.add(initModeMenu());
         //        menuBar.add(launchMenu);
         //        menuBar.add(initHelpMenu());
@@ -316,17 +316,17 @@ public class MenuController {
         return menu;
     }
 
-    private static JMenu initCompositionMenu() {
-        var menu = new JMenu(Strings.get(Strings.MENU_COMPOSITION));
+    private static JMenu initSongMenu() {
+        var menu = new JMenu(Strings.get(Strings.MENU_SONG));
 
-        var lineMenu = new JMenu(Strings.get(Strings.MENU_COMPOSITION_LINE));
+        var lineMenu = new JMenu(Strings.get(Strings.MENU_SONG_LINE));
         lineMenu.add(InsertLineAction.createAddLineAction());
         lineMenu.add(InsertLineAction.createInsertLineBeforeAction());
         lineMenu.add(InsertLineAction.createInsertLineAfterAction());
         menu.add(lineMenu);
         menu.addSeparator();
 
-        menu.add(Actions.COMPOSITION_SETTINGS_ACTION);
+        menu.add(Actions.SONG_SETTINGS_ACTION);
         return menu;
     }
 

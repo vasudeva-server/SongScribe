@@ -40,7 +40,7 @@ import songscribe.error.RuntimeError;
 import songscribe.file.FileExtensions;
 import songscribe.file.FileUtils;
 import songscribe.file.MyFileFilter;
-import songscribe.io.CompositionIO;
+import songscribe.io.SongIO;
 import songscribe.message.MessageCenter;
 import songscribe.message.MessageLogger;
 import songscribe.message.command.CloseWindowCommand;
@@ -52,10 +52,10 @@ import songscribe.message.command.SaveCommand;
 import songscribe.message.command.ShowOpenDialogCommand;
 import songscribe.message.command.ToggleLoopPlaybackCommand;
 import songscribe.message.command.TogglePlayWithRepeatsCommand;
-import songscribe.message.notification.CompositionDidChangeNotification;
+import songscribe.message.notification.SongDidChangeNotification;
 import songscribe.message.notification.DocumentDidLoadNotification;
 import songscribe.message.notification.DocumentWasSavedNotification;
-import songscribe.music.Composition;
+import songscribe.music.Song;
 import songscribe.prefs.Prefs;
 import songscribe.prefs.PrefsKey;
 import songscribe.prefs.RecentDocumentsManager;
@@ -448,7 +448,7 @@ public class MainFrame extends JFrame implements Printable {
     }
 
     private boolean showSaveDialog() {
-        if (score == null || !score.getComposition().isModified()) {
+        if (score == null || !score.getSong().isModified()) {
             return true;
         }
 
@@ -490,7 +490,7 @@ public class MainFrame extends JFrame implements Printable {
         }
 
         var name = getDisplayName();
-        var isModified = score.getComposition().isModified();
+        var isModified = score.getSong().isModified();
         var title = isModified ? '•' + name : name;
         setTitle(title);
 
@@ -512,7 +512,7 @@ public class MainFrame extends JFrame implements Printable {
     }
 
     @Handler
-    public void compositionDidChange(CompositionDidChangeNotification message) {
+    public void songDidChange(SongDidChangeNotification message) {
         updateTitle();
     }
 
@@ -578,11 +578,11 @@ public class MainFrame extends JFrame implements Printable {
         setCurrentFile(null);
 
         if (score != null) {
-            score.setComposition(new Composition());
+            score.setSong(new Song());
             score.requestFocusInWindow();
         }
 
-        LOG.info("New composition");
+        LOG.info("New song");
     }
 
     public static void handlePrefs() throws IllegalStateException {
@@ -749,9 +749,9 @@ public class MainFrame extends JFrame implements Printable {
                 currentFile,
                 StandardCharsets.UTF_8
             );
-            CompositionIO.writeComposition(score.getComposition(), printWriter);
+            SongIO.writeSong(score.getSong(), printWriter);
             printWriter.close();
-            score.getComposition().setModified(false);
+            score.getSong().setModified(false);
             LOG.info("Saved: {}", currentFile.getName());
             MessageCenter.post(new DocumentWasSavedNotification());
         } catch (IOException e1) {
@@ -792,7 +792,7 @@ public class MainFrame extends JFrame implements Printable {
             setCurrentFile(saveFile);
             saveCurrentFile();
 
-            if (!score.getComposition().isModified()) {
+            if (!score.getSong().isModified()) {
                 RecentDocumentsManager.getInstance().add(saveFile.toPath().toAbsolutePath());
             }
         }

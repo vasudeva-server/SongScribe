@@ -79,7 +79,7 @@ public class ImageExporter {
         ExportOptions options
     ) {
         // TODO: When component-based rendering is implemented, use options to
-        // skip excluded sections (lyrics, title, attribution) without mutating Composition
+        // skip excluded sections (lyrics, title, attribution) without mutating Song
         var g2 = image.createGraphics();
         g2.setRenderingHint(
             RenderingHints.KEY_ANTIALIASING,

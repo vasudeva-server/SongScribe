@@ -266,7 +266,7 @@ public final class GraceModeManager {
             graceLine, previewElement, graceNoteIndex + 1, graceLineComponent.getLayoutResult()
         );
 
-        if (!result.fitsWithinLine(graceLine.getComposition().getLineWidthSs())) {
+        if (!result.fitsWithinLine(graceLine.getSong().getLineWidthSs())) {
             return null;
         }
 
@@ -445,7 +445,7 @@ public final class GraceModeManager {
 
         // Coalesce the host-note insertion, the grace-note glissando connection,
         // and the subsequent enterGraceNotePaired/finish work into a single
-        // CompositionDidChangeNotification.
+        // SongDidChangeNotification.
         var line = graceLine;
 
         if (line == null) {

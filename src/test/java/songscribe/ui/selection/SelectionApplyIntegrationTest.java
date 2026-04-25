@@ -36,7 +36,7 @@ import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
 import songscribe.music.ArticulationType;
-import songscribe.music.Composition;
+import songscribe.music.Song;
 import songscribe.music.ElementType;
 import songscribe.music.StaffElement;
 import songscribe.ui.action.AccidentalAction;
@@ -87,7 +87,7 @@ class SelectionApplyIntegrationTest extends UnitTest {
     ) {
         var coordinator = ReflectionTestHelper.createCoordinator(notes, actions);
         var line = Objects.requireNonNull(coordinator.getActiveSelection()).getLine();
-        line.setComposition(createCompositionMock());
+        line.setSong(createSongMock());
         return coordinator;
     }
 
@@ -98,24 +98,24 @@ class SelectionApplyIntegrationTest extends UnitTest {
     ) {
         var coordinator = ReflectionTestHelper.createCoordinator(notes, actions, managedActions);
         var line = Objects.requireNonNull(coordinator.getActiveSelection()).getLine();
-        line.setComposition(createCompositionMock());
+        line.setSong(createSongMock());
         return coordinator;
     }
 
-    private static Composition createCompositionMock() {
-        var compositionMock = mock(Composition.class);
-        when(compositionMock.isModifying()).thenReturn(true);
+    private static Song createSongMock() {
+        var songMock = mock(Song.class);
+        when(songMock.isModifying()).thenReturn(true);
         doAnswer(inv -> {
             Runnable runnable = inv.getArgument(0);
             runnable.run();
             return null;
-        }).when(compositionMock).withModification(any());
+        }).when(songMock).withModification(any());
         doAnswer(inv -> {
             Runnable mutator = inv.getArgument(1);
             mutator.run();
             return null;
-        }).when(compositionMock).applyChange(any(), any());
-        return compositionMock;
+        }).when(songMock).applyChange(any(), any());
+        return songMock;
     }
 
     // ---- Edge Cases ----

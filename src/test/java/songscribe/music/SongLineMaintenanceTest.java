@@ -39,26 +39,26 @@ import songscribe.message.mutation.ElementInsertion;
 import songscribe.message.mutation.ElementReplacement;
 import songscribe.message.mutation.LineDeletion;
 import songscribe.message.mutation.LineInsertion;
-import songscribe.message.notification.CompositionDidChangeNotification;
+import songscribe.message.notification.SongDidChangeNotification;
 
 /**
- * Verifies that {@link Composition#addLine} and {@link Composition#removeLine} auto-maintain
- * the terminal invariant: whenever the last line of the composition changes, the new last
+ * Verifies that {@link Song#addLine} and {@link Song#removeLine} auto-maintain
+ * the terminal invariant: whenever the last line of the song changes, the new last
  * line ends in a valid terminal ({@code FINAL_DOUBLE_BARLINE} or {@code REPEAT_RIGHT}) and
  * no other line does. All maintenance mutations
  * coalesce with the triggering {@link LineInsertion} / {@link LineDeletion} into a single
- * {@link CompositionDidChangeNotification}.
+ * {@link SongDidChangeNotification}.
  */
-class CompositionLineMaintenanceTest extends UnitTest {
+class SongLineMaintenanceTest extends UnitTest {
 
-    private Composition composition;
+    private Song song;
     private Line initialLine;
     private MockedStatic<MessageCenter> messageCenterMock;
 
     @BeforeEach
     void setUp() {
-        composition = new Composition();
-        initialLine = composition.getLine(0);
+        song = new Song();
+        initialLine = song.getLine(0);
         messageCenterMock = mockStatic(MessageCenter.class);
     }
 
@@ -77,7 +77,7 @@ class CompositionLineMaintenanceTest extends UnitTest {
         @Test
         void testAppendEmptyLineRemovesPrevFinalAndInsertsOnNewLast() {
             var newLast = new Line();
-            composition.addLine(1, newLast);
+            song.addLine(1, newLast);
 
             var notification = captureSingleDidChange();
 
@@ -101,12 +101,12 @@ class CompositionLineMaintenanceTest extends UnitTest {
         void testAppendLineEndingInOtherBarlineReplacesWithFinal() {
             var newLast = new Line();
             var trailingBarline = new StaffElement(ElementType.DOUBLE_BARLINE);
-            composition.withoutMutationTracking(() -> {
+            song.withoutMutationTracking(() -> {
                 newLast.addElement(new StaffElement(ElementType.CROTCHET));
                 newLast.addElement(trailingBarline);
             });
 
-            composition.addLine(1, newLast);
+            song.addLine(1, newLast);
 
             var notification = captureSingleDidChange();
 
@@ -132,9 +132,9 @@ class CompositionLineMaintenanceTest extends UnitTest {
         void testAppendLineEndingInNoteAppendsFinal() {
             var newLast = new Line();
             var trailingNote = new StaffElement(ElementType.CROTCHET);
-            composition.withoutMutationTracking(() -> newLast.addElement(trailingNote));
+            song.withoutMutationTracking(() -> newLast.addElement(trailingNote));
 
-            composition.addLine(1, newLast);
+            song.addLine(1, newLast);
 
             var notification = captureSingleDidChange();
 
@@ -157,11 +157,11 @@ class CompositionLineMaintenanceTest extends UnitTest {
         @Test
         void testAppendLineAlreadyEndingInFinalTransfersWithoutDuplication() {
             var newLast = new Line();
-            composition.withoutMutationTracking(
-                () -> newLast.addElement(Composition.newTerminalElement(ElementType.FINAL_DOUBLE_BARLINE))
+            song.withoutMutationTracking(
+                () -> newLast.addElement(Song.newTerminalElement(ElementType.FINAL_DOUBLE_BARLINE))
             );
 
-            composition.addLine(1, newLast);
+            song.addLine(1, newLast);
 
             var notification = captureSingleDidChange();
 
@@ -191,7 +191,7 @@ class CompositionLineMaintenanceTest extends UnitTest {
         void testInsertBeforeLastDoesNotTouchInitialLine() {
             // Populate the initial (last) line beyond its final barline so we can assert
             // the final barline remains as the last element.
-            composition.withoutMutationTracking(() -> {
+            song.withoutMutationTracking(() -> {
                 // Put a note BEFORE the final barline. addElement(index, element) would
                 // trip the guard check for FINAL's position, so insert at index 0 and
                 // rely on the existing FINAL staying last by index shift.
@@ -200,7 +200,7 @@ class CompositionLineMaintenanceTest extends UnitTest {
             var finalElement = initialLine.getElement(initialLine.elementCount() - 1);
 
             var inserted = new Line();
-            composition.addLine(0, inserted);
+            song.addLine(0, inserted);
 
             var notification = captureSingleDidChange();
 
@@ -215,7 +215,7 @@ class CompositionLineMaintenanceTest extends UnitTest {
             assertThat(notification.getMutations()).noneMatch(m -> m instanceof ElementReplacement);
             assertThat(notification.getMutations()).noneMatch(m -> m instanceof ElementInsertion);
 
-            assertThat(composition.getLine(composition.lineCount() - 1)).isSameAs(initialLine);
+            assertThat(song.getLine(song.lineCount() - 1)).isSameAs(initialLine);
             assertThat(initialLine.getElement(initialLine.elementCount() - 1)).isSameAs(finalElement);
         }
     }
@@ -232,17 +232,17 @@ class CompositionLineMaintenanceTest extends UnitTest {
             // Configure initialLine to end in a note so the removeLine maintenance
             // exercises the append branch.
             var newLast = new Line();
-            composition.withoutMutationTracking(() -> {
+            song.withoutMutationTracking(() -> {
                 initialLine.removeElement(initialLine.elementCount() - 1);
                 initialLine.addElement(new StaffElement(ElementType.CROTCHET));
-                newLast.addElement(Composition.newTerminalElement(ElementType.FINAL_DOUBLE_BARLINE));
+                newLast.addElement(Song.newTerminalElement(ElementType.FINAL_DOUBLE_BARLINE));
             });
-            composition.addLine(1, newLast);
+            song.addLine(1, newLast);
             // Drain the addLine notification so the removeLine assertion below sees
             // only the removal's mutations.
             messageCenterMock.reset();
 
-            composition.removeLine(1);
+            song.removeLine(1);
 
             var notification = captureSingleDidChange();
 
@@ -261,18 +261,18 @@ class CompositionLineMaintenanceTest extends UnitTest {
         @Test
         void testRemovingLastWhenPenultEndsInOtherBarlineReplacesWithFinal() {
             var newLast = new Line();
-            composition.withoutMutationTracking(() -> {
+            song.withoutMutationTracking(() -> {
                 // Replace initialLine's FINAL with CROTCHET + DOUBLE_BARLINE so the
                 // removeLine maintenance exercises the replace branch.
                 initialLine.removeElement(initialLine.elementCount() - 1);
                 initialLine.addElement(new StaffElement(ElementType.CROTCHET));
                 initialLine.addElement(new StaffElement(ElementType.DOUBLE_BARLINE));
-                newLast.addElement(Composition.newTerminalElement(ElementType.FINAL_DOUBLE_BARLINE));
+                newLast.addElement(Song.newTerminalElement(ElementType.FINAL_DOUBLE_BARLINE));
             });
-            composition.addLine(1, newLast);
+            song.addLine(1, newLast);
             messageCenterMock.reset();
 
-            composition.removeLine(1);
+            song.removeLine(1);
 
             var notification = captureSingleDidChange();
 
@@ -291,16 +291,16 @@ class CompositionLineMaintenanceTest extends UnitTest {
             // initialLine's FINAL during maintenance, so re-seed it under
             // withoutMutationTracking so the post-addLine state has FINAL on both lines.
             var newLast = new Line();
-            composition.withoutMutationTracking(
-                () -> newLast.addElement(Composition.newTerminalElement(ElementType.FINAL_DOUBLE_BARLINE))
+            song.withoutMutationTracking(
+                () -> newLast.addElement(Song.newTerminalElement(ElementType.FINAL_DOUBLE_BARLINE))
             );
-            composition.addLine(1, newLast);
-            composition.withoutMutationTracking(
-                () -> initialLine.addElement(Composition.newTerminalElement(ElementType.FINAL_DOUBLE_BARLINE))
+            song.addLine(1, newLast);
+            song.withoutMutationTracking(
+                () -> initialLine.addElement(Song.newTerminalElement(ElementType.FINAL_DOUBLE_BARLINE))
             );
             messageCenterMock.reset();
 
-            composition.removeLine(1);
+            song.removeLine(1);
 
             var notification = captureSingleDidChange();
 
@@ -322,14 +322,14 @@ class CompositionLineMaintenanceTest extends UnitTest {
         @Test
         void testRemovingNonLastLineRunsNoMaintenance() {
             var newLast = new Line();
-            composition.withoutMutationTracking(
-                () -> newLast.addElement(Composition.newTerminalElement(ElementType.FINAL_DOUBLE_BARLINE))
+            song.withoutMutationTracking(
+                () -> newLast.addElement(Song.newTerminalElement(ElementType.FINAL_DOUBLE_BARLINE))
             );
-            composition.addLine(1, newLast);
+            song.addLine(1, newLast);
             messageCenterMock.reset();
 
             // Remove the first (non-last) line.
-            composition.removeLine(0);
+            song.removeLine(0);
 
             var notification = captureSingleDidChange();
 
@@ -339,8 +339,8 @@ class CompositionLineMaintenanceTest extends UnitTest {
             assertThat(notification.getMutations()).noneMatch(m -> m instanceof ElementDeletion);
 
             // newLast is now the only line and still ends in FINAL.
-            assertThat(composition.lineCount()).isEqualTo(1);
-            assertThat(composition.getLine(0)).isSameAs(newLast);
+            assertThat(song.lineCount()).isEqualTo(1);
+            assertThat(song.getLine(0)).isSameAs(newLast);
             assertThat(newLast.getElement(newLast.elementCount() - 1).getType())
                 .isEqualTo(ElementType.FINAL_DOUBLE_BARLINE);
         }
@@ -359,12 +359,12 @@ class CompositionLineMaintenanceTest extends UnitTest {
             // a setElement(…, FINAL_DOUBLE_BARLINE) that would otherwise trip the
             // Phase 1 guards. isInAutoMaintenance gates them so this succeeds.
             var newLast = new Line();
-            composition.withoutMutationTracking(() -> {
+            song.withoutMutationTracking(() -> {
                 newLast.addElement(new StaffElement(ElementType.CROTCHET));
                 newLast.addElement(new StaffElement(ElementType.DOUBLE_BARLINE));
             });
 
-            assertThatNoException().isThrownBy(() -> composition.addLine(1, newLast));
+            assertThatNoException().isThrownBy(() -> song.addLine(1, newLast));
         }
     }
 
@@ -377,18 +377,18 @@ class CompositionLineMaintenanceTest extends UnitTest {
 
         @Test
         void testAddLineDirtiesDocument() {
-            assertThat(composition.isModified()).isFalse();
-            composition.addLine(1, new Line());
-            assertThat(composition.isModified()).isTrue();
+            assertThat(song.isModified()).isFalse();
+            song.addLine(1, new Line());
+            assertThat(song.isModified()).isTrue();
         }
 
         @Test
         void testRemoveLineDirtiesDocument() {
-            composition.addLine(1, new Line());
-            composition.setModified(false);
+            song.addLine(1, new Line());
+            song.setModified(false);
 
-            composition.removeLine(1);
-            assertThat(composition.isModified()).isTrue();
+            song.removeLine(1);
+            assertThat(song.isModified()).isTrue();
         }
     }
 
@@ -399,31 +399,31 @@ class CompositionLineMaintenanceTest extends UnitTest {
     @Test
     @Disabled("pending #14 — undo grouping collapses trigger + auto-maintenance into one step")
     void testCoalescedMutationsRevertInSingleUndoStep() {
-        // Will exercise undo once Composition.beginModification snapshots for undo grouping
-        // (see TODO at Composition.java beginModification).
+        // Will exercise undo once Song.beginModification snapshots for undo grouping
+        // (see TODO at Song.java beginModification).
     }
 
     // -----------------------------------------------------------------------
     // Helpers
     // -----------------------------------------------------------------------
 
-    private CompositionDidChangeNotification captureSingleDidChange() {
+    private SongDidChangeNotification captureSingleDidChange() {
         var captor = ArgumentCaptor.forClass(Message.class);
         messageCenterMock.verify(() -> MessageCenter.post(captor.capture()));
         var didChanges = captor.getAllValues().stream()
-            .filter(m -> m instanceof CompositionDidChangeNotification)
-            .map(m -> (CompositionDidChangeNotification) m)
+            .filter(m -> m instanceof SongDidChangeNotification)
+            .map(m -> (SongDidChangeNotification) m)
             .toList();
 
         assertThat(didChanges)
-            .as("expected exactly one CompositionDidChangeNotification, got: %s", didChanges)
+            .as("expected exactly one SongDidChangeNotification, got: %s", didChanges)
             .hasSize(1);
 
         return didChanges.get(0);
     }
 
     private <T> T singleMutationOfType(
-        CompositionDidChangeNotification notification, Class<T> type
+        SongDidChangeNotification notification, Class<T> type
     ) {
         var matches = notification.getMutations().stream()
             .filter(type::isInstance)

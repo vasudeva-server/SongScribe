@@ -26,7 +26,7 @@ import songscribe.error.RuntimeError;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.music.Composition;
+import songscribe.music.Song;
 
 /**
  * Container panel for under-lyrics text sections.
@@ -51,9 +51,9 @@ public class TextPanel extends JPanel {
     /** Translation component. */
     private final TranslationComponent translationComponent;
 
-    /** The composition model. */
+    /** The song model. */
     @Nullable
-    private Composition composition;
+    private Song song;
 
     /**
      * Creates a new TextPanel.
@@ -78,28 +78,28 @@ public class TextPanel extends JPanel {
     }
 
     /**
-     * Sets the composition and updates all child components.
+     * Sets the song and updates all child components.
      *
-     * @param composition The composition
+     * @param song The song
      */
-    public void setComposition(Composition composition) {
-        this.composition = composition;
-        underLyricsComponent.setComposition(composition);
-        banglaLyricsComponent.setComposition(composition);
-        translationComponent.setComposition(composition);
+    public void setSong(Song song) {
+        this.song = song;
+        underLyricsComponent.setSong(song);
+        banglaLyricsComponent.setSong(song);
+        translationComponent.setSong(song);
         revalidate();
         repaint();
     }
 
     /**
-     * Returns the composition.
+     * Returns the song.
      */
-    public Composition getComposition() {
-        if (composition == null) {
-            throw RuntimeError.exit("composition not initialized");
+    public Song getSong() {
+        if (song == null) {
+            throw RuntimeError.exit("song not initialized");
         }
 
-        return composition;
+        return song;
     }
 
     /**
@@ -126,13 +126,13 @@ public class TextPanel extends JPanel {
     @Override
     protected void paintComponent(Graphics g) {
         // Calculate union width and set contentX on children before they paint
-        if (composition != null) {
+        if (song != null) {
             var g2 = (Graphics2D) g;
             var unionWidth = calculateUnionWidth(g2);
 
             if (unionWidth > 0) {
                 var contentX = (float) Math.round(
-                    (composition.getLineWidthPx() - unionWidth) / 2
+                    (song.getLineWidthPx() - unionWidth) / 2
                 );
                 underLyricsComponent.setContentX(contentX);
                 banglaLyricsComponent.setContentX(contentX);
@@ -169,7 +169,7 @@ public class TextPanel extends JPanel {
 
     @Override
     public Dimension getPreferredSize() {
-        if (composition == null) {
+        if (song == null) {
             return new Dimension(0, 0);
         }
 

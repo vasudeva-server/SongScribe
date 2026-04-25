@@ -21,9 +21,9 @@
 package songscribe.ui.layout;
 
 /**
- * Composition-wide layout constants shared across all staff lines.
+ * Song-wide layout constants shared across all staff lines.
  * <p>
- * Every line in the composition uses the same {@code totalLineHeightSs} so that
+ * Every line in the song uses the same {@code totalLineHeightSs} so that
  * staff baselines are vertically consistent regardless of how many ledger lines or
  * stem extensions appear on any individual line.
  * <p>
@@ -34,7 +34,7 @@ package songscribe.ui.layout;
  * @param maxBelowStaffSs    staff-space amount below the staff bottom for non-lyric content
  *                           (line-component sizing reservation, includes the MIN_BELOW floor
  *                           for ledger-line capacity and the inter-line margin)
- * @param maxBelowContentSs  composition-wide maximum of actual below-staff content extent across
+ * @param maxBelowContentSs  song-wide maximum of actual below-staff content extent across
  *                           all lines; the lyric-positioning anchor (no MIN_BELOW floor, no margin)
  * @param staffToLyricsGapSs gap between the below-staff content and the first verse baseline
  * @param lyricsLineHeightSs height allocated for each verse row
@@ -42,7 +42,7 @@ package songscribe.ui.layout;
  * @param lyricsBandHeightSs total height of the lyrics band (= verseCount * lyricsLineHeightSs)
  * @param totalLineHeightSs  total height of a single staff line component
  */
-public record CompositionLayoutMetrics(
+public record SongLayoutMetrics(
     double maxAboveStaffSs,
     double maxBelowStaffSs,
     double maxBelowContentSs,

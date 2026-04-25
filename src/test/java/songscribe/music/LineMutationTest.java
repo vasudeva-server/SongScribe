@@ -44,22 +44,22 @@ import songscribe.message.mutation.ElementRangeDeletion;
 import songscribe.message.mutation.LineDeletion;
 import songscribe.message.mutation.LineInsertion;
 import songscribe.message.mutation.Mutation;
-import songscribe.message.notification.CompositionDidChangeNotification;
+import songscribe.message.notification.SongDidChangeNotification;
 import songscribe.ui.layout.Ending;
 import songscribe.ui.layout.EndingLineFixture;
 import songscribe.ui.layout.Tie;
 
 class LineMutationTest extends UnitTest {
 
-    private Composition composition;
+    private Song song;
     private Line line;
     private MockedStatic<MessageCenter> messageCenterMock;
 
     @BeforeEach
     void setUp() {
         // Construct before mocking so constructor's bus interactions go to the real bus.
-        composition = new Composition();
-        line = composition.getLine(0);
+        song = new Song();
+        line = song.getLine(0);
         messageCenterMock = mockStatic(MessageCenter.class);
     }
 
@@ -78,7 +78,7 @@ class LineMutationTest extends UnitTest {
         @Test
         void testAddLineFiresLineInsertion() {
             var newLine = new Line();
-            composition.addLine(1, newLine);
+            song.addLine(1, newLine);
 
             // addLine also fires LineKeyChange and LineLayoutChange mutations
             // for the new line's key and tempo defaults; filter for the LineInsertion.
@@ -90,7 +90,7 @@ class LineMutationTest extends UnitTest {
 
         @Test
         void testRemoveLineFiresLineDeletion() {
-            composition.removeLine(0);
+            song.removeLine(0);
 
             var notification = captureSingleDidChange();
             assertThat(notification.getMutations()).hasSize(1);
@@ -118,7 +118,7 @@ class LineMutationTest extends UnitTest {
             e0 = new StaffElement(ElementType.QUAVER);
             e1 = new StaffElement(ElementType.QUAVER);
             e2 = new StaffElement(ElementType.QUAVER);
-            composition.withoutMutationTracking(() -> {
+            song.withoutMutationTracking(() -> {
                 line.addElement(e0);
                 line.addElement(e1);
                 line.addElement(e2);
@@ -127,7 +127,7 @@ class LineMutationTest extends UnitTest {
 
         @Test
         void testFiresSingleElementDeletion() {
-            composition.withModification(() -> line.removeElement(1));
+            song.withModification(() -> line.removeElement(1));
 
             var notification = captureSingleDidChange();
             assertThat(notification.getMutations()).hasSize(1);
@@ -141,9 +141,9 @@ class LineMutationTest extends UnitTest {
         void testInvalidatedRangeElementIsRemoved() {
             // Tie spans e0 → e2; deleting the anchor (e0) must remove the tie.
             var tie = new Tie(e0, e2);
-            composition.withoutMutationTracking(() -> line.addRangeElement(tie));
+            song.withoutMutationTracking(() -> line.addRangeElement(tie));
 
-            composition.withModification(() -> line.removeElement(0));
+            song.withModification(() -> line.removeElement(0));
 
             assertThat(line.getRangeElements()).doesNotContain(tie);
         }
@@ -152,9 +152,9 @@ class LineMutationTest extends UnitTest {
         void testUnaffectedRangeElementIsPreserved() {
             // Tie spans e0 → e2; deleting the middle element (e1) must not remove the tie.
             var tie = new Tie(e0, e2);
-            composition.withoutMutationTracking(() -> line.addRangeElement(tie));
+            song.withoutMutationTracking(() -> line.addRangeElement(tie));
 
-            composition.withModification(() -> line.removeElement(1));
+            song.withModification(() -> line.removeElement(1));
 
             assertThat(line.getRangeElements()).contains(tie);
         }
@@ -174,7 +174,7 @@ class LineMutationTest extends UnitTest {
             // Populate via withoutMutationTracking so Line.applyChange bypasses the
             // strict bracket check and the setup produces no notification.
             var list = new ArrayList<StaffElement>();
-            composition.withoutMutationTracking(() -> {
+            song.withoutMutationTracking(() -> {
                 for (var i = 0; i < 10; i++) {
                     var element = new StaffElement(ElementType.QUAVER);
                     line.addElement(element);
@@ -187,7 +187,7 @@ class LineMutationTest extends UnitTest {
 
         @Test
         void testFiresSingleElementRangeDeletion() {
-            composition.withModification(() -> line.removeRange(2, 5));
+            song.withModification(() -> line.removeRange(2, 5));
 
             var notification = captureSingleDidChange();
             assertThat(notification.getMutations()).hasSize(1);
@@ -201,7 +201,7 @@ class LineMutationTest extends UnitTest {
 
         @Test
         void testElementListShrunkenByRangeWidth() {
-            composition.withModification(() -> line.removeRange(2, 5));
+            song.withModification(() -> line.removeRange(2, 5));
 
             // 10 elements + 1 auto-maintained final barline − 4 removed (indices 2, 3, 4, 5) = 7 remain.
             assertThat(line.elementCount()).isEqualTo(7);
@@ -211,9 +211,9 @@ class LineMutationTest extends UnitTest {
         void testInvalidatedRangeElementIsRemoved() {
             // Ending anchored at e3 (index 3), which falls inside the deleted range [2, 5].
             var ending = new Ending(elements.get(3), elements.get(7), Ending.Type.FIRST);
-            composition.withoutMutationTracking(() -> line.addRangeElement(ending));
+            song.withoutMutationTracking(() -> line.addRangeElement(ending));
 
-            composition.withModification(() -> line.removeRange(2, 5));
+            song.withModification(() -> line.removeRange(2, 5));
 
             assertThat(line.getRangeElements()).doesNotContain(ending);
         }
@@ -222,9 +222,9 @@ class LineMutationTest extends UnitTest {
         void testUnaffectedRangeElementIsPreserved() {
             // Ending spans e0 → e1; deleted range [5, 8] is entirely disjoint.
             var ending = new Ending(elements.get(0), elements.get(1), Ending.Type.FIRST);
-            composition.withoutMutationTracking(() -> line.addRangeElement(ending));
+            song.withoutMutationTracking(() -> line.addRangeElement(ending));
 
-            composition.withModification(() -> line.removeRange(5, 8));
+            song.withModification(() -> line.removeRange(5, 8));
 
             assertThat(line.getRangeElements()).contains(ending);
         }
@@ -240,13 +240,13 @@ class LineMutationTest extends UnitTest {
         @Test
         void testXPosShiftOutsideBracketProducesNoNotification() {
             // Verify that mutating element positions directly (outside any bracket)
-            // does not trigger a CompositionDidChangeNotification. This mirrors
+            // does not trigger a SongDidChangeNotification. This mirrors
             // the pre-bracket xpos adjustment in handleDelete's contiguous path.
             var e0 = new StaffElement(ElementType.QUAVER);
             var e1 = new StaffElement(ElementType.QUAVER);
             e0.setXOffsetPx(0);
             e1.setXOffsetPx(10);
-            composition.withoutMutationTracking(() -> {
+            song.withoutMutationTracking(() -> {
                 line.addElement(e0);
                 line.addElement(e1);
             });
@@ -260,8 +260,8 @@ class LineMutationTest extends UnitTest {
         void testContiguousRangeDeleteFiresSingleNotificationWithOneRangeDeletion() {
             // Mirrors the production path in handleDelete for the contiguous range case:
             //   1. Shift trailing elements outside the bracket (direct field mutation, no notification).
-            //   2. Call composition.withModification(() -> line.removeRange(begin, end)).
-            // Exactly one CompositionDidChangeNotification must be posted, carrying
+            //   2. Call song.withModification(() -> line.removeRange(begin, end)).
+            // Exactly one SongDidChangeNotification must be posted, carrying
             // exactly one ElementRangeDeletion (not one per deleted element).
             var e0 = new StaffElement(ElementType.QUAVER);
             var e1 = new StaffElement(ElementType.QUAVER);
@@ -271,7 +271,7 @@ class LineMutationTest extends UnitTest {
             e1.setXOffsetPx(10);
             e2.setXOffsetPx(20);
             e3.setXOffsetPx(30);
-            composition.withoutMutationTracking(() -> {
+            song.withoutMutationTracking(() -> {
                 line.addElement(e0);
                 line.addElement(e1);
                 line.addElement(e2);
@@ -289,7 +289,7 @@ class LineMutationTest extends UnitTest {
             }
 
             // Step 2: bracket-wrapped range removal
-            composition.withModification(() -> line.removeRange(begin, end));
+            song.withModification(() -> line.removeRange(begin, end));
 
             var notification = captureSingleDidChange();
             assertThat(notification.getMutations()).hasSize(1);
@@ -334,7 +334,7 @@ class LineMutationTest extends UnitTest {
 
         @BeforeEach
         void setUpEnding() {
-            var fixture = EndingLineFixture.primary(composition);
+            var fixture = EndingLineFixture.primary(song);
             anchor = fixture.anchor();
             note1  = fixture.note1();
             note2  = fixture.note2();
@@ -352,7 +352,7 @@ class LineMutationTest extends UnitTest {
         @Test
         void testSetElementAnchorWithDoubleBarlineRemovesEnding() {
             // Condition 1: DOUBLE_BARLINE is not an allowed anchor type
-            composition.withModification(() ->
+            song.withModification(() ->
                 line.setElement(0, new StaffElement(ElementType.DOUBLE_BARLINE)));
 
             assertThat(line.getRangeElements()).doesNotContain(ending);
@@ -361,7 +361,7 @@ class LineMutationTest extends UnitTest {
         @Test
         void testSetElementAnchorWithRepeatLeftRetainsEnding() {
             // Condition 1: REPEAT_LEFT is an allowed anchor type
-            composition.withModification(() ->
+            song.withModification(() ->
                 line.setElement(0, new StaffElement(ElementType.REPEAT_LEFT)));
 
             assertThat(line.getRangeElements()).contains(ending);
@@ -370,7 +370,7 @@ class LineMutationTest extends UnitTest {
         @Test
         void testSetElementSplitWithSingleBarlineRemovesEnding() {
             // Condition 2: SINGLE_BARLINE is not an allowed split type
-            composition.withModification(() ->
+            song.withModification(() ->
                 line.setElement(3, new StaffElement(ElementType.SINGLE_BARLINE)));
 
             assertThat(line.getRangeElements()).doesNotContain(ending);
@@ -381,7 +381,7 @@ class LineMutationTest extends UnitTest {
             // Condition 2: replacing split REPEAT_RIGHT → REPEAT_LEFT_RIGHT now returns
             // CompensateEnd, not Invalidate, so isInvalidatedByReplacement returns false and
             // the ending is retained. The UI layer handles the confirm and compensating change.
-            composition.withModification(() ->
+            song.withModification(() ->
                 line.setElement(3, new StaffElement(ElementType.REPEAT_LEFT_RIGHT)));
 
             assertThat(line.getRangeElements()).contains(ending);
@@ -390,7 +390,7 @@ class LineMutationTest extends UnitTest {
         @Test
         void testSetElementSplitWithRepeatLeftRightEndIsRightRepeatRetainsEnding() {
             // Condition 2: REPEAT_LEFT_RIGHT is valid as split when end is a right repeat
-            var comp2 = new Composition();
+            var comp2 = new Song();
             var line2 = comp2.getLine(0);
             var anchor2 = new StaffElement(ElementType.SINGLE_BARLINE);
             var split2  = new StaffElement(ElementType.REPEAT_RIGHT);
@@ -416,7 +416,7 @@ class LineMutationTest extends UnitTest {
         @Test
         void testSetElementEndWithNoteRemovesEnding() {
             // Condition 3: a content element is not an allowed end type
-            composition.withModification(() ->
+            song.withModification(() ->
                 line.setElement(6, new StaffElement(ElementType.CROTCHET)));
 
             assertThat(line.getRangeElements()).doesNotContain(ending);
@@ -425,7 +425,7 @@ class LineMutationTest extends UnitTest {
         @Test
         void testSetElementEndWithDoubleBarlineRetainsEnding() {
             // Condition 3: any barline type is allowed as end
-            composition.withModification(() ->
+            song.withModification(() ->
                 line.setElement(6, new StaffElement(ElementType.DOUBLE_BARLINE)));
 
             assertThat(line.getRangeElements()).contains(ending);
@@ -438,7 +438,7 @@ class LineMutationTest extends UnitTest {
         @Test
         void testInsertBarlineInFirstSpanInteriorRemovesEnding() {
             // Condition 5: barline inserted at interior of first sub-span (index 2)
-            composition.withModification(() ->
+            song.withModification(() ->
                 line.addElement(2, new StaffElement(ElementType.SINGLE_BARLINE)));
 
             assertThat(line.getRangeElements()).doesNotContain(ending);
@@ -447,7 +447,7 @@ class LineMutationTest extends UnitTest {
         @Test
         void testInsertNoteInFirstSpanInteriorRetainsEnding() {
             // Non-barline/non-repeat insertions never invalidate the ending
-            composition.withModification(() ->
+            song.withModification(() ->
                 line.addElement(2, new StaffElement(ElementType.CROTCHET)));
 
             assertThat(line.getRangeElements()).contains(ending);
@@ -460,11 +460,11 @@ class LineMutationTest extends UnitTest {
         @Test
         void testSequentialDeleteFirstSpanContentRemovesEndingOnLastNote() {
             // After removing note1 the ending is still present (note2 remains in span).
-            composition.withModification(() -> line.removeElement(1));
+            song.withModification(() -> line.removeElement(1));
             assertThat(line.getRangeElements()).contains(ending);
 
             // note2 has shifted to index 1; removing it empties the first span → ending gone.
-            composition.withModification(() -> line.removeElement(1));
+            song.withModification(() -> line.removeElement(1));
             assertThat(line.getRangeElements()).doesNotContain(ending);
         }
 
@@ -475,7 +475,7 @@ class LineMutationTest extends UnitTest {
         @Test
         void testRemoveRangeAllFirstSpanContentRemovesEnding() {
             // Deleting both first-span notes (indices 1–2) at once empties the sub-span
-            composition.withModification(() -> line.removeRange(1, 2));
+            song.withModification(() -> line.removeRange(1, 2));
 
             assertThat(line.getRangeElements()).doesNotContain(ending);
         }
@@ -487,7 +487,7 @@ class LineMutationTest extends UnitTest {
         @Test
         void testRemoveSplitElementRemovesEnding() {
             // Condition 2: deleting the REPEAT_RIGHT that separates first/second sub-spans
-            composition.withModification(() -> line.removeElement(3));
+            song.withModification(() -> line.removeElement(3));
 
             assertThat(line.getRangeElements()).doesNotContain(ending);
         }
@@ -505,29 +505,29 @@ class LineMutationTest extends UnitTest {
         @Test
         void testAddFinalBarlineOnNonLastLineThrows() {
             var secondLine = new Line();
-            composition.addLine(1, secondLine);
+            song.addLine(1, secondLine);
             // line is now index 0, no longer the last line
             assertThatIllegalStateException().isThrownBy(() ->
-                composition.withModification(() ->
-                    line.addElement(0, Composition.newTerminalElement(ElementType.FINAL_DOUBLE_BARLINE))));
+                song.withModification(() ->
+                    line.addElement(0, Song.newTerminalElement(ElementType.FINAL_DOUBLE_BARLINE))));
         }
 
         @Test
         void testAddFinalBarlineAtNonEndOfLastLineThrows() {
             // Pre-load an element so that index 0 != elementCount() (2)
-            composition.withoutMutationTracking(() ->
+            song.withoutMutationTracking(() ->
                 line.addElement(new StaffElement(ElementType.QUAVER)));
             assertThatIllegalStateException().isThrownBy(() ->
-                composition.withModification(() ->
-                    line.addElement(0, Composition.newTerminalElement(ElementType.FINAL_DOUBLE_BARLINE))));
+                song.withModification(() ->
+                    line.addElement(0, Song.newTerminalElement(ElementType.FINAL_DOUBLE_BARLINE))));
         }
 
         @Test
         void testAddFinalBarlineAtEndOfLastLineSucceeds() {
             assertThatNoException().isThrownBy(() ->
-                composition.withModification(() ->
+                song.withModification(() ->
                     line.addElement(line.elementCount(),
-                        Composition.newTerminalElement(ElementType.FINAL_DOUBLE_BARLINE))));
+                        Song.newTerminalElement(ElementType.FINAL_DOUBLE_BARLINE))));
         }
 
         // --- setElement guards ---
@@ -535,78 +535,78 @@ class LineMutationTest extends UnitTest {
         @Test
         void testSetFinalBarlineOnNonLastLineThrows() {
             var secondLine = new Line();
-            composition.addLine(1, secondLine);
-            composition.withoutMutationTracking(() ->
+            song.addLine(1, secondLine);
+            song.withoutMutationTracking(() ->
                 line.addElement(new StaffElement(ElementType.QUAVER)));
             // line is index 0, not the last line
             assertThatIllegalStateException().isThrownBy(() ->
-                composition.withModification(() ->
-                    line.setElement(0, Composition.newTerminalElement(ElementType.FINAL_DOUBLE_BARLINE))));
+                song.withModification(() ->
+                    line.setElement(0, Song.newTerminalElement(ElementType.FINAL_DOUBLE_BARLINE))));
         }
 
         @Test
         void testSetFinalBarlineAtNonLastPositionOfLastLineThrows() {
-            composition.withoutMutationTracking(() -> {
+            song.withoutMutationTracking(() -> {
                 line.addElement(new StaffElement(ElementType.QUAVER));
                 line.addElement(new StaffElement(ElementType.QUAVER));
             });
             // index 0 != elementCount()-1 (2)
             assertThatIllegalStateException().isThrownBy(() ->
-                composition.withModification(() ->
-                    line.setElement(0, Composition.newTerminalElement(ElementType.FINAL_DOUBLE_BARLINE))));
+                song.withModification(() ->
+                    line.setElement(0, Song.newTerminalElement(ElementType.FINAL_DOUBLE_BARLINE))));
         }
 
         @Test
         void testSetFinalBarlineAtLastPositionOfLastLineSucceeds() {
-            composition.withoutMutationTracking(() ->
+            song.withoutMutationTracking(() ->
                 line.addElement(new StaffElement(ElementType.QUAVER)));
             // index 1 == elementCount()-1 (1), and this is the last line
             assertThatNoException().isThrownBy(() ->
-                composition.withModification(() ->
+                song.withModification(() ->
                     line.setElement(line.elementCount() - 1,
-                        Composition.newTerminalElement(ElementType.FINAL_DOUBLE_BARLINE))));
+                        Song.newTerminalElement(ElementType.FINAL_DOUBLE_BARLINE))));
         }
 
         // --- removeElement guards ---
 
         @Test
         void testRemoveFinalBarlineOnLastLineThrows() {
-            composition.withoutMutationTracking(() ->
-                line.addElement(Composition.newTerminalElement(ElementType.FINAL_DOUBLE_BARLINE)));
+            song.withoutMutationTracking(() ->
+                line.addElement(Song.newTerminalElement(ElementType.FINAL_DOUBLE_BARLINE)));
             assertThatIllegalStateException().isThrownBy(() ->
-                composition.withModification(() ->
+                song.withModification(() ->
                     line.removeElement(line.elementCount() - 1)));
         }
 
         @Test
         void testRemoveNonFinalElementOnLastLineSucceeds() {
-            composition.withoutMutationTracking(() ->
+            song.withoutMutationTracking(() ->
                 line.addElement(new StaffElement(ElementType.QUAVER)));
             assertThatNoException().isThrownBy(() ->
-                composition.withModification(() -> line.removeElement(0)));
+                song.withModification(() -> line.removeElement(0)));
         }
 
         // --- removeRange guards ---
 
         @Test
         void testRemoveRangeIncludingFinalBarlineOnLastLineThrows() {
-            composition.withoutMutationTracking(() -> {
+            song.withoutMutationTracking(() -> {
                 line.addElement(new StaffElement(ElementType.QUAVER));
-                line.addElement(Composition.newTerminalElement(ElementType.FINAL_DOUBLE_BARLINE));
+                line.addElement(Song.newTerminalElement(ElementType.FINAL_DOUBLE_BARLINE));
             });
             assertThatIllegalStateException().isThrownBy(() ->
-                composition.withModification(() ->
+                song.withModification(() ->
                     line.removeRange(0, line.elementCount() - 1)));
         }
 
         @Test
         void testRemoveRangeExcludingFinalBarlineOnLastLineSucceeds() {
-            composition.withoutMutationTracking(() -> {
+            song.withoutMutationTracking(() -> {
                 line.addElement(new StaffElement(ElementType.QUAVER));
                 line.addElement(new StaffElement(ElementType.QUAVER));
             });
             assertThatNoException().isThrownBy(() ->
-                composition.withModification(() -> line.removeRange(0, 0)));
+                song.withModification(() -> line.removeRange(0, 0)));
         }
 
         // --- guard bypass ---
@@ -614,8 +614,8 @@ class LineMutationTest extends UnitTest {
         @Test
         void testGuardsAreBypasedWhenMutationTrackingSuspended() {
             assertThatNoException().isThrownBy(() ->
-                composition.withoutMutationTracking(() ->
-                    line.addElement(0, Composition.newTerminalElement(ElementType.FINAL_DOUBLE_BARLINE))));
+                song.withoutMutationTracking(() ->
+                    line.addElement(0, Song.newTerminalElement(ElementType.FINAL_DOUBLE_BARLINE))));
         }
     }
 
@@ -629,26 +629,26 @@ class LineMutationTest extends UnitTest {
         @Test
         void testFinalBarlineOnLastLineIsNotInteractable() {
             var terminal = line.getElement(line.elementCount() - 1);
-            assertThat(composition.isInteractable(terminal, line)).isFalse();
+            assertThat(song.isInteractable(terminal, line)).isFalse();
         }
 
         @Test
         void testDoubleBarlineOnLastLineIsInteractable() {
-            assertThat(composition.isInteractable(
+            assertThat(song.isInteractable(
                 new StaffElement(ElementType.DOUBLE_BARLINE), line)).isTrue();
         }
 
         @Test
         void testFinalBarlineOnNonLastLineIsInteractable() {
-            composition.addLine(1, new Line());
+            song.addLine(1, new Line());
             // line is now index 0, not the last line
-            assertThat(composition.isInteractable(
-                Composition.newTerminalElement(ElementType.FINAL_DOUBLE_BARLINE), line)).isTrue();
+            assertThat(song.isInteractable(
+                Song.newTerminalElement(ElementType.FINAL_DOUBLE_BARLINE), line)).isTrue();
         }
 
         @Test
         void testNoteOnLastLineIsInteractable() {
-            assertThat(composition.isInteractable(
+            assertThat(song.isInteractable(
                 new StaffElement(ElementType.QUAVER), line)).isTrue();
         }
     }
@@ -667,7 +667,7 @@ class LineMutationTest extends UnitTest {
         void addElements() {
             predecessor = new StaffElement(ElementType.QUAVER);
             neighbor = new StaffElement(ElementType.QUAVER);
-            composition.withoutMutationTracking(() -> {
+            song.withoutMutationTracking(() -> {
                 line.addElement(predecessor);
                 line.addElement(neighbor);
             });
@@ -680,7 +680,7 @@ class LineMutationTest extends UnitTest {
         @Test
         void testInsertionBreaksSyllableRelation() {
             setLyric(predecessor, StaffElement.SyllableRelation.SYLLABLE);
-            composition.withModification(() -> line.adjustSyllablesForNeighborChange(0, null));
+            song.withModification(() -> line.adjustSyllablesForNeighborChange(0, null));
             assertThat(predecessor.properties.lyrics.get(0).relation())
                 .isEqualTo(StaffElement.SyllableRelation.NONE);
         }
@@ -688,7 +688,7 @@ class LineMutationTest extends UnitTest {
         @Test
         void testInsertionBreaksCompoundWordRelation() {
             setLyric(predecessor, StaffElement.SyllableRelation.COMPOUND_WORD);
-            composition.withModification(() -> line.adjustSyllablesForNeighborChange(0, null));
+            song.withModification(() -> line.adjustSyllablesForNeighborChange(0, null));
             assertThat(predecessor.properties.lyrics.get(0).relation())
                 .isEqualTo(StaffElement.SyllableRelation.NONE);
         }
@@ -696,7 +696,7 @@ class LineMutationTest extends UnitTest {
         @Test
         void testInsertionLeavesNoneRelationUnchanged() {
             setLyric(predecessor, StaffElement.SyllableRelation.NONE);
-            composition.withModification(() -> line.adjustSyllablesForNeighborChange(0, null));
+            song.withModification(() -> line.adjustSyllablesForNeighborChange(0, null));
             assertThat(predecessor.properties.lyrics.get(0).relation())
                 .isEqualTo(StaffElement.SyllableRelation.NONE);
         }
@@ -705,7 +705,7 @@ class LineMutationTest extends UnitTest {
         void testInsertionOnNegativeIndexIsNoOp() {
             setLyric(predecessor, StaffElement.SyllableRelation.SYLLABLE);
             assertThatNoException().isThrownBy(() ->
-                composition.withModification(() -> line.adjustSyllablesForNeighborChange(-1, null)));
+                song.withModification(() -> line.adjustSyllablesForNeighborChange(-1, null)));
             assertThat(predecessor.properties.lyrics.get(0).relation())
                 .isEqualTo(StaffElement.SyllableRelation.SYLLABLE);
         }
@@ -714,7 +714,7 @@ class LineMutationTest extends UnitTest {
         void testDeletionOfTerminusBreaksPredecessorRelation() {
             setLyric(predecessor, StaffElement.SyllableRelation.SYLLABLE);
             setLyric(neighbor, StaffElement.SyllableRelation.NONE);
-            composition.withModification(() -> line.adjustSyllablesForNeighborChange(0, neighbor));
+            song.withModification(() -> line.adjustSyllablesForNeighborChange(0, neighbor));
             assertThat(predecessor.properties.lyrics.get(0).relation())
                 .isEqualTo(StaffElement.SyllableRelation.NONE);
         }
@@ -723,7 +723,7 @@ class LineMutationTest extends UnitTest {
         void testDeletionOfChainMemberPreservesPredecessorRelation() {
             setLyric(predecessor, StaffElement.SyllableRelation.SYLLABLE);
             setLyric(neighbor, StaffElement.SyllableRelation.SYLLABLE);
-            composition.withModification(() -> line.adjustSyllablesForNeighborChange(0, neighbor));
+            song.withModification(() -> line.adjustSyllablesForNeighborChange(0, neighbor));
             assertThat(predecessor.properties.lyrics.get(0).relation())
                 .isEqualTo(StaffElement.SyllableRelation.SYLLABLE);
         }
@@ -732,7 +732,7 @@ class LineMutationTest extends UnitTest {
         void testDeletionOfElementWithNoLyricBreaksPredecessorRelation() {
             setLyric(predecessor, StaffElement.SyllableRelation.SYLLABLE);
             // neighbor has no lyric
-            composition.withModification(() -> line.adjustSyllablesForNeighborChange(0, neighbor));
+            song.withModification(() -> line.adjustSyllablesForNeighborChange(0, neighbor));
             assertThat(predecessor.properties.lyrics.get(0).relation())
                 .isEqualTo(StaffElement.SyllableRelation.NONE);
         }
@@ -744,7 +744,7 @@ class LineMutationTest extends UnitTest {
             neighbor.properties.lyrics.add(new Lyric(1, StaffElement.SyllableRelation.SYLLABLE, "re", Lyric.Extend.NONE));
             // verse 2 has no lyric on neighbor — verse 2 predecessor should break, verse 1 should keep
 
-            composition.withModification(() -> line.adjustSyllablesForNeighborChange(0, neighbor));
+            song.withModification(() -> line.adjustSyllablesForNeighborChange(0, neighbor));
 
             assertThat(predecessor.properties.lyrics.get(0).relation())
                 .as("verse 1: chain continues via neighbor's SYLLABLE")
@@ -776,16 +776,16 @@ class LineMutationTest extends UnitTest {
         }
 
         private void addChain(StaffElement... elements) {
-            composition.withoutMutationTracking(() -> {
+            song.withoutMutationTracking(() -> {
                 for (var element : elements) {
                     line.addElement(element);
                 }
-                line.addElement(Composition.newTerminalElement(ElementType.FINAL_DOUBLE_BARLINE));
+                line.addElement(Song.newTerminalElement(ElementType.FINAL_DOUBLE_BARLINE));
             });
         }
 
         private void deleteAt(int index) {
-            composition.withModification(() -> {
+            song.withModification(() -> {
                 line.adjustExtendsForDeletion(index);
                 line.removeElement(index);
             });
@@ -914,23 +914,23 @@ class LineMutationTest extends UnitTest {
     // Helpers
     // -----------------------------------------------------------------------
 
-    private CompositionDidChangeNotification captureSingleDidChange() {
+    private SongDidChangeNotification captureSingleDidChange() {
         var captor = ArgumentCaptor.forClass(Message.class);
         messageCenterMock.verify(() -> MessageCenter.post(captor.capture()));
         var didChanges = captor.getAllValues().stream()
-            .filter(m -> m instanceof CompositionDidChangeNotification)
-            .map(m -> (CompositionDidChangeNotification) m)
+            .filter(m -> m instanceof SongDidChangeNotification)
+            .map(m -> (SongDidChangeNotification) m)
             .toList();
 
         assertThat(didChanges)
-            .as("expected exactly one CompositionDidChangeNotification, got: %s", didChanges)
+            .as("expected exactly one SongDidChangeNotification, got: %s", didChanges)
             .hasSize(1);
 
         return didChanges.get(0);
     }
 
     private <T extends Mutation> T findSingleMutationOfType(
-        CompositionDidChangeNotification notification, Class<T> type
+        SongDidChangeNotification notification, Class<T> type
     ) {
         var matches = notification.getMutations().stream()
             .filter(type::isInstance)

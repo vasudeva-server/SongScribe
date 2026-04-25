@@ -7,7 +7,7 @@ All application dialogs extend `BaseDialog` (package `songscribe.ui.dialog`). Di
 ```
 BaseDialog (abstract)
 ├── StandardDialog (abstract) — OK/Apply/Cancel commit lifecycle
-│   ├── CompositionSettingsDialog, LyricsDialog, ExportPDFDialog, ...
+│   ├── SongSettingsDialog, LyricsDialog, ExportPDFDialog, ...
 │   ├── AboutDialog (uses OK only, hides Apply/Cancel)
 │   └── FontDialog — wraps FontChooser panel with OK/Cancel
 ├── PreferencesDialog — live-apply, no OK/Apply/Cancel
@@ -27,7 +27,7 @@ BaseDialog (abstract)
 | `isModal` | Whether the dialog blocks input to the parent |
 | `getMainFrame()` | Returns the `MainFrame` singleton |
 | `getScore()` | Returns the current `Score` (nullable) |
-| `getComposition()` | Returns the current `Composition` (requires non-null score) |
+| `getSong()` | Returns the current `Song` (requires non-null score) |
 
 **Layout constants:**
 
@@ -86,7 +86,7 @@ When `setVisible(false)` is called:
 Every `BaseDialog` has a `DialogCategory` passed to the constructor (default: `OPERATIONAL`):
 
 - `INFORMATIONAL` — read-only, never blocked (About, Help, WhatsNew)
-- `EXCLUSIVE` — modifies global state, e.g. Preferences, CompositionSettings
+- `EXCLUSIVE` — modifies global state, e.g. Preferences, SongSettings
 - `OPERATIONAL` — modifies scoped state or runs a task (default)
 
 Exclusive and operational dialogs are mutually exclusive — only one blocking dialog at a time. Informational dialogs are always allowed. `OptionDialogs` does not participate (it uses raw `JOptionPane`).
@@ -235,7 +235,7 @@ public class MySettingsDialog extends StandardDialog {
 
         @Override
         protected boolean getData() {
-            nameField.setText(getComposition().getTitle());
+            nameField.setText(getSong().getTitle());
             return true;
         }
 
@@ -250,7 +250,7 @@ public class MySettingsDialog extends StandardDialog {
 
         @Override
         protected void setData() {
-            getComposition().setTitle(nameField.getText());
+            getSong().setTitle(nameField.getText());
         }
     }
 }

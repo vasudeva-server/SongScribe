@@ -29,7 +29,7 @@ import org.slf4j.LoggerFactory;
 import org.xml.sax.SAXException;
 
 import songscribe.SongScribe;
-import songscribe.io.CompositionLoader;
+import songscribe.io.SongLoader;
 import songscribe.ui.playback.PlaybackController;
 import songscribe.file.FileUtils;
 
@@ -81,8 +81,8 @@ public class MidiConverter {
 
         for (var file : files) {
             try {
-                var composition = CompositionLoader.load(file);
-                var sequence = PlaybackController.buildSequence(composition);
+                var song = SongLoader.load(file);
+                var sequence = PlaybackController.buildSequence(song);
                 MidiSystem.write(
                     sequence,
                     1,

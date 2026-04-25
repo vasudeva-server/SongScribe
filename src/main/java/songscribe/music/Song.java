@@ -32,7 +32,8 @@ import net.engio.mbassy.listener.Handler;
 
 import songscribe.Strings;
 import songscribe.error.RuntimeError;
-import songscribe.message.CompositionData;
+import songscribe.io.SongIO;
+import songscribe.message.SongData;
 import songscribe.message.Message;
 import songscribe.message.MessageCenter;
 import songscribe.message.mutation.FontChange;
@@ -46,7 +47,7 @@ import songscribe.message.mutation.LyricsField;
 import songscribe.message.mutation.MetadataChange;
 import songscribe.message.mutation.MetadataField;
 import songscribe.message.mutation.Mutation;
-import songscribe.message.notification.CompositionDidChangeNotification;
+import songscribe.message.notification.SongDidChangeNotification;
 import songscribe.message.notification.DocumentWasSavedNotification;
 import songscribe.message.notification.FontDidChangeNotification;
 import songscribe.message.notification.KeySignatureDidChangeNotification;
@@ -68,7 +69,7 @@ import songscribe.util.Utils;
  * This class serves as the model for data that is read from and written to
  * SongScribe files.
  */
-public final class Composition {
+public final class Song {
 
     public enum LANGUAGE {
         // Not used, the ordinals of the actual languages start at 1
@@ -89,11 +90,11 @@ public final class Composition {
     public static final int DEFAULT_KEY_ACCIDENTAL_COUNT = 5;
     public static final KeyType DEFAULT_KEY_TYPE = KeyType.FLATS;
 
-    // The base tempo of the composition
+    // The base tempo of the song
     private Tempo tempo;
 
     // The number of the song, can be empty
-    private String number = Strings.get(Strings.COMPOSITION_DEFAULT_NUMBER);
+    private String number = Strings.get(Strings.SONG_DEFAULT_NUMBER);
 
     // The title of the song
     private String title = Strings.get(Strings.DOCUMENT_UNTITLED);
@@ -161,7 +162,7 @@ public final class Composition {
     private final ArrayList<Line> lines = new ArrayList<>();
 
     /**
-     * Indicates whether this composition has been dynamically laid out.
+     * Indicates whether this song has been dynamically laid out.
      * <p>
      * When reading a document:
      * - If false (legacy document): ignore xPos values (they were absolute positions)
@@ -172,17 +173,17 @@ public final class Composition {
     private boolean hasBeenDynamicallyLaidOut = false;
 
     /**
-     * Data format version for the composition's internal representation.
+     * Data format version for the song's internal representation.
      * <p>
      * <ul>
      *   <li>Version 1: Legacy format (SpanSet ranges, inline Note attachments)</li>
      *   <li>Version 2: LineElement format (RangeElement objects, Attachment objects)</li>
      * </ul>
      * <p>
-     * Note: This is distinct from the IO file format version (CompositionIO.IO_MAJOR_VERSION).
+     * Note: This is distinct from the IO file format version (SongIO.IO_MAJOR_VERSION).
      * The file format may remain compatible while the in-memory representation is migrated.
      * <p>
-     * Default is 1 for newly loaded compositions (before migration).
+     * Default is 1 for newly loaded songs (before migration).
      * FormatMigrator sets this to 2 after migration.
      */
     private int formatVersion = 1;
@@ -190,7 +191,7 @@ public final class Composition {
     private boolean modified;
 
     // Modification bracket depth counter. Mutations are accumulated while > 0 and
-    // flushed as a single CompositionDidChangeNotification when depth returns to 0.
+    // flushed as a single SongDidChangeNotification when depth returns to 0.
     private int modificationDepth;
 
     // Suspension depth counter. While > 0, Line.applyChange bypasses the strict
@@ -198,7 +199,7 @@ public final class Composition {
     // populates lines without emitting notifications or recording undo history.
     private int suspensionDepth;
 
-    // While true, Line mutation guards are bypassed so Composition can auto-maintain
+    // While true, Line mutation guards are bypassed so Song can auto-maintain
     // the terminal invariant without triggering the guards that protect against
     // user-driven invariant violations.
     private boolean autoMaintenance;
@@ -210,8 +211,8 @@ public final class Composition {
     private boolean shortANotified;
 
 
-    public Composition() {
-        attribution = Strings.get(Strings.COMPOSITION_DEFAULT_ATTRIBUTION);
+    public Song() {
+        attribution = Strings.get(Strings.SONG_DEFAULT_ATTRIBUTION);
         tempo = new Tempo();
         defaultKeyAccidentalCount = DEFAULT_KEY_ACCIDENTAL_COUNT;
         defaultKeyType = DEFAULT_KEY_TYPE;
@@ -221,11 +222,11 @@ public final class Composition {
         // attributionStartY is calculated from title, will be recalculated on layout
         attributionStartYSs = calculateAttributionStartY();
 
-        // Configure the initial line BEFORE attaching it to the composition so that
-        // Line.applyChange sees a null composition and bypasses mutation tracking.
-        // This avoids posting a spurious CompositionDidChangeNotification to global
+        // Configure the initial line BEFORE attaching it to the song so that
+        // Line.applyChange sees a null song and bypasses mutation tracking.
+        // This avoids posting a spurious SongDidChangeNotification to global
         // subscribers (MainFrame, LyricsPanel, ScoreMessageCoordinator) carrying a
-        // Composition that is not yet installed in any Score.
+        // Song that is not yet installed in any Score.
         var initialLine = new Line();
         initialLine.setKeyAccidentalCount(defaultKeyAccidentalCount);
         initialLine.setKeyType(defaultKeyType);
@@ -234,7 +235,7 @@ public final class Composition {
         );
         initialLine.addElement(newTerminalElement(ElementType.FINAL_DOUBLE_BARLINE));
         lines.add(initialLine);
-        initialLine.setComposition(this);
+        initialLine.setSong(this);
 
         MessageCenter.subscribe(this);
     }
@@ -244,7 +245,7 @@ public final class Composition {
      * parsed data, and subscribes to the message bus. Avoids the wasted work
      * of the no-arg constructor (default line, attributionStartY calculation).
      */
-    public Composition(CompositionData data) {
+    public Song(SongData data) {
         initFontsFromPrefs();
         loadFrom(data);
         MessageCenter.subscribe(this);
@@ -284,18 +285,18 @@ public final class Composition {
     }
 
     /**
-     * Applies all fields from a {@link CompositionData} snapshot atomically.
-     * Does not post any notification — the caller ({@code Score.setComposition})
+     * Applies all fields from a {@link SongData} snapshot atomically.
+     * Does not post any notification — the caller ({@code Score.setSong})
      * posts a {@link songscribe.message.notification.DocumentDidLoadNotification}
-     * after the composition is fully installed.
+     * after the song is fully installed.
      * <p>
-     * Called by {@link songscribe.io.CompositionIO.DocumentReader#getComposition()}
+     * Called by {@link SongIO.DocumentReader#getSong()}
      * after parsing a file. This is a direct method call rather than a message
-     * handler because loading targets a specific Composition instance.
+     * handler because loading targets a specific Song instance.
      *
-     * @param data the parsed composition data to apply
+     * @param data the parsed song data to apply
      */
-    public void loadFrom(CompositionData data) {
+    public void loadFrom(SongData data) {
         // Apply all scalar fields using apply methods (no individual message posting)
         this.tempo = data.tempo();
         applyNumber(data.number());
@@ -337,7 +338,7 @@ public final class Composition {
         applyLineWidthSs(data.lineWidthSs());
 
         // Replace lines. Configure each line's bootstrap state BEFORE attaching it to
-        // the composition so that Line.applyChange sees a null composition and bypasses
+        // the song so that Line.applyChange sees a null song and bypasses
         // mutation tracking — load is not a user mutation.
         lines.clear();
 
@@ -360,7 +361,7 @@ public final class Composition {
             }
 
             lines.add(line);
-            line.setComposition(this);
+            line.setSong(this);
         }
 
         // Loading bypasses the addElement path that normally handles this.
@@ -374,8 +375,8 @@ public final class Composition {
         // Loaded file starts unmodified
         modified = false;
 
-        // Note: CompositionChanged(FULL) is NOT posted here because the
-        // composition hasn't been installed into Score yet. Score.setComposition()
+        // Note: SongChanged(FULL) is NOT posted here because the
+        // song hasn't been installed into Score yet. Score.setSong()
         // posts the FULL message after all state is consistent.
     }
 
@@ -386,9 +387,9 @@ public final class Composition {
     }
 
     /**
-     * Returns the effective tempo at a given position in the composition.
+     * Returns the effective tempo at a given position in the song.
      * Walks backwards through lines and notes to find the most recent tempo change,
-     * or returns the default composition tempo if none found.
+     * or returns the default song tempo if none found.
      *
      * @param lineIndex The index of the line
      * @param noteIndex The index of the note within the line
@@ -817,7 +818,7 @@ public final class Composition {
      * the new last line, transfers the terminal invariant so the last element of
      * the last line is always a valid terminal ({@code FINAL_DOUBLE_BARLINE} or
      * {@code REPEAT_RIGHT}). All resulting mutations
-     * coalesce into a single {@link CompositionDidChangeNotification}.
+     * coalesce into a single {@link SongDidChangeNotification}.
      *
      * <p>The invariant transfer is skipped when mutation tracking is suspended
      * (see {@link #withoutMutationTracking}) — test setup can install lines with
@@ -851,7 +852,7 @@ public final class Composition {
         withModification(() -> incrementAutoMaintenance(() -> {
             applyChange(new LineInsertion(lineIndex, line), () -> {
                 lines.add(lineIndex, line);
-                line.setComposition(this);
+                line.setSong(this);
 
                 if ((line.getKeyAccidentalCount() == 0) && (line.getKeyType() == null)) {
                     line.setKeyAccidentalCount(defaultKeyAccidentalCount);
@@ -876,7 +877,7 @@ public final class Composition {
     /**
      * Removes the line at {@code index} and, when the removed line was the last line,
      * installs the terminal on the new last line so the invariant holds. All
-     * resulting mutations coalesce into a single {@link CompositionDidChangeNotification}.
+     * resulting mutations coalesce into a single {@link SongDidChangeNotification}.
      *
      * <p>The invariant transfer is skipped when mutation tracking is suspended
      * (see {@link #withoutMutationTracking}).
@@ -916,7 +917,7 @@ public final class Composition {
     }
 
     /**
-     * Maintains the terminal invariant after the last line of the composition has
+     * Maintains the terminal invariant after the last line of the song has
      * changed: the last element of the last line must be a valid terminal
      * ({@code FINAL_DOUBLE_BARLINE} or {@code REPEAT_RIGHT}). Must be called inside
      * an open modification bracket with {@link #incrementAutoMaintenance} raised so
@@ -1067,7 +1068,7 @@ public final class Composition {
     }
 
     /**
-     * Returns {@code true} when {@code element} is the composition's auto-maintained
+     * Returns {@code true} when {@code element} is the song's auto-maintained
      * terminal: it occupies the last position of the last line, and its type satisfies
      * {@link ElementType#isValidTerminal()}.
      *
@@ -1085,7 +1086,7 @@ public final class Composition {
     /**
      * Returns {@code true} when the user may interact with {@code element} on {@code line}
      * (select, click, drag, delete, etc.). Returns {@code false} only for the
-     * composition's auto-maintained terminal — i.e., a {@link ElementType#isValidTerminal()
+     * song's auto-maintained terminal — i.e., a {@link ElementType#isValidTerminal()
      * valid terminal} element that is the last element of the last line.
      */
     public boolean isInteractable(StaffElement element, Line line) {
@@ -1137,7 +1138,7 @@ public final class Composition {
     /**
      * Runs {@code body} with mutation tracking suspended. Line-level mutations
      * invoked during {@code body} run silently: no notification is posted, no
-     * undo entry is recorded, and the composition's {@code modified} flag is
+     * undo entry is recorded, and the song's {@code modified} flag is
      * not set.
      * <p>
      * Intended for test setup that populates lines outside a user-driven
@@ -1159,14 +1160,14 @@ public final class Composition {
      * Brackets may be nested; the notification fires only when the outermost bracket closes.
      */
     public void beginModification() {
-        // TODO: snapshot composition state here for undo grouping (#14)
+        // TODO: snapshot song state here for undo grouping (#14)
         modificationDepth++;
     }
 
     /**
      * Closes a modification bracket. When the outermost bracket closes and at least one
-     * mutation was accumulated, marks the composition modified and posts a single
-     * {@link CompositionDidChangeNotification} carrying all accumulated mutations.
+     * mutation was accumulated, marks the song modified and posts a single
+     * {@link SongDidChangeNotification} carrying all accumulated mutations.
      */
     public void endModification() {
         modificationDepth--;
@@ -1178,13 +1179,13 @@ public final class Composition {
             // copy a list whose only reference is about to be dropped.
             var mutations = Collections.unmodifiableList(accumulatedMutations);
             accumulatedMutations = null;
-            MessageCenter.post(new CompositionDidChangeNotification(mutations, this));
+            MessageCenter.post(new SongDidChangeNotification(mutations, this));
         }
     }
 
     /**
      * Executes {@code body} inside a modification bracket, then posts a single
-     * {@link CompositionDidChangeNotification} with all accumulated mutations.
+     * {@link SongDidChangeNotification} with all accumulated mutations.
      * Prefer this over {@link #beginModification()} / {@link #endModification()} to ensure
      * the depth counter is always balanced even if {@code body} throws.
      */
@@ -1200,9 +1201,9 @@ public final class Composition {
 
     /**
      * Posts {@code message} to the message bus inside a modification bracket so
-     * that the resulting mutations (from subscribers like {@code Composition}'s
+     * that the resulting mutations (from subscribers like {@code Song}'s
      * own {@code @Handler} methods) coalesce into a single
-     * {@link CompositionDidChangeNotification}. Equivalent to
+     * {@link SongDidChangeNotification}. Equivalent to
      * {@code withModification(() -> MessageCenter.post(message))} but cleaner
      * at the call site.
      */
@@ -1229,7 +1230,7 @@ public final class Composition {
      * })  // bracket closes                                  │
      *   ├─ depth → 0                                         │
      *   ├─ push undo entry (future, #14)                     │
-     *   └─ post CompositionDidChangeNotification(accumulated)┘
+     *   └─ post SongDidChangeNotification(accumulated)┘
      * </pre>
      *
      * @throws IllegalStateException if called outside a modification bracket
@@ -1255,7 +1256,7 @@ public final class Composition {
     }
 
     /**
-     * Sets whether this composition has been dynamically laid out.
+     * Sets whether this song has been dynamically laid out.
      * <p>
      * Should be set to true when saving.
      *
@@ -1266,7 +1267,7 @@ public final class Composition {
     }
 
     /**
-     * Sets the data format version of this composition.
+     * Sets the data format version of this song.
      * <p>
      * This is typically called by FormatMigrator after migrating from legacy format.
      *
@@ -1380,7 +1381,7 @@ public final class Composition {
     public void keySignatureDidChange(KeySignatureDidChangeNotification update) {
         withModification(() -> {
             if (update.getLineIndex() == null) {
-                // Composition-level default with propagation to matching lines.
+                // Song-level default with propagation to matching lines.
                 var oldKeyType = defaultKeyType;
                 var oldAccidentalCount = defaultKeyAccidentalCount;
 

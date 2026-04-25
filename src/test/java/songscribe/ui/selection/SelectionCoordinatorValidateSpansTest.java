@@ -39,7 +39,7 @@ import songscribe.message.mutation.Mutation;
 import songscribe.message.mutation.TupletAddition;
 import songscribe.message.mutation.TupletRemoval;
 import songscribe.music.BeamSpan;
-import songscribe.music.Composition;
+import songscribe.music.Song;
 import songscribe.music.ElementType;
 import songscribe.music.StaffElement;
 import songscribe.music.TupletSpan;
@@ -70,26 +70,26 @@ class SelectionCoordinatorValidateSpansTest extends UnitTest {
     ) {
         var coordinator = ReflectionTestHelper.createCoordinator(notes, actions);
         var line = Objects.requireNonNull(coordinator.getActiveSelection()).getLine();
-        line.setComposition(createCompositionMock());
+        line.setSong(createSongMock());
         return coordinator;
     }
 
-    private Composition createCompositionMock() {
-        var compositionMock = mock(Composition.class);
-        when(compositionMock.isModifying()).thenReturn(true);
+    private Song createSongMock() {
+        var songMock = mock(Song.class);
+        when(songMock.isModifying()).thenReturn(true);
         doAnswer(inv -> {
             Runnable runnable = inv.getArgument(0);
             runnable.run();
             return null;
-        }).when(compositionMock).withModification(any());
+        }).when(songMock).withModification(any());
         doAnswer(inv -> {
             Mutation mutation = inv.getArgument(0);
             Runnable mutator = inv.getArgument(1);
             capturedMutations.add(mutation);
             mutator.run();
             return null;
-        }).when(compositionMock).applyChange(any(), any());
-        return compositionMock;
+        }).when(songMock).applyChange(any(), any());
+        return songMock;
     }
 
     private <T extends Mutation> List<T> mutationsOfType(Class<T> type) {

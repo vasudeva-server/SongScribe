@@ -26,7 +26,7 @@ import songscribe.error.RuntimeError;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.music.Composition;
+import songscribe.music.Song;
 import songscribe.ui.layout.LayoutStylesheet;
 import songscribe.ui.layout.ScaleContext;
 
@@ -35,7 +35,7 @@ import songscribe.ui.layout.ScaleContext;
  * <p>
  * Contains:
  * <ul>
- *   <li>{@link TitleComponent} - composition title</li>
+ *   <li>{@link TitleComponent} - song title</li>
  *   <li>{@link StaffPanel} - all staff lines</li>
  *   <li>{@link TextPanel} - under-lyrics sections (lyrics, Bangla, translation)</li>
  *   <li>{@link FootnotesComponent} - footnotes</li>
@@ -59,9 +59,9 @@ public class MainPanel extends JPanel {
     /** Footnotes component. */
     private final FootnotesComponent footnotesComponent;
 
-    /** The composition model. */
+    /** The song model. */
     @Nullable
-    private Composition composition;
+    private Song song;
 
     /** Spacing between title and score. */
     private final int scoreMarginTop;
@@ -96,29 +96,29 @@ public class MainPanel extends JPanel {
     }
 
     /**
-     * Sets the composition and updates all child components.
+     * Sets the song and updates all child components.
      *
-     * @param composition The composition
+     * @param song The song
      */
-    public void setComposition(Composition composition) {
-        this.composition = composition;
-        titleComponent.setComposition(composition);
-        staffPanel.setComposition(composition);
-        textPanel.setComposition(composition);
-        footnotesComponent.setComposition(composition);
+    public void setSong(Song song) {
+        this.song = song;
+        titleComponent.setSong(song);
+        staffPanel.setSong(song);
+        textPanel.setSong(song);
+        footnotesComponent.setSong(song);
         revalidate();
         repaint();
     }
 
     /**
-     * Returns the composition.
+     * Returns the song.
      */
-    public Composition getComposition() {
-        if (composition == null) {
-            throw RuntimeError.exit("composition not initialized");
+    public Song getSong() {
+        if (song == null) {
+            throw RuntimeError.exit("song not initialized");
         }
 
-        return composition;
+        return song;
     }
 
     /**
@@ -150,9 +150,9 @@ public class MainPanel extends JPanel {
     }
 
     /**
-     * Rebuilds the layout when the composition structure changes.
+     * Rebuilds the layout when the song structure changes.
      * <p>
-     * Call this after lines are added or removed from the composition.
+     * Call this after lines are added or removed from the song.
      */
     public void rebuildLayout() {
         staffPanel.rebuildLayout();
@@ -194,7 +194,7 @@ public class MainPanel extends JPanel {
 
     @Override
     public Dimension getPreferredSize() {
-        if (composition == null) {
+        if (song == null) {
             return new Dimension(0, 0);
         }
 

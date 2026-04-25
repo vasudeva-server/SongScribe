@@ -45,17 +45,17 @@ class TieToggleTest extends UnitTest {
     private static final int TIED_1 = 3;
     private static final int TIED_2 = 4;
 
-    private static Composition composition;
+    private static Song song;
     private static Line line;
     private static SelectionCoordinator coordinator;
     private static MusicEditOperations operations;
 
     @BeforeAll
     static void loadFixtureData() throws Exception {
-        composition = loadFixture("connections");
-        line = composition.getLine(0);
+        song = loadFixture("connections");
+        line = song.getLine(0);
         coordinator = ReflectionTestHelper.createCoordinatorForLine(line);
-        operations = new MusicEditOperations(composition, coordinator);
+        operations = new MusicEditOperations(song, coordinator);
     }
 
     @Test
@@ -107,7 +107,7 @@ class TieToggleTest extends UnitTest {
         var tie = line.getTies().findSpan(TIED_1);
         assertThat(tie).as("pre-tied pair exists").isNotNull();
 
-        var reloaded = roundTrip(composition);
+        var reloaded = roundTrip(song);
         var reloadedLine = reloaded.getLine(0);
         var reloadedTie = reloadedLine.getTies().findSpan(TIED_1);
 

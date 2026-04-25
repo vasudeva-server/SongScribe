@@ -28,7 +28,7 @@ import net.engio.mbassy.listener.Handler;
 import songscribe.message.Message;
 import songscribe.message.MessageCenter;
 import songscribe.message.command.ToggleTupletCommand;
-import songscribe.message.notification.CompositionDidChangeNotification;
+import songscribe.message.notification.SongDidChangeNotification;
 import songscribe.message.notification.DocumentDidLoadNotification;
 import songscribe.message.notification.MusicSelectionDidChangeNotification;
 import songscribe.ui.component.Score;
@@ -127,7 +127,7 @@ public class TupletAction extends UIAction {
 
     @Override
     @Handler
-    public void compositionDidChange(CompositionDidChangeNotification message) {
+    public void songDidChange(SongDidChangeNotification message) {
         var score = getScore();
 
         if (score != null) {

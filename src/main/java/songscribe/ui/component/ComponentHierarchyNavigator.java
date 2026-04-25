@@ -24,7 +24,7 @@ import java.util.function.Consumer;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.music.Composition;
+import songscribe.music.Song;
 import songscribe.ui.component.score.LineComponent;
 import songscribe.ui.component.score.MainPanel;
 import songscribe.ui.layout.LayoutStylesheet;
@@ -35,7 +35,7 @@ interface ComponentHierarchyProvider {
     @Nullable
     MainPanel getMainPanel();
 
-    Composition getComposition();
+    Song getSong();
 }
 
 public final class ComponentHierarchyNavigator {
@@ -110,16 +110,16 @@ public final class ComponentHierarchyNavigator {
      */
     public int findLineIndexAtPoint(int y, int rowHeight) {
         var mainPanel = provider.getMainPanel();
-        var composition = provider.getComposition();
+        var song = provider.getSong();
 
         if (mainPanel == null) {
-            return (int) (y - composition.getTopPaddingSs()) / rowHeight;
+            return (int) (y - song.getTopPaddingSs()) / rowHeight;
         }
 
         var staffPanel = mainPanel.getStaffPanel();
 
         if (staffPanel == null) {
-            return (int) (y - composition.getTopPaddingSs()) / rowHeight;
+            return (int) (y - song.getTopPaddingSs()) / rowHeight;
         }
 
         // Convert Score Y to StaffPanel Y

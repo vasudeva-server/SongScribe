@@ -27,7 +27,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.music.Composition;
+import songscribe.music.Song;
 import songscribe.music.ElementType;
 
 class ClipboardManagerTest extends UnitTest {
@@ -64,11 +64,11 @@ class ClipboardManagerTest extends UnitTest {
     }
 
     // Verifies that normalizing a copied final barline does not affect the
-    // composition's own invariant-owned final barline.
+    // song's own invariant-owned final barline.
     @Test
-    void testCompositionFinalBarlineUntouched() {
-        var composition = new Composition();
-        var lastLine = composition.getLine(composition.lineCount() - 1);
+    void testSongFinalBarlineUntouched() {
+        var song = new Song();
+        var lastLine = song.getLine(song.lineCount() - 1);
         var lastIdx = lastLine.elementCount() - 1;
 
         // Simulate what handleCopy does: clone then add to clipboard
@@ -80,14 +80,14 @@ class ClipboardManagerTest extends UnitTest {
             .isEqualTo(ElementType.FINAL_DOUBLE_BARLINE);
     }
 
-    // Parallels testCompositionFinalBarlineUntouched for a REPEAT_RIGHT terminal.
+    // Parallels testSongFinalBarlineUntouched for a REPEAT_RIGHT terminal.
     // REPEAT_RIGHT is structurally valid as an interior element, so it passes through
-    // the clipboard unchanged; the composition's terminal remains in place.
+    // the clipboard unchanged; the song's terminal remains in place.
     @Test
-    void testCompositionRightRepeatTerminalUntouched() {
-        var composition = new Composition();
-        composition.replaceTerminal(ElementType.REPEAT_RIGHT);
-        var lastLine = composition.getLine(composition.lineCount() - 1);
+    void testSongRightRepeatTerminalUntouched() {
+        var song = new Song();
+        song.replaceTerminal(ElementType.REPEAT_RIGHT);
+        var lastLine = song.getLine(song.lineCount() - 1);
         var lastIdx = lastLine.elementCount() - 1;
 
         clipboardManager.addElement(lastLine.getElement(lastIdx).clone());

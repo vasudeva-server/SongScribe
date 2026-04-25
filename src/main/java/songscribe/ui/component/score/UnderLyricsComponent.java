@@ -28,7 +28,7 @@ import songscribe.util.GraphicUtils;
  * Component that renders the main under-lyrics section.
  * <p>
  * Displays multi-line lyrics text centered horizontally below the staff lines.
- * Uses the composition's lyrics font.
+ * Uses the song's lyrics font.
  */
 public class UnderLyricsComponent extends ScoreComponent {
 
@@ -68,11 +68,11 @@ public class UnderLyricsComponent extends ScoreComponent {
      * @return Text width in pixels
      */
     public double getTextWidth(Graphics2D g2) {
-        if (composition == null) {
+        if (song == null) {
             return 0;
         }
 
-        var lyrics = composition.getUnderLyrics();
+        var lyrics = song.getUnderLyrics();
 
         if (lyrics.isEmpty()) {
             return 0;
@@ -82,18 +82,18 @@ public class UnderLyricsComponent extends ScoreComponent {
             g2,
             songscribe.ui.renderer.GraphicsState.Property.FONT
         )) {
-            g2.setFont(composition.getLyricsFont());
+            g2.setFont(song.getLyricsFont());
             return GraphicUtils.getTextBlockWidth(lyrics, g2);
         }
     }
 
     @Override
     protected void render(Graphics2D g2) {
-        if (composition == null) {
+        if (song == null) {
             return;
         }
 
-        var lyrics = composition.getUnderLyrics();
+        var lyrics = song.getUnderLyrics();
 
         if (lyrics.isEmpty()) {
             return;
@@ -104,7 +104,7 @@ public class UnderLyricsComponent extends ScoreComponent {
             songscribe.ui.renderer.GraphicsState.Property.FONT,
             songscribe.ui.renderer.GraphicsState.Property.COLOR
         )) {
-            var font = composition.getLyricsFont();
+            var font = song.getLyricsFont();
             g2.setFont(font);
             g2.setColor(Color.BLACK);
 
@@ -118,7 +118,7 @@ public class UnderLyricsComponent extends ScoreComponent {
                 x = contentXPx;
             } else {
                 var textWidth = GraphicUtils.getTextBlockWidth(lyrics, g2);
-                x = (float) ((composition.getLineWidthPx() - textWidth) / 2);
+                x = (float) ((song.getLineWidthPx() - textWidth) / 2);
             }
 
             var y = (float) metrics.getAscent();
@@ -135,23 +135,23 @@ public class UnderLyricsComponent extends ScoreComponent {
 
     @Override
     public Dimension getPreferredSize() {
-        if (composition == null) {
+        if (song == null) {
             return new Dimension(0, 0);
         }
 
-        var lyrics = composition.getUnderLyrics();
+        var lyrics = song.getUnderLyrics();
 
         if (lyrics.isEmpty()) {
             return new Dimension(0, 0);
         }
 
-        var font = composition.getLyricsFont();
+        var font = song.getLyricsFont();
         var metrics = getFontMetrics(font);
 
         var lines = lyrics.split("\n");
         var lineHeight = metrics.getHeight();
         var height = lineHeight * lines.length;
 
-        return new Dimension(composition.getLineWidthPx(), height);
+        return new Dimension(song.getLineWidthPx(), height);
     }
 }

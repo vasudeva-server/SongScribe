@@ -47,7 +47,7 @@ import songscribe.ui.layout.Tuplet;
 import songscribe.ui.layout.ScaleContext;
 
 /**
- * Migrates composition data from legacy format (version 1) to new format (version 2).
+ * Migrates song data from legacy format (version 1) to new format (version 2).
  * <p>
  * Legacy format stores:
  * <ul>
@@ -61,7 +61,7 @@ import songscribe.ui.layout.ScaleContext;
  *   <li>Note attachments as Attachment objects in Note.attachments</li>
  * </ul>
  * <p>
- * This migrator is called after loading a composition to populate the new data structures.
+ * This migrator is called after loading a song to populate the new data structures.
  * The legacy structures are preserved for backward compatibility during the transition period.
  *
  * <h2>Migration history</h2>
@@ -112,7 +112,7 @@ public final class FormatMigrator {
      * Converts pixel-based line-level position values to staff-space units.
      * <p>
      * Called when loading a pre-v2.1 file (which stores positions in pixels).
-     * Composition-level pixel-to-ss conversion is handled by the caller.
+     * Song-level pixel-to-ss conversion is handled by the caller.
      * <p>
      * Fields that are already unit-agnostic (e.g. Note.staffPosition, which is a
      * diatonic step count) are NOT converted.
@@ -526,7 +526,7 @@ public final class FormatMigrator {
     }
 
     /**
-     * Enforces the terminal invariant on every line in the composition.
+     * Enforces the terminal invariant on every line in the song.
      * <p>
      * Called when loading any file saved before v2.4. The decision tree for the last line:
      * <ul>
@@ -541,7 +541,7 @@ public final class FormatMigrator {
      * removed before applying the decision tree. Interior {@code REPEAT_RIGHT} elements
      * on non-last lines are left untouched.
      *
-     * @param lines the lines to migrate (not yet attached to a {@code Composition})
+     * @param lines the lines to migrate (not yet attached to a {@code Song})
      */
     public static void migrateFinalTerminal(List<Line> lines) {
         if (lines.isEmpty()) {

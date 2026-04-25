@@ -31,7 +31,7 @@ import org.junit.jupiter.api.Test;
 import songscribe.UnitTest;
 import songscribe.message.MessageCenter;
 import songscribe.message.notification.DocumentDidLoadNotification;
-import songscribe.music.Composition;
+import songscribe.music.Song;
 import songscribe.ui.Mode;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.Score;
@@ -83,7 +83,7 @@ class ActionsResetOnDocumentLoadTest extends UnitTest {
         Actions.REST_ACTION.setSelected(true);
         Actions.ACCIDENTAL_IN_PARENS_ACTION.setSelected(true);
 
-        MessageCenter.post(new DocumentDidLoadNotification(new Composition()));
+        MessageCenter.post(new DocumentDidLoadNotification(new Song()));
 
         assertAll(
             () -> assertThat(Actions.MODE_ACTION_GROUP.getSelected())

@@ -27,10 +27,10 @@ import songscribe.ui.layout.ScaleContext;
 import songscribe.util.StringUtils;
 
 /**
- * Component that renders the composition title.
+ * Component that renders the song title.
  * <p>
  * The title is centered horizontally and may wrap to multiple lines
- * if it exceeds 75% of the line width. Uses the composition's title font.
+ * if it exceeds 75% of the line width. Uses the song's title font.
  */
 public class TitleComponent extends ScoreComponent {
 
@@ -47,17 +47,17 @@ public class TitleComponent extends ScoreComponent {
 
     @Override
     protected void render(Graphics2D g2) {
-        if (composition == null) {
+        if (song == null) {
             return;
         }
 
-        var title = composition.getTitle();
+        var title = song.getTitle();
 
         if (title.isEmpty()) {
             return;
         }
 
-        var number = composition.getNumber();
+        var number = song.getNumber();
 
         if (!number.isEmpty()) {
             title = number + ". " + title;
@@ -68,13 +68,13 @@ public class TitleComponent extends ScoreComponent {
             songscribe.ui.renderer.GraphicsState.Property.FONT,
             songscribe.ui.renderer.GraphicsState.Property.COLOR
         )) {
-            var font = composition.getTitleFont();
+            var font = song.getTitleFont();
             g2.setFont(font);
             g2.setColor(Color.BLACK);
             var metrics = g2.getFontMetrics();
 
         // Wrap the title to fit in the maximum width
-        var maxWidth = (int) (composition.getLineWidthPx() * TITLE_MAX_WIDTH_PERCENTAGE);
+        var maxWidth = (int) (song.getLineWidthPx() * TITLE_MAX_WIDTH_PERCENTAGE);
         var titleLines = StringUtils.wrapText(title, metrics, maxWidth);
 
         // Calculate max width of wrapped lines for centering
@@ -85,7 +85,7 @@ public class TitleComponent extends ScoreComponent {
         }
 
         // Center the title horizontally within the component
-        var lineWidth = composition.getLineWidthPx();
+        var lineWidth = song.getLineWidthPx();
         var startX = (lineWidth - actualMaxWidth) / 2;
 
             // Draw each line
@@ -103,32 +103,32 @@ public class TitleComponent extends ScoreComponent {
 
     @Override
     public Dimension getPreferredSize() {
-        if (composition == null) {
+        if (song == null) {
             return new Dimension(0, 0);
         }
 
-        var title = composition.getTitle();
+        var title = song.getTitle();
 
         if (title.isEmpty()) {
             return new Dimension(0, 0);
         }
 
-        var number = composition.getNumber();
+        var number = song.getNumber();
 
         if (!number.isEmpty()) {
             title = number + ". " + title;
         }
 
-        var font = composition.getTitleFont();
+        var font = song.getTitleFont();
         var metrics = getFontMetrics(font);
 
         // Wrap the title to calculate height
-        var maxWidth = (int) (composition.getLineWidthPx() * TITLE_MAX_WIDTH_PERCENTAGE);
+        var maxWidth = (int) (song.getLineWidthPx() * TITLE_MAX_WIDTH_PERCENTAGE);
         var titleLines = StringUtils.wrapText(title, metrics, maxWidth);
 
         var lineHeight = metrics.getHeight();
         var height = lineHeight * titleLines.size();
 
-        return new Dimension(composition.getLineWidthPx(), height + marginBottom);
+        return new Dimension(song.getLineWidthPx(), height + marginBottom);
     }
 }

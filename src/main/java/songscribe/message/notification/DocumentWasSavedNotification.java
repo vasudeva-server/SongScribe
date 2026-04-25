@@ -23,7 +23,7 @@ package songscribe.message.notification;
 import songscribe.message.Message;
 
 /**
- * Posted after a successful file write to signal that the composition
+ * Posted after a successful file write to signal that the song
  * should be marked as unmodified. Must only be posted after the write
  * succeeds -- if the write fails, modified must remain true.
  */

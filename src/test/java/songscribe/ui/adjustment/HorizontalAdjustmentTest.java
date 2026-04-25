@@ -31,17 +31,17 @@ import org.mockito.MockedStatic;
 
 import songscribe.UnitTest;
 import songscribe.message.MessageCenter;
-import songscribe.music.Composition;
+import songscribe.music.Song;
 import songscribe.music.ElementType;
 import songscribe.music.Line;
 
 /**
  * Tests that the drag snap-to-end skip in {@link HorizontalAdjustment#drag()} is
- * correctly gated on {@code Composition.isInteractable}.
+ * correctly gated on {@code Song.isInteractable}.
  *
  * <p>The condition in {@code drag()} is:
  * <pre>
- *   if (composition.isInteractable(note, line) &amp;&amp; note.getType().snapToEnd() &amp;&amp; ...) {
+ *   if (song.isInteractable(note, line) &amp;&amp; note.getType().snapToEnd() &amp;&amp; ...) {
  *       endPoint.x = ...;  // snap
  *   }
  * </pre>
@@ -52,13 +52,13 @@ import songscribe.music.Line;
 class HorizontalAdjustmentTest extends UnitTest {
 
     private MockedStatic<MessageCenter> messageCenterMock;
-    private Composition composition;
+    private Song song;
     private Line line;
 
     @BeforeEach
     void setUp() {
-        composition = new Composition();
-        line = composition.getLine(0);
+        song = new Song();
+        line = song.getLine(0);
         messageCenterMock = mockStatic(MessageCenter.class);
     }
 
@@ -87,7 +87,7 @@ class HorizontalAdjustmentTest extends UnitTest {
             assertThat(terminal.getType())
                 .as("default terminal type")
                 .isEqualTo(ElementType.FINAL_DOUBLE_BARLINE);
-            assertThat(composition.isInteractable(terminal, line))
+            assertThat(song.isInteractable(terminal, line))
                 .as("terminal must not be interactable — snap condition is false")
                 .isFalse();
             assertThat(terminal.getType().snapToEnd())
@@ -101,7 +101,7 @@ class HorizontalAdjustmentTest extends UnitTest {
          */
         @Test
         void testRepeatRightTerminalSkipsSnap() {
-            composition.replaceTerminal(ElementType.REPEAT_RIGHT);
+            song.replaceTerminal(ElementType.REPEAT_RIGHT);
 
             var termIdx = line.elementCount() - 1;
             var terminal = line.getElement(termIdx);
@@ -109,7 +109,7 @@ class HorizontalAdjustmentTest extends UnitTest {
             assertThat(terminal.getType())
                 .as("terminal type after replaceTerminal")
                 .isEqualTo(ElementType.REPEAT_RIGHT);
-            assertThat(composition.isInteractable(terminal, line))
+            assertThat(song.isInteractable(terminal, line))
                 .as("REPEAT_RIGHT terminal must not be interactable — snap condition is false")
                 .isFalse();
             assertThat(terminal.getType().snapToEnd())

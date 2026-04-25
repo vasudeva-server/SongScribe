@@ -29,7 +29,7 @@ import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.music.Composition;
+import songscribe.music.Song;
 import songscribe.music.ElementType;
 import songscribe.music.KeyType;
 import songscribe.music.Line;
@@ -88,8 +88,8 @@ class LayoutEngineTest extends UnitTest {
     // T3: On the last line, the final barline is positioned flush-right
     @Test
     void testFinalBarlineFlushRightOnLastLine() {
-        var composition = new Composition();
-        var line = composition.getLine(0);
+        var song = new Song();
+        var line = song.getLine(0);
         var finalBarline = line.getElement(line.elementCount() - 1);
 
         var result = require(engine().layout(line, true), "LayoutResult");
@@ -101,9 +101,9 @@ class LayoutEngineTest extends UnitTest {
     // T3b: On the last line with a REPEAT_RIGHT terminal, the terminal is flush-right
     @Test
     void testRightRepeatTerminalFlushRightOnLastLine() {
-        var composition = new Composition();
-        composition.replaceTerminal(ElementType.REPEAT_RIGHT);
-        var line = composition.getLine(0);
+        var song = new Song();
+        song.replaceTerminal(ElementType.REPEAT_RIGHT);
+        var line = song.getLine(0);
         var terminal = line.getElement(line.elementCount() - 1);
 
         assertThat(terminal.getType()).isEqualTo(ElementType.REPEAT_RIGHT);
@@ -117,8 +117,8 @@ class LayoutEngineTest extends UnitTest {
     // T4: On a non-last line, the final barline is not flush-right
     @Test
     void testFinalBarlineNotFlushRightOnNonLastLine() {
-        var composition = new Composition();
-        var line = composition.getLine(0);
+        var song = new Song();
+        var line = song.getLine(0);
         var finalBarline = line.getElement(line.elementCount() - 1);
 
         var result = require(engine().layout(line, false), "LayoutResult");

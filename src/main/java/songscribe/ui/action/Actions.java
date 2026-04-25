@@ -41,7 +41,7 @@ import songscribe.message.Message;
 import songscribe.message.MessageCenter;
 import songscribe.message.notification.DocumentDidLoadNotification;
 import songscribe.ui.action.UIAction.AppMenuAction;
-import songscribe.ui.dialog.CompositionSettingsDialog;
+import songscribe.ui.dialog.SongSettingsDialog;
 
 /**
  * This class serves as a repository for global action-related constants and action groups.
@@ -303,12 +303,12 @@ public final class Actions {
     public static final PreferencesOpenAction PREFERENCES_ACTION = new PreferencesOpenAction();
 
     public static final DialogOpenAction<
-        CompositionSettingsDialog
-        > COMPOSITION_SETTINGS_ACTION = new DialogOpenAction<>(
-        Strings.get(Strings.ACTION_COMPOSITION_SETTINGS),
+        SongSettingsDialog
+        > SONG_SETTINGS_ACTION = new DialogOpenAction<>(
+        Strings.get(Strings.ACTION_SONG_SETTINGS),
         KeyEvent.VK_G,
         MENU_SHORTCUT_MASK,
-        CompositionSettingsDialog.class,
+        SongSettingsDialog.class,
         Flag.DISABLE_WHEN_PLAYING
     );
 

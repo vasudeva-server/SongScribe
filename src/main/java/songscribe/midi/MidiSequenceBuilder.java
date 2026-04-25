@@ -23,14 +23,14 @@ package songscribe.midi;
 import module java.desktop;
 
 
-import songscribe.music.Composition;
+import songscribe.music.Song;
 import songscribe.music.ElementType;
 import songscribe.music.Tempo;
 import songscribe.ui.playback.MidiMetaMessageTypes;
 
 
 /**
- * Coordinates MIDI sequence building for a composition.
+ * Coordinates MIDI sequence building for a song.
  * Delegates note-level MIDI generation to Line objects.
  * <p>
  * Phase 1 of the Score Cleanup refactoring (Step 5).
@@ -47,41 +47,41 @@ public class MidiSequenceBuilder {
     /** MIDI CC number for Bank Select LSB. */
     private static final int BANK_SELECT_LSB_CC = 32;
 
-    private final Composition composition;
+    private final Song song;
     private final PlaybackSettings settings;
 
     /**
      * Creates a new MIDI sequence builder.
      *
-     * @param composition The composition to build a sequence from
+     * @param song The song to build a sequence from
      * @param settings Playback settings (instrument, tempo adjustment, note duration, colorize)
      */
-    public MidiSequenceBuilder(Composition composition, PlaybackSettings settings) {
-        this.composition = composition;
+    public MidiSequenceBuilder(Song song, PlaybackSettings settings) {
+        this.song = song;
         this.settings = settings;
     }
 
     /**
-     * Builds a MIDI sequence for the entire composition.
+     * Builds a MIDI sequence for the entire song.
      *
      * @return The complete MIDI sequence
      * @throws InvalidMidiDataException if MIDI data is invalid
      */
     public Sequence buildFullSequence() throws InvalidMidiDataException {
-        return buildSequence(0, 0, -1, -1, composition.getTempo());
+        return buildSequence(0, 0, -1, -1, song.getTempo());
     }
 
     /**
      * Builds a MIDI sequence starting from a specific note and continuing to the end
-     * of the composition.
+     * of the song.
      *
      * @param lineIndex The line containing the starting note
      * @param startNote The index of the first note to include
-     * @return The MIDI sequence from startNote to the end of the composition
+     * @return The MIDI sequence from startNote to the end of the song
      * @throws InvalidMidiDataException if MIDI data is invalid
      */
     public Sequence buildFromNoteToEnd(int lineIndex, int startNote) throws InvalidMidiDataException {
-        var startTempo = composition.getTempoAt(lineIndex, startNote);
+        var startTempo = song.getTempoAt(lineIndex, startNote);
         return buildSequence(lineIndex, startNote, -1, -1, startTempo);
     }
 
@@ -114,11 +114,11 @@ public class MidiSequenceBuilder {
         MidiEventFactory.addTempoEvent(track, 0, initialTempo, settings.tempoChangePercent());
 
         // Pre-compute dynamic-aware velocities for all notes
-        var velocityMap = VelocityMap.build(composition, VelocityMap.MAX_VELOCITY);
+        var velocityMap = VelocityMap.build(song, VelocityMap.MAX_VELOCITY);
 
         var ticks = 0;
         var currentTempo = initialTempo;
-        var lines = composition.getLines();
+        var lines = song.getLines();
 
         // If repeats are disabled or we have a hard end boundary, use simple linear processing
         if (!settings.playWithRepeats() || endNote >= 0) {
@@ -185,7 +185,7 @@ public class MidiSequenceBuilder {
     ) throws InvalidMidiDataException {
         var ticks = 0;
         var currentTempo = initialTempo;
-        var lines = composition.getLines();
+        var lines = song.getLines();
         var repeating = false;
         var glissandoHelper = new GlissandoMidiHelper();
 
@@ -231,7 +231,7 @@ public class MidiSequenceBuilder {
                             }
                         }
 
-                        // If we didn't find a repeat start, begin from the start of the composition
+                        // If we didn't find a repeat start, begin from the start of the song
                         if (searchLineIndex < 0) {
                             lineIndex = 0;
                             noteIndex = -1; // Will be incremented to 0

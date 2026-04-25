@@ -27,21 +27,21 @@ import org.jspecify.annotations.Nullable;
 import songscribe.message.Message;
 import songscribe.message.mutation.LineScopedMutation;
 import songscribe.message.mutation.Mutation;
-import songscribe.music.Composition;
+import songscribe.music.Song;
 import songscribe.music.Line;
 
 /**
- * Posted when one or more mutations have been applied to the composition.
+ * Posted when one or more mutations have been applied to the song.
  * Carries the accumulated list of mutations from the current modification bracket.
  *
  * <p><strong>EDT only.</strong> The cached {@link #getLine()} result is read and written
  * without synchronization; subscribers must call it from the event-dispatch thread.
  * This matches MBassador's synchronous dispatch and the rest of the SongScribe UI.
  */
-public class CompositionDidChangeNotification extends Message {
+public class SongDidChangeNotification extends Message {
 
     private final List<Mutation> mutations;
-    private final Composition composition;
+    private final Song song;
 
     // Lazy cache for getLine(). null is a valid result, so we need a separate flag.
     private boolean lineIsCached;
@@ -51,26 +51,26 @@ public class CompositionDidChangeNotification extends Message {
     /**
      * Constructs a notification that takes ownership of an already-immutable
      * mutation list. The caller must not retain or mutate the list after
-     * construction — {@code Composition.endModification} uses this to avoid
+     * construction — {@code Song.endModification} uses this to avoid
      * defensively copying the accumulated list a second time.
      */
-    public CompositionDidChangeNotification(List<Mutation> mutations, Composition composition) {
+    public SongDidChangeNotification(List<Mutation> mutations, Song song) {
         this.mutations = mutations;
-        this.composition = composition;
+        this.song = song;
     }
 
     public List<Mutation> getMutations() {
         return mutations;
     }
 
-    public Composition getComposition() {
-        return composition;
+    public Song getSong() {
+        return song;
     }
 
     /**
      * Returns the single line targeted by all line-scoped mutations in the list,
      * or {@code null} if no line-scoped mutations exist or they target different lines.
-     * Composition-scoped mutations are ignored. Result is lazily cached.
+     * Song-scoped mutations are ignored. Result is lazily cached.
      */
     @Nullable
     public Line getLine() {

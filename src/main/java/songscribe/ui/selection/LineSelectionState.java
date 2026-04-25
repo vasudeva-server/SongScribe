@@ -148,7 +148,7 @@ public final class LineSelectionState {
     }
 
     /**
-     * Selects all elements on this line, excluding the composition's
+     * Selects all elements on this line, excluding the song's
      * auto-maintained terminal.
      */
     public void selectAll() {

@@ -79,17 +79,17 @@ public class TranslationComponent extends ScoreComponent {
      * @return Text width in pixels
      */
     public double getTextWidth(Graphics2D g2) {
-        if (composition == null) {
+        if (song == null) {
             return 0;
         }
 
-        var translation = composition.getTranslatedLyrics();
+        var translation = song.getTranslatedLyrics();
 
         if (translation.isEmpty()) {
             return 0;
         }
 
-        var lyricsFont = composition.getLyricsFont();
+        var lyricsFont = song.getLyricsFont();
         var headerFont = lyricsFont.deriveFont(Font.BOLD, lyricsFont.getSize2D());
 
         double maxWidth = 0;
@@ -100,7 +100,7 @@ public class TranslationComponent extends ScoreComponent {
         )) {
             // Header width
             g2.setFont(headerFont);
-            var headerText = composition.isUnofficialTranslation()
+            var headerText = song.isUnofficialTranslation()
                 ? TRANSLATION_HEADER_UNOFFICIAL
                 : TRANSLATION_HEADER_OFFICIAL;
             maxWidth = Math.max(maxWidth, GraphicUtils.getTextBlockWidth(headerText, g2));
@@ -115,11 +115,11 @@ public class TranslationComponent extends ScoreComponent {
 
     @Override
     protected void render(Graphics2D g2) {
-        if (composition == null) {
+        if (song == null) {
             return;
         }
 
-        var translation = composition.getTranslatedLyrics();
+        var translation = song.getTranslatedLyrics();
 
         if (translation.isEmpty()) {
             return;
@@ -130,14 +130,14 @@ public class TranslationComponent extends ScoreComponent {
             songscribe.ui.renderer.GraphicsState.Property.FONT,
             songscribe.ui.renderer.GraphicsState.Property.COLOR
         )) {
-            var lyricsFont = composition.getLyricsFont();
+            var lyricsFont = song.getLyricsFont();
             var headerFont = lyricsFont.deriveFont(Font.BOLD, lyricsFont.getSize2D());
 
             // Draw header
             g2.setFont(headerFont);
             g2.setColor(Color.BLACK);
 
-            var headerText = composition.isUnofficialTranslation()
+            var headerText = song.isUnofficialTranslation()
                 ? TRANSLATION_HEADER_UNOFFICIAL
                 : TRANSLATION_HEADER_OFFICIAL;
 
@@ -150,7 +150,7 @@ public class TranslationComponent extends ScoreComponent {
                 x = contentXPx;
             } else {
                 var headerWidth = GraphicUtils.getTextBlockWidth(headerText, g2);
-                x = (float) ((composition.getLineWidthPx() - headerWidth) / 2);
+                x = (float) ((song.getLineWidthPx() - headerWidth) / 2);
             }
 
             var y = (float) (marginTop + headerMetrics.getAscent());
@@ -176,17 +176,17 @@ public class TranslationComponent extends ScoreComponent {
 
     @Override
     public Dimension getPreferredSize() {
-        if (composition == null) {
+        if (song == null) {
             return new Dimension(0, 0);
         }
 
-        var translation = composition.getTranslatedLyrics();
+        var translation = song.getTranslatedLyrics();
 
         if (translation.isEmpty()) {
             return new Dimension(0, 0);
         }
 
-        var lyricsFont = composition.getLyricsFont();
+        var lyricsFont = song.getLyricsFont();
         var headerFont = lyricsFont.deriveFont(Font.BOLD, lyricsFont.getSize2D());
 
         // Calculate header height
@@ -201,6 +201,6 @@ public class TranslationComponent extends ScoreComponent {
         var lines = translation.split("\n");
         height += textMetrics.getHeight() * lines.length;
 
-        return new Dimension(composition.getLineWidthPx(), (int) height);
+        return new Dimension(song.getLineWidthPx(), (int) height);
     }
 }

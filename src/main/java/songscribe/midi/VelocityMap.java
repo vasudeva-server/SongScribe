@@ -21,13 +21,12 @@
 package songscribe.midi;
 
 import songscribe.music.ArticulationType;
-import songscribe.music.Composition;
-import songscribe.music.Line;
+import songscribe.music.Song;
 import songscribe.ui.layout.DynamicAttachment;
 import songscribe.ui.layout.DynamicAttachment.DynamicType;
 
 /**
- * Pre-computed MIDI velocity map for a composition. Velocities are derived
+ * Pre-computed MIDI velocity map for a song. Velocities are derived
  * from point dynamic markings ({@link DynamicAttachment}) on notes, with
  * forward propagation within and across lines.
  * <p>
@@ -52,14 +51,14 @@ public final class VelocityMap {
     }
 
     /**
-     * Builds a velocity map for the given composition.
+     * Builds a velocity map for the given song.
      *
-     * @param composition     the composition to map
+     * @param song     the song to map
      * @param masterVelocity  the ceiling velocity (typically {@link #MAX_VELOCITY})
      * @return a fully computed velocity map
      */
-    public static VelocityMap build(Composition composition, int masterVelocity) {
-        var lines = composition.getLines();
+    public static VelocityMap build(Song song, int masterVelocity) {
+        var lines = song.getLines();
         var velocities = new int[lines.size()][];
         var lastFraction = DEFAULT_VELOCITY_FRACTION;
 
@@ -95,7 +94,7 @@ public final class VelocityMap {
     /**
      * Returns the pre-computed MIDI velocity for a note.
      *
-     * @param lineIndex  the line index in the composition
+     * @param lineIndex  the line index in the song
      * @param noteIndex  the element index within the line
      * @return MIDI velocity (1–127)
      */

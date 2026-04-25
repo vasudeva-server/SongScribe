@@ -33,9 +33,9 @@ import com.formdev.flatlaf.FlatLaf;
 import com.formdev.flatlaf.FlatLightLaf;
 import org.xml.sax.InputSource;
 
-import songscribe.io.CompositionIO;
-import songscribe.io.CompositionLoader;
-import songscribe.music.Composition;
+import songscribe.io.SongIO;
+import songscribe.io.SongLoader;
+import songscribe.music.Song;
 import songscribe.ui.OptionDialogs;
 
 import org.junit.jupiter.api.BeforeAll;
@@ -80,34 +80,34 @@ public abstract class UnitTest {
     }
 
     /**
-     * Loads a fixture file and returns the parsed composition.
+     * Loads a fixture file and returns the parsed song.
      * Fixture files live in {@code src/test/resources/fixtures/{name}.mssw}.
      */
-    public static Composition loadFixture(String fixtureName) throws IllegalArgumentException, java.io.IOException, org.xml.sax.SAXException, URISyntaxException {
+    public static Song loadFixture(String fixtureName) throws IllegalArgumentException, java.io.IOException, org.xml.sax.SAXException, URISyntaxException {
         var url = UnitTest.class.getClassLoader().getResource("fixtures/" + fixtureName + ".mssw");
 
         if (url == null) {
             throw new IllegalArgumentException("Fixture not found: " + fixtureName);
         }
 
-        return CompositionLoader.load(new File(url.toURI()));
+        return SongLoader.load(new File(url.toURI()));
     }
 
     /**
-     * Serializes a composition to XML and parses it back, verifying round-trip fidelity.
+     * Serializes a song to XML and parses it back, verifying round-trip fidelity.
      */
-    public static Composition roundTrip(Composition original) throws Exception {
+    public static Song roundTrip(Song original) throws Exception {
         var sw = new StringWriter();
         var pw = new PrintWriter(sw);
-        CompositionIO.writeComposition(original, pw);
+        SongIO.writeSong(original, pw);
         pw.flush();
         var xml = sw.toString();
 
         var factory = SAXParserFactory.newInstance();
         var parser = factory.newSAXParser();
-        var reader = new CompositionIO.DocumentReader();
+        var reader = new SongIO.DocumentReader();
         parser.parse(new InputSource(new StringReader(xml)), reader);
 
-        return reader.getComposition();
+        return reader.getSong();
     }
 }

@@ -46,8 +46,8 @@ import songscribe.message.Message;
 import songscribe.message.MessageCenter;
 import songscribe.message.mutation.ElementField;
 import songscribe.message.mutation.ElementModification;
-import songscribe.message.notification.CompositionDidChangeNotification;
-import songscribe.music.Composition;
+import songscribe.message.notification.SongDidChangeNotification;
+import songscribe.music.Song;
 import songscribe.music.ElementType;
 import songscribe.music.Line;
 import songscribe.music.StaffElement;
@@ -116,7 +116,7 @@ class NoteDragHandlerTest extends UnitTest {
         when(lc.getScore()).thenReturn(mockScore);
         when(lc.getSelectionHandler()).thenReturn(mockSelectionHandler);
         when(lc.getLineSelectionState()).thenReturn(mockSelectionState);
-        when(lc.getComposition()).thenReturn(mock(Composition.class));
+        when(lc.getSong()).thenReturn(mock(Song.class));
         when(mockScore.getMode()).thenReturn(Mode.SELECT);
 
         handler = new NoteDragHandler(lc);
@@ -364,16 +364,16 @@ class NoteDragHandlerTest extends UnitTest {
         private Line realLine;
 
         @BeforeEach
-        void setUpWithRealComposition() {
-            // Create a real Composition so line.withModification() in handleRelease
-            // delegates to composition.withModification(), which posts a
-            // CompositionDidChangeNotification via the static MessageCenter mock.
-            var realComposition = new Composition();
-            realLine = realComposition.getLine(0);
+        void setUpWithRealSong() {
+            // Create a real Song so line.withModification() in handleRelease
+            // delegates to song.withModification(), which posts a
+            // SongDidChangeNotification via the static MessageCenter mock.
+            var realSong = new Song();
+            realLine = realSong.getLine(0);
 
             var note = ElementType.CROTCHET.newInstance();
             note.setStaffPosition(ORIGINAL_POSITION_SP);
-            realComposition.withoutMutationTracking(() -> realLine.addElement(note));
+            realSong.withoutMutationTracking(() -> realLine.addElement(note));
 
             when(lc.getLine()).thenReturn(realLine);
         }
@@ -381,14 +381,14 @@ class NoteDragHandlerTest extends UnitTest {
         @Test
         void testBeforeCloneHasOriginalPitchAfterRelease() {
             // Press on the note, drag it to a new position, release.
-            // handleRelease coalesces the mutations into one CompositionDidChangeNotification
+            // handleRelease coalesces the mutations into one SongDidChangeNotification
             // carrying an ElementModification whose beforeElement reflects the pre-drag pitch.
             setupSingleSelection(0);
             pressOnNote(0);
             dragToPosition(DRAGGED_POSITION_SP);
             handler.handleRelease();
 
-            // Capture all MessageCenter.post calls (includes the composition-constructor
+            // Capture all MessageCenter.post calls (includes the song-constructor
             // notification and the handleRelease notification).
             var captor = ArgumentCaptor.forClass(Message.class);
             messageCenterMock.verify(
@@ -398,8 +398,8 @@ class NoteDragHandlerTest extends UnitTest {
 
             // Find the ElementModification inside whichever notification carries it.
             var modification = captor.getAllValues().stream()
-                .filter(m -> m instanceof CompositionDidChangeNotification)
-                .map(m -> (CompositionDidChangeNotification) m)
+                .filter(m -> m instanceof SongDidChangeNotification)
+                .map(m -> (SongDidChangeNotification) m)
                 .flatMap(n -> n.getMutations().stream())
                 .filter(m -> m instanceof ElementModification)
                 .map(m -> (ElementModification) m)

@@ -38,13 +38,12 @@ import net.engio.mbassy.listener.Handler;
 import songscribe.message.Message;
 import songscribe.message.MessageCenter;
 import songscribe.message.notification.MusicSelectionDidChangeNotification;
-import songscribe.music.Composition;
+import songscribe.music.Song;
 import songscribe.music.Line;
 import songscribe.music.StaffElement;
 import songscribe.ui.EndingConfirms;
 import songscribe.ui.action.Actions;
 import songscribe.ui.action.UIAction;
-import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.score.LineComponent;
 import songscribe.ui.layout.Ending;
 
@@ -56,7 +55,7 @@ import songscribe.ui.layout.Ending;
  */
 public final class SelectionCoordinator {
 
-    private final Supplier<Composition> compositionSupplier;
+    private final Supplier<Song> songSupplier;
 
     /** Registry of per-line selection states, keyed by line index. */
     private final Map<Integer, LineSelectionState> lineStates = new HashMap<>();
@@ -123,8 +122,8 @@ public final class SelectionCoordinator {
         }
     };
 
-    public SelectionCoordinator(Supplier<Composition> compositionSupplier) {
-        this.compositionSupplier = compositionSupplier;
+    public SelectionCoordinator(Supplier<Song> songSupplier) {
+        this.songSupplier = songSupplier;
         MessageCenter.subscribe(this);
     }
 
@@ -297,7 +296,7 @@ public final class SelectionCoordinator {
             return false;
         }
 
-        return compositionSupplier.get().lineCount() > 1;
+        return songSupplier.get().lineCount() > 1;
     }
 
     /**
@@ -563,7 +562,7 @@ public final class SelectionCoordinator {
     /**
      * Applies the given action to all applicable elements in the selection.
      * Wraps the entire pass in a single modification bracket so all emitted
-     * mutations coalesce into one {@code CompositionDidChangeNotification}.
+     * mutations coalesce into one {@code SongDidChangeNotification}.
      * @param action   the reflectable action to apply
      * @param selected true to apply the attribute, false to remove it
      */
@@ -572,9 +571,9 @@ public final class SelectionCoordinator {
         if (selection == null) return;
 
         var line = selection.line();
-        var composition = line.getComposition();
+        var song = line.getSong();
 
-        composition.withModification(() -> {
+        song.withModification(() -> {
             var needsSpanCleanup = false;
 
             for (int i = selection.begin(); i <= selection.end(); i++) {

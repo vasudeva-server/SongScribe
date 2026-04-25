@@ -27,7 +27,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import songscribe.SongScribe;
-import songscribe.io.CompositionLoader;
+import songscribe.io.SongLoader;
 import songscribe.ui.action.ExportABCAction;
 
 public class AbcConverter {
@@ -57,8 +57,8 @@ public class AbcConverter {
         }
 
         try {
-            var composition = CompositionLoader.load(file);
-            ExportABCAction.writeABC(composition, writer);
+            var song = SongLoader.load(file);
+            ExportABCAction.writeABC(song, writer);
             writer.close();
             LOG.info("Converted {} to ABC", file.getName());
         } catch (Exception e) {

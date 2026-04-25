@@ -41,17 +41,17 @@ import songscribe.ui.layout.Articulation;
  */
 class ParentLinePropagationTest extends UnitTest {
 
-    private Composition composition;
+    private Song song;
     private Line line;
 
     @BeforeEach
     void setUp() {
-        composition = new Composition();
-        line = composition.getLine(0);
+        song = new Song();
+        line = song.getLine(0);
     }
 
     private void addToLine(Line targetLine, StaffElement element) {
-        composition.withoutMutationTracking(() -> targetLine.addElement(element));
+        song.withoutMutationTracking(() -> targetLine.addElement(element));
     }
 
     // -----------------------------------------------------------------------
@@ -117,7 +117,7 @@ class ParentLinePropagationTest extends UnitTest {
         @Test
         void testParentLineFollowsAttachmentToNewElement() {
             var line2 = new Line();
-            line2.setComposition(composition);
+            line2.setSong(song);
 
             var note1 = ElementType.QUAVER.newInstance();
             var note2 = ElementType.QUAVER.newInstance();

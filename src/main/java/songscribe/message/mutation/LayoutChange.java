@@ -23,7 +23,7 @@ package songscribe.message.mutation;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Mutation recording a change to a composition layout property.
+ * Mutation recording a change to a song layout property.
  * The runtime types of {@code oldValue} and {@code newValue} are validated against
  * {@link LayoutField#getExpectedType()} at construction time.
  */

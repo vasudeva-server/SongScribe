@@ -24,12 +24,13 @@ import module java.desktop;
 
 import songscribe.Strings;
 import songscribe.music.ElementType;
+import songscribe.music.Song;
 
 /**
- * Action that sets the composition's auto-maintained terminal to a specific valid
+ * Action that sets the song's auto-maintained terminal to a specific valid
  * terminal type ({@code FINAL_DOUBLE_BARLINE} or {@code REPEAT_RIGHT}). Renders as
  * a {@link javax.swing.JRadioButtonMenuItem} whose selected state tracks
- * {@link songscribe.music.Composition#currentTerminalType()}.
+ * {@link Song#currentTerminalType()}.
  */
 public final class FinalTerminalAction extends ElementTypeAction {
 
@@ -61,19 +62,19 @@ public final class FinalTerminalAction extends ElementTypeAction {
 
     @Override
     public void actionPerformed(ActionEvent e) {
-        getComposition().replaceTerminal(getType());
+        getSong().replaceTerminal(getType());
     }
 
     @Override
-    protected boolean enableFromCompositionState() {
-        if (!super.enableFromCompositionState()) {
+    protected boolean enableFromSongState() {
+        if (!super.enableFromSongState()) {
             setSelected(false);
             return false;
         }
 
         var score = getScore();
         setSelected(score != null && score.isInitialized()
-            && score.getComposition().currentTerminalType() == getType());
+            && score.getSong().currentTerminalType() == getType());
         return true;
     }
 }

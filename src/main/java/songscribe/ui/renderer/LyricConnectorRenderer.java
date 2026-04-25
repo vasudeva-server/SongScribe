@@ -29,14 +29,15 @@ import java.awt.geom.Line2D;
 
 import songscribe.ui.layout.LyricConnectorLayout;
 import songscribe.ui.layout.LyricRenderMetrics;
+import songscribe.ui.layout.SongLayoutMetrics;
 
 /**
  * Renders line-level lyric connectors (syllable hyphens and melisma extenders).
  * <p>
  * Iterates the {@link LyricConnectorLayout} entries on the current
  * {@link songscribe.ui.layout.LayoutResult}, reading each connector's verse baseline
- * Y from the composition-wide
- * {@link songscribe.ui.layout.CompositionLayoutMetrics}. Stateless.
+ * Y from the song-wide
+ * {@link SongLayoutMetrics}. Stateless.
  * <p>
  * Following Gould/Ross engraving rules: hyphens mark syllable division only;
  * extenders mark duration only.
@@ -76,7 +77,7 @@ public class LyricConnectorRenderer {
      * Renders every connector on the current line.
      *
      * @param g2  graphics context (in staff-space coordinates)
-     * @param ctx render context with a populated layout result and composition metrics
+     * @param ctx render context with a populated layout result and song metrics
      */
     public void render(Graphics2D g2, ElementRenderContext ctx) {
         var connectors = ctx.getLayoutResult().getLyricConnectors();
@@ -85,7 +86,7 @@ public class LyricConnectorRenderer {
             return;
         }
 
-        var metrics = ctx.getCompositionLayoutMetrics();
+        var metrics = ctx.getSongLayoutMetrics();
         var lyricRenderMetrics = ctx.getLyricRenderMetrics();
 
         try (var ignored = GraphicsState.save(g2, STROKE, FONT)) {

@@ -25,7 +25,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.music.Composition;
+import songscribe.music.Song;
 import songscribe.music.ElementType;
 import songscribe.music.Line;
 import songscribe.music.TupletSpan;
@@ -131,10 +131,10 @@ class LineSelectionStateTest extends UnitTest {
 
     @Test
     void testSelectAllExcludesAutoMaintainedFinalBarlineOnLastLine() {
-        var composition = new Composition();
-        var line = composition.getLine(0);
+        var song = new Song();
+        var line = song.getLine(0);
 
-        composition.withoutMutationTracking(() -> {
+        song.withoutMutationTracking(() -> {
             line.addElement(0, ElementType.CROTCHET.newInstance());
             line.addElement(1, ElementType.CROTCHET.newInstance());
         });
@@ -152,11 +152,11 @@ class LineSelectionStateTest extends UnitTest {
 
     @Test
     void testSelectAllExcludesAutoMaintainedRightRepeatTerminalOnLastLine() {
-        var composition = new Composition();
-        var line = composition.getLine(0);
-        composition.replaceTerminal(ElementType.REPEAT_RIGHT);
+        var song = new Song();
+        var line = song.getLine(0);
+        song.replaceTerminal(ElementType.REPEAT_RIGHT);
 
-        composition.withoutMutationTracking(() -> {
+        song.withoutMutationTracking(() -> {
             line.addElement(0, ElementType.CROTCHET.newInstance());
             line.addElement(1, ElementType.CROTCHET.newInstance());
         });
@@ -173,10 +173,10 @@ class LineSelectionStateTest extends UnitTest {
 
     @Test
     void testSelectAllOnLineWithOnlyFinalBarlineSelectsNothing() {
-        var composition = new Composition();
-        var line = composition.getLine(0);
+        var song = new Song();
+        var line = song.getLine(0);
 
-        // Default composition seeds the first (and only) line with just the final barline.
+        // Default song seeds the first (and only) line with just the final barline.
         assertThat(line.elementCount()).isEqualTo(1);
         assertThat(line.getElement(0).getType()).isEqualTo(ElementType.FINAL_DOUBLE_BARLINE);
 
@@ -188,12 +188,12 @@ class LineSelectionStateTest extends UnitTest {
 
     @Test
     void testSelectAllOnNonLastLineIncludesAllElements() {
-        var composition = new Composition();
-        var firstLine = composition.getLine(0);
-        composition.addLine(1, new Line());
+        var song = new Song();
+        var firstLine = song.getLine(0);
+        song.addLine(1, new Line());
 
         // firstLine is no longer the last line — its final barline has been transferred away.
-        composition.withoutMutationTracking(() -> {
+        song.withoutMutationTracking(() -> {
             firstLine.addElement(0, ElementType.CROTCHET.newInstance());
             firstLine.addElement(1, ElementType.CROTCHET.newInstance());
         });

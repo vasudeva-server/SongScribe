@@ -21,7 +21,7 @@
 package songscribe.message.mutation;
 
 /**
- * Mutation recording a change to lyrics text in the composition.
+ * Mutation recording a change to lyrics text in the song.
  */
 public record LyricsChange(LyricsField field, String oldText, String newText)
     implements Mutation {

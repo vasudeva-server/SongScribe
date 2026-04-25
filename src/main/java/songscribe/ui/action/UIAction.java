@@ -34,7 +34,7 @@ import org.slf4j.LoggerFactory;
 import songscribe.message.Message;
 import songscribe.message.MessageCenter;
 import songscribe.message.notification.BarWasSelectedNotification;
-import songscribe.message.notification.CompositionDidChangeNotification;
+import songscribe.message.notification.SongDidChangeNotification;
 import songscribe.message.notification.DocumentDidLoadNotification;
 import songscribe.message.notification.DialogVisibilityDidChangeNotification;
 import songscribe.message.notification.DurationWasSelectedNotification;
@@ -45,7 +45,7 @@ import songscribe.message.notification.PlaybackStateDidChangeNotification;
 import songscribe.message.notification.RestModeDidChangeNotification;
 import songscribe.message.notification.TextEditingDidChangeNotification;
 import songscribe.message.mutation.ElementField;
-import songscribe.music.Composition;
+import songscribe.music.Song;
 import songscribe.music.StaffElement;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.Score;
@@ -71,7 +71,7 @@ public class UIAction extends AbstractAction {
         DISABLE_IN_ADJUSTMENT_MODE(1 << 9),
         DISABLE_WHEN_BAR_SELECTED(1 << 10),
         ENABLE_WHEN_DURATION_SELECTED(1 << 11),
-        DISABLE_WHEN_COMPOSITION_EMPTY(1 << 12),
+        DISABLE_WHEN_SONG_EMPTY(1 << 12),
         DISABLE_IN_GRACE_MODE(1 << 13),
         DISABLE_IN_SELECT_MODE(1 << 14),
         OPENS_DIALOG(1 << 15);
@@ -264,8 +264,8 @@ public class UIAction extends AbstractAction {
         return mainFrame.requireScore();
     }
 
-    protected Composition getComposition() {
-        return mainFrame.requireScore().getComposition();
+    protected Song getSong() {
+        return mainFrame.requireScore().getSong();
     }
 
     public void setFlags(Flag... flags) {
@@ -280,7 +280,7 @@ public class UIAction extends AbstractAction {
             hasFlag(Flag.REQUIRES_SELECTION) ||
                 hasFlag(Flag.REQUIRES_SINGLE_SELECTION) ||
                 hasFlag(Flag.REQUIRES_MULTIPLE_SELECTION) ||
-                hasFlag(Flag.DISABLE_WHEN_COMPOSITION_EMPTY)
+                hasFlag(Flag.DISABLE_WHEN_SONG_EMPTY)
         ) {
             setEnabled(false);
         }
@@ -386,7 +386,7 @@ public class UIAction extends AbstractAction {
                 enableFromBarSelection(activeSelection) &&
                 enableFromSelection(activeSelection, score) &&
                 enableFromDurationSelection(activeSelection) &&
-                enableFromCompositionState();
+                enableFromSongState();
         setEnabled(enable);
         return enable;
     }
@@ -559,7 +559,7 @@ public class UIAction extends AbstractAction {
     }
 
     @Handler(priority = Message.MEDIUM_PRIORITY)
-    public void compositionDidChange(CompositionDidChangeNotification message) {
+    public void songDidChange(SongDidChangeNotification message) {
         updateEnabledState();
     }
 
@@ -596,12 +596,12 @@ public class UIAction extends AbstractAction {
             .hasActiveSelection();
     }
 
-    protected boolean enableFromCompositionState() {
-        if (!hasFlag(Flag.DISABLE_WHEN_COMPOSITION_EMPTY)) {
+    protected boolean enableFromSongState() {
+        if (!hasFlag(Flag.DISABLE_WHEN_SONG_EMPTY)) {
             return true;
         }
 
         var score = getScore();
-        return score != null && score.isInitialized() && !score.getComposition().isEmpty();
+        return score != null && score.isInitialized() && !score.getSong().isEmpty();
     }
 }

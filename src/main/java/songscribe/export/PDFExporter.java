@@ -53,7 +53,7 @@ public class PDFExporter {
             return;
         }
 
-        var composition = score.getComposition();
+        var song = score.getSong();
 
         // Scale to fit
         var sheetWidth = score.getSheetWidthPx();

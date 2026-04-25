@@ -24,7 +24,7 @@ import songscribe.music.Line;
 
 /**
  * Marker interface for mutations scoped to a specific line.
- * Element mutations implement this interface; composition-scoped mutations do not.
+ * Element mutations implement this interface; song-scoped mutations do not.
  */
 @FunctionalInterface
 public interface LineScopedMutation {

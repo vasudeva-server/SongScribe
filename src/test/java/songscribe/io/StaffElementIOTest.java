@@ -38,7 +38,7 @@ import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
 
 import songscribe.UnitTest;
-import songscribe.music.Composition;
+import songscribe.music.Song;
 import songscribe.music.ElementType;
 import songscribe.ui.layout.DynamicAttachment;
 import songscribe.ui.layout.DynamicAttachment.DynamicType;
@@ -90,8 +90,8 @@ class StaffElementIOTest extends UnitTest {
         // T31: Read <dynamic type="FORTE"/> → note has DynamicAttachment(FORTE)
         @Test
         void testReadsDynamicElement() throws Exception {
-            var comp = parseXmlToComposition(buildXmlWithDynamic("FORTE"));
-            var dynamic = comp.getLine(0).getElement(0).findAttachment(DynamicAttachment.class);
+            var song = parseXmlToSong(buildXmlWithDynamic("FORTE"));
+            var dynamic = song.getLine(0).getElement(0).findAttachment(DynamicAttachment.class);
 
             assertThat(dynamic).isNotNull();
             if (dynamic == null) return;
@@ -102,7 +102,7 @@ class StaffElementIOTest extends UnitTest {
         @ParameterizedTest
         @EnumSource(value = DynamicType.class, names = {"PIANISSIMO", "PIANO", "MEZZO_PIANO", "MEZZO_FORTE", "FORTE", "FORTISSIMO"})
         void testRoundTripPreservesDynamicType(DynamicType dynamicType) throws Exception {
-            var comp1 = parseXmlToComposition(buildXmlWithDynamic(dynamicType.name()));
+            var comp1 = parseXmlToSong(buildXmlWithDynamic(dynamicType.name()));
             var comp2 = roundTrip(comp1);
             var dynamic = comp2.getLine(0).getElement(0).findAttachment(DynamicAttachment.class);
 
@@ -114,8 +114,8 @@ class StaffElementIOTest extends UnitTest {
         // T33: Read file without dynamics → no DynamicAttachment
         @Test
         void testNoDynamicWhenElementAbsent() throws Exception {
-            var comp = parseXmlToComposition(buildXmlWithoutDynamic());
-            var dynamic = comp.getLine(0).getElement(0).findAttachment(DynamicAttachment.class);
+            var song = parseXmlToSong(buildXmlWithoutDynamic());
+            var dynamic = song.getLine(0).getElement(0).findAttachment(DynamicAttachment.class);
 
             assertThat(dynamic).isNull();
         }
@@ -125,13 +125,13 @@ class StaffElementIOTest extends UnitTest {
         void testUnknownDynamicTypeIsSkipped() {
             var xml = buildXmlWithDynamic("UNKNOWN_DYNAMIC");
 
-            assertThatCode(() -> parseXmlToComposition(xml)).doesNotThrowAnyException();
+            assertThatCode(() -> parseXmlToSong(xml)).doesNotThrowAnyException();
         }
 
         @Test
         void testUnknownDynamicTypeProducesNoAttachment() throws Exception {
-            var comp = parseXmlToComposition(buildXmlWithDynamic("UNKNOWN_DYNAMIC"));
-            var dynamic = comp.getLine(0).getElement(0).findAttachment(DynamicAttachment.class);
+            var song = parseXmlToSong(buildXmlWithDynamic("UNKNOWN_DYNAMIC"));
+            var dynamic = song.getLine(0).getElement(0).findAttachment(DynamicAttachment.class);
 
             assertThat(dynamic).isNull();
         }
@@ -147,11 +147,11 @@ class StaffElementIOTest extends UnitTest {
         return sw.toString();
     }
 
-    private static Composition parseXmlToComposition(String xml) throws Exception {
+    private static Song parseXmlToSong(String xml) throws Exception {
         var parser = PARSER_FACTORY.newSAXParser();
-        var reader = new CompositionIO.DocumentReader();
+        var reader = new SongIO.DocumentReader();
         parser.parse(new InputSource(new StringReader(xml)), reader);
-        return reader.getComposition();
+        return reader.getSong();
     }
 
     private static String buildXmlWithDynamic(String dynamicType) {
@@ -219,7 +219,7 @@ class StaffElementIOTest extends UnitTest {
 
     private static void parseXml(String xml) throws Exception {
         var parser = PARSER_FACTORY.newSAXParser();
-        var reader = new CompositionIO.DocumentReader();
+        var reader = new SongIO.DocumentReader();
         parser.parse(new InputSource(new StringReader(xml)), reader);
     }
 

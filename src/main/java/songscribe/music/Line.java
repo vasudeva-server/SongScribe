@@ -85,8 +85,8 @@ public class Line {
     /** Range elements (ties, trills, crescendo, diminuendo, tuplets, endings). */
     private final List<RangeElement> rangeElements = new ArrayList<>();
 
-    @SuppressWarnings("NullAway") // set by setComposition() before the Line is used
-    private Composition composition = null;
+    @SuppressWarnings("NullAway") // set by setSong() before the Line is used
+    private Song song = null;
     private int keys = 0;
     @Nullable
     private KeyType keyType = null;
@@ -155,12 +155,12 @@ public class Line {
     /** Ratio multiplier for horizontal element spacing (default: 1.0, user-adjustable). */
     private float elementDistChangeRatio = 1f;
 
-    public Composition getComposition() {
-        return composition;
+    public Song getSong() {
+        return song;
     }
 
-    public void setComposition(Composition composition) {
-        this.composition = composition;
+    public void setSong(Song song) {
+        this.song = song;
     }
 
     public int getKeyAccidentalCount() {
@@ -168,40 +168,40 @@ public class Line {
     }
 
     /**
-     * Applies a single mutation, delegating to the parent composition's bracket.
+     * Applies a single mutation, delegating to the parent song's bracket.
      *
-     * <p>When the line is attached to a composition, a modification bracket must be
+     * <p>When the line is attached to a song, a modification bracket must be
      * open — the mutation is recorded and the mutator runs inside it. If the line is
-     * not yet attached (e.g. during file-load bootstrap before {@code setComposition}),
-     * or the composition has suspended tracking via
-     * {@link Composition#withoutMutationTracking(Runnable)}, the mutator runs directly
+     * not yet attached (e.g. during file-load bootstrap before {@code setSong}),
+     * or the song has suspended tracking via
+     * {@link Song#withoutMutationTracking(Runnable)}, the mutator runs directly
      * without tracking.
      *
-     * @throws IllegalStateException if the line is attached to a composition that has
+     * @throws IllegalStateException if the line is attached to a song that has
      *     neither an open modification bracket nor suspended tracking
      */
     public void applyChange(Mutation mutation, Runnable mutator) {
-        if (composition == null || composition.isMutationTrackingSuspended()) {
+        if (song == null || song.isMutationTrackingSuspended()) {
             mutator.run();
             return;
         }
 
-        if (!composition.isModifying()) {
+        if (!song.isModifying()) {
             throw new IllegalStateException(
                 "Line.applyChange called outside a modification bracket for " + mutation
             );
         }
 
-        composition.applyChange(mutation, mutator);
+        song.applyChange(mutation, mutator);
     }
 
     /**
-     * Executes {@code body} inside a modification bracket on the parent composition.
-     * If the composition is not yet set, {@code body} runs directly.
+     * Executes {@code body} inside a modification bracket on the parent song.
+     * If the song is not yet set, {@code body} runs directly.
      */
     public void withModification(Runnable body) {
-        if (composition != null) {
-            composition.withModification(body);
+        if (song != null) {
+            song.withModification(body);
         } else {
             body.run();
         }
@@ -242,8 +242,8 @@ public class Line {
         // element before it so the terminal remains the last element.
         var lastIdx = elements.size() - 1;
         var insertBeforeFinal = lastIdx >= 0
-            && composition != null
-            && composition.isAutoMaintainedTerminal(elements.get(lastIdx), this);
+            && song != null
+            && song.isAutoMaintainedTerminal(elements.get(lastIdx), this);
         var index = insertBeforeFinal ? lastIdx : elements.size();
 
         applyChange(
@@ -259,19 +259,19 @@ public class Line {
 
     /**
      * Returns {@code true} when the terminal mutation guards in this class should
-     * be bypassed: the line has no parent composition yet, mutation tracking is suspended
-     * (test setup), or the composition is currently auto-maintaining the invariant.
+     * be bypassed: the line has no parent song yet, mutation tracking is suspended
+     * (test setup), or the song is currently auto-maintaining the invariant.
      */
     private boolean isTerminalGuardBypassed() {
-        return composition == null
-            || composition.isMutationTrackingSuspended()
-            || composition.isInAutoMaintenance();
+        return song == null
+            || song.isMutationTrackingSuspended()
+            || song.isInAutoMaintenance();
     }
 
     public void addElement(int index, StaffElement element) {
         if (!isTerminalGuardBypassed()
                 && element.getType() == ElementType.FINAL_DOUBLE_BARLINE
-                && (composition.indexOfLine(this) != composition.lineCount() - 1
+                && (song.indexOfLine(this) != song.lineCount() - 1
                     || index != elementCount())) {
             throw new IllegalStateException(
                 "FINAL_DOUBLE_BARLINE may only be appended to the last line");
@@ -294,8 +294,8 @@ public class Line {
         // carried the initial tempo — move it to the new first element.
         var displacedFirstElement = (index == 0
             && !elements.isEmpty()
-            && composition != null
-            && composition.indexOfLine(this) == 0)
+            && song != null
+            && song.indexOfLine(this) == 0)
             ? elements.get(0)
             : null;
         var displacedTempo = displacedFirstElement != null ? displacedFirstElement.getTempoChange() : null;
@@ -319,7 +319,7 @@ public class Line {
     public void setElement(int index, StaffElement element) {
         if (!isTerminalGuardBypassed()
                 && element.getType() == ElementType.FINAL_DOUBLE_BARLINE
-                && (composition.indexOfLine(this) != composition.lineCount() - 1
+                && (song.indexOfLine(this) != song.lineCount() - 1
                     || index != elementCount() - 1)) {
             throw new IllegalStateException(
                 "FINAL_DOUBLE_BARLINE may only replace the last element on the last line");
@@ -531,16 +531,16 @@ public class Line {
         return -1;
     }
 
-    /** Attaches the composition's initial tempo to the first element of this line if not already set. */
+    /** Attaches the song's initial tempo to the first element of this line if not already set. */
     void attachInitialTempoIfNeeded() {
-        if (elements.isEmpty() || composition == null) {
+        if (elements.isEmpty() || song == null) {
             return;
         }
 
         var element = elements.get(0);
 
         if (element.getTempoChange() == null) {
-            var initialTempo = composition.getTempo();
+            var initialTempo = song.getTempo();
 
             if (initialTempo != null) {
                 element.setTempoChange(initialTempo);
@@ -564,7 +564,7 @@ public class Line {
 
     public void removeElement(int index) {
         if (!isTerminalGuardBypassed()
-                && composition.isAutoMaintainedTerminal(elements.get(index), this)) {
+                && song.isAutoMaintainedTerminal(elements.get(index), this)) {
             throw new IllegalStateException(
                 "The auto-maintained terminal may not be removed");
         }
@@ -597,7 +597,7 @@ public class Line {
     public void removeRange(int from, int to) {
         if (!isTerminalGuardBypassed()
                 && elements.subList(from, to + 1).stream()
-                       .anyMatch(e -> composition.isAutoMaintainedTerminal(e, this))) {
+                       .anyMatch(e -> song.isAutoMaintainedTerminal(e, this))) {
             throw new IllegalStateException(
                 "The auto-maintained terminal may not be removed");
         }
@@ -626,14 +626,14 @@ public class Line {
     /**
      * Returns the element count excluding a trailing auto-maintained terminal
      * ({@code FINAL_DOUBLE_BARLINE} or {@code REPEAT_RIGHT}). Use this wherever a
-     * computation should treat the composition-owned terminal as if it were not there
+     * computation should treat the song-owned terminal as if it were not there
      * (insertion spacing, preview positioning, etc.).
      */
     public int effectiveElementCount() {
         var count = elements.size();
 
-        if (count > 0 && composition != null
-                && composition.isAutoMaintainedTerminal(elements.get(count - 1), this)) {
+        if (count > 0 && song != null
+                && song.isAutoMaintainedTerminal(elements.get(count - 1), this)) {
             return count - 1;
         }
 
@@ -935,7 +935,7 @@ public class Line {
     }
 
     public int getFirstTempoChange() {
-        if (composition != null && (composition.indexOfLine(this) == 0) && (elementCount() > 0)) {
+        if (song != null && (song.indexOfLine(this) == 0) && (elementCount() > 0)) {
             return 0;
         }
 

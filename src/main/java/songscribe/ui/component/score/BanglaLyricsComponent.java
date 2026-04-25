@@ -29,7 +29,7 @@ import songscribe.util.GraphicUtils;
  * Component that renders Bengali (Bangla) lyrics.
  * <p>
  * Displays multi-line Bangla text centered horizontally below the main lyrics.
- * Uses the composition's Bangla font with appropriate spacing.
+ * Uses the song's Bangla font with appropriate spacing.
  */
 public class BanglaLyricsComponent extends ScoreComponent {
 
@@ -73,11 +73,11 @@ public class BanglaLyricsComponent extends ScoreComponent {
      * @return Text width in pixels
      */
     public double getTextWidth(Graphics2D g2) {
-        if (composition == null) {
+        if (song == null) {
             return 0;
         }
 
-        var banglaLyrics = composition.getBanglaLyrics();
+        var banglaLyrics = song.getBanglaLyrics();
 
         if (banglaLyrics.isEmpty()) {
             return 0;
@@ -87,18 +87,18 @@ public class BanglaLyricsComponent extends ScoreComponent {
             g2,
             songscribe.ui.renderer.GraphicsState.Property.FONT
         )) {
-            g2.setFont(composition.getBanglaFont());
+            g2.setFont(song.getBanglaFont());
             return GraphicUtils.getTextBlockWidth(banglaLyrics, g2);
         }
     }
 
     @Override
     protected void render(Graphics2D g2) {
-        if (composition == null) {
+        if (song == null) {
             return;
         }
 
-        var banglaLyrics = composition.getBanglaLyrics();
+        var banglaLyrics = song.getBanglaLyrics();
 
         if (banglaLyrics.isEmpty()) {
             return;
@@ -109,7 +109,7 @@ public class BanglaLyricsComponent extends ScoreComponent {
             songscribe.ui.renderer.GraphicsState.Property.FONT,
             songscribe.ui.renderer.GraphicsState.Property.COLOR
         )) {
-            var font = composition.getBanglaFont();
+            var font = song.getBanglaFont();
             g2.setFont(font);
             g2.setColor(Color.BLACK);
 
@@ -123,7 +123,7 @@ public class BanglaLyricsComponent extends ScoreComponent {
                 x = contentXPx;
             } else {
                 var textWidth = GraphicUtils.getTextBlockWidth(banglaLyrics, g2);
-                x = (float) ((composition.getLineWidthPx() - textWidth) / 2);
+                x = (float) ((song.getLineWidthPx() - textWidth) / 2);
             }
 
             var y = (float) (marginTop + metrics.getAscent());
@@ -140,23 +140,23 @@ public class BanglaLyricsComponent extends ScoreComponent {
 
     @Override
     public Dimension getPreferredSize() {
-        if (composition == null) {
+        if (song == null) {
             return new Dimension(0, 0);
         }
 
-        var banglaLyrics = composition.getBanglaLyrics();
+        var banglaLyrics = song.getBanglaLyrics();
 
         if (banglaLyrics.isEmpty()) {
             return new Dimension(0, 0);
         }
 
-        var font = composition.getBanglaFont();
+        var font = song.getBanglaFont();
         var metrics = getFontMetrics(font);
 
         var lines = banglaLyrics.split("\n");
         var lineHeight = metrics.getHeight();
         var height = lineHeight * lines.length;
 
-        return new Dimension(composition.getLineWidthPx(), height + marginTop);
+        return new Dimension(song.getLineWidthPx(), height + marginTop);
     }
 }

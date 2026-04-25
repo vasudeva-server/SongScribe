@@ -51,7 +51,7 @@ class NoteConnectionTest extends E2ETest {
 
     @BeforeAll
     void loadConnectionsFixture() throws Exception {
-        resetComposition();
+        resetSong();
         loadFixture("connections");
     }
 
@@ -113,7 +113,7 @@ class NoteConnectionTest extends E2ETest {
             assertThat(Objects.requireNonNull(lss).isElementSelected(Element.PAIR_B_SRC.index))
                 .as("source note selected").isTrue();
 
-            var note = composition().getLine(0).getElement(Element.PAIR_B_SRC.index);
+            var note = song().getLine(0).getElement(Element.PAIR_B_SRC.index);
             assertThat(note.getGlissando()).as("source has glissando").isNotNull();
         }
 
@@ -126,7 +126,7 @@ class NoteConnectionTest extends E2ETest {
             assertThat(Objects.requireNonNull(lss).isElementSelected(Element.PAIR_B_TGT.index))
                 .as("target note selected").isTrue();
 
-            var sourceNote = composition().getLine(0).getElement(Element.PAIR_B_SRC.index);
+            var sourceNote = song().getLine(0).getElement(Element.PAIR_B_SRC.index);
             assertThat(Objects.requireNonNull(sourceNote.getGlissando()).type)
                 .as("source has connected glissando pointing to target")
                 .isEqualTo(StaffElement.Glissando.Type.CONNECTED);
@@ -149,7 +149,7 @@ class NoteConnectionTest extends E2ETest {
             clickAt(midpoint(0, Element.PAIR_A_SRC.index, Element.PAIR_A_TGT.index));
             performLayout(0);
 
-            var note = composition().getLine(0).getElement(Element.PAIR_A_SRC.index);
+            var note = song().getLine(0).getElement(Element.PAIR_A_SRC.index);
             var glissando = note.getGlissando();
             assertAll(
                 () -> assertThat(glissando).as("has glissando").isNotNull(),
@@ -165,7 +165,7 @@ class NoteConnectionTest extends E2ETest {
             clickAt(midpoint(0, Element.PAIR_A_TGT.index, Element.PAIR_B_SRC.index));
             performLayout(0);
 
-            var note = composition().getLine(0).getElement(Element.PAIR_A_TGT.index);
+            var note = song().getLine(0).getElement(Element.PAIR_A_TGT.index);
             var glissando = note.getGlissando();
             assertAll(
                 () -> assertThat(glissando).as("has glissando").isNotNull(),
@@ -195,7 +195,7 @@ class NoteConnectionTest extends E2ETest {
             robot.pressAndReleaseKey(KeyEvent.VK_DELETE);
             performLayout(0);
 
-            var note = composition().getLine(0).getElement(Element.PAIR_D_SRC.index);
+            var note = song().getLine(0).getElement(Element.PAIR_D_SRC.index);
             assertThat(note.getGlissando()).as("delete selected glissando").isNull();
         }
 
@@ -203,14 +203,14 @@ class NoteConnectionTest extends E2ETest {
         @Test
         void testDeleteSourceNoteRemovesGlissando() {
             var countBefore = Objects.requireNonNull(GuiActionRunner.execute(
-                () -> composition().getLine(0).elementCount()
+                () -> song().getLine(0).elementCount()
             ));
 
             clickAt(noteScreenPosition(0, Element.PAIR_E_SRC.index));
             robot.pressAndReleaseKey(KeyEvent.VK_DELETE);
             performLayout(0);
 
-            var line = composition().getLine(0);
+            var line = song().getLine(0);
             // After deleting PAIR_E_SRC: former pair E target shifts down by 1
             assertAll(
                 () -> assertThat(line.elementCount())
@@ -225,14 +225,14 @@ class NoteConnectionTest extends E2ETest {
         void testDeleteTargetNoteRemovesGlissando() {
             // After previous deletion: pair F source and target each shifted down
             var countBefore = Objects.requireNonNull(GuiActionRunner.execute(
-                () -> composition().getLine(0).elementCount()
+                () -> song().getLine(0).elementCount()
             ));
 
             clickAt(noteScreenPosition(0, Element.PAIR_F_TGT_SHIFTED.index));
             robot.pressAndReleaseKey(KeyEvent.VK_DELETE);
             performLayout(0);
 
-            var line = composition().getLine(0);
+            var line = song().getLine(0);
             // Pair F source should have glissando removed (target deleted)
             assertAll(
                 () -> assertThat(line.elementCount())

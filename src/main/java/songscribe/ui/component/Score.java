@@ -35,15 +35,15 @@ import org.slf4j.LoggerFactory;
 
 import songscribe.Strings;
 import songscribe.export.ExportOptions;
-import songscribe.io.CompositionIO;
+import songscribe.io.SongIO;
 import songscribe.message.Message;
 import songscribe.message.MessageCenter;
-import songscribe.music.Composition;
+import songscribe.music.Song;
 import songscribe.music.EndingValidationResult;
 import songscribe.music.Line;
 import songscribe.music.StaffElement;
 import songscribe.ui.MusicEditOperations;
-import songscribe.message.notification.CompositionDidChangeNotification;
+import songscribe.message.notification.SongDidChangeNotification;
 import songscribe.message.notification.DocumentDidLoadNotification;
 import songscribe.message.notification.MusicSelectionDidChangeNotification;
 import songscribe.message.notification.PrefsDidChangeNotification;
@@ -63,7 +63,7 @@ import songscribe.ui.component.score.LineComponent;
 import songscribe.ui.component.score.MainPanel;
 import songscribe.ui.component.score.ScorePanel;
 import songscribe.ui.edit.EditModeManager;
-import songscribe.ui.layout.CompositionLayoutMetrics;
+import songscribe.ui.layout.SongLayoutMetrics;
 import songscribe.ui.layout.LayoutStylesheet;
 import songscribe.ui.layout.LyricRenderMetrics;
 import songscribe.ui.layout.PageModel;
@@ -161,7 +161,7 @@ public final class Score
 
     // The model for the score
     @Nullable
-    private Composition composition = null;
+    private Song song = null;
 
     // The scroll pane that contains the score + margin
     @Nullable
@@ -222,13 +222,13 @@ public final class Score
     // If true, the score is played with repeats
     private boolean playWithRepeats = false;
 
-    // Composition-wide layout metrics shared across all line components.
-    // Set by StaffPanel.updateCompositionMetrics before any layout/paint runs.
+    // Song-wide layout metrics shared across all line components.
+    // Set by StaffPanel.updateSongMetrics before any layout/paint runs.
     @SuppressWarnings("NullAway")
-    private CompositionLayoutMetrics compositionLayoutMetrics = null;
+    private SongLayoutMetrics songLayoutMetrics = null;
 
-    // Composition-wide lyric render metrics shared across all line components.
-    // Set by StaffPanel.updateCompositionMetrics before any layout/paint runs.
+    // Song-wide lyric render metrics shared across all line components.
+    // Set by StaffPanel.updateSongMetrics before any layout/paint runs.
     @SuppressWarnings("NullAway")
     private LyricRenderMetrics lyricRenderMetrics = null;
 
@@ -237,7 +237,7 @@ public final class Score
      * edit mode). This is sufficient for headless use (converters pass {@code null}).
      * <p>
      * For interactive use, call {@link #init()} after construction to create the
-     * UI components (view, panels, message coordinator) and the initial Composition.
+     * UI components (view, panels, message coordinator) and the initial Song.
      *
      * @param onFileOpened callback invoked when a file is successfully opened,
      *                     or {@code null} for headless (converter) use
@@ -247,7 +247,7 @@ public final class Score
         var headless = onFileOpened == null;
         control = Control.valueOf(Prefs.getInstance().getString(PrefsKey.CONTROL));
 
-        selectionCoordinator = new SelectionCoordinator(this::getComposition);
+        selectionCoordinator = new SelectionCoordinator(this::getSong);
         clipboardManager = new ClipboardManager();
         editModeManager = new EditModeManager(
             clipboardManager,
@@ -288,14 +288,14 @@ public final class Score
 
     /**
      * Initializes the interactive UI: view, panels, message coordinator,
-     * and the initial Composition. Must be called exactly once after construction
+     * and the initial Song. Must be called exactly once after construction
      * for interactive (non-converter) use. Not needed for headless converters.
      */
     public void init() {
         setName(ComponentNames.SCORE);
 
-        // Create initial composition
-        composition = new Composition();
+        // Create initial song
+        song = new Song();
 
         // Initialize UI components
         initView();
@@ -303,7 +303,7 @@ public final class Score
         initScorePanel();
         initMainPanel();
 
-        updatePageLayout(ScaleContext.getInstance().toRoundedPixels(composition.getLineWidthSs()));
+        updatePageLayout(ScaleContext.getInstance().toRoundedPixels(song.getLineWidthSs()));
         if (inputHandler != null) {
             addMouseMotionListener(inputHandler);
             addMouseListener(inputHandler);
@@ -322,10 +322,10 @@ public final class Score
 
         MessageCenter.subscribe(this);
         syncPlaybackPrefs();
-        composition.setModified(false);
+        song.setModified(false);
 
         // Create operations and message coordinator (requires mainPanel to be set)
-        operations = new MusicEditOperations(composition, selectionCoordinator);
+        operations = new MusicEditOperations(song, selectionCoordinator);
         messageCoordinator = new ScoreMessageCoordinator(
             this,
             operations,
@@ -398,7 +398,7 @@ public final class Score
 
     private void initMainPanel() {
         mainPanel = new MainPanel();
-        mainPanel.setComposition(getComposition());
+        mainPanel.setSong(getSong());
         mainPanel.setVisible(true);
         add(mainPanel, BorderLayout.CENTER);
         setupLineComponentState();
@@ -476,22 +476,22 @@ public final class Score
     }
 
     public boolean openFile(File file, boolean updateCurrentFile) {
-        var previousModified = composition != null && composition.isModified();
+        var previousModified = song != null && song.isModified();
 
-        if (composition != null) {
-            composition.setModified(false);
+        if (song != null) {
+            song.setModified(false);
         }
 
         try {
-            var reader = new CompositionIO.DocumentReader();
+            var reader = new SongIO.DocumentReader();
             if (saxParser == null) {
                 throw RuntimeError.exit("saxParser not initialized");
             }
 
             saxParser.parse(file, reader);
-            var newComposition = reader.getComposition();
+            var newSong = reader.getSong();
             var lineWidthInches =
-                ScaleContext.getInstance().toPixels(newComposition.getLineWidthSs()) /
+                ScaleContext.getInstance().toPixels(newSong.getLineWidthSs()) /
                     GraphicUtils.getDpi();
 
             if (lineWidthInches > PageModel.MAX_LINE_WIDTH_INCHES) {
@@ -507,41 +507,41 @@ public final class Score
                     PageModel.MAX_LINE_WIDTH_INCHES
                 );
 
-                if (composition != null) {
-                    composition.setModified(previousModified);
+                if (song != null) {
+                    song.setModified(previousModified);
                 }
 
                 return false;
             }
 
-            setComposition(newComposition);
+            setSong(newSong);
 
             if (updateCurrentFile && onFileOpened != null) {
                 onFileOpened.accept(file);
             }
 
-            LOG.info("Composition loaded: {}", file.getName());
+            LOG.info("Song loaded: {}", file.getName());
             return true;
-        } catch (CompositionIO.NewerVersionException e) {
+        } catch (SongIO.NewerVersionException e) {
             OptionDialogs.showErrorMessage(null, Strings.ALERT_TITLE_FILE_ERROR, Strings.ERROR_FILE_OPEN_NEWER_VERSION);
             LOG.error("Could not open '{}': document version is newer than the application supports", file.getName(), e);
 
-            if (composition != null) {
-                composition.setModified(previousModified);
+            if (song != null) {
+                song.setModified(previousModified);
             }
             return false;
         } catch (SAXException e) {
             OptionDialogs.showErrorMessage(null, Strings.ALERT_TITLE_FILE_ERROR, Strings.ERROR_FILE_OPEN_DAMAGED, file.getName());
             LOG.error("Could not open damaged file '{}'", file.getName(), e);
-            if (composition != null) {
-                composition.setModified(previousModified);
+            if (song != null) {
+                song.setModified(previousModified);
             }
             return false;
         } catch (IOException e) {
             OptionDialogs.showErrorMessage(null, Strings.ALERT_TITLE_FILE_ERROR, Strings.ERROR_FILE_OPEN_NO_PERMISSION, file.getName());
             LOG.error("Could not open file '{}': permission error", file.getName(), e);
-            if (composition != null) {
-                composition.setModified(previousModified);
+            if (song != null) {
+                song.setModified(previousModified);
             }
             return false;
         }
@@ -567,7 +567,7 @@ public final class Score
     }
 
     @Handler(priority = TUPLET_INFO_CACHE_PRIORITY)
-    public void compositionDidChangeCacheTupletInfo(CompositionDidChangeNotification message) {
+    public void songDidChangeCacheTupletInfo(SongDidChangeNotification message) {
         cachedTupletToggleInfo = operations != null ? operations.canToggleTuplet() : null;
     }
 
@@ -581,8 +581,8 @@ public final class Score
         switch (message.getKey()) {
             case LOOP_PLAYBACK, PLAY_WITH_REPEATS -> syncPlaybackPrefs();
             case PAGE_SIZE -> {
-                if (composition != null) {
-                    updatePageLayout(ScaleContext.getInstance().toRoundedPixels(composition.getLineWidthSs()));
+                if (song != null) {
+                    updatePageLayout(ScaleContext.getInstance().toRoundedPixels(song.getLineWidthSs()));
                 }
             }
             default -> { }
@@ -790,35 +790,35 @@ public final class Score
     }
 
     public boolean isInitialized() {
-        return composition != null;
+        return song != null;
     }
 
     @Override
-    public Composition getComposition() {
-        if (composition == null) {
-            throw RuntimeError.exit("composition not initialized");
+    public Song getSong() {
+        if (song == null) {
+            throw RuntimeError.exit("song not initialized");
         }
 
-        return composition;
+        return song;
     }
 
-    public void setComposition(Composition composition) {
-        this.composition = composition;
+    public void setSong(Song song) {
+        this.song = song;
 
-        if (composition == null) {
+        if (song == null) {
             return;
         }
 
-        var lineWidthPx = ScaleContext.getInstance().toRoundedPixels(composition.getLineWidthSs());
+        var lineWidthPx = ScaleContext.getInstance().toRoundedPixels(song.getLineWidthSs());
 
         // Core setup needed for both headless and interactive modes
         updatePageLayout(lineWidthPx);
 
-        for (var i = 0; i < composition.lineCount(); i++) {
-            drawWidthIfWiderLine(composition.getLine(i), true);
+        for (var i = 0; i < song.lineCount(); i++) {
+            drawWidthIfWiderLine(song.getLine(i), true);
         }
 
-        composition.setModified(false);
+        song.setModified(false);
 
         if (!initialized) {
             return;
@@ -826,7 +826,7 @@ public final class Score
 
         // Interactive-only setup below
 
-        operations = new MusicEditOperations(composition, selectionCoordinator);
+        operations = new MusicEditOperations(song, selectionCoordinator);
 
         if (messageCoordinator == null) {
             messageCoordinator = new ScoreMessageCoordinator(
@@ -847,18 +847,18 @@ public final class Score
             throw RuntimeError.exit("mainPanel not initialized");
         }
 
-        mainPanel.setComposition(getComposition());
+        mainPanel.setSong(getSong());
         setupLineComponentState();
 
         syncPlaybackPrefs();
         viewChanged();
 
         // Notify all subscribers (LyricsPanel, ScoreMessageCoordinator, UIActions, etc.)
-        // that the composition has been fully replaced. This must happen after all
+        // that the song has been fully replaced. This must happen after all
         // Score state is consistent.
-        MessageCenter.post(new DocumentDidLoadNotification(composition));
+        MessageCenter.post(new DocumentDidLoadNotification(song));
 
-        // Reset scroll position to top-left for the new/opened composition
+        // Reset scroll position to top-left for the new/opened song
         if (scrollPane != null) {
             scrollPane.getViewport().setViewPosition(new Point(0, 0));
         }
@@ -882,7 +882,7 @@ public final class Score
     }
 
     public int getSheetWidthPx() {
-        return ScaleContext.getInstance().toRoundedPixels(getComposition().getLineWidthSs());
+        return ScaleContext.getInstance().toRoundedPixels(getSong().getLineWidthSs());
     }
 
     public int getSheetHeightPx() {
@@ -920,7 +920,7 @@ public final class Score
                 idealSpace = (float) ScaleContext.getInstance().toPixels(LayoutStylesheet.DEFAULT_COLUMN_GAP_SS) + 20;
             }
 
-            var lineWidthPx = getComposition().getLineWidthPx();
+            var lineWidthPx = getSong().getLineWidthPx();
 
             if (endNote.getXOffsetPx() > (lineWidthPx - idealSpace)) {
                 var firstX = line.getElement(0).getXOffsetPx();
@@ -1008,7 +1008,7 @@ public final class Score
     }
 
     public void updatePageLayout(int lineWidthPx) {
-        getComposition().setLineWidthSs(ScaleContext.getInstance().fromPixels(lineWidthPx));
+        getSong().setLineWidthSs(ScaleContext.getInstance().fromPixels(lineWidthPx));
 
         var pageModel = PageModel.getInstance();
         int pageWidthPx = pageModel.getPageWidthPx();
@@ -1096,17 +1096,17 @@ public final class Score
         return selectionCoordinator.canDeleteLine();
     }
 
-    public CompositionLayoutMetrics getCompositionLayoutMetrics() {
-        if (compositionLayoutMetrics == null) {
+    public SongLayoutMetrics getSongLayoutMetrics() {
+        if (songLayoutMetrics == null) {
             throw RuntimeError.exit(
-                "CompositionLayoutMetrics accessed before StaffPanel populated it");
+                "SongLayoutMetrics accessed before StaffPanel populated it");
         }
 
-        return compositionLayoutMetrics;
+        return songLayoutMetrics;
     }
 
-    public void setCompositionLayoutMetrics(CompositionLayoutMetrics metrics) {
-        this.compositionLayoutMetrics = metrics;
+    public void setSongLayoutMetrics(SongLayoutMetrics metrics) {
+        this.songLayoutMetrics = metrics;
     }
 
     public LyricRenderMetrics getLyricRenderMetrics() {

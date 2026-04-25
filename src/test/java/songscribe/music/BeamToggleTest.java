@@ -42,17 +42,17 @@ class BeamToggleTest extends UnitTest {
     private static final int EIGHTH_1 = 1;
     private static final int EIGHTH_2 = 2;
 
-    private static Composition composition;
+    private static Song song;
     private static Line line;
     private static SelectionCoordinator coordinator;
     private static MusicEditOperations operations;
 
     @BeforeAll
     static void loadFixtureData() throws Exception {
-        composition = loadFixture("connections");
-        line = composition.getLine(0);
+        song = loadFixture("connections");
+        line = song.getLine(0);
         coordinator = ReflectionTestHelper.createCoordinatorForLine(line);
-        operations = new MusicEditOperations(composition, coordinator);
+        operations = new MusicEditOperations(song, coordinator);
     }
 
     @Nested
@@ -114,7 +114,7 @@ class BeamToggleTest extends UnitTest {
                 .as("isUpper changed").isNotEqualTo(upperBefore);
 
             var flippedUpper = note.isUpper();
-            var reloaded = roundTrip(composition);
+            var reloaded = roundTrip(song);
             var reloadedNote = reloaded.getLine(0).getElement(EIGHTH_1);
 
             assertAll(

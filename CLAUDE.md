@@ -31,7 +31,7 @@ Key packages under `src/main/java/songscribe/`:
 | `file/` | File I/O, serialization |
 | `message/` | MBassador event bus — `MessageCenter`, `Message`, commands, notifications |
 | `midi/` | MIDI playback |
-| `music/` | Data model — `Composition`, `Line`, notes, decorations |
+| `music/` | Data model — `Song`, `Line`, notes, decorations |
 | `prefs/` | User preferences |
 | `smufl/` | SMuFL music font handling, glyph metadata |
 | `ui/` | Swing UI — `MainFrame`, renderers, actions, panels |
@@ -41,7 +41,7 @@ Key packages under `src/main/java/songscribe/`:
 
 - `SongScribe.java` — application bootstrap (`main()`)
 - `ui/component/MainFrame.java` — main window (singleton)
-- `music/Composition.java` — the document model
+- `music/Song.java` — the document model
 
 ## Key Gotchas
 
@@ -69,7 +69,7 @@ For the bootstrap logging constraint in `SongScribe.java`, see [Logging](./.clau
 
 For the MBassador message bus (posting, subscribing, `@Handler` methods), see [Message System](./.claude/rules/messages.md).
 
-For the typed `Mutation` records, modification brackets, and `CompositionDidChangeNotification` filtering, see [Mutation System](./.claude/rules/mutations.md).
+For the typed `Mutation` records, modification brackets, and `SongDidChangeNotification` filtering, see [Mutation System](./.claude/rules/mutations.md).
 
 For `JOptionPane`-based alerts, confirms, and input prompts, see [OptionDialogs](./.claude/option-dialogs.md).
 

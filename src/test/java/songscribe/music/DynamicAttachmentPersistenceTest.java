@@ -41,10 +41,10 @@ class DynamicAttachmentPersistenceTest extends UnitTest {
 
     @Test
     void testRoundTripPreservesDynamicAttachments() throws Exception {
-        var composition = new Composition();
-        var line = composition.getLine(0);
+        var song = new Song();
+        var line = song.getLine(0);
 
-        composition.withModification(() -> {
+        song.withModification(() -> {
             line.addElement(ElementType.CROTCHET.newInstance());
             line.addElement(ElementType.CROTCHET.newInstance());
             line.addElement(ElementType.CROTCHET.newInstance());
@@ -56,7 +56,7 @@ class DynamicAttachmentPersistenceTest extends UnitTest {
             pianissimoNote.addAttachment(new DynamicAttachment(pianissimoNote, DynamicType.PIANISSIMO));
         });
 
-        var reloaded = roundTrip(composition);
+        var reloaded = roundTrip(song);
         var reloadedLine = reloaded.getLine(0);
 
         var reloadedForte = reloadedLine.getElement(FORTE_INDEX).findAttachment(DynamicAttachment.class);

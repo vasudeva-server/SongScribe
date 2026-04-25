@@ -65,12 +65,12 @@ public final class LineIO {
         pw.println("    <" + XML_LINE + '>');
         XML.setIndent(6);
 
-        var composition = l.getComposition();
+        var song = l.getSong();
         var lineKeyType = l.getKeyType();
 
         if (
-            (l.getKeyAccidentalCount() != composition.getDefaultKeyAccidentalCount()) ||
-                (lineKeyType != composition.getDefaultKeyType())
+            (l.getKeyAccidentalCount() != song.getDefaultKeyAccidentalCount()) ||
+                (lineKeyType != song.getDefaultKeyType())
         ) {
             XML.writeValue(
                 pw,
