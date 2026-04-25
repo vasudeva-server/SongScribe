@@ -239,6 +239,8 @@ public final class Actions {
     public static final FlipStemDirectionAction FLIP_STEM_DIRECTION_ACTION =
         FlipStemDirectionAction.createAction();
 
+    public static final AddLyricAction ADD_LYRIC_ACTION = AddLyricAction.createAction();
+
     public static final ToggleTrillAction TOGGLE_TRILL_ACTION = ToggleTrillAction.createAction();
 
     public static final AddDynamicsAction ADD_CRESCENDO_ACTION =

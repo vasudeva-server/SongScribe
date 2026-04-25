@@ -1,0 +1,70 @@
+/*
+ * SongScribe song notation program
+ * Copyright (C) Sri Chinmoy Centres International
+ *
+ * This file is part of SongScribe.
+ *
+ * SongScribe is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * SongScribe is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+package songscribe.ui.action;
+
+import module java.desktop;
+
+import java.util.EnumSet;
+
+import songscribe.Strings;
+import songscribe.message.mutation.ElementField;
+import songscribe.ui.component.Score;
+
+public final class AddLyricAction extends UIAction {
+
+    private static final EnumSet<ElementField> MODIFIED_FIELDS = EnumSet.of(ElementField.LYRIC);
+
+    public static final Flag[] FLAGS = new Flag[]{
+        Flag.REQUIRES_SINGLE_SELECTION,
+        Flag.DISABLE_WHEN_PLAYING,
+        Flag.DISABLE_IN_ADJUSTMENT_MODE,
+        Flag.DISABLE_WHEN_BAR_SELECTED,
+        Flag.DISABLE_WHEN_SONG_EMPTY,
+        Flag.DISABLE_IN_GRACE_MODE,
+    };
+
+    public static AddLyricAction createAction() {
+        return new AddLyricAction();
+    }
+
+    private AddLyricAction() {
+        super(
+            Strings.get(Strings.ACTION_ADD_LYRIC),
+            "@\uEF6E", 22,
+            "add-lyric",
+            Strings.get(Strings.ACTION_ADD_LYRIC_TOOLTIP),
+            0, 0,
+            FLAGS
+        );
+    }
+
+    @Override
+    protected boolean enableFromSelection(boolean activeSelection, Score score) {
+        var element = score.getSelectionCoordinator().getSingleSelectedElement();
+
+        if (element == null) {
+            return true;
+        }
+
+        var lyric = element.getMainLyric();
+        return lyric == null || lyric.text().isBlank();
+    }
+}

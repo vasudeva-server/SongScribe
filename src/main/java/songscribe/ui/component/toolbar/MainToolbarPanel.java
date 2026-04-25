@@ -126,7 +126,7 @@ public final class MainToolbarPanel extends JPanel {
 
     private static JPanel createConnectionToolbarPanel() {
         var panel = createToolbarPanel(RIGHT_BORDER);
-        panel.add(new ConnectionToolbar());
+        panel.add(new ModifyNoteToolbar());
         return panel;
     }
 

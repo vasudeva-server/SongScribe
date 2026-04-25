@@ -24,12 +24,13 @@ import songscribe.ui.action.Actions;
 import songscribe.ui.component.ToolbarButton;
 import songscribe.ui.component.TupletPopupButton;
 
-public class ConnectionToolbar extends Toolbar {
+public class ModifyNoteToolbar extends Toolbar {
 
-    public ConnectionToolbar() {
+    public ModifyNoteToolbar() {
         add(new ToolbarButton(Actions.TOGGLE_BEAM_ACTION));
         add(new ToolbarButton(Actions.TOGGLE_TIE_ACTION));
         add(new TupletPopupButton());
         add(new ToolbarButton(Actions.FLIP_STEM_DIRECTION_ACTION));
+        add(new ToolbarButton(Actions.ADD_LYRIC_ACTION));
     }
 }
