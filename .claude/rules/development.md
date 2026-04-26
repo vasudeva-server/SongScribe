@@ -103,9 +103,9 @@ To determine the pass/fail status of tests, run `test.sh`. If there are failures
 
 Before writing tests, read the appropriate guide (these are NOT auto-loaded):
 
-- **Common conventions:** [testing-common.md](../.claude/testing-common.md)
-- **Unit tests:** [testing-unit.md](../.claude/testing-unit.md) — mocking patterns, ReflectionTestHelper, MainFrame singleton mocking
-- **E2E tests:** [testing-e2e.md](../.claude/testing-e2e.md) — user simulation helpers, coordinate conversion, layout sync
+- **Common conventions:** [testing-common.md](../testing-common.md)
+- **Unit tests:** [testing-unit.md](../testing-unit.md) — mocking patterns, ReflectionTestHelper, MainFrame singleton mocking
+- **E2E tests:** [testing-e2e.md](../testing-e2e.md) — user simulation helpers, coordinate conversion, layout sync
 
 ### Build Full Project
 
