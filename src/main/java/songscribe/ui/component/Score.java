@@ -124,8 +124,8 @@ public final class Score
         return FlatLafProps.get(FlatLafKeys.SCORE_PREVIEW_ELEMENT_COLOR);
     }
 
-    public static Color getSelectionStrokeColor() {
-        return FlatLafProps.get(FlatLafKeys.SCORE_SELECTION_RECT_BORDER);
+    public static Color getSelectionColor() {
+        return FlatLafProps.get(FlatLafKeys.SCORE_SELECTION_COLOR);
     }
 
     // Cached per-notification-dispatch result of canToggleTuplet(), populated by

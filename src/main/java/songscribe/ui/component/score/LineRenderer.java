@@ -177,7 +177,7 @@ class LineRenderer {
             && selectionProvider != null
             && selectionProvider.isLineSelected(lineIndex);
 
-        g2.setColor(staffSelected ? Score.getSelectionStrokeColor() : BaseElementRenderer.STAFF_LINE_COLOR);
+        g2.setColor(staffSelected ? Score.getSelectionColor() : BaseElementRenderer.STAFF_LINE_COLOR);
 
         var lineWidth = lc.getSong().getLineWidthSs();
         var middleLineYSs = lc.getMiddleLineYSs();
@@ -688,7 +688,7 @@ class LineRenderer {
                 SELECTION_RECT_ARC_PX, SELECTION_RECT_ARC_PX);
         var originalStroke = g2.getStroke();
         g2.setStroke(SELECTION_RECT_STROKE);
-        g2.setColor(Score.getSelectionStrokeColor());
+        g2.setColor(Score.getSelectionColor());
         g2.draw(roundRect);
         g2.setStroke(originalStroke);
     }

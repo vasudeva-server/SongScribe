@@ -75,7 +75,7 @@ public class ElementRenderContext {
     private LyricRenderMetrics lyricRenderMetrics = null;
     private LineComponent.@Nullable SelectionProvider selectionProvider;
     private boolean editMode;
-    private Color selectionColor = Score.getSelectionStrokeColor();
+    private Color selectionColor = Score.getSelectionColor();
     private int playingNoteIndex = -1;
     private int playingGraceNoteIndex = -1;
     private int currentElementIndex = -1;
