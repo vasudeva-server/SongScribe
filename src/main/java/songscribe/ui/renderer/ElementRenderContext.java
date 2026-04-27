@@ -27,6 +27,7 @@ import org.jspecify.annotations.Nullable;
 import songscribe.music.Song;
 import songscribe.music.Span;
 import songscribe.music.Line;
+import songscribe.music.StaffElement;
 import songscribe.ui.component.Score;
 import songscribe.ui.component.score.LineComponent;
 import songscribe.ui.component.score.PreviewElementManager;
@@ -73,6 +74,8 @@ public class ElementRenderContext {
     private SongLayoutMetrics songLayoutMetrics = null;
     @SuppressWarnings("NullAway") // set by setLyricRenderMetrics() before first access
     private LyricRenderMetrics lyricRenderMetrics = null;
+    @Nullable
+    private StaffElement activelyEditedElement;
     private LineComponent.@Nullable SelectionProvider selectionProvider;
     private boolean editMode;
     private Color selectionColor = Score.getSelectionColor();
@@ -227,6 +230,17 @@ public class ElementRenderContext {
     /** Sets the song-wide lyric render metrics. */
     public void setLyricRenderMetrics(LyricRenderMetrics metrics) {
         this.lyricRenderMetrics = metrics;
+    }
+
+    /** Returns the element currently being edited in the lyric overlay, or null. */
+    @Nullable
+    public StaffElement getActivelyEditedElement() {
+        return activelyEditedElement;
+    }
+
+    /** Sets the element being edited; pass null when no lyric editor is open. */
+    public void setActivelyEditedElement(@Nullable StaffElement element) {
+        this.activelyEditedElement = element;
     }
 
     /**

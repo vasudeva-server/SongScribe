@@ -126,7 +126,7 @@ class BeatChangeAttachmentTest extends UnitTest {
             var equals = metrics.regions().get(1);
 
             double equalsDescentSs = ScaleContext.getInstance().fromPixels(
-                font.getLineMetrics("=", GraphicUtils.LAYOUT_FRC).getDescent());
+                font.getLineMetrics("=", GraphicUtils.SCREEN_FRC).getDescent());
             double equalsBottom = equals.yOffsetSs() + equals.heightSs();
 
             assertThat(equalsBottom).isCloseTo(

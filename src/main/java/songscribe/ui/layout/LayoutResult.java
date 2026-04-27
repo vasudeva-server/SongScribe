@@ -614,6 +614,40 @@ public final class LayoutResult {
     }
 
     /**
+     * Returns the center-X and baseline-Y anchor for the lyric editor on {@code element}.
+     * <p>
+     * Uses the verse-1 lyric box when one exists (box-anchored branch); otherwise falls back to
+     * the element column's horizontal center (column-anchored branch). Throws
+     * {@link IllegalStateException} when neither a box nor a column is available — that indicates
+     * a broken layout state, not a recoverable condition.
+     *
+     * @param element           the element to anchor on
+     * @param songLayoutMetrics song-wide metrics providing the verse-1 baseline Y
+     * @return the lyric anchor for positioning the editor
+     * @throws IllegalStateException if neither a lyric box nor an element column exists for the element
+     */
+    public LyricAnchor getLyricAnchor(StaffElement element, SongLayoutMetrics songLayoutMetrics) {
+        var boxes = getLyricBoxes(element);
+        var baselineYSs = songLayoutMetrics.verseYSsInLine(1);
+
+        if (!boxes.isEmpty()) {
+            var box = boxes.getFirst();
+            var centerXSs = box.xSs() + box.widthSs() / 2.0;
+            return new LyricAnchor(centerXSs, baselineYSs);
+        }
+
+        var column = getElementColumn(element);
+
+        if (column == null) {
+            throw new IllegalStateException(
+                "getLyricAnchor: no lyric box and no column for element " + element);
+        }
+
+        var centerXSs = column.getXSs() + column.getRightExtentSs() / 2.0;
+        return new LyricAnchor(centerXSs, baselineYSs);
+    }
+
+    /**
      * Returns all lyric connectors (hyphens, melisma extenders) on this line.
      *
      * @return immutable list of connectors in the order they were emitted
@@ -1354,4 +1388,14 @@ public final class LayoutResult {
         double endXSs,
         double ySs,
         double heightSs) {}
+
+    /**
+     * Center-X and baseline-Y anchor returned by {@link #getLyricAnchor}.
+     * <p>
+     * All values are in staff-space units.
+     *
+     * @param centerXSs    horizontal center of the lyric box (or element column) in staff spaces
+     * @param baselineYSs  verse-1 text baseline Y in staff spaces
+     */
+    public record LyricAnchor(double centerXSs, double baselineYSs) {}
 }

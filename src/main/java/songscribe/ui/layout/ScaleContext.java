@@ -23,6 +23,7 @@ package songscribe.ui.layout;
 import module java.desktop;
 
 import songscribe.util.GraphicUtils;
+import songscribe.util.MyFontUtils;
 
 /**
  * Central scale context that defines the mapping between staff-space units
@@ -86,13 +87,33 @@ public final class ScaleContext {
 
     /** Returns the width of {@code text} in staff-space units for the given font. */
     public double textWidthSs(Font font, String text) {
-        return fromPixels(new TextLayout(text, font, GraphicUtils.LAYOUT_FRC).getAdvance());
+        return fromPixels(new TextLayout(text, font, GraphicUtils.SCREEN_FRC).getAdvance());
     }
 
     /** Returns the text height (ascent + descent) in staff-space units for the given font. */
     public double textHeightSs(Font font) {
-        var lm = font.getLineMetrics("", GraphicUtils.LAYOUT_FRC);
+        var lm = font.getLineMetrics("", GraphicUtils.SCREEN_FRC);
         return fromPixels(lm.getAscent() + lm.getDescent());
+    }
+
+    /** Returns the font ascent in staff-space units for the given font. */
+    public double fontAscentSs(Font font) {
+        return fromPixels(font.getLineMetrics("", GraphicUtils.SCREEN_FRC).getAscent());
+    }
+
+    /**
+     * Returns the maximum ascent in staff-space units for the given font — the largest
+     * ascent any glyph in the font can produce, suitable for sizing a stable text box that
+     * accommodates accents, diacriticals, and tall caps regardless of which characters are
+     * currently typed.
+     */
+    public double fontMaxAscentSs(Font font) {
+        return fromPixels(MyFontUtils.getFontMetrics(font).getMaxAscent());
+    }
+
+    /** Returns the font descent in staff-space units for the given font. */
+    public double fontDescentSs(Font font) {
+        return fromPixels(font.getLineMetrics("", GraphicUtils.SCREEN_FRC).getDescent());
     }
 
     /**

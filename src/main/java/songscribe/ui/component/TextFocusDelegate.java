@@ -22,7 +22,6 @@ package songscribe.ui.component;
 
 import module java.desktop;
 
-
 import songscribe.message.MessageCenter;
 import songscribe.message.notification.TextEditingDidChangeNotification;
 

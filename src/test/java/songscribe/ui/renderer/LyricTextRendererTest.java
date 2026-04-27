@@ -154,4 +154,41 @@ class LyricTextRendererTest extends UnitTest {
         verify(g2).setFont(any(Font.class));
         verify(g2).drawString(anyString(), anyFloat(), anyFloat());
     }
+
+    // T28
+    @Test
+    void testSkipsActivelyEditedElementButRendersOthers() {
+        var activeElement = ElementType.CROTCHET.newInstance();
+        var otherElement = ElementType.CROTCHET.newInstance();
+
+        var activeBox = new LyricBoxLayout(1.0, 1.5, 1, "la");
+        var otherBox = new LyricBoxLayout(3.0, 1.5, 1, "sol");
+
+        var layoutResult = LayoutResult.builder()
+            .addLyricBox(activeElement, activeBox)
+            .addLyricBox(otherElement, otherBox)
+            .build();
+
+        var lyricRenderMetrics = new LyricRenderMetrics(LYRICS_FONT, LYRICS_FONT, 0.0, 0.0);
+
+        var activeCtx = new ElementRenderContext(new Song());
+        activeCtx.setLayoutResult(layoutResult);
+        activeCtx.setSongLayoutMetrics(metrics(1.0, 2.5, 1));
+        activeCtx.setLyricRenderMetrics(lyricRenderMetrics);
+        activeCtx.setActivelyEditedElement(activeElement);
+
+        var g2Active = mock(Graphics2D.class);
+        LyricTextRenderer.getInstance().render(activeElement, g2Active, activeCtx);
+        verifyNoInteractions(g2Active);
+
+        var otherCtx = new ElementRenderContext(new Song());
+        otherCtx.setLayoutResult(layoutResult);
+        otherCtx.setSongLayoutMetrics(metrics(1.0, 2.5, 1));
+        otherCtx.setLyricRenderMetrics(lyricRenderMetrics);
+        otherCtx.setActivelyEditedElement(activeElement);
+
+        var g2Other = mock(Graphics2D.class);
+        LyricTextRenderer.getInstance().render(otherElement, g2Other, otherCtx);
+        verify(g2Other).drawString(anyString(), anyFloat(), anyFloat());
+    }
 }

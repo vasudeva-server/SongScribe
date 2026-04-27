@@ -42,6 +42,7 @@ public class MyJTextArea extends JTextArea {
 
     private void init() {
         delegate = new TextFocusDelegate(this);
+        setCaret(new SelectionHidingCaret());
     }
 
     @Override

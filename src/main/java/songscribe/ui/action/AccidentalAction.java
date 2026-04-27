@@ -110,7 +110,7 @@ public class AccidentalAction extends NoteOnlyAction {
             tooltip,
             virtualKey,
             modifiers,
-            withFlags(NoteOnlyAction.FLAGS, Flag.DISABLE_WHEN_EDITING_TEXT)
+            NoteOnlyAction.FLAGS
         );
         this.accidental = accidental;
     }

@@ -52,6 +52,12 @@ public class LyricTextRenderer extends BaseElementRenderer<StaffElement> {
         Graphics2D g2,
         ElementRenderContext ctx
     ) {
+        // While the editor is open, suppress the rendered box so the overlay is the
+        // sole representation. Connectors are not suppressed (no connectors in 1a).
+        if (ctx.getActivelyEditedElement() == element) {
+            return;
+        }
+
         var boxes = ctx.getLayoutResult().getLyricBoxes(element);
 
         if (boxes.isEmpty()) {

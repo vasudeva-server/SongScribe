@@ -34,6 +34,7 @@ import songscribe.prefs.PrefsKey;
 import songscribe.Strings;
 import songscribe.ui.component.BorderPanel;
 import songscribe.ui.component.MyBorder;
+import songscribe.ui.component.MyJTextField;
 import songscribe.util.GraphicUtils;
 
 @SuppressWarnings("NonStaticInitializer")
@@ -41,8 +42,8 @@ public class ResolutionDialog extends StandardDialog implements ChangeListener {
 
     private boolean approved = false;
     private JPanel mainPanel;
-    private JTextField widthField;
-    private JTextField heightField;
+    private MyJTextField widthField;
+    private MyJTextField heightField;
     private JCheckBox withoutLyricsCheck;
     private JSpinner resolutionSpinner;
     private BorderPanel borderPanel;
@@ -492,7 +493,7 @@ public class ResolutionDialog extends StandardDialog implements ChangeListener {
                 false
             )
         );
-        widthField = new JTextField();
+        widthField = new MyJTextField();
         widthField.setEditable(false);
         panel4.add(
             widthField,
@@ -512,7 +513,7 @@ public class ResolutionDialog extends StandardDialog implements ChangeListener {
                 false
             )
         );
-        heightField = new JTextField();
+        heightField = new MyJTextField();
         heightField.setEditable(false);
         panel4.add(
             heightField,

@@ -99,7 +99,6 @@ public final class Score
     extends JComponent
     implements
     ComponentHierarchyProvider,
-    FocusRestorationCallback,
     InputHandlerCallback,
     LineComponent.SelectionProvider,
     RenderContext,
@@ -207,9 +206,6 @@ public final class Score
     // Preferred size of the score panel
     private final Dimension preferredSizePx = new Dimension();
 
-    // Manages focus behavior to keep the score in focus (null in headless mode)
-    private final @Nullable ScoreFocusController focusController;
-
     // Navigates the component hierarchy (null in headless mode)
     private final @Nullable ComponentHierarchyNavigator hierarchyNavigator;
 
@@ -268,11 +264,9 @@ public final class Score
         }
 
         if (headless) {
-            focusController = null;
             hierarchyNavigator = null;
             inputHandler = null;
         } else {
-            focusController = new ScoreFocusController(this);
             hierarchyNavigator = new ComponentHierarchyNavigator(this);
             var handler = new ScoreInputHandler(this, editModeManager);
             inputHandler = handler;
@@ -307,10 +301,6 @@ public final class Score
         if (inputHandler != null) {
             addMouseMotionListener(inputHandler);
             addMouseListener(inputHandler);
-        }
-
-        if (focusController != null) {
-            addFocusListener(focusController);
         }
 
         initEditPopup();
@@ -1061,12 +1051,6 @@ public final class Score
         return selectionCoordinator.getSelection();
     }
 
-    public void allowFocusInComponent(Component component) {
-        if (focusController != null) {
-            focusController.allowFocusInComponent(component);
-        }
-    }
-
     public BufferedImage createImageForExport(
         Color background,
         double scale,
@@ -1120,6 +1104,34 @@ public final class Score
 
     public void setLyricRenderMetrics(LyricRenderMetrics metrics) {
         this.lyricRenderMetrics = metrics;
+    }
+
+    @Nullable
+    public LyricEditor getActiveLyricEditor() {
+        for (var component : getComponents()) {
+            if (component instanceof LyricEditor editor) {
+                return editor;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Adds {@code overlay} as a free-floating absolute-bounds child. Score uses BorderLayout
+     * for its main panel, so we must register the overlay with null constraints (so the
+     * layout manager ignores it) and restore the main panel's center mapping that
+     * {@link #add(Component)} silently overwrote.
+     */
+    public void addOverlay(JComponent overlay) {
+        add(overlay);
+
+        var layout = (BorderLayout) getLayout();
+        layout.removeLayoutComponent(overlay);
+
+        if (mainPanel != null) {
+            layout.addLayoutComponent(mainPanel, BorderLayout.CENTER);
+        }
     }
 
 }

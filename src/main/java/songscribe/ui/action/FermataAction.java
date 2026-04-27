@@ -41,7 +41,7 @@ public class FermataAction extends NoteOnlyAction {
             0,
             "fermata",
             Strings.get(Strings.ACTION_FERMATA_TOOLTIP),
-            withFlags(NoteOnlyAction.FLAGS, Flag.DISABLE_WHEN_EDITING_TEXT)
+            NoteOnlyAction.FLAGS
         );
     }
 

@@ -576,7 +576,7 @@ public class SongSettingsDialog extends StandardDialog {
             KeyCellRenderer.SELECTIONS.toArray(new KeySelection[0])
         );
 
-        private final JTextField lineWidthField = new JTextField(6);
+        private final MyJTextField lineWidthField = new MyJTextField(6);
         private final JLabel unitLabel = new JLabel();
 
         private MusicTab() {
@@ -836,7 +836,7 @@ public class SongSettingsDialog extends StandardDialog {
         );
 
         private final JLabel attributionFontLabel = new JLabel();
-        private final JTextArea attributionFontPreview = new JTextArea(
+        private final MyJTextArea attributionFontPreview = new MyJTextArea(
             """
                 Words and music
                 by Sri Chinmoy"""
@@ -1235,7 +1235,7 @@ public class SongSettingsDialog extends StandardDialog {
                         );
                     }
 
-                    var glyphVector = FONT.createGlyphVector(GraphicUtils.LAYOUT_FRC, glyph);
+                    var glyphVector = FONT.createGlyphVector(GraphicUtils.SCREEN_FRC, glyph);
                     var visualBounds = glyphVector.getVisualBounds();
                     maxGlyphWidth = Math.max(maxGlyphWidth, visualBounds.getWidth());
                     maxGlyphHeight = Math.max(maxGlyphHeight, visualBounds.getHeight());
@@ -1246,7 +1246,7 @@ public class SongSettingsDialog extends StandardDialog {
                     );
                     var textLayout = new TextLayout(
                         attributed.getIterator(),
-                        GraphicUtils.LAYOUT_FRC
+                        GraphicUtils.SCREEN_FRC
                     );
                     maxLabelWidth = Math.max(
                         maxLabelWidth,

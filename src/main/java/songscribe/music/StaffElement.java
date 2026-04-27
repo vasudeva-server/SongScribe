@@ -544,6 +544,30 @@ public class StaffElement extends LineElement implements Cloneable {
         return Collections.unmodifiableList(properties.lyrics);
     }
 
+    /**
+     * Sets or removes the lyric for a given verse.
+     * <p>
+     * <b>Mutation contract:</b> production callers must invoke this from inside a
+     * {@code Line.modifyElement} bracket so an {@code ElementModification} is recorded
+     * with the {@code LYRIC} field. Calling it directly outside a bracket bypasses the
+     * mutation system (no notification, no undo entry) and is permitted only for test
+     * setup that mirrors {@code song.withoutMutationTracking}.
+     *
+     * @param verse    the verse number (typically 1)
+     * @param relation the syllable boundary type
+     * @param text     the syllable text; null or blank removes the verse entry
+     * @param extend   the melisma extender state
+     */
+    public void setLyricForVerse(int verse, SyllableRelation relation, @Nullable String text, Lyric.Extend extend) {
+        // Remove existing verse-N entry if any
+        properties.lyrics.removeIf(lyric -> lyric.verse() == verse);
+
+        // Add new entry if text is non-blank
+        if (text != null && !text.isBlank()) {
+            properties.lyrics.add(new Lyric(verse, relation, text, extend));
+        }
+    }
+
     public boolean isStemDirectionAuto() {
         return stemDirectionAuto;
     }

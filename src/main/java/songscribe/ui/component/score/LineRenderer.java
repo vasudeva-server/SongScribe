@@ -137,6 +137,8 @@ class LineRenderer {
         var score = lc.getScore();
         ctx.setSongLayoutMetrics(score.getSongLayoutMetrics());
         ctx.setLyricRenderMetrics(score.getLyricRenderMetrics());
+        var activeEditor = score.getActiveLyricEditor();
+        ctx.setActivelyEditedElement(activeEditor != null ? activeEditor.getActiveElement() : null);
         ctx.setSelectionProvider(lc.getSelectionProvider());
         ctx.setEditMode(lc.isEditMode());
         ctx.setPlayingNoteIndex(lc.getPlayingNoteIndex());

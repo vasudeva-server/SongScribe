@@ -22,19 +22,18 @@ package songscribe.ui.action;
 
 import module java.desktop;
 
-import java.util.EnumSet;
+import static java.awt.event.KeyEvent.*;
 
 import songscribe.Strings;
-import songscribe.message.mutation.ElementField;
+import songscribe.ui.component.LyricEditor;
 import songscribe.ui.component.Score;
 
 public final class AddLyricAction extends UIAction {
 
-    private static final EnumSet<ElementField> MODIFIED_FIELDS = EnumSet.of(ElementField.LYRIC);
-
     public static final Flag[] FLAGS = new Flag[]{
         Flag.REQUIRES_SINGLE_SELECTION,
         Flag.DISABLE_WHEN_PLAYING,
+        Flag.DISABLE_WHEN_EDITING_TEXT,
         Flag.DISABLE_IN_ADJUSTMENT_MODE,
         Flag.DISABLE_WHEN_BAR_SELECTED,
         Flag.DISABLE_WHEN_SONG_EMPTY,
@@ -51,7 +50,7 @@ public final class AddLyricAction extends UIAction {
             "@\uEF6E", 22,
             "add-lyric",
             Strings.get(Strings.ACTION_ADD_LYRIC_TOOLTIP),
-            0, 0,
+            VK_L, META_DOWN_MASK,
             FLAGS
         );
     }
@@ -66,5 +65,18 @@ public final class AddLyricAction extends UIAction {
 
         var lyric = element.getMainLyric();
         return lyric == null || lyric.text().isBlank();
+    }
+
+    @Override
+    public void actionPerformed(ActionEvent e) {
+        var score = requireScore();
+        var element = score.getSelectionCoordinator().getSingleSelectedElement();
+
+        if (element == null) {
+            throw new IllegalStateException(
+                "AddLyricAction fired with no selected element — REQUIRES_SINGLE_SELECTION should have prevented this");
+        }
+
+        LyricEditor.openOn(score, element.getLine(), element);
     }
 }

@@ -22,6 +22,8 @@ package songscribe.ui.layout;
 
 import module java.desktop;
 
+import songscribe.util.GraphicUtils;
+
 /**
  * Lyrics-font-derived values hoisted to song scope so they are computed once
  * per relayout rather than per element. Used by both the layout engine (for measuring
@@ -58,5 +60,67 @@ public record LyricRenderMetrics(
     /** Returns the preferred cell width for a hyphen connector (glyph width × widening factor). */
     public double preferredHyphenCellWidthSs() {
         return HYPHEN_WIDENING_FACTOR * hyphenWidthSs;
+    }
+
+    /**
+     * Returns the full lyric box width for {@code text} in staff spaces.
+     */
+    public double lyricBoxWidthSs(String text) {
+        if (text.isEmpty()) {
+            return 0.0;
+        }
+
+        return ScaleContext.getInstance().textWidthSs(lyricsFont, text);
+    }
+
+    /**
+     * Visual layout metrics for a lyric box, all in staff-space units.
+     *
+     * @param advanceSs     cursor-advance width (the layout width used for column placement
+     *                      and centering math)
+     * @param leftBearingSs offset from the advance origin to the leftmost painted pixel;
+     *                      typically 0 or slightly negative for glyphs that overhang to
+     *                      the left of their advance origin
+     * @param rightExtentSs offset from the advance origin to the rightmost painted pixel;
+     *                      may exceed {@code advanceSs} for glyphs that overhang past their
+     *                      advance width
+     */
+    public record LyricBoxMetrics(double advanceSs, double leftBearingSs, double rightExtentSs) {
+        public static final LyricBoxMetrics EMPTY = new LyricBoxMetrics(0.0, 0.0, 0.0);
+    }
+
+    /**
+     * Returns advance plus visual left/right extents for {@code text}. Use this when sizing
+     * a container that must include glyph overhang (e.g. an in-place editor) so leftmost or
+     * rightmost ink pixels are not clipped. Plain layout callers should keep using
+     * {@link #lyricBoxWidthSs} since they want advance-only.
+     */
+    public LyricBoxMetrics lyricBoxMetricsSs(String text) {
+        if (text.isEmpty()) {
+            return LyricBoxMetrics.EMPTY;
+        }
+
+        var layout = new TextLayout(text, lyricsFont, GraphicUtils.SCREEN_FRC);
+        var bounds = layout.getBounds();
+        var scaleContext = ScaleContext.getInstance();
+
+        return new LyricBoxMetrics(
+            scaleContext.fromPixels(layout.getAdvance()),
+            scaleContext.fromPixels(bounds.getX()),
+            scaleContext.fromPixels(bounds.getX() + bounds.getWidth())
+        );
+    }
+
+    /**
+     * Returns a stable lyric-box height in staff spaces — ascent + descent of the lyrics
+     * font. Matches what {@link javax.swing.JTextField} actually paints (its baseline
+     * lands at {@code insets.top + ascent} from {@link java.awt.font.LineMetrics}, and
+     * the descender extends {@code descent} below), so the box hugs the rendered glyphs
+     * with no slack. Independent of the currently typed text so the editor box does not
+     * change height as characters with descenders are typed or deleted.
+     */
+    public double lyricBoxHeightSs() {
+        var scaleContext = ScaleContext.getInstance();
+        return scaleContext.fontAscentSs(lyricsFont) + scaleContext.fontDescentSs(lyricsFont);
     }
 }

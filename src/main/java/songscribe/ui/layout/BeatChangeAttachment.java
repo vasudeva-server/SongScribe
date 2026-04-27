@@ -99,7 +99,7 @@ public class BeatChangeAttachment extends MetronomeAttachment {
 
         regions.add(new CollisionRegion(0, 0, leftNoteWidthSs, QUARTER_NOTE_HEIGHT_SS));
 
-        var equalsLm = attrFont.getLineMetrics("=", GraphicUtils.LAYOUT_FRC);
+        var equalsLm = attrFont.getLineMetrics("=", GraphicUtils.SCREEN_FRC);
         double equalsAscentSs = scale.fromPixels(equalsLm.getAscent());
         double equalsDescentSs = scale.fromPixels(equalsLm.getDescent());
         double equalsXOffsetSs = leftNoteWidthSs + EQUALS_GAP_SS;

@@ -42,6 +42,7 @@ public class MyJTextField extends JTextField {
 
     private void init() {
         focusDelegate = new TextFocusDelegate(this);
+        setCaret(new SelectionHidingCaret());
     }
 
     @Override

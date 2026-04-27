@@ -221,7 +221,7 @@ public class LayoutEngine {
         boolean hasLeadingLyricContinuation) {
 
         var lyricResult = LyricLayoutBuilder.build(
-            columns, lyricRenderMetrics.lyricsFont(), hasLeadingLyricContinuation, staffRightMarginSs);
+            columns, lyricRenderMetrics, hasLeadingLyricContinuation, staffRightMarginSs);
 
         for (var entry : lyricResult.boxes().entrySet()) {
             for (var box : entry.getValue()) {

@@ -38,16 +38,18 @@ import oshi.util.EdidUtil;
 
 import songscribe.smufl.SMuFLGlyph;
 
+
 public final class GraphicUtils {
 
     private static final Logger LOG = LoggerFactory.getLogger(GraphicUtils.class);
 
     /**
-     * A {@link FontRenderContext} for layout-time glyph measurement without a live
-     * {@link Graphics2D}. Uses antialiasing and fractional metrics enabled.
+     * A {@link FontRenderContext} derived from the default screen device with the
+     * application's standard rendering hints applied. Use for layout-time glyph
+     * measurement so that text advances match what is actually rendered on screen.
+     * Initialised in the static block below alongside {@code isRetina} and {@code dpi}.
      */
-    public static final FontRenderContext LAYOUT_FRC =
-        new FontRenderContext(null, true, true);
+    public static final FontRenderContext SCREEN_FRC;
 
     private static final FlatSVGIcon.ColorFilter THEME_AWARE_SVG_ICON_FILTER =
         new FlatSVGIcon.ColorFilter(
@@ -117,6 +119,13 @@ public final class GraphicUtils {
         var config = gd.getDefaultConfiguration();
         isRetina = config.getDefaultTransform().getScaleX() > 1;
         dpi = computePhysicalDpi(gd);
+
+        var image = config.createCompatibleImage(1, 1);
+        var g2d = image.createGraphics();
+        setRenderingHints(g2d);
+        SCREEN_FRC = g2d.getFontRenderContext();
+        g2d.dispose();
+        image.flush();
     }
 
     /**

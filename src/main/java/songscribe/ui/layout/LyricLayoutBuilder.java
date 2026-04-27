@@ -20,8 +20,6 @@
 
 package songscribe.ui.layout;
 
-import module java.desktop;
-
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -72,14 +70,14 @@ public final class LyricLayoutBuilder {
      * Builds lyric boxes and connectors for a single line.
      *
      * @param columns                per-element columns in line order (X positions already finalized)
-     * @param lyricsFont             font used to measure and lay out syllable text
+     * @param lyricRenderMetrics     metrics used to measure syllable text widths
      * @param hasLeadingContinuation true if the previous line ended with an active extender
      *                               that should continue from x = 0 on this line
      * @param lineWidthSs            width of the line in staff spaces (used for trailing stubs)
      */
     public static Result build(
         List<ElementColumn> columns,
-        Font lyricsFont,
+        LyricRenderMetrics lyricRenderMetrics,
         boolean hasLeadingContinuation,
         double lineWidthSs) {
 
@@ -93,7 +91,7 @@ public final class LyricLayoutBuilder {
             // Only verse 1 is currently populated; cross-line continuation flows through verse 1.
             // Multi-verse continuation threading is a follow-up when multi-verse data lands.
             var leading = (verse == 1) && hasLeadingContinuation;
-            var verseResult = buildVerse(verse, columns, lyricsFont, leading, lineWidthSs);
+            var verseResult = buildVerse(verse, columns, lyricRenderMetrics, leading, lineWidthSs);
 
             for (var entry : verseResult.boxesByElement.entrySet()) {
                 boxes.computeIfAbsent(entry.getKey(), e -> new ArrayList<>()).addAll(entry.getValue());
@@ -128,7 +126,7 @@ public final class LyricLayoutBuilder {
     private static VerseResult buildVerse(
         int verse,
         List<ElementColumn> columns,
-        Font lyricsFont,
+        LyricRenderMetrics lyricRenderMetrics,
         boolean hasLeadingContinuation,
         double lineWidthSs) {
 
@@ -176,7 +174,7 @@ public final class LyricLayoutBuilder {
             // reuse the cached value to avoid a redundant TextLayout allocation per layout pass.
             var widthSs = (verse == 1)
                 ? column.getSyllableWidthSs()
-                : ScaleContext.getInstance().textWidthSs(lyricsFont, text);
+                : lyricRenderMetrics.lyricBoxWidthSs(text);
             var centerXSs = column.getXSs() + column.getRightExtentSs() / 2.0;
             var boxXSs = centerXSs - widthSs / 2.0;
             var box = new LyricBoxLayout(boxXSs, widthSs, verse, text);

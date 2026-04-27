@@ -309,7 +309,7 @@ public class ElementColumnBuilder {
             return 0;
         }
 
-        return ScaleContext.getInstance().textWidthSs(lyricRenderMetrics.lyricsFont(), syllable);
+        return lyricRenderMetrics.lyricBoxWidthSs(syllable);
     }
 
     // ==========================================================================

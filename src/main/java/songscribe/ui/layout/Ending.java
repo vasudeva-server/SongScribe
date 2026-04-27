@@ -61,11 +61,11 @@ public class Ending extends RangeElement {
 
     /** Cached visual bounds for the "1." label. */
     private static final Rectangle2D LABEL_1_BOUNDS_SS =
-        ENDING_FONT.createGlyphVector(GraphicUtils.LAYOUT_FRC, "1.").getVisualBounds();
+        ENDING_FONT.createGlyphVector(GraphicUtils.SCREEN_FRC, "1.").getVisualBounds();
 
     /** Cached visual bounds for the "2." label. */
     private static final Rectangle2D LABEL_2_BOUNDS_SS =
-        ENDING_FONT.createGlyphVector(GraphicUtils.LAYOUT_FRC, "2.").getVisualBounds();
+        ENDING_FONT.createGlyphVector(GraphicUtils.SCREEN_FRC, "2.").getVisualBounds();
 
     /**
      * The type of ending (first or second).

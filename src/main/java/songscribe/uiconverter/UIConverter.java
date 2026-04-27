@@ -36,6 +36,7 @@ import songscribe.ui.OptionDialogs;
 import songscribe.ui.action.QuitAction;
 import songscribe.SongScribe;
 import songscribe.ui.component.MainFrame;
+import songscribe.ui.component.MyJTextField;
 import songscribe.ui.component.Score;
 import songscribe.ui.playback.MidiController;
 import songscribe.util.GraphicUtils;
@@ -202,7 +203,7 @@ public class UIConverter extends MainFrame {
                 false
             )
         );
-        songsFolder = new JTextField();
+        songsFolder = new MyJTextField();
         songsFolder.setEditable(false);
         panel1.add(
             songsFolder,
