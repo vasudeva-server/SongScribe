@@ -22,7 +22,7 @@
 
 ## Testability Over Encapsulation
 
-When a private method is a self-contained unit worth testing directly, widen its visibility to package-private rather than trying to test it indirectly through public methods that require complex setup. Reconstructing application state through mocks, reflection, or elaborate wiring just to reach a private method makes tests fragile and hard to understand. A simple visibility change is always preferable.
+When a private method is a self-contained unit worth testing directly, widen its visibility to package-private rather than trying to test it indirectly through public methods that require complex setup. Reconstructing application state through mocks, reflection, or elaborate wiring just to reach a private method makes tests fragile and hard to understand. The same goes for private constants, widen access instead of duplicating them. A simple visibility change is always preferable.
 
 ## Assertions
 
