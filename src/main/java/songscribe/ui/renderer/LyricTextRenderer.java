@@ -21,10 +21,12 @@
 package songscribe.ui.renderer;
 
 import static songscribe.ui.renderer.GraphicsState.Property.FONT;
+import static songscribe.ui.renderer.GraphicsState.Property.TRANSFORM;
 
 import module java.desktop;
 
 import songscribe.music.StaffElement;
+import songscribe.ui.layout.ScaleContext;
 import songscribe.ui.layout.SongLayoutMetrics;
 
 /**
@@ -66,13 +68,24 @@ public class LyricTextRenderer extends BaseElementRenderer<StaffElement> {
 
         var metrics = ctx.getSongLayoutMetrics();
         var lyricRenderMetrics = ctx.getLyricRenderMetrics();
+        var scaleContext = ScaleContext.getInstance();
+        var pxPerSs = ctx.getPixelsPerStaffSpace();
 
-        try (var ignored = GraphicsState.save(g2, FONT)) {
-            g2.setFont(lyricRenderMetrics.scaledLyricsFont());
+        try (var ignored = GraphicsState.save(g2, FONT, TRANSFORM)) {
+            // Strip only the staff-space → pixel factor from the current transform,
+            // leaving any HiDPI / zoom scale intact. This makes the renderer go through
+            // the same rasterization path JTextField uses: unscaled lyricsFont drawn at
+            // integer logical-pixel coordinates. Drawing through the SS scale instead
+            // (with scaledLyricsFont) takes a different float-ascent rounding path that
+            // shifts the baseline by up to one device pixel relative to the editor.
+            g2.scale(1.0 / pxPerSs, 1.0 / pxPerSs);
+            g2.setFont(lyricRenderMetrics.lyricsFont());
 
             for (var box : boxes) {
                 var baselineYSs = metrics.verseYSsInLine(box.verseIndex());
-                g2.drawString(box.text(), (float) box.xSs(), (float) baselineYSs);
+                var xPx = scaleContext.toRoundedPixels(box.xSs());
+                var yPx = scaleContext.toRoundedPixels(baselineYSs);
+                g2.drawString(box.text(), xPx, yPx);
             }
         }
     }

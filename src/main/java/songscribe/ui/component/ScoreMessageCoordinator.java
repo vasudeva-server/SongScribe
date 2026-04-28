@@ -153,8 +153,7 @@ public final class ScoreMessageCoordinator {
                 ? (selectionCoordinator.getSelectedLine() + shift)
                 : InsertLineAction.ADD;
             song.addLine(index, new Line());
-            score.clearSelection();
-            score.repaint();
+            score.deselect();
         } else {
             OptionDialogs.showErrorMessage(
                 null,
@@ -441,8 +440,7 @@ public final class ScoreMessageCoordinator {
         // pre-selection states would be stale. Individual action handlers will
         // re-evaluate their enabled state from the current context.
         selectionCoordinator.clearSavedActionStates();
-        score.clearSelection();
-        score.repaint();
+        score.deselect();
     }
 
     /**
@@ -467,8 +465,7 @@ public final class ScoreMessageCoordinator {
     @Handler
     public void handleDeselect(DeselectCommand message) {
         if (score.isFocusOwner()) {
-            score.clearSelection();
-            score.repaint();
+            score.deselect();
         }
     }
 

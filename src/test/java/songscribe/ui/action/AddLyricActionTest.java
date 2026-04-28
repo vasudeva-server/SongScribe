@@ -68,7 +68,8 @@ class AddLyricActionTest extends UnitTest {
 
         try (var lyricEditorMock = mockStatic(LyricEditor.class)) {
             action.actionPerformed(new ActionEvent(this, ActionEvent.ACTION_PERFORMED, "add-lyric"));
-            lyricEditorMock.verify(() -> LyricEditor.openOn(mockEnv.score(), mockLine, mockElement));
+            var score = mockEnv.score();
+            lyricEditorMock.verify(() -> LyricEditor.openOn(score, mockLine, mockElement));
         }
     }
 

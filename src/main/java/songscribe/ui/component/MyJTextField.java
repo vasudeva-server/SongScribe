@@ -21,34 +21,40 @@ package songscribe.ui.component;
 
 import module java.desktop;
 
+import org.jspecify.annotations.Nullable;
 
 public class MyJTextField extends JTextField {
 
-    private TextFocusDelegate focusDelegate;
+    protected final TextFocusDelegate focusDelegate;
 
     public MyJTextField() {
-        init();
+        this(null, 0);
     }
 
     public MyJTextField(String text) {
-        super(text);
-        init();
+        this(text, 0);
     }
 
     public MyJTextField(int columns) {
-        super(columns);
-        init();
+        this(null, columns);
     }
 
-    private void init() {
-        focusDelegate = new TextFocusDelegate(this);
+    protected MyJTextField(@Nullable String text, int columns) {
+        super(text, columns);
+        this.focusDelegate = createFocusDelegate();
         setCaret(new SelectionHidingCaret());
+    }
+
+    /** Hook for subclasses to provide a specialized focus delegate. */
+    protected TextFocusDelegate createFocusDelegate() {
+        return new TextFocusDelegate(this);
     }
 
     @Override
     protected void processKeyEvent(KeyEvent e) {
-        if (!focusDelegate.processKeyEvent(e)) {
-            super.processKeyEvent(e);
+        if (focusDelegate != null && focusDelegate.processKeyEvent(e)) {
+            return;
         }
+        super.processKeyEvent(e);
     }
 }

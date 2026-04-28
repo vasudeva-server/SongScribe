@@ -22,6 +22,7 @@ package songscribe.ui.component;
 
 import module java.desktop;
 
+import java.awt.event.MouseEvent;
 import java.util.Collections;
 import java.util.EnumSet;
 
@@ -31,6 +32,7 @@ import javax.swing.text.AbstractDocument;
 import javax.swing.text.AttributeSet;
 import javax.swing.text.BadLocationException;
 import javax.swing.text.DocumentFilter;
+import javax.swing.text.Element;
 
 import org.jspecify.annotations.Nullable;
 
@@ -93,7 +95,7 @@ import songscribe.ui.layout.ScaleContext;
  *  └───────────────────────────────────────────────────────────┘
  * </pre>
  */
-public final class LyricEditor extends JTextField {
+public final class LyricEditor extends MyJTextField {
 
     static final int MAX_LENGTH_CHARS = 32;
 
@@ -117,12 +119,19 @@ public final class LyricEditor extends JTextField {
     private static final int CARET_SLACK_PX = 1;
 
     /**
+     * Swing's {@link FieldView} clips to the field allocation before text is drawn. Some
+     * rasterized glyph edges can land just outside that allocation even when Java reports
+     * no negative left bearing, so the editor view gives the paint clip a small left guard.
+     */
+    private static final int LEADING_PAINT_SLACK_PX = 1;
+
+    /**
      * Minimum content-area width when the editor is empty so the caret remains visible
      * and the box reads as a clickable target rather than collapsing to zero.
      */
     private static final double EMPTY_BOX_MIN_WIDTH_SS = 0.125;  // 1px
 
-private static final String ACTION_KEY_TAB = "lyric.editor.tab";
+    private static final String ACTION_KEY_TAB = "lyric.editor.tab";
     private static final String ACTION_KEY_ENTER = "lyric.editor.enter";
     private static final String ACTION_KEY_ESCAPE = "lyric.editor.escape";
 
@@ -133,12 +142,14 @@ private static final String ACTION_KEY_TAB = "lyric.editor.tab";
 
     private boolean focused;
 
+    @Nullable private AWTEventListener outsideClickListener;
+
     /**
      * Constructs a {@link LyricEditor} on {@code element}, attaches it to {@code score},
      * and gives it focus. Used by both {@link songscribe.ui.action.AddLyricAction} and
      * {@link #advance()} so the open sequence is centralized.
      */
-    public static LyricEditor openOn(Score score, Line line, StaffElement element) {
+    public static void openOn(Score score, Line line, StaffElement element) {
         var editor = new LyricEditor(score, line, element);
         score.addOverlay(editor);
         score.setComponentZOrder(editor, 0);
@@ -150,8 +161,6 @@ private static final String ACTION_KEY_TAB = "lyric.editor.tab";
         // own focus dance before we request focus, preventing an immediate focusLost.
         SwingUtilities.invokeLater(editor::requestFocusInWindow);
         score.repaint(editor.getBounds());
-
-        return editor;
     }
 
     public LyricEditor(Score score, Line line, StaffElement element) {
@@ -182,15 +191,71 @@ private static final String ACTION_KEY_TAB = "lyric.editor.tab";
     }
 
     private void configureLAF() {
+        setUI(new LyricTextFieldUI());
         setFont(score.getLyricRenderMetrics().lyricsFont());
         setOpaque(true);
         setBackground(LayoutStylesheet.getScreenBackground());
         setForeground(Color.BLACK);
         setCaretColor(Color.BLACK);
-        setCaret(new SelectionHidingCaret());
         setHorizontalAlignment(LEFT);
         // The border is installed per-text in recomputeBounds() because its EmptyBorder
         // insets compensate for the active glyph's left side bearing — see comment there.
+    }
+
+    /**
+     * Text-field UI used only by the lyric overlay so we can customize its Swing text
+     * view without changing global look-and-feel behavior.
+     */
+    private static final class LyricTextFieldUI extends BasicTextFieldUI {
+        @Override
+        public View create(Element elem) {
+            return new LeadingSlackFieldView(elem);
+        }
+    }
+
+    /**
+     * Single-line text view that gives {@link FieldView#paint(Graphics, Shape)} one
+     * extra pixel of left paint clip. {@code FieldView} clips before {@code PlainView}
+     * draws glyphs; with the lyrics font, the rasterized leading edge of characters
+     * such as "d" can land just outside that clip even when the reported left bearing
+     * is non-negative. Expanding the paint clip exposes that edge, while
+     * {@link #adjustAllocation(Shape)} restores the original text allocation so caret
+     * placement and lyric alignment do not shift.
+     */
+    private static final class LeadingSlackFieldView extends FieldView {
+        private boolean paintingWithLeadingSlack;
+
+        LeadingSlackFieldView(Element elem) {
+            super(elem);
+        }
+
+        @Override
+        public void paint(Graphics g, Shape a) {
+            var expanded = a.getBounds();
+            expanded.x -= LEADING_PAINT_SLACK_PX;
+            expanded.width += LEADING_PAINT_SLACK_PX;
+            paintingWithLeadingSlack = true;
+
+            try {
+                super.paint(g, expanded);
+            } finally {
+                paintingWithLeadingSlack = false;
+            }
+        }
+
+        @Override
+        protected Shape adjustAllocation(Shape a) {
+            var adjusted = super.adjustAllocation(a);
+
+            if (paintingWithLeadingSlack && adjusted != null) {
+                var bounds = adjusted.getBounds();
+                bounds.x += LEADING_PAINT_SLACK_PX;
+                bounds.width -= LEADING_PAINT_SLACK_PX;
+                return bounds;
+            }
+
+            return adjusted;
+        }
     }
 
     /** Returns the element this editor session is bound to. */
@@ -201,6 +266,34 @@ private static final String ACTION_KEY_TAB = "lyric.editor.tab";
     /** Returns the line containing {@link #getActiveElement()}. */
     public Line getActiveLine() {
         return line;
+    }
+
+    @Override
+    protected TextFocusDelegate createFocusDelegate() {
+        return new LyricFocusDelegate();
+    }
+
+    private class LyricFocusDelegate extends TextFocusDelegate {
+        LyricFocusDelegate() {
+            super(LyricEditor.this);
+        }
+
+        @Override
+        public void focusGained(FocusEvent e) {
+            focused = true;
+            super.focusGained(e);
+        }
+
+        @Override
+        public void focusLost(FocusEvent e) {
+            if (!focused || getParent() == null) {
+                return;
+            }
+            focused = false;
+            super.focusLost(e);
+            commit();
+            dismiss();
+        }
     }
 
     /**
@@ -260,25 +353,6 @@ private static final String ACTION_KEY_TAB = "lyric.editor.tab";
             }
         });
 
-        // Clearing focused before calling commit() means any re-entrant focusLost
-        // fired by a layout reflow inside the mutation is a no-op.
-        addFocusListener(new FocusAdapter() {
-            @Override
-            public void focusGained(FocusEvent e) {
-                focused = true;
-            }
-
-            @Override
-            public void focusLost(FocusEvent e) {
-                if (!focused || getParent() == null) {
-                    return;
-                }
-
-                focused = false;
-                commit();
-                dismiss();
-            }
-        });
     }
 
     /**
@@ -321,6 +395,27 @@ private static final String ACTION_KEY_TAB = "lyric.editor.tab";
         });
 
         bindKey(KeyEvent.VK_ESCAPE, ACTION_KEY_ESCAPE, this::dismiss);
+
+        // Commit and dismiss on any click outside the editor. The focusLost handler covers
+        // clicks on focusable components (toolbar buttons, etc.); this covers clicks on the
+        // score canvas, which is not focusable and would not otherwise steal focus.
+        outsideClickListener = event -> {
+            if (event.getID() != MouseEvent.MOUSE_PRESSED) {
+                return;
+            }
+
+            var source = (Component) event.getSource();
+
+            if (source == LyricEditor.this || isAncestorOf(source)) {
+                return;
+            }
+
+            Toolkit.getDefaultToolkit().removeAWTEventListener(outsideClickListener);
+            outsideClickListener = null;
+            commitAndDismiss();
+        };
+
+        Toolkit.getDefaultToolkit().addAWTEventListener(outsideClickListener, AWTEvent.MOUSE_EVENT_MASK);
     }
 
     private void bindKey(int keyCode, String actionKey, Runnable handler) {
@@ -359,26 +454,28 @@ private static final String ACTION_KEY_TAB = "lyric.editor.tab";
 
         var lyricsFont = lyricRenderMetrics.lyricsFont();
         var advanceLeftSs = anchor.centerXSs() - advanceSs / 2.0;
-        var ascentSs = scaleContext.fontAscentSs(lyricsFont);
         var heightSs = lyricRenderMetrics.lyricBoxHeightSs();
-        var topSs = anchor.baselineYSs() - ascentSs;
 
-        // The visual padding from the box edge to the glyph ink should equal
-        // EDITOR_PADDING_SS (plus the LineBorder) on every side. JTextField paints its
-        // advance origin at content_left + 0 and the glyph ink lands at
-        // content_left + leftBearing. Compensating for that bearing by adjusting the
-        // EmptyBorder insets is what makes the visible padding symmetric — fixed insets
-        // produce an asymmetric look whenever the glyph's bearing slack is non-zero.
         var paddingPx = EDITOR_PADDING_SS.toInsetsPx();
         var leftBearingPx = scaleContext.toPixels(boxMetrics.leftBearingSs());
         var rightExtentPx = scaleContext.toPixels(boxMetrics.rightExtentSs());
         var advancePx = scaleContext.toPixels(advanceSs);
         var contentWidthPx = (int) Math.ceil(advancePx) + CARET_SLACK_PX;
         var contentHeightPx = (int) Math.ceil(scaleContext.toPixels(heightSs));
+        // Bearing-compensated insets so the visible gap from the inner LineBorder edge to
+        // the glyph ink is equal on both sides. JTextField paints the advance origin at
+        // contentLeft, so on the left the ink lands at contentLeft + leftBearing and on
+        // the right the content area extends beyond the ink by
+        // (contentWidth - rightExtent) — i.e. CARET_SLACK_PX, the ceil(advance) rounding
+        // remainder, and the glyph's right side bearing. Subtracting each side's slack
+        // from paddingPx makes both visible gaps land at paddingPx (with sub-pixel
+        // rounding error). The trade-off is that the EmptyBorder bands are no longer
+        // symmetric whenever a glyph's bearings or the trailing slack are non-zero —
+        // visual centering of the glyph wins over band symmetry.
         var emptyLeftPx = Math.max(0,
-            (int) Math.round(paddingPx.left - leftBearingPx));
+            (int) Math.ceil(paddingPx.left - leftBearingPx));
         var emptyRightPx = Math.max(0,
-            (int) Math.round(paddingPx.right - (contentWidthPx - rightExtentPx)));
+            (int) Math.ceil(paddingPx.right - (contentWidthPx - rightExtentPx)));
 
         setBorder(BorderFactory.createCompoundBorder(
             new LineBorder(Color.BLACK, LINE_BORDER_WIDTH_PX),
@@ -390,8 +487,19 @@ private static final String ACTION_KEY_TAB = "lyric.editor.tab";
 
         // Snap content_left exactly to the advance-origin pixel: JTextField paints there,
         // and any rounding drift would visibly shift the painted text within the box.
-        var contentLeftPx = (int) Math.round(scaleContext.toPixels(advanceLeftSs));
-        var contentTopPx = (int) Math.round(scaleContext.toPixels(topSs));
+        var contentLeftPx = scaleContext.toRoundedPixels(advanceLeftSs);
+
+        // Derive the content top from the (pixel-snapped) baseline and the integer font-metrics
+        // ascent, then compensate for FieldView.adjustAllocation. PlainView paints at
+        // lineArea.y + ascent, but FieldView first shifts alloc.y by slop/2 (where
+        // slop = contentHeight - fontMetrics.getHeight()) whenever they differ — including the
+        // common case where contentHeight is smaller than the font's full line height
+        // (ascent + descent + leading). Without subtracting slop/2 here, the actual rendered
+        // baseline lands 1 px off baselineYPxInt.
+        var baselineYPxInt = scaleContext.toRoundedPixels(anchor.baselineYSs());
+        var fontMetrics = getFontMetrics(lyricsFont);
+        var fieldViewSlopPx = contentHeightPx - fontMetrics.getHeight();
+        var contentTopPx = baselineYPxInt - fontMetrics.getAscent() - fieldViewSlopPx / 2;
 
         var xLinePx = contentLeftPx - insets.left;
         var yLinePx = contentTopPx - insets.top;
@@ -439,7 +547,7 @@ private static final String ACTION_KEY_TAB = "lyric.editor.tab";
         for (var i = startIndex; i < line.elementCount(); i++) {
             var candidate = line.getElement(i);
 
-            if (isEligibleForLyric(candidate)) {
+            if (isEligibleForLyric(candidate) && !score.getSong().isAutoMaintainedTerminal(candidate, line)) {
                 dismiss();
                 openOn(score, line, candidate);
                 return;
@@ -458,11 +566,28 @@ private static final String ACTION_KEY_TAB = "lyric.editor.tab";
         return lyric != null && !lyric.text().isBlank();
     }
 
+    // Re-entrant guard: clearing focused before commit/dismiss prevents a second
+    // focusLost (fired by layout reflow inside the mutation) from re-entering.
+    private void commitAndDismiss() {
+        if (!focused || getParent() == null) {
+            return;
+        }
+
+        focused = false;
+        commit();
+        dismiss();
+    }
+
     /**
      * Removes the editor from its parent, clears the active-editor reference on
      * {@code Score}, and repaints the vacated region.
      */
     public void dismiss() {
+        if (outsideClickListener != null) {
+            Toolkit.getDefaultToolkit().removeAWTEventListener(outsideClickListener);
+            outsideClickListener = null;
+        }
+
         var parent = getParent();
 
         if (parent == null) {

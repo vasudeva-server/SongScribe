@@ -24,8 +24,10 @@ import module java.desktop;
 
 import java.io.File;
 import java.io.IOException;
-import songscribe.error.RuntimeError;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.function.Consumer;
+import songscribe.error.RuntimeError;
 
 import org.jspecify.annotations.Nullable;
 
@@ -47,6 +49,7 @@ import songscribe.message.notification.SongDidChangeNotification;
 import songscribe.message.notification.DocumentDidLoadNotification;
 import songscribe.message.notification.MusicSelectionDidChangeNotification;
 import songscribe.message.notification.PrefsDidChangeNotification;
+import songscribe.message.notification.TextEditingDidChangeNotification;
 import songscribe.prefs.Prefs;
 import songscribe.prefs.PrefsKey;
 import songscribe.ui.Constants;
@@ -112,6 +115,8 @@ public final class Score
     // Runs before all HIGH_PRIORITY subscribers so the tuplet info cache is warm
     // by the time TupletAction handlers (HIGH_PRIORITY) read it.
     private static final int TUPLET_INFO_CACHE_PRIORITY = Message.HIGH_PRIORITY + 100;
+
+    private static final String DISABLED_KEY_BINDING = "none";
 
     // Colors used to draw the music score in various states — read from UIManager for theming.
     // Callers should not cache these values; read at render time.
@@ -228,6 +233,9 @@ public final class Score
     @SuppressWarnings("NullAway")
     private LyricRenderMetrics lyricRenderMetrics = null;
 
+    // Maps each registered KeyStroke to its action key so bindings can be toggled.
+    private final Map<KeyStroke, Object> scoreKeyBindings = new LinkedHashMap<>();
+
     /**
      * Creates a Score with core infrastructure (SAX parser, selection, clipboard,
      * edit mode). This is sufficient for headless use (converters pass {@code null}).
@@ -338,16 +346,15 @@ public final class Score
             KeyEvent.VK_ENTER,
         };
 
+        var inputMap = getInputMap(JComponent.WHEN_FOCUSED);
+        var actionMap = getActionMap();
+
         for (var keyCode : keyCodes) {
-            var o = new Object();
-            getInputMap(JComponent.WHEN_FOCUSED).put(
-                KeyStroke.getKeyStroke(keyCode, 0),
-                o
-            );
-            getActionMap().put(
-                o,
-                new ScoreInputHandler.KeyAction(this, editModeManager, keyCode)
-            );
+            var actionKey = new Object();
+            var keyStroke = KeyStroke.getKeyStroke(keyCode, 0);
+            scoreKeyBindings.put(keyStroke, actionKey);
+            inputMap.put(keyStroke, actionKey);
+            actionMap.put(actionKey, new ScoreInputHandler.KeyAction(this, editModeManager, keyCode));
         }
     }
 
@@ -579,6 +586,17 @@ public final class Score
         }
     }
 
+    @Handler
+    public void textEditingDidChange(TextEditingDidChangeNotification message) {
+        var inputMap = getInputMap(JComponent.WHEN_FOCUSED);
+
+        if (message.isEditing()) {
+            scoreKeyBindings.keySet().forEach(keyStroke -> inputMap.put(keyStroke, DISABLED_KEY_BINDING));
+        } else {
+            scoreKeyBindings.forEach(inputMap::put);
+        }
+    }
+
     public void viewChanged() {
         // Clear inspector hover since layout bounds will be recalculated
         var needsImmediateRepaint = false;
@@ -725,6 +743,11 @@ public final class Score
     public void clearSelection() {
         selectionCoordinator.clearSelection();
         selectionChanged();
+    }
+
+    public void deselect() {
+        clearSelection();
+        repaint();
     }
 
     public void selectionChanged() {

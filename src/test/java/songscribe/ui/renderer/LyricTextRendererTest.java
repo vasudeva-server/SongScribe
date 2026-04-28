@@ -21,9 +21,8 @@
 package songscribe.ui.renderer;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.within;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyFloat;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
@@ -45,8 +44,12 @@ import songscribe.ui.layout.LyricRenderMetrics;
 
 class LyricTextRendererTest extends UnitTest {
 
-    private static final double TOLERANCE = 0.0001;
+    private static final double PX_PER_SS = 8.0;
     private static final Font LYRICS_FONT = new Font(Font.MONOSPACED, Font.PLAIN, 12);
+
+    private static int toPx(double ss) {
+        return (int) Math.round(ss * PX_PER_SS);
+    }
 
     private static SongLayoutMetrics metrics(double staffToLyricsGapSs, double lyricsLineHeightSs, int verseCount) {
         // staffTop=1, staffHeight=4 ⇒ staffBottom=5. verse 1 baseline = 5 + maxBelowContent + gap + 1*line
@@ -77,16 +80,16 @@ class LyricTextRendererTest extends UnitTest {
 
         LyricTextRenderer.getInstance().render(element, g2, ctx);
 
-        var xCap = ArgumentCaptor.forClass(Float.class);
-        var yCap = ArgumentCaptor.forClass(Float.class);
+        var xCap = ArgumentCaptor.forClass(Integer.class);
+        var yCap = ArgumentCaptor.forClass(Integer.class);
         var textCap = ArgumentCaptor.forClass(String.class);
         verify(g2, times(1)).drawString(textCap.capture(), xCap.capture(), yCap.capture());
 
         assertThat(textCap.getValue()).isEqualTo("do");
-        assertThat(xCap.getValue().doubleValue()).isCloseTo(3.25, within(TOLERANCE));
+        assertThat(xCap.getValue()).isEqualTo(toPx(3.25));
 
         // Baseline for verse 1 = staffBottom(5) + below(1) + gap(1) + 1 * lineHeight(2.5) = 9.5
-        assertThat(yCap.getValue().doubleValue()).isCloseTo(9.5, within(TOLERANCE));
+        assertThat(yCap.getValue()).isEqualTo(toPx(9.5));
     }
 
     @Test
@@ -109,14 +112,14 @@ class LyricTextRendererTest extends UnitTest {
         LyricTextRenderer.getInstance().render(element, g2, ctx);
 
         var textCap = ArgumentCaptor.forClass(String.class);
-        var yCap = ArgumentCaptor.forClass(Float.class);
-        verify(g2, times(2)).drawString(textCap.capture(), anyFloat(), yCap.capture());
+        var yCap = ArgumentCaptor.forClass(Integer.class);
+        verify(g2, times(2)).drawString(textCap.capture(), anyInt(), yCap.capture());
 
         assertThat(textCap.getAllValues()).containsExactly("v1", "v2");
 
         // staffBottom=5, below=1, gap=1, lineHeight=2.0 ⇒ verse1=9.0, verse2=11.0
-        assertThat(yCap.getAllValues().get(0).doubleValue()).isCloseTo(9.0, within(TOLERANCE));
-        assertThat(yCap.getAllValues().get(1).doubleValue()).isCloseTo(11.0, within(TOLERANCE));
+        assertThat(yCap.getAllValues().get(0)).isEqualTo(toPx(9.0));
+        assertThat(yCap.getAllValues().get(1)).isEqualTo(toPx(11.0));
     }
 
     @Test
@@ -152,7 +155,7 @@ class LyricTextRendererTest extends UnitTest {
         LyricTextRenderer.getInstance().render(element, g2, ctx);
 
         verify(g2).setFont(any(Font.class));
-        verify(g2).drawString(anyString(), anyFloat(), anyFloat());
+        verify(g2).drawString(anyString(), anyInt(), anyInt());
     }
 
     // T28
@@ -189,6 +192,6 @@ class LyricTextRendererTest extends UnitTest {
 
         var g2Other = mock(Graphics2D.class);
         LyricTextRenderer.getInstance().render(otherElement, g2Other, otherCtx);
-        verify(g2Other).drawString(anyString(), anyFloat(), anyFloat());
+        verify(g2Other).drawString(anyString(), anyInt(), anyInt());
     }
 }

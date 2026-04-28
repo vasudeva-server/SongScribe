@@ -63,11 +63,7 @@ public record SongLayoutMetrics(
         return staffTopYSsInLine() + LayoutStylesheet.STAFF_HEIGHT_SS;
     }
 
-    /**
-     * Y position of the baseline for the given verse within a line component.
-     *
-     * @param verse 1-based verse number
-     */
+    /** Y position of the baseline for the given verse within a line component. */
     public double verseYSsInLine(int verse) {
         return staffBottomYSsInLine() + maxBelowContentSs + staffToLyricsGapSs + verse * lyricsLineHeightSs;
     }

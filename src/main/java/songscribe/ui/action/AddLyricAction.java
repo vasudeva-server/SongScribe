@@ -77,6 +77,7 @@ public final class AddLyricAction extends UIAction {
                 "AddLyricAction fired with no selected element — REQUIRES_SINGLE_SELECTION should have prevented this");
         }
 
+        score.deselect();
         LyricEditor.openOn(score, element.getLine(), element);
     }
 }
