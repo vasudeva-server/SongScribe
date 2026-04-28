@@ -244,7 +244,8 @@ public class StaffPanel extends JPanel {
             }
         }
 
-        var metrics = SongLayoutMetricsBuilder.build(layouts);
+        var lyricAscentSs = ScaleContext.getInstance().fontAscentSs(lyricsFont);
+        var metrics = SongLayoutMetricsBuilder.build(layouts, lyricAscentSs);
         score.setSongLayoutMetrics(metrics);
     }
 

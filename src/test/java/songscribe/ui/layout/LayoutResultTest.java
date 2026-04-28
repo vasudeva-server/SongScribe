@@ -100,11 +100,11 @@ class LayoutResultTest extends UnitTest {
         var box = new LyricBoxLayout(2.0, 1.0, 1, "re");
         var layoutResult = LayoutResult.builder().addLyricBox(element, box).build();
         // maxAboveStaffSs=1, LayoutStylesheet.STAFF_HEIGHT_SS=4, maxBelowContentSs=0.5,
-        // staffToLyricsGapSs=0.25, lyricsLineHeightSs=2.0 → verseYSsInLine(1) = 5+0.5+0.25+2 = 7.75
+        // staffToLyricsGapSs=0.25, lyricsLineHeightSs=2.0 → verseYSsInLine(1) = 5+0.5+0.25+0 = 5.75
         var metrics = testSongMetrics();
         var anchor = layoutResult.getLyricAnchor(element, metrics);
 
-        assertThat(anchor.baselineYSs()).isCloseTo(7.75, within(TOLERANCE));
+        assertThat(anchor.baselineYSs()).isCloseTo(5.75, within(TOLERANCE));
     }
 
     // T4: getLyricAnchor throws IllegalStateException when neither boxes nor column exist
@@ -127,7 +127,7 @@ class LayoutResultTest extends UnitTest {
     private static SongLayoutMetrics testSongMetrics() {
         // maxAboveStaffSs=1, maxBelowStaffSs=1, maxBelowContentSs=0.5,
         // staffToLyricsGapSs=0.25, lyricsLineHeightSs=2.0, verseCount=1
-        // verseYSsInLine(1) = (1 + 4) + 0.5 + 0.25 + 1*2.0 = 7.75
+        // verseYSsInLine(1) = (1 + 4) + 0.5 + 0.25 + 0*2.0 = 5.75
         return new SongLayoutMetrics(1.0, 1.0, 0.5, 0.25, 2.0, 1, 2.0, 9.75);
     }
 

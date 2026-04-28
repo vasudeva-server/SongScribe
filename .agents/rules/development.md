@@ -68,6 +68,8 @@ DEBUG=1 ./scripts/run.sh
 
 ### Running Tests
 
+ALWAYS use `./scripts/compile.sh` before running tests if changes have been made to the production code.
+
 ALWAYS use `./scripts/test.sh` to run tests. NEVER invoke `mvn test` directly.
 
 **IMPORTANT:** Never run e2e tests without waiting for the user's approval; they will take control of the user's mouse and keyboard, and may cause unintended consequences if run without the user's knowledge.

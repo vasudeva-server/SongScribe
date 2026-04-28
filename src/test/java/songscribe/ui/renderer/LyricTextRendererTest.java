@@ -52,7 +52,7 @@ class LyricTextRendererTest extends UnitTest {
     }
 
     private static SongLayoutMetrics metrics(double staffToLyricsGapSs, double lyricsLineHeightSs, int verseCount) {
-        // staffTop=1, staffHeight=4 ⇒ staffBottom=5. verse 1 baseline = 5 + maxBelowContent + gap + 1*line
+        // staffTop=1, staffHeight=4 ⇒ staffBottom=5. verse 1 baseline = 5 + maxBelowContent + gap
         return new SongLayoutMetrics(
             1.0,
             1.0,
@@ -88,8 +88,8 @@ class LyricTextRendererTest extends UnitTest {
         assertThat(textCap.getValue()).isEqualTo("do");
         assertThat(xCap.getValue()).isEqualTo(toPx(3.25));
 
-        // Baseline for verse 1 = staffBottom(5) + below(1) + gap(1) + 1 * lineHeight(2.5) = 9.5
-        assertThat(yCap.getValue()).isEqualTo(toPx(9.5));
+        // Baseline for verse 1 = staffBottom(5) + below(1) + gap(1) + 0 * lineHeight(2.5) = 7.0
+        assertThat(yCap.getValue()).isEqualTo(toPx(7.0));
     }
 
     @Test
@@ -117,9 +117,9 @@ class LyricTextRendererTest extends UnitTest {
 
         assertThat(textCap.getAllValues()).containsExactly("v1", "v2");
 
-        // staffBottom=5, below=1, gap=1, lineHeight=2.0 ⇒ verse1=9.0, verse2=11.0
-        assertThat(yCap.getAllValues().get(0)).isEqualTo(toPx(9.0));
-        assertThat(yCap.getAllValues().get(1)).isEqualTo(toPx(11.0));
+        // staffBottom=5, below=1, gap=1, lineHeight=2.0 ⇒ verse1=7.0, verse2=9.0
+        assertThat(yCap.getAllValues().get(0)).isEqualTo(toPx(7.0));
+        assertThat(yCap.getAllValues().get(1)).isEqualTo(toPx(9.0));
     }
 
     @Test

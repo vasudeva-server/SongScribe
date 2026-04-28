@@ -36,7 +36,9 @@ package songscribe.ui.layout;
  *                           for ledger-line capacity and the inter-line margin)
  * @param maxBelowContentSs  song-wide maximum of actual below-staff content extent across
  *                           all lines; the lyric-positioning anchor (no MIN_BELOW floor, no margin)
- * @param staffToLyricsGapSs gap between the below-staff content and the first verse baseline
+ * @param staffToLyricsGapSs distance from below-staff content to the first verse baseline;
+ *                           equals the visual gap (to text top) plus the font ascent so that
+ *                           the rendered text top sits exactly one visual gap below the content
  * @param lyricsLineHeightSs height allocated for each verse row
  * @param verseCount         number of verse rows present (0 collapses the lyrics band)
  * @param lyricsBandHeightSs total height of the lyrics band (= verseCount * lyricsLineHeightSs)
@@ -65,6 +67,6 @@ public record SongLayoutMetrics(
 
     /** Y position of the baseline for the given verse within a line component. */
     public double verseYSsInLine(int verse) {
-        return staffBottomYSsInLine() + maxBelowContentSs + staffToLyricsGapSs + verse * lyricsLineHeightSs;
+        return staffBottomYSsInLine() + maxBelowContentSs + staffToLyricsGapSs + (verse - 1) * lyricsLineHeightSs;
     }
 }

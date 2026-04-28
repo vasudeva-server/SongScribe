@@ -99,8 +99,8 @@ class LyricConnectorRendererTest extends UnitTest {
         assertThat(textCap.getValue()).isEqualTo("-");
         assertThat(xCap.getValue().doubleValue()).isCloseTo(center - HYPHEN_WIDTH_SS / 2.0, within(TOLERANCE));
 
-        // Verse 1 baseline: staffBottom(5) + below(1) + gap(1) + 1 * lineHeight(2.5) = 9.5
-        assertThat(yCap.getValue().doubleValue()).isCloseTo(9.5, within(TOLERANCE));
+        // Verse 1 baseline: staffBottom(5) + below(1) + gap(1) + 0 * lineHeight(2.5) = 7.0
+        assertThat(yCap.getValue().doubleValue()).isCloseTo(7.0, within(TOLERANCE));
     }
 
     @Test
@@ -119,9 +119,9 @@ class LyricConnectorRendererTest extends UnitTest {
         assertThat(drawn.x1).isCloseTo(5.0, within(TOLERANCE));
         assertThat(drawn.x2).isCloseTo(20.0, within(TOLERANCE));
 
-        // Verse 1 baseline: staffBottom(5) + below(1) + gap(0.5) + 1 * lineHeight(2.0) = 8.5
-        assertThat(drawn.y1).isCloseTo(8.5, within(TOLERANCE));
-        assertThat(drawn.y2).isCloseTo(8.5, within(TOLERANCE));
+        // Verse 1 baseline: staffBottom(5) + below(1) + gap(0.5) + 0 * lineHeight(2.0) = 6.5
+        assertThat(drawn.y1).isCloseTo(6.5, within(TOLERANCE));
+        assertThat(drawn.y2).isCloseTo(6.5, within(TOLERANCE));
     }
 
     @Test
@@ -139,9 +139,9 @@ class LyricConnectorRendererTest extends UnitTest {
         var first = (Line2D.Double) lineCap.getAllValues().get(0);
         var second = (Line2D.Double) lineCap.getAllValues().get(1);
 
-        // below=1, gap=1, lineHeight=2.0 ⇒ verse1 baseline = 9.0, verse2 baseline = 11.0
-        assertThat(first.y1).isCloseTo(9.0, within(TOLERANCE));
-        assertThat(second.y1).isCloseTo(11.0, within(TOLERANCE));
+        // below=1, gap=1, lineHeight=2.0 ⇒ verse1 baseline = 7.0, verse2 baseline = 9.0
+        assertThat(first.y1).isCloseTo(7.0, within(TOLERANCE));
+        assertThat(second.y1).isCloseTo(9.0, within(TOLERANCE));
     }
 
     @Test

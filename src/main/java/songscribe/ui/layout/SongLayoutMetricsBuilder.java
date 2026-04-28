@@ -36,10 +36,13 @@ public final class SongLayoutMetricsBuilder {
     /**
      * Builds song-wide layout metrics from the per-line layout results.
      *
-     * @param layouts per-line layout results; may be empty
+     * @param layouts       per-line layout results; may be empty
+     * @param lyricAscentSs ascent of the lyrics font in staff spaces; added to the visual
+     *                      gap so that {@code staffToLyricsGapSs} positions the baseline
+     *                      correctly (gap is measured to the text top, not the baseline)
      * @return metrics object suitable for driving uniform line heights
      */
-    public static SongLayoutMetrics build(List<LayoutResult> layouts) {
+    public static SongLayoutMetrics build(List<LayoutResult> layouts, double lyricAscentSs) {
         var maxAboveStaffSs = LayoutStylesheet.MIN_ABOVE_STAFF_SS;
         var maxBelowStaffSs = LayoutStylesheet.MIN_BELOW_STAFF_SS + LayoutStylesheet.INTER_LINE_MARGIN_SS;
         var maxBelowContentSs = 0.0;
@@ -56,7 +59,7 @@ public final class SongLayoutMetricsBuilder {
         }
 
         var hasLyrics = verseCount > 0;
-        var staffToLyricsGapSs = hasLyrics ? LayoutStylesheet.LYRICS_ROW_MARGIN_SS : 0.0;
+        var staffToLyricsGapSs = hasLyrics ? LayoutStylesheet.LYRICS_ROW_MARGIN_SS + lyricAscentSs : 0.0;
         var lyricsLineHeightSs = hasLyrics ? LayoutStylesheet.LYRICS_HEIGHT_SS : 0.0;
         var lyricsBandHeightSs = verseCount * lyricsLineHeightSs;
         var totalLineHeightSs = maxAboveStaffSs
