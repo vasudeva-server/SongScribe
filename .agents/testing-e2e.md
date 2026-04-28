@@ -1,6 +1,6 @@
 # E2E Test Guide
 
-Read `.claude/testing-common.md` first for shared conventions.
+Read `.agent/testing-common.md` first for shared conventions.
 
 ## Core Principle
 

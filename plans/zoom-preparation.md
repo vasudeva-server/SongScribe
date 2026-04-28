@@ -46,7 +46,7 @@ and leaves the codebase in a consistent state.
 - All exploration uses Serena semantic tools first (`jet_brains_get_symbols_overview`,
   `jet_brains_find_symbol`, `jet_brains_find_referencing_symbols`,
   `jet_brains_type_hierarchy`). Grep / Glob / Read are fallbacks for non-code
-  files or when Serena returns no match. See `.claude/rules/serena.md`.
+  files or when Serena returns no match. See `.agent/rules/serena.md`.
 - Any Explore subagent spawned during this plan uses the **Sonnet** model and
   is briefed with the Serena-first instruction from `CLAUDE.md`.
 - Renames go through `jet_brains_rename`; moves through `jet_brains_move`;
@@ -55,7 +55,7 @@ and leaves the codebase in a consistent state.
 - Every phase ends with `./scripts/compile.sh` + `./scripts/test.sh unit`
   passing before the next phase starts.
 - No magic numbers in new code. Extract named constants per
-  `.claude/rules/development.md`.
+  `.agent/rules/development.md`.
 - Null `parentLine` dereferences use `RuntimeError.exit("<message>")`, not
   silent fallback or `Objects.requireNonNull`.
 
@@ -670,8 +670,8 @@ in unit handling surface automatically.
 
 ### Steps
 
-1. ⏳ Read the existing test harness conventions from `.claude/testing-unit.md`
-   and `.claude/testing-common.md` before writing.
+1. ⏳ Read the existing test harness conventions from `.agent/testing-unit.md`
+   and `.agent/testing-common.md` before writing.
 2. ⏳ Write the `ScaleContextTestHarness` extension.
 3. ⏳ Add the parameterized tests in the classes listed in Scope 2.
 4. ⏳ Add the roundtrip test in `CollisionDetectorTest` (create if absent).
@@ -702,7 +702,7 @@ full scope and the final prerequisite for a working zoom feature.
 ### Scope
 
 1. **`ScaleContext` change notification.** Add a `ScaleDidChangeNotification`
-   (see `.claude/rules/messages.md` and `.claude/rules/mutations.md` for the
+   (see `.agent/rules/messages.md` and `.agent/rules/mutations.md` for the
    notification conventions) posted from `setPixelsPerStaffSpace` whenever the
    value actually changes. Include the old and new scale in the payload.
 2. **Fix `static final` pixel constants** identified in findings Q5:
@@ -775,7 +775,7 @@ without introducing new unit bugs.
 
 3. **Phase 10's `ScaleContext` notification must not fire inside the
    `Composition` modification bracket** — or if it does, the coalescing
-   contract from `.claude/rules/mutations.md` must be verified. `ScaleContext`
+   contract from `.agent/rules/mutations.md` must be verified. `ScaleContext`
    is not a `Composition` state, so the natural choice is to post the
    notification directly on `MessageCenter` without any mutation bracket.
    Confirm this during Phase 10 design.
@@ -783,7 +783,7 @@ without introducing new unit bugs.
 4. **Visual-parity verification in Phases 3, 4, 5, 7, 8 is not covered by
    the unit test suite.** Run `./scripts/crun.sh` against a rich reference
    composition and eyeball the result before marking the phase complete.
-   E2E tests require user approval per `.claude/rules/development.md` — do
+   E2E tests require user approval per `.agent/rules/development.md` — do
    not run them without asking.
 
 ---

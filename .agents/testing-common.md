@@ -11,7 +11,7 @@
 
 **`UnitTest`** (`src/test/java/songscribe/UnitTest.java`) — extend for all unit tests. Suppresses modal error dialogs via `@BeforeAll`.
 
-**`E2ETest`** (`src/test/java/songscribe/e2e/E2ETest.java`) — extend for E2E tests. See `.claude/testing-e2e.md`.
+**`E2ETest`** (`src/test/java/songscribe/e2e/E2ETest.java`) — extend for E2E tests. See `.agent/testing-e2e.md`.
 
 ## Naming Conventions
 

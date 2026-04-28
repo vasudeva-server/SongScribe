@@ -1,6 +1,6 @@
 # Unit Test Guide
 
-Read `.claude/testing-common.md` first for shared conventions.
+Read `.agent/testing-common.md` first for shared conventions.
 
 ## Structure
 
