@@ -143,8 +143,14 @@ public final class LyricLayoutBuilder {
             if (isRest) {
                 // Rest with extending lyric (START/CONTINUE): extender flows through.
                 // Rest with STOP lyric: extender ends at rest's right edge below.
-                if (lyric != null && (lyric.extend() == Lyric.Extend.START
-                    || lyric.extend() == Lyric.Extend.CONTINUE)) {
+                if (lyric != null && lyric.extend() == Lyric.Extend.CONTINUE) {
+                    if (state.extenderActive) {
+                        state.extenderConfirmed = true;
+                    }
+                    continue;
+                }
+
+                if (lyric != null && lyric.extend() == Lyric.Extend.START) {
                     continue;
                 }
 
@@ -158,9 +164,18 @@ public final class LyricLayoutBuilder {
                 continue;
             }
 
-            if (lyric == null || lyric.extend() == Lyric.Extend.CONTINUE) {
-                // Note with no lyric, or with a CONTINUE carrier: extender (if active)
-                // continues silently through this column.
+            if (lyric == null) {
+                // Note with no lyric: extender (if active) continues silently through
+                // this column, but does not by itself confirm a trailing extender.
+                continue;
+            }
+
+            if (lyric.extend() == Lyric.Extend.CONTINUE) {
+                // CONTINUE carrier: extender continues silently and is confirmed for
+                // trailing emission past the last column.
+                if (state.extenderActive) {
+                    state.extenderConfirmed = true;
+                }
                 continue;
             }
 
@@ -203,13 +218,17 @@ public final class LyricLayoutBuilder {
 
             if (lyric.extend() == Lyric.Extend.START && !opensHyphen) {
                 state.extenderActive = true;
+                state.extenderConfirmed = false;
                 state.extenderStartXSs = syllableEndXSs;
             }
         }
 
         var hasTrailingContinuation = false;
 
-        if (state.extenderActive) {
+        // A lone START with no CONTINUE/STOP after it is a "potential" melisma — emit
+        // nothing. Only confirmed extenders (a CONTINUE was seen, or we inherited a
+        // leading continuation) trail off the end of the line.
+        if (state.extenderActive && state.extenderConfirmed) {
             connectors.add(new LyricConnectorLayout(
                 state.extenderStartXSs,
                 lineWidthSs,
@@ -232,11 +251,13 @@ public final class LyricLayoutBuilder {
     /** Mutable scratch state for tracking the active extender and pending hyphen during one verse pass. */
     private static final class ExtenderState {
         boolean extenderActive;
+        boolean extenderConfirmed;
         double extenderStartXSs;
         double pendingHyphenStartXSs = -1.0;
 
         ExtenderState(boolean hasLeadingContinuation) {
             this.extenderActive = hasLeadingContinuation;
+            this.extenderConfirmed = hasLeadingContinuation;
             this.extenderStartXSs = 0.0;
         }
 
@@ -249,6 +270,7 @@ public final class LyricLayoutBuilder {
                     verse,
                     LyricConnectorLayout.Kind.EXTENDER));
                 extenderActive = false;
+                extenderConfirmed = false;
             }
         }
     }
