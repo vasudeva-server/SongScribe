@@ -1,9 +1,9 @@
 # Lyric Editor — Part 2 (Phases 1b, 1c, 2, 3, 4)
 
-Follow-on phases to `lyric-editor.md` (Phase 1a). Each phase is independently shippable and depends on the editor scaffolding from 1a.
+Follow-on phases to `./lyric-editor.md` (Phase 1a). Each phase is independently shippable and depends on the editor scaffolding from 1a.
 
 Index:
-- [Phase 1b — Boundary characters, scan-back, IME](#phase-1b--boundary-characters-scan-back-ime)
+- [Phase 1b — Boundary characters, scan-back](#phase-1b--boundary-characters-scan-back-ime)
 - [Phase 1c — Paste tokenization](#phase-1c--paste-tokenization)
 - [Phase 2 — Lyric click-selection](#phase-2--lyric-click-selection)
 - [Phase 3 — DeleteAction dispatch for lyrics](#phase-3--deleteaction-dispatch-for-lyrics)
@@ -16,7 +16,7 @@ Index:
 
 ### Goal
 
-Enable hyphen / compound-word / melisma-extender semantics by intercepting `-`, `=`, `_` keystrokes. Add `_` alone (scan-back) handling. Add IME composition tracking so boundary keys are passed through to the IME during composition.
+Enable hyphen / compound-word / melisma-extender semantics by intercepting `-`, `=`, `_` keystrokes. Add `_` alone (scan-back) handling.
 
 ### Behavior matrix (additions to 1a)
 
@@ -36,7 +36,7 @@ In 1b, `commit()` becomes parameterized by `(SyllableRelation, Extend)` rather t
 When the user presses `_` with an empty editor:
 
 1. Walk backwards through the elements of the current line, starting from the element just before the editor's current element.
-2. For each candidate, check whether its verse-1 lyric has non-blank text and `extend` is not `STOP` or `CONTINUE`. If yes, that's the previous syllable.
+2. For each candidate, check whether its current verse lyric has non-blank text and `extend` is not `STOP` or `CONTINUE`. If yes, that's the previous syllable.
 3. **If a previous syllable is found:**
    - In a single `song.withModification` block:
      - Set `extend = START` on the previous syllable's lyric (via `Line.modifyElement` and `setLyricForVerse`).
@@ -48,16 +48,10 @@ When the user presses `_` with an empty editor:
 
 The layout's natural rules then handle the trailing extender: it runs from the prior syllable's right edge to the next syllable's left edge / next rest / end-of-line, automatically traversing any blank notes in between (including the current note, which is now blank by construction).
 
-### IME composition tracking
-
-Track a `composingViaIme` flag via `InputMethodListener.inputMethodTextChanged` — true when the event has uncommitted text, false on full commit. While `composingViaIme == true`, KeyListener boundary handling is suppressed; raw `-` / `=` / `_` keystrokes pass through to the IME. The 1a Tab / Space / Enter / Escape interception remains active (those are unambiguous control keys).
-
-The 32-char cap applies to IME commits as well: an IME commit that would push the document past 32 chars is rejected with a beep.
-
 ### Files / classes (1b)
 
 **Modified:**
-- `songscribe.ui.component.LyricEditor` — extend keystroke dispatch; add scan-back; attach `InputMethodListener`.
+- `songscribe.ui.component.LyricEditor` — extend keystroke dispatch; add scan-back.
 
 **New:**
 - None expected.
@@ -71,9 +65,6 @@ The 32-char cap applies to IME commits as well: an IME commit that would push th
 - `_` non-empty → commit with `extend = START`, advance.
 - `_` empty with prior syllable found → previous syllable gets `extend = START` AND current element's lyric removed, in one bracket; advance.
 - `_` empty with no prior syllable → current element's lyric removed (single mutation); advance.
-- IME composition active suppresses `-` / `=` / `_` interception.
-- IME commit pushing past 32 chars is rejected with a beep.
-
 ### Update lifecycle diagram in `LyricEditor.java`
 
 When 1b lands, append the keystroke dispatch table to the lifecycle diagram in the class header comment. Per project convention, diagrams are maintained alongside the code they describe.
