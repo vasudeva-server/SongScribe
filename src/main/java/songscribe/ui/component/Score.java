@@ -917,6 +917,7 @@ public final class Score
         return getHeight();
     }
 
+    @Override
     public void drawWidthIfWiderLine(Line line, boolean strict) {
         // Exclude the auto-maintained FINAL_DOUBLE_BARLINE from stretch calculations:
         // its position is fixed at the line's right edge and must not be treated as
