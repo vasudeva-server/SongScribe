@@ -99,6 +99,8 @@ public final class LyricEditor extends MyJTextField {
 
     static final int MAX_LENGTH_CHARS = 32;
 
+    private static final int VERSE = 1;
+
     private static final EnumSet<ElementField> LYRIC_FIELDS = EnumSet.of(ElementField.LYRIC);
 
     /**
@@ -517,7 +519,7 @@ public final class LyricEditor extends MyJTextField {
      */
     public void commit() {
         var text = getText();
-        var existingLyric = element.getLyricForVerse(1);
+        var existingLyric = element.getLyricForVerse(VERSE);
         var existingText = existingLyric != null ? existingLyric.text() : "";
 
         if (text.equals(existingText)) {
@@ -531,7 +533,7 @@ public final class LyricEditor extends MyJTextField {
         line.withModification(() -> line.modifyElement(
             line.getElementIndex(element),
             LYRIC_FIELDS,
-            () -> element.setLyricForVerse(1, StaffElement.SyllableRelation.NONE, text, Lyric.Extend.NONE)
+            () -> element.setLyricForVerse(VERSE, relation, text, extend)
         ));
     }
 
@@ -562,7 +564,7 @@ public final class LyricEditor extends MyJTextField {
             return true;
         }
 
-        var lyric = candidate.getLyricForVerse(1);
+        var lyric = candidate.getLyricForVerse(VERSE);
         return lyric != null && !lyric.text().isBlank();
     }
 

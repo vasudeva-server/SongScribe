@@ -113,6 +113,7 @@ public final class LyricLayoutBuilder {
 
     private static TreeSet<Integer> collectVerses(List<ElementColumn> columns) {
         var verses = new TreeSet<Integer>();
+        verses.add(1);
 
         for (var column : columns) {
             for (var lyric : column.getElement().getLyrics()) {

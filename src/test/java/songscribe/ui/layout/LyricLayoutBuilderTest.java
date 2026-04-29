@@ -108,7 +108,7 @@ class LyricLayoutBuilderTest extends UnitTest {
 
         assertThat(result.boxes()).isEmpty();
         assertThat(result.connectors()).isEmpty();
-        assertThat(result.verseCount()).isZero();
+        assertThat(result.verseCount()).isEqualTo(1);
         assertThat(result.hasTrailingContinuation()).isFalse();
     }
 
@@ -119,7 +119,7 @@ class LyricLayoutBuilderTest extends UnitTest {
 
         assertThat(result.boxes()).isEmpty();
         assertThat(result.connectors()).isEmpty();
-        assertThat(result.verseCount()).isZero();
+        assertThat(result.verseCount()).isEqualTo(1);
     }
 
     // do-re-mi across three notes → three boxes, two HYPHEN spans
