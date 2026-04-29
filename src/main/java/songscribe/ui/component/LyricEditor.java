@@ -553,12 +553,14 @@ public final class LyricEditor extends MyJTextField {
      * dismisses without wrapping to the next line.
      */
     public void advance() {
-        var startIndex = line.getElementIndex(element) + 1;
+        var currentIndex = line.getElementIndex(element);
+        var startIndex = currentIndex + 1;
+        var effectiveCount = line.effectiveElementCount();
 
-        for (var i = startIndex; i < line.elementCount(); i++) {
+        for (var i = startIndex; i < effectiveCount; i++) {
             var candidate = line.getElement(i);
 
-            if (isEligibleForLyric(candidate) && !score.getSong().isAutoMaintainedTerminal(candidate, line)) {
+            if (isEligibleForLyric(candidate)) {
                 dismiss(false);
                 openOn(score, line, candidate);
                 return;
