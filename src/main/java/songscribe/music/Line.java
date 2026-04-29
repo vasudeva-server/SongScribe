@@ -153,7 +153,7 @@ public class Line {
     private int trillYPosPx = ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.TRILL_DEFAULT_Y_SS);
 
     /** Ratio multiplier for horizontal element spacing (default: 1.0, user-adjustable). */
-    private float elementDistChangeRatio = 1f;
+    private float elementSpacingRatio = 1f;
 
     public Song getSong() {
         return song;
@@ -801,17 +801,17 @@ public class Line {
         );
     }
 
-    public void mulElementDistChange(float ratio) {
-        var old = elementDistChangeRatio;
+    public void changeElementSpacingRatio(float ratio) {
+        var old = elementSpacingRatio;
         var newRatio = old * ratio;
         applyChange(
-            new LineLayoutChange(this, LineLayoutField.ELEMENT_DIST_CHANGE_RATIO, old, newRatio),
-            () -> elementDistChangeRatio = newRatio
+            new LineLayoutChange(this, LineLayoutField.ELEMENT_SPACING_RATIO, old, newRatio),
+            () -> elementSpacingRatio = newRatio
         );
     }
 
-    public float getElementDistChangeRatio() {
-        return elementDistChangeRatio;
+    public float getElementSpacingRatio() {
+        return elementSpacingRatio;
     }
 
     public SpanSet<BeamSpan> getBeamings() {

@@ -83,11 +83,11 @@ public final class LineIO {
             }
         }
 
-        if (l.getElementDistChangeRatio() != 1f) {
+        if (l.getElementSpacingRatio() != 1f) {
             XML.writeValue(
                 pw,
                 XML_NOTE_DIST_CHANGE,
-                Float.toString(l.getElementDistChangeRatio())
+                Float.toString(l.getElementSpacingRatio())
             );
         }
 
@@ -478,7 +478,7 @@ public final class LineIO {
                         case XML_KEYTYPE -> line.setKeyType(
                             KeyType.valueOf(str)
                         );
-                        case XML_NOTE_DIST_CHANGE -> line.mulElementDistChange(
+                        case XML_NOTE_DIST_CHANGE -> line.changeElementSpacingRatio(
                             Float.parseFloat(str)
                         );
                         case XML_TEMPO_CHANGE_YPOS -> line.setTempoChangeYPosPx(

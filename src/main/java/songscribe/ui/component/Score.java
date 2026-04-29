@@ -948,7 +948,7 @@ public final class Score
                     );
                 }
 
-                line.mulElementDistChange((float) ratio);
+                line.changeElementSpacingRatio((float) ratio);
             }
         }
     }

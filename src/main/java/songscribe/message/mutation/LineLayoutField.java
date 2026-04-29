@@ -62,7 +62,7 @@ public enum LineLayoutField {
     LYRICS_Y_POS_SS(Double.class),
 
     /** Ratio multiplier for horizontal element spacing. */
-    ELEMENT_DIST_CHANGE_RATIO(Float.class);
+    ELEMENT_SPACING_RATIO(Float.class);
 
     private final Class<?> expectedType;
 

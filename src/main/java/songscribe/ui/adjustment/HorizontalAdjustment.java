@@ -216,7 +216,7 @@ public class HorizontalAdjustment extends Adjustment {
                 }
             }
 
-            line.mulElementDistChange(ratio);
+            line.changeElementSpacingRatio(ratio);
         } else if (
             draggingRect.horizontalAdjustmentType ==
                 HorizontalAdjustmentType.TO_END_OF_LINE
