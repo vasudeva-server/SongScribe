@@ -494,7 +494,10 @@ public final class UIUtils {
         }
 
         var manager = KeyboardFocusManager.getCurrentKeyboardFocusManager();
-        return manager.getFocusOwner() instanceof JTextComponent;
+        // A detached JTextComponent (one whose editor was just removed from the
+        // component tree) is not really being edited. Require it to still be showing.
+        return manager.getFocusOwner() instanceof JTextComponent textComponent
+            && textComponent.isShowing();
     }
 
     public record TaggedString(String text, @Nullable Font font) {
