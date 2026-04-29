@@ -155,6 +155,14 @@ public final class LyricEditor extends MyJTextField {
         var editor = new LyricEditor(score, line, element);
         score.addOverlay(editor);
         score.setComponentZOrder(editor, 0);
+
+        // A mutation that triggered this open (e.g. committing a lyric before advancing)
+        // may have invalidated the line's layout. Force a synchronous layout pass so
+        // recomputeBounds sees fresh anchor positions on the first paint.
+        if (editor.lineComponent != null) {
+            editor.lineComponent.ensureLayout();
+        }
+
         editor.recomputeBounds();
         editor.attachListeners();
         editor.setVisible(true);
@@ -162,6 +170,7 @@ public final class LyricEditor extends MyJTextField {
         // Defer focus so the toolbar button that triggered the action can finish its
         // own focus dance before we request focus, preventing an immediate focusLost.
         SwingUtilities.invokeLater(editor::requestFocusInWindow);
+        score.revalidate();
         score.repaint(editor.getBounds());
     }
 
