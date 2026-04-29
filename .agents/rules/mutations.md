@@ -1,7 +1,7 @@
 ## Mutation System
 
-Every structural change to a `Composition` is recorded as a typed `Mutation` record and
-delivered to subscribers inside a single `CompositionDidChangeNotification`. This replaces
+Every structural change to a `Song` is recorded as a typed `Mutation` record and
+delivered to subscribers inside a single `SongDidChangeNotification`. This replaces
 the old `ChangeType` enum — subscribers use `instanceof` / pattern matching to filter
 instead of switching on enum values.
 
@@ -22,10 +22,10 @@ public sealed interface Mutation permits
     MetadataChange, FontChange, LayoutChange, LyricsChange { }
 ```
 
-### Line-scoped vs. composition-scoped
+### Line-scoped vs. song-scoped
 
 Mutations that target a specific `Line` also implement `LineScopedMutation` (returns the
-affected line). Composition-scoped mutations (`LineInsertion`, `LineDeletion`,
+affected line). Song-scoped mutations (`LineInsertion`, `LineDeletion`,
 `MetadataChange`, `FontChange`, `LayoutChange`, `LyricsChange`) do not.
 
 | Group | Types |
@@ -35,7 +35,7 @@ affected line). Composition-scoped mutations (`LineInsertion`, `LineDeletion`,
 | Line properties (line-scoped) | `LineKeyChange`, `LineLayoutChange` |
 | Range elements (line-scoped) | `RangeElementAddition`, `RangeElementRemoval` |
 | Intervals (line-scoped) | `BeamingAddition/Removal`, `TieAddition/Removal`, `TupletAddition/Removal`, `CrescendoAddition/Removal`, `DiminuendoAddition/Removal` |
-| Composition-wide | `MetadataChange`, `FontChange`, `LayoutChange`, `LyricsChange` |
+| Song-wide | `MetadataChange`, `FontChange`, `LayoutChange`, `LyricsChange` |
 
 ### Field enums with validated types
 
@@ -60,7 +60,7 @@ When adding a new field enum value, set `expectedType` to the concrete class (e.
 ### Emitting mutations
 
 Mutations must be accumulated inside a **modification bracket**. Prefer the high-level
-helpers on `Line` — they wrap `composition.applyChange` with the correct mutation type,
+helpers on `Line` — they wrap `song.applyChange` with the correct mutation type,
 the clone-before-mutate snapshot for `ElementModification`, and any bookkeeping (interval
 shifting, range-element invalidation, initial-tempo attachment).
 
@@ -80,26 +80,26 @@ shifting, range-element invalidation, initial-tempo attachment).
 points are:
 
 ```java
-composition.withModification(() -> {
+song.withModification(() -> {
     line.addElement(index, note);
     line.modifyElement(index, ElementField.PITCH, () -> note.setA1(pitch));
 });
 ```
 
-For messages that propagate into `Composition`'s own `@Handler` methods, use
-`composition.postWithModification(command)` — it opens the bracket, posts the message,
+For messages that propagate into `Song`'s own `@Handler` methods, use
+`song.postWithModification(command)` — it opens the bracket, posts the message,
 and closes the bracket so every mutation the handlers apply coalesces into a single
 notification.
 
-**Raw `applyChange`.** If no `Line` helper fits, call `composition.applyChange(mutation,
+**Raw `applyChange`.** If no `Line` helper fits, call `song.applyChange(mutation,
 mutator)` directly. The mutator runs first, then the mutation record is appended to the
 accumulated list. Must be inside a modification bracket — throws `IllegalStateException`
 otherwise.
 
 ```java
-composition.applyChange(
+song.applyChange(
     new MetadataChange(MetadataField.TITLE, oldTitle, newTitle),
-    () -> composition.setTitle(newTitle)
+    () -> song.setTitle(newTitle)
 );
 ```
 
@@ -109,29 +109,29 @@ somehow need to emit `ElementModification` manually, clone first:
 
 ```java
 var beforeClone = line.getElement(index).clone();
-composition.applyChange(
+song.applyChange(
     new ElementModification(line, index, EnumSet.of(ElementField.PITCH), beforeClone),
     () -> { /* mutate element */ }
 );
 ```
 
-**Test-only suspension.** `composition.withoutMutationTracking(Runnable)` runs `body`
+**Test-only suspension.** `song.withoutMutationTracking(Runnable)` runs `body`
 with mutation tracking suspended — no notification, no undo, no modified flag. Use only
 for test setup that populates lines outside a user-driven bracket.
 
 ### Subscribing
 
-`CompositionDidChangeNotification` carries the ordered list of mutations accumulated in
-the bracket plus the source `Composition`. Use the `@Handler` naming rule from
-`messages.md`: `compositionDidChange`.
+`SongDidChangeNotification` carries the ordered list of mutations accumulated in
+the bracket plus the source `Song`. Use the `@Handler` naming rule from
+`messages.md`: `songDidChange`.
 
 Helpful APIs on the notification:
 
 - `getMutations()` — `List<Mutation>`, immutable.
-- `getComposition()` — the source composition.
+- `getSong()` — the source song.
 - `getLine()` — the single line targeted by all line-scoped mutations, or `null` if
   there are none or they target different lines. **EDT-only** (lazily cached without
-  synchronization). Composition-scoped mutations are ignored for this check.
+  synchronization). Song-scoped mutations are ignored for this check.
 - `hasMutationOf(Class<? extends Mutation>)` — true if any mutation in the list is an
   instance of the given subclass.
 
@@ -139,7 +139,7 @@ Helpful APIs on the notification:
 
 ```java
 @Handler
-public void compositionDidChange(CompositionDidChangeNotification n) {
+public void songDidChange(SongDidChangeNotification n) {
     if (n.hasMutationOf(LyricsChange.class)) { /* refresh lyrics */ }
 
     for (var mutation : n.getMutations()) {
@@ -159,12 +159,12 @@ public void compositionDidChange(CompositionDidChangeNotification n) {
 }
 ```
 
-`ScoreMessageCoordinator.compositionDidChange` is the canonical large-scale example.
+`ScoreMessageCoordinator.songDidChange` is the canonical large-scale example.
 
 ### Rules
 
-- **Never construct `CompositionDidChangeNotification` directly.** It is posted by
-  `Composition.endModification` after the outermost bracket closes.
+- **Never construct `SongDidChangeNotification` directly.** It is posted by
+  `Song.endModification` after the outermost bracket closes.
 - **Never create a new `Mutation` subtype without adding it to `Mutation`'s `permits`
   list.** The sealed interface is the inventory.
 - **Line helpers > raw `applyChange`.** Reach for `Line.addElement` etc. before hand-rolling
