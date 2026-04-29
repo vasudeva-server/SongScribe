@@ -36,7 +36,11 @@ import javax.swing.text.Element;
 
 import org.jspecify.annotations.Nullable;
 
+import songscribe.error.RuntimeError;
+import songscribe.message.MessageCenter;
 import songscribe.message.mutation.ElementField;
+import songscribe.message.notification.SongDidChangeNotification;
+import songscribe.message.notification.TextEditingDidChangeNotification;
 import songscribe.music.Line;
 import songscribe.music.Lyric;
 import songscribe.music.StaffElement;
@@ -55,7 +59,7 @@ import songscribe.ui.layout.ScaleContext;
  *
  * <pre>
  *  ┌───────────────────────────────────────────────────────────┐
- *  │ LyricEditor lifecycle (Phase 1a)                          │
+ *  │ LyricEditor lifecycle (Phase 1a/1b)                       │
  *  │                                                           │
  *  │   AddLyricAction.actionPerformed                          │
  *  │           │                                               │
@@ -74,10 +78,25 @@ import songscribe.ui.layout.ScaleContext;
  *  │   │   - len > 32 → beep, reject                 │         │
  *  │   │   - newline → reject                        │         │
  *  │   │                                             │         │
- *  │   │  Tab/Space  → commit() → advance()          │         │
- *  │   │  Enter      → commit() → dismiss()          │         │
+ *  │   │  Tab/Space  → commit(NONE,NONE) → advance() │         │
+ *  │   │  Enter      → commit(NONE,NONE) → dismiss() │         │
  *  │   │  Escape     → dismiss() (no commit)         │         │
- *  │   │  focus-lost → commit() → dismiss()          │         │
+ *  │   │  focus-lost → commit(NONE,NONE) → dismiss() │         │
+ *  │   │                                             │         │
+ *  │   │  Boundary keys (Phase 1b):                  │         │
+ *  │   │  ┌────────┬──────────┬────────────────────┐ │         │
+ *  │   │  │ Key    │ State    │ Effect             │ │         │
+ *  │   │  ├────────┼──────────┼────────────────────┤ │         │
+ *  │   │  │ -      │ non-empty│ commit(SYLLABLE,   │ │         │
+ *  │   │  │        │          │   NONE) → advance  │ │         │
+ *  │   │  │ -      │ empty    │ advance only       │ │         │
+ *  │   │  │ =      │ non-empty│ commit(COMPOUND_   │ │         │
+ *  │   │  │        │          │   WORD,NONE)→adv.  │ │         │
+ *  │   │  │ =      │ empty    │ beep, no-op        │ │         │
+ *  │   │  │ _      │ non-empty│ commit(NONE,START) │ │         │
+ *  │   │  │        │          │   → advance        │ │         │
+ *  │   │  │ _      │ empty    │ scan-back → advance│ │         │
+ *  │   │  └────────┴──────────┴────────────────────┘ │         │
  *  │   └─────────────────────────────────────────────┘         │
  *  │           │                                               │
  *  │           ▼                                               │
@@ -85,6 +104,13 @@ import songscribe.ui.layout.ScaleContext;
  *  │     eligible: !rest, OR rest with existing lyric          │
  *  │     found: dismiss this, new LyricEditor(line, next)      │
  *  │     none:  dismiss()                                      │
+ *  │                                                           │
+ *  │   scanBack(): walk backwards from current element         │
+ *  │     find prev syllable with non-blank text, extend !=     │
+ *  │       STOP/CONTINUE                                       │
+ *  │     found: set extend=START on prev syllable, remove      │
+ *  │       lyric from current element (one bracket)            │
+ *  │     none: remove lyric from current element               │
  *  │                                                           │
  *  │   dismiss(): score.remove(this); editor reference cleared │
  *  │                                                           │
@@ -351,15 +377,16 @@ public final class LyricEditor extends MyJTextField {
             }
         });
 
-        // Space is a normal printable, so it goes through KeyListener.keyTyped rather
-        // than the input map (which routes by KeyStroke before character translation).
+        // Boundary characters are normal printables so they arrive via keyTyped rather
+        // than the input map. Consuming the event prevents insertion into the document.
         addKeyListener(new KeyAdapter() {
             @Override
             public void keyTyped(KeyEvent e) {
-                if (e.getKeyChar() == ' ') {
-                    e.consume();
-                    commit();
-                    advance();
+                switch (e.getKeyChar()) {
+                    case ' ' -> { e.consume(); commit(); advance(); }
+                    case '-' -> { e.consume(); handleHyphen(); }
+                    case '=' -> { e.consume(); handleEquals(); }
+                    case '_' -> { e.consume(); handleUnderscore(); }
                 }
             }
         });
@@ -522,16 +549,26 @@ public final class LyricEditor extends MyJTextField {
     }
 
     /**
-     * Writes the editor's current text into the active element's verse-1 lyric. Same-text
-     * commits and empty-on-empty commits emit zero mutations — the modification bracket
-     * is skipped entirely.
+     * Writes the editor's current text into the active element's lyric for {@link #VERSE}
+     * with {@code relation = NONE} and {@code extend = NONE}. Same-text commits and
+     * empty-on-empty commits emit zero mutations — the modification bracket is skipped.
      */
     public void commit() {
+        commit(StaffElement.SyllableRelation.NONE, Lyric.Extend.NONE);
+    }
+
+    /**
+     * Writes the editor's current text into the active element's lyric for {@link #VERSE}
+     * with the supplied {@code relation} and {@code extend}. Same-text commits and
+     * empty-on-empty commits emit zero mutations — the modification bracket is skipped.
+     */
+    private void commit(StaffElement.SyllableRelation relation, Lyric.Extend extend) {
         var text = getText();
         var existingLyric = element.getLyricForVerse(VERSE);
         var existingText = existingLyric != null ? existingLyric.text() : "";
 
-        if (text.equals(existingText)) {
+        if (text.equals(existingText)
+                && (existingLyric == null || (existingLyric.relation() == relation && existingLyric.extend() == extend))) {
             return;
         }
 
@@ -577,6 +614,91 @@ public final class LyricEditor extends MyJTextField {
 
         var lyric = candidate.getLyricForVerse(VERSE);
         return lyric != null && !lyric.text().isBlank();
+    }
+
+    private void handleHyphen() {
+        if (!getText().isEmpty()) {
+            commit(StaffElement.SyllableRelation.SYLLABLE, Lyric.Extend.NONE);
+        }
+
+        advance();
+    }
+
+    private void handleEquals() {
+        if (getText().isEmpty()) {
+            Toolkit.getDefaultToolkit().beep();
+            return;
+        }
+
+        commit(StaffElement.SyllableRelation.COMPOUND_WORD, Lyric.Extend.NONE);
+        advance();
+    }
+
+    private void handleUnderscore() {
+        if (!getText().isEmpty()) {
+            commit(StaffElement.SyllableRelation.NONE, Lyric.Extend.START);
+        } else {
+            scanBack();
+        }
+
+        advance();
+    }
+
+    /**
+     * Implements the scan-back semantics for {@code _} pressed on an empty editor.
+     * Walks backwards to find the previous element whose {@link #VERSE} lyric has
+     * non-blank text and whose extend is not {@code STOP} or {@code CONTINUE}, then
+     * sets {@code extend = START} on that lyric and removes the current element's lyric
+     * — all inside a single modification bracket so undo is atomic.
+     */
+    private void scanBack() {
+        var currentIndex = line.getElementIndex(element);
+        StaffElement previousSyllable = null;
+        var previousSyllableIndex = -1;
+
+        for (var i = currentIndex - 1; i >= 0; i--) {
+            var candidate = line.getElement(i);
+            var lyric = candidate.getLyricForVerse(VERSE);
+
+            if (lyric != null && !lyric.text().isBlank()
+                    && lyric.extend() != Lyric.Extend.STOP
+                    && lyric.extend() != Lyric.Extend.CONTINUE) {
+                previousSyllable = candidate;
+                previousSyllableIndex = i;
+                break;
+            }
+        }
+
+        var existingLyric = element.getLyricForVerse(VERSE);
+
+        if (previousSyllable != null) {
+            var finalPreviousSyllable = previousSyllable;
+            var finalPreviousSyllableIndex = previousSyllableIndex;
+            var prevLyric = previousSyllable.getLyricForVerse(VERSE);
+
+            // Invariant: the loop assigned previousSyllable only when lyric != null
+            if (prevLyric == null) {
+                throw RuntimeError.exit("Previous syllable lost verse " + VERSE + " lyric between scan and commit");
+            }
+
+            line.withModification(() -> {
+                line.modifyElement(finalPreviousSyllableIndex, LYRIC_FIELDS, () ->
+                    finalPreviousSyllable.setLyricForVerse(
+                        VERSE, prevLyric.relation(), prevLyric.text(), Lyric.Extend.START)
+                );
+
+                if (existingLyric != null) {
+                    line.modifyElement(currentIndex, LYRIC_FIELDS, () ->
+                        element.setLyricForVerse(VERSE, StaffElement.SyllableRelation.NONE, null, Lyric.Extend.NONE)
+                    );
+                }
+            });
+        } else if (existingLyric != null) {
+            line.withModification(() -> line.modifyElement(
+                currentIndex, LYRIC_FIELDS,
+                () -> element.setLyricForVerse(VERSE, StaffElement.SyllableRelation.NONE, null, Lyric.Extend.NONE)
+            ));
+        }
     }
 
     // Re-entrant guard: clearing focused before commit/dismiss prevents a second
