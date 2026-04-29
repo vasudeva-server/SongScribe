@@ -291,10 +291,10 @@ public final class LyricEditor extends MyJTextField {
             if (!focused || getParent() == null) {
                 return;
             }
+
             focused = false;
-            super.focusLost(e);
             commit();
-            dismiss();
+            dismiss(false);
         }
     }
 
@@ -393,10 +393,10 @@ public final class LyricEditor extends MyJTextField {
 
         bindKey(KeyEvent.VK_ENTER, ACTION_KEY_ENTER, () -> {
             commit();
-            dismiss();
+            dismiss(true);
         });
 
-        bindKey(KeyEvent.VK_ESCAPE, ACTION_KEY_ESCAPE, this::dismiss);
+        bindKey(KeyEvent.VK_ESCAPE, ACTION_KEY_ESCAPE, () -> dismiss(true));
 
         // Commit and dismiss on any click outside the editor. The focusLost handler covers
         // clicks on focusable components (toolbar buttons, etc.); this covers clicks on the
@@ -550,13 +550,13 @@ public final class LyricEditor extends MyJTextField {
             var candidate = line.getElement(i);
 
             if (isEligibleForLyric(candidate) && !score.getSong().isAutoMaintainedTerminal(candidate, line)) {
-                dismiss();
+                dismiss(false);
                 openOn(score, line, candidate);
                 return;
             }
         }
 
-        dismiss();
+        dismiss(true);
     }
 
     private static boolean isEligibleForLyric(StaffElement candidate) {
@@ -577,14 +577,14 @@ public final class LyricEditor extends MyJTextField {
 
         focused = false;
         commit();
-        dismiss();
+        dismiss(true);
     }
 
     /**
      * Removes the editor from its parent, clears the active-editor reference on
      * {@code Score}, and repaints the vacated region.
      */
-    public void dismiss() {
+    public void dismiss(boolean isDoneEditing) {
         if (outsideClickListener != null) {
             Toolkit.getDefaultToolkit().removeAWTEventListener(outsideClickListener);
             outsideClickListener = null;
@@ -597,9 +597,19 @@ public final class LyricEditor extends MyJTextField {
         }
 
         var bounds = getBounds();
+
+        // Move focus off the text field before removing it, so the
+        // KeyboardFocusManager doesn't retain the detached JTextComponent as focus owner.
+        score.requestFocusInWindow();
+
         parent.remove(this);
         parent.repaint(bounds.x, bounds.y, bounds.width, bounds.height);
-        score.requestFocusInWindow();
+
+        // We want to notify actions that editing has ended so they can update their enabled state,
+        // but only when not advancing to another lyric editor.
+        if (isDoneEditing) {
+            MessageCenter.post(new TextEditingDidChangeNotification(false));
+        }
     }
 
     /** Test-only hook to set the focused state without a real focus event. */
