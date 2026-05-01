@@ -136,6 +136,7 @@ public final class LyricEditor extends MyJTextField {
     public static final InsetsSs EDITOR_PADDING_SS = new InsetsSs(0.25, 0.5, 0.25, 0.5);
 
     private static final int LINE_BORDER_WIDTH_PX = 1;
+    private static final int EXTRA_VERTICAL_PADDING_PX = 1;
 
     /**
      * {@link javax.swing.plaf.basic.BasicTextUI#getVisibleEditorRect()} leaves one
@@ -577,7 +578,12 @@ public final class LyricEditor extends MyJTextField {
         var rightPaddingPx = Math.max(0, paddingPx.right - TEXT_FIELD_RESERVED_TRAILING_PX);
         setBorder(BorderFactory.createCompoundBorder(
             new LineBorder(Color.BLACK, LINE_BORDER_WIDTH_PX),
-            new EmptyBorder(paddingPx.top, paddingPx.left, paddingPx.bottom, rightPaddingPx)
+            new EmptyBorder(
+                paddingPx.top + EXTRA_VERTICAL_PADDING_PX,
+                paddingPx.left,
+                paddingPx.bottom + EXTRA_VERTICAL_PADDING_PX,
+                rightPaddingPx
+            )
         ));
 
         // getInsets() now reflects the dynamic border just set above.
