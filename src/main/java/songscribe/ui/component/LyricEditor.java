@@ -277,6 +277,8 @@ public final class LyricEditor extends MyJTextField {
         WORD_CONTINUING_COMPOUND
     }
 
+    private record CommitSpec(CommitKind kind, Lyric.Extend extend) {}
+
     /**
      * Text-field UI used only by the lyric overlay so we can customize its Swing text
      * view without changing global look-and-feel behavior.
@@ -694,7 +696,8 @@ public final class LyricEditor extends MyJTextField {
      * runs the dismiss-adjustment pass, then advances to the next eligible element.
      */
     public void advance() {
-        advance(CommitKind.WORD_FINAL, Lyric.Extend.NONE);
+        var commitSpec = navigationCommitSpec();
+        advance(commitSpec.kind(), commitSpec.extend());
     }
 
     /**
@@ -702,12 +705,41 @@ public final class LyricEditor extends MyJTextField {
      * runs the dismiss-adjustment pass, then retreats to the previous eligible element.
      */
     public void retreat() {
+        var commitSpec = navigationCommitSpec();
         line.withModification(() -> {
-            commitInner(CommitKind.WORD_FINAL, Lyric.Extend.NONE);
+            commitInner(commitSpec.kind(), commitSpec.extend());
             applyDismissAdjustment();
         });
 
         openAdjacentOrDismiss(i -> i - 1, i -> i >= 0);
+    }
+
+    /**
+     * Tab/Shift-Tab without a text edit should not rewrite the current lyric's syllabic
+     * or extend state. Reuse the stored shape when the text is unchanged; otherwise fall
+     * back to the default word-final/no-melisma commit.
+     */
+    private CommitSpec navigationCommitSpec() {
+        var lyric = element.getLyricForVerse(CURRENT_VERSE);
+
+        if (lyric == null || !getText().equals(lyric.text())) {
+            return new CommitSpec(CommitKind.WORD_FINAL, Lyric.Extend.NONE);
+        }
+
+        if (lyric.extend() == Lyric.Extend.CONTINUE || lyric.extend() == Lyric.Extend.STOP) {
+            return new CommitSpec(CommitKind.WORD_FINAL, lyric.extend());
+        }
+
+        var kind = switch (lyric.syllabic()) {
+            case BEGIN, MIDDLE -> lyric.compound()
+                ? CommitKind.WORD_CONTINUING_COMPOUND
+                : CommitKind.WORD_CONTINUING_HYPHEN;
+            case SINGLE, END -> CommitKind.WORD_FINAL;
+            case null -> throw RuntimeError.exit(
+                "Text-bearing lyric at editor element is missing syllabic");
+        };
+
+        return new CommitSpec(kind, lyric.extend());
     }
 
     private void openAdjacentOrDismiss(IntUnaryOperator next, IntPredicate inBounds) {

@@ -295,6 +295,52 @@ class LyricEditorTest extends UnitTest {
         assertThat(newEditor.getCaret().getDot()).isEqualTo("do".length());
     }
 
+    @Test
+    void testAdvanceWithUnchangedTextPreservesExistingBoundaryAndExtend() {
+        var current = crotchet();
+        current.setLyricForVerse(1, Lyric.Syllabic.BEGIN, true, "ho", Lyric.Extend.START);
+        var nextNote = crotchet();
+        nextNote.setLyricForVerse(1, Lyric.Syllabic.END, false, "ri", Lyric.Extend.NONE);
+        var line = detachedLineWith(current, nextNote);
+
+        var editor = new LyricEditor(score, line, current);
+        assertThat(editor.getText()).isEqualTo("ho");
+
+        messageCenterMock = mockStatic(MessageCenter.class);
+        editor.advance();
+
+        assertThat(current.getMainLyric())
+            .extracting(Lyric::text, Lyric::syllabic, Lyric::compound, Lyric::extend)
+            .containsExactly("ho", Lyric.Syllabic.BEGIN, true, Lyric.Extend.START);
+
+        var captor = ArgumentCaptor.forClass(LyricEditor.class);
+        verify(score, atLeastOnce()).addOverlay(captor.capture());
+        assertThat(requireLastNonNull(captor).getActiveElement()).isSameAs(nextNote);
+    }
+
+    @Test
+    void testRetreatWithUnchangedTextPreservesExistingBoundary() {
+        var previous = crotchet();
+        previous.setLyricForVerse(1, Lyric.Syllabic.BEGIN, false, "ho", Lyric.Extend.NONE);
+        var current = crotchet();
+        current.setLyricForVerse(1, Lyric.Syllabic.END, false, "ri", Lyric.Extend.NONE);
+        var line = detachedLineWith(previous, current);
+
+        var editor = new LyricEditor(score, line, current);
+        assertThat(editor.getText()).isEqualTo("ri");
+
+        messageCenterMock = mockStatic(MessageCenter.class);
+        editor.retreat();
+
+        assertThat(current.getMainLyric())
+            .extracting(Lyric::text, Lyric::syllabic, Lyric::compound, Lyric::extend)
+            .containsExactly("ri", Lyric.Syllabic.END, false, Lyric.Extend.NONE);
+
+        var captor = ArgumentCaptor.forClass(LyricEditor.class);
+        verify(score, atLeastOnce()).addOverlay(captor.capture());
+        assertThat(requireLastNonNull(captor).getActiveElement()).isSameAs(previous);
+    }
+
     // -----------------------------------------------------------------------
     // T18–T24: input behavior and validation
     // -----------------------------------------------------------------------
