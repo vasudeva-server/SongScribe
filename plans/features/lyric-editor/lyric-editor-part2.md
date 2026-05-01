@@ -1,13 +1,13 @@
-# Lyric Editor — Part 2 (Phases 1b, 1c, 2, 3, 4)
+# Lyric Editor — Part 2 (Phases 1b, 2, 3, 4, 5)
 
 Follow-on phases to `./lyric-editor.md` (Phase 1a). Each phase is independently shippable and depends on the editor scaffolding from 1a.
 
 Index:
 - [Phase 1b — Boundary characters, scan-back](#phase-1b--boundary-characters-scan-back-ime)
-- [Phase 1c — Paste tokenization](#phase-1c--paste-tokenization)
 - [Phase 2 — Lyric click-selection](#phase-2--lyric-click-selection)
 - [Phase 3 — DeleteAction dispatch for lyrics](#phase-3--deleteaction-dispatch-for-lyrics)
 - [Phase 4 — Double-click to edit](#phase-4--double-click-to-edit)
+- [Phase 5 — Paste tokenization](#phase-5--paste-tokenization)
 - [Cross-phase TODOs](#cross-phase-todos)
 
 ---
@@ -68,57 +68,6 @@ The layout's natural rules then handle the trailing extender: it runs from the p
 ### Update lifecycle diagram in `LyricEditor.java`
 
 When 1b lands, append the keystroke dispatch table to the lifecycle diagram in the class header comment. Per project convention, diagrams are maintained alongside the code they describe.
-
----
-
-## Phase 1c — Paste tokenization
-
-### Goal
-
-Pasting clipboard text into an active editor distributes syllables across notes following Finale / Sibelius / MuseScore lyric-paste conventions: tokens separated by space, `-`, `=`, `_` advance through eligible elements; relation / extend follow from the boundary character.
-
-### Behavior
-
-Override the `JTextArea`'s `TransferHandler`. On paste:
-
-1. Strip the clipboard text: replace each newline with a single space.
-2. Tokenize on the boundary characters `space`, `-`, `=`, `_`. Each token + its trailing boundary character forms a "segment." A trailing token without a boundary forms a final segment with `boundary = null`.
-3. Inside one `song.withModification` block:
-   - For each segment with a non-null boundary character: treat it as if the user had typed the segment text and then pressed the boundary key. Apply the matching commit + advance from the 1b matrix. If advance has no eligible target (end of line), commit the current segment and stop processing remaining segments — they are silently dropped.
-   - The final segment with `boundary = null`: replace the editor's field text with that segment (no commit, no advance). The user can continue typing or press a commit key.
-4. The 32-char cap applies per-segment, not per-paste. A segment longer than 32 chars triggers a beep and that segment is truncated to 32 chars before commit.
-5. The whole paste produces a single undo entry (one `withModification` bracket emits N mutations; undo reverts all of them at once).
-
-### Special leading-character behavior
-
-- Leading `-` (paste begins with `-`): `-` alone semantics (advance, no model change).
-- Leading `_`: `_` alone scan-back semantics; advance.
-- Leading `=`: silently consumed (no beep during paste); continue with next segment.
-
-If the paste produces no advances at all (e.g. paste is just `"foo"` with no boundary), the editor's field text becomes `"foo"` and the session continues normally on the same element.
-
-### Concern carried over from review (Issue 9)
-
-`ScaleContext.textWidthSs` will be called at minimum once per segment width recompute during paste processing. Before paste lands, **verify that `ScaleContext.textWidthSs` is reasonably cheap** (caches `FontMetrics`, doesn't allocate per call). If it allocates per call, add a local cache in `LyricEditor` keyed on `(font, text)` for paste duration. A 50-syllable paste should not produce a measurable hitch.
-
-### Files / classes (1c)
-
-**New:**
-- `songscribe.ui.component.LyricPasteHandler` (or inner class on `LyricEditor`) extending `TransferHandler`.
-
-**Modified:**
-- `songscribe.ui.component.LyricEditor` — install the paste handler at construction.
-
-### Tests (1c)
-
-- Paste `"hel-lo world"` over three eligible elements: writes `hel(SYLLABLE)`, `lo(NONE)`, `world(NONE)`; final element commits with no boundary so the editor stays open with `"world"`.
-- Single-undo: undoing the paste reverts all three mutations atomically.
-- Paste exceeding remaining elements: silently drops trailing segments after end-of-line.
-- Per-segment 32-char cap: a 50-char segment beeps and commits truncated to 32.
-- Leading `-` advances without model change.
-- Leading `_` runs scan-back.
-- Leading `=` silently consumed.
-- Paste without any boundaries replaces field text only.
 
 ---
 
@@ -257,17 +206,68 @@ Double-clicking a rendered lyric opens the editor on that element with prefill s
 
 ---
 
+## Phase 5 — Paste tokenization
+
+### Goal
+
+Pasting clipboard text into an active editor distributes syllables across notes following Finale / Sibelius / MuseScore lyric-paste conventions: tokens separated by space, `-`, `=`, `_` advance through eligible elements; relation / extend follow from the boundary character.
+
+### Behavior
+
+Override the `JTextArea`'s `TransferHandler`. On paste:
+
+1. Strip the clipboard text: replace each newline with a single space.
+2. Tokenize on the boundary characters `space`, `-`, `=`, `_`. Each token + its trailing boundary character forms a "segment." A trailing token without a boundary forms a final segment with `boundary = null`.
+3. Inside one `song.withModification` block:
+   - For each segment with a non-null boundary character: treat it as if the user had typed the segment text and then pressed the boundary key. Apply the matching commit + advance from the 1b matrix. If advance has no eligible target (end of line), commit the current segment and stop processing remaining segments — they are silently dropped.
+   - The final segment with `boundary = null`: replace the editor's field text with that segment (no commit, no advance). The user can continue typing or press a commit key.
+4. The 32-char cap applies per-segment, not per-paste. A segment longer than 32 chars triggers a beep and that segment is truncated to 32 chars before commit.
+5. The whole paste produces a single undo entry (one `withModification` bracket emits N mutations; undo reverts all of them at once).
+
+### Special leading-character behavior
+
+- Leading `-` (paste begins with `-`): `-` alone semantics (advance, no model change).
+- Leading `_`: `_` alone scan-back semantics; advance.
+- Leading `=`: silently consumed (no beep during paste); continue with next segment.
+
+If the paste produces no advances at all (e.g. paste is just `"foo"` with no boundary), the editor's field text becomes `"foo"` and the session continues normally on the same element.
+
+### Concern carried over from review (Issue 9)
+
+`ScaleContext.textWidthSs` will be called at minimum once per segment width recompute during paste processing. Before paste lands, **verify that `ScaleContext.textWidthSs` is reasonably cheap** (caches `FontMetrics`, doesn't allocate per call). If it allocates per call, add a local cache in `LyricEditor` keyed on `(font, text)` for paste duration. A 50-syllable paste should not produce a measurable hitch.
+
+### Files / classes (5)
+
+**New:**
+- `songscribe.ui.component.LyricPasteHandler` (or inner class on `LyricEditor`) extending `TransferHandler`.
+
+**Modified:**
+- `songscribe.ui.component.LyricEditor` — install the paste handler at construction.
+
+### Tests (5)
+
+- Paste `"hel-lo world"` over three eligible elements: writes `hel(SYLLABLE)`, `lo(NONE)`, `world(NONE)`; final element commits with no boundary so the editor stays open with `"world"`.
+- Single-undo: undoing the paste reverts all three mutations atomically.
+- Paste exceeding remaining elements: silently drops trailing segments after end-of-line.
+- Per-segment 32-char cap: a 50-char segment beeps and commits truncated to 32.
+- Leading `-` advances without model change.
+- Leading `_` runs scan-back.
+- Leading `=` silently consumed.
+- Paste without any boundaries replaces field text only.
+
+---
+
 ## Cross-phase TODOs
 
-### TODO: Verify `ScaleContext.textWidthSs` cost before Phase 1c
+### TODO: Verify `ScaleContext.textWidthSs` cost before Phase 5
 
 **What:** Read the implementation of `ScaleContext.textWidthSs(Font, String)` and confirm it does not allocate a fresh `FontMetrics` per call.
 
-**Why:** Phase 1c paste calls the width recompute many times in rapid succession (one per segment × 1+ per width recompute). If the width call allocates per invocation, a long paste produces a measurable UI hitch. Phase 1a only calls it at human keystroke pace, so the cost is undetectable there — but 1c will surface any latent inefficiency.
+**Why:** Phase 5 paste calls the width recompute many times in rapid succession (one per segment × 1+ per width recompute). If the width call allocates per invocation, a long paste produces a measurable UI hitch. Phase 1a only calls it at human keystroke pace, so the cost is undetectable there — but 5 will surface any latent inefficiency.
 
 **Context:** Per the review, expected to be cheap (most Java FontMetrics implementations cache internally). Two-minute read, no design change unless slow. If slow, options are (a) optimize `textWidthSs` itself, or (b) add a local memoization in `LyricEditor` for paste duration.
 
-**Depends on / blocked by:** Nothing for the verification itself. The verification result feeds into Phase 1c's design.
+**Depends on / blocked by:** Nothing for the verification itself. The verification result feeds into Phase 5's design.
 
 ### TODO: Lock the UIAction audit whitelist in T25
 
