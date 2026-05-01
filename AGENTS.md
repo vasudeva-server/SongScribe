@@ -20,7 +20,7 @@ SongScribe is a Java/Kotlin-based music notation application. SongScribe files u
 source ./scripts/set-java-home.sh # Set JAVA_HOME (requires Java 25+)
 ```
 
-See [development rules](.agents/rules/development.md) for full script options and testing examples.
+You MUST read [development rules](.agents/rules/development.md) for comprehensive information on the development workflow and harness.
 
 ### Package Overview
 
