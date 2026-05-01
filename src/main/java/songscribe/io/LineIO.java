@@ -143,10 +143,8 @@ public final class LineIO {
 
         pw.println("      <" + XML_NOTES + '>');
 
-        var prevRelation = StaffElement.SyllableRelation.NONE;
-
         for (var i = 0; i < l.elementCount(); i++) {
-            prevRelation = StaffElementIO.writeElement(l.getElement(i), pw, prevRelation);
+            StaffElementIO.writeElement(l.getElement(i), pw, l, i);
         }
 
         pw.println("      </" + XML_NOTES + '>');

@@ -35,7 +35,6 @@ import org.xml.sax.InputSource;
 import songscribe.UnitTest;
 import songscribe.music.Song;
 import songscribe.music.Lyric;
-import songscribe.music.StaffElement.SyllableRelation;
 
 class SongIOTest extends UnitTest {
 
@@ -59,11 +58,11 @@ class SongIOTest extends UnitTest {
             var line = song.getLine(0);
 
             line.getElement(0).properties.lyrics.add(
-                new Lyric(1, SyllableRelation.COMPOUND_WORD, "heart", Lyric.Extend.START)
+                new Lyric(1, "heart", Lyric.Extend.START, Lyric.Syllabic.BEGIN, true)
             );
             // element 1 intentionally left without lyrics
             line.getElement(2).properties.lyrics.add(
-                new Lyric(1, SyllableRelation.NONE, "garden", Lyric.Extend.NONE)
+                new Lyric(1, "garden", Lyric.Extend.NONE, Lyric.Syllabic.SINGLE, false)
             );
 
             var reloaded = roundTrip(song);
@@ -71,7 +70,7 @@ class SongIOTest extends UnitTest {
 
             assertThat(reloadedLine.getElement(0).properties.lyrics)
                 .as("note 0 lyrics round-trip")
-                .containsExactly(new Lyric(1, SyllableRelation.COMPOUND_WORD, "heart", Lyric.Extend.START));
+                .containsExactly(new Lyric(1, "heart", Lyric.Extend.START, Lyric.Syllabic.BEGIN, true));
 
             assertThat(reloadedLine.getElement(1).properties.lyrics)
                 .as("note 1 has no lyrics")
@@ -79,7 +78,7 @@ class SongIOTest extends UnitTest {
 
             assertThat(reloadedLine.getElement(2).properties.lyrics)
                 .as("note 2 lyrics round-trip")
-                .containsExactly(new Lyric(1, SyllableRelation.NONE, "garden", Lyric.Extend.NONE));
+                .containsExactly(new Lyric(1, "garden", Lyric.Extend.NONE, Lyric.Syllabic.END, false));
         }
 
         // T41: Legacy load — a pre-v2.6 fixture with <lyrics>heart--garden</lyrics>
@@ -91,11 +90,11 @@ class SongIOTest extends UnitTest {
 
             assertThat(line.getElement(0).properties.lyrics)
                 .as("note 0: compound-word syllable")
-                .containsExactly(new Lyric(1, SyllableRelation.COMPOUND_WORD, "heart", Lyric.Extend.NONE));
+                .containsExactly(new Lyric(1, "heart", Lyric.Extend.NONE, Lyric.Syllabic.BEGIN, true));
 
             assertThat(line.getElement(1).properties.lyrics)
                 .as("note 1: word end syllable")
-                .containsExactly(new Lyric(1, SyllableRelation.NONE, "garden", Lyric.Extend.NONE));
+                .containsExactly(new Lyric(1, "garden", Lyric.Extend.NONE, Lyric.Syllabic.END, false));
         }
 
         // T42: Version guard — a v2.6 file with both a <lyrics> blob and per-note
@@ -110,7 +109,7 @@ class SongIOTest extends UnitTest {
             // If the guard works, we get exactly the per-note record.
             assertThat(line.getElement(0).properties.lyrics)
                 .as("per-note lyric wins over legacy blob in new-format file")
-                .containsExactly(new Lyric(1, SyllableRelation.NONE, "hello", Lyric.Extend.NONE));
+                .containsExactly(new Lyric(1, "hello", Lyric.Extend.NONE, Lyric.Syllabic.SINGLE, false));
         }
 
         // T43: Tolerant nudge-field read — a pre-migration file containing
@@ -138,19 +137,19 @@ class SongIOTest extends UnitTest {
             var line = song.getLine(0);
 
             line.getElement(0).properties.lyrics.add(
-                new Lyric(1, SyllableRelation.NONE, "ah", Lyric.Extend.START)
+                new Lyric(1, "ah", Lyric.Extend.START, Lyric.Syllabic.SINGLE, false)
             );
             line.getElement(1).properties.lyrics.add(
-                new Lyric(1, SyllableRelation.NONE, "", Lyric.Extend.STOP)
+                new Lyric(1, "", Lyric.Extend.STOP, null, false)
             );
 
             var reloaded = roundTrip(song);
             var reloadedLine = reloaded.getLine(0);
 
             assertThat(reloadedLine.getElement(0).properties.lyrics)
-                .containsExactly(new Lyric(1, SyllableRelation.NONE, "ah", Lyric.Extend.START));
+                .containsExactly(new Lyric(1, "ah", Lyric.Extend.START, Lyric.Syllabic.SINGLE, false));
             assertThat(reloadedLine.getElement(1).properties.lyrics)
-                .containsExactly(new Lyric(1, SyllableRelation.NONE, "", Lyric.Extend.STOP));
+                .containsExactly(new Lyric(1, "", Lyric.Extend.STOP, null, false));
         }
 
         // A pre-enum v2.6 file with bare <extend/> (no type attribute) loads as START,
@@ -161,7 +160,7 @@ class SongIOTest extends UnitTest {
             var reloadedLine = song.getLine(0);
 
             assertThat(reloadedLine.getElement(0).properties.lyrics)
-                .containsExactly(new Lyric(1, SyllableRelation.NONE, "ah", Lyric.Extend.START));
+                .containsExactly(new Lyric(1, "ah", Lyric.Extend.START, Lyric.Syllabic.SINGLE, false));
         }
 
         // MusicXML-style input with <extend type="stop"/> on a note carrying only
@@ -172,9 +171,9 @@ class SongIOTest extends UnitTest {
             var reloadedLine = song.getLine(0);
 
             assertThat(reloadedLine.getElement(0).properties.lyrics)
-                .containsExactly(new Lyric(1, SyllableRelation.NONE, "ah", Lyric.Extend.START));
+                .containsExactly(new Lyric(1, "ah", Lyric.Extend.START, Lyric.Syllabic.SINGLE, false));
             assertThat(reloadedLine.getElement(1).properties.lyrics)
-                .containsExactly(new Lyric(1, SyllableRelation.NONE, "", Lyric.Extend.STOP));
+                .containsExactly(new Lyric(1, "", Lyric.Extend.STOP, null, false));
         }
 
         // T44: Legacy <lyrics> blob with -- maps to COMPOUND_WORD on first note.
@@ -184,8 +183,8 @@ class SongIOTest extends UnitTest {
 
             assertThat(song.getLine(0).getElement(0).getMainLyric())
                 .isNotNull()
-                .extracting(Lyric::relation)
-                .isEqualTo(SyllableRelation.COMPOUND_WORD);
+                .extracting(Lyric::compound)
+                .isEqualTo(true);
         }
     }
 

@@ -23,6 +23,7 @@ package songscribe.io;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mockStatic;
 
 import java.io.PrintWriter;
 import java.io.StringReader;
@@ -30,22 +31,41 @@ import java.io.StringWriter;
 
 import javax.xml.parsers.SAXParserFactory;
 
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.mockito.MockedStatic;
 import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
 
 import songscribe.UnitTest;
-import songscribe.music.Song;
+import songscribe.message.MessageCenter;
 import songscribe.music.ElementType;
+import songscribe.music.Line;
+import songscribe.music.Song;
 import songscribe.ui.layout.DynamicAttachment;
 import songscribe.ui.layout.DynamicAttachment.DynamicType;
 
 class StaffElementIOTest extends UnitTest {
 
     private static final SAXParserFactory PARSER_FACTORY = SAXParserFactory.newInstance();
+
+    private Line line;
+    private MockedStatic<MessageCenter> messageCenterMock;
+
+    @BeforeEach
+    void setUp() {
+        messageCenterMock = mockStatic(MessageCenter.class);
+        line = new Song().getLine(0);
+    }
+
+    @AfterEach
+    void tearDown() {
+        messageCenterMock.close();
+    }
 
     @Nested
     class InvalidMapLookups {
@@ -139,11 +159,9 @@ class StaffElementIOTest extends UnitTest {
 
     // -- Helpers --
 
-    private static String writeNote(songscribe.music.StaffElement note) {
+    private String writeNote(songscribe.music.StaffElement note) {
         var sw = new StringWriter();
-        StaffElementIO.writeElement(
-            note, new PrintWriter(sw), songscribe.music.StaffElement.SyllableRelation.NONE
-        );
+        StaffElementIO.writeElement(note, new PrintWriter(sw), line, 0);
         return sw.toString();
     }
 

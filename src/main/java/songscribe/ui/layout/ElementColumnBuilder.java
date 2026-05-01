@@ -29,6 +29,7 @@ import java.util.List;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.music.Line;
+import songscribe.music.Lyric;
 import songscribe.music.StaffElement;
 import songscribe.smufl.Engraving;
 import songscribe.smufl.SMuFLGlyph;
@@ -141,7 +142,8 @@ public class ElementColumnBuilder {
         var mainLyric = element.getMainLyric();
 
         if (mainLyric != null) {
-            var isHyphenated = mainLyric.relation() != StaffElement.SyllableRelation.NONE;
+            var syllabic = mainLyric.syllabic();
+            var isHyphenated = syllabic == Lyric.Syllabic.BEGIN || syllabic == Lyric.Syllabic.MIDDLE;
             column.setMinGapToNextSyllableSs(isHyphenated
                 ? lyricRenderMetrics.preferredHyphenCellWidthSs()
                 : lyricRenderMetrics.spaceWidthSs());

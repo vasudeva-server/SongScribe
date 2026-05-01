@@ -467,10 +467,12 @@ public final class Song {
                 if (lyric.extend() != Lyric.Extend.NONE) {
                     sb.append('_');
                 } else {
-                    switch (lyric.relation()) {
-                        case NONE -> sb.append(' ');
-                        case SYLLABLE -> sb.append('-');
-                        case COMPOUND_WORD -> sb.append("--");
+                    if (lyric.compound()) {
+                        sb.append("--");
+                    } else {
+                        var syllabic = lyric.syllabic();
+                        sb.append(syllabic == Lyric.Syllabic.BEGIN || syllabic == Lyric.Syllabic.MIDDLE
+                            ? '-' : ' ');
                     }
                 }
             }

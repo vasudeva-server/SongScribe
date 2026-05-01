@@ -33,6 +33,7 @@ import songscribe.music.ArticulationType;
 import songscribe.music.BeatChange;
 import songscribe.music.Duration;
 import songscribe.music.ElementType;
+import songscribe.music.Line;
 import songscribe.music.Lyric;
 import songscribe.music.StaffElement;
 import songscribe.ui.layout.Articulation;
@@ -86,7 +87,14 @@ public final class StaffElementIO {
     private static final String XML_SYLLABIC = "syllabic";
     private static final String XML_LYRIC_TEXT = "text";
     private static final String XML_EXTEND_TAG = "extend";
-    private static final String XML_COMPOUND_ATTR_VALUE = "compound";
+
+    /**
+     * Compound-word boundary marker: a zero-width space (U+200B) appended to a
+     * syllable's {@code <text>} content signals that the syllable joins the next
+     * via SongScribe's {@code =} operator. Standard MusicXML readers ignore the
+     * invisible character and render the text normally.
+     */
+    private static final String COMPOUND_WORD_MARKER = "​";
 
     private static final Map<String, StaffElement.Accidental> ACCIDENTAL_MAP =
         new HashMap<>();
@@ -135,10 +143,11 @@ public final class StaffElementIO {
         };
     }
 
-    public static StaffElement.SyllableRelation writeElement(
+    public static void writeElement(
         StaffElement element,
         PrintWriter writer,
-        StaffElement.SyllableRelation prevRelation
+        Line line,
+        int elementIndex
     ) {
         writer.println(
             "          <" +
@@ -270,32 +279,20 @@ public final class StaffElementIO {
                 continue;
             }
 
-            var hasPrev = prevRelation != StaffElement.SyllableRelation.NONE;
-            var hasNext = lyric.relation() != StaffElement.SyllableRelation.NONE;
-            String syllabicValue;
+            var syllabicValue = switch (lyric.syllabic()) {
+                case SINGLE -> "single";
+                case BEGIN -> "begin";
+                case MIDDLE -> "middle";
+                case END -> "end";
+                case null -> "single";
+            };
 
-            if (hasPrev && hasNext) {
-                syllabicValue = "middle";
-            } else if (hasPrev) {
-                syllabicValue = "end";
-            } else if (hasNext) {
-                syllabicValue = "begin";
-            } else {
-                syllabicValue = "single";
-            }
+            writer.println("              <" + XML_SYLLABIC + ">" + syllabicValue + "</" + XML_SYLLABIC + ">");
 
-            if (lyric.relation() == StaffElement.SyllableRelation.COMPOUND_WORD) {
-                writer.println(
-                    "              <" + XML_SYLLABIC + " " + XML_TYPE + "=\"" +
-                        XML_COMPOUND_ATTR_VALUE + "\">" + syllabicValue + "</" + XML_SYLLABIC + ">"
-                );
-            } else {
-                writer.println("              <" + XML_SYLLABIC + ">" + syllabicValue + "</" + XML_SYLLABIC + ">");
-            }
-
+            var lyricText = lyric.compound() ? lyric.text() + COMPOUND_WORD_MARKER : lyric.text();
             writer.println(
                 "              <" + XML_LYRIC_TEXT + ">" +
-                    XML.escapeXML(lyric.text()) + "</" + XML_LYRIC_TEXT + ">"
+                    XML.escapeXML(lyricText) + "</" + XML_LYRIC_TEXT + ">"
             );
 
             if (lyric.extend() == Lyric.Extend.START) {
@@ -305,11 +302,9 @@ public final class StaffElementIO {
             }
 
             writer.println("            </" + XML_LYRIC + ">");
-            prevRelation = lyric.relation();
         }
 
         writer.println("          </" + XML_NOTE + '>');
-        return prevRelation;
     }
 
     public static class StaffElementReader {
@@ -333,7 +328,6 @@ public final class StaffElementIO {
         // State for the lyric currently being parsed (valid while where == LYRIC)
         private int lyricNumber;
         private String lyricSyllabic = "";
-        private boolean lyricCompound;
         private String lyricText = "";
         private Lyric.Extend lyricExtend = Lyric.Extend.NONE;
 
@@ -404,7 +398,6 @@ public final class StaffElementIO {
                     var numberStr = attributes.getValue(XML_LYRIC_NUMBER);
                     lyricNumber = numberStr != null ? Integer.parseInt(numberStr) : 1;
                     lyricSyllabic = "";
-                    lyricCompound = false;
                     lyricText = "";
                     lyricExtend = Lyric.Extend.NONE;
                     lastTag = null;
@@ -439,7 +432,6 @@ public final class StaffElementIO {
                 }
             } else if (where == Where.LYRIC) {
                 if (qName.equals(XML_SYLLABIC)) {
-                    lyricCompound = XML_COMPOUND_ATTR_VALUE.equals(attributes.getValue(XML_TYPE));
                     lastTag = qName;
                 } else if (qName.equals(XML_EXTEND_TAG)) {
                     lyricExtend = parseExtendType(attributes.getValue(XML_TYPE));
@@ -480,19 +472,35 @@ public final class StaffElementIO {
                 if (element == null) return null;
 
                 if (qName.equals(XML_LYRIC)) {
-                    // STOP/CONTINUE carriers have no syllabic/text; force relation to NONE.
+                    // STOP/CONTINUE carriers have no syllabic/text.
                     var isCarrier = lyricExtend == Lyric.Extend.STOP
                         || lyricExtend == Lyric.Extend.CONTINUE;
-                    var relation = isCarrier
-                        ? StaffElement.SyllableRelation.NONE
-                        : switch (lyricSyllabic) {
-                            case "single", "end" -> StaffElement.SyllableRelation.NONE;
-                            default -> lyricCompound
-                                ? StaffElement.SyllableRelation.COMPOUND_WORD
-                                : StaffElement.SyllableRelation.SYLLABLE;
+                    Lyric.@Nullable Syllabic syllabic;
+
+                    if (isCarrier) {
+                        syllabic = null;
+                    } else {
+                        syllabic = switch (lyricSyllabic) {
+                            case "single" -> Lyric.Syllabic.SINGLE;
+                            case "begin" -> Lyric.Syllabic.BEGIN;
+                            case "middle" -> Lyric.Syllabic.MIDDLE;
+                            case "end" -> Lyric.Syllabic.END;
+                            // Absent <syllabic>: implies SINGLE; the post-load syllabic
+                            // backfill normalizes further if needed.
+                            default -> Lyric.Syllabic.SINGLE;
                         };
+                    }
+
+                    var isCompoundEligible = syllabic == Lyric.Syllabic.BEGIN
+                        || syllabic == Lyric.Syllabic.MIDDLE;
+                    var compound = isCompoundEligible && lyricText.endsWith(COMPOUND_WORD_MARKER);
+
+                    if (compound) {
+                        lyricText = lyricText.substring(
+                            0, lyricText.length() - COMPOUND_WORD_MARKER.length());
+                    }
                     element.properties.lyrics.add(
-                        new Lyric(lyricNumber, relation, lyricText, lyricExtend)
+                        new Lyric(lyricNumber, lyricText, lyricExtend, syllabic, compound)
                     );
                     where = Where.ELEMENT;
                 } else if (lastTag != null && qName.equals(lastTag)) {

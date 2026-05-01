@@ -58,7 +58,6 @@ import songscribe.music.Line;
 import songscribe.music.Lyric;
 import songscribe.music.Song;
 import songscribe.music.StaffElement;
-import songscribe.music.StaffElement.SyllableRelation;
 import songscribe.ui.layout.LyricRenderMetrics;
 
 class LyricEditorTest extends UnitTest {
@@ -89,7 +88,7 @@ class LyricEditorTest extends UnitTest {
     }
 
     private static void setMainLyric(StaffElement element, String text) {
-        element.setLyricForVerse(1, SyllableRelation.NONE, text, Lyric.Extend.NONE);
+        element.setLyricForVerse(1, Lyric.Syllabic.SINGLE, false, text, Lyric.Extend.NONE);
     }
 
     // -----------------------------------------------------------------------
@@ -452,6 +451,138 @@ class LyricEditorTest extends UnitTest {
         }
 
         verifyNoSongDidChange();
+    }
+
+    // -----------------------------------------------------------------------
+    // T25–T29: applyDismissAdjustment branches
+    // -----------------------------------------------------------------------
+
+    private void fireEscape(LyricEditor editor) {
+        var escapeKeyStroke = KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0);
+        var escapeActionKey = editor.getInputMap(JComponent.WHEN_FOCUSED).get(escapeKeyStroke);
+        assertThat(escapeActionKey).as("Escape must be bound in WHEN_FOCUSED map").isNotNull();
+        editor.getActionMap().get(escapeActionKey).actionPerformed(
+            new ActionEvent(editor, ActionEvent.ACTION_PERFORMED, ""));
+    }
+
+    @Test
+    void testSuppressedDismissAdjustmentEmitsNoMutations() {
+        var element = crotchet();
+        var line = song.getLine(0);
+        song.withoutMutationTracking(() -> line.addElement(element));
+
+        var editor = new LyricEditor(score, line, element);
+        editor.setSuppressDismissAdjustmentForTesting(true);
+
+        messageCenterMock = mockStatic(MessageCenter.class);
+        fireEscape(editor);
+
+        verifyNoSongDidChange();
+    }
+
+    @Test
+    void testOpenOnContinueCarrierEscWithoutTypingEmitsNoMutations() {
+        var element = crotchet();
+        element.setLyricForVerse(1, null, false, null, Lyric.Extend.CONTINUE);
+        var line = song.getLine(0);
+        song.withoutMutationTracking(() -> line.addElement(element));
+
+        var editor = new LyricEditor(score, line, element);
+        // Text is empty — openedAsExtender is true — dismiss without typing.
+        assertThat(editor.getText()).isEmpty();
+
+        messageCenterMock = mockStatic(MessageCenter.class);
+        fireEscape(editor);
+
+        verifyNoSongDidChange();
+    }
+
+    @Test
+    void testTypingIntoMidChainCarrierFlipsPredecessorAndClearsForwardCarriers() {
+        var e0 = crotchet();
+        var e1 = crotchet();
+        var e2 = crotchet();
+        var e3 = crotchet();
+        e0.setLyricForVerse(1, Lyric.Syllabic.END, false, "Sure", Lyric.Extend.START);
+        e1.setLyricForVerse(1, null, false, null, Lyric.Extend.CONTINUE);
+        e2.setLyricForVerse(1, null, false, null, Lyric.Extend.CONTINUE);
+        e3.setLyricForVerse(1, null, false, null, Lyric.Extend.STOP);
+        var line = song.getLine(0);
+        song.withoutMutationTracking(() -> {
+            line.addElement(e0);
+            line.addElement(e1);
+            line.addElement(e2);
+            line.addElement(e3);
+        });
+
+        var editor = new LyricEditor(score, line, e2);
+        editor.setText("abc");
+        editor.attachListeners();
+
+        messageCenterMock = mockStatic(MessageCenter.class);
+
+        var spaceEvent = new KeyEvent(editor, KeyEvent.KEY_TYPED, 0L, 0, KeyEvent.VK_UNDEFINED, ' ');
+
+        for (var listener : editor.getKeyListeners()) {
+            listener.keyTyped(spaceEvent);
+        }
+
+        var notification = captureSingleDidChange();
+        assertThat(notification.getMutations()).hasSize(3);
+
+        for (var mutation : notification.getMutations()) {
+            var modification = (ElementModification) mutation;
+            assertThat(modification.fields()).containsExactly(ElementField.LYRIC);
+            assertThat(modification.beforeElement()).isNotNull();
+        }
+
+        assertThat(e2.getLyricForVerse(1)).extracting(Lyric::text).isEqualTo("abc");
+        assertThat(e1.getLyricForVerse(1)).extracting(Lyric::extend).isEqualTo(Lyric.Extend.STOP);
+        assertThat(e3.getLyricForVerse(1)).isNull();
+    }
+
+    @Test
+    void testDismissAdjustmentNoOpWhenPredecessorHasNoCarrier() {
+        var e0 = crotchet();
+        var e1 = crotchet();
+        e0.setLyricForVerse(1, Lyric.Syllabic.SINGLE, false, "Sure", Lyric.Extend.NONE);
+        var line = song.getLine(0);
+        song.withoutMutationTracking(() -> {
+            line.addElement(e0);
+            line.addElement(e1);
+        });
+
+        var editor = new LyricEditor(score, line, e1);
+
+        messageCenterMock = mockStatic(MessageCenter.class);
+        fireEscape(editor);
+
+        verifyNoSongDidChange();
+        assertThat(e0.getLyricForVerse(1)).extracting(Lyric::syllabic).isEqualTo(Lyric.Syllabic.SINGLE);
+    }
+
+    @Test
+    void testDismissDemotesDanglingBeginToSingle() {
+        var e0 = crotchet();
+        var e1 = crotchet();
+        e0.setLyricForVerse(1, Lyric.Syllabic.BEGIN, false, "Su", Lyric.Extend.NONE);
+        var line = song.getLine(0);
+        song.withoutMutationTracking(() -> {
+            line.addElement(e0);
+            line.addElement(e1);
+        });
+
+        // e0 is a dangling BEGIN with no following text-bearing element; e1 has no lyric.
+        var editor = new LyricEditor(score, line, e1);
+
+        messageCenterMock = mockStatic(MessageCenter.class);
+        fireEscape(editor);
+
+        var notification = captureSingleDidChange();
+        assertThat(notification.getMutations()).hasSize(1);
+        assertThat(((ElementModification) notification.getMutations().get(0)).fields())
+            .containsExactly(ElementField.LYRIC);
+        assertThat(e0.getLyricForVerse(1)).extracting(Lyric::syllabic).isEqualTo(Lyric.Syllabic.SINGLE);
     }
 
     private static <T> T requireLastNonNull(ArgumentCaptor<T> captor) {

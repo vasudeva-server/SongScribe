@@ -657,6 +657,13 @@ public final class SongIO {
                 LegacyLyricsImporter.importLegacyLyrics(song.getLines(), lyrics);
             }
 
+            // Normalize stored syllabic values to match relation-chain derivation. Required
+            // for legacy files that may carry only locally-consistent values from the read
+            // path or no <syllabic> at all (LegacyLyricsImporter / pre-syllabic XML).
+            for (var line : song.getLines()) {
+                line.backfillSyllabic();
+            }
+
             return song;
         }
 

@@ -21,6 +21,7 @@
 package songscribe.music;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import org.junit.jupiter.api.Test;
 
@@ -32,9 +33,9 @@ class StaffElementTest extends UnitTest {
     @Test
     void testSetLyricForVerseReplacesExisting() {
         var element = new StaffElement(ElementType.CROTCHET);
-        element.setLyricForVerse(1, StaffElement.SyllableRelation.NONE, "old", Lyric.Extend.NONE);
+        element.setLyricForVerse(1, Lyric.Syllabic.SINGLE, false, "old", Lyric.Extend.NONE);
 
-        element.setLyricForVerse(1, StaffElement.SyllableRelation.NONE, "new", Lyric.Extend.NONE);
+        element.setLyricForVerse(1, Lyric.Syllabic.SINGLE, false, "new", Lyric.Extend.NONE);
 
         assertThat(element.getLyrics()).hasSize(1);
         assertThat(element.getLyricForVerse(1)).isNotNull()
@@ -42,13 +43,13 @@ class StaffElementTest extends UnitTest {
             .isEqualTo("new");
     }
 
-    // T8: setLyricForVerse(1, NONE, "", NONE) removes verse-1 entry
+    // T8: setLyricForVerse(1, ..., "", NONE) removes verse-1 entry
     @Test
     void testSetLyricForVerseEmptyTextRemoves() {
         var element = new StaffElement(ElementType.CROTCHET);
-        element.setLyricForVerse(1, StaffElement.SyllableRelation.NONE, "text", Lyric.Extend.NONE);
+        element.setLyricForVerse(1, Lyric.Syllabic.SINGLE, false, "text", Lyric.Extend.NONE);
 
-        element.setLyricForVerse(1, StaffElement.SyllableRelation.NONE, "", Lyric.Extend.NONE);
+        element.setLyricForVerse(1, null, false, "", Lyric.Extend.NONE);
 
         assertThat(element.getLyricForVerse(1)).isNull();
         assertThat(element.getLyrics()).isEmpty();
@@ -58,9 +59,9 @@ class StaffElementTest extends UnitTest {
     @Test
     void testSetLyricForVerseAddsWithoutDisturbing() {
         var element = new StaffElement(ElementType.CROTCHET);
-        element.setLyricForVerse(1, StaffElement.SyllableRelation.NONE, "verse1", Lyric.Extend.NONE);
+        element.setLyricForVerse(1, Lyric.Syllabic.SINGLE, false, "verse1", Lyric.Extend.NONE);
 
-        element.setLyricForVerse(2, StaffElement.SyllableRelation.SYLLABLE, "verse2", Lyric.Extend.NONE);
+        element.setLyricForVerse(2, Lyric.Syllabic.SINGLE, false, "verse2", Lyric.Extend.NONE);
 
         assertThat(element.getLyrics()).hasSize(2);
         assertThat(element.getLyricForVerse(1)).isNotNull()
@@ -75,9 +76,9 @@ class StaffElementTest extends UnitTest {
     @Test
     void testSetLyricForVerseNullTextRemoves() {
         var element = new StaffElement(ElementType.CROTCHET);
-        element.setLyricForVerse(1, StaffElement.SyllableRelation.NONE, "text", Lyric.Extend.NONE);
+        element.setLyricForVerse(1, Lyric.Syllabic.SINGLE, false, "text", Lyric.Extend.NONE);
 
-        element.setLyricForVerse(1, StaffElement.SyllableRelation.NONE, null, Lyric.Extend.NONE);
+        element.setLyricForVerse(1, null, false, null, Lyric.Extend.NONE);
 
         assertThat(element.getLyricForVerse(1)).isNull();
     }
@@ -86,10 +87,79 @@ class StaffElementTest extends UnitTest {
     @Test
     void testSetLyricForVerseBlankTextRemoves() {
         var element = new StaffElement(ElementType.CROTCHET);
-        element.setLyricForVerse(1, StaffElement.SyllableRelation.NONE, "text", Lyric.Extend.NONE);
+        element.setLyricForVerse(1, Lyric.Syllabic.SINGLE, false, "text", Lyric.Extend.NONE);
 
-        element.setLyricForVerse(1, StaffElement.SyllableRelation.NONE, "   ", Lyric.Extend.NONE);
+        element.setLyricForVerse(1, null, false, "   ", Lyric.Extend.NONE);
 
         assertThat(element.getLyricForVerse(1)).isNull();
+    }
+
+    // T8a: non-blank text + START → syllable entry + melisma start
+    @Test
+    void testSetLyricForVerseNonBlankStartAddsEntry() {
+        var element = new StaffElement(ElementType.CROTCHET);
+
+        element.setLyricForVerse(1, Lyric.Syllabic.SINGLE, false, "la", Lyric.Extend.START);
+
+        assertThat(element.getLyricForVerse(1)).isNotNull()
+            .extracting("text", "extend", "syllabic")
+            .containsExactly("la", Lyric.Extend.START, Lyric.Syllabic.SINGLE);
+    }
+
+    // T8b: non-blank text + CONTINUE → throws
+    @Test
+    void testSetLyricForVerseNonBlankContinueThrows() {
+        var element = new StaffElement(ElementType.CROTCHET);
+
+        assertThatThrownBy(
+            () -> element.setLyricForVerse(1, null, false, "la", Lyric.Extend.CONTINUE))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("carrier");
+    }
+
+    // T8c: non-blank text + STOP → throws
+    @Test
+    void testSetLyricForVerseNonBlankStopThrows() {
+        var element = new StaffElement(ElementType.CROTCHET);
+
+        assertThatThrownBy(
+            () -> element.setLyricForVerse(1, null, false, "la", Lyric.Extend.STOP))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("carrier");
+    }
+
+    // T8d: blank text + START → throws
+    @Test
+    void testSetLyricForVerseBlankStartThrows() {
+        var element = new StaffElement(ElementType.CROTCHET);
+
+        assertThatThrownBy(
+            () -> element.setLyricForVerse(1, null, false, "", Lyric.Extend.START))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("START");
+    }
+
+    // T8e: blank text + CONTINUE → extender-carrier entry with null syllabic
+    @Test
+    void testSetLyricForVerseBlankContinueAddsCarrier() {
+        var element = new StaffElement(ElementType.CROTCHET);
+
+        element.setLyricForVerse(1, null, false, "", Lyric.Extend.CONTINUE);
+
+        assertThat(element.getLyricForVerse(1)).isNotNull()
+            .extracting("text", "extend", "syllabic", "compound")
+            .containsExactly("", Lyric.Extend.CONTINUE, null, false);
+    }
+
+    // T8f: blank text + STOP → extender-carrier entry with null syllabic
+    @Test
+    void testSetLyricForVerseBlankStopAddsCarrier() {
+        var element = new StaffElement(ElementType.CROTCHET);
+
+        element.setLyricForVerse(1, null, false, null, Lyric.Extend.STOP);
+
+        assertThat(element.getLyricForVerse(1)).isNotNull()
+            .extracting("text", "extend", "syllabic", "compound")
+            .containsExactly("", Lyric.Extend.STOP, null, false);
     }
 }

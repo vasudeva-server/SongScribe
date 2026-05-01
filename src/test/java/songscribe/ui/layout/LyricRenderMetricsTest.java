@@ -22,18 +22,24 @@ package songscribe.ui.layout;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
+import static org.mockito.Mockito.mockStatic;
 
 import java.awt.Font;
 import java.util.Collections;
 import java.util.List;
 
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
 
 import songscribe.UnitTest;
+import songscribe.message.MessageCenter;
 import songscribe.music.ElementType;
+import songscribe.music.Line;
 import songscribe.music.Lyric;
+import songscribe.music.Song;
 import songscribe.music.StaffElement;
-import songscribe.music.StaffElement.SyllableRelation;
 import songscribe.smufl.Engraving;
 
 class LyricRenderMetricsTest extends UnitTest {
@@ -43,12 +49,29 @@ class LyricRenderMetricsTest extends UnitTest {
     private static final LyricRenderMetrics LYRIC_METRICS =
         new LyricRenderMetrics(LYRICS_FONT, LYRICS_FONT, 0.0, 0.0);
 
+    private Song song;
+    private Line line;
+    private MockedStatic<MessageCenter> messageCenterMock;
+
+    @BeforeEach
+    void setUp() {
+        messageCenterMock = mockStatic(MessageCenter.class);
+        song = new Song();
+        line = song.getLine(0);
+    }
+
+    @AfterEach
+    void tearDown() {
+        messageCenterMock.close();
+    }
+
     // T5: lyricBoxWidthSs(text) returns the same value as LyricBoxLayout produces for the same text
     @Test
     void testLyricBoxWidthSsMatchesLayoutBoxWidth() {
         var text = "do";
         var element = ElementType.CROTCHET.newInstance();
-        element.properties.lyrics.add(new Lyric(2, SyllableRelation.NONE, text, Lyric.Extend.NONE));
+        element.properties.lyrics.add(new Lyric(2, text, Lyric.Extend.NONE, Lyric.Syllabic.SINGLE, false));
+        song.withoutMutationTracking(() -> line.addElement(element));
         var column = columnAt(element, 5.0);
         var result = LyricLayoutBuilder.build(List.of(column), LYRIC_METRICS, false, 100.0);
         var boxes = result.boxes().get(element);

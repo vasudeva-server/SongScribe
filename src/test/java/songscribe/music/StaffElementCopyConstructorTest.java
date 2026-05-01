@@ -43,8 +43,8 @@ class StaffElementCopyConstructorTest extends UnitTest {
         element.setStaffPosition(-3);
         element.addArticulation(new Articulation(element, ArticulationType.STACCATO));
         element.addArticulation(new Articulation(element, ArticulationType.ACCENT));
-        element.properties.lyrics.add(new Lyric(1, StaffElement.SyllableRelation.SYLLABLE, "heart", Lyric.Extend.START));
-        element.properties.lyrics.add(new Lyric(1, StaffElement.SyllableRelation.NONE, "ache", Lyric.Extend.NONE));
+        element.properties.lyrics.add(new Lyric(1, "heart", Lyric.Extend.START, Lyric.Syllabic.BEGIN, false));
+        element.properties.lyrics.add(new Lyric(1, "ache", Lyric.Extend.NONE, Lyric.Syllabic.END, false));
         return element;
     }
 
@@ -131,8 +131,8 @@ class StaffElementCopyConstructorTest extends UnitTest {
     @Test
     void testCloneCopyConstructorDeepCopiesLyrics() {
         var source = new StaffElement(ElementType.CROTCHET);
-        source.properties.lyrics.add(new Lyric(1, StaffElement.SyllableRelation.SYLLABLE, "heart", Lyric.Extend.START));
-        source.properties.lyrics.add(new Lyric(1, StaffElement.SyllableRelation.NONE, "ache", Lyric.Extend.NONE));
+        source.properties.lyrics.add(new Lyric(1, "heart", Lyric.Extend.START, Lyric.Syllabic.BEGIN, false));
+        source.properties.lyrics.add(new Lyric(1, "ache", Lyric.Extend.NONE, Lyric.Syllabic.END, false));
 
         var clone = source.clone();
 
@@ -147,13 +147,13 @@ class StaffElementCopyConstructorTest extends UnitTest {
     @Test
     void testCrossTypeCopyConstructorDeepCopiesLyrics() {
         var source = new StaffElement(ElementType.CROTCHET);
-        source.properties.lyrics.add(new Lyric(1, StaffElement.SyllableRelation.SYLLABLE, "do", Lyric.Extend.NONE));
+        source.properties.lyrics.add(new Lyric(1, "do", Lyric.Extend.NONE, Lyric.Syllabic.SINGLE, false));
 
         var copy = new StaffElement(ElementType.QUAVER, source);
 
         // Content is equal
         assertThat(copy.properties.lyrics)
-            .isEqualTo(List.of(new Lyric(1, StaffElement.SyllableRelation.SYLLABLE, "do", Lyric.Extend.NONE)));
+            .isEqualTo(List.of(new Lyric(1, "do", Lyric.Extend.NONE, Lyric.Syllabic.SINGLE, false)));
 
         // Reference is distinct
         copy.properties.lyrics.clear();
@@ -166,7 +166,7 @@ class StaffElementCopyConstructorTest extends UnitTest {
 
         assertThat(element.getMainLyric()).isNull();
 
-        var lyric = new Lyric(1, StaffElement.SyllableRelation.NONE, "heart", Lyric.Extend.NONE);
+        var lyric = new Lyric(1, "heart", Lyric.Extend.NONE, Lyric.Syllabic.SINGLE, false);
         element.properties.lyrics.add(lyric);
 
         assertThat(element.getMainLyric()).isEqualTo(lyric);

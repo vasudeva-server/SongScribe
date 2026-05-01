@@ -505,12 +505,8 @@ public class ExportABCAction extends UIAction {
             if (lyric.extend() == Lyric.Extend.START) {
                 sb.append('_');
             } else {
-                sb.append(
-                    switch (lyric.relation()) {
-                        case NONE -> ' ';
-                        case SYLLABLE, COMPOUND_WORD -> '-';
-                    }
-                );
+                var syllabic = lyric.syllabic();
+                sb.append(syllabic == Lyric.Syllabic.BEGIN || syllabic == Lyric.Syllabic.MIDDLE ? '-' : ' ');
             }
         }
 

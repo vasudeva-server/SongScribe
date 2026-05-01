@@ -22,6 +22,7 @@ package songscribe.ui.layout;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
+import static org.mockito.Mockito.mockStatic;
 
 import java.awt.Font;
 import java.util.ArrayList;
@@ -29,13 +30,20 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
+
+import org.jspecify.annotations.Nullable;
 
 import songscribe.UnitTest;
+import songscribe.message.MessageCenter;
 import songscribe.music.ElementType;
+import songscribe.music.Line;
 import songscribe.music.Lyric;
+import songscribe.music.Song;
 import songscribe.music.StaffElement;
-import songscribe.music.StaffElement.SyllableRelation;
 import songscribe.smufl.Engraving;
 
 class LyricLayoutBuilderTest extends UnitTest {
@@ -46,6 +54,30 @@ class LyricLayoutBuilderTest extends UnitTest {
     private static final Font LYRICS_FONT = new Font(Font.MONOSPACED, Font.PLAIN, 12);
     private static final LyricRenderMetrics LYRIC_METRICS =
         new LyricRenderMetrics(LYRICS_FONT, LYRICS_FONT, 0.0, 0.0);
+
+    private Song song;
+    private Line line;
+    private MockedStatic<MessageCenter> messageCenterMock;
+
+    @BeforeEach
+    void setUp() {
+        messageCenterMock = mockStatic(MessageCenter.class);
+        song = new Song();
+        line = song.getLine(0);
+    }
+
+    @AfterEach
+    void tearDown() {
+        messageCenterMock.close();
+    }
+
+    private void addToLine(StaffElement... elements) {
+        song.withoutMutationTracking(() -> {
+            for (var element : elements) {
+                line.addElement(element);
+            }
+        });
+    }
 
     private static StaffElement note() {
         return ElementType.CROTCHET.newInstance();
@@ -67,13 +99,15 @@ class LyricLayoutBuilderTest extends UnitTest {
         return column;
     }
 
-    private static void setLyric(StaffElement element, SyllableRelation relation, String text, boolean extend) {
-        element.properties.lyrics.add(new Lyric(1, relation, text,
-            extend ? Lyric.Extend.START : Lyric.Extend.NONE));
+    private static void setLyric(
+        StaffElement element, Lyric.@Nullable Syllabic syllabic, boolean compound, String text, boolean extend) {
+        element.properties.lyrics.add(new Lyric(1, text,
+            extend ? Lyric.Extend.START : Lyric.Extend.NONE, syllabic, compound));
     }
 
-    private static void setLyric(StaffElement element, SyllableRelation relation, String text, Lyric.Extend extend) {
-        element.properties.lyrics.add(new Lyric(1, relation, text, extend));
+    private static void setLyric(
+        StaffElement element, Lyric.@Nullable Syllabic syllabic, boolean compound, String text, Lyric.Extend extend) {
+        element.properties.lyrics.add(new Lyric(1, text, extend, syllabic, compound));
     }
 
     private static List<LyricBoxLayout> boxesOf(
@@ -126,11 +160,12 @@ class LyricLayoutBuilderTest extends UnitTest {
     @Test
     void testDoReMiProducesThreeBoxesAndTwoHyphens() {
         var n1 = note();
-        setLyric(n1, SyllableRelation.SYLLABLE, "do", false);
+        setLyric(n1, Lyric.Syllabic.BEGIN, false, "do", false);
         var n2 = note();
-        setLyric(n2, SyllableRelation.SYLLABLE, "re", false);
+        setLyric(n2, Lyric.Syllabic.MIDDLE, false, "re", false);
         var n3 = note();
-        setLyric(n3, SyllableRelation.NONE, "mi", false);
+        setLyric(n3, Lyric.Syllabic.END, false, "mi", false);
+        addToLine(n1, n2, n3);
 
         var columns = List.of(
             columnAt(n1, 5),
@@ -156,11 +191,12 @@ class LyricLayoutBuilderTest extends UnitTest {
     @Test
     void testExtenderSpansContinuationNotes() {
         var n1 = note();
-        setLyric(n1, SyllableRelation.NONE, "heart", true);
+        setLyric(n1, Lyric.Syllabic.SINGLE, false, "heart", true);
         var n2 = note();
         var n3 = note();
         var n4 = note();
-        setLyric(n4, SyllableRelation.NONE, "garden", false);
+        setLyric(n4, Lyric.Syllabic.SINGLE, false, "garden", false);
+        addToLine(n1, n2, n3, n4);
 
         var columns = List.of(
             columnAt(n1, 5),
@@ -184,12 +220,13 @@ class LyricLayoutBuilderTest extends UnitTest {
     @Test
     void testRestWithoutLyricBreaksExtender() {
         var n1 = note();
-        setLyric(n1, SyllableRelation.NONE, "heart", true);
+        setLyric(n1, Lyric.Syllabic.SINGLE, false, "heart", true);
         var n2 = note();
         var r = rest();
         var n3 = note();
         var n4 = note();
-        setLyric(n4, SyllableRelation.NONE, "garden", false);
+        setLyric(n4, Lyric.Syllabic.SINGLE, false, "garden", false);
+        addToLine(n1, n2, r, n3, n4);
 
         var columns = List.of(
             columnAt(n1, 5),
@@ -211,13 +248,14 @@ class LyricLayoutBuilderTest extends UnitTest {
     @Test
     void testRestWithExtendingLyricContinuesExtender() {
         var n1 = note();
-        setLyric(n1, SyllableRelation.NONE, "heart", true);
+        setLyric(n1, Lyric.Syllabic.SINGLE, false, "heart", true);
         var n2 = note();
         var r = rest();
-        setLyric(r, SyllableRelation.NONE, "", true);
+        setLyric(r, Lyric.Syllabic.SINGLE, false, "", true);
         var n3 = note();
         var n4 = note();
-        setLyric(n4, SyllableRelation.NONE, "garden", false);
+        setLyric(n4, Lyric.Syllabic.SINGLE, false, "garden", false);
+        addToLine(n1, n2, r, n3, n4);
 
         var columns = List.of(
             columnAt(n1, 5),
@@ -241,8 +279,18 @@ class LyricLayoutBuilderTest extends UnitTest {
     void testTrailingContinuationAndLeadingStub() {
         // Line A: single note with extend=true and no closing syllable
         var n1 = note();
-        setLyric(n1, SyllableRelation.NONE, "ah", true);
+        setLyric(n1, Lyric.Syllabic.SINGLE, false, "ah", true);
         var columnsA = List.of(columnAt(n1, 5));
+
+        // Line B: no lyric on its first note, second note has 'garden'
+        var n2 = note();
+        var n3 = note();
+        setLyric(n3, Lyric.Syllabic.SINGLE, false, "garden", false);
+        var columnsB = List.of(columnAt(n2, 5), columnAt(n3, 5 + COLUMN_SPACING_SS));
+
+        // All elements share one Line for getSyllabicAt — syllabic values are still correct since all
+        // syllabics are SINGLE, which yields SINGLE regardless of neighbors.
+        addToLine(n1, n2, n3);
 
         var resultA = LyricLayoutBuilder.build(columnsA, LYRIC_METRICS, false, LINE_WIDTH_SS);
         assertThat(resultA.hasTrailingContinuation()).isTrue();
@@ -251,12 +299,6 @@ class LyricLayoutBuilderTest extends UnitTest {
         assertThat(trailingExtenders.get(0).endXSs())
             .as("trailing stub ends at line width")
             .isCloseTo(LINE_WIDTH_SS, within(TOLERANCE));
-
-        // Line B: no lyric on its first note, second note has 'garden'
-        var n2 = note();
-        var n3 = note();
-        setLyric(n3, SyllableRelation.NONE, "garden", false);
-        var columnsB = List.of(columnAt(n2, 5), columnAt(n3, 5 + COLUMN_SPACING_SS));
 
         var resultB = LyricLayoutBuilder.build(columnsB, LYRIC_METRICS, true, LINE_WIDTH_SS);
 
@@ -270,13 +312,14 @@ class LyricLayoutBuilderTest extends UnitTest {
             .isEqualTo(boxesOf(resultB.boxes(), n3).get(0).xSs(), within(TOLERANCE));
     }
 
-    // Compound-word boundary: heart(COMPOUND_WORD) garden(NONE) → HYPHEN span (visually identical to SYLLABLE)
+    // Compound-word boundary: heart(BEGIN+compound) garden(END) → HYPHEN span (visually identical to SYLLABLE)
     @Test
     void testCompoundWordBoundaryProducesHyphen() {
         var n1 = note();
-        setLyric(n1, SyllableRelation.COMPOUND_WORD, "heart", false);
+        setLyric(n1, Lyric.Syllabic.BEGIN, true, "heart", false);
         var n2 = note();
-        setLyric(n2, SyllableRelation.NONE, "garden", false);
+        setLyric(n2, Lyric.Syllabic.END, false, "garden", false);
+        addToLine(n1, n2);
 
         var columns = List.of(columnAt(n1, 5), columnAt(n2, 5 + COLUMN_SPACING_SS));
 
@@ -291,9 +334,10 @@ class LyricLayoutBuilderTest extends UnitTest {
     @Test
     void testStopCarrierEndsExtenderAtNoteRightEdge() {
         var n1 = note();
-        setLyric(n1, SyllableRelation.NONE, "den", Lyric.Extend.START);
+        setLyric(n1, Lyric.Syllabic.SINGLE, false, "den", Lyric.Extend.START);
         var n2 = note();
-        setLyric(n2, SyllableRelation.NONE, "", Lyric.Extend.STOP);
+        setLyric(n2, null, false, "", Lyric.Extend.STOP);
+        addToLine(n1, n2);
 
         var columns = List.of(columnAt(n1, 5), columnAt(n2, 5 + COLUMN_SPACING_SS));
 
@@ -316,11 +360,12 @@ class LyricLayoutBuilderTest extends UnitTest {
     @Test
     void testContinueCarrierPassesThrough() {
         var n1 = note();
-        setLyric(n1, SyllableRelation.NONE, "ah", Lyric.Extend.START);
+        setLyric(n1, Lyric.Syllabic.SINGLE, false, "ah", Lyric.Extend.START);
         var n2 = note();
-        setLyric(n2, SyllableRelation.NONE, "", Lyric.Extend.CONTINUE);
+        setLyric(n2, null, false, "", Lyric.Extend.CONTINUE);
         var n3 = note();
-        setLyric(n3, SyllableRelation.NONE, "men", Lyric.Extend.NONE);
+        setLyric(n3, Lyric.Syllabic.SINGLE, false, "men", Lyric.Extend.NONE);
+        addToLine(n1, n2, n3);
 
         var columns = List.of(
             columnAt(n1, 5),
@@ -338,11 +383,12 @@ class LyricLayoutBuilderTest extends UnitTest {
     @Test
     void testNonFinalSyllableWithMelismaEmitsHyphenOnly() {
         var n1 = note();
-        setLyric(n1, SyllableRelation.SYLLABLE, "con", Lyric.Extend.START);
+        setLyric(n1, Lyric.Syllabic.BEGIN, false, "con", Lyric.Extend.START);
         var n2 = note();
-        setLyric(n2, SyllableRelation.NONE, "", Lyric.Extend.CONTINUE);
+        setLyric(n2, null, false, "", Lyric.Extend.CONTINUE);
         var n3 = note();
-        setLyric(n3, SyllableRelation.NONE, "tinue", Lyric.Extend.NONE);
+        setLyric(n3, Lyric.Syllabic.END, false, "tinue", Lyric.Extend.NONE);
+        addToLine(n1, n2, n3);
 
         var columns = List.of(
             columnAt(n1, 5),
@@ -361,19 +407,21 @@ class LyricLayoutBuilderTest extends UnitTest {
     @Test
     void testHeartCompoundGarDenComposite() {
         var n1 = note();
-        setLyric(n1, SyllableRelation.COMPOUND_WORD, "heart", true);
+        setLyric(n1, Lyric.Syllabic.BEGIN, true, "heart", true);
         var n2 = note();
         var n3 = note();
         var n4 = note();
         var n5 = note();
-        setLyric(n5, SyllableRelation.SYLLABLE, "gar", true);
+        setLyric(n5, Lyric.Syllabic.MIDDLE, false, "gar", true);
         var n6 = note();
         var n7 = note();
         var n8 = note();
-        setLyric(n8, SyllableRelation.NONE, "den", false);
+        setLyric(n8, Lyric.Syllabic.END, false, "den", false);
+
+        var elements = List.of(n1, n2, n3, n4, n5, n6, n7, n8);
+        addToLine(elements.toArray(new StaffElement[0]));
 
         var columns = new ArrayList<ElementColumn>();
-        var elements = List.of(n1, n2, n3, n4, n5, n6, n7, n8);
 
         for (var i = 0; i < elements.size(); i++) {
             columns.add(columnAt(elements.get(i), 5 + i * COLUMN_SPACING_SS));
@@ -391,10 +439,11 @@ class LyricLayoutBuilderTest extends UnitTest {
     void testMultiVerseProducesSeparateBoxesPerVerse() {
         var n1 = note();
         var n2 = note();
-        n1.properties.lyrics.add(new Lyric(1, SyllableRelation.SYLLABLE, "do", Lyric.Extend.NONE));
-        n1.properties.lyrics.add(new Lyric(2, SyllableRelation.SYLLABLE, "un", Lyric.Extend.NONE));
-        n2.properties.lyrics.add(new Lyric(1, SyllableRelation.NONE, "re", Lyric.Extend.NONE));
-        n2.properties.lyrics.add(new Lyric(2, SyllableRelation.NONE, "deux", Lyric.Extend.NONE));
+        n1.properties.lyrics.add(new Lyric(1, "do", Lyric.Extend.NONE, Lyric.Syllabic.BEGIN, false));
+        n1.properties.lyrics.add(new Lyric(2, "un", Lyric.Extend.NONE, Lyric.Syllabic.BEGIN, false));
+        n2.properties.lyrics.add(new Lyric(1, "re", Lyric.Extend.NONE, Lyric.Syllabic.END, false));
+        n2.properties.lyrics.add(new Lyric(2, "deux", Lyric.Extend.NONE, Lyric.Syllabic.END, false));
+        addToLine(n1, n2);
 
         var columns = List.of(columnAt(n1, 5), columnAt(n2, 5 + COLUMN_SPACING_SS));
 

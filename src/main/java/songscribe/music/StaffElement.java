@@ -545,27 +545,69 @@ public class StaffElement extends LineElement implements Cloneable {
     }
 
     /**
-     * Sets or removes the lyric for a given verse.
-     * <p>
-     * <b>Mutation contract:</b> production callers must invoke this from inside a
-     * {@code Line.modifyElement} bracket so an {@code ElementModification} is recorded
-     * with the {@code LYRIC} field. Calling it directly outside a bracket bypasses the
-     * mutation system (no notification, no undo entry) and is permitted only for test
-     * setup that mirrors {@code song.withoutMutationTracking}.
+     * Sets or removes the verse-{@code verse} lyric on this element, enforcing the MusicXML 4.0
+     * {@code <lyric>} content-model contract. Illegal combinations throw
+     * {@link IllegalArgumentException} rather than silently normalizing.
+     *
+     * <p><b>Truth table</b> (MusicXML 4.0 {@code note.mod} §lyric):
+     * <table>
+     *   <tr><th>text</th><th>extend</th><th>action</th></tr>
+     *   <tr><td>non-blank</td><td>{@link Lyric.Extend#NONE}</td>
+     *       <td>syllable entry, no melisma</td></tr>
+     *   <tr><td>non-blank</td><td>{@link Lyric.Extend#START}</td>
+     *       <td>syllable entry + melisma start</td></tr>
+     *   <tr><td>non-blank</td><td>{@link Lyric.Extend#CONTINUE}/{@link Lyric.Extend#STOP}</td>
+     *       <td><b>throws</b> — carriers cannot have text</td></tr>
+     *   <tr><td>blank/null</td><td>{@link Lyric.Extend#START}</td>
+     *       <td><b>throws</b> — START requires text</td></tr>
+     *   <tr><td>blank/null</td><td>{@link Lyric.Extend#CONTINUE}/{@link Lyric.Extend#STOP}</td>
+     *       <td>extender-carrier entry; {@code syllabic} forced to {@code null}</td></tr>
+     *   <tr><td>blank/null</td><td>{@link Lyric.Extend#NONE}</td>
+     *       <td>removes the verse entry</td></tr>
+     * </table>
+     *
+     * <p><b>Mutation contract:</b> production callers must invoke this from inside a
+     * {@code Line.modifyElement} bracket so an {@code ElementModification} is recorded with the
+     * {@code LYRIC} field. Calling it directly outside a bracket bypasses the mutation system
+     * (no notification, no undo entry) and is permitted only for test setup that mirrors
+     * {@code song.withoutMutationTracking}.
      *
      * @param verse    the verse number (typically 1)
-     * @param relation the syllable boundary type
-     * @param text     the syllable text; null or blank removes the verse entry
+     * @param syllabic the syllabic position of this lyric within its word; ignored (forced to
+     *                 {@code null}) for carrier lyrics ({@link Lyric.Extend#STOP} /
+     *                 {@link Lyric.Extend#CONTINUE})
+     * @param compound {@code true} when this syllable joins the next via a compound-word boundary;
+     *                 ignored (forced to {@code false}) for carrier lyrics
+     * @param text     the syllable text; {@code null} or blank removes the entry for
+     *                 {@link Lyric.Extend#NONE}, and creates a carrier for CONTINUE/STOP
      * @param extend   the melisma extender state
+     * @throws IllegalArgumentException if {@code text} is non-blank and {@code extend} is
+     *                                  CONTINUE or STOP, or if {@code text} is blank and
+     *                                  {@code extend} is START
      */
-    public void setLyricForVerse(int verse, SyllableRelation relation, @Nullable String text, Lyric.Extend extend) {
-        // Remove existing verse-N entry if any
+    public void setLyricForVerse(int verse, Lyric.@Nullable Syllabic syllabic, boolean compound,
+            @Nullable String text, Lyric.Extend extend) {
+        var isBlankText = text == null || text.isBlank();
+        var isCarrier = extend == Lyric.Extend.CONTINUE || extend == Lyric.Extend.STOP;
+
+        if (!isBlankText && isCarrier) {
+            throw new IllegalArgumentException(
+                "carrier lyric (extend=" + extend + ") cannot have text; got: \"" + text + "\"");
+        }
+
+        if (isBlankText && extend == Lyric.Extend.START) {
+            throw new IllegalArgumentException(
+                "melisma START requires non-blank text");
+        }
+
         properties.lyrics.removeIf(lyric -> lyric.verse() == verse);
 
-        // Add new entry if text is non-blank
         if (text != null && !text.isBlank()) {
-            properties.lyrics.add(new Lyric(verse, relation, text, extend));
+            properties.lyrics.add(new Lyric(verse, text, extend, syllabic, compound));
+        } else if (isCarrier) {
+            properties.lyrics.add(new Lyric(verse, "", extend, null, false));
         }
+        // blank + NONE: entry removed above, nothing to add
     }
 
     public boolean isStemDirectionAuto() {
@@ -704,12 +746,6 @@ public class StaffElement extends LineElement implements Cloneable {
         public int getComponent(int i) {
             return components[i];
         }
-    }
-
-    public enum SyllableRelation {
-        NONE,
-        COMPOUND_WORD,
-        SYLLABLE,
     }
 
     public static class Glissando {

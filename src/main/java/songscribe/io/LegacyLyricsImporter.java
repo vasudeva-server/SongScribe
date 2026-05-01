@@ -24,7 +24,6 @@ import java.util.List;
 
 import songscribe.music.Line;
 import songscribe.music.Lyric;
-import songscribe.music.StaffElement;
 
 /**
  * Populates per-note {@code Properties.lyrics} records from a legacy
@@ -75,6 +74,22 @@ public final class LegacyLyricsImporter {
         }
     }
 
+    private static Lyric.Syllabic deriveSyllabic(boolean inWord, boolean hasDelimiter) {
+        if (!inWord && hasDelimiter) {
+            return Lyric.Syllabic.BEGIN;
+        }
+
+        if (!inWord) {
+            return Lyric.Syllabic.SINGLE;
+        }
+
+        if (hasDelimiter) {
+            return Lyric.Syllabic.MIDDLE;
+        }
+
+        return Lyric.Syllabic.END;
+    }
+
     private static void importLine(Line line, String text) {
         // Strip legacy mid-word continuation marker.
         if (text.startsWith("--")) {
@@ -85,6 +100,7 @@ public final class LegacyLyricsImporter {
         var elementIdx = 0;
         var i = 0;
         var n = text.length();
+        var inWord = false;
 
         while (i < n && elementIdx < elementCount) {
             var c = text.charAt(i);
@@ -156,28 +172,34 @@ public final class LegacyLyricsImporter {
                 continuations--;
             }
 
-            // Determine relation from the next character.
-            var relation = StaffElement.SyllableRelation.NONE;
+            // Determine compound boundary and whether the word chain continues.
+            var compound = false;
+            var hasDelimiter = false;
 
             if (i < n) {
                 var next = text.charAt(i);
 
                 if (next == '=') {
-                    relation = StaffElement.SyllableRelation.COMPOUND_WORD;
+                    compound = true;
+                    hasDelimiter = true;
                     i++;
                 } else if (next == '-') {
                     if (i + 1 < n && text.charAt(i + 1) == '-') {
-                        relation = StaffElement.SyllableRelation.COMPOUND_WORD;
+                        compound = true;
+                        hasDelimiter = true;
                         i += 2;
                     } else {
-                        relation = StaffElement.SyllableRelation.SYLLABLE;
+                        hasDelimiter = true;
                         i++;
                     }
                 }
             }
 
+            var syllabic = deriveSyllabic(inWord, hasDelimiter);
+            inWord = hasDelimiter;
+
             line.getElement(elementIdx).properties.lyrics.add(
-                new Lyric(1, relation, word, extend));
+                new Lyric(1, word, extend, syllabic, compound));
             elementIdx++;
             elementIdx += continuations;
         }

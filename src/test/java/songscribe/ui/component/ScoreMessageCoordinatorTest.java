@@ -183,14 +183,14 @@ class ScoreMessageCoordinatorTest extends UnitTest {
         void testDeleteNoteBreaksSyllableRelationWhenDeletedNoteIsTerminus() {
             var predecessor = crotchet();
             var terminus = crotchet();
-            predecessor.properties.lyrics.add(new Lyric(1, StaffElement.SyllableRelation.SYLLABLE, "do", Lyric.Extend.NONE));
-            terminus.properties.lyrics.add(new Lyric(1, StaffElement.SyllableRelation.NONE, "re", Lyric.Extend.NONE));
+            predecessor.properties.lyrics.add(new Lyric(1, "do", Lyric.Extend.NONE, Lyric.Syllabic.BEGIN, false));
+            terminus.properties.lyrics.add(new Lyric(1, "re", Lyric.Extend.NONE, Lyric.Syllabic.END, false));
             var line = lineWith(predecessor, terminus);
 
             ScoreMessageCoordinator.deleteNote(1, line);
 
-            assertThat(predecessor.properties.lyrics.get(0).relation())
-                .isEqualTo(StaffElement.SyllableRelation.NONE);
+            assertThat(predecessor.properties.lyrics.get(0).syllabic())
+                .isEqualTo(Lyric.Syllabic.SINGLE);
         }
 
         @Test
@@ -198,15 +198,15 @@ class ScoreMessageCoordinatorTest extends UnitTest {
             var first = crotchet();
             var middle = crotchet();
             var last = crotchet();
-            first.properties.lyrics.add(new Lyric(1, StaffElement.SyllableRelation.SYLLABLE, "do", Lyric.Extend.NONE));
-            middle.properties.lyrics.add(new Lyric(1, StaffElement.SyllableRelation.SYLLABLE, "re", Lyric.Extend.NONE));
-            last.properties.lyrics.add(new Lyric(1, StaffElement.SyllableRelation.NONE, "mi", Lyric.Extend.NONE));
+            first.properties.lyrics.add(new Lyric(1, "do", Lyric.Extend.NONE, Lyric.Syllabic.BEGIN, false));
+            middle.properties.lyrics.add(new Lyric(1, "re", Lyric.Extend.NONE, Lyric.Syllabic.MIDDLE, false));
+            last.properties.lyrics.add(new Lyric(1, "mi", Lyric.Extend.NONE, Lyric.Syllabic.END, false));
             var line = lineWith(first, middle, last);
 
             ScoreMessageCoordinator.deleteNote(1, line);
 
-            assertThat(first.properties.lyrics.get(0).relation())
-                .isEqualTo(StaffElement.SyllableRelation.SYLLABLE);
+            assertThat(first.properties.lyrics.get(0).syllabic())
+                .isEqualTo(Lyric.Syllabic.BEGIN);
         }
 
         private StaffElement crotchet() {

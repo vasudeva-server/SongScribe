@@ -86,7 +86,7 @@ public class Line {
     private final List<RangeElement> rangeElements = new ArrayList<>();
 
     @SuppressWarnings("NullAway") // set by setSong() before the Line is used
-    private Song song = null;
+    private Song song;
     private int keys = 0;
     @Nullable
     private KeyType keyType = null;
@@ -378,15 +378,15 @@ public class Line {
     }
 
     /**
-     * Adjusts syllable relations on the element at {@code prevIndex} when the neighbor
+     * Adjusts the syllabic value on the element at {@code prevIndex} when the neighbor
      * to its right is inserted (blank note) or deleted.
      *
-     * <p>For insertion ({@code deletedElement} is null): always clears any non-{@code NONE}
-     * relation on the predecessor, since the new blank note breaks the syllable chain.
+     * <p>For insertion ({@code deletedElement} is null): always breaks the syllabic chain on
+     * the predecessor, since the new blank note interrupts it.
      *
-     * <p>For deletion ({@code deletedElement} is the element being removed): clears the
-     * predecessor's relation only in verses where the deleted element does not continue
-     * the chain (i.e., it has {@code NONE} relation or no lyric for that verse).
+     * <p>For deletion ({@code deletedElement} is the element being removed): breaks the
+     * predecessor's chain only in verses where the deleted element did not continue
+     * the chain (i.e., it has no lyric for that verse or its syllabic is not BEGIN/MIDDLE).
      *
      * <p>Must be called inside a modification bracket.
      */
@@ -401,8 +401,9 @@ public class Line {
 
         for (var j = 0; j < lyrics.size(); j++) {
             var lyric = lyrics.get(j);
+            var syllabic = lyric.syllabic();
 
-            if (lyric.relation() == StaffElement.SyllableRelation.NONE) {
+            if (syllabic != Lyric.Syllabic.BEGIN && syllabic != Lyric.Syllabic.MIDDLE) {
                 continue;
             }
 
@@ -414,8 +415,9 @@ public class Line {
                     .findFirst()
                     .orElse(null);
 
-                if (matchingDeletedLyric == null
-                        || matchingDeletedLyric.relation() == StaffElement.SyllableRelation.NONE) {
+                var deletedSyllabic = matchingDeletedLyric != null ? matchingDeletedLyric.syllabic() : null;
+
+                if (deletedSyllabic != Lyric.Syllabic.BEGIN && deletedSyllabic != Lyric.Syllabic.MIDDLE) {
                     indicesToClear.add(j);
                 }
             }
@@ -428,8 +430,14 @@ public class Line {
         modifyElement(prevIndex, ElementField.LYRIC, () -> {
             for (var lyricIndex : indicesToClear) {
                 var lyric = lyrics.get(lyricIndex);
+                var prevOfPrevLyric = prevIndex > 0
+                    ? elements.get(prevIndex - 1).getLyricForVerse(lyric.verse()) : null;
+                var prevOfPrevSyllabic = prevOfPrevLyric != null ? prevOfPrevLyric.syllabic() : null;
+                var prevContinues = prevOfPrevSyllabic == Lyric.Syllabic.BEGIN
+                    || prevOfPrevSyllabic == Lyric.Syllabic.MIDDLE;
+                var newSyllabic = prevContinues ? Lyric.Syllabic.END : Lyric.Syllabic.SINGLE;
                 lyrics.set(lyricIndex,
-                    new Lyric(lyric.verse(), StaffElement.SyllableRelation.NONE, lyric.text(), lyric.extend()));
+                    new Lyric(lyric.verse(), lyric.text(), lyric.extend(), newSyllabic, false));
             }
         });
     }
@@ -483,7 +491,7 @@ public class Line {
 
             modifyElement(i, ElementField.LYRIC, () ->
                 element.properties.lyrics.set(lyricIndex,
-                    new Lyric(lyric.verse(), lyric.relation(), lyric.text(), Lyric.Extend.NONE)));
+                    new Lyric(lyric.verse(), lyric.text(), Lyric.Extend.NONE, Lyric.Syllabic.SINGLE, false)));
 
             if (isStop) {
                 break;
@@ -516,7 +524,197 @@ public class Line {
 
         modifyElement(precedingIndex, ElementField.LYRIC, () ->
             precedingElement.properties.lyrics.set(lyricIndex,
-                new Lyric(lyric.verse(), lyric.relation(), lyric.text(), newExtend)));
+                new Lyric(lyric.verse(), lyric.text(), newExtend, lyric.syllabic(), lyric.compound())));
+    }
+
+    /**
+     * Normalizes every {@link Lyric} on this line so that {@link Lyric#syllabic()} is
+     * chain-consistent (SINGLE/BEGIN/MIDDLE/END match the word boundary implied by neighbors).
+     * Idempotent. Used after document load for legacy files where {@code <syllabic>} may be
+     * absent or only a best-guess value.
+     */
+    public void backfillSyllabic() {
+        for (var index = 0; index < elements.size(); index++) {
+            var lyrics = elements.get(index).properties.lyrics;
+
+            for (var lyricIndex = 0; lyricIndex < lyrics.size(); lyricIndex++) {
+                backfillSyllabicAt(index, lyrics.get(lyricIndex).verse());
+            }
+        }
+    }
+
+    /**
+     * Updates the lyric at {@code (index, verse)} so its {@link Lyric#syllabic()} is consistent
+     * with the syllabic chain. BEGIN/MIDDLE on the predecessor means this element is in the middle
+     * or end of a word; BEGIN on this element (from an initial best-guess load) means it continues
+     * to the next. No-op when the element has no lyric for the verse, the lyric is a carrier, or
+     * the stored value already matches. Mutates the lyric list in place — the caller is
+     * responsible for any required modification bracket.
+     */
+    private void backfillSyllabicAt(int index, int verse) {
+        var lyrics = elements.get(index).properties.lyrics;
+        var lyricIndex = findLyricIndexForVerse(elements.get(index), verse);
+
+        if (lyricIndex < 0) {
+            return;
+        }
+
+        var lyric = lyrics.get(lyricIndex);
+        var extend = lyric.extend();
+
+        // Carriers never need backfill — their syllabic is always null.
+        if (extend == Lyric.Extend.STOP || extend == Lyric.Extend.CONTINUE) {
+            return;
+        }
+
+        var prevContinues = false;
+
+        for (var i = index - 1; i >= 0; i--) {
+            var prevLyric = elements.get(i).getLyricForVerse(verse);
+
+            if (prevLyric != null) {
+                var prevSyllabic = prevLyric.syllabic();
+                prevContinues = prevSyllabic == Lyric.Syllabic.BEGIN || prevSyllabic == Lyric.Syllabic.MIDDLE;
+                break;
+            }
+        }
+
+        // BEGIN was assigned by best-guess load to signal "this syllable continues to the next".
+        var thisContinues = lyric.syllabic() == Lyric.Syllabic.BEGIN
+                || lyric.syllabic() == Lyric.Syllabic.MIDDLE;
+        Lyric.Syllabic derived;
+
+        if (prevContinues) {
+            derived = thisContinues ? Lyric.Syllabic.MIDDLE : Lyric.Syllabic.END;
+        } else {
+            derived = thisContinues ? Lyric.Syllabic.BEGIN : Lyric.Syllabic.SINGLE;
+        }
+
+        if (derived == lyric.syllabic()) {
+            return;
+        }
+
+        lyrics.set(lyricIndex, new Lyric(lyric.verse(), lyric.text(), lyric.extend(), derived, lyric.compound()));
+    }
+
+    /**
+     * Adjusts the syllable boundary on the lyric at {@code (index, verse)} and propagates the
+     * change to the next lyric-bearing element so its {@link Lyric.Syllabic} stays consistent
+     * with the chain. The lyric at {@code index} must already exist and must not be a carrier
+     * ({@link Lyric.Extend#STOP} / {@link Lyric.Extend#CONTINUE}); typical use is right after a
+     * text write to fix up the syllabic chain.
+     *
+     * <p>The new {@link Lyric#syllabic()} on this element is derived from {@code isWordEnd} and
+     * the previous lyric-bearing element's syllabic position:
+     * <ul>
+     *   <li>{@code isWordEnd} → {@link Lyric.Syllabic#END} when the predecessor continues
+     *       (BEGIN/MIDDLE), else {@link Lyric.Syllabic#SINGLE}.</li>
+     *   <li>{@code !isWordEnd} → {@link Lyric.Syllabic#MIDDLE} when the predecessor continues,
+     *       else {@link Lyric.Syllabic#BEGIN}. {@link Lyric#compound()} is set to
+     *       {@code isCompound}.</li>
+     * </ul>
+     *
+     * <p>The next lyric-bearing element (if it has a non-null syllabic) is rewritten to whichever
+     * of BEGIN/MIDDLE/END/SINGLE matches its own continues-status combined with this element's
+     * new continues-status. Element rewrites that would not actually change the stored value are
+     * skipped to avoid emitting redundant {@code ElementModification}s.
+     *
+     * <p>Must be called from inside a {@link #withModification(Runnable)} bracket.
+     *
+     * @param index      the element index on this line
+     * @param verse      the verse number (typically 1)
+     * @param isWordEnd  {@code true} when this syllable terminates the word (no continuation)
+     * @param isCompound {@code true} when this syllable joins the next via a compound-word
+     *                   boundary; ignored when {@code isWordEnd} is {@code true}
+     */
+    public void setSyllableBoundary(int index, int verse, boolean isWordEnd, boolean isCompound) {
+        var lyric = elements.get(index).getLyricForVerse(verse);
+
+        if (lyric == null) {
+            throw new IllegalStateException(
+                "setSyllableBoundary requires existing lyric at index " + index + " verse " + verse);
+        }
+
+        if (lyric.syllabic() == null) {
+            throw new IllegalStateException(
+                "setSyllableBoundary cannot run on carrier lyric (extend=" + lyric.extend() + ")");
+        }
+
+        var prevContinues = previousLyricContinues(index, verse);
+        Lyric.Syllabic newSyllabic;
+
+        if (isWordEnd) {
+            newSyllabic = prevContinues ? Lyric.Syllabic.END : Lyric.Syllabic.SINGLE;
+        } else {
+            newSyllabic = prevContinues ? Lyric.Syllabic.MIDDLE : Lyric.Syllabic.BEGIN;
+        }
+
+        var newCompound = !isWordEnd && isCompound;
+
+        if (newSyllabic != lyric.syllabic() || newCompound != lyric.compound()) {
+            modifyElement(index, ElementField.LYRIC, () ->
+                replaceSyllabicAndCompound(index, verse, newSyllabic, newCompound));
+        }
+
+        var nextIndex = nextLyricBearingIndex(index, verse);
+
+        if (nextIndex < 0) {
+            return;
+        }
+
+        var nextLyric = elements.get(nextIndex).getLyricForVerse(verse);
+
+        if (nextLyric == null || nextLyric.syllabic() == null) {
+            return;
+        }
+
+        var nextContinues = nextLyric.syllabic() == Lyric.Syllabic.BEGIN
+            || nextLyric.syllabic() == Lyric.Syllabic.MIDDLE;
+        var thisContinues = !isWordEnd;
+        Lyric.Syllabic newNextSyllabic;
+
+        if (thisContinues) {
+            newNextSyllabic = nextContinues ? Lyric.Syllabic.MIDDLE : Lyric.Syllabic.END;
+        } else {
+            newNextSyllabic = nextContinues ? Lyric.Syllabic.BEGIN : Lyric.Syllabic.SINGLE;
+        }
+
+        if (newNextSyllabic != nextLyric.syllabic()) {
+            modifyElement(nextIndex, ElementField.LYRIC, () ->
+                replaceSyllabicAndCompound(nextIndex, verse, newNextSyllabic, nextLyric.compound()));
+        }
+    }
+
+    private void replaceSyllabicAndCompound(int index, int verse,
+            Lyric.@Nullable Syllabic syllabic, boolean compound) {
+        var lyrics = elements.get(index).properties.lyrics;
+        var lyricIndex = findLyricIndexForVerse(elements.get(index), verse);
+        var lyric = lyrics.get(lyricIndex);
+        lyrics.set(lyricIndex, new Lyric(
+            lyric.verse(), lyric.text(), lyric.extend(), syllabic, compound));
+    }
+
+    private boolean previousLyricContinues(int index, int verse) {
+        for (var i = index - 1; i >= 0; i--) {
+            var prevLyric = elements.get(i).getLyricForVerse(verse);
+
+            if (prevLyric != null && prevLyric.syllabic() != null) {
+                return prevLyric.syllabic() == Lyric.Syllabic.BEGIN
+                    || prevLyric.syllabic() == Lyric.Syllabic.MIDDLE;
+            }
+        }
+
+        return false;
+    }
+
+    private int nextLyricBearingIndex(int index, int verse) {
+        for (var i = index + 1; i < elements.size(); i++) {
+            if (elements.get(i).getLyricForVerse(verse) != null) {
+                return i;
+            }
+        }
+
+        return -1;
     }
 
     private static int findLyricIndexForVerse(StaffElement element, int verse) {
