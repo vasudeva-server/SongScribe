@@ -24,6 +24,8 @@ import module java.desktop;
 
 import java.awt.event.MouseEvent;
 import java.util.Collections;
+import java.util.function.IntPredicate;
+import java.util.function.IntUnaryOperator;
 
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
@@ -157,6 +159,7 @@ public final class LyricEditor extends MyJTextField {
     private static final double EMPTY_BOX_MIN_WIDTH_SS = 0.125;  // 1px
 
     private static final String ACTION_KEY_TAB = "lyric.editor.tab";
+    private static final String ACTION_KEY_SHIFT_TAB = "lyric.editor.shift.tab";
     private static final String ACTION_KEY_ENTER = "lyric.editor.enter";
     private static final String ACTION_KEY_ESCAPE = "lyric.editor.escape";
 
@@ -226,9 +229,10 @@ public final class LyricEditor extends MyJTextField {
 
         configureLAF();
 
-        // Tab is a focus-traversal key by default; clear the set so VK_TAB reaches the
-        // input map rather than moving focus to the next component.
+        // Tab/Shift-Tab are focus-traversal keys by default; clear both sets so VK_TAB
+        // (with and without Shift) reaches the input map rather than moving focus.
         setFocusTraversalKeys(KeyboardFocusManager.FORWARD_TRAVERSAL_KEYS, Collections.emptySet());
+        setFocusTraversalKeys(KeyboardFocusManager.BACKWARD_TRAVERSAL_KEYS, Collections.emptySet());
 
         installKeyBindings();
 
@@ -451,7 +455,8 @@ public final class LyricEditor extends MyJTextField {
      * would otherwise insert their literal characters; Escape has no default binding.
      */
     private void installKeyBindings() {
-        bindKey(KeyEvent.VK_TAB, ACTION_KEY_TAB, () -> advance());
+        bindKey(KeyEvent.VK_TAB, 0, ACTION_KEY_TAB, () -> advance());
+        bindKey(KeyEvent.VK_TAB, InputEvent.SHIFT_DOWN_MASK, ACTION_KEY_SHIFT_TAB, () -> retreat());
 
         bindKey(KeyEvent.VK_ENTER, ACTION_KEY_ENTER, () -> {
             line.withModification(() -> {
@@ -489,7 +494,11 @@ public final class LyricEditor extends MyJTextField {
     }
 
     private void bindKey(int keyCode, String actionKey, Runnable handler) {
-        getInputMap(WHEN_FOCUSED).put(KeyStroke.getKeyStroke(keyCode, 0), actionKey);
+        bindKey(keyCode, 0, actionKey, handler);
+    }
+
+    private void bindKey(int keyCode, int modifiers, String actionKey, Runnable handler) {
+        getInputMap(WHEN_FOCUSED).put(KeyStroke.getKeyStroke(keyCode, modifiers), actionKey);
         getActionMap().put(actionKey, new AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -659,7 +668,7 @@ public final class LyricEditor extends MyJTextField {
             applyDismissAdjustment();
         });
 
-        openNextOrDismiss();
+        openAdjacentOrDismiss(i -> i + 1, i -> i < line.effectiveElementCount());
     }
 
     /**
@@ -670,12 +679,23 @@ public final class LyricEditor extends MyJTextField {
         advance(CommitKind.WORD_FINAL, Lyric.Extend.NONE);
     }
 
-    private void openNextOrDismiss() {
-        var currentIndex = line.getElementIndex(element);
-        var startIndex = currentIndex + 1;
-        var effectiveCount = line.effectiveElementCount();
+    /**
+     * Commits the editor's text as a word-final syllable (no compound, no melisma),
+     * runs the dismiss-adjustment pass, then retreats to the previous eligible element.
+     */
+    public void retreat() {
+        line.withModification(() -> {
+            commitInner(CommitKind.WORD_FINAL, Lyric.Extend.NONE);
+            applyDismissAdjustment();
+        });
 
-        for (var i = startIndex; i < effectiveCount; i++) {
+        openAdjacentOrDismiss(i -> i - 1, i -> i >= 0);
+    }
+
+    private void openAdjacentOrDismiss(IntUnaryOperator next, IntPredicate inBounds) {
+        var currentIndex = line.getElementIndex(element);
+
+        for (var i = next.applyAsInt(currentIndex); inBounds.test(i); i = next.applyAsInt(i)) {
             var candidate = line.getElement(i);
 
             if (isEligibleForLyric(candidate)) {
@@ -738,7 +758,7 @@ public final class LyricEditor extends MyJTextField {
         }
 
         // Implicit-extension: leave this element's lyric null and advance.
-        openNextOrDismiss();
+        openAdjacentOrDismiss(i -> i + 1, i -> i < line.effectiveElementCount());
     }
 
     private boolean isCaretAtEnd() {
