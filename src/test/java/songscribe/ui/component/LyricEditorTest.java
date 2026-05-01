@@ -465,6 +465,14 @@ class LyricEditorTest extends UnitTest {
             new ActionEvent(editor, ActionEvent.ACTION_PERFORMED, ""));
     }
 
+    private void fireHyphen(LyricEditor editor) {
+        var hyphenEvent = new KeyEvent(editor, KeyEvent.KEY_TYPED, 0L, 0, KeyEvent.VK_UNDEFINED, '-');
+
+        for (var listener : editor.getKeyListeners()) {
+            listener.keyTyped(hyphenEvent);
+        }
+    }
+
     @Test
     void testSuppressedDismissAdjustmentEmitsNoMutations() {
         var element = crotchet();
@@ -583,6 +591,125 @@ class LyricEditorTest extends UnitTest {
         assertThat(((ElementModification) notification.getMutations().get(0)).fields())
             .containsExactly(ElementField.LYRIC);
         assertThat(e0.getLyricForVerse(1)).extracting(Lyric::syllabic).isEqualTo(Lyric.Syllabic.SINGLE);
+    }
+
+    // -----------------------------------------------------------------------
+    // T30–T35: handleHyphen behavior matrix
+    // -----------------------------------------------------------------------
+
+    // State 1: openedAsExtender = true → beep
+    @Test
+    void testHyphenOnExtenderCarrierBeeps() {
+        var element = crotchet();
+        element.setLyricForVerse(1, null, false, null, Lyric.Extend.CONTINUE);
+        var line = detachedLineWith(element);
+        var editor = new LyricEditor(score, line, element);
+        editor.attachListeners();
+
+        var toolkitMock = mock(Toolkit.class);
+
+        try (var toolkitStatic = mockStatic(Toolkit.class)) {
+            toolkitStatic.when(Toolkit::getDefaultToolkit).thenReturn(toolkitMock);
+            fireHyphen(editor);
+            verify(toolkitMock).beep();
+        }
+    }
+
+    // State 2: text non-empty → commit as BEGIN syllabic + advance to next note
+    @Test
+    void testHyphenOnNonEmptyTextCommitsAndAdvances() {
+        var e0 = crotchet();
+        var e1 = crotchet();
+        var line = detachedLineWith(e0, e1);
+        var editor = new LyricEditor(score, line, e0);
+        editor.setText("Sup");
+        editor.attachListeners();
+
+        fireHyphen(editor);
+
+        assertThat(e0.getLyricForVerse(1)).extracting(Lyric::text).isEqualTo("Sup");
+        assertThat(e0.getLyricForVerse(1)).extracting(Lyric::syllabic).isEqualTo(Lyric.Syllabic.BEGIN);
+
+        var captor = ArgumentCaptor.forClass(LyricEditor.class);
+        verify(score, atLeastOnce()).addOverlay(captor.capture());
+        assertThat(requireLastNonNull(captor).getActiveElement()).isSameAs(e1);
+    }
+
+    // State 3: text empty, element lyric non-null → beep (don't silently delete existing lyric)
+    @Test
+    void testHyphenOnEmptyEditorWithExistingLyricBeeps() {
+        var element = crotchet();
+        setMainLyric(element, "do");
+        var line = detachedLineWith(element);
+        var editor = new LyricEditor(score, line, element);
+        editor.setText("");
+        editor.attachListeners();
+
+        var toolkitMock = mock(Toolkit.class);
+
+        try (var toolkitStatic = mockStatic(Toolkit.class)) {
+            toolkitStatic.when(Toolkit::getDefaultToolkit).thenReturn(toolkitMock);
+            fireHyphen(editor);
+            verify(toolkitMock).beep();
+        }
+
+        assertThat(element.getLyricForVerse(1)).extracting(Lyric::text).isEqualTo("do");
+    }
+
+    // State 4: text empty, lyric null, no predecessor → beep
+    @Test
+    void testHyphenOnEmptyEditorWithNoPredecessorBeeps() {
+        var element = crotchet();
+        var line = detachedLineWith(element);
+        var editor = new LyricEditor(score, line, element);
+        editor.attachListeners();
+
+        var toolkitMock = mock(Toolkit.class);
+
+        try (var toolkitStatic = mockStatic(Toolkit.class)) {
+            toolkitStatic.when(Toolkit::getDefaultToolkit).thenReturn(toolkitMock);
+            fireHyphen(editor);
+            verify(toolkitMock).beep();
+        }
+    }
+
+    // State 5: text empty, lyric null, predecessor END/SINGLE → beep
+    @Test
+    void testHyphenOnEmptyEditorWithWordFinalPredecessorBeeps() {
+        var e0 = crotchet();
+        var e1 = crotchet();
+        e0.setLyricForVerse(1, Lyric.Syllabic.SINGLE, false, "do", Lyric.Extend.NONE);
+        var line = detachedLineWith(e0, e1);
+        var editor = new LyricEditor(score, line, e1);
+        editor.attachListeners();
+
+        var toolkitMock = mock(Toolkit.class);
+
+        try (var toolkitStatic = mockStatic(Toolkit.class)) {
+            toolkitStatic.when(Toolkit::getDefaultToolkit).thenReturn(toolkitMock);
+            fireHyphen(editor);
+            verify(toolkitMock).beep();
+        }
+    }
+
+    // State 6: text empty, lyric null, predecessor BEGIN/MIDDLE → advance without mutating current element
+    @Test
+    void testHyphenOnEmptyEditorWithBeginPredecessorAdvancesWithoutMutation() {
+        var e0 = crotchet();
+        var e1 = crotchet();
+        var e2 = crotchet();
+        e0.setLyricForVerse(1, Lyric.Syllabic.BEGIN, false, "Sup", Lyric.Extend.NONE);
+        var line = detachedLineWith(e0, e1, e2);
+        var editor = new LyricEditor(score, line, e1);
+        editor.attachListeners();
+
+        fireHyphen(editor);
+
+        assertThat(e1.getLyricForVerse(1)).isNull();
+
+        var captor = ArgumentCaptor.forClass(LyricEditor.class);
+        verify(score, atLeastOnce()).addOverlay(captor.capture());
+        assertThat(requireLastNonNull(captor).getActiveElement()).isSameAs(e2);
     }
 
     private static <T> T requireLastNonNull(ArgumentCaptor<T> captor) {
