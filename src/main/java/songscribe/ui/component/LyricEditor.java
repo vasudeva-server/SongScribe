@@ -255,6 +255,16 @@ public final class LyricEditor extends MyJTextField {
         // insets compensate for the active glyph's left side bearing — see comment there.
     }
 
+    /** The three legal shapes a committed syllable can have. */
+    public enum CommitKind {
+        /** Word-final syllable: SINGLE or END, compound = false. */
+        WORD_FINAL,
+        /** Word-continuing via hyphen: BEGIN or MIDDLE, compound = false. */
+        WORD_CONTINUING_HYPHEN,
+        /** Word-continuing via compound join: compound = true. */
+        WORD_CONTINUING_COMPOUND
+    }
+
     /**
      * Text-field UI used only by the lyric overlay so we can customize its Swing text
      * view without changing global look-and-feel behavior.
@@ -345,7 +355,7 @@ public final class LyricEditor extends MyJTextField {
 
             focused = false;
             line.withModification(() -> {
-                commitInner(true, false, Lyric.Extend.NONE);
+                commitInner(CommitKind.WORD_FINAL, Lyric.Extend.NONE);
                 applyDismissAdjustment();
             });
             dismiss(false);
@@ -445,7 +455,7 @@ public final class LyricEditor extends MyJTextField {
 
         bindKey(KeyEvent.VK_ENTER, ACTION_KEY_ENTER, () -> {
             line.withModification(() -> {
-                commitInner(true, false, Lyric.Extend.NONE);
+                commitInner(CommitKind.WORD_FINAL, Lyric.Extend.NONE);
                 applyDismissAdjustment();
             });
             dismiss(true);
@@ -576,11 +586,11 @@ public final class LyricEditor extends MyJTextField {
      * empty-on-empty commits emit zero mutations — the modification bracket is skipped.
      */
     public void commit() {
-        commit(true, false, Lyric.Extend.NONE);
+        commit(CommitKind.WORD_FINAL, Lyric.Extend.NONE);
     }
 
-    private void commit(boolean isWordEnd, boolean isCompound, Lyric.Extend extend) {
-        line.withModification(() -> commitInner(isWordEnd, isCompound, extend));
+    private void commit(CommitKind kind, Lyric.Extend extend) {
+        line.withModification(() -> commitInner(kind, extend));
     }
 
     /**
@@ -598,19 +608,17 @@ public final class LyricEditor extends MyJTextField {
      * mutations — assumes an open modification bracket so zero-mutation early-returns
      * produce an empty bracket with no notification.
      *
-     * @param isWordEnd  {@code true} when this syllable terminates the word
-     * @param isCompound {@code true} when this syllable joins the next via a compound-word
-     *                   boundary; ignored when {@code isWordEnd} is {@code true}
-     * @param extend     melisma extender state for the lyric
+     * @param kind   the syllable shape being committed
+     * @param extend melisma extender state for the lyric
      */
-    private void commitInner(boolean isWordEnd, boolean isCompound, Lyric.Extend extend) {
+    private void commitInner(CommitKind kind, Lyric.Extend extend) {
         var text = getText();
         var existingLyric = element.getLyricForVerse(CURRENT_VERSE);
 
         var existingText = existingLyric != null ? existingLyric.text() : "";
         var wantsCarrier = extend == Lyric.Extend.STOP || extend == Lyric.Extend.CONTINUE;
-        var wantsContinues = !isWordEnd;
-        var wantsCompound = !isWordEnd && isCompound;
+        var wantsContinues = !(kind == CommitKind.WORD_FINAL);
+        var wantsCompound = kind == CommitKind.WORD_CONTINUING_COMPOUND;
         var existingContinues = existingLyric != null
             && (existingLyric.syllabic() == Lyric.Syllabic.BEGIN
                 || existingLyric.syllabic() == Lyric.Syllabic.MIDDLE);
@@ -635,7 +643,7 @@ public final class LyricEditor extends MyJTextField {
             element.setLyricForVerse(CURRENT_VERSE, placeholderSyllabic, false, text, extend));
 
         if (!text.isEmpty() && !wantsCarrier) {
-            line.setSyllableBoundary(index, CURRENT_VERSE, isWordEnd, isCompound);
+            line.setSyllableBoundary(index, CURRENT_VERSE, kind == CommitKind.WORD_FINAL, kind == CommitKind.WORD_CONTINUING_COMPOUND);
         }
     }
 
@@ -645,9 +653,9 @@ public final class LyricEditor extends MyJTextField {
      * The commit and adjustment are wrapped in a single modification bracket so both
      * produce one {@link songscribe.message.notification.SongDidChangeNotification}.
      */
-    public void advance(boolean isWordEnd, boolean isCompound, Lyric.Extend extend) {
+    public void advance(CommitKind kind, Lyric.Extend extend) {
         line.withModification(() -> {
-            commitInner(isWordEnd, isCompound, extend);
+            commitInner(kind, extend);
             applyDismissAdjustment();
         });
 
@@ -659,7 +667,7 @@ public final class LyricEditor extends MyJTextField {
      * runs the dismiss-adjustment pass, then advances to the next eligible element.
      */
     public void advance() {
-        advance(true, false, Lyric.Extend.NONE);
+        advance(CommitKind.WORD_FINAL, Lyric.Extend.NONE);
     }
 
     private void openNextOrDismiss() {
@@ -698,7 +706,7 @@ public final class LyricEditor extends MyJTextField {
 
         if (!getText().isEmpty()) {
             // Typed syllable + '-': commit as BEGIN/MIDDLE and advance.
-            advance(false, false, Lyric.Extend.NONE);
+            advance(CommitKind.WORD_CONTINUING_HYPHEN, Lyric.Extend.NONE);
             return;
         }
 
@@ -743,13 +751,13 @@ public final class LyricEditor extends MyJTextField {
             return;
         }
 
-        advance(false, true, Lyric.Extend.NONE);
+        advance(CommitKind.WORD_CONTINUING_COMPOUND, Lyric.Extend.NONE);
     }
 
     private void handleUnderscore() {
         if (!getText().isEmpty()) {
             if (isCaretAtEnd()) {
-                advance(true, false, Lyric.Extend.START);
+                advance(CommitKind.WORD_FINAL, Lyric.Extend.START);
             } else {
                 Toolkit.getDefaultToolkit().beep();
             }
@@ -823,7 +831,7 @@ public final class LyricEditor extends MyJTextField {
 
         focused = false;
         line.withModification(() -> {
-            commitInner(true, false, Lyric.Extend.NONE);
+            commitInner(CommitKind.WORD_FINAL, Lyric.Extend.NONE);
             applyDismissAdjustment();
         });
         dismiss(true);
