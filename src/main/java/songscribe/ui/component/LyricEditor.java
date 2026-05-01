@@ -129,21 +129,28 @@ public final class LyricEditor extends MyJTextField {
     private static final int CURRENT_VERSE = 1;
 
     /**
-     * Visible padding from the box edge to the glyph ink, on each side. The LineBorder
-     * width is included in this padding (i.e. the EmptyBorder portion is this minus the
-     * line-border width). Left/right are realized symmetrically around the glyph ink by
-     * compensating for the font's left side bearing in {@link #recomputeBounds}.
+     * Visible padding from the box edge to the JTextField text allocation. For selected
+     * text, Swing highlights from the allocation origin to the caret advance, so the
+     * editor frame is centered around that same span rather than the glyph ink bounds.
      */
     public static final InsetsSs EDITOR_PADDING_SS = new InsetsSs(0.25, 0.5, 0.25, 0.5);
 
     private static final int LINE_BORDER_WIDTH_PX = 1;
 
     /**
-     * One pixel of horizontal slack at the right end of the JTextField content area so
-     * the caret has room to paint at the trailing edge without JTextField horizontally
-     * scrolling the view to keep it in sight.
+     * {@link javax.swing.plaf.basic.BasicTextUI#getVisibleEditorRect()} leaves one
+     * trailing pixel outside the view allocation. Account for it explicitly so the
+     * selected text allocation gets the intended width without growing the visible
+     * right margin.
      */
-    private static final int CARET_SLACK_PX = 1;
+    private static final int TEXT_FIELD_RESERVED_TRAILING_PX = 1;
+
+    /**
+     * Minimum horizontal room for the caret when the editor is empty. Non-empty text uses
+     * the text advance as the caret/selection end; widening that allocation visually
+     * uncenters the selected text span inside the editor frame.
+     */
+    private static final int MIN_TRAILING_CARET_ROOM_PX = 1;
 
     /**
      * Swing's {@link FieldView} clips to the field allocation before text is drawn. Some
@@ -296,11 +303,27 @@ public final class LyricEditor extends MyJTextField {
             super(elem);
         }
 
+        private Shape keepAllocationAtContentOrigin(Shape input, Shape adjusted) {
+            if (input == null || adjusted == null) {
+                return adjusted;
+            }
+
+            var inputBounds = input.getBounds();
+            var adjustedBounds = adjusted.getBounds();
+
+            if (adjustedBounds.x < inputBounds.x) {
+                adjustedBounds.x = inputBounds.x;
+                return adjustedBounds;
+            }
+
+            return adjusted;
+        }
+
         @Override
         public void paint(Graphics g, Shape a) {
             var expanded = a.getBounds();
             expanded.x -= LEADING_PAINT_SLACK_PX;
-            expanded.width += LEADING_PAINT_SLACK_PX;
+            expanded.width += LEADING_PAINT_SLACK_PX + 1;
             paintingWithLeadingSlack = true;
 
             try {
@@ -312,16 +335,18 @@ public final class LyricEditor extends MyJTextField {
 
         @Override
         protected Shape adjustAllocation(Shape a) {
-            var adjusted = super.adjustAllocation(a);
+            Shape adjusted;
 
-            if (paintingWithLeadingSlack && adjusted != null) {
-                var bounds = adjusted.getBounds();
-                bounds.x += LEADING_PAINT_SLACK_PX;
-                bounds.width -= LEADING_PAINT_SLACK_PX;
-                return bounds;
+            if (paintingWithLeadingSlack && a != null) {
+                var textAllocation = a.getBounds();
+                textAllocation.x += LEADING_PAINT_SLACK_PX;
+                textAllocation.width -= LEADING_PAINT_SLACK_PX;
+                adjusted = super.adjustAllocation(textAllocation);
+                return keepAllocationAtContentOrigin(textAllocation, adjusted);
             }
 
-            return adjusted;
+            adjusted = super.adjustAllocation(a);
+            return keepAllocationAtContentOrigin(a, adjusted);
         }
     }
 
@@ -535,30 +560,24 @@ public final class LyricEditor extends MyJTextField {
         var advanceLeftSs = anchor.centerXSs() - advanceSs / 2.0;
         var heightSs = lyricRenderMetrics.lyricBoxHeightSs();
 
+        var fontMetrics = getFontMetrics(lyricsFont);
         var paddingPx = EDITOR_PADDING_SS.toInsetsPx();
-        var leftBearingPx = scaleContext.toPixels(boxMetrics.leftBearingSs());
-        var rightExtentPx = scaleContext.toPixels(boxMetrics.rightExtentSs());
         var advancePx = scaleContext.toPixels(advanceSs);
-        var contentWidthPx = (int) Math.ceil(advancePx) + CARET_SLACK_PX;
-        var contentHeightPx = (int) Math.ceil(scaleContext.toPixels(heightSs));
-        // Bearing-compensated insets so the visible gap from the inner LineBorder edge to
-        // the glyph ink is equal on both sides. JTextField paints the advance origin at
-        // contentLeft, so on the left the ink lands at contentLeft + leftBearing and on
-        // the right the content area extends beyond the ink by
-        // (contentWidth - rightExtent) — i.e. CARET_SLACK_PX, the ceil(advance) rounding
-        // remainder, and the glyph's right side bearing. Subtracting each side's slack
-        // from paddingPx makes both visible gaps land at paddingPx (with sub-pixel
-        // rounding error). The trade-off is that the EmptyBorder bands are no longer
-        // symmetric whenever a glyph's bearings or the trailing slack are non-zero —
-        // visual centering of the glyph wins over band symmetry.
-        var emptyLeftPx = Math.max(0,
-            (int) Math.ceil(paddingPx.left - leftBearingPx));
-        var emptyRightPx = Math.max(0,
-            (int) Math.ceil(paddingPx.right - (contentWidthPx - rightExtentPx)));
-
+        var roundedAdvancePx = (int) Math.ceil(advancePx);
+        var trailingCaretRoomPx = getText().isEmpty()
+            ? MIN_TRAILING_CARET_ROOM_PX
+            : 0;
+        var contentWidthPx = roundedAdvancePx + trailingCaretRoomPx;
+        // lyricBoxHeightSs covers ascent+descent only; FieldView's selection height uses
+        // getHeight() = ascent+descent+leading. Adding leading here makes fieldViewSlopPx
+        // equal to SELECTION_MARGIN_PX*2, so the selection gets exactly SELECTION_MARGIN_PX
+        // pixels of breathing room above and below.
+        var contentHeightPx = (int) Math.ceil(scaleContext.toPixels(heightSs))
+            + fontMetrics.getLeading();
+        var rightPaddingPx = Math.max(0, paddingPx.right - TEXT_FIELD_RESERVED_TRAILING_PX);
         setBorder(BorderFactory.createCompoundBorder(
             new LineBorder(Color.BLACK, LINE_BORDER_WIDTH_PX),
-            new EmptyBorder(paddingPx.top, emptyLeftPx, paddingPx.bottom, emptyRightPx)
+            new EmptyBorder(paddingPx.top, paddingPx.left, paddingPx.bottom, rightPaddingPx)
         ));
 
         // getInsets() now reflects the dynamic border just set above.
@@ -568,25 +587,18 @@ public final class LyricEditor extends MyJTextField {
         // and any rounding drift would visibly shift the painted text within the box.
         var contentLeftPx = scaleContext.toRoundedPixels(advanceLeftSs);
 
-        // Derive the content top from the (pixel-snapped) baseline and the integer font-metrics
-        // ascent, then compensate for FieldView.adjustAllocation. PlainView paints at
-        // lineArea.y + ascent, but FieldView first shifts alloc.y by slop/2 (where
-        // slop = contentHeight - fontMetrics.getHeight()) whenever they differ — including the
-        // common case where contentHeight is smaller than the font's full line height
-        // (ascent + descent + leading). Without subtracting slop/2 here, the actual rendered
-        // baseline lands 1 px off baselineYPxInt.
         var baselineYPxInt = scaleContext.toRoundedPixels(anchor.baselineYSs());
-        var fontMetrics = getFontMetrics(lyricsFont);
         var fieldViewSlopPx = contentHeightPx - fontMetrics.getHeight();
         var contentTopPx = baselineYPxInt - fontMetrics.getAscent() - fieldViewSlopPx / 2;
 
         var xLinePx = contentLeftPx - insets.left;
         var yLinePx = contentTopPx - insets.top;
-        var widthPx = insets.left + contentWidthPx + insets.right;
+        var widthPx = insets.left + contentWidthPx + insets.right + TEXT_FIELD_RESERVED_TRAILING_PX;
         var heightPx = insets.top + contentHeightPx + insets.bottom;
 
         var scoreLocal = SwingUtilities.convertPoint(lineComponent, xLinePx, yLinePx, score);
         setBounds(scoreLocal.x, scoreLocal.y, widthPx, heightPx);
+
     }
 
     /**
