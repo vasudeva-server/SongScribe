@@ -20,6 +20,7 @@
 
 package songscribe.ui.renderer;
 
+import static songscribe.ui.renderer.GraphicsState.Property.COLOR;
 import static songscribe.ui.renderer.GraphicsState.Property.FONT;
 import static songscribe.ui.renderer.GraphicsState.Property.TRANSFORM;
 
@@ -71,7 +72,7 @@ public class LyricTextRenderer extends BaseElementRenderer<StaffElement> {
         var scaleContext = ScaleContext.getInstance();
         var pxPerSs = ctx.getPixelsPerStaffSpace();
 
-        try (var ignored = GraphicsState.save(g2, FONT, TRANSFORM)) {
+        try (var ignored = GraphicsState.save(g2, COLOR, FONT, TRANSFORM)) {
             // Strip only the staff-space → pixel factor from the current transform,
             // leaving any HiDPI / zoom scale intact. This makes the renderer go through
             // the same rasterization path JTextField uses: unscaled lyricsFont drawn at
@@ -82,6 +83,17 @@ public class LyricTextRenderer extends BaseElementRenderer<StaffElement> {
             g2.setFont(lyricRenderMetrics.lyricsFont());
 
             for (var box : boxes) {
+                if (ctx.getSelectionProvider() != null
+                    && ctx.getSelectionProvider().isLyricSelected(
+                        element,
+                        box.verseIndex(),
+                        ctx.getLineIndex()
+                    )) {
+                    g2.setColor(ctx.getSelectionColor());
+                } else {
+                    g2.setColor(Color.BLACK);
+                }
+
                 var baselineYSs = metrics.verseYSsInLine(box.verseIndex());
                 var xPx = scaleContext.toRoundedPixels(box.xSs());
                 var yPx = scaleContext.toRoundedPixels(baselineYSs);

@@ -55,6 +55,8 @@ import songscribe.ui.layout.Ending;
  */
 public final class SelectionCoordinator {
 
+    public record LyricSelection(StaffElement element, int verse) {}
+
     private final Supplier<Song> songSupplier;
 
     /** Registry of per-line selection states, keyed by line index. */
@@ -62,6 +64,8 @@ public final class SelectionCoordinator {
 
     /** Which line currently has the active selection, or -1 if none. */
     private int activeLineIndex = -1;
+    @Nullable
+    private LyricSelection lyricSelection = null;
 
     /**
      * The LineComponent that currently has an active rubber-band drag, or null.
@@ -136,6 +140,7 @@ public final class SelectionCoordinator {
      * Called by LineComponent when it is set up.
      */
     public void registerLineState(int lineIndex, LineSelectionState state) {
+        state.setSelectionChangeCallback(this::clearLyricSelection);
         lineStates.put(lineIndex, state);
     }
 
@@ -190,6 +195,8 @@ public final class SelectionCoordinator {
      * Activates the given line for selection. Clears the previous line's selection.
      */
     public void activateLine(int lineIndex) {
+        clearLyricSelection();
+
         if (activeLineIndex != -1 && activeLineIndex != lineIndex) {
             var previousState = lineStates.get(activeLineIndex);
 
@@ -205,6 +212,8 @@ public final class SelectionCoordinator {
      * Clears the active line's selection and resets activeLineIndex to -1.
      */
     public void clearSelection() {
+        clearLyricSelection();
+
         if (activeLineIndex != -1) {
             var state = lineStates.get(activeLineIndex);
 
@@ -214,6 +223,24 @@ public final class SelectionCoordinator {
         }
 
         activeLineIndex = -1;
+    }
+
+    public void selectLyric(StaffElement element, int verse) {
+        clearSelection();
+        activeLineIndex = findLineIndex(element.getLine());
+        lyricSelection = new LyricSelection(element, verse);
+    }
+
+    public void clearLyricSelection() {
+        lyricSelection = null;
+    }
+
+    public @Nullable LyricSelection getLyricSelection() {
+        return lyricSelection;
+    }
+
+    public boolean hasLyricSelection() {
+        return lyricSelection != null;
     }
 
     // -------------------------------------------------------------------------
@@ -270,12 +297,30 @@ public final class SelectionCoordinator {
         return (state != null) && state.isGlissandoSelected(elementIndex);
     }
 
+    public boolean isLyricSelected(StaffElement element, int verse, int lineIndex) {
+        if (activeLineIndex != lineIndex || lyricSelection == null) {
+            return false;
+        }
+
+        return lyricSelection.element() == element && lyricSelection.verse() == verse;
+    }
+
     /**
      * Returns whether any glissando is selected on the active line.
      */
     public boolean hasGlissandoSelection() {
         var state = getActiveSelection();
         return (state != null) && state.hasGlissandoSelection();
+    }
+
+    private int findLineIndex(Line line) {
+        for (var entry : lineStates.entrySet()) {
+            if (entry.getValue().getLine() == line) {
+                return entry.getKey();
+            }
+        }
+
+        return -1;
     }
 
     // -------------------------------------------------------------------------
@@ -835,7 +880,7 @@ public final class SelectionCoordinator {
      * the selection-changed message.
      */
     @Handler(priority = Message.LOW_PRIORITY)
-    public void musicSelectionDidChangeReflectSelection(@Nullable MusicSelectionDidChangeNotification message) {
+    public void musicSelectionDidChangeReflectSelection(MusicSelectionDidChangeNotification message) {
         var actions = getReflectableActions();
         var selection = getSelection();
 

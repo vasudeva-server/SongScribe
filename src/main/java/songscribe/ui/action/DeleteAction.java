@@ -46,4 +46,21 @@ public class DeleteAction extends PasteboardAction {
             UIUtils.registerActionKeystroke(keystroke, this);
         }
     }
+
+    @Override
+    public boolean updateEnabledState() {
+        if (!super.updateEnabledState()) {
+            return false;
+        }
+
+        var score = requireScore();
+        var selection = score.getSelectionCoordinator();
+        var enabled =
+            selection.hasLyricSelection() ||
+                selection.hasActiveSelection() ||
+                selection.hasGlissandoSelection() ||
+                score.canDeleteLine();
+        setEnabled(enabled);
+        return enabled;
+    }
 }

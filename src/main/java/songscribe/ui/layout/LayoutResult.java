@@ -22,6 +22,8 @@ package songscribe.ui.layout;
 
 import module java.desktop;
 
+import java.awt.Font;
+import java.awt.geom.Point2D;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -32,6 +34,7 @@ import java.util.Set;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.music.Span;
+import songscribe.music.Line;
 import songscribe.music.StaffElement;
 
 /**
@@ -61,6 +64,13 @@ public final class LayoutResult {
     private final Map<LineElement, ElementBoundsSs> elementBounds;
     private final Map<Span, BeamLayout> beamLayouts;
     private final Map<StaffElement, StemLayout> stemLayouts;
+    /**
+     * Flat lookup keyed by element for every stem in the line — beamed stems
+     * (extracted from {@link BeamLayout#stems()}) and unbeamed stems alike.
+     * Built once at construction so per-element render lookups are O(1) instead
+     * of O(beam-count).
+     */
+    private final Map<StaffElement, StemLayout> allStemLayouts;
     private final Map<Span, TieLayout> tieLayouts;
     private final Map<LineElement, DecorationLayout> decorationLayouts;
     private final Map<Span, SpanLayout> spanLayouts;
@@ -113,6 +123,14 @@ public final class LayoutResult {
         this.elementBounds = Map.copyOf(elementBounds);
         this.beamLayouts = Map.copyOf(beamLayouts);
         this.stemLayouts = Map.copyOf(stemLayouts);
+
+        var mergedStems = new HashMap<StaffElement, StemLayout>(stemLayouts);
+
+        for (var beamLayout : beamLayouts.values()) {
+            mergedStems.putAll(beamLayout.stems());
+        }
+
+        this.allStemLayouts = Map.copyOf(mergedStems);
         this.tieLayouts = Map.copyOf(tieLayouts);
         this.decorationLayouts = Map.copyOf(decorationLayouts);
         this.spanLayouts = Map.copyOf(spanLayouts);
@@ -201,15 +219,7 @@ public final class LayoutResult {
      * @return The stem layout, or null if not computed
      */
     public @Nullable StemLayout getStemLayout(StaffElement element) {
-        for (var beamLayout : beamLayouts.values()) {
-            var stemLayout = beamLayout.stems().get(element);
-
-            if (stemLayout != null) {
-                return stemLayout;
-            }
-        }
-
-        return stemLayouts.get(element);
+        return allStemLayouts.get(element);
     }
 
     // ==========================================================================
@@ -611,6 +621,39 @@ public final class LayoutResult {
     public List<LyricBoxLayout> getLyricBoxes(StaffElement element) {
         var boxes = lyricBoxes.get(element);
         return boxes != null ? boxes : List.of();
+    }
+
+    public @Nullable LyricHit hitTestLyric(Line line, Point2D pointPx) {
+        var lyricsFont = line.getSong() != null
+            ? line.getSong().getLyricsFont()
+            : new Font(Font.DIALOG, Font.PLAIN, 12);
+        var scaleContext = ScaleContext.getInstance();
+        var ascentSs = scaleContext.fontAscentSs(lyricsFont);
+        var descentSs = scaleContext.fontDescentSs(lyricsFont);
+        var pointXSs = scaleContext.fromPixels(pointPx.getX());
+        var pointYSs = scaleContext.fromPixels(pointPx.getY());
+
+        for (var element : line.getElements()) {
+            for (var box : getLyricBoxes(element)) {
+                var baselineYSs = aboveStaffSs
+                    + LayoutStylesheet.STAFF_HEIGHT_SS
+                    + belowContentSs
+                    + LayoutStylesheet.LYRICS_ROW_MARGIN_SS
+                    + ascentSs
+                    + (box.verseIndex() - 1) * (ascentSs + descentSs);
+                var topYSs = baselineYSs - ascentSs;
+                var bottomYSs = baselineYSs + descentSs;
+
+                if (pointXSs >= box.xSs()
+                    && pointXSs <= box.xSs() + box.widthSs()
+                    && pointYSs >= topYSs
+                    && pointYSs <= bottomYSs) {
+                    return new LyricHit(element, box.verseIndex());
+                }
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -1398,4 +1441,5 @@ public final class LayoutResult {
      * @param baselineYSs  verse-1 text baseline Y in staff spaces
      */
     public record LyricAnchor(double centerXSs, double baselineYSs) {}
+    public record LyricHit(StaffElement element, int verse) {}
 }

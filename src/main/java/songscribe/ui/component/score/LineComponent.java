@@ -91,6 +91,8 @@ public class LineComponent extends ScoreComponent
          * @return true if the glissando is selected
          */
         boolean isGlissandoSelected(int elementIndex, int lineIndex);
+
+        boolean isLyricSelected(StaffElement element, int verse, int lineIndex);
     }
 
     // ==========================================================================
@@ -531,6 +533,10 @@ public class LineComponent extends ScoreComponent
             return;
         }
 
+        if (hitTestLyric(e.getPoint()) != null) {
+            return;
+        }
+
         if (!selectionHandler.handleClick(e)) {
             PreviewElementManager.handleClick(this);
         }
@@ -549,6 +555,15 @@ public class LineComponent extends ScoreComponent
         // Alt+click in EDIT mode: switch to SELECT, then fall through to normal handling
         if (e.isAltDown() && score != null && score.getMode() == Mode.EDIT) {
             Actions.SELECT_MODE_ACTION.perform(this);
+        }
+
+        var lyricHit = hitTestLyric(e.getPoint());
+
+        if (lyricHit != null) {
+            getScore().getSelectionCoordinator().selectLyric(lyricHit.element(), lyricHit.verse());
+            getScore().selectionChanged();
+            repaint();
+            return;
         }
 
         // In SELECT mode, note head press starts a pitch drag
@@ -671,6 +686,20 @@ public class LineComponent extends ScoreComponent
      */
     @Nullable SelectionProvider getSelectionProvider() {
         return selectionProvider;
+    }
+
+    private LayoutResult.@Nullable LyricHit hitTestLyric(java.awt.Point pointPx) {
+        if (line == null) {
+            return null;
+        }
+
+        ensureLayout();
+
+        if (layoutResult == null) {
+            return null;
+        }
+
+        return layoutResult.hitTestLyric(line, pointPx);
     }
 
     /**

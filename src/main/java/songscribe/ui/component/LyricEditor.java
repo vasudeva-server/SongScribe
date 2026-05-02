@@ -48,6 +48,7 @@ import songscribe.ui.component.score.LineComponent;
 import songscribe.ui.layout.InsetsSs;
 import songscribe.ui.layout.LayoutStylesheet;
 import songscribe.ui.layout.ScaleContext;
+import songscribe.util.UIUtils;
 
 /**
  * In-place lyric editor overlay parented to {@link Score}. Edits the active-verse lyric
@@ -161,6 +162,13 @@ public final class LyricEditor extends MyJTextField {
     private static final int LEADING_PAINT_SLACK_PX = 1;
 
     /**
+     * Trailing pixel added to the expanded paint clip so the rightmost glyph column is
+     * not lost to {@link FieldView}'s right-edge clipping. Distinct from
+     * {@link #LEADING_PAINT_SLACK_PX}, which guards the left edge.
+     */
+    private static final int TRAILING_PAINT_SLACK_PX = 1;
+
+    /**
      * Minimum content-area width when the editor is empty so the caret remains visible
      * and the box reads as a clickable target rather than collapsing to zero.
      */
@@ -187,6 +195,9 @@ public final class LyricEditor extends MyJTextField {
      */
     private final boolean openedAsExtender;
 
+    /** Font metrics for the lyrics font; fixed for the editor's lifetime. */
+    private final FontMetrics fontMetrics;
+
     /**
      * When {@code true}, {@link #applyDismissAdjustment()} clears the flag and returns
      * immediately without walking the chain. Set by {@code extendChainBackward} after
@@ -203,6 +214,7 @@ public final class LyricEditor extends MyJTextField {
         var editor = new LyricEditor(score, line, element);
         score.addOverlay(editor);
         score.setComponentZOrder(editor, 0);
+        score.setActiveLyricEditor(editor);
 
         // A mutation that triggered this open (e.g. committing a lyric before advancing)
         // may have invalidated the line's layout. Force a synchronous layout pass so
@@ -236,6 +248,7 @@ public final class LyricEditor extends MyJTextField {
         lineComponent = lineIndex >= 0 ? score.getLineComponent(lineIndex) : null;
 
         configureLAF();
+        fontMetrics = getFontMetrics(getFont());
 
         // Tab/Shift-Tab are focus-traversal keys by default; clear both sets so VK_TAB
         // (with and without Shift) reaches the input map rather than moving focus.
@@ -263,8 +276,18 @@ public final class LyricEditor extends MyJTextField {
         setForeground(Color.BLACK);
         setCaretColor(Color.BLACK);
         setHorizontalAlignment(LEFT);
-        // The border is installed per-text in recomputeBounds() because its EmptyBorder
-        // insets compensate for the active glyph's left side bearing — see comment there.
+
+        var paddingPx = EDITOR_PADDING_SS.toInsetsPx();
+        var rightPaddingPx = Math.max(0, paddingPx.right - TEXT_FIELD_RESERVED_TRAILING_PX);
+        setBorder(BorderFactory.createCompoundBorder(
+            new LineBorder(Color.BLACK, LINE_BORDER_WIDTH_PX),
+            new EmptyBorder(
+                paddingPx.top + EXTRA_VERTICAL_PADDING_PX,
+                paddingPx.left,
+                paddingPx.bottom + EXTRA_VERTICAL_PADDING_PX,
+                rightPaddingPx
+            )
+        ));
     }
 
     /** The three legal shapes a committed syllable can have. */
@@ -326,7 +349,7 @@ public final class LyricEditor extends MyJTextField {
         public void paint(Graphics g, Shape a) {
             var expanded = a.getBounds();
             expanded.x -= LEADING_PAINT_SLACK_PX;
-            expanded.width += LEADING_PAINT_SLACK_PX + 1;
+            expanded.width += LEADING_PAINT_SLACK_PX + TRAILING_PAINT_SLACK_PX;
             paintingWithLeadingSlack = true;
 
             try {
@@ -452,6 +475,7 @@ public final class LyricEditor extends MyJTextField {
             }
         });
 
+        installOutsideClickListener();
     }
 
     /**
@@ -471,7 +495,7 @@ public final class LyricEditor extends MyJTextField {
         }
 
         if (currentLength - replacedLength + text.length() > MAX_LENGTH_CHARS) {
-            Toolkit.getDefaultToolkit().beep();
+            UIUtils.beep();
             return null;
         }
 
@@ -498,10 +522,19 @@ public final class LyricEditor extends MyJTextField {
             line.withModification(this::applyDismissAdjustment);
             dismiss(true);
         });
+    }
 
-        // Commit and dismiss on any click outside the editor. The focusLost handler covers
-        // clicks on focusable components (toolbar buttons, etc.); this covers clicks on the
-        // score canvas, which is not focusable and would not otherwise steal focus.
+    /**
+     * Installs the global mouse listener that commits and dismisses the editor on any
+     * click outside its bounds. The focusLost handler covers clicks on focusable
+     * components (toolbar buttons, etc.); this covers clicks on the score canvas, which
+     * is not focusable and would not otherwise steal focus.
+     *
+     * <p>Registered alongside the document and key listeners in {@link #attachListeners}
+     * so the AWT listener — which holds a strong reference to this editor — cannot be
+     * installed unless the rest of the listener stack is too.
+     */
+    private void installOutsideClickListener() {
         outsideClickListener = event -> {
             if (event.getID() != MouseEvent.MOUSE_PRESSED) {
                 return;
@@ -526,13 +559,7 @@ public final class LyricEditor extends MyJTextField {
     }
 
     private void bindKey(int keyCode, int modifiers, String actionKey, Runnable handler) {
-        getInputMap(WHEN_FOCUSED).put(KeyStroke.getKeyStroke(keyCode, modifiers), actionKey);
-        getActionMap().put(actionKey, new AbstractAction() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                handler.run();
-            }
-        });
+        UIUtils.bindKey(this, WHEN_FOCUSED, KeyStroke.getKeyStroke(keyCode, modifiers), actionKey, handler);
     }
 
     /**
@@ -559,12 +586,9 @@ public final class LyricEditor extends MyJTextField {
         var advanceSs = Math.max(boxMetrics.advanceSs(), EMPTY_BOX_MIN_WIDTH_SS);
         var anchor = layoutResult.getLyricAnchor(element, songLayoutMetrics);
 
-        var lyricsFont = lyricRenderMetrics.lyricsFont();
         var advanceLeftSs = anchor.centerXSs() - advanceSs / 2.0;
         var heightSs = lyricRenderMetrics.lyricBoxHeightSs();
 
-        var fontMetrics = getFontMetrics(lyricsFont);
-        var paddingPx = EDITOR_PADDING_SS.toInsetsPx();
         var advancePx = scaleContext.toPixels(advanceSs);
         var roundedAdvancePx = (int) Math.ceil(advancePx);
         var trailingCaretRoomPx = getText().isEmpty()
@@ -577,18 +601,7 @@ public final class LyricEditor extends MyJTextField {
         // pixels of breathing room above and below.
         var contentHeightPx = (int) Math.ceil(scaleContext.toPixels(heightSs))
             + fontMetrics.getLeading();
-        var rightPaddingPx = Math.max(0, paddingPx.right - TEXT_FIELD_RESERVED_TRAILING_PX);
-        setBorder(BorderFactory.createCompoundBorder(
-            new LineBorder(Color.BLACK, LINE_BORDER_WIDTH_PX),
-            new EmptyBorder(
-                paddingPx.top + EXTRA_VERTICAL_PADDING_PX,
-                paddingPx.left,
-                paddingPx.bottom + EXTRA_VERTICAL_PADDING_PX,
-                rightPaddingPx
-            )
-        ));
 
-        // getInsets() now reflects the dynamic border just set above.
         var insets = getInsets();
 
         // Snap content_left exactly to the advance-origin pixel: JTextField paints there,
@@ -770,7 +783,7 @@ public final class LyricEditor extends MyJTextField {
     private void handleHyphen() {
         if (openedAsExtender) {
             // Editor sits on a melisma carrier (Extend.CONTINUE/STOP) — '-' has no meaning here.
-            Toolkit.getDefaultToolkit().beep();
+            UIUtils.beep();
             return;
         }
 
@@ -784,7 +797,7 @@ public final class LyricEditor extends MyJTextField {
 
         if (element.getLyricForVerse(CURRENT_VERSE) != null) {
             // User cleared text then typed '-'; don't silently delete the existing lyric.
-            Toolkit.getDefaultToolkit().beep();
+            UIUtils.beep();
             return;
         }
 
@@ -795,7 +808,7 @@ public final class LyricEditor extends MyJTextField {
             : null;
 
         if (backLyric == null) {
-            Toolkit.getDefaultToolkit().beep();
+            UIUtils.beep();
             return;
         }
 
@@ -803,7 +816,7 @@ public final class LyricEditor extends MyJTextField {
 
         if (backSyllabic != Lyric.Syllabic.BEGIN && backSyllabic != Lyric.Syllabic.MIDDLE) {
             // Predecessor is END or SINGLE — no open hyphen chain to extend.
-            Toolkit.getDefaultToolkit().beep();
+            UIUtils.beep();
             return;
         }
 
@@ -817,7 +830,7 @@ public final class LyricEditor extends MyJTextField {
 
     private void handleEquals() {
         if (getText().isEmpty() || !isCaretAtEnd()) {
-            Toolkit.getDefaultToolkit().beep();
+            UIUtils.beep();
             return;
         }
 
@@ -829,7 +842,7 @@ public final class LyricEditor extends MyJTextField {
             if (isCaretAtEnd()) {
                 advance(CommitKind.WORD_FINAL, Lyric.Extend.START);
             } else {
-                Toolkit.getDefaultToolkit().beep();
+                UIUtils.beep();
             }
 
             return;
@@ -1045,6 +1058,7 @@ public final class LyricEditor extends MyJTextField {
         score.requestFocusInWindow();
 
         parent.remove(this);
+        score.setActiveLyricEditor(null);
         parent.repaint(bounds.x, bounds.y, bounds.width, bounds.height);
 
         // We want to notify actions that editing has ended so they can update their enabled state,

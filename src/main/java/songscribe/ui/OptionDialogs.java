@@ -234,7 +234,7 @@ public final class OptionDialogs {
         }
 
         if (beep) {
-            Toolkit.getDefaultToolkit().beep();
+            UIUtils.beep();
         }
 
         try {

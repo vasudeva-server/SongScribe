@@ -62,20 +62,15 @@ public class PasteboardAction extends UIAction {
                 case PASTE -> setEnabled(
                     message.getScore().getPasteboardSize() > 0
                 );
-                // Allow lines to be deleted
-                case DELETE -> setEnabled(
-                    (message.getSelectionSize() > 0) ||
-                        message.hasGlissandoSelection() ||
-                        (message.getScore().canDeleteLine())
-                );
-                case null, default -> setEnabled(
+                case COPY, CUT -> setEnabled(
                     message.getSelectionSize() > 0
                 );
+                // DELETE is handled by DeleteAction.updateEnabledState() above.
+                case DELETE -> {}
+                case null -> setEnabled(message.getSelectionSize() > 0);
             }
         }
     }
-
-    // TODO: Handle text selection changes
 
     @Override
     public void actionPerformed(ActionEvent e) {

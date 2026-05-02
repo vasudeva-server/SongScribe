@@ -24,6 +24,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.within;
 
+import java.awt.geom.Point2D;
+import java.util.Objects;
 import java.util.Collections;
 
 import org.junit.jupiter.api.Test;
@@ -116,6 +118,59 @@ class LayoutResultTest extends UnitTest {
 
         assertThatThrownBy(() -> layoutResult.getLyricAnchor(element, metrics))
             .isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
+    void testHitTestLyricHitsInsideBounds() {
+        var song = new songscribe.music.Song();
+        var line = song.getLine(0);
+        var element = ElementType.CROTCHET.newInstance();
+        song.withoutMutationTracking(() -> line.addElement(0, element));
+        var box = new LyricBoxLayout(3.0, 2.0, 1, "do");
+        var baselineYSs = 1.0 + LayoutStylesheet.STAFF_HEIGHT_SS + 0.5
+            + LayoutStylesheet.LYRICS_ROW_MARGIN_SS
+            + ScaleContext.getInstance().fontAscentSs(song.getLyricsFont());
+        var layoutResult = LayoutResult.builder()
+            .setAboveStaffSs(1.0)
+            .setBelowContentSs(0.5)
+            .addLyricBox(element, box)
+            .build();
+
+        var hit = layoutResult.hitTestLyric(
+            line,
+            new Point2D.Double(
+                ScaleContext.getInstance().toRoundedPixels(4.0),
+                ScaleContext.getInstance().toRoundedPixels(baselineYSs)
+            )
+        );
+
+        var nonNullHit = Objects.requireNonNull(hit);
+        assertThat(nonNullHit.element()).isSameAs(element);
+        assertThat(nonNullHit.verse()).isEqualTo(1);
+    }
+
+    @Test
+    void testHitTestLyricMissesOutsideBounds() {
+        var song = new songscribe.music.Song();
+        var line = song.getLine(0);
+        var element = ElementType.CROTCHET.newInstance();
+        song.withoutMutationTracking(() -> line.addElement(0, element));
+        var box = new LyricBoxLayout(3.0, 2.0, 1, "do");
+        var layoutResult = LayoutResult.builder()
+            .setAboveStaffSs(1.0)
+            .setBelowContentSs(0.5)
+            .addLyricBox(element, box)
+            .build();
+
+        var hit = layoutResult.hitTestLyric(
+            line,
+            new Point2D.Double(
+                ScaleContext.getInstance().toRoundedPixels(5.5),
+                ScaleContext.getInstance().toRoundedPixels(7.0)
+            )
+        );
+
+        assertThat(hit).isNull();
     }
 
     // ==========================================================================

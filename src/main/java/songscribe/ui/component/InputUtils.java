@@ -27,6 +27,8 @@ import javax.swing.text.AttributeSet;
 import java.text.ParseException;
 import java.util.regex.Pattern;
 
+import songscribe.util.UIUtils;
+
 public final class InputUtils {
 
     private InputUtils() {}
@@ -102,7 +104,7 @@ public final class InputUtils {
                 if (isProspectiveTextValid(fb.getDocument(), offset, 0, string)) {
                     super.insertString(fb, offset, string, attr);
                 } else {
-                    Toolkit.getDefaultToolkit().beep();
+                    UIUtils.beep();
                 }
             }
         }
@@ -119,7 +121,7 @@ public final class InputUtils {
                 if (isProspectiveTextValid(fb.getDocument(), offset, length, text)) {
                     super.replace(fb, offset, length, text, attrs);
                 } else {
-                    Toolkit.getDefaultToolkit().beep();
+                    UIUtils.beep();
                 }
             }
         }
@@ -155,7 +157,7 @@ public final class InputUtils {
                 if (string.isEmpty() || pattern.matcher(string).matches()) {
                     super.insertString(fb, offset, string, attr);
                 } else {
-                    Toolkit.getDefaultToolkit().beep();
+                    UIUtils.beep();
                 }
             }
         }
@@ -172,7 +174,7 @@ public final class InputUtils {
                 if (text.isEmpty() || pattern.matcher(text).matches()) {
                     super.replace(fb, offset, length, text, attrs);
                 } else {
-                    Toolkit.getDefaultToolkit().beep();
+                    UIUtils.beep();
                 }
             }
         }

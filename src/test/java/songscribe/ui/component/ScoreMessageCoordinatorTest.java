@@ -55,9 +55,60 @@ import songscribe.ui.component.score.LinePanel;
 import songscribe.ui.component.score.MainPanel;
 import songscribe.ui.component.score.StaffPanel;
 import songscribe.ui.edit.EditModeManager;
+import songscribe.ui.selection.ReflectionTestHelper;
 import songscribe.ui.selection.SelectionCoordinator;
 
 class ScoreMessageCoordinatorTest extends UnitTest {
+
+    @Nested
+    class DeleteLyric {
+
+        @Test
+        void testDeleteRemovesSelectedLyricAndClearsLyricSelection() {
+            var song = new Song();
+            var line = song.getLine(0);
+            var element = ElementType.CROTCHET.newInstance();
+            element.setLyricForVerse(1, Lyric.Syllabic.SINGLE, false, "om", Lyric.Extend.NONE);
+            song.withoutMutationTracking(() -> line.addElement(element));
+
+            var selectionCoordinator = ReflectionTestHelper.createCoordinatorForLine(line);
+            selectionCoordinator.selectLyric(element, 1);
+            assertThat(selectionCoordinator.getLyricSelection()).isEqualTo(
+                new SelectionCoordinator.LyricSelection(element, 1));
+            assertThat(line.getElementIndex(element)).isGreaterThanOrEqualTo(0);
+
+            var scoreMock = mock(Score.class);
+            when(scoreMock.isFocusOwner()).thenReturn(true);
+            when(scoreMock.getSong()).thenReturn(song);
+            when(scoreMock.canDeleteLine()).thenReturn(false);
+
+            var coordinator = new ScoreMessageCoordinator(
+                scoreMock,
+                mock(MusicEditOperations.class),
+                mock(EditModeManager.class),
+                selectionCoordinator,
+                mock(ClipboardManager.class)
+            );
+
+            invokeHandleDelete(coordinator);
+
+            assertThat(element.getLyricForVerse(1)).isNull();
+            assertThat(selectionCoordinator.hasLyricSelection()).isFalse();
+            assertThat(selectionCoordinator.hasActiveSelection()).isFalse();
+            verify(scoreMock).selectionChanged();
+            verify(scoreMock).repaint();
+        }
+
+        private void invokeHandleDelete(ScoreMessageCoordinator coordinator) {
+            try {
+                var method = ScoreMessageCoordinator.class.getDeclaredMethod("handleDelete");
+                method.setAccessible(true);
+                method.invoke(coordinator);
+            } catch (ReflectiveOperationException e) {
+                throw new RuntimeException("Failed to invoke handleDelete", e);
+            }
+        }
+    }
 
     @Nested
     class DeleteNote {

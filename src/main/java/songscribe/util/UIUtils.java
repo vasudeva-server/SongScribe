@@ -102,6 +102,14 @@ public final class UIUtils {
     }
 
     //
+    // Audio feedback
+    //
+
+    public static void beep() {
+        Toolkit.getDefaultToolkit().beep();
+    }
+
+    //
     // Actions
     //
 
@@ -391,26 +399,39 @@ public final class UIUtils {
             .getBounds();
     }
 
-    public static void addStandardDialogKeyBindings(JDialog dialog) {
-        var dispatchClosing = new AbstractAction() {
+    /**
+     * Binds {@code keyStroke} on {@code component}'s input map for {@code condition}
+     * (one of {@link JComponent#WHEN_FOCUSED}, {@link JComponent#WHEN_IN_FOCUSED_WINDOW},
+     * or {@link JComponent#WHEN_ANCESTOR_OF_FOCUSED_COMPONENT}) to invoke {@code handler}.
+     */
+    public static void bindKey(
+        JComponent component,
+        int condition,
+        KeyStroke keyStroke,
+        String actionKey,
+        Runnable handler
+    ) {
+        component.getInputMap(condition).put(keyStroke, actionKey);
+        component.getActionMap().put(actionKey, new AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                dialog.dispatchEvent(
-                    new WindowEvent(dialog, WindowEvent.WINDOW_CLOSING)
-                );
+                handler.run();
             }
-        };
+        });
+    }
+
+    public static void addStandardDialogKeyBindings(JDialog dialog) {
+        Runnable dispatchClosing = () -> dialog.dispatchEvent(
+            new WindowEvent(dialog, WindowEvent.WINDOW_CLOSING)
+        );
 
         var actionKey = "action:WINDOW_CLOSING";
-        var inputMap = dialog.getRootPane()
-            .getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW);
+        var rootPane = dialog.getRootPane();
 
-        inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0), actionKey);
-        inputMap.put(KeyStroke.getKeyStroke(
-            KeyEvent.VK_W, MENU_SHORTCUT_MASK
-        ), actionKey);
-
-        dialog.getRootPane().getActionMap().put(actionKey, dispatchClosing);
+        bindKey(rootPane, JComponent.WHEN_IN_FOCUSED_WINDOW,
+            KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0), actionKey, dispatchClosing);
+        bindKey(rootPane, JComponent.WHEN_IN_FOCUSED_WINDOW,
+            KeyStroke.getKeyStroke(KeyEvent.VK_W, MENU_SHORTCUT_MASK), actionKey, dispatchClosing);
     }
 
     /**

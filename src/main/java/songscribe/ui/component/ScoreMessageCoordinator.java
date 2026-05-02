@@ -40,6 +40,7 @@ import songscribe.message.command.ToggleTieCommand;
 import songscribe.message.command.ToggleTrillCommand;
 import songscribe.message.command.ToggleTupletCommand;
 import songscribe.message.command.UpdatePreviewElementCommand;
+import songscribe.message.mutation.ElementField;
 import songscribe.message.mutation.FontChange;
 import songscribe.message.mutation.LayoutChange;
 import songscribe.message.mutation.LineDeletion;
@@ -55,6 +56,7 @@ import songscribe.message.notification.MusicSelectionDidChangeNotification;
 import songscribe.message.notification.PlaybackStateDidChangeNotification;
 import songscribe.message.notification.RestModeDidChangeNotification;
 import songscribe.music.Line;
+import songscribe.music.Lyric;
 import songscribe.ui.EndingConfirms;
 import songscribe.ui.Mode;
 import songscribe.ui.MusicEditOperations;
@@ -378,6 +380,27 @@ public final class ScoreMessageCoordinator {
 
     private void handleDelete() {
         var song = score.getSong();
+        var lyricSelection = selectionCoordinator.getLyricSelection();
+
+        if (lyricSelection != null) {
+            var element = lyricSelection.element();
+            var line = element.getLine();
+            var index = line.getElementIndex(element);
+
+            if (index >= 0) {
+                song.withModification(() ->
+                    line.modifyElement(index, ElementField.LYRIC, () ->
+                        line.getElement(index).setLyricForVerse(
+                            lyricSelection.verse(), null, false, "", Lyric.Extend.NONE)));
+            }
+
+            selectionCoordinator.clearSavedActionStates();
+            selectionCoordinator.clearLyricSelection();
+            score.selectionChanged();
+            score.repaint();
+            return;
+        }
+
         var state = selectionCoordinator.getActiveSelection();
 
         if (state != null && state.hasElementSelection()) {

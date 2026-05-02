@@ -28,6 +28,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 
 import module java.desktop;
 
@@ -37,6 +38,7 @@ import org.mockito.ArgumentCaptor;
 import songscribe.UnitTest;
 import songscribe.music.Song;
 import songscribe.music.ElementType;
+import songscribe.ui.component.Score;
 import songscribe.ui.layout.SongLayoutMetrics;
 import songscribe.ui.layout.LayoutResult;
 import songscribe.ui.layout.LyricBoxLayout;
@@ -193,5 +195,26 @@ class LyricTextRendererTest extends UnitTest {
         var g2Other = mock(Graphics2D.class);
         LyricTextRenderer.getInstance().render(otherElement, g2Other, otherCtx);
         verify(g2Other).drawString(anyString(), anyInt(), anyInt());
+    }
+
+    @Test
+    void testSelectedLyricPaintsInSelectionColor() {
+        var element = ElementType.CROTCHET.newInstance();
+        var box = new LyricBoxLayout(2.0, 1.5, 1, "v1");
+        var layoutResult = LayoutResult.builder().addLyricBox(element, box).build();
+        var selectionProvider = mock(songscribe.ui.component.score.LineComponent.SelectionProvider.class);
+        var ctx = new ElementRenderContext(new Song());
+        ctx.setLayoutResult(layoutResult);
+        ctx.setSongLayoutMetrics(metrics(1.0, 2.0, 1));
+        ctx.setLyricRenderMetrics(new LyricRenderMetrics(LYRICS_FONT, LYRICS_FONT, 0.0, 0.0));
+        ctx.setSelectionProvider(selectionProvider);
+        when(selectionProvider.isLyricSelected(element, 1, 0)).thenReturn(true);
+
+        var g2 = mock(Graphics2D.class);
+
+        LyricTextRenderer.getInstance().render(element, g2, ctx);
+
+        verify(g2).setColor(Score.getSelectionColor());
+        verify(g2).drawString("v1", toPx(2.0), toPx(7.0));
     }
 }

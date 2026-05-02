@@ -233,6 +233,10 @@ public final class Score
     @SuppressWarnings("NullAway")
     private LyricRenderMetrics lyricRenderMetrics = null;
 
+    // The currently-open lyric editor overlay, if any. Set by LyricEditor.openOn /
+    // dismiss so getActiveLyricEditor() doesn't have to scan getComponents() per paint.
+    @Nullable private LyricEditor activeLyricEditor;
+
     // Maps each registered KeyStroke to its action key so bindings can be toggled.
     private final Map<KeyStroke, Object> scoreKeyBindings = new LinkedHashMap<>();
 
@@ -630,6 +634,14 @@ public final class Score
         }
     }
 
+    @Override
+    public void doLayout() {
+        super.doLayout();
+        // Refresh derived layout coordinates after children have been positioned, so
+        // paintComponent can read them without recomputing on every paint pass.
+        updateLayoutFromComponents();
+    }
+
     public @Nullable JScrollPane getScoreScrollPane() {
         return scrollPane;
     }
@@ -650,6 +662,11 @@ public final class Score
     }
 
     @Override
+    public boolean isLyricSelected(StaffElement element, int verse, int lineIndex) {
+        return selectionCoordinator.isLyricSelected(element, verse, lineIndex);
+    }
+
+    @Override
     public void paintComponent(Graphics g) {
         super.paintComponent(g);
 
@@ -662,9 +679,6 @@ public final class Score
             g2.setColor(LayoutStylesheet.getScreenBackground());
             g2.fillRect(0, 0, getWidth(), getHeight());
         }
-
-        // Derive coordinates from positioned components
-        updateLayoutFromComponents();
 
         drawEditElements(g2);
         drawDebugOverlays(g2);
@@ -1132,13 +1146,11 @@ public final class Score
 
     @Nullable
     public LyricEditor getActiveLyricEditor() {
-        for (var component : getComponents()) {
-            if (component instanceof LyricEditor editor) {
-                return editor;
-            }
-        }
+        return activeLyricEditor;
+    }
 
-        return null;
+    public void setActiveLyricEditor(@Nullable LyricEditor editor) {
+        this.activeLyricEditor = editor;
     }
 
     /**

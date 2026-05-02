@@ -39,6 +39,7 @@ import songscribe.music.StaffElement;
 public final class LineSelectionState {
 
     private final Line line;
+    private Runnable selectionChangeCallback = () -> {};
 
     private int selectionBegin = -1;
     private int selectionEnd = -1;
@@ -78,6 +79,8 @@ public final class LineSelectionState {
         if (lineSelected) {
             selectedGlissandoElementIndex = -1;
         }
+
+        selectionChangeCallback.run();
     }
 
     /**
@@ -104,6 +107,7 @@ public final class LineSelectionState {
         selectionEnd = -1;
         selectionAnchor = -1;
         lineSelected = false;
+        selectionChangeCallback.run();
     }
 
     /**
@@ -132,6 +136,10 @@ public final class LineSelectionState {
         return line;
     }
 
+    void setSelectionChangeCallback(Runnable selectionChangeCallback) {
+        this.selectionChangeCallback = selectionChangeCallback;
+    }
+
     // -------------------------------------------------------------------------
     // Selection state methods
     // -------------------------------------------------------------------------
@@ -145,6 +153,7 @@ public final class LineSelectionState {
         selectionAnchor = -1;
         lineSelected = false;
         selectedGlissandoElementIndex = -1;
+        selectionChangeCallback.run();
     }
 
     /**
@@ -162,6 +171,7 @@ public final class LineSelectionState {
         selectionEnd = end;
         selectionAnchor = 0;
         selectedGlissandoElementIndex = -1;
+        selectionChangeCallback.run();
     }
 
     /**
@@ -230,6 +240,7 @@ public final class LineSelectionState {
         selectionEnd = elementIndex;
         selectionAnchor = elementIndex;
         selectedGlissandoElementIndex = -1;
+        selectionChangeCallback.run();
     }
 
     /**
@@ -258,6 +269,7 @@ public final class LineSelectionState {
         selectionBegin = Math.min(selectionAnchor, elementIndex);
         selectionEnd = Math.max(selectionAnchor, elementIndex);
         selectedGlissandoElementIndex = -1;
+        selectionChangeCallback.run();
     }
 
     /**
@@ -271,6 +283,7 @@ public final class LineSelectionState {
 
         selectionEnd = elementIndex;
         selectedGlissandoElementIndex = -1;
+        selectionChangeCallback.run();
     }
 
     /**
@@ -280,6 +293,7 @@ public final class LineSelectionState {
     public void resetElementSelection() {
         selectionBegin = -1;
         selectionEnd = -1;
+        selectionChangeCallback.run();
     }
 
     // -------------------------------------------------------------------------
