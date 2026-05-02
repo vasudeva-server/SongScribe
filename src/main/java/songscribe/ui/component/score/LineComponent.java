@@ -31,6 +31,7 @@ import songscribe.music.StaffElement;
 import songscribe.ui.Mode;
 import songscribe.ui.action.Actions;
 import songscribe.ui.component.ComponentNames;
+import songscribe.ui.component.LyricEditor;
 import songscribe.ui.edit.EditModeManager;
 import songscribe.ui.edit.GraceModeManager;
 import songscribe.ui.component.Score;
@@ -533,7 +534,18 @@ public class LineComponent extends ScoreComponent
             return;
         }
 
-        if (hitTestLyric(e.getPoint()) != null) {
+        var lyricHit = hitTestLyric(e.getPoint());
+
+        if (lyricHit != null) {
+            if (e.getClickCount() == 2 && line != null && getScore().getActiveLyricEditor() == null) {
+                var lyric = lyricHit.element().getLyricForVerse(lyricHit.verse());
+
+                if (lyric != null && !lyric.text().isBlank()) {
+                    getScore().deselect();
+                    LyricEditor.openOn(getScore(), line, lyricHit.element());
+                }
+            }
+
             return;
         }
 
