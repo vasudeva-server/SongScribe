@@ -31,6 +31,11 @@ import songscribe.music.StaffElement;
 public class Tie extends RangeElement {
 
     /**
+     * Arc height of a tie curve.
+     */
+    public static final double TIE_ARC_HEIGHT_SS = 1.0;  // 8px
+
+    /**
      * Creates a new tie between two elements.
      *
      * @param anchorElement The first (starting) element of the tie
@@ -42,7 +47,7 @@ public class Tie extends RangeElement {
 
     @Override
     public double getContentHeightSs() {
-        return LayoutStylesheet.TIE_ARC_HEIGHT_SS;
+        return TIE_ARC_HEIGHT_SS;
     }
 
     @Override

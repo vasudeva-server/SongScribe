@@ -22,7 +22,6 @@ package songscribe.ui.component.score;
 
 import module java.desktop;
 
-import songscribe.ui.layout.LayoutStylesheet;
 import songscribe.ui.layout.ScaleContext;
 import songscribe.util.StringUtils;
 
@@ -34,6 +33,10 @@ import songscribe.util.StringUtils;
  */
 public class TitleComponent extends ScoreComponent {
 
+    /**
+     * Margin from title bottom to next section
+     */
+    public static final double TITLE_MARGIN_BOTTOM_SS = 2.0;  // 16px
     /** Maximum percentage of line width the title can occupy before wrapping. */
     private static final double TITLE_MAX_WIDTH_PERCENTAGE = 0.75;
 
@@ -42,7 +45,7 @@ public class TitleComponent extends ScoreComponent {
      */
     public TitleComponent() {
         super();
-        setMarginBottom(ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.TITLE_MARGIN_BOTTOM_SS));
+        setMarginBottom(ScaleContext.getInstance().toRoundedPixels(TITLE_MARGIN_BOTTOM_SS));
     }
 
     @Override

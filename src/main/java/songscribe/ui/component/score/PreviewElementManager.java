@@ -49,10 +49,10 @@ import songscribe.ui.edit.EditModeManager;
 import songscribe.ui.layout.Ending;
 import songscribe.ui.layout.InsertionSpacingCalculator;
 import songscribe.ui.layout.LayoutResult;
-import songscribe.ui.layout.LayoutStylesheet;
 import songscribe.ui.layout.ScaleContext;
 import songscribe.message.notification.ModeDidChangeNotification;
 import songscribe.message.notification.PlaybackStateDidChangeNotification;
+import songscribe.ui.layout.StaffExtents;
 import songscribe.ui.playback.PlaybackController;
 
 /**
@@ -731,7 +731,7 @@ public final class PreviewElementManager {
      * @return Staff position
      */
     static int calculateStaffPositionFromMouse(double mouseYss, double middleLineYSs) {
-        return LayoutStylesheet.ssToSp(mouseYss - middleLineYSs);
+        return StaffExtents.ssToSp(mouseYss - middleLineYSs);
     }
 
     /**
@@ -753,8 +753,8 @@ public final class PreviewElementManager {
      * @return true if the position is valid
      */
     static boolean isValidStaffPosition(int staffPosition) {
-        return staffPosition >= LayoutStylesheet.MIN_STAFF_POSITION_SP
-            && staffPosition <= LayoutStylesheet.MAX_STAFF_POSITION_SP;
+        return staffPosition >= StaffExtents.MIN_STAFF_POSITION_SP
+            && staffPosition <= StaffExtents.MAX_STAFF_POSITION_SP;
     }
 
     // ==========================================================================

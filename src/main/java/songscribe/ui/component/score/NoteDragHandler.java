@@ -41,8 +41,8 @@ import songscribe.ui.OptionDialogs;
 import songscribe.ui.Mode;
 import songscribe.ui.component.Score;
 import songscribe.ui.edit.EditModeManager;
-import songscribe.ui.layout.LayoutStylesheet;
 import songscribe.ui.layout.ScaleContext;
+import songscribe.ui.layout.StaffExtents;
 import songscribe.ui.playback.MidiController;
 import songscribe.ui.playback.PlayThread;
 
@@ -237,7 +237,7 @@ class NoteDragHandler {
         // a reposition of the line component within its parent can perturb the mapping.
         var deltaYPx = e.getYOnScreen() - dragPressScreenYPx;
         var deltaYSs = ScaleContext.getInstance().fromPixels(deltaYPx);
-        var deltaSp = LayoutStylesheet.ssToSp(deltaYSs);
+        var deltaSp = StaffExtents.ssToSp(deltaYSs);
         var newPositionSp = originalDragStaffPositionSp + deltaSp;
 
         if (newPositionSp == lastPlayedStaffPositionSp) {
@@ -253,8 +253,8 @@ class NoteDragHandler {
         var maxDelta = Integer.MAX_VALUE;
 
         for (var entry : dragGroup) {
-            minDelta = Math.max(minDelta, LayoutStylesheet.MIN_STAFF_POSITION_SP - entry.originalStaffPositionSp());
-            maxDelta = Math.min(maxDelta, LayoutStylesheet.MAX_STAFF_POSITION_SP - entry.originalStaffPositionSp());
+            minDelta = Math.max(minDelta, StaffExtents.MIN_STAFF_POSITION_SP - entry.originalStaffPositionSp());
+            maxDelta = Math.min(maxDelta, StaffExtents.MAX_STAFF_POSITION_SP - entry.originalStaffPositionSp());
         }
 
         deltaSp = Math.clamp(deltaSp, minDelta, maxDelta);

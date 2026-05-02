@@ -43,7 +43,7 @@ class TupletTest extends UnitTest {
         var tuplet = createTuplet();
 
         assertThat(tuplet.getContentHeightSs())
-            .isEqualTo(LayoutStylesheet.TUPLET_BRACKET_HEIGHT_SS);
+            .isEqualTo(Tuplet.TUPLET_BRACKET_HEIGHT_SS);
     }
 
     @Test
@@ -52,7 +52,7 @@ class TupletTest extends UnitTest {
         var scale = ScaleContext.getInstance();
 
         assertThat(tuplet.getContentHeightPx())
-            .isCloseTo(scale.toPixels(LayoutStylesheet.TUPLET_BRACKET_HEIGHT_SS),
+            .isCloseTo(scale.toPixels(Tuplet.TUPLET_BRACKET_HEIGHT_SS),
                 within(EPSILON));
     }
 }

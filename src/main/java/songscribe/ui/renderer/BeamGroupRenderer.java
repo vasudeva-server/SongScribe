@@ -36,8 +36,8 @@ import songscribe.smufl.Engraving;
 import songscribe.ui.component.Score;
 import songscribe.ui.component.score.PreviewElementManager;
 import songscribe.ui.layout.LineElement;
-import songscribe.ui.layout.LayoutStylesheet;
 import songscribe.ui.layout.LayoutResult;
+import songscribe.ui.layout.StaffExtents;
 
 /**
  * Renders beam bars connecting beamed notes.
@@ -323,7 +323,7 @@ public class BeamGroupRenderer extends BaseElementRenderer<LineElement> {
         var endNote = line.getElement(endIndex);
         var layoutResult = ctx.getLayoutResult();
         double middleLineYSs = ctx.getMiddleLineYSs();
-        double halfStemWidthSs = LayoutStylesheet.STEM_WIDTH_SS / 2.0;
+        double halfStemWidthSs = NoteRenderer.STEM_WIDTH_SS / 2.0;
 
         // --- Thickening (from BeamLayout, zero if unavailable) ---
         double thickeningSs = (beamLayout != null) ? beamLayout.thickeningSs() : 0.0;
@@ -405,10 +405,10 @@ public class BeamGroupRenderer extends BaseElementRenderer<LineElement> {
         }
 
         // Fallback: approximate from staff position + standard stem length
-        double elementYSs = LayoutStylesheet.spToSs(element.getStaffPosition());
+        double elementYSs = StaffExtents.spToSs(element.getStaffPosition());
         return isUpper
-            ? elementYSs - LayoutStylesheet.STEM_LENGTH_SS
-            : elementYSs + LayoutStylesheet.STEM_LENGTH_SS;
+            ? elementYSs - NoteRenderer.STEM_LENGTH_SS
+            : elementYSs + NoteRenderer.STEM_LENGTH_SS;
     }
 
     /**

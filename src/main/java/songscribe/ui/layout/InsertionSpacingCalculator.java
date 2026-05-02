@@ -65,7 +65,7 @@ public class InsertionSpacingCalculator {
          * @return {@code true} if the projected line width does not exceed the margin
          */
         public boolean fitsWithinLine(double staffRightMarginSs) {
-            return newLineWidthSs + LayoutStylesheet.DEFAULT_COLUMN_GAP_SS <= staffRightMarginSs;
+            return newLineWidthSs + HorizontalSpacingCalculator.DEFAULT_COLUMN_GAP_SS <= staffRightMarginSs;
         }
     }
 
@@ -99,7 +99,7 @@ public class InsertionSpacingCalculator {
         var effectiveCount = line.effectiveElementCount();
 
         if (effectiveCount == 0) {
-            return LayoutStylesheet.calculateFirstElementXSs(line.getKeyAccidentalCount());
+            return HorizontalSpacingCalculator.calculateFirstElementXSs(line.getKeyAccidentalCount());
         }
 
         var lastElement = line.getElement(effectiveCount - 1);
@@ -173,7 +173,7 @@ public class InsertionSpacingCalculator {
 
         if (insertIndex == 0) {
             // Inserting at beginning - calculate space from line start
-            insertedElementXSs = LayoutStylesheet.calculateFirstElementXSs(line.getKeyAccidentalCount());
+            insertedElementXSs = HorizontalSpacingCalculator.calculateFirstElementXSs(line.getKeyAccidentalCount());
             var nextElement = line.getElement(0);
             var nextColumn = createLightweightColumn(nextElement);
 

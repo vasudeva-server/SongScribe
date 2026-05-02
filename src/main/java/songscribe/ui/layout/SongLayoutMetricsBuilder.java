@@ -31,6 +31,20 @@ import java.util.List;
  */
 public final class SongLayoutMetricsBuilder {
 
+    /**
+     * Vertical margin between the bottom of one staff line and the top of the next.
+     */
+    public static final double INTER_LINE_MARGIN_SS = 1.25;  // 10px
+    public static final double MIN_LINE_HEIGHT_SS = StaffExtents.STAFF_HEIGHT_SS + StaffExtents.MIN_ABOVE_STAFF_SS + StaffExtents.MIN_BELOW_STAFF_SS + INTER_LINE_MARGIN_SS;
+    /**
+     * Approximate height of a single lyrics row (to be measured from actual font in later phases).
+     */
+    public static final double LYRICS_HEIGHT_SS = 2.5;  // ~20px
+    /**
+     * Margin from the bottom of below-staff content to the lyrics baseline
+     */
+    public static final double LYRICS_ROW_MARGIN_SS = 1.0;  // 8px
+
     private SongLayoutMetricsBuilder() {}
 
     /**
@@ -43,8 +57,8 @@ public final class SongLayoutMetricsBuilder {
      * @return metrics object suitable for driving uniform line heights
      */
     public static SongLayoutMetrics build(List<LayoutResult> layouts, double lyricAscentSs) {
-        var maxAboveStaffSs = LayoutStylesheet.MIN_ABOVE_STAFF_SS;
-        var maxBelowStaffSs = LayoutStylesheet.MIN_BELOW_STAFF_SS + LayoutStylesheet.INTER_LINE_MARGIN_SS;
+        var maxAboveStaffSs = StaffExtents.MIN_ABOVE_STAFF_SS;
+        var maxBelowStaffSs = StaffExtents.MIN_BELOW_STAFF_SS + INTER_LINE_MARGIN_SS;
         var maxBelowContentSs = 0.0;
         var verseCount = 0;
 
@@ -59,11 +73,11 @@ public final class SongLayoutMetricsBuilder {
         }
 
         var hasLyrics = verseCount > 0;
-        var staffToLyricsGapSs = hasLyrics ? LayoutStylesheet.LYRICS_ROW_MARGIN_SS + lyricAscentSs : 0.0;
-        var lyricsLineHeightSs = hasLyrics ? LayoutStylesheet.LYRICS_HEIGHT_SS : 0.0;
+        var staffToLyricsGapSs = hasLyrics ? LYRICS_ROW_MARGIN_SS + lyricAscentSs : 0.0;
+        var lyricsLineHeightSs = hasLyrics ? LYRICS_HEIGHT_SS : 0.0;
         var lyricsBandHeightSs = verseCount * lyricsLineHeightSs;
         var totalLineHeightSs = maxAboveStaffSs
-            + LayoutStylesheet.STAFF_HEIGHT_SS
+            + StaffExtents.STAFF_HEIGHT_SS
             + maxBelowStaffSs
             + staffToLyricsGapSs
             + lyricsBandHeightSs;

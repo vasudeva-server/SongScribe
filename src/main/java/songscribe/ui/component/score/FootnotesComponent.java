@@ -22,7 +22,6 @@ package songscribe.ui.component.score;
 
 import module java.desktop;
 
-import songscribe.ui.layout.LayoutStylesheet;
 import songscribe.ui.layout.ScaleContext;
 import songscribe.util.GraphicUtils;
 
@@ -34,6 +33,10 @@ import songscribe.util.GraphicUtils;
  */
 public class FootnotesComponent extends ScoreComponent {
 
+    /**
+     * Minimum margin above footnotes section
+     */
+    public static final double FOOTNOTES_MIN_MARGIN_TOP_SS = 5.0;  // 40px
     /** Maximum width as fraction of line width. */
     private static final double MAX_WIDTH_PERCENTAGE = 2.0 / 3.0;
 
@@ -42,7 +45,7 @@ public class FootnotesComponent extends ScoreComponent {
      */
     public FootnotesComponent() {
         super();
-        setMarginTop(ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.FOOTNOTES_MIN_MARGIN_TOP_SS));
+        setMarginTop(ScaleContext.getInstance().toRoundedPixels(FOOTNOTES_MIN_MARGIN_TOP_SS));
     }
 
     @Override

@@ -36,7 +36,7 @@ import songscribe.music.Song;
  *   <li>Antialiasing setup in {@link #paintComponent(Graphics)}</li>
  *   <li>Template method pattern via {@link #render(Graphics2D)}</li>
  *   <li>Debug visualization hooks</li>
- *   <li>Margin system integration via {@link songscribe.ui.layout.LayoutStylesheet}</li>
+ *   <li>Margin system integration via layout constants</li>
  * </ul>
  * <p>
  * Subclasses must implement {@link #render(Graphics2D)} to perform their specific rendering.

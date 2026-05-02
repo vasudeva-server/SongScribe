@@ -465,7 +465,7 @@ class StructuralTierStackingTest extends UnitTest {
 
             assertThat(layout.widthSs()).isGreaterThan(0.0);
             assertThat(layout.heightSs()).isCloseTo(
-                LayoutStylesheet.VOLTA_TICK_HEIGHT_SS, within(TOLERANCE));
+                Ending.VOLTA_TICK_HEIGHT_SS, within(TOLERANCE));
         }
 
         @Test

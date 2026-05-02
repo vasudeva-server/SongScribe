@@ -38,6 +38,7 @@ import songscribe.smufl.Engraving;
 class LayoutEngineTest extends UnitTest {
 
     private static final double STAFF_RIGHT_MARGIN_SS = 60.0;
+    private static final double CLEF_X_POSITION_SS = 0.625;
     private static final double TOLERANCE = 0.001;
 
     private static LayoutEngine engine() {
@@ -63,7 +64,7 @@ class LayoutEngineTest extends UnitTest {
         var result = require(engine().layout(new Line()), "LayoutResult");
         var clef = require(result.getClef(), "Clef");
 
-        assertThat(clef.getXSs()).isCloseTo(LayoutStylesheet.CLEF_X_POSITION_SS, within(TOLERANCE));
+        assertThat(clef.getXSs()).isCloseTo(CLEF_X_POSITION_SS, within(TOLERANCE));
     }
 
     // T2: layout() stores a KeySignature immediately after the clef with correct key data
@@ -76,7 +77,7 @@ class LayoutEngineTest extends UnitTest {
         var result = require(engine().layout(line), "LayoutResult");
         var keySig = require(result.getKeySignature(), "KeySignature");
 
-        double expectedXSs = LayoutStylesheet.CLEF_X_POSITION_SS
+        double expectedXSs = CLEF_X_POSITION_SS
             + Engraving.G_CLEF_WIDTH_SS
             + new Clef().getMarginRightSs();
 

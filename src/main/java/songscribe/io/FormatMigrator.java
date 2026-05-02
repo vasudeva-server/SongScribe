@@ -38,7 +38,6 @@ import songscribe.ui.layout.Crescendo;
 import songscribe.ui.layout.Diminuendo;
 import songscribe.ui.layout.Ending;
 import songscribe.ui.layout.FermataAttachment;
-import songscribe.ui.layout.LayoutStylesheet;
 import songscribe.ui.layout.RangeElement;
 import songscribe.ui.layout.TempoChangeAttachment;
 import songscribe.ui.layout.Tie;
@@ -240,8 +239,8 @@ public final class FormatMigrator {
         int beatChangeOffset = line.getBeatChangeYPosPx();
 
         // BeatChange has a default offset, only migrate if different
-        if (beatChangeOffset != ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.BEAT_CHANGE_DEFAULT_Y_SS)) {
-            int delta = beatChangeOffset - ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.BEAT_CHANGE_DEFAULT_Y_SS);
+        if (beatChangeOffset != ScaleContext.getInstance().toRoundedPixels(Line.BEAT_CHANGE_DEFAULT_Y_SS)) {
+            int delta = beatChangeOffset - ScaleContext.getInstance().toRoundedPixels(Line.BEAT_CHANGE_DEFAULT_Y_SS);
 
             for (var i = 0; i < line.elementCount(); i++) {
                 var note = line.getElement(i);
@@ -259,8 +258,8 @@ public final class FormatMigrator {
         // Migrate first/second ending offset to per-instance
         int endingOffset = line.getFirstSecondEndingYPosPx();
 
-        if (endingOffset != ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.ENDING_DEFAULT_Y_SS)) {
-            int delta = endingOffset - ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.ENDING_DEFAULT_Y_SS);
+        if (endingOffset != ScaleContext.getInstance().toRoundedPixels(Line.ENDING_DEFAULT_Y_SS)) {
+            int delta = endingOffset - ScaleContext.getInstance().toRoundedPixels(Line.ENDING_DEFAULT_Y_SS);
 
             for (var element : line.getRangeElements()) {
                 if (element instanceof Ending ending) {
@@ -272,8 +271,8 @@ public final class FormatMigrator {
         // Migrate trill offset to per-instance
         int trillOffset = line.getTrillYPosPx();
 
-        if (trillOffset != ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.TRILL_DEFAULT_Y_SS)) {
-            int delta = trillOffset - ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.TRILL_DEFAULT_Y_SS);
+        if (trillOffset != ScaleContext.getInstance().toRoundedPixels(Line.TRILL_DEFAULT_Y_SS)) {
+            int delta = trillOffset - ScaleContext.getInstance().toRoundedPixels(Line.TRILL_DEFAULT_Y_SS);
 
             for (var element : line.getRangeElements()) {
                 if (element instanceof Trill trill) {

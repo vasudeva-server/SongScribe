@@ -34,11 +34,11 @@ import songscribe.smufl.Engraving;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
 import songscribe.ui.layout.ElementBoundsSs;
-import songscribe.ui.layout.LayoutStylesheet;
 import songscribe.ui.layout.LineElement;
 
 import org.jspecify.annotations.Nullable;
 
+import songscribe.ui.layout.StaffExtents;
 import songscribe.util.GraphicUtils;
 import songscribe.util.MyFontUtils;
 
@@ -93,7 +93,7 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
     public static final Font MUSIC_FONT;
 
     /**
-     * The music font scaled for grace note rendering ({@link LayoutStylesheet#GRACE_NOTE_SCALE}).
+     * The music font scaled for grace note rendering ({@link NoteRenderer#GRACE_NOTE_SCALE}).
      */
     public static final Font GRACE_NOTE_FONT;
 
@@ -116,7 +116,7 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
     static {
         try {
             MUSIC_FONT = getMusicFont();
-            GRACE_NOTE_FONT = getMusicFont().deriveFont(FONT_SIZE * LayoutStylesheet.GRACE_NOTE_SCALE);
+            GRACE_NOTE_FONT = getMusicFont().deriveFont(FONT_SIZE * NoteRenderer.GRACE_NOTE_SCALE);
         } catch (Exception e) {
             throw new RuntimeException("Cannot load required fonts for rendering.", e);
         }
@@ -402,7 +402,7 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
      * @return Y coordinate for the note in staff spaces
      */
     public static double noteStaffPositionToCoordinateSs(int staffPosition, double middleLineYSs) {
-        return middleLineYSs + LayoutStylesheet.spToSs(staffPosition);
+        return middleLineYSs + StaffExtents.spToSs(staffPosition);
     }
 
     /**
@@ -430,7 +430,7 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
         int step = (staffPosition > 0) ? -2 : 2;
 
         while (Math.abs(i) > 5) {
-            consumer.accept(LayoutStylesheet.spToSs(i - staffPosition));
+            consumer.accept(StaffExtents.spToSs(i - staffPosition));
             i += step;
         }
     }
@@ -443,6 +443,6 @@ public abstract class BaseElementRenderer<T extends LineElement> implements Elem
 
         // upper: SE anchor is the stem's right edge; center = anchorX - half stem width
         // lower: NW anchor is the stem's left edge (after notehead shift); center = anchorX
-        return upper ? anchorX - LayoutStylesheet.STEM_WIDTH_SS / 2.0 : anchorX;
+        return upper ? anchorX - NoteRenderer.STEM_WIDTH_SS / 2.0 : anchorX;
     }
 }

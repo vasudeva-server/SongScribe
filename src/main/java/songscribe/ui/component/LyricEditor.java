@@ -44,9 +44,10 @@ import songscribe.message.mutation.ElementField;
 import songscribe.music.Line;
 import songscribe.music.Lyric;
 import songscribe.music.StaffElement;
+import songscribe.ui.FlatLafKeys;
+import songscribe.ui.FlatLafProps;
 import songscribe.ui.component.score.LineComponent;
 import songscribe.ui.layout.InsetsSs;
-import songscribe.ui.layout.LayoutStylesheet;
 import songscribe.ui.layout.ScaleContext;
 import songscribe.util.UIUtils;
 
@@ -272,7 +273,7 @@ public final class LyricEditor extends MyJTextField {
         setUI(new LyricTextFieldUI());
         setFont(score.getLyricRenderMetrics().lyricsFont());
         setOpaque(true);
-        setBackground(LayoutStylesheet.getScreenBackground());
+        setBackground(FlatLafProps.get(FlatLafKeys.SCORE_PAGE_SCREEN_BACKGROUND));
         setForeground(Color.BLACK);
         setCaretColor(Color.BLACK);
         setHorizontalAlignment(LEFT);

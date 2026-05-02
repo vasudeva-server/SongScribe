@@ -33,10 +33,10 @@ import org.jspecify.annotations.Nullable;
 
 import songscribe.music.ElementType;
 import songscribe.music.StaffElement;
+import songscribe.smufl.GlyphAnchors;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.Engraving;
 import songscribe.smufl.SMuFLMetadata;
-import songscribe.ui.layout.LayoutStylesheet;
 import songscribe.error.RuntimeError;
 
 /**
@@ -54,6 +54,36 @@ import songscribe.error.RuntimeError;
  * </ul>
  */
 public class NoteRenderer extends BaseElementRenderer<StaffElement> {
+    /**
+     * SMuFL standard stem length in staff-space units.
+     */
+    public static final double STEM_LENGTH_SS = 3.5;
+    /**
+     * Stem length for grace notes in staff-space units.
+     */
+    public static final double GRACE_NOTE_STEM_LENGTH_SS = 2.5;
+    /**
+     * Scale factor applied to grace notes relative to regular notes.
+     * Grace notes use the regular glyphs drawn with a scaled-down Bravura font.
+     */
+    public static final float GRACE_NOTE_SCALE = 0.75f;
+    /**
+     * Stem width in staff-space units (LilyPond multiplier-derived).
+     */
+    public static final double STEM_WIDTH_SS;
+    /**
+     * Stem anchor point for small black noteheads (stem-up, south-east corner).
+     * Used for grace notes which use pre-sized small glyphs.
+     */
+    public static final GlyphAnchors.Anchor STEM_UP_SE_BLACK_SMALL;
+
+    static {
+        STEM_WIDTH_SS = LineThickness.getInstance().stemSs();
+        STEM_UP_SE_BLACK_SMALL = new GlyphAnchors.Anchor(
+            Engraving.NOTEHEAD_BLACK_STEM_UP_SE.x() * GRACE_NOTE_SCALE,
+            Engraving.NOTEHEAD_BLACK_STEM_UP_SE.y() * GRACE_NOTE_SCALE
+        );
+    }
 
     // ==========================================================================
     // Constants
@@ -205,6 +235,58 @@ public class NoteRenderer extends BaseElementRenderer<StaffElement> {
         return noteX;
     }
 
+    /**
+     * Returns the ledger line overhang for a note, or 0 if the note has no ledger lines.
+     * This is the distance the ledger lines extend beyond the notehead on each side.
+     *
+     * @param note The note to check
+     * @return The overhang in staff-space units, or 0 if no ledger lines are needed
+     */
+    public static double getLedgerLineOverhangSs(StaffElement note) {
+        if (Math.abs(note.getStaffPosition()) <= 5 || !note.getType().drawStaveLongitude()) {
+            return 0.0;
+        }
+
+        return Engraving.LEDGER_LINE_EXTENSION_SS;
+    }
+
+    /**
+     * Computes the base stem geometry for a note type and direction.
+     * This is the shared anchor selection and positioning logic used by both
+     * {@code NoteRenderer} (for drawing) and {@code GlissandoRenderer} (for area building).
+     *
+     * @param noteType The note type (determines anchor and stem length)
+     * @param upper    true for stem-up, false for stem-down
+     * @return The base stem geometry
+     */
+    public static StemGeometry computeBaseStemGeometry(ElementType noteType, boolean upper) {
+        boolean isMinim = noteType == ElementType.MINIM;
+        boolean isGrace = noteType.isGraceNote();
+
+        GlyphAnchors.Anchor anchor;
+
+        if (isGrace) {
+            anchor = STEM_UP_SE_BLACK_SMALL;
+        } else if (upper) {
+            anchor = isMinim ? Engraving.NOTEHEAD_HALF_STEM_UP_SE : Engraving.NOTEHEAD_BLACK_STEM_UP_SE;
+        } else {
+            anchor = isMinim ? Engraving.NOTEHEAD_HALF_STEM_DOWN_NW : Engraving.NOTEHEAD_BLACK_STEM_DOWN_NW;
+        }
+
+        double anchorX = anchor.x();
+
+        // Stem left edge: for up-stems, the anchor marks the RIGHT edge of the stem;
+        // for down-stems, the anchor marks the LEFT edge but the notehead is shifted
+        // left by STEM_WIDTH_SS/2, so we compensate.
+        double stemLeftX = upper
+            ? anchorX - STEM_WIDTH_SS
+            : anchorX - STEM_WIDTH_SS / 2;
+
+        double stemLength = isGrace ? GRACE_NOTE_STEM_LENGTH_SS : STEM_LENGTH_SS;
+
+        return new StemGeometry(stemLeftX, anchor.y(), stemLength);
+    }
+
     @Override
     protected void renderElement(
         StaffElement element,
@@ -341,7 +423,7 @@ public class NoteRenderer extends BaseElementRenderer<StaffElement> {
             return null;
         }
 
-        var geom = LayoutStylesheet.computeBaseStemGeometry(noteType, upper);
+        var geom = computeBaseStemGeometry(noteType, upper);
         var stemWidthSs = ctx.getLineThickness().stemSs();
 
         // Snap stem left edge to device pixel boundary for crisp rendering.
@@ -445,7 +527,7 @@ public class NoteRenderer extends BaseElementRenderer<StaffElement> {
             flagFont = GRACE_NOTE_FONT;
             // The scaled flag glyph's internal stem connection is 65% of the full stem width.
             // Shift right to visually center the flag on the actual stem.
-            flagX += (float) (LayoutStylesheet.STEM_WIDTH_SS * (1 - LayoutStylesheet.GRACE_NOTE_SCALE) / 2);
+            flagX += (float) (STEM_WIDTH_SS * (1 - GRACE_NOTE_SCALE) / 2);
         } else {
             flagFont = MUSIC_FONT;
         }
@@ -520,7 +602,7 @@ public class NoteRenderer extends BaseElementRenderer<StaffElement> {
     // ==========================================================================
 
     private void renderLedgerLines(Graphics2D g2, StaffElement note, ElementRenderContext ctx) {
-        double extensionSs = LayoutStylesheet.getLedgerLineOverhangSs(note);
+        double extensionSs = getLedgerLineOverhangSs(note);
 
         if (extensionSs == 0.0) {
             return;
@@ -760,7 +842,7 @@ public class NoteRenderer extends BaseElementRenderer<StaffElement> {
      */
     public static float getNoteheadXOffsetSs(ElementType noteType, boolean upper) {
         if (noteType.isNoteWithStem() && !upper) {
-            return (float) -(LayoutStylesheet.STEM_WIDTH_SS / 2);
+            return (float) -(STEM_WIDTH_SS / 2);
         }
 
         return 0f;
@@ -798,4 +880,24 @@ public class NoteRenderer extends BaseElementRenderer<StaffElement> {
         return getNoteheadRightEdgeSs(note) + 2 * extensionSs;
     }
 
+    /**
+     * Base stem geometry computed from SMuFL anchor data, before any rendering-specific
+     * adjustments (device-pixel snapping, beam lengthening, etc.).
+     *
+     * @param stemLeftXSs Left edge of the stem in staff spaces (relative to notehead origin)
+     * @param anchorYSs   Y position where the stem meets the notehead
+     * @param lengthSs    Stem length in staff spaces (without beam lengthening)
+     */
+    public record StemGeometry(double stemLeftXSs, double anchorYSs, double lengthSs) {
+
+        /**
+         * Returns the Y position of the stem tip (the end away from the notehead).
+         *
+         * @param upper true for stem-up (tip above notehead), false for stem-down
+         * @return stem tip Y in staff spaces
+         */
+        public double stemTipYSs(boolean upper) {
+            return upper ? anchorYSs - lengthSs : anchorYSs + lengthSs;
+        }
+    }
 }

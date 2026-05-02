@@ -33,7 +33,6 @@ import songscribe.music.StaffElement;
 import songscribe.smufl.Engraving;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
-import songscribe.ui.layout.LayoutStylesheet;
 import songscribe.util.GraphicUtils;
 
 /**
@@ -297,7 +296,7 @@ class NoteAreaBuilder {
      * Mirrors the positioning logic in {@link NoteRenderer#renderLedgerLines}.
      */
     private void addLedgerLinesToArea(Area area, StaffElement note) {
-        double extensionSs = LayoutStylesheet.getLedgerLineOverhangSs(note);
+        double extensionSs = NoteRenderer.getLedgerLineOverhangSs(note);
 
         if (extensionSs == 0.0) {
             return;
@@ -319,7 +318,7 @@ class NoteAreaBuilder {
 
     /**
      * Adds a stem rectangle to the area and returns the stem tip point.
-     * Uses {@link LayoutStylesheet#computeBaseStemGeometry} for shared anchor/positioning logic.
+     * Uses {@link NoteRenderer#computeBaseStemGeometry} for shared anchor/positioning logic.
      *
      * @return The stem tip point (x = stem left edge, y = stem tip)
      */
@@ -328,16 +327,16 @@ class NoteAreaBuilder {
         ElementType noteType,
         boolean upper
     ) {
-        var geom = LayoutStylesheet.computeBaseStemGeometry(noteType, upper);
+        var geom = NoteRenderer.computeBaseStemGeometry(noteType, upper);
         double stemLeftXSs = geom.stemLeftXSs();
         double stemTipYSs = geom.stemTipYSs(upper);
 
         if (upper) {
             area.add(new Area(new Rectangle2D.Double(
-                stemLeftXSs, stemTipYSs, LayoutStylesheet.STEM_WIDTH_SS, geom.lengthSs())));
+                stemLeftXSs, stemTipYSs, NoteRenderer.STEM_WIDTH_SS, geom.lengthSs())));
         } else {
             area.add(new Area(new Rectangle2D.Double(
-                stemLeftXSs, geom.anchorYSs(), LayoutStylesheet.STEM_WIDTH_SS, geom.lengthSs())));
+                stemLeftXSs, geom.anchorYSs(), NoteRenderer.STEM_WIDTH_SS, geom.lengthSs())));
         }
 
         return new Point2D.Double(stemLeftXSs, stemTipYSs);

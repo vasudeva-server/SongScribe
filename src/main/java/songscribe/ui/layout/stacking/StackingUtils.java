@@ -26,7 +26,6 @@ import songscribe.music.StaffElement;
 import songscribe.smufl.SMuFLMetadata;
 import songscribe.ui.layout.CollisionRegion;
 import songscribe.ui.layout.LayoutResult;
-import songscribe.ui.layout.LayoutStylesheet;
 import songscribe.ui.layout.LineElement;
 import songscribe.ui.layout.RangeElement;
 import songscribe.ui.layout.StaffExtents;
@@ -49,7 +48,7 @@ public final class StackingUtils {
 
     // Y coordinate of the top staff line in the middleLineY=0 coordinate system
     private static final double STAFF_TOP_Y_SS =
-        TOP_STAFF_LINE_POSITION * LayoutStylesheet.STAFF_POSITION_OFFSET_SS;
+        TOP_STAFF_LINE_POSITION * StaffExtents.STAFF_POSITION_OFFSET_SS;
 
     // Horizontal collision margin for structural/system elements (collapses between adjacent elements)
     private static final double STRUCTURAL_HORIZONTAL_MARGIN_SS = 0.75; // 6px
@@ -75,7 +74,7 @@ public final class StackingUtils {
             return STAFF_TOP_Y_SS;
         }
 
-        double noteHeadYSs = staffPosition * LayoutStylesheet.STAFF_POSITION_OFFSET_SS;
+        double noteHeadYSs = staffPosition * StaffExtents.STAFF_POSITION_OFFSET_SS;
         return noteHeadYSs - NOTE_HEAD_RADIUS_SS;
     }
 

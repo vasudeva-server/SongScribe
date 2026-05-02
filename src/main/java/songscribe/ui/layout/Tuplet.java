@@ -36,6 +36,11 @@ public class Tuplet extends RangeElement {
 
     /** Inward shortening at each bracket endpoint (LilyPond: -0.2ss). */
     public static final double ARM_EXTENSION_SS = 0.2;  // 1.6px
+    /**
+     * Total vertical extent of a tuplet bracket (arms + number label).
+     * Engraving convention, not measured — in the same category as {@link #STAFF_HEIGHT_SS}.
+     */
+    public static final double TUPLET_BRACKET_HEIGHT_SS = 1.5;  // 12px
 
     private int grade = 3;
     private int verticalPositionSs = 0;
@@ -60,7 +65,7 @@ public class Tuplet extends RangeElement {
 
     @Override
     public double getContentHeightSs() {
-        return LayoutStylesheet.TUPLET_BRACKET_HEIGHT_SS;
+        return TUPLET_BRACKET_HEIGHT_SS;
     }
 
     @Override

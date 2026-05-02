@@ -35,6 +35,10 @@ import songscribe.error.RuntimeError;
  */
 public class Attribution extends LineElement {
 
+    /**
+     * Margin from attribution bottom to score
+     */
+    public static final double ATTRIBUTION_MARGIN_BOTTOM_SS = 2.0;  // 16px
     /** The attribution text (composer, arranger, etc.). */
     private String text;
 
@@ -48,7 +52,7 @@ public class Attribution extends LineElement {
      */
     public Attribution(String text) {
         this.text = text;
-        setMarginSs(0, 0, LayoutStylesheet.ATTRIBUTION_MARGIN_BOTTOM_SS, 0);
+        setMarginSs(0, 0, ATTRIBUTION_MARGIN_BOTTOM_SS, 0);
     }
 
     /**

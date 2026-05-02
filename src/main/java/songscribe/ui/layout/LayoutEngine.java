@@ -33,6 +33,7 @@ import songscribe.smufl.Engraving;
 import songscribe.music.Line;
 import songscribe.music.StaffElement;
 import songscribe.ui.layout.stacking.VerticalStackingCalculator;
+import songscribe.ui.renderer.NoteRenderer;
 
 /**
  * Orchestrates the complete layout pipeline for a staff line.
@@ -62,14 +63,16 @@ import songscribe.ui.layout.stacking.VerticalStackingCalculator;
  */
 public class LayoutEngine {
 
-    // Staff height in staff-space units (from LayoutStylesheet)
-    private static final double STAFF_HEIGHT_SS = LayoutStylesheet.STAFF_HEIGHT_SS;
+    // Staff height in staff-space units
+    private static final double STAFF_HEIGHT_SS = StaffExtents.STAFF_HEIGHT_SS;
+
+    private static final double CLEF_X_POSITION_SS = 0.625;  // 5px
 
     // Beam geometry constants (staff-space units unless noted)
     private static final double BEAM_DEPTH_SS = 0.4;        // beam thickness
     private static final double BEAM_SHIFT_SS = 0.625;      // gap between stacked beam levels
     private static final double BEAM_SLOPE_MAX = 0.4;    // hyperbolic saturation limit (dimensionless)
-    private static final double MIN_STEM_SS = LayoutStylesheet.STEM_LENGTH_SS;
+    private static final double MIN_STEM_SS = NoteRenderer.STEM_LENGTH_SS;
 
     // Tie geometry constants (MuseScore port, staff-space units unless noted)
     private static final double TIE_SHOULDER_W = 0.6;                // shoulder width fraction of tie span
@@ -163,10 +166,10 @@ public class LayoutEngine {
             // Empty line — mirror the minimum content-fitted height from
             // VerticalStackingCalculator so header elements (clef, key signature)
             // have MIN_ABOVE_STAFF_SS room above the staff.
-            double emptyLineHeightSs = LayoutStylesheet.MIN_LINE_HEIGHT_SS;
+            double emptyLineHeightSs = SongLayoutMetricsBuilder.MIN_LINE_HEIGHT_SS;
             var emptyBuilder = LayoutResult.builder()
                 .setLineHeightSs(emptyLineHeightSs)
-                .setAboveStaffSs(LayoutStylesheet.MIN_ABOVE_STAFF_SS);
+                .setAboveStaffSs(StaffExtents.MIN_ABOVE_STAFF_SS);
             createHeaderElements(line, emptyBuilder);
             return emptyBuilder.build();
         }
@@ -362,7 +365,7 @@ public class LayoutEngine {
 
                 if (dxSs != 0.0) {
                     double rawSlope =
-                        LayoutStylesheet.spToSs(lastElement.getStaffPosition() - firstElement.getStaffPosition()) / dxSs;
+                        StaffExtents.spToSs(lastElement.getStaffPosition() - firstElement.getStaffPosition()) / dxSs;
 
                     // Hyperbolic dampening saturates extreme slopes without hard clamping.
                     slope = BEAM_SLOPE_MAX * rawSlope / (BEAM_SLOPE_MAX + Math.abs(rawSlope));
@@ -394,7 +397,7 @@ public class LayoutEngine {
                 var anchorElement = line.getElement(anchorIdx);
                 var anchorColumn = elementToColumn.get(anchorElement);
                 double anchorXSs = (anchorColumn != null) ? anchorColumn.getXSs() : firstXSs;
-                double anchorElementYSs = LayoutStylesheet.spToSs(anchorElement.getStaffPosition());
+                double anchorElementYSs = StaffExtents.spToSs(anchorElement.getStaffPosition());
 
                 // Place beam exactly MIN_STEM_SS from the anchor notehead.
                 // Y-down: beam above notehead = smaller Y (subtract); beam below = larger Y (add).
@@ -417,7 +420,7 @@ public class LayoutEngine {
                             continue;
                         }
 
-                        double elementYSs = LayoutStylesheet.spToSs(element.getStaffPosition());
+                        double elementYSs = StaffExtents.spToSs(element.getStaffPosition());
                         double beamYSs = slope * (col.getXSs() - firstXSs) + startYSs;
                         double stemLenSs = stemsUp ? (elementYSs - beamYSs) : (beamYSs - elementYSs);
 
@@ -450,7 +453,7 @@ public class LayoutEngine {
                         continue;
                     }
 
-                    double elementYSs = LayoutStylesheet.spToSs(element.getStaffPosition());
+                    double elementYSs = StaffExtents.spToSs(element.getStaffPosition());
                     double beamYSs = slope * (col.getXSs() - firstXSs) + startYSs;
                     double stemLenSs = stemsUp ? (elementYSs - beamYSs) : (beamYSs - elementYSs);
                     double deficitSs = MIN_STEM_SS - stemLenSs;
@@ -498,7 +501,7 @@ public class LayoutEngine {
                         continue;
                     }
 
-                    double elementYSs = LayoutStylesheet.spToSs(element.getStaffPosition());
+                    double elementYSs = StaffExtents.spToSs(element.getStaffPosition());
                     double beamYSs = slope * (col.getXSs() - firstXSs) + startYSs;
                     double stemLenSs = stemsUp ? (elementYSs - beamYSs) : (beamYSs - elementYSs);
                     double lengtheningSs = stemLenSs - MIN_STEM_SS;
@@ -569,9 +572,9 @@ public class LayoutEngine {
 
             // isUpper() → stem up (upper=true means stem goes up)
             boolean stemsUp = element.isUpper();
-            double elementYSs = LayoutStylesheet.spToSs(element.getStaffPosition());
+            double elementYSs = StaffExtents.spToSs(element.getStaffPosition());
             double stemLenSs = element.getType().isGraceNote()
-                ? LayoutStylesheet.GRACE_NOTE_STEM_LENGTH_SS
+                ? NoteRenderer.GRACE_NOTE_STEM_LENGTH_SS
                 : MIN_STEM_SS;
 
             // Y increases downward: stem-up tip has smaller Y; stem-down tip has larger Y.
@@ -629,8 +632,8 @@ public class LayoutEngine {
             // Tie attachment points: centered on notehead horizontally.
             double startXSs = startColumn.getXSs() + TIE_NOTEHEAD_HALF_WIDTH_SS;
             double endXSs = endColumn.getXSs() + TIE_NOTEHEAD_HALF_WIDTH_SS;
-            double startYSs = LayoutStylesheet.spToSs(startElement.getStaffPosition()) + direction * TIE_ENDPOINT_Y_OFFSET_SS;
-            double endYSs = LayoutStylesheet.spToSs(endElement.getStaffPosition()) + direction * TIE_ENDPOINT_Y_OFFSET_SS;
+            double startYSs = StaffExtents.spToSs(startElement.getStaffPosition()) + direction * TIE_ENDPOINT_Y_OFFSET_SS;
+            double endYSs = StaffExtents.spToSs(endElement.getStaffPosition()) + direction * TIE_ENDPOINT_Y_OFFSET_SS;
 
             double tieWidthSs = endXSs - startXSs;
 
@@ -668,7 +671,7 @@ public class LayoutEngine {
                     }
 
                     double elementXSs = interiorColumn.getXSs();
-                    double elementYSs = LayoutStylesheet.spToSs(interiorElement.getStaffPosition());
+                    double elementYSs = StaffExtents.spToSs(interiorElement.getStaffPosition());
 
                     // Evaluate outer cubic Bezier at approximate t (linear X interpolation).
                     double t = tieWidthSs > 0
@@ -711,18 +714,18 @@ public class LayoutEngine {
     /**
      * Creates the clef and key signature header elements and stores them in the builder.
      * <p>
-     * The clef is placed at {@link LayoutStylesheet#CLEF_X_POSITION_SS}. The key signature
+     * The clef is placed at {@link #CLEF_X_POSITION_SS}. The key signature
      * is placed immediately to the right of the clef, accounting for the clef's advance width
      * and right margin.
      */
     private static void createHeaderElements(Line line, LayoutResult.Builder builder) {
         var clef = new Clef();
-        clef.setPosition(LayoutStylesheet.CLEF_X_POSITION_SS, 0);
+        clef.setPosition(CLEF_X_POSITION_SS, 0);
         builder.setClef(clef);
         var rawKeyType = line.getKeyType();
         var keyType = rawKeyType != null ? rawKeyType : KeyType.NONE;
         var keySig = new KeySignature(keyType, line.getKeyAccidentalCount());
-        double keySigXSs = LayoutStylesheet.CLEF_X_POSITION_SS
+        double keySigXSs = CLEF_X_POSITION_SS
             + Engraving.G_CLEF_WIDTH_SS
             + clef.getMarginRightSs();
         keySig.setPosition(keySigXSs, 0);

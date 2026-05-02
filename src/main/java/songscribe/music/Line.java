@@ -52,7 +52,6 @@ import songscribe.message.mutation.TieRemoval;
 import songscribe.message.mutation.TupletAddition;
 import songscribe.message.mutation.TupletRemoval;
 import songscribe.ui.layout.Ending;
-import songscribe.ui.layout.LayoutStylesheet;
 import songscribe.ui.layout.RangeElement;
 import songscribe.ui.layout.ScaleContext;
 
@@ -118,22 +117,34 @@ public class Line {
     private int tempoChangeYPosPx = 0;
 
     /**
+     * Default beat change Y position (-3 staff spaces above middle)
+     */
+    public static final double BEAT_CHANGE_DEFAULT_Y_SS = -3.0;  // -24px
+    /**
      * Y offset for beat change display (default: -24, above staff).
      *
      * @deprecated Use per-instance userYOffset on BeatChangeAttachment instead.
      *             Retained for backward compatibility with legacy documents.
      */
     @Deprecated
-    private int beatChangeYPosPx = ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.BEAT_CHANGE_DEFAULT_Y_SS);
+    private int beatChangeYPosPx = ScaleContext.getInstance().toRoundedPixels(BEAT_CHANGE_DEFAULT_Y_SS);
 
+    /**
+     * Default lyrics Y position (below staff)
+     */
+    public static final double LYRICS_DEFAULT_Y_SS = 6.25;  // 50px
     /**
      * Y offset for lyrics display (default: 50, below staff).
      * <p>
      * Note: This field is still in active use for line-level lyrics positioning.
      * Per-instance lyrics offsets are not yet implemented.
      */
-    private double lyricsYPosSs = LayoutStylesheet.LYRICS_DEFAULT_Y_SS;
+    private double lyricsYPosSs = LYRICS_DEFAULT_Y_SS;
 
+    /**
+     * Default first/second ending Y position (above staff)
+     */
+    public static final double ENDING_DEFAULT_Y_SS = -3.125;  // -25px
     /**
      * Y offset for first/second ending display (default: -25, above staff).
      *
@@ -141,8 +152,12 @@ public class Line {
      *             Retained for backward compatibility with legacy documents.
      */
     @Deprecated
-    private int firstSecondEndingYPosPx = ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.ENDING_DEFAULT_Y_SS);
+    private int firstSecondEndingYPosPx = ScaleContext.getInstance().toRoundedPixels(ENDING_DEFAULT_Y_SS);
 
+    /**
+     * Default trill Y position (above staff)
+     */
+    public static final double TRILL_DEFAULT_Y_SS = -3.375;  // -27px
     /**
      * Y offset for trill display (default: -27, above staff).
      *
@@ -150,7 +165,7 @@ public class Line {
      *             Retained for backward compatibility with legacy documents.
      */
     @Deprecated
-    private int trillYPosPx = ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.TRILL_DEFAULT_Y_SS);
+    private int trillYPosPx = ScaleContext.getInstance().toRoundedPixels(TRILL_DEFAULT_Y_SS);
 
     /** Ratio multiplier for horizontal element spacing (default: 1.0, user-adjustable). */
     private float elementSpacingRatio = 1f;

@@ -35,10 +35,10 @@ import songscribe.ui.edit.EditModeManager;
 import songscribe.ui.edit.GraceModeManager;
 import songscribe.ui.component.Score;
 import songscribe.ui.layout.LayoutEngine;
-import songscribe.ui.layout.LayoutStylesheet;
 import songscribe.ui.layout.LayoutResult;
 import songscribe.ui.layout.ScaleContext;
 import songscribe.ui.layout.SongLayoutMetrics;
+import songscribe.ui.layout.StaffExtents;
 import songscribe.ui.renderer.ElementRenderContext;
 import songscribe.ui.selection.LineSelectionState;
 import songscribe.error.RuntimeError;
@@ -449,7 +449,7 @@ public class LineComponent extends ScoreComponent
             throw RuntimeError.exit("layout result is null after layout for line " + lineIndex);
         }
 
-        return result.getAboveStaffSs() + LayoutStylesheet.STAFF_HALF_SS;
+        return result.getAboveStaffSs() + StaffExtents.STAFF_HALF_SS;
     }
 
     // ==========================================================================

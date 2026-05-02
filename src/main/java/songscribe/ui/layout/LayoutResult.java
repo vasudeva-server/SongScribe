@@ -590,7 +590,7 @@ public final class LayoutResult {
      * This is the lyric-positioning anchor: the maximum distance below the staff bottom that
      * any staff element (notehead, stem, decoration) reaches on this line. Distinct from the
      * layout reservation embedded in {@link #getLineHeightSs()}, which floors at
-     * {@link LayoutStylesheet#MIN_BELOW_STAFF_SS} for ledger-line capacity.
+     * {@link StaffExtents#MIN_BELOW_STAFF_SS} for ledger-line capacity.
      */
     public double getBelowContentSs() {
         return belowContentSs;
@@ -600,12 +600,12 @@ public final class LayoutResult {
      * Returns the below-staff reservation embedded in this line's height, in staff spaces.
      * <p>
      * Equals {@code lineHeightSs - aboveStaffSs - STAFF_HEIGHT_SS}: the part of the line that
-     * sits below the staff bottom including the {@link LayoutStylesheet#MIN_BELOW_STAFF_SS}
+     * sits below the staff bottom including the {@link StaffExtents#MIN_BELOW_STAFF_SS}
      * floor and the inter-line margin. Use {@link #getBelowContentSs()} when you need the
      * actual content extent without the floor or margin.
      */
     public double getBelowStaffReservationSs() {
-        return lineHeightSs - aboveStaffSs - LayoutStylesheet.STAFF_HEIGHT_SS;
+        return lineHeightSs - aboveStaffSs - StaffExtents.STAFF_HEIGHT_SS;
     }
 
     // ==========================================================================
@@ -636,9 +636,9 @@ public final class LayoutResult {
         for (var element : line.getElements()) {
             for (var box : getLyricBoxes(element)) {
                 var baselineYSs = aboveStaffSs
-                    + LayoutStylesheet.STAFF_HEIGHT_SS
+                    + StaffExtents.STAFF_HEIGHT_SS
                     + belowContentSs
-                    + LayoutStylesheet.LYRICS_ROW_MARGIN_SS
+                    + SongLayoutMetricsBuilder.LYRICS_ROW_MARGIN_SS
                     + ascentSs
                     + (box.verseIndex() - 1) * (ascentSs + descentSs);
                 var topYSs = baselineYSs - ascentSs;
@@ -879,7 +879,7 @@ public final class LayoutResult {
 
         // Empty line - use first element position (clef + key signature + offset)
         if (elementCount == 0) {
-            return LayoutStylesheet.calculateFirstElementXSs(line.getKeyAccidentalCount());
+            return HorizontalSpacingCalculator.calculateFirstElementXSs(line.getKeyAccidentalCount());
         }
 
         // Check if mouse is over any element head - if so, snap to that element's position.
@@ -919,7 +919,7 @@ public final class LayoutResult {
             var firstColumn = elementColumns.get(firstElement);
 
             if (firstColumn == null) {
-                return LayoutStylesheet.FIRST_NOTE_OFFSET_SS;
+                return HorizontalSpacingCalculator.FIRST_NOTE_OFFSET_SS;
             }
 
             return firstColumn.getXSs() - PREVIEW_BEFORE_FIRST_OFFSET_SS;
@@ -931,7 +931,7 @@ public final class LayoutResult {
             var lastColumn = elementColumns.get(lastElement);
 
             if (lastColumn == null) {
-                return LayoutStylesheet.FIRST_NOTE_OFFSET_SS;
+                return HorizontalSpacingCalculator.FIRST_NOTE_OFFSET_SS;
             }
 
             // Build a temporary column for the preview element to calculate proper spacing
@@ -959,7 +959,7 @@ public final class LayoutResult {
         var currColumn = elementColumns.get(currElement);
 
         if (prevColumn == null || currColumn == null) {
-            return LayoutStylesheet.FIRST_NOTE_OFFSET_SS;
+            return HorizontalSpacingCalculator.FIRST_NOTE_OFFSET_SS;
         }
 
         return (prevColumn.getXSs() + currColumn.getXSs()) / 2.0;

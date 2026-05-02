@@ -27,7 +27,7 @@ import org.jspecify.annotations.Nullable;
 import songscribe.music.Song;
 import songscribe.ui.component.score.LineComponent;
 import songscribe.ui.component.score.MainPanel;
-import songscribe.ui.layout.LayoutStylesheet;
+import songscribe.ui.component.score.StaffPanel;
 import songscribe.ui.layout.ScaleContext;
 
 interface ComponentHierarchyProvider {
@@ -198,7 +198,7 @@ public final class ComponentHierarchyNavigator {
         } else {
             var linePanel = linePanels.get(0);
             rowHeight = linePanel.getLineComponent().getHeight()
-                + ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.LINE_MARGIN_BOTTOM_SS);
+                + ScaleContext.getInstance().toRoundedPixels(StaffPanel.LINE_MARGIN_BOTTOM_SS);
         }
 
         layoutUpdater.accept(new int[]{middleLineY, rowHeight});

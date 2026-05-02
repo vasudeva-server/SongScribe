@@ -67,11 +67,12 @@ import songscribe.ui.component.score.LineComponent;
 import songscribe.ui.component.score.MainPanel;
 import songscribe.ui.component.score.ScorePanel;
 import songscribe.ui.edit.EditModeManager;
+import songscribe.ui.layout.HorizontalSpacingCalculator;
 import songscribe.ui.layout.SongLayoutMetrics;
-import songscribe.ui.layout.LayoutStylesheet;
 import songscribe.ui.layout.LyricRenderMetrics;
 import songscribe.ui.layout.PageModel;
 import songscribe.ui.layout.ScaleContext;
+import songscribe.ui.layout.StaffExtents;
 import songscribe.util.GraphicUtils;
 import songscribe.ui.menu.DebugState;
 import songscribe.ui.playback.PlaybackController;
@@ -111,7 +112,7 @@ public final class Score
     private static final Logger LOG = LoggerFactory.getLogger(Score.class);
 
     // The vertical distance between whole tones on the staff (e.g. A to B)
-    public static final float STAFF_POSITION_OFFSET_PX = (float) ScaleContext.getInstance().toPixels(LayoutStylesheet.STAFF_POSITION_OFFSET_SS);
+    public static final float STAFF_POSITION_OFFSET_PX = (float) ScaleContext.getInstance().toPixels(StaffExtents.STAFF_POSITION_OFFSET_SS);
 
     // Runs before all HIGH_PRIORITY subscribers so the tuplet info cache is warm
     // by the time TupletAction handlers (HIGH_PRIORITY) read it.
@@ -696,7 +697,7 @@ public final class Score
             g2,
             songscribe.ui.renderer.GraphicsState.Property.COLOR
         )) {
-            g2.setColor(LayoutStylesheet.getScreenBackground());
+            g2.setColor(FlatLafProps.get(FlatLafKeys.SCORE_PAGE_SCREEN_BACKGROUND));
             g2.fillRect(0, 0, getWidth(), getHeight());
         }
 
@@ -965,7 +966,7 @@ public final class Score
             if (strict) {
                 idealSpace = (float) endNote.getContentWidthPx();
             } else {
-                idealSpace = (float) ScaleContext.getInstance().toPixels(LayoutStylesheet.DEFAULT_COLUMN_GAP_SS) + 20;
+                idealSpace = (float) ScaleContext.getInstance().toPixels(HorizontalSpacingCalculator.DEFAULT_COLUMN_GAP_SS) + 20;
             }
 
             var lineWidthPx = getSong().getLineWidthPx();

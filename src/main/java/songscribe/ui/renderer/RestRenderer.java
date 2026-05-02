@@ -33,7 +33,7 @@ import songscribe.music.ElementType;
 import songscribe.music.StaffElement;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
-import songscribe.ui.layout.LayoutStylesheet;
+import songscribe.ui.layout.StaffExtents;
 
 /**
  * Renders rest glyphs (whole, half, quarter, eighth, sixteenth, thirty-second rests).
@@ -181,16 +181,16 @@ public class RestRenderer extends BaseElementRenderer<StaffElement> {
 
         if (noteType == ElementType.SEMIBREVE_REST) {
             // Whole rest hangs below the 4th line (second from top)
-            return middleLineYSs + LayoutStylesheet.spToSs(SEMIBREVE_REST_Y_OFFSET);
+            return middleLineYSs + StaffExtents.spToSs(SEMIBREVE_REST_Y_OFFSET);
         }
 
         if (noteType == ElementType.MINIM_REST) {
             // Half rest sits on the middle line
-            return middleLineYSs + LayoutStylesheet.spToSs(MINIM_REST_Y_OFFSET);
+            return middleLineYSs + StaffExtents.spToSs(MINIM_REST_Y_OFFSET);
         }
 
         // Other rests use standard note Y positioning
-        return middleLineYSs + LayoutStylesheet.spToSs(note.getStaffPosition());
+        return middleLineYSs + StaffExtents.spToSs(note.getStaffPosition());
     }
 
     /**

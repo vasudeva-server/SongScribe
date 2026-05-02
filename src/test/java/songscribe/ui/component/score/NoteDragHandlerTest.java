@@ -55,8 +55,8 @@ import songscribe.music.TieSpan;
 import songscribe.ui.Mode;
 import songscribe.ui.component.Score;
 import songscribe.ui.edit.EditModeManager;
-import songscribe.ui.layout.LayoutStylesheet;
 import songscribe.ui.layout.ScaleContext;
+import songscribe.ui.layout.StaffExtents;
 import songscribe.ui.playback.MidiController;
 import songscribe.ui.playback.PlayThread;
 import songscribe.ui.selection.LineSelectionState;
@@ -214,7 +214,7 @@ class NoteDragHandlerTest extends UnitTest {
 
         @Test
         void testClampingAtLowerBoundary() {
-            // LayoutStylesheet.MAX_STAFF_POSITION_SP = 12
+            // MAX_STAFF_POSITION_SP = 12
             // Notes at 8 and 10, drag down by +5 → clamped to +2 (10+2=12)
             var line = createLine(8, 10);
             when(lc.getLine()).thenReturn(line);
@@ -229,7 +229,7 @@ class NoteDragHandlerTest extends UnitTest {
 
         @Test
         void testClampingAtUpperBoundary() {
-            // LayoutStylesheet.MIN_STAFF_POSITION_SP = -10
+            // MIN_STAFF_POSITION_SP = -10
             // Notes at -6 and -8, drag up by -5 → clamped to -2 (-8-2=-10)
             var line = createLine(-6, -8);
             when(lc.getLine()).thenReturn(line);
@@ -442,7 +442,7 @@ class NoteDragHandlerTest extends UnitTest {
      */
     private void dragToPosition(int targetPositionSp) {
         var deltaSp = targetPositionSp - pressOriginalSp;
-        var deltaYSs = deltaSp * LayoutStylesheet.STAFF_POSITION_OFFSET_SS;
+        var deltaYSs = deltaSp * StaffExtents.STAFF_POSITION_OFFSET_SS;
         when(mockScaleContext.fromPixels(anyDouble())).thenReturn(deltaYSs);
 
         var event = mouseEvent(lc, MouseEvent.MOUSE_DRAGGED, 100, DRAG_SCREEN_Y, MouseEvent.BUTTON1);

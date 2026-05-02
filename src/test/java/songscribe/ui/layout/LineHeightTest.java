@@ -50,10 +50,10 @@ class LineHeightTest extends UnitTest {
      * No above- or below-staff extents, no lyrics.
      */
     private static final double MIN_LINE_HEIGHT_SS =
-        LayoutStylesheet.STAFF_HEIGHT_SS
-        + LayoutStylesheet.MIN_ABOVE_STAFF_SS
-        + LayoutStylesheet.MIN_BELOW_STAFF_SS
-        + LayoutStylesheet.INTER_LINE_MARGIN_SS;
+        StaffExtents.STAFF_HEIGHT_SS
+        + StaffExtents.MIN_ABOVE_STAFF_SS
+        + StaffExtents.MIN_BELOW_STAFF_SS
+        + SongLayoutMetricsBuilder.INTER_LINE_MARGIN_SS;
 
     private static LayoutEngine engine() {
         var lyricsFont = new Font("Dialog", Font.PLAIN, 12);
@@ -108,7 +108,7 @@ class LineHeightTest extends UnitTest {
         var song = new Song();
         var line = song.getLine(0);
 
-        addNote(song, line, crotchet(LayoutStylesheet.MIN_STAFF_POSITION_SP));
+        addNote(song, line, crotchet(StaffExtents.MIN_STAFF_POSITION_SP));
 
         var result = require(engine().layout(line, true), "LayoutResult");
 
@@ -123,7 +123,7 @@ class LineHeightTest extends UnitTest {
         var line = song.getLine(0);
 
         // Regression guard for the below-staff term added in step 2 of the plan.
-        addNote(song, line, crotchet(LayoutStylesheet.MAX_STAFF_POSITION_SP));
+        addNote(song, line, crotchet(StaffExtents.MAX_STAFF_POSITION_SP));
 
         var result = require(engine().layout(line, true), "LayoutResult");
 

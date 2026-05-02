@@ -32,9 +32,10 @@ import songscribe.smufl.BBox;
 import songscribe.smufl.Engraving;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
-import songscribe.ui.layout.LayoutStylesheet;
+import songscribe.ui.layout.StaffExtents;
 import songscribe.ui.renderer.LineThickness;
 import songscribe.error.RuntimeError;
+import songscribe.ui.renderer.NoteRenderer;
 import songscribe.util.UIUtils;
 
 public enum ElementType {
@@ -573,12 +574,12 @@ public enum ElementType {
                 type.noteheadTopOffsetSs = headTop;
 
                 // Height up: from top of stem to bottom of notehead
-                double upTop = stemUpY - LayoutStylesheet.STEM_LENGTH_SS;
+                double upTop = stemUpY - NoteRenderer.STEM_LENGTH_SS;
                 type.heightUpSs = headBottom - upTop;
                 type.topOffsetUpSs = upTop;    // stem tip above center (negative)
 
                 // Height down: from top of notehead to bottom of stem
-                double downBottom = stemDownY + LayoutStylesheet.STEM_LENGTH_SS;
+                double downBottom = stemDownY + NoteRenderer.STEM_LENGTH_SS;
                 type.heightDownSs = downBottom - headTop;
                 type.topOffsetDownSs = headTop; // notehead top above center (negative)
             } else {
@@ -597,7 +598,7 @@ public enum ElementType {
 
     private static void computeGraceNoteBoundsSs(SMuFLMetadata metadata, ElementType type) {
         var headBBox = requireBBox(metadata, SMuFLGlyph.NOTEHEAD_BLACK, type);
-        double scale = LayoutStylesheet.GRACE_NOTE_SCALE;
+        double scale = NoteRenderer.GRACE_NOTE_SCALE;
 
         double headBottom = headBBox.bottom() * scale;
         double headRight = headBBox.right() * scale;
@@ -611,7 +612,7 @@ public enum ElementType {
         double stemUpX = anchors.stemUpSE().x() * scale;
         double stemUpY = anchors.stemUpSE().y() * scale;
 
-        double upTop = stemUpY - LayoutStylesheet.GRACE_NOTE_STEM_LENGTH_SS;
+        double upTop = stemUpY - NoteRenderer.GRACE_NOTE_STEM_LENGTH_SS;
         double width = headRight;
 
         var flagBBox = metadata.getBBox(SMuFLGlyph.FLAG_8TH_UP);
@@ -670,7 +671,7 @@ public enum ElementType {
         double thin = lt.thinBarlineSs();
         double thick = lt.thickBarlineSs();
         double sep = lt.barlineSeparationSs();
-        double staffHeight = LayoutStylesheet.STAFF_HEIGHT_SS;
+        double staffHeight = StaffExtents.STAFF_HEIGHT_SS;
         double topOffset = -staffHeight / 2;
 
         SINGLE_BARLINE.setSymmetricBounds(thin, staffHeight, topOffset);
@@ -684,7 +685,7 @@ public enum ElementType {
         double thick = lt.thickBarlineSs();
         double sep = lt.barlineSeparationSs();
         double dotsAdvance = Engraving.REPEAT_DOTS_ADVANCE_WIDTH_SS;
-        double staffHeight = LayoutStylesheet.STAFF_HEIGHT_SS;
+        double staffHeight = StaffExtents.STAFF_HEIGHT_SS;
         double topOffset = -staffHeight / 2;
 
         // Match the renderer's actual layout: dots | sep | thin | sep | thick

@@ -61,6 +61,12 @@ import org.jspecify.annotations.Nullable;
 public class LineJustificationCalculator {
 
     /**
+     * Absolute minimum column gap during compression.
+     * Even under maximum compression, gaps cannot go below this.
+     */
+    public static final double COMPRESSED_MIN_COLUMN_GAP_SS = 0.125;  // 1px
+
+    /**
      * Result of line justification attempt.
      */
     public static class JustificationResult {
@@ -236,7 +242,7 @@ public class LineJustificationCalculator {
         List<ElementColumn> columns,
         double compressionRatio) {
 
-        var minColumnGapSs = LayoutStylesheet.COMPRESSED_MIN_COLUMN_GAP_SS;
+        var minColumnGapSs = COMPRESSED_MIN_COLUMN_GAP_SS;
         var minSyllableGapSs = LyricRenderMetrics.COMPRESSED_MIN_SYLLABLE_GAP_SS;
 
         var firstColumn = columns.get(0);

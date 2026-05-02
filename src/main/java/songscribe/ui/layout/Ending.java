@@ -46,6 +46,10 @@ import songscribe.util.MyFontUtils;
  */
 public class Ending extends RangeElement {
 
+    /**
+     * Height of volta bracket tick marks in staff-space units.
+     */
+    public static final double VOLTA_TICK_HEIGHT_SS = 2.0;
     /** Scale of volta label font relative to standard music font size. */
     private static final float LABEL_FONT_SCALE = 0.6f;
 
@@ -349,7 +353,7 @@ public class Ending extends RangeElement {
      */
     @Override
     public double getContentHeightSs() {
-        return LayoutStylesheet.VOLTA_TICK_HEIGHT_SS;
+        return VOLTA_TICK_HEIGHT_SS;
     }
 
     /**
@@ -400,14 +404,14 @@ public class Ending extends RangeElement {
         // Left tick
         regions.add(new CollisionRegion(
             xBaseSs, 0, bracketThicknessSs,
-            LayoutStylesheet.VOLTA_TICK_HEIGHT_SS));
+            VOLTA_TICK_HEIGHT_SS));
 
         // Right tick (only if there is a closing stroke)
         if (bracket.hasClosingStroke()) {
             regions.add(new CollisionRegion(
                 xBaseSs + spanWidthSs - bracketThicknessSs, 0,
                 bracketThicknessSs,
-                LayoutStylesheet.VOLTA_TICK_HEIGHT_SS));
+                VOLTA_TICK_HEIGHT_SS));
         }
 
         // Label (e.g. "1." or "2.")

@@ -26,7 +26,7 @@ import java.util.List;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.music.Line;
-import songscribe.music.StaffElement;
+import songscribe.smufl.Engraving;
 import songscribe.ui.renderer.GlissandoRenderer;
 import songscribe.ui.renderer.NoteRenderer;
 
@@ -71,9 +71,66 @@ import songscribe.ui.renderer.NoteRenderer;
 public class HorizontalSpacingCalculator {
 
     /**
+     * Minimum horizontal gap between adjacent note columns.
+     * This is the absolute minimum; lyric spacing may require more.
+     */
+    public static final double MIN_COLUMN_GAP_SS = 0.125;  // 1px
+    /**
+     * Default horizontal gap between adjacent note columns when no lyrics are present.
+     * Provides comfortable spacing for music without lyrics.
+     */
+    public static final double DEFAULT_COLUMN_GAP_SS = 2.5;  // 20px
+    /**
+     * Minimum clearance for accidentals from previous column's right extent.
+     * Accidentals only push spacing when this minimum would be violated.
+     */
+    public static final double ACCIDENTAL_CLEARANCE_SS = 0.125;  // 1px
+    /**
+     * Gap between a grace note and its host note.
+     */
+    public static final double GRACE_NOTE_GAP_SS = 2.0;  // 16px
+    /**
+     * Minimum internal spacing within a beam group (tight, regular spacing).
+     * Beam groups may widen if lyrics under them require it.
+     */
+    public static final double BEAM_GROUP_MIN_INTERNAL_GAP_SS = 1.5;  // 12px
+    /**
+     * Distance from right extent of clef/key signature to first note column.
+     * Per Gould/Ross: provides visual separation between staff beginning and music.
+     */
+    public static final double FIRST_NOTE_OFFSET_SS = 3.5;  // 28px
+    /**
+     * Width of each accidental in the key signature.
+     */
+    public static final double KEY_ACCIDENTAL_WIDTH_SS = 1.0;  // 8px
+
+    /**
      * Creates a new HorizontalSpacingCalculator.
      */
     public HorizontalSpacingCalculator() {
+    }
+
+    /**
+     * Calculates the X position of the first note in a line, in staff-space units.
+     * <p>
+     * Formula: clefWidth + keySignatureWidth + FIRST_NOTE_OFFSET
+     *
+     * @param keyAccidentalCount Number of accidentals in the key signature
+     * @return X position in staff-space units where the first note should be placed
+     */
+    public static double calculateFirstElementXSs(int keyAccidentalCount) {
+        return calculateHeaderRightEdgeSs(keyAccidentalCount) + FIRST_NOTE_OFFSET_SS;
+    }
+
+    /**
+     * Returns the X position of the right edge of the staff header
+     * (clef + optional key signature), in staff-space units.
+     *
+     * @param keyAccidentalCount Number of accidentals in the key signature
+     * @return X position in staff-space units of the header's right edge
+     */
+    public static double calculateHeaderRightEdgeSs(int keyAccidentalCount) {
+        return Engraving.G_CLEF_WIDTH_SS + keyAccidentalCount * KEY_ACCIDENTAL_WIDTH_SS;
     }
 
     /**
@@ -128,7 +185,7 @@ public class HorizontalSpacingCalculator {
      * @return X position in ss
      */
     private double calculateFirstNoteXSs(Line line) {
-        return LayoutStylesheet.calculateFirstElementXSs(line.getKeyAccidentalCount());
+        return calculateFirstElementXSs(line.getKeyAccidentalCount());
     }
 
     // ==========================================================================
@@ -152,7 +209,7 @@ public class HorizontalSpacingCalculator {
         // Grace note → host note: use tight grace note spacing
         if (prevColumn.getElement().getType().isGraceNote()) {
             double spacingSs = prevColumn.getRightExtentSs()
-                + LayoutStylesheet.GRACE_NOTE_GAP_SS
+                + GRACE_NOTE_GAP_SS
                 + Math.abs(currColumn.getLeftExtentSs());
             return prevColumn.getXSs() + spacingSs;
         }
@@ -174,7 +231,7 @@ public class HorizontalSpacingCalculator {
 
         // Check accidental clearance and push right if needed
         if (needsAccidentalPush(prevColumn, currColumn, nextXSs)) {
-            double accidentalClearanceSs = LayoutStylesheet.ACCIDENTAL_CLEARANCE_SS;
+            double accidentalClearanceSs = ACCIDENTAL_CLEARANCE_SS;
             double prevRightEdgeSs = prevColumn.getRightEdgeXSs();
             double currAccidentalLeftSs = nextXSs + currColumn.getLeftExtentSs();
             double neededPushSs = prevRightEdgeSs + accidentalClearanceSs - currAccidentalLeftSs;
@@ -205,7 +262,7 @@ public class HorizontalSpacingCalculator {
 
         // Distance from previous column's center to current column's center
         // = previous column's right extent + MIN_COLUMN_GAP + abs(current column's left extent)
-        return prevColumn.getRightExtentSs() + LayoutStylesheet.MIN_COLUMN_GAP_SS + Math.abs(currColumn.getLeftExtentSs());
+        return prevColumn.getRightExtentSs() + MIN_COLUMN_GAP_SS + Math.abs(currColumn.getLeftExtentSs());
     }
 
     /**
@@ -247,7 +304,7 @@ public class HorizontalSpacingCalculator {
         ElementColumn prevColumn,
         ElementColumn currColumn) {
 
-        return prevColumn.getRightExtentSs() + LayoutStylesheet.DEFAULT_COLUMN_GAP_SS + Math.abs(currColumn.getLeftExtentSs());
+        return prevColumn.getRightExtentSs() + DEFAULT_COLUMN_GAP_SS + Math.abs(currColumn.getLeftExtentSs());
     }
 
     /**
@@ -301,7 +358,7 @@ public class HorizontalSpacingCalculator {
         if (!prev.hasGlissando()) return spacingSs;
 
         // Compute ledger-line-inclusive extents on-the-fly
-        double prevOverhang = LayoutStylesheet.getLedgerLineOverhangSs(prev.getElement());
+        double prevOverhang = NoteRenderer.getLedgerLineOverhangSs(prev.getElement());
         double prevGlissRight = prev.getRightExtentSs();
 
         if (prevOverhang > 0) {
@@ -309,7 +366,7 @@ public class HorizontalSpacingCalculator {
             prevGlissRight = Math.max(prevGlissRight, noteheadWidthSs + prevOverhang);
         }
 
-        double currOverhang = LayoutStylesheet.getLedgerLineOverhangSs(curr.getElement());
+        double currOverhang = NoteRenderer.getLedgerLineOverhangSs(curr.getElement());
         double currGlissLeft = curr.getLeftExtentSs();
 
         if (currOverhang > 0) {
@@ -438,7 +495,7 @@ public class HorizontalSpacingCalculator {
         }
 
         // Step 1: Calculate tight internal spacing
-        double tightGapSs = LayoutStylesheet.BEAM_GROUP_MIN_INTERNAL_GAP_SS;
+        double tightGapSs = BEAM_GROUP_MIN_INTERNAL_GAP_SS;
         var tightPositions = new ArrayList<Double>();
         double currentXSs = startXSs;
 

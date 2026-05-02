@@ -56,6 +56,18 @@ import songscribe.ui.renderer.NoteRenderer;
  */
 public class ElementColumnBuilder {
 
+    /**
+     * Augmentation dot width in staff-space units.
+     */
+    public static final double DOT_WIDTH_SS = 0.5;
+    /**
+     * Gap between the notehead right edge and the first augmentation dot, in staff-space units.
+     */
+    public static final double DOT_GAP_SS = 0.25;
+    /**
+     * Gap between an accidental and the notehead, in staff-space units.
+     */
+    public static final double ACCIDENTAL_GAP_SS = 0.25;
     private static final SMuFLMetadata METADATA = SMuFLMetadata.getInstance();
 
     // Small note head width from SMuFL noteheadBlackSmall bounding box (ss)
@@ -171,7 +183,7 @@ public class ElementColumnBuilder {
         // Add accidental width if present
         if (element.getAccidental() != null) {
             double accidentalWidthSs = NoteRenderer.getAccidentalWidthSs(element);
-            extentSs -= (accidentalWidthSs + LayoutStylesheet.ACCIDENTAL_GAP_SS);
+            extentSs -= (accidentalWidthSs + ACCIDENTAL_GAP_SS);
         }
 
         return extentSs;
@@ -206,11 +218,11 @@ public class ElementColumnBuilder {
 
         if (dotCount > 0) {
             // First dot: gap + dot
-            noteheadRightExtent += LayoutStylesheet.DOT_GAP_SS + LayoutStylesheet.DOT_WIDTH_SS;
+            noteheadRightExtent += DOT_GAP_SS + DOT_WIDTH_SS;
 
             // Additional dots: gap + dot each
             for (var i = 1; i < dotCount; i++) {
-                noteheadRightExtent += LayoutStylesheet.DOT_GAP_SS + LayoutStylesheet.DOT_WIDTH_SS;
+                noteheadRightExtent += DOT_GAP_SS + DOT_WIDTH_SS;
             }
         }
 
@@ -223,7 +235,7 @@ public class ElementColumnBuilder {
 
             // Grace notes always stem up, use the small notehead anchor
             double stemAnchorX = type.isGraceNote()
-                ? LayoutStylesheet.STEM_UP_SE_BLACK_SMALL.x()
+                ? NoteRenderer.STEM_UP_SE_BLACK_SMALL.x()
                 : (upper ? Engraving.NOTEHEAD_BLACK_STEM_UP_SE.x() : Engraving.NOTEHEAD_BLACK_STEM_DOWN_NW.x());
 
             flagRightExtent = stemAnchorX + flagAdvanceWidthSs;
@@ -259,7 +271,7 @@ public class ElementColumnBuilder {
 
         // Stem up: stem extends upward
         if (!element.isUpper()) {
-            return -LayoutStylesheet.STEM_LENGTH_SS;
+            return -NoteRenderer.STEM_LENGTH_SS;
         }
 
         // Stem down: top is just above element head
@@ -284,7 +296,7 @@ public class ElementColumnBuilder {
 
         // Stem down: stem extends downward
         if (element.isUpper()) {
-            return LayoutStylesheet.STEM_LENGTH_SS;
+            return NoteRenderer.STEM_LENGTH_SS;
         }
 
         // Stem up: bottom is just below element head

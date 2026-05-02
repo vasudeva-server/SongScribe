@@ -31,6 +31,10 @@ package songscribe.ui.layout;
  */
 public class Staff extends LineElement {
 
+    /**
+     * Number of staff lines
+     */
+    public static final int STAFF_LINE_COUNT = 5;
     /** Width of the staff lines (typically the full line width minus margins). */
     private double widthPx;
 
@@ -64,7 +68,7 @@ public class Staff extends LineElement {
 
     @Override
     public double getContentHeightPx() {
-        return ScaleContext.getInstance().toPixels(LayoutStylesheet.STAFF_HEIGHT_SS);
+        return ScaleContext.getInstance().toPixels(StaffExtents.STAFF_HEIGHT_SS);
     }
 
     /**
@@ -78,7 +82,7 @@ public class Staff extends LineElement {
      * Returns the number of staff lines (always 5).
      */
     public int getLineCount() {
-        return LayoutStylesheet.STAFF_LINE_COUNT;
+        return STAFF_LINE_COUNT;
     }
 
     /**
@@ -92,7 +96,7 @@ public class Staff extends LineElement {
      * Returns the Y coordinate of the bottom staff line relative to staff position.
      */
     public double getBottomLineYPx() {
-        return ScaleContext.getInstance().toPixels((LayoutStylesheet.STAFF_LINE_COUNT - 1) * 1.0);
+        return ScaleContext.getInstance().toPixels((STAFF_LINE_COUNT - 1) * 1.0);
     }
 
     /**
@@ -109,7 +113,7 @@ public class Staff extends LineElement {
      * @return Y coordinate relative to staff position
      */
     public double getLineYPx(int lineIndex) {
-        if (lineIndex < 0 || lineIndex >= LayoutStylesheet.STAFF_LINE_COUNT) {
+        if (lineIndex < 0 || lineIndex >= STAFF_LINE_COUNT) {
             throw new IndexOutOfBoundsException("Staff line index must be 0-4, got: " + lineIndex);
         }
 

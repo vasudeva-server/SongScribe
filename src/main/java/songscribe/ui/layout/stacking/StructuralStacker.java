@@ -36,9 +36,9 @@ import songscribe.ui.layout.Diminuendo;
 import songscribe.ui.layout.DynamicAttachment;
 import songscribe.ui.layout.ElementColumn;
 import songscribe.ui.layout.Ending;
+import songscribe.ui.layout.Hairpin;
 import songscribe.ui.layout.LayoutResult;
 import songscribe.smufl.Engraving;
-import songscribe.ui.layout.LayoutStylesheet;
 import songscribe.ui.layout.RangeElement;
 import songscribe.ui.layout.StaffExtents;
 import songscribe.ui.layout.Tuplet;
@@ -56,6 +56,18 @@ import static songscribe.ui.layout.stacking.StackingUtils.stackAboveWithRegions;
  */
 public class StructuralStacker {
 
+    /**
+     * Vertical margin between hairpins and elements below during stacking.
+     */
+    public static final double HAIRPIN_MARGIN_SS = 1.0;  // 8px
+    /**
+     * Margin from reference point to ending bracket
+     */
+    public static final double ENDING_MARGIN_SS = 1.0;  // 8px
+    /**
+     * Margin from reference point to tuplet bracket
+     */
+    public static final double TUPLET_MARGIN_SS = 0.625;  // 5px
     private final StackingContext context;
     private final StaffExtents structuralExtents;
 
@@ -105,7 +117,7 @@ public class StructuralStacker {
         var existingTuplets = line.findRangeElements(Tuplet.class);
 
         for (var tuplet : existingTuplets) {
-            stackSpanElement(tuplet, LayoutStylesheet.TUPLET_MARGIN_SS,
+            stackSpanElement(tuplet, TUPLET_MARGIN_SS,
                 columnsByElement, builder);
         }
 
@@ -157,7 +169,7 @@ public class StructuralStacker {
             double contentHeightSs = bridged.getContentHeightSs();
 
             double ySs = stackAbove(structuralExtents, bridged, leftXSs, widthSs,
-                contentHeightSs, LayoutStylesheet.TUPLET_MARGIN_SS,
+                contentHeightSs, TUPLET_MARGIN_SS,
                 staffPosition, builder);
 
             // Write SpanLayout with actual bracket bounds for renderer access
@@ -182,7 +194,7 @@ public class StructuralStacker {
         var existingCrescendos = line.findRangeElements(Crescendo.class);
 
         for (var crescendo : existingCrescendos) {
-            stackSpanElement(crescendo, LayoutStylesheet.HAIRPIN_MARGIN_SS,
+            stackSpanElement(crescendo, HAIRPIN_MARGIN_SS,
                 columnsByElement, builder);
         }
 
@@ -190,7 +202,7 @@ public class StructuralStacker {
         var existingDiminuendos = line.findRangeElements(Diminuendo.class);
 
         for (var diminuendo : existingDiminuendos) {
-            stackSpanElement(diminuendo, LayoutStylesheet.HAIRPIN_MARGIN_SS,
+            stackSpanElement(diminuendo, HAIRPIN_MARGIN_SS,
                 columnsByElement, builder);
         }
 
@@ -240,13 +252,13 @@ public class StructuralStacker {
             int staffPosition = startNote.getStaffPosition();
             double widthSs = endXSs - anchorXSs + Engraving.NOTE_HEAD_WIDTH_SS;
             double ySs = stackAbove(structuralExtents, bridged, anchorXSs, widthSs,
-                LayoutStylesheet.HAIRPIN_OPENING_HEIGHT_SS, LayoutStylesheet.HAIRPIN_MARGIN_SS,
+                Hairpin.HAIRPIN_OPENING_HEIGHT_SS, HAIRPIN_MARGIN_SS,
                 staffPosition, builder);
 
             // Write SpanLayout keyed by the legacy span for renderer access
             builder.putSpanLayout(span,
                 new LayoutResult.SpanLayout(anchorXSs, endXSs,
-                    ySs, LayoutStylesheet.HAIRPIN_OPENING_HEIGHT_SS));
+                    ySs, Hairpin.HAIRPIN_OPENING_HEIGHT_SS));
         }
     }
 
@@ -273,7 +285,7 @@ public class StructuralStacker {
         int staffPosition = note.getStaffPosition();
         stackAbove(structuralExtents, dynamic, centeredXSs,
             contentWidthSs, dynamic.getContentHeightSs(),
-            LayoutStylesheet.NOTE_DECORATION_MARGIN_SS,
+            NoteAttachedStacker.NOTE_DECORATION_MARGIN_SS,
             staffPosition, builder);
     }
 
@@ -336,7 +348,7 @@ public class StructuralStacker {
 
             stackAboveWithRegions(structuralExtents, ending, allRegions,
                 anchorXSs, widthSs,
-                LayoutStylesheet.ENDING_MARGIN_SS,
+                ENDING_MARGIN_SS,
                 staffPosition, builder);
         }
     }

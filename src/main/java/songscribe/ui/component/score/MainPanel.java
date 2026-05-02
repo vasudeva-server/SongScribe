@@ -27,7 +27,6 @@ import songscribe.error.RuntimeError;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.music.Song;
-import songscribe.ui.layout.LayoutStylesheet;
 import songscribe.ui.layout.ScaleContext;
 
 /**
@@ -47,6 +46,10 @@ import songscribe.ui.layout.ScaleContext;
  */
 public class MainPanel extends JPanel {
 
+    /**
+     * Margin from previous section to score top
+     */
+    public static final double SCORE_MARGIN_TOP_SS = 1.5;  // 12px
     /** Title component. */
     private final TitleComponent titleComponent;
 
@@ -74,7 +77,7 @@ public class MainPanel extends JPanel {
         setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
         setOpaque(false);
 
-        scoreMarginTop = ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.SCORE_MARGIN_TOP_SS);
+        scoreMarginTop = ScaleContext.getInstance().toRoundedPixels(SCORE_MARGIN_TOP_SS);
 
         titleComponent = new TitleComponent();
         titleComponent.setAlignmentX(LEFT_ALIGNMENT);

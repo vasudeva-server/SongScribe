@@ -31,7 +31,7 @@ import songscribe.music.KeyType;
 import songscribe.music.Line;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.ui.layout.KeySignature;
-import songscribe.ui.layout.LayoutStylesheet;
+import songscribe.ui.layout.StaffExtents;
 
 /**
  * Renders key signatures (sharps or flats) at the start of a staff line.
@@ -134,7 +134,7 @@ public class KeySignatureRenderer extends BaseElementRenderer<KeySignature> {
 
             for (int i = 0; i < accidentalCount; i++) {
                 int staffPosition = staffPositions[i % 7];
-                double y = middleLineYSs + LayoutStylesheet.spToSs(staffPosition);
+                double y = middleLineYSs + StaffExtents.spToSs(staffPosition);
 
                 g2.drawString(glyphStr, (float) xPosSs, (float) y);
                 xPosSs += ACCIDENTAL_SPACING_SS;
@@ -258,7 +258,7 @@ public class KeySignatureRenderer extends BaseElementRenderer<KeySignature> {
 
                 for (var i = 0; i < accidentalCounts[kt]; i++) {
                     var staffPosition = staffPositions[(i + startingOffsets[kt]) % 7];
-                    var y = middleLineYSs + LayoutStylesheet.spToSs(staffPosition);
+                    var y = middleLineYSs + StaffExtents.spToSs(staffPosition);
 
                     g2.drawString(glyphStr, (float) xPosSs, (float) y);
                     xPosSs += KEY_CHANGE_SPACING_SS;

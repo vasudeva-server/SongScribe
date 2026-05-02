@@ -34,7 +34,6 @@ import songscribe.ui.layout.ElementColumn;
 import songscribe.ui.layout.FermataAttachment;
 import songscribe.ui.layout.LayoutResult;
 import songscribe.smufl.Engraving;
-import songscribe.ui.layout.LayoutStylesheet;
 import songscribe.ui.layout.StaffExtents;
 import songscribe.ui.layout.Trill;
 
@@ -54,6 +53,17 @@ import static songscribe.ui.layout.stacking.StackingUtils.stackAbove;
  */
 public class NoteAttachedStacker {
 
+    /**
+     * Default vertical margin between note decorations during stacking.
+     * Used for articulations, fermata, trill, and text dynamics.
+     */
+    public static final double NOTE_DECORATION_MARGIN_SS = 0.5;  // 4px
+    /**
+     * Vertical margin between single-note decorations and upward-arcing tie curves.
+     * Smaller than {@link NoteAttachedStacker#NOTE_DECORATION_MARGIN_SS} since the tie arc already
+     * provides visual separation from the notehead.
+     */
+    public static final double TIE_DECORATION_MARGIN_SS = 0.25;  // 2px
     // Precomposed accent+staccato glyph dimensions (staff-space units)
     private static final double ACCENT_STACCATO_WIDTH_SS =
         SMuFLMetadata.getInstance().requireBBox(SMuFLGlyph.ARTIC_ACCENT_STACCATO_ABOVE).width();
@@ -139,7 +149,7 @@ public class NoteAttachedStacker {
         }
 
         dispatchArticulationStacking(staccatoArticulation, accentArticulation,
-            extents, xSs, LayoutStylesheet.NOTE_DECORATION_MARGIN_SS,
+            extents, xSs, NOTE_DECORATION_MARGIN_SS,
             staffPosition, builder);
 
         // Tier 2: Fermata
@@ -147,7 +157,7 @@ public class NoteAttachedStacker {
             var fermata = new FermataAttachment(note);
             stackAbove(extents, fermata, xSs,
                 fermata.getContentWidthSs(), fermata.getContentHeightSs(),
-                LayoutStylesheet.NOTE_DECORATION_MARGIN_SS, staffPosition, builder);
+                NOTE_DECORATION_MARGIN_SS, staffPosition, builder);
         }
 
         return builder.build();
@@ -166,7 +176,7 @@ public class NoteAttachedStacker {
      * Computes note vertical bounds from element type geometry alone (no stem layout).
      */
     private static NoteBounds computeNoteBounds(StaffElement element) {
-        double centerYSs = LayoutStylesheet.spToSs(element.getStaffPosition());
+        double centerYSs = StaffExtents.spToSs(element.getStaffPosition());
         var type = element.getType();
         boolean upper = element.isUpper();
         double noteheadTopSs = centerYSs + type.getNoteheadTopOffsetSs();
@@ -199,7 +209,7 @@ public class NoteAttachedStacker {
 
             if (stemLayout != null) {
                 double centerYSs = element.getStaffPosition()
-                    * LayoutStylesheet.STAFF_POSITION_OFFSET_SS;
+                    * StaffExtents.STAFF_POSITION_OFFSET_SS;
                 var type = element.getType();
                 double noteheadTopSs = centerYSs + type.getNoteheadTopOffsetSs();
                 double noteheadBotSs = noteheadTopSs + type.getFullElementHeightSs();
@@ -216,7 +226,7 @@ public class NoteAttachedStacker {
 
             // Track lowest notehead bottom for lyrics baseline calculation
             double noteheadCenterYSs = element.getStaffPosition()
-                * LayoutStylesheet.STAFF_POSITION_OFFSET_SS;
+                * StaffExtents.STAFF_POSITION_OFFSET_SS;
             context.updateLowestNoteBotSs(
                 noteheadCenterYSs + StackingUtils.NOTE_HEAD_RADIUS_SS);
 
@@ -234,7 +244,7 @@ public class NoteAttachedStacker {
      * ensuring decorations stack above the tie arc.
      * <p>
      * Also returns the set of notes with upward ties so stacking methods
-     * can use a reduced margin ({@link LayoutStylesheet#TIE_DECORATION_MARGIN_SS}) for
+     * can use a reduced margin ({@link NoteAttachedStacker#TIE_DECORATION_MARGIN_SS}) for
      * single-note decorations. A note is only added to the set when the tie endpoint at
      * that note's position is above (more negative Y than) the anchored ceiling, meaning
      * the tie is the actual constraint that pushes decorations higher. When the tie stays
@@ -411,8 +421,8 @@ public class NoteAttachedStacker {
 
         // Use reduced margin for notes with upward ties
         double marginSs = context.getNotesWithUpwardTie().contains(note)
-            ? LayoutStylesheet.TIE_DECORATION_MARGIN_SS
-            : LayoutStylesheet.NOTE_DECORATION_MARGIN_SS;
+            ? TIE_DECORATION_MARGIN_SS
+            : NOTE_DECORATION_MARGIN_SS;
 
         dispatchArticulationStacking(staccatoArticulation, accentArticulation,
             noteAttachedExtents, xSs, marginSs, staffPosition, builder);
@@ -494,7 +504,7 @@ public class NoteAttachedStacker {
 
         stackAbove(noteAttachedExtents, fermata, xSs,
             fermata.getContentWidthSs(), fermata.getContentHeightSs(),
-            LayoutStylesheet.NOTE_DECORATION_MARGIN_SS, staffPosition, builder);
+            NOTE_DECORATION_MARGIN_SS, staffPosition, builder);
     }
 
     /**
@@ -558,7 +568,7 @@ public class NoteAttachedStacker {
         int staffPosition = anchor.getStaffPosition();
         double widthSs = trill.getSpanWidthSs(anchorXSs, endXSs);
         stackAbove(noteAttachedExtents, trill, anchorXSs, widthSs,
-            trill.getContentHeightSs(), LayoutStylesheet.NOTE_DECORATION_MARGIN_SS,
+            trill.getContentHeightSs(), NOTE_DECORATION_MARGIN_SS,
             staffPosition, builder);
     }
 

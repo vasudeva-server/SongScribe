@@ -30,7 +30,7 @@ import songscribe.ui.layout.AnnotationAttachment;
 import songscribe.ui.layout.ElementColumn;
 import songscribe.ui.layout.Ending;
 import songscribe.ui.layout.LayoutResult;
-import songscribe.ui.layout.LayoutStylesheet;
+import songscribe.ui.layout.SongLayoutMetricsBuilder;
 import songscribe.ui.layout.StaffExtents;
 import songscribe.ui.layout.Trill;
 
@@ -102,8 +102,8 @@ public class VerticalStackingCalculator {
         // both subtract STAFF_HALF_SS from the signed extent.
         double topExtentSs = systemExtents.yGet(true, 0, lineWidthSs);
         double aboveStaffSs = Math.max(
-            LayoutStylesheet.MIN_ABOVE_STAFF_SS,
-            -topExtentSs - LayoutStylesheet.STAFF_HALF_SS);
+            StaffExtents.MIN_ABOVE_STAFF_SS,
+            -topExtentSs - StaffExtents.STAFF_HALF_SS);
 
         double botExtentSs = Math.max(
             Math.max(
@@ -113,20 +113,20 @@ public class VerticalStackingCalculator {
                 systemExtents.yGet(false, 0, lineWidthSs),
                 lowestNoteBotSs));
         double belowStaffSs = Math.max(
-            LayoutStylesheet.MIN_BELOW_STAFF_SS,
-            botExtentSs - LayoutStylesheet.STAFF_HALF_SS);
+            StaffExtents.MIN_BELOW_STAFF_SS,
+            botExtentSs - StaffExtents.STAFF_HALF_SS);
 
         // True extent of staff-element content below the staff bottom — distinct from the
         // sizing reservation above. Tracked in the context as elements seed their bounds
         // (notes, downward ties), defaults to staff bottom for an empty line.
         double belowContentSs = Math.max(
             0.0,
-            context.getBotContentExtentSs() - LayoutStylesheet.STAFF_HALF_SS);
+            context.getBotContentExtentSs() - StaffExtents.STAFF_HALF_SS);
 
-        double lineHeightSs = LayoutStylesheet.STAFF_HEIGHT_SS
+        double lineHeightSs = StaffExtents.STAFF_HEIGHT_SS
             + aboveStaffSs
             + belowStaffSs
-            + LayoutStylesheet.INTER_LINE_MARGIN_SS;
+            + SongLayoutMetricsBuilder.INTER_LINE_MARGIN_SS;
 
         builder.setLineHeightSs(lineHeightSs);
         builder.setAboveStaffSs(aboveStaffSs);

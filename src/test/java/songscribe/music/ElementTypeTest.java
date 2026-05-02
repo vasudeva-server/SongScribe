@@ -29,8 +29,8 @@ import org.junit.jupiter.api.Test;
 import songscribe.UnitTest;
 import songscribe.smufl.SMuFLGlyph;
 
-import songscribe.ui.layout.LayoutStylesheet;
 import songscribe.ui.layout.ScaleContext;
+import songscribe.ui.layout.StaffExtents;
 import songscribe.ui.renderer.LineThickness;
 
 class ElementTypeTest extends UnitTest {
@@ -202,7 +202,7 @@ class ElementTypeTest extends UnitTest {
 
         @Test
         void testBarlineHeightEqualsStaffHeight() {
-            double staffHeight = LayoutStylesheet.STAFF_HEIGHT_SS;
+            double staffHeight = StaffExtents.STAFF_HEIGHT_SS;
 
             assertThat(ElementType.SINGLE_BARLINE.getElementHeightSs(true))
                 .isCloseTo(staffHeight, within(1e-9));
@@ -214,7 +214,7 @@ class ElementTypeTest extends UnitTest {
 
         @Test
         void testRepeatHeightEqualsStaffHeight() {
-            double staffHeight = LayoutStylesheet.STAFF_HEIGHT_SS;
+            double staffHeight = StaffExtents.STAFF_HEIGHT_SS;
 
             assertThat(ElementType.REPEAT_LEFT.getElementHeightSs(true))
                 .isCloseTo(staffHeight, within(1e-9));

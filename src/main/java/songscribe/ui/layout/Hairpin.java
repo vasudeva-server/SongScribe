@@ -34,6 +34,11 @@ public sealed abstract class Hairpin extends RangeElement
         permits Crescendo, Diminuendo {
 
     /**
+     * Height of the hairpin opening
+     */
+    public static final double HAIRPIN_OPENING_HEIGHT_SS = 1.25;  // 10px
+
+    /**
      * Creates a hairpin spanning from anchor to end element.
      *
      * @param anchorElement The starting element of the hairpin
@@ -48,7 +53,7 @@ public sealed abstract class Hairpin extends RangeElement
      */
     @Override
     public double getContentHeightSs() {
-        return LayoutStylesheet.HAIRPIN_OPENING_HEIGHT_SS;
+        return HAIRPIN_OPENING_HEIGHT_SS;
     }
 
     /**

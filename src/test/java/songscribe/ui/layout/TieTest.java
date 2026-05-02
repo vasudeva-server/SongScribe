@@ -43,7 +43,7 @@ class TieTest extends UnitTest {
         var tie = createTie();
 
         assertThat(tie.getContentHeightSs())
-            .isEqualTo(LayoutStylesheet.TIE_ARC_HEIGHT_SS);
+            .isEqualTo(Tie.TIE_ARC_HEIGHT_SS);
     }
 
     @Test
@@ -52,7 +52,7 @@ class TieTest extends UnitTest {
         var scale = ScaleContext.getInstance();
 
         assertThat(tie.getContentHeightPx())
-            .isCloseTo(scale.toPixels(LayoutStylesheet.TIE_ARC_HEIGHT_SS),
+            .isCloseTo(scale.toPixels(Tie.TIE_ARC_HEIGHT_SS),
                 within(EPSILON));
     }
 }

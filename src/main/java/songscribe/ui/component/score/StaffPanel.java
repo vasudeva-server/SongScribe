@@ -31,7 +31,6 @@ import org.jspecify.annotations.Nullable;
 import songscribe.music.Song;
 import songscribe.ui.layout.SongLayoutMetricsBuilder;
 import songscribe.ui.layout.LayoutResult;
-import songscribe.ui.layout.LayoutStylesheet;
 import songscribe.ui.layout.ScaleContext;
 import songscribe.ui.layout.SongLayoutMetrics;
 
@@ -39,12 +38,16 @@ import songscribe.ui.layout.SongLayoutMetrics;
  * Panel containing all staff lines of a song.
  * <p>
  * Uses BoxLayout.Y_AXIS to stack {@link LinePanel} components with
- * {@link LayoutStylesheet#LINE_MARGIN_BOTTOM_MU} spacing between them.
+ * {@code LINE_MARGIN_BOTTOM_MU} spacing between them.
  * <p>
  * Note: Named StaffPanel to avoid conflict with Score.ScorePanel inner class.
  */
 public class StaffPanel extends JPanel {
 
+    /**
+     * Margin between staff lines
+     */
+    public static final double LINE_MARGIN_BOTTOM_SS = 2.0;  // 16px
     /** The song model. */
     @Nullable
     private Song song;
@@ -64,7 +67,7 @@ public class StaffPanel extends JPanel {
         setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
         setOpaque(false);
 
-        lineMargin = ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.LINE_MARGIN_BOTTOM_SS);
+        lineMargin = ScaleContext.getInstance().toRoundedPixels(LINE_MARGIN_BOTTOM_SS);
     }
 
     /**

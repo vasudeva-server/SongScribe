@@ -31,7 +31,7 @@ class StaffExtentsTest extends UnitTest {
 
     private static final double LINE_WIDTH_SS = 64.0;
     private static final double STAFF_TOP_SS = 0.0;
-    private static final double STAFF_BOTTOM_SS = LayoutStylesheet.STAFF_HEIGHT_SS;
+    private static final double STAFF_BOTTOM_SS = StaffExtents.STAFF_HEIGHT_SS;
 
     @Nested
     class CopyTopFrom {

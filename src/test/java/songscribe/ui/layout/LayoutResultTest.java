@@ -101,7 +101,7 @@ class LayoutResultTest extends UnitTest {
         var element = ElementType.CROTCHET.newInstance();
         var box = new LyricBoxLayout(2.0, 1.0, 1, "re");
         var layoutResult = LayoutResult.builder().addLyricBox(element, box).build();
-        // maxAboveStaffSs=1, LayoutStylesheet.STAFF_HEIGHT_SS=4, maxBelowContentSs=0.5,
+        // maxAboveStaffSs=1, STAFF_HEIGHT_SS=4, maxBelowContentSs=0.5,
         // staffToLyricsGapSs=0.25, lyricsLineHeightSs=2.0 → verseYSsInLine(1) = 5+0.5+0.25+0 = 5.75
         var metrics = testSongMetrics();
         var anchor = layoutResult.getLyricAnchor(element, metrics);
@@ -127,8 +127,8 @@ class LayoutResultTest extends UnitTest {
         var element = ElementType.CROTCHET.newInstance();
         song.withoutMutationTracking(() -> line.addElement(0, element));
         var box = new LyricBoxLayout(3.0, 2.0, 1, "do");
-        var baselineYSs = 1.0 + LayoutStylesheet.STAFF_HEIGHT_SS + 0.5
-            + LayoutStylesheet.LYRICS_ROW_MARGIN_SS
+        var baselineYSs = 1.0 + StaffExtents.STAFF_HEIGHT_SS + 0.5
+            + SongLayoutMetricsBuilder.LYRICS_ROW_MARGIN_SS
             + ScaleContext.getInstance().fontAscentSs(song.getLyricsFont());
         var layoutResult = LayoutResult.builder()
             .setAboveStaffSs(1.0)

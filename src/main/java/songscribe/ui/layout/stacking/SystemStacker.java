@@ -25,7 +25,6 @@ import songscribe.ui.layout.AnnotationAttachment;
 import songscribe.ui.layout.BeatChangeAttachment;
 import songscribe.ui.layout.ElementColumn;
 import songscribe.ui.layout.LayoutResult;
-import songscribe.ui.layout.LayoutStylesheet;
 import songscribe.ui.layout.ScaleContext;
 import songscribe.ui.layout.StaffExtents;
 import songscribe.ui.layout.TempoChangeAttachment;
@@ -43,6 +42,18 @@ import static songscribe.ui.layout.stacking.StackingUtils.stackAboveWithRegions;
  */
 public class SystemStacker {
 
+    /**
+     * Margin from reference point to tempo marking
+     */
+    public static final double TEMPO_MARGIN_SS = 1.0;  // 4px
+    /**
+     * Margin from reference point to beat change
+     */
+    public static final double BEAT_CHANGE_MARGIN_SS = 1.0;  // 8px
+    /**
+     * Margin from reference point to annotation
+     */
+    public static final double ANNOTATION_MARGIN_SS = 1.0;  // 8px
     private final StackingContext context;
     private final StaffExtents systemExtents;
 
@@ -99,7 +110,7 @@ public class SystemStacker {
         var metrics = tempo.computeContentMetrics(attrFont);
 
         stackAboveWithRegions(systemExtents, tempo, metrics.regions(), xSs,
-            metrics.widthSs(), LayoutStylesheet.TEMPO_MARGIN_SS,
+            metrics.widthSs(), TEMPO_MARGIN_SS,
             staffPosition, builder);
     }
 
@@ -135,7 +146,7 @@ public class SystemStacker {
         var metrics = beatChange.computeContentMetrics(attrFont);
 
         stackAboveWithRegions(systemExtents, beatChange, metrics.regions(), xSs,
-            metrics.widthSs(), LayoutStylesheet.BEAT_CHANGE_MARGIN_SS,
+            metrics.widthSs(), BEAT_CHANGE_MARGIN_SS,
             staffPosition, builder);
     }
 
@@ -180,7 +191,7 @@ public class SystemStacker {
 
         stackAbove(systemExtents, annotation, xSs,
             widthSs, heightSs,
-            LayoutStylesheet.ANNOTATION_MARGIN_SS,
+            ANNOTATION_MARGIN_SS,
             staffPosition, builder);
     }
 }

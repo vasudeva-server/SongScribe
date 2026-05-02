@@ -62,7 +62,7 @@ public record SongLayoutMetrics(
 
     /** Y position of the staff bottom within a line component (component-local coordinates). */
     public double staffBottomYSsInLine() {
-        return staffTopYSsInLine() + LayoutStylesheet.STAFF_HEIGHT_SS;
+        return staffTopYSsInLine() + StaffExtents.STAFF_HEIGHT_SS;
     }
 
     /** Y position of the baseline for the given verse within a line component. */

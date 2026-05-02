@@ -58,7 +58,6 @@ import songscribe.prefs.Prefs;
 import songscribe.prefs.PrefsKey;
 import songscribe.ui.OptionDialogs;
 import songscribe.ui.action.InsertLineAction;
-import songscribe.ui.layout.LayoutStylesheet;
 import songscribe.ui.layout.PageModel;
 import songscribe.ui.layout.ScaleContext;
 import songscribe.util.MyFontUtils;
@@ -70,6 +69,15 @@ import songscribe.util.Utils;
  * SongScribe files.
  */
 public final class Song {
+
+    /**
+     * Default tempo Y for first line (-5 staff spaces above middle)
+     */
+    public static final double TEMPO_DEFAULT_Y_FIRST_LINE_SS = -5.0;  // -40px
+    /**
+     * Default tempo Y for subsequent lines (-3 staff spaces above middle)
+     */
+    public static final double TEMPO_DEFAULT_Y_OTHER_LINES_SS = -3.0;  // -24px
 
     public enum LANGUAGE {
         // Not used, the ordinals of the actual languages start at 1
@@ -231,7 +239,7 @@ public final class Song {
         initialLine.setKeyAccidentalCount(defaultKeyAccidentalCount);
         initialLine.setKeyType(defaultKeyType);
         initialLine.setTempoChangeYPosPx(
-            ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.TEMPO_DEFAULT_Y_FIRST_LINE_SS)
+            ScaleContext.getInstance().toRoundedPixels(TEMPO_DEFAULT_Y_FIRST_LINE_SS)
         );
         initialLine.addElement(newTerminalElement(ElementType.FINAL_DOUBLE_BARLINE));
         lines.add(initialLine);
@@ -355,8 +363,8 @@ public final class Song {
             if (line.getTempoChangeYPosPx() == 0) {
                 line.setTempoChangeYPosPx(
                     (lineIndex == 0)
-                        ? ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.TEMPO_DEFAULT_Y_FIRST_LINE_SS)
-                        : ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.TEMPO_DEFAULT_Y_OTHER_LINES_SS)
+                        ? ScaleContext.getInstance().toRoundedPixels(TEMPO_DEFAULT_Y_FIRST_LINE_SS)
+                        : ScaleContext.getInstance().toRoundedPixels(TEMPO_DEFAULT_Y_OTHER_LINES_SS)
                 );
             }
 
@@ -864,8 +872,8 @@ public final class Song {
                 if (line.getTempoChangeYPosPx() == 0) {
                     line.setTempoChangeYPosPx(
                         (lineIndex == 0)
-                            ? ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.TEMPO_DEFAULT_Y_FIRST_LINE_SS)
-                            : ScaleContext.getInstance().toRoundedPixels(LayoutStylesheet.TEMPO_DEFAULT_Y_OTHER_LINES_SS)
+                            ? ScaleContext.getInstance().toRoundedPixels(TEMPO_DEFAULT_Y_FIRST_LINE_SS)
+                            : ScaleContext.getInstance().toRoundedPixels(TEMPO_DEFAULT_Y_OTHER_LINES_SS)
                     );
                 }
             });
