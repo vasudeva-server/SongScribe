@@ -410,8 +410,9 @@ public final class LyricEditor extends MyJTextField {
             }
 
             focused = false;
+            var commitSpec = navigationCommitSpec();
             line.withModification(() -> {
-                commitInner(CommitKind.WORD_FINAL, Lyric.Extend.NONE);
+                commitInner(commitSpec.kind(), commitSpec.extend());
                 applyDismissAdjustment();
             });
             dismiss(false);
@@ -914,8 +915,9 @@ public final class LyricEditor extends MyJTextField {
         }
 
         focused = false;
+        var commitSpec = navigationCommitSpec();
         line.withModification(() -> {
-            commitInner(CommitKind.WORD_FINAL, Lyric.Extend.NONE);
+            commitInner(commitSpec.kind(), commitSpec.extend());
             applyDismissAdjustment();
         });
         dismiss(true);
