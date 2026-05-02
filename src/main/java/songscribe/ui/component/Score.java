@@ -45,6 +45,7 @@ import songscribe.music.EndingValidationResult;
 import songscribe.music.Line;
 import songscribe.music.StaffElement;
 import songscribe.ui.MusicEditOperations;
+import songscribe.message.mutation.FontChange;
 import songscribe.message.notification.SongDidChangeNotification;
 import songscribe.message.notification.DocumentDidLoadNotification;
 import songscribe.message.notification.MusicSelectionDidChangeNotification;
@@ -570,6 +571,25 @@ public final class Score
     @Handler(priority = TUPLET_INFO_CACHE_PRIORITY)
     public void songDidChangeCacheTupletInfo(SongDidChangeNotification message) {
         cachedTupletToggleInfo = operations != null ? operations.canToggleTuplet() : null;
+    }
+
+    @Handler
+    public void songDidChangeInvalidateLineLayouts(SongDidChangeNotification message) {
+        if (!message.hasMutationOf(FontChange.class) || song == null) {
+            return;
+        }
+
+        // Rebuild metrics before invalidating so that LineComponent.getPreferredSize()
+        // calls performLayout() with up-to-date measurements during the layout pass.
+        rebuildLyricRenderMetrics();
+
+        for (var i = 0; i < song.lineCount(); i++) {
+            var lineComponent = getLineComponent(i);
+
+            if (lineComponent != null) {
+                lineComponent.invalidateLayout();
+            }
+        }
     }
 
     @Handler(priority = TUPLET_INFO_CACHE_PRIORITY)
@@ -1142,6 +1162,30 @@ public final class Score
 
     public void setLyricRenderMetrics(LyricRenderMetrics metrics) {
         this.lyricRenderMetrics = metrics;
+    }
+
+    /**
+     * Rebuilds {@link LyricRenderMetrics} from the current lyrics font if it has changed.
+     * Must be called before any line layout runs so that {@link LineComponent#performLayout}
+     * reads up-to-date hyphen and space widths.
+     */
+    public void rebuildLyricRenderMetrics() {
+        if (song == null) {
+            return;
+        }
+
+        var lyricsFont = song.getLyricsFont();
+
+        if (lyricRenderMetrics != null && lyricRenderMetrics.lyricsFont().equals(lyricsFont)) {
+            return;
+        }
+
+        var scale = ScaleContext.getInstance();
+        setLyricRenderMetrics(new LyricRenderMetrics(
+            lyricsFont,
+            scale.scaleFont(lyricsFont),
+            scale.textWidthSs(lyricsFont, "-"),
+            scale.textWidthSs(lyricsFont, "  ")));
     }
 
     @Nullable
