@@ -970,7 +970,7 @@ public final class PreviewElementManager {
 
     /**
      * Replaces an existing element entirely with the current preview element.
-     * Only the x position is preserved from the existing element; all other attributes
+     * The x position and lyrics are preserved from the existing element; all other attributes
      * (type, duration, dots, beaming, ties) come from the preview element.
      * Called when the user clicks on an existing element head with the preview element active.
      *
@@ -998,9 +998,13 @@ public final class PreviewElementManager {
             return;
         }
 
-        // Preserve the existing element's x position
+        // Preserve the existing element's x position and lyrics
         var existing = line.getElement(elementIndex);
         previewElement.setXOffsetPx(existing.getXOffsetPx());
+
+        for (var lyric : existing.getLyrics()) {
+            previewElement.setLyricForVerse(lyric.verse(), lyric.syllabic(), lyric.compound(), lyric.text(), lyric.extend());
+        }
 
         // Rests snap to their default staff position; pitched notes use the mouse Y position
         applyStaffPosition(previewElement, currentStaffPosition);
