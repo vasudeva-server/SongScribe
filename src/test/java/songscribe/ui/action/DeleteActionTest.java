@@ -45,9 +45,11 @@ class DeleteActionTest extends UnitTest {
     @BeforeEach
     void setUp() {
         mainFrameMock = mockStatic(MainFrame.class);
+        env = MockEnvHelper.setupMockEnv(mainFrameMock);
+        // Must follow MainFrame setup: PlaybackController's static initializer creates
+        // playback actions that call MainFrame.getInstance().getRootPane().
         playbackControllerMock = mockStatic(PlaybackController.class);
         playbackControllerMock.when(PlaybackController::isPlaying).thenReturn(false);
-        env = MockEnvHelper.setupMockEnv(mainFrameMock);
     }
 
     @AfterEach
