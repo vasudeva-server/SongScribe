@@ -951,28 +951,8 @@ public final class LyricEditor extends MyJTextField {
             return;
         }
 
-        // Common case: walk back to the first lyric-bearing predecessor and repair
-        // whichever dangling chain marker (extender or syllable) is left behind.
-        var backIndex = findPreviousLyricBearingIndex(currentIndex);
-
-        if (backIndex < 0) {
-            return;
-        }
-
-        var backLyric = line.getElement(backIndex).getLyricForVerse(CURRENT_VERSE);
-
-        if (backLyric == null) {
-            return;
-        }
-
-        if (backLyric.extend() == Lyric.Extend.CONTINUE) {
-            rewriteLyricExtend(backIndex, backLyric, Lyric.Extend.STOP);
-            return;
-        }
-
-        if (isWordContinuing(backLyric) && !hasFollowingTextBearing(backIndex)) {
-            line.setSyllableBoundary(backIndex, CURRENT_VERSE, true, false);
-        }
+        // Common case: repair any dangling chain marker left on a predecessor.
+        line.adjustNeighborsForLyricDeletion(currentIndex, CURRENT_VERSE);
     }
 
     private void terminatePrecedingContinueChain(int currentIndex) {
@@ -1024,24 +1004,6 @@ public final class LyricEditor extends MyJTextField {
                 existing.syllabic(), existing.compound(), existing.text(), newExtend));
     }
 
-    private static boolean isWordContinuing(Lyric lyric) {
-        return lyric.syllabic() == Lyric.Syllabic.BEGIN
-            || lyric.syllabic() == Lyric.Syllabic.MIDDLE
-            || lyric.compound();
-    }
-
-    private boolean hasFollowingTextBearing(int fromIndex) {
-        var forwardIndex = findNextLyricBearingIndex(fromIndex);
-
-        if (forwardIndex < 0) {
-            return false;
-        }
-
-        var forwardLyric = line.getElement(forwardIndex).getLyricForVerse(CURRENT_VERSE);
-
-        return forwardLyric != null && forwardLyric.syllabic() != null;
-    }
-
     /**
      * Removes the editor from its parent, clears the active-editor reference on
      * {@code Score}, and repaints the vacated region.
@@ -1081,22 +1043,6 @@ public final class LyricEditor extends MyJTextField {
      */
     private int findPreviousLyricBearingIndex(int fromIndex) {
         for (var i = fromIndex - 1; i >= 0; i--) {
-            if (line.getElement(i).getLyricForVerse(CURRENT_VERSE) != null) {
-                return i;
-            }
-        }
-
-        return -1;
-    }
-
-    /**
-     * Walks forward from {@code fromIndex + 1} and returns the index of the first
-     * element whose {@code CURRENT_VERSE} lyric is non-null, or {@code -1} if none.
-     */
-    private int findNextLyricBearingIndex(int fromIndex) {
-        var effectiveCount = line.effectiveElementCount();
-
-        for (var i = fromIndex + 1; i < effectiveCount; i++) {
             if (line.getElement(i).getLyricForVerse(CURRENT_VERSE) != null) {
                 return i;
             }

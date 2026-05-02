@@ -386,12 +386,14 @@ public final class ScoreMessageCoordinator {
             var element = lyricSelection.element();
             var line = element.getLine();
             var index = line.getElementIndex(element);
+            var verse = lyricSelection.verse();
 
             if (index >= 0) {
-                song.withModification(() ->
+                song.withModification(() -> {
                     line.modifyElement(index, ElementField.LYRIC, () ->
-                        line.getElement(index).setLyricForVerse(
-                            lyricSelection.verse(), null, false, "", Lyric.Extend.NONE)));
+                        line.getElement(index).setLyricForVerse(verse, null, false, "", Lyric.Extend.NONE));
+                    line.adjustNeighborsForLyricDeletion(index, verse);
+                });
             }
 
             selectionCoordinator.clearSavedActionStates();

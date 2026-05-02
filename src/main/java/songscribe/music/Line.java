@@ -732,6 +732,88 @@ public class Line {
         return -1;
     }
 
+    private int previousLyricBearingIndex(int fromIndex, int verse) {
+        for (var i = fromIndex - 1; i >= 0; i--) {
+            if (elements.get(i).getLyricForVerse(verse) != null) {
+                return i;
+            }
+        }
+
+        return -1;
+    }
+
+    private static boolean isWordContinuingLyric(Lyric lyric) {
+        return lyric.syllabic() == Lyric.Syllabic.BEGIN
+            || lyric.syllabic() == Lyric.Syllabic.MIDDLE
+            || lyric.compound();
+    }
+
+    private boolean hasFollowingTextBearingLyric(int fromIndex, int verse) {
+        var forwardIndex = nextLyricBearingIndex(fromIndex, verse);
+
+        if (forwardIndex < 0) {
+            return false;
+        }
+
+        var forwardLyric = elements.get(forwardIndex).getLyricForVerse(verse);
+        return forwardLyric != null && forwardLyric.syllabic() != null;
+    }
+
+    /**
+     * Repairs syllabic chain markers on the neighbors of a just-deleted verse lyric.
+     * Must be called inside a modification bracket, after the lyric at {@code index}
+     * has already been cleared.
+     */
+    public void adjustNeighborsForLyricDeletion(int index, int verse) {
+        var backIndex = previousLyricBearingIndex(index, verse);
+
+        if (backIndex >= 0) {
+            var backLyric = elements.get(backIndex).getLyricForVerse(verse);
+
+            if (backLyric == null) {
+                return;
+            }
+
+            if (backLyric.extend() == Lyric.Extend.CONTINUE) {
+                var backElement = elements.get(backIndex);
+                modifyElement(backIndex, ElementField.LYRIC, () ->
+                    backElement.setLyricForVerse(verse,
+                        backLyric.syllabic(), backLyric.compound(), backLyric.text(),
+                        Lyric.Extend.STOP));
+                return;
+            }
+
+            if (isWordContinuingLyric(backLyric) && !hasFollowingTextBearingLyric(backIndex, verse)) {
+                // setSyllableBoundary also adjusts the next lyric-bearing element.
+                setSyllableBoundary(backIndex, verse, true, false);
+            }
+
+            return;
+        }
+
+        // No predecessor — fix the successor if it now lacks a continuing predecessor.
+        var nextIndex = nextLyricBearingIndex(index, verse);
+
+        if (nextIndex < 0) {
+            return;
+        }
+
+        var nextLyric = elements.get(nextIndex).getLyricForVerse(verse);
+
+        if (nextLyric == null || nextLyric.syllabic() == null) {
+            return;
+        }
+
+        var nextContinues = nextLyric.syllabic() == Lyric.Syllabic.MIDDLE
+            || nextLyric.syllabic() == Lyric.Syllabic.BEGIN;
+        var newSyllabic = nextContinues ? Lyric.Syllabic.BEGIN : Lyric.Syllabic.SINGLE;
+
+        if (newSyllabic != nextLyric.syllabic()) {
+            modifyElement(nextIndex, ElementField.LYRIC, () ->
+                replaceSyllabicAndCompound(nextIndex, verse, newSyllabic, nextLyric.compound()));
+        }
+    }
+
     private static int findLyricIndexForVerse(StaffElement element, int verse) {
         var lyrics = element.properties.lyrics;
 
