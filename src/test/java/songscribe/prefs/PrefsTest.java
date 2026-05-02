@@ -22,8 +22,12 @@ package songscribe.prefs;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
+import com.google.gson.JsonParser;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
@@ -37,17 +41,23 @@ class PrefsTest extends UnitTest {
     }
 
     @Test
-    void testFontDefaultsExist() {
-        var prefs = Prefs.getInstance();
+    void testAllKeysExistInDefaults() throws IOException {
+        var stream = Prefs.class.getResourceAsStream("/conf/defaults.json");
+        assertThat(stream).isNotNull();
 
-        assertThat(prefs.getString(PrefsKey.TITLE_FONT)).isEqualTo("LatoPlus-Bold");
-        assertThat(prefs.getInt(PrefsKey.TITLE_FONT_SIZE)).isEqualTo(30);
-        assertThat(prefs.getString(PrefsKey.LYRICS_FONT)).isEqualTo("LatoPlus-Regular");
-        assertThat(prefs.getInt(PrefsKey.LYRICS_FONT_SIZE)).isEqualTo(17);
-        assertThat(prefs.getString(PrefsKey.ATTRIBUTION_FONT)).isEqualTo("LatoPlus-Regular");
-        assertThat(prefs.getInt(PrefsKey.ATTRIBUTION_FONT_SIZE)).isEqualTo(15);
-        assertThat(prefs.getString(PrefsKey.ANNOTATION_FONT)).isEqualTo("LatoPlus-Regular");
-        assertThat(prefs.getInt(PrefsKey.ANNOTATION_FONT_SIZE)).isEqualTo(15);
+        try (var reader = new InputStreamReader(stream, StandardCharsets.UTF_8)) {
+            var defaults = JsonParser.parseReader(reader).getAsJsonObject();
+
+            for (var key : PrefsKey.values()) {
+                if (key == PrefsKey.ALL) {
+                    continue;
+                }
+
+                assertThat(defaults.has(key.key()))
+                    .as("'%s' missing from defaults.json", key.key())
+                    .isTrue();
+            }
+        }
     }
 
     @Test
