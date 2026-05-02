@@ -881,6 +881,14 @@ public final class SelectionCoordinator {
      */
     @Handler(priority = Message.LOW_PRIORITY)
     public void musicSelectionDidChangeReflectSelection(MusicSelectionDidChangeNotification message) {
+        triggerReflection();
+    }
+
+    /**
+     * Reflects the current selection onto all reflectable toolbar actions.
+     * Package-private so tests can trigger reflection directly without a notification.
+     */
+    void triggerReflection() {
         var actions = getReflectableActions();
         var selection = getSelection();
 

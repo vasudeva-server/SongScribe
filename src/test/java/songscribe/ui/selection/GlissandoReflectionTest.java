@@ -104,7 +104,7 @@ class GlissandoReflectionTest extends UnitTest {
 
         // Select glissando (saves state, then reflection modifies it)
         ReflectionTestHelper.selectGlissando(coordinator, 0);
-        coordinator.musicSelectionDidChangeReflectSelection(null);
+        coordinator.triggerReflection();
 
         // Verify reflection changed state
         assertThat(crotchetAction.isEnabled()).isFalse();
@@ -124,7 +124,7 @@ class GlissandoReflectionTest extends UnitTest {
     void testConnectedGlissandoSelectedReflectsGlissandoAction() {
         var coordinator = createCoordinatorWithGlissando(StaffElement.Glissando.Type.CONNECTED);
         ReflectionTestHelper.selectGlissando(coordinator, 0);
-        coordinator.musicSelectionDidChangeReflectSelection(null);
+        coordinator.triggerReflection();
 
         assertSelectedAndEnabled(glissandoAction, true, true);
         assertSelectedAndEnabled(slideOutAction, false, false);
@@ -141,7 +141,7 @@ class GlissandoReflectionTest extends UnitTest {
         // When CONNECTED is selected, SLIDE_OUT should be disabled
         var coordinator = createCoordinatorWithGlissando(StaffElement.Glissando.Type.CONNECTED);
         ReflectionTestHelper.selectGlissando(coordinator, 0);
-        coordinator.musicSelectionDidChangeReflectSelection(null);
+        coordinator.triggerReflection();
 
         assertSelectedAndEnabled(glissandoAction, true, true);
         assertSelectedAndEnabled(slideOutAction, false, false);
@@ -149,7 +149,7 @@ class GlissandoReflectionTest extends UnitTest {
         // And vice versa
         var coordinator2 = createCoordinatorWithGlissando(StaffElement.Glissando.Type.SLIDE_OUT);
         ReflectionTestHelper.selectGlissando(coordinator2, 0);
-        coordinator2.musicSelectionDidChangeReflectSelection(null);
+        coordinator2.triggerReflection();
 
         assertSelectedAndEnabled(slideOutAction, true, true);
         assertSelectedAndEnabled(glissandoAction, false, false);
@@ -161,7 +161,7 @@ class GlissandoReflectionTest extends UnitTest {
 
         // Select the note itself, not its glissando
         ReflectionTestHelper.selectNote(coordinator, 0);
-        coordinator.musicSelectionDidChangeReflectSelection(null);
+        coordinator.triggerReflection();
 
         // Normal reflection: crotchet should be selected (it's a crotchet note)
         assertThat(crotchetAction.isSelected()).isTrue();
@@ -174,7 +174,7 @@ class GlissandoReflectionTest extends UnitTest {
     void testSlideOutSelectedReflectsSlideOutAction() {
         var coordinator = createCoordinatorWithGlissando(StaffElement.Glissando.Type.SLIDE_OUT);
         ReflectionTestHelper.selectGlissando(coordinator, 0);
-        coordinator.musicSelectionDidChangeReflectSelection(null);
+        coordinator.triggerReflection();
 
         assertSelectedAndEnabled(slideOutAction, true, true);
         assertSelectedAndEnabled(glissandoAction, false, false);
@@ -199,7 +199,7 @@ class GlissandoReflectionTest extends UnitTest {
 
             // Select glissando — this should save states
             ReflectionTestHelper.selectGlissando(coordinator, 0);
-            coordinator.musicSelectionDidChangeReflectSelection(null);
+            coordinator.triggerReflection();
 
             // Fermata should now be disabled by reflection
             assertThat(fermataAction.isEnabled()).isFalse();

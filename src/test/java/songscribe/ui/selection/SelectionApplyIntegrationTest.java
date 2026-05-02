@@ -260,7 +260,7 @@ class SelectionApplyIntegrationTest extends UnitTest {
             ReflectionTestHelper.selectRange(coordinator, 0, 1);
 
             // Reflect — sharp not selected (not all match), flat not selected (not all match)
-            coordinator.musicSelectionDidChangeReflectSelection(null);
+            coordinator.triggerReflection();
             assertThat(SHARP_ACTION.isSelected()).isFalse();
             assertThat(FLAT_ACTION.isSelected()).isFalse();
 
@@ -287,7 +287,7 @@ class SelectionApplyIntegrationTest extends UnitTest {
             ReflectionTestHelper.selectRange(coordinator, 0, 2);
 
             // Reflect — should show no duration selected (mixed quaver/semiquaver)
-            coordinator.musicSelectionDidChangeReflectSelection(null);
+            coordinator.triggerReflection();
             assertThat(QUARTER_ACTION.isSelected()).isFalse();
             assertThat(HALF_ACTION.isSelected()).isFalse();
 
@@ -544,14 +544,14 @@ class SelectionApplyIntegrationTest extends UnitTest {
 
             // Select and reflect — saves state for both managed actions
             ReflectionTestHelper.selectNote(coordinator, 0);
-            coordinator.musicSelectionDidChangeReflectSelection(null);
+            coordinator.triggerReflection();
 
             // Simulate flag chain disabling the non-reflectable action
             flaggedAction.setEnabled(false);
 
             // Clear and reflect — both actions should be restored
             ReflectionTestHelper.clearSelection(coordinator);
-            coordinator.musicSelectionDidChangeReflectSelection(null);
+            coordinator.triggerReflection();
 
             assertThat(flaggedAction.isEnabled())
                 .as("non-reflectable action enabled state restored")
@@ -578,7 +578,7 @@ class SelectionApplyIntegrationTest extends UnitTest {
 
             // Select and reflect — saves state, then reflects
             ReflectionTestHelper.selectNote(coordinator, 0);
-            coordinator.musicSelectionDidChangeReflectSelection(null);
+            coordinator.triggerReflection();
 
             // Note has FLAT, so SHARP=false, FLAT=true
             assertThat(sharpAction.isSelected()).isFalse();
@@ -594,7 +594,7 @@ class SelectionApplyIntegrationTest extends UnitTest {
 
             // Clear selection and reflect — restores pre-selection state
             ReflectionTestHelper.clearSelection(coordinator);
-            coordinator.musicSelectionDidChangeReflectSelection(null);
+            coordinator.triggerReflection();
 
             assertThat(sharpAction.isSelected()).as("sharp restored to pre-selection selected").isFalse();
             assertThat(sharpAction.isEnabled()).as("sharp restored to pre-selection enabled").isTrue();
