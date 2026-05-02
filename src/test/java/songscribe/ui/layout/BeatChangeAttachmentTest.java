@@ -82,7 +82,7 @@ class BeatChangeAttachmentTest extends UnitTest {
             var equals = metrics.regions().get(1);
 
             assertThat(equals.xOffsetSs())
-                .isEqualTo(leftNote.widthSs() + MetronomeAttachment.EQUALS_GAP_SS);
+                .isEqualTo(leftNote.widthSs());
             assertThat(equals.widthSs()).isGreaterThan(0.0);
         }
 
@@ -94,7 +94,7 @@ class BeatChangeAttachmentTest extends UnitTest {
             var rightNote = metrics.regions().get(2);
 
             assertThat(rightNote.xOffsetSs())
-                .isEqualTo(equals.xOffsetSs() + equals.widthSs() + MetronomeAttachment.EQUALS_GAP_SS);
+                .isEqualTo(equals.xOffsetSs() + equals.widthSs());
             assertThat(rightNote.yOffsetSs()).isEqualTo(0.0);
             assertThat(rightNote.heightSs()).isEqualTo(MetronomeAttachment.QUARTER_NOTE_HEIGHT_SS);
             assertThat(rightNote.widthSs()).isGreaterThan(0.0);
@@ -107,9 +107,7 @@ class BeatChangeAttachmentTest extends UnitTest {
             var regions = metrics.regions();
 
             double expectedWidth = regions.get(0).widthSs()
-                + MetronomeAttachment.EQUALS_GAP_SS
                 + regions.get(1).widthSs()
-                + MetronomeAttachment.EQUALS_GAP_SS
                 + regions.get(2).widthSs();
 
             assertThat(metrics.widthSs()).isCloseTo(expectedWidth, within(EPSILON));

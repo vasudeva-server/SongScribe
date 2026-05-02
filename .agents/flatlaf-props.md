@@ -21,7 +21,7 @@ SongScribe.scorePanel.background = #c0c0c0
 
 ### Accessing Properties
 
-A build plugin generates `FlatLafKeys.java` with a `public static final String` constant per property. Run `./scripts/compile.sh` after adding new properties.
+A build plugin generates `target/generated-sources/ui/FlatLafKeys.java` with a `public static final String` constant per property. Run `./scripts/compile.sh` after adding new properties.
 
 Read values with `FlatLafProps.get(key)` — the return type is inferred from the assignment target:
 

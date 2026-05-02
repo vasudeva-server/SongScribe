@@ -102,16 +102,16 @@ public class BeatChangeAttachment extends MetronomeAttachment {
         var equalsLm = attrFont.getLineMetrics("=", GraphicUtils.SCREEN_FRC);
         double equalsAscentSs = scale.fromPixels(equalsLm.getAscent());
         double equalsDescentSs = scale.fromPixels(equalsLm.getDescent());
-        double equalsXOffsetSs = leftNoteWidthSs + EQUALS_GAP_SS;
+        double equalsXOffsetSs = leftNoteWidthSs;
         double equalsYOffsetSs = QUARTER_NOTE_HEIGHT_SS - equalsAscentSs;
         regions.add(new CollisionRegion(
             equalsXOffsetSs, equalsYOffsetSs, equalsWidthSs, equalsAscentSs + equalsDescentSs));
 
-        double rightNoteXOffsetSs = equalsXOffsetSs + equalsWidthSs + EQUALS_GAP_SS;
+        double rightNoteXOffsetSs = equalsXOffsetSs + equalsWidthSs;
         regions.add(new CollisionRegion(rightNoteXOffsetSs, 0, rightNoteWidthSs, QUARTER_NOTE_HEIGHT_SS));
 
         double totalWidthSs =
-            leftNoteWidthSs + EQUALS_GAP_SS + equalsWidthSs + EQUALS_GAP_SS + rightNoteWidthSs;
+            leftNoteWidthSs + equalsWidthSs + rightNoteWidthSs;
 
         return new ContentMetrics(totalWidthSs, regions);
     }

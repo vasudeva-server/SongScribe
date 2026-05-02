@@ -153,10 +153,10 @@ public abstract class MetronomeRenderer extends BaseElementRenderer<StaffElement
             g2.setFont(TEMPO_NOTE_FONT);
             g2.drawString(metGlyph.asString(), (float) xSs, (float) glyphOriginYSs);
             xSs += metadata.requireAdvanceWidth(metGlyph) * MetronomeAttachment.NOTE_SCALE;
+            var dotAdvanceSs = MetronomeAttachment.dotAdvanceWidthSs(metadata);
+            xSs += dotAdvanceSs;
 
             if (note.getDotCount() > 0) {
-                var dotAdvanceSs = MetronomeAttachment.dotAdvanceWidthSs(metadata);
-                xSs += dotAdvanceSs;
                 g2.drawString(
                     SMuFLGlyph.MET_AUGMENTATION_DOT.asString(),
                     (float) xSs,
@@ -164,15 +164,13 @@ public abstract class MetronomeRenderer extends BaseElementRenderer<StaffElement
                 xSs += dotAdvanceSs;
             }
 
-            xSs += MetronomeAttachment.EQUALS_GAP_SS;
-
             var scale = ScaleContext.getInstance();
             g2.setFont(scale.scaleFont(attrFont));
-            g2.drawString("=", (float) xSs, (float) textBaselineYSs);
+            g2.drawString(MetronomeAttachment.EQUALS_STR, (float) xSs, (float) textBaselineYSs);
 
             double equalsWidthSs = scale.fromPixels(
-                attrFont.getStringBounds("=", g2.getFontRenderContext()).getWidth());
-            xSs += equalsWidthSs + MetronomeAttachment.EQUALS_GAP_SS;
+                attrFont.getStringBounds(MetronomeAttachment.EQUALS_STR, g2.getFontRenderContext()).getWidth());
+            xSs += equalsWidthSs;
         }
 
         return xSs;

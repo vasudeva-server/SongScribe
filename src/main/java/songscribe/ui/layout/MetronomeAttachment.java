@@ -48,9 +48,8 @@ public abstract class MetronomeAttachment extends Attachment {
     private static final BBox QUARTER_NOTE_BBOX =
         SMuFLMetadata.getInstance().requireBBox(SMuFLGlyph.MET_NOTE_QUARTER_UP);
 
-    /** Gap on each side of "=" in tempo markings and beat changes, in staff-space units. */
-    public static final float EQUALS_GAP_SS =
-        FlatLafProps.get(FlatLafKeys.SCORE_EQUALS_GAP);
+    /** " = " in tempo markings and beat changes. */
+    public static final String EQUALS_STR = " = ";
 
     /** Content height derived from the quarter note glyph, scaled to metronome note size. */
     public static final double QUARTER_NOTE_HEIGHT_SS = QUARTER_NOTE_BBOX.height() * NOTE_SCALE;
