@@ -504,6 +504,12 @@ public class LineComponent extends ScoreComponent
             return;
         }
 
+        if (getScore().getMode() == Mode.EDIT && isYInLyricBounds(e.getY())) {
+            clearPreviewElement();
+            setCursor(Cursor.getDefaultCursor());
+            return;
+        }
+
         PreviewElementManager.trackMouse(this, e);
     }
 
@@ -701,6 +707,21 @@ public class LineComponent extends ScoreComponent
     }
 
     private LayoutResult.@Nullable LyricHit hitTestLyric(java.awt.Point pointPx) {
+        var ready = readyLayout();
+        return ready != null
+            ? ready.layoutResult().hitTestLyric(getScore().getLyricRenderMetrics(), ready.line(), pointPx)
+            : null;
+    }
+
+    private boolean isYInLyricBounds(int pointYPx) {
+        var ready = readyLayout();
+        return ready != null
+            && ready.layoutResult().isYInLyricBounds(getScore().getLyricRenderMetrics(), pointYPx);
+    }
+
+    private record ReadyLayout(Line line, LayoutResult layoutResult) {}
+
+    private @Nullable ReadyLayout readyLayout() {
         if (line == null) {
             return null;
         }
@@ -711,7 +732,7 @@ public class LineComponent extends ScoreComponent
             return null;
         }
 
-        return layoutResult.hitTestLyric(line, pointPx);
+        return new ReadyLayout(line, layoutResult);
     }
 
     /**

@@ -22,7 +22,6 @@ package songscribe.ui.layout;
 
 import module java.desktop;
 
-import java.awt.Font;
 import java.awt.geom.Point2D;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -623,37 +622,49 @@ public final class LayoutResult {
         return boxes != null ? boxes : List.of();
     }
 
-    public @Nullable LyricHit hitTestLyric(Line line, Point2D pointPx) {
-        var lyricsFont = line.getSong() != null
-            ? line.getSong().getLyricsFont()
-            : new Font(Font.DIALOG, Font.PLAIN, 12);
+    public @Nullable LyricHit hitTestLyric(LyricRenderMetrics lyricRenderMetrics, Line line, Point2D pointPx) {
         var scaleContext = ScaleContext.getInstance();
-        var ascentSs = scaleContext.fontAscentSs(lyricsFont);
-        var descentSs = scaleContext.fontDescentSs(lyricsFont);
+        var rowHeightSs = lyricRenderMetrics.lyricBoxHeightSs();
+        var baseYSs = lyricAreaBaseYSs();
         var pointXSs = scaleContext.fromPixels(pointPx.getX());
         var pointYSs = scaleContext.fromPixels(pointPx.getY());
 
         for (var element : line.getElements()) {
             for (var box : getLyricBoxes(element)) {
-                var baselineYSs = aboveStaffSs
-                    + StaffExtents.STAFF_HEIGHT_SS
-                    + belowContentSs
-                    + SongLayoutMetricsBuilder.LYRICS_ROW_MARGIN_SS
-                    + ascentSs
-                    + (box.verseIndex() - 1) * (ascentSs + descentSs);
-                var topYSs = baselineYSs - ascentSs;
-                var bottomYSs = baselineYSs + descentSs;
+                var rowTopYSs = baseYSs + (box.verseIndex() - 1) * rowHeightSs;
+                var rowBottomYSs = rowTopYSs + rowHeightSs;
 
                 if (pointXSs >= box.xSs()
                     && pointXSs <= box.xSs() + box.widthSs()
-                    && pointYSs >= topYSs
-                    && pointYSs <= bottomYSs) {
+                    && pointYSs >= rowTopYSs
+                    && pointYSs <= rowBottomYSs) {
                     return new LyricHit(element, box.verseIndex());
                 }
             }
         }
 
         return null;
+    }
+
+    /**
+     * Returns true if {@code pointYPx} (in pixels) falls within the vertical extent
+     * of the lyric area on this line, regardless of X position.
+     * Returns false if the line has no lyrics.
+     */
+    public boolean isYInLyricBounds(LyricRenderMetrics lyricRenderMetrics, double pointYPx) {
+        if (verseCount == 0) {
+            return false;
+        }
+
+        var rowHeightSs = lyricRenderMetrics.lyricBoxHeightSs();
+        var baseYSs = lyricAreaBaseYSs();
+        var pointYSs = ScaleContext.getInstance().fromPixels(pointYPx);
+
+        return pointYSs >= baseYSs && pointYSs <= baseYSs + verseCount * rowHeightSs;
+    }
+
+    private double lyricAreaBaseYSs() {
+        return aboveStaffSs + StaffExtents.STAFF_HEIGHT_SS + belowContentSs + SongLayoutMetricsBuilder.LYRICS_ROW_MARGIN_SS;
     }
 
     /**

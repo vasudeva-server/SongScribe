@@ -136,7 +136,10 @@ class LayoutResultTest extends UnitTest {
             .addLyricBox(element, box)
             .build();
 
+        var lyricsFont = song.getLyricsFont();
+        var lyricRenderMetrics = new LyricRenderMetrics(lyricsFont, lyricsFont, 0.0, 0.0);
         var hit = layoutResult.hitTestLyric(
+            lyricRenderMetrics,
             line,
             new Point2D.Double(
                 ScaleContext.getInstance().toRoundedPixels(4.0),
@@ -162,7 +165,10 @@ class LayoutResultTest extends UnitTest {
             .addLyricBox(element, box)
             .build();
 
+        var lyricsFont = song.getLyricsFont();
+        var lyricRenderMetrics = new LyricRenderMetrics(lyricsFont, lyricsFont, 0.0, 0.0);
         var hit = layoutResult.hitTestLyric(
+            lyricRenderMetrics,
             line,
             new Point2D.Double(
                 ScaleContext.getInstance().toRoundedPixels(5.5),
