@@ -1,9 +1,9 @@
 {
-  "annotationFont": "LatoPlus-Regular",
-  "annotationFontSize": 15,
+  "annotationFont": "SourceSans3-Regular",
+  "annotationFontSize": 17,
   "appearance": "system",
-  "attributionFont": "LatoPlus-Regular",
-  "attributionFontSize": 15,
+  "attributionFont": "SourceSans3-Regular",
+  "attributionFontSize": 18,
   "autoSaveAfterStripShortA": true,
   "control": "MOUSE",
   "dialogGeometry": {},
@@ -13,8 +13,8 @@
   "instrument": 0,
   "lastSeenWhatsNewVersion": "",
   "loopPlayback": false,
-  "lyricsFont": "LatoPlus-Regular",
-  "lyricsFontSize": 17,
+  "lyricsFont": "SourceSans3-Regular",
+  "lyricsFontSize": 18,
   "metric": false,
   "pageSize": "letter",
   "playSelectedNote": true,
@@ -27,6 +27,6 @@
   "stripShortA": true,
   "tempoChangePercent": 100,
   "tipIndex": 0,
-  "titleFont": "LatoPlus-Bold",
-  "titleFontSize": 30
+  "titleFont": "SourceSans3-SemiBold",
+  "titleFontSize": 32
 }
