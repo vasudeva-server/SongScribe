@@ -95,7 +95,7 @@ public abstract class MetronomeRenderer extends BaseElementRenderer<StaffElement
         var color = getDecorationColor(element, ctx);
         var decorationLayout = requireDecorationLayout(element, attachmentClass, ctx);
         double ySs = layoutYToComponentYSs(decorationLayout.ySs(), ctx);
-        var attrFont = ctx.getSong().getAttributionFont();
+        var attrFont = ctx.getSong().getAnnotationFont();
 
         return new RenderSetup(color, decorationLayout, ySs, attrFont);
     }
