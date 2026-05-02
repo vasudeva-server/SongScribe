@@ -25,11 +25,15 @@ import static songscribe.ui.renderer.GraphicsState.Property.STROKE;
 
 import module java.desktop;
 
+import java.awt.font.GlyphVector;
 import java.awt.geom.Line2D;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import songscribe.ui.layout.LyricConnectorLayout;
 import songscribe.ui.layout.LyricRenderMetrics;
 import songscribe.ui.layout.SongLayoutMetrics;
+import songscribe.util.GraphicUtils;
 
 /**
  * Renders line-level lyric connectors (syllable hyphens and melisma extenders).
@@ -57,6 +61,11 @@ public class LyricConnectorRenderer {
         BasicStroke.JOIN_MITER);
 
     private static final LyricConnectorRenderer INSTANCE = new LyricConnectorRenderer();
+
+    // Cache of pre-shaped hyphen glyphs keyed by scaled lyrics font. The font changes
+    // only when the user changes the lyrics font or zoom, so the cache is small in
+    // practice and trades a few-byte map for repeated drawString shaping.
+    private final Map<Font, GlyphVector> hyphenGlyphVectors = new ConcurrentHashMap<>();
 
     // ==========================================================================
     // Construction
@@ -88,6 +97,7 @@ public class LyricConnectorRenderer {
 
         var metrics = ctx.getSongLayoutMetrics();
         var lyricRenderMetrics = ctx.getLyricRenderMetrics();
+        var hyphenGv = getHyphenGlyphVector(lyricRenderMetrics.scaledLyricsFont());
 
         try (var ignored = GraphicsState.save(g2, STROKE, FONT)) {
             g2.setFont(lyricRenderMetrics.scaledLyricsFont());
@@ -97,36 +107,54 @@ public class LyricConnectorRenderer {
                 var ySs = metrics.verseYSsInLine(connector.verseIndex());
 
                 switch (connector.kind()) {
-                    case HYPHEN -> drawHyphen(g2, connector, ySs, lyricRenderMetrics);
+                    case HYPHEN -> drawHyphen(g2, connector, ySs, lyricRenderMetrics, hyphenGv);
+                    case DANGLING_HYPHEN -> drawSingleCenteredHyphen(g2, connector, ySs, lyricRenderMetrics, hyphenGv);
                     case EXTENDER -> drawExtender(g2, connector, ySs);
                 }
             }
         }
     }
 
+    private GlyphVector getHyphenGlyphVector(Font scaledLyricsFont) {
+        return hyphenGlyphVectors.computeIfAbsent(
+            scaledLyricsFont,
+            font -> font.createGlyphVector(GraphicUtils.SCREEN_FRC, "-"));
+    }
+
     private static void drawHyphen(
         Graphics2D g2,
         LyricConnectorLayout connector,
         double ySs,
-        LyricRenderMetrics metrics
+        LyricRenderMetrics metrics,
+        GlyphVector hyphenGv
     ) {
-        var hyphenWidthSs = metrics.hyphenWidthSs();
         var gapSs = connector.endXSs() - connector.startXSs();
         var preferredCellWidthSs = metrics.preferredHyphenCellWidthSs();
         var count = (int) Math.floor(gapSs / preferredCellWidthSs);
 
         if (count <= 1) {
-            var centerXSs = (connector.startXSs() + connector.endXSs()) / 2.0;
-            g2.drawString("-", (float) (centerXSs - hyphenWidthSs / 2.0), (float) ySs);
+            drawSingleCenteredHyphen(g2, connector, ySs, metrics, hyphenGv);
             return;
         }
 
+        var hyphenWidthSs = metrics.hyphenWidthSs();
         var offsetSs = (gapSs - count * preferredCellWidthSs) / 2.0;
 
         for (var i = 0; i < count; i++) {
             var cellCenterXSs = connector.startXSs() + offsetSs + (i + 0.5) * preferredCellWidthSs;
-            g2.drawString("-", (float) (cellCenterXSs - hyphenWidthSs / 2.0), (float) ySs);
+            g2.drawGlyphVector(hyphenGv, (float) (cellCenterXSs - hyphenWidthSs / 2.0), (float) ySs);
         }
+    }
+
+    private static void drawSingleCenteredHyphen(
+        Graphics2D g2,
+        LyricConnectorLayout connector,
+        double ySs,
+        LyricRenderMetrics metrics,
+        GlyphVector hyphenGv
+    ) {
+        var centerXSs = (connector.startXSs() + connector.endXSs()) / 2.0;
+        g2.drawGlyphVector(hyphenGv, (float) (centerXSs - metrics.hyphenWidthSs() / 2.0), (float) ySs);
     }
 
     private static void drawExtender(Graphics2D g2, LyricConnectorLayout connector, double ySs) {

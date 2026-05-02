@@ -763,7 +763,7 @@ public final class LyricEditor extends MyJTextField {
         for (var i = next.applyAsInt(currentIndex); inBounds.test(i); i = next.applyAsInt(i)) {
             var candidate = line.getElement(i);
 
-            if (isEligibleForLyric(candidate)) {
+            if (isEligibleForLyric(candidate, CURRENT_VERSE)) {
                 dismiss(false);
                 openOn(score, line, candidate);
                 return;
@@ -773,12 +773,16 @@ public final class LyricEditor extends MyJTextField {
         dismiss(true);
     }
 
-    private static boolean isEligibleForLyric(StaffElement candidate) {
+    /**
+     * An element is eligible to carry a lyric in {@code verse} if it is a non-rest, or a
+     * rest that already carries a non-blank lyric in that verse.
+     */
+    public static boolean isEligibleForLyric(StaffElement candidate, int verse) {
         if (!candidate.getType().isRest()) {
             return true;
         }
 
-        var lyric = candidate.getLyricForVerse(CURRENT_VERSE);
+        var lyric = candidate.getLyricForVerse(verse);
         return lyric != null && !lyric.text().isBlank();
     }
 

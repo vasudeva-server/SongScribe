@@ -23,20 +23,23 @@ package songscribe.ui.layout;
 /**
  * Line-level lyric span connector (a hyphen between syllables or a melisma extender line).
  * <p>
- * Coordinates are in staff spaces, relative to the line's left edge. Hyphens are drawn
- * centered within the span; extender lines run horizontally from {@code startXSs} to
- * {@code endXSs}. The renderer reads Y from
- * {@link SongLayoutMetrics#verseYSsInLine(int)}.
+ * Coordinates are in staff spaces, relative to the line's left edge. {@link Kind#HYPHEN}
+ * spans are drawn with one or more hyphens distributed across the gap; a
+ * {@link Kind#DANGLING_HYPHEN} draws exactly one hyphen centered in the gap between the
+ * syllable end and the next eligible element on the same line; {@link Kind#EXTENDER}
+ * lines run horizontally from {@code startXSs} to {@code endXSs}. The renderer reads Y
+ * from {@link SongLayoutMetrics#verseYSsInLine(int)}.
  *
  * @param startXSs   left edge of the connector in staff spaces
  * @param endXSs     right edge of the connector in staff spaces
  * @param verseIndex 1-based verse number
- * @param kind       connector kind (hyphen or melisma extender)
+ * @param kind       connector kind
  */
 public record LyricConnectorLayout(double startXSs, double endXSs, int verseIndex, Kind kind) {
 
     public enum Kind {
         HYPHEN,
+        DANGLING_HYPHEN,
         EXTENDER
     }
 }

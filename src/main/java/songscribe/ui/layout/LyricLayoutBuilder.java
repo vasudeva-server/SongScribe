@@ -27,8 +27,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeSet;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import songscribe.music.Lyric;
 import songscribe.music.StaffElement;
+import songscribe.ui.component.LyricEditor;
 
 /**
  * Computes lyric box and connector geometry from per-element {@link Lyric} records.
@@ -56,6 +60,8 @@ import songscribe.music.StaffElement;
  * its first lyric-bearing element (or to the first rest that breaks the continuation).
  */
 public final class LyricLayoutBuilder {
+
+    private static final Logger LOG = LoggerFactory.getLogger(LyricLayoutBuilder.class);
 
     private LyricLayoutBuilder() {}
 
@@ -131,32 +137,29 @@ public final class LyricLayoutBuilder {
         boolean hasLeadingContinuation,
         double lineWidthSs) {
 
-        var boxesByElement = new HashMap<StaffElement, List<LyricBoxLayout>>();
-        var connectors = new ArrayList<LyricConnectorLayout>();
+        var boxesByElement = new HashMap<StaffElement, List<LyricBoxLayout>>(columns.size());
+        var connectors = new ArrayList<LyricConnectorLayout>(columns.size());
         var state = new ExtenderState(hasLeadingContinuation);
 
-        for (var column : columns) {
+        for (var columnIndex = 0; columnIndex < columns.size(); columnIndex++) {
+            var column = columns.get(columnIndex);
             var element = column.getElement();
-            var isRest = column.isRest();
             var lyric = element.getLyricForVerse(verse);
+            var extend = lyric != null ? lyric.extend() : null;
 
-            if (isRest) {
+            if (column.isRest()) {
                 // Rest with extending lyric (START/CONTINUE): extender flows through.
-                // Rest with STOP lyric: extender ends at rest's right edge below.
-                if (lyric != null && lyric.extend() == Lyric.Extend.CONTINUE) {
+                // Rest with STOP lyric: extender ends at rest's right edge.
+                // Rest without extending lyric: extender (if active) ends at rest's left edge.
+                if (extend == Lyric.Extend.CONTINUE || extend == Lyric.Extend.START) {
                     continue;
                 }
 
-                if (lyric != null && lyric.extend() == Lyric.Extend.START) {
-                    continue;
-                }
-
-                if (lyric != null && lyric.extend() == Lyric.Extend.STOP) {
+                if (extend == Lyric.Extend.STOP) {
                     state.closeExtender(connectors, verse, column.getRightEdgeXSs());
                     continue;
                 }
 
-                // Rest without extending lyric: any active extender ends at the rest's left edge.
                 state.closeExtender(connectors, verse, column.getLeftEdgeXSs());
                 continue;
             }
@@ -166,12 +169,12 @@ public final class LyricLayoutBuilder {
                 continue;
             }
 
-            if (lyric.extend() == Lyric.Extend.CONTINUE) {
+            if (extend == Lyric.Extend.CONTINUE) {
                 // CONTINUE carrier: extender continues silently through this column.
                 continue;
             }
 
-            if (lyric.extend() == Lyric.Extend.STOP) {
+            if (extend == Lyric.Extend.STOP) {
                 // STOP carrier: ends active extender at this note's right edge, no box.
                 state.closeExtender(connectors, verse, column.getRightEdgeXSs());
                 continue;
@@ -196,6 +199,7 @@ public final class LyricLayoutBuilder {
                     verse,
                     LyricConnectorLayout.Kind.HYPHEN));
                 state.pendingHyphenStartXSs = -1;
+                state.pendingHyphenColumnIndex = -1;
             }
 
             // Close any active extender at the start of this syllable.
@@ -207,9 +211,10 @@ public final class LyricLayoutBuilder {
 
             if (opensHyphen) {
                 state.pendingHyphenStartXSs = syllableEndXSs;
+                state.pendingHyphenColumnIndex = columnIndex;
             }
 
-            if (lyric.extend() == Lyric.Extend.START && !opensHyphen) {
+            if (extend == Lyric.Extend.START && !opensHyphen) {
                 state.extenderActive = true;
                 state.extenderStartXSs = syllableEndXSs;
             }
@@ -229,14 +234,39 @@ public final class LyricLayoutBuilder {
         }
 
         if (state.pendingHyphenStartXSs >= 0) {
-            connectors.add(new LyricConnectorLayout(
-                state.pendingHyphenStartXSs,
-                lineWidthSs,
-                verse,
-                LyricConnectorLayout.Kind.HYPHEN));
+            emitDanglingHyphen(connectors, columns, state, verse);
         }
 
         return new VerseResult(boxesByElement, connectors, hasTrailingContinuation);
+    }
+
+    /**
+     * Emits a {@link LyricConnectorLayout.Kind#DANGLING_HYPHEN} centered between the
+     * syllable end and the next eligible element's left edge. The lyric editor prevents
+     * a hyphen-opening syllable from being entered without a following eligible element
+     * on the line, so finding none here indicates a layout invariant violation.
+     */
+    private static void emitDanglingHyphen(
+        List<LyricConnectorLayout> connectors,
+        List<ElementColumn> columns,
+        ExtenderState state,
+        int verse
+    ) {
+        for (var i = state.pendingHyphenColumnIndex + 1; i < columns.size(); i++) {
+            var column = columns.get(i);
+
+            if (LyricEditor.isEligibleForLyric(column.getElement(), verse)) {
+                connectors.add(new LyricConnectorLayout(
+                    state.pendingHyphenStartXSs,
+                    column.getLeftEdgeXSs(),
+                    verse,
+                    LyricConnectorLayout.Kind.DANGLING_HYPHEN));
+                return;
+            }
+        }
+
+        LOG.error("Dangling hyphen at column {} in verse {} has no following eligible element on line",
+            state.pendingHyphenColumnIndex, verse);
     }
 
     /** Mutable scratch state for tracking the active extender and pending hyphen during one verse pass. */
@@ -244,6 +274,7 @@ public final class LyricLayoutBuilder {
         boolean extenderActive;
         double extenderStartXSs;
         double pendingHyphenStartXSs = -1.0;
+        int pendingHyphenColumnIndex = -1;
 
         ExtenderState(boolean hasLeadingContinuation) {
             this.extenderActive = hasLeadingContinuation;

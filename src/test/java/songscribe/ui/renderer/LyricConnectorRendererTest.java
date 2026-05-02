@@ -22,12 +22,14 @@ package songscribe.ui.renderer;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 
+import java.awt.font.GlyphVector;
 import java.util.List;
 
 import module java.desktop;
@@ -89,17 +91,33 @@ class LyricConnectorRendererTest extends UnitTest {
 
         LyricConnectorRenderer.getInstance().render(g2, ctx);
 
-        var textCap = ArgumentCaptor.forClass(String.class);
         var xCap = ArgumentCaptor.forClass(Float.class);
         var yCap = ArgumentCaptor.forClass(Float.class);
-        verify(g2, times(1)).drawString(textCap.capture(), xCap.capture(), yCap.capture());
+        verify(g2, times(1)).drawGlyphVector(any(GlyphVector.class), xCap.capture(), yCap.capture());
 
         var center = (10.0 + 11.5) / 2.0;
 
-        assertThat(textCap.getValue()).isEqualTo("-");
         assertThat(xCap.getValue().doubleValue()).isCloseTo(center - HYPHEN_WIDTH_SS / 2.0, within(TOLERANCE));
 
         // Verse 1 baseline: staffBottom(5) + below(1) + gap(1) + 0 * lineHeight(2.5) = 7.0
+        assertThat(yCap.getValue().doubleValue()).isCloseTo(7.0, within(TOLERANCE));
+    }
+
+    @Test
+    void testDanglingHyphenDrawnCenteredInGap() {
+        var connector = new LyricConnectorLayout(8.0, 12.0, 1, Kind.DANGLING_HYPHEN);
+        var ctx = contextWith(List.of(connector), metrics(1.0, 2.5, 1));
+        var g2 = mock(Graphics2D.class);
+
+        LyricConnectorRenderer.getInstance().render(g2, ctx);
+
+        var xCap = ArgumentCaptor.forClass(Float.class);
+        var yCap = ArgumentCaptor.forClass(Float.class);
+        verify(g2, times(1)).drawGlyphVector(any(GlyphVector.class), xCap.capture(), yCap.capture());
+
+        var center = (8.0 + 12.0) / 2.0;
+
+        assertThat(xCap.getValue().doubleValue()).isCloseTo(center - HYPHEN_WIDTH_SS / 2.0, within(TOLERANCE));
         assertThat(yCap.getValue().doubleValue()).isCloseTo(7.0, within(TOLERANCE));
     }
 
@@ -156,7 +174,7 @@ class LyricConnectorRendererTest extends UnitTest {
         var strokeCap = ArgumentCaptor.forClass(Stroke.class);
         verify(g2, atLeastOnce()).setStroke(strokeCap.capture());
 
-        // Only the extender calls setStroke; hyphen uses drawString.
+        // Only the extender calls setStroke; hyphen uses drawGlyphVector.
         var actualStrokes = strokeCap.getAllValues().stream()
             .filter(s -> s instanceof BasicStroke)
             .map(s -> (BasicStroke) s)
