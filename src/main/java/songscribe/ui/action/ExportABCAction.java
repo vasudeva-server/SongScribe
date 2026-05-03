@@ -184,7 +184,7 @@ public class ExportABCAction extends UIAction {
         writer.println("T:" + song.getTitle().replace('\n', ' '));
         writer.println("W:" + song.getUnderLyrics().replace('\n', ' '));
         writer.println("C:" + song.getAttribution().replace('\n', ' '));
-        writer.println("Q:" + translateTempo(song.getTempo()));
+        writer.println("Q:" + translateTempo(song.getEffectiveTempo()));
         writer.println(
             "L:" +
                 translateUnitLength(

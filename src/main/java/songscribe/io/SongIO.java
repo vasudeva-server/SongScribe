@@ -115,7 +115,12 @@ public final class SongIO {
         if (keyType != null) {
             XML.writeValue(pw, XML_KEYTYPE, keyType.name());
         }
-        TempoIO.writeTempo(c.getTempo(), pw, 2);
+        var tempo = c.getTempo();
+
+        if (tempo != null) {
+            TempoIO.writeTempo(tempo, pw, 2);
+        }
+
         XML.setIndent(2);
 
         XML.writeValue(pw, XML_NUMBER, c.getNumber());
@@ -235,7 +240,8 @@ public final class SongIO {
         private int majorVersion = 0, minorVersion = 0;
 
         // Parsed song data (replaces direct Song mutation)
-        private Tempo tempo = new Tempo();
+        @Nullable
+        private Tempo tempo = null;
         private String number = Strings.get(Strings.SONG_DEFAULT_NUMBER);
         private String title = Strings.get(Strings.DOCUMENT_UNTITLED);
         private String place = "";

@@ -83,5 +83,6 @@ public class TempoChangeDialog extends AttachmentDialog<Tempo> {
     @Override
     protected void clearChange(StaffElement element) {
         element.setTempoChange(null);
+        element.getLine().getSong().clearTempoIfOrphaned(element);
     }
 }

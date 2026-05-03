@@ -79,10 +79,24 @@ class SongDefaultsTest extends UnitTest {
     @Test
     void testDefaultTempo() {
         var song = new Song();
-        var tempo = song.getTempo();
+        assertThat(song.getTempo()).isNotNull();
+        var tempo = song.getEffectiveTempo();
         assertThat(tempo.getVisibleTempo()).isEqualTo(120);
         assertThat(tempo.getTempoType()).isEqualTo(Duration.CROTCHET);
         assertThat(tempo.getTempoDescription()).isEqualTo("Moderate");
+    }
+
+    @Test
+    void testEffectiveTempoFallbackWhenTempoIsNull() {
+        var song = new Song();
+        song.setTempo(null);
+        assertThat(song.getTempo()).isNull();
+
+        var tempo = song.getEffectiveTempo();
+        assertThat(tempo.getVisibleTempo()).isEqualTo(120);
+        assertThat(tempo.getTempoType()).isEqualTo(Duration.CROTCHET);
+        assertThat(tempo.getTempoDescription()).isEqualTo("Moderate");
+        assertThat(tempo.shouldShowTempo()).isTrue();
     }
 
     @Test

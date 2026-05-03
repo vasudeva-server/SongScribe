@@ -42,9 +42,11 @@ import songscribe.music.Tempo;
  * <p>
  * Font fields are {@code @Nullable} because v1.0 files have no View section;
  * when null, the Song retains its default (preferences-based) fonts.
+ * The {@code tempo} field is {@code @Nullable}; a null value means the song
+ * file contained no {@code <tempo>} element and the song has no explicit tempo.
  */
 public record SongData(
-    Tempo tempo,
+    @Nullable Tempo tempo,
     String number,
     String title,
     String place,

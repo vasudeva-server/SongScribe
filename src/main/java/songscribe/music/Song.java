@@ -98,7 +98,8 @@ public final class Song {
     public static final int DEFAULT_KEY_ACCIDENTAL_COUNT = 5;
     public static final KeyType DEFAULT_KEY_TYPE = KeyType.FLATS;
 
-    // The base tempo of the song
+    // The base tempo of the song; null means the song has no explicit tempo
+    @Nullable
     private Tempo tempo;
 
     // The number of the song, can be empty
@@ -390,14 +391,23 @@ public final class Song {
 
     // ========== Getters (public, read-only API) ==========
 
+    @Nullable
     public Tempo getTempo() {
         return tempo;
     }
 
     /**
+     * Returns the song's tempo, or a default 120bpm crotchet tempo if none is set.
+     * Use this in playback and export contexts where a non-null tempo is required.
+     */
+    public Tempo getEffectiveTempo() {
+        return tempo != null ? tempo : new Tempo();
+    }
+
+    /**
      * Returns the effective tempo at a given position in the song.
      * Walks backwards through lines and notes to find the most recent tempo change,
-     * or returns the default song tempo if none found.
+     * or returns the effective song tempo if none found.
      *
      * @param lineIndex The index of the line
      * @param noteIndex The index of the note within the line
@@ -425,7 +435,22 @@ public final class Song {
             lastLine = false;
         }
 
-        return tempo;
+        return getEffectiveTempo();
+    }
+
+    /**
+     * Returns true if any element anywhere in the song carries a tempo change.
+     */
+    public boolean hasAnyTempoChange() {
+        for (var line : lines) {
+            for (var i = 0; i < line.elementCount(); i++) {
+                if (line.getElement(i).getTempoChange() != null) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     public String getTitle() {
@@ -635,8 +660,29 @@ public final class Song {
 
     // ========== Setters (mutate + setModified + post) ==========
 
-    public void setTempo(Tempo tempo) {
+    public void setTempo(@Nullable Tempo tempo) {
         mutateMetadata(MetadataField.TEMPO, this.tempo, tempo, () -> this.tempo = tempo);
+    }
+
+    /**
+     * Clears the song-level initial tempo if {@code element} losing its tempo change
+     * would orphan it. The song-level tempo is mirrored onto the first note of the
+     * first line on every reload by {@code attachInitialTempoIfNeeded}, so it must be
+     * cleared when:
+     * <ul>
+     *   <li>{@code element} is the first element of the first line (the only place the
+     *       initial tempo is anchored), or</li>
+     *   <li>no per-note tempo changes remain anywhere — otherwise the song-level tempo
+     *       would be re-attached to the first note on the next reload.</li>
+     * </ul>
+     */
+    public void clearTempoIfOrphaned(StaffElement element) {
+        var line = element.getLine();
+        var isFirstElement = indexOfLine(line) == 0 && line.getElementIndex(element) == 0;
+
+        if (isFirstElement || !hasAnyTempoChange()) {
+            setTempo(null);
+        }
     }
 
     public void setTitle(String text) {
@@ -1357,31 +1403,40 @@ public final class Song {
             return;
         }
 
+        // If the song has no tempo yet, initialize one so the handler can mutate it.
+        if (tempo == null) {
+            tempo = new Tempo();
+        }
+
+        // Capture in a local so the lambda can reference it without NullAway complaints
+        // (NullAway cannot track @Nullable field non-nullness across lambda boundaries).
+        var currentTempo = tempo;
+
         // Clone the old tempo before mutating it in place so the mutation record
         // carries a stable before-state (option (a) from the Phase 3a audit).
         var oldTempo = new Tempo(
-            tempo.getVisibleTempo(),
-            tempo.getTempoType(),
-            tempo.getTempoDescription(),
-            tempo.shouldShowTempo()
+            currentTempo.getVisibleTempo(),
+            currentTempo.getTempoType(),
+            currentTempo.getTempoDescription(),
+            currentTempo.shouldShowTempo()
         );
         withModification(() -> applyChange(
-            new MetadataChange(MetadataField.TEMPO, oldTempo, tempo),
+            new MetadataChange(MetadataField.TEMPO, oldTempo, currentTempo),
             () -> {
                 if (update.getTempoType() != null) {
-                    tempo.setTempoType(update.getTempoType());
+                    currentTempo.setTempoType(update.getTempoType());
                 }
 
                 if (update.getVisibleTempo() != null) {
-                    tempo.setVisibleTempo(update.getVisibleTempo());
+                    currentTempo.setVisibleTempo(update.getVisibleTempo());
                 }
 
                 if (update.getTempoDescription() != null) {
-                    tempo.setTempoDescription(update.getTempoDescription());
+                    currentTempo.setTempoDescription(update.getTempoDescription());
                 }
 
                 if (update.getShowTempo() != null) {
-                    tempo.setShowTempo(update.getShowTempo());
+                    currentTempo.setShowTempo(update.getShowTempo());
                 }
             }
         ));

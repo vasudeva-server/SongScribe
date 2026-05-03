@@ -680,7 +680,7 @@ public class SongSettingsDialog extends StandardDialog {
         @Override
         protected boolean getData() {
             var song = getSong();
-            tempoSection.setTempo(song.getTempo());
+            tempoSection.setTempo(song.getEffectiveTempo());
             setKeyComboFromSong(song);
             revertLineWidthField();
             return true;
@@ -689,7 +689,7 @@ public class SongSettingsDialog extends StandardDialog {
         @Override
         protected void setData() {
             var song = getSong();
-            var tempo = song.getTempo();
+            var tempo = song.getEffectiveTempo();
             var tempoType = tempoSection.getTempoType();
             var visibleTempo = tempoSection.getVisibleTempo();
             var tempoDescription = tempoSection.getTempoDescription();

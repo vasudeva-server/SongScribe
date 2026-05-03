@@ -213,7 +213,7 @@ class SongSetterMutationTest extends UnitTest {
 
         @Test
         void testSetTempoPostsMutation() {
-            var oldTempo = song.getTempo();
+            var oldTempo = song.getEffectiveTempo();
             var newTempo = new Tempo();
             newTempo.setVisibleTempo(oldTempo.getVisibleTempo() + 10);
 
