@@ -294,11 +294,11 @@ class LyricLayoutBuilderTest extends UnitTest {
 
         var resultA = LyricLayoutBuilder.build(columnsA, LYRIC_METRICS, false, LINE_WIDTH_SS);
         assertThat(resultA.hasTrailingContinuation()).isTrue();
-        var trailingExtenders = connectorsOfKind(resultA.connectors(), LyricConnectorLayout.Kind.EXTENDER);
+        var trailingExtenders = connectorsOfKind(resultA.connectors(), LyricConnectorLayout.Kind.DANGLING_EXTENDER);
         assertThat(trailingExtenders).hasSize(1);
         assertThat(trailingExtenders.get(0).endXSs())
-            .as("trailing stub ends at line width")
-            .isCloseTo(LINE_WIDTH_SS, within(TOLERANCE));
+            .as("trailing stub ends at last note's right edge")
+            .isCloseTo(columnsA.get(0).getRightEdgeXSs(), within(TOLERANCE));
 
         var resultB = LyricLayoutBuilder.build(columnsB, LYRIC_METRICS, true, LINE_WIDTH_SS);
 
@@ -310,6 +310,64 @@ class LyricLayoutBuilderTest extends UnitTest {
         assertThat(leadingExtenders.get(0).endXSs())
             .as("leading stub ends at garden's left edge")
             .isEqualTo(boxesOf(resultB.boxes(), n3).get(0).xSs(), within(TOLERANCE));
+    }
+
+    // Dangling extender: note with extend=START followed only by bare notes with no lyrics →
+    // DANGLING_EXTENDER ending at the START note's right edge (no CONTINUE/STOP markers follow,
+    // so the extender does not advance past the START column).
+    @Test
+    void testDanglingExtenderEndsAtStartNoteWhenNoContinueFollows() {
+        var n1 = note();
+        setLyric(n1, Lyric.Syllabic.SINGLE, false, "ah", true);
+        var n2 = note();
+        var n3 = note();
+        addToLine(n1, n2, n3);
+
+        var columns = List.of(
+            columnAt(n1, 5),
+            columnAt(n2, 5 + COLUMN_SPACING_SS),
+            columnAt(n3, 5 + 2 * COLUMN_SPACING_SS));
+
+        var result = LyricLayoutBuilder.build(columns, LYRIC_METRICS, false, LINE_WIDTH_SS);
+
+        assertThat(result.hasTrailingContinuation()).isTrue();
+
+        var danglingExtenders = connectorsOfKind(result.connectors(), LyricConnectorLayout.Kind.DANGLING_EXTENDER);
+        assertThat(danglingExtenders).hasSize(1);
+        assertThat(danglingExtenders.get(0).endXSs())
+            .as("dangling extender ends at START note's right edge")
+            .isCloseTo(columns.get(0).getRightEdgeXSs(), within(TOLERANCE));
+        assertThat(connectorsOfKind(result.connectors(), LyricConnectorLayout.Kind.EXTENDER)).isEmpty();
+    }
+
+    // Dangling extender with explicit CONTINUE markers on following notes →
+    // extends through them and ends at the last CONTINUE note's right edge.
+    @Test
+    void testDanglingExtenderExtendsThroughContinueMarkers() {
+        var n1 = note();
+        setLyric(n1, Lyric.Syllabic.SINGLE, false, "ah", Lyric.Extend.START);
+        var n2 = note();
+        setLyric(n2, null, false, "", Lyric.Extend.CONTINUE);
+        var n3 = note();
+        setLyric(n3, null, false, "", Lyric.Extend.CONTINUE);
+        var n4 = note();
+        addToLine(n1, n2, n3, n4);
+
+        var columns = List.of(
+            columnAt(n1, 5),
+            columnAt(n2, 5 + COLUMN_SPACING_SS),
+            columnAt(n3, 5 + 2 * COLUMN_SPACING_SS),
+            columnAt(n4, 5 + 3 * COLUMN_SPACING_SS));
+
+        var result = LyricLayoutBuilder.build(columns, LYRIC_METRICS, false, LINE_WIDTH_SS);
+
+        assertThat(result.hasTrailingContinuation()).isTrue();
+
+        var danglingExtenders = connectorsOfKind(result.connectors(), LyricConnectorLayout.Kind.DANGLING_EXTENDER);
+        assertThat(danglingExtenders).hasSize(1);
+        assertThat(danglingExtenders.get(0).endXSs())
+            .as("dangling extender ends at last CONTINUE note's right edge (n3), not n4 (no extend marker)")
+            .isCloseTo(columns.get(2).getRightEdgeXSs(), within(TOLERANCE));
     }
 
     // Compound-word boundary: heart(BEGIN+compound) garden(END) → HYPHEN span (visually identical to SYLLABLE)

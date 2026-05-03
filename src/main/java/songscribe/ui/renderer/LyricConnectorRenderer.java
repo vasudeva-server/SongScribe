@@ -109,7 +109,7 @@ public class LyricConnectorRenderer {
                 switch (connector.kind()) {
                     case HYPHEN -> drawHyphen(g2, connector, ySs, lyricRenderMetrics, hyphenGv);
                     case DANGLING_HYPHEN -> drawSingleCenteredHyphen(g2, connector, ySs, lyricRenderMetrics, hyphenGv);
-                    case EXTENDER -> drawExtender(g2, connector, ySs);
+                    case EXTENDER, DANGLING_EXTENDER -> drawExtender(g2, connector, ySs);
                 }
             }
         }

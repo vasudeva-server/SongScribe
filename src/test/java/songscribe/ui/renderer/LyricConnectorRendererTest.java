@@ -143,6 +143,27 @@ class LyricConnectorRendererTest extends UnitTest {
     }
 
     @Test
+    void testDanglingExtenderDrawnFromStartToEnd() {
+        var connector = new LyricConnectorLayout(5.0, 15.0, 1, Kind.DANGLING_EXTENDER);
+        var ctx = contextWith(List.of(connector), metrics(0.5, 2.0, 1));
+        var g2 = mock(Graphics2D.class);
+
+        LyricConnectorRenderer.getInstance().render(g2, ctx);
+
+        var lineCap = ArgumentCaptor.forClass(Shape.class);
+        verify(g2, times(1)).draw(lineCap.capture());
+
+        var drawn = (Line2D.Double) lineCap.getValue();
+
+        assertThat(drawn.x1).isCloseTo(5.0, within(TOLERANCE));
+        assertThat(drawn.x2).isCloseTo(15.0, within(TOLERANCE));
+
+        // Verse 1 baseline: staffBottom(5) + below(1) + gap(0.5) + 0 * lineHeight(2.0) = 6.5
+        assertThat(drawn.y1).isCloseTo(6.5, within(TOLERANCE));
+        assertThat(drawn.y2).isCloseTo(6.5, within(TOLERANCE));
+    }
+
+    @Test
     void testDistinctVersesRenderAtDistinctY() {
         var verse1 = new LyricConnectorLayout(0.0, 10.0, 1, Kind.EXTENDER);
         var verse2 = new LyricConnectorLayout(0.0, 10.0, 2, Kind.EXTENDER);

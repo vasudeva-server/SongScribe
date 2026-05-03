@@ -27,8 +27,11 @@ package songscribe.ui.layout;
  * spans are drawn with one or more hyphens distributed across the gap; a
  * {@link Kind#DANGLING_HYPHEN} draws exactly one hyphen centered in the gap between the
  * syllable end and the next eligible element on the same line; {@link Kind#EXTENDER}
- * lines run horizontally from {@code startXSs} to {@code endXSs}. The renderer reads Y
- * from {@link SongLayoutMetrics#verseYSsInLine(int)}.
+ * lines run horizontally from {@code startXSs} to {@code endXSs}; a
+ * {@link Kind#DANGLING_EXTENDER} is an extender that reaches the end of the line without
+ * a closing element — it is anchored to the right edge of the last eligible element on
+ * the line rather than the line width. The renderer reads Y from
+ * {@link SongLayoutMetrics#verseYSsInLine(int)}.
  *
  * @param startXSs   left edge of the connector in staff spaces
  * @param endXSs     right edge of the connector in staff spaces
@@ -40,6 +43,7 @@ public record LyricConnectorLayout(double startXSs, double endXSs, int verseInde
     public enum Kind {
         HYPHEN,
         DANGLING_HYPHEN,
-        EXTENDER
+        EXTENDER,
+        DANGLING_EXTENDER
     }
 }

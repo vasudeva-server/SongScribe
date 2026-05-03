@@ -24,15 +24,15 @@ import module java.desktop;
 
 import java.awt.event.MouseEvent;
 import java.util.Collections;
-import java.util.function.IntPredicate;
-import java.util.function.IntUnaryOperator;
 
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import javax.swing.text.AbstractDocument;
 import javax.swing.text.AttributeSet;
 import javax.swing.text.BadLocationException;
+import javax.swing.text.Document;
 import javax.swing.text.DocumentFilter;
+import javax.swing.text.PlainDocument;
 import javax.swing.text.Element;
 
 import org.jspecify.annotations.Nullable;
@@ -74,7 +74,7 @@ import songscribe.util.UIUtils;
  *  │   │  user keystroke                             │         │
  *  │   │   - char insert/delete → recompute width    │         │
  *  │   │   - len > 32 → beep, reject                 │         │
- *  │   │   - newline → reject                        │         │
+ *  │   │   - newline → strip                         │         │
  *  │   │                                             │         │
  *  │   │  Tab/Space  → commit + advance              │         │
  *  │   │  Enter      → commit + dismiss              │         │
@@ -267,6 +267,21 @@ public final class LyricEditor extends MyJTextField {
             setText(existingLyric.text());
             selectAll();
         }
+    }
+
+    // PlainDocument replaces '\n' with space before calling the filter; override to strip instead.
+    @Override
+    protected Document createDefaultModel() {
+        return new PlainDocument() {
+            @Override
+            public void insertString(int offset, String str, AttributeSet a) throws BadLocationException {
+                if (str != null && str.indexOf('\n') >= 0) {
+                    str = str.replace("\n", "");
+                }
+
+                super.insertString(offset, str, a);
+            }
+        };
     }
 
     private void configureLAF() {
@@ -469,7 +484,10 @@ public final class LyricEditor extends MyJTextField {
             @Override
             public void keyTyped(KeyEvent e) {
                 switch (e.getKeyChar()) {
-                    case ' ' -> { e.consume(); advance(); }
+                    case ' ' -> {
+                        e.consume();
+                        breakChainCommitAndAdvance(CommitKind.WORD_FINAL, findNextEligibleIndex());
+                    }
                     case '-' -> { e.consume(); handleHyphen(); }
                     case '=' -> { e.consume(); handleEquals(); }
                     case '_' -> { e.consume(); handleUnderscore(); }
@@ -492,10 +510,6 @@ public final class LyricEditor extends MyJTextField {
             return text;
         }
 
-        if (text.indexOf('\n') >= 0) {
-            return null;
-        }
-
         if (currentLength - replacedLength + text.length() > MAX_LENGTH_CHARS) {
             UIUtils.beep();
             return null;
@@ -513,8 +527,9 @@ public final class LyricEditor extends MyJTextField {
         bindKey(KeyEvent.VK_TAB, InputEvent.SHIFT_DOWN_MASK, ACTION_KEY_SHIFT_TAB, () -> retreat());
 
         bindKey(KeyEvent.VK_ENTER, ACTION_KEY_ENTER, () -> {
+            var commitSpec = navigationCommitSpec();
             line.withModification(() -> {
-                commitInner(CommitKind.WORD_FINAL, Lyric.Extend.NONE);
+                commitInner(commitSpec.kind(), commitSpec.extend());
                 applyDismissAdjustment();
             });
             dismiss(true);
@@ -698,12 +713,7 @@ public final class LyricEditor extends MyJTextField {
      * produce one {@link songscribe.message.notification.SongDidChangeNotification}.
      */
     public void advance(CommitKind kind, Lyric.Extend extend) {
-        line.withModification(() -> {
-            commitInner(kind, extend);
-            applyDismissAdjustment();
-        });
-
-        openAdjacentOrDismiss(i -> i + 1, i -> i < line.effectiveElementCount());
+        advanceWithIndex(kind, extend, findNextEligibleIndex());
     }
 
     /**
@@ -721,12 +731,27 @@ public final class LyricEditor extends MyJTextField {
      */
     public void retreat() {
         var commitSpec = navigationCommitSpec();
+        advanceWithIndex(commitSpec.kind(), commitSpec.extend(), findPreviousEligibleIndex());
+    }
+
+    private void advanceWithIndex(CommitKind kind, Lyric.Extend extend, int nextIndex) {
         line.withModification(() -> {
-            commitInner(commitSpec.kind(), commitSpec.extend());
+            commitInner(kind, extend);
             applyDismissAdjustment();
         });
+        openIndexOrDismiss(nextIndex);
+    }
 
-        openAdjacentOrDismiss(i -> i - 1, i -> i >= 0);
+    // Must NOT be inside an open modification bracket — opens its own.
+    private void breakChainCommitAndAdvance(CommitKind kind, int nextIndex) {
+        var currentIndex = line.getElementIndex(element);
+        line.withModification(() -> {
+            breakChainAtCurrentElement(currentIndex);
+            suppressDismissAdjustment = true;
+            commitInner(kind, Lyric.Extend.NONE);
+            applyDismissAdjustment();
+        });
+        openIndexOrDismiss(nextIndex);
     }
 
     /**
@@ -757,20 +782,13 @@ public final class LyricEditor extends MyJTextField {
         return new CommitSpec(kind, lyric.extend());
     }
 
-    private void openAdjacentOrDismiss(IntUnaryOperator next, IntPredicate inBounds) {
-        var currentIndex = line.getElementIndex(element);
-
-        for (var i = next.applyAsInt(currentIndex); inBounds.test(i); i = next.applyAsInt(i)) {
-            var candidate = line.getElement(i);
-
-            if (isEligibleForLyric(candidate, CURRENT_VERSE)) {
-                dismiss(false);
-                openOn(score, line, candidate);
-                return;
-            }
+    private void openIndexOrDismiss(int nextIndex) {
+        if (nextIndex >= 0) {
+            dismiss(false);
+            openOn(score, line, line.getElement(nextIndex));
+        } else {
+            dismiss(true);
         }
-
-        dismiss(true);
     }
 
     /**
@@ -786,23 +804,64 @@ public final class LyricEditor extends MyJTextField {
         return lyric != null && !lyric.text().isBlank();
     }
 
+    private int findNextEligibleIndex() {
+        var currentIndex = line.getElementIndex(element);
+        var count = line.effectiveElementCount();
+
+        for (var i = currentIndex + 1; i < count; i++) {
+            if (isEligibleForLyric(line.getElement(i), CURRENT_VERSE)) {
+                return i;
+            }
+        }
+
+        return -1;
+    }
+
+    private int findPreviousEligibleIndex() {
+        var currentIndex = line.getElementIndex(element);
+
+        for (var i = currentIndex - 1; i >= 0; i--) {
+            if (isEligibleForLyric(line.getElement(i), CURRENT_VERSE)) {
+                return i;
+            }
+        }
+
+        return -1;
+    }
+
     private void handleHyphen() {
         if (openedAsExtender) {
-            // Editor sits on a melisma carrier (Extend.CONTINUE/STOP) — '-' has no meaning here.
-            UIUtils.beep();
+            if (getText().isEmpty()) {
+                UIUtils.beep();
+                return;
+            }
+
+            var nextIndex = findNextEligibleIndex();
+
+            if (nextIndex < 0) {
+                UIUtils.beep();
+                return;
+            }
+
+            breakChainCommitAndAdvance(CommitKind.WORD_CONTINUING_HYPHEN, nextIndex);
             return;
         }
 
         if (!getText().isEmpty()) {
-            // Typed syllable + '-': commit as BEGIN/MIDDLE and advance.
-            advance(CommitKind.WORD_CONTINUING_HYPHEN, Lyric.Extend.NONE);
+            var nextIndex = findNextEligibleIndex();
+
+            if (nextIndex < 0) {
+                UIUtils.beep();
+                return;
+            }
+
+            advanceWithIndex(CommitKind.WORD_CONTINUING_HYPHEN, Lyric.Extend.NONE, nextIndex);
             return;
         }
 
-        // Lone '-' on empty editor.
+        // Lone '-' on empty editor, not a carrier.
 
         if (element.getLyricForVerse(CURRENT_VERSE) != null) {
-            // User cleared text then typed '-'; don't silently delete the existing lyric.
             UIUtils.beep();
             return;
         }
@@ -821,13 +880,18 @@ public final class LyricEditor extends MyJTextField {
         var backSyllabic = backLyric.syllabic();
 
         if (backSyllabic != Lyric.Syllabic.BEGIN && backSyllabic != Lyric.Syllabic.MIDDLE) {
-            // Predecessor is END or SINGLE — no open hyphen chain to extend.
             UIUtils.beep();
             return;
         }
 
-        // Implicit-extension: leave this element's lyric null and advance.
-        openAdjacentOrDismiss(i -> i + 1, i -> i < line.effectiveElementCount());
+        var nextIndex = findNextEligibleIndex();
+
+        if (nextIndex < 0) {
+            UIUtils.beep();
+            return;
+        }
+
+        openIndexOrDismiss(nextIndex);
     }
 
     private boolean isCaretAtEnd() {
@@ -840,17 +904,24 @@ public final class LyricEditor extends MyJTextField {
             return;
         }
 
-        advance(CommitKind.WORD_CONTINUING_COMPOUND, Lyric.Extend.NONE);
+        var nextIndex = findNextEligibleIndex();
+
+        if (nextIndex < 0) {
+            UIUtils.beep();
+            return;
+        }
+
+        if (openedAsExtender) {
+            breakChainCommitAndAdvance(CommitKind.WORD_CONTINUING_COMPOUND, nextIndex);
+            return;
+        }
+
+        advanceWithIndex(CommitKind.WORD_CONTINUING_COMPOUND, Lyric.Extend.NONE, nextIndex);
     }
 
     private void handleUnderscore() {
         if (!getText().isEmpty()) {
-            if (isCaretAtEnd()) {
-                advance(CommitKind.WORD_FINAL, Lyric.Extend.START);
-            } else {
-                UIUtils.beep();
-            }
-
+            UIUtils.beep();
             return;
         }
 
@@ -869,7 +940,7 @@ public final class LyricEditor extends MyJTextField {
         var backIndex = findPreviousLyricBearingIndex(currentIndex);
 
         if (backIndex < 0) {
-            dismiss(true);
+            UIUtils.beep();
             return;
         }
 
@@ -946,8 +1017,7 @@ public final class LyricEditor extends MyJTextField {
             // Editor was opened on a carrier and text was committed in its place.
             // Terminate the predecessor extender chain and clear stale forward
             // carriers up to the next STOP or text-bearing element.
-            terminatePrecedingContinueChain(currentIndex);
-            clearForwardCarriers(currentIndex);
+            breakChainAtCurrentElement(currentIndex);
             return;
         }
 
@@ -964,8 +1034,15 @@ public final class LyricEditor extends MyJTextField {
 
         var backLyric = line.getElement(backIndex).getLyricForVerse(CURRENT_VERSE);
 
-        if (backLyric != null && backLyric.extend() == Lyric.Extend.CONTINUE) {
+        if (backLyric == null) {
+            return;
+        }
+
+        if (backLyric.extend() == Lyric.Extend.CONTINUE) {
             rewriteLyricExtend(backIndex, backLyric, Lyric.Extend.STOP);
+        } else if (backLyric.extend() == Lyric.Extend.START) {
+            // START directly precedes the break point — the whole chain collapses.
+            rewriteLyricExtend(backIndex, backLyric, Lyric.Extend.NONE);
         }
     }
 
@@ -995,6 +1072,12 @@ public final class LyricEditor extends MyJTextField {
                 return;
             }
         }
+    }
+
+    // Must be called inside an open modification bracket.
+    void breakChainAtCurrentElement(int currentIndex) {
+        terminatePrecedingContinueChain(currentIndex);
+        clearForwardCarriers(currentIndex);
     }
 
     private void rewriteLyricExtend(int index, Lyric existing, Lyric.Extend newExtend) {

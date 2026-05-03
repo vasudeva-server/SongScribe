@@ -54,10 +54,11 @@ import songscribe.ui.component.LyricEditor;
  *       syllable; a new span (if any) begins after this syllable</li>
  * </ul>
  * <p>
- * Spans that extend past the last column produce trailing stubs at {@code lineWidthSs}; the
- * caller threads {@link Result#hasTrailingContinuation()} into the next line's
- * {@code hasLeadingContinuation} so that line emits a matching leading stub from x = 0 to
- * its first lyric-bearing element (or to the first rest that breaks the continuation).
+ * Spans that extend past the last column produce a {@link LyricConnectorLayout.Kind#DANGLING_EXTENDER}
+ * anchored to the right edge of the last eligible element on the line; the caller threads
+ * {@link Result#hasTrailingContinuation()} into the next line's {@code hasLeadingContinuation}
+ * so that line emits a matching leading stub from x = 0 to its first lyric-bearing element
+ * (or to the first rest that breaks the continuation).
  */
 public final class LyricLayoutBuilder {
 
@@ -79,7 +80,7 @@ public final class LyricLayoutBuilder {
      * @param lyricRenderMetrics     metrics used to measure syllable text widths
      * @param hasLeadingContinuation true if the previous line ended with an active extender
      *                               that should continue from x = 0 on this line
-     * @param lineWidthSs            width of the line in staff spaces (used for trailing stubs)
+     * @param lineWidthSs            width of the line in staff spaces (reserved for future use)
      */
     public static Result build(
         List<ElementColumn> columns,
@@ -217,6 +218,7 @@ public final class LyricLayoutBuilder {
             if (extend == Lyric.Extend.START && !opensHyphen) {
                 state.extenderActive = true;
                 state.extenderStartXSs = syllableEndXSs;
+                state.extenderColumnIndex = columnIndex;
             }
         }
 
@@ -225,11 +227,7 @@ public final class LyricLayoutBuilder {
         // Any START that reaches the end of the line without being closed by a STOP or a
         // text-bearing note continues the melisma onto the next line.
         if (state.extenderActive) {
-            connectors.add(new LyricConnectorLayout(
-                state.extenderStartXSs,
-                lineWidthSs,
-                verse,
-                LyricConnectorLayout.Kind.EXTENDER));
+            emitDanglingExtender(connectors, columns, state, verse);
             hasTrailingContinuation = true;
         }
 
@@ -238,6 +236,44 @@ public final class LyricLayoutBuilder {
         }
 
         return new VerseResult(boxesByElement, connectors, hasTrailingContinuation);
+    }
+
+    /**
+     * Emits a {@link LyricConnectorLayout.Kind#DANGLING_EXTENDER} starting at the syllable end
+     * and walking forward from the START column, extending only through elements that explicitly
+     * carry {@link Lyric.Extend#CONTINUE} or {@link Lyric.Extend#STOP}. The extender ends at the
+     * right edge of the last such element, or at the START element's own right edge if none
+     * follow. A leading continuation (extender carried in from the previous line, with no START
+     * column on this line) extends from x = 0 through the leading run of CONTINUE/STOP markers.
+     */
+    private static void emitDanglingExtender(
+        List<LyricConnectorLayout> connectors,
+        List<ElementColumn> columns,
+        ExtenderState state,
+        int verse
+    ) {
+        var startColumnIndex = state.extenderColumnIndex;
+        var endXSs = startColumnIndex >= 0
+            ? columns.get(startColumnIndex).getRightEdgeXSs()
+            : state.extenderStartXSs;
+
+        for (var i = startColumnIndex + 1; i < columns.size(); i++) {
+            var column = columns.get(i);
+            var lyric = column.getElement().getLyricForVerse(verse);
+            var extend = lyric != null ? lyric.extend() : null;
+
+            if (extend != Lyric.Extend.CONTINUE && extend != Lyric.Extend.STOP) {
+                break;
+            }
+
+            endXSs = column.getRightEdgeXSs();
+        }
+
+        connectors.add(new LyricConnectorLayout(
+            state.extenderStartXSs,
+            endXSs,
+            verse,
+            LyricConnectorLayout.Kind.DANGLING_EXTENDER));
     }
 
     /**
@@ -273,6 +309,7 @@ public final class LyricLayoutBuilder {
     private static final class ExtenderState {
         boolean extenderActive;
         double extenderStartXSs;
+        int extenderColumnIndex = -1;
         double pendingHyphenStartXSs = -1.0;
         int pendingHyphenColumnIndex = -1;
 

@@ -43,24 +43,18 @@ import javax.swing.KeyStroke;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.jspecify.annotations.Nullable;
 import org.mockito.ArgumentCaptor;
-import org.mockito.MockedStatic;
 
-import songscribe.UnitTest;
 import songscribe.message.Message;
 import songscribe.message.MessageCenter;
 import songscribe.message.mutation.ElementField;
 import songscribe.message.mutation.ElementModification;
 import songscribe.message.notification.SongDidChangeNotification;
-import songscribe.music.ElementType;
-import songscribe.music.Line;
 import songscribe.music.Lyric;
 import songscribe.music.Song;
-import songscribe.music.StaffElement;
 import songscribe.ui.layout.LyricRenderMetrics;
 
-class LyricEditorTest extends UnitTest {
+class LyricEditorTest extends LyricEditorTestSupport {
 
     private static final Font LYRICS_FONT = new Font(Font.MONOSPACED, Font.PLAIN, 12);
     private static final LyricRenderMetrics LYRIC_METRICS =
@@ -79,24 +73,9 @@ class LyricEditorTest extends UnitTest {
         when(score.getLayout()).thenReturn(new BorderLayout());
     }
 
-    private static StaffElement crotchet() {
-        return ElementType.CROTCHET.newInstance();
-    }
-
-    private static StaffElement crotchetRest() {
-        return ElementType.CROTCHET_REST.newInstance();
-    }
-
-    private static void setMainLyric(StaffElement element, String text) {
-        element.setLyricForVerse(1, Lyric.Syllabic.SINGLE, false, text, Lyric.Extend.NONE);
-    }
-
     // -----------------------------------------------------------------------
     // T10–T13: commit() semantics
     // -----------------------------------------------------------------------
-
-    @Nullable
-    private MockedStatic<MessageCenter> messageCenterMock;
 
     @AfterEach
     void tearDown() {
@@ -104,37 +83,6 @@ class LyricEditorTest extends UnitTest {
             messageCenterMock.close();
             messageCenterMock = null;
         }
-    }
-
-    private MockedStatic<MessageCenter> requireMessageCenterMock() {
-        if (messageCenterMock == null) {
-            throw new IllegalStateException("messageCenterMock must be initialized");
-        }
-
-        return messageCenterMock;
-    }
-
-    private SongDidChangeNotification captureSingleDidChange() {
-        var captor = ArgumentCaptor.forClass(Message.class);
-        requireMessageCenterMock().verify(() -> MessageCenter.post(captor.capture()), atLeastOnce());
-
-        var didChanges = captor.getAllValues().stream()
-            .filter(m -> m instanceof SongDidChangeNotification)
-            .map(m -> (SongDidChangeNotification) m)
-            .toList();
-
-        assertThat(didChanges)
-            .as("expected exactly one SongDidChangeNotification, got: %s", didChanges)
-            .hasSize(1);
-
-        return didChanges.get(0);
-    }
-
-    private void verifyNoSongDidChange() {
-        requireMessageCenterMock().verify(
-            () -> MessageCenter.post(any(SongDidChangeNotification.class)),
-            never()
-        );
     }
 
     @Test
@@ -213,22 +161,6 @@ class LyricEditorTest extends UnitTest {
     // -----------------------------------------------------------------------
     // T14–T17: advance() eligibility scan
     // -----------------------------------------------------------------------
-
-    /**
-     * Creates a fresh {@link Line} unattached to {@link #song}. The advance() tests need
-     * an empty line so {@code isEligibleForLyric} only sees the elements added here —
-     * {@code song.getLine(0)} returns a line populated with default clef/key elements that
-     * would falsely match as eligible.
-     */
-    private Line detachedLineWith(StaffElement... elements) {
-        var line = new Line();
-
-        for (var element : elements) {
-            line.addElement(element);
-        }
-
-        return line;
-    }
 
     @Test
     void testAdvanceSkipsRestsAndLandsOnNextNote() {
@@ -503,22 +435,6 @@ class LyricEditorTest extends UnitTest {
     // T25–T29: applyDismissAdjustment branches
     // -----------------------------------------------------------------------
 
-    private void fireEscape(LyricEditor editor) {
-        var escapeKeyStroke = KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0);
-        var escapeActionKey = editor.getInputMap(JComponent.WHEN_FOCUSED).get(escapeKeyStroke);
-        assertThat(escapeActionKey).as("Escape must be bound in WHEN_FOCUSED map").isNotNull();
-        editor.getActionMap().get(escapeActionKey).actionPerformed(
-            new ActionEvent(editor, ActionEvent.ACTION_PERFORMED, ""));
-    }
-
-    private void fireHyphen(LyricEditor editor) {
-        var hyphenEvent = new KeyEvent(editor, KeyEvent.KEY_TYPED, 0L, 0, KeyEvent.VK_UNDEFINED, '-');
-
-        for (var listener : editor.getKeyListeners()) {
-            listener.keyTyped(hyphenEvent);
-        }
-    }
-
     @Test
     void testSuppressedDismissAdjustmentEmitsNoMutations() {
         var element = crotchet();
@@ -758,15 +674,326 @@ class LyricEditorTest extends UnitTest {
         assertThat(requireLastNonNull(captor).getActiveElement()).isSameAs(e2);
     }
 
-    private static <T> T requireLastNonNull(ArgumentCaptor<T> captor) {
-        for (var i = captor.getAllValues().size() - 1; i >= 0; i--) {
-            var value = captor.getAllValues().get(i);
+    // -----------------------------------------------------------------------
+    // Phase 2: _ (underscore) overhaul
+    // -----------------------------------------------------------------------
 
-            if (value != null) {
-                return value;
-            }
+    @Test
+    void testUnderscoreOnNonEmptyTextBeeps() {
+        var element = crotchet();
+        var next = crotchet();
+        var line = detachedLineWith(element, next);
+        var editor = new LyricEditor(score, line, element);
+        editor.setText("ho");
+        editor.attachListeners();
+
+        var toolkitMock = mock(Toolkit.class);
+
+        try (var toolkitStatic = mockStatic(Toolkit.class)) {
+            toolkitStatic.when(Toolkit::getDefaultToolkit).thenReturn(toolkitMock);
+            fireUnderscore(editor);
+            verify(toolkitMock).beep();
         }
 
-        throw new AssertionError("expected at least one non-null captured value");
+        assertThat(editor.getText()).isEqualTo("ho");
+    }
+
+    @Test
+    void testUnderscoreOnNonEmptyTextMidCaretBeeps() {
+        var element = crotchet();
+        var next = crotchet();
+        var line = detachedLineWith(element, next);
+        var editor = new LyricEditor(score, line, element);
+        editor.setText("ho");
+        editor.setCaretPosition(1);
+        editor.attachListeners();
+
+        var toolkitMock = mock(Toolkit.class);
+
+        try (var toolkitStatic = mockStatic(Toolkit.class)) {
+            toolkitStatic.when(Toolkit::getDefaultToolkit).thenReturn(toolkitMock);
+            fireUnderscore(editor);
+            verify(toolkitMock).beep();
+        }
+    }
+
+    @Test
+    void testUnderscoreEmptyNoPredecessorBeeps() {
+        var element = crotchet();
+        var next = crotchet();
+        var line = detachedLineWith(element, next);
+        var editor = new LyricEditor(score, line, element);
+        editor.attachListeners();
+
+        var toolkitMock = mock(Toolkit.class);
+
+        try (var toolkitStatic = mockStatic(Toolkit.class)) {
+            toolkitStatic.when(Toolkit::getDefaultToolkit).thenReturn(toolkitMock);
+            fireUnderscore(editor);
+            verify(toolkitMock).beep();
+        }
+
+        verify(score, never()).addOverlay(any(LyricEditor.class));
+    }
+
+    @Test
+    void testUnderscoreEmptyNoNextEligibleBuildsChainAndDismisses() {
+        var predecessor = crotchet();
+        predecessor.setLyricForVerse(1, Lyric.Syllabic.SINGLE, false, "do", Lyric.Extend.NONE);
+        var element = crotchet();
+        var line = song.getLine(0);
+        song.withoutMutationTracking(() -> line.addElement(predecessor));
+        song.withoutMutationTracking(() -> line.addElement(element));
+        messageCenterMock = mockStatic(MessageCenter.class);
+        var editor = new LyricEditor(score, line, element);
+        editor.attachListeners();
+        fireUnderscore(editor);
+
+        captureSingleDidChange();
+        assertThat(predecessor.getMainLyric())
+            .extracting(Lyric::syllabic, Lyric::compound, Lyric::text, Lyric::extend)
+            .containsExactly(Lyric.Syllabic.SINGLE, false, "do", Lyric.Extend.START);
+        assertThat(element.getLyricForVerse(1))
+            .extracting(Lyric::extend)
+            .isEqualTo(Lyric.Extend.CONTINUE);
+        verify(score, never()).addOverlay(any(LyricEditor.class));
+    }
+
+    @Test
+    void testUnderscoreEmptyEndPredecessorRewritesToStart() {
+        var predecessor = crotchet();
+        predecessor.setLyricForVerse(1, Lyric.Syllabic.END, false, "ble", Lyric.Extend.NONE);
+        var element = crotchet();
+        var next = crotchet();
+        var line = song.getLine(0);
+        song.withoutMutationTracking(() -> line.addElement(predecessor));
+        song.withoutMutationTracking(() -> line.addElement(element));
+        song.withoutMutationTracking(() -> line.addElement(next));
+
+        messageCenterMock = mockStatic(MessageCenter.class);
+        var editor = new LyricEditor(score, line, element);
+        editor.attachListeners();
+        fireUnderscore(editor);
+
+        var notification = captureSingleDidChange();
+        assertThat(notification.getMutations()).hasSize(2);
+        assertThat(predecessor.getLyricForVerse(1)).extracting(Lyric::extend).isEqualTo(Lyric.Extend.START);
+        assertThat(predecessor.getLyricForVerse(1)).extracting(Lyric::syllabic).isEqualTo(Lyric.Syllabic.END);
+        assertThat(predecessor.getLyricForVerse(1)).extracting(Lyric::text).isEqualTo("ble");
+        assertThat(element.getLyricForVerse(1)).extracting(Lyric::extend).isEqualTo(Lyric.Extend.CONTINUE);
+    }
+
+    @Test
+    void testUnderscoreEmptySinglePredecessorRewritesToStart() {
+        var predecessor = crotchet();
+        predecessor.setLyricForVerse(1, Lyric.Syllabic.SINGLE, false, "do", Lyric.Extend.NONE);
+        var element = crotchet();
+        var next = crotchet();
+        var line = song.getLine(0);
+        song.withoutMutationTracking(() -> line.addElement(predecessor));
+        song.withoutMutationTracking(() -> line.addElement(element));
+        song.withoutMutationTracking(() -> line.addElement(next));
+
+        messageCenterMock = mockStatic(MessageCenter.class);
+        var editor = new LyricEditor(score, line, element);
+        editor.attachListeners();
+        fireUnderscore(editor);
+
+        var notification = captureSingleDidChange();
+        assertThat(notification.getMutations()).hasSize(2);
+        assertThat(predecessor.getLyricForVerse(1)).extracting(Lyric::extend).isEqualTo(Lyric.Extend.START);
+        assertThat(element.getLyricForVerse(1)).extracting(Lyric::extend).isEqualTo(Lyric.Extend.CONTINUE);
+    }
+
+    // -----------------------------------------------------------------------
+    // Phase 3: - and = no-successor rules + carrier-with-text paths
+    // -----------------------------------------------------------------------
+
+    @Test
+    void testHyphenNoNextEligibleBeeps() {
+        var element = crotchet();
+        var line = detachedLineWith(element);
+        var editor = new LyricEditor(score, line, element);
+        editor.setText("Sup");
+        editor.attachListeners();
+
+        var toolkitMock = mock(Toolkit.class);
+
+        try (var toolkitStatic = mockStatic(Toolkit.class)) {
+            toolkitStatic.when(Toolkit::getDefaultToolkit).thenReturn(toolkitMock);
+            fireHyphen(editor);
+            verify(toolkitMock).beep();
+        }
+
+        verify(score, never()).addOverlay(any(LyricEditor.class));
+    }
+
+    @Test
+    void testHyphenOnEmptyBeginPredecessorNoNextEligibleBeeps() {
+        var predecessor = crotchet();
+        predecessor.setLyricForVerse(1, Lyric.Syllabic.BEGIN, false, "Su", Lyric.Extend.NONE);
+        var element = crotchet();
+        var line = detachedLineWith(predecessor, element);
+        var editor = new LyricEditor(score, line, element);
+        editor.attachListeners();
+
+        var toolkitMock = mock(Toolkit.class);
+
+        try (var toolkitStatic = mockStatic(Toolkit.class)) {
+            toolkitStatic.when(Toolkit::getDefaultToolkit).thenReturn(toolkitMock);
+            fireHyphen(editor);
+            verify(toolkitMock).beep();
+        }
+
+        verify(score, never()).addOverlay(any(LyricEditor.class));
+    }
+
+    @Test
+    void testHyphenOnCarrierWithTextBreaksPredecessorChain() {
+        // e0(START chain root) → e1(CONTINUE, editor, typed "Re") → e2(STOP) → e3(next)
+        // Breaking chain from e1: terminatePrecedingContinueChain sees e0=START (no flip),
+        // clearForwardCarriers clears e2. commitInner writes e1 as new syllable.
+        var e0 = crotchet();
+        e0.setLyricForVerse(1, Lyric.Syllabic.SINGLE, false, "Do", Lyric.Extend.START);
+        var e1 = crotchet();
+        e1.setLyricForVerse(1, null, false, null, Lyric.Extend.CONTINUE);
+        var e2 = crotchet();
+        e2.setLyricForVerse(1, null, false, null, Lyric.Extend.STOP);
+        var e3 = crotchet();
+        var line = song.getLine(0);
+        song.withoutMutationTracking(() -> line.addElement(e0));
+        song.withoutMutationTracking(() -> line.addElement(e1));
+        song.withoutMutationTracking(() -> line.addElement(e2));
+        song.withoutMutationTracking(() -> line.addElement(e3));
+
+        messageCenterMock = mockStatic(MessageCenter.class);
+        var editor = new LyricEditor(score, line, e1);
+        editor.setText("Re");
+        editor.attachListeners();
+        fireHyphen(editor);
+
+        var notification = captureSingleDidChange();
+        assertThat(notification.getMutations()).hasSizeGreaterThanOrEqualTo(2);
+        assertThat(e2.getLyricForVerse(1)).isNull();
+        assertThat(e1.getLyricForVerse(1)).extracting(Lyric::text).isEqualTo("Re");
+        assertThat(e1.getLyricForVerse(1)).extracting(Lyric::syllabic).isEqualTo(Lyric.Syllabic.BEGIN);
+    }
+
+    @Test
+    void testEqualsNoNextEligibleBeeps() {
+        var element = crotchet();
+        var line = detachedLineWith(element);
+        var editor = new LyricEditor(score, line, element);
+        editor.setText("Do");
+        editor.attachListeners();
+
+        var toolkitMock = mock(Toolkit.class);
+
+        try (var toolkitStatic = mockStatic(Toolkit.class)) {
+            toolkitStatic.when(Toolkit::getDefaultToolkit).thenReturn(toolkitMock);
+            fireEquals(editor);
+            verify(toolkitMock).beep();
+        }
+
+        verify(score, never()).addOverlay(any(LyricEditor.class));
+    }
+
+    @Test
+    void testEqualsOnCarrierWithTextBreaksPredecessorChain() {
+        // e0(START) → e1(CONTINUE, editor, typed "Re") → e2(next)
+        var e0 = crotchet();
+        e0.setLyricForVerse(1, Lyric.Syllabic.SINGLE, false, "Do", Lyric.Extend.START);
+        var e1 = crotchet();
+        e1.setLyricForVerse(1, null, false, null, Lyric.Extend.CONTINUE);
+        var e2 = crotchet();
+        var line = song.getLine(0);
+        song.withoutMutationTracking(() -> line.addElement(e0));
+        song.withoutMutationTracking(() -> line.addElement(e1));
+        song.withoutMutationTracking(() -> line.addElement(e2));
+
+        messageCenterMock = mockStatic(MessageCenter.class);
+        var editor = new LyricEditor(score, line, e1);
+        editor.setText("Re");
+        editor.setCaretPosition(editor.getText().length());
+        editor.attachListeners();
+        fireEquals(editor);
+
+        var notification = captureSingleDidChange();
+        assertThat(notification.getMutations()).hasSizeGreaterThanOrEqualTo(1);
+        assertThat(e1.getLyricForVerse(1)).extracting(Lyric::text).isEqualTo("Re");
+        assertThat(e1.getLyricForVerse(1)).extracting(Lyric::compound).isEqualTo(true);
+    }
+
+    // -----------------------------------------------------------------------
+    // Phase 4: Space — always break chains
+    // -----------------------------------------------------------------------
+
+    @Test
+    void testSpaceOnUnchangedBeginTextRewritesToSingle() {
+        var element = crotchet();
+        element.setLyricForVerse(1, Lyric.Syllabic.BEGIN, false, "Su", Lyric.Extend.NONE);
+        var next = crotchet();
+        var line = song.getLine(0);
+        song.withoutMutationTracking(() -> line.addElement(element));
+        song.withoutMutationTracking(() -> line.addElement(next));
+
+        messageCenterMock = mockStatic(MessageCenter.class);
+        var editor = new LyricEditor(score, line, element);
+        editor.attachListeners();
+        fireSpace(editor);
+
+        var notification = captureSingleDidChange();
+        assertThat(notification.getMutations()).hasSizeGreaterThanOrEqualTo(1);
+        assertThat(element.getLyricForVerse(1)).extracting(Lyric::syllabic).isEqualTo(Lyric.Syllabic.SINGLE);
+        assertThat(element.getLyricForVerse(1)).extracting(Lyric::extend).isEqualTo(Lyric.Extend.NONE);
+    }
+
+    @Test
+    void testSpaceOnCarrierEmptyBreaksPredecessorChain() {
+        // e0(START) → e1(CONTINUE, editor, empty) → e2(STOP) → e3(next)
+        // Breaking from e1: terminatePrecedingContinueChain sees e0=START (no flip),
+        // clearForwardCarriers clears e2. commitInner on empty carrier emits 1 mutation.
+        var e0 = crotchet();
+        e0.setLyricForVerse(1, Lyric.Syllabic.SINGLE, false, "Do", Lyric.Extend.START);
+        var e1 = crotchet();
+        e1.setLyricForVerse(1, null, false, null, Lyric.Extend.CONTINUE);
+        var e2 = crotchet();
+        e2.setLyricForVerse(1, null, false, null, Lyric.Extend.STOP);
+        var e3 = crotchet();
+        var line = song.getLine(0);
+        song.withoutMutationTracking(() -> line.addElement(e0));
+        song.withoutMutationTracking(() -> line.addElement(e1));
+        song.withoutMutationTracking(() -> line.addElement(e2));
+        song.withoutMutationTracking(() -> line.addElement(e3));
+
+        messageCenterMock = mockStatic(MessageCenter.class);
+        var editor = new LyricEditor(score, line, e1);
+        editor.attachListeners();
+        fireSpace(editor);
+
+        var notification = captureSingleDidChange();
+        assertThat(notification.getMutations()).hasSizeGreaterThanOrEqualTo(1);
+        assertThat(e2.getLyricForVerse(1)).isNull();
+    }
+
+    // -----------------------------------------------------------------------
+    // Phase 5: Enter — preserve unchanged shape
+    // -----------------------------------------------------------------------
+
+    @Test
+    void testEnterOnUnchangedTextPreservesShape() {
+        var element = crotchet();
+        element.setLyricForVerse(1, Lyric.Syllabic.BEGIN, true, "ho", Lyric.Extend.START);
+        var line = song.getLine(0);
+        song.withoutMutationTracking(() -> line.addElement(element));
+
+        messageCenterMock = mockStatic(MessageCenter.class);
+        var editor = new LyricEditor(score, line, element);
+        fireEnter(editor);
+
+        verifyNoSongDidChange();
+        assertThat(element.getLyricForVerse(1))
+            .extracting(Lyric::syllabic, Lyric::compound, Lyric::extend)
+            .containsExactly(Lyric.Syllabic.BEGIN, true, Lyric.Extend.START);
     }
 }
