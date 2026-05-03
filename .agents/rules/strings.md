@@ -66,17 +66,6 @@ OptionDialogs.showErrorMessage(parent, Strings.get(Strings.ALERT_TITLE_LINE_WIDT
 
 When removing code that references a `Strings.*` constant, check whether any other references to that constant remain in the codebase. If none remain, **remove the corresponding key from `strings.properties`** as well. Dead keys accumulate quickly and make the file hard to maintain.
 
-### Curly quotes in strings.properties
-
-The `Edit` tool cannot reliably write curly (typographic) quotes and apostrophes (‘’“”). When a string value contains these characters, use `python3` via `Bash` to write or modify the line, using the characters directly:
-
-```bash
-python3 -c "
-line = 'some.key = It’s a “smart” quote'
-# append or use file manipulation to insert the line
-"
-```
-
 ### Adding a new string
 
 1. Add the key/value to `strings.properties` in the correct alphabetical position within its group.
