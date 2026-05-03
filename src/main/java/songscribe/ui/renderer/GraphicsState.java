@@ -22,6 +22,8 @@ package songscribe.ui.renderer;
 
 import module java.desktop;
 
+import org.jspecify.annotations.Nullable;
+
 
 /**
  * Saves and restores {@link Graphics2D} properties using try-with-resources.
@@ -48,14 +50,13 @@ public final class GraphicsState implements AutoCloseable {
 
     private final Graphics2D g2;
     private final int propertyMask;
-    private Color color;
-    private Stroke stroke;
-    private Font font;
-    private AffineTransform transform;
-    private Object antialiasing;
-    private Object strokeControl;
+    private @Nullable Color color;
+    private @Nullable Stroke stroke;
+    private @Nullable Font font;
+    private @Nullable AffineTransform transform;
+    private @Nullable Object antialiasing;
+    private @Nullable Object strokeControl;
 
-    @SuppressWarnings("NullAway.Init")
     private GraphicsState(Graphics2D g2, int propertyMask) {
         this.g2 = g2;
         this.propertyMask = propertyMask;
@@ -117,19 +118,19 @@ public final class GraphicsState implements AutoCloseable {
             g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, antialiasing);
         }
 
-        if (has(Property.TRANSFORM)) {
+        if (has(Property.TRANSFORM) && transform != null) {
             g2.setTransform(transform);
         }
 
-        if (has(Property.FONT)) {
+        if (has(Property.FONT) && font != null) {
             g2.setFont(font);
         }
 
-        if (has(Property.STROKE)) {
+        if (has(Property.STROKE) && stroke != null) {
             g2.setStroke(stroke);
         }
 
-        if (has(Property.COLOR)) {
+        if (has(Property.COLOR) && color != null) {
             g2.setColor(color);
         }
     }

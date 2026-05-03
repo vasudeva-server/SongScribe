@@ -37,6 +37,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.formdev.flatlaf.util.SystemInfo;
+import com.uber.nullaway.annotations.Initializer;
 import net.engio.mbassy.listener.Handler;
 
 import songscribe.Strings;
@@ -88,7 +89,6 @@ public class MenuController {
         instance = new MenuController(mainFrame);
     }
 
-    @SuppressWarnings("NullAway.Init")
     public MenuController(MainFrame mainFrame) {
         this.mainFrame = mainFrame;
         this.score = mainFrame.requireScore();
@@ -132,6 +132,7 @@ public class MenuController {
         }
     }
 
+    @Initializer
     private JMenu initFileMenu() {
         var menu = new JMenu(Strings.get(Strings.MENU_FILE));
         menu.add(NewAction.createAction());

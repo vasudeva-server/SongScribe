@@ -26,6 +26,8 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.stream.IntStream;
 
+import com.uber.nullaway.annotations.Initializer;
+
 import org.jspecify.annotations.Nullable;
 
 import songscribe.message.mutation.BeamingAddition;
@@ -84,7 +86,6 @@ public class Line {
     /** Range elements (ties, trills, crescendo, diminuendo, tuplets, endings). */
     private final List<RangeElement> rangeElements = new ArrayList<>();
 
-    @SuppressWarnings("NullAway") // set by setSong() before the Line is used
     private Song song;
     private int keys = 0;
     @Nullable
@@ -174,6 +175,7 @@ public class Line {
         return song;
     }
 
+    @Initializer
     public void setSong(Song song) {
         this.song = song;
     }

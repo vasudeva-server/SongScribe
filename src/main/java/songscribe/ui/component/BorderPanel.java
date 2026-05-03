@@ -33,19 +33,36 @@ import songscribe.Strings;
 @SuppressWarnings("NonStaticInitializer")
 public class BorderPanel extends JPanel {
 
+    @SuppressWarnings("NullAway.Init")
     private JPanel expertBorderPanel;
+
+    @SuppressWarnings("NullAway.Init")
     private JSpinner topSpinner;
+
+    @SuppressWarnings("NullAway.Init")
     private JSpinner leftSpinner;
+
+    @SuppressWarnings("NullAway.Init")
     private JSpinner bottomSpinner;
+
+    @SuppressWarnings("NullAway.Init")
     private JSpinner rightSpinner;
+
+    @SuppressWarnings("NullAway.Init")
     private JButton expertBorderButton;
+
+    @SuppressWarnings("NullAway.Init")
     private JPanel simpleBorderPanel;
+
+    @SuppressWarnings("NullAway.Init")
     private JSpinner borderSpinner;
+
+    @SuppressWarnings("NullAway.Init")
     private JPanel borderPanel;
+
     private boolean exportBorder = false;
     private @Nullable ActionListener packListener = null;
 
-    @SuppressWarnings("NullAway.Init")
     public BorderPanel() {
         borderSpinner.setValue(10);
         expertBorderButton.addActionListener(_ -> {

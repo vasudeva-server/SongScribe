@@ -85,8 +85,8 @@ class LineRenderer {
      * Render context reused across paint passes to avoid per-paint allocation.
      * Only mutated within {@link #render} on the EDT.
      */
-    @SuppressWarnings("NullAway") // populated by render() before any read
-    private ElementRenderContext ctx = null;
+    @SuppressWarnings("NullAway.Init")
+    private ElementRenderContext ctx;
 
     // ==========================================================================
     // Constructor

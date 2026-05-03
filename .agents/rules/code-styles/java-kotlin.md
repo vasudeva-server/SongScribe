@@ -221,6 +221,13 @@ The project uses [NullAway](https://github.com/uber/NullAway) for compile-time n
 - Use `@Nullable` from `org.jspecify.annotations` when null is a valid value for a parameter, return type, or field.
 - Use `@SuppressWarnings("NullAway")` only as an absolute last resort with an explanation when NO OTHER technique will work.
 
+**Deferred-init fields (non-null fields set after construction):**
+
+- If a single post-construction method always assigns the field before any read, annotate that method with `@com.uber.nullaway.annotations.Initializer`. NullAway will verify the method actually assigns the field.
+- If there is no single canonical init method (multiple public setters, GUI Designer-wired fields, etc.), annotate the field itself with `@SuppressWarnings("NullAway.Init")`.
+- Never use the broad `@SuppressWarnings("NullAway")` for deferred init — it silences all NullAway violations in scope, not just the init warning.
+- Never place `@SuppressWarnings` on a constructor to cover deferred-init fields — put the annotation on the specific field or init method.
+
 ```java
 // Non-null by default — no annotation needed
 public Note getNote(String name)

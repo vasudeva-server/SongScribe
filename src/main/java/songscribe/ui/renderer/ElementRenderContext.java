@@ -22,6 +22,8 @@ package songscribe.ui.renderer;
 
 import module java.desktop;
 
+import com.uber.nullaway.annotations.Initializer;
+
 import org.jspecify.annotations.Nullable;
 
 import songscribe.music.Song;
@@ -68,12 +70,9 @@ public class ElementRenderContext {
     private Line currentLine;
     private double middleLineYSs;
     private int lineIndex;
-    @SuppressWarnings("NullAway") // set by setLayoutResult() before first access
-    private LayoutResult layoutResult = null;
-    @SuppressWarnings("NullAway") // set by setSongLayoutMetrics() before first access
-    private SongLayoutMetrics songLayoutMetrics = null;
-    @SuppressWarnings("NullAway") // set by setLyricRenderMetrics() before first access
-    private LyricRenderMetrics lyricRenderMetrics = null;
+    private LayoutResult layoutResult;
+    private SongLayoutMetrics songLayoutMetrics;
+    private LyricRenderMetrics lyricRenderMetrics;
     @Nullable
     private StaffElement activelyEditedElement;
     private LineComponent.@Nullable SelectionProvider selectionProvider;
@@ -202,6 +201,7 @@ public class ElementRenderContext {
      *
      * @param layoutResult The layout result from LayoutEngine
      */
+    @Initializer
     public void setLayoutResult(LayoutResult layoutResult) {
         this.layoutResult = layoutResult;
     }
@@ -218,6 +218,7 @@ public class ElementRenderContext {
     }
 
     /** Sets the song-wide layout metrics. */
+    @Initializer
     public void setSongLayoutMetrics(SongLayoutMetrics metrics) {
         this.songLayoutMetrics = metrics;
     }
@@ -228,6 +229,7 @@ public class ElementRenderContext {
     }
 
     /** Sets the song-wide lyric render metrics. */
+    @Initializer
     public void setLyricRenderMetrics(LyricRenderMetrics metrics) {
         this.lyricRenderMetrics = metrics;
     }

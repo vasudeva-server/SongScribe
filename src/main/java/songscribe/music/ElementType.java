@@ -131,7 +131,7 @@ public enum ElementType {
             : 0;
     }
 
-    @SuppressWarnings("NullAway") // set by static initializer for every enum constant
+    @SuppressWarnings("NullAway.Init") // set by static initializer for every enum constant
     private StaffElement instance;
     @Nullable
     private final String name;

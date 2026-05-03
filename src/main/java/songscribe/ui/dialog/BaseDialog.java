@@ -78,6 +78,8 @@ public abstract class BaseDialog {
     private final List<Tab> tabs = new ArrayList<>();
     private @Nullable JTabbedPane tabbedPane;
     private @Nullable Component savedFocusOwner;
+
+    @SuppressWarnings("NullAway.Init")
     private JDialog dialog;
 
     protected BaseDialog(String title) {
@@ -88,7 +90,6 @@ public abstract class BaseDialog {
         this(title, isModal, DialogCategory.OPERATIONAL);
     }
 
-    @SuppressWarnings("NullAway.Init")
     protected BaseDialog(String title, boolean isModal, DialogCategory category) {
         mainFrame = MainFrame.getInstance();
         dialogTitle = title;

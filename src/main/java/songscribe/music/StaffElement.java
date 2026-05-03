@@ -27,6 +27,8 @@ import java.util.Collections;
 import java.util.List;
 import songscribe.error.RuntimeError;
 
+import com.uber.nullaway.annotations.Initializer;
+
 import org.jspecify.annotations.Nullable;
 
 import songscribe.ui.layout.Articulation;
@@ -110,8 +112,7 @@ public class StaffElement extends LineElement implements Cloneable {
     private boolean stemDirectionAuto = true;
 
     // The line which owns this note
-    @SuppressWarnings("NullAway") // set by Line.addElement() before the element is used
-    protected Line line = null;
+    protected Line line;
 
     // ========================================================================
     // LineElement hierarchy: articulations and attachments (Phase 3)
@@ -677,6 +678,7 @@ public class StaffElement extends LineElement implements Cloneable {
         return line;
     }
 
+    @Initializer
     public void setLine(Line line) {
         this.line = line;
 

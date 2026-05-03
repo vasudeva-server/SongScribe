@@ -41,19 +41,33 @@ import songscribe.util.GraphicUtils;
 public class ResolutionDialog extends StandardDialog implements ChangeListener {
 
     private boolean approved = false;
+
+    @SuppressWarnings("NullAway.Init")
     private JPanel mainPanel;
+
+    @SuppressWarnings("NullAway.Init")
     private MyJTextField widthField;
+
+    @SuppressWarnings("NullAway.Init")
     private MyJTextField heightField;
+
+    @SuppressWarnings("NullAway.Init")
     private JCheckBox withoutLyricsCheck;
+
+    @SuppressWarnings("NullAway.Init")
     private JSpinner resolutionSpinner;
+
+    @SuppressWarnings("NullAway.Init")
     private BorderPanel borderPanel;
+
+    @SuppressWarnings("NullAway.Init")
     private JCheckBox exportWithoutTitleCheckBox;
+
     private int sheetWidthPx = 0;
     private int sheetHeightPx = 0;
     private int sheetHeightWithoutLyricsPx = 0;
     private int sheetHeightWithoutTitlePx = 0;
 
-    @SuppressWarnings("NullAway.Init")
     public ResolutionDialog() {
         super(Strings.get(Strings.DIALOG_RESOLUTION_TITLE));
         borderPanel.setPackListener(_ -> pack());

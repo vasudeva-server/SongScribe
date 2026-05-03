@@ -227,13 +227,13 @@ public final class Score
 
     // Song-wide layout metrics shared across all line components.
     // Set by StaffPanel.updateSongMetrics before any layout/paint runs.
-    @SuppressWarnings("NullAway")
-    private SongLayoutMetrics songLayoutMetrics = null;
+    @SuppressWarnings("NullAway.Init")
+    private SongLayoutMetrics songLayoutMetrics;
 
     // Song-wide lyric render metrics shared across all line components.
     // Set by StaffPanel.updateSongMetrics before any layout/paint runs.
-    @SuppressWarnings("NullAway")
-    private LyricRenderMetrics lyricRenderMetrics = null;
+    @SuppressWarnings("NullAway.Init")
+    private LyricRenderMetrics lyricRenderMetrics;
 
     // The currently-open lyric editor overlay, if any. Set by LyricEditor.openOn /
     // dismiss so getActiveLyricEditor() doesn't have to scan getComponents() per paint.

@@ -46,14 +46,30 @@ import org.jspecify.annotations.Nullable;
 @SuppressWarnings("NonStaticInitializer")
 public class UIConverter extends MainFrame {
 
+    @SuppressWarnings("NullAway.Init")
     private JPanel mainPanel;
+
+    @SuppressWarnings("NullAway.Init")
     private JTextField songsFolder;
+
+    @SuppressWarnings("NullAway.Init")
     private JButton chooseButton;
+
+    @SuppressWarnings("NullAway.Init")
     private JButton convertButton;
+
+    @SuppressWarnings("NullAway.Init")
     private JPanel songsSummaryPanel;
+
+    @SuppressWarnings("NullAway.Init")
     private JTable acceptedTable;
+
+    @SuppressWarnings("NullAway.Init")
     private JButton numberSongButton;
+
+    @SuppressWarnings("NullAway.Init")
     private JList<Object> rejectList;
+
     private final DefaultTableModel acceptedTableModel =
         new DefaultTableModel();
     private final DefaultListModel<Object> rejectListModel =
@@ -61,7 +77,6 @@ public class UIConverter extends MainFrame {
     @Nullable
     private File currentDir = null;
 
-    @SuppressWarnings("NullAway.Init")
     public UIConverter() {
         appName = "Song Converter";
         setTitle(appName);
