@@ -3,9 +3,6 @@
     "CLAUDE_CODE_TASK_LIST_ID": "SongScribe"
   },
   "permissions": {
-    "ask": [
-      "Bash(./scripts/test.sh e2e)"
-    ],
     "allow": [
       "Bash(./gradlew compileJava:*)",
       "Bash(./scripts/check-style.sh:*)",
@@ -63,8 +60,6 @@
       "mcp__serena__rename_symbol",
       "mcp__serena__search_for_pattern",
       "mcp__serena__write_memory",
-      "Skill(commit-changes)",
-      "Skill(commit-commands:commit)",
       "WebFetch",
       "WebSearch",
       "Read(~/Library/Logs/SongScribe/songscribe.log)",
@@ -74,6 +69,9 @@
       "Bash(rtk read:*)",
       "Bash(rtk write:*)",
       "Bash(rtk grep:*)"
+    ],
+    "ask": [
+      "Bash(./scripts/test.sh e2e)"
     ]
   },
   "hooks": {
