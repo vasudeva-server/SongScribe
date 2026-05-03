@@ -975,7 +975,7 @@ public final class LyricEditor extends MyJTextField {
             }
 
             line.modifyElement(currentIndex, ElementField.LYRIC, () ->
-                element.setLyricForVerse(CURRENT_VERSE, null, false, null, Lyric.Extend.CONTINUE));
+                element.setLyricForVerse(CURRENT_VERSE, null, false, null, Lyric.Extend.STOP));
         });
 
         suppressDismissAdjustment = true;

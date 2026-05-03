@@ -41,15 +41,16 @@ import songscribe.ui.component.LyricEditor;
  * <ul>
  *   <li>note-with-Lyric(relation = SYLLABLE/COMPOUND_WORD) → HYPHEN span to next syllable</li>
  *   <li>note-with-Lyric(extend = START) → EXTENDER span from end of syllable onward</li>
- *   <li>note-with-Lyric(extend = STOP) → active EXTENDER ends at this note's right edge;
- *       emits no lyric box (the lyric is a melisma terminator)</li>
+ *   <li>note-with-Lyric(extend = STOP) → active EXTENDER ends {@value STOP_MELISMA_OVERSHOOT_SS} ss
+ *       past this note's right edge; emits no lyric box (the lyric is a melisma terminator)</li>
  *   <li>note-with-Lyric(extend = CONTINUE) → continues current EXTENDER silently (cross-line
  *       carrier); emits no lyric box</li>
  *   <li>note-with-no-Lyric + active EXTENDER → continues current EXTENDER</li>
  *   <li>rest-with-no-Lyric + active EXTENDER → breaks EXTENDER (ends at rest left edge)</li>
  *   <li>rest-with-Lyric(extend = START/CONTINUE) + active EXTENDER → continues EXTENDER through
  *       rest</li>
- *   <li>rest-with-Lyric(extend = STOP) + active EXTENDER → ends EXTENDER at rest's right edge</li>
+ *   <li>rest-with-Lyric(extend = STOP) + active EXTENDER → ends EXTENDER {@value STOP_MELISMA_OVERSHOOT_SS} ss
+ *       past rest's right edge</li>
  *   <li>note-with-Lyric(extend = NONE, text) + active EXTENDER → EXTENDER ends at start of this
  *       syllable; a new span (if any) begins after this syllable</li>
  * </ul>
@@ -63,6 +64,10 @@ import songscribe.ui.component.LyricEditor;
 public final class LyricLayoutBuilder {
 
     private static final Logger LOG = LoggerFactory.getLogger(LyricLayoutBuilder.class);
+
+    // Extends 0.25 ss past the column right edge so the line visually overshoots
+    // the notehead and makes the melisma termination unambiguous.
+    static final double STOP_MELISMA_OVERSHOOT_SS = 0.5;
 
     private LyricLayoutBuilder() {}
 
@@ -150,14 +155,14 @@ public final class LyricLayoutBuilder {
 
             if (column.isRest()) {
                 // Rest with extending lyric (START/CONTINUE): extender flows through.
-                // Rest with STOP lyric: extender ends at rest's right edge.
+                // Rest with STOP lyric: extender ends STOP_MELISMA_OVERSHOOT_SS past rest's right edge.
                 // Rest without extending lyric: extender (if active) ends at rest's left edge.
                 if (extend == Lyric.Extend.CONTINUE || extend == Lyric.Extend.START) {
                     continue;
                 }
 
                 if (extend == Lyric.Extend.STOP) {
-                    state.closeExtender(connectors, verse, column.getRightEdgeXSs());
+                    state.closeExtender(connectors, verse, column.getRightEdgeXSs() + STOP_MELISMA_OVERSHOOT_SS);
                     continue;
                 }
 
@@ -176,8 +181,8 @@ public final class LyricLayoutBuilder {
             }
 
             if (extend == Lyric.Extend.STOP) {
-                // STOP carrier: ends active extender at this note's right edge, no box.
-                state.closeExtender(connectors, verse, column.getRightEdgeXSs());
+                // STOP carrier: ends active extender STOP_MELISMA_OVERSHOOT_SS past this note's right edge, no box.
+                state.closeExtender(connectors, verse, column.getRightEdgeXSs() + STOP_MELISMA_OVERSHOOT_SS);
                 continue;
             }
 

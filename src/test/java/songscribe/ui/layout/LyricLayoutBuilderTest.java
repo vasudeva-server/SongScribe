@@ -406,8 +406,10 @@ class LyricLayoutBuilderTest extends UnitTest {
         var extenders = connectorsOfKind(result.connectors(), LyricConnectorLayout.Kind.EXTENDER);
         assertThat(extenders).hasSize(1);
         assertThat(extenders.get(0).endXSs())
-            .as("extender ends at stop carrier note's right edge")
-            .isCloseTo(columns.get(1).getRightEdgeXSs(), within(TOLERANCE));
+            .as("extender ends 0.25 ss beyond stop carrier note's right edge")
+            .isCloseTo(
+                columns.get(1).getRightEdgeXSs() + LyricLayoutBuilder.STOP_MELISMA_OVERSHOOT_SS,
+                within(TOLERANCE));
         assertThat(result.hasTrailingContinuation())
             .as("stop terminates melisma — no trailing continuation")
             .isFalse();
