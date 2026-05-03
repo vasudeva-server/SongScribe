@@ -110,7 +110,7 @@ class LyricEditorActionAuditTest extends UnitTest {
             ToggleNotationAction.createTieAction(),
             TupletAction.createTripletAction(),
             FlipStemDirectionAction.createAction(),
-            AddLyricAction.createAction(),
+            EditLyricAction.createAction(),
             // StaffAnnotationPopupButton
             AnnotationAction.createAction(),
             BeatChangeAction.createAction(),

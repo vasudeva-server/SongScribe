@@ -28,7 +28,7 @@ import songscribe.Strings;
 import songscribe.ui.component.LyricEditor;
 import songscribe.ui.component.Score;
 
-public final class AddLyricAction extends UIAction {
+public final class EditLyricAction extends UIAction {
 
     public static final Flag[] FLAGS = new Flag[]{
         Flag.REQUIRES_SINGLE_SELECTION,
@@ -40,16 +40,16 @@ public final class AddLyricAction extends UIAction {
         Flag.DISABLE_IN_GRACE_MODE,
     };
 
-    public static AddLyricAction createAction() {
-        return new AddLyricAction();
+    public static EditLyricAction createAction() {
+        return new EditLyricAction();
     }
 
-    private AddLyricAction() {
+    private EditLyricAction() {
         super(
-            Strings.get(Strings.ACTION_ADD_LYRIC),
+            Strings.get(Strings.ACTION_EDIT_LYRIC),
             "@\uEF6E", 22,
-            "add-lyric",
-            Strings.get(Strings.ACTION_ADD_LYRIC_TOOLTIP),
+            "edit-lyric",
+            Strings.get(Strings.ACTION_EDIT_LYRIC_TOOLTIP),
             VK_L, META_DOWN_MASK,
             FLAGS
         );
@@ -60,11 +60,10 @@ public final class AddLyricAction extends UIAction {
         var element = score.getSelectionCoordinator().getSingleSelectedElement();
 
         if (element == null) {
-            return true;
+            return false;
         }
 
-        var lyric = element.getMainLyric();
-        return lyric == null || lyric.text().isBlank();
+        return element.getType().isPitchedNote() || element.getType().isRest();
     }
 
     @Override
@@ -74,7 +73,7 @@ public final class AddLyricAction extends UIAction {
 
         if (element == null) {
             throw new IllegalStateException(
-                "AddLyricAction fired with no selected element — REQUIRES_SINGLE_SELECTION should have prevented this");
+                "EditLyricAction fired with no selected element — REQUIRES_SINGLE_SELECTION should have prevented this");
         }
 
         score.deselect();

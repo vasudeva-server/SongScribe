@@ -46,6 +46,7 @@ import songscribe.music.Lyric;
 import songscribe.music.StaffElement;
 import songscribe.ui.FlatLafKeys;
 import songscribe.ui.FlatLafProps;
+import songscribe.ui.action.EditLyricAction;
 import songscribe.ui.component.score.LineComponent;
 import songscribe.ui.layout.InsetsSs;
 import songscribe.ui.layout.ScaleContext;
@@ -59,7 +60,7 @@ import songscribe.util.UIUtils;
  *  ┌───────────────────────────────────────────────────────────┐
  *  │ LyricEditor lifecycle                                     │
  *  │                                                           │
- *  │   AddLyricAction.actionPerformed                          │
+ *  │   EditLyricAction.actionPerformed                          │
  *  │           │                                               │
  *  │           ▼                                               │
  *  │   new LyricEditor(line, element)                          │
@@ -208,7 +209,7 @@ public final class LyricEditor extends MyJTextField {
 
     /**
      * Constructs a {@link LyricEditor} on {@code element}, attaches it to {@code score},
-     * and gives it focus. Used by both {@link songscribe.ui.action.AddLyricAction} and
+     * and gives it focus. Used by both {@link EditLyricAction} and
      * {@link #advance()} so the open sequence is centralized.
      */
     public static void openOn(Score score, Line line, StaffElement element) {

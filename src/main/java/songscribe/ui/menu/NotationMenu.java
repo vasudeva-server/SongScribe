@@ -21,7 +21,7 @@ package songscribe.ui.menu;
 
 import static songscribe.ui.action.Actions.ADD_CRESCENDO_ACTION;
 import static songscribe.ui.action.Actions.ADD_DIMINUENDO_ACTION;
-import static songscribe.ui.action.Actions.ADD_LYRIC_ACTION;
+import static songscribe.ui.action.Actions.EDIT_LYRIC_ACTION;
 import static songscribe.ui.action.Actions.BREATH_MARK_ACTION;
 import static songscribe.ui.action.Actions.DYNAMIC_MARKING_ACTION_GROUP;
 import static songscribe.ui.action.Actions.FERMATA_ACTION;
@@ -77,7 +77,7 @@ public class NotationMenu extends JMenu {
         add(new JMenuItem(TOGGLE_BEAM_ACTION));
         add(new JMenuItem(TOGGLE_TIE_ACTION));
         add(new JMenuItem(FLIP_STEM_DIRECTION_ACTION));
-        add(new JMenuItem(ADD_LYRIC_ACTION));
+        add(new JMenuItem(EDIT_LYRIC_ACTION));
 
         addSeparator();
 

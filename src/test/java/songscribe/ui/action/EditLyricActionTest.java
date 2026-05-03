@@ -39,17 +39,17 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 
-class AddLyricActionTest extends UnitTest {
+class EditLyricActionTest extends UnitTest {
 
     private MockedStatic<MainFrame> mainFrameMock;
     private MockEnvHelper.MockEnv mockEnv;
-    private AddLyricAction action;
+    private EditLyricAction action;
 
     @BeforeEach
     void setUp() {
         mainFrameMock = mockStatic(MainFrame.class);
         mockEnv = MockEnvHelper.setupMockEnv(mainFrameMock);
-        action = AddLyricAction.createAction();
+        action = EditLyricAction.createAction();
     }
 
     @AfterEach
@@ -67,7 +67,7 @@ class AddLyricActionTest extends UnitTest {
         when(mockEnv.coordinator().getSingleSelectedElement()).thenReturn(mockElement);
 
         try (var lyricEditorMock = mockStatic(LyricEditor.class)) {
-            action.actionPerformed(new ActionEvent(this, ActionEvent.ACTION_PERFORMED, "add-lyric"));
+            action.actionPerformed(new ActionEvent(this, ActionEvent.ACTION_PERFORMED, "edit-lyric"));
             var score = mockEnv.score();
             lyricEditorMock.verify(() -> LyricEditor.openOn(score, mockLine, mockElement));
         }
@@ -77,7 +77,7 @@ class AddLyricActionTest extends UnitTest {
 
     @Test
     void testCarriesDisableWhenEditingTextFlag() {
-        assertThat(AddLyricAction.FLAGS).contains(UIAction.Flag.DISABLE_WHEN_EDITING_TEXT);
+        assertThat(EditLyricAction.FLAGS).contains(UIAction.Flag.DISABLE_WHEN_EDITING_TEXT);
     }
 
     @Test

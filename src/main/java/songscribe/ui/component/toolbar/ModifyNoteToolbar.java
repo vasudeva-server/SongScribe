@@ -31,6 +31,6 @@ public class ModifyNoteToolbar extends Toolbar {
         add(new ToolbarButton(Actions.TOGGLE_TIE_ACTION));
         add(new TupletPopupButton());
         add(new ToolbarButton(Actions.FLIP_STEM_DIRECTION_ACTION));
-        add(new ToolbarButton(Actions.ADD_LYRIC_ACTION));
+        add(new ToolbarButton(Actions.EDIT_LYRIC_ACTION));
     }
 }
