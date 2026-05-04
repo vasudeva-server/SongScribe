@@ -33,12 +33,18 @@ package songscribe.ui.layout;
  * the line rather than the line width. The renderer reads Y from
  * {@link SongLayoutMetrics#verseYSsInLine(int)}.
  *
- * @param startXSs   left edge of the connector in staff spaces
- * @param endXSs     right edge of the connector in staff spaces
- * @param verseIndex 1-based verse number
- * @param kind       connector kind
+ * @param startXSs           left edge of the connector in staff spaces
+ * @param endXSs             right edge of the connector in staff spaces
+ * @param verseIndex         1-based verse number
+ * @param kind               connector kind
+ * @param sourceElementIndex index of the element that opened this connector within its line,
+ *                           or {@link #NO_SOURCE_ELEMENT_INDEX} when the connector is a
+ *                           leading continuation carried in from the previous line (no
+ *                           source element on this line)
  */
-public record LyricConnectorLayout(double startXSs, double endXSs, int verseIndex, Kind kind) {
+public record LyricConnectorLayout(double startXSs, double endXSs, int verseIndex, Kind kind, int sourceElementIndex) {
+
+    public static final int NO_SOURCE_ELEMENT_INDEX = -1;
 
     public enum Kind {
         HYPHEN,

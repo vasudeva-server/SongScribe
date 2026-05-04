@@ -20,6 +20,7 @@
 
 package songscribe.ui.renderer;
 
+import static songscribe.ui.renderer.GraphicsState.Property.COLOR;
 import static songscribe.ui.renderer.GraphicsState.Property.FONT;
 import static songscribe.ui.renderer.GraphicsState.Property.STROKE;
 
@@ -99,12 +100,13 @@ public class LyricConnectorRenderer {
         var lyricRenderMetrics = ctx.getLyricRenderMetrics();
         var hyphenGv = getHyphenGlyphVector(lyricRenderMetrics.scaledLyricsFont());
 
-        try (var ignored = GraphicsState.save(g2, STROKE, FONT)) {
+        try (var ignored = GraphicsState.save(g2, COLOR, STROKE, FONT)) {
             g2.setFont(lyricRenderMetrics.scaledLyricsFont());
             g2.setStroke(EXTENDER_STROKE);
 
             for (var connector : connectors) {
                 var ySs = metrics.verseYSsInLine(connector.verseIndex());
+                g2.setColor(ctx.getElementColor(connector.sourceElementIndex()));
 
                 switch (connector.kind()) {
                     case HYPHEN -> drawHyphen(g2, connector, ySs, lyricRenderMetrics, hyphenGv);

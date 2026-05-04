@@ -28,6 +28,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static songscribe.ui.layout.LyricConnectorLayout.NO_SOURCE_ELEMENT_INDEX;
 
 import java.awt.font.GlyphVector;
 import java.util.List;
@@ -39,6 +40,7 @@ import org.mockito.ArgumentCaptor;
 
 import songscribe.UnitTest;
 import songscribe.music.Song;
+import songscribe.ui.component.Score;
 import songscribe.ui.layout.SongLayoutMetrics;
 import songscribe.ui.layout.LayoutResult;
 import songscribe.ui.layout.LyricConnectorLayout;
@@ -85,7 +87,7 @@ class LyricConnectorRendererTest extends UnitTest {
 
     @Test
     void testHyphenDrawnCenteredAtMidpoint() {
-        var connector = new LyricConnectorLayout(10.0, 11.5, 1, Kind.HYPHEN);
+        var connector = new LyricConnectorLayout(10.0, 11.5, 1, Kind.HYPHEN, NO_SOURCE_ELEMENT_INDEX);
         var ctx = contextWith(List.of(connector), metrics(1.0, 2.5, 1));
         var g2 = mock(Graphics2D.class);
 
@@ -105,7 +107,7 @@ class LyricConnectorRendererTest extends UnitTest {
 
     @Test
     void testDanglingHyphenDrawnCenteredInGap() {
-        var connector = new LyricConnectorLayout(8.0, 12.0, 1, Kind.DANGLING_HYPHEN);
+        var connector = new LyricConnectorLayout(8.0, 12.0, 1, Kind.DANGLING_HYPHEN, NO_SOURCE_ELEMENT_INDEX);
         var ctx = contextWith(List.of(connector), metrics(1.0, 2.5, 1));
         var g2 = mock(Graphics2D.class);
 
@@ -123,7 +125,7 @@ class LyricConnectorRendererTest extends UnitTest {
 
     @Test
     void testExtenderDrawnFromStartToEnd() {
-        var connector = new LyricConnectorLayout(5.0, 20.0, 1, Kind.EXTENDER);
+        var connector = new LyricConnectorLayout(5.0, 20.0, 1, Kind.EXTENDER, NO_SOURCE_ELEMENT_INDEX);
         var ctx = contextWith(List.of(connector), metrics(0.5, 2.0, 1));
         var g2 = mock(Graphics2D.class);
 
@@ -144,7 +146,7 @@ class LyricConnectorRendererTest extends UnitTest {
 
     @Test
     void testDanglingExtenderDrawnFromStartToEnd() {
-        var connector = new LyricConnectorLayout(5.0, 15.0, 1, Kind.DANGLING_EXTENDER);
+        var connector = new LyricConnectorLayout(5.0, 15.0, 1, Kind.DANGLING_EXTENDER, NO_SOURCE_ELEMENT_INDEX);
         var ctx = contextWith(List.of(connector), metrics(0.5, 2.0, 1));
         var g2 = mock(Graphics2D.class);
 
@@ -165,8 +167,8 @@ class LyricConnectorRendererTest extends UnitTest {
 
     @Test
     void testDistinctVersesRenderAtDistinctY() {
-        var verse1 = new LyricConnectorLayout(0.0, 10.0, 1, Kind.EXTENDER);
-        var verse2 = new LyricConnectorLayout(0.0, 10.0, 2, Kind.EXTENDER);
+        var verse1 = new LyricConnectorLayout(0.0, 10.0, 1, Kind.EXTENDER, NO_SOURCE_ELEMENT_INDEX);
+        var verse2 = new LyricConnectorLayout(0.0, 10.0, 2, Kind.EXTENDER, NO_SOURCE_ELEMENT_INDEX);
         var ctx = contextWith(List.of(verse1, verse2), metrics(1.0, 2.0, 2));
         var g2 = mock(Graphics2D.class);
 
@@ -185,8 +187,8 @@ class LyricConnectorRendererTest extends UnitTest {
 
     @Test
     void testExtenderUsesExtenderStroke() {
-        var hyphen = new LyricConnectorLayout(0.0, 4.0, 1, Kind.HYPHEN);
-        var extender = new LyricConnectorLayout(0.0, 4.0, 1, Kind.EXTENDER);
+        var hyphen = new LyricConnectorLayout(0.0, 4.0, 1, Kind.HYPHEN, NO_SOURCE_ELEMENT_INDEX);
+        var extender = new LyricConnectorLayout(0.0, 4.0, 1, Kind.EXTENDER, NO_SOURCE_ELEMENT_INDEX);
         var ctx = contextWith(List.of(hyphen, extender), metrics(1.0, 2.0, 1));
         var g2 = mock(Graphics2D.class);
 
@@ -203,6 +205,18 @@ class LyricConnectorRendererTest extends UnitTest {
 
         assertThat(actualStrokes).hasSize(1);
         assertThat(actualStrokes.get(0).getLineWidth()).isEqualTo(0.1045f);
+    }
+
+    @Test
+    void testSelectedSourceElementRendersConnectorInSelectionColor() {
+        var connector = new LyricConnectorLayout(5.0, 20.0, 1, Kind.EXTENDER, 0);
+        var ctx = contextWith(List.of(connector), metrics(0.5, 2.0, 1));
+        RenderContextTestHelper.enableSelection(ctx, 0);
+        var g2 = mock(Graphics2D.class);
+
+        LyricConnectorRenderer.getInstance().render(g2, ctx);
+
+        verify(g2).setColor(Score.getSelectionColor());
     }
 
     @Test

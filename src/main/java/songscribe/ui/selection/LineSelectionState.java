@@ -185,7 +185,7 @@ public final class LineSelectionState {
      * Returns whether the element at the given index is selected.
      */
     public boolean isElementSelected(int elementIndex) {
-        return (selectionBegin <= elementIndex) && (elementIndex <= selectionEnd);
+        return (elementIndex >= 0) && (selectionBegin <= elementIndex) && (elementIndex <= selectionEnd);
     }
 
     /**

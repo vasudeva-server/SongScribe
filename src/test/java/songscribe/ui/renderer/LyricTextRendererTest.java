@@ -39,6 +39,7 @@ import songscribe.UnitTest;
 import songscribe.music.Song;
 import songscribe.music.ElementType;
 import songscribe.ui.component.Score;
+import songscribe.ui.component.score.LineComponent;
 import songscribe.ui.layout.SongLayoutMetrics;
 import songscribe.ui.layout.LayoutResult;
 import songscribe.ui.layout.LyricBoxLayout;
@@ -202,7 +203,7 @@ class LyricTextRendererTest extends UnitTest {
         var element = ElementType.CROTCHET.newInstance();
         var box = new LyricBoxLayout(2.0, 1.5, 1, "v1");
         var layoutResult = LayoutResult.builder().addLyricBox(element, box).build();
-        var selectionProvider = mock(songscribe.ui.component.score.LineComponent.SelectionProvider.class);
+        var selectionProvider = mock(LineComponent.SelectionProvider.class);
         var ctx = new ElementRenderContext(new Song());
         ctx.setLayoutResult(layoutResult);
         ctx.setSongLayoutMetrics(metrics(1.0, 2.0, 1));
@@ -216,5 +217,24 @@ class LyricTextRendererTest extends UnitTest {
 
         verify(g2).setColor(Score.getSelectionColor());
         verify(g2).drawString("v1", toPx(2.0), toPx(7.0));
+    }
+
+    @Test
+    void testSelectedElementPaintsLyricInSelectionColor() {
+        var element = ElementType.CROTCHET.newInstance();
+        var box = new LyricBoxLayout(2.0, 1.5, 1, "v1");
+        var layoutResult = LayoutResult.builder().addLyricBox(element, box).build();
+        var ctx = new ElementRenderContext(new Song());
+        ctx.setLayoutResult(layoutResult);
+        ctx.setSongLayoutMetrics(metrics(1.0, 2.0, 1));
+        ctx.setLyricRenderMetrics(new LyricRenderMetrics(LYRICS_FONT, LYRICS_FONT, 0.0, 0.0));
+        ctx.setCurrentElementIndex(0);
+        RenderContextTestHelper.enableSelection(ctx, 0);
+
+        var g2 = mock(Graphics2D.class);
+
+        LyricTextRenderer.getInstance().render(element, g2, ctx);
+
+        verify(g2).setColor(Score.getSelectionColor());
     }
 }

@@ -21,8 +21,6 @@
 package songscribe.ui.renderer;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 import module java.desktop;
 
@@ -33,7 +31,6 @@ import songscribe.music.Song;
 import songscribe.music.Line;
 import songscribe.music.TieSpan;
 import songscribe.ui.component.Score;
-import songscribe.ui.component.score.LineComponent;
 
 class ElementRenderContextTest extends UnitTest {
 
@@ -74,12 +71,8 @@ class ElementRenderContextTest extends UnitTest {
     // T4: edit mode + element is selected → selectionColor
     @Test
     void testSelectedElementReturnsSelectionColor() {
-        var selectionProvider = mock(LineComponent.SelectionProvider.class);
-        when(selectionProvider.isElementSelected(0, 0)).thenReturn(true);
-
         var ctx = new ElementRenderContext(new Song());
-        ctx.setEditMode(true);
-        ctx.setSelectionProvider(selectionProvider);
+        RenderContextTestHelper.enableSelection(ctx, 0);
         ctx.setSelectionColor(Color.RED);
 
         assertThat(ctx.getElementColor(0)).isEqualTo(Color.RED);

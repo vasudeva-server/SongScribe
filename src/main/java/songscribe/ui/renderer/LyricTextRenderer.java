@@ -91,7 +91,7 @@ public class LyricTextRenderer extends BaseElementRenderer<StaffElement> {
                     )) {
                     g2.setColor(ctx.getSelectionColor());
                 } else {
-                    g2.setColor(Color.BLACK);
+                    g2.setColor(getDecorationColor(element, ctx));
                 }
 
                 var baselineYSs = metrics.verseYSsInLine(box.verseIndex());

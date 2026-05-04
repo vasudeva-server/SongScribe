@@ -203,9 +203,10 @@ public final class LyricLayoutBuilder {
                     state.pendingHyphenStartXSs,
                     boxXSs,
                     verse,
-                    LyricConnectorLayout.Kind.HYPHEN));
+                    LyricConnectorLayout.Kind.HYPHEN,
+                    state.pendingHyphenColumnIndex));
                 state.pendingHyphenStartXSs = -1;
-                state.pendingHyphenColumnIndex = -1;
+                state.pendingHyphenColumnIndex = LyricConnectorLayout.NO_SOURCE_ELEMENT_INDEX;
             }
 
             // Close any active extender at the start of this syllable.
@@ -278,7 +279,8 @@ public final class LyricLayoutBuilder {
             state.extenderStartXSs,
             endXSs,
             verse,
-            LyricConnectorLayout.Kind.DANGLING_EXTENDER));
+            LyricConnectorLayout.Kind.DANGLING_EXTENDER,
+            state.extenderColumnIndex));
     }
 
     /**
@@ -301,7 +303,8 @@ public final class LyricLayoutBuilder {
                     state.pendingHyphenStartXSs,
                     column.getLeftEdgeXSs(),
                     verse,
-                    LyricConnectorLayout.Kind.DANGLING_HYPHEN));
+                    LyricConnectorLayout.Kind.DANGLING_HYPHEN,
+                    state.pendingHyphenColumnIndex));
                 return;
             }
         }
@@ -314,9 +317,9 @@ public final class LyricLayoutBuilder {
     private static final class ExtenderState {
         boolean extenderActive;
         double extenderStartXSs;
-        int extenderColumnIndex = -1;
+        int extenderColumnIndex = LyricConnectorLayout.NO_SOURCE_ELEMENT_INDEX;
         double pendingHyphenStartXSs = -1.0;
-        int pendingHyphenColumnIndex = -1;
+        int pendingHyphenColumnIndex = LyricConnectorLayout.NO_SOURCE_ELEMENT_INDEX;
 
         ExtenderState(boolean hasLeadingContinuation) {
             this.extenderActive = hasLeadingContinuation;
@@ -330,7 +333,8 @@ public final class LyricLayoutBuilder {
                     extenderStartXSs,
                     endXSs,
                     verse,
-                    LyricConnectorLayout.Kind.EXTENDER));
+                    LyricConnectorLayout.Kind.EXTENDER,
+                    extenderColumnIndex));
                 extenderActive = false;
             }
         }

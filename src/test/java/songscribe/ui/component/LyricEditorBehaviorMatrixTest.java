@@ -1005,7 +1005,7 @@ class LyricEditorBehaviorMatrixTest extends LyricEditorTestSupport {
                 .containsExactly(Lyric.Syllabic.SINGLE, false, "do", Lyric.Extend.START);
             assertThat(element.getLyricForVerse(1))
                 .extracting(Lyric::extend)
-                .isEqualTo(Lyric.Extend.CONTINUE);
+                .isEqualTo(Lyric.Extend.STOP);
 
             var captor = ArgumentCaptor.forClass(LyricEditor.class);
             verify(score, atLeastOnce()).addOverlay(captor.capture());
@@ -1034,7 +1034,7 @@ class LyricEditorBehaviorMatrixTest extends LyricEditorTestSupport {
                 .containsExactly(Lyric.Syllabic.SINGLE, false, "do", Lyric.Extend.START);
             assertThat(element.getLyricForVerse(1))
                 .extracting(Lyric::extend)
-                .isEqualTo(Lyric.Extend.CONTINUE);
+                .isEqualTo(Lyric.Extend.STOP);
             verify(score, never()).addOverlay(any());
         }
 
@@ -1063,7 +1063,7 @@ class LyricEditorBehaviorMatrixTest extends LyricEditorTestSupport {
                 .containsExactly(Lyric.Syllabic.BEGIN, false, "Su", Lyric.Extend.START);
             assertThat(element.getLyricForVerse(1))
                 .extracting(Lyric::extend)
-                .isEqualTo(Lyric.Extend.CONTINUE);
+                .isEqualTo(Lyric.Extend.STOP);
 
             var captor = ArgumentCaptor.forClass(LyricEditor.class);
             verify(score, atLeastOnce()).addOverlay(captor.capture());
@@ -1098,7 +1098,7 @@ class LyricEditorBehaviorMatrixTest extends LyricEditorTestSupport {
                 .isEqualTo(Lyric.Extend.CONTINUE);
             assertThat(element.getLyricForVerse(1))
                 .extracting(Lyric::extend)
-                .isEqualTo(Lyric.Extend.CONTINUE);
+                .isEqualTo(Lyric.Extend.STOP);
 
             var captor = ArgumentCaptor.forClass(LyricEditor.class);
             verify(score, atLeastOnce()).addOverlay(captor.capture());
@@ -1133,7 +1133,7 @@ class LyricEditorBehaviorMatrixTest extends LyricEditorTestSupport {
                 .isEqualTo(Lyric.Extend.CONTINUE);
             assertThat(element.getLyricForVerse(1))
                 .extracting(Lyric::extend)
-                .isEqualTo(Lyric.Extend.CONTINUE);
+                .isEqualTo(Lyric.Extend.STOP);
 
             var captor = ArgumentCaptor.forClass(LyricEditor.class);
             verify(score, atLeastOnce()).addOverlay(captor.capture());
@@ -1162,7 +1162,7 @@ class LyricEditorBehaviorMatrixTest extends LyricEditorTestSupport {
                 .containsExactly(Lyric.Syllabic.BEGIN, false, "Su", Lyric.Extend.START);
             assertThat(element.getLyricForVerse(1))
                 .extracting(Lyric::extend)
-                .isEqualTo(Lyric.Extend.CONTINUE);
+                .isEqualTo(Lyric.Extend.STOP);
             verify(score, never()).addOverlay(any());
         }
     }

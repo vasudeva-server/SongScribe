@@ -755,7 +755,7 @@ class LyricEditorTest extends LyricEditorTestSupport {
             .containsExactly(Lyric.Syllabic.SINGLE, false, "do", Lyric.Extend.START);
         assertThat(element.getLyricForVerse(1))
             .extracting(Lyric::extend)
-            .isEqualTo(Lyric.Extend.CONTINUE);
+            .isEqualTo(Lyric.Extend.STOP);
         verify(score, never()).addOverlay(any(LyricEditor.class));
     }
 
@@ -780,7 +780,7 @@ class LyricEditorTest extends LyricEditorTestSupport {
         assertThat(predecessor.getLyricForVerse(1)).extracting(Lyric::extend).isEqualTo(Lyric.Extend.START);
         assertThat(predecessor.getLyricForVerse(1)).extracting(Lyric::syllabic).isEqualTo(Lyric.Syllabic.END);
         assertThat(predecessor.getLyricForVerse(1)).extracting(Lyric::text).isEqualTo("ble");
-        assertThat(element.getLyricForVerse(1)).extracting(Lyric::extend).isEqualTo(Lyric.Extend.CONTINUE);
+        assertThat(element.getLyricForVerse(1)).extracting(Lyric::extend).isEqualTo(Lyric.Extend.STOP);
     }
 
     @Test
@@ -802,7 +802,7 @@ class LyricEditorTest extends LyricEditorTestSupport {
         var notification = captureSingleDidChange();
         assertThat(notification.getMutations()).hasSize(2);
         assertThat(predecessor.getLyricForVerse(1)).extracting(Lyric::extend).isEqualTo(Lyric.Extend.START);
-        assertThat(element.getLyricForVerse(1)).extracting(Lyric::extend).isEqualTo(Lyric.Extend.CONTINUE);
+        assertThat(element.getLyricForVerse(1)).extracting(Lyric::extend).isEqualTo(Lyric.Extend.STOP);
     }
 
     // -----------------------------------------------------------------------

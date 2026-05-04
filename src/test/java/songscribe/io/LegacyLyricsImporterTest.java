@@ -122,12 +122,13 @@ class LegacyLyricsImporterTest extends UnitTest {
         assertLyric(lineA, 0, Lyric.Syllabic.BEGIN, false, "ele", false);
         assertNoLyric(lineA, 1);
 
-        // Leading "--" on line B is stripped; the first token "phant" lands on
-        // line B's first note as a standalone syllable.
-        assertLyric(lineB, 0, Lyric.Syllabic.SINGLE, false, "phant", false);
+        // Leading "--" on line B signals that "phant" continues a compound word
+        // from line A, so it lands on line B's first note as the END of a compound
+        // started by "ele" on line A.
+        assertLyric(lineB, 0, Lyric.Syllabic.END, false, "phant", false);
         assertLyric(lineB, 1, Lyric.Syllabic.BEGIN, false, "is", false);
 
-        // Cross-line continuation is expressed by line A's last Lyric syllabic.
+        // Line A's last Lyric is BEGIN, completing the cross-line compound.
         assertThat(lineA.getElement(0).getMainLyric())
             .isNotNull()
             .extracting(Lyric::syllabic)
