@@ -83,16 +83,7 @@ public class LyricTextRenderer extends BaseElementRenderer<StaffElement> {
             g2.setFont(lyricRenderMetrics.lyricsFont());
 
             for (var box : boxes) {
-                if (ctx.getSelectionProvider() != null
-                    && ctx.getSelectionProvider().isLyricSelected(
-                        element,
-                        box.verseIndex(),
-                        ctx.getLineIndex()
-                    )) {
-                    g2.setColor(ctx.getSelectionColor());
-                } else {
-                    g2.setColor(getDecorationColor(element, ctx));
-                }
+                g2.setColor(ctx.getLyricColor(ctx.getCurrentElementIndex(), element, box.verseIndex()));
 
                 var baselineYSs = metrics.verseYSsInLine(box.verseIndex());
                 var xPx = scaleContext.toRoundedPixels(box.xSs());

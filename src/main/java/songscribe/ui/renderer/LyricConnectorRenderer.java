@@ -106,7 +106,7 @@ public class LyricConnectorRenderer {
 
             for (var connector : connectors) {
                 var ySs = metrics.verseYSsInLine(connector.verseIndex());
-                g2.setColor(ctx.getElementColor(connector.sourceElementIndex()));
+                g2.setColor(ctx.getLyricConnectorColor(connector.sourceElementIndex(), connector.verseIndex()));
 
                 switch (connector.kind()) {
                     case HYPHEN -> drawHyphen(g2, connector, ySs, lyricRenderMetrics, hyphenGv);

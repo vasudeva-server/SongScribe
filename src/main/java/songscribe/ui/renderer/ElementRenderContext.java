@@ -22,10 +22,13 @@ package songscribe.ui.renderer;
 
 import module java.desktop;
 
+import java.util.function.BooleanSupplier;
+
 import com.uber.nullaway.annotations.Initializer;
 
 import org.jspecify.annotations.Nullable;
 
+import songscribe.music.Lyric;
 import songscribe.music.Song;
 import songscribe.music.Span;
 import songscribe.music.Line;
@@ -312,8 +315,76 @@ public class ElementRenderContext {
             return Color.BLACK;
         }
 
-        if (isElementPlaying(elementIndex) || isElementInPlayingTie(elementIndex)) {
+        return colorFor(
+            elementIndex,
+            () -> isElementPlaying(elementIndex) || isElementInPlayingTie(elementIndex),
+            () -> false
+        );
+    }
+
+    /**
+     * Returns the rendering color for a lyric syllable attached to the element at
+     * {@code elementIndex}, for the given verse. Extends {@link #getElementColor} with
+     * a per-verse {@code isLyricSelected} check inserted between playback and
+     * element-level selection.
+     * <p>
+     * The playback highlight extends across the syllable's span: a melisma anchor
+     * ({@link Lyric.Extend#START}) stays highlighted while any extender carrier of
+     * its melisma plays, and a {@link Lyric.Syllabic#BEGIN}/{@link Lyric.Syllabic#MIDDLE}
+     * anchor stays highlighted while in-between unlyriced notes play, up to (but not
+     * including) the next text-bearing syllable.
+     */
+    public Color getLyricColor(int elementIndex, StaffElement element, int verseIndex) {
+        if (!editMode) {
+            return Color.BLACK;
+        }
+
+        return colorFor(
+            elementIndex,
+            () -> isLyricSpanPlaying(elementIndex, element, verseIndex),
+            () -> selectionProvider != null
+                    && selectionProvider.isLyricSelected(element, verseIndex, lineIndex)
+        );
+    }
+
+    /**
+     * Returns the rendering color for a lyric connector (hyphen run or melisma extender)
+     * anchored at {@code sourceElementIndex} for {@code verseIndex}. Tracks the same
+     * span-aware playing highlight as the anchor syllable so that the connector stays
+     * highlighted while the in-between or extender carrier notes are playing.
+     */
+    public Color getLyricConnectorColor(int sourceElementIndex, int verseIndex) {
+        if (sourceElementIndex < 0 || !editMode) {
+            return Color.BLACK;
+        }
+
+        if (currentLine == null) {
+            return getElementColor(sourceElementIndex);
+        }
+
+        var anchor = currentLine.getElement(sourceElementIndex);
+        return colorFor(
+            sourceElementIndex,
+            () -> isLyricSpanPlaying(sourceElementIndex, anchor, verseIndex),
+            () -> false
+        );
+    }
+
+    private Color colorFor(
+        int elementIndex,
+        BooleanSupplier playingCheck,
+        BooleanSupplier extraSelectionCheck
+    ) {
+        if (!editMode) {
+            return Color.BLACK;
+        }
+
+        if (playingCheck.getAsBoolean()) {
             return Score.getPlayingNoteColor();
+        }
+
+        if (extraSelectionCheck.getAsBoolean()) {
+            return selectionColor;
         }
 
         if (selectionProvider != null
@@ -390,6 +461,59 @@ public class ElementRenderContext {
         return tieSpan != null
                 && tieSpan.getStart() <= elementIndex
                 && elementIndex <= tieSpan.getEnd();
+    }
+
+    /**
+     * Returns whether the lyric anchored at {@code anchorIndex} for {@code verseIndex}
+     * should render in the playing-note color: either its own element is playing (or
+     * tied to the playing note), or the playing note falls inside the anchor's lyric
+     * span (melisma extender carriers, or the unlyriced notes between a BEGIN/MIDDLE
+     * syllable and the next text-bearing syllable).
+     */
+    private boolean isLyricSpanPlaying(int anchorIndex, StaffElement element, int verseIndex) {
+        if (isElementPlaying(anchorIndex) || isElementInPlayingTie(anchorIndex)) {
+            return true;
+        }
+
+        if (playingNoteIndex < 0 || currentLine == null || playingNoteIndex <= anchorIndex) {
+            return false;
+        }
+
+        var lyric = element.getLyricForVerse(verseIndex);
+
+        if (lyric == null) {
+            return false;
+        }
+
+        var syllabic = lyric.syllabic();
+        boolean extendsForward = lyric.extend() == Lyric.Extend.START
+                || syllabic == Lyric.Syllabic.BEGIN
+                || syllabic == Lyric.Syllabic.MIDDLE;
+
+        if (!extendsForward) {
+            return false;
+        }
+
+        int count = currentLine.elementCount();
+
+        for (int i = anchorIndex + 1; i < count; i++) {
+            var next = currentLine.getElement(i).getLyricForVerse(verseIndex);
+
+            if (next == null) {
+                continue;
+            }
+
+            // A carrier (STOP/CONTINUE) belongs to this anchor's melisma — span includes it.
+            // A text-bearing lyric starts a new span — this anchor's span ends just before it.
+            int spanEnd = (next.extend() == Lyric.Extend.STOP
+                    || next.extend() == Lyric.Extend.CONTINUE)
+                    ? i
+                    : i - 1;
+            return playingNoteIndex <= spanEnd;
+        }
+
+        // No further lyric on this line: span runs to the end of the line.
+        return playingNoteIndex < count;
     }
 
     /**

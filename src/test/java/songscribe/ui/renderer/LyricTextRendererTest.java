@@ -208,6 +208,7 @@ class LyricTextRendererTest extends UnitTest {
         ctx.setLayoutResult(layoutResult);
         ctx.setSongLayoutMetrics(metrics(1.0, 2.0, 1));
         ctx.setLyricRenderMetrics(new LyricRenderMetrics(LYRICS_FONT, LYRICS_FONT, 0.0, 0.0));
+        ctx.setEditMode(true);
         ctx.setSelectionProvider(selectionProvider);
         when(selectionProvider.isLyricSelected(element, 1, 0)).thenReturn(true);
 
