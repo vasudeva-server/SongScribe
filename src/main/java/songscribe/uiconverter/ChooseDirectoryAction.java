@@ -27,6 +27,8 @@ import songscribe.ui.dialog.PlatformFileDialog;
 
 public class ChooseDirectoryAction extends AbstractAction {
 
+    public static final String DIRECTORY_CHANGE_PROPERTY = "directorychange";
+
     private final PlatformFileDialog pfd;
 
     public ChooseDirectoryAction(UIConverter uiConverter) {
@@ -43,7 +45,7 @@ public class ChooseDirectoryAction extends AbstractAction {
     @Override
     public void actionPerformed(ActionEvent e) {
         if (pfd.showDialog()) {
-            firePropertyChange("directorychange", null, pfd.getFile());
+            firePropertyChange(DIRECTORY_CHANGE_PROPERTY, null, pfd.getFile());
         }
     }
 }

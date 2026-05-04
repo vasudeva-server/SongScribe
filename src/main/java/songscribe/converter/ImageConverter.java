@@ -56,25 +56,25 @@ public class ImageConverter {
         "Top margin. If not present, the size of margin parameter is applied."
     )
     @NoDefault
-    public final int topmargin = -1;
+    public final int topMargin = -1;
 
     @ArgumentDescribe(
         "Left margin. If not present, the size of margin parameter is applied."
     )
     @NoDefault
-    public final int leftmargin = -1;
+    public final int leftMargin = -1;
 
     @ArgumentDescribe(
         "Bottom margin. If not present, the size of margin parameter is applied."
     )
     @NoDefault
-    public final int bottommargin = -1;
+    public final int bottomMargin = -1;
 
     @ArgumentDescribe(
         "Right margin. If not present, the size of margin parameter is applied."
     )
     @NoDefault
-    public final int rightmargin = -1;
+    public final int rightMargin = -1;
 
     @FileArgument
     public final File[] files = new File[0];

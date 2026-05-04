@@ -138,11 +138,11 @@ public final class GraphicUtils {
 
             if (!displays.isEmpty()) {
                 var edid = displays.getFirst().getEdid();
-                int widthCm = EdidUtil.getHcm(edid);
+                var widthCm = EdidUtil.getHcm(edid);
 
                 if (widthCm > 0) {
-                    double widthInches = widthCm / CM_PER_INCH;
-                    int logicalPixelWidth = gd.getDefaultConfiguration().getBounds().width;
+                    var widthInches = widthCm / CM_PER_INCH;
+                    var logicalPixelWidth = gd.getDefaultConfiguration().getBounds().width;
                     return (int) Math.round(logicalPixelWidth / widthInches);
                 }
             }

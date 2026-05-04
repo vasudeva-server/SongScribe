@@ -29,8 +29,12 @@ import songscribe.ui.component.Score;
 public class PageLayoutData {
 
     public @Nullable ArrayList<File> files = null;
-    public int paperWidthPx = 0, paperHeightPx = 0, leftInnerMarginPx =
-        0, rightOuterMarginPx = 0, topMarginPx = 0, bottomMarginPx = 0;
+    public int paperWidthPx = 0;
+    public int paperHeightPx = 0;
+    public int leftInnerMarginPx = 0;
+    public int rightOuterMarginPx = 0;
+    public int topMarginPx = 0;
+    public int bottomMarginPx = 0;
     public boolean mirrored = false;
     public int songsPerPage = 2;
     public @Nullable Score score = null;

@@ -39,7 +39,7 @@ public final class RuntimeError {
         "Sorry, but a fatal error has occurred and the application must quit.";
 
     // Guards against showing the alert more than once if exit() is called re-entrantly.
-    private static final AtomicBoolean alertShown = new AtomicBoolean(false);
+    private static final AtomicBoolean ALERT_SHOWN = new AtomicBoolean(false);
 
     /**
      * Logs the message, shows an error dialog to the user, and exits.
@@ -80,7 +80,7 @@ public final class RuntimeError {
     }
 
     private static RuntimeException showDialogAndExit() {
-        if (!alertShown.compareAndSet(false, true)) {
+        if (!ALERT_SHOWN.compareAndSet(false, true)) {
             throw new ExitInProgressError();
         }
 

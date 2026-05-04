@@ -191,12 +191,10 @@ public class ArgumentReader<T> {
     }
 
     private void setField(Field field, @Nullable String value) {
-        var t = field.getType().getSimpleName();
-
         try {
-            if (t.equals("int")) {
+            if (field.getType() == int.class) {
                 field.setInt(obj, Integer.parseInt(value));
-            } else if (t.equals("boolean")) {
+            } else if (field.getType() == boolean.class) {
                 field.setBoolean(
                     obj,
                     (value == null) || Boolean.parseBoolean(value)

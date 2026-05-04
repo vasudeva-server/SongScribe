@@ -76,47 +76,39 @@ public final class DesktopUtils {
     }
 
     public void browse(URI uri) {
-        if (klass == null) {
-            return;
-        }
-
-        if (isSupported(Action.BROWSE)) {
-            try {
-                klass.getMethod("browse", URI.class).invoke(desktop, uri);
-            } catch (Exception e) {
-                // Ignore
-            }
-        }
+        try {
+            invokeDesktopMethod("browse", Action.BROWSE, URI.class, uri);
+        } catch (IOException ignored) {}
     }
 
     public void mail(URI uri) {
-        if (klass == null) {
-            return;
-        }
-
-        if (isSupported(Action.MAIL)) {
-            try {
-                klass.getMethod("mail", URI.class).invoke(desktop, uri);
-            } catch (Exception e) {
-                // Ignore
-            }
-        }
+        try {
+            invokeDesktopMethod("mail", Action.MAIL, URI.class, uri);
+        } catch (IOException ignored) {}
     }
 
     public void open(File file) throws IOException {
+        invokeDesktopMethod("open", Action.OPEN, File.class, file);
+    }
+
+    private void invokeDesktopMethod(String name, Action action, Class<?> paramType, Object arg) throws IOException {
         if (klass == null) {
             return;
         }
 
-        if (isSupported(Action.OPEN)) {
-            try {
-                klass.getMethod("open", File.class).invoke(desktop, file);
-            } catch (NoSuchMethodException | IllegalAccessException e) {
-                // Ignore
-            } catch (InvocationTargetException e) {
-                throw new IOException(e.getTargetException());
-            }
+        if (!isSupported(action)) {
+            return;
         }
+
+        try {
+            klass.getMethod(name, paramType).invoke(desktop, arg);
+        } catch (InvocationTargetException e) {
+            var cause = e.getTargetException();
+
+            if (cause instanceof IOException ioException) {
+                throw ioException;
+            }
+        } catch (Exception ignored) {}
     }
 
     private boolean isSupported(Action p) {

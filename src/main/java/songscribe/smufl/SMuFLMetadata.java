@@ -104,14 +104,7 @@ public final class SMuFLMetadata {
      * Use for well-known glyphs whose metadata is guaranteed by the font.
      */
     public BBox requireBBox(SMuFLGlyph glyph) {
-        var result = bboxes.get(glyph);
-
-        if (result == null) {
-            throw RuntimeError.exit("missing bounding box for glyph: " + glyph);
-
-        }
-
-        return result;
+        return requireMapValue(bboxes, glyph, "bounding box");
     }
 
     /**
@@ -119,14 +112,7 @@ public final class SMuFLMetadata {
      * Use for well-known glyphs whose metadata is guaranteed by the font.
      */
     public GlyphAnchors requireAnchors(SMuFLGlyph glyph) {
-        var result = anchors.get(glyph);
-
-        if (result == null) {
-            throw RuntimeError.exit("missing anchors for glyph: " + glyph);
-
-        }
-
-        return result;
+        return requireMapValue(anchors, glyph, "anchors");
     }
 
     /**
@@ -134,11 +120,14 @@ public final class SMuFLMetadata {
      * Use for well-known glyphs whose metadata is guaranteed by the font.
      */
     public double requireAdvanceWidth(SMuFLGlyph glyph) {
-        var result = advanceWidths.get(glyph);
+        return requireMapValue(advanceWidths, glyph, "advance width");
+    }
+
+    private static <V> V requireMapValue(Map<SMuFLGlyph, V> map, SMuFLGlyph glyph, String description) {
+        var result = map.get(glyph);
 
         if (result == null) {
-            throw RuntimeError.exit("missing advance width for glyph: " + glyph);
-
+            throw RuntimeError.exit("missing " + description + " for glyph: " + glyph);
         }
 
         return result;
@@ -210,7 +199,7 @@ public final class SMuFLMetadata {
         var map = new EnumMap<SMuFLGlyph, Double>(SMuFLGlyph.class);
 
         for (var glyph : SMuFLGlyph.values()) {
-            JsonElement width = obj.get(glyph.smuflName());
+            var width = obj.get(glyph.smuflName());
 
             if (width != null) {
                 map.put(glyph, width.getAsDouble());
@@ -224,7 +213,7 @@ public final class SMuFLMetadata {
         static final SMuFLMetadata INSTANCE = load();
 
         private static SMuFLMetadata load() {
-            try (Reader reader = new InputStreamReader(
+            try (var reader = new InputStreamReader(
                     SMuFLMetadata.class.getResourceAsStream(METADATA_RESOURCE),
                     StandardCharsets.UTF_8)) {
                 var root = JsonParser.parseReader(reader).getAsJsonObject();

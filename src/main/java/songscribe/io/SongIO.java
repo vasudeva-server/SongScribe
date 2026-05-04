@@ -614,10 +614,17 @@ public final class SongIO {
             }
 
             // Extract fonts from ViewReader (null for v1.0 files without View section)
-            Font titleFont = viewReader != null ? viewReader.getTitleFont() : null;
-            Font lyricsFont = viewReader != null ? viewReader.getLyricsFont() : null;
-            Font attributionFont = viewReader != null ? viewReader.getAttributionFont() : null;
-            Font annotationFont = viewReader != null ? viewReader.getAnnotationFont() : null;
+            @Nullable Font titleFont = null;
+            @Nullable Font lyricsFont = null;
+            @Nullable Font attributionFont = null;
+            @Nullable Font annotationFont = null;
+
+            if (viewReader != null) {
+                titleFont = viewReader.getTitleFont();
+                lyricsFont = viewReader.getLyricsFont();
+                attributionFont = viewReader.getAttributionFont();
+                annotationFont = viewReader.getAnnotationFont();
+            }
 
             // Legacy fallback: if topPadding wasn't set in file, calculate initial value.
             // Layout calculation will recalculate this properly, but this provides

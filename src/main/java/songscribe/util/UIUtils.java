@@ -313,8 +313,8 @@ public final class UIUtils {
     @Nullable
     public static Component getDeepestComponentAt(JFrame frame, Point screenPoint) {
         var frameLocation = frame.getLocationOnScreen();
-        int relX = screenPoint.x - frameLocation.x;
-        int relY = screenPoint.y - frameLocation.y;
+        var relX = screenPoint.x - frameLocation.x;
+        var relY = screenPoint.y - frameLocation.y;
         return SwingUtilities.getDeepestComponentAt(frame, relX, relY);
     }
 
@@ -350,9 +350,8 @@ public final class UIUtils {
 
     @Nullable
     public static JFrame getParentFrame(Component component) {
-        return (SwingUtilities.getWindowAncestor(component) instanceof JFrame)
-            ? (JFrame) SwingUtilities.getWindowAncestor(component)
-            : null;
+        var ancestor = SwingUtilities.getWindowAncestor(component);
+        return (ancestor instanceof JFrame frame) ? frame : null;
     }
 
     @Nullable

@@ -68,44 +68,43 @@ public final class Utils {
         return Calendar.getInstance().get(Calendar.YEAR);
     }
 
-    public static void openWebPage(MainFrame mainFrame, String webPage) {
-        if (DesktopUtils.isDesktopSupported()) {
-            var desktop = DesktopUtils.getDesktop();
+    @FunctionalInterface
+    private interface DesktopOperation {
+        void perform(DesktopUtils desktop) throws Exception;
+    }
 
-            if (desktop == null) {
-                return;
-            }
+    private static void withDesktop(DesktopOperation operation, String title, String message) {
+        if (!DesktopUtils.isDesktopSupported()) {
+            return;
+        }
 
-            try {
-                desktop.browse(new URI(webPage));
-            } catch (Exception e) {
-                OptionDialogs.showErrorMessage(
-                    null,
-                    Strings.ALERT_TITLE_BROWSER_ERROR,
-                    Strings.ERROR_WEBPAGE_OPEN
-                );
-            }
+        var desktop = DesktopUtils.getDesktop();
+
+        if (desktop == null) {
+            return;
+        }
+
+        try {
+            operation.perform(desktop);
+        } catch (Exception e) {
+            OptionDialogs.showErrorMessage(null, title, message);
         }
     }
 
+    public static void openWebPage(MainFrame mainFrame, String webPage) {
+        withDesktop(
+            desktop -> desktop.browse(new URI(webPage)),
+            Strings.ALERT_TITLE_BROWSER_ERROR,
+            Strings.ERROR_WEBPAGE_OPEN
+        );
+    }
+
     public static void openEmail(MainFrame mainFrame, String email) {
-        if (DesktopUtils.isDesktopSupported()) {
-            var desktop = DesktopUtils.getDesktop();
-
-            if (desktop == null) {
-                return;
-            }
-
-            try {
-                desktop.mail(new URI("mailto", email, null));
-            } catch (Exception e) {
-                OptionDialogs.showErrorMessage(
-                    null,
-                    Strings.ALERT_TITLE_EMAIL_ERROR,
-                    Strings.ERROR_EMAIL_OPEN
-                );
-            }
-        }
+        withDesktop(
+            desktop -> desktop.mail(new URI("mailto", email, null)),
+            Strings.ALERT_TITLE_EMAIL_ERROR,
+            Strings.ERROR_EMAIL_OPEN
+        );
     }
 
     public static void sleep(long ms) {

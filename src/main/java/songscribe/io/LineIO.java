@@ -62,21 +62,21 @@ public final class LineIO {
     private LineIO() {
     }
 
-    public static void writeLine(Line l, PrintWriter pw) {
+    public static void writeLine(Line line, PrintWriter pw) {
         pw.println("    <" + XML_LINE + '>');
         XML.setIndent(6);
 
-        var song = l.getSong();
-        var lineKeyType = l.getKeyType();
+        var song = line.getSong();
+        var lineKeyType = line.getKeyType();
 
         if (
-            (l.getKeyAccidentalCount() != song.getDefaultKeyAccidentalCount()) ||
+            (line.getKeyAccidentalCount() != song.getDefaultKeyAccidentalCount()) ||
                 (lineKeyType != song.getDefaultKeyType())
         ) {
             XML.writeValue(
                 pw,
                 XML_KEYS,
-                Integer.toString(l.getKeyAccidentalCount())
+                Integer.toString(line.getKeyAccidentalCount())
             );
 
             if (lineKeyType != null) {
@@ -84,11 +84,11 @@ public final class LineIO {
             }
         }
 
-        if (l.getElementSpacingRatio() != 1f) {
+        if (line.getElementSpacingRatio() != 1f) {
             XML.writeValue(
                 pw,
                 XML_NOTE_DIST_CHANGE,
-                Float.toString(l.getElementSpacingRatio())
+                Float.toString(line.getElementSpacingRatio())
             );
         }
 
@@ -101,22 +101,22 @@ public final class LineIO {
         XML.writeValue(
             pw,
             XML_LYRICS_YPOS,
-            Double.toString(l.getLyricsYPosSs())
+            Double.toString(line.getLyricsYPosSs())
         );
 
-        if (!l.getBeamings().isEmpty()) {
-            XML.writeValue(pw, XML_BEAMINGS, spanSetToString(l.getBeamings()));
+        if (!line.getBeamings().isEmpty()) {
+            XML.writeValue(pw, XML_BEAMINGS, spanSetToString(line.getBeamings()));
         }
 
-        if (!l.getTies().isEmpty()) {
-            XML.writeValue(pw, XML_TIES, spanSetToString(l.getTies()));
+        if (!line.getTies().isEmpty()) {
+            XML.writeValue(pw, XML_TIES, spanSetToString(line.getTies()));
         }
 
-        if (!l.getTuplets().isEmpty()) {
-            XML.writeValue(pw, XML_TUPLETS, tupletSpanSetToString(l.getTuplets()));
+        if (!line.getTuplets().isEmpty()) {
+            XML.writeValue(pw, XML_TUPLETS, tupletSpanSetToString(line.getTuplets()));
         }
 
-        var endings = l.findEndings();
+        var endings = line.findEndings();
 
         if (!endings.isEmpty()) {
             XML.writeValue(
@@ -126,26 +126,26 @@ public final class LineIO {
             );
         }
 
-        if (!l.getCrescendos().isEmpty()) {
+        if (!line.getCrescendos().isEmpty()) {
             XML.writeValue(
                 pw,
                 XML_CRESCENDO,
-                dynamicsSpanSetToString(l.getCrescendos())
+                dynamicsSpanSetToString(line.getCrescendos())
             );
         }
 
-        if (!l.getDiminuendos().isEmpty()) {
+        if (!line.getDiminuendos().isEmpty()) {
             XML.writeValue(
                 pw,
                 XML_DIMINUENDO,
-                dynamicsSpanSetToString(l.getDiminuendos())
+                dynamicsSpanSetToString(line.getDiminuendos())
             );
         }
 
         pw.println("      <" + XML_NOTES + '>');
 
-        for (var i = 0; i < l.elementCount(); i++) {
-            StaffElementIO.writeElement(l.getElement(i), pw, l, i);
+        for (var i = 0; i < line.elementCount(); i++) {
+            StaffElementIO.writeElement(line.getElement(i), pw, line, i);
         }
 
         pw.println("      </" + XML_NOTES + '>');
@@ -165,18 +165,18 @@ public final class LineIO {
         return sb.toString();
     }
 
-    private static String spanSetToString(SpanSet<? extends Span> is) {
+    private static String spanSetToString(SpanSet<? extends Span> spanSet) {
         var sb = new StringBuilder(27);
 
-        for (var li = is.listIterator(); li.hasNext(); ) {
-            var i = li.next();
-            sb.append(i.getStart());
+        for (var iterator = spanSet.listIterator(); iterator.hasNext(); ) {
+            var span = iterator.next();
+            sb.append(span.getStart());
             sb.append(',');
-            sb.append(i.getEnd());
+            sb.append(span.getEnd());
 
-            if (i.getData() != null) {
+            if (span.getData() != null) {
                 sb.append(',');
-                sb.append(i.getData());
+                sb.append(span.getData());
             }
 
             sb.append(';');
@@ -185,20 +185,20 @@ public final class LineIO {
         return sb.toString();
     }
 
-    private static String tupletSpanSetToString(SpanSet<TupletSpan> is) {
+    private static String tupletSpanSetToString(SpanSet<TupletSpan> spanSet) {
         var sb = new StringBuilder(27);
 
-        for (var li = is.listIterator(); li.hasNext(); ) {
-            var i = li.next();
-            sb.append(i.getStart());
+        for (var iterator = spanSet.listIterator(); iterator.hasNext(); ) {
+            var span = iterator.next();
+            sb.append(span.getStart());
             sb.append(',');
-            sb.append(i.getEnd());
+            sb.append(span.getEnd());
             sb.append(',');
-            sb.append(i.getGrade());
+            sb.append(span.getGrade());
 
-            if (i.isVerticallyAdjusted()) {
+            if (span.isVerticallyAdjusted()) {
                 sb.append(',');
-                sb.append(i.getVerticalPositionSs());
+                sb.append(span.getVerticalPositionSs());
             }
 
             sb.append(';');
@@ -207,28 +207,44 @@ public final class LineIO {
         return sb.toString();
     }
 
-    private static String dynamicsSpanSetToString(SpanSet<DynamicsSpan> is) {
+    private static String dynamicsSpanSetToString(SpanSet<DynamicsSpan> spanSet) {
         var sb = new StringBuilder(27);
 
-        for (var li = is.listIterator(); li.hasNext(); ) {
-            var i = li.next();
-            sb.append(i.getStart());
+        for (var iterator = spanSet.listIterator(); iterator.hasNext(); ) {
+            var span = iterator.next();
+            sb.append(span.getStart());
             sb.append(',');
-            sb.append(i.getEnd());
+            sb.append(span.getEnd());
 
-            if (i.getX1ShiftSs() != 0 || i.getX2ShiftSs() != 0 || i.getYShiftSs() != 0) {
+            if (span.getX1ShiftSs() != 0 || span.getX2ShiftSs() != 0 || span.getYShiftSs() != 0) {
                 sb.append(',');
-                sb.append(i.getX1ShiftSs());
+                sb.append(span.getX1ShiftSs());
                 sb.append(',');
-                sb.append(i.getX2ShiftSs());
+                sb.append(span.getX2ShiftSs());
                 sb.append(',');
-                sb.append(i.getYShiftSs());
+                sb.append(span.getYShiftSs());
             }
 
             sb.append(';');
         }
 
         return sb.toString();
+    }
+
+    @FunctionalInterface
+    private interface SegmentConsumer {
+        void accept(int begin, int end);
+    }
+
+    private static void forEachSegment(String str, SegmentConsumer consumer) {
+        var begin = 0;
+        var end = str.indexOf(';', begin);
+
+        while (end != -1) {
+            consumer.accept(begin, end);
+            begin = end + 1;
+            end = str.indexOf(';', begin);
+        }
     }
 
     public static class LineReader {
@@ -255,11 +271,8 @@ public final class LineIO {
             this.song = song;
         }
 
-        private static void stringToBeamingSpanSet(SpanSet<Span> is, String str) {
-            var begin = 0;
-            var end = str.indexOf(';', begin);
-
-            while (end != -1) {
+        private static void stringToBeamingSpanSet(SpanSet<Span> spanSet, String str) {
+            forEachSegment(str, (begin, end) -> {
                 var firstComma = str.indexOf(',', begin);
                 var secondComma = str.indexOf(',', firstComma + 1);
 
@@ -269,53 +282,33 @@ public final class LineIO {
 
                 var a = Integer.parseInt(str.substring(begin, firstComma));
                 var b = Integer.parseInt(
-                    str.substring(
-                        firstComma + 1,
-                        (secondComma == -1) ? end : secondComma
-                    )
+                    str.substring(firstComma + 1, (secondComma == -1) ? end : secondComma)
                 );
-                var data = (secondComma == -1)
-                    ? null
-                    : str.substring(secondComma + 1, end);
-                is.addSpan(a, b, data);
-                begin = str.indexOf(';', begin) + 1;
-                end = str.indexOf(';', begin);
-            }
+                var data = (secondComma == -1) ? null : str.substring(secondComma + 1, end);
+                spanSet.addSpan(a, b, data);
+            });
         }
 
-        private static void stringToBeamSpanSet(SpanSet<BeamSpan> is, String str) {
-            var begin = 0;
-            var end = str.indexOf(';', begin);
-
-            while (end != -1) {
+        private static void stringToBeamSpanSet(SpanSet<BeamSpan> spanSet, String str) {
+            forEachSegment(str, (begin, end) -> {
                 var firstComma = str.indexOf(',', begin);
                 var a = Integer.parseInt(str.substring(begin, firstComma));
                 var b = Integer.parseInt(str.substring(firstComma + 1, end));
-                is.addSpan(new BeamSpan(a, b));
-                begin = str.indexOf(';', begin) + 1;
-                end = str.indexOf(';', begin);
-            }
+                spanSet.addSpan(new BeamSpan(a, b));
+            });
         }
 
-        private static void stringToTieSpanSet(SpanSet<TieSpan> is, String str) {
-            var begin = 0;
-            var end = str.indexOf(';', begin);
-
-            while (end != -1) {
+        private static void stringToTieSpanSet(SpanSet<TieSpan> spanSet, String str) {
+            forEachSegment(str, (begin, end) -> {
                 var firstComma = str.indexOf(',', begin);
                 var a = Integer.parseInt(str.substring(begin, firstComma));
                 var b = Integer.parseInt(str.substring(firstComma + 1, end));
-                is.addSpan(new TieSpan(a, b));
-                begin = str.indexOf(';', begin) + 1;
-                end = str.indexOf(';', begin);
-            }
+                spanSet.addSpan(new TieSpan(a, b));
+            });
         }
 
-        private static void stringToTupletSpanSet(SpanSet<TupletSpan> is, String str) {
-            var begin = 0;
-            var end = str.indexOf(';', begin);
-
-            while (end != -1) {
+        private static void stringToTupletSpanSet(SpanSet<TupletSpan> spanSet, String str) {
+            forEachSegment(str, (begin, end) -> {
                 var firstComma = str.indexOf(',', begin);
                 var secondComma = str.indexOf(',', firstComma + 1);
 
@@ -325,19 +318,14 @@ public final class LineIO {
 
                 var a = Integer.parseInt(str.substring(begin, firstComma));
                 var b = Integer.parseInt(
-                    str.substring(
-                        firstComma + 1,
-                        (secondComma == -1) ? end : secondComma
-                    )
+                    str.substring(firstComma + 1, (secondComma == -1) ? end : secondComma)
                 );
-
-                int grade = 3; // default to triplet
-                double vertPos = 0;
+                var grade = 3; // default to triplet
+                var verticalPositionSs = 0.0;
 
                 if (secondComma != -1) {
                     // Has data portion: grade[,vertPos]
-                    var dataStr = str.substring(secondComma + 1, end);
-                    var parts = dataStr.split(",");
+                    var parts = str.substring(secondComma + 1, end).split(",");
 
                     try {
                         grade = Integer.parseInt(parts[0]);
@@ -347,26 +335,21 @@ public final class LineIO {
 
                     if (parts.length > 1) {
                         try {
-                            vertPos = Double.parseDouble(parts[1]);
+                            verticalPositionSs = Double.parseDouble(parts[1]);
                         } catch (NumberFormatException e) {
-                            vertPos = 0;
+                            verticalPositionSs = 0.0;
                         }
                     }
                 }
 
                 var tuplet = new TupletSpan(a, b, grade);
-                tuplet.setVerticalPositionSs(vertPos);
-                is.addSpan(tuplet);
-                begin = str.indexOf(';', begin) + 1;
-                end = str.indexOf(';', begin);
-            }
+                tuplet.setVerticalPositionSs(verticalPositionSs);
+                spanSet.addSpan(tuplet);
+            });
         }
 
-        private static void stringToDynamicsSpanSet(SpanSet<DynamicsSpan> is, String str) {
-            var begin = 0;
-            var end = str.indexOf(';', begin);
-
-            while (end != -1) {
+        private static void stringToDynamicsSpanSet(SpanSet<DynamicsSpan> spanSet, String str) {
+            forEachSegment(str, (begin, end) -> {
                 var firstComma = str.indexOf(',', begin);
                 var secondComma = str.indexOf(',', firstComma + 1);
 
@@ -376,18 +359,13 @@ public final class LineIO {
 
                 var a = Integer.parseInt(str.substring(begin, firstComma));
                 var b = Integer.parseInt(
-                    str.substring(
-                        firstComma + 1,
-                        (secondComma == -1) ? end : secondComma
-                    )
+                    str.substring(firstComma + 1, (secondComma == -1) ? end : secondComma)
                 );
-
                 var dynamics = new DynamicsSpan(a, b);
 
                 if (secondComma != -1) {
                     // Has data portion: x1,x2,y
-                    var dataStr = str.substring(secondComma + 1, end);
-                    var parts = dataStr.split(",");
+                    var parts = str.substring(secondComma + 1, end).split(",");
 
                     if (parts.length >= 3) {
                         try {
@@ -400,36 +378,18 @@ public final class LineIO {
                     }
                 }
 
-                is.addSpan(dynamics);
-                begin = str.indexOf(';', begin) + 1;
-                end = str.indexOf(';', begin);
-            }
+                spanSet.addSpan(dynamics);
+            });
         }
 
         private void parseEndingPairs(String str) {
             pendingEndingPairs.clear();
-            var begin = 0;
-            var end = str.indexOf(';', begin);
-
-            while (end != -1) {
+            forEachSegment(str, (begin, end) -> {
                 var firstComma = str.indexOf(',', begin);
-                var secondComma = str.indexOf(',', firstComma + 1);
-
-                if (secondComma > end) {
-                    secondComma = -1;
-                }
-
                 var a = Integer.parseInt(str.substring(begin, firstComma));
-                var b = Integer.parseInt(
-                    str.substring(
-                        firstComma + 1,
-                        (secondComma == -1) ? end : secondComma
-                    )
-                );
+                var b = Integer.parseInt(str.substring(firstComma + 1, end));
                 pendingEndingPairs.add(new int[]{a, b});
-                begin = str.indexOf(';', begin) + 1;
-                end = str.indexOf(';', begin);
-            }
+            });
         }
 
         public void startElement11(String qName, Attributes attributes) {
@@ -534,11 +494,11 @@ public final class LineIO {
             return null;
         }
 
-        public void characters(char[] ch, int start, int lenght) {
+        public void characters(char[] ch, int start, int length) {
             if (where == Where.NOTES && noteReader != null) {
-                noteReader.characters(ch, start, lenght);
+                noteReader.characters(ch, start, length);
             } else if (lastTag != null) {
-                value.append(ch, start, lenght);
+                value.append(ch, start, length);
             }
         }
 

@@ -121,8 +121,8 @@ public final class FormatMigrator {
     public static void migratePixelsToStaffSpace(List<Line> lines) {
         var pps = ScaleContext.DEFAULT_PIXELS_PER_STAFF_SPACE;
 
-        for (var lineIdx = 0; lineIdx < lines.size(); lineIdx++) {
-            var line = lines.get(lineIdx);
+        for (var lineIndex = 0; lineIndex < lines.size(); lineIndex++) {
+            var line = lines.get(lineIndex);
 
             // Line-level fields
             line.setLyricsYPosSs(line.getLyricsYPosSs() / pps);
@@ -218,7 +218,7 @@ public final class FormatMigrator {
     @SuppressWarnings("deprecation")
     private static void migrateLineLevelOffsets(Line line) {
         // Migrate tempo change offset to per-instance
-        int tempoOffset = line.getTempoChangeYPosPx();
+        var tempoOffset = line.getTempoChangeYPosPx();
 
         if (tempoOffset != 0) {
             for (var i = 0; i < line.elementCount(); i++) {
@@ -236,11 +236,12 @@ public final class FormatMigrator {
         }
 
         // Migrate beat change offset to per-instance
-        int beatChangeOffset = line.getBeatChangeYPosPx();
+        var beatChangeOffset = line.getBeatChangeYPosPx();
+        var beatChangeDefaultPx = ScaleContext.getInstance().toRoundedPixels(Line.BEAT_CHANGE_DEFAULT_Y_SS);
 
         // BeatChange has a default offset, only migrate if different
-        if (beatChangeOffset != ScaleContext.getInstance().toRoundedPixels(Line.BEAT_CHANGE_DEFAULT_Y_SS)) {
-            int delta = beatChangeOffset - ScaleContext.getInstance().toRoundedPixels(Line.BEAT_CHANGE_DEFAULT_Y_SS);
+        if (beatChangeOffset != beatChangeDefaultPx) {
+            var delta = beatChangeOffset - beatChangeDefaultPx;
 
             for (var i = 0; i < line.elementCount(); i++) {
                 var note = line.getElement(i);
@@ -256,10 +257,11 @@ public final class FormatMigrator {
         }
 
         // Migrate first/second ending offset to per-instance
-        int endingOffset = line.getFirstSecondEndingYPosPx();
+        var endingOffset = line.getFirstSecondEndingYPosPx();
+        var endingDefaultPx = ScaleContext.getInstance().toRoundedPixels(Line.ENDING_DEFAULT_Y_SS);
 
-        if (endingOffset != ScaleContext.getInstance().toRoundedPixels(Line.ENDING_DEFAULT_Y_SS)) {
-            int delta = endingOffset - ScaleContext.getInstance().toRoundedPixels(Line.ENDING_DEFAULT_Y_SS);
+        if (endingOffset != endingDefaultPx) {
+            var delta = endingOffset - endingDefaultPx;
 
             for (var element : line.getRangeElements()) {
                 if (element instanceof Ending ending) {
@@ -269,10 +271,11 @@ public final class FormatMigrator {
         }
 
         // Migrate trill offset to per-instance
-        int trillOffset = line.getTrillYPosPx();
+        var trillOffset = line.getTrillYPosPx();
+        var trillDefaultPx = ScaleContext.getInstance().toRoundedPixels(Line.TRILL_DEFAULT_Y_SS);
 
-        if (trillOffset != ScaleContext.getInstance().toRoundedPixels(Line.TRILL_DEFAULT_Y_SS)) {
-            int delta = trillOffset - ScaleContext.getInstance().toRoundedPixels(Line.TRILL_DEFAULT_Y_SS);
+        if (trillOffset != trillDefaultPx) {
+            var delta = trillOffset - trillDefaultPx;
 
             for (var element : line.getRangeElements()) {
                 if (element instanceof Trill trill) {

@@ -698,7 +698,7 @@ public class UIConverter extends MainFrame {
 
         @Override
         public void propertyChange(PropertyChangeEvent evt) {
-            if (evt.getPropertyName().equals("directorychange")) {
+            if (evt.getPropertyName().equals(ChooseDirectoryAction.DIRECTORY_CHANGE_PROPERTY)) {
                 handleDirectoryChange((File) evt.getNewValue());
             }
         }

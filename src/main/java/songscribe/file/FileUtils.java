@@ -26,10 +26,12 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
@@ -113,15 +115,16 @@ public final class FileUtils {
         var name = file.getName().toLowerCase();
 
         for (var ext : extensions) {
-            var dotExt = ext.startsWith(".") ? ext : "." + ext;
-
-            if (name.endsWith(dotExt)) {
+            if (name.endsWith(toDotExt(ext))) {
                 return file;
             }
         }
 
-        var dotExt = extensions[0].startsWith(".") ? extensions[0] : "." + extensions[0];
-        return new File(file.getAbsolutePath() + dotExt);
+        return new File(file.getAbsolutePath() + toDotExt(extensions[0]));
+    }
+
+    private static String toDotExt(String ext) {
+        return ext.startsWith(".") ? ext : "." + ext;
     }
 
     @Nullable
@@ -136,9 +139,7 @@ public final class FileUtils {
             return null;
         }
 
-        var saveFile = ensureExtension(fileDialog.getFile(), extensions);
-
-        return saveFile;
+        return ensureExtension(fileDialog.getFile(), extensions);
     }
 
     public static File getDocumentsDirectory() {
@@ -168,7 +169,7 @@ public final class FileUtils {
 
             try (
                 var reader = new BufferedReader(
-                    new InputStreamReader(inputStream)
+                    new InputStreamReader(inputStream, StandardCharsets.UTF_8)
                 )
             ) {
                 var line = reader.readLine();
@@ -188,17 +189,8 @@ public final class FileUtils {
     }
 
     public static void copyFile(File in, File out) {
-        try (
-            var inputStream = new FileInputStream(in);
-            var outputStream = new FileOutputStream(out)
-        ) {
-            var buf = new byte[1024];
-            var bytesRead = inputStream.read(buf);
-
-            while (bytesRead != -1) {
-                outputStream.write(buf, 0, bytesRead);
-                bytesRead = inputStream.read(buf);
-            }
+        try {
+            Files.copy(in.toPath(), out.toPath(), StandardCopyOption.REPLACE_EXISTING);
         } catch (IOException e) {
             // Ignore
         }
@@ -246,7 +238,7 @@ public final class FileUtils {
         try (var inputStream = new FileInputStream(file)) {
             var bytesRead = inputStream.read(buf);
 
-            while (bytesRead > 0) {
+            while (bytesRead != -1) {
                 zos.write(buf, 0, bytesRead);
                 bytesRead = inputStream.read(buf);
             }

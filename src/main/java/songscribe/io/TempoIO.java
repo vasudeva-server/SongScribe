@@ -176,9 +176,9 @@ public final class TempoIO {
             return null;
         }
 
-        public void characters(char[] ch, int start, int lenght) {
+        public void characters(char[] ch, int start, int length) {
             if (lastTag != null) {
-                value.append(ch, start, lenght);
+                value.append(ch, start, length);
             }
         }
 

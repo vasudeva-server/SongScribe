@@ -31,41 +31,35 @@ public final class XML {
         indent = newIndent;
     }
 
-    public static void writeEmptyTag(PrintWriter pw, String tag) {
+    private static void printIndent(PrintWriter pw) {
         for (var i = 0; i < indent; i++) {
             pw.print(' ');
         }
+    }
 
+    public static void writeEmptyTag(PrintWriter pw, String tag) {
+        printIndent(pw);
         pw.print('<');
         pw.print(tag);
         pw.println(" />");
     }
 
     public static void writeBeginTag(PrintWriter pw, String tag) {
-        for (var i = 0; i < indent; i++) {
-            pw.print(' ');
-        }
-
+        printIndent(pw);
         pw.print('<');
         pw.print(tag);
         pw.println('>');
     }
 
     public static void writeEndTag(PrintWriter pw, String tag) {
-        for (var i = 0; i < indent; i++) {
-            pw.print(' ');
-        }
-
+        printIndent(pw);
         pw.print("</");
         pw.print(tag);
         pw.println('>');
     }
 
     public static void writeValue(PrintWriter pw, String tag, String value) {
-        for (var i = 0; i < indent; i++) {
-            pw.print(' ');
-        }
-
+        printIndent(pw);
         pw.print('<');
         pw.print(tag);
         pw.print('>');

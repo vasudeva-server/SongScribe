@@ -63,17 +63,14 @@ public class PDFExporter {
         var horizontalScale = (paperWidth - horizontalMargin) / sheetWidth;
         var verticalMargin = (data.topMarginPx + data.bottomMarginPx) * resolution;
         var verticalScale = (paperHeight - verticalMargin) / sheetHeight;
-        double scale;
-        double leftMargin = data.leftInnerMarginPx * resolution;
+        var scale = (horizontalScale < verticalScale) ? horizontalScale : verticalScale;
+        var leftMargin = (double) data.leftInnerMarginPx * resolution;
 
-        if (horizontalScale < verticalScale) {
-            scale = horizontalScale;
-        } else {
+        if (horizontalScale >= verticalScale) {
             // If scaling vertically, the horizontal margin will be larger than
             // what is specified in Data. So we calculate the total margin available,
             // then give the left margin the same fraction of the total margin
             // it would have had before scaling.
-            scale = verticalScale;
             var scaledMargin = paperWidth - (sheetWidth * scale);
             var leftMarginFactor =
                 (double) data.leftInnerMarginPx /

@@ -45,30 +45,18 @@ public final class ViewIO {
 
     public static void writeView(Song c, PrintWriter pw) {
         XML.setIndent(4);
-        XML.writeValue(pw, XML_TITLE_FONT, c.getTitleFont().getPSName());
-        XML.writeValue(
-            pw,
-            XML_TITLE_FONT_SIZE,
-            String.valueOf(c.getTitleFont().getSize())
-        );
-        XML.writeValue(pw, XML_LYRICS_FONT, c.getLyricsFont().getPSName());
-        XML.writeValue(
-            pw,
-            XML_LYRICS_FONT_SIZE,
-            Integer.toString(c.getLyricsFont().getSize())
-        );
-        XML.writeValue(pw, XML_GENERAL_FONT, c.getAttributionFont().getPSName());
-        XML.writeValue(
-            pw,
-            XML_GENERAL_FONT_SIZE,
-            Integer.toString(c.getAttributionFont().getSize())
-        );
-        XML.writeValue(pw, XML_ANNOTATION_FONT, c.getAnnotationFont().getPSName());
-        XML.writeValue(
-            pw,
-            XML_ANNOTATION_FONT_SIZE,
-            Integer.toString(c.getAnnotationFont().getSize())
-        );
+        var titleFont = c.getTitleFont();
+        var lyricsFont = c.getLyricsFont();
+        var attributionFont = c.getAttributionFont();
+        var annotationFont = c.getAnnotationFont();
+        XML.writeValue(pw, XML_TITLE_FONT, titleFont.getPSName());
+        XML.writeValue(pw, XML_TITLE_FONT_SIZE, String.valueOf(titleFont.getSize()));
+        XML.writeValue(pw, XML_LYRICS_FONT, lyricsFont.getPSName());
+        XML.writeValue(pw, XML_LYRICS_FONT_SIZE, Integer.toString(lyricsFont.getSize()));
+        XML.writeValue(pw, XML_GENERAL_FONT, attributionFont.getPSName());
+        XML.writeValue(pw, XML_GENERAL_FONT_SIZE, Integer.toString(attributionFont.getSize()));
+        XML.writeValue(pw, XML_ANNOTATION_FONT, annotationFont.getPSName());
+        XML.writeValue(pw, XML_ANNOTATION_FONT_SIZE, Integer.toString(annotationFont.getSize()));
     }
 
     public static class ViewReader {
@@ -127,9 +115,9 @@ public final class ViewIO {
             lastTag = null;
         }
 
-        public void characters(char[] ch, int start, int lenght) {
+        public void characters(char[] ch, int start, int length) {
             if (lastTag != null) {
-                value.append(ch, start, lenght);
+                value.append(ch, start, length);
             }
         }
 

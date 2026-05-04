@@ -87,7 +87,7 @@ public final class MyFontUtils {
                 throw RuntimeError.exit("Could not load system fonts");
             }
 
-            Map<TextAttribute, Object> attributes = new HashMap<>();
+            var attributes = new HashMap<TextAttribute, Object>();
             attributes.put(TextAttribute.KERNING, TextAttribute.KERNING_ON);
             var kernedFonts = new ArrayList<Font>(fonts.length);
 
@@ -142,7 +142,7 @@ public final class MyFontUtils {
     }
 
     public static Font deriveKernedFont(Font font) {
-        Map<TextAttribute, Object> attributes = new HashMap<>();
+        var attributes = new HashMap<TextAttribute, Object>();
         attributes.put(TextAttribute.KERNING, TextAttribute.KERNING_ON);
         return font.deriveFont(attributes);
     }
@@ -216,15 +216,9 @@ public final class MyFontUtils {
     public static void installLocalFont(String fontName, float size) {
         var font = getLocalFont(fontName, size);
         var ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
-        var psName = font.getPSName();
 
-        // Skip registration if a font with the same PostScript name is already present
-        // (registerFont returns false for duplicates, but also for other failures).
-        var alreadyRegistered = Arrays.stream(ge.getAllFonts())
-            .anyMatch(f -> f.getPSName().equals(psName));
-
-        if (!alreadyRegistered && !ge.registerFont(font)) {
-            LOG.error("Could not register font: {}", fontName);
+        if (!ge.registerFont(font)) {
+            LOG.warn("Could not register font (may already be registered): {}", fontName);
         }
     }
 

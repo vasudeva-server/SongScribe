@@ -37,6 +37,13 @@ public class PDFConverter {
 
     private static final Logger LOG = LoggerFactory.getLogger(PDFConverter.class);
 
+    private static final int PAPER_A4_WIDTH = 827;
+    private static final int PAPER_A4_HEIGHT = 1169;
+    private static final int PAPER_LETTER_WIDTH = 850;
+    private static final int PAPER_LETTER_HEIGHT = 1100;
+    private static final int PAPER_LEGAL_HEIGHT = 1400;
+    private static final int DEFAULT_MARGIN = 75;
+
     @ArgumentDescribe("Paper size: a4, letter, legal, custom")
     @NoDefault
     public @Nullable String paperSize = null;
@@ -113,16 +120,16 @@ public class PDFConverter {
 
         switch (size) {
             case "a4" -> {
-                paperWidth = 827;
-                paperHeight = 1169;
+                paperWidth = PAPER_A4_WIDTH;
+                paperHeight = PAPER_A4_HEIGHT;
             }
             case "letter" -> {
-                paperWidth = 850;
-                paperHeight = 1100;
+                paperWidth = PAPER_LETTER_WIDTH;
+                paperHeight = PAPER_LETTER_HEIGHT;
             }
             case "legal" -> {
-                paperWidth = 850;
-                paperHeight = 1400;
+                paperWidth = PAPER_LETTER_WIDTH;
+                paperHeight = PAPER_LEGAL_HEIGHT;
             }
             case "custom" -> {
                 if ((paperWidth <= 0) || (paperHeight <= 0)) {
@@ -142,7 +149,7 @@ public class PDFConverter {
         data.paperWidthPx = paperWidth;
         data.paperHeightPx = paperHeight;
         data.score = score;
-        data.applyMarginOverrides(75, topMargin, leftMargin, bottomMargin, rightMargin);
+        data.applyMarginOverrides(DEFAULT_MARGIN, topMargin, leftMargin, bottomMargin, rightMargin);
 
         if (files.length == 0) {
             LOG.error("No files specified");

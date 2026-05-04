@@ -40,7 +40,7 @@ public final class GeneralPathFile {
 
     private static final Logger LOG = LoggerFactory.getLogger(GeneralPathFile.class);
 
-    private static final char fermataChar = '\uf055';
+    private static final char FERMATA_CHAR = '\uf055';
 
     private static final Properties valueNum = new Properties();
 
@@ -69,7 +69,7 @@ public final class GeneralPathFile {
                 continue;
             }
 
-            int parNum = parNumObj;
+            var parNum = (int) parNumObj;
             oos.writeInt(seg);
 
             for (var i = 0; i < parNum; i++) {
@@ -137,7 +137,7 @@ public final class GeneralPathFile {
     public static void main(String[] args)
         throws IOException, FileNotFoundException, FileNotFoundException {
         writeGeneralPath(
-            fermataChar,
+            FERMATA_CHAR,
             new File(Utils.getResourcePath("fonts/fermata"))
         );
         // final GeneralPath gm = readGeneralPath(new File("fm"));

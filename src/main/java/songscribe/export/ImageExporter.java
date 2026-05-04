@@ -30,7 +30,7 @@ import static songscribe.export.ExportOptions.ALL;
 /**
  * Utility class for exporting music scores as images.
  */
-public class ImageExporter {
+public final class ImageExporter {
 
     private ImageExporter() {
         // Utility class - prevent instantiation

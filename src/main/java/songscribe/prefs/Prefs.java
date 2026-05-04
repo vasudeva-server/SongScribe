@@ -313,8 +313,7 @@ public final class Prefs {
         try {
             var merged = new HashMap<>(defaults);
             merged.putAll(store);
-            var json = GSON.toJsonTree(merged);
-            Files.writeString(prefsFile, GSON.toJson(json), StandardCharsets.UTF_8);
+            Files.writeString(prefsFile, GSON.toJson(merged), StandardCharsets.UTF_8);
         } catch (IOException e) {
             LOG.warn("Failed to save preferences to {}", prefsFile, e);
         }

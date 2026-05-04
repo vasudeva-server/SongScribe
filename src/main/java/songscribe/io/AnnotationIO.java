@@ -43,11 +43,8 @@ public final class AnnotationIO {
         PrintWriter pw,
         int indent
     ) {
-        for (var i = 0; i < indent; i++) {
-            pw.print(' ');
-        }
-
-        pw.println('<' + XML_ANNOTATION + '>');
+        XML.setIndent(indent);
+        XML.writeBeginTag(pw, XML_ANNOTATION);
         XML.setIndent(indent + 2);
         XML.writeValue(pw, XML_NAME, a.getAnnotation());
         XML.writeValue(pw, XML_ALIGNMENT, Float.toString(a.getXAlignment()));
@@ -58,11 +55,8 @@ public final class AnnotationIO {
             XML.writeValue(pw, XML_USER_Y_OFFSET, Double.toString(a.getUserYOffsetSs()));
         }
 
-        for (var i = 0; i < indent; i++) {
-            pw.print(' ');
-        }
-
-        pw.println("</" + XML_ANNOTATION + '>');
+        XML.setIndent(indent);
+        XML.writeEndTag(pw, XML_ANNOTATION);
     }
 
     public static class AnnotationReader {
