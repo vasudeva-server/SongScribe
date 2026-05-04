@@ -34,6 +34,7 @@ import songscribe.ui.FlatLafProps;
 public class AnnotationDialog extends AttachmentDialog<Annotation> {
 
     private static final String DEFAULT_ANNOTATION = "fine";
+    private static final String ANNOTATION_FILE = "annotations";
 
     private final JComboBox<String> annotationCombo = new JComboBox<>();
     private final JRadioButton leftRadio =
@@ -51,7 +52,7 @@ public class AnnotationDialog extends AttachmentDialog<Annotation> {
         super(Strings.get(Strings.DIALOG_ANNOTATION_TITLE));
 
         annotationCombo.setEditable(true);
-        FileUtils.readComboValuesFromFile(annotationCombo, "annotations");
+        FileUtils.readComboValuesFromFile(annotationCombo, ANNOTATION_FILE);
 
         var alignmentGroup = new ButtonGroup();
         alignmentGroup.add(leftRadio);

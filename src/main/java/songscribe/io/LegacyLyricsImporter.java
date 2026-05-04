@@ -47,12 +47,14 @@ import songscribe.music.Lyric;
  * {@code heart_ _ _garden} across 4 notes placed "heart" on note 1 and "garden"
  * on note 4, with two continuation notes between them.
  *
- * <p>A line starting with {@code --} (legacy mid-word continuation marker) has
- * those two characters stripped before tokenizing; cross-line continuation is
- * expressed in the new model by the preceding line's last {@link Lyric} having
- * a non-{@code NONE} relation.
+ * <p>A line starting with {@code --} (legacy mid-word continuation marker) signals that
+ * the first word on this line continues a compound word from the previous line. The
+ * marker is stripped and {@code inWord} is initialized to {@code true} so that
+ * {@link #deriveSyllabic} assigns {@code MIDDLE} or {@code END} to the first syllable.
  */
 public final class LegacyLyricsImporter {
+
+    private static final String COMPOUND_WORD_MARKER = "--";
 
     private LegacyLyricsImporter() {
     }
@@ -91,16 +93,18 @@ public final class LegacyLyricsImporter {
     }
 
     private static void importLine(Line line, String text) {
-        // Strip legacy mid-word continuation marker.
-        if (text.startsWith("--")) {
-            text = text.substring(2);
+        var inWord = false;
+
+        // A leading "--" means the first word continues a compound from the previous line.
+        if (text.startsWith(COMPOUND_WORD_MARKER)) {
+            text = text.substring(COMPOUND_WORD_MARKER.length());
+            inWord = true;
         }
 
         var elementCount = line.effectiveElementCount();
         var elementIdx = 0;
         var i = 0;
         var n = text.length();
-        var inWord = false;
 
         while (i < n && elementIdx < elementCount) {
             var c = text.charAt(i);
@@ -133,8 +137,8 @@ public final class LegacyLyricsImporter {
 
             if (c == '-' || c == '=') {
                 // Stray relation marker without a preceding word; skip.
-                if (c == '-' && i + 1 < n && text.charAt(i + 1) == '-') {
-                    i += 2;
+                if (c == '-' && text.startsWith(COMPOUND_WORD_MARKER, i)) {
+                    i += COMPOUND_WORD_MARKER.length();
                 } else {
                     i++;
                 }
@@ -184,10 +188,10 @@ public final class LegacyLyricsImporter {
                     hasDelimiter = true;
                     i++;
                 } else if (next == '-') {
-                    if (i + 1 < n && text.charAt(i + 1) == '-') {
+                    if (text.startsWith(COMPOUND_WORD_MARKER, i)) {
                         compound = true;
                         hasDelimiter = true;
-                        i += 2;
+                        i += COMPOUND_WORD_MARKER.length();
                     } else {
                         hasDelimiter = true;
                         i++;
