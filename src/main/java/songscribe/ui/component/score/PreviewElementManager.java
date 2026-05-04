@@ -894,7 +894,9 @@ public final class PreviewElementManager {
         }
 
         line.adjustSyllablesForNeighborChange(xIndex - 1, null);
+        line.adjustExtendsForInsertion(xIndex);
         line.addElement(xIndex, previewElement);
+        line.adjustSyllablesForSuccessorAfterInsertion(xIndex);
         var shift = ScaleContext.getInstance().toRoundedPixels(insertion.shiftForSubsequentElementsSs());
 
         for (var i = xIndex + 1; i < line.effectiveElementCount(); i++) {

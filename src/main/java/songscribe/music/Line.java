@@ -447,6 +447,110 @@ public class Line {
     }
 
     /**
+     * Adjusts the syllabic value on the element at {@code insertionIndex + 1} after a bare
+     * note has been inserted at {@code insertionIndex}. The inserted note carries no lyric,
+     * so a successor that was mid-word or end-of-word now has no preceding syllable:
+     *
+     * <ul>
+     *   <li>{@link Lyric.Syllabic#MIDDLE} → {@link Lyric.Syllabic#BEGIN}</li>
+     *   <li>{@link Lyric.Syllabic#END} → {@link Lyric.Syllabic#SINGLE}</li>
+     * </ul>
+     *
+     * <p>Carrier lyrics ({@code syllabic == null}) are unaffected.
+     * Must be called inside a modification bracket, after {@link #addElement(int, StaffElement)}.
+     */
+    public void adjustSyllablesForSuccessorAfterInsertion(int insertionIndex) {
+        var successorIndex = insertionIndex + 1;
+
+        if (successorIndex >= effectiveElementCount()) {
+            return;
+        }
+
+        var successor = elements.get(successorIndex);
+        var lyrics = successor.properties.lyrics;
+        var indicesToAdjust = new ArrayList<Integer>();
+
+        for (var j = 0; j < lyrics.size(); j++) {
+            var syllabic = lyrics.get(j).syllabic();
+
+            if (syllabic == Lyric.Syllabic.MIDDLE || syllabic == Lyric.Syllabic.END) {
+                indicesToAdjust.add(j);
+            }
+        }
+
+        if (indicesToAdjust.isEmpty()) {
+            return;
+        }
+
+        modifyElement(successorIndex, ElementField.LYRIC, () -> {
+            for (var lyricIndex : indicesToAdjust) {
+                var lyric = lyrics.get(lyricIndex);
+                var newSyllabic = lyric.syllabic() == Lyric.Syllabic.MIDDLE
+                    ? Lyric.Syllabic.BEGIN
+                    : Lyric.Syllabic.SINGLE;
+                lyrics.set(lyricIndex,
+                    new Lyric(lyric.verse(), lyric.text(), lyric.extend(), newSyllabic, lyric.compound()));
+            }
+        });
+    }
+
+    /**
+     * Adjusts the melisma extend chain when a bare note is inserted at {@code insertionIndex}.
+     * The predecessor at {@code insertionIndex - 1} may be part of a melisma chain; inserting
+     * a note with no extend breaks the chain there. Must be called <em>before</em>
+     * {@link #addElement(int, StaffElement)} while the pre-insertion indices are still valid.
+     *
+     * <ul>
+     *   <li>{@link Lyric.Extend#START}: predecessor cleared to {@code NONE}; cascade-clear
+     *       {@code CONTINUE}/{@code STOP} from {@code insertionIndex} onward.</li>
+     *   <li>{@link Lyric.Extend#CONTINUE}: predecessor promoted to {@code STOP}; cascade-clear
+     *       {@code CONTINUE}/{@code STOP} from {@code insertionIndex} onward.</li>
+     *   <li>{@link Lyric.Extend#STOP}/{@link Lyric.Extend#NONE}: no action.</li>
+     * </ul>
+     */
+    public void adjustExtendsForInsertion(int insertionIndex) {
+        var predecessorIndex = insertionIndex - 1;
+
+        if (predecessorIndex < 0 || predecessorIndex >= effectiveElementCount()) {
+            return;
+        }
+
+        var predecessorElement = elements.get(predecessorIndex);
+        var lyrics = predecessorElement.properties.lyrics;
+
+        record ExtendFix(int lyricIndex, int verse, Lyric.Extend newExtend) {}
+
+        var fixes = new ArrayList<ExtendFix>();
+
+        for (var i = 0; i < lyrics.size(); i++) {
+            var lyric = lyrics.get(i);
+
+            switch (lyric.extend()) {
+                case START -> fixes.add(new ExtendFix(i, lyric.verse(), Lyric.Extend.NONE));
+                case CONTINUE -> fixes.add(new ExtendFix(i, lyric.verse(), Lyric.Extend.STOP));
+                default -> { }
+            }
+        }
+
+        if (fixes.isEmpty()) {
+            return;
+        }
+
+        modifyElement(predecessorIndex, ElementField.LYRIC, () -> {
+            for (var fix : fixes) {
+                var lyricIndex = fix.lyricIndex();
+                var lyric = lyrics.get(lyricIndex);
+                lyrics.set(lyricIndex,
+                    new Lyric(lyric.verse(), lyric.text(), fix.newExtend(), lyric.syllabic(), lyric.compound()));
+            }
+        });
+
+        for (var fix : fixes) {
+            cascadeClearExtend(insertionIndex, fix.verse());
+        }
+    }
+
+    /**
      * Adjusts the melisma extends of neighboring elements when the element at
      * {@code deletedIndex} is about to be deleted. Must be called inside a modification
      * bracket while the element is still in the list.

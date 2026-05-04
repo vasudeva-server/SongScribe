@@ -51,6 +51,8 @@ import songscribe.ui.layout.Tie;
 
 class LineMutationTest extends UnitTest {
 
+    private static final int VERSE = 1;
+
     private Song song;
     private Line line;
     private MockedStatic<MessageCenter> messageCenterMock;
@@ -756,34 +758,83 @@ class LineMutationTest extends UnitTest {
     }
 
     // -----------------------------------------------------------------------
+    // Syllable adjustment on insertion
+    // -----------------------------------------------------------------------
+
+    @Nested
+    class SyllableAdjustmentOnInsertion {
+
+        private StaffElement successor;
+
+        @BeforeEach
+        void addElements() {
+            var inserted = new StaffElement(ElementType.QUAVER);
+            successor = new StaffElement(ElementType.QUAVER);
+            song.withoutMutationTracking(() -> {
+                line.addElement(inserted);
+                line.addElement(successor);
+            });
+        }
+
+        private void setLyric(Lyric.Syllabic syllabic) {
+            successor.properties.lyrics.add(new Lyric(1, "x", Lyric.Extend.NONE, syllabic, false));
+        }
+
+        @Test
+        void testInsertionBeforeMiddleSyllablePromotesToBegin() {
+            setLyric(Lyric.Syllabic.MIDDLE);
+            song.withModification(() -> line.adjustSyllablesForSuccessorAfterInsertion(0));
+            assertThat(successor.properties.lyrics.get(0).syllabic())
+                .isEqualTo(Lyric.Syllabic.BEGIN);
+        }
+
+        @Test
+        void testInsertionBeforeEndSyllablePromotesToSingle() {
+            setLyric(Lyric.Syllabic.END);
+            song.withModification(() -> line.adjustSyllablesForSuccessorAfterInsertion(0));
+            assertThat(successor.properties.lyrics.get(0).syllabic())
+                .isEqualTo(Lyric.Syllabic.SINGLE);
+        }
+
+        @Test
+        void testInsertionBeforeBeginSyllableLeavesUnchanged() {
+            setLyric(Lyric.Syllabic.BEGIN);
+            song.withModification(() -> line.adjustSyllablesForSuccessorAfterInsertion(0));
+            assertThat(successor.properties.lyrics.get(0).syllabic())
+                .isEqualTo(Lyric.Syllabic.BEGIN);
+        }
+
+        @Test
+        void testInsertionBeforeSingleSyllableLeavesUnchanged() {
+            setLyric(Lyric.Syllabic.SINGLE);
+            song.withModification(() -> line.adjustSyllablesForSuccessorAfterInsertion(0));
+            assertThat(successor.properties.lyrics.get(0).syllabic())
+                .isEqualTo(Lyric.Syllabic.SINGLE);
+        }
+
+        @Test
+        void testInsertionBeforeElementWithNoLyricIsNoOp() {
+            song.withModification(() -> line.adjustSyllablesForSuccessorAfterInsertion(0));
+            assertThat(successor.properties.lyrics).isEmpty();
+        }
+
+        @Test
+        void testInsertionPastLastElementIsNoOp() {
+            setLyric(Lyric.Syllabic.MIDDLE);
+            // insertionIndex 1 means successorIndex 2, out of bounds for a 2-element line
+            assertThatNoException().isThrownBy(() ->
+                song.withModification(() -> line.adjustSyllablesForSuccessorAfterInsertion(1)));
+            assertThat(successor.properties.lyrics.get(0).syllabic())
+                .isEqualTo(Lyric.Syllabic.MIDDLE);
+        }
+    }
+
+    // -----------------------------------------------------------------------
     // Extend adjustment
     // -----------------------------------------------------------------------
 
     @Nested
     class ExtendAdjustment {
-
-        private static final int VERSE = 1;
-
-        private StaffElement makeElement(Lyric.Extend extend) {
-            var element = new StaffElement(ElementType.QUAVER);
-            var text = extend == Lyric.Extend.START ? "x" : "";
-            var syllabic = (extend == Lyric.Extend.STOP || extend == Lyric.Extend.CONTINUE) ? null : Lyric.Syllabic.SINGLE;
-            element.properties.lyrics.add(new Lyric(VERSE, text, extend, syllabic, false));
-            return element;
-        }
-
-        private Lyric.Extend extendOf(StaffElement element) {
-            return element.properties.lyrics.get(0).extend();
-        }
-
-        private void addChain(StaffElement... elements) {
-            song.withoutMutationTracking(() -> {
-                for (var element : elements) {
-                    line.addElement(element);
-                }
-                line.addElement(Song.newTerminalElement(ElementType.FINAL_DOUBLE_BARLINE));
-            });
-        }
 
         private void deleteAt(int index) {
             song.withModification(() -> {
@@ -796,9 +847,9 @@ class LineMutationTest extends UnitTest {
 
         @Test
         void testDeleteFirstOfTwoElementChain() {
-            var start = makeElement(Lyric.Extend.START);
-            var stop = makeElement(Lyric.Extend.STOP);
-            addChain(start, stop);
+            var start = makeExtendElement(Lyric.Extend.START);
+            var stop = makeExtendElement(Lyric.Extend.STOP);
+            addExtendChain(start, stop);
             deleteAt(0);
             // Deleting START kills the chain: [2.NONE]
             assertThat(extendOf(stop)).isEqualTo(Lyric.Extend.NONE);
@@ -806,9 +857,9 @@ class LineMutationTest extends UnitTest {
 
         @Test
         void testDeleteLastOfTwoElementChain() {
-            var start = makeElement(Lyric.Extend.START);
-            var stop = makeElement(Lyric.Extend.STOP);
-            addChain(start, stop);
+            var start = makeExtendElement(Lyric.Extend.START);
+            var stop = makeExtendElement(Lyric.Extend.STOP);
+            addExtendChain(start, stop);
             deleteAt(1);
             // Deleting STOP from a 2-element chain collapses it: [1.NONE]
             assertThat(extendOf(start)).isEqualTo(Lyric.Extend.NONE);
@@ -818,10 +869,10 @@ class LineMutationTest extends UnitTest {
 
         @Test
         void testDeleteFirstOfThreeElementChain() {
-            var start = makeElement(Lyric.Extend.START);
-            var continueElement = makeElement(Lyric.Extend.CONTINUE);
-            var stop = makeElement(Lyric.Extend.STOP);
-            addChain(start, continueElement, stop);
+            var start = makeExtendElement(Lyric.Extend.START);
+            var continueElement = makeExtendElement(Lyric.Extend.CONTINUE);
+            var stop = makeExtendElement(Lyric.Extend.STOP);
+            addExtendChain(start, continueElement, stop);
             deleteAt(0);
             // Deleting START kills the chain: [2.NONE, 3.NONE]
             assertThat(extendOf(continueElement)).isEqualTo(Lyric.Extend.NONE);
@@ -830,10 +881,10 @@ class LineMutationTest extends UnitTest {
 
         @Test
         void testDeleteSecondOfThreeElementChain() {
-            var start = makeElement(Lyric.Extend.START);
-            var continueElement = makeElement(Lyric.Extend.CONTINUE);
-            var stop = makeElement(Lyric.Extend.STOP);
-            addChain(start, continueElement, stop);
+            var start = makeExtendElement(Lyric.Extend.START);
+            var continueElement = makeExtendElement(Lyric.Extend.CONTINUE);
+            var stop = makeExtendElement(Lyric.Extend.STOP);
+            addExtendChain(start, continueElement, stop);
             deleteAt(1);
             // Deleting CONTINUE heals the chain: [1.START, 3.STOP]
             assertThat(extendOf(start)).isEqualTo(Lyric.Extend.START);
@@ -842,10 +893,10 @@ class LineMutationTest extends UnitTest {
 
         @Test
         void testDeleteLastOfThreeElementChain() {
-            var start = makeElement(Lyric.Extend.START);
-            var continueElement = makeElement(Lyric.Extend.CONTINUE);
-            var stop = makeElement(Lyric.Extend.STOP);
-            addChain(start, continueElement, stop);
+            var start = makeExtendElement(Lyric.Extend.START);
+            var continueElement = makeExtendElement(Lyric.Extend.CONTINUE);
+            var stop = makeExtendElement(Lyric.Extend.STOP);
+            addExtendChain(start, continueElement, stop);
             deleteAt(2);
             // Deleting STOP promotes the preceding CONTINUE: [1.START, 2.STOP]
             assertThat(extendOf(continueElement)).isEqualTo(Lyric.Extend.STOP);
@@ -856,11 +907,11 @@ class LineMutationTest extends UnitTest {
 
         @Test
         void testDeleteFirstOfFourElementChain() {
-            var start = makeElement(Lyric.Extend.START);
-            var firstContinue = makeElement(Lyric.Extend.CONTINUE);
-            var secondContinue = makeElement(Lyric.Extend.CONTINUE);
-            var stop = makeElement(Lyric.Extend.STOP);
-            addChain(start, firstContinue, secondContinue, stop);
+            var start = makeExtendElement(Lyric.Extend.START);
+            var firstContinue = makeExtendElement(Lyric.Extend.CONTINUE);
+            var secondContinue = makeExtendElement(Lyric.Extend.CONTINUE);
+            var stop = makeExtendElement(Lyric.Extend.STOP);
+            addExtendChain(start, firstContinue, secondContinue, stop);
             deleteAt(0);
             // Deleting START kills the chain: [2.NONE, 3.NONE, 4.NONE]
             assertThat(extendOf(firstContinue)).isEqualTo(Lyric.Extend.NONE);
@@ -870,11 +921,11 @@ class LineMutationTest extends UnitTest {
 
         @Test
         void testDeleteSecondOfFourElementChain() {
-            var start = makeElement(Lyric.Extend.START);
-            var firstContinue = makeElement(Lyric.Extend.CONTINUE);
-            var secondContinue = makeElement(Lyric.Extend.CONTINUE);
-            var stop = makeElement(Lyric.Extend.STOP);
-            addChain(start, firstContinue, secondContinue, stop);
+            var start = makeExtendElement(Lyric.Extend.START);
+            var firstContinue = makeExtendElement(Lyric.Extend.CONTINUE);
+            var secondContinue = makeExtendElement(Lyric.Extend.CONTINUE);
+            var stop = makeExtendElement(Lyric.Extend.STOP);
+            addExtendChain(start, firstContinue, secondContinue, stop);
             deleteAt(1);
             // Deleting CONTINUE heals the chain: [1.START, 3.CONTINUE, 4.STOP]
             assertThat(extendOf(start)).isEqualTo(Lyric.Extend.START);
@@ -884,11 +935,11 @@ class LineMutationTest extends UnitTest {
 
         @Test
         void testDeleteSecondAndThirdOfFourElementChain() {
-            var start = makeElement(Lyric.Extend.START);
-            var firstContinue = makeElement(Lyric.Extend.CONTINUE);
-            var secondContinue = makeElement(Lyric.Extend.CONTINUE);
-            var stop = makeElement(Lyric.Extend.STOP);
-            addChain(start, firstContinue, secondContinue, stop);
+            var start = makeExtendElement(Lyric.Extend.START);
+            var firstContinue = makeExtendElement(Lyric.Extend.CONTINUE);
+            var secondContinue = makeExtendElement(Lyric.Extend.CONTINUE);
+            var stop = makeExtendElement(Lyric.Extend.STOP);
+            addExtendChain(start, firstContinue, secondContinue, stop);
             deleteAt(1);
             deleteAt(1);
             // Each CONTINUE deletion heals the chain; remaining: [1.START, 4.STOP]
@@ -898,16 +949,113 @@ class LineMutationTest extends UnitTest {
 
         @Test
         void testDeleteLastOfFourElementChain() {
-            var start = makeElement(Lyric.Extend.START);
-            var firstContinue = makeElement(Lyric.Extend.CONTINUE);
-            var secondContinue = makeElement(Lyric.Extend.CONTINUE);
-            var stop = makeElement(Lyric.Extend.STOP);
-            addChain(start, firstContinue, secondContinue, stop);
+            var start = makeExtendElement(Lyric.Extend.START);
+            var firstContinue = makeExtendElement(Lyric.Extend.CONTINUE);
+            var secondContinue = makeExtendElement(Lyric.Extend.CONTINUE);
+            var stop = makeExtendElement(Lyric.Extend.STOP);
+            addExtendChain(start, firstContinue, secondContinue, stop);
             deleteAt(3);
             // Deleting STOP promotes the preceding CONTINUE: [1.START, 2.CONTINUE, 3.STOP]
             assertThat(extendOf(secondContinue)).isEqualTo(Lyric.Extend.STOP);
             assertThat(extendOf(firstContinue)).isEqualTo(Lyric.Extend.CONTINUE);
             assertThat(extendOf(start)).isEqualTo(Lyric.Extend.START);
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Extend adjustment on insertion
+    // -----------------------------------------------------------------------
+
+    @Nested
+    class ExtendAdjustmentOnInsertion {
+
+        private void insertAt(int index) {
+            var bareNote = new StaffElement(ElementType.QUAVER);
+            song.withModification(() -> {
+                line.adjustExtendsForInsertion(index);
+                line.addElement(index, bareNote);
+            });
+        }
+
+        @Test
+        void testInsertionAfterStartClearsChain() {
+            var start = makeExtendElement(Lyric.Extend.START);
+            var stop = makeExtendElement(Lyric.Extend.STOP);
+            addExtendChain(start, stop);
+            insertAt(1);
+            // START broken by insertion: predecessor cleared to NONE, forward chain cascade-cleared
+            assertThat(extendOf(start)).isEqualTo(Lyric.Extend.NONE);
+            assertThat(extendOf(stop)).isEqualTo(Lyric.Extend.NONE);
+        }
+
+        @Test
+        void testInsertionAfterContinuePromotesToStop() {
+            var start = makeExtendElement(Lyric.Extend.START);
+            var continueElement = makeExtendElement(Lyric.Extend.CONTINUE);
+            var stop = makeExtendElement(Lyric.Extend.STOP);
+            addExtendChain(start, continueElement, stop);
+            insertAt(2);
+            // CONTINUE promoted to STOP; forward chain cascade-cleared
+            assertThat(extendOf(start)).isEqualTo(Lyric.Extend.START);
+            assertThat(extendOf(continueElement)).isEqualTo(Lyric.Extend.STOP);
+            assertThat(extendOf(stop)).isEqualTo(Lyric.Extend.NONE);
+        }
+
+        @Test
+        void testInsertionAfterStopIsNoOp() {
+            var start = makeExtendElement(Lyric.Extend.START);
+            var stop = makeExtendElement(Lyric.Extend.STOP);
+            addExtendChain(start, stop);
+            insertAt(2);
+            // Inserting after a chain terminus leaves it intact
+            assertThat(extendOf(start)).isEqualTo(Lyric.Extend.START);
+            assertThat(extendOf(stop)).isEqualTo(Lyric.Extend.STOP);
+        }
+
+        @Test
+        void testInsertionAfterNoneIsNoOp() {
+            var standalone = makeExtendElement(Lyric.Extend.NONE);
+            addExtendChain(standalone);
+            insertAt(1);
+            assertThat(extendOf(standalone)).isEqualTo(Lyric.Extend.NONE);
+        }
+
+        @Test
+        void testInsertionAtIndexZeroIsNoOp() {
+            var start = makeExtendElement(Lyric.Extend.START);
+            var stop = makeExtendElement(Lyric.Extend.STOP);
+            addExtendChain(start, stop);
+            insertAt(0);
+            // No predecessor — nothing to repair
+            assertThat(extendOf(start)).isEqualTo(Lyric.Extend.START);
+            assertThat(extendOf(stop)).isEqualTo(Lyric.Extend.STOP);
+        }
+
+        @Test
+        void testMultiVerseEachVerseRepairedIndependently() {
+            var verse2 = 2;
+            var predecessor = new StaffElement(ElementType.QUAVER);
+            predecessor.properties.lyrics.add(new Lyric(VERSE, "x", Lyric.Extend.START, Lyric.Syllabic.SINGLE, false));
+            predecessor.properties.lyrics.add(new Lyric(verse2, "", Lyric.Extend.CONTINUE, null, false));
+
+            var follower = new StaffElement(ElementType.QUAVER);
+            follower.properties.lyrics.add(new Lyric(VERSE, "", Lyric.Extend.STOP, null, false));
+            follower.properties.lyrics.add(new Lyric(verse2, "", Lyric.Extend.STOP, null, false));
+
+            song.withoutMutationTracking(() -> {
+                line.addElement(predecessor);
+                line.addElement(follower);
+                line.addElement(Song.newTerminalElement(ElementType.FINAL_DOUBLE_BARLINE));
+            });
+
+            insertAt(1);
+
+            // Verse 1: START → NONE; verse 2: CONTINUE → STOP
+            assertThat(predecessor.properties.lyrics.get(0).extend()).isEqualTo(Lyric.Extend.NONE);
+            assertThat(predecessor.properties.lyrics.get(1).extend()).isEqualTo(Lyric.Extend.STOP);
+            // Forward chain for both verses cascade-cleared
+            assertThat(follower.properties.lyrics.get(0).extend()).isEqualTo(Lyric.Extend.NONE);
+            assertThat(follower.properties.lyrics.get(1).extend()).isEqualTo(Lyric.Extend.NONE);
         }
     }
 
@@ -943,6 +1091,27 @@ class LineMutationTest extends UnitTest {
             .hasSize(1);
 
         return matches.get(0);
+    }
+
+    private StaffElement makeExtendElement(Lyric.Extend extend) {
+        var element = new StaffElement(ElementType.QUAVER);
+        var text = extend == Lyric.Extend.START ? "x" : "";
+        var syllabic = (extend == Lyric.Extend.STOP || extend == Lyric.Extend.CONTINUE) ? null : Lyric.Syllabic.SINGLE;
+        element.properties.lyrics.add(new Lyric(VERSE, text, extend, syllabic, false));
+        return element;
+    }
+
+    private Lyric.Extend extendOf(StaffElement element) {
+        return element.properties.lyrics.get(0).extend();
+    }
+
+    private void addExtendChain(StaffElement... elements) {
+        song.withoutMutationTracking(() -> {
+            for (var element : elements) {
+                line.addElement(element);
+            }
+            line.addElement(Song.newTerminalElement(ElementType.FINAL_DOUBLE_BARLINE));
+        });
     }
 
     @Nested
