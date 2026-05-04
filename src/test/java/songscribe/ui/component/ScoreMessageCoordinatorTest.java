@@ -271,7 +271,7 @@ class ScoreMessageCoordinatorTest extends UnitTest {
         }
 
         private Line lineWith(StaffElement... elements) {
-            var line = new Line();
+            var line = detachedLine();
 
             for (var element : elements) {
                 line.addElement(element);
@@ -297,7 +297,7 @@ class ScoreMessageCoordinatorTest extends UnitTest {
 
         @BeforeEach
         void setUp() {
-            line = new Line();
+            line = detachedLine();
             lineComponentMock = mock(LineComponent.class);
 
             var linePanelMock = mock(LinePanel.class);

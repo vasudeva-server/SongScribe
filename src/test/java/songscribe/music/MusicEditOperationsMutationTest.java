@@ -93,16 +93,18 @@ class MusicEditOperationsMutationTest extends UnitTest {
      * and does not require an open modification bracket.
      */
     private Env setup(StaffElement... elements) {
-        var line = new Line();
-
-        for (var element : elements) {
-            line.addElement(element);
-        }
+        var line = new Line(song);
 
         // addLine fires a real LineInsertion notification on the pre-mock bus.
         // Use withoutMutationTracking so the terminal invariant is not enforced
         // during setup — tests need to build lines with arbitrary terminal elements.
-        song.withoutMutationTracking(() -> song.addLine(line));
+        song.withoutMutationTracking(() -> {
+            for (var element : elements) {
+                line.addElement(element);
+            }
+
+            song.addLine(line);
+        });
         var coordinator = ReflectionTestHelper.createCoordinatorForLine(line);
         var ops = new MusicEditOperations(song, coordinator);
         messageCenterMock = mockStatic(MessageCenter.class);
@@ -598,11 +600,13 @@ class MusicEditOperationsMutationTest extends UnitTest {
             // Line 1: CROTCHET CROTCHET REPEAT_RIGHT  CROTCHET CROTCHET SINGLE_BARLINE
             //         idx: 0        1        2             3        4        5
             // Selection 0–5 on line 1. No repeat found; lineIndex==1 → invalid
-            var line0 = new Line();
-            line0.addElement(crotchet());
-            line0.addElement(crotchet());
-            line0.addElement(crotchet());
-            song.withoutMutationTracking(() -> song.addLine(line0));
+            var line0 = new Line(song);
+            song.withoutMutationTracking(() -> {
+                line0.addElement(crotchet());
+                line0.addElement(crotchet());
+                line0.addElement(crotchet());
+                song.addLine(line0);
+            });
 
             var env = setup(
                 crotchet(), crotchet(), repeatRight(), crotchet(), crotchet(), singleBarline()
@@ -618,11 +622,13 @@ class MusicEditOperationsMutationTest extends UnitTest {
             // Line 1: CROTCHET CROTCHET REPEAT_RIGHT  CROTCHET CROTCHET SINGLE_BARLINE
             //         idx: 0        1        2             3        4        5
             // Selection 0–5 on line 1. Scan crosses to line 0, finds REPEAT_LEFT → valid
-            var line0 = new Line();
-            line0.addElement(repeatLeft());
-            line0.addElement(crotchet());
-            line0.addElement(crotchet());
-            song.withoutMutationTracking(() -> song.addLine(line0));
+            var line0 = new Line(song);
+            song.withoutMutationTracking(() -> {
+                line0.addElement(repeatLeft());
+                line0.addElement(crotchet());
+                line0.addElement(crotchet());
+                song.addLine(line0);
+            });
 
             var env = setup(
                 crotchet(), crotchet(), repeatRight(), crotchet(), crotchet(), singleBarline()

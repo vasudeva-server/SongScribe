@@ -55,13 +55,12 @@ public final class ElementHitTest {
         var pointXSs = sc.fromPixels(point.x);
         var pointYSs = sc.fromPixels(point.y);
         var helper = new Rectangle2D.Double();
-        var song = line.getSong();
 
         for (var elementIndex = 0; elementIndex < line.elementCount(); elementIndex++) {
             var element = line.getElement(elementIndex);
 
             // Skip the song's auto-maintained terminal (shared predicate).
-            if (song != null && !song.isInteractable(element, line)) {
+            if (!line.getSong().isInteractable(element, line)) {
                 continue;
             }
 

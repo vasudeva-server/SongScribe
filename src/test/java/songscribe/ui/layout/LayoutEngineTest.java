@@ -61,7 +61,7 @@ class LayoutEngineTest extends UnitTest {
     // T1: layout() stores a Clef at CLEF_X_POSITION_SS
     @Test
     void testLayoutStoresClefAtStandardPosition() {
-        var result = require(engine().layout(new Line()), "LayoutResult");
+        var result = require(engine().layout(detachedLine()), "LayoutResult");
         var clef = require(result.getClef(), "Clef");
 
         assertThat(clef.getXSs()).isCloseTo(CLEF_X_POSITION_SS, within(TOLERANCE));
@@ -70,7 +70,7 @@ class LayoutEngineTest extends UnitTest {
     // T2: layout() stores a KeySignature immediately after the clef with correct key data
     @Test
     void testLayoutStoresKeySignatureAfterClef() {
-        var line = new Line();
+        var line = detachedLine();
         line.setKeyType(KeyType.SHARPS);
         line.setKeyAccidentalCount(3);
 

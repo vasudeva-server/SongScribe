@@ -46,6 +46,17 @@ class SongIOTest extends UnitTest {
             .isInstanceOf(SongIO.NewerVersionException.class);
     }
 
+    @Test
+    void testParsedLinesHaveSongSet() throws Exception {
+        var song = loadFixture("full-line");
+
+        for (var loadedLine : song.getLines()) {
+            assertThat(loadedLine.getSong())
+                .as("every parsed line must reference the song that owns it")
+                .isSameAs(song);
+        }
+    }
+
     @Nested
     class PerNoteLyricSerialization {
 

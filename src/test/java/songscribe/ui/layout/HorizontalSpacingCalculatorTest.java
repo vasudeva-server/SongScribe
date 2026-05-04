@@ -41,7 +41,7 @@ class HorizontalSpacingCalculatorTest extends UnitTest {
     @Test
     void testFirstNoteXMatchesCalculateFirstElementXSs() {
         var calculator = new HorizontalSpacingCalculator();
-        var line = new Line(); // C major, 0 accidentals
+        var line = detachedLine(); // C major, 0 accidentals
         var element = ElementType.CROTCHET.newInstance();
         var column = new ElementColumn(
             element,

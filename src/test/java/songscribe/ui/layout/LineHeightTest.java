@@ -95,7 +95,7 @@ class LineHeightTest extends UnitTest {
     @Test
     void testEmptyNonLastLineReturnsMinimumHeight() {
         var song = new Song();
-        song.addLine(new Line());
+        song.addLine(new Line(song));
 
         var result = require(engine().layout(song.getLine(1), false), "LayoutResult");
 

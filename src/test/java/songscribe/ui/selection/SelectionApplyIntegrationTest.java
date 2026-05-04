@@ -85,10 +85,7 @@ class SelectionApplyIntegrationTest extends UnitTest {
         List<StaffElement> notes,
         List<UIAction.Reflectable> actions
     ) {
-        var coordinator = ReflectionTestHelper.createCoordinator(notes, actions);
-        var line = Objects.requireNonNull(coordinator.getActiveSelection()).getLine();
-        line.setSong(createSongMock());
-        return coordinator;
+        return ReflectionTestHelper.createCoordinator(notes, actions, createSongMock());
     }
 
     private SelectionCoordinator createCoordinator(
@@ -96,10 +93,7 @@ class SelectionApplyIntegrationTest extends UnitTest {
         List<UIAction.Reflectable> actions,
         List<UIAction> managedActions
     ) {
-        var coordinator = ReflectionTestHelper.createCoordinator(notes, actions, managedActions);
-        var line = Objects.requireNonNull(coordinator.getActiveSelection()).getLine();
-        line.setSong(createSongMock());
-        return coordinator;
+        return ReflectionTestHelper.createCoordinator(notes, actions, managedActions, createSongMock());
     }
 
     private static Song createSongMock() {

@@ -262,7 +262,7 @@ class FormatMigratorTest extends UnitTest {
         // T61: Last line is empty → FINAL_DOUBLE_BARLINE appended.
         @Test
         void testEmptyLastLineGetsFinalBarlineAppended() {
-            var last = new Line();
+            var last = detachedLine();
             FormatMigrator.migrateFinalTerminal(List.of(last));
 
             assertThat(last.elementCount()).isEqualTo(1);
@@ -286,7 +286,7 @@ class FormatMigratorTest extends UnitTest {
 
     /** Creates a line containing elements of the given types (in order), unattached to a song. */
     private static Line lineWith(ElementType... types) {
-        var line = new Line();
+        var line = detachedLine();
 
         for (var type : types) {
             line.addElement(type.newInstance());
@@ -297,7 +297,7 @@ class FormatMigratorTest extends UnitTest {
 
     /** Creates a line containing a single crotchet with the given annotation text. */
     private static Line lineWithAnnotation(String text) {
-        var line = new Line();
+        var line = detachedLine();
         var note = ElementType.CROTCHET.newInstance();
         line.addElement(note);
         note.setAnnotation(new Annotation(text));

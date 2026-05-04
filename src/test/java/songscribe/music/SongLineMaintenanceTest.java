@@ -76,7 +76,7 @@ class SongLineMaintenanceTest extends UnitTest {
 
         @Test
         void testAppendEmptyLineRemovesPrevFinalAndInsertsOnNewLast() {
-            var newLast = new Line();
+            var newLast = new Line(song);
             song.addLine(1, newLast);
 
             var notification = captureSingleDidChange();
@@ -99,7 +99,7 @@ class SongLineMaintenanceTest extends UnitTest {
 
         @Test
         void testAppendLineEndingInOtherBarlineReplacesWithFinal() {
-            var newLast = new Line();
+            var newLast = new Line(song);
             var trailingBarline = new StaffElement(ElementType.DOUBLE_BARLINE);
             song.withoutMutationTracking(() -> {
                 newLast.addElement(new StaffElement(ElementType.CROTCHET));
@@ -130,7 +130,7 @@ class SongLineMaintenanceTest extends UnitTest {
 
         @Test
         void testAppendLineEndingInNoteAppendsFinal() {
-            var newLast = new Line();
+            var newLast = new Line(song);
             var trailingNote = new StaffElement(ElementType.CROTCHET);
             song.withoutMutationTracking(() -> newLast.addElement(trailingNote));
 
@@ -156,7 +156,7 @@ class SongLineMaintenanceTest extends UnitTest {
 
         @Test
         void testAppendLineAlreadyEndingInFinalTransfersWithoutDuplication() {
-            var newLast = new Line();
+            var newLast = new Line(song);
             song.withoutMutationTracking(
                 () -> newLast.addElement(Song.newTerminalElement(ElementType.FINAL_DOUBLE_BARLINE))
             );
@@ -199,7 +199,7 @@ class SongLineMaintenanceTest extends UnitTest {
             });
             var finalElement = initialLine.getElement(initialLine.elementCount() - 1);
 
-            var inserted = new Line();
+            var inserted = new Line(song);
             song.addLine(0, inserted);
 
             var notification = captureSingleDidChange();
@@ -231,7 +231,7 @@ class SongLineMaintenanceTest extends UnitTest {
         void testRemovingLastWhenPenultEndsInNoteAppendsFinal() {
             // Configure initialLine to end in a note so the removeLine maintenance
             // exercises the append branch.
-            var newLast = new Line();
+            var newLast = new Line(song);
             song.withoutMutationTracking(() -> {
                 initialLine.removeElement(initialLine.elementCount() - 1);
                 initialLine.addElement(new StaffElement(ElementType.CROTCHET));
@@ -260,7 +260,7 @@ class SongLineMaintenanceTest extends UnitTest {
 
         @Test
         void testRemovingLastWhenPenultEndsInOtherBarlineReplacesWithFinal() {
-            var newLast = new Line();
+            var newLast = new Line(song);
             song.withoutMutationTracking(() -> {
                 // Replace initialLine's FINAL with CROTCHET + DOUBLE_BARLINE so the
                 // removeLine maintenance exercises the replace branch.
@@ -290,7 +290,7 @@ class SongLineMaintenanceTest extends UnitTest {
             // Arrange: two lines, both ending in FINAL. addLine(1, newLast) would strip
             // initialLine's FINAL during maintenance, so re-seed it under
             // withoutMutationTracking so the post-addLine state has FINAL on both lines.
-            var newLast = new Line();
+            var newLast = new Line(song);
             song.withoutMutationTracking(
                 () -> newLast.addElement(Song.newTerminalElement(ElementType.FINAL_DOUBLE_BARLINE))
             );
@@ -321,7 +321,7 @@ class SongLineMaintenanceTest extends UnitTest {
 
         @Test
         void testRemovingNonLastLineRunsNoMaintenance() {
-            var newLast = new Line();
+            var newLast = new Line(song);
             song.withoutMutationTracking(
                 () -> newLast.addElement(Song.newTerminalElement(ElementType.FINAL_DOUBLE_BARLINE))
             );
@@ -358,7 +358,7 @@ class SongLineMaintenanceTest extends UnitTest {
             // New line whose last element is DOUBLE_BARLINE — maintenance must issue
             // a setElement(…, FINAL_DOUBLE_BARLINE) that would otherwise trip the
             // Phase 1 guards. isInAutoMaintenance gates them so this succeeds.
-            var newLast = new Line();
+            var newLast = new Line(song);
             song.withoutMutationTracking(() -> {
                 newLast.addElement(new StaffElement(ElementType.CROTCHET));
                 newLast.addElement(new StaffElement(ElementType.DOUBLE_BARLINE));
@@ -378,13 +378,13 @@ class SongLineMaintenanceTest extends UnitTest {
         @Test
         void testAddLineDirtiesDocument() {
             assertThat(song.isModified()).isFalse();
-            song.addLine(1, new Line());
+            song.addLine(1, new Line(song));
             assertThat(song.isModified()).isTrue();
         }
 
         @Test
         void testRemoveLineDirtiesDocument() {
-            song.addLine(1, new Line());
+            song.addLine(1, new Line(song));
             song.setModified(false);
 
             song.removeLine(1);

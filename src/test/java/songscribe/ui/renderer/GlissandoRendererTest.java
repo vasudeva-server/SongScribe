@@ -224,7 +224,7 @@ class GlissandoRendererTest extends UnitTest {
         var note2 = ElementType.CROTCHET.newInstance();
         note2.setUpper(true);
 
-        var line = new Line();
+        var line = detachedLine();
         line.addElement(note0);
         line.addElement(note1);
         line.addElement(note2);
@@ -258,7 +258,7 @@ class GlissandoRendererTest extends UnitTest {
         note2.setStaffPosition(staffPos2);
         note2.setAccidental(acc2);
 
-        var line = new Line();
+        var line = detachedLine();
         line.addElement(note1);
         line.addElement(note2);
 

@@ -126,11 +126,13 @@ class ScoreMessageCoordinatorCommandHandlerTest extends UnitTest {
      * desirable: the test invokes handlers directly, bypassing the bus.
      */
     private Env setup(StaffElement... elements) {
-        var line = new Line();
+        var line = new Line(song);
 
-        for (var element : elements) {
-            line.addElement(element);
-        }
+        song.withoutMutationTracking(() -> {
+            for (var element : elements) {
+                line.addElement(element);
+            }
+        });
 
         // addLine fires a real LineInsertion notification on the pre-mock bus.
         song.addLine(line);

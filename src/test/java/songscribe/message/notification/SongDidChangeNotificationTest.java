@@ -72,7 +72,7 @@ class SongDidChangeNotificationTest extends UnitTest {
 
         @Test
         void testLineScopedPlusSongScopedReturnsLine() {
-            var line = new Line();
+            var line = detachedLine();
             var notification = makeNotification(
                 new ElementDeletion(line, 0, ElementType.CROTCHET.newInstance()),
                 new MetadataChange(MetadataField.TITLE, "a", "b")
@@ -82,8 +82,8 @@ class SongDidChangeNotificationTest extends UnitTest {
 
         @Test
         void testMultipleLineScopedDifferentLinesReturnsNull() {
-            var lineA = new Line();
-            var lineB = new Line();
+            var lineA = detachedLine();
+            var lineB = detachedLine();
             var notification = makeNotification(
                 new ElementDeletion(lineA, 0, ElementType.CROTCHET.newInstance()),
                 new ElementInsertion(lineB, 0, ElementType.CROTCHET.newInstance())
@@ -93,7 +93,7 @@ class SongDidChangeNotificationTest extends UnitTest {
 
         @Test
         void testMultipleLineScopedSameLineReturnsLine() {
-            var line = new Line();
+            var line = detachedLine();
             var notification = makeNotification(
                 new ElementDeletion(line, 0, ElementType.CROTCHET.newInstance()),
                 new ElementInsertion(line, 1, ElementType.CROTCHET.newInstance())
@@ -103,7 +103,7 @@ class SongDidChangeNotificationTest extends UnitTest {
 
         @Test
         void testRepeatedCallsReturnSameInstance() {
-            var line = new Line();
+            var line = detachedLine();
             var notification = makeNotification(
                 new ElementDeletion(line, 0, ElementType.CROTCHET.newInstance())
             );
@@ -119,7 +119,7 @@ class SongDidChangeNotificationTest extends UnitTest {
 
         @Test
         void testSingleLineScopedReturnsLine() {
-            var line = new Line();
+            var line = detachedLine();
             var notification = makeNotification(
                 new ElementDeletion(line, 0, ElementType.CROTCHET.newInstance())
             );

@@ -231,20 +231,19 @@ public final class Song {
         // attributionStartY is calculated from title, will be recalculated on layout
         attributionStartYSs = calculateAttributionStartY();
 
-        // Configure the initial line BEFORE attaching it to the song so that
-        // Line.applyChange sees a null song and bypasses mutation tracking.
-        // This avoids posting a spurious SongDidChangeNotification to global
-        // subscribers (MainFrame, LyricsPanel, ScoreMessageCoordinator) carrying a
-        // Song that is not yet installed in any Score.
-        var initialLine = new Line();
-        initialLine.setKeyAccidentalCount(defaultKeyAccidentalCount);
-        initialLine.setKeyType(defaultKeyType);
-        initialLine.setTempoChangeYPosPx(
-            ScaleContext.getInstance().toRoundedPixels(TEMPO_DEFAULT_Y_FIRST_LINE_SS)
-        );
-        initialLine.addElement(newTerminalElement(ElementType.FINAL_DOUBLE_BARLINE));
-        lines.add(initialLine);
-        initialLine.setSong(this);
+        // Suspend mutation tracking so that setup changes don't post a spurious
+        // SongDidChangeNotification to global subscribers before this Song is
+        // installed in any Score.
+        withoutMutationTracking(() -> {
+            var initialLine = new Line(this);
+            initialLine.setKeyAccidentalCount(defaultKeyAccidentalCount);
+            initialLine.setKeyType(defaultKeyType);
+            initialLine.setTempoChangeYPosPx(
+                ScaleContext.getInstance().toRoundedPixels(TEMPO_DEFAULT_Y_FIRST_LINE_SS)
+            );
+            initialLine.addElement(newTerminalElement(ElementType.FINAL_DOUBLE_BARLINE));
+            lines.add(initialLine);
+        });
 
         MessageCenter.subscribe(this);
     }
@@ -257,6 +256,24 @@ public final class Song {
     public Song(SongData data) {
         initFontsFromPrefs();
         loadFrom(data);
+        MessageCenter.subscribe(this);
+    }
+
+    /**
+     * Creates a minimal stub Song for use during file parsing. Only fonts are
+     * initialized; all other fields stay at defaults until
+     * {@link #loadFrom(SongData)} is called with the real parsed data.
+     * This avoids the double {@code loadFrom} that would result from using
+     * {@link #Song(SongData)} with an empty snapshot.
+     */
+    public static Song newParsingStub() {
+        return new Song(Stub.INSTANCE);
+    }
+
+    private enum Stub { INSTANCE }
+
+    private Song(Stub ignored) {
+        initFontsFromPrefs();
         MessageCenter.subscribe(this);
     }
 
@@ -346,9 +363,8 @@ public final class Song {
         applyRowHeightAdjustmentSs(data.rowHeightAdjustmentSs());
         applyLineWidthSs(data.lineWidthSs());
 
-        // Replace lines. Configure each line's bootstrap state BEFORE attaching it to
-        // the song so that Line.applyChange sees a null song and bypasses
-        // mutation tracking — load is not a user mutation.
+        // Replace lines. Mutation tracking is suspended by the caller for the
+        // duration of parsing and loadFrom, so applyChange does not post notifications.
         lines.clear();
 
         var loadedLines = data.lines();
@@ -370,7 +386,6 @@ public final class Song {
             }
 
             lines.add(line);
-            line.setSong(this);
         }
 
         // Loading bypasses the addElement path that normally handles this.
@@ -901,6 +916,10 @@ public final class Song {
      * </pre>
      */
     public void addLine(int index, Line line) {
+        if (line.getSong() != this) {
+            throw new IllegalArgumentException("Line must be constructed with this Song");
+        }
+
         var lineIndex = (index == InsertLineAction.ADD) ? lines.size() : index;
         var willBecomeNewLast = lineIndex == lines.size();
         var previousLastLine = lines.isEmpty() ? null : lines.get(lines.size() - 1);
@@ -908,7 +927,6 @@ public final class Song {
         withModification(() -> incrementAutoMaintenance(() -> {
             applyChange(new LineInsertion(lineIndex, line), () -> {
                 lines.add(lineIndex, line);
-                line.setSong(this);
 
                 if ((line.getKeyAccidentalCount() == 0) && (line.getKeyType() == null)) {
                     line.setKeyAccidentalCount(defaultKeyAccidentalCount);
@@ -1083,11 +1101,8 @@ public final class Song {
         return modificationDepth > 0;
     }
 
-    /**
-     * Returns {@code true} while mutation tracking is suspended.
-     * Package-private so {@link Line#applyChange} can check without exposing the depth counter.
-     */
-    boolean isMutationTrackingSuspended() {
+    /** Returns {@code true} while mutation tracking is suspended. */
+    public boolean isMutationTrackingSuspended() {
         return suspensionDepth > 0;
     }
 
@@ -1135,6 +1150,7 @@ public final class Song {
         var lastIdx = line.elementCount() - 1;
         return lastIdx >= 0
             && element.getType().isValidTerminal()
+            && !lines.isEmpty()
             && lines.getLast() == line
             && line.getElement(lastIdx) == element;
     }
@@ -1202,13 +1218,36 @@ public final class Song {
      * {@link #withModification(Runnable)} instead.
      */
     public void withoutMutationTracking(Runnable body) {
-        suspensionDepth++;
+        beginSuspendMutationTracking();
 
         try {
             body.run();
         } finally {
-            suspensionDepth--;
+            endSuspendMutationTracking();
         }
+    }
+
+    /**
+     * Suspends mutation tracking until the matching {@link #endSuspendMutationTracking()}.
+     * Use {@link #withoutMutationTracking(Runnable)} when the suspended scope fits in a
+     * single block; this pair exists for callers (e.g. SAX parsing) whose suspension
+     * scope crosses multiple methods.
+     */
+    public void beginSuspendMutationTracking() {
+        suspensionDepth++;
+    }
+
+    /**
+     * Resumes mutation tracking. Must be paired with a prior
+     * {@link #beginSuspendMutationTracking()} call; calls without a matching
+     * begin are a programming error and throw immediately.
+     */
+    public void endSuspendMutationTracking() {
+        if (suspensionDepth <= 0) {
+            throw new IllegalStateException("No matching beginSuspendMutationTracking");
+        }
+
+        suspensionDepth--;
     }
 
     /**

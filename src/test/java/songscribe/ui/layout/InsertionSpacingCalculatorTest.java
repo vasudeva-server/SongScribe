@@ -37,13 +37,12 @@ import songscribe.music.Line;
 
 class InsertionSpacingCalculatorTest extends UnitTest {
 
-    /**
-     * Creates a mock song with the given line width (in staff spaces) and attaches it to the line.
-     */
-    private static void setLineWidth(Line line, double lineWidthSs) {
+    /** Returns a minimal song mock with the given line width stubbed. */
+    private static Song songWithLineWidth(double lineWidthSs) {
         var song = mock(Song.class);
+        when(song.isMutationTrackingSuspended()).thenReturn(true);
         when(song.getLineWidthSs()).thenReturn(lineWidthSs);
-        line.setSong(song);
+        return song;
     }
 
     /**
@@ -51,8 +50,14 @@ class InsertionSpacingCalculatorTest extends UnitTest {
      * standard spacing algorithm.
      */
     private static Line lineWithCrotchets(int count) {
-        var line = new Line();
+        return lineWithCrotchets(count, detachedLine());
+    }
 
+    private static Line lineWithCrotchets(int count, Song song) {
+        return lineWithCrotchets(count, new Line(song));
+    }
+
+    private static Line lineWithCrotchets(int count, Line line) {
         for (var i = 0; i < count; i++) {
             var element = crotchet();
             double xSs = InsertionSpacingCalculator.calculateAppendPositionSs(line, element, null);
@@ -68,7 +73,15 @@ class InsertionSpacingCalculatorTest extends UnitTest {
      * all positioned using the standard spacing algorithm.
      */
     private static Line lineWithGraceAtIndex(int numCrotchetsBefore) {
-        var line = lineWithCrotchets(numCrotchetsBefore);
+        return lineWithGraceAtIndex(numCrotchetsBefore, detachedLine());
+    }
+
+    private static Line lineWithGraceAtIndex(int numCrotchetsBefore, Song song) {
+        return lineWithGraceAtIndex(numCrotchetsBefore, new Line(song));
+    }
+
+    private static Line lineWithGraceAtIndex(int numCrotchetsBefore, Line line) {
+        lineWithCrotchets(numCrotchetsBefore, line);
         var grace = ElementType.GRACE_QUAVER.newInstance();
         double xSs = InsertionSpacingCalculator.calculateAppendPositionSs(line, grace, null);
         grace.setXOffsetPx(ScaleContext.getInstance().toRoundedPixels(xSs));
@@ -120,16 +133,17 @@ class InsertionSpacingCalculatorTest extends UnitTest {
 
         @Test
         void testEmptyLine() {
-            var line = lineWithCrotchets(0);
-            setLineWidth(line, 500);
+            var line = lineWithCrotchets(0, songWithLineWidth(500));
             assertThat(InsertionSpacingCalculator.hasRoomForGraceNote(line, 0, null)).isTrue();
         }
 
         @Test
         void testLineExactlyFull() {
-            var line = lineWithCrotchets(3);
-            double currentWidthSs = lastElementRightEdgeSs(line);
-            setLineWidth(line, currentWidthSs);
+            var song = mock(Song.class);
+            when(song.isMutationTrackingSuspended()).thenReturn(true);
+            var line = lineWithCrotchets(3, song);
+            var currentWidthSs = lastElementRightEdgeSs(line);
+            when(song.getLineWidthSs()).thenReturn(currentWidthSs);
 
             assertThat(InsertionSpacingCalculator.hasRoomForGraceNote(
                 line, line.elementCount(), null)).isFalse();
@@ -137,8 +151,7 @@ class InsertionSpacingCalculatorTest extends UnitTest {
 
         @Test
         void testLineWithPlentyOfRoom() {
-            var line = lineWithCrotchets(2);
-            setLineWidth(line, 500);
+            var line = lineWithCrotchets(2, songWithLineWidth(500));
             assertThat(InsertionSpacingCalculator.hasRoomForGraceNote(line, 1, null)).isTrue();
         }
     }
@@ -148,19 +161,20 @@ class InsertionSpacingCalculatorTest extends UnitTest {
 
         @Test
         void testPlentyOfRoom() {
-            var line = lineWithGraceAtIndex(0);
-            setLineWidth(line, 500);
+            var line = lineWithGraceAtIndex(0, songWithLineWidth(500));
             assertThat(InsertionSpacingCalculator.hasRoomForHostNoteAfterGrace(line, 0)).isTrue();
         }
 
         @Test
         void testNoRoomForHost() {
-            var line = lineWithGraceAtIndex(2);
-            int graceIndex = line.elementCount() - 1;
-            double currentWidthSs = lastElementRightEdgeSs(line);
+            var song = mock(Song.class);
+            when(song.isMutationTrackingSuspended()).thenReturn(true);
+            var line = lineWithGraceAtIndex(2, song);
+            var graceIndex = line.elementCount() - 1;
+            var currentWidthSs = lastElementRightEdgeSs(line);
 
             // Width exactly at grace note's right edge — no room for a host note
-            setLineWidth(line, currentWidthSs);
+            when(song.getLineWidthSs()).thenReturn(currentWidthSs);
 
             assertThat(InsertionSpacingCalculator.hasRoomForHostNoteAfterGrace(line, graceIndex)).isFalse();
         }

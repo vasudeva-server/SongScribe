@@ -150,10 +150,10 @@ class ViewIOTest extends UnitTest {
     // -- Helpers --
 
     private static void addNote(Song song) {
-        var line = new Line();
+        var line = new Line(song);
         var note = ElementType.CROTCHET.newInstance();
         note.setStaffPosition(0);
-        line.addElement(note);
+        song.withoutMutationTracking(() -> line.addElement(note));
         song.addLine(line);
     }
 

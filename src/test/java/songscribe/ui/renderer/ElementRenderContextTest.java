@@ -56,7 +56,7 @@ class ElementRenderContextTest extends UnitTest {
     // T3: edit mode + element is in a tie with the playing note → Score.getPlayingNoteColor()
     @Test
     void testElementInPlayingTieReturnsPlayingColor() {
-        var line = new Line();
+        var line = detachedLine();
         line.getTies().addSpan(new TieSpan(0, 2));
 
         var ctx = new ElementRenderContext(new Song());

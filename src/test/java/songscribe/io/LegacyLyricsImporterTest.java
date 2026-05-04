@@ -183,8 +183,7 @@ class LegacyLyricsImporterTest extends UnitTest {
     }
 
     private Line lineWithNotes(int count) {
-        var line = new Line();
-        line.setSong(song);
+        var line = new Line(song);
 
         song.withoutMutationTracking(() -> {
             for (var i = 0; i < count; i++) {

@@ -132,7 +132,7 @@ class GlissandoMidiIntegrationTest extends UnitTest {
             grace.setGlissando(StaffElement.Glissando.Type.CONNECTED);
             var host = ElementType.CROTCHET.newInstance();
             host.setStaffPosition(-2);
-            var graceHostLine = new Line();
+            var graceHostLine = detachedLine();
             graceHostLine.addElement(grace);
             graceHostLine.addElement(host);
 

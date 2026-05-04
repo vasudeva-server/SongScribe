@@ -65,7 +65,7 @@ abstract class LyricEditorTestSupport extends UnitTest {
     }
 
     protected static Line detachedLineWith(StaffElement... elements) {
-        var line = new Line();
+        var line = detachedLine();
 
         for (var element : elements) {
             line.addElement(element);

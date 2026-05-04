@@ -81,10 +81,7 @@ class ApplyActionToSelectionMutationTest extends UnitTest {
         List<StaffElement> notes,
         List<UIAction.Reflectable> actions
     ) {
-        var coordinator = ReflectionTestHelper.createCoordinator(notes, actions);
-        var line = Objects.requireNonNull(coordinator.getActiveSelection()).getLine();
-        line.setSong(createSongMock());
-        return coordinator;
+        return ReflectionTestHelper.createCoordinator(notes, actions, createSongMock());
     }
 
     private Song createSongMock() {

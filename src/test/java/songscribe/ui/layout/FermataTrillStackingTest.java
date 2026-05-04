@@ -70,7 +70,7 @@ class FermataTrillStackingTest extends UnitTest {
     }
 
     private static LayoutResult stackColumns(List<ElementColumn> columns) {
-        return stackColumns(columns, new Line());
+        return stackColumns(columns, detachedLine());
     }
 
     @Nested
@@ -171,7 +171,7 @@ class FermataTrillStackingTest extends UnitTest {
         @Test
         void testSingleNoteTrillPositionedAboveNote() {
             var note = createNote(-2, false);
-            var line = new Line();
+            var line = detachedLine();
             line.addElement(note);
             var trill = new Trill(note);
             line.addRangeElement(trill);
@@ -190,7 +190,7 @@ class FermataTrillStackingTest extends UnitTest {
         @Test
         void testTrillHasPositiveDimensions() {
             var note = createNote(0, false);
-            var line = new Line();
+            var line = detachedLine();
             line.addElement(note);
             var trill = new Trill(note);
             line.addRangeElement(trill);
@@ -209,7 +209,7 @@ class FermataTrillStackingTest extends UnitTest {
         void testTrillPositionedAboveArticulation() {
             var note = createNote(-2, false);
             note.addArticulation(new Articulation(note, ArticulationType.ACCENT));
-            var line = new Line();
+            var line = detachedLine();
             line.addElement(note);
             var trill = new Trill(note);
             line.addRangeElement(trill);
@@ -231,7 +231,7 @@ class FermataTrillStackingTest extends UnitTest {
         void testMultiNoteTrillReservesFullSpan() {
             var note1 = createNote(-2, false);
             var note2 = createNote(0, false);
-            var line = new Line();
+            var line = detachedLine();
             line.addElement(note1);
             line.addElement(note2);
             var trill = new Trill(note1, note2);
@@ -253,7 +253,7 @@ class FermataTrillStackingTest extends UnitTest {
         void testLegacyTrillFlagProducesLayout() {
             var note = createNote(-2, false);
             note.setTrill(true);
-            var line = new Line();
+            var line = detachedLine();
             line.addElement(note);
 
             var result = stackColumns(List.of(columnFor(note)), line);
@@ -269,7 +269,7 @@ class FermataTrillStackingTest extends UnitTest {
             note1.setTrill(true);
             var note2 = createNote(0, false);
             note2.setTrill(true);
-            var line = new Line();
+            var line = detachedLine();
             line.addElement(note1);
             line.addElement(note2);
 
@@ -290,7 +290,7 @@ class FermataTrillStackingTest extends UnitTest {
         void testFermataAndTrillDoNotOverlap() {
             var note = createNote(-2, false);
             note.setFermata(true);
-            var line = new Line();
+            var line = detachedLine();
             line.addElement(note);
             var trill = new Trill(note);
             line.addRangeElement(trill);

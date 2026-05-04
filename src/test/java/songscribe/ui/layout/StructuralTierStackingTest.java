@@ -74,7 +74,7 @@ class StructuralTierStackingTest extends UnitTest {
         void testCrescendoPositionedAboveNoteAttachedLayer() {
             var note1 = createNote(0, false);
             var note2 = createNote(0, false);
-            var line = new Line();
+            var line = detachedLine();
             line.addElement(note1);
             line.addElement(note2);
 
@@ -97,7 +97,7 @@ class StructuralTierStackingTest extends UnitTest {
         void testDiminuendoPositionedAboveNoteAttachedLayer() {
             var note1 = createNote(0, false);
             var note2 = createNote(0, false);
-            var line = new Line();
+            var line = detachedLine();
             line.addElement(note1);
             line.addElement(note2);
 
@@ -119,7 +119,7 @@ class StructuralTierStackingTest extends UnitTest {
         void testHairpinHasPositiveDimensions() {
             var note1 = createNote(0, false);
             var note2 = createNote(0, false);
-            var line = new Line();
+            var line = detachedLine();
             line.addElement(note1);
             line.addElement(note2);
 
@@ -143,7 +143,7 @@ class StructuralTierStackingTest extends UnitTest {
             var note1 = createNote(-2, false);
             note1.setFermata(true);
             var note2 = createNote(0, false);
-            var line = new Line();
+            var line = detachedLine();
             line.addElement(note1);
             line.addElement(note2);
 
@@ -170,7 +170,7 @@ class StructuralTierStackingTest extends UnitTest {
             var note1 = createNote(0, false);
             var note2 = createNote(0, false);
             var note3 = createNote(0, false);
-            var line = new Line();
+            var line = detachedLine();
             line.addElement(note1);
             line.addElement(note2);
             line.addElement(note3);
@@ -206,7 +206,7 @@ class StructuralTierStackingTest extends UnitTest {
         void testLegacyCrescendoSpanProducesSpanLayout() {
             var note1 = createNote(0, false);
             var note2 = createNote(0, false);
-            var line = new Line();
+            var line = detachedLine();
             line.addElement(note1);
             line.addElement(note2);
 
@@ -228,7 +228,7 @@ class StructuralTierStackingTest extends UnitTest {
         void testLegacyDiminuendoSpanProducesSpanLayout() {
             var note1 = createNote(0, false);
             var note2 = createNote(0, false);
-            var line = new Line();
+            var line = detachedLine();
             line.addElement(note1);
             line.addElement(note2);
 
@@ -254,7 +254,7 @@ class StructuralTierStackingTest extends UnitTest {
         void testTupletRangeElementPositionedAboveStaff() {
             var note1 = createNote(0, false);
             var note2 = createNote(0, false);
-            var line = new Line();
+            var line = detachedLine();
             line.addElement(note1);
             line.addElement(note2);
 
@@ -276,7 +276,7 @@ class StructuralTierStackingTest extends UnitTest {
         void testTupletHasPositiveDimensions() {
             var note1 = createNote(0, false);
             var note2 = createNote(0, false);
-            var line = new Line();
+            var line = detachedLine();
             line.addElement(note1);
             line.addElement(note2);
 
@@ -300,7 +300,7 @@ class StructuralTierStackingTest extends UnitTest {
             var note1 = createNote(-2, false);
             note1.setFermata(true);
             var note2 = createNote(0, false);
-            var line = new Line();
+            var line = detachedLine();
             line.addElement(note1);
             line.addElement(note2);
 
@@ -326,7 +326,7 @@ class StructuralTierStackingTest extends UnitTest {
         void testLegacyTupletSpanProducesSpanLayout() {
             var note1 = createNote(0, false);
             var note2 = createNote(0, false);
-            var line = new Line();
+            var line = detachedLine();
             line.addElement(note1);
             line.addElement(note2);
 
@@ -354,7 +354,7 @@ class StructuralTierStackingTest extends UnitTest {
             note.addAttachment(new DynamicAttachment(note,
                 DynamicAttachment.DynamicType.FORTE));
 
-            var line = new Line();
+            var line = detachedLine();
             line.addElement(note);
 
             var result = stackColumns(List.of(columnFor(note, NOTE1_X_SS)), line);
@@ -372,7 +372,7 @@ class StructuralTierStackingTest extends UnitTest {
             note.addAttachment(new DynamicAttachment(note,
                 DynamicAttachment.DynamicType.PIANO));
 
-            var line = new Line();
+            var line = detachedLine();
             line.addElement(note);
 
             var result = stackColumns(List.of(columnFor(note, NOTE1_X_SS)), line);
@@ -392,7 +392,7 @@ class StructuralTierStackingTest extends UnitTest {
             note1.addAttachment(new DynamicAttachment(note1,
                 DynamicAttachment.DynamicType.MEZZO_FORTE));
 
-            var line = new Line();
+            var line = detachedLine();
             line.addElement(note1);
             line.addElement(note2);
 
@@ -426,7 +426,7 @@ class StructuralTierStackingTest extends UnitTest {
         void testEndingPositionedAboveStaff() {
             var note1 = createNote(0, false);
             var note2 = createNote(0, false);
-            var line = new Line();
+            var line = detachedLine();
             line.addElement(note1);
             line.addElement(note2);
 
@@ -448,7 +448,7 @@ class StructuralTierStackingTest extends UnitTest {
         void testEndingHasPositiveDimensions() {
             var note1 = createNote(0, false);
             var note2 = createNote(0, false);
-            var line = new Line();
+            var line = detachedLine();
             line.addElement(note1);
             line.addElement(note2);
 
@@ -472,7 +472,7 @@ class StructuralTierStackingTest extends UnitTest {
         void testEndingPositionedAboveHairpins() {
             var note1 = createNote(0, false);
             var note2 = createNote(0, false);
-            var line = new Line();
+            var line = detachedLine();
             line.addElement(note1);
             line.addElement(note2);
 
@@ -501,7 +501,7 @@ class StructuralTierStackingTest extends UnitTest {
         void testEndingRangeElementProducesDecorationLayout() {
             var note1 = createNote(0, false);
             var note2 = createNote(0, false);
-            var line = new Line();
+            var line = detachedLine();
             line.addElement(note1);
             line.addElement(note2);
 
@@ -531,7 +531,7 @@ class StructuralTierStackingTest extends UnitTest {
             note2.addAttachment(new DynamicAttachment(note2,
                 DynamicAttachment.DynamicType.FORTE));
 
-            var line = new Line();
+            var line = detachedLine();
             line.addElement(note1);
             line.addElement(note2);
 

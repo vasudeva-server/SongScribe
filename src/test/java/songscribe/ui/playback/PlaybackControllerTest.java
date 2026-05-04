@@ -60,7 +60,7 @@ class PlaybackControllerTest extends UnitTest {
             PlaybackController.state = PlaybackState.PAUSED;
             PlaybackController.previousPlayingLine = 0;
 
-            var selection = new ElementSelection(new Line(), 1, 3);
+            var selection = new ElementSelection(detachedLine(), 1, 3);
             PlaybackController.selectionDidChange(selection);
 
             verify(mockLineComponent).setPlayingIndices(-1, -1);
@@ -72,7 +72,7 @@ class PlaybackControllerTest extends UnitTest {
         @Test
         void testDoesNothingWhenPlaying() {
             PlaybackController.state = PlaybackState.PLAYING;
-            var selection = new ElementSelection(new Line(), 0, 0);
+            var selection = new ElementSelection(detachedLine(), 0, 0);
 
             PlaybackController.selectionDidChange(selection);
 
@@ -82,7 +82,7 @@ class PlaybackControllerTest extends UnitTest {
 
         @Test
         void testDoesNothingWhenStopped() {
-            var selection = new ElementSelection(new Line(), 0, 0);
+            var selection = new ElementSelection(detachedLine(), 0, 0);
 
             PlaybackController.selectionDidChange(selection);
 

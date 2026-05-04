@@ -35,6 +35,7 @@ import songscribe.music.TieSpan;
 import songscribe.music.TupletSpan;
 import songscribe.music.KeyType;
 import songscribe.music.Line;
+import songscribe.music.Song;
 import songscribe.music.StaffElement;
 import songscribe.ui.layout.Ending;
 
@@ -232,6 +233,8 @@ public final class LineIO {
 
     public static class LineReader {
 
+        private final Song song;
+
         @Nullable
         private Line line = null;
 
@@ -247,6 +250,10 @@ public final class LineIO {
 
         /** Temporarily holds parsed fsendings index pairs (start, end) until elements are loaded. */
         private final List<int[]> pendingEndingPairs = new ArrayList<>();
+
+        public LineReader(Song song) {
+            this.song = song;
+        }
 
         private static void stringToBeamingSpanSet(SpanSet<Span> is, String str) {
             var begin = 0;
@@ -429,7 +436,7 @@ public final class LineIO {
             if (where == null) {
                 if (qName.equals(XML_LINE)) {
                     where = Where.LINE;
-                    line = new Line();
+                    line = new Line(song);
                     lastTag = null;
                     noteReader = new StaffElementIO.StaffElementReader();
                 }

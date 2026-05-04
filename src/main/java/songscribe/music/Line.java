@@ -26,8 +26,6 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.stream.IntStream;
 
-import com.uber.nullaway.annotations.Initializer;
-
 import org.jspecify.annotations.Nullable;
 
 import songscribe.message.mutation.BeamingAddition;
@@ -86,7 +84,7 @@ public class Line {
     /** Range elements (ties, trills, crescendo, diminuendo, tuplets, endings). */
     private final List<RangeElement> rangeElements = new ArrayList<>();
 
-    private Song song;
+    private final Song song;
     private int keys = 0;
     @Nullable
     private KeyType keyType = null;
@@ -171,13 +169,12 @@ public class Line {
     /** Ratio multiplier for horizontal element spacing (default: 1.0, user-adjustable). */
     private float elementSpacingRatio = 1f;
 
-    public Song getSong() {
-        return song;
+    public Line(Song song) {
+        this.song = song;
     }
 
-    @Initializer
-    public void setSong(Song song) {
-        this.song = song;
+    public Song getSong() {
+        return song;
     }
 
     public int getKeyAccidentalCount() {
@@ -187,18 +184,16 @@ public class Line {
     /**
      * Applies a single mutation, delegating to the parent song's bracket.
      *
-     * <p>When the line is attached to a song, a modification bracket must be
-     * open — the mutation is recorded and the mutator runs inside it. If the line is
-     * not yet attached (e.g. during file-load bootstrap before {@code setSong}),
-     * or the song has suspended tracking via
+     * <p>A modification bracket must be open — the mutation is recorded and the
+     * mutator runs inside it. If the song has suspended tracking via
      * {@link Song#withoutMutationTracking(Runnable)}, the mutator runs directly
      * without tracking.
      *
-     * @throws IllegalStateException if the line is attached to a song that has
-     *     neither an open modification bracket nor suspended tracking
+     * @throws IllegalStateException if the song has neither an open modification
+     *     bracket nor suspended tracking
      */
     public void applyChange(Mutation mutation, Runnable mutator) {
-        if (song == null || song.isMutationTrackingSuspended()) {
+        if (song.isMutationTrackingSuspended()) {
             mutator.run();
             return;
         }
@@ -214,14 +209,9 @@ public class Line {
 
     /**
      * Executes {@code body} inside a modification bracket on the parent song.
-     * If the song is not yet set, {@code body} runs directly.
      */
     public void withModification(Runnable body) {
-        if (song != null) {
-            song.withModification(body);
-        } else {
-            body.run();
-        }
+        song.withModification(body);
     }
 
     public void setKeyAccidentalCount(int keys) {
@@ -259,7 +249,6 @@ public class Line {
         // element before it so the terminal remains the last element.
         var lastIdx = elements.size() - 1;
         var insertBeforeFinal = lastIdx >= 0
-            && song != null
             && song.isAutoMaintainedTerminal(elements.get(lastIdx), this);
         var index = insertBeforeFinal ? lastIdx : elements.size();
 
@@ -276,12 +265,11 @@ public class Line {
 
     /**
      * Returns {@code true} when the terminal mutation guards in this class should
-     * be bypassed: the line has no parent song yet, mutation tracking is suspended
-     * (test setup), or the song is currently auto-maintaining the invariant.
+     * be bypassed: mutation tracking is suspended (test setup or file load), or
+     * the song is currently auto-maintaining the invariant.
      */
     private boolean isTerminalGuardBypassed() {
-        return song == null
-            || song.isMutationTrackingSuspended()
+        return song.isMutationTrackingSuspended()
             || song.isInAutoMaintenance();
     }
 
@@ -311,7 +299,6 @@ public class Line {
         // carried the initial tempo — move it to the new first element.
         var displacedFirstElement = (index == 0
             && !elements.isEmpty()
-            && song != null
             && song.indexOfLine(this) == 0)
             ? elements.get(0)
             : null;
@@ -830,7 +817,7 @@ public class Line {
 
     /** Attaches the song's initial tempo to the first element of this line if not already set. */
     void attachInitialTempoIfNeeded() {
-        if (elements.isEmpty() || song == null) {
+        if (elements.isEmpty()) {
             return;
         }
 
@@ -929,8 +916,7 @@ public class Line {
     public int effectiveElementCount() {
         var count = elements.size();
 
-        if (count > 0 && song != null
-                && song.isAutoMaintainedTerminal(elements.get(count - 1), this)) {
+        if (count > 0 && song.isAutoMaintainedTerminal(elements.get(count - 1), this)) {
             return count - 1;
         }
 
@@ -1232,7 +1218,7 @@ public class Line {
     }
 
     public int getFirstTempoChange() {
-        if (song != null && (song.indexOfLine(this) == 0) && (elementCount() > 0)) {
+        if ((song.indexOfLine(this) == 0) && (elementCount() > 0)) {
             return 0;
         }
 

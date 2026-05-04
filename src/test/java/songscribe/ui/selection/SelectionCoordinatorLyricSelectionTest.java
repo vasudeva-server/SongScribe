@@ -34,7 +34,7 @@ class SelectionCoordinatorLyricSelectionTest extends UnitTest {
 
     @Test
     void testSelectLyricClearsElementSelection() {
-        var line = new Line();
+        var line = detachedLine();
         var first = ElementType.CROTCHET.newInstance();
         var second = ElementType.CROTCHET.newInstance();
         line.addElement(first);
@@ -53,7 +53,7 @@ class SelectionCoordinatorLyricSelectionTest extends UnitTest {
 
     @Test
     void testElementSelectionClearsLyricSelection() {
-        var line = new Line();
+        var line = detachedLine();
         var first = ElementType.CROTCHET.newInstance();
         var second = ElementType.CROTCHET.newInstance();
         line.addElement(first);

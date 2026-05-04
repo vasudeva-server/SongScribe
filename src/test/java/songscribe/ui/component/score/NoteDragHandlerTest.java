@@ -309,7 +309,7 @@ class NoteDragHandlerTest extends UnitTest {
         @Test
         void testRemovesGraceNoteDraggedToHostPitch() {
             // [grace@0, crotchet@4] — drag grace note to position 4 (matches host)
-            var line = new Line();
+            var line = detachedLine();
             var grace = ElementType.GRACE_QUAVER.newInstance();
             grace.setStaffPosition(0);
             line.addElement(grace);
@@ -331,7 +331,7 @@ class NoteDragHandlerTest extends UnitTest {
         @Test
         void testRemovesGraceNoteWhenHostDraggedToGracePitch() {
             // [grace@4, crotchet@0] — drag host note to position 4 (matches grace)
-            var line = new Line();
+            var line = detachedLine();
             var grace = ElementType.GRACE_QUAVER.newInstance();
             grace.setStaffPosition(4);
             line.addElement(grace);
@@ -423,7 +423,7 @@ class NoteDragHandlerTest extends UnitTest {
      * Creates a Line with crotchets at the given staff positions.
      */
     private Line createLine(int... staffPositions) {
-        var line = new Line();
+        var line = detachedLine();
 
         for (var sp : staffPositions) {
             var note = ElementType.CROTCHET.newInstance();

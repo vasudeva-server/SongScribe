@@ -24,7 +24,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
+import songscribe.UnitTest;
 import songscribe.music.Line;
+import songscribe.music.Song;
 import songscribe.music.StaffElement;
 import songscribe.ui.action.UIAction;
 
@@ -54,44 +56,61 @@ public final class ReflectionTestHelper {
     /**
      * Creates a SelectionCoordinator with a Line containing the given notes,
      * registered and activated at line index 0, with the given actions
-     * injected as the reflectable actions list.
+     * injected as the reflectable actions list. The line is backed by a minimal
+     * song mock with mutation tracking suspended.
      */
     public static SelectionCoordinator createCoordinator(
         List<StaffElement> notes,
         List<UIAction.Reflectable> actions
     ) {
-        var line = new Line();
+        return createCoordinator(notes, actions, UnitTest.minimalSongMock());
+    }
 
-        for (var note : notes) {
-            line.addElement(note);
-        }
-
-        var coordinator = new SelectionCoordinator(() -> null);
-        var state = new LineSelectionState(line);
-        coordinator.registerLineState(0, state);
-        coordinator.activateLine(0);
-
-        // Derive managed actions from the reflectable actions list.
+    /**
+     * Creates a SelectionCoordinator with a Line backed by the given {@code song},
+     * registered and activated at line index 0, with the given actions
+     * injected as the reflectable actions list.
+     */
+    public static SelectionCoordinator createCoordinator(
+        List<StaffElement> notes,
+        List<UIAction.Reflectable> actions,
+        Song song
+    ) {
         var managedActions = new ArrayList<UIAction>();
 
         for (var action : actions) {
             managedActions.add((UIAction) action);
         }
 
-        return createCoordinator(coordinator, actions, managedActions);
+        return createCoordinator(notes, actions, managedActions, song);
     }
 
     /**
      * Creates a SelectionCoordinator with a Line containing the given notes,
      * registered and activated at line index 0, with the given reflectable and
-     * managed actions injected.
+     * managed actions injected. The line is backed by a minimal song mock with
+     * mutation tracking suspended.
      */
     public static SelectionCoordinator createCoordinator(
         List<StaffElement> notes,
         List<UIAction.Reflectable> actions,
         List<UIAction> managedActions
     ) {
-        var line = new Line();
+        return createCoordinator(notes, actions, managedActions, UnitTest.minimalSongMock());
+    }
+
+    /**
+     * Creates a SelectionCoordinator with a Line backed by the given {@code song},
+     * registered and activated at line index 0, with the given reflectable and
+     * managed actions injected.
+     */
+    public static SelectionCoordinator createCoordinator(
+        List<StaffElement> notes,
+        List<UIAction.Reflectable> actions,
+        List<UIAction> managedActions,
+        Song song
+    ) {
+        var line = new Line(song);
 
         for (var note : notes) {
             line.addElement(note);

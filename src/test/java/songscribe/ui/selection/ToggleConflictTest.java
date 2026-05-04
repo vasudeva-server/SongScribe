@@ -43,7 +43,7 @@ class ToggleConflictTest extends UnitTest {
 
     @BeforeEach
     void setUp() {
-        line = new Line();
+        line = detachedLine();
         line.addElement(ElementType.CROTCHET.newInstance());
         line.addElement(ElementType.CROTCHET.newInstance());
 

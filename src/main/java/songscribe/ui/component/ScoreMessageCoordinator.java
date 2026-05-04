@@ -154,7 +154,7 @@ public final class ScoreMessageCoordinator {
             var index = (shift >= 0)
                 ? (selectionCoordinator.getSelectedLine() + shift)
                 : InsertLineAction.ADD;
-            song.addLine(index, new Line());
+            song.addLine(index, new Line(song));
             score.deselect();
         } else {
             OptionDialogs.showErrorMessage(

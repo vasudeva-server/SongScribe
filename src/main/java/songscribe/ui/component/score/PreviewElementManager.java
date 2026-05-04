@@ -409,8 +409,7 @@ public final class PreviewElementManager {
         // active preview element can legally replace it — exemption in isPositionBlockedByTerminal).
         var song = line.getSong();
 
-        if (song != null
-                && isPositionBlockedByTerminal(song, line, xIndex, elementAtX >= 0)) {
+        if (isPositionBlockedByTerminal(song, line, xIndex, elementAtX >= 0)) {
             clearPreviewElement();
             return;
         }
@@ -546,15 +545,13 @@ public final class PreviewElementManager {
         // terminal. trackMouse already clears the preview at these positions.
         var song = line.getSong();
 
-        if (song != null
-                && isPositionBlockedByTerminal(
-                    song, line, currentXIndex, xPosSsMatchesElement)) {
+        if (isPositionBlockedByTerminal(song, line, currentXIndex, xPosSsMatchesElement)) {
             return;
         }
 
         // Route a direct click on the terminal to replaceTerminal when the active preview
         // element can legally replace it. This bypasses the normal insertion path entirely.
-        if (song != null && xPosSsMatchesElement && editModeManager != null) {
+        if (xPosSsMatchesElement && editModeManager != null) {
             var previewElement = editModeManager.getPreviewElement();
 
             if (previewElement != null
@@ -565,8 +562,7 @@ public final class PreviewElementManager {
             }
         }
 
-        var wasFirstLineEmpty = song != null
-            && song.indexOfLine(line) == 0
+        var wasFirstLineEmpty = song.indexOfLine(line) == 0
             && line.effectiveElementCount() == 0;
 
         // Determine action based on position. Wrap in a modification bracket so the

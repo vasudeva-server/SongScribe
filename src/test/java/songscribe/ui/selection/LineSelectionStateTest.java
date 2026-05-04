@@ -37,7 +37,7 @@ class LineSelectionStateTest extends UnitTest {
 
     @Test
     void testEmptySelectionCannotToggleTuplet() {
-        var line = new Line();
+        var line = detachedLine();
         line.addElement(ElementType.CROTCHET.newInstance());
         line.addElement(ElementType.CROTCHET.newInstance());
         var state = new LineSelectionState(line);
@@ -51,7 +51,7 @@ class LineSelectionStateTest extends UnitTest {
 
     @Test
     void testTwoPitchedNotesNoTupletCanToggle() {
-        var line = new Line();
+        var line = detachedLine();
         line.addElement(ElementType.CROTCHET.newInstance());
         line.addElement(ElementType.CROTCHET.newInstance());
         var state = new LineSelectionState(line);
@@ -67,7 +67,7 @@ class LineSelectionStateTest extends UnitTest {
 
     @Test
     void testFullCoverageOfTripletReportsCoversExisting() {
-        var line = new Line();
+        var line = detachedLine();
         line.addElement(ElementType.CROTCHET.newInstance());
         line.addElement(ElementType.CROTCHET.newInstance());
         line.addElement(ElementType.CROTCHET.newInstance());
@@ -88,7 +88,7 @@ class LineSelectionStateTest extends UnitTest {
 
     @Test
     void testPartialCoverageOfTripletDoesNotCoverExisting() {
-        var line = new Line();
+        var line = detachedLine();
         line.addElement(ElementType.CROTCHET.newInstance());
         line.addElement(ElementType.CROTCHET.newInstance());
         line.addElement(ElementType.CROTCHET.newInstance());
@@ -109,7 +109,7 @@ class LineSelectionStateTest extends UnitTest {
 
     @Test
     void testSelectionSpanningTwoDifferentTupletsCannotToggle() {
-        var line = new Line();
+        var line = detachedLine();
         line.addElement(ElementType.CROTCHET.newInstance());
         line.addElement(ElementType.CROTCHET.newInstance());
         line.addElement(ElementType.CROTCHET.newInstance());
@@ -190,7 +190,7 @@ class LineSelectionStateTest extends UnitTest {
     void testSelectAllOnNonLastLineIncludesAllElements() {
         var song = new Song();
         var firstLine = song.getLine(0);
-        song.addLine(1, new Line());
+        song.addLine(1, new Line(song));
 
         // firstLine is no longer the last line — its final barline has been transferred away.
         song.withoutMutationTracking(() -> {
@@ -207,7 +207,7 @@ class LineSelectionStateTest extends UnitTest {
 
     @Test
     void testSelectionContainingNonPitchedElementCannotToggle() {
-        var line = new Line();
+        var line = detachedLine();
         line.addElement(ElementType.CROTCHET.newInstance());
         line.addElement(ElementType.CROTCHET_REST.newInstance());
         var state = new LineSelectionState(line);

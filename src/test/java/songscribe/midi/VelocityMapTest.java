@@ -174,7 +174,7 @@ class VelocityMapTest extends UnitTest {
     }
 
     private static Line lineWith(StaffElement... notes) {
-        var line = new Line();
+        var line = detachedLine();
 
         for (var note : notes) {
             line.addElement(note);

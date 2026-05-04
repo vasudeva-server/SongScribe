@@ -239,6 +239,11 @@ public final class SongIO {
         private ViewIO.@Nullable ViewReader viewReader = null;
         private int majorVersion = 0, minorVersion = 0;
 
+        // Stub Song that gets attached to every parsed Line during XML parsing,
+        // then repopulated via loadFrom(data) in getSong() once parsing completes.
+        @Nullable
+        private Song parsingSong = null;
+
         // Parsed song data (replaces direct Song mutation)
         @Nullable
         private Tempo tempo = null;
@@ -284,6 +289,8 @@ public final class SongIO {
                         );
                         where = Where.SONG;
 
+                        parsingSong = newSuspendedStubSong();
+
                         if ((majorVersion == 1) && (minorVersion == 0)) {
                             noteReader = new StaffElementIO.StaffElementReader();
                             tempoReader = new TempoIO.TempoReader();
@@ -292,7 +299,7 @@ public final class SongIO {
                             // Hard-coded to IO_MINOR_VERSION; bump when the reader is updated.
                             (majorVersion == 2 && minorVersion <= 7)
                         ) {
-                            lineReader = new LineIO.LineReader();
+                            lineReader = new LineIO.LineReader(parsingSong);
                             viewReader = new ViewIO.ViewReader();
                         } else {
                             throw new NewerVersionException();
@@ -322,10 +329,10 @@ public final class SongIO {
             Attributes attributes
         ) {
             if (where == Where.NOTES) {
-                if (noteReader == null) return;
+                if (noteReader == null || parsingSong == null) return;
 
                 if (noteReader.startElement10(qName, attributes)) {
-                    parsedLines.add(new Line());
+                    parsedLines.add(new Line(parsingSong));
                 }
             } else if (where == Where.TEMPO_CHANGE) {
                 if (tempoReader == null) return;
@@ -402,7 +409,8 @@ public final class SongIO {
 
                 if (note != null) {
                     if (parsedLines.isEmpty()) {
-                        parsedLines.add(new Line());
+                        if (parsingSong == null) return;
+                        parsedLines.add(new Line(parsingSong));
                     }
 
                     var line = parsedLines.get(parsedLines.size() - 1);
@@ -651,9 +659,22 @@ public final class SongIO {
                 formatVersion
             );
 
-            // Use the loading constructor to avoid the wasted work of the
-            // no-arg constructor (default line, attributionStartY calculation).
-            var song = new Song(data);
+            // Repopulate the stub Song that was created at <song> startElement
+            // and attached to every parsed Line. This preserves Line.song
+            // references already established during parsing. Mutation tracking
+            // remains suspended (from newSuspendedStubSong) through loadFrom so
+            // that line-level setters during reload bypass the bracket check.
+            if (parsingSong == null) {
+                throw new IllegalStateException("parsingSong was not initialized");
+            }
+
+            var song = parsingSong;
+
+            try {
+                song.loadFrom(data);
+            } finally {
+                song.endSuspendMutationTracking();
+            }
 
             // Populate per-note Lyric records from the captured legacy `<lyrics>` blob.
             // Only fires for files saved before per-note <lyric> serialization was
@@ -671,6 +692,17 @@ public final class SongIO {
             }
 
             return song;
+        }
+
+        /**
+         * Creates the stub Song that gets attached to every parsed Line and
+         * suspends its mutation tracking. Suspension is released in {@link #getSong()}
+         * after the final {@link Song#loadFrom(SongData)} call.
+         */
+        private static Song newSuspendedStubSong() {
+            var stub = Song.newParsingStub();
+            stub.beginSuspendMutationTracking();
+            return stub;
         }
 
         private static Font defaultFontFromPrefs(songscribe.prefs.PrefsKey nameKey, songscribe.prefs.PrefsKey sizeKey) {

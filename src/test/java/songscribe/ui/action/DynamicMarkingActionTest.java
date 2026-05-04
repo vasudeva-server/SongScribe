@@ -159,7 +159,7 @@ class DynamicMarkingActionTest extends UnitTest {
         void testEnabledWhenSingleNoteNotInHairpin() {
             try (var mainFrameMock = mockStatic(MainFrame.class)) {
                 var env = setupFullMockEnv(mainFrameMock);
-                var line = new Line();
+                var line = detachedLine();
                 var selection = new ElementSelection(line, 0, 0);
 
                 when(env.score().getSelectionSize()).thenReturn(1);
@@ -177,7 +177,7 @@ class DynamicMarkingActionTest extends UnitTest {
         void testDisabledWhenNoteInsideCrescendoRange() {
             try (var mainFrameMock = mockStatic(MainFrame.class)) {
                 var env = setupFullMockEnv(mainFrameMock);
-                var line = new Line();
+                var line = detachedLine();
                 line.getCrescendos().addSpan(new DynamicsSpan(0, 3));
                 var selection = new ElementSelection(line, 1, 1);
 
@@ -196,7 +196,7 @@ class DynamicMarkingActionTest extends UnitTest {
         void testDisabledWhenNoteInsideDiminuendoRange() {
             try (var mainFrameMock = mockStatic(MainFrame.class)) {
                 var env = setupFullMockEnv(mainFrameMock);
-                var line = new Line();
+                var line = detachedLine();
                 line.getDiminuendos().addSpan(new DynamicsSpan(0, 3));
                 var selection = new ElementSelection(line, 1, 1);
 

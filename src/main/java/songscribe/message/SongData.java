@@ -25,7 +25,6 @@ import java.util.List;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.io.SongIO;
 import songscribe.music.KeyType;
 import songscribe.music.Line;
 import songscribe.music.Song;

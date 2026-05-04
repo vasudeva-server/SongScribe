@@ -35,10 +35,16 @@ import org.xml.sax.InputSource;
 
 import songscribe.io.SongIO;
 import songscribe.io.SongLoader;
+import songscribe.music.Line;
 import songscribe.music.Song;
 import songscribe.ui.OptionDialogs;
 
 import org.junit.jupiter.api.BeforeAll;
+
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 /**
  * Base class for unit tests. Suppresses modal error dialogs
@@ -109,5 +115,24 @@ public abstract class UnitTest {
         parser.parse(new InputSource(new StringReader(xml)), reader);
 
         return reader.getSong();
+    }
+
+    /**
+     * Creates a minimal Song mock with mutation tracking suspended and
+     * {@code withModification} delegating directly to the runnable.
+     * Shared by {@link #detachedLine()} and
+     * {@link songscribe.ui.selection.ReflectionTestHelper}.
+     */
+    public static Song minimalSongMock() {
+        var songMock = mock(Song.class);
+        when(songMock.isMutationTrackingSuspended()).thenReturn(true);
+        doAnswer(inv -> { ((Runnable) inv.getArgument(0)).run(); return null; })
+            .when(songMock).withModification(any(Runnable.class));
+        return songMock;
+    }
+
+    /** Creates a Line backed by a minimal Song mock. */
+    protected static Line detachedLine() {
+        return new Line(minimalSongMock());
     }
 }

@@ -69,9 +69,7 @@ class SystemTierStackingTest extends UnitTest {
     }
 
     private static Line newLine() {
-        var line = new Line();
-        line.setSong(song);
-        return line;
+        return new Line(song);
     }
 
     /**

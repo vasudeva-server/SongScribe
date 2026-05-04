@@ -77,7 +77,7 @@ class LineMutationTest extends UnitTest {
 
         @Test
         void testAddLineFiresLineInsertion() {
-            var newLine = new Line();
+            var newLine = new Line(song);
             song.addLine(1, newLine);
 
             // addLine also fires LineKeyChange and LineLayoutChange mutations
@@ -504,7 +504,7 @@ class LineMutationTest extends UnitTest {
 
         @Test
         void testAddFinalBarlineOnNonLastLineThrows() {
-            var secondLine = new Line();
+            var secondLine = new Line(song);
             song.addLine(1, secondLine);
             // line is now index 0, no longer the last line
             assertThatIllegalStateException().isThrownBy(() ->
@@ -534,7 +534,7 @@ class LineMutationTest extends UnitTest {
 
         @Test
         void testSetFinalBarlineOnNonLastLineThrows() {
-            var secondLine = new Line();
+            var secondLine = new Line(song);
             song.addLine(1, secondLine);
             song.withoutMutationTracking(() ->
                 line.addElement(new StaffElement(ElementType.QUAVER)));
@@ -640,7 +640,7 @@ class LineMutationTest extends UnitTest {
 
         @Test
         void testFinalBarlineOnNonLastLineIsInteractable() {
-            song.addLine(1, new Line());
+            song.addLine(1, new Line(song));
             // line is now index 0, not the last line
             assertThat(song.isInteractable(
                 Song.newTerminalElement(ElementType.FINAL_DOUBLE_BARLINE), line)).isTrue();
@@ -943,5 +943,23 @@ class LineMutationTest extends UnitTest {
             .hasSize(1);
 
         return matches.get(0);
+    }
+
+    @Nested
+    class LineConstructorInvariants {
+
+        @Test
+        void testSongIsNonNullImmediatelyAfterConstruction() {
+            var testSong = new Song();
+            var testLine = new Line(testSong);
+            assertThat(testLine.getSong()).isSameAs(testSong);
+        }
+
+        @Test
+        void testApplyChangeThrowsWhenNotInBracket() {
+            assertThatIllegalStateException().isThrownBy(() ->
+                line.applyChange(new LineDeletion(0, line), () -> {})
+            );
+        }
     }
 }

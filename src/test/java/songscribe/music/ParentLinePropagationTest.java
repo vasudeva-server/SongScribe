@@ -116,8 +116,7 @@ class ParentLinePropagationTest extends UnitTest {
 
         @Test
         void testParentLineFollowsAttachmentToNewElement() {
-            var line2 = new Line();
-            line2.setSong(song);
+            var line2 = new Line(song);
 
             var note1 = ElementType.QUAVER.newInstance();
             var note2 = ElementType.QUAVER.newInstance();
