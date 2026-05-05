@@ -25,23 +25,20 @@ import module java.desktop;
 import java.awt.event.MouseEvent;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.Objects;
 
 import songscribe.message.MessageCenter;
 import songscribe.ui.Control;
 import songscribe.ui.Mode;
 import songscribe.ui.component.score.LineComponent;
-import songscribe.ui.debug.DebugInspector;
 import songscribe.ui.edit.EditModeManager;
 import songscribe.ui.layout.StaffExtents;
-import songscribe.ui.menu.DebugState;
 import songscribe.message.command.DeselectCommand;
 import songscribe.util.UIUtils;
 
 /**
  * Handles mouse and keyboard input for the Score component.
  * <p>
- * Manages debug inspector, popup triggers, focus, and playback guards.
+ * Manages popup triggers, focus, and playback guards.
  * Selection handling (click-to-select, drag-to-select, Alt-switch) is
  * handled by {@link LineComponent}.
  */
@@ -64,10 +61,6 @@ public final class ScoreInputHandler extends KeyAdapter
     //***************************
     @Override
     public void mouseClicked(MouseEvent e) {
-        if (DebugState.isInspectorEnabled()) {
-            return;
-        }
-
         if (e.getButton() != MouseEvent.BUTTON1) {
             return;
         }
@@ -77,10 +70,6 @@ public final class ScoreInputHandler extends KeyAdapter
 
     @Override
     public void mousePressed(MouseEvent e) {
-        if (DebugState.isInspectorEnabled()) {
-            return;
-        }
-
         if (e.isPopupTrigger()) {
             var popup = callback.getEditPopup();
 
@@ -92,10 +81,6 @@ public final class ScoreInputHandler extends KeyAdapter
 
     @Override
     public void mouseReleased(MouseEvent e) {
-        if (DebugState.isInspectorEnabled()) {
-            return;
-        }
-
         if (e.isPopupTrigger()) {
             var popup = callback.getEditPopup();
 
@@ -107,10 +92,6 @@ public final class ScoreInputHandler extends KeyAdapter
 
     @Override
     public void mouseEntered(MouseEvent e) {
-        if (DebugState.isInspectorEnabled()) {
-            return;
-        }
-
         if (
             !editModeManager.isPreviewElementVisible() &&
                 (callback.getControl() == Control.MOUSE) &&
@@ -122,12 +103,6 @@ public final class ScoreInputHandler extends KeyAdapter
 
     @Override
     public void mouseExited(MouseEvent e) {
-        if (DebugState.isInspectorEnabled()) {
-            DebugState.setHoveredElement(null);
-            DebugState.setMousePosition(null);
-            callback.repaint();
-        }
-
         if (
             editModeManager.isPreviewElementVisible() &&
                 (callback.getControl() == Control.MOUSE) &&
@@ -148,19 +123,7 @@ public final class ScoreInputHandler extends KeyAdapter
 
     @Override
     public void mouseMoved(MouseEvent e) {
-        // Inspector hover tracking - only repaint if hovered element changes
-        if (DebugState.isInspectorEnabled()) {
-            var oldHoveredElement = DebugState.getHoveredElement();
-            DebugState.setMousePosition(new Point(e.getX(), e.getY()));
-            DebugInspector.updateInspectorHover(e.getX(), e.getY());
-            var newHoveredElement = DebugState.getHoveredElement();
-
-            // Only repaint if the hovered element actually changed
-            if (!Objects.equals(oldHoveredElement, newHoveredElement)) {
-                DebugInspector.logInspectorHover(newHoveredElement);
-                callback.repaint();
-            }
-        }
+        // Interface requires mouseMoved to be implemented
     }
 
     //***********************

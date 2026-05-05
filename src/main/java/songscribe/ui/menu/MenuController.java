@@ -108,10 +108,6 @@ public class MenuController {
         //        menuBar.add(initHelpMenu());
         //        var launchMenu = initLaunchMenu();
 
-        if (DebugState.isDebugEnabled()) {
-            menuBar.add(new DebugMenu(score));
-        }
-
         if (SystemInfo.isMacOS) {
             // Desktop.getDesktop().setDefaultMenuBar(menuBar) is broken in macOS.
             // We have to use setJMenuBar() in conjunction with

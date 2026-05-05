@@ -74,7 +74,6 @@ import songscribe.ui.layout.PageModel;
 import songscribe.ui.layout.ScaleContext;
 import songscribe.ui.layout.StaffExtents;
 import songscribe.util.GraphicUtils;
-import songscribe.ui.menu.DebugState;
 import songscribe.ui.playback.PlaybackController;
 import songscribe.ui.renderer.RenderContext;
 import songscribe.ui.selection.ElementSelection;
@@ -605,21 +604,8 @@ public final class Score
     }
 
     public void viewChanged() {
-        // Clear inspector hover since layout bounds will be recalculated
-        var needsImmediateRepaint = false;
-
-        if (DebugState.isInspectorEnabled() && DebugState.getHoveredElement() != null) {
-            DebugState.setHoveredElement(null);
-            needsImmediateRepaint = true;
-        }
-
         // Component hierarchy handles layout automatically
         updateLayoutFromComponents();
-
-        // Force immediate repaint to clear stale inspector visualization
-        if (needsImmediateRepaint) {
-            repaint();
-        }
     }
 
     /**
@@ -688,10 +674,6 @@ public final class Score
     }
 
     private void drawEditElements(Graphics2D g2) {
-        if (DebugState.isInspectorEnabled()) {
-            return;
-        }
-
         if (mode == Mode.EDIT) {
             // Insertion note rendering is now handled by LineComponent
         } else if (mode == Mode.ADJUSTMENT && horizontalAdjustment != null) {
@@ -744,17 +726,17 @@ public final class Score
 
     @Override
     public boolean isShowLayoutBoxes() {
-        return DebugState.isShowLayoutBoxes();
+        return false;
     }
 
     @Override
     public boolean isShowBoundingBoxes() {
-        return DebugState.isShowBoundingBoxes();
+        return false;
     }
 
     @Override
     public boolean isShowMargins() {
-        return DebugState.isShowMargins();
+        return false;
     }
 
     public void clearSelection() {

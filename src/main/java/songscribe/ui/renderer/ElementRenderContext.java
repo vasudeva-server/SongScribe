@@ -40,7 +40,6 @@ import songscribe.ui.layout.SongLayoutMetrics;
 import songscribe.ui.layout.LayoutResult;
 import songscribe.ui.layout.LyricRenderMetrics;
 import songscribe.ui.layout.ScaleContext;
-import songscribe.ui.menu.DebugState;
 
 /**
  * Context passed to element renderers containing shared rendering state.
@@ -605,45 +604,4 @@ public class ElementRenderContext {
         return LineThickness.getInstance();
     }
 
-    /**
-     * Returns whether debug rendering is enabled via DEBUG environment variable.
-     * <p>
-     * This is intended for development-time debugging only.
-     * For user-facing inspection, use {@link #isInspectorEnabled()}.
-     */
-    public boolean isDebugEnabled() {
-        return DebugState.isDebugEnabled();
-    }
-
-    /**
-     * Returns whether the inspector is enabled.
-     * <p>
-     * When enabled, renderers should draw additional visualization
-     * such as bounding boxes and margin regions. This is the user-facing
-     * debug feature controlled via the UI.
-     */
-    public boolean isInspectorEnabled() {
-        return DebugState.isInspectorEnabled();
-    }
-
-    /**
-     * Returns whether layout boxes should be shown for debugging.
-     */
-    public boolean isShowLayoutBoxes() {
-        return DebugState.isShowLayoutBoxes();
-    }
-
-    /**
-     * Returns whether bounding boxes should be shown for debugging.
-     */
-    public boolean isShowBoundingBoxes() {
-        return DebugState.isShowBoundingBoxes();
-    }
-
-    /**
-     * Returns whether margins should be shown for debugging.
-     */
-    public boolean isShowMargins() {
-        return DebugState.isShowMargins();
-    }
 }
