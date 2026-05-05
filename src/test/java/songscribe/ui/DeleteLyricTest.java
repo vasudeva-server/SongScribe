@@ -134,6 +134,7 @@ class DeleteLyricTest extends UnitTest {
     // Lyric branch
     // -------------------------------------------------------------------------
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class LyricBranch {
 
@@ -178,6 +179,7 @@ class DeleteLyricTest extends UnitTest {
     // Element branch — lyric selection absent
     // -------------------------------------------------------------------------
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class ElementBranch {
 
@@ -214,6 +216,7 @@ class DeleteLyricTest extends UnitTest {
     // No-selection — neither branch fires
     // -------------------------------------------------------------------------
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class NoSelection {
 
@@ -237,6 +240,7 @@ class DeleteLyricTest extends UnitTest {
     // Neighbor adjustment — syllabic chain repair after lyric deletion
     // -------------------------------------------------------------------------
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class NeighborAdjustment {
 

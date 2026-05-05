@@ -38,6 +38,7 @@ import static songscribe.music.StaffElementFactory.crotchet;
 
 class VelocityMapTest extends UnitTest {
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class AccentBoost {
 
@@ -70,6 +71,7 @@ class VelocityMapTest extends UnitTest {
         }
     }
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class CeilingCap {
 
@@ -94,6 +96,7 @@ class VelocityMapTest extends UnitTest {
         }
     }
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class DynamicMarking {
 
@@ -122,6 +125,7 @@ class VelocityMapTest extends UnitTest {
         }
     }
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class Propagation {
 

@@ -57,6 +57,7 @@ class SongIOTest extends UnitTest {
         }
     }
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class PerNoteLyricSerialization {
 

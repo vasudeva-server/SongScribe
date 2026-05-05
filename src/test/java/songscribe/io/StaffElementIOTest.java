@@ -68,6 +68,7 @@ class StaffElementIOTest extends UnitTest {
         messageCenterMock.close();
     }
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class InvalidMapLookups {
 
@@ -94,6 +95,7 @@ class StaffElementIOTest extends UnitTest {
         }
     }
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class DynamicSerialization {
 

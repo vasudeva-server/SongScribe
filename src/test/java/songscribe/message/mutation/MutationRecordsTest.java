@@ -48,6 +48,7 @@ import songscribe.ui.layout.RangeElement;
 
 class MutationRecordsTest extends UnitTest {
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class ElementMutations {
 
@@ -105,6 +106,7 @@ class MutationRecordsTest extends UnitTest {
         }
     }
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class SpanMutations {
 
@@ -132,6 +134,7 @@ class MutationRecordsTest extends UnitTest {
         }
     }
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class LineScopedInterfaceMembership {
 
@@ -163,6 +166,7 @@ class MutationRecordsTest extends UnitTest {
         }
     }
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class LineLevelMutations {
 
@@ -191,6 +195,7 @@ class MutationRecordsTest extends UnitTest {
         }
     }
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class PropertyMutations {
 
@@ -251,6 +256,7 @@ class MutationRecordsTest extends UnitTest {
         }
     }
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class RangeElementMutations {
 
@@ -285,6 +291,7 @@ class MutationRecordsTest extends UnitTest {
         }
     }
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class StructuralMutations {
 

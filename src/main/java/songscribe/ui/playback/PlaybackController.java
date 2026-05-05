@@ -56,10 +56,10 @@ public final class PlaybackController {
     private static final Logger LOG = LoggerFactory.getLogger(PlaybackController.class);
 
     @Nullable
-    static Score registeredScore;
+    private static Score registeredScore = null;
 
-    static PlaybackState state = PlaybackState.STOPPED;
-    static int previousPlayingLine = -1;
+    private static PlaybackState state = PlaybackState.STOPPED;
+    private static int previousPlayingLine = -1;
     private static long pausedTickPosition = 0;
 
     private static int instrument = 0;
@@ -68,7 +68,7 @@ public final class PlaybackController {
     private static boolean playWithRepeats = false;
 
     @Nullable
-    static ElementSelection activeSelection;
+    private static ElementSelection activeSelection = null;
 
     public static final PlayPauseAction PLAY_PAUSE_ACTION =
         PlayPauseAction.createAction();
@@ -90,6 +90,36 @@ public final class PlaybackController {
 
     public static PlaybackState getState() {
         return state;
+    }
+
+    public static void setState(PlaybackState newState) {
+        state = newState;
+    }
+
+    @Nullable
+    public static Score getRegisteredScore() {
+        return registeredScore;
+    }
+
+    public static void setRegisteredScore(@Nullable Score score) {
+        registeredScore = score;
+    }
+
+    public static int getPreviousPlayingLine() {
+        return previousPlayingLine;
+    }
+
+    public static void setPreviousPlayingLine(int line) {
+        previousPlayingLine = line;
+    }
+
+    @Nullable
+    public static ElementSelection getActiveSelection() {
+        return activeSelection;
+    }
+
+    public static void setActiveSelection(@Nullable ElementSelection selection) {
+        activeSelection = selection;
     }
 
     public static boolean isPlaying() {

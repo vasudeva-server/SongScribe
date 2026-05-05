@@ -40,6 +40,7 @@ class PageModelTest extends UnitTest {
         Prefs.getInstance().put(PrefsKey.PAGE_SIZE, "letter");
     }
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class SizeEnum {
 
@@ -56,6 +57,7 @@ class PageModelTest extends UnitTest {
         }
     }
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class PageSizeFromPrefs {
 
@@ -83,6 +85,7 @@ class PageModelTest extends UnitTest {
         }
     }
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class PageDimensionsPx {
 
@@ -113,6 +116,7 @@ class PageModelTest extends UnitTest {
         }
     }
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class Margins {
 
@@ -149,6 +153,7 @@ class PageModelTest extends UnitTest {
         }
     }
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class ContentArea {
 
@@ -162,6 +167,7 @@ class PageModelTest extends UnitTest {
         }
     }
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class LineWidthConstants {
 
@@ -176,6 +182,7 @@ class PageModelTest extends UnitTest {
         }
     }
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class DefaultLineWidth {
 
@@ -186,6 +193,7 @@ class PageModelTest extends UnitTest {
         }
     }
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class PageSizeChange {
 

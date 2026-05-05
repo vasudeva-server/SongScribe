@@ -83,6 +83,7 @@ class SongBracketTest extends UnitTest {
         assertThat(notification.getMutations()).containsExactly(mutation);
     }
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class NestedBrackets {
 
@@ -121,6 +122,7 @@ class SongBracketTest extends UnitTest {
         }
     }
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class WithModificationLifecycle {
 

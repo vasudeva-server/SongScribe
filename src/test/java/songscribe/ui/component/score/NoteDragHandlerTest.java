@@ -137,6 +137,7 @@ class NoteDragHandlerTest extends UnitTest {
     // Drag Group Building
     // -------------------------------------------------------------------------
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class DragGroupBuilding {
 
@@ -208,6 +209,7 @@ class NoteDragHandlerTest extends UnitTest {
     // Delta Computation and Clamping
     // -------------------------------------------------------------------------
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class DeltaComputationAndClamping {
 
@@ -260,6 +262,7 @@ class NoteDragHandlerTest extends UnitTest {
     // Glissando Cleanup
     // -------------------------------------------------------------------------
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class GlissandoCleanup {
 
@@ -302,6 +305,7 @@ class NoteDragHandlerTest extends UnitTest {
     // Grace Note Validity Checks
     // -------------------------------------------------------------------------
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class GraceNoteValidity {
 
@@ -354,6 +358,7 @@ class NoteDragHandlerTest extends UnitTest {
     // Mutation emission
     // -------------------------------------------------------------------------
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class MutationEmission {
 

@@ -398,7 +398,7 @@ public final class GlissandoRenderer {
     /**
      * Resolved geometry for a single note: center position, offset area, and note reference.
      */
-    record NoteContext(
+    private record NoteContext(
         StaffElement note,
         double cxSs, double cySs,
         Area offsetArea,
@@ -408,7 +408,7 @@ public final class GlissandoRenderer {
     /**
      * Immutable record holding the computed glissando endpoint positions in layout space.
      */
-    record Endpoints(double startXSs, double startYSs, double endXSs, double endYSs, double angle) {}
+    private record Endpoints(double startXSs, double startYSs, double endXSs, double endYSs, double angle) {}
 
     /**
      * Resolves the geometry context for a note at the given index: notehead center
@@ -471,6 +471,7 @@ public final class GlissandoRenderer {
             dy = Math.sin(Math.toRadians(SLIDE_OUT_ANGLE_DEG));
         } else {
             // tgt is non-null when isSlideOut is false (isSlideOut = (tgt == null))
+            //noinspection ConstantValue
             if (tgt == null) {
                 throw new IllegalStateException("tgt must be non-null when not a slide-out");
             }

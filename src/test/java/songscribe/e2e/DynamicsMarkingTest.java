@@ -106,6 +106,7 @@ class DynamicsMarkingTest extends E2ETest {
     // Regression checks
     // =====================================================================
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     @Order(5)
     @TestInstance(TestInstance.Lifecycle.PER_CLASS)

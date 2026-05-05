@@ -120,6 +120,7 @@ class ArticulationStackingTest extends UnitTest {
         assertThat(staccatoLayout.ySs()).isLessThan(0.0);
     }
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class StemDownArticulationsAbove {
 
@@ -157,6 +158,7 @@ class ArticulationStackingTest extends UnitTest {
         }
     }
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class StemUpArticulationsAbove {
 
@@ -181,6 +183,7 @@ class ArticulationStackingTest extends UnitTest {
         }
     }
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class CollisionDetection {
 
@@ -234,6 +237,7 @@ class ArticulationStackingTest extends UnitTest {
         }
     }
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class PrecomposedGlyph {
 
@@ -272,6 +276,7 @@ class ArticulationStackingTest extends UnitTest {
         }
     }
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class DecorationLayoutProperties {
 

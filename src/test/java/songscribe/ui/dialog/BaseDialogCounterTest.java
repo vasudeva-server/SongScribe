@@ -126,6 +126,7 @@ class BaseDialogCounterTest extends UnitTest {
 
     // -- notification transitions --
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class NotificationTransitionTests {
 
@@ -265,6 +266,7 @@ class BaseDialogCounterTest extends UnitTest {
         }
     }
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class InformationalNotificationTests {
 

@@ -74,6 +74,7 @@ class LineMutationTest extends UnitTest {
     // Line insertion / deletion
     // -----------------------------------------------------------------------
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class LineMutations {
 
@@ -106,6 +107,7 @@ class LineMutationTest extends UnitTest {
     // Element deletion
     // -----------------------------------------------------------------------
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class RemoveElement {
 
@@ -166,6 +168,7 @@ class LineMutationTest extends UnitTest {
     // Element range deletion
     // -----------------------------------------------------------------------
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class RemoveRange {
 
@@ -236,6 +239,7 @@ class LineMutationTest extends UnitTest {
     // Coordinator-equivalent range deletion
     // -----------------------------------------------------------------------
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class CoordinatorEquivalentDelete {
 
@@ -322,6 +326,7 @@ class LineMutationTest extends UnitTest {
      *        (anchor)                        (split)                          (end)
      * </pre>
      */
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class EndingInvalidationConditions {
 
@@ -492,6 +497,7 @@ class LineMutationTest extends UnitTest {
     // Final-barline mutation guards
     // -----------------------------------------------------------------------
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class TerminalGuards {
 
@@ -618,6 +624,7 @@ class LineMutationTest extends UnitTest {
     // Selectability predicate
     // -----------------------------------------------------------------------
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class SelectabilityPredicate {
 
@@ -652,6 +659,7 @@ class LineMutationTest extends UnitTest {
     // Syllable adjustment
     // -----------------------------------------------------------------------
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class SyllableAdjustment {
 
@@ -754,6 +762,7 @@ class LineMutationTest extends UnitTest {
     // Syllable adjustment on insertion
     // -----------------------------------------------------------------------
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class SyllableAdjustmentOnInsertion {
 
@@ -826,6 +835,7 @@ class LineMutationTest extends UnitTest {
     // Extend adjustment
     // -----------------------------------------------------------------------
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class ExtendAdjustment {
 
@@ -959,6 +969,7 @@ class LineMutationTest extends UnitTest {
     // Extend adjustment on insertion
     // -----------------------------------------------------------------------
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class ExtendAdjustmentOnInsertion {
 
@@ -1107,6 +1118,7 @@ class LineMutationTest extends UnitTest {
         });
     }
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class LineConstructorInvariants {
 

@@ -79,6 +79,7 @@ class AppearanceManagerTest extends UnitTest {
         prefsMock.close();
     }
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class CreateLaf {
 
@@ -105,6 +106,7 @@ class AppearanceManagerTest extends UnitTest {
         }
     }
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class Init {
 
@@ -139,6 +141,7 @@ class AppearanceManagerTest extends UnitTest {
         }
     }
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class ResolveIsDark {
 
@@ -171,6 +174,7 @@ class AppearanceManagerTest extends UnitTest {
         }
     }
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class SwitchTheme {
 

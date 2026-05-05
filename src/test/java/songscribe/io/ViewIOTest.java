@@ -40,6 +40,7 @@ import songscribe.util.MyFontUtils;
 
 class ViewIOTest extends UnitTest {
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class AnnotationFontRoundTrip {
 
@@ -59,6 +60,7 @@ class ViewIOTest extends UnitTest {
         }
     }
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class FontXmlParsing {
 
@@ -127,6 +129,7 @@ class ViewIOTest extends UnitTest {
         }
     }
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class LegacyFontStyleElements {
 

@@ -39,6 +39,7 @@ class AnnotationAttachmentTest extends UnitTest {
 
     private static final double EPSILON = 1e-10;
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class GetContentHeightSs {
 

@@ -198,6 +198,7 @@ class BaseDialogPositionTest extends UnitTest {
     }
 
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class GeometryPersistence {
 

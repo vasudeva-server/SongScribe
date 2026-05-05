@@ -37,6 +37,7 @@ import songscribe.ui.layout.DynamicAttachment.DynamicType;
 
 class FormatMigratorTest extends UnitTest {
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class MigrateAnnotationDynamics {
 
@@ -147,6 +148,7 @@ class FormatMigratorTest extends UnitTest {
         }
     }
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class MigrateFinalTerminal {
 

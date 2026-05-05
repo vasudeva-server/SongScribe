@@ -41,12 +41,13 @@ class PlaybackControllerTest extends UnitTest {
 
     @AfterEach
     void tearDown() {
-        PlaybackController.state = PlaybackState.STOPPED;
-        PlaybackController.previousPlayingLine = -1;
-        PlaybackController.activeSelection = null;
-        PlaybackController.registeredScore = null;
+        PlaybackController.setState(PlaybackState.STOPPED);
+        PlaybackController.setPreviousPlayingLine(-1);
+        PlaybackController.setActiveSelection(null);
+        PlaybackController.setRegisteredScore(null);
     }
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class SelectionDidChange {
 
@@ -57,27 +58,27 @@ class PlaybackControllerTest extends UnitTest {
             when(mockScore.getLineComponent(0)).thenReturn(mockLineComponent);
             PlaybackController.register(mockScore);
 
-            PlaybackController.state = PlaybackState.PAUSED;
-            PlaybackController.previousPlayingLine = 0;
+            PlaybackController.setState(PlaybackState.PAUSED);
+            PlaybackController.setPreviousPlayingLine(0);
 
             var selection = new ElementSelection(detachedLine(), 1, 3);
             PlaybackController.selectionDidChange(selection);
 
             verify(mockLineComponent).setPlayingIndices(-1, -1);
-            assertThat(PlaybackController.previousPlayingLine).isEqualTo(-1);
-            assertThat(PlaybackController.activeSelection).isEqualTo(selection);
-            assertThat(PlaybackController.state).isEqualTo(PlaybackState.PAUSED);
+            assertThat(PlaybackController.getPreviousPlayingLine()).isEqualTo(-1);
+            assertThat(PlaybackController.getActiveSelection()).isEqualTo(selection);
+            assertThat(PlaybackController.getState()).isEqualTo(PlaybackState.PAUSED);
         }
 
         @Test
         void testDoesNothingWhenPlaying() {
-            PlaybackController.state = PlaybackState.PLAYING;
+            PlaybackController.setState(PlaybackState.PLAYING);
             var selection = new ElementSelection(detachedLine(), 0, 0);
 
             PlaybackController.selectionDidChange(selection);
 
-            assertThat(PlaybackController.activeSelection).isNull();
-            assertThat(PlaybackController.state).isEqualTo(PlaybackState.PLAYING);
+            assertThat(PlaybackController.getActiveSelection()).isNull();
+            assertThat(PlaybackController.getState()).isEqualTo(PlaybackState.PLAYING);
         }
 
         @Test
@@ -86,18 +87,18 @@ class PlaybackControllerTest extends UnitTest {
 
             PlaybackController.selectionDidChange(selection);
 
-            assertThat(PlaybackController.activeSelection).isNull();
-            assertThat(PlaybackController.state).isEqualTo(PlaybackState.STOPPED);
+            assertThat(PlaybackController.getActiveSelection()).isNull();
+            assertThat(PlaybackController.getState()).isEqualTo(PlaybackState.STOPPED);
         }
 
         @Test
         void testStopsWhenSelectionClearedWhilePaused() {
-            PlaybackController.state = PlaybackState.PAUSED;
+            PlaybackController.setState(PlaybackState.PAUSED);
 
             PlaybackController.selectionDidChange(null);
 
-            assertThat(PlaybackController.state).isEqualTo(PlaybackState.STOPPED);
-            assertThat(PlaybackController.activeSelection).isNull();
+            assertThat(PlaybackController.getState()).isEqualTo(PlaybackState.STOPPED);
+            assertThat(PlaybackController.getActiveSelection()).isNull();
         }
     }
 }

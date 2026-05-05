@@ -62,6 +62,7 @@ class GlissandoMidiIntegrationTest extends UnitTest {
         tempo = Objects.requireNonNull(line.getElement(TEMPO_INDEX).getTempoChange());
     }
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class ConnectedGlissando {
 
@@ -90,6 +91,7 @@ class GlissandoMidiIntegrationTest extends UnitTest {
         }
     }
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class SlideOut {
 
@@ -123,6 +125,7 @@ class GlissandoMidiIntegrationTest extends UnitTest {
         assertThat(note.getGlissando()).as("pair A source has no glissando").isNull();
     }
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class GraceHostPair {
 

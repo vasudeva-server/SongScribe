@@ -106,7 +106,7 @@ public final class SelectionCoordinator {
     private ElementSelection applicabilityCacheSelection = null;
     private final Map<UIAction.Reflectable, Boolean> applicabilityCache = new IdentityHashMap<>();
 
-    record ActionState(boolean selected, boolean enabled) {}
+    private record ActionState(boolean selected, boolean enabled) {}
 
     /**
      * Global AWT listener that catches mouseReleased events which Swing sometimes

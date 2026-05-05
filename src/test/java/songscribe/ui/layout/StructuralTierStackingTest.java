@@ -67,6 +67,7 @@ class StructuralTierStackingTest extends UnitTest {
         return builder.build();
     }
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class HairpinStacking {
 
@@ -247,6 +248,7 @@ class StructuralTierStackingTest extends UnitTest {
         }
     }
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class TupletStacking {
 
@@ -345,6 +347,7 @@ class StructuralTierStackingTest extends UnitTest {
         }
     }
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class TextDynamicsStacking {
 
@@ -419,6 +422,7 @@ class StructuralTierStackingTest extends UnitTest {
         }
     }
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class EndingStacking {
 
@@ -520,6 +524,7 @@ class StructuralTierStackingTest extends UnitTest {
         }
     }
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class StructuralTierInteraction {
 

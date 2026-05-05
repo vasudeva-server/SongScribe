@@ -80,6 +80,7 @@ class NoteConnectionTest extends E2ETest {
     }
 
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     @Order(1)
     @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -135,6 +136,7 @@ class NoteConnectionTest extends E2ETest {
     }
 
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     @Order(2)
     @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -177,6 +179,7 @@ class NoteConnectionTest extends E2ETest {
     }
 
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     @Order(3)
     @TestInstance(TestInstance.Lifecycle.PER_CLASS)

@@ -179,6 +179,7 @@ class EndingConfirmsTest extends UnitTest {
     // Confirm-I, user declines — mutation is aborted
     // -----------------------------------------------------------------------
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class ConfirmInvalidationUserDeclines {
 
@@ -211,6 +212,7 @@ class EndingConfirmsTest extends UnitTest {
     // Confirm-I, user confirms — mutation proceeds, ending removed
     // -----------------------------------------------------------------------
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class ConfirmInvalidationUserConfirms {
 
@@ -248,6 +250,7 @@ class EndingConfirmsTest extends UnitTest {
     // Confirm-R, user declines — mutation is aborted, ending unchanged
     // -----------------------------------------------------------------------
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class ConfirmCompensationUserDeclines {
 
@@ -280,6 +283,7 @@ class EndingConfirmsTest extends UnitTest {
     // Confirm-R, user confirms — both changes applied, ending retained
     // -----------------------------------------------------------------------
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class ConfirmCompensationUserConfirms {
 

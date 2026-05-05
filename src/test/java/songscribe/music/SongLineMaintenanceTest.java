@@ -71,6 +71,7 @@ class SongLineMaintenanceTest extends UnitTest {
     // addLine — appending as the new last line transfers the final barline
     // -----------------------------------------------------------------------
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class AppendAsNewLast {
 
@@ -184,6 +185,7 @@ class SongLineMaintenanceTest extends UnitTest {
     // addLine — inserting before the current last runs no maintenance
     // -----------------------------------------------------------------------
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class InsertBeforeLast {
 
@@ -224,6 +226,7 @@ class SongLineMaintenanceTest extends UnitTest {
     // removeLine — removing the last line migrates the barline to the penult
     // -----------------------------------------------------------------------
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class RemoveLastLine {
 
@@ -316,6 +319,7 @@ class SongLineMaintenanceTest extends UnitTest {
     // removeLine — removing a non-last line runs no maintenance
     // -----------------------------------------------------------------------
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class RemoveNonLastLine {
 
@@ -350,6 +354,7 @@ class SongLineMaintenanceTest extends UnitTest {
     // Guard bypass: maintenance-driven replacement must not throw.
     // -----------------------------------------------------------------------
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class GuardBypass {
 
@@ -372,6 +377,7 @@ class SongLineMaintenanceTest extends UnitTest {
     // Modified flag: user-driven line mutations dirty the document.
     // -----------------------------------------------------------------------
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class ModifiedFlag {
 

@@ -58,6 +58,7 @@ class ParentLinePropagationTest extends UnitTest {
     // Attachment already on element when addElement is called
     // -----------------------------------------------------------------------
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class WhenAttachmentPreexistsOnElement {
 
@@ -92,6 +93,7 @@ class ParentLinePropagationTest extends UnitTest {
     // Attachment added to element that is already in a line
     // -----------------------------------------------------------------------
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class WhenElementAlreadyInLine {
 
@@ -111,6 +113,7 @@ class ParentLinePropagationTest extends UnitTest {
     // Attachment moved from one element to another in a different line
     // -----------------------------------------------------------------------
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class WhenMovedBetweenElements {
 

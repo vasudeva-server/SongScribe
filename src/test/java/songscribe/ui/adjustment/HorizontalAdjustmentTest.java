@@ -71,6 +71,7 @@ class HorizontalAdjustmentTest extends UnitTest {
     // Snap-to-end skipped for both terminal types
     // -----------------------------------------------------------------------
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class SnapToEndSkipped {
 

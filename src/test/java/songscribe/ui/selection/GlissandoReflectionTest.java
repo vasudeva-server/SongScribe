@@ -186,6 +186,7 @@ class GlissandoReflectionTest extends UnitTest {
         assertSelectedAndEnabled(staccatoAction, false, false);
     }
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class SaveRestore {
 

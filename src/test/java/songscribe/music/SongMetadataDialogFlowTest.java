@@ -69,6 +69,7 @@ class SongMetadataDialogFlowTest extends UnitTest {
     // Multiple-field coalescing
     // -----------------------------------------------------------------------
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class MultipleFieldCoalescing {
 
@@ -135,6 +136,7 @@ class SongMetadataDialogFlowTest extends UnitTest {
     // Dialog-flow bracketing
     // -----------------------------------------------------------------------
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class DialogFlowBracketing {
 

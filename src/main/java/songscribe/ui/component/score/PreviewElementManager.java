@@ -75,20 +75,20 @@ public final class PreviewElementManager {
      * to a different line, the old line is repainted to clear the preview element.
      */
     @Nullable
-    static LineComponent currentPreviewLine = null;
+    private static LineComponent currentPreviewLine = null;
 
     /** Current insertion index (0 to elementCount inclusive). */
-    static int currentXIndex = -1;
+    private static int currentXIndex = -1;
 
     /** Current Y position on the staff (in staff position units, not pixels). */
-    static int currentStaffPosition = 0;
+    private static int currentStaffPosition = 0;
 
     /** The LineComponent the mouse is currently over (independent of insertion note state). */
     @Nullable
     private static LineComponent currentMouseLine = null;
 
     /** Whether the mouse X (in staff spaces) is within the horizontal bounds of a note head. */
-    static boolean xPosSsMatchesElement = false;
+    private static boolean xPosSsMatchesElement = false;
 
     /** Whether the mouse Y (staff position) is within the vertical bounds of that note head. */
     private static boolean yPosSpMatchesElement = false;
@@ -178,8 +178,6 @@ public final class PreviewElementManager {
      * @param pressed true if Alt is pressed
      */
     static void setAltPressed(boolean pressed) {
-        /** Whether the Alt key is currently held down. */
-
         // When Alt is released, re-trigger preview element from current mouse position
         if (!pressed) {
             restorePreviewElement(currentMouseLine);
@@ -256,6 +254,41 @@ public final class PreviewElementManager {
      */
     static StaffElement.Glissando.@Nullable Type getGlissandoZone() {
         return currentGlissandoZone;
+    }
+
+    /**
+     * Sets the current insertion X index (0 to elementCount inclusive).
+     */
+    static void setCurrentXIndex(int index) {
+        currentXIndex = index;
+    }
+
+    /**
+     * Sets the current preview line.
+     */
+    static void setCurrentPreviewLine(@Nullable LineComponent line) {
+        currentPreviewLine = line;
+    }
+
+    /**
+     * Sets the current Y position on the staff (in staff position units, not pixels).
+     */
+    static void setCurrentStaffPosition(int position) {
+        currentStaffPosition = position;
+    }
+
+    /**
+     * Returns whether the mouse X (in staff spaces) is within the horizontal bounds of a note head.
+     */
+    static boolean isXPosSsMatchesElement() {
+        return xPosSsMatchesElement;
+    }
+
+    /**
+     * Sets whether the mouse X (in staff spaces) is within the horizontal bounds of a note head.
+     */
+    static void setXPosSsMatchesElement(boolean matches) {
+        xPosSsMatchesElement = matches;
     }
 
     // ==========================================================================
@@ -802,11 +835,6 @@ public final class PreviewElementManager {
      */
     private static void addPreviewElement(LineComponent lc, Line line) {
         var score = lc.getScore();
-
-        if (score == null) {
-            return;
-        }
-
         var previewElement = getActivePreviewElement();
 
         if (previewElement == null) {
@@ -836,32 +864,32 @@ public final class PreviewElementManager {
         }
     }
 
-    /**
-     * Inserts a preview element at the specified index in the line.
-     *
-     * @param lc     The LineComponent
-     * @param xIndex The index to insert at
-     * @param line   The line to insert into
-     */
-    private static void insertElement(LineComponent lc, int xIndex, Line line) {
-        var score = lc.getScore();
+    @Nullable
+    private static StaffElement validateAndGetPreviewElement(Line line, int elementIndex) {
+        var previewElement = getActivePreviewElement();
 
-        if (score == null) {
-            return;
+        if (previewElement == null) {
+            return null;
         }
 
-        var previewElement = getActivePreviewElement();
+        var editModeManager = EditModeManager.getInstance();
+
+        if (editModeManager != null && editModeManager.elementWasModified(line, elementIndex)) {
+            editModeManager.previewElementDidChange(line, elementIndex);
+            return null;
+        }
+
+        return previewElement;
+    }
+
+    private static void insertElement(LineComponent lc, int xIndex, Line line) {
+        var previewElement = validateAndGetPreviewElement(line, xIndex);
 
         if (previewElement == null) {
             return;
         }
 
         var editModeManager = EditModeManager.getInstance();
-
-        if (editModeManager != null && editModeManager.elementWasModified(line, xIndex)) {
-            editModeManager.previewElementDidChange(line, xIndex);
-            return;
-        }
 
         // If inserting into a tuplet, remove it — the new element changes the rhythmic grouping.
         // The subsequent removeSpan call handles the remaining span sets (beamings, ties, etc.).
@@ -970,24 +998,13 @@ public final class PreviewElementManager {
      * @param line         The line containing the element
      */
     private static void modifyExistingElement(LineComponent lc, int elementIndex, Line line) {
-        var score = lc.getScore();
-
-        if (score == null) {
-            return;
-        }
-
-        var previewElement = getActivePreviewElement();
+        var previewElement = validateAndGetPreviewElement(line, elementIndex);
 
         if (previewElement == null) {
             return;
         }
 
         var editModeManager = EditModeManager.getInstance();
-
-        if (editModeManager != null && editModeManager.elementWasModified(line, elementIndex)) {
-            editModeManager.previewElementDidChange(line, elementIndex);
-            return;
-        }
 
         // Preserve the existing element's x position and lyrics
         var existing = line.getElement(elementIndex);

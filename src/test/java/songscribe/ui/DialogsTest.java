@@ -53,6 +53,7 @@ class DialogsTest extends UnitTest {
         OptionDialogs.setSuppressDialogs(true);
     }
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class WhenNotSuppressed {
 
@@ -202,6 +203,7 @@ class DialogsTest extends UnitTest {
 
     }
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class WhenSuppressed {
 

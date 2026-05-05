@@ -51,6 +51,7 @@ class BeatChangeAttachmentTest extends UnitTest {
         return new BeatChangeAttachment(new BeatChange(Duration.CROTCHET, Duration.CROTCHET));
     }
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class RegionStructure {
 
@@ -114,6 +115,7 @@ class BeatChangeAttachmentTest extends UnitTest {
         }
     }
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class EqualsDescender {
 

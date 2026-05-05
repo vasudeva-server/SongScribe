@@ -60,6 +60,7 @@ import songscribe.ui.selection.SelectionCoordinator;
 
 class ScoreMessageCoordinatorTest extends UnitTest {
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class DeleteLyric {
 
@@ -110,6 +111,7 @@ class ScoreMessageCoordinatorTest extends UnitTest {
         }
     }
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class DeleteNote {
 
@@ -288,6 +290,7 @@ class ScoreMessageCoordinatorTest extends UnitTest {
      * implement {@code LineScopedMutation} silently skips layout invalidation,
      * which is the main user-visible correctness risk of the migration.
      */
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class LayoutInvalidation {
 

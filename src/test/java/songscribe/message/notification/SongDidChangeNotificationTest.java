@@ -52,6 +52,7 @@ class SongDidChangeNotificationTest extends UnitTest {
         song = new Song();
     }
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class GetLine {
 
@@ -127,6 +128,7 @@ class SongDidChangeNotificationTest extends UnitTest {
         }
     }
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class HasMutationOf {
 

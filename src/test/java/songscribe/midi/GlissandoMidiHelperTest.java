@@ -46,6 +46,7 @@ import static songscribe.midi.GlissandoMidiHelper.resolveTargetPitch;
 
 class GlissandoMidiHelperTest extends UnitTest {
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class CalculateBendValue {
 
@@ -108,6 +109,7 @@ class GlissandoMidiHelperTest extends UnitTest {
         }
     }
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class CreatePitchBendMessages {
 
@@ -168,6 +170,7 @@ class GlissandoMidiHelperTest extends UnitTest {
         }
     }
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class CreatePitchBendReset {
 
@@ -195,6 +198,7 @@ class GlissandoMidiHelperTest extends UnitTest {
         }
     }
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class CreateRpnMessages {
 
@@ -241,6 +245,7 @@ class GlissandoMidiHelperTest extends UnitTest {
         }
     }
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class CreateRpnMessagesIfNeeded {
 
@@ -286,6 +291,7 @@ class GlissandoMidiHelperTest extends UnitTest {
         }
     }
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class CalculateSensitivity {
 
@@ -310,6 +316,7 @@ class GlissandoMidiHelperTest extends UnitTest {
         }
     }
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class CalculateSlideTicks {
 
@@ -331,6 +338,7 @@ class GlissandoMidiHelperTest extends UnitTest {
         }
     }
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class CalculateSustainTicks {
 
@@ -353,6 +361,7 @@ class GlissandoMidiHelperTest extends UnitTest {
         }
     }
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class ResolveTargetPitch {
 

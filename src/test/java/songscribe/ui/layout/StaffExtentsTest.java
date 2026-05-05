@@ -33,6 +33,7 @@ class StaffExtentsTest extends UnitTest {
     private static final double STAFF_TOP_SS = 0.0;
     private static final double STAFF_BOTTOM_SS = StaffExtents.STAFF_HEIGHT_SS;
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class CopyTopFrom {
 
@@ -62,6 +63,7 @@ class StaffExtentsTest extends UnitTest {
         }
     }
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class InitializationDefaults {
 
@@ -78,6 +80,7 @@ class StaffExtentsTest extends UnitTest {
         }
     }
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class OverlappingReservations {
 
@@ -120,6 +123,7 @@ class StaffExtentsTest extends UnitTest {
         }
     }
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class StepClamping {
 
@@ -150,6 +154,7 @@ class StaffExtentsTest extends UnitTest {
         }
     }
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class YGetBasicOperations {
 
@@ -185,6 +190,7 @@ class StaffExtentsTest extends UnitTest {
         }
     }
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class YSetBasicOperations {
 

@@ -39,6 +39,7 @@ class ResourceScanTest extends UnitTest {
 
     private static final Path ICONS_DIR = Path.of("src/main/resources/icons");
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class SvgIcons {
 

@@ -103,6 +103,7 @@ class InsertionSpacingCalculatorTest extends UnitTest {
         return column.getRightEdgeXSs();
     }
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class FitsWithinLine {
 
@@ -128,6 +129,7 @@ class InsertionSpacingCalculatorTest extends UnitTest {
         }
     }
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class HasRoomForGraceNote {
 
@@ -156,6 +158,7 @@ class InsertionSpacingCalculatorTest extends UnitTest {
         }
     }
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class HasRoomForHostNoteAfterGrace {
 

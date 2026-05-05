@@ -44,6 +44,7 @@ import songscribe.ui.component.MainFrame;
  */
 class DialogsTest extends E2ETest {
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class ConfirmDialog {
 
@@ -105,6 +106,7 @@ class DialogsTest extends E2ETest {
         }
     }
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class InputDialog {
 
@@ -127,6 +129,7 @@ class DialogsTest extends E2ETest {
         }
     }
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class OptionDialog {
 

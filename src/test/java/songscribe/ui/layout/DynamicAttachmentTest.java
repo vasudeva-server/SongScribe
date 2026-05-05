@@ -32,6 +32,7 @@ import songscribe.ui.layout.DynamicAttachment.DynamicType;
 
 class DynamicAttachmentTest extends UnitTest {
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class DynamicTypeFields {
 
@@ -108,6 +109,7 @@ class DynamicAttachmentTest extends UnitTest {
         }
     }
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class Dimensions {
 

@@ -109,6 +109,7 @@ class ManualOffsetStackingTest extends UnitTest {
         return stackColumns(columns, newLine());
     }
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class AnnotationOffsets {
 
@@ -198,6 +199,7 @@ class ManualOffsetStackingTest extends UnitTest {
         }
     }
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class FermataOffsets {
 
@@ -234,6 +236,7 @@ class ManualOffsetStackingTest extends UnitTest {
         }
     }
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class HairpinOffsets {
 
@@ -328,6 +331,7 @@ class ManualOffsetStackingTest extends UnitTest {
         }
     }
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class NoCollisionRerun {
 
@@ -378,6 +382,7 @@ class ManualOffsetStackingTest extends UnitTest {
         }
     }
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class TempoOffsets {
 
@@ -434,6 +439,7 @@ class ManualOffsetStackingTest extends UnitTest {
         }
     }
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class TrillOffsets {
 
@@ -471,6 +477,7 @@ class ManualOffsetStackingTest extends UnitTest {
         }
     }
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class EndingOffsets {
 

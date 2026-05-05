@@ -454,6 +454,7 @@ class MusicEditOperationsMutationTest extends UnitTest {
      * Selection covers indices 1–6. The REPEAT_LEFT at index 0 satisfies the preceding-element
      * and enclosing-repeat requirements.
      */
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class CanMakeFirstSecondEndingWithRepeatLeftRightSplit {
 
@@ -512,6 +513,7 @@ class MusicEditOperationsMutationTest extends UnitTest {
      * </pre>
      * Index 6 is the auto-maintained terminal — not interactable. The user selects 1–5.
      */
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class CanMakeFirstSecondEndingAtSongEnd {
 
@@ -538,6 +540,7 @@ class MusicEditOperationsMutationTest extends UnitTest {
      * non-first line is invalid, and reaching the beginning of the first line
      * is valid.
      */
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class HasEnclosingRepeatRules {
 

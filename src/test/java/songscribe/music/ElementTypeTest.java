@@ -169,6 +169,7 @@ class ElementTypeTest extends UnitTest {
 
     // --- Element bounds tests (Step 10) ---
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class ElementContentDelegationTests {
 
@@ -197,6 +198,7 @@ class ElementTypeTest extends UnitTest {
         }
     }
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class ElementHeightTests {
 
@@ -241,6 +243,7 @@ class ElementTypeTest extends UnitTest {
         }
     }
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class ElementWidthTests {
 

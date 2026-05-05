@@ -131,6 +131,7 @@ class SelectionTest extends E2ETest {
     };
 
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     @Order(1)
     @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -156,6 +157,7 @@ class SelectionTest extends E2ETest {
     }
 
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     @Order(2)
     @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -202,6 +204,7 @@ class SelectionTest extends E2ETest {
     }
 
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     @Order(3)
     @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -248,6 +251,7 @@ class SelectionTest extends E2ETest {
     }
 
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     @Order(4)
     @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -286,6 +290,7 @@ class SelectionTest extends E2ETest {
     }
 
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     @Order(5)
     @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -346,6 +351,7 @@ class SelectionTest extends E2ETest {
     }
 
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     @Order(6)
     @TestInstance(TestInstance.Lifecycle.PER_CLASS)

@@ -50,6 +50,7 @@ class DynamicMarkingActionTest extends UnitTest {
     private static final DynamicMarkingAction PIANO_ACTION =
         DynamicMarkingAction.createPianoAction();
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class ApplyToElement {
 
@@ -92,6 +93,7 @@ class DynamicMarkingActionTest extends UnitTest {
         }
     }
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class MatchesElement {
 
@@ -116,6 +118,7 @@ class DynamicMarkingActionTest extends UnitTest {
         }
     }
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class EnabledState {
 
@@ -212,6 +215,7 @@ class DynamicMarkingActionTest extends UnitTest {
         }
     }
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class ActionGroupBehavior {
 

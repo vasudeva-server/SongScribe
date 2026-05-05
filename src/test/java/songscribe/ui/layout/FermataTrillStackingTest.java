@@ -73,6 +73,7 @@ class FermataTrillStackingTest extends UnitTest {
         return stackColumns(columns, detachedLine());
     }
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class FermataStacking {
 
@@ -165,6 +166,7 @@ class FermataTrillStackingTest extends UnitTest {
         }
     }
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class TrillStacking {
 
@@ -283,6 +285,7 @@ class FermataTrillStackingTest extends UnitTest {
         }
     }
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class FermataAndTrillInteraction {
 

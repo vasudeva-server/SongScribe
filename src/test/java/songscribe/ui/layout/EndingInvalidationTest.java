@@ -85,6 +85,7 @@ class EndingInvalidationTest extends UnitTest {
     // isInvalidatedByDeletion
     // -----------------------------------------------------------------------
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class IsInvalidatedByDeletion {
 
@@ -129,6 +130,7 @@ class EndingInvalidationTest extends UnitTest {
     // isInvalidatedByInsertion
     // -----------------------------------------------------------------------
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class IsInvalidatedByInsertion {
 
@@ -167,6 +169,7 @@ class EndingInvalidationTest extends UnitTest {
     // isInvalidatedByReplacement
     // -----------------------------------------------------------------------
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class IsInvalidatedByReplacement {
 
@@ -260,6 +263,7 @@ class EndingInvalidationTest extends UnitTest {
             assertThat(ending2.isInvalidatedByReplacement(split2, new StaffElement(ElementType.REPEAT_LEFT_RIGHT), line2)).isFalse();
         }
 
+        @SuppressWarnings("PackageVisibleInnerClass")
         @Nested
         class WhenSplitIsRepeatLeftRight {
 
@@ -324,6 +328,7 @@ class EndingInvalidationTest extends UnitTest {
     // checkReplacement
     // -----------------------------------------------------------------------
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class CheckReplacement {
 
@@ -440,6 +445,7 @@ class EndingInvalidationTest extends UnitTest {
         // Secondary canonical line: split = REPEAT_LEFT_RIGHT
         // -----------------------------------------------------------------------
 
+        @SuppressWarnings("PackageVisibleInnerClass")
         @Nested
         class WhenSplitIsRepeatLeftRight {
 

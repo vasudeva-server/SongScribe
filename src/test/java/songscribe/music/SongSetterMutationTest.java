@@ -68,6 +68,7 @@ class SongSetterMutationTest extends UnitTest {
     // Metadata setters
     // -----------------------------------------------------------------------
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class StringMetadataSetters {
 
@@ -174,6 +175,7 @@ class SongSetterMutationTest extends UnitTest {
         }
     }
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class NumericAndTypedMetadataSetters {
 
@@ -289,6 +291,7 @@ class SongSetterMutationTest extends UnitTest {
     // Lyrics setters
     // -----------------------------------------------------------------------
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class LyricsSetters {
 
@@ -348,6 +351,7 @@ class SongSetterMutationTest extends UnitTest {
     // Font setters
     // -----------------------------------------------------------------------
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class FontSetters {
 
@@ -460,6 +464,7 @@ class SongSetterMutationTest extends UnitTest {
     // Layout setters
     // -----------------------------------------------------------------------
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class LayoutSetters {
 

@@ -38,6 +38,7 @@ class RangeElementInvalidationTest extends UnitTest {
     // Factory
     // -----------------------------------------------------------------------
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @FunctionalInterface
     interface RangeElementFactory {
 

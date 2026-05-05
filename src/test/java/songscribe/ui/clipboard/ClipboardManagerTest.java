@@ -39,6 +39,7 @@ class ClipboardManagerTest extends UnitTest {
         clipboardManager = new ClipboardManager();
     }
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class AddElement {
 

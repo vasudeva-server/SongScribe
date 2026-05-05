@@ -55,6 +55,7 @@ class BeamToggleTest extends UnitTest {
         operations = new MusicEditOperations(song, coordinator);
     }
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class FlipStemDirection {
 
@@ -130,6 +131,7 @@ class BeamToggleTest extends UnitTest {
         }
     }
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class ToggleBeam {
 

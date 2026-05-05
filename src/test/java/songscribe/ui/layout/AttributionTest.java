@@ -50,6 +50,7 @@ class AttributionTest extends UnitTest {
         assertThat(attribution.computeContentWidthSs(font)).isCloseTo(expected, within(EPSILON));
     }
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class ParentLineResolution {
 

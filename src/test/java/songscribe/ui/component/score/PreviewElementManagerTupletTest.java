@@ -27,15 +27,11 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 
-import java.lang.reflect.Field;
-
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
-
-import org.jspecify.annotations.Nullable;
 
 import songscribe.UnitTest;
 import songscribe.message.MessageCenter;
@@ -81,7 +77,7 @@ class PreviewElementManagerTupletTest extends UnitTest {
     private Line line;
 
     @BeforeEach
-    void setUp() throws Exception {
+    void setUp() {
         // Construct before mocking MessageCenter so constructor subscriptions
         // reach the real bus.
         song = new Song();
@@ -111,16 +107,16 @@ class PreviewElementManagerTupletTest extends UnitTest {
         // defaultUpperNote is called when the preview element's stem direction is auto
         scoreMock.when(() -> Score.defaultUpperNote(any())).thenReturn(true);
 
-        setStaticField("currentPreviewLine", lc);
-        setStaticField("currentStaffPosition", 0);
+        PreviewElementManager.setCurrentPreviewLine(lc);
+        PreviewElementManager.setCurrentStaffPosition(0);
     }
 
     @AfterEach
-    void tearDown() throws Exception {
+    void tearDown() {
         // Reset static cursor state to avoid cross-test contamination
-        setStaticField("currentPreviewLine", null);
-        setStaticField("currentXIndex", -1);
-        setStaticField("xPosSsMatchesElement", false);
+        PreviewElementManager.setCurrentPreviewLine(null);
+        PreviewElementManager.setCurrentXIndex(-1);
+        PreviewElementManager.setXPosSsMatchesElement(false);
 
         playbackMock.close();
         scoreMock.close();
@@ -131,12 +127,6 @@ class PreviewElementManagerTupletTest extends UnitTest {
     // -----------------------------------------------------------------------
     // Helpers
     // -----------------------------------------------------------------------
-
-    private static void setStaticField(String name, @Nullable Object value) throws Exception {
-        var field = PreviewElementManager.class.getDeclaredField(name);
-        field.setAccessible(true);
-        field.set(null, value);
-    }
 
     private void addNotes(int count, ElementType type) {
         song.withoutMutationTracking(() -> {
@@ -158,6 +148,7 @@ class PreviewElementManagerTupletTest extends UnitTest {
     // modifyExistingElement
     // -----------------------------------------------------------------------
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class ModifyExistingElement {
 
@@ -167,12 +158,12 @@ class PreviewElementManagerTupletTest extends UnitTest {
          * (different type) must remove the tuplet.
          */
         @Test
-        void testDifferentDurationTypeRemovesTuplet() throws Exception {
+        void testDifferentDurationTypeRemovesTuplet() {
             addNotes(3, ElementType.QUAVER);
             addTriplet(0, 2);
 
-            setStaticField("xPosSsMatchesElement", true);
-            setStaticField("currentXIndex", 1);
+            PreviewElementManager.setXPosSsMatchesElement(true);
+            PreviewElementManager.setCurrentXIndex(1);
             setPreviewElement(ElementType.CROTCHET.newInstance());
 
             PreviewElementManager.handleClick(lc);
@@ -185,15 +176,15 @@ class PreviewElementManagerTupletTest extends UnitTest {
          * The tuplet must be removed.
          */
         @Test
-        void testDifferentDotCountRemovesTuplet() throws Exception {
+        void testDifferentDotCountRemovesTuplet() {
             addNotes(3, ElementType.QUAVER);
             addTriplet(0, 2);
 
             var dottedQuaver = ElementType.QUAVER.newInstance();
             dottedQuaver.setDotCount(1);
 
-            setStaticField("xPosSsMatchesElement", true);
-            setStaticField("currentXIndex", 1);
+            PreviewElementManager.setXPosSsMatchesElement(true);
+            PreviewElementManager.setCurrentXIndex(1);
             setPreviewElement(dottedQuaver);
 
             PreviewElementManager.handleClick(lc);
@@ -205,12 +196,12 @@ class PreviewElementManagerTupletTest extends UnitTest {
          * Same type and same dot count (only pitch differs): tuplet must be preserved.
          */
         @Test
-        void testSameDurationAndDotCountPreservesTuplet() throws Exception {
+        void testSameDurationAndDotCountPreservesTuplet() {
             addNotes(3, ElementType.QUAVER);
             addTriplet(0, 2);
 
-            setStaticField("xPosSsMatchesElement", true);
-            setStaticField("currentXIndex", 1);
+            PreviewElementManager.setXPosSsMatchesElement(true);
+            PreviewElementManager.setCurrentXIndex(1);
             setPreviewElement(ElementType.QUAVER.newInstance());
 
             PreviewElementManager.handleClick(lc);
@@ -224,6 +215,7 @@ class PreviewElementManagerTupletTest extends UnitTest {
     // insertElement
     // -----------------------------------------------------------------------
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class InsertElement {
 
@@ -233,12 +225,12 @@ class PreviewElementManagerTupletTest extends UnitTest {
          * must remove the tuplet without a confirmation dialog.
          */
         @Test
-        void testInsertingIntoTupletRemovesIt() throws Exception {
+        void testInsertingIntoTupletRemovesIt() {
             addNotes(3, ElementType.QUAVER);
             addTriplet(0, 2);
 
-            setStaticField("xPosSsMatchesElement", false);
-            setStaticField("currentXIndex", 1);
+            PreviewElementManager.setXPosSsMatchesElement(false);
+            PreviewElementManager.setCurrentXIndex(1);
             setPreviewElement(ElementType.QUAVER.newInstance());
 
             PreviewElementManager.handleClick(lc);
@@ -251,13 +243,13 @@ class PreviewElementManagerTupletTest extends UnitTest {
          * must leave the tuplet intact.
          */
         @Test
-        void testInsertingAfterTupletPreservesIt() throws Exception {
+        void testInsertingAfterTupletPreservesIt() {
             addNotes(3, ElementType.QUAVER);
             // Tuplet covers only [0..1]; inserting at index 3 (after index 2) is outside
             addTriplet(0, 1);
 
-            setStaticField("xPosSsMatchesElement", false);
-            setStaticField("currentXIndex", 3);
+            PreviewElementManager.setXPosSsMatchesElement(false);
+            PreviewElementManager.setCurrentXIndex(3);
             setPreviewElement(ElementType.QUAVER.newInstance());
 
             PreviewElementManager.handleClick(lc);

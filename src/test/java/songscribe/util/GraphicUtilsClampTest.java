@@ -69,6 +69,7 @@ class GraphicUtilsClampTest extends UnitTest {
         geMock.close();
     }
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class ClampRectangle {
 
@@ -124,6 +125,7 @@ class GraphicUtilsClampTest extends UnitTest {
         }
     }
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class ClampPointDimension {
 

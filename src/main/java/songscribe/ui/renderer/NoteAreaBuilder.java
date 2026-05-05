@@ -106,11 +106,6 @@ class NoteAreaBuilder {
     // ==========================================================================
 
     /**
-     * The offset (pre-expanded) note area and its bounding box, ready for glissando endpoint search.
-     */
-    record NoteArea(Area offsetArea, Rectangle2D offsetBounds) {}
-
-    /**
      * Cache key capturing the note attributes that affect the composite area shape.
      * When any attribute changes, the key won't match and the area is rebuilt.
      * <p>

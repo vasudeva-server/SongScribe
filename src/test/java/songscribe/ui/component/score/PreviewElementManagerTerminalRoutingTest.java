@@ -90,15 +90,15 @@ class PreviewElementManagerTerminalRoutingTest extends UnitTest {
 
         playbackMock.when(PlaybackController::isPlaying).thenReturn(false);
 
-        PreviewElementManager.currentPreviewLine = lc;
-        PreviewElementManager.currentStaffPosition = 0;
+        PreviewElementManager.setCurrentPreviewLine(lc);
+        PreviewElementManager.setCurrentStaffPosition(0);
     }
 
     @AfterEach
     void tearDown() {
-        PreviewElementManager.currentPreviewLine = null;
-        PreviewElementManager.currentXIndex = -1;
-        PreviewElementManager.xPosSsMatchesElement = false;
+        PreviewElementManager.setCurrentPreviewLine(null);
+        PreviewElementManager.setCurrentXIndex(-1);
+        PreviewElementManager.setXPosSsMatchesElement(false);
 
         playbackMock.close();
         scoreMock.close();
@@ -114,6 +114,7 @@ class PreviewElementManagerTerminalRoutingTest extends UnitTest {
     // Terminal replacement routing
     // -----------------------------------------------------------------------
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class TerminalReplacement {
 
@@ -128,8 +129,8 @@ class PreviewElementManagerTerminalRoutingTest extends UnitTest {
                 .thenReturn(ElementType.REPEAT_RIGHT.newInstance());
 
             var termIdx = terminalIndex();
-            PreviewElementManager.xPosSsMatchesElement = true;
-            PreviewElementManager.currentXIndex = termIdx;
+            PreviewElementManager.setXPosSsMatchesElement(true);
+            PreviewElementManager.setCurrentXIndex(termIdx);
             var countBefore = line.elementCount();
 
             PreviewElementManager.handleClick(lc);
@@ -152,8 +153,8 @@ class PreviewElementManagerTerminalRoutingTest extends UnitTest {
                 .thenReturn(ElementType.CROTCHET.newInstance());
 
             var termIdx = terminalIndex();
-            PreviewElementManager.xPosSsMatchesElement = true;
-            PreviewElementManager.currentXIndex = termIdx;
+            PreviewElementManager.setXPosSsMatchesElement(true);
+            PreviewElementManager.setCurrentXIndex(termIdx);
             var terminalTypeBefore = line.getElement(termIdx).getType();
             var countBefore = line.elementCount();
 
@@ -172,6 +173,7 @@ class PreviewElementManagerTerminalRoutingTest extends UnitTest {
     // isPositionBlockedByTerminal: past-terminal append slot
     // -----------------------------------------------------------------------
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class PastTerminalAlwaysBlocked {
 
@@ -186,8 +188,8 @@ class PreviewElementManagerTerminalRoutingTest extends UnitTest {
                 .thenReturn(ElementType.REPEAT_RIGHT.newInstance());
 
             // xIndex one past the last element
-            PreviewElementManager.xPosSsMatchesElement = false;
-            PreviewElementManager.currentXIndex = line.elementCount();
+            PreviewElementManager.setXPosSsMatchesElement(false);
+            PreviewElementManager.setCurrentXIndex(line.elementCount());
             var termIdx = terminalIndex();
             var terminalTypeBefore = line.getElement(termIdx).getType();
             var countBefore = line.elementCount();

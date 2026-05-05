@@ -114,6 +114,7 @@ class SelectionApplyIntegrationTest extends UnitTest {
 
     // ---- Edge Cases ----
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class EdgeCases {
 
@@ -197,6 +198,7 @@ class SelectionApplyIntegrationTest extends UnitTest {
 
     // ---- Full Select → Reflect → Apply → Verify Flow ----
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class FullApplyFlow {
 
@@ -302,6 +304,7 @@ class SelectionApplyIntegrationTest extends UnitTest {
 
     // ---- Mutual Exclusivity ----
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class MutualExclusivity {
 
@@ -408,6 +411,7 @@ class SelectionApplyIntegrationTest extends UnitTest {
 
     // ---- Multi-Action Sequential Application ----
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class SequentialApply {
 
@@ -505,6 +509,7 @@ class SelectionApplyIntegrationTest extends UnitTest {
 
     // ---- State Management Integration ----
 
+    @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class StateManagement {
 
